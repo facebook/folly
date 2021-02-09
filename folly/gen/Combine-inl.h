@@ -49,8 +49,7 @@ class Interleave : public Operator<Interleave<Container>> {
 
    public:
     explicit Generator(
-        Source source,
-        const std::shared_ptr<Container> container)
+        Source source, const std::shared_ptr<Container> container)
         : source_(std::move(source)), container_(container) {}
 
     template <class Handler>
@@ -111,8 +110,7 @@ class Zip : public Operator<Zip<Container>> {
 
    public:
     explicit Generator(
-        Source source,
-        const std::shared_ptr<Container> container)
+        Source source, const std::shared_ptr<Container> container)
         : source_(std::move(source)), container_(container) {}
 
     template <class Handler>

@@ -83,15 +83,13 @@ ProxyLockableUniqueLock<Mutex>& ProxyLockableUniqueLock<Mutex>::operator=(
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex,
-    std::defer_lock_t) noexcept {
+    mutex_type& mutex, std::defer_lock_t) noexcept {
   mutex_ = std::addressof(mutex);
 }
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex,
-    std::try_to_lock_t) {
+    mutex_type& mutex, std::try_to_lock_t) {
   mutex_ = std::addressof(mutex);
   if (auto state = mutex.try_lock()) {
     proxy_.emplace(std::move(state));
@@ -101,8 +99,7 @@ ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
 template <typename Mutex>
 template <typename Rep, typename Period>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex,
-    const std::chrono::duration<Rep, Period>& duration) {
+    mutex_type& mutex, const std::chrono::duration<Rep, Period>& duration) {
   mutex_ = std::addressof(mutex);
   if (auto state = mutex.try_lock_for(duration)) {
     proxy_.emplace(std::move(state));
@@ -112,8 +109,7 @@ ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
 template <typename Mutex>
 template <typename Clock, typename Duration>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex,
-    const std::chrono::time_point<Clock, Duration>& time) {
+    mutex_type& mutex, const std::chrono::time_point<Clock, Duration>& time) {
   mutex_ = std::addressof(mutex);
   if (auto state = mutex.try_lock_until(time)) {
     proxy_.emplace(std::move(state));

@@ -219,9 +219,7 @@ class SingletonThreadLocal {
 
 template <typename T, typename Tag, typename Make, typename TLTag>
 detail::UniqueInstance SingletonThreadLocal<T, Tag, Make, TLTag>::unique{
-    "folly::SingletonThreadLocal",
-    tag_t<T, Tag>{},
-    tag_t<Make, TLTag>{}};
+    "folly::SingletonThreadLocal", tag_t<T, Tag>{}, tag_t<Make, TLTag>{}};
 
 } // namespace folly
 

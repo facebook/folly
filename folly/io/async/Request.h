@@ -141,8 +141,7 @@ class RequestContext {
 
   // copy ctor is disabled, use copyAsRoot/copyAsChild instead.
   static std::shared_ptr<RequestContext> copyAsRoot(
-      const RequestContext& ctx,
-      intptr_t rootid);
+      const RequestContext& ctx, intptr_t rootid);
   static std::shared_ptr<RequestContext> copyAsChild(const RequestContext& ctx);
 
   // Create a unique request context for this request.
@@ -173,11 +172,9 @@ class RequestContext {
   // used, will print a warning message for the first time, clear the existing
   // RequestData instance for "val", and **not** add "data".
   void setContextData(
-      const RequestToken& token,
-      std::unique_ptr<RequestData> data);
+      const RequestToken& token, std::unique_ptr<RequestData> data);
   void setContextData(
-      const std::string& val,
-      std::unique_ptr<RequestData> data) {
+      const std::string& val, std::unique_ptr<RequestData> data) {
     setContextData(RequestToken(val), std::move(data));
   }
 
@@ -185,11 +182,9 @@ class RequestContext {
   // string identifier "val". If the same string identifier has already been
   // used, return false and do nothing. Otherwise add "data" and return true.
   bool setContextDataIfAbsent(
-      const RequestToken& token,
-      std::unique_ptr<RequestData> data);
+      const RequestToken& token, std::unique_ptr<RequestData> data);
   bool setContextDataIfAbsent(
-      const std::string& val,
-      std::unique_ptr<RequestData> data) {
+      const std::string& val, std::unique_ptr<RequestData> data) {
     return setContextDataIfAbsent(RequestToken(val), std::move(data));
   }
 
@@ -253,8 +248,7 @@ class RequestContext {
  private:
   static StaticContext& getStaticContext();
   static std::shared_ptr<RequestContext> setContextHelper(
-      std::shared_ptr<RequestContext>& newCtx,
-      StaticContext& staticCtx);
+      std::shared_ptr<RequestContext>& newCtx, StaticContext& staticCtx);
 
   // Start shallow copy guard implementation details:
   // All methods are private to encourage proper use
@@ -408,14 +402,12 @@ struct ShallowCopyRequestContextScopeGuard {
    * "clearRequestData" then "setRequestData" after the guard.
    */
   ShallowCopyRequestContextScopeGuard(
-      const RequestToken& token,
-      std::unique_ptr<RequestData> data)
+      const RequestToken& token, std::unique_ptr<RequestData> data)
       : ShallowCopyRequestContextScopeGuard() {
     RequestContext::get()->overwriteContextData(token, std::move(data), true);
   }
   ShallowCopyRequestContextScopeGuard(
-      const std::string& val,
-      std::unique_ptr<RequestData> data)
+      const std::string& val, std::unique_ptr<RequestData> data)
       : ShallowCopyRequestContextScopeGuard() {
     RequestContext::get()->overwriteContextData(val, std::move(data), true);
   }
@@ -429,8 +421,7 @@ struct ShallowCopyRequestContextScopeGuard {
    */
   template <typename... TItems>
   explicit ShallowCopyRequestContextScopeGuard(
-      RequestDataItem&& first,
-      TItems&&... rest)
+      RequestDataItem&& first, TItems&&... rest)
       : ShallowCopyRequestContextScopeGuard() {
     auto rc = RequestContext::get();
     auto overwriteContextData = [&rc](RequestDataItem&& item) {

@@ -220,8 +220,7 @@ class hazptr_priv {
   }
 
   void collect(
-      hazptr_obj<Atom>*& colHead,
-      hazptr_obj<Atom>*& colTail) noexcept {
+      hazptr_obj<Atom>*& colHead, hazptr_obj<Atom>*& colTail) noexcept {
     // This function doesn't change rcount_.
     // The value rcount_ is accurate excluding the effects of calling collect().
     auto h = exchange_head();

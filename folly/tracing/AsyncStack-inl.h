@@ -27,8 +27,7 @@ inline void checkAsyncStackFrameIsActive(
 }
 
 inline void activateAsyncStackFrame(
-    folly::AsyncStackRoot& root,
-    folly::AsyncStackFrame& frame) noexcept {
+    folly::AsyncStackRoot& root, folly::AsyncStackFrame& frame) noexcept {
   assert(tryGetCurrentAsyncStackRoot() == &root);
   root.setTopFrame(frame);
 }
@@ -114,8 +113,7 @@ inline AsyncStackFrame* AsyncStackRoot::getTopFrame() noexcept {
 }
 
 inline void AsyncStackRoot::setStackFrameContext(
-    void* framePtr,
-    void* ip) noexcept {
+    void* framePtr, void* ip) noexcept {
   stackFramePtr = framePtr;
   returnAddress = ip;
 }

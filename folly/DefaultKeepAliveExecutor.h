@@ -59,8 +59,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
   class WeakRef : public Executor {
    public:
     static folly::Executor::KeepAlive<> create(
-        std::shared_ptr<ControlBlock> controlBlock,
-        Executor* executor) {
+        std::shared_ptr<ControlBlock> controlBlock, Executor* executor) {
       return makeKeepAlive(new WeakRef(std::move(controlBlock), executor));
     }
 

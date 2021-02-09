@@ -454,8 +454,7 @@ void LoggerDB::resetConfig(const LogConfig& config) {
 }
 
 LogCategory* LoggerDB::getOrCreateCategoryLocked(
-    LoggerNameMap& loggersByName,
-    StringPiece name) {
+    LoggerNameMap& loggersByName, StringPiece name) {
   auto it = loggersByName.find(name);
   if (it != loggersByName.end()) {
     return it->second.get();
@@ -467,9 +466,7 @@ LogCategory* LoggerDB::getOrCreateCategoryLocked(
 }
 
 LogCategory* LoggerDB::createCategoryLocked(
-    LoggerNameMap& loggersByName,
-    StringPiece name,
-    LogCategory* parent) {
+    LoggerNameMap& loggersByName, StringPiece name, LogCategory* parent) {
   auto uptr = std::make_unique<LogCategory>(name, parent);
   LogCategory* logger = uptr.get();
   auto ret = loggersByName.emplace(logger->getName(), std::move(uptr));
@@ -530,8 +527,7 @@ size_t LoggerDB::flushAllHandlers() {
 }
 
 void LoggerDB::registerHandlerFactory(
-    std::unique_ptr<LogHandlerFactory> factory,
-    bool replaceExisting) {
+    std::unique_ptr<LogHandlerFactory> factory, bool replaceExisting) {
   auto type = factory->getType();
   auto handlerInfo = handlerInfo_.wlock();
   if (replaceExisting) {
@@ -686,9 +682,7 @@ std::string LoggerDB::getContextString() const {
 std::atomic<LoggerDB::InternalWarningHandler> LoggerDB::warningHandler_;
 
 void LoggerDB::internalWarningImpl(
-    folly::StringPiece filename,
-    int lineNumber,
-    std::string&& msg) noexcept {
+    folly::StringPiece filename, int lineNumber, std::string&& msg) noexcept {
   auto handler = warningHandler_.load();
   if (handler) {
     handler(filename, lineNumber, std::move(msg));
@@ -721,9 +715,7 @@ void LoggerDB::setInternalWarningHandler(InternalWarningHandler handler) {
 }
 
 void LoggerDB::defaultInternalWarningImpl(
-    folly::StringPiece filename,
-    int lineNumber,
-    std::string&& msg) noexcept {
+    folly::StringPiece filename, int lineNumber, std::string&& msg) noexcept {
   // Rate limit to 10 messages every 5 seconds.
   //
   // We intentonally use a leaky Meyer's singleton here over folly::Singleton:

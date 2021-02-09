@@ -106,13 +106,11 @@ class Indestructible final {
   template <
       typename U,
       typename... Args,
-      typename = decltype(
-          T(std::declval<std::initializer_list<U>&>(),
-            std::declval<Args>()...))>
+      typename = decltype(T(
+          std::declval<std::initializer_list<U>&>(), std::declval<Args>()...))>
   explicit constexpr Indestructible(std::initializer_list<U> il, Args... args) noexcept(
-      noexcept(
-          T(std::declval<std::initializer_list<U>&>(),
-            std::declval<Args>()...)))
+      noexcept(T(
+          std::declval<std::initializer_list<U>&>(), std::declval<Args>()...)))
       : storage_(il, std::forward<Args>(args)...) {}
 
   ~Indestructible() = default;

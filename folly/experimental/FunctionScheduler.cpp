@@ -148,9 +148,7 @@ void FunctionScheduler::addFunction(
 }
 
 void FunctionScheduler::addFunctionOnce(
-    Function<void()>&& cb,
-    StringPiece nameID,
-    microseconds startDelay) {
+    Function<void()>&& cb, StringPiece nameID, microseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       ConstIntervalFunctor(microseconds::zero()),
@@ -289,8 +287,7 @@ void FunctionScheduler::addFunctionInternal(
 }
 
 bool FunctionScheduler::cancelFunctionWithLock(
-    std::unique_lock<std::mutex>& lock,
-    StringPiece nameID) {
+    std::unique_lock<std::mutex>& lock, StringPiece nameID) {
   CHECK_EQ(lock.owns_lock(), true);
   if (currentFunction_ && currentFunction_->name == nameID) {
     functionsMap_.erase(currentFunction_->name);
@@ -334,8 +331,7 @@ bool FunctionScheduler::cancelFunctionAndWait(StringPiece nameID) {
 }
 
 void FunctionScheduler::cancelFunction(
-    const std::unique_lock<std::mutex>& l,
-    RepeatFunc* it) {
+    const std::unique_lock<std::mutex>& l, RepeatFunc* it) {
   // This function should only be called with mutex_ already locked.
   DCHECK(l.mutex() == &mutex_);
   DCHECK(l.owns_lock());
@@ -473,8 +469,7 @@ void FunctionScheduler::run() {
 }
 
 void FunctionScheduler::runOneFunction(
-    std::unique_lock<std::mutex>& lock,
-    steady_clock::time_point now) {
+    std::unique_lock<std::mutex>& lock, steady_clock::time_point now) {
   DCHECK(lock.mutex() == &mutex_);
   DCHECK(lock.owns_lock());
 

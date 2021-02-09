@@ -101,10 +101,7 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     EventBaseManager* ebm,
     bool waitForAll)
     : ThreadPoolExecutor(
-          maxThreads,
-          minThreads,
-          std::move(threadFactory),
-          waitForAll),
+          maxThreads, minThreads, std::move(threadFactory), waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(maxThreads);
@@ -121,9 +118,7 @@ void IOThreadPoolExecutor::add(Func func) {
 }
 
 void IOThreadPoolExecutor::add(
-    Func func,
-    std::chrono::milliseconds expiration,
-    Func expireCallback) {
+    Func func, std::chrono::milliseconds expiration, Func expireCallback) {
   ensureActiveThreads();
   SharedMutex::ReadHolder r{&threadListLock_};
   if (threadList_.get().empty()) {

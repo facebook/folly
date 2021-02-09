@@ -91,9 +91,7 @@ bool Symbolizer::isAvailable() {
 }
 
 Symbolizer::Symbolizer(
-    ElfCacheBase* cache,
-    LocationInfoMode mode,
-    size_t symbolCacheSize)
+    ElfCacheBase* cache, LocationInfoMode mode, size_t symbolCacheSize)
     : cache_(cache ? cache : defaultElfCache()), mode_(mode) {
   if (symbolCacheSize > 0) {
     symbolCache_.emplace(folly::in_place, symbolCacheSize);
@@ -235,8 +233,7 @@ size_t Symbolizer::symbolize(
 }
 
 FastStackTracePrinter::FastStackTracePrinter(
-    std::unique_ptr<SymbolizePrinter> printer,
-    size_t symbolCacheSize)
+    std::unique_ptr<SymbolizePrinter> printer, size_t symbolCacheSize)
     : printer_(std::move(printer)),
       symbolizer_(defaultElfCache(), LocationInfoMode::FULL, symbolCacheSize) {}
 

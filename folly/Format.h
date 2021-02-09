@@ -121,14 +121,14 @@ class BaseFormatter {
   }
 
   template <size_t K, class Callback>
-  typename std::enable_if<K == valueCount>::type
-  doFormatFrom(size_t i, FormatArg& arg, Callback& /*cb*/) const {
+  typename std::enable_if<K == valueCount>::type doFormatFrom(
+      size_t i, FormatArg& arg, Callback& /*cb*/) const {
     arg.error("argument index out of range, max=", i);
   }
 
   template <size_t K, class Callback>
-  typename std::enable_if<(K < valueCount)>::type
-  doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
+  typename std::enable_if<(K < valueCount)>::type doFormatFrom(
+      size_t i, FormatArg& arg, Callback& cb) const {
     if (i == K) {
       asDerived().template doFormatArg<K>(arg, cb);
     } else {
@@ -143,8 +143,7 @@ class BaseFormatter {
 
   template <size_t K>
   typename std::enable_if<K == valueCount, int>::type getSizeArgFrom(
-      size_t i,
-      const FormatArg& arg) const {
+      size_t i, const FormatArg& arg) const {
     arg.error("argument index out of range, max=", i);
   }
 
@@ -165,9 +164,8 @@ class BaseFormatter {
   }
 
   template <size_t K>
-      typename std::enable_if <
-      K<valueCount, int>::type getSizeArgFrom(size_t i, const FormatArg& arg)
-          const {
+      typename std::enable_if < K<valueCount, int>::type getSizeArgFrom(
+                                    size_t i, const FormatArg& arg) const {
     if (i == K) {
       return getValue(getFormatValue<K>(), arg);
     }
@@ -258,8 +256,7 @@ std::ostream& operator<<(
  */
 template <class Derived, bool containerMode, class... Args>
 void writeTo(
-    FILE* fp,
-    const BaseFormatter<Derived, containerMode, Args...>& formatter);
+    FILE* fp, const BaseFormatter<Derived, containerMode, Args...>& formatter);
 
 /**
  * Create a formatter object.
@@ -350,8 +347,7 @@ struct DefaultValueWrapper {
 
 template <class Container, class Value>
 detail::DefaultValueWrapper<Container, Value> defaulted(
-    const Container& c,
-    const Value& v) {
+    const Container& c, const Value& v) {
   return detail::DefaultValueWrapper<Container, Value>(c, v);
 }
 
@@ -364,8 +360,8 @@ detail::DefaultValueWrapper<Container, Value> defaulted(
  * Shortcut for toAppend(format(...), &foo);
  */
 template <class Str, class... Args>
-typename std::enable_if<IsSomeString<Str>::value>::type
-format(Str* out, StringPiece fmt, Args&&... args) {
+typename std::enable_if<IsSomeString<Str>::value>::type format(
+    Str* out, StringPiece fmt, Args&&... args) {
   format(fmt, std::forward<Args>(args)...).appendTo(*out);
 }
 
@@ -373,8 +369,8 @@ format(Str* out, StringPiece fmt, Args&&... args) {
  * Append vformatted output to a string.
  */
 template <class Str, class Container>
-typename std::enable_if<IsSomeString<Str>::value>::type
-vformat(Str* out, StringPiece fmt, Container&& container) {
+typename std::enable_if<IsSomeString<Str>::value>::type vformat(
+    Str* out, StringPiece fmt, Container&& container) {
   vformat(fmt, std::forward<Container>(container)).appendTo(*out);
 }
 
@@ -401,10 +397,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb);
  */
 template <class FormatCallback>
 void formatNumber(
-    StringPiece val,
-    int prefixLen,
-    FormatArg& arg,
-    FormatCallback& cb);
+    StringPiece val, int prefixLen, FormatArg& arg, FormatCallback& cb);
 
 /**
  * Format a Formatter object recursively.  Behaves just like

@@ -48,8 +48,7 @@ class TimeoutManager {
    * Attaches/detaches TimeoutManager to AsyncTimeout
    */
   virtual void attachTimeoutManager(
-      AsyncTimeout* obj,
-      InternalEnum internal) = 0;
+      AsyncTimeout* obj, InternalEnum internal) = 0;
   virtual void detachTimeoutManager(AsyncTimeout* obj) = 0;
 
   /**
@@ -61,8 +60,7 @@ class TimeoutManager {
    * Schedules AsyncTimeout to fire after `timeout` microseconds
    */
   virtual bool scheduleTimeoutHighRes(
-      AsyncTimeout* obj,
-      timeout_type_high_res timeout);
+      AsyncTimeout* obj, timeout_type_high_res timeout);
 
   /**
    * Cancels the AsyncTimeout, if scheduled

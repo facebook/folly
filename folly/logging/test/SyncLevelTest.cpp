@@ -30,8 +30,8 @@ namespace folly {
 
 class TestLogWriter : public LogWriter {
  public:
-  void writeMessage(folly::StringPiece /* buffer */, uint32_t /* flags */ = 0)
-      override {
+  void writeMessage(
+      folly::StringPiece /* buffer */, uint32_t /* flags */ = 0) override {
     unflushed_messages_count++;
   }
 
@@ -66,8 +66,8 @@ class TestHandlerFactory : public LogHandlerFactory {
     TestWriterFactory(std::shared_ptr<TestLogWriter> writer)
         : writer_(writer) {}
 
-    bool processOption(StringPiece /* name */, StringPiece /* value */)
-        override {
+    bool processOption(
+        StringPiece /* name */, StringPiece /* value */) override {
       return false;
     }
 

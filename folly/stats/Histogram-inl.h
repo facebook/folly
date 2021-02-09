@@ -141,9 +141,7 @@ size_t HistogramBuckets<T, BucketType>::getPercentileBucketIdx(
 template <typename T, typename BucketType>
 template <typename CountFn, typename AvgFn>
 T HistogramBuckets<T, BucketType>::getPercentileEstimate(
-    double pct,
-    CountFn countFromBucket,
-    AvgFn avgFromBucket) const {
+    double pct, CountFn countFromBucket, AvgFn avgFromBucket) const {
   // Find the bucket where this percentile falls
   double lowPct;
   double highPct;

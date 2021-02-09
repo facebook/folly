@@ -140,8 +140,7 @@ class MicroLockCore {
   }
 
   static constexpr uint8_t decodeDataFromWord(
-      uint32_t word,
-      unsigned baseShift) noexcept {
+      uint32_t word, unsigned baseShift) noexcept {
     return static_cast<uint8_t>(
         static_cast<uint8_t>(word >> baseShift) >> kNumLockBits);
   }
@@ -149,9 +148,7 @@ class MicroLockCore {
     return decodeDataFromWord(word, baseShift());
   }
   static constexpr uint32_t encodeDataToWord(
-      uint32_t word,
-      unsigned shiftToByte,
-      uint8_t value) noexcept {
+      uint32_t word, unsigned shiftToByte, uint8_t value) noexcept {
     const uint32_t preservedBits = word & ~(kDataBits << shiftToByte);
     const uint32_t newBits = encodeDataToByte(value) << shiftToByte;
     return preservedBits | newBits;
@@ -216,8 +213,7 @@ inline unsigned MicroLockCore::waitBit() const noexcept {
 }
 
 inline void MicroLockCore::store(
-    uint8_t value,
-    std::memory_order order) noexcept {
+    uint8_t value, std::memory_order order) noexcept {
   detail::Futex<>* wordPtr = word();
 
   const auto shiftToByte = baseShift();

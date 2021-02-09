@@ -78,8 +78,7 @@ class StandardLogHandler : public LogHandler {
   }
 
   void handleMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) override;
+      const LogMessage& message, const LogCategory* handlerCategory) override;
 
   void flush() override;
 

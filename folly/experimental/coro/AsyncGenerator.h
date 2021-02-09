@@ -534,8 +534,7 @@ class FOLLY_NODISCARD AsyncGenerator {
     explicit NextAwaitable(handle_t coro) noexcept : coro_(coro) {}
 
     friend NextAwaitable tag_invoke(
-        cpo_t<co_withAsyncStack>,
-        NextAwaitable awaitable) noexcept {
+        cpo_t<co_withAsyncStack>, NextAwaitable awaitable) noexcept {
       return NextAwaitable{awaitable.coro_};
     }
 
@@ -552,8 +551,7 @@ class FOLLY_NODISCARD AsyncGenerator {
     }
 
     friend NextSemiAwaitable co_withCancellation(
-        CancellationToken cancelToken,
-        NextSemiAwaitable&& awaitable) {
+        CancellationToken cancelToken, NextSemiAwaitable&& awaitable) {
       if (awaitable.coro_) {
         awaitable.coro_.promise().setCancellationToken(std::move(cancelToken));
       }
@@ -574,8 +572,8 @@ class FOLLY_NODISCARD AsyncGenerator {
   }
 
   template <typename F, typename... A, typename F_, typename... A_>
-  friend AsyncGenerator
-  folly_co_invoke(tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
+  friend AsyncGenerator folly_co_invoke(
+      tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
     auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
     while (auto v = co_await r.next()) {
       co_yield std::move(v).value();

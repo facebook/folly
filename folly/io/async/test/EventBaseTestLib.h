@@ -196,8 +196,8 @@ struct ScheduledEvent {
   }
 };
 
-FOLLY_ALWAYS_INLINE void
-scheduleEvents(EventBase* eventBase, int fd, ScheduledEvent* events) {
+FOLLY_ALWAYS_INLINE void scheduleEvents(
+    EventBase* eventBase, int fd, ScheduledEvent* events) {
   for (ScheduledEvent* ev = events; ev->milliseconds > 0; ++ev) {
     eventBase->tryRunAfterDelay(
         std::bind(&ScheduledEvent::perform, ev, fd), ev->milliseconds);
@@ -1858,8 +1858,7 @@ namespace {
 class IdleTimeTimeoutSeries : public AsyncTimeout {
  public:
   explicit IdleTimeTimeoutSeries(
-      EventBase* base,
-      std::deque<std::size_t>& timeout)
+      EventBase* base, std::deque<std::size_t>& timeout)
       : AsyncTimeout(base), timeouts_(0), timeout_(timeout) {
     scheduleTimeout(1);
   }

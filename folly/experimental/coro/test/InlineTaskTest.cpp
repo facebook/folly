@@ -141,8 +141,7 @@ struct TypeWithImplicitMultiValueConstructor {
   std::string s_;
   float x_;
   /* implicit */ TypeWithImplicitMultiValueConstructor(
-      std::string s,
-      float x) noexcept
+      std::string s, float x) noexcept
       : s_(s), x_(x) {}
 };
 

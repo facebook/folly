@@ -146,8 +146,7 @@ class CallbackHandle {
   CallbackHandle();
   template <typename T>
   CallbackHandle(
-      Observer<T> observer,
-      folly::Function<void(Snapshot<T>)> callback);
+      Observer<T> observer, folly::Function<void(Snapshot<T>)> callback);
   CallbackHandle(const CallbackHandle&) = delete;
   CallbackHandle(CallbackHandle&&) = default;
   CallbackHandle& operator=(const CallbackHandle&) = delete;
@@ -306,8 +305,7 @@ class ReadMostlyTLObserver {
   struct LocalSnapshot {
     LocalSnapshot() {}
     LocalSnapshot(
-        const folly::ReadMostlyMainPtr<const T>& data,
-        int64_t version)
+        const folly::ReadMostlyMainPtr<const T>& data, int64_t version)
         : data_(data), version_(version) {}
 
     folly::ReadMostlyWeakPtr<const T> data_;

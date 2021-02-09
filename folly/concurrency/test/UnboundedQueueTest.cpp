@@ -50,13 +50,11 @@ using UMPMC = folly::UMPMCQueue<T, MayBlock>;
 FOLLY_ATTR_WEAK void noop(folly::Optional<int>&&) {}
 
 extern "C" FOLLY_KEEP void check_uspsc_mayblock_dequeue_ref(
-    USPSC<int, true>& queue,
-    int& item) {
+    USPSC<int, true>& queue, int& item) {
   queue.dequeue(item);
 }
 extern "C" FOLLY_KEEP bool check_uspsc_mayblock_try_dequeue_ref(
-    USPSC<int, true>& queue,
-    int& item) {
+    USPSC<int, true>& queue, int& item) {
   return queue.try_dequeue(item);
 }
 extern "C" FOLLY_KEEP bool check_uspsc_mayblock_try_dequeue_for_ref(
@@ -81,8 +79,7 @@ extern "C" FOLLY_KEEP void check_uspsc_mayblock_try_dequeue_ret(
   noop(queue.try_dequeue());
 }
 extern "C" FOLLY_KEEP void check_uspsc_mayblock_try_dequeue_for_ret(
-    USPSC<int, true>& queue,
-    std::chrono::milliseconds const& timeout) {
+    USPSC<int, true>& queue, std::chrono::milliseconds const& timeout) {
   noop(queue.try_dequeue_for(timeout));
 }
 extern "C" FOLLY_KEEP void check_uspsc_mayblock_try_dequeue_until_ret(
@@ -92,13 +89,11 @@ extern "C" FOLLY_KEEP void check_uspsc_mayblock_try_dequeue_until_ret(
 }
 
 extern "C" FOLLY_KEEP void check_umpmc_mayblock_dequeue_ref(
-    UMPMC<int, true>& queue,
-    int& item) {
+    UMPMC<int, true>& queue, int& item) {
   queue.dequeue(item);
 }
 extern "C" FOLLY_KEEP bool check_umpmc_mayblock_try_dequeue_ref(
-    UMPMC<int, true>& queue,
-    int& item) {
+    UMPMC<int, true>& queue, int& item) {
   return queue.try_dequeue(item);
 }
 extern "C" FOLLY_KEEP bool check_umpmc_mayblock_try_dequeue_for_ref(
@@ -123,8 +118,7 @@ extern "C" FOLLY_KEEP void check_umpmc_mayblock_try_dequeue_ret(
   noop(queue.try_dequeue());
 }
 extern "C" FOLLY_KEEP void check_umpmc_mayblock_try_dequeue_for_ret(
-    UMPMC<int, true>& queue,
-    std::chrono::milliseconds const& timeout) {
+    UMPMC<int, true>& queue, std::chrono::milliseconds const& timeout) {
   noop(queue.try_dequeue_for(timeout));
 }
 extern "C" FOLLY_KEEP void check_umpmc_mayblock_try_dequeue_until_ret(
@@ -507,8 +501,7 @@ class MPMC {
 
   template <typename Rep, typename Period>
   bool try_dequeue_for(
-      T& item,
-      const std::chrono::duration<Rep, Period>& duration) noexcept {
+      T& item, const std::chrono::duration<Rep, Period>& duration) noexcept {
     auto deadline = std::chrono::steady_clock::now() + duration;
     return q_.tryReadUntil(deadline, item);
   }

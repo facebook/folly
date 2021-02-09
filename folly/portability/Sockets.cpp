@@ -211,21 +211,13 @@ ssize_t sendto(
 }
 
 int setsockopt(
-    int s,
-    int level,
-    int optname,
-    const void* optval,
-    socklen_t optlen) {
+    int s, int level, int optname, const void* optval, socklen_t optlen) {
   return wrapSocketFunction<int>(
       netops::setsockopt, s, level, optname, optval, optlen);
 }
 
 int setsockopt(
-    int s,
-    int level,
-    int optname,
-    const char* optval,
-    socklen_t optlen) {
+    int s, int level, int optname, const char* optval, socklen_t optlen) {
   return setsockopt(s, level, optname, (const void*)optval, optlen);
 }
 

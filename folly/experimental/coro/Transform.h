@@ -51,8 +51,7 @@ namespace coro {
 //   }
 template <typename TransformFn, typename Reference, typename Value>
 AsyncGenerator<invoke_result_t<TransformFn&, Reference>> transform(
-    AsyncGenerator<Reference, Value> source,
-    TransformFn transformFn);
+    AsyncGenerator<Reference, Value> source, TransformFn transformFn);
 
 } // namespace coro
 } // namespace folly

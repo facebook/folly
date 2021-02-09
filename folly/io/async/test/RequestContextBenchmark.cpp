@@ -206,10 +206,7 @@ uint64_t bench_RequestContextScopeGuard(int nthr, uint64_t ops, bool nonempty) {
 }
 
 uint64_t bench_ShallowCopyRequestContextScopeGuard(
-    int nthr,
-    uint64_t ops,
-    int keep,
-    bool replace) {
+    int nthr, uint64_t ops, int keep, bool replace) {
   auto fn = [&](int tid) {
     RequestContextScopeGuard g1;
     auto ctx = RequestContext::get();

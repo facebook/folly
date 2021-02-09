@@ -113,8 +113,7 @@ class not_null_base : protected guaranteed_not_null_provider {
 
   // Allow construction without a null check for trusted callsites.
   explicit not_null_base(
-      PtrT&& ptr,
-      guaranteed_not_null_provider::guaranteed_not_null) noexcept;
+      PtrT&& ptr, guaranteed_not_null_provider::guaranteed_not_null) noexcept;
 
   /**
    * Assignment:
@@ -318,8 +317,7 @@ class not_null<std::shared_ptr<T>> : public not_null_base<std::shared_ptr<T>> {
   not_null(std::shared_ptr<U>&& r, not_null<element_type*> ptr) noexcept;
   template <typename U>
   not_null(
-      not_null<std::shared_ptr<U>>&& r,
-      not_null<element_type*> ptr) noexcept;
+      not_null<std::shared_ptr<U>>&& r, not_null<element_type*> ptr) noexcept;
 
   /**
    * not_null_shared_ptr can only be reset to a non-null pointer.
@@ -370,8 +368,7 @@ not_null_shared_ptr<T> make_not_null_shared(Args&&... args);
 
 template <typename T, typename Alloc, typename... Args>
 not_null_shared_ptr<T> allocate_not_null_shared(
-    const Alloc& alloc,
-    Args&&... args);
+    const Alloc& alloc, Args&&... args);
 
 /**
  * Comparison:
@@ -401,8 +398,7 @@ FB_NOT_NULL_MK_OP(>=)
  */
 template <typename U, typename V, typename PtrT>
 std::basic_ostream<U, V>& operator<<(
-    std::basic_ostream<U, V>& os,
-    const not_null<PtrT>& ptr);
+    std::basic_ostream<U, V>& os, const not_null<PtrT>& ptr);
 
 /**
  * Swap

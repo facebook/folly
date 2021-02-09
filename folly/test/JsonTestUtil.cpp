@@ -32,18 +32,14 @@ bool compareJson(StringPiece json1, StringPiece json2) {
 }
 
 bool compareJsonWithNestedJson(
-    StringPiece json1,
-    StringPiece json2,
-    unsigned strNestingDepth) {
+    StringPiece json1, StringPiece json2, unsigned strNestingDepth) {
   auto obj1 = parseJson(json1);
   auto obj2 = parseJson(json2);
   return compareDynamicWithNestedJson(obj1, obj2, strNestingDepth);
 }
 
 bool compareDynamicWithNestedJson(
-    dynamic const& obj1,
-    dynamic const& obj2,
-    unsigned strNestingDepth) {
+    dynamic const& obj1, dynamic const& obj2, unsigned strNestingDepth) {
   if (obj1 == obj2) {
     return true;
   }
@@ -110,9 +106,7 @@ bool isClose(double x, double y, double tolerance) {
 } // namespace
 
 bool compareDynamicWithTolerance(
-    const dynamic& obj1,
-    const dynamic& obj2,
-    double tolerance) {
+    const dynamic& obj1, const dynamic& obj2, double tolerance) {
   if (obj1.type() != obj2.type()) {
     if (obj1.isNumber() && obj2.isNumber()) {
       const auto& integ = obj1.isInt() ? obj1 : obj2;
@@ -164,9 +158,7 @@ bool compareDynamicWithTolerance(
 }
 
 bool compareJsonWithTolerance(
-    StringPiece json1,
-    StringPiece json2,
-    double tolerance) {
+    StringPiece json1, StringPiece json2, double tolerance) {
   auto obj1 = parseJson(json1);
   auto obj2 = parseJson(json2);
   return compareDynamicWithTolerance(obj1, obj2, tolerance);

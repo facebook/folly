@@ -205,9 +205,7 @@ void for_each_range_impl(index_constant<1>, Sequence&& range, Func& func) {
  */
 template <typename Sequence, typename Func, std::size_t... Indices>
 void for_each_tuple_impl(
-    std::index_sequence<Indices...>,
-    Sequence&& seq,
-    Func& func) {
+    std::index_sequence<Indices...>, Sequence&& seq, Func& func) {
   using _ = int[];
 
   // unroll the loop in an initializer list construction parameter expansion

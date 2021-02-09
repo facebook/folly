@@ -126,11 +126,7 @@ int getsockname(NetworkSocket s, sockaddr* name, socklen_t* namelen) {
 }
 
 int getsockopt(
-    NetworkSocket s,
-    int level,
-    int optname,
-    void* optval,
-    socklen_t* optlen) {
+    NetworkSocket s, int level, int optname, void* optval, socklen_t* optlen) {
   auto ret = wrapSocketFunction<int>(
       ::getsockopt, s, level, optname, (char*)optval, optlen);
 #ifdef _WIN32
@@ -408,10 +404,7 @@ ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
 }
 
 int sendmmsg(
-    NetworkSocket socket,
-    mmsghdr* msgvec,
-    unsigned int vlen,
-    int flags) {
+    NetworkSocket socket, mmsghdr* msgvec, unsigned int vlen, int flags) {
 #if FOLLY_HAVE_SENDMMSG
   return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
 #else

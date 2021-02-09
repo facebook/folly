@@ -59,8 +59,7 @@ class CurrentAsyncStackFrameAwaitable {
   }
 
   friend Awaiter tag_invoke(
-      cpo_t<co_withAsyncStack>,
-      CurrentAsyncStackFrameAwaitable) noexcept {
+      cpo_t<co_withAsyncStack>, CurrentAsyncStackFrameAwaitable) noexcept {
     return Awaiter{};
   }
 };

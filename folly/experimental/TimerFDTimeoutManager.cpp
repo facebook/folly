@@ -32,8 +32,7 @@ void TimerFDTimeoutManager::onTimeout() noexcept {
 }
 
 void TimerFDTimeoutManager::scheduleTimeout(
-    Callback* callback,
-    std::chrono::microseconds timeout) {
+    Callback* callback, std::chrono::microseconds timeout) {
   cancelTimeout(callback);
   // we cannot schedule a timeout of 0 - this will stop the timer
   if (FOLLY_UNLIKELY(!timeout.count())) {

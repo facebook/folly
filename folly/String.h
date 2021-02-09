@@ -109,9 +109,7 @@ enum class UriEscapeMode : unsigned char {
 };
 template <class String>
 void uriEscape(
-    StringPiece str,
-    String& out,
-    UriEscapeMode mode = UriEscapeMode::ALL);
+    StringPiece str, String& out, UriEscapeMode mode = UriEscapeMode::ALL);
 
 /**
  * Similar to uriEscape above, but returns the escaped string.
@@ -131,9 +129,7 @@ String uriEscape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
  */
 template <class String>
 void uriUnescape(
-    StringPiece str,
-    String& out,
-    UriEscapeMode mode = UriEscapeMode::ALL);
+    StringPiece str, String& out, UriEscapeMode mode = UriEscapeMode::ALL);
 
 /**
  * Similar to uriUnescape above, but returns the unescaped string.
@@ -159,9 +155,8 @@ void stringPrintf(std::string* out, FOLLY_PRINTF_FORMAT const char* format, ...)
     FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
 std::string& stringAppendf(
-    std::string* output,
-    FOLLY_PRINTF_FORMAT const char* format,
-    ...) FOLLY_PRINTF_FORMAT_ATTR(2, 3);
+    std::string* output, FOLLY_PRINTF_FORMAT const char* format, ...)
+    FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
 /**
  * Similar to stringPrintf, but accepts a va_list argument.
@@ -194,9 +189,7 @@ std::string& stringVAppendf(std::string* out, const char* format, va_list ap);
  */
 template <class OutputString>
 void backslashify(
-    folly::StringPiece input,
-    OutputString& output,
-    bool hex_style = false);
+    folly::StringPiece input, OutputString& output, bool hex_style = false);
 
 template <class OutputString = std::string>
 OutputString backslashify(StringPiece input, bool hex_style = false) {
@@ -235,9 +228,7 @@ String humanify(const String& input) {
  */
 template <class InputString, class OutputString>
 bool hexlify(
-    const InputString& input,
-    OutputString& output,
-    bool append = false);
+    const InputString& input, OutputString& output, bool append = false);
 
 template <class OutputString = std::string>
 OutputString hexlify(ByteRange input) {
@@ -331,8 +322,7 @@ std::string prettyPrint(double val, PrettyType, bool addSpace = true);
  * 'abc' => throws std::range_error
  */
 double prettyToDouble(
-    folly::StringPiece* const prettyString,
-    const PrettyType type);
+    folly::StringPiece* const prettyString, const PrettyType type);
 
 /**
  * Same as prettyToDouble(folly::StringPiece*, PrettyType), but
@@ -515,8 +505,7 @@ std::string join(const Delim& delimiter, const Container& container) {
 
 template <class Delim, class Value>
 std::string join(
-    const Delim& delimiter,
-    const std::initializer_list<Value>& values) {
+    const Delim& delimiter, const std::initializer_list<Value>& values) {
   std::string output;
   join(delimiter, values.begin(), values.end(), output);
   return output;

@@ -68,8 +68,7 @@ spin_result spin_pause_until(
 
 template <typename Clock, typename Duration, typename F>
 spin_result spin_yield_until(
-    std::chrono::time_point<Clock, Duration> const& deadline,
-    F f) {
+    std::chrono::time_point<Clock, Duration> const& deadline, F f) {
   while (true) {
     if (f()) {
       return spin_result::success;

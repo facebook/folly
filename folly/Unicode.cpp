@@ -51,9 +51,7 @@ std::string codePointToUtf8(char32_t cp) {
 }
 
 char32_t utf8ToCodePoint(
-    const unsigned char*& p,
-    const unsigned char* const e,
-    bool skipOnError) {
+    const unsigned char*& p, const unsigned char* const e, bool skipOnError) {
   // clang-format off
   /** UTF encodings
   *  | # of B | First CP |  Last CP  | Bit Pattern

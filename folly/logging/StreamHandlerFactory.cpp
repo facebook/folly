@@ -24,8 +24,7 @@
 namespace folly {
 
 bool StreamHandlerFactory::WriterFactory::processOption(
-    StringPiece name,
-    StringPiece value) {
+    StringPiece name, StringPiece value) {
   if (name == "stream") {
     stream_ = value.str();
     return true;

@@ -117,9 +117,7 @@ namespace {
 static std::vector<std::string>* internalWarnings;
 
 void handleLoggingError(
-    StringPiece /* file */,
-    int /* lineNumber */,
-    std::string&& msg) {
+    StringPiece /* file */, int /* lineNumber */, std::string&& msg) {
   internalWarnings->emplace_back(std::move(msg));
 }
 } // namespace
@@ -546,10 +544,7 @@ void readThread(folly::File&& file, ReadStats* stats) {
  * writeThread() writes a series of messages to the AsyncFileWriter
  */
 void writeThread(
-    AsyncFileWriter* writer,
-    size_t id,
-    uint32_t flags,
-    ReadStats* readStats) {
+    AsyncFileWriter* writer, size_t id, uint32_t flags, ReadStats* readStats) {
   size_t msgID = 0;
   while (true) {
     ++msgID;

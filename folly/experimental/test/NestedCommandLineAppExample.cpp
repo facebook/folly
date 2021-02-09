@@ -101,8 +101,7 @@ void Concatenator::cat(const std::string& name) {
 }
 
 void runCat(
-    const po::variables_map& options,
-    const std::vector<std::string>& args) {
+    const po::variables_map& options, const std::vector<std::string>& args) {
   Concatenator concatenator(options);
   bool ok = true;
   auto catFile = [&concatenator, &ok](const std::string& name) {
@@ -136,8 +135,7 @@ void runCat(
 }
 
 void runEcho(
-    const po::variables_map& options,
-    const std::vector<std::string>& args) {
+    const po::variables_map& options, const std::vector<std::string>& args) {
   try {
     const char* sep = "";
     for (auto& arg : args) {

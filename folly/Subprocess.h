@@ -624,8 +624,7 @@ class Subprocess {
    * `sigtermTimeoutSeconds`.
    */
   ProcessReturnCode waitOrTerminateOrKill(
-      TimeoutDuration waitTimeout,
-      TimeoutDuration sigtermTimeout);
+      TimeoutDuration waitTimeout, TimeoutDuration sigtermTimeout);
 
   /**
    * Send the SIGTERM to terminate the process, poll `waitpid` non-blockingly

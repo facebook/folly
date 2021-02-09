@@ -167,8 +167,8 @@ class DeterministicSchedule {
    * runnable thread.  The subset is chosen with size n, and the choice
    * is made every m steps.
    */
-  static std::function<size_t(size_t)>
-  uniformSubset(uint64_t seed, size_t n = 2, size_t m = 64);
+  static std::function<size_t(size_t)> uniformSubset(
+      uint64_t seed, size_t n = 2, size_t m = 64);
 
   /** Obtains permission for the current thread to perform inter-thread
    *  communication. */
@@ -332,9 +332,7 @@ struct DeterministicAtomicImpl {
   bool is_lock_free() const noexcept { return data_.is_lock_free(); }
 
   bool compare_exchange_strong(
-      T& v0,
-      T v1,
-      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0, T v1, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     return compare_exchange_strong(
         v0, v1, mo, ::folly::detail::default_failure_memory_order(mo));
   }
@@ -354,9 +352,7 @@ struct DeterministicAtomicImpl {
   }
 
   bool compare_exchange_weak(
-      T& v0,
-      T v1,
-      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0, T v1, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     return compare_exchange_weak(
         v0, v1, mo, ::folly::detail::default_failure_memory_order(mo));
   }

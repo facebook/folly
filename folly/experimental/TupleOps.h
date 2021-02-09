@@ -115,8 +115,7 @@ auto tupleRange(T&& v)
 // Return a tuple obtained by prepending car to the tuple cdr.
 template <class T, class U>
 auto tuplePrepend(T&& car, U&& cdr) -> decltype(std::tuple_cat(
-    std::make_tuple(std::forward<T>(car)),
-    std::forward<U>(cdr))) {
+    std::make_tuple(std::forward<T>(car)), std::forward<U>(cdr))) {
   return std::tuple_cat(
       std::make_tuple(std::forward<T>(car)), std::forward<U>(cdr));
 }

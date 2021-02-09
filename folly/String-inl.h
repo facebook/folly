@@ -285,10 +285,7 @@ inline char delimFront(StringPiece s) {
  */
 template <class OutStringT, class DelimT, class OutputIterator>
 void internalSplit(
-    DelimT delim,
-    StringPiece sp,
-    OutputIterator out,
-    bool ignoreEmpty) {
+    DelimT delim, StringPiece sp, OutputIterator out, bool ignoreEmpty) {
   assert(sp.empty() || sp.start() != nullptr);
 
   const char* s = sp.start();
@@ -452,10 +449,7 @@ struct IsSizableStringContainerIterator
 
 template <class Delim, class Iterator, class String>
 void internalJoinAppend(
-    Delim delimiter,
-    Iterator begin,
-    Iterator end,
-    String& output) {
+    Delim delimiter, Iterator begin, Iterator end, String& output) {
   assert(begin != end);
   if (std::is_same<Delim, StringPiece>::value && delimSize(delimiter) == 1) {
     internalJoinAppend(delimFront(delimiter), begin, end, output);
@@ -499,18 +493,13 @@ internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
 
 template <class Delim, class Iterator, class String>
 void join(
-    const Delim& delimiter,
-    Iterator begin,
-    Iterator end,
-    String& output) {
+    const Delim& delimiter, Iterator begin, Iterator end, String& output) {
   detail::internalJoin(detail::prepareDelim(delimiter), begin, end, output);
 }
 
 template <class OutputString>
 void backslashify(
-    folly::StringPiece input,
-    OutputString& output,
-    bool hex_style) {
+    folly::StringPiece input, OutputString& output, bool hex_style) {
   static const char hexValues[] = "0123456789abcdef";
   output.clear();
   output.reserve(3 * input.size());
@@ -597,9 +586,7 @@ void humanify(const String1& input, String2& output) {
 
 template <class InputString, class OutputString>
 bool hexlify(
-    const InputString& input,
-    OutputString& output,
-    bool append_output) {
+    const InputString& input, OutputString& output, bool append_output) {
   if (!append_output) {
     output.clear();
   }
@@ -640,8 +627,8 @@ namespace detail {
  * Hex-dump at most 16 bytes starting at offset from a memory area of size
  * bytes.  Return the number of bytes actually dumped.
  */
-size_t
-hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line);
+size_t hexDumpLine(
+    const void* ptr, size_t offset, size_t size, std::string& line);
 } // namespace detail
 
 template <class OutIt>

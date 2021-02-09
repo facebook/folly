@@ -1151,8 +1151,7 @@ class CustomCodec : public Codec {
   }
 
   std::unique_ptr<IOBuf> doUncompress(
-      const IOBuf* data,
-      Optional<uint64_t> uncompressedLength) override {
+      const IOBuf* data, Optional<uint64_t> uncompressedLength) override {
     EXPECT_TRUE(canUncompress(data, uncompressedLength));
     auto clone = data->cloneCoalescedAsValue();
     clone.trimStart(prefix_.size());
@@ -1246,8 +1245,7 @@ namespace {
 class ConstantCodec : public Codec {
  public:
   static std::unique_ptr<Codec> create(
-      std::string uncompressed,
-      CodecType type) {
+      std::string uncompressed, CodecType type) {
     return std::make_unique<ConstantCodec>(std::move(uncompressed), type);
   }
   explicit ConstantCodec(std::string uncompressed, CodecType type)
@@ -1262,8 +1260,8 @@ class ConstantCodec : public Codec {
     throw std::runtime_error("ConstantCodec error: compress() not supported.");
   }
 
-  std::unique_ptr<IOBuf> doUncompress(const IOBuf*, Optional<uint64_t>)
-      override {
+  std::unique_ptr<IOBuf> doUncompress(
+      const IOBuf*, Optional<uint64_t>) override {
     return IOBuf::copyBuffer(uncompressed_);
   }
 
@@ -1573,11 +1571,7 @@ INSTANTIATE_TEST_CASE_P(
         testing::Values(9, 12, 15),
         testing::Values(1, 8, 9),
         testing::Values(
-            Z_DEFAULT_STRATEGY,
-            Z_FILTERED,
-            Z_HUFFMAN_ONLY,
-            Z_RLE,
-            Z_FIXED)));
+            Z_DEFAULT_STRATEGY, Z_FILTERED, Z_HUFFMAN_ONLY, Z_RLE, Z_FIXED)));
 
 #endif // FOLLY_HAVE_LIBZ
 

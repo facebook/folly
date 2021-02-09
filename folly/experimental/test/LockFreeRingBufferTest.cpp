@@ -105,8 +105,7 @@ uint64_t value(const typename LockFreeRingBuffer<T, Atom>::Cursor& rbcursor) {
 
 template <template <typename> class Atom>
 void runReader(
-    LockFreeRingBuffer<int, Atom>& rb,
-    std::atomic<int32_t>& writes) {
+    LockFreeRingBuffer<int, Atom>& rb, std::atomic<int32_t>& writes) {
   int32_t idx;
   while ((idx = writes--) > 0) {
     rb.write(idx);

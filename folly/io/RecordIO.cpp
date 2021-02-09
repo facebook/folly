@@ -206,8 +206,8 @@ RecordInfo validateRecord(ByteRange range, uint32_t fileId) {
   return validateRecordData(range);
 }
 
-RecordInfo
-findRecord(ByteRange searchRange, ByteRange wholeRange, uint32_t fileId) {
+RecordInfo findRecord(
+    ByteRange searchRange, ByteRange wholeRange, uint32_t fileId) {
   static const uint32_t magic = Header::kMagic;
   static const ByteRange magicRange(
       reinterpret_cast<const uint8_t*>(&magic), sizeof(magic));

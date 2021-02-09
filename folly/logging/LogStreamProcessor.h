@@ -214,12 +214,7 @@ class LogStreamProcessor {
       folly::StringPiece functionName,
       AppendType) noexcept
       : LogStreamProcessor(
-            fileScopeInfo,
-            level,
-            filename,
-            lineNumber,
-            functionName,
-            APPEND) {}
+            fileScopeInfo, level, filename, lineNumber, functionName, APPEND) {}
   template <typename... Args>
   LogStreamProcessor(
       XlogFileScopeInfo* fileScopeInfo,
@@ -338,9 +333,7 @@ class LogStreamProcessor {
   }
 
   FOLLY_NOINLINE std::string vformatLogString(
-      folly::StringPiece fmt,
-      fmt::format_args args,
-      bool& failed) noexcept {
+      folly::StringPiece fmt, fmt::format_args args, bool& failed) noexcept {
     return folly::catch_exception<const std::exception&>(
         [&] {
           return fmt::vformat(fmt::string_view(fmt.data(), fmt.size()), args);
@@ -374,8 +367,7 @@ class LogStreamProcessor {
    */
   template <typename... Args>
   FOLLY_NOINLINE std::string formatLogString(
-      folly::StringPiece fmt,
-      const Args&... args) noexcept {
+      folly::StringPiece fmt, const Args&... args) noexcept {
     bool failed = false;
     std::string result =
         vformatLogString(fmt, fmt::make_format_args(args...), failed);

@@ -41,8 +41,7 @@ class CursorNoopAppender {
 
 template <class Derived, class BufType>
 std::string CursorBase<Derived, BufType>::readTerminatedString(
-    char termChar,
-    size_t maxLength) {
+    char termChar, size_t maxLength) {
   size_t bytesRead{0};
   auto keepReading = [&bytesRead, termChar, maxLength](uint8_t byte) {
     if (byte == termChar) {
@@ -77,8 +76,7 @@ std::string CursorBase<Derived, BufType>::readWhile(
 template <class Derived, class BufType>
 template <typename Predicate, typename Output>
 void CursorBase<Derived, BufType>::readWhile(
-    const Predicate& predicate,
-    Output& out) {
+    const Predicate& predicate, Output& out) {
   while (true) {
     auto peeked = peekBytes();
     if (peeked.empty()) {

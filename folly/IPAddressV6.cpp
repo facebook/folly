@@ -247,8 +247,8 @@ static inline uint16_t unpack(uint8_t lobyte, uint8_t hibyte) {
 
 // given a src string, unpack count*2 bytes into dest
 // dest must have as much storage as count
-static inline void
-unpackInto(const unsigned char* src, uint16_t* dest, size_t count) {
+static inline void unpackInto(
+    const unsigned char* src, uint16_t* dest, size_t count) {
   for (size_t i = 0, hi = 1, lo = 0; i < count; i++) {
     dest[i] = unpack(src[hi], src[lo]);
     hi += 2;
@@ -344,8 +344,7 @@ bool IPAddressV6::inSubnet(StringPiece cidrNetwork) const {
 
 // public
 bool IPAddressV6::inSubnetWithMask(
-    const IPAddressV6& subnet,
-    const ByteArray16& cidrMask) const {
+    const IPAddressV6& subnet, const ByteArray16& cidrMask) const {
   const auto mask = detail::Bytes::mask(toByteArray(), cidrMask);
   const auto subMask = detail::Bytes::mask(subnet.toByteArray(), cidrMask);
   return (mask == subMask);
@@ -525,8 +524,7 @@ ByteArray16 IPAddressV6::fetchMask(size_t numBits) {
 
 // public static
 CIDRNetworkV6 IPAddressV6::longestCommonPrefix(
-    const CIDRNetworkV6& one,
-    const CIDRNetworkV6& two) {
+    const CIDRNetworkV6& one, const CIDRNetworkV6& two) {
   auto prefix = detail::Bytes::longestCommonPrefix(
       one.first.addr_.bytes_, one.second, two.first.addr_.bytes_, two.second);
   return {IPAddressV6(prefix.first), prefix.second};
@@ -534,8 +532,7 @@ CIDRNetworkV6 IPAddressV6::longestCommonPrefix(
 
 // protected
 bool IPAddressV6::inBinarySubnet(
-    const std::array<uint8_t, 2> addr,
-    size_t numBits) const {
+    const std::array<uint8_t, 2> addr, size_t numBits) const {
   auto masked = mask(numBits);
   return (std::memcmp(addr.data(), masked.bytes(), 2) == 0);
 }

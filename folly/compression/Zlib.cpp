@@ -83,8 +83,8 @@ class ZlibStreamCodec final : public StreamCodec {
   ~ZlibStreamCodec() override;
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
-      const override;
+  bool canUncompress(
+      const IOBuf* data, Optional<uint64_t> uncompressedLength) const override;
 
  private:
   uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
@@ -157,8 +157,8 @@ std::vector<std::string> ZlibStreamCodec::validPrefixes() const {
   }
 }
 
-bool ZlibStreamCodec::canUncompress(const IOBuf* data, Optional<uint64_t>)
-    const {
+bool ZlibStreamCodec::canUncompress(
+    const IOBuf* data, Optional<uint64_t>) const {
   if (type() == CodecType::ZLIB) {
     uint16_t value;
     Cursor cursor{data};
@@ -183,14 +183,12 @@ uint64_t ZlibStreamCodec::doMaxCompressedLength(
 }
 
 std::unique_ptr<Codec> ZlibStreamCodec::createCodec(
-    Options options,
-    int level) {
+    Options options, int level) {
   return std::make_unique<ZlibStreamCodec>(options, level);
 }
 
 std::unique_ptr<StreamCodec> ZlibStreamCodec::createStream(
-    Options options,
-    int level) {
+    Options options, int level) {
   return std::make_unique<ZlibStreamCodec>(options, level);
 }
 
@@ -335,9 +333,7 @@ int zlibThrowOnError(int rc) {
 }
 
 bool ZlibStreamCodec::doCompressStream(
-    ByteRange& input,
-    MutableByteRange& output,
-    StreamCodec::FlushOp flush) {
+    ByteRange& input, MutableByteRange& output, StreamCodec::FlushOp flush) {
   if (needReset_) {
     resetDeflateStream();
     needReset_ = false;
@@ -370,9 +366,7 @@ bool ZlibStreamCodec::doCompressStream(
 }
 
 bool ZlibStreamCodec::doUncompressStream(
-    ByteRange& input,
-    MutableByteRange& output,
-    StreamCodec::FlushOp flush) {
+    ByteRange& input, MutableByteRange& output, StreamCodec::FlushOp flush) {
   if (needReset_) {
     resetInflateStream();
     needReset_ = false;

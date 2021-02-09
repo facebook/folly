@@ -66,8 +66,7 @@ BarrierTask makeCollectAllTryTask(
 
 template <typename... SemiAwaitables, size_t... Indices>
 auto collectAllTryImpl(
-    std::index_sequence<Indices...>,
-    SemiAwaitables... awaitables)
+    std::index_sequence<Indices...>, SemiAwaitables... awaitables)
     -> folly::coro::Task<
         std::tuple<collect_all_try_component_t<SemiAwaitables>...>> {
   static_assert(sizeof...(Indices) == sizeof...(SemiAwaitables));
@@ -118,8 +117,7 @@ auto collectAllTryImpl(
 
 template <typename... SemiAwaitables, size_t... Indices>
 auto collectAllImpl(
-    std::index_sequence<Indices...>,
-    SemiAwaitables... awaitables)
+    std::index_sequence<Indices...>, SemiAwaitables... awaitables)
     -> folly::coro::Task<
         std::tuple<collect_all_component_t<SemiAwaitables>...>> {
   if constexpr (sizeof...(SemiAwaitables) == 0) {

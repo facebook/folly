@@ -27,8 +27,7 @@ std::string createABDTokenNotDispatchedExMsg(
     const std::vector<size_t>& vecTokensNotDispatched);
 
 std::string createUnexpectedNumResultsABDUsageExMsg(
-    size_t numExpectedResults,
-    size_t numActualResults);
+    size_t numExpectedResults, size_t numActualResults);
 
 } // namespace detail
 } // namespace fibers

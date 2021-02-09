@@ -157,9 +157,7 @@ std::string serialize(dynamic const&, serialization_opts const&);
  */
 
 void escapeString(
-    StringPiece input,
-    std::string& out,
-    const serialization_opts& opts);
+    StringPiece input, std::string& out, const serialization_opts& opts);
 
 /*
  * Strip all C99-like comments (i.e. // and / * ... * /)

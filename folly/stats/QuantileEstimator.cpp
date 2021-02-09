@@ -20,8 +20,7 @@ namespace folly {
 namespace detail {
 
 QuantileEstimates estimatesFromDigest(
-    const TDigest& digest,
-    Range<const double*> quantiles) {
+    const TDigest& digest, Range<const double*> quantiles) {
   QuantileEstimates result;
   result.quantiles.reserve(quantiles.size());
   result.sum = digest.sum();

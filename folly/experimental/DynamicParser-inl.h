@@ -86,8 +86,8 @@ using EnableForArgTypes =
 
 // No arguments
 template <typename Fn>
-EnableForArgTypes<Fn>
-invokeForKeyValue(Fn f, const folly::dynamic&, const folly::dynamic&) {
+EnableForArgTypes<Fn> invokeForKeyValue(
+    Fn f, const folly::dynamic&, const folly::dynamic&) {
   f();
 }
 
@@ -95,32 +95,32 @@ invokeForKeyValue(Fn f, const folly::dynamic&, const folly::dynamic&) {
 //
 // folly::dynamic (no conversion)
 template <typename Fn>
-EnableForArgTypes<Fn, folly::dynamic>
-invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
+EnableForArgTypes<Fn, folly::dynamic> invokeForKeyValue(
+    Fn fn, const folly::dynamic&, const folly::dynamic& v) {
   fn(v);
 }
 // int64_t
 template <typename Fn>
-EnableForArgTypes<Fn, int64_t>
-invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
+EnableForArgTypes<Fn, int64_t> invokeForKeyValue(
+    Fn fn, const folly::dynamic&, const folly::dynamic& v) {
   fn(v.asInt());
 }
 // bool
 template <typename Fn>
-EnableForArgTypes<Fn, bool>
-invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
+EnableForArgTypes<Fn, bool> invokeForKeyValue(
+    Fn fn, const folly::dynamic&, const folly::dynamic& v) {
   fn(v.asBool());
 }
 // double
 template <typename Fn>
-EnableForArgTypes<Fn, double>
-invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
+EnableForArgTypes<Fn, double> invokeForKeyValue(
+    Fn fn, const folly::dynamic&, const folly::dynamic& v) {
   fn(v.asDouble());
 }
 // std::string
 template <typename Fn>
-EnableForArgTypes<Fn, std::string>
-invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
+EnableForArgTypes<Fn, std::string> invokeForKeyValue(
+    Fn fn, const folly::dynamic&, const folly::dynamic& v) {
   fn(v.asString());
 }
 
@@ -132,32 +132,32 @@ invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
 //
 // folly::dynamic, folly::dynamic (no conversion of value, either)
 template <typename Fn>
-EnableForArgTypes<Fn, folly::dynamic, folly::dynamic>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, folly::dynamic, folly::dynamic> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k, v);
 }
 // folly::dynamic, int64_t
 template <typename Fn>
-EnableForArgTypes<Fn, folly::dynamic, int64_t>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, folly::dynamic, int64_t> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k, v.asInt());
 }
 // folly::dynamic, bool
 template <typename Fn>
-EnableForArgTypes<Fn, folly::dynamic, bool>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, folly::dynamic, bool> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k, v.asBool());
 }
 // folly::dynamic, double
 template <typename Fn>
-EnableForArgTypes<Fn, folly::dynamic, double>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, folly::dynamic, double> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k, v.asDouble());
 }
 // folly::dynamic, std::string
 template <typename Fn>
-EnableForArgTypes<Fn, folly::dynamic, std::string>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, folly::dynamic, std::string> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k, v.asString());
 }
 
@@ -165,32 +165,32 @@ invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
 //
 // std::string, folly::dynamic (no conversion of value)
 template <typename Fn>
-EnableForArgTypes<Fn, std::string, folly::dynamic>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, std::string, folly::dynamic> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asString(), v);
 }
 // std::string, int64_t
 template <typename Fn>
-EnableForArgTypes<Fn, std::string, int64_t>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, std::string, int64_t> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asString(), v.asInt());
 }
 // std::string, bool
 template <typename Fn>
-EnableForArgTypes<Fn, std::string, bool>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, std::string, bool> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asString(), v.asBool());
 }
 // std::string, double
 template <typename Fn>
-EnableForArgTypes<Fn, std::string, double>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, std::string, double> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asString(), v.asDouble());
 }
 // std::string, std::string
 template <typename Fn>
-EnableForArgTypes<Fn, std::string, std::string>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, std::string, std::string> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asString(), v.asString());
 }
 
@@ -198,32 +198,32 @@ invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
 //
 // int64_t, folly::dynamic (no conversion of value)
 template <typename Fn>
-EnableForArgTypes<Fn, int64_t, folly::dynamic>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, int64_t, folly::dynamic> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asInt(), v);
 }
 // int64_t, int64_t
 template <typename Fn>
-EnableForArgTypes<Fn, int64_t, int64_t>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, int64_t, int64_t> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asInt(), v.asInt());
 }
 // int64_t, bool
 template <typename Fn>
-EnableForArgTypes<Fn, int64_t, bool>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, int64_t, bool> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asInt(), v.asBool());
 }
 // int64_t, double
 template <typename Fn>
-EnableForArgTypes<Fn, int64_t, double>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, int64_t, double> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asInt(), v.asDouble());
 }
 // int64_t, std::string
 template <typename Fn>
-EnableForArgTypes<Fn, int64_t, std::string>
-invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
+EnableForArgTypes<Fn, int64_t, std::string> invokeForKeyValue(
+    Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asInt(), v.asString());
 }
 } // namespace detail
@@ -293,9 +293,7 @@ void DynamicParser::wrapError(const folly::dynamic* lookup_k, Fn fn) {
 
 template <typename Fn>
 void DynamicParser::parse(
-    const folly::dynamic& k,
-    const folly::dynamic& v,
-    Fn fn) {
+    const folly::dynamic& k, const folly::dynamic& v, Fn fn) {
   auto guard = stack_.push(k, v); // User code can nest parser calls.
   wrapError(nullptr, [&]() { detail::invokeForKeyValue(fn, k, v); });
 }

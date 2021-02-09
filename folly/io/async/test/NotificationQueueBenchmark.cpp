@@ -62,9 +62,7 @@ static void burn(size_t n) {
 
 template <typename Queue, typename Consumer>
 void multiProducerMultiConsumer(
-    int iters,
-    size_t numProducers,
-    size_t numConsumers) {
+    int iters, size_t numProducers, size_t numConsumers) {
   BenchmarkSuspender susp;
   Queue queue;
   std::vector<std::unique_ptr<EventBase>> consumerEventBases;
@@ -139,17 +137,13 @@ void multiProducerMultiConsumer(
 }
 
 void multiProducerMultiConsumerNQ(
-    int iters,
-    size_t numProducers,
-    size_t numConsumers) {
+    int iters, size_t numProducers, size_t numConsumers) {
   multiProducerMultiConsumer<NotificationQueue<Func>, MockConsumer>(
       iters, numProducers, numConsumers);
 }
 
 void multiProducerMultiConsumerANQ(
-    int iters,
-    size_t numProducers,
-    size_t numConsumers) {
+    int iters, size_t numProducers, size_t numConsumers) {
   CHECK(numConsumers == 1);
   multiProducerMultiConsumer<
       EventBaseAtomicNotificationQueue<Func, FuncRunner>,

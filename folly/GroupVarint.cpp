@@ -105,8 +105,8 @@ struct group_varint_table_length_make_item : group_varint_table_base_make_item {
 
 struct group_varint_table_sse_mask_make_item
     : group_varint_table_base_make_item {
-  constexpr auto partial_item(std::size_t d, std::size_t offset, std::size_t k)
-      const {
+  constexpr auto partial_item(
+      std::size_t d, std::size_t offset, std::size_t k) const {
     // if k < d, the j'th integer uses d bytes, consume them
     // set remaining bytes in result to 0
     // 0xff: set corresponding byte in result to 0

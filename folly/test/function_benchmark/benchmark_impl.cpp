@@ -36,17 +36,14 @@ void BM_std_function_invoke_impl(int iters, const std::function<void()>& fn) {
 }
 
 void BM_Function_invoke_impl(
-    int iters,
-    const folly::Function<void() const>& fn) {
+    int iters, const folly::Function<void() const>& fn) {
   for (int n = 0; n < iters; ++n) {
     fn();
   }
 }
 
 void BM_mem_fn_invoke_impl(
-    int iters,
-    TestClass* tc,
-    void (TestClass::*memfn)()) {
+    int iters, TestClass* tc, void (TestClass::*memfn)()) {
   for (int n = 0; n < iters; ++n) {
     (tc->*memfn)();
   }

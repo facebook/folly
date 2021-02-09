@@ -204,8 +204,7 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
 }
 
 void AsyncUDPSocket::bind(
-    const folly::SocketAddress& address,
-    BindOptions bindOptions) {
+    const folly::SocketAddress& address, BindOptions bindOptions) {
   init(address.getFamily(), bindOptions);
 
   // bind to the address
@@ -1246,8 +1245,7 @@ void AsyncUDPSocket::setTrafficClass(int tclass) {
 }
 
 void AsyncUDPSocket::applyOptions(
-    const SocketOptionMap& options,
-    SocketOptionKey::ApplyPos pos) {
+    const SocketOptionMap& options, SocketOptionKey::ApplyPos pos) {
   auto result = applySocketOptions(fd_, options, pos);
   if (result != 0) {
     throw AsyncSocketException(

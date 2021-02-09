@@ -77,8 +77,7 @@ std::unique_ptr<TAsync> getAIO(size_t capacity, AsyncBase::PollMode pollMode) {
 
 template <typename TAsync>
 void testReadsSerially(
-    const std::vector<TestSpec>& specs,
-    folly::AsyncBase::PollMode pollMode) {
+    const std::vector<TestSpec>& specs, folly::AsyncBase::PollMode pollMode) {
   auto aioReader = getAIO<TAsync>(1, pollMode);
   SKIP_IF(!aioReader) << "TAsync not available";
 
@@ -181,8 +180,7 @@ void testReadsParallel(
 
 template <typename TAsync>
 void testReadsQueued(
-    const std::vector<TestSpec>& specs,
-    folly::AsyncBase::PollMode pollMode) {
+    const std::vector<TestSpec>& specs, folly::AsyncBase::PollMode pollMode) {
   size_t readerCapacity = std::max(specs.size() / 2, size_t(1));
   auto aioReader = getAIO<TAsync>(readerCapacity, pollMode);
   SKIP_IF(!aioReader) << "TAsync not available";
@@ -241,8 +239,7 @@ void testReadsQueued(
 
 template <typename TAsync>
 void testReads(
-    const std::vector<TestSpec>& specs,
-    folly::AsyncBase::PollMode pollMode) {
+    const std::vector<TestSpec>& specs, folly::AsyncBase::PollMode pollMode) {
   testReadsSerially<TAsync>(specs, pollMode);
   testReadsParallel<TAsync>(specs, pollMode, false);
   testReadsParallel<TAsync>(specs, pollMode, true);

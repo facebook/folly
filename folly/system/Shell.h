@@ -41,8 +41,7 @@ std::string shellQuote(StringPiece argument);
 namespace detail {
 template <typename... Arguments>
 std::vector<std::string> shellify(
-    StringPiece format,
-    Arguments&&... arguments) {
+    StringPiece format, Arguments&&... arguments) {
   auto command = sformat(
       format,
       shellQuote(to<std::string>(std::forward<Arguments>(arguments)))...);
@@ -63,8 +62,7 @@ struct ShellCmdFormat {
 inline namespace literals {
 inline namespace shell_literals {
 constexpr detail::ShellCmdFormat operator"" _shellify(
-    char const* name,
-    std::size_t length) {
+    char const* name, std::size_t length) {
   return {folly::StringPiece(name, length)};
 }
 } // namespace shell_literals

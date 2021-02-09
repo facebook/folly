@@ -120,8 +120,7 @@ class hazptr_domain {
   static constexpr int kNumShards = 8;
   static constexpr int kShardMask = kNumShards - 1;
   static_assert(
-      (kNumShards & kShardMask) == 0,
-      "kNumShards must be a power of 2");
+      (kNumShards & kShardMask) == 0, "kNumShards must be a power of 2");
 
   static folly::Executor* get_default_executor() {
     return &folly::QueuedImmediateExecutor::instance();
@@ -210,8 +209,8 @@ class hazptr_domain {
     }
   }
 
-  void
-  list_match_tag(uintptr_t tag, Obj* obj, ObjList& match, ObjList& nomatch) {
+  void list_match_tag(
+      uintptr_t tag, Obj* obj, ObjList& match, ObjList& nomatch) {
     list_match_condition(
         obj, match, nomatch, [tag](Obj* o) { return o->cohort_tag() == tag; });
   }
@@ -222,12 +221,9 @@ class hazptr_domain {
       FixedAlign<alignof(hazptr_rec<Atom>)>>;
 
   friend void hazptr_domain_push_list<Atom>(
-      hazptr_obj_list<Atom>&,
-      hazptr_domain<Atom>&) noexcept;
+      hazptr_obj_list<Atom>&, hazptr_domain<Atom>&) noexcept;
   friend void hazptr_domain_push_retired<Atom>(
-      hazptr_obj_list<Atom>&,
-      bool check,
-      hazptr_domain<Atom>&) noexcept;
+      hazptr_obj_list<Atom>&, bool check, hazptr_domain<Atom>&) noexcept;
   friend class hazptr_holder<Atom>;
   friend class hazptr_obj<Atom>;
   friend class hazptr_obj_cohort<Atom>;
@@ -486,10 +482,7 @@ class hazptr_domain {
   /** list_match_condition */
   template <typename Cond>
   void list_match_condition(
-      Obj* obj,
-      ObjList& match,
-      ObjList& nomatch,
-      const Cond& cond) {
+      Obj* obj, ObjList& match, ObjList& nomatch, const Cond& cond) {
     while (obj) {
       auto next = obj->next();
       DCHECK_NE(obj, next);
@@ -648,8 +641,7 @@ class hazptr_domain {
   }
 
   bool bulk_lookup_and_reclaim(
-      hazptr_obj<Atom>* obj,
-      const std::unordered_set<const void*>& hashset) {
+      hazptr_obj<Atom>* obj, const std::unordered_set<const void*>& hashset) {
     hazptr_obj_list<Atom> children;
     hazptr_obj_list<Atom> matched;
     while (obj) {
@@ -761,8 +753,8 @@ class hazptr_domain {
     // program is missing a call to folly::init or an alternative.
   }
 
-  FOLLY_EXPORT FOLLY_NOINLINE void
-  hazptr_warning_list_too_large(uintptr_t tag, size_t shard, int count) {
+  FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_list_too_large(
+      uintptr_t tag, size_t shard, int count) {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
       LOG(WARNING) << "Hazptr retired list too large:"
@@ -820,8 +812,7 @@ void hazptr_domain_push_retired(
 /** hazptr_domain_push_list */
 template <template <typename> class Atom>
 void hazptr_domain_push_list(
-    hazptr_obj_list<Atom>& l,
-    hazptr_domain<Atom>& domain) noexcept {
+    hazptr_obj_list<Atom>& l, hazptr_domain<Atom>& domain) noexcept {
   domain.push_list(l);
 }
 

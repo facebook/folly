@@ -56,8 +56,8 @@ using Futex = Atom<std::uint32_t>;
  * other return (signal, this->load() != expected, or spurious wakeup).
  */
 template <typename Futex>
-FutexResult
-futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
+FutexResult futexWait(
+    const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
 
 /**
  * Similar to futexWait but also accepts a deadline until when the wait call

@@ -313,11 +313,7 @@ struct IntegralSizePolicy<SizeType, true>
    */
   template <class T, class EmplaceFunc>
   void moveToUninitializedEmplace(
-      T* begin,
-      T* end,
-      T* out,
-      SizeType pos,
-      EmplaceFunc&& emplaceFunc) {
+      T* begin, T* end, T* out, SizeType pos, EmplaceFunc&& emplaceFunc) {
     // Must be called first so that if it throws [begin, end) is unmodified.
     // We have to support the strong exception guarantee for emplace_back().
     emplaceFunc(out + pos);
@@ -990,8 +986,8 @@ class small_vector : public detail::small_vector_base<
     return begin() + offset;
   }
 
-  iterator
-  insertImpl(iterator pos, size_type n, const value_type& val, std::true_type) {
+  iterator insertImpl(
+      iterator pos, size_type n, const value_type& val, std::true_type) {
     // The true_type means this should call the size_t,value_type
     // overload.  (See insert().)
     return insert(pos, n, val);

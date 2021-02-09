@@ -361,8 +361,7 @@ class RelaxedConcurrentPriorityQueue {
 
   /// Set the size of current MoundElement
   FOLLY_ALWAYS_INLINE void setElementSize(
-      const Position& pos,
-      const uint32_t& v) {
+      const Position& pos, const uint32_t& v) {
     levels_[pos.level][pos.index].size.store(v, std::memory_order_relaxed);
   }
 
@@ -802,9 +801,7 @@ class RelaxedConcurrentPriorityQueue {
   }
 
   void binarySearchPosition(
-      Position& cur,
-      const T& val,
-      folly::hazptr_holder<Atom>& hptr) {
+      Position& cur, const T& val, folly::hazptr_holder<Atom>& hptr) {
     Position parent, mid;
     if (cur.level == 0) {
       return;

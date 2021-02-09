@@ -202,8 +202,7 @@ class StackAwareViaIfAsyncAwaiter {
 
  public:
   explicit StackAwareViaIfAsyncAwaiter(
-      folly::Executor::KeepAlive<> executor,
-      Awaitable&& awaitable)
+      folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
       : viaCoroutine_(CoroutineType::create(std::move(executor))),
         awaitable_(folly::coro::co_withAsyncStack(
             static_cast<Awaitable&&>(awaitable))),
@@ -263,8 +262,7 @@ class ViaIfAsyncAwaiter {
 
  public:
   explicit ViaIfAsyncAwaiter(
-      folly::Executor::KeepAlive<> executor,
-      Awaitable&& awaitable)
+      folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
       : viaCoroutine_(CoroutineType::create(std::move(executor))),
         awaiter_(
             folly::coro::get_awaiter(static_cast<Awaitable&&>(awaitable))) {}
@@ -403,8 +401,7 @@ class ViaIfAsyncAwaitable {
   }
 
   friend StackAwareViaIfAsyncAwaitable<Awaitable> tag_invoke(
-      cpo_t<co_withAsyncStack>,
-      ViaIfAsyncAwaitable&& self) {
+      cpo_t<co_withAsyncStack>, ViaIfAsyncAwaitable&& self) {
     return StackAwareViaIfAsyncAwaitable<Awaitable>{
         std::move(self.executor_), static_cast<Awaitable&&>(self.awaitable_)};
   }
@@ -454,11 +451,9 @@ struct ViaIfAsyncFunction {
   template <typename Awaitable>
   auto operator()(folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
       const noexcept(noexcept(co_viaIfAsync(
-          std::move(executor),
-          static_cast<Awaitable&&>(awaitable))))
+          std::move(executor), static_cast<Awaitable&&>(awaitable))))
           -> decltype(co_viaIfAsync(
-              std::move(executor),
-              static_cast<Awaitable&&>(awaitable))) {
+              std::move(executor), static_cast<Awaitable&&>(awaitable))) {
     return co_viaIfAsync(
         std::move(executor), static_cast<Awaitable&&>(awaitable));
   }
@@ -483,16 +478,15 @@ template <typename T>
 struct is_semi_awaitable<
     T,
     void_t<decltype(folly::coro::co_viaIfAsync(
-        std::declval<folly::Executor::KeepAlive<>>(),
-        std::declval<T>()))>> : std::true_type {};
+        std::declval<folly::Executor::KeepAlive<>>(), std::declval<T>()))>>
+    : std::true_type {};
 
 template <typename T>
 constexpr bool is_semi_awaitable_v = is_semi_awaitable<T>::value;
 
 template <typename T>
 using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
-    std::declval<folly::Executor::KeepAlive<>>(),
-    std::declval<T>()))>;
+    std::declval<folly::Executor::KeepAlive<>>(), std::declval<T>()))>;
 
 namespace detail {
 
@@ -552,11 +546,9 @@ class TryAwaitable {
   template <
       typename T2 = T,
       typename Result = decltype(folly::coro::co_withCancellation(
-          std::declval<const folly::CancellationToken&>(),
-          std::declval<T2>()))>
+          std::declval<const folly::CancellationToken&>(), std::declval<T2>()))>
   friend TryAwaitable<Result> co_withCancellation(
-      const folly::CancellationToken& cancelToken,
-      TryAwaitable&& awaitable) {
+      const folly::CancellationToken& cancelToken, TryAwaitable&& awaitable) {
     return TryAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
                                   return folly::coro::co_withCancellation(
                                       cancelToken,
@@ -580,8 +572,7 @@ class TryAwaitable {
   template <
       typename T2 = T,
       typename Result = decltype(folly::coro::co_viaIfAsync(
-          std::declval<folly::Executor::KeepAlive<>>(),
-          std::declval<T2>()))>
+          std::declval<folly::Executor::KeepAlive<>>(), std::declval<T2>()))>
   friend TryAwaitable<Result> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor,
       TryAwaitable&&

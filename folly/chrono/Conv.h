@@ -340,8 +340,7 @@ struct CheckOverflowToDuration<true> {
       typename Seconds,
       typename Subseconds>
   static ConversionCode check(
-      Seconds /* seconds */,
-      Subseconds /* subseconds */) {
+      Seconds /* seconds */, Subseconds /* subseconds */) {
     static_assert(
         std::is_floating_point<typename Tgt::rep>::value, "incorrect usage");
     static_assert(
@@ -558,8 +557,7 @@ template <
     typename Seconds,
     typename Subseconds>
 Expected<Tgt, ConversionCode> tryPosixTimeToDuration(
-    Seconds seconds,
-    Subseconds subseconds) {
+    Seconds seconds, Subseconds subseconds) {
   static_assert(
       SubsecondRatio::num == 1, "subsecond numerator should always be 1");
 

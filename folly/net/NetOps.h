@@ -195,11 +195,7 @@ int connect(NetworkSocket s, const sockaddr* name, socklen_t namelen);
 int getpeername(NetworkSocket s, sockaddr* name, socklen_t* namelen);
 int getsockname(NetworkSocket s, sockaddr* name, socklen_t* namelen);
 int getsockopt(
-    NetworkSocket s,
-    int level,
-    int optname,
-    void* optval,
-    socklen_t* optlen);
+    NetworkSocket s, int level, int optname, void* optval, socklen_t* optlen);
 int inet_aton(const char* cp, in_addr* inp);
 int listen(NetworkSocket s, int backlog);
 int poll(PollDescriptor fds[], nfds_t nfds, int timeout);
@@ -228,10 +224,7 @@ ssize_t sendto(
     socklen_t tolen);
 ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags);
 int sendmmsg(
-    NetworkSocket socket,
-    mmsghdr* msgvec,
-    unsigned int vlen,
-    int flags);
+    NetworkSocket socket, mmsghdr* msgvec, unsigned int vlen, int flags);
 int setsockopt(
     NetworkSocket s,
     int level,

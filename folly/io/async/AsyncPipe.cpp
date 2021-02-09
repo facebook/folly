@@ -160,8 +160,7 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
 }
 
 void AsyncPipeWriter::write(
-    unique_ptr<folly::IOBuf> buf,
-    AsyncWriter::WriteCallback* callback) {
+    unique_ptr<folly::IOBuf> buf, AsyncWriter::WriteCallback* callback) {
   if (closed()) {
     if (callback) {
       AsyncSocketException ex(

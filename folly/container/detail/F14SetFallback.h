@@ -322,8 +322,7 @@ class F14BasicSet
 
   template <typename K, typename BeforeDestroy>
   EnableHeterogeneousErase<K, size_type> eraseInto(
-      K const& key,
-      BeforeDestroy&& beforeDestroy) {
+      K const& key, BeforeDestroy&& beforeDestroy) {
     return eraseIntoImpl(key, beforeDestroy);
   }
 #endif

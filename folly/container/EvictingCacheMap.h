@@ -359,8 +359,8 @@ class EvictingCacheMap {
    *     element that prevented the insertion) and a bool denoting whether the
    *     insertion took place.
    */
-  std::pair<iterator, bool>
-  insert(const TKey& key, TValue value, PruneHookCall pruneHook = nullptr) {
+  std::pair<iterator, bool> insert(
+      const TKey& key, TValue value, PruneHookCall pruneHook = nullptr) {
     auto node = std::make_unique<Node>(key, std::move(value));
     auto pair = index_.insert(*node);
     if (pair.second) {
@@ -492,9 +492,7 @@ class EvictingCacheMap {
    * @param failSafe true if exceptions are to ignored, false by default
    */
   void pruneWithFailSafeOption(
-      std::size_t pruneSize,
-      PruneHookCall pruneHook,
-      bool failSafe) {
+      std::size_t pruneSize, PruneHookCall pruneHook, bool failSafe) {
     auto& ph = (nullptr == pruneHook) ? pruneHook_ : pruneHook;
 
     for (std::size_t i = 0; i < pruneSize && !lru_.empty(); i++) {

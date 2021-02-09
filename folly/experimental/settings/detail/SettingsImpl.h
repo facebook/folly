@@ -62,9 +62,7 @@ class SettingCoreBase {
   using Version = uint64_t;
 
   virtual void setFromString(
-      StringPiece newValue,
-      StringPiece reason,
-      SnapshotBase* snapshot) = 0;
+      StringPiece newValue, StringPiece reason, SnapshotBase* snapshot) = 0;
   virtual std::pair<std::string, std::string> getAsString(
       const SnapshotBase* snapshot) const = 0;
   virtual void resetToDefault(SnapshotBase* snapshot) = 0;
@@ -153,8 +151,7 @@ void saveValueForOutstandingSnapshots(
  * @returns a pointer to a saved value at or before the given version
  */
 const BoxedValue* getSavedValue(
-    SettingCoreBase::Key key,
-    SettingCoreBase::Version at);
+    SettingCoreBase::Key key, SettingCoreBase::Version at);
 
 class SnapshotBase {
  public:
@@ -178,9 +175,7 @@ class SnapshotBase {
    * @throws std::runtime_error  If there's a conversion error.
    */
   virtual bool setFromString(
-      StringPiece settingName,
-      StringPiece newValue,
-      StringPiece reason) = 0;
+      StringPiece settingName, StringPiece newValue, StringPiece reason) = 0;
 
   /**
    * @return If the setting exists, the current setting information.
@@ -201,9 +196,8 @@ class SnapshotBase {
    * func(meta, to<string>(value), reason) for each.
    */
   virtual void forEachSetting(
-      const std::function<
-          void(const SettingMetadata&, StringPiece, StringPiece)>& func)
-      const = 0;
+      const std::function<void(
+          const SettingMetadata&, StringPiece, StringPiece)>& func) const = 0;
 
   virtual ~SnapshotBase();
 
@@ -296,8 +290,8 @@ class SettingCore : public SettingCoreBase {
   /**
    * Non-SmallPOD version: read the thread local shared_ptr
    */
-  const T& getImpl(std::false_type, std::atomic<uint64_t>& /* ignored */)
-      const {
+  const T& getImpl(
+      std::false_type, std::atomic<uint64_t>& /* ignored */) const {
     return const_cast<SettingCore*>(this)->tlValue()->value;
   }
 
@@ -334,8 +328,7 @@ class SettingCore : public SettingCoreBase {
   class CallbackHandle {
    public:
     CallbackHandle(
-        std::shared_ptr<UpdateCallback> callback,
-        SettingCore<T>& setting)
+        std::shared_ptr<UpdateCallback> callback, SettingCore<T>& setting)
         : callback_(std::move(callback)), setting_(setting) {}
     ~CallbackHandle() {
       if (callback_) {

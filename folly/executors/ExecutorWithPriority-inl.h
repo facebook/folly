@@ -55,8 +55,7 @@ class ExecutorWithPriorityImpl : public virtual Executor {
 
  private:
   ExecutorWithPriorityImpl(
-      Executor::KeepAlive<Executor> executor,
-      Callback&& callback)
+      Executor::KeepAlive<Executor> executor, Callback&& callback)
       : executor_(std::move(executor)), callback_(std::move(callback)) {}
   std::atomic<ssize_t> keepAliveCounter_{1};
   Executor::KeepAlive<Executor> executor_;
@@ -66,8 +65,7 @@ class ExecutorWithPriorityImpl : public virtual Executor {
 
 template <typename Callback>
 Executor::KeepAlive<> ExecutorWithPriority::createDynamic(
-    Executor::KeepAlive<Executor> executor,
-    Callback&& callback) {
+    Executor::KeepAlive<Executor> executor, Callback&& callback) {
   return detail::ExecutorWithPriorityImpl<std::decay_t<Callback>>::create(
       executor, std::move(callback));
 }

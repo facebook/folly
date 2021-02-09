@@ -43,8 +43,7 @@ std::string createABDTokenNotDispatchedExMsg(
 }
 
 std::string createUnexpectedNumResultsABDUsageExMsg(
-    size_t numExpectedResults,
-    size_t numActualResults) {
+    size_t numExpectedResults, size_t numActualResults) {
   return fmt::format(
       "Unexpected number of results ({}) returned from dispatch function, "
       "expected ({})",

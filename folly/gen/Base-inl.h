@@ -171,8 +171,7 @@ template <class StorageType, class Container>
 class CopiedSource
     : public GenImpl<const StorageType&, CopiedSource<StorageType, Container>> {
   static_assert(
-      !std::is_reference<StorageType>::value,
-      "StorageType must be decayed");
+      !std::is_reference<StorageType>::value, "StorageType must be decayed");
 
  public:
   // Generator objects are often copied during normal construction as they are
@@ -181,8 +180,7 @@ class CopiedSource
   // const reference to the value, it's safe to share it between multiple
   // generators.
   static_assert(
-      !std::is_reference<Container>::value,
-      "Can't copy into a reference");
+      !std::is_reference<Container>::value, "Can't copy into a reference");
   std::shared_ptr<const Container> copy_;
 
  public:
@@ -452,8 +450,7 @@ class SingleReference : public GenImpl<Value&, SingleReference<Value>> {
 template <class Value>
 class SingleCopy : public GenImpl<const Value&, SingleCopy<Value>> {
   static_assert(
-      !std::is_reference<Value>::value,
-      "SingleCopy requires non-ref types");
+      !std::is_reference<Value>::value, "SingleCopy requires non-ref types");
   Value value_;
 
  public:

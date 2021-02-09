@@ -399,8 +399,8 @@ class AtomicHashMap {
     return encodeIndex(ret.i, ret.j);
   }
 
-  inline uint32_t
-  recToIdx(key_type k, const mapped_type& v, bool mayInsert = true) {
+  inline uint32_t recToIdx(
+      key_type k, const mapped_type& v, bool mayInsert = true) {
     SimpleRetT ret = mayInsert ? insertInternal(k, v) : findInternal(k);
     return encodeIndex(ret.i, ret.j);
   }

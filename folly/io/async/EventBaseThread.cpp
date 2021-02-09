@@ -24,9 +24,7 @@ namespace folly {
 EventBaseThread::EventBaseThread() : EventBaseThread(true) {}
 
 EventBaseThread::EventBaseThread(
-    bool autostart,
-    EventBaseManager* ebm,
-    folly::StringPiece threadName)
+    bool autostart, EventBaseManager* ebm, folly::StringPiece threadName)
     : EventBaseThread(autostart, EventBase::Options(), ebm, threadName) {}
 
 EventBaseThread::EventBaseThread(

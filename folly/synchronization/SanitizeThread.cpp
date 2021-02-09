@@ -20,20 +20,20 @@
 // long, so it is helpful to keep these declarations out of widely-included
 // header files.
 
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockCreate(const char* f, int l, const volatile void* addr);
+extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockCreate(
+    const char* f, int l, const volatile void* addr);
 
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockCreateStatic(const char* f, int l, const volatile void* addr);
+extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockCreateStatic(
+    const char* f, int l, const volatile void* addr);
 
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockDestroy(const char* f, int l, const volatile void* addr);
+extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockDestroy(
+    const char* f, int l, const volatile void* addr);
 
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockAcquired(const char* f, int l, const volatile void* addr, long w);
+extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockAcquired(
+    const char* f, int l, const volatile void* addr, long w);
 
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockReleased(const char* f, int l, const volatile void* addr, long w);
+extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockReleased(
+    const char* f, int l, const volatile void* addr, long w);
 
 extern "C" FOLLY_ATTR_WEAK void AnnotateBenignRaceSized(
     const char* f,
@@ -64,27 +64,21 @@ namespace folly {
 namespace detail {
 
 void annotate_rwlock_create_impl(
-    void const volatile* const addr,
-    char const* const f,
-    int const l) {
+    void const volatile* const addr, char const* const f, int const l) {
   if (kIsSanitizeThread) {
     FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockCreate, f, l, addr);
   }
 }
 
 void annotate_rwlock_create_static_impl(
-    void const volatile* const addr,
-    char const* const f,
-    int const l) {
+    void const volatile* const addr, char const* const f, int const l) {
   if (kIsSanitizeThread) {
     FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockCreateStatic, f, l, addr);
   }
 }
 
 void annotate_rwlock_destroy_impl(
-    void const volatile* const addr,
-    char const* const f,
-    int const l) {
+    void const volatile* const addr, char const* const f, int const l) {
   if (kIsSanitizeThread) {
     FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockDestroy, f, l, addr);
   }

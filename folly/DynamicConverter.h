@@ -110,14 +110,12 @@ namespace dynamicconverter_detail {
 template <typename T>
 struct Dereferencer {
   static inline void derefToCache(
-      Optional<T>* /* mem */,
-      const dynamic::const_item_iterator& /* it */) {
+      Optional<T>* /* mem */, const dynamic::const_item_iterator& /* it */) {
     throw_exception<TypeError>("array", dynamic::Type::OBJECT);
   }
 
   static inline void derefToCache(
-      Optional<T>* mem,
-      const dynamic::const_iterator& it) {
+      Optional<T>* mem, const dynamic::const_iterator& it) {
     mem->emplace(convertTo<T>(*it));
   }
 };
@@ -125,16 +123,14 @@ struct Dereferencer {
 template <typename F, typename S>
 struct Dereferencer<std::pair<F, S>> {
   static inline void derefToCache(
-      Optional<std::pair<F, S>>* mem,
-      const dynamic::const_item_iterator& it) {
+      Optional<std::pair<F, S>>* mem, const dynamic::const_item_iterator& it) {
     mem->emplace(convertTo<F>(it->first), convertTo<S>(it->second));
   }
 
   // Intentional duplication of the code in Dereferencer
   template <typename T>
   static inline void derefToCache(
-      Optional<T>* mem,
-      const dynamic::const_iterator& it) {
+      Optional<T>* mem, const dynamic::const_iterator& it) {
     mem->emplace(convertTo<T>(*it));
   }
 };

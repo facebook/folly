@@ -24,9 +24,7 @@ namespace folly {
 
 template <typename VT, typename CT>
 MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
-    size_t nBuckets,
-    size_t nLevels,
-    const Duration levelDurations[])
+    size_t nBuckets, size_t nLevels, const Duration levelDurations[])
     : cachedTime_(), cachedSum_(0), cachedCount_(0) {
   CHECK_GT(nLevels, 0u);
   CHECK(levelDurations);
@@ -44,8 +42,7 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
 
 template <typename VT, typename CT>
 MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
-    size_t nBuckets,
-    std::initializer_list<Duration> durations)
+    size_t nBuckets, std::initializer_list<Duration> durations)
     : cachedTime_(), cachedSum_(0), cachedCount_(0) {
   CHECK_GT(durations.size(), 0u);
 
@@ -66,24 +63,19 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
 
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValue(
-    TimePoint now,
-    const ValueType& val) {
+    TimePoint now, const ValueType& val) {
   addValueAggregated(now, val, 1);
 }
 
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValue(
-    TimePoint now,
-    const ValueType& val,
-    uint64_t times) {
+    TimePoint now, const ValueType& val, uint64_t times) {
   addValueAggregated(now, val * ValueType(times), times);
 }
 
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValueAggregated(
-    TimePoint now,
-    const ValueType& total,
-    uint64_t nsamples) {
+    TimePoint now, const ValueType& total, uint64_t nsamples) {
   if (cachedTime_ != now) {
     flush();
     cachedTime_ = now;

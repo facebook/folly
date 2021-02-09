@@ -167,10 +167,7 @@ StringPiece rtrimWhitespace(StringPiece sp) {
 namespace {
 
 int stringAppendfImplHelper(
-    char* buf,
-    size_t bufsize,
-    const char* format,
-    va_list args) {
+    char* buf, size_t bufsize, const char* format, va_list args) {
   va_list args_copy;
   va_copy(args_copy, args);
   int bytes_used = vsnprintf(buf, bufsize, format, args_copy);
@@ -242,8 +239,8 @@ std::string& stringAppendf(std::string* output, const char* format, ...) {
   return stringVAppendf(output, format, ap);
 }
 
-std::string&
-stringVAppendf(std::string* output, const char* format, va_list ap) {
+std::string& stringVAppendf(
+    std::string* output, const char* format, va_list ap) {
   stringAppendfImpl(*output, format, ap);
   return *output;
 }
@@ -408,8 +405,7 @@ std::string prettyPrint(double val, PrettyType type, bool addSpace) {
 // TODO:
 // 1) Benchmark & optimize
 double prettyToDouble(
-    folly::StringPiece* const prettyString,
-    const PrettyType type) {
+    folly::StringPiece* const prettyString, const PrettyType type) {
   auto value = folly::to<double>(prettyString);
   while (!prettyString->empty() && std::isspace(prettyString->front())) {
     prettyString->advance(1); // Skipping spaces between number and suffix
@@ -467,10 +463,7 @@ std::string hexDump(const void* ptr, size_t size) {
 
 FOLLY_MAYBE_UNUSED
 static std::string invoke_strerror_r(
-    int (*strerror_r)(int, char*, size_t),
-    int err,
-    char* buf,
-    size_t buflen) {
+    int (*strerror_r)(int, char*, size_t), int err, char* buf, size_t buflen) {
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, buflen);
 
@@ -668,8 +661,8 @@ void toLowerAscii(char* str, size_t length) {
 
 namespace detail {
 
-size_t
-hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line) {
+size_t hexDumpLine(
+    const void* ptr, size_t offset, size_t size, std::string& line) {
   static char hexValues[] = "0123456789abcdef";
   // Line layout:
   // 8: address

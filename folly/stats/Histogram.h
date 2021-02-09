@@ -186,9 +186,7 @@ class HistogramBuckets {
    */
   template <typename CountFn, typename AvgFn>
   ValueType getPercentileEstimate(
-      double pct,
-      CountFn countFromBucket,
-      AvgFn avgFromBucket) const;
+      double pct, CountFn countFromBucket, AvgFn avgFromBucket) const;
 
   /*
    * Iterator access to the buckets.
@@ -395,9 +393,7 @@ class Histogram {
    * returned in the lowPct and highPct arguments, if they are not nullptr.
    */
   size_t getPercentileBucketIdx(
-      double pct,
-      double* lowPct = nullptr,
-      double* highPct = nullptr) const {
+      double pct, double* lowPct = nullptr, double* highPct = nullptr) const {
     // We unfortunately can't use lambdas here yet;
     // Some users of this code are still built with gcc-4.4.
     CountFromBucket countFn;

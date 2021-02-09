@@ -537,8 +537,7 @@ class SignedValueHandler<T, false> {
  */
 template <class Tgt>
 inline Expected<Tgt, ConversionCode> digits_to(
-    const char* b,
-    const char* const e) noexcept {
+    const char* b, const char* const e) noexcept {
   using UT = typename std::make_unsigned<Tgt>::type;
   assert(b <= e);
 
@@ -637,46 +636,35 @@ outOfRange:
 }
 
 template Expected<char, ConversionCode> digits_to<char>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 template Expected<signed char, ConversionCode> digits_to<signed char>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 template Expected<unsigned char, ConversionCode> digits_to<unsigned char>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 
 template Expected<short, ConversionCode> digits_to<short>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 template Expected<unsigned short, ConversionCode> digits_to<unsigned short>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 
 template Expected<int, ConversionCode> digits_to<int>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 template Expected<unsigned int, ConversionCode> digits_to<unsigned int>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 
 template Expected<long, ConversionCode> digits_to<long>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 template Expected<unsigned long, ConversionCode> digits_to<unsigned long>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 
 template Expected<long long, ConversionCode> digits_to<long long>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 template Expected<unsigned long long, ConversionCode>
 digits_to<unsigned long long>(const char*, const char*) noexcept;
 
 #if FOLLY_HAVE_INT128_T
 template Expected<__int128, ConversionCode> digits_to<__int128>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 template Expected<unsigned __int128, ConversionCode>
 digits_to<unsigned __int128>(const char*, const char*) noexcept;
 #endif

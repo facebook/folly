@@ -73,8 +73,7 @@ void ElfFile::open(const char* name, Options const& options) {
 }
 
 ElfFile::OpenResult ElfFile::openNoThrow(
-    const char* name,
-    Options const& options) noexcept {
+    const char* name, Options const& options) noexcept {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
   // Always close fd and unmap in case of failure along the way to avoid
   // check failure above if we leave fd != -1 and the object is recycled
@@ -110,8 +109,7 @@ ElfFile::OpenResult ElfFile::openNoThrow(
 }
 
 ElfFile::OpenResult ElfFile::openAndFollow(
-    const char* name,
-    Options const& options) noexcept {
+    const char* name, Options const& options) noexcept {
   auto result = openNoThrow(name, options);
   if (options.writable() || result != kSuccess) {
     return result;
@@ -312,8 +310,8 @@ void ElfFile::validateStringTable(const ElfShdr& stringTable) const noexcept {
       "invalid string table");
 }
 
-const char* ElfFile::getString(const ElfShdr& stringTable, size_t offset)
-    const noexcept {
+const char* ElfFile::getString(
+    const ElfShdr& stringTable, size_t offset) const noexcept {
   validateStringTable(stringTable);
   FOLLY_SAFE_CHECK(
       offset < stringTable.sh_size, "invalid offset in string table");

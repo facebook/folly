@@ -30,8 +30,7 @@ namespace {
 
 template <class BaseIter>
 BitIterator<BaseIter> simpleFFS(
-    BitIterator<BaseIter> begin,
-    BitIterator<BaseIter> end) {
+    BitIterator<BaseIter> begin, BitIterator<BaseIter> end) {
   return std::find(begin, end, true);
 }
 

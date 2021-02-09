@@ -123,58 +123,46 @@ void runSingleInserts(std::string const& name) {
 }
 
 FOLLY_NOINLINE int codeSize_find_Std(
-    std::unordered_map<int16_t, float>& m,
-    int16_t k) {
+    std::unordered_map<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
 FOLLY_NOINLINE int codeSize_find_F14Value(
-    F14ValueMap<int16_t, float>& m,
-    int16_t k) {
+    F14ValueMap<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
 FOLLY_NOINLINE int codeSize_find_F14Node(
-    F14NodeMap<int16_t, float>& m,
-    int16_t k) {
+    F14NodeMap<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
 FOLLY_NOINLINE int codeSize_find_F14Vector(
-    F14VectorMap<int16_t, float>& m,
-    int16_t k) {
+    F14VectorMap<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
 FOLLY_NOINLINE void codeSize_bracket_Std(
-    std::unordered_map<int16_t, uint32_t>& m,
-    int16_t k,
-    uint32_t v) {
+    std::unordered_map<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 
 FOLLY_NOINLINE void codeSize_bracket_F14Value(
-    F14ValueMap<int16_t, uint32_t>& m,
-    int16_t k,
-    uint32_t v) {
+    F14ValueMap<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 
 FOLLY_NOINLINE void codeSize_bracket_F14Node(
-    F14NodeMap<int16_t, uint32_t>& m,
-    int16_t k,
-    uint32_t v) {
+    F14NodeMap<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 
 FOLLY_NOINLINE void codeSize_bracket_F14Vector(
-    F14VectorMap<int16_t, uint32_t>& m,
-    int16_t k,
-    uint32_t v) {
+    F14VectorMap<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 

@@ -370,8 +370,8 @@ class ConcurrentHashMap {
 
   // Assign to desired if and only if key k is equal to expected
   template <typename Key, typename Value>
-  folly::Optional<ConstIterator>
-  assign_if_equal(Key&& k, const ValueType& expected, Value&& desired) {
+  folly::Optional<ConstIterator> assign_if_equal(
+      Key&& k, const ValueType& expected, Value&& desired) {
     auto segment = pickSegment(k);
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);

@@ -145,9 +145,7 @@ class IPAddress {
    *         CIDRNetworkError
    */
   static Expected<CIDRNetwork, CIDRNetworkError> tryCreateNetwork(
-      StringPiece ipSlashCidr,
-      int defaultCidr = -1,
-      bool mask = true);
+      StringPiece ipSlashCidr, int defaultCidr = -1, bool mask = true);
 
   /**
    * Create a network and mask from a CIDR formatted address string.
@@ -158,9 +156,7 @@ class IPAddress {
    * @return pair with IPAddress network and uint8_t mask
    */
   static CIDRNetwork createNetwork(
-      StringPiece ipSlashCidr,
-      int defaultCidr = -1,
-      bool mask = true);
+      StringPiece ipSlashCidr, int defaultCidr = -1, bool mask = true);
 
   /**
    * Return a string representation of a CIDR block created with createNetwork.
@@ -202,8 +198,7 @@ class IPAddress {
   // Given 2 IPAddress,mask pairs extract the longest common IPAddress,
   // mask pair
   static CIDRNetwork longestCommonPrefix(
-      const CIDRNetwork& one,
-      const CIDRNetwork& two);
+      const CIDRNetwork& one, const CIDRNetwork& two);
 
   /**
    * Constructs an uninitialized IPAddress.

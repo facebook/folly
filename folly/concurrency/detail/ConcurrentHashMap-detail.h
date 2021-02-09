@@ -513,8 +513,8 @@ class alignas(64) BucketTable {
     FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_(nullptr) {}
     FOLLY_ALWAYS_INLINE ~Iterator() {}
 
-    void
-    setNode(Node* node, Buckets* buckets, size_t bucket_count, uint64_t idx) {
+    void setNode(
+        Node* node, Buckets* buckets, size_t bucket_count, uint64_t idx) {
       node_ = node;
       buckets_ = buckets;
       idx_ = idx;
@@ -599,9 +599,7 @@ class alignas(64) BucketTable {
     return (hash >> ShardBits) & (bucket_count - 1);
   }
   void getBucketsAndCount(
-      size_t& bcount,
-      Buckets*& buckets,
-      hazptr_holder<Atom>& hazptr) {
+      size_t& bcount, Buckets*& buckets, hazptr_holder<Atom>& hazptr) {
     while (true) {
       auto seqlock = seqlock_.load(std::memory_order_acquire);
       bcount = bucket_count_.load(std::memory_order_acquire);
@@ -1499,8 +1497,7 @@ class alignas(64) SIMDTable {
   }
 
   void rehash_internal(
-      size_t new_chunk_count,
-      hazptr_obj_cohort<Atom>* cohort) {
+      size_t new_chunk_count, hazptr_obj_cohort<Atom>* cohort) {
     DCHECK(isPowTwo(new_chunk_count));
     auto old_chunk_count = chunk_count_.load(std::memory_order_relaxed);
     if (old_chunk_count >= new_chunk_count) {
@@ -1538,9 +1535,7 @@ class alignas(64) SIMDTable {
   }
 
   void getChunksAndCount(
-      size_t& ccount,
-      Chunks*& chunks,
-      hazptr_holder<Atom>& hazptr) {
+      size_t& ccount, Chunks*& chunks, hazptr_holder<Atom>& hazptr) {
     while (true) {
       auto seqlock = seqlock_.load(std::memory_order_acquire);
       ccount = chunk_count_.load(std::memory_order_acquire);
@@ -1553,8 +1548,8 @@ class alignas(64) SIMDTable {
     DCHECK(chunks);
   }
 
-  std::pair<size_t, size_t>
-  findEmptyInsertLocation(Chunks* chunks, size_t ccount, const HashPair& hp) {
+  std::pair<size_t, size_t> findEmptyInsertLocation(
+      Chunks* chunks, size_t ccount, const HashPair& hp) {
     size_t chunk_idx = hp.first;
     Chunk* dst_chunk = chunks->getChunk(chunk_idx, ccount);
     auto firstEmpty = dst_chunk->firstEmpty();
@@ -1751,10 +1746,7 @@ class alignas(64) ConcurrentHashMapSegment {
 
   template <typename Key, typename Value>
   bool assign_if_equal(
-      Iterator& it,
-      Key&& k,
-      const ValueType& expected,
-      Value&& desired) {
+      Iterator& it, Key&& k, const ValueType& expected, Value&& desired) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
     new (node)
         Node(cohort_, std::forward<Key>(k), std::forward<Value>(desired));
@@ -1784,11 +1776,7 @@ class alignas(64) ConcurrentHashMapSegment {
 
   template <typename MatchFunc, typename K, typename... Args>
   bool insert_internal(
-      Iterator& it,
-      const K& k,
-      InsertType type,
-      MatchFunc match,
-      Node* cur) {
+      Iterator& it, const K& k, InsertType type, MatchFunc match, Node* cur) {
     return impl_.insert(it, k, type, match, cur, cohort_);
   }
 

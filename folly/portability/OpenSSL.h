@@ -146,14 +146,10 @@ int SSL_SESSION_up_ref(SSL_SESSION* session);
 int X509_up_ref(X509* x);
 int X509_STORE_up_ref(X509_STORE* v);
 void X509_STORE_CTX_set0_verified_chain(
-    X509_STORE_CTX* ctx,
-    STACK_OF(X509) * sk);
+    X509_STORE_CTX* ctx, STACK_OF(X509) * sk);
 int EVP_PKEY_up_ref(EVP_PKEY* evp);
 void RSA_get0_key(
-    const RSA* r,
-    const BIGNUM** n,
-    const BIGNUM** e,
-    const BIGNUM** d);
+    const RSA* r, const BIGNUM** n, const BIGNUM** e, const BIGNUM** d);
 RSA* EVP_PKEY_get0_RSA(EVP_PKEY* pkey);
 DSA* EVP_PKEY_get0_DSA(EVP_PKEY* pkey);
 DH* EVP_PKEY_get0_DH(EVP_PKEY* pkey);
@@ -192,23 +188,15 @@ unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
 int SSL_SESSION_has_ticket(const SSL_SESSION* s);
 int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
 void DH_get0_pqg(
-    const DH* dh,
-    const BIGNUM** p,
-    const BIGNUM** q,
-    const BIGNUM** g);
+    const DH* dh, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g);
 void DH_get0_key(const DH* dh, const BIGNUM** pub_key, const BIGNUM** priv_key);
 long DH_get_length(const DH* dh);
 int DH_set_length(DH* dh, long length);
 
 void DSA_get0_pqg(
-    const DSA* dsa,
-    const BIGNUM** p,
-    const BIGNUM** q,
-    const BIGNUM** g);
+    const DSA* dsa, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g);
 void DSA_get0_key(
-    const DSA* dsa,
-    const BIGNUM** pub_key,
-    const BIGNUM** priv_key);
+    const DSA* dsa, const BIGNUM** pub_key, const BIGNUM** priv_key);
 
 STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store);
 

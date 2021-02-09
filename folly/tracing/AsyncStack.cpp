@@ -117,8 +117,7 @@ AsyncStackRoot* exchangeCurrentAsyncStackRoot(
 namespace detail {
 
 ScopedAsyncStackRoot::ScopedAsyncStackRoot(
-    void* framePointer,
-    void* returnAddress) noexcept {
+    void* framePointer, void* returnAddress) noexcept {
   root_.setStackFrameContext(framePointer, returnAddress);
   root_.nextRoot = currentThreadAsyncStackRoot.get();
   currentThreadAsyncStackRoot.set(&root_);

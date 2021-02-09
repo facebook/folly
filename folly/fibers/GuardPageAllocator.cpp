@@ -201,9 +201,7 @@ namespace {
 struct sigaction oldSigsegvAction;
 
 FOLLY_NOINLINE void FOLLY_FIBERS_STACK_OVERFLOW_DETECTED(
-    int signum,
-    siginfo_t* info,
-    void* ucontext) {
+    int signum, siginfo_t* info, void* ucontext) {
   std::cerr << "folly::fibers Fiber stack overflow detected." << std::endl;
   // Let the old signal handler handle the signal, but make this function name
   // present in the stack trace.
@@ -275,8 +273,7 @@ class CacheManager {
   }
 
   std::unique_ptr<StackCacheEntry> getStackCache(
-      size_t stackSize,
-      size_t guardPagesPerStack) {
+      size_t stackSize, size_t guardPagesPerStack) {
     auto used = inUse_.load(std::memory_order_relaxed);
     do {
       if (used >= kMaxInUse) {

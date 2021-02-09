@@ -42,9 +42,7 @@ struct AddressData {
   uint8_t version;
 
   AddressData(
-      const std::string& address_,
-      const ByteVector& bytes_,
-      uint8_t version_)
+      const std::string& address_, const ByteVector& bytes_, uint8_t version_)
       : address(address_), bytes(bytes_), version(version_) {}
   AddressData(const std::string& address_, uint8_t version_)
       : address(address_), bytes(), version(version_) {}
@@ -1446,9 +1444,7 @@ static vector<AddressFlags> flagProvider = {
     AddressFlags("224.0.0.0", 4, IS_NONROUTABLE),
     // v4 link local broadcast
     AddressFlags(
-        "255.255.255.255",
-        4,
-        IS_NONROUTABLE | IS_LINK_LOCAL_BROADCAST),
+        "255.255.255.255", 4, IS_NONROUTABLE | IS_LINK_LOCAL_BROADCAST),
 
     // non routable v6
     AddressFlags("1999::1", 6, IS_NONROUTABLE),
@@ -1538,29 +1534,19 @@ static const vector<MaskBoundaryData> maskBoundaryProvider = {
 };
 
 INSTANTIATE_TEST_CASE_P(
-    IPAddress,
-    IPAddressTest,
-    ::testing::ValuesIn(validAddressProvider));
+    IPAddress, IPAddressTest, ::testing::ValuesIn(validAddressProvider));
 INSTANTIATE_TEST_CASE_P(
-    IPAddress,
-    IPAddressFlagTest,
-    ::testing::ValuesIn(flagProvider));
+    IPAddress, IPAddressFlagTest, ::testing::ValuesIn(flagProvider));
 INSTANTIATE_TEST_CASE_P(
-    IPAddress,
-    IPAddressMappedTest,
-    ::testing::ValuesIn(mapProvider));
+    IPAddress, IPAddressMappedTest, ::testing::ValuesIn(mapProvider));
 INSTANTIATE_TEST_CASE_P(
-    IPAddress,
-    IPAddressCtorTest,
-    ::testing::ValuesIn(invalidAddressProvider));
+    IPAddress, IPAddressCtorTest, ::testing::ValuesIn(invalidAddressProvider));
 INSTANTIATE_TEST_CASE_P(
     IPAddress,
     IPAddressCtorBinaryTest,
     ::testing::ValuesIn(invalidBinaryProvider));
 INSTANTIATE_TEST_CASE_P(
-    IPAddress,
-    IPAddressMaskTest,
-    ::testing::ValuesIn(masksProvider));
+    IPAddress, IPAddressMaskTest, ::testing::ValuesIn(masksProvider));
 INSTANTIATE_TEST_CASE_P(
     IPAddress,
     IPAddressMaskBoundaryTest,

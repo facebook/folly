@@ -249,8 +249,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
 };
 
 int AsyncSocket::SendMsgParamsCallback::getDefaultFlags(
-    folly::WriteFlags flags,
-    bool zeroCopyEnabled) noexcept {
+    folly::WriteFlags flags, bool zeroCopyEnabled) noexcept {
   int msg_flags = MSG_DONTWAIT;
 
 #ifdef MSG_NOSIGNAL // Linux-only
@@ -281,9 +280,7 @@ AsyncSocket::SendMsgParamsCallback defaultSendMsgParamsCallback;
 
 // Based on flags, signal the transparent handler to disable certain functions
 void disableTransparentFunctions(
-    NetworkSocket fd,
-    bool noTransparentTls,
-    bool noTSocks) {
+    NetworkSocket fd, bool noTransparentTls, bool noTSocks) {
   (void)fd;
   (void)noTransparentTls;
   (void)noTSocks;
@@ -343,9 +340,7 @@ AsyncSocket::AsyncSocket(
 }
 
 AsyncSocket::AsyncSocket(
-    EventBase* evb,
-    NetworkSocket fd,
-    uint32_t zeroCopyBufId)
+    EventBase* evb, NetworkSocket fd, uint32_t zeroCopyBufId)
     : zeroCopyBufId_(zeroCopyBufId),
       eventBase_(evb),
       writeTimeout_(this, evb),
@@ -993,8 +988,7 @@ void AsyncSocket::adjustZeroCopyFlags(folly::WriteFlags& flags) {
 }
 
 void AsyncSocket::addZeroCopyBuf(
-    std::unique_ptr<folly::IOBuf>&& buf,
-    ReleaseIOBufCallback* cb) {
+    std::unique_ptr<folly::IOBuf>&& buf, ReleaseIOBufCallback* cb) {
   uint32_t id = getNextZeroCopyBufId();
   folly::IOBuf* ptr = buf.get();
 
@@ -1030,8 +1024,7 @@ void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
 }
 
 void AsyncSocket::setZeroCopyBuf(
-    std::unique_ptr<folly::IOBuf>&& buf,
-    ReleaseIOBufCallback* cb) {
+    std::unique_ptr<folly::IOBuf>&& buf, ReleaseIOBufCallback* cb) {
   folly::IOBuf* ptr = buf.get();
   auto& p = idZeroCopyBufInfoMap_[ptr];
   CHECK(p.buf_.get() == nullptr);
@@ -1081,10 +1074,7 @@ void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
 }
 
 void AsyncSocket::write(
-    WriteCallback* callback,
-    const void* buf,
-    size_t bytes,
-    WriteFlags flags) {
+    WriteCallback* callback, const void* buf, size_t bytes, WriteFlags flags) {
   iovec op;
   op.iov_base = const_cast<void*>(buf);
   op.iov_len = bytes;
@@ -1092,10 +1082,7 @@ void AsyncSocket::write(
 }
 
 void AsyncSocket::writev(
-    WriteCallback* callback,
-    const iovec* vec,
-    size_t count,
-    WriteFlags flags) {
+    WriteCallback* callback, const iovec* vec, size_t count, WriteFlags flags) {
   size_t totalBytes = 0;
   for (size_t i = 0; i < count; ++i) {
     totalBytes += vec[i].iov_len;
@@ -1104,9 +1091,7 @@ void AsyncSocket::writev(
 }
 
 void AsyncSocket::writeChain(
-    WriteCallback* callback,
-    unique_ptr<IOBuf>&& buf,
-    WriteFlags flags) {
+    WriteCallback* callback, unique_ptr<IOBuf>&& buf, WriteFlags flags) {
   adjustZeroCopyFlags(flags);
 
   // adjustZeroCopyFlags can set zeroCopyEnabled_ to true
@@ -1688,8 +1673,7 @@ void AsyncSocket::cachePeerAddress() const {
 }
 
 void AsyncSocket::applyOptions(
-    const SocketOptionMap& options,
-    SocketOptionKey::ApplyPos pos) {
+    const SocketOptionMap& options, SocketOptionKey::ApplyPos pos) {
   auto result = applySocketOptions(fd_, options, pos);
   if (result != 0) {
     throw AsyncSocketException(
@@ -1945,8 +1929,8 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   }
 }
 
-AsyncSocket::ReadResult
-AsyncSocket::performRead(void** buf, size_t* buflen, size_t* /* offset */) {
+AsyncSocket::ReadResult AsyncSocket::performRead(
+    void** buf, size_t* buflen, size_t* /* offset */) {
   VLOG(5) << "AsyncSocket::performRead() this=" << this << ", buf=" << *buf
           << ", buflen=" << *buflen;
 
@@ -2553,15 +2537,13 @@ void AsyncSocket::timeoutExpired() noexcept {
   }
 }
 
-ssize_t
-AsyncSocket::tfoSendMsg(NetworkSocket fd, struct msghdr* msg, int msg_flags) {
+ssize_t AsyncSocket::tfoSendMsg(
+    NetworkSocket fd, struct msghdr* msg, int msg_flags) {
   return detail::tfo_sendmsg(fd, msg, msg_flags);
 }
 
 AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
-    NetworkSocket fd,
-    struct msghdr* msg,
-    int msg_flags) {
+    NetworkSocket fd, struct msghdr* msg, int msg_flags) {
   ssize_t totalWritten = 0;
   if (state_ == StateEnum::FAST_OPEN) {
     sockaddr_storage addr;
@@ -2848,8 +2830,7 @@ void AsyncSocket::failRead(const char* fn, const AsyncSocketException& ex) {
 }
 
 void AsyncSocket::failErrMessageRead(
-    const char* fn,
-    const AsyncSocketException& ex) {
+    const char* fn, const AsyncSocketException& ex) {
   VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
           << ", state=" << state_ << " host=" << addr_.describe()
           << "): failed while reading message in " << fn << "(): " << ex.what();
@@ -3070,8 +3051,7 @@ void AsyncSocket::doClose() {
 }
 
 std::ostream& operator<<(
-    std::ostream& os,
-    const AsyncSocket::StateEnum& state) {
+    std::ostream& os, const AsyncSocket::StateEnum& state) {
   os << static_cast<int>(state);
   return os;
 }

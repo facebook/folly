@@ -112,8 +112,7 @@ class BarrierTask {
   }
 
   FOLLY_NOINLINE void start(
-      Barrier* barrier,
-      folly::AsyncStackFrame& parentFrame) noexcept {
+      Barrier* barrier, folly::AsyncStackFrame& parentFrame) noexcept {
     assert(coro_);
     auto& calleeFrame = coro_.promise().getAsyncFrame();
     calleeFrame.setParentFrame(parentFrame);
@@ -196,8 +195,7 @@ class DetachedBarrierTask {
   }
 
   FOLLY_NOINLINE void start(
-      Barrier* barrier,
-      folly::AsyncStackFrame& parentFrame) && noexcept {
+      Barrier* barrier, folly::AsyncStackFrame& parentFrame) && noexcept {
     assert(coro_);
     coro_.promise().getAsyncFrame().setParentFrame(parentFrame);
     std::move(*this).start(barrier, FOLLY_ASYNC_STACK_RETURN_ADDRESS());

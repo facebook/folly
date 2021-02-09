@@ -285,8 +285,7 @@ po::options_description getGFlags(ProgramOptionsStyle style) {
 namespace {
 
 NestedCommandLineParseResult doParseNestedCommandLine(
-    po::command_line_parser&& parser,
-    const po::options_description& desc) {
+    po::command_line_parser&& parser, const po::options_description& desc) {
   NestedCommandLineParseResult result;
 
   result.options = parser.options(desc).allow_unregistered().run();
@@ -320,9 +319,7 @@ NestedCommandLineParseResult doParseNestedCommandLine(
 } // namespace
 
 NestedCommandLineParseResult parseNestedCommandLine(
-    int argc,
-    const char* const argv[],
-    const po::options_description& desc) {
+    int argc, const char* const argv[], const po::options_description& desc) {
   return doParseNestedCommandLine(po::command_line_parser(argc, argv), desc);
 }
 

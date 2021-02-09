@@ -52,8 +52,7 @@ AsyncTimeout::AsyncTimeout(EventBase* eventBase) : timeoutManager_(eventBase) {
 }
 
 AsyncTimeout::AsyncTimeout(
-    TimeoutManager* timeoutManager,
-    InternalEnum internal)
+    TimeoutManager* timeoutManager, InternalEnum internal)
     : timeoutManager_(timeoutManager) {
   event_.eb_event_set(
       NetworkSocket::invalid_handle_value,
@@ -105,8 +104,7 @@ bool AsyncTimeout::scheduleTimeoutHighRes(
 }
 
 bool AsyncTimeout::scheduleTimeout(
-    uint32_t milliseconds,
-    std::shared_ptr<RequestContext>&& rctx) {
+    uint32_t milliseconds, std::shared_ptr<RequestContext>&& rctx) {
   return scheduleTimeout(
       TimeoutManager::timeout_type(milliseconds), std::move(rctx));
 }
@@ -123,8 +121,7 @@ bool AsyncTimeout::isScheduled() const {
 }
 
 void AsyncTimeout::attachTimeoutManager(
-    TimeoutManager* timeoutManager,
-    InternalEnum internal) {
+    TimeoutManager* timeoutManager, InternalEnum internal) {
   // This also implies no timeout is scheduled.
   assert(timeoutManager_ == nullptr);
   assert(timeoutManager->isInTimeoutManagerThread());
@@ -134,8 +131,7 @@ void AsyncTimeout::attachTimeoutManager(
 }
 
 void AsyncTimeout::attachEventBase(
-    EventBase* eventBase,
-    InternalEnum internal) {
+    EventBase* eventBase, InternalEnum internal) {
   attachTimeoutManager(eventBase, internal);
 }
 

@@ -133,8 +133,8 @@ auto makeAutoTimer(
 
 template <GoogleLoggerStyle Style>
 struct GoogleLogger final {
-  void operator()(StringPiece msg, const std::chrono::duration<double>& sec)
-      const {
+  void operator()(
+      StringPiece msg, const std::chrono::duration<double>& sec) const {
     if (msg.empty()) {
       return;
     }

@@ -54,10 +54,7 @@ fs::path generateUniquePath(fs::path path, StringPiece namePrefix) {
 } // namespace
 
 TemporaryFile::TemporaryFile(
-    StringPiece namePrefix,
-    fs::path dir,
-    Scope scope,
-    bool closeOnDestruction)
+    StringPiece namePrefix, fs::path dir, Scope scope, bool closeOnDestruction)
     : scope_(scope),
       closeOnDestruction_(closeOnDestruction),
       fd_(-1),
@@ -112,9 +109,7 @@ TemporaryFile::~TemporaryFile() {
 }
 
 TemporaryDirectory::TemporaryDirectory(
-    StringPiece namePrefix,
-    fs::path dir,
-    Scope scope)
+    StringPiece namePrefix, fs::path dir, Scope scope)
     : scope_(scope),
       path_(std::make_unique<fs::path>(
           generateUniquePath(std::move(dir), namePrefix))) {

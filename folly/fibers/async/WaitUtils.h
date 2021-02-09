@@ -27,8 +27,8 @@ namespace async {
 
 namespace detail {
 template <typename F>
-lift_unit_t<async_invocable_inner_type_t<F>>
-executeOnFiberAndWait(F&& func, folly::EventBase& evb, FiberManager& fm) {
+lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
+    F&& func, folly::EventBase& evb, FiberManager& fm) {
   DCHECK(!detail::onFiber());
   return addFiberFuture(std::forward<F>(func), fm).getVia(&evb);
 }
@@ -45,8 +45,7 @@ executeOnFiberAndWait(F&& func, folly::EventBase& evb, FiberManager& fm) {
  */
 template <typename F>
 lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
-    F&& func,
-    const FiberManager::Options& opts = FiberManager::Options()) {
+    F&& func, const FiberManager::Options& opts = FiberManager::Options()) {
   folly::EventBase evb;
   return detail::executeOnFiberAndWait(
       std::forward<F>(func), evb, getFiberManager(evb, opts));
@@ -54,8 +53,7 @@ lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
 
 template <typename F>
 lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
-    F&& func,
-    const FiberManager::FrozenOptions& opts) {
+    F&& func, const FiberManager::FrozenOptions& opts) {
   folly::EventBase evb;
   return detail::executeOnFiberAndWait(
       std::forward<F>(func), evb, getFiberManager(evb, opts));
@@ -72,9 +70,7 @@ lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
 
 template <typename F>
 lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
-    F&& func,
-    folly::EventBase& evb,
-    const FiberManager::FrozenOptions& opts) {
+    F&& func, folly::EventBase& evb, const FiberManager::FrozenOptions& opts) {
   return detail::executeOnFiberAndWait(
       std::forward<F>(func), evb, getFiberManager(evb, opts));
 }
@@ -91,8 +87,7 @@ lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
  */
 template <typename F>
 lift_unit_t<async_invocable_inner_type_t<F>> executeOnRemoteFiberAndWait(
-    F&& func,
-    FiberManager& fm) {
+    F&& func, FiberManager& fm) {
   DCHECK(!detail::onFiber());
   return addFiberRemoteFuture(std::forward<F>(func), fm).get();
 }

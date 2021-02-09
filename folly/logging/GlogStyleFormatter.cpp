@@ -44,8 +44,7 @@ StringPiece getGlogLevelName(LogLevel level) {
 namespace folly {
 
 std::string GlogStyleFormatter::formatMessage(
-    const LogMessage& message,
-    const LogCategory* /* handlerCategory */) {
+    const LogMessage& message, const LogCategory* /* handlerCategory */) {
   // Get the local time info
   struct tm ltime;
   auto timeSinceEpoch = message.getTimestamp().time_since_epoch();

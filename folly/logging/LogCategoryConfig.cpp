@@ -22,9 +22,7 @@ LogCategoryConfig::LogCategoryConfig(LogLevel l, bool inherit)
     : level{l}, inheritParentLevel{inherit} {}
 
 LogCategoryConfig::LogCategoryConfig(
-    LogLevel l,
-    bool inherit,
-    std::vector<std::string> h)
+    LogLevel l, bool inherit, std::vector<std::string> h)
     : level{l}, inheritParentLevel{inherit}, handlers{h} {}
 
 bool LogCategoryConfig::operator==(const LogCategoryConfig& other) const {

@@ -70,9 +70,7 @@ static std::vector<std::pair<double, double>> rateToConsumeSize = {
 };
 
 INSTANTIATE_TEST_CASE_P(
-    TokenBucket,
-    TokenBucketTest,
-    ::testing::ValuesIn(rateToConsumeSize));
+    TokenBucket, TokenBucketTest, ::testing::ValuesIn(rateToConsumeSize));
 
 TEST(TokenBucket, drainOnFail) {
   DynamicTokenBucket tokenBucket;

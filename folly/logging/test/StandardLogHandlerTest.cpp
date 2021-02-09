@@ -33,8 +33,7 @@ namespace {
 class TestLogFormatter : public LogFormatter {
  public:
   std::string formatMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) override {
+      const LogMessage& message, const LogCategory* handlerCategory) override {
     return folly::to<std::string>(
         logLevelToString(message.getLevel()),
         "::",
@@ -52,8 +51,8 @@ class TestLogFormatter : public LogFormatter {
 
 class TestLogWriter : public LogWriter {
  public:
-  void writeMessage(folly::StringPiece buffer, uint32_t /* flags */ = 0)
-      override {
+  void writeMessage(
+      folly::StringPiece buffer, uint32_t /* flags */ = 0) override {
     messages_.emplace_back(buffer.str());
   }
   void flush() override {}

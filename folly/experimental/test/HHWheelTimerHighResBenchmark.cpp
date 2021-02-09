@@ -103,8 +103,7 @@ unsigned int scheduleCancelTimersUs(unsigned int iters, unsigned int timers) {
 }
 
 unsigned int scheduleCancelTimersDirectUs(
-    unsigned int iters,
-    unsigned int timers) {
+    unsigned int iters, unsigned int timers) {
   BenchmarkSuspender susp;
 
   EventBase evb;
@@ -130,58 +129,42 @@ BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_1, 1)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_1, 1)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_1,
-    1)
+    scheduleCancelTimersDirectUs, direct_us_1, 1)
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_16, 16)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_16, 16)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_16,
-    16)
+    scheduleCancelTimersDirectUs, direct_us_16, 16)
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_64, 64)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_64, 64)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_64,
-    64)
+    scheduleCancelTimersDirectUs, direct_us_64, 64)
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_128, 128)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_128, 128)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_128,
-    128)
+    scheduleCancelTimersDirectUs, direct_us_128, 128)
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_512, 512)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_512, 512)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_512,
-    512)
+    scheduleCancelTimersDirectUs, direct_us_512, 512)
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_1024, 1024)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_1024, 1024)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_1024,
-    1024)
+    scheduleCancelTimersDirectUs, direct_us_1024, 1024)
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_4096, 4096)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_4096, 4096)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_4096,
-    4096)
+    scheduleCancelTimersDirectUs, direct_us_4096, 4096)
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM_MULTI(scheduleCancelTimersMs, ms_8192, 9182)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(scheduleCancelTimersUs, us_8192, 9182)
 BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(
-    scheduleCancelTimersDirectUs,
-    direct_us_8192,
-    9182)
+    scheduleCancelTimersDirectUs, direct_us_8192, 9182)
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char* argv[]) {

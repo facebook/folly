@@ -31,8 +31,7 @@ class SimpleLoopController::SimpleTimeoutManager : public TimeoutManager {
       : loopController_(loopController) {}
 
   void attachTimeoutManager(
-      AsyncTimeout* /* unused */,
-      InternalEnum /* unused */) final {}
+      AsyncTimeout* /* unused */, InternalEnum /* unused */) final {}
   void detachTimeoutManager(AsyncTimeout* /* unused */) final {}
 
   bool scheduleTimeout(AsyncTimeout* obj, timeout_type timeout) final {

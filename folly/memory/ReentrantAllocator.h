@@ -247,15 +247,13 @@ class reentrant_allocator : private detail::reentrant_allocator_base {
 
 template <typename A, typename B>
 FOLLY_ERASE bool operator==(
-    reentrant_allocator<A> const& a,
-    reentrant_allocator<B> const& b) noexcept {
+    reentrant_allocator<A> const& a, reentrant_allocator<B> const& b) noexcept {
   using base = detail::reentrant_allocator_base;
   return static_cast<base const&>(a) == static_cast<base const&>(b);
 }
 template <typename A, typename B>
 FOLLY_ERASE bool operator!=(
-    reentrant_allocator<A> const& a,
-    reentrant_allocator<B> const& b) noexcept {
+    reentrant_allocator<A> const& a, reentrant_allocator<B> const& b) noexcept {
   using base = detail::reentrant_allocator_base;
   return static_cast<base const&>(a) != static_cast<base const&>(b);
 }

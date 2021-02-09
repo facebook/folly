@@ -40,8 +40,7 @@ namespace coro {
 //   }
 template <typename Reference, typename Value, typename Output>
 Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator,
-    Output init);
+    AsyncGenerator<Reference, Value> generator, Output init);
 
 template <
     typename Reference,
@@ -49,9 +48,7 @@ template <
     typename Output,
     typename BinaryOp>
 Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator,
-    Output init,
-    BinaryOp op);
+    AsyncGenerator<Reference, Value> generator, Output init, BinaryOp op);
 
 } // namespace coro
 } // namespace folly

@@ -103,9 +103,7 @@ LogStreamProcessor::LogStreamProcessor(
     InternalType,
     std::string&& msg) noexcept
     : category_{getXlogCategory(
-          categoryInfo,
-          categoryName,
-          isCategoryNameOverridden)},
+          categoryInfo, categoryName, isCategoryNameOverridden)},
       level_{level},
       filename_{filename},
       lineNumber_{lineNumber},

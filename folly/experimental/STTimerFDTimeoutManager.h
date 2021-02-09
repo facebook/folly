@@ -39,8 +39,8 @@ class STTimerFDTimeoutManager : public TimeoutManager, TimerFD {
   /**
    * Schedules AsyncTimeout to fire after `timeout` microseconds
    */
-  bool scheduleTimeoutHighRes(AsyncTimeout* obj, timeout_type_high_res timeout)
-      final;
+  bool scheduleTimeoutHighRes(
+      AsyncTimeout* obj, timeout_type_high_res timeout) final;
 
   /**
    * Cancels the AsyncTimeout, if scheduled

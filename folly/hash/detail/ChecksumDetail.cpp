@@ -117,8 +117,8 @@ namespace detail {
 
 #if FOLLY_SSE_PREREQ(4, 2)
 
-uint32_t
-crc32_hw_aligned(uint32_t remainder, const __m128i* p, size_t vec_count) {
+uint32_t crc32_hw_aligned(
+    uint32_t remainder, const __m128i* p, size_t vec_count) {
   /* Constants precomputed by gen_crc32_multipliers.c.  Do not edit! */
   const __m128i multipliers_4 = _mm_set_epi32(0, 0x1D9513D7, 0, 0x8F352D95);
   const __m128i multipliers_2 = _mm_set_epi32(0, 0x81256527, 0, 0xF1DA05AA);

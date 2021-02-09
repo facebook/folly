@@ -32,16 +32,14 @@ namespace adl {
 // Types must opt-in to hooking cancellation by customising this function.
 template <typename Awaitable>
 Awaitable&& co_withCancellation(
-    const folly::CancellationToken&,
-    Awaitable&& awaitable) noexcept {
+    const folly::CancellationToken&, Awaitable&& awaitable) noexcept {
   return (Awaitable &&) awaitable;
 }
 
 struct WithCancellationFunction {
   template <typename Awaitable>
   auto operator()(
-      const folly::CancellationToken& cancelToken,
-      Awaitable&& awaitable) const
+      const folly::CancellationToken& cancelToken, Awaitable&& awaitable) const
       noexcept(
           noexcept(co_withCancellation(cancelToken, (Awaitable &&) awaitable)))
           -> decltype(
@@ -52,11 +50,9 @@ struct WithCancellationFunction {
   template <typename Awaitable>
   auto operator()(folly::CancellationToken&& cancelToken, Awaitable&& awaitable)
       const noexcept(noexcept(co_withCancellation(
-          std::move(cancelToken),
-          (Awaitable &&) awaitable)))
+          std::move(cancelToken), (Awaitable &&) awaitable)))
           -> decltype(co_withCancellation(
-              std::move(cancelToken),
-              (Awaitable &&) awaitable)) {
+              std::move(cancelToken), (Awaitable &&) awaitable)) {
     return co_withCancellation(
         std::move(cancelToken), (Awaitable &&) awaitable);
   }

@@ -65,9 +65,7 @@ ThreadPoolExecutor::~ThreadPoolExecutor() {
 }
 
 ThreadPoolExecutor::Task::Task(
-    Func&& func,
-    std::chrono::milliseconds expiration,
-    Func&& expireCallback)
+    Func&& func, std::chrono::milliseconds expiration, Func&& expireCallback)
     : func_(std::move(func)),
       expiration_(expiration),
       expireCallback_(std::move(expireCallback)),

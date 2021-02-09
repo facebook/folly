@@ -49,8 +49,7 @@ class CompressionContextPool {
   using Ref = std::unique_ptr<T, ReturnToPoolDeleter>;
 
   explicit CompressionContextPool(
-      Creator creator = Creator(),
-      Deleter deleter = Deleter())
+      Creator creator = Creator(), Deleter deleter = Deleter())
       : creator_(std::move(creator)), deleter_(std::move(deleter)) {}
 
   Ref get() {

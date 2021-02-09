@@ -102,15 +102,13 @@ TEST(to_weak_ptr, example) {
 // These are here to make it easy to double-check the assembly
 // for to_weak_ptr_aliasing
 extern "C" FOLLY_KEEP void check_to_weak_ptr_aliasing(
-    std::shared_ptr<void> const& s,
-    void* a) {
+    std::shared_ptr<void> const& s, void* a) {
   auto w = folly::to_weak_ptr_aliasing(s, a);
   asm_volatile_memory();
   asm_volatile_pause();
 }
 extern "C" FOLLY_KEEP void check_to_weak_ptr_aliasing_fallback(
-    std::shared_ptr<void> const& s,
-    void* a) {
+    std::shared_ptr<void> const& s, void* a) {
   auto w = folly::to_weak_ptr(std::shared_ptr<void>(s, a));
   asm_volatile_memory();
   asm_volatile_pause();

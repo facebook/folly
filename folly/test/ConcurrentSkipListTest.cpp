@@ -116,8 +116,7 @@ static void sumAllValues(SkipListAccessor skipList, int64_t* sum) {
 }
 
 static void concurrentSkip(
-    const vector<ValueType>* values,
-    SkipListAccessor skipList) {
+    const vector<ValueType>* values, SkipListAccessor skipList) {
   int64_t sum = 0;
   SkipListAccessor::Skipper skipper(skipList);
   FOR_EACH (it, *values) {
@@ -270,8 +269,8 @@ TEST(ConcurrentSkipList, TestStringType) {
 }
 
 struct UniquePtrComp {
-  bool operator()(const std::unique_ptr<int>& x, const std::unique_ptr<int>& y)
-      const {
+  bool operator()(
+      const std::unique_ptr<int>& x, const std::unique_ptr<int>& y) const {
     if (!x) {
       return false;
     }
@@ -371,8 +370,8 @@ TEST(ConcurrentSkipList, ConcurrentRemove) {
   }
 }
 
-static void
-testConcurrentAccess(int numInsertions, int numDeletions, int maxValue) {
+static void testConcurrentAccess(
+    int numInsertions, int numDeletions, int maxValue) {
   auto skipList = SkipListType::create(kHeadHeight);
 
   vector<SetType> verifiers(FLAGS_num_threads);

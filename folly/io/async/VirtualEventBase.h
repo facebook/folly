@@ -82,8 +82,7 @@ class VirtualEventBase : public folly::TimeoutManager,
   HHWheelTimer& timer() { return evb_->timer(); }
 
   void attachTimeoutManager(
-      AsyncTimeout* obj,
-      TimeoutManager::InternalEnum internal) override {
+      AsyncTimeout* obj, TimeoutManager::InternalEnum internal) override {
     evb_->attachTimeoutManager(obj, internal);
   }
 
@@ -91,8 +90,8 @@ class VirtualEventBase : public folly::TimeoutManager,
     evb_->detachTimeoutManager(obj);
   }
 
-  bool scheduleTimeout(AsyncTimeout* obj, TimeoutManager::timeout_type timeout)
-      override {
+  bool scheduleTimeout(
+      AsyncTimeout* obj, TimeoutManager::timeout_type timeout) override {
     return evb_->scheduleTimeout(obj, timeout);
   }
 

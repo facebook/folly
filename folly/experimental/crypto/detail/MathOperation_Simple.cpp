@@ -166,8 +166,7 @@ void MathOperation<MathEngine::SIMPLE>::sub(
 
 template <>
 void MathOperation<MathEngine::SIMPLE>::clearPaddingBits(
-    uint64_t dataMask,
-    MutableByteRange buf) {
+    uint64_t dataMask, MutableByteRange buf) {
   if (dataMask == 0xffffffffffffffffULL) {
     return;
   }
@@ -191,8 +190,7 @@ void MathOperation<MathEngine::SIMPLE>::clearPaddingBits(
 
 template <>
 bool MathOperation<MathEngine::SIMPLE>::checkPaddingBits(
-    uint64_t dataMask,
-    ByteRange buf) {
+    uint64_t dataMask, ByteRange buf) {
   if (dataMask == 0xffffffffffffffffULL) {
     return true;
   }

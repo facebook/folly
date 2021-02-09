@@ -40,8 +40,6 @@ struct IoUringBackendProvider {
 };
 
 INSTANTIATE_TYPED_TEST_CASE_P(
-    AsyncSignalHandlerTest,
-    AsyncSignalHandlerTest,
-    IoUringBackendProvider);
+    AsyncSignalHandlerTest, AsyncSignalHandlerTest, IoUringBackendProvider);
 } // namespace test
 } // namespace folly

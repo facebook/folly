@@ -35,16 +35,16 @@ namespace folly {
  *       polynomial and thus yields different results for the same input
  *       than a traditional CRC-32.
  */
-uint32_t
-crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
+uint32_t crc32c(
+    const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
 /**
  * Compute the CRC-32 checksum of a buffer, using a hardware-accelerated
  * implementation if available or a portable software implementation as
  * a default.
  */
-uint32_t
-crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
+uint32_t crc32(
+    const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
 /**
  * Compute the CRC-32 checksum of a buffer, using a hardware-accelerated
@@ -55,8 +55,8 @@ crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
  *       parameters to match the results returned by boost::crc_32_type and
  *       php's built-in crc32 implementation
  */
-uint32_t
-crc32_type(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
+uint32_t crc32_type(
+    const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
 /**
  * Given two checksums, combine them in to one checksum.

@@ -97,9 +97,7 @@ TEST(Tracked, baseline) {
 // call the function using callWithExtractedKey
 template <typename F>
 void runKeyExtractCases(
-    std::string const& name,
-    F const& func,
-    uint64_t expectedDist = 0) {
+    std::string const& name, F const& func, uint64_t expectedDist = 0) {
   Optional<std::pair<Tracked<0> const, Tracked<1>>> sink;
   auto sinkFunc = [&sink](Tracked<0> const& key, auto&&... args) {
     if (!sink.hasValue() || sink.value().first != key) {

@@ -233,8 +233,7 @@ void basicNThreads(int numThreads, int iterations = kStressFactor) {
 
 template <template <typename> class Atom = std::atomic>
 void lockWithTryAndTimedNThreads(
-    int numThreads,
-    std::chrono::seconds duration) {
+    int numThreads, std::chrono::seconds duration) {
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& barrier = std::atomic<int>{0};
   auto&& threads = std::vector<std::thread>{};
@@ -462,8 +461,7 @@ void combineWithTryLockNThreads(int numThreads, std::chrono::seconds duration) {
 
 template <template <typename> class Atom = std::atomic>
 void combineWithLockTryAndTimedNThreads(
-    int numThreads,
-    std::chrono::seconds duration) {
+    int numThreads, std::chrono::seconds duration) {
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& barrier = std::atomic<int>{0};
   auto&& threads = std::vector<std::thread>{};
@@ -960,8 +958,7 @@ void combineAndLockNThreadsDeterministic(int threads, std::chrono::seconds t) {
 }
 
 void combineTryLockAndLockNThreadsDeterministic(
-    int threads,
-    std::chrono::seconds t) {
+    int threads, std::chrono::seconds t) {
   const auto kNumPasses = 3.0;
   const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
   const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
@@ -974,8 +971,7 @@ void combineTryLockAndLockNThreadsDeterministic(
 }
 
 void lockWithTryAndTimedNThreadsDeterministic(
-    int threads,
-    std::chrono::seconds t) {
+    int threads, std::chrono::seconds t) {
   const auto kNumPasses = 3.0;
   const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
   const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
@@ -988,8 +984,7 @@ void lockWithTryAndTimedNThreadsDeterministic(
 }
 
 void combineWithTryLockAndTimedNThreadsDeterministic(
-    int threads,
-    std::chrono::seconds t) {
+    int threads, std::chrono::seconds t) {
   const auto kNumPasses = 3.0;
   const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
   const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
@@ -1300,8 +1295,7 @@ TEST(DistributedMutex, TimedLockAcquireAfterContentionChain) {
 namespace {
 template <template <typename> class Atom = std::atomic>
 void stressTryLockWithConcurrentLocks(
-    int numThreads,
-    int iterations = kStressFactor) {
+    int numThreads, int iterations = kStressFactor) {
   auto&& threads = std::vector<std::thread>{};
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& atomic = std::atomic<std::uint64_t>{0};
@@ -1706,8 +1700,7 @@ TEST(DistributedMutex, StressWithManyMutexesAlternatingSixtyFourThreads) {
 
 namespace {
 void concurrentLocksManyMutexesDeterministic(
-    int threads,
-    std::chrono::seconds t) {
+    int threads, std::chrono::seconds t) {
   const auto kNumPasses = 3.0;
   const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
   const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
@@ -1782,8 +1775,7 @@ TEST(DistributedMutex, TestExceptionPropagationUncontended) {
 namespace {
 template <template <typename> class Atom = std::atomic>
 void concurrentExceptionPropagationStress(
-    int numThreads,
-    std::chrono::milliseconds t) {
+    int numThreads, std::chrono::milliseconds t) {
   // This test inexplicably aborts when ran under TSAN. TSAN reports a
   // read-write race where the exception is freed by the lock-holder / combiner
   // thread and read concurrently by the thread that requested the combine
@@ -1873,8 +1865,7 @@ TEST(DistributedMutex, TestExceptionPropagationStressSixtyFourThreads) {
 
 namespace {
 void concurrentExceptionPropagationDeterministic(
-    int threads,
-    std::chrono::seconds t) {
+    int threads, std::chrono::seconds t) {
   const auto kNumPasses = 3.0;
   const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
   const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
@@ -1922,8 +1913,7 @@ std::array<std::uint64_t, 8> makeMonotonicArray(int start) {
 
 template <template <typename> class Atom = std::atomic>
 void concurrentBigValueReturnStress(
-    int numThreads,
-    std::chrono::milliseconds t) {
+    int numThreads, std::chrono::milliseconds t) {
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& threads = std::vector<std::thread>{};
   auto&& stop = std::atomic<bool>{false};
@@ -1984,8 +1974,7 @@ TEST(DistributedMutex, StressBigValueReturnSixtyFourThreads) {
 
 namespace {
 void concurrentBigValueReturnDeterministic(
-    int threads,
-    std::chrono::seconds t) {
+    int threads, std::chrono::seconds t) {
   const auto kNumPasses = 3.0;
   const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
   const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};

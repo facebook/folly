@@ -160,8 +160,7 @@ void MathOperation<MathEngine::AVX2>::sub(
 
 template <>
 void MathOperation<MathEngine::AVX2>::clearPaddingBits(
-    uint64_t dataMask,
-    MutableByteRange buf) {
+    uint64_t dataMask, MutableByteRange buf) {
   if (dataMask == 0xffffffffffffffffULL) {
     return;
   }
@@ -190,8 +189,7 @@ void MathOperation<MathEngine::AVX2>::clearPaddingBits(
 
 template <>
 bool MathOperation<MathEngine::AVX2>::checkPaddingBits(
-    uint64_t dataMask,
-    ByteRange buf) {
+    uint64_t dataMask, ByteRange buf) {
   if (dataMask == 0xffffffffffffffffULL) {
     return true;
   }
@@ -247,8 +245,7 @@ void MathOperation<MathEngine::AVX2>::sub(
 
 template <>
 void MathOperation<MathEngine::AVX2>::clearPaddingBits(
-    uint64_t /* dataMask */,
-    MutableByteRange buf) {
+    uint64_t /* dataMask */, MutableByteRange buf) {
   if (buf.data() != nullptr) { // hack to defeat [[noreturn]] compiler warning
     LOG(FATAL) << "Unimplemented function MathOperation<MathEngine::AVX2>::"
                << "clearPaddingBits() called";
@@ -257,8 +254,7 @@ void MathOperation<MathEngine::AVX2>::clearPaddingBits(
 
 template <>
 bool MathOperation<MathEngine::AVX2>::checkPaddingBits(
-    uint64_t /* dataMask */,
-    ByteRange buf) {
+    uint64_t /* dataMask */, ByteRange buf) {
   if (buf.data() != nullptr) { // hack to defeat [[noreturn]] compiler warning
     LOG(FATAL) << "Unimplemented function MathOperation<MathEngine::AVX2>::"
                << "checkPaddingBits() called";

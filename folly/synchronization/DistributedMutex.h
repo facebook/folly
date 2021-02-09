@@ -311,8 +311,7 @@ class DistributedMutex {
    */
   template <typename Rep, typename Period, typename Task>
   folly::Optional<invoke_result_t<Task&>> try_lock_combine_for(
-      const std::chrono::duration<Rep, Period>& duration,
-      Task task);
+      const std::chrono::duration<Rep, Period>& duration, Task task);
 
   /**
    * Try to combine a task as a combined critical section untill the given time
@@ -322,8 +321,7 @@ class DistributedMutex {
    */
   template <typename Clock, typename Duration, typename Task>
   folly::Optional<invoke_result_t<Task&>> try_lock_combine_until(
-      const std::chrono::time_point<Clock, Duration>& deadline,
-      Task task);
+      const std::chrono::time_point<Clock, Duration>& deadline, Task task);
 
  private:
   Atomic<std::uintptr_t> state_{0};

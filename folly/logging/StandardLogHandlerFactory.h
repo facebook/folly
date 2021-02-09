@@ -64,9 +64,7 @@ class StandardLogHandlerFactory {
   };
 
   static std::shared_ptr<StandardLogHandler> createHandler(
-      StringPiece type,
-      WriterFactory* writerFactory,
-      const Options& options);
+      StringPiece type, WriterFactory* writerFactory, const Options& options);
 
   static std::shared_ptr<StandardLogHandler> createHandler(
       StringPiece type,

@@ -437,8 +437,7 @@ class MPMC {
 
   template <typename Rep, typename Period>
   bool try_enqueue_for(
-      const T& v,
-      const std::chrono::duration<Rep, Period>& duration) {
+      const T& v, const std::chrono::duration<Rep, Period>& duration) {
     return q_.tryWriteUntil(std::chrono::steady_clock::now() + duration, v);
   }
 
@@ -448,8 +447,7 @@ class MPMC {
 
   template <typename Rep, typename Period>
   bool try_dequeue_for(
-      T& item,
-      const std::chrono::duration<Rep, Period>& duration) {
+      T& item, const std::chrono::duration<Rep, Period>& duration) {
     return q_.tryReadUntil(std::chrono::steady_clock::now() + duration, item);
   }
 };

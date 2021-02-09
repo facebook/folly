@@ -24,11 +24,7 @@
 
 namespace some_ns {
 FOLLY_SETTING_DEFINE(
-    follytest,
-    some_flag,
-    std::string,
-    "default",
-    "Description");
+    follytest, some_flag, std::string, "default", "Description");
 FOLLY_SETTING_DEFINE(
     follytest,
     unused,

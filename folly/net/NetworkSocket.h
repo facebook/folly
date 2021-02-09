@@ -53,22 +53,19 @@ struct NetworkSocket {
   }
 
   friend constexpr bool operator==(
-      const NetworkSocket& a,
-      const NetworkSocket& b) noexcept {
+      const NetworkSocket& a, const NetworkSocket& b) noexcept {
     return a.data == b.data;
   }
 
   friend constexpr bool operator!=(
-      const NetworkSocket& a,
-      const NetworkSocket& b) noexcept {
+      const NetworkSocket& a, const NetworkSocket& b) noexcept {
     return !(a == b);
   }
 };
 
 template <class CharT, class Traits>
 inline std::basic_ostream<CharT, Traits>& operator<<(
-    std::basic_ostream<CharT, Traits>& os,
-    const NetworkSocket& addr) {
+    std::basic_ostream<CharT, Traits>& os, const NetworkSocket& addr) {
   os << "folly::NetworkSocket(" << addr.data << ")";
   return os;
 }

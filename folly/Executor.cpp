@@ -65,8 +65,7 @@ ExecutorBlockingGuard::ExecutorBlockingGuard(PermitTag) noexcept
 }
 
 ExecutorBlockingGuard::ExecutorBlockingGuard(
-    ForbidTag,
-    StringPiece name) noexcept
+    ForbidTag, StringPiece name) noexcept
     : list_{true, executor_blocking_list, {name}} {
   if (executor_blocking_list_enabled) {
     executor_blocking_list = &list_;

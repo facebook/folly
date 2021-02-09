@@ -133,8 +133,7 @@ void EventBaseAtomicNotificationQueue<Task, Consumer>::putMessage(T&& task) {
 template <typename Task, typename Consumer>
 template <typename T>
 bool EventBaseAtomicNotificationQueue<Task, Consumer>::tryPutMessage(
-    T&& task,
-    uint32_t maxSize) {
+    T&& task, uint32_t maxSize) {
   auto result = notificationQueue_.tryPush(std::forward<T>(task), maxSize);
   if (result ==
       AtomicNotificationQueue<Task>::TryPushResult::SUCCESS_AND_ARMED) {
@@ -166,8 +165,7 @@ void EventBaseAtomicNotificationQueue<Task, Consumer>::startConsumingInternal(
 
 template <typename Task, typename Consumer>
 void EventBaseAtomicNotificationQueue<Task, Consumer>::startConsumingImpl(
-    EventBase* evb,
-    bool internal) {
+    EventBase* evb, bool internal) {
   evb_ = evb;
   initHandler(
       evb_,

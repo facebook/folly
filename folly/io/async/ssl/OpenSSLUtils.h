@@ -38,11 +38,9 @@ class OpenSSLUtils {
    * large enough
    */
   static bool getTLSMasterKey(
-      const SSL_SESSION* session,
-      MutableByteRange keyOut);
+      const SSL_SESSION* session, MutableByteRange keyOut);
   static bool getTLSMasterKey(
-      const std::shared_ptr<SSLSession> session,
-      MutableByteRange keyOut);
+      const std::shared_ptr<SSLSession> session, MutableByteRange keyOut);
 
   /*
    * Get the TLS Client Random used to generate the TLS key material
@@ -68,8 +66,8 @@ class OpenSSLUtils {
    */
   // TODO(agartrell): Add support for things like common name when
   // necessary.
-  static bool
-  validatePeerCertNames(X509* cert, const sockaddr* addr, socklen_t addrLen);
+  static bool validatePeerCertNames(
+      X509* cert, const sockaddr* addr, socklen_t addrLen);
 
   /**
    * Get the peer socket address from an X509_STORE_CTX*.  Unlike the
@@ -82,9 +80,7 @@ class OpenSSLUtils {
    * @return true on success, false on failure
    */
   static bool getPeerAddressFromX509StoreCtx(
-      X509_STORE_CTX* ctx,
-      sockaddr_storage* addrStorage,
-      socklen_t* addrLen);
+      X509_STORE_CTX* ctx, sockaddr_storage* addrStorage, socklen_t* addrLen);
 
   /**
    * Get a stringified cipher name (e.g., ECDHE-ECDSA-CHACHA20-POLY1305) given
@@ -121,11 +117,9 @@ class OpenSSLUtils {
    */
   static BioMethodUniquePtr newSocketBioMethod();
   static bool setCustomBioReadMethod(
-      BIO_METHOD* bioMeth,
-      int (*meth)(BIO*, char*, int));
+      BIO_METHOD* bioMeth, int (*meth)(BIO*, char*, int));
   static bool setCustomBioWriteMethod(
-      BIO_METHOD* bioMeth,
-      int (*meth)(BIO*, const char*, int));
+      BIO_METHOD* bioMeth, int (*meth)(BIO*, const char*, int));
   static int getBioShouldRetryWrite(int ret);
   static void setBioAppData(BIO* b, void* ptr);
   static void* getBioAppData(BIO* b);

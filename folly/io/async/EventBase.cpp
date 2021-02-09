@@ -110,8 +110,7 @@ int EventBaseBackend::eb_event_base_loopbreak() {
 }
 
 int EventBaseBackend::eb_event_add(
-    Event& event,
-    const struct timeval* timeout) {
+    Event& event, const struct timeval* timeout) {
   return event_add(event.getEvent(), timeout);
 }
 
@@ -715,8 +714,7 @@ void EventBase::SmoothLoopTime::reset(double value) {
 }
 
 void EventBase::SmoothLoopTime::addSample(
-    std::chrono::microseconds total,
-    std::chrono::microseconds busy) {
+    std::chrono::microseconds total, std::chrono::microseconds busy) {
   if ((buffer_time_ + total) > buffer_interval_ && buffer_cnt_ > 0) {
     // See https://en.wikipedia.org/wiki/Exponential_smoothing for
     // more info on this calculation.
@@ -755,8 +753,7 @@ void EventBase::detachTimeoutManager(AsyncTimeout* obj) {
 }
 
 bool EventBase::scheduleTimeout(
-    AsyncTimeout* obj,
-    TimeoutManager::timeout_type timeout) {
+    AsyncTimeout* obj, TimeoutManager::timeout_type timeout) {
   dcheckIsInEventBaseThread();
   // Set up the timeval and add the event
   struct timeval tv;

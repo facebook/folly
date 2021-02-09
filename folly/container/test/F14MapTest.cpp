@@ -1079,9 +1079,7 @@ TEST(Tracked, baseline) {
 // and a pair const& or pair&& and cause it to be inserted
 template <typename M, typename F>
 void runInsertCases(
-    std::string const& name,
-    F const& insertFunc,
-    uint64_t expectedDist = 0) {
+    std::string const& name, F const& insertFunc, uint64_t expectedDist = 0) {
   static_assert(std::is_same<typename M::key_type, Tracked<0>>::value, "");
   static_assert(std::is_same<typename M::mapped_type, Tracked<1>>::value, "");
   {

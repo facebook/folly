@@ -65,9 +65,7 @@ class FOLLY_EXPORT AsyncSocketException : public std::runtime_error {
 
   /** Return a message based on the input. */
   static std::string getMessage(
-      AsyncSocketExceptionType type,
-      const std::string& message,
-      int errnoCopy);
+      AsyncSocketExceptionType type, const std::string& message, int errnoCopy);
 
   /** Error code */
   AsyncSocketExceptionType type_;

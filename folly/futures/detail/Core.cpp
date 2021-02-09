@@ -478,8 +478,7 @@ void CoreBase::setProxy_(CoreBase* proxy) {
 
 // May be called at most once.
 void CoreBase::doCallback(
-    Executor::KeepAlive<>&& completingKA,
-    State priorState) {
+    Executor::KeepAlive<>&& completingKA, State priorState) {
   DCHECK(state_ == State::Done);
 
   auto executor = std::exchange(executor_, KeepAliveOrDeferred{});

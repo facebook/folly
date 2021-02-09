@@ -79,8 +79,8 @@ class ConcurrentBitSet {
   /**
    * Read bit idx.
    */
-  bool test(size_t idx, std::memory_order order = std::memory_order_seq_cst)
-      const;
+  bool test(
+      size_t idx, std::memory_order order = std::memory_order_seq_cst) const;
 
   /**
    * Same as test() with the default memory order.
@@ -136,14 +136,14 @@ inline bool ConcurrentBitSet<N>::reset(size_t idx, std::memory_order order) {
 }
 
 template <size_t N>
-inline bool
-ConcurrentBitSet<N>::set(size_t idx, bool value, std::memory_order order) {
+inline bool ConcurrentBitSet<N>::set(
+    size_t idx, bool value, std::memory_order order) {
   return value ? set(idx, order) : reset(idx, order);
 }
 
 template <size_t N>
-inline bool ConcurrentBitSet<N>::test(size_t idx, std::memory_order order)
-    const {
+inline bool ConcurrentBitSet<N>::test(
+    size_t idx, std::memory_order order) const {
   assert(idx < N);
   BlockType mask = kOne << bitOffset(idx);
   return data_[blockIndex(idx)].load(order) & mask;

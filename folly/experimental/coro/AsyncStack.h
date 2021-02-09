@@ -67,8 +67,7 @@ class AsyncStackTraceAwaitable {
   Awaiter operator co_await() const noexcept { return {}; }
 
   friend AsyncStackTraceAwaitable tag_invoke(
-      cpo_t<co_withAsyncStack>,
-      AsyncStackTraceAwaitable awaitable) noexcept {
+      cpo_t<co_withAsyncStack>, AsyncStackTraceAwaitable awaitable) noexcept {
     return awaitable;
   }
 };

@@ -156,8 +156,7 @@ class AsyncPipe {
         folly::Function<void()> onClosedFunc)
         : cancellationSource_(std::move(cancellationSource)),
           cancellationCallback_(
-              cancellationSource_->getToken(),
-              std::move(onClosedFunc)) {}
+              cancellationSource_->getToken(), std::move(onClosedFunc)) {}
 
     void requestInvoke() { cancellationSource_->requestCancellation(); }
 
@@ -171,8 +170,7 @@ class AsyncPipe {
   };
 
   explicit AsyncPipe(
-      std::weak_ptr<Queue> queue,
-      std::unique_ptr<OnClosedCallback> onClosed)
+      std::weak_ptr<Queue> queue, std::unique_ptr<OnClosedCallback> onClosed)
       : queue_(std::move(queue)), onClosed_(std::move(onClosed)) {}
 
   std::weak_ptr<Queue> queue_;

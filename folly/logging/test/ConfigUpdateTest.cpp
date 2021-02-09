@@ -44,8 +44,7 @@ auto MatchLogHandler(const LogHandlerConfig& config) {
   return LogHandlerMatcherImpl(config);
 }
 auto MatchLogHandler(
-    StringPiece type,
-    std::unordered_map<std::string, std::string> options) {
+    StringPiece type, std::unordered_map<std::string, std::string> options) {
   return MatchLogHandler(LogHandlerConfig{type, std::move(options)});
 }
 

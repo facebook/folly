@@ -91,8 +91,7 @@ struct GuardObj : GuardObjBase {
 
 template <class F, class... Args>
 GuardObj<typename std::decay<F>::type, std::tuple<Args...>> guard(
-    F&& f,
-    Args&&... args) {
+    F&& f, Args&&... args) {
   return GuardObj<typename std::decay<F>::type, std::tuple<Args...>>(
       std::forward<F>(f), std::tuple<Args...>(std::forward<Args>(args)...));
 }

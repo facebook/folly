@@ -46,9 +46,7 @@ using folly::PicoSpinLock;
 #endif
 
 DEFINE_int64(
-    stress_test_seconds,
-    2,
-    "Number of seconds for which to run stress tests");
+    stress_test_seconds, 2, "Number of seconds for which to run stress tests");
 
 namespace {
 

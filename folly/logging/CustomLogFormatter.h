@@ -53,8 +53,7 @@ class CustomLogFormatter : public LogFormatter {
  public:
   explicit CustomLogFormatter(StringPiece format, bool colored);
   std::string formatMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) override;
+      const LogMessage& message, const LogCategory* handlerCategory) override;
 
  private:
   void parseFormatString(StringPiece input);

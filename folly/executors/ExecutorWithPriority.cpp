@@ -18,8 +18,7 @@
 
 namespace folly {
 Executor::KeepAlive<> ExecutorWithPriority::create(
-    Executor::KeepAlive<Executor> executor,
-    int8_t priority) {
+    Executor::KeepAlive<Executor> executor, int8_t priority) {
   return ExecutorWithPriority::createDynamic(
       executor, [priority]() { return priority; });
 }

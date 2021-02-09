@@ -97,10 +97,7 @@ struct BenchmarkResult {
  * internally. Pass by value is intentional.
  */
 void addBenchmarkImpl(
-    const char* file,
-    StringPiece name,
-    BenchmarkFun,
-    bool useCounter);
+    const char* file, StringPiece name, BenchmarkFun, bool useCounter);
 
 /**
  * Runs all benchmarks defined in the program, doesn't print by default.
@@ -214,8 +211,8 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
  * (iteration occurs outside the function).
  */
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable_v<Lambda>>::type
-addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
+typename std::enable_if<folly::is_invocable_v<Lambda>>::type addBenchmark(
+    const char* file, StringPiece name, Lambda&& lambda) {
   addBenchmark(file, name, [=](unsigned int times) {
     unsigned int niter = 0;
     while (times-- > 0) {
@@ -269,12 +266,10 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
 struct dynamic;
 
 void benchmarkResultsToDynamic(
-    const std::vector<detail::BenchmarkResult>& data,
-    dynamic&);
+    const std::vector<detail::BenchmarkResult>& data, dynamic&);
 
 void benchmarkResultsFromDynamic(
-    const dynamic&,
-    std::vector<detail::BenchmarkResult>&);
+    const dynamic&, std::vector<detail::BenchmarkResult>&);
 
 void printResultComparison(
     const std::vector<detail::BenchmarkResult>& base,

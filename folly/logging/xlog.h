@@ -449,8 +449,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
   namespace {                                                          \
   XLOG_SET_CATEGORY_CHECK                                              \
   constexpr inline folly::StringPiece getXlogCategoryName(             \
-      folly::StringPiece,                                              \
-      int) {                                                           \
+      folly::StringPiece, int) {                                       \
     return category;                                                   \
   }                                                                    \
   constexpr inline bool isXlogCategoryOverridden(int) { return true; } \
@@ -784,8 +783,7 @@ constexpr const char* xlogStripFilenameRecursive(
  * would return "src/foo.cpp"
  */
 constexpr const char* xlogStripFilename(
-    const char* filename,
-    const char* prefixes) {
+    const char* filename, const char* prefixes) {
   return detail::xlogStripFilenameRecursive(filename, prefixes, 0, 0, true);
 }
 } // namespace folly
@@ -817,8 +815,7 @@ namespace {
  */
 template <typename T>
 constexpr inline folly::StringPiece getXlogCategoryName(
-    folly::StringPiece filename,
-    T) {
+    folly::StringPiece filename, T) {
   return filename;
 }
 

@@ -182,14 +182,12 @@ class Atomic {
       : onFetchOr_{std::move(onFetchOr)}, onFetchAnd_{std::move(onFetchAnd)} {}
 
   Integer fetch_or(
-      Integer value,
-      std::memory_order = std::memory_order_seq_cst) {
+      Integer value, std::memory_order = std::memory_order_seq_cst) {
     onFetchOr_();
     return std::exchange(integer_, integer_ | value);
   }
   Integer fetch_and(
-      Integer value,
-      std::memory_order = std::memory_order_seq_cst) {
+      Integer value, std::memory_order = std::memory_order_seq_cst) {
     onFetchAnd_();
     return std::exchange(integer_, integer_ & value);
   }

@@ -457,8 +457,7 @@ constexpr folly::Optional<T> make_optional(Args&&... args) {
 
 template <class T, class U, class... Args>
 constexpr folly::Optional<T> make_optional(
-    std::initializer_list<U> il,
-    Args&&... args) {
+    std::initializer_list<U> il, Args&&... args) {
   using PrivateConstructor = typename folly::Optional<T>::PrivateConstructor;
   return {PrivateConstructor{}, il, std::forward<Args>(args)...};
 }

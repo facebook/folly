@@ -303,8 +303,8 @@ class F14BasicMap {
 
  private:
   template <class InputIt>
-  FOLLY_ALWAYS_INLINE void
-  bulkInsert(InputIt first, InputIt last, bool autoReserve) {
+  FOLLY_ALWAYS_INLINE void bulkInsert(
+      InputIt first, InputIt last, bool autoReserve) {
     if (autoReserve) {
       auto n = std::distance(first, last);
       if (n == 0) {
@@ -372,8 +372,8 @@ class F14BasicMap {
   }
 
   template <typename M>
-  iterator
-  insert_or_assign(const_iterator /*hint*/, key_type const& key, M&& obj) {
+  iterator insert_or_assign(
+      const_iterator /*hint*/, key_type const& key, M&& obj) {
     return insert_or_assign(key, std::forward<M>(obj)).first;
   }
 
@@ -384,8 +384,7 @@ class F14BasicMap {
 
   template <typename K, typename M>
   EnableHeterogeneousInsert<K, std::pair<iterator, bool>> insert_or_assign(
-      K&& key,
-      M&& obj) {
+      K&& key, M&& obj) {
     auto rv = try_emplace(std::forward<K>(key), std::forward<M>(obj));
     if (!rv.second) {
       rv.first->second = std::forward<M>(obj);
@@ -433,8 +432,8 @@ class F14BasicMap {
   }
 
   template <typename... Args>
-  iterator
-  try_emplace(const_iterator /*hint*/, key_type const& key, Args&&... args) {
+  iterator try_emplace(
+      const_iterator /*hint*/, key_type const& key, Args&&... args) {
     auto rv = table_.tryEmplaceValue(
         key,
         std::piecewise_construct,
@@ -444,8 +443,8 @@ class F14BasicMap {
   }
 
   template <typename... Args>
-  iterator
-  try_emplace(const_iterator /*hint*/, key_type&& key, Args&&... args) {
+  iterator try_emplace(
+      const_iterator /*hint*/, key_type&& key, Args&&... args) {
     auto rv = table_.tryEmplaceValue(
         key,
         std::piecewise_construct,
@@ -456,8 +455,7 @@ class F14BasicMap {
 
   template <typename K, typename... Args>
   EnableHeterogeneousInsert<K, std::pair<iterator, bool>> try_emplace(
-      K&& key,
-      Args&&... args) {
+      K&& key, Args&&... args) {
     auto rv = table_.tryEmplaceValue(
         key,
         std::piecewise_construct,
@@ -492,8 +490,7 @@ class F14BasicMap {
  protected:
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE void tableEraseIterInto(
-      ItemIter pos,
-      BeforeDestroy&& beforeDestroy) {
+      ItemIter pos, BeforeDestroy&& beforeDestroy) {
     table_.eraseIterInto(pos, [&](value_type&& v) {
       auto p = Policy::moveValue(v);
       beforeDestroy(std::move(p.first), std::move(p.second));
@@ -502,8 +499,7 @@ class F14BasicMap {
 
   template <typename K, typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE std::size_t tableEraseKeyInto(
-      K const& key,
-      BeforeDestroy&& beforeDestroy) {
+      K const& key, BeforeDestroy&& beforeDestroy) {
     return table_.eraseKeyInto(key, [&](value_type&& v) {
       auto p = Policy::moveValue(v);
       beforeDestroy(std::move(p.first), std::move(p.second));
@@ -557,8 +553,7 @@ class F14BasicMap {
 
   template <typename K, typename BeforeDestroy>
   EnableHeterogeneousErase<K, size_type> eraseInto(
-      K const& key,
-      BeforeDestroy&& beforeDestroy) {
+      K const& key, BeforeDestroy&& beforeDestroy) {
     return tableEraseKeyInto(key, beforeDestroy);
   }
 
@@ -659,15 +654,13 @@ class F14BasicMap {
 
   template <typename K>
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(
-      F14HashToken const& token,
-      K const& key) {
+      F14HashToken const& token, K const& key) {
     return table_.makeIter(table_.find(token, key));
   }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
-      F14HashToken const& token,
-      K const& key) const {
+      F14HashToken const& token, K const& key) const {
     return table_.makeConstIter(table_.find(token, key));
   }
 
@@ -682,15 +675,13 @@ class F14BasicMap {
   }
 
   FOLLY_ALWAYS_INLINE bool contains(
-      F14HashToken const& token,
-      key_type const& key) const {
+      F14HashToken const& token, key_type const& key) const {
     return !table_.find(token, key).atEnd();
   }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, bool> contains(
-      F14HashToken const& token,
-      K const& key) const {
+      F14HashToken const& token, K const& key) const {
     return !table_.find(token, key).atEnd();
   }
 
@@ -991,8 +982,7 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
  private:
   template <typename BeforeDestroy>
   void eraseUnderlying(
-      typename Policy::ItemIter underlying,
-      BeforeDestroy&& beforeDestroy) {
+      typename Policy::ItemIter underlying, BeforeDestroy&& beforeDestroy) {
     Alloc& a = this->table_.alloc();
     auto values = this->table_.values_;
 
@@ -1087,8 +1077,7 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
 
   template <typename K, typename BeforeDestroy>
   EnableHeterogeneousVectorErase<K, std::size_t> eraseInto(
-      K const& key,
-      BeforeDestroy&& beforeDestroy) {
+      K const& key, BeforeDestroy&& beforeDestroy) {
     return eraseUnderlyingKey(key, beforeDestroy);
   }
 

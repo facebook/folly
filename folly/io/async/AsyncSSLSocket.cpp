@@ -210,9 +210,7 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
 };
 
 AsyncSSLSocket::AsyncSSLSocket(
-    shared_ptr<SSLContext> ctx,
-    EventBase* evb,
-    Options&& options)
+    shared_ptr<SSLContext> ctx, EventBase* evb, Options&& options)
     : AsyncSocket(evb),
       server_{options.isServer},
       ctx_{std::move(ctx)},
@@ -254,9 +252,7 @@ AsyncSSLSocket::AsyncSSLSocket(
  * Create a client AsyncSSLSocket
  */
 AsyncSSLSocket::AsyncSSLSocket(
-    shared_ptr<SSLContext> ctx,
-    EventBase* evb,
-    bool deferSecurityNegotiation)
+    shared_ptr<SSLContext> ctx, EventBase* evb, bool deferSecurityNegotiation)
     : AsyncSocket(evb),
       ctx_(std::move(ctx)),
       handshakeTimeout_(this, evb),
@@ -319,10 +315,7 @@ AsyncSSLSocket::AsyncSSLSocket(
     bool server,
     bool deferSecurityNegotiation)
     : AsyncSSLSocket(
-          ctx,
-          oldAsyncSocket.get(),
-          server,
-          deferSecurityNegotiation) {}
+          ctx, oldAsyncSocket.get(), server, deferSecurityNegotiation) {}
 
 #if FOLLY_OPENSSL_HAS_SNI
 /**
@@ -684,8 +677,7 @@ AsyncSSLSocket* AsyncSSLSocket::getFromSSL(const SSL* ssl) {
 }
 
 void AsyncSSLSocket::failHandshake(
-    const char* /* fn */,
-    const AsyncSocketException& ex) {
+    const char* /* fn */, const AsyncSocketException& ex) {
   startFail();
   if (handshakeTimeout_.isScheduled()) {
     handshakeTimeout_.cancelTimeout();
@@ -915,8 +907,7 @@ void AsyncSSLSocket::setRawSSLSession(SSLSessionUniquePtr session) {
 }
 
 void AsyncSSLSocket::getSelectedNextProtocol(
-    const unsigned char** protoName,
-    unsigned* protoLen) const {
+    const unsigned char** protoName, unsigned* protoLen) const {
   if (!getSelectedNextProtocolNoThrow(protoName, protoLen)) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_SUPPORTED, "ALPN not supported");
@@ -924,8 +915,7 @@ void AsyncSSLSocket::getSelectedNextProtocol(
 }
 
 bool AsyncSSLSocket::getSelectedNextProtocolNoThrow(
-    const unsigned char** protoName,
-    unsigned* protoLen) const {
+    const unsigned char** protoName, unsigned* protoLen) const {
   *protoName = nullptr;
   *protoLen = 0;
 #if FOLLY_OPENSSL_HAS_ALPN
@@ -1038,9 +1028,7 @@ const AsyncTransportCertificate* AsyncSSLSocket::getSelfCertificate() const {
 }
 
 bool AsyncSSLSocket::willBlock(
-    int ret,
-    int* sslErrorOut,
-    unsigned long* errErrorOut) noexcept {
+    int ret, int* sslErrorOut, unsigned long* errErrorOut) noexcept {
   *errErrorOut = 0;
   int error = *sslErrorOut = sslGetErrorImpl(ssl_.get(), ret);
   if (error == SSL_ERROR_WANT_READ) {
@@ -1421,8 +1409,8 @@ void AsyncSSLSocket::handleRead() noexcept {
   AsyncSocket::handleRead();
 }
 
-AsyncSocket::ReadResult
-AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
+AsyncSocket::ReadResult AsyncSSLSocket::performRead(
+    void** buf, size_t* buflen, size_t* offset) {
   VLOG(4) << "AsyncSSLSocket::performRead() this=" << this << ", buf=" << *buf
           << ", buflen=" << *buflen;
 
@@ -1830,8 +1818,7 @@ int AsyncSSLSocket::bioRead(BIO* b, char* out, int outl) {
 }
 
 int AsyncSSLSocket::sslVerifyCallback(
-    int preverifyOk,
-    X509_STORE_CTX* x509Ctx) {
+    int preverifyOk, X509_STORE_CTX* x509Ctx) {
   SSL* ssl = (SSL*)X509_STORE_CTX_get_ex_data(
       x509Ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
   AsyncSSLSocket* self = AsyncSSLSocket::getFromSSL(ssl);
@@ -2037,8 +2024,7 @@ void AsyncSSLSocket::clientHelloParsingCallback(
 }
 
 void AsyncSSLSocket::getSSLClientCiphers(
-    std::string& clientCiphers,
-    bool convertToString) const {
+    std::string& clientCiphers, bool convertToString) const {
   std::string ciphers;
 
   if (!parseClientHello_ ||

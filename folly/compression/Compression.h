@@ -261,8 +261,7 @@ class Codec {
   // these methods to avoid the copy.
   virtual std::string doCompressString(StringPiece data);
   virtual std::string doUncompressString(
-      StringPiece data,
-      folly::Optional<uint64_t> uncompressedLength);
+      StringPiece data, folly::Optional<uint64_t> uncompressedLength);
 
   virtual uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const = 0;
   // default: returns the passed uncompressedLength.
@@ -459,8 +458,7 @@ constexpr int COMPRESSION_LEVEL_BEST = -3;
  * of compression level.
  */
 std::unique_ptr<Codec> getCodec(
-    CodecType type,
-    int level = COMPRESSION_LEVEL_DEFAULT);
+    CodecType type, int level = COMPRESSION_LEVEL_DEFAULT);
 
 /**
  * Return a codec for the given type. Throws on error.  The level
@@ -479,8 +477,7 @@ std::unique_ptr<Codec> getCodec(
  * of compression level.
  */
 std::unique_ptr<StreamCodec> getStreamCodec(
-    CodecType type,
-    int level = COMPRESSION_LEVEL_DEFAULT);
+    CodecType type, int level = COMPRESSION_LEVEL_DEFAULT);
 
 /**
  * Returns a codec that can uncompress any of the given codec types as well as

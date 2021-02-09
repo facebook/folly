@@ -98,8 +98,7 @@ class InlineTaskPromise : public InlineTaskPromiseBase {
       std::is_move_constructible<T>::value,
       "InlineTask<T> only supports types that are move-constructible.");
   static_assert(
-      !std::is_rvalue_reference<T>::value,
-      "InlineTask<T&&> is not supported");
+      !std::is_rvalue_reference<T>::value, "InlineTask<T&&> is not supported");
 
   InlineTaskPromise() noexcept = default;
 

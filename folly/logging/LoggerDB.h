@@ -150,8 +150,7 @@ class LoggerDB {
    * existing factory.
    */
   void registerHandlerFactory(
-      std::unique_ptr<LogHandlerFactory> factory,
-      bool replaceExisting = false);
+      std::unique_ptr<LogHandlerFactory> factory, bool replaceExisting = false);
 
   /**
    * Remove a registered LogHandlerFactory.
@@ -221,9 +220,7 @@ class LoggerDB {
    */
   template <typename... Args>
   static void internalWarning(
-      folly::StringPiece file,
-      int lineNumber,
-      Args&&... args) noexcept {
+      folly::StringPiece file, int lineNumber, Args&&... args) noexcept {
     internalWarningImpl(
         file, lineNumber, folly::to<std::string>(std::forward<Args>(args)...));
   }
@@ -278,8 +275,7 @@ class LoggerDB {
 
   LoggerDB();
   LogCategory* getOrCreateCategoryLocked(
-      LoggerNameMap& loggersByName,
-      folly::StringPiece name);
+      LoggerNameMap& loggersByName, folly::StringPiece name);
   LogCategory* createCategoryLocked(
       LoggerNameMap& loggersByName,
       folly::StringPiece name,
@@ -305,13 +301,9 @@ class LoggerDB {
       const std::vector<std::string>& categoryHandlerNames);
 
   static void internalWarningImpl(
-      folly::StringPiece filename,
-      int lineNumber,
-      std::string&& msg) noexcept;
+      folly::StringPiece filename, int lineNumber, std::string&& msg) noexcept;
   static void defaultInternalWarningImpl(
-      folly::StringPiece filename,
-      int lineNumber,
-      std::string&& msg) noexcept;
+      folly::StringPiece filename, int lineNumber, std::string&& msg) noexcept;
 
   /**
    * A map of LogCategory objects by name.

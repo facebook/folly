@@ -64,9 +64,7 @@ void StrandContext::add(Func func, Executor::KeepAlive<> executor) {
 }
 
 void StrandContext::addWithPriority(
-    Func func,
-    Executor::KeepAlive<> executor,
-    int8_t priority) {
+    Func func, Executor::KeepAlive<> executor, int8_t priority) {
   addImpl(QueueItem{std::move(func), std::move(executor), priority});
 }
 

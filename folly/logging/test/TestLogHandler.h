@@ -50,8 +50,7 @@ class TestLogHandler : public LogHandler {
   void clearMessages() { messages_.clear(); }
 
   void handleMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) override {
+      const LogMessage& message, const LogCategory* handlerCategory) override {
     messages_.emplace_back(message, handlerCategory);
   }
 

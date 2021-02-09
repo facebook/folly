@@ -108,8 +108,7 @@ class CancellationToken {
   void swap(CancellationToken& other) noexcept;
 
   friend bool operator==(
-      const CancellationToken& a,
-      const CancellationToken& b) noexcept;
+      const CancellationToken& a, const CancellationToken& b) noexcept;
 
  private:
   friend class CancellationCallback;
@@ -121,11 +120,9 @@ class CancellationToken {
 };
 
 bool operator==(
-    const CancellationToken& a,
-    const CancellationToken& b) noexcept;
+    const CancellationToken& a, const CancellationToken& b) noexcept;
 bool operator!=(
-    const CancellationToken& a,
-    const CancellationToken& b) noexcept;
+    const CancellationToken& a, const CancellationToken& b) noexcept;
 
 // A CancellationSource object provides the ability to request cancellation of
 // operations that an associated CancellationToken was passed to.
@@ -203,8 +200,7 @@ class CancellationSource {
   void swap(CancellationSource& other) noexcept;
 
   friend bool operator==(
-      const CancellationSource& a,
-      const CancellationSource& b) noexcept;
+      const CancellationSource& a, const CancellationSource& b) noexcept;
 
  private:
   explicit CancellationSource(
@@ -214,11 +210,9 @@ class CancellationSource {
 };
 
 bool operator==(
-    const CancellationSource& a,
-    const CancellationSource& b) noexcept;
+    const CancellationSource& a, const CancellationSource& b) noexcept;
 bool operator!=(
-    const CancellationSource& a,
-    const CancellationSource& b) noexcept;
+    const CancellationSource& a, const CancellationSource& b) noexcept;
 
 class CancellationCallback {
   using VoidFunction = folly::Function<void()>;

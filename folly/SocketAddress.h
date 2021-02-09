@@ -62,9 +62,7 @@ class SocketAddress {
   }
 
   SocketAddress(
-      const std::string& host,
-      uint16_t port,
-      bool allowNameLookup = false) {
+      const std::string& host, uint16_t port, bool allowNameLookup = false) {
     // Initialize the address family first,
     // since setFromHostPort() and setFromIpPort() will check it.
 
@@ -293,8 +291,7 @@ class SocketAddress {
    * Returns `defaultResult` for unsupported socket families.
    */
   static const char* getFamilyNameFrom(
-      const struct sockaddr* address,
-      const char* defaultResult = nullptr);
+      const struct sockaddr* address, const char* defaultResult = nullptr);
 
   /**
    * Initialize this SocketAddress from a local unix path.

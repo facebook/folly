@@ -92,9 +92,7 @@ class CustomLogFormatterFactory
 } // namespace
 
 std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
-    StringPiece type,
-    WriterFactory* writerFactory,
-    const Options& options) {
+    StringPiece type, WriterFactory* writerFactory, const Options& options) {
   std::unique_ptr<FormatterFactory> formatterFactory;
 
   // Get the log formatter type

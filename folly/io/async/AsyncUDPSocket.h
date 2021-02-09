@@ -182,8 +182,7 @@ class AsyncUDPSocket : public EventHandler {
    * returns. The parameter BindOptions contains parameters for the bind.
    */
   virtual void bind(
-      const folly::SocketAddress& address,
-      BindOptions options = BindOptions());
+      const folly::SocketAddress& address, BindOptions options = BindOptions());
 
   /**
    * Connects the UDP socket to a remote destination address provided in
@@ -442,8 +441,7 @@ class AsyncUDPSocket : public EventHandler {
   void setTrafficClass(int tclass);
 
   void applyOptions(
-      const SocketOptionMap& options,
-      SocketOptionKey::ApplyPos pos);
+      const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
 
  protected:
   struct full_sockaddr_storage {
@@ -451,8 +449,8 @@ class AsyncUDPSocket : public EventHandler {
     socklen_t len;
   };
 
-  virtual ssize_t
-  sendmsg(NetworkSocket socket, const struct msghdr* message, int flags) {
+  virtual ssize_t sendmsg(
+      NetworkSocket socket, const struct msghdr* message, int flags) {
     return netops::sendmsg(socket, message, flags);
   }
 

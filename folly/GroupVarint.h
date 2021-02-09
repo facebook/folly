@@ -172,11 +172,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
    * may be read but ignored).
    */
   static const char* decode_simple(
-      const char* p,
-      uint32_t* a,
-      uint32_t* b,
-      uint32_t* c,
-      uint32_t* d) {
+      const char* p, uint32_t* a, uint32_t* b, uint32_t* c, uint32_t* d) {
     size_t k = loadUnaligned<uint8_t>(p);
     const char* end = p + detail::groupVarintLengths[k];
     ++p;
@@ -222,8 +218,8 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
    * Just like decode_simple, but with the additional constraint that
    * we must be able to read at least 17 bytes from the input pointer, p.
    */
-  static const char*
-  decode(const char* p, uint32_t* a, uint32_t* b, uint32_t* c, uint32_t* d) {
+  static const char* decode(
+      const char* p, uint32_t* a, uint32_t* b, uint32_t* c, uint32_t* d) {
     uint8_t key = uint8_t(p[0]);
     __m128i val = _mm_loadu_si128((const __m128i*)(p + 1));
     __m128i mask =
@@ -247,8 +243,8 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
   }
 
 #else /* !__SSSE3__ */
-  static const char*
-  decode(const char* p, uint32_t* a, uint32_t* b, uint32_t* c, uint32_t* d) {
+  static const char* decode(
+      const char* p, uint32_t* a, uint32_t* b, uint32_t* c, uint32_t* d) {
     return decode_simple(p, a, b, c, d);
   }
 
@@ -286,8 +282,8 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
   /**
    * Return the number of bytes used to encode these five values.
    */
-  static size_t
-  size(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e) {
+  static size_t size(
+      uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e) {
     return kHeaderSize + kGroupSize + key(a) + key(b) + key(c) + key(d) +
         key(e);
   }
@@ -360,8 +356,8 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
    * the next position in the buffer (that is, one character past the last
    * encoded byte).  p needs to have at least size()+8 bytes available.
    */
-  static char*
-  encode(char* p, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e) {
+  static char* encode(
+      char* p, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e) {
     uint16_t b0key = key(a);
     uint16_t b1key = key(b);
     uint16_t b2key = key(c);

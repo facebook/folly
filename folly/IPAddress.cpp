@@ -136,9 +136,7 @@ CIDRNetwork IPAddress::createNetwork(
 
 // public static
 Expected<CIDRNetwork, CIDRNetworkError> IPAddress::tryCreateNetwork(
-    StringPiece ipSlashCidr,
-    int defaultCidr,
-    bool applyMask) {
+    StringPiece ipSlashCidr, int defaultCidr, bool applyMask) {
   if (defaultCidr > std::numeric_limits<uint8_t>::max()) {
     return makeUnexpected(CIDRNetworkError::INVALID_DEFAULT_CIDR);
   }
@@ -325,8 +323,8 @@ bool IPAddress::inSubnet(const IPAddress& subnet, uint8_t cidr) const {
 }
 
 // public
-bool IPAddress::inSubnetWithMask(const IPAddress& subnet, ByteRange mask)
-    const {
+bool IPAddress::inSubnetWithMask(
+    const IPAddress& subnet, ByteRange mask) const {
   auto mkByteArray4 = [&]() -> ByteArray4 {
     ByteArray4 ba{{0}};
     std::memcpy(ba.data(), mask.begin(), std::min<size_t>(mask.size(), 4));
@@ -438,8 +436,7 @@ bool operator<(const IPAddress& addr1, const IPAddress& addr2) {
 }
 
 CIDRNetwork IPAddress::longestCommonPrefix(
-    const CIDRNetwork& one,
-    const CIDRNetwork& two) {
+    const CIDRNetwork& one, const CIDRNetwork& two) {
   if (one.first.family() != two.first.family()) {
     throw std::invalid_argument(fmt::format(
         "Can't compute longest common prefix between addresses of different"

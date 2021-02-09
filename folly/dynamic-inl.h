@@ -59,16 +59,14 @@ struct DynamicKeyEqual {
 
   template <typename A>
   std::enable_if_t<std::is_convertible<A, StringPiece>::value, bool> operator()(
-      A const& lhs,
-      dynamic const& rhs) const {
+      A const& lhs, dynamic const& rhs) const {
     return FOLLY_LIKELY(rhs.type() == dynamic::Type::STRING) &&
         std::equal_to<StringPiece>()(lhs, rhs.stringPiece());
   }
 
   template <typename B>
   std::enable_if_t<std::is_convertible<B, StringPiece>::value, bool> operator()(
-      dynamic const& lhs,
-      B const& rhs) const {
+      dynamic const& lhs, B const& rhs) const {
     return FOLLY_LIKELY(lhs.type() == dynamic::Type::STRING) &&
         std::equal_to<StringPiece>()(lhs.stringPiece(), rhs);
   }
@@ -651,8 +649,7 @@ inline dynamic&& dynamic::operator[](StringPiece k) && {
 
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
-    K&& k,
-    const dynamic& v) const& {
+    K&& k, const dynamic& v) const& {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(std::forward<K>(k));
   return it == obj.end() ? v : it->second;
@@ -660,8 +657,7 @@ dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
 
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
-    K&& k,
-    dynamic&& v) const& {
+    K&& k, dynamic&& v) const& {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(std::forward<K>(k));
   // Avoid clang bug with ternary
@@ -674,8 +670,7 @@ dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
 
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
-    K&& k,
-    const dynamic& v) && {
+    K&& k, const dynamic& v) && {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(std::forward<K>(k));
   // Avoid clang bug with ternary
@@ -688,8 +683,7 @@ dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
 
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
-    K&& k,
-    dynamic&& v) && {
+    K&& k, dynamic&& v) && {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(std::forward<K>(k));
   return std::move(it == obj.end() ? v : it->second);
@@ -697,24 +691,21 @@ dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
 
 template <typename K, typename V>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic&> dynamic::setDefault(
-    K&& k,
-    V&& v) {
+    K&& k, V&& v) {
   auto& obj = get<ObjectImpl>();
   return obj.emplace(std::forward<K>(k), std::forward<V>(v)).first->second;
 }
 
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic&> dynamic::setDefault(
-    K&& k,
-    dynamic&& v) {
+    K&& k, dynamic&& v) {
   auto& obj = get<ObjectImpl>();
   return obj.emplace(std::forward<K>(k), std::move(v)).first->second;
 }
 
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic&> dynamic::setDefault(
-    K&& k,
-    const dynamic& v) {
+    K&& k, const dynamic& v) {
   auto& obj = get<ObjectImpl>();
   return obj.emplace(std::forward<K>(k), v).first->second;
 }
@@ -897,8 +888,7 @@ inline void dynamic::merge_patch(const dynamic& patch) {
 }
 
 inline dynamic dynamic::merge(
-    const dynamic& mergeObj1,
-    const dynamic& mergeObj2) {
+    const dynamic& mergeObj1, const dynamic& mergeObj2) {
   // No checks on type needed here because they are done in update_missing
   // Note that we do update_missing here instead of update() because
   // it will prevent the extra writes that would occur with update()
@@ -931,8 +921,7 @@ inline dynamic::const_key_iterator dynamic::erase(const_key_iterator it) {
 }
 
 inline dynamic::const_key_iterator dynamic::erase(
-    const_key_iterator first,
-    const_key_iterator last) {
+    const_key_iterator first, const_key_iterator last) {
   return const_key_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
@@ -941,8 +930,7 @@ inline dynamic::value_iterator dynamic::erase(const_value_iterator it) {
 }
 
 inline dynamic::value_iterator dynamic::erase(
-    const_value_iterator first,
-    const_value_iterator last) {
+    const_value_iterator first, const_value_iterator last) {
   return value_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
@@ -951,8 +939,7 @@ inline dynamic::item_iterator dynamic::erase(const_item_iterator it) {
 }
 
 inline dynamic::item_iterator dynamic::erase(
-    const_item_iterator first,
-    const_item_iterator last) {
+    const_item_iterator first, const_item_iterator last) {
   return item_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
@@ -1118,22 +1105,22 @@ struct dynamic::PrintImpl {
 // Otherwise, null, being (void*)0, would print as 0.
 template <>
 struct dynamic::PrintImpl<std::nullptr_t> {
-  static void
-  print(dynamic const& /* d */, std::ostream& out, std::nullptr_t const&) {
+  static void print(
+      dynamic const& /* d */, std::ostream& out, std::nullptr_t const&) {
     out << "null";
   }
 };
 template <>
 struct dynamic::PrintImpl<dynamic::ObjectImpl> {
-  static void
-  print(dynamic const& d, std::ostream& out, dynamic::ObjectImpl const&) {
+  static void print(
+      dynamic const& d, std::ostream& out, dynamic::ObjectImpl const&) {
     d.print_as_pseudo_json(out);
   }
 };
 template <>
 struct dynamic::PrintImpl<dynamic::Array> {
-  static void
-  print(dynamic const& d, std::ostream& out, dynamic::Array const&) {
+  static void print(
+      dynamic const& d, std::ostream& out, dynamic::Array const&) {
     d.print_as_pseudo_json(out);
   }
 };

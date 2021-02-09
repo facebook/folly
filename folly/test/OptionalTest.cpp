@@ -602,8 +602,7 @@ class ConstructibleWithArgsOnly {
 class ConstructibleWithInitializerListAndArgsOnly {
  public:
   ConstructibleWithInitializerListAndArgsOnly(
-      std::initializer_list<int>,
-      double) {}
+      std::initializer_list<int>, double) {}
 
   ConstructibleWithInitializerListAndArgsOnly() = delete;
   ConstructibleWithInitializerListAndArgsOnly(

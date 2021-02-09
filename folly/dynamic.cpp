@@ -55,9 +55,7 @@ TypeError::TypeError(const std::string& expected, dynamic::Type actual)
           dynamic::typeName(actual))) {}
 
 TypeError::TypeError(
-    const std::string& expected,
-    dynamic::Type actual1,
-    dynamic::Type actual2)
+    const std::string& expected, dynamic::Type actual1, dynamic::Type actual2)
     : std::runtime_error(sformat(
           "TypeError: expected dynamic types `{}, but had types `{}' and `{}'",
           expected,

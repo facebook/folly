@@ -300,8 +300,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // Start execution of this task eagerly and call the callback when complete.
   template <typename F>
   FOLLY_NOINLINE void start(
-      F&& tryCallback,
-      folly::CancellationToken cancelToken = {}) && {
+      F&& tryCallback, folly::CancellationToken cancelToken = {}) && {
     std::move(*this).startImpl(
         static_cast<F&&>(tryCallback),
         std::move(cancelToken),
@@ -313,8 +312,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // context.
   template <typename F>
   FOLLY_NOINLINE void startInlineUnsafe(
-      F&& tryCallback,
-      folly::CancellationToken cancelToken = {}) && {
+      F&& tryCallback, folly::CancellationToken cancelToken = {}) && {
     std::move(*this).startInlineImpl(
         static_cast<F&&>(tryCallback),
         std::move(cancelToken),
@@ -495,8 +493,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
    private:
     friend InlineTryAwaitable tag_invoke(
-        cpo_t<co_withAsyncStack>,
-        InlineTryAwaitable&& awaitable) noexcept {
+        cpo_t<co_withAsyncStack>, InlineTryAwaitable&& awaitable) noexcept {
       return std::move(awaitable);
     }
 
@@ -518,8 +515,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   }
 
   friend TaskWithExecutor tag_invoke(
-      cpo_t<co_withAsyncStack>,
-      TaskWithExecutor&& task) noexcept {
+      cpo_t<co_withAsyncStack>, TaskWithExecutor&& task) noexcept {
     return std::move(task);
   }
 
@@ -620,8 +616,7 @@ class FOLLY_NODISCARD Task {
   }
 
   friend auto co_viaIfAsync(
-      Executor::KeepAlive<> executor,
-      Task<T>&& t) noexcept {
+      Executor::KeepAlive<> executor, Task<T>&& t) noexcept {
     DCHECK(t.coro_);
     // Child task inherits the awaiting task's executor
     t.setExecutor(std::move(executor));
@@ -629,8 +624,7 @@ class FOLLY_NODISCARD Task {
   }
 
   friend Task co_withCancellation(
-      const folly::CancellationToken& cancelToken,
-      Task&& task) noexcept {
+      const folly::CancellationToken& cancelToken, Task&& task) noexcept {
     DCHECK(task.coro_);
     task.coro_.promise().setCancelToken(cancelToken);
     return std::move(task);
@@ -698,8 +692,7 @@ class FOLLY_NODISCARD Task {
     // This overload needed as Awaiter is returned from co_viaIfAsync() which is
     // then passed into co_withAsyncStack().
     friend Awaiter tag_invoke(
-        cpo_t<co_withAsyncStack>,
-        Awaiter&& awaiter) noexcept {
+        cpo_t<co_withAsyncStack>, Awaiter&& awaiter) noexcept {
       return std::move(awaiter);
     }
 

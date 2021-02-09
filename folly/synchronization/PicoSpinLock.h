@@ -73,8 +73,7 @@ struct PicoSpinLock {
   typedef typename std::make_unsigned<IntType>::type UIntType;
 
   static_assert(
-      std::is_integral<IntType>::value,
-      "PicoSpinLock needs an integral type");
+      std::is_integral<IntType>::value, "PicoSpinLock needs an integral type");
   static_assert(
       sizeof(IntType) == 2 || sizeof(IntType) == 4 || sizeof(IntType) == 8,
       "PicoSpinLock can't work on integers smaller than 2 bytes");

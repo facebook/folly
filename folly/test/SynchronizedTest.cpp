@@ -133,8 +133,7 @@ using SynchronizedTimedWithConstTestTypes = testing::Types<
     folly::SharedMutexReadPriority,
     folly::SharedMutexWritePriority>;
 TYPED_TEST_CASE(
-    SynchronizedTimedWithConstTest,
-    SynchronizedTimedWithConstTestTypes);
+    SynchronizedTimedWithConstTest, SynchronizedTimedWithConstTestTypes);
 
 TYPED_TEST(SynchronizedTimedWithConstTest, TimedShared) {
   testTimedShared<TypeParam>();

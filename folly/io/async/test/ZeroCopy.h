@@ -211,10 +211,7 @@ class ZeroCopyTestAsyncSocket {
 class ZeroCopyTestServer : public folly::AsyncServerSocket::AcceptCallback {
  public:
   explicit ZeroCopyTestServer(
-      folly::EventBase* evb,
-      int numLoops,
-      size_t bufferSize,
-      bool zeroCopy)
+      folly::EventBase* evb, int numLoops, size_t bufferSize, bool zeroCopy)
       : evb_(evb),
         numLoops_(numLoops),
         bufferSize_(bufferSize),
@@ -249,10 +246,7 @@ class ZeroCopyTestServer : public folly::AsyncServerSocket::AcceptCallback {
 class ZeroCopyTest {
  public:
   explicit ZeroCopyTest(
-      size_t numClients,
-      int numLoops,
-      bool zeroCopy,
-      size_t bufferSize);
+      size_t numClients, int numLoops, bool zeroCopy, size_t bufferSize);
   bool run();
 
  private:

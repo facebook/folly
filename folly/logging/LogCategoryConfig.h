@@ -30,8 +30,7 @@ namespace folly {
 class LogCategoryConfig {
  public:
   explicit LogCategoryConfig(
-      LogLevel level = kDefaultLogLevel,
-      bool inheritParentLevel = true);
+      LogLevel level = kDefaultLogLevel, bool inheritParentLevel = true);
   LogCategoryConfig(
       LogLevel level,
       bool inheritParentLevel,

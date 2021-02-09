@@ -65,8 +65,7 @@ class LogHandler {
    *     the log message.
    */
   virtual void handleMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) = 0;
+      const LogMessage& message, const LogCategory* handlerCategory) = 0;
 
   /**
    * Block until all messages that have already been sent to this LogHandler

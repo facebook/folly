@@ -236,8 +236,8 @@ std::uint64_t write(AtomicFetchXor& atomic) {
 void initialize(AtomicFetchXor&) {}
 
 template <typename Lock, typename Data = std::uint64_t>
-static void
-runContended(size_t numOps, size_t numThreads, size_t work = FLAGS_work) {
+static void runContended(
+    size_t numOps, size_t numThreads, size_t work = FLAGS_work) {
   folly::BenchmarkSuspender braces;
   size_t totalthreads = std::thread::hardware_concurrency();
   if (totalthreads < numThreads) {

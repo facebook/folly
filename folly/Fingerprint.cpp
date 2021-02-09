@@ -65,8 +65,7 @@ constexpr auto copy_table(D const (&table)[S0]) {
 
 template <typename D, size_t S0, size_t S1, size_t... I0>
 constexpr auto copy_table(
-    D const (&table)[S0][S1],
-    std::index_sequence<I0...>) {
+    D const (&table)[S0][S1], std::index_sequence<I0...>) {
   using array = std::array<std::array<D, S1>, S0>;
   return array{{copy_table(table[I0])...}};
 }
@@ -77,8 +76,7 @@ constexpr auto copy_table(D const (&table)[S0][S1]) {
 
 template <typename D, size_t S0, size_t S1, size_t S2, size_t... I0>
 constexpr auto copy_table(
-    D const (&table)[S0][S1][S2],
-    std::index_sequence<I0...>) {
+    D const (&table)[S0][S1][S2], std::index_sequence<I0...>) {
   using array = std::array<std::array<std::array<D, S2>, S1>, S0>;
   return array{{copy_table(table[I0])...}};
 }
@@ -121,12 +119,10 @@ const uint64_t FingerprintTable<64>::poly[poly_size(64)] = {
     FingerprintTablePoly<63>::data[0]};
 template <>
 const uint64_t FingerprintTable<96>::poly[poly_size(96)] = {
-    FingerprintTablePoly<95>::data[0],
-    FingerprintTablePoly<95>::data[1]};
+    FingerprintTablePoly<95>::data[0], FingerprintTablePoly<95>::data[1]};
 template <>
 const uint64_t FingerprintTable<128>::poly[poly_size(128)] = {
-    FingerprintTablePoly<127>::data[0],
-    FingerprintTablePoly<127>::data[1]};
+    FingerprintTablePoly<127>::data[0], FingerprintTablePoly<127>::data[1]};
 
 template <>
 const poly_table<64> FingerprintTable<64>::table = poly_table_63;

@@ -244,8 +244,7 @@ class IPAddressV4 {
   // Given 2 IPAddressV4, mask pairs extract the longest common IPAddress,
   // mask pair
   static CIDRNetworkV4 longestCommonPrefix(
-      const CIDRNetworkV4& one,
-      const CIDRNetworkV4& two);
+      const CIDRNetworkV4& one, const CIDRNetworkV4& two);
   // Number of bytes in the address representation.
   static size_t byteCount() { return 4; }
   // get nth most significant bit - 0 indexed

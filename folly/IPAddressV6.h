@@ -199,8 +199,8 @@ class IPAddressV6 {
   bool inSubnet(const IPAddressV6& subnet, uint8_t cidr) const {
     return inSubnetWithMask(subnet, fetchMask(cidr));
   }
-  bool inSubnetWithMask(const IPAddressV6& subnet, const ByteArray16& mask)
-      const;
+  bool inSubnetWithMask(
+      const IPAddressV6& subnet, const ByteArray16& mask) const;
 
   // @see IPAddress#isLoopback
   bool isLoopback() const;
@@ -326,8 +326,7 @@ class IPAddressV6 {
   // Given 2 IPAddressV6,mask pairs extract the longest common IPAddress,
   // mask pair
   static CIDRNetworkV6 longestCommonPrefix(
-      const CIDRNetworkV6& one,
-      const CIDRNetworkV6& two);
+      const CIDRNetworkV6& one, const CIDRNetworkV6& two);
   // Number of bytes in the address representation.
   static constexpr size_t byteCount() { return 16; }
 

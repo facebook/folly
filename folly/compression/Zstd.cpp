@@ -103,15 +103,14 @@ class ZSTDStreamCodec final : public StreamCodec {
   explicit ZSTDStreamCodec(Options options);
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
-      const override;
+  bool canUncompress(
+      const IOBuf* data, Optional<uint64_t> uncompressedLength) const override;
 
  private:
   bool doNeedsUncompressedLength() const override;
   uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
   Optional<uint64_t> doGetUncompressedLength(
-      IOBuf const* data,
-      Optional<uint64_t> uncompressedLength) const override;
+      IOBuf const* data, Optional<uint64_t> uncompressedLength) const override;
 
   void doResetStream() override;
   bool doCompressStream(
@@ -138,8 +137,8 @@ std::vector<std::string> ZSTDStreamCodec::validPrefixes() const {
   return {prefixToStringLE(kZSTDMagicLE)};
 }
 
-bool ZSTDStreamCodec::canUncompress(const IOBuf* data, Optional<uint64_t>)
-    const {
+bool ZSTDStreamCodec::canUncompress(
+    const IOBuf* data, Optional<uint64_t>) const {
   return dataStartsWithLE(data, kZSTDMagicLE);
 }
 
@@ -163,8 +162,7 @@ uint64_t ZSTDStreamCodec::doMaxCompressedLength(
 }
 
 Optional<uint64_t> ZSTDStreamCodec::doGetUncompressedLength(
-    IOBuf const* data,
-    Optional<uint64_t> uncompressedLength) const {
+    IOBuf const* data, Optional<uint64_t> uncompressedLength) const {
   // Read decompressed size from frame if available in first IOBuf.
   auto const decompressedSize =
       ZSTD_getFrameContentSize(data->data(), data->length());
@@ -197,9 +195,7 @@ void ZSTDStreamCodec::resetCCtx() {
 }
 
 bool ZSTDStreamCodec::doCompressStream(
-    ByteRange& input,
-    MutableByteRange& output,
-    StreamCodec::FlushOp flushOp) {
+    ByteRange& input, MutableByteRange& output, StreamCodec::FlushOp flushOp) {
   if (needReset_) {
     resetCCtx();
     needReset_ = false;
@@ -238,9 +234,7 @@ void ZSTDStreamCodec::resetDCtx() {
 }
 
 bool ZSTDStreamCodec::doUncompressStream(
-    ByteRange& input,
-    MutableByteRange& output,
-    StreamCodec::FlushOp) {
+    ByteRange& input, MutableByteRange& output, StreamCodec::FlushOp) {
   if (needReset_) {
     resetDCtx();
     needReset_ = false;

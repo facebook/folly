@@ -116,8 +116,7 @@ class Baton {
    */
   template <typename Rep, typename Period, typename F>
   bool try_wait_for(
-      const std::chrono::duration<Rep, Period>& timeout,
-      F&& mainContextFunc);
+      const std::chrono::duration<Rep, Period>& timeout, F&& mainContextFunc);
 
   /**
    * Puts active fiber to sleep. Returns when post is called or the deadline
@@ -172,8 +171,7 @@ class Baton {
   /// Alias to try_wait_for. Deprecated.
   template <typename Rep, typename Period, typename F>
   bool timed_wait(
-      const std::chrono::duration<Rep, Period>& timeout,
-      F&& mainContextFunc) {
+      const std::chrono::duration<Rep, Period>& timeout, F&& mainContextFunc) {
     return try_wait_for(timeout, static_cast<F&&>(mainContextFunc));
   }
 

@@ -174,8 +174,7 @@ void SymbolizePrinter::printTerse(const SymbolizedFrame& frame) {
 }
 
 void SymbolizePrinter::println(
-    const SymbolizedFrame* frames,
-    size_t frameCount) {
+    const SymbolizedFrame* frames, size_t frameCount) {
   for (size_t i = 0; i < frameCount; ++i) {
     println(frames[i]);
   }

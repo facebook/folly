@@ -188,8 +188,7 @@ bool IPAddressV4::inSubnet(StringPiece cidrNetwork) const {
 
 // public
 bool IPAddressV4::inSubnetWithMask(
-    const IPAddressV4& subnet,
-    const ByteArray4 cidrMask) const {
+    const IPAddressV4& subnet, const ByteArray4 cidrMask) const {
   const auto mask = detail::Bytes::mask(toByteArray(), cidrMask);
   const auto subMask = detail::Bytes::mask(subnet.toByteArray(), cidrMask);
   return (mask == subMask);
@@ -294,8 +293,7 @@ ByteArray4 IPAddressV4::fetchMask(size_t numBits) {
 }
 // public static
 CIDRNetworkV4 IPAddressV4::longestCommonPrefix(
-    const CIDRNetworkV4& one,
-    const CIDRNetworkV4& two) {
+    const CIDRNetworkV4& one, const CIDRNetworkV4& two) {
   auto prefix = detail::Bytes::longestCommonPrefix(
       one.first.addr_.bytes_, one.second, two.first.addr_.bytes_, two.second);
   return {IPAddressV4(prefix.first), prefix.second};

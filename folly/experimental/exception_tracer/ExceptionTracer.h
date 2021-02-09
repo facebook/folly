@@ -40,9 +40,7 @@ struct ExceptionInfo {
 };
 
 void printExceptionInfo(
-    std::ostream& out,
-    const ExceptionInfo& info,
-    int options);
+    std::ostream& out, const ExceptionInfo& info, int options);
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info);
 
 /**

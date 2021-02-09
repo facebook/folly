@@ -215,8 +215,7 @@ inline CallbackHandle::CallbackHandle() {}
 
 template <typename T>
 CallbackHandle::CallbackHandle(
-    Observer<T> observer,
-    folly::Function<void(Snapshot<T>)> callback) {
+    Observer<T> observer, folly::Function<void(Snapshot<T>)> callback) {
   context_ = std::make_shared<Context>();
   context_->observer = makeObserver([observer = std::move(observer),
                                      callback = std::move(callback),

@@ -53,9 +53,7 @@ class File {
    */
   explicit File(const char* name, int flags = O_RDONLY, mode_t mode = 0666);
   explicit File(
-      const std::string& name,
-      int flags = O_RDONLY,
-      mode_t mode = 0666);
+      const std::string& name, int flags = O_RDONLY, mode_t mode = 0666);
   explicit File(StringPiece name, int flags = O_RDONLY, mode_t mode = 0666);
 
   /**

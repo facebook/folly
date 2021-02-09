@@ -199,8 +199,7 @@ class FlatCombiningPriorityQueue
 
   template <typename Rep, typename Period>
   bool try_push_for(
-      const T& val,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      const T& val, const std::chrono::duration<Rep, Period>& timeout) {
     return (
         try_push(val) ||
         try_push_impl(val, std::chrono::steady_clock::now() + timeout));
@@ -229,8 +228,7 @@ class FlatCombiningPriorityQueue
 
   template <typename Clock, typename Duration>
   bool try_push_until(
-      const T& val,
-      const std::chrono::time_point<Clock, Duration>& deadline) {
+      const T& val, const std::chrono::time_point<Clock, Duration>& deadline) {
     return try_push_impl(val, deadline);
   }
 
@@ -269,18 +267,15 @@ class FlatCombiningPriorityQueue
 
   template <typename Clock, typename Duration>
   bool try_push_impl(
-      const T& val,
-      const std::chrono::time_point<Clock, Duration>& when);
+      const T& val, const std::chrono::time_point<Clock, Duration>& when);
 
   template <typename Clock, typename Duration>
   bool try_pop_impl(
-      T& val,
-      const std::chrono::time_point<Clock, Duration>& when);
+      T& val, const std::chrono::time_point<Clock, Duration>& when);
 
   template <typename Clock, typename Duration>
   bool try_peek_impl(
-      T& val,
-      const std::chrono::time_point<Clock, Duration>& when);
+      T& val, const std::chrono::time_point<Clock, Duration>& when);
 };
 
 /// Implementation
@@ -294,8 +289,7 @@ template <
 template <typename Clock, typename Duration>
 inline bool
 FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_push_impl(
-    const T& val,
-    const std::chrono::time_point<Clock, Duration>& when) {
+    const T& val, const std::chrono::time_point<Clock, Duration>& when) {
   while (true) {
     bool res;
     bool wake;
@@ -352,8 +346,7 @@ template <
 template <typename Clock, typename Duration>
 inline bool
 FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_pop_impl(
-    T& val,
-    const std::chrono::time_point<Clock, Duration>& when) {
+    T& val, const std::chrono::time_point<Clock, Duration>& when) {
   while (true) {
     bool res;
     bool wake;
@@ -399,8 +392,7 @@ template <
 template <typename Clock, typename Duration>
 inline bool
 FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_peek_impl(
-    T& val,
-    const std::chrono::time_point<Clock, Duration>& when) {
+    T& val, const std::chrono::time_point<Clock, Duration>& when) {
   while (true) {
     bool res;
 

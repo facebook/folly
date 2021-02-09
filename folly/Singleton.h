@@ -235,8 +235,7 @@ class TypeDescriptorHasher {
     const TypeDescriptor& type);
 
 void singletonWarnDestroyInstanceLeak(
-    const TypeDescriptor& type,
-    const void* ptr);
+    const TypeDescriptor& type, const void* ptr);
 
 [[noreturn]] void singletonWarnCreateCircularDependencyAndAbort(
     const TypeDescriptor& type);
@@ -691,8 +690,7 @@ class Singleton {
   }
 
   static void make_mock(
-      CreateFunc c,
-      typename Singleton<T>::TeardownFunc t = nullptr) {
+      CreateFunc c, typename Singleton<T>::TeardownFunc t = nullptr) {
     if (c == nullptr) {
       detail::singletonThrowNullCreator(typeid(T));
     }

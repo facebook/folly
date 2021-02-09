@@ -170,8 +170,7 @@ FOLLY_NOINLINE FOLLY_COLD auto invoke_cold(F&& f, A&&... a)
 ///   }
 template <typename F, typename... A>
 [[noreturn]] FOLLY_NOINLINE FOLLY_COLD void invoke_noreturn_cold(
-    F&& f,
-    A&&... a) {
+    F&& f, A&&... a) {
   static_cast<F&&>(f)(static_cast<A&&>(a)...);
   std::terminate();
 }
@@ -208,8 +207,8 @@ template <typename E, typename Try, typename Catch, typename... CatchA>
 FOLLY_ERASE_TRYCATCH auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
     typename std::common_type<
         decltype(static_cast<Try&&>(t)()),
-        decltype(static_cast<Catch&&>(
-            c)(std::declval<E>(), static_cast<CatchA&&>(a)...))>::type {
+        decltype(static_cast<Catch&&>(c)(
+            std::declval<E>(), static_cast<CatchA&&>(a)...))>::type {
 #if FOLLY_HAS_EXCEPTIONS
   try {
     return static_cast<Try&&>(t)();

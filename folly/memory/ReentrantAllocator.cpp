@@ -80,8 +80,7 @@ reentrant_allocator_base::~reentrant_allocator_base() {
 }
 
 void* reentrant_allocator_base::allocate(
-    std::size_t const n,
-    std::size_t const a) noexcept {
+    std::size_t const n, std::size_t const a) noexcept {
   if (!n) {
     return &dummy;
   }
@@ -132,8 +131,7 @@ void* reentrant_allocator_base::allocate(
 }
 
 void reentrant_allocator_base::deallocate(
-    void* const p,
-    std::size_t const n) noexcept {
+    void* const p, std::size_t const n) noexcept {
   if (p == &dummy) {
     FOLLY_SAFE_CHECK(n == 0, "unexpected non-zero size");
     return;

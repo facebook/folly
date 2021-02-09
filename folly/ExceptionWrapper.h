@@ -262,11 +262,9 @@ class exception_wrapper final {
         "greater than one. as_int_ below will not work!");
 
     static std::uintptr_t as_int_(
-        std::exception_ptr const& ptr,
-        std::exception const& e) noexcept;
+        std::exception_ptr const& ptr, std::exception const& e) noexcept;
     static std::uintptr_t as_int_(
-        std::exception_ptr const& ptr,
-        AnyException e) noexcept;
+        std::exception_ptr const& ptr, AnyException e) noexcept;
     bool has_exception_() const;
     std::exception const* as_exception_() const;
     std::type_info const* as_type_() const;
@@ -636,8 +634,7 @@ exception_wrapper make_exception_wrapper(As&&... as) {
  */
 template <class Ch>
 std::basic_ostream<Ch>& operator<<(
-    std::basic_ostream<Ch>& sout,
-    exception_wrapper const& ew) {
+    std::basic_ostream<Ch>& sout, exception_wrapper const& ew) {
   return sout << ew.what();
 }
 

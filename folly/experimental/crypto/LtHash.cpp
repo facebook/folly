@@ -142,8 +142,7 @@ void MathOperation<MathEngine::AUTO>::sub(
 // static
 template <>
 void MathOperation<MathEngine::AUTO>::clearPaddingBits(
-    uint64_t dataMask,
-    folly::MutableByteRange buf) {
+    uint64_t dataMask, folly::MutableByteRange buf) {
   // Note: implementation is a function pointer that is initialized to point
   // at the fastest available implementation the first time this function is
   // called.
@@ -166,8 +165,7 @@ void MathOperation<MathEngine::AUTO>::clearPaddingBits(
 // static
 template <>
 bool MathOperation<MathEngine::AUTO>::checkPaddingBits(
-    uint64_t dataMask,
-    folly::ByteRange buf) {
+    uint64_t dataMask, folly::ByteRange buf) {
   // Note: implementation is a function pointer that is initialized to point
   // at the fastest available implementation the first time this function is
   // called.

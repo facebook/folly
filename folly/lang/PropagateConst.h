@@ -126,8 +126,7 @@ class propagate_const {
 
   constexpr void swap(propagate_const& other) noexcept(
       noexcept(detail::propagate_const_adl::adl_swap(
-          std::declval<Pointer&>(),
-          other.pointer_))) {
+          std::declval<Pointer&>(), other.pointer_))) {
     detail::propagate_const_adl::adl_swap(pointer_, other.pointer_);
   }
 
@@ -212,43 +211,37 @@ constexpr bool operator!=(std::nullptr_t, propagate_const<Pointer> const& a) {
 
 template <typename Pointer>
 constexpr bool operator==(
-    propagate_const<Pointer> const& a,
-    propagate_const<Pointer> const& b) {
+    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
   return get_underlying(a) == get_underlying(b);
 }
 
 template <typename Pointer>
 constexpr bool operator!=(
-    propagate_const<Pointer> const& a,
-    propagate_const<Pointer> const& b) {
+    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
   return get_underlying(a) != get_underlying(b);
 }
 
 template <typename Pointer>
 constexpr bool operator<(
-    propagate_const<Pointer> const& a,
-    propagate_const<Pointer> const& b) {
+    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
   return get_underlying(a) < get_underlying(b);
 }
 
 template <typename Pointer>
 constexpr bool operator<=(
-    propagate_const<Pointer> const& a,
-    propagate_const<Pointer> const& b) {
+    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
   return get_underlying(a) <= get_underlying(b);
 }
 
 template <typename Pointer>
 constexpr bool operator>(
-    propagate_const<Pointer> const& a,
-    propagate_const<Pointer> const& b) {
+    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
   return get_underlying(a) > get_underlying(b);
 }
 
 template <typename Pointer>
 constexpr bool operator>=(
-    propagate_const<Pointer> const& a,
-    propagate_const<Pointer> const& b) {
+    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
   return get_underlying(a) >= get_underlying(b);
 }
 

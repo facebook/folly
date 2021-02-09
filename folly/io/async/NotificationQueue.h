@@ -122,8 +122,7 @@ class NotificationQueue {
      * doesn't count towards the pending reader count for the IOLoop.
      */
     void startConsumingInternal(
-        EventBase* eventBase,
-        NotificationQueue* queue) {
+        EventBase* eventBase, NotificationQueue* queue) {
       init(eventBase, queue);
       registerInternalHandler(READ | PERSIST);
     }
@@ -589,9 +588,7 @@ class NotificationQueue {
 
   template <typename InputIteratorT>
   void putMessagesImpl(
-      InputIteratorT first,
-      InputIteratorT last,
-      std::input_iterator_tag) {
+      InputIteratorT first, InputIteratorT last, std::input_iterator_tag) {
     checkPid();
     bool signal = false;
     boost::intrusive::slist<Node, boost::intrusive::cache_last<true>> q;
@@ -661,8 +658,7 @@ void NotificationQueue<MessageT>::Consumer::handlerReady(
 
 template <typename MessageT>
 void NotificationQueue<MessageT>::Consumer::consumeMessages(
-    bool isDrain,
-    size_t* numConsumed) noexcept {
+    bool isDrain, size_t* numConsumed) noexcept {
   DestructorGuard dg(this);
   uint32_t numProcessed = 0;
   setActive(true);
@@ -774,8 +770,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
 
 template <typename MessageT>
 void NotificationQueue<MessageT>::Consumer::init(
-    EventBase* eventBase,
-    NotificationQueue* queue) {
+    EventBase* eventBase, NotificationQueue* queue) {
   eventBase->dcheckIsInEventBaseThread();
   assert(queue_ == nullptr);
   assert(!isHandlerRegistered());

@@ -565,15 +565,13 @@ struct dynamic : private boost::operators<dynamic> {
    */
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic> getDefault(
-      K&& k,
-      const dynamic& v = dynamic::object) const&;
-  template <typename K>
-  IfIsNonStringDynamicConvertible<K, dynamic> getDefault(K&& k, dynamic&& v)
-      const&;
+      K&& k, const dynamic& v = dynamic::object) const&;
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic> getDefault(
-      K&& k,
-      const dynamic& v = dynamic::object) &&;
+      K&& k, dynamic&& v) const&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic> getDefault(
+      K&& k, const dynamic& v = dynamic::object) &&;
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic> getDefault(K&& k, dynamic&& v) &&;
 
@@ -594,8 +592,7 @@ struct dynamic : private boost::operators<dynamic> {
   IfIsNonStringDynamicConvertible<K, dynamic&> setDefault(K&& k, dynamic&& v);
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic&> setDefault(
-      K&& k,
-      const dynamic& v = dynamic::object);
+      K&& k, const dynamic& v = dynamic::object);
 
   dynamic& setDefault(StringPiece k, dynamic&& v);
   dynamic& setDefault(StringPiece k, const dynamic& v = dynamic::object);

@@ -287,8 +287,8 @@ uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
 
 #else
 
-uint32_t
-crc32c_hw(const uint8_t* /* buf */, size_t /* len */, uint32_t /* crc */) {
+uint32_t crc32c_hw(
+    const uint8_t* /* buf */, size_t /* len */, uint32_t /* crc */) {
   throw std::runtime_error("crc32_hw is not implemented on this platform");
 }
 

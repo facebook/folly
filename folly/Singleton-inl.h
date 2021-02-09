@@ -23,8 +23,7 @@ template <typename Tag, typename VaultTag>
 struct SingletonHolder<T>::Impl : SingletonHolder<T> {
   Impl()
       : SingletonHolder<T>(
-            {typeid(T), typeid(Tag)},
-            *SingletonVault::singleton<VaultTag>()) {}
+            {typeid(T), typeid(Tag)}, *SingletonVault::singleton<VaultTag>()) {}
 };
 
 template <typename T>
@@ -214,8 +213,7 @@ void SingletonHolder<T>::inChildAfterFork() {
 
 template <typename T>
 SingletonHolder<T>::SingletonHolder(
-    TypeDescriptor typeDesc,
-    SingletonVault& vault) noexcept
+    TypeDescriptor typeDesc, SingletonVault& vault) noexcept
     : SingletonHolderBase(typeDesc), vault_(vault) {}
 
 template <typename T>

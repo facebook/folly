@@ -439,8 +439,7 @@ using back_emplace_iterator = detail::
  */
 template <bool implicit_unpack = true, typename Container>
 emplace_iterator<Container, implicit_unpack> emplacer(
-    Container& c,
-    typename Container::iterator i) {
+    Container& c, typename Container::iterator i) {
   return emplace_iterator<Container, implicit_unpack>(c, std::move(i));
 }
 
@@ -455,8 +454,7 @@ emplace_iterator<Container, implicit_unpack> emplacer(
  */
 template <bool implicit_unpack = true, typename Container>
 hint_emplace_iterator<Container, implicit_unpack> hint_emplacer(
-    Container& c,
-    typename Container::iterator i) {
+    Container& c, typename Container::iterator i) {
   return hint_emplace_iterator<Container, implicit_unpack>(c, std::move(i));
 }
 

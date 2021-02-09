@@ -94,8 +94,7 @@ struct BitVectorEncoder {
 
   template <class RandomAccessIterator>
   static MutableCompressedList encode(
-      RandomAccessIterator begin,
-      RandomAccessIterator end) {
+      RandomAccessIterator begin, RandomAccessIterator end) {
     if (begin == end) {
       return MutableCompressedList();
     }

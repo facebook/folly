@@ -94,8 +94,7 @@ template <
     typename =
         typename std::enable_if<std::is_trivially_destructible<T>::value>::type>
 inline void resizeWithoutInitialization(
-    std::basic_string<T>& s,
-    std::size_t n) {
+    std::basic_string<T>& s, std::size_t n) {
   if (n <= s.size()) {
     s.resize(n);
   } else {
@@ -154,8 +153,7 @@ namespace detail {
   void unsafeStringSetLargerSizeImpl(std::basic_string<TYPE>& s, std::size_t); \
   template <>                                                                  \
   inline void unsafeStringSetLargerSize<TYPE>(                                 \
-      std::basic_string<TYPE> & s,                                             \
-      std::size_t n) {                                                         \
+      std::basic_string<TYPE> & s, std::size_t n) {                            \
     unsafeStringSetLargerSizeImpl(s, n);                                       \
   }                                                                            \
   }                                                                            \
@@ -167,8 +165,7 @@ namespace detail {
 template <typename Tag, typename T, typename A, A Ptr__set_size>
 struct MakeUnsafeStringSetLargerSize {
   friend void unsafeStringSetLargerSizeImpl(
-      std::basic_string<T>& s,
-      std::size_t n) {
+      std::basic_string<T>& s, std::size_t n) {
     // s.__set_size(n);
     (s.*Ptr__set_size)(n);
     (&s[0])[n] = '\0';
@@ -190,8 +187,7 @@ struct MakeUnsafeStringSetLargerSize {
 template <typename Tag, typename T, typename A, A Ptr_M_set_length>
 struct MakeUnsafeStringSetLargerSize {
   friend void unsafeStringSetLargerSizeImpl(
-      std::basic_string<T>& s,
-      std::size_t n) {
+      std::basic_string<T>& s, std::size_t n) {
     // s._M_set_length(n);
     (s.*Ptr_M_set_length)(n);
   }
@@ -218,8 +214,7 @@ template <
     B Ptr_M_set_length_and_sharable>
 struct MakeUnsafeStringSetLargerSize {
   friend void unsafeStringSetLargerSizeImpl(
-      std::basic_string<T>& s,
-      std::size_t n) {
+      std::basic_string<T>& s, std::size_t n) {
     // s._M_rep()->_M_set_length_and_sharable(n);
     auto rep = (s.*Ptr_M_rep)();
     (rep->*Ptr_M_set_length_and_sharable)(n);
@@ -246,8 +241,7 @@ struct MakeUnsafeStringSetLargerSize {
 template <typename Tag, typename T, typename A, A Ptr_Eos>
 struct MakeUnsafeStringSetLargerSize {
   friend void unsafeStringSetLargerSizeImpl(
-      std::basic_string<T>& s,
-      std::size_t n) {
+      std::basic_string<T>& s, std::size_t n) {
     // _Eos method is public for _MSC_VER <= 1916, private after
     // s._Eos(n);
     (s.*Ptr_Eos)(n);
@@ -286,8 +280,7 @@ namespace detail {
   void unsafeVectorSetLargerSizeImpl(std::vector<TYPE>& v, std::size_t); \
   template <>                                                            \
   inline void unsafeVectorSetLargerSize<TYPE>(                           \
-      std::vector<TYPE> & v,                                             \
-      std::size_t n) {                                                   \
+      std::vector<TYPE> & v, std::size_t n) {                            \
     unsafeVectorSetLargerSizeImpl(v, n);                                 \
   }                                                                      \
   }                                                                      \

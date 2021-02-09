@@ -41,8 +41,8 @@
 namespace folly {
 
 struct AtomicHashArrayLinearProbeFcn {
-  inline size_t operator()(size_t idx, size_t /* numProbes */, size_t capacity)
-      const {
+  inline size_t operator()(
+      size_t idx, size_t /* numProbes */, size_t capacity) const {
     idx += 1; // linear probing
 
     // Avoid modulus because it's slow
@@ -51,8 +51,8 @@ struct AtomicHashArrayLinearProbeFcn {
 };
 
 struct AtomicHashArrayQuadraticProbeFcn {
-  inline size_t operator()(size_t idx, size_t numProbes, size_t capacity)
-      const {
+  inline size_t operator()(
+      size_t idx, size_t numProbes, size_t capacity) const {
     idx += numProbes; // quadratic probing
 
     // Avoid modulus because it's slow
@@ -71,10 +71,7 @@ inline void checkLegalKeyIfKeyTImpl(
 
 template <typename KeyT>
 inline void checkLegalKeyIfKeyTImpl(
-    KeyT key_in,
-    KeyT emptyKey,
-    KeyT lockedKey,
-    KeyT erasedKey) {
+    KeyT key_in, KeyT emptyKey, KeyT lockedKey, KeyT erasedKey) {
   DCHECK_NE(key_in, emptyKey);
   DCHECK_NE(key_in, lockedKey);
   DCHECK_NE(key_in, erasedKey);

@@ -34,8 +34,8 @@ namespace detail {
  * Returns the number of trailing bytes of "prefix" that make up the
  * delimiter, or 0 if the delimiter was not found.
  */
-inline size_t
-splitPrefix(StringPiece& in, StringPiece& prefix, char delimiter) {
+inline size_t splitPrefix(
+    StringPiece& in, StringPiece& prefix, char delimiter) {
   size_t found = in.find(delimiter);
   if (found != StringPiece::npos) {
     ++found;
@@ -50,8 +50,8 @@ splitPrefix(StringPiece& in, StringPiece& prefix, char delimiter) {
 /**
  * As above, but supports multibyte delimiters.
  */
-inline size_t
-splitPrefix(StringPiece& in, StringPiece& prefix, StringPiece delimiter) {
+inline size_t splitPrefix(
+    StringPiece& in, StringPiece& prefix, StringPiece delimiter) {
   auto found = in.find(delimiter);
   if (found != StringPiece::npos) {
     found += delimiter.size();

@@ -157,8 +157,8 @@ struct RecordInfo {
   uint32_t fileId;
   ByteRange record;
 };
-RecordInfo
-findRecord(ByteRange searchRange, ByteRange wholeRange, uint32_t fileId);
+RecordInfo findRecord(
+    ByteRange searchRange, ByteRange wholeRange, uint32_t fileId);
 
 /**
  * Search for the first valid record in range.

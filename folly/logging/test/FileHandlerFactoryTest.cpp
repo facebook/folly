@@ -50,9 +50,7 @@ void checkAsyncWriter(
 }
 
 void checkAsyncWriter(
-    const LogWriter* writer,
-    int expectedFD,
-    size_t expectedMaxBufferSize) {
+    const LogWriter* writer, int expectedFD, size_t expectedMaxBufferSize) {
   auto asyncWriter = dynamic_cast<const AsyncFileWriter*>(writer);
   ASSERT_TRUE(asyncWriter)
       << "handler factory should have created an AsyncFileWriter";

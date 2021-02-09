@@ -255,8 +255,7 @@ struct LockTraitsImpl<Mutex, MutexLevel::UNIQUE, true>
    */
   template <class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return mutex.try_lock_for(timeout);
   }
 };
@@ -281,8 +280,7 @@ struct LockTraitsImpl<Mutex, MutexLevel::SHARED, true>
    */
   template <class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return mutex.try_lock_for(timeout);
   }
 
@@ -293,8 +291,7 @@ struct LockTraitsImpl<Mutex, MutexLevel::SHARED, true>
    */
   template <class Rep, class Period>
   static bool try_lock_shared_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return mutex.try_lock_shared_for(timeout);
   }
 };
@@ -314,8 +311,7 @@ struct LockTraitsImpl<Mutex, MutexLevel::UPGRADE, true>
    */
   template <class Rep, class Period>
   static bool try_lock_upgrade_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return mutex.try_lock_upgrade_for(timeout);
   }
 
@@ -326,8 +322,7 @@ struct LockTraitsImpl<Mutex, MutexLevel::UPGRADE, true>
    */
   template <class Rep, class Period>
   static bool try_unlock_upgrade_and_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return mutex.try_unlock_upgrade_and_lock_for(timeout);
   }
 };
@@ -465,8 +460,7 @@ struct LockPolicyExclusive : detail::UnlockPolicyExclusive<LockTraits> {
   }
   template <class Mutex, class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return LockTraits<Mutex>::try_lock_for(mutex, timeout);
   }
 };
@@ -485,8 +479,7 @@ struct LockPolicyShared : detail::UnlockPolicyShared<LockTraits> {
   }
   template <class Mutex, class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return LockTraits<Mutex>::try_lock_shared_for(mutex, timeout);
   }
 };
@@ -508,8 +501,7 @@ struct LockPolicyUpgrade : detail::UnlockPolicyUpgrade<LockTraits> {
   }
   template <class Mutex, class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return LockTraits<Mutex>::try_lock_upgrade_for(mutex, timeout);
   }
 };
@@ -574,8 +566,7 @@ struct LockPolicyFromUpgradeToExclusive : LockPolicyExclusive {
   }
   template <class Mutex, class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>& timeout) {
     return LockTraits<Mutex>::try_unlock_upgrade_and_lock_for(mutex, timeout);
   }
 };
@@ -595,8 +586,7 @@ struct LockPolicyFromExclusiveToUpgrade : LockPolicyUpgrade {
   }
   template <class Mutex, class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>&) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>&) {
     LockTraits<Mutex>::unlock_and_lock_upgrade(mutex);
 
     // downgrade should be non blocking and should succeed
@@ -619,8 +609,7 @@ struct LockPolicyFromUpgradeToShared : LockPolicyShared {
   }
   template <class Mutex, class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>&) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>&) {
     LockTraits<Mutex>::unlock_upgrade_and_lock_shared(mutex);
 
     // downgrade should be non blocking and should succeed
@@ -643,8 +632,7 @@ struct LockPolicyFromExclusiveToShared : LockPolicyShared {
   }
   template <class Mutex, class Rep, class Period>
   static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>&) {
+      Mutex& mutex, const std::chrono::duration<Rep, Period>&) {
     LockTraits<Mutex>::unlock_and_lock_shared(mutex);
 
     // downgrade should be non blocking and should succeed

@@ -73,8 +73,8 @@ class SSLAcceptRunner {
    * value to the second function. This can be used to run the SSL_accept
    * in different contexts.
    */
-  virtual void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
-      const {
+  virtual void run(
+      Function<int()> acceptFunc, Function<void(int)> finallyFunc) const {
     finallyFunc(acceptFunc());
   }
 };
@@ -124,10 +124,7 @@ class SSLContext {
 
   // Function that selects a client protocol given the server's list
   using ClientProtocolFilterCallback = bool (*)(
-      unsigned char**,
-      unsigned int*,
-      const unsigned char*,
-      unsigned int);
+      unsigned char**, unsigned int*, const unsigned char*, unsigned int);
 
   /**
    * Convenience function to call getErrors() with the current errno value.
@@ -327,8 +324,7 @@ class SSLContext {
    * @param pkey A PEM formatted key
    */
   virtual void loadCertKeyPairFromBufferPEM(
-      folly::StringPiece cert,
-      folly::StringPiece pkey);
+      folly::StringPiece cert, folly::StringPiece pkey);
 
   /**
    * Load cert and key from files. Guaranteed to throw if cert and key mismatch.
@@ -618,10 +614,7 @@ class SSLContext {
   std::discrete_distribution<int> nextProtocolDistribution_;
 
   static int advertisedNextProtocolCallback(
-      SSL* ssl,
-      const unsigned char** out,
-      unsigned int* outlen,
-      void* data);
+      SSL* ssl, const unsigned char** out, unsigned int* outlen, void* data);
 
   static int alpnSelectCallback(
       SSL* ssl,
@@ -649,9 +642,7 @@ class SSLContext {
    * generically for performing logic after the Client Hello comes in.
    */
   static int baseServerNameOpenSSLCallback(
-      SSL* ssl,
-      int* al /* alert (return value) */,
-      void* data);
+      SSL* ssl, int* al /* alert (return value) */, void* data);
 #endif
 
   std::string providedCiphersString_;
@@ -667,7 +658,6 @@ class SSLContext {
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
 
 std::ostream& operator<<(
-    std::ostream& os,
-    const folly::PasswordCollector& collector);
+    std::ostream& os, const folly::PasswordCollector& collector);
 
 } // namespace folly

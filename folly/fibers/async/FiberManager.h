@@ -68,8 +68,7 @@ void addFiberRemote(F&& func, FiberManager& fm) {
  */
 template <typename F>
 Future<lift_unit_t<async_invocable_inner_type_t<F>>> addFiberFuture(
-    F&& func,
-    FiberManager& fm) {
+    F&& func, FiberManager& fm) {
   return fm.addTaskFuture(
       [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }
@@ -85,8 +84,7 @@ Future<lift_unit_t<async_invocable_inner_type_t<F>>> addFiberFuture(
  */
 template <typename F>
 Future<lift_unit_t<async_invocable_inner_type_t<F>>> addFiberRemoteFuture(
-    F&& func,
-    FiberManager& fm) {
+    F&& func, FiberManager& fm) {
   return fm.addTaskRemoteFuture(
       [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }

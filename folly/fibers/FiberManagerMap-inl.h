@@ -108,8 +108,8 @@ template <typename EventBaseT>
 class ThreadLocalCache {
  public:
   template <typename LocalT>
-  static FiberManager&
-  get(uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
+  static FiberManager& get(
+      uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
     return instance()->template getImpl<LocalT>(token, evb, opts);
   }
 
@@ -142,8 +142,8 @@ class ThreadLocalCache {
   }
 
   template <typename LocalT>
-  FiberManager&
-  getImpl(uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
+  FiberManager& getImpl(
+      uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
     eraseImpl();
 
     auto key = make_tuple(&evb, token, std::type_index(typeid(LocalT)));
@@ -202,33 +202,28 @@ Function<void()> makeOnEventBaseDestructionCallback(
 
 template <typename LocalT>
 FiberManager& getFiberManagerT(
-    EventBase& evb,
-    const FiberManager::Options& opts) {
+    EventBase& evb, const FiberManager::Options& opts) {
   return detail::ThreadLocalCache<EventBase>::get<LocalT>(0, evb, opts);
 }
 
 FiberManager& getFiberManager(
-    folly::EventBase& evb,
-    const FiberManager::Options& opts) {
+    folly::EventBase& evb, const FiberManager::Options& opts) {
   return detail::ThreadLocalCache<EventBase>::get<void>(0, evb, opts);
 }
 
 FiberManager& getFiberManager(
-    VirtualEventBase& evb,
-    const FiberManager::Options& opts) {
+    VirtualEventBase& evb, const FiberManager::Options& opts) {
   return detail::ThreadLocalCache<VirtualEventBase>::get<void>(0, evb, opts);
 }
 
 FiberManager& getFiberManager(
-    folly::EventBase& evb,
-    const FiberManager::FrozenOptions& opts) {
+    folly::EventBase& evb, const FiberManager::FrozenOptions& opts) {
   return detail::ThreadLocalCache<EventBase>::get<void>(
       opts.token, evb, opts.options);
 }
 
 FiberManager& getFiberManager(
-    VirtualEventBase& evb,
-    const FiberManager::FrozenOptions& opts) {
+    VirtualEventBase& evb, const FiberManager::FrozenOptions& opts) {
   return detail::ThreadLocalCache<VirtualEventBase>::get<void>(
       opts.token, evb, opts.options);
 }

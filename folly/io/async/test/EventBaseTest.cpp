@@ -26,12 +26,8 @@ struct DefaultBackendProvider {
   }
 };
 INSTANTIATE_TYPED_TEST_CASE_P(
-    EventBaseTest,
-    EventBaseTest,
-    DefaultBackendProvider);
+    EventBaseTest, EventBaseTest, DefaultBackendProvider);
 INSTANTIATE_TYPED_TEST_CASE_P(
-    EventBaseTest1,
-    EventBaseTest1,
-    DefaultBackendProvider);
+    EventBaseTest1, EventBaseTest1, DefaultBackendProvider);
 } // namespace test
 } // namespace folly

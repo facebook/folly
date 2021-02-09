@@ -194,9 +194,7 @@ class MPMCQueue<T, Atom, true>
   }
 
   explicit MPMCQueue(
-      size_t queueCapacity,
-      size_t minCapacity,
-      size_t expansionMultiplier)
+      size_t queueCapacity, size_t minCapacity, size_t expansionMultiplier)
       : detail::MPMCQueueBase<MPMCQueue<T, Atom, true>>(queueCapacity) {
     minCapacity = std::max<size_t>(1, minCapacity);
     size_t cap = std::min<size_t>(minCapacity, queueCapacity);
@@ -361,10 +359,7 @@ class MPMCQueue<T, Atom, true>
   }
 
   bool tryObtainReadyPushTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     uint64_t state;
     do {
       ticket = this->pushTicket_.load(std::memory_order_acquire); // A
@@ -407,10 +402,7 @@ class MPMCQueue<T, Atom, true>
   }
 
   bool tryObtainPromisedPushTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     uint64_t state;
     do {
       ticket = this->pushTicket_.load(std::memory_order_acquire);
@@ -447,10 +439,7 @@ class MPMCQueue<T, Atom, true>
   }
 
   bool tryObtainReadyPopTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     uint64_t state;
     do {
       ticket = this->popTicket_.load(std::memory_order_relaxed);
@@ -478,10 +467,7 @@ class MPMCQueue<T, Atom, true>
   }
 
   bool tryObtainPromisedPopTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     uint64_t state;
     do {
       ticket = this->popTicket_.load(std::memory_order_acquire);
@@ -585,10 +571,7 @@ class MPMCQueue<T, Atom, true>
 
   /// Seqlock read-only section
   bool trySeqlockReadSection(
-      uint64_t& state,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& state, Slot*& slots, size_t& cap, int& stride) noexcept {
     state = this->dstate_.load(std::memory_order_acquire);
     if (state & 1) {
       // Locked.
@@ -857,8 +840,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
 
   template <class Clock, typename... Args>
   bool tryWriteUntil(
-      const std::chrono::time_point<Clock>& when,
-      Args&&... args) noexcept {
+      const std::chrono::time_point<Clock>& when, Args&&... args) noexcept {
     uint64_t ticket;
     Slot* slots;
     size_t cap;
@@ -945,8 +927,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
 
   template <class Clock, typename... Args>
   bool tryReadUntil(
-      const std::chrono::time_point<Clock>& when,
-      T& elem) noexcept {
+      const std::chrono::time_point<Clock>& when, T& elem) noexcept {
     uint64_t ticket;
     Slot* slots;
     size_t cap;
@@ -1102,10 +1083,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   /// won't block.  Returns true on immediate success, false on immediate
   /// failure.
   bool tryObtainReadyPushTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     ticket = pushTicket_.load(std::memory_order_acquire); // A
     slots = slots_;
     cap = capacity_;
@@ -1171,10 +1149,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   /// other thread's pop is still in progress (ticket has been granted but
   /// pop has not yet completed).
   bool tryObtainPromisedPushTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     auto numPushes = pushTicket_.load(std::memory_order_acquire); // A
     slots = slots_;
     cap = capacity_;
@@ -1200,10 +1175,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   /// won't block.  Returns true on immediate success, false on immediate
   /// failure.
   bool tryObtainReadyPopTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     ticket = popTicket_.load(std::memory_order_acquire);
     slots = slots_;
     cap = capacity_;
@@ -1265,10 +1237,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   /// have to block waiting for them to finish executing code inside the
   /// MPMCQueue itself.
   bool tryObtainPromisedPopTicket(
-      uint64_t& ticket,
-      Slot*& slots,
-      size_t& cap,
-      int& stride) noexcept {
+      uint64_t& ticket, Slot*& slots, size_t& cap, int& stride) noexcept {
     auto numPops = popTicket_.load(std::memory_order_acquire); // A
     slots = slots_;
     cap = capacity_;
@@ -1312,11 +1281,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
 
   // Given a ticket, dequeues the corresponding element
   void dequeueWithTicketBase(
-      uint64_t ticket,
-      Slot* slots,
-      size_t cap,
-      int stride,
-      T& elem) noexcept {
+      uint64_t ticket, Slot* slots, size_t cap, int stride, T& elem) noexcept {
     assert(cap != 0);
     slots[idx(ticket, cap, stride)].dequeue(
         turn(ticket, cap),

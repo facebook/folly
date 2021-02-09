@@ -44,11 +44,9 @@ struct ConcurrentLazy {
   using result_type = invoke_result_t<Ctor>;
 
   static_assert(
-      !std::is_const<Ctor>::value,
-      "Func should not be a const-qualified type");
+      !std::is_const<Ctor>::value, "Func should not be a const-qualified type");
   static_assert(
-      !std::is_reference<Ctor>::value,
-      "Func should not be a reference type");
+      !std::is_reference<Ctor>::value, "Func should not be a reference type");
 
   template <
       typename F,

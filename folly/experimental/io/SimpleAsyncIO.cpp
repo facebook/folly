@@ -154,8 +154,7 @@ void SimpleAsyncIO::putOp(std::unique_ptr<AsyncBaseOp>&& op) {
 }
 
 void SimpleAsyncIO::submitOp(
-    Function<void(AsyncBaseOp*)> preparer,
-    SimpleAsyncIOCompletor completor) {
+    Function<void(AsyncBaseOp*)> preparer, SimpleAsyncIOCompletor completor) {
   std::unique_ptr<AsyncBaseOp> opHolder = getOp();
   if (!opHolder) {
     completor(-EBUSY);
@@ -209,8 +208,8 @@ void SimpleAsyncIO::pwrite(
 }
 
 #if FOLLY_HAS_COROUTINES
-folly::coro::Task<int>
-SimpleAsyncIO::co_pwrite(int fd, const void* buf, size_t size, off_t start) {
+folly::coro::Task<int> SimpleAsyncIO::co_pwrite(
+    int fd, const void* buf, size_t size, off_t start) {
   folly::coro::Baton done;
   int result;
   pwrite(fd, buf, size, start, [&done, &result](int rc) {
@@ -221,8 +220,8 @@ SimpleAsyncIO::co_pwrite(int fd, const void* buf, size_t size, off_t start) {
   co_return result;
 }
 
-folly::coro::Task<int>
-SimpleAsyncIO::co_pread(int fd, void* buf, size_t size, off_t start) {
+folly::coro::Task<int> SimpleAsyncIO::co_pread(
+    int fd, void* buf, size_t size, off_t start) {
   folly::coro::Baton done;
   int result;
   pread(fd, buf, size, start, [&done, &result](int rc) {

@@ -838,8 +838,7 @@ static_assert(constructibleNotConvertible<LargePODConstructTo>(), "");
 static_assert(constructibleNotConvertible<NonPODConstructTo>(), "");
 
 static_assert(
-    expected_detail::IsConvertible<Source, ConvertTo>(),
-    "convertible");
+    expected_detail::IsConvertible<Source, ConvertTo>(), "convertible");
 } // namespace
 
 TEST(Expected, GitHubIssue1111) {

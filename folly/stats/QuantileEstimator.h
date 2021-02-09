@@ -41,8 +41,7 @@ class SimpleQuantileEstimator {
   SimpleQuantileEstimator();
 
   QuantileEstimates estimateQuantiles(
-      Range<const double*> quantiles,
-      TimePoint now = ClockT::now());
+      Range<const double*> quantiles, TimePoint now = ClockT::now());
 
   void addValue(double value, TimePoint now = ClockT::now());
 
@@ -68,12 +67,10 @@ class SlidingWindowQuantileEstimator {
   using TimePoint = typename ClockT::time_point;
 
   SlidingWindowQuantileEstimator(
-      std::chrono::seconds windowDuration,
-      size_t nWindows = 60);
+      std::chrono::seconds windowDuration, size_t nWindows = 60);
 
   QuantileEstimates estimateQuantiles(
-      Range<const double*> quantiles,
-      TimePoint now = ClockT::now());
+      Range<const double*> quantiles, TimePoint now = ClockT::now());
 
   void addValue(double value, TimePoint now = ClockT::now());
 

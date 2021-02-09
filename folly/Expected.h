@@ -676,16 +676,14 @@ class Unexpected final {
 template <
     class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
 inline bool operator==(
-    const Unexpected<Error>& lhs,
-    const Unexpected<Error>& rhs) {
+    const Unexpected<Error>& lhs, const Unexpected<Error>& rhs) {
   return lhs.error() == rhs.error();
 }
 
 template <
     class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
 inline bool operator!=(
-    const Unexpected<Error>& lhs,
-    const Unexpected<Error>& rhs) {
+    const Unexpected<Error>& lhs, const Unexpected<Error>& rhs) {
   return !(lhs == rhs);
 }
 
@@ -1103,8 +1101,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto then(Fns&&... fns) const& -> decltype(
       expected_detail::ExpectedHelper::then_(
-          std::declval<const Base&>(),
-          std::declval<Fns>()...)) {
+          std::declval<const Base&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess>();
     }
@@ -1114,8 +1111,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto then(Fns&&... fns) & -> decltype(expected_detail::ExpectedHelper::then_(
-      std::declval<Base&>(),
-      std::declval<Fns>()...)) {
+      std::declval<Base&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess>();
     }
@@ -1125,8 +1121,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto then(Fns&&... fns) && -> decltype(expected_detail::ExpectedHelper::then_(
-      std::declval<Base&&>(),
-      std::declval<Fns>()...)) {
+      std::declval<Base&&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess>();
     }
@@ -1193,8 +1188,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 template <class Value, class Error>
 inline typename std::enable_if<IsEqualityComparable<Value>::value, bool>::type
 operator==(
-    const Expected<Value, Error>& lhs,
-    const Expected<Value, Error>& rhs) {
+    const Expected<Value, Error>& lhs, const Expected<Value, Error>& rhs) {
   if (UNLIKELY(lhs.uninitializedByException())) {
     throw_exception<BadExpectedAccess>();
   }
@@ -1211,16 +1205,14 @@ template <
     class Value,
     class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Value>::value)>
 inline bool operator!=(
-    const Expected<Value, Error>& lhs,
-    const Expected<Value, Error>& rhs) {
+    const Expected<Value, Error>& lhs, const Expected<Value, Error>& rhs) {
   return !(rhs == lhs);
 }
 
 template <class Value, class Error>
 inline typename std::enable_if<IsLessThanComparable<Value>::value, bool>::type
 operator<(
-    const Expected<Value, Error>& lhs,
-    const Expected<Value, Error>& rhs) {
+    const Expected<Value, Error>& lhs, const Expected<Value, Error>& rhs) {
   if (UNLIKELY(
           lhs.uninitializedByException() || rhs.uninitializedByException())) {
     throw_exception<BadExpectedAccess>();
@@ -1238,8 +1230,7 @@ template <
     class Value,
     class Error FOLLY_REQUIRES_TRAILING(IsLessThanComparable<Value>::value)>
 inline bool operator<=(
-    const Expected<Value, Error>& lhs,
-    const Expected<Value, Error>& rhs) {
+    const Expected<Value, Error>& lhs, const Expected<Value, Error>& rhs) {
   return !(rhs < lhs);
 }
 
@@ -1247,8 +1238,7 @@ template <
     class Value,
     class Error FOLLY_REQUIRES_TRAILING(IsLessThanComparable<Value>::value)>
 inline bool operator>(
-    const Expected<Value, Error>& lhs,
-    const Expected<Value, Error>& rhs) {
+    const Expected<Value, Error>& lhs, const Expected<Value, Error>& rhs) {
   return rhs < lhs;
 }
 
@@ -1256,8 +1246,7 @@ template <
     class Value,
     class Error FOLLY_REQUIRES_TRAILING(IsLessThanComparable<Value>::value)>
 inline bool operator>=(
-    const Expected<Value, Error>& lhs,
-    const Expected<Value, Error>& rhs) {
+    const Expected<Value, Error>& lhs, const Expected<Value, Error>& rhs) {
   return !(lhs < rhs);
 }
 

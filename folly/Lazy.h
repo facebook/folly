@@ -92,11 +92,9 @@ struct Lazy {
   typedef invoke_result_t<Func> result_type;
 
   static_assert(
-      !std::is_const<Func>::value,
-      "Func should not be a const-qualified type");
+      !std::is_const<Func>::value, "Func should not be a const-qualified type");
   static_assert(
-      !std::is_reference<Func>::value,
-      "Func should not be a reference type");
+      !std::is_reference<Func>::value, "Func should not be a reference type");
 
   explicit Lazy(Func&& f) : func_(std::move(f)) {}
   explicit Lazy(const Func& f) : func_(f) {}

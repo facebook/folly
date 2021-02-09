@@ -188,8 +188,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
   explicit UDPClient(EventBase* evb) : AsyncTimeout(evb), evb_(evb) {}
 
-  void
-  start(const folly::SocketAddress& server, int n, bool sendClustered = false) {
+  void start(
+      const folly::SocketAddress& server, int n, bool sendClustered = false) {
     CHECK(evb_->isInEventBaseThread());
     server_ = server;
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
@@ -295,8 +295,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   AsyncUDPSocket& getSocket() { return *socket_; }
 
   void setShouldConnect(
-      const folly::SocketAddress& connectAddr,
-      BindSocket bindSocket) {
+      const folly::SocketAddress& connectAddr, BindSocket bindSocket) {
     connectAddr_ = connectAddr;
     bindSocket_ = bindSocket;
   }
@@ -326,9 +325,7 @@ class UDPNotifyClient : public UDPClient {
   ~UDPNotifyClient() override = default;
 
   explicit UDPNotifyClient(
-      EventBase* evb,
-      bool useRecvmmsg = false,
-      unsigned int numMsgs = 1)
+      EventBase* evb, bool useRecvmmsg = false, unsigned int numMsgs = 1)
       : UDPClient(evb), useRecvmmsg_(useRecvmmsg), numMsgs_(numMsgs) {}
 
   bool shouldOnlyNotify() override { return true; }
@@ -598,8 +595,7 @@ TEST_P(ConnectedAsyncSocketIntegrationTest, ConnectedPingPong) {
 }
 
 TEST_P(
-    ConnectedAsyncSocketIntegrationTest,
-    ConnectedPingPongServerWrongAddress) {
+    ConnectedAsyncSocketIntegrationTest, ConnectedPingPongServerWrongAddress) {
   server->setChangePortForWrites(true);
   startServer();
   auto pingClient =
@@ -609,8 +605,7 @@ TEST_P(
 }
 
 TEST_P(
-    ConnectedAsyncSocketIntegrationTest,
-    ConnectedPingPongClientWrongAddress) {
+    ConnectedAsyncSocketIntegrationTest, ConnectedPingPongClientWrongAddress) {
   server->setChangePortForWrites(false);
   startServer();
   folly::SocketAddress connectAddr(

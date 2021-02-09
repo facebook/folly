@@ -40,8 +40,7 @@ class AsyncPipeReader : public EventHandler,
           UniquePtr;
 
   static UniquePtr newReader(
-      folly::EventBase* eventBase,
-      NetworkSocket pipeFd) {
+      folly::EventBase* eventBase, NetworkSocket pipeFd) {
     return UniquePtr(new AsyncPipeReader(eventBase, pipeFd));
   }
 
@@ -102,8 +101,7 @@ class AsyncPipeWriter : public EventHandler,
           UniquePtr;
 
   static UniquePtr newWriter(
-      folly::EventBase* eventBase,
-      NetworkSocket pipeFd) {
+      folly::EventBase* eventBase, NetworkSocket pipeFd) {
     return UniquePtr(new AsyncPipeWriter(eventBase, pipeFd));
   }
 

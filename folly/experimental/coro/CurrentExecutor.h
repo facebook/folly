@@ -81,8 +81,7 @@ class co_reschedule_on_current_executor_ {
 
    private:
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend_impl(
-        coroutine_handle<> coro,
-        AsyncStackFrame& frame) {
+        coroutine_handle<> coro, AsyncStackFrame& frame) {
       auto& stackRoot = *frame.getStackRoot();
       folly::deactivateAsyncStackFrame(frame);
       try {
@@ -111,8 +110,7 @@ class co_reschedule_on_current_executor_ {
     }
 
     friend StackAwareAwaiter tag_invoke(
-        cpo_t<co_withAsyncStack>,
-        Awaiter awaiter) {
+        cpo_t<co_withAsyncStack>, Awaiter awaiter) {
       return StackAwareAwaiter{std::move(awaiter.executor_)};
     }
   };

@@ -161,8 +161,7 @@ size_t uintToBinary(char* buffer, size_t bufLen, Uint v) {
 
 template <class Derived, bool containerMode, class... Args>
 BaseFormatter<Derived, containerMode, Args...>::BaseFormatter(
-    StringPiece str,
-    Args&&... args)
+    StringPiece str, Args&&... args)
     : str_(str), values_(std::forward<Args>(args)...) {}
 
 template <class Derived, bool containerMode, class... Args>
@@ -280,8 +279,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
 
 template <class Derived, bool containerMode, class... Args>
 void writeTo(
-    FILE* fp,
-    const BaseFormatter<Derived, containerMode, Args...>& formatter) {
+    FILE* fp, const BaseFormatter<Derived, containerMode, Args...>& formatter) {
   auto writer = [fp](StringPiece sp) {
     size_t n = fwrite(sp.data(), 1, sp.size(), fp);
     if (n < sp.size()) {
@@ -355,10 +353,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
 
 template <class FormatCallback>
 void formatNumber(
-    StringPiece val,
-    int prefixLen,
-    FormatArg& arg,
-    FormatCallback& cb) {
+    StringPiece val, int prefixLen, FormatArg& arg, FormatCallback& cb) {
   // precision means something different for numbers
   arg.precision = FormatArg::kDefaultPrecision;
   if (arg.align == FormatArg::Align::DEFAULT) {
@@ -806,8 +801,8 @@ template <class T, class = void>
 class TryFormatValue {
  public:
   template <class FormatCallback>
-  static void
-  formatOrFail(T& /* value */, FormatArg& arg, FormatCallback& /* cb */) {
+  static void formatOrFail(
+      T& /* value */, FormatArg& arg, FormatCallback& /* cb */) {
     arg.error("No formatter available for this type");
   }
 };
@@ -959,8 +954,8 @@ struct KeyableTraitsAssoc : public FormatTraitsBase {
     }
     throw_exception<FormatKeyNotFoundException>(key);
   }
-  static const value_type&
-  at(const T& map, StringPiece key, const value_type& dflt) {
+  static const value_type& at(
+      const T& map, StringPiece key, const value_type& dflt) {
     auto pos = map.find(KeyFromStringPiece<key_type>::convert(key));
     return pos != map.end() ? pos->second : dflt;
   }
@@ -1070,14 +1065,14 @@ class FormatValue<std::tuple<Args...>> {
   static constexpr size_t valueCount = std::tuple_size<Tuple>::value;
 
   template <size_t K, class Callback>
-  typename std::enable_if<K == valueCount>::type
-  doFormatFrom(size_t i, FormatArg& arg, Callback& /* cb */) const {
+  typename std::enable_if<K == valueCount>::type doFormatFrom(
+      size_t i, FormatArg& arg, Callback& /* cb */) const {
     arg.error("tuple index out of range, max=", i);
   }
 
   template <size_t K, class Callback>
-  typename std::enable_if<(K < valueCount)>::type
-  doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
+  typename std::enable_if<(K < valueCount)>::type doFormatFrom(
+      size_t i, FormatArg& arg, Callback& cb) const {
     if (i == K) {
       FormatValue<typename std::decay<
           typename std::tuple_element<K, Tuple>::type>::type>(std::get<K>(val_))
@@ -1121,8 +1116,7 @@ class FormatValue<
  */
 template <class Tgt, class Derived, bool containerMode, class... Args>
 typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
-    const BaseFormatter<Derived, containerMode, Args...>& value,
-    Tgt* result) {
+    const BaseFormatter<Derived, containerMode, Args...>& value, Tgt* result) {
   value.appendTo(*result);
 }
 

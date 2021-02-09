@@ -75,8 +75,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   ~ThreadPoolExecutor() override;
 
   void add(Func func) override = 0;
-  virtual void
-  add(Func func, std::chrono::milliseconds expiration, Func expireCallback);
+  virtual void add(
+      Func func, std::chrono::milliseconds expiration, Func expireCallback);
 
   void setThreadFactory(std::shared_ptr<ThreadFactory> threadFactory) {
     CHECK(numThreads() == 0);

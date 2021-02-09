@@ -303,8 +303,7 @@ class AsyncWriter {
      * @param ex                An exception describing the error that occurred.
      */
     virtual void writeErr(
-        size_t bytesWritten,
-        const AsyncSocketException& ex) noexcept = 0;
+        size_t bytesWritten, const AsyncSocketException& ex) noexcept = 0;
 
     virtual ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept {
       return nullptr;

@@ -126,8 +126,7 @@ struct growth_policy_wrapper<void> {
  */
 template <class Iterator>
 typename std::iterator_traits<Iterator>::difference_type distance_if_multipass(
-    Iterator first,
-    Iterator last) {
+    Iterator first, Iterator last) {
   typedef typename std::iterator_traits<Iterator>::iterator_category categ;
   if (std::is_same<categ, std::input_iterator_tag>::value) {
     return -1;
@@ -304,8 +303,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   explicit sorted_vector_set(const Allocator& alloc) : m_(Compare(), alloc) {}
 
   explicit sorted_vector_set(
-      const Compare& comp,
-      const Allocator& alloc = Allocator())
+      const Compare& comp, const Allocator& alloc = Allocator())
       : m_(comp, alloc) {}
 
   template <class InputIterator>
@@ -322,9 +320,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
 
   template <class InputIterator>
   sorted_vector_set(
-      InputIterator first,
-      InputIterator last,
-      const Allocator& alloc)
+      InputIterator first, InputIterator last, const Allocator& alloc)
       : m_(Compare(), alloc) {
     // This is linear if [first, last) is already sorted (and if we
     // can figure out the distance between the two iterators).
@@ -340,8 +336,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   sorted_vector_set(
-      std::initializer_list<value_type> list,
-      const Allocator& alloc)
+      std::initializer_list<value_type> list, const Allocator& alloc)
       : m_(Compare(), alloc) {
     insert(list.begin(), list.end());
   }
@@ -355,8 +350,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   // Note that `sorted_vector_set(const Container& container)` is not provided,
   // since the purpose of this constructor is to avoid an unnecessary copy.
   explicit sorted_vector_set(
-      Container&& container,
-      const Compare& comp = Compare())
+      Container&& container, const Compare& comp = Compare())
       : sorted_vector_set(
             sorted_unique,
             detail::as_sorted_unique(std::move(container), comp),
@@ -676,8 +670,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
 // Swap function that can be found using ADL.
 template <class T, class C, class A, class G>
 inline void swap(
-    sorted_vector_set<T, C, A, G>& a,
-    sorted_vector_set<T, C, A, G>& b) {
+    sorted_vector_set<T, C, A, G>& a, sorted_vector_set<T, C, A, G>& b) {
   return a.swap(b);
 }
 
@@ -784,8 +777,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
       : m_(value_compare(Compare()), alloc) {}
 
   explicit sorted_vector_map(
-      const Compare& comp,
-      const Allocator& alloc = Allocator())
+      const Compare& comp, const Allocator& alloc = Allocator())
       : m_(value_compare(comp), alloc) {}
 
   template <class InputIterator>
@@ -800,9 +792,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 
   template <class InputIterator>
   sorted_vector_map(
-      InputIterator first,
-      InputIterator last,
-      const Allocator& alloc)
+      InputIterator first, InputIterator last, const Allocator& alloc)
       : m_(value_compare(Compare()), alloc) {
     insert(first, last);
   }
@@ -816,8 +806,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   sorted_vector_map(
-      std::initializer_list<value_type> list,
-      const Allocator& alloc)
+      std::initializer_list<value_type> list, const Allocator& alloc)
       : m_(value_compare(Compare()), alloc) {
     insert(list.begin(), list.end());
   }
@@ -831,8 +820,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   // Note that `sorted_vector_map(const Container& container)` is not provided,
   // since the purpose of this constructor is to avoid an unnecessary copy.
   explicit sorted_vector_map(
-      Container&& container,
-      const Compare& comp = Compare())
+      Container&& container, const Compare& comp = Compare())
       : sorted_vector_map(
             sorted_unique,
             detail::as_sorted_unique(std::move(container), value_compare(comp)),
@@ -1178,8 +1166,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 
   template <typename Self, typename K>
   static std::pair<self_iterator_t<Self>, self_iterator_t<Self>> equal_range(
-      Self& self,
-      K const& key) {
+      Self& self, K const& key) {
     // Note: std::equal_range can't be passed a functor that takes
     // argument types different from the iterator value_type, so we
     // have to do this.
@@ -1190,8 +1177,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 // Swap function that can be found using ADL.
 template <class K, class V, class C, class A, class G>
 inline void swap(
-    sorted_vector_map<K, V, C, A, G>& a,
-    sorted_vector_map<K, V, C, A, G>& b) {
+    sorted_vector_map<K, V, C, A, G>& a, sorted_vector_map<K, V, C, A, G>& b) {
   return a.swap(b);
 }
 

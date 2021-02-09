@@ -40,8 +40,7 @@ constexpr std::uint8_t selectInByte(std::size_t i, std::size_t j) {
 
 template <std::size_t... I, std::size_t J>
 constexpr auto makeSelectInByteNestedArray(
-    std::index_sequence<I...>,
-    index_constant<J>) {
+    std::index_sequence<I...>, index_constant<J>) {
   return std::array<std::uint8_t, sizeof...(I)>{{selectInByte(I, J)...}};
 }
 
@@ -56,8 +55,7 @@ constexpr auto makeSelectInByteArray(Is is, std::index_sequence<J...>) {
 
 FOLLY_STORAGE_CONSTEXPR std::array<std::array<std::uint8_t, 256>, 8> const
     kSelectInByte = makeSelectInByteArray(
-        std::make_index_sequence<256>{},
-        std::make_index_sequence<8>{});
+        std::make_index_sequence<256>{}, std::make_index_sequence<8>{});
 
 } // namespace detail
 } // namespace folly

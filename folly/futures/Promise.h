@@ -410,9 +410,7 @@ class Promise {
   template <class, class>
   friend class futures::detail::CoreCallbackState;
   friend void futures::detail::setTry<T>(
-      Promise<T>& p,
-      Executor::KeepAlive<>&& ka,
-      Try<T>&& t);
+      Promise<T>& p, Executor::KeepAlive<>&& ka, Try<T>&& t);
 
   // Whether the Future has been retrieved (a one-time operation).
   bool retrieved_;

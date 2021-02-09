@@ -53,9 +53,7 @@ mul128(UInt64InverseType lowbits, uint64_t divisor) {
 }
 
 FOLLY_ALWAYS_INLINE std::pair<uint64_t, uint64_t> getQuotientAndRemainder(
-    uint64_t dividend,
-    uint64_t divisor,
-    UInt64InverseType inverse) {
+    uint64_t dividend, uint64_t divisor, UInt64InverseType inverse) {
   if (FOLLY_UNLIKELY(divisor == 1)) {
     return {dividend, 0};
   }
@@ -127,9 +125,7 @@ struct QuotientMultiSet<Instructions>::Block {
   }
 
   FOLLY_ALWAYS_INLINE uint64_t getRemainder(
-      size_t offsetInBlock,
-      size_t remainderBits,
-      size_t remainderMask) const {
+      size_t offsetInBlock, size_t remainderBits, size_t remainderMask) const {
     DCHECK_LE(remainderBits, 56);
     const size_t bitPos = offsetInBlock * remainderBits;
     const uint64_t remainderWord =
@@ -145,8 +141,8 @@ struct QuotientMultiSet<Instructions>::Block {
     runends |= uint64_t(1) << offsetInBlock;
   }
 
-  void
-  setRemainder(size_t offsetInBlock, size_t remainderBits, uint64_t remainder) {
+  void setRemainder(
+      size_t offsetInBlock, size_t remainderBits, uint64_t remainder) {
     DCHECK_LT(offsetInBlock, kBlockSize);
     if (FOLLY_UNLIKELY(remainderBits == 0)) {
       return;
@@ -253,8 +249,8 @@ auto QuotientMultiSet<Instructions>::equalRange(uint64_t key) const
 
 template <class Instructions>
 auto QuotientMultiSet<Instructions>::findRunend(
-    uint64_t occupiedRank,
-    uint64_t firstRunend) const -> std::pair<uint64_t, const Block*> {
+    uint64_t occupiedRank, uint64_t firstRunend) const
+    -> std::pair<uint64_t, const Block*> {
   // Look for the right runend.
   size_t slotBlockIndex = firstRunend / kBlockSize;
   auto block = getBlock(slotBlockIndex);

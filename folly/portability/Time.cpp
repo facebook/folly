@@ -25,8 +25,7 @@
 
 template <typename _Rep, typename _Period>
 static void duration_to_ts(
-    std::chrono::duration<_Rep, _Period> d,
-    struct timespec* ts) {
+    std::chrono::duration<_Rep, _Period> d, struct timespec* ts) {
   ts->tv_sec =
       time_t(std::chrono::duration_cast<std::chrono::seconds>(d).count());
   ts->tv_nsec = long(std::chrono::duration_cast<std::chrono::nanoseconds>(

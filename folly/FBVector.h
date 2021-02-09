@@ -415,10 +415,7 @@ class fbvector {
   // allocator
   template <typename... Args>
   static void S_uninitialized_fill_n_a(
-      Allocator& a,
-      T* dest,
-      size_type sz,
-      Args&&... args) {
+      Allocator& a, T* dest, size_type sz, Args&&... args) {
     auto b = dest;
     auto e = dest + sz;
     auto rollback = makeGuard([&] { S_destroy_range_a(a, dest, b); });
@@ -522,17 +519,15 @@ class fbvector {
     rollback.dismiss();
   }
 
-  static void
-  S_uninitialized_copy_bits(T* dest, const T* first, const T* last) {
+  static void S_uninitialized_copy_bits(
+      T* dest, const T* first, const T* last) {
     if (last != first) {
       std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
     }
   }
 
   static void S_uninitialized_copy_bits(
-      T* dest,
-      std::move_iterator<T*> first,
-      std::move_iterator<T*> last) {
+      T* dest, std::move_iterator<T*> first, std::move_iterator<T*> last) {
     T* bFirst = first.base();
     T* bLast = last.base();
     if (bLast != bFirst) {
@@ -570,8 +565,8 @@ class fbvector {
     }
   }
 
-  static std::move_iterator<T*>
-  S_copy_n(T* dest, std::move_iterator<T*> mIt, size_type n) {
+  static std::move_iterator<T*> S_copy_n(
+      T* dest, std::move_iterator<T*> mIt, size_type n) {
     if (is_trivially_copyable<T>::value) {
       T* first = mIt.base();
       std::memcpy((void*)dest, (void*)first, n * sizeof(T));
@@ -836,9 +831,7 @@ class fbvector {
   // contract dispatch for iterator types in assign(It first, It last)
   template <class ForwardIterator>
   void assign(
-      ForwardIterator first,
-      ForwardIterator last,
-      std::forward_iterator_tag) {
+      ForwardIterator first, ForwardIterator last, std::forward_iterator_tag) {
     const auto newSize = size_type(std::distance(first, last));
     if (newSize > capacity()) {
       impl_.reset(newSize);
@@ -853,8 +846,8 @@ class fbvector {
   }
 
   template <class InputIterator>
-  void
-  assign(InputIterator first, InputIterator last, std::input_iterator_tag) {
+  void assign(
+      InputIterator first, InputIterator last, std::input_iterator_tag) {
     auto p = impl_.b_;
     for (; first != last && p != impl_.e_; ++first, ++p) {
       *p = *first;
@@ -1554,8 +1547,8 @@ class fbvector {
   // insert dispatch for iterator types
  private:
   template <class FIt>
-  iterator
-  insert(const_iterator cpos, FIt first, FIt last, std::forward_iterator_tag) {
+  iterator insert(
+      const_iterator cpos, FIt first, FIt last, std::forward_iterator_tag) {
     size_type n = size_type(std::distance(first, last));
     return do_real_insert(
         cpos,
@@ -1567,8 +1560,8 @@ class fbvector {
   }
 
   template <class IIt>
-  iterator
-  insert(const_iterator cpos, IIt first, IIt last, std::input_iterator_tag) {
+  iterator insert(
+      const_iterator cpos, IIt first, IIt last, std::input_iterator_tag) {
     T* position = const_cast<T*>(cpos);
     assert(isValid(position));
     size_type idx = std::distance(begin(), position);

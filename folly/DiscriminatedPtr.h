@@ -219,22 +219,19 @@ class DiscriminatedPtr {
 
 template <typename Visitor, typename... Args>
 decltype(auto) apply_visitor(
-    Visitor&& visitor,
-    const DiscriminatedPtr<Args...>& variant) {
+    Visitor&& visitor, const DiscriminatedPtr<Args...>& variant) {
   return variant.apply(std::forward<Visitor>(visitor));
 }
 
 template <typename Visitor, typename... Args>
 decltype(auto) apply_visitor(
-    Visitor&& visitor,
-    DiscriminatedPtr<Args...>& variant) {
+    Visitor&& visitor, DiscriminatedPtr<Args...>& variant) {
   return variant.apply(std::forward<Visitor>(visitor));
 }
 
 template <typename Visitor, typename... Args>
 decltype(auto) apply_visitor(
-    Visitor&& visitor,
-    DiscriminatedPtr<Args...>&& variant) {
+    Visitor&& visitor, DiscriminatedPtr<Args...>&& variant) {
   return variant.apply(std::forward<Visitor>(visitor));
 }
 

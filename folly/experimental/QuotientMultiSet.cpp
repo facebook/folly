@@ -25,9 +25,7 @@
 namespace folly {
 
 QuotientMultiSetBuilder::QuotientMultiSetBuilder(
-    size_t keyBits,
-    size_t expectedElements,
-    double loadFactor)
+    size_t keyBits, size_t expectedElements, double loadFactor)
     : keyBits_(keyBits), maxKey_(qms_detail::maxValue(keyBits_)) {
   expectedElements = std::max<size_t>(expectedElements, 1);
   uint64_t numSlots = ceil(expectedElements / loadFactor);

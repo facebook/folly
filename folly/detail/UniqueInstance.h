@@ -28,9 +28,7 @@ class UniqueInstance {
  public:
   template <typename... Key, typename... Mapped>
   FOLLY_EXPORT explicit UniqueInstance(
-      char const* tmpl,
-      tag_t<Key...>,
-      tag_t<Mapped...>) noexcept {
+      char const* tmpl, tag_t<Key...>, tag_t<Mapped...>) noexcept {
     static Ptr const ptrs[] = {&typeid(Key)..., &typeid(Mapped)...};
     auto& global = createGlobal<Value, tag_t<Tag, Key...>>();
     enforce(tmpl, ptrs, sizeof...(Key), sizeof...(Mapped), global);

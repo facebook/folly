@@ -62,10 +62,7 @@ class Semaphore {
 
 template <class T, class Random>
 void randomPartition(
-    Random& random,
-    T key,
-    int n,
-    std::vector<std::pair<T, int>>& out) {
+    Random& random, T key, int n, std::vector<std::pair<T, int>>& out) {
   while (n != 0) {
     int m = std::min(n, 1000);
     std::uniform_int_distribution<uint32_t> u(1, m);

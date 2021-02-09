@@ -132,8 +132,7 @@ struct EliasFanoEncoderV2 {
   // free() explicitly.
   template <class RandomAccessIterator>
   static MutableCompressedList encode(
-      RandomAccessIterator begin,
-      RandomAccessIterator end) {
+      RandomAccessIterator begin, RandomAccessIterator end) {
     if (begin == end) {
       return MutableCompressedList();
     }
@@ -209,8 +208,8 @@ struct EliasFanoEncoderV2 {
     }
   }
   // Writes value (with len up to 56 bits) to data starting at pos-th bit.
-  static void
-  writeBits56(unsigned char* data, size_t pos, uint8_t len, uint64_t value) {
+  static void writeBits56(
+      unsigned char* data, size_t pos, uint8_t len, uint64_t value) {
     DCHECK_LE(uint32_t(len), 56);
     DCHECK_EQ(0, value & ~((uint64_t(1) << len) - 1));
     unsigned char* const ptr = data + (pos / 8);
@@ -265,8 +264,8 @@ struct EliasFanoEncoderV2<
     return fromInternalSizes(numLowerBits, upper, size);
   }
 
-  static Layout
-  fromInternalSizes(uint8_t numLowerBits, size_t upper, size_t size) {
+  static Layout fromInternalSizes(
+      uint8_t numLowerBits, size_t upper, size_t size) {
     Layout layout;
     layout.size = size;
     layout.numLowerBits = numLowerBits;
@@ -556,8 +555,8 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     block_ &= ~((block_t(1) << (dest % 8)) - 1);
   }
 
-  FOLLY_ALWAYS_INLINE void
-  getPreviousInfo(block_t& block, size_t& inner, OuterType& outer) const {
+  FOLLY_ALWAYS_INLINE void getPreviousInfo(
+      block_t& block, size_t& inner, OuterType& outer) const {
     DCHECK_NE(position(), std::numeric_limits<SizeType>::max());
     DCHECK_GT(position(), 0);
 

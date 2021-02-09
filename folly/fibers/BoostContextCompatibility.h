@@ -38,9 +38,7 @@ class FiberImpl {
 
  public:
   FiberImpl(
-      folly::Function<void()> func,
-      unsigned char* stackLimit,
-      size_t stackSize)
+      folly::Function<void()> func, unsigned char* stackLimit, size_t stackSize)
       : func_(std::move(func)) {
     auto stackBase = stackLimit + stackSize;
     stackBase_ = stackBase;

@@ -62,17 +62,14 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
     std::shared_ptr<ThreadFactory> threadFactory)
     : ThreadPoolExecutor(
-          numThreads.first,
-          numThreads.second,
-          std::move(threadFactory)),
+          numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(taskQueue.release()) {
   setNumThreads(numThreads.first);
   registerThreadPoolExecutor(this);
 }
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
-    size_t numThreads,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    size_t numThreads, std::shared_ptr<ThreadFactory> threadFactory)
     : ThreadPoolExecutor(
           numThreads,
           FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads,
@@ -86,9 +83,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::pair<size_t, size_t> numThreads,
     std::shared_ptr<ThreadFactory> threadFactory)
     : ThreadPoolExecutor(
-          numThreads.first,
-          numThreads.second,
-          std::move(threadFactory)),
+          numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})) {
   setNumThreads(numThreads.first);
   registerThreadPoolExecutor(this);
@@ -96,8 +91,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads)
     : CPUThreadPoolExecutor(
-          numThreads,
-          std::make_shared<NamedThreadFactory>("CPUThreadPool")) {}
+          numThreads, std::make_shared<NamedThreadFactory>("CPUThreadPool")) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
@@ -117,8 +111,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     : CPUThreadPoolExecutor(
           numThreads,
           std::make_unique<PriorityLifoSemMPMCQueue<CPUTask>>(
-              numPriorities,
-              maxQueueSize),
+              numPriorities, maxQueueSize),
           std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
@@ -165,9 +158,7 @@ void CPUThreadPoolExecutor::add(Func func) {
 }
 
 void CPUThreadPoolExecutor::add(
-    Func func,
-    std::chrono::milliseconds expiration,
-    Func expireCallback) {
+    Func func, std::chrono::milliseconds expiration, Func expireCallback) {
   CPUTask task{std::move(func), expiration, std::move(expireCallback), 0};
   if (auto queueObserver = getQueueObserver(0)) {
     task.queueObserverPayload() =

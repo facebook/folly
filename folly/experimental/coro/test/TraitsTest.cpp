@@ -122,19 +122,15 @@ static_assert(
     "");
 
 static_assert(
-    std::is_same<await_result_t<SomeAwaiter1<void>>, void>::value,
-    "");
+    std::is_same<await_result_t<SomeAwaiter1<void>>, void>::value, "");
 static_assert(
-    std::is_same<await_result_t<MemberOperatorCoAwait>, int>::value,
-    "");
+    std::is_same<await_result_t<MemberOperatorCoAwait>, int>::value, "");
 static_assert(
-    std::is_same<await_result_t<MemberOperatorCoAwait&>, void>::value,
-    "");
+    std::is_same<await_result_t<MemberOperatorCoAwait&>, void>::value, "");
 static_assert(
     std::is_same<await_result_t<const MemberOperatorCoAwait&>, float>::value,
     "");
 static_assert(
-    std::is_same<await_result_t<MoveOnlyFreeOperatorCoAwait>, int>::value,
-    "");
+    std::is_same<await_result_t<MoveOnlyFreeOperatorCoAwait>, int>::value, "");
 
 #endif

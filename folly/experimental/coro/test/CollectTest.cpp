@@ -214,10 +214,7 @@ template <
     typename BinaryOp,
     typename InitialValue = typename std::iterator_traits<Iter>::value_type>
 folly::coro::Task<InitialValue> parallelAccumulate(
-    Iter begin,
-    Sentinel end,
-    BinaryOp op,
-    InitialValue initialValue = {}) {
+    Iter begin, Sentinel end, BinaryOp op, InitialValue initialValue = {}) {
   auto distance = std::distance(begin, end);
   if (distance < 512) {
     co_return std::accumulate(

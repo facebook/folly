@@ -50,14 +50,12 @@ struct non_atomic {
   operator T() const { return load(); }
 
   void store(
-      T desired,
-      std::memory_order /* order */ = std::memory_order_seq_cst) {
+      T desired, std::memory_order /* order */ = std::memory_order_seq_cst) {
     value = desired;
   }
 
   T exchange(
-      T desired,
-      std::memory_order /* order */ = std::memory_order_seq_cst) {
+      T desired, std::memory_order /* order */ = std::memory_order_seq_cst) {
     T old = load();
     store(desired);
     return old;

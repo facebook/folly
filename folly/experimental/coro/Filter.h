@@ -38,8 +38,7 @@ namespace coro {
 //   }
 template <typename FilterFn, typename Reference, typename Value>
 AsyncGenerator<Reference, Value> filter(
-    AsyncGenerator<Reference, Value> source,
-    FilterFn filterFn);
+    AsyncGenerator<Reference, Value> source, FilterFn filterFn);
 
 } // namespace coro
 } // namespace folly

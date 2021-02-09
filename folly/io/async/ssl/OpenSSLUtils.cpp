@@ -39,8 +39,7 @@ namespace folly {
 namespace ssl {
 
 bool OpenSSLUtils::getTLSMasterKey(
-    const SSL_SESSION* session,
-    MutableByteRange keyOut) {
+    const SSL_SESSION* session, MutableByteRange keyOut) {
 #if FOLLY_OPENSSL_IS_110
   auto size = SSL_SESSION_get_master_key(session, nullptr, 0);
   if (size == keyOut.size()) {
@@ -54,8 +53,7 @@ bool OpenSSLUtils::getTLSMasterKey(
 }
 
 bool OpenSSLUtils::getTLSMasterKey(
-    const std::shared_ptr<SSLSession> session,
-    MutableByteRange keyOut) {
+    const std::shared_ptr<SSLSession> session, MutableByteRange keyOut) {
   auto openSSLSession =
       std::dynamic_pointer_cast<folly::ssl::detail::OpenSSLSession>(session);
   if (openSSLSession) {
@@ -69,8 +67,7 @@ bool OpenSSLUtils::getTLSMasterKey(
 }
 
 bool OpenSSLUtils::getTLSClientRandom(
-    const SSL* ssl,
-    MutableByteRange randomOut) {
+    const SSL* ssl, MutableByteRange randomOut) {
 #if FOLLY_OPENSSL_IS_110
   auto size = SSL_get_client_random(ssl, nullptr, 0);
   if (size == randomOut.size()) {
@@ -84,9 +81,7 @@ bool OpenSSLUtils::getTLSClientRandom(
 }
 
 bool OpenSSLUtils::getPeerAddressFromX509StoreCtx(
-    X509_STORE_CTX* ctx,
-    sockaddr_storage* addrStorage,
-    socklen_t* addrLen) {
+    X509_STORE_CTX* ctx, sockaddr_storage* addrStorage, socklen_t* addrLen) {
   // Grab the ssl idx and then the ssl object so that we can get the peer
   // name to compare against the ips in the subjectAltName
   auto sslIdx = SSL_get_ex_data_X509_STORE_CTX_idx();
@@ -107,9 +102,7 @@ bool OpenSSLUtils::getPeerAddressFromX509StoreCtx(
 }
 
 bool OpenSSLUtils::validatePeerCertNames(
-    X509* cert,
-    const sockaddr* addr,
-    socklen_t /* addrLen */) {
+    X509* cert, const sockaddr* addr, socklen_t /* addrLen */) {
   // Try to extract the names within the SAN extension from the certificate
   auto altNames = reinterpret_cast<STACK_OF(GENERAL_NAME)*>(
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
@@ -257,16 +250,14 @@ BioMethodUniquePtr OpenSSLUtils::newSocketBioMethod() {
 }
 
 bool OpenSSLUtils::setCustomBioReadMethod(
-    BIO_METHOD* bioMeth,
-    int (*meth)(BIO*, char*, int)) {
+    BIO_METHOD* bioMeth, int (*meth)(BIO*, char*, int)) {
   bool ret = false;
   ret = (BIO_meth_set_read(bioMeth, meth) == 1);
   return ret;
 }
 
 bool OpenSSLUtils::setCustomBioWriteMethod(
-    BIO_METHOD* bioMeth,
-    int (*meth)(BIO*, const char*, int)) {
+    BIO_METHOD* bioMeth, int (*meth)(BIO*, const char*, int)) {
   bool ret = false;
   ret = (BIO_meth_set_write(bioMeth, meth) == 1);
   return ret;

@@ -999,8 +999,8 @@ static uint64_t throughtput_test(std::string name, uint64_t initial_size) {
 }
 
 template <class PriorityQueue>
-static void
-accuracy_test(std::string name, uint64_t initial_size, uint32_t top_percent) {
+static void accuracy_test(
+    std::string name, uint64_t initial_size, uint32_t top_percent) {
   int avg = 0;
   int reps = 15;
   int valid = initial_size / top_percent;

@@ -35,9 +35,7 @@ class QuotientMultiSetTest : public ::testing::Test {
   void SetUp() override { rng.seed(folly::randomNumberSeed()); }
 
   void buildAndValidate(
-      std::vector<uint64_t>& keys,
-      uint64_t keyBits,
-      double loadFactor) {
+      std::vector<uint64_t>& keys, uint64_t keyBits, double loadFactor) {
     // Elements must be added in ascending order.
     std::sort(keys.begin(), keys.end());
     folly::QuotientMultiSetBuilder builder(keyBits, keys.size(), loadFactor);

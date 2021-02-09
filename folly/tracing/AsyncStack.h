@@ -205,8 +205,7 @@ void checkAsyncStackFrameIsActive(const folly::AsyncStackFrame& frame) noexcept;
 // This is typically called immediately prior to executing a callback that
 // resumes the async operation represented by 'frame'.
 void activateAsyncStackFrame(
-    folly::AsyncStackRoot& root,
-    folly::AsyncStackFrame& frame) noexcept;
+    folly::AsyncStackRoot& root, folly::AsyncStackFrame& frame) noexcept;
 
 // Deactivate the specified AsyncStackFrame, clearing the current 'topFrame'.
 //
@@ -258,8 +257,7 @@ AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept;
 // on the current thread and setting the specified AsyncStackFrame as
 // the current async frame.
 FOLLY_NOINLINE void resumeCoroutineWithNewAsyncStackRoot(
-    std::experimental::coroutine_handle<> h,
-    AsyncStackFrame& frame) noexcept;
+    std::experimental::coroutine_handle<> h, AsyncStackFrame& frame) noexcept;
 
 // Resume the specified coroutine after installing a new AsyncStackRoot
 // on the current thread and setting the coroutine's associated
@@ -310,12 +308,10 @@ struct AsyncStackFrame {
 
   friend AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept;
   friend void activateAsyncStackFrame(
-      folly::AsyncStackRoot&,
-      folly::AsyncStackFrame&) noexcept;
+      folly::AsyncStackRoot&, folly::AsyncStackFrame&) noexcept;
   friend void deactivateAsyncStackFrame(folly::AsyncStackFrame&) noexcept;
   friend void pushAsyncStackFrameCallerCallee(
-      folly::AsyncStackFrame&,
-      folly::AsyncStackFrame&) noexcept;
+      folly::AsyncStackFrame&, folly::AsyncStackFrame&) noexcept;
   friend void checkAsyncStackFrameIsActive(
       const folly::AsyncStackFrame&) noexcept;
   friend void popAsyncStackFrameCallee(folly::AsyncStackFrame&) noexcept;
@@ -399,12 +395,10 @@ struct AsyncStackRoot {
  private:
   friend class detail::ScopedAsyncStackRoot;
   friend void activateAsyncStackFrame(
-      folly::AsyncStackRoot&,
-      folly::AsyncStackFrame&) noexcept;
+      folly::AsyncStackRoot&, folly::AsyncStackFrame&) noexcept;
   friend void deactivateAsyncStackFrame(folly::AsyncStackFrame&) noexcept;
   friend void pushAsyncStackFrameCallerCallee(
-      folly::AsyncStackFrame&,
-      folly::AsyncStackFrame&) noexcept;
+      folly::AsyncStackFrame&, folly::AsyncStackFrame&) noexcept;
   friend void checkAsyncStackFrameIsActive(
       const folly::AsyncStackFrame&) noexcept;
   friend void popAsyncStackFrameCallee(folly::AsyncStackFrame&) noexcept;

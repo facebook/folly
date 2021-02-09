@@ -504,8 +504,7 @@ class SharedMutexImpl : std::conditional_t<
 
   template <class Rep, class Period>
   bool try_lock_shared_for(
-      const std::chrono::duration<Rep, Period>& duration,
-      Token& token) {
+      const std::chrono::duration<Rep, Period>& duration, Token& token) {
     WaitForDuration<Rep, Period> ctx(duration);
     auto result = lockSharedImpl(&token, ctx);
     annotateTryAcquired(result, annotate_rwlock_level::rdlock);
@@ -705,9 +704,7 @@ class SharedMutexImpl : std::conditional_t<
     bool shouldTimeOut() { return true; }
 
     bool doWait(
-        Futex& /* futex */,
-        uint32_t /* expected */,
-        uint32_t /* waitMask */) {
+        Futex& /* futex */, uint32_t /* expected */, uint32_t /* waitMask */) {
       return false;
     }
   };
@@ -1003,9 +1000,7 @@ class SharedMutexImpl : std::conditional_t<
 
   template <class WaitContext>
   bool lockExclusiveImpl(
-      uint32_t& state,
-      uint32_t preconditionGoalMask,
-      WaitContext& ctx) {
+      uint32_t& state, uint32_t preconditionGoalMask, WaitContext& ctx) {
     while (true) {
       if (UNLIKELY((state & preconditionGoalMask) != 0) &&
           !waitForZeroBits(state, preconditionGoalMask, kWaitingE, ctx) &&
@@ -1071,10 +1066,7 @@ class SharedMutexImpl : std::conditional_t<
 
   template <class WaitContext>
   bool waitForZeroBits(
-      uint32_t& state,
-      uint32_t goal,
-      uint32_t waitMask,
-      WaitContext& ctx) {
+      uint32_t& state, uint32_t goal, uint32_t waitMask, WaitContext& ctx) {
     uint32_t spinCount = 0;
     while (true) {
       state = state_.load(std::memory_order_acquire);
@@ -1092,10 +1084,7 @@ class SharedMutexImpl : std::conditional_t<
 
   template <class WaitContext>
   bool yieldWaitForZeroBits(
-      uint32_t& state,
-      uint32_t goal,
-      uint32_t waitMask,
-      WaitContext& ctx) {
+      uint32_t& state, uint32_t goal, uint32_t waitMask, WaitContext& ctx) {
 #ifdef RUSAGE_THREAD
     struct rusage usage;
     std::memset(&usage, 0, sizeof(usage));
@@ -1133,10 +1122,7 @@ class SharedMutexImpl : std::conditional_t<
 
   template <class WaitContext>
   bool futexWaitForZeroBits(
-      uint32_t& state,
-      uint32_t goal,
-      uint32_t waitMask,
-      WaitContext& ctx) {
+      uint32_t& state, uint32_t goal, uint32_t waitMask, WaitContext& ctx) {
     assert(
         waitMask == kWaitingNotS || waitMask == kWaitingE ||
         waitMask == kWaitingU || waitMask == kWaitingS);

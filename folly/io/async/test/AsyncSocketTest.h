@@ -250,8 +250,8 @@ class TestSendMsgParamsCallback
     queriedData_ = false;
   }
 
-  int getFlagsImpl(folly::WriteFlags flags, int /*defaultFlags*/) noexcept
-      override {
+  int getFlagsImpl(
+      folly::WriteFlags flags, int /*defaultFlags*/) noexcept override {
     queriedFlags_ = true;
     if (writeFlags_ == folly::WriteFlags::NONE) {
       writeFlags_ = flags;
@@ -400,8 +400,7 @@ class TestServer {
   }
 
   std::shared_ptr<folly::AsyncSocket> acceptAsync(
-      folly::EventBase* evb,
-      int timeout = 50) {
+      folly::EventBase* evb, int timeout = 50) {
     auto fd = acceptFD(timeout);
     return folly::AsyncSocket::newSocket(evb, fd);
   }

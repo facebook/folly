@@ -49,8 +49,7 @@ constexpr std::size_t constexpr_strlen_internal(const Char* s, int) noexcept {
 }
 template <typename Char>
 constexpr std::size_t constexpr_strlen_internal(
-    const Char* s,
-    unsigned) noexcept {
+    const Char* s, unsigned) noexcept {
   std::size_t ret = 0;
   while (*s++) {
     ++ret;
@@ -72,13 +71,13 @@ static_assert(
 template <
     typename Char,
     int = FOLLY_DETAIL_STRCMP(static_cast<const Char*>(""), "")>
-constexpr int
-constexpr_strcmp_internal(const Char* s1, const Char* s2, int) noexcept {
+constexpr int constexpr_strcmp_internal(
+    const Char* s1, const Char* s2, int) noexcept {
   return FOLLY_DETAIL_STRCMP(s1, s2);
 }
 template <typename Char>
-constexpr int
-constexpr_strcmp_internal(const Char* s1, const Char* s2, unsigned) noexcept {
+constexpr int constexpr_strcmp_internal(
+    const Char* s1, const Char* s2, unsigned) noexcept {
   while (*s1 && *s1 == *s2) {
     ++s1, ++s2;
   }
@@ -88,8 +87,7 @@ constexpr_strcmp_internal(const Char* s1, const Char* s2, unsigned) noexcept {
 
 template <typename Char>
 constexpr int constexpr_strcmp_fallback(
-    const Char* s1,
-    const Char* s2) noexcept {
+    const Char* s1, const Char* s2) noexcept {
   return constexpr_strcmp_internal(s1, s2, 0u);
 }
 

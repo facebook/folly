@@ -623,8 +623,7 @@ class EventBase : public TimeoutManager,
    */
   template <typename T>
   void runImmediatelyOrRunInEventBaseThreadAndWait(
-      void (*fn)(T*),
-      T* arg) noexcept;
+      void (*fn)(T*), T* arg) noexcept;
 
   /*
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
@@ -742,8 +741,7 @@ class EventBase : public TimeoutManager,
     void reset(double value = 0.0);
 
     void addSample(
-        std::chrono::microseconds total,
-        std::chrono::microseconds busy);
+        std::chrono::microseconds total, std::chrono::microseconds busy);
 
     double get() const {
       // Add the outstanding buffered times linearly, to avoid
@@ -810,13 +808,12 @@ class EventBase : public TimeoutManager,
 
   // TimeoutManager
   void attachTimeoutManager(
-      AsyncTimeout* obj,
-      TimeoutManager::InternalEnum internal) final;
+      AsyncTimeout* obj, TimeoutManager::InternalEnum internal) final;
 
   void detachTimeoutManager(AsyncTimeout* obj) final;
 
-  bool scheduleTimeout(AsyncTimeout* obj, TimeoutManager::timeout_type timeout)
-      final;
+  bool scheduleTimeout(
+      AsyncTimeout* obj, TimeoutManager::timeout_type timeout) final;
 
   void cancelTimeout(AsyncTimeout* obj) final;
 
@@ -968,8 +965,7 @@ void EventBase::runInEventBaseThread(void (*fn)(T*), T* arg) noexcept {
 
 template <typename T>
 void EventBase::runInEventBaseThreadAlwaysEnqueue(
-    void (*fn)(T*),
-    T* arg) noexcept {
+    void (*fn)(T*), T* arg) noexcept {
   return runInEventBaseThreadAlwaysEnqueue([=] { fn(arg); });
 }
 
@@ -980,8 +976,7 @@ void EventBase::runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) noexcept {
 
 template <typename T>
 void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(
-    void (*fn)(T*),
-    T* arg) noexcept {
+    void (*fn)(T*), T* arg) noexcept {
   return runImmediatelyOrRunInEventBaseThreadAndWait([=] { fn(arg); });
 }
 

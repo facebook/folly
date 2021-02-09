@@ -63,8 +63,7 @@ class upgrade_lock {
       : mutex_{&mutex}, owns_{true} {}
   template <typename Rep, typename Period>
   upgrade_lock(
-      mutex_type& mutex,
-      std::chrono::duration<Rep, Period> const& timeout)
+      mutex_type& mutex, std::chrono::duration<Rep, Period> const& timeout)
       : mutex_{&mutex}, owns_{mutex.try_lock_upgrade_for(timeout)} {}
   template <typename Clock, typename Duration>
   upgrade_lock(

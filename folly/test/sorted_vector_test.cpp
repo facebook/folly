@@ -952,9 +952,7 @@ struct test_resource : public memory_resource {
   }
 
   void do_deallocate(
-      void* p,
-      size_t /* bytes */,
-      size_t /* alignment */) noexcept override {
+      void* p, size_t /* bytes */, size_t /* alignment */) noexcept override {
     free(p);
   }
 

@@ -34,8 +34,7 @@ void* asan_region_is_poisoned_(void* ptr, std::size_t len);
 //  or nullptr if there is no such byte. If Address Sanitizer is unavailable,
 //  always returns nullptr.
 FOLLY_ALWAYS_INLINE static void* asan_region_is_poisoned(
-    void* const ptr,
-    std::size_t const len) {
+    void* const ptr, std::size_t const len) {
   return kIsSanitizeAddress //
       ? detail::asan_region_is_poisoned_(ptr, len)
       : nullptr;

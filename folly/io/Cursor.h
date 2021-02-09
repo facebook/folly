@@ -96,8 +96,7 @@ class CursorBase {
 
   template <class OtherDerived, class OtherBuf>
   explicit CursorBase(
-      const CursorBase<OtherDerived, OtherBuf>& cursor,
-      size_t len)
+      const CursorBase<OtherDerived, OtherBuf>& cursor, size_t len)
       : crtBuf_(cursor.crtBuf_),
         buffer_(cursor.buffer_),
         crtBegin_(cursor.crtBegin_),

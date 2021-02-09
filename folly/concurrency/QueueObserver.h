@@ -40,8 +40,7 @@ class QueueObserverFactory {
   virtual std::unique_ptr<QueueObserver> create(int8_t pri) = 0;
 
   static std::unique_ptr<QueueObserverFactory> make(
-      const std::string& context,
-      size_t numPriorities);
+      const std::string& context, size_t numPriorities);
 };
 
 using MakeQueueObserverFactory =

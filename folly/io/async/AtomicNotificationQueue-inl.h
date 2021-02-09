@@ -228,9 +228,7 @@ template <
         invoke_result_t<Consumer, Task&&>,
         AtomicNotificationQueueTaskStatus>::value>>
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
-    Consumer&& consumer,
-    Task&& task,
-    std::shared_ptr<RequestContext>&& rctx) {
+    Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   RequestContextScopeGuard rcsg(std::move(rctx));
   return consumer(std::forward<Task>(task));
 }
@@ -243,9 +241,7 @@ template <
         AtomicNotificationQueueTaskStatus>::value>,
     typename = void>
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
-    Consumer&& consumer,
-    Task&& task,
-    std::shared_ptr<RequestContext>&& rctx) {
+    Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   return consumer(
       std::forward<Task>(task),
       std::forward<std::shared_ptr<RequestContext>>(rctx));
@@ -259,9 +255,7 @@ template <
     typename = void,
     typename = void>
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
-    Consumer&& consumer,
-    Task&& task,
-    std::shared_ptr<RequestContext>&& rctx) {
+    Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   RequestContextScopeGuard rcsg(std::move(rctx));
   consumer(std::forward<Task>(task));
   return AtomicNotificationQueueTaskStatus::CONSUMED;
@@ -277,9 +271,7 @@ template <
     typename = void,
     typename = void>
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
-    Consumer&& consumer,
-    Task&& task,
-    std::shared_ptr<RequestContext>&& rctx) {
+    Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   consumer(
       std::forward<Task>(task),
       std::forward<std::shared_ptr<RequestContext>>(rctx));

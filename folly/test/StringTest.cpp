@@ -989,8 +989,7 @@ ColorError makeConversionError(ColorErrorCode, StringPiece sp) {
 }
 
 Expected<StringPiece, ColorErrorCode> parseTo(
-    StringPiece in,
-    Color& out) noexcept {
+    StringPiece in, Color& out) noexcept {
   if (in == "R") {
     out = Color::Red;
   } else if (in == "B") {

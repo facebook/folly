@@ -70,8 +70,7 @@ class CompressionCoreLocalContextPool {
   using Ref = std::unique_ptr<T, ReturnToPoolDeleter>;
 
   explicit CompressionCoreLocalContextPool(
-      Creator creator = Creator(),
-      Deleter deleter = Deleter())
+      Creator creator = Creator(), Deleter deleter = Deleter())
       : pool_(std::move(creator), std::move(deleter)), caches_() {}
 
   ~CompressionCoreLocalContextPool() {

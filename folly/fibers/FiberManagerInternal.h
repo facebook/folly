@@ -607,13 +607,9 @@ class FiberManager : public ::folly::Executor {
   // find the right stack extents when it needs to poison/unpoison the stack.
 
   void registerStartSwitchStackWithAsan(
-      void** saveFakeStack,
-      const void* stackBase,
-      size_t stackSize);
+      void** saveFakeStack, const void* stackBase, size_t stackSize);
   void registerFinishSwitchStackWithAsan(
-      void* fakeStack,
-      const void** saveStackBase,
-      size_t* saveStackSize);
+      void* fakeStack, const void** saveStackBase, size_t* saveStackSize);
   void freeFakeStack(void* fakeStack);
   void unpoisonFiberStack(const Fiber* fiber);
 

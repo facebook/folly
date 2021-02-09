@@ -57,9 +57,7 @@ void metaDeleter(void* ex) noexcept {
 // trace. To manage the lifetime of the stack trace we override the deleter with
 // our own wrapper.
 void throwCallback(
-    void* ex,
-    std::type_info*,
-    void (**deleter)(void*)) noexcept {
+    void* ex, std::type_info*, void (**deleter)(void*)) noexcept {
   // Make this code reentrant safe in case we throw an exception while
   // handling an exception. Thread local variables are zero initialized.
   static FOLLY_TLS bool handlingThrow;

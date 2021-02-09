@@ -29,9 +29,8 @@ namespace __cxxabiv1 {
 
 extern "C" {
 void __cxa_throw(
-    void* thrownException,
-    std::type_info* type,
-    void (*destructor)(void*)) __attribute__((__noreturn__));
+    void* thrownException, std::type_info* type, void (*destructor)(void*))
+    __attribute__((__noreturn__));
 void* __cxa_begin_catch(void* excObj) throw();
 void __cxa_rethrow(void) __attribute__((__noreturn__));
 void __cxa_end_catch(void);
@@ -98,9 +97,7 @@ DECLARE_CALLBACK(RethrowException)
 namespace __cxxabiv1 {
 
 void __cxa_throw(
-    void* thrownException,
-    std::type_info* type,
-    void (*destructor)(void*)) {
+    void* thrownException, std::type_info* type, void (*destructor)(void*)) {
   static auto orig_cxa_throw =
       reinterpret_cast<decltype(&__cxa_throw)>(dlsym(RTLD_NEXT, "__cxa_throw"));
   getCxaThrowCallbacks().invoke(thrownException, type, &destructor);

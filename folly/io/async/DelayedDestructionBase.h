@@ -227,23 +227,19 @@ inline bool operator!=(
   return left.get() != right.get();
 }
 inline bool operator==(
-    const DelayedDestructionBase::DestructorGuard& left,
-    std::nullptr_t) {
+    const DelayedDestructionBase::DestructorGuard& left, std::nullptr_t) {
   return left.get() == nullptr;
 }
 inline bool operator==(
-    std::nullptr_t,
-    const DelayedDestructionBase::DestructorGuard& right) {
+    std::nullptr_t, const DelayedDestructionBase::DestructorGuard& right) {
   return nullptr == right.get();
 }
 inline bool operator!=(
-    const DelayedDestructionBase::DestructorGuard& left,
-    std::nullptr_t) {
+    const DelayedDestructionBase::DestructorGuard& left, std::nullptr_t) {
   return left.get() != nullptr;
 }
 inline bool operator!=(
-    std::nullptr_t,
-    const DelayedDestructionBase::DestructorGuard& right) {
+    std::nullptr_t, const DelayedDestructionBase::DestructorGuard& right) {
   return nullptr != right.get();
 }
 

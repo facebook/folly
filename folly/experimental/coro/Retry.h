@@ -95,8 +95,7 @@ class RetryImmediatelyWithLimit {
  public:
   template <typename Decider2>
   explicit RetryImmediatelyWithLimit(
-      uint32_t maxRetries,
-      Decider2&& decider) noexcept
+      uint32_t maxRetries, Decider2&& decider) noexcept
       : retriesRemaining_(maxRetries),
         decider_(static_cast<Decider2&&>(decider)) {}
 

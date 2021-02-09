@@ -60,8 +60,7 @@ class shared_ptr_internals {
 
   template <typename T>
   static std::shared_ptr<T> get_shared_ptr_from_counted_base(
-      counted_base* base,
-      bool inc = true);
+      counted_base* base, bool inc = true);
 
  private:
   /* Accessors for private members using explicit template instantiation */
@@ -142,8 +141,7 @@ shared_ptr_internals::get_counted_base(const std::shared_ptr<T>& bar) {
 }
 
 inline void shared_ptr_internals::inc_shared_count(
-    counted_base* base,
-    long count) {
+    counted_base* base, long count) {
   // Check that we don't exceed the maximum number of atomic_shared_ptrs.
   // Consider setting EXTERNAL_COUNT lower if this CHECK is hit.
   FOLLY_SAFE_CHECK(
@@ -154,8 +152,7 @@ inline void shared_ptr_internals::inc_shared_count(
 
 template <typename T>
 inline void shared_ptr_internals::release_shared(
-    counted_base* base,
-    long count) {
+    counted_base* base, long count) {
   // If count == 1, this is equivalent to base->_M_release()
   if (__gnu_cxx::__exchange_and_add_dispatch(
           &(base->*fieldPtr(access_use_count{})), -count) == count) {
@@ -194,8 +191,7 @@ inline T* shared_ptr_internals::release_ptr(std::shared_ptr<T>& p) {
 template <typename T>
 inline std::shared_ptr<T>
 shared_ptr_internals::get_shared_ptr_from_counted_base(
-    counted_base* base,
-    bool inc) {
+    counted_base* base, bool inc) {
   if (!base) {
     return nullptr;
   }

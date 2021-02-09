@@ -38,8 +38,7 @@ std::string getHelperPath() {
 }
 
 std::string callHelper(
-    ProgramOptionsStyle style,
-    std::initializer_list<std::string> args) {
+    ProgramOptionsStyle style, std::initializer_list<std::string> args) {
   static std::string helperPath = getHelperPath();
 
   std::vector<std::string> allArgs;

@@ -60,8 +60,7 @@ constexpr bool is_hashable_byte_v<unsigned char> = true;
 //  We use it to reduce multiple 64 bit hashes into a single hash.
 FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
 constexpr uint64_t hash_128_to_64(
-    const uint64_t upper,
-    const uint64_t lower) noexcept {
+    const uint64_t upper, const uint64_t lower) noexcept {
   // Murmur-inspired hashing.
   const uint64_t kMul = 0x9ddfea08eb382d69ULL;
   uint64_t a = (lower ^ upper) * kMul;
@@ -184,24 +183,21 @@ constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) {
 
 //  fnv32_buf
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint32_t
-fnv32_buf(const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
+constexpr uint32_t fnv32_buf(
+    const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
     hash = fnv32_append_byte(hash, static_cast<uint8_t>(buf[i]));
   }
   return hash;
 }
 inline uint32_t fnv32_buf(
-    const void* buf,
-    size_t n,
-    uint32_t hash = fnv32_hash_start) noexcept {
+    const void* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
   return fnv32_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
 //  fnv32
 constexpr uint32_t fnv32(
-    const char* buf,
-    uint32_t hash = fnv32_hash_start) noexcept {
+    const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
   for (; *buf; ++buf) {
     hash = fnv32_append_byte(hash, static_cast<uint8_t>(*buf));
   }
@@ -210,8 +206,7 @@ constexpr uint32_t fnv32(
 
 //  fnv32
 inline uint32_t fnv32(
-    const std::string& str,
-    uint32_t hash = fnv32_hash_start) noexcept {
+    const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
   return fnv32_buf(str.data(), str.size(), hash);
 }
 
@@ -231,24 +226,21 @@ constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
 
 //  fnv64_buf
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint64_t
-fnv64_buf(const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
+constexpr uint64_t fnv64_buf(
+    const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
     hash = fnv64_append_byte(hash, static_cast<uint8_t>(buf[i]));
   }
   return hash;
 }
 inline uint64_t fnv64_buf(
-    const void* buf,
-    size_t n,
-    uint64_t hash = fnv64_hash_start) noexcept {
+    const void* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
   return fnv64_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
 //  fnv64
 constexpr uint64_t fnv64(
-    const char* buf,
-    uint64_t hash = fnv64_hash_start) noexcept {
+    const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
   for (; *buf; ++buf) {
     hash = fnv64_append_byte(hash, static_cast<uint8_t>(*buf));
   }
@@ -257,8 +249,7 @@ constexpr uint64_t fnv64(
 
 //  fnv64
 inline uint64_t fnv64(
-    const std::string& str,
-    uint64_t hash = fnv64_hash_start) noexcept {
+    const std::string& str, uint64_t hash = fnv64_hash_start) noexcept {
   return fnv64_buf(str.data(), str.size(), hash);
 }
 
@@ -277,24 +268,21 @@ constexpr uint64_t fnva64_append_byte(uint64_t hash, uint8_t c) {
 
 //  fnva64_buf
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint64_t
-fnva64_buf(const C* buf, size_t n, uint64_t hash = fnva64_hash_start) noexcept {
+constexpr uint64_t fnva64_buf(
+    const C* buf, size_t n, uint64_t hash = fnva64_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
     hash = fnva64_append_byte(hash, static_cast<uint8_t>(buf[i]));
   }
   return hash;
 }
 inline uint64_t fnva64_buf(
-    const void* buf,
-    size_t n,
-    uint64_t hash = fnva64_hash_start) noexcept {
+    const void* buf, size_t n, uint64_t hash = fnva64_hash_start) noexcept {
   return fnva64_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
 //  fnva64
 inline uint64_t fnva64(
-    const std::string& str,
-    uint64_t hash = fnva64_hash_start) noexcept {
+    const std::string& str, uint64_t hash = fnva64_hash_start) noexcept {
   return fnva64_buf(str.data(), str.size(), hash);
 }
 
@@ -652,9 +640,7 @@ class StdHasher {
 
 template <class Hash, class Value>
 uint64_t commutative_hash_combine_value_generic(
-    uint64_t seed,
-    Hash const& hasher,
-    Value const& value) {
+    uint64_t seed, Hash const& hasher, Value const& value) {
   auto const x = hasher(value);
   auto const y = IsAvalanchingHasher<Hash, Value>::value ? x : twang_mix64(x);
   // Commutative accumulator taken from this paper:
@@ -670,8 +656,8 @@ uint64_t commutative_hash_combine_value_generic(
 template <
     class Iter,
     class Hash = std::hash<typename std::iterator_traits<Iter>::value_type>>
-uint64_t
-hash_range(Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
+uint64_t hash_range(
+    Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
   for (; begin != end; ++begin) {
     hash = hash_128_to_64(hash, hasher(*begin));
   }
@@ -680,10 +666,7 @@ hash_range(Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
 
 template <class Hash, class Iter>
 uint64_t commutative_hash_combine_range_generic(
-    uint64_t seed,
-    Hash const& hasher,
-    Iter first,
-    Iter last) {
+    uint64_t seed, Hash const& hasher, Iter first, Iter last) {
   while (first != last) {
     seed = commutative_hash_combine_value_generic(seed, hasher, *first++);
   }
@@ -706,9 +689,11 @@ inline size_t hash_combine_generic(const Hasher&) noexcept {
 }
 
 template <class Hasher, typename T, typename... Ts>
-size_t
-hash_combine_generic(const Hasher& h, const T& t, const Ts&... ts) noexcept(
-    noexcept(detail::c_array_size_t{h(t), h(ts)...})) {
+size_t hash_combine_generic(
+    const Hasher& h,
+    const T& t,
+    const Ts&... ts) noexcept(noexcept(detail::c_array_size_t{
+    h(t), h(ts)...})) {
   size_t seed = h(t);
   if (sizeof...(ts) == 0) {
     return seed;
@@ -723,9 +708,7 @@ hash_combine_generic(const Hasher& h, const T& t, const Ts&... ts) noexcept(
 
 template <typename Hash, typename... Value>
 uint64_t commutative_hash_combine_generic(
-    uint64_t seed,
-    Hash const& hasher,
-    Value const&... value) {
+    uint64_t seed, Hash const& hasher, Value const&... value) {
   // variadic foreach:
   uint64_t _[] = {
       0, seed = commutative_hash_combine_value_generic(seed, hasher, value)...};

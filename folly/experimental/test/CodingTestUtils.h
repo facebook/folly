@@ -37,10 +37,7 @@ namespace compression {
 
 template <class URNG>
 std::vector<uint64_t> generateRandomList(
-    size_t n,
-    uint64_t maxId,
-    URNG&& g,
-    bool withDuplicates = false) {
+    size_t n, uint64_t maxId, URNG&& g, bool withDuplicates = false) {
   CHECK_LT(n, 2 * maxId);
   std::uniform_int_distribution<uint64_t> uid(1, maxId);
   std::unordered_set<uint64_t> dataset;
@@ -63,14 +60,14 @@ std::vector<uint64_t> generateRandomList(
   return ids;
 }
 
-inline std::vector<uint64_t>
-generateRandomList(size_t n, uint64_t maxId, bool withDuplicates = false) {
+inline std::vector<uint64_t> generateRandomList(
+    size_t n, uint64_t maxId, bool withDuplicates = false) {
   std::mt19937 gen;
   return generateRandomList(n, maxId, gen, withDuplicates);
 }
 
-inline std::vector<uint64_t>
-generateSeqList(uint64_t minId, uint64_t maxId, uint64_t step = 1) {
+inline std::vector<uint64_t> generateSeqList(
+    uint64_t minId, uint64_t maxId, uint64_t step = 1) {
   CHECK_LE(minId, maxId);
   CHECK_GT(step, 0);
   std::vector<uint64_t> ids;
@@ -147,9 +144,7 @@ void testNext(const std::vector<uint64_t>& data, const List& list) {
 
 template <class Reader, class List>
 void testSkip(
-    const std::vector<uint64_t>& data,
-    const List& list,
-    size_t skipStep) {
+    const std::vector<uint64_t>& data, const List& list, size_t skipStep) {
   CHECK_GT(skipStep, 0);
   Reader reader(list);
 
@@ -183,9 +178,7 @@ void testSkip(const std::vector<uint64_t>& data, const List& list) {
 
 template <class Reader, class List>
 void testSkipTo(
-    const std::vector<uint64_t>& data,
-    const List& list,
-    size_t skipToStep) {
+    const std::vector<uint64_t>& data, const List& list, size_t skipToStep) {
   using ValueType = typename Reader::ValueType;
 
   CHECK_GT(skipToStep, 0);

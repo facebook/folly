@@ -23,8 +23,7 @@ namespace detail {
 
 template <typename BucketT>
 SlidingWindow<BucketT>::SlidingWindow(
-    Function<BucketT(void)> fn,
-    size_t numBuckets)
+    Function<BucketT(void)> fn, size_t numBuckets)
     : fn_(std::move(fn)), curHead_(0) {
   buckets_.reserve(numBuckets);
   for (size_t i = 0; i < numBuckets; ++i) {

@@ -30,8 +30,7 @@
 
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_pre_hook(uint64_t* call_time);
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
-    uint64_t call_time,
-    int ret);
+    uint64_t call_time, int ret);
 
 namespace {
 struct SignalRegistry {
@@ -273,8 +272,7 @@ static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 
 namespace folly {
 IoUringBackend::TimerEntry::TimerEntry(
-    Event* event,
-    const struct timeval& timeout)
+    Event* event, const struct timeval& timeout)
     : event_(event) {
   setExpireTime(timeout, std::chrono::steady_clock::now());
 }
@@ -597,8 +595,7 @@ void IoUringBackend::scheduleTimeout(const std::chrono::microseconds& us) {
 }
 
 void IoUringBackend::addTimerEvent(
-    Event& event,
-    const struct timeval* timeout) {
+    Event& event, const struct timeval* timeout) {
   // first try to remove if already existing
   auto iter1 = eventToTimers_.find(&event);
   if (iter1 != eventToTimers_.end()) {
@@ -1151,8 +1148,7 @@ int IoUringBackend::submitBusyCheck(int num, WaitForEventsMode waitForEvents) {
 }
 
 size_t IoUringBackend::submitList(
-    IoSqeList& ioSqes,
-    WaitForEventsMode waitForEvents) {
+    IoSqeList& ioSqes, WaitForEventsMode waitForEvents) {
   int i = 0;
   size_t ret = 0;
 
@@ -1183,11 +1179,7 @@ size_t IoUringBackend::submitList(
 }
 
 void IoUringBackend::queueRead(
-    int fd,
-    void* buf,
-    unsigned int nbytes,
-    off_t offset,
-    FileOpCallback&& cb) {
+    int fd, void* buf, unsigned int nbytes, off_t offset, FileOpCallback&& cb) {
   struct iovec iov {
     buf, nbytes
   };

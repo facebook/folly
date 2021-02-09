@@ -305,10 +305,9 @@ static std::unordered_map<std::string, std::string> fakeSysfsTree = {
 
 /// This is the expected CacheLocality structure for fakeSysfsTree
 static const CacheLocality nonUniformExampleLocality = {
-    32,
-    {16, 16, 2},
-    {0,  2, 4, 6, 8, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28,
-     30, 1, 3, 5, 7, 9,  13, 15, 17, 19, 21, 23, 25, 27, 29, 31}};
+    32, {16, 16, 2}, {0,  2,  4,  6,  8,  10, 11, 12, 14, 16, 18,
+                      20, 22, 24, 26, 28, 30, 1,  3,  5,  7,  9,
+                      13, 15, 17, 19, 21, 23, 25, 27, 29, 31}};
 
 TEST(CacheLocality, FakeSysfs) {
   auto parsed = CacheLocality::readFromSysfsTree([](std::string name) {
@@ -959,11 +958,10 @@ static const std::vector<std::string> fakeProcCpuinfo = {
 
 /// This is the expected CacheLocality structure for fakeProcCpuinfo
 static const CacheLocality fakeProcCpuinfoLocality = {
-    56,
-    {28, 28, 2},
-    {0,  2,  4,  6,  8,  10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36,
-     38, 40, 42, 44, 46, 48, 50, 52, 54, 1,  3,  5,  7,  9,  11, 13, 15, 17, 19,
-     21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55}};
+    56, {28, 28, 2}, {0,  2,  4,  6,  8,  10, 12, 14, 16, 18, 20, 22, 24, 26,
+                      28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54,
+                      1,  3,  5,  7,  9,  11, 13, 15, 17, 19, 21, 23, 25, 27,
+                      29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55}};
 
 TEST(CacheLocality, ProcCpu) {
   auto parsed = CacheLocality::readFromProcCpuinfoLines(fakeProcCpuinfo);

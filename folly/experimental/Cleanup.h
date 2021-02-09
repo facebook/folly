@@ -63,8 +63,7 @@ using is_cleanup = std::bool_constant<is_cleanup_v<T>>;
 //
 template <typename T>
 folly::SemiFuture<T> ensureCleanupAfterTask(
-    folly::SemiFuture<T> task,
-    folly::SemiFuture<folly::Unit> cleanup) {
+    folly::SemiFuture<T> task, folly::SemiFuture<folly::Unit> cleanup) {
   return folly::makeSemiFuture()
       .deferValue([task_ = std::move(task)](folly::Unit) mutable {
         return std::move(task_);

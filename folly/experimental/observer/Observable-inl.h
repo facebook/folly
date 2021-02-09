@@ -104,8 +104,7 @@ class ObserverCreator<Observable, Traits>::ContextPrimaryPtr {
   explicit ContextPrimaryPtr(std::shared_ptr<Context> context)
       : contextPrimary_(std::move(context)),
         context_(
-            contextPrimary_.get(),
-            [destroyBaton = destroyBaton_](Context*) {
+            contextPrimary_.get(), [destroyBaton = destroyBaton_](Context*) {
               destroyBaton->post();
             }) {}
   ~ContextPrimaryPtr() {

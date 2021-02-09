@@ -54,7 +54,6 @@ namespace folly {
 class GlogStyleFormatter : public LogFormatter {
  public:
   std::string formatMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) override;
+      const LogMessage& message, const LogCategory* handlerCategory) override;
 };
 } // namespace folly

@@ -130,8 +130,8 @@ class OpenSSLHash {
     HmacCtxUniquePtr ctx_{nullptr};
   };
 
-  static void
-  hmac(MutableByteRange out, const EVP_MD* md, ByteRange key, ByteRange data) {
+  static void hmac(
+      MutableByteRange out, const EVP_MD* md, ByteRange key, ByteRange data) {
     Hmac hmac;
     hmac.hash_init(md, key);
     hmac.hash_update(data);
@@ -150,15 +150,15 @@ class OpenSSLHash {
   static void hmac_sha1(MutableByteRange out, ByteRange key, ByteRange data) {
     hmac(out, EVP_sha1(), key, data);
   }
-  static void
-  hmac_sha1(MutableByteRange out, ByteRange key, const IOBuf& data) {
+  static void hmac_sha1(
+      MutableByteRange out, ByteRange key, const IOBuf& data) {
     hmac(out, EVP_sha1(), key, data);
   }
   static void hmac_sha256(MutableByteRange out, ByteRange key, ByteRange data) {
     hmac(out, EVP_sha256(), key, data);
   }
-  static void
-  hmac_sha256(MutableByteRange out, ByteRange key, const IOBuf& data) {
+  static void hmac_sha256(
+      MutableByteRange out, ByteRange key, const IOBuf& data) {
     hmac(out, EVP_sha256(), key, data);
   }
 
@@ -170,8 +170,7 @@ class OpenSSLHash {
     check_out_size_throw(size, out);
   }
   [[noreturn]] static void check_out_size_throw(
-      size_t size,
-      MutableByteRange out);
+      size_t size, MutableByteRange out);
 
   static inline void check_libssl_result(int expected, int result) {
     if (LIKELY(result == expected)) {

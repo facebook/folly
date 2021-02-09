@@ -25,9 +25,7 @@ struct DefaultBackendProvider {
 };
 
 INSTANTIATE_TYPED_TEST_CASE_P(
-    AsyncSignalHandlerTest,
-    AsyncSignalHandlerTest,
-    DefaultBackendProvider);
+    AsyncSignalHandlerTest, AsyncSignalHandlerTest, DefaultBackendProvider);
 
 TEST(AsyncSignalHandler, destructionOrder) {
   auto evb = std::make_unique<EventBase>();

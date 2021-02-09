@@ -52,8 +52,7 @@ template <class BaseIter>
 class BitIterator;
 template <class BaseIter>
 BitIterator<BaseIter> findFirstSet(
-    BitIterator<BaseIter>,
-    BitIterator<BaseIter>);
+    BitIterator<BaseIter>, BitIterator<BaseIter>);
 /**
  * Wrapper around an iterator over an integer type that iterates
  * over its underlying bits in LSb to MSb order.
@@ -166,8 +165,7 @@ BitIterator<BaseIter> makeBitIterator(const BaseIter& iter) {
  */
 template <class BaseIter>
 BitIterator<BaseIter> findFirstSet(
-    BitIterator<BaseIter> begin,
-    BitIterator<BaseIter> end) {
+    BitIterator<BaseIter> begin, BitIterator<BaseIter> end) {
   // shortcut to avoid ugly static_cast<>
   static const typename std::iterator_traits<BaseIter>::value_type one = 1;
 

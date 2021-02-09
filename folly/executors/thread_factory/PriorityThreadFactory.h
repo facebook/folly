@@ -39,8 +39,7 @@ namespace folly {
 class PriorityThreadFactory : public ThreadFactory {
  public:
   explicit PriorityThreadFactory(
-      std::shared_ptr<ThreadFactory> factory,
-      int priority)
+      std::shared_ptr<ThreadFactory> factory, int priority)
       : factory_(std::move(factory)), priority_(priority) {}
 
   std::thread newThread(Func&& func) override {

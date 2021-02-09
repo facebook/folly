@@ -338,8 +338,8 @@ class InterruptHandlerImpl : public InterruptHandler {
 class CoreBase {
  protected:
   using Context = std::shared_ptr<RequestContext>;
-  using Callback = folly::Function<
-      void(CoreBase&, Executor::KeepAlive<>&&, exception_wrapper* ew)>;
+  using Callback = folly::Function<void(
+      CoreBase&, Executor::KeepAlive<>&&, exception_wrapper* ew)>;
 
  public:
   // not copyable

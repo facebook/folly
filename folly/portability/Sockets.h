@@ -84,11 +84,7 @@ ssize_t sendto(
     socklen_t tolen);
 ssize_t sendmsg(int socket, const struct msghdr* message, int flags);
 int setsockopt(
-    int s,
-    int level,
-    int optname,
-    const void* optval,
-    socklen_t optlen);
+    int s, int level, int optname, const void* optval, socklen_t optlen);
 int shutdown(int s, int how);
 
 // This is the only function that _must_ be referenced via the namespace
@@ -134,11 +130,7 @@ ssize_t sendto(
     const sockaddr* to,
     socklen_t tolen);
 int setsockopt(
-    int s,
-    int level,
-    int optname,
-    const char* optval,
-    socklen_t optlen);
+    int s, int level, int optname, const char* optval, socklen_t optlen);
 #endif
 } // namespace sockets
 } // namespace portability

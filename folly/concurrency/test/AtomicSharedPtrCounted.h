@@ -134,8 +134,7 @@ class counted_ptr_internals : public counted_ptr_base<Atom> {
 
   template <typename T>
   static counted_ptr<T, Atom> get_shared_ptr_from_counted_base(
-      counted_base* base,
-      bool inc = true) {
+      counted_base* base, bool inc = true) {
     auto res = counted_ptr<T, Atom>(counted_shared_tag(), (T*)(base));
     if (!inc) {
       release_shared<T>(base, 1);

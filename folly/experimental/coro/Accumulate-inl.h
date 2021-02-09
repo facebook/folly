@@ -21,8 +21,7 @@ namespace coro {
 
 template <typename Reference, typename Value, typename Output>
 Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator,
-    Output init) {
+    AsyncGenerator<Reference, Value> generator, Output init) {
   return accumulate(std::move(generator), std::move(init), std::plus{});
 }
 
@@ -32,9 +31,7 @@ template <
     typename Output,
     typename BinaryOp>
 Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator,
-    Output init,
-    BinaryOp op) {
+    AsyncGenerator<Reference, Value> generator, Output init, BinaryOp op) {
   while (auto next = co_await generator.next()) {
     init = op(std::move(init), std::move(next).value());
   }

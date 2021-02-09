@@ -151,8 +151,7 @@ class QuotientMultiSet final {
   }
 
   FOLLY_ALWAYS_INLINE std::pair<uint64_t, const Block*> findRunend(
-      uint64_t occupiedRank,
-      uint64_t startPos) const;
+      uint64_t occupiedRank, uint64_t startPos) const;
 
   const Metadata* metadata_;
   const char* data_;

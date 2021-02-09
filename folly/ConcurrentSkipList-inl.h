@@ -59,8 +59,8 @@ class SkipListNode {
       typename U,
       typename =
           typename std::enable_if<std::is_convertible<U, T>::value>::type>
-  static SkipListNode*
-  create(NodeAlloc& alloc, int height, U&& data, bool isHead = false) {
+  static SkipListNode* create(
+      NodeAlloc& alloc, int height, U&& data, bool isHead = false) {
     DCHECK(height >= 1 && height < 64) << height;
 
     size_t size =

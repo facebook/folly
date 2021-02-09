@@ -128,8 +128,7 @@ class Barrier {
 
    private:
     friend Awaiter tag_invoke(
-        cpo_t<co_withAsyncStack>,
-        Awaiter&& awaiter) noexcept {
+        cpo_t<co_withAsyncStack>, Awaiter&& awaiter) noexcept {
       return Awaiter{awaiter.barrier_};
     }
 

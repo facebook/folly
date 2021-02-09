@@ -325,8 +325,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   virtual void writePing(
-      const std::vector<std::unique_ptr<folly::IOBuf>>& vec,
-      const int* gso) {
+      const std::vector<std::unique_ptr<folly::IOBuf>>& vec, const int* gso) {
     socket_->writemGSO(
         folly::range(&server_, &server_ + 1), vec.data(), vec.size(), gso);
   }

@@ -262,9 +262,7 @@ int SSLContext::getVerificationMode() {
 }
 
 void SSLContext::authenticate(
-    bool checkPeerCert,
-    bool checkPeerName,
-    const std::string& peerName) {
+    bool checkPeerCert, bool checkPeerName, const std::string& peerName) {
   int mode;
   if (checkPeerCert) {
     mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT |
@@ -386,8 +384,7 @@ void SSLContext::loadPrivateKeyFromBufferPEM(folly::StringPiece pkey) {
 }
 
 void SSLContext::loadCertKeyPairFromBufferPEM(
-    folly::StringPiece cert,
-    folly::StringPiece pkey) {
+    folly::StringPiece cert, folly::StringPiece pkey) {
   loadCertificateFromBufferPEM(cert);
   loadPrivateKeyFromBufferPEM(pkey);
   if (!isCertKeyPairValid()) {

@@ -61,9 +61,7 @@ Optional<SettingMetadata> getSettingsMeta(StringPiece settingName) {
 }
 
 bool Snapshot::setFromString(
-    StringPiece settingName,
-    StringPiece newValue,
-    StringPiece reason) {
+    StringPiece settingName, StringPiece newValue, StringPiece reason) {
   auto mapPtr = detail::settingsMap().rlock();
   auto it = mapPtr->find(settingName.str());
   if (it == mapPtr->end()) {

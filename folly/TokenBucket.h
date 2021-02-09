@@ -345,9 +345,7 @@ class BasicTokenBucket {
    *                 bucket is "full" after construction.
    */
   BasicTokenBucket(
-      double genRate,
-      double burstSize,
-      double zeroTime = 0) noexcept
+      double genRate, double burstSize, double zeroTime = 0) noexcept
       : tokenBucket_(zeroTime), rate_(genRate), burstSize_(burstSize) {
     assert(rate_ > 0);
     assert(burstSize_ > 0);
@@ -443,8 +441,7 @@ class BasicTokenBucket {
    * @return number of tokens that were consumed.
    */
   double consumeOrDrain(
-      double toConsume,
-      double nowInSeconds = defaultClockNow()) {
+      double toConsume, double nowInSeconds = defaultClockNow()) {
     return tokenBucket_.consumeOrDrain(
         toConsume, rate_, burstSize_, nowInSeconds);
   }
@@ -461,8 +458,7 @@ class BasicTokenBucket {
    * be compatible with the bucket configuration.
    */
   Optional<double> consumeWithBorrowNonBlocking(
-      double toConsume,
-      double nowInSeconds = defaultClockNow()) {
+      double toConsume, double nowInSeconds = defaultClockNow()) {
     return tokenBucket_.consumeWithBorrowNonBlocking(
         toConsume, rate_, burstSize_, nowInSeconds);
   }
@@ -471,8 +467,7 @@ class BasicTokenBucket {
    * Reserve tokens. Blocks if need be until reservation is satisfied.
    */
   bool consumeWithBorrowAndWait(
-      double toConsume,
-      double nowInSeconds = defaultClockNow()) {
+      double toConsume, double nowInSeconds = defaultClockNow()) {
     return tokenBucket_.consumeWithBorrowAndWait(
         toConsume, rate_, burstSize_, nowInSeconds);
   }

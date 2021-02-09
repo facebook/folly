@@ -367,8 +367,8 @@ class atomic_shared_ptr {
     return newlocal;
   }
 
-  void putOwnedBase(BasePtr* p, unsigned int count, std::memory_order mo)
-      const noexcept {
+  void putOwnedBase(
+      BasePtr* p, unsigned int count, std::memory_order mo) const noexcept {
     PackedPtr local = ptr_.load(std::memory_order_acquire);
     while (true) {
       if (local.get() != p) {

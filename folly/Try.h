@@ -51,8 +51,7 @@ class FOLLY_EXPORT UsingUninitializedTry : public TryException {
 template <class T>
 class Try {
   static_assert(
-      !std::is_reference<T>::value,
-      "Try may not be used with reference types");
+      !std::is_reference<T>::value, "Try may not be used with reference types");
 
   enum class Contains {
     VALUE,

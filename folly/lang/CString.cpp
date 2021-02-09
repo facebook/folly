@@ -90,8 +90,8 @@ void const* memrchr(void const* s, int c, std::size_t len) noexcept {
   return invoke_memrchr<void const*, int, std::size_t>(s, c, len);
 }
 
-std::size_t
-strlcpy(char* const dest, char const* const src, std::size_t const size) {
+std::size_t strlcpy(
+    char* const dest, char const* const src, std::size_t const size) {
   std::size_t const len = std::strlen(src);
   if (size != 0) {
     std::size_t const n = std::min(len, size - 1); // always null terminate!

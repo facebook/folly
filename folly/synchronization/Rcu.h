@@ -476,8 +476,7 @@ using rcu_reader = rcu_reader_domain<RcuTag>;
 
 template <typename Tag = RcuTag>
 inline void swap(
-    rcu_reader_domain<Tag>& a,
-    rcu_reader_domain<Tag>& b) noexcept {
+    rcu_reader_domain<Tag>& a, rcu_reader_domain<Tag>& b) noexcept {
   a.swap(b);
 }
 
@@ -520,9 +519,7 @@ template <
     typename D = std::default_delete<T>,
     typename Tag = RcuTag>
 void rcu_retire(
-    T* p,
-    D d = {},
-    rcu_domain<Tag>* domain = rcu_default_domain()) {
+    T* p, D d = {}, rcu_domain<Tag>* domain = rcu_default_domain()) {
   domain->call([p, del = std::move(d)]() { del(p); });
 }
 

@@ -132,9 +132,7 @@ void appendToString(std::string& result, const Arg& arg) {
  */
 template <typename Arg1, typename... Args>
 void appendToString(
-    std::string& result,
-    const Arg1& arg1,
-    const Args&... remainder) {
+    std::string& result, const Arg1& arg1, const Args&... remainder) {
   ::folly::logging::detail::appendObjectToString(result, &arg1, 0);
   result.append(", ");
   ::folly::logging::appendToString(result, remainder...);

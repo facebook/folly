@@ -139,9 +139,7 @@ class EventBaseEvent {
   }
 
   void eb_signal_set(
-      int signum,
-      void (*callback)(libevent_fd_t, short, void*),
-      void* arg) {
+      int signum, void (*callback)(libevent_fd_t, short, void*), void* arg) {
     event_set(&event_, signum, EV_SIGNAL | EV_PERSIST, callback, arg);
   }
 

@@ -103,8 +103,7 @@ Async<async_invocable_inner_type_t<F>> executeOnNewFiber(F&& func) {
  */
 template <typename F>
 Async<async_invocable_inner_type_t<F>> executeOnRemoteFiber(
-    F&& func,
-    FiberManager& fm) {
+    F&& func, FiberManager& fm) {
   DCHECK(detail::onFiber());
   return futureWait(addFiberRemoteFuture(std::forward<F>(func), fm));
 }

@@ -212,28 +212,28 @@ TEST(Bits, MultiBitUnaligned64) {
 
 namespace {
 template <bool aligned, class T>
-typename std::enable_if<!aligned>::type
-testSet(uint8_t* buf, size_t start, size_t bits, T value) {
+typename std::enable_if<!aligned>::type testSet(
+    uint8_t* buf, size_t start, size_t bits, T value) {
   Bits<Unaligned<T>>::set(
       reinterpret_cast<Unaligned<T>*>(buf), start, bits, value);
 }
 
 template <bool aligned, class T>
-typename std::enable_if<aligned>::type
-testSet(uint8_t* buf, size_t start, size_t bits, T value) {
+typename std::enable_if<aligned>::type testSet(
+    uint8_t* buf, size_t start, size_t bits, T value) {
   Bits<T>::set(reinterpret_cast<T*>(buf), start, bits, value);
 }
 
 template <bool aligned, class T>
-typename std::enable_if<!aligned, T>::type
-testGet(uint8_t* buf, size_t start, size_t bits) {
+typename std::enable_if<!aligned, T>::type testGet(
+    uint8_t* buf, size_t start, size_t bits) {
   return Bits<Unaligned<T>>::get(
       reinterpret_cast<Unaligned<T>*>(buf), start, bits);
 }
 
 template <bool aligned, class T>
-typename std::enable_if<aligned, T>::type
-testGet(uint8_t* buf, size_t start, size_t bits) {
+typename std::enable_if<aligned, T>::type testGet(
+    uint8_t* buf, size_t start, size_t bits) {
   return Bits<T>::get(reinterpret_cast<T*>(buf), start, bits);
 }
 

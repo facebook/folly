@@ -239,8 +239,7 @@ struct PolyExtends : virtual I... {
 template <std::size_t N, typename This, typename... As>
 auto poly_call(This&& _this, As&&... as)
     -> decltype(detail::PolyAccess::call<N>(
-        static_cast<This&&>(_this),
-        static_cast<As&&>(as)...)) {
+        static_cast<This&&>(_this), static_cast<As&&>(as)...)) {
   return detail::PolyAccess::call<N>(
       static_cast<This&&>(_this), static_cast<As&&>(as)...);
 }
@@ -277,8 +276,7 @@ template <
     typename... As,
     std::enable_if_t<detail::IsPoly<Poly>::value, int> = 0>
 auto poly_call(Poly&& _this, As&&... as) -> decltype(poly_call<N, I>(
-    static_cast<Poly&&>(_this).get(),
-    static_cast<As&&>(as)...)) {
+    static_cast<Poly&&>(_this).get(), static_cast<As&&>(as)...)) {
   return poly_call<N, I>(
       static_cast<Poly&&>(_this).get(), static_cast<As&&>(as)...);
 }

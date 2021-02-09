@@ -71,28 +71,21 @@ TEST(ConstexprTest, constexpr_strcmp_ints) {
 }
 
 static_assert(
-    constexpr_strcmp("abc", "abc") == 0,
-    "constexpr_strcmp is broken");
+    constexpr_strcmp("abc", "abc") == 0, "constexpr_strcmp is broken");
 static_assert(constexpr_strcmp("", "") == 0, "constexpr_strcmp is broken");
 static_assert(constexpr_strcmp("abc", "def") < 0, "constexpr_strcmp is broken");
 static_assert(constexpr_strcmp("xyz", "abc") > 0, "constexpr_strcmp is broken");
 static_assert(constexpr_strcmp("a", "abc") < 0, "constexpr_strcmp is broken");
 static_assert(constexpr_strcmp("abc", "a") > 0, "constexpr_strcmp is broken");
 static_assert(
-    constexpr_strcmp_fallback("abc", "abc") == 0,
-    "constexpr_strcmp is broken");
+    constexpr_strcmp_fallback("abc", "abc") == 0, "constexpr_strcmp is broken");
 static_assert(
-    constexpr_strcmp_fallback("", "") == 0,
-    "constexpr_strcmp is broken");
+    constexpr_strcmp_fallback("", "") == 0, "constexpr_strcmp is broken");
 static_assert(
-    constexpr_strcmp_fallback("abc", "def") < 0,
-    "constexpr_strcmp is broken");
+    constexpr_strcmp_fallback("abc", "def") < 0, "constexpr_strcmp is broken");
 static_assert(
-    constexpr_strcmp_fallback("xyz", "abc") > 0,
-    "constexpr_strcmp is broken");
+    constexpr_strcmp_fallback("xyz", "abc") > 0, "constexpr_strcmp is broken");
 static_assert(
-    constexpr_strcmp_fallback("a", "abc") < 0,
-    "constexpr_strcmp is broken");
+    constexpr_strcmp_fallback("a", "abc") < 0, "constexpr_strcmp is broken");
 static_assert(
-    constexpr_strcmp_fallback("abc", "a") > 0,
-    "constexpr_strcmp is broken");
+    constexpr_strcmp_fallback("abc", "a") > 0, "constexpr_strcmp is broken");

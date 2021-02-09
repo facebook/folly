@@ -242,8 +242,7 @@ class EDFThreadPoolExecutor::TaskQueue {
 };
 
 EDFThreadPoolExecutor::EDFThreadPoolExecutor(
-    std::size_t numThreads,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    std::size_t numThreads, std::shared_ptr<ThreadFactory> threadFactory)
     : ThreadPoolExecutor(numThreads, numThreads, std::move(threadFactory)),
       taskQueue_(std::make_unique<TaskQueue>()) {
   setNumThreads(numThreads);
@@ -299,8 +298,7 @@ folly::Executor::KeepAlive<> EDFThreadPoolExecutor::deadlineExecutor(
   class DeadlineExecutor : public folly::Executor {
    public:
     static KeepAlive<> create(
-        uint64_t deadline,
-        KeepAlive<EDFThreadPoolExecutor> executor) {
+        uint64_t deadline, KeepAlive<EDFThreadPoolExecutor> executor) {
       return makeKeepAlive(new DeadlineExecutor(deadline, std::move(executor)));
     }
 
@@ -326,8 +324,7 @@ folly::Executor::KeepAlive<> EDFThreadPoolExecutor::deadlineExecutor(
 
    private:
     DeadlineExecutor(
-        uint64_t deadline,
-        KeepAlive<EDFThreadPoolExecutor> executor)
+        uint64_t deadline, KeepAlive<EDFThreadPoolExecutor> executor)
         : deadline_(deadline), executor_(std::move(executor)) {}
 
     std::atomic<size_t> keepAliveCount_{1};

@@ -276,10 +276,7 @@ TEST(StringGen, EachToPair) {
 }
 
 void checkResplitMaxLength(
-    vector<string> ins,
-    char delim,
-    uint64_t maxLength,
-    vector<string> outs) {
+    vector<string> ins, char delim, uint64_t maxLength, vector<string> outs) {
   vector<std::string> pieces;
   auto splitter = streamSplitter(
       delim,

@@ -25,8 +25,7 @@ make_queue_observer_factory_fallback(const std::string&, size_t) noexcept {
 
 namespace folly {
 /* static */ std::unique_ptr<QueueObserverFactory> QueueObserverFactory::make(
-    const std::string& context,
-    size_t numPriorities) {
+    const std::string& context, size_t numPriorities) {
   auto f = make_queue_observer_factory ? make_queue_observer_factory
                                        : make_queue_observer_factory_fallback;
   return f(context, numPriorities);

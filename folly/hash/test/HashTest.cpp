@@ -729,20 +729,16 @@ static_assert(
     "");
 static_assert(!folly::IsAvalanchingHasher<std::hash<float>, float>::value, "");
 static_assert(
-    !folly::IsAvalanchingHasher<std::hash<double>, double>::value,
-    "");
+    !folly::IsAvalanchingHasher<std::hash<double>, double>::value, "");
 static_assert(
     !folly::IsAvalanchingHasher<std::hash<long double>, long double>::value,
     "");
 static_assert(
-    folly::IsAvalanchingHasher<std::hash<std::string>, std::string>::value,
-    "");
+    folly::IsAvalanchingHasher<std::hash<std::string>, std::string>::value, "");
 static_assert(
-    !folly::IsAvalanchingHasher<std::hash<TestEnum>, TestEnum>::value,
-    "");
+    !folly::IsAvalanchingHasher<std::hash<TestEnum>, TestEnum>::value, "");
 static_assert(
-    !folly::IsAvalanchingHasher<std::hash<TestStruct>, TestStruct>::value,
-    "");
+    !folly::IsAvalanchingHasher<std::hash<TestStruct>, TestStruct>::value, "");
 
 static_assert(
     !folly::IsAvalanchingHasher<folly::transparent<std::hash<int>>, int>::value,
@@ -780,32 +776,24 @@ static_assert(
     "");
 
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::Hash, uint8_t>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::Hash, uint8_t>::value, "");
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::Hash, char>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::Hash, char>::value, "");
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::Hash, uint16_t>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::Hash, uint16_t>::value, "");
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::Hash, int16_t>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::Hash, int16_t>::value, "");
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::Hash, uint32_t>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::Hash, uint32_t>::value, "");
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::Hash, int32_t>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::Hash, int32_t>::value, "");
 static_assert(folly::IsAvalanchingHasher<folly::Hash, uint64_t>::value, "");
 static_assert(folly::IsAvalanchingHasher<folly::Hash, int64_t>::value, "");
 static_assert(
-    folly::IsAvalanchingHasher<folly::Hash, folly::StringPiece>::value,
-    "");
+    folly::IsAvalanchingHasher<folly::Hash, folly::StringPiece>::value, "");
 static_assert(folly::IsAvalanchingHasher<folly::Hash, std::string>::value, "");
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::Hash, TestEnum>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::Hash, TestEnum>::value, "");
 static_assert(folly::IsAvalanchingHasher<folly::Hash, TestBigEnum>::value, "");
 
 static_assert(
@@ -813,8 +801,7 @@ static_assert(
         folly::IsAvalanchingHasher<folly::hasher<uint8_t>, uint8_t>::value,
     "");
 static_assert(
-    k32Bit == folly::IsAvalanchingHasher<folly::hasher<char>, char>::value,
-    "");
+    k32Bit == folly::IsAvalanchingHasher<folly::hasher<char>, char>::value, "");
 static_assert(
     k32Bit ==
         folly::IsAvalanchingHasher<folly::hasher<uint16_t>, uint16_t>::value,
@@ -832,17 +819,13 @@ static_assert(
         folly::IsAvalanchingHasher<folly::hasher<int32_t>, int32_t>::value,
     "");
 static_assert(
-    folly::IsAvalanchingHasher<folly::hasher<uint64_t>, uint64_t>::value,
-    "");
+    folly::IsAvalanchingHasher<folly::hasher<uint64_t>, uint64_t>::value, "");
 static_assert(
-    folly::IsAvalanchingHasher<folly::hasher<int64_t>, int64_t>::value,
-    "");
+    folly::IsAvalanchingHasher<folly::hasher<int64_t>, int64_t>::value, "");
 static_assert(
-    folly::IsAvalanchingHasher<folly::hasher<float>, float>::value,
-    "");
+    folly::IsAvalanchingHasher<folly::hasher<float>, float>::value, "");
 static_assert(
-    folly::IsAvalanchingHasher<folly::hasher<double>, double>::value,
-    "");
+    folly::IsAvalanchingHasher<folly::hasher<double>, double>::value, "");
 static_assert(
     folly::IsAvalanchingHasher<folly::hasher<std::string>, std::string>::value,
     "");

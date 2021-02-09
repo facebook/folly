@@ -37,8 +37,7 @@ class IntervalRateLimiter {
   using clock = chrono::coarse_steady_clock;
 
   constexpr IntervalRateLimiter(
-      uint64_t maxPerInterval,
-      clock::duration interval)
+      uint64_t maxPerInterval, clock::duration interval)
       : maxPerInterval_{maxPerInterval}, interval_{interval} {}
 
   bool check() {

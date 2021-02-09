@@ -104,8 +104,7 @@ class TestSSLServer {
   // Create a TestSSLServer.
   // This immediately starts listening on the given port.
   explicit TestSSLServer(
-      SSLServerAcceptCallbackBase* acb,
-      bool enableTFO = false);
+      SSLServerAcceptCallbackBase* acb, bool enableTFO = false);
   explicit TestSSLServer(
       SSLServerAcceptCallbackBase* acb,
       std::shared_ptr<SSLContext> ctx,

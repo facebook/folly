@@ -194,8 +194,7 @@ struct StdNodeReplica<
 
 template <class Container, class Predicate>
 typename Container::size_type erase_if_impl(
-    Container& c,
-    Predicate& predicate) {
+    Container& c, Predicate& predicate) {
   auto const old_size = c.size();
   for (auto i = c.begin(), last = c.end(); i != last;) {
     auto prev = i++;
@@ -628,8 +627,7 @@ class PackedChunkItemPtr<T*> {
   static constexpr uintptr_t kIndexMask = (uintptr_t{1} << kIndexBits) - 1;
 
   static constexpr uintptr_t kAlignBits = constexpr_min(
-      uintptr_t{4},
-      constexpr_find_first_set(uintptr_t{sizeof(T)}) - 1);
+      uintptr_t{4}, constexpr_find_first_set(uintptr_t{sizeof(T)}) - 1);
 
   static constexpr uintptr_t kAlignMask = (uintptr_t{1} << kAlignBits) - 1;
 
@@ -1091,8 +1089,7 @@ class F14Table : public Policy {
   //////// memory management helpers
 
   static std::size_t computeCapacity(
-      std::size_t chunkCount,
-      std::size_t scale) {
+      std::size_t chunkCount, std::size_t scale) {
     FOLLY_SAFE_DCHECK(!(chunkCount > 1 && scale == 0), "");
     FOLLY_SAFE_DCHECK(
         scale < (std::size_t{1} << Chunk::kCapacityScaleBits), "");
@@ -1158,8 +1155,7 @@ class F14Table : public Policy {
   }
 
   static std::size_t chunkAllocSize(
-      std::size_t chunkCount,
-      std::size_t capacityScale) {
+      std::size_t chunkCount, std::size_t capacityScale) {
     FOLLY_SAFE_DCHECK(chunkCount > 0, "");
     FOLLY_SAFE_DCHECK(!(chunkCount > 1 && capacityScale == 0), "");
     if (chunkCount == 1) {
@@ -1171,9 +1167,7 @@ class F14Table : public Policy {
   }
 
   ChunkPtr initializeChunks(
-      BytePtr raw,
-      std::size_t chunkCount,
-      std::size_t capacityScale) {
+      BytePtr raw, std::size_t chunkCount, std::size_t capacityScale) {
     static_assert(std::is_trivial<Chunk>::value, "F14Chunk should be POD");
     auto chunks = static_cast<Chunk*>(static_cast<void*>(&*raw));
     for (std::size_t i = 0; i < chunkCount; ++i) {
@@ -1929,8 +1923,7 @@ class F14Table : public Policy {
   }
 
   FOLLY_ALWAYS_INLINE void debugModePerturbSlotInsertOrder(
-      ChunkPtr chunk,
-      std::size_t& itemIndex) {
+      ChunkPtr chunk, std::size_t& itemIndex) {
     FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
     constexpr bool perturbSlot = FOLLY_F14_PERTURB_INSERTION_ORDER;
     if (perturbSlot && !tlsPendingSafeInserts()) {
@@ -2203,8 +2196,7 @@ class F14Table : public Policy {
 
  private:
   static std::size_t& histoAt(
-      std::vector<std::size_t>& histo,
-      std::size_t index) {
+      std::vector<std::size_t>& histo, std::size_t index) {
     if (histo.size() <= index) {
       histo.resize(index + 1);
     }

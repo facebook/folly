@@ -47,8 +47,6 @@ int (*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*, size_t) =
     nullptr;
 #endif
 bool (*MallocExtension_Internal_GetNumericProperty)(
-    const char*,
-    size_t,
-    size_t*) = nullptr;
+    const char*, size_t, size_t*) = nullptr;
 #endif
 }

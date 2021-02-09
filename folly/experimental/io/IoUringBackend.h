@@ -311,13 +311,13 @@ class IoUringBackend : public EventBaseBackendBase {
 
   struct IoSqe;
 
-  static void
-  processPollIoSqe(IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
+  static void processPollIoSqe(
+      IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
     backend->processPollIo(ioSqe, res);
   }
 
-  static void
-  processTimerIoSqe(IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
+  static void processTimerIoSqe(
+      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
     backend->setProcessTimers();
   }
 
@@ -329,9 +329,7 @@ class IoUringBackend : public EventBaseBackendBase {
   FOLLY_ALWAYS_INLINE void setProcessSignals() { processSignals_ = true; }
 
   static void processSignalReadIoSqe(
-      IoUringBackend* backend,
-      IoSqe* /*sqe*/,
-      int64_t /*res*/) {
+      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
     backend->setProcessSignals();
   }
 
@@ -517,10 +515,7 @@ class IoUringBackend : public EventBaseBackendBase {
     EventCallbackData cbData_;
 
     void prepPollAdd(
-        struct io_uring_sqe* sqe,
-        int fd,
-        uint32_t events,
-        bool registerFd) {
+        struct io_uring_sqe* sqe, int fd, uint32_t events, bool registerFd) {
       CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
@@ -578,10 +573,7 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     void prepRecvmsg(
-        struct io_uring_sqe* sqe,
-        int fd,
-        struct msghdr* msg,
-        bool registerFd) {
+        struct io_uring_sqe* sqe, int fd, struct msghdr* msg, bool registerFd) {
       CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
@@ -597,8 +589,7 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     FOLLY_ALWAYS_INLINE void prepCancel(
-        struct io_uring_sqe* sqe,
-        void* user_data) {
+        struct io_uring_sqe* sqe, void* user_data) {
       CHECK(sqe);
       ::io_uring_prep_cancel(sqe, user_data, 0);
       ::io_uring_sqe_set_data(sqe, this);
@@ -697,10 +688,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
   struct FSyncIoSqe : public FileOpIoSqe {
     FSyncIoSqe(
-        IoUringBackend* backend,
-        int fd,
-        FSyncFlags flags,
-        FileOpCallback&& cb)
+        IoUringBackend* backend, int fd, FSyncFlags flags, FileOpCallback&& cb)
         : FileOpIoSqe(backend, fd, std::move(cb)), flags_(flags) {}
 
     ~FSyncIoSqe() override = default;
@@ -734,8 +722,8 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void processFileOp(IoSqe* ioSqe, int64_t res) noexcept;
 
-  static void
-  processFileOpCB(IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
+  static void processFileOpCB(
+      IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
     static_cast<IoUringBackend*>(backend)->processFileOp(ioSqe, res);
   }
 

@@ -72,9 +72,7 @@ T validData(T const& target, std::vector<bool> const& valid) {
 
 template <typename T>
 void doResizeWithoutInit(
-    T& target,
-    std::vector<bool>& valid,
-    std::size_t newSize) {
+    T& target, std::vector<bool>& valid, std::size_t newSize) {
   auto oldSize = target.size();
   auto before = validData(target, valid);
   folly::resizeWithoutInitialization(target, newSize);
@@ -90,10 +88,7 @@ void doResizeWithoutInit(
 
 template <typename T>
 void doOverwrite(
-    T& target,
-    std::vector<bool>& valid,
-    std::size_t b,
-    std::size_t e) {
+    T& target, std::vector<bool>& valid, std::size_t b, std::size_t e) {
   for (auto i = b; i < e && i < target.size(); ++i) {
     target[i] = '0' + (i % 10);
     valid[i] = true;

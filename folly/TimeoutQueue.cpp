@@ -21,15 +21,15 @@
 
 namespace folly {
 
-TimeoutQueue::Id
-TimeoutQueue::add(int64_t now, int64_t delay, Callback callback) {
+TimeoutQueue::Id TimeoutQueue::add(
+    int64_t now, int64_t delay, Callback callback) {
   Id id = nextId_++;
   timeouts_.insert({id, now + delay, -1, std::move(callback)});
   return id;
 }
 
-TimeoutQueue::Id
-TimeoutQueue::addRepeating(int64_t now, int64_t interval, Callback callback) {
+TimeoutQueue::Id TimeoutQueue::addRepeating(
+    int64_t now, int64_t interval, Callback callback) {
   Id id = nextId_++;
   timeouts_.insert({id, now + interval, interval, std::move(callback)});
   return id;

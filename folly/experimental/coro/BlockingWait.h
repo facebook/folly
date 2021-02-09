@@ -396,8 +396,7 @@ auto blockingWait(Awaitable&& awaitable)
 
 template <typename SemiAwaitable>
 FOLLY_NOINLINE auto blockingWait(
-    SemiAwaitable&& awaitable,
-    folly::DrivableExecutor* executor)
+    SemiAwaitable&& awaitable, folly::DrivableExecutor* executor)
     -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
   folly::AsyncStackFrame frame;
   frame.setReturnAddress();

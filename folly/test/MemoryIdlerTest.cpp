@@ -91,8 +91,8 @@ struct MockAtom : public std::atomic<T> {
       FutexResult(uint32_t, const MockClock::time_point&, uint32_t));
 };
 
-FutexResult
-futexWait(const Futex<MockAtom>* futex, uint32_t expected, uint32_t waitMask) {
+FutexResult futexWait(
+    const Futex<MockAtom>* futex, uint32_t expected, uint32_t waitMask) {
   return futex->futexWait(expected, waitMask);
 }
 template <typename Clock, typename Duration>

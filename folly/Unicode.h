@@ -63,8 +63,7 @@ inline bool utf16_code_unit_is_low_surrogate(char16_t const c) {
   return c >= 0xdc00 && c < 0xe000;
 }
 inline char32_t unicode_code_point_from_utf16_surrogate_pair(
-    char16_t const high,
-    char16_t const low) {
+    char16_t const high, char16_t const low) {
   if (!utf16_code_unit_is_high_surrogate(high)) {
     throw_exception<unicode_error>("invalid high surrogate");
   }
@@ -87,9 +86,7 @@ std::string codePointToUtf8(char32_t cp);
  * Decode a single unicode code point from UTF-8 byte sequence.
  */
 char32_t utf8ToCodePoint(
-    const unsigned char*& p,
-    const unsigned char* const e,
-    bool skipOnError);
+    const unsigned char*& p, const unsigned char* const e, bool skipOnError);
 
 //////////////////////////////////////////////////////////////////////
 

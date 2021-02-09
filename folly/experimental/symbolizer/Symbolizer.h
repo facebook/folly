@@ -119,9 +119,7 @@ class Symbolizer {
       folly::Range<SymbolizedFrame*> frames);
 
   size_t symbolize(
-      const uintptr_t* addresses,
-      SymbolizedFrame* frames,
-      size_t frameCount) {
+      const uintptr_t* addresses, SymbolizedFrame* frames, size_t frameCount) {
     return symbolize(
         folly::Range<const uintptr_t*>(addresses, frameCount),
         folly::Range<SymbolizedFrame*>(frames, frameCount));

@@ -59,9 +59,7 @@ static void align4Bytes(size_t& pos) {
 }
 
 static int getNextZero(
-    const std::vector<uint8_t>& v,
-    const size_t curPos,
-    const size_t limit) {
+    const std::vector<uint8_t>& v, const size_t curPos, const size_t limit) {
   auto pos = std::find(v.begin() + curPos, v.begin() + limit, 0);
   if (pos == v.begin() + limit) {
     return -1;
@@ -75,8 +73,8 @@ static intptr_t getAddr(const std::vector<uint8_t>& v, size_t& pos) {
       folly::loadUnaligned<intptr_t>(v.data() + pos - kAddrWidth));
 }
 
-static std::string
-getStr(const std::vector<uint8_t>& v, size_t& pos, const size_t len) {
+static std::string getStr(
+    const std::vector<uint8_t>& v, size_t& pos, const size_t len) {
   CHECK_GE(len, 1);
   std::string res;
   res.resize(len - 1);
@@ -149,8 +147,7 @@ static std::vector<uint8_t> readNote(const std::string& fileName) {
 
 template <std::size_t SIZE>
 static void checkTracepointArguments(
-    const std::string& arguments,
-    std::array<int, SIZE>& expectedSize) {
+    const std::string& arguments, std::array<int, SIZE>& expectedSize) {
   std::vector<std::string> args;
   folly::split(' ', arguments, args);
   EXPECT_EQ(expectedSize.size(), args.size());

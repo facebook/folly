@@ -88,8 +88,7 @@ class StringKeyedSetBase : private std::set<StringPiece, Compare, Alloc> {
   }
 
   StringKeyedSetBase(
-      StringKeyedSetBase&& other,
-      const allocator_type& alloc) noexcept
+      StringKeyedSetBase&& other, const allocator_type& alloc) noexcept
       : Base(std::move(other), alloc) {
     assert(other.empty());
   }

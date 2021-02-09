@@ -26,9 +26,7 @@ namespace folly {
 
 namespace {
 folly::dynamic& insertAtKey(
-    folly::dynamic* d,
-    bool allow_non_string_keys,
-    const folly::dynamic& key) {
+    folly::dynamic* d, bool allow_non_string_keys, const folly::dynamic& key) {
   if (key.isString()) {
     return (*d)[key];
   } else if (key.isNumber() || key.isBool()) {
@@ -45,8 +43,7 @@ folly::dynamic& insertAtKey(
 } // namespace
 
 void DynamicParser::reportError(
-    const folly::dynamic* lookup_k,
-    const std::exception& ex) {
+    const folly::dynamic* lookup_k, const std::exception& ex) {
   // If descendants of this item, or other keys on it, already reported an
   // error, the error object would already exist.
   auto& e = stack_.errors(allowNonStringKeyErrors_);
@@ -122,8 +119,7 @@ void DynamicParser::ParserStack::Pop::operator()() noexcept {
 }
 
 DynamicParser::ParserStack::PopGuard DynamicParser::ParserStack::push(
-    const folly::dynamic& k,
-    const folly::dynamic& v) noexcept {
+    const folly::dynamic& k, const folly::dynamic& v) noexcept {
   // Save the previous state of the parser.
   DynamicParser::ParserStack::PopGuard guard{this};
   key_ = &k;

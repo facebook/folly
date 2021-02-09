@@ -136,11 +136,7 @@ void IoUringOp::preadv(int fd, const iovec* iov, int iovcnt, off_t start) {
 }
 
 void IoUringOp::pread(
-    int fd,
-    void* buf,
-    size_t size,
-    off_t start,
-    int buf_index) {
+    int fd, void* buf, size_t size, off_t start, int buf_index) {
   init();
   io_uring_prep_read_fixed(&sqe_, fd, buf, size, start, buf_index);
   io_uring_sqe_set_data(&sqe_, this);
@@ -161,11 +157,7 @@ void IoUringOp::pwritev(int fd, const iovec* iov, int iovcnt, off_t start) {
 }
 
 void IoUringOp::pwrite(
-    int fd,
-    const void* buf,
-    size_t size,
-    off_t start,
-    int buf_index) {
+    int fd, const void* buf, size_t size, off_t start, int buf_index) {
   init();
   io_uring_prep_write_fixed(&sqe_, fd, buf, size, start, buf_index);
   io_uring_sqe_set_data(&sqe_, this);
@@ -225,8 +217,7 @@ bool IoUring::isAvailable() {
 }
 
 int IoUring::register_buffers(
-    const struct iovec* iovecs,
-    unsigned int nr_iovecs) {
+    const struct iovec* iovecs, unsigned int nr_iovecs) {
   initializeContext();
 
   SharedMutex::WriteHolder lk(submitMutex_);

@@ -45,13 +45,7 @@ bool folly::JemallocHugePageAllocator::hugePagesSupported{true};
 #if !defined(JEMALLOC_VERSION_MAJOR) || (JEMALLOC_VERSION_MAJOR < 5)
 typedef struct extent_hooks_s extent_hooks_t;
 typedef void*(extent_alloc_t)(
-    extent_hooks_t*,
-    void*,
-    size_t,
-    size_t,
-    bool*,
-    bool*,
-    unsigned);
+    extent_hooks_t*, void*, size_t, size_t, bool*, bool*, unsigned);
 struct extent_hooks_s {
   extent_alloc_t* alloc;
 };

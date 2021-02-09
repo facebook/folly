@@ -215,10 +215,7 @@ TEST(TestDynamicParser, AllParserFeaturesSuccess) {
 // We can hit multiple key lookup errors, but only one parse error.
 template <typename Fn>
 void checkXYKeyErrorsAndParseError(
-    const dynamic& d,
-    Fn fn,
-    std::string key_re,
-    std::string parse_re) {
+    const dynamic& d, Fn fn, std::string key_re, std::string parse_re) {
   DynamicParser p(DynamicParser::OnError::RECORD, &d);
   fn(p);
   auto errors = p.releaseErrors();

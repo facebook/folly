@@ -58,8 +58,7 @@ class CallbackRecord {
   }
   template <class OtherReference>
   static void convert_variant(
-      CallbackRecord* that,
-      const CallbackRecord<OtherReference>& other) {
+      CallbackRecord* that, const CallbackRecord<OtherReference>& other) {
     if (other.hasValue()) {
       detail::activate(that->value_, other.value_.get());
     } else if (other.hasError()) {
@@ -69,8 +68,7 @@ class CallbackRecord {
   }
   template <class OtherReference>
   static void convert_variant(
-      CallbackRecord* that,
-      CallbackRecord<OtherReference>&& other) {
+      CallbackRecord* that, CallbackRecord<OtherReference>&& other) {
     if (other.hasValue()) {
       detail::activate(that->value_, std::move(other.value_).get());
     } else if (other.hasError()) {
@@ -94,8 +92,7 @@ class CallbackRecord {
   explicit CallbackRecord(const std::in_place_index_t<1>&) noexcept
       : selector_(CallbackRecordSelector::None) {}
   CallbackRecord(
-      const std::in_place_index_t<2>&,
-      folly::exception_wrapper e) noexcept
+      const std::in_place_index_t<2>&, folly::exception_wrapper e) noexcept
       : CallbackRecord() {
     detail::activate(error_, std::move(e));
     selector_ = CallbackRecordSelector::Error;

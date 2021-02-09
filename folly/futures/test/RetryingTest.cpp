@@ -33,10 +33,7 @@ using namespace folly;
 // max_duration.
 template <typename D, typename F>
 void multiAttemptExpectDurationWithin(
-    size_t num_tries,
-    D min_duration,
-    D max_duration,
-    const F& func) {
+    size_t num_tries, D min_duration, D max_duration, const F& func) {
   vector<thread> threads(num_tries);
   vector<D> durations(num_tries, D::min());
   for (size_t i = 0; i < num_tries; ++i) {

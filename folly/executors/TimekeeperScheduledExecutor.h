@@ -48,8 +48,8 @@ class TimekeeperScheduledExecutor : public ScheduledExecutor {
 
   virtual void add(Func func) override;
 
-  virtual void scheduleAt(Func&& func, ScheduledExecutor::TimePoint const& t)
-      override;
+  virtual void scheduleAt(
+      Func&& func, ScheduledExecutor::TimePoint const& t) override;
 
  protected:
   bool keepAliveAcquire() noexcept override;

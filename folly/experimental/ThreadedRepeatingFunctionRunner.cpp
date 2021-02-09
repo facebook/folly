@@ -55,9 +55,7 @@ bool ThreadedRepeatingFunctionRunner::stopImpl() {
 }
 
 void ThreadedRepeatingFunctionRunner::add(
-    std::string name,
-    RepeatingFn fn,
-    std::chrono::milliseconds initialSleep) {
+    std::string name, RepeatingFn fn, std::chrono::milliseconds initialSleep) {
   threads_.emplace_back([name = std::move(name),
                          fn = std::move(fn),
                          initialSleep,
@@ -78,8 +76,7 @@ bool ThreadedRepeatingFunctionRunner::waitFor(
 }
 
 void ThreadedRepeatingFunctionRunner::executeInLoop(
-    RepeatingFn fn,
-    std::chrono::milliseconds initialSleep) noexcept {
+    RepeatingFn fn, std::chrono::milliseconds initialSleep) noexcept {
   auto duration = initialSleep;
   while (waitFor(duration)) {
     duration = fn();

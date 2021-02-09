@@ -147,8 +147,7 @@ class LtHash {
    */
   LtHash<B, N>& operator+=(const LtHash<B, N>& rhs);
   friend LtHash<B, N> operator+(
-      const LtHash<B, N>& lhs,
-      const LtHash<B, N>& rhs) {
+      const LtHash<B, N>& lhs, const LtHash<B, N>& rhs) {
     LtHash<B, N> result = lhs;
     result += rhs;
     return result;
@@ -174,8 +173,7 @@ class LtHash {
    */
   LtHash<B, N>& operator-=(const LtHash<B, N>& rhs);
   friend LtHash<B, N> operator-(
-      const LtHash<B, N>& lhs,
-      const LtHash<B, N>& rhs) {
+      const LtHash<B, N>& lhs, const LtHash<B, N>& rhs) {
     LtHash<B, N> result = lhs;
     result -= rhs;
     return result;
@@ -261,8 +259,8 @@ class LtHash {
       Args&&... moreRanges);
 
   template <typename... Args>
-  void
-  updateDigest(Blake2xb& digest, folly::ByteRange range, Args&&... moreRanges);
+  void updateDigest(
+      Blake2xb& digest, folly::ByteRange range, Args&&... moreRanges);
 
   void updateDigest(Blake2xb& digest);
 

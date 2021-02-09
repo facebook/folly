@@ -347,8 +347,7 @@ class FunctionScheduler {
   // Return true if the current function is being canceled
   bool cancelAllFunctionsWithLock(std::unique_lock<std::mutex>& lock);
   bool cancelFunctionWithLock(
-      std::unique_lock<std::mutex>& lock,
-      StringPiece nameID);
+      std::unique_lock<std::mutex>& lock, StringPiece nameID);
 
   std::thread thread_;
 

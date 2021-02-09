@@ -103,8 +103,7 @@ StringPiece getXlogCategoryNameForFile(StringPiece filename) {
 
 template <bool IsInHeaderFile>
 LogLevel XlogLevelInfo<IsInHeaderFile>::loadLevelFull(
-    folly::StringPiece categoryName,
-    bool isOverridden) {
+    folly::StringPiece categoryName, bool isOverridden) {
   auto currentLevel = level_.load(std::memory_order_acquire);
   if (UNLIKELY(currentLevel == ::folly::LogLevel::UNINITIALIZED)) {
     return LoggerDB::get().xlogInit(
@@ -117,8 +116,7 @@ LogLevel XlogLevelInfo<IsInHeaderFile>::loadLevelFull(
 
 template <bool IsInHeaderFile>
 LogCategory* XlogCategoryInfo<IsInHeaderFile>::init(
-    folly::StringPiece categoryName,
-    bool isOverridden) {
+    folly::StringPiece categoryName, bool isOverridden) {
   return LoggerDB::get().xlogInitCategory(
       isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
       &category_,

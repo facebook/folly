@@ -26,8 +26,7 @@
 using namespace folly;
 
 inline void popAndFulfillPromise(
-    std::queue<std::shared_ptr<Promise<Unit>>>& ps,
-    std::mutex& ps_mutex) {
+    std::queue<std::shared_ptr<Promise<Unit>>>& ps, std::mutex& ps_mutex) {
   ps_mutex.lock();
   auto p = ps.front();
   ps.pop();

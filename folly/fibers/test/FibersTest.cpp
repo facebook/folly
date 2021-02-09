@@ -1925,9 +1925,7 @@ TEST(FiberManager, batchDispatchTest) {
 
 template <typename ExecutorT>
 folly::Future<std::vector<std::string>> doubleBatchInnerDispatch(
-    ExecutorT& executor,
-    int totalNumberOfElements,
-    std::vector<int> input) {
+    ExecutorT& executor, int totalNumberOfElements, std::vector<int> input) {
   thread_local BatchDispatcher<
       std::vector<int>,
       std::vector<std::string>,
@@ -1957,9 +1955,7 @@ folly::Future<std::vector<std::string>> doubleBatchInnerDispatch(
  */
 template <typename ExecutorT>
 void doubleBatchOuterDispatch(
-    ExecutorT& executor,
-    int totalNumberOfElements,
-    int index) {
+    ExecutorT& executor, int totalNumberOfElements, int index) {
   thread_local BatchDispatcher<int, std::string, ExecutorT> batchDispatcher(
       executor, [=, &executor](std::vector<int>&& batch) {
         EXPECT_EQ(totalNumberOfElements, batch.size());
@@ -2157,8 +2153,7 @@ void dispatchJobs(
 }
 
 void validateResult(
-    std::vector<folly::Optional<folly::Future<ResultT>>>& results,
-    size_t i) {
+    std::vector<folly::Optional<folly::Future<ResultT>>>& results, size_t i) {
   try {
     OUTPUT_TRACE << "results[" << i << "].value() : " << results[i]->value()
                  << std::endl;

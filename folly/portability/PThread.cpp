@@ -210,9 +210,7 @@ DWORD pthread_getw32threadid_np(pthread_t thread) {
 }
 
 int pthread_setschedparam(
-    pthread_t thread,
-    int policy,
-    const sched_param* param) {
+    pthread_t thread, int policy, const sched_param* param) {
   if (thread->detached) {
     errno = EINVAL;
     return -1;
@@ -378,8 +376,7 @@ struct pthread_mutex_t_ {
 };
 
 int pthread_mutex_init(
-    pthread_mutex_t* mutex,
-    const pthread_mutexattr_t* attr) {
+    pthread_mutex_t* mutex, const pthread_mutexattr_t* attr) {
   if (mutex == nullptr) {
     return EINVAL;
   }
@@ -432,8 +429,7 @@ static std::chrono::system_clock::time_point timespec_to_time_point(
 }
 
 int pthread_mutex_timedlock(
-    pthread_mutex_t* mutex,
-    const timespec* abs_timeout) {
+    pthread_mutex_t* mutex, const timespec* abs_timeout) {
   if (mutex == nullptr || abs_timeout == nullptr) {
     return EINVAL;
   }
@@ -506,8 +502,7 @@ int pthread_rwlock_tryrdlock(pthread_rwlock_t* rwlock) {
 }
 
 int pthread_rwlock_timedrdlock(
-    pthread_rwlock_t* rwlock,
-    const timespec* abs_timeout) {
+    pthread_rwlock_t* rwlock, const timespec* abs_timeout) {
   if (rwlock == nullptr) {
     return EINVAL;
   }
@@ -546,8 +541,7 @@ int pthread_rwlock_trywrlock(pthread_rwlock_t* rwlock) {
 }
 
 int pthread_rwlock_timedwrlock(
-    pthread_rwlock_t* rwlock,
-    const timespec* abs_timeout) {
+    pthread_rwlock_t* rwlock, const timespec* abs_timeout) {
   if (rwlock == nullptr) {
     return EINVAL;
   }
@@ -620,9 +614,7 @@ int pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
 }
 
 int pthread_cond_timedwait(
-    pthread_cond_t* cond,
-    pthread_mutex_t* mutex,
-    const timespec* abstime) {
+    pthread_cond_t* cond, pthread_mutex_t* mutex, const timespec* abstime) {
   if (cond == nullptr || mutex == nullptr || abstime == nullptr) {
     return EINVAL;
   }

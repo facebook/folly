@@ -61,8 +61,7 @@ HHWheelTimerBase<Duration>::Callback::~Callback() {
 
 template <class Duration>
 void HHWheelTimerBase<Duration>::Callback::setScheduled(
-    HHWheelTimerBase* wheel,
-    std::chrono::steady_clock::time_point deadline) {
+    HHWheelTimerBase* wheel, std::chrono::steady_clock::time_point deadline) {
   assert(wheel_ == nullptr);
   assert(expiration_ == decltype(expiration_){});
 
@@ -150,8 +149,7 @@ void HHWheelTimerBase<Duration>::scheduleTimeoutImpl(
 
 template <class Duration>
 void HHWheelTimerBase<Duration>::scheduleTimeout(
-    Callback* callback,
-    Duration timeout) {
+    Callback* callback, Duration timeout) {
   // Make sure that the timeout is not negative.
   timeout = std::max(timeout, Duration::zero());
   // Cancel the callback if it happens to be scheduled already.
@@ -206,9 +204,7 @@ void HHWheelTimerBase<Duration>::scheduleTimeout(Callback* callback) {
 
 template <class Duration>
 bool HHWheelTimerBase<Duration>::cascadeTimers(
-    int bucket,
-    int tick,
-    const std::chrono::steady_clock::time_point curTime) {
+    int bucket, int tick, const std::chrono::steady_clock::time_point curTime) {
   CallbackList cbs;
   cbs.swap(buckets_[bucket][tick]);
   auto nextTick = calcNextTick(curTime);
@@ -356,8 +352,7 @@ void HHWheelTimerBase<Duration>::scheduleNextTimeout(int64_t nextTick) {
 
 template <class Duration>
 void HHWheelTimerBase<Duration>::scheduleNextTimeout(
-    int64_t nextTick,
-    int64_t ticks) {
+    int64_t nextTick, int64_t ticks) {
   scheduleTimeoutInternal(interval_ * ticks);
   expireTick_ = ticks + nextTick - 1;
 }

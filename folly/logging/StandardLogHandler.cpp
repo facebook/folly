@@ -37,8 +37,7 @@ StandardLogHandler::StandardLogHandler(
 StandardLogHandler::~StandardLogHandler() = default;
 
 void StandardLogHandler::handleMessage(
-    const LogMessage& message,
-    const LogCategory* handlerCategory) {
+    const LogMessage& message, const LogCategory* handlerCategory) {
   if (message.getLevel() < getLevel()) {
     return;
   }

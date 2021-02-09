@@ -174,8 +174,7 @@ detail::AttributeSpec readAttributeSpec(folly::StringPiece& sp) {
 
 // Reads an abbreviation from a StringPiece, return true if at end; advance sp
 bool readAbbreviation(
-    folly::StringPiece& section,
-    detail::DIEAbbreviation& abbr) {
+    folly::StringPiece& section, detail::DIEAbbreviation& abbr) {
   // Abbreviation code
   abbr.code = readULEB(section);
   if (abbr.code == 0) {
@@ -202,8 +201,7 @@ bool readAbbreviation(
 }
 
 folly::StringPiece getStringFromStringSection(
-    folly::StringPiece str,
-    uint64_t offset) {
+    folly::StringPiece str, uint64_t offset) {
   FOLLY_SAFE_CHECK(offset < str.size(), "invalid string offset");
   str.advance(offset);
   return readNullTerminated(str);
@@ -277,8 +275,7 @@ detail::Attribute readAttribute(
 }
 
 detail::CompilationUnit getCompilationUnit(
-    folly::StringPiece info,
-    uint64_t offset) {
+    folly::StringPiece info, uint64_t offset) {
   FOLLY_SAFE_DCHECK(offset < info.size(), "unexpected offset");
   detail::CompilationUnit cu;
   folly::StringPiece chunk(info);
@@ -303,8 +300,7 @@ detail::CompilationUnit getCompilationUnit(
 
 // Finds the Compilation Unit starting at offset.
 detail::CompilationUnit findCompilationUnit(
-    folly::StringPiece info,
-    uint64_t targetOffset) {
+    folly::StringPiece info, uint64_t targetOffset) {
   FOLLY_SAFE_DCHECK(targetOffset < info.size(), "unexpected target address");
   uint64_t offset = 0;
   while (offset < info.size()) {
@@ -326,8 +322,7 @@ detail::CompilationUnit findCompilationUnit(
 }
 
 void readCompilationUnitAbbrs(
-    folly::StringPiece abbrev,
-    detail::CompilationUnit& cu) {
+    folly::StringPiece abbrev, detail::CompilationUnit& cu) {
   abbrev.advance(cu.abbrevOffset);
 
   detail::DIEAbbreviation abbr;
@@ -395,8 +390,8 @@ folly::StringPiece Dwarf::getSection(const char* name) const {
   return elf_->getSectionBody(*elfSection);
 }
 
-detail::DIEAbbreviation Dwarf::getAbbreviation(uint64_t code, uint64_t offset)
-    const {
+detail::DIEAbbreviation Dwarf::getAbbreviation(
+    uint64_t code, uint64_t offset) const {
   // Linear search in the .debug_abbrev section, starting at offset
   folly::StringPiece section = debugAbbrev_;
   section.advance(offset);
@@ -416,9 +411,7 @@ detail::DIEAbbreviation Dwarf::getAbbreviation(uint64_t code, uint64_t offset)
  * .debug_info for compilation unit to which this address belongs.
  */
 bool Dwarf::findDebugInfoOffset(
-    uintptr_t address,
-    StringPiece aranges,
-    uint64_t& offset) {
+    uintptr_t address, StringPiece aranges, uint64_t& offset) {
   Section arangesSection(aranges);
   folly::StringPiece chunk;
   while (arangesSection.next(chunk)) {
@@ -696,8 +689,7 @@ bool Dwarf::findAddress(
 }
 
 detail::Die Dwarf::getDieAtOffset(
-    const detail::CompilationUnit& cu,
-    uint64_t offset) const {
+    const detail::CompilationUnit& cu, uint64_t offset) const {
   FOLLY_SAFE_DCHECK(offset < debugInfo_.size(), "unexpected offset");
   detail::Die die;
   folly::StringPiece sp = folly::StringPiece{
@@ -718,8 +710,7 @@ detail::Die Dwarf::getDieAtOffset(
 }
 
 detail::Die Dwarf::findDefinitionDie(
-    const detail::CompilationUnit& cu,
-    const detail::Die& die) const {
+    const detail::CompilationUnit& cu, const detail::Die& die) const {
   // Find the real definition instead of declaration.
   // DW_AT_specification: Incomplete, non-defining, or separate declaration
   // corresponding to a declaration
@@ -1054,8 +1045,7 @@ void Dwarf::findInlinedSubroutineDieForAddress(
 }
 
 Dwarf::LineNumberVM::LineNumberVM(
-    folly::StringPiece data,
-    folly::StringPiece compilationDirectory)
+    folly::StringPiece data, folly::StringPiece compilationDirectory)
     : compilationDirectory_(compilationDirectory) {
   Section section(data);
   FOLLY_SAFE_CHECK(section.next(data_), "invalid line number VM");
@@ -1177,8 +1167,7 @@ folly::StringPiece Dwarf::LineNumberVM::getIncludeDirectory(
 }
 
 bool Dwarf::LineNumberVM::readFileName(
-    folly::StringPiece& program,
-    FileName& fn) {
+    folly::StringPiece& program, FileName& fn) {
   fn.relativeName = readNullTerminated(program);
   if (fn.relativeName.empty()) {
     return false;
@@ -1191,8 +1180,7 @@ bool Dwarf::LineNumberVM::readFileName(
 }
 
 bool Dwarf::LineNumberVM::nextDefineFile(
-    folly::StringPiece& program,
-    FileName& fn) const {
+    folly::StringPiece& program, FileName& fn) const {
   while (!program.empty()) {
     auto opcode = read<uint8_t>(program);
 
@@ -1340,9 +1328,7 @@ Dwarf::LineNumberVM::StepResult Dwarf::LineNumberVM::step(
 }
 
 bool Dwarf::LineNumberVM::findAddress(
-    uintptr_t target,
-    Path& file,
-    uint64_t& line) {
+    uintptr_t target, Path& file, uint64_t& line) {
   folly::StringPiece program = data_;
 
   // Within each sequence of instructions, the address may only increase.

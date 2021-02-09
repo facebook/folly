@@ -728,8 +728,7 @@ struct IAddable {
   template <class Base>
   struct Interface : Base {
     friend PolySelf<Base, PolyDecay> operator+(
-        PolySelf<Base> const& a,
-        PolySelf<Base> const& b) {
+        PolySelf<Base> const& a, PolySelf<Base> const& b) {
       return folly::poly_call<0, IAddable>(a, b);
     }
   };

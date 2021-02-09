@@ -138,8 +138,7 @@ class SimplePromise {
   class WaitOperation {
    public:
     explicit WaitOperation(
-        folly::coro::Baton& baton,
-        folly::Optional<T>& value) noexcept
+        folly::coro::Baton& baton, folly::Optional<T>& value) noexcept
         : awaiter_(baton), value_(value) {}
 
     bool await_ready() { return awaiter_.await_ready(); }

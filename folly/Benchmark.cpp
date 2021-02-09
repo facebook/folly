@@ -54,9 +54,7 @@ DEFINE_string(
     "NOTE: this is written independent of the above --json / --bm_relative_to.");
 
 DEFINE_string(
-    bm_regex,
-    "",
-    "Only benchmarks whose names match this regex will be run.");
+    bm_regex, "", "Only benchmarks whose names match this regex will be run.");
 
 DEFINE_int64(
     bm_min_usec,
@@ -64,9 +62,7 @@ DEFINE_int64(
     "Minimum # of microseconds we'll accept for each benchmark.");
 
 DEFINE_int32(
-    bm_min_iters,
-    1,
-    "Minimum # of iterations we'll try for each benchmark.");
+    bm_min_iters, 1, "Minimum # of iterations we'll try for each benchmark.");
 
 DEFINE_int64(
     bm_max_iters,
@@ -74,9 +70,7 @@ DEFINE_int64(
     "Maximum # of iterations we'll try for each benchmark.");
 
 DEFINE_int32(
-    bm_max_secs,
-    1,
-    "Maximum # of seconds we'll spend on each benchmark.");
+    bm_max_secs, 1, "Maximum # of seconds we'll spend on each benchmark.");
 
 namespace folly {
 
@@ -117,16 +111,12 @@ size_t getGlobalBenchmarkBaselineIndex() {
 #undef FB_FOLLY_GLOBAL_BENCHMARK_BASELINE
 
 void detail::addBenchmarkImpl(
-    const char* file,
-    StringPiece name,
-    BenchmarkFun fun,
-    bool useCounter) {
+    const char* file, StringPiece name, BenchmarkFun fun, bool useCounter) {
   benchmarks().push_back({file, name.str(), std::move(fun), useCounter});
 }
 
 static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
-    const BenchmarkFun& fun,
-    const double globalBaseline) {
+    const BenchmarkFun& fun, const double globalBaseline) {
   using std::chrono::duration_cast;
   using std::chrono::high_resolution_clock;
   using std::chrono::microseconds;
@@ -233,8 +223,8 @@ static const ScaleInfo kMetricSuffixes[]{
     {0, nullptr},
 };
 
-static string
-humanReadable(double n, unsigned int decimals, const ScaleInfo* scales) {
+static string humanReadable(
+    double n, unsigned int decimals, const ScaleInfo* scales) {
   if (std::isinf(n) || std::isnan(n)) {
     return folly::to<string>(n);
   }
@@ -377,8 +367,7 @@ static void printBenchmarkResultsAsJson(
 }
 
 void benchmarkResultsToDynamic(
-    const vector<detail::BenchmarkResult>& data,
-    dynamic& out) {
+    const vector<detail::BenchmarkResult>& data, dynamic& out) {
   out = dynamic::array;
   for (auto& datum : data) {
     if (!datum.counters.empty()) {
@@ -398,8 +387,7 @@ void benchmarkResultsToDynamic(
 }
 
 void benchmarkResultsFromDynamic(
-    const dynamic& d,
-    vector<detail::BenchmarkResult>& results) {
+    const dynamic& d, vector<detail::BenchmarkResult>& results) {
   for (auto& datum : d) {
     results.push_back(
         {datum[0].asString(),

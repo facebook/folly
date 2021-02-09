@@ -56,8 +56,7 @@ ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
     : ScopedEventBaseThread(ebm, "") {}
 
 ScopedEventBaseThread::ScopedEventBaseThread(
-    EventBaseManager* ebm,
-    StringPiece name)
+    EventBaseManager* ebm, StringPiece name)
     : ScopedEventBaseThread(EventBase::Options(), ebm, name) {}
 
 ScopedEventBaseThread::ScopedEventBaseThread(

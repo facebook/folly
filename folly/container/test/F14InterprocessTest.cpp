@@ -113,8 +113,7 @@ std::string makeRandomName() {
 }
 
 std::shared_ptr<managed_shared_memory> makeShmSegment(
-    std::size_t n,
-    std::string name = makeRandomName()) {
+    std::size_t n, std::string name = makeRandomName()) {
   auto deleter = [=](managed_shared_memory* p) {
     delete p;
     shared_memory_object::remove(name.c_str());

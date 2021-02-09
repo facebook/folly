@@ -157,10 +157,7 @@ class MemoryMapping {
       Options options = Options());
 
   explicit MemoryMapping(
-      int fd,
-      off_t offset = 0,
-      off_t length = -1,
-      Options options = Options());
+      int fd, off_t offset = 0, off_t length = -1, Options options = Options());
 
   MemoryMapping(const MemoryMapping&) = delete;
   MemoryMapping(MemoryMapping&&) noexcept;

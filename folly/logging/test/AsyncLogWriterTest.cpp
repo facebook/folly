@@ -28,9 +28,7 @@ using namespace folly;
 namespace {
 static bool* expectedMessage;
 void handleLoggingError(
-    StringPiece /* file */,
-    int /* lineNumber */,
-    std::string&& msg) {
+    StringPiece /* file */, int /* lineNumber */, std::string&& msg) {
   if (folly::kIsDebug) {
     std::cerr << msg << std::endl;
   } else {

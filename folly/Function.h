@@ -1066,24 +1066,20 @@ class FunctionRef<ReturnType(Args...)> final {
   constexpr explicit operator bool() const noexcept { return object_; }
 
   constexpr friend bool operator==(
-      FunctionRef<ReturnType(Args...)> ref,
-      std::nullptr_t) noexcept {
+      FunctionRef<ReturnType(Args...)> ref, std::nullptr_t) noexcept {
     return ref.object_ == nullptr;
   }
   constexpr friend bool operator!=(
-      FunctionRef<ReturnType(Args...)> ref,
-      std::nullptr_t) noexcept {
+      FunctionRef<ReturnType(Args...)> ref, std::nullptr_t) noexcept {
     return ref.object_ != nullptr;
   }
 
   constexpr friend bool operator==(
-      std::nullptr_t,
-      FunctionRef<ReturnType(Args...)> ref) noexcept {
+      std::nullptr_t, FunctionRef<ReturnType(Args...)> ref) noexcept {
     return ref.object_ == nullptr;
   }
   constexpr friend bool operator!=(
-      std::nullptr_t,
-      FunctionRef<ReturnType(Args...)> ref) noexcept {
+      std::nullptr_t, FunctionRef<ReturnType(Args...)> ref) noexcept {
     return ref.object_ != nullptr;
   }
 };

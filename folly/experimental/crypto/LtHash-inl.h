@@ -320,9 +320,7 @@ void LtHash<B, N>::hashObject(
 template <std::size_t B, std::size_t N>
 template <typename... Args>
 void LtHash<B, N>::updateDigest(
-    Blake2xb& digest,
-    folly::ByteRange firstRange,
-    Args&&... moreRanges) {
+    Blake2xb& digest, folly::ByteRange firstRange, Args&&... moreRanges) {
   digest.update(firstRange);
   updateDigest(digest, std::forward<Args>(moreRanges)...);
 }
@@ -333,8 +331,7 @@ void LtHash<B, N>::updateDigest(Blake2xb& /* digest */) {}
 template <std::size_t B, std::size_t N>
 template <typename... Args>
 LtHash<B, N>& LtHash<B, N>::addObject(
-    folly::ByteRange firstRange,
-    Args&&... moreRanges) {
+    folly::ByteRange firstRange, Args&&... moreRanges) {
   // hash obj and add to elements of checksum
   using H = std::array<unsigned char, getChecksumSizeBytes()>;
   alignas(detail::kCacheLineSize) H h;
@@ -352,8 +349,7 @@ LtHash<B, N>& LtHash<B, N>::addObject(
 template <std::size_t B, std::size_t N>
 template <typename... Args>
 LtHash<B, N>& LtHash<B, N>::removeObject(
-    folly::ByteRange firstRange,
-    Args&&... moreRanges) {
+    folly::ByteRange firstRange, Args&&... moreRanges) {
   // hash obj and subtract from elements of checksum
   using H = std::array<unsigned char, getChecksumSizeBytes()>;
   alignas(detail::kCacheLineSize) H h;

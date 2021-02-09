@@ -215,13 +215,11 @@ class MacAddress {
 
   template <typename OnError>
   Expected<Unit, MacAddressFormatError> setFromString(
-      StringPiece value,
-      OnError err);
+      StringPiece value, OnError err);
 
   template <typename OnError>
   Expected<Unit, MacAddressFormatError> setFromBinary(
-      ByteRange value,
-      OnError err);
+      ByteRange value, OnError err);
 
   /* We store the 6 bytes starting at bytes_[2] (most significant)
      through bytes_[7] (least).
@@ -241,8 +239,7 @@ class MacAddress {
 /* Define toAppend() so to<string> will work */
 template <class Tgt>
 typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
-    MacAddress address,
-    Tgt* result) {
+    MacAddress address, Tgt* result) {
   toAppend(address.toString(), result);
 }
 

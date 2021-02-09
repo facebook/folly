@@ -226,8 +226,7 @@ class AsyncSocket : public AsyncTransport {
      * @param data      Pointer to ancillary data buffer to initialize.
      */
     virtual void getAncillaryData(
-        folly::WriteFlags /*flags*/,
-        void* /*data*/) noexcept {}
+        folly::WriteFlags /*flags*/, void* /*data*/) noexcept {}
 
     /**
      * getAncillaryDataSize() will be invoked to retrieve the size of
@@ -805,8 +804,8 @@ class AsyncSocket : public AsyncTransport {
    * @param optlen    same as "optlen" parameter in getsockopt().
    * @return          same as the return value of getsockopt().
    */
-  virtual int
-  getSockOptVirtual(int level, int optname, void* optval, socklen_t* optlen) {
+  virtual int getSockOptVirtual(
+      int level, int optname, void* optval, socklen_t* optlen) {
     return netops::getsockopt(fd_, level, optname, optval, optlen);
   }
 
@@ -822,10 +821,7 @@ class AsyncSocket : public AsyncTransport {
    * @return          same as the return value of setsockopt().
    */
   virtual int setSockOptVirtual(
-      int level,
-      int optname,
-      void const* optval,
-      socklen_t optlen) {
+      int level, int optname, void const* optval, socklen_t optlen) {
     return netops::setsockopt(fd_, level, optname, optval, optlen);
   }
 
@@ -1292,11 +1288,11 @@ class AsyncSocket : public AsyncTransport {
    * @param msg       Message to send
    * @param msg_flags Flags to pass to sendmsg
    */
-  virtual AsyncSocket::WriteResult
-  sendSocketMessage(NetworkSocket fd, struct msghdr* msg, int msg_flags);
+  virtual AsyncSocket::WriteResult sendSocketMessage(
+      NetworkSocket fd, struct msghdr* msg, int msg_flags);
 
-  virtual ssize_t
-  tfoSendMsg(NetworkSocket fd, struct msghdr* msg, int msg_flags);
+  virtual ssize_t tfoSendMsg(
+      NetworkSocket fd, struct msghdr* msg, int msg_flags);
 
   int socketConnect(const struct sockaddr* addr, socklen_t len);
 
@@ -1351,8 +1347,7 @@ class AsyncSocket : public AsyncTransport {
   void cachePeerAddress() const;
 
   void applyOptions(
-      const SocketOptionMap& options,
-      SocketOptionKey::ApplyPos pos);
+      const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
 
   bool isZeroCopyRequest(WriteFlags flags);
 
@@ -1362,12 +1357,10 @@ class AsyncSocket : public AsyncTransport {
   uint32_t getNextZeroCopyBufId() { return zeroCopyBufId_++; }
   void adjustZeroCopyFlags(folly::WriteFlags& flags);
   void addZeroCopyBuf(
-      std::unique_ptr<folly::IOBuf>&& buf,
-      ReleaseIOBufCallback* cb);
+      std::unique_ptr<folly::IOBuf>&& buf, ReleaseIOBufCallback* cb);
   void addZeroCopyBuf(folly::IOBuf* ptr);
   void setZeroCopyBuf(
-      std::unique_ptr<folly::IOBuf>&& buf,
-      ReleaseIOBufCallback* cb);
+      std::unique_ptr<folly::IOBuf>&& buf, ReleaseIOBufCallback* cb);
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
 

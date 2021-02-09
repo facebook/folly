@@ -87,11 +87,7 @@ GlobalStatic globalStatic;
 // we intercept setsoctopt to test setting NO_TRANSPARENT_TLS opt
 // this name has to be global
 int setsockopt(
-    int sockfd,
-    int level,
-    int optname,
-    const void* optval,
-    socklen_t optlen) {
+    int sockfd, int level, int optname, const void* optval, socklen_t optlen) {
   if (optname == SO_NO_TRANSPARENT_TLS) {
     globalStatic.ttlsDisabledSet.insert(folly::NetworkSocket::fromFd(sockfd));
     return 0;
@@ -157,10 +153,7 @@ bool clientProtoFilterPickPony(
 }
 
 bool clientProtoFilterPickNone(
-    unsigned char**,
-    unsigned int*,
-    const unsigned char*,
-    unsigned int) {
+    unsigned char**, unsigned int*, const unsigned char*, unsigned int) {
   return false;
 }
 
@@ -1914,8 +1907,8 @@ inline void RSAPointersFree(RSAPointers* p) {
 using RSAPointersDeleter =
     folly::static_function_deleter<RSAPointers, RSAPointersFree>;
 
-std::unique_ptr<RSAPointers, RSAPointersDeleter>
-setupCustomRSA(const char* certPath, const char* keyPath, EventBase* jobEvb) {
+std::unique_ptr<RSAPointers, RSAPointersDeleter> setupCustomRSA(
+    const char* certPath, const char* keyPath, EventBase* jobEvb) {
   auto certPEM = getFileAsBuf(certPath);
   auto keyPEM = getFileAsBuf(keyPath);
 
@@ -2620,13 +2613,11 @@ class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
       std::unique_ptr<MockAsyncTFOSSLSocket, ReleasableDestructor>;
 
   explicit MockAsyncTFOSSLSocket(
-      std::shared_ptr<folly::SSLContext> sslCtx,
-      EventBase* evb)
+      std::shared_ptr<folly::SSLContext> sslCtx, EventBase* evb)
       : AsyncSSLSocket(sslCtx, evb) {}
 
   MOCK_METHOD3(
-      tfoSendMsg,
-      ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
+      tfoSendMsg, ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 #if defined __linux__
@@ -2754,9 +2745,7 @@ class ConnCallback : public AsyncSocket::ConnectCallback {
 
 template <class Cardinality>
 MockAsyncTFOSSLSocket::UniquePtr setupSocketWithFallback(
-    EventBase* evb,
-    const SocketAddress& address,
-    Cardinality cardinality) {
+    EventBase* evb, const SocketAddress& address, Cardinality cardinality) {
   // Set up SSL context.
   auto sslContext = std::make_shared<SSLContext>();
 

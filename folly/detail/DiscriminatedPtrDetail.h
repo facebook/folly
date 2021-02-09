@@ -78,8 +78,7 @@ template <typename T, typename... Types>
 struct SameType<T, Types...> {
   typedef T type;
   static_assert(
-      IsSameType<T, Types...>::value,
-      "Not all types in pack are the same");
+      IsSameType<T, Types...>::value, "Not all types in pack are the same");
 };
 
 // Determine the result type of applying a visitor of type V on a pointer

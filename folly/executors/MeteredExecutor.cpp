@@ -73,8 +73,7 @@ void MeteredExecutor::Consumer::executeIfNotEmpty() {
 }
 
 void MeteredExecutor::Consumer::operator()(
-    Func&& func,
-    std::shared_ptr<RequestContext>&& rctx) {
+    Func&& func, std::shared_ptr<RequestContext>&& rctx) {
   if (!first_) {
     first_ = std::move(func);
     firstRctx_ = std::move(rctx);

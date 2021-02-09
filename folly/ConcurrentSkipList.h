@@ -184,8 +184,7 @@ class ConcurrentSkipList {
 
   // Create a shared_ptr skiplist object with initial head height.
   static std::shared_ptr<SkipListType> createInstance(
-      int height,
-      const NodeAlloc& alloc) {
+      int height, const NodeAlloc& alloc) {
     return std::make_shared<ConcurrentSkipList>(height, alloc);
   }
 

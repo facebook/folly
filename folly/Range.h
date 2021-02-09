@@ -77,8 +77,8 @@ class Range;
 template <
     class Iter,
     class Comp = std::equal_to<typename Range<Iter>::value_type>>
-inline size_t
-qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq = Comp());
+inline size_t qfind(
+    const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq = Comp());
 
 /**
  * Finds the first occurrence of needle in haystack. The result is the
@@ -106,8 +106,7 @@ size_t rfind(
  */
 template <class Iter>
 inline size_t qfind_first_of(
-    const Range<Iter>& haystack,
-    const Range<Iter>& needle);
+    const Range<Iter>& haystack, const Range<Iter>& needle);
 
 /**
  * Small internal helper - returns the value just before an iterator.
@@ -1137,8 +1136,7 @@ typedef Range<unsigned char*> MutableByteRange;
 
 template <class C>
 std::basic_ostream<C>& operator<<(
-    std::basic_ostream<C>& os,
-    Range<C const*> piece) {
+    std::basic_ostream<C>& os, Range<C const*> piece) {
   using StreamSize = decltype(os.width());
   os.write(piece.start(), static_cast<StreamSize>(piece.size()));
   return os;
@@ -1208,8 +1206,7 @@ struct ComparableAsStringPiece {
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator==(
-    const T& lhs,
-    const U& rhs) {
+    const T& lhs, const U& rhs) {
   return StringPiece(lhs) == StringPiece(rhs);
 }
 
@@ -1218,8 +1215,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator==(
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator!=(
-    const T& lhs,
-    const U& rhs) {
+    const T& lhs, const U& rhs) {
   return StringPiece(lhs) != StringPiece(rhs);
 }
 
@@ -1228,8 +1224,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator!=(
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<(
-    const T& lhs,
-    const U& rhs) {
+    const T& lhs, const U& rhs) {
   return StringPiece(lhs) < StringPiece(rhs);
 }
 
@@ -1238,8 +1233,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<(
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>(
-    const T& lhs,
-    const U& rhs) {
+    const T& lhs, const U& rhs) {
   return StringPiece(lhs) > StringPiece(rhs);
 }
 
@@ -1248,8 +1242,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>(
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<=(
-    const T& lhs,
-    const U& rhs) {
+    const T& lhs, const U& rhs) {
   return StringPiece(lhs) <= StringPiece(rhs);
 }
 
@@ -1258,8 +1251,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<=(
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>=(
-    const T& lhs,
-    const U& rhs) {
+    const T& lhs, const U& rhs) {
   return StringPiece(lhs) >= StringPiece(rhs);
 }
 
@@ -1325,8 +1317,7 @@ size_t qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq) {
 namespace detail {
 
 inline size_t qfind_first_byte_of(
-    const StringPiece haystack,
-    const StringPiece needles) {
+    const StringPiece haystack, const StringPiece needles) {
   static auto const qfind_first_byte_of_fn = folly::CpuId().sse42()
       ? qfind_first_byte_of_sse42
       : qfind_first_byte_of_nosse;
@@ -1337,9 +1328,7 @@ inline size_t qfind_first_byte_of(
 
 template <class Iter, class Comp>
 size_t qfind_first_of(
-    const Range<Iter>& haystack,
-    const Range<Iter>& needles,
-    Comp eq) {
+    const Range<Iter>& haystack, const Range<Iter>& needles, Comp eq) {
   auto ret = std::find_first_of(
       haystack.begin(), haystack.end(), needles.begin(), needles.end(), eq);
   return ret == haystack.end() ? std::string::npos : ret - haystack.begin();
@@ -1414,8 +1403,7 @@ inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
 // specialization for ByteRange
 template <>
 inline size_t qfind(
-    const Range<const unsigned char*>& haystack,
-    const unsigned char& needle) {
+    const Range<const unsigned char*>& haystack, const unsigned char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
   if (haystack.empty()) {
     return std::string::npos;
@@ -1427,8 +1415,7 @@ inline size_t qfind(
 
 template <>
 inline size_t rfind(
-    const Range<const unsigned char*>& haystack,
-    const unsigned char& needle) {
+    const Range<const unsigned char*>& haystack, const unsigned char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
   if (haystack.empty()) {
     return std::string::npos;
@@ -1446,8 +1433,7 @@ size_t qfind_first_of(const Range<Iter>& haystack, const Range<Iter>& needles) {
 // specialization for StringPiece
 template <>
 inline size_t qfind_first_of(
-    const Range<const char*>& haystack,
-    const Range<const char*>& needles) {
+    const Range<const char*>& haystack, const Range<const char*>& needles) {
   return detail::qfind_first_byte_of(haystack, needles);
 }
 
@@ -1491,34 +1477,29 @@ struct hasher<
 inline namespace literals {
 inline namespace string_piece_literals {
 constexpr Range<char const*> operator"" _sp(
-    char const* str,
-    size_t len) noexcept {
+    char const* str, size_t len) noexcept {
   return Range<char const*>(str, len);
 }
 
 #if __cpp_char8_t >= 201811L
 constexpr Range<char8_t const*> operator"" _sp(
-    char8_t const* str,
-    size_t len) noexcept {
+    char8_t const* str, size_t len) noexcept {
   return Range<char8_t const*>(str, len);
 }
 #endif
 
 constexpr Range<char16_t const*> operator"" _sp(
-    char16_t const* str,
-    size_t len) noexcept {
+    char16_t const* str, size_t len) noexcept {
   return Range<char16_t const*>(str, len);
 }
 
 constexpr Range<char32_t const*> operator"" _sp(
-    char32_t const* str,
-    size_t len) noexcept {
+    char32_t const* str, size_t len) noexcept {
   return Range<char32_t const*>(str, len);
 }
 
 constexpr Range<wchar_t const*> operator"" _sp(
-    wchar_t const* str,
-    size_t len) noexcept {
+    wchar_t const* str, size_t len) noexcept {
   return Range<wchar_t const*>(str, len);
 }
 } // namespace string_piece_literals

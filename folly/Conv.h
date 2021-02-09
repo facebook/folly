@@ -335,8 +335,8 @@ constexpr unsigned int digitsEnough() {
   return static_cast<unsigned int>(digits10) + 1;
 }
 
-inline size_t
-unsafeTelescope128(char* buffer, size_t room, unsigned __int128 x) {
+inline size_t unsafeTelescope128(
+    char* buffer, size_t room, unsigned __int128 x) {
   typedef unsigned __int128 Usrc;
   size_t p = room - 1;
 
@@ -571,8 +571,7 @@ toAppend(const Src& value, Tgt* result) {
  */
 template <class Tgt>
 typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
-    StringPiece value,
-    Tgt* result) {
+    StringPiece value, Tgt* result) {
   result->append(value.data(), value.size());
 }
 
@@ -582,8 +581,7 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
  */
 template <class Tgt>
 typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
-    const fbstring& value,
-    Tgt* result) {
+    const fbstring& value, Tgt* result) {
   result->append(value.data(), value.size());
 }
 
@@ -995,15 +993,14 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
  */
 template <class Delimiter, class Tgt>
 typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
-    const Delimiter& /* delim */,
-    Tgt* /* result */) {}
+    const Delimiter& /* delim */, Tgt* /* result */) {}
 
 /**
  * 1 element: same as toAppend.
  */
 template <class Delimiter, class T, class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type
-toAppendDelim(const Delimiter& /* delim */, const T& v, Tgt* tgt) {
+typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
+    const Delimiter& /* delim */, const T& v, Tgt* tgt) {
   toAppend(v, tgt);
 }
 
@@ -1121,43 +1118,35 @@ template <class Tgt>
 Expected<Tgt, ConversionCode> digits_to(const char* b, const char* e) noexcept;
 
 extern template Expected<char, ConversionCode> digits_to<char>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 extern template Expected<signed char, ConversionCode> digits_to<signed char>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 extern template Expected<unsigned char, ConversionCode>
 digits_to<unsigned char>(const char*, const char*) noexcept;
 
 extern template Expected<short, ConversionCode> digits_to<short>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 extern template Expected<unsigned short, ConversionCode>
 digits_to<unsigned short>(const char*, const char*) noexcept;
 
 extern template Expected<int, ConversionCode> digits_to<int>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 extern template Expected<unsigned int, ConversionCode> digits_to<unsigned int>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 
 extern template Expected<long, ConversionCode> digits_to<long>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 extern template Expected<unsigned long, ConversionCode>
 digits_to<unsigned long>(const char*, const char*) noexcept;
 
 extern template Expected<long long, ConversionCode> digits_to<long long>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 extern template Expected<unsigned long long, ConversionCode>
 digits_to<unsigned long long>(const char*, const char*) noexcept;
 
 #if FOLLY_HAVE_INT128_T
 extern template Expected<__int128, ConversionCode> digits_to<__int128>(
-    const char*,
-    const char*) noexcept;
+    const char*, const char*) noexcept;
 extern template Expected<unsigned __int128, ConversionCode>
 digits_to<unsigned __int128>(const char*, const char*) noexcept;
 #endif
@@ -1468,16 +1457,14 @@ parseTo(StringPiece in, T& out) noexcept {
 
 FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
-    StringPiece in,
-    StringPiece& out) noexcept {
+    StringPiece in, StringPiece& out) noexcept {
   out = in;
   return StringPiece{in.end(), in.end()};
 }
 
 FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
-    StringPiece in,
-    std::string& out) {
+    StringPiece in, std::string& out) {
   out.clear();
   out.append(in.data(), in.size()); // TODO try/catch?
   return StringPiece{in.end(), in.end()};
@@ -1485,8 +1472,7 @@ inline Expected<StringPiece, ConversionCode> parseTo(
 
 FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
-    StringPiece in,
-    fbstring& out) {
+    StringPiece in, fbstring& out) {
   out.clear();
   out.append(in.data(), in.size()); // TODO try/catch?
   return StringPiece{in.end(), in.end()};

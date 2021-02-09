@@ -2641,8 +2641,7 @@ class MockAsyncTFOSocket : public AsyncSocket {
   explicit MockAsyncTFOSocket(EventBase* evb) : AsyncSocket(evb) {}
 
   MOCK_METHOD3(
-      tfoSendMsg,
-      ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
+      tfoSendMsg, ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 TEST(AsyncSocketTest, TestTFOUnsupported) {

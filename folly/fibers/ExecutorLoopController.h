@@ -37,8 +37,7 @@ class ExecutorTimeoutManager : public TimeoutManager {
   ExecutorTimeoutManager& operator=(const ExecutorTimeoutManager&) = delete;
 
   void attachTimeoutManager(
-      AsyncTimeout* /* unused */,
-      InternalEnum /* unused */) final {}
+      AsyncTimeout* /* unused */, InternalEnum /* unused */) final {}
 
   void detachTimeoutManager(AsyncTimeout* /* unused */) final {
     throw std::logic_error(

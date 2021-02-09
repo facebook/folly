@@ -198,8 +198,7 @@ template <
     typename Alloc,
     size_t kAlign = alignof(typename std::allocator_traits<Alloc>::value_type)>
 typename std::allocator_traits<Alloc>::pointer allocateOverAligned(
-    Alloc const& alloc,
-    size_t n) {
+    Alloc const& alloc, size_t n) {
   void* raw = nullptr;
   detail::rawOverAlignedImpl<Alloc, kAlign, true>(alloc, n, raw);
   return std::pointer_traits<typename std::allocator_traits<Alloc>::pointer>::
@@ -683,8 +682,7 @@ class allocator_delete : private std::remove_reference<Alloc>::type {
  */
 template <typename T, typename Alloc, typename... Args>
 std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
-    Alloc const& alloc,
-    Args&&... args) {
+    Alloc const& alloc, Args&&... args) {
   using traits = std::allocator_traits<Alloc>;
   struct DeferCondDeallocate {
     bool& cond;

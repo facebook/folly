@@ -1396,8 +1396,7 @@ struct Dimensions {
 };
 
 Expected<StringPiece, ConversionCode> parseTo(
-    folly::StringPiece in,
-    Dimensions& out) {
+    folly::StringPiece in, Dimensions& out) {
   return parseTo(in, out.w)
       .then([](StringPiece sp) { return sp.removePrefix("x"), sp; })
       .then([&](StringPiece sp) { return parseTo(sp, out.h); });

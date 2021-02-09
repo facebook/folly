@@ -37,8 +37,7 @@ class BasicTransportCertificate : public folly::AsyncTransportCertificate {
   }
 
   BasicTransportCertificate(
-      std::string identity,
-      folly::ssl::X509UniquePtr x509)
+      std::string identity, folly::ssl::X509UniquePtr x509)
       : identity_(std::move(identity)), x509_(std::move(x509)) {}
 
   std::string getIdentity() const override { return identity_; }

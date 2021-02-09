@@ -70,8 +70,8 @@ void ThreadTimestamps::clear() {
   timestamps_.clear();
 }
 
-bool ThreadTimestamps::atLeastAsRecentAs(DSchedThreadId tid, DSchedTimestamp ts)
-    const {
+bool ThreadTimestamps::atLeastAsRecentAs(
+    DSchedThreadId tid, DSchedTimestamp ts) const {
   // It is not meaningful learn whether any instance is at least
   // as recent as timestamp 0.
   assert(ts.initialized());
@@ -245,8 +245,8 @@ DeterministicSchedule* DeterministicSchedule::getCurrentSchedule() {
   return tls.sched;
 }
 
-std::function<size_t(size_t)>
-DeterministicSchedule::uniformSubset(uint64_t seed, size_t n, size_t m) {
+std::function<size_t(size_t)> DeterministicSchedule::uniformSubset(
+    uint64_t seed, size_t n, size_t m) {
   auto gen = std::make_shared<UniformSubset>(seed, n, m);
   return [=](size_t numActive) { return (*gen)(numActive); };
 }
@@ -286,9 +286,7 @@ size_t DeterministicSchedule::getRandNumber(size_t n) {
 }
 
 int DeterministicSchedule::getcpu(
-    unsigned* cpu,
-    unsigned* node,
-    void* /* unused */) {
+    unsigned* cpu, unsigned* node, void* /* unused */) {
   auto& tls = TLState::get();
   if (cpu) {
     *cpu = tls.threadId.val;

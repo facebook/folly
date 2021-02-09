@@ -39,23 +39,20 @@ void STTimerFDTimeoutManager::setActive(AsyncTimeout* obj, bool active) {
 }
 
 void STTimerFDTimeoutManager::attachTimeoutManager(
-    AsyncTimeout* /*unused*/,
-    InternalEnum /*unused*/) {}
+    AsyncTimeout* /*unused*/, InternalEnum /*unused*/) {}
 
 void STTimerFDTimeoutManager::detachTimeoutManager(AsyncTimeout* obj) {
   cancelTimeout(obj);
 }
 
 bool STTimerFDTimeoutManager::scheduleTimeout(
-    AsyncTimeout* obj,
-    timeout_type timeout) {
+    AsyncTimeout* obj, timeout_type timeout) {
   timeout_type_high_res high_res_timeout(timeout);
   return scheduleTimeoutHighRes(obj, high_res_timeout);
 }
 
 bool STTimerFDTimeoutManager::scheduleTimeoutHighRes(
-    AsyncTimeout* obj,
-    timeout_type_high_res timeout) {
+    AsyncTimeout* obj, timeout_type_high_res timeout) {
   CHECK(obj_ == nullptr || obj_ == obj)
       << "Scheduling multiple timeouts on a single timeout manager is not allowed!";
   // no need to cancel - just reschedule

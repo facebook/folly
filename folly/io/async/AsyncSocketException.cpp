@@ -62,9 +62,7 @@ namespace folly {
 }
 
 /* static */ std::string AsyncSocketException::getMessage(
-    AsyncSocketExceptionType type,
-    const std::string& message,
-    int errnoCopy) {
+    AsyncSocketExceptionType type, const std::string& message, int errnoCopy) {
   if (errnoCopy != 0) {
     return sformat(
         "AsyncSocketException: {}, type = {}, errno = {} ({})",

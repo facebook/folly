@@ -32,13 +32,9 @@ class UTF8Range : public Base {
   /* implicit */ UTF8Range(const folly::Range<Iterator> baseRange)
       : Base(
             boost::u8_to_u32_iterator<Iterator>(
-                baseRange.begin(),
-                baseRange.begin(),
-                baseRange.end()),
+                baseRange.begin(), baseRange.begin(), baseRange.end()),
             boost::u8_to_u32_iterator<Iterator>(
-                baseRange.end(),
-                baseRange.begin(),
-                baseRange.end())) {}
+                baseRange.end(), baseRange.begin(), baseRange.end())) {}
   /* implicit */ UTF8Range(const std::string& baseString)
       : Base(folly::Range<Iterator>(baseString)) {}
 };

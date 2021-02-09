@@ -31,8 +31,7 @@ void init(
 }
 
 void foo(
-    const po::variables_map& options,
-    const std::vector<std::string>& args) {
+    const po::variables_map& options, const std::vector<std::string>& args) {
   printf("foo global-foo %d\n", options["global-foo"].as<int32_t>());
   printf("foo local-foo %d\n", options["local-foo"].as<int32_t>());
   for (auto& arg : args) {

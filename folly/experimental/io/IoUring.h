@@ -44,8 +44,8 @@ class IoUringOp : public AsyncBaseOp {
    */
   void pread(int fd, void* buf, size_t size, off_t start) override;
   void preadv(int fd, const iovec* iov, int iovcnt, off_t start) override;
-  void pread(int fd, void* buf, size_t size, off_t start, int buf_index)
-      override;
+  void pread(
+      int fd, void* buf, size_t size, off_t start, int buf_index) override;
 
   /**
    * Initiate a write request.
@@ -85,9 +85,7 @@ class IoUring : public AsyncBase {
    * The default IORING_MAX_ENTRIES value is usually 32K.
    */
   explicit IoUring(
-      size_t capacity,
-      PollMode pollMode = NOT_POLLABLE,
-      size_t maxSubmit = 1);
+      size_t capacity, PollMode pollMode = NOT_POLLABLE, size_t maxSubmit = 1);
   IoUring(const IoUring&) = delete;
   IoUring& operator=(const IoUring&) = delete;
   ~IoUring() override;

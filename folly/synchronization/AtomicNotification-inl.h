@@ -50,8 +50,7 @@ extern ParkingLot<std::uint32_t> parkingLot;
 
 template <template <typename...> class Atom, typename... Args>
 void atomic_wait_impl(
-    const Atom<std::uint32_t, Args...>* atomic,
-    std::uint32_t old) {
+    const Atom<std::uint32_t, Args...>* atomic, std::uint32_t old) {
   futexWait(atomic, old);
   return;
 }

@@ -1009,6 +1009,4 @@ typedef ::testing::Types<MapFactory<BucketTable>> MapFactoryTypes;
 #endif
 
 INSTANTIATE_TYPED_TEST_CASE_P(
-    MapFactoryTypesInstantiation,
-    ConcurrentHashMapTest,
-    MapFactoryTypes);
+    MapFactoryTypesInstantiation, ConcurrentHashMapTest, MapFactoryTypes);

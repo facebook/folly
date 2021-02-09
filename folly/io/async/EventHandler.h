@@ -63,8 +63,7 @@ class EventHandler {
    *                   changeHandlerFD() before the handler can be registered.
    */
   explicit EventHandler(
-      EventBase* eventBase = nullptr,
-      NetworkSocket fd = NetworkSocket());
+      EventBase* eventBase = nullptr, NetworkSocket fd = NetworkSocket());
 
   EventHandler(const EventHandler&) = delete;
   EventHandler& operator=(const EventHandler&) = delete;

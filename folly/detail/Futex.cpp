@@ -227,9 +227,7 @@ FutexResult emulatedFutexWaitImpl(
 // Futex<> overloads
 
 int futexWakeImpl(
-    const Futex<std::atomic>* futex,
-    int count,
-    uint32_t wakeMask) {
+    const Futex<std::atomic>* futex, int count, uint32_t wakeMask) {
 #ifdef __linux__
   return nativeFutexWake(futex, count, wakeMask);
 #else
@@ -238,9 +236,7 @@ int futexWakeImpl(
 }
 
 int futexWakeImpl(
-    const Futex<EmulatedFutexAtomic>* futex,
-    int count,
-    uint32_t wakeMask) {
+    const Futex<EmulatedFutexAtomic>* futex, int count, uint32_t wakeMask) {
   return emulatedFutexWake(futex, count, wakeMask);
 }
 

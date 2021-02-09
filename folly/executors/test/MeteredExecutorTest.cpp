@@ -234,9 +234,7 @@ TEST_P(MeteredExecutorTestP, RequestContext) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    MeteredExecutorSuite,
-    MeteredExecutorTestP,
-    testing::Values(1, 3));
+    MeteredExecutorSuite, MeteredExecutorTestP, testing::Values(1, 3));
 
 TEST_F(MeteredExecutorTest, ResetJoins) {
   createAdapter(2);

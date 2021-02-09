@@ -20,10 +20,7 @@ namespace folly {
 
 // ZeroCopyTest
 ZeroCopyTest::ZeroCopyTest(
-    size_t numClients,
-    int numLoops,
-    bool zeroCopy,
-    size_t bufferSize)
+    size_t numClients, int numLoops, bool zeroCopy, size_t bufferSize)
     : numClients_(numClients),
       counter_(numClients),
       numLoops_(numLoops),

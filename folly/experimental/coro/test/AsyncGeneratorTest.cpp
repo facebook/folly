@@ -162,8 +162,7 @@ TEST_F(AsyncGeneratorTest, ThrowExceptionAfterFirstYield) {
 }
 
 TEST_F(
-    AsyncGeneratorTest,
-    ConsumingManySynchronousElementsDoesNotOverflowStack) {
+    AsyncGeneratorTest, ConsumingManySynchronousElementsDoesNotOverflowStack) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<std::uint64_t> {
     for (std::uint64_t i = 0; i < 1'000'000; ++i) {
       co_yield i;

@@ -126,8 +126,7 @@ not_null_base<PtrT>::not_null_base(U&& u, private_tag)
 
 template <typename PtrT>
 not_null_base<PtrT>::not_null_base(
-    PtrT&& ptr,
-    guaranteed_not_null_provider::guaranteed_not_null) noexcept
+    PtrT&& ptr, guaranteed_not_null_provider::guaranteed_not_null) noexcept
     : ptr_(std::move(ptr)) {}
 
 template <typename PtrT>
@@ -250,8 +249,7 @@ template <typename T, typename Deleter>
 not_null<std::unique_ptr<T, Deleter>>::not_null(pointer p, const Deleter& d)
     : not_null_base<std::unique_ptr<T, Deleter>>(
           std::unique_ptr<T, Deleter>(
-              std::move(p).unwrap(),
-              this->forward_or_throw_if_null(d)),
+              std::move(p).unwrap(), this->forward_or_throw_if_null(d)),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
 template <typename T, typename Deleter>
@@ -300,23 +298,20 @@ template <typename T>
 template <typename U, typename Deleter>
 not_null<std::shared_ptr<T>>::not_null(U* ptr, Deleter d)
     : not_null_base<std::shared_ptr<T>>(std::shared_ptr<T>(
-          ptr,
-          this->forward_or_throw_if_null(std::move(d)))) {}
+          ptr, this->forward_or_throw_if_null(std::move(d)))) {}
 
 template <typename T>
 template <typename U, typename Deleter>
 not_null<std::shared_ptr<T>>::not_null(not_null<U*> ptr, Deleter d)
     : not_null_base<std::shared_ptr<T>>(
           std::shared_ptr<T>(
-              ptr.unwrap(),
-              this->forward_or_throw_if_null(std::move(d))),
+              ptr.unwrap(), this->forward_or_throw_if_null(std::move(d))),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
 template <typename T>
 template <typename U>
 not_null<std::shared_ptr<T>>::not_null(
-    const std::shared_ptr<U>& r,
-    not_null<element_type*> ptr) noexcept
+    const std::shared_ptr<U>& r, not_null<element_type*> ptr) noexcept
     : not_null_base<std::shared_ptr<T>>(
           std::shared_ptr<T>(r, ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
@@ -324,8 +319,7 @@ not_null<std::shared_ptr<T>>::not_null(
 template <typename T>
 template <typename U>
 not_null<std::shared_ptr<T>>::not_null(
-    const not_null<std::shared_ptr<U>>& r,
-    not_null<element_type*> ptr) noexcept
+    const not_null<std::shared_ptr<U>>& r, not_null<element_type*> ptr) noexcept
     : not_null_base<std::shared_ptr<T>>(
           std::shared_ptr<T>(r.unwrap(), ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
@@ -333,8 +327,7 @@ not_null<std::shared_ptr<T>>::not_null(
 template <typename T>
 template <typename U>
 not_null<std::shared_ptr<T>>::not_null(
-    std::shared_ptr<U>&& r,
-    not_null<element_type*> ptr) noexcept
+    std::shared_ptr<U>&& r, not_null<element_type*> ptr) noexcept
     : not_null_base<std::shared_ptr<T>>(
           std::shared_ptr<T>(std::move(r), ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
@@ -342,8 +335,7 @@ not_null<std::shared_ptr<T>>::not_null(
 template <typename T>
 template <typename U>
 not_null<std::shared_ptr<T>>::not_null(
-    not_null<std::shared_ptr<U>>&& r,
-    not_null<element_type*> ptr) noexcept
+    not_null<std::shared_ptr<U>>&& r, not_null<element_type*> ptr) noexcept
     : not_null_base<std::shared_ptr<T>>(
           std::shared_ptr<T>(std::move(r).unwrap(), ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
@@ -412,8 +404,7 @@ not_null_shared_ptr<T> make_not_null_shared(Args&&... args) {
 
 template <typename T, typename Alloc, typename... Args>
 not_null_shared_ptr<T> allocate_not_null_shared(
-    const Alloc& alloc,
-    Args&&... args) {
+    const Alloc& alloc, Args&&... args) {
   return not_null_shared_ptr<T>(
       std::allocate_shared<T, Alloc, Args...>(
           alloc, std::forward<Args>(args)...),
@@ -446,8 +437,7 @@ FB_NOT_NULL_MK_OP(>=)
  */
 template <typename U, typename V, typename PtrT>
 std::basic_ostream<U, V>& operator<<(
-    std::basic_ostream<U, V>& os,
-    const not_null<PtrT>& ptr) {
+    std::basic_ostream<U, V>& os, const not_null<PtrT>& ptr) {
   return os << ptr.unwrap();
 }
 

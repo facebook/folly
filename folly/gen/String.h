@@ -236,8 +236,8 @@ class StreamSplitter {
 };
 
 template <class Callback> // Helper to enable template deduction
-StreamSplitter<Callback>
-streamSplitter(char delimiter, Callback&& pieceCb, uint64_t capacity = 0) {
+StreamSplitter<Callback> streamSplitter(
+    char delimiter, Callback&& pieceCb, uint64_t capacity = 0) {
   return StreamSplitter<Callback>(delimiter, std::move(pieceCb), capacity);
 }
 

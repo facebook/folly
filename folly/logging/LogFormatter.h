@@ -41,7 +41,6 @@ class LogFormatter {
    *     message->getCategory()
    */
   virtual std::string formatMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) = 0;
+      const LogMessage& message, const LogCategory* handlerCategory) = 0;
 };
 } // namespace folly

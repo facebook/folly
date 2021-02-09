@@ -42,17 +42,13 @@ bool compareJson(StringPiece json1, StringPiece json2);
  * str2, strNestingDepth - 1).
  */
 bool compareJsonWithNestedJson(
-    StringPiece json1,
-    StringPiece json2,
-    unsigned strNestingDepth);
+    StringPiece json1, StringPiece json2, unsigned strNestingDepth);
 
 /**
  * Like compareJson, but with dynamic instances.
  */
 bool compareDynamicWithNestedJson(
-    dynamic const& obj1,
-    dynamic const& obj2,
-    unsigned strNestingDepth);
+    dynamic const& obj1, dynamic const& obj2, unsigned strNestingDepth);
 
 /**
  * Like compareJson, but allows for the given tolerance when comparing
@@ -67,18 +63,14 @@ bool compareDynamicWithNestedJson(
  * keys are doubles (again a dynamic extension).
  */
 bool compareJsonWithTolerance(
-    StringPiece json1,
-    StringPiece json2,
-    double tolerance);
+    StringPiece json1, StringPiece json2, double tolerance);
 
 /**
  * Like compareJsonWithTolerance, but operates directly on the
  * dynamics.
  */
 bool compareDynamicWithTolerance(
-    const dynamic& obj1,
-    const dynamic& obj2,
-    double tolerance);
+    const dynamic& obj1, const dynamic& obj2, double tolerance);
 
 } // namespace folly
 

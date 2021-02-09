@@ -173,14 +173,12 @@ inline CancellationToken::CancellationToken(
     : state_(std::move(state)) {}
 
 inline bool operator==(
-    const CancellationToken& a,
-    const CancellationToken& b) noexcept {
+    const CancellationToken& a, const CancellationToken& b) noexcept {
   return a.state_ == b.state_;
 }
 
 inline bool operator!=(
-    const CancellationToken& a,
-    const CancellationToken& b) noexcept {
+    const CancellationToken& a, const CancellationToken& b) noexcept {
   return !(a == b);
 }
 
@@ -255,8 +253,7 @@ template <
             value,
         int>>
 inline CancellationCallback::CancellationCallback(
-    CancellationToken&& ct,
-    Callable&& callable)
+    CancellationToken&& ct, Callable&& callable)
     : next_(nullptr),
       prevNext_(nullptr),
       state_(nullptr),
@@ -275,8 +272,7 @@ template <
             value,
         int>>
 inline CancellationCallback::CancellationCallback(
-    const CancellationToken& ct,
-    Callable&& callable)
+    const CancellationToken& ct, Callable&& callable)
     : next_(nullptr),
       prevNext_(nullptr),
       state_(nullptr),

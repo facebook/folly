@@ -162,10 +162,7 @@ TEST_P(SimpleAsyncIOTest, DestroyWithPendingIO) {
 
 #if FOLLY_HAS_COROUTINES
 static folly::coro::Task<folly::Unit> doCoAsyncWrites(
-    SimpleAsyncIO& aio,
-    int fd,
-    std::string const& data,
-    int copies) {
+    SimpleAsyncIO& aio, int fd, std::string const& data, int copies) {
   std::vector<folly::coro::Task<int>> writes;
 
   for (int i = 0; i < copies; ++i) {
@@ -182,10 +179,7 @@ static folly::coro::Task<folly::Unit> doCoAsyncWrites(
 }
 
 static folly::coro::Task<folly::Unit> doCoAsyncReads(
-    SimpleAsyncIO& aio,
-    int fd,
-    std::string const& data,
-    int copies) {
+    SimpleAsyncIO& aio, int fd, std::string const& data, int copies) {
   std::vector<std::unique_ptr<char[]>> buffers;
   std::vector<folly::coro::Task<int>> reads;
 

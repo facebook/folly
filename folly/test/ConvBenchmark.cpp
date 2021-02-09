@@ -1080,20 +1080,14 @@ STRING_TO_TYPE_BENCHMARK(
     " -8123456789123456789 ",
     "-10000000000000000000000")
 STRING_TO_TYPE_BENCHMARK(
-    unsigned long long,
-    LongLongUnsigned,
-    " 18123456789123456789 ",
-    "-4711")
+    unsigned long long, LongLongUnsigned, " 18123456789123456789 ", "-4711")
 BENCHMARK_DRAW_LINE();
 
 PTR_PAIR_TO_INT_BENCHMARK(signed char, CharSigned, "-47", "1000")
 PTR_PAIR_TO_INT_BENCHMARK(unsigned char, CharUnsigned, "47", "1000")
 PTR_PAIR_TO_INT_BENCHMARK(int, IntSigned, "-4711", "-10000000000000000000000")
 PTR_PAIR_TO_INT_BENCHMARK(
-    unsigned int,
-    IntUnsigned,
-    "4711",
-    "10000000000000000000000")
+    unsigned int, IntUnsigned, "4711", "10000000000000000000000")
 PTR_PAIR_TO_INT_BENCHMARK(
     long long,
     LongLongSigned,

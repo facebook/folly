@@ -139,8 +139,8 @@ static CRYPTO_dynlock_value* dyn_create(const char*, int) {
   return new CRYPTO_dynlock_value;
 }
 
-static void
-dyn_lock(int mode, struct CRYPTO_dynlock_value* lock, const char*, int) {
+static void dyn_lock(
+    int mode, struct CRYPTO_dynlock_value* lock, const char*, int) {
   if (lock != nullptr) {
     if (mode & CRYPTO_LOCK) {
       lock->mutex.lock();

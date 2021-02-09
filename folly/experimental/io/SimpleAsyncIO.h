@@ -149,8 +149,8 @@ class SimpleAsyncIO : public EventHandler {
    * Identical to pwrite() except that result is obtained by co_await instead of
    * callback.
    */
-  folly::coro::Task<int>
-  co_pwrite(int fd, const void* buf, size_t size, off_t start);
+  folly::coro::Task<int> co_pwrite(
+      int fd, const void* buf, size_t size, off_t start);
 #endif
 
  private:
@@ -158,8 +158,7 @@ class SimpleAsyncIO : public EventHandler {
   void putOp(std::unique_ptr<AsyncBaseOp>&&);
 
   void submitOp(
-      Function<void(AsyncBaseOp*)> preparer,
-      SimpleAsyncIOCompletor completor);
+      Function<void(AsyncBaseOp*)> preparer, SimpleAsyncIOCompletor completor);
 
   virtual void handlerReady(uint16_t events) noexcept override;
 

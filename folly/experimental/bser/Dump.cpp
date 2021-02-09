@@ -36,8 +36,7 @@ serialization_opts::serialization_opts()
     : sort_keys(false), growth_increment(8192) {}
 
 static const dynamic* getTemplate(
-    const serialization_opts& opts,
-    dynamic const& dynArray) {
+    const serialization_opts& opts, dynamic const& dynArray) {
   if (!opts.templates.has_value()) {
     return nullptr;
   }
@@ -190,8 +189,7 @@ static void bserEncode(
 }
 
 std::unique_ptr<folly::IOBuf> toBserIOBuf(
-    folly::dynamic const& dyn,
-    const serialization_opts& opts) {
+    folly::dynamic const& dyn, const serialization_opts& opts) {
   IOBufQueue q(IOBufQueue::cacheChainLength());
   uint8_t hdrbuf[sizeof(kMagic) + 1 + sizeof(int64_t)];
 

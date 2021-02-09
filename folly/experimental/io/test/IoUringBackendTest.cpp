@@ -959,22 +959,14 @@ INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest1, IoUringBackendProvider);
 
 // Instantiate the registered fd tests
 INSTANTIATE_TYPED_TEST_CASE_P(
-    IoUringRegFd,
-    EventBaseTest,
-    IoUringRegFdBackendProvider);
+    IoUringRegFd, EventBaseTest, IoUringRegFdBackendProvider);
 INSTANTIATE_TYPED_TEST_CASE_P(
-    IoUringRegFd,
-    EventBaseTest1,
-    IoUringRegFdBackendProvider);
+    IoUringRegFd, EventBaseTest1, IoUringRegFdBackendProvider);
 
 // Instantiate the poll CQ tests
 INSTANTIATE_TYPED_TEST_CASE_P(
-    IoUringPollCQ,
-    EventBaseTest,
-    IoUringPollCQBackendProvider);
+    IoUringPollCQ, EventBaseTest, IoUringPollCQBackendProvider);
 INSTANTIATE_TYPED_TEST_CASE_P(
-    IoUringPollCQ,
-    EventBaseTest1,
-    IoUringPollCQBackendProvider);
+    IoUringPollCQ, EventBaseTest1, IoUringPollCQBackendProvider);
 } // namespace test
 } // namespace folly

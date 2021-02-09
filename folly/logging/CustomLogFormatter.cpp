@@ -69,9 +69,7 @@ struct FormatKeys {
   const std::size_t width;
 
   constexpr FormatKeys(
-      StringPiece key_,
-      std::size_t argIndex_,
-      std::size_t width_ = 0)
+      StringPiece key_, std::size_t argIndex_, std::size_t width_ = 0)
       : key(key_), argIndex(argIndex_), width(width_) {}
 };
 
@@ -232,8 +230,7 @@ void CustomLogFormatter::parseFormatString(StringPiece input) {
 }
 
 std::string CustomLogFormatter::formatMessage(
-    const LogMessage& message,
-    const LogCategory* /* handlerCategory */) {
+    const LogMessage& message, const LogCategory* /* handlerCategory */) {
   // Get the local time info
   struct tm ltime;
   auto timeSinceEpoch = message.getTimestamp().time_since_epoch();

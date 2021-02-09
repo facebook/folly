@@ -190,8 +190,7 @@ std::string toPseudoJson(const folly::dynamic& d);
 struct FOLLY_EXPORT DynamicParserParseError : public std::runtime_error {
   explicit DynamicParserParseError(folly::dynamic error)
       : std::runtime_error(folly::to<std::string>(
-            "DynamicParserParseError: ",
-            detail::toPseudoJson(error))),
+            "DynamicParserParseError: ", detail::toPseudoJson(error))),
         error_(std::move(error)) {}
   /**
    * Structured just like releaseErrors(), but with only 1 error inside:

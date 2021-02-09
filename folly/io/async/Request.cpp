@@ -498,8 +498,7 @@ RequestContext::RequestContext(const RequestContext& ctx, Tag)
     : RequestContext(ctx) {}
 
 /* static */ std::shared_ptr<RequestContext> RequestContext::copyAsRoot(
-    const RequestContext& ctx,
-    intptr_t rootid) {
+    const RequestContext& ctx, intptr_t rootid) {
   return std::make_shared<RequestContext>(ctx, rootid, Tag{});
 }
 
@@ -509,22 +508,18 @@ RequestContext::RequestContext(const RequestContext& ctx, Tag)
 }
 
 void RequestContext::setContextData(
-    const RequestToken& token,
-    std::unique_ptr<RequestData> data) {
+    const RequestToken& token, std::unique_ptr<RequestData> data) {
   state_.doSetContextData(token, data, DoSetBehaviour::SET, false);
 }
 
 bool RequestContext::setContextDataIfAbsent(
-    const RequestToken& token,
-    std::unique_ptr<RequestData> data) {
+    const RequestToken& token, std::unique_ptr<RequestData> data) {
   return state_.doSetContextData(
       token, data, DoSetBehaviour::SET_IF_ABSENT, false);
 }
 
 void RequestContext::overwriteContextData(
-    const RequestToken& token,
-    std::unique_ptr<RequestData> data,
-    bool safe) {
+    const RequestToken& token, std::unique_ptr<RequestData> data, bool safe) {
   state_.doSetContextData(token, data, DoSetBehaviour::OVERWRITE, safe);
 }
 
