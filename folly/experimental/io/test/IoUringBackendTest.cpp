@@ -495,7 +495,7 @@ TEST(IoUringBackend, SuccessCreateRetry) {
   try {
     folly::IoUringBackend::Options options;
     options.setCapacity(256 * 1024);
-    options.setMinCapacity(1024);
+    options.setMinCapacity(16);
     folly::IoUringBackend backend(options);
   } catch (const folly::IoUringBackend::NotAvailable&) {
     bSuccess = false;
