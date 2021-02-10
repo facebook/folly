@@ -211,6 +211,17 @@ class IoUringBackend : public EventBaseBackendBase {
   void queueFsync(int fd, FileOpCallback&& cb);
   void queueFdatasync(int fd, FileOpCallback&& cb);
 
+  void queueOpenat(
+      int dfd, const char* path, int flags, mode_t mode, FileOpCallback&& cb);
+
+  void queueOpenat2(
+      int dfd, const char* path, struct open_how* how, FileOpCallback&& cb);
+
+  void queueClose(int fd, FileOpCallback&& cb);
+
+  void queueFallocate(
+      int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb);
+
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
 
@@ -709,6 +720,87 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     FSyncFlags flags_;
+  };
+
+  struct FOpenAtIoSqe : public FileOpIoSqe {
+    FOpenAtIoSqe(
+        IoUringBackend* backend,
+        int dfd,
+        const char* path,
+        int flags,
+        mode_t mode,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, dfd, std::move(cb)),
+          path_(path),
+          flags_(flags),
+          mode_(mode) {}
+
+    ~FOpenAtIoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      ::io_uring_prep_openat(sqe, fd_, path_.c_str(), flags_, mode_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    std::string path_;
+    int flags_;
+    mode_t mode_;
+  };
+
+  struct FOpenAt2IoSqe : public FileOpIoSqe {
+    FOpenAt2IoSqe(
+        IoUringBackend* backend,
+        int dfd,
+        const char* path,
+        struct open_how* how,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, dfd, std::move(cb)), path_(path), how_(*how) {}
+
+    ~FOpenAt2IoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      ::io_uring_prep_openat2(sqe, fd_, path_.c_str(), &how_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    std::string path_;
+    struct open_how how_;
+  };
+
+  struct FCloseIoSqe : public FileOpIoSqe {
+    using FileOpIoSqe::FileOpIoSqe;
+
+    ~FCloseIoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      ::io_uring_prep_close(sqe, fd_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+  };
+
+  struct FAllocateIoSqe : public FileOpIoSqe {
+    FAllocateIoSqe(
+        IoUringBackend* backend,
+        int fd,
+        int mode,
+        off_t offset,
+        off_t len,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, fd, std::move(cb)),
+          mode_(mode),
+          offset_(offset),
+          len_(len) {}
+
+    ~FAllocateIoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      ::io_uring_prep_fallocate(sqe, fd_, mode_, offset_, len_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    int mode_;
+    off_t offset_;
+    off_t len_;
   };
 
   int getActiveEvents(WaitForEventsMode waitForEvents);

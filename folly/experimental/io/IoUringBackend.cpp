@@ -1246,6 +1246,41 @@ void IoUringBackend::queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb) {
   submitImmediateIoSqe(*ioSqe);
 }
 
+void IoUringBackend::queueOpenat(
+    int dfd, const char* path, int flags, mode_t mode, FileOpCallback&& cb) {
+  auto* ioSqe = new FOpenAtIoSqe(this, dfd, path, flags, mode, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+  incNumIoSqeInUse();
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
+void IoUringBackend::queueOpenat2(
+    int dfd, const char* path, struct open_how* how, FileOpCallback&& cb) {
+  auto* ioSqe = new FOpenAt2IoSqe(this, dfd, path, how, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+  incNumIoSqeInUse();
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
+void IoUringBackend::queueClose(int fd, FileOpCallback&& cb) {
+  auto* ioSqe = new FCloseIoSqe(this, fd, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+  incNumIoSqeInUse();
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
+void IoUringBackend::queueFallocate(
+    int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb) {
+  auto* ioSqe = new FAllocateIoSqe(this, fd, mode, offset, len, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+  incNumIoSqeInUse();
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
 void IoUringBackend::processFileOp(IoSqe* sqe, int64_t res) noexcept {
   auto* ioSqe = reinterpret_cast<FileOpIoSqe*>(sqe);
   // save the res
