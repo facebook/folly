@@ -174,6 +174,23 @@ TEST(copy_to_shared_ptr, example) {
   EXPECT_EQ(17, *s);
 }
 
+TEST(to_erased_unique_ptr, example) {
+  erased_unique_ptr ptr = to_erased_unique_ptr(new int(42));
+  EXPECT_EQ(42, *static_cast<int*>(ptr.get()));
+
+  ptr = to_erased_unique_ptr(new std::string("foo"));
+  EXPECT_EQ("foo", *static_cast<std::string*>(ptr.get()));
+
+  struct {
+    int i;
+  } s;
+  ptr = to_erased_unique_ptr(new decltype(s){42});
+  EXPECT_EQ(42, static_cast<decltype(s)*>(ptr.get())->i);
+
+  ptr = to_erased_unique_ptr(std::make_unique<int>(42));
+  EXPECT_EQ(42, *static_cast<int*>(ptr.get()));
+}
+
 TEST(SysAllocator, equality) {
   using Alloc = SysAllocator<float>;
   Alloc const a, b;

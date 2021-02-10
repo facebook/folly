@@ -426,6 +426,29 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
   return std::make_shared<remove_cvref_t<T>>(static_cast<T&&>(t));
 }
 
+namespace detail {
+template <typename T>
+struct erased_unique_ptr_deleter {
+  static void call(void* ptr) { delete static_cast<T*>(ptr); }
+};
+} // namespace detail
+
+/**
+ *  to_erased_unique_ptr
+ *
+ *  Wraps a raw pointer in a unique_ptr<void> with appropriate deleter.
+ *  Makes it as easy to use as shared_ptr<void> when refcounting is not needed.
+ */
+using erased_unique_ptr = std::unique_ptr<void, void (*)(void*)>;
+template <typename T>
+erased_unique_ptr to_erased_unique_ptr(T* ptr) {
+  return {ptr, &detail::erased_unique_ptr_deleter<T>::call};
+}
+template <typename T>
+erased_unique_ptr to_erased_unique_ptr(std::unique_ptr<T> ptr) {
+  return to_erased_unique_ptr(ptr.release());
+}
+
 /**
  * SysAllocator
  *
