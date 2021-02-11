@@ -1100,6 +1100,25 @@ struct IoUringPollCQBackendProvider {
   }
 };
 
+// SQ/CQ polling
+struct IoUringPollSQCQBackendProvider {
+  static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
+    try {
+      folly::PollIoBackend::Options options;
+      options.setCapacity(kCapacity)
+          .setMaxSubmit(kMaxSubmit)
+          .setMaxGet(kMaxGet)
+          .setUseRegisteredFds(false)
+          .setFlags(
+              folly::PollIoBackend::Options::Flags::POLL_SQ |
+              folly::PollIoBackend::Options::Flags::POLL_CQ);
+      return std::make_unique<folly::IoUringBackend>(options);
+    } catch (const IoUringBackend::NotAvailable&) {
+      return nullptr;
+    }
+  }
+};
+
 // Instantiate the non registered fd tests
 INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest, IoUringBackendProvider);
 INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest1, IoUringBackendProvider);
@@ -1115,5 +1134,11 @@ INSTANTIATE_TYPED_TEST_CASE_P(
     IoUringPollCQ, EventBaseTest, IoUringPollCQBackendProvider);
 INSTANTIATE_TYPED_TEST_CASE_P(
     IoUringPollCQ, EventBaseTest1, IoUringPollCQBackendProvider);
+
+// Instantiate the poll SQ/CQ tests
+INSTANTIATE_TYPED_TEST_CASE_P(
+    IoUringPollSQCQ, EventBaseTest, IoUringPollCQBackendProvider);
+INSTANTIATE_TYPED_TEST_CASE_P(
+    IoUringPollSQCQ, EventBaseTest1, IoUringPollCQBackendProvider);
 } // namespace test
 } // namespace folly
