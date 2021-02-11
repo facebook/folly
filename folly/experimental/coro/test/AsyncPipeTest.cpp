@@ -327,4 +327,154 @@ TEST(AsyncPipeTest, PublisherMustCloseIfCallbackSetAndGeneratorAlive) {
       "If an onClosed callback is specified and the generator still exists, "
       "the publisher must explicitly close the pipe prior to destruction.");
 }
+
+TEST(BoundedAsyncPipeTest, PublishConsume) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 10);
+    for (int i = 0; i < 15; ++i) {
+      EXPECT_TRUE(co_await pipe.write(i));
+
+      auto item = co_await generator.next();
+      EXPECT_TRUE(item.has_value());
+      EXPECT_EQ(item.value(), i);
+    }
+    std::move(pipe).close();
+    EXPECT_FALSE(co_await generator.next());
+  }());
+}
+
+TEST(BoundedAsyncPipeTest, PublisherBlocks) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::ManualExecutor executor;
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 10);
+
+    for (size_t i = 0; i < 10; ++i) {
+      co_await pipe.write(i);
+    }
+
+    auto writeFuture = pipe.write(20).scheduleOn(&executor).start();
+    executor.drain();
+    EXPECT_FALSE(writeFuture.isReady());
+
+    auto item = co_await generator.next();
+    EXPECT_TRUE(item.has_value());
+
+    executor.drain();
+    EXPECT_TRUE(writeFuture.isReady());
+  }());
+}
+
+TEST(BoundedAsyncPipeTest, BlockingPublisherCanceledOnDestroy) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::ManualExecutor executor;
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 2);
+
+    for (size_t i = 0; i < 2; ++i) {
+      co_await pipe.write(i);
+    }
+
+    std::vector<folly::SemiFuture<bool>> futures;
+    for (size_t i = 0; i < 5; ++i) {
+      auto writeFuture = pipe.write(20).scheduleOn(&executor).start();
+      executor.drain();
+      EXPECT_FALSE(writeFuture.isReady());
+      futures.emplace_back(std::move(writeFuture));
+    }
+
+    {
+      // destroy the read end
+      auto _ = std::move(generator);
+    }
+
+    executor.drain();
+    for (auto& future : futures) {
+      EXPECT_TRUE(future.isReady());
+      EXPECT_FALSE(std::move(future).get());
+    }
+  }());
+}
+
+TEST(BoundedAsyncPipeTest, PublisherFailsAfterDestroyWithRemainingTokens) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 2);
+    {
+      // destroy the read end
+      auto _ = std::move(generator);
+    }
+
+    EXPECT_FALSE(co_await pipe.write(1));
+    EXPECT_FALSE(co_await pipe.write(1));
+
+    // No tokens left, blocking path also returns false
+    EXPECT_FALSE(co_await pipe.write(1));
+    EXPECT_FALSE(co_await pipe.write(1));
+  }());
+}
+
+TEST(BoundedAsyncPipeTest, BlockingPublisherCancelsWithParent) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::ManualExecutor executor;
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 2);
+
+    for (size_t i = 0; i < 2; ++i) {
+      co_await pipe.write(i);
+    }
+
+    folly::CancellationSource cs;
+    auto future =
+        folly::coro::co_withCancellation(
+            cs.getToken(),
+            folly::coro::co_invoke([&pipe = pipe]() -> folly::coro::Task<bool> {
+              co_return co_await pipe.write(100);
+            }))
+            .scheduleOn(&executor)
+            .start();
+    executor.drain();
+    EXPECT_FALSE(future.isReady());
+
+    cs.requestCancellation();
+    executor.drain();
+    EXPECT_TRUE(future.isReady());
+    EXPECT_TRUE(std::move(future).getTry().hasException());
+  }());
+}
+
+TEST(BoundedAsyncPipeTest, ClosingPublisherEndsConsumer) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 2);
+
+    for (size_t i = 0; i < 2; ++i) {
+      co_await pipe.write(i);
+    }
+    std::move(pipe).close();
+
+    EXPECT_TRUE(co_await generator.next());
+    EXPECT_TRUE(co_await generator.next());
+    EXPECT_FALSE(co_await generator.next());
+  }());
+}
+
+TEST(BoundedAsyncPipeTest, ClosingPublisherWithException) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 2);
+
+    for (size_t i = 0; i < 2; ++i) {
+      co_await pipe.write(i);
+    }
+    std::move(pipe).close(std::runtime_error("error!"));
+
+    EXPECT_TRUE(co_await generator.next());
+    EXPECT_TRUE(co_await generator.next());
+
+    auto itemTry = co_await folly::coro::co_awaitTry(generator.next());
+    EXPECT_TRUE(itemTry.hasException());
+  }());
+}
 #endif
