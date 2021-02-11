@@ -178,8 +178,8 @@ BENCHMARK_RELATIVE(format_nested_fbstrings, iters) {
         format(
             &out,
             "{} {}",
-            format("{} {}", i, i + 1).fbstr(),
-            format("{} {}", -i, -i - 1).fbstr());
+            format("{} {}", i, i + 1).str(),
+            format("{} {}", -i, -i - 1).str());
       });
     }
   }

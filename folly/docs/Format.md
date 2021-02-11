@@ -95,7 +95,7 @@ std::cout << format("{0:05d} decimal = {0:04x} hex", 42);
 
 // Formatter objects may be written to a string using folly::to or
 // folly::toAppend (see folly/Conv.h), or by calling their appendTo(),
-// str(), and fbstr() methods
+// and str() methods
 std::string s = format("The only answer is {}", 42).str();
 std::cout << s;
 // => "The only answer is 42"

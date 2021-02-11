@@ -98,15 +98,6 @@ class BaseFormatter {
   }
 
   /**
-   * Conversion to fbstring
-   */
-  fbstring fbstr() const {
-    fbstring s;
-    appendTo(s);
-    return s;
-  }
-
-  /**
    * Metadata to identify generated children of BaseFormatter
    */
   typedef detail::FormatterTag IsFormatter;

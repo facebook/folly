@@ -385,7 +385,7 @@ void formatFormatter(
       arg.align != FormatArg::Align::DEFAULT) {
     // We can only avoid creating a temporary string if we align left,
     // as we'd need to know the size beforehand otherwise
-    format_value::formatString(formatter.fbstr(), arg, cb);
+    format_value::formatString(formatter.str(), arg, cb);
   } else {
     auto fn = [&arg, &cb](StringPiece sp) mutable {
       int sz = static_cast<int>(sp.size());
