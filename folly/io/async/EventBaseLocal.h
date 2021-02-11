@@ -62,7 +62,7 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase {
  *   Foo& foo = myFoo.getOrCreate(evb, 1, 2); // ctor
  *   Foo& foo = myFoo.getOrCreate(evb, 1, 2); // no ctor
  *   myFoo.erase(evb);
- *   Foo& foo = myFoo.getOrCreateFn(evb, [] () { return new Foo(3, 4); })
+ *   Foo& foo = myFoo.getOrCreateFn(evb, [] { return Foo(3, 4); })
  *
  * The objects will be deleted when the EventBaseLocal or the EventBase is
  * destructed (whichever comes first). All methods must be called from the
@@ -112,8 +112,7 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
     if (auto ptr = getVoid(evb)) {
       return *static_cast<T*>(ptr);
     }
-    std::shared_ptr<T> smartPtr(fn());
-    DCHECK(smartPtr.get() != nullptr);
+    auto smartPtr = std::shared_ptr<T>(new T(fn()));
     auto& ref = *smartPtr;
     setVoid(evb, std::move(smartPtr));
     return ref;
