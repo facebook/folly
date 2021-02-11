@@ -252,13 +252,6 @@ std::ostream& operator<<(
 }
 
 /**
- * Formatter objects can be written to stdio FILEs.
- */
-template <class Derived, bool containerMode, class... Args>
-void writeTo(
-    FILE* fp, const BaseFormatter<Derived, containerMode, Args...>& formatter);
-
-/**
  * Create a formatter object.
  *
  * std::string formatted = format("{} {}", 23, 42).str();
