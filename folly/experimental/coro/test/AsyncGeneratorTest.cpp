@@ -610,17 +610,18 @@ TEST(AsyncGenerator, SafePoint) {
     step_type step = step_type::init;
 
     folly::CancellationSource cancelSrc;
-    auto gen = [&]() -> folly::coro::AsyncGenerator<int> {
-      step = step_type::before_continue_sp;
-      co_await folly::coro::co_safe_point;
-      step = step_type::after_continue_sp;
+    auto gen =
+        folly::coro::co_invoke([&]() -> folly::coro::AsyncGenerator<int> {
+          step = step_type::before_continue_sp;
+          co_await folly::coro::co_safe_point;
+          step = step_type::after_continue_sp;
 
-      cancelSrc.requestCancellation();
+          cancelSrc.requestCancellation();
 
-      step = step_type::before_cancel_sp;
-      co_await folly::coro::co_safe_point;
-      step = step_type::after_cancel_sp;
-    }();
+          step = step_type::before_cancel_sp;
+          co_await folly::coro::co_safe_point;
+          step = step_type::after_cancel_sp;
+        });
 
     auto result = co_await folly::coro::co_awaitTry(
         folly::coro::co_withCancellation(cancelSrc.getToken(), gen.next()));
