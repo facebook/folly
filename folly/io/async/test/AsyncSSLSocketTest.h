@@ -1127,7 +1127,6 @@ class SSLClient : public AsyncSocket::ConnectCallback,
         errors_(0),
         writeAfterConnectErrors_(0) {
     ctx_.reset(new folly::SSLContext());
-    ctx_->setOptions(SSL_OP_NO_TICKET);
     ctx_->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
     memset(buf_, 'a', sizeof(buf_));
   }
@@ -1147,6 +1146,8 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   uint32_t getWriteAfterConnectErrors() const {
     return writeAfterConnectErrors_;
   }
+
+  void setSSLOptions(long options) { ctx_->setOptions(options); }
 
   void connect(bool writeNow = false) {
     sslSocket_ = AsyncSSLSocket::newSocket(ctx_, eventBase_);

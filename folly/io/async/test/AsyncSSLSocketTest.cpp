@@ -741,6 +741,7 @@ TEST(AsyncSSLSocketTest, SSLClientTest) {
   // Set up SSL client
   EventBase eventBase;
   auto client = std::make_shared<SSLClient>(&eventBase, server.getAddress(), 1);
+  client->setSSLOptions(SSL_OP_NO_TICKET);
 
   client->connect();
   EventBaseAborter eba(&eventBase, 3000);
@@ -767,6 +768,7 @@ TEST(AsyncSSLSocketTest, SSLClientTestReuse) {
   EventBase eventBase;
   auto client =
       std::make_shared<SSLClient>(&eventBase, server.getAddress(), 10);
+  client->setSSLOptions(SSL_OP_NO_TICKET);
 
   client->connect();
   EventBaseAborter eba(&eventBase, 3000);
@@ -793,6 +795,8 @@ TEST(AsyncSSLSocketTest, SSLClientTimeoutTest) {
   EventBase eventBase;
   auto client =
       std::make_shared<SSLClient>(&eventBase, server.getAddress(), 1, 10);
+  client->setSSLOptions(SSL_OP_NO_TICKET);
+
   client->connect(true /* write before connect completes */);
   EventBaseAborter eba(&eventBase, 3000);
   eventBase.loop();
