@@ -104,8 +104,22 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    // Set the CPU as preferred for submission queue poll thread.
+    //
+    // This only has effect if POLL_SQ flag is specified.
+    //
+    // Can call multiple times to specify multiple CPUs.
     Options& setSQCpu(uint32_t v) {
-      sqCpu = v;
+      sqCpus.insert(v);
+
+      return *this;
+    }
+
+    // Set the preferred CPUs for submission queue poll thread(s).
+    //
+    // This only has effect if POLL_SQ flag is specified.
+    Options& setSQCpus(std::set<uint32_t> const& cpus) {
+      sqCpus.insert(cpus.begin(), cpus.end());
 
       return *this;
     }
@@ -131,7 +145,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
     std::chrono::milliseconds sqIdle{0};
     std::chrono::milliseconds cqIdle{0};
-    uint32_t sqCpu{0};
+    std::set<uint32_t> sqCpus;
     std::string sqGroupName;
     size_t sqGroupNumThreads{1};
   };

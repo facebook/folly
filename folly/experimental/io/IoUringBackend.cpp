@@ -145,7 +145,11 @@ class SQGroupInfoRegistry {
       }
     };
 
-    explicit SQGroupInfo(size_t num) : subGroups(num) {}
+    SQGroupInfo(size_t num, std::set<uint32_t> const& cpus) : subGroups(num) {
+      for (const uint32_t cpu : cpus) {
+        nextCpu.emplace_back(cpu);
+      }
+    }
 
     // returns the least loaded subgroup
     SQSubGroupInfo* getNextSubgroup() {
@@ -188,6 +192,9 @@ class SQGroupInfoRegistry {
     std::vector<SQSubGroupInfo> subGroups;
     // number of entries
     size_t count{0};
+    // Set of CPUs we will bind threads to.
+    std::vector<uint32_t> nextCpu;
+    int nextCpuIndex{0};
   };
 
   using SQGroupInfoMap = folly::F14FastMap<std::string, SQGroupInfo>;
@@ -205,13 +212,13 @@ class SQGroupInfoRegistry {
       const std::string& groupName,
       size_t groupNumThreads,
       FDCreateFunc& createFd,
-      struct io_uring_params& params) {
+      struct io_uring_params& params,
+      std::set<uint32_t> const& cpus) {
     if (groupName.empty()) {
       createFd(params);
       return 0;
     }
 
-    size_t ret = 0;
     std::lock_guard g(mutex_);
 
     SQGroupInfo::SQSubGroupInfo* sg = nullptr;
@@ -219,28 +226,34 @@ class SQGroupInfoRegistry {
     auto iter = map_.find(groupName);
     if (iter != map_.end()) {
       info = &iter->second;
-      sg = info->getNextSubgroup();
+    } else {
+      // First use of this group.
+      SQGroupInfo gr(groupNumThreads, cpus);
+      info =
+          &map_.insert(std::make_pair(groupName, std::move(gr))).first->second;
+    }
+    sg = info->getNextSubgroup();
+    if (sg->count) {
       // we're adding to a non empty subgroup
-      if (sg->count) {
-        params.wq_fd = *(sg->fds.begin());
-        params.flags |= IORING_SETUP_ATTACH_WQ;
+      params.wq_fd = *(sg->fds.begin());
+      params.flags |= IORING_SETUP_ATTACH_WQ;
+    } else {
+      // First use of this subgroup, pin thread to CPU if specified.
+      if (info->nextCpu.size()) {
+        uint32_t cpu = info->nextCpu[info->nextCpuIndex];
+        info->nextCpuIndex = (info->nextCpuIndex + 1) % info->nextCpu.size();
+
+        params.sq_thread_cpu = cpu;
+        params.flags |= IORING_SETUP_SQ_AFF;
       }
     }
 
     auto fd = createFd(params);
-
-    if (fd >= 0) {
-      if (!info) {
-        SQGroupInfo gr(groupNumThreads);
-        info = &map_.insert(std::make_pair(groupName, std::move(gr)))
-                    .first->second;
-        sg = info->getNextSubgroup();
-      }
-
-      ret = info->add(fd, sg);
+    if (fd < 0) {
+      return 0;
     }
 
-    return ret;
+    return info->add(fd, sg);
   }
 
   size_t removeFrom(const std::string& groupName, int fd, FDCloseFunc& func) {
@@ -402,7 +415,6 @@ IoUringBackend::IoUringBackend(Options options)
   if (options.flags & Options::Flags::POLL_SQ) {
     params_.flags |= IORING_SETUP_SQPOLL;
     params_.sq_thread_idle = options.sqIdle.count();
-    params_.sq_thread_cpu = options.sqCpu;
   }
 
   SQGroupInfoRegistry::FDCreateFunc func = [&](struct io_uring_params& params) {
@@ -438,7 +450,11 @@ IoUringBackend::IoUringBackend(Options options)
   };
 
   auto ret = sSQGroupInfoRegistry->addTo(
-      options_.sqGroupName, options_.sqGroupNumThreads, func, params_);
+      options_.sqGroupName,
+      options_.sqGroupNumThreads,
+      func,
+      params_,
+      options.sqCpus);
 
   if (!options_.sqGroupName.empty()) {
     LOG(INFO) << "Adding to SQ poll group \"" << options_.sqGroupName
