@@ -23,6 +23,21 @@ using folly::IoUring;
 namespace folly {
 namespace test {
 namespace async_base_test_lib_detail {
+REGISTER_TYPED_TEST_CASE_P(
+    AsyncTest,
+    ZeroAsyncDataNotPollable,
+    ZeroAsyncDataPollable,
+    SingleAsyncDataNotPollable,
+    SingleAsyncDataPollable,
+    MultipleAsyncDataNotPollable,
+    MultipleAsyncDataPollable,
+    ManyAsyncDataNotPollable,
+    ManyAsyncDataPollable,
+    NonBlockingWait,
+    Cancel);
+
+REGISTER_TYPED_TEST_CASE_P(AsyncBatchTest, BatchRead);
+
 INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, IoUring);
 
 class BatchIoUring : public IoUring {

@@ -470,19 +470,6 @@ TYPED_TEST_P(AsyncTest, Cancel) {
   EXPECT_EQ(foundCompleted, completed);
 }
 
-REGISTER_TYPED_TEST_CASE_P(
-    AsyncTest,
-    ZeroAsyncDataNotPollable,
-    ZeroAsyncDataPollable,
-    SingleAsyncDataNotPollable,
-    SingleAsyncDataPollable,
-    MultipleAsyncDataNotPollable,
-    MultipleAsyncDataPollable,
-    ManyAsyncDataNotPollable,
-    ManyAsyncDataPollable,
-    NonBlockingWait,
-    Cancel);
-
 // batch tests
 template <typename T>
 class AsyncBatchTest : public ::testing::Test {};
@@ -524,7 +511,6 @@ TYPED_TEST_P(AsyncBatchTest, BatchRead) {
   CHECK_EQ(completed, kBatchNumEntries);
 }
 
-REGISTER_TYPED_TEST_CASE_P(AsyncBatchTest, BatchRead);
 } // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly
