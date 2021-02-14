@@ -16,20 +16,22 @@
 
 #pragma once
 
-// MSCV 2017 __cplusplus definition by default does not track the C++ version.
-// https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
-#if !defined(_MSC_VER) || _MSC_VER >= 2000
-static_assert(__cplusplus >= 201402L, "__cplusplus >= 201402L");
-#endif
-
-#if defined(__GNUC__) && !defined(__clang__)
-static_assert(__GNUC__ >= 5, "__GNUC__ >= 5");
-#endif
-
 #include <cstddef>
 
 #include <folly/CPortability.h>
 #include <folly/portability/Config.h>
+
+#if defined(_MSC_VER)
+#define FOLLY_CPLUSPLUS _MSVC_LANG
+#else
+#define FOLLY_CPLUSPLUS __cplusplus
+#endif
+
+static_assert(FOLLY_CPLUSPLUS >= 201402L, "__cplusplus >= 201402L");
+
+#if defined(__GNUC__) && !defined(__clang__)
+static_assert(__GNUC__ >= 5, "__GNUC__ >= 5");
+#endif
 
 // Unaligned loads and stores
 namespace folly {
