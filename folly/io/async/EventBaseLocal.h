@@ -38,7 +38,7 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase {
   void onEventBaseDestruction(EventBase& evb) override;
 
  protected:
-  void setVoid(EventBase& evb, std::shared_ptr<void>&& ptr);
+  void setVoid(EventBase& evb, void* ptr, void (*dtor)(void*));
   void* getVoid(EventBase& evb);
 
   folly::Synchronized<std::unordered_set<EventBase*>> eventBases_;
@@ -81,16 +81,14 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
 
   void emplace(EventBase& evb, T* ptr) {
     DCHECK(ptr != nullptr);
-    std::shared_ptr<T> smartPtr(ptr);
-    setVoid(evb, std::move(smartPtr));
+    setVoid(evb, ptr, detail::thunk::ruin<T>);
   }
 
   template <typename... Args>
   T& emplace(EventBase& evb, Args&&... args) {
-    auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
-    auto& ref = *smartPtr;
-    setVoid(evb, std::move(smartPtr));
-    return ref;
+    auto ptr = new T(static_cast<Args&&>(args)...);
+    setVoid(evb, ptr, detail::thunk::ruin<T>);
+    return *ptr;
   }
 
   template <typename... Args>
@@ -98,10 +96,9 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
     if (auto ptr = getVoid(evb)) {
       return *static_cast<T*>(ptr);
     }
-    auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
-    auto& ref = *smartPtr;
-    setVoid(evb, std::move(smartPtr));
-    return ref;
+    auto ptr = new T(static_cast<Args&&>(args)...);
+    setVoid(evb, ptr, detail::thunk::ruin<T>);
+    return *ptr;
   }
 
   template <typename Func>
@@ -112,10 +109,9 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
     if (auto ptr = getVoid(evb)) {
       return *static_cast<T*>(ptr);
     }
-    auto smartPtr = std::shared_ptr<T>(new T(fn()));
-    auto& ref = *smartPtr;
-    setVoid(evb, std::move(smartPtr));
-    return ref;
+    auto ptr = new T(fn());
+    setVoid(evb, ptr, detail::thunk::ruin<T>);
+    return *ptr;
   }
 };
 

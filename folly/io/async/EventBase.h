@@ -35,6 +35,7 @@
 
 #include <folly/Executor.h>
 #include <folly/Function.h>
+#include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
@@ -948,7 +949,7 @@ class EventBase : public TimeoutManager,
   friend class detail::EventBaseLocalBase;
   template <typename T>
   friend class EventBaseLocal;
-  std::unordered_map<std::size_t, std::shared_ptr<void>> localStorage_;
+  std::unordered_map<std::size_t, erased_unique_ptr> localStorage_;
   std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
 
   folly::once_flag virtualEventBaseInitFlag_;

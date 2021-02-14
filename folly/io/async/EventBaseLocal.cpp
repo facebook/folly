@@ -20,6 +20,7 @@
 #include <thread>
 
 #include <folly/MapUtil.h>
+#include <folly/Memory.h>
 
 namespace folly {
 namespace detail {
@@ -56,12 +57,17 @@ void EventBaseLocalBase::onEventBaseDestruction(EventBase& evb) {
   eventBases_.wlock()->erase(&evb);
 }
 
-void EventBaseLocalBase::setVoid(EventBase& evb, std::shared_ptr<void>&& ptr) {
+void EventBaseLocalBase::setVoid(
+    EventBase& evb, void* ptr, void (*dtor)(void*)) {
+  // construct the unique-ptr eagerly, just in case anything between this and
+  // the emplace below could throw
+  auto erased = erased_unique_ptr{ptr, dtor};
+
   evb.dcheckIsInEventBaseThread();
 
   auto alreadyExists = evb.localStorage_.find(key_) != evb.localStorage_.end();
 
-  evb.localStorage_.emplace(key_, std::move(ptr));
+  evb.localStorage_.emplace(key_, std::move(erased));
 
   if (!alreadyExists) {
     eventBases_.wlock()->insert(&evb);
