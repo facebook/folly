@@ -30,6 +30,7 @@
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
@@ -426,13 +427,6 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
   return std::make_shared<remove_cvref_t<T>>(static_cast<T&&>(t));
 }
 
-namespace detail {
-template <typename T>
-struct erased_unique_ptr_deleter {
-  static void call(void* ptr) { delete static_cast<T*>(ptr); }
-};
-} // namespace detail
-
 /**
  *  to_erased_unique_ptr
  *
@@ -442,7 +436,7 @@ struct erased_unique_ptr_deleter {
 using erased_unique_ptr = std::unique_ptr<void, void (*)(void*)>;
 template <typename T>
 erased_unique_ptr to_erased_unique_ptr(T* ptr) {
-  return {ptr, &detail::erased_unique_ptr_deleter<T>::call};
+  return {ptr, detail::thunk::ruin<T>};
 }
 template <typename T>
 erased_unique_ptr to_erased_unique_ptr(std::unique_ptr<T> ptr) {

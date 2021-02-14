@@ -22,6 +22,7 @@
 #include <folly/CPortability.h>
 #include <folly/Indestructible.h>
 #include <folly/Likely.h>
+#include <folly/Utility.h>
 #include <folly/detail/Singleton.h>
 #include <folly/lang/TypeInfo.h>
 
@@ -57,9 +58,10 @@ class StaticSingletonManagerWithRtti {
  public:
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
+    constexpr auto& make = thunk::make<T>;
     // gcc and clang behave poorly if typeid is hidden behind a non-constexpr
     // function, but typeid is not constexpr under msvc
-    static Arg arg{{nullptr}, FOLLY_TYPE_INFO_OF(tag_t<T, Tag>), make<T>};
+    static Arg arg{{nullptr}, FOLLY_TYPE_INFO_OF(tag_t<T, Tag>), make};
     auto const v = arg.cache.load(std::memory_order_acquire);
     auto const p = FOLLY_LIKELY(!!v) ? v : create_<noexcept(T())>(arg);
     return *static_cast<T*>(p);
@@ -74,11 +76,6 @@ class StaticSingletonManagerWithRtti {
     Key const* key;
     Make& make;
   };
-
-  template <typename T>
-  static void* make() {
-    return new T();
-  }
 
   template <bool Noexcept>
   FOLLY_NOINLINE static void* create_(Arg& arg) noexcept(Noexcept);

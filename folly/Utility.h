@@ -400,4 +400,35 @@ T declval() noexcept;
 #define FOLLY_DECLVAL(...) ::folly::detail::declval<__VA_ARGS__>()
 #endif
 
+namespace detail {
+
+//  thunk
+//
+//  A carefully curated collection of generic general-purpose thunk templates:
+//  * make: operator new with default constructor
+//  * ruin: operator delete
+//  * ctor: in-place default constructor
+//  * dtor: in-place destructor
+struct thunk {
+  template <typename T>
+  static void* make() {
+    return new T();
+  }
+  template <typename T>
+  static void ruin(void* ptr) noexcept {
+    delete static_cast<T*>(ptr);
+  }
+
+  template <typename T>
+  static void ctor(void* ptr) {
+    ::new (ptr) T();
+  }
+  template <typename T>
+  static void dtor(void* ptr) noexcept {
+    static_cast<T*>(ptr)->~T();
+  }
+};
+
+} // namespace detail
+
 } // namespace folly
