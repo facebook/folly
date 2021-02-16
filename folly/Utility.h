@@ -291,21 +291,29 @@ class MoveOnly {
 
 using MoveOnly = moveonly_::MoveOnly;
 
-template <typename T>
-constexpr auto to_signed(T const& t) -> typename std::make_signed<T>::type {
-  using S = typename std::make_signed<T>::type;
-  // note: static_cast<S>(t) would be more straightforward, but it would also be
-  // implementation-defined behavior and that is typically to be avoided; the
-  // following code optimized into the same thing, though
-  constexpr auto m = static_cast<T>(std::numeric_limits<S>::max());
-  return m < t ? -static_cast<S>(~t) + S{-1} : static_cast<S>(t);
-}
+struct to_signed_fn {
+  template <typename..., typename T>
+  constexpr auto operator()(T const& t) const noexcept ->
+      typename std::make_signed<T>::type {
+    using S = typename std::make_signed<T>::type;
+    // note: static_cast<S>(t) would be more straightforward, but it would also
+    // be implementation-defined behavior and that is typically to be avoided;
+    // the following code optimized into the same thing, though
+    constexpr auto m = static_cast<T>(std::numeric_limits<S>::max());
+    return m < t ? -static_cast<S>(~t) + S{-1} : static_cast<S>(t);
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr to_signed_fn to_signed;
 
-template <typename T>
-constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
-  using U = typename std::make_unsigned<T>::type;
-  return static_cast<U>(t);
-}
+struct to_unsigned_fn {
+  template <typename..., typename T>
+  constexpr auto operator()(T const& t) const noexcept ->
+      typename std::make_unsigned<T>::type {
+    using U = typename std::make_unsigned<T>::type;
+    return static_cast<U>(t);
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr to_unsigned_fn to_unsigned;
 
 template <typename Src>
 class to_narrow_convertible {
@@ -356,16 +364,23 @@ class to_narrow_convertible {
 //  to take advantage of the undefined-behavior sanitizer's inspection of all
 //  implicit conversions - it checks for truncation, with suppressions in place
 //  for warnings which guard against narrowing implicit conversions.
-template <typename Src>
-constexpr auto to_narrow(Src const& src) -> to_narrow_convertible<Src> {
-  return to_narrow_convertible<Src>{src};
-}
+struct to_narrow_fn {
+  template <typename..., typename Src>
+  constexpr auto operator()(Src const& src) const noexcept
+      -> to_narrow_convertible<Src> {
+    return to_narrow_convertible<Src>{src};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr to_narrow_fn to_narrow;
 
-template <class E>
-constexpr std::underlying_type_t<E> to_underlying(E e) noexcept {
-  static_assert(std::is_enum<E>::value, "not an enum type");
-  return static_cast<std::underlying_type_t<E>>(e);
-}
+struct to_underlying_fn {
+  template <typename..., class E>
+  constexpr std::underlying_type_t<E> operator()(E e) const noexcept {
+    static_assert(std::is_enum<E>::value, "not an enum type");
+    return static_cast<std::underlying_type_t<E>>(e);
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying;
 
 /*
  * FOLLY_DECLVAL(T)
