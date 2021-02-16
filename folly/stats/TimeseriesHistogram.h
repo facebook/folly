@@ -358,14 +358,6 @@ class TimeseriesHistogram {
     TimePoint end_;
   };
 
-  /*
-   * Special logic for the case of only one unique value registered
-   * (this can happen when clients don't pick good bucket ranges or have
-   * other bugs).  It's a lot easier for clients to track down these issues
-   * if they are getting the correct value.
-   */
-  void maybeHandleSingleUniqueValue(const ValueType& value);
-
   void computeAvgData(ValueType* total, uint64_t* nsamples, size_t level) const;
   void computeAvgData(
       ValueType* total,
@@ -380,8 +372,6 @@ class TimeseriesHistogram {
       TimePoint end) const;
 
   folly::detail::HistogramBuckets<ValueType, ContainerType> buckets_;
-  bool haveNotSeenValue_;
-  bool singleUniqueValue_;
   ValueType firstValue_;
 };
 } // namespace folly

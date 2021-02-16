@@ -24,22 +24,18 @@ TimeseriesHistogram<T, CT, C>::TimeseriesHistogram(
     ValueType min,
     ValueType max,
     const ContainerType& copyMe)
-    : buckets_(bucketSize, min, max, copyMe),
-      haveNotSeenValue_(true),
-      singleUniqueValue_(false) {}
+    : buckets_(bucketSize, min, max, copyMe) {}
 
 template <typename T, typename CT, typename C>
 void TimeseriesHistogram<T, CT, C>::addValue(
     TimePoint now, const ValueType& value) {
   buckets_.getByValue(value).addValue(now, value);
-  maybeHandleSingleUniqueValue(value);
 }
 
 template <typename T, typename CT, typename C>
 void TimeseriesHistogram<T, CT, C>::addValue(
     TimePoint now, const ValueType& value, uint64_t times) {
   buckets_.getByValue(value).addValue(now, value, times);
-  maybeHandleSingleUniqueValue(value);
 }
 
 template <typename T, typename CT, typename C>
@@ -56,33 +52,11 @@ void TimeseriesHistogram<T, CT, C>::addValues(
     Bucket& myBucket = buckets_.getByIndex(n);
     myBucket.addValueAggregated(now, histBucket.sum, histBucket.count);
   }
-
-  // We don't bother with the singleUniqueValue_ tracking.
-  haveNotSeenValue_ = false;
-  singleUniqueValue_ = false;
-}
-
-template <typename T, typename CT, typename C>
-void TimeseriesHistogram<T, CT, C>::maybeHandleSingleUniqueValue(
-    const ValueType& value) {
-  if (haveNotSeenValue_) {
-    firstValue_ = value;
-    singleUniqueValue_ = true;
-    haveNotSeenValue_ = false;
-  } else if (singleUniqueValue_) {
-    if (value != firstValue_) {
-      singleUniqueValue_ = false;
-    }
-  }
 }
 
 template <typename T, typename CT, typename C>
 T TimeseriesHistogram<T, CT, C>::getPercentileEstimate(
     double pct, size_t level) const {
-  if (singleUniqueValue_) {
-    return firstValue_;
-  }
-
   return buckets_.getPercentileEstimate(
       pct / 100.0, CountFromLevel(level), AvgFromLevel(level));
 }
@@ -90,10 +64,6 @@ T TimeseriesHistogram<T, CT, C>::getPercentileEstimate(
 template <typename T, typename CT, typename C>
 T TimeseriesHistogram<T, CT, C>::getPercentileEstimate(
     double pct, TimePoint start, TimePoint end) const {
-  if (singleUniqueValue_) {
-    return firstValue_;
-  }
-
   return buckets_.getPercentileEstimate(
       pct / 100.0,
       CountFromInterval(start, end),
