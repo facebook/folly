@@ -566,9 +566,7 @@ if (BUILD_TESTS)
       TEST access_test SOURCES AccessTest.cpp
       TEST array_test SOURCES ArrayTest.cpp
       TEST bit_iterator_test SOURCES BitIteratorTest.cpp
-      # TODO: CMake's gtest_add_tests() function currently chokes on
-      # EnumerateTest.cpp since it uses macros to define tests.
-      #TEST enumerate_test SOURCES EnumerateTest.cpp
+      TEST enumerate_test SOURCES EnumerateTest.cpp
       TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
       TEST f14_fwd_test SOURCES F14FwdTest.cpp
       TEST f14_map_test SOURCES F14MapTest.cpp

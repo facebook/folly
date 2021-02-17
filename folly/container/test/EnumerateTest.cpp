@@ -35,70 +35,109 @@ struct IsConstReference<const T&> {
 
 } // namespace
 
-#define ENUMERATE_TEST_BASIC(DECL, NAME)             \
-  TEST(Enumerate, NAME) {                            \
-    std::vector<std::string> v = {"abc", "a", "ab"}; \
-    size_t i = 0;                                    \
-    for (DECL it : folly::enumerate(v)) {            \
-      EXPECT_EQ(it.index, i);                        \
-      EXPECT_EQ(*it, v[i]);                          \
-      EXPECT_EQ(it->size(), v[i].size());            \
-                                                     \
-      /* Test mutability. */                         \
-      std::string newValue = "x";                    \
-      *it = newValue;                                \
-      EXPECT_EQ(newValue, v[i]);                     \
-                                                     \
-      ++i;                                           \
-    }                                                \
-                                                     \
-    EXPECT_EQ(i, v.size());                          \
+TEST(Enumerate, Basic) {
+  std::vector<std::string> v = {"abc", "a", "ab"};
+  size_t i = 0;
+  for (auto it : folly::enumerate(v)) {
+    EXPECT_EQ(it.index, i);
+    EXPECT_EQ(*it, v[i]);
+    EXPECT_EQ(it->size(), v[i].size());
+
+    /* Test mutability. */
+    std::string newValue = "x";
+    *it = newValue;
+    EXPECT_EQ(newValue, v[i]);
+
+    ++i;
   }
 
-ENUMERATE_TEST_BASIC(auto, Basic)
-ENUMERATE_TEST_BASIC(auto&&, BasicRRef)
+  EXPECT_EQ(i, v.size());
+}
 
-#undef ENUMERATE_TEST_BASIC
+TEST(Enumerate, BasicRRef) {
+  std::vector<std::string> v = {"abc", "a", "ab"};
+  size_t i = 0;
+  for (auto&& it : folly::enumerate(v)) {
+    EXPECT_EQ(it.index, i);
+    EXPECT_EQ(*it, v[i]);
+    EXPECT_EQ(it->size(), v[i].size());
 
-#define ENUMERATE_TEST_BASIC_CONST(DECL, NAME)                          \
-  TEST(Enumerate, NAME) {                                               \
-    std::vector<std::string> v = {"abc", "a", "ab"};                    \
-    size_t i = 0;                                                       \
-    for (DECL it : folly::enumerate(v)) {                               \
-      static_assert(                                                    \
-          IsConstReference<decltype(*it)>::value, "Const enumeration"); \
-      EXPECT_EQ(it.index, i);                                           \
-      EXPECT_EQ(*it, v[i]);                                             \
-      EXPECT_EQ(it->size(), v[i].size());                               \
-      ++i;                                                              \
-    }                                                                   \
-                                                                        \
-    EXPECT_EQ(i, v.size());                                             \
+    /* Test mutability. */
+    std::string newValue = "x";
+    *it = newValue;
+    EXPECT_EQ(newValue, v[i]);
+
+    ++i;
   }
 
-ENUMERATE_TEST_BASIC_CONST(const auto, BasicConst)
-ENUMERATE_TEST_BASIC_CONST(const auto&, BasicConstRef)
-ENUMERATE_TEST_BASIC_CONST(const auto&&, BasicConstRRef)
+  EXPECT_EQ(i, v.size());
+}
 
-#undef ENUMERATE_TEST_BASIC_CONST
-
-#define ENUMERATE_TEST_BASIC_VECTOR_BOOL(DECL, NAME)  \
-  TEST(Enumerate, NAME) {                             \
-    std::vector<bool> v = {true, false, false, true}; \
-    size_t i = 0;                                     \
-    for (DECL it : folly::enumerate(v)) {             \
-      EXPECT_EQ(it.index, i);                         \
-      EXPECT_EQ(*it, v[i]);                           \
-      ++i;                                            \
-    }                                                 \
-                                                      \
-    EXPECT_EQ(i, v.size());                           \
+TEST(Enumerate, BasicConst) {
+  std::vector<std::string> v = {"abc", "a", "ab"};
+  size_t i = 0;
+  for (const auto it : folly::enumerate(v)) {
+    static_assert(IsConstReference<decltype(*it)>::value, "Const enumeration");
+    EXPECT_EQ(it.index, i);
+    EXPECT_EQ(*it, v[i]);
+    EXPECT_EQ(it->size(), v[i].size());
+    ++i;
   }
 
-ENUMERATE_TEST_BASIC_VECTOR_BOOL(auto, BasicVecBool)
-ENUMERATE_TEST_BASIC_VECTOR_BOOL(auto&&, BasicVecBoolRRef)
+  EXPECT_EQ(i, v.size());
+}
 
-#undef ENUMERATE_TEST_BASIC_VECTOR_BOOL
+TEST(Enumerate, BasicConstRef) {
+  std::vector<std::string> v = {"abc", "a", "ab"};
+  size_t i = 0;
+  for (const auto& it : folly::enumerate(v)) {
+    static_assert(IsConstReference<decltype(*it)>::value, "Const enumeration");
+    EXPECT_EQ(it.index, i);
+    EXPECT_EQ(*it, v[i]);
+    EXPECT_EQ(it->size(), v[i].size());
+    ++i;
+  }
+
+  EXPECT_EQ(i, v.size());
+}
+
+TEST(Enumerate, BasicConstRRef) {
+  std::vector<std::string> v = {"abc", "a", "ab"};
+  size_t i = 0;
+  for (const auto&& it : folly::enumerate(v)) {
+    static_assert(IsConstReference<decltype(*it)>::value, "Const enumeration");
+    EXPECT_EQ(it.index, i);
+    EXPECT_EQ(*it, v[i]);
+    EXPECT_EQ(it->size(), v[i].size());
+    ++i;
+  }
+
+  EXPECT_EQ(i, v.size());
+}
+
+TEST(Enumerate, BasicVecBool) {
+  std::vector<bool> v = {true, false, false, true};
+  size_t i = 0;
+  for (auto it : folly::enumerate(v)) {
+    EXPECT_EQ(it.index, i);
+    EXPECT_EQ(*it, v[i]);
+    ++i;
+  }
+
+  EXPECT_EQ(i, v.size());
+}
+
+TEST(Enumerate, BasicVecBoolRRef) {
+  std::vector<bool> v = {true, false, false, true};
+  size_t i = 0;
+  for (auto it : folly::enumerate(v)) {
+    EXPECT_EQ(it.index, i);
+    EXPECT_EQ(*it, v[i]);
+    ++i;
+  }
+
+  EXPECT_EQ(i, v.size());
+}
 
 TEST(Enumerate, Temporary) {
   std::vector<std::string> v = {"abc", "a", "ab"};
