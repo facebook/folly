@@ -16,12 +16,33 @@
 
 #include <folly/experimental/io/FsUtil.h>
 
+#include <fstream>
+#include <random>
+
+#include <fmt/core.h>
 #include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::fs;
+
+namespace {
+
+class TempDir {
+ public:
+  static fs::path make_path() {
+    std::random_device rng;
+    std::uniform_int_distribution<uint64_t> dist;
+    auto basename = "folly-unit-test-" + fmt::format("{:016x}", dist(rng));
+    return fs::canonical(fs::temp_directory_path()) / basename;
+  }
+  fs::path const path{make_path()};
+  TempDir() { fs::create_directory(path); }
+  ~TempDir() { fs::remove_all(path); }
+};
+
+} // namespace
 
 TEST(Simple, Path) {
   path root("/");
@@ -50,10 +71,16 @@ TEST(Simple, Path) {
 }
 
 TEST(Simple, CanonicalizeParent) {
-  path a("/usr/bin/tail");
-  path b("/usr/lib/../bin/tail");
-  path c("/usr/bin/DOES_NOT_EXIST_ASDF");
-  path d("/usr/lib/../bin/DOES_NOT_EXIST_ASDF");
+  TempDir tmpd;
+
+  path a = tmpd.path / "usr/bin/tail";
+  path b = tmpd.path / "usr/lib/../bin/tail";
+  path c = tmpd.path / "usr/bin/DOES_NOT_EXIST_ASDF";
+  path d = tmpd.path / "usr/lib/../bin/DOES_NOT_EXIST_ASDF";
+
+  create_directories(a.parent_path());
+  create_directories(a.parent_path() / "../lib");
+  std::ofstream(a.native()) << "foobar" << std::endl;
 
   EXPECT_EQ(a, canonical(a));
   EXPECT_EQ(a, canonical_parent(b));

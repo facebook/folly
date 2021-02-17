@@ -16,6 +16,11 @@
 
 #include <folly/File.h>
 
+#include <fstream>
+#include <random>
+
+#include <boost/filesystem.hpp>
+#include <fmt/core.h>
 #include <glog/logging.h>
 
 #include <folly/String.h>
@@ -24,7 +29,10 @@
 
 using namespace folly;
 
+namespace fs = boost::filesystem;
+
 namespace {
+
 void expectWouldBlock(ssize_t r) {
   int savedErrno = errno;
   EXPECT_EQ(-1, r);
@@ -34,13 +42,31 @@ void expectOK(ssize_t r) {
   int savedErrno = errno;
   EXPECT_LE(0, r) << ": errno=" << errnoStr(savedErrno);
 }
+
+class TempDir {
+ public:
+  static fs::path make_path() {
+    std::random_device rng;
+    std::uniform_int_distribution<uint64_t> dist;
+    auto basename = "folly-unit-test-" + fmt::format("{:016x}", dist(rng));
+    return fs::canonical(fs::temp_directory_path()) / basename;
+  }
+  fs::path const path{make_path()};
+  TempDir() { fs::create_directory(path); }
+  ~TempDir() { fs::remove_all(path); }
+};
+
 } // namespace
 
 TEST(File, Simple) {
+  TempDir tmpd;
+  auto tmpf = tmpd.path / "foobar.txt";
+  std::ofstream{tmpf.native()} << "hello world" << std::endl;
+
   // Open a file, ensure it's indeed open for reading
   char buf = 'x';
   {
-    File f("/etc/hosts");
+    File f(tmpf.string());
     EXPECT_NE(-1, f.fd());
     EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
     f.close();
@@ -49,8 +75,12 @@ TEST(File, Simple) {
 }
 
 TEST(File, SimpleStringPiece) {
+  TempDir tmpd;
+  auto tmpf = tmpd.path / "foobar.txt";
+  std::ofstream{tmpf.native()} << "hello world" << std::endl;
+
   char buf = 'x';
-  File f(StringPiece("/etc/hosts"));
+  File f(StringPiece(tmpf.string()));
   EXPECT_NE(-1, f.fd());
   EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
   f.close();
@@ -139,7 +169,10 @@ TEST(File, Truthy) {
 }
 
 TEST(File, HelperCtor) {
-  File::makeFile(StringPiece("/etc/hosts")).then([](File&& f) {
+  TempDir tmpd;
+  auto tmpf = tmpd.path / "foobar.txt";
+
+  File::makeFile(StringPiece(tmpf.string())).then([](File&& f) {
     char buf = 'x';
     EXPECT_NE(-1, f.fd());
     EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
