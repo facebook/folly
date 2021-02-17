@@ -79,11 +79,6 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
 
   T* get(EventBase& evb) { return static_cast<T*>(getVoid(evb)); }
 
-  void emplace(EventBase& evb, T* ptr) {
-    DCHECK(ptr != nullptr);
-    setVoid(evb, ptr, detail::thunk::ruin<T>);
-  }
-
   template <typename... Args>
   T& emplace(EventBase& evb, Args&&... args) {
     auto ptr = new T(static_cast<Args&&>(args)...);

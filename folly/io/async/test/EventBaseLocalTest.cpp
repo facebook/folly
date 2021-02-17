@@ -36,18 +36,18 @@ TEST(EventBaseLocalTest, Basic) {
 
     EXPECT_EQ(foo.get(evb1), nullptr);
 
-    foo.emplace(evb1, new Foo(5, [&]() { ++dtorCnt; }));
+    foo.emplace(evb1, 5, [&] { ++dtorCnt; });
 
     EXPECT_EQ(foo.get(evb1)->n, 5);
 
     {
       folly::EventBase evb2;
-      foo.emplace(evb2, new Foo(6, [&]() { ++dtorCnt; }));
+      foo.emplace(evb2, 6, [&] { ++dtorCnt; });
       EXPECT_EQ(foo.get(evb2)->n, 6);
       foo.erase(evb2);
       EXPECT_EQ(dtorCnt, 1); // should dtor a Foo when we erase
       EXPECT_EQ(foo.get(evb2), nullptr);
-      foo.emplace(evb2, 7, [&]() { ++dtorCnt; });
+      foo.emplace(evb2, 7, [&] { ++dtorCnt; });
       EXPECT_EQ(foo.get(evb2)->n, 7);
     }
 
