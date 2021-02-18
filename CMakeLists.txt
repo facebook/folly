@@ -779,11 +779,22 @@ if (BUILD_TESTS)
       TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
 
     DIRECTORY lang/test/
-      TEST aligned_test SOURCES AlignedTest.cpp
-      TEST bits_test SOURCES BitsTest.cpp
-      TEST c_string_test SOURCES CStringTest.cpp
-      TEST cast_test SOURCES CastTest.cpp
-      TEST safe_assert_test SOURCES SafeAssertTest.cpp
+      TEST lang_aligned_test SOURCES AlignedTest.cpp
+      TEST lang_bits_test SOURCES BitsTest.cpp
+      TEST lang_byte_test SOURCES ByteTest.cpp
+      TEST lang_c_string_test SOURCES CStringTest.cpp
+      TEST lang_cast_test SOURCES CastTest.cpp
+      TEST lang_checked_math_test SOURCES CheckedMathTest.cpp
+      TEST lang_exception_test SOURCES ExceptionTest.cpp
+      TEST lang_launder_test SOURCES LaunderTest.cpp
+      TEST lang_ordering_test SOURCES OrderingTest.cpp
+      TEST lang_pretty_test SOURCES PrettyTest.cpp
+      TEST lang_propagate_const_test SOURCES PropagateConstTest.cpp
+      TEST lang_r_value_reference_wrapper_test
+        SOURCES RValueReferenceWrapperTest.cpp
+      TEST lang_safe_assert_test SOURCES SafeAssertTest.cpp
+      TEST lang_type_info_test SOURCES TypeInfoTest.cpp
+      TEST lang_uncaught_exceptions_test SOURCES UncaughtExceptionsTest.cpp
 
     DIRECTORY memory/test/
       TEST arena_test SOURCES ArenaTest.cpp
