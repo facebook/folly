@@ -54,7 +54,7 @@ char* cplus_demangle_v3_wrapper(const char* mangled) {
   return cplus_demangle_v3(mangled, options);
 #else
   (void)mangled;
-  return 0;
+  return nullptr;
 #endif
 }
 
