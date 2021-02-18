@@ -401,6 +401,27 @@ class CleanCmd(SubCmd):
         clean_dirs(opts)
 
 
+@cmd("show-build-dir", "print the build dir for a given project")
+class ShowBuildDirCmd(ProjectCmdBase):
+    def run_project_cmd(self, args, loader, manifest):
+        if args.recursive:
+            manifests = loader.manifests_in_dependency_order()
+        else:
+            manifests = [manifest]
+
+        for m in manifests:
+            inst_dir = loader.get_project_build_dir(m)
+            print(inst_dir)
+
+    def setup_project_cmd_parser(self, parser):
+        parser.add_argument(
+            "--recursive",
+            help="print the transitive deps also",
+            action="store_true",
+            default=False,
+        )
+
+
 @cmd("show-inst-dir", "print the installation dir for a given project")
 class ShowInstDirCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
