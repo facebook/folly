@@ -751,15 +751,6 @@ struct TupleHasher<0, Ts...> {
 
 // Custom hash functions.
 namespace std {
-#if FOLLY_SUPPLY_MISSING_INT128_TRAITS
-template <>
-struct hash<__int128> : folly::detail::integral_hasher<__int128> {};
-
-template <>
-struct hash<unsigned __int128>
-    : folly::detail::integral_hasher<unsigned __int128> {};
-#endif
-
 // Hash function for pairs. Requires default hash functions for both
 // items in the pair.
 template <typename T1, typename T2>
