@@ -126,7 +126,6 @@ class ZSTDStreamCodec final : public StreamCodec {
   void resetDCtx();
 
   Options options_;
-  bool needReset_{true};
   ZSTD_CCtx_Pool::Ref cctx_{getNULL_ZSTD_CCtx()};
   ZSTD_DCtx_Pool::Ref dctx_{getNULL_ZSTD_DCtx()};
 };
@@ -177,16 +176,14 @@ Optional<uint64_t> ZSTDStreamCodec::doGetUncompressedLength(
 }
 
 void ZSTDStreamCodec::doResetStream() {
-  needReset_ = true;
+  cctx_.reset(nullptr);
+  dctx_.reset(nullptr);
 }
 
 void ZSTDStreamCodec::resetCCtx() {
-  if (!cctx_) {
-    cctx_ = getZSTD_CCtx();
-    if (!cctx_) {
-      throw std::bad_alloc{};
-    }
-  }
+  DCHECK(cctx_ == nullptr);
+  cctx_ = getZSTD_CCtx();
+  DCHECK(cctx_ != nullptr);
   resetCCtxSessionAndParameters(cctx_.get());
   zstdThrowIfError(
       ZSTD_CCtx_setParametersUsingCCtxParams(cctx_.get(), options_.params()));
@@ -196,9 +193,8 @@ void ZSTDStreamCodec::resetCCtx() {
 
 bool ZSTDStreamCodec::doCompressStream(
     ByteRange& input, MutableByteRange& output, StreamCodec::FlushOp flushOp) {
-  if (needReset_) {
+  if (cctx_ == nullptr) {
     resetCCtx();
-    needReset_ = false;
   }
   ZSTD_inBuffer in = {input.data(), input.size(), 0};
   ZSTD_outBuffer out = {output.data(), output.size(), 0};
@@ -212,7 +208,12 @@ bool ZSTDStreamCodec::doCompressStream(
     case StreamCodec::FlushOp::NONE:
       return false;
     case StreamCodec::FlushOp::FLUSH:
+      return rc == 0;
     case StreamCodec::FlushOp::END:
+      if (rc == 0) {
+        // Surrender our cctx_
+        doResetStream();
+      }
       return rc == 0;
     default:
       throw std::invalid_argument("ZSTD: invalid FlushOp");
@@ -220,12 +221,9 @@ bool ZSTDStreamCodec::doCompressStream(
 }
 
 void ZSTDStreamCodec::resetDCtx() {
-  if (!dctx_) {
-    dctx_ = getZSTD_DCtx();
-    if (!dctx_) {
-      throw std::bad_alloc{};
-    }
-  }
+  DCHECK(dctx_ == nullptr);
+  dctx_ = getZSTD_DCtx();
+  DCHECK(dctx_ != nullptr);
   resetDCtxSessionAndParameters(dctx_.get());
   if (options_.maxWindowSize() != 0) {
     zstdThrowIfError(
@@ -235,9 +233,8 @@ void ZSTDStreamCodec::resetDCtx() {
 
 bool ZSTDStreamCodec::doUncompressStream(
     ByteRange& input, MutableByteRange& output, StreamCodec::FlushOp) {
-  if (needReset_) {
+  if (dctx_ == nullptr) {
     resetDCtx();
-    needReset_ = false;
   }
   ZSTD_inBuffer in = {input.data(), input.size(), 0};
   ZSTD_outBuffer out = {output.data(), output.size(), 0};
@@ -247,6 +244,10 @@ bool ZSTDStreamCodec::doUncompressStream(
   };
   size_t const rc =
       zstdThrowIfError(ZSTD_decompressStream(dctx_.get(), &out, &in));
+  if (rc == 0) {
+    // Surrender our dctx_
+    doResetStream();
+  }
   return rc == 0;
 }
 
