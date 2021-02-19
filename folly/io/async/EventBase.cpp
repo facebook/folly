@@ -286,7 +286,7 @@ static std::chrono::milliseconds getTimeDelta(
 }
 
 void EventBase::waitUntilRunning() {
-  while (!isRunning()) {
+  while (loopThread_.load(std::memory_order_acquire) == std::thread::id()) {
     std::this_thread::yield();
   }
 }
@@ -340,7 +340,7 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   std::chrono::microseconds idle;
 
   auto const prevLoopThread = loopThread_.exchange(
-      std::this_thread::get_id(), std::memory_order_relaxed);
+      std::this_thread::get_id(), std::memory_order_release);
   CHECK_EQ(std::thread::id(), prevLoopThread)
       << "Driving an EventBase in one thread (" << std::this_thread::get_id()
       << ") while it is already being driven in another thread ("
