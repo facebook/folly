@@ -102,7 +102,7 @@ FiberManager::~FiberManager() {
     fibersPool_.pop_front_and_dispose([](Fiber* fiber) { delete fiber; });
   }
   assert(readyFibers_.empty());
-  assert(fibersActive_ == 0);
+  assert(!hasTasks());
 }
 
 LoopController& FiberManager::loopController() {
