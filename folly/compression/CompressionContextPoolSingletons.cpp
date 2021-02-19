@@ -43,6 +43,18 @@ void ZSTD_DCtx_Deleter::operator()(ZSTD_DCtx* ctx) const noexcept {
   ZSTD_freeDCtx(ctx);
 }
 
+void ZSTD_CCtx_Resetter::operator()(ZSTD_CCtx* ctx) const noexcept {
+  size_t const err = ZSTD_CCtx_reset(ctx, ZSTD_reset_session_and_parameters);
+  assert(!ZSTD_isError(err)); // This function doesn't actually fail
+  (void)err;
+}
+
+void ZSTD_DCtx_Resetter::operator()(ZSTD_DCtx* ctx) const noexcept {
+  size_t const err = ZSTD_DCtx_reset(ctx, ZSTD_reset_session_and_parameters);
+  assert(!ZSTD_isError(err)); // This function doesn't actually fail
+  (void)err;
+}
+
 ZSTD_CCtx_Pool::Ref getZSTD_CCtx() {
   return zstd_cctx_pool_singleton.get();
 }

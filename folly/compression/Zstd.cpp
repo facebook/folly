@@ -57,24 +57,6 @@ namespace {
 #define ZSTD_c_compressionLevel ZSTD_p_compressionLevel
 #define ZSTD_c_contentSizeFlag ZSTD_p_contentSizeFlag
 
-void resetCCtxSessionAndParameters(ZSTD_CCtx* cctx) {
-  ZSTD_CCtx_reset(cctx);
-}
-
-void resetDCtxSessionAndParameters(ZSTD_DCtx* dctx) {
-  ZSTD_DCtx_reset(dctx);
-}
-
-#else
-
-void resetCCtxSessionAndParameters(ZSTD_CCtx* cctx) {
-  ZSTD_CCtx_reset(cctx, ZSTD_reset_session_and_parameters);
-}
-
-void resetDCtxSessionAndParameters(ZSTD_DCtx* dctx) {
-  ZSTD_DCtx_reset(dctx, ZSTD_reset_session_and_parameters);
-}
-
 #endif
 
 size_t zstdThrowIfError(size_t rc) {
@@ -182,9 +164,8 @@ void ZSTDStreamCodec::doResetStream() {
 
 void ZSTDStreamCodec::resetCCtx() {
   DCHECK(cctx_ == nullptr);
-  cctx_ = getZSTD_CCtx();
+  cctx_ = getZSTD_CCtx(); // Gives us a clean context
   DCHECK(cctx_ != nullptr);
-  resetCCtxSessionAndParameters(cctx_.get());
   zstdThrowIfError(
       ZSTD_CCtx_setParametersUsingCCtxParams(cctx_.get(), options_.params()));
   zstdThrowIfError(ZSTD_CCtx_setPledgedSrcSize(
@@ -222,9 +203,8 @@ bool ZSTDStreamCodec::doCompressStream(
 
 void ZSTDStreamCodec::resetDCtx() {
   DCHECK(dctx_ == nullptr);
-  dctx_ = getZSTD_DCtx();
+  dctx_ = getZSTD_DCtx(); // Gives us a clean context
   DCHECK(dctx_ != nullptr);
-  resetDCtxSessionAndParameters(dctx_.get());
   if (options_.maxWindowSize() != 0) {
     zstdThrowIfError(
         ZSTD_DCtx_setMaxWindowSize(dctx_.get(), options_.maxWindowSize()));

@@ -30,7 +30,18 @@ namespace {
 std::atomic<size_t> numFoos{0};
 std::atomic<size_t> numDeleted{0};
 
-class Foo {};
+class Foo {
+ public:
+  void use() {
+    EXPECT_FALSE(used_);
+    used_ = true;
+  }
+
+  void reset() { used_ = false; }
+
+ private:
+  bool used_{false};
+};
 
 struct FooCreator {
   Foo* operator()() {
@@ -53,8 +64,13 @@ struct FooDeleter {
   }
 };
 
-using Pool = CompressionContextPool<Foo, FooCreator, FooDeleter>;
-using BadPool = CompressionContextPool<Foo, BadFooCreator, FooDeleter>;
+struct FooResetter {
+  void operator()(Foo* f) { f->reset(); }
+};
+
+using Pool = CompressionContextPool<Foo, FooCreator, FooDeleter, FooResetter>;
+using BadPool =
+    CompressionContextPool<Foo, BadFooCreator, FooDeleter, FooResetter>;
 
 } // anonymous namespace
 
@@ -175,9 +191,28 @@ TEST_F(CompressionContextPoolTest, testBadCreate) {
   EXPECT_THROW(pool.get(), std::bad_alloc);
 }
 
+TEST_F(CompressionContextPoolTest, testReset) {
+  Pool::Object* tmp;
+  {
+    auto ptr = pool_->get();
+    ptr->use();
+    tmp = ptr.get();
+  }
+  {
+    auto ptr = pool_->get();
+    ptr->use();
+    EXPECT_EQ(ptr.get(), tmp);
+  }
+}
+
 class CompressionCoreLocalContextPoolTest : public testing::Test {
  protected:
-  using Pool = CompressionCoreLocalContextPool<Foo, FooCreator, FooDeleter, 8>;
+  using Pool = CompressionCoreLocalContextPool<
+      Foo,
+      FooCreator,
+      FooDeleter,
+      FooResetter,
+      8>;
 
   void SetUp() override { pool_ = std::make_unique<Pool>(); }
 
@@ -248,6 +283,32 @@ TEST_F(CompressionCoreLocalContextPoolTest, testMultithread) {
   }
 
   EXPECT_LE(numFoos.load(), numThreads);
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testReset) {
+  Pool::Object* tmp1;
+  Pool::Object* tmp2;
+  {
+    auto ptr1 = pool_->get();
+    ptr1->use();
+    tmp1 = ptr1.get();
+  }
+  {
+    auto ptr1 = pool_->get();
+    auto ptr2 = pool_->get();
+    ptr1->use();
+    ptr2->use();
+    EXPECT_EQ(ptr1.get(), tmp1);
+    tmp2 = ptr2.get();
+  }
+  {
+    auto ptr1 = pool_->get();
+    auto ptr2 = pool_->get();
+    ptr1->use();
+    ptr2->use();
+    EXPECT_EQ(ptr1.get(), tmp2);
+    EXPECT_EQ(ptr2.get(), tmp1);
+  }
 }
 
 #ifdef FOLLY_COMPRESSION_HAS_ZSTD_CONTEXT_POOL_SINGLETONS
