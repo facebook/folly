@@ -96,16 +96,16 @@ AsyncServerSocket::RemoteAcceptor::Consumer::operator()(
       break;
     }
     case MessageType::MSG_ERROR: {
-      std::runtime_error ex(msg.msg);
-      acceptor_.callback_->acceptError(ex);
+      auto ex = make_exception_wrapper<std::runtime_error>(msg.msg);
+      acceptor_.callback_->acceptError(std::move(ex));
       break;
     }
     default: {
       LOG(ERROR) << "invalid accept notification message type "
                  << int(msg.type);
-      std::runtime_error ex(
+      auto ex = make_exception_wrapper<std::runtime_error>(
           "received invalid accept notification message type");
-      acceptor_.callback_->acceptError(ex);
+      acceptor_.callback_->acceptError(std::move(ex));
     }
   }
   return AtomicNotificationQueueTaskStatus::CONSUMED;
@@ -1076,9 +1076,9 @@ void AsyncServerSocket::dispatchError(const char* msgstr, int errnoValue) {
   while (true) {
     // Short circuit if the callback is in the primary EventBase thread
     if (info->eventBase == nullptr || info->eventBase == this->eventBase_) {
-      std::runtime_error ex(
+      auto ex = make_exception_wrapper<std::runtime_error>(
           std::string(msgstr) + folly::to<std::string>(errnoValue));
-      info->callback->acceptError(ex);
+      info->callback->acceptError(std::move(ex));
       return;
     }
 

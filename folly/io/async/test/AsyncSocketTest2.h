@@ -189,11 +189,11 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
       connectionAcceptedFn_(fd, clientAddr);
     }
   }
-  void acceptError(const std::exception& ex) noexcept override {
-    events_.emplace_back(ex.what());
+  void acceptError(folly::exception_wrapper ex) noexcept override {
+    events_.emplace_back(ex.what().toStdString());
 
     if (acceptErrorFn_) {
-      acceptErrorFn_(ex);
+      acceptErrorFn_(*ex.get_exception());
     }
   }
   void acceptStarted() noexcept override {

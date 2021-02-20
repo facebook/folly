@@ -229,7 +229,7 @@ class ZeroCopyTestServer : public folly::AsyncServerSocket::AcceptCallback {
     clients_[client.get()] = client;
   }
 
-  void acceptError(const std::exception&) noexcept override {}
+  void acceptError(folly::exception_wrapper) noexcept override {}
 
  private:
   folly::EventBase* evb_;

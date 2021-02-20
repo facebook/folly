@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <stddef.h>
 
+#include <folly/ExceptionWrapper.h>
 #include <chrono>
 #include <exception>
 #include <memory>
@@ -169,7 +170,19 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
      *
      * @param ex  An exception representing the error.
      */
-    virtual void acceptError(const std::exception& ex) noexcept = 0;
+
+    // TODO(T81599451): Remove the acceptError(const std::exception&)
+    // after migration and remove compile warning supression.
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Woverloaded-virtual")
+    virtual void acceptError(exception_wrapper ew) noexcept {
+      auto ex = ew.get_exception<std::exception>();
+      FOLLY_SAFE_CHECK(ex, "no exception");
+      acceptError(*ex);
+    }
+
+    virtual void acceptError(const std::exception& /* unused */) noexcept {}
+    FOLLY_POP_WARNING
 
     /**
      * acceptStarted() will be called in the callback's EventBase thread

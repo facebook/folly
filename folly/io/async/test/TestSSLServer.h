@@ -56,8 +56,8 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
 
   ~SSLServerAcceptCallbackBase() override { EXPECT_EQ(STATE_SUCCEEDED, state); }
 
-  void acceptError(const std::exception& ex) noexcept override {
-    LOG(WARNING) << "SSLServerAcceptCallbackBase::acceptError " << ex.what();
+  void acceptError(folly::exception_wrapper ex) noexcept override {
+    LOG(WARNING) << "SSLServerAcceptCallbackBase::acceptError " << ex;
     state = STATE_FAILED;
   }
 
