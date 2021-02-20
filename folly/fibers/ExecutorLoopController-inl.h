@@ -36,7 +36,16 @@ inline void ExecutorLoopController::schedule() {
   if (!executorKeepAlive_) {
     executorKeepAlive_ = getKeepAliveToken(executor_);
   }
-  executor_->add([this]() { return runLoop(); });
+  auto guard = localCallbackControlBlock_->trySchedule();
+  if (!guard) {
+    return;
+  }
+  executor_->add([this, guard = std::move(guard)]() {
+    if (guard->isCancelled()) {
+      return;
+    }
+    runLoop();
+  });
 }
 
 inline void ExecutorLoopController::runLoop() {

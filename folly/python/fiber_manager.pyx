@@ -46,8 +46,6 @@ cdef class FiberManager:
     def __dealloc__(FiberManager self):
         while deref(self.cManager).hasTasks():
             self.cExecutor.drive()
-        # drive one last time
-        self.cExecutor.drive()
 
         # Explicitly reset here, otherwise it is possible
         # that self.cManager dstor runs after python finalizes

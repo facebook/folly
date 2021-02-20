@@ -86,6 +86,51 @@ class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
   ExecutorTimeoutManager timeoutManager_;
   HHWheelTimer::UniquePtr timer_;
 
+  class LocalCallbackControlBlock {
+   public:
+    struct DeleteOrCancel {
+      void operator()(LocalCallbackControlBlock* controlBlock) {
+        if (controlBlock->scheduled_) {
+          controlBlock->cancelled_ = true;
+        } else {
+          delete controlBlock;
+        }
+      }
+    };
+    using Ptr = std::unique_ptr<LocalCallbackControlBlock, DeleteOrCancel>;
+
+    struct GuardDeleter {
+      void operator()(LocalCallbackControlBlock* controlBlock) {
+        DCHECK(controlBlock->scheduled_);
+        controlBlock->scheduled_ = false;
+        if (controlBlock->cancelled_) {
+          delete controlBlock;
+        }
+      }
+    };
+    using Guard = std::unique_ptr<LocalCallbackControlBlock, GuardDeleter>;
+
+    static Ptr create() { return Ptr(new LocalCallbackControlBlock()); }
+
+    Guard trySchedule() {
+      if (scheduled_) {
+        return {};
+      }
+      scheduled_ = true;
+      return Guard(this);
+    }
+
+    bool isCancelled() const { return cancelled_; }
+
+   private:
+    LocalCallbackControlBlock() {}
+
+    bool cancelled_{false};
+    bool scheduled_{false};
+  };
+  LocalCallbackControlBlock::Ptr localCallbackControlBlock_{
+      LocalCallbackControlBlock::create()};
+
   void setFiberManager(fibers::FiberManager* fm) override;
   void schedule() override;
   void runLoop() override;
