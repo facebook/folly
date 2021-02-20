@@ -208,6 +208,51 @@ if(NOT FOLLY_CPP_ATOMIC_BUILTIN)
   endif()
 endif()
 
+check_cxx_source_compiles("
+  #include <type_traits>
+  #if _GLIBCXX_RELEASE
+  int main() {}
+  #endif"
+  FOLLY_STDLIB_LIBSTDCXX
+)
+check_cxx_source_compiles("
+  #include <type_traits>
+  #if _GLIBCXX_RELEASE >= 9
+  int main() {}
+  #endif"
+  FOLLY_STDLIB_LIBSTDCXX_GE_9
+)
+check_cxx_source_compiles("
+  #include <type_traits>
+  #if _LIBCPP_VERSION
+  int main() {}
+  #endif"
+  FOLLY_STDLIB_LIBCXX
+)
+check_cxx_source_compiles("
+  #include <type_traits>
+  #if _LIBCPP_VERSION >= 9000
+  int main() {}
+  #endif"
+  FOLLY_STDLIB_LIBCXX_GE_9
+)
+check_cxx_source_compiles("
+  #include <type_traits>
+  #if _CPPLIB_VER
+  int main() {}
+  #endif"
+  FOLLY_STDLIB_LIBCPP
+)
+
+if (FOLLY_STDLIB_LIBSTDCXX AND NOT FOLLY_STDLIB_LIBSTDCXX_GE_9)
+  list (APPEND CMAKE_REQUIRED_LIBRARIES stdc++fs)
+  list (APPEND FOLLY_LINK_LIBRARIES stdc++fs)
+endif()
+if (FOLLY_STDLIB_LIBCXX AND NOT FOLLY_STDLIB_LIBCXX_GE_9)
+  list (APPEND CMAKE_REQUIRED_LIBRARIES c++fs)
+  list (APPEND FOLLY_LINK_LIBRARIES c++fs)
+endif ()
+
 option(
   FOLLY_LIBRARY_SANITIZE_ADDRESS
   "Build folly with Address Sanitizer enabled."

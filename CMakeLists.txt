@@ -810,6 +810,7 @@ if (BUILD_TESTS)
 
     DIRECTORY portability/test/
       TEST constexpr_test SOURCES ConstexprTest.cpp
+      TEST filesystem_test SOURCES FilesystemTest.cpp
       TEST libgen-test SOURCES LibgenTest.cpp
       TEST openssl_portability_test SOURCES OpenSSLPortabilityTest.cpp
       TEST pthread_test SOURCES PThreadTest.cpp

@@ -19,7 +19,6 @@
 #include <array>
 #include <cstdlib>
 
-#include <boost/filesystem.hpp>
 #include <folly/Demangle.h>
 #include <folly/Range.h>
 #include <folly/String.h>
@@ -27,6 +26,7 @@
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
+#include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
@@ -143,7 +143,7 @@ void expectFrameEq(
     const std::string& file,
     size_t lineno) {
   auto normalizePath = [](std::string path) {
-    path = boost::filesystem::path(path).lexically_normal().native();
+    path = fs::lexically_normal(path).native();
     return (path.find("./", 0) != std::string::npos) ? path.substr(2) : path;
   };
   auto demangled = folly::demangle(frame.name);

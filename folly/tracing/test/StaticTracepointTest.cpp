@@ -23,8 +23,6 @@
 #include <string>
 #include <vector>
 
-#include <boost/filesystem.hpp>
-
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Random.h>
@@ -32,6 +30,7 @@
 #include <folly/Subprocess.h>
 #include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/lang/Bits.h>
+#include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/tracing/test/StaticTracepointTestModule.h>
@@ -89,7 +88,7 @@ static std::string getStr(
 
 static std::string getExe() {
   auto path = folly::sformat("/proc/{}/exe", getpid());
-  return boost::filesystem::read_symlink(path).string();
+  return folly::fs::read_symlink(path).string();
 }
 
 static std::string getNoteRawContent(const std::string& fileName) {
