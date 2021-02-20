@@ -16,11 +16,15 @@
 
 #pragma once
 
+#include <atomic>
+#include <cstddef>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <unordered_set>
 #include <utility>
 
+#include <folly/Likely.h>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
 
@@ -30,7 +34,7 @@ namespace detail {
 
 class EventBaseLocalBase : public EventBaseLocalBaseBase {
  public:
-  EventBaseLocalBase() {}
+  EventBaseLocalBase() = default;
   EventBaseLocalBase(const EventBaseLocalBase&) = delete;
   EventBaseLocalBase& operator=(const EventBaseLocalBase&) = delete;
   ~EventBaseLocalBase() override;
@@ -55,58 +59,72 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase {
  *   EventBaseLocal<Foo> myFoo;
  *   ...
  *   EventBase evb;
- *   myFoo.set(evb, new Foo(1, 2));
- *   myFoo.set(evb, 1, 2);
+ *   myFoo.emplace(evb, Foo(1, 2));
+ *   myFoo.emplace(evb, 1, 2);
  *   Foo* foo = myFoo.get(evb);
  *   myFoo.erase(evb);
- *   Foo& foo = myFoo.getOrCreate(evb, 1, 2); // ctor
- *   Foo& foo = myFoo.getOrCreate(evb, 1, 2); // no ctor
+ *   Foo& foo = myFoo.try_emplace(evb, 1, 2); // ctor if missing
+ *   Foo& foo = myFoo.try_emplace(evb, 1, 2); // noop if present
  *   myFoo.erase(evb);
- *   Foo& foo = myFoo.getOrCreateFn(evb, [] { return Foo(3, 4); })
+ *   Foo& foo = myFoo.try_emplace_with(evb, [] { return Foo(3, 4); })
  *
  * The objects will be deleted when the EventBaseLocal or the EventBase is
  * destructed (whichever comes first). All methods must be called from the
  * EventBase thread.
  *
  * The user is responsible for throwing away invalid references/ptrs returned
- * by the get() method after set/erase is called.  If shared ownership is
+ * by the get() method after emplace/erase is called.  If shared ownership is
  * needed, use a EventBaseLocal<shared_ptr<...>>.
  */
 template <typename T>
 class EventBaseLocal : public detail::EventBaseLocalBase {
+ private:
+  template <typename U, typename... A>
+  using if_ilist_emplaceable_t = std::enable_if_t<
+      std::is_constructible<T, std::initializer_list<U>, A...>::value,
+      int>;
+
+  T& store(EventBase& evb, T* const ptr) {
+    setVoid(evb, ptr, detail::thunk::ruin<T>);
+    return *ptr;
+  }
+
  public:
-  EventBaseLocal() : EventBaseLocalBase() {}
+  EventBaseLocal() = default;
 
   T* get(EventBase& evb) { return static_cast<T*>(getVoid(evb)); }
 
-  template <typename... Args>
-  T& emplace(EventBase& evb, Args&&... args) {
-    auto ptr = new T(static_cast<Args&&>(args)...);
-    setVoid(evb, ptr, detail::thunk::ruin<T>);
-    return *ptr;
+  template <typename... A>
+  T& emplace(EventBase& evb, A&&... a) {
+    return store(evb, new T(static_cast<A&&>(a)...));
   }
 
-  template <typename... Args>
-  T& getOrCreate(EventBase& evb, Args&&... args) {
-    if (auto ptr = getVoid(evb)) {
-      return *static_cast<T*>(ptr);
-    }
-    auto ptr = new T(static_cast<Args&&>(args)...);
-    setVoid(evb, ptr, detail::thunk::ruin<T>);
-    return *ptr;
+  template <typename U, typename... A, if_ilist_emplaceable_t<U, A...> = 0>
+  T& emplace(EventBase& evb, std::initializer_list<U> i, A&&... a) {
+    return store(evb, new T(i, static_cast<A&&>(a)...));
   }
 
-  template <typename Func>
-  T& getOrCreateFn(EventBase& evb, Func fn) {
-    // If this looks like it's copy/pasted from above, that's because it is.
-    // gcc has a bug (fixed in 4.9) that doesn't allow capturing variadic
-    // params in a lambda.
-    if (auto ptr = getVoid(evb)) {
-      return *static_cast<T*>(ptr);
-    }
-    auto ptr = new T(fn());
-    setVoid(evb, ptr, detail::thunk::ruin<T>);
-    return *ptr;
+  template <typename F>
+  T& emplace_with(EventBase& evb, F f) {
+    return store(evb, new T(f()));
+  }
+
+  template <typename... A>
+  T& try_emplace(EventBase& evb, A&&... a) {
+    auto const ptr = get(evb);
+    return FOLLY_LIKELY(!!ptr) ? *ptr : emplace(evb, static_cast<A&&>(a)...);
+  }
+
+  template <typename U, typename... A, if_ilist_emplaceable_t<U, A...> = 0>
+  T& try_emplace(EventBase& evb, std::initializer_list<U> i, A&&... a) {
+    auto const ptr = get(evb);
+    return FOLLY_LIKELY(!!ptr) ? *ptr : emplace(evb, i, static_cast<A&&>(a)...);
+  }
+
+  template <typename F>
+  T& try_emplace_with(EventBase& evb, F f) {
+    auto const ptr = get(evb);
+    return FOLLY_LIKELY(!!ptr) ? *ptr : emplace_with(evb, std::ref(f));
   }
 };
 

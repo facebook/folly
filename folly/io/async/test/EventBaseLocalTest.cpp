@@ -58,17 +58,17 @@ TEST(EventBaseLocalTest, Basic) {
   EXPECT_EQ(dtorCnt, 3); // Foo will be destroyed in EventBase loop
 }
 
-TEST(EventBaseLocalTest, getOrCreate) {
+TEST(EventBaseLocalTest, try_emplace) {
   folly::EventBase evb1;
   folly::EventBaseLocal<int> ints;
 
-  EXPECT_EQ(ints.getOrCreate(evb1), 0);
-  EXPECT_EQ(ints.getOrCreate(evb1, 5), 0);
+  EXPECT_EQ(ints.try_emplace(evb1), 0);
+  EXPECT_EQ(ints.try_emplace(evb1, 5), 0);
 
   folly::EventBase evb2;
-  EXPECT_EQ(ints.getOrCreate(evb2, 5), 5);
+  EXPECT_EQ(ints.try_emplace(evb2, 5), 5);
   ints.erase(evb2);
-  EXPECT_EQ(4, ints.getOrCreateFn(evb2, [] { return 4; }));
+  EXPECT_EQ(4, ints.try_emplace_with(evb2, [] { return 4; }));
 }
 
 using IntPtr = std::unique_ptr<int>;
@@ -77,11 +77,11 @@ TEST(EventBaseLocalTest, getOrCreateNoncopyable) {
   folly::EventBase evb1;
   folly::EventBaseLocal<IntPtr> ints;
 
-  EXPECT_EQ(ints.getOrCreate(evb1), IntPtr());
-  EXPECT_EQ(ints.getOrCreate(evb1, std::make_unique<int>(5)), IntPtr());
+  EXPECT_EQ(ints.try_emplace(evb1), IntPtr());
+  EXPECT_EQ(ints.try_emplace(evb1, std::make_unique<int>(5)), IntPtr());
 
   folly::EventBase evb2;
-  EXPECT_EQ(*ints.getOrCreate(evb2, std::make_unique<int>(5)), 5);
+  EXPECT_EQ(*ints.try_emplace(evb2, std::make_unique<int>(5)), 5);
 }
 
 TEST(EventBaseLocalTest, emplaceNoncopyable) {
