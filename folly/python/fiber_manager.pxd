@@ -25,7 +25,8 @@ cdef extern from "folly/fibers/FiberManagerInternal.h" namespace "folly::fibers"
         pass
     cdef cppclass cFiberManager "folly::fibers::FiberManager":
         cFiberManager(unique_ptr[cLoopController], const cFiberManagerOptions&)
-        bool hasTasks() const
+        void loopUntilNoReady()
+        bool isRemoteScheduled() const
 
 cdef extern from "folly/fibers/ExecutorLoopController.h" namespace "folly::fibers":
     cdef cppclass cAsyncioLoopController "folly::fibers::ExecutorLoopController"(cLoopController):

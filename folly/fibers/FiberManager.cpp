@@ -118,6 +118,10 @@ bool FiberManager::hasTasks() const {
       !remoteTaskQueue_.empty() || remoteCount_ > 0;
 }
 
+bool FiberManager::isRemoteScheduled() const {
+  return remoteCount_ > 0;
+}
+
 Fiber* FiberManager::getFiber() {
   Fiber* fiber = nullptr;
 

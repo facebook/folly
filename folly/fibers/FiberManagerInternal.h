@@ -219,6 +219,7 @@ class FiberManager : public ::folly::Executor {
    * @return true if there are outstanding tasks.
    */
   bool hasTasks() const;
+  bool isRemoteScheduled() const;
 
   /**
    * @return The number of currently active fibers (ready to run or blocked).

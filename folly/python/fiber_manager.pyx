@@ -44,8 +44,10 @@ cdef class FiberManager:
             opts));
 
     def __dealloc__(FiberManager self):
-        while deref(self.cManager).hasTasks():
+        while deref(self.cManager).isRemoteScheduled():
             self.cExecutor.drive()
+
+        deref(self.cManager).loopUntilNoReady()
 
         # Explicitly reset here, otherwise it is possible
         # that self.cManager dstor runs after python finalizes
