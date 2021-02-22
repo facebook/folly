@@ -315,7 +315,7 @@ set(PCLMUL_FILES
   ${FOLLY_DIR}/hash/detail/Crc32CombineDetail.cpp
   ${FOLLY_DIR}/hash/detail/Crc32cDetail.cpp
 )
-CHECK_CXX_COMPILER_FLAG(-mpclmul COMPILER_HAS_M_PCLMUL)
+check_cxx_compiler_flag(-mpclmul COMPILER_HAS_M_PCLMUL)
 if (COMPILER_HAS_M_PCLMUL)
   message(
     STATUS
