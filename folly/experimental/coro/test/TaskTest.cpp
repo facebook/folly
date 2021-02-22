@@ -362,9 +362,10 @@ TEST_F(TaskTest, FutureRoundtrip) {
       std::runtime_error);
 }
 
-// NOTE: This function is unused.
+namespace {
+
 // We just want to make sure this compiles without errors or warnings.
-folly::coro::Task<void>
+FOLLY_MAYBE_UNUSED folly::coro::Task<void>
 checkAwaitingFutureOfUnitDoesntWarnAboutDiscardedResult() {
   co_await folly::makeSemiFuture();
 
@@ -372,11 +373,13 @@ checkAwaitingFutureOfUnitDoesntWarnAboutDiscardedResult() {
   co_await folly::futures::sleep(1ms);
 }
 
-folly::coro::Task<int&> returnIntRef(int& value) {
-  co_return value;
-}
+} // namespace
 
 TEST_F(TaskTest, TaskOfLvalueReference) {
+  auto returnIntRef = [](int& value) -> folly::coro::Task<int&> {
+    co_return value;
+  };
+
   int value = 123;
   auto&& result = folly::coro::blockingWait(returnIntRef(value));
   static_assert(std::is_same_v<decltype(result), int&>);
@@ -385,6 +388,10 @@ TEST_F(TaskTest, TaskOfLvalueReference) {
 
 TEST_F(TaskTest, TaskOfLvalueReferenceAsTry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto returnIntRef = [](int& value) -> folly::coro::Task<int&> {
+      co_return value;
+    };
+
     int value = 123;
     auto&& result = co_await co_awaitTry(returnIntRef(value));
     CHECK(result.hasValue());
