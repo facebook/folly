@@ -141,7 +141,7 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   auto ew3 = try_and_catch<std::exception, std::runtime_error>(
       []() { throw std::exception(); });
   EXPECT_TRUE(bool(ew3));
-  EXPECT_EQ(ew3.what(), kExceptionClassName + ": std::exception");
+  EXPECT_EQ(ew3.what(), kExceptionClassName + ": " + std::exception().what());
   EXPECT_EQ(ew3.class_name(), kExceptionClassName);
   rep = ew3.is_compatible_with<std::runtime_error>();
   EXPECT_FALSE(rep);
