@@ -18,6 +18,11 @@
 
 #include <folly/Exception.h>
 
+#ifdef __APPLE__
+#include <glog/logging.h>
+#include <mach-o/dyld.h> // @manual
+#endif
+
 namespace bsys = ::boost::system;
 
 namespace folly {
@@ -70,7 +75,16 @@ path canonical_parent(const path& pth, const path& base) {
 }
 
 path executable_path() {
+#ifdef __APPLE__
+  uint32_t size = 0;
+  _NSGetExecutablePath(nullptr, &size);
+  std::string buf(size - 1, '\0');
+  auto data = const_cast<char*>(&*buf.data());
+  _NSGetExecutablePath(data, &size);
+  return path(std::move(buf));
+#else
   return read_symlink("/proc/self/exe");
+#endif
 }
 
 } // namespace fs
