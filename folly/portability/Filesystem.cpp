@@ -16,11 +16,7 @@
 
 #include <folly/portability/Filesystem.h>
 
-#include <boost/filesystem.hpp>
-
 namespace folly::fs {
-
-namespace boost_fs = boost::filesystem;
 
 #if __cpp_lib_filesystem >= 201703
 
@@ -30,8 +26,38 @@ path lexically_normal_fn::operator()(path const& p) const {
 
 #elif __cpp_lib_experimental_filesystem >= 201406
 
+//  mimic: std::filesystem::path::lexically_normal, C++17
+//  from: https://github.com/gulrak/filesystem/tree/v1.5.0, MIT
 path lexically_normal_fn::operator()(path const& p) const {
-  return path(boost_fs::path(p.native()).lexically_normal().native());
+  path dest;
+  bool lastDotDot = false;
+  for (path::string_type s : p) {
+    if (s == ".") {
+      dest /= "";
+      continue;
+    } else if (s == ".." && !dest.empty()) {
+      auto root = p.root_path();
+      if (dest == root) {
+        continue;
+      } else if (*(--dest.end()) != "..") {
+        auto drepr = dest.native();
+        if (drepr.back() == path::preferred_separator) {
+          drepr.pop_back();
+          dest = std::move(drepr);
+        }
+        dest.remove_filename();
+        continue;
+      }
+    }
+    if (!(s.empty() && lastDotDot)) {
+      dest /= s;
+    }
+    lastDotDot = s == "..";
+  }
+  if (dest.empty()) {
+    dest = ".";
+  }
+  return dest;
 }
 
 #else

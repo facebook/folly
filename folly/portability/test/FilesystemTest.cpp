@@ -24,14 +24,12 @@ using namespace testing;
 class FilesystemTest : public Test {};
 
 TEST_F(FilesystemTest, lexically_normal) {
-  // cases from cppreference.com
-  // implementation either std::filesystem or boost::filesystem
-  auto gold = folly::fs::which == folly::fs::which_enum::std;
-  auto sep = std::string({folly::fs::path::preferred_separator});
+  //  from: https://en.cppreference.com/w/cpp/filesystem/path/lexically_normal,
+  //      CC-BY-SA, GFDL
   EXPECT_THAT(
       folly::fs::lexically_normal("foo/./bar/..").native(),
-      Eq(folly::fs::path(gold ? "foo" + sep : "foo").native()));
+      Eq(folly::fs::path("foo/").make_preferred().native()));
   EXPECT_THAT(
       folly::fs::lexically_normal("foo/.///bar/../").native(),
-      Eq(folly::fs::path(gold ? "foo" + sep : "foo" + sep + ".").native()));
+      Eq(folly::fs::path("foo/").make_preferred().native()));
 }
