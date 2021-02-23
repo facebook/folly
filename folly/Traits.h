@@ -810,23 +810,3 @@ template <>
 struct is_unsigned<unsigned __int128> : ::std::true_type {};
 FOLLY_NAMESPACE_STD_END
 #endif // FOLLY_SUPPLY_MISSING_INT128_TRAITS
-
-namespace folly {
-
-/**
- * Extension point for containers to provide an order such that if entries are
- * inserted into a new instance in that order, iteration order of the new
- * instance matches the original's. This can be useful for containers that have
- * defined but non-FIFO iteration order, such as F14Vector*.
- *
- * Should return an iterable view (a type that provides begin() and end()).
- *
- * Containers should provide overloads in their own namespace; resolution is
- * expected to be done via ADL.
- */
-template <typename Container>
-const Container& order_preserving_reinsertion_view(const Container& container) {
-  return container;
-}
-
-} // namespace folly

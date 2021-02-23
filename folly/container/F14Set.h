@@ -31,6 +31,7 @@
 #include <initializer_list>
 #include <tuple>
 
+#include <folly/container/View.h>
 #include <folly/lang/SafeAssert.h>
 
 #include <folly/container/F14Set-fwd.h>
@@ -916,13 +917,12 @@ class F14VectorSet
   const_reverse_iterator riter(const_iterator it) const {
     return this->table_.riter(it);
   }
-};
 
-template <typename K, typename H, typename E, typename A>
-Range<typename F14VectorSet<K, H, E, A>::const_reverse_iterator>
-order_preserving_reinsertion_view(const F14VectorSet<K, H, E, A>& c) {
-  return {c.rbegin(), c.rend()};
-}
+  friend Range<const_reverse_iterator> tag_invoke(
+      order_preserving_reinsertion_view_fn, F14VectorSet const& c) noexcept {
+    return {c.rbegin(), c.rend()};
+  }
+};
 
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14FastSet

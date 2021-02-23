@@ -34,6 +34,7 @@
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
+#include <folly/container/View.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
 
@@ -1176,13 +1177,12 @@ class F14VectorMap : public f14::detail::F14VectorMapImpl<
   const_reverse_iterator riter(const_iterator it) const {
     return this->table_.riter(it);
   }
-};
 
-template <typename K, typename M, typename H, typename E, typename A>
-Range<typename F14VectorMap<K, M, H, E, A>::const_reverse_iterator>
-order_preserving_reinsertion_view(const F14VectorMap<K, M, H, E, A>& c) {
-  return {c.rbegin(), c.rend()};
-}
+  friend Range<const_reverse_iterator> tag_invoke(
+      order_preserving_reinsertion_view_fn, F14VectorMap const& c) noexcept {
+    return {c.rbegin(), c.rend()};
+  }
+};
 
 template <
     typename Key,
