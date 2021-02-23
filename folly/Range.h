@@ -1526,12 +1526,21 @@ FOLLY_POP_WARNING
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range)
 
-// Tell the range-v3 library that this type should satisfy
-// the view concept (a lightweight, non-owning range).
+// Unfortunately it is not possible to forward declare enable_view under
+// MSVC 2019.8 due to compiler bugs, so we need to include the actual
+// definition if available.
+#if __has_include(<range/v3/range/concepts.hpp>) && defined(_MSC_VER) && _MSC_VER >= 1920
+#include <range/v3/range/concepts.hpp> // @manual
+#else
 namespace ranges {
 template <class T>
 extern const bool enable_view;
+} // namespace ranges
+#endif
 
+// Tell the range-v3 library that this type should satisfy
+// the view concept (a lightweight, non-owning range).
+namespace ranges {
 template <class Iter>
 FOLLY_INLINE_VARIABLE constexpr bool enable_view<::folly::Range<Iter>> = true;
 } // namespace ranges
