@@ -16,6 +16,7 @@
 
 #include <folly/io/async/EventBaseLocal.h>
 
+#include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/portability/GTest.h>
 
 struct Foo {
@@ -89,4 +90,25 @@ TEST(EventBaseLocalTest, emplaceNoncopyable) {
   folly::EventBaseLocal<IntPtr> ints;
   ints.emplace(evb, std::make_unique<int>(42));
   EXPECT_EQ(42, **ints.get(evb));
+}
+
+TEST(EventBaseLocalTest, DestructionOrder) {
+  struct Consumer {
+    void operator()(int) noexcept {}
+  };
+  using Queue = folly::EventBaseAtomicNotificationQueue<int, Consumer>;
+  folly::EventBaseLocal<std::unique_ptr<Queue>> ebl;
+  {
+    // Since queue binds to the underlying event loop, we must ensure
+    // local storage is cleared before event loop is destroyed.
+    folly::EventBase evb;
+    ebl.emplace_with(
+           evb,
+           [&evb] {
+             auto q = std::make_unique<Queue>();
+             q->startConsumingInternal(&evb);
+             return q;
+           })
+        .get();
+  }
 }

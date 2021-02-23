@@ -220,11 +220,13 @@ EventBase::~EventBase() {
 
   // Stop consumer before deleting NotificationQueue
   queue_->stopConsuming();
-  evb_.reset();
 
   for (auto storage : localStorageToDtor_) {
     storage->onEventBaseDestruction(*this);
   }
+  localStorage_.clear();
+
+  evb_.reset();
 
   VLOG(5) << "EventBase(): Destroyed.";
 }
