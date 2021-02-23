@@ -165,8 +165,8 @@ class propagate_const {
   }
 
  private:
-  friend Pointer& get_underlying<>(propagate_const&);
-  friend Pointer const& get_underlying<>(propagate_const const&);
+  friend constexpr Pointer& get_underlying<>(propagate_const&);
+  friend constexpr Pointer const& get_underlying<>(propagate_const const&);
   template <typename OtherPointer>
   friend class propagate_const;
 
