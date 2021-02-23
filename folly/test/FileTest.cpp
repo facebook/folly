@@ -19,17 +19,15 @@
 #include <fstream>
 #include <random>
 
-#include <boost/filesystem.hpp>
 #include <fmt/core.h>
 #include <glog/logging.h>
 
 #include <folly/String.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
-
-namespace fs = boost::filesystem;
 
 namespace {
 
