@@ -20,11 +20,10 @@ BUILD_TESTS=ON
 [cmake.defines.test=off]
 BUILD_TESTS=OFF
 
-
 [dependencies]
 folly
 fizz
-libbpf_0_2_0_beta
+libbpf
 libmnl
 zlib
 googletest
