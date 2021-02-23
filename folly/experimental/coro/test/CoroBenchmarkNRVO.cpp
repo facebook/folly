@@ -96,7 +96,7 @@ class InlineTask {
    public:
     InlineTask get_return_object() { return InlineTask(this); }
 
-    template <typename U>
+    template <typename U = T>
     void return_value(U&& value) {
       *valuePtr_ = std::forward<U>(value);
     }

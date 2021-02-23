@@ -1357,7 +1357,7 @@ struct Promise {
     return {};
   }
   std::experimental::suspend_never final_suspend() const noexcept { return {}; }
-  template <typename U>
+  template <typename U = Value>
   void return_value(U&& u) {
     value_->emplace(static_cast<U&&>(u));
   }

@@ -159,9 +159,7 @@ class TaskPromise : public TaskPromiseBase {
         exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
-  void return_value(T&& t) { result_.emplace(static_cast<T&&>(t)); }
-
-  template <typename U>
+  template <typename U = T>
   void return_value(U&& value) {
     if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
       DCHECK(value.hasValue() || value.hasException());

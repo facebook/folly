@@ -107,18 +107,11 @@ class InlineTaskPromise : public InlineTaskPromiseBase {
   InlineTask<T> get_return_object() noexcept;
 
   template <
-      typename Value,
+      typename Value = T,
       std::enable_if_t<std::is_convertible<Value&&, T>::value, int> = 0>
   void return_value(Value&& value) noexcept(
       std::is_nothrow_constructible<T, Value&&>::value) {
     result_.emplace(static_cast<Value&&>(value));
-  }
-
-  // Also provide non-template overload for T&& so that we can do
-  // 'co_return {arg1, arg2}' as shorthand for 'co_return T{arg1, arg2}'.
-  void return_value(T&& value) noexcept(
-      std::is_nothrow_move_constructible<T>::value) {
-    result_.emplace(static_cast<T&&>(value));
   }
 
   void unhandled_exception() noexcept {

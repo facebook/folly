@@ -102,7 +102,7 @@ class BlockingWaitPromise final : public BlockingWaitPromiseBase {
   }
 
   template <
-      typename U,
+      typename U = T,
       std::enable_if_t<std::is_convertible<U, T>::value, int> = 0>
   void return_value(U&& value) noexcept(
       std::is_nothrow_constructible<T, U&&>::value) {
