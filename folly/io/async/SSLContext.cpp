@@ -99,7 +99,6 @@ void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
   DCHECK((newOpt & opt) == opt);
 #endif // FOLLY_OPENSSL_PREREQ(1, 1, 0)
 }
-
 } // namespace
 
 //
@@ -231,6 +230,50 @@ void SSLContext::setVerificationOption(
   verifyPeer_ = verifyPeer;
 }
 
+void SSLContext::setVerificationOption(
+    const SSLContext::VerifyClientCertificate& verifyClient) {
+  verifyClient_ = verifyClient;
+}
+
+void SSLContext::setVerificationOption(
+    const SSLContext::VerifyServerCertificate& verifyServer) {
+  verifyServer_ = verifyServer;
+}
+
+int SSLContext::getVerificationMode(
+    const SSLContext::VerifyClientCertificate& verifyClient) {
+  int mode = SSL_VERIFY_NONE;
+  switch (verifyClient) {
+    case VerifyClientCertificate::ALWAYS:
+      mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+      break;
+
+    case VerifyClientCertificate::IF_PRESENTED:
+      mode = SSL_VERIFY_PEER;
+      break;
+
+    case VerifyClientCertificate::DO_NOT_REQUEST:
+      mode = SSL_VERIFY_NONE;
+      break;
+  }
+  return mode;
+}
+
+int SSLContext::getVerificationMode(
+    const SSLContext::VerifyServerCertificate& verifyServer) {
+  int mode = SSL_VERIFY_NONE;
+  switch (verifyServer) {
+    case VerifyServerCertificate::IF_PRESENTED:
+      mode = SSL_VERIFY_PEER;
+      break;
+
+    case VerifyServerCertificate::IGNORE_VERIFY_RESULT:
+      mode = SSL_VERIFY_NONE;
+      break;
+  }
+  return mode;
+}
+
 int SSLContext::getVerificationMode(
     const SSLContext::SSLVerifyPeerEnum& verifyPeer) {
   CHECK(verifyPeer != SSLVerifyPeerEnum::USE_CTX);
@@ -258,7 +301,11 @@ int SSLContext::getVerificationMode(
 }
 
 int SSLContext::getVerificationMode() {
-  return getVerificationMode(verifyPeer_);
+  // the below or'ing is incorrect unless VERIFY_NONE is 0
+  static_assert(SSL_VERIFY_NONE == 0);
+  return getVerificationMode(verifyClient_) |
+      getVerificationMode(verifyServer_) |
+      getVerificationMode(verifyPeer_);
 }
 
 void SSLContext::authenticate(
