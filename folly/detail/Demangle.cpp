@@ -30,6 +30,10 @@
 #undef HAVE_DECL_BASENAME
 #endif
 
+#ifndef DMGL_NO_RECURSE_LIMIT
+#define DMGL_NO_RECURSE_LIMIT 0
+#endif
+
 namespace folly {
 namespace detail {
 
@@ -38,7 +42,8 @@ int cplus_demangle_v3_callback_wrapper(
     void (*const cbref)(char const*, std::size_t, void*),
     void* const opaque) {
 #if FOLLY_DETAIL_HAVE_DEMANGLE_H
-  auto const options = DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES;
+  auto const options =
+      DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES | DMGL_NO_RECURSE_LIMIT;
   return cplus_demangle_v3_callback(mangled, options, cbref, opaque);
 #else
   (void)mangled;
@@ -50,7 +55,8 @@ int cplus_demangle_v3_callback_wrapper(
 
 char* cplus_demangle_v3_wrapper(const char* mangled) {
 #if FOLLY_DETAIL_HAVE_DEMANGLE_H
-  auto const options = DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES;
+  auto const options =
+      DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES | DMGL_NO_RECURSE_LIMIT;
   return cplus_demangle_v3(mangled, options);
 #else
   (void)mangled;
