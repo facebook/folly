@@ -58,7 +58,7 @@ class SerialExecutor : public SequencedExecutor {
   SerialExecutor& operator=(SerialExecutor&&) = delete;
 
   static KeepAlive<SerialExecutor> create(
-      KeepAlive<Executor> parent = getGlobalCPUExecutor());
+      KeepAlive<Executor> parent = getKeepAliveToken(getCPUExecutor().get()));
 
   class Deleter {
    public:
@@ -76,7 +76,7 @@ class SerialExecutor : public SequencedExecutor {
 
   using UniquePtr = std::unique_ptr<SerialExecutor, Deleter>;
   [[deprecated("Replaced by create")]] static UniquePtr createUnique(
-      std::shared_ptr<Executor> parent);
+      std::shared_ptr<Executor> parent = getCPUExecutor());
 
   /**
    * Add one task for execution in the parent executor
