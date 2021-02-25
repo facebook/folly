@@ -304,8 +304,7 @@ int SSLContext::getVerificationMode() {
   // the below or'ing is incorrect unless VERIFY_NONE is 0
   static_assert(SSL_VERIFY_NONE == 0);
   return getVerificationMode(verifyClient_) |
-      getVerificationMode(verifyServer_) |
-      getVerificationMode(verifyPeer_);
+      getVerificationMode(verifyServer_) | getVerificationMode(verifyPeer_);
 }
 
 void SSLContext::authenticate(
