@@ -16,8 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/CancellationToken.h>
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
@@ -29,6 +27,8 @@
 #include <folly/experimental/coro/Task.h>
 
 #include <folly/portability/GTest.h>
+
+#if FOLLY_HAS_COROUTINES
 
 using namespace folly::coro;
 

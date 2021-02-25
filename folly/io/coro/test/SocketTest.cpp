@@ -16,8 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
@@ -25,6 +23,8 @@
 #include <folly/io/coro/ServerSocket.h>
 #include <folly/io/coro/Socket.h>
 #include <folly/portability/GTest.h>
+
+#if FOLLY_HAS_COROUTINES
 
 using namespace std::chrono_literals;
 using namespace folly;

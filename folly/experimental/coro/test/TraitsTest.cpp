@@ -16,11 +16,11 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/Traits.h>
 #include <experimental/coroutine>
 #include <type_traits>
+
+#if FOLLY_HAS_COROUTINES
 
 using namespace folly::coro;
 

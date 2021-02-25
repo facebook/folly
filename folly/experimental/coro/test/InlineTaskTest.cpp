@@ -16,13 +16,13 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/portability/GTest.h>
 
 #include <tuple>
+
+#if FOLLY_HAS_COROUTINES
 
 template <typename T>
 using InlineTask = folly::coro::detail::InlineTask<T>;

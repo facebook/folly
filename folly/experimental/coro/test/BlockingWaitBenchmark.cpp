@@ -17,12 +17,12 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Utils.h>
 
 #include <string>
+
+#if FOLLY_HAS_COROUTINES
 
 BENCHMARK(blockingWaitRVOInt, iters) {
   for (size_t iter = 0; iter < iters; ++iter) {

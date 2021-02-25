@@ -20,7 +20,6 @@
 
 #include <folly/Portability.h>
 #include <gtest/gtest-death-test.h>
-#if FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/GmockHelpers.h>
 
@@ -29,6 +28,8 @@
 
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+
+#if FOLLY_HAS_COROUTINES
 
 using namespace ::testing;
 using namespace folly::coro::gmock_helpers;

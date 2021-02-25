@@ -16,8 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
@@ -31,6 +29,8 @@
 #include <folly/portability/GTest.h>
 
 #include <type_traits>
+
+#if FOLLY_HAS_COROUTINES
 
 using namespace folly;
 

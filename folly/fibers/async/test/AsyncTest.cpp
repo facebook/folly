@@ -28,10 +28,8 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-#if FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/fibers/async/Task.h>
-#endif
 
 using namespace ::testing;
 using namespace folly::fibers;

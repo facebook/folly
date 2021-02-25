@@ -16,8 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/CancellationToken.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
@@ -27,6 +25,8 @@
 
 #include <string>
 #include <thread>
+
+#if FOLLY_HAS_COROUTINES
 
 TEST(UnboundedQueueTest, EnqueueDeque) {
   folly::coro::UnboundedQueue<std::string, true, true> queue;

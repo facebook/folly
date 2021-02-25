@@ -16,9 +16,11 @@
 
 #include <folly/Benchmark.h>
 
-#if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
 #include <future>
+
+#include <folly/experimental/coro/Coroutine.h>
+
+#if FOLLY_HAS_COROUTINES
 
 class Wait {
  public:

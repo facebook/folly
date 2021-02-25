@@ -16,7 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Baton.h>
@@ -24,6 +23,8 @@
 #include <folly/experimental/coro/FutureUtil.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
+
+#if FOLLY_HAS_COROUTINES
 
 static folly::coro::Task<int> makeTask() {
   co_return 42;

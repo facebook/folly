@@ -16,8 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/executors/ManualExecutor.h>
@@ -31,6 +29,8 @@
 
 #include <memory>
 #include <type_traits>
+
+#if FOLLY_HAS_COROUTINES
 
 static_assert(
     std::is_same<

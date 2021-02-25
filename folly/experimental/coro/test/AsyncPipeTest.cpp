@@ -16,8 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/AsyncPipe.h>
 #include <folly/experimental/coro/BlockingWait.h>
@@ -26,6 +24,8 @@
 #include <folly/portability/GTest.h>
 
 #include <string>
+
+#if FOLLY_HAS_COROUTINES
 
 TEST(AsyncPipeTest, PublishConsume) {
   auto pipe = folly::coro::AsyncPipe<int>::create();

@@ -18,10 +18,10 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Task.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace python {

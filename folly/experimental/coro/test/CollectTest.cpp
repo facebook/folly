@@ -16,8 +16,6 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
@@ -34,6 +32,8 @@
 #include <numeric>
 #include <string>
 #include <vector>
+
+#if FOLLY_HAS_COROUTINES
 
 folly::coro::Task<void> sleepThatShouldBeCancelled(
     std::chrono::milliseconds dur) {

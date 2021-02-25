@@ -15,6 +15,10 @@
  */
 
 #include <folly/Benchmark.h>
+
+#include <folly/experimental/coro/Coroutine.h>
+
+#include <future>
 #include <thread>
 
 struct ExpensiveCopy {
@@ -26,8 +30,6 @@ struct ExpensiveCopy {
 };
 
 #if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
-#include <future>
 
 class Wait {
  public:

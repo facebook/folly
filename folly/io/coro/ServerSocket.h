@@ -23,6 +23,8 @@
 #include <folly/io/coro/Socket.h>
 #include <optional>
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 
@@ -62,3 +64,5 @@ class ServerSocket {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -17,8 +17,6 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
@@ -27,6 +25,8 @@
 #include <folly/ExceptionWrapper.h>
 
 #include <exception>
+
+#if FOLLY_HAS_COROUTINES
 
 struct SomeError : std::exception {};
 
