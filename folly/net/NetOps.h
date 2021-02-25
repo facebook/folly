@@ -25,7 +25,85 @@
 #include <folly/portability/Time.h>
 #include <folly/portability/Windows.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+#include <WS2tcpip.h> // @manual
+
+using nfds_t = int;
+using sa_family_t = ADDRESS_FAMILY;
+
+// these are not supported
+#define SO_EE_ORIGIN_ZEROCOPY 0
+#define SO_ZEROCOPY 0
+#define SO_TXTIME 0
+#define MSG_ZEROCOPY 0x0
+#define SOL_UDP 0x0
+#define UDP_SEGMENT 0x0
+#define IP_BIND_ADDRESS_NO_PORT 0
+
+// We don't actually support either of these flags
+// currently.
+#define MSG_DONTWAIT 0x1000
+#define MSG_EOR 0
+struct msghdr {
+  void* msg_name;
+  socklen_t msg_namelen;
+  struct iovec* msg_iov;
+  size_t msg_iovlen;
+  void* msg_control;
+  size_t msg_controllen;
+  int msg_flags;
+};
+
+struct mmsghdr {
+  struct msghdr msg_hdr;
+  unsigned int msg_len;
+};
+
+struct sockaddr_un {
+  sa_family_t sun_family;
+  char sun_path[108];
+};
+
+#define SHUT_RD SD_RECEIVE
+#define SHUT_WR SD_SEND
+#define SHUT_RDWR SD_BOTH
+
+// These are the same, but PF_LOCAL
+// isn't defined by WinSock.
+#define AF_LOCAL PF_UNIX
+#define PF_LOCAL PF_UNIX
+
+// This isn't defined by Windows, and we need to
+// distinguish it from SO_REUSEADDR
+#define SO_REUSEPORT 0x7001
+
+// Someone thought it would be a good idea
+// to define a field via a macro...
+#undef s_host
+#elif defined(__XROS__)
+// Stub this out for now.
+using nfds_t = int;
+using socklen_t = int;
+struct sockaddr {};
+struct in_addr {};
+struct msghdr {
+  void* msg_name;
+  socklen_t msg_namelen;
+  struct iovec* msg_iov;
+  size_t msg_iovlen;
+  void* msg_control;
+  size_t msg_controllen;
+  int msg_flags;
+};
+
+struct mmsghdr {
+  struct msghdr msg_hdr;
+  unsigned int msg_len;
+};
+
+#else
+
 #include <netdb.h>
 #include <poll.h>
 
@@ -121,61 +199,6 @@ struct mmsghdr {
 #define IP_BIND_ADDRESS_NO_PORT 24
 #endif
 
-#else
-#include <WS2tcpip.h> // @manual
-
-using nfds_t = int;
-using sa_family_t = ADDRESS_FAMILY;
-
-// these are not supported
-#define SO_EE_ORIGIN_ZEROCOPY 0
-#define SO_ZEROCOPY 0
-#define SO_TXTIME 0
-#define MSG_ZEROCOPY 0x0
-#define SOL_UDP 0x0
-#define UDP_SEGMENT 0x0
-#define IP_BIND_ADDRESS_NO_PORT 0
-
-// We don't actually support either of these flags
-// currently.
-#define MSG_DONTWAIT 0x1000
-#define MSG_EOR 0
-struct msghdr {
-  void* msg_name;
-  socklen_t msg_namelen;
-  struct iovec* msg_iov;
-  size_t msg_iovlen;
-  void* msg_control;
-  size_t msg_controllen;
-  int msg_flags;
-};
-
-struct mmsghdr {
-  struct msghdr msg_hdr;
-  unsigned int msg_len;
-};
-
-struct sockaddr_un {
-  sa_family_t sun_family;
-  char sun_path[108];
-};
-
-#define SHUT_RD SD_RECEIVE
-#define SHUT_WR SD_SEND
-#define SHUT_RDWR SD_BOTH
-
-// These are the same, but PF_LOCAL
-// isn't defined by WinSock.
-#define AF_LOCAL PF_UNIX
-#define PF_LOCAL PF_UNIX
-
-// This isn't defined by Windows, and we need to
-// distinguish it from SO_REUSEADDR
-#define SO_REUSEPORT 0x7001
-
-// Someone thought it would be a good idea
-// to define a field via a macro...
-#undef s_host
 #endif
 
 namespace folly {

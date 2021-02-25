@@ -34,6 +34,12 @@ struct SocketFileDescriptorMap {
 
   static SOCKET fdToSocket(int fd) noexcept;
   static int socketToFd(SOCKET sock) noexcept;
+#elif defined(__XROS__)
+  static int close(int fd) noexcept;
+  static int close(void* sock) noexcept;
+
+  static void* fdToSocket(int fd) noexcept;
+  static int socketToFd(void* sock) noexcept;
 #else
   static int close(int fd) noexcept { return ::close(fd); }
 

@@ -23,25 +23,9 @@
 namespace folly {
 namespace portability {
 namespace sockets {
-#ifndef _WIN32
-using ::accept;
-using ::bind;
-using ::connect;
-using ::getpeername;
-using ::getsockname;
-using ::getsockopt;
-using ::inet_ntop;
-using ::listen;
-using ::poll;
-using ::recv;
-using ::recvfrom;
-using ::send;
-using ::sendmsg;
-using ::sendto;
-using ::setsockopt;
-using ::shutdown;
-using ::socket;
-#else
+
+#ifdef _WIN32
+
 // Some Windows specific helper functions.
 bool is_fh_socket(int fh);
 SOCKET fd_to_socket(int fd);
@@ -131,7 +115,33 @@ ssize_t sendto(
     socklen_t tolen);
 int setsockopt(
     int s, int level, int optname, const char* optval, socklen_t optlen);
+
+#elif defined(__XROS__)
+
+// None of these are implemented or referenced right now.
+
+#else
+
+using ::accept;
+using ::bind;
+using ::connect;
+using ::getpeername;
+using ::getsockname;
+using ::getsockopt;
+using ::inet_ntop;
+using ::listen;
+using ::poll;
+using ::recv;
+using ::recvfrom;
+using ::send;
+using ::sendmsg;
+using ::sendto;
+using ::setsockopt;
+using ::shutdown;
+using ::socket;
+
 #endif
+
 } // namespace sockets
 } // namespace portability
 } // namespace folly

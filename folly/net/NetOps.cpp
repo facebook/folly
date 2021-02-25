@@ -20,6 +20,7 @@
 #include <cerrno>
 
 #include <cstddef>
+#include <stdexcept>
 
 #include <folly/Portability.h>
 #include <folly/net/detail/SocketFileDescriptorMap.h>
@@ -85,11 +86,18 @@ static R wrapSocketFunction(F f, NetworkSocket s, Args... args) {
 } // namespace
 
 NetworkSocket accept(NetworkSocket s, sockaddr* addr, socklen_t* addrlen) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   return NetworkSocket(wrapSocketFunction<NetworkSocket::native_handle_type>(
       ::accept, s, addr, addrlen));
+#endif
 }
 
 int bind(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   if (kIsWindows && name->sa_family == AF_UNIX) {
     // Windows added support for AF_UNIX sockets, but didn't add
     // support for autobind sockets, so detect requests for autobind
@@ -101,13 +109,21 @@ int bind(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
     }
   }
   return wrapSocketFunction<int>(::bind, s, name, namelen);
+#endif
 }
 
 int close(NetworkSocket s) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   return netops::detail::SocketFileDescriptorMap::close(s.data);
+#endif
 }
 
 int connect(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   auto r = wrapSocketFunction<int>(::connect, s, name, namelen);
 #ifdef _WIN32
   if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
@@ -115,18 +131,30 @@ int connect(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
   }
 #endif
   return r;
+#endif
 }
 
 int getpeername(NetworkSocket s, sockaddr* name, socklen_t* namelen) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   return wrapSocketFunction<int>(::getpeername, s, name, namelen);
+#endif
 }
 
 int getsockname(NetworkSocket s, sockaddr* name, socklen_t* namelen) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   return wrapSocketFunction<int>(::getsockname, s, name, namelen);
+#endif
 }
 
 int getsockopt(
     NetworkSocket s, int level, int optname, void* optval, socklen_t* optlen) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   auto ret = wrapSocketFunction<int>(
       ::getsockopt, s, level, optname, (char*)optval, optlen);
 #ifdef _WIN32
@@ -139,18 +167,30 @@ int getsockopt(
   }
 #endif
   return ret;
+#endif
 }
 
 int inet_aton(const char* cp, in_addr* inp) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   inp->s_addr = inet_addr(cp);
   return inp->s_addr == INADDR_NONE ? 0 : 1;
+#endif
 }
 
 int listen(NetworkSocket s, int backlog) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   return wrapSocketFunction<int>(::listen, s, backlog);
+#endif
 }
 
 int poll(PollDescriptor fds[], nfds_t nfds, int timeout) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   // Make sure that PollDescriptor is byte-for-byte identical to pollfd,
   // so we don't need extra allocations just for the safety of this shim.
   static_assert(
@@ -187,6 +227,7 @@ int poll(PollDescriptor fds[], nfds_t nfds, int timeout) {
 #else
   return ::poll(files, nfds, timeout);
 #endif
+#endif // defined(__XROS__)
 }
 
 ssize_t recv(NetworkSocket s, void* buf, size_t len, int flags) {
@@ -211,6 +252,8 @@ ssize_t recv(NetworkSocket s, void* buf, size_t len, int flags) {
     }
   }
   return wrapSocketFunction<ssize_t>(::recv, s, (char*)buf, (int)len, flags);
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::recv, s, buf, len, flags);
 #endif
@@ -271,6 +314,8 @@ ssize_t recvfrom(
   }
   return wrapSocketFunction<ssize_t>(
       ::recvfrom, s, (char*)buf, (int)len, flags, from, fromlen);
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(
       ::recvfrom, s, buf, len, flags, from, fromlen);
@@ -321,6 +366,8 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
   int res = WSARecvMsg(h, &msg, &bytesReceived, nullptr, nullptr);
   errno = translate_wsa_error(WSAGetLastError());
   return res == 0 ? (ssize_t)bytesReceived : -1;
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::recvmsg, s, message, flags);
 #endif
@@ -332,6 +379,9 @@ int recvmmsg(
     unsigned int vlen,
     unsigned int flags,
     timespec* timeout) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   if (reinterpret_cast<void*>(::recvmmsg) != nullptr) {
     return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
   }
@@ -351,12 +401,15 @@ int recvmmsg(
     }
   }
   return static_cast<int>(vlen);
+#endif
 }
 
 ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
 #ifdef _WIN32
   return wrapSocketFunction<ssize_t>(
       ::send, s, (const char*)buf, (int)len, flags);
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::send, s, buf, len, flags);
 #endif
@@ -398,6 +451,8 @@ ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
     bytesSent += r;
   }
   return bytesSent;
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::sendmsg, socket, message, flags);
 #endif
@@ -407,6 +462,8 @@ int sendmmsg(
     NetworkSocket socket, mmsghdr* msgvec, unsigned int vlen, int flags) {
 #if FOLLY_HAVE_SENDMMSG
   return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   // implement via sendmsg
   for (unsigned int i = 0; i < vlen; i++) {
@@ -439,6 +496,8 @@ ssize_t sendto(
 #ifdef _WIN32
   return wrapSocketFunction<ssize_t>(
       ::sendto, s, (const char*)buf, (int)len, flags, to, (int)tolen);
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::sendto, s, buf, len, flags, to, tolen);
 #endif
@@ -462,6 +521,8 @@ int setsockopt(
   }
   return wrapSocketFunction<int>(
       ::setsockopt, s, level, optname, (char*)optval, optlen);
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<int>(
       ::setsockopt, s, level, optname, optval, optlen);
@@ -469,11 +530,19 @@ int setsockopt(
 }
 
 int shutdown(NetworkSocket s, int how) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   return wrapSocketFunction<int>(::shutdown, s, how);
+#endif
 }
 
 NetworkSocket socket(int af, int type, int protocol) {
+#if defined(__XROS__)
+  throw std::logic_error("Not implemented!");
+#else
   return NetworkSocket(::socket(af, type, protocol));
+#endif
 }
 
 int socketpair(int domain, int type, int protocol, NetworkSocket sv[2]) {
@@ -489,6 +558,8 @@ int socketpair(int domain, int type, int protocol, NetworkSocket sv[2]) {
   sv[0] = NetworkSocket(static_cast<SOCKET>(pair[0]));
   sv[1] = NetworkSocket(static_cast<SOCKET>(pair[1]));
   return r;
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   int pair[2];
   auto r = ::socketpair(domain, type, protocol, pair);
@@ -505,6 +576,8 @@ int set_socket_non_blocking(NetworkSocket s) {
 #ifdef _WIN32
   u_long nonBlockingEnabled = 1;
   return ioctlsocket(s.data, FIONBIO, &nonBlockingEnabled);
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   int flags = fcntl(s.data, F_GETFL, 0);
   if (flags == -1) {
@@ -520,6 +593,8 @@ int set_socket_close_on_exec(NetworkSocket s) {
     return 0;
   }
   return -1;
+#elif defined(__XROS__)
+  throw std::logic_error("Not implemented!");
 #else
   return fcntl(s.data, F_SETFD, FD_CLOEXEC);
 #endif
