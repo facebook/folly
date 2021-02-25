@@ -213,8 +213,9 @@ Collections similar to `std::map` but implemented as sorted vectors.
 
 #### `stats/`
 
-A collection of efficient utilities for collecting statistics (often of
-time series data).
+A collection of efficient utilities for collecting statistics, including
+single-pass variance and standard deviation calculations and handling of
+time series data.
 
 #### `StlAllocator.h`
 
