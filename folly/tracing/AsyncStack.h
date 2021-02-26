@@ -377,7 +377,7 @@ struct AsyncStackRoot {
   // The current stack root must not currently have any active
   // frame.
   void setTopFrame(AsyncStackFrame& frame) noexcept;
-  AsyncStackFrame* getTopFrame() noexcept;
+  AsyncStackFrame* getTopFrame() const noexcept;
 
   // Initialises this stack root with information about the context
   // in which the stack-root was declared. This records information

@@ -108,7 +108,7 @@ inline void AsyncStackRoot::setTopFrame(AsyncStackFrame& frame) noexcept {
   this->topFrame.store(&frame, std::memory_order_release);
 }
 
-inline AsyncStackFrame* AsyncStackRoot::getTopFrame() noexcept {
+inline AsyncStackFrame* AsyncStackRoot::getTopFrame() const noexcept {
   return topFrame.load(std::memory_order_relaxed);
 }
 
