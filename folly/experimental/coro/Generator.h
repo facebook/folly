@@ -255,7 +255,8 @@ class Generator {
   }
 
   template <typename F, typename... A, typename F_, typename... A_>
-  friend Generator folly_co_invoke(tag_t<Generator, F, A...>, F_ f, A_... a) {
+  friend Generator tag_invoke(
+      tag_t<co_invoke_type>, tag_t<Generator, F, A...>, F_ f, A_... a) {
     auto&& r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
     for (auto&& v : r) {
       co_yield std::move(v);

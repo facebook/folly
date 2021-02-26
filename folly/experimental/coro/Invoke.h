@@ -22,10 +22,6 @@
 namespace folly {
 namespace coro {
 
-namespace invoke_detail {
-void folly_co_invoke(folly::detail::invoke_private_overload&);
-}
-
 //  co_invoke
 //
 //  This utility callable is a safe way to instantiate a coroutine using a
@@ -80,15 +76,18 @@ void folly_co_invoke(folly::detail::invoke_private_overload&);
 struct co_invoke_type {
   template <typename F, typename... A>
   FOLLY_ERASE constexpr auto operator()(F&& f, A&&... a) const
-      noexcept(noexcept(folly_co_invoke(
+      noexcept(noexcept(tag_invoke(
+          tag<co_invoke_type>,
           tag<invoke_result_t<F, A...>, F, A...>,
           static_cast<F&&>(f),
           static_cast<A&&>(a)...)))
-          -> decltype(folly_co_invoke(
+          -> decltype(tag_invoke(
+              tag<co_invoke_type>,
               tag<invoke_result_t<F, A...>, F, A...>,
               static_cast<F&&>(f),
               static_cast<A&&>(a)...)) {
-    return folly_co_invoke(
+    return tag_invoke(
+        tag<co_invoke_type>,
         tag<invoke_result_t<F, A...>, F, A...>,
         static_cast<F&&>(f),
         static_cast<A&&>(a)...);

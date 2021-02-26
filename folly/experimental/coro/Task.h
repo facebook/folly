@@ -629,7 +629,8 @@ class FOLLY_NODISCARD Task {
   }
 
   template <typename F, typename... A, typename F_, typename... A_>
-  friend Task folly_co_invoke(tag_t<Task, F, A...>, F_ f, A_... a) {
+  friend Task tag_invoke(
+      tag_t<co_invoke_type>, tag_t<Task, F, A...>, F_ f, A_... a) {
     co_return co_await invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
   }
 

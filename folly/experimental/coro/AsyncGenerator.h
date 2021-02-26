@@ -572,8 +572,8 @@ class FOLLY_NODISCARD AsyncGenerator {
   }
 
   template <typename F, typename... A, typename F_, typename... A_>
-  friend AsyncGenerator folly_co_invoke(
-      tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
+  friend AsyncGenerator tag_invoke(
+      tag_t<co_invoke_type>, tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
     auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
     while (auto v = co_await r.next()) {
       co_yield std::move(v).value();
