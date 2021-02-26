@@ -81,6 +81,11 @@ TEST_F(UtilityTest, forward_like) {
   // the real work is done by like_t, in terms of which forward_like is defined
   EXPECT_EQ(&x, std::addressof(folly::forward_like<char&>(x)));
   EXPECT_EQ(&x, std::addressof(as_mutable(folly::forward_like<char const>(x))));
+
+  // Should not be able to turn rvalues into lvalues
+  // Uncomment to produce expected compile-time errors
+  // std::forward<const int&>(1);
+  // folly::forward_like<const int&>(1);
 }
 
 TEST_F(UtilityTest, MoveOnly) {

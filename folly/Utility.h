@@ -106,7 +106,7 @@ void as_const(T const&&) = delete;
 //  mimic: forward_like, p0847r0
 template <typename Src, typename Dst>
 constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
-  return static_cast<like_t<Src, Dst>&&>(std::forward<Dst>(dst));
+  return std::forward<like_t<Src, Dst>>(static_cast<Dst&&>(dst));
 }
 
 /**
