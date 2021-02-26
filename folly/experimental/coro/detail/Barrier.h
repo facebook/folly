@@ -80,7 +80,7 @@ class Barrier {
       }
       return std::exchange(continuation_, {});
     } else {
-      return std::experimental::noop_coroutine();
+      return noop_coroutine();
     }
   }
 
@@ -95,12 +95,12 @@ class Barrier {
       auto coro = std::exchange(continuation_, {});
       if (asyncFrame_ != nullptr) {
         folly::resumeCoroutineWithNewAsyncStackRoot(coro, *asyncFrame_);
-        return std::experimental::noop_coroutine();
+        return noop_coroutine();
       } else {
         return coro;
       }
     } else {
-      return std::experimental::noop_coroutine();
+      return noop_coroutine();
     }
   }
 

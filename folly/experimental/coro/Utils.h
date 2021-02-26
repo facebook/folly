@@ -63,12 +63,11 @@ struct await_suspend_return_coroutine_fn {
   coroutine_handle<> operator()(A& a, coroutine_handle<P> coro) const
       noexcept(noexcept(a.await_suspend(coro))) {
     using result = decltype(a.await_suspend(coro));
-    auto noop = std::experimental::noop_coroutine();
     if constexpr (std::is_same_v<void, result>) {
       a.await_suspend(coro);
-      return noop;
+      return noop_coroutine();
     } else if constexpr (std::is_same_v<bool, result>) {
-      return a.await_suspend(coro) ? noop : coro;
+      return a.await_suspend(coro) ? noop_coroutine() : coro;
     } else {
       return a.await_suspend(coro);
     }
