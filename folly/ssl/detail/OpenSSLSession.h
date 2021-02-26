@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <atomic>
-
+#include <folly/SharedMutex.h>
+#include <folly/Synchronized.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/ssl/SSLSession.h>
@@ -38,7 +38,7 @@ namespace detail {
 
 class OpenSSLSession : public SSLSession {
  public:
-  ~OpenSSLSession();
+  ~OpenSSLSession() = default;
 
   /**
    * Set the underlying SSL session. Any previously held session
@@ -52,7 +52,7 @@ class OpenSSLSession : public SSLSession {
   SSLSessionUniquePtr getActiveSession();
 
  private:
-  std::atomic<SSL_SESSION*> activeSession_;
+  folly::Synchronized<SSLSessionUniquePtr, folly::SharedMutex> activeSession_;
 };
 
 } // namespace detail
