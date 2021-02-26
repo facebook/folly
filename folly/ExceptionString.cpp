@@ -20,6 +20,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Demangle.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
 
