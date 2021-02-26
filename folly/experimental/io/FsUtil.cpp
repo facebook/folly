@@ -19,7 +19,6 @@
 #include <folly/Exception.h>
 
 #ifdef __APPLE__
-#include <glog/logging.h>
 #include <mach-o/dyld.h> // @manual
 #endif
 
