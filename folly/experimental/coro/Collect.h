@@ -18,6 +18,7 @@
 
 #include <folly/Try.h>
 #include <folly/Unit.h>
+#include <folly/container/Access.h>
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
@@ -53,7 +54,7 @@ using collect_all_try_range_component_t =
     collect_all_try_component_t<SemiAwaitable>;
 
 template <typename Range>
-using range_iterator_t = decltype(std::begin(std::declval<Range&>()));
+using range_iterator_t = decltype(access::begin(std::declval<Range&>()));
 
 template <typename Iterator>
 using iterator_reference_t = typename std::iterator_traits<Iterator>::reference;

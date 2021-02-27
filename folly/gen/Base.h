@@ -29,6 +29,7 @@
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/Utility.h>
+#include <folly/container/Access.h>
 #include <folly/gen/Core.h>
 
 /**
@@ -244,7 +245,7 @@ struct FBounded;
 template <class Container>
 struct ValueTypeOfRange {
  public:
-  using RefType = decltype(*std::begin(std::declval<Container&>()));
+  using RefType = decltype(*access::begin(std::declval<Container&>()));
   using StorageType = typename std::decay<RefType>::type;
 };
 

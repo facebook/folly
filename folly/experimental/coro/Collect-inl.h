@@ -512,10 +512,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
     }
   };
 
-  using std::begin;
-  using std::end;
-  auto iter = begin(awaitables);
-  const auto iterEnd = end(awaitables);
+  auto iter = access::begin(awaitables);
+  const auto iterEnd = access::end(awaitables);
 
   using iterator_t = decltype(iter);
   using awaitable_t = typename std::iterator_traits<iterator_t>::value_type;
@@ -648,10 +646,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
     }
   };
 
-  using std::begin;
-  using std::end;
-  auto iter = begin(awaitables);
-  const auto iterEnd = end(awaitables);
+  auto iter = access::begin(awaitables);
+  const auto iterEnd = access::end(awaitables);
 
   using iterator_t = decltype(iter);
   using awaitable_t = typename std::iterator_traits<iterator_t>::value_type;
@@ -807,10 +803,8 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
   const Executor::KeepAlive<> executor = co_await co_current_executor;
   const CancellationToken& cancelToken = co_await co_current_cancellation_token;
 
-  using std::begin;
-  using std::end;
-  auto iter = begin(awaitables);
-  const auto iterEnd = end(awaitables);
+  auto iter = access::begin(awaitables);
+  const auto iterEnd = access::end(awaitables);
 
   using iterator_t = decltype(iter);
   using awaitable_t = typename std::iterator_traits<iterator_t>::value_type;

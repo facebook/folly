@@ -20,8 +20,11 @@
 #include <iterator>
 
 #include <folly/Portability.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
+
+namespace access {
 
 //  mimic: std::size, C++17
 struct size_fn {
@@ -81,5 +84,19 @@ struct data_fn {
   }
 };
 FOLLY_INLINE_VARIABLE constexpr data_fn data{};
+
+//  begin
+//
+//  Invokes unqualified begin with std::begin in scope.
+FOLLY_CREATE_FREE_INVOKER(begin_fn, begin, std);
+FOLLY_INLINE_VARIABLE constexpr begin_fn begin{};
+
+//  end
+//
+//  Invokes unqualified end with std::end in scope.
+FOLLY_CREATE_FREE_INVOKER(end_fn, end, std);
+FOLLY_INLINE_VARIABLE constexpr end_fn end{};
+
+} // namespace access
 
 } // namespace folly

@@ -25,6 +25,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/container/Access.h>
 #include <folly/functional/Invoke.h>
 
 namespace folly {
@@ -33,10 +34,6 @@ namespace for_each_detail {
 
 namespace adl {
 
-/* using override */
-using std::begin;
-/* using override */
-using std::end;
 /* using override */
 using std::get;
 
@@ -49,14 +46,6 @@ using std::get;
 template <std::size_t Index, typename Type>
 auto adl_get(Type&& instance) -> decltype(get<Index>(std::declval<Type>())) {
   return get<Index>(std::forward<Type>(instance));
-}
-template <typename Type>
-auto adl_begin(Type&& instance) -> decltype(begin(instance)) {
-  return begin(instance);
-}
-template <typename Type>
-auto adl_end(Type&& instance) -> decltype(end(instance)) {
-  return end(instance);
 }
 
 } // namespace adl
@@ -111,8 +100,8 @@ struct IsTuple<EnableIfTuple<T>, T> : std::true_type {};
  */
 template <typename Type, typename T = typename std::decay<Type>::type>
 using EnableIfRange = void_t<
-    decltype(adl::adl_begin(std::declval<T>())),
-    decltype(adl::adl_end(std::declval<T>()))>;
+    decltype(access::begin(std::declval<T&>())),
+    decltype(access::end(std::declval<T&>()))>;
 template <typename, typename T>
 struct IsRange : std::false_type {};
 template <typename T>
@@ -166,8 +155,8 @@ LoopControl invoke_returning_loop_control(Func&& f, Args&&... a) {
  */
 template <typename Sequence, typename Func>
 void for_each_range_impl(index_constant<3>, Sequence&& range, Func& func) {
-  auto first = adl::adl_begin(range);
-  auto last = adl::adl_end(range);
+  auto first = access::begin(range);
+  auto last = access::end(range);
   for (auto index = std::size_t{0}; first != last; ++index) {
     auto next = std::next(first);
     auto control = invoke_returning_loop_control(func, *first, index, first);
@@ -273,7 +262,7 @@ void for_each_impl(TupleTag, Sequence&& range, Func& func) {
 }
 template <typename Sequence, typename Func>
 void for_each_impl(RangeTag, Sequence&& range, Func& func) {
-  using iter = decltype(adl::adl_begin(std::declval<Sequence>()));
+  using iter = decltype(access::begin(std::declval<Sequence>()));
   using type = decltype(*std::declval<iter>());
   using tag = ForEachImplTag<Func, type, iter>;
   static_assert(!std::is_same<tag, void>::value, "unknown invocability");
@@ -286,7 +275,7 @@ decltype(auto) fetch_impl(IndexingTag, Sequence&& sequence, Index&& index) {
 }
 template <typename Sequence, typename Index>
 decltype(auto) fetch_impl(BeginAddTag, Sequence&& sequence, Index index) {
-  return *(adl::adl_begin(std::forward<Sequence>(sequence)) + index);
+  return *(access::begin(std::forward<Sequence>(sequence)) + index);
 }
 
 template <typename Sequence, typename Index>
@@ -295,7 +284,7 @@ decltype(auto) fetch_impl(TupleTag, Sequence&& sequence, Index index) {
 }
 template <typename Sequence, typename Index>
 decltype(auto) fetch_impl(RangeTag, Sequence&& sequence, Index&& index) {
-  using iter = decltype(adl::adl_begin(std::declval<Sequence>()));
+  using iter = decltype(access::begin(std::declval<Sequence>()));
   using iter_traits = std::iterator_traits<remove_cvref_t<iter>>;
   using iter_cat = typename iter_traits::iterator_category;
   using tag = std::conditional_t<

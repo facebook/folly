@@ -188,7 +188,8 @@ class CopiedSource
 
   template <class SourceContainer>
   explicit CopiedSource(const SourceContainer& container)
-      : copy_(new Container(begin(container), end(container))) {}
+      : copy_(new Container(access::begin(container), access::end(container))) {
+  }
 
   explicit CopiedSource(Container&& container)
       : copy_(new Container(std::move(container))) {}
