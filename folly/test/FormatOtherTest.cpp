@@ -28,34 +28,6 @@
 
 using namespace folly;
 
-TEST(FormatOther, file) {
-  // Test writing to FILE. I'd use open_memstream but that's not available
-  // outside of Linux (even though it's in POSIX.1-2008).
-  {
-    int fds[2];
-    CHECK_ERR(pipe(fds));
-    SCOPE_EXIT {
-      // fclose on Windows automatically closes the underlying
-      // file descriptor.
-      if (!kIsWindows) {
-        closeNoInt(fds[1]);
-      }
-    };
-    {
-      FILE* fp = fdopen(fds[1], "wb");
-      PCHECK(fp);
-      SCOPE_EXIT { fclose(fp); };
-      writeTo(fp, format("{} {}", 42, 23)); // <= 512 bytes (PIPE_BUF)
-    }
-
-    char buf[512];
-    ssize_t n = readFull(fds[0], buf, sizeof(buf));
-    CHECK_GE(n, 0);
-
-    EXPECT_EQ("42 23", std::string(buf, n));
-  }
-}
-
 TEST(FormatOther, dynamic) {
   auto dyn = parseJson(
       "{\n"

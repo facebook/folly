@@ -19,7 +19,7 @@
 
 #include <glog/logging.h>
 
-#include <folly/Format.h>
+#include <fmt/core.h>
 #include <folly/Range.h>
 #include <folly/experimental/io/HugePages.h>
 #include <folly/portability/GFlags.h>
@@ -32,7 +32,8 @@ using namespace folly;
 namespace {
 
 [[noreturn]] void usage(const char* name) {
-  std::cerr << folly::format(
+  fmt::print(
+      stderr,
       "Usage: {0}\n"
       "         list all huge page sizes and their mount points\n"
       "       {0} -cp <src_file> <dest_nameprefix>\n"

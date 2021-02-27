@@ -224,6 +224,11 @@ class Formatter : public BaseFormatter<
 
   template <class... A>
   friend Formatter<false, A...> format(StringPiece fmt, A&&... arg);
+  template <class Str, class... A>
+  friend typename std::enable_if<IsSomeString<Str>::value>::type format(
+      Str* out, StringPiece fmt, A&&... args);
+  template <class... A>
+  friend std::string sformat(StringPiece fmt, A&&... arg);
   template <class C>
   friend Formatter<true, C> vformat(StringPiece fmt, C&& container);
 };
@@ -250,7 +255,11 @@ std::ostream& operator<<(
  * writeTo(stdout, format("{} {}", 23, 42));
  */
 template <class... Args>
-Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
+[[deprecated(
+    "Use fmt::format instead of folly::format for better performance, build "
+    "times and compatibility with std::format")]] //
+Formatter<false, Args...>
+format(StringPiece fmt, Args&&... args) {
   return Formatter<false, Args...>(fmt, std::forward<Args>(args)...);
 }
 
@@ -260,7 +269,7 @@ Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
  */
 template <class... Args>
 inline std::string sformat(StringPiece fmt, Args&&... args) {
-  return format(fmt, std::forward<Args>(args)...).str();
+  return Formatter<false, Args...>(fmt, std::forward<Args>(args)...).str();
 }
 
 /**
@@ -346,7 +355,7 @@ detail::DefaultValueWrapper<Container, Value> defaulted(
 template <class Str, class... Args>
 typename std::enable_if<IsSomeString<Str>::value>::type format(
     Str* out, StringPiece fmt, Args&&... args) {
-  format(fmt, std::forward<Args>(args)...).appendTo(*out);
+  Formatter<false, Args...>(fmt, std::forward<Args>(args)...).appendTo(*out);
 }
 
 /**

@@ -21,7 +21,7 @@
 #include <thread>
 #include <vector>
 
-#include <folly/Format.h>
+#include <fmt/ostream.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/test/Barrier.h>
 
@@ -67,8 +67,9 @@ bool operator==(const CtorCounts& lhs, const CtorCounts& rhs) {
 }
 
 std::ostream& operator<<(std::ostream& out, const CtorCounts& counts) {
-  return out << folly::format(
-             "CtorCounts({}, {}, {})", counts.ctor, counts.copy, counts.move);
+  fmt::print(
+      out, "CtorCounts({}, {}, {})", counts.ctor, counts.copy, counts.move);
+  return out;
 }
 } // namespace
 

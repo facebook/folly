@@ -95,7 +95,7 @@ const folly::F14FastSet<uint64_t>& getF14Baseline() {
   folly::BenchmarkSuspender guard;
   static const auto set = [] {
     folly::F14FastSet<uint64_t> ret(uniform.begin(), uniform.end());
-    LOG(INFO) << folly::format(
+    LOG(INFO) << folly::sformat(
         "Built F14FastSet, size: {}, space: {}",
         ret.size(),
         folly::prettyPrint(
@@ -112,7 +112,7 @@ const folly::compression::MutableEliasFanoCompressedList& getEFBaseline() {
   folly::BenchmarkSuspender guard;
   static auto list = [] {
     auto ret = EFEncoder::encode(uniform.begin(), uniform.end());
-    LOG(INFO) << folly::format(
+    LOG(INFO) << folly::sformat(
         "Built Elias-Fano list, space: {}",
         folly::prettyPrint(
             ret.data.size(), folly::PrettyType::PRETTY_BYTES_IEC));
@@ -207,7 +207,7 @@ void benchmarkSetup() {
   boost::sort::spreadsort::integer_sort(uniform.begin(), uniform.end());
   buildQuotientMultiSet(uniform);
 
-  LOG(INFO) << folly::format(
+  LOG(INFO) << folly::sformat(
       "Built QuotientMultiSet, space: {}",
       folly::prettyPrint(qmsData.size(), folly::PrettyType::PRETTY_BYTES_IEC));
 }

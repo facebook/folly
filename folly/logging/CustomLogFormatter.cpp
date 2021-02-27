@@ -274,7 +274,7 @@ std::string CustomLogFormatter::formatMessage(
   // If the message contains multiple lines, ensure that the log header is
   // prepended before each message line.
   else {
-    const auto headerFormatter = folly::format(
+    const auto header = folly::sformat(
         logFormat_,
         getGlogLevelName(message.getLevel())[0],
         ltime.tm_mon + 1,
@@ -321,7 +321,7 @@ std::string CustomLogFormatter::formatMessage(
       }
 
       auto line = msgData.subpiece(idx, end - idx);
-      headerFormatter.appendTo(buffer);
+      buffer += header;
       buffer.append(line.data(), line.size());
       buffer.push_back('\n');
 

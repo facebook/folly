@@ -530,23 +530,10 @@ TEST(IOBuf, Format) {
   IOBuf head(IOBuf::CREATE, 24);
   Appender app(&head, 32);
 
-  format("{}", "test")(app);
+  // Test compatibility with the legacy format API.
+  app(folly::StringPiece("test"));
   EXPECT_EQ(head.length(), 4);
   EXPECT_EQ(0, memcmp(head.data(), "test", 4));
-
-  auto fmt = format(
-      "{}{} {}{} {:#x}",
-      32,
-      "this string is",
-      "longer than our original allocation size,",
-      "and will therefore require a new allocation",
-      0x12345678);
-  fmt(app);
-  EXPECT_EQ(
-      "test32this string is longer than our original "
-      "allocation size,and will therefore require a "
-      "new allocation 0x12345678",
-      head.moveToFbString().toStdString());
 }
 
 TEST(IOBuf, QueueAppender) {

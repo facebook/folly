@@ -23,10 +23,10 @@
 #include <string>
 
 #include <boost/intrusive/parent_from_member.hpp>
+#include <fmt/ostream.h>
 #include <glog/logging.h>
 
 #include <folly/Exception.h>
-#include <folly/Format.h>
 #include <folly/Likely.h>
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
@@ -56,7 +56,8 @@ const char* iocbCmdToString(short int cmd_short) {
 #undef X
 
 void toStream(std::ostream& os, const iocb& cb) {
-  os << folly::format(
+  fmt::print(
+      os,
       "data={}, key={}, opcode={}, reqprio={}, fd={}, f={}, ",
       cb.data,
       cb.key,
@@ -68,7 +69,8 @@ void toStream(std::ostream& os, const iocb& cb) {
   switch (cb.aio_lio_opcode) {
     case IO_CMD_PREAD:
     case IO_CMD_PWRITE:
-      os << folly::format(
+      fmt::print(
+          os,
           "buf={}, offset={}, nbytes={}, ",
           cb.u.c.buf,
           cb.u.c.offset,

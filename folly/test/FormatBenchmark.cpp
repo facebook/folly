@@ -27,6 +27,8 @@
 #include <folly/init/Init.h>
 #include <folly/json.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
 using namespace folly;
 
 namespace {
@@ -162,24 +164,8 @@ BENCHMARK(format_nested_strings, iters) {
         format(
             &out,
             "{} {}",
-            format("{} {}", i, i + 1).str(),
-            format("{} {}", -i, -i - 1).str());
-      });
-    }
-  }
-}
-
-BENCHMARK_RELATIVE(format_nested_fbstrings, iters) {
-  BenchmarkSuspender suspender;
-  while (iters--) {
-    for (int i = 0; i < 1000; ++i) {
-      fbstring out;
-      suspender.dismissing([&] {
-        format(
-            &out,
-            "{} {}",
-            format("{} {}", i, i + 1).str(),
-            format("{} {}", -i, -i - 1).str());
+            sformat("{} {}", i, i + 1),
+            sformat("{} {}", -i, -i - 1));
       });
     }
   }
@@ -314,7 +300,6 @@ BENCHMARK_RELATIVE(sformat_long_string_safe, iters) {
 // bigFormat_format                                  90.41%   196.91us    5.08K
 // ----------------------------------------------------------------------------
 // format_nested_strings                                      317.65us    3.15K
-// format_nested_fbstrings                           99.89%   318.01us    3.14K
 // format_nested_direct                             116.52%   272.62us    3.67K
 // ----------------------------------------------------------------------------
 // copy_short_string                                           28.33ns   35.30M

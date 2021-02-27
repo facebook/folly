@@ -23,10 +23,10 @@
 #include <string>
 
 #include <boost/intrusive/parent_from_member.hpp>
+#include <fmt/ostream.h>
 #include <glog/logging.h>
 
 #include <folly/Exception.h>
-#include <folly/Format.h>
 #include <folly/Likely.h>
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
@@ -72,7 +72,8 @@ const char* ioUringOpToString(unsigned char op) {
 #undef X
 
 void toStream(std::ostream& os, const struct io_uring_sqe& sqe) {
-  os << folly::format(
+  fmt::print(
+      os,
       "user_data={}, opcode={}, ioprio={}, f={}, ",
       sqe.user_data,
       ioUringOpToString(sqe.opcode),
@@ -89,7 +90,8 @@ void toStream(std::ostream& os, const struct io_uring_sqe& sqe) {
         if (i) {
           os << ",";
         }
-        os << folly::format(
+        fmt::print(
+            os,
             "buf={}, offset={}, nbytes={}",
             iovec[i].iov_base,
             offset,

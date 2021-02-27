@@ -20,9 +20,9 @@
 #include <cerrno>
 #include <utility>
 
+#include <fmt/core.h>
 #include <glog/logging.h>
 
-#include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
@@ -306,8 +306,7 @@ bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
     return true;
   }
 
-  auto msg =
-      folly::format("mlock({}) failed at {}", mapLength_, amountSucceeded);
+  auto msg = fmt::format("mlock({}) failed at {}", mapLength_, amountSucceeded);
   if (mode == LockMode::TRY_LOCK && errno == EPERM) {
     PLOG(WARNING) << msg;
   } else if (mode == LockMode::TRY_LOCK && errno == ENOMEM) {
@@ -363,7 +362,7 @@ MemoryMapping::~MemoryMapping() {
             size_t(mapLength_),
             options_.pageSize,
             amountSucceeded)) {
-      PLOG(FATAL) << folly::format(
+      PLOG(FATAL) << fmt::format(
           "munmap({}) failed at {}", mapLength_, amountSucceeded);
     }
   }

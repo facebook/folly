@@ -21,6 +21,8 @@
 #include <folly/Utility.h>
 #include <folly/portability/GTest.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
+
 using namespace folly;
 
 template <class Uint>
