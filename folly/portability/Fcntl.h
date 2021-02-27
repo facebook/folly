@@ -59,3 +59,9 @@ FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */ using namespace folly::portability::fcntl;
 FOLLY_POP_WARNING
 #endif
+
+#ifdef _WIN32
+#define FOLLY_PORT_WIN32_OPEN_BINARY _O_BINARY
+#else
+#define FOLLY_PORT_WIN32_OPEN_BINARY 0
+#endif
