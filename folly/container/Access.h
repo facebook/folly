@@ -19,71 +19,67 @@
 #include <initializer_list>
 #include <iterator>
 
-/**
- *  include or backport:
- *  * std::size
- *  * std::empty
- *  * std::data
- */
-
-#if __cpp_lib_nonmember_container_access >= 201411 || _MSC_VER
-
-namespace folly {
-
-/* using override */ using std::data;
-/* using override */ using std::empty;
-/* using override */ using std::size;
-
-} // namespace folly
-
-#else
+#include <folly/Portability.h>
 
 namespace folly {
 
 //  mimic: std::size, C++17
-template <typename C>
-constexpr auto size(C const& c) -> decltype(c.size()) {
-  return c.size();
-}
-template <typename T, std::size_t N>
-constexpr std::size_t size(T const (&)[N]) noexcept {
-  return N;
-}
+struct size_fn {
+  template <typename C>
+  FOLLY_ERASE constexpr auto operator()(C const& c) const
+      noexcept(noexcept(c.size())) -> decltype(c.size()) {
+    return c.size();
+  }
+  template <typename T, std::size_t N>
+  FOLLY_ERASE constexpr std::size_t operator()(T const (&)[N]) const noexcept {
+    return N;
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr size_fn size{};
 
 //  mimic: std::empty, C++17
-template <typename C>
-constexpr auto empty(C const& c) -> decltype(c.empty()) {
-  return c.empty();
-}
-template <typename T, std::size_t N>
-constexpr bool empty(T const (&)[N]) noexcept {
-  //  while zero-length arrays are not allowed in the language, some compilers
-  //  may permit them in some cases
-  return N == 0;
-}
-template <typename E>
-constexpr bool empty(std::initializer_list<E> il) noexcept {
-  return il.size() == 0;
-}
+struct empty_fn {
+  template <typename C>
+  FOLLY_ERASE constexpr auto operator()(C const& c) const
+      noexcept(noexcept(c.empty())) -> decltype(c.empty()) {
+    return c.empty();
+  }
+  template <typename T, std::size_t N>
+  FOLLY_ERASE constexpr bool operator()(T const (&)[N]) const noexcept {
+    //  while zero-length arrays are not allowed in the language, some compilers
+    //  may permit them in some cases
+    return N == 0;
+  }
+  template <typename E>
+  FOLLY_ERASE constexpr bool operator()(
+      std::initializer_list<E> il) const noexcept {
+    return il.size() == 0;
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr empty_fn empty{};
 
 //  mimic: std::data, C++17
-template <typename C>
-constexpr auto data(C& c) -> decltype(c.data()) {
-  return c.data();
-}
-template <typename C>
-constexpr auto data(C const& c) -> decltype(c.data()) {
-  return c.data();
-}
-template <typename T, std::size_t N>
-constexpr T* data(T (&a)[N]) noexcept {
-  return a;
-}
-template <typename E>
-constexpr E const* data(std::initializer_list<E> il) noexcept {
-  return il.begin();
-}
+struct data_fn {
+  template <typename C>
+  FOLLY_ERASE constexpr auto operator()(C& c) const noexcept(noexcept(c.data()))
+      -> decltype(c.data()) {
+    return c.data();
+  }
+  template <typename C>
+  FOLLY_ERASE constexpr auto operator()(C const& c) const
+      noexcept(noexcept(c.data())) -> decltype(c.data()) {
+    return c.data();
+  }
+  template <typename T, std::size_t N>
+  FOLLY_ERASE constexpr T* operator()(T (&a)[N]) const noexcept {
+    return a;
+  }
+  template <typename E>
+  FOLLY_ERASE constexpr E const* operator()(
+      std::initializer_list<E> il) const noexcept {
+    return il.begin();
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr data_fn data{};
 
 } // namespace folly
-
-#endif
