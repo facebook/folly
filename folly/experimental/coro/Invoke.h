@@ -73,27 +73,27 @@ namespace coro {
 //      auto task = co_invoke([](string n) -> Task<T> {
 //        co_return co_await make<T>(n);
 //      }, std::move(name)); // passed as &&
-struct co_invoke_type {
+struct co_invoke_fn {
   template <typename F, typename... A>
   FOLLY_ERASE constexpr auto operator()(F&& f, A&&... a) const
       noexcept(noexcept(tag_invoke(
-          tag<co_invoke_type>,
+          tag<co_invoke_fn>,
           tag<invoke_result_t<F, A...>, F, A...>,
           static_cast<F&&>(f),
           static_cast<A&&>(a)...)))
           -> decltype(tag_invoke(
-              tag<co_invoke_type>,
+              tag<co_invoke_fn>,
               tag<invoke_result_t<F, A...>, F, A...>,
               static_cast<F&&>(f),
               static_cast<A&&>(a)...)) {
     return tag_invoke(
-        tag<co_invoke_type>,
+        tag<co_invoke_fn>,
         tag<invoke_result_t<F, A...>, F, A...>,
         static_cast<F&&>(f),
         static_cast<A&&>(a)...);
   }
 };
-FOLLY_DEFINE_CPO(co_invoke_type, co_invoke)
+FOLLY_DEFINE_CPO(co_invoke_fn, co_invoke)
 
 } // namespace coro
 } // namespace folly
