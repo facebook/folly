@@ -88,6 +88,8 @@ using ExpectedErrorType =
 namespace expected_detail {
 
 template <typename Value, typename Error>
+struct Promise;
+template <typename Value, typename Error>
 struct PromiseReturn;
 
 template <template <class...> class Trait, class... Ts>
@@ -821,6 +823,8 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   template <class U>
   using rebind = Expected<U, Error>;
 
+  using promise_type = expected_detail::Promise<Value, Error>;
+
   static_assert(
       !std::is_reference<Value>::value,
       "Expected may not be used with reference types");
@@ -1393,14 +1397,4 @@ expected_detail::Awaitable<Value, Error>
   return expected_detail::Awaitable<Value, Error>{std::move(o)};
 }
 } // namespace folly
-
-// This makes folly::Expected<Value> useable as a coroutine return type...
-namespace std {
-namespace experimental {
-template <typename Value, typename Error, typename... Args>
-struct coroutine_traits<folly::Expected<Value, Error>, Args...> {
-  using promise_type = folly::expected_detail::Promise<Value, Error>;
-};
-} // namespace experimental
-} // namespace std
 #endif // FOLLY_HAS_COROUTINES

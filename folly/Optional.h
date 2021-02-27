@@ -76,6 +76,8 @@ class Optional;
 
 namespace detail {
 template <class Value>
+struct OptionalPromise;
+template <class Value>
 struct OptionalPromiseReturn;
 } // namespace detail
 
@@ -100,6 +102,8 @@ template <class Value>
 class Optional {
  public:
   typedef Value value_type;
+
+  using promise_type = detail::OptionalPromise<Value>;
 
   static_assert(
       !std::is_reference<Value>::value,
@@ -676,13 +680,4 @@ detail::OptionalAwaitable<Value>
 }
 } // namespace folly
 
-// This makes folly::Optional<Value> useable as a coroutine return type..
-namespace std {
-namespace experimental {
-template <typename Value, typename... Args>
-struct coroutine_traits<folly::Optional<Value>, Args...> {
-  using promise_type = folly::detail::OptionalPromise<Value>;
-};
-} // namespace experimental
-} // namespace std
 #endif // FOLLY_HAS_COROUTINES
