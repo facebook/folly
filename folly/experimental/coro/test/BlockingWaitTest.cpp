@@ -21,8 +21,8 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Utils.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/portability/GTest.h>
@@ -35,25 +35,25 @@
 static_assert(
     std::is_same<
         decltype(folly::coro::blockingWait(
-            std::declval<folly::coro::AwaitableReady<void>>())),
+            std::declval<folly::coro::ready_awaitable<>>())),
         void>::value,
     "");
 static_assert(
     std::is_same<
         decltype(folly::coro::blockingWait(
-            std::declval<folly::coro::AwaitableReady<int>>())),
+            std::declval<folly::coro::ready_awaitable<int>>())),
         int>::value,
     "");
 static_assert(
     std::is_same<
         decltype(folly::coro::blockingWait(
-            std::declval<folly::coro::AwaitableReady<int&>>())),
+            std::declval<folly::coro::ready_awaitable<int&>>())),
         int&>::value,
     "");
 static_assert(
     std::is_same<
         decltype(folly::coro::blockingWait(
-            std::declval<folly::coro::AwaitableReady<int&&>>())),
+            std::declval<folly::coro::ready_awaitable<int&&>>())),
         int>::value,
     "blockingWait() should convert rvalue-reference-returning awaitables "
     "into a returned prvalue to avoid potential lifetime issues since "
@@ -64,22 +64,22 @@ static_assert(
 class BlockingWaitTest : public testing::Test {};
 
 TEST_F(BlockingWaitTest, SynchronousCompletionVoidResult) {
-  folly::coro::blockingWait(folly::coro::AwaitableReady<void>{});
+  folly::coro::blockingWait(folly::coro::ready_awaitable<>{});
 }
 
 TEST_F(BlockingWaitTest, SynchronousCompletionPRValueResult) {
   EXPECT_EQ(
-      123, folly::coro::blockingWait(folly::coro::AwaitableReady<int>{123}));
+      123, folly::coro::blockingWait(folly::coro::ready_awaitable<int>{123}));
   EXPECT_EQ(
       "hello",
       folly::coro::blockingWait(
-          folly::coro::AwaitableReady<std::string>("hello")));
+          folly::coro::ready_awaitable<std::string>("hello")));
 }
 
 TEST_F(BlockingWaitTest, SynchronousCompletionLValueResult) {
   int value = 123;
   int& result =
-      folly::coro::blockingWait(folly::coro::AwaitableReady<int&>{value});
+      folly::coro::blockingWait(folly::coro::ready_awaitable<int&>{value});
   EXPECT_EQ(&value, &result);
   EXPECT_EQ(123, result);
 }
@@ -91,7 +91,7 @@ TEST_F(BlockingWaitTest, SynchronousCompletionRValueResult) {
   // Should return a prvalue which will lifetime-extend when assigned to an
   // auto&& local variable.
   auto&& result = folly::coro::blockingWait(
-      folly::coro::AwaitableReady<std::unique_ptr<int>&&>{std::move(p)});
+      folly::coro::ready_awaitable<std::unique_ptr<int>&&>{std::move(p)});
 
   EXPECT_EQ(ptr, result.get());
   EXPECT_FALSE(p);
@@ -203,11 +203,11 @@ TEST_F(BlockingWaitTest, WaitOnMoveOnlyAsyncPromise) {
 }
 
 TEST_F(BlockingWaitTest, moveCountingAwaitableReady) {
-  folly::coro::AwaitableReady<MoveCounting> awaitable{MoveCounting{}};
+  folly::coro::ready_awaitable<MoveCounting> awaitable{MoveCounting{}};
   auto result = folly::coro::blockingWait(awaitable);
 
   // Moves:
-  // 1. Move value into AwaitableReady
+  // 1. Move value into ready_awaitable
   // 2. Move value to await_resume() return-value
   // 3. Move value to Try<T>
   // 4. Move value to blockingWait() return-value

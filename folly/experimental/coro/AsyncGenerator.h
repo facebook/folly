@@ -24,7 +24,6 @@
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Result.h>
-#include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/WithCancellation.h>
@@ -146,12 +145,12 @@ class AsyncGeneratorPromise {
     }
   }
 
-  AwaitableVariant<YieldAwaiter, AwaitableReady<void>> await_transform(
+  variant_awaitable<YieldAwaiter, ready_awaitable<>> await_transform(
       co_safe_point_t) noexcept {
     if (cancelToken_.isCancellationRequested()) {
       return yield_value(co_cancelled);
     }
-    return AwaitableReady<void>{};
+    return ready_awaitable<>{};
   }
 
   void unhandled_exception() noexcept {
@@ -174,11 +173,11 @@ class AsyncGeneratorPromise {
   }
 
   auto await_transform(folly::coro::co_current_executor_t) noexcept {
-    return AwaitableReady<folly::Executor*>{executor_.get()};
+    return ready_awaitable<folly::Executor*>{executor_.get()};
   }
 
   auto await_transform(folly::coro::co_current_cancellation_token_t) noexcept {
-    return AwaitableReady<const folly::CancellationToken&>{cancelToken_};
+    return ready_awaitable<const folly::CancellationToken&>{cancelToken_};
   }
 
   void setCancellationToken(folly::CancellationToken cancelToken) noexcept {

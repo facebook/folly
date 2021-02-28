@@ -32,7 +32,6 @@
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Result.h>
 #include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/WithCancellation.h>
@@ -79,12 +78,12 @@ class TaskPromiseBase {
   TaskPromiseBase() noexcept {}
 
   template <typename Promise>
-  AwaitableVariant<FinalAwaiter, AwaitableReady<void>> do_safe_point(
+  variant_awaitable<FinalAwaiter, ready_awaitable<>> do_safe_point(
       Promise& promise) noexcept {
     if (cancelToken_.isCancellationRequested()) {
       return promise.yield_value(co_cancelled);
     }
-    return AwaitableReady<void>{};
+    return ready_awaitable<>{};
   }
 
  public:
@@ -109,11 +108,11 @@ class TaskPromiseBase {
   }
 
   auto await_transform(co_current_executor_t) noexcept {
-    return AwaitableReady<folly::Executor*>{executor_.get()};
+    return ready_awaitable<folly::Executor*>{executor_.get()};
   }
 
   auto await_transform(co_current_cancellation_token_t) noexcept {
-    return AwaitableReady<const folly::CancellationToken&>{cancelToken_};
+    return ready_awaitable<const folly::CancellationToken&>{cancelToken_};
   }
 
   void setCancelToken(const folly::CancellationToken& cancelToken) noexcept {

@@ -22,13 +22,13 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/DetachOnCancel.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/TimedWait.h>
-#include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/WithCancellation.h>
 #include <folly/fibers/Semaphore.h>
 #include <folly/futures/Future.h>

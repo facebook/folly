@@ -18,7 +18,7 @@
 #include <folly/Portability.h>
 
 #include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Utils.h>
+#include <folly/experimental/coro/Coroutine.h>
 
 #include <string>
 
@@ -27,7 +27,7 @@
 BENCHMARK(blockingWaitRVOInt, iters) {
   for (size_t iter = 0; iter < iters; ++iter) {
     auto result =
-        folly::coro::blockingWait(folly::coro::AwaitableReady<int>(42));
+        folly::coro::blockingWait(folly::coro::ready_awaitable<int>(42));
     if (result != 42) {
       std::abort();
     }
@@ -41,7 +41,7 @@ constexpr folly::StringPiece longString =
 BENCHMARK(blockingWaitRVOStrings, iters) {
   for (size_t iter = 0; iter < iters; ++iter) {
     auto result = folly::coro::blockingWait(
-        folly::coro::AwaitableReady<std::string>(longString.str()));
+        folly::coro::ready_awaitable<std::string>(longString.str()));
     if (result.size() != longString.size()) {
       std::abort();
     }
@@ -66,7 +66,7 @@ struct Matrix {
 };
 
 BENCHMARK(blockingWaitRVO, iters) {
-  folly::coro::AwaitableReady<Matrix> identityAwaitable{IdentityMatrix{}};
+  folly::coro::ready_awaitable<Matrix> identityAwaitable{IdentityMatrix{}};
   for (size_t iter = 0; iter < iters; ++iter) {
     auto result = folly::coro::blockingWait(identityAwaitable);
     if (result.values_[3][3] != 1) {

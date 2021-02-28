@@ -19,7 +19,6 @@
 #include <folly/Range.h>
 #include <folly/SocketAddress.h>
 #include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Utils.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncTimeout.h>
