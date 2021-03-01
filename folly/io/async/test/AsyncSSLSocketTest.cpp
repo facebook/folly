@@ -3163,6 +3163,52 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
     EXPECT_EQ(sniStr, std::string("Baz"));
   }
 }
+
+TEST(AsyncSSLSocketTest, BytesWrittenWithMove) {
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback);
+
+  auto sslContext = std::make_shared<SSLContext>();
+  sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  auto socket1 =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket1->open(std::chrono::milliseconds(10000));
+
+  // write
+  std::vector<uint8_t> wbuf(128, 'a');
+  socket1->write(wbuf.data(), wbuf.size());
+  const auto socket1AppBytes = socket1->getSocket()->getAppBytesWritten();
+  const auto socket1RawBytes = socket1->getSocket()->getRawBytesWritten();
+  EXPECT_EQ(128, socket1AppBytes);
+  EXPECT_LT(128, socket1RawBytes);
+
+  // read reflection
+  std::vector<uint8_t> readbuf(wbuf.size());
+  uint32_t bytesRead = socket1->readAll(readbuf.data(), readbuf.size());
+  EXPECT_EQ(bytesRead, wbuf.size());
+
+  // additional sanity checks on virtuals
+  EXPECT_EQ(
+      socket1->getSSLSocket()->getRawBytesWritten(),
+      socket1->getSocket()->getRawBytesWritten());
+  EXPECT_EQ(128, socket1->getSocket()->getAppBytesWritten());
+  EXPECT_EQ(128, socket1->getSSLSocket()->getAppBytesWritten());
+
+  // move to another AsyncSSLSocket
+  AsyncSSLSocket::UniquePtr socket2(
+      new AsyncSSLSocket(sslContext, socket1->getSocket()));
+  EXPECT_EQ(socket1AppBytes, socket2->getAppBytesWritten());
+  EXPECT_EQ(socket1RawBytes, socket2->getRawBytesWritten());
+
+  // move to an AsyncSocket
+  AsyncSocket::UniquePtr socket3(new AsyncSocket(std::move(socket2)));
+  EXPECT_EQ(socket1AppBytes, socket3->getAppBytesWritten());
+  EXPECT_EQ(socket1RawBytes, socket3->getRawBytesWritten());
+}
+
 } // namespace folly
 
 #ifdef SIGPIPE

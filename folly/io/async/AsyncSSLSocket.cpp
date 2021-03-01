@@ -445,7 +445,7 @@ size_t AsyncSSLSocket::getRawBytesWritten() const {
   // get the write bytes of the last bio
   BIO* b;
   if (!ssl_ || !(b = SSL_get_wbio(ssl_.get()))) {
-    return 0;
+    return rawBytesWritten_;
   }
   BIO* next = BIO_next(b);
   while (next != nullptr) {
@@ -453,7 +453,12 @@ size_t AsyncSSLSocket::getRawBytesWritten() const {
     next = BIO_next(b);
   }
 
-  return BIO_number_written(b);
+  // Raw bytes written should be >= BIO_number_written(b)
+  // Verify no shadowing of rawBytesWritten_
+  DCHECK_GE(AsyncSocket::getRawBytesWritten(), BIO_number_written(b));
+  DCHECK_GE(rawBytesWritten_, BIO_number_written(b));
+  DCHECK_EQ(rawBytesWritten_, AsyncSocket::getRawBytesWritten());
+  return rawBytesWritten_;
 }
 
 size_t AsyncSSLSocket::getRawBytesReceived() const {

@@ -360,6 +360,8 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
           oldAsyncSocket->getEventBase(),
           oldAsyncSocket->detachNetworkSocket(),
           oldAsyncSocket->getZeroCopyBufId()) {
+  appBytesWritten_ = oldAsyncSocket->appBytesWritten_;
+  rawBytesWritten_ = oldAsyncSocket->rawBytesWritten_;
   preReceivedData_ = std::move(oldAsyncSocket->preReceivedData_);
 
   // inform lifecycle observers to give them an opportunity to unsubscribe from
@@ -397,6 +399,7 @@ void AsyncSocket::init() {
   wShutdownSocketSet_.reset();
   appBytesWritten_ = 0;
   appBytesReceived_ = 0;
+  rawBytesWritten_ = 0;
   totalAppBytesScheduledForWrite_ = 0;
   sendMsgParamCallback_ = &defaultSendMsgParamsCallback;
 }
@@ -2579,6 +2582,11 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
 AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     NetworkSocket fd, struct msghdr* msg, int msg_flags) {
   ssize_t totalWritten = 0;
+  SCOPE_EXIT {
+    if (totalWritten > 0) {
+      rawBytesWritten_ += totalWritten;
+    }
+  };
   if (state_ == StateEnum::FAST_OPEN) {
     sockaddr_storage addr;
     auto len = addr_.getAddress(&addr);

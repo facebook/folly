@@ -3032,6 +3032,29 @@ TEST(AsyncSocketTest, TestEvbDetachThenClose) {
   socket.reset();
 }
 
+TEST(AsyncSocket, BytesWrittenWithMove) {
+  TestServer server;
+
+  EventBase evb;
+  auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  ConnCallback ccb;
+  socket1->connect(&ccb, server.getAddress(), 30);
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+
+  EXPECT_EQ(0, socket1->getRawBytesWritten());
+  std::vector<uint8_t> wbuf(128, 'a');
+  WriteCallback wcb;
+  socket1->write(&wcb, wbuf.data(), wbuf.size());
+  evb.loopOnce();
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+  EXPECT_EQ(wbuf.size(), socket1->getRawBytesWritten());
+  EXPECT_EQ(wbuf.size(), socket1->getAppBytesWritten());
+
+  auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(std::move(socket1)));
+  EXPECT_EQ(wbuf.size(), socket2->getRawBytesWritten());
+  EXPECT_EQ(wbuf.size(), socket2->getAppBytesWritten());
+}
+
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
 /* copied from include/uapi/linux/net_tstamp.h */
 /* SO_TIMESTAMPING gets an integer bit field comprised of these values */

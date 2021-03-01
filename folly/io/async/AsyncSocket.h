@@ -634,7 +634,7 @@ class AsyncSocket : public AsyncTransport {
 
   size_t getAppBytesWritten() const override { return appBytesWritten_; }
 
-  size_t getRawBytesWritten() const override { return getAppBytesWritten(); }
+  size_t getRawBytesWritten() const override { return rawBytesWritten_; }
 
   size_t getAppBytesReceived() const override { return appBytesReceived_; }
 
@@ -1420,6 +1420,7 @@ class AsyncSocket : public AsyncTransport {
   std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   size_t appBytesReceived_; ///< Num of bytes received from socket
   size_t appBytesWritten_; ///< Num of bytes written to socket
+  size_t rawBytesWritten_; ///< Num of (raw) bytes written to socket
   // The total num of bytes passed to AsyncSocket's write functions. It doesn't
   // include failed writes, but it does include buffered writes.
   size_t totalAppBytesScheduledForWrite_;
