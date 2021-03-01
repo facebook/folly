@@ -476,7 +476,7 @@ void AsyncSocket::setShutdownSocketSet(
 }
 
 void AsyncSocket::setCloseOnExec() {
-  int rv = netops::set_socket_close_on_exec(fd_);
+  int rv = netops_->set_socket_close_on_exec(fd_);
   if (rv != 0) {
     auto errnoCopy = errno;
     throw AsyncSocketException(
@@ -520,7 +520,7 @@ void AsyncSocket::connect(
     // constant (PF_xxx) rather than an address family (AF_xxx), but the
     // distinction is mainly just historical.  In pretty much all
     // implementations the PF_foo and AF_foo constants are identical.
-    fd_ = netops::socket(address.getFamily(), SOCK_STREAM, 0);
+    fd_ = netops_->socket(address.getFamily(), SOCK_STREAM, 0);
     if (fd_ == NetworkSocket()) {
       auto errnoCopy = errno;
       throw AsyncSocketException(
@@ -537,7 +537,7 @@ void AsyncSocket::connect(
     setCloseOnExec();
 
     // Put the socket in non-blocking mode
-    int rv = netops::set_socket_non_blocking(fd_);
+    int rv = netops_->set_socket_non_blocking(fd_);
     if (rv == -1) {
       auto errnoCopy = errno;
       throw AsyncSocketException(
@@ -577,7 +577,7 @@ void AsyncSocket::connect(
     // bind the socket
     if (bindAddr != anyAddress()) {
       int one = 1;
-      if (netops::setsockopt(
+      if (netops_->setsockopt(
               fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
         auto errnoCopy = errno;
         doClose();
@@ -589,7 +589,7 @@ void AsyncSocket::connect(
 
       bindAddr.getAddress(&addrStorage);
 
-      if (netops::bind(fd_, saddr, bindAddr.getActualSize()) != 0) {
+      if (netops_->bind(fd_, saddr, bindAddr.getActualSize()) != 0) {
         auto errnoCopy = errno;
         doClose();
         throw AsyncSocketException(
@@ -649,7 +649,7 @@ void AsyncSocket::connect(
 }
 
 int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
-  int rv = netops::connect(fd_, saddr, len);
+  int rv = netops_->connect(fd_, saddr, len);
   if (rv < 0) {
     auto errnoCopy = errno;
     if (errnoCopy == EINPROGRESS) {
@@ -931,7 +931,7 @@ bool AsyncSocket::setZeroCopy(bool enable) {
 
     int val = enable ? 1 : 0;
     int ret =
-        netops::setsockopt(fd_, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
+        netops_->setsockopt(fd_, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
 
     // if enable == false, set zeroCopyEnabled_ = false regardless
     // if SO_ZEROCOPY is set or not
@@ -946,7 +946,7 @@ bool AsyncSocket::setZeroCopy(bool enable) {
     if (ret) {
       val = 0;
       socklen_t optlen = sizeof(val);
-      ret = netops::getsockopt(fd_, SOL_SOCKET, SO_ZEROCOPY, &val, &optlen);
+      ret = netops_->getsockopt(fd_, SOL_SOCKET, SO_ZEROCOPY, &val, &optlen);
 
       if (!ret) {
         enable = val != 0;
@@ -1492,7 +1492,7 @@ void AsyncSocket::shutdownWriteNow() {
       }
 
       // Shutdown writes on the file descriptor
-      netops::shutdown(fd_, SHUT_WR);
+      netops_->shutdown(fd_, SHUT_WR);
 
       // Immediately fail all write requests
       failAllWrites(getSocketShutdownForWritesEx());
@@ -1546,7 +1546,7 @@ bool AsyncSocket::readable() const {
   fds[0].fd = fd_;
   fds[0].events = POLLIN;
   fds[0].revents = 0;
-  int rc = netops::poll(fds, 1, 0);
+  int rc = netops_->poll(fds, 1, 0);
   return rc == 1;
 }
 
@@ -1558,7 +1558,7 @@ bool AsyncSocket::writable() const {
   fds[0].fd = fd_;
   fds[0].events = POLLOUT;
   fds[0].revents = 0;
-  int rc = netops::poll(fds, 1, 0);
+  int rc = netops_->poll(fds, 1, 0);
   return rc == 1;
 }
 
@@ -1577,7 +1577,7 @@ bool AsyncSocket::hangup() const {
   fds[0].fd = fd_;
   fds[0].events = POLLRDHUP | POLLHUP;
   fds[0].revents = 0;
-  netops::poll(fds, 1, 0);
+  netops_->poll(fds, 1, 0);
   return (fds[0].revents & (POLLRDHUP | POLLHUP)) != 0;
 #else
   return false;
@@ -1713,7 +1713,7 @@ int AsyncSocket::setNoDelay(bool noDelay) {
   }
 
   int value = noDelay ? 1 : 0;
-  if (netops::setsockopt(
+  if (netops_->setsockopt(
           fd_, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value)) != 0) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update TCP_NODELAY option on AsyncSocket " << this
@@ -1736,7 +1736,7 @@ int AsyncSocket::setCongestionFlavor(const std::string& cname) {
     return EINVAL;
   }
 
-  if (netops::setsockopt(
+  if (netops_->setsockopt(
           fd_,
           IPPROTO_TCP,
           TCP_CONGESTION,
@@ -1762,7 +1762,7 @@ int AsyncSocket::setQuickAck(bool quickack) {
 
 #ifdef TCP_QUICKACK // Linux-only
   int value = quickack ? 1 : 0;
-  if (netops::setsockopt(
+  if (netops_->setsockopt(
           fd_, IPPROTO_TCP, TCP_QUICKACK, &value, sizeof(value)) != 0) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update TCP_QUICKACK option on AsyncSocket" << this
@@ -1784,7 +1784,7 @@ int AsyncSocket::setSendBufSize(size_t bufsize) {
     return EINVAL;
   }
 
-  if (netops::setsockopt(
+  if (netops_->setsockopt(
           fd_, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize)) != 0) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update SO_SNDBUF option on AsyncSocket" << this
@@ -1803,7 +1803,7 @@ int AsyncSocket::setRecvBufSize(size_t bufsize) {
     return EINVAL;
   }
 
-  if (netops::setsockopt(
+  if (netops_->setsockopt(
           fd_, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize)) != 0) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update SO_RCVBUF option on AsyncSocket" << this
@@ -1870,7 +1870,7 @@ int AsyncSocket::setTCPProfile(int profd) {
     return EINVAL;
   }
 
-  if (netops::setsockopt(
+  if (netops_->setsockopt(
           fd_, SOL_SOCKET, SO_SET_NAMESPACE, &profd, sizeof(int)) != 0) {
     int errnoCopy = errno;
     VLOG(2) << "failed to set socket namespace option on AsyncSocket" << this
@@ -1957,7 +1957,7 @@ AsyncSocket::ReadResult AsyncSocket::performRead(
 
   // No callback to read ancillary data was set
   if (readAncillaryDataCallback_ == nullptr) {
-    bytes = netops::recv(fd_, *buf, *buflen, MSG_DONTWAIT);
+    bytes = netops_->recv(fd_, *buf, *buflen, MSG_DONTWAIT);
   } else {
     struct msghdr msg;
     struct iovec iov;
@@ -2037,7 +2037,7 @@ size_t AsyncSocket::handleErrMessages() noexcept {
   size_t num = 0;
   // the socket may be closed by errMessage callback, so check on each iteration
   while (fd_ != NetworkSocket()) {
-    ret = netops::recvmsg(fd_, &msg, MSG_ERRQUEUE);
+    ret = netops_->recvmsg(fd_, &msg, MSG_ERRQUEUE);
     VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
 
     if (ret < 0) {
@@ -2325,7 +2325,7 @@ void AsyncSocket::handleWrite() noexcept {
             }
           } else {
             // Reads are still enabled, so we are only doing a half-shutdown
-            netops::shutdown(fd_, SHUT_WR);
+            netops_->shutdown(fd_, SHUT_WR);
           }
         }
       }
@@ -2450,7 +2450,7 @@ void AsyncSocket::handleConnect() noexcept {
   // Call getsockopt() to check if the connect succeeded
   int error;
   socklen_t len = sizeof(error);
-  int rv = netops::getsockopt(fd_, SOL_SOCKET, SO_ERROR, &error, &len);
+  int rv = netops_->getsockopt(fd_, SOL_SOCKET, SO_ERROR, &error, &len);
   if (rv != 0) {
     auto errnoCopy = errno;
     AsyncSocketException ex(
@@ -2480,7 +2480,7 @@ void AsyncSocket::handleConnect() noexcept {
     // are still connecting we just abort the connect rather than waiting for
     // it to complete.
     assert((shutdownFlags_ & SHUT_READ) == 0);
-    netops::shutdown(fd_, SHUT_WR);
+    netops_->shutdown(fd_, SHUT_WR);
     shutdownFlags_ |= SHUT_WRITE;
   }
 
@@ -2646,7 +2646,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
               AsyncSocketException::UNKNOWN, "No more free local ports"));
     }
   } else {
-    totalWritten = netops::sendmsg(fd, msg, msg_flags);
+    totalWritten = netops_->sendmsg(fd, msg, msg_flags);
   }
   return WriteResult(totalWritten);
 }
@@ -3050,7 +3050,7 @@ void AsyncSocket::doClose() {
   if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
     shutdownSocketSet->close(fd_);
   } else {
-    netops::close(fd_);
+    netops_->close(fd_);
   }
   fd_ = NetworkSocket();
 

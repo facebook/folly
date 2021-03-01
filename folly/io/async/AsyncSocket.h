@@ -33,6 +33,7 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/net/NetOpsDispatcher.h>
 #include <folly/portability/Sockets.h>
 #include <folly/small_vector.h>
 
@@ -551,6 +552,28 @@ class AsyncSocket : public AsyncTransport {
    */
   virtual SendMsgParamsCallback* getSendMsgParamsCB() const;
 
+  /**
+   * Override netops::Dispatcher to be used for netops:: calls.
+   *
+   * Pass empty shared_ptr to reset to default.
+   * Override can be used by unit tests to intercept and mock netops:: calls.
+   */
+  virtual void setOverrideNetOpsDispatcher(
+      std::shared_ptr<netops::Dispatcher> dispatcher) {
+    netops_.setOverride(std::move(dispatcher));
+  }
+
+  /**
+   * Returns override netops::Dispatcher being used for netops:: calls.
+   *
+   * Returns empty shared_ptr if no override set.
+   * Override can be used by unit tests to intercept and mock netops:: calls.
+   */
+  virtual std::shared_ptr<netops::Dispatcher> getOverrideNetOpsDispatcher()
+      const {
+    return netops_.getOverride();
+  }
+
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
@@ -777,7 +800,7 @@ class AsyncSocket : public AsyncTransport {
    */
   template <typename T>
   int getSockOpt(int level, int optname, T* optval, socklen_t* optlen) {
-    return netops::getsockopt(fd_, level, optname, (void*)optval, optlen);
+    return netops_->getsockopt(fd_, level, optname, (void*)optval, optlen);
   }
 
   /**
@@ -790,7 +813,7 @@ class AsyncSocket : public AsyncTransport {
    */
   template <typename T>
   int setSockOpt(int level, int optname, const T* optval) {
-    return netops::setsockopt(fd_, level, optname, optval, sizeof(T));
+    return netops_->setsockopt(fd_, level, optname, optval, sizeof(T));
   }
 
   /**
@@ -806,7 +829,7 @@ class AsyncSocket : public AsyncTransport {
    */
   virtual int getSockOptVirtual(
       int level, int optname, void* optval, socklen_t* optlen) {
-    return netops::getsockopt(fd_, level, optname, optval, optlen);
+    return netops_->getsockopt(fd_, level, optname, optval, optlen);
   }
 
   /**
@@ -822,7 +845,7 @@ class AsyncSocket : public AsyncTransport {
    */
   virtual int setSockOptVirtual(
       int level, int optname, void const* optval, socklen_t optlen) {
-    return netops::setsockopt(fd_, level, optname, optval, optlen);
+    return netops_->setsockopt(fd_, level, optname, optval, optlen);
   }
 
   /**
@@ -1467,6 +1490,8 @@ class AsyncSocket : public AsyncTransport {
       nullptr};
 
   bool closeOnFailedWrite_{true};
+
+  netops::DispatcherContainer netops_;
 };
 
 } // namespace folly
