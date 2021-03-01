@@ -1283,6 +1283,16 @@ class AsyncSocket : public AsyncTransport {
       uint32_t* partialWritten);
 
   /**
+   * Prepares a msghdr and sends the message over the socket using sendmsg
+   *
+   * @param vec             The iovec array pointing to the buffers to write.
+   * @param count           The length of the iovec array.
+   * @param flags           Set of write flags.
+   */
+  virtual AsyncSocket::WriteResult sendSocketMessage(
+      const iovec* vec, size_t count, WriteFlags flags);
+
+  /**
    * Sends the message over the socket using sendmsg
    *
    * @param msg       Message to send

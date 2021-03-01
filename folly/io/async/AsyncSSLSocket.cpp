@@ -1756,27 +1756,10 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
     flags = unSet(flags, folly::WriteFlags::EOR);
   }
 
-  struct msghdr msg;
-  struct iovec iov;
-  iov.iov_base = const_cast<char*>(in);
-  iov.iov_len = size_t(inl);
-  memset(&msg, 0, sizeof(msg));
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
-  int msg_flags =
-      sslSock->getSendMsgParamsCB()->getFlags(flags, false /*zeroCopyEnabled*/);
-  msg.msg_controllen =
-      sslSock->getSendMsgParamsCB()->getAncillaryDataSize(flags);
-  CHECK_GE(
-      AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,
-      msg.msg_controllen);
-  if (msg.msg_controllen != 0) {
-    msg.msg_control = reinterpret_cast<char*>(alloca(msg.msg_controllen));
-    sslSock->getSendMsgParamsCB()->getAncillaryData(flags, msg.msg_control);
-  }
-
-  auto result =
-      sslSock->sendSocketMessage(OpenSSLUtils::getBioFd(b), &msg, msg_flags);
+  struct iovec vec;
+  vec.iov_base = const_cast<char*>(in);
+  vec.iov_len = size_t(inl);
+  auto result = sslSock->sendSocketMessage(&vec, 1, flags);
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
     if (OpenSSLUtils::getBioShouldRetryWrite(int(result.writeReturn))) {

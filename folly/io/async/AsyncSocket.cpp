@@ -2543,6 +2543,40 @@ ssize_t AsyncSocket::tfoSendMsg(
 }
 
 AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
+    const iovec* vec, size_t count, WriteFlags flags) {
+  struct msghdr msg = {};
+  msg.msg_name = nullptr;
+  msg.msg_namelen = 0;
+  msg.msg_iov = const_cast<struct iovec*>(vec);
+  msg.msg_iovlen = std::min<size_t>(count, kIovMax);
+  msg.msg_flags = 0; // ignored, must forward flags via sendmsg parameter
+  msg.msg_control = nullptr;
+  msg.msg_controllen = sendMsgParamCallback_->getAncillaryDataSize(flags);
+  CHECK_GE(
+      AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,
+      msg.msg_controllen);
+
+  if (msg.msg_controllen != 0) {
+    msg.msg_control = reinterpret_cast<char*>(alloca(msg.msg_controllen));
+    sendMsgParamCallback_->getAncillaryData(flags, msg.msg_control);
+  }
+  int msg_flags = sendMsgParamCallback_->getFlags(flags, zeroCopyEnabled_);
+
+  auto writeResult = sendSocketMessage(fd_, &msg, msg_flags);
+
+  if (writeResult.writeReturn < 0 && zeroCopyEnabled_ && errno == ENOBUFS) {
+    // workaround for running with zerocopy enabled but without a big enough
+    // memlock value - see ulimit -l
+    zeroCopyEnabled_ = false;
+    zeroCopyReenableCounter_ = zeroCopyReenableThreshold_;
+    msg_flags = sendMsgParamCallback_->getFlags(flags, zeroCopyEnabled_);
+    writeResult = sendSocketMessage(fd_, &msg, msg_flags);
+  }
+
+  return writeResult;
+}
+
+AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     NetworkSocket fd, struct msghdr* msg, int msg_flags) {
   ssize_t totalWritten = 0;
   if (state_ == StateEnum::FAST_OPEN) {
@@ -2615,40 +2649,8 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     WriteFlags flags,
     uint32_t* countWritten,
     uint32_t* partialWritten) {
-  // We use sendmsg() instead of writev() so that we can pass in MSG_NOSIGNAL
-  // We correctly handle EPIPE errors, so we never want to receive SIGPIPE
-  // (since it may terminate the program if the main program doesn't explicitly
-  // ignore it).
-  struct msghdr msg;
-  msg.msg_name = nullptr;
-  msg.msg_namelen = 0;
-  msg.msg_iov = const_cast<iovec*>(vec);
-  msg.msg_iovlen = std::min<size_t>(count, kIovMax);
-  msg.msg_flags = 0;
-  msg.msg_controllen = sendMsgParamCallback_->getAncillaryDataSize(flags);
-  CHECK_GE(
-      AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,
-      msg.msg_controllen);
-
-  if (msg.msg_controllen != 0) {
-    msg.msg_control = reinterpret_cast<char*>(alloca(msg.msg_controllen));
-    sendMsgParamCallback_->getAncillaryData(flags, msg.msg_control);
-  } else {
-    msg.msg_control = nullptr;
-  }
-  int msg_flags = sendMsgParamCallback_->getFlags(flags, zeroCopyEnabled_);
-
-  auto writeResult = sendSocketMessage(fd_, &msg, msg_flags);
+  auto writeResult = sendSocketMessage(vec, count, flags);
   auto totalWritten = writeResult.writeReturn;
-  if (totalWritten < 0 && zeroCopyEnabled_ && errno == ENOBUFS) {
-    // workaround for running with zerocopy enabled but without a big enough
-    // memlock value - see ulimit -l
-    zeroCopyEnabled_ = false;
-    zeroCopyReenableCounter_ = zeroCopyReenableThreshold_;
-    msg_flags = sendMsgParamCallback_->getFlags(flags, zeroCopyEnabled_);
-    writeResult = sendSocketMessage(fd_, &msg, msg_flags);
-    totalWritten = writeResult.writeReturn;
-  }
   if (totalWritten < 0) {
     bool tryAgain = (errno == EAGAIN);
 #ifdef __APPLE__
