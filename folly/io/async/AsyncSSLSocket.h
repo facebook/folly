@@ -382,6 +382,18 @@ class AsyncSSLSocket : public AsyncSocket {
   void setEorTracking(bool track) override;
   size_t getRawBytesWritten() const override;
   size_t getRawBytesReceived() const override;
+
+  // End of methods inherited from AsyncTransport
+
+  /**
+   * Enable ByteEvents for this socket.
+   *
+   * ByteEvents cannot be enabled if TLS 1.0 or earlier is in use, as these
+   * client implementations often have trouble handling cases where a TLS
+   * record is split across multiple packets.
+   */
+  void enableByteEvents() override;
+
   void enableClientHelloParsing();
 
   /**

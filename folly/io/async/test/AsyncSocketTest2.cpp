@@ -34,13 +34,21 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
+#include <folly/io/async/test/MockAsyncSocketObserver.h>
+#include <folly/io/async/test/MockAsyncTransportObserver.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/net/test/MockNetOpsDispatcher.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/test/SocketAddressTestHelper.h>
+
+#if defined(__linux__)
+#include <linux/errqueue.h>
+#include <linux/net_tstamp.h>
+#endif
 
 using std::min;
 using std::string;
@@ -3056,19 +3064,6 @@ TEST(AsyncSocket, BytesWrittenWithMove) {
 }
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-/* copied from include/uapi/linux/net_tstamp.h */
-/* SO_TIMESTAMPING gets an integer bit field comprised of these values */
-enum SOF_TIMESTAMPING {
-  SOF_TIMESTAMPING_TX_SOFTWARE = (1 << 1),
-  SOF_TIMESTAMPING_RX_HARDWARE = (1 << 2),
-  SOF_TIMESTAMPING_RX_SOFTWARE = (1 << 3),
-  SOF_TIMESTAMPING_SOFTWARE = (1 << 4),
-  SOF_TIMESTAMPING_OPT_ID = (1 << 7),
-  SOF_TIMESTAMPING_TX_SCHED = (1 << 8),
-  SOF_TIMESTAMPING_OPT_CMSG = (1 << 10),
-  SOF_TIMESTAMPING_OPT_TSONLY = (1 << 11),
-};
-
 struct AsyncSocketErrMessageCallbackTestParams {
   folly::Optional<int> resetCallbackAfter;
   folly::Optional<int> closeSocketAfter;
@@ -3284,32 +3279,1922 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
   ASSERT_EQ(errMsgCB.gotByteSeq_, testParams.gotByteSeqExpected);
   ASSERT_EQ(errMsgCB.gotTimestamp_, testParams.gotTimestampExpected);
 }
+
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
-class MockAsyncSocketLifecycleObserver : public AsyncSocket::LifecycleObserver {
- public:
-  GMOCK_METHOD1_(, noexcept, , observerAttach, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , observerDetach, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , destroy, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , close, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , connect, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , fdDetach, void(AsyncSocket*));
-  GMOCK_METHOD2_(, noexcept, , move, void(AsyncSocket*, AsyncSocket*));
-  GMOCK_METHOD2_(, noexcept, , evbAttach, void(AsyncTransport*, EventBase*));
-  GMOCK_METHOD2_(, noexcept, , evbDetach, void(AsyncTransport*, EventBase*));
+#ifdef FOLLY_HAVE_SO_TIMESTAMPING
+
+class AsyncSocketByteEventTest : public ::testing::Test {
+ protected:
+  using MockDispatcher = ::testing::NiceMock<netops::test::MockDispatcher>;
+  using TestObserver = MockAsyncTransportObserverForByteEvents;
+  using ByteEventType = AsyncTransport::ByteEvent::Type;
+
+  /**
+   * Components of a client connection to TestServer.
+   *
+   * Includes EventBase, client's AsyncSocket, and corresponding server socket.
+   */
+  class ClientConn {
+   public:
+    explicit ClientConn(
+        std::shared_ptr<TestServer> server,
+        std::shared_ptr<AsyncSocket> socket = nullptr,
+        std::shared_ptr<BlockingSocket> acceptedSocket = nullptr)
+        : server_(std::move(server)),
+          socket_(std::move(socket)),
+          acceptedSocket_(std::move(acceptedSocket)) {
+      if (!socket_) {
+        socket_ = AsyncSocket::newSocket(&getEventBase());
+      } else {
+        setReadCb();
+      }
+      socket_->setOverrideNetOpsDispatcher(netOpsDispatcher_);
+      netOpsDispatcher_->forwardToDefaultImpl();
+    }
+
+    void connect() {
+      CHECK_NOTNULL(socket_.get());
+      CHECK_NOTNULL(socket_->getEventBase());
+      socket_->connect(&connCb_, server_->getAddress(), 30);
+      socket_->getEventBase()->loopOnce();
+      ASSERT_EQ(connCb_.state, STATE_SUCCEEDED);
+      setReadCb();
+
+      // accept the socket at the server
+      acceptedSocket_ = server_->accept();
+    }
+
+    void setReadCb() {
+      // Due to how libevent works, we currently need to be subscribed to
+      // EV_READ events in order to get error messages.
+      //
+      // TODO(bschlinker): Resolve this with libevent modification.
+      // See https://github.com/libevent/libevent/issues/1038 for details.
+      socket_->setReadCB(&readCb_);
+    }
+
+    std::shared_ptr<NiceMock<TestObserver>> attachObserver(
+        bool enableByteEvents) {
+      auto observer = AsyncSocketByteEventTest::attachObserver(
+          socket_.get(), enableByteEvents);
+      observers_.push_back(observer);
+      return observer;
+    }
+
+    /**
+     * Write to client socket and read at server.
+     */
+    void write(const std::vector<uint8_t>& wbuf, const WriteFlags writeFlags) {
+      CHECK_NOTNULL(socket_.get());
+      CHECK_NOTNULL(socket_->getEventBase());
+
+      // read buffer for server
+      std::vector<uint8_t> rbuf(wbuf.size(), 0);
+      uint64_t rbufReadBytes = 0;
+
+      // write to the client socket, incrementally read at the server
+      WriteCallback wcb;
+      socket_->write(&wcb, wbuf.data(), wbuf.size(), writeFlags);
+      while (wcb.state == STATE_WAITING) {
+        socket_->getEventBase()->loopOnce();
+        rbufReadBytes += acceptedSocket_->read(
+            rbuf.data() + rbufReadBytes, rbuf.size() - rbufReadBytes);
+      }
+      ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+
+      // finish reading
+      rbufReadBytes += acceptedSocket_->readAll(
+          rbuf.data() + rbufReadBytes, rbuf.size() - rbufReadBytes);
+      ASSERT_EQ(rbufReadBytes, wbuf.size());
+      ASSERT_TRUE(std::equal(wbuf.begin(), wbuf.end(), rbuf.begin()));
+    }
+
+    /**
+     * Write to client socket, echo at server, and wait for echo at client.
+     *
+     * Waiting for echo at client ensures that we have given opportunity for
+     * timestamps to be generated by the kernel.
+     */
+    void writeAndReflect(
+        const std::vector<uint8_t>& wbuf, const WriteFlags writeFlags) {
+      write(wbuf, writeFlags);
+
+      // reflect
+      acceptedSocket_->write(wbuf.data(), wbuf.size());
+      while (wbuf.size() != readCb_.dataRead()) {
+        socket_->getEventBase()->loopOnce();
+      }
+      readCb_.verifyData(wbuf.data(), wbuf.size());
+      readCb_.clearData();
+    }
+
+    std::shared_ptr<AsyncSocket> getRawSocket() { return socket_; }
+
+    std::shared_ptr<BlockingSocket> getAcceptedSocket() {
+      return acceptedSocket_;
+    }
+
+    EventBase& getEventBase() {
+      static EventBase evb; // use same EventBase for all client sockets
+      return evb;
+    }
+
+    void netOpsExpectTimestampingSetSockOpt() {
+      // must whitelist other calls
+      EXPECT_CALL(*netOpsDispatcher_, setsockopt(_, _, _, _, _))
+          .Times(AnyNumber());
+      EXPECT_CALL(
+          *netOpsDispatcher_, setsockopt(_, SOL_SOCKET, SO_TIMESTAMPING, _, _))
+          .Times(1);
+    }
+
+    void netOpsExpectNoTimestampingSetSockOpt() {
+      // must whitelist other calls
+      EXPECT_CALL(*netOpsDispatcher_, setsockopt(_, _, _, _, _))
+          .Times(AnyNumber());
+      EXPECT_CALL(
+          *netOpsDispatcher_, setsockopt(_, SOL_SOCKET, SO_TIMESTAMPING, _, _))
+          .Times(0);
+    }
+
+    void netOpsExpectWriteWithFlags(WriteFlags writeFlags) {
+      EXPECT_CALL(*netOpsDispatcher_, sendmsg(_, _, _))
+          .WillOnce(Invoke(
+              [this, writeFlags](
+                  NetworkSocket socket, const msghdr* message, int flags) {
+                EXPECT_EQ(writeFlags, getMsgWriteFlags(*message));
+                return netOpsDispatcher_->netops::Dispatcher::sendmsg(
+                    socket, message, flags);
+              }));
+    }
+
+    void netOpsVerifyAndClearExpectations() {
+      Mock::VerifyAndClearExpectations(netOpsDispatcher_.get());
+    }
+
+   private:
+    // server
+    std::shared_ptr<TestServer> server_;
+
+    // managed observers
+    std::vector<std::shared_ptr<TestObserver>> observers_;
+
+    // socket components
+    ConnCallback connCb_;
+    ReadCallback readCb_;
+    std::shared_ptr<MockDispatcher> netOpsDispatcher_{
+        std::make_shared<MockDispatcher>()};
+    std::shared_ptr<AsyncSocket> socket_;
+
+    // accepted socket at server
+    std::shared_ptr<BlockingSocket> acceptedSocket_;
+  };
+
+  ClientConn getClientConn() { return ClientConn(server_); }
+
+  /**
+   * Static utility functions.
+   */
+
+  static std::shared_ptr<NiceMock<TestObserver>> attachObserver(
+      AsyncSocket* socket, bool enableByteEvents) {
+    AsyncTransport::LifecycleObserver::Config config = {};
+    config.byteEvents = enableByteEvents;
+    return std::make_shared<NiceMock<TestObserver>>(socket, config);
+  }
+
+  static WriteFlags getMsgWriteFlags(const struct msghdr& msg) {
+    const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+    if (!cmsg || cmsg->cmsg_level != SOL_SOCKET ||
+        cmsg->cmsg_type != SO_TIMESTAMPING ||
+        cmsg->cmsg_len != CMSG_LEN(sizeof(uint32_t))) {
+      return WriteFlags::NONE;
+    }
+
+    const uint32_t* sofFlags =
+        (reinterpret_cast<const uint32_t*>(CMSG_DATA(cmsg)));
+    WriteFlags flags = WriteFlags::NONE;
+    if (*sofFlags & SOF_TIMESTAMPING_TX_SCHED) {
+      flags = flags | WriteFlags::TIMESTAMP_SCHED;
+    }
+    if (*sofFlags & SOF_TIMESTAMPING_TX_SOFTWARE) {
+      flags = flags | WriteFlags::TIMESTAMP_TX;
+    }
+    if (*sofFlags & SOF_TIMESTAMPING_TX_ACK) {
+      flags = flags | WriteFlags::TIMESTAMP_ACK;
+    }
+
+    return flags;
+  }
+
+  static WriteFlags dropWriteFromFlags(WriteFlags writeFlags) {
+    return writeFlags & ~WriteFlags::TIMESTAMP_WRITE;
+  }
+
+  // server
+  std::shared_ptr<TestServer> server_{std::make_shared<TestServer>()};
 };
 
-class MockAsyncTransportLifecycleObserver
-    : public AsyncTransport::LifecycleObserver {
- public:
-  GMOCK_METHOD1_(, noexcept, , observerAttach, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , observerDetach, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , destroy, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , close, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , connect, void(AsyncTransport*));
-  GMOCK_METHOD2_(, noexcept, , evbAttach, void(AsyncTransport*, EventBase*));
-  GMOCK_METHOD2_(, noexcept, , evbDetach, void(AsyncTransport*, EventBase*));
+TEST_F(AsyncSocketByteEventTest, GetMsgWriteFlags) {
+  auto ancillaryDataSize = CMSG_LEN(sizeof(uint32_t));
+  auto ancillaryData = reinterpret_cast<char*>(alloca(ancillaryDataSize));
+
+  auto getMsg = [&ancillaryDataSize, &ancillaryData](uint32_t sofFlags) {
+    struct msghdr msg = {};
+    msg.msg_name = nullptr;
+    msg.msg_namelen = 0;
+    msg.msg_iov = nullptr;
+    msg.msg_iovlen = 0;
+    msg.msg_flags = 0;
+    msg.msg_controllen = 0;
+    msg.msg_control = nullptr;
+    if (sofFlags) {
+      msg.msg_controllen = ancillaryDataSize;
+      msg.msg_control = ancillaryData;
+      struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+      CHECK_NOTNULL(cmsg);
+      cmsg->cmsg_level = SOL_SOCKET;
+      cmsg->cmsg_type = SO_TIMESTAMPING;
+      cmsg->cmsg_len = CMSG_LEN(sizeof(uint32_t));
+      memcpy(CMSG_DATA(cmsg), &sofFlags, sizeof(sofFlags));
+    }
+    return msg;
+  };
+
+  // SCHED
+  {
+    auto msg = getMsg(SOF_TIMESTAMPING_TX_SCHED);
+    EXPECT_EQ(WriteFlags::TIMESTAMP_SCHED, getMsgWriteFlags(msg));
+  }
+
+  // TX
+  {
+    auto msg = getMsg(SOF_TIMESTAMPING_TX_SOFTWARE);
+    EXPECT_EQ(WriteFlags::TIMESTAMP_TX, getMsgWriteFlags(msg));
+  }
+
+  // ACK
+  {
+    auto msg = getMsg(SOF_TIMESTAMPING_TX_ACK);
+    EXPECT_EQ(WriteFlags::TIMESTAMP_ACK, getMsgWriteFlags(msg));
+  }
+
+  // SCHED + TX + ACK
+  {
+    auto msg = getMsg(
+        SOF_TIMESTAMPING_TX_SCHED | SOF_TIMESTAMPING_TX_SOFTWARE |
+        SOF_TIMESTAMPING_TX_ACK);
+    EXPECT_EQ(
+        WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_TX |
+            WriteFlags::TIMESTAMP_ACK,
+        getMsgWriteFlags(msg));
+  }
+}
+
+TEST_F(AsyncSocketByteEventTest, ObserverAttachedBeforeConnect) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(1, 'a');
+
+  auto clientConn = getClientConn();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  clientConn.connect();
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(4));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+
+  // write again to check offsets
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(8));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+}
+
+TEST_F(AsyncSocketByteEventTest, ObserverAttachedAfterConnect) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(1, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(4));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+
+  // write again to check offsets
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(8));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+}
+
+TEST_F(
+    AsyncSocketByteEventTest, ObserverAttachedBeforeConnectByteEventsDisabled) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(1, 'a');
+
+  auto clientConn = getClientConn();
+  auto observer = clientConn.attachObserver(false /* enableByteEvents */);
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+
+  clientConn.connect(); // connect after observer attached
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectWriteWithFlags(WriteFlags::NONE); // events disabled
+  clientConn.writeAndReflect(wbuf, flags);
+  EXPECT_THAT(observer->byteEvents, IsEmpty());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // now enable ByteEvents with another observer, then write again
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  auto observer2 = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled); // observer 1 doesn't want
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  EXPECT_EQ(1, observer2->byteEventsEnabledCalled); // should be set
+  EXPECT_EQ(0, observer2->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  EXPECT_NE(WriteFlags::NONE, flags);
+  EXPECT_NE(WriteFlags::NONE, dropWriteFromFlags(flags));
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // expect no ByteEvents for first observer, four for the second
+  EXPECT_THAT(observer->byteEvents, IsEmpty());
+  EXPECT_THAT(observer2->byteEvents, SizeIs(4));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+}
+
+TEST_F(
+    AsyncSocketByteEventTest, ObserverAttachedAfterConnectByteEventsDisabled) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(1, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+
+  clientConn.connect(); // connect before observer attached
+
+  auto observer = clientConn.attachObserver(false /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectWriteWithFlags(WriteFlags::NONE); // events disabled
+  clientConn.writeAndReflect(wbuf, flags);
+  EXPECT_THAT(observer->byteEvents, IsEmpty());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // now enable ByteEvents with another observer, then write again
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  auto observer2 = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled); // observer 1 doesn't want
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  EXPECT_EQ(1, observer2->byteEventsEnabledCalled); // should be set
+  EXPECT_EQ(0, observer2->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  EXPECT_NE(WriteFlags::NONE, flags);
+  EXPECT_NE(WriteFlags::NONE, dropWriteFromFlags(flags));
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // expect no ByteEvents for first observer, four for the second
+  EXPECT_THAT(observer->byteEvents, IsEmpty());
+  EXPECT_THAT(observer2->byteEvents, SizeIs(4));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(1, observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+}
+
+TEST_F(AsyncSocketByteEventTest, ObserverAttachedAfterWrite) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(1, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect(); // connect before observer attached
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectWriteWithFlags(WriteFlags::NONE); // events disabled
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  EXPECT_THAT(observer->byteEvents, SizeIs(4));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+}
+
+TEST_F(AsyncSocketByteEventTest, ObserverAttachedAfterClose) {
+  auto clientConn = getClientConn();
+  clientConn.connect();
+  clientConn.getRawSocket()->close();
+  EXPECT_TRUE(clientConn.getRawSocket()->isClosedBySelf());
+
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+}
+
+TEST_F(AsyncSocketByteEventTest, MultipleObserverAttached) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(50, 'a');
+
+  // attach observer 1 before connect
+  auto clientConn = getClientConn();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  clientConn.connect();
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // attach observer 2 after connect
+  auto observer2 = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer2->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer2->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // check observer1
+  EXPECT_THAT(observer->byteEvents, SizeIs(4));
+  EXPECT_EQ(49, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(49, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(49, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(49, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+
+  // check observer2
+  EXPECT_THAT(observer2->byteEvents, SizeIs(4));
+  EXPECT_EQ(49, observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(49, observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(49, observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(49, observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+}
+
+/**
+ * Test when kernel offset (uint32_t) wraps around.
+ */
+TEST_F(AsyncSocketByteEventTest, KernelOffsetWrap) {
+  auto clientConn = getClientConn();
+  clientConn.connect();
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  const uint64_t wbufSize = 3000000;
+  const std::vector<uint8_t> wbuf(wbufSize, 'a');
+
+  // part 1: write close to the wrap point with no ByteEvents to speed things up
+  const uint64_t bytesToWritePt1 =
+      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) -
+      (wbufSize * 5);
+  while (clientConn.getRawSocket()->getRawBytesWritten() < bytesToWritePt1) {
+    clientConn.write(wbuf, WriteFlags::NONE); // no reflect needed
+  }
+
+  // part 2: write over the wrap point with ByteEvents
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const uint64_t bytesToWritePt2 =
+      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) +
+      (wbufSize * 5);
+  while (clientConn.getRawSocket()->getRawBytesWritten() < bytesToWritePt2) {
+    clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+    clientConn.writeAndReflect(wbuf, flags);
+    clientConn.netOpsVerifyAndClearExpectations();
+    const uint64_t expectedOffset =
+        clientConn.getRawSocket()->getRawBytesWritten() - 1;
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+
+  // part 3: one more write outside of a loop with extra checks
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  const auto expectedOffset =
+      clientConn.getRawSocket()->getRawBytesWritten() - 1;
+  EXPECT_LT(std::numeric_limits<uint32_t>::max(), expectedOffset);
+  EXPECT_EQ(
+      expectedOffset,
+      observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(
+      expectedOffset,
+      observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(
+      expectedOffset,
+      observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(
+      expectedOffset,
+      observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+}
+
+/**
+ * Ensure that ErrMessageCallback still works when ByteEvents enabled.
+ */
+TEST_F(AsyncSocketByteEventTest, ErrMessageCallbackStillTriggered) {
+  auto clientConn = getClientConn();
+  clientConn.connect();
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  TestErrMessageCallback errMsgCB;
+  clientConn.getRawSocket()->setErrMessageCB(&errMsgCB);
+
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+
+  std::vector<uint8_t> wbuf(1, 'a');
+  EXPECT_NE(WriteFlags::NONE, flags);
+  EXPECT_NE(WriteFlags::NONE, dropWriteFromFlags(flags));
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // observer should get events
+  EXPECT_THAT(observer->byteEvents, SizeIs(4));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(0, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+
+  // err message callbach should get events, too
+  EXPECT_EQ(3, errMsgCB.gotByteSeq_);
+  EXPECT_EQ(3, errMsgCB.gotTimestamp_);
+
+  // write again, more events for both
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(8));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(1, observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  EXPECT_EQ(6, errMsgCB.gotByteSeq_);
+  EXPECT_EQ(6, errMsgCB.gotTimestamp_);
+}
+
+/**
+ * Ensure that ByteEvents disabled for unix sockets (not supported).
+ */
+TEST_F(AsyncSocketByteEventTest, FailUnixSocket) {
+  std::shared_ptr<NiceMock<TestObserver>> observer;
+  auto netOpsDispatcher = std::make_shared<MockDispatcher>();
+
+  NetworkSocket fd[2];
+  EXPECT_EQ(netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fd), 0);
+  ASSERT_NE(fd[0], NetworkSocket());
+  ASSERT_NE(fd[1], NetworkSocket());
+  SCOPE_EXIT { netops::close(fd[1]); };
+
+  EXPECT_EQ(netops::set_socket_non_blocking(fd[0]), 0);
+  EXPECT_EQ(netops::set_socket_non_blocking(fd[1]), 0);
+
+  auto clientSocketRaw = AsyncSocket::newSocket(nullptr, fd[0]);
+  auto clientBlockingSocket = BlockingSocket(std::move(clientSocketRaw));
+  clientBlockingSocket.getSocket()->setOverrideNetOpsDispatcher(
+      netOpsDispatcher);
+
+  // make sure no SO_TIMESTAMPING setsockopt on observer attach
+  EXPECT_CALL(*netOpsDispatcher, setsockopt(_, _, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(
+      *netOpsDispatcher, setsockopt(_, SOL_SOCKET, SO_TIMESTAMPING, _, _))
+      .Times(0); // no calls
+  observer = attachObserver(
+      clientBlockingSocket.getSocket(), true /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(1, observer->byteEventsUnavailableCalled);
+  EXPECT_TRUE(observer->byteEventsUnavailableCalledEx.has_value());
+  Mock::VerifyAndClearExpectations(netOpsDispatcher.get());
+
+  // do a write, we should see it has no timestamp flags
+  const std::vector<uint8_t> wbuf(1, 'a');
+  EXPECT_CALL(*netOpsDispatcher, sendmsg(_, _, _))
+      .WillOnce(WithArgs<1>(Invoke([](const msghdr* message) {
+        EXPECT_EQ(WriteFlags::NONE, getMsgWriteFlags(*message));
+        return 1;
+      })));
+  clientBlockingSocket.write(
+      wbuf.data(),
+      wbuf.size(),
+      WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+          WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK);
+  Mock::VerifyAndClearExpectations(netOpsDispatcher.get());
+}
+
+/**
+ * If socket timestamps already enabled, do not enable ByteEvents.
+ */
+TEST_F(AsyncSocketByteEventTest, FailTimestampsAlreadyEnabled) {
+  auto clientConn = getClientConn();
+  clientConn.connect();
+
+  // enable timestamps via setsockopt
+  const uint32_t flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
+      SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
+      SOF_TIMESTAMPING_OPT_TX_SWHW;
+  const auto ret = clientConn.getRawSocket()->setSockOpt(
+      SOL_SOCKET, SO_TIMESTAMPING, &flags);
+  EXPECT_EQ(0, ret);
+
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(1, observer->byteEventsUnavailableCalled); // fail
+  EXPECT_TRUE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  std::vector<uint8_t> wbuf(1, 'a');
+  clientConn.netOpsExpectWriteWithFlags(WriteFlags::NONE);
+  clientConn.writeAndReflect(
+      wbuf,
+      WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+          WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, IsEmpty());
+}
+
+/**
+ * Verify that ByteEvent information is properly copied during socket moves.
+ */
+
+TEST_F(AsyncSocketByteEventTest, MoveByteEventsEnabled) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(50, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.connect();
+
+  // observer with ByteEvents enabled
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // move the socket immediately and add an observer with ByteEvents enabled
+  auto clientConn2 = ClientConn(
+      server_,
+      AsyncSocket::UniquePtr(new AsyncSocket(clientConn.getRawSocket().get())),
+      clientConn.getAcceptedSocket());
+  auto observer2 = clientConn2.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer2->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer2->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write following move, make sure the offsets are correct
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(4)));
+  {
+    const auto expectedOffset = 49;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+
+  // write again
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(8)));
+  {
+    const auto expectedOffset = 99;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+}
+
+TEST_F(AsyncSocketByteEventTest, WriteThenMoveByteEventsEnabled) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(50, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.connect();
+
+  // observer with ByteEvents enabled
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(Ge(4)));
+  {
+    const auto expectedOffset = 49;
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+
+  // now move the socket and add an observer with ByteEvents enabled
+  auto clientConn2 = ClientConn(
+      server_,
+      AsyncSocket::UniquePtr(
+          new AsyncSocket(std::move(clientConn.getRawSocket().get()))),
+      clientConn.getAcceptedSocket());
+  auto observer2 = clientConn2.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer2->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer2->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write following move, make sure the offsets are correct
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(4)));
+  {
+    const auto expectedOffset = 99;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+
+  // write again
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(8)));
+  {
+    const auto expectedOffset = 149;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+}
+
+TEST_F(AsyncSocketByteEventTest, MoveThenEnableByteEvents) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(50, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.connect();
+
+  // observer with ByteEvents disabled
+  auto observer = clientConn.attachObserver(false /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // move the socket immediately and add an observer with ByteEvents enabled
+  auto clientConn2 = ClientConn(
+      server_,
+      AsyncSocket::UniquePtr(new AsyncSocket(clientConn.getRawSocket().get())),
+      clientConn.getAcceptedSocket());
+  auto observer2 = clientConn2.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer2->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer2->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write following move, make sure the offsets are correct
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(4)));
+  {
+    const auto expectedOffset = 49;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+
+  // write again
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(8)));
+  {
+    const auto expectedOffset = 99;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+}
+
+TEST_F(AsyncSocketByteEventTest, WriteThenMoveThenEnableByteEvents) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(50, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.connect();
+
+  // observer with ByteEvents disabled
+  auto observer = clientConn.attachObserver(false /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write, ByteEvents disabled
+  clientConn.netOpsExpectWriteWithFlags(WriteFlags::NONE); // events diabled
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // now move the socket and add an observer with ByteEvents enabled
+  auto clientConn2 = ClientConn(
+      server_,
+      AsyncSocket::UniquePtr(new AsyncSocket(clientConn.getRawSocket().get())),
+      clientConn.getAcceptedSocket());
+  auto observer2 = clientConn2.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer2->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer2->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write following move, make sure the offsets are correct
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(4)));
+  {
+    const auto expectedOffset = 99;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+
+  // write again
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer2->byteEvents, SizeIs(Ge(8)));
+  {
+    const auto expectedOffset = 149;
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer2->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+}
+
+TEST_F(AsyncSocketByteEventTest, NoObserverMoveThenEnableByteEvents) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(50, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.connect();
+
+  // no observer
+
+  // move the socket immediately and add an observer with ByteEvents enabled
+  auto clientConn2 = ClientConn(
+      server_,
+      AsyncSocket::UniquePtr(new AsyncSocket(clientConn.getRawSocket().get())),
+      clientConn.getAcceptedSocket());
+  auto observer = clientConn2.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  // write following move, make sure the offsets are correct
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(Ge(4)));
+  {
+    const auto expectedOffset = 49;
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+
+  // write again
+  clientConn2.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn2.writeAndReflect(wbuf, flags);
+  clientConn2.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(Ge(8)));
+  {
+    const auto expectedOffset = 99;
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+    EXPECT_EQ(
+        expectedOffset,
+        observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
+  }
+}
+
+/**
+ * Inspect ByteEvent fields, including xTimestampRequested in WRITE events.
+ */
+TEST_F(AsyncSocketByteEventTest, CheckByteEventDetails) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+  const std::vector<uint8_t> wbuf(1, 'a');
+
+  auto clientConn = getClientConn();
+  clientConn.connect();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  EXPECT_NE(WriteFlags::NONE, dropWriteFromFlags(flags));
+  clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(Eq(4)));
+  const auto expectedOffset = wbuf.size() - 1;
+
+  // check WRITE
+  {
+    auto maybeByteEvent = observer->getByteEventReceivedWithOffset(
+        expectedOffset, ByteEventType::WRITE);
+    ASSERT_TRUE(maybeByteEvent.has_value());
+    auto& byteEvent = maybeByteEvent.value();
+
+    EXPECT_EQ(ByteEventType::WRITE, byteEvent.type);
+    EXPECT_EQ(expectedOffset, byteEvent.offset);
+    EXPECT_GE(std::chrono::steady_clock::now(), byteEvent.ts);
+    EXPECT_LT(
+        std::chrono::steady_clock::now() - std::chrono::seconds(60),
+        byteEvent.ts);
+
+    EXPECT_EQ(flags, byteEvent.maybeWriteFlags);
+    EXPECT_TRUE(byteEvent.schedTimestampRequested());
+    EXPECT_TRUE(byteEvent.txTimestampRequested());
+    EXPECT_TRUE(byteEvent.ackTimestampRequested());
+
+    EXPECT_FALSE(byteEvent.maybeSoftwareTs.has_value());
+    EXPECT_FALSE(byteEvent.maybeHardwareTs.has_value());
+  }
+
+  // check SCHED, TX, ACK
+  for (const auto& byteEventType :
+       {ByteEventType::SCHED, ByteEventType::TX, ByteEventType::ACK}) {
+    auto maybeByteEvent =
+        observer->getByteEventReceivedWithOffset(expectedOffset, byteEventType);
+    ASSERT_TRUE(maybeByteEvent.has_value());
+    auto& byteEvent = maybeByteEvent.value();
+
+    EXPECT_EQ(byteEventType, byteEvent.type);
+    EXPECT_EQ(expectedOffset, byteEvent.offset);
+    EXPECT_GE(std::chrono::steady_clock::now(), byteEvent.ts);
+    EXPECT_LT(
+        std::chrono::steady_clock::now() - std::chrono::seconds(60),
+        byteEvent.ts);
+
+    EXPECT_FALSE(byteEvent.maybeWriteFlags.has_value());
+    EXPECT_DEATH(byteEvent.schedTimestampRequested(), ".*");
+    EXPECT_DEATH(byteEvent.txTimestampRequested(), ".*");
+    EXPECT_DEATH(byteEvent.ackTimestampRequested(), ".*");
+
+    EXPECT_TRUE(byteEvent.maybeSoftwareTs.has_value());
+    EXPECT_FALSE(byteEvent.maybeHardwareTs.has_value());
+  }
+}
+
+struct AsyncSocketByteEventDetailsTestParams {
+  struct WriteParams {
+    WriteParams(uint64_t bufferSize, WriteFlags writeFlags)
+        : bufferSize(bufferSize), writeFlags(writeFlags) {}
+    uint64_t bufferSize{0};
+    WriteFlags writeFlags{WriteFlags::NONE};
+  };
+
+  std::vector<WriteParams> writesWithParams;
 };
+
+class AsyncSocketByteEventDetailsTest
+    : public AsyncSocketByteEventTest,
+      public testing::WithParamInterface<
+          AsyncSocketByteEventDetailsTestParams> {
+ public:
+  static std::vector<AsyncSocketByteEventDetailsTestParams> getTestingValues() {
+    const std::array<WriteFlags, 9> writeFlagCombinations{
+        // SCHED
+        WriteFlags::TIMESTAMP_SCHED,
+        // TX
+        WriteFlags::TIMESTAMP_TX,
+        // ACK
+        WriteFlags::TIMESTAMP_ACK,
+        // SCHED + TX + ACK
+        WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_TX |
+            WriteFlags::TIMESTAMP_ACK,
+        // WRITE
+        WriteFlags::TIMESTAMP_WRITE,
+        // WRITE + SCHED
+        WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED,
+        // WRITE + TX
+        WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_TX,
+        // WRITE + ACK
+        WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_ACK,
+        // WRITE + SCHED + TX + ACK
+        WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+            WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK,
+    };
+
+    std::vector<AsyncSocketByteEventDetailsTestParams> vals;
+    for (const auto& writeFlags : writeFlagCombinations) {
+      // write 1 byte
+      {
+        AsyncSocketByteEventDetailsTestParams params;
+        params.writesWithParams.emplace_back(1, writeFlags);
+        vals.push_back(params);
+      }
+
+      // write 1 byte twice
+      {
+        AsyncSocketByteEventDetailsTestParams params;
+        params.writesWithParams.emplace_back(1, writeFlags);
+        params.writesWithParams.emplace_back(1, writeFlags);
+        vals.push_back(params);
+      }
+
+      // write 10 bytes
+      {
+        AsyncSocketByteEventDetailsTestParams params;
+        params.writesWithParams.emplace_back(10, writeFlags);
+        vals.push_back(params);
+      }
+
+      // write 10 bytes twice
+      {
+        AsyncSocketByteEventDetailsTestParams params;
+        params.writesWithParams.emplace_back(10, writeFlags);
+        params.writesWithParams.emplace_back(10, writeFlags);
+        vals.push_back(params);
+      }
+    }
+
+    return vals;
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(
+    ByteEventDetailsTest,
+    AsyncSocketByteEventDetailsTest,
+    ::testing::ValuesIn(AsyncSocketByteEventDetailsTest::getTestingValues()));
+
+/**
+ * Inspect ByteEvent fields, including xTimestampRequested in WRITE events.
+ */
+TEST_P(AsyncSocketByteEventDetailsTest, CheckByteEventDetails) {
+  auto params = GetParam();
+
+  auto clientConn = getClientConn();
+  clientConn.connect();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+
+  uint64_t expectedNumByteEvents = 0;
+  for (const auto& writeParams : params.writesWithParams) {
+    const std::vector<uint8_t> wbuf(writeParams.bufferSize, 'a');
+    const auto flags = writeParams.writeFlags;
+    clientConn.netOpsExpectWriteWithFlags(dropWriteFromFlags(flags));
+    clientConn.writeAndReflect(wbuf, flags);
+    clientConn.netOpsVerifyAndClearExpectations();
+    const auto expectedOffset =
+        clientConn.getRawSocket()->getRawBytesWritten() - 1;
+
+    // check WRITE
+    if ((flags & WriteFlags::TIMESTAMP_WRITE) != WriteFlags::NONE) {
+      expectedNumByteEvents++;
+
+      auto maybeByteEvent = observer->getByteEventReceivedWithOffset(
+          expectedOffset, ByteEventType::WRITE);
+      ASSERT_TRUE(maybeByteEvent.has_value());
+      auto& byteEvent = maybeByteEvent.value();
+
+      EXPECT_EQ(ByteEventType::WRITE, byteEvent.type);
+      EXPECT_EQ(expectedOffset, byteEvent.offset);
+      EXPECT_GE(std::chrono::steady_clock::now(), byteEvent.ts);
+      EXPECT_LT(
+          std::chrono::steady_clock::now() - std::chrono::seconds(60),
+          byteEvent.ts);
+
+      EXPECT_EQ(flags, byteEvent.maybeWriteFlags);
+      EXPECT_EQ(
+          isSet(flags, WriteFlags::TIMESTAMP_SCHED),
+          byteEvent.schedTimestampRequested());
+      EXPECT_EQ(
+          isSet(flags, WriteFlags::TIMESTAMP_TX),
+          byteEvent.txTimestampRequested());
+      EXPECT_EQ(
+          isSet(flags, WriteFlags::TIMESTAMP_ACK),
+          byteEvent.ackTimestampRequested());
+
+      EXPECT_FALSE(byteEvent.maybeSoftwareTs.has_value());
+      EXPECT_FALSE(byteEvent.maybeHardwareTs.has_value());
+    }
+
+    // check SCHED, TX, ACK
+    for (const auto& byteEventType :
+         {ByteEventType::SCHED, ByteEventType::TX, ByteEventType::ACK}) {
+      auto maybeByteEvent = observer->getByteEventReceivedWithOffset(
+          expectedOffset, byteEventType);
+      switch (byteEventType) {
+        case ByteEventType::WRITE:
+          FAIL();
+        case ByteEventType::SCHED:
+          if ((flags & WriteFlags::TIMESTAMP_SCHED) == WriteFlags::NONE) {
+            EXPECT_FALSE(maybeByteEvent.has_value());
+            continue;
+          }
+          break;
+        case ByteEventType::TX:
+          if ((flags & WriteFlags::TIMESTAMP_TX) == WriteFlags::NONE) {
+            EXPECT_FALSE(maybeByteEvent.has_value());
+            continue;
+          }
+          break;
+        case ByteEventType::ACK:
+          if ((flags & WriteFlags::TIMESTAMP_ACK) == WriteFlags::NONE) {
+            EXPECT_FALSE(maybeByteEvent.has_value());
+            continue;
+          }
+          break;
+      }
+
+      expectedNumByteEvents++;
+      ASSERT_TRUE(maybeByteEvent.has_value());
+      auto& byteEvent = maybeByteEvent.value();
+
+      EXPECT_EQ(byteEventType, byteEvent.type);
+      EXPECT_EQ(expectedOffset, byteEvent.offset);
+      EXPECT_GE(std::chrono::steady_clock::now(), byteEvent.ts);
+      EXPECT_LT(
+          std::chrono::steady_clock::now() - std::chrono::seconds(60),
+          byteEvent.ts);
+      EXPECT_FALSE(byteEvent.maybeWriteFlags.has_value());
+      // don't check xTimestampRequested fields to save time with CHECK_DEATH
+      // already checked in AsyncSocketByteEventTest::CheckByteEventDetails
+
+      EXPECT_TRUE(byteEvent.maybeSoftwareTs.has_value());
+      EXPECT_FALSE(byteEvent.maybeHardwareTs.has_value());
+    }
+  }
+
+  // should have at least expectedNumByteEvents
+  // may be more if writes were split up by kernel
+  EXPECT_THAT(observer->byteEvents, SizeIs(Ge(expectedNumByteEvents)));
+}
+
+class AsyncSocketByteEventHelperTest : public ::testing::Test {
+ protected:
+  using ByteEventType = AsyncTransport::ByteEvent::Type;
+
+  /**
+   * Wrapper around a vector containing cmsg header + data.
+   */
+  class WrappedCMsg {
+   public:
+    explicit WrappedCMsg(std::vector<char>&& data) : data_(std::move(data)) {}
+
+    operator const struct cmsghdr &() {
+      return *reinterpret_cast<struct cmsghdr*>(data_.data());
+    }
+
+   protected:
+    std::vector<char> data_;
+  };
+
+  /**
+   * Wrapper around a vector containing cmsg header + data.
+   */
+  class WrappedSockExtendedErrTsCMsg : public WrappedCMsg {
+   public:
+    using WrappedCMsg::WrappedCMsg;
+
+    // ts[0] -> software timestamp
+    // ts[1] -> hardware timestamp transformed to userspace time (deprecated)
+    // ts[2] -> hardware timestamp
+
+    void setSoftwareTimestamp(
+        const std::chrono::seconds seconds,
+        const std::chrono::nanoseconds nanoseconds) {
+      struct cmsghdr* cmsg{reinterpret_cast<cmsghdr*>(data_.data())};
+      struct scm_timestamping* tss{
+          reinterpret_cast<struct scm_timestamping*>(CMSG_DATA(cmsg))};
+      tss->ts[0].tv_sec = seconds.count();
+      tss->ts[0].tv_nsec = nanoseconds.count();
+    }
+
+    void setHardwareTimestamp(
+        const std::chrono::seconds seconds,
+        const std::chrono::nanoseconds nanoseconds) {
+      struct cmsghdr* cmsg{reinterpret_cast<cmsghdr*>(data_.data())};
+      struct scm_timestamping* tss{
+          reinterpret_cast<struct scm_timestamping*>(CMSG_DATA(cmsg))};
+      tss->ts[2].tv_sec = seconds.count();
+      tss->ts[2].tv_nsec = nanoseconds.count();
+    }
+  };
+
+  static std::vector<char> cmsgData(int level, int type, size_t len) {
+    std::vector<char> data(CMSG_LEN(len), 0);
+    struct cmsghdr* cmsg{reinterpret_cast<cmsghdr*>(data.data())};
+    cmsg->cmsg_level = level;
+    cmsg->cmsg_type = type;
+    cmsg->cmsg_len = CMSG_LEN(len);
+    return data;
+  }
+
+  static WrappedSockExtendedErrTsCMsg cmsgForSockExtendedErrTimestamping() {
+    return WrappedSockExtendedErrTsCMsg(
+        cmsgData(SOL_SOCKET, SO_TIMESTAMPING, sizeof(struct scm_timestamping)));
+  }
+
+  static WrappedCMsg cmsgForScmTimestamping(
+      const uint32_t type, const uint32_t kernelByteOffset) {
+    auto data = cmsgData(SOL_IP, IP_RECVERR, sizeof(struct sock_extended_err));
+    struct cmsghdr* cmsg{reinterpret_cast<cmsghdr*>(data.data())};
+    struct sock_extended_err* serr{
+        reinterpret_cast<struct sock_extended_err*>(CMSG_DATA(cmsg))};
+    serr->ee_errno = ENOMSG;
+    serr->ee_origin = SO_EE_ORIGIN_TIMESTAMPING;
+    serr->ee_info = type;
+    serr->ee_data = kernelByteOffset;
+    return WrappedCMsg(std::move(data));
+  }
+};
+
+TEST_F(AsyncSocketByteEventHelperTest, ByteOffsetThenTs) {
+  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_TRUE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, TsThenByteOffset) {
+  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+
+  EXPECT_FALSE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+  EXPECT_TRUE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, ByteEventsDisabled) {
+  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = false;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+
+  // fails because disabled
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_FALSE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+
+  // enable, try again to prove this works
+  helper.byteEventsEnabled = true;
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_TRUE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, IgnoreUnsupportedEvent) {
+  auto scmType = SCM_TSTAMP_ACK + 10; // imaginary new type of SCM event
+  auto scmTs = cmsgForScmTimestamping(scmType, 0);
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+
+  // unsupported event is eaten
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_FALSE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+
+  // change type, try again to prove this works
+  scmTs = cmsgForScmTimestamping(SCM_TSTAMP_ACK, 0);
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_TRUE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, ErrorDoubleScmCmsg) {
+  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_THROW(
+      helper.processCmsg(scmTs, 1 /* rawBytesWritten */),
+      AsyncSocket::ByteEventHelper::Exception);
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, ErrorDoubleSerrCmsg) {
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+  EXPECT_FALSE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+  EXPECT_THROW(
+      helper.processCmsg(serrTs, 1 /* rawBytesWritten */),
+      AsyncSocket::ByteEventHelper::Exception);
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, ErrorExceptionSet) {
+  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+  helper.maybeEx = AsyncSocketException(
+      AsyncSocketException::AsyncSocketExceptionType::UNKNOWN, "");
+
+  // fails due to existing exception
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_FALSE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+
+  // delete the exception, then repeat to prove exception was blocking
+  helper.maybeEx = folly::none;
+  EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
+  EXPECT_TRUE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
+}
+
+struct AsyncSocketByteEventHelperTimestampTestParams {
+  AsyncSocketByteEventHelperTimestampTestParams(
+      uint32_t scmType,
+      AsyncTransport::ByteEvent::Type expectedByteEventType,
+      bool includeSoftwareTs,
+      bool includeHardwareTs)
+      : scmType(scmType),
+        expectedByteEventType(expectedByteEventType),
+        includeSoftwareTs(includeSoftwareTs),
+        includeHardwareTs(includeHardwareTs) {}
+  uint32_t scmType{0};
+  AsyncTransport::ByteEvent::Type expectedByteEventType;
+  bool includeSoftwareTs{false};
+  bool includeHardwareTs{false};
+};
+
+class AsyncSocketByteEventHelperTimestampTest
+    : public AsyncSocketByteEventHelperTest,
+      public testing::WithParamInterface<
+          AsyncSocketByteEventHelperTimestampTestParams> {
+ public:
+  static std::vector<AsyncSocketByteEventHelperTimestampTestParams>
+  getTestingValues() {
+    std::vector<AsyncSocketByteEventHelperTimestampTestParams> vals;
+
+    // software + hardware timestamps
+    {
+      vals.emplace_back(SCM_TSTAMP_SCHED, ByteEventType::SCHED, true, true);
+      vals.emplace_back(SCM_TSTAMP_SND, ByteEventType::TX, true, true);
+      vals.emplace_back(SCM_TSTAMP_ACK, ByteEventType::ACK, true, true);
+    }
+
+    // software ts only
+    {
+      vals.emplace_back(SCM_TSTAMP_SCHED, ByteEventType::SCHED, true, false);
+      vals.emplace_back(SCM_TSTAMP_SND, ByteEventType::TX, true, false);
+      vals.emplace_back(SCM_TSTAMP_ACK, ByteEventType::ACK, true, false);
+    }
+
+    // hardware ts only
+    {
+      vals.emplace_back(SCM_TSTAMP_SCHED, ByteEventType::SCHED, false, true);
+      vals.emplace_back(SCM_TSTAMP_SND, ByteEventType::TX, false, true);
+      vals.emplace_back(SCM_TSTAMP_ACK, ByteEventType::ACK, false, true);
+    }
+
+    return vals;
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(
+    ByteEventTimestampTest,
+    AsyncSocketByteEventHelperTimestampTest,
+    ::testing::ValuesIn(
+        AsyncSocketByteEventHelperTimestampTest::getTestingValues()));
+
+/**
+ * Check timestamp parsing for software and hardware timestamps.
+ */
+TEST_P(AsyncSocketByteEventHelperTimestampTest, CheckEventTimestamps) {
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  const auto hardwareTsSec = std::chrono::seconds(79);
+  const auto hardwareTsNs = std::chrono::nanoseconds(31);
+
+  auto params = GetParam();
+  auto scmTs = cmsgForScmTimestamping(params.scmType, 0);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  if (params.includeSoftwareTs) {
+    serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+  }
+  if (params.includeHardwareTs) {
+    serrTs.setHardwareTimestamp(hardwareTsSec, hardwareTsNs);
+  }
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = 0;
+  folly::Optional<AsyncTransport::ByteEvent> maybeByteEvent;
+  maybeByteEvent = helper.processCmsg(serrTs, 1 /* rawBytesWritten */);
+  EXPECT_FALSE(maybeByteEvent.has_value());
+  maybeByteEvent = helper.processCmsg(scmTs, 1 /* rawBytesWritten */);
+
+  // common checks
+  ASSERT_TRUE(maybeByteEvent.has_value());
+  const auto& byteEvent = *maybeByteEvent;
+  EXPECT_EQ(0, byteEvent.offset);
+  EXPECT_GE(std::chrono::steady_clock::now(), byteEvent.ts);
+
+  EXPECT_EQ(params.expectedByteEventType, byteEvent.type);
+  if (params.includeSoftwareTs) {
+    EXPECT_EQ(softwareTsSec + softwareTsNs, byteEvent.maybeSoftwareTs);
+  }
+  if (params.includeHardwareTs) {
+    EXPECT_EQ(hardwareTsSec + hardwareTsNs, byteEvent.maybeHardwareTs);
+  }
+}
+
+struct AsyncSocketByteEventHelperOffsetTestParams {
+  uint64_t rawBytesWrittenWhenByteEventsEnabled{0};
+  uint64_t byteTimestamped;
+  uint64_t rawBytesWrittenWhenTimestampReceived;
+};
+
+class AsyncSocketByteEventHelperOffsetTest
+    : public AsyncSocketByteEventHelperTest,
+      public testing::WithParamInterface<
+          AsyncSocketByteEventHelperOffsetTestParams> {
+ public:
+  static std::vector<AsyncSocketByteEventHelperOffsetTestParams>
+  getTestingValues() {
+    std::vector<AsyncSocketByteEventHelperOffsetTestParams> vals;
+    const std::array<uint64_t, 5> rawBytesWrittenWhenByteEventsEnabledVals{
+        0, 1, 100, 4294967295, 4294967296};
+    for (const auto& rawBytesWrittenWhenByteEventsEnabled :
+         rawBytesWrittenWhenByteEventsEnabledVals) {
+      auto addParams = [&](auto params) {
+        // check if case is valid based on rawBytesWrittenWhenByteEventsEnabled
+        if (rawBytesWrittenWhenByteEventsEnabled <= params.byteTimestamped) {
+          vals.push_back(params);
+        }
+      };
+
+      // case 1
+      // bytes sent on receipt of timestamp == byte timestamped
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 0;
+        params.rawBytesWrittenWhenTimestampReceived = 0;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 1;
+        params.rawBytesWrittenWhenTimestampReceived = 1;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 101;
+        params.rawBytesWrittenWhenTimestampReceived = 101;
+        addParams(params);
+      }
+
+      // bytes sent on receipt of timestamp > byte timestamped
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 1;
+        params.rawBytesWrittenWhenTimestampReceived = 2;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 101;
+        params.rawBytesWrittenWhenTimestampReceived = 102;
+        addParams(params);
+      }
+
+      // case 2
+      // bytes sent on receipt of timestamp == byte timestamped, boundary test
+      // (boundary is at 2^32)
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967294;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967294;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967295;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967295;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967296;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967296;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967297;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967297;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967298;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967298;
+        addParams(params);
+      }
+
+      // case 3
+      // bytes sent on receipt of timestamp > byte timestamped, boundary test
+      // (boundary is at 2^32)
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967293;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967294;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967294;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967295;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967295;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967296;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967296;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967297;
+        addParams(params);
+      }
+
+      // case 4
+      // bytes sent on receipt of timestamp > byte timestamped, wrap test
+      // (boundary is at 2^32)
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967275;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967305;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967295;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967296;
+        addParams(params);
+      }
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 4294967285;
+        params.rawBytesWrittenWhenTimestampReceived = 4294967305;
+        addParams(params);
+      }
+
+      // case 5
+      // special case when timestamp enabled when bytes transferred > (2^32)
+      // bytes sent on receipt of timestamp == byte timestamped, boundary test
+      // (boundary is at 2^32)
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 6442450943;
+        params.rawBytesWrittenWhenTimestampReceived = 6442450943;
+        addParams(params);
+      }
+
+      // case 6
+      // special case when timestamp enabled when bytes transferred > (2^32)
+      // bytes sent on receipt of timestamp > byte timestamped, boundary test
+      // (boundary is at 2^32)
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 6442450943;
+        params.rawBytesWrittenWhenTimestampReceived = 6442450944;
+        addParams(params);
+      }
+
+      // case 7
+      // special case when timestamp enabled when bytes transferred > (2^32)
+      // bytes sent on receipt of timestamp > byte timestamped, wrap test
+      // (boundary is at 2^32)
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = 6442450943;
+        params.rawBytesWrittenWhenTimestampReceived = 8589934591;
+        addParams(params);
+      }
+    }
+
+    return vals;
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(
+    ByteEventOffsetTest,
+    AsyncSocketByteEventHelperOffsetTest,
+    ::testing::ValuesIn(
+        AsyncSocketByteEventHelperOffsetTest::getTestingValues()));
+
+/**
+ * Check byte offset handling, including boundary cases.
+ *
+ * See AsyncSocket::ByteEventHelper::processCmsg for details.
+ */
+TEST_P(AsyncSocketByteEventHelperOffsetTest, CheckCalculatedOffset) {
+  auto params = GetParam();
+
+  // because we use SOF_TIMESTAMPING_OPT_ID, byte offsets delivered from the
+  // kernel are offset (relative to bytes written by AsyncSocket) by the number
+  // of bytes AsyncSocket had written to the socket when enabling timestamps
+  //
+  // here we calculate what the kernel offset would be for the given byte offset
+  const uint64_t bytesPerOffsetWrap =
+      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+
+  auto kernelByteOffset =
+      params.byteTimestamped - params.rawBytesWrittenWhenByteEventsEnabled;
+  if (kernelByteOffset > 0) {
+    kernelByteOffset = kernelByteOffset % bytesPerOffsetWrap;
+  }
+
+  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, kernelByteOffset);
+  const auto softwareTsSec = std::chrono::seconds(59);
+  const auto softwareTsNs = std::chrono::nanoseconds(11);
+  auto serrTs = cmsgForSockExtendedErrTimestamping();
+  serrTs.setSoftwareTimestamp(softwareTsSec, softwareTsNs);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled =
+      params.rawBytesWrittenWhenByteEventsEnabled;
+
+  EXPECT_FALSE(helper.processCmsg(
+      scmTs,
+      params.rawBytesWrittenWhenTimestampReceived /* rawBytesWritten */));
+  const auto maybeByteEvent = helper.processCmsg(
+      serrTs,
+      params.rawBytesWrittenWhenTimestampReceived /* rawBytesWritten */);
+  ASSERT_TRUE(maybeByteEvent.has_value());
+  const auto& byteEvent = *maybeByteEvent;
+
+  EXPECT_EQ(params.byteTimestamped, byteEvent.offset);
+  EXPECT_EQ(softwareTsSec + softwareTsNs, byteEvent.maybeSoftwareTs);
+}
+
+#endif // FOLLY_HAVE_SO_TIMESTAMPING
 
 TEST(AsyncSocket, LifecycleObserverDetachAndAttachEvb) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
