@@ -590,19 +590,27 @@ class TestData : public folly::RequestData {
 };
 
 TEST(ThreadPoolExecutorTest, RequestContext) {
-  CPUThreadPoolExecutor executor(1);
-
   RequestContextScopeGuard rctx; // create new request context for this scope
   EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
   RequestContext::get()->setContextData("test", std::make_unique<TestData>(42));
   auto data = RequestContext::get()->getContextData("test");
   EXPECT_EQ(42, dynamic_cast<TestData*>(data)->data_);
 
-  executor.add([] {
-    auto data2 = RequestContext::get()->getContextData("test");
-    ASSERT_TRUE(data2 != nullptr);
-    EXPECT_EQ(42, dynamic_cast<TestData*>(data2)->data_);
-  });
+  struct VerifyRequestContext {
+    ~VerifyRequestContext() {
+      auto data2 = RequestContext::get()->getContextData("test");
+      EXPECT_TRUE(data2 != nullptr);
+      if (data2 != nullptr) {
+        EXPECT_EQ(42, dynamic_cast<TestData*>(data2)->data_);
+      }
+    }
+  };
+
+  {
+    CPUThreadPoolExecutor executor(1);
+    executor.add([] { VerifyRequestContext(); });
+    executor.add([x = VerifyRequestContext()] {});
+  }
 }
 
 std::atomic<int> g_sequence{};
