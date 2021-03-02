@@ -86,7 +86,8 @@ REGISTER_TYPED_TEST_CASE_P(
     RunOnDestructionAfterHandleDestroyed,
     RunOnDestructionAddCallbackWithinCallback,
     InternalExternalCallbackOrderTest,
-    pidCheck);
+    pidCheck,
+    EventBaseExecutionObserver);
 
 struct DefaultBackendProvider {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {

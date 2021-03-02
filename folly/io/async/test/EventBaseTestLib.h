@@ -204,6 +204,27 @@ FOLLY_ALWAYS_INLINE void scheduleEvents(
   }
 }
 
+class TestObserver : public folly::ExecutionObserver {
+ public:
+  virtual void starting(uintptr_t /* id */) noexcept override {
+    if (nestedStart_ == 0) {
+      nestedStart_ = 1;
+    }
+    numStartingCalled_++;
+  }
+  virtual void stopped(uintptr_t /* id */) noexcept override {
+    nestedStart_--;
+    numStoppedCalled_++;
+  }
+  virtual void runnable(uintptr_t /* id */) noexcept override {
+    // Unused
+  }
+
+  int nestedStart_{0};
+  int numStartingCalled_{0};
+  int numStoppedCalled_{0};
+};
+
 class TestHandler : public folly::EventHandler {
  public:
   TestHandler(folly::EventBase* eventBase, int fd)
@@ -1993,7 +2014,6 @@ TYPED_TEST_P(EventBaseTest, EventBaseThreadLoop) {
   SKIP_IF(!eventBasePtr) << "Backend not available";
   folly::EventBase& base = *eventBasePtr;
   bool ran = false;
-
   base.runInEventBaseThread([&]() { ran = true; });
   base.loop();
 
@@ -2404,6 +2424,29 @@ TYPED_TEST_P(EventBaseTest1, RunOnDestructionAddCallbackWithinCallback) {
     });
   }
   EXPECT_EQ(2, callbacksCalled);
+}
+
+TYPED_TEST_P(EventBaseTest1, EventBaseExecutionObserver) {
+  auto eventBasePtr = getEventBase<TypeParam>();
+  SKIP_IF(!eventBasePtr) << "Backend not available";
+  folly::EventBase& base = *eventBasePtr;
+  bool ranBeforeLoop = false;
+  bool ran = false;
+  TestObserver observer;
+  base.setExecutionObserver(&observer);
+
+  CountedLoopCallback cb(&base, 1, [&]() { ranBeforeLoop = true; });
+  base.runBeforeLoop(&cb);
+
+  base.runInEventBaseThread(
+      [&]() { base.runInEventBaseThread([&]() { ran = true; }); });
+  base.loop();
+
+  ASSERT_TRUE(ranBeforeLoop);
+  ASSERT_TRUE(ran);
+  ASSERT_EQ(0, observer.nestedStart_);
+  ASSERT_EQ(4, observer.numStartingCalled_);
+  ASSERT_EQ(4, observer.numStoppedCalled_);
 }
 } // namespace test
 } // namespace folly

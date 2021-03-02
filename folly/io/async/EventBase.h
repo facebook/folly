@@ -873,6 +873,8 @@ class EventBase : public TimeoutManager,
 
   bool loopBody(int flags = 0, bool ignoreKeepAlive = false);
 
+  void runLoopCallbacks(LoopCallbackList& currentCallbacks);
+
   // executes any callbacks queued by runInLoop(); returns false if none found
   bool runLoopCallbacks();
 

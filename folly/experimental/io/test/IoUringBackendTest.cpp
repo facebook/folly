@@ -1185,7 +1185,8 @@ REGISTER_TYPED_TEST_CASE_P(
     RunOnDestructionAfterHandleDestroyed,
     RunOnDestructionAddCallbackWithinCallback,
     InternalExternalCallbackOrderTest,
-    pidCheck);
+    pidCheck,
+    EventBaseExecutionObserver);
 
 // Instantiate the non registered fd tests
 INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest, IoUringBackendProvider);
