@@ -410,6 +410,18 @@ TEST(Dynamic, StringBasics) {
   EXPECT_FALSE(str.empty());
   str = "";
   EXPECT_TRUE(str.empty());
+
+  dynamic std_str = std::string("hello world");
+  EXPECT_EQ(11, std_str.size());
+  EXPECT_FALSE(std_str.empty());
+
+  dynamic stringpiece = folly::StringPiece("hello world");
+  EXPECT_EQ(11, stringpiece.size());
+  EXPECT_FALSE(stringpiece.empty());
+
+  dynamic vectorstring = std::vector<char>{'a', 'b', 'c', 'd', 'e', 'f'};
+  EXPECT_EQ(6, vectorstring.size());
+  EXPECT_FALSE(vectorstring.empty());
 }
 
 TEST(Dynamic, ArrayBasics) {

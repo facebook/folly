@@ -77,6 +77,12 @@ struct TypeError;
 
 //////////////////////////////////////////////////////////////////////
 
+namespace dynamic_detail {
+template <typename T>
+using detect_construct_string = decltype(std::string(
+    FOLLY_DECLVAL(T const&).data(), FOLLY_DECLVAL(T const&).size()));
+}
+
 struct dynamic : private boost::operators<dynamic> {
   enum Type {
     NULLT,
@@ -167,9 +173,13 @@ struct dynamic : private boost::operators<dynamic> {
    * String compatibility constructors.
    */
   /* implicit */ dynamic(std::nullptr_t);
-  /* implicit */ dynamic(StringPiece val);
   /* implicit */ dynamic(char const* val);
   /* implicit */ dynamic(std::string val);
+  template <
+      typename Stringish,
+      typename = std::enable_if_t<
+          is_detected_v<dynamic_detail::detect_construct_string, Stringish>>>
+  /* implicit */ dynamic(Stringish&& s);
 
   /*
    * This is part of the plumbing for array() and object(), above.
@@ -326,8 +336,6 @@ struct dynamic : private boost::operators<dynamic> {
    *
    * These will throw a TypeError if the dynamic is not a string.
    */
-  const char* data() const&;
-  const char* data() && = delete;
   const char* c_str() const&;
   const char* c_str() && = delete;
   StringPiece stringPiece() const;

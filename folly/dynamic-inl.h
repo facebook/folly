@@ -27,6 +27,7 @@
 
 namespace folly {
 namespace detail {
+
 struct DynamicHasher {
   using is_transparent = void;
 
@@ -329,16 +330,17 @@ inline dynamic::dynamic(ObjectMaker (*)()) : type_(OBJECT) {
   new (getAddress<ObjectImpl>()) ObjectImpl();
 }
 
-inline dynamic::dynamic(StringPiece s) : type_(STRING) {
-  new (&u_.string) std::string(s.data(), s.size());
-}
-
 inline dynamic::dynamic(char const* s) : type_(STRING) {
   new (&u_.string) std::string(s);
 }
 
 inline dynamic::dynamic(std::string s) : type_(STRING) {
   new (&u_.string) std::string(std::move(s));
+}
+
+template <typename Stringish, typename>
+inline dynamic::dynamic(Stringish&& s) : type_(STRING) {
+  new (&u_.string) std::string(s.data(), s.size());
 }
 
 inline dynamic::dynamic(ObjectMaker&& maker) : type_(OBJECT) {
@@ -535,9 +537,6 @@ inline bool dynamic::getBool() && {
   return get<bool>();
 }
 
-inline const char* dynamic::data() const& {
-  return get<std::string>().data();
-}
 inline const char* dynamic::c_str() const& {
   return get<std::string>().c_str();
 }

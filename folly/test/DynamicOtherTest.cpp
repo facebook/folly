@@ -38,11 +38,10 @@ TEST(Dynamic, StringPtrs) {
   dynamic nullStr = folly::parseJson("\"foo\\u0000bar\"");
 
   EXPECT_EQ(0, strcmp(str.c_str(), "12.0"));
-  EXPECT_EQ(0, strncmp(str.data(), "12.0", str.asString().length()));
+  EXPECT_EQ(0, strncmp(str.c_str(), "12.0", str.asString().length()));
   EXPECT_EQ(str.stringPiece(), "12.0");
 
   EXPECT_THROW(num.c_str(), TypeError);
-  EXPECT_THROW(num.data(), TypeError);
   EXPECT_THROW(num.stringPiece(), TypeError);
 
   EXPECT_EQ(nullStr.stringPiece(), folly::StringPiece("foo\0bar", 7));
