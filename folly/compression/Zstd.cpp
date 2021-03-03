@@ -30,8 +30,8 @@
 #include <folly/compression/Utils.h>
 
 static_assert(
-    ZSTD_VERSION_NUMBER >= 10302,
-    "zstd-1.3.2 is the minimum supported zstd version.");
+    ZSTD_VERSION_NUMBER >= 10400,
+    "zstd-1.4.0 is the minimum supported zstd version.");
 
 using folly::io::compression::detail::dataStartsWithLE;
 using folly::io::compression::detail::prefixToStringLE;
@@ -42,22 +42,6 @@ namespace folly {
 namespace io {
 namespace zstd {
 namespace {
-
-// Compatibility helpers for zstd versions < 1.4.0
-#if ZSTD_VERSION_NUMBER < 10400
-
-#define ZSTD_CCtxParams_setParameter ZSTD_CCtxParam_setParameter
-
-#endif
-
-// Compatibility helpers for zstd versions < 1.3.8.
-#if ZSTD_VERSION_NUMBER < 10308
-
-#define ZSTD_compressStream2 ZSTD_compress_generic
-#define ZSTD_c_compressionLevel ZSTD_p_compressionLevel
-#define ZSTD_c_contentSizeFlag ZSTD_p_contentSizeFlag
-
-#endif
 
 size_t zstdThrowIfError(size_t rc) {
   if (!ZSTD_isError(rc)) {
@@ -237,16 +221,7 @@ Options::Options(int level) : params_(ZSTD_createCCtxParams()), level_(level) {
   if (params_ == nullptr) {
     throw std::bad_alloc{};
   }
-#if ZSTD_VERSION_NUMBER >= 10304
   zstdThrowIfError(ZSTD_CCtxParams_init(params_.get(), level));
-#else
-  zstdThrowIfError(ZSTD_initCCtxParams(params_.get(), level));
-  set(ZSTD_c_contentSizeFlag, 1);
-#endif
-  // zstd-1.3.4 is buggy and only disables Huffman decompression for negative
-  // compression levels if this call is present. This call is begign in other
-  // versions.
-  set(ZSTD_c_compressionLevel, level);
 }
 
 void Options::set(ZSTD_cParameter param, unsigned value) {
