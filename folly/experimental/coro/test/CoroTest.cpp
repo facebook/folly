@@ -362,7 +362,7 @@ template <int value>
 struct AwaitableInt {
   bool await_ready() const { return true; }
 
-  bool await_suspend(std::experimental::coroutine_handle<>) {
+  bool await_suspend(coro::coroutine_handle<>) {
     LOG(FATAL) << "Should never be called.";
   }
 

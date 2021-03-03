@@ -2611,7 +2611,7 @@ class FutureAwaiter {
   }
 
   FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
-      std::experimental::coroutine_handle<> h) {
+      coro::coroutine_handle<> h) {
     // FutureAwaiter may get destroyed as soon as the callback is executed.
     // Make sure the future object doesn't get destroyed until setCallback_
     // returns.

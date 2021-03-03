@@ -71,7 +71,7 @@ inline void popAsyncStackFrameCallee(
 
 template <typename Promise>
 void resumeCoroutineWithNewAsyncStackRoot(
-    std::experimental::coroutine_handle<Promise> h) noexcept {
+    coro::coroutine_handle<Promise> h) noexcept {
   resumeCoroutineWithNewAsyncStackRoot(h, h.promise().getAsyncFrame());
 }
 

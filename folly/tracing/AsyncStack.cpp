@@ -172,8 +172,7 @@ AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept {
 #if FOLLY_HAS_COROUTINES
 
 FOLLY_NOINLINE void resumeCoroutineWithNewAsyncStackRoot(
-    std::experimental::coroutine_handle<> h,
-    folly::AsyncStackFrame& frame) noexcept {
+    coro::coroutine_handle<> h, folly::AsyncStackFrame& frame) noexcept {
   detail::ScopedAsyncStackRoot root;
   root.activateFrame(frame);
   h.resume();

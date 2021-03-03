@@ -1324,7 +1324,7 @@ bool operator>(const Value& other, const Expected<Value, Error>&) = delete;
 // Enable the use of folly::Expected with `co_await`
 // Inspired by https://github.com/toby-allsopp/coroutine_monad
 #if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
+#include <folly/experimental/coro/Coroutine.h>
 
 namespace folly {
 namespace expected_detail {
@@ -1357,10 +1357,8 @@ struct Promise {
   // or:
   //    auto retobj = p.get_return_object(); // clang
   PromiseReturn<Value, Error> get_return_object() noexcept { return *this; }
-  std::experimental::suspend_never initial_suspend() const noexcept {
-    return {};
-  }
-  std::experimental::suspend_never final_suspend() const noexcept { return {}; }
+  coro::suspend_never initial_suspend() const noexcept { return {}; }
+  coro::suspend_never final_suspend() const noexcept { return {}; }
   template <typename U = Value>
   void return_value(U&& u) {
     value_->emplace(static_cast<U&&>(u));
@@ -1383,7 +1381,7 @@ struct Awaitable {
 
   // Explicitly only allow suspension into a Promise
   template <typename U>
-  void await_suspend(std::experimental::coroutine_handle<Promise<U, Error>> h) {
+  void await_suspend(coro::coroutine_handle<Promise<U, Error>> h) {
     *h.promise().value_ = makeUnexpected(std::move(o_.error()));
     // Abort the rest of the coroutine. resume() is not going to be called
     h.destroy();

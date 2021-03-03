@@ -257,7 +257,7 @@ AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept;
 // on the current thread and setting the specified AsyncStackFrame as
 // the current async frame.
 FOLLY_NOINLINE void resumeCoroutineWithNewAsyncStackRoot(
-    std::experimental::coroutine_handle<> h, AsyncStackFrame& frame) noexcept;
+    coro::coroutine_handle<> h, AsyncStackFrame& frame) noexcept;
 
 // Resume the specified coroutine after installing a new AsyncStackRoot
 // on the current thread and setting the coroutine's associated
@@ -265,7 +265,7 @@ FOLLY_NOINLINE void resumeCoroutineWithNewAsyncStackRoot(
 // current async frame.
 template <typename Promise>
 void resumeCoroutineWithNewAsyncStackRoot(
-    std::experimental::coroutine_handle<Promise> h) noexcept;
+    coro::coroutine_handle<Promise> h) noexcept;
 
 #endif // FOLLY_HAS_COROUTINES
 

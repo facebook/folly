@@ -274,14 +274,14 @@ class BatonAwaitableWaiter : public Baton::Waiter {
 
   void await_resume() {}
 
-  void await_suspend(std::experimental::coroutine_handle<> h) {
+  void await_suspend(coro::coroutine_handle<> h) {
     assert(!h_);
     h_ = std::move(h);
     baton_.setWaiter(*this);
   }
 
  private:
-  std::experimental::coroutine_handle<> h_;
+  coro::coroutine_handle<> h_;
   Baton& baton_;
 };
 } // namespace detail

@@ -611,7 +611,7 @@ FOLLY_NAMESPACE_STD_END
 // Enable the use of folly::Optional with `co_await`
 // Inspired by https://github.com/toby-allsopp/coroutine_monad
 #if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
+#include <folly/experimental/coro/Coroutine.h>
 
 namespace folly {
 namespace detail {
@@ -642,10 +642,8 @@ struct OptionalPromise {
   // or:
   //    auto retobj = p.get_return_object(); // clang
   OptionalPromiseReturn<Value> get_return_object() noexcept { return *this; }
-  std::experimental::suspend_never initial_suspend() const noexcept {
-    return {};
-  }
-  std::experimental::suspend_never final_suspend() const noexcept { return {}; }
+  coro::suspend_never initial_suspend() const noexcept { return {}; }
+  coro::suspend_never final_suspend() const noexcept { return {}; }
   template <typename U = Value>
   void return_value(U&& u) {
     *value_ = static_cast<U&&>(u);
@@ -665,8 +663,7 @@ struct OptionalAwaitable {
 
   // Explicitly only allow suspension into an OptionalPromise
   template <typename U>
-  void await_suspend(
-      std::experimental::coroutine_handle<OptionalPromise<U>> h) const {
+  void await_suspend(coro::coroutine_handle<OptionalPromise<U>> h) const {
     // Abort the rest of the coroutine. resume() is not going to be called
     h.destroy();
   }

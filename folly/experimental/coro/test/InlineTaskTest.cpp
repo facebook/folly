@@ -200,7 +200,7 @@ TEST_F(InlineTaskTest, ExceptionsPropagateFromVoidTask) {
   struct MyException : std::exception {};
 
   auto f = []() -> InlineTask<void> {
-    co_await std::experimental::suspend_never{};
+    co_await folly::coro::suspend_never{};
     throw MyException{};
   };
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
@@ -210,7 +210,7 @@ TEST_F(InlineTaskTest, ExceptionsPropagateFromValueTask) {
   struct MyException : std::exception {};
 
   auto f = []() -> InlineTask<int> {
-    co_await std::experimental::suspend_never{};
+    co_await folly::coro::suspend_never{};
     throw MyException{};
   };
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
@@ -220,7 +220,7 @@ TEST_F(InlineTaskTest, ExceptionsPropagateFromRefTask) {
   struct MyException : std::exception {};
 
   auto f = []() -> InlineTask<int&> {
-    co_await std::experimental::suspend_never{};
+    co_await folly::coro::suspend_never{};
     throw MyException{};
   };
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);

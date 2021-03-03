@@ -16,8 +16,8 @@
 
 #include <folly/Portability.h>
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Traits.h>
-#include <experimental/coroutine>
 #include <type_traits>
 
 #if FOLLY_HAS_COROUTINES
@@ -27,39 +27,38 @@ using namespace folly::coro;
 template <typename T>
 struct SomeAwaiter1 {
   bool await_ready();
-  void await_suspend(std::experimental::coroutine_handle<>);
+  void await_suspend(coroutine_handle<>);
   T await_resume();
 };
 
 template <typename T>
 struct SomeAwaiter2 {
   bool await_ready();
-  bool await_suspend(std::experimental::coroutine_handle<>);
+  bool await_suspend(coroutine_handle<>);
   T await_resume();
 };
 
 template <typename T>
 struct SomeAwaiter3 {
   bool await_ready();
-  std::experimental::coroutine_handle<> await_suspend(
-      std::experimental::coroutine_handle<>);
+  coroutine_handle<> await_suspend(coroutine_handle<>);
   T await_resume();
 };
 
 struct MissingAwaitReady {
-  void await_suspend(std::experimental::coroutine_handle<>);
+  void await_suspend(coroutine_handle<>);
   int await_resume();
 };
 
 struct WrongAwaitReadyReturnType {
   void* await_ready();
-  void await_suspend(std::experimental::coroutine_handle<>);
+  void await_suspend(coroutine_handle<>);
   int await_resume();
 };
 
 struct MissingAwaitResume {
   bool await_ready();
-  void await_suspend(std::experimental::coroutine_handle<void>);
+  void await_suspend(coroutine_handle<void>);
 };
 
 struct MemberOperatorCoAwait {

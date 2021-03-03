@@ -28,9 +28,9 @@ class Wait {
    public:
     Wait get_return_object() { return Wait(promise_.get_future()); }
 
-    std::experimental::suspend_never initial_suspend() noexcept { return {}; }
+    folly::coro::suspend_never initial_suspend() noexcept { return {}; }
 
-    std::experimental::suspend_never final_suspend() noexcept { return {}; }
+    folly::coro::suspend_never final_suspend() noexcept { return {}; }
 
     void return_void() { promise_.set_value(); }
 
@@ -69,16 +69,15 @@ class InlineTask {
 
   bool await_ready() const { return false; }
 
-  std::experimental::coroutine_handle<> await_suspend(
-      std::experimental::coroutine_handle<> awaiter) {
+  folly::coro::coroutine_handle<> await_suspend(
+      folly::coro::coroutine_handle<> awaiter) {
     promise_->valuePtr_ = &value_;
     promise_->awaiter_ = std::move(awaiter);
-    return std::experimental::coroutine_handle<promise_type>::from_promise(
-        *promise_);
+    return folly::coro::coroutine_handle<promise_type>::from_promise(*promise_);
   }
 
   T await_resume() {
-    std::experimental::coroutine_handle<promise_type>::from_promise(
+    folly::coro::coroutine_handle<promise_type>::from_promise(
         *std::exchange(promise_, nullptr))
         .destroy();
     T value = std::move(value_);
@@ -96,14 +95,14 @@ class InlineTask {
 
     void unhandled_exception() { std::terminate(); }
 
-    std::experimental::suspend_always initial_suspend() { return {}; }
+    folly::coro::suspend_always initial_suspend() { return {}; }
 
     class FinalSuspender {
      public:
       bool await_ready() noexcept { return false; }
 
       auto await_suspend(
-          std::experimental::coroutine_handle<promise_type> h) noexcept {
+          folly::coro::coroutine_handle<promise_type> h) noexcept {
         return h.promise().awaiter_;
       }
 
@@ -116,7 +115,7 @@ class InlineTask {
     friend class InlineTask;
 
     T* valuePtr_;
-    std::experimental::coroutine_handle<> awaiter_;
+    folly::coro::coroutine_handle<> awaiter_;
   };
 
  private:
@@ -161,16 +160,15 @@ class InlineTaskAllocator {
 
   bool await_ready() const { return false; }
 
-  std::experimental::coroutine_handle<> await_suspend(
-      std::experimental::coroutine_handle<> awaiter) {
+  folly::coro::coroutine_handle<> await_suspend(
+      folly::coro::coroutine_handle<> awaiter) {
     promise_->valuePtr_ = &value_;
     promise_->awaiter_ = std::move(awaiter);
-    return std::experimental::coroutine_handle<promise_type>::from_promise(
-        *promise_);
+    return folly::coro::coroutine_handle<promise_type>::from_promise(*promise_);
   }
 
   T await_resume() {
-    std::experimental::coroutine_handle<promise_type>::from_promise(
+    folly::coro::coroutine_handle<promise_type>::from_promise(
         *std::exchange(promise_, nullptr))
         .destroy();
     T value = std::move(value_);
@@ -205,14 +203,14 @@ class InlineTaskAllocator {
 
     [[noreturn]] void unhandled_exception() noexcept { std::terminate(); }
 
-    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+    folly::coro::suspend_always initial_suspend() noexcept { return {}; }
 
     class FinalSuspender {
      public:
       bool await_ready() noexcept { return false; }
 
       auto await_suspend(
-          std::experimental::coroutine_handle<promise_type> h) noexcept {
+          folly::coro::coroutine_handle<promise_type> h) noexcept {
         return h.promise().awaiter_;
       }
 
@@ -225,7 +223,7 @@ class InlineTaskAllocator {
     friend class InlineTaskAllocator;
 
     T* valuePtr_;
-    std::experimental::coroutine_handle<> awaiter_;
+    folly::coro::coroutine_handle<> awaiter_;
   };
 
  private:
