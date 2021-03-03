@@ -851,8 +851,6 @@ jobs:
             )
 
             getdeps = f"{py3} build/fbcode_builder/getdeps.py"
-            if not args.disallow_system_packages:
-                getdeps += " --allow-system-packages"
 
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
@@ -878,11 +876,6 @@ jobs:
                 # that we want it to use them!
                 out.write("    - name: Fix Git config\n")
                 out.write("      run: git config --system core.longpaths true\n")
-            elif not args.disallow_system_packages:
-                out.write("    - name: Install system deps\n")
-                out.write(
-                    f"      run: sudo {getdeps} install-system-deps --recursive {manifest.name}\n"
-                )
 
             projects = loader.manifests_in_dependency_order()
 
