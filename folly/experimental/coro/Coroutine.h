@@ -27,7 +27,11 @@
 
 #if FOLLY_HAS_COROUTINES
 
+#if __has_include(<coroutine>)
+#include <coroutine>
+#else
 #include <experimental/coroutine>
+#endif
 
 #endif // FOLLY_HAS_COROUTINES
 
@@ -43,13 +47,19 @@
 
 namespace folly::coro {
 
-using std::experimental::coroutine_handle;
-using std::experimental::coroutine_traits;
-using std::experimental::noop_coroutine;
-using std::experimental::noop_coroutine_handle;
-using std::experimental::noop_coroutine_promise;
-using std::experimental::suspend_always;
-using std::experimental::suspend_never;
+#if __has_include(<coroutine>)
+namespace impl = std;
+#else
+namespace impl = std::experimental;
+#endif
+
+using impl::coroutine_handle;
+using impl::coroutine_traits;
+using impl::noop_coroutine;
+using impl::noop_coroutine_handle;
+using impl::noop_coroutine_promise;
+using impl::suspend_always;
+using impl::suspend_never;
 
 //  ready_awaitable
 //
