@@ -395,6 +395,13 @@ MmapPtr allocateStack(ucontext_t* oucp, size_t pageSize) {
 
 } // namespace
 
+FOLLY_PUSH_WARNING
+
+// On Apple platforms, some ucontext methods that are used here are deprecated.
+#ifdef __APPLE__
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+#endif
+
 void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
   if (pageSizeUnchecked_ <= 0) {
     return;
@@ -430,6 +437,8 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
     return;
   }
 }
+
+FOLLY_POP_WARNING
 
 #endif // FOLLY_HAVE_SWAPCONTEXT
 
