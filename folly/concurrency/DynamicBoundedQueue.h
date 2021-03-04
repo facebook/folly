@@ -444,7 +444,7 @@ class DynamicBoundedQueue {
   // Calculation of threshold to move credits in bulk from consumers
   // to producers
   constexpr Weight threshold(Weight capacity) const noexcept {
-    return capacity / 10;
+    return (capacity + 9) / 10;
   }
 
   // Functions called frequently by producers
