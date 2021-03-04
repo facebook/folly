@@ -197,6 +197,9 @@ struct MemoryIdler {
           _ret = rv;
           return true;
         }
+      } else {
+        // deadline is before the idle timeout, never flush in this case
+        return false;
       }
     }
 
