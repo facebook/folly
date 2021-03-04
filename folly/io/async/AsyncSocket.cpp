@@ -351,6 +351,8 @@ void AsyncSocket::SendMsgParamsCallback::getAncillaryData(
   cmsg->cmsg_type = SO_TIMESTAMPING;
   cmsg->cmsg_len = CMSG_LEN(sizeof(uint32_t));
   memcpy(CMSG_DATA(cmsg), &sofFlags, sizeof(sofFlags));
+#else
+  (void)data;
 #endif
   return;
 }
@@ -362,6 +364,9 @@ uint32_t AsyncSocket::SendMsgParamsCallback::getAncillaryDataSize(
       byteEventsEnabled) {
     return CMSG_LEN(sizeof(uint32_t));
   }
+#else
+  (void)flags;
+  (void)byteEventsEnabled;
 #endif
   return 0;
 }
@@ -487,6 +492,9 @@ AsyncSocket::ByteEventHelper::processCmsg(
     event.maybeHardwareTs = state.maybeHardwareTs;
     return event;
   }
+#else
+  (void)cmsg;
+  (void)rawBytesWritten;
 #endif // FOLLY_HAVE_SO_TIMESTAMPING
   return folly::none;
 }
