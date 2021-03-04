@@ -249,7 +249,7 @@ class Range {
               std::declval<Container const&>().data() +
               std::declval<Container const&>().size()))>
   /* implicit */ constexpr Range(Container const& container)
-      : b_(container.data()), e_(b_ + container.size()) {}
+      : Range(container.data(), container.size()) {}
 
   template <
       class Container,
