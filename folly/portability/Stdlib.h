@@ -35,6 +35,7 @@ extern "C" {
 // code that needs them.
 #define PATH_MAX _MAX_PATH
 #define MAXPATHLEN _MAX_PATH
+#define NAME_MAX _MAX_FNAME
 
 char* mktemp(char* tn);
 char* mkdtemp(char* tn);
