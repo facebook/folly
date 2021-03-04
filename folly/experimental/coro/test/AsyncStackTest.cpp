@@ -156,12 +156,14 @@ FOLLY_NOINLINE void normalFunction() {
   //  4) makeRefBlockingWaitTask()
   //  5) blockingWait()
   //  6) MixedStackWalk_Test::TestBody()
+  // Note that some extra frames could be in-between these depending on inlining
+  // of std library primitives (e.g. coroutine_handle).
 
-  CHECK_EQ(6, stack1.size());
+  CHECK_LE(6, stack1.size());
 
   auto stack2 = walk_stack();
 
-  CHECK_EQ(6, stack2.size());
+  CHECK_LE(6, stack2.size());
 
   // All except the topmost stack-frame should be the same.
   CHECK(std::equal(
