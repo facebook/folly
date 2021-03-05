@@ -19,46 +19,113 @@
 #include <algorithm>
 #include <cstring>
 
-#include <folly/detail/Demangle.h>
 #include <folly/lang/CString.h>
 #include <folly/portability/Config.h>
 
-#if FOLLY_DETAIL_HAVE_DEMANGLE_H
-
+#if __has_include(<cxxabi.h>)
 #include <cxxabi.h>
-
 #endif
+
+//  The headers <libiberty.h> (binutils) and <string.h> (glibc) both declare the
+//  symbol basename. Unfortunately, the declarations are different. So including
+//  both headers in the same translation unit fails due to the two conflicting
+//  declarations. Since <demangle.h> includes <libiberty.h> we must be careful.
+#if __has_include(<demangle.h>)
+#pragma push_macro("HAVE_DECL_BASENAME")
+#define HAVE_DECL_BASENAME 1
+#include <demangle.h> // @manual
+#pragma pop_macro("HAVE_DECL_BASENAME")
+#endif
+
+//  try to find cxxabi demangle
+//
+//  prefer using a weak symbol
+
+#if FOLLY_HAVE_WEAK_SYMBOLS
+
+namespace __cxxabiv1 {
+extern "C" FOLLY_ATTR_WEAK char* __cxa_demangle(
+    char const*, char*, size_t*, int*);
+}
+
+static auto const cxxabi_demangle = __cxxabiv1::__cxa_demangle;
+
+#else // FOLLY_HAVE_WEAK_SYMBOLS
+
+static constexpr auto cxxabi_demangle = static_cast<char* (*)(...)>(nullptr);
+
+#endif // FOLLY_HAVE_WEAK_SYMBOLS
+
+//  try to find liberty demangle
+//
+//  cannot use a weak symbol since it may be the only referenced symbol in
+//  liberty
+//
+//  in contrast with cxxabi, where there are certainly other referenced symbols
+
+#if __has_include(<demangle.h>)
+
+static constexpr auto liberty_demangle = cplus_demangle_v3_callback;
+
+#if defined(DMGL_NO_RECURSE_LIMIT)
+static constexpr auto liberty_demangle_options_no_recurse_limit =
+    DMGL_NO_RECURSE_LIMIT;
+#else
+static constexpr auto liberty_demangle_options_no_recurse_limit = 0;
+#endif
+
+static constexpr auto liberty_demangle_options = //
+    DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES | //
+    liberty_demangle_options_no_recurse_limit;
+
+#else // __has_include(<demangle.h>)
+
+static constexpr auto liberty_demangle = static_cast<int (*)(...)>(nullptr);
+static constexpr auto liberty_demangle_options = 0;
+
+#endif // __has_include(<demangle.h>)
+
+//  implementations
 
 namespace folly {
 
-#if FOLLY_DETAIL_HAVE_DEMANGLE_H
+//  reinterpret-cast currently evades -Waddress
+bool const demangle_build_has_cxxabi = cxxabi_demangle;
+bool const demangle_build_has_liberty =
+    reinterpret_cast<void*>(liberty_demangle);
 
 fbstring demangle(const char* name) {
   if (!name) {
     return fbstring();
   }
-#ifdef FOLLY_DEMANGLE_MAX_SYMBOL_SIZE
-  // GCC's __cxa_demangle() uses on-stack data structures for the
-  // parser state which are linear in the number of components of the
-  // symbol. For extremely long symbols, this can cause a stack
-  // overflow. We set an arbitrary symbol length limit above which we
-  // just return the mangled name.
-  size_t mangledLen = strlen(name);
-  if (mangledLen > FOLLY_DEMANGLE_MAX_SYMBOL_SIZE) {
-    return fbstring(name, mangledLen);
-  }
-#endif
 
-  int status;
-  size_t len = 0;
-  // malloc() memory for the demangled type name
-  char* demangled = abi::__cxa_demangle(name, nullptr, &len, &status);
-  if (status != 0) {
-    return name;
+  if (demangle_max_symbol_size) {
+    // GCC's __cxa_demangle() uses on-stack data structures for the
+    // parser state which are linear in the number of components of the
+    // symbol. For extremely long symbols, this can cause a stack
+    // overflow. We set an arbitrary symbol length limit above which we
+    // just return the mangled name.
+    size_t mangledLen = strlen(name);
+    if (mangledLen > demangle_max_symbol_size) {
+      return fbstring(name, mangledLen);
+    }
   }
-  // len is the length of the buffer (including NUL terminator and maybe
-  // other junk)
-  return fbstring(demangled, strlen(demangled), len, AcquireMallocatedString());
+
+  if (cxxabi_demangle) {
+    int status;
+    size_t len = 0;
+    // malloc() memory for the demangled type name
+    char* demangled = cxxabi_demangle(name, nullptr, &len, &status);
+    if (status != 0) {
+      return name;
+    }
+    // len is the length of the buffer (including NUL terminator and maybe
+    // other junk)
+    return fbstring(
+        demangled, strlen(demangled), len, AcquireMallocatedString());
+  } else {
+    return fbstring(name);
+  }
 }
 
 namespace {
@@ -81,45 +148,37 @@ void demangleCallback(const char* str, size_t size, void* p) {
 } // namespace
 
 size_t demangle(const char* name, char* out, size_t outSize) {
-#ifdef FOLLY_DEMANGLE_MAX_SYMBOL_SIZE
-  size_t mangledLen = strlen(name);
-  if (mangledLen > FOLLY_DEMANGLE_MAX_SYMBOL_SIZE) {
-    if (outSize) {
-      size_t n = std::min(mangledLen, outSize - 1);
-      memcpy(out, name, n);
-      out[n] = '\0';
+  if (demangle_max_symbol_size) {
+    size_t mangledLen = strlen(name);
+    if (mangledLen > demangle_max_symbol_size) {
+      if (outSize) {
+        size_t n = std::min(mangledLen, outSize - 1);
+        memcpy(out, name, n);
+        out[n] = '\0';
+      }
+      return mangledLen;
     }
-    return mangledLen;
   }
-#endif
 
-  DemangleBuf dbuf;
-  dbuf.dest = out;
-  dbuf.remaining = outSize ? outSize - 1 : 0; // leave room for null term
-  dbuf.total = 0;
+  if (reinterpret_cast<void*>(liberty_demangle)) {
+    DemangleBuf dbuf;
+    dbuf.dest = out;
+    dbuf.remaining = outSize ? outSize - 1 : 0; // leave room for null term
+    dbuf.total = 0;
 
-  // Unlike most library functions, this returns 1 on success and 0 on failure
-  int status =
-      detail::cplus_demangle_v3_callback_wrapper(name, demangleCallback, &dbuf);
-  if (status == 0) { // failed, return original
+    // Unlike most library functions, this returns 1 on success and 0 on failure
+    int status = liberty_demangle(
+        name, liberty_demangle_options, demangleCallback, &dbuf);
+    if (status == 0) { // failed, return original
+      return folly::strlcpy(out, name, outSize);
+    }
+    if (outSize != 0) {
+      *dbuf.dest = '\0';
+    }
+    return dbuf.total;
+  } else {
     return folly::strlcpy(out, name, outSize);
   }
-  if (outSize != 0) {
-    *dbuf.dest = '\0';
-  }
-  return dbuf.total;
 }
-
-#else
-
-fbstring demangle(const char* name) {
-  return name;
-}
-
-size_t demangle(const char* name, char* out, size_t outSize) {
-  return folly::strlcpy(out, name, outSize);
-}
-
-#endif
 
 } // namespace folly

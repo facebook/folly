@@ -16,73 +16,62 @@
 
 #include <folly/Demangle.h>
 
-#include <folly/detail/Demangle.h>
-#include <folly/lang/CString.h>
+#include <folly/lang/Pretty.h>
 #include <folly/portability/GTest.h>
 
 using folly::demangle;
+using folly::demangle_build_has_cxxabi;
+using folly::demangle_build_has_liberty;
+using folly::demangle_max_symbol_size;
+using folly::pretty_name;
 
 namespace folly_test {
 struct ThisIsAVeryLongStructureName {};
 } // namespace folly_test
 
-#if FOLLY_DETAIL_HAVE_DEMANGLE_H
-TEST(Demangle, demangle) {
-  char expected[] = "folly_test::ThisIsAVeryLongStructureName";
-  EXPECT_STREQ(
-      expected,
-      demangle(typeid(folly_test::ThisIsAVeryLongStructureName)).c_str());
+class DemangleTest : public testing::Test {};
+
+TEST_F(DemangleTest, demangle_return_string) {
+  using type = folly_test::ThisIsAVeryLongStructureName;
+  auto const raw = typeid(type).name();
+  auto const expected = demangle_build_has_cxxabi ? pretty_name<type>() : raw;
+  EXPECT_EQ(expected, demangle(typeid(type)));
+}
+
+TEST_F(DemangleTest, demangle_to_buffer) {
+  using type = folly_test::ThisIsAVeryLongStructureName;
+  auto const raw = typeid(type).name();
+  auto const expected = demangle_build_has_liberty ? pretty_name<type>() : raw;
 
   {
-    char buf[sizeof(expected)];
-    EXPECT_EQ(
-        sizeof(expected) - 1,
-        demangle(
-            typeid(folly_test::ThisIsAVeryLongStructureName),
-            buf,
-            sizeof(buf)));
-    EXPECT_STREQ(expected, buf);
+    std::vector<char> buf;
+    buf.resize(1 + strlen(expected));
+    EXPECT_EQ(strlen(expected), demangle(typeid(type), buf.data(), buf.size()));
+    EXPECT_EQ(std::string(expected), buf.data());
+  }
 
-    EXPECT_EQ(
-        sizeof(expected) - 1,
-        demangle(typeid(folly_test::ThisIsAVeryLongStructureName), buf, 11));
-    EXPECT_STREQ("folly_test", buf);
+  {
+    constexpr size_t size = 10;
+    std::vector<char> buf;
+    buf.resize(1 + size);
+    EXPECT_EQ(strlen(expected), demangle(typeid(type), buf.data(), buf.size()));
+    EXPECT_EQ(std::string(expected).substr(0, size), buf.data());
   }
 }
 
-#if defined(FOLLY_DEMANGLE_MAX_SYMBOL_SIZE)
-namespace {
+TEST_F(DemangleTest, demangle_long_symbol) {
+  //  pretty and demangled names are the same for int but not for size_t
+  //  mangling strlen multiplier can be assumed to be at least 4
+  using type = std::make_integer_sequence<int, demangle_max_symbol_size / 4>;
+  auto raw = typeid(type).name();
+  auto choice = demangle_max_symbol_size ? raw : pretty_name<type>();
 
-template <int I, class T1, class T2>
-struct Node {};
+  EXPECT_EQ(std::string(choice), demangle(raw).toStdString());
 
-template <int N, int I = 1>
-struct LongSymbol {
-  using arg1 = typename LongSymbol<N / 2, 2 * I>::type;
-  using arg2 = typename LongSymbol<N / 2, 2 * I + 1>::type;
-  using type = Node<I, arg1, arg2>;
-};
-
-template <int I>
-struct LongSymbol<0, I> {
-  using type = void;
-};
-
-} // namespace
-
-TEST(Demangle, LongSymbolFallback) {
-  // The symbol must be at least FOLLY_DEMANGLE_MAX_SYMBOL_SIZE long.
-  using Symbol = LongSymbol<FOLLY_DEMANGLE_MAX_SYMBOL_SIZE>::type;
-  auto name = typeid(Symbol).name();
-
-  EXPECT_STREQ(name, demangle(name).c_str());
-
-  char buf[16];
-  char expected[16];
-  folly::demangle(name, buf, 16);
-  folly::strlcpy(expected, name, 16);
-  EXPECT_STREQ(expected, buf);
+  auto const expected = demangle_build_has_liberty ? choice : raw;
+  constexpr size_t size = 15;
+  std::vector<char> buf;
+  buf.resize(1 + size);
+  EXPECT_EQ(strlen(expected), demangle(raw, buf.data(), buf.size()));
+  EXPECT_EQ(std::string(expected).substr(0, size), buf.data());
 }
-#endif // defined(FOLLY_DEMANGLE_MAX_SYMBOL_SIZE)
-
-#endif // FOLLY_DETAIL_HAVE_DEMANGLE_H

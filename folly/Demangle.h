@@ -17,8 +17,19 @@
 #pragma once
 
 #include <folly/FBString.h>
+#include <folly/portability/Config.h>
 
 namespace folly {
+
+FOLLY_INLINE_VARIABLE constexpr size_t demangle_max_symbol_size =
+#if defined(FOLLY_DEMANGLE_MAX_SYMBOL_SIZE)
+    FOLLY_DEMANGLE_MAX_SYMBOL_SIZE;
+#else
+    0;
+#endif
+
+extern bool const demangle_build_has_cxxabi;
+extern bool const demangle_build_has_liberty;
 
 /**
  * Return the demangled (prettyfied) version of a C++ type.
