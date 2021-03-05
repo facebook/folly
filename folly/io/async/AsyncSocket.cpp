@@ -79,7 +79,7 @@ static AsyncSocketException const& getSocketShutdownForWritesEx() {
 }
 
 namespace {
-#ifdef FOLLY_HAVE_SO_TIMESTAMPING
+#if FOLLY_HAVE_SO_TIMESTAMPING
 const sock_extended_err* FOLLY_NULLABLE
 cmsgToSockExtendedErr(const cmsghdr& cmsg) {
   if ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
@@ -322,7 +322,7 @@ void AsyncSocket::SendMsgParamsCallback::getAncillaryData(
   if (!ancillaryDataSize) {
     return;
   }
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+#if FOLLY_HAVE_SO_TIMESTAMPING
   CHECK_NOTNULL(data);
   // this function only handles ancillary data for timestamping
   //
@@ -353,7 +353,7 @@ void AsyncSocket::SendMsgParamsCallback::getAncillaryData(
   memcpy(CMSG_DATA(cmsg), &sofFlags, sizeof(sofFlags));
 #else
   (void)data;
-#endif
+#endif // FOLLY_HAVE_SO_TIMESTAMPING
   return;
 }
 
@@ -374,7 +374,7 @@ uint32_t AsyncSocket::SendMsgParamsCallback::getAncillaryDataSize(
 folly::Optional<AsyncSocket::ByteEvent>
 AsyncSocket::ByteEventHelper::processCmsg(
     const cmsghdr& cmsg, const size_t rawBytesWritten) {
-#ifdef FOLLY_HAVE_SO_TIMESTAMPING
+#if FOLLY_HAVE_SO_TIMESTAMPING
   if (!byteEventsEnabled || maybeEx.has_value()) {
     return folly::none;
   }
@@ -1312,7 +1312,7 @@ void AsyncSocket::enableByteEvents() {
   }
 
   try {
-#ifdef FOLLY_HAVE_SO_TIMESTAMPING
+#if FOLLY_HAVE_SO_TIMESTAMPING
     // make sure we have a connected IP socket that supports error queues
     // (Unix sockets do not support error queues)
     if (NetworkSocket() == fd_ || !good()) {

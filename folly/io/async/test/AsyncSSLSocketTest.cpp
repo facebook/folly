@@ -2984,7 +2984,7 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
   cerr << "SendMsgParamsCallback test completed" << endl;
 }
 
-#ifdef FOLLY_HAVE_SO_TIMESTAMPING
+#if FOLLY_HAVE_SO_TIMESTAMPING
 
 class AsyncSSLSocketByteEventTest : public ::testing::Test {
  protected:

@@ -3282,7 +3282,7 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
 
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
-#ifdef FOLLY_HAVE_SO_TIMESTAMPING
+#if FOLLY_HAVE_SO_TIMESTAMPING
 
 class AsyncSocketByteEventTest : public ::testing::Test {
  protected:

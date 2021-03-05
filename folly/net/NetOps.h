@@ -116,7 +116,9 @@ struct mmsghdr {
 
 #ifdef MSG_ERRQUEUE
 #define FOLLY_HAVE_MSG_ERRQUEUE 1
+#ifndef FOLLY_HAVE_SO_TIMESTAMPING
 #define FOLLY_HAVE_SO_TIMESTAMPING 1
+#endif
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
 #endif
