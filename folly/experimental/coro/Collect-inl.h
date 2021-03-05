@@ -15,6 +15,8 @@
  */
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/experimental/coro/AsyncPipe.h>
+#include <folly/experimental/coro/AsyncScope.h>
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/BarrierTask.h>
@@ -212,6 +214,73 @@ auto collectAllImpl(
     co_return std::tuple<collect_all_component_t<SemiAwaitables>...>{
         getValueOrUnit(std::get<Indices>(std::move(results)))...};
   }
+}
+
+template <typename InputRange, typename IsTry>
+auto makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
+    AsyncScope& scope, InputRange awaitables, IsTry) {
+  using Item =
+      async_generator_from_awaitable_range_item_t<InputRange, IsTry::value>;
+  return [](AsyncScope& scope,
+            InputRange awaitables) -> AsyncGenerator<Item&&> {
+    auto [results, pipe] = AsyncPipe<Item, false>::create();
+    const CancellationSource cancelSource;
+    auto guard = folly::makeGuard([&] { cancelSource.requestCancellation(); });
+    auto ex = co_await co_current_executor;
+    size_t expected = 0;
+    // Save the initial context and restore it after starting each task
+    // as the task may have modified the context before suspending and we
+    // want to make sure the next task is started with the same initial
+    // context.
+    const auto context = RequestContext::saveContext();
+
+    for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
+      scope.add(
+          [](auto semiAwaitable,
+             auto& cancelSource,
+             auto& pipe) -> Task<void> {
+            auto result = co_await co_withCancellation(
+                cancelSource.getToken(), co_awaitTry(std::move(semiAwaitable)));
+            if (!result.hasValue() && !IsTry::value) {
+              cancelSource.requestCancellation();
+            }
+            pipe.write(std::move(result));
+          }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable),
+            cancelSource,
+            pipe)
+                                .scheduleOn(ex));
+      ++expected;
+      RequestContext::setContext(context);
+    }
+
+    while (true) {
+      CancellationCallback cancelCallback(
+          co_await co_current_cancellation_token,
+          [&]() noexcept { cancelSource.requestCancellation(); });
+
+      if constexpr (!IsTry::value) {
+        auto result = co_await co_awaitTry(results.next());
+        if (result.hasValue()) {
+          co_yield std::move(*result);
+          if (--expected) {
+            continue;
+          }
+          result = {}; // completion result
+        }
+        guard.dismiss();
+        co_yield co_result(std::move(result));
+      } else {
+        // Prevent AsyncPipe from receiving cancellation so we get the right
+        // number of OperationCancelleds.
+        auto result = co_await co_withCancellation({}, results.next());
+        co_yield std::move(*result);
+        if (--expected == 0) {
+          guard.dismiss();
+          co_return;
+        }
+      }
+    }
+  }(scope, std::move(awaitables));
 }
 
 } // namespace detail
@@ -919,6 +988,26 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
   }
 
   co_return results;
+}
+
+template <typename InputRange>
+auto makeUnorderedAsyncGeneratorFromAwaitableRange(
+    AsyncScope& scope, InputRange awaitables)
+    -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
+        InputRange,
+        false>&&> {
+  return detail::makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
+      scope, std::move(awaitables), bool_constant<false>{});
+}
+
+template <typename InputRange>
+auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+    AsyncScope& scope, InputRange awaitables)
+    -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
+        InputRange,
+        true>&&> {
+  return detail::makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
+      scope, std::move(awaitables), bool_constant<true>{});
 }
 
 } // namespace coro
