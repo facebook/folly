@@ -45,7 +45,7 @@ cdef class FiberManager:
 
     def __dealloc__(FiberManager self):
         while deref(self.cManager).isRemoteScheduled():
-            self.cExecutor.drive()
+            self.cExecutor.driveNoDiscard()
 
         deref(self.cManager).loopUntilNoReady()
 
