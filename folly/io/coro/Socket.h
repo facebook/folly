@@ -74,6 +74,9 @@ class Socket : public Transport {
   explicit Socket(std::shared_ptr<AsyncSocket> socket)
       : socket_(std::move(socket)) {}
 
+  explicit Socket(AsyncSocket::UniquePtr socket)
+      : socket_(socket.release(), AsyncSocket::Destructor()) {}
+
   Socket(Socket&&) = default;
   Socket& operator=(Socket&&) = default;
 
