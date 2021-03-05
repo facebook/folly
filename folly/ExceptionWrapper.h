@@ -699,9 +699,20 @@ inline exception_wrapper try_and_catch_(F&& f) {
 //!   }
 //! });
 //! \endcode
-template <typename... Exceptions, typename F>
+template <typename Exn, typename... Exns, typename F>
 exception_wrapper try_and_catch(F&& fn) {
-  return detail::try_and_catch_<F, Exceptions...>(std::forward<F>(fn));
+  return detail::try_and_catch_<F, Exn, Exns...>(std::forward<F>(fn));
+}
+template <typename F>
+exception_wrapper try_and_catch(F&& fn) noexcept {
+  try {
+    static_cast<F&&>(fn)();
+    return exception_wrapper{};
+  } catch (std::exception const& ex) {
+    return exception_wrapper{std::current_exception(), ex};
+  } catch (...) {
+    return exception_wrapper{std::current_exception()};
+  }
 }
 } // namespace folly
 

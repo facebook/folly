@@ -150,6 +150,11 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   EXPECT_THROW(
       try_and_catch<std::runtime_error>([]() { throw std::exception(); }),
       std::exception);
+
+  // No list
+  auto ew4 = try_and_catch([] { throw 17; });
+  EXPECT_TRUE(bool(ew4));
+  EXPECT_TRUE(ew4.is_compatible_with<int>());
 }
 
 TEST(ExceptionWrapper, with_exception_test) {
