@@ -797,6 +797,41 @@ TEST(Json, SortKeys) {
       inverse_sorted_keys, folly::json::serialize(value, opts_custom_sort));
 }
 
+TEST(Json, PrettyPrintIndent) {
+  folly::json::serialization_opts opts;
+  opts.sort_keys = true;
+  opts.pretty_formatting = true;
+  opts.pretty_formatting_indent_width = 4;
+
+  // clang-format off
+  dynamic value = dynamic::object
+    ("foo", "bar")
+    ("nested",
+      dynamic::object
+        ("abc", "def")
+        ("qrs", dynamic::array("tuv", 789))
+        ("xyz", 123)
+    )
+    ("zzz", 456)
+    ;
+  // clang-format on
+
+  std::string expected = R"({
+    "foo": "bar",
+    "nested": {
+        "abc": "def",
+        "qrs": [
+            "tuv",
+            789
+        ],
+        "xyz": 123
+    },
+    "zzz": 456
+})";
+
+  EXPECT_EQ(expected, folly::json::serialize(value, opts));
+}
+
 TEST(Json, PrintTo) {
   std::ostringstream oss;
 

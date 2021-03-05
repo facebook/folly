@@ -189,7 +189,8 @@ struct Printer {
 
   void newline() const {
     if (indentLevel_) {
-      out_ += to<std::string>('\n', std::string(*indentLevel_ * 2, ' '));
+      auto indent = *indentLevel_ * opts_.pretty_formatting_indent_width;
+      out_ += to<std::string>('\n', std::string(indent, ' '));
     }
   }
 
