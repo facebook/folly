@@ -24,7 +24,7 @@ using namespace folly::exception_tracer;
 }
 
 TEST(SmartExceptionTracer, ExceptionPtr) {
-  auto ew = folly::try_and_catch<std::exception>(testThrowException);
+  auto ew = folly::try_and_catch(testThrowException);
   auto info = getTrace(ew.to_exception_ptr());
 
   std::ostringstream ss;
@@ -33,7 +33,7 @@ TEST(SmartExceptionTracer, ExceptionPtr) {
 }
 
 TEST(SmartExceptionTracer, ExceptionWrapper) {
-  auto ew = folly::try_and_catch<std::exception>(testThrowException);
+  auto ew = folly::try_and_catch(testThrowException);
   auto info = getTrace(ew);
 
   std::ostringstream ss;

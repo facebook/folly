@@ -65,7 +65,7 @@ class Promise {
   void setWith(F&& func);
 
   /** Fulfill the Promise with an exception_wrapper, e.g.
-    auto ew = folly::try_and_catch<std::exception>([]{ ... });
+    auto ew = folly::try_and_catch([]{ ... });
     if (ew) {
       p.setException(std::move(ew));
     }
