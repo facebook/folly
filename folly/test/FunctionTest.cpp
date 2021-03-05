@@ -187,6 +187,8 @@ static_assert(
     "");
 #endif
 
+static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
+
 // TEST =====================================================================
 // InvokeFunctor & InvokeReference
 

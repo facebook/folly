@@ -72,6 +72,8 @@ TEST(FunctionRef, Traits) {
           FunctionRef<int(int)>,
           FunctionRef<int(int)>&>::value,
       "");
+
+  static_assert(std::is_nothrow_destructible<FunctionRef<int(int)>>::value, "");
 }
 
 TEST(FunctionRef, Simple) {
