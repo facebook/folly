@@ -951,6 +951,10 @@ if (BUILD_TESTS)
       TEST unit_test SOURCES UnitTest.cpp
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
+
+    DIRECTORY tracing/test/
+      TEST static_tracepoint_test APPLE_DISABLED WINDOWS_DISABLED
+        SOURCES StaticTracepointTest.cpp StaticTracepointTestModule.cpp
   )
 
   if (${LIBSODIUM_FOUND})
