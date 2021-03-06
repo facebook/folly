@@ -20,6 +20,7 @@
 
 #include <folly/Executor.h>
 #include <folly/ThreadLocal.h>
+#include <folly/executors/InlineExecutor.h>
 
 namespace folly {
 
@@ -28,7 +29,7 @@ namespace folly {
  * to this executor by one of its own callbacks will be queued instead of
  * executed inline (nested). This is usually better behavior than Inline.
  */
-class QueuedImmediateExecutor : public Executor {
+class QueuedImmediateExecutor : public InlineLikeExecutor {
  public:
   static QueuedImmediateExecutor& instance();
 

@@ -35,8 +35,6 @@
 
 namespace folly {
 
-class InlineExecutor;
-
 namespace coro {
 
 namespace detail {

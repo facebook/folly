@@ -24,10 +24,15 @@
 
 namespace folly {
 
+class InlineLikeExecutor : public virtual Executor {
+ public:
+  virtual ~InlineLikeExecutor() {}
+};
+
 /// When work is "queued", execute it immediately inline.
 /// Usually when you think you want this, you actually want a
 /// QueuedImmediateExecutor.
-class InlineExecutor : public Executor {
+class InlineExecutor : public InlineLikeExecutor {
  public:
   FOLLY_ERASE static InlineExecutor& instance() noexcept {
     auto const value = cache.load(std::memory_order_acquire);

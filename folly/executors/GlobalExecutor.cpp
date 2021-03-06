@@ -26,6 +26,7 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
+#include <folly/executors/InlineExecutor.h>
 #include <folly/system/HardwareConcurrency.h>
 
 using namespace folly;
@@ -35,7 +36,7 @@ namespace {
 class GlobalTag {};
 
 // aka InlineExecutor
-class DefaultCPUExecutor : public Executor {
+class DefaultCPUExecutor : public InlineLikeExecutor {
  public:
   FOLLY_NOINLINE void add(Func f) override { f(); }
 };
@@ -137,9 +138,6 @@ namespace folly {
 namespace detail {
 std::shared_ptr<Executor> tryGetImmutableCPUPtr() {
   return getImmutable<Executor>();
-}
-bool isDefaultExecutor(Executor* ex) {
-  return dynamic_cast<DefaultCPUExecutor*>(ex);
 }
 } // namespace detail
 
