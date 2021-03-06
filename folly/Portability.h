@@ -594,18 +594,9 @@ constexpr auto kCpplibVer = 0;
 #endif
 
 // feature test __cpp_lib_string_view is defined in <string>, which is
-// too heavy to include here.  MSVC __has_include support arrived later
-// than string_view, so we need an alternate case for it.
-#ifdef __has_include
+// too heavy to include here.
 #if __has_include(<string_view>) && FOLLY_CPLUSPLUS >= 201703L
 #define FOLLY_HAS_STRING_VIEW 1
 #else
 #define FOLLY_HAS_STRING_VIEW 0
 #endif
-#else // __has_include
-#if _MSC_VER >= 1910 && FOLLY_CPLUSPLUS > 201402
-#define FOLLY_HAS_STRING_VIEW 1
-#else
-#define FOLLY_HAS_STRING_VIEW 0
-#endif
-#endif // __has_include
