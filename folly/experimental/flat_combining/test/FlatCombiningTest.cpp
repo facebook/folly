@@ -16,10 +16,11 @@
 
 #include <folly/experimental/flat_combining/test/FlatCombiningTestHelpers.h>
 
-#include <folly/portability/GTest.h>
-#include <glog/logging.h>
-
 #include <mutex>
+
+#include <folly/portability/GTest.h>
+
+#include <glog/logging.h>
 
 using namespace folly::test;
 

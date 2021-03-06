@@ -16,14 +16,15 @@
 
 #include <folly/experimental/crypto/Blake2xb.h>
 
-#include <folly/String.h>
-#include <folly/io/IOBuf.h>
-#include <folly/portability/GTest.h>
-#include <sodium.h>
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <sodium.h>
+
+#include <folly/String.h>
+#include <folly/io/IOBuf.h>
+#include <folly/portability/GTest.h>
 
 // Note: the test vectors in this file were generated from
 // https://github.com/BLAKE2/BLAKE2/blob/master/testvectors/blake2-kat.h

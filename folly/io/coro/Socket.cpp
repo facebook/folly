@@ -16,9 +16,10 @@
 
 #include <folly/Portability.h>
 
+#include <functional>
+
 #include <folly/experimental/coro/Baton.h>
 #include <folly/io/coro/Socket.h>
-#include <functional>
 
 #if FOLLY_HAS_COROUTINES
 

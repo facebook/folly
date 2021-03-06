@@ -15,8 +15,10 @@
  */
 
 #include <folly/experimental/TimerFD.h>
-#ifdef FOLLY_HAVE_TIMERFD
+
 #include <folly/FileUtil.h>
+
+#ifdef FOLLY_HAVE_TIMERFD
 #include <sys/timerfd.h>
 #endif
 

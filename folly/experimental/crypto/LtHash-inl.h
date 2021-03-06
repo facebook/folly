@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/lang/Bits.h>
-#include <sodium.h>
 #include <cstring>
 #include <stdexcept>
 
+#include <sodium.h>
+
 #include <folly/experimental/crypto/detail/LtHashInternal.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 namespace crypto {

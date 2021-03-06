@@ -16,11 +16,12 @@
 
 #pragma once
 
+#include <thread>
+
 #include <folly/experimental/STTimerFDTimeoutManager.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/HHWheelTimer.h>
-#include <thread>
 
 namespace folly {
 

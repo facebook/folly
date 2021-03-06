@@ -16,9 +16,10 @@
 
 #include <folly/Portability.h>
 
+#include <type_traits>
+
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Traits.h>
-#include <type_traits>
 
 #if FOLLY_HAS_COROUTINES
 

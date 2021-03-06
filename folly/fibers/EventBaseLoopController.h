@@ -16,12 +16,13 @@
 
 #pragma once
 
+#include <atomic>
+#include <memory>
+
 #include <folly/CancellationToken.h>
 #include <folly/fibers/ExecutorBasedLoopController.h>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/io/async/VirtualEventBase.h>
-#include <atomic>
-#include <memory>
 
 namespace folly {
 namespace fibers {

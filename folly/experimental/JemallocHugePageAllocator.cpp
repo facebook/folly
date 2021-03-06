@@ -16,11 +16,12 @@
 
 #include <folly/experimental/JemallocHugePageAllocator.h>
 
+#include <sstream>
+
 #include <folly/portability/Malloc.h>
 #include <folly/portability/String.h>
-#include <glog/logging.h>
 
-#include <sstream>
+#include <glog/logging.h>
 
 #if (defined(MADV_HUGEPAGE) || defined(MAP_ALIGNED_SUPER)) && \
     defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE

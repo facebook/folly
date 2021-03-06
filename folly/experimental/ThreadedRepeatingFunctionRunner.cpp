@@ -16,9 +16,11 @@
 
 #include <folly/experimental/ThreadedRepeatingFunctionRunner.h>
 
-#include <folly/system/ThreadName.h>
-#include <glog/logging.h>
 #include <iostream>
+
+#include <folly/system/ThreadName.h>
+
+#include <glog/logging.h>
 
 namespace folly {
 

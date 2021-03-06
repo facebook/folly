@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include <folly/net/NetOps.h>
 #include <memory>
+
+#include <folly/net/NetOps.h>
 
 namespace folly {
 namespace netops {

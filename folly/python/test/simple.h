@@ -15,9 +15,11 @@
  */
 
 #pragma once
+
+#include <cstdint>
+
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
-#include <cstdint>
 
 namespace folly {
 namespace python {

@@ -16,16 +16,18 @@
 
 #include <folly/experimental/crypto/LtHash.h>
 
-#include <folly/Random.h>
-#include <folly/String.h>
-#include <folly/io/IOBuf.h>
-#include <folly/portability/GTest.h>
-#include <sodium.h>
 #include <algorithm>
 #include <memory>
 #include <random>
 #include <string>
 #include <vector>
+
+#include <sodium.h>
+
+#include <folly/Random.h>
+#include <folly/String.h>
+#include <folly/io/IOBuf.h>
+#include <folly/portability/GTest.h>
 
 using namespace ::testing;
 

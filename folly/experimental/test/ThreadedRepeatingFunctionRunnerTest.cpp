@@ -16,8 +16,9 @@
 
 #include <folly/experimental/ThreadedRepeatingFunctionRunner.h>
 
-#include <folly/portability/GTest.h>
 #include <atomic>
+
+#include <folly/portability/GTest.h>
 
 using namespace std;
 

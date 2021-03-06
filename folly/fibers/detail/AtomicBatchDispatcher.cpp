@@ -16,8 +16,9 @@
 
 #include <folly/fibers/detail/AtomicBatchDispatcher.h>
 
-#include <fmt/core.h>
 #include <cassert>
+
+#include <fmt/core.h>
 
 namespace folly {
 namespace fibers {

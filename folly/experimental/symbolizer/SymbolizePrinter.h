@@ -16,10 +16,11 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <folly/FBString.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
-#include <cstdint>
 
 namespace folly {
 class IOBuf;

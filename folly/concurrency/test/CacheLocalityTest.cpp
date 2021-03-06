@@ -16,13 +16,14 @@
 
 #include <folly/concurrency/CacheLocality.h>
 
+#include <memory>
+#include <thread>
+#include <unordered_map>
+
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
 
 #include <glog/logging.h>
-#include <memory>
-#include <thread>
-#include <unordered_map>
 
 using namespace folly;
 

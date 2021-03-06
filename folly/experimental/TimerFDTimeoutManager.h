@@ -15,9 +15,11 @@
  */
 
 #pragma once
+
+#include <map>
+
 #include <folly/experimental/TimerFD.h>
 #include <folly/io/async/DelayedDestruction.h>
-#include <map>
 
 namespace folly {
 // generic TimerFD based timeout manager

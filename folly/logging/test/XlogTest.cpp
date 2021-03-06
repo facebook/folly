@@ -16,6 +16,9 @@
 
 #include <folly/logging/xlog.h>
 
+#include <chrono>
+#include <thread>
+
 #include <folly/logging/LogConfigParser.h>
 #include <folly/logging/LogHandler.h>
 #include <folly/logging/LogMessage.h>
@@ -27,8 +30,6 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
-#include <chrono>
-#include <thread>
 
 using namespace folly;
 using std::make_shared;

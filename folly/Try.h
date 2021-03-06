@@ -16,6 +16,11 @@
 
 #pragma once
 
+#include <exception>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+
 #include <folly/ExceptionWrapper.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
@@ -24,10 +29,6 @@
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
-#include <exception>
-#include <stdexcept>
-#include <type_traits>
-#include <utility>
 
 namespace folly {
 

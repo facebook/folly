@@ -15,8 +15,10 @@
  */
 
 #include <folly/container/Array.h>
-#include <folly/portability/GTest.h>
+
 #include <string>
+
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using folly::make_array;

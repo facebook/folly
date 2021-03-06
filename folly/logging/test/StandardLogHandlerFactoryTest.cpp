@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <folly/test/TestUtils.h>
 #include <queue>
 #include <vector>
 
@@ -28,6 +27,7 @@
 #include <folly/logging/StandardLogHandlerFactory.h>
 #include <folly/logging/xlog.h>
 #include <folly/portability/GMock.h>
+#include <folly/test/TestUtils.h>
 
 namespace folly {
 

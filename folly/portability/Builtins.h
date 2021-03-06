@@ -18,7 +18,9 @@
 
 #if defined(_WIN32) && !defined(__MINGW32__) && !defined(__clang__)
 #include <assert.h>
+
 #include <folly/Portability.h>
+
 #include <intrin.h>
 #include <stdint.h>
 

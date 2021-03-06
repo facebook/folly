@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include <iostream>
+
 #include <folly/init/Init.h>
 #include <folly/logging/xlog.h>
 #include <folly/portability/Stdlib.h>
-#include <iostream>
 
 DEFINE_string(
     category,

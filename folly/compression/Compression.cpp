@@ -49,6 +49,9 @@
 #include <bzlib.h>
 #endif
 
+#include <algorithm>
+#include <unordered_set>
+
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
@@ -59,8 +62,6 @@
 #include <folly/io/Cursor.h>
 #include <folly/lang/Bits.h>
 #include <folly/stop_watch.h>
-#include <algorithm>
-#include <unordered_set>
 
 using folly::io::compression::detail::dataStartsWithLE;
 using folly::io::compression::detail::prefixToStringLE;

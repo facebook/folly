@@ -16,10 +16,11 @@
 
 #pragma once
 
-#include <folly/lang/Bits.h>
-#include <glog/logging.h>
-
 #include <atomic>
+
+#include <folly/lang/Bits.h>
+
+#include <glog/logging.h>
 
 namespace folly {
 

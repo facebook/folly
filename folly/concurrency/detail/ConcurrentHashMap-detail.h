@@ -16,14 +16,15 @@
 
 #pragma once
 
+#include <algorithm>
+#include <atomic>
+#include <mutex>
+
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Mask.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/Launder.h>
 #include <folly/synchronization/Hazptr.h>
-#include <algorithm>
-#include <atomic>
-#include <mutex>
 
 #if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
 #include <nmmintrin.h>

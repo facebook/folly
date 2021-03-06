@@ -16,11 +16,12 @@
 
 #include <folly/experimental/symbolizer/Elf.h>
 
+#include <sys/auxv.h>
+
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/portability/GTest.h>
-#include <sys/auxv.h>
 
 using folly::symbolizer::ElfFile;
 

@@ -16,11 +16,13 @@
 
 #include <folly/python/error.h>
 
-#include <Python.h>
-#include <folly/Conv.h>
-#include <folly/ScopeGuard.h>
 #include <stdexcept>
 #include <string>
+
+#include <Python.h>
+
+#include <folly/Conv.h>
+#include <folly/ScopeGuard.h>
 
 namespace folly {
 namespace python {
