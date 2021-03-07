@@ -24,6 +24,7 @@
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/Utility.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -229,6 +230,12 @@ class Executor {
     return getKeepAliveToken(&executor);
   }
 
+  template <typename F>
+  FOLLY_ERASE static void invokeCatchingExns(char const* prefix, F f) noexcept {
+    auto h = [&](auto const&... e) { invokeCatchingExnsLog(prefix, &e...); };
+    catch_exception([&] { catch_exception<std::exception const&>(f, h); }, h);
+  }
+
  protected:
   /**
    * Returns true if the KeepAlive is constructed from an executor that does
@@ -262,6 +269,9 @@ class Executor {
   }
 
  private:
+  static void invokeCatchingExnsLog(
+      char const* prefix, std::exception const* ex = nullptr);
+
   template <typename ExecutorT>
   static KeepAlive<ExecutorT> makeKeepAliveDummy(ExecutorT* executor) {
     static_assert(

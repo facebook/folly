@@ -78,17 +78,8 @@ void SerialExecutor::run() {
     Task task;
     queue_.dequeue(task);
 
-    try {
-      folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
-      auto func = std::move(task.func);
-      func();
-    } catch (std::exception const& ex) {
-      LOG(ERROR) << "SerialExecutor: func threw unhandled exception "
-                 << folly::exceptionStr(ex);
-    } catch (...) {
-      LOG(ERROR) << "SerialExecutor: func threw unhandled non-exception "
-                    "object";
-    }
+    folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
+    invokeCatchingExns("SerialExecutor: func", std::exchange(task.func, {}));
 
     // We want scheduled_ to guard side-effects of completed tasks, so we can't
     // use std::memory_order_relaxed here.

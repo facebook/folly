@@ -30,13 +30,8 @@ TimekeeperScheduledExecutor::create(
 }
 
 void TimekeeperScheduledExecutor::run(Func func) {
-  try {
-    func();
-  } catch (std::exception const& ex) {
-    LOG(ERROR) << "func threw unhandled exception " << folly::exceptionStr(ex);
-  } catch (...) {
-    LOG(ERROR) << "func threw unhandled non-exception object";
-  }
+  invokeCatchingExns(
+      "TimekeeperScheduledExecutor: func", std::exchange(func, {}));
 }
 
 void TimekeeperScheduledExecutor::add(Func func) {

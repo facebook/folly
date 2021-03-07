@@ -105,16 +105,18 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
     folly::RequestContextScopeGuard rctx(task.context_);
     if (task.expiration_ > std::chrono::milliseconds(0) &&
         stats.waitTime >= task.expiration_) {
+      task.func_ = nullptr;
       stats.expired = true;
       if (task.expireCallback_ != nullptr) {
-        nothrow("expireCallback", [&] { task.expireCallback_(); });
+        invokeCatchingExns(
+            "ThreadPoolExecutor: expireCallback",
+            std::exchange(task.expireCallback_, {}));
       }
     } else {
-      nothrow("func", [&] { task.func_(); });
+      invokeCatchingExns(
+          "ThreadPoolExecutor: func", std::exchange(task.func_, {}));
+      task.expireCallback_ = nullptr;
     }
-    // Callback destruction might involve user logic, protect it as well.
-    nothrow("~func", [&] { task.func_ = nullptr; });
-    nothrow("~expireCallback", [&] { task.expireCallback_ = nullptr; });
   }
   if (!stats.expired) {
     stats.runTime = std::chrono::steady_clock::now() - startTime;

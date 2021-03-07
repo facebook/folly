@@ -49,19 +49,9 @@ std::shared_ptr<ThreadFactory> ThreadedExecutor::newDefaultThreadFactory() {
 }
 
 void ThreadedExecutor::work(Func& func) {
-  SCOPE_EXIT {
-    controlMessages_.enqueue(
-        {Message::Type::Join, {}, std::this_thread::get_id()});
-  };
-
-  try {
-    func();
-  } catch (const std::exception& e) {
-    LOG(ERROR) << "ThreadedExecutor: func threw unhandled " << typeid(e).name()
-               << " exception: " << e.what();
-  } catch (...) {
-    LOG(ERROR) << "ThreadedExecutor: func threw unhandled non-exception object";
-  }
+  invokeCatchingExns("ThreadedExecutor: func", std::exchange(func, {}));
+  controlMessages_.enqueue(
+      {Message::Type::Join, {}, std::this_thread::get_id()});
 }
 
 void ThreadedExecutor::control() {
