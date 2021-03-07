@@ -793,6 +793,7 @@ if (BUILD_TESTS)
       TEST lang_r_value_reference_wrapper_test
         SOURCES RValueReferenceWrapperTest.cpp
       TEST lang_safe_assert_test SOURCES SafeAssertTest.cpp
+      TEST lang_to_ascii_test SOURCES ToAsciiTest.cpp
       TEST lang_type_info_test SOURCES TypeInfoTest.cpp
       TEST lang_uncaught_exceptions_test SOURCES UncaughtExceptionsTest.cpp
 
