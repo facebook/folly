@@ -18,8 +18,8 @@
 
 #include <algorithm>
 
-#include <folly/Conv.h>
 #include <folly/detail/FileUtilDetail.h>
+#include <folly/lang/ToAscii.h>
 #include <folly/portability/Unistd.h>
 
 namespace folly {
@@ -461,6 +461,8 @@ void assertionFailure(
     unsigned int line,
     const char* function,
     int error) {
+  char buf[to_ascii_size_max_decimal<uint64_t>()];
+
   writeStderr("\n\nAssertion failure: ");
   writeStderr(expr + 1, strlen(expr) - 2);
   writeStderr("\nMessage: ");
@@ -468,9 +470,7 @@ void assertionFailure(
   writeStderr("\nFile: ");
   writeStderr(file);
   writeStderr("\nLine: ");
-  char buf[20];
-  uint32_t n = uint64ToBufferUnsafe(line, buf);
-  writeStderr(buf, n);
+  writeStderr(buf, to_ascii_decimal(buf, line));
   writeStderr("\nFunction: ");
   writeStderr(function);
   if (error) {
@@ -478,8 +478,7 @@ void assertionFailure(
     // the symbolic constant is necessary since actual numbers may vary
     // for simplicity, do not attempt to mimic strerror printing descriptions
     writeStderr("\nError: ");
-    n = uint64ToBufferUnsafe(error, buf);
-    writeStderr(buf, n);
+    writeStderr(buf, to_ascii_decimal(buf, error));
     writeStderr(" (");
     // the list is not required to be sorted; but the program is about to die
     auto const pred = [=](auto const e) { return e.first == error; };
