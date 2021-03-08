@@ -50,7 +50,7 @@
 namespace folly {
 
 // Using 'auto' for non-type template parameters is only possible from C++17
-#if __cplusplus >= 201703L
+#if FOLLY_CPLUSPLUS >= 201703L
 
 //  cpo_t<CPO>
 //
@@ -71,6 +71,6 @@ namespace folly {
 template <const auto& Tag>
 using cpo_t = std::decay_t<decltype(Tag)>;
 
-#endif // __cplusplus >= 201703L
+#endif // FOLLY_CPLUSPLUS >= 201703L
 
 } // namespace folly

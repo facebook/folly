@@ -24,6 +24,7 @@
 #include <folly/Synchronized.h>
 #include <folly/container/Array.h>
 #include <folly/container/Foreach.h>
+#include <folly/lang/CustomizationPoint.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/test/DeterministicSchedule.h>
@@ -174,7 +175,8 @@ folly::detail::FutexResult futexWaitImpl(
 }
 
 template <typename Clock, typename Duration>
-std::cv_status atomic_wait_until(
+std::cv_status tag_invoke(
+    cpo_t<atomic_wait_until>,
     const ManualAtomic<std::uintptr_t>*,
     std::uintptr_t,
     const std::chrono::time_point<Clock, Duration>&) {
@@ -182,7 +184,7 @@ std::cv_status atomic_wait_until(
   return std::cv_status::no_timeout;
 }
 
-void atomic_notify_one(const ManualAtomic<std::uintptr_t>*) {
+void tag_invoke(cpo_t<atomic_notify_one>, const ManualAtomic<std::uintptr_t>*) {
   ManualSchedule::beforeSharedAccess();
 }
 } // namespace test

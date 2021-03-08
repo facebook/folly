@@ -16,9 +16,6 @@
 
 #pragma once
 
-#include <condition_variable>
-#include <cstdint>
-
 #include <folly/detail/Futex.h>
 #include <folly/synchronization/ParkingLot.h>
 
@@ -120,31 +117,31 @@ void atomic_notify_all_impl(const Atom<Integer, Args...>* atomic) {
     return UnparkControl::RemoveContinue;
   });
 }
-} // namespace atomic_notification
-} // namespace detail
 
 template <typename Integer>
-void atomic_wait(const std::atomic<Integer>* atomic, Integer expected) {
-  detail::atomic_notification::atomic_wait_impl(atomic, expected);
+void tag_invoke(
+    atomic_wait_fn, const std::atomic<Integer>* atomic, Integer expected) {
+  atomic_wait_impl(atomic, expected);
 }
 
 template <typename Integer, typename Clock, typename Duration>
-std::cv_status atomic_wait_until(
+std::cv_status tag_invoke(
+    atomic_wait_until_fn,
     const std::atomic<Integer>* atomic,
     Integer expected,
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  return detail::atomic_notification::atomic_wait_until_impl(
-      atomic, expected, deadline);
+  return atomic_wait_until_impl(atomic, expected, deadline);
 }
 
 template <typename Integer>
-void atomic_notify_one(const std::atomic<Integer>* atomic) {
-  detail::atomic_notification::atomic_notify_one_impl(atomic);
+void tag_invoke(atomic_notify_one_fn, const std::atomic<Integer>* atomic) {
+  atomic_notify_one_impl(atomic);
 }
 
 template <typename Integer>
-void atomic_notify_all(const std::atomic<Integer>* atomic) {
-  detail::atomic_notification::atomic_notify_all_impl(atomic);
+void tag_invoke(atomic_notify_all_fn, const std::atomic<Integer>* atomic) {
+  atomic_notify_all_impl(atomic);
 }
-
+} // namespace atomic_notification
+} // namespace detail
 } // namespace folly

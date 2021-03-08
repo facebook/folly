@@ -33,6 +33,8 @@
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
+#include <folly/lang/CustomizationPoint.h>
+#include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
 #include <folly/synchronization/test/Semaphore.h>
 
@@ -684,18 +686,22 @@ detail::FutexResult deterministicFutexWaitImpl(
  * waits and wakes
  */
 template <typename Integer>
-void atomic_wait(const DeterministicAtomic<Integer>*, Integer) {}
+void tag_invoke(
+    cpo_t<atomic_wait>, const DeterministicAtomic<Integer>*, Integer) {}
 template <typename Integer, typename Clock, typename Duration>
-std::cv_status atomic_wait_until(
+std::cv_status tag_invoke(
+    cpo_t<atomic_wait_until>,
     const DeterministicAtomic<Integer>*,
     Integer,
     const std::chrono::time_point<Clock, Duration>&) {
   return std::cv_status::no_timeout;
 }
 template <typename Integer>
-void atomic_notify_one(const DeterministicAtomic<Integer>*) {}
+void tag_invoke(cpo_t<atomic_notify_one>, const DeterministicAtomic<Integer>*) {
+}
 template <typename Integer>
-void atomic_notify_all(const DeterministicAtomic<Integer>*) {}
+void tag_invoke(cpo_t<atomic_notify_all>, const DeterministicAtomic<Integer>*) {
+}
 
 /**
  * DeterministicMutex is a drop-in replacement of std::mutex that
