@@ -39,19 +39,17 @@ class AsyncStackTraceAwaitable {
     }
 
     FOLLY_NOINLINE std::vector<std::uintptr_t> await_resume() {
-      std::vector<std::uintptr_t> result;
-      auto addIP = [&](void* ip) {
-        result.push_back(reinterpret_cast<std::uintptr_t>(ip));
-      };
+      static constexpr size_t maxFrames = 100;
+      std::array<std::uintptr_t, maxFrames> result;
 
-      addIP(FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+      result[0] =
+          reinterpret_cast<std::uintptr_t>(FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+      auto numFrames = getAsyncStackTraceFromInitialFrame(
+          initialFrame_, result.data() + 1, maxFrames - 1);
 
-      auto* frame = initialFrame_;
-      while (frame != nullptr) {
-        addIP(frame->getReturnAddress());
-        frame = frame->getParentFrame();
-      }
-      return result;
+      return std::vector<std::uintptr_t>(
+          std::make_move_iterator(result.begin()),
+          std::make_move_iterator(result.begin()) + numFrames + 1);
     }
 
    private:

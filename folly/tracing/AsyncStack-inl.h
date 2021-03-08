@@ -67,6 +67,19 @@ inline void popAsyncStackFrameCallee(
   calleeFrame.stackRoot = nullptr;
 }
 
+inline size_t getAsyncStackTraceFromInitialFrame(
+    folly::AsyncStackFrame* initialFrame,
+    std::uintptr_t* addresses,
+    size_t maxAddresses) {
+  size_t numFrames = 0;
+  for (auto* frame = initialFrame; frame != nullptr && numFrames < maxAddresses;
+       frame = frame->getParentFrame()) {
+    addresses[numFrames++] =
+        reinterpret_cast<std::uintptr_t>(frame->getReturnAddress());
+  }
+  return numFrames;
+}
+
 #if FOLLY_HAS_COROUTINES
 
 template <typename Promise>

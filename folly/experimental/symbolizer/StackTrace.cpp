@@ -21,6 +21,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/portability/Config.h>
+#include <folly/tracing/AsyncStack.h>
 
 #if FOLLY_HAVE_LIBUNWIND
 // Must be first to ensure that UNW_LOCAL_ONLY is defined
@@ -121,6 +122,12 @@ ssize_t getStackTraceInPlace(
 
 #endif // FOLLY_HAVE_LIBUNWIND
 
+// Helper struct for manually walking the stack using stack frame pointers
+struct StackFrame {
+  StackFrame* parentFrame;
+  void* returnAddress;
+};
+
 } // namespace
 
 ssize_t getStackTraceSafe(
@@ -162,5 +169,43 @@ ssize_t getStackTraceHeap(
   return -1;
 #endif
 }
+
+ssize_t getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
+  size_t numFrames = 0;
+  const auto* asyncStackRoot = tryGetCurrentAsyncStackRoot();
+  // If we have no async stack root, this should return no frames.
+  // If we do have a stack root, also include the current return address.
+  if (asyncStackRoot != nullptr && numFrames < maxAddresses) {
+    addresses[numFrames++] = (uintptr_t)FOLLY_ASYNC_STACK_RETURN_ADDRESS();
+  }
+  for (const auto* normalStackFrame =
+           (StackFrame*)FOLLY_ASYNC_STACK_FRAME_POINTER();
+       normalStackFrame != nullptr && asyncStackRoot != nullptr &&
+       numFrames < maxAddresses;
+       normalStackFrame = normalStackFrame->parentFrame) {
+    // Walk the normal stack to find the caller of the frame that holds the
+    // AsyncStackRoot. If the caller holds the AsyncStackRoot, then the
+    // current frame is part of an async operation, and we should get the
+    // async stack trace before adding the current frame.
+    if (normalStackFrame->parentFrame ==
+        asyncStackRoot->getStackFramePointer()) {
+      // Follow the async stack trace starting from the root
+      numFrames += getAsyncStackTraceFromInitialFrame(
+          asyncStackRoot->getTopFrame(),
+          &addresses[numFrames],
+          maxAddresses - numFrames);
+      // There could be more related work at the next async stack root.
+      // Anything after the stack frame containing the last async stack root
+      // is potentially unrelated to the current async stack.
+      asyncStackRoot = asyncStackRoot->getNextRoot();
+      if (asyncStackRoot == nullptr) {
+        break;
+      }
+    }
+    addresses[numFrames++] = (uintptr_t)normalStackFrame->returnAddress;
+  }
+  return numFrames;
+}
+
 } // namespace symbolizer
 } // namespace folly

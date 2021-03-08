@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <cstdint>
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
@@ -250,6 +251,16 @@ void popAsyncStackFrameCallee(folly::AsyncStackFrame& calleeFrame) noexcept;
 // many frames and threads. The implication of this restriction is that
 // you should also never activate this frame.
 AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept;
+
+// Given an initial AsyncStackFrame, this will write `addresses` with
+// the return addresses of the frames in this async stack trace, up to
+// `maxAddresses` written.
+// This assumes `addresses` has `maxAddresses` allocated space available.
+// Returns the number of frames written.
+size_t getAsyncStackTraceFromInitialFrame(
+    folly::AsyncStackFrame* initialFrame,
+    std::uintptr_t* addresses,
+    size_t maxAddresses);
 
 #if FOLLY_HAS_COROUTINES
 

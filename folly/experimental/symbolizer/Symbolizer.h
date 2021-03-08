@@ -87,6 +87,14 @@ inline bool getStackTraceHeap(FrameArray<N>& fa) {
   return detail::fixFrameArray(fa, getStackTraceHeap(fa.addresses, N));
 }
 
+template <size_t N>
+FOLLY_ALWAYS_INLINE bool getAsyncStackTraceSafe(FrameArray<N>& fa);
+
+template <size_t N>
+inline bool getAsyncStackTraceSafe(FrameArray<N>& fa) {
+  return detail::fixFrameArray(fa, getAsyncStackTraceSafe(fa.addresses, N));
+}
+
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 class Symbolizer {
@@ -235,6 +243,14 @@ class SafeStackTracePrinter {
   FDSymbolizePrinter printer_;
   std::unique_ptr<FrameArray<kMaxStackTraceDepth>> addresses_;
 };
+
+/**
+ * Gets the async stack trace for the current thread and returns a string
+ * representation. Convenience function meant for debugging and logging.
+ *
+ * NOT async-signal-safe.
+ */
+std::string getAsyncStackTraceStr();
 
 #if FOLLY_HAVE_SWAPCONTEXT
 
