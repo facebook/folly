@@ -149,11 +149,18 @@
 #define CO_ASSERT_FALSE(condition) \
   GTEST_TEST_BOOLEAN_(             \
       !(condition), #condition, true, false, CO_GTEST_FATAL_FAILURE_)
-#define CO_ASSERT_EQ(val1, val2)                                            \
+
+#if defined(GTEST_IS_NULL_LITERAL_)
+#define CO_ASSERT_EQ(val1, val2)                                  \
   CO_ASSERT_PRED_FORMAT2(                                                   \
       ::testing::internal::EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
       val1,                                                                 \
       val2)
+#else
+#define CO_ASSERT_EQ(val1, val2) \
+  CO_ASSERT_PRED_FORMAT2(::testing::internal::EqHelper::Compare, val1, val2)
+#endif
+
 #define CO_ASSERT_NE(val1, val2) \
   CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperNE, val1, val2)
 #define CO_ASSERT_LE(val1, val2) \
