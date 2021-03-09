@@ -713,3 +713,54 @@ TEST(EvictingCacheMap, IteratorConversion) {
   EXPECT_FALSE((std::is_convertible<cri, ri>::value));
   EXPECT_TRUE((std::is_convertible<cri, cri>::value));
 }
+
+TEST(EvictingCacheMap, HeterogeneousAccess) {
+  constexpr std::array pieces{
+      std::pair{"one"_sp, 1},
+      std::pair{"two"_sp, 2},
+      std::pair{"three"_sp, 3},
+  };
+  constexpr std::array charstars{
+      std::pair{"four", 4},
+      std::pair{"five", 5},
+      std::pair{"six", 6},
+      std::pair{"seven", 7},
+  };
+
+  EvictingCacheMap<std::string, int> map(0);
+  for (auto&& [key, value] : pieces) {
+    auto [_, inserted] = map.insert(key, value);
+    EXPECT_TRUE(inserted);
+  }
+  for (auto&& [key, value] : charstars) {
+    map.set(key, value);
+  }
+
+  for (auto&& [key, value] : pieces) {
+    auto exists = map.exists(key);
+    EXPECT_TRUE(exists);
+    auto iter = map.find(key);
+    EXPECT_TRUE(iter != map.end());
+    EXPECT_EQ(iter->second, value);
+    iter = map.findWithoutPromotion(key);
+    EXPECT_TRUE(iter != map.end());
+    EXPECT_EQ(iter->second, value);
+  }
+  for (auto&& [key, value] : charstars) {
+    auto result = map.get(key);
+    EXPECT_EQ(result, value);
+    result = map.getWithoutPromotion(key);
+    EXPECT_EQ(result, value);
+  }
+
+  for (auto&& [key, _] : pieces) {
+    auto erased = map.erase(key);
+    EXPECT_TRUE(erased);
+    erased = map.erase(key);
+    EXPECT_FALSE(erased);
+  }
+  for (auto&& [key, _] : charstars) {
+    map.erase(map.findWithoutPromotion(key));
+  }
+  EXPECT_TRUE(map.empty());
+}

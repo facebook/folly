@@ -25,6 +25,7 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/utility.hpp>
 
+#include <folly/container/HeterogeneousAccess.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {
@@ -94,25 +95,24 @@ namespace folly {
 template <
     class TKey,
     class TValue,
-    class THash = std::hash<TKey>,
-    class TKeyEqual = std::equal_to<TKey>>
+    class THash = HeterogeneousAccessHash<TKey>,
+    class TKeyEqual = HeterogeneousAccessEqualTo<TKey>>
 class EvictingCacheMap {
  private:
   // typedefs for brevity
   struct Node;
   struct KeyHasher;
   struct KeyValueEqual;
-  typedef boost::intrusive::link_mode<boost::intrusive::safe_link> link_mode;
-  typedef boost::intrusive::unordered_set<
+  using LinkMode = boost::intrusive::link_mode<boost::intrusive::safe_link>;
+  using NodeMap = boost::intrusive::unordered_set<
       Node,
       boost::intrusive::hash<KeyHasher>,
-      boost::intrusive::equal<KeyValueEqual>>
-      NodeMap;
-  typedef boost::intrusive::list<Node> NodeList;
-  typedef std::pair<const TKey, TValue> TPair;
+      boost::intrusive::equal<KeyValueEqual>>;
+  using NodeList = boost::intrusive::list<Node>;
+  using TPair = std::pair<const TKey, TValue>;
 
  public:
-  typedef std::function<void(TKey, TValue&&)> PruneHookCall;
+  using PruneHookCall = std::function<void(TKey, TValue&&)>;
 
   // iterator base : returns TPair on dereference
   template <typename Value, typename TIterator>
@@ -141,19 +141,46 @@ class EvictingCacheMap {
   };
 
   // iterators
-  typedef iterator_base<TPair, typename NodeList::iterator> iterator;
-  typedef iterator_base<const TPair, typename NodeList::const_iterator>
-      const_iterator;
-  typedef iterator_base<TPair, typename NodeList::reverse_iterator>
-      reverse_iterator;
-  typedef iterator_base<const TPair, typename NodeList::const_reverse_iterator>
-      const_reverse_iterator;
+  using iterator = iterator_base<TPair, typename NodeList::iterator>;
+  using const_iterator =
+      iterator_base<const TPair, typename NodeList::const_iterator>;
+  using reverse_iterator =
+      iterator_base<TPair, typename NodeList::reverse_iterator>;
+  using const_reverse_iterator =
+      iterator_base<const TPair, typename NodeList::const_reverse_iterator>;
 
   // the default map typedefs
   using key_type = TKey;
   using mapped_type = TValue;
   using hasher = THash;
 
+ private:
+  template <typename K, typename T>
+  using EnableHeterogeneousFind = std::enable_if_t<
+      detail::EligibleForHeterogeneousFind<TKey, THash, TKeyEqual, K>::value,
+      T>;
+
+  template <typename K, typename T>
+  using EnableHeterogeneousInsert = std::enable_if_t<
+      detail::EligibleForHeterogeneousInsert<TKey, THash, TKeyEqual, K>::value,
+      T>;
+
+  template <typename K>
+  using IsIter = Disjunction<
+      std::is_same<iterator, remove_cvref_t<K>>,
+      std::is_same<const_iterator, remove_cvref_t<K>>>;
+
+  template <typename K, typename T>
+  using EnableHeterogeneousErase = std::enable_if_t<
+      detail::EligibleForHeterogeneousFind<
+          TKey,
+          THash,
+          TKeyEqual,
+          std::conditional_t<IsIter<K>::value, TKey, K>>::value &&
+          !IsIter<K>::value,
+      T>;
+
+ public:
   /**
    * Construct a EvictingCacheMap
    * @param maxSize maximum size of the cache map.  Once the map size exceeds
@@ -219,8 +246,11 @@ class EvictingCacheMap {
    * @param key key to search for
    * @return true if exists, false otherwise
    */
-  bool exists(const TKey& key) const {
-    return findInIndex(key) != index_.end();
+  bool exists(const TKey& key) const { return existsImpl(key); }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  bool exists(const K& key) const {
+    return existsImpl(key);
   }
 
   /**
@@ -230,12 +260,11 @@ class EvictingCacheMap {
    * @return the value if it exists
    * @throw std::out_of_range exception of the key does not exist
    */
-  TValue& get(const TKey& key) {
-    auto it = find(key);
-    if (it == end()) {
-      throw_exception<std::out_of_range>("Key does not exist");
-    }
-    return it->second;
+  TValue& get(const TKey& key) { return getImpl(key); }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  TValue& get(const K& key) {
+    return getImpl(key);
   }
 
   /**
@@ -245,13 +274,18 @@ class EvictingCacheMap {
    * @return the iterator of the object (a std::pair of const TKey, TValue) or
    *     end() if it does not exist
    */
-  iterator find(const TKey& key) {
-    auto it = findInIndex(key);
-    if (it == index_.end()) {
-      return end();
-    }
-    lru_.splice(lru_.begin(), lru_, lru_.iterator_to(*it));
-    return iterator(lru_.iterator_to(*it));
+  iterator find(const TKey& key) { return findImpl(*this, key); }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  iterator find(const K& key) {
+    return findImpl(*this, key);
+  }
+
+  const_iterator find(const TKey& key) const { return findImpl(*this, key); }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  const_iterator find(const K& key) const {
+    return findImpl(*this, key);
   }
 
   /**
@@ -262,16 +296,21 @@ class EvictingCacheMap {
    * @throw std::out_of_range exception of the key does not exist
    */
   const TValue& getWithoutPromotion(const TKey& key) const {
-    auto it = findWithoutPromotion(key);
-    if (it == end()) {
-      throw_exception<std::out_of_range>("Key does not exist");
-    }
-    return it->second;
+    return getWithoutPromotionImpl(*this, key);
+  }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  const TValue& getWithoutPromotion(const K& key) const {
+    return getWithoutPromotionImpl(*this, key);
   }
 
   TValue& getWithoutPromotion(const TKey& key) {
-    auto const& cThis = *this;
-    return const_cast<TValue&>(cThis.getWithoutPromotion(key));
+    return getWithoutPromotionImpl(*this, key);
+  }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  TValue& getWithoutPromotion(const K& key) {
+    return getWithoutPromotionImpl(*this, key);
   }
 
   /**
@@ -282,13 +321,21 @@ class EvictingCacheMap {
    *     end() if it does not exist
    */
   const_iterator findWithoutPromotion(const TKey& key) const {
-    auto it = findInIndex(key);
-    return (it == index_.end()) ? end() : const_iterator(lru_.iterator_to(*it));
+    return findWithoutPromotionImpl(*this, key);
+  }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  const_iterator findWithoutPromotion(const K& key) const {
+    return findWithoutPromotionImpl(*this, key);
   }
 
   iterator findWithoutPromotion(const TKey& key) {
-    auto it = findInIndex(key);
-    return (it == index_.end()) ? end() : iterator(lru_.iterator_to(*it));
+    return findWithoutPromotionImpl(*this, key);
+  }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  iterator findWithoutPromotion(const K& key) {
+    return findWithoutPromotionImpl(*this, key);
   }
 
   /**
@@ -296,13 +343,11 @@ class EvictingCacheMap {
    * @param key key associated with the value
    * @return true if the key existed and was erased, else false
    */
-  bool erase(const TKey& key) {
-    auto it = findInIndex(key);
-    if (it != index_.end()) {
-      erase(const_iterator(lru_.iterator_to(*it)));
-      return true;
-    }
-    return false;
+  bool erase(const TKey& key) { return eraseImpl(key); }
+
+  template <typename K, EnableHeterogeneousErase<K, int> = 0>
+  bool erase(const K& key) {
+    return eraseImpl(key);
   }
 
   /**
@@ -332,22 +377,16 @@ class EvictingCacheMap {
       TValue value,
       bool promote = true,
       PruneHookCall pruneHook = nullptr) {
-    auto it = findInIndex(key);
-    if (it != index_.end()) {
-      it->pr.second = std::move(value);
-      if (promote) {
-        lru_.splice(lru_.begin(), lru_, lru_.iterator_to(*it));
-      }
-    } else {
-      auto node = new Node(key, std::move(value));
-      index_.insert(*node);
-      lru_.push_front(*node);
+    setImpl(key, std::forward<TValue>(value), promote, pruneHook);
+  }
 
-      // no evictions if maxSize_ is 0 i.e. unlimited capacity
-      if (maxSize_ > 0 && size() > maxSize_) {
-        prune(clearSize_, pruneHook);
-      }
-    }
+  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  void set(
+      const K& key,
+      TValue value,
+      bool promote = true,
+      PruneHookCall pruneHook = nullptr) {
+    setImpl(key, std::forward<TValue>(value), promote, pruneHook);
   }
 
   /**
@@ -361,18 +400,13 @@ class EvictingCacheMap {
    */
   std::pair<iterator, bool> insert(
       const TKey& key, TValue value, PruneHookCall pruneHook = nullptr) {
-    auto node = std::make_unique<Node>(key, std::move(value));
-    auto pair = index_.insert(*node);
-    if (pair.second) {
-      lru_.push_front(*node);
-      node.release();
+    return insertImpl(key, std::forward<TValue>(value), pruneHook);
+  }
 
-      // no evictions if maxSize_ is 0 i.e. unlimited capacity
-      if (maxSize_ > 0 && size() > maxSize_) {
-        prune(clearSize_, pruneHook);
-      }
-    }
-    return std::make_pair(iterator(lru_.iterator_to(*pair.first)), pair.second);
+  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  std::pair<iterator, bool> insert(
+      const K& key, TValue value, PruneHookCall pruneHook = nullptr) {
+    return insertImpl(key, std::forward<TValue>(value), pruneHook);
   }
 
   /**
@@ -440,10 +474,10 @@ class EvictingCacheMap {
   }
 
  private:
-  struct Node : public boost::intrusive::unordered_set_base_hook<link_mode>,
-                public boost::intrusive::list_base_hook<link_mode> {
-    Node(const TKey& key, TValue&& value)
-        : pr(std::make_pair(key, std::move(value))) {}
+  struct Node : public boost::intrusive::unordered_set_base_hook<LinkMode>,
+                public boost::intrusive::list_base_hook<LinkMode> {
+    template <typename K>
+    Node(const K& key, TValue&& value) : pr(key, std::move(value)) {}
     TPair pr;
   };
 
@@ -452,16 +486,21 @@ class EvictingCacheMap {
     std::size_t operator()(const Node& node) const {
       return hash(node.pr.first);
     }
-    std::size_t operator()(const TKey& key) const { return hash(key); }
+    template <typename K>
+    std::size_t operator()(const K& key) const {
+      return hash(key);
+    }
     THash hash;
   };
 
   struct KeyValueEqual {
     KeyValueEqual(const TKeyEqual& keyEqual) : equal(keyEqual) {}
-    bool operator()(const TKey& lhs, const Node& rhs) const {
+    template <typename K>
+    bool operator()(const K& lhs, const Node& rhs) const {
       return equal(lhs, rhs.pr.first);
     }
-    bool operator()(const Node& lhs, const TKey& rhs) const {
+    template <typename K>
+    bool operator()(const Node& lhs, const K& rhs) const {
       return equal(lhs.pr.first, rhs);
     }
     bool operator()(const Node& lhs, const Node& rhs) const {
@@ -470,6 +509,99 @@ class EvictingCacheMap {
     TKeyEqual equal;
   };
 
+  template <typename K>
+  bool existsImpl(const K& key) const {
+    return findInIndex(key) != index_.end();
+  }
+
+  template <typename K>
+  TValue& getImpl(const K& key) {
+    auto it = findImpl(*this, key);
+    if (it == end()) {
+      throw_exception<std::out_of_range>("Key does not exist");
+    }
+    return it->second;
+  }
+
+  template <typename Self>
+  using self_iterator_t =
+      std::conditional_t<std::is_const<Self>::value, const_iterator, iterator>;
+
+  template <typename Self, typename K>
+  static auto findImpl(Self& self, const K& key) {
+    auto it = self.findInIndex(key);
+    if (it == self.index_.end()) {
+      return self.end();
+    }
+    self.lru_.splice(self.lru_.begin(), self.lru_, self.lru_.iterator_to(*it));
+    return self_iterator_t<Self>(self.lru_.iterator_to(*it));
+  }
+
+  template <typename Self, typename K>
+  static auto& getWithoutPromotionImpl(Self& self, const K& key) {
+    auto it = self.findWithoutPromotion(key);
+    if (it == self.end()) {
+      throw_exception<std::out_of_range>("Key does not exist");
+    }
+    return it->second;
+  }
+
+  template <typename Self, typename K>
+  static auto findWithoutPromotionImpl(Self& self, const K& key) {
+    auto it = self.findInIndex(key);
+    return (it == self.index_.end())
+        ? self.end()
+        : self_iterator_t<Self>(self.lru_.iterator_to(*it));
+  }
+
+  template <typename K>
+  bool eraseImpl(const K& key) {
+    auto it = findInIndex(key);
+    if (it != index_.end()) {
+      erase(const_iterator(lru_.iterator_to(*it)));
+      return true;
+    }
+    return false;
+  }
+
+  template <typename K>
+  void setImpl(
+      const K& key, TValue value, bool promote, PruneHookCall pruneHook) {
+    auto it = findInIndex(key);
+    if (it != index_.end()) {
+      it->pr.second = std::move(value);
+      if (promote) {
+        lru_.splice(lru_.begin(), lru_, lru_.iterator_to(*it));
+      }
+    } else {
+      auto node = new Node(key, std::move(value));
+      index_.insert(*node);
+      lru_.push_front(*node);
+
+      // no evictions if maxSize_ is 0 i.e. unlimited capacity
+      if (maxSize_ > 0 && size() > maxSize_) {
+        prune(clearSize_, pruneHook);
+      }
+    }
+  }
+
+  template <typename K>
+  auto insertImpl(const K& key, TValue value, PruneHookCall pruneHook) {
+    auto node = std::make_unique<Node>(key, std::move(value));
+    auto pair = index_.insert(*node);
+    if (pair.second) {
+      lru_.push_front(*node);
+      node.release();
+
+      // no evictions if maxSize_ is 0 i.e. unlimited capacity
+      if (maxSize_ > 0 && size() > maxSize_) {
+        prune(clearSize_, pruneHook);
+      }
+    }
+    return std::pair<iterator, bool>(
+        lru_.iterator_to(*pair.first), pair.second);
+  }
+
   /**
    * Get the iterator in in the index associated with a specific key. This is
    * merely a search in the index and does not promote the object.
@@ -477,11 +609,13 @@ class EvictingCacheMap {
    * @return the NodeMap::iterator to the Node containing the object
    *    (a std::pair of const TKey, TValue) or index_.end() if it does not exist
    */
-  typename NodeMap::iterator findInIndex(const TKey& key) {
+  template <typename K>
+  typename NodeMap::iterator findInIndex(const K& key) {
     return index_.find(key, KeyHasher(keyHash_), KeyValueEqual(keyEqual_));
   }
 
-  typename NodeMap::const_iterator findInIndex(const TKey& key) const {
+  template <typename K>
+  typename NodeMap::const_iterator findInIndex(const K& key) const {
     return index_.find(key, KeyHasher(keyHash_), KeyValueEqual(keyEqual_));
   }
 
