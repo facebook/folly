@@ -351,7 +351,7 @@ STATIC_INLINE uint64_t Rotate64(uint64_t val, int shift) {
 #define can_use_avx 0
 #endif
 
-#if can_use_ssse3 || can_use_sse41 || can_use_sse42 || can_use_aesni || can_use_avx
+#if can_use_sse42 || (can_use_sse41 && x86_64)
 STATIC_INLINE __m128i Fetch128(const char* s) {
   return _mm_loadu_si128(reinterpret_cast<const __m128i*>(s));
 }
