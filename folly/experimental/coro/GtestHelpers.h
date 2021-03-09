@@ -151,7 +151,7 @@
       !(condition), #condition, true, false, CO_GTEST_FATAL_FAILURE_)
 
 #if defined(GTEST_IS_NULL_LITERAL_)
-#define CO_ASSERT_EQ(val1, val2)                                  \
+#define CO_ASSERT_EQ(val1, val2)                                            \
   CO_ASSERT_PRED_FORMAT2(                                                   \
       ::testing::internal::EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
       val1,                                                                 \
