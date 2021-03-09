@@ -18,7 +18,12 @@
 
 #include <atomic>
 
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+
+extern "C" FOLLY_KEEP void check_executor_invoke_catching_exns(void (*f)()) {
+  folly::Executor::invokeCatchingExns("check", f);
+}
 
 namespace folly {
 
