@@ -488,9 +488,14 @@ Yield generator(Source&& source) {
  * Create inline generator, used like:
  *
  *  auto gen = GENERATOR(int) { yield(1); yield(2); };
+ *
+ * GENERATOR_REF can be useful for creating a generator that doesn't
+ * leave its original scope.
  */
 #define GENERATOR(TYPE) \
   ::folly::gen::detail::GeneratorBuilder<TYPE>() + [=](auto&& yield)
+#define GENERATOR_REF(TYPE) \
+  ::folly::gen::detail::GeneratorBuilder<TYPE>() + [&](auto&& yield)
 
 /*
  * empty() - for producing empty sequences.
