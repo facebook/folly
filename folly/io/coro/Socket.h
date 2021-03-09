@@ -21,7 +21,7 @@
 #include <folly/experimental/coro/Task.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncSocket.h>
-#include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/AsyncSocketException.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -71,11 +71,12 @@ class Transport {
 
 class Socket : public Transport {
  public:
-  explicit Socket(std::shared_ptr<AsyncSocket> socket)
-      : socket_(std::move(socket)) {}
-
   explicit Socket(AsyncSocket::UniquePtr socket)
-      : socket_(socket.release(), AsyncSocket::Destructor()) {}
+      : eventBase_(socket->getEventBase()), transport_(std::move(socket)) {}
+
+  Socket(
+      folly::EventBase* eventBase, folly::AsyncTransport::UniquePtr transport)
+      : eventBase_(eventBase), transport_(std::move(transport)) {}
 
   Socket(Socket&&) = default;
   Socket& operator=(Socket&&) = default;
@@ -84,9 +85,7 @@ class Socket : public Transport {
       EventBase* evb,
       const SocketAddress& destAddr,
       std::chrono::milliseconds connectTimeout);
-  virtual EventBase* getEventBase() noexcept override {
-    return socket_->getEventBase();
-  }
+  virtual EventBase* getEventBase() noexcept override { return eventBase_; }
 
   Task<size_t> read(
       MutableByteRange buf, std::chrono::milliseconds timeout) override;
@@ -105,42 +104,40 @@ class Socket : public Transport {
       std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
       WriteInfo* writeInfo = nullptr) override;
 
+  AsyncTransport* getTransport() const override { return transport_.get(); }
+
   SocketAddress getLocalAddress() const noexcept override {
     SocketAddress addr;
-    socket_->getLocalAddress(&addr);
+    transport_->getLocalAddress(&addr);
     return addr;
   }
 
-  folly::AsyncTransport* getTransport() const override { return socket_.get(); }
-
   SocketAddress getPeerAddress() const noexcept override {
     SocketAddress addr;
-    socket_->getPeerAddress(&addr);
+    transport_->getPeerAddress(&addr);
     return addr;
   }
 
   void shutdownWrite() noexcept override {
-    if (socket_) {
-      socket_->shutdownWrite();
+    if (transport_) {
+      transport_->shutdownWrite();
     }
   }
 
   void close() noexcept override {
-    if (socket_) {
-      socket_->close();
+    if (transport_) {
+      transport_->close();
     }
   }
 
   void closeWithReset() noexcept override {
-    if (socket_) {
-      socket_->closeWithReset();
+    if (transport_) {
+      transport_->closeWithReset();
     }
   }
 
-  std::shared_ptr<AsyncSocket> getAsyncSocket() { return socket_; }
-
   const AsyncTransportCertificate* getPeerCertificate() const override {
-    return socket_->getPeerCertificate();
+    return transport_->getPeerCertificate();
   }
 
  private:
@@ -148,7 +145,8 @@ class Socket : public Transport {
   Socket(const Socket&) = delete;
   Socket& operator=(const Socket&) = delete;
 
-  std::shared_ptr<AsyncSocket> socket_;
+  EventBase* eventBase_;
+  AsyncTransport::UniquePtr transport_;
   bool deferredReadEOF_{false};
 };
 

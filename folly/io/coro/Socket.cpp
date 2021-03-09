@@ -33,8 +33,8 @@ namespace {
 
 class CallbackBase {
  public:
-  explicit CallbackBase(std::shared_ptr<folly::AsyncSocket> socket)
-      : socket_{std::move(socket)} {}
+  explicit CallbackBase(folly::AsyncTransport& transport)
+      : transport_{transport} {}
 
   virtual ~CallbackBase() noexcept = default;
 
@@ -65,10 +65,10 @@ class CallbackBase {
  protected:
   // we use this to notify the other side of completion
   Baton baton_;
-  // needed to modify AsyncSocket state, e.g. cacncel callbacks
-  const std::shared_ptr<folly::AsyncSocket> socket_;
+  // needed to modify AsyncTransport state, e.g. cacncel callbacks
+  folly::AsyncTransport& transport_;
 
-  // to wrap AsyncSocket errors
+  // to wrap AsyncTransport errors
   folly::exception_wrapper error_;
 
  private:
@@ -82,11 +82,11 @@ class CallbackBase {
 class ConnectCallback : public CallbackBase,
                         public folly::AsyncSocket::ConnectCallback {
  public:
-  explicit ConnectCallback(std::shared_ptr<folly::AsyncSocket> socket)
-      : CallbackBase(std::move(socket)) {}
+  explicit ConnectCallback(folly::AsyncSocket& socket)
+      : CallbackBase(socket), socket_(socket) {}
 
  private:
-  void cancel() noexcept override { socket_->cancelConnect(); }
+  void cancel() noexcept override { socket_.cancelConnect(); }
 
   void connectSuccess() noexcept override { post(); }
 
@@ -94,14 +94,15 @@ class ConnectCallback : public CallbackBase,
     error_ = folly::exception_wrapper(ex);
     post();
   }
+  folly::AsyncSocket& socket_;
 };
 
 //
-// Handle data read for AsyncSocket
+// Handle data read for AsyncTransport
 //
 
 class ReadCallback : public CallbackBase,
-                     public folly::AsyncSocket::ReadCallback,
+                     public folly::AsyncTransport::ReadCallback,
                      public folly::HHWheelTimer::Callback {
  public:
   // we need to pass the socket into ReadCallback so we can clear the callback
@@ -111,27 +112,29 @@ class ReadCallback : public CallbackBase,
   // socket to call readDataAvailable and readEOF in sequence, causing the
   // promise to be fulfilled twice (oops!)
   ReadCallback(
-      std::shared_ptr<folly::AsyncSocket> socket,
+      folly::HHWheelTimer& timer,
+      folly::AsyncTransport& transport,
       folly::MutableByteRange buf,
       std::chrono::milliseconds timeout)
-      : CallbackBase(socket), buf_{buf} {
+      : CallbackBase(transport), buf_{buf} {
     if (timeout.count() > 0) {
-      socket->getEventBase()->timer().scheduleTimeout(this, timeout);
+      timer.scheduleTimeout(this, timeout);
     }
   }
 
   ReadCallback(
-      std::shared_ptr<folly::AsyncSocket> socket,
+      folly::HHWheelTimer& timer,
+      folly::AsyncTransport& transport,
       folly::IOBufQueue* readBuf,
       size_t minReadSize,
       size_t newAllocationSize,
       std::chrono::milliseconds timeout)
-      : CallbackBase(socket),
+      : CallbackBase(transport),
         readBuf_(readBuf),
         minReadSize_(minReadSize),
         newAllocationSize_(newAllocationSize) {
     if (timeout.count() > 0) {
-      socket->getEventBase()->timer().scheduleTimeout(this, timeout);
+      timer.scheduleTimeout(this, timeout);
     }
   }
 
@@ -147,7 +150,7 @@ class ReadCallback : public CallbackBase,
   size_t newAllocationSize_{0};
 
   void cancel() noexcept override {
-    socket_->setReadCB(nullptr);
+    transport_.setReadCB(nullptr);
     cancelTimeout();
   }
 
@@ -176,7 +179,7 @@ class ReadCallback : public CallbackBase,
     if (readBuf_) {
       readBuf_->postallocate(len);
     } else if (length == buf_.size()) {
-      socket_->setReadCB(nullptr);
+      transport_.setReadCB(nullptr);
       cancelTimeout();
     }
     post();
@@ -185,7 +188,7 @@ class ReadCallback : public CallbackBase,
   void readEOF() noexcept override {
     VLOG(5) << "readEOF()";
     // disable callbacks
-    socket_->setReadCB(nullptr);
+    transport_.setReadCB(nullptr);
     cancelTimeout();
     eof = true;
     post();
@@ -194,7 +197,7 @@ class ReadCallback : public CallbackBase,
   void readErr(const folly::AsyncSocketException& ex) noexcept override {
     VLOG(5) << "readErr()";
     // disable callbacks
-    socket_->setReadCB(nullptr);
+    transport_.setReadCB(nullptr);
     cancelTimeout();
     error_ = folly::exception_wrapper(ex);
     post();
@@ -210,7 +213,7 @@ class ReadCallback : public CallbackBase,
     using Error = folly::AsyncSocketException::AsyncSocketExceptionType;
 
     // uninstall read callback. it takes another read to bring it back.
-    socket_->setReadCB(nullptr);
+    transport_.setReadCB(nullptr);
     // If the timeout fires but this ReadCallback did get some data, ignore it.
     // post() has already happend from readDataAvailable.
     if (length == 0) {
@@ -222,21 +225,21 @@ class ReadCallback : public CallbackBase,
 };
 
 //
-// Handle data write for AsyncSocket
+// Handle data write for AsyncTransport
 //
 
 class WriteCallback : public CallbackBase,
-                      public folly::AsyncSocket::WriteCallback {
+                      public folly::AsyncTransport::WriteCallback {
  public:
-  explicit WriteCallback(std::shared_ptr<folly::AsyncSocket> socket)
-      : CallbackBase(socket) {}
+  explicit WriteCallback(folly::AsyncTransport& transport)
+      : CallbackBase(transport) {}
   ~WriteCallback() override = default;
 
   size_t bytesWritten{0};
   std::optional<folly::AsyncSocketException> error;
 
  private:
-  void cancel() noexcept override { socket_->closeWithReset(); }
+  void cancel() noexcept override { transport_.closeWithReset(); }
   //
   // Methods of WriteCallback
   //
@@ -264,10 +267,10 @@ Task<Socket> Socket::connect(
     folly::EventBase* evb,
     const folly::SocketAddress& destAddr,
     std::chrono::milliseconds connectTimeout) {
-  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(evb);
+  auto socket = AsyncSocket::newSocket(evb);
 
   socket->setReadCB(nullptr);
-  ConnectCallback cb{socket};
+  ConnectCallback cb{*socket};
   socket->connect(&cb, destAddr, connectTimeout.count());
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
@@ -277,7 +280,7 @@ Task<Socket> Socket::connect(
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
-  co_return Socket(socket);
+  co_return Socket(evb, std::move(socket));
 }
 
 Task<size_t> Socket::read(
@@ -288,8 +291,8 @@ Task<size_t> Socket::read(
   }
   VLOG(5) << "Socket::read(), expecting max len " << buf.size();
 
-  ReadCallback cb{socket_, buf, timeout};
-  socket_->setReadCB(&cb);
+  ReadCallback cb{eventBase_->timer(), *transport_, buf, timeout};
+  transport_->setReadCB(&cb);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
 
@@ -299,7 +302,7 @@ Task<size_t> Socket::read(
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
-  socket_->setReadCB(nullptr);
+  transport_->setReadCB(nullptr);
   deferredReadEOF_ = (cb.eof && cb.length > 0);
   co_return cb.length;
 }
@@ -315,8 +318,14 @@ Task<size_t> Socket::read(
   }
   VLOG(5) << "Socket::read(), expecting minReadSize=" << minReadSize;
 
-  ReadCallback cb{socket_, &readBuf, minReadSize, newAllocationSize, timeout};
-  socket_->setReadCB(&cb);
+  ReadCallback cb{
+      eventBase_->timer(),
+      *transport_,
+      &readBuf,
+      minReadSize,
+      newAllocationSize,
+      timeout};
+  transport_->setReadCB(&cb);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
   if (waitRet.hasException()) {
@@ -325,7 +334,7 @@ Task<size_t> Socket::read(
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
-  socket_->setReadCB(nullptr);
+  transport_->setReadCB(nullptr);
   deferredReadEOF_ = (cb.eof && cb.length > 0);
   co_return cb.length;
 }
@@ -334,9 +343,9 @@ Task<folly::Unit> Socket::write(
     folly::ByteRange buf,
     std::chrono::milliseconds timeout,
     WriteInfo* writeInfo) {
-  socket_->setSendTimeout(timeout.count());
-  WriteCallback cb{socket_};
-  socket_->write(&cb, buf.begin(), buf.size());
+  transport_->setSendTimeout(timeout.count());
+  WriteCallback cb{*transport_};
+  transport_->write(&cb, buf.begin(), buf.size());
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
   if (waitRet.hasException()) {
@@ -359,10 +368,10 @@ Task<folly::Unit> Socket::write(
     folly::IOBufQueue& ioBufQueue,
     std::chrono::milliseconds timeout,
     WriteInfo* writeInfo) {
-  socket_->setSendTimeout(timeout.count());
-  WriteCallback cb{socket_};
+  transport_->setSendTimeout(timeout.count());
+  WriteCallback cb{*transport_};
   auto iovec = ioBufQueue.front()->getIov();
-  socket_->writev(&cb, iovec.data(), iovec.size());
+  transport_->writev(&cb, iovec.data(), iovec.size());
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
   if (waitRet.hasException()) {

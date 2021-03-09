@@ -114,8 +114,10 @@ Task<std::unique_ptr<Socket>> ServerSocket::accept() {
   if (cb.error) {
     co_yield co_error(std::move(cb.error));
   }
-  co_return std::make_unique<Socket>(AsyncSocket::newSocket(
-      socket_->getEventBase(), NetworkSocket::fromFd(cb.acceptFd)));
+  co_return std::make_unique<Socket>(
+      socket_->getEventBase(),
+      AsyncSocket::newSocket(
+          socket_->getEventBase(), NetworkSocket::fromFd(cb.acceptFd)));
 }
 
 } // namespace coro

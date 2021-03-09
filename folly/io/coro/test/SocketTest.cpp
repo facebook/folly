@@ -252,7 +252,9 @@ TEST_F(ServerSocketTest, WriteCancelled) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     // reduce the send buffer size so the write wouldn't complete immediately
-    EXPECT_EQ(cs.getAsyncSocket()->setSendBufSize(4096), 0);
+    auto asyncSocket = dynamic_cast<folly::AsyncSocket*>(cs.getTransport());
+    CHECK(asyncSocket);
+    EXPECT_EQ(asyncSocket->setSendBufSize(4096), 0);
     // produces blocking socket
     auto ss = srv.accept(-1);
     constexpr auto kBufSize = 65536;
