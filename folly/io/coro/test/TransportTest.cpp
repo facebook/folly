@@ -21,7 +21,7 @@
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/ScopedBoundPort.h>
 #include <folly/io/coro/ServerSocket.h>
-#include <folly/io/coro/Socket.h>
+#include <folly/io/coro/Transport.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -30,7 +30,7 @@ using namespace std::chrono_literals;
 using namespace folly;
 using namespace folly::coro;
 
-class SocketTest : public testing::Test {
+class TransportTest : public testing::Test {
  public:
   template <typename F>
   void run(F f) {
@@ -46,32 +46,34 @@ class SocketTest : public testing::Test {
   CancellationSource cancelSource;
 };
 
-class ServerSocketTest : public SocketTest {
+class ServerTransportTest : public TransportTest {
  public:
-  folly::coro::Task<Socket> connect() {
-    co_return co_await Socket::connect(&evb, srv.getAddress(), 0ms);
+  folly::coro::Task<Transport> connect() {
+    co_return co_await Transport::newConnectedSocket(
+        &evb, srv.getAddress(), 0ms);
   }
   TestServer srv;
 };
 
-TEST_F(SocketTest, ConnectFailure) {
+TEST_F(TransportTest, ConnectFailure) {
   run([&]() -> Task<> {
     ScopedBoundPort ph;
 
     auto serverAddr = ph.getAddress();
     EXPECT_THROW(
-        co_await Socket::connect(&evb, serverAddr, 0ms), AsyncSocketException);
+        co_await Transport::newConnectedSocket(&evb, serverAddr, 0ms),
+        AsyncSocketException);
   });
 }
 
-TEST_F(ServerSocketTest, ConnectSuccess) {
+TEST_F(ServerTransportTest, ConnectSuccess) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     EXPECT_EQ(srv.getAddress(), cs.getPeerAddress());
   });
 }
 
-TEST_F(ServerSocketTest, ConnectCancelled) {
+TEST_F(ServerTransportTest, ConnectCancelled) {
   run([&]() -> Task<> {
     co_await folly::coro::collectAll(
         // token would be cancelled while waiting on connect
@@ -85,12 +87,12 @@ TEST_F(ServerSocketTest, ConnectCancelled) {
     EXPECT_THROW(
         co_await co_withCancellation(
             cancelSource.getToken(),
-            Socket::connect(&evb, srv.getAddress(), 0ms)),
+            Transport::newConnectedSocket(&evb, srv.getAddress(), 0ms)),
         OperationCancelled);
   });
 }
 
-TEST_F(ServerSocketTest, SimpleRead) {
+TEST_F(ServerTransportTest, SimpleRead) {
   run([&]() -> Task<> {
     constexpr auto kBufSize = 65536;
     auto cs = co_await connect();
@@ -121,7 +123,7 @@ TEST_F(ServerSocketTest, SimpleRead) {
   });
 }
 
-TEST_F(ServerSocketTest, SimpleIOBufRead) {
+TEST_F(ServerTransportTest, SimpleIOBufRead) {
   run([&]() -> Task<> {
     // Exactly fills a buffer mid-loop and triggers deferredReadEOF handling
     constexpr auto kBufSize = 55 * 1184;
@@ -151,7 +153,7 @@ TEST_F(ServerSocketTest, SimpleIOBufRead) {
   });
 }
 
-TEST_F(ServerSocketTest, ReadCancelled) {
+TEST_F(ServerTransportTest, ReadCancelled) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     auto reader = [&cs]() -> Task<Unit> {
@@ -172,7 +174,7 @@ TEST_F(ServerSocketTest, ReadCancelled) {
   });
 }
 
-TEST_F(ServerSocketTest, ReadTimeout) {
+TEST_F(ServerTransportTest, ReadTimeout) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     std::array<uint8_t, 1024> rcvBuf;
@@ -184,7 +186,7 @@ TEST_F(ServerSocketTest, ReadTimeout) {
   });
 }
 
-TEST_F(ServerSocketTest, ReadError) {
+TEST_F(ServerTransportTest, ReadError) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     // produces blocking socket
@@ -200,7 +202,7 @@ TEST_F(ServerSocketTest, ReadError) {
   });
 }
 
-TEST_F(ServerSocketTest, SimpleWrite) {
+TEST_F(ServerTransportTest, SimpleWrite) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     // produces blocking socket
@@ -220,7 +222,7 @@ TEST_F(ServerSocketTest, SimpleWrite) {
   });
 }
 
-TEST_F(ServerSocketTest, SimpleWritev) {
+TEST_F(ServerTransportTest, SimpleWritev) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     // produces blocking socket
@@ -248,7 +250,7 @@ TEST_F(ServerSocketTest, SimpleWritev) {
   });
 }
 
-TEST_F(ServerSocketTest, WriteCancelled) {
+TEST_F(ServerTransportTest, WriteCancelled) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
     // reduce the send buffer size so the write wouldn't complete immediately
@@ -276,17 +278,17 @@ TEST_F(ServerSocketTest, WriteCancelled) {
   });
 }
 
-TEST_F(SocketTest, SimpleAccept) {
+TEST_F(TransportTest, SimpleAccept) {
   run([&]() -> Task<> {
     ServerSocket css(AsyncServerSocket::newSocket(&evb), std::nullopt, 16);
     auto serverAddr = css.getAsyncServerSocket()->getAddress();
 
     co_await folly::coro::collectAll(
-        css.accept(), Socket::connect(&evb, serverAddr, 0ms));
+        css.accept(), Transport::newConnectedSocket(&evb, serverAddr, 0ms));
   });
 }
 
-TEST_F(SocketTest, AcceptCancelled) {
+TEST_F(TransportTest, AcceptCancelled) {
   run([&]() -> Task<> {
     co_await folly::coro::collectAll(requestCancellation(), [&]() -> Task<> {
       ServerSocket css(AsyncServerSocket::newSocket(&evb), std::nullopt, 16);
@@ -297,12 +299,12 @@ TEST_F(SocketTest, AcceptCancelled) {
   });
 }
 
-TEST_F(SocketTest, AsyncClientAndServer) {
+TEST_F(TransportTest, AsyncClientAndServer) {
   run([&]() -> Task<> {
     constexpr int kSize = 128;
     ServerSocket css(AsyncServerSocket::newSocket(&evb), std::nullopt, 16);
     auto serverAddr = css.getAsyncServerSocket()->getAddress();
-    auto cs = co_await Socket::connect(&evb, serverAddr, 0ms);
+    auto cs = co_await Transport::newConnectedSocket(&evb, serverAddr, 0ms);
 
     co_await folly::coro::collectAll(
         [&css]() -> Task<> {

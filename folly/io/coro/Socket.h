@@ -16,138 +16,32 @@
 
 #pragma once
 
-#include <folly/Range.h>
-#include <folly/SocketAddress.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/io/IOBufQueue.h>
-#include <folly/io/async/AsyncSocket.h>
-#include <folly/io/async/AsyncSocketException.h>
+#include <folly/io/coro/Transport.h>
 
 #if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
 
-class Transport {
- public:
-  using ErrorCode = AsyncSocketException::AsyncSocketExceptionType;
-  // on write error, report the issue and how many bytes were written
-  virtual ~Transport() = default;
-  virtual EventBase* getEventBase() noexcept = 0;
-  virtual Task<size_t> read(
-      MutableByteRange buf, std::chrono::milliseconds timeout) = 0;
-  Task<size_t> read(
-      void* buf, size_t buflen, std::chrono::milliseconds timeout) {
-    return read(MutableByteRange((unsigned char*)buf, buflen), timeout);
-  }
-  virtual Task<size_t> read(
-      IOBufQueue& buf,
-      size_t minReadSize,
-      size_t newAllocationSize,
-      std::chrono::milliseconds timeout) = 0;
-
-  struct WriteInfo {
-    size_t bytesWritten{0};
-  };
-
-  virtual Task<Unit> write(
-      ByteRange buf,
-      std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-      WriteInfo* writeInfo = nullptr) = 0;
-  virtual Task<Unit> write(
-      IOBufQueue& ioBufQueue,
-      std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-      WriteInfo* writeInfo = nullptr) = 0;
-
-  virtual SocketAddress getLocalAddress() const noexcept = 0;
-
-  virtual SocketAddress getPeerAddress() const noexcept = 0;
-  virtual void close() = 0;
-  virtual void shutdownWrite() = 0;
-  virtual void closeWithReset() = 0;
-  virtual folly::AsyncTransport* getTransport() const = 0;
-  virtual const AsyncTransportCertificate* getPeerCertificate() const = 0;
-};
-
+// Shim class -- will remove
 class Socket : public Transport {
  public:
   explicit Socket(AsyncSocket::UniquePtr socket)
-      : eventBase_(socket->getEventBase()), transport_(std::move(socket)) {}
+      : Socket(socket->getEventBase(), std::move(socket)) {}
 
   Socket(
       folly::EventBase* eventBase, folly::AsyncTransport::UniquePtr transport)
-      : eventBase_(eventBase), transport_(std::move(transport)) {}
+      : Transport(eventBase, std::move(transport)) {}
 
-  Socket(Socket&&) = default;
-  Socket& operator=(Socket&&) = default;
+  Socket(Transport&& transport) : Transport(std::move(transport)) {}
 
   static Task<Socket> connect(
       EventBase* evb,
       const SocketAddress& destAddr,
-      std::chrono::milliseconds connectTimeout);
-  virtual EventBase* getEventBase() noexcept override { return eventBase_; }
-
-  Task<size_t> read(
-      MutableByteRange buf, std::chrono::milliseconds timeout) override;
-  Task<size_t> read(
-      IOBufQueue& buf,
-      size_t minReadSize,
-      size_t newAllocationSize,
-      std::chrono::milliseconds timeout) override;
-
-  Task<Unit> write(
-      ByteRange buf,
-      std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-      WriteInfo* writeInfo = nullptr) override;
-  Task<folly::Unit> write(
-      IOBufQueue& ioBufQueue,
-      std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-      WriteInfo* writeInfo = nullptr) override;
-
-  AsyncTransport* getTransport() const override { return transport_.get(); }
-
-  SocketAddress getLocalAddress() const noexcept override {
-    SocketAddress addr;
-    transport_->getLocalAddress(&addr);
-    return addr;
+      std::chrono::milliseconds connectTimeout) {
+    auto transport = co_await newConnectedSocket(evb, destAddr, connectTimeout);
+    co_return Socket(std::move(transport));
   }
-
-  SocketAddress getPeerAddress() const noexcept override {
-    SocketAddress addr;
-    transport_->getPeerAddress(&addr);
-    return addr;
-  }
-
-  void shutdownWrite() noexcept override {
-    if (transport_) {
-      transport_->shutdownWrite();
-    }
-  }
-
-  void close() noexcept override {
-    if (transport_) {
-      transport_->close();
-    }
-  }
-
-  void closeWithReset() noexcept override {
-    if (transport_) {
-      transport_->closeWithReset();
-    }
-  }
-
-  const AsyncTransportCertificate* getPeerCertificate() const override {
-    return transport_->getPeerCertificate();
-  }
-
- private:
-  // non-copyable
-  Socket(const Socket&) = delete;
-  Socket& operator=(const Socket&) = delete;
-
-  EventBase* eventBase_;
-  AsyncTransport::UniquePtr transport_;
-  bool deferredReadEOF_{false};
 };
 
 } // namespace coro

@@ -95,7 +95,7 @@ ServerSocket::ServerSocket(
   socket_->listen(listenQueueDepth);
 }
 
-Task<std::unique_ptr<Socket>> ServerSocket::accept() {
+Task<std::unique_ptr<Transport>> ServerSocket::accept() {
   VLOG(5) << "accept() called";
   co_await folly::coro::co_safe_point;
 
@@ -114,7 +114,7 @@ Task<std::unique_ptr<Socket>> ServerSocket::accept() {
   if (cb.error) {
     co_yield co_error(std::move(cb.error));
   }
-  co_return std::make_unique<Socket>(
+  co_return std::make_unique<Transport>(
       socket_->getEventBase(),
       AsyncSocket::newSocket(
           socket_->getEventBase(), NetworkSocket::fromFd(cb.acceptFd)));

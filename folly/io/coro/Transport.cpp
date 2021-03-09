@@ -19,7 +19,7 @@
 #include <functional>
 
 #include <folly/experimental/coro/Baton.h>
-#include <folly/io/coro/Socket.h>
+#include <folly/io/coro/Transport.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -263,7 +263,7 @@ class WriteCallback : public CallbackBase,
 namespace folly {
 namespace coro {
 
-Task<Socket> Socket::connect(
+Task<Transport> Transport::newConnectedSocket(
     folly::EventBase* evb,
     const folly::SocketAddress& destAddr,
     std::chrono::milliseconds connectTimeout) {
@@ -280,16 +280,16 @@ Task<Socket> Socket::connect(
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
-  co_return Socket(evb, std::move(socket));
+  co_return Transport(evb, std::move(socket));
 }
 
-Task<size_t> Socket::read(
+Task<size_t> Transport::read(
     folly::MutableByteRange buf, std::chrono::milliseconds timeout) {
   if (deferredReadEOF_) {
     deferredReadEOF_ = false;
     co_return 0;
   }
-  VLOG(5) << "Socket::read(), expecting max len " << buf.size();
+  VLOG(5) << "Transport::read(), expecting max len " << buf.size();
 
   ReadCallback cb{eventBase_->timer(), *transport_, buf, timeout};
   transport_->setReadCB(&cb);
@@ -307,7 +307,7 @@ Task<size_t> Socket::read(
   co_return cb.length;
 }
 
-Task<size_t> Socket::read(
+Task<size_t> Transport::read(
     folly::IOBufQueue& readBuf,
     std::size_t minReadSize,
     std::size_t newAllocationSize,
@@ -316,7 +316,7 @@ Task<size_t> Socket::read(
     deferredReadEOF_ = false;
     co_return 0;
   }
-  VLOG(5) << "Socket::read(), expecting minReadSize=" << minReadSize;
+  VLOG(5) << "Transport::read(), expecting minReadSize=" << minReadSize;
 
   ReadCallback cb{
       eventBase_->timer(),
@@ -339,7 +339,7 @@ Task<size_t> Socket::read(
   co_return cb.length;
 }
 
-Task<folly::Unit> Socket::write(
+Task<folly::Unit> Transport::write(
     folly::ByteRange buf,
     std::chrono::milliseconds timeout,
     WriteInfo* writeInfo) {
@@ -364,7 +364,7 @@ Task<folly::Unit> Socket::write(
   co_return unit;
 }
 
-Task<folly::Unit> Socket::write(
+Task<folly::Unit> Transport::write(
     folly::IOBufQueue& ioBufQueue,
     std::chrono::milliseconds timeout,
     WriteInfo* writeInfo) {

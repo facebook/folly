@@ -22,7 +22,7 @@
 #include <folly/Expected.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/async/AsyncServerSocket.h>
-#include <folly/io/coro/Socket.h>
+#include <folly/io/coro/Transport.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -43,7 +43,7 @@ class ServerSocket {
   ServerSocket(ServerSocket&&) = default;
   ServerSocket& operator=(ServerSocket&&) = default;
 
-  Task<std::unique_ptr<Socket>> accept();
+  Task<std::unique_ptr<Transport>> accept();
 
   void close() noexcept {
     if (socket_) {
