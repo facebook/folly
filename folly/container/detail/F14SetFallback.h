@@ -151,12 +151,39 @@ class F14BasicSet
   //// PUBLIC - Lookup
 
  private:
-  template <typename K>
-  struct BottomKeyEqual {
+  // BottomKeyEqual must have same size, alignment, emptiness, and finality as
+  // KeyEqual
+  struct BottomKeyEqualEmpty {};
+  template <size_t S, size_t A>
+  struct BottomKeyEqualNonEmpty {
+    alignas(A) char data[S];
+  };
+  using BottomKeyEqualBase = conditional_t<
+      std::is_empty<KeyEqual>::value,
+      BottomKeyEqualEmpty,
+      BottomKeyEqualNonEmpty<sizeof(KeyEqual), alignof(KeyEqual)>>;
+  template <bool IsFinal, typename K>
+  struct BottomKeyEqualCond : BottomKeyEqualBase {
     [[noreturn]] bool operator()(K const&, K const&) const {
       assume_unreachable();
     }
   };
+  template <typename K>
+  struct BottomKeyEqualCond<true, K> final : BottomKeyEqualCond<false, K> {};
+  template <typename K>
+  using BottomKeyEqual = BottomKeyEqualCond<
+      std::is_final<KeyEqual>::value || std::is_union<KeyEqual>::value,
+      K>;
+  using BottomTest = BottomKeyEqual<char>;
+  static_assert(sizeof(BottomTest) == sizeof(KeyEqual), "mismatch size");
+  static_assert(alignof(BottomTest) == alignof(KeyEqual), "mismatch align");
+  static_assert(
+      std::is_empty<BottomTest>::value == std::is_empty<KeyEqual>::value,
+      "mismatch is-empty");
+  static_assert(
+      (std::is_final<BottomTest>::value || std::is_union<BottomTest>::value) ==
+          (std::is_final<KeyEqual>::value || std::is_union<KeyEqual>::value),
+      "mismatch is-final");
 
   template <typename Iter, typename LocalIter>
   static std::
