@@ -105,14 +105,15 @@
  *
  * Note that this is threadsafe.
  */
-#define XLOG_EVERY_MS(level, ms, ...)                                    \
-  XLOG_IF(                                                               \
-      level,                                                             \
-      [] {                                                               \
-        static ::folly::logging::IntervalRateLimiter                     \
-            folly_detail_xlog_limiter(1, std::chrono::milliseconds(ms)); \
-        return folly_detail_xlog_limiter.check();                        \
-      }(),                                                               \
+#define XLOG_EVERY_MS(level, ms, ...)                                  \
+  XLOG_IF(                                                             \
+      level,                                                           \
+      [__folly_detail_xlog_ms = ms] {                                  \
+        static ::folly::logging::IntervalRateLimiter                   \
+            folly_detail_xlog_limiter(                                 \
+                1, std::chrono::milliseconds(__folly_detail_xlog_ms)); \
+        return folly_detail_xlog_limiter.check();                      \
+      }(),                                                             \
       ##__VA_ARGS__)
 
 /**
@@ -121,16 +122,17 @@
  *
  * Note that this is threadsafe.
  */
-#define XLOGF_EVERY_MS(level, ms, fmt, arg1, ...)                        \
-  XLOGF_IF(                                                              \
-      level,                                                             \
-      [] {                                                               \
-        static ::folly::logging::IntervalRateLimiter                     \
-            folly_detail_xlog_limiter(1, std::chrono::milliseconds(ms)); \
-        return folly_detail_xlog_limiter.check();                        \
-      }(),                                                               \
-      fmt,                                                               \
-      arg1,                                                              \
+#define XLOGF_EVERY_MS(level, ms, fmt, arg1, ...)                      \
+  XLOGF_IF(                                                            \
+      level,                                                           \
+      [__folly_detail_xlog_ms = ms] {                                  \
+        static ::folly::logging::IntervalRateLimiter                   \
+            folly_detail_xlog_limiter(                                 \
+                1, std::chrono::milliseconds(__folly_detail_xlog_ms)); \
+        return folly_detail_xlog_limiter.check();                      \
+      }(),                                                             \
+      fmt,                                                             \
+      arg1,                                                            \
       ##__VA_ARGS__)
 
 namespace folly {
