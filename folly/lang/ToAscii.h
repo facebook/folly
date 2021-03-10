@@ -58,7 +58,11 @@ namespace detail {
 
 FOLLY_ERASE int to_ascii_port_clzll(uint64_t v) {
 #if _MSC_VER
+#if FOLLY_X64
   return __lzcnt64(v);
+#else
+  __assume(0);
+#endif
 #else
   return __builtin_clzll(v);
 #endif
