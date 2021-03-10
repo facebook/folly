@@ -37,7 +37,7 @@ void do_import() {
 
 folly::Executor* getExecutor() {
   FOLLY_MAYBE_UNUSED static bool done = (do_import(), false);
-  return get_executor();
+  return get_running_executor(false); // TODO: fried set this to true
 }
 
 } // namespace python

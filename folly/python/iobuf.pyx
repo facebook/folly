@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from builtins import memoryview as py_memoryview
-from folly.executor cimport get_executor
+from folly.executor cimport get_running_executor
 from cpython cimport Py_buffer
 from weakref import WeakValueDictionary
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
@@ -29,7 +29,7 @@ cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view):
         raise ValueError("View must be contiguous")
     return move(
         iobuf_from_python(
-            get_executor(),
+            get_running_executor(True),
             <PyObject*>view,
             view.view.buf,
             view.view.len,

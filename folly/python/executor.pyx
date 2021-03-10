@@ -42,9 +42,19 @@ cdef class AsyncioExecutor:
         self.cQ.reset()
 
 
-cdef cAsyncioExecutor* get_executor():
+# TODO: fried this is a stop gap, we really should not bind things to
+# the default eventloop if its not running. As it may never be run.
+# modern python asyncio suggests never using the "default" event loop
+# I don't believe we will be able to force the behavior that
+# get_executor() should always be run from a running eventloop in a single
+# diff. But ultimately we will want to remove this function and
+# go back to just get_executor() that only binds to a running loop.
+cdef cAsyncioExecutor* get_running_executor(bint running):
     try:
-        loop = asyncio.get_event_loop()
+        if running:
+            loop = asyncio.get_running_loop()
+        else:
+            loop = asyncio.get_event_loop()
     except RuntimeError:
         return NULL
     try:
@@ -54,3 +64,6 @@ cdef cAsyncioExecutor* get_executor():
         loop.add_reader(Q.fileno(), Q.drive)
         loop_to_q[loop] = Q
     return Q.cQ.get()
+
+cdef cAsyncioExecutor* get_executor():
+    return get_running_executor(False)

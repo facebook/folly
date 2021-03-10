@@ -27,3 +27,4 @@ cdef class AsyncioExecutor:
     cdef unique_ptr[cAsyncioExecutor] cQ
 
 cdef api cAsyncioExecutor* get_executor()
+cdef api cAsyncioExecutor* get_running_executor(bint running)
