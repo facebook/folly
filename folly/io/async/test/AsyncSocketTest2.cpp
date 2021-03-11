@@ -45,11 +45,6 @@
 #include <folly/synchronization/Baton.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
-#if defined(__linux__)
-#include <linux/errqueue.h>
-#include <linux/net_tstamp.h>
-#endif
-
 using std::min;
 using std::string;
 using std::unique_ptr;
@@ -3239,9 +3234,11 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
 
   // Enable timestamp notifications
   ASSERT_NE(socket->getNetworkSocket(), NetworkSocket());
-  int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
-      SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_OPT_CMSG |
-      SOF_TIMESTAMPING_TX_SCHED;
+  int flags = folly::netops::SOF_TIMESTAMPING_OPT_ID |
+      folly::netops::SOF_TIMESTAMPING_OPT_TSONLY |
+      folly::netops::SOF_TIMESTAMPING_SOFTWARE |
+      folly::netops::SOF_TIMESTAMPING_OPT_CMSG |
+      folly::netops::SOF_TIMESTAMPING_TX_SCHED;
   SocketOptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
   EXPECT_EQ(tstampingOpt.apply(socket->getNetworkSocket(), flags), 0);
 
@@ -3475,13 +3472,13 @@ class AsyncSocketByteEventTest : public ::testing::Test {
     const uint32_t* sofFlags =
         (reinterpret_cast<const uint32_t*>(CMSG_DATA(cmsg)));
     WriteFlags flags = WriteFlags::NONE;
-    if (*sofFlags & SOF_TIMESTAMPING_TX_SCHED) {
+    if (*sofFlags & folly::netops::SOF_TIMESTAMPING_TX_SCHED) {
       flags = flags | WriteFlags::TIMESTAMP_SCHED;
     }
-    if (*sofFlags & SOF_TIMESTAMPING_TX_SOFTWARE) {
+    if (*sofFlags & folly::netops::SOF_TIMESTAMPING_TX_SOFTWARE) {
       flags = flags | WriteFlags::TIMESTAMP_TX;
     }
-    if (*sofFlags & SOF_TIMESTAMPING_TX_ACK) {
+    if (*sofFlags & folly::netops::SOF_TIMESTAMPING_TX_ACK) {
       flags = flags | WriteFlags::TIMESTAMP_ACK;
     }
 
@@ -3524,27 +3521,28 @@ TEST_F(AsyncSocketByteEventTest, GetMsgWriteFlags) {
 
   // SCHED
   {
-    auto msg = getMsg(SOF_TIMESTAMPING_TX_SCHED);
+    auto msg = getMsg(folly::netops::SOF_TIMESTAMPING_TX_SCHED);
     EXPECT_EQ(WriteFlags::TIMESTAMP_SCHED, getMsgWriteFlags(msg));
   }
 
   // TX
   {
-    auto msg = getMsg(SOF_TIMESTAMPING_TX_SOFTWARE);
+    auto msg = getMsg(folly::netops::SOF_TIMESTAMPING_TX_SOFTWARE);
     EXPECT_EQ(WriteFlags::TIMESTAMP_TX, getMsgWriteFlags(msg));
   }
 
   // ACK
   {
-    auto msg = getMsg(SOF_TIMESTAMPING_TX_ACK);
+    auto msg = getMsg(folly::netops::SOF_TIMESTAMPING_TX_ACK);
     EXPECT_EQ(WriteFlags::TIMESTAMP_ACK, getMsgWriteFlags(msg));
   }
 
   // SCHED + TX + ACK
   {
     auto msg = getMsg(
-        SOF_TIMESTAMPING_TX_SCHED | SOF_TIMESTAMPING_TX_SOFTWARE |
-        SOF_TIMESTAMPING_TX_ACK);
+        folly::netops::SOF_TIMESTAMPING_TX_SCHED |
+        folly::netops::SOF_TIMESTAMPING_TX_SOFTWARE |
+        folly::netops::SOF_TIMESTAMPING_TX_ACK);
     EXPECT_EQ(
         WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_TX |
             WriteFlags::TIMESTAMP_ACK,
@@ -3976,9 +3974,11 @@ TEST_F(AsyncSocketByteEventTest, FailTimestampsAlreadyEnabled) {
   clientConn.connect();
 
   // enable timestamps via setsockopt
-  const uint32_t flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
-      SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
-      SOF_TIMESTAMPING_OPT_TX_SWHW;
+  const uint32_t flags = folly::netops::SOF_TIMESTAMPING_OPT_ID |
+      folly::netops::SOF_TIMESTAMPING_OPT_TSONLY |
+      folly::netops::SOF_TIMESTAMPING_SOFTWARE |
+      folly::netops::SOF_TIMESTAMPING_RAW_HARDWARE |
+      folly::netops::SOF_TIMESTAMPING_OPT_TX_SWHW;
   const auto ret = clientConn.getRawSocket()->setSockOpt(
       SOL_SOCKET, SO_TIMESTAMPING, &flags);
   EXPECT_EQ(0, ret);
@@ -4700,7 +4700,7 @@ class AsyncSocketByteEventHelperTest : public ::testing::Test {
 };
 
 TEST_F(AsyncSocketByteEventHelperTest, ByteOffsetThenTs) {
-  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  auto scmTs = cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 0);
   const auto softwareTsSec = std::chrono::seconds(59);
   const auto softwareTsNs = std::chrono::nanoseconds(11);
   auto serrTs = cmsgForSockExtendedErrTimestamping();
@@ -4715,7 +4715,7 @@ TEST_F(AsyncSocketByteEventHelperTest, ByteOffsetThenTs) {
 }
 
 TEST_F(AsyncSocketByteEventHelperTest, TsThenByteOffset) {
-  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  auto scmTs = cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 0);
   const auto softwareTsSec = std::chrono::seconds(59);
   const auto softwareTsNs = std::chrono::nanoseconds(11);
   auto serrTs = cmsgForSockExtendedErrTimestamping();
@@ -4730,7 +4730,7 @@ TEST_F(AsyncSocketByteEventHelperTest, TsThenByteOffset) {
 }
 
 TEST_F(AsyncSocketByteEventHelperTest, ByteEventsDisabled) {
-  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  auto scmTs = cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 0);
   const auto softwareTsSec = std::chrono::seconds(59);
   const auto softwareTsNs = std::chrono::nanoseconds(11);
   auto serrTs = cmsgForSockExtendedErrTimestamping();
@@ -4751,7 +4751,8 @@ TEST_F(AsyncSocketByteEventHelperTest, ByteEventsDisabled) {
 }
 
 TEST_F(AsyncSocketByteEventHelperTest, IgnoreUnsupportedEvent) {
-  auto scmType = SCM_TSTAMP_ACK + 10; // imaginary new type of SCM event
+  auto scmType =
+      folly::netops::SCM_TSTAMP_ACK + 10; // imaginary new type of SCM event
   auto scmTs = cmsgForScmTimestamping(scmType, 0);
   const auto softwareTsSec = std::chrono::seconds(59);
   const auto softwareTsNs = std::chrono::nanoseconds(11);
@@ -4767,13 +4768,13 @@ TEST_F(AsyncSocketByteEventHelperTest, IgnoreUnsupportedEvent) {
   EXPECT_FALSE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
 
   // change type, try again to prove this works
-  scmTs = cmsgForScmTimestamping(SCM_TSTAMP_ACK, 0);
+  scmTs = cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_ACK, 0);
   EXPECT_FALSE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
   EXPECT_TRUE(helper.processCmsg(serrTs, 1 /* rawBytesWritten */));
 }
 
 TEST_F(AsyncSocketByteEventHelperTest, ErrorDoubleScmCmsg) {
-  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  auto scmTs = cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 0);
 
   AsyncSocket::ByteEventHelper helper = {};
   helper.byteEventsEnabled = true;
@@ -4800,7 +4801,7 @@ TEST_F(AsyncSocketByteEventHelperTest, ErrorDoubleSerrCmsg) {
 }
 
 TEST_F(AsyncSocketByteEventHelperTest, ErrorExceptionSet) {
-  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, 0);
+  auto scmTs = cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 0);
   const auto softwareTsSec = std::chrono::seconds(59);
   const auto softwareTsNs = std::chrono::nanoseconds(11);
   auto serrTs = cmsgForSockExtendedErrTimestamping();
@@ -4849,23 +4850,32 @@ class AsyncSocketByteEventHelperTimestampTest
 
     // software + hardware timestamps
     {
-      vals.emplace_back(SCM_TSTAMP_SCHED, ByteEventType::SCHED, true, true);
-      vals.emplace_back(SCM_TSTAMP_SND, ByteEventType::TX, true, true);
-      vals.emplace_back(SCM_TSTAMP_ACK, ByteEventType::ACK, true, true);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_SCHED, ByteEventType::SCHED, true, true);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_SND, ByteEventType::TX, true, true);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_ACK, ByteEventType::ACK, true, true);
     }
 
     // software ts only
     {
-      vals.emplace_back(SCM_TSTAMP_SCHED, ByteEventType::SCHED, true, false);
-      vals.emplace_back(SCM_TSTAMP_SND, ByteEventType::TX, true, false);
-      vals.emplace_back(SCM_TSTAMP_ACK, ByteEventType::ACK, true, false);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_SCHED, ByteEventType::SCHED, true, false);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_SND, ByteEventType::TX, true, false);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_ACK, ByteEventType::ACK, true, false);
     }
 
     // hardware ts only
     {
-      vals.emplace_back(SCM_TSTAMP_SCHED, ByteEventType::SCHED, false, true);
-      vals.emplace_back(SCM_TSTAMP_SND, ByteEventType::TX, false, true);
-      vals.emplace_back(SCM_TSTAMP_ACK, ByteEventType::ACK, false, true);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_SCHED, ByteEventType::SCHED, false, true);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_SND, ByteEventType::TX, false, true);
+      vals.emplace_back(
+          folly::netops::SCM_TSTAMP_ACK, ByteEventType::ACK, false, true);
     }
 
     return vals;
@@ -5170,7 +5180,8 @@ TEST_P(AsyncSocketByteEventHelperOffsetTest, CheckCalculatedOffset) {
     kernelByteOffset = kernelByteOffset % bytesPerOffsetWrap;
   }
 
-  auto scmTs = cmsgForScmTimestamping(SCM_TSTAMP_SND, kernelByteOffset);
+  auto scmTs =
+      cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, kernelByteOffset);
   const auto softwareTsSec = std::chrono::seconds(59);
   const auto softwareTsNs = std::chrono::nanoseconds(11);
   auto serrTs = cmsgForSockExtendedErrTimestamping();
@@ -6210,8 +6221,9 @@ TEST(AsyncSocketTest, readAncillaryData) {
 
   // Enable rx timestamp notifications
   ASSERT_NE(socket->getNetworkSocket(), NetworkSocket());
-  int flags = SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_SOFTWARE |
-      SOF_TIMESTAMPING_RX_HARDWARE;
+  int flags = folly::netops::SOF_TIMESTAMPING_SOFTWARE |
+      folly::netops::SOF_TIMESTAMPING_RX_SOFTWARE |
+      folly::netops::SOF_TIMESTAMPING_RX_HARDWARE;
   SocketOptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
   EXPECT_EQ(tstampingOpt.apply(socket->getNetworkSocket(), flags), 0);
 

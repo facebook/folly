@@ -41,7 +41,6 @@
 
 #if defined(__linux__)
 #include <linux/if_packet.h>
-#include <linux/net_tstamp.h>
 #include <linux/sockios.h>
 #include <sys/ioctl.h>
 #endif
@@ -333,13 +332,13 @@ void AsyncSocket::SendMsgParamsCallback::getAncillaryData(
 
   uint32_t sofFlags = 0;
   if (byteEventsEnabled && isSet(flags, WriteFlags::TIMESTAMP_TX)) {
-    sofFlags = sofFlags | SOF_TIMESTAMPING_TX_SOFTWARE;
+    sofFlags = sofFlags | folly::netops::SOF_TIMESTAMPING_TX_SOFTWARE;
   }
   if (byteEventsEnabled && isSet(flags, WriteFlags::TIMESTAMP_ACK)) {
-    sofFlags = sofFlags | SOF_TIMESTAMPING_TX_ACK;
+    sofFlags = sofFlags | folly::netops::SOF_TIMESTAMPING_TX_ACK;
   }
   if (byteEventsEnabled && isSet(flags, WriteFlags::TIMESTAMP_SCHED)) {
-    sofFlags = sofFlags | SOF_TIMESTAMPING_TX_SCHED;
+    sofFlags = sofFlags | folly::netops::SOF_TIMESTAMPING_TX_SCHED;
   }
 
   msghdr msg;
@@ -421,15 +420,15 @@ AsyncSocket::ByteEventHelper::processCmsg(
     // map the type
     folly::Optional<ByteEvent::Type> tsType;
     switch (completeState.typeRaw) {
-      case SCM_TSTAMP_SND: {
+      case folly::netops::SCM_TSTAMP_SND: {
         tsType = ByteEvent::Type::TX;
         break;
       }
-      case SCM_TSTAMP_ACK: {
+      case folly::netops::SCM_TSTAMP_ACK: {
         tsType = ByteEvent::Type::ACK;
         break;
       }
-      case SCM_TSTAMP_SCHED: {
+      case folly::netops::SCM_TSTAMP_SCHED: {
         tsType = ByteEvent::Type::SCHED;
         break;
       }
@@ -1371,16 +1370,12 @@ void AsyncSocket::enableByteEvents() {
     // SOF_TIMESTAMPING_SOFTWARE: get software timestamps if generated
     // SOF_TIMESTAMPING_RAW_HARDWARE: get hardware timestamps if generated
     // SOF_TIMESTAMPING_OPT_TX_SWHW: get both sw + hw timestamps if generated
-    // SOF_TIMESTAMPING_OPT_MULTIMSG: older version SOF_TIMESTAMPING_OPT_TX_SWHW
     const uint32_t flags =
-        (SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
-         SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RAW_HARDWARE
-#if defined(SOF_TIMESTAMPING_OPT_TX_SWHW)
-         | SOF_TIMESTAMPING_OPT_TX_SWHW
-#elif defined(SOF_TIMESTAMPING_OPT_MULTIMSG)
-         | SOF_TIMESTAMPING_OPT_MULTIMSG
-#endif
-        );
+        (folly::netops::SOF_TIMESTAMPING_OPT_ID |
+         folly::netops::SOF_TIMESTAMPING_OPT_TSONLY |
+         folly::netops::SOF_TIMESTAMPING_SOFTWARE |
+         folly::netops::SOF_TIMESTAMPING_RAW_HARDWARE |
+         folly::netops::SOF_TIMESTAMPING_OPT_TX_SWHW);
     socklen_t len = sizeof(flags);
     const auto ret =
         setSockOptVirtual(SOL_SOCKET, SO_TIMESTAMPING, &flags, len);

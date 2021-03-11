@@ -47,8 +47,6 @@
 
 #ifdef __linux__
 #include <dlfcn.h>
-#include <linux/errqueue.h>
-#include <linux/net_tstamp.h>
 #endif
 
 #if FOLLY_OPENSSL_IS_110
@@ -3175,13 +3173,13 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
     const uint32_t* sofFlags =
         (reinterpret_cast<const uint32_t*>(CMSG_DATA(cmsg)));
     WriteFlags flags = WriteFlags::NONE;
-    if (*sofFlags & SOF_TIMESTAMPING_TX_SCHED) {
+    if (*sofFlags & folly::netops::SOF_TIMESTAMPING_TX_SCHED) {
       flags = flags | WriteFlags::TIMESTAMP_SCHED;
     }
-    if (*sofFlags & SOF_TIMESTAMPING_TX_SOFTWARE) {
+    if (*sofFlags & folly::netops::SOF_TIMESTAMPING_TX_SOFTWARE) {
       flags = flags | WriteFlags::TIMESTAMP_TX;
     }
-    if (*sofFlags & SOF_TIMESTAMPING_TX_ACK) {
+    if (*sofFlags & folly::netops::SOF_TIMESTAMPING_TX_ACK) {
       flags = flags | WriteFlags::TIMESTAMP_ACK;
     }
 
