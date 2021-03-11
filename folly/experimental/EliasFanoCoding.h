@@ -411,13 +411,15 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     position_ += n; // n 1-bits will be read.
 
     // Use forward pointer.
-    if (Encoder::forwardQuantum > 0 && UNLIKELY(n > Encoder::forwardQuantum)) {
-      const size_t steps = position_ / Encoder::forwardQuantum;
-      const size_t dest = loadUnaligned<SkipValueType>(
-          this->forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
+    if constexpr (Encoder::forwardQuantum > 0) {
+      if (UNLIKELY(n > Encoder::forwardQuantum)) {
+        const size_t steps = position_ / Encoder::forwardQuantum;
+        const size_t dest = loadUnaligned<SkipValueType>(
+            this->forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
 
-      reposition(dest + steps * Encoder::forwardQuantum);
-      n = position_ + 1 - steps * Encoder::forwardQuantum; // n is > 0.
+        reposition(dest + steps * Encoder::forwardQuantum);
+        n = position_ + 1 - steps * Encoder::forwardQuantum; // n is > 0.
+      }
     }
 
     size_t cnt;
@@ -442,20 +444,21 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     DCHECK_GE(v, value_);
 
     // Use skip pointer.
-    if (Encoder::skipQuantum > 0 &&
-        UNLIKELY(v >= value_ + Encoder::skipQuantum)) {
-      const size_t steps = v / Encoder::skipQuantum;
-      const size_t dest = loadUnaligned<SkipValueType>(
-          this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
+    if constexpr (Encoder::skipQuantum > 0) {
+      if (UNLIKELY(v >= value_ + Encoder::skipQuantum)) {
+        const size_t steps = v / Encoder::skipQuantum;
+        const size_t dest = loadUnaligned<SkipValueType>(
+            this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
 
-      reposition(dest + Encoder::skipQuantum * steps);
-      position_ = dest - 1;
+        reposition(dest + Encoder::skipQuantum * steps);
+        position_ = dest - 1;
 
-      // Correct value_ will be set during the next() call at the end.
+        // Correct value_ will be set during the next() call at the end.
 
-      // NOTE: Corresponding block of lower bits sequence may be
-      // prefetched here (via __builtin_prefetch), but experiments
-      // didn't show any significant improvements.
+        // NOTE: Corresponding block of lower bits sequence may be
+        // prefetched here (via __builtin_prefetch), but experiments
+        // didn't show any significant improvements.
+      }
     }
 
     // Skip by blocks.
@@ -492,24 +495,27 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   FOLLY_ALWAYS_INLINE SizeType prepareSkipTo(ValueType v) const {
     auto position = position_;
 
-    if (Encoder::skipQuantum > 0 && v >= value_ + Encoder::skipQuantum) {
-      auto outer = outer_;
-      const size_t steps = v / Encoder::skipQuantum;
-      const size_t dest = loadUnaligned<SkipValueType>(
-          this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
+    if constexpr (Encoder::skipQuantum > 0) {
+      if (v >= value_ + Encoder::skipQuantum) {
+        auto outer = outer_;
+        const size_t steps = v / Encoder::skipQuantum;
+        const size_t dest = loadUnaligned<SkipValueType>(
+            this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
 
-      position = dest - 1;
-      outer = (dest + Encoder::skipQuantum * steps) / 8;
+        position = dest - 1;
+        outer = (dest + Encoder::skipQuantum * steps) / 8;
 
-      // Prefetch up to the beginning of where we linear search. After that,
-      // hardware prefetching will outperform our own. In addition, this
-      // simplifies calculating what to prefetch as we don't have to calculate
-      // the entire destination address. Two cache lines are prefetched because
-      // this results in fewer cycles used (based on practical results) than
-      // one. However, three cache lines does not have any additional effect.
-      const auto addr = start_ + outer;
-      __builtin_prefetch(addr);
-      __builtin_prefetch(addr + kCacheLineSize);
+        // Prefetch up to the beginning of where we linear search. After that,
+        // hardware prefetching will outperform our own. In addition, this
+        // simplifies calculating what to prefetch as we don't have to calculate
+        // the entire destination address. Two cache lines are prefetched
+        // because this results in fewer cycles used (based on practical
+        // results) than one. However, three cache lines does not have any
+        // additional effect.
+        const auto addr = start_ + outer;
+        __builtin_prefetch(addr);
+        __builtin_prefetch(addr + kCacheLineSize);
+      }
     }
 
     return position;
