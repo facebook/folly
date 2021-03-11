@@ -1462,20 +1462,36 @@ inline Expected<StringPiece, ConversionCode> parseTo(
   return StringPiece{in.end(), in.end()};
 }
 
-FOLLY_NODISCARD
-inline Expected<StringPiece, ConversionCode> parseTo(
-    StringPiece in, std::string& out) {
+namespace detail {
+
+template <class Str>
+FOLLY_ERASE Expected<StringPiece, ConversionCode> parseToStr(
+    StringPiece in, Str& out) {
   out.clear();
   out.append(in.data(), in.size()); // TODO try/catch?
   return StringPiece{in.end(), in.end()};
 }
 
+} // namespace detail
+
+FOLLY_NODISCARD
+inline Expected<StringPiece, ConversionCode> parseTo(
+    StringPiece in, std::string& out) {
+  return detail::parseToStr(in, out);
+}
+
 FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in, fbstring& out) {
-  out.clear();
-  out.append(in.data(), in.size()); // TODO try/catch?
-  return StringPiece{in.end(), in.end()};
+  return detail::parseToStr(in, out);
+}
+
+template <class Str>
+FOLLY_NODISCARD inline typename std::enable_if<
+    IsSomeString<Str>::value,
+    Expected<StringPiece, ConversionCode>>::type
+parseTo(StringPiece in, Str& out) {
+  return detail::parseToStr(in, out);
 }
 
 namespace detail {
