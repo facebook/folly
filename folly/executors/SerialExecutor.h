@@ -76,7 +76,7 @@ class SerialExecutor : public SequencedExecutor {
 
   using UniquePtr = std::unique_ptr<SerialExecutor, Deleter>;
   [[deprecated("Replaced by create")]] static UniquePtr createUnique(
-      std::shared_ptr<Executor> parent = getCPUExecutor());
+      std::shared_ptr<Executor> parent);
 
   /**
    * Add one task for execution in the parent executor
