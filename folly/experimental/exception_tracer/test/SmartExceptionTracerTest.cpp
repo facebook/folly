@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Task.h>
 #include <folly/experimental/exception_tracer/SmartExceptionTracer.h>
 #include <folly/portability/GTest.h>
 
@@ -87,4 +89,57 @@ TEST(SmartExceptionTracer, UnthrownException) {
   ASSERT_TRUE(
       ss.str().find("Exception type: std::runtime_error (0 frames)") !=
       std::string::npos);
+}
+
+namespace {
+
+[[noreturn]] void funcD() {
+  throw std::runtime_error("test ex");
+}
+
+FOLLY_NOINLINE folly::coro::Task<void> co_funcC() {
+  funcD();
+  co_return;
+}
+
+FOLLY_NOINLINE folly::coro::Task<void> co_funcB() {
+  co_await co_funcC();
+}
+
+FOLLY_NOINLINE folly::coro::Task<void> co_funcA() {
+  co_await co_funcB();
+}
+
+} // namespace
+
+TEST(SmartExceptionTracer, AsyncStackTrace) {
+  try {
+    folly::coro::blockingWait(co_funcA());
+    FAIL() << "exception should be thrown";
+  } catch (const std::exception& ex) {
+    ASSERT_EQ(std::string("test ex"), ex.what());
+    auto info = folly::exception_tracer::getAsyncTrace(ex);
+    LOG(INFO) << "async stack trace: " << info;
+
+    std::ostringstream ss;
+    ss << info;
+
+    // Symbols should appear in this relative order
+    std::vector<std::string> symbols{
+        "funcD",
+        "co_funcC",
+        "co_funcB",
+        "co_funcA",
+    };
+    std::vector<size_t> positions;
+    for (const auto& symbol : symbols) {
+      SCOPED_TRACE(symbol);
+      auto pos = ss.str().find(symbol);
+      ASSERT_NE(std::string::npos, pos);
+      positions.push_back(pos);
+    }
+    for (size_t i = 0; i < positions.size() - 1; ++i) {
+      ASSERT_LT(positions[i], positions[i + 1]);
+    }
+  }
 }
