@@ -20,7 +20,20 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+
+extern "C" FOLLY_ATTR_WEAK void sink();
+
+extern "C" FOLLY_KEEP void check_folly_safe_check(bool cond) {
+  FOLLY_SAFE_CHECK(cond, "the condition failed");
+  sink();
+}
+
+extern "C" FOLLY_KEEP void check_folly_safe_pcheck(bool cond) {
+  FOLLY_SAFE_PCHECK(cond, "the condition failed");
+  sink();
+}
 
 // clang-format off
 [[noreturn]] void fail() {
