@@ -23,7 +23,6 @@
 #include <folly/portability/Unistd.h>
 
 namespace folly {
-namespace detail {
 
 namespace {
 
@@ -442,35 +441,40 @@ constexpr std::pair<int, const char*> errors[] = {
 };
 #undef FOLLY_DETAIL_ERROR
 
+} // namespace
+
+namespace signal_safe {
+
 void writeStderr(const char* s, size_t len) {
   fileutil_detail::wrapFull(write, STDERR_FILENO, const_cast<char*>(s), len);
 }
+
 void writeStderr(const char* s) {
   writeStderr(s, strlen(s));
 }
+
 void flushStderr() {
   fileutil_detail::wrapNoInt(fsync, STDERR_FILENO);
 }
 
-} // namespace
-
-void assertionFailure(
-    const char* expr,
-    const char* msg,
-    const char* file,
-    unsigned int line,
-    const char* function,
-    int error) {
+void writeStderr(unsigned long x) {
   char buf[to_ascii_size_max_decimal<uint64_t>()];
+  writeStderr(buf, to_ascii_decimal(buf, x));
+}
 
+void writeErrBegin(const char* expr, const char* msg) {
   writeStderr("\n\nAssertion failure: ");
   writeStderr(expr + 1, strlen(expr) - 2);
   writeStderr("\nMessage: ");
   writeStderr(msg);
+}
+
+[[noreturn]] void writeErrEnd(
+    const char* file, unsigned int line, const char* function, int error) {
   writeStderr("\nFile: ");
   writeStderr(file);
   writeStderr("\nLine: ");
-  writeStderr(buf, to_ascii_decimal(buf, line));
+  writeStderr(line);
   writeStderr("\nFunction: ");
   writeStderr(function);
   if (error) {
@@ -478,7 +482,7 @@ void assertionFailure(
     // the symbolic constant is necessary since actual numbers may vary
     // for simplicity, do not attempt to mimic strerror printing descriptions
     writeStderr("\nError: ");
-    writeStderr(buf, to_ascii_decimal(buf, error));
+    writeStderr(error);
     writeStderr(" (");
     // the list is not required to be sorted; but the program is about to die
     auto const pred = [=](auto const e) { return e.first == error; };
@@ -491,5 +495,5 @@ void assertionFailure(
   abort();
 }
 
-} // namespace detail
+} // namespace signal_safe
 } // namespace folly
