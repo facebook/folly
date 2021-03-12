@@ -25,8 +25,13 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
 
+//QuotientMultiSet requires little-endian architecture
+#if __BYTE_ORDER == __ORDER_BIG_ENDIAN__
+#define FOLLY_QUOTIENT_MULTI_SET_SUPPORTED 0
+#else
 // A 128-bit integer type is needed for fast division.
 #define FOLLY_QUOTIENT_MULTI_SET_SUPPORTED FOLLY_HAVE_INT128_T
+#endif
 
 #if FOLLY_QUOTIENT_MULTI_SET_SUPPORTED
 
