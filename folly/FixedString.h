@@ -36,6 +36,10 @@
 #include <folly/lang/Ordering.h>
 #include <folly/portability/Constexpr.h>
 
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view>
+#endif
+
 namespace folly {
 
 template <class Char, std::size_t N>
@@ -773,6 +777,16 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   std::basic_string<Char> toStdString() const noexcept(false) {
     return std::basic_string<Char>{begin(), end()};
   }
+
+#if FOLLY_HAS_STRING_VIEW
+  /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
+   * Conversion to std::basic_string_view<Char>
+   * \return `std::basic_string_view<Char>{begin(), end()}`
+   */
+  /* implicit */ constexpr operator std::basic_string_view<Char>() const {
+    return std::basic_string_view<Char>{begin(), size()};
+  }
+#endif
 
   // Think hard about whether this is a good idea. It's certainly better than
   // an implicit conversion to `const Char*` since `delete "hi"_fs` will fail

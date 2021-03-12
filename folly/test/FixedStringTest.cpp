@@ -653,7 +653,7 @@ TEST(FixedStringReverseIteratorTest, ConstexprReverseIteration) {
 #include <folly/Range.h>
 
 TEST(FixedStringConversionTest, ConversionToFollyRange) {
-  // The following declaraction is static for compilers that haven't implemented
+  // The following declaration is static for compilers that haven't implemented
   // the resolution of:
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1454
   static constexpr folly::FixedString<16> tmp{"This is a string"};
@@ -661,3 +661,12 @@ TEST(FixedStringConversionTest, ConversionToFollyRange) {
   static_assert(tmp.begin() == piece.begin(), "");
   static_assert(tmp.end() == piece.end(), "");
 }
+
+#if FOLLY_HAS_STRING_VIEW
+TEST(FixedStringConversionTest, ConversionToStringView) {
+  static constexpr folly::FixedString<16> tmp{"This is a string"};
+  constexpr std::string_view view = tmp;
+  static_assert(tmp.data() == view.data(), "");
+  static_assert(tmp.size() == view.size(), "");
+}
+#endif // FOLLY_HAS_STRING_VIEW
