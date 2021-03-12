@@ -115,9 +115,9 @@ class TaskPromiseBase {
     return ready_awaitable<const folly::CancellationToken&>{cancelToken_};
   }
 
-  void setCancelToken(const folly::CancellationToken& cancelToken) noexcept {
+  void setCancelToken(folly::CancellationToken&& cancelToken) noexcept {
     if (!hasCancelTokenOverride_) {
-      cancelToken_ = cancelToken;
+      cancelToken_ = std::move(cancelToken);
       hasCancelTokenOverride_ = true;
     }
   }
@@ -504,10 +504,9 @@ class FOLLY_NODISCARD TaskWithExecutor {
   }
 
   friend TaskWithExecutor co_withCancellation(
-      const folly::CancellationToken& cancelToken,
-      TaskWithExecutor&& task) noexcept {
+      folly::CancellationToken cancelToken, TaskWithExecutor&& task) noexcept {
     DCHECK(task.coro_);
-    task.coro_.promise().setCancelToken(cancelToken);
+    task.coro_.promise().setCancelToken(std::move(cancelToken));
     return std::move(task);
   }
 
@@ -621,9 +620,9 @@ class FOLLY_NODISCARD Task {
   }
 
   friend Task co_withCancellation(
-      const folly::CancellationToken& cancelToken, Task&& task) noexcept {
+      folly::CancellationToken cancelToken, Task&& task) noexcept {
     DCHECK(task.coro_);
-    task.coro_.promise().setCancelToken(cancelToken);
+    task.coro_.promise().setCancelToken(std::move(cancelToken));
     return std::move(task);
   }
 
