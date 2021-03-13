@@ -272,20 +272,16 @@ class ElfFile {
   template <class T>
   const T& at(ElfOff offset) const noexcept {
     static_assert(std::is_pod<T>::value, "non-pod");
-    if (offset + sizeof(T) > length_) {
-      char msg[kFilepathMaxLen + 128];
-      snprintf(
-          msg,
-          sizeof(msg),
-          "Offset (%zu + %zu) is not contained within our mmapped"
-          " file (%s) of length %zu",
-          static_cast<size_t>(offset),
-          sizeof(T),
-          filepath_,
-          length_);
-      FOLLY_SAFE_CHECK(offset + sizeof(T) <= length_, msg);
-    }
-
+    FOLLY_SAFE_CHECK(
+        offset + sizeof(T) <= length_,
+        "Offset (",
+        static_cast<size_t>(offset),
+        " + ",
+        sizeof(T),
+        ") is not contained within our mapped file (",
+        filepath_,
+        ") of length ",
+        length_);
     return *reinterpret_cast<T*>(file_ + offset);
   }
 
