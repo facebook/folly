@@ -424,6 +424,7 @@ namespace detail {
 //  * ruin: operator delete
 //  * ctor: in-place default constructor
 //  * dtor: in-place destructor
+//  * noop: no-op function with the given arguments
 struct thunk {
   template <typename T>
   static void* make() {
@@ -442,6 +443,9 @@ struct thunk {
   static void dtor(void* ptr) noexcept {
     static_cast<T*>(ptr)->~T();
   }
+
+  template <typename... T>
+  static void noop(T...) noexcept {}
 };
 
 } // namespace detail
