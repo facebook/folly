@@ -427,20 +427,49 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
   return std::make_shared<remove_cvref_t<T>>(static_cast<T&&>(t));
 }
 
-/**
- *  to_erased_unique_ptr
- *
- *  Wraps a raw pointer in a unique_ptr<void> with appropriate deleter.
- *  Makes it as easy to use as shared_ptr<void> when refcounting is not needed.
- */
+//  erased_unique_ptr
+//
+//  A type-erased smart-ptr with unique ownership to a heap-allocated object.
 using erased_unique_ptr = std::unique_ptr<void, void (*)(void*)>;
+
+//  to_erased_unique_ptr
+//
+//  Converts an owning pointer to an object to an erased_unique_ptr.
 template <typename T>
-erased_unique_ptr to_erased_unique_ptr(T* ptr) {
+erased_unique_ptr to_erased_unique_ptr(T* const ptr) noexcept {
   return {ptr, detail::thunk::ruin<T>};
 }
+
+//  to_erased_unique_ptr
+//
+//  Converts an owning std::unique_ptr to an erased_unique_ptr.
 template <typename T>
-erased_unique_ptr to_erased_unique_ptr(std::unique_ptr<T> ptr) {
+erased_unique_ptr to_erased_unique_ptr(std::unique_ptr<T> ptr) noexcept {
   return to_erased_unique_ptr(ptr.release());
+}
+
+//  make_erased_unique
+//
+//  Allocate an object of the T on the heap, constructed with a..., and return
+//  an owning erased_unique_ptr to it.
+template <typename T, typename... A>
+erased_unique_ptr make_erased_unique(A&&... a) {
+  return to_erased_unique_ptr(std::make_unique<T>(static_cast<A&&>(a)...));
+}
+
+//  copy_to_erased_unique_ptr
+//
+//  Copy an object to the heap and return an owning erased_unique_ptr to it.
+template <typename T>
+erased_unique_ptr copy_to_erased_unique_ptr(T&& obj) {
+  return to_erased_unique_ptr(copy_to_unique_ptr(static_cast<T&&>(obj)));
+}
+
+//  empty_erased_unique_ptr
+//
+//  Return an empty erased_unique_ptr.
+inline erased_unique_ptr empty_erased_unique_ptr() {
+  return {nullptr, nullptr};
 }
 
 /**

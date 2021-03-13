@@ -175,7 +175,9 @@ TEST(copy_to_shared_ptr, example) {
 }
 
 TEST(to_erased_unique_ptr, example) {
-  erased_unique_ptr ptr = to_erased_unique_ptr(new int(42));
+  erased_unique_ptr ptr = empty_erased_unique_ptr();
+
+  ptr = to_erased_unique_ptr(new int(42));
   EXPECT_EQ(42, *static_cast<int*>(ptr.get()));
 
   ptr = to_erased_unique_ptr(new std::string("foo"));
@@ -189,6 +191,12 @@ TEST(to_erased_unique_ptr, example) {
 
   ptr = to_erased_unique_ptr(std::make_unique<int>(42));
   EXPECT_EQ(42, *static_cast<int*>(ptr.get()));
+
+  ptr = make_erased_unique<std::string>(7, 'a');
+  EXPECT_EQ("aaaaaaa", *static_cast<std::string*>(ptr.get()));
+
+  ptr = copy_to_erased_unique_ptr(std::string("bbbbbbb"));
+  EXPECT_EQ("bbbbbbb", *static_cast<std::string*>(ptr.get()));
 }
 
 TEST(SysAllocator, equality) {
