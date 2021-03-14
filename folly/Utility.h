@@ -420,27 +420,27 @@ namespace detail {
 //  thunk
 //
 //  A carefully curated collection of generic general-purpose thunk templates:
-//  * make: operator new with default constructor
+//  * make: operator new with given arguments
 //  * ruin: operator delete
-//  * ctor: in-place default constructor
+//  * ctor: in-place constructor with given arguments
 //  * dtor: in-place destructor
 //  * noop: no-op function with the given arguments
 struct thunk {
-  template <typename T>
-  static void* make() {
-    return new T();
+  template <typename T, typename... A>
+  static void* make(A... a) {
+    return new T(static_cast<A>(a)...);
   }
   template <typename T>
-  static void ruin(void* ptr) noexcept {
+  static void ruin(void* const ptr) noexcept {
     delete static_cast<T*>(ptr);
   }
 
-  template <typename T>
-  static void ctor(void* ptr) {
-    ::new (ptr) T();
+  template <typename T, typename... A>
+  static void ctor(void* const ptr, A... a) {
+    ::new (ptr) T(static_cast<A>(a)...);
   }
   template <typename T>
-  static void dtor(void* ptr) noexcept {
+  static void dtor(void* const ptr) noexcept {
     static_cast<T*>(ptr)->~T();
   }
 
