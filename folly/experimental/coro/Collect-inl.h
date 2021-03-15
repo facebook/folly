@@ -221,8 +221,8 @@ auto makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
     AsyncScope& scope, InputRange awaitables, IsTry) {
   using Item =
       async_generator_from_awaitable_range_item_t<InputRange, IsTry::value>;
-  return [](AsyncScope& scope,
-            InputRange awaitables) -> AsyncGenerator<Item&&> {
+  return [](AsyncScope& scopeParam,
+            InputRange awaitablesParam) -> AsyncGenerator<Item&&> {
     auto [results, pipe] = AsyncPipe<Item, false>::create();
     const CancellationSource cancelSource;
     auto guard = folly::makeGuard([&] { cancelSource.requestCancellation(); });
@@ -234,15 +234,16 @@ auto makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
     // context.
     const auto context = RequestContext::saveContext();
 
-    for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
-      scope.add(
-          [](auto semiAwaitable,
-             auto& cancelSource,
+    for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitablesParam)) {
+      scopeParam.add(
+          [](auto semiAwaitableParam,
+             auto& cancelSourceParam,
              auto& pipe) -> Task<void> {
             auto result = co_await co_withCancellation(
-                cancelSource.getToken(), co_awaitTry(std::move(semiAwaitable)));
+                cancelSourceParam.getToken(),
+                co_awaitTry(std::move(semiAwaitableParam)));
             if (!result.hasValue() && !IsTry::value) {
-              cancelSource.requestCancellation();
+              cancelSourceParam.requestCancellation();
             }
             pipe.write(std::move(result));
           }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable),
