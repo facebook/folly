@@ -53,9 +53,9 @@ TEST(SafeAssert, AssertionFailure) {
 
 TEST(SafeAssert, AssertionFailureErrno) {
   EXPECT_DEATH(
-      FOLLY_SAFE_PCHECK((errno = EINVAL) && false, "hello"),
+      ([] { FOLLY_SAFE_PCHECK((errno = EINVAL) && false, "hello"); }()),
       folly::to<std::string>("Error: ", EINVAL, " \\(EINVAL\\)"));
   EXPECT_DEATH(
-      FOLLY_SAFE_PCHECK((errno = 999) && false, "hello"),
+      ([] { FOLLY_SAFE_PCHECK((errno = 999) && false, "hello"); }()),
       folly::to<std::string>("Error: 999 \\(<unknown>\\)"));
 }

@@ -17,12 +17,15 @@
 #include <folly/lang/SafeAssert.h>
 
 #include <algorithm>
+#include <cerrno>
+#include <cstdarg>
 
 #include <folly/detail/FileUtilDetail.h>
 #include <folly/lang/ToAscii.h>
 #include <folly/portability/Unistd.h>
 
 namespace folly {
+namespace detail {
 
 namespace {
 
@@ -441,48 +444,53 @@ constexpr std::pair<int, const char*> errors[] = {
 };
 #undef FOLLY_DETAIL_ERROR
 
-} // namespace
-
-namespace signal_safe {
-
 void writeStderr(const char* s, size_t len) {
   fileutil_detail::wrapFull(write, STDERR_FILENO, const_cast<char*>(s), len);
 }
-
 void writeStderr(const char* s) {
   writeStderr(s, strlen(s));
 }
-
 void flushStderr() {
   fileutil_detail::wrapNoInt(fsync, STDERR_FILENO);
 }
 
-void writeStderr(unsigned long x) {
+[[noreturn]] FOLLY_COLD void safe_assert_terminate_v(
+    safe_assert_arg const* arg_, int const error, va_list msg) noexcept {
+  auto const& arg = *arg_;
   char buf[to_ascii_size_max_decimal<uint64_t>()];
-  writeStderr(buf, to_ascii_decimal(buf, x));
-}
 
-void writeErrBegin(const char* expr, const char* msg) {
   writeStderr("\n\nAssertion failure: ");
-  writeStderr(expr + 1, strlen(expr) - 2);
-  writeStderr("\nMessage: ");
-  writeStderr(msg);
-}
-
-[[noreturn]] void writeErrEnd(
-    const char* file, unsigned int line, const char* function, int error) {
+  writeStderr(arg.expr + 1, strlen(arg.expr) - 2);
+  if (*arg.msg_types != safe_assert_msg_type::term) {
+    writeStderr("\nMessage: ");
+    auto msg_types = arg.msg_types;
+    bool stop = false;
+    while (!stop) {
+      switch (*msg_types++) {
+        case safe_assert_msg_type::term:
+          stop = true;
+          break;
+        case safe_assert_msg_type::cstr:
+          writeStderr(va_arg(msg, char const*));
+          break;
+        case safe_assert_msg_type::ui64:
+          writeStderr(buf, to_ascii_decimal(buf, va_arg(msg, uint64_t)));
+          break;
+      }
+    }
+  }
   writeStderr("\nFile: ");
-  writeStderr(file);
+  writeStderr(arg.file);
   writeStderr("\nLine: ");
-  writeStderr(line);
+  writeStderr(buf, to_ascii_decimal(buf, arg.line));
   writeStderr("\nFunction: ");
-  writeStderr(function);
+  writeStderr(arg.function);
   if (error) {
     // if errno is set, print the number and the symbolic constant
     // the symbolic constant is necessary since actual numbers may vary
     // for simplicity, do not attempt to mimic strerror printing descriptions
     writeStderr("\nError: ");
-    writeStderr(error);
+    writeStderr(buf, to_ascii_decimal(buf, error));
     writeStderr(" (");
     // the list is not required to be sorted; but the program is about to die
     auto const pred = [=](auto const e) { return e.first == error; };
@@ -495,5 +503,23 @@ void writeErrBegin(const char* expr, const char* msg) {
   abort();
 }
 
-} // namespace signal_safe
+} // namespace
+
+template <>
+void safe_assert_terminate<0>(safe_assert_arg const* arg, ...) noexcept {
+  va_list msg;
+  va_start(msg, arg);
+  safe_assert_terminate_v(arg, 0, msg);
+  va_end(msg);
+}
+
+template <>
+void safe_assert_terminate<1>(safe_assert_arg const* arg, ...) noexcept {
+  va_list msg;
+  va_start(msg, arg);
+  safe_assert_terminate_v(arg, errno, msg);
+  va_end(msg);
+}
+
+} // namespace detail
 } // namespace folly

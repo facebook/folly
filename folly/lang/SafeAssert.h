@@ -16,58 +16,130 @@
 
 #pragma once
 
-#include <cerrno>
+#include <cstdint>
+#include <utility>
 
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
+#include <folly/lang/CArray.h>
 
-#define FOLLY_SAFE_CHECK_IMPL(expr, expr_s, msg, error, ...)     \
-  ((expr) ? static_cast<void>(0)                                 \
-          : (::folly::signal_safe::writeErrBegin(                \
-                 FOLLY_PP_STRINGIZE(expr_s), (msg)),             \
-             ::folly::signal_safe::writeStderrPack(__VA_ARGS__), \
-             ::folly::signal_safe::writeErrEnd(                  \
-                 __FILE__, __LINE__, __PRETTY_FUNCTION__, error)))
+#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)                  \
+  if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&                     \
+      !static_cast<bool>(expr)) {                                              \
+    static constexpr auto __folly_detail_safe_assert_arg =                     \
+        ::folly::detail::safe_assert_arg{                                      \
+            FOLLY_PP_STRINGIZE(expr_s),                                        \
+            __FILE__,                                                          \
+            __LINE__,                                                          \
+            __PRETTY_FUNCTION__,                                               \
+            ::folly::detail::safe_assert_msg_types_ptr<decltype(               \
+                ::folly::detail::safe_assert_msg_types_seq_of(__VA_ARGS__))>}; \
+    ::folly::detail::safe_assert_terminate<p>(                                 \
+        __folly_detail_safe_assert_arg, __VA_ARGS__);                          \
+  }                                                                            \
+  [] {}()
 
-/**
- * Verify that the expression is true. If not, prints an error message
- * (containing msg) to stderr and abort()s. Just like CHECK(), but only
- * logs to stderr and only does async-signal-safe calls.
- */
-#define FOLLY_SAFE_CHECK(expr, msg, ...) \
-  FOLLY_SAFE_CHECK_IMPL((expr), (expr), (msg), 0, __VA_ARGS__);
+//  FOLLY_SAFE_CHECK
+//
+//  If expr evaluates to false after explicit conversion to bool, prints context
+//  information to stderr and aborts. Context information includes the remaining
+//  variadic arguments.
+//
+//  When the remaining variadic arguments are printed to stderr, there are two
+//  supported types after implicit conversions: char const* and uint64_t. This
+//  facility is intentionally not extensible to custom types.
+//
+//  multi-thread-safe
+//  async-signal-safe
+#define FOLLY_SAFE_CHECK(expr, ...) \
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(     \
+      0, 0, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
 
-/**
- * In debug mode, verify that the expression is true. Otherwise, do nothing
- * (do not even evaluate expr). Just like DCHECK(), but only logs to stderr and
- * only does async-signal-safe calls.
- */
-#define FOLLY_SAFE_DCHECK(expr, msg, ...) \
-  FOLLY_SAFE_CHECK_IMPL(                  \
-      !::folly::kIsDebug || (expr), (expr), (msg), 0, __VA_ARGS__)
+//  FOLLY_SAFE_DCHECK
+//
+//  Equivalent to FOLLY_SAFE_CHECK when in debug or instrumented builds, where
+//  debug builds are signalled by NDEBUG being undefined and instrumented builds
+//  include sanitizer builds.
+//
+//  multi-thread-safe
+//  async-signal-safe
+#define FOLLY_SAFE_DCHECK(expr, ...) \
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(      \
+      1, 0, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
 
-/**
- * Like FOLLY_SAFE_CHECK, but also prints errno.
- */
-#define FOLLY_SAFE_PCHECK(expr, msg, ...) \
-  FOLLY_SAFE_CHECK_IMPL((expr), (expr), (msg), errno, __VA_ARGS__)
+//  FOLLY_SAFE_PCHECK
+//
+//  Equivalent to FOLLY_SAFE_CHECK but includes errno in the context information
+//  printed to stderr.
+//
+//  multi-thread-safe
+//  async-signal-safe
+#define FOLLY_SAFE_PCHECK(expr, ...) \
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(      \
+      0, 1, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
 
 namespace folly {
-namespace signal_safe {
+namespace detail {
 
-void writeStderr(const char*);
-void writeStderr(unsigned long int);
+enum class safe_assert_msg_type : char { term, cstr, ui64 };
+
+template <safe_assert_msg_type... A>
+struct safe_assert_msg_type_s {};
+
+struct safe_assert_msg_types_one_fn {
+  template <safe_assert_msg_type A>
+  using c = std::integral_constant<safe_assert_msg_type, A>;
+  // only used in unevaluated contexts:
+  c<safe_assert_msg_type::cstr> operator()(char const*) const;
+  c<safe_assert_msg_type::ui64> operator()(uint64_t) const;
+};
+FOLLY_INLINE_VARIABLE constexpr safe_assert_msg_types_one_fn
+    safe_assert_msg_types_one{}; // a function object to prevent extensions
 
 template <typename... A>
-void writeStderrPack(A... a) {
-  // NOTE: C++14-compatible version of comma fold expression.
-  using _ = int[];
-  void(_{0, (writeStderr(a), 0)...});
+safe_assert_msg_type_s<decltype(safe_assert_msg_types_one(A{}))::value...>
+safe_assert_msg_types_seq_of(A...); // only used in unevaluated contexts
+
+template <typename>
+struct safe_assert_msg_types;
+template <safe_assert_msg_type... A>
+struct safe_assert_msg_types<safe_assert_msg_type_s<A...>> {
+  using value_type = c_array<safe_assert_msg_type, sizeof...(A) + 1>;
+  static constexpr value_type value = {{A..., safe_assert_msg_type::term}};
+};
+template <safe_assert_msg_type... A>
+constexpr
+    typename safe_assert_msg_types<safe_assert_msg_type_s<A...>>::value_type
+        safe_assert_msg_types<safe_assert_msg_type_s<A...>>::value;
+template <typename S>
+static constexpr safe_assert_msg_type const* safe_assert_msg_types_ptr =
+    safe_assert_msg_types<S>::value.data;
+
+struct safe_assert_arg {
+  char const* expr;
+  char const* file;
+  unsigned int line;
+  char const* function;
+  safe_assert_msg_type const* msg_types;
+};
+
+struct safe_assert_msg_cast_one_fn {
+  FOLLY_ERASE auto operator()(char const* const a) const { return a; }
+  FOLLY_ERASE auto operator()(uint64_t const a) const { return a; }
+};
+FOLLY_INLINE_VARIABLE constexpr safe_assert_msg_cast_one_fn
+    safe_assert_msg_cast_one{}; // a function object to prevent extensions
+
+template <bool P>
+[[noreturn]] FOLLY_COLD FOLLY_NOINLINE void safe_assert_terminate(
+    safe_assert_arg const* arg, ...) noexcept; // the true backing function
+
+template <bool P, typename... A>
+[[noreturn]] FOLLY_ERASE void safe_assert_terminate(
+    safe_assert_arg const& arg, A... a) noexcept {
+  safe_assert_terminate<P>(&arg, safe_assert_msg_cast_one(a)...);
 }
 
-void writeErrBegin(const char* expr, const char* msg);
-[[noreturn]] void writeErrEnd(
-    const char* file, unsigned int line, const char* function, int error);
-
-} // namespace signal_safe
+} // namespace detail
 } // namespace folly
