@@ -700,7 +700,8 @@ inline exception_wrapper try_and_catch_(F&& f) {
 //! });
 //! \endcode
 template <typename Exn, typename... Exns, typename F>
-exception_wrapper try_and_catch(F&& fn) {
+[[deprecated("no longer specify exception types explicitly")]] exception_wrapper
+try_and_catch(F&& fn) {
   return detail::try_and_catch_<F, Exn, Exns...>(std::forward<F>(fn));
 }
 template <typename F>

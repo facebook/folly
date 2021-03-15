@@ -119,8 +119,11 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   std::string expected = "payload";
 
   // Catch rightmost matching exception type
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
   exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
       [=]() { throw std::runtime_error(expected); });
+  FOLLY_POP_WARNING
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ew.what(), kRuntimeErrorClassName + ": payload");
   EXPECT_EQ(ew.class_name(), kRuntimeErrorClassName);
@@ -129,8 +132,11 @@ TEST(ExceptionWrapper, try_and_catch_test) {
 
   // Changing order is like catching in wrong order. Beware of this in your
   // code.
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
   auto ew2 = try_and_catch<std::runtime_error, std::exception>(
       [=]() { throw std::runtime_error(expected); });
+  FOLLY_POP_WARNING
   EXPECT_TRUE(bool(ew2));
   // We are catching a std::exception, not std::runtime_error.
   // But, we can still get the actual type if we want it.
@@ -138,8 +144,11 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   EXPECT_TRUE(rep);
 
   // Catches even if not rightmost.
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
   auto ew3 = try_and_catch<std::exception, std::runtime_error>(
       []() { throw std::exception(); });
+  FOLLY_POP_WARNING
   EXPECT_TRUE(bool(ew3));
   EXPECT_EQ(ew3.what(), kExceptionClassName + ": " + std::exception().what());
   EXPECT_EQ(ew3.class_name(), kExceptionClassName);
@@ -147,9 +156,12 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   EXPECT_FALSE(rep);
 
   // If does not catch, throws.
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
   EXPECT_THROW(
       try_and_catch<std::runtime_error>([]() { throw std::exception(); }),
       std::exception);
+  FOLLY_POP_WARNING
 
   // No list
   auto ew4 = try_and_catch([] { throw 17; });
@@ -160,19 +172,16 @@ TEST(ExceptionWrapper, try_and_catch_test) {
 TEST(ExceptionWrapper, with_exception_test) {
   int expected = 23;
 
-  // This works, and doesn't slice.
-  exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
-      [=]() { throw IntException(expected); });
+  exception_wrapper ew = exception_wrapper::from_exception_ptr(
+      std::make_exception_ptr(IntException(expected)));
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ew.what(), kIntExceptionClassName + ": int == 23");
   EXPECT_EQ(ew.class_name(), kIntExceptionClassName);
   EXPECT_TRUE(ew.with_exception(
       [&](const IntException& ie) { EXPECT_EQ(ie.getInt(), expected); }));
 
-  // I can try_and_catch a non-copyable base class.  This will use
-  // std::exception_ptr internally.
-  exception_wrapper ew2 = try_and_catch<AbstractIntException>(
-      [=]() { throw IntException(expected); });
+  exception_wrapper ew2 = exception_wrapper::from_exception_ptr(
+      std::make_exception_ptr(IntException(expected)));
   EXPECT_TRUE(bool(ew2));
   EXPECT_EQ(ew2.what(), kIntExceptionClassName + ": int == 23");
   EXPECT_EQ(ew2.class_name(), kIntExceptionClassName);
@@ -207,16 +216,13 @@ TEST(ExceptionWrapper, with_exception_test) {
 TEST(ExceptionWrapper, get_or_make_exception_ptr_test) {
   int expected = 23;
 
-  // This works, and doesn't slice.
-  exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
-      [=]() { throw IntException(expected); });
+  exception_wrapper ew = exception_wrapper::from_exception_ptr(
+      std::make_exception_ptr(IntException(expected)));
   std::exception_ptr eptr = ew.to_exception_ptr();
   EXPECT_THROW(std::rethrow_exception(eptr), IntException);
 
-  // I can try_and_catch a non-copyable base class.  This will use
-  // std::exception_ptr internally.
-  exception_wrapper ew2 = try_and_catch<AbstractIntException>(
-      [=]() { throw IntException(expected); });
+  exception_wrapper ew2 = exception_wrapper::from_exception_ptr(
+      std::make_exception_ptr(IntException(expected)));
   eptr = ew2.to_exception_ptr();
   EXPECT_THROW(std::rethrow_exception(eptr), IntException);
 
@@ -489,8 +495,11 @@ TEST(ExceptionWrapper, with_exception_deduction_functor_lvalue) {
 TEST(ExceptionWrapper, non_std_exception_test) {
   int expected = 17;
 
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
   exception_wrapper ew =
       try_and_catch<std::exception, int>([=]() { throw expected; });
+  FOLLY_POP_WARNING
   EXPECT_TRUE(bool(ew));
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
