@@ -56,16 +56,38 @@ namespace gmock_helpers {
 //   int fooCallCount = 0;
 //
 //   EXPECT_CALL(mock, foo(_))
-//     .WillRepeatedly(CoInvoke([&](int x) -> folly::coro::Task<int> {
-//                                ++fooCallCount;
-//                                co_return x + 1;
-//                              }));
+//     .WillRepeatedly(CoInvoke(
+//         [&](int x) -> folly::coro::Task<int> {
+//           ++fooCallCount;
+//           co_return x + 1;
+//         }));
 //
 template <typename F>
 auto CoInvoke(F&& f) {
   return ::testing::Invoke([f = static_cast<F&&>(f)](auto&&... a) {
     return co_invoke(f, static_cast<decltype(a)>(a)...);
   });
+}
+
+// CoInvoke variant that does not pass arguments to callback function.
+//
+// Example:
+//   using namespace ::testing
+//   using namespace folly::coro::gmock_helpers;
+//
+//   MockFoo mock;
+//   int fooCallCount = 0;
+//
+//   EXPECT_CALL(mock, foo(_))
+//     .WillRepeatedly(CoInvokeWithoutArgs(
+//         [&]() -> folly::coro::Task<int> {
+//           ++fooCallCount;
+//           co_return 42;
+//         }));
+template <typename F>
+auto CoInvokeWithoutArgs(F&& f) {
+  return ::testing::InvokeWithoutArgs(
+      [f = static_cast<F&&>(f)]() { return co_invoke(f); });
 }
 
 namespace detail {
