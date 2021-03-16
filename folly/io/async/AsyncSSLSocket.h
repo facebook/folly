@@ -832,9 +832,6 @@ class AsyncSSLSocket : public AsyncSocket {
     asyncOperationFinishCallback_ = std::move(cb);
   }
 
-  // zero copy is not supported by openssl.
-  bool setZeroCopy(bool /*enable*/) override { return false; }
-
  private:
   /**
    * Handle the return from invoking SSL_accept
