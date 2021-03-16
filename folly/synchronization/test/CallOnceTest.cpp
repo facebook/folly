@@ -135,3 +135,12 @@ TYPED_TEST(FollyCallOnce, TryCallOnce) {
   EXPECT_TRUE(folly::try_call_once(once, []() noexcept { return true; }));
   EXPECT_TRUE(folly::test_once(once));
 }
+
+TYPED_TEST(FollyCallOnce, ResetOnce) {
+  typename TestFixture::OnceFlag once;
+  EXPECT_FALSE(folly::test_once(once));
+  folly::call_once(once, [] {});
+  EXPECT_TRUE(folly::test_once(once));
+  folly::reset_once(once);
+  EXPECT_FALSE(folly::test_once(once));
+}

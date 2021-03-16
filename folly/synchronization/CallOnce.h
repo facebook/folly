@@ -103,6 +103,16 @@ FOLLY_ALWAYS_INLINE bool test_once(OnceFlag const& flag) noexcept {
   return flag.test_once();
 }
 
+//  reset_once
+//
+//  Resets a flag.
+//
+//  Warning: unsafe to call concurrently with any other flag operations.
+template <typename OnceFlag>
+FOLLY_ALWAYS_INLINE void reset_once(OnceFlag& flag) noexcept {
+  return flag.reset_once();
+}
+
 template <typename Mutex, template <typename> class Atom>
 class basic_once_flag {
  public:
@@ -116,6 +126,9 @@ class basic_once_flag {
 
   template <typename OnceFlag>
   friend bool test_once(OnceFlag const& flag) noexcept;
+
+  template <typename OnceFlag>
+  friend void reset_once(OnceFlag&) noexcept;
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
@@ -145,6 +158,10 @@ class basic_once_flag {
     return called_.load(std::memory_order_acquire);
   }
 
+  FOLLY_ALWAYS_INLINE void reset_once() noexcept {
+    called_.store(false, std::memory_order_relaxed);
+  }
+
   Atom<bool> called_{false};
   Mutex mutex_;
 };
@@ -161,6 +178,9 @@ class compact_once_flag {
 
   template <typename OnceFlag>
   friend bool test_once(OnceFlag const& flag) noexcept;
+
+  template <typename OnceFlag>
+  friend void reset_once(OnceFlag&) noexcept;
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
@@ -189,6 +209,11 @@ class compact_once_flag {
 
   FOLLY_ALWAYS_INLINE bool test_once() const noexcept {
     return mutex_.load(std::memory_order_acquire) != 0;
+  }
+
+  FOLLY_ALWAYS_INLINE void reset_once() noexcept {
+    folly::MicroLock::LockGuardWithData guard(mutex_);
+    guard.storeValue(0);
   }
 
   folly::MicroLock mutex_;
