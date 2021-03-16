@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
+
 //  FOLLY_KEEP
 //
 //  When applied to a function, prevents removal of the function.
@@ -63,6 +65,10 @@ class keep {
 
 //  noinline ctor and trivial dtor minimize the text size of this
 static keep keep_instance{keep_anchor};
+
+//  weak and noinline to prevent the compiler from eliding calls
+template <typename... T>
+FOLLY_ATTR_WEAK FOLLY_NOINLINE void keep_sink(T&&...) {}
 
 } // namespace detail
 } // namespace folly

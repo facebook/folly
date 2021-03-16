@@ -23,23 +23,14 @@
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
-namespace folly {
-namespace safe_assert_test {
-
-template <typename... T>
-FOLLY_ATTR_WEAK FOLLY_NOINLINE void sink(T&&...) {}
-
-} // namespace safe_assert_test
-} // namespace folly
-
 extern "C" FOLLY_KEEP void check_folly_safe_check(bool cond) {
   FOLLY_SAFE_CHECK(cond, "the condition failed");
-  folly::safe_assert_test::sink();
+  folly::detail::keep_sink();
 }
 
 extern "C" FOLLY_KEEP void check_folly_safe_pcheck(bool cond) {
   FOLLY_SAFE_PCHECK(cond, "the condition failed");
-  folly::safe_assert_test::sink();
+  folly::detail::keep_sink();
 }
 
 // clang-format off

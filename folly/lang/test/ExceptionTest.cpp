@@ -25,26 +25,17 @@
 #include <folly/lang/Pretty.h>
 #include <folly/portability/GTest.h>
 
-namespace folly {
-namespace exception_test {
-
-template <typename... T>
-FOLLY_ATTR_WEAK FOLLY_NOINLINE void sink(T&&...) {}
-
-} // namespace exception_test
-} // namespace folly
-
 extern "C" FOLLY_KEEP void check_cond_std_terminate(bool c) {
   if (c) {
     std::terminate();
   }
-  folly::exception_test::sink();
+  folly::detail::keep_sink();
 }
 extern "C" FOLLY_KEEP void check_cond_folly_terminate_with(bool c) {
   if (c) {
     folly::terminate_with<std::runtime_error>("bad error");
   }
-  folly::exception_test::sink();
+  folly::detail::keep_sink();
 }
 
 template <typename Ex>
