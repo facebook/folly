@@ -150,7 +150,7 @@ Executor::KeepAlive<> getGlobalCPUExecutor() {
   return folly::getKeepAliveToken(executorPtrPtr->get());
 }
 
-Executor::KeepAlive<> getGlobalIOExecutor() {
+Executor::KeepAlive<IOExecutor> getGlobalIOExecutor() {
   auto executorPtrPtr = getImmutablePtrPtr<IOExecutor>();
   if (!executorPtrPtr) {
     throw std::runtime_error("Requested global IO executor during shutdown.");
