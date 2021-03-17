@@ -24,20 +24,21 @@
 #include <folly/Preprocessor.h>
 #include <folly/lang/CArray.h>
 
-#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)                  \
-  if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&                     \
-      !static_cast<bool>(expr)) {                                              \
-    static constexpr auto __folly_detail_safe_assert_arg =                     \
-        ::folly::detail::safe_assert_arg{                                      \
-            FOLLY_PP_STRINGIZE(expr_s),                                        \
-            __FILE__,                                                          \
-            __LINE__,                                                          \
-            __PRETTY_FUNCTION__,                                               \
-            ::folly::detail::safe_assert_msg_types_ptr<decltype(               \
-                ::folly::detail::safe_assert_msg_types_seq_of(__VA_ARGS__))>}; \
-    ::folly::detail::safe_assert_terminate<p>(                                 \
-        __folly_detail_safe_assert_arg, __VA_ARGS__);                          \
-  }                                                                            \
+#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)  \
+  if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&     \
+      !static_cast<bool>(expr)) {                              \
+    static constexpr ::folly::detail::safe_assert_arg          \
+        __folly_detail_safe_assert_arg{                        \
+            FOLLY_PP_STRINGIZE(expr_s),                        \
+            __FILE__,                                          \
+            __LINE__,                                          \
+            __PRETTY_FUNCTION__,                               \
+            ::folly::detail::safe_assert_msg_types<decltype(   \
+                ::folly::detail::safe_assert_msg_types_seq_of( \
+                    __VA_ARGS__))>::value.data};               \
+    ::folly::detail::safe_assert_terminate<p>(                 \
+        __folly_detail_safe_assert_arg, __VA_ARGS__);          \
+  }                                                            \
   [] {}()
 
 //  FOLLY_SAFE_CHECK
@@ -112,9 +113,6 @@ template <safe_assert_msg_type... A>
 constexpr
     typename safe_assert_msg_types<safe_assert_msg_type_s<A...>>::value_type
         safe_assert_msg_types<safe_assert_msg_type_s<A...>>::value;
-template <typename S>
-static constexpr safe_assert_msg_type const* safe_assert_msg_types_ptr =
-    safe_assert_msg_types<S>::value.data;
 
 struct safe_assert_arg {
   char const* expr;
