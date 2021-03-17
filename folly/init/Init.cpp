@@ -65,7 +65,9 @@ void init(int* argc, char*** argv, InitOptions options) {
 #if !FOLLY_HAVE_LIBGFLAGS
   (void)options;
 #else
-  gflags::ParseCommandLineFlags(argc, argv, options.remove_flags);
+  if (options.use_gflags) {
+    gflags::ParseCommandLineFlags(argc, argv, options.remove_flags);
+  }
 #endif
 
   folly::initLoggingOrDie(FLAGS_logging);

@@ -25,6 +25,7 @@ class InitOptions {
   InitOptions() noexcept;
 
   bool remove_flags{true};
+  bool use_gflags{true};
 
   // mask of all fatal (default handler of terminating the process) signals for
   // which `init()` will install handler that print stack traces and invokes
@@ -41,6 +42,11 @@ class InitOptions {
 
   InitOptions& fatalSignals(unsigned long val) {
     fatal_signals = val;
+    return *this;
+  }
+
+  InitOptions& useGFlags(bool useGFlags) {
+    use_gflags = useGFlags;
     return *this;
   }
 };
