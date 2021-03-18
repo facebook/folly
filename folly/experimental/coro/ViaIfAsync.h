@@ -298,8 +298,8 @@ class ViaIfAsyncAwaiter {
   // case.
 
   template <typename Promise>
-  auto await_suspend(coroutine_handle<Promise> continuation) noexcept(
-      noexcept(awaiter_.await_suspend(std::declval<WrapperHandle>())))
+  auto await_suspend(coroutine_handle<Promise> continuation) noexcept(noexcept(
+      std::declval<Awaiter&>().await_suspend(std::declval<WrapperHandle>())))
       -> await_suspend_result_t {
     viaCoroutine_.setContinuation(continuation);
 

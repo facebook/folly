@@ -238,18 +238,18 @@ auto makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
       scopeParam.add(
           [](auto semiAwaitableParam,
              auto& cancelSourceParam,
-             auto& pipe) -> Task<void> {
+             auto& p) -> Task<void> {
             auto result = co_await co_withCancellation(
                 cancelSourceParam.getToken(),
                 co_awaitTry(std::move(semiAwaitableParam)));
             if (!result.hasValue() && !IsTry::value) {
               cancelSourceParam.requestCancellation();
             }
-            pipe.write(std::move(result));
+            p.write(std::move(result));
           }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable),
             cancelSource,
             pipe)
-                                .scheduleOn(ex));
+                             .scheduleOn(ex));
       ++expected;
       RequestContext::setContext(context);
     }

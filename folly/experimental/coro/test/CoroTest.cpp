@@ -33,6 +33,7 @@
 #include <folly/fibers/Semaphore.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
+#include <folly/lang/Assume.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -362,9 +363,7 @@ template <int value>
 struct AwaitableInt {
   bool await_ready() const { return true; }
 
-  bool await_suspend(coro::coroutine_handle<>) {
-    LOG(FATAL) << "Should never be called.";
-  }
+  bool await_suspend(coro::coroutine_handle<>) { assume_unreachable(); }
 
   int await_resume() { return value; }
 };
@@ -556,7 +555,7 @@ TEST_F(CoroTest, CancelOutstandingSemaphoreWait) {
             // whcih should reqeust cancellation of sem.co_wait().
             co_yield folly::coro::co_error(ExpectedError{});
           }());
-    } catch (ExpectedError) {
+    } catch (const ExpectedError&) {
     }
   }());
 }

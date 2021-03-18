@@ -70,6 +70,7 @@ class co_reschedule_on_current_executor_ {
     folly::Executor::KeepAlive<> executor_;
   };
 
+ public:
   class StackAwareAwaiter : public AwaiterBase {
    public:
     using AwaiterBase::AwaiterBase;
