@@ -24,6 +24,7 @@
 #include <folly/Likely.h>
 #include <folly/Utility.h>
 #include <folly/detail/Singleton.h>
+#include <folly/lang/Thunk.h>
 #include <folly/lang/TypeInfo.h>
 
 namespace folly {

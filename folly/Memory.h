@@ -34,6 +34,7 @@
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/Thunk.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/Malloc.h>

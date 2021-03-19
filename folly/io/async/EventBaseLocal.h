@@ -27,6 +27,7 @@
 #include <folly/Likely.h>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/lang/Thunk.h>
 
 namespace folly {
 
