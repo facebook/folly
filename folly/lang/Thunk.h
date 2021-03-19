@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <exception>
+
 namespace folly {
 namespace detail {
 
@@ -27,6 +29,7 @@ namespace detail {
 //  * ctor: in-place constructor with given arguments
 //  * dtor: in-place destructor
 //  * noop: no-op function with the given arguments
+//  * fail: terminating function with the given return and arguments
 struct thunk {
   template <typename T, typename... A>
   static void* make(A... a) {
@@ -46,8 +49,13 @@ struct thunk {
     static_cast<T*>(ptr)->~T();
   }
 
-  template <typename... T>
-  static void noop(T...) noexcept {}
+  template <typename... A>
+  static void noop(A...) noexcept {}
+
+  template <typename R, typename... A>
+  static R fail(A...) noexcept {
+    std::terminate();
+  }
 };
 
 } // namespace detail
