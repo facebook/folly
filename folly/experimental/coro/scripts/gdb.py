@@ -175,12 +175,36 @@ def get_async_stack_root_addr() -> gdb.Value:
         return nullptr()
 
     # get the stack root pointer from thread-local storage
-    async_stack_root_holder_addr = gdb.parse_and_eval(
-        f"((struct pthread*){to_hex(pthread_addr)})->specific"
-        f"[(int){ASYNC_STACK_ROOT_TLS_KEY}/32]"
-        f"[(int){ASYNC_STACK_ROOT_TLS_KEY}%32]"
-        ".data"
-    )
+    try:
+        # Note: "struct pthread" is the implementation type for "pthread_t".
+        # Its symbol information may not be available, depending if pthread
+        # debug symbols are available.
+        async_stack_root_holder_addr = gdb.parse_and_eval(
+            f"((struct pthread*){to_hex(pthread_addr)})->specific"
+            f"[(int){to_hex(tls_key)}/32]"
+            f"[(int){to_hex(tls_key)}%32]"
+            ".data"
+        )
+    except gdb.error as e:
+        if "No struct type named pthread" not in str(e):
+            raise e
+        # If "struct pthread" isn't defined, use the precalculated offset.
+        # Note: The offset is specific to linux x86_64.
+        specific_offset = 1296
+        pthread_key_data_addr = gdb.parse_and_eval(
+            f"&(((uintptr_t[2]**)({to_hex(pthread_addr)}+{specific_offset}))"
+            f"[(int){to_hex(tls_key)}/32]"
+            f"[(int){to_hex(tls_key)}%32])"
+        )
+
+        # Extract the "data" field from pthread_key_data, which has the
+        # following definition:
+        # struct pthread_key_data {
+        #   uintptr_t seq;
+        #   void *data;
+        # }
+        async_stack_root_holder_addr = get_field(pthread_key_data_addr, 1)
+
     if int(async_stack_root_holder_addr) == 0:
         return nullptr()
     async_stack_root_holder = AsyncStackRootHolder.from_addr(
