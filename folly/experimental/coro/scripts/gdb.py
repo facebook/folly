@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import re
+import sys
+import traceback
 from dataclasses import dataclass
 from typing import List, Tuple
 
@@ -167,6 +169,11 @@ def get_async_stack_root_addr() -> gdb.Value:
     if int(pthread_addr) == 0:
         return nullptr()
 
+    # Check if the tls key is initialized
+    tls_key = gdb.parse_and_eval(f"(int){ASYNC_STACK_ROOT_TLS_KEY}")
+    if (int(tls_key) % (2 ** 32)) == ((2 ** 32) - 1):
+        return nullptr()
+
     # get the stack root pointer from thread-local storage
     async_stack_root_holder_addr = gdb.parse_and_eval(
         f"((struct pthread*){to_hex(pthread_addr)})->specific"
@@ -293,17 +300,21 @@ class CoroBacktraceCommand(gdb.Command):
         super(CoroBacktraceCommand, self).__init__("co_bt", gdb.COMMAND_USER)
 
     def invoke(self, arg: str, from_tty: bool):
-        addrs: List[gdb.Value] = []
-        if arg:
-            async_stack_root_addr = gdb.parse_and_eval(arg)
-            if int(async_stack_root_addr) != 0:
-                async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
-                addrs = get_async_stack_addrs_from_initial_frame(
-                    async_stack_root.top_frame
-                )
-        else:
-            addrs = get_async_stack_addrs()
-        print_async_stack_addrs(addrs)
+        try:
+            addrs: List[gdb.Value] = []
+            if arg:
+                async_stack_root_addr = gdb.parse_and_eval(arg)
+                if int(async_stack_root_addr) != 0:
+                    async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
+                    addrs = get_async_stack_addrs_from_initial_frame(
+                        async_stack_root.top_frame
+                    )
+            else:
+                addrs = get_async_stack_addrs()
+            print_async_stack_addrs(addrs)
+        except Exception:
+            print("Error collecting async stack trace:")
+            traceback.print_exception(*sys.exc_info())
 
 
 class CoroAsyncStackRootsCommand(gdb.Command):
@@ -331,3 +342,7 @@ def load() -> None:
     CoroBacktraceCommand()
     CoroAsyncStackRootsCommand()
     print(info())
+
+
+if __name__ == "__main__":
+    load()
