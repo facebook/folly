@@ -143,6 +143,16 @@ class EventBase : public TimeoutManager,
 
   using Func = folly::Function<void()>;
 
+  class FuncRunner {
+   public:
+    void operator()(Func&& func) noexcept {
+      func();
+      func = nullptr;
+    }
+  };
+
+  using EventBaseQueue = EventBaseAtomicNotificationQueue<Func, FuncRunner>;
+
   /**
    * A callback interface to use with runInLoop()
    *
@@ -855,8 +865,6 @@ class EventBase : public TimeoutManager,
   }
 
  private:
-  class FuncRunner;
-
   folly::VirtualEventBase* tryGetVirtualEventBase();
 
   void applyLoopKeepAlive();
@@ -906,7 +914,7 @@ class EventBase : public TimeoutManager,
 
   // A notification queue for runInEventBaseThread() to use
   // to send function requests to the EventBase thread.
-  std::unique_ptr<EventBaseAtomicNotificationQueue<Func, FuncRunner>> queue_;
+  std::unique_ptr<EventBaseQueue> queue_;
   ssize_t loopKeepAliveCount_{0};
   std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
   bool loopKeepAliveActive_{false};
