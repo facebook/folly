@@ -474,7 +474,7 @@ class Range {
   template <typename ValueType>
   struct StringViewType
       : std::conditional<
-            std::is_trivially_copyable<std::remove_const_t<ValueType>>::value,
+            folly::is_trivially_copyable<std::remove_const_t<ValueType>>::value,
             std::basic_string_view<std::remove_const_t<ValueType>>,
             NotStringView> {};
 
