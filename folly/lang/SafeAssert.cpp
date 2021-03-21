@@ -22,7 +22,21 @@
 
 #include <folly/detail/FileUtilDetail.h>
 #include <folly/lang/ToAscii.h>
-#include <folly/portability/Unistd.h>
+#include <folly/portability/SysTypes.h>
+#include <folly/portability/Windows.h>
+
+#if defined(_WIN32)
+
+#include <fileapi.h> // @manual
+
+#else
+
+// @lint-ignore CLANGTIDY
+#include <unistd.h>
+
+#endif
+
+//  This header takes care to have minimal dependencies.
 
 namespace folly {
 namespace detail {
@@ -444,14 +458,54 @@ constexpr std::pair<int, const char*> errors[] = {
 };
 #undef FOLLY_DETAIL_ERROR
 
+#if defined(_WIN32)
+
+constexpr int stderr_fileno = 2;
+
+ssize_t write(int fh, void const* buf, size_t count) {
+  auto r = _write(fh, buf, static_cast<unsigned int>(count));
+  if ((r > 0 && size_t(r) != count) || (r == -1 && errno == ENOSPC)) {
+    // Writing to a pipe with a full buffer doesn't generate
+    // any error type, unless it caused us to write exactly 0
+    // bytes, so we have to see if we have a pipe first. We
+    // don't touch the errno for anything else.
+    HANDLE h = (HANDLE)_get_osfhandle(fh);
+    if (GetFileType(h) == FILE_TYPE_PIPE) {
+      DWORD state = 0;
+      if (GetNamedPipeHandleState(
+              h, &state, nullptr, nullptr, nullptr, nullptr, 0)) {
+        if ((state & PIPE_NOWAIT) == PIPE_NOWAIT) {
+          errno = EAGAIN;
+          return -1;
+        }
+      }
+    }
+  }
+  return r;
+}
+
+int fsync(int fh) {
+  HANDLE h = (HANDLE)_get_osfhandle(fh);
+  if (!FlushFileBuffers(h)) {
+    return -1;
+  }
+  return 0;
+}
+
+#else
+
+constexpr int stderr_fileno = STDERR_FILENO;
+
+#endif
+
 void writeStderr(const char* s, size_t len) {
-  fileutil_detail::wrapFull(write, STDERR_FILENO, const_cast<char*>(s), len);
+  fileutil_detail::wrapFull(write, stderr_fileno, const_cast<char*>(s), len);
 }
 void writeStderr(const char* s) {
   writeStderr(s, strlen(s));
 }
 void flushStderr() {
-  fileutil_detail::wrapNoInt(fsync, STDERR_FILENO);
+  fileutil_detail::wrapNoInt(fsync, stderr_fileno);
 }
 
 [[noreturn]] FOLLY_COLD void safe_assert_terminate_v(

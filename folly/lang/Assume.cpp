@@ -16,14 +16,14 @@
 
 #include <folly/lang/Assume.h>
 
-#include <glog/logging.h>
+#include <folly/lang/SafeAssert.h>
 
 namespace folly {
 
 namespace detail {
 
 void assume_check(bool cond) {
-  CHECK(cond) << "compiler-hint assumption fails at runtime";
+  FOLLY_SAFE_CHECK(cond, "compiler-hint assumption fails at runtime");
 }
 
 } // namespace detail

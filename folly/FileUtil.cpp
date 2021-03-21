@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <folly/detail/FileUtilDetail.h>
+#include <folly/detail/FileUtilVectorDetail.h>
 #include <folly/net/NetOps.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>

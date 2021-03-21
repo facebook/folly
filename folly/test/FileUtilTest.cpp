@@ -29,6 +29,7 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/detail/FileUtilDetail.h>
+#include <folly/detail/FileUtilVectorDetail.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
 
