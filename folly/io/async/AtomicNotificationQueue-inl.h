@@ -100,9 +100,9 @@ AtomicNotificationQueue<Task>::AtomicQueue::~AtomicQueue() {
 }
 
 template <typename Task>
-template <typename T>
-bool AtomicNotificationQueue<Task>::AtomicQueue::push(T&& value) {
-  std::unique_ptr<Node> node(new Node(std::forward<T>(value)));
+template <typename... Args>
+bool AtomicNotificationQueue<Task>::AtomicQueue::push(Args&&... args) {
+  std::unique_ptr<Node> node(new Node(std::forward<Args>(args)...));
   auto head = head_.load(std::memory_order_relaxed);
   while (true) {
     node->next =
@@ -191,16 +191,15 @@ bool AtomicNotificationQueue<Task>::arm() {
 }
 
 template <typename Task>
-template <typename T>
-bool AtomicNotificationQueue<Task>::push(T&& task) {
+template <typename... Args>
+bool AtomicNotificationQueue<Task>::push(Args&&... args) {
   pushCount_.fetch_add(1, std::memory_order_relaxed);
-  return atomicQueue_.push(std::forward<T>(task));
+  return atomicQueue_.push(std::forward<Args>(args)...);
 }
 
 template <typename Task>
-template <typename T>
 typename AtomicNotificationQueue<Task>::TryPushResult
-AtomicNotificationQueue<Task>::tryPush(T&& task, uint32_t maxSize) {
+AtomicNotificationQueue<Task>::tryPush(Task&& task, uint32_t maxSize) {
   auto pushed = pushCount_.load(std::memory_order_relaxed);
   while (true) {
     auto executed = taskExecuteCount_.load(std::memory_order_relaxed);
@@ -215,9 +214,8 @@ AtomicNotificationQueue<Task>::tryPush(T&& task, uint32_t maxSize) {
       break;
     }
   }
-  return atomicQueue_.push(std::forward<T>(task))
-      ? TryPushResult::SUCCESS_AND_ARMED
-      : TryPushResult::SUCCESS;
+  return atomicQueue_.push(std::move(task)) ? TryPushResult::SUCCESS_AND_ARMED
+                                            : TryPushResult::SUCCESS;
 }
 
 namespace detail {

@@ -131,3 +131,49 @@ TEST(AtomicNotificationQueueTest, DiscardDequeuedTasks) {
   EXPECT_EQ(data.size(), 1);
   EXPECT_EQ(data.at(0), 15);
 }
+
+TEST(AtomicNotificationQueueTest, PutMessage) {
+  struct Data {
+    int datum;
+    bool isExpired;
+
+    explicit Data(int datum, bool isExpired)
+        : datum(datum), isExpired(isExpired) {}
+
+    bool operator==(const Data& data) const {
+      return datum == data.datum && isExpired == data.isExpired;
+    }
+  };
+
+  struct Consumer {
+    explicit Consumer(vector<Data>& data) : data(data) {}
+    void operator()(Data&& task) noexcept { data.push_back(task); }
+    vector<Data>& data;
+  };
+
+  vector<Data> expected =
+                   {Data(10, false),
+                    Data(20, true),
+                    Data(-8, true),
+                    Data(0, false)},
+               actual;
+  Consumer consumer{actual};
+
+  EventBaseAtomicNotificationQueue<Data, decltype(consumer)> queue{
+      std::move(consumer)};
+  queue.setMaxReadAtOnce(0);
+
+  EventBase eventBase;
+  queue.startConsuming(&eventBase);
+
+  for (auto& t : expected) {
+    queue.putMessage(t.datum, t.isExpired);
+  }
+
+  eventBase.loopOnce();
+
+  EXPECT_EQ(expected.size(), actual.size());
+  for (unsigned i = 0; i < expected.size(); ++i) {
+    EXPECT_EQ(expected[i], actual[i]);
+  }
+}

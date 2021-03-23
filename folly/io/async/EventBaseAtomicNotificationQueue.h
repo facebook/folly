@@ -82,16 +82,15 @@ class EventBaseAtomicNotificationQueue : private EventBase::LoopCallback,
    * Adds a task into the queue.
    * Can be called from any thread.
    */
-  template <typename T>
-  void putMessage(T&& task);
+  template <typename... Args>
+  void putMessage(Args&&... task);
 
   /**
    * Adds a task into the queue unless the max queue size is reached.
    * Returns true iff the task was queued.
    * Can be called from any thread.
    */
-  template <typename T>
-  FOLLY_NODISCARD bool tryPutMessage(T&& task, uint32_t maxSize);
+  FOLLY_NODISCARD bool tryPutMessage(Task&& task, uint32_t maxSize);
 
   /*
    * Detaches the queue from an EventBase.

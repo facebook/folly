@@ -84,8 +84,8 @@ class AtomicNotificationQueue {
    * Returns true iff the queue was armed, in which case
    * producers are expected to notify consumer thread.
    */
-  template <typename T>
-  bool push(T&& task);
+  template <typename... Args>
+  bool push(Args&&... args);
 
   /*
    * Attempts adding a task into the queue.
@@ -94,8 +94,7 @@ class AtomicNotificationQueue {
    * consumer iff SUCCESS_AND_ARMED is returned.
    */
   enum class TryPushResult { FAILED_LIMIT_REACHED, SUCCESS, SUCCESS_AND_ARMED };
-  template <typename T>
-  TryPushResult tryPush(T&& task, uint32_t maxSize);
+  TryPushResult tryPush(Task&& task, uint32_t maxSize);
 
  private:
   struct Node {
@@ -105,8 +104,8 @@ class AtomicNotificationQueue {
    private:
     friend class AtomicNotificationQueue;
 
-    template <typename T>
-    explicit Node(T&& t) : task(std::forward<T>(t)) {}
+    template <typename... Args>
+    explicit Node(Args&&... args) : task(std::forward<Args>(args)...) {}
 
     Node* next{};
   };
@@ -187,8 +186,8 @@ class AtomicNotificationQueue {
      * Pushes a task into the queue. Returns true iff the queue was armed.
      * Can be called from any thread.
      */
-    template <typename T>
-    bool push(T&& value);
+    template <typename... Args>
+    bool push(Args&&... args);
 
     /*
      * Returns true if the queue has tasks.
