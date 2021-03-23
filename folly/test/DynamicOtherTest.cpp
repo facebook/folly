@@ -90,6 +90,227 @@ TEST(Dynamic, Getters) {
   EXPECT_THROW(dBool.getDouble(), TypeError);
 }
 
+TEST(Dynamic, ViewTruthinessTest) {
+  // An default constructed view is falsey.
+  folly::const_dynamic_view view{};
+  EXPECT_EQ((bool)view, false);
+
+  dynamic d{nullptr};
+
+  // A view of a dynamic that is null is still truthy.
+  // Assigning a dynamic to a view sets it to that dynamic.
+  view = d;
+  EXPECT_EQ((bool)view, true);
+
+  // reset() empties a view.
+  view.reset();
+  EXPECT_EQ((bool)view, false);
+}
+
+TEST(Dynamic, ViewDescendTruthinessTest) {
+  folly::const_dynamic_view view{};
+
+  dynamic obj = dynamic::object("key", "value");
+  dynamic arr = dynamic::array("one", "two", "three");
+
+  // Descending should return truthy views.
+  view = obj;
+  EXPECT_EQ((bool)view, true);
+  view = view.descend("key");
+  EXPECT_EQ((bool)view, true);
+
+  view = arr;
+  EXPECT_EQ((bool)view, true);
+  view = view.descend(1);
+  EXPECT_EQ((bool)view, true);
+}
+
+TEST(Dynamic, ViewDescendFailedTest) {
+  folly::const_dynamic_view view{};
+
+  dynamic nully{};
+  dynamic obj = dynamic::object("key", "value");
+  dynamic arr = dynamic::array("one", "two", "three");
+
+  // Failed descents should return empty views.
+  view = nully;
+  EXPECT_EQ((bool)view, true);
+  view = view.descend("not an object");
+  EXPECT_EQ((bool)view, false);
+
+  view = obj;
+  EXPECT_EQ((bool)view, true);
+  view = view.descend("missing key");
+  EXPECT_EQ((bool)view, false);
+
+  view = arr;
+  EXPECT_EQ((bool)view, true);
+  view = view.descend("not an object");
+  EXPECT_EQ((bool)view, false);
+
+  view = arr;
+  EXPECT_EQ((bool)view, true);
+  view = view.descend(5); // out of range
+  EXPECT_EQ((bool)view, false);
+}
+
+TEST(Dynamic, ViewScalarsTest) {
+  dynamic i = 5;
+  dynamic str = "hello";
+  double pi = 3.14;
+  dynamic d = pi;
+  dynamic b = true;
+
+  folly::const_dynamic_view view{};
+
+  view = i;
+  EXPECT_EQ(view.int_or(0), 5);
+
+  view = str;
+  EXPECT_EQ(view.string_or("default"), "hello");
+
+  view = d;
+  EXPECT_EQ(view.double_or(0.7), d.asDouble());
+
+  view = b;
+  EXPECT_EQ(view.bool_or(false), true);
+}
+
+TEST(Dynamic, ViewScalarsWrongTest) {
+  dynamic i = 5;
+  dynamic str = "hello";
+  double pi = 3.14;
+  dynamic d = pi;
+  dynamic b = true;
+
+  folly::const_dynamic_view view{};
+
+  view = i;
+  EXPECT_EQ(view.string_or("default"), "default");
+
+  view = str;
+  EXPECT_EQ(view.double_or(pi), pi);
+
+  view = d;
+  EXPECT_EQ(view.bool_or(false), false);
+
+  view = b;
+  EXPECT_EQ(view.int_or(777), 777);
+}
+
+TEST(Dynamic, ViewDescendObjectOnceTest) {
+  double d = 3.14;
+  dynamic obj =
+      dynamic::object("string", "hello")("int", 5)("double", d)("bool", true);
+  folly::const_dynamic_view view{obj};
+
+  EXPECT_EQ(view.descend("string").string_or(""), "hello");
+  EXPECT_EQ(view.descend("int").int_or(0), 5);
+  EXPECT_EQ(view.descend("double").double_or(0.0), d);
+  EXPECT_EQ(view.descend("bool").bool_or(false), true);
+}
+
+TEST(Dynamic, ViewDescendObjectTwiceTest) {
+  double d = 3.14;
+  dynamic nested =
+      dynamic::object("string", "hello")("int", 5)("double", d)("bool", true);
+  dynamic wrapper = dynamic::object("wrapped", nested);
+
+  folly::const_dynamic_view view{wrapper};
+
+  EXPECT_EQ(view.descend("wrapped").descend("string").string_or(""), "hello");
+  EXPECT_EQ(view.descend("wrapped").descend("int").int_or(0), 5);
+  EXPECT_EQ(view.descend("wrapped").descend("double").double_or(0.0), d);
+  EXPECT_EQ(view.descend("wrapped").descend("bool").bool_or(false), true);
+
+  EXPECT_EQ(view.descend("wrapped", "string").string_or(""), "hello");
+  EXPECT_EQ(view.descend("wrapped", "int").int_or(0), 5);
+  EXPECT_EQ(view.descend("wrapped", "double").double_or(0.0), d);
+  EXPECT_EQ(view.descend("wrapped", "bool").bool_or(false), true);
+}
+
+TEST(Dynamic, ViewDescendObjectMissingKeyTest) {
+  double d = 3.14;
+  dynamic nested =
+      dynamic::object("string", "string")("int", 5)("double", d)("bool", true);
+  dynamic wrapper = dynamic::object("wrapped", nested);
+
+  folly::const_dynamic_view view{wrapper};
+
+  EXPECT_EQ(view.descend("wrapped").descend("string").string_or(""), "string");
+  EXPECT_EQ(view.descend("wrapped").descend("int").int_or(0), 5);
+  EXPECT_EQ(view.descend("wrapped").descend("double").double_or(0.0), d);
+  EXPECT_EQ(view.descend("wrapped").descend("bool").bool_or(false), true);
+
+  EXPECT_EQ(view.descend("wrapped", "string").string_or(""), "string");
+  EXPECT_EQ(view.descend("wrapped", "int").int_or(0), 5);
+  EXPECT_EQ(view.descend("wrapped", "double").double_or(0.0), d);
+  EXPECT_EQ(view.descend("wrapped", "bool").bool_or(false), true);
+}
+
+TEST(Dynamic, ViewDescendObjectAndArrayTest) {
+  dynamic leaf = dynamic::object("key", "value");
+  dynamic arr = dynamic::array(leaf);
+  dynamic root = dynamic::object("arr", arr);
+
+  folly::const_dynamic_view view{root};
+  EXPECT_EQ(view.descend("arr", 0, "key").string_or(""), "value");
+}
+
+std::string make_long_string() {
+  return std::string(100, 'a');
+}
+
+TEST(Dynamic, ViewMoveValuesTest) {
+  dynamic leaf = dynamic::object("key", make_long_string());
+  dynamic obj = dynamic::object("leaf", std::move(leaf));
+
+  folly::dynamic_view view{obj};
+
+  const dynamic value = view.descend("leaf").move_value_or(nullptr);
+  EXPECT_TRUE(value.isObject());
+  EXPECT_EQ(value.count("key"), 1);
+  EXPECT_TRUE(value["key"].isString());
+  EXPECT_EQ(value["key"].getString(), make_long_string());
+
+  // Original dynamic should have a moved-from "leaf" key.
+  EXPECT_EQ(obj.count("leaf"), 1);
+  EXPECT_TRUE(obj["leaf"].isObject());
+  EXPECT_EQ(obj["leaf"].count("key"), 0);
+}
+
+TEST(Dynamic, ViewMoveStringsTest) {
+  dynamic obj = dynamic::object("long_string", make_long_string());
+
+  folly::dynamic_view view{obj};
+
+  std::string value = view.descend("long_string").move_string_or("");
+  EXPECT_EQ(value, make_long_string());
+
+  // Original dynamic should still have a "long_string" entry with moved-from
+  // string value.
+  EXPECT_EQ(obj.count("long_string"), 1);
+  EXPECT_TRUE(obj["long_string"].isString());
+  EXPECT_NE(obj["long_string"].getString(), make_long_string());
+}
+
+TEST(Dynamic, ViewMakerTest) {
+  dynamic d{nullptr};
+
+  auto view = folly::make_dynamic_view(d);
+
+  EXPECT_TRUE((std::is_same<decltype(view), folly::dynamic_view>::value));
+
+  const dynamic cd{nullptr};
+
+  auto cv = folly::make_dynamic_view(cd);
+
+  EXPECT_TRUE((std::is_same<decltype(cv), folly::const_dynamic_view>::value));
+
+  // This should not compile, because you can't view temporaries.
+  // auto fail = folly::make_dynamic_view(folly::dynamic{nullptr});
+}
+
 TEST(Dynamic, FormattedIO) {
   std::ostringstream out;
   dynamic doubl = 123.33;
