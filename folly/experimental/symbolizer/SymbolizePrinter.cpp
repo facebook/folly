@@ -16,11 +16,11 @@
 
 #include <folly/experimental/symbolizer/SymbolizePrinter.h>
 
-#include <folly/Conv.h>
 #include <folly/Demangle.h>
 #include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/io/IOBuf.h>
+#include <folly/lang/ToAscii.h>
 
 #ifdef __GLIBCXX__
 #include <ext/stdio_filebuf.h>
@@ -113,8 +113,8 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
       }
       doPrint(fileBuf);
 
-      char buf[22];
-      uint32_t n = uint64ToBufferUnsafe(frame.location.line, buf);
+      char buf[to_ascii_size_max_decimal<decltype(frame.location.line)>()];
+      uint32_t n = to_ascii_decimal(buf, frame.location.line);
       doPrint(":");
       doPrint(StringPiece(buf, n));
     } else {

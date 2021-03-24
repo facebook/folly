@@ -30,9 +30,9 @@
 
 #include <glog/logging.h>
 
-#include <folly/Conv.h>
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/lang/ToAscii.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 
@@ -171,26 +171,18 @@ void flush() {
 }
 
 void printDec(uint64_t val) {
-  char buf[20];
-  uint32_t n = uint64ToBufferUnsafe(val, buf);
+  char buf[to_ascii_size_max_decimal<uint64_t>()];
+  size_t n = to_ascii_decimal(buf, val);
   gStackTracePrinter->print(StringPiece(buf, n));
 }
 
-const char kHexChars[] = "0123456789abcdef";
 void printHex(uint64_t val) {
-  // TODO(tudorb): Add this to folly/Conv.h
-  char buf[2 + 2 * sizeof(uint64_t)]; // "0x" prefix, 2 digits for each byte
-
-  char* end = buf + sizeof(buf);
-  char* p = end;
-  do {
-    *--p = kHexChars[val & 0x0f];
-    val >>= 4;
-  } while (val != 0);
-  *--p = 'x';
-  *--p = '0';
-
-  gStackTracePrinter->print(StringPiece(p, end));
+  char buf[2 + to_ascii_size_max<16, uint64_t>()];
+  auto out = buf + 0;
+  *out++ = '0';
+  *out++ = 'x';
+  out += to_ascii_lower<16>(out, val);
+  gStackTracePrinter->print(StringPiece(buf, out - buf));
 }
 
 void dumpTimeInfo() {
