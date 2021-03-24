@@ -615,6 +615,33 @@ TEST(IOBuf, QueueAppenderInsertClone) {
   EXPECT_EQ(x, queue.front()->next()->data()[0]);
 }
 
+TEST(IOBuf, QueueAppenderRWCursor) {
+  folly::IOBufQueue queue;
+
+  QueueAppender app(&queue, 100);
+  const size_t n = 1024 / sizeof(uint32_t);
+  for (size_t m = 0; m < n; m++) {
+    for (uint32_t i = 0; i < n; ++i) {
+      app.writeBE<uint32_t>(0);
+    }
+
+    RWPrivateCursor rw(app);
+
+    // Advance cursor to skip data that's already overwritten
+    rw += m * n * sizeof(uint32_t);
+
+    // Overwrite the data
+    for (uint32_t i = 0; i < n; ++i) {
+      rw.writeBE<uint32_t>(i + m * n);
+    }
+  }
+
+  Cursor cursor(queue.front());
+  for (uint32_t i = 0; i < n * n; ++i) {
+    EXPECT_EQ(i, cursor.readBE<uint32_t>());
+  }
+}
+
 TEST(IOBuf, CursorOperators) {
   // Test operators on a single-item chain
   {

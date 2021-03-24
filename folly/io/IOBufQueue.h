@@ -24,6 +24,12 @@
 
 namespace folly {
 
+namespace io {
+enum class CursorAccess;
+template <CursorAccess>
+class RWCursor;
+} // namespace io
+
 /**
  * An IOBufQueue encapsulates a chain of IOBufs and provides
  * convenience functions to append data to the back of the chain
@@ -34,6 +40,9 @@ namespace folly {
  */
 class IOBufQueue {
  private:
+  template <io::CursorAccess>
+  friend class io::RWCursor;
+
   /**
    * This guard should be taken by any method that intends to do any changes
    * to in data_ (e.g. appending to it).
