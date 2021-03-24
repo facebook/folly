@@ -507,8 +507,12 @@ auto collectAllTryRange(InputRange awaitables)
             executor.get_alias(),
             co_withCancellation(cancelToken, std::move(semiAwaitable))));
       }
+// This causes "Instruction does not dominate all uses!" internal compiler
+// error on Windows with Clang.
+#if !(defined(_WIN32) && defined(__clang__))
     } catch (const std::exception& ex) {
       result.emplaceException(std::current_exception(), ex);
+#endif
     } catch (...) {
       result.emplaceException(std::current_exception());
     }
