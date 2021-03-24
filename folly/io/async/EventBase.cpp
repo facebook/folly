@@ -151,6 +151,11 @@ class ExecutionObserverScopeGuard {
 
 namespace folly {
 
+class EventBase::FuncRunner {
+ public:
+  void operator()(Func func) noexcept { func(); }
+};
+
 /*
  * EventBase methods
  */
