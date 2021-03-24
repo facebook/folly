@@ -341,10 +341,6 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
 
 namespace {
 
-// SIGSTKSZ (8 kB on our architectures) isn't always enough for
-// folly::symbolizer, so allocate 32 kB.
-constexpr size_t kAltStackSize = folly::constexpr_max(SIGSTKSZ, 32 * 1024);
-
 bool hasAlternateStack() {
   stack_t ss;
   sigaltstack(nullptr, &ss);
@@ -372,9 +368,13 @@ class ScopedAlternateSignalStack {
       return;
     }
 
-    stack_ = std::make_unique<AltStackBuffer>();
+    // SIGSTKSZ (8 kB on our architectures) isn't always enough for
+    // folly::symbolizer, so allocate 32 kB.
+    size_t kAltStackSize = std::max(size_t(SIGSTKSZ), size_t(32 * 1024));
 
-    setAlternateStack(stack_->data(), stack_->size());
+    stack_ = std::unique_ptr<char[]>(new char[kAltStackSize]);
+
+    setAlternateStack(stack_.get(), kAltStackSize);
   }
 
   ScopedAlternateSignalStack(ScopedAlternateSignalStack&&) = default;
@@ -387,8 +387,7 @@ class ScopedAlternateSignalStack {
   }
 
  private:
-  using AltStackBuffer = std::array<char, kAltStackSize>;
-  std::unique_ptr<AltStackBuffer> stack_;
+  std::unique_ptr<char[]> stack_;
 };
 } // namespace
 
