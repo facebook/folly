@@ -24,7 +24,7 @@
 #include <folly/portability/Config.h>
 #include <folly/synchronization/HazptrThreadPoolExecutor.h>
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__XROS__)
 #include <folly/experimental/symbolizer/SignalHandler.h>
 #endif
 #include <folly/portability/GFlags.h>
@@ -33,7 +33,7 @@ DEFINE_string(logging, "", "Logging configuration");
 
 namespace folly {
 const unsigned long kAllFatalSignals =
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__XROS__)
     symbolizer::kAllFatalSignals;
 #else
     0;
@@ -48,7 +48,7 @@ void init(int* argc, char*** argv, bool removeFlags) {
 }
 
 void init(int* argc, char*** argv, InitOptions options) {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__XROS__)
   // Install the handler now, to trap errors received during startup.
   // The callbacks, if any, can be installed later
   folly::symbolizer::installFatalSignalHandler(options.fatal_signals);
