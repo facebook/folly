@@ -498,6 +498,14 @@ constexpr int stderr_fileno = STDERR_FILENO;
 
 #endif
 
+#if !defined(_WIN32) && !defined(_POSIX_FSYNC)
+
+int fsync(int fh) {
+  return 0;
+}
+
+#endif
+
 void writeStderr(const char* s, size_t len) {
   fileutil_detail::wrapFull(write, stderr_fileno, const_cast<char*>(s), len);
 }
