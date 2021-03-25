@@ -21,7 +21,7 @@
 #include <cstdint>
 
 extern "C" {
-int gettimeofday(timeval* tv, struct timezone*) {
+int gettimeofday(timeval* tv, folly_port_struct_timezone*) {
   constexpr auto posixWinFtOffset = 116444736000000000ULL;
 
   if (tv) {
