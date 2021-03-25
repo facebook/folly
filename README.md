@@ -1,10 +1,6 @@
 Folly: Facebook Open-source Library
 -----------------------------------
 
-[![linux](https://github.com/facebook/folly/workflows/linux/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:linux)
-[![mac](https://github.com/facebook/folly/workflows/mac/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:mac)
-[![windows](https://github.com/facebook/folly/workflows/windows/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:windows)
-
 ### What is `folly`?
 
 <img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
@@ -298,7 +294,7 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `mast
     - libevent-devel
     - fmt-devel
     - libsodium-devel
-    
+
   Optional
     - libdwarf-devel
     - elfutils-libelf-devel
