@@ -138,7 +138,6 @@ int getpriority(int /* which */, int /* who */) {
 int setpriority(int /* which */, int /* who */, int /* value */) {
   return -1;
 }
-
 }
 
 #endif
