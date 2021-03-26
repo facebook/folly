@@ -24,6 +24,9 @@ getdepsbuild
 [make.install_args]
 install-getdeps
 
+[make.test_args]
+test-getdeps
+
 [shipit.pathmap]
 fbcode/eden/oss = .
 fbcode/eden = eden
