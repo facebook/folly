@@ -31,6 +31,12 @@
 //  paths are designed as the fast path and which are designed as the slow path,
 //  and to force the compiler to optimize for the fast path, even when it is not
 //  overwhelmingly likely.
+//
+//  Notes:
+//  * All supported compilers treat unconditionally-noreturn blocks as unlikely.
+//    This is true for blocks which unconditionally throw exceptions and for
+//    blocks which unconditionally call [[noreturn]]-annotated functions. Such
+//    cases do not require likeliness annotations.
 
 #define FOLLY_LIKELY(x) FOLLY_DETAIL_BUILTIN_EXPECT((x), 1)
 #define FOLLY_UNLIKELY(x) FOLLY_DETAIL_BUILTIN_EXPECT((x), 0)
