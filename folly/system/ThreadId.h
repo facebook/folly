@@ -23,6 +23,10 @@
 #include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
 
+#ifdef __XROS__
+#include <xr/execution/accessors.h> // @manual
+#endif
+
 namespace folly {
 
 /**
@@ -44,6 +48,8 @@ inline uint64_t getCurrentThreadID() {
   return uint64_t(pthread_mach_thread_np(pthread_self()));
 #elif defined(_WIN32)
   return uint64_t(GetCurrentThreadId());
+#elif defined(__XROS__)
+  return uint64_t(xr_execution_get_id());
 #else
   return uint64_t(pthread_self());
 #endif
@@ -88,6 +94,8 @@ inline uint64_t getOSThreadID() {
   long tid;
   thr_self(&tid);
   return uint64_t(tid);
+#elif defined(__XROS__)
+  return uint64_t(xr_execution_get_id());
 #else
   return uint64_t(syscall(FOLLY_SYS_gettid));
 #endif
