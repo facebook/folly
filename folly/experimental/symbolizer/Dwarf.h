@@ -28,7 +28,7 @@
 namespace folly {
 namespace symbolizer {
 
-#if FOLLY_HAVE_DWARF
+#if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 
 namespace detail {
 

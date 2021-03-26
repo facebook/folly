@@ -22,7 +22,7 @@
 #include <folly/Optional.h>
 #include <folly/portability/Config.h>
 
-#if FOLLY_HAVE_DWARF
+#if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 
 #include <dwarf.h>
 
