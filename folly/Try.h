@@ -179,6 +179,17 @@ class Try {
   const T&& value() const&&;
 
   /*
+   * Returns a copy of the contained value if *this has a value,
+   * otherwise returns a value constructed from defaultValue.
+   *
+   * The selected constructor of the return value may throw exceptions.
+   */
+  template <class U>
+  T value_or(U&& defaultValue) const&;
+  template <class U>
+  T value_or(U&& defaultValue) &&;
+
+  /*
    * [Re]throw if the Try contains an exception or is empty. Otherwise do
    * nothing.
    */

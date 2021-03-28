@@ -192,6 +192,8 @@ TEST(Try, emplaceWithThrowingConstructor) {
 
     EXPECT_FALSE(t.hasValue());
     EXPECT_FALSE(t.hasException());
+
+    EXPECT_THROW(t.value_or(true), MyException);
   }
 
   {
@@ -202,6 +204,8 @@ TEST(Try, emplaceWithThrowingConstructor) {
     EXPECT_THROW(t.emplace(true), MyException);
     EXPECT_FALSE(t.hasValue());
     EXPECT_FALSE(t.hasException());
+
+    EXPECT_THROW(t.value_or(true), MyException);
   }
 }
 
@@ -376,6 +380,7 @@ TEST(Try, MoveDereference) {
   auto t = Try<std::unique_ptr<int>>{std::move(ptr)};
   auto result = *std::move(t);
   EXPECT_EQ(*result, 1);
+  EXPECT_TRUE(t.hasValue());
 }
 
 TEST(Try, MoveConstRvalue) {
@@ -426,6 +431,47 @@ TEST(Try, ValueOverloads) {
     EXPECT_THROW(std::move(obj.value()), std::range_error);
     EXPECT_THROW(as_const(obj.value()), std::range_error);
     EXPECT_THROW(std::move(as_const(obj.value())), std::range_error);
+  }
+}
+
+TEST(Try, ValueOr) {
+  struct CopyableValue {
+    int x;
+  };
+  {
+    Try<CopyableValue> o{CopyableValue{42}};
+    CopyableValue defaultValue{17};
+    EXPECT_EQ(o.value_or(defaultValue).x, 42);
+    EXPECT_EQ(o.value_or(defaultValue).x, (*o).x);
+  }
+
+  {
+    Try<CopyableValue> empty;
+    EXPECT_FALSE(empty.hasValue());
+    CopyableValue defaultValue{17};
+    EXPECT_EQ(empty.value_or(defaultValue).x, defaultValue.x);
+  }
+
+  {
+    Try<std::unique_ptr<int>> o{std::make_unique<int>(42)};
+    std::unique_ptr<int> defaultValue = std::make_unique<int>(17);
+    std::unique_ptr<int> v = std::move(o).value_or(std::move(defaultValue));
+    ASSERT_TRUE(v);
+    EXPECT_EQ(*v, 42);
+    ASSERT_TRUE(defaultValue);
+    EXPECT_EQ(*defaultValue, 17);
+    EXPECT_TRUE(o.hasValue());
+    ASSERT_FALSE(*o);
+  }
+
+  {
+    Try<std::unique_ptr<int>> empty;
+    std::unique_ptr<int> defaultValue = std::make_unique<int>(17);
+    std::unique_ptr<int> v = std::move(empty).value_or(std::move(defaultValue));
+    ASSERT_TRUE(v);
+    EXPECT_EQ(*v, 17);
+    EXPECT_FALSE(defaultValue);
+    EXPECT_FALSE(empty.hasValue());
   }
 }
 

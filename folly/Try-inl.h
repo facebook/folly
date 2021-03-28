@@ -169,6 +169,19 @@ const T&& Try<T>::value() const&& {
 }
 
 template <class T>
+template <class U>
+T Try<T>::value_or(U&& defaultValue) const& {
+  return hasValue() ? **this : static_cast<T>(static_cast<U&&>(defaultValue));
+}
+
+template <class T>
+template <class U>
+T Try<T>::value_or(U&& defaultValue) && {
+  return hasValue() ? std::move(**this)
+                    : static_cast<T>(static_cast<U&&>(defaultValue));
+}
+
+template <class T>
 void Try<T>::throwUnlessValue() const {
   switch (contains_) {
     case Contains::VALUE:
