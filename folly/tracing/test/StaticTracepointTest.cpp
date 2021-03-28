@@ -234,9 +234,13 @@ static bool getTracepointArguments(
       }
       // If the test is built as PIE, then the semaphore address listed in the
       // notes section is relative to the beginning of the binary image.
-      auto binaryOffset =
-          folly::symbolizer::detail::get_r_debug()->r_map->l_addr;
-      CHECK_EQ(expectedSemaphore, binaryOffset + semaphoreAddr);
+      struct r_debug* rendezvous_struct = folly::symbolizer::detail::get_r_debug();
+      if (nullptr != rendezvous_struct) {
+            auto binaryOffset = rendezvous_struct->r_map->l_addr;
+            CHECK_EQ(expectedSemaphore, binaryOffset + semaphoreAddr);
+      } else {
+            LOG(WARNING) << "StaticTracepointTest: unable to determine semaphore offset.";
+      }
       return true;
     }
   }
