@@ -771,8 +771,10 @@ class SharedMutexImpl : std::conditional_t<
 
   void annotateDestroy() {
     if (AnnotateForThreadSanitizer) {
-      annotateLazyCreate();
-      annotate_rwlock_destroy(this, __FILE__, __LINE__);
+      // call destroy only if the annotation was created
+      if (state_.load() & kAnnotationCreated) {
+        annotate_rwlock_destroy(this, __FILE__, __LINE__);
+      }
     }
   }
 
