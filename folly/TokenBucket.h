@@ -259,7 +259,7 @@ class BasicDynamicTokenBucket {
     auto res =
         consumeWithBorrowNonBlocking(toConsume, rate, burstSize, nowInSeconds);
     if (res.value_or(0) > 0) {
-      int64_t napUSec = res.value() * 1000000;
+      const auto napUSec = static_cast<int64_t>(res.value() * 1000000);
       std::this_thread::sleep_for(std::chrono::microseconds(napUSec));
     }
     return res.has_value();
