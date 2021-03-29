@@ -73,10 +73,8 @@ TEST(IOBuf, Simple) {
 }
 
 void testAllocSize(uint32_t requestedCapacity) {
-  auto expectedSize = IOBuf::goodSize(requestedCapacity);
   unique_ptr<IOBuf> iobuf(IOBuf::create(requestedCapacity));
   EXPECT_GE(iobuf->capacity(), requestedCapacity);
-  EXPECT_EQ(iobuf->capacity(), expectedSize);
 }
 
 TEST(IOBuf, AllocSizes) {
