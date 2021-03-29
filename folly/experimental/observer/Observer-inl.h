@@ -156,7 +156,7 @@ T AtomicObserver<T>::get() const {
 
 template <typename T>
 TLObserver<T>::TLObserver(Observer<T> observer)
-    : observer_(observer),
+    : observer_(std::move(observer)),
       snapshot_([&] { return new Snapshot<T>(observer_.getSnapshot()); }) {}
 
 template <typename T>
@@ -175,8 +175,22 @@ const Snapshot<T>& TLObserver<T>::getSnapshotRef() const {
 }
 
 template <typename T>
+ReadMostlyAtomicObserver<T>::ReadMostlyAtomicObserver(Observer<T> observer)
+    : observer_(std::move(observer)),
+      cachedValue_(**observer_),
+      callback_(
+          observer_.addCallback([this](folly::observer::Snapshot<T> snapshot) {
+            cachedValue_.store(*snapshot, std::memory_order_relaxed);
+          })) {}
+
+template <typename T>
+T ReadMostlyAtomicObserver<T>::get() const {
+  return cachedValue_.load(std::memory_order_relaxed);
+}
+
+template <typename T>
 ReadMostlyTLObserver<T>::ReadMostlyTLObserver(Observer<T> observer)
-    : observer_(observer),
+    : observer_(std::move(observer)),
       callback_(
           observer_.addCallback([this](folly::observer::Snapshot<T> snapshot) {
             globalData_.lock()->reset(snapshot.getShared());

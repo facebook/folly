@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <atomic>
+#include <memory>
+
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
@@ -78,6 +81,9 @@ class Observer;
  * is stale. If the cache needs to be refreshed, a mutex is used to
  * synchronize the update. This avoids creating a shared_ptr for every read.
  *
+ * AtomicObserver models CopyConstructible and MoveConstructible. Copying or
+ * moving simply invalidates the cache.
+ *
  * AtomicObserver is ideal when there are lots of reads on a trivially-copyable
  * type. if `std::atomic<T>` is not possible but you still want to optimize
  * reads, consider a TLObserver.
@@ -106,6 +112,37 @@ class AtomicObserver;
  */
 template <typename T>
 class TLObserver;
+
+/**
+ * A ReadMostlyAtomicObserver guarantees that reading is exactly one relaxed
+ * atomic load. Like AtomicObserver, the value is cached using `std::atomic`.
+ * However, there is no version check when reading which means that the
+ * cached value may be out-of-date with the Observer value. The cached value
+ * will be updated asynchronously in a background thread.
+ *
+ * Because there is no version check when reading, ReadMostlyAtomicObserver
+ * does not capture observer dependencies when used from makeObserver. It is not
+ * possible to create a dependent observer. Therefore, ReadMostlyAtomicObserver
+ * models none of CopyConstructible, MoveConstructible, CopyAssignable, or
+ * MoveAssignable. Dependent observers should be created using the underlying
+ * observer.
+ *
+ * ReadMostlyAtomicObserver is ideal for fastest possible reads on a
+ * trivially-copyable type when a slightly out-of-date value will suffice. It is
+ * perfect for very frequent reads coupled with very infrequent writes.
+ *
+ *   Observer<int> observer = ...;
+ *   ReadMostlyAtomicObserver<int> atomicObserver(observer);
+ *   auto value = *atomicObserver;
+ */
+template <typename T>
+class ReadMostlyAtomicObserver;
+
+/**
+ * A TLObserver that optimizes for getting shared_ptr to data
+ */
+template <typename T>
+class ReadMostlyTLObserver;
 
 template <typename T>
 class Snapshot {
@@ -267,6 +304,10 @@ class AtomicObserver {
   T get() const;
   T operator*() const { return get(); }
 
+  folly::observer::Observer<T> getUnderlyingObserver() const {
+    return observer_;
+  }
+
  private:
   mutable std::atomic<T> cachedValue_{};
   mutable std::atomic<size_t> cachedVersion_{};
@@ -283,14 +324,36 @@ class TLObserver {
   const Snapshot<T>& getSnapshotRef() const;
   const Snapshot<T>& operator*() const { return getSnapshotRef(); }
 
+  folly::observer::Observer<T> getUnderlyingObserver() const {
+    return observer_;
+  }
+
  private:
   Observer<T> observer_;
   folly::ThreadLocal<Snapshot<T>> snapshot_;
 };
 
-/**
- * A TLObserver that optimizes for getting shared_ptr to data
- */
+template <typename T>
+class ReadMostlyAtomicObserver {
+ public:
+  explicit ReadMostlyAtomicObserver(Observer<T> observer);
+  ReadMostlyAtomicObserver(const ReadMostlyAtomicObserver<T>&) = delete;
+  ReadMostlyAtomicObserver<T>& operator=(const ReadMostlyAtomicObserver<T>&) =
+      delete;
+
+  T get() const;
+  T operator*() const { return get(); }
+
+  folly::observer::Observer<T> getUnderlyingObserver() const {
+    return observer_;
+  }
+
+ private:
+  Observer<T> observer_;
+  std::atomic<T> cachedValue_{};
+  CallbackHandle callback_;
+};
+
 template <typename T>
 class ReadMostlyTLObserver {
  public:
@@ -298,6 +361,10 @@ class ReadMostlyTLObserver {
   ReadMostlyTLObserver(const ReadMostlyTLObserver<T>& other);
 
   folly::ReadMostlySharedPtr<const T> getShared() const;
+
+  folly::observer::Observer<T> getUnderlyingObserver() const {
+    return observer_;
+  }
 
  private:
   folly::ReadMostlySharedPtr<const T> refresh() const;
@@ -326,16 +393,16 @@ class ReadMostlyTLObserver {
 };
 
 /**
- * Same as makeObserver(...), but creates ReadMostlyTLObserver.
+ * Same as makeObserver(...), but creates AtomicObserver.
  */
 template <typename T>
-ReadMostlyTLObserver<T> makeReadMostlyTLObserver(Observer<T> observer) {
-  return ReadMostlyTLObserver<T>(std::move(observer));
+AtomicObserver<T> makeAtomicObserver(Observer<T> observer) {
+  return AtomicObserver<T>(std::move(observer));
 }
 
 template <typename F>
-auto makeReadMostlyTLObserver(F&& creator) {
-  return makeReadMostlyTLObserver(makeObserver(std::forward<F>(creator)));
+auto makeAtomicObserver(F&& creator) {
+  return makeAtomicObserver(makeObserver(std::forward<F>(creator)));
 }
 
 /**
@@ -352,16 +419,29 @@ auto makeTLObserver(F&& creator) {
 }
 
 /**
- * Same as makeObserver(...), but creates AtomicObserver.
+ * Same as makeObserver(...), but creates ReadMostlyAtomicObserver.
  */
 template <typename T>
-AtomicObserver<T> makeAtomicObserver(Observer<T> observer) {
-  return AtomicObserver<T>(std::move(observer));
+ReadMostlyAtomicObserver<T> makeReadMostlyAtomicObserver(Observer<T> observer) {
+  return ReadMostlyAtomicObserver<T>(std::move(observer));
 }
 
 template <typename F>
-auto makeAtomicObserver(F&& creator) {
-  return makeAtomicObserver(makeObserver(std::forward<F>(creator)));
+auto makeReadMostlyAtomicObserver(F&& creator) {
+  return makeReadMostlyAtomicObserver(makeObserver(std::forward<F>(creator)));
+}
+
+/**
+ * Same as makeObserver(...), but creates ReadMostlyTLObserver.
+ */
+template <typename T>
+ReadMostlyTLObserver<T> makeReadMostlyTLObserver(Observer<T> observer) {
+  return ReadMostlyTLObserver<T>(std::move(observer));
+}
+
+template <typename F>
+auto makeReadMostlyTLObserver(F&& creator) {
+  return makeReadMostlyTLObserver(makeObserver(std::forward<F>(creator)));
 }
 
 template <typename T, bool CacheInThreadLocal>

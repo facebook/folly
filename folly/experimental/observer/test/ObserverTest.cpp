@@ -611,6 +611,24 @@ TEST(Observer, AtomicObserver) {
   EXPECT_EQ(*dependentObserver, 21);
 }
 
+TEST(Observer, ReadMostlyAtomicObserver) {
+  SimpleObservable<int> observable{42};
+
+  ReadMostlyAtomicObserver<int> observer{observable.getObserver()};
+
+  EXPECT_EQ(*observer, 42);
+  observable.setValue(24);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(*observer, 24);
+
+  auto dependentObserver = makeReadMostlyAtomicObserver(
+      [o = observer.getUnderlyingObserver()] { return **o + 1; });
+  EXPECT_EQ(*dependentObserver, 25);
+  observable.setValue(20);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(*dependentObserver, 21);
+}
+
 TEST(Observer, Unwrap) {
   SimpleObservable<bool> selectorObservable{true};
   SimpleObservable<int> trueObservable{1};
