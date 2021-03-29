@@ -554,9 +554,12 @@ constexpr auto kCpplibVer = 0;
 
 #if __cplusplus >= 201703L
 // folly::coro requires C++17 support
-#if defined(_WIN32) && defined(__clang__)
-// LLVM and MSVC coroutines are ABI incompatible and <experimental/coroutine>
-// is the MSVC implementation on windows, so we *don't* have coroutines.
+#if defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES)
+// LLVM and MSVC coroutines are ABI incompatible, so for the MSVC implementation
+// of <experimental/coroutine> on Windows we *don't* have coroutines.
+//
+// LLVM_COROUTINES indicates that LLVM compatible header is added to include
+// path and can be used.
 //
 // Worse, if we define FOLLY_HAS_COROUTINES 1 we will include
 // <experimental/coroutine> which will conflict with anyone who wants to load
