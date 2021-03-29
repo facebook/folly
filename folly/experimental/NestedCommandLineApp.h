@@ -61,6 +61,7 @@ class NestedCommandLineApp {
       Command;
 
   static constexpr StringPiece const kHelpCommand = "help";
+  static constexpr StringPiece const kShortHelpCommand = "h";
   static constexpr StringPiece const kVersionCommand = "version";
   /**
    * Initialize the app.

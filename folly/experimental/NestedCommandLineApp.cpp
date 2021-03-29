@@ -72,6 +72,7 @@ NestedCommandLineApp::NestedCommandLineApp(
         displayHelp(vm, args);
       });
   builtinCommands_.insert(kHelpCommand);
+  addAlias(kShortHelpCommand.str(), kHelpCommand.str());
 
   addCommand(
       kVersionCommand.str(),
@@ -84,7 +85,7 @@ NestedCommandLineApp::NestedCommandLineApp(
   builtinCommands_.insert(kVersionCommand);
 
   globalOptions_.add_options()(
-      kHelpCommand.str().c_str(),
+      (kHelpCommand.str() + "," + kShortHelpCommand.str()).c_str(),
       "Display help (globally or for a given command)")(
       kVersionCommand.str().c_str(), "Display version information");
 }

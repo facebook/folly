@@ -75,6 +75,10 @@ TEST(ProgramOptionsTest, Errors) {
 TEST(ProgramOptionsTest, Help) {
   // Not actually checking help output, just verifying that help doesn't fail
   callHelper({"--version"});
+  callHelper({"--h"});
+  callHelper({"--h", "foo"});
+  callHelper({"--h", "bar"});
+  callHelper({"--h", "--", "bar"});
   callHelper({"--help"});
   callHelper({"--help", "foo"});
   callHelper({"--help", "bar"});
@@ -84,6 +88,7 @@ TEST(ProgramOptionsTest, Help) {
   callHelper({"help", "bar"});
 
   // wrong command name
+  callHelper({"-h", "qux"}, 1);
   callHelper({"--help", "qux"}, 1);
   callHelper({"help", "qux"}, 1);
 
@@ -93,6 +98,7 @@ TEST(ProgramOptionsTest, Help) {
 
 TEST(ProgramOptionsTest, DevFull) {
   folly::File full("/dev/full", O_RDWR);
+  callHelper({"-h"}, 1, full.fd());
   callHelper({"--help"}, 1, full.fd());
 }
 
