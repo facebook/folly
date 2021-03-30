@@ -384,7 +384,7 @@ inline FixedMergingCancellationState<N>::FixedMergingCancellationState(
 
 template <typename... Ts>
 inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
-  std::array<bool, sizeof...(Ts)> cancellable{tokens.canBeCancelled()...};
+  std::array<bool, sizeof...(Ts)> cancellable{{tokens.canBeCancelled()...}};
   bool canBeCancelled =
       std::any_of(cancellable.begin(), cancellable.end(), identity);
   return canBeCancelled
