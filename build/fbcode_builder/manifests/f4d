@@ -7,11 +7,10 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebookexternal/f4d.git
 
-# Skip non-linux builds for now.
-[build.not(os=linux)]
+[build.os=windows]
 builder = nop
 
-[build.os=linux]
+[build.not(os=windows)]
 builder = cmake
 
 [dependencies]
@@ -22,6 +21,7 @@ googletest
 boost
 protobuf
 lzo
+libicu
 
 [shipit.pathmap]
 fbcode/f4d/public_tld = .
