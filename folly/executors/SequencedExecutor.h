@@ -26,7 +26,7 @@ namespace folly {
 // (i.e. B() can be called only after A() returns) too.
 class SequencedExecutor : public virtual Executor {
  public:
-  virtual ~SequencedExecutor() {}
+  virtual ~SequencedExecutor() override {}
 };
 
 } // namespace folly
