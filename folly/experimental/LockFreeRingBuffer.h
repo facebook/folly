@@ -21,6 +21,7 @@
 #include <cstring>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
@@ -156,6 +157,20 @@ class LockFreeRingBuffer {
     backStep = std::min(ticket, backStep);
 
     return Cursor(ticket - backStep);
+  }
+
+  // Returns the address and length of the internal buffer.
+  // This can be useful to know if you are using LockFreeRingBuffer to store
+  // things you want to be able to retrieve after a crash, and you are not
+  // dumping all memory when a crash occurs: you can add the result of this
+  // call to the list of memory regions that are dumped.
+  // See `folly::FlightRecorder` for this use-case.
+  // It's not useful, or safe, to inspect this region at runtime (other than
+  // through the APIs above)
+  std::pair<void const*, size_t> internalBufferLocation() const {
+    return std::make_pair(
+        static_cast<void const*>(slots_.get()),
+        sizeof(detail::RingBufferSlot<T, Atom>[capacity_]));
   }
 
   ~LockFreeRingBuffer() {}
