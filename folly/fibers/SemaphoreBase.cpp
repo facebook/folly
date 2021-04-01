@@ -167,8 +167,7 @@ namespace {
 
 class FutureWaiter final : public fibers::Baton::Waiter {
  public:
-  explicit FutureWaiter(int64_t tokens)
-      : semaphoreWaiter(SemaphoreBase::Waiter(tokens)) {
+  explicit FutureWaiter(int64_t tokens) : semaphoreWaiter(tokens) {
     semaphoreWaiter.baton.setWaiter(*this);
   }
 
