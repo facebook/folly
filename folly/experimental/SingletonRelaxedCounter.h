@@ -141,8 +141,7 @@ class SingletonRelaxedCounter {
     }
   };
 
-  FOLLY_ALWAYS_INLINE static void mutate(Signed v) {
-    auto cl = counter();
+  FOLLY_ERASE static void mutate(Signed v, CounterRefAndLocal cl) {
     auto& c = *cl.counter;
     if (cl.local) {
       // splitting load/store on the local counter is faster than fetch-and-add
@@ -151,6 +150,14 @@ class SingletonRelaxedCounter {
       // but is not allowed on the global counter because mutations may be lost
       c.fetch_add(v, std::memory_order_relaxed);
     }
+  }
+
+  FOLLY_NOINLINE static void mutate_slow(Signed v) { mutate(v, counter()); }
+
+  FOLLY_ERASE static void mutate(Signed v, void (&slow)(Signed) = mutate_slow) {
+    auto const cache = local().cache; // a copy! null before/after LocalLifetime
+    // fun-ref to trick compiler into emitting a tail call
+    FOLLY_LIKELY(!!cache) ? mutate(v, {cache, true}) : slow(v);
   }
 
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static CounterAndCache& local() {
