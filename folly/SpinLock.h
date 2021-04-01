@@ -52,24 +52,4 @@ class SpinLock {
   mutable folly::MicroSpinLock lock_;
 };
 
-template <typename LOCK>
-class SpinLockGuardImpl {
- public:
-  FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) noexcept(
-      noexcept(lock.lock()))
-      : lock_(lock) {
-    lock_.lock();
-  }
-
-  SpinLockGuardImpl(const SpinLockGuardImpl&) = delete;
-  SpinLockGuardImpl& operator=(const SpinLockGuardImpl&) = delete;
-
-  FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() { lock_.unlock(); }
-
- private:
-  LOCK& lock_;
-};
-
-typedef SpinLockGuardImpl<SpinLock> SpinLockGuard;
-
 } // namespace folly

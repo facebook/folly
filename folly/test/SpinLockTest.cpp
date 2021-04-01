@@ -23,8 +23,6 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-using folly::SpinLockGuardImpl;
-
 namespace {
 
 template <typename LOCK>
@@ -41,7 +39,7 @@ void spinlockTestThread(LockedVal<LOCK>* v) {
   auto rng = folly::ThreadLocalPRNG();
   for (int i = 0; i < max; i++) {
     folly::asm_volatile_pause();
-    SpinLockGuardImpl<LOCK> g(v->lock);
+    std::unique_lock g(v->lock);
 
     EXPECT_THAT(v->ar, testing::Each(testing::Eq(v->ar[0])));
 
@@ -64,7 +62,7 @@ void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
   while (true) {
     folly::asm_volatile_pause();
     bool ret = state->lock2.try_lock();
-    SpinLockGuardImpl<LOCK> g(state->lock1);
+    std::unique_lock g(state->lock1);
     if (state->obtained >= count) {
       if (ret) {
         state->lock2.unlock();

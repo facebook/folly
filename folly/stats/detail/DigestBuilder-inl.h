@@ -40,7 +40,7 @@ DigestT DigestBuilder<DigestT>::build() {
   digestPtrs.reserve(cpuLocalBuffers_.size());
 
   for (auto& cpuLocalBuffer : cpuLocalBuffers_) {
-    SpinLockGuard g(cpuLocalBuffer.mutex);
+    std::unique_lock<SpinLock> g(cpuLocalBuffer.mutex);
     valuesVec.push_back(std::move(cpuLocalBuffer.buffer));
     if (cpuLocalBuffer.digest) {
       digestPtrs.push_back(std::move(cpuLocalBuffer.digest));
