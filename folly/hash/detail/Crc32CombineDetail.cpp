@@ -18,7 +18,6 @@
 #include <utility>
 
 #include <folly/Bits.h>
-#include <folly/ConstexprMath.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 
 namespace folly {
