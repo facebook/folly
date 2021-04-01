@@ -154,6 +154,10 @@ _path_search_cache = {}
 _not_found = object()
 
 
+def tpx_path():
+    return "xplat/testinfra/tpx/ctp.tpx"
+
+
 def path_search(env, exename, defval=None):
     """Search for exename in the PATH specified in env.
     exename is eg: `ninja` and this function knows to append a .exe
