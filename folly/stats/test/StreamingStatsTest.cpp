@@ -21,7 +21,6 @@
 #include <folly/portability/GTest.h>
 
 using folly::StreamingStats;
-using std::vector;
 
 TEST(StreamingStatsTest, EmptyDataSet) {
   StreamingStats<int, double> stats;
