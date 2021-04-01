@@ -315,20 +315,23 @@ class ViaIfAsyncAwaiter {
 
       folly::deactivateAsyncStackFrame(asyncFrame);
 
-      try {
-        if constexpr (std::is_same_v<await_suspend_result_t, bool>) {
-          if (!awaiter_.await_suspend(viaCoroutine_.getHandle())) {
-            // Reactivate the stack-frame before we resume.
-            folly::activateAsyncStackFrame(stackRoot, asyncFrame);
-            return false;
-          }
-          return true;
-        } else {
-          return awaiter_.await_suspend(viaCoroutine_.getHandle());
+      // Reactivate the stack-frame before we resume.
+      auto rollback =
+          makeGuard([&] { activateAsyncStackFrame(stackRoot, asyncFrame); });
+      if constexpr (std::is_same_v<await_suspend_result_t, bool>) {
+        if (!awaiter_.await_suspend(viaCoroutine_.getHandle())) {
+          return false;
         }
-      } catch (...) {
-        folly::activateAsyncStackFrame(stackRoot, asyncFrame);
-        throw;
+        rollback.dismiss();
+        return true;
+      } else if constexpr (std::is_same_v<await_suspend_result_t, void>) {
+        awaiter_.await_suspend(viaCoroutine_.getHandle());
+        rollback.dismiss();
+        return;
+      } else {
+        auto ret = awaiter_.await_suspend(viaCoroutine_.getHandle());
+        rollback.dismiss();
+        return ret;
       }
     } else {
       return awaiter_.await_suspend(viaCoroutine_.getHandle());
