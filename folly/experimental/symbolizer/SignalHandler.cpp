@@ -181,7 +181,7 @@ void printHex(uint64_t val) {
   auto out = buf + 0;
   *out++ = '0';
   *out++ = 'x';
-  out += to_ascii_lower<16>(out, val);
+  out += to_ascii_lower<16>(out, buf + sizeof(buf), val);
   gStackTracePrinter->print(StringPiece(buf, out - buf));
 }
 

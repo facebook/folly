@@ -384,7 +384,15 @@ inline size_t to_ascii_size_decimal(uint64_t v) {
 //
 //  async-signal-safe
 template <uint64_t Base, typename Alphabet>
-size_t to_ascii_with(char* out, uint64_t v) {
+size_t to_ascii_with(char* outb, char const* oute, uint64_t v) {
+  auto const size = to_ascii_size<Base>(v);
+  return FOLLY_UNLIKELY(oute < outb || size_t(oute - outb) < size)
+      ? 0
+      : detail::to_ascii_with_table<Base, Alphabet>(outb, v);
+}
+template <uint64_t Base, typename Alphabet, size_t N>
+size_t to_ascii_with(char (&out)[N], uint64_t v) {
+  static_assert(N >= to_ascii_size_max<Base, decltype(v)>(), "out too small");
   return detail::to_ascii_with_table<Base, Alphabet>(out, v);
 }
 
@@ -394,7 +402,11 @@ size_t to_ascii_with(char* out, uint64_t v) {
 //
 //  async-signal-safe
 template <uint64_t Base>
-size_t to_ascii_lower(char* out, uint64_t v) {
+size_t to_ascii_lower(char* outb, char const* oute, uint64_t v) {
+  return to_ascii_with<Base, to_ascii_alphabet_lower>(outb, oute, v);
+}
+template <uint64_t Base, size_t N>
+size_t to_ascii_lower(char (&out)[N], uint64_t v) {
   return to_ascii_with<Base, to_ascii_alphabet_lower>(out, v);
 }
 
@@ -404,7 +416,11 @@ size_t to_ascii_lower(char* out, uint64_t v) {
 //
 //  async-signal-safe
 template <uint64_t Base>
-size_t to_ascii_upper(char* out, uint64_t v) {
+size_t to_ascii_upper(char* outb, char const* oute, uint64_t v) {
+  return to_ascii_with<Base, to_ascii_alphabet_upper>(outb, oute, v);
+}
+template <uint64_t Base, size_t N>
+size_t to_ascii_upper(char (&out)[N], uint64_t v) {
   return to_ascii_with<Base, to_ascii_alphabet_upper>(out, v);
 }
 
@@ -413,7 +429,11 @@ size_t to_ascii_upper(char* out, uint64_t v) {
 //  An alias to to_ascii<10, false>.
 //
 //  async-signals-afe
-inline size_t to_ascii_decimal(char* out, uint64_t v) {
+inline size_t to_ascii_decimal(char* outb, char const* oute, uint64_t v) {
+  return to_ascii_lower<10>(outb, oute, v);
+}
+template <size_t N>
+inline size_t to_ascii_decimal(char (&out)[N], uint64_t v) {
   return to_ascii_lower<10>(out, v);
 }
 
