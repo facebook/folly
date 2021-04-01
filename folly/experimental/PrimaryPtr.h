@@ -203,10 +203,7 @@ class PrimaryPtr {
           return std::move(this->unreferenced_);
         })
         // start cleanup tasks
-        .deferValue([this](folly::Unit) {
-          auto cleanup = getCleanup(innerPtr_.get());
-          return std::move(cleanup);
-        })
+        .deferValue([this](folly::Unit) { return getCleanup(innerPtr_.get()); })
         .defer([this](folly::Try<folly::Unit> r) {
           if (r.hasException()) {
             LOG(FATAL) << "Cleanup actions must be noexcept.";
@@ -235,10 +232,26 @@ class PrimaryPtr {
     auto referencesContract = folly::makePromiseContract<folly::Unit>();
     unreferenced_ = std::move(std::get<1>(referencesContract));
 
+    // The deleter object needs to be copyable in std::shared_ptr on some
+    // platform. To work around this limitation we can slightly tweak the
+    // semantics of deleter copy constructor and check we always use this
+    // object at most once.
+    class LastReference {
+     public:
+      LastReference(Promise<Unit>&& p) : p_(std::move(p)) {}
+      LastReference(LastReference&&) = default;
+      LastReference(LastReference& other) : LastReference(std::move(other)) {}
+      void operator()(T*) {
+        DCHECK(!p_.isFulfilled());
+        p_.setValue();
+      }
+
+     private:
+      Promise<Unit> p_;
+    };
     auto innerPtrShared = std::shared_ptr<T>(
         innerPtr_.get(),
-        [lastReference = std::move(std::get<0>(referencesContract))](
-            T*) mutable { lastReference.setValue(folly::Unit{}); });
+        LastReference{std::move(std::get<0>(referencesContract))});
 
     outerPtrWeak_ = outerPtrShared_ =
         std::make_shared<std::shared_ptr<T>>(innerPtrShared);
