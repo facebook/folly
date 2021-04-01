@@ -21,7 +21,6 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
-using namespace ::testing;
 using namespace folly::ssl;
 
 namespace folly {

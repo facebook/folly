@@ -24,7 +24,6 @@
 #include <folly/portability/GTest.h>
 
 using folly::ByteRange;
-using folly::format;
 using folly::IOBuf;
 using folly::StringPiece;
 using std::unique_ptr;

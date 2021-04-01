@@ -53,10 +53,6 @@
 #include <openssl/async.h>
 #endif
 
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
-#include <sys/utsname.h>
-#endif
-
 using std::cerr;
 using std::endl;
 using std::string;
