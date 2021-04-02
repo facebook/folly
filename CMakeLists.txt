@@ -784,6 +784,7 @@ if (BUILD_TESTS)
       TEST lang_cast_test SOURCES CastTest.cpp
       TEST lang_checked_math_test SOURCES CheckedMathTest.cpp
       TEST lang_exception_test SOURCES ExceptionTest.cpp
+      TEST lang_extern_test SOURCES ExternTest.cpp
       TEST lang_launder_test SOURCES LaunderTest.cpp
       TEST lang_ordering_test SOURCES OrderingTest.cpp
       TEST lang_pretty_test SOURCES PrettyTest.cpp
