@@ -333,22 +333,16 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_with_table(char* out, uint64_t v) {
 //
 //  In base 10, u64 requires at most 20 bytes, u32 at most 10, u16 at most 5,
 //  and u8 at most 3.
-//
-//  async-signal-safe
 template <uint64_t Base, typename I>
-constexpr size_t to_ascii_size_max() {
-  return detail::to_ascii_powers<Base, I>::size;
-}
+FOLLY_INLINE_VARIABLE constexpr size_t to_ascii_size_max =
+    detail::to_ascii_powers<Base, I>::size;
 
 //  to_ascii_size_max_decimal
 //
 //  An alias to to_ascii_size_max<10>.
-//
-//  async-signal-safe
 template <typename I>
-constexpr size_t to_ascii_size_max_decimal() {
-  return to_ascii_size_max<10, I>();
-}
+FOLLY_INLINE_VARIABLE constexpr size_t to_ascii_size_max_decimal =
+    to_ascii_size_max<10, I>;
 
 //  to_ascii_size
 //
@@ -392,7 +386,7 @@ size_t to_ascii_with(char* outb, char const* oute, uint64_t v) {
 }
 template <uint64_t Base, typename Alphabet, size_t N>
 size_t to_ascii_with(char (&out)[N], uint64_t v) {
-  static_assert(N >= to_ascii_size_max<Base, decltype(v)>(), "out too small");
+  static_assert(N >= to_ascii_size_max<Base, decltype(v)>, "out too small");
   return detail::to_ascii_with_table<Base, Alphabet>(out, v);
 }
 

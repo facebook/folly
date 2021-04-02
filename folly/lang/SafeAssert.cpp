@@ -519,7 +519,7 @@ void flushStderr() {
 [[noreturn]] FOLLY_COLD void safe_assert_terminate_v(
     safe_assert_arg const* arg_, int const error, va_list msg) noexcept {
   auto const& arg = *arg_;
-  char buf[to_ascii_size_max_decimal<uint64_t>()];
+  char buf[to_ascii_size_max_decimal<uint64_t>];
 
   writeStderr("\n\nAssertion failure: ");
   writeStderr(arg.expr + 1, strlen(arg.expr) - 2);

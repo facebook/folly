@@ -57,7 +57,7 @@ namespace symbolizer {
 namespace {
 template <typename PrintFunc>
 void printAsyncStackInfo(PrintFunc print) {
-  char buf[to_ascii_size_max<16, uint64_t>()];
+  char buf[to_ascii_size_max<16, uint64_t>];
   auto printHex = [&print, &buf](uint64_t val) {
     print("0x");
     print(StringPiece(buf, to_ascii_lower<16>(buf, val)));

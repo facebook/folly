@@ -150,7 +150,7 @@ static void to_ascii_size_go(size_t iters, size_t index, F f) {
 
 template <uint64_t Base, typename F>
 static void to_ascii_go(size_t iters, size_t index, F f) {
-  char out[1 + folly::to_ascii_size_max<Base, uint64_t>()];
+  char out[1 + folly::to_ascii_size_max<Base, uint64_t>];
   while (iters--) {
     auto const v = inputs<Base>::data[index] + (iters % 8);
     auto const size = folly::to_ascii_size<Base>(v);

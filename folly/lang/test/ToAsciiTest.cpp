@@ -117,17 +117,17 @@ TEST_F(ToAsciiTest, to_ascii_powers_u64_8) {
 }
 
 TEST_F(ToAsciiTest, to_ascii_size_max_u64_16) {
-  constexpr auto const actual = folly::to_ascii_size_max<16, uint64_t>();
+  constexpr auto const actual = folly::to_ascii_size_max<16, uint64_t>;
   EXPECT_EQ(16, actual);
 }
 
 TEST_F(ToAsciiTest, to_ascii_size_max_u64_10) {
-  constexpr auto const actual = folly::to_ascii_size_max<10, uint64_t>();
+  constexpr auto const actual = folly::to_ascii_size_max<10, uint64_t>;
   EXPECT_EQ(20, actual);
 }
 
 TEST_F(ToAsciiTest, to_ascii_size_max_u64_8) {
-  constexpr auto const actual = folly::to_ascii_size_max<8, uint64_t>();
+  constexpr auto const actual = folly::to_ascii_size_max<8, uint64_t>;
   EXPECT_EQ(22, actual);
 }
 
@@ -232,7 +232,7 @@ static void to_ascii_compare(F _) {
   for (auto const n : inputs<Base>::data) {
     auto const expected = std::to_string(n);
     SCOPED_TRACE(expected);
-    std::string actual(folly::to_ascii_size_max<Base, uint64_t>(), '\0');
+    std::string actual(folly::to_ascii_size_max<Base, uint64_t>, '\0');
     auto const size = _(&actual[0], n);
     EXPECT_EQ(expected.size(), size);
     EXPECT_EQ(expected, actual.substr(0, size));

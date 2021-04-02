@@ -171,13 +171,13 @@ void flush() {
 }
 
 void printDec(uint64_t val) {
-  char buf[to_ascii_size_max_decimal<uint64_t>()];
+  char buf[to_ascii_size_max_decimal<uint64_t>];
   size_t n = to_ascii_decimal(buf, val);
   gStackTracePrinter->print(StringPiece(buf, n));
 }
 
 void printHex(uint64_t val) {
-  char buf[2 + to_ascii_size_max<16, uint64_t>()];
+  char buf[2 + to_ascii_size_max<16, uint64_t>];
   auto out = buf + 0;
   *out++ = '0';
   *out++ = 'x';
