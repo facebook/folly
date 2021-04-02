@@ -1153,6 +1153,11 @@ bool AsyncSocket::setZeroCopy(bool enable) {
       return false;
     }
 
+    // No-op, bail out early
+    if (enable == zeroCopyEnabled_) {
+      return true;
+    }
+
     int val = enable ? 1 : 0;
     int ret =
         netops_->setsockopt(fd_, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));

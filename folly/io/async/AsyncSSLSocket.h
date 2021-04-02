@@ -832,8 +832,14 @@ class AsyncSSLSocket : public AsyncSocket {
     asyncOperationFinishCallback_ = std::move(cb);
   }
 
+  // Only enable if security negotiation is deferred
   // zero copy is not supported by openssl.
-  bool setZeroCopy(bool /*enable*/) override { return false; }
+  bool setZeroCopy(bool enable) override {
+    if (sslState_ == STATE_UNENCRYPTED) {
+      return AsyncSocket::setZeroCopy(enable);
+    }
+    return false;
+  }
 
  private:
   /**

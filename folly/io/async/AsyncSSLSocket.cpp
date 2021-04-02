@@ -514,6 +514,10 @@ void AsyncSSLSocket::sslAccept(
     cacheAddresses();
   }
 
+  // AsyncSSLSocket will leak memory if zero copy if left enabled after
+  // the TLS handshake
+  setZeroCopy(false);
+
   handshakeStartTime_ = std::chrono::steady_clock::now();
   // Make end time at least >= start time.
   handshakeEndTime_ = handshakeStartTime_;
@@ -864,6 +868,10 @@ void AsyncSSLSocket::sslConn(
         "error applying the SSL verification options");
     return failHandshake(__func__, *ex);
   }
+
+  // AsyncSSLSocket will leak memory if zero copy if left enabled after
+  // the TLS handshake
+  setZeroCopy(false);
 
   SSLSessionUniquePtr sessionPtr = sslSessionManager_.getRawSession();
   if (sessionPtr) {
