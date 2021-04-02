@@ -55,7 +55,7 @@ void MemoryIdler::flushLocalMallocCaches() {
   // Not using mallctlCall as this will fail if tcache is disabled.
   mallctl("thread.tcache.flush", nullptr, nullptr, nullptr, 0);
 
-  if (!FLAGS_folly_memory_idler_purge_arenas) {
+  if (FLAGS_folly_memory_idler_purge_arenas) {
     try {
       // By default jemalloc has 4 arenas per cpu, and then assigns each
       // thread to one of those arenas.  This means that in any service
