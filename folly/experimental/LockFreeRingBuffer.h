@@ -159,14 +159,11 @@ class LockFreeRingBuffer {
     return Cursor(ticket - backStep);
   }
 
-  // Returns the address and length of the internal buffer.
-  // This can be useful to know if you are using LockFreeRingBuffer to store
-  // things you want to be able to retrieve after a crash, and you are not
-  // dumping all memory when a crash occurs: you can add the result of this
-  // call to the list of memory regions that are dumped.
-  // See `folly::FlightRecorder` for this use-case.
-  // It's not useful, or safe, to inspect this region at runtime (other than
-  // through the APIs above)
+  /// Returns the address and length of the internal buffer.
+  /// Unsafe to inspect this region at runtime. And not useful.
+  /// Useful when using LockFreeRingBuffer to store data which must be retrieved
+  /// from a core dump after a crash if the given region is added to the list of
+  /// dumped memory regions.
   std::pair<void const*, size_t> internalBufferLocation() const {
     return std::make_pair(
         static_cast<void const*>(slots_.get()),
