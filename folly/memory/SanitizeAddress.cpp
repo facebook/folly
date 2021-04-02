@@ -14,21 +14,23 @@
  * limitations under the License.
  */
 
+#include <folly/lang/Extern.h>
 #include <folly/memory/SanitizeAddress.h>
 
 //  Address Sanitizer interface may be found at:
 //    https://github.com/llvm-mirror/compiler-rt/blob/master/include/sanitizer/asan_interface.h
-extern "C" FOLLY_ATTR_WEAK void* __asan_region_is_poisoned(void*, std::size_t);
+extern "C" void* __asan_region_is_poisoned(void*, std::size_t);
 
 namespace folly {
 namespace detail {
 
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    asan_region_is_poisoned_access_v, __asan_region_is_poisoned);
+
 void* asan_region_is_poisoned_(void* const ptr, std::size_t len) {
-  if (kIsLibrarySanitizeAddress) {
-    return __asan_region_is_poisoned(ptr, len);
-  } else {
-    return nullptr;
-  }
+  constexpr auto fun =
+      asan_region_is_poisoned_access_v<kIsLibrarySanitizeAddress>;
+  return fun ? fun(ptr, len) : nullptr;
 }
 
 } // namespace detail
