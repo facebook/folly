@@ -46,6 +46,17 @@ class FOLLY_EXPORT ProgramExit : public std::runtime_error {
  * App that uses a nested command line, of the form:
  *
  * program [--global_options...] command [--command_options...] command_args...
+ *
+ * Note: Global options (including GFlags, if added using addGFlags()) are
+ * recognized anywhere in the command line, and are prefix matched with higher
+ * priority than command options. For example, a global option named "--foobar"
+ * would be matched over a command option named "--foo", even if you specify
+ * "--foo" on the command line. You can disable prefix matching with:
+ *
+ * int style = boost::program_options::command_line_style::default_style;
+ * style &= ~boost::program_options::command_line_style::allow_guessing;
+ * app.setOptionStyle(
+ *   static_cast<boost::program_options::command_line_style::style_t>(style));
  */
 class NestedCommandLineApp {
  public:
@@ -121,6 +132,12 @@ class NestedCommandLineApp {
   void addAlias(std::string newName, std::string oldName);
 
   /**
+   * Sets the style in which options will be accepted by the parser.
+   */
+  void setOptionStyle(
+      boost::program_options::command_line_style::style_t style);
+
+  /**
    * Run the command and return; the return code is 0 on success or
    * non-zero on error, so it is idiomatic to call this at the end of main():
    * return app.run(argc, argv);
@@ -165,6 +182,7 @@ class NestedCommandLineApp {
   std::string version_;
   InitFunction initFunction_;
   boost::program_options::options_description globalOptions_;
+  boost::program_options::command_line_style::style_t optionStyle_;
   std::map<std::string, CommandInfo> commands_;
   std::map<std::string, std::string> aliases_;
   std::set<folly::StringPiece> builtinCommands_;

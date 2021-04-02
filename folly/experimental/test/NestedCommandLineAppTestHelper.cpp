@@ -18,6 +18,7 @@
 #include <folly/portability/GFlags.h>
 
 DEFINE_int32(global_foo, 42, "Global foo");
+DEFINE_int32(conflict_global, 42, "Global conflict");
 
 namespace po = ::boost::program_options;
 
@@ -34,6 +35,8 @@ void foo(
     const po::variables_map& options, const std::vector<std::string>& args) {
   printf("foo global-foo %d\n", options["global-foo"].as<int32_t>());
   printf("foo local-foo %d\n", options["local-foo"].as<int32_t>());
+  printf("foo conflict-global %d\n", options["conflict-global"].as<int32_t>());
+  printf("foo conflict %d\n", options["conflict"].as<int32_t>());
   for (auto& arg : args) {
     printf("foo arg %s\n", arg.c_str());
   }
@@ -43,11 +46,17 @@ void foo(
 
 int main(int argc, char* argv[]) {
   folly::NestedCommandLineApp app("", "0.1", "", "", init);
+
+  int style = po::command_line_style::default_style;
+  style &= ~po::command_line_style::allow_guessing;
+  app.setOptionStyle(static_cast<po::command_line_style::style_t>(style));
+
   app.addGFlags();
   // clang-format off
   app.addCommand("foo", "[args...]", "Do some foo", "Does foo", foo)
     .add_options()
-      ("local-foo", po::value<int32_t>()->default_value(42), "Local foo");
+      ("local-foo", po::value<int32_t>()->default_value(42), "Local foo")
+      ("conflict", po::value<int32_t>()->default_value(42), "Local conflict");
   // clang-format on
   app.addAlias("bar", "foo");
   app.addAlias("baz", "bar");

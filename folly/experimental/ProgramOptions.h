@@ -77,10 +77,14 @@ struct NestedCommandLineParseResult {
 NestedCommandLineParseResult parseNestedCommandLine(
     int argc,
     const char* const argv[],
-    const boost::program_options::options_description& desc);
+    const boost::program_options::options_description& desc,
+    boost::program_options::command_line_style::style_t style =
+        boost::program_options::command_line_style::default_style);
 
 NestedCommandLineParseResult parseNestedCommandLine(
     const std::vector<std::string>& cmdline,
-    const boost::program_options::options_description& desc);
+    const boost::program_options::options_description& desc,
+    boost::program_options::command_line_style::style_t style =
+        boost::program_options::command_line_style::default_style);
 
 } // namespace folly
