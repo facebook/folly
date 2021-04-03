@@ -243,7 +243,7 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
 }
 
 template <uint64_t Base>
-FOLLY_ALWAYS_INLINE size_t to_ascii_size(uint64_t v) {
+FOLLY_ALWAYS_INLINE size_t to_ascii_size_route(uint64_t v) {
   return kIsArchAmd64 && !(Base & (Base - 1)) //
       ? to_ascii_size_clzll<Base>(v)
       : to_ascii_size_array<Base>(v);
@@ -269,7 +269,7 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_basic(
 }
 template <uint64_t Base, typename Alphabet>
 FOLLY_ALWAYS_INLINE size_t to_ascii_with_basic(char* out, uint64_t v) {
-  auto const size = to_ascii_size<Base>(v);
+  auto const size = to_ascii_size_route<Base>(v);
   to_ascii_with_basic<Base, Alphabet>(out, size, v);
   return size;
 }
@@ -283,7 +283,7 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_array(
 }
 template <uint64_t Base, typename Alphabet>
 FOLLY_ALWAYS_INLINE size_t to_ascii_with_array(char* out, uint64_t v) {
-  auto const size = to_ascii_size<Base>(v);
+  auto const size = to_ascii_size_route<Base>(v);
   to_ascii_with_array<Base, Alphabet>(out, size, v);
   return size;
 }
@@ -319,7 +319,7 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_table(
 }
 template <uint64_t Base, typename Alphabet>
 FOLLY_ALWAYS_INLINE size_t to_ascii_with_table(char* out, uint64_t v) {
-  auto const size = to_ascii_size<Base>(v);
+  auto const size = to_ascii_size_route<Base>(v);
   to_ascii_with_table<Base, Alphabet>(out, size, v);
   return size;
 }
@@ -352,7 +352,7 @@ FOLLY_INLINE_VARIABLE constexpr size_t to_ascii_size_max_decimal =
 //  async-signal-safe
 template <uint64_t Base>
 size_t to_ascii_size(uint64_t v) {
-  return detail::to_ascii_size<Base>(v);
+  return detail::to_ascii_size_route<Base>(v);
 }
 
 //  to_ascii_size_decimal
