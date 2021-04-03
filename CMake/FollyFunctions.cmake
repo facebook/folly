@@ -202,7 +202,7 @@ function(folly_define_tests)
           set(test_${cur_test}_content_dir)
           set(test_${cur_test}_headers)
           set(test_${cur_test}_sources)
-          set(test_${cur_test}_tag "NONE")
+          set(test_${cur_test}_tag)
 
           set(argumentState 0)
           while (currentArg LESS ${ARGC})
@@ -221,13 +221,13 @@ function(folly_define_tests)
               break()
             elseif (argumentState EQUAL 0)
               if ("x${ARGV${currentArg}}" STREQUAL "xBROKEN")
-                set(test_${cur_test}_tag "BROKEN")
+                list(APPEND test_${cur_test}_tag "BROKEN")
               elseif ("x${ARGV${currentArg}}" STREQUAL "xHANGING")
-                set(test_${cur_test}_tag "HANGING")
+                list(APPEND test_${cur_test}_tag "HANGING")
               elseif ("x${ARGV${currentArg}}" STREQUAL "xSLOW")
-                set(test_${cur_test}_tag "SLOW")
+                list(APPEND test_${cur_test}_tag "SLOW")
               elseif ("x${ARGV${currentArg}}" STREQUAL "xWINDOWS_DISABLED")
-                set(test_${cur_test}_tag "WINDOWS_DISABLED")
+                list(APPEND test_${cur_test}_tag "WINDOWS_DISABLED")
               else()
                 message(FATAL_ERROR "Unknown test tag '${ARGV${currentArg}}'!")
               endif()
@@ -264,11 +264,13 @@ function(folly_define_tests)
 
   set(cur_test 0)
   while (cur_test LESS test_count)
-    if ("x${test_${cur_test}_tag}" STREQUAL "xNONE" OR
-        ("x${test_${cur_test}_tag}" STREQUAL "xBROKEN" AND BUILD_BROKEN_TESTS) OR
-        ("x${test_${cur_test}_tag}" STREQUAL "xSLOW" AND BUILD_SLOW_TESTS) OR
-        ("x${test_${cur_test}_tag}" STREQUAL "xHANGING" AND BUILD_HANGING_TESTS) OR
-        ("x${test_${cur_test}_tag}" STREQUAL "xWINDOWS_DISABLED" AND NOT WIN32)
+    if (
+      1
+      # TODO: Use IN_LIST after cmake 3.3
+      AND (test_${cur_test}_tag MATCHES "\\bBROKEN\\b" OR BUILD_BROKEN_TESTS)
+      AND (test_${cur_test}_tag MATCHES "\\bSLOW\\b" OR BUILD_SLOW_TESTS)
+      AND (test_${cur_test}_tag MATCHES "\\bHANGING\\b" OR BUILD_HANGING_TESTS)
+      AND (test_${cur_test}_tag MATCHES "\\bWINDOWS_DISABLED\\b" OR NOT WIN32)
     )
       set(cur_test_name ${test_${cur_test}_name})
       set(cur_dir_name ${directory_${test_${cur_test}_directory}_name})
