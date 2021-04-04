@@ -166,6 +166,26 @@ TEST(File, Truthy) {
   }
 }
 
+TEST(File, Dup) {
+  auto f = File::temporary();
+
+  auto d = f.dup();
+#ifndef _WIN32
+  EXPECT_EQ(::fcntl(d.fd(), F_GETFD, 0) & FD_CLOEXEC, 0);
+#endif
+  (void)d;
+}
+
+TEST(File, DupCloseOnExec) {
+  auto f = File::temporary();
+
+  auto d = f.dupCloseOnExec();
+#ifndef _WIN32
+  EXPECT_EQ(::fcntl(d.fd(), F_GETFD, 0) & FD_CLOEXEC, FD_CLOEXEC);
+#endif
+  (void)d;
+}
+
 TEST(File, HelperCtor) {
   TempDir tmpd;
   auto tmpf = tmpd.path / "foobar.txt";

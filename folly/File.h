@@ -89,8 +89,19 @@ class File {
 
   /**
    * Duplicate file descriptor and return File that owns it.
+   *
+   * Duplicated file descriptor does not have close-on-exec flag set,
+   * so it is leaked to child processes. Consider using "dupCloseOnExec".
    */
   File dup() const;
+
+  /**
+   * Duplicate file descriptor and return File that owns it.
+   *
+   * This functions creates a descriptor with close-on-exec flag set
+   * (where supported, otherwise it is equivalent to "dup").
+   */
+  File dupCloseOnExec() const;
 
   /**
    * If we own the file descriptor, close the file and throw on error.

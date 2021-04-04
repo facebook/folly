@@ -80,6 +80,7 @@ File::~File() {
   checkFopenError(tmpFile, "tmpfile() failed");
   SCOPE_EXIT { fclose(tmpFile); };
 
+  // TODO(nga): consider setting close-on-exec for the resulting FD
   int fd = ::dup(fileno(tmpFile));
   checkUnixError(fd, "dup() failed");
 
@@ -106,6 +107,22 @@ void swap(File& a, File& b) noexcept {
 File File::dup() const {
   if (fd_ != -1) {
     int fd = ::dup(fd_);
+    checkUnixError(fd, "dup() failed");
+
+    return File(fd, true);
+  }
+
+  return File();
+}
+
+File File::dupCloseOnExec() const {
+  if (fd_ != -1) {
+    int fd;
+#ifdef _WIN32
+    fd = ::dup(fd_);
+#else
+    fd = ::fcntl(fd_, F_DUPFD_CLOEXEC, 0);
+#endif
     checkUnixError(fd, "dup() failed");
 
     return File(fd, true);
