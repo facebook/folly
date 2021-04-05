@@ -1067,7 +1067,7 @@ TEST(ThreadId, SimplePthread) {
 }
 
 #ifdef FOLLY_CL_USE_FOLLY_TLS
-static FOLLY_TLS unsigned testingCpu = 0;
+static thread_local unsigned testingCpu = 0;
 
 static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
   if (cpu != nullptr) {

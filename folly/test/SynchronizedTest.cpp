@@ -160,11 +160,11 @@ class FakeMutex {
   // Keep these two static for test access
   // Keep them thread_local in case of tests are run in parallel within one
   // process
-  static FOLLY_TLS int lockCount_;
-  static FOLLY_TLS int unlockCount_;
+  static thread_local int lockCount_;
+  static thread_local int unlockCount_;
 };
-FOLLY_TLS int FakeMutex::lockCount_{0};
-FOLLY_TLS int FakeMutex::unlockCount_{0};
+thread_local int FakeMutex::lockCount_{0};
+thread_local int FakeMutex::unlockCount_{0};
 
 // SynchronizedLockTest is used to verify the correct lock unlock behavior
 // happens per design

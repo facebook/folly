@@ -158,7 +158,7 @@ TEST(IndexedMemPool, locate_elem) {
 }
 
 struct NonTrivialStruct {
-  static FOLLY_TLS size_t count;
+  static thread_local size_t count;
 
   size_t elem_;
 
@@ -175,7 +175,7 @@ struct NonTrivialStruct {
   ~NonTrivialStruct() { --count; }
 };
 
-FOLLY_TLS size_t NonTrivialStruct::count;
+thread_local size_t NonTrivialStruct::count;
 
 TEST(IndexedMemPool, eager_recycle) {
   typedef IndexedMemPool<NonTrivialStruct> Pool;

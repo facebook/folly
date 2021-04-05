@@ -114,7 +114,7 @@ TEST(DeterministicSchedule, buggyAdd) {
  *      to maintain global knowledge of shared and private state.
  *   3. Define:
  *        static AuxData* aux_;
- *        static FOLLY_TLS uint32_t tid_;
+ *        static thread_local uint32_t tid_;
  *   4. (Optional) Define gflags for command line options. E.g.:
  *        DEFINE_int64(seed, 0, "Seed for random number generators");
  *   5. (Optionl) Define macros for mangement of auxiliary data. E.g.,
@@ -208,7 +208,7 @@ struct AuxData {
 };
 
 static AuxData* aux_;
-static FOLLY_TLS uint32_t tid_;
+static thread_local uint32_t tid_;
 
 /* Command line flags */
 DEFINE_int64(seed, 0, "Seed for random number generators");
