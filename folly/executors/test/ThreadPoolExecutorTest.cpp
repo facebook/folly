@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/DefaultKeepAliveExecutor.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
 #include <atomic>
@@ -934,7 +936,7 @@ static void WeakRefTest() {
             .via(&fe)
             .thenValue([](auto&&) { burnMs(100)(); })
             .thenValue([&](auto&&) { ++counter; })
-            .via(fe.weakRef())
+            .via(getWeakRef(fe))
             .thenValue([](auto&&) { burnMs(100)(); })
             .thenValue([&](auto&&) { ++counter; });
   }
@@ -984,6 +986,13 @@ static void virtualExecutorTest() {
   EXPECT_EQ(2, counter);
 }
 
+class SingleThreadedCPUThreadPoolExecutor : public CPUThreadPoolExecutor,
+                                            public SequencedExecutor {
+ public:
+  explicit SingleThreadedCPUThreadPoolExecutor(size_t)
+      : CPUThreadPoolExecutor(1) {}
+};
+
 TEST(ThreadPoolExecutorTest, WeakRefTestIO) {
   WeakRefTest<IOThreadPoolExecutor>();
 }
@@ -994,6 +1003,18 @@ TEST(ThreadPoolExecutorTest, WeakRefTestCPU) {
 
 TEST(ThreadPoolExecutorTest, WeakRefTestEDF) {
   WeakRefTest<EDFThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, WeakRefTestSingleThreadedCPU) {
+  WeakRefTest<SingleThreadedCPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, WeakRefTestSequential) {
+  SingleThreadedCPUThreadPoolExecutor ex(1);
+  auto weakRef = getWeakRef(ex);
+  EXPECT_TRUE((std::is_same_v<
+               decltype(weakRef),
+               Executor::KeepAlive<SequencedExecutor>>));
 }
 
 TEST(ThreadPoolExecutorTest, VirtualExecutorTestIO) {

@@ -21,6 +21,7 @@
 #include <glog/logging.h>
 
 #include <folly/Executor.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/synchronization/Baton.h>
 
 namespace folly {
@@ -31,9 +32,20 @@ class DefaultKeepAliveExecutor : public virtual Executor {
  public:
   virtual ~DefaultKeepAliveExecutor() { DCHECK(!keepAlive_); }
 
-  folly::Executor::KeepAlive<> weakRef() {
-    return WeakRef::create(controlBlock_, this);
+  template <typename ExecutorT>
+  static auto getWeakRef(ExecutorT& executor) {
+    static_assert(
+        std::is_base_of<DefaultKeepAliveExecutor, ExecutorT>::value,
+        "getWeakRef only works for folly::DefaultKeepAliveExecutor implementations.");
+    using WeakRefExecutorType = std::conditional_t<
+        std::is_base_of<SequencedExecutor, ExecutorT>::value,
+        SequencedExecutor,
+        Executor>;
+    return WeakRef<WeakRefExecutorType>::create(
+        executor.controlBlock_, &executor);
   }
+
+  folly::Executor::KeepAlive<> weakRef() { return getWeakRef(*this); }
 
  protected:
   void joinKeepAlive() {
@@ -56,10 +68,11 @@ class DefaultKeepAliveExecutor : public virtual Executor {
     std::atomic<ssize_t> keepAliveCount_{1};
   };
 
-  class WeakRef : public Executor {
+  template <typename ExecutorT = Executor>
+  class WeakRef : public ExecutorT {
    public:
-    static folly::Executor::KeepAlive<> create(
-        std::shared_ptr<ControlBlock> controlBlock, Executor* executor) {
+    static folly::Executor::KeepAlive<ExecutorT> create(
+        std::shared_ptr<ControlBlock> controlBlock, ExecutorT* executor) {
       return makeKeepAlive(new WeakRef(std::move(controlBlock), executor));
     }
 
@@ -78,7 +91,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
     virtual uint8_t getNumPriorities() const override { return numPriorities_; }
 
    private:
-    WeakRef(std::shared_ptr<ControlBlock> controlBlock, Executor* executor)
+    WeakRef(std::shared_ptr<ControlBlock> controlBlock, ExecutorT* executor)
         : controlBlock_(std::move(controlBlock)),
           executor_(executor),
           numPriorities_(executor->getNumPriorities()) {}
@@ -101,7 +114,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
       }
     }
 
-    folly::Executor::KeepAlive<> lock() {
+    folly::Executor::KeepAlive<ExecutorT> lock() {
       auto controlBlock =
           controlBlock_->keepAliveCount_.load(std::memory_order_relaxed);
       do {
@@ -114,13 +127,13 @@ class DefaultKeepAliveExecutor : public virtual Executor {
           std::memory_order_release,
           std::memory_order_relaxed));
 
-      return makeKeepAlive(executor_);
+      return makeKeepAlive<ExecutorT>(executor_);
     }
 
     std::atomic<size_t> keepAliveCount_{1};
 
     std::shared_ptr<ControlBlock> controlBlock_;
-    Executor* executor_;
+    ExecutorT* executor_;
 
     uint8_t numPriorities_;
   };
@@ -147,5 +160,13 @@ class DefaultKeepAliveExecutor : public virtual Executor {
   Baton<> keepAliveReleaseBaton_;
   KeepAlive<DefaultKeepAliveExecutor> keepAlive_{makeKeepAlive(this)};
 };
+
+template <typename ExecutorT>
+auto getWeakRef(ExecutorT& executor) {
+  static_assert(
+      std::is_base_of<DefaultKeepAliveExecutor, ExecutorT>::value,
+      "getWeakRef only works for folly::DefaultKeepAliveExecutor implementations.");
+  return DefaultKeepAliveExecutor::getWeakRef(executor);
+}
 
 } // namespace folly
