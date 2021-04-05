@@ -244,6 +244,17 @@ TEST(IOBuf, WrapBuffer) {
   EXPECT_EQ(size4, iobuf4.length());
   EXPECT_EQ(buf4.get(), iobuf4.buffer());
   EXPECT_EQ(size4, iobuf4.capacity());
+
+  if (folly::kIsSanitizeAddress) {
+    const uint32_t size5 = 100;
+    uint8_t buf5[size5];
+    EXPECT_DEATH(IOBuf::wrapBuffer(buf5, size5 + 1), "asan_region_is_poisoned");
+
+    const uint32_t size6 = 100;
+    std::vector<uint8_t> buf6(size6);
+    EXPECT_DEATH(
+        IOBuf::wrapBuffer(buf6.data(), size6 + 1), "asan_region_is_poisoned");
+  }
 }
 
 TEST(IOBuf, CreateCombined) {

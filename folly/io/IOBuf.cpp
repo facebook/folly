@@ -34,6 +34,7 @@
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
+#include <folly/memory/SanitizeAddress.h>
 
 using std::unique_ptr;
 
@@ -498,6 +499,8 @@ IOBuf::IOBuf(
       flagsAndSharedInfo_(flagsAndSharedInfo) {
   assert(data >= buf);
   assert(data + length <= buf + capacity);
+
+  CHECK(!folly::asan_region_is_poisoned(buf, capacity));
 }
 
 IOBuf::~IOBuf() {
