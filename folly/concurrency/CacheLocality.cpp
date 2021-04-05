@@ -229,10 +229,6 @@ CacheLocality CacheLocality::readFromProcCpuinfoLines(
   if (cpus.empty()) {
     throw std::runtime_error("no CPUs parsed from /proc/cpuinfo");
   }
-  if (maxCpu != cpus.size() - 1) {
-    throw std::runtime_error(
-        "offline CPUs not supported for /proc/cpuinfo cache locality source");
-  }
 
   std::sort(cpus.begin(), cpus.end());
   size_t cpusPerCore = 1;
@@ -250,7 +246,7 @@ CacheLocality CacheLocality::readFromProcCpuinfoLines(
   numCachesByLevel.push_back(cpus.size() / cpusPerCore);
   numCachesByLevel.push_back(std::get<0>(cpus.back()) + 1);
 
-  std::vector<size_t> indexes(cpus.size());
+  std::vector<size_t> indexes(maxCpu + 1, std::numeric_limits<size_t>::max());
   for (size_t i = 0; i < cpus.size(); ++i) {
     indexes[std::get<2>(cpus[i])] = i;
   }
