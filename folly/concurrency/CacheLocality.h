@@ -206,6 +206,40 @@ typedef FallbackGetcpu<SequentialThreadId<std::atomic>> FallbackGetcpuType;
 typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
 #endif
 
+namespace detail {
+
+class AccessSpreaderBase {
+ protected:
+  /// If there are more cpus than this nothing will crash, but there
+  /// might be unnecessary sharing
+  enum {
+    // Android phones with 8 cores exist today; 16 for future-proofing.
+    kMaxCpus = kIsMobile ? 16 : 256,
+  };
+
+  using CompactStripe = uint8_t;
+
+  static_assert(
+      (kMaxCpus & (kMaxCpus - 1)) == 0,
+      "kMaxCpus should be a power of two so modulo is fast");
+  static_assert(
+      kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
+      "stripeByCpu element type isn't wide enough");
+
+  using CompactStripeTable = CompactStripe[kMaxCpus + 1][kMaxCpus];
+
+  /// Always claims to be on CPU zero, node zero
+  static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*);
+
+  static bool initialize(
+      Getcpu::Func&,
+      Getcpu::Func (&)(),
+      const CacheLocality& (&)(),
+      CompactStripeTable&);
+};
+
+} // namespace detail
+
 /// AccessSpreader arranges access to a striped data structure in such a
 /// way that concurrently executing threads are likely to be accessing
 /// different stripes.  It does NOT guarantee uncontended access.
@@ -241,7 +275,7 @@ typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
 /// DeterministicScheduler, you can just use the default template parameter
 /// all of the time.
 template <template <typename> class Atom = std::atomic>
-struct AccessSpreader {
+struct AccessSpreader : private detail::AccessSpreaderBase {
   /// Returns the stripe associated with the current CPU.  The returned
   /// value will be < numStripes.
   static size_t current(size_t numStripes) {
@@ -276,22 +310,6 @@ struct AccessSpreader {
   static constexpr size_t maxStripeValue() { return kMaxCpus; }
 
  private:
-  /// If there are more cpus than this nothing will crash, but there
-  /// might be unnecessary sharing
-  enum {
-    // Android phones with 8 cores exist today; 16 for future-proofing.
-    kMaxCpus = kIsMobile ? 16 : 256,
-  };
-
-  typedef uint8_t CompactStripe;
-
-  static_assert(
-      (kMaxCpus & (kMaxCpus - 1)) == 0,
-      "kMaxCpus should be a power of two so modulo is fast");
-  static_assert(
-      kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
-      "stripeByCpu element type isn't wide enough");
-
   /// Points to the getcpu-like function we are using to obtain the
   /// current cpu.  It should not be assumed that the returned cpu value
   /// is in range.  We use a static for this so that we can prearrange a
@@ -304,7 +322,7 @@ struct AccessSpreader {
   /// kMaxCpus) to the stripe.  Rather than performing any inequalities
   /// or modulo on the actual number of cpus, we just fill in the entire
   /// array.
-  static CompactStripe widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus];
+  static CompactStripeTable widthAndCpuToStripe;
 
   /// Caches the current CPU and refreshes the cache every so often.
   class CpuCache {
@@ -338,17 +356,6 @@ struct AccessSpreader {
     return best ? best : &FallbackGetcpuType::getcpu;
   }
 
-  /// Always claims to be on CPU zero, node zero
-  static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*) {
-    if (cpu != nullptr) {
-      *cpu = 0;
-    }
-    if (node != nullptr) {
-      *node = 0;
-    }
-    return 0;
-  }
-
   // The function to call for fast lookup of getcpu is a singleton, as
   // is the precomputed table of locality information.  AccessSpreader
   // is used in very tight loops, however (we're trying to race an L1
@@ -363,32 +370,11 @@ struct AccessSpreader {
   // a race or undefined behavior, we can annotate it.
 
   static bool initialize() {
-    getcpuFunc = pickGetcpuFunc();
-
-    auto& cacheLocality = CacheLocality::system<Atom>();
-    auto n = cacheLocality.numCpus;
-    for (size_t width = 0; width <= kMaxCpus; ++width) {
-      auto& row = widthAndCpuToStripe[width];
-      auto numStripes = std::max(size_t{1}, width);
-      for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
-        auto index = cacheLocality.localityIndexByCpu[cpu];
-        assert(index < n);
-        // as index goes from 0..n, post-transform value goes from
-        // 0..numStripes
-        row[cpu] = static_cast<CompactStripe>((index * numStripes) / n);
-        assert(row[cpu] < numStripes);
-      }
-      size_t filled = n;
-      while (filled < kMaxCpus) {
-        size_t len = std::min(filled, kMaxCpus - filled);
-        std::memcpy(&row[filled], &row[0], len);
-        filled += len;
-      }
-      for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {
-        assert(row[cpu] == row[cpu - n]);
-      }
-    }
-    return true;
+    return detail::AccessSpreaderBase::initialize(
+        getcpuFunc,
+        pickGetcpuFunc,
+        CacheLocality::system<Atom>,
+        widthAndCpuToStripe);
   }
 };
 

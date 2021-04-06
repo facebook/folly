@@ -323,6 +323,53 @@ Getcpu::Func Getcpu::resolveVdsoFunc() {
 template struct SequentialThreadId<std::atomic>;
 #endif
 
+namespace detail {
+
+int AccessSpreaderBase::degenerateGetcpu(unsigned* cpu, unsigned* node, void*) {
+  if (cpu != nullptr) {
+    *cpu = 0;
+  }
+  if (node != nullptr) {
+    *node = 0;
+  }
+  return 0;
+}
+
+bool AccessSpreaderBase::initialize(
+    Getcpu::Func& getcpuFunc,
+    Getcpu::Func (&pickGetcpuFunc)(),
+    const CacheLocality& (&system)(),
+    CompactStripeTable& widthAndCpuToStripe) {
+  getcpuFunc = pickGetcpuFunc();
+
+  auto& cacheLocality = system();
+  auto n = cacheLocality.numCpus;
+  for (size_t width = 0; width <= kMaxCpus; ++width) {
+    auto& row = widthAndCpuToStripe[width];
+    auto numStripes = std::max(size_t{1}, width);
+    for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
+      auto index = cacheLocality.localityIndexByCpu[cpu];
+      assert(index < n);
+      // as index goes from 0..n, post-transform value goes from
+      // 0..numStripes
+      row[cpu] = static_cast<CompactStripe>((index * numStripes) / n);
+      assert(row[cpu] < numStripes);
+    }
+    size_t filled = n;
+    while (filled < kMaxCpus) {
+      size_t len = std::min(filled, kMaxCpus - filled);
+      std::memcpy(&row[filled], &row[0], len);
+      filled += len;
+    }
+    for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {
+      assert(row[cpu] == row[cpu - n]);
+    }
+  }
+  return true;
+}
+
+} // namespace detail
+
 /////////////// AccessSpreader
 template struct AccessSpreader<std::atomic>;
 
