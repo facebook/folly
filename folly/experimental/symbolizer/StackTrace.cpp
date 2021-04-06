@@ -26,7 +26,7 @@
 #if FOLLY_HAVE_LIBUNWIND
 // Must be first to ensure that UNW_LOCAL_ONLY is defined
 #define UNW_LOCAL_ONLY 1
-#include <libunwind.h>
+#include <folly/portability/Libunwind.h>
 #endif
 
 #if FOLLY_HAVE_BACKTRACE
