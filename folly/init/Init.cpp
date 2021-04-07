@@ -25,7 +25,7 @@
 #include <folly/synchronization/HazptrThreadPoolExecutor.h>
 
 #if !defined(_WIN32) && !defined(__XROS__)
-#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/experimental/symbolizer/SignalHandler.h> // @manual
 #endif
 #include <folly/portability/GFlags.h>
 
