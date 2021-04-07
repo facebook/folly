@@ -170,10 +170,6 @@ Atom<unsigned> SequentialThreadId<Atom>::prevId(0);
 
 template <template <typename> class Atom>
 FOLLY_TLS unsigned SequentialThreadId<Atom>::currentId(0);
-
-// Suppress this instantiation in other translation units. It is
-// instantiated in CacheLocality.cpp
-extern template struct SequentialThreadId<std::atomic>;
 #endif
 
 struct HashingThreadId {
@@ -394,10 +390,6 @@ FOLLY_TLS
 
 template <template <typename> class Atom>
 bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
-
-// Suppress this instantiation in other translation units. It is
-// instantiated in CacheLocality.cpp
-extern template struct AccessSpreader<std::atomic>;
 
 /**
  * A simple freelist allocator.  Allocates things of size sz, from
