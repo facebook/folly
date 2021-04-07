@@ -167,6 +167,21 @@ TEST(IOBuf, TakeOwnership) {
     fbstring str = iobuf->moveToFbString();
     EXPECT_EQ(str, "A");
   }
+
+  deleteCount = 0;
+  uint32_t size6 = 100;
+  uint8_t* buf6 = new uint8_t[size6];
+  uint32_t offset6 = 48;
+  uint32_t length6 = 48;
+  unique_ptr<IOBuf> iobuf6(IOBuf::takeOwnership(
+      buf6, size6, offset6, length6, deleteArrayBuffer, &deleteCount));
+  EXPECT_EQ(buf6 + offset6, iobuf6->data());
+  EXPECT_EQ(length6, iobuf6->length());
+  EXPECT_EQ(buf6, iobuf6->buffer());
+  EXPECT_EQ(size6, iobuf6->capacity());
+  EXPECT_EQ(0, deleteCount);
+  iobuf6.reset();
+  EXPECT_EQ(1, deleteCount);
 }
 
 TEST(IOBuf, GetUserData) {

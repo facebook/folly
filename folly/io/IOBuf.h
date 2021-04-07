@@ -314,6 +314,9 @@ class IOBuf {
    * In the second version, the user specifies the valid length of data
    * in the buffer
    *
+   * In the third version, the user specifies the offset to the valid data
+   * and the length of valid data in the buffer.
+   *
    * On error, std::bad_alloc will be thrown.  If freeOnError is true (the
    * default) the buffer will be freed before throwing the error.
    */
@@ -324,7 +327,7 @@ class IOBuf {
       void* userData = nullptr,
       bool freeOnError = true) {
     return takeOwnership(
-        buf, capacity, capacity, freeFn, userData, freeOnError);
+        buf, capacity, 0, capacity, freeFn, userData, freeOnError);
   }
   IOBuf(
       TakeOwnershipOp op,
@@ -333,11 +336,32 @@ class IOBuf {
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
       bool freeOnError = true)
-      : IOBuf(op, buf, capacity, capacity, freeFn, userData, freeOnError) {}
+      : IOBuf(op, buf, capacity, 0, capacity, freeFn, userData, freeOnError) {}
 
   static std::unique_ptr<IOBuf> takeOwnership(
       void* buf,
       std::size_t capacity,
+      std::size_t length,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true) {
+    return takeOwnership(
+        buf, capacity, 0, length, freeFn, userData, freeOnError);
+  }
+  IOBuf(
+      TakeOwnershipOp op,
+      void* buf,
+      std::size_t capacity,
+      std::size_t length,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true)
+      : IOBuf(op, buf, capacity, 0, length, freeFn, userData, freeOnError) {}
+
+  static std::unique_ptr<IOBuf> takeOwnership(
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
       std::size_t length,
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
@@ -346,6 +370,7 @@ class IOBuf {
       TakeOwnershipOp,
       void* buf,
       std::size_t capacity,
+      std::size_t offset,
       std::size_t length,
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,

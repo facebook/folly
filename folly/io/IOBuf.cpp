@@ -360,13 +360,14 @@ IOBuf::IOBuf(
     TakeOwnershipOp,
     void* buf,
     std::size_t capacity,
+    std::size_t offset,
     std::size_t length,
     FreeFunction freeFn,
     void* userData,
     bool freeOnError)
     : next_(this),
       prev_(this),
-      data_(static_cast<uint8_t*>(buf)),
+      data_(static_cast<uint8_t*>(buf) + offset),
       buf_(static_cast<uint8_t*>(buf)),
       length_(length),
       capacity_(capacity),
@@ -386,6 +387,7 @@ IOBuf::IOBuf(
 unique_ptr<IOBuf> IOBuf::takeOwnership(
     void* buf,
     std::size_t capacity,
+    std::size_t offset,
     std::size_t length,
     FreeFunction freeFn,
     void* userData,
@@ -416,7 +418,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
       packFlagsAndSharedInfo(0, &storage->shared),
       static_cast<uint8_t*>(buf),
       capacity,
-      static_cast<uint8_t*>(buf),
+      static_cast<uint8_t*>(buf) + offset,
       length));
 
   rollback.dismiss();
