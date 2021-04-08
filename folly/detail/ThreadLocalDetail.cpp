@@ -77,7 +77,7 @@ StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
 
 ThreadEntryList* StaticMetaBase::getThreadEntryList() {
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
-  static FOLLY_TLS ThreadEntryList threadEntryListSingleton;
+  static thread_local ThreadEntryList threadEntryListSingleton;
   return &threadEntryListSingleton;
 #else
   class PthreadKey {

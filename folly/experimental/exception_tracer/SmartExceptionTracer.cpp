@@ -63,7 +63,7 @@ void throwCallback(
     void* ex, std::type_info*, void (**deleter)(void*)) noexcept {
   // Make this code reentrant safe in case we throw an exception while
   // handling an exception. Thread local variables are zero initialized.
-  static FOLLY_TLS bool handlingThrow;
+  static thread_local bool handlingThrow;
   if (handlingThrow) {
     return;
   }

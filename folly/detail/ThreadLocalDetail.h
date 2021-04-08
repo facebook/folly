@@ -416,8 +416,8 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // cached fast path, leaving only one branch here and one indirection below.
     uint32_t id = ent->getOrInvalid();
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
-    static FOLLY_TLS ThreadEntry* threadEntry{};
-    static FOLLY_TLS size_t capacity{};
+    static thread_local ThreadEntry* threadEntry{};
+    static thread_local size_t capacity{};
 #else
     ThreadEntry* threadEntry{};
     size_t capacity{};
@@ -448,7 +448,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     if (!threadEntry) {
       ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
-      static FOLLY_TLS ThreadEntry threadEntrySingleton;
+      static thread_local ThreadEntry threadEntrySingleton;
       threadEntry = &threadEntrySingleton;
 #else
       threadEntry = new ThreadEntry();

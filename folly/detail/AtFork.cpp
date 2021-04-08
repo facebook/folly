@@ -58,9 +58,9 @@ struct SkipAtForkHandlers<true> {
   static void set(bool value) { value_ = value; }
 
  private:
-  static FOLLY_TLS bool value_;
+  static thread_local bool value_;
 };
-FOLLY_TLS bool SkipAtForkHandlers<true>::value_{false};
+thread_local bool SkipAtForkHandlers<true>::value_{false};
 #endif
 
 struct AtForkTask {

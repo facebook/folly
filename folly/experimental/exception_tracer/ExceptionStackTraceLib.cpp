@@ -28,10 +28,10 @@ namespace {
 
 // If we somehow ended up in an invalid state, we don't want to print any stack
 // trace at all because in could be bogus
-FOLLY_TLS bool invalid;
+thread_local bool invalid;
 
-FOLLY_TLS StackTraceStack uncaughtExceptions;
-FOLLY_TLS StackTraceStack caughtExceptions;
+thread_local StackTraceStack uncaughtExceptions;
+thread_local StackTraceStack caughtExceptions;
 
 } // namespace
 

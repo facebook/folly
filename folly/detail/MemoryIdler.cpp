@@ -91,8 +91,8 @@ void MemoryIdler::flushLocalMallocCaches() {
 #if (FOLLY_X64 || FOLLY_PPC64) && defined(_GNU_SOURCE) && \
     defined(__linux__) && !FOLLY_MOBILE && !FOLLY_SANITIZE_ADDRESS
 
-static FOLLY_TLS uintptr_t tls_stackLimit;
-static FOLLY_TLS size_t tls_stackSize;
+static thread_local uintptr_t tls_stackLimit;
+static thread_local size_t tls_stackSize;
 
 static size_t pageSize() {
   static const size_t s_pageSize = sysconf(_SC_PAGESIZE);

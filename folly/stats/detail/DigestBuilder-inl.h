@@ -23,7 +23,7 @@
 namespace folly {
 namespace detail {
 
-static FOLLY_TLS uint32_t tls_lastCpuBufferSlot = 0;
+static thread_local uint32_t tls_lastCpuBufferSlot = 0;
 
 template <typename DigestT>
 DigestBuilder<DigestT>::DigestBuilder(size_t bufferSize, size_t digestSize)
