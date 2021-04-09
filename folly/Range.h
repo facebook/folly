@@ -41,7 +41,9 @@
 #include <string_view> // @manual
 #endif
 
+#if __has_include(<fmt/format.h>)
 #include <fmt/format.h>
+#endif
 
 #include <folly/CpuId.h>
 #include <folly/Likely.h>
