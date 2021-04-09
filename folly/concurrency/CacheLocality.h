@@ -37,7 +37,7 @@
 #include <folly/lang/Exception.h>
 #include <folly/system/ThreadId.h>
 
-#if !FOLLY_MOBILE
+#if !FOLLY_MOBILE && defined(FOLLY_TLS)
 #define FOLLY_CL_USE_FOLLY_TLS 1
 #else
 #undef FOLLY_CL_USE_FOLLY_TLS
@@ -162,14 +162,18 @@ struct SequentialThreadId {
  private:
   static Atom<unsigned> prevId;
 
-  static thread_local unsigned currentId;
+  static FOLLY_TLS unsigned currentId;
 };
 
 template <template <typename> class Atom>
 Atom<unsigned> SequentialThreadId<Atom>::prevId(0);
 
 template <template <typename> class Atom>
-thread_local unsigned SequentialThreadId<Atom>::currentId(0);
+FOLLY_TLS unsigned SequentialThreadId<Atom>::currentId(0);
+
+// Suppress this instantiation in other translation units. It is
+// instantiated in CacheLocality.cpp
+extern template struct SequentialThreadId<std::atomic>;
 #endif
 
 struct HashingThreadId {
@@ -341,7 +345,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   };
 
 #ifdef FOLLY_CL_USE_FOLLY_TLS
-  static thread_local CpuCache cpuCache;
+  static FOLLY_TLS CpuCache cpuCache;
 #endif
 
   static bool initialized;
@@ -384,12 +388,16 @@ typename AccessSpreader<Atom>::CompactStripe
 
 #ifdef FOLLY_CL_USE_FOLLY_TLS
 template <template <typename> class Atom>
-thread_local
+FOLLY_TLS
     typename AccessSpreader<Atom>::CpuCache AccessSpreader<Atom>::cpuCache;
 #endif
 
 template <template <typename> class Atom>
 bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
+
+// Suppress this instantiation in other translation units. It is
+// instantiated in CacheLocality.cpp
+extern template struct AccessSpreader<std::atomic>;
 
 /**
  * A simple freelist allocator.  Allocates things of size sz, from

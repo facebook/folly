@@ -318,6 +318,11 @@ Getcpu::Func Getcpu::resolveVdsoFunc() {
 #endif
 }
 
+#ifdef FOLLY_CL_USE_FOLLY_TLS
+/////////////// SequentialThreadId
+template struct SequentialThreadId<std::atomic>;
+#endif
+
 namespace detail {
 
 int AccessSpreaderBase::degenerateGetcpu(unsigned* cpu, unsigned* node, void*) {
@@ -364,6 +369,9 @@ bool AccessSpreaderBase::initialize(
 }
 
 } // namespace detail
+
+/////////////// AccessSpreader
+template struct AccessSpreader<std::atomic>;
 
 SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
     : allocSize_{allocSize}, sz_(sz) {}
