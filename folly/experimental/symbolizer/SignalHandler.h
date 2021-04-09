@@ -55,5 +55,11 @@ void addFatalSignalCallback(SignalCallback cb);
  * callbacks in the order in which they were added.
  */
 void installFatalSignalCallbacks();
+
+/**
+ * True if a fatal signal was received (i.e. the process is crashing).
+ */
+bool fatalSignalReceived();
+
 } // namespace symbolizer
 } // namespace folly

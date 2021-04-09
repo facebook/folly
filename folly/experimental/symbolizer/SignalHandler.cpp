@@ -455,7 +455,13 @@ void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
   }
 }
 
+namespace {
+std::atomic<bool> gFatalSignalReceived{false};
+} // namespace
+
 void signalHandler(int signum, siginfo_t* info, void* uctx) {
+  gFatalSignalReceived.store(true, std::memory_order_relaxed);
+
   int savedErrno = errno;
   SCOPE_EXIT {
     flush();
@@ -549,5 +555,14 @@ void installFatalSignalHandler(std::bitset<64> signals) {
   }
 #endif // FOLLY_USE_SYMBOLIZER
 }
+
+bool fatalSignalReceived() {
+#ifdef FOLLY_USE_SYMBOLIZER
+  return gFatalSignalReceived.load(std::memory_order_relaxed);
+#else
+  return false;
+#endif
+}
+
 } // namespace symbolizer
 } // namespace folly

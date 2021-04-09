@@ -42,7 +42,9 @@ void callback1() {
 }
 
 void callback2() {
-  print("Callback2\n");
+  if (fatalSignalReceived()) {
+    print("Callback2\n");
+  }
 }
 
 [[noreturn]] FOLLY_NOINLINE void funcC() {
@@ -65,6 +67,8 @@ TEST(SignalHandler, Simple) {
   addFatalSignalCallback(callback2);
   installFatalSignalHandler();
   installFatalSignalCallbacks();
+
+  EXPECT_FALSE(fatalSignalReceived());
 
   EXPECT_DEATH(
       failHard(),
