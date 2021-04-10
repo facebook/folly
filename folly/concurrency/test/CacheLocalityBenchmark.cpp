@@ -47,7 +47,7 @@ using namespace folly;
 DECLARE_SPREADER_TAG(
     ThreadLocalTag,
     CacheLocality::system<>(),
-    folly::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu)
+    folly::FallbackGetcpu<SequentialThreadId>::getcpu)
 DECLARE_SPREADER_TAG(
     PthreadSelfTag,
     CacheLocality::system<>(),

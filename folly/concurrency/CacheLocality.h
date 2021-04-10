@@ -148,32 +148,9 @@ struct Getcpu {
 };
 
 #ifdef FOLLY_CL_USE_FOLLY_TLS
-template <template <typename> class Atom>
 struct SequentialThreadId {
-  /// Returns the thread id assigned to the current thread
-  static unsigned get() {
-    auto rv = currentId;
-    if (UNLIKELY(rv == 0)) {
-      rv = currentId = ++prevId;
-    }
-    return rv;
-  }
-
- private:
-  static Atom<unsigned> prevId;
-
-  static FOLLY_TLS unsigned currentId;
+  static unsigned get();
 };
-
-template <template <typename> class Atom>
-Atom<unsigned> SequentialThreadId<Atom>::prevId(0);
-
-template <template <typename> class Atom>
-FOLLY_TLS unsigned SequentialThreadId<Atom>::currentId(0);
-
-// Suppress this instantiation in other translation units. It is
-// instantiated in CacheLocality.cpp
-extern template struct SequentialThreadId<std::atomic>;
 #endif
 
 struct HashingThreadId {
@@ -201,7 +178,7 @@ struct FallbackGetcpu {
 };
 
 #ifdef FOLLY_CL_USE_FOLLY_TLS
-typedef FallbackGetcpu<SequentialThreadId<std::atomic>> FallbackGetcpuType;
+typedef FallbackGetcpu<SequentialThreadId> FallbackGetcpuType;
 #else
 typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
 #endif

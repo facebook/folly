@@ -1044,13 +1044,12 @@ TEST(Getcpu, VdsoGetcpu) {
 #ifdef FOLLY_CL_USE_FOLLY_TLS
 TEST(ThreadId, SimpleTls) {
   unsigned cpu = 0;
-  auto rv = folly::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
-      &cpu, nullptr, nullptr);
+  auto rv =
+      folly::FallbackGetcpu<SequentialThreadId>::getcpu(&cpu, nullptr, nullptr);
   EXPECT_EQ(rv, 0);
   EXPECT_TRUE(cpu > 0);
   unsigned again;
-  folly::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
-      &again, nullptr, nullptr);
+  folly::FallbackGetcpu<SequentialThreadId>::getcpu(&again, nullptr, nullptr);
   EXPECT_EQ(cpu, again);
 }
 #endif
