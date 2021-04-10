@@ -198,14 +198,14 @@ class RingBufferSlot {
   explicit RingBufferSlot() noexcept : sequencer_(), data() {}
 
   template <typename V>
-  void write(const uint32_t turn, V& value) noexcept {
+  void write(const uint32_t turn, const V& value) noexcept {
     Atom<uint32_t> cutoff(0);
     sequencer_.waitForTurn(turn * 2, cutoff, false);
 
     // Change to an odd-numbered turn to indicate write in process
     sequencer_.completeTurn(turn * 2);
 
-    data = std::move(value);
+    data = value;
     sequencer_.completeTurn(turn * 2 + 1);
     // At (turn + 1) * 2
   }
