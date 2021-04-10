@@ -123,6 +123,7 @@
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/Pretty.h>
+#include <folly/lang/ToAscii.h>
 #include <folly/portability/Math.h>
 
 namespace folly {
@@ -367,120 +368,6 @@ inline size_t unsafeTelescope128(
 #endif
 
 /**
- * Returns the number of digits in the base 10 representation of an
- * uint64_t. Useful for preallocating buffers and such. It's also used
- * internally, see below. Measurements suggest that defining a
- * separate overload for 32-bit integers is not worthwhile.
- */
-
-inline uint32_t digits10(uint64_t v) {
-#ifdef __x86_64__
-
-  // For this arch we can get a little help from specialized CPU instructions
-  // which can count leading zeroes; 64 minus that is appx. log (base 2).
-  // Use that to approximate base-10 digits (log_10) and then adjust if needed.
-
-  // 10^i, defined for i 0 through 19.
-  // This is 20 * 8 == 160 bytes, which fits neatly into 5 cache lines
-  // (assuming a cache line size of 64).
-  alignas(64) static const uint64_t powersOf10[20] = {
-      1,
-      10,
-      100,
-      1000,
-      10000,
-      100000,
-      1000000,
-      10000000,
-      100000000,
-      1000000000,
-      10000000000,
-      100000000000,
-      1000000000000,
-      10000000000000,
-      100000000000000,
-      1000000000000000,
-      10000000000000000,
-      100000000000000000,
-      1000000000000000000,
-      10000000000000000000UL,
-  };
-
-  // "count leading zeroes" operation not valid; for 0; special case this.
-  if (UNLIKELY(!v)) {
-    return 1;
-  }
-
-  // bits is in the ballpark of log_2(v).
-  const uint32_t leadingZeroes = __builtin_clzll(v);
-  const auto bits = 63 - leadingZeroes;
-
-  // approximate log_10(v) == log_10(2) * bits.
-  // Integer magic below: 77/256 is appx. 0.3010 (log_10(2)).
-  // The +1 is to make this the ceiling of the log_10 estimate.
-  const uint32_t minLength = 1 + ((bits * 77) >> 8);
-
-  // return that log_10 lower bound, plus adjust if input >= 10^(that bound)
-  // in case there's a small error and we misjudged length.
-  return minLength + uint32_t(v >= powersOf10[minLength]);
-
-#else
-
-  uint32_t result = 1;
-  while (true) {
-    if (LIKELY(v < 10)) {
-      return result;
-    }
-    if (LIKELY(v < 100)) {
-      return result + 1;
-    }
-    if (LIKELY(v < 1000)) {
-      return result + 2;
-    }
-    if (LIKELY(v < 10000)) {
-      return result + 3;
-    }
-    // Skip ahead by 4 orders of magnitude
-    v /= 10000U;
-    result += 4;
-  }
-
-#endif
-}
-
-/**
- * Copies the ASCII base 10 representation of v into buffer and
- * returns the number of bytes written. Does NOT append a \0. Assumes
- * the buffer points to digits10(v) bytes of valid memory. Note that
- * uint64_t needs at most 20 bytes, uint32_t needs at most 10 bytes,
- * uint16_t needs at most 5 bytes, and so on. Measurements suggest
- * that defining a separate overload for 32-bit integers is not
- * worthwhile.
- *
- * This primitive is unsafe because it makes the size assumption and
- * because it does not add a terminating \0.
- */
-
-inline uint32_t uint64ToBufferUnsafe(uint64_t v, char* const buffer) {
-  auto const result = digits10(v);
-  // WARNING: using size_t or pointer arithmetic for pos slows down
-  // the loop below 20x. This is because several 32-bit ops can be
-  // done in parallel, but only fewer 64-bit ones.
-  uint32_t pos = result - 1;
-  while (v >= 10) {
-    // Keep these together so a peephole optimization "sees" them and
-    // computes them in one shot.
-    auto const q = v / 10;
-    auto const r = v % 10;
-    buffer[pos--] = static_cast<char>('0' + r);
-    v = q;
-  }
-  // Last digit is trivial to handle
-  buffer[pos] = static_cast<char>(v + '0');
-  return result;
-}
-
-/**
  * A single char gets appended.
  */
 template <class Tgt>
@@ -645,15 +532,13 @@ typename std::enable_if<
     std::is_integral<Src>::value && std::is_signed<Src>::value &&
     IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt* result) {
-  char buffer[20];
+  char buffer[to_ascii_size_max_decimal<uint64_t>];
+  auto uvalue = value < 0 ? ~static_cast<uint64_t>(value) + 1
+                          : static_cast<uint64_t>(value);
   if (value < 0) {
     result->push_back('-');
-    result->append(
-        buffer,
-        uint64ToBufferUnsafe(~static_cast<uint64_t>(value) + 1, buffer));
-  } else {
-    result->append(buffer, uint64ToBufferUnsafe(uint64_t(value), buffer));
   }
+  result->append(buffer, to_ascii_decimal(buffer, uvalue));
 }
 
 template <class Src>
@@ -662,14 +547,9 @@ typename std::enable_if<
         sizeof(Src) >= 4 && sizeof(Src) < 16,
     size_t>::type
 estimateSpaceNeeded(Src value) {
-  if (value < 0) {
-    // When "value" is the smallest negative, negating it would evoke
-    // undefined behavior, so, instead of writing "-value" below, we write
-    // "~static_cast<uint64_t>(value) + 1"
-    return 1 + digits10(~static_cast<uint64_t>(value) + 1);
-  }
-
-  return digits10(static_cast<uint64_t>(value));
+  auto uvalue = value < 0 ? ~static_cast<uint64_t>(value) + 1
+                          : static_cast<uint64_t>(value);
+  return size_t(value < 0) + to_ascii_size_decimal(uvalue);
 }
 
 /**
@@ -680,8 +560,8 @@ typename std::enable_if<
     std::is_integral<Src>::value && !std::is_signed<Src>::value &&
     IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt* result) {
-  char buffer[20];
-  result->append(buffer, uint64ToBufferUnsafe(value, buffer));
+  char buffer[to_ascii_size_max_decimal<uint64_t>];
+  result->append(buffer, to_ascii_decimal(buffer, value));
 }
 
 template <class Src>
@@ -690,7 +570,7 @@ typename std::enable_if<
         sizeof(Src) >= 4 && sizeof(Src) < 16,
     size_t>::type
 estimateSpaceNeeded(Src value) {
-  return digits10(value);
+  return to_ascii_size_decimal(value);
 }
 
 /**

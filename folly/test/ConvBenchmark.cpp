@@ -25,6 +25,7 @@
 #include <folly/Benchmark.h>
 #include <folly/CppAttributes.h>
 #include <folly/container/Foreach.h>
+#include <folly/lang/ToAscii.h>
 
 using namespace std;
 using namespace folly;
@@ -345,7 +346,7 @@ unsigned u64ToAsciiTable(uint64_t value, char* dst) {
       "80818283848586878889"
       "90919293949596979899";
 
-  uint32_t const length = digits10(value);
+  uint32_t const length = to_ascii_size_decimal(value);
   uint32_t next = length - 1;
   while (value >= 100) {
     auto const i = (value % 100) * 2;
@@ -407,7 +408,7 @@ void u64ToAsciiFollyBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   char buf[20];
   FOR_EACH_RANGE (i, 0, n) {
-    doNotOptimizeAway(uint64ToBufferUnsafe(uint64Num[index] + (i % 8), buf));
+    doNotOptimizeAway(to_ascii_decimal(buf, uint64Num[index] + (i % 8)));
   }
 }
 
@@ -465,7 +466,7 @@ void u2aAppendFollyBM(unsigned int n, size_t index) {
   FOR_EACH_RANGE (i, 0, n) {
     // auto buf = &s.back() + 1;
     char buffer[20];
-    s.append(buffer, uint64ToBufferUnsafe(uint64Num[index] + (i % 8), buffer));
+    s.append(buffer, to_ascii_decimal(buffer, uint64Num[index] + (i % 8)));
     doNotOptimizeAway(s.size());
   }
 }

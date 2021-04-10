@@ -36,54 +36,6 @@
 using namespace std;
 using namespace folly;
 
-TEST(Conv, digits10) {
-  char buffer[100];
-  uint64_t power;
-
-  // first, some basic sniff tests
-  EXPECT_EQ(1, digits10(0));
-  EXPECT_EQ(1, digits10(1));
-  EXPECT_EQ(1, digits10(9));
-  EXPECT_EQ(2, digits10(10));
-  EXPECT_EQ(2, digits10(99));
-  EXPECT_EQ(3, digits10(100));
-  EXPECT_EQ(3, digits10(999));
-  EXPECT_EQ(4, digits10(1000));
-  EXPECT_EQ(4, digits10(9999));
-  EXPECT_EQ(20, digits10(18446744073709551615ULL));
-
-  // try the first X nonnegatives.
-  // Covers some more cases of 2^p, 10^p
-  for (uint64_t i = 0; i < 100000; i++) {
-    snprintf(buffer, sizeof(buffer), "%" PRIu64, i);
-    EXPECT_EQ(strlen(buffer), digits10(i));
-  }
-
-  // try powers of 2
-  power = 1;
-  for (int p = 0; p < 64; p++) {
-    snprintf(buffer, sizeof(buffer), "%" PRIu64, power);
-    EXPECT_EQ(strlen(buffer), digits10(power));
-    snprintf(buffer, sizeof(buffer), "%" PRIu64, power - 1);
-    EXPECT_EQ(strlen(buffer), digits10(power - 1));
-    snprintf(buffer, sizeof(buffer), "%" PRIu64, power + 1);
-    EXPECT_EQ(strlen(buffer), digits10(power + 1));
-    power *= 2;
-  }
-
-  // try powers of 10
-  power = 1;
-  for (int p = 0; p < 20; p++) {
-    snprintf(buffer, sizeof(buffer), "%" PRIu64, power);
-    EXPECT_EQ(strlen(buffer), digits10(power));
-    snprintf(buffer, sizeof(buffer), "%" PRIu64, power - 1);
-    EXPECT_EQ(strlen(buffer), digits10(power - 1));
-    snprintf(buffer, sizeof(buffer), "%" PRIu64, power + 1);
-    EXPECT_EQ(strlen(buffer), digits10(power + 1));
-    power *= 10;
-  }
-}
-
 // Test to<T>(T)
 TEST(Conv, Type2Type) {
   bool boolV = true;
@@ -1330,44 +1282,6 @@ TEST(Conv, TryPtrPairToInt) {
   auto rv4 = folly::tryTo<uint16_t>(sp4.begin(), sp4.end());
   EXPECT_TRUE(rv4.hasValue());
   EXPECT_EQ(rv4.value(), 4711);
-}
-
-TEST(Conv, NewUint64ToString) {
-  char buf[21];
-
-#define THE_GREAT_EXPECTATIONS(n, len)                \
-  do {                                                \
-    EXPECT_EQ((len), uint64ToBufferUnsafe((n), buf)); \
-    buf[(len)] = 0;                                   \
-    auto s = string(#n);                              \
-    s = s.substr(0, s.size() - 2);                    \
-    EXPECT_EQ(s, buf);                                \
-  } while (0)
-
-  THE_GREAT_EXPECTATIONS(0UL, 1);
-  THE_GREAT_EXPECTATIONS(1UL, 1);
-  THE_GREAT_EXPECTATIONS(12UL, 2);
-  THE_GREAT_EXPECTATIONS(123UL, 3);
-  THE_GREAT_EXPECTATIONS(1234UL, 4);
-  THE_GREAT_EXPECTATIONS(12345UL, 5);
-  THE_GREAT_EXPECTATIONS(123456UL, 6);
-  THE_GREAT_EXPECTATIONS(1234567UL, 7);
-  THE_GREAT_EXPECTATIONS(12345678UL, 8);
-  THE_GREAT_EXPECTATIONS(123456789UL, 9);
-  THE_GREAT_EXPECTATIONS(1234567890UL, 10);
-  THE_GREAT_EXPECTATIONS(12345678901UL, 11);
-  THE_GREAT_EXPECTATIONS(123456789012UL, 12);
-  THE_GREAT_EXPECTATIONS(1234567890123UL, 13);
-  THE_GREAT_EXPECTATIONS(12345678901234UL, 14);
-  THE_GREAT_EXPECTATIONS(123456789012345UL, 15);
-  THE_GREAT_EXPECTATIONS(1234567890123456UL, 16);
-  THE_GREAT_EXPECTATIONS(12345678901234567UL, 17);
-  THE_GREAT_EXPECTATIONS(123456789012345678UL, 18);
-  THE_GREAT_EXPECTATIONS(1234567890123456789UL, 19);
-  THE_GREAT_EXPECTATIONS(18446744073709551614UL, 20);
-  THE_GREAT_EXPECTATIONS(18446744073709551615UL, 20);
-
-#undef THE_GREAT_EXPECTATIONS
 }
 
 TEST(Conv, allocate_size) {

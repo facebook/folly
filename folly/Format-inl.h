@@ -30,6 +30,7 @@
 #include <folly/MapUtil.h>
 #include <folly/Traits.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/ToAscii.h>
 #include <folly/portability/Windows.h>
 
 // Ignore -Wformat-nonliteral and -Wconversion warnings within this file
@@ -521,8 +522,9 @@ class FormatValue<
             "' specifier");
         valBufBegin = valBuf + 1; // room for sign
 
-        // Use uintToBuffer, faster than sprintf
-        valBufEnd = valBufBegin + uint64ToBufferUnsafe(uval, valBufBegin);
+        // Use to_ascii_decimal, faster than sprintf
+        valBufEnd = valBufBegin +
+            to_ascii_decimal(valBufBegin, valBuf + sizeof(valBuf), uval);
         if (arg.thousandsSeparator) {
           detail::insertThousandsGroupingUnsafe(valBufBegin, &valBufEnd);
         }
