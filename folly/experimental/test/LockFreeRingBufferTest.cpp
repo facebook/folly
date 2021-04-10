@@ -250,4 +250,47 @@ TEST(LockFreeRingBuffer, moveBackwardsCanFail) {
   EXPECT_FALSE(cursor.moveBackward()); // moving back does nothing
 }
 
+namespace {
+
+struct S {
+  int x;
+  float y;
+  char c;
+};
+
+} // namespace
+
+TEST(LockFreeRingBuffer, contendedReadsAndWrites) {
+  LockFreeRingBuffer<S> rb{2};
+  std::atomic<bool> done{false};
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 8; ++i) {
+    threads.emplace_back([&] {
+      while (!done.load(std::memory_order_relaxed)) {
+        S value{10, -5.5, 100};
+        rb.write(value);
+      }
+    });
+  }
+  for (int i = 0; i < 8; ++i) {
+    threads.emplace_back([&] {
+      S value;
+      while (!done.load(std::memory_order_relaxed)) {
+        if (rb.tryRead(value, rb.currentTail())) {
+          EXPECT_EQ(10, value.x);
+          EXPECT_EQ(-5.5, value.y);
+          EXPECT_EQ(100, value.c);
+        }
+      }
+    });
+  }
+
+  /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds{1});
+  done.store(true, std::memory_order_relaxed);
+  for (auto& thread : threads) {
+    thread.join();
+  }
+}
+
 } // namespace folly
