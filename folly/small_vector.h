@@ -458,8 +458,10 @@ class small_vector : public detail::small_vector_base<
    * the user asks for less inlined elements than we can fit unioned
    * into our value_type*, we will inline more than they asked.)
    */
+  static constexpr auto kSizeOfValuePtr = sizeof(Value*);
+  static constexpr auto kSizeOfValue = sizeof(Value);
   static constexpr std::size_t MaxInline{
-      constexpr_max(sizeof(Value*) / sizeof(Value), RequestedMaxInline)};
+      constexpr_max(kSizeOfValuePtr / kSizeOfValue, RequestedMaxInline)};
 
  public:
   typedef std::size_t size_type;
