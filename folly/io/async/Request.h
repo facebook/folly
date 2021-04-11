@@ -419,20 +419,10 @@ struct ShallowCopyRequestContextScopeGuard {
    * Accepts iterators to a container of <string/RequestToken, RequestData
    * pointer> pairs
    */
-  template <typename... TItems>
+  template <typename... Item>
   explicit ShallowCopyRequestContextScopeGuard(
-      RequestDataItem&& first, TItems&&... rest)
-      : ShallowCopyRequestContextScopeGuard() {
-    auto rc = RequestContext::get();
-    auto overwriteContextData = [&rc](RequestDataItem&& item) {
-      rc->overwriteContextData(item.first, std::move(item.second), true);
-    };
-
-    overwriteContextData(std::move(first));
-
-    using _ = int[];
-    void(_{0, (void(overwriteContextData(std::forward<TItems>(rest))), 0)...});
-  }
+      RequestDataItem&& first, Item&&... rest)
+      : ShallowCopyRequestContextScopeGuard(MultiTag{}, first, rest...) {}
 
   ~ShallowCopyRequestContextScopeGuard() {
     RequestContext::setContext(std::move(prev_));
@@ -448,6 +438,19 @@ struct ShallowCopyRequestContextScopeGuard {
       ShallowCopyRequestContextScopeGuard&&) = delete;
 
  private:
+  struct MultiTag {};
+  template <typename... Item>
+  explicit ShallowCopyRequestContextScopeGuard(MultiTag, Item&... item)
+      : ShallowCopyRequestContextScopeGuard() {
+    auto rc = RequestContext::get();
+    auto go = [&](RequestDataItem& i) {
+      rc->overwriteContextData(i.first, std::move(i.second), true);
+    };
+
+    using _ = int[];
+    void(_{0, (go(item), 0)...});
+  }
+
   std::shared_ptr<RequestContext> prev_;
 };
 
