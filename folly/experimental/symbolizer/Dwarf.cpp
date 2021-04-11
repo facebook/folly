@@ -1317,9 +1317,11 @@ Dwarf::LineNumberVM::StepResult Dwarf::LineNumberVM::step(
       // use unbounded amounts of state (ie. use the heap).  We'll do a second
       // pass (using nextDefineFile()) if necessary.
       break;
+#if !defined(__FreeBSD__)
     case DW_LNE_set_discriminator:
       discriminator_ = readULEB(program);
       return CONTINUE;
+#endif
   }
 
   // Unrecognized extended opcode

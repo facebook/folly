@@ -55,7 +55,7 @@ char*** _NSGetEnviron(void);
 
 #if defined(__FreeBSD__)
 // Needed to resolve linkage
-char** environ;
+extern char** environ;
 #endif
 
 #if !__linux__ && !FOLLY_MOBILE
