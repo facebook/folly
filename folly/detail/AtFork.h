@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <sys/types.h>
+
 #include <folly/Function.h>
 
 namespace folly {
