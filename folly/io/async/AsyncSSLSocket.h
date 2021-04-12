@@ -283,25 +283,25 @@ class AsyncSSLSocket : public AsyncSocket {
   /**
    * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
    */
-  static std::shared_ptr<AsyncSSLSocket> newSocket(
+  static UniquePtr newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
       NetworkSocket fd,
       bool server = true,
       bool deferSecurityNegotiation = false) {
-    return std::shared_ptr<AsyncSSLSocket>(AsyncSSLSocket::UniquePtr(
-        new AsyncSSLSocket(ctx, evb, fd, server, deferSecurityNegotiation)));
+    return AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(ctx, evb, fd, server, deferSecurityNegotiation));
   }
 
   /**
    * Helper function to create a client shared_ptr<AsyncSSLSocket>.
    */
-  static std::shared_ptr<AsyncSSLSocket> newSocket(
+  static UniquePtr newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
       bool deferSecurityNegotiation = false) {
-    return std::shared_ptr<AsyncSSLSocket>(AsyncSSLSocket::UniquePtr(
-        new AsyncSSLSocket(ctx, evb, deferSecurityNegotiation)));
+    return AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(ctx, evb, deferSecurityNegotiation));
   }
 
 #if FOLLY_OPENSSL_HAS_SNI
@@ -337,13 +337,13 @@ class AsyncSSLSocket : public AsyncSocket {
       const std::string& serverName,
       bool deferSecurityNegotiation = false);
 
-  static std::shared_ptr<AsyncSSLSocket> newSocket(
+  static UniquePtr newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
       const std::string& serverName,
       bool deferSecurityNegotiation = false) {
-    return std::shared_ptr<AsyncSSLSocket>(AsyncSSLSocket::UniquePtr(
-        new AsyncSSLSocket(ctx, evb, serverName, deferSecurityNegotiation)));
+    return AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(ctx, evb, serverName, deferSecurityNegotiation));
   }
 #endif // FOLLY_OPENSSL_HAS_SNI
 

@@ -2180,7 +2180,8 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
   getctx(clientCtx, serverCtx);
   auto client =
       AsyncSSLSocket::newSocket(clientCtx, &base, fds[0], false, true);
-  auto server = AsyncSSLSocket::newSocket(serverCtx, &base, fds[1], true, true);
+  std::shared_ptr<AsyncSSLSocket> server =
+      AsyncSSLSocket::newSocket(serverCtx, &base, fds[1], true, true);
 
   ReadCallbackTerminator readCallback(&base, nullptr);
   server->setReadCB(&readCallback);
