@@ -629,6 +629,54 @@ TEST(Observer, ReadMostlyAtomicObserver) {
   EXPECT_EQ(*dependentObserver, 21);
 }
 
+void runHazptrObserverTest(bool useLocalSnapshot) {
+  struct IntHolder {
+    explicit IntHolder(int val) : val_(val) {}
+    IntHolder(const IntHolder&) = delete;
+    IntHolder& operator=(const IntHolder&) = delete;
+    IntHolder(IntHolder&&) = default;
+    IntHolder& operator=(IntHolder&&) = delete;
+    int val_;
+  };
+
+  auto value = [=](const auto& observer) {
+    if (useLocalSnapshot) {
+      return observer.getSnapshot()->val_;
+    } else {
+      return observer.getLocalSnapshot()->val_;
+    }
+  };
+
+  SimpleObservable<IntHolder> observable{IntHolder{42}};
+
+  HazptrObserver<IntHolder> observer{observable.getObserver()};
+  HazptrObserver<IntHolder> observerCopy{observer};
+  EXPECT_EQ(value(observer), 42);
+  EXPECT_EQ(value(observerCopy), 42);
+
+  observable.setValue(IntHolder{24});
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(value(observer), 24);
+  EXPECT_EQ(value(observerCopy), 24);
+
+  auto dependentObserver = makeHazptrObserver([=] {
+    return IntHolder{observer.getUnderlyingObserver().getSnapshot()->val_ + 1};
+  });
+  EXPECT_EQ(value(dependentObserver), 25);
+
+  observable.setValue(IntHolder{20});
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(value(dependentObserver), 21);
+}
+
+TEST(Observer, HazptrObserver) {
+  runHazptrObserverTest(/* useLocalSnapshot */ false);
+}
+
+TEST(Observer, HazptrObserverLocalSnapshot) {
+  runHazptrObserverTest(/* useLocalSnapshot */ true);
+}
+
 TEST(Observer, Unwrap) {
   SimpleObservable<bool> selectorObservable{true};
   SimpleObservable<int> trueObservable{1};
