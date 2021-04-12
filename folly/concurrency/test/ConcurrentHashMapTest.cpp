@@ -166,6 +166,9 @@ TYPED_TEST_P(ConcurrentHashMapTest, EmplaceTest) {
   foomap.emplace(1, foo());
   EXPECT_EQ(foo::moved, 1);
   EXPECT_EQ(foo::copied, 0);
+  // Reset the counters. Repeated tests are allowed
+  foo::moved = 0;
+  foo::copied = 0;
 }
 
 TYPED_TEST_P(ConcurrentHashMapTest, MapInsertIteratorValueTest) {
