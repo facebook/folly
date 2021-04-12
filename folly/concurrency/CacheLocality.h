@@ -275,7 +275,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   /// current()).
   static size_t cachedCurrent(size_t numStripes) {
     return widthAndCpuToStripe[std::min(size_t(kMaxCpus), numStripes)]
-                              [cpuCache.cpu()];
+                              [cpuCache().cpu()];
   }
 #else
   /// Fallback implementation when thread-local storage isn't available.
@@ -317,12 +317,15 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
    private:
     static constexpr unsigned kMaxCachedCpuUses = 32;
 
-    unsigned cachedCpu_{0};
-    unsigned cachedCpuUses_{0};
+    unsigned cachedCpu_;
+    unsigned cachedCpuUses_;
   };
 
 #ifdef FOLLY_CL_USE_FOLLY_TLS
-  static FOLLY_TLS CpuCache cpuCache;
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static CpuCache& cpuCache() {
+    static thread_local CpuCache cpuCache;
+    return cpuCache;
+  }
 #endif
 
   static bool initialized;
@@ -362,12 +365,6 @@ Getcpu::Func AccessSpreader<Atom>::getcpuFunc =
 template <template <typename> class Atom>
 typename AccessSpreader<Atom>::CompactStripe
     AccessSpreader<Atom>::widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus] = {};
-
-#ifdef FOLLY_CL_USE_FOLLY_TLS
-template <template <typename> class Atom>
-FOLLY_TLS
-    typename AccessSpreader<Atom>::CpuCache AccessSpreader<Atom>::cpuCache;
-#endif
 
 template <template <typename> class Atom>
 bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
