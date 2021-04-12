@@ -670,6 +670,7 @@ class alignas(64) BucketTable {
             next->acquire_link(); // defined in hazptr_obj_base_linked
           }
           prev->store(cur, std::memory_order_release);
+          it.setNode(cur, buckets, bcount, idx);
           g.unlock();
           // Release not under lock.
           node->release();
