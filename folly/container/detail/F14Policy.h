@@ -469,11 +469,13 @@ class ValueContainerIterator : public ValueContainerIteratorBase<ValuePtr> {
     return cur;
   }
 
-  bool operator==(ValueContainerIterator<ValueConstPtr> const& rhs) const {
-    return underlying_ == rhs.underlying_;
+  friend bool operator==(
+      ValueContainerIterator const& lhs, ValueContainerIterator const& rhs) {
+    return lhs.underlying_ == rhs.underlying_;
   }
-  bool operator!=(ValueContainerIterator<ValueConstPtr> const& rhs) const {
-    return !(*this == rhs);
+  friend bool operator!=(
+      ValueContainerIterator const& lhs, ValueContainerIterator const& rhs) {
+    return !(lhs == rhs);
   }
 
  private:
@@ -698,11 +700,13 @@ class NodeContainerIterator : public BaseIter<ValuePtr, NonConstPtr<ValuePtr>> {
     return cur;
   }
 
-  bool operator==(NodeContainerIterator<ValueConstPtr> const& rhs) const {
-    return underlying_ == rhs.underlying_;
+  friend bool operator==(
+      NodeContainerIterator const& lhs, NodeContainerIterator const& rhs) {
+    return lhs.underlying_ == rhs.underlying_;
   }
-  bool operator!=(NodeContainerIterator<ValueConstPtr> const& rhs) const {
-    return !(*this == rhs);
+  friend bool operator!=(
+      NodeContainerIterator const& lhs, NodeContainerIterator const& rhs) {
+    return !(lhs == rhs);
   }
 
  private:
@@ -936,11 +940,13 @@ class VectorContainerIterator : public BaseIter<ValuePtr, uint32_t> {
     return cur;
   }
 
-  bool operator==(VectorContainerIterator<ValueConstPtr> const& rhs) const {
-    return current_ == rhs.current_;
+  friend bool operator==(
+      VectorContainerIterator const& lhs, VectorContainerIterator const& rhs) {
+    return lhs.current_ == rhs.current_;
   }
-  bool operator!=(VectorContainerIterator<ValueConstPtr> const& rhs) const {
-    return !(*this == rhs);
+  friend bool operator!=(
+      VectorContainerIterator const& lhs, VectorContainerIterator const& rhs) {
+    return !(lhs == rhs);
   }
 
  private:
