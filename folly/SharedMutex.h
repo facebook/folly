@@ -328,7 +328,7 @@ template <
     bool BlockImmediately = false,
     bool AnnotateForThreadSanitizer = kIsSanitizeThread && !ReaderPriority,
     bool TrackThreadId = false>
-class SharedMutexImpl : std::conditional_t<
+class FOLLY_EXPORT SharedMutexImpl : std::conditional_t<
                             TrackThreadId,
                             shared_mutex_detail::ThreadIdOwnershipTracker,
                             shared_mutex_detail::NopOwnershipTracker> {
