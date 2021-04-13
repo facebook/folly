@@ -17,7 +17,6 @@
 #pragma once
 
 #include <atomic>
-#include <cmath>
 #include <cstring>
 #include <memory>
 #include <type_traits>
@@ -152,21 +151,12 @@ class LockFreeRingBuffer {
   /// Returns a Cursor pointing to the first write that has not occurred yet.
   Cursor currentHead() noexcept { return Cursor(ticket_.load()); }
 
-  /// Returns a Cursor pointing to a currently readable write.
-  /// skipFraction is a value in the [0, 1] range indicating how far into the
-  /// currently readable window to place the cursor. 0 means the
-  /// earliest readable write, 1 means the latest readable write (if any).
-  Cursor currentTail(double skipFraction = 0.0) noexcept {
-    assert(skipFraction >= 0.0 && skipFraction <= 1.0);
+  /// Returns a Cursor pointing to the earliest readable write.
+  Cursor currentTail() noexcept {
     uint64_t ticket = ticket_.load();
 
-    uint64_t backStep = llround((1.0 - skipFraction) * capacity_);
-
-    // always try to move at least one step backward to something readable
-    backStep = std::max<uint64_t>(1, backStep);
-
     // can't go back more steps than we've taken
-    backStep = std::min(ticket, backStep);
+    uint64_t backStep = std::min<uint64_t>(ticket, capacity_);
 
     return Cursor(ticket - backStep);
   }

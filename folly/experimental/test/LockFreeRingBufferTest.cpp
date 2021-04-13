@@ -177,42 +177,6 @@ TEST(LockFreeRingBuffer, readerCanDetectSkips) {
   cursor = rb.currentTail();
   EXPECT_TRUE(rb.tryRead(result, cursor));
   EXPECT_EQ(capacity * (rounds - 1), result);
-
-  cursor = rb.currentTail(1.0);
-  EXPECT_TRUE(rb.tryRead(result, cursor));
-  EXPECT_EQ((capacity * rounds) - 1, result);
-}
-
-TEST(LockFreeRingBuffer, currentTailRange) {
-  const int capacity = 4;
-  LockFreeRingBuffer<int> rb(capacity);
-
-  // Workaround for template deduction failure
-  auto (&cursorValue)(value<int, std::atomic>);
-
-  // Empty buffer - everything points to 0
-  EXPECT_EQ(0, cursorValue(rb.currentTail(0)));
-  EXPECT_EQ(0, cursorValue(rb.currentTail(0.5)));
-  EXPECT_EQ(0, cursorValue(rb.currentTail(1)));
-
-  // Half-full
-  int val = 5;
-  rb.write(val);
-  rb.write(val);
-
-  EXPECT_EQ(0, cursorValue(rb.currentTail(0)));
-  EXPECT_EQ(1, cursorValue(rb.currentTail(1)));
-
-  // Full
-  rb.write(val);
-  rb.write(val);
-
-  EXPECT_EQ(0, cursorValue(rb.currentTail(0)));
-  EXPECT_EQ(3, cursorValue(rb.currentTail(1)));
-
-  auto midvalue = cursorValue(rb.currentTail(0.5));
-  // both rounding behaviours are acceptable
-  EXPECT_TRUE(midvalue == 1 || midvalue == 2);
 }
 
 TEST(LockFreeRingBuffer, cursorFromWrites) {
