@@ -32,7 +32,7 @@ using namespace std::chrono_literals;
 namespace {
 
 struct SomeError : std::exception {
-  explicit SomeError(int value) : value(value) {}
+  explicit SomeError(int v) : value(v) {}
   int value;
 };
 

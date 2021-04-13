@@ -806,8 +806,8 @@ TEST_F(CollectAllRangeTest, VectorOfTaskWithExecutorUsage) {
     std::vector<folly::coro::TaskWithExecutor<int>> tasks;
     for (int i = 0; i < 4; ++i) {
       tasks.push_back(
-          [](int i) -> folly::coro::Task<int> { co_return i + 1; }(i)
-                           .scheduleOn(&threadPool));
+          [](int idx) -> folly::coro::Task<int> { co_return idx + 1; }(i)
+                             .scheduleOn(&threadPool));
     }
 
     auto results = co_await folly::coro::collectAllRange(std::move(tasks));
@@ -1208,9 +1208,9 @@ TEST_F(CollectAllWindowedTest, ConcurrentTasks) {
   auto results = blockingWait(collectAllWindowed(
       [&]() -> Generator<Task<std::string>&&> {
         for (int i = 0; i < 10'000; ++i) {
-          co_yield [](int i) -> Task<std::string> {
+          co_yield [](int idx) -> Task<std::string> {
             co_await folly::coro::co_reschedule_on_current_executor;
-            co_return folly::to<std::string>(i);
+            co_return folly::to<std::string>(idx);
           }(i);
         }
       }(),
@@ -1345,23 +1345,23 @@ TEST_F(CollectAllWindowedTest, MultipleFailuresPropagatesFirstError) {
         folly::coro::blockingWait(folly::coro::collectAllWindowed(
             []() -> folly::coro::Generator<folly::coro::Task<int>&&> {
               for (int i = 0; i < 10; ++i) {
-                co_yield [](int i) -> folly::coro::Task<int> {
+                co_yield [](int idx) -> folly::coro::Task<int> {
                   using namespace std::literals::chrono_literals;
-                  if (i == 3) {
+                  if (idx == 3) {
                     co_await folly::coro::co_reschedule_on_current_executor;
                     co_await folly::coro::co_reschedule_on_current_executor;
                     throw ErrorA{};
-                  } else if (i == 7) {
+                  } else if (idx == 7) {
                     co_await folly::coro::co_reschedule_on_current_executor;
                     throw ErrorB{};
                   }
-                  co_return i;
+                  co_return idx;
                 }(i);
               }
             }(),
             5));
     CHECK(false); // Should have thrown.
-  } catch (ErrorB) {
+  } catch (const ErrorB&) {
     // Expected.
   }
 }
@@ -1487,8 +1487,8 @@ TEST_F(CollectAllWindowedTest, VectorOfTaskWithExecutorUsage) {
     std::vector<folly::coro::TaskWithExecutor<int>> tasks;
     for (int i = 0; i < 4; ++i) {
       tasks.push_back(
-          [](int i) -> folly::coro::Task<int> { co_return i + 1; }(i)
-                           .scheduleOn(&threadPool));
+          [](int idx) -> folly::coro::Task<int> { co_return idx + 1; }(i)
+                             .scheduleOn(&threadPool));
     }
 
     auto results =
@@ -1507,17 +1507,17 @@ TEST_F(CollectAllTryWindowedTest, PartialFailure) {
   auto results = folly::coro::blockingWait(folly::coro::collectAllTryWindowed(
       []() -> folly::coro::Generator<folly::coro::Task<int>&&> {
         for (int i = 0; i < 10; ++i) {
-          co_yield [](int i) -> folly::coro::Task<int> {
+          co_yield [](int idx) -> folly::coro::Task<int> {
             using namespace std::literals::chrono_literals;
-            if (i == 3) {
+            if (idx == 3) {
               co_await folly::coro::co_reschedule_on_current_executor;
               co_await folly::coro::co_reschedule_on_current_executor;
               throw ErrorA{};
-            } else if (i == 7) {
+            } else if (idx == 7) {
               co_await folly::coro::co_reschedule_on_current_executor;
               throw ErrorB{};
             }
-            co_return i;
+            co_return idx;
           }(i);
         }
       }(),
@@ -1562,7 +1562,7 @@ TEST_F(CollectAllTryWindowedTest, GeneratorFailure) {
     [[maybe_unused]] auto results = folly::coro::blockingWait(
         folly::coro::collectAllTryWindowed(generateTasks(), 5));
     CHECK(false);
-  } catch (ErrorA) {
+  } catch (const ErrorA&) {
   }
 
   // Even if the generator throws an exception we should still have launched

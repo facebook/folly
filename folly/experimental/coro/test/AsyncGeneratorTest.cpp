@@ -499,7 +499,7 @@ TEST(AsyncGenerator, YieldCoError) {
     try {
       (void)co_await gen.next();
       CHECK(false);
-    } catch (SomeError) {
+    } catch (const SomeError&) {
     }
   }());
 }
