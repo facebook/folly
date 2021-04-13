@@ -143,7 +143,7 @@ template <typename T>
 T AtomicObserver<T>::get() const {
   auto version = cachedVersion_.load(std::memory_order_acquire);
   if (UNLIKELY(observer_.needRefresh(version))) {
-    folly::SharedMutex::WriteHolder guard{refreshLock_};
+    SharedMutex::WriteHolder guard{refreshLock_};
     version = cachedVersion_.load(std::memory_order_acquire);
     if (LIKELY(observer_.needRefresh(version))) {
       auto snapshot = *observer_;
@@ -178,10 +178,9 @@ template <typename T>
 ReadMostlyAtomicObserver<T>::ReadMostlyAtomicObserver(Observer<T> observer)
     : observer_(std::move(observer)),
       cachedValue_(**observer_),
-      callback_(
-          observer_.addCallback([this](folly::observer::Snapshot<T> snapshot) {
-            cachedValue_.store(*snapshot, std::memory_order_relaxed);
-          })) {}
+      callback_(observer_.addCallback([this](Snapshot<T> snapshot) {
+        cachedValue_.store(*snapshot, std::memory_order_relaxed);
+      })) {}
 
 template <typename T>
 T ReadMostlyAtomicObserver<T>::get() const {
@@ -191,11 +190,10 @@ T ReadMostlyAtomicObserver<T>::get() const {
 template <typename T>
 ReadMostlyTLObserver<T>::ReadMostlyTLObserver(Observer<T> observer)
     : observer_(std::move(observer)),
-      callback_(
-          observer_.addCallback([this](folly::observer::Snapshot<T> snapshot) {
-            globalData_.lock()->reset(snapshot.getShared());
-            globalVersion_ = snapshot.getVersion();
-          })) {}
+      callback_(observer_.addCallback([this](Snapshot<T> snapshot) {
+        globalData_.lock()->reset(snapshot.getShared());
+        globalVersion_ = snapshot.getVersion();
+      })) {}
 
 template <typename T>
 ReadMostlyTLObserver<T>::ReadMostlyTLObserver(
@@ -203,7 +201,7 @@ ReadMostlyTLObserver<T>::ReadMostlyTLObserver(
     : ReadMostlyTLObserver(other.observer_) {}
 
 template <typename T>
-folly::ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::getShared() const {
+ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::getShared() const {
   if (localSnapshot_->version_ == globalVersion_.load()) {
     if (auto data = localSnapshot_->data_.lock()) {
       return data;
@@ -213,7 +211,7 @@ folly::ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::getShared() const {
 }
 
 template <typename T>
-folly::ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::refresh() const {
+ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::refresh() const {
   auto version = globalVersion_.load();
   auto globalData = globalData_.lock();
   *localSnapshot_ = LocalSnapshot(*globalData, version);
@@ -229,7 +227,7 @@ inline CallbackHandle::CallbackHandle() {}
 
 template <typename T>
 CallbackHandle::CallbackHandle(
-    Observer<T> observer, folly::Function<void(Snapshot<T>)> callback) {
+    Observer<T> observer, Function<void(Snapshot<T>)> callback) {
   context_ = std::make_shared<Context>();
   context_->observer = makeObserver([observer = std::move(observer),
                                      callback = std::move(callback),
@@ -265,7 +263,7 @@ inline void CallbackHandle::cancel() {
 
 template <typename T>
 CallbackHandle Observer<T>::addCallback(
-    folly::Function<void(Snapshot<T>)> callback) const {
+    Function<void(Snapshot<T>)> callback) const {
   return CallbackHandle(*this, std::move(callback));
 }
 

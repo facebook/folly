@@ -208,8 +208,7 @@ class CallbackHandle {
  public:
   CallbackHandle();
   template <typename T>
-  CallbackHandle(
-      Observer<T> observer, folly::Function<void(Snapshot<T>)> callback);
+  CallbackHandle(Observer<T> observer, Function<void(Snapshot<T>)> callback);
   CallbackHandle(const CallbackHandle&) = delete;
   CallbackHandle(CallbackHandle&&) = default;
   CallbackHandle& operator=(const CallbackHandle&) = delete;
@@ -249,7 +248,7 @@ class Observer {
     return version < core_->getVersionLastChange();
   }
 
-  CallbackHandle addCallback(folly::Function<void(Snapshot<T>)> callback) const;
+  CallbackHandle addCallback(Function<void(Snapshot<T>)> callback) const;
 
  private:
   template <typename Observable, typename Traits>
@@ -330,14 +329,12 @@ class AtomicObserver {
   T get() const;
   T operator*() const { return get(); }
 
-  folly::observer::Observer<T> getUnderlyingObserver() const {
-    return observer_;
-  }
+  Observer<T> getUnderlyingObserver() const { return observer_; }
 
  private:
   mutable std::atomic<T> cachedValue_{};
   mutable std::atomic<size_t> cachedVersion_{};
-  mutable folly::SharedMutex refreshLock_;
+  mutable SharedMutex refreshLock_;
   Observer<T> observer_;
 };
 
@@ -350,13 +347,11 @@ class TLObserver {
   const Snapshot<T>& getSnapshotRef() const;
   const Snapshot<T>& operator*() const { return getSnapshotRef(); }
 
-  folly::observer::Observer<T> getUnderlyingObserver() const {
-    return observer_;
-  }
+  Observer<T> getUnderlyingObserver() const { return observer_; }
 
  private:
   Observer<T> observer_;
-  folly::ThreadLocal<Snapshot<T>> snapshot_;
+  ThreadLocal<Snapshot<T>> snapshot_;
 };
 
 template <typename T>
@@ -370,9 +365,7 @@ class ReadMostlyAtomicObserver {
   T get() const;
   T operator*() const { return get(); }
 
-  folly::observer::Observer<T> getUnderlyingObserver() const {
-    return observer_;
-  }
+  Observer<T> getUnderlyingObserver() const { return observer_; }
 
  private:
   Observer<T> observer_;
@@ -386,32 +379,28 @@ class ReadMostlyTLObserver {
   explicit ReadMostlyTLObserver(Observer<T> observer);
   ReadMostlyTLObserver(const ReadMostlyTLObserver<T>& other);
 
-  folly::ReadMostlySharedPtr<const T> getShared() const;
+  ReadMostlySharedPtr<const T> getShared() const;
 
-  folly::observer::Observer<T> getUnderlyingObserver() const {
-    return observer_;
-  }
+  Observer<T> getUnderlyingObserver() const { return observer_; }
 
  private:
-  folly::ReadMostlySharedPtr<const T> refresh() const;
+  ReadMostlySharedPtr<const T> refresh() const;
 
   struct LocalSnapshot {
     LocalSnapshot() {}
-    LocalSnapshot(
-        const folly::ReadMostlyMainPtr<const T>& data, int64_t version)
+    LocalSnapshot(const ReadMostlyMainPtr<const T>& data, int64_t version)
         : data_(data), version_(version) {}
 
-    folly::ReadMostlyWeakPtr<const T> data_;
+    ReadMostlyWeakPtr<const T> data_;
     int64_t version_;
   };
 
   Observer<T> observer_;
 
-  folly::Synchronized<folly::ReadMostlyMainPtr<const T>, std::mutex>
-      globalData_;
+  Synchronized<ReadMostlyMainPtr<const T>, std::mutex> globalData_;
   std::atomic<int64_t> globalVersion_;
 
-  folly::ThreadLocal<LocalSnapshot> localSnapshot_;
+  ThreadLocal<LocalSnapshot> localSnapshot_;
 
   // Construct callback last so that it's joined before members it may
   // be accessing are destructed
