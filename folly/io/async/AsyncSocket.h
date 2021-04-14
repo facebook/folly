@@ -77,31 +77,7 @@ namespace folly {
 
 class AsyncSocket : public AsyncTransport {
  public:
-  /**
-   * Use ReleasableDestructor with AsyncSocket to enable transferring the
-   * ownership of the socket owned by smart pointers.
-   */
-  class ReleasableDestructor : public DelayedDestruction::Destructor {
-   public:
-    void operator()(DelayedDestruction* dd) const {
-      if (!released_) {
-        dd->destroy();
-      }
-    }
-
-    /**
-     * Release the object managed by smart pointers. This is used when the
-     * object ownership is transferred to another smart pointer or manually
-     * managed by the caller. The original object must be properly deleted at
-     * the end of its life cycle to avoid resource leaks.
-     */
-    void release() { released_ = true; }
-
-   private:
-    bool released_{false};
-  };
-
-  using UniquePtr = std::unique_ptr<AsyncSocket, ReleasableDestructor>;
+  using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
 
   class ConnectCallback {
    public:
