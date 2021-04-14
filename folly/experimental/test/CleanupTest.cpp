@@ -92,38 +92,28 @@ TEST(CleanupTest, EnsureCleanupAfterTaskBasic) {
 }
 
 TEST(CleanupTest, Errors) {
-  auto runTest = [](auto releaseCleanedFunc) {
-    auto cleaned = std::make_unique<Cleaned>();
+  auto cleaned = std::make_unique<Cleaned>();
 
-    cleaned->addCleanup(folly::makeSemiFuture().deferValue(
-        [](folly::Unit) { EXPECT_TRUE(false); }));
+  cleaned->addCleanup(folly::makeSemiFuture().deferValue(
+      [](folly::Unit) { EXPECT_TRUE(false); }));
 
-    cleaned->addCleanup(folly::makeSemiFuture<folly::Unit>(
-        std::runtime_error("failed cleanup")));
+  cleaned->addCleanup(
+      folly::makeSemiFuture<folly::Unit>(std::runtime_error("failed cleanup")));
 
-    releaseCleanedFunc(cleaned);
-  };
-
+  folly::ManualExecutor exec;
   EXPECT_EXIT(
-      runTest([](auto& cleaned) {
-        folly::ManualExecutor exec;
-        cleaned->cleanup()
-            .within(1s)
-            .via(folly::getKeepAliveToken(exec))
-            .getVia(&exec);
-      }),
+      cleaned->cleanup()
+          .within(1s)
+          .via(folly::getKeepAliveToken(exec))
+          .getVia(&exec),
       testing::KilledBySignal(SIGABRT),
       ".*noexcept.*");
 
   EXPECT_EXIT(
-      runTest([](auto& cleaned) { cleaned.reset(); }),
-      testing::KilledBySignal(SIGABRT),
-      ".*destructed.*");
+      cleaned.reset(), testing::KilledBySignal(SIGABRT), ".*destructed.*");
 
-  runTest([](auto& cleaned) {
-    // must leak the Cleaned as its destructor will abort.
-    (void)cleaned.release();
-  });
+  // must leak the Cleaned as its destructor will abort.
+  (void)cleaned.release();
 }
 
 TEST(CleanupTest, Invariants) {
