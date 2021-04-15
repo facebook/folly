@@ -24,21 +24,21 @@
 #include <folly/Preprocessor.h>
 #include <folly/lang/CArray.h>
 
-#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)  \
-  if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&     \
-      !static_cast<bool>(expr)) {                              \
-    static constexpr ::folly::detail::safe_assert_arg          \
-        __folly_detail_safe_assert_arg{                        \
-            FOLLY_PP_STRINGIZE(expr_s),                        \
-            __FILE__,                                          \
-            __LINE__,                                          \
-            __PRETTY_FUNCTION__,                               \
-            ::folly::detail::safe_assert_msg_types<decltype(   \
-                ::folly::detail::safe_assert_msg_types_seq_of( \
-                    __VA_ARGS__))>::value.data};               \
-    ::folly::detail::safe_assert_terminate<p>(                 \
-        __folly_detail_safe_assert_arg, __VA_ARGS__);          \
-  }                                                            \
+#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)                  \
+  if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&                     \
+      !static_cast<bool>(expr)) {                                              \
+    constexpr auto __folly_detail_safe_assert_fun = __PRETTY_FUNCTION__;       \
+    constexpr ::folly::detail::safe_assert_arg __folly_detail_safe_assert_arg{ \
+        FOLLY_PP_STRINGIZE(expr_s),                                            \
+        __FILE__,                                                              \
+        __LINE__,                                                              \
+        __folly_detail_safe_assert_fun,                                        \
+        ::folly::detail::safe_assert_msg_types<decltype(                       \
+            ::folly::detail::safe_assert_msg_types_seq_of(                     \
+                __VA_ARGS__))>::value.data};                                   \
+    ::folly::detail::safe_assert_terminate<p>(                                 \
+        __folly_detail_safe_assert_arg, __VA_ARGS__);                          \
+  }                                                                            \
   [] {}()
 
 //  FOLLY_SAFE_CHECK
