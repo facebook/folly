@@ -20,7 +20,6 @@
 #include <cstring>
 
 #include <folly/lang/CString.h>
-#include <folly/portability/Config.h>
 
 #if __has_include(<cxxabi.h>)
 #include <cxxabi.h>
@@ -39,22 +38,18 @@
 
 //  try to find cxxabi demangle
 //
-//  prefer using a weak symbol
+//  prefer using a weakref
 
-#if FOLLY_HAVE_WEAK_SYMBOLS
+#if __has_include(<cxxabi.h>)
 
-namespace __cxxabiv1 {
-extern "C" FOLLY_ATTR_WEAK char* __cxa_demangle(
+[[gnu::weakref("__cxa_demangle")]] static char* cxxabi_demangle(
     char const*, char*, size_t*, int*);
-}
 
-static auto const cxxabi_demangle = __cxxabiv1::__cxa_demangle;
-
-#else // FOLLY_HAVE_WEAK_SYMBOLS
+#else // __has_include(<cxxabi.h>)
 
 static constexpr auto cxxabi_demangle = static_cast<char* (*)(...)>(nullptr);
 
-#endif // FOLLY_HAVE_WEAK_SYMBOLS
+#endif // __has_include(<cxxabi.h>)
 
 //  try to find liberty demangle
 //
