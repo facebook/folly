@@ -168,7 +168,16 @@ void escapeString(
  */
 std::string stripComments(StringPiece jsonC);
 
+// Parse error can be thrown when deserializing json (ie., converting string
+// into json).
 class FOLLY_EXPORT parse_error : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
+};
+
+// Print error can be thrown when serializing json (ie., converting json into
+// string).
+class FOLLY_EXPORT print_error : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
 };

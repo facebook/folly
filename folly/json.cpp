@@ -63,11 +63,11 @@ struct Printer {
       case dynamic::DOUBLE:
         if (!opts_.allow_nan_inf) {
           if (std::isnan(v.asDouble())) {
-            throw json::parse_error(
+            throw json::print_error(
                 "folly::toJson: JSON object value was a NaN");
           }
           if (std::isinf(v.asDouble())) {
-            throw json::parse_error(
+            throw json::print_error(
                 "folly::toJson: JSON object value was an INF");
           }
         }
@@ -107,7 +107,7 @@ struct Printer {
  private:
   void printKV(const std::pair<const dynamic, dynamic>& p) const {
     if (!opts_.allow_non_string_keys && !p.first.isString()) {
-      throw json::parse_error(
+      throw json::print_error(
           "folly::toJson: JSON object key was not a "
           "string");
     }

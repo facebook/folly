@@ -26,6 +26,7 @@ using folly::parseJson;
 using folly::parseJsonWithMetadata;
 using folly::toJson;
 using folly::json::parse_error;
+using folly::json::print_error;
 
 TEST(Json, Unicode) {
   auto val = parseJson(u8"\"I \u2665 UTF-8\"");
@@ -389,7 +390,7 @@ TEST(Json, Produce) {
 
   // We're not allowed to have non-string keys in json.
   EXPECT_THROW(
-      toJson(dynamic::object("abc", "xyz")(42.33, "asd")), parse_error);
+      toJson(dynamic::object("abc", "xyz")(42.33, "asd")), print_error);
 
   // Check Infinity/Nan
   folly::json::serialization_opts opts;
