@@ -300,10 +300,28 @@ void AsyncServerSocket::useExistingSocket(NetworkSocket fd) {
 }
 
 void AsyncServerSocket::bindSocket(
-    NetworkSocket fd, const SocketAddress& address, bool isExistingSocket) {
+    NetworkSocket fd,
+    const SocketAddress& address,
+    bool isExistingSocket,
+    const std::string& ifName) {
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
   auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
+
+#if defined(__linux__)
+  if (!ifName.empty() &&
+      netops::setsockopt(
+          fd, SOL_SOCKET, SO_BINDTODEVICE, ifName.c_str(), ifName.length())) {
+    auto errnoCopy = errno;
+    if (!isExistingSocket) {
+      closeNoInt(fd);
+    }
+    folly::throwSystemErrorExplicit(
+        errnoCopy, "failed to bind to device: " + ifName);
+  }
+#else
+  (void)ifName;
+#endif
 
   if (netops::bind(fd, saddr, address.getActualSize()) != 0) {
     if (errno != EINPROGRESS) {
@@ -350,7 +368,8 @@ bool AsyncServerSocket::setZeroCopy(bool enable) {
   return false;
 }
 
-void AsyncServerSocket::bind(const SocketAddress& address) {
+void AsyncServerSocket::bindInternal(
+    const SocketAddress& address, const std::string& ifName) {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
@@ -373,7 +392,16 @@ void AsyncServerSocket::bind(const SocketAddress& address) {
     throw std::invalid_argument("Attempted to bind to multiple fds");
   }
 
-  bindSocket(fd, address, !sockets_.empty());
+  bindSocket(fd, address, !sockets_.empty(), ifName);
+}
+
+void AsyncServerSocket::bind(const SocketAddress& address) {
+  bindInternal(address, "");
+}
+
+void AsyncServerSocket::bind(
+    const SocketAddress& address, const std::string& ifName) {
+  bindInternal(address, ifName);
 }
 
 void AsyncServerSocket::bind(
@@ -389,7 +417,28 @@ void AsyncServerSocket::bind(
     SocketAddress address(ipAddress.toFullyQualified(), port);
     auto fd = createSocket(address.getFamily());
 
-    bindSocket(fd, address, false);
+    bindSocket(fd, address, false, "");
+  }
+  if (sockets_.empty()) {
+    throw std::runtime_error(
+        "did not bind any async server socket for port and addresses");
+  }
+}
+
+void AsyncServerSocket::bind(
+    const std::vector<IPAddressIfNamePair>& addresses, uint16_t port) {
+  if (addresses.empty()) {
+    throw std::invalid_argument("No ip addresses were provided");
+  }
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
+
+  for (const auto& addr : addresses) {
+    SocketAddress address(addr.first.toFullyQualified(), port);
+    auto fd = createSocket(address.getFamily());
+
+    bindSocket(fd, address, false, addr.second);
   }
   if (sockets_.empty()) {
     throw std::runtime_error(

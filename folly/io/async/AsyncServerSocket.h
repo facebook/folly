@@ -338,6 +338,8 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    */
   bool setZeroCopy(bool enable);
 
+  using IPAddressIfNamePair = std::pair<IPAddress, std::string>;
+
   /**
    * Bind to the specified address.
    *
@@ -348,6 +350,15 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   virtual void bind(const SocketAddress& address);
 
   /**
+   * Bind to the specified address/if name
+   *
+   * This must be called from the primary EventBase thread.
+   *
+   * Throws AsyncSocketException on error.
+   */
+  virtual void bind(const SocketAddress& address, const std::string& ifName);
+
+  /**
    * Bind to the specified port for the specified addresses.
    *
    * This must be called from the primary EventBase thread.
@@ -355,6 +366,16 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * Throws AsyncSocketException on error.
    */
   virtual void bind(const std::vector<IPAddress>& ipAddresses, uint16_t port);
+
+  /**
+   * Bind to the specified port for the specified addresses/if names.
+   *
+   * This must be called from the primary EventBase thread.
+   *
+   * Throws AsyncSocketException on error.
+   */
+  virtual void bind(
+      const std::vector<IPAddressIfNamePair>& addresses, uint16_t port);
 
   /**
    * Bind to the specified port.
@@ -829,8 +850,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
   NetworkSocket createSocket(int family);
   void setupSocket(NetworkSocket fd, int family);
+  void bindInternal(const SocketAddress& address, const std::string& ifName);
   void bindSocket(
-      NetworkSocket fd, const SocketAddress& address, bool isExistingSocket);
+      NetworkSocket fd,
+      const SocketAddress& address,
+      bool isExistingSocket,
+      const std::string& ifName);
   void dispatchSocket(NetworkSocket socket, SocketAddress&& address);
   void dispatchError(const char* msg, int errnoValue);
   void enterBackoff();
