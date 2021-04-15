@@ -23,8 +23,19 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
+#include <folly/lang/Keep.h>
 
 using namespace folly;
+
+extern "C" FOLLY_KEEP size_t
+check_access_spreader_atomic_current(size_t numStripes) {
+  return AccessSpreader<>::current(numStripes);
+}
+
+extern "C" FOLLY_KEEP size_t
+check_access_spreader_atomic_cached_current(size_t numStripes) {
+  return AccessSpreader<>::cachedCurrent(numStripes);
+}
 
 #define DECLARE_SPREADER_TAG(tag, locality, func)      \
   namespace {                                          \
