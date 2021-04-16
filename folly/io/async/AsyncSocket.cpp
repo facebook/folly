@@ -715,7 +715,8 @@ void AsyncSocket::connect(
     const folly::SocketAddress& address,
     int timeout,
     const SocketOptionMap& options,
-    const folly::SocketAddress& bindAddr) noexcept {
+    const folly::SocketAddress& bindAddr,
+    const std::string& ifName) noexcept {
   DestructorGuard dg(this);
   eventBase_->dcheckIsInEventBaseThread();
 
@@ -797,6 +798,26 @@ void AsyncSocket::connect(
 
     VLOG(5) << "AsyncSocket::connect(this=" << this << ", evb=" << eventBase_
             << ", fd=" << fd_ << ", host=" << address.describe().c_str();
+
+    // bind the socket to the interface
+#if defined(__linux__)
+    if (!ifName.empty() &&
+        netops_->setsockopt(
+            fd_,
+            SOL_SOCKET,
+            SO_BINDTODEVICE,
+            ifName.c_str(),
+            ifName.length())) {
+      auto errnoCopy = errno;
+      doClose();
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to bind to device: " + ifName,
+          errnoCopy);
+    }
+#else
+    (void)ifName;
+#endif
 
     // bind the socket
     if (bindAddr != anyAddress()) {

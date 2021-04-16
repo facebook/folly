@@ -491,7 +491,8 @@ class AsyncSocket : public AsyncTransport {
       const folly::SocketAddress& address,
       int timeout = 0,
       const SocketOptionMap& options = emptySocketOptionMap,
-      const folly::SocketAddress& bindAddr = anyAddress()) noexcept;
+      const folly::SocketAddress& bindAddr = anyAddress(),
+      const std::string& ifName = "") noexcept;
 
   void connect(
       ConnectCallback* callback,

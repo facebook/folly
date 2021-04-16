@@ -721,9 +721,17 @@ void AsyncSSLSocket::connect(
     const folly::SocketAddress& address,
     int timeout,
     const SocketOptionMap& options,
-    const folly::SocketAddress& bindAddr) noexcept {
+    const folly::SocketAddress& bindAddr,
+    const std::string& ifName) noexcept {
   auto timeoutChrono = std::chrono::milliseconds(timeout);
-  connect(callback, address, timeoutChrono, timeoutChrono, options, bindAddr);
+  connect(
+      callback,
+      address,
+      timeoutChrono,
+      timeoutChrono,
+      options,
+      bindAddr,
+      ifName);
 }
 
 void AsyncSSLSocket::connect(
@@ -732,7 +740,8 @@ void AsyncSSLSocket::connect(
     std::chrono::milliseconds connectTimeout,
     std::chrono::milliseconds totalConnectTimeout,
     const SocketOptionMap& options,
-    const folly::SocketAddress& bindAddr) noexcept {
+    const folly::SocketAddress& bindAddr,
+    const std::string& ifName) noexcept {
   assert(!server_);
   assert(state_ == StateEnum::UNINIT);
   assert(sslState_ == STATE_UNINIT || sslState_ == STATE_UNENCRYPTED);
@@ -744,7 +753,12 @@ void AsyncSSLSocket::connect(
     callback = allocatedConnectCallback_;
   }
   AsyncSocket::connect(
-      callback, address, int(connectTimeout.count()), options, bindAddr);
+      callback,
+      address,
+      int(connectTimeout.count()),
+      options,
+      bindAddr,
+      ifName);
 }
 
 void AsyncSSLSocket::cancelConnect() {
