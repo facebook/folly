@@ -209,13 +209,13 @@ SingletonVault::SingletonVault(Type type) noexcept : type_(type) {
       this,
       /*prepare*/
       [this]() {
-        const auto& singletons = singletons_.unsafeGetUnlocked();
-        const auto& creationOrder = creationOrder_.unsafeGetUnlocked();
+        auto singletons = singletons_.rlock();
+        auto creationOrder = creationOrder_.rlock();
 
-        CHECK_GE(singletons.size(), creationOrder.size());
+        CHECK_GE(singletons->size(), creationOrder->size());
 
-        for (const auto& singletonType : creationOrder) {
-          liveSingletonsPreFork_.insert(singletons.at(singletonType));
+        for (const auto& singletonType : *creationOrder) {
+          liveSingletonsPreFork_.insert(singletons->at(singletonType));
         }
 
         return true;
