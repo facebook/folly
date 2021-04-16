@@ -32,10 +32,8 @@
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
-#include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
-#include <folly/system/ThreadId.h>
 
 #if !FOLLY_MOBILE && defined(FOLLY_TLS)
 #define FOLLY_CL_USE_FOLLY_TLS 1
@@ -154,7 +152,7 @@ struct SequentialThreadId {
 #endif
 
 struct HashingThreadId {
-  static unsigned get() { return hash::twang_32from64(getCurrentThreadID()); }
+  static unsigned get();
 };
 
 /// A class that lazily binds a unique (for each implementation of Atom)

@@ -28,6 +28,8 @@
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
+#include <folly/hash/Hash.h>
+#include <folly/system/ThreadId.h>
 
 namespace folly {
 
@@ -326,6 +328,11 @@ unsigned SequentialThreadId::get() {
   return FOLLY_LIKELY(local) ? local : (local = ++global);
 }
 #endif
+
+/////////////// HashingThreadId
+unsigned HashingThreadId::get() {
+  return hash::twang_32from64(getCurrentThreadID());
+}
 
 namespace detail {
 
