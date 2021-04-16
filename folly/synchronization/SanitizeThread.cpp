@@ -16,72 +16,102 @@
 
 #include <folly/synchronization/SanitizeThread.h>
 
+#include <folly/lang/Extern.h>
+
 // abseil uses size_t for size params while other FB code and libraries use
 // long, so it is helpful to keep these declarations out of widely-included
 // header files.
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockCreate(
+extern "C" void AnnotateRWLockCreate(
     const char* f, int l, const volatile void* addr);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockCreateStatic(
+extern "C" void AnnotateRWLockCreateStatic(
     const char* f, int l, const volatile void* addr);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockDestroy(
+extern "C" void AnnotateRWLockDestroy(
     const char* f, int l, const volatile void* addr);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockAcquired(
+extern "C" void AnnotateRWLockAcquired(
     const char* f, int l, const volatile void* addr, long w);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateRWLockReleased(
+extern "C" void AnnotateRWLockReleased(
     const char* f, int l, const volatile void* addr, long w);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateBenignRaceSized(
+extern "C" void AnnotateBenignRaceSized(
     const char* f,
     int l,
     const volatile void* addr,
     long size,
     const char* desc);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreReadsBegin(const char* f, int l);
+extern "C" void AnnotateIgnoreReadsBegin(const char* f, int l);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreReadsEnd(const char* f, int l);
+extern "C" void AnnotateIgnoreReadsEnd(const char* f, int l);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreWritesBegin(const char* f, int l);
+extern "C" void AnnotateIgnoreWritesBegin(const char* f, int l);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreWritesEnd(const char* f, int l);
+extern "C" void AnnotateIgnoreWritesEnd(const char* f, int l);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreSyncBegin(const char* f, int l);
+extern "C" void AnnotateIgnoreSyncBegin(const char* f, int l);
 
-extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreSyncEnd(const char* f, int l);
-
-#ifdef _MSC_VER
-#define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) [](...) {}(__VA_ARGS__)
-#else
-#define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) name(__VA_ARGS__)
-#endif
+extern "C" void AnnotateIgnoreSyncEnd(const char* f, int l);
 
 namespace folly {
 namespace detail {
 
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_rwlock_create_access_v, AnnotateRWLockCreate);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_rwlock_create_static_access_v, AnnotateRWLockCreateStatic);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_rwlock_destroy_access_v, AnnotateRWLockDestroy);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_rwlock_acquired_access_v, AnnotateRWLockAcquired);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_rwlock_released_access_v, AnnotateRWLockReleased);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_benign_race_sized_access_v, AnnotateBenignRaceSized);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_ignore_reads_begin_access_v, AnnotateIgnoreReadsBegin);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_ignore_reads_end_access_v, AnnotateIgnoreReadsEnd);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_ignore_writes_begin_access_v, AnnotateIgnoreWritesBegin);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_ignore_writes_end_access_v, AnnotateIgnoreWritesEnd);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_ignore_sync_begin_access_v, AnnotateIgnoreSyncBegin);
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    annotate_ignore_sync_end_access_v, AnnotateIgnoreSyncEnd);
+
 void annotate_rwlock_create_impl(
     void const volatile* const addr, char const* const f, int const l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockCreate, f, l, addr);
-  }
+  constexpr auto fun = annotate_rwlock_create_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l, addr) : void();
 }
 
 void annotate_rwlock_create_static_impl(
     void const volatile* const addr, char const* const f, int const l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockCreateStatic, f, l, addr);
-  }
+  constexpr auto fun =
+      annotate_rwlock_create_static_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l, addr) : void();
 }
 
 void annotate_rwlock_destroy_impl(
     void const volatile* const addr, char const* const f, int const l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockDestroy, f, l, addr);
-  }
+  constexpr auto fun = annotate_rwlock_destroy_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l, addr) : void();
 }
 
 void annotate_rwlock_acquired_impl(
@@ -89,10 +119,8 @@ void annotate_rwlock_acquired_impl(
     annotate_rwlock_level const w,
     char const* const f,
     int const l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(
-        AnnotateRWLockAcquired, f, l, addr, static_cast<long>(w));
-  }
+  constexpr auto fun = annotate_rwlock_acquired_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l, addr, static_cast<long>(w)) : void();
 }
 
 void annotate_rwlock_try_acquired_impl(
@@ -111,10 +139,8 @@ void annotate_rwlock_released_impl(
     annotate_rwlock_level const w,
     char const* const f,
     int const l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(
-        AnnotateRWLockReleased, f, l, addr, static_cast<long>(w));
-  }
+  constexpr auto fun = annotate_rwlock_released_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l, addr, static_cast<long>(w)) : void();
 }
 
 void annotate_benign_race_sized_impl(
@@ -123,46 +149,38 @@ void annotate_benign_race_sized_impl(
     const char* desc,
     const char* f,
     int l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(
-        AnnotateBenignRaceSized, f, l, addr, size, desc);
-  }
+  constexpr auto fun = annotate_benign_race_sized_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l, addr, size, desc) : void();
 }
 
 void annotate_ignore_reads_begin_impl(const char* f, int l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateIgnoreReadsBegin, f, l);
-  }
+  constexpr auto fun = annotate_ignore_reads_begin_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l) : void();
 }
 
 void annotate_ignore_reads_end_impl(const char* f, int l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateIgnoreReadsEnd, f, l);
-  }
+  constexpr auto fun = annotate_ignore_reads_end_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l) : void();
 }
 
 void annotate_ignore_writes_begin_impl(const char* f, int l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateIgnoreWritesBegin, f, l);
-  }
+  constexpr auto fun = annotate_ignore_writes_begin_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l) : void();
 }
 
 void annotate_ignore_writes_end_impl(const char* f, int l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateIgnoreWritesEnd, f, l);
-  }
+  constexpr auto fun = annotate_ignore_writes_end_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l) : void();
 }
 
 void annotate_ignore_sync_begin_impl(const char* f, int l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateIgnoreSyncBegin, f, l);
-  }
+  constexpr auto fun = annotate_ignore_sync_begin_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l) : void();
 }
 
 void annotate_ignore_sync_end_impl(const char* f, int l) {
-  if (kIsSanitizeThread) {
-    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateIgnoreSyncEnd, f, l);
-  }
+  constexpr auto fun = annotate_ignore_sync_end_access_v<kIsSanitizeThread>;
+  return fun ? fun(f, l) : void();
 }
 } // namespace detail
 } // namespace folly

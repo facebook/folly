@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/lang/Extern.h>
 #include <folly/memory/SanitizeAddress.h>
+
+#include <folly/lang/Extern.h>
 
 //  Address Sanitizer interface may be found at:
 //    https://github.com/llvm-mirror/compiler-rt/blob/master/include/sanitizer/asan_interface.h
