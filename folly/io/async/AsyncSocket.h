@@ -1280,6 +1280,7 @@ class AsyncSocket : public AsyncTransport {
   virtual void checkForImmediateRead() noexcept;
   virtual void handleInitialReadWrite() noexcept;
   virtual void prepareReadBuffer(void** buf, size_t* buflen);
+  virtual size_t prepareReadBuffers(struct iovec* iovs, size_t num);
   virtual size_t handleErrMessages() noexcept;
   virtual void handleRead() noexcept;
   virtual void handleWrite() noexcept;
@@ -1287,7 +1288,7 @@ class AsyncSocket : public AsyncTransport {
   void timeoutExpired() noexcept;
 
   /**
-   * Attempt to read from the socket.
+   * Attempt to read from the socket into a single buffer
    *
    * @param buf      The buffer to read data into.
    * @param buflen   The length of the buffer.
@@ -1295,6 +1296,16 @@ class AsyncSocket : public AsyncTransport {
    * @return Returns a read result. See read result for details.
    */
   virtual ReadResult performRead(void** buf, size_t* buflen, size_t* offset);
+
+  /**
+   * Attempt to read from the socket into an iovec array
+   *
+   * @param iovs     The iovec array to read data into.
+   * @param num      The number of elements in the iovec array
+   *
+   * @return Returns a read result. See read result for details.
+   */
+  virtual ReadResult performReadv(struct iovec* iovs, size_t num);
 
   /**
    * Populate an iovec array from an IOBuf and attempt to write it.
@@ -1401,6 +1412,9 @@ class AsyncSocket : public AsyncTransport {
    * @return true iff the update is successful.
    */
   bool updateEventRegistration(uint16_t enable, uint16_t disable);
+
+  // read methods
+  ReadResult performReadInternal(struct iovec* iovs, size_t num);
 
   // Actually close the file descriptor and set it to -1 so we don't
   // accidentally close it again.

@@ -152,17 +152,28 @@ class AsyncReader {
  public:
   class ReadCallback {
    public:
+    enum class ReadMode : uint8_t {
+      ReadBuffer = 0,
+      ReadVec = 1,
+    };
+
     virtual ~ReadCallback() = default;
 
+    ReadMode getReadMode() const noexcept { return readMode_; }
+
+    void setReadMode(ReadMode readMode) noexcept { readMode_ = readMode; }
+
     /**
-     * When data becomes available, getReadBuffer() will be invoked to get the
-     * buffer into which data should be read.
+     * When data becomes available, getReadBuffer()/getReadBuffers() will be
+     * invoked to get the buffer/buffers into which data should be read.
      *
-     * This method allows the ReadCallback to delay buffer allocation until
+     * These methods allows the ReadCallback to delay buffer allocation until
      * data becomes available.  This allows applications to manage large
      * numbers of idle connections, without having to maintain a separate read
      * buffer for each idle connection.
-     *
+     */
+
+    /**
      * It is possible that in some cases, getReadBuffer() may be called
      * multiple times before readDataAvailable() is invoked.  In this case, the
      * data will be written to the buffer returned from the most recent call to
@@ -188,8 +199,36 @@ class AsyncReader {
     virtual void getReadBuffer(void** bufReturn, size_t* lenReturn) = 0;
 
     /**
+     * It is possible that in some cases, getReadBuffers() may be called
+     * multiple times before readDataAvailable() is invoked.  In this case, the
+     * data will be written to the buffer returned from the most recent call to
+     * readDataAvailable().  If the previous calls to readDataAvailable()
+     * returned different buffers, the ReadCallback is responsible for ensuring
+     * that they are not leaked.
+     *
+     * If getReadBuffera() throws an exception or returns a zero length array
+     * the ReadCallback will be uninstalled and its readError() method will be
+     * invoked.
+     *
+     * getReadBuffers() is not allowed to change the transport state before it
+     * returns.  (For example, it should never uninstall the read callback, or
+     * set a different read callback.)
+     *
+     * @param iovs      getReadBuffers() will copy up to num iovec entries into
+     *                  iovs. iovs cannot be nullptr unless num is 0
+     * @param num       number of iovec entries in the iovs array
+     * @return          number of entried copied to the iovs array
+     *                  this is less than or equal to num
+     */
+    virtual size_t getReadBuffers(
+        FOLLY_MAYBE_UNUSED struct iovec* iovs, FOLLY_MAYBE_UNUSED size_t num) {
+      return 0;
+    }
+
+    /**
      * readDataAvailable() will be invoked when data has been successfully read
-     * into the buffer returned by the last call to getReadBuffer().
+     * into the buffer(s) returned by the last call to
+     * getReadBuffer()/getReadBuffers()
      *
      * The read callback remains installed after readDataAvailable() returns.
      * It must be explicitly uninstalled to stop receiving read events.
@@ -271,6 +310,9 @@ class AsyncReader {
      * @param ex        An exception describing the error that occurred.
      */
     virtual void readErr(const AsyncSocketException& ex) noexcept = 0;
+
+   protected:
+    ReadMode readMode_{ReadMode::ReadBuffer};
   };
 
   // Read methods that aren't part of AsyncTransport.

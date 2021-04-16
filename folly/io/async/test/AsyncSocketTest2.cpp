@@ -474,6 +474,50 @@ TEST_P(AsyncSocketConnectTest, ConnectAndRead) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
+TEST_P(AsyncSocketConnectTest, ConnectAndReadv) {
+  TestServer server;
+
+  // connect()
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  if (GetParam() == TFOState::ENABLED) {
+    socket->enableTFO();
+  }
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+
+  static constexpr size_t kBuffSize = 10;
+  static constexpr size_t kLen = 40;
+  static constexpr size_t kDataSize = 128;
+
+  ReadvCallback rcb(kBuffSize, kLen);
+  socket->setReadCB(&rcb);
+
+  if (GetParam() == TFOState::ENABLED) {
+    // Trigger a connection
+    socket->writeChain(nullptr, IOBuf::copyBuffer("hey"));
+  }
+
+  // Even though we haven't looped yet, we should be able to accept
+  // the connection and send data to it.
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+  std::string data(kDataSize, 'A');
+  acceptedSocket->write(
+      reinterpret_cast<unsigned char*>(data.data()), data.size());
+  acceptedSocket->flush();
+  acceptedSocket->close();
+
+  // Loop, although there shouldn't be anything to do.
+  evb.loop();
+
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+  rcb.verifyData(data);
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
+}
+
 /**
  * Test installing a read callback and then closing immediately before the
  * connect attempt finishes.

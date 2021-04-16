@@ -2271,20 +2271,44 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
 
 AsyncSocket::ReadResult AsyncSocket::performRead(
     void** buf, size_t* buflen, size_t* /* offset */) {
-  VLOG(5) << "AsyncSocket::performRead() this=" << this << ", buf=" << *buf
-          << ", buflen=" << *buflen;
+  struct iovec iov;
+
+  // Data buffer pointer and length
+  iov.iov_base = *buf;
+  iov.iov_len = *buflen;
+
+  return performReadInternal(&iov, 1);
+}
+
+AsyncSocket::ReadResult AsyncSocket::performReadv(
+    struct iovec* iovs, size_t num) {
+  return performReadInternal(iovs, num);
+}
+
+AsyncSocket::ReadResult AsyncSocket::performReadInternal(
+    struct iovec* iovs, size_t num) {
+  VLOG(5) << "AsyncSocket::performReadInternal() this=" << this
+          << ", iovs=" << iovs << ", num=" << num;
+
+  if (!num) {
+    return ReadResult(READ_ERROR);
+  }
 
   if (preReceivedData_ && !preReceivedData_->empty()) {
-    VLOG(5) << "AsyncSocket::performRead() this=" << this
+    VLOG(5) << "AsyncSocket::performReadInternal() this=" << this
             << ", reading pre-received data";
 
-    io::Cursor cursor(preReceivedData_.get());
-    auto len = cursor.pullAtMost(*buf, *buflen);
+    ssize_t len = 0;
+    for (size_t i = 0; (i < num) && (!preReceivedData_->empty()); ++i) {
+      io::Cursor cursor(preReceivedData_.get());
+      auto ret = cursor.pullAtMost(iovs[i].iov_base, iovs[i].iov_len);
+      len += ret;
 
-    IOBufQueue queue;
-    queue.append(std::move(preReceivedData_));
-    queue.trimStart(len);
-    preReceivedData_ = queue.move();
+      IOBufQueue queue;
+      queue.append(std::move(preReceivedData_));
+      queue.trimStart(ret);
+      preReceivedData_ = queue.move();
+    }
 
     appBytesReceived_ += len;
     return ReadResult(len);
@@ -2292,36 +2316,35 @@ AsyncSocket::ReadResult AsyncSocket::performRead(
 
   ssize_t bytes = 0;
 
-  // No callback to read ancillary data was set
-  if (readAncillaryDataCallback_ == nullptr) {
-    bytes = netops_->recv(fd_, *buf, *buflen, MSG_DONTWAIT);
-  } else {
-    struct msghdr msg;
-    struct iovec iov;
+  struct msghdr msg;
 
-    // Ancillary data buffer and length
-    msg.msg_control =
-        readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().data();
-    msg.msg_controllen =
-        readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().size();
+  if (readAncillaryDataCallback_ == nullptr && num == 1) {
+    bytes = netops_->recv(fd_, iovs[0].iov_base, iovs[0].iov_len, MSG_DONTWAIT);
+  } else {
+    if (readAncillaryDataCallback_) {
+      // Ancillary data buffer and length
+      msg.msg_control =
+          readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().data();
+      msg.msg_controllen =
+          readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().size();
+    } else {
+      msg.msg_control = nullptr;
+      msg.msg_controllen = 0;
+    }
 
     // Dest address info
     msg.msg_name = nullptr;
     msg.msg_namelen = 0;
 
     // Array of data buffers (scatter/gather)
-    msg.msg_iov = &iov;
-    msg.msg_iovlen = 1;
-
-    // Data buffer pointer and length
-    iov.iov_base = *buf;
-    iov.iov_len = *buflen;
+    msg.msg_iov = iovs;
+    msg.msg_iovlen = num;
 
     bytes = netops::recvmsg(fd_, &msg, 0);
+  }
 
-    if (bytes > 0) {
-      readAncillaryDataCallback_->ancillaryData(msg);
-    }
+  if (readAncillaryDataCallback_ && (bytes > 0)) {
+    readAncillaryDataCallback_->ancillaryData(msg);
   }
 
   if (bytes < 0) {
@@ -2338,9 +2361,15 @@ AsyncSocket::ReadResult AsyncSocket::performRead(
 }
 
 void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) {
-  // no matter what, buffer should be preapared for non-ssl socket
+  // no matter what, buffer should be prepared for non-ssl socket
   CHECK(readCallback_);
   readCallback_->getReadBuffer(buf, buflen);
+}
+
+size_t AsyncSocket::prepareReadBuffers(struct iovec* iovs, size_t num) {
+  // no matter what, buffers should be prepared for non-ssl socket
+  CHECK(readCallback_);
+  return readCallback_->getReadBuffers(iovs, num);
 }
 
 size_t AsyncSocket::handleErrMessages() noexcept {
@@ -2541,12 +2570,22 @@ void AsyncSocket::handleRead() noexcept {
   size_t numReads = maxReadsPerEvent_ ? maxReadsPerEvent_ : size_t(-1);
   EventBase* originalEventBase = eventBase_;
   while (readCallback_ && eventBase_ == originalEventBase && numReads--) {
-    // Get the buffer to read into.
+    auto readMode = readCallback_->getReadMode();
+    // Get the buffer(s) to read into.
     void* buf = nullptr;
-    size_t buflen = 0, offset = 0;
+    size_t buflen = 0, offset = 0, num = 0;
+    static constexpr size_t kNumIov = 16;
+    std::array<struct iovec, kNumIov> iovs;
+
     try {
-      prepareReadBuffer(&buf, &buflen);
-      VLOG(5) << "prepareReadBuffer() buf=" << buf << ", buflen=" << buflen;
+      if (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec) {
+        num = prepareReadBuffers(iovs.data(), iovs.size());
+        VLOG(5) << "prepareReadBuffers() bufs=" << iovs.data()
+                << ", num=" << num;
+      } else {
+        prepareReadBuffer(&buf, &buflen);
+        VLOG(5) << "prepareReadBuffer() buf=" << buf << ", buflen=" << buflen;
+      }
     } catch (const AsyncSocketException& ex) {
       return failRead(__func__, ex);
     } catch (const std::exception& ex) {
@@ -2563,7 +2602,7 @@ void AsyncSocket::handleRead() noexcept {
           "non-exception type");
       return failRead(__func__, ex);
     }
-    if (buf == nullptr || buflen == 0) {
+    if ((num == 0) && (buf == nullptr || buflen == 0)) {
       AsyncSocketException ex(
           AsyncSocketException::BAD_ARGS,
           "ReadCallback::getReadBuffer() returned "
@@ -2572,7 +2611,9 @@ void AsyncSocket::handleRead() noexcept {
     }
 
     // Perform the read
-    auto readResult = performRead(&buf, &buflen, &offset);
+    auto readResult = (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec)
+        ? performReadv(iovs.data(), num)
+        : performRead(&buf, &buflen, &offset);
     auto bytesRead = readResult.readReturn;
     VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got "
             << bytesRead << " bytes";
