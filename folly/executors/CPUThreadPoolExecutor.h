@@ -162,6 +162,13 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   bool tryDecrToStop();
   bool taskShouldStop(folly::Optional<CPUTask>&);
 
+  template <bool withPriority>
+  void addImpl(
+      Func func,
+      int8_t priority,
+      std::chrono::milliseconds expiration,
+      Func expireCallback);
+
   std::unique_ptr<folly::QueueObserverFactory> createQueueObserverFactory();
   QueueObserver* FOLLY_NULLABLE getQueueObserver(int8_t pri);
 

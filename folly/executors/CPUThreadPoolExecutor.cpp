@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/Executor.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 
+#include <atomic>
 #include <folly/Memory.h>
 #include <folly/concurrency/QueueObserver.h>
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
@@ -48,14 +50,11 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
     std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
     std::shared_ptr<ThreadFactory> threadFactory)
-    : ThreadPoolExecutor(
-          numThreads,
-          FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads,
-          std::move(threadFactory)),
-      taskQueue_(taskQueue.release()) {
-  setNumThreads(numThreads);
-  registerThreadPoolExecutor(this);
-}
+    : CPUThreadPoolExecutor(
+          std::make_pair(
+              numThreads, FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads),
+          std::move(taskQueue),
+          std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::pair<size_t, size_t> numThreads,
@@ -65,19 +64,18 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(taskQueue.release()) {
   setNumThreads(numThreads.first);
+  if (numThreads.second == 0) {
+    minThreads_.store(1, std::memory_order_relaxed);
+  }
   registerThreadPoolExecutor(this);
 }
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads, std::shared_ptr<ThreadFactory> threadFactory)
-    : ThreadPoolExecutor(
-          numThreads,
-          FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads,
-          std::move(threadFactory)),
-      taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})) {
-  setNumThreads(numThreads);
-  registerThreadPoolExecutor(this);
-}
+    : CPUThreadPoolExecutor(
+          std::make_pair(
+              numThreads, FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads),
+          std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::pair<size_t, size_t> numThreads,
@@ -86,6 +84,9 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})) {
   setNumThreads(numThreads.first);
+  if (numThreads.second == 0) {
+    minThreads_.store(1, std::memory_order_relaxed);
+  }
   registerThreadPoolExecutor(this);
 }
 
@@ -159,15 +160,7 @@ void CPUThreadPoolExecutor::add(Func func) {
 
 void CPUThreadPoolExecutor::add(
     Func func, std::chrono::milliseconds expiration, Func expireCallback) {
-  CPUTask task{std::move(func), expiration, std::move(expireCallback), 0};
-  if (auto queueObserver = getQueueObserver(0)) {
-    task.queueObserverPayload() =
-        queueObserver->onEnqueued(task.context_.get());
-  }
-  auto result = taskQueue_->add(std::move(task));
-  if (!result.reusedThread) {
-    ensureActiveThreads();
-  }
+  addImpl<false>(std::move(func), 0, expiration, std::move(expireCallback));
 }
 
 void CPUThreadPoolExecutor::addWithPriority(Func func, int8_t priority) {
@@ -179,15 +172,43 @@ void CPUThreadPoolExecutor::add(
     int8_t priority,
     std::chrono::milliseconds expiration,
     Func expireCallback) {
-  CHECK(getNumPriorities() > 0);
+  addImpl<true>(
+      std::move(func), priority, expiration, std::move(expireCallback));
+}
+
+template <bool withPriority>
+void CPUThreadPoolExecutor::addImpl(
+    Func func,
+    int8_t priority,
+    std::chrono::milliseconds expiration,
+    Func expireCallback) {
+  if (withPriority) {
+    CHECK(getNumPriorities() > 0);
+  }
   CPUTask task(
       std::move(func), expiration, std::move(expireCallback), priority);
   if (auto queueObserver = getQueueObserver(priority)) {
     task.queueObserverPayload() =
         queueObserver->onEnqueued(task.context_.get());
   }
-  auto result = taskQueue_->addWithPriority(std::move(task), priority);
-  if (!result.reusedThread) {
+
+  // It's not safe to expect that the executor is alive after a task is added to
+  // the queue (this task could be holding the last KeepAlive and when finished
+  // - it may unblock the executor shutdown).
+  // If we need executor to be alive after adding into the queue, we have to
+  // acquire a KeepAlive.
+  bool mayNeedToAddThreads = minThreads_.load(std::memory_order_relaxed) == 0 ||
+      activeThreads_.load(std::memory_order_relaxed) <
+          maxThreads_.load(std::memory_order_relaxed);
+  folly::Executor::KeepAlive<> ka = mayNeedToAddThreads
+      ? getKeepAliveToken(this)
+      : folly::Executor::KeepAlive<>{};
+
+  auto result = withPriority
+      ? taskQueue_->addWithPriority(std::move(task), priority)
+      : taskQueue_->add(std::move(task));
+
+  if (mayNeedToAddThreads && !result.reusedThread) {
     ensureActiveThreads();
   }
 }
