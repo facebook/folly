@@ -190,6 +190,7 @@ class AsyncGeneratorPromise {
   }
 
   void setExecutor(folly::Executor::KeepAlive<> executor) noexcept {
+    DCHECK(executor);
     executor_ = std::move(executor);
   }
 

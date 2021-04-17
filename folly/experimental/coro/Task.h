@@ -564,6 +564,7 @@ class FOLLY_NODISCARD Task {
 
   void setExecutor(folly::Executor::KeepAlive<>&& e) noexcept {
     DCHECK(coro_);
+    DCHECK(e);
     coro_.promise().executor_ = std::move(e);
   }
 
