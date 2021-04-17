@@ -36,7 +36,7 @@
     if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&      \
         !static_cast<bool>(expr)) {                               \
       FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr auto              \
-          __folly_detail_safe_assert_fun = __PRETTY_FUNCTION__;   \
+          __folly_detail_safe_assert_fun = __func__;              \
       FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr ::folly::detail:: \
           safe_assert_arg __folly_detail_safe_assert_arg{         \
               FOLLY_PP_STRINGIZE(expr_s),                         \
