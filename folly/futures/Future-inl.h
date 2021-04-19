@@ -1908,6 +1908,7 @@ SemiFuture<T> unorderedReduceSemiFuture(It first, It last, T initial, F func) {
       f.setCallback_([ctx, mp = std::move(p), mt = std::move(t)](
                          Executor::KeepAlive<>&&, Try<T>&& v) mutable {
         if (v.hasValue()) {
+          exception_wrapper ew;
           try {
             Fulfill{}(
                 std::move(mp),
@@ -1915,9 +1916,12 @@ SemiFuture<T> unorderedReduceSemiFuture(It first, It last, T initial, F func) {
                     std::move(v.value()),
                     mt.template get<IsTry::value, Arg&&>()));
           } catch (std::exception& e) {
-            mp.setException(exception_wrapper(std::current_exception(), e));
+            ew = exception_wrapper{std::current_exception(), e};
           } catch (...) {
-            mp.setException(exception_wrapper(std::current_exception()));
+            ew = exception_wrapper{std::current_exception()};
+          }
+          if (ew) {
+            mp.setException(std::move(ew));
           }
         } else {
           mp.setTry(std::move(v));
