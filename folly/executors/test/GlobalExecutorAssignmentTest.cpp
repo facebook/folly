@@ -34,7 +34,8 @@ TEST(GlobalExecutorAssignmentTest, GlobalCPUExecutorAsImmutable) {
     b.post();
   };
 
-  {
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations") {
     auto inlineExec = getCPUExecutor();
     EXPECT_EQ(
         dynamic_cast<folly::CPUThreadPoolExecutor*>(inlineExec.get()), nullptr);
@@ -50,4 +51,5 @@ TEST(GlobalExecutorAssignmentTest, GlobalCPUExecutorAsImmutable) {
     b.wait();
     EXPECT_EQ(1, count);
   }
+  FOLLY_POP_WARNING
 }

@@ -67,6 +67,8 @@ TEST(GlobalExecutorTest, GlobalCPUExecutor) {
   auto f = [&]() {};
 
   // Don't explode, we should create the default global CPUExecutor lazily here.
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   getCPUExecutor()->add(f);
 
   {
@@ -80,6 +82,7 @@ TEST(GlobalExecutorTest, GlobalCPUExecutor) {
   // Don't explode, we should restore the default global CPUExecutor because our
   // weak reference to dummy has expired
   getCPUExecutor()->add(f);
+  FOLLY_POP_WARNING
 }
 
 TEST(GlobalExecutorTest, GlobalIOExecutor) {
@@ -92,6 +95,8 @@ TEST(GlobalExecutorTest, GlobalIOExecutor) {
 
   auto f = []() {};
 
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   // Don't explode, we should create the default global IOExecutor lazily here.
   getIOExecutor()->add(f);
 
@@ -106,4 +111,5 @@ TEST(GlobalExecutorTest, GlobalIOExecutor) {
   // Don't explode, we should restore the default global IOExecutor because our
   // weak reference to dummy has expired
   getIOExecutor()->add(f);
+  FOLLY_POP_WARNING
 }

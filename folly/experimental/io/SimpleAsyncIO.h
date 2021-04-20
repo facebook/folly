@@ -74,7 +74,8 @@ class SimpleAsyncIO : public EventHandler {
   struct Config {
     Config()
         : maxRequests_(1000),
-          completionExecutor_(getKeepAliveToken(getCPUExecutor().get())),
+          completionExecutor_(
+              getKeepAliveToken(getUnsafeMutableGlobalCPUExecutor().get())),
           mode_(AIO),
           evb_(nullptr) {}
     Config& setMaxRequests(size_t maxRequests) {
