@@ -71,8 +71,14 @@ struct CachedCurrentTag {};
 } // namespace
 namespace folly {
 template <>
-size_t AccessSpreader<CachedCurrentTag>::current(size_t numStripes) {
-  return AccessSpreader<std::atomic>::cachedCurrent(numStripes);
+const CacheLocality& CacheLocality::system<CachedCurrentTag>() {
+  return CacheLocality::system<>();
+}
+template <>
+size_t AccessSpreader<CachedCurrentTag>::current(
+    size_t numStripes, const GlobalState& state) {
+  auto& alter = reinterpret_cast<const AccessSpreader::GlobalState&>(state);
+  return AccessSpreader::cachedCurrent(numStripes, alter);
 }
 } // namespace folly
 
@@ -83,9 +89,25 @@ BENCHMARK(AccessSpreaderUse, iters) {
   }
 }
 
+BENCHMARK(StateAccessSpreaderUse, iters) {
+  auto& state = AccessSpreader<>::state();
+  for (unsigned long i = 0; i < iters; ++i) {
+    auto x = AccessSpreader<>::current(16, state);
+    folly::doNotOptimizeAway(x);
+  }
+}
+
 BENCHMARK(CachedAccessSpreaderUse, iters) {
   for (unsigned long i = 0; i < iters; ++i) {
     auto x = AccessSpreader<>::cachedCurrent(16);
+    folly::doNotOptimizeAway(x);
+  }
+}
+
+BENCHMARK(StateCachedAccessSpreaderUse, iters) {
+  auto& state = AccessSpreader<>::state();
+  for (unsigned long i = 0; i < iters; ++i) {
+    auto x = AccessSpreader<>::cachedCurrent(16, state);
     folly::doNotOptimizeAway(x);
   }
 }
@@ -102,6 +124,16 @@ BENCHMARK(CachedAccessSpreaderAtomicIncrement, iters) {
   std::array<std::atomic<int>, 64> values;
   for (unsigned long i = 0; i < iters; ++i) {
     auto x = AccessSpreader<>::cachedCurrent(64);
+    ++values[x];
+    folly::doNotOptimizeAway(values[x]);
+  }
+}
+
+BENCHMARK(StateCachedAccessSpreaderAtomicIncrement, iters) {
+  auto& state = AccessSpreader<>::state();
+  std::array<std::atomic<int>, 64> values;
+  for (unsigned long i = 0; i < iters; ++i) {
+    auto x = AccessSpreader<>::cachedCurrent(64, state);
     ++values[x];
     folly::doNotOptimizeAway(values[x]);
   }

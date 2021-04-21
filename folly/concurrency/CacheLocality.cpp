@@ -62,8 +62,17 @@ static CacheLocality getSystemLocalityInfo() {
 
 template <>
 const CacheLocality& CacheLocality::system<std::atomic>() {
-  static auto* cache = new CacheLocality(getSystemLocalityInfo());
-  return *cache;
+  static std::atomic<const CacheLocality*> cache;
+  auto value = cache.load(std::memory_order_acquire);
+  if (value != nullptr) {
+    return *value;
+  }
+  auto next = new CacheLocality(getSystemLocalityInfo());
+  if (cache.compare_exchange_strong(value, next, std::memory_order_acq_rel)) {
+    return *next;
+  }
+  delete next;
+  return *value;
 }
 
 // Each level of cache has sharing sets, which are the set of cpus
@@ -346,43 +355,50 @@ int AccessSpreaderBase::degenerateGetcpu(unsigned* cpu, unsigned* node, void*) {
   return 0;
 }
 
-bool AccessSpreaderBase::initialize(
-    Getcpu::Func& getcpuFunc,
-    Getcpu::Func (&pickGetcpuFunc)(),
-    const CacheLocality& (&system)(),
-    CompactStripeTable& widthAndCpuToStripe) {
-  getcpuFunc = pickGetcpuFunc();
+struct AccessSpreaderStaticInit {
+  static AccessSpreaderStaticInit instance;
+  AccessSpreaderStaticInit() { (void)AccessSpreader<>::current(~size_t(0)); }
+};
+AccessSpreaderStaticInit AccessSpreaderStaticInit::instance;
 
+bool AccessSpreaderBase::initialize(
+    GlobalState& state,
+    Getcpu::Func (&pickGetcpuFunc)(),
+    const CacheLocality& (&system)()) {
+  (void)AccessSpreaderStaticInit::instance; // ODR-use it so it is not dropped
   auto& cacheLocality = system();
   auto n = cacheLocality.numCpus;
   for (size_t width = 0; width <= kMaxCpus; ++width) {
-    auto& row = widthAndCpuToStripe[width];
+    auto& row = state.table[width];
     auto numStripes = std::max(size_t{1}, width);
     for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
       auto index = cacheLocality.localityIndexByCpu[cpu];
       assert(index < n);
       // as index goes from 0..n, post-transform value goes from
       // 0..numStripes
-      row[cpu] = static_cast<CompactStripe>((index * numStripes) / n);
+      row[cpu].store(
+          static_cast<CompactStripe>((index * numStripes) / n),
+          std::memory_order_relaxed);
       assert(row[cpu] < numStripes);
     }
     size_t filled = n;
     while (filled < kMaxCpus) {
       size_t len = std::min(filled, kMaxCpus - filled);
-      std::memcpy(&row[filled], &row[0], len);
+      for (size_t i = 0; i < len; ++i) {
+        row[filled + i].store(
+            row[i].load(std::memory_order_relaxed), std::memory_order_relaxed);
+      }
       filled += len;
     }
     for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {
       assert(row[cpu] == row[cpu - n]);
     }
   }
+  state.getcpu.exchange(pickGetcpuFunc(), std::memory_order_acq_rel);
   return true;
 }
 
 } // namespace detail
-
-/////////////// AccessSpreader
-template struct AccessSpreader<std::atomic>;
 
 SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
     : allocSize_{allocSize}, sz_(sz) {}

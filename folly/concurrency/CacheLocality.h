@@ -201,16 +201,29 @@ class AccessSpreaderBase {
       kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
       "stripeByCpu element type isn't wide enough");
 
-  using CompactStripeTable = CompactStripe[kMaxCpus + 1][kMaxCpus];
+  using CompactStripeTable = std::atomic<CompactStripe>[kMaxCpus + 1][kMaxCpus];
+
+  struct GlobalState {
+    /// For each level of splitting up to kMaxCpus, maps the cpu (mod
+    /// kMaxCpus) to the stripe.  Rather than performing any inequalities
+    /// or modulo on the actual number of cpus, we just fill in the entire
+    /// array.
+    /// Keep as the first field to avoid extra + in the fastest path.
+    CompactStripeTable table;
+
+    /// Points to the getcpu-like function we are using to obtain the
+    /// current cpu. It should not be assumed that the returned cpu value
+    /// is in range.
+    std::atomic<Getcpu::Func> getcpu; // nullptr -> not initialized
+  };
+  static_assert(
+      std::is_trivial<GlobalState>::value || kCpplibVer, "not trivial");
 
   /// Always claims to be on CPU zero, node zero
   static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*);
 
   static bool initialize(
-      Getcpu::Func&,
-      Getcpu::Func (&)(),
-      const CacheLocality& (&)(),
-      CompactStripeTable&);
+      GlobalState& out, Getcpu::Func (&)(), const CacheLocality& (&)());
 };
 
 } // namespace detail
@@ -251,17 +264,31 @@ class AccessSpreaderBase {
 /// all of the time.
 template <template <typename> class Atom = std::atomic>
 struct AccessSpreader : private detail::AccessSpreaderBase {
+ private:
+  struct GlobalState : detail::AccessSpreaderBase::GlobalState {};
+  static_assert(
+      std::is_trivial<GlobalState>::value || kCpplibVer, "not trivial");
+
+ public:
+  FOLLY_EXPORT static GlobalState& state() {
+    static GlobalState state; // trivial for zero ctor and zero dtor
+    if (FOLLY_UNLIKELY(!state.getcpu.load(std::memory_order_acquire))) {
+      initialize(state);
+    }
+    return state;
+  }
+
   /// Returns the stripe associated with the current CPU.  The returned
   /// value will be < numStripes.
-  static size_t current(size_t numStripes) {
-    // widthAndCpuToStripe[0] will actually work okay (all zeros), but
+  static size_t current(size_t numStripes, const GlobalState& s = state()) {
+    // s.table[0] will actually work okay (all zeros), but
     // something's wrong with the caller
     assert(numStripes > 0);
 
     unsigned cpu;
-    getcpuFunc(&cpu, nullptr, nullptr);
-    return widthAndCpuToStripe[std::min(size_t(kMaxCpus), numStripes)]
-                              [cpu % kMaxCpus];
+    s.getcpu.load(std::memory_order_relaxed)(&cpu, nullptr, nullptr);
+    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpu % kMaxCpus].load(
+        std::memory_order_relaxed);
   }
 
 #ifdef FOLLY_CL_USE_FOLLY_TLS
@@ -271,13 +298,17 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   /// certain small number of calls, which can make the result imprecise, but
   /// it is more efficient (amortized 2 ns on my dev box, compared to 12 ns for
   /// current()).
-  static size_t cachedCurrent(size_t numStripes) {
-    return widthAndCpuToStripe[std::min(size_t(kMaxCpus), numStripes)]
-                              [cpuCache().cpu()];
+  static size_t cachedCurrent(
+      size_t numStripes, const GlobalState& s = state()) {
+    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)]
+        .load(std::memory_order_relaxed);
   }
 #else
   /// Fallback implementation when thread-local storage isn't available.
-  static size_t cachedCurrent(size_t numStripes) { return current(numStripes); }
+  static size_t cachedCurrent(
+      size_t numStripes, const GlobalState& s = state()) {
+    return current(numStripes, s);
+  }
 #endif
 
   /// Returns the maximum stripe value that can be returned under any
@@ -285,27 +316,13 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   static constexpr size_t maxStripeValue() { return kMaxCpus; }
 
  private:
-  /// Points to the getcpu-like function we are using to obtain the
-  /// current cpu.  It should not be assumed that the returned cpu value
-  /// is in range.  We use a static for this so that we can prearrange a
-  /// valid value in the pre-constructed state and avoid the need for a
-  /// conditional on every subsequent invocation (not normally a big win,
-  /// but 20% on some inner loops here).
-  static Getcpu::Func getcpuFunc;
-
-  /// For each level of splitting up to kMaxCpus, maps the cpu (mod
-  /// kMaxCpus) to the stripe.  Rather than performing any inequalities
-  /// or modulo on the actual number of cpus, we just fill in the entire
-  /// array.
-  static CompactStripeTable widthAndCpuToStripe;
-
   /// Caches the current CPU and refreshes the cache every so often.
   class CpuCache {
    public:
-    unsigned cpu() {
+    unsigned cpu(GlobalState const& s) {
       if (UNLIKELY(cachedCpuUses_-- == 0)) {
         unsigned cpu;
-        AccessSpreader::getcpuFunc(&cpu, nullptr, nullptr);
+        s.getcpu.load(std::memory_order_relaxed)(&cpu, nullptr, nullptr);
         cachedCpu_ = cpu % kMaxCpus;
         cachedCpuUses_ = kMaxCachedCpuUses - 1;
       }
@@ -326,8 +343,6 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   }
 #endif
 
-  static bool initialized;
-
   /// Returns the best getcpu implementation for Atom
   static Getcpu::Func pickGetcpuFunc() {
     auto best = Getcpu::resolveVdsoFunc();
@@ -347,29 +362,11 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   // zero stripe.  Once a sanitizer gets smart enough to detect this as
   // a race or undefined behavior, we can annotate it.
 
-  static bool initialize() {
+  static bool initialize(GlobalState& state) {
     return detail::AccessSpreaderBase::initialize(
-        getcpuFunc,
-        pickGetcpuFunc,
-        CacheLocality::system<Atom>,
-        widthAndCpuToStripe);
+        state, pickGetcpuFunc, CacheLocality::system<Atom>);
   }
 };
-
-template <template <typename> class Atom>
-Getcpu::Func AccessSpreader<Atom>::getcpuFunc =
-    AccessSpreader<Atom>::degenerateGetcpu;
-
-template <template <typename> class Atom>
-typename AccessSpreader<Atom>::CompactStripe
-    AccessSpreader<Atom>::widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus] = {};
-
-template <template <typename> class Atom>
-bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
-
-// Suppress this instantiation in other translation units. It is
-// instantiated in CacheLocality.cpp
-extern template struct AccessSpreader<std::atomic>;
 
 /**
  * A simple freelist allocator.  Allocates things of size sz, from
