@@ -28,11 +28,12 @@
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
 
-extern "C" int* check() {
+extern "C" FOLLY_KEEP int* check() {
   return &SingletonThreadLocal<int>::get();
 }
 
