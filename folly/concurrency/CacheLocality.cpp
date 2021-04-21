@@ -105,6 +105,7 @@ static size_t parseLeadingNumber(const std::string& line) {
   return val;
 }
 
+#ifndef _WIN32
 CacheLocality CacheLocality::readFromSysfsTree(
     const std::function<std::string(std::string)>& mapping) {
   // number of equivalence classes per level
@@ -198,6 +199,7 @@ CacheLocality CacheLocality::readFromSysfs() {
     return rv;
   });
 }
+#endif // !_WIN32
 
 static bool procCpuinfoLineRelevant(std::string const& line) {
   return line.size() > 4 && (line[0] == 'p' || line[0] == 'c');

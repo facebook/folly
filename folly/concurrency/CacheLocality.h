@@ -100,6 +100,7 @@ struct CacheLocality {
   template <template <typename> class Atom = std::atomic>
   static const CacheLocality& system();
 
+#ifndef _WIN32
   /// Reads CacheLocality information from a tree structured like
   /// the sysfs filesystem.  The provided function will be evaluated
   /// for each sysfs file that needs to be queried.  The function
@@ -114,6 +115,7 @@ struct CacheLocality {
   /// Reads CacheLocality information from the real sysfs filesystem.
   /// Throws an exception if no cache information can be loaded.
   static CacheLocality readFromSysfs();
+#endif // !_WIN32
 
   /// readFromProcCpuinfo(), except input is taken from memory rather
   /// than the file system.
