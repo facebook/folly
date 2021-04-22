@@ -152,7 +152,7 @@ class ReadMostlyTLObserver;
  * observer changes. This implementation incurs an additional allocation
  * on updates making it less suitable for write-heavy workloads.
  *
- * There are 3 main APIs:
+ * There are 2 main APIs:
  * 1) getSnapshot: Returns a Snapshot containing a const pointer to T and guards
  *    access to it using folly::hazptr_holder. The pointer is only safe to use
  *    while the returned Snapshot object is alive.
@@ -160,10 +160,6 @@ class ReadMostlyTLObserver;
  *    This API is ~3ns faster than getSnapshot but is unsafe for the current
  *    thread to construct any other hazptr holder type objects (hazptr_holder,
  *    hazptr_array and other hazptr_local) while the returned snapshot exists.
- * 3) getUnderlyingObserver: This can be used to trigger dependent observer
- *    updates inside the lambda passed to folly::observer::makeObserver(...).
- *    Using getSnapshot or getLocalSnapshot is not sufficient since they don't
- *    access the underlying observer's snapshot.
  *
  * See folly/synchronization/Hazptr.h for more details on hazptrs.
  */
@@ -397,14 +393,10 @@ class ReadMostlyTLObserver {
 
   Observer<T> observer_;
 
-  Synchronized<ReadMostlyMainPtr<const T>, std::mutex> globalData_;
-  std::atomic<int64_t> globalVersion_;
+  mutable Synchronized<ReadMostlyMainPtr<const T>, std::mutex> globalData_;
+  mutable std::atomic<int64_t> globalVersion_{0};
 
   ThreadLocal<LocalSnapshot> localSnapshot_;
-
-  // Construct callback last so that it's joined before members it may
-  // be accessing are destructed
-  CallbackHandle callback_;
 };
 
 template <typename T>
@@ -432,14 +424,20 @@ class HazptrObserver {
   using LocalSnapshot = HazptrSnapshot<hazptr_local<1>>;
 
   explicit HazptrObserver(Observer<T> observer)
-      : observer_(std::move(observer)),
-        callback_(observer_.addCallback([this](Snapshot<T> snapshot) {
-          auto* newState = new State(std::move(snapshot));
-          auto* oldState = state_.exchange(newState, std::memory_order_acq_rel);
-          if (oldState) {
-            oldState->retire();
-          }
-        })) {}
+      : observer_(
+            makeObserver([o = std::move(observer), alive = alive_, this]() {
+              auto snapshot = o.getSnapshot();
+              auto rAlive = alive->rlock();
+              if (*rAlive) {
+                auto* newState = new State(snapshot);
+                auto* oldState =
+                    state_.exchange(newState, std::memory_order_acq_rel);
+                if (oldState) {
+                  oldState->retire();
+                }
+              }
+              return snapshot.getShared();
+            })) {}
 
   HazptrObserver(const HazptrObserver<T>& r) : HazptrObserver(r.observer_) {}
   HazptrObserver& operator=(const HazptrObserver<T>&) = delete;
@@ -448,17 +446,15 @@ class HazptrObserver {
   HazptrObserver& operator=(HazptrObserver<T>&&) = default;
 
   ~HazptrObserver() {
+    *alive_->wlock() = false;
     auto* state = state_.load(std::memory_order_acquire);
     if (state) {
       state->retire();
     }
   }
 
-  DefaultSnapshot getSnapshot() const { return DefaultSnapshot(state_); }
-
-  LocalSnapshot getLocalSnapshot() const { return LocalSnapshot(state_); }
-
-  Observer<T> getUnderlyingObserver() const { return observer_; }
+  DefaultSnapshot getSnapshot() const;
+  LocalSnapshot getLocalSnapshot() const;
 
  private:
   struct State : public hazptr_obj_base<State> {
@@ -468,8 +464,9 @@ class HazptrObserver {
   };
 
   std::atomic<State*> state_{nullptr};
+  std::shared_ptr<Synchronized<bool>> alive_{
+      std::make_shared<Synchronized<bool>>(true)};
   Observer<T> observer_;
-  CallbackHandle callback_;
 };
 
 /**

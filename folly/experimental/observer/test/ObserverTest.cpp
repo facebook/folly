@@ -17,6 +17,7 @@
 #include <thread>
 
 #include <folly/Singleton.h>
+#include <folly/experimental/observer/Observer.h>
 #include <folly/experimental/observer/SimpleObservable.h>
 #include <folly/experimental/observer/WithJitter.h>
 #include <folly/portability/GTest.h>
@@ -659,8 +660,8 @@ void runHazptrObserverTest(bool useLocalSnapshot) {
   EXPECT_EQ(value(observer), 24);
   EXPECT_EQ(value(observerCopy), 24);
 
-  auto dependentObserver = makeHazptrObserver([=] {
-    return IntHolder{observer.getUnderlyingObserver().getSnapshot()->val_ + 1};
+  auto dependentObserver = makeHazptrObserver([o = observable.getObserver()] {
+    return IntHolder{o.getSnapshot()->val_ + 1};
   });
   EXPECT_EQ(value(dependentObserver), 25);
 
@@ -810,4 +811,52 @@ TEST(SimpleObservable, DefaultConstructible) {
 
   SimpleObservable<Data> observable;
   EXPECT_EQ((**observable.getObserver()).i, 42);
+}
+
+TEST(Observer, MakeObserverUpdatesTracking) {
+  SimpleObservable<int> observable(0);
+  auto slowObserver = makeObserver([o = observable.getObserver()] {
+    std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    return **o;
+  });
+
+  auto tlObserver = makeTLObserver(slowObserver);
+  auto rmtlObserver = makeReadMostlyTLObserver(slowObserver);
+  auto atomicObserver = makeAtomicObserver(slowObserver);
+  auto rmatomicObserver = makeReadMostlyAtomicObserver(slowObserver);
+  auto hazptrObserver = makeHazptrObserver(slowObserver);
+  EXPECT_EQ(0, **tlObserver);
+  EXPECT_EQ(0, *(rmtlObserver.getShared()));
+  EXPECT_EQ(0, *atomicObserver);
+  EXPECT_EQ(0, *rmatomicObserver);
+  EXPECT_EQ(0, *(hazptrObserver.getSnapshot()));
+  EXPECT_EQ(0, *(hazptrObserver.getLocalSnapshot()));
+
+  auto tlObserverCheck = makeObserver([&]() mutable { return **tlObserver; });
+
+  auto rmtlObserverCheck =
+      makeObserver([&]() mutable { return *(rmtlObserver.getShared()); });
+
+  auto atomicObserverCheck =
+      makeObserver([&]() mutable { return *atomicObserver; });
+
+  auto rmatomicObserverCheck =
+      makeObserver([&]() mutable { return *rmatomicObserver; });
+
+  auto hazptrObserverGetSnapshotCheck =
+      makeObserver([&]() mutable { return *(hazptrObserver.getSnapshot()); });
+
+  auto hazptrObserverGetLocalSnapshotCheck = makeObserver(
+      [&]() mutable { return *(hazptrObserver.getLocalSnapshot()); });
+
+  for (size_t i = 1; i <= 10; ++i) {
+    observable.setValue(i);
+    folly::observer_detail::ObserverManager::waitForAllUpdates();
+    EXPECT_EQ(i, **tlObserverCheck);
+    EXPECT_EQ(i, **rmtlObserverCheck);
+    EXPECT_EQ(i, **atomicObserverCheck);
+    EXPECT_EQ(i, **rmatomicObserverCheck);
+    EXPECT_EQ(i, **hazptrObserverGetSnapshotCheck);
+    EXPECT_EQ(i, **hazptrObserverGetLocalSnapshotCheck);
+  }
 }
