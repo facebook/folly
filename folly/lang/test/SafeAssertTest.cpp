@@ -49,6 +49,16 @@ TEST(SafeAssert, AssertionFailure) {
   EXPECT_DEATH(fail(), "Message: hello");
 }
 
+TEST(SafeAssert, AssertionFailureVariadicFormattedArgs) {
+  FOLLY_SAFE_CHECK(true);
+  EXPECT_DEATH( //
+      ([] { FOLLY_SAFE_CHECK(false); }()), //
+      "Assertion failure: false");
+  EXPECT_DEATH( //
+      ([] { FOLLY_SAFE_CHECK(false, 17ull, " < ", 18ull); }()), //
+      "Message: 17 < 18");
+}
+
 TEST(SafeAssert, AssertionFailureErrno) {
   EXPECT_DEATH(
       ([] { FOLLY_SAFE_PCHECK((errno = EINVAL) && false, "hello"); }()),
