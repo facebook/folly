@@ -53,32 +53,6 @@ TEST(RcuTest, Guard) {
   EXPECT_TRUE(del);
 }
 
-TEST(RcuTest, Perf) {
-  long i = FLAGS_iters;
-  auto start = std::chrono::steady_clock::now();
-  while (i-- > 0) {
-    rcu_reader g;
-  }
-  auto diff = std::chrono::steady_clock::now() - start;
-  printf(
-      "Total time %li ns \n",
-      std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() /
-          FLAGS_iters);
-}
-
-TEST(RcuTest, ResetPerf) {
-  long i = FLAGS_iters;
-  auto start = std::chrono::steady_clock::now();
-  while (i-- > 0) {
-    rcu_retire<int>(nullptr, [](int*) {});
-  }
-  auto diff = std::chrono::steady_clock::now() - start;
-  printf(
-      "Total time %li ns \n",
-      std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() /
-          FLAGS_iters);
-}
-
 TEST(RcuTest, SlowReader) {
   std::thread t;
   {

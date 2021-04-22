@@ -19,23 +19,28 @@
 
 using namespace folly;
 
-void runTest(int iters) {
+BENCHMARK(RcuReader, iters) {
   BenchmarkSuspender susp;
 
   { rcu_reader g; }
   susp.dismiss();
 
   // run the test loop
-  for (int i = 0; i < iters; i++) {
+  while (iters--) {
     rcu_reader g;
   }
 }
 
-BENCHMARK_DRAW_LINE();
-BENCHMARK(RcuReader, iters) {
-  runTest(iters);
+BENCHMARK(RcuRetire, iters) {
+  BenchmarkSuspender susp;
+
+  rcu_retire<int>(nullptr, [](int*) {});
+  susp.dismiss();
+
+  while (iters--) {
+    rcu_retire<int>(nullptr, [](int*) {});
+  }
 }
-BENCHMARK_DRAW_LINE();
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
