@@ -59,7 +59,7 @@ namespace detail {
 FOLLY_ERASE auto to_ascii_port_clzll(uint64_t v) {
 #if _MSC_VER
 #if FOLLY_X64
-  return __lzcnt64(v);
+  return static_cast<int>(__lzcnt64(v));
 #else
   return __assume(0), 0;
 #endif
@@ -75,7 +75,7 @@ struct to_ascii_array {
     data_type_ result{};
     Alphabet alpha;
     for (size_t i = 0; i < Base; ++i) {
-      result.data[i] = alpha(i);
+      result.data[i] = alpha(static_cast<uint8_t>(i));
     }
     return result;
   }
