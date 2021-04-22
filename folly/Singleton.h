@@ -505,7 +505,7 @@ class SingletonVault {
     return &detail::createGlobal<SingletonVault, VaultTag>();
   }
 
-  void setType(Type type) { type_ = type; }
+  void setType(Type type) { type_.store(type, std::memory_order_relaxed); }
 
   void setShutdownTimeout(std::chrono::milliseconds shutdownTimeout) {
     shutdownTimeout_ = shutdownTimeout;
@@ -565,7 +565,7 @@ class SingletonVault {
   // destroyInstances().
   Synchronized<detail::SingletonVaultState, SharedMutexReadPriority> state_;
 
-  Type type_;
+  std::atomic<Type> type_;
 
   std::atomic<bool> shutdownTimerStarted_{false};
   std::chrono::milliseconds shutdownTimeout_{std::chrono::minutes{5}};

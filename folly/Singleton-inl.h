@@ -279,7 +279,8 @@ void SingletonHolder<T>::createInstance() {
   creating_thread_.store(std::this_thread::get_id(), std::memory_order_release);
 
   auto state = vault_.state_.rlock();
-  if (vault_.type_ != SingletonVault::Type::Relaxed &&
+  if (vault_.type_.load(std::memory_order_relaxed) !=
+          SingletonVault::Type::Relaxed &&
       !state->registrationComplete) {
     detail::singletonWarnCreateBeforeRegistrationCompleteAndAbort(type());
   }

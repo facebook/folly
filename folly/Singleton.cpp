@@ -239,7 +239,8 @@ void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
   state->check(detail::SingletonVaultState::Type::Running);
 
-  if (UNLIKELY(state->registrationComplete) && type_ == Type::Strict) {
+  if (UNLIKELY(state->registrationComplete) &&
+      type_.load(std::memory_order_relaxed) == Type::Strict) {
     LOG(ERROR) << "Registering singleton after registrationComplete().";
   }
 
@@ -252,7 +253,8 @@ void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
   state->check(detail::SingletonVaultState::Type::Running);
 
-  if (UNLIKELY(state->registrationComplete) && type_ == Type::Strict) {
+  if (UNLIKELY(state->registrationComplete) &&
+      type_.load(std::memory_order_relaxed) == Type::Strict) {
     LOG(ERROR) << "Registering for eager-load after registrationComplete().";
   }
 
@@ -273,7 +275,7 @@ void SingletonVault::registrationComplete() {
   }
 
   auto singletons = singletons_.rlock();
-  if (type_ == Type::Strict) {
+  if (type_.load(std::memory_order_relaxed) == Type::Strict) {
     for (const auto& p : *singletons) {
       if (p.second->hasLiveInstance()) {
         throw std::runtime_error(
