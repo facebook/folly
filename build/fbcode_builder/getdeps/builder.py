@@ -746,6 +746,10 @@ if __name__ == "__main__":
                     "--print-long-results",
                 ]
 
+            if tpx and env:
+                testpilot_args.append("--env")
+                testpilot_args.extend(f"{key}={val}" for key, val in env.items())
+
             if owner:
                 testpilot_args += ["--contacts", owner]
 
