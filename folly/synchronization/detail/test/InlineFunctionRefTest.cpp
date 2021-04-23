@@ -16,6 +16,7 @@
 
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 
+#include <array>
 #include <cstring>
 
 #include <folly/portability/GTest.h>
