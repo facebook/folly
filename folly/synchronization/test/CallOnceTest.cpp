@@ -49,7 +49,7 @@ class FollyCallOnce : public testing::Test {
 
 using OnceFlagTypes =
     testing::Types<folly::once_flag, folly::compact_once_flag>;
-TYPED_TEST_CASE(FollyCallOnce, OnceFlagTypes);
+TYPED_TEST_SUITE(FollyCallOnce, OnceFlagTypes);
 
 TYPED_TEST(FollyCallOnce, Simple) {
   typename TestFixture::OnceFlag flag;

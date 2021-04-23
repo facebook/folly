@@ -55,7 +55,7 @@ class StreamingStatsTest : public testing::Test {
 };
 
 using InputDataTypes = ::testing::Types<double, float, long, int, short>;
-TYPED_TEST_CASE(StreamingStatsTest, InputDataTypes);
+TYPED_TEST_SUITE(StreamingStatsTest, InputDataTypes);
 
 TYPED_TEST(StreamingStatsTest, StatsCalculations) {
   EXPECT_EQ(this->stats.count(), 10);

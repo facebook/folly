@@ -935,7 +935,7 @@ struct ByteSetNeedleFinder {
 
 using NeedleFinders =
     ::testing::Types<SseNeedleFinder, NoSseNeedleFinder, ByteSetNeedleFinder>;
-TYPED_TEST_CASE(NeedleFinderTest, NeedleFinders);
+TYPED_TEST_SUITE(NeedleFinderTest, NeedleFinders);
 
 TYPED_TEST(NeedleFinderTest, Null) {
   { // null characters in the string

@@ -56,7 +56,7 @@ typedef testing::Types<
     >
     Implementations;
 
-TYPED_TEST_CASE(RWSpinLockTest, Implementations);
+TYPED_TEST_SUITE(RWSpinLockTest, Implementations);
 
 template <typename RWSpinLockType>
 static void run(RWSpinLockType* lock) {

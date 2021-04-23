@@ -52,7 +52,7 @@ using SynchronizedTestTypes = testing::Types<
     folly::RWTicketSpinLock64,
 #endif
     folly::SpinLock>;
-TYPED_TEST_CASE(SynchronizedTest, SynchronizedTestTypes);
+TYPED_TEST_SUITE(SynchronizedTest, SynchronizedTestTypes);
 
 TYPED_TEST(SynchronizedTest, Basic) {
   testBasic<TypeParam>();
@@ -116,7 +116,7 @@ using SynchronizedTimedTestTypes = testing::Types<
 #endif
     folly::SharedMutexReadPriority,
     folly::SharedMutexWritePriority>;
-TYPED_TEST_CASE(SynchronizedTimedTest, SynchronizedTimedTestTypes);
+TYPED_TEST_SUITE(SynchronizedTimedTest, SynchronizedTimedTestTypes);
 
 TYPED_TEST(SynchronizedTimedTest, Timed) {
   testTimed<TypeParam>();
@@ -132,7 +132,7 @@ using SynchronizedTimedWithConstTestTypes = testing::Types<
 #endif
     folly::SharedMutexReadPriority,
     folly::SharedMutexWritePriority>;
-TYPED_TEST_CASE(
+TYPED_TEST_SUITE(
     SynchronizedTimedWithConstTest, SynchronizedTimedWithConstTestTypes);
 
 TYPED_TEST(SynchronizedTimedWithConstTest, TimedShared) {

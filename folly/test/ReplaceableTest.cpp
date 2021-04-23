@@ -94,13 +94,13 @@ using StaticAttributeTypes = ::testing::Types<
     OddA,
     OddB,
     Indestructible>;
-TYPED_TEST_CASE(ReplaceableStaticAttributeTest, StaticAttributeTypes);
+TYPED_TEST_SUITE(ReplaceableStaticAttributeTest, StaticAttributeTypes);
 
 template <typename T>
 struct ReplaceableStaticAttributePairTest : Test {};
 using StaticAttributePairTypes = ::testing::
     Types<std::pair<int, long>, std::pair<OddA, OddB>, std::pair<OddB, OddA>>;
-TYPED_TEST_CASE(ReplaceableStaticAttributePairTest, StaticAttributePairTypes);
+TYPED_TEST_SUITE(ReplaceableStaticAttributePairTest, StaticAttributePairTypes);
 
 TYPED_TEST(ReplaceableStaticAttributeTest, size) {
   EXPECT_EQ(sizeof(TypeParam), sizeof(Replaceable<TypeParam>));
