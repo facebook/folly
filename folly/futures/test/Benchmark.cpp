@@ -23,8 +23,8 @@
 #include <folly/futures/Promise.h>
 #include <folly/futures/test/TestExecutor.h>
 #include <folly/portability/GFlags.h>
-#include <folly/portability/Semaphore.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/NativeSemaphore.h>
 
 using namespace folly;
 
@@ -167,8 +167,7 @@ BENCHMARK_RELATIVE(contention) {
   std::vector<Promise<int>> promises(10000);
   std::vector<Future<int>> futures;
   std::thread producer, consumer;
-  sem_t sem;
-  sem_init(&sem, 0, 0);
+  folly::NativeSemaphore sem;
 
   BENCHMARK_SUSPEND {
     folly::Baton<> b1, b2;
@@ -179,7 +178,7 @@ BENCHMARK_RELATIVE(contention) {
     consumer = std::thread([&] {
       b1.post();
       for (auto& f : futures) {
-        sem_wait(&sem);
+        sem.wait();
         std::move(f).then(incr<int>);
       }
     });
@@ -187,7 +186,7 @@ BENCHMARK_RELATIVE(contention) {
     producer = std::thread([&] {
       b2.post();
       for (auto& p : promises) {
-        sem_post(&sem);
+        sem.post();
         p.setValue(42);
       }
     });

@@ -23,7 +23,7 @@
 #include <folly/portability/Asm.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/Semaphore.h>
+#include <folly/synchronization/NativeSemaphore.h>
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
@@ -408,23 +408,19 @@ BENCHMARK(single_thread_lifo_trywait, iters) {
   }
 }
 
-BENCHMARK(single_thread_posix_postwait, iters) {
-  sem_t sem;
-  EXPECT_EQ(sem_init(&sem, 0, 0), 0);
+BENCHMARK(single_thread_native_postwait, iters) {
+  folly::NativeSemaphore sem;
   for (size_t n = 0; n < iters; ++n) {
-    EXPECT_EQ(sem_post(&sem), 0);
-    EXPECT_EQ(sem_wait(&sem), 0);
+    sem.post();
+    sem.wait();
   }
-  EXPECT_EQ(sem_destroy(&sem), 0);
 }
 
-BENCHMARK(single_thread_posix_trywait, iters) {
-  sem_t sem;
-  EXPECT_EQ(sem_init(&sem, 0, 0), 0);
+BENCHMARK(single_thread_native_trywait, iters) {
+  folly::NativeSemaphore sem;
   for (size_t n = 0; n < iters; ++n) {
-    EXPECT_EQ(sem_trywait(&sem), -1);
+    EXPECT_FALSE(sem.try_wait());
   }
-  EXPECT_EQ(sem_destroy(&sem), 0);
 }
 
 static void contendedUse(uint32_t n, int posters, int waiters) {
@@ -482,8 +478,8 @@ BENCHMARK_NAMED_PARAM(contendedUse, 32_to_1000, 32, 1000)
 // single_thread_lifo_wait                                     13.60ns   73.53M
 // single_thread_lifo_postwait                                 29.43ns   33.98M
 // single_thread_lifo_trywait                                 677.69ps    1.48G
-// single_thread_posix_postwait                                25.03ns   39.95M
-// single_thread_posix_trywait                                  7.30ns  136.98M
+// single_thread_native_postwait                                25.03ns   39.95M
+// single_thread_native_trywait                                  7.30ns  136.98M
 // ----------------------------------------------------------------------------
 // contendedUse(1_to_1)                                       158.22ns    6.32M
 // contendedUse(1_to_4)                                       574.73ns    1.74M

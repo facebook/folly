@@ -19,7 +19,7 @@
 #include <thread>
 
 #include <folly/Benchmark.h>
-#include <folly/portability/Semaphore.h>
+#include <folly/synchronization/NativeSemaphore.h>
 #include <folly/synchronization/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
 
@@ -46,22 +46,21 @@ BENCHMARK(baton_pingpong_emulated_futex_nonblocking, iters) {
 
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK(posix_sem_pingpong, iters) {
-  sem_t sems[3];
-  sem_t* a = sems + 0;
-  sem_t* b = sems + 2; // to get it on a different cache line
+BENCHMARK(native_sem_pingpong, iters) {
+  alignas(folly::hardware_destructive_interference_size)
+      folly::NativeSemaphore a;
+  alignas(folly::hardware_destructive_interference_size)
+      folly::NativeSemaphore b;
 
-  sem_init(a, 0, 0);
-  sem_init(b, 0, 0);
-  auto thr = std::thread([=] {
+  auto thr = std::thread([&] {
     for (size_t i = 0; i < iters; ++i) {
-      sem_wait(a);
-      sem_post(b);
+      a.wait();
+      b.post();
     }
   });
   for (size_t i = 0; i < iters; ++i) {
-    sem_post(a);
-    sem_wait(b);
+    a.post();
+    b.wait();
   }
   thr.join();
 }
