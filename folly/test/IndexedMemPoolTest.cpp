@@ -21,7 +21,6 @@
 
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/Semaphore.h>
 #include <folly/portability/Unistd.h>
 #include <folly/test/DeterministicSchedule.h>
 

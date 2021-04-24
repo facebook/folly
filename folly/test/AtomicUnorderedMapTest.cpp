@@ -23,7 +23,6 @@
 #include <folly/Benchmark.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/Semaphore.h>
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
