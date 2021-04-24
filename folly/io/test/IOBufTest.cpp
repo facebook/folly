@@ -1005,7 +1005,7 @@ TEST_P(MoveToFbStringTest, Simple) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     MoveToFbString,
     MoveToFbStringTest,
     ::testing::Combine(

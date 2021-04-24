@@ -209,7 +209,7 @@ TEST_P(SimpleAsyncIOTest, CoroutineReadWrite) {
 }
 #endif // FOLLY_HAS_COROUTINES
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SimpleAsyncIOTests,
     SimpleAsyncIOTest,
     ::testing::Values(

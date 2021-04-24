@@ -699,7 +699,7 @@ TEST_P(FNVTest, Fnva64Partial) {
 }
 
 // Taken from http://www.isthe.com/chongo/src/fnv/test_fnv.c
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     FNVTesting,
     FNVTest,
     ::testing::Values(

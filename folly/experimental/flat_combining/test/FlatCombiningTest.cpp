@@ -118,4 +118,4 @@ constexpr Params params[] = {
     {true, false, false, true, false}, // tc async
 };
 
-INSTANTIATE_TEST_CASE_P(Foo, FlatCombiningTest, ::testing::ValuesIn(params));
+INSTANTIATE_TEST_SUITE_P(Foo, FlatCombiningTest, ::testing::ValuesIn(params));

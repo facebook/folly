@@ -233,7 +233,7 @@ TEST_P(MeteredExecutorTestP, RequestContext) {
   join();
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     MeteredExecutorSuite, MeteredExecutorTestP, testing::Values(1, 3));
 
 TEST_F(MeteredExecutorTest, ResetJoins) {

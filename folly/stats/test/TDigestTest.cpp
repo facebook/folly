@@ -399,7 +399,7 @@ TEST_P(DistributionTest, ReasonableError) {
   EXPECT_GE(reasonableError, stddev);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ReasonableErrors,
     DistributionTest,
     ::testing::Combine(

@@ -631,7 +631,7 @@ TEST_P(
   EXPECT_TRUE(pingClient->error());
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ConnectedAsyncSocketIntegrationTests,
     ConnectedAsyncSocketIntegrationTest,
     Values(BindSocket::YES, BindSocket::NO));

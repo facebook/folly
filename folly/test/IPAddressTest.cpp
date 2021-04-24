@@ -1533,33 +1533,33 @@ static const vector<MaskBoundaryData> maskBoundaryProvider = {
     MaskBoundaryData("2620:0:1cfe:face:b00c::1", 48, "2620:0:1cfc::", false),
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress, IPAddressTest, ::testing::ValuesIn(validAddressProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress, IPAddressFlagTest, ::testing::ValuesIn(flagProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress, IPAddressMappedTest, ::testing::ValuesIn(mapProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress, IPAddressCtorTest, ::testing::ValuesIn(invalidAddressProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress,
     IPAddressCtorBinaryTest,
     ::testing::ValuesIn(invalidBinaryProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress, IPAddressMaskTest, ::testing::ValuesIn(masksProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress,
     IPAddressMaskBoundaryTest,
     ::testing::ValuesIn(maskBoundaryProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress,
     IPAddressByteAccessorTest,
     ::testing::ValuesIn(validAddressProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress,
     IPAddressBitAccessorTest,
     ::testing::ValuesIn(validAddressProvider));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     IPAddress,
     TryFromStringTest,
     ::testing::ValuesIn(TryFromStringTest::ipInOutProvider()));

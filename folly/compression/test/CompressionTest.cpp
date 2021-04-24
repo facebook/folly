@@ -300,7 +300,7 @@ TEST_P(CompressionTest, ConstantDataString) {
   runSimpleStringTest(constantDataHolder);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     CompressionTest,
     CompressionTest,
     testing::Combine(
@@ -357,7 +357,7 @@ TEST_P(CompressionVarintTest, ConstantData) {
   runSimpleTest(constantDataHolder);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     CompressionVarintTest,
     CompressionVarintTest,
     testing::Combine(
@@ -443,7 +443,7 @@ TEST_P(CompressionCorruptionTest, ConstantData) {
   runSimpleTest(constantDataHolder);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     CompressionCorruptionTest,
     CompressionCorruptionTest,
     testing::ValuesIn(
@@ -779,7 +779,7 @@ TEST_P(StreamingUnitTest, stateTransitions) {
   codec_->compress(inBuffer.get());
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     StreamingUnitTest,
     StreamingUnitTest,
     testing::ValuesIn(availableStreamCodecs()));
@@ -989,7 +989,7 @@ TEST_P(StreamingCompressionTest, testFlush) {
   runFlushTest(randomDataHolder);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     StreamingCompressionTest,
     StreamingCompressionTest,
     testing::Combine(
@@ -1234,7 +1234,7 @@ TEST_P(AutomaticCodecTest, canUncompressOneBytes) {
   EXPECT_FALSE(auto_->canUncompress(&buf, folly::none));
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     AutomaticCodecTest,
     AutomaticCodecTest,
     testing::ValuesIn(availableCodecs()));
@@ -1318,7 +1318,7 @@ TEST_P(TerminalCodecTest, terminalOverridesDefaults) {
   EXPECT_EQ(terminal->uncompress(compressed), "dummyString");
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TerminalCodecTest,
     TerminalCodecTest,
     testing::ValuesIn(autoUncompressionCodecTypes));
@@ -1559,7 +1559,7 @@ TEST_P(ZlibOptionsTest, simpleRoundTripTest) {
   runSimpleRoundTripTest(randomDataHolder);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ZlibOptionsTest,
     ZlibOptionsTest,
     testing::Combine(

@@ -141,7 +141,7 @@ class OpenSSLCertUtilsTest : public TestWithParam<bool> {
   }
 };
 
-INSTANTIATE_TEST_CASE_P(OpenSSLCertUtilsTest, OpenSSLCertUtilsTest, Bool());
+INSTANTIATE_TEST_SUITE_P(OpenSSLCertUtilsTest, OpenSSLCertUtilsTest, Bool());
 
 static folly::ssl::X509UniquePtr readCertFromFile(const std::string& filename) {
   folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_file()));

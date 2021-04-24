@@ -133,7 +133,7 @@ std::vector<TFOState> getTestingValues() {
   return vals;
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ConnectTests,
     AsyncSocketConnectTest,
     ::testing::ValuesIn(getTestingValues()));
@@ -3186,7 +3186,7 @@ class AsyncSocketErrMessageCallbackTest
   }
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ErrMessageTests,
     AsyncSocketErrMessageCallbackTest,
     ::testing::ValuesIn(AsyncSocketErrMessageCallbackTest::getTestingValues()));
@@ -4553,7 +4553,7 @@ class AsyncSocketByteEventDetailsTest
   }
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ByteEventDetailsTest,
     AsyncSocketByteEventDetailsTest,
     ::testing::ValuesIn(AsyncSocketByteEventDetailsTest::getTestingValues()));
@@ -4926,7 +4926,7 @@ class AsyncSocketByteEventHelperTimestampTest
   }
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ByteEventTimestampTest,
     AsyncSocketByteEventHelperTimestampTest,
     ::testing::ValuesIn(
@@ -5196,7 +5196,7 @@ class AsyncSocketByteEventHelperOffsetTest
   }
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ByteEventOffsetTest,
     AsyncSocketByteEventHelperOffsetTest,
     ::testing::ValuesIn(
