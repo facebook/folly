@@ -329,14 +329,12 @@ Getcpu::Func Getcpu::resolveVdsoFunc() {
 #endif
 }
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
 /////////////// SequentialThreadId
 unsigned SequentialThreadId::get() {
   static std::atomic<unsigned> global{0};
-  static FOLLY_TLS unsigned local{0};
+  static thread_local unsigned local{0};
   return FOLLY_LIKELY(local) ? local : (local = ++global);
 }
-#endif
 
 /////////////// HashingThreadId
 unsigned HashingThreadId::get() {

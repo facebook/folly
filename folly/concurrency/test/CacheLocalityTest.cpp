@@ -1041,7 +1041,6 @@ TEST(Getcpu, VdsoGetcpu) {
 }
 #endif
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
 TEST(ThreadId, SimpleTls) {
   unsigned cpu = 0;
   auto rv =
@@ -1052,7 +1051,6 @@ TEST(ThreadId, SimpleTls) {
   folly::FallbackGetcpu<SequentialThreadId>::getcpu(&again, nullptr, nullptr);
   EXPECT_EQ(cpu, again);
 }
-#endif
 
 TEST(ThreadId, SimplePthread) {
   unsigned cpu = 0;
@@ -1065,7 +1063,6 @@ TEST(ThreadId, SimplePthread) {
   EXPECT_EQ(cpu, again);
 }
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
 static thread_local unsigned testingCpu = 0;
 
 static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
@@ -1077,7 +1074,6 @@ static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
   }
   return 0;
 }
-#endif
 
 TEST(AccessSpreader, Simple) {
   for (size_t s = 1; s < 200; ++s) {
@@ -1109,7 +1105,6 @@ TEST(AccessSpreader, ConcurrentAccessCached) {
   }
 }
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
 #define DECLARE_SPREADER_TAG(tag, locality, func)      \
   namespace {                                          \
   template <typename dummy>                            \
@@ -1174,5 +1169,3 @@ TEST(CoreRawAllocator, Basic) {
   }
   mems.clear();
 }
-
-#endif

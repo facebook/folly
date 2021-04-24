@@ -35,12 +35,6 @@
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
 
-#if !FOLLY_MOBILE && defined(FOLLY_TLS)
-#define FOLLY_CL_USE_FOLLY_TLS 1
-#else
-#undef FOLLY_CL_USE_FOLLY_TLS
-#endif
-
 namespace folly {
 
 // This file contains several classes that might be useful if you are
@@ -145,11 +139,9 @@ struct Getcpu {
   static Func resolveVdsoFunc();
 };
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
 struct SequentialThreadId {
   static unsigned get();
 };
-#endif
 
 struct HashingThreadId {
   static unsigned get();
@@ -175,11 +167,8 @@ struct FallbackGetcpu {
   }
 };
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
-typedef FallbackGetcpu<SequentialThreadId> FallbackGetcpuType;
-#else
-typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
-#endif
+using FallbackGetcpuType = FallbackGetcpu<
+    conditional_t<kIsMobile, HashingThreadId, SequentialThreadId>>;
 
 namespace detail {
 
@@ -291,7 +280,6 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
         std::memory_order_relaxed);
   }
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
   /// Returns the stripe associated with the current CPU.  The returned
   /// value will be < numStripes.
   /// This function caches the current cpu in a thread-local variable for a
@@ -300,16 +288,12 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   /// current()).
   static size_t cachedCurrent(
       size_t numStripes, const GlobalState& s = state()) {
+    if (kIsMobile) {
+      return current(numStripes);
+    }
     return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)]
         .load(std::memory_order_relaxed);
   }
-#else
-  /// Fallback implementation when thread-local storage isn't available.
-  static size_t cachedCurrent(
-      size_t numStripes, const GlobalState& s = state()) {
-    return current(numStripes, s);
-  }
-#endif
 
   /// Returns the maximum stripe value that can be returned under any
   /// dynamic configuration, based on the current compile-time platform
@@ -336,12 +320,10 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
     unsigned cachedCpuUses_;
   };
 
-#ifdef FOLLY_CL_USE_FOLLY_TLS
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static CpuCache& cpuCache() {
     static thread_local CpuCache cpuCache;
     return cpuCache;
   }
-#endif
 
   /// Returns the best getcpu implementation for Atom
   static Getcpu::Func pickGetcpuFunc() {
