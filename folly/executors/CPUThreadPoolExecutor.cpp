@@ -250,7 +250,7 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
-  ExecutorBlockingGuard guard{ExecutorBlockingGuard::ForbidTag{}, executorName};
+  ExecutorBlockingGuard guard{ExecutorBlockingGuard::TrackTag{}, executorName};
 
   thread->startupBaton.post();
   while (true) {

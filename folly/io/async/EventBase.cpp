@@ -311,7 +311,7 @@ void EventBase::waitUntilRunning() {
 
 // enters the event_base loop -- will only exit when forced to
 bool EventBase::loop() {
-  ExecutorBlockingGuard guard{ExecutorBlockingGuard::ForbidTag{}, executorName};
+  ExecutorBlockingGuard guard{ExecutorBlockingGuard::TrackTag{}, executorName};
   return loopBody();
 }
 

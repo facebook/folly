@@ -325,13 +325,13 @@ static_assert(
 class ExecutorBlockingGuard {
  public:
   struct PermitTag {};
-  struct ForbidTag {};
+  struct TrackTag {};
 
   ~ExecutorBlockingGuard();
   ExecutorBlockingGuard() = delete;
 
   explicit ExecutorBlockingGuard(PermitTag) noexcept;
-  explicit ExecutorBlockingGuard(ForbidTag, StringPiece name) noexcept;
+  explicit ExecutorBlockingGuard(TrackTag, StringPiece name) noexcept;
 
   ExecutorBlockingGuard(ExecutorBlockingGuard&&) = delete;
   ExecutorBlockingGuard(ExecutorBlockingGuard const&) = delete;
