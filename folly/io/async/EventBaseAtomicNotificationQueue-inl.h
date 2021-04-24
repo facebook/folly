@@ -78,6 +78,11 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
       [](Task&&) { return AtomicNotificationQueueTaskStatus::DISCARD; })) {
   }
 
+  // We must unregister before closing the fd. Otherwise the base class
+  // would unregister the fd after it's already closed, which is invalid
+  // (some other thread could've opened something that reused the fd).
+  unregisterHandler();
+
   // Don't drain fd in the child process.
   if (pid_ == get_cached_pid()) {
     // Wait till we observe all the writes before closing fds
