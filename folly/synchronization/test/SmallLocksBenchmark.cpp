@@ -23,6 +23,8 @@
 #include <thread>
 #include <vector>
 
+#include <fmt/core.h>
+
 #include <folly/Benchmark.h>
 #include <folly/SharedMutex.h>
 #include <folly/experimental/flat_combining/FlatCombining.h>
@@ -369,9 +371,9 @@ static void runFairness(std::size_t numThreads) {
       sum / (sum - 1);
   double stddev2 = std::sqrt(variance);
 
-  printf("Sum: %li Mean: %.0f stddev: %.0f\n", sum, m, stdev);
-  printf(
-      "Lock time stats in us: mean %li stddev %.0f max %li\n",
+  fmt::print("Sum: {} Mean: {:.0f} stddev: {:.0f}\n", sum, m, stdev);
+  fmt::print(
+      "Lock time stats in us: mean {} stddev {:.0f} max {}\n",
       mean.count(),
       stddev2,
       mx.count());
