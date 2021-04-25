@@ -18,15 +18,6 @@
 
 #include <cstdint>
 
-#include <folly/portability/PThread.h>
-#include <folly/portability/SysSyscall.h>
-#include <folly/portability/Unistd.h>
-#include <folly/portability/Windows.h>
-
-#ifdef __XROS__
-#include <xr/execution/accessors.h> // @manual
-#endif
-
 namespace folly {
 
 /**
@@ -43,17 +34,7 @@ namespace folly {
  * The thread ID may be reused once the thread it corresponds to has been
  * joined.
  */
-inline uint64_t getCurrentThreadID() {
-#if __APPLE__
-  return uint64_t(pthread_mach_thread_np(pthread_self()));
-#elif defined(_WIN32)
-  return uint64_t(GetCurrentThreadId());
-#elif defined(__XROS__)
-  return uint64_t(xr_execution_get_id());
-#else
-  return uint64_t(pthread_self());
-#endif
-}
+uint64_t getCurrentThreadID();
 
 /**
  * Get the operating-system level thread ID for the current thread.
@@ -83,21 +64,6 @@ inline uint64_t getCurrentThreadID() {
  * The thread ID may be reused once the thread it corresponds to has been
  * joined.
  */
-inline uint64_t getOSThreadID() {
-#if __APPLE__
-  uint64_t tid;
-  pthread_threadid_np(nullptr, &tid);
-  return tid;
-#elif defined(_WIN32)
-  return uint64_t(GetCurrentThreadId());
-#elif defined(__FreeBSD__)
-  long tid;
-  thr_self(&tid);
-  return uint64_t(tid);
-#elif defined(__XROS__)
-  return uint64_t(xr_execution_get_id());
-#else
-  return uint64_t(syscall(FOLLY_SYS_gettid));
-#endif
-}
+uint64_t getOSThreadID();
+
 } // namespace folly
