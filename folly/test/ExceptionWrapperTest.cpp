@@ -120,7 +120,7 @@ TEST(ExceptionWrapper, try_and_catch_test) {
 
   // Catch rightmost matching exception type
   FOLLY_PUSH_WARNING
-  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
       [=]() { throw std::runtime_error(expected); });
   FOLLY_POP_WARNING
@@ -133,7 +133,7 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   // Changing order is like catching in wrong order. Beware of this in your
   // code.
   FOLLY_PUSH_WARNING
-  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   auto ew2 = try_and_catch<std::runtime_error, std::exception>(
       [=]() { throw std::runtime_error(expected); });
   FOLLY_POP_WARNING
@@ -145,7 +145,7 @@ TEST(ExceptionWrapper, try_and_catch_test) {
 
   // Catches even if not rightmost.
   FOLLY_PUSH_WARNING
-  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   auto ew3 = try_and_catch<std::exception, std::runtime_error>(
       []() { throw std::exception(); });
   FOLLY_POP_WARNING
@@ -157,7 +157,7 @@ TEST(ExceptionWrapper, try_and_catch_test) {
 
   // If does not catch, throws.
   FOLLY_PUSH_WARNING
-  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   EXPECT_THROW(
       try_and_catch<std::runtime_error>([]() { throw std::exception(); }),
       std::exception);
@@ -496,7 +496,7 @@ TEST(ExceptionWrapper, non_std_exception_test) {
   int expected = 17;
 
   FOLLY_PUSH_WARNING
-  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated")
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   exception_wrapper ew =
       try_and_catch<std::exception, int>([=]() { throw expected; });
   FOLLY_POP_WARNING
