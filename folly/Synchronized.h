@@ -1781,7 +1781,7 @@ struct [[deprecated(
   FOLLY_MSVC_DISABLE_WARNING(4459) /* declaration hides global */         \
   FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS                                   \
   if (bool SYNCHRONIZED_VAR(state) = false) {                             \
-    ::folly::detail::SYNCHRONIZED_macro_is_deprecated{};                  \
+    (void)::folly::detail::SYNCHRONIZED_macro_is_deprecated{};            \
   } else                                                                  \
     for (auto SYNCHRONIZED_VAR(lockedPtr) =                               \
              (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).contextualLock(); \
@@ -1816,7 +1816,7 @@ struct [[deprecated(
  */
 #define SYNCHRONIZED_DUAL(n1, e1, n2, e2)                                      \
   if (bool SYNCHRONIZED_VAR(state) = false) {                                  \
-    ::folly::detail::SYNCHRONIZED_macro_is_deprecated{};                       \
+    (void)::folly::detail::SYNCHRONIZED_macro_is_deprecated{};                 \
   } else                                                                       \
     for (auto SYNCHRONIZED_VAR(ptrs) = acquireLockedPair(e1, e2);              \
          !SYNCHRONIZED_VAR(state);                                             \
