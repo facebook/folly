@@ -67,6 +67,11 @@ TEST_F(StaticSingletonManagerTest, example_sans_rtti) {
   auto& k = K::create<T, Tag<char*>>();
   EXPECT_NE(&i, &k);
   EXPECT_EQ(T::value, k);
+
+  static K::ArgCreate<true> m_arg{tag<T, Tag<int>>};
+  auto& m = K::create<T>(m_arg);
+  EXPECT_NE(&i, &m);
+  EXPECT_EQ(T::value, m);
 }
 
 TEST_F(StaticSingletonManagerTest, example_with_rtti) {
@@ -84,6 +89,11 @@ TEST_F(StaticSingletonManagerTest, example_with_rtti) {
   auto& k = K::create<T, Tag<char*>>();
   EXPECT_NE(&i, &k);
   EXPECT_EQ(T::value, k);
+
+  static K::ArgCreate<true> m_arg{tag<T, Tag<int>>};
+  auto& m = K::create<T>(m_arg);
+  EXPECT_NE(&i, &m);
+  EXPECT_EQ(T::value, m);
 }
 
 TEST_F(StaticSingletonManagerTest, example) {

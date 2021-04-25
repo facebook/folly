@@ -33,7 +33,7 @@ class StaticSingletonManagerWithRttiImpl {
   static void* create(Arg& arg) {
     // This Leaky Meyers Singleton must always live in the .cpp file.
     static auto& instance = *new StaticSingletonManagerWithRttiImpl();
-    auto const ptr = instance.entry(*arg.key).get(arg.make);
+    auto const ptr = instance.entry(*arg.key).get(*arg.make);
     arg.cache.store(ptr, std::memory_order_release);
     return ptr;
   }
