@@ -26,7 +26,7 @@ namespace folly {
 
 class InlineLikeExecutor : public virtual Executor {
  public:
-  virtual ~InlineLikeExecutor() {}
+  virtual ~InlineLikeExecutor() override {}
 };
 
 /// When work is "queued", execute it immediately inline.

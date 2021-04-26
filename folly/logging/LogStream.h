@@ -64,7 +64,7 @@ class LogStream : public std::ostream {
   // bloat, with minimal benefit--for debug log statements these never even get
   // called in the common case where the log statement is disabled.
   explicit LogStream(LogStreamProcessor* processor);
-  ~LogStream();
+  ~LogStream() override;
 
   bool empty() const { return buffer_.empty(); }
 
