@@ -5256,35 +5256,35 @@ TEST(AsyncSocket, LifecycleObserverDetachAndAttachEvb) {
   EventBase evb;
   EventBase evb2;
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttach(socket.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
   // Detach the evb and attach a new evb2
-  EXPECT_CALL(*cb, evbDetach(socket.get(), &evb));
+  EXPECT_CALL(*cb, evbDetachMock(socket.get(), &evb));
   socket->detachEventBase();
   EXPECT_EQ(nullptr, socket->getEventBase());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, evbAttach(socket.get(), &evb2));
+  EXPECT_CALL(*cb, evbAttachMock(socket.get(), &evb2));
   socket->attachEventBase(&evb2);
   EXPECT_EQ(&evb2, socket->getEventBase());
   Mock::VerifyAndClearExpectations(cb.get());
 
   // detach the new evb2 and re-attach the old evb.
-  EXPECT_CALL(*cb, evbDetach(socket.get(), &evb2));
+  EXPECT_CALL(*cb, evbDetachMock(socket.get(), &evb2));
   socket->detachEventBase();
   EXPECT_EQ(nullptr, socket->getEventBase());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, evbAttach(socket.get(), &evb));
+  EXPECT_CALL(*cb, evbAttachMock(socket.get(), &evb));
   socket->attachEventBase(&evb);
   EXPECT_EQ(&evb, socket->getEventBase());
   Mock::VerifyAndClearExpectations(cb.get());
 
   InSequence s;
-  EXPECT_CALL(*cb, destroy(socket.get()));
+  EXPECT_CALL(*cb, destroyMock(socket.get()));
   socket = nullptr;
   Mock::VerifyAndClearExpectations(cb.get());
 }
@@ -5295,19 +5295,19 @@ TEST(AsyncSocket, LifecycleObserverAttachThenDestroySocket) {
 
   EventBase evb;
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttach(socket.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket.get()));
+  EXPECT_CALL(*cb, connectMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
 
   InSequence s;
-  EXPECT_CALL(*cb, close(socket.get()));
-  EXPECT_CALL(*cb, destroy(socket.get()));
+  EXPECT_CALL(*cb, closeMock(socket.get()));
+  EXPECT_CALL(*cb, destroyMock(socket.get()));
   socket = nullptr;
   Mock::VerifyAndClearExpectations(cb.get());
 }
@@ -5319,13 +5319,13 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenDestroySocket) {
 
   EventBase evb;
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb1, observerAttach(socket.get()));
+  EXPECT_CALL(*cb1, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb1.get());
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb1.get()));
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
-  EXPECT_CALL(*cb2, observerAttach(socket.get()));
+  EXPECT_CALL(*cb2, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb2.get());
   EXPECT_THAT(
       socket->getLifecycleObservers(),
@@ -5333,18 +5333,18 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenDestroySocket) {
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
-  EXPECT_CALL(*cb1, connect(socket.get()));
-  EXPECT_CALL(*cb2, connect(socket.get()));
+  EXPECT_CALL(*cb1, connectMock(socket.get()));
+  EXPECT_CALL(*cb2, connectMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
   InSequence s;
-  EXPECT_CALL(*cb1, close(socket.get()));
-  EXPECT_CALL(*cb2, close(socket.get()));
-  EXPECT_CALL(*cb1, destroy(socket.get()));
-  EXPECT_CALL(*cb2, destroy(socket.get()));
+  EXPECT_CALL(*cb1, closeMock(socket.get()));
+  EXPECT_CALL(*cb2, closeMock(socket.get()));
+  EXPECT_CALL(*cb1, destroyMock(socket.get()));
+  EXPECT_CALL(*cb2, destroyMock(socket.get()));
   socket = nullptr;
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
@@ -5354,12 +5354,12 @@ TEST(AsyncSocket, LifecycleObserverAttachRemove) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   EventBase evb;
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttach(socket.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
 
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
-  EXPECT_CALL(*cb, observerDetach(socket.get()));
+  EXPECT_CALL(*cb, observerDetachMock(socket.get()));
   EXPECT_TRUE(socket->removeLifecycleObserver(cb.get()));
   EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
   Mock::VerifyAndClearExpectations(cb.get());
@@ -5379,13 +5379,13 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenRemove) {
 
   EventBase evb;
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb1, observerAttach(socket.get()));
+  EXPECT_CALL(*cb1, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb1.get());
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb1.get()));
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
-  EXPECT_CALL(*cb2, observerAttach(socket.get()));
+  EXPECT_CALL(*cb2, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb2.get());
   EXPECT_THAT(
       socket->getLifecycleObservers(),
@@ -5393,13 +5393,13 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenRemove) {
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
-  EXPECT_CALL(*cb2, observerDetach(socket.get()));
+  EXPECT_CALL(*cb2, observerDetachMock(socket.get()));
   EXPECT_TRUE(socket->removeLifecycleObserver(cb2.get()));
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb1.get()));
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
-  EXPECT_CALL(*cb1, observerDetach(socket.get()));
+  EXPECT_CALL(*cb1, observerDetachMock(socket.get()));
   socket->removeLifecycleObserver(cb1.get());
   EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
   Mock::VerifyAndClearExpectations(cb1.get());
@@ -5412,17 +5412,17 @@ TEST(AsyncSocket, LifecycleObserverDetach) {
 
   EventBase evb;
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttach(socket1.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
   socket1->addLifecycleObserver(cb.get());
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket1.get()));
+  EXPECT_CALL(*cb, connectMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, fdDetach(socket1.get()));
+  EXPECT_CALL(*cb, fdDetachMock(socket1.get()));
   auto fd = socket1->detachNetworkSocket();
   Mock::VerifyAndClearExpectations(cb.get());
 
@@ -5431,7 +5431,7 @@ TEST(AsyncSocket, LifecycleObserverDetach) {
   socket2 = nullptr;
 
   // finally, destroy socket1
-  EXPECT_CALL(*cb, destroy(socket1.get()));
+  EXPECT_CALL(*cb, destroyMock(socket1.get()));
 }
 
 TEST(AsyncSocket, LifecycleObserverMoveResubscribe) {
@@ -5440,12 +5440,12 @@ TEST(AsyncSocket, LifecycleObserverMoveResubscribe) {
 
   EventBase evb;
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttach(socket1.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
   socket1->addLifecycleObserver(cb.get());
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket1.get()));
+  EXPECT_CALL(*cb, connectMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -5453,13 +5453,13 @@ TEST(AsyncSocket, LifecycleObserverMoveResubscribe) {
   AsyncSocket* socket2PtrCapturedmoved = nullptr;
   {
     InSequence s;
-    EXPECT_CALL(*cb, fdDetach(socket1.get()));
-    EXPECT_CALL(*cb, move(socket1.get(), Not(socket1.get())))
+    EXPECT_CALL(*cb, fdDetachMock(socket1.get()));
+    EXPECT_CALL(*cb, moveMock(socket1.get(), Not(socket1.get())))
         .WillOnce(Invoke(
             [&socket2PtrCapturedmoved, &cb](auto oldSocket, auto newSocket) {
               socket2PtrCapturedmoved = newSocket;
-              EXPECT_CALL(*cb, observerDetach(oldSocket));
-              EXPECT_CALL(*cb, observerAttach(newSocket));
+              EXPECT_CALL(*cb, observerDetachMock(oldSocket));
+              EXPECT_CALL(*cb, observerAttachMock(newSocket));
               EXPECT_TRUE(oldSocket->removeLifecycleObserver(cb.get()));
               EXPECT_THAT(oldSocket->getLifecycleObservers(), IsEmpty());
               newSocket->addLifecycleObserver(cb.get());
@@ -5474,8 +5474,8 @@ TEST(AsyncSocket, LifecycleObserverMoveResubscribe) {
 
   {
     InSequence s;
-    EXPECT_CALL(*cb, close(socket2.get()));
-    EXPECT_CALL(*cb, destroy(socket2.get()));
+    EXPECT_CALL(*cb, closeMock(socket2.get()));
+    EXPECT_CALL(*cb, destroyMock(socket2.get()));
   }
   socket2 = nullptr;
 }
@@ -5486,12 +5486,12 @@ TEST(AsyncSocket, LifecycleObserverMoveDoNotResubscribe) {
 
   EventBase evb;
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttach(socket1.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
   socket1->addLifecycleObserver(cb.get());
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket1.get()));
+  EXPECT_CALL(*cb, connectMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -5499,13 +5499,13 @@ TEST(AsyncSocket, LifecycleObserverMoveDoNotResubscribe) {
   // close will not be called on socket1 because the fd is detached
   AsyncSocket* socket2PtrCapturedMoved = nullptr;
   InSequence s;
-  EXPECT_CALL(*cb, fdDetach(socket1.get()));
-  EXPECT_CALL(*cb, move(socket1.get(), Not(socket1.get())))
+  EXPECT_CALL(*cb, fdDetachMock(socket1.get()));
+  EXPECT_CALL(*cb, moveMock(socket1.get(), Not(socket1.get())))
       .WillOnce(Invoke(
           [&socket2PtrCapturedMoved](auto /* oldSocket */, auto newSocket) {
             socket2PtrCapturedMoved = newSocket;
           }));
-  EXPECT_CALL(*cb, destroy(socket1.get()));
+  EXPECT_CALL(*cb, destroyMock(socket1.get()));
   auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(std::move(socket1)));
   Mock::VerifyAndClearExpectations(cb.get());
   EXPECT_EQ(socket2.get(), socket2PtrCapturedMoved);
@@ -5517,12 +5517,12 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackImmediately) {
 
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  EXPECT_CALL(*cb, observerAttach(socket.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, observerDetach(socket.get()));
+  EXPECT_CALL(*cb, observerDetachMock(socket.get()));
   EXPECT_TRUE(socket->removeLifecycleObserver(cb.get()));
   EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
   Mock::VerifyAndClearExpectations(cb.get());
@@ -5538,16 +5538,16 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterConnect) {
 
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  EXPECT_CALL(*cb, observerAttach(socket.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket.get()));
+  EXPECT_CALL(*cb, connectMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, observerDetach(socket.get()));
+  EXPECT_CALL(*cb, observerDetachMock(socket.get()));
   EXPECT_TRUE(socket->removeLifecycleObserver(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 }
@@ -5558,20 +5558,20 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterClose) {
 
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  EXPECT_CALL(*cb, observerAttach(socket.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket.get()));
+  EXPECT_CALL(*cb, connectMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, close(socket.get()));
+  EXPECT_CALL(*cb, closeMock(socket.get()));
   socket->closeNow();
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, observerDetach(socket.get()));
+  EXPECT_CALL(*cb, observerDetachMock(socket.get()));
   EXPECT_TRUE(socket->removeLifecycleObserver(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 }
@@ -5582,21 +5582,21 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackcloseDuringDestroy) {
 
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  EXPECT_CALL(*cb, observerAttach(socket.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket.get()));
+  EXPECT_CALL(*cb, connectMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
 
   InSequence s;
-  EXPECT_CALL(*cb, close(socket.get()))
+  EXPECT_CALL(*cb, closeMock(socket.get()))
       .WillOnce(Invoke([&cb](auto callbackSocket) {
         EXPECT_TRUE(callbackSocket->removeLifecycleObserver(cb.get()));
       }));
-  EXPECT_CALL(*cb, observerDetach(socket.get()));
+  EXPECT_CALL(*cb, observerDetachMock(socket.get()));
   socket = nullptr;
   Mock::VerifyAndClearExpectations(cb.get());
 }
@@ -5609,18 +5609,18 @@ TEST(AsyncSocket, LifecycleObserverBaseClassMoveNoCrash) {
 
   EventBase evb;
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttach(socket1.get()));
+  EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
   socket1->addLifecycleObserver(cb.get());
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connect(socket1.get()));
+  EXPECT_CALL(*cb, connectMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
 
   // we'll see socket1 get destroyed, but nothing else
-  EXPECT_CALL(*cb, destroy(socket1.get()));
+  EXPECT_CALL(*cb, destroyMock(socket1.get()));
   auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(std::move(socket1)));
   Mock::VerifyAndClearExpectations(cb.get());
 }

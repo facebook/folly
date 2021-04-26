@@ -27,26 +27,48 @@ class MockAsyncTransportLifecycleObserver
     : public AsyncTransport::LifecycleObserver {
  public:
   using AsyncTransport::LifecycleObserver::LifecycleObserver;
-  GMOCK_METHOD1_(, noexcept, , observerAttach, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , observerDetach, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , destroy, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , close, void(AsyncTransport*));
-  GMOCK_METHOD1_(, noexcept, , connect, void(AsyncTransport*));
-  GMOCK_METHOD2_(, noexcept, , evbAttach, void(AsyncTransport*, EventBase*));
-  GMOCK_METHOD2_(, noexcept, , evbDetach, void(AsyncTransport*, EventBase*));
-  GMOCK_METHOD2_(
-      ,
-      noexcept,
-      ,
-      byteEvent,
-      void(AsyncTransport*, const AsyncTransport::ByteEvent&));
-  GMOCK_METHOD1_(, noexcept, , byteEventsEnabled, void(AsyncTransport*));
-  GMOCK_METHOD2_(
-      ,
-      noexcept,
-      ,
-      byteEventsUnavailable,
+  MOCK_METHOD1(observerAttachMock, void(AsyncTransport*));
+  MOCK_METHOD1(observerDetachMock, void(AsyncTransport*));
+  MOCK_METHOD1(destroyMock, void(AsyncTransport*));
+  MOCK_METHOD1(closeMock, void(AsyncTransport*));
+  MOCK_METHOD1(connectMock, void(AsyncTransport*));
+  MOCK_METHOD2(evbAttachMock, void(AsyncTransport*, EventBase*));
+  MOCK_METHOD2(evbDetachMock, void(AsyncTransport*, EventBase*));
+  MOCK_METHOD2(
+      byteEventMock, void(AsyncTransport*, const AsyncTransport::ByteEvent&));
+  MOCK_METHOD1(byteEventsEnabledMock, void(AsyncTransport*));
+  MOCK_METHOD2(
+      byteEventsUnavailableMock,
       void(AsyncTransport*, const AsyncSocketException&));
+
+ private:
+  void observerAttach(AsyncTransport* trans) noexcept override {
+    observerAttachMock(trans);
+  }
+  void observerDetach(AsyncTransport* trans) noexcept override {
+    observerDetachMock(trans);
+  }
+  void destroy(AsyncTransport* trans) noexcept override { destroyMock(trans); }
+  void close(AsyncTransport* trans) noexcept override { closeMock(trans); }
+  void connect(AsyncTransport* trans) noexcept override { connectMock(trans); }
+  void evbAttach(AsyncTransport* trans, EventBase* eb) noexcept override {
+    evbAttachMock(trans, eb);
+  }
+  void evbDetach(AsyncTransport* trans, EventBase* eb) noexcept override {
+    evbDetachMock(trans, eb);
+  }
+  void byteEvent(
+      AsyncTransport* trans,
+      const AsyncTransport::ByteEvent& ev) noexcept override {
+    byteEventMock(trans, ev);
+  }
+  void byteEventsEnabled(AsyncTransport* trans) noexcept override {
+    byteEventsEnabledMock(trans);
+  }
+  void byteEventsUnavailable(
+      AsyncTransport* trans, const AsyncSocketException& ex) noexcept override {
+    byteEventsUnavailableMock(trans, ex);
+  }
 };
 
 /**
@@ -60,7 +82,7 @@ class MockAsyncTransportObserverForByteEvents
       const MockAsyncTransportObserverForByteEvents::Config& observerConfig)
       : MockAsyncTransportLifecycleObserver(observerConfig),
         transport_(transport) {
-    ON_CALL(*this, byteEvent(testing::_, testing::_))
+    ON_CALL(*this, byteEventMock(testing::_, testing::_))
         .WillByDefault(
             testing::Invoke([this](
                                 AsyncTransport* transport,
@@ -68,13 +90,13 @@ class MockAsyncTransportObserverForByteEvents
               CHECK_EQ(this->transport_, transport);
               byteEvents_.emplace_back(event);
             }));
-    ON_CALL(*this, byteEventsEnabled(testing::_))
+    ON_CALL(*this, byteEventsEnabledMock(testing::_))
         .WillByDefault(testing::Invoke([this](AsyncTransport* transport) {
           CHECK_EQ(this->transport_, transport);
           byteEventsEnabledCalled_++;
         }));
 
-    ON_CALL(*this, byteEventsUnavailable(testing::_, testing::_))
+    ON_CALL(*this, byteEventsUnavailableMock(testing::_, testing::_))
         .WillByDefault(testing::Invoke(
             [this](AsyncTransport* transport, const AsyncSocketException& ex) {
               CHECK_EQ(this->transport_, transport);
