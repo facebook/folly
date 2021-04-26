@@ -307,6 +307,8 @@ Executor::KeepAlive<ExecutorT> getKeepAliveToken(
 }
 
 struct ExecutorBlockingContext {
+  bool forbid;
+  bool allowTerminationOnBlocking;
   StringPiece name;
 };
 static_assert(
@@ -314,7 +316,6 @@ static_assert(
     "non-standard layout");
 
 struct ExecutorBlockingList {
-  bool forbid;
   ExecutorBlockingList* prev;
   ExecutorBlockingContext curr;
 };
@@ -326,12 +327,14 @@ class ExecutorBlockingGuard {
  public:
   struct PermitTag {};
   struct TrackTag {};
+  struct ProhibitTag {};
 
   ~ExecutorBlockingGuard();
   ExecutorBlockingGuard() = delete;
 
   explicit ExecutorBlockingGuard(PermitTag) noexcept;
   explicit ExecutorBlockingGuard(TrackTag, StringPiece name) noexcept;
+  explicit ExecutorBlockingGuard(ProhibitTag, StringPiece name) noexcept;
 
   ExecutorBlockingGuard(ExecutorBlockingGuard&&) = delete;
   ExecutorBlockingGuard(ExecutorBlockingGuard const&) = delete;

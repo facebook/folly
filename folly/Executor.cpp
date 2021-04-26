@@ -51,35 +51,56 @@ void Executor::keepAliveRelease() noexcept {
              << "which do not override keepAliveAcquire()";
 }
 
+// Base case of permitting with no termination to avoid nullptr tests
+static ExecutorBlockingList emptyList{nullptr, {false, false, {}}};
+
 #if defined(FOLLY_TLS)
 
 extern constexpr bool const executor_blocking_list_enabled = true;
-thread_local ExecutorBlockingList* executor_blocking_list = nullptr;
+thread_local ExecutorBlockingList* executor_blocking_list = &emptyList;
 
 #else
 
 extern constexpr bool const executor_blocking_list_enabled = false;
-ExecutorBlockingList* executor_blocking_list = nullptr;
+ExecutorBlockingList* executor_blocking_list = &emptyList;
 
 #endif
 
 Optional<ExecutorBlockingContext> getExecutorBlockingContext() noexcept {
   return //
-      !executor_blocking_list || !executor_blocking_list->forbid ? none : //
+      !executor_blocking_list->curr.forbid ? none : //
       make_optional(executor_blocking_list->curr);
 }
 
 ExecutorBlockingGuard::ExecutorBlockingGuard(PermitTag) noexcept
-    : list_{false, executor_blocking_list, {}} {
+    : list_{*executor_blocking_list} {
   if (executor_blocking_list_enabled) {
+    list_.prev = executor_blocking_list;
+    list_.curr.forbid = false;
+    list_.curr.name = {};
     executor_blocking_list = &list_;
   }
 }
 
 ExecutorBlockingGuard::ExecutorBlockingGuard(
     TrackTag, StringPiece name) noexcept
-    : list_{true, executor_blocking_list, {name}} {
+    : list_{*executor_blocking_list} {
   if (executor_blocking_list_enabled) {
+    list_.prev = executor_blocking_list;
+    list_.curr.forbid = true;
+    list_.curr.name = name;
+    executor_blocking_list = &list_;
+  }
+}
+
+ExecutorBlockingGuard::ExecutorBlockingGuard(
+    ProhibitTag, StringPiece name) noexcept
+    : list_{*executor_blocking_list} {
+  if (executor_blocking_list_enabled) {
+    list_.prev = executor_blocking_list;
+    list_.curr.forbid = true;
+    list_.curr.allowTerminationOnBlocking = true;
+    list_.curr.name = name;
     executor_blocking_list = &list_;
   }
 }
