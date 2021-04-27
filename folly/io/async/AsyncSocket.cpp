@@ -563,7 +563,10 @@ AsyncSocket::AsyncSocket(
 }
 
 AsyncSocket::AsyncSocket(
-    EventBase* evb, NetworkSocket fd, uint32_t zeroCopyBufId)
+    EventBase* evb,
+    NetworkSocket fd,
+    uint32_t zeroCopyBufId,
+    const SocketAddress* peerAddress)
     : zeroCopyBufId_(zeroCopyBufId),
       eventBase_(evb),
       writeTimeout_(this, evb),
@@ -576,13 +579,17 @@ AsyncSocket::AsyncSocket(
   disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
   setCloseOnExec();
   state_ = StateEnum::ESTABLISHED;
+  if (peerAddress) {
+    addr_ = *peerAddress;
+  }
 }
 
 AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
     : AsyncSocket(
           oldAsyncSocket->getEventBase(),
           oldAsyncSocket->detachNetworkSocket(),
-          oldAsyncSocket->getZeroCopyBufId()) {
+          oldAsyncSocket->getZeroCopyBufId(),
+          &oldAsyncSocket->addr_) {
   appBytesWritten_ = oldAsyncSocket->appBytesWritten_;
   rawBytesWritten_ = oldAsyncSocket->rawBytesWritten_;
   byteEventHelper_ = std::move(oldAsyncSocket->byteEventHelper_);

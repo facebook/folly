@@ -5731,8 +5731,11 @@ TEST(AsyncSocket, PreReceivedDataTakeover) {
 
   socket->writeChain(nullptr, IOBuf::copyBuffer("hello"));
 
+  auto fd = server.acceptFD();
+  SocketAddress peerAddress;
+  peerAddress.setFromPeerAddress(fd);
   auto acceptedSocket =
-      AsyncSocket::UniquePtr(new AsyncSocket(&evb, server.acceptFD()));
+      AsyncSocket::UniquePtr(new AsyncSocket(&evb, fd, 0, &peerAddress));
   AsyncSocket::UniquePtr takeoverSocket;
 
   ReadCallback peekCallback(3);
@@ -5753,6 +5756,12 @@ TEST(AsyncSocket, PreReceivedDataTakeover) {
   acceptedSocket->setReadCB(&peekCallback);
 
   evb.loop();
+  // Verify we can still get the peer address after the peer socket is reset.
+  socket->closeWithReset();
+  evb.loopOnce();
+  SocketAddress socketPeerAddress;
+  takeoverSocket->getPeerAddress(&socketPeerAddress);
+  EXPECT_EQ(socketPeerAddress, peerAddress);
 }
 
 #ifdef MSG_NOSIGNAL

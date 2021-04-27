@@ -63,7 +63,7 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
 
   void connectionAccepted(
       folly::NetworkSocket fd,
-      const SocketAddress& /* clientAddr */) noexcept override {
+      const SocketAddress& clientAddr) noexcept override {
     if (socket_) {
       socket_->detachEventBase();
     }
@@ -71,7 +71,13 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
     try {
       // Create a AsyncSSLSocket object with the fd. The socket should be
       // added to the event base and in the state of accepting SSL connection.
-      socket_ = AsyncSSLSocket::newSocket(ctx_, base_, fd);
+      socket_ = AsyncSSLSocket::newSocket(
+          ctx_,
+          base_,
+          fd,
+          /*server=*/true,
+          /*deferSecurityNegotiation=*/false,
+          &clientAddr);
     } catch (const std::exception& e) {
       LOG(ERROR) << "Exception %s caught while creating a AsyncSSLSocket "
                     "object with socket "
