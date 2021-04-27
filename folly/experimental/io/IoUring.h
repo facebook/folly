@@ -98,10 +98,11 @@ class IoUring : public AsyncBase {
 
   void initializeContext() override;
 
- private:
+ protected:
   int submitOne(AsyncBase::Op* op) override;
   int submitRange(Range<AsyncBase::Op**> ops) override;
 
+ private:
   Range<AsyncBase::Op**> doWait(
       WaitType type,
       size_t minRequests,
