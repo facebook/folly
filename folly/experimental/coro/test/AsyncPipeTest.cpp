@@ -150,6 +150,14 @@ TEST(AsyncPipeTest, BrokenPipe) {
   std::move(pipe.second).close();
 }
 
+TEST(AsyncPipeTest, IsClosed) {
+  auto pipe = folly::coro::AsyncPipe<int>::create();
+  EXPECT_FALSE(pipe.second.isClosed());
+  { auto gen = std::move(pipe.first); }
+  EXPECT_TRUE(pipe.second.isClosed());
+  std::move(pipe.second).close();
+}
+
 TEST(AsyncPipeTest, WriteWhileBlocking) {
   auto pipe = folly::coro::AsyncPipe<int>::create();
   folly::ManualExecutor ex;
@@ -371,6 +379,18 @@ TEST(BoundedAsyncPipeTest, PublisherBlocks) {
     executor.drain();
     EXPECT_TRUE(writeFuture.isReady());
   }());
+}
+
+TEST(BoundedAsyncPipeTest, IsClosed) {
+  auto [generator, pipe] =
+      folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 2);
+
+  EXPECT_FALSE(pipe.isClosed());
+  {
+    // destroy the read end
+    auto _ = std::move(generator);
+  }
+  EXPECT_TRUE(pipe.isClosed());
 }
 
 TEST(BoundedAsyncPipeTest, BlockingPublisherCanceledOnDestroy) {
