@@ -224,7 +224,7 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
   }
 
   //  log2 is approx log<2>(v)
-  size_t const vlog2 = 64 - to_ascii_port_clzll(v);
+  size_t const vlog2 = 64 - static_cast<int>(to_ascii_port_clzll(v));
 
   //  handle directly when Base is power-of-two
   if (!(Base & (Base - 1))) {
