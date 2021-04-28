@@ -49,20 +49,24 @@ const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
     std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory,
+    Options opt)
     : CPUThreadPoolExecutor(
           std::make_pair(
               numThreads, FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads),
           std::move(taskQueue),
-          std::move(threadFactory)) {}
+          std::move(threadFactory),
+          std::move(opt)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::pair<size_t, size_t> numThreads,
     std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory,
+    Options opt)
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
-      taskQueue_(taskQueue.release()) {
+      taskQueue_(taskQueue.release()),
+      prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
     minThreads_.store(1, std::memory_order_relaxed);
@@ -71,18 +75,23 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
 }
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
-    size_t numThreads, std::shared_ptr<ThreadFactory> threadFactory)
+    size_t numThreads,
+    std::shared_ptr<ThreadFactory> threadFactory,
+    Options opt)
     : CPUThreadPoolExecutor(
           std::make_pair(
               numThreads, FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads),
-          std::move(threadFactory)) {}
+          std::move(threadFactory),
+          std::move(opt)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::pair<size_t, size_t> numThreads,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory,
+    Options opt)
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
-      taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})) {
+      taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})),
+      prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
     minThreads_.store(1, std::memory_order_relaxed);
@@ -90,30 +99,36 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
   registerThreadPoolExecutor(this);
 }
 
-CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads)
+CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads, Options opt)
     : CPUThreadPoolExecutor(
-          numThreads, std::make_shared<NamedThreadFactory>("CPUThreadPool")) {}
+          numThreads,
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"),
+          std::move(opt)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
     int8_t numPriorities,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory,
+    Options opt)
     : CPUThreadPoolExecutor(
           numThreads,
           std::make_unique<PriorityUnboundedBlockingQueue<CPUTask>>(
               numPriorities),
-          std::move(threadFactory)) {}
+          std::move(threadFactory),
+          std::move(opt)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
     int8_t numPriorities,
     size_t maxQueueSize,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory,
+    Options opt)
     : CPUThreadPoolExecutor(
           numThreads,
           std::make_unique<PriorityLifoSemMPMCQueue<CPUTask>>(
               numPriorities, maxQueueSize),
-          std::move(threadFactory)) {}
+          std::move(threadFactory),
+          std::move(opt)) {}
 
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
@@ -250,7 +265,15 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
-  ExecutorBlockingGuard guard{ExecutorBlockingGuard::TrackTag{}, executorName};
+  auto guard = [&]() {
+    if (prohibitBlockingOnThreadPools_ == Options::Blocking::prohibit) {
+      return ExecutorBlockingGuard{
+          ExecutorBlockingGuard::ProhibitTag{}, executorName};
+    } else {
+      return ExecutorBlockingGuard{
+          ExecutorBlockingGuard::TrackTag{}, executorName};
+    }
+  }();
 
   thread->startupBaton.post();
   while (true) {

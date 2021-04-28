@@ -68,40 +68,62 @@ namespace folly {
 class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  public:
   struct CPUTask;
+  struct Options {
+    enum class Blocking {
+      prohibit,
+      allow,
+    };
+
+    constexpr Options() noexcept : blocking{Blocking::allow} {}
+
+    Options setBlocking(Blocking b) {
+      blocking = b;
+      return *this;
+    }
+
+    Blocking blocking;
+  };
 
   CPUThreadPoolExecutor(
       size_t numThreads,
       std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
       std::shared_ptr<ThreadFactory> threadFactory =
-          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"),
+      Options opt = {});
 
   CPUThreadPoolExecutor(
       std::pair<size_t, size_t> numThreads,
       std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
       std::shared_ptr<ThreadFactory> threadFactory =
-          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"),
+      Options opt = {});
 
-  explicit CPUThreadPoolExecutor(size_t numThreads);
+  explicit CPUThreadPoolExecutor(size_t numThreads, Options opt = {});
 
   CPUThreadPoolExecutor(
-      size_t numThreads, std::shared_ptr<ThreadFactory> threadFactory);
+      size_t numThreads,
+      std::shared_ptr<ThreadFactory> threadFactory,
+      Options opt = {});
 
   CPUThreadPoolExecutor(
       std::pair<size_t, size_t> numThreads,
-      std::shared_ptr<ThreadFactory> threadFactory);
+      std::shared_ptr<ThreadFactory> threadFactory,
+      Options opt = {});
 
   CPUThreadPoolExecutor(
       size_t numThreads,
       int8_t numPriorities,
       std::shared_ptr<ThreadFactory> threadFactory =
-          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"),
+      Options opt = {});
 
   CPUThreadPoolExecutor(
       size_t numThreads,
       int8_t numPriorities,
       size_t maxQueueSize,
       std::shared_ptr<ThreadFactory> threadFactory =
-          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"),
+      Options opt = {});
 
   ~CPUThreadPoolExecutor() override;
 
@@ -179,6 +201,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   std::unique_ptr<folly::QueueObserverFactory> queueObserverFactory_{
       createQueueObserverFactory()};
   std::atomic<ssize_t> threadsToStop_{0};
+  Options::Blocking prohibitBlockingOnThreadPools_ = Options::Blocking::allow;
 };
 
 } // namespace folly
