@@ -65,18 +65,26 @@ std::string join(PtrRange types) {
 }
 
 template <typename Value>
+fbstring render_tmpl(Value value) {
+  auto const str = demangle(value.tmpl->name());
+  auto const off = str.find('<');
+  return str.substr(off + 1, str.size() - off - 2);
+}
+
+template <typename Value>
 std::string render(Value value) {
+  auto const tmpl_s = render_tmpl(value);
   auto const key_s = join(ptr_range_key(value));
   auto const mapped_s = join(ptr_range_mapped(value));
   std::ostringstream ret;
-  ret << value.tmpl << "<" << key_s << ", " << mapped_s << ">";
+  ret << tmpl_s << "<" << key_s << ", " << mapped_s << ">";
   return ret.str();
 }
 
 } // namespace
 
 void UniqueInstance::enforce(
-    char const* tmpl,
+    Ptr tmpl,
     Ptr const* ptrs,
     std::uint32_t key_size,
     std::uint32_t mapped_size,
@@ -87,11 +95,13 @@ void UniqueInstance::enforce(
     global = local;
     return;
   }
+  if (*global.tmpl != *local.tmpl) {
+    throw_exception<std::logic_error>("mismatched unique instance");
+  }
   if (!equal(ptr_range_key(global), ptr_range_key(local))) {
     throw_exception<std::logic_error>("mismatched unique instance");
   }
-  if (std::strcmp(global.tmpl, local.tmpl) == 0 &&
-      equal(ptr_range_mapped(global), ptr_range_mapped(local))) {
+  if (equal(ptr_range_mapped(global), ptr_range_mapped(local))) {
     return;
   }
 
