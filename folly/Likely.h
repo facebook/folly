@@ -38,8 +38,8 @@
 //    blocks which unconditionally call [[noreturn]]-annotated functions. Such
 //    cases do not require likeliness annotations.
 
-#define FOLLY_LIKELY(x) FOLLY_DETAIL_BUILTIN_EXPECT((x), 1)
-#define FOLLY_UNLIKELY(x) FOLLY_DETAIL_BUILTIN_EXPECT((x), 0)
+#define FOLLY_LIKELY(...) FOLLY_DETAIL_BUILTIN_EXPECT((__VA_ARGS__), 1)
+#define FOLLY_UNLIKELY(...) FOLLY_DETAIL_BUILTIN_EXPECT((__VA_ARGS__), 0)
 
 //  Un-namespaced annotations
 
