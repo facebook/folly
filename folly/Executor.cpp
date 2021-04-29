@@ -54,27 +54,17 @@ void Executor::keepAliveRelease() noexcept {
 // Base case of permitting with no termination to avoid nullptr tests
 static ExecutorBlockingList emptyList{nullptr, {false, false, {}}};
 
-#if defined(FOLLY_TLS)
-
-extern constexpr bool const executor_blocking_list_enabled = true;
 thread_local ExecutorBlockingList* executor_blocking_list = &emptyList;
-
-#else
-
-extern constexpr bool const executor_blocking_list_enabled = false;
-ExecutorBlockingList* executor_blocking_list = &emptyList;
-
-#endif
 
 Optional<ExecutorBlockingContext> getExecutorBlockingContext() noexcept {
   return //
-      !executor_blocking_list->curr.forbid ? none : //
+      kIsMobile || !executor_blocking_list->curr.forbid ? none : //
       make_optional(executor_blocking_list->curr);
 }
 
-ExecutorBlockingGuard::ExecutorBlockingGuard(PermitTag) noexcept
-    : list_{*executor_blocking_list} {
-  if (executor_blocking_list_enabled) {
+ExecutorBlockingGuard::ExecutorBlockingGuard(PermitTag) noexcept {
+  if (!kIsMobile) {
+    list_ = *executor_blocking_list;
     list_.prev = executor_blocking_list;
     list_.curr.forbid = false;
     list_.curr.name = {};
@@ -83,9 +73,9 @@ ExecutorBlockingGuard::ExecutorBlockingGuard(PermitTag) noexcept
 }
 
 ExecutorBlockingGuard::ExecutorBlockingGuard(
-    TrackTag, StringPiece name) noexcept
-    : list_{*executor_blocking_list} {
-  if (executor_blocking_list_enabled) {
+    TrackTag, StringPiece name) noexcept {
+  if (!kIsMobile) {
+    list_ = *executor_blocking_list;
     list_.prev = executor_blocking_list;
     list_.curr.forbid = true;
     list_.curr.name = name;
@@ -94,9 +84,9 @@ ExecutorBlockingGuard::ExecutorBlockingGuard(
 }
 
 ExecutorBlockingGuard::ExecutorBlockingGuard(
-    ProhibitTag, StringPiece name) noexcept
-    : list_{*executor_blocking_list} {
-  if (executor_blocking_list_enabled) {
+    ProhibitTag, StringPiece name) noexcept {
+  if (!kIsMobile) {
+    list_ = *executor_blocking_list;
     list_.prev = executor_blocking_list;
     list_.curr.forbid = true;
     list_.curr.allowTerminationOnBlocking = true;
@@ -106,7 +96,7 @@ ExecutorBlockingGuard::ExecutorBlockingGuard(
 }
 
 ExecutorBlockingGuard::~ExecutorBlockingGuard() {
-  if (executor_blocking_list_enabled) {
+  if (!kIsMobile) {
     if (executor_blocking_list != &list_) {
       terminate_with<std::logic_error>("dtor mismatch");
     }
