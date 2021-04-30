@@ -83,13 +83,9 @@ std::string render(Value value) {
 
 } // namespace
 
-void UniqueInstance::enforce(
-    Ptr tmpl,
-    Ptr const* ptrs,
-    std::uint32_t key_size,
-    std::uint32_t mapped_size,
-    Value& global) noexcept {
-  Value const local{tmpl, ptrs, key_size, mapped_size};
+void UniqueInstance::enforce(Arg& arg) noexcept {
+  auto const& local = arg.local;
+  auto& global = StaticSingletonManager::create<Value>(arg.global);
 
   if (!global.tmpl) {
     global = local;
