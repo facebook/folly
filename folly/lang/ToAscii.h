@@ -75,7 +75,7 @@ struct to_ascii_array {
     data_type_ result{};
     Alphabet alpha;
     for (size_t i = 0; i < Base; ++i) {
-      result.data[i] = alpha(i);
+      result.data[i] = alpha(static_cast<uint8_t>(i));
     }
     return result;
   }
@@ -224,7 +224,7 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
   }
 
   //  log2 is approx log<2>(v)
-  size_t const vlog2 = 64 - to_ascii_port_clzll(v);
+  size_t const vlog2 = 64 - static_cast<size_t>(to_ascii_port_clzll(v));
 
   //  handle directly when Base is power-of-two
   if (!(Base & (Base - 1))) {
