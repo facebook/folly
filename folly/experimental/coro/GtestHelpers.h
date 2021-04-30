@@ -172,4 +172,10 @@
 #define CO_ASSERT_GT(val1, val2) \
   CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
 
+/**
+ * coroutine version of FAIL() which is defined as GTEST_FAIL()
+ * GTEST_FATAL_FAILURE_("Failed")
+ */
+#define CO_FAIL() CO_GTEST_FATAL_FAILURE_("Failed")
+
 #endif // FOLLY_HAS_COROUTINES
