@@ -60,6 +60,8 @@ FOLLY_ERASE auto to_ascii_port_clzll(uint64_t v) {
 #if _MSC_VER
 #if FOLLY_X64
   return __lzcnt64(v);
+#elif defined(_M_IX86)
+  return __builtin_clzll(v);
 #else
   return __assume(0), 0;
 #endif
