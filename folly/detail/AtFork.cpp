@@ -30,38 +30,16 @@ namespace detail {
 
 namespace {
 
-#if !FOLLY_MOBILE && !defined(__APPLE__) && !defined(_MSC_VER)
-#define FOLLY_ATFORK_USE_FOLLY_TLS 1
-#else
-#define FOLLY_ATFORK_USE_FOLLY_TLS 0
-#endif
+struct SkipAtForkHandlers {
+  static thread_local bool value;
 
-template <bool enabled = FOLLY_ATFORK_USE_FOLLY_TLS>
-struct SkipAtForkHandlers;
-
-template <>
-struct SkipAtForkHandlers<false> {
-  static bool available() { return false; }
-
-  static bool get() { return false; }
-
-  [[noreturn]] static void set(bool) { std::terminate(); }
+  struct Guard {
+    bool saved = value;
+    Guard() { value = true; }
+    ~Guard() { value = saved; }
+  };
 };
-
-#if FOLLY_ATFORK_USE_FOLLY_TLS
-template <>
-struct SkipAtForkHandlers<true> {
-  static bool available() { return true; }
-
-  static bool get() { return value_; }
-
-  static void set(bool value) { value_ = value; }
-
- private:
-  static thread_local bool value_;
-};
-thread_local bool SkipAtForkHandlers<true>::value_{false};
-#endif
+thread_local bool SkipAtForkHandlers::value;
 
 struct AtForkTask {
   void const* handle;
@@ -78,7 +56,7 @@ class AtForkList {
   }
 
   static void prepare() noexcept {
-    if (SkipAtForkHandlers<>::get()) {
+    if (SkipAtForkHandlers::value) {
       return;
     }
     instance().tasksLock.lock();
@@ -100,7 +78,7 @@ class AtForkList {
   }
 
   static void parent() noexcept {
-    if (SkipAtForkHandlers<>::get()) {
+    if (SkipAtForkHandlers::value) {
       return;
     }
     auto& tasks = instance().tasks;
@@ -111,7 +89,7 @@ class AtForkList {
   }
 
   static void child() noexcept {
-    if (SkipAtForkHandlers<>::get()) {
+    if (SkipAtForkHandlers::value) {
       return;
     }
     // if we fork a multithreaded process
@@ -181,20 +159,17 @@ void AtFork::unregisterHandler(void const* handle) {
 }
 
 pid_t AtFork::forkInstrumented(fork_t forkFn) {
-  if (SkipAtForkHandlers<>::available()) {
-    AtForkList::prepare();
-    SkipAtForkHandlers<>::set(true);
-    auto ret = forkFn();
-    SkipAtForkHandlers<>::set(false);
-    if (ret) {
-      AtForkList::parent();
-    } else {
-      AtForkList::child();
-    }
-    return ret;
-  } else {
+  AtForkList::prepare();
+  auto ret = [&] {
+    SkipAtForkHandlers::Guard guard;
     return forkFn();
+  }();
+  if (ret) {
+    AtForkList::parent();
+  } else {
+    AtForkList::child();
   }
+  return ret;
 }
 } // namespace detail
 } // namespace folly
