@@ -124,8 +124,12 @@ TEST_F(ExceptionTest, catch_exception) {
   auto thrower = [](int i) { return [=]() -> int { throw i; }; };
   EXPECT_EQ(3, folly::catch_exception(returner(3), returner(4)));
   EXPECT_EQ(3, folly::catch_exception<int>(returner(3), identity));
+  EXPECT_EQ(3, folly::catch_exception<int>(returner(3), +identity));
+  EXPECT_EQ(3, folly::catch_exception<int>(returner(3), *+identity));
   EXPECT_EQ(4, folly::catch_exception(thrower(3), returner(4)));
   EXPECT_EQ(3, folly::catch_exception<int>(thrower(3), identity));
+  EXPECT_EQ(3, folly::catch_exception<int>(thrower(3), +identity));
+  EXPECT_EQ(3, folly::catch_exception<int>(thrower(3), *+identity));
 }
 
 TEST_F(ExceptionTest, rethrow_current_exception) {

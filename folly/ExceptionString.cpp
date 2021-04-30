@@ -74,7 +74,7 @@ fbstring exceptionStr(std::exception_ptr ep) {
       [&]() -> fbstring {
         return catch_exception<std::exception const&>(
             [&]() -> fbstring { std::rethrow_exception(std::move(ep)); },
-            [](auto&& e) { return exceptionStr(e); });
+            static_cast<fbstring (&)(std::exception const&)>(exceptionStr));
       },
       [&]() -> fbstring {
         return type ? demangle(*type) : "<unknown exception>";

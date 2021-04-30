@@ -125,7 +125,9 @@ template <typename Ex, typename... Args>
 ///
 /// Usage note:
 /// Passing extra values as arguments rather than capturing them allows smaller
-/// inlined native at the call-site.
+/// inlined native code at the call-site. Passing function-pointers or function-
+/// references rather than general callables with captures allows allows smaller
+/// inlined native code at the call-site as well.
 ///
 /// Example:
 ///
@@ -138,10 +140,23 @@ template <typename Ex, typename... Args>
 ///         },
 ///         i);
 ///   }
-template <typename F, typename... A>
+template <
+    typename F,
+    typename... A,
+    typename FD = std::remove_pointer_t<std::decay_t<F>>,
+    std::enable_if_t<!std::is_function<FD>::value, int> = 0>
 FOLLY_NOINLINE FOLLY_COLD auto invoke_cold(F&& f, A&&... a)
     -> decltype(static_cast<F&&>(f)(static_cast<A&&>(a)...)) {
   return static_cast<F&&>(f)(static_cast<A&&>(a)...);
+}
+template <
+    typename F,
+    typename... A,
+    typename FD = std::remove_pointer_t<std::decay_t<F>>,
+    std::enable_if_t<std::is_function<FD>::value, int> = 0>
+FOLLY_ERASE auto invoke_cold(F&& f, A&&... a)
+    -> decltype(f(static_cast<A&&>(a)...)) {
+  return f(static_cast<A&&>(a)...);
 }
 
 /// invoke_noreturn_cold

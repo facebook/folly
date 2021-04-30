@@ -43,7 +43,7 @@ class ScopeGuardImplBase {
  protected:
   ScopeGuardImplBase(bool dismissed = false) noexcept : dismissed_(dismissed) {}
 
-  static void warnAboutToCrash() noexcept;
+  [[noreturn]] static void terminate() noexcept;
   static ScopeGuardImplBase makeEmptyScopeGuard() noexcept {
     return ScopeGuardImplBase{};
   }
@@ -125,7 +125,8 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   void execute() noexcept(InvokeNoexcept) {
     if (InvokeNoexcept) {
       using R = decltype(function_());
-      auto catcher = []() -> R { warnAboutToCrash(), std::terminate(); };
+      auto catcher_word = reinterpret_cast<uintptr_t>(&terminate);
+      auto catcher = reinterpret_cast<R (*)()>(catcher_word);
       catch_exception(function_, catcher);
     } else {
       function_();
