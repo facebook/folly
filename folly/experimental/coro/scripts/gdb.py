@@ -241,10 +241,105 @@ def get_async_stack_addrs_from_initial_frame(
     return addrs
 
 
+def walk_normal_stack(
+    normal_stack_frame_addr: gdb.Value,
+    normal_stack_frame_stop_addr: gdb.Value,
+) -> List[gdb.Value]:
+    """
+    Returns the list of return addresses in the normal stack.
+    Does not include stop_addr
+    """
+    addrs: List[gdb.Value] = []
+    while int(normal_stack_frame_addr) != 0:
+        normal_stack_frame = StackFrame.from_addr(normal_stack_frame_addr)
+        if (
+            int(normal_stack_frame_stop_addr) != 0
+            and normal_stack_frame.stack_frame == normal_stack_frame_stop_addr
+        ):
+            # Reached end of normal stack, transition to the async stack
+            # Do not include the return address in the stack trace that points
+            # to the frame that registered the AsyncStackRoot.
+            break
+        addrs.append(normal_stack_frame.return_address)
+        normal_stack_frame_addr = normal_stack_frame.stack_frame
+    return addrs
+
+
+@dataclass
+class WalkAsyncStackResult:
+    addrs: List[gdb.Value]
+    # Normal stack frame to start the next normal stack walk
+    normal_stack_frame_addr: gdb.Value
+    normal_stack_frame_stop_addr: gdb.Value
+    # Async stack frame to start the next async stack walk after the next
+    # normal stack walk
+    async_stack_frame_addr: gdb.Value
+
+
+def walk_async_stack(async_stack_frame_addr: gdb.Value) -> WalkAsyncStackResult:
+    """
+    Walks the async stack and returns the next normal stack and async stack
+    addresses to walk.
+    """
+    addrs: List[gdb.Value] = []
+    normal_stack_frame_addr = nullptr()
+    normal_stack_frame_stop_addr = nullptr()
+    async_stack_frame_next_addr = nullptr()
+    while int(async_stack_frame_addr) != 0:
+        async_stack_frame = AsyncStackFrame.from_addr(async_stack_frame_addr)
+        addrs.append(async_stack_frame.instruction_pointer)
+
+        if int(async_stack_frame.parent_frame) == 0:
+            # Reached end of async stack
+            # Check if there is an AsyncStackRoot and if so, whether there
+            # is an associated stack frame that indicates the normal stack
+            # frame we should continue walking at.
+            async_stack_root_addr = async_stack_frame.stack_root
+            if int(async_stack_root_addr) == 0:
+                # This is a detached async stack. We are done
+                break
+            async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
+            normal_stack_frame_addr = async_stack_root.stack_frame_ptr
+            if int(normal_stack_frame_addr) == 0:
+                # No associated normal stack frame for this async stack root.
+                # This means we should treat this as a top-level/detached
+                # stack and not try to walk any further.
+                break
+            # Skip to the parent stack frame pointer
+            normal_stack_frame = StackFrame.from_addr(normal_stack_frame_addr)
+            normal_stack_frame_addr = normal_stack_frame.stack_frame
+
+            # Check if there is a higher-level AsyncStackRoot that defines
+            # the stop point we should stop walking normal stack frames at.
+            # If there is no higher stack root then we will walk to the
+            # top of the normal stack (normalStackFrameStop == nullptr).
+            # Otherwise we record the frame pointer that we should stop
+            # at and walk normal stack frames until we hit that frame.
+            # Also get the async stack frame where the next async stack walk
+            # should begin after the next normal stack walk finishes.
+            async_stack_root_addr = async_stack_root.next_root
+            if int(async_stack_root_addr) != 0:
+                async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
+                normal_stack_frame_stop_addr = async_stack_root.stack_frame_ptr
+                async_stack_frame_next_addr = async_stack_root.top_frame
+
+        async_stack_frame_addr = async_stack_frame.parent_frame
+
+    return WalkAsyncStackResult(
+        addrs=addrs,
+        normal_stack_frame_addr=normal_stack_frame_addr,
+        normal_stack_frame_stop_addr=normal_stack_frame_stop_addr,
+        async_stack_frame_addr=async_stack_frame_next_addr,
+    )
+
+
 def get_async_stack_addrs() -> List[gdb.Value]:
     """
     Gets the async stack trace, including normal stack frames with async
     stack frames.
+
+    See C++ implementation in `getAsyncStackTraceSafe` in
+    folly/experimental/symbolizer/StackTrace.cpp
     """
     async_stack_root_addr = get_async_stack_root_addr()
 
@@ -253,33 +348,29 @@ def get_async_stack_addrs() -> List[gdb.Value]:
     if int(async_stack_root_addr) == 0:
         return []
 
-    # start the stack trace from the top
+    # Start the stack trace from the top
     gdb.execute("f 0", from_tty=False, to_string=True)
 
+    # Start by walking the normal stack until we get to the frame right before
+    # the frame that holds the async root.
+    async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
+    normal_stack_frame_addr = gdb.parse_and_eval("$rbp")
+    normal_stack_frame_stop_addr = async_stack_root.stack_frame_ptr
     addrs: List[gdb.Value] = []
     addrs.append(gdb.parse_and_eval("$pc"))
-    normal_stack_frame_addr = gdb.parse_and_eval("$rbp")
-    while int(normal_stack_frame_addr) != 0 and int(async_stack_root_addr) != 0:
-        normal_stack_frame = StackFrame.from_addr(normal_stack_frame_addr)
-        async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
+    async_stack_frame_addr = async_stack_root.top_frame
 
-        # Walk the normal stack to find the caller of the frame that holds the
-        # AsyncStackRoot. If the caller holds the AsyncStackRoot, then the
-        # current frame is part of an async operation, and we should get the
-        # async stack trace before adding the current frame.
-        if int(normal_stack_frame.stack_frame) == int(async_stack_root.stack_frame_ptr):
-            addrs += get_async_stack_addrs_from_initial_frame(
-                async_stack_root.top_frame
-            )
-            # There could be more related work at the next async stack root.
-            # Anything after the stack frame containing the last async stack root
-            # is potentially unrelated to the current async stack.
-            async_stack_root_addr = async_stack_root.next_root
-            if int(async_stack_root_addr) == 0:
-                break
-
-        addrs.append(normal_stack_frame.return_address)
-        normal_stack_frame_addr = normal_stack_frame.stack_frame
+    while int(normal_stack_frame_addr) != 0 or int(async_stack_frame_addr) != 0:
+        addrs += walk_normal_stack(
+            normal_stack_frame_addr, normal_stack_frame_stop_addr
+        )
+        walk_async_stack_result = walk_async_stack(async_stack_frame_addr)
+        addrs += walk_async_stack_result.addrs
+        normal_stack_frame_addr = walk_async_stack_result.normal_stack_frame_addr
+        normal_stack_frame_stop_addr = (
+            walk_async_stack_result.normal_stack_frame_stop_addr
+        )
+        async_stack_frame_addr = walk_async_stack_result.async_stack_frame_addr
     return addrs
 
 
