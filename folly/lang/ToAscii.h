@@ -86,7 +86,7 @@ struct to_ascii_array {
   }
 };
 template <uint64_t Base, typename Alphabet>
-alignas(hardware_constructive_interference_size)
+alignas(kIsMobile ? sizeof(size_t) : hardware_constructive_interference_size)
     typename to_ascii_array<Base, Alphabet>::data_type_ const
     to_ascii_array<Base, Alphabet>::data =
         to_ascii_array<Base, Alphabet>::data_();
@@ -262,10 +262,10 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_basic(
     //  keep /, % together so a peephole optimization computes them together
     auto const q = v / Base;
     auto const r = v % Base;
-    out[pos] = xlate(r);
+    out[pos] = xlate(uint8_t(r));
     v = q;
   }
-  out[0] = xlate(v);
+  out[0] = xlate(uint8_t(v));
 }
 template <uint64_t Base, typename Alphabet>
 FOLLY_ALWAYS_INLINE size_t to_ascii_with_basic(char* out, uint64_t v) {
@@ -380,8 +380,11 @@ inline size_t to_ascii_size_decimal(uint64_t v) {
 template <uint64_t Base, typename Alphabet>
 size_t to_ascii_with(char* outb, char const* oute, uint64_t v) {
   auto const size = to_ascii_size<Base>(v);
-  return FOLLY_UNLIKELY(oute < outb || size_t(oute - outb) < size)
-      ? 0
+  if (FOLLY_UNLIKELY(oute < outb || size_t(oute - outb) < size)) {
+    return 0;
+  }
+  return kIsMobile //
+      ? detail::to_ascii_with_array<Base, Alphabet>(outb, v)
       : detail::to_ascii_with_table<Base, Alphabet>(outb, v);
 }
 template <uint64_t Base, typename Alphabet, size_t N>
