@@ -37,6 +37,10 @@ extern "C" FOLLY_KEEP void check_cond_folly_terminate_with(bool c) {
   }
   folly::detail::keep_sink();
 }
+extern "C" FOLLY_KEEP std::exception const* check_get_object_exception(
+    std::exception_ptr const& ptr) {
+  return folly::exception_ptr_get_object<std::exception>(ptr);
+}
 
 template <typename Ex>
 static std::string message_for_terminate_with(std::string const& what) {
@@ -59,6 +63,17 @@ static std::string message_for_terminate() {
       "" /* empty regex matches anything */;
   // clang-format on
 }
+
+namespace {
+
+template <int I>
+struct Virt {
+  virtual ~Virt() {}
+  int value = I;
+  operator int() const { return value; }
+};
+
+} // namespace
 
 class MyException : public std::exception {
  private:
@@ -142,4 +157,46 @@ TEST_F(ExceptionTest, rethrow_current_exception) {
         }
       }),
       std::runtime_error);
+}
+
+TEST_F(ExceptionTest, exception_ptr_empty) {
+  auto ptr = std::exception_ptr();
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_type(ptr));
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_object(ptr, nullptr));
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_object(ptr, &typeid(long)));
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_object(ptr, &typeid(int)));
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_object<int>(ptr));
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_object(ptr));
+}
+
+TEST_F(ExceptionTest, exception_ptr_int) {
+  auto ptr = std::make_exception_ptr(17);
+  EXPECT_EQ(&typeid(int), folly::exception_ptr_get_type(ptr));
+  EXPECT_EQ(17, *(int*)(folly::exception_ptr_get_object(ptr, nullptr)));
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_object(ptr, &typeid(long)));
+  EXPECT_EQ(17, *(int*)(folly::exception_ptr_get_object(ptr, &typeid(int))));
+  EXPECT_EQ(17, *folly::exception_ptr_get_object<int>(ptr));
+  EXPECT_EQ(17, *(int*)(folly::exception_ptr_get_object(ptr)));
+}
+
+TEST_F(ExceptionTest, exception_ptr_vmi) {
+  using A0 = Virt<0>;
+  using A1 = Virt<1>;
+  using A2 = Virt<2>;
+  struct B0 : virtual A1, virtual A2 {};
+  struct B1 : virtual A2, virtual A0 {};
+  struct B2 : virtual A0, virtual A1 {};
+  struct C : B0, B1, B2 {
+    int value = 44;
+    operator int() const { return value; }
+  };
+
+  auto ptr = std::make_exception_ptr(C());
+  EXPECT_EQ(&typeid(C), folly::exception_ptr_get_type(ptr));
+  EXPECT_EQ(44, *(C*)(folly::exception_ptr_get_object(ptr, nullptr)));
+  EXPECT_EQ(nullptr, folly::exception_ptr_get_object(ptr, &typeid(long)));
+  EXPECT_EQ(44, *(C*)(folly::exception_ptr_get_object(ptr, &typeid(C))));
+  EXPECT_EQ(1, *(A1*)(folly::exception_ptr_get_object(ptr, &typeid(A1))));
+  EXPECT_EQ(1, folly::exception_ptr_get_object<A1>(ptr)->value);
+  EXPECT_EQ(44, *(C*)(folly::exception_ptr_get_object(ptr)));
 }
