@@ -26,15 +26,9 @@
 
 namespace folly {
 
-void Executor::invokeCatchingExnsLog(
-    char const* const prefix, std::exception const* const ex) {
-  auto const message = " threw unhandled ";
-  if (ex) {
-    LOG(ERROR) << prefix << message << exceptionStr(*ex);
-  } else {
-    auto ep = std::current_exception();
-    LOG(ERROR) << prefix << message << exceptionStr(ep);
-  }
+void Executor::invokeCatchingExnsLog(char const* const prefix) noexcept {
+  auto ep = std::current_exception();
+  LOG(ERROR) << prefix << " threw unhandled " << exceptionStr(ep);
 }
 
 void Executor::addWithPriority(Func, int8_t /* priority */) {

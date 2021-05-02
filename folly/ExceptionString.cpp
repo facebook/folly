@@ -18,67 +18,34 @@
 
 #include <utility>
 
-#include <folly/CPortability.h>
-#include <folly/CppAttributes.h>
 #include <folly/Demangle.h>
-#include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/TypeInfo.h>
 
 namespace folly {
+
+namespace {
+
+fbstring exception_string_type(std::type_info const* ti) {
+  return ti ? demangle(*ti) : "<unknown exception>";
+}
+
+} // namespace
 
 /**
  * Debug string for an exception: include type and what(), if
  * defined.
  */
-fbstring exceptionStr(const std::exception& e) {
-#if FOLLY_HAS_RTTI
-  fbstring rv(demangle(typeid(e)));
-  rv += ": ";
-#else
-  fbstring rv("Exception (no RTTI available): ");
-#endif
-  rv += e.what();
-  return rv;
+fbstring exceptionStr(std::exception const& e) {
+  auto prefix = exception_string_type(folly::type_info_of(e));
+  return std::move(prefix) + ": " + e.what();
 }
 
-namespace {
-
-FOLLY_CREATE_MEMBER_INVOKER(invoke_cxa_exception_type_fn, __cxa_exception_type);
-
-struct fallback_cxa_exception_type_fn {
-  FOLLY_MAYBE_UNUSED FOLLY_ERASE_HACK_GCC std::type_info const* operator()(
-      std::exception_ptr const&) const noexcept {
-    return nullptr;
+fbstring exceptionStr(std::exception_ptr const& ep) {
+  if (auto ex = exception_ptr_get_object<std::exception>(ep)) {
+    return exceptionStr(*ex);
   }
-};
-
-using invoke_or_fallback_cxa_exception_type_fn = std::conditional_t<
-    is_invocable_r_v<
-        std::type_info const*,
-        invoke_cxa_exception_type_fn,
-        std::exception_ptr const&>,
-    invoke_cxa_exception_type_fn,
-    fallback_cxa_exception_type_fn>;
-
-FOLLY_INLINE_VARIABLE constexpr invoke_or_fallback_cxa_exception_type_fn
-    invoke_or_fallback_cxa_exception_type;
-
-} // namespace
-
-fbstring exceptionStr(std::exception_ptr ep) {
-  if (!kHasExceptions) {
-    return "Exception (catch unavailable)";
-  }
-  auto type = invoke_or_fallback_cxa_exception_type(ep);
-  return catch_exception(
-      [&]() -> fbstring {
-        return catch_exception<std::exception const&>(
-            [&]() -> fbstring { std::rethrow_exception(std::move(ep)); },
-            static_cast<fbstring (&)(std::exception const&)>(exceptionStr));
-      },
-      [&]() -> fbstring {
-        return type ? demangle(*type) : "<unknown exception>";
-      });
+  return exception_string_type(exception_ptr_get_type(ep));
 }
 
 } // namespace folly

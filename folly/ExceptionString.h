@@ -26,8 +26,8 @@ namespace folly {
  * Debug string for an exception: include type and what(), if
  * defined.
  */
-fbstring exceptionStr(const std::exception& e);
+fbstring exceptionStr(std::exception const& e);
 
-fbstring exceptionStr(std::exception_ptr ep);
+fbstring exceptionStr(std::exception_ptr const& ep);
 
 } // namespace folly

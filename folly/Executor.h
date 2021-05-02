@@ -232,8 +232,7 @@ class Executor {
 
   template <typename F>
   FOLLY_ERASE static void invokeCatchingExns(char const* p, F f) noexcept {
-    auto h = [p](auto&... e) noexcept { invokeCatchingExnsLog(p, &e...); };
-    catch_exception([&] { catch_exception<std::exception const&>(f, h); }, h);
+    catch_exception(f, invokeCatchingExnsLog, p);
   }
 
  protected:
@@ -269,8 +268,7 @@ class Executor {
   }
 
  private:
-  static void invokeCatchingExnsLog(
-      char const* prefix, std::exception const* ex = nullptr);
+  static void invokeCatchingExnsLog(char const* prefix) noexcept;
 
   template <typename ExecutorT>
   static KeepAlive<ExecutorT> makeKeepAliveDummy(ExecutorT* executor) {
