@@ -24,6 +24,7 @@
 #include <folly/Utility.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/CArray.h>
+#include <folly/portability/builtins.h>
 
 #if _MSC_VER
 #include <intrin.h>
