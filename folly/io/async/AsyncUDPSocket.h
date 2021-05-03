@@ -30,6 +30,10 @@
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
 
+#if defined(__linux__) && !FOLLY_MOBILE
+#define FOLLY_HAVE_BIND_OPTIONS_IFNAME
+#endif
+
 namespace folly {
 
 /**
@@ -170,9 +174,12 @@ class AsyncUDPSocket : public EventHandler {
    * Contains options to pass to bind.
    */
   struct BindOptions {
-    constexpr BindOptions() noexcept {}
+    BindOptions() noexcept {}
     // Whether IPV6_ONLY should be set on the socket.
     bool bindV6Only{true};
+#ifdef FOLLY_HAVE_BIND_OPTIONS_IFNAME
+    std::string ifName;
+#endif
   };
 
   /**
