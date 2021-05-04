@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <string>
 
 #include <folly/Portability.h>
@@ -40,6 +41,17 @@ extern "C" FOLLY_KEEP void check_cond_folly_terminate_with(bool c) {
 extern "C" FOLLY_KEEP std::exception const* check_get_object_exception(
     std::exception_ptr const& ptr) {
   return folly::exception_ptr_get_object<std::exception>(ptr);
+}
+
+extern "C" FOLLY_KEEP void check_cond_catch_exception(bool c) {
+  auto try_ = [=] { c ? folly::throw_exception(0) : void(); };
+  auto catch_ = folly::detail::keep_sink<>;
+  folly::catch_exception(try_, std::bind(catch_));
+}
+extern "C" FOLLY_KEEP void check_cond_catch_exception_ptr(bool c) {
+  auto try_ = [=] { c ? folly::throw_exception(0) : void(); };
+  auto catch_ = folly::detail::keep_sink<>;
+  folly::catch_exception(try_, catch_);
 }
 
 template <typename Ex>

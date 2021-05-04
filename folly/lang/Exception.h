@@ -24,6 +24,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/lang/TypeInfo.h>
 
 namespace folly {
@@ -145,18 +146,20 @@ template <
     typename F,
     typename... A,
     typename FD = std::remove_pointer_t<std::decay_t<F>>,
-    std::enable_if_t<!std::is_function<FD>::value, int> = 0>
-FOLLY_NOINLINE FOLLY_COLD auto invoke_cold(F&& f, A&&... a)
-    -> decltype(static_cast<F&&>(f)(static_cast<A&&>(a)...)) {
+    std::enable_if_t<!std::is_function<FD>::value, int> = 0,
+    typename R = decltype(FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(A &&)...))>
+FOLLY_NOINLINE FOLLY_COLD R invoke_cold(F&& f, A&&... a) //
+    noexcept(noexcept(static_cast<F&&>(f)(static_cast<A&&>(a)...))) {
   return static_cast<F&&>(f)(static_cast<A&&>(a)...);
 }
 template <
     typename F,
     typename... A,
     typename FD = std::remove_pointer_t<std::decay_t<F>>,
-    std::enable_if_t<std::is_function<FD>::value, int> = 0>
-FOLLY_ERASE auto invoke_cold(F&& f, A&&... a)
-    -> decltype(f(static_cast<A&&>(a)...)) {
+    std::enable_if_t<std::is_function<FD>::value, int> = 0,
+    typename R = decltype(FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(A &&)...))>
+FOLLY_ERASE R invoke_cold(F&& f, A&&... a) //
+    noexcept(noexcept(f(static_cast<A&&>(a)...))) {
   return f(static_cast<A&&>(a)...);
 }
 
@@ -219,12 +222,16 @@ template <typename F, typename... A>
 ///      [](auto&& e, int num) { return num; },
 ///      def);
 ///  assert(result == input < 0 ? def : input);
-template <typename E, typename Try, typename Catch, typename... CatchA>
-FOLLY_ERASE_TRYCATCH auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
-    typename std::common_type<
-        decltype(static_cast<Try&&>(t)()),
-        decltype(static_cast<Catch&&>(c)(
-            std::declval<E>(), static_cast<CatchA&&>(a)...))>::type {
+template <
+    typename E,
+    typename Try,
+    typename Catch,
+    typename... CatchA,
+    typename R = std::common_type_t<
+        decltype(FOLLY_DECLVAL(Try &&)()),
+        decltype(FOLLY_DECLVAL(Catch &&)(
+            FOLLY_DECLVAL(E&), FOLLY_DECLVAL(CatchA&&)...))>>
+FOLLY_ERASE_TRYCATCH R catch_exception(Try&& t, Catch&& c, CatchA&&... a) {
 #if FOLLY_HAS_EXCEPTIONS
   try {
     return static_cast<Try&&>(t)();
@@ -259,11 +266,14 @@ FOLLY_ERASE_TRYCATCH auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
 ///      [](int num) { return num; },
 ///      def);
 ///  assert(result == input < 0 ? def : input);
-template <typename Try, typename Catch, typename... CatchA>
-FOLLY_ERASE_TRYCATCH auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
-    typename std::common_type<
-        decltype(static_cast<Try&&>(t)()),
-        decltype(static_cast<Catch&&>(c)(static_cast<CatchA&&>(a)...))>::type {
+template <
+    typename Try,
+    typename Catch,
+    typename... CatchA,
+    typename R = std::common_type_t<
+        decltype(FOLLY_DECLVAL(Try &&)()),
+        decltype(FOLLY_DECLVAL(Catch &&)(FOLLY_DECLVAL(CatchA &&)...))>>
+FOLLY_ERASE_TRYCATCH R catch_exception(Try&& t, Catch&& c, CatchA&&... a) {
 #if FOLLY_HAS_EXCEPTIONS
   try {
     return static_cast<Try&&>(t)();
