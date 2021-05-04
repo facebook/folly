@@ -217,27 +217,6 @@ constexpr bool kIsSanitize = false;
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
 #endif
 
-/* Platform specific TLS support
- * gcc implements __thread
- * msvc implements __declspec(thread)
- * the semantics are the same
- * (but remember __thread has different semantics when using emutls (ex. apple))
- */
-#if defined(_MSC_VER)
-#define FOLLY_TLS __declspec(thread)
-#elif defined(__GNUC__)
-#define FOLLY_TLS __thread
-#else
-#error cannot define platform specific thread local storage
-#endif
-
-// disable FOLLY_TLS on 32 bit Apple/iOS
-#if defined(__APPLE__) && FOLLY_MOBILE
-#if (__SIZEOF_POINTER__ == 4)
-#undef FOLLY_TLS
-#endif
-#endif
-
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
