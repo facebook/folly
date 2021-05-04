@@ -816,7 +816,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
       AtomicNotificationQueueTaskStatus operator()(
           QueueMessage&& msg) noexcept {
         return boost::apply_visitor(
-            [this](auto& visitMsg) { return visitMsg(acceptor_); }, msg);
+            [this](auto&& visitMsg) { return visitMsg(acceptor_); }, msg);
       }
 
       explicit Consumer(RemoteAcceptor& acceptor) : acceptor_(acceptor) {}
