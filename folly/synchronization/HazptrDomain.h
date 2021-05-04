@@ -154,7 +154,11 @@ class hazptr_domain {
     shutdown_ = true;
     reclaim_all_objects();
     free_hazptr_recs();
-    DCHECK(tagged_empty());
+    if (kIsDebug && !tagged_empty()) {
+      LOG(WARNING)
+          << "Tagged objects remain. This may indicate a higher-level leak "
+          << "of object(s) that use hazptr_obj_cohort.";
+    }
   }
 
   hazptr_domain(const hazptr_domain&) = delete;
