@@ -207,22 +207,23 @@ void AsyncUDPSocket::bind(
     const folly::SocketAddress& address, BindOptions bindOptions) {
   init(address.getFamily(), bindOptions);
 
-  // bind the socket to the interface
-#ifdef FOLLY_HAVE_BIND_OPTIONS_IFNAME
-  if (!bindOptions.ifName.empty() &&
-      netops::setsockopt(
-          fd_,
-          SOL_SOCKET,
-          SO_BINDTODEVICE,
-          bindOptions.ifName.c_str(),
-          bindOptions.ifName.length())) {
-    auto errnoCopy = errno;
-    throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN,
-        "failed to bind to device: " + bindOptions.ifName,
-        errnoCopy);
-  }
+  {
+    // bind the socket to the interface
+    int optname = 0;
+#if defined(SO_BINDTODEVICE)
+    optname = SO_BINDTODEVICE;
 #endif
+    auto& ifName = bindOptions.ifName;
+    if (optname && !ifName.empty() &&
+        netops::setsockopt(
+            fd_, SOL_SOCKET, optname, ifName.data(), ifName.length())) {
+      auto errnoCopy = errno;
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to bind to device: " + ifName,
+          errnoCopy);
+    }
+  }
 
   // bind to the address
   sockaddr_storage addrStorage;
