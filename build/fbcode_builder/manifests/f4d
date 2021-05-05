@@ -22,6 +22,7 @@ boost
 protobuf
 lzo
 libicu
+re2
 
 [shipit.pathmap]
 fbcode/f4d/public_tld = .
