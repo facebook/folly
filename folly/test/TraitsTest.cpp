@@ -186,28 +186,21 @@ TEST(Traits, relational) {
 
 TEST(Traits, int128) {
   EXPECT_TRUE(
-      (::std::is_same<::std::make_unsigned<__int128_t>::type, __uint128_t>::
-           value));
-  EXPECT_TRUE((
-      ::std::is_same<::std::make_signed<__int128_t>::type, __int128_t>::value));
+      (::std::is_same<folly::make_unsigned_t<int128_t>, uint128_t>::value));
   EXPECT_TRUE(
-      (::std::is_same<::std::make_unsigned<__uint128_t>::type, __uint128_t>::
-           value));
+      (::std::is_same<folly::make_signed_t<int128_t>, int128_t>::value));
   EXPECT_TRUE(
-      (::std::is_same<::std::make_signed<__uint128_t>::type, __int128_t>::
-           value));
-  EXPECT_TRUE((::std::is_arithmetic<__int128_t>::value));
-  EXPECT_TRUE((::std::is_arithmetic<__uint128_t>::value));
-  EXPECT_TRUE((::std::is_integral<__int128_t>::value));
-  EXPECT_TRUE((::std::is_integral<__uint128_t>::value));
-  EXPECT_FALSE((::std::is_unsigned<__int128_t>::value));
-  EXPECT_TRUE((::std::is_signed<__int128_t>::value));
-  EXPECT_TRUE((::std::is_unsigned<__uint128_t>::value));
-  EXPECT_FALSE((::std::is_signed<__uint128_t>::value));
-  EXPECT_TRUE((::std::is_fundamental<__int128_t>::value));
-  EXPECT_TRUE((::std::is_fundamental<__uint128_t>::value));
-  EXPECT_TRUE((::std::is_scalar<__int128_t>::value));
-  EXPECT_TRUE((::std::is_scalar<__uint128_t>::value));
+      (::std::is_same<folly::make_unsigned_t<uint128_t>, uint128_t>::value));
+  EXPECT_TRUE( //
+      (::std::is_same<folly::make_signed_t<uint128_t>, int128_t>::value));
+  EXPECT_TRUE((folly::is_arithmetic_v<int128_t>));
+  EXPECT_TRUE((folly::is_arithmetic_v<uint128_t>));
+  EXPECT_TRUE((folly::is_integral_v<int128_t>));
+  EXPECT_TRUE((folly::is_integral_v<uint128_t>));
+  EXPECT_FALSE((folly::is_unsigned_v<int128_t>));
+  EXPECT_TRUE((folly::is_signed_v<int128_t>));
+  EXPECT_TRUE((folly::is_unsigned_v<uint128_t>));
+  EXPECT_FALSE((folly::is_signed_v<__uint128_t>));
 }
 
 #endif // FOLLY_HAVE_INT128_T

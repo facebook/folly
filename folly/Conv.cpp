@@ -466,7 +466,7 @@ template Expected<double, ConversionCode> str_to_floating<double>(
  * This class takes care of additional processing needed for signed values,
  * like leading sign character and overflow checks.
  */
-template <typename T, bool IsSigned = std::is_signed<T>::value>
+template <typename T, bool IsSigned = is_signed_v<T>>
 class SignedValueHandler;
 
 template <typename T>
@@ -539,7 +539,7 @@ class SignedValueHandler<T, false> {
 template <class Tgt>
 inline Expected<Tgt, ConversionCode> digits_to(
     const char* b, const char* const e) noexcept {
-  using UT = typename std::make_unsigned<Tgt>::type;
+  using UT = make_unsigned_t<Tgt>;
   assert(b <= e);
 
   SignedValueHandler<Tgt> sgn;
@@ -676,7 +676,7 @@ digits_to<unsigned __int128>(const char*, const char*) noexcept;
  */
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
-  using UT = typename std::make_unsigned<Tgt>::type;
+  using UT = make_unsigned_t<Tgt>;
 
   auto b = src->data(), past = src->data() + src->size();
 
@@ -695,7 +695,7 @@ Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
   if (UNLIKELY(err != ConversionCode::SUCCESS)) {
     return makeUnexpected(err);
   }
-  if (std::is_signed<Tgt>::value && UNLIKELY(b >= past)) {
+  if (is_signed_v<Tgt> && UNLIKELY(b >= past)) {
     return makeUnexpected(ConversionCode::NO_DIGITS);
   }
   if (UNLIKELY(!isdigit(*b))) {

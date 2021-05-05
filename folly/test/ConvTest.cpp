@@ -109,8 +109,8 @@ void testIntegral2String() {}
 
 template <class String, class Int, class... Ints>
 void testIntegral2String() {
-  typedef typename make_unsigned<Int>::type Uint;
-  typedef typename make_signed<Int>::type Sint;
+  typedef folly::make_unsigned_t<Int> Uint;
+  typedef folly::make_signed_t<Int> Sint;
 
   Uint value = 123;
   EXPECT_EQ(to<String>(value), "123");
@@ -196,8 +196,8 @@ void testString2Integral() {}
 
 template <class String, class Int, class... Ints>
 void testString2Integral() {
-  typedef typename make_unsigned<Int>::type Uint;
-  typedef typename make_signed<Int>::type Sint;
+  typedef folly::make_unsigned_t<Int> Uint;
+  typedef folly::make_signed_t<Int> Sint;
 
   // Unsigned numbers small enough to fit in a signed type
   static const String strings[] = {

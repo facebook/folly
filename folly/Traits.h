@@ -769,44 +769,101 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::unique_ptr)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::shared_ptr)
 #endif
 
-/* Some combinations of compilers and C++ libraries make __int128 and
- * unsigned __int128 available but do not correctly define their standard type
- * traits.
- *
- * If FOLLY_SUPPLY_MISSING_INT128_TRAITS is defined, we define these traits
- * here.
- *
- * @author: Phil Willoughby <philwill@fb.com>
- */
-#if FOLLY_SUPPLY_MISSING_INT128_TRAITS
-FOLLY_NAMESPACE_STD_BEGIN
+namespace folly {
+
+//  Some compilers have signed __int128 and unsigned __int128 types, and some
+//  libraries with some compilers have traits for those types. It's a mess.
+//  Import things into folly and then fill in whatever is missing.
+//
+//  The aliases:
+//    int128_t
+//    uint128_t
+//
+//  The traits:
+//    is_arithmetic
+//    is_arithmetic_v
+//    is_integral
+//    is_integral_v
+//    is_signed
+//    is_signed_v
+//    is_unsigned
+//    is_unsigned_v
+//    make_signed
+//    make_signed_t
+//    make_unsigned
+//    make_unsigned_t
+
+template <typename T>
+struct is_arithmetic : std::is_arithmetic<T> {};
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
+
+template <typename T>
+struct is_integral : std::is_integral<T> {};
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_integral_v = is_integral<T>::value;
+
+template <typename T>
+struct is_signed : std::is_signed<T> {};
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_signed_v = is_signed<T>::value;
+
+template <typename T>
+struct is_unsigned : std::is_unsigned<T> {};
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_unsigned_v = is_unsigned<T>::value;
+
+template <typename T>
+struct make_signed : std::make_signed<T> {};
+template <typename T>
+using make_signed_t = typename make_signed<T>::type;
+
+template <typename T>
+struct make_unsigned : std::make_unsigned<T> {};
+template <typename T>
+using make_unsigned_t = typename make_unsigned<T>::type;
+
+#if FOLLY_HAVE_INT128_T
+
+using int128_t = signed __int128;
+using uint128_t = unsigned __int128;
+
 template <>
-struct is_arithmetic<__int128> : ::std::true_type {};
+struct is_arithmetic<int128_t> : std::true_type {};
 template <>
-struct is_arithmetic<unsigned __int128> : ::std::true_type {};
+struct is_arithmetic<uint128_t> : std::true_type {};
+
 template <>
-struct is_integral<__int128> : ::std::true_type {};
+struct is_integral<int128_t> : std::true_type {};
 template <>
-struct is_integral<unsigned __int128> : ::std::true_type {};
+struct is_integral<uint128_t> : std::true_type {};
+
 template <>
-struct make_unsigned<__int128> {
-  typedef unsigned __int128 type;
+struct is_signed<int128_t> : std::true_type {};
+template <>
+struct is_signed<uint128_t> : std::false_type {};
+template <>
+struct is_unsigned<int128_t> : std::false_type {};
+template <>
+struct is_unsigned<uint128_t> : std::true_type {};
+
+template <>
+struct make_signed<int128_t> {
+  using type = int128_t;
 };
 template <>
-struct make_signed<__int128> {
-  typedef __int128 type;
+struct make_signed<uint128_t> {
+  using type = int128_t;
+};
+
+template <>
+struct make_unsigned<int128_t> {
+  using type = uint128_t;
 };
 template <>
-struct make_unsigned<unsigned __int128> {
-  typedef unsigned __int128 type;
+struct make_unsigned<uint128_t> {
+  using type = uint128_t;
 };
-template <>
-struct make_signed<unsigned __int128> {
-  typedef __int128 type;
-};
-template <>
-struct is_signed<__int128> : ::std::true_type {};
-template <>
-struct is_unsigned<unsigned __int128> : ::std::true_type {};
-FOLLY_NAMESPACE_STD_END
-#endif // FOLLY_SUPPLY_MISSING_INT128_TRAITS
+#endif // FOLLY_HAVE_INT128_T
+
+} // namespace folly

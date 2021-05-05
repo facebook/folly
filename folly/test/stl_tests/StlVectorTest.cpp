@@ -1462,7 +1462,7 @@ void verifyAllocator(int ele, int cap) {
 // Master verifier
 template <class Vector>
 void verify(int extras) {
-  if (!is_arithmetic<typename Vector::value_type>::value) {
+  if (!std::is_arithmetic<typename Vector::value_type>::value) {
     ASSERT_EQ(0 + extras, getTotal()) << "there exist Data but no vectors";
   }
   isSane();
@@ -1476,7 +1476,7 @@ void verify(int extras) {
 template <class Vector>
 void verify(int extras, const Vector& v) {
   verifyVector(v);
-  if (!is_arithmetic<typename Vector::value_type>::value) {
+  if (!std::is_arithmetic<typename Vector::value_type>::value) {
     ASSERT_EQ(v.size() + extras, getTotal())
         << "not all Data are in the vector";
   }
@@ -1498,7 +1498,7 @@ void verify(int extras, const Vector& v1, const Vector& v2) {
     size += v2.size();
     cap += v2.capacity();
   }
-  if (!is_arithmetic<typename Vector::value_type>::value) {
+  if (!std::is_arithmetic<typename Vector::value_type>::value) {
     ASSERT_EQ(size + extras, getTotal()) << "not all Data are in the vector(s)";
   }
   isSane();
@@ -1674,7 +1674,7 @@ STL_TEST("23.2.1 Table 96.1-7", containerTypedefs, is_destructible) {
           typename Vector::const_iterator>::value,
       "Vector::iterator is not convertible to Vector::const_iterator");
   static_assert(
-      is_signed<typename Vector::difference_type>::value,
+      std::is_signed<typename Vector::difference_type>::value,
       "Vector::difference_type is not signed");
   static_assert(
       is_same<
@@ -1689,7 +1689,7 @@ STL_TEST("23.2.1 Table 96.1-7", containerTypedefs, is_destructible) {
               typename Vector::const_iterator>::difference_type>::value,
       "Vector::difference_type != Vector::const_iterator::difference_type");
   static_assert(
-      is_unsigned<typename Vector::size_type>::value,
+      std::is_unsigned<typename Vector::size_type>::value,
       "Vector::size_type is not unsigned");
   static_assert(
       sizeof(typename Vector::size_type) >=
@@ -1837,7 +1837,7 @@ STL_TEST("23.2.1 Table 96.15-18", iterators, is_destructible, a) {
   ASSERT_TRUE(Cdist == ca.size()) << "distance(cbegin, cend) != size";
 }
 
-STL_TEST("23.2.1 Table 96.19-20", equitable, is_arithmetic, a, b) {
+STL_TEST("23.2.1 Table 96.19-20", equitable, std::is_arithmetic, a, b) {
   const auto& ca = a;
   const auto& cb = b;
   DataState<Vector> dsa(a);
@@ -2009,7 +2009,7 @@ STL_TEST("23.2.1 Table 97.3-5", reversibleIterators, is_destructible, a) {
 //-----------------------------------------------------------------------------
 // Lexicographical functions
 
-STL_TEST("23.2.1 Table 98", comparable, is_arithmetic) {
+STL_TEST("23.2.1 Table 98", comparable, std::is_arithmetic) {
   const Vector v1 = {1, 2, 3, 4};
   const Vector v2 = {1, 2, 3, 4, 5};
   const Vector v3 = {1, 2, 2};
@@ -2157,7 +2157,7 @@ STL_TEST(
   ASSERT_TRUE(m == u.get_allocator());
 }
 
-STL_TEST("23.2.1-7", ilAllocConstruction, is_arithmetic, m) {
+STL_TEST("23.2.1-7", ilAllocConstruction, std::is_arithmetic, m) {
   // gcc fail
   if (Ticker::TicksLeft >= 0) {
     return;
@@ -2264,7 +2264,7 @@ STL_TEST(
   }
 }
 
-STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
+STL_TEST("23.2.3 Table 100.3", ilConstruction, std::is_arithmetic) {
   // whitebox: ensure that Vector(il) is implemented in terms of
   // Vector(il.begin(), il.end())
 
@@ -2284,7 +2284,7 @@ STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
   }
 }
 
-STL_TEST("23.2.3 Table 100.4", ilAssignment, is_arithmetic, a) {
+STL_TEST("23.2.3 Table 100.4", ilAssignment, std::is_arithmetic, a) {
   // whitebox: ensure that assign(il) is implemented in terms of
   // assign(il.begin(), il.end())
 
@@ -2524,7 +2524,7 @@ STL_TEST(
   insertItCheck(a, dsa, idx, i, j);
 }
 
-STL_TEST("23.2.3 Table 100.10", iteratorInsertIL, is_arithmetic, a, p) {
+STL_TEST("23.2.3 Table 100.10", iteratorInsertIL, std::is_arithmetic, a, p) {
   // gcc fail
   if (Ticker::TicksLeft >= 0) {
     return;
@@ -2654,7 +2654,7 @@ STL_TEST(
   }
 }
 
-STL_TEST("23.2.3 Table 100.15", assignIL, is_arithmetic, a) {
+STL_TEST("23.2.3 Table 100.15", assignIL, std::is_arithmetic, a) {
   // whitebox: ensure that assign(il) is implemented in terms of
   // assign(il.begin(), il.end())
 
