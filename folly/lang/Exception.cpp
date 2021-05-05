@@ -50,7 +50,7 @@
 
 namespace __cxxabiv1 {
 
-struct _LIBCXXABI_HIDDEN __cxa_exception {
+struct __cxa_exception {
 #if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
   void* reserve;
   size_t referenceCount;
