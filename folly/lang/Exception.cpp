@@ -77,14 +77,16 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
   _Unwind_Exception unwindHeader;
 };
 
-class _LIBCXXABI_TYPE_VIS __shim_type_info : public std::type_info {
+//  named differently from the real shim type __shim_type_info and all members
+//  are pure virtual; as long as the vtable is the same, though, it should work
+class __folly_shim_type_info : public std::type_info {
  public:
-  _LIBCXXABI_HIDDEN virtual ~__shim_type_info();
+  virtual ~__folly_shim_type_info() = 0;
 
-  _LIBCXXABI_HIDDEN virtual void noop1() const;
-  _LIBCXXABI_HIDDEN virtual void noop2() const;
-  _LIBCXXABI_HIDDEN virtual bool can_catch(
-      const __shim_type_info* thrown_type, void*& adjustedPtr) const = 0;
+  virtual void noop1() const = 0;
+  virtual void noop2() const = 0;
+  virtual bool can_catch(
+      const std::type_info* thrown_type, void*& adjustedPtr) const = 0;
 };
 
 } // namespace __cxxabiv1
@@ -157,9 +159,8 @@ void* exception_ptr_get_object(
   }
   auto object = cxxabi_get_object(ptr);
   auto type = exception_ptr_get_type(ptr);
-  auto stype = static_cast<abi::__shim_type_info const*>(type);
-  auto starget = static_cast<abi::__shim_type_info const*>(target);
-  return !target || starget->can_catch(stype, object) ? object : nullptr;
+  auto starget = static_cast<abi::__folly_shim_type_info const*>(target);
+  return !target || starget->can_catch(type, object) ? object : nullptr;
 }
 
 #endif // defined(_LIBCPP_VERSION)
