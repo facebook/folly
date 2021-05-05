@@ -17,10 +17,10 @@
 #include <folly/memory/UninitializedMemoryHacks.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>
 
@@ -215,7 +215,7 @@ template <typename T>
 void testRandom(size_t numSteps = 10000) {
   describePlatform();
 
-  auto target = folly::make_unique<T>();
+  auto target = std::make_unique<T>();
   std::vector<bool> valid;
 
   for (size_t step = 0; step < numSteps; ++step) {
@@ -239,9 +239,9 @@ void testRandom(size_t numSteps = 10000) {
       } else if (pct < 20) {
         *target = copy;
       } else if (pct < 25) {
-        target = folly::make_unique<T>(std::move(copy));
+        target = std::make_unique<T>(std::move(copy));
       } else {
-        target = folly::make_unique<T>(copy);
+        target = std::make_unique<T>(copy);
       }
     } else if (pct < 35) {
       target->reserve(v);
@@ -258,7 +258,7 @@ void testRandom(size_t numSteps = 10000) {
     } else if (pct < 60) {
       doPushBack(*target, valid);
     } else if (pct < 65) {
-      target = folly::make_unique<T>();
+      target = std::make_unique<T>();
       valid.clear();
     } else if (pct < 80) {
       auto v2 = folly::Random::rand32(uint32_t{3} << folly::Random::rand32(14));
