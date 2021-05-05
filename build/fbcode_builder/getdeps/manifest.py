@@ -330,11 +330,11 @@ class ManifestParser(object):
                     hasher.update(value.encode("utf-8"))
 
     def is_first_party_project(self):
-        """ returns true if this is an FB first-party project """
+        """returns true if this is an FB first-party project"""
         return self.shipit_project is not None
 
     def get_required_system_packages(self, ctx):
-        """ Returns dictionary of packager system -> list of packages """
+        """Returns dictionary of packager system -> list of packages"""
         return {
             "rpm": self.get_section_as_args("rpms", ctx),
             "deb": self.get_section_as_args("debs", ctx),

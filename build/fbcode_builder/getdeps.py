@@ -235,7 +235,7 @@ class CachedProject(object):
         )
 
     def is_cacheable(self):
-        """ We only cache third party projects """
+        """We only cache third party projects"""
         return self.cache and self.m.shipit_project is None
 
     def was_cached(self):

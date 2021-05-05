@@ -11,7 +11,7 @@ class SubCmd(object):
     HELP = None
 
     def run(self, args):
-        """ perform the command """
+        """perform the command"""
         return 0
 
     def setup_parser(self, parser):
@@ -24,7 +24,7 @@ CmdTable = []
 
 
 def add_subcommands(parser, common_args, cmd_table=CmdTable):
-    """ Register parsers for the defined commands with the provided parser """
+    """Register parsers for the defined commands with the provided parser"""
     for cls in cmd_table:
         command = cls()
         command_parser = parser.add_parser(

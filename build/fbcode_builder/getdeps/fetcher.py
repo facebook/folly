@@ -690,7 +690,7 @@ class ArchiveFetcher(Fetcher):
             )
 
     def _download_dir(self):
-        """ returns the download dir, creating it if it doesn't already exist """
+        """returns the download dir, creating it if it doesn't already exist"""
         download_dir = os.path.dirname(self.file_name)
         if not os.path.exists(download_dir):
             os.makedirs(download_dir)
