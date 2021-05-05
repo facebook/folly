@@ -35,32 +35,40 @@ template <typename Awaitable>
 Task<Optional<lift_unit_t<detail::decay_rvalue_reference_t<
     detail::lift_lvalue_reference_t<semi_await_result_t<Awaitable>>>>>>
 timed_wait(Awaitable awaitable, Duration duration) {
-  auto posted = std::make_shared<std::atomic<bool>>(false);
   Baton baton;
   Try<lift_unit_t<detail::decay_rvalue_reference_t<
       detail::lift_lvalue_reference_t<semi_await_result_t<Awaitable>>>>>
       result;
 
-  futures::sleep(duration).toUnsafeFuture().setCallback_(
-      [posted, &baton, executor = co_await co_current_executor](
-          auto&&, auto&&) {
+  auto sleepFuture = futures::sleep(duration).toUnsafeFuture();
+  auto posted = new std::atomic<bool>(false);
+  std::move(sleepFuture)
+      .setCallback_([posted, &baton, executor = co_await co_current_executor](
+                        auto&&, auto&&) {
         if (!posted->exchange(true, std::memory_order_relaxed)) {
           executor->add([&baton] { baton.post(); });
+        } else {
+          delete posted;
         }
       });
 
-  co_invoke(
-      [awaitable = std::move(
-           awaitable)]() mutable -> Task<semi_await_result_t<Awaitable>> {
-        co_return co_await std::move(awaitable);
-      })
-      .scheduleOn(co_await co_current_executor)
-      .start([posted, &baton, &result](auto&& r) {
-        if (!posted->exchange(true, std::memory_order_relaxed)) {
-          result = std::move(r);
-          baton.post();
-        }
-      });
+  {
+    auto t = co_invoke(
+        [awaitable = std::move(
+             awaitable)]() mutable -> Task<semi_await_result_t<Awaitable>> {
+          co_return co_await std::move(awaitable);
+        });
+    std::move(t)
+        .scheduleOn(co_await co_current_executor)
+        .start([posted, &baton, &result](auto&& r) {
+          if (!posted->exchange(true, std::memory_order_relaxed)) {
+            result = std::move(r);
+            baton.post();
+          } else {
+            delete posted;
+          }
+        });
+  }
 
   co_await detail::UnsafeResumeInlineSemiAwaitable{get_awaiter(baton)};
 
