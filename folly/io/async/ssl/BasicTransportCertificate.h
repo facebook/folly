@@ -18,12 +18,12 @@
 
 #include <memory>
 
-#include <folly/io/async/AsyncTransportCertificate.h>
+#include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 
 namespace folly {
 namespace ssl {
 
-class BasicTransportCertificate : public folly::AsyncTransportCertificate {
+class BasicTransportCertificate : public folly::OpenSSLTransportCertificate {
  public:
   // Create a basic transport cert from an existing one.  Returns nullptr
   // if cert is null.

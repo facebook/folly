@@ -34,6 +34,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseThread.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
+#include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
 #include <folly/io/async/test/MockAsyncTransportObserver.h>
 #include <folly/net/NetOps.h>
@@ -1012,9 +1013,16 @@ TEST(AsyncSSLSocketTest, GetClientCertificate) {
   auto clientSelfCert = cliSocket->getSelfCertificate();
   CHECK(clientSelfCert);
 
-  auto serverX509 = serverPeerCert->getX509();
-  auto clientX509 = clientSelfCert->getX509();
+  auto serverOpenSSLPeerCert =
+      dynamic_cast<const OpenSSLTransportCertificate*>(serverPeerCert);
+  CHECK(serverOpenSSLPeerCert);
+  auto serverX509 = serverOpenSSLPeerCert->getX509();
   CHECK(serverX509);
+
+  auto clientOpenSSLSelfCert =
+      dynamic_cast<const OpenSSLTransportCertificate*>(clientSelfCert);
+  CHECK(clientOpenSSLSelfCert);
+  auto clientX509 = clientSelfCert->getX509();
   CHECK(clientX509);
 
   // The two certs should be the same.
