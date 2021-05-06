@@ -59,39 +59,8 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
   event_base* evb_;
 };
 
-// The interface used to libevent is not thread-safe.  Calls to
-// event_init() and event_base_free() directly modify an internal
-// global 'current_base', so a mutex is required to protect this.
-//
-// event_init() should only ever be called once.  Subsequent calls
-// should be made to event_base_new().  We can recognise that
-// event_init() has already been called by simply inspecting current_base.
-std::mutex libevent_mutex_;
-
 EventBaseBackend::EventBaseBackend() {
-  struct event ev;
-  {
-    std::lock_guard<std::mutex> lock(libevent_mutex_);
-
-    // The value 'current_base' (libevent 1) or
-    // 'event_global_current_base_' (libevent 2) is filled in by event_set(),
-    // allowing examination of its value without an explicit reference here.
-    // If ev.ev_base is nullptr, then event_init() must be called, otherwise
-    // call event_base_new().
-    ::event_set(&ev, 0, 0, nullptr, nullptr);
-    if (!ev.ev_base) {
-      evb_ = event_init();
-    }
-  }
-
-  if (ev.ev_base) {
-    evb_ = ::event_base_new();
-  }
-
-  if (UNLIKELY(evb_ == nullptr)) {
-    LOG(ERROR) << "EventBase(): Failed to init event base.";
-    folly::throwSystemError("error in EventBaseBackend::EventBaseBackend()");
-  }
+  evb_ = event_base_new();
 }
 
 EventBaseBackend::EventBaseBackend(event_base* evb) : evb_(evb) {
@@ -124,7 +93,6 @@ bool EventBaseBackend::eb_event_active(Event& event, int res) {
 }
 
 EventBaseBackend::~EventBaseBackend() {
-  std::lock_guard<std::mutex> lock(libevent_mutex_);
   event_base_free(evb_);
 }
 
@@ -829,7 +797,15 @@ const char* EventBase::getLibeventVersion() {
   return event_get_version();
 }
 const char* EventBase::getLibeventMethod() {
-  return event_get_method();
+  // event_base_method() would segv if there is no current_base so simulate it
+  struct op {
+    const char* name;
+  };
+  struct base {
+    const op* evsel;
+  };
+  auto b = reinterpret_cast<base*>(getLibeventBase());
+  return !b ? "" : b->evsel->name;
 }
 
 VirtualEventBase& EventBase::getVirtualEventBase() {
