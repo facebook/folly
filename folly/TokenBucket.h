@@ -21,11 +21,22 @@
 #include <chrono>
 #include <thread>
 
+#include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
 #include <folly/Optional.h>
 #include <folly/concurrency/CacheLocality.h>
 
 namespace folly {
+
+struct TokenBucketPolicyDefault {
+  using align =
+      std::integral_constant<size_t, hardware_destructive_interference_size>;
+
+  template <typename T>
+  using atom = std::atomic<T>;
+
+  using clock = std::chrono::steady_clock;
+};
 
 /**
  * Thread-safe (atomic) token bucket implementation.
@@ -51,10 +62,15 @@ namespace folly {
  * The "dynamic" base variant allows the token generation rate and maximum
  * burst size to change with every token consumption.
  *
- * @tparam Clock Clock type, must be steady i.e. monotonic.
+ * @tparam Policy A policy.
  */
-template <typename Clock = std::chrono::steady_clock>
+template <typename Policy = TokenBucketPolicyDefault>
 class BasicDynamicTokenBucket {
+  template <typename T>
+  using Atom = typename Policy::template atom<T>;
+  using Align = typename Policy::align;
+  using Clock = typename Policy::clock;
+
   static_assert(Clock::is_steady, "clock must be steady");
 
  public:
@@ -320,19 +336,19 @@ class BasicDynamicTokenBucket {
     return zeroTimeNew;
   }
 
-  alignas(hardware_destructive_interference_size) std::atomic<double> zeroTime_;
+  static constexpr size_t AlignValue =
+      constexpr_max(Align::value, alignof(Atom<double>));
+  alignas(AlignValue) Atom<double> zeroTime_;
 };
 
 /**
  * Specialization of BasicDynamicTokenBucket with a fixed token
  * generation rate and a fixed maximum burst size.
  */
-template <typename Clock = std::chrono::steady_clock>
+template <typename Policy = TokenBucketPolicyDefault>
 class BasicTokenBucket {
-  static_assert(Clock::is_steady, "clock must be steady");
-
  private:
-  using Impl = BasicDynamicTokenBucket<Clock>;
+  using Impl = BasicDynamicTokenBucket<Policy>;
 
  public:
   /**
