@@ -380,6 +380,7 @@ void testString2Integral() {
 TEST(Conv, String2Integral) {
   testString2Integral<const char*, int8_t, int16_t, int32_t, int64_t>();
   testString2Integral<std::string, int8_t, int16_t, int32_t, int64_t>();
+  testString2Integral<std::string_view, int8_t, int16_t, int32_t, int64_t>();
   testString2Integral<fbstring, int8_t, int16_t, int32_t, int64_t>();
 
   // Testing the behavior of the StringPiece* API
@@ -500,10 +501,10 @@ TEST(Conv, VariadicToDelim) {
 
 template <class String>
 void testDoubleToString() {
-  EXPECT_EQ(to<string>(0.0), "0");
-  EXPECT_EQ(to<string>(0.5), "0.5");
-  EXPECT_EQ(to<string>(10.25), "10.25");
-  EXPECT_EQ(to<string>(1.123e10), "11230000000");
+  EXPECT_EQ(to<String>(0.0), "0");
+  EXPECT_EQ(to<String>(0.5), "0.5");
+  EXPECT_EQ(to<String>(10.25), "10.25");
+  EXPECT_EQ(to<String>(1.123e10), "11230000000");
 }
 
 TEST(Conv, DoubleToString) {
@@ -1175,10 +1176,11 @@ TEST(Conv, TryStringToEnum) {
   EXPECT_EQ(static_cast<A>(50), rv3.value());
 }
 
-TEST(Conv, TryStringToFloat) {
-  auto rv1 = folly::tryTo<float>("");
+template <class String>
+void tryStringToFloat() {
+  auto rv1 = folly::tryTo<float>(String(""));
   EXPECT_FALSE(rv1.hasValue());
-  auto rv2 = folly::tryTo<float>("3.14");
+  auto rv2 = folly::tryTo<float>(String("3.14"));
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-5);
   // No trailing '\0' to expose 1-byte buffer over-read
@@ -1187,16 +1189,16 @@ TEST(Conv, TryStringToFloat) {
   EXPECT_FALSE(rv3.hasValue());
 
   // Exact conversion at numeric limits (8+ decimal digits)
-  auto rv4 = folly::tryTo<float>("-3.4028235E38");
+  auto rv4 = folly::tryTo<float>(String("-3.4028235E38"));
   EXPECT_TRUE(rv4.hasValue());
   EXPECT_EQ(rv4.value(), numeric_limits<float>::lowest());
-  auto rv5 = folly::tryTo<float>("3.40282346E38");
+  auto rv5 = folly::tryTo<float>(String("3.40282346E38"));
   EXPECT_TRUE(rv5.hasValue());
   EXPECT_EQ(rv5.value(), numeric_limits<float>::max());
 
   // Beyond numeric limits
   // numeric_limits<float>::lowest() ~= -3.402823466E38
-  const std::array<folly::StringPiece, 4> kOversizedInputs{{
+  const std::array<String, 4> kOversizedInputs{{
       "-3.403E38",
       "-3.4029E38",
       "-3.402824E38",
@@ -1208,7 +1210,7 @@ TEST(Conv, TryStringToFloat) {
   }
 
   // NaN
-  const std::array<folly::StringPiece, 6> kNanInputs{{
+  const std::array<String, 6> kNanInputs{{
       "nan",
       "NaN",
       "NAN",
@@ -1222,16 +1224,29 @@ TEST(Conv, TryStringToFloat) {
   }
 }
 
-TEST(Conv, TryStringToDouble) {
-  auto rv1 = folly::tryTo<double>("");
+TEST(Conv, TryStringToFloat) {
+  tryStringToFloat<std::string>();
+  tryStringToFloat<std::string_view>();
+  tryStringToFloat<folly::StringPiece>();
+}
+
+template <class String>
+void tryToDouble() {
+  auto rv1 = folly::tryTo<double>(String(""));
   EXPECT_FALSE(rv1.hasValue());
-  auto rv2 = folly::tryTo<double>("3.14");
+  auto rv2 = folly::tryTo<double>(String("3.14"));
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-10);
   // No trailing '\0' to expose 1-byte buffer over-read
   char y = '\t';
   auto rv4 = folly::tryTo<double>(folly::StringPiece(&y, 1));
   EXPECT_FALSE(rv4.hasValue());
+}
+
+TEST(Conv, TryStringToDouble) {
+  tryToDouble<std::string>();
+  tryToDouble<std::string_view>();
+  tryToDouble<folly::StringPiece>();
 }
 
 TEST(Conv, TryIntToInt) {
@@ -1266,22 +1281,28 @@ TEST(Conv, TryIntToFloat) {
   EXPECT_EQ(rv2.value(), 1000.0f);
 }
 
-TEST(Conv, TryPtrPairToInt) {
-  StringPiece sp1("1000000000000000000000000000000");
+template <class String>
+void tryTo() {
+  String sp1("1000000000000000000000000000000");
   auto rv1 = folly::tryTo<int>(sp1.begin(), sp1.end());
   EXPECT_FALSE(rv1.hasValue());
-  StringPiece sp2("4711");
+  String sp2("4711");
   auto rv2 = folly::tryTo<int>(sp2.begin(), sp2.end());
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_EQ(rv2.value(), 4711);
-  StringPiece sp3("-4711");
+  String sp3("-4711");
   auto rv3 = folly::tryTo<int>(sp3.begin(), sp3.end());
   EXPECT_TRUE(rv3.hasValue());
   EXPECT_EQ(rv3.value(), -4711);
-  StringPiece sp4("4711");
+  String sp4("4711");
   auto rv4 = folly::tryTo<uint16_t>(sp4.begin(), sp4.end());
   EXPECT_TRUE(rv4.hasValue());
   EXPECT_EQ(rv4.value(), 4711);
+}
+
+TEST(Conv, TryPtrPairToInt) {
+  tryTo<string_view>();
+  tryTo<StringPiece>();
 }
 
 TEST(Conv, allocate_size) {

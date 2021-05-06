@@ -673,10 +673,10 @@ void splitTest() {
   EXPECT_EQ(parts[3], "");
 }
 
-template <template <class, class> class VectorType>
+template <class Str, template <class, class> class VectorType>
 void piecesTest() {
-  VectorType<StringPiece, std::allocator<StringPiece>> pieces;
-  VectorType<StringPiece, std::allocator<StringPiece>> pieces2;
+  VectorType<Str, std::allocator<Str>> pieces;
+  VectorType<Str, std::allocator<Str>> pieces2;
 
   folly::split(',', "a,b,c", pieces);
   EXPECT_EQ(pieces.size(), 3);
@@ -799,15 +799,15 @@ void piecesTest() {
   pieces.clear();
 
   const char* str = "a,b";
-  folly::split(',', StringPiece(str), pieces);
+  folly::split(',', Str(str), pieces);
   EXPECT_EQ(pieces.size(), 2);
   EXPECT_EQ(pieces[0], "a");
   EXPECT_EQ(pieces[1], "b");
-  EXPECT_EQ(pieces[0].start(), str);
-  EXPECT_EQ(pieces[1].start(), str + 2);
+  EXPECT_EQ(pieces[0].begin(), str);
+  EXPECT_EQ(pieces[1].begin(), str + 2);
 
-  std::set<StringPiece> unique;
-  folly::splitTo<StringPiece>(
+  std::set<Str> unique;
+  folly::splitTo<Str>(
       ":",
       "asd:bsd:asd:asd:bsd:csd::asd",
       std::inserter(unique, unique.begin()),
@@ -831,11 +831,18 @@ TEST(Split, split_vector) {
 TEST(Split, split_fbvector) {
   splitTest<folly::fbvector>();
 }
+
 TEST(Split, pieces_vector) {
-  piecesTest<std::vector>();
+  piecesTest<StringPiece, std::vector>();
 }
 TEST(Split, pieces_fbvector) {
-  piecesTest<folly::fbvector>();
+  piecesTest<StringPiece, folly::fbvector>();
+}
+TEST(Split, view_vector) {
+  piecesTest<std::string_view, std::vector>();
+}
+TEST(Split, view_fbvector) {
+  piecesTest<std::string_view, folly::fbvector>();
 }
 
 TEST(Split, fixed) {
