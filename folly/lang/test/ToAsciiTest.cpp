@@ -243,18 +243,24 @@ using abc = folly::to_ascii_alphabet_lower;
 
 TEST_F(ToAsciiTest, to_ascii_basic_10_compare) {
   to_ascii_compare<10>([](auto out, auto v) {
-    return folly::detail::to_ascii_with_basic<10, abc>(out, v);
+    auto size = folly::to_ascii_size<10>(v);
+    folly::detail::to_ascii_with_basic<10, abc>(out, size, v);
+    return size;
   });
 }
 
 TEST_F(ToAsciiTest, to_ascii_array_10_compare) {
   to_ascii_compare<10>([](auto out, auto v) {
-    return folly::detail::to_ascii_with_array<10, abc>(out, v);
+    auto size = folly::to_ascii_size<10>(v);
+    folly::detail::to_ascii_with_array<10, abc>(out, size, v);
+    return size;
   });
 }
 
 TEST_F(ToAsciiTest, to_ascii_table_10_compare) {
   to_ascii_compare<10>([](auto out, auto v) {
-    return folly::detail::to_ascii_with_table<10, abc>(out, v);
+    auto size = folly::to_ascii_size<10>(v);
+    folly::detail::to_ascii_with_table<10, abc>(out, size, v);
+    return size;
   });
 }

@@ -252,12 +252,6 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_basic(
   }
   out[0] = xlate(uint8_t(v));
 }
-template <uint64_t Base, typename Alphabet>
-FOLLY_ALWAYS_INLINE size_t to_ascii_with_basic(char* out, uint64_t v) {
-  auto const size = to_ascii_size_route<Base>(v);
-  to_ascii_with_basic<Base, Alphabet>(out, size, v);
-  return size;
-}
 
 //  A variant of the straightforward implementation, but using a lookup table.
 template <uint64_t Base, typename Alphabet>
@@ -265,12 +259,6 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_array(
     char* out, size_t size, uint64_t v) {
   using array = to_ascii_array<Base, Alphabet>; // also an alphabet
   to_ascii_with_basic<Base, array>(out, size, v);
-}
-template <uint64_t Base, typename Alphabet>
-FOLLY_ALWAYS_INLINE size_t to_ascii_with_array(char* out, uint64_t v) {
-  auto const size = to_ascii_size_route<Base>(v);
-  to_ascii_with_array<Base, Alphabet>(out, size, v);
-  return size;
 }
 
 //  A trickier implementation which performs half as many divides as the other,
@@ -307,6 +295,24 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_with_table(char* out, uint64_t v) {
   auto const size = to_ascii_size_route<Base>(v);
   to_ascii_with_table<Base, Alphabet>(out, size, v);
   return size;
+}
+
+template <uint64_t Base, typename Alphabet>
+FOLLY_ALWAYS_INLINE size_t
+to_ascii_with_route(char* outb, char const* oute, uint64_t v) {
+  auto const size = to_ascii_size_route<Base>(v);
+  if (FOLLY_UNLIKELY(oute < outb || size_t(oute - outb) < size)) {
+    return 0;
+  }
+  kIsMobile //
+      ? to_ascii_with_array<Base, Alphabet>(outb, size, v)
+      : to_ascii_with_table<Base, Alphabet>(outb, size, v);
+  return size;
+}
+template <uint64_t Base, typename Alphabet, size_t N>
+FOLLY_ALWAYS_INLINE size_t to_ascii_with_route(char (&out)[N], uint64_t v) {
+  static_assert(N >= to_ascii_powers<Base, decltype(v)>::size, "out too small");
+  return to_ascii_with_table<Base, Alphabet>(out, v);
 }
 
 } // namespace detail
@@ -364,18 +370,11 @@ inline size_t to_ascii_size_decimal(uint64_t v) {
 //  async-signal-safe
 template <uint64_t Base, typename Alphabet>
 size_t to_ascii_with(char* outb, char const* oute, uint64_t v) {
-  auto const size = to_ascii_size<Base>(v);
-  if (FOLLY_UNLIKELY(oute < outb || size_t(oute - outb) < size)) {
-    return 0;
-  }
-  return kIsMobile //
-      ? detail::to_ascii_with_array<Base, Alphabet>(outb, v)
-      : detail::to_ascii_with_table<Base, Alphabet>(outb, v);
+  return detail::to_ascii_with_route<Base, Alphabet>(outb, oute, v);
 }
 template <uint64_t Base, typename Alphabet, size_t N>
 size_t to_ascii_with(char (&out)[N], uint64_t v) {
-  static_assert(N >= to_ascii_size_max<Base, decltype(v)>, "out too small");
-  return detail::to_ascii_with_table<Base, Alphabet>(out, v);
+  return detail::to_ascii_with_route<Base, Alphabet>(out, v);
 }
 
 //  to_ascii_lower
