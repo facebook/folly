@@ -50,7 +50,7 @@
 
 namespace __cxxabiv1 {
 
-struct __cxa_exception {
+struct __folly_cxa_exception {
 #if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
   void* reserve;
   size_t referenceCount;
@@ -59,10 +59,10 @@ struct __cxa_exception {
   void (*exceptionDestructor)(void*);
   void (*unexpectedHandler)();
   std::terminate_handler terminateHandler;
-  __cxa_exception* nextException;
+  __folly_cxa_exception* nextException;
   int handlerCount;
 #if defined(_LIBCXXABI_ARM_EHABI)
-  __cxa_exception* nextPropagatingException;
+  __folly_cxa_exception* nextPropagatingException;
   int propagationCount;
 #else
   int handlerSwitchValue;
@@ -147,7 +147,7 @@ std::type_info const* exception_ptr_get_type(
     return nullptr;
   }
   auto object = cxxabi_get_object(ptr);
-  auto exception = static_cast<abi::__cxa_exception*>(object) - 1;
+  auto exception = static_cast<abi::__folly_cxa_exception*>(object) - 1;
   return exception->exceptionType;
 }
 
