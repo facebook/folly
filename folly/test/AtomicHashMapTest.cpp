@@ -327,6 +327,8 @@ class Integer {
  public:
   explicit Integer(KeyT v = 0) : v_(v) {}
 
+  Integer(const Integer&) = default;
+
   Integer& operator=(const Integer& a) {
     static bool throwException_ = false;
     throwException_ = !throwException_;

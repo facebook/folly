@@ -27,6 +27,8 @@ struct ExpensiveCopy {
   ExpensiveCopy(const ExpensiveCopy&) {
     std::this_thread::sleep_for(std::chrono::milliseconds{1});
   }
+
+  ExpensiveCopy& operator=(const ExpensiveCopy&) = default;
 };
 
 #if FOLLY_HAS_COROUTINES

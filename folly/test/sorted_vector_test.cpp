@@ -71,6 +71,8 @@ struct CountCopyCtor {
     ++gCount_;
   }
 
+  CountCopyCtor& operator=(const CountCopyCtor&) = default;
+
   bool operator<(const CountCopyCtor& o) const { return val_ < o.val_; }
 
   int val_;
