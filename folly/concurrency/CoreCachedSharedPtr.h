@@ -112,7 +112,7 @@ class AtomicCoreCachedSharedPtr {
   }
 
   void reset(const std::shared_ptr<T>& p = nullptr) {
-    auto newslots = folly::make_unique<Slots>();
+    auto newslots = std::make_unique<Slots>();
     // Allocate each Holder in a different CoreRawAllocator stripe to
     // prevent false sharing. Their control blocks will be adjacent
     // thanks to allocate_shared().
