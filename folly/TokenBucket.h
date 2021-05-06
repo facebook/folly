@@ -91,7 +91,7 @@ class BasicDynamicTokenBucket {
    * however.)
    */
   BasicDynamicTokenBucket(const BasicDynamicTokenBucket& other) noexcept
-      : zeroTime_(other.zeroTime_.load()) {}
+      : zeroTime_(other.zeroTime_.load(std::memory_order_relaxed)) {}
 
   /**
    * Copy-assignment operator.
@@ -101,7 +101,9 @@ class BasicDynamicTokenBucket {
    */
   BasicDynamicTokenBucket& operator=(
       const BasicDynamicTokenBucket& other) noexcept {
-    zeroTime_ = other.zeroTime_.load();
+    zeroTime_.store(
+        other.zeroTime_.load(std::memory_order_relaxed),
+        std::memory_order_relaxed);
     return *this;
   }
 
@@ -114,7 +116,9 @@ class BasicDynamicTokenBucket {
    *                 starting to fill. Defaults to 0, so by default token
    *                 bucket is reset to "full".
    */
-  void reset(double zeroTime = 0) noexcept { zeroTime_ = zeroTime; }
+  void reset(double zeroTime = 0) noexcept {
+    zeroTime_.store(zeroTime, std::memory_order_relaxed);
+  }
 
   /**
    * Returns the current time in seconds since Epoch.
@@ -148,7 +152,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    if (nowInSeconds <= zeroTime_.load()) {
+    if (nowInSeconds <= zeroTime_.load(std::memory_order_relaxed)) {
       return 0;
     }
 
@@ -185,7 +189,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    if (nowInSeconds <= zeroTime_.load()) {
+    if (nowInSeconds <= zeroTime_.load(std::memory_order_relaxed)) {
       return 0;
     }
 
@@ -293,7 +297,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    double zt = this->zeroTime_.load();
+    double zt = this->zeroTime_.load(std::memory_order_relaxed);
     if (nowInSeconds <= zt) {
       return 0;
     }
@@ -307,7 +311,7 @@ class BasicDynamicTokenBucket {
       double burstSize,
       double nowInSeconds,
       const TCallback& callback) {
-    auto zeroTimeOld = zeroTime_.load();
+    auto zeroTimeOld = zeroTime_.load(std::memory_order_relaxed);
     double zeroTimeNew;
     do {
       auto tokens = std::min((nowInSeconds - zeroTimeOld) * rate, burstSize);
@@ -315,8 +319,8 @@ class BasicDynamicTokenBucket {
         return false;
       }
       zeroTimeNew = nowInSeconds - tokens / rate;
-    } while (
-        UNLIKELY(!zeroTime_.compare_exchange_weak(zeroTimeOld, zeroTimeNew)));
+    } while (UNLIKELY(!zeroTime_.compare_exchange_weak(
+        zeroTimeOld, zeroTimeNew, std::memory_order_relaxed)));
 
     return true;
   }
@@ -327,12 +331,12 @@ class BasicDynamicTokenBucket {
    * into the future.
    */
   double returnTokensImpl(double tokenCount, double rate) {
-    auto zeroTimeOld = zeroTime_.load();
+    auto zeroTimeOld = zeroTime_.load(std::memory_order_relaxed);
     double zeroTimeNew;
     do {
       zeroTimeNew = zeroTimeOld - tokenCount / rate;
-    } while (
-        UNLIKELY(!zeroTime_.compare_exchange_weak(zeroTimeOld, zeroTimeNew)));
+    } while (UNLIKELY(!zeroTime_.compare_exchange_weak(
+        zeroTimeOld, zeroTimeNew, std::memory_order_relaxed)));
     return zeroTimeNew;
   }
 
