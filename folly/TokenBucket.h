@@ -36,6 +36,8 @@ struct TokenBucketPolicyDefault {
   using atom = std::atomic<T>;
 
   using clock = std::chrono::steady_clock;
+
+  using concurrent = std::true_type;
 };
 
 /**
@@ -70,6 +72,7 @@ class BasicDynamicTokenBucket {
   using Atom = typename Policy::template atom<T>;
   using Align = typename Policy::align;
   using Clock = typename Policy::clock;
+  using Concurrent = typename Policy::concurrent;
 
   static_assert(Clock::is_steady, "clock must be steady");
 
@@ -305,6 +308,16 @@ class BasicDynamicTokenBucket {
   }
 
  private:
+  static bool compare_exchange_weak_relaxed(
+      Atom<double>& atom, double& expected, double value) {
+    if (Concurrent::value) {
+      return atom.compare_exchange_weak(
+          expected, value, std::memory_order_relaxed);
+    } else {
+      return atom.store(value, std::memory_order_relaxed), true;
+    }
+  }
+
   template <typename TCallback>
   bool consumeImpl(
       double rate,
@@ -319,8 +332,8 @@ class BasicDynamicTokenBucket {
         return false;
       }
       zeroTimeNew = nowInSeconds - tokens / rate;
-    } while (UNLIKELY(!zeroTime_.compare_exchange_weak(
-        zeroTimeOld, zeroTimeNew, std::memory_order_relaxed)));
+    } while (UNLIKELY(
+        !compare_exchange_weak_relaxed(zeroTime_, zeroTimeOld, zeroTimeNew)));
 
     return true;
   }
@@ -335,8 +348,8 @@ class BasicDynamicTokenBucket {
     double zeroTimeNew;
     do {
       zeroTimeNew = zeroTimeOld - tokenCount / rate;
-    } while (UNLIKELY(!zeroTime_.compare_exchange_weak(
-        zeroTimeOld, zeroTimeNew, std::memory_order_relaxed)));
+    } while (UNLIKELY(
+        !compare_exchange_weak_relaxed(zeroTime_, zeroTimeOld, zeroTimeNew)));
     return zeroTimeNew;
   }
 
