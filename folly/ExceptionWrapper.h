@@ -31,6 +31,7 @@
 #include <utility>
 
 #include <folly/CPortability.h>
+#include <folly/CppAttributes.h>
 #include <folly/Demangle.h>
 #include <folly/ExceptionString.h>
 #include <folly/FBString.h>
@@ -38,6 +39,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/Exception.h>
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -177,10 +179,7 @@ class exception_wrapper final {
   //  1. An small object stored in-situ.
   //  2. A larger object stored on the heap and referenced with a
   //     std::shared_ptr.
-  //  3. A std::exception_ptr, together with either:
-  //       a. A pointer to the referenced std::exception object, or
-  //       b. A pointer to a std::type_info object for the referenced exception,
-  //          or for an unspecified type if the type is unknown.
+  //  3. A std::exception_ptr.
   // This is accomplished with the help of a union and a pointer to a hand-
   // rolled virtual table. This virtual table contains pointers to functions
   // that know which field of the union is active and do the proper action.
@@ -211,8 +210,6 @@ class exception_wrapper final {
   template <class CatchFn>
   using IsCatchAll =
       std::is_same<arg_type<std::decay_t<CatchFn>>, AnyException>;
-
-  struct Unknown {};
 
   // Sadly, with the gcc-4.9 platform, std::logic_error and std::runtime_error
   // do not fit here. They also don't have noexcept copy-ctors, so the internal
@@ -255,19 +252,7 @@ class exception_wrapper final {
 
   struct ExceptionPtr {
     std::exception_ptr ptr_;
-    std::uintptr_t exception_or_type_; // odd for type_info
-    static_assert(
-        1 < alignof(std::exception) && 1 < alignof(std::type_info),
-        "Surprise! std::exception and std::type_info don't have alignment "
-        "greater than one. as_int_ below will not work!");
 
-    static std::uintptr_t as_int_(
-        std::exception_ptr const& ptr, std::exception const& e) noexcept;
-    static std::uintptr_t as_int_(
-        std::exception_ptr const& ptr, AnyException e) noexcept;
-    bool has_exception_() const;
-    std::exception const* as_exception_() const;
-    std::type_info const* as_type_() const;
     static void copy_(exception_wrapper const* from, exception_wrapper* to);
     static void move_(exception_wrapper* from, exception_wrapper* to);
     static void delete_(exception_wrapper* that);
@@ -408,19 +393,19 @@ class exception_wrapper final {
 
   ~exception_wrapper();
 
-  //! \pre `ptr` is empty, or it holds a reference to an exception that is not
-  //!     derived from `std::exception`.
   //! \post `!ptr || bool(*this)`
-  //! \post `hasThrownException() == true`
-  //! \post `type() == unknown()`
-  explicit exception_wrapper(std::exception_ptr ptr) noexcept;
+  //! \post `hasThrownException() == bool(ptr)`
+  explicit exception_wrapper(std::exception_ptr const& ptr) noexcept;
+  explicit exception_wrapper(std::exception_ptr&& ptr) noexcept;
 
   //! \pre `ptr` holds a reference to `ex`.
   //! \post `hasThrownException() == true`
   //! \post `bool(*this)`
   //! \post `type() == typeid(ex)`
   template <class Ex>
-  exception_wrapper(std::exception_ptr ptr, Ex& ex) noexcept;
+  exception_wrapper(std::exception_ptr const& ptr, Ex& ex) noexcept;
+  template <class Ex>
+  exception_wrapper(std::exception_ptr&& ptr, Ex& ex) noexcept;
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
@@ -506,23 +491,16 @@ class exception_wrapper final {
   //! \return the `typeid` of an unspecified type used by
   //!     `exception_wrapper::type()` to denote an empty `exception_wrapper`.
   static std::type_info const& none() noexcept;
-  //! \return the `typeid` of an unspecified type used by
-  //!     `exception_wrapper::type()` to denote an `exception_wrapper` that
-  //!     holds an exception of unknown type.
-  static std::type_info const& unknown() noexcept;
 
   //! Returns the `typeid` of the wrapped exception object. If there is no
-  //!     wrapped exception object, returns `exception_wrapper::none()`. If
-  //!     this instance wraps an exception of unknown type not derived from
-  //!     `std::exception`, returns `exception_wrapper::unknown()`.
+  //!     wrapped exception object, returns `exception_wrapper::none()`.
   std::type_info const& type() const noexcept;
 
   //! \return If `get_exception() != nullptr`, `class_name() + ": " +
   //!     get_exception()->what()`; otherwise, `class_name()`.
   folly::fbstring what() const;
 
-  //! \return If `!*this`, the empty string; otherwise, if
-  //!     `type() == unknown()`, the string `"<unknown exception>"`; otherwise,
+  //! \return If `!*this`, the empty string; otherwise,
   //!     the result of `type().name()` after demangling.
   folly::fbstring class_name() const;
 
@@ -658,8 +636,8 @@ template <typename F, typename Ex, typename... Exs>
 inline exception_wrapper try_and_catch_(F&& f) {
   try {
     return try_and_catch_<F, Exs...>(std::forward<F>(f));
-  } catch (Ex& ex) {
-    return exception_wrapper(std::current_exception(), ex);
+  } catch (Ex&) {
+    return exception_wrapper(std::current_exception());
   }
 }
 } // namespace detail
@@ -709,8 +687,6 @@ exception_wrapper try_and_catch(F&& fn) noexcept {
   try {
     static_cast<F&&>(fn)();
     return exception_wrapper{};
-  } catch (std::exception const& ex) {
-    return exception_wrapper{std::current_exception(), ex};
   } catch (...) {
     return exception_wrapper{std::current_exception()};
   }
