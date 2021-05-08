@@ -394,10 +394,12 @@ class exception_wrapper final {
   ~exception_wrapper();
 
   //! \post `!ptr || bool(*this)`
+  //! \post `hasThrownException() == bool(ptr)`
   explicit exception_wrapper(std::exception_ptr const& ptr) noexcept;
   explicit exception_wrapper(std::exception_ptr&& ptr) noexcept;
 
   //! \pre `ptr` holds a reference to `ex`.
+  //! \post `hasThrownException() == true`
   //! \post `bool(*this)`
   //! \post `type() == typeid(ex)`
   template <class Ex>
@@ -407,6 +409,7 @@ class exception_wrapper final {
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
+  //! \post `hasThrownException() == false`
   //! \post `type() == typeid(ex)`
   //! \note Exceptions of types derived from `std::exception` can be implicitly
   //!     converted to an `exception_wrapper`.
@@ -419,6 +422,7 @@ class exception_wrapper final {
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
+  //! \post `hasThrownException() == false`
   //! \post `type() == typeid(ex)`
   //! \note Exceptions of types not derived from `std::exception` can still be
   //!     used to construct an `exception_wrapper`, but you must specify
