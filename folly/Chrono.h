@@ -197,5 +197,37 @@ struct coarse_steady_clock {
   }
 };
 
+struct coarse_system_clock {
+  using duration = std::chrono::milliseconds;
+  using rep = duration::rep;
+  using period = duration::period;
+  using time_point = std::chrono::time_point<coarse_system_clock>;
+  constexpr static bool is_steady = false;
+
+  static time_point now() noexcept {
+#ifndef CLOCK_REALTIME_COARSE
+    auto time = std::chrono::system_clock::now().time_since_epoch();
+#else
+    timespec ts;
+    int ret = clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    if (kIsDebug && (ret != 0)) {
+      throw_exception<std::runtime_error>(
+          "Error using CLOCK_REALTIME_COARSE.");
+    }
+    auto time = std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
+#endif
+    return time_point(std::chrono::duration_cast<duration>(time));
+  }
+
+  static std::time_t to_time_t(const time_point &t) noexcept {
+    return std::chrono::duration_cast<std::chrono::seconds>(
+               t.time_since_epoch()).count();
+  }
+
+  static time_point from_time_t(std::time_t t) noexcept {
+    return time_point(std::chrono::duration_cast<duration>(std::chrono::seconds(t)));
+  }
+};
+
 } // namespace chrono
 } // namespace folly
