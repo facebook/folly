@@ -145,15 +145,42 @@
 #endif
 
 #if FOLLY_SANITIZE
-#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
-  __attribute__((no_sanitize(__VA_ARGS__)))
-#else
-#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
+
+// Error early if we don't have __has_attribute to be more explicit
+#ifndef __has_attribute
+#error Need __has_attribute to determine which attributes can be used
+#endif
+
+// Find an attribute to disable undefined behaviour sanitization
+#if __has_attribute(__no_sanitize__)
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER \
+  __attribute__((__no_sanitize__("undefined")))
+#elif __has_attribute(__no_sanitize_undefined__)
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER \
+  __attribute__((__no_sanitize_undefined__))
+#else // __has_attribute(no_sanitize)
+#error No attribute to disable undefined behaviour sanitization
+#endif // __has_attribute(no_sanitize)
+
+// Find an attribute to disable non-null sanitization
+#if __has_attribute(__no_sanitize__)
+#define FOLLY_DISABLE_NONNULL_SANITIZER \
+  __attribute__((__no_sanitize__("nonnull-attribute")))
+#elif __has_attribute(__nonnull__)
+#define FOLLY_DISABLE_NONNULL_SANITIZER \
+  __attribute__((__nonnull__))
+#else // has_attribute(no_sanitize)
+#error No attribute to disable non-null sanitization
+#endif // __has_attribute(no_sanitize)
+
+#else // FOLLY_SANITIZE
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER
+#define FOLLY_DISABLE_NONNULL_SANITIZER
 #endif // FOLLY_SANITIZE
 
 #define FOLLY_DISABLE_SANITIZERS                                 \
   FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_THREAD_SANITIZER \
-      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("undefined")
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER
 
 /**
  * Macro for marking functions as having public visibility.
