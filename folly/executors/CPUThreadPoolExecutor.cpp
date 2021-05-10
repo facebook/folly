@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <folly/Memory.h>
+#include <folly/Optional.h>
 #include <folly/concurrency/QueueObserver.h>
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
@@ -265,15 +266,12 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
-  auto guard = [&]() {
-    if (prohibitBlockingOnThreadPools_ == Options::Blocking::prohibit) {
-      return ExecutorBlockingGuard{
-          ExecutorBlockingGuard::ProhibitTag{}, executorName};
-    } else {
-      return ExecutorBlockingGuard{
-          ExecutorBlockingGuard::TrackTag{}, executorName};
-    }
-  }();
+  folly::Optional<ExecutorBlockingGuard> guard; // optional until C++17
+  if (prohibitBlockingOnThreadPools_ == Options::Blocking::prohibit) {
+    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, executorName);
+  } else {
+    guard.emplace(ExecutorBlockingGuard::TrackTag{}, executorName);
+  }
 
   thread->startupBaton.post();
   while (true) {
