@@ -85,6 +85,17 @@ class ConstructorCallback {
   using This = ConstructorCallback<T, MaxCallbacks>;
 
   explicit ConstructorCallback(T* t) {
+    // This code depends on the C++ standard where values that are
+    // initialized to zero ("Zero Initiation") are initialized before any more
+    // complex static pre-main() dynamic initialization - see
+    // https://en.cppreference.com/w/cpp/language/initialization) for
+    // more details.
+    //
+    // This assumption prevents a subtle initialization race condition
+    // where something could call this code pre-main() before
+    // nConstructorCallbacks_ was set to zero, and thus prevents issuing
+    // callbacks on garbage data.
+
     // fire callbacks to inform listeners about the new constructor
     auto nCBs = This::nConstructorCallbacks_.load(std::memory_order_acquire);
     /****
