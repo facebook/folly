@@ -716,6 +716,7 @@ class alignas(64) BucketTable {
     cur->next_.store(headnode, std::memory_order_relaxed);
     head->store(cur, std::memory_order_release);
     it.setNode(cur, buckets, bcount, idx);
+    haznode.reset(cur);
     return true;
   }
 
