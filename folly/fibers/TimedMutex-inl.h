@@ -173,7 +173,10 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::lock_shared() {
     read_waiters_.push_back(waiter);
     ulock.unlock();
     waiter.baton.wait();
-    assert(state_ == State::READ_LOCKED);
+    if (folly::kIsDebug) {
+      std::unique_lock<folly::SpinLock> assertLock{lock_};
+      assert(state_ == State::READ_LOCKED);
+    }
     return;
   }
   assert(
