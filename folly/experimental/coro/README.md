@@ -18,9 +18,8 @@ folly::coro::Task<int> taskSlow43() {
 
 int main() {
   ...
-  CHECK_EQ(
-      43,
-      folly::coro::blockingWait(taskSlow43().scheduleOn(folly::getCPUExecutor().get())));
+  CHECK_EQ(43, folly::coro::blockingWait(taskSlow43().scheduleOn(
+                   folly::getGlobalCPUExecutor().get())));
   ...
 }
 ```
