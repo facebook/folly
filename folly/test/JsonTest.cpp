@@ -399,6 +399,49 @@ TEST(Json, Produce) {
   EXPECT_EQ("NaN", folly::json::serialize(parseJson("NaN"), opts));
 }
 
+TEST(Json, PrintExceptionErrorMessages) {
+  folly::json::serialization_opts opts;
+  opts.allow_nan_inf = false;
+  try {
+    const char* jsonWithInfValue =
+        "[{}, {}, {\"outerKey\":{\"innerKey\": Infinity}}]";
+    EXPECT_THROW(
+        toJson(folly::json::serialize(parseJson(jsonWithInfValue), opts)),
+        print_error);
+
+    toJson(folly::json::serialize(parseJson(jsonWithInfValue), opts));
+  } catch (const print_error& error) {
+    EXPECT_EQ(
+        std::string(
+            "folly::toJson: JSON object value was an INF when serializing value at 2->\"outerKey\"->\"innerKey\""),
+        error.what());
+  }
+
+  try {
+    const char* jsonWithNanValue = "[{\"outerKey\":{\"innerKey\": NaN}}]";
+    EXPECT_THROW(
+        toJson(folly::json::serialize(parseJson(jsonWithNanValue), opts)),
+        print_error);
+    toJson(folly::json::serialize(parseJson(jsonWithNanValue), opts));
+  } catch (const print_error& error) {
+    EXPECT_EQ(
+        std::string(
+            "folly::toJson: JSON object value was a NaN when serializing value at 0->\"outerKey\"->\"innerKey\""),
+        error.what());
+  }
+  try {
+    const dynamic jsonWithNonStringKey(
+        dynamic::object("abc", "xyz")(42.33, "asd"));
+    EXPECT_THROW(toJson(jsonWithNonStringKey), print_error);
+    toJson(jsonWithNonStringKey);
+  } catch (const print_error& error) {
+    EXPECT_EQ(
+        std::string(
+            "folly::toJson: JSON object key 42.33 was not a string when serializing key at 42.33"),
+        error.what());
+  }
+}
+
 TEST(Json, JsonEscape) {
   folly::json::serialization_opts opts;
   EXPECT_EQ(
