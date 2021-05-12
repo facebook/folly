@@ -71,6 +71,15 @@ constexpr uint64_t hash_128_to_64(
   return b;
 }
 
+// Order-independent way to reduce multiple 64 bit hashes into a single hash.
+FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
+constexpr uint64_t commutative_hash_128_to_64(
+    const uint64_t upper, const uint64_t lower) noexcept {
+  // Commutative accumulator taken from this paper:
+  // https://www.preprints.org/manuscript/201710.0192/v1/download
+  return 3860031 + (upper + lower) * 2779 + (upper * lower * 2);
+}
+
 //  twang_mix64
 //
 //  Thomas Wang 64 bit mix hash function.
@@ -643,9 +652,7 @@ uint64_t commutative_hash_combine_value_generic(
     uint64_t seed, Hash const& hasher, Value const& value) {
   auto const x = hasher(value);
   auto const y = IsAvalanchingHasher<Hash, Value>::value ? x : twang_mix64(x);
-  // Commutative accumulator taken from this paper:
-  // https://www.preprints.org/manuscript/201710.0192/v1/download
-  return 3860031 + (seed + y) * 2779 + (seed * y * 2);
+  return commutative_hash_128_to_64(seed, y);
 }
 
 // hash_range combines hashes of items in the range [first, last) in an

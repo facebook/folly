@@ -31,6 +31,15 @@
 
 using namespace folly::hash;
 
+TEST(Hash, Test128To64) {
+  constexpr uint64_t upper = 12345678910111213UL;
+  constexpr uint64_t lower = 141516171819202122UL;
+  EXPECT_NE(hash_128_to_64(upper, lower), hash_128_to_64(lower, upper));
+  EXPECT_EQ(
+      commutative_hash_128_to_64(upper, lower),
+      commutative_hash_128_to_64(lower, upper));
+}
+
 TEST(Hash, Fnv32) {
   const char* s1 = "hello, world!";
   const uint32_t s1_res = 3605494790UL;
