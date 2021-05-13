@@ -2531,7 +2531,14 @@ void AsyncSocket::addLifecycleObserver(
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
-  lifecycleObservers_.push_back(observer);
+
+  // adding the same observer multiple times is not allowed
+  auto& observers = lifecycleObservers_;
+  CHECK(
+      std::find(observers.begin(), observers.end(), observer) ==
+      observers.end());
+
+  observers.push_back(observer);
   observer->observerAttach(this);
   if (observer->getConfig().byteEvents) {
     if (byteEventHelper_ && byteEventHelper_->maybeEx.has_value()) {
@@ -2547,16 +2554,13 @@ void AsyncSocket::addLifecycleObserver(
 
 bool AsyncSocket::removeLifecycleObserver(
     AsyncTransport::LifecycleObserver* observer) {
-  const auto eraseIt = std::remove(
-      lifecycleObservers_.begin(), lifecycleObservers_.end(), observer);
-  if (eraseIt == lifecycleObservers_.end()) {
+  auto& observers = lifecycleObservers_;
+  auto it = std::find(observers.begin(), observers.end(), observer);
+  if (it == observers.end()) {
     return false;
   }
-
-  for (auto it = eraseIt; it != lifecycleObservers_.end(); it++) {
-    (*it)->observerDetach(this);
-  }
-  lifecycleObservers_.erase(eraseIt, lifecycleObservers_.end());
+  observer->observerDetach(this);
+  observers.erase(it);
   return true;
 }
 

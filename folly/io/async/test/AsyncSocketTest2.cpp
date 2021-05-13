@@ -5351,9 +5351,10 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenDestroySocket) {
 }
 
 TEST(AsyncSocket, LifecycleObserverAttachRemove) {
-  auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   EventBase evb;
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+
+  auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
@@ -5363,6 +5364,64 @@ TEST(AsyncSocket, LifecycleObserverAttachRemove) {
   EXPECT_TRUE(socket->removeLifecycleObserver(cb.get()));
   EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
   Mock::VerifyAndClearExpectations(cb.get());
+}
+
+TEST(AsyncSocket, LifecycleObserverAttachRemoveMultiple) {
+  EventBase evb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+
+  auto cb1 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
+  EXPECT_CALL(*cb1, observerAttachMock(socket.get()));
+  socket->addLifecycleObserver(cb1.get());
+  Mock::VerifyAndClearExpectations(cb1.get());
+  EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb1.get()));
+
+  auto cb2 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
+  EXPECT_CALL(*cb2, observerAttachMock(socket.get()));
+  socket->addLifecycleObserver(cb2.get());
+  Mock::VerifyAndClearExpectations(cb2.get());
+  EXPECT_THAT(
+      socket->getLifecycleObservers(),
+      UnorderedElementsAre(cb1.get(), cb2.get()));
+
+  EXPECT_CALL(*cb1, observerDetachMock(socket.get()));
+  EXPECT_TRUE(socket->removeLifecycleObserver(cb1.get()));
+  Mock::VerifyAndClearExpectations(cb1.get());
+  EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb2.get()));
+
+  EXPECT_CALL(*cb2, observerDetachMock(socket.get()));
+  EXPECT_TRUE(socket->removeLifecycleObserver(cb2.get()));
+  Mock::VerifyAndClearExpectations(cb2.get());
+  EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
+}
+
+TEST(AsyncSocket, LifecycleObserverAttachRemoveMultipleReverse) {
+  EventBase evb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+
+  auto cb1 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
+  EXPECT_CALL(*cb1, observerAttachMock(socket.get()));
+  socket->addLifecycleObserver(cb1.get());
+  Mock::VerifyAndClearExpectations(cb1.get());
+  EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb1.get()));
+
+  auto cb2 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
+  EXPECT_CALL(*cb2, observerAttachMock(socket.get()));
+  socket->addLifecycleObserver(cb2.get());
+  Mock::VerifyAndClearExpectations(cb2.get());
+  EXPECT_THAT(
+      socket->getLifecycleObservers(),
+      UnorderedElementsAre(cb1.get(), cb2.get()));
+
+  EXPECT_CALL(*cb2, observerDetachMock(socket.get()));
+  EXPECT_TRUE(socket->removeLifecycleObserver(cb2.get()));
+  Mock::VerifyAndClearExpectations(cb2.get());
+  EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb1.get()));
+
+  EXPECT_CALL(*cb1, observerDetachMock(socket.get()));
+  EXPECT_TRUE(socket->removeLifecycleObserver(cb1.get()));
+  Mock::VerifyAndClearExpectations(cb1.get());
+  EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
 }
 
 TEST(AsyncSocket, LifecycleObserverRemoveMissing) {
