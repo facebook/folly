@@ -67,6 +67,15 @@ class MockAsyncSocket : public AsyncSocket {
   void setPreReceivedData(std::unique_ptr<IOBuf> data) override {
     return _setPreReceivedData(data);
   }
+
+  MOCK_METHOD1(
+      addLifecycleObserver,
+      void(folly::AsyncTransport::LifecycleObserver* observer));
+  MOCK_METHOD1(
+      removeLifecycleObserver,
+      bool(folly::AsyncTransport::LifecycleObserver* observer));
+  MOCK_CONST_METHOD0(
+      getLifecycleObservers, std::vector<AsyncTransport::LifecycleObserver*>());
 };
 
 } // namespace test
