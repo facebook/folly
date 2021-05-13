@@ -17,11 +17,12 @@
 #pragma once
 #include <array>
 #include <atomic>
+#include <iterator>
+#include <memory>
 #include <stdexcept>
 
 #include <folly/Format.h>
 #include <folly/Function.h>
-#include <folly/Optional.h>
 #include <folly/SharedMutex.h>
 
 namespace folly {
@@ -102,10 +103,10 @@ class ConstructorCallback {
      * We don't need the full lock here, just the atomic int to tell us
      * how far into the array to go/how many callbacks are registered
      *
-     * NOTE that nCBs > 0 will always imply that callbacks_ is non-nullopt
+     * NOTE that nCBs > 0 will always imply that callbacks_ is non-nullptr
      */
     for (int i = 0; i < nCBs; i++) {
-      This::callbacks_.value()[i](t);
+      (*This::callbacks_)[i](t);
     }
   }
 
@@ -128,16 +129,16 @@ class ConstructorCallback {
   static void addNewConstructorCallback(NewConstructorCallback cb) {
     std::lock_guard<SharedMutex> g(This::getMutex());
     auto idx = nConstructorCallbacks_.load(std::memory_order_acquire);
-    if (!callbacks_) {
+    if (callbacks_ == nullptr) {
       // initialize the array if unallocated
-      callbacks_.emplace(
-          std::array<This::NewConstructorCallback, MaxCallbacks>());
+      callbacks_ = std::make_unique<
+          std::array<This::NewConstructorCallback, MaxCallbacks>>();
     }
-    if (idx >= callbacks_.value().size()) {
+    if (idx >= (*callbacks_).size()) {
       throw std::length_error(
           folly::sformat("Too many callbacks - max {}", MaxCallbacks));
     }
-    callbacks_.value()[idx] = std::move(cb);
+    (*callbacks_)[idx] = std::move(cb);
     // Only increment nConstructorCallbacks_ after fully initializing the array
     // entry. This step makes the new array entry visible to other threads.
     nConstructorCallbacks_.store(idx + 1, std::memory_order_release);
@@ -145,7 +146,7 @@ class ConstructorCallback {
 
  private:
   // allocate an array internal to function to avoid init() races
-  static folly::Optional<std::array<NewConstructorCallback, MaxCallbacks>>
+  static std::unique_ptr<std::array<NewConstructorCallback, MaxCallbacks>>
       callbacks_;
   static folly::SharedMutex& getMutex();
   static std::atomic<int> nConstructorCallbacks_;
@@ -162,9 +163,9 @@ folly::SharedMutex& ConstructorCallback<T, MaxCallbacks>::getMutex() {
 }
 
 template <class T, std::size_t MaxCallbacks>
-folly::Optional<std::array<
+std::unique_ptr<std::array<
     typename ConstructorCallback<T, MaxCallbacks>::NewConstructorCallback,
     MaxCallbacks>>
-    ConstructorCallback<T, MaxCallbacks>::callbacks_{folly::none};
+    ConstructorCallback<T, MaxCallbacks>::callbacks_{nullptr};
 
 } // namespace folly
