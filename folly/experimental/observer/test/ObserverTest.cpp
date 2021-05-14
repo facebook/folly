@@ -20,6 +20,8 @@
 #include <folly/experimental/observer/Observer.h>
 #include <folly/experimental/observer/SimpleObservable.h>
 #include <folly/experimental/observer/WithJitter.h>
+#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerMap.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -859,4 +861,27 @@ TEST(Observer, MakeObserverUpdatesTracking) {
     EXPECT_EQ(i, **hazptrObserverGetSnapshotCheck);
     EXPECT_EQ(i, **hazptrObserverGetLocalSnapshotCheck);
   }
+}
+
+TEST(Observer, Fibers) {
+  folly::EventBase evb;
+  auto& fm = folly::fibers::getFiberManager(evb);
+
+  auto f1 = fm.addTaskFuture([] {
+    auto o = makeObserver([] {
+      folly::futures::sleep(std::chrono::milliseconds{10}).get();
+      return 1;
+    });
+    EXPECT_EQ(1, **o);
+  });
+  auto f2 = fm.addTaskFuture([] {
+    auto o = makeObserver([] {
+      folly::futures::sleep(std::chrono::milliseconds{20}).get();
+      return 2;
+    });
+    EXPECT_EQ(2, **o);
+  });
+
+  std::move(f1).getVia(&evb);
+  std::move(f2).getVia(&evb);
 }
