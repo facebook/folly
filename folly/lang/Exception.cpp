@@ -141,6 +141,65 @@ static void* cxxabi_get_object(std::exception_ptr const& ptr) noexcept {
   return reinterpret_cast<void* const&>(ptr);
 }
 
+static std::intptr_t cxxabi_cxa_exception_fields_adjustment() noexcept {
+#if defined(__LP64__) || defined(_WIN64) || !defined(_LIBCXXABI_ARM_EHABI)
+  return 0;
+#endif
+  // detect and cache whether this version of llvm has __cxa_exception with
+  // shifted fields
+  //
+  // for 32-bit arm-ehabi llvm ...
+  //
+  // before v5.0.1, _Unwind_Exception is alignas(4)
+  // as of v5.0.1, _Unwind_Exception is alignas(8)
+  // _Unwind_Exception is the last field in __cxa_exception
+  //
+  // before v10.0.0-rc2, __cxa_exception has 4b padding before the unwind field
+  // as of v10.0.0-rc2, __cxa_exception moves the 4b padding to the start in a
+  // field called reserve, but this field also exists as of this version in 64-
+  // bit llvm but not before
+  //
+  // before 32-bit arm-ehabi llvm v10.0.0-rc2, the reserve field does not exist
+  // in the struct explicitly but the refcount field is there instead due to
+  // implicit padding
+  //
+  // before 32-bit arm-ehabi llvm v5.0.1, and before 64-bit llvm v10.0.0-rc2,
+  // the reserve field is before the struct start and so is presumably before
+  // the struct allocation and so must not be accessed
+  //
+  // __cxa_allocate_exception zero-fills the __cxa_exception before __cxa_throw
+  // assigns fields so if, after incref, the refcount field is still zero, then
+  // the runtime llvm is at least v5.0.1 and before v10.00-rc2 and then all the
+  // fields except for the unwind field are shifted up by 4b
+  //
+  // prefer optimistic concurrency over pessimistic concurrency
+  static std::atomic<std::ptrdiff_t> cache{0}; // encoded
+  if (auto encoded = cache.load(std::memory_order_relaxed)) {
+    return (encoded - 1) / 2;
+  } else {
+    auto object = abi::__cxa_allocate_exception(0);
+    abi::__cxa_increment_exception_refcount(object);
+    auto exception = static_cast<abi::__folly_cxa_exception*>(object) - 1;
+    std::ptrdiff_t shift = 0;
+#if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
+    if (exception->referenceCount != 1) {
+      assert(exception->reserve = reinterpret_cast<void*>(1));
+      shift = -static_cast<std::ptrdiff_t>(sizeof(exception->reserve));
+    }
+#endif
+    abi::__cxa_free_exception(object); // no need for decref
+    cache.store(shift * 2 + 1, std::memory_order_relaxed);
+    return shift;
+  }
+}
+
+static abi::__folly_cxa_exception* cxxabi_cxa_exception_fields_adjusted(
+    abi::__folly_cxa_exception* exception) noexcept {
+  auto shift = cxxabi_cxa_exception_fields_adjustment();
+  return reinterpret_cast<abi::__folly_cxa_exception*>(
+      reinterpret_cast<char*>(exception) + shift);
+}
+
 std::type_info const* exception_ptr_get_type(
     std::exception_ptr const& ptr) noexcept {
   if (!ptr) {
@@ -148,7 +207,8 @@ std::type_info const* exception_ptr_get_type(
   }
   auto object = cxxabi_get_object(ptr);
   auto exception = static_cast<abi::__folly_cxa_exception*>(object) - 1;
-  return exception->exceptionType;
+  auto adjusted_ = cxxabi_cxa_exception_fields_adjusted(exception);
+  return adjusted_->exceptionType;
 }
 
 void* exception_ptr_get_object(
