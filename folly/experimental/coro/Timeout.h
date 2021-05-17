@@ -43,7 +43,7 @@ namespace folly::coro {
 // If a timekeeper is provided then uses that timekeeper to start the timer,
 // otherwise uses the process' default TimeKeeper if 'tk' is null.
 template <typename SemiAwaitable, typename Duration>
-Task<semi_await_result_t<SemiAwaitable>> timeout(
+Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
     SemiAwaitable semiAwaitable,
     Duration timeoutDuration,
     Timekeeper* tk = nullptr);

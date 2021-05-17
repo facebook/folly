@@ -602,6 +602,12 @@ detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
       static_cast<Awaitable&&>(awaitable)};
 }
 
+template <typename T>
+using semi_await_try_result_t =
+    await_result_t<decltype(folly::coro::co_viaIfAsync(
+        std::declval<folly::Executor::KeepAlive<>>(),
+        folly::coro::co_awaitTry(std::declval<T>())))>;
+
 } // namespace coro
 } // namespace folly
 

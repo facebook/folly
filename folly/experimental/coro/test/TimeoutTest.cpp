@@ -16,6 +16,7 @@
 
 #include <folly/Portability.h>
 
+#include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/Sleep.h>
@@ -160,6 +161,24 @@ TEST(Timeout, CancelParent) {
     EXPECT_LT(elapsed, 1s);
 
     EXPECT_TRUE(cancelled);
+  }());
+}
+
+TEST(Timeout, AsyncGenerator) {
+  coro::blockingWait([]() -> coro::Task<> {
+    // Completing synchronously with a value.
+    auto result = co_await coro::timeout(
+        []() -> coro::AsyncGenerator<int> { co_yield 42; }().next(), 1s);
+    EXPECT_EQ(42, result);
+
+    // Test that it handles failing synchronously
+    auto tryResult = co_await coro::co_awaitTry(coro::timeout(
+        []() -> coro::AsyncGenerator<int> {
+          co_yield coro::co_error(std::runtime_error{"bad value"});
+        }()
+                    .next(),
+        1s));
+    EXPECT_TRUE(tryResult.hasException<std::runtime_error>());
   }());
 }
 
