@@ -1033,10 +1033,10 @@ TEST(ThreadPoolExecutorTest, VirtualExecutorTestEDF) {
 template <class TPE>
 static void currentThreadTest(folly::StringPiece executorName) {
   folly::Optional<ExecutorBlockingContext> ctx{};
-  TPE tpe(1);
+  TPE tpe(1, std::make_shared<NamedThreadFactory>(executorName));
   tpe.add([&ctx]() { ctx = getExecutorBlockingContext(); });
   tpe.join();
-  EXPECT_EQ(ctx->name, executorName);
+  EXPECT_EQ(ctx->tag, executorName);
 }
 
 // Test the nesting of the permit guard
@@ -1044,7 +1044,7 @@ template <class TPE>
 static void currentThreadTestDisabled(folly::StringPiece executorName) {
   folly::Optional<ExecutorBlockingContext> ctxPermit{};
   folly::Optional<ExecutorBlockingContext> ctxForbid{};
-  TPE tpe(1);
+  TPE tpe(1, std::make_shared<NamedThreadFactory>(executorName));
   tpe.add([&]() {
     {
       // Nest the guard that permits blocking
@@ -1055,20 +1055,20 @@ static void currentThreadTestDisabled(folly::StringPiece executorName) {
   });
   tpe.join();
   EXPECT_TRUE(!ctxPermit.has_value());
-  EXPECT_EQ(ctxForbid->name, executorName);
+  EXPECT_EQ(ctxForbid->tag, executorName);
 }
 
 TEST(ThreadPoolExecutorTest, CPUCurrentThreadExecutor) {
-  currentThreadTest<CPUThreadPoolExecutor>("CPUThreadPoolExecutor");
-  currentThreadTestDisabled<CPUThreadPoolExecutor>("CPUThreadPoolExecutor");
+  currentThreadTest<CPUThreadPoolExecutor>("CPU-ExecutorName");
+  currentThreadTestDisabled<CPUThreadPoolExecutor>("CPU-ExecutorName");
 }
 
 TEST(ThreadPoolExecutorTest, IOCurrentThreadExecutor) {
-  currentThreadTest<IOThreadPoolExecutor>("EventBase");
-  currentThreadTestDisabled<IOThreadPoolExecutor>("EventBase");
+  currentThreadTest<IOThreadPoolExecutor>("IO-ExecutorName");
+  currentThreadTestDisabled<IOThreadPoolExecutor>("IO-ExecutorName");
 }
 
 TEST(ThreadPoolExecutorTest, EDFCurrentThreadExecutor) {
-  currentThreadTest<EDFThreadPoolExecutor>("EDFThreadPoolExecutor");
-  currentThreadTestDisabled<EDFThreadPoolExecutor>("EDFThreadPoolExecutor");
+  currentThreadTest<EDFThreadPoolExecutor>("EDF-ExecutorName");
+  currentThreadTestDisabled<EDFThreadPoolExecutor>("EDF-ExecutorName");
 }

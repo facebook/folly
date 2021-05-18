@@ -307,7 +307,8 @@ Executor::KeepAlive<ExecutorT> getKeepAliveToken(
 struct ExecutorBlockingContext {
   bool forbid;
   bool allowTerminationOnBlocking;
-  StringPiece name;
+  Executor* ex = nullptr;
+  StringPiece tag;
 };
 static_assert(
     std::is_standard_layout<ExecutorBlockingContext>::value,
@@ -331,8 +332,10 @@ class ExecutorBlockingGuard {
   ExecutorBlockingGuard() = delete;
 
   explicit ExecutorBlockingGuard(PermitTag) noexcept;
-  explicit ExecutorBlockingGuard(TrackTag, StringPiece name) noexcept;
-  explicit ExecutorBlockingGuard(ProhibitTag, StringPiece name) noexcept;
+  explicit ExecutorBlockingGuard(
+      TrackTag, Executor* ex, StringPiece tag) noexcept;
+  explicit ExecutorBlockingGuard(
+      ProhibitTag, Executor* ex, StringPiece tag) noexcept;
 
   ExecutorBlockingGuard(ExecutorBlockingGuard&&) = delete;
   ExecutorBlockingGuard(ExecutorBlockingGuard const&) = delete;

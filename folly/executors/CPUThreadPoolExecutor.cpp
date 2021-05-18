@@ -41,8 +41,6 @@ namespace {
 using default_queue = UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>;
 using default_queue_alloc =
     AlignedSysAllocator<default_queue, FixedAlign<alignof(default_queue)>>;
-
-constexpr folly::StringPiece executorName = "CPUThreadPoolExecutor";
 } // namespace
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
@@ -268,9 +266,9 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
   folly::Optional<ExecutorBlockingGuard> guard; // optional until C++17
   if (prohibitBlockingOnThreadPools_ == Options::Blocking::prohibit) {
-    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, executorName);
+    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, this, namePrefix_);
   } else {
-    guard.emplace(ExecutorBlockingGuard::TrackTag{}, executorName);
+    guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, namePrefix_);
   }
 
   thread->startupBaton.post();

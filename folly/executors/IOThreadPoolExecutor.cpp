@@ -203,19 +203,23 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
 
   ioThread->eventBase->runInEventBaseThread(
       [thread] { thread->startupBaton.post(); });
-  while (ioThread->shouldRun) {
-    ioThread->eventBase->loopForever();
-  }
-  if (isJoin_) {
-    while (ioThread->pendingTasks > 0) {
-      ioThread->eventBase->loopOnce();
+  {
+    ExecutorBlockingGuard guard{
+        ExecutorBlockingGuard::TrackTag{}, this, namePrefix_};
+    while (ioThread->shouldRun) {
+      ioThread->eventBase->loopForever();
     }
-  }
-  idler.reset();
-  if (isWaitForAll_) {
-    // some tasks, like thrift asynchronous calls, create additional
-    // event base hookups, let's wait till all of them complete.
-    ioThread->eventBase->loop();
+    if (isJoin_) {
+      while (ioThread->pendingTasks > 0) {
+        ioThread->eventBase->loopOnce();
+      }
+    }
+    idler.reset();
+    if (isWaitForAll_) {
+      // some tasks, like thrift asynchronous calls, create additional
+      // event base hookups, let's wait till all of them complete.
+      ioThread->eventBase->loop();
+    }
   }
 
   std::lock_guard<std::mutex> guard(ioThread->eventBaseShutdownMutex_);

@@ -37,7 +37,6 @@
 #include <folly/system/ThreadName.h>
 
 namespace {
-constexpr folly::StringPiece executorName = "EventBase";
 
 class EventBaseBackend : public folly::EventBaseBackendBase {
  public:
@@ -279,7 +278,8 @@ void EventBase::waitUntilRunning() {
 
 // enters the event_base loop -- will only exit when forced to
 bool EventBase::loop() {
-  ExecutorBlockingGuard guard{ExecutorBlockingGuard::TrackTag{}, executorName};
+  // Enforce blocking tracking and if we have a name override any previous one
+  ExecutorBlockingGuard guard{ExecutorBlockingGuard::TrackTag{}, this, name_};
   return loopBody();
 }
 

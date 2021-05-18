@@ -46,7 +46,7 @@ void Executor::keepAliveRelease() noexcept {
 }
 
 // Base case of permitting with no termination to avoid nullptr tests
-static ExecutorBlockingList emptyList{nullptr, {false, false, {}}};
+static ExecutorBlockingList emptyList{nullptr, {false, false, nullptr, {}}};
 
 thread_local ExecutorBlockingList* executor_blocking_list = &emptyList;
 
@@ -61,30 +61,40 @@ ExecutorBlockingGuard::ExecutorBlockingGuard(PermitTag) noexcept {
     list_ = *executor_blocking_list;
     list_.prev = executor_blocking_list;
     list_.curr.forbid = false;
-    list_.curr.name = {};
+    // Do not overwrite tag or executor pointer
     executor_blocking_list = &list_;
   }
 }
 
 ExecutorBlockingGuard::ExecutorBlockingGuard(
-    TrackTag, StringPiece name) noexcept {
+    TrackTag, Executor* ex, StringPiece tag) noexcept {
   if (!kIsMobile) {
     list_ = *executor_blocking_list;
     list_.prev = executor_blocking_list;
     list_.curr.forbid = true;
-    list_.curr.name = name;
+    list_.curr.ex = ex;
+    // If no string was provided, maintain the parent string to keep some
+    // information
+    if (!tag.empty()) {
+      list_.curr.tag = tag;
+    }
     executor_blocking_list = &list_;
   }
 }
 
 ExecutorBlockingGuard::ExecutorBlockingGuard(
-    ProhibitTag, StringPiece name) noexcept {
+    ProhibitTag, Executor* ex, StringPiece tag) noexcept {
   if (!kIsMobile) {
     list_ = *executor_blocking_list;
     list_.prev = executor_blocking_list;
     list_.curr.forbid = true;
+    list_.curr.ex = ex;
     list_.curr.allowTerminationOnBlocking = true;
-    list_.curr.name = name;
+    // If no string was provided, maintain the parent string to keep some
+    // information
+    if (!tag.empty()) {
+      list_.curr.tag = tag;
+    }
     executor_blocking_list = &list_;
   }
 }
