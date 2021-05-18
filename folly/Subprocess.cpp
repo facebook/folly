@@ -560,8 +560,13 @@ int Subprocess::prepareChild(
   // If requested, close all other file descriptors.  Don't close
   // any fds in options.fdActions_, and don't touch stdin, stdout, stderr.
   // Ignore errors.
+  #ifdef __ANDROID__
+  int tableSize = sysconf(_SC_OPEN_MAX);
+  #else
+  int tableSize = getdtablesize();
+  #endif
   if (options.closeOtherFds_) {
-    for (int fd = getdtablesize() - 1; fd >= 3; --fd) {
+    for (int fd = tableSize - 1; fd >= 3; --fd) {
       if (options.fdActions_.count(fd) == 0) {
         ::close(fd);
       }
