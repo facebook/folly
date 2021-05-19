@@ -127,56 +127,6 @@ inline std::exception const* exception_wrapper::as_exception_or_null_(
   return nullptr;
 }
 
-static_assert(
-    !kMicrosoftAbiVer || (kMicrosoftAbiVer >= 1900 && kMicrosoftAbiVer <= 2000),
-    "exception_wrapper is untested and possibly broken on your version of "
-    "MSVC");
-
-inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
-    std::exception_ptr const& ptr, std::exception const& e) noexcept {
-  if (!kMicrosoftAbiVer) {
-    return reinterpret_cast<std::uintptr_t>(&e);
-  } else {
-    // On Windows, as of MSVC2017, all thrown exceptions are copied to the stack
-    // first. Thus, we cannot depend on exception references associated with an
-    // exception_ptr to be live for the duration of the exception_ptr. We need
-    // to directly access the heap allocated memory inside the exception_ptr.
-    //
-    // std::exception_ptr is an opaque reinterpret_cast of
-    // std::shared_ptr<__ExceptionPtr>
-    // __ExceptionPtr is a non-virtual class with two members, a union and a
-    // bool. The union contains the now-undocumented EHExceptionRecord, which
-    // contains a struct which contains a void* which points to the heap
-    // allocated exception.
-    // We derive the offset to pExceptionObject via manual means.
-    FOLLY_PACK_PUSH
-    struct Win32ExceptionPtr {
-      char offset[8 + 4 * sizeof(void*)];
-      void* exceptionObject;
-    } FOLLY_PACK_ATTR;
-    FOLLY_PACK_POP
-
-    auto* win32ExceptionPtr =
-        reinterpret_cast<std::shared_ptr<Win32ExceptionPtr> const*>(&ptr)
-            ->get();
-    return reinterpret_cast<std::uintptr_t>(win32ExceptionPtr->exceptionObject);
-  }
-}
-inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
-    std::exception_ptr const&, AnyException e) noexcept {
-  return reinterpret_cast<std::uintptr_t>(e.typeinfo_) + 1;
-}
-inline bool exception_wrapper::ExceptionPtr::has_exception_() const {
-  return 0 == exception_or_type_ % 2;
-}
-inline std::exception const* exception_wrapper::ExceptionPtr::as_exception_()
-    const {
-  return reinterpret_cast<std::exception const*>(exception_or_type_);
-}
-inline std::type_info const* exception_wrapper::ExceptionPtr::as_type_() const {
-  return reinterpret_cast<std::type_info const*>(exception_or_type_ - 1);
-}
-
 inline void exception_wrapper::ExceptionPtr::copy_(
     exception_wrapper const* from, exception_wrapper* to) {
   ::new (static_cast<void*>(&to->eptr_)) ExceptionPtr(from->eptr_);
@@ -196,14 +146,11 @@ inline void exception_wrapper::ExceptionPtr::delete_(exception_wrapper* that) {
 }
 inline std::type_info const* exception_wrapper::ExceptionPtr::type_(
     exception_wrapper const* that) {
-  if (auto e = get_exception_(that)) {
-    return &typeid(*e);
-  }
-  return that->eptr_.as_type_();
+  return exception_ptr_get_type(that->eptr_.ptr_);
 }
 inline std::exception const* exception_wrapper::ExceptionPtr::get_exception_(
     exception_wrapper const* that) {
-  return that->eptr_.has_exception_() ? that->eptr_.as_exception_() : nullptr;
+  return exception_ptr_get_object<std::exception>(that->eptr_.ptr_);
 }
 inline exception_wrapper exception_wrapper::ExceptionPtr::get_exception_ptr_(
     exception_wrapper const* that) {
@@ -248,8 +195,8 @@ inline exception_wrapper exception_wrapper::InPlace<Ex>::get_exception_ptr_(
     exception_wrapper const* that) {
   try {
     throw_(that);
-  } catch (Ex const& ex) {
-    return exception_wrapper{std::current_exception(), ex};
+  } catch (...) {
+    return exception_wrapper{std::current_exception()};
   }
 }
 
@@ -268,8 +215,8 @@ inline exception_wrapper
 exception_wrapper::SharedPtr::Impl<Ex>::get_exception_ptr_() const noexcept {
   try {
     throw_();
-  } catch (Ex& ex) {
-    return exception_wrapper{std::current_exception(), ex};
+  } catch (...) {
+    return exception_wrapper{std::current_exception()};
   }
 }
 inline void exception_wrapper::SharedPtr::copy_(
@@ -307,7 +254,7 @@ inline exception_wrapper exception_wrapper::SharedPtr::get_exception_ptr_(
 template <class Ex, typename... As>
 inline exception_wrapper::exception_wrapper(
     ThrownTag, in_place_type_t<Ex>, As&&... as)
-    : eptr_{std::make_exception_ptr(Ex(std::forward<As>(as)...)), reinterpret_cast<std::uintptr_t>(std::addressof(typeid(Ex))) + 1u},
+    : eptr_{std::make_exception_ptr(Ex(std::forward<As>(as)...))},
       vptr_(&ExceptionPtr::ops_) {}
 
 template <class Ex, typename... As>
@@ -355,9 +302,17 @@ inline exception_wrapper::~exception_wrapper() {
 
 template <class Ex>
 inline exception_wrapper::exception_wrapper(
-    std::exception_ptr ptr, Ex& ex) noexcept
-    : eptr_{ptr, ExceptionPtr::as_int_(ptr, ex)}, vptr_(&ExceptionPtr::ops_) {
+    std::exception_ptr const& ptr, Ex& ex) noexcept
+    : exception_wrapper{folly::copy(ptr), ex} {}
+
+template <class Ex>
+inline exception_wrapper::exception_wrapper(
+    std::exception_ptr&& ptr, Ex& ex) noexcept
+    : eptr_{std::move(ptr)}, vptr_(&ExceptionPtr::ops_) {
   assert(eptr_.ptr_);
+  (void)ex;
+  assert(exception_ptr_get_object<Ex>(eptr_.ptr_));
+  assert(exception_ptr_get_object<Ex>(eptr_.ptr_) == &ex || kIsWindows);
 }
 
 namespace exception_wrapper_detail {
@@ -457,9 +412,6 @@ inline std::exception_ptr exception_wrapper::to_exception_ptr() const noexcept {
 inline std::type_info const& exception_wrapper::none() noexcept {
   return typeid(void);
 }
-inline std::type_info const& exception_wrapper::unknown() noexcept {
-  return typeid(Unknown);
-}
 
 inline std::type_info const& exception_wrapper::type() const noexcept {
   return *vptr_->type_(this);
@@ -474,9 +426,7 @@ inline folly::fbstring exception_wrapper::what() const {
 
 inline folly::fbstring exception_wrapper::class_name() const {
   auto& ti = type();
-  return ti == none()   ? ""
-      : ti == unknown() ? "<unknown exception>"
-                        : folly::demangle(ti);
+  return ti == none() ? "" : folly::demangle(ti);
 }
 
 template <class Ex>
