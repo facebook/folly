@@ -26,6 +26,7 @@
 //  Support:
 //    libstdc++ via libgcc libsupc++
 //    libc++ via llvm libcxxabi
+//    libc++ on freebsd via libcxxrt
 //    win32 via msvc crt
 //
 //  Both libstdc++ and libc++ are based on cxxabi but they are not identical.
@@ -40,7 +41,7 @@
 
 #endif // defined(__GLIBCXX__)
 
-#if defined(_LIBCPP_VERSION)
+#if defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
 
 //  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/cxa_exception.h
 //  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/private_typeinfo.h
@@ -93,7 +94,35 @@ class __folly_shim_type_info : public std::type_info {
 
 namespace abi = __cxxabiv1;
 
-#endif // defined(_LIBCPP_VERSION)
+#endif // defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
+
+#if defined(__FreeBSD__)
+
+//  https://github.com/freebsd/freebsd-src/blob/release/13.0.0/contrib/libcxxrt/cxxabi.h
+//  https://github.com/freebsd/freebsd-src/blob/release/13.0.0/contrib/libcxxrt/typeinfo.h
+
+#include <cxxabi.h>
+
+namespace __cxxabiv1 {
+
+class __folly_shim_type_info {
+ public:
+  virtual ~__folly_shim_type_info() = 0;
+  virtual bool __is_pointer_p() const = 0;
+  virtual bool __is_function_p() const = 0;
+  virtual bool __do_catch(
+      std::type_info const* thrown_type,
+      void** thrown_object,
+      unsigned outer) const = 0;
+  virtual bool __do_upcast(
+      std::type_info const* target, void** thrown_object) const = 0;
+};
+
+} // namespace __cxxabiv1
+
+namespace abi = __cxxabiv1;
+
+#endif // defined(__FreeBSD__)
 
 #if defined(_WIN32)
 
@@ -135,7 +164,7 @@ void* exception_ptr_get_object(
 
 #endif // defined(__GLIBCXX__)
 
-#if defined(_LIBCPP_VERSION)
+#if defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
 
 static void* cxxabi_get_object(std::exception_ptr const& ptr) noexcept {
   return reinterpret_cast<void* const&>(ptr);
@@ -223,7 +252,33 @@ void* exception_ptr_get_object(
   return !target || starget->can_catch(type, object) ? object : nullptr;
 }
 
-#endif // defined(_LIBCPP_VERSION)
+#endif // defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
+
+#if defined(__FreeBSD__)
+
+std::type_info const* exception_ptr_get_type(
+    std::exception_ptr const& ptr) noexcept {
+  if (!ptr) {
+    return nullptr;
+  }
+  auto object = reinterpret_cast<void* const&>(ptr);
+  auto exception = static_cast<abi::__cxa_exception*>(object) - 1;
+  return exception->exceptionType;
+}
+
+void* exception_ptr_get_object(
+    std::exception_ptr const& ptr,
+    std::type_info const* const target) noexcept {
+  if (!ptr) {
+    return nullptr;
+  }
+  auto object = reinterpret_cast<void* const&>(ptr);
+  auto type = exception_ptr_get_type(ptr);
+  auto starget = reinterpret_cast<abi::__folly_shim_type_info const*>(target);
+  return !target || starget->__do_catch(type, &object, 1) ? object : nullptr;
+}
+
+#endif // defined(__FreeBSD__)
 
 #if defined(_WIN32)
 
