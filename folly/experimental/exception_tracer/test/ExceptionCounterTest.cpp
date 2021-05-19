@@ -23,6 +23,8 @@
 #include <folly/experimental/exception_tracer/ExceptionCounterLib.h>
 #include <folly/portability/GTest.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 struct MyException {};
 
 // clang-format off
@@ -131,3 +133,5 @@ TEST(ExceptionCounter, multyThreads) {
     t.join();
   }
 }
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

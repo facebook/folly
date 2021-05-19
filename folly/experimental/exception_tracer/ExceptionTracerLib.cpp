@@ -16,14 +16,16 @@
 
 #include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
 
-#include <dlfcn.h>
-
 #include <vector>
 
 #include <folly/Indestructible.h>
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
+
+#if defined(__GLIBCXX__)
+
+#include <dlfcn.h>
 
 namespace __cxxabiv1 {
 
@@ -152,3 +154,5 @@ void rethrow_exception(std::exception_ptr ep) {
 }
 
 } // namespace std
+
+#endif // defined(__GLIBCXX__)

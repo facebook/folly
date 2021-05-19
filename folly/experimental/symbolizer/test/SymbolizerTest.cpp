@@ -30,6 +30,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 namespace folly {
 namespace symbolizer {
 namespace test {
@@ -480,6 +482,8 @@ TEST(Dwarf, FindParameterNames) {
 } // namespace test
 } // namespace symbolizer
 } // namespace folly
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 // Can't use initFacebookLight since that would install its own signal handlers
 // Can't use initFacebookNoSignals since we cannot depend on common

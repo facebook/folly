@@ -28,6 +28,7 @@
 #include <folly/Synchronized.h>
 #include <folly/container/EvictingCacheMap.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
 #include <folly/experimental/symbolizer/SymbolizePrinter.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
@@ -36,10 +37,6 @@
 
 namespace folly {
 namespace symbolizer {
-
-class ElfCacheBase;
-class ElfCache;
-class Symbolizer;
 
 /**
  * Get stack trace into a given FrameArray, return true on success (and

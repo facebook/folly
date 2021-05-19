@@ -24,6 +24,8 @@
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 #include <folly/portability/GFlags.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 void recurse(int level) {
   if (level == 0) {
     throw std::runtime_error("");
@@ -53,6 +55,8 @@ BENCHMARK(ExceptionTracer, iters) {
     t.join();
   }
 }
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

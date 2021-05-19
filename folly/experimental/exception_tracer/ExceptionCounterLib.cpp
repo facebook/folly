@@ -29,6 +29,8 @@
 #include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 using namespace folly::exception_tracer;
 
 namespace {
@@ -140,3 +142,5 @@ struct Initializer {
 Initializer initializer;
 
 } // namespace
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

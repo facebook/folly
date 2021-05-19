@@ -29,6 +29,8 @@
 
 #include <folly/portability/GTest.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 using namespace folly;
 using namespace folly::symbolizer;
 
@@ -327,3 +329,5 @@ FOLLY_NOINLINE folly::coro::Task<void> co_funcA0() {
 TEST(StackTraceTest, AsyncStackTraceSimple) {
   folly::coro::blockingWait(co_funcA0());
 }
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
