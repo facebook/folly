@@ -19,6 +19,8 @@
 #include <folly/experimental/exception_tracer/SmartExceptionTracer.h>
 #include <folly/portability/GTest.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 using namespace folly::exception_tracer;
 
 [[noreturn]] FOLLY_NOINLINE void testThrowException() {
@@ -143,3 +145,5 @@ TEST(SmartExceptionTracer, AsyncStackTrace) {
     }
   }
 }
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

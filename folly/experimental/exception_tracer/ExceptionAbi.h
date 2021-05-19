@@ -22,6 +22,8 @@
 #include <exception>
 #include <typeinfo>
 
+#if defined(__GLIBCXX__)
+
 #include <unwind.h>
 
 namespace __cxxabiv1 {
@@ -57,3 +59,5 @@ __cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 #endif
 
 } // namespace __cxxabiv1
+
+#endif // defined(__GLIBCXX__)

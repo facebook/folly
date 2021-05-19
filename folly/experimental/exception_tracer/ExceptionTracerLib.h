@@ -19,6 +19,8 @@
 #include <exception>
 #include <typeinfo>
 
+#if defined(__GLIBCXX__)
+
 namespace folly {
 namespace exception_tracer {
 
@@ -49,3 +51,5 @@ void registerCxaEndCatchCallback(CxaEndCatchType callback);
 void registerRethrowExceptionCallback(RethrowExceptionType callback);
 } // namespace exception_tracer
 } // namespace folly
+
+#endif // defined(__GLIBCXX__)

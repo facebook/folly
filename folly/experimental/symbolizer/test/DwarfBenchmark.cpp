@@ -22,6 +22,8 @@
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GFlags.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 namespace {
 
 using namespace folly::symbolizer;
@@ -70,6 +72,8 @@ BENCHMARK(DwarfFindAddressFull, n) {
 BENCHMARK(DwarfFindAddressFullWithInline, n) {
   run(folly::symbolizer::LocationInfoMode::FULL_WITH_INLINE, n);
 }
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

@@ -19,6 +19,8 @@
 
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 // clang-format off
 [[noreturn]] void bar() {
   throw std::runtime_error("hello");
@@ -97,3 +99,9 @@ int main(int /* argc */, char* /* argv */[]) {
   baz();
   // no return because baz() is [[noreturn]]
 }
+
+#else // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
+int main(int /* argc */, char* /* argv */[]) {}
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

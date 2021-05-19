@@ -35,6 +35,8 @@
 #include <folly/portability/Unistd.h>
 #include <folly/tracing/test/StaticTracepointTestModule.h>
 
+#if FOLLY_HAS_STD
+
 static const std::string kUSDTSubsectionName = FOLLY_SDT_NOTE_NAME;
 static const int kUSDTNoteType = FOLLY_SDT_NOTE_TYPE;
 static const size_t kAddrWidth = sizeof(void*);
@@ -428,3 +430,5 @@ TEST(StaticTracepoint, TestSemaphoreExtern) {
   CHECK_EQ(v * v, folly::test::staticTracepointTestFunc(v));
   EXPECT_FALSE(FOLLY_SDT_IS_ENABLED(folly, test_semaphore_extern));
 }
+
+#endif

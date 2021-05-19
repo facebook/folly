@@ -19,6 +19,8 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 namespace folly {
 namespace exception_tracer {
 
@@ -36,3 +38,5 @@ ExceptionInfo getAsyncTrace(const exception_wrapper& ew);
 
 } // namespace exception_tracer
 } // namespace folly
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 
 #else // FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 
-int main(int argc, char* argv[]) {
+int main(int, char*[]) {
   return 1;
 }
 
