@@ -561,7 +561,7 @@ int Subprocess::prepareChild(
   // any fds in options.fdActions_, and don't touch stdin, stdout, stderr.
   // Ignore errors.
   if (options.closeOtherFds_) {
-    for (int fd = getdtablesize() - 1; fd >= 3; --fd) {
+    for (int fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
       if (options.fdActions_.count(fd) == 0) {
         ::close(fd);
       }
