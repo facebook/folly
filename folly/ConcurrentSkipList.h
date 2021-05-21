@@ -165,13 +165,13 @@ class ConcurrentSkipList {
 
   explicit ConcurrentSkipList(int height, const NodeAlloc& alloc)
       : recycler_(alloc),
-        head_(NodeType::create(recycler_.alloc(), height, value_type(), true)),
-        size_(0) {}
+        head_(NodeType::create(recycler_.alloc(), height, value_type(), true)) {
+  }
 
   explicit ConcurrentSkipList(int height)
       : recycler_(),
-        head_(NodeType::create(recycler_.alloc(), height, value_type(), true)),
-        size_(0) {}
+        head_(NodeType::create(recycler_.alloc(), height, value_type(), true)) {
+  }
 
   // Convenient function to get an Accessor to a new instance.
   static Accessor create(int height, const NodeAlloc& alloc) {
@@ -191,6 +191,9 @@ class ConcurrentSkipList {
   static std::shared_ptr<SkipListType> createInstance(int height = 1) {
     return std::make_shared<ConcurrentSkipList>(height);
   }
+
+  size_t size() const { return size_.load(std::memory_order_relaxed); }
+  bool empty() const { return size() == 0; }
 
   //===================================================================
   // Below are implementation details.
@@ -246,8 +249,6 @@ class ConcurrentSkipList {
     }
     return foundLayer;
   }
-
-  size_t size() const { return size_.load(std::memory_order_relaxed); }
 
   int height() const { return head_.load(std::memory_order_consume)->height(); }
 
@@ -529,7 +530,7 @@ class ConcurrentSkipList {
 
   detail::NodeRecycler<NodeType, NodeAlloc> recycler_;
   std::atomic<NodeType*> head_;
-  std::atomic<size_t> size_;
+  std::atomic<size_t> size_{0};
 };
 
 template <typename T, typename Comp, typename NodeAlloc, int MAX_HEIGHT>
