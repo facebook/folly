@@ -1047,6 +1047,110 @@ TEST(IoUringBackend, FileWriteMany) {
   EXPECT_EQ(bFsync, true);
 }
 
+TEST(IoUringBackend, SendmsgRecvmsg) {
+  static constexpr size_t kBackendCapacity = 256;
+  static constexpr size_t kBackendMaxSubmit = 32;
+  static constexpr size_t kBackendMaxGet = 32;
+
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity)
+      .setMaxSubmit(kBackendMaxSubmit)
+      .setMaxGet(kBackendMaxGet)
+      .setUseRegisteredFds(false);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  // we want raw sockets
+  auto sendFd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  CHECK_GT(sendFd, 0);
+  auto recvFd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  CHECK_GT(sendFd, 0);
+
+  folly::SocketAddress addr("::1", 0);
+
+  sockaddr_storage addrStorage;
+  addr.getAddress(&addrStorage);
+  auto& saddr = reinterpret_cast<sockaddr&>(addrStorage);
+  auto ret = ::bind(sendFd, &saddr, addr.getActualSize());
+  CHECK_EQ(ret, 0);
+  ret = ::bind(recvFd, &saddr, addr.getActualSize());
+  CHECK_EQ(ret, 0);
+
+  folly::SocketAddress sendAddr;
+  folly::SocketAddress recvAddr;
+  sendAddr.setFromLocalAddress(folly::NetworkSocket(sendFd));
+  recvAddr.setFromLocalAddress(folly::NetworkSocket(recvFd));
+
+  bool sendDone = false;
+  bool recvDone = false;
+
+  static constexpr size_t kNumBytes = 64;
+  static std::array<char, kNumBytes> sendBuf, recvBuf;
+
+  folly::IoUringBackend::FileOpCallback sendCb = [&](int res) {
+    CHECK_EQ(res, kNumBytes);
+    CHECK(!sendDone);
+    sendDone = true;
+
+    if (recvDone) {
+      evbPtr->terminateLoopSoon();
+    }
+  };
+
+  folly::IoUringBackend::FileOpCallback recvCb = [&](int res) {
+    CHECK_EQ(res, kNumBytes);
+    CHECK(!recvDone);
+    recvDone = true;
+
+    CHECK_EQ(::memcmp(sendBuf.data(), recvBuf.data(), kNumBytes), 0);
+
+    if (sendDone) {
+      evbPtr->terminateLoopSoon();
+    }
+  };
+
+  struct msghdr sendMsg = {};
+  struct msghdr recvMsg = {};
+  struct iovec sendIov, recvIov;
+  sendIov.iov_base = sendBuf.data();
+  sendIov.iov_len = sendBuf.size();
+
+  recvIov.iov_base = recvBuf.data();
+  recvIov.iov_len = recvBuf.size();
+
+  recvAddr.getAddress(&addrStorage);
+
+  sendMsg.msg_iov = &sendIov;
+  sendMsg.msg_iovlen = 1;
+
+  sendMsg.msg_name = reinterpret_cast<void*>(&addrStorage);
+  sendMsg.msg_namelen = recvAddr.getActualSize();
+
+  sendMsg.msg_iov = &sendIov;
+  sendMsg.msg_iovlen = 1;
+
+  recvMsg.msg_iov = &recvIov;
+  recvMsg.msg_iovlen = 1;
+
+  ::memset(sendBuf.data(), 0xAB, sendBuf.size());
+  ::memset(recvBuf.data(), 0x0, recvBuf.size());
+
+  CHECK_NE(::memcmp(sendBuf.data(), recvBuf.data(), kNumBytes), 0);
+
+  backendPtr->queueRecvmsg(recvFd, &recvMsg, 0, std::move(recvCb));
+  backendPtr->queueSendmsg(sendFd, &sendMsg, 0, std::move(sendCb));
+
+  evbPtr->loopForever();
+
+  CHECK(sendDone && recvDone);
+
+  ::close(sendFd);
+  ::close(recvFd);
+}
+
 namespace folly {
 namespace test {
 static constexpr size_t kCapacity = 32;

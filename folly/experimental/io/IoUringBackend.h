@@ -236,6 +236,16 @@ class IoUringBackend : public EventBaseBackendBase {
   void queueFallocate(
       int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb);
 
+  // sendmgs/recvmsg
+  void queueSendmsg(
+      int fd,
+      const struct msghdr* msg,
+      unsigned int flags,
+      FileOpCallback&& cb);
+
+  void queueRecvmsg(
+      int fd, struct msghdr* msg, unsigned int flags, FileOpCallback&& cb);
+
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
 
@@ -815,6 +825,46 @@ class IoUringBackend : public EventBaseBackendBase {
     int mode_;
     off_t offset_;
     off_t len_;
+  };
+
+  struct SendmsgIoSqe : public FileOpIoSqe {
+    SendmsgIoSqe(
+        IoUringBackend* backend,
+        int fd,
+        const struct msghdr* msg,
+        unsigned int flags,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, fd, std::move(cb)), msg_(msg), flags_(flags) {}
+
+    ~SendmsgIoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      ::io_uring_prep_sendmsg(sqe, fd_, msg_, flags_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    const struct msghdr* msg_;
+    unsigned int flags_;
+  };
+
+  struct RecvmsgIoSqe : public FileOpIoSqe {
+    RecvmsgIoSqe(
+        IoUringBackend* backend,
+        int fd,
+        struct msghdr* msg,
+        unsigned int flags,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, fd, std::move(cb)), msg_(msg), flags_(flags) {}
+
+    ~RecvmsgIoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      ::io_uring_prep_recvmsg(sqe, fd_, msg_, flags_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    struct msghdr* msg_;
+    unsigned int flags_;
   };
 
   int getActiveEvents(WaitForEventsMode waitForEvents);

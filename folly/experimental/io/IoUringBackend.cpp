@@ -1297,6 +1297,24 @@ void IoUringBackend::queueFallocate(
   submitImmediateIoSqe(*ioSqe);
 }
 
+void IoUringBackend::queueSendmsg(
+    int fd, const struct msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
+  auto* ioSqe = new SendmsgIoSqe(this, fd, msg, flags, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+  incNumIoSqeInUse();
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
+void IoUringBackend::queueRecvmsg(
+    int fd, struct msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
+  auto* ioSqe = new RecvmsgIoSqe(this, fd, msg, flags, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+  incNumIoSqeInUse();
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
 void IoUringBackend::processFileOp(IoSqe* sqe, int64_t res) noexcept {
   auto* ioSqe = reinterpret_cast<FileOpIoSqe*>(sqe);
   // save the res
