@@ -22,6 +22,7 @@
 #include <map>
 #include <memory>
 
+#include <folly/ConstructorCallback.h>
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/detail/SocketFastOpen.h>
@@ -1598,6 +1599,12 @@ class AsyncSocket : public AsyncTransport {
   bool closeOnFailedWrite_{true};
 
   netops::DispatcherContainer netops_;
+
+  // allow other functions to register for callbacks when
+  // new AsyncSocket()'s are created
+  // must be LAST member defined to ensure other members are initialized
+  // before access; see ConstructorCallback.h for details
+  ConstructorCallback<AsyncSocket> constructorCallback_{this};
 };
 
 } // namespace folly

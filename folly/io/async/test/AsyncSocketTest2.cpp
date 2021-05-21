@@ -5251,6 +5251,31 @@ TEST_P(AsyncSocketByteEventHelperOffsetTest, CheckCalculatedOffset) {
 
 #endif // FOLLY_HAVE_SO_TIMESTAMPING
 
+TEST(AsyncSocket, LifecycleCtorCallback) {
+  EventBase evb;
+  // create socket and verify that w/o a ctor callback, nothing happens
+  auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  EXPECT_EQ(socket1->getLifecycleObservers().size(), 0);
+
+  // Then register a ctor callback that registers a mock lifecycle observer
+  // NB: use nicemock instead of strict b/c the actual lifecycle testing
+  // is done below and this simplifies the test
+  auto lifecycleCB =
+      std::make_shared<NiceMock<MockAsyncSocketLifecycleObserver>>();
+  auto lifecycleRawPtr = lifecycleCB.get();
+  // verify the first part of the lifecycle was processed
+  ConstructorCallback<AsyncSocket>::addNewConstructorCallback(
+      [lifecycleRawPtr](AsyncSocket* s) {
+        s->addLifecycleObserver(lifecycleRawPtr);
+      });
+  auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  EXPECT_EQ(socket2->getLifecycleObservers().size(), 1);
+  EXPECT_THAT(
+      socket2->getLifecycleObservers(),
+      UnorderedElementsAre(lifecycleCB.get()));
+  Mock::VerifyAndClearExpectations(lifecycleCB.get());
+}
+
 TEST(AsyncSocket, LifecycleObserverDetachAndAttachEvb) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   EventBase evb;
