@@ -239,13 +239,13 @@ TEST(ExceptionWrapper, get_or_make_exception_ptr_test) {
 
 TEST(ExceptionWrapper, from_exception_ptr_empty) {
   auto ep = std::exception_ptr();
-  auto ew = exception_wrapper{ep};
+  auto ew = exception_wrapper::from_exception_ptr(ep);
   EXPECT_FALSE(bool(ew));
 }
 
 TEST(ExceptionWrapper, from_exception_ptr_exn) {
   auto ep = std::make_exception_ptr(std::runtime_error("foo"));
-  auto ew = exception_wrapper{ep};
+  auto ew = exception_wrapper::from_exception_ptr(ep);
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ep, folly::as_const(ew).to_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
@@ -254,7 +254,7 @@ TEST(ExceptionWrapper, from_exception_ptr_exn) {
 
 TEST(ExceptionWrapper, from_exception_ptr_any) {
   auto ep = std::make_exception_ptr<int>(12);
-  auto ew = exception_wrapper{ep};
+  auto ew = exception_wrapper::from_exception_ptr(ep);
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ep, folly::as_const(ew).to_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
@@ -420,7 +420,7 @@ TEST(ExceptionWrapper, with_non_std_exception_test) {
 
 TEST(ExceptionWrapper, with_exception_ptr_any_nil_test) {
   auto ep = std::make_exception_ptr<int>(12);
-  auto ew = exception_wrapper(ep);
+  auto ew = exception_wrapper(ep); // concrete type is erased
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
@@ -428,8 +428,9 @@ TEST(ExceptionWrapper, with_exception_ptr_any_nil_test) {
   EXPECT_EQ(12, *ew.get_exception<int>());
   EXPECT_EQ(ep, folly::as_const(ew).to_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
-  EXPECT_EQ("int", ew.class_name());
-  EXPECT_EQ("int", ew.what());
+  EXPECT_EQ("<unknown exception>", ew.class_name()); // because concrete type is
+  // erased
+  EXPECT_EQ("<unknown exception>", ew.what());
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
@@ -538,16 +539,23 @@ TEST(ExceptionWrapper, implicitConstruction) {
 }
 
 namespace {
-struct BaseNonStdException {
-  virtual ~BaseNonStdException() {}
+struct BaseException {
+  virtual ~BaseException() {}
 };
-struct DerivedNonStdException : BaseNonStdException {};
+struct DerivedException : BaseException {};
+exception_wrapper testNonStdException() {
+  try {
+    throw DerivedException{};
+  } catch (const BaseException& e) {
+    return exception_wrapper{std::current_exception(), e};
+  }
+}
 } // namespace
 
 TEST(ExceptionWrapper, base_derived_non_std_exception_test) {
-  exception_wrapper ew{std::make_exception_ptr(DerivedNonStdException{})};
-  EXPECT_TRUE(ew.type() == typeid(DerivedNonStdException));
-  EXPECT_TRUE(ew.with_exception([](const DerivedNonStdException&) {}));
+  auto ew = testNonStdException();
+  EXPECT_TRUE(ew.type() == typeid(DerivedException));
+  EXPECT_TRUE(ew.with_exception([](const DerivedException&) {}));
 }
 
 namespace {
@@ -834,26 +842,26 @@ TEST(ExceptionWrapper, handle_non_std_exception_big) {
 }
 
 TEST(ExceptionWrapper, handle_non_std_exception_rethrow_base_derived) {
-  exception_wrapper ew{std::make_exception_ptr(DerivedNonStdException{})};
+  auto ew = testNonStdException();
   bool handled = false;
   EXPECT_THROW(
       ew.handle(
-          [&](const DerivedNonStdException& e) {
+          [&](const DerivedException& e) {
             handled = true;
             throw e;
           },
-          [](const BaseNonStdException&) { ADD_FAILURE(); }),
-      DerivedNonStdException);
+          [](const BaseException&) { ADD_FAILURE(); }),
+      DerivedException);
   EXPECT_TRUE(handled);
   handled = false;
   EXPECT_THROW(
       ew.handle(
-          [&](const DerivedNonStdException& e) {
+          [&](const DerivedException& e) {
             handled = true;
             throw e;
           },
           [](...) { ADD_FAILURE(); }),
-      DerivedNonStdException);
+      DerivedException);
   EXPECT_TRUE(handled);
 }
 
