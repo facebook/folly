@@ -80,8 +80,8 @@ struct ApplyInvoke {
   static constexpr auto
   invoke_(F&& f, T&& t, std::index_sequence<I...>) noexcept(
       noexcept(invoke(static_cast<F&&>(f), get<I>{}(static_cast<T&&>(t))...)))
-      -> decltype(
-          invoke(static_cast<F&&>(f), get<I>{}(static_cast<T&&>(t))...)) {
+      -> decltype(invoke(
+          static_cast<F&&>(f), get<I>{}(static_cast<T&&>(t))...)) {
     return invoke(static_cast<F&&>(f), get<I>{}(static_cast<T&&>(t))...);
   }
 

@@ -510,8 +510,8 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
 
   makecontext(
       &alt,
-      (void (*)())(void (*)(UnsafeSelfAllocateStackTracePrinter*))(
-          contextStart),
+      (void (*)())(void (*)(
+          UnsafeSelfAllocateStackTracePrinter*))(contextStart),
       /* argc */ 1,
       /* arg */ this);
   // NOTE: swapcontext is not async-signal-safe

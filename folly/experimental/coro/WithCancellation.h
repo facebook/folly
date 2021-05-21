@@ -42,8 +42,8 @@ struct WithCancellationFunction {
       const folly::CancellationToken& cancelToken, Awaitable&& awaitable) const
       noexcept(
           noexcept(co_withCancellation(cancelToken, (Awaitable &&) awaitable)))
-          -> decltype(
-              co_withCancellation(cancelToken, (Awaitable &&) awaitable)) {
+          -> decltype(co_withCancellation(
+              cancelToken, (Awaitable &&) awaitable)) {
     return co_withCancellation(cancelToken, (Awaitable &&) awaitable);
   }
 

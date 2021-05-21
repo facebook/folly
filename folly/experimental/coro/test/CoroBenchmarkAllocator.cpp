@@ -253,7 +253,7 @@ class Recursion {
 
   InlineTask<int> operator co_await() {
     if (child_) {
-      co_return co_await* child_ + 1;
+      co_return co_await *child_ + 1;
     }
     co_return 0;
   }

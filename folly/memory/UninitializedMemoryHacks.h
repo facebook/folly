@@ -401,8 +401,8 @@ struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
       &std::vector<TYPE>::_Mypair,                                             \
       decltype(&decltype(std::declval<std::vector<TYPE>>()._Mypair)::_Myval2), \
       &decltype(std::declval<std::vector<TYPE>>()._Mypair)::_Myval2,           \
-      decltype(&decltype(                                                      \
-          std::declval<std::vector<TYPE>>()._Mypair._Myval2)::_Mylast),        \
+      decltype(&decltype(std::declval<std::vector<TYPE>>()                     \
+                             ._Mypair._Myval2)::_Mylast),                      \
       &decltype(std::declval<std::vector<TYPE>>()._Mypair._Myval2)::_Mylast>;  \
   FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 

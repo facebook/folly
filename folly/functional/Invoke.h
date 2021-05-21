@@ -495,8 +495,8 @@ struct tag_invoke_fn {
   template <typename Tag, typename... Args>
   constexpr auto operator()(Tag tag, Args&&... args) const noexcept(noexcept(
       tag_invoke(static_cast<Tag&&>(tag), static_cast<Args&&>(args)...)))
-      -> decltype(
-          tag_invoke(static_cast<Tag&&>(tag), static_cast<Args&&>(args)...)) {
+      -> decltype(tag_invoke(
+          static_cast<Tag&&>(tag), static_cast<Args&&>(args)...)) {
     return tag_invoke(static_cast<Tag&&>(tag), static_cast<Args&&>(args)...);
   }
 };

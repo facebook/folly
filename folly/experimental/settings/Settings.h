@@ -179,8 +179,8 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
      Aggregate all off these together in a single section for better TLB      \
      and cache locality. */                                                   \
   __attribute__((__section__(".folly.settings.cache")))                       \
-      std::atomic<folly::settings::detail::SettingCore<_Type>*>               \
-          FOLLY_SETTINGS_CACHE__##_project##_##_name;                         \
+  std::atomic<folly::settings::detail::SettingCore<_Type>*>                   \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name;                             \
   /* Location for the small value cache (if _Type is small and trivial).      \
      Intentionally located right after the pointer cache above to take        \
      advantage of the prefetching */                                          \

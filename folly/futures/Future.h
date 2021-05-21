@@ -2057,8 +2057,8 @@ template <
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
     class Tag = std::enable_if_t<is_invocable_v<F, typename ItT::value_type&&>>,
-    class Result = typename decltype(
-        std::declval<ItT>().thenValue(std::declval<F>()))::value_type>
+    class Result = typename decltype(std::declval<ItT>().thenValue(
+        std::declval<F>()))::value_type>
 std::vector<Future<Result>> mapValue(It first, It last, F func);
 
 /**
@@ -2071,8 +2071,8 @@ template <
     class ItT = typename std::iterator_traits<It>::value_type,
     class Tag =
         std::enable_if_t<!is_invocable_v<F, typename ItT::value_type&&>>,
-    class Result = typename decltype(
-        std::declval<ItT>().thenTry(std::declval<F>()))::value_type>
+    class Result = typename decltype(std::declval<ItT>().thenTry(
+        std::declval<F>()))::value_type>
 std::vector<Future<Result>> mapTry(It first, It last, F func, int = 0);
 
 /**

@@ -31,25 +31,25 @@
 #define FOLLY_DETAIL_SAFE_CHECK_LINKAGE static
 #endif
 
-#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)           \
-  do {                                                                  \
-    if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&            \
-        !static_cast<bool>(expr)) {                                     \
-      FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr auto                    \
-          __folly_detail_safe_assert_fun = __func__;                    \
-      FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr ::folly::detail::       \
-          safe_assert_arg __folly_detail_safe_assert_arg{               \
-              FOLLY_PP_STRINGIZE(expr_s),                               \
-              __FILE__,                                                 \
-              __LINE__,                                                 \
-              __folly_detail_safe_assert_fun,                           \
-              ::folly::detail::safe_assert_msg_types<decltype(          \
-                  ::folly::detail::safe_assert_msg_types_seq_of(        \
-                      __VA_ARGS__))>::value.data};                      \
-      ::folly::detail::safe_assert_terminate<p>(                        \
-          __folly_detail_safe_assert_arg FOLLY_PP_DETAIL_APPEND_VA_ARG( \
-              __VA_ARGS__));                                            \
-    }                                                                   \
+#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)             \
+  do {                                                                    \
+    if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&              \
+        !static_cast<bool>(expr)) {                                       \
+      FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr auto                      \
+          __folly_detail_safe_assert_fun = __func__;                      \
+      FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr ::folly::detail::         \
+          safe_assert_arg __folly_detail_safe_assert_arg{                 \
+              FOLLY_PP_STRINGIZE(expr_s),                                 \
+              __FILE__,                                                   \
+              __LINE__,                                                   \
+              __folly_detail_safe_assert_fun,                             \
+              ::folly::detail::safe_assert_msg_types<                     \
+                  decltype(::folly::detail::safe_assert_msg_types_seq_of( \
+                      __VA_ARGS__))>::value.data};                        \
+      ::folly::detail::safe_assert_terminate<p>(                          \
+          __folly_detail_safe_assert_arg FOLLY_PP_DETAIL_APPEND_VA_ARG(   \
+              __VA_ARGS__));                                              \
+    }                                                                     \
   } while (false)
 
 //  FOLLY_SAFE_CHECK

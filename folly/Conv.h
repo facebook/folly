@@ -312,9 +312,8 @@ auto getLastElement(const Ts&... ts)
 }
 
 template <class... Ts>
-struct LastElement : std::decay<decltype(
-                         LastElementImpl<Ts...>::call(std::declval<Ts>()...))> {
-};
+struct LastElement : std::decay<decltype(LastElementImpl<Ts...>::call(
+                         std::declval<Ts>()...))> {};
 #endif
 
 } // namespace detail
@@ -1420,8 +1419,8 @@ parseToWrap(StringPiece sp, Tgt& out) {
 }
 
 template <typename Tgt>
-using ParseToError = ExpectedErrorType<decltype(
-    detail::parseToWrap(StringPiece{}, std::declval<Tgt&>()))>;
+using ParseToError = ExpectedErrorType<decltype(detail::parseToWrap(
+    StringPiece{}, std::declval<Tgt&>()))>;
 
 } // namespace detail
 

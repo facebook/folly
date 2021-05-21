@@ -70,8 +70,8 @@ struct ValueTypeForTransparentConversionToRange {
 template <typename T>
 struct ValueTypeForTransparentConversionToRange<
     T,
-    void_t<decltype(
-        std::declval<hasher<Range<typename T::value_type const*>>>()(
+    void_t<
+        decltype(std::declval<hasher<Range<typename T::value_type const*>>>()(
             std::declval<Range<typename T::value_type const*>>()))>> {
   using type = std::remove_const_t<typename T::value_type>;
 };

@@ -353,8 +353,8 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
 template <typename SemiAwaitable>
 auto collectAllWindowed(
     std::vector<SemiAwaitable> awaitables, std::size_t maxConcurrency)
-    -> decltype(
-        collectAllWindowed(awaitables | ranges::views::move, maxConcurrency)) {
+    -> decltype(collectAllWindowed(
+        awaitables | ranges::views::move, maxConcurrency)) {
   co_return co_await collectAllWindowed(
       awaitables | ranges::views::move, maxConcurrency);
 }

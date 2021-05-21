@@ -84,7 +84,7 @@ TEST(Expected, CoroutineSuccess) {
     EXPECT_EQ(2.0 * 7, y);
     auto z = co_await f3(x, y);
     EXPECT_EQ(int(2.0 * 7 + 7), *z);
-    co_return* z;
+    co_return *z;
   }();
   EXPECT_TRUE(r0.hasValue());
   EXPECT_EQ(21, *r0);

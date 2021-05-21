@@ -195,8 +195,9 @@ class StackAwareViaIfAsyncAwaiter {
   using CoroutinePromise = typename CoroutineType::promise_type;
   using WrapperHandle = coroutine_handle<CoroutinePromise>;
 
-  using await_suspend_result_t = decltype(
-      std::declval<Awaiter&>().await_suspend(std::declval<WrapperHandle>()));
+  using await_suspend_result_t =
+      decltype(std::declval<Awaiter&>().await_suspend(
+          std::declval<WrapperHandle>()));
 
  public:
   explicit StackAwareViaIfAsyncAwaiter(
@@ -255,8 +256,9 @@ class ViaIfAsyncAwaiter {
   using CoroutinePromise = typename CoroutineType::promise_type;
   using WrapperHandle = coroutine_handle<CoroutinePromise>;
 
-  using await_suspend_result_t = decltype(
-      std::declval<Awaiter&>().await_suspend(std::declval<WrapperHandle>()));
+  using await_suspend_result_t =
+      decltype(std::declval<Awaiter&>().await_suspend(
+          std::declval<WrapperHandle>()));
 
  public:
   explicit ViaIfAsyncAwaiter(

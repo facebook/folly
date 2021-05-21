@@ -59,8 +59,8 @@ struct ArgumentTypesByKind {};
 template <typename Fn>
 struct ArgumentTypesByKind<IdentifyCallable::Kind::MemberFunction, Fn> {
   using type = typename boost::mpl::template pop_front<
-      typename boost::function_types::template parameter_types<decltype(
-          &Fn::operator())>::type>::type;
+      typename boost::function_types::template parameter_types<
+          decltype(&Fn::operator())>::type>::type;
 };
 template <typename Fn>
 struct ArgumentTypesByKind<IdentifyCallable::Kind::Function, Fn> {

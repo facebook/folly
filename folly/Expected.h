@@ -1103,8 +1103,8 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
    * then
    */
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
-  auto then(Fns&&... fns) const& -> decltype(
-      expected_detail::ExpectedHelper::then_(
+  auto then(Fns&&... fns)
+      const& -> decltype(expected_detail::ExpectedHelper::then_(
           std::declval<const Base&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess>();
@@ -1137,8 +1137,8 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
    * thenOrThrow
    */
   template <class Yes, class No = MakeBadExpectedAccess>
-  auto thenOrThrow(Yes&& yes, No&& no = No{}) const& -> decltype(
-      std::declval<Yes>()(std::declval<const Value&>())) {
+  auto thenOrThrow(Yes&& yes, No&& no = No{})
+      const& -> decltype(std::declval<Yes>()(std::declval<const Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<const Value&>()));
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess>();
@@ -1148,8 +1148,8 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   template <class Yes, class No = MakeBadExpectedAccess>
-  auto thenOrThrow(Yes&& yes, No&& no = No{}) & -> decltype(
-      std::declval<Yes>()(std::declval<Value&>())) {
+  auto thenOrThrow(Yes&& yes, No&& no = No{}) & -> decltype(std::declval<Yes>()(
+      std::declval<Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&>()));
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess>();
@@ -1159,8 +1159,10 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   template <class Yes, class No = MakeBadExpectedAccess>
-  auto thenOrThrow(Yes&& yes, No&& no = No{}) && -> decltype(
-      std::declval<Yes>()(std::declval<Value&&>())) {
+  auto thenOrThrow(
+      Yes&& yes,
+      No&& no =
+          No{}) && -> decltype(std::declval<Yes>()(std::declval<Value&&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&&>()));
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess>();

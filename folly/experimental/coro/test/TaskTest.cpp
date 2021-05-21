@@ -62,8 +62,9 @@ static_assert(
     "");
 static_assert(
     std::is_same<
-        folly::coro::semi_await_result_t<decltype(
-            std::declval<folly::coro::SharedMutex&>().co_scoped_lock_shared())>,
+        folly::coro::semi_await_result_t<
+            decltype(std::declval<folly::coro::SharedMutex&>()
+                         .co_scoped_lock_shared())>,
         folly::coro::SharedLock<folly::coro::SharedMutex>>::value,
     "");
 
