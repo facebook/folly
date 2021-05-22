@@ -68,6 +68,7 @@ class IsCompatibleSignature<Candidate, ExpectedReturn(ArgTypes...)> {
  */
 template <class Self>
 struct FBounded {
+  using SelfType = Self;
   const Self& self() const { return *static_cast<const Self*>(this); }
 
   Self& self() { return *static_cast<Self*>(this); }

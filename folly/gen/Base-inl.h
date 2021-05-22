@@ -18,6 +18,7 @@
 #error This file may only be included from folly/gen/Base.h
 #endif
 
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
@@ -521,14 +522,12 @@ class Map : public Operator<Map<Predicate>> {
     static constexpr bool infinite = Source::infinite;
   };
 
-  template <class Source, class Value, class Gen = Generator<Value, Source>>
-  Gen compose(GenImpl<Value, Source>&& source) const {
+  template <
+      class Source,
+      class Gen =
+          Generator<typename Source::ValueType, typename Source::SelfType>>
+  Gen compose(Source source) const {
     return Gen(std::move(source.self()), pred_);
-  }
-
-  template <class Source, class Value, class Gen = Generator<Value, Source>>
-  Gen compose(const GenImpl<Value, Source>& source) const {
-    return Gen(source.self(), pred_);
   }
 };
 
@@ -2451,6 +2450,16 @@ const T& operator|(const Optional<T>& opt, const Unwrap&) {
   return opt.value();
 }
 
+class ToVirtualGen : public Operator<ToVirtualGen> {
+ public:
+  template <
+      class Source,
+      class Generator = VirtualGenMoveOnly<typename Source::ValueType>>
+  Generator compose(Source source) const {
+    return Generator(std::move(source.self()));
+  }
+};
+
 #if FOLLY_USE_RANGEV3
 template <class RangeV3, class Value>
 class RangeV3Source
@@ -2567,64 +2576,104 @@ auto rangev3_will_be_consumed(Range&& r) {
 /**
  * VirtualGen<T> - For wrapping template types in simple polymorphic wrapper.
  **/
-template <class Value>
-class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
+template <class Value, class Self>
+class VirtualGenBase : public GenImpl<Value, Self> {
+ protected:
   class WrapperBase {
    public:
     virtual ~WrapperBase() noexcept {}
-    virtual bool apply(const std::function<bool(Value)>& handler) const = 0;
-    virtual void foreach(const std::function<void(Value)>& body) const = 0;
-    virtual std::unique_ptr<const WrapperBase> clone() const = 0;
+    virtual bool apply(const FunctionRef<bool(Value)>& handler) const = 0;
+    virtual void foreach(const FunctionRef<void(Value)>& body) const = 0;
+    virtual std::unique_ptr<const WrapperBase> clone() const {
+      // clone() is only ever called from VirtualGen<>, where it
+      // is overridden with a real implementation.
+      return nullptr;
+    }
   };
 
   template <class Wrapped>
   class WrapperImpl : public WrapperBase {
+   protected:
     Wrapped wrapped_;
 
    public:
     explicit WrapperImpl(Wrapped wrapped) : wrapped_(std::move(wrapped)) {}
 
-    bool apply(const std::function<bool(Value)>& handler) const override {
+    bool apply(const FunctionRef<bool(Value)>& handler) const final {
       return wrapped_.apply(handler);
     }
 
-    void foreach(const std::function<void(Value)>& body) const override {
+    void foreach(const FunctionRef<void(Value)>& body) const final {
       wrapped_.foreach(body);
-    }
-
-    std::unique_ptr<const WrapperBase> clone() const override {
-      return std::unique_ptr<const WrapperBase>(new WrapperImpl(wrapped_));
     }
   };
 
   std::unique_ptr<const WrapperBase> wrapper_;
 
+  VirtualGenBase() = default;
+  VirtualGenBase(VirtualGenBase&&) = default;
+  VirtualGenBase& operator=(VirtualGenBase&&) = default;
+
  public:
-  template <class Self>
-  /* implicit */ VirtualGen(Self source)
-      : wrapper_(new WrapperImpl<Self>(std::move(source))) {}
-
-  VirtualGen(VirtualGen&& source) noexcept
-      : wrapper_(std::move(source.wrapper_)) {}
-
-  VirtualGen(const VirtualGen& source) : wrapper_(source.wrapper_->clone()) {}
-
-  VirtualGen& operator=(const VirtualGen& source) {
-    wrapper_.reset(source.wrapper_->clone());
-    return *this;
-  }
-
-  VirtualGen& operator=(VirtualGen&& source) noexcept {
-    wrapper_ = std::move(source.wrapper_);
-    return *this;
-  }
-
-  bool apply(const std::function<bool(Value)>& handler) const {
+  bool apply(const FunctionRef<bool(Value)>& handler) const {
     return wrapper_->apply(handler);
   }
 
-  void foreach(const std::function<void(Value)>& body) const {
+  void foreach(const FunctionRef<void(Value)>& body) const {
     wrapper_->foreach(body);
+  }
+};
+
+template <class Value>
+class VirtualGen : public VirtualGenBase<Value, VirtualGen<Value>> {
+  using Base = VirtualGenBase<Value, VirtualGen>;
+  using WrapperBase = typename Base::WrapperBase;
+  template <class Wrapped>
+  using WrapperImpl = typename Base::template WrapperImpl<Wrapped>;
+
+  template <class Wrapped>
+  class CloneableWrapperImpl : public WrapperImpl<Wrapped> {
+   public:
+    using WrapperImpl<Wrapped>::WrapperImpl;
+
+    std::unique_ptr<const WrapperBase> clone() const final {
+      return std::make_unique<CloneableWrapperImpl<Wrapped>>(this->wrapped_);
+    }
+  };
+
+ public:
+  VirtualGen() = default;
+  VirtualGen(VirtualGen&& source) = default;
+  VirtualGen& operator=(VirtualGen&& source) = default;
+
+  template <class Source>
+  /* implicit */ VirtualGen(Source source) {
+    this->wrapper_ =
+        std::make_unique<CloneableWrapperImpl<Source>>(std::move(source));
+  }
+
+  VirtualGen(const VirtualGen& source) {
+    this->wrapper_ = source.wrapper_->clone();
+  }
+
+  VirtualGen& operator=(const VirtualGen& source) {
+    return *this = VirtualGen(source);
+  }
+};
+
+template <class Value>
+class VirtualGenMoveOnly
+    : public VirtualGenBase<Value, VirtualGenMoveOnly<Value>> {
+ public:
+  VirtualGenMoveOnly() = default;
+  VirtualGenMoveOnly(VirtualGenMoveOnly&& other) = default;
+  VirtualGenMoveOnly& operator=(VirtualGenMoveOnly&&) = default;
+
+  template <class Source>
+  /* implicit */ VirtualGenMoveOnly(Source source) {
+    this->wrapper_ = std::make_unique<
+        typename VirtualGenBase<Value, VirtualGenMoveOnly<Value>>::
+            template WrapperImpl<Source>>(std::move(source));
   }
 };
 
@@ -2663,6 +2712,8 @@ constexpr detail::Dereference dereference{};
 constexpr detail::Indirect indirect{};
 
 constexpr detail::Unwrap unwrap{};
+
+constexpr detail::ToVirtualGen virtualize{};
 
 template <class Number>
 inline detail::Take take(Number count) {

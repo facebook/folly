@@ -880,6 +880,14 @@ TEST(Gen, VirtualGen) {
   EXPECT_EQ(30, v | take(4) | sum);
 }
 
+TEST(Gen, VirtualGenMoveOnly) {
+  VirtualGenMoveOnly<int> v(seq(1, 10));
+  EXPECT_EQ(55, std::move(v) | sum);
+  v = seq(1, 10) | virtualize;
+  v = std::move(v) | map(square);
+  EXPECT_EQ(385, std::move(v) | sum);
+}
+
 TEST(Gen, CustomType) {
   struct Foo {
     int y;

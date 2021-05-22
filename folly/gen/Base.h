@@ -401,6 +401,9 @@ class Unwrap;
 template <class Value>
 class VirtualGen;
 
+template <class Value>
+class VirtualGenMoveOnly;
+
 /*
  * Source Factories
  */
