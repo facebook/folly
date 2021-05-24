@@ -414,6 +414,14 @@ class FBCodeBuilder(object):
             'BUILD_SHARED_LIBS': 'ON',
             'CMAKE_INSTALL_PREFIX': self.option('prefix'),
         }
+
+        # Hacks to add thriftpy3 support
+        if 'BUILD_THRIFT_PY3' in os.environ and 'folly' in name:
+            cmake_defines['PYTHON_EXTENSIONS'] = 'True'
+
+        if 'BUILD_THRIFT_PY3' in os.environ and 'fbthrift' in name:
+            cmake_defines['thriftpy3'] = 'ON'
+
         cmake_defines.update(
             self.option('{0}:cmake_defines'.format(name), {})
         )
