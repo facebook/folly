@@ -377,6 +377,11 @@ IOBuf::IOBuf(
   // since we use that for folly::sizedFree
   DCHECK(!userData || (userData && freeFn));
 
+  // add support for sized dealloc if freeFn is null
+  if (!userData && !freeFn) {
+    userData = reinterpret_cast<void*>(capacity);
+  }
+
   auto rollback = makeGuard([&] { //
     takeOwnershipError(freeOnError, buf, freeFn, userData);
   });
@@ -395,6 +400,11 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
   // do not allow only user data without a freeFn
   // since we use that for folly::sizedFree
   DCHECK(!userData || (userData && freeFn));
+
+  // add support for sized dealloc if freeFn is null
+  if (!userData && !freeFn) {
+    userData = reinterpret_cast<void*>(capacity);
+  }
 
   HeapFullStorage* storage = nullptr;
   auto rollback = makeGuard([&] {
