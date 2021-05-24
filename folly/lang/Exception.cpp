@@ -51,7 +51,35 @@
 
 namespace __cxxabiv1 {
 
-struct __folly_cxa_exception {
+//  the definition until llvm v10.0.0-rc2
+struct __folly_cxa_exception_sans_reserve {
+#if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
+  size_t referenceCount;
+#endif
+  std::type_info* exceptionType;
+  void (*exceptionDestructor)(void*);
+  void (*unexpectedHandler)();
+  std::terminate_handler terminateHandler;
+  __folly_cxa_exception_sans_reserve* nextException;
+  int handlerCount;
+#if defined(_LIBCXXABI_ARM_EHABI)
+  __folly_cxa_exception_sans_reserve* nextPropagatingException;
+  int propagationCount;
+#else
+  int handlerSwitchValue;
+  const unsigned char* actionRecord;
+  const unsigned char* languageSpecificData;
+  void* catchTemp;
+  void* adjustedPtr;
+#endif
+#if !defined(__LP64__) && !defined(_WIN64) && !defined(_LIBCXXABI_ARM_EHABI)
+  size_t referenceCount;
+#endif
+  _Unwind_Exception unwindHeader;
+};
+
+//  the definition since llvm v10.0.0-rc2
+struct __folly_cxa_exception_with_reserve {
 #if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
   void* reserve;
   size_t referenceCount;
@@ -60,10 +88,10 @@ struct __folly_cxa_exception {
   void (*exceptionDestructor)(void*);
   void (*unexpectedHandler)();
   std::terminate_handler terminateHandler;
-  __folly_cxa_exception* nextException;
+  __folly_cxa_exception_with_reserve* nextException;
   int handlerCount;
 #if defined(_LIBCXXABI_ARM_EHABI)
-  __folly_cxa_exception* nextPropagatingException;
+  __folly_cxa_exception_with_reserve* nextPropagatingException;
   int propagationCount;
 #else
   int handlerSwitchValue;
@@ -170,12 +198,8 @@ static void* cxxabi_get_object(std::exception_ptr const& ptr) noexcept {
   return reinterpret_cast<void* const&>(ptr);
 }
 
-static std::intptr_t cxxabi_cxa_exception_fields_adjustment() noexcept {
-#if defined(__LP64__) || defined(_WIN64) || !defined(_LIBCXXABI_ARM_EHABI)
-  return 0;
-#endif
-  // detect and cache whether this version of llvm has __cxa_exception with
-  // shifted fields
+static bool cxxabi_cxa_exception_sans_reserve() noexcept {
+  // detect and cache the layout of __cxa_exception in the loaded libc++abi
   //
   // for 32-bit arm-ehabi llvm ...
   //
@@ -185,8 +209,7 @@ static std::intptr_t cxxabi_cxa_exception_fields_adjustment() noexcept {
   //
   // before v10.0.0-rc2, __cxa_exception has 4b padding before the unwind field
   // as of v10.0.0-rc2, __cxa_exception moves the 4b padding to the start in a
-  // field called reserve, but this field also exists as of this version in 64-
-  // bit llvm but not before
+  // field called reserve
   //
   // before 32-bit arm-ehabi llvm v10.0.0-rc2, the reserve field does not exist
   // in the struct explicitly but the refcount field is there instead due to
@@ -202,31 +225,35 @@ static std::intptr_t cxxabi_cxa_exception_fields_adjustment() noexcept {
   // fields except for the unwind field are shifted up by 4b
   //
   // prefer optimistic concurrency over pessimistic concurrency
-  static std::atomic<std::ptrdiff_t> cache{0}; // encoded
-  if (auto encoded = cache.load(std::memory_order_relaxed)) {
-    return (encoded - 1) / 2;
-  } else {
-    auto object = abi::__cxa_allocate_exception(0);
-    abi::__cxa_increment_exception_refcount(object);
-    auto exception = static_cast<abi::__folly_cxa_exception*>(object) - 1;
-    std::ptrdiff_t shift = 0;
-#if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
-    if (exception->referenceCount != 1) {
-      assert(exception->reserve = reinterpret_cast<void*>(1));
-      shift = -static_cast<std::ptrdiff_t>(sizeof(exception->reserve));
-    }
-#endif
-    abi::__cxa_free_exception(object); // no need for decref
-    cache.store(shift * 2 + 1, std::memory_order_relaxed);
-    return shift;
+  static std::atomic<int> cache{};
+  if (auto value = cache.load(std::memory_order_relaxed)) {
+    return value > 0;
   }
+  auto object = abi::__cxa_allocate_exception(0);
+  abi::__cxa_increment_exception_refcount(object);
+  auto exception =
+      static_cast<abi::__folly_cxa_exception_sans_reserve*>(object) - 1;
+  auto result = exception->referenceCount == 1;
+  assert(
+      result ||
+      (static_cast<abi::__folly_cxa_exception_with_reserve*>(object) - 1)
+              ->referenceCount == 1);
+  abi::__cxa_free_exception(object); // no need for decref
+  cache.store(result ? 1 : -1, std::memory_order_relaxed);
+  return result;
 }
 
-static abi::__folly_cxa_exception* cxxabi_cxa_exception_fields_adjusted(
-    abi::__folly_cxa_exception* exception) noexcept {
-  auto shift = cxxabi_cxa_exception_fields_adjustment();
-  return reinterpret_cast<abi::__folly_cxa_exception*>(
-      reinterpret_cast<char*>(exception) + shift);
+template <typename F>
+static decltype(auto) cxxabi_with_cxa_exception(void* object, F f) {
+  if (cxxabi_cxa_exception_sans_reserve()) {
+    using cxa_exception = abi::__folly_cxa_exception_sans_reserve;
+    auto exception = object ? static_cast<cxa_exception*>(object) - 1 : nullptr;
+    return f(exception);
+  } else {
+    using cxa_exception = abi::__folly_cxa_exception_with_reserve;
+    auto exception = object ? static_cast<cxa_exception*>(object) - 1 : nullptr;
+    return f(exception);
+  }
 }
 
 std::type_info const* exception_ptr_get_type(
@@ -235,9 +262,9 @@ std::type_info const* exception_ptr_get_type(
     return nullptr;
   }
   auto object = cxxabi_get_object(ptr);
-  auto exception = static_cast<abi::__folly_cxa_exception*>(object) - 1;
-  auto adjusted_ = cxxabi_cxa_exception_fields_adjusted(exception);
-  return adjusted_->exceptionType;
+  return cxxabi_with_cxa_exception(object, [](auto exception) { //
+    return exception->exceptionType;
+  });
 }
 
 void* exception_ptr_get_object(
