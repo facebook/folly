@@ -47,7 +47,7 @@ template <template <typename> class Atom = std::atomic>
 class hazptr_rec;
 
 ///
-/// Classes related to objects protected by hazard pointers.
+/// Classes related to objects protectable by hazard pointers.
 /// Defined in HazptrObj.h
 ///
 

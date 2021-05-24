@@ -187,17 +187,14 @@
 /// - Both can protect linked structures. Hazard pointers needs
 ///   additional link counting with low or moderate overhead for
 ///   update operations, and no overhead for readers. RCU protects
-///   protects linked structures automatically, because it protects
-///   everything.
+///   linked structures automatically, because it implicitly protects
+///   all protectable objects.
 ///
 /// Differences from the Standard Proposal
 /// --------------------------------------
-/// - The latest standard proposal is in wg21.link/p0566.
-/// - This library's API differs from the standard proposal because:
-///   (a) the standard proposal is changing based on committee
-///   feedback, and (b) this library provides additional
-///   fast-evolving features based on usage experience that do not
-///   have corressponding proposed standard wording.
+/// - The latest standard proposal is in wg21.link/p1121. The
+///   substance of the proposal was frozen around October 2017, but
+///   there were subsequent API changes based on committee feadback.
 /// - The main differences are:
 ///   o This library uses an extra atomic template parameter for
 ///     testing and debugging.
@@ -213,3 +210,5 @@
 ///     proposal.
 ///   o Link counting support and protection of linked structures is
 ///     not part of the current standard proposal.
+///   o The standard proposal does not include cohorts and the
+///     associated synchronous reclamation capabilities.

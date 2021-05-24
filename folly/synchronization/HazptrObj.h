@@ -28,7 +28,7 @@
 #include <folly/synchronization/detail/HazptrUtils.h>
 
 ///
-/// Classes related to objects protected by hazard pointers.
+/// Classes related to objects protectable by hazard pointers.
 ///
 
 namespace folly {
@@ -36,14 +36,14 @@ namespace folly {
 /**
  *  hazptr_obj
  *
- *  Private base class for objects protected by hazard pointers.
+ *  Private base class for objects protectable by hazard pointers.
  *
  *  Data members:
  *  - next_: link to next object in private singly linked lists.
  *  - reclaim_: reclamation function for this object.
- *  - cohort_tag_: A pointer to a cohort (a linked list where the
- *    object is to be pushed when retired). It can also be used as a
- *    tag (see below). See details below.
+ *  - cohort_tag_: A pointer to a cohort (where the object is to be
+ *    pushed when retired). It can also be used as a tag (see
+ *    below).
  *
  *  Cohorts, Tags, Tagged Objects, and Untagged Objects:
  *
@@ -53,27 +53,27 @@ namespace folly {
  *    and/or mixed with unrelated objects.
  *
  *  - Tags: A tag is a unique identifier used for fast identification
- *    of related objects. Tags are implemented as addresses of
- *    cohorts, with the lowest bit set (to save the space of separate
- *    cohort and tag data members and to differentiate from cohorts of
- *    untagged objects.
+ *    of related objects for synchronous reclamation. Tags are
+ *    implemented as addresses of cohorts, with the lowest bit set (to
+ *    save the space of separate cohort and tag data members and to
+ *    differentiate from cohorts of untagged objects.
  *
  *  - Tagged objects: Objects are tagged for fast identification. The
- *    primary use case is for guaranteeing the destruction of all
- *    objects with a certain tag (e.g., the destruction of all Key and
- *    Value objects that were part of a Folly ConcurrentHashMap
- *    instance). Member function set_cohort_tag makes an object tagged.
+ *    primary use case is for synchronous reclamation ((e.g., the
+ *    destruction of all Key and Value objects that were part of a
+ *    Folly ConcurrentHashMap instance). Member function
+ *    set_cohort_tag makes an object tagged.
  *
  *  - Untagged objects: Objects that do not need to be identified
  *    separately from unrelated objects are not tagged (to keep tagged
  *    objects uncluttered). Untagged objects may or may not be
  *    associated with cohorts. An example of untagged objects
  *    associated with cohorts are Segment-s of Folly UnboundedQueue.
- *    Although such objects do not need to be tagged, keeping them in
- *    cohorts helps avoid cases of a few missing objects delaying the
- *    reclamation of large numbers of link-counted objects. Objects
- *    are untagged either by default or after calling
- *    set_cohort_no_tag.
+ *    Although such objects do not need synchronous reclamation,
+ *    keeping them in cohorts helps avoid cases of a few missing
+ *    objects delaying the reclamation of large numbers of
+ *    link-counted objects. Objects are untagged either by default or
+ *    after calling set_cohort_no_tag.
  *
  *  - Thread Safety: Member functions set_cohort_tag and
  *    set_cohort_no_tag are not thread-safe. Thread safety must be
