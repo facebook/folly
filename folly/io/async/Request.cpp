@@ -16,8 +16,7 @@
 
 #include <folly/io/async/Request.h>
 
-#include <glog/logging.h>
-
+#include <folly/GLog.h>
 #include <folly/MapUtil.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/experimental/SingleWriterFixedHashMap.h>
@@ -243,7 +242,7 @@ bool RequestContext::State::doSetContextData(
     result = doSetContextDataHelper(token, data, behaviour, safe);
   }
   if (result.unexpected) {
-    LOG_FIRST_N(WARNING, 1)
+    FB_LOG_EVERY_MS(WARNING, 60000)
         << "Calling RequestContext::setContextData for "
         << token.getDebugString() << " but it is already set";
   }
