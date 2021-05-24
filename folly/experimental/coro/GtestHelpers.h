@@ -178,4 +178,10 @@
  */
 #define CO_FAIL() CO_GTEST_FATAL_FAILURE_("Failed")
 
+/**
+ * Coroutine version of SKIP() which is defined as GTEST_SKIP()
+ */
+#define CO_SKIP(message) \
+  co_return GTEST_MESSAGE_(message, ::testing::TestPartResult::kSkip)
+
 #endif // FOLLY_HAS_COROUTINES
