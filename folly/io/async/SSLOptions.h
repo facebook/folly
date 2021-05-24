@@ -52,10 +52,22 @@ struct SSLCommonOptions {
    */
   static constexpr auto sigalgs() {
     return folly::make_array(
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "rsa_pss_pss_sha512",
+        "rsa_pss_rsae_sha512",
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA512",
         "ECDSA+SHA512",
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "rsa_pss_pss_sha384",
+        "rsa_pss_rsae_sha384",
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA384",
         "ECDSA+SHA384",
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "rsa_pss_pss_sha256",
+        "rsa_pss_rsae_sha256",
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA256",
         "ECDSA+SHA256",
         "RSA+SHA1",
