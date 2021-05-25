@@ -24,13 +24,20 @@ namespace folly {
 namespace channels {
 namespace detail {
 
+static int* getConsumerParam() {
+  return reinterpret_cast<int*>(1);
+}
+
 TEST(AtomicQueueTest, Basic) {
   folly::Baton<> producerBaton;
   folly::Baton<> consumerBaton;
 
   struct Consumer {
-    void consume() { baton.post(); }
-    void canceled() { ADD_FAILURE() << "canceled() shouldn't be called"; }
+    void consume(int* consumerParam) {
+      EXPECT_EQ(consumerParam, getConsumerParam());
+      baton.post();
+    }
+    void canceled(int*) { ADD_FAILURE() << "canceled() shouldn't be called"; }
     folly::Baton<> baton;
   };
   AtomicQueue<Consumer, int> atomicQueue;
@@ -40,23 +47,23 @@ TEST(AtomicQueueTest, Basic) {
     producerBaton.wait();
     producerBaton.reset();
 
-    atomicQueue.push(1);
+    atomicQueue.push(1, getConsumerParam());
 
     producerBaton.wait();
     producerBaton.reset();
 
-    atomicQueue.push(2);
-    atomicQueue.push(3);
+    atomicQueue.push(2, getConsumerParam());
+    atomicQueue.push(3, getConsumerParam());
     consumerBaton.post();
   });
 
-  EXPECT_TRUE(atomicQueue.wait(&consumer));
+  EXPECT_TRUE(atomicQueue.wait(&consumer, getConsumerParam()));
   producerBaton.post();
   consumer.baton.wait();
   consumer.baton.reset();
 
   {
-    auto q = atomicQueue.getMessages();
+    auto q = atomicQueue.getMessages(getConsumerParam());
     EXPECT_FALSE(q.empty());
     EXPECT_EQ(1, q.front());
     q.pop();
@@ -67,9 +74,9 @@ TEST(AtomicQueueTest, Basic) {
   consumerBaton.wait();
   consumerBaton.reset();
 
-  EXPECT_FALSE(atomicQueue.wait(&consumer));
+  EXPECT_FALSE(atomicQueue.wait(&consumer, getConsumerParam()));
   {
-    auto q = atomicQueue.getMessages();
+    auto q = atomicQueue.getMessages(getConsumerParam());
     EXPECT_FALSE(q.empty());
     EXPECT_EQ(2, q.front());
     q.pop();
@@ -79,10 +86,10 @@ TEST(AtomicQueueTest, Basic) {
     EXPECT_TRUE(q.empty());
   }
 
-  EXPECT_TRUE(atomicQueue.wait(&consumer));
+  EXPECT_TRUE(atomicQueue.wait(&consumer, getConsumerParam()));
   EXPECT_EQ(atomicQueue.cancelCallback(), &consumer);
 
-  EXPECT_TRUE(atomicQueue.wait(&consumer));
+  EXPECT_TRUE(atomicQueue.wait(&consumer, getConsumerParam()));
   EXPECT_EQ(atomicQueue.cancelCallback(), &consumer);
 
   EXPECT_EQ(atomicQueue.cancelCallback(), nullptr);
@@ -92,41 +99,47 @@ TEST(AtomicQueueTest, Basic) {
 
 TEST(AtomicQueueTest, Canceled) {
   struct Consumer {
-    void consume() { ADD_FAILURE() << "consume() shouldn't be called"; }
-    void canceled() { canceledCalled = true; }
+    void consume(int*) { ADD_FAILURE() << "consume() shouldn't be called"; }
+    void canceled(int* consumerParam) {
+      EXPECT_EQ(consumerParam, getConsumerParam());
+      canceledCalled = true;
+    }
     bool canceledCalled{false};
   };
   AtomicQueue<Consumer, int> atomicQueue;
   Consumer consumer;
 
-  EXPECT_TRUE(atomicQueue.wait(&consumer));
-  atomicQueue.close();
+  EXPECT_TRUE(atomicQueue.wait(&consumer, getConsumerParam()));
+  atomicQueue.close(getConsumerParam());
   EXPECT_TRUE(consumer.canceledCalled);
   EXPECT_TRUE(atomicQueue.isClosed());
 
-  EXPECT_TRUE(atomicQueue.getMessages().empty());
+  EXPECT_TRUE(atomicQueue.getMessages(getConsumerParam()).empty());
   EXPECT_TRUE(atomicQueue.isClosed());
 
-  atomicQueue.push(42);
+  atomicQueue.push(42, getConsumerParam());
 
-  EXPECT_TRUE(atomicQueue.getMessages().empty());
+  EXPECT_TRUE(atomicQueue.getMessages(getConsumerParam()).empty());
   EXPECT_TRUE(atomicQueue.isClosed());
 }
 
 TEST(AtomicQueueTest, Stress) {
   struct Consumer {
-    void consume() { baton.post(); }
-    void canceled() { ADD_FAILURE() << "canceled() shouldn't be called"; }
+    void consume(int* consumerParam) {
+      EXPECT_EQ(consumerParam, getConsumerParam());
+      baton.post();
+    }
+    void canceled(int*) { ADD_FAILURE() << "canceled() shouldn't be called"; }
     folly::Baton<> baton;
   };
   AtomicQueue<Consumer, int> atomicQueue;
   auto getNext = [&atomicQueue, queue = Queue<int>()]() mutable {
     Consumer consumer;
     if (queue.empty()) {
-      if (atomicQueue.wait(&consumer)) {
+      if (atomicQueue.wait(&consumer, getConsumerParam())) {
         consumer.baton.wait();
       }
-      queue = atomicQueue.getMessages();
+      queue = atomicQueue.getMessages(getConsumerParam());
       EXPECT_FALSE(queue.empty());
     }
     auto next = queue.front();
@@ -142,7 +155,7 @@ TEST(AtomicQueueTest, Stress) {
 
   std::thread producerThread([&] {
     for (producerIndex = 1; producerIndex <= kNumIters; ++producerIndex) {
-      atomicQueue.push(producerIndex);
+      atomicQueue.push(producerIndex, getConsumerParam());
 
       if (producerIndex % kSynchronizeEvery == 0) {
         while (producerIndex > consumerIndex.load(std::memory_order_relaxed)) {

@@ -100,7 +100,8 @@ class AtomicQueue {
   AtomicQueue(const AtomicQueue&) = delete;
   AtomicQueue& operator=(const AtomicQueue&) = delete;
 
-  void push(Message&& value) {
+  template <typename... ConsumerArgs>
+  void push(Message&& value, ConsumerArgs&&... consumerArgs) {
     std::unique_ptr<typename MessageQueue::Node> node(
         new typename MessageQueue::Node(std::move(value)));
     assert(!(reinterpret_cast<intptr_t>(node.get()) & kTypeMask));
@@ -135,7 +136,7 @@ class AtomicQueue {
                   std::memory_order_relaxed)) {
             node.release();
             auto consumer = reinterpret_cast<Consumer*>(ptr);
-            consumer->consume();
+            consumer->consume(std::forward<ConsumerArgs>(consumerArgs)...);
             return;
           }
           break;
@@ -145,7 +146,8 @@ class AtomicQueue {
     }
   }
 
-  bool wait(Consumer* consumer) {
+  template <typename... ConsumerArgs>
+  bool wait(Consumer* consumer, ConsumerArgs&&... consumerArgs) {
     assert(!(reinterpret_cast<intptr_t>(consumer) & kTypeMask));
     auto storage = storage_.load(std::memory_order_relaxed);
     while (true) {
@@ -162,7 +164,7 @@ class AtomicQueue {
           }
           break;
         case Type::CLOSED:
-          consumer->canceled();
+          consumer->canceled(std::forward<ConsumerArgs>(consumerArgs)...);
           return true;
         case Type::TAIL:
           return false;
@@ -173,7 +175,8 @@ class AtomicQueue {
     }
   }
 
-  void close() {
+  template <typename... ConsumerArgs>
+  void close(ConsumerArgs&&... consumerArgs) {
     auto storage = storage_.exchange(
         static_cast<intptr_t>(Type::CLOSED), std::memory_order_acquire);
     auto type = static_cast<Type>(storage & kTypeMask);
@@ -186,7 +189,8 @@ class AtomicQueue {
             reinterpret_cast<typename MessageQueue::Node*>(ptr));
         return;
       case Type::CONSUMER:
-        reinterpret_cast<Consumer*>(ptr)->canceled();
+        reinterpret_cast<Consumer*>(ptr)->canceled(
+            std::forward<ConsumerArgs>(consumerArgs)...);
         return;
       case Type::CLOSED:
       default:
@@ -199,7 +203,8 @@ class AtomicQueue {
     return type == Type::CLOSED;
   }
 
-  MessageQueue getMessages() {
+  template <typename... ConsumerArgs>
+  MessageQueue getMessages(ConsumerArgs&&... consumerArgs) {
     auto storage = storage_.exchange(
         static_cast<intptr_t>(Type::EMPTY), std::memory_order_acquire);
     auto type = static_cast<Type>(storage & kTypeMask);
@@ -214,7 +219,7 @@ class AtomicQueue {
         // We accidentally re-opened the queue, so close it again.
         // This is only safe to do because isClosed() can't be called
         // concurrently with getMessages().
-        close();
+        close(std::forward<ConsumerArgs>(consumerArgs)...);
         return MessageQueue();
       case Type::CONSUMER:
       default:
