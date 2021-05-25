@@ -212,7 +212,7 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
   size_t const vlog2 = 64 - static_cast<size_t>(__builtin_clzll(v));
 
   //  handle directly when Base is power-of-two
-  if (!(Base & (Base - 1))) {
+  if constexpr(!(Base & (Base - 1))) {
     constexpr auto const blog2 = constexpr_log2(Base);
     return vlog2 / blog2 + size_t(vlog2 % blog2 != 0);
   }
