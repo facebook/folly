@@ -43,7 +43,7 @@ class HazptrWideCAS {
     hazptr_holder<Atom> hptr;
     Node* p;
     while (true) {
-      p = hptr.get_protected(node_);
+      p = hptr.protect(node_);
       if (p->val_ != u) {
         delete n;
         return false;
@@ -53,7 +53,7 @@ class HazptrWideCAS {
         break;
       }
     }
-    hptr.reset();
+    hptr.reset_protection();
     p->retire();
     return true;
   }

@@ -375,7 +375,7 @@ RequestContext::State::insertNewData(
 FOLLY_ALWAYS_INLINE
 bool RequestContext::State::hasContextData(const RequestToken& token) const {
   hazptr_local<1> h;
-  Combined* combined = h[0].get_protected(combined_);
+  Combined* combined = h[0].protect(combined_);
   return combined ? combined->requestData_.contains(token) : false;
 }
 
@@ -383,7 +383,7 @@ FOLLY_ALWAYS_INLINE
 RequestData* FOLLY_NULLABLE
 RequestContext::State::getContextData(const RequestToken& token) {
   hazptr_local<1> h;
-  Combined* combined = h[0].get_protected(combined_);
+  Combined* combined = h[0].protect(combined_);
   if (!combined) {
     return nullptr;
   }
@@ -396,7 +396,7 @@ FOLLY_ALWAYS_INLINE
 const RequestData* FOLLY_NULLABLE
 RequestContext::State::getContextData(const RequestToken& token) const {
   hazptr_local<1> h;
-  Combined* combined = h[0].get_protected(combined_);
+  Combined* combined = h[0].protect(combined_);
   if (!combined) {
     return nullptr;
   }
@@ -409,7 +409,7 @@ FOLLY_ALWAYS_INLINE
 void RequestContext::State::onSet() {
   // Don't use hazptr_local because callback may use hazptr
   hazptr_holder<> h;
-  Combined* combined = h.get_protected(combined_);
+  Combined* combined = h.protect(combined_);
   if (!combined) {
     return;
   }
@@ -423,7 +423,7 @@ FOLLY_ALWAYS_INLINE
 void RequestContext::State::onUnset() {
   // Don't use hazptr_local because callback may use hazptr
   hazptr_holder<> h;
-  Combined* combined = h.get_protected(combined_);
+  Combined* combined = h.protect(combined_);
   if (!combined) {
     return;
   }
@@ -576,8 +576,8 @@ void RequestContext::clearContextData(const RequestToken& val) {
   bool checkNew = newCtx && newCtx->state_.combined();
   if (checkCur && checkNew) {
     hazptr_array<2> h;
-    auto curc = h[0].get_protected(curCtx->state_.combined_);
-    auto newc = h[1].get_protected(newCtx->state_.combined_);
+    auto curc = h[0].protect(curCtx->state_.combined_);
+    auto newc = h[1].protect(newCtx->state_.combined_);
     auto& curcb = curc->callbackData_;
     auto& newcb = newc->callbackData_;
     for (auto it = curcb.begin(); it != curcb.end(); ++it) {

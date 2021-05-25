@@ -39,9 +39,9 @@ namespace folly {
  *    T* ptr;
  *    {
  *      hazptr_holder h;
- *      ptr = h.get_protected(src);
+ *      ptr = h.protect(src);
  *      //  ... *ptr is protected ...
- *      h.reset();
+ *      h.reset_protection();
  *      // ... *ptr is not protected ...
  *      ptr = src.load();
  *      while (!h.try_protect(ptr, src)) {}
@@ -124,24 +124,24 @@ class hazptr_holder {
     /* Filtering the protected pointer through function Func is useful
        for stealing bits of the pointer word */
     auto p = ptr;
-    reset(f(p));
+    reset_protection(f(p));
     /*** Full fence ***/ folly::asymmetricLightBarrier();
     ptr = src.load(std::memory_order_acquire);
     if (UNLIKELY(p != ptr)) {
-      reset();
+      reset_protection();
       return false;
     }
     return true;
   }
 
-  /** get_protected */
+  /** protect */
   template <typename T>
-  FOLLY_ALWAYS_INLINE T* get_protected(const Atom<T*>& src) noexcept {
-    return get_protected(src, [](T* t) { return t; });
+  FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src) noexcept {
+    return protect(src, [](T* t) { return t; });
   }
 
   template <typename T, typename Func>
-  FOLLY_ALWAYS_INLINE T* get_protected(const Atom<T*>& src, Func f) noexcept {
+  FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src, Func f) noexcept {
     T* ptr = src.load(std::memory_order_relaxed);
     while (!try_protect(ptr, src, f)) {
       /* Keep trying */;
@@ -151,13 +151,13 @@ class hazptr_holder {
 
   /** reset */
   template <typename T>
-  FOLLY_ALWAYS_INLINE void reset(const T* ptr) noexcept {
+  FOLLY_ALWAYS_INLINE void reset_protection(const T* ptr) noexcept {
     auto p = static_cast<hazptr_obj<Atom>*>(const_cast<T*>(ptr));
     DCHECK(hprec_); // UB if *this is empty
     hprec_->reset_hazptr(p);
   }
 
-  FOLLY_ALWAYS_INLINE void reset(std::nullptr_t = nullptr) noexcept {
+  FOLLY_ALWAYS_INLINE void reset_protection(std::nullptr_t = nullptr) noexcept {
     DCHECK(hprec_); // UB if *this is empty
     hprec_->reset_hazptr();
   }
@@ -285,7 +285,7 @@ class hazptr_array {
       count = cap - M;
     }
     for (uint8_t i = 0; i < M; ++i) {
-      h[i].reset();
+      h[i].reset_protection();
       tc[count + i].fill(h[i].hprec());
       new (&h[i]) hazptr_holder<Atom>(nullptr);
     }
@@ -380,7 +380,7 @@ class hazptr_local {
       tc.set_local(false);
     }
     for (uint8_t i = 0; i < M; ++i) {
-      h[i].reset();
+      h[i].reset_protection();
     }
 #else
     for (uint8_t i = 0; i < M; ++i) {

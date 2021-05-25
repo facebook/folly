@@ -405,7 +405,7 @@ class HazptrObserver {
   struct HazptrSnapshot {
     template <typename State>
     explicit HazptrSnapshot(const std::atomic<State*>& state)
-        : holder_(), ptr_(get(holder_).get_protected(state)->snapshot_.get()) {}
+        : holder_(), ptr_(get(holder_).protect(state)->snapshot_.get()) {}
 
     const T& operator*() const { return *get(); }
     const T* operator->() const { return get(); }

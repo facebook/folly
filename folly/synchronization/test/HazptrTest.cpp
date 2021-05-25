@@ -202,7 +202,7 @@ struct List {
   }
 
   bool protect_all(int val, hazptr_holder<Atom>& hptr) {
-    auto curr = hptr.get_protected(head_);
+    auto curr = hptr.protect(head_);
     while (curr) {
       auto next = curr->next();
       if (curr->value() == val) {
@@ -332,12 +332,12 @@ void basic_protection_test() {
   c_.clear();
   auto obj = new Node<Atom>;
   hazptr_holder<Atom> h;
-  h.reset(obj);
+  h.reset_protection(obj);
   obj->retire();
   ASSERT_EQ(c_.ctors(), 1);
   hazptr_cleanup<Atom>();
   ASSERT_EQ(c_.dtors(), 0);
-  h.reset();
+  h.reset_protection();
   hazptr_cleanup<Atom>();
   ASSERT_EQ(c_.dtors(), 1);
 }
@@ -353,7 +353,7 @@ void virtual_test() {
     bar->a = i;
 
     hazptr_holder<Atom> hptr;
-    hptr.reset(bar);
+    hptr.reset_protection(bar);
     bar->retire();
     ASSERT_EQ(bar->a, i);
   }
@@ -388,7 +388,7 @@ void move_test() {
     auto x = new Node<Atom>(i);
     hazptr_holder<Atom> hptr0;
     // Protect object
-    hptr0.reset(x);
+    hptr0.reset_protection(x);
     // Retire object
     x->retire();
     // Move constructor - still protected
@@ -404,7 +404,7 @@ void move_test() {
     // Access object
     ASSERT_EQ(x->value(), i);
     // Unprotect object - hptr2 is nonempty
-    hptr2.reset();
+    hptr2.reset_protection();
   }
   hazptr_cleanup<Atom>();
 }
@@ -415,7 +415,7 @@ void array_test() {
     auto x = new Node<Atom>(i);
     hazptr_array<3, Atom> hptr;
     // Protect object
-    hptr[2].reset(x);
+    hptr[2].reset_protection(x);
     // Empty array
     hazptr_array<3, Atom> h(nullptr);
     // Move assignment
@@ -424,7 +424,7 @@ void array_test() {
     x->retire();
     ASSERT_EQ(x->value(), i);
     // Unprotect object - hptr2 is nonempty
-    h[2].reset();
+    h[2].reset_protection();
   }
   hazptr_cleanup<Atom>();
 }
@@ -464,11 +464,11 @@ void local_test() {
     auto x = new Node<Atom>(i);
     hazptr_local<3, Atom> hptr;
     // Protect object
-    hptr[2].reset(x);
+    hptr[2].reset_protection(x);
     // Retire object
     x->retire();
     // Unprotect object - hptr2 is nonempty
-    hptr[2].reset();
+    hptr[2].reset_protection();
   }
   hazptr_cleanup<Atom>();
 }
@@ -483,7 +483,7 @@ void linked_test() {
   }
   p = new NodeRC<Mutable, Atom>(num - 1, p, Mutable);
   hazptr_holder<Atom> hptr;
-  hptr.reset(p);
+  hptr.reset_protection(p);
   if (!Mutable) {
     for (auto q = p->next(); q; q = q->next()) {
       q->retire();
@@ -508,7 +508,7 @@ void linked_test() {
   hazptr_cleanup<Atom>();
   ASSERT_EQ(c_.dtors(), 0);
 
-  hptr.reset();
+  hptr.reset_protection();
   hazptr_cleanup<Atom>();
   ASSERT_EQ(c_.dtors(), num);
 }
@@ -532,7 +532,7 @@ void mt_linked_test() {
         /* spin */
       }
       hazptr_holder<Atom> hptr;
-      auto p = hptr.get_protected(head());
+      auto p = hptr.protect(head());
       ++setHazptrs;
       /* Concurrent with removal */
       int v = num;
@@ -601,7 +601,7 @@ void auto_retire_test() {
            root-->a  a-->b  a-->c  b-->d  c-->d
            a(1,0) b(1,0) c(1,0) d(2,0)
     */
-    h.reset(c); /* h protects c */
+    h.reset_protection(c); /* h protects c */
     hazptr_cleanup<Atom>();
     ASSERT_EQ(c_.dtors(), 0);
     /* Nothing is retired or reclaimed yet */
@@ -653,7 +653,7 @@ void auto_retire_test() {
            bulk_reclamed-ed (i.e, found not protected): d
   */
   ASSERT_EQ(c_.dtors(), 2);
-  h.reset(); /* c is now no longer protected */
+  h.reset_protection(); /* c is now no longer protected */
   hazptr_cleanup<Atom>();
   /* hazptr_cleanup calls bulk_reclaim which finds c unprotected,
      which triggers a call to c->release_ref.
@@ -734,8 +734,8 @@ void cleanup_test() {
       hazptr_array<2, Atom> h;
       auto p0 = new Node<Atom>;
       auto p1 = new Node<Atom>;
-      h[0].reset(p0);
-      h[1].reset(p1);
+      h[0].reset_protection(p0);
+      h[1].reset_protection(p1);
       p0->retire();
       p1->retire();
     }
@@ -750,8 +750,8 @@ void cleanup_test() {
       hazptr_local<2, Atom> h;
       auto p0 = new Node<Atom>;
       auto p1 = new Node<Atom>;
-      h[0].reset(p0);
-      h[1].reset(p1);
+      h[0].reset_protection(p0);
+      h[1].reset_protection(p1);
       p0->retire();
       p1->retire();
     }

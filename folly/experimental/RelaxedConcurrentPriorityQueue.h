@@ -468,7 +468,7 @@ class RelaxedConcurrentPriorityQueue {
 
   FOLLY_ALWAYS_INLINE T
   optimisticReadValue(const Position& pos, folly::hazptr_holder<Atom>& hptr) {
-    Node* tmp = hptr.get_protected(levels_[pos.level][pos.index].head);
+    Node* tmp = hptr.protect(levels_[pos.level][pos.index].head);
     return (tmp == nullptr) ? MIN_VALUE : tmp->val;
   }
 

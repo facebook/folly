@@ -130,7 +130,7 @@ class AtomicCoreCachedSharedPtr {
 
   std::shared_ptr<T> get() const {
     folly::hazptr_local<1> hazptr;
-    auto slots = hazptr[0].get_protected(slots_);
+    auto slots = hazptr[0].protect(slots_);
     if (!slots) {
       return nullptr;
     }
