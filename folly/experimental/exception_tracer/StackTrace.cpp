@@ -47,7 +47,6 @@ void StackTraceStack::Node::deallocate() {
 }
 
 bool StackTraceStack::pushCurrent() {
-  checkGuard();
   auto node = Node::allocate();
   if (!node) {
     // cannot allocate memory
@@ -61,61 +60,54 @@ bool StackTraceStack::pushCurrent() {
   }
   node->frameCount = n;
 
-  node->next = state_[kTopIdx];
-  state_[kTopIdx] = node;
+  node->next = state_;
+  state_ = node;
   return true;
 }
 
 bool StackTraceStack::pop() {
-  checkGuard();
-  if (!state_[kTopIdx]) {
+  if (!state_) {
     return false;
   }
 
-  auto node = state_[kTopIdx];
-  state_[kTopIdx] = node->next;
+  auto node = state_;
+  state_ = node->next;
   node->deallocate();
   return true;
 }
 
 bool StackTraceStack::moveTopFrom(StackTraceStack& other) {
-  checkGuard();
-  if (!other.state_[kTopIdx]) {
+  if (!other.state_) {
     return false;
   }
 
-  auto node = other.state_[kTopIdx];
-  other.state_[kTopIdx] = node->next;
-  node->next = state_[kTopIdx];
-  state_[kTopIdx] = node;
+  auto node = other.state_;
+  other.state_ = node->next;
+  node->next = state_;
+  state_ = node;
   return true;
 }
 
 void StackTraceStack::clear() {
-  checkGuard();
-  while (state_[kTopIdx]) {
+  while (state_) {
     pop();
   }
 }
 
 StackTrace* StackTraceStack::top() {
-  checkGuard();
-  return state_[kTopIdx];
+  return state_;
 }
 
 const StackTrace* StackTraceStack::top() const {
-  checkGuard();
-  return state_[kTopIdx];
+  return state_;
 }
 
 StackTrace* StackTraceStack::next(StackTrace* p) {
-  checkGuard();
   assert(p);
   return static_cast<Node*>(p)->next;
 }
 
 const StackTrace* StackTraceStack::next(const StackTrace* p) const {
-  checkGuard();
   assert(p);
   return static_cast<const Node*>(p)->next;
 }
