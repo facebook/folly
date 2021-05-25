@@ -95,6 +95,9 @@
 #elif defined(__GNUC__)
 #define FOLLY_DISABLE_ADDRESS_SANITIZER \
   __attribute__((__no_address_safety_analysis__, __noinline__))
+#elif defined(_MSC_VER)
+#define FOLLY_DISABLE_ADDRESS_SANITIZER \
+  __declspec(no_sanitize_address)
 #endif
 #endif
 #ifndef FOLLY_DISABLE_ADDRESS_SANITIZER
@@ -145,8 +148,11 @@
 #endif
 
 #if FOLLY_SANITIZE
+// We need to specifically check for __clang__ as clang-cl defines _MSC_VER
+#if defined(__clang__) || !defined(_MSC_VER)
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
   __attribute__((no_sanitize(__VA_ARGS__)))
+#endif
 #else
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
 #endif // FOLLY_SANITIZE
