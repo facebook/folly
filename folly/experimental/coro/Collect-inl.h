@@ -59,8 +59,11 @@ BarrierTask makeCollectAllTryTask(
           co_withCancellation(
               cancelToken, static_cast<SemiAwaitable&&>(awaitable))));
     }
+// This causes clang internal error on Windows.
+#if !(defined(_WIN32) && defined(__clang__))
   } catch (const std::exception& ex) {
     result.emplaceException(std::current_exception(), ex);
+#endif
   } catch (...) {
     result.emplaceException(std::current_exception());
   }
