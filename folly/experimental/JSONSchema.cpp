@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/hash/StdHash.h>
 #include <folly/experimental/JSONSchema.h>
 
 #include <boost/algorithm/string/replace.hpp>

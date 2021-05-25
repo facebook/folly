@@ -22,7 +22,7 @@
 
 #include <folly/Format.h>
 #include <folly/container/Enumerate.h>
-#include <folly/hash/Hash.h>
+#include <folly/hash/StdHash.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 

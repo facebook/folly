@@ -15,6 +15,7 @@
  */
 
 #include <folly/fibers/GuardPageAllocator.h>
+#include <folly/hash/StdHash.h>
 
 #ifndef _WIN32
 #include <dlfcn.h>

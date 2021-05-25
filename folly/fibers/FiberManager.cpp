@@ -15,6 +15,7 @@
  */
 
 #include <folly/fibers/FiberManagerInternal.h>
+#include <folly/hash/StdHash.h>
 
 #include <csignal>
 

@@ -756,41 +756,6 @@ struct TupleHasher<0, Ts...> {
 
 } // namespace folly
 
-// Custom hash functions.
-namespace std {
-// Hash function for pairs. Requires default hash functions for both
-// items in the pair.
-template <typename T1, typename T2>
-struct hash<std::pair<T1, T2>> {
-  using folly_is_avalanching = std::true_type;
-
-  size_t operator()(const std::pair<T1, T2>& x) const {
-    return folly::hash::hash_combine(x.first, x.second);
-  }
-};
-
-// Hash function for tuples. Requires default hash functions for all types.
-template <typename... Ts>
-struct hash<std::tuple<Ts...>> {
- private:
-  using FirstT = std::decay_t<std::tuple_element_t<0, std::tuple<Ts..., bool>>>;
-
- public:
-  using folly_is_avalanching = folly::bool_constant<(
-      sizeof...(Ts) != 1 ||
-      folly::IsAvalanchingHasher<std::hash<FirstT>, FirstT>::value)>;
-
-  size_t operator()(std::tuple<Ts...> const& key) const {
-    folly::TupleHasher<
-        sizeof...(Ts) - 1, // start index
-        Ts...>
-        hasher;
-
-    return hasher(key);
-  }
-};
-} // namespace std
-
 namespace folly {
 
 // std::hash<std::string> is avalanching on libstdc++-v3 (code checked),

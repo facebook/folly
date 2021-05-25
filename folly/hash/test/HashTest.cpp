@@ -15,6 +15,7 @@
  */
 
 #include <folly/hash/Hash.h>
+#include <folly/hash/StdHash.h>
 
 #include <stdint.h>
 
