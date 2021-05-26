@@ -22,7 +22,7 @@
 
 #include <folly/Format.h>
 #include <folly/container/Enumerate.h>
-#include <folly/hash/StdHash.h>
+#include <folly/hash/Hash.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 
@@ -289,7 +289,7 @@ std::size_t dynamic::hash() const {
       // Accumulate using addition instead of using hash_range (as in the ARRAY
       // case), as we need a commutative hash operation since unordered_map's
       // iteration order is unspecified.
-      auto h = std::hash<std::pair<dynamic const, dynamic>>{};
+      auto h = folly::std_pair_hash{};
       return std::accumulate(
           items().begin(),
           items().end(),

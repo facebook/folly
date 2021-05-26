@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/hash/StdHash.h>
+#include <folly/hash/Hash.h>
 #include <folly/experimental/JSONSchema.h>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -86,7 +86,7 @@ struct ValidationContext {
   }
 
  private:
-  std::unordered_set<std::pair<const IValidator*, const dynamic*>> seen;
+  std::unordered_set<std::pair<const IValidator*, const dynamic*>, folly::std_pair_hash> seen;
 };
 
 /**

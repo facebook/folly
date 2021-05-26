@@ -22,7 +22,7 @@
 #include <tuple>
 
 #include <folly/Conv.h>
-#include <folly/hash/StdHash.h>
+#include <folly/hash/Hash.h>
 
 namespace folly {
 
@@ -86,7 +86,7 @@ namespace std {
 template <>
 struct hash<folly::Uri> {
   std::size_t operator()(const folly::Uri& k) const {
-    return std::hash<folly::uri_detail::UriTuple>{}(
+    return folly::hasher<folly::uri_detail::UriTuple>{}(
         folly::uri_detail::as_tuple(k));
   }
 };
