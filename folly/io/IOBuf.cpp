@@ -320,15 +320,7 @@ unique_ptr<IOBuf> IOBuf::create(std::size_t capacity) {
     // if we do not have space for the overhead, allocate the mem separateley
     if (mallocSize < minSize) {
       auto* buf = checkedMalloc(mallocSize);
-      return takeOwnership(
-          buf,
-          mallocSize,
-          static_cast<size_t>(0),
-          static_cast<size_t>(0),
-          nullptr, /*freeFn*/
-          reinterpret_cast<void*>(mallocSize), /*userData - used for sizedFree*/
-          true, /*freeOnError*/
-          TakeOwnershipOption::STORE_SIZE);
+      return takeOwnership(SIZED_FREE, buf, mallocSize, 0, 0);
     }
   }
 
@@ -426,8 +418,31 @@ IOBuf::IOBuf(
   });
   setSharedInfo(new SharedInfo(freeFn, userData));
   rollback.dismiss();
+}
 
-  if (io_buf_alloc_cb && !freeFn && capacity) {
+IOBuf::IOBuf(
+    TakeOwnershipOp,
+    SizedFree,
+    void* buf,
+    std::size_t capacity,
+    std::size_t offset,
+    std::size_t length,
+    bool freeOnError)
+    : next_(this),
+      prev_(this),
+      data_(static_cast<uint8_t*>(buf) + offset),
+      buf_(static_cast<uint8_t*>(buf)),
+      length_(length),
+      capacity_(capacity),
+      flagsAndSharedInfo_(
+          packFlagsAndSharedInfo(kFlagFreeSharedInfo, nullptr)) {
+  auto rollback = makeGuard([&] { //
+    takeOwnershipError(freeOnError, buf, nullptr, nullptr);
+  });
+  setSharedInfo(new SharedInfo(nullptr, reinterpret_cast<void*>(capacity)));
+  rollback.dismiss();
+
+  if (io_buf_alloc_cb && capacity) {
     io_buf_alloc_cb(buf, capacity);
   }
 }
@@ -477,7 +492,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
 
   if (io_buf_alloc_cb) {
     io_buf_alloc_cb(storage, mallocSize);
-    if (userData && !freeFn) {
+    if (userData && !freeFn && (option == TakeOwnershipOption::STORE_SIZE)) {
       // Even though we did not allocate the buffer, call io_buf_alloc_cb()
       // since we will call io_buf_free_cb() on destruction, and we want these
       // calls to be 1:1.

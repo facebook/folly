@@ -81,7 +81,8 @@ TEST(IOBufCB, TakeOwnership) {
   static constexpr size_t kAllocSize = 1024;
 
   {
-    auto buf = folly::IOBuf::takeOwnership(malloc(kAllocSize), kAllocSize);
+    auto buf = folly::IOBuf::takeOwnership(
+        folly::IOBuf::SIZED_FREE, malloc(kAllocSize), kAllocSize, 0, 0);
     size_t newSize = gIOBufAlloc.load();
     CHECK_GE(newSize, initialSize + kAllocSize);
   }
@@ -90,7 +91,12 @@ TEST(IOBufCB, TakeOwnership) {
 
   {
     folly::IOBuf buf(
-        folly::IOBuf::TAKE_OWNERSHIP, malloc(kAllocSize), kAllocSize);
+        folly::IOBuf::TAKE_OWNERSHIP,
+        folly::IOBuf::SIZED_FREE,
+        malloc(kAllocSize),
+        kAllocSize,
+        0,
+        0);
     size_t newSize = gIOBufAlloc.load();
     CHECK_GE(newSize, initialSize + kAllocSize);
   }
@@ -105,7 +111,8 @@ TEST(IOBufCB, MoveToFbString) {
   LOG(INFO) << gIOBufAlloc.load();
 
   {
-    auto buf = folly::IOBuf::takeOwnership(malloc(kAllocSize), kAllocSize);
+    auto buf = folly::IOBuf::takeOwnership(
+        folly::IOBuf::SIZED_FREE, malloc(kAllocSize), kAllocSize, 0, 0);
     LOG(INFO) << gIOBufAlloc.load();
     size_t newSize = gIOBufAlloc.load();
     CHECK_GE(newSize, initialSize + kAllocSize);

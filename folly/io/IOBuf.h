@@ -228,9 +228,9 @@ class IOBuf {
   enum WrapBufferOp { WRAP_BUFFER };
   enum TakeOwnershipOp { TAKE_OWNERSHIP };
   enum CopyBufferOp { COPY_BUFFER };
+  enum SizedFree { SIZED_FREE };
 
   enum class CombinedOption { DEFAULT, COMBINED, SEPARATE };
-  enum class TakeOwnershipOption { DEFAULT, STORE_SIZE };
 
   typedef ByteRange value_type;
   typedef Iterator iterator;
@@ -328,7 +328,14 @@ class IOBuf {
       void* userData = nullptr,
       bool freeOnError = true) {
     return takeOwnership(
-        buf, capacity, 0, capacity, freeFn, userData, freeOnError);
+        buf,
+        capacity,
+        0,
+        capacity,
+        freeFn,
+        userData,
+        freeOnError,
+        TakeOwnershipOption::DEFAULT);
   }
   IOBuf(
       TakeOwnershipOp op,
@@ -347,7 +354,14 @@ class IOBuf {
       void* userData = nullptr,
       bool freeOnError = true) {
     return takeOwnership(
-        buf, capacity, 0, length, freeFn, userData, freeOnError);
+        buf,
+        capacity,
+        0,
+        length,
+        freeFn,
+        userData,
+        freeOnError,
+        TakeOwnershipOption::DEFAULT);
   }
   IOBuf(
       TakeOwnershipOp op,
@@ -366,8 +380,36 @@ class IOBuf {
       std::size_t length,
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
-      bool freeOnError = true,
-      TakeOwnershipOption option = TakeOwnershipOption::DEFAULT);
+      bool freeOnError = true) {
+    return takeOwnership(
+        buf,
+        capacity,
+        offset,
+        length,
+        freeFn,
+        userData,
+        freeOnError,
+        TakeOwnershipOption::DEFAULT);
+  }
+
+  static std::unique_ptr<IOBuf> takeOwnership(
+      SizedFree,
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
+      std::size_t length,
+      bool freeOnError = true) {
+    return takeOwnership(
+        buf,
+        capacity,
+        offset,
+        length,
+        nullptr,
+        reinterpret_cast<void*>(capacity),
+        freeOnError,
+        TakeOwnershipOption::STORE_SIZE);
+  }
+
   IOBuf(
       TakeOwnershipOp,
       void* buf,
@@ -376,6 +418,15 @@ class IOBuf {
       std::size_t length,
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
+      bool freeOnError = true);
+
+  IOBuf(
+      TakeOwnershipOp,
+      SizedFree,
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
+      std::size_t length,
       bool freeOnError = true);
 
   /**
@@ -1391,6 +1442,17 @@ class IOBuf {
   IOBuf& operator=(const IOBuf& other);
 
  private:
+  enum class TakeOwnershipOption { DEFAULT, STORE_SIZE };
+  static std::unique_ptr<IOBuf> takeOwnership(
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
+      std::size_t length,
+      FreeFunction freeFn,
+      void* userData,
+      bool freeOnError,
+      TakeOwnershipOption option);
+
   enum FlagsEnum : uintptr_t {
     // Adding any more flags would not work on 32-bit architectures,
     // as these flags are stashed in the least significant 2 bits of a
