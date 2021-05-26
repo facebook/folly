@@ -505,7 +505,7 @@ TEST(Hash, std_empty_tuple) {
   m[{}] = "foo";
   EXPECT_EQ(m[{}], "foo");
 
-  folly::std_tuple_hash<> h;
+  folly::hasher<std::tuple<>> h;
   EXPECT_EQ(h({}), 0);
 }
 
@@ -858,27 +858,32 @@ static_assert(
     "");
 static_assert(
     folly::IsAvalanchingHasher<
+        folly::hasher<std::pair<int, int>>,
         folly::std_pair_hash<int, int>,
         std::pair<int, int>>::value,
     "");
 static_assert(
     k32Bit ==
         folly::IsAvalanchingHasher<
+            folly::hasher<std::tuple<int>>,
             folly::std_tuple_hash<int>,
             std::tuple<int>>::value,
     "");
 static_assert(
     folly::IsAvalanchingHasher<
+        folly::hasher<std::tuple<std::string>>,
         folly::std_tuple_hash<std::string>,
         std::tuple<std::string>>::value,
     "");
 static_assert(
     folly::IsAvalanchingHasher<
+        folly::hasher<std::tuple<int, int>>,
         folly::std_tuple_hash<int, int>,
         std::tuple<int, int>>::value,
     "");
 static_assert(
     folly::IsAvalanchingHasher<
+        folly::hasher<std::tuple<int, int, int>>,
         folly::std_tuple_hash<int, int, int>,
         std::tuple<int, int, int>>::value,
     "");
