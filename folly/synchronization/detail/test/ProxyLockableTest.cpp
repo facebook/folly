@@ -125,6 +125,16 @@ TEST_F(ProxyLockableTest, UniqueLockConstructMoveConstructAssign) {
   EXPECT_FALSE(one.proxy());
 
   EXPECT_EQ(mutex.locked_, 1);
+
+  four = std::move(three);
+  EXPECT_EQ(mutex.locked_, 0);
+  EXPECT_FALSE(four.mutex());
+  EXPECT_FALSE(four.proxy());
+
+  four = ProxyLockableUniqueLock<MockMutex>{mutex};
+  EXPECT_EQ(mutex.locked_, 1);
+  EXPECT_TRUE(four.mutex());
+  EXPECT_TRUE(four.proxy());
 }
 
 TEST_F(ProxyLockableTest, UniqueLockDeferLock) {

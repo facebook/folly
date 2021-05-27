@@ -76,6 +76,9 @@ ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>& ProxyLockableUniqueLock<Mutex>::operator=(
     ProxyLockableUniqueLock&& other) noexcept {
+  if (owns_lock()) {
+    unlock();
+  }
   proxy_ = std::move(other.proxy_);
   mutex_ = std::exchange(other.mutex_, nullptr);
   return *this;
