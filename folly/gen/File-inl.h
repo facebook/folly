@@ -20,6 +20,7 @@
 
 #include <system_error>
 
+#include <folly/Exception.h>
 #include <folly/gen/String.h>
 
 namespace folly {
@@ -41,7 +42,8 @@ class FileReader : public GenImpl<ByteRange, FileReader> {
         n = ::read(file_.fd(), buffer_->writableTail(), buffer_->capacity());
       } while (n == -1 && errno == EINTR);
       if (n == -1) {
-        throw std::system_error(errno, std::system_category(), "read failed");
+        throw std::system_error(
+            errno, errorCategoryForErrnoDomain(), "read failed");
       }
       if (n == 0) {
         return true;
@@ -101,7 +103,7 @@ class FileWriter : public Operator<FileWriter> {
       } while (n == -1 && errno == EINTR);
       if (n == -1) {
         throw std::system_error(
-            errno, std::system_category(), "write() failed");
+            errno, errorCategoryForErrnoDomain(), "write() failed");
       }
       v.advance(size_t(n));
     }

@@ -25,6 +25,7 @@
 
 #include <boost/preprocessor/control/if.hpp>
 
+#include <folly/Exception.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
@@ -2020,7 +2021,8 @@ void AsyncSocket::cacheAddresses() {
       cacheLocalAddress();
       cachePeerAddress();
     } catch (const std::system_error& e) {
-      if (e.code() != std::error_code(ENOTCONN, std::system_category())) {
+      if (e.code() !=
+          std::error_code(ENOTCONN, errorCategoryForErrnoDomain())) {
         VLOG(2) << "Error caching addresses: " << e.code().value() << ", "
                 << e.code().message();
       }

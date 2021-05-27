@@ -25,15 +25,15 @@
 namespace folly {
 namespace test {
 
-#define EXPECT_SYSTEM_ERROR(statement, err, msg)                  \
-  try {                                                           \
-    statement;                                                    \
-    ADD_FAILURE() << "Didn't throw";                              \
-  } catch (const std::system_error& e) {                          \
-    std::system_error expected(err, std::system_category(), msg); \
-    EXPECT_STREQ(expected.what(), e.what());                      \
-  } catch (...) {                                                 \
-    ADD_FAILURE() << "Threw a different type";                    \
+#define EXPECT_SYSTEM_ERROR(statement, err, msg)                         \
+  try {                                                                  \
+    statement;                                                           \
+    ADD_FAILURE() << "Didn't throw";                                     \
+  } catch (const std::system_error& e) {                                 \
+    std::system_error expected(err, errorCategoryForErrnoDomain(), msg); \
+    EXPECT_STREQ(expected.what(), e.what());                             \
+  } catch (...) {                                                        \
+    ADD_FAILURE() << "Threw a different type";                           \
   }
 
 TEST(ExceptionTest, Simple) {
@@ -94,27 +94,27 @@ TEST(ExceptionTest, makeSystemError) {
   errno = ENOENT;
   auto ex = makeSystemErrorExplicit(EDEADLK, "stuck");
   EXPECT_EQ(EDEADLK, ex.code().value());
-  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_EQ(errorCategoryForErrnoDomain(), ex.code().category());
   EXPECT_TRUE(StringPiece{ex.what()}.contains("stuck"))
       << "what() string missing input message: " << ex.what();
 
   ex = makeSystemErrorExplicit(EDOM, 300, " is bigger than max=", 255);
   EXPECT_EQ(EDOM, ex.code().value());
-  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_EQ(errorCategoryForErrnoDomain(), ex.code().category());
   EXPECT_TRUE(StringPiece{ex.what()}.contains("300 is bigger than max=255"))
       << "what() string missing input message: " << ex.what();
 
   errno = EINVAL;
   ex = makeSystemError("bad argument ", 1234, ": bogus");
   EXPECT_EQ(EINVAL, ex.code().value());
-  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_EQ(errorCategoryForErrnoDomain(), ex.code().category());
   EXPECT_TRUE(StringPiece{ex.what()}.contains("bad argument 1234: bogus"))
       << "what() string missing input message: " << ex.what();
 
   errno = 0;
   ex = makeSystemError("unexpected success");
   EXPECT_EQ(0, ex.code().value());
-  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_EQ(errorCategoryForErrnoDomain(), ex.code().category());
   EXPECT_TRUE(StringPiece{ex.what()}.contains("unexpected success"))
       << "what() string missing input message: " << ex.what();
 }
