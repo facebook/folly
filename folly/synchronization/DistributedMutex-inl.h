@@ -1125,11 +1125,7 @@ auto tryLockNoLoad(Atomic& atomic, DistributedMutex<A, T>&) {
   // If this fails, then it is a no-op
   using Proxy = typename DistributedMutex<A, T>::DistributedMutexStateProxy;
   auto previous = atomic_fetch_set(atomic, 0, std::memory_order_acquire);
-  if (!previous) {
-    return Proxy{nullptr, kLocked};
-  }
-
-  return Proxy{nullptr, 0};
+  return Proxy{nullptr, previous ? 0 : kLocked};
 }
 
 template <template <typename> class Atomic, bool TimePublishing>
