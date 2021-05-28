@@ -510,8 +510,9 @@ class alignas(64) BucketTable {
  public:
   class Iterator {
    public:
-    FOLLY_ALWAYS_INLINE Iterator() {}
-    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_(nullptr) {}
+    FOLLY_ALWAYS_INLINE Iterator()
+        : hazptrs_(make_hazard_pointer_array<3, Atom>()) {}
+    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_() {}
     FOLLY_ALWAYS_INLINE ~Iterator() {}
 
     void setNode(
@@ -1009,8 +1010,9 @@ class alignas(64) SIMDTable {
 
   class Iterator {
    public:
-    FOLLY_ALWAYS_INLINE Iterator() {}
-    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_(nullptr) {}
+    FOLLY_ALWAYS_INLINE Iterator()
+        : hazptrs_(make_hazard_pointer_array<2, Atom>()) {}
+    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_() {}
     FOLLY_ALWAYS_INLINE ~Iterator() {}
 
     void setNode(

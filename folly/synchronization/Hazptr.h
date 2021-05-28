@@ -84,7 +84,7 @@
 ///
 ///   // Called frequently
 ///   U get_config(V v) {
-///     hazptr_holder h; /* h owns a hazard pointer */
+///     hazptr_holder h = make_hazard_pointer();
 ///     Config* ptr = h.protect(config_);
 ///     /* safe to access *ptr as long as it is protected by h */
 ///     return ptr->get_config(v);
@@ -201,8 +201,6 @@
 ///   o This library does not support a custom polymorphic allocator
 ///     (C++17) parameter for the hazptr_domain constructor, until
 ///     such support becomes widely available.
-///   o The construction of empty and non-empty hazptr_holder-s are
-///     reversed. This library will conform eventually.
 ///   o hazptr_array and hazptr_local are not part of the standard
 ///     proposal.
 ///   o Link counting support and protection of linked structures is

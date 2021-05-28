@@ -40,7 +40,7 @@ class HazptrWideCAS {
 
   bool cas(T& u, T& v) {
     Node* n = new Node(v);
-    hazptr_holder<Atom> hptr;
+    hazptr_holder<Atom> hptr = make_hazard_pointer<Atom>();
     Node* p;
     while (true) {
       p = hptr.protect(node_);

@@ -404,14 +404,20 @@ class HazptrObserver {
   template <typename Holder>
   struct HazptrSnapshot {
     template <typename State>
-    explicit HazptrSnapshot(const std::atomic<State*>& state)
-        : holder_(), ptr_(get(holder_).protect(state)->snapshot_.get()) {}
+    explicit HazptrSnapshot(const std::atomic<State*>& state) : holder_() {
+      make(holder_);
+      ptr_ = get(holder_).protect(state)->snapshot_.get();
+    }
 
     const T& operator*() const { return *get(); }
     const T* operator->() const { return get(); }
     const T* get() const { return ptr_; }
 
    private:
+    static void make(hazptr_holder<>& holder) {
+      holder = folly::make_hazard_pointer<>();
+    }
+    static void make(hazptr_local<1>&) {}
     static hazptr_holder<>& get(hazptr_holder<>& holder) { return holder; }
     static hazptr_holder<>& get(hazptr_local<1>& holder) { return holder[0]; }
 

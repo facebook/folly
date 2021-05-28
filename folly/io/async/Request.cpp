@@ -408,7 +408,7 @@ RequestContext::State::getContextData(const RequestToken& token) const {
 FOLLY_ALWAYS_INLINE
 void RequestContext::State::onSet() {
   // Don't use hazptr_local because callback may use hazptr
-  hazptr_holder<> h;
+  hazptr_holder<> h = make_hazard_pointer<>();
   Combined* combined = h.protect(combined_);
   if (!combined) {
     return;
@@ -422,7 +422,7 @@ void RequestContext::State::onSet() {
 FOLLY_ALWAYS_INLINE
 void RequestContext::State::onUnset() {
   // Don't use hazptr_local because callback may use hazptr
-  hazptr_holder<> h;
+  hazptr_holder<> h = make_hazard_pointer<>();
   Combined* combined = h.protect(combined_);
   if (!combined) {
     return;
@@ -575,7 +575,7 @@ void RequestContext::clearContextData(const RequestToken& val) {
   bool checkCur = curCtx && curCtx->state_.combined();
   bool checkNew = newCtx && newCtx->state_.combined();
   if (checkCur && checkNew) {
-    hazptr_array<2> h;
+    hazptr_array<2> h = make_hazard_pointer_array<2>();
     auto curc = h[0].protect(curCtx->state_.combined_);
     auto newc = h[1].protect(newCtx->state_.combined_);
     auto& curcb = curc->callbackData_;

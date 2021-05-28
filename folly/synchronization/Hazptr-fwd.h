@@ -173,6 +173,11 @@ extern hazptr_domain<std::atomic> default_domain;
 template <template <typename> class Atom = std::atomic>
 class hazptr_holder;
 
+/** Free function make_hazard_pointer constructs nonempty holder */
+template <template <typename> class Atom = std::atomic>
+hazptr_holder<Atom> make_hazard_pointer(
+    hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>());
+
 /** Free function swap of hazptr_holder-s */
 template <template <typename> class Atom = std::atomic>
 void swap(hazptr_holder<Atom>&, hazptr_holder<Atom>&) noexcept;
@@ -180,6 +185,10 @@ void swap(hazptr_holder<Atom>&, hazptr_holder<Atom>&) noexcept;
 /** hazptr_array */
 template <uint8_t M = 1, template <typename> class Atom = std::atomic>
 class hazptr_array;
+
+/** Free function make_hazard_pointer_array constructs nonempty array */
+template <uint8_t M = 1, template <typename> class Atom = std::atomic>
+hazptr_array<M, Atom> make_hazard_pointer_array();
 
 /** hazptr_local */
 template <uint8_t M = 1, template <typename> class Atom = std::atomic>

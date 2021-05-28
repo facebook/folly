@@ -361,7 +361,7 @@ class UnboundedQueue {
     } else {
       // Using hazptr_holder instead of hazptr_local because it is
       // possible that the T ctor happens to use hazard pointers.
-      hazptr_holder<Atom> hptr;
+      hazptr_holder<Atom> hptr = make_hazard_pointer<Atom>();
       Segment* s = hptr.protect(p_.tail);
       enqueueCommon(s, std::forward<Arg>(arg));
     }
@@ -396,7 +396,7 @@ class UnboundedQueue {
       // Using hazptr_holder instead of hazptr_local because it is
       // possible to call the T dtor and it may happen to use hazard
       // pointers.
-      hazptr_holder<Atom> hptr;
+      hazptr_holder<Atom> hptr = make_hazard_pointer<Atom>();
       Segment* s = hptr.protect(c_.head);
       return dequeueCommon(s);
     }
@@ -427,7 +427,7 @@ class UnboundedQueue {
     } else {
       // Using hazptr_holder instead of hazptr_local because it is
       //  possible to call ~T() and it may happen to use hazard pointers.
-      hazptr_holder<Atom> hptr;
+      hazptr_holder<Atom> hptr = make_hazard_pointer<Atom>();
       Segment* s = hptr.protect(c_.head);
       return tryDequeueUntilMC(s, deadline);
     }

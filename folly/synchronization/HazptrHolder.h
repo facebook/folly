@@ -38,7 +38,7 @@ namespace folly {
  *  Usage example:
  *    T* ptr;
  *    {
- *      hazptr_holder h;
+ *      hazptr_holder h = make_hazard_pointer();
  *      ptr = h.protect(src);
  *      //  ... *ptr is protected ...
  *      h.reset_protection();
@@ -53,31 +53,26 @@ template <template <typename> class Atom>
 class hazptr_holder {
   hazptr_rec<Atom>* hprec_;
 
- public:
-  /** Constructor - automatically acquires a hazard pointer. */
-  FOLLY_ALWAYS_INLINE explicit hazptr_holder(
-      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
-#if FOLLY_HAZPTR_THR_LOCAL
-    if (LIKELY(&domain == &default_hazptr_domain<Atom>())) {
-      auto hprec = hazptr_tc_tls<Atom>().try_get();
-      if (LIKELY(hprec != nullptr)) {
-        hprec_ = hprec;
-        return;
-      }
-    }
-#endif
-    hprec_ = domain.hprec_acquire();
-  }
+  template <uint8_t M, template <typename> class A>
+  friend class hazptr_local;
+  friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
+  template <uint8_t M, template <typename> class A>
+  friend hazptr_array<M, A> make_hazard_pointer_array();
 
-  /** Empty constructor */
-  FOLLY_ALWAYS_INLINE explicit hazptr_holder(std::nullptr_t) noexcept
-      : hprec_(nullptr) {}
+  /** Private constructor used by make_hazard_pointer and
+      make_hazard_pointer_array */
+  FOLLY_ALWAYS_INLINE explicit hazptr_holder(hazptr_rec<Atom>* hprec)
+      : hprec_(hprec) {}
+
+ public:
+  /** Default empty constructor */
+  FOLLY_ALWAYS_INLINE hazptr_holder() noexcept : hprec_(nullptr) {}
+
+  /** For nonempty construction use make_hazard_pointer. */
 
   /** Move constructor */
-  FOLLY_ALWAYS_INLINE hazptr_holder(hazptr_holder&& rhs) noexcept {
-    hprec_ = rhs.hprec_;
-    rhs.hprec_ = nullptr;
-  }
+  FOLLY_ALWAYS_INLINE hazptr_holder(hazptr_holder&& rhs) noexcept
+      : hprec_(std::exchange(rhs.hprec_, nullptr)) {}
 
   hazptr_holder(const hazptr_holder&) = delete;
   hazptr_holder& operator=(const hazptr_holder&) = delete;
@@ -103,8 +98,7 @@ class hazptr_holder {
     /* Self-move is a no-op.  */
     if (LIKELY(this != &rhs)) {
       this->~hazptr_holder();
-      new (this) hazptr_holder(nullptr);
-      hprec_ = rhs.hprec_;
+      new (this) hazptr_holder(rhs.hprec_);
       rhs.hprec_ = nullptr;
     }
     return *this;
@@ -149,7 +143,7 @@ class hazptr_holder {
     return ptr;
   }
 
-  /** reset */
+  /** reset_protection */
   template <typename T>
   FOLLY_ALWAYS_INLINE void reset_protection(const T* ptr) noexcept {
     auto p = static_cast<hazptr_obj<Atom>*>(const_cast<T*>(ptr));
@@ -182,7 +176,25 @@ class hazptr_holder {
 }; // hazptr_holder
 
 /**
- *  Free function swap of hazptr_holder-s.
+ *  Free function make_hazard_pointer constructs nonempty holder
+ */
+template <template <typename> class Atom>
+FOLLY_ALWAYS_INLINE hazptr_holder<Atom> make_hazard_pointer(
+    hazptr_domain<Atom>& domain) {
+#if FOLLY_HAZPTR_THR_LOCAL
+  if (LIKELY(&domain == &default_hazptr_domain<Atom>())) {
+    auto hprec = hazptr_tc_tls<Atom>().try_get();
+    if (LIKELY(hprec != nullptr)) {
+      return hazptr_holder<Atom>(hprec);
+    }
+  }
+#endif
+  auto hprec = domain.hprec_acquire();
+  return hazptr_holder<Atom>(hprec);
+}
+
+/**
+ *  Free function. Swaps hazptr_holder-s.
  */
 template <template <typename> class Atom>
 FOLLY_ALWAYS_INLINE void swap(
@@ -216,45 +228,23 @@ class hazptr_array {
   static_assert(M > 0, "M must be a positive integer.");
 
   aligned_hazptr_holder<Atom> raw_[M];
-  bool empty_{false};
+  bool empty_;
+
+  friend hazptr_array<M, Atom> make_hazard_pointer_array<M, Atom>();
+
+  /** Private constructor used by make_hazard_pointer_array */
+  FOLLY_ALWAYS_INLINE explicit hazptr_array(std::nullptr_t) noexcept {}
 
  public:
-  /** Constructor */
-  FOLLY_ALWAYS_INLINE hazptr_array() {
+  /** Default empty constructor */
+  FOLLY_ALWAYS_INLINE hazptr_array() noexcept : empty_(true) {
     auto h = reinterpret_cast<hazptr_holder<Atom>*>(&raw_);
-#if FOLLY_HAZPTR_THR_LOCAL
-    static_assert(
-        M <= hazptr_tc<Atom>::capacity(),
-        "M must be within the thread cache capacity.");
-    auto& tc = hazptr_tc_tls<Atom>();
-    auto count = tc.count();
-    if (UNLIKELY(M > count)) {
-      tc.fill(M - count);
-      count = M;
-    }
-    uint8_t offset = count - M;
     for (uint8_t i = 0; i < M; ++i) {
-      auto hprec = tc[offset + i].get();
-      DCHECK(hprec != nullptr);
-      new (&h[i]) hazptr_holder<Atom>(nullptr);
-      h[i].set_hprec(hprec);
+      new (&h[i]) hazptr_holder<Atom>();
     }
-    tc.set_count(offset);
-#else
-    for (uint8_t i = 0; i < M; ++i) {
-      new (&h[i]) hazptr_holder<Atom>;
-    }
-#endif
   }
 
-  /** Empty constructor */
-  FOLLY_ALWAYS_INLINE hazptr_array(std::nullptr_t) noexcept {
-    auto h = reinterpret_cast<hazptr_holder<Atom>*>(&raw_);
-    for (uint8_t i = 0; i < M; ++i) {
-      new (&h[i]) hazptr_holder<Atom>(nullptr);
-    }
-    empty_ = true;
-  }
+  /** For nonempty construction use make_hazard_pointer_array. */
 
   /** Move constructor */
   FOLLY_ALWAYS_INLINE hazptr_array(hazptr_array&& other) noexcept {
@@ -287,7 +277,7 @@ class hazptr_array {
     for (uint8_t i = 0; i < M; ++i) {
       h[i].reset_protection();
       tc[count + i].fill(h[i].hprec());
-      new (&h[i]) hazptr_holder<Atom>(nullptr);
+      h[i].set_hprec(nullptr);
     }
     tc.set_count(count + M);
 #else
@@ -317,10 +307,43 @@ class hazptr_array {
 }; // hazptr_array
 
 /**
+ *  Free function make_hazard_pointer_array constructs nonempty array
+ */
+template <uint8_t M, template <typename> class Atom>
+FOLLY_ALWAYS_INLINE hazptr_array<M, Atom> make_hazard_pointer_array() {
+  hazptr_array<M, Atom> a(nullptr);
+  auto h = reinterpret_cast<hazptr_holder<Atom>*>(&a.raw_);
+#if FOLLY_HAZPTR_THR_LOCAL
+  static_assert(
+      M <= hazptr_tc<Atom>::capacity(),
+      "M must be within the thread cache capacity.");
+  auto& tc = hazptr_tc_tls<Atom>();
+  auto count = tc.count();
+  if (UNLIKELY(M > count)) {
+    tc.fill(M - count);
+    count = M;
+  }
+  uint8_t offset = count - M;
+  for (uint8_t i = 0; i < M; ++i) {
+    auto hprec = tc[offset + i].get();
+    DCHECK(hprec != nullptr);
+    new (&h[i]) hazptr_holder<Atom>(hprec);
+  }
+  tc.set_count(offset);
+#else
+  for (uint8_t i = 0; i < M; ++i) {
+    new (&h[i]) hazptr_holder<Atom>(make_hazard_pointer<Atom>());
+  }
+#endif
+  a.empty_ = false;
+  return a;
+}
+
+/**
  *  hazptr_local
  *
  *  Optimized for construction and destruction of one or more
- *  hazptr_holder-s with local scope.
+ *  nonempty hazptr_holder-s with local scope.
  *
  *  WARNING 1: Do not move from or to individual hazptr_holder-s.
  *
@@ -355,12 +378,11 @@ class hazptr_local {
     for (uint8_t i = 0; i < M; ++i) {
       auto hprec = tc[i].get();
       DCHECK(hprec != nullptr);
-      new (&h[i]) hazptr_holder<Atom>(nullptr);
-      h[i].set_hprec(hprec);
+      new (&h[i]) hazptr_holder<Atom>(hprec);
     }
 #else
     for (uint8_t i = 0; i < M; ++i) {
-      new (&h[i]) hazptr_holder<Atom>;
+      new (&h[i]) hazptr_holder<Atom>(make_hazard_pointer<Atom>());
     }
 #endif
   }

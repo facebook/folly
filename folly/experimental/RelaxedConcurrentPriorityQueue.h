@@ -830,7 +830,7 @@ class RelaxedConcurrentPriorityQueue {
   // The push keeps the length of each element stable
   void moundPush(const T& val) {
     Position cur;
-    folly::hazptr_holder<Atom> hptr;
+    folly::hazptr_holder<Atom> hptr = folly::make_hazard_pointer<Atom>();
     Node* newNode = new Node;
     newNode->val = val;
     uint32_t seed = folly::Random::rand32() % (1 << 21);

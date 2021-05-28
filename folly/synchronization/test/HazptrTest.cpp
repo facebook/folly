@@ -49,6 +49,8 @@ using folly::hazptr_tc;
 using folly::HazptrLockFreeLIFO;
 using folly::HazptrSWMRSet;
 using folly::HazptrWideCAS;
+using folly::make_hazard_pointer;
+using folly::make_hazard_pointer_array;
 using folly::test::Barrier;
 using folly::test::DeterministicAtomic;
 
@@ -322,8 +324,8 @@ void copy_and_move_test() {
 
 template <template <typename> class Atom = std::atomic>
 void basic_holders_test() {
-  { hazptr_holder<Atom> h; }
-  { hazptr_array<2, Atom> h; }
+  { hazptr_holder<Atom> h = make_hazard_pointer<Atom>(); }
+  { hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>(); }
   { hazptr_local<2, Atom> h; }
 }
 
@@ -331,7 +333,7 @@ template <template <typename> class Atom = std::atomic>
 void basic_protection_test() {
   c_.clear();
   auto obj = new Node<Atom>;
-  hazptr_holder<Atom> h;
+  hazptr_holder<Atom> h = make_hazard_pointer<Atom>();
   h.reset_protection(obj);
   obj->retire();
   ASSERT_EQ(c_.ctors(), 1);
@@ -352,7 +354,7 @@ void virtual_test() {
     auto bar = new Thing;
     bar->a = i;
 
-    hazptr_holder<Atom> hptr;
+    hazptr_holder<Atom> hptr = make_hazard_pointer<Atom>();
     hptr.reset_protection(bar);
     bar->retire();
     ASSERT_EQ(bar->a, i);
@@ -386,7 +388,7 @@ template <template <typename> class Atom = std::atomic>
 void move_test() {
   for (int i = 0; i < 100; ++i) {
     auto x = new Node<Atom>(i);
-    hazptr_holder<Atom> hptr0;
+    hazptr_holder<Atom> hptr0 = make_hazard_pointer<Atom>();
     // Protect object
     hptr0.reset_protection(x);
     // Retire object
@@ -398,7 +400,7 @@ void move_test() {
     ASSERT_EQ(phptr1, &hptr1);
     hptr1 = std::move(*phptr1);
     // Empty constructor
-    hazptr_holder<Atom> hptr2(nullptr);
+    hazptr_holder<Atom> hptr2;
     // Move assignment - still protected
     hptr2 = std::move(hptr1);
     // Access object
@@ -413,11 +415,11 @@ template <template <typename> class Atom = std::atomic>
 void array_test() {
   for (int i = 0; i < 100; ++i) {
     auto x = new Node<Atom>(i);
-    hazptr_array<3, Atom> hptr;
+    hazptr_array<3, Atom> hptr = make_hazard_pointer_array<3, Atom>();
     // Protect object
     hptr[2].reset_protection(x);
     // Empty array
-    hazptr_array<3, Atom> h(nullptr);
+    hazptr_array<3, Atom> h;
     // Move assignment
     h = std::move(hptr);
     // Retire object
@@ -438,16 +440,16 @@ void array_dtor_full_tc_test() {
 #endif
   {
     // Fill the thread cache
-    hazptr_array<M, Atom> w;
+    hazptr_array<M, Atom> w = make_hazard_pointer_array<M, Atom>();
   }
   {
     // Empty array x
-    hazptr_array<M, Atom> x(nullptr);
+    hazptr_array<M, Atom> x;
     {
       // y ctor gets elements from the thread cache filled by w dtor.
-      hazptr_array<M, Atom> y;
+      hazptr_array<M, Atom> y = make_hazard_pointer_array<M, Atom>();
       // z ctor gets elements from the default domain.
-      hazptr_array<M, Atom> z;
+      hazptr_array<M, Atom> z = make_hazard_pointer_array<M, Atom>();
       // Elements of y are moved to x.
       x = std::move(y);
       // z dtor fills the thread cache.
@@ -482,7 +484,7 @@ void linked_test() {
     p = new NodeRC<Mutable, Atom>(i, p, true);
   }
   p = new NodeRC<Mutable, Atom>(num - 1, p, Mutable);
-  hazptr_holder<Atom> hptr;
+  hazptr_holder<Atom> hptr = make_hazard_pointer<Atom>();
   hptr.reset_protection(p);
   if (!Mutable) {
     for (auto q = p->next(); q; q = q->next()) {
@@ -531,7 +533,7 @@ void mt_linked_test() {
       while (!ready.load()) {
         /* spin */
       }
-      hazptr_holder<Atom> hptr;
+      hazptr_holder<Atom> hptr = make_hazard_pointer<Atom>();
       auto p = hptr.protect(head());
       ++setHazptrs;
       /* Concurrent with removal */
@@ -591,7 +593,7 @@ void auto_retire_test() {
   c->acquire_link_safe();
   b->acquire_link_safe();
   auto a = new NodeAuto<Atom>(b, c);
-  hazptr_holder<Atom> h;
+  hazptr_holder<Atom> h = make_hazard_pointer<Atom>();
   {
     hazptr_root<NodeAuto<Atom>> root;
     a->acquire_link_safe();
@@ -729,9 +731,9 @@ void cleanup_test() {
   }
   { // Cleanup after using array
     c_.clear();
-    { hazptr_array<2, Atom> h; }
+    { hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>(); }
     {
-      hazptr_array<2, Atom> h;
+      hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>();
       auto p0 = new Node<Atom>;
       auto p1 = new Node<Atom>;
       h[0].reset_protection(p0);
@@ -1229,12 +1231,12 @@ TEST(HazptrTest, reclamation_without_calling_cleanup) {
 template <typename InitFunc, typename Func, typename EndFunc>
 uint64_t run_once(
     int nthreads, const InitFunc& init, const Func& fn, const EndFunc& endFn) {
-  std::atomic<bool> start{false};
   Barrier b(nthreads + 1);
   init();
   std::vector<std::thread> threads(nthreads);
   for (int tid = 0; tid < nthreads; ++tid) {
     threads[tid] = std::thread([&, tid] {
+      b.wait();
       b.wait();
       fn(tid);
     });
@@ -1242,7 +1244,7 @@ uint64_t run_once(
   b.wait();
   // begin time measurement
   auto tbegin = std::chrono::steady_clock::now();
-  start.store(true);
+  b.wait();
   for (auto& t : threads) {
     t.join();
   }
@@ -1283,7 +1285,6 @@ uint64_t bench(std::string name, int ops, const RepFunc& repFn) {
 //
 // Benchmarks
 //
-// const int ops = 1000000;
 const int ops = 1000000;
 
 inline uint64_t holder_bench(std::string name, int nthreads) {
@@ -1291,7 +1292,7 @@ inline uint64_t holder_bench(std::string name, int nthreads) {
     auto init = [] {};
     auto fn = [&](int tid) {
       for (int j = tid; j < 10 * ops; j += nthreads) {
-        hazptr_holder<> h;
+        hazptr_holder<> h = make_hazard_pointer<>();
       }
     };
     auto endFn = [] {};
@@ -1306,7 +1307,7 @@ inline uint64_t array_bench(std::string name, int nthreads) {
     auto init = [] {};
     auto fn = [&](int tid) {
       for (int j = tid; j < 10 * ops; j += nthreads) {
-        hazptr_array<M> a;
+        hazptr_array<M> a = make_hazard_pointer_array<M>();
       }
     };
     auto endFn = [] {};
@@ -1396,7 +1397,7 @@ uint64_t cleanup_bench(std::string name, int nthreads) {
   auto repFn = [&] {
     auto init = [] {};
     auto fn = [&](int) {
-      hazptr_holder<std::atomic> hptr;
+      hazptr_holder<> hptr = make_hazard_pointer<>();
       for (int i = 0; i < ops / 1000; i++) {
         hazptr_cleanup();
       }

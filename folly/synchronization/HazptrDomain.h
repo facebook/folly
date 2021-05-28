@@ -218,6 +218,7 @@ class hazptr_domain {
       hazptr_obj_list<Atom>&, hazptr_domain<Atom>&) noexcept;
   friend void hazptr_domain_push_retired<Atom>(
       hazptr_obj_list<Atom>&, bool check, hazptr_domain<Atom>&) noexcept;
+  friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
   friend class hazptr_holder<Atom>;
   friend class hazptr_obj<Atom>;
   friend class hazptr_obj_cohort<Atom>;

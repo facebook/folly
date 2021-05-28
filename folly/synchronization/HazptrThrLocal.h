@@ -48,6 +48,8 @@ class hazptr_tc_entry {
   template <uint8_t, template <typename> class>
   friend class hazptr_local;
   friend class hazptr_tc<Atom>;
+  template <uint8_t M, template <typename> class A>
+  friend hazptr_array<M, A> make_hazard_pointer_array();
 
   FOLLY_ALWAYS_INLINE void fill(hazptr_rec<Atom>* hprec) noexcept {
     hprec_ = hprec;
@@ -86,6 +88,9 @@ class hazptr_tc {
   friend class hazptr_holder<Atom>;
   template <uint8_t, template <typename> class>
   friend class hazptr_local;
+  friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
+  template <uint8_t M, template <typename> class A>
+  friend hazptr_array<M, A> make_hazard_pointer_array();
 
   FOLLY_ALWAYS_INLINE
   hazptr_tc_entry<Atom>& operator[](uint8_t i) noexcept {
