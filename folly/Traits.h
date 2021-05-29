@@ -302,7 +302,7 @@ struct detected_<void_t<T<A...>>, D, T, A...> {
 //
 //  If T<A...> substitutes, has member type alias value_t as std::true_type
 //  and has member type alias type as T<A...>. Otherwise, has member type
-//  alias value_t as std::false_type and has member type alias as D.
+//  alias value_t as std::false_type and has member type alias type as D.
 //
 //  mimic: std::experimental::detected_or, Library Fundamentals TS v2
 template <typename D, template <typename...> class T, typename... A>
