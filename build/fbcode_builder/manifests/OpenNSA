@@ -2,12 +2,12 @@
 name = OpenNSA
 
 [download]
-url = https://docs.broadcom.com/docs-and-downloads/csg/opennsa-6.5.21.tgz
-sha256 = f259519591981106ccad2842e89ab3c8515858ac784a5dbe0fa1513cb412421e
+url = https://docs.broadcom.com/docs-and-downloads/csg/opennsa-6.5.22.tgz
+sha256 = 74bfbdaebb6bfe9ebb0deac3aff624385cdcf5aa416ba63706c36538b3c3c46c
 
 [build]
 builder = nop
-subdir = opennsa-6.5.21
+subdir = opennsa-6.5.22
 
 [install.files]
 lib/x86-64 = lib
