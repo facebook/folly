@@ -26,6 +26,7 @@
 #include <cstring>
 
 #include <folly/FileUtil.h>
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
@@ -1085,8 +1086,9 @@ void AsyncServerSocket::dispatchSocket(
       // should use pauseAccepting() to temporarily back off accepting new
       // connections, before they reach the point where their threads can't
       // even accept new messages.
-      LOG_EVERY_N(ERROR, 100) << "failed to dispatch newly accepted socket:"
-                              << " all accept callback queues are full";
+      FB_LOG_EVERY_MS(ERROR, 1000)
+          << "failed to dispatch newly accepted socket:"
+          << " all accept callback queues are full";
       closeNoInt(socket);
       if (connectionEventCallback_) {
         connectionEventCallback_->onConnectionDropped(socket, addr);
@@ -1123,7 +1125,7 @@ void AsyncServerSocket::dispatchError(const char* msgstr, int errnoValue) {
     if (callbackIndex_ == startingIndex) {
       // The notification queues for all of the callbacks were full.
       // We can't really do anything at this point.
-      LOG_EVERY_N(ERROR, 100)
+      FB_LOG_EVERY_MS(ERROR, 1000)
           << "failed to dispatch accept error: all accept"
           << " callback queues are full: error msg:  " << msg.msg << ": "
           << errnoValue;
