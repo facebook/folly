@@ -33,6 +33,7 @@ OpenNSA
 re2
 python
 yaml-cpp
+libyaml
 
 [shipit.pathmap]
 fbcode/fboss/github = .
