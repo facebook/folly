@@ -426,7 +426,7 @@ void printResultComparison(
   // Print header for a file
   auto header = [&](const string& file) {
     separator('=');
-    printf("%-*srelative  time/iter  iters/s", columns - 28, file.c_str());
+    printf("%-*srelative  time/iter  iters/s\n", columns - 28, file.c_str());
     separator('=');
   };
 
