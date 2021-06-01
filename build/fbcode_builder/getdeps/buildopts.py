@@ -141,6 +141,9 @@ class BuildOptions(object):
     def is_windows(self):
         return self.host_type.is_windows()
 
+    def is_arm(self):
+        return self.host_type.is_arm()
+
     def get_vcvars_path(self):
         return self.vcvars_path
 

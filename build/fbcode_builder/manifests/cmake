@@ -20,8 +20,8 @@ url = https://github.com/Kitware/CMake/releases/download/v3.14.0/cmake-3.14.0-Da
 sha256 = a02ad0d5b955dfad54c095bd7e937eafbbbfe8a99860107025cc442290a3e903
 
 [download.os=linux]
-url = https://github.com/Kitware/CMake/releases/download/v3.14.0/cmake-3.14.0-Linux-x86_64.tar.gz
-sha256 = 91dc9af7345e458eb10c853aa875e591efb7079a045641685ddec8d973c2b2bc
+url = https://github.com/Kitware/CMake/releases/download/v3.14.0/cmake-3.14.0.tar.gz
+sha256 = aa76ba67b3c2af1946701f847073f4652af5cbd9f141f221c97af99127e75502
 
 [build.os=windows]
 builder = nop
@@ -36,5 +36,8 @@ CMake.app/Contents/bin = bin
 CMake.app/Contents/share = share
 
 [build.os=linux]
-builder = nop
-subdir = cmake-3.14.0-Linux-x86_64
+builder = cmakebootstrap
+subdir = cmake-3.14.0
+
+[make.install_args.os=linux]
+install

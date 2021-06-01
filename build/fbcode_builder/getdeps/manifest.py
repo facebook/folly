@@ -21,6 +21,7 @@ from .builder import (
     OpenNSABuilder,
     OpenSSLBuilder,
     SqliteBuilder,
+    CMakeBootStrapBuilder,
 )
 from .expr import parse_expr
 from .fetcher import (
@@ -437,21 +438,34 @@ class ManifestParser(object):
                 build_dir = os.path.join(build_dir, subdir)
             print("build_dir is %s" % build_dir)  # just to quiet lint
 
-        if builder == "make":
+        if builder == "make" or builder == "cmakebootstrap":
             build_args = self.get_section_as_args("make.build_args", ctx)
             install_args = self.get_section_as_args("make.install_args", ctx)
             test_args = self.get_section_as_args("make.test_args", ctx)
-            return MakeBuilder(
-                build_options,
-                ctx,
-                self,
-                src_dir,
-                None,
-                inst_dir,
-                build_args,
-                install_args,
-                test_args,
-            )
+            if builder == "cmakebootstrap":
+                return CMakeBootStrapBuilder(
+                    build_options,
+                    ctx,
+                    self,
+                    src_dir,
+                    None,
+                    inst_dir,
+                    build_args,
+                    install_args,
+                    test_args,
+                )
+            else:
+                return MakeBuilder(
+                    build_options,
+                    ctx,
+                    self,
+                    src_dir,
+                    None,
+                    inst_dir,
+                    build_args,
+                    install_args,
+                    test_args,
+                )
 
         if builder == "autoconf":
             args = self.get_section_as_args("autoconf.args", ctx)

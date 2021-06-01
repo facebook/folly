@@ -185,6 +185,12 @@ class MakeBuilder(BuilderBase):
         self._run_cmd(cmd, env=env)
 
 
+class CMakeBootStrapBuilder(MakeBuilder):
+    def _build(self, install_dirs, reconfigure):
+        self._run_cmd(["./bootstrap", "--prefix=" + self.inst_dir])
+        super(CMakeBootStrapBuilder, self)._build(install_dirs, reconfigure)
+
+
 class AutoconfBuilder(BuilderBase):
     def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, args):
         super(AutoconfBuilder, self).__init__(
@@ -868,7 +874,9 @@ class OpenSSLBuilder(BuilderBase):
             args = ["darwin64-x86_64-cc"]
         elif self.build_opts.is_linux():
             make = "make"
-            args = ["linux-x86_64"]
+            args = (
+                ["linux-x86_64"] if not self.build_opts.is_arm() else ["linux-aarch64"]
+            )
         else:
             raise Exception("don't know how to build openssl for %r" % self.ctx)
 
