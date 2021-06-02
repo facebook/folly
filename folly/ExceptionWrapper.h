@@ -173,6 +173,9 @@ class exception_wrapper final {
   template <class Fn>
   using arg_type = _t<arg_type_<Fn>>;
 
+  struct with_exception_from_fn_;
+  struct with_exception_from_ex_;
+
   // exception_wrapper is implemented as a simple variant over four
   // different representations:
   //  0. Empty, no exception.
@@ -538,7 +541,7 @@ class exception_wrapper final {
   //! \code
   //! ew.with_exception<std::runtime_error>([](auto&& e) { /*...*/; });
   //! \endcode
-  //! \note The handler may or may not be invoked with an active exception.
+  //! \note The handler is not invoked with an active exception.
   //!     **Do not try to rethrow the exception with `throw;` from within your
   //!     handler -- that is, a throw expression with no operand.** This may
   //!     cause your process to terminate. (It is perfectly ok to throw from

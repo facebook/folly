@@ -94,6 +94,16 @@ struct exception_wrapper::arg_type_<Ret (*)(...) noexcept> {
 };
 #endif
 
+struct exception_wrapper::with_exception_from_fn_ {
+  template <typename, typename Fn>
+  using apply = arg_type<Fn>;
+};
+
+struct exception_wrapper::with_exception_from_ex_ {
+  template <typename Ex, typename>
+  using apply = Ex;
+};
+
 template <class Ret, class... Args>
 inline Ret exception_wrapper::noop_(Args...) {
   return Ret();
@@ -598,34 +608,14 @@ inline void exception_wrapper::handle_(
   }
 }
 
-namespace exception_wrapper_detail {
-template <class Ex, class Fn>
-struct catch_fn {
-  Fn fn_;
-  auto operator()(Ex& ex) { return fn_(ex); }
-};
-
-template <class Ex, class Fn>
-inline catch_fn<Ex, Fn> catch_(Ex*, Fn fn) {
-  return {std::move(fn)};
-}
-template <class Fn>
-inline Fn catch_(void const*, Fn fn) {
-  return fn;
-}
-} // namespace exception_wrapper_detail
-
 template <class Ex, class This, class Fn>
 inline bool exception_wrapper::with_exception_(This& this_, Fn fn_) {
-  if (!this_) {
-    return false;
-  }
-  bool handled = true;
-  auto fn = exception_wrapper_detail::catch_(
-      static_cast<Ex*>(nullptr), std::move(fn_));
-  auto&& all = [&](...) { handled = false; };
-  handle_(IsStdException<arg_type<decltype(fn)>>{}, this_, fn, all);
-  return handled;
+  using from_fn = with_exception_from_fn_;
+  using from_ex = with_exception_from_ex_;
+  using from = conditional_t<std::is_void<Ex>::value, from_fn, from_ex>;
+  using type = typename from::template apply<Ex, Fn>;
+  auto ptr = this_.template get_exception<remove_cvref_t<type>>();
+  return ptr && (void(fn_(static_cast<type&>(*ptr))), true);
 }
 
 template <class Ex, class Fn>
