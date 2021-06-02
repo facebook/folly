@@ -445,7 +445,7 @@ inline folly::fbstring exception_wrapper::class_name() const {
 
 template <class Ex>
 inline bool exception_wrapper::is_compatible_with() const noexcept {
-  return with_exception([](Ex const&) {});
+  return get_exception<Ex>();
 }
 
 [[noreturn]] inline void exception_wrapper::throw_exception() const {
