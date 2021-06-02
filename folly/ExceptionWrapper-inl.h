@@ -386,16 +386,30 @@ inline std::exception const* exception_wrapper::get_exception() const noexcept {
 
 template <typename Ex>
 inline Ex* exception_wrapper::get_exception() noexcept {
-  Ex* object{nullptr};
-  with_exception([&](Ex& ex) { object = &ex; });
-  return object;
+  constexpr auto stdexcept = std::is_base_of<std::exception, Ex>::value;
+  if (vptr_ == &ExceptionPtr::ops_) {
+    return exception_ptr_get_object<Ex>(eptr_.ptr_);
+  } else if (!stdexcept || vptr_ == &uninit_) {
+    return nullptr;
+  } else {
+    using Target = conditional_t<stdexcept, Ex, std::exception>;
+    auto const ptr = dynamic_cast<Target*>(get_exception());
+    return reinterpret_cast<Ex*>(ptr);
+  }
 }
 
 template <typename Ex>
 inline Ex const* exception_wrapper::get_exception() const noexcept {
-  Ex const* object{nullptr};
-  with_exception([&](Ex const& ex) { object = &ex; });
-  return object;
+  constexpr auto stdexcept = std::is_base_of<std::exception, Ex>::value;
+  if (vptr_ == &ExceptionPtr::ops_) {
+    return exception_ptr_get_object<Ex>(eptr_.ptr_);
+  } else if (!stdexcept || vptr_ == &uninit_) {
+    return nullptr;
+  } else {
+    using Target = conditional_t<stdexcept, Ex, std::exception>;
+    auto const ptr = dynamic_cast<Target const*>(get_exception());
+    return reinterpret_cast<Ex const*>(ptr);
+  }
 }
 
 inline std::exception_ptr exception_wrapper::to_exception_ptr() noexcept {
