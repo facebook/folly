@@ -751,25 +751,11 @@ inline std::uint64_t recover(std::uint64_t from) {
 template <template <typename> class Atomic, bool TimePublishing>
 class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
  public:
-  // DistributedMutexStateProxy is move constructible and assignable for
-  // convenience
-  DistributedMutexStateProxy(DistributedMutexStateProxy&& other) {
-    *this = std::move(other);
-  }
+  DistributedMutexStateProxy() = default;
 
-  DistributedMutexStateProxy& operator=(DistributedMutexStateProxy&& other) {
-    DCHECK(!(*this)) << "Cannot move into a valid DistributedMutexStateProxy";
-
-    next_ = std::exchange(other.next_, nullptr);
-    expected_ = std::exchange(other.expected_, 0);
-    timedWaiters_ = std::exchange(other.timedWaiters_, false);
-    combined_ = std::exchange(other.combined_, false);
-    waker_ = std::exchange(other.waker_, 0);
-    waiters_ = std::exchange(other.waiters_, nullptr);
-    ready_ = std::exchange(other.ready_, nullptr);
-
-    return *this;
-  }
+  DistributedMutexStateProxy(DistributedMutexStateProxy const&) = default;
+  DistributedMutexStateProxy& operator=(DistributedMutexStateProxy const&) =
+      default;
 
   // The proxy is valid when a mutex acquisition attempt was successful,
   // lock() is guaranteed to return a valid proxy, try_lock() is not

@@ -82,7 +82,7 @@ TEST_F(ProxyLockableTest, UniqueLockDefaultConstruct) {
   auto lck = ProxyLockableUniqueLock<MockMutex>{};
 
   EXPECT_FALSE(lck.mutex());
-  EXPECT_FALSE(lck.proxy());
+  EXPECT_FALSE(lck.state());
   EXPECT_FALSE(lck.owns_lock());
   EXPECT_FALSE(lck.operator bool());
 }
@@ -92,7 +92,7 @@ TEST_F(ProxyLockableTest, UniqueLockLockOnConstruct) {
   auto lck = ProxyLockableUniqueLock<MockMutex>{mutex};
 
   EXPECT_TRUE(lck.mutex());
-  EXPECT_TRUE(lck.proxy());
+  EXPECT_TRUE(lck.state());
 
   EXPECT_EQ(mutex.locked_, 1);
 }
@@ -102,15 +102,15 @@ TEST_F(ProxyLockableTest, UniqueLockConstructMoveConstructAssign) {
 
   auto one = ProxyLockableUniqueLock<MockMutex>{mutex};
   EXPECT_TRUE(one.mutex());
-  EXPECT_TRUE(one.proxy());
+  EXPECT_TRUE(one.state());
 
   auto two = std::move(one);
   EXPECT_FALSE(one.mutex());
-  EXPECT_FALSE(one.proxy());
+  EXPECT_FALSE(one.state());
   EXPECT_FALSE(one.owns_lock());
   EXPECT_FALSE(one.operator bool());
   EXPECT_TRUE(two.mutex());
-  EXPECT_TRUE(two.proxy());
+  EXPECT_TRUE(two.state());
 
   auto three = std::move(one);
   EXPECT_FALSE(one.mutex());
@@ -120,21 +120,36 @@ TEST_F(ProxyLockableTest, UniqueLockConstructMoveConstructAssign) {
 
   auto four = std::move(two);
   EXPECT_TRUE(four.mutex());
-  EXPECT_TRUE(four.proxy());
-  EXPECT_FALSE(one.proxy());
-  EXPECT_FALSE(one.proxy());
+  EXPECT_TRUE(four.state());
+  EXPECT_FALSE(one.state());
+  EXPECT_FALSE(one.state());
 
   EXPECT_EQ(mutex.locked_, 1);
 
   four = std::move(three);
   EXPECT_EQ(mutex.locked_, 0);
   EXPECT_FALSE(four.mutex());
-  EXPECT_FALSE(four.proxy());
+  EXPECT_FALSE(four.state());
 
   four = ProxyLockableUniqueLock<MockMutex>{mutex};
   EXPECT_EQ(mutex.locked_, 1);
   EXPECT_TRUE(four.mutex());
-  EXPECT_TRUE(four.proxy());
+  EXPECT_TRUE(four.state());
+
+  four = ProxyLockableUniqueLock<MockMutex>{};
+  EXPECT_EQ(mutex.locked_, 0);
+  EXPECT_FALSE(four.mutex());
+  EXPECT_FALSE(four.state());
+}
+
+TEST_F(ProxyLockableTest, UniqueLockAdoptLock) {
+  auto mutex = MockMutex{};
+  auto state = mutex.lock();
+  auto lck = ProxyLockableUniqueLock<MockMutex>{mutex, std::adopt_lock, state};
+
+  EXPECT_EQ(mutex.locked_, 1);
+  lck.unlock();
+  EXPECT_EQ(mutex.locked_, 0);
 }
 
 TEST_F(ProxyLockableTest, UniqueLockDeferLock) {
@@ -155,7 +170,7 @@ void testTryToLock(Make make) {
     auto lck = make(mutex);
 
     EXPECT_TRUE(lck.mutex());
-    EXPECT_TRUE(lck.proxy());
+    EXPECT_TRUE(lck.state());
     EXPECT_EQ(mutex.locked_, 1);
   }
 
@@ -165,7 +180,7 @@ void testTryToLock(Make make) {
   auto lck = make(mutex);
   EXPECT_EQ(mutex.locked_, 1);
   EXPECT_TRUE(lck.mutex());
-  EXPECT_FALSE(lck.proxy());
+  EXPECT_FALSE(lck.state());
 }
 } // namespace
 
@@ -195,12 +210,12 @@ TEST_F(ProxyLockableTest, UniqueLockLockExplicitLockAfterDefer) {
   auto mutex = MockMutex{};
   auto lck = ProxyLockableUniqueLock<MockMutex>{mutex, std::defer_lock};
   EXPECT_TRUE(lck.mutex());
-  EXPECT_FALSE(lck.proxy());
+  EXPECT_FALSE(lck.state());
 
   lck.lock();
 
   EXPECT_TRUE(lck.mutex());
-  EXPECT_TRUE(lck.proxy());
+  EXPECT_TRUE(lck.state());
   EXPECT_EQ(mutex.locked_, 1);
 }
 
@@ -208,12 +223,12 @@ TEST_F(ProxyLockableTest, UniqueLockLockExplicitUnlockAfterDefer) {
   auto mutex = MockMutex{};
   auto lck = ProxyLockableUniqueLock<MockMutex>{mutex, std::defer_lock};
   EXPECT_TRUE(lck.mutex());
-  EXPECT_FALSE(lck.proxy());
+  EXPECT_FALSE(lck.state());
 
   lck.lock();
 
   EXPECT_TRUE(lck.mutex());
-  EXPECT_TRUE(lck.proxy());
+  EXPECT_TRUE(lck.state());
   EXPECT_EQ(mutex.locked_, 1);
 
   lck.unlock();
@@ -224,12 +239,12 @@ TEST_F(ProxyLockableTest, UniqueLockLockExplicitTryLockAfterDefer) {
   auto mutex = MockMutex{};
   auto lck = ProxyLockableUniqueLock<MockMutex>{mutex, std::defer_lock};
   EXPECT_TRUE(lck.mutex());
-  EXPECT_FALSE(lck.proxy());
+  EXPECT_FALSE(lck.state());
 
   EXPECT_TRUE(lck.try_lock());
 
   EXPECT_TRUE(lck.mutex());
-  EXPECT_TRUE(lck.proxy());
+  EXPECT_TRUE(lck.state());
   EXPECT_EQ(mutex.locked_, 1);
 
   lck.unlock();

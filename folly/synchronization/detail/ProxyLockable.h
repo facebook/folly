@@ -25,7 +25,7 @@ namespace detail {
 
 /**
  * ProxyLockable is a "concept" that is used usually for mutexes that don't
- * return void, but rather a proxy object that contains data that should be
+ * return void, but rather a state object that contains data that should be
  * passed to the unlock function.
  *
  * This is in contrast with the normal Lockable concept that imposes no
@@ -43,7 +43,7 @@ template <typename Mutex>
 class ProxyLockableUniqueLock {
  public:
   using mutex_type = Mutex;
-  using proxy_type = std::decay_t<decltype(std::declval<mutex_type>().lock())>;
+  using state_type = std::decay_t<decltype(std::declval<mutex_type&>().lock())>;
 
   /**
    * Default constructor initializes the unique_lock to an empty state
@@ -67,15 +67,18 @@ class ProxyLockableUniqueLock {
    *
    * The mutex is guaranteed to be acquired after this function returns.
    */
-  ProxyLockableUniqueLock(mutex_type&) noexcept;
+  explicit ProxyLockableUniqueLock(mutex_type&);
 
   /**
    * Explicit locking constructors to control how the lock() method is called
    *
+   * std::adopt_lock_t causes the mutex to get tracked, with provided lock state
    * std::defer_lock_t causes the mutex to get tracked, but not locked
    * std::try_to_lock_t causes try_lock() to be called.  The current object is
    *                    converts to true if the lock was successful
    */
+  ProxyLockableUniqueLock(
+      mutex_type& mutex, std::adopt_lock_t, state_type state);
   ProxyLockableUniqueLock(mutex_type& mutex, std::defer_lock_t) noexcept;
   ProxyLockableUniqueLock(mutex_type& mutex, std::try_to_lock_t);
 
@@ -106,9 +109,9 @@ class ProxyLockableUniqueLock {
    * These throw if there was no mutex, or if the mutex was already locked
    */
   template <typename Rep, typename Period>
-  bool try_lock_for(const std::chrono::duration<Rep, Period>& duration);
+  bool try_lock_for(const std::chrono::duration<Rep, Period>& timeout);
   template <typename Clock, typename Duration>
-  bool try_lock_until(const std::chrono::time_point<Clock, Duration>& time);
+  bool try_lock_until(const std::chrono::time_point<Clock, Duration>& deadline);
 
   /**
    * Swap this unique lock with the other one
@@ -124,13 +127,14 @@ class ProxyLockableUniqueLock {
 
   /**
    * mutex() return a pointer to the mutex if there is a contained mutex and
-   * proxy() returns a pointer to the contained proxy if the mutex is locked
+   * state() returns a pointer to the contained state if the mutex is locked
    *
    * If the unique lock was not constructed with a mutex, then mutex() returns
-   * nullptr.  If the mutex is not locked, then proxy() returns nullptr
+   * nullptr.  If the mutex is not locked, then state() returns nullptr
    */
   mutex_type* mutex() const noexcept;
-  proxy_type* proxy() const noexcept;
+  state_type const& state() const noexcept;
+  state_type& state() noexcept;
 
  private:
   friend class ProxyLockableTest;
@@ -139,8 +143,8 @@ class ProxyLockableUniqueLock {
    * If the optional has a value, the mutex is locked, if it is empty, it is
    * not
    */
-  mutable folly::Optional<proxy_type> proxy_{};
   mutex_type* mutex_{nullptr};
+  state_type state_{};
 };
 
 template <typename Mutex>

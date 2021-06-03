@@ -61,17 +61,14 @@ ProxyLockableUniqueLock<Mutex>::~ProxyLockableUniqueLock() {
 }
 
 template <typename Mutex>
-ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex) noexcept {
-  proxy_.emplace(mutex.lock());
-  mutex_ = std::addressof(mutex);
-}
+ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(mutex_type& mutex)
+    : mutex_{std::addressof(mutex)}, state_{mutex.lock()} {}
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    ProxyLockableUniqueLock&& a) noexcept {
-  *this = std::move(a);
-}
+    ProxyLockableUniqueLock&& a) noexcept
+    : mutex_{std::exchange(a.mutex_, nullptr)},
+      state_{std::exchange(a.state_, state_type{})} {}
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>& ProxyLockableUniqueLock<Mutex>::operator=(
@@ -79,111 +76,92 @@ ProxyLockableUniqueLock<Mutex>& ProxyLockableUniqueLock<Mutex>::operator=(
   if (owns_lock()) {
     unlock();
   }
-  proxy_ = std::move(other.proxy_);
   mutex_ = std::exchange(other.mutex_, nullptr);
+  state_ = std::exchange(other.state_, state_type{});
   return *this;
 }
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex, std::defer_lock_t) noexcept {
-  mutex_ = std::addressof(mutex);
+    mutex_type& mutex, std::adopt_lock_t, state_type state)
+    : mutex_{std::addressof(mutex)}, state_{state} {
+  proxylockable_detail::throwIfNotLocked(state_);
 }
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex, std::try_to_lock_t) {
-  mutex_ = std::addressof(mutex);
-  if (auto state = mutex.try_lock()) {
-    proxy_.emplace(std::move(state));
-  }
-}
+    mutex_type& mutex, std::defer_lock_t) noexcept
+    : mutex_{std::addressof(mutex)} {}
+
+template <typename Mutex>
+ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
+    mutex_type& mutex, std::try_to_lock_t)
+    : mutex_{std::addressof(mutex)}, state_{mutex.try_lock()} {}
 
 template <typename Mutex>
 template <typename Rep, typename Period>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex, const std::chrono::duration<Rep, Period>& duration) {
-  mutex_ = std::addressof(mutex);
-  if (auto state = mutex.try_lock_for(duration)) {
-    proxy_.emplace(std::move(state));
-  }
-}
+    mutex_type& mutex, const std::chrono::duration<Rep, Period>& timeout)
+    : mutex_{std::addressof(mutex)}, state_{mutex.try_lock_for(timeout)} {}
 
 template <typename Mutex>
 template <typename Clock, typename Duration>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex, const std::chrono::time_point<Clock, Duration>& time) {
-  mutex_ = std::addressof(mutex);
-  if (auto state = mutex.try_lock_until(time)) {
-    proxy_.emplace(std::move(state));
-  }
-}
+    mutex_type& mutex, const std::chrono::time_point<Clock, Duration>& deadline)
+    : mutex_{std::addressof(mutex)}, state_{mutex.try_lock_until(deadline)} {}
 
 template <typename Mutex>
 void ProxyLockableUniqueLock<Mutex>::lock() {
-  proxylockable_detail::throwIfAlreadyLocked(proxy_);
+  proxylockable_detail::throwIfAlreadyLocked(state_);
   proxylockable_detail::throwIfNoMutex(mutex_);
 
-  proxy_.emplace(mutex_->lock());
+  state_ = mutex_->lock();
 }
 
 template <typename Mutex>
 void ProxyLockableUniqueLock<Mutex>::unlock() {
   proxylockable_detail::throwIfNoMutex(mutex_);
-  proxylockable_detail::throwIfNotLocked(proxy_);
+  proxylockable_detail::throwIfNotLocked(state_);
 
-  mutex_->unlock(std::move(*proxy_));
-  proxy_.reset();
+  mutex_->unlock(std::exchange(state_, state_type{}));
 }
 
 template <typename Mutex>
 bool ProxyLockableUniqueLock<Mutex>::try_lock() {
   proxylockable_detail::throwIfNoMutex(mutex_);
-  proxylockable_detail::throwIfAlreadyLocked(proxy_);
+  proxylockable_detail::throwIfAlreadyLocked(state_);
 
-  if (auto state = mutex_->try_lock()) {
-    proxy_.emplace(std::move(state));
-    return true;
-  }
-
-  return false;
+  state_ = mutex_->try_lock();
+  return !!state_;
 }
 
 template <typename Mutex>
 template <typename Rep, typename Period>
 bool ProxyLockableUniqueLock<Mutex>::try_lock_for(
-    const std::chrono::duration<Rep, Period>& duration) {
+    const std::chrono::duration<Rep, Period>& timeout) {
   proxylockable_detail::throwIfNoMutex(mutex_);
-  proxylockable_detail::throwIfAlreadyLocked(proxy_);
+  proxylockable_detail::throwIfAlreadyLocked(state_);
 
-  if (auto state = mutex_->try_lock_for(duration)) {
-    proxy_.emplace(std::move(state));
-    return true;
-  }
-
-  return false;
+  state_ = mutex_->try_lock_for(timeout);
+  return !!state_;
 }
 
 template <typename Mutex>
 template <typename Clock, typename Duration>
 bool ProxyLockableUniqueLock<Mutex>::try_lock_until(
-    const std::chrono::time_point<Clock, Duration>& time) {
+    const std::chrono::time_point<Clock, Duration>& deadline) {
   proxylockable_detail::throwIfNoMutex(mutex_);
-  proxylockable_detail::throwIfAlreadyLocked(proxy_);
+  proxylockable_detail::throwIfAlreadyLocked(state_);
 
-  if (auto state = mutex_->try_lock_until(time)) {
-    proxy_.emplace(std::move(state));
-    return true;
-  }
-
-  return false;
+  state_ = mutex_->try_lock_until(deadline);
+  return !!state_;
 }
 
 template <typename Mutex>
 void ProxyLockableUniqueLock<Mutex>::swap(
     ProxyLockableUniqueLock& other) noexcept {
   std::swap(mutex_, other.mutex_);
-  std::swap(proxy_, other.proxy_);
+  std::swap(state_, other.state_);
 }
 
 template <typename Mutex>
@@ -193,14 +171,20 @@ ProxyLockableUniqueLock<Mutex>::mutex() const noexcept {
 }
 
 template <typename Mutex>
-typename ProxyLockableUniqueLock<Mutex>::proxy_type*
-ProxyLockableUniqueLock<Mutex>::proxy() const noexcept {
-  return proxy_ ? std::addressof(proxy_.value()) : nullptr;
+typename ProxyLockableUniqueLock<Mutex>::state_type const&
+ProxyLockableUniqueLock<Mutex>::state() const noexcept {
+  return state_;
+}
+
+template <typename Mutex>
+typename ProxyLockableUniqueLock<Mutex>::state_type&
+ProxyLockableUniqueLock<Mutex>::state() noexcept {
+  return state_;
 }
 
 template <typename Mutex>
 bool ProxyLockableUniqueLock<Mutex>::owns_lock() const noexcept {
-  return proxy_.has_value();
+  return !!state_;
 }
 
 template <typename Mutex>
