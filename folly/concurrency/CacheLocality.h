@@ -206,7 +206,9 @@ class AccessSpreaderBase {
     std::atomic<Getcpu::Func> getcpu; // nullptr -> not initialized
   };
   static_assert(
-      std::is_trivial<GlobalState>::value || kCpplibVer, "not trivial");
+      is_constexpr_default_constructible_v<GlobalState> &&
+          std::is_trivially_destructible<GlobalState>::value,
+      "unsuitable for global state");
 
   /// Always claims to be on CPU zero, node zero
   static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*);
