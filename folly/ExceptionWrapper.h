@@ -59,33 +59,6 @@ namespace folly {
 
 #define FOLLY_REQUIRES(...) FOLLY_REQUIRES_DEF(__VA_ARGS__) = __LINE__
 
-namespace exception_wrapper_detail {
-
-template <template <class> class T, class... As>
-using AllOf = StrictConjunction<T<As>...>;
-
-template <bool If, class T>
-using AddConstIf = std::conditional_t<If, const T, T>;
-
-template <class Fn, class A>
-FOLLY_ERASE auto fold(Fn&&, A&& a) {
-  return static_cast<A&&>(a);
-}
-
-template <class Fn, class A, class B, class... Bs>
-FOLLY_ERASE auto fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
-  return fold(
-      // This looks like a use of fn after a move of fn, but in reality, this is
-      // just a cast and not a move. That's because regardless of which fold
-      // overload is selected, fn gets bound to a &&. Had fold taken fn by value
-      // there would indeed be a problem here.
-      static_cast<Fn&&>(fn),
-      static_cast<Fn&&>(fn)(static_cast<A&&>(a), static_cast<B&&>(b)),
-      static_cast<Bs&&>(bs)...);
-}
-
-} // namespace exception_wrapper_detail
-
 //! Throwing exceptions can be a convenient way to handle errors. Storing
 //! exceptions in an `exception_ptr` makes it easy to handle exceptions in a
 //! different thread or at a later time. `exception_ptr` can also be used in a
@@ -208,8 +181,6 @@ class exception_wrapper final {
 
   template <class Ex>
   using IsStdException = std::is_base_of<std::exception, std::decay_t<Ex>>;
-  template <bool B, class T>
-  using AddConstIf = exception_wrapper_detail::AddConstIf<B, T>;
   template <class CatchFn>
   using IsCatchAll =
       std::is_same<arg_type<std::decay_t<CatchFn>>, AnyException>;
@@ -345,23 +316,17 @@ class exception_wrapper final {
             Negation<std::is_base_of<exception_wrapper, T>>,
             Negation<std::is_abstract<T>>> {};
 
-  template <class CatchFn, bool IsConst = false>
-  struct ExceptionTypeOf;
+  template <class This, class Fn>
+  static bool with_exception_(This& this_, Fn fn_, tag_t<AnyException>);
 
-  template <bool IsConst>
-  struct HandleReduce;
-
-  template <bool IsConst>
-  struct HandleStdExceptReduce;
-
-  template <class This, class... CatchFns>
-  static void handle_(std::false_type, This& this_, CatchFns&... fns);
-
-  template <class This, class... CatchFns>
-  static void handle_(std::true_type, This& this_, CatchFns&... fns);
+  template <class This, class Fn, typename Ex>
+  static bool with_exception_(This& this_, Fn fn_, tag_t<Ex>);
 
   template <class Ex, class This, class Fn>
   static bool with_exception_(This& this_, Fn fn_);
+
+  template <class This, class... CatchFns>
+  static void handle_(This& this_, char const* name, CatchFns&... fns);
 
  public:
   static exception_wrapper from_exception_ptr(
@@ -580,7 +545,7 @@ class exception_wrapper final {
   //! \tparam CatchFns A pack of unary monomorphic function object types.
   //! \param fns A pack of unary monomorphic function objects to be treated as
   //!     an ordered list of potential exception handlers.
-  //! \note The handlers may or may not be invoked with an active exception.
+  //! \note The handlers are not invoked with an active exception.
   //!     **Do not try to rethrow the exception with `throw;` from within your
   //!     handler -- that is, a throw expression with no operand.** This may
   //!     cause your process to terminate. (It is perfectly ok to throw from

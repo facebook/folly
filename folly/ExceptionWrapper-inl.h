@@ -472,140 +472,16 @@ template <class Ex>
   }
 }
 
-template <class CatchFn, bool IsConst>
-struct exception_wrapper::ExceptionTypeOf {
-  using type = arg_type<std::decay_t<CatchFn>>;
-  static_assert(
-      std::is_reference<type>::value, "Always catch exceptions by reference.");
-  static_assert(
-      !IsConst || std::is_const<std::remove_reference_t<type>>::value,
-      "handle() or with_exception() called on a const exception_wrapper "
-      "and asked to catch a non-const exception. Handler will never fire. "
-      "Catch exception by const reference to fix this.");
-};
-
-// Nests a throw in the proper try/catch blocks
-template <bool IsConst>
-struct exception_wrapper::HandleReduce {
-  bool* handled_;
-
-  template <
-      class ThrowFn,
-      class CatchFn,
-      FOLLY_REQUIRES(!IsCatchAll<CatchFn>::value)>
-  auto operator()(ThrowFn&& th, CatchFn& ca) const {
-    using Ex = _t<ExceptionTypeOf<CatchFn, IsConst>>;
-    return [th = std::forward<ThrowFn>(th), &ca, handled_ = handled_] {
-      try {
-        th();
-      } catch (Ex& e) {
-        // If we got here because a catch function threw, rethrow.
-        if (*handled_) {
-          throw;
-        }
-        *handled_ = true;
-        ca(e);
-      }
-    };
-  }
-
-  template <
-      class ThrowFn,
-      class CatchFn,
-      FOLLY_REQUIRES(IsCatchAll<CatchFn>::value)>
-  auto operator()(ThrowFn&& th, CatchFn& ca) const {
-    return [th = std::forward<ThrowFn>(th), &ca, handled_ = handled_] {
-      try {
-        th();
-      } catch (...) {
-        // If we got here because a catch function threw, rethrow.
-        if (*handled_) {
-          throw;
-        }
-        *handled_ = true;
-        ca();
-      }
-    };
-  }
-};
-
-// When all the handlers expect types derived from std::exception, we can
-// sometimes invoke the handlers without throwing any exceptions.
-template <bool IsConst>
-struct exception_wrapper::HandleStdExceptReduce {
-  using StdEx = AddConstIf<IsConst, std::exception>;
-
-  template <
-      class ThrowFn,
-      class CatchFn,
-      FOLLY_REQUIRES(!IsCatchAll<CatchFn>::value)>
-  auto operator()(ThrowFn&& th, CatchFn& ca) const {
-    using Ex = _t<ExceptionTypeOf<CatchFn, IsConst>>;
-    return
-        [th = std::forward<ThrowFn>(th), &ca](auto&& continuation) -> StdEx* {
-          if (auto e = const_cast<StdEx*>(th(continuation))) {
-            if (auto e2 = dynamic_cast<std::add_pointer_t<Ex>>(e)) {
-              ca(*e2);
-            } else {
-              return e;
-            }
-          }
-          return nullptr;
-        };
-  }
-
-  template <
-      class ThrowFn,
-      class CatchFn,
-      FOLLY_REQUIRES(IsCatchAll<CatchFn>::value)>
-  auto operator()(ThrowFn&& th, CatchFn& ca) const {
-    return [th = std::forward<ThrowFn>(th), &ca](auto&&) -> StdEx* {
-      // The following continuation causes ca() to execute if *this contains
-      // an exception /not/ derived from std::exception.
-      auto continuation = [&ca](StdEx* e) {
-        return e != nullptr ? e : ((void)ca(), nullptr);
-      };
-      if (th(continuation) != nullptr) {
-        ca();
-      }
-      return nullptr;
-    };
-  }
-};
-
-// Called when some types in the catch clauses are not derived from
-// std::exception.
-template <class This, class... CatchFns>
-inline void exception_wrapper::handle_(
-    std::false_type, This& this_, CatchFns&... fns) {
-  bool handled = false;
-  auto impl = exception_wrapper_detail::fold(
-      HandleReduce<std::is_const<This>::value>{&handled},
-      [&] { this_.throw_exception(); },
-      fns...);
-  impl();
+template <class This, class Fn>
+inline bool exception_wrapper::with_exception_(
+    This&, Fn fn_, tag_t<AnyException>) {
+  return void(fn_()), true;
 }
 
-// Called when all types in the catch clauses are either derived from
-// std::exception or a catch-all clause.
-template <class This, class... CatchFns>
-inline void exception_wrapper::handle_(
-    std::true_type, This& this_, CatchFns&... fns) {
-  using StdEx = exception_wrapper_detail::
-      AddConstIf<std::is_const<This>::value, std::exception>;
-  auto impl = exception_wrapper_detail::fold(
-      HandleStdExceptReduce<std::is_const<This>::value>{},
-      [&](auto&& continuation) {
-        return continuation(
-            const_cast<StdEx*>(this_.vptr_->get_exception_(&this_)));
-      },
-      fns...);
-  // This continuation gets evaluated if CatchFns... does not include a
-  // catch-all handler. It is a no-op.
-  auto continuation = [](StdEx* ex) { return ex; };
-  if (nullptr != impl(continuation)) {
-    this_.throw_exception();
-  }
+template <class This, class Fn, typename Ex>
+inline bool exception_wrapper::with_exception_(This& this_, Fn fn_, tag_t<Ex>) {
+  auto ptr = this_.template get_exception<remove_cvref_t<Ex>>();
+  return ptr && (void(fn_(static_cast<Ex&>(*ptr))), true);
 }
 
 template <class Ex, class This, class Fn>
@@ -614,8 +490,21 @@ inline bool exception_wrapper::with_exception_(This& this_, Fn fn_) {
   using from_ex = with_exception_from_ex_;
   using from = conditional_t<std::is_void<Ex>::value, from_fn, from_ex>;
   using type = typename from::template apply<Ex, Fn>;
-  auto ptr = this_.template get_exception<remove_cvref_t<type>>();
-  return ptr && (void(fn_(static_cast<type&>(*ptr))), true);
+  return with_exception_(this_, fn_, tag<type>);
+}
+
+template <class This, class... CatchFns>
+inline void exception_wrapper::handle_(
+    This& this_, char const* name, CatchFns&... fns) {
+  using _ = bool[];
+  if (!this_) {
+    onNoExceptionError(name);
+  }
+  bool handled = false;
+  void(_{false, (handled = handled || with_exception_<void>(this_, fns))...});
+  if (!handled) {
+    this_.throw_exception();
+  }
 }
 
 template <class Ex, class Fn>
@@ -629,21 +518,11 @@ inline bool exception_wrapper::with_exception(Fn fn) const {
 
 template <class... CatchFns>
 inline void exception_wrapper::handle(CatchFns... fns) {
-  using AllStdEx =
-      exception_wrapper_detail::AllOf<IsStdException, arg_type<CatchFns>...>;
-  if (!*this) {
-    onNoExceptionError(__func__);
-  }
-  this->handle_(AllStdEx{}, *this, fns...);
+  handle_(*this, __func__, fns...);
 }
 template <class... CatchFns>
 inline void exception_wrapper::handle(CatchFns... fns) const {
-  using AllStdEx =
-      exception_wrapper_detail::AllOf<IsStdException, arg_type<CatchFns>...>;
-  if (!*this) {
-    onNoExceptionError(__func__);
-  }
-  this->handle_(AllStdEx{}, *this, fns...);
+  handle_(*this, __func__, fns...);
 }
 
 } // namespace folly
