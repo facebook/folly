@@ -41,15 +41,6 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpragmas"
-#pragma GCC diagnostic ignored "-Wpotentially-evaluated-expression"
-// GCC gets confused about lambda scopes and issues shadow-local warnings for
-// parameters in totally different functions.
-FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
-#endif
-
 #define FOLLY_EXCEPTION_WRAPPER_H_INCLUDED
 
 namespace folly {
@@ -661,6 +652,3 @@ exception_wrapper try_and_catch(F&& fn) noexcept {
 
 #undef FOLLY_REQUIRES
 #undef FOLLY_REQUIRES_DEF
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
