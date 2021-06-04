@@ -581,62 +581,8 @@ inline void swap(exception_wrapper& a, exception_wrapper& b) noexcept {
 // For consistency with exceptionStr() functions in ExceptionString.h
 fbstring exceptionStr(exception_wrapper const& ew);
 
-namespace detail {
-template <typename F>
-inline exception_wrapper try_and_catch_(F&& f) {
-  return (f(), exception_wrapper());
-}
-
-template <typename F, typename Ex, typename... Exs>
-inline exception_wrapper try_and_catch_(F&& f) {
-  try {
-    return try_and_catch_<F, Exs...>(std::forward<F>(f));
-  } catch (Ex&) {
-    return exception_wrapper(std::current_exception());
-  }
-}
-} // namespace detail
-
-//! `try_and_catch` is a simple replacement for `try {} catch(){}`` that allows
-//! you to specify which derived exceptions you would like to catch and store in
-//! an `exception_wrapper`.
-//!
-//! Because we cannot build an equivalent of `std::current_exception()`, we need
-//! to catch every derived exception that we are interested in catching.
-//!
-//! Exceptions should be listed in the reverse order that you would write your
-//! catch statements (that is, `std::exception&` should be first).
-//!
-//! \par Example Usage:
-//! \code
-//! // This catches my runtime_error and if I call throw_exception() on ew, it
-//! // will throw a runtime_error
-//! auto ew = folly::try_and_catch<std::exception, std::runtime_error>([=]() {
-//!   if (badThingHappens()) {
-//!     throw std::runtime_error("ZOMG!");
-//!   }
-//! });
-//!
-//! // This will catch the exception and if I call throw_exception() on ew, it
-//! // will throw a std::exception
-//! auto ew = folly::try_and_catch<std::exception, std::runtime_error>([=]() {
-//!   if (badThingHappens()) {
-//!     throw std::exception();
-//!   }
-//! });
-//!
-//! // This will not catch the exception and it will be thrown.
-//! auto ew = folly::try_and_catch<std::runtime_error>([=]() {
-//!   if (badThingHappens()) {
-//!     throw std::exception();
-//!   }
-//! });
-//! \endcode
-template <typename Exn, typename... Exns, typename F>
-[[deprecated("no longer specify exception types explicitly")]] exception_wrapper
-try_and_catch(F&& fn) {
-  return detail::try_and_catch_<F, Exn, Exns...>(std::forward<F>(fn));
-}
+//! `try_and_catch` is a convenience for `try {} catch(...) {}`` that returns an
+//! `exception_wrapper` with the thrown exception, if any.
 template <typename F>
 exception_wrapper try_and_catch(F&& fn) noexcept {
   try {
