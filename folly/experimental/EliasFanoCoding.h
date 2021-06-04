@@ -191,16 +191,16 @@ struct EliasFanoEncoderV2 {
     CHECK_EQ(size_, result_.size);
     const ValueType upperBitsUniverse =
         (8 * result_.upperSizeBytes - result_.size);
-    if (upperBitsUniverse > 0) {
-      // Populate skip pointers up to the universe upper bound.
-      fillSkipPointersUpTo(upperBitsUniverse - 1);
-    }
+    // Populate skip pointers up to the universe upper bound (inclusive).
+    fillSkipPointersUpTo(upperBitsUniverse);
     return result_;
   }
 
  private:
   void fillSkipPointersUpTo(ValueType fillBoundary) {
     if constexpr (skipQuantum != 0) {
+      // The first skip pointer is omitted (it would always be 0), so the
+      // calculation is shifted by 1.
       while ((skipPointersSize_ + 1) * skipQuantum <= fillBoundary) {
         // Store the number of preceding 1-bits.
         skipPointers_[skipPointersSize_++] = static_cast<SkipValueType>(size_);
