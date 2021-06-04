@@ -1533,7 +1533,8 @@ bool tryUnlockClean(Atomic& state, Proxy& proxy, Sleepers sleepers) {
 
 template <template <typename> class Atomic, bool Publish>
 void DistributedMutex<Atomic, Publish>::unlock(
-    DistributedMutex::DistributedMutexStateProxy proxy) {
+    DistributedMutex::DistributedMutexStateProxy const& proxy_) {
+  auto proxy = proxy_;
   // we always wake up ready threads and timed waiters if we saw either
   DCHECK(proxy) << "Invalid proxy passed to DistributedMutex::unlock()";
   DCHECK(!proxy.combined_) << "Cannot unlock mutex after a successful combine";

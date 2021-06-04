@@ -189,7 +189,7 @@ class DistributedMutex {
    * It is undefined behavior to unlock from a thread that did not lock the
    * mutex
    */
-  void unlock(DistributedMutexStateProxy);
+  void unlock(DistributedMutexStateProxy const&);
 
   /**
    * Try to acquire the mutex
