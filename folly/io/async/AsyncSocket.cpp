@@ -2396,10 +2396,10 @@ void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) {
   readCallback_->getReadBuffer(buf, buflen);
 }
 
-size_t AsyncSocket::prepareReadBuffers(struct iovec* iovs, size_t num) {
+void AsyncSocket::prepareReadBuffers(IOBufIovecBuilder::IoVecVec& iovs) {
   // no matter what, buffers should be prepared for non-ssl socket
   CHECK(readCallback_);
-  return readCallback_->getReadBuffers(iovs, num);
+  readCallback_->getReadBuffers(iovs);
 }
 
 size_t AsyncSocket::handleErrMessages() noexcept {
@@ -2608,12 +2608,12 @@ void AsyncSocket::handleRead() noexcept {
     // Get the buffer(s) to read into.
     void* buf = nullptr;
     size_t buflen = 0, offset = 0, num = 0;
-    static constexpr size_t kNumIov = 16;
-    std::array<struct iovec, kNumIov> iovs;
+    IOBufIovecBuilder::IoVecVec iovs; // this can be an Asyncsocket member too
 
     try {
       if (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec) {
-        num = prepareReadBuffers(iovs.data(), iovs.size());
+        prepareReadBuffers(iovs);
+        num = iovs.size();
         VLOG(5) << "prepareReadBuffers() bufs=" << iovs.data()
                 << ", num=" << num;
       } else {

@@ -76,7 +76,7 @@ class IOBufIovecBuilder {
       // This is safe, because it means this is the last reference
       // Anything trying to copy it is already undefined behavior.
       if (refcount_.load(std::memory_order_acquire) > 1) {
-        uint32_t newcnt = refcount_.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        size_t newcnt = refcount_.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (newcnt > 0) {
           return;
         }

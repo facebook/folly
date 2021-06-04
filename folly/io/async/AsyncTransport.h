@@ -21,6 +21,7 @@
 
 #include <folly/Optional.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/IOBufIovecBuilder.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTransportCertificate.h>
 #include <folly/io/async/DelayedDestruction.h>
@@ -206,7 +207,7 @@ class AsyncReader {
      * returned different buffers, the ReadCallback is responsible for ensuring
      * that they are not leaked.
      *
-     * If getReadBuffera() throws an exception or returns a zero length array
+     * If getReadBuffers() throws an exception or returns a zero length array
      * the ReadCallback will be uninstalled and its readError() method will be
      * invoked.
      *
@@ -215,14 +216,10 @@ class AsyncReader {
      * set a different read callback.)
      *
      * @param iovs      getReadBuffers() will copy up to num iovec entries into
-     *                  iovs. iovs cannot be nullptr unless num is 0
-     * @param num       number of iovec entries in the iovs array
-     * @return          number of entried copied to the iovs array
-     *                  this is less than or equal to num
+     *                  iovs
      */
-    virtual size_t getReadBuffers(
-        FOLLY_MAYBE_UNUSED struct iovec* iovs, FOLLY_MAYBE_UNUSED size_t num) {
-      return 0;
+    virtual void getReadBuffers(IOBufIovecBuilder::IoVecVec& iovs) {
+      iovs.clear();
     }
 
     /**

@@ -27,6 +27,7 @@
 #include <folly/SocketAddress.h>
 #include <folly/detail/SocketFastOpen.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/IOBufIovecBuilder.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocketException.h>
@@ -1292,7 +1293,7 @@ class AsyncSocket : public AsyncTransport {
   virtual void checkForImmediateRead() noexcept;
   virtual void handleInitialReadWrite() noexcept;
   virtual void prepareReadBuffer(void** buf, size_t* buflen);
-  virtual size_t prepareReadBuffers(struct iovec* iovs, size_t num);
+  virtual void prepareReadBuffers(IOBufIovecBuilder::IoVecVec& iovs);
   virtual size_t handleErrMessages() noexcept;
   virtual void handleRead() noexcept;
   virtual void handleWrite() noexcept;
