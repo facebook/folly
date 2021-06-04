@@ -83,7 +83,7 @@ ProxyLockableUniqueLock<Mutex>& ProxyLockableUniqueLock<Mutex>::operator=(
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mutex, std::adopt_lock_t, state_type state)
+    mutex_type& mutex, std::adopt_lock_t, const state_type& state)
     : mutex_{std::addressof(mutex)}, state_{state} {
   proxylockable_detail::throwIfNotLocked(state_);
 }
@@ -123,7 +123,9 @@ void ProxyLockableUniqueLock<Mutex>::unlock() {
   proxylockable_detail::throwIfNoMutex(mutex_);
   proxylockable_detail::throwIfNotLocked(state_);
 
-  mutex_->unlock(std::exchange(state_, state_type{}));
+  const auto& state = state_;
+  mutex_->unlock(state);
+  state_ = state_type{};
 }
 
 template <typename Mutex>

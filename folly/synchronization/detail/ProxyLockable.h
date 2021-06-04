@@ -78,7 +78,7 @@ class ProxyLockableUniqueLock {
    *                    converts to true if the lock was successful
    */
   ProxyLockableUniqueLock(
-      mutex_type& mutex, std::adopt_lock_t, state_type state);
+      mutex_type& mutex, std::adopt_lock_t, const state_type& state);
   ProxyLockableUniqueLock(mutex_type& mutex, std::defer_lock_t) noexcept;
   ProxyLockableUniqueLock(mutex_type& mutex, std::try_to_lock_t);
 
