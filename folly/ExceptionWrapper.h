@@ -585,12 +585,8 @@ fbstring exceptionStr(exception_wrapper const& ew);
 //! `exception_wrapper` with the thrown exception, if any.
 template <typename F>
 exception_wrapper try_and_catch(F&& fn) noexcept {
-  try {
-    static_cast<F&&>(fn)();
-    return exception_wrapper{};
-  } catch (...) {
-    return exception_wrapper{std::current_exception()};
-  }
+  auto x = [&] { return void(static_cast<F&&>(fn)()), std::exception_ptr{}; };
+  return exception_wrapper{catch_exception(x, std::current_exception)};
 }
 } // namespace folly
 
