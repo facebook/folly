@@ -207,8 +207,7 @@ class AsyncGeneratorPromise {
     if (state_ == State::EXCEPTION_WRAPPER) {
       return std::move(exceptionWrapper_.get());
     } else {
-      return exception_wrapper::from_exception_ptr(
-          std::move(exceptionPtr_.get()));
+      return exception_wrapper(std::move(exceptionPtr_.get()));
     }
   }
 

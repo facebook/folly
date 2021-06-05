@@ -587,9 +587,6 @@ makeSemiFutureWith(F&& func) {
   using InnerType = typename isFutureOrSemiFuture<invoke_result_t<F>>::Inner;
   try {
     return static_cast<F&&>(func)();
-  } catch (std::exception& e) {
-    return makeSemiFuture<InnerType>(
-        exception_wrapper(std::current_exception(), e));
   } catch (...) {
     return makeSemiFuture<InnerType>(
         exception_wrapper(std::current_exception()));
@@ -1239,9 +1236,6 @@ typename std::
   using InnerType = typename isFuture<invoke_result_t<F>>::Inner;
   try {
     return static_cast<F&&>(func)();
-  } catch (std::exception& e) {
-    return makeFuture<InnerType>(
-        exception_wrapper(std::current_exception(), e));
   } catch (...) {
     return makeFuture<InnerType>(exception_wrapper(std::current_exception()));
   }
@@ -1915,8 +1909,6 @@ SemiFuture<T> unorderedReduceSemiFuture(It first, It last, T initial, F func) {
                 ctx->func_(
                     std::move(v.value()),
                     mt.template get<IsTry::value, Arg&&>()));
-          } catch (std::exception& e) {
-            ew = exception_wrapper{std::current_exception(), e};
           } catch (...) {
             ew = exception_wrapper{std::current_exception()};
           }

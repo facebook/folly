@@ -94,8 +94,6 @@ AsyncGenerator<Reference, Value> merge(
             break;
           }
         }
-      } catch (const std::exception& e) {
-        ex = exception_wrapper{std::current_exception(), e};
       } catch (...) {
         ex = exception_wrapper{std::current_exception()};
       }
@@ -125,8 +123,6 @@ AsyncGenerator<Reference, Value> merge(
         }
         makeWorkerTask(state, *std::move(item)).start(&barrier, asyncFrame);
       }
-    } catch (const std::exception& e) {
-      ex = exception_wrapper{std::current_exception(), e};
     } catch (...) {
       ex = exception_wrapper{std::current_exception()};
     }

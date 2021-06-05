@@ -65,8 +65,8 @@ class File {
   static Expected<File, exception_wrapper> makeFile(Args&&... args) noexcept {
     try {
       return File(std::forward<Args>(args)...);
-    } catch (const std::system_error& se) {
-      return makeUnexpected(exception_wrapper(std::current_exception(), se));
+    } catch (const std::system_error&) {
+      return makeUnexpected(exception_wrapper(std::current_exception()));
     }
   }
 

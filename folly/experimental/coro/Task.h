@@ -154,8 +154,7 @@ class TaskPromise : public TaskPromiseBase {
   Task<T> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_.emplaceException(
-        exception_wrapper::from_exception_ptr(std::current_exception()));
+    result_.emplaceException(exception_wrapper{std::current_exception()});
   }
 
   template <typename U = T>
@@ -211,8 +210,7 @@ class TaskPromise<void> : public TaskPromiseBase {
   Task<void> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_.emplaceException(
-        exception_wrapper::from_exception_ptr(std::current_exception()));
+    result_.emplaceException(exception_wrapper{std::current_exception()});
   }
 
   void return_void() noexcept { result_.emplace(); }
@@ -360,11 +358,6 @@ class FOLLY_NODISCARD TaskWithExecutor {
   detail::InlineTaskDetached startImpl(TaskWithExecutor task, F cb) {
     try {
       cb(co_await folly::coro::co_awaitTry(std::move(task)));
-// This causes clang internal error on Windows.
-#if !(defined(_WIN32) && defined(__clang__))
-    } catch (const std::exception& e) {
-      cb(Try<StorageType>(exception_wrapper(std::current_exception(), e)));
-#endif
     } catch (...) {
       cb(Try<StorageType>(exception_wrapper(std::current_exception())));
     }
@@ -374,11 +367,6 @@ class FOLLY_NODISCARD TaskWithExecutor {
   detail::InlineTaskDetached startInlineImpl(TaskWithExecutor task, F cb) {
     try {
       cb(co_await InlineTryAwaitable{std::exchange(task.coro_, {})});
-// This causes clang internal error on Windows.
-#if !(defined(_WIN32) && defined(__clang__))
-    } catch (const std::exception& e) {
-      cb(Try<StorageType>(exception_wrapper(std::current_exception(), e)));
-#endif
     } catch (...) {
       cb(Try<StorageType>(exception_wrapper(std::current_exception())));
     }

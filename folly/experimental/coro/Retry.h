@@ -66,8 +66,6 @@ auto retryWhen(Func func, RetryDelayFunc retryDelay)
         assert(result.hasException());
         error = std::move(result.exception());
       }
-    } catch (const std::exception& e) {
-      error = exception_wrapper(std::current_exception(), e);
     } catch (...) {
       error = exception_wrapper(std::current_exception());
     }

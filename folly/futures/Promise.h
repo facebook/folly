@@ -239,7 +239,7 @@ class Promise {
   ///   Promise<MyValue> p = ...
   ///   ...
   ///   auto const ep = std::exception_ptr();
-  ///   auto const ew = exception_wrapper::from_exception_ptr(ep);
+  ///   auto const ew = exception_wrapper{ep};
   ///   p.setException(ew);
   ///
   /// Functionally equivalent to `setTry(Try<T>(std::move(ew)))`

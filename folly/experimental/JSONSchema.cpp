@@ -832,8 +832,6 @@ exception_wrapper SchemaValidator::try_validate(
     if (auto se = validate(vc, value)) {
       return make_exception_wrapper<SchemaError>(*se);
     }
-  } catch (const std::exception& e) {
-    return exception_wrapper(std::current_exception(), e);
   } catch (...) {
     return exception_wrapper(std::current_exception());
   }
