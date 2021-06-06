@@ -38,11 +38,14 @@ using namespace folly::test;
 using namespace std;
 using namespace std::chrono;
 
-typedef DeterministicSchedule DSched;
-typedef SharedMutexImpl<true, void, DeterministicAtomic, true>
-    DSharedMutexReadPriority;
-typedef SharedMutexImpl<false, void, DeterministicAtomic, true>
-    DSharedMutexWritePriority;
+struct DSharedMutexPolicy : SharedMutexPolicyDefault {
+  static constexpr bool block_immediately = true;
+};
+using DSched = DeterministicSchedule;
+using DSharedMutexReadPriority =
+    SharedMutexImpl<true, void, DeterministicAtomic, DSharedMutexPolicy>;
+using DSharedMutexWritePriority =
+    SharedMutexImpl<false, void, DeterministicAtomic, DSharedMutexPolicy>;
 
 template <typename Lock>
 void runBasicTest() {
