@@ -31,6 +31,8 @@
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
+#if defined(__GLIBCXX__)
+
 using namespace folly::exception_tracer;
 
 namespace {
@@ -142,5 +144,7 @@ struct Initializer {
 Initializer initializer;
 
 } // namespace
+
+#endif // __GLIBCXX__
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
