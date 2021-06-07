@@ -69,6 +69,9 @@ void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
     case SSLContext::SSLVersion::TLSv1_2:
       minVersion = TLS1_2_VERSION;
       break;
+    // TODO: Handle this correctly once the max protocol version
+    // is no longer limited to TLS 1.2.
+    case SSLContext::SSLVersion::TLSv1_3:
     case SSLContext::SSLVersion::SSLv2:
     default:
       // do nothing
@@ -107,6 +110,15 @@ void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
 // SSLContext implementation
 SSLContext::SSLContext(SSLVersion version) {
   folly::ssl::init();
+
+  // version represents the desired minimum protocol version. Since TLS 1.2
+  // is currently set as the maximum protocol version, we can't allow a min
+  // version of TLS 1.3.
+  // TODO: Remove this error once the max is no longer limited to TLS 1.2.
+  if (version == SSLContext::SSLVersion::TLSv1_3) {
+    throw std::runtime_error(
+        "A minimum TLS version of TLS 1.3 is currently unsupported.");
+  }
 
   ctx_ = SSL_CTX_new(SSLv23_method());
   if (ctx_ == nullptr) {

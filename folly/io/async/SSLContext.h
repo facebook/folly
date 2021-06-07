@@ -94,6 +94,7 @@ class SSLContext {
     SSLv3,
     TLSv1, // support TLS 1.0+
     TLSv1_2, // support for only TLS 1.2+
+    TLSv1_3,
   };
 
   /**

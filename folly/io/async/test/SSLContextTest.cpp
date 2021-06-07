@@ -231,4 +231,8 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
       std::runtime_error);
 }
 #endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
+
+TEST_F(SSLContextTest, TestTLS13MinVersionThrow) {
+  EXPECT_THROW(SSLContext{SSLContext::SSLVersion::TLSv1_3}, std::runtime_error);
+}
 } // namespace folly
