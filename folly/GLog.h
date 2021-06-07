@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <folly/Likely.h>
+
 #include <atomic>
 #include <chrono>
 
@@ -56,4 +58,28 @@
         } else                                                                 \
           LOG(severity)
 
+#endif
+
+/**
+ * Issues a LOG(severity) once.
+ *
+ *   FB_LOG_ONCE(ERROR) << "Log this error only once";
+ *
+ * This macro is thread-safe and does not impact surrounding statements.
+ *
+ * NOTE: A load() is used in the fast-path scenario (steady state) in order to
+ * avoid a locked RMW operation.
+ */
+#ifndef FB_LOG_ONCE
+#define FB_LOG_ONCE(severity)                                                  \
+  for (auto __folly_detail_glog_once = true; __folly_detail_glog_once;)        \
+    for (static ::std::atomic_bool __folly_detail_glog_logged{false};          \
+         __folly_detail_glog_once;                                             \
+         __folly_detail_glog_once = false)                                     \
+      if (FOLLY_LIKELY(                                                        \
+              __folly_detail_glog_logged.load(::std::memory_order_relaxed)) || \
+          __folly_detail_glog_logged.exchange(                                 \
+              true, ::std::memory_order_relaxed)) {                            \
+      } else                                                                   \
+        LOG(severity)
 #endif

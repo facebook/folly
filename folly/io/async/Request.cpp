@@ -242,9 +242,8 @@ bool RequestContext::State::doSetContextData(
     result = doSetContextDataHelper(token, data, behaviour, safe);
   }
   if (result.unexpected) {
-    FB_LOG_EVERY_MS(WARNING, 60000)
-        << "Calling RequestContext::setContextData for "
-        << token.getDebugString() << " but it is already set";
+    FB_LOG_ONCE(WARNING) << "Calling RequestContext::setContextData for "
+                         << token.getDebugString() << " but it is already set";
   }
   if (result.replaced) {
     result.replaced->retire(); // Retire to hazptr library
