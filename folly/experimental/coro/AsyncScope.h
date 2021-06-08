@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/CancellationToken.h>
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/Barrier.h>
@@ -157,7 +158,7 @@ FOLLY_NOINLINE inline void AsyncScope::add(Awaitable&& awaitable) {
       !joined_ &&
       "It is invalid to add() more work after work has been joined");
   anyTasksStarted_.store(true, std::memory_order_relaxed);
-  addImpl((Awaitable &&) awaitable)
+  addImpl(static_cast<Awaitable&&>(awaitable))
       .start(&barrier_, FOLLY_ASYNC_STACK_RETURN_ADDRESS());
 }
 
@@ -171,6 +172,59 @@ inline Task<void> AsyncScope::joinAsync() noexcept {
 inline folly::SemiFuture<folly::Unit> AsyncScope::cleanup() noexcept {
   return joinAsync().semi();
 }
+
+///////////////////////////////
+// A cancellable version of AsyncScope. Work added to this scope will be
+// provided a cancellation token for cancelling during join. See
+// add() and cancelAndJoinAsync() for more information.
+class CancellableAsyncScope {
+ public:
+  CancellableAsyncScope() noexcept = default;
+
+  // Query the number of tasks added to the scope that have not yet completed.
+  std::size_t remaining() const noexcept { return scope_.remaining(); }
+
+  // Start the specified task/awaitable by co_awaiting it. The awaitable will be
+  // provided a cancellation token to respond to cancelAndJoinAsync() in the
+  // future.
+  //
+  // Note that cancellation is cooperative, your task must handle cancellation
+  // in order to have any effect.
+  //
+  // See the documentation on AsyncScope::add.
+  template <typename Awaitable>
+  void add(Awaitable&& awaitable) {
+    scope_.add(co_withCancellation(
+        cancellationSource_.getToken(), static_cast<Awaitable&&>(awaitable)));
+  }
+
+  // Request cancellation for all started tasks that accepted a
+  // CancellationToken in add().
+  void requestCancellation() const noexcept {
+    cancellationSource_.requestCancellation();
+  }
+
+  // Request cancellation then asynchronously wait for all started tasks to
+  // complete.
+  //
+  // Either call this method, _or_ joinAsync() to join the work. It is invalid
+  // to call both of them.
+  Task<void> cancelAndJoinAsync() noexcept {
+    requestCancellation();
+    co_await joinAsync();
+  }
+
+  // Asynchronously wait for all started tasks to complete without requesting
+  // cancellation.
+  //
+  // Either call this method _or_ cancelAndJoinAsync() to join the
+  // work. It is invalid to call both of them.
+  Task<void> joinAsync() noexcept { co_await scope_.joinAsync(); }
+
+ private:
+  folly::CancellationSource cancellationSource_;
+  AsyncScope scope_;
+};
 
 } // namespace coro
 } // namespace folly
