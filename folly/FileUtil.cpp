@@ -35,7 +35,22 @@ namespace folly {
 using namespace fileutil_detail;
 
 int openNoInt(const char* name, int flags, mode_t mode) {
-  return int(wrapNoInt(open, name, flags, mode));
+  // Android NDK bionic with FORTIFY has this definition:
+  // https://android.googlesource.com/platform/bionic/+/9349b9e51b/libc/include/bits/fortify/fcntl.h
+  // ```
+  // __BIONIC_ERROR_FUNCTION_VISIBILITY
+  // int open(const char* pathname, int flags, mode_t modes, ...) __overloadable
+  //         __errorattr(__open_too_many_args_error);
+  // ```
+  // This is originally to prevent open() with incorrect parameters.
+  //
+  // However, combined with folly wrapNotInt, template deduction will fail.
+  // In this case, we create a custom lambda to bypass the error.
+  // The solution is referenced from
+  // https://github.com/llvm/llvm-project/commit/0a0e411204a2baa520fd73a8d69b664f98b428ba
+  //
+  auto openWrapper = [&] { return open(name, flags, mode); };
+  return int(wrapNoInt(openWrapper));
 }
 
 static int filterCloseReturn(int r) {
