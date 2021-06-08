@@ -33,6 +33,10 @@
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/lang/Bits.h>
 
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view>
+#endif
+
 namespace folly {
 namespace hash {
 
@@ -560,6 +564,20 @@ struct hasher<std::string> {
 };
 template <typename K>
 struct IsAvalanchingHasher<hasher<std::string>, K> : std::true_type {};
+
+#if FOLLY_HAS_STRING_VIEW
+template <>
+struct hasher<std::string_view> {
+  using folly_is_avalanching = std::true_type;
+
+  size_t operator()(const std::string_view& key) const {
+    return static_cast<size_t>(
+        hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
+  }
+};
+template <typename K>
+struct IsAvalanchingHasher<hasher<std::string_view>, K> : std::true_type {};
+#endif
 
 template <typename T>
 struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {

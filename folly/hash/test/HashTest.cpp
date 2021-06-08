@@ -628,6 +628,12 @@ TEST(Hash, Strings) {
   EXPECT_EQ(h2(a2), h2(a2.str()));
   EXPECT_EQ(h2(a3), h2(a3.str()));
   EXPECT_EQ(h2(a4), h2(a4.str()));
+
+  // Check compatibility with std::string_view.
+  EXPECT_EQ(h2(a1), h2(std::string_view{a1}));
+  EXPECT_EQ(h2(a2), h2(std::string_view{a2}));
+  EXPECT_EQ(h2(a3), h2(std::string_view{a3}));
+  EXPECT_EQ(h2(a4), h2(std::string_view{a4}));
 }
 
 namespace {
