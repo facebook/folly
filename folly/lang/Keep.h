@@ -69,6 +69,8 @@ static keep keep_instance{keep_anchor};
 //  weak and noinline to prevent the compiler from eliding calls
 template <typename... T>
 FOLLY_ATTR_WEAK FOLLY_NOINLINE void keep_sink(T&&...) {}
+template <typename... T>
+FOLLY_ATTR_WEAK FOLLY_NOINLINE void keep_sink_nx(T&&...) noexcept {}
 
 } // namespace detail
 } // namespace folly
