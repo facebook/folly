@@ -752,12 +752,15 @@ if __name__ == "__main__":
                     "--print-long-results",
                 ]
 
+            if owner:
+                testpilot_args += ["--contacts", owner]
+
             if tpx and env:
                 testpilot_args.append("--env")
                 testpilot_args.extend(f"{key}={val}" for key, val in env.items())
 
-            if owner:
-                testpilot_args += ["--contacts", owner]
+            if test_filter:
+                testpilot_args += ["--", test_filter]
 
             if schedule_type == "continuous":
                 runs.append(
@@ -796,9 +799,6 @@ if __name__ == "__main__":
                 )
             else:
                 runs.append(["--collection", "oss-diff", "--purpose", "diff"])
-
-            if test_filter:
-                testpilot_args += [test_filter]
 
             for run in runs:
                 self._run_cmd(
