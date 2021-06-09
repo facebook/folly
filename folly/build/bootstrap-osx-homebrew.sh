@@ -33,6 +33,7 @@ install_deps() {
         boost
         cmake
         double-conversion
+        fmt
         gflags
         glog
         jemalloc
