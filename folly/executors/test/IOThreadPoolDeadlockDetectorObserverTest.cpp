@@ -21,7 +21,6 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
-using namespace testing;
 
 class DeadlockDetectorMock : public DeadlockDetector {
  public:
