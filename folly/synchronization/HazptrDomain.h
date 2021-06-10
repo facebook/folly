@@ -129,8 +129,6 @@ class hazptr_domain {
   RetiredList untagged_;
   RetiredList tagged_[kNumShards];
   Atom<int> count_{0};
-  Obj* unprotected_; // List of unprotected objects being reclaimed
-  ObjList children_; // Children of unprotected objects being reclaimed
   Atom<uint64_t> due_time_{0};
   Atom<ExecFn> exec_fn_{nullptr};
   Atom<int> exec_backlog_{0};
@@ -432,7 +430,7 @@ class hazptr_domain {
     });
     ObjList children;
     int count = nomatch.count();
-    reclaim_unprotected_unsafe(nomatch.head(), children);
+    reclaim_unprotected(nomatch.head(), children);
     count -= children.count();
     match.splice(children);
     List l(match.head(), match.tail());
@@ -490,17 +488,8 @@ class hazptr_domain {
     }
   }
 
-  /** reclaim_unprotected_safe */
-  void reclaim_unprotected_safe() {
-    while (unprotected_) {
-      auto obj = unprotected_;
-      unprotected_ = obj->next();
-      (*(obj->reclaim()))(obj, children_);
-    }
-  }
-
-  /** reclaim_unprotected_unsafe */
-  void reclaim_unprotected_unsafe(Obj* obj, ObjList& children) {
+  /** reclaim_unprotected */
+  void reclaim_unprotected(Obj* obj, ObjList& children) {
     while (obj) {
       auto next = obj->next();
       (*(obj->reclaim()))(obj, children);
