@@ -57,7 +57,8 @@ class SerialExecutor : public SequencedExecutor {
   SerialExecutor(SerialExecutor&&) = delete;
   SerialExecutor& operator=(SerialExecutor&&) = delete;
 
-  static KeepAlive<SerialExecutor> create(KeepAlive<Executor> parent);
+  static KeepAlive<SerialExecutor> create(
+      KeepAlive<Executor> parent = getGlobalCPUExecutor());
 
   class Deleter {
    public:

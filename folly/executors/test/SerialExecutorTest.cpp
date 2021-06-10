@@ -179,8 +179,7 @@ TEST(SerialExecutor, RecursiveAddInline) {
 }
 
 TEST(SerialExecutor, ExecutionThrows) {
-  auto executor = SerialExecutor::create(folly::getKeepAliveToken(
-      folly::getUnsafeMutableGlobalCPUExecutor().get()));
+  auto executor = SerialExecutor::create();
 
   // an empty Func will throw std::bad_function_call when invoked,
   // but SerialExecutor should catch that exception
