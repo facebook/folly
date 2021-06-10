@@ -1067,7 +1067,7 @@ TEST(IoUringBackend, SendmsgRecvmsg) {
   auto sendFd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
   CHECK_GT(sendFd, 0);
   auto recvFd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-  CHECK_GT(sendFd, 0);
+  CHECK_GT(recvFd, 0);
 
   folly::SocketAddress addr("::1", 0);
 
@@ -1128,9 +1128,6 @@ TEST(IoUringBackend, SendmsgRecvmsg) {
 
   sendMsg.msg_name = reinterpret_cast<void*>(&addrStorage);
   sendMsg.msg_namelen = recvAddr.getActualSize();
-
-  sendMsg.msg_iov = &sendIov;
-  sendMsg.msg_iovlen = 1;
 
   recvMsg.msg_iov = &recvIov;
   recvMsg.msg_iovlen = 1;
