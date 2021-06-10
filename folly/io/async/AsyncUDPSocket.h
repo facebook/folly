@@ -39,6 +39,9 @@ class AsyncUDPSocket : public EventHandler {
  public:
   enum class FDOwnership { OWNS, SHARED };
 
+  AsyncUDPSocket(const AsyncUDPSocket&) = delete;
+  AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
+
   class ReadCallback {
    public:
     struct OnDataAvailableParams {
@@ -493,9 +496,6 @@ class AsyncUDPSocket : public EventHandler {
   ReadCallback* readCallback_;
 
  private:
-  AsyncUDPSocket(const AsyncUDPSocket&) = delete;
-  AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
-
   void init(sa_family_t family, BindOptions bindOptions);
 
   // EventHandler
