@@ -25,12 +25,70 @@
 #include <folly/container/Array.h>
 #include <folly/container/Foreach.h>
 #include <folly/lang/CustomizationPoint.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/test/DeterministicSchedule.h>
 #include <folly/test/TestUtils.h>
 
 using namespace std::literals;
+
+extern "C" FOLLY_KEEP void //
+check_unique_lock_distributed_mutex_lock(
+    std::unique_lock<folly::DistributedMutex>& lock) {
+  lock.lock();
+}
+extern "C" FOLLY_KEEP bool //
+check_unique_lock_distributed_mutex_try_lock(
+    std::unique_lock<folly::DistributedMutex>& lock) {
+  return lock.try_lock();
+}
+extern "C" FOLLY_KEEP bool //
+check_unique_lock_distributed_mutex_try_lock_for_ns(
+    std::unique_lock<folly::DistributedMutex>& lock,
+    std::chrono::nanoseconds timeout) {
+  return lock.try_lock_for(timeout);
+}
+extern "C" FOLLY_KEEP bool //
+check_unique_lock_distributed_mutex_try_lock_until_steady_clock_time_point(
+    std::unique_lock<folly::DistributedMutex>& lock,
+    std::chrono::steady_clock::time_point deadline) {
+  return lock.try_lock_until(deadline);
+}
+extern "C" FOLLY_KEEP void //
+check_unique_lock_distributed_mutex_unlock(
+    std::unique_lock<folly::DistributedMutex>& lock) {
+  lock.unlock();
+}
+extern "C" FOLLY_KEEP void //
+check_unique_lock_distributed_mutex_raii_lock( //
+    folly::DistributedMutex& mutex) {
+  std::unique_lock lock{mutex};
+  folly::detail::keep_sink_nx();
+}
+extern "C" FOLLY_KEEP void //
+check_unique_lock_distributed_mutex_raii_try_lock(
+    folly::DistributedMutex& mutex) {
+  if (std::unique_lock lock{mutex, std::try_to_lock}) {
+    folly::detail::keep_sink_nx();
+  }
+}
+extern "C" FOLLY_KEEP void //
+check_unique_lock_distributed_mutex_raii_try_lock_for_ns(
+    folly::DistributedMutex& mutex, //
+    std::chrono::nanoseconds timeout) {
+  if (std::unique_lock lock{mutex, timeout}) {
+    folly::detail::keep_sink_nx();
+  }
+}
+extern "C" FOLLY_KEEP void //
+check_unique_lock_distributed_mutex_raii_try_lock_until_steady_clock_time_point(
+    folly::DistributedMutex& mutex,
+    std::chrono::steady_clock::time_point deadline) {
+  if (std::unique_lock lock{mutex, deadline}) {
+    folly::detail::keep_sink_nx();
+  }
+}
 
 namespace folly {
 namespace test {
