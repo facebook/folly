@@ -727,7 +727,7 @@ bool less_than_impl(LHS const lhs) {
       (!std::is_signed<RHS>::value && is_negative(lhs)) ? true :
       (!std::is_signed<LHS>::value && is_negative(rhs)) ? false :
       rhs > std::numeric_limits<LHS>::max() ? true :
-      rhs <= std::numeric_limits<LHS>::min() ? false :
+      rhs <= std::numeric_limits<LHS>::lowest() ? false :
       lhs < rhs;
   // clang-format on
 }
@@ -740,7 +740,7 @@ bool greater_than_impl(LHS const lhs) {
       (!std::is_signed<RHS>::value && is_negative(lhs)) ? false :
       (!std::is_signed<LHS>::value && is_negative(rhs)) ? true :
       rhs > std::numeric_limits<LHS>::max() ? false :
-      rhs < std::numeric_limits<LHS>::min() ? true :
+      rhs < std::numeric_limits<LHS>::lowest() ? true :
       lhs > rhs;
   // clang-format on
 }
