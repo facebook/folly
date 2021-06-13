@@ -300,6 +300,7 @@ void ParkingLot<Data>::unpark(const Key bits, Func&& func) {
   // B: Must be seq_cst.  Matches A.  If true, A *must* see in seq_cst
   // order any atomic updates in toPark() (and matching updates that
   // happen before unpark is called)
+  std::atomic_thread_fence(std::memory_order_seq_cst);
   if (bucket.count_.load(std::memory_order_seq_cst) == 0) {
     return;
   }
