@@ -26,6 +26,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/RWSpinLock.h>
 #include <folly/test/SynchronizedTestLib.h>
 
@@ -39,6 +40,7 @@ template <class Mutex>
 class SynchronizedTest : public testing::Test {};
 
 using SynchronizedTestTypes = testing::Types<
+    folly::DistributedMutex,
     folly::SharedMutexReadPriority,
     folly::SharedMutexWritePriority,
     std::mutex,
@@ -744,9 +746,6 @@ template <template <typename...> class Trait>
 void testLockedPtrCompatibilityExclusive() {
   EXPECT_TRUE((
       Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyTryExclusive>&&>::value));
-  EXPECT_TRUE((Trait<
-               LPtr<LockPolicyExclusive>,
-               LPtr<LockPolicyFromUpgradeToExclusive>&&>::value));
 
   EXPECT_FALSE(
       (Trait<LPtr<LockPolicyExclusive>&, LPtr<LockPolicyShared>&&>::value));
@@ -756,27 +755,12 @@ void testLockedPtrCompatibilityExclusive() {
       (Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyUpgrade>&&>::value));
   EXPECT_FALSE(
       (Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyTryUpgrade>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<LockPolicyExclusive>,
-                LPtr<LockPolicyFromExclusiveToUpgrade>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<LockPolicyExclusive>,
-                LPtr<LockPolicyFromExclusiveToShared>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyFromUpgradeToShared>&&>::
-           value));
 }
 
 template <template <typename...> class Trait>
 void testLockedPtrCompatibilityShared() {
   EXPECT_TRUE(
       (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyTryShared>&&>::value));
-  EXPECT_TRUE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromUpgradeToShared>&&>::
-           value));
-  EXPECT_TRUE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromExclusiveToShared>&&>::
-           value));
 
   EXPECT_FALSE(
       (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyExclusive>&&>::value));
@@ -786,21 +770,12 @@ void testLockedPtrCompatibilityShared() {
       (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyUpgrade>&&>::value));
   EXPECT_FALSE(
       (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyTryUpgrade>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromExclusiveToUpgrade>&&>::
-           value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromUpgradeToExclusive>&&>::
-           value));
 }
 
 template <template <typename...> class Trait>
 void testLockedPtrCompatibilityUpgrade() {
   EXPECT_TRUE(
       (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyTryUpgrade>&&>::value));
-  EXPECT_TRUE((
-      Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromExclusiveToUpgrade>&&>::
-          value));
 
   EXPECT_FALSE(
       (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyExclusive>&&>::value));
@@ -810,15 +785,6 @@ void testLockedPtrCompatibilityUpgrade() {
       (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyShared>&&>::value));
   EXPECT_FALSE(
       (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyTryShared>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromExclusiveToShared>&&>::
-           value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromUpgradeToShared>&&>::
-           value));
-  EXPECT_FALSE((
-      Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromUpgradeToExclusive>&&>::
-          value));
 }
 } // namespace
 

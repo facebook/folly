@@ -34,6 +34,7 @@
 #include <folly/Utility.h>
 #include <folly/container/Foreach.h>
 #include <folly/functional/ApplyTuple.h>
+#include <folly/synchronization/Lock.h>
 
 #include <glog/logging.h>
 
@@ -821,7 +822,15 @@ struct Synchronized : public SynchronizedBase<
       : datum_{std::get<IndicesOne>(std::move(datumArgs))...},
         mutex_{std::get<IndicesTwo>(std::move(mutexArgs))...} {}
 
-  // Synchronized data members
+  // simulacrum of data members - keep data members in sync!
+  // LockedPtr needs offsetof() which is specified only for standard-layout
+  // types which Synchronized is not so we define a simulacrum for offsetof
+  struct Simulacrum {
+    aligned_storage_for_t<DataType> datum_;
+    aligned_storage_for_t<MutexType> mutex_;
+  };
+
+  // data members - keep simulacrum of data members in sync!
   T datum_;
   mutable Mutex mutex_;
 };
@@ -1019,310 +1028,31 @@ auto lock(Synchronized& synchronized, Args&&... args) {
 } // namespace detail
 
 /**
- * A helper base class for implementing LockedPtr.
- *
- * The main reason for having this as a separate class is so we can specialize
- * it for std::mutex, so we can expose a std::unique_lock to the caller
- * when std::mutex is being used.  This allows callers to use a
- * std::condition_variable with the mutex from a Synchronized<T, std::mutex>.
- *
- * We don't use std::unique_lock with other Mutex types since it makes the
- * LockedPtr class slightly larger, and it makes the logic to support
- * ScopedUnlocker slightly more complicated.  std::mutex is the only one that
- * really seems to benefit from the unique_lock.  std::condition_variable
- * itself only supports std::unique_lock<std::mutex>, so there doesn't seem to
- * be any real benefit to exposing the unique_lock with other mutex types.
- *
- * Note that the SynchronizedType template parameter may or may not be const
- * qualified.
- */
-template <class SynchronizedType, class Mutex, class LockPolicy>
-class LockedPtrBase {
- public:
-  using MutexType = Mutex;
-  friend class folly::ScopedUnlocker<SynchronizedType, LockPolicy>;
-
-  /**
-   * Friend all instantiations of LockedPtr and LockedPtrBase
-   */
-  template <typename S, typename L>
-  friend class folly::LockedPtr;
-  template <typename S, typename M, typename L>
-  friend class LockedPtrBase;
-
-  /**
-   * Destructor releases.
-   */
-  ~LockedPtrBase() {
-    if (parent_) {
-      LockPolicy::unlock(parent_->mutex_);
-    }
-  }
-
-  /**
-   * Unlock the synchronized data.
-   *
-   * The LockedPtr can no longer be dereferenced after unlock() has been
-   * called.  isValid() will return false on an unlocked LockedPtr.
-   *
-   * unlock() can only be called on a LockedPtr that is valid.
-   */
-  void unlock() {
-    DCHECK(parent_ != nullptr);
-    LockPolicy::unlock(parent_->mutex_);
-    parent_ = nullptr;
-  }
-
- protected:
-  LockedPtrBase() {}
-  explicit LockedPtrBase(SynchronizedType* parent) : parent_(parent) {
-    DCHECK(parent);
-    if (!LockPolicy::lock(parent_->mutex_)) {
-      parent_ = nullptr;
-    }
-  }
-  template <class Rep, class Period>
-  LockedPtrBase(
-      SynchronizedType* parent,
-      const std::chrono::duration<Rep, Period>& timeout) {
-    if (LockPolicy::try_lock_for(parent->mutex_, timeout)) {
-      this->parent_ = parent;
-    }
-  }
-  LockedPtrBase(LockedPtrBase&& rhs) noexcept
-      : parent_{std::exchange(rhs.parent_, nullptr)} {}
-  LockedPtrBase& operator=(LockedPtrBase&& rhs) noexcept {
-    assignImpl(*this, rhs);
-    return *this;
-  }
-
-  /**
-   * Templated move construct and assignment operators
-   *
-   * These allow converting LockedPtr types that have the same unlocking
-   * policy to each other.  This allows us to write code like
-   *
-   *  auto wlock = sync.wlock();
-   *  wlock.unlock();
-   *
-   *  auto ulock = sync.ulock();
-   *  wlock = ulock.moveFromUpgradeToWrite();
-   */
-  template <typename LockPolicyType>
-  LockedPtrBase(
-      LockedPtrBase<SynchronizedType, Mutex, LockPolicyType>&& rhs) noexcept
-      : parent_{std::exchange(rhs.parent_, nullptr)} {}
-  template <typename LockPolicyType>
-  LockedPtrBase& operator=(
-      LockedPtrBase<SynchronizedType, Mutex, LockPolicyType>&& rhs) noexcept {
-    assignImpl(*this, rhs);
-    return *this;
-  }
-
-  /**
-   * Implementation for the assignment operator
-   */
-  template <typename LockPolicyLhs, typename LockPolicyRhs>
-  void assignImpl(
-      LockedPtrBase<SynchronizedType, Mutex, LockPolicyLhs>& lhs,
-      LockedPtrBase<SynchronizedType, Mutex, LockPolicyRhs>& rhs) noexcept {
-    if (lhs.parent_) {
-      LockPolicy::unlock(lhs.parent_->mutex_);
-    }
-
-    lhs.parent_ = std::exchange(rhs.parent_, nullptr);
-  }
-
-  using UnlockerData = SynchronizedType*;
-
-  /**
-   * Get a pointer to the Synchronized object from the UnlockerData.
-   *
-   * In the generic case UnlockerData is just the Synchronized pointer,
-   * so we return it as is.  (This function is more interesting in the
-   * std::mutex specialization below.)
-   */
-  static SynchronizedType* getSynchronized(UnlockerData data) { return data; }
-
-  UnlockerData releaseLock() {
-    DCHECK(parent_ != nullptr);
-    auto current = parent_;
-    parent_ = nullptr;
-    LockPolicy::unlock(current->mutex_);
-    return current;
-  }
-  void reacquireLock(UnlockerData&& data) {
-    DCHECK(parent_ == nullptr);
-    parent_ = data;
-    LockPolicy::lock(parent_->mutex_);
-  }
-
-  SynchronizedType* parent_ = nullptr;
-};
-
-/**
- * LockedPtrBase specialization for use with std::mutex.
- *
- * When std::mutex is used we use a std::unique_lock to hold the mutex.
- * This makes it possible to use std::condition_variable with a
- * Synchronized<T, std::mutex>.
- */
-template <class SynchronizedType, class LockPolicy>
-class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
- public:
-  using MutexType = std::mutex;
-  friend class folly::ScopedUnlocker<SynchronizedType, LockPolicy>;
-
-  /**
-   * Friend all instantiations of LockedPtr and LockedPtrBase
-   */
-  template <typename S, typename L>
-  friend class folly::LockedPtr;
-  template <typename S, typename M, typename L>
-  friend class LockedPtrBase;
-
-  /**
-   * Destructor releases.
-   */
-  ~LockedPtrBase() {
-    // The std::unique_lock will automatically release the lock when it is
-    // destroyed, so we don't need to do anything extra here.
-  }
-
-  LockedPtrBase(LockedPtrBase&& rhs) noexcept
-      : lock_{std::move(rhs.lock_)},
-        parent_{std::exchange(rhs.parent_, nullptr)} {}
-  LockedPtrBase& operator=(LockedPtrBase&& rhs) noexcept {
-    assignImpl(*this, rhs);
-    return *this;
-  }
-
-  /**
-   * Templated move construct and assignment operators
-   *
-   * These allow converting LockedPtr types that have the same unlocking
-   * policy to each other.
-   */
-  template <typename LockPolicyType>
-  LockedPtrBase(LockedPtrBase<SynchronizedType, std::mutex, LockPolicyType>&&
-                    other) noexcept
-      : lock_{std::move(other.lock_)},
-        parent_{std::exchange(other.parent_, nullptr)} {}
-  template <typename LockPolicyType>
-  LockedPtrBase& operator=(
-      LockedPtrBase<SynchronizedType, std::mutex, LockPolicyType>&&
-          rhs) noexcept {
-    assignImpl(*this, rhs);
-    return *this;
-  }
-
-  /**
-   * Implementation for the assignment operator
-   */
-  template <typename LockPolicyLhs, typename LockPolicyRhs>
-  void assignImpl(
-      LockedPtrBase<SynchronizedType, std::mutex, LockPolicyLhs>& lhs,
-      LockedPtrBase<SynchronizedType, std::mutex, LockPolicyRhs>&
-          rhs) noexcept {
-    lhs.lock_ = std::move(rhs.lock_);
-    lhs.parent_ = std::exchange(rhs.parent_, nullptr);
-  }
-
-  /**
-   * Get a reference to the std::unique_lock.
-   *
-   * This is provided so that callers can use Synchronized<T, std::mutex>
-   * with a std::condition_variable.
-   *
-   * While this API could be used to bypass the normal Synchronized APIs and
-   * manually interact with the underlying unique_lock, this is strongly
-   * discouraged.
-   */
-  std::unique_lock<std::mutex>& getUniqueLock() { return lock_; }
-
-  /**
-   * Unlock the synchronized data.
-   *
-   * The LockedPtr can no longer be dereferenced after unlock() has been
-   * called.  isValid() will return false on an unlocked LockedPtr.
-   *
-   * unlock() can only be called on a LockedPtr that is valid.
-   */
-  void unlock() {
-    DCHECK(parent_ != nullptr);
-    lock_.unlock();
-    parent_ = nullptr;
-  }
-
- protected:
-  LockedPtrBase() {}
-  explicit LockedPtrBase(SynchronizedType* parent)
-      : lock_{parent->mutex_, std::adopt_lock}, parent_{parent} {
-    DCHECK(parent);
-    if (!LockPolicy::lock(parent_->mutex_)) {
-      parent_ = nullptr;
-      lock_.release();
-    }
-  }
-
-  using UnlockerData =
-      std::pair<std::unique_lock<std::mutex>, SynchronizedType*>;
-
-  static SynchronizedType* getSynchronized(const UnlockerData& data) {
-    return data.second;
-  }
-
-  UnlockerData releaseLock() {
-    DCHECK(parent_ != nullptr);
-    UnlockerData data(std::move(lock_), parent_);
-    parent_ = nullptr;
-    data.first.unlock();
-    return data;
-  }
-  void reacquireLock(UnlockerData&& data) {
-    lock_ = std::move(data.first);
-    lock_.lock();
-    parent_ = data.second;
-  }
-
-  // The specialization for std::mutex does have to store slightly more
-  // state than the default implementation.
-  std::unique_lock<std::mutex> lock_;
-  SynchronizedType* parent_ = nullptr;
-};
-
-/**
  * This class temporarily unlocks a LockedPtr in a scoped manner.
  */
 template <class SynchronizedType, class LockPolicy>
 class ScopedUnlocker {
  public:
-  explicit ScopedUnlocker(LockedPtr<SynchronizedType, LockPolicy>* p)
-      : ptr_(p), data_(ptr_->releaseLock()) {}
+  explicit ScopedUnlocker(LockedPtr<SynchronizedType, LockPolicy>* p) noexcept
+      : ptr_(p), parent_(p->parent()) {
+    ptr_->releaseLock();
+  }
   ScopedUnlocker(const ScopedUnlocker&) = delete;
   ScopedUnlocker& operator=(const ScopedUnlocker&) = delete;
   ScopedUnlocker(ScopedUnlocker&& other) noexcept
       : ptr_(std::exchange(other.ptr_, nullptr)),
-        data_(std::move(other.data_)) {}
+        parent_(std::exchange(other.parent_, nullptr)) {}
   ScopedUnlocker& operator=(ScopedUnlocker&& other) = delete;
 
-  ~ScopedUnlocker() {
+  ~ScopedUnlocker() noexcept(false) {
     if (ptr_) {
-      ptr_->reacquireLock(std::move(data_));
+      ptr_->reacquireLock(parent_);
     }
   }
 
-  /**
-   * Return a pointer to the Synchronized object used by this ScopedUnlocker.
-   */
-  SynchronizedType* getSynchronized() const {
-    return LockedPtr<SynchronizedType, LockPolicy>::getSynchronized(data_);
-  }
-
  private:
-  using Data = typename LockedPtr<SynchronizedType, LockPolicy>::UnlockerData;
   LockedPtr<SynchronizedType, LockPolicy>* ptr_{nullptr};
-  Data data_;
+  SynchronizedType* parent_{nullptr};
 };
 
 /**
@@ -1336,49 +1066,42 @@ class ScopedUnlocker {
  * exclusive or shared mode.
  */
 template <class SynchronizedType, class LockPolicy>
-class LockedPtr : public LockedPtrBase<
-                      SynchronizedType,
-                      typename SynchronizedType::MutexType,
-                      LockPolicy> {
+class LockedPtr {
  private:
-  using Base = LockedPtrBase<
-      SynchronizedType,
-      typename SynchronizedType::MutexType,
-      LockPolicy>;
   constexpr static bool AllowsConcurrentAccess =
       LockPolicy::allows_concurrent_access;
-  using UnlockerData = typename Base::UnlockerData;
-  // CDataType is the DataType with the appropriate const-qualification
-  using CDataType =
+
+  using CDataType = // the DataType with the appropriate const-qualification
       detail::SynchronizedDataType<SynchronizedType, AllowsConcurrentAccess>;
-  // Enable only if the unlock policy of the other LockPolicy is the same as
-  // ours
+
   template <typename LockPolicyOther>
   using EnableIfSameUnlockPolicy = std::enable_if_t<std::is_same<
       typename LockPolicy::UnlockPolicy,
       typename LockPolicyOther::UnlockPolicy>::value>;
 
-  // friend other LockedPtr types
-  template <typename SynchronizedTypeOther, typename LockPolicyOther>
+  template <typename, typename>
   friend class LockedPtr;
+
+  friend class ScopedUnlocker<SynchronizedType, LockPolicy>;
 
  public:
   using DataType = typename SynchronizedType::DataType;
   using MutexType = typename SynchronizedType::MutexType;
   using Synchronized = typename std::remove_const<SynchronizedType>::type;
-  friend class ScopedUnlocker<SynchronizedType, LockPolicy>;
+  using LockType = typename LockPolicy::template lock_type<MutexType>;
 
   /**
    * Creates an uninitialized LockedPtr.
    *
    * Dereferencing an uninitialized LockedPtr is not allowed.
    */
-  LockedPtr() {}
+  LockedPtr() = default;
 
   /**
    * Takes a Synchronized<T> and locks it.
    */
-  explicit LockedPtr(SynchronizedType* parent) : Base(parent) {}
+  explicit LockedPtr(SynchronizedType* parent)
+      : lock_{!parent ? LockType{} : doLock(parent->mutex_)} {}
 
   /**
    * Takes a Synchronized<T> and attempts to lock it, within the specified
@@ -1392,7 +1115,7 @@ class LockedPtr : public LockedPtrBase<
   LockedPtr(
       SynchronizedType* parent,
       const std::chrono::duration<Rep, Period>& timeout)
-      : Base(parent, timeout) {}
+      : lock_{parent ? LockType{parent->mutex_, timeout} : LockType{}} {}
 
   /**
    * Move constructor.
@@ -1401,8 +1124,9 @@ class LockedPtr : public LockedPtrBase<
   template <
       typename LockPolicyType,
       EnableIfSameUnlockPolicy<LockPolicyType>* = nullptr>
-  LockedPtr(LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept
-      : Base{std::move(other)} {}
+  explicit LockedPtr(
+      LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept
+      : lock_{std::move(other.lock_)} {}
 
   /**
    * Move assignment operator.
@@ -1413,7 +1137,7 @@ class LockedPtr : public LockedPtrBase<
       EnableIfSameUnlockPolicy<LockPolicyType>* = nullptr>
   LockedPtr& operator=(
       LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept {
-    Base::operator=(std::move(other));
+    lock_ = std::move(other.lock_);
     return *this;
   }
 
@@ -1426,7 +1150,31 @@ class LockedPtr : public LockedPtrBase<
   /**
    * Destructor releases.
    */
-  ~LockedPtr() {}
+  ~LockedPtr() = default;
+
+  /**
+   * Access the underlying lock object.
+   */
+  LockType& as_lock() noexcept { return lock_; }
+  LockType const& as_lock() const noexcept { return lock_; }
+
+  /**
+   * Deprecated. For backward compatibility. Use as_lock() instead.
+   */
+  template <
+      typename M = MutexType,
+      std::enable_if_t<std::is_same<M, std::mutex>::value, int> = 0>
+  LockType& getUniqueLock() noexcept {
+    static_assert(std::is_same<M, MutexType>::value, "mismatch");
+    return as_lock();
+  }
+  template <
+      typename M = MutexType,
+      std::enable_if_t<std::is_same<M, std::mutex>::value, int> = 0>
+  LockType const& getUniqueLock() const noexcept {
+    static_assert(std::is_same<M, MutexType>::value, "mismatch");
+    return as_lock();
+  }
 
   /**
    * Check if this LockedPtr is uninitialized, or points to valid locked data.
@@ -1438,28 +1186,30 @@ class LockedPtr : public LockedPtrBase<
    * Methods such as scopedUnlock() reset the LockedPtr to null for the
    * duration of the unlock.
    */
-  bool isNull() const { return this->parent_ == nullptr; }
+  bool isNull() const { return !lock_.owns_lock(); }
 
   /**
    * Explicit boolean conversion.
    *
    * Returns !isNull()
    */
-  explicit operator bool() const { return this->parent_ != nullptr; }
+  explicit operator bool() const { return lock_.owns_lock(); }
 
   /**
    * Access the locked data.
    *
    * This method should only be used if the LockedPtr is valid.
    */
-  CDataType* operator->() const { return &this->parent_->datum_; }
+  CDataType* operator->() const { return std::addressof(parent()->datum_); }
 
   /**
    * Access the locked data.
    *
    * This method should only be used if the LockedPtr is valid.
    */
-  CDataType& operator*() const { return this->parent_->datum_; }
+  CDataType& operator*() const { return parent()->datum_; }
+
+  void unlock() noexcept { lock_ = {}; }
 
   /**
    * Locks that allow concurrent access (shared, upgrade) force const
@@ -1486,7 +1236,7 @@ class LockedPtr : public LockedPtrBase<
         "asNonConstUnsafe() is only available on non-exclusive locks"
         " acquired in a non-const context");
 
-    return this->parent_->datum_;
+    return parent()->datum_;
   }
 
   /**
@@ -1512,10 +1262,9 @@ class LockedPtr : public LockedPtrBase<
       typename SyncType = SynchronizedType,
       typename = typename std::enable_if<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
-  LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>
-  moveFromUpgradeToWrite() {
-    return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>(
-        std::exchange(this->parent_, nullptr));
+  LockedPtr<SynchronizedType, LockPolicyExclusive> moveFromUpgradeToWrite() {
+    static_assert(std::is_same<SyncType, SynchronizedType>::value, "mismatch");
+    return transition_to_unique_lock(lock_);
   }
 
   /**
@@ -1526,10 +1275,9 @@ class LockedPtr : public LockedPtrBase<
       typename SyncType = SynchronizedType,
       typename = typename std::enable_if<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
-  LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>
-  moveFromWriteToUpgrade() {
-    return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>(
-        std::exchange(this->parent_, nullptr));
+  LockedPtr<SynchronizedType, LockPolicyUpgrade> moveFromWriteToUpgrade() {
+    static_assert(std::is_same<SyncType, SynchronizedType>::value, "mismatch");
+    return transition_to_upgrade_lock(lock_);
   }
 
   /**
@@ -1540,10 +1288,9 @@ class LockedPtr : public LockedPtrBase<
       typename SyncType = SynchronizedType,
       typename = typename std::enable_if<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
-  LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>
-  moveFromUpgradeToRead() {
-    return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>(
-        std::exchange(this->parent_, nullptr));
+  LockedPtr<SynchronizedType, LockPolicyShared> moveFromUpgradeToRead() {
+    static_assert(std::is_same<SyncType, SynchronizedType>::value, "mismatch");
+    return transition_to_shared_lock(lock_);
   }
 
   /**
@@ -1554,11 +1301,51 @@ class LockedPtr : public LockedPtrBase<
       typename SyncType = SynchronizedType,
       typename = typename std::enable_if<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
-  LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>
-  moveFromWriteToRead() {
-    return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>(
-        std::exchange(this->parent_, nullptr));
+  LockedPtr<SynchronizedType, LockPolicyShared> moveFromWriteToRead() {
+    static_assert(std::is_same<SyncType, SynchronizedType>::value, "mismatch");
+    return transition_to_shared_lock(lock_);
   }
+
+ private:
+  /* implicit */ LockedPtr(LockType lock) noexcept : lock_{std::move(lock)} {}
+
+  template <
+      typename MT,
+      typename LT = LockType,
+      typename LP = LockPolicy,
+      std::enable_if_t<LP::is_try, int> = 0>
+  FOLLY_ERASE static LT doLock(MT& mutex) {
+    return LT{mutex, std::try_to_lock};
+  }
+  template <
+      typename MT,
+      typename LT = LockType,
+      typename LP = LockPolicy,
+      std::enable_if_t<!LP::is_try, int> = 0>
+  FOLLY_ERASE static LT doLock(MT& mutex) {
+    return LT{mutex};
+  }
+
+  void releaseLock() noexcept {
+    DCHECK(lock_.owns_lock());
+    lock_ = {};
+  }
+  void reacquireLock(SynchronizedType* parent) {
+    DCHECK(parent);
+    DCHECK(!lock_.owns_lock());
+    lock_ = doLock(parent->mutex_);
+  }
+
+  SynchronizedType* parent() const {
+    using simulacrum = typename SynchronizedType::Simulacrum;
+    static_assert(sizeof(simulacrum) == sizeof(SynchronizedType), "mismatch");
+    static_assert(alignof(simulacrum) == alignof(SynchronizedType), "mismatch");
+    constexpr auto off = offsetof(simulacrum, mutex_);
+    const auto raw = reinterpret_cast<char*>(lock_.mutex());
+    return reinterpret_cast<SynchronizedType*>(raw - (raw ? off : 0));
+  }
+
+  LockType lock_;
 };
 
 /**

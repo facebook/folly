@@ -256,30 +256,6 @@ TEST(LockTraits, LockPolicy) {
   mutex.lock_upgrade();
   LockPolicyUpgrade::unlock(mutex);
 
-  mutex.lock_upgrade();
-  LockPolicyFromUpgradeToExclusive::lock(mutex);
-  mutex.unlock();
-  mutex.lock();
-  LockPolicyFromUpgradeToExclusive::unlock(mutex);
-
-  mutex.lock();
-  LockPolicyFromExclusiveToUpgrade::lock(mutex);
-  mutex.unlock_upgrade();
-  mutex.lock_upgrade();
-  LockPolicyFromExclusiveToUpgrade::unlock(mutex);
-
-  mutex.lock_upgrade();
-  LockPolicyFromUpgradeToShared::lock(mutex);
-  mutex.unlock_shared();
-  mutex.lock_shared();
-  LockPolicyFromUpgradeToShared::unlock(mutex);
-
-  mutex.lock();
-  LockPolicyFromExclusiveToShared::lock(mutex);
-  mutex.unlock_shared();
-  mutex.lock_shared();
-  LockPolicyFromExclusiveToShared::unlock(mutex);
-
   EXPECT_EQ(mutex.lock_state, Mutex::CurrentLockState::UNLOCKED);
 }
 
@@ -293,30 +269,6 @@ TEST(LockTraits, LockPolicyTimed) {
   bool gotLock = LockPolicyUpgrade::try_lock_for(mutex, one_ms);
   EXPECT_TRUE(gotLock) << "Should have been able to acquire the fake mutex";
   LockPolicyUpgrade::unlock(mutex);
-
-  mutex.lock_upgrade();
-  gotLock = LockPolicyFromUpgradeToExclusive::try_lock_for(mutex, one_ms);
-  EXPECT_TRUE(gotLock)
-      << "Should have been able to upgrade from upgrade to unique";
-  mutex.unlock();
-
-  mutex.lock();
-  gotLock = LockPolicyFromExclusiveToUpgrade::try_lock_for(mutex, one_ms);
-  EXPECT_TRUE(gotLock) << "Should have been able to downgrade from exclusive "
-                          "to upgrade";
-  mutex.unlock_upgrade();
-
-  mutex.lock_upgrade();
-  gotLock = LockPolicyFromUpgradeToShared::try_lock_for(mutex, one_ms);
-  EXPECT_TRUE(gotLock) << "Should have been able to downgrade from upgrade to "
-                          "shared";
-  mutex.unlock_shared();
-
-  mutex.lock();
-  gotLock = LockPolicyFromExclusiveToShared::try_lock_for(mutex, one_ms);
-  EXPECT_TRUE(gotLock) << "Should have been able to downgrade from exclusive "
-                          "to shared";
-  mutex.unlock_shared();
 }
 
 /**
@@ -330,24 +282,12 @@ TEST(LockTraits, LockPolicyCompatibilities) {
   EXPECT_TRUE((std::is_same<
                LockPolicyExclusive::UnlockPolicy,
                LockPolicyTryExclusive::UnlockPolicy>::value));
-  EXPECT_TRUE((std::is_same<
-               LockPolicyExclusive::UnlockPolicy,
-               LockPolicyFromUpgradeToExclusive::UnlockPolicy>::value));
 
   EXPECT_TRUE((std::is_same<
                LockPolicyShared::UnlockPolicy,
                LockPolicyTryShared::UnlockPolicy>::value));
-  EXPECT_TRUE((std::is_same<
-               LockPolicyShared::UnlockPolicy,
-               LockPolicyFromUpgradeToShared::UnlockPolicy>::value));
-  EXPECT_TRUE((std::is_same<
-               LockPolicyShared::UnlockPolicy,
-               LockPolicyFromExclusiveToShared::UnlockPolicy>::value));
 
   EXPECT_TRUE((std::is_same<
                LockPolicyUpgrade::UnlockPolicy,
                LockPolicyTryUpgrade::UnlockPolicy>::value));
-  EXPECT_TRUE((std::is_same<
-               LockPolicyUpgrade::UnlockPolicy,
-               LockPolicyFromExclusiveToUpgrade::UnlockPolicy>::value));
 }

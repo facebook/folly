@@ -72,7 +72,7 @@ void runParallel(size_t numThreads, const Function& function) {
     // as close to the same time as possible.
     {
       auto lockedGo = go.lock();
-      goCV.wait(lockedGo.getUniqueLock(), [&] { return *lockedGo; });
+      goCV.wait(lockedGo.as_lock(), [&] { return *lockedGo; });
     }
 
     function(threadIndex);
@@ -86,9 +86,8 @@ void runParallel(size_t numThreads, const Function& function) {
   // Wait for all threads to become ready
   {
     auto readyLocked = threadsReady.lock();
-    readyCV.wait(readyLocked.getUniqueLock(), [&] {
-      return *readyLocked == numThreads;
-    });
+    readyCV.wait(
+        readyLocked.as_lock(), [&] { return *readyLocked == numThreads; });
   }
   // Now signal the threads that they can go
   go = true;
