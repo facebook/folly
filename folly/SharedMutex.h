@@ -1578,18 +1578,6 @@ class SharedMutexImpl : std::conditional_t<
     friend class UpgradeHolder;
     SharedMutexImpl* lock_;
   };
-
-  // Adapters for Synchronized<>
-  friend void acquireRead(SharedMutexImpl& lock) { lock.lock_shared(); }
-  friend void acquireReadWrite(SharedMutexImpl& lock) { lock.lock(); }
-  friend void releaseRead(SharedMutexImpl& lock) { lock.unlock_shared(); }
-  friend void releaseReadWrite(SharedMutexImpl& lock) { lock.unlock(); }
-  friend bool acquireRead(SharedMutexImpl& lock, unsigned int ms) {
-    return lock.try_lock_shared_for(std::chrono::milliseconds(ms));
-  }
-  friend bool acquireReadWrite(SharedMutexImpl& lock, unsigned int ms) {
-    return lock.try_lock_for(std::chrono::milliseconds(ms));
-  }
 };
 
 using SharedMutexReadPriority = SharedMutexImpl<true>;
