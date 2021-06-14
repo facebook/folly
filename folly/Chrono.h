@@ -17,6 +17,7 @@
 #pragma once
 
 #include <chrono>
+#include <ctime>
 #include <stdexcept>
 #include <type_traits>
 
@@ -175,28 +176,59 @@ namespace folly {
 namespace chrono {
 
 struct coarse_steady_clock {
-  using rep = std::chrono::milliseconds::rep;
-  using period = std::chrono::milliseconds::period;
-  using duration = std::chrono::duration<rep, period>;
-  using time_point = std::chrono::time_point<coarse_steady_clock, duration>;
+  using duration = std::chrono::milliseconds;
+  using rep = duration::rep;
+  using period = duration::period;
+  using time_point = std::chrono::time_point<coarse_steady_clock>;
   constexpr static bool is_steady = true;
 
   static time_point now() noexcept {
 #ifndef CLOCK_MONOTONIC_COARSE
-    return time_point(std::chrono::duration_cast<duration>(
-        std::chrono::steady_clock::now().time_since_epoch()));
+    auto time = std::chrono::steady_clock::now().time_since_epoch();
 #else
     timespec ts;
-    auto ret = clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
+    int ret = clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
     if (kIsDebug && (ret != 0)) {
       throw_exception<std::runtime_error>(
           "Error using CLOCK_MONOTONIC_COARSE.");
     }
-
-    return time_point(std::chrono::duration_cast<duration>(
-        std::chrono::seconds(ts.tv_sec) +
-        std::chrono::nanoseconds(ts.tv_nsec)));
+    auto time =
+        std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
 #endif
+    return time_point(std::chrono::duration_cast<duration>(time));
+  }
+};
+
+struct coarse_system_clock {
+  using duration = std::chrono::milliseconds;
+  using rep = duration::rep;
+  using period = duration::period;
+  using time_point = std::chrono::time_point<coarse_system_clock>;
+  constexpr static bool is_steady = false;
+
+  static time_point now() noexcept {
+#ifndef CLOCK_REALTIME_COARSE
+    auto time = std::chrono::system_clock::now().time_since_epoch();
+#else
+    timespec ts;
+    int ret = clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    if (kIsDebug && (ret != 0)) {
+      throw_exception<std::runtime_error>("Error using CLOCK_REALTIME_COARSE.");
+    }
+    auto time =
+        std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
+#endif
+    return time_point(std::chrono::duration_cast<duration>(time));
+  }
+
+  static std::time_t to_time_t(const time_point& t) noexcept {
+    auto d = t.time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::seconds>(d).count();
+  }
+
+  static time_point from_time_t(std::time_t t) noexcept {
+    return time_point(
+        std::chrono::duration_cast<duration>(std::chrono::seconds(t)));
   }
 };
 
