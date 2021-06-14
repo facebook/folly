@@ -654,7 +654,7 @@ When used with a `std::mutex`, `Synchronized` supports using a
 in the internal data.
 
 The `LockedPtr` returned by `Synchronized<T, std::mutex>::lock()` has a
-`getUniqueLock()` method that returns a reference to a
+`as_lock()` method that returns a reference to a
 `std::unique_lock<std::mutex>`, which can be given to the
 `std::condition_variable`:
 
@@ -665,7 +665,7 @@ The `LockedPtr` returned by `Synchronized<T, std::mutex>::lock()` has a
     // Assuming some other thread will put data on vec and signal
     // emptySignal, we can then wait on it as follows:
     auto locked = vec.lock();
-    emptySignal.wait(locked.getUniqueLock(),
+    emptySignal.wait(locked.as_lock(),
                      [&] { return !locked->empty(); });
 ```
 

@@ -341,7 +341,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
    * This is similar to withULock(), but the function will be passed a
    * LockedPtr rather than a reference to the data itself.
    *
-   * This allows scopedUnlock() and getUniqueLock() to be called on the
+   * This allows scopedUnlock() and as_lock() to be called on the
    * LockedPtr argument.
    *
    * This also allows you to upgrade the LockedPtr proxy to a write state so
@@ -447,7 +447,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
    * This is similar to withWLock(), but the function will be passed a
    * LockedPtr rather than a reference to the data itself.
    *
-   * This allows scopedUnlock() and getUniqueLock() to be called on the
+   * This allows scopedUnlock() and as_lock() to be called on the
    * LockedPtr argument.
    */
   template <class Function>
@@ -1157,24 +1157,6 @@ class LockedPtr {
    */
   LockType& as_lock() noexcept { return lock_; }
   LockType const& as_lock() const noexcept { return lock_; }
-
-  /**
-   * Deprecated. For backward compatibility. Use as_lock() instead.
-   */
-  template <
-      typename M = MutexType,
-      std::enable_if_t<std::is_same<M, std::mutex>::value, int> = 0>
-  LockType& getUniqueLock() noexcept {
-    static_assert(std::is_same<M, MutexType>::value, "mismatch");
-    return as_lock();
-  }
-  template <
-      typename M = MutexType,
-      std::enable_if_t<std::is_same<M, std::mutex>::value, int> = 0>
-  LockType const& getUniqueLock() const noexcept {
-    static_assert(std::is_same<M, MutexType>::value, "mismatch");
-    return as_lock();
-  }
 
   /**
    * Check if this LockedPtr is uninitialized, or points to valid locked data.
