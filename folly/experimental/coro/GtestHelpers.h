@@ -95,6 +95,42 @@
       test_fixture,                        \
       ::testing::internal::GetTypeId<test_fixture>())
 
+#define CO_TEST_P(test_suite_name, test_name)                                  \
+  class GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)                     \
+      : public test_suite_name {                                               \
+   public:                                                                     \
+    GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)() {}                    \
+    void TestBody() override;                                                  \
+    folly::coro::Task<void> co_TestBody();                                     \
+                                                                               \
+   private:                                                                    \
+    static int AddToRegistry() {                                               \
+      ::testing::UnitTest::GetInstance()                                       \
+          ->parameterized_test_registry()                                      \
+          .GetTestSuitePatternHolder<test_suite_name>(                         \
+              GTEST_STRINGIFY_(test_suite_name),                               \
+              ::testing::internal::CodeLocation(__FILE__, __LINE__))           \
+          ->AddTestPattern(                                                    \
+              GTEST_STRINGIFY_(test_suite_name),                               \
+              GTEST_STRINGIFY_(test_name),                                     \
+              new ::testing::internal::TestMetaFactory<GTEST_TEST_CLASS_NAME_( \
+                  test_suite_name, test_name)>(),                              \
+              ::testing::internal::CodeLocation(__FILE__, __LINE__));          \
+      return 0;                                                                \
+    }                                                                          \
+    static int gtest_registering_dummy_ GTEST_ATTRIBUTE_UNUSED_;               \
+    GTEST_DISALLOW_COPY_AND_ASSIGN_(                                           \
+        GTEST_TEST_CLASS_NAME_(test_suite_name, test_name));                   \
+  };                                                                           \
+  int GTEST_TEST_CLASS_NAME_(                                                  \
+      test_suite_name, test_name)::gtest_registering_dummy_ =                  \
+      GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::AddToRegistry();     \
+  void GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::TestBody() {        \
+    folly::coro::blockingWait(co_TestBody());                                  \
+  }                                                                            \
+  folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                              \
+      test_suite_name, test_name)::co_TestBody()
+
 /**
  * Coroutine versions of GTests's Assertion predicate macros. Use these in place
  * of ASSERT_* in CO_TEST or coroutine functions.
