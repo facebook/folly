@@ -1645,4 +1645,210 @@ TEST_F(CollectAllTryWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
   }());
 }
 
+class CollectAnyTest : public testing::Test {};
+
+TEST_F(CollectAnyTest, OneTaskWithValue) {
+  folly::coro::Baton baton;
+  auto f = [&]() -> folly::coro::Task<std::string> {
+    co_await baton;
+    co_return "hello";
+  };
+
+  bool completed = false;
+  auto run = [&]() -> folly::coro::Task<void> {
+    auto [index, result] = co_await folly::coro::collectAny(f());
+    CHECK_EQ("hello", result.value());
+    CHECK_EQ(0, index);
+    completed = true;
+  };
+
+  folly::ManualExecutor executor;
+
+  auto future = run().scheduleOn(&executor).start();
+
+  executor.drain();
+
+  CHECK(!completed);
+
+  baton.post();
+
+  // Posting the baton should have just scheduled the 'f()' coroutine
+  // for resumption on the executor but should not have executed
+  // until we drain the executor again.
+  CHECK(!completed);
+
+  executor.drain();
+
+  CHECK(completed);
+  CHECK(future.isReady());
+}
+
+TEST_F(CollectAnyTest, OneVoidTask) {
+  bool completed = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    // Checks that the task actually runs and that 'void' results are
+    // promoted to folly::Unit when placed in a tuple.
+    std::pair<std::size_t, folly::Try<void>> result =
+        co_await folly::coro::collectAny([&]() -> folly::coro::Task<void> {
+          completed = true;
+          co_return;
+        }());
+    (void)result;
+  }());
+  CHECK(completed);
+}
+
+TEST_F(CollectAnyTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
+  folly::coro::Baton baton1;
+  folly::coro::Baton baton2;
+  bool task1Started = false;
+  bool task2Started = false;
+  bool complete = false;
+  constexpr std::size_t taskTerminatingExpectedIndex = 1;
+
+  auto run = [&]() -> folly::coro::Task<void> {
+    auto [index, result] = co_await folly::coro::collectAny(
+        [&]() -> folly::coro::Task<int> {
+          task1Started = true;
+          co_await baton1;
+          co_return 42;
+        }(),
+        [&]() -> folly::coro::Task<int> {
+          task2Started = true;
+          co_await baton2;
+          co_return 314;
+        }());
+    complete = true;
+    CHECK_EQ(taskTerminatingExpectedIndex, index);
+    CHECK_EQ(result.value(), 314);
+  };
+
+  folly::ManualExecutor executor;
+
+  auto future = run().scheduleOn(&executor).start();
+
+  CHECK(!task1Started);
+  CHECK(!task2Started);
+
+  executor.drain();
+
+  CHECK(task1Started);
+  CHECK(task2Started);
+  CHECK(!complete);
+  baton2.post();
+  executor.drain();
+  CHECK(!complete);
+  baton1.post();
+  executor.drain();
+  CHECK(complete);
+  CHECK(future.isReady());
+}
+
+TEST_F(CollectAnyTest, ThrowsFirstError) {
+  bool caughtException = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    bool throwError = true;
+    // Child tasks are started in-order.
+    // The first task will reschedule itself onto the executor.
+    // The second task will fail immediately and will be the first
+    // task to fail.
+    // Then the third and first tasks will fail.
+    // As the second task failed first we should see its exception
+    // propagate out of collectAny().
+    auto [index, result] = co_await folly::coro::collectAny(
+        [&]() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          if (throwError) {
+            throw ErrorA{};
+          }
+          co_return 1;
+        }(),
+        [&]() -> folly::coro::Task<int> {
+          if (throwError) {
+            throw ErrorB{};
+          }
+          co_return 2;
+        }(),
+        [&]() -> folly::coro::Task<int> {
+          if (throwError) {
+            throw ErrorC{};
+          }
+          co_return 3;
+        }());
+    CHECK_EQ(1, index);
+    try {
+      result.value();
+      CHECK(false);
+    } catch (const ErrorB&) {
+      caughtException = true;
+    }
+  }());
+  CHECK(caughtException);
+}
+
+TEST_F(CollectAnyTest, CollectAnyCancelsSubtasksWhenASubtaskCompletes) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+
+    auto [index, result] = co_await folly::coro::collectAny(
+        []() -> folly::coro::Task<int> {
+          co_await sleepThatShouldBeCancelled(10s);
+          co_return 42;
+        }(),
+        []() -> folly::coro::Task<int> {
+          co_await sleepThatShouldBeCancelled(5s);
+          co_return 314;
+        }(),
+        []() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          throw ErrorA{};
+        }());
+    CHECK_EQ(2, index);
+    try {
+      result.value();
+      CHECK(false);
+    } catch (const ErrorA&) {
+    }
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+  }());
+}
+
+TEST_F(CollectAnyTest, CollectAnyCancelsSubtasksWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+    folly::CancellationSource cancelSource;
+    try {
+      auto [index, result] = co_await folly::coro::co_withCancellation(
+          cancelSource.getToken(),
+          folly::coro::collectAny(
+              [&]() -> folly::coro::Task<int> {
+                co_await sleepThatShouldBeCancelled(10s);
+                co_return 42;
+              }(),
+              [&]() -> folly::coro::Task<int> {
+                co_await sleepThatShouldBeCancelled(5s);
+                co_return 314;
+              }(),
+              [&]() -> folly::coro::Task<int> {
+                co_await folly::coro::co_reschedule_on_current_executor;
+                co_await folly::coro::co_reschedule_on_current_executor;
+                co_await folly::coro::co_reschedule_on_current_executor;
+                cancelSource.requestCancellation();
+                co_await sleepThatShouldBeCancelled(15s);
+                co_return 123;
+              }()));
+      CHECK(false);
+    } catch (const folly::OperationCancelled&) {
+      auto end = std::chrono::steady_clock::now();
+      CHECK((end - start) < 1s);
+    }
+  }());
+}
+
 #endif

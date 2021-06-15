@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <utility>
+
+#include <folly/CancellationToken.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/experimental/coro/AsyncPipe.h>
 #include <folly/experimental/coro/AsyncScope.h>
@@ -274,6 +277,46 @@ auto makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
       }
     }
   }(scope, std::move(awaitables));
+}
+
+template <typename... SemiAwaitables, size_t... Indices>
+auto collectAnyImpl(
+    std::index_sequence<Indices...>, SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<std::pair<
+        std::size_t,
+        folly::Try<collect_any_component_t<SemiAwaitables...>>>> {
+  const CancellationToken& parentCancelToken =
+      co_await co_current_cancellation_token;
+
+  const CancellationSource cancelSource;
+  CancellationCallback cancelCallback(parentCancelToken, [&]() noexcept {
+    cancelSource.requestCancellation();
+  });
+  const CancellationToken cancelToken = cancelSource.getToken();
+
+  std::atomic<bool> resultHasBeenSet{false};
+  std::pair<std::size_t, folly::Try<collect_any_component_t<SemiAwaitables...>>>
+      firstCompletion{0, {}};
+  co_await folly::coro::collectAll(folly::coro::co_withCancellation(
+      cancelToken,
+      folly::coro::co_invoke(
+          [&, aw = static_cast<SemiAwaitables&&>(awaitables)]() mutable
+          -> folly::coro::Task<void> {
+            auto result = co_await folly::coro::co_awaitTry(
+                static_cast<SemiAwaitables&&>(aw));
+            if (!resultHasBeenSet.load(std::memory_order_relaxed) &&
+                !resultHasBeenSet.exchange(true, std::memory_order_relaxed)) {
+              cancelSource.requestCancellation();
+              firstCompletion.first = Indices;
+              firstCompletion.second = std::move(result);
+            }
+          }))...);
+
+  if (parentCancelToken.isCancellationRequested()) {
+    co_yield co_cancelled;
+  }
+
+  co_return firstCompletion;
 }
 
 } // namespace detail
@@ -958,6 +1001,19 @@ auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
         true>&&> {
   return detail::makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
       scope, std::move(awaitables), bool_constant<true>{});
+}
+
+template <typename SemiAwaitable, typename... SemiAwaitables>
+auto collectAny(SemiAwaitable&& awaitable, SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<std::pair<
+        std::size_t,
+        folly::Try<detail::collect_any_component_t<
+            SemiAwaitable,
+            SemiAwaitables...>>>> {
+  return detail::collectAnyImpl(
+      std::make_index_sequence<sizeof...(SemiAwaitables) + 1>{},
+      static_cast<SemiAwaitable&&>(awaitable),
+      static_cast<SemiAwaitables&&>(awaitables)...);
 }
 
 } // namespace coro

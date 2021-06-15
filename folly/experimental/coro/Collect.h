@@ -55,6 +55,10 @@ template <typename SemiAwaitable>
 using collect_all_try_range_component_t =
     collect_all_try_component_t<SemiAwaitable>;
 
+template <typename... SemiAwaitables>
+using collect_any_component_t = std::common_type_t<
+    decay_rvalue_reference_t<semi_await_result_t<SemiAwaitables>>...>;
+
 template <typename Range>
 using range_iterator_t = decltype(access::begin(std::declval<Range&>()));
 
@@ -367,6 +371,40 @@ auto collectAllTryWindowed(
   co_return co_await collectAllTryWindowed(
       awaitables | ranges::views::move, maxConcurrency);
 }
+
+///////////////////////////////////////////////////////////////////////////
+// collectAny(SemiAwaitable<Ts>...) -> SemiAwaitable<
+//   std::pair<std::size_t, folly::Try<std::common_type<Ts...>>>>
+//
+// The collectAny() function can be used to concurrently co_await on multiple
+// SemiAwaitable objects, get the result and index of the first one completing,
+// cancel the remaining ones and continue once they are completed.
+//
+// collectAny() accepts a positive number of SemiAwaitable objects and
+// returns a SemiAwaitable object that will complete with a pair containing the
+// result of the first one to complete and its index.
+//
+// collectAny() is built on top of collectAll(), be aware of the coroutine
+// starting behavior described in collectAll() documentation.
+//
+// The result of the first SemiAwaitable is going to be returned, whether it
+// is a value or an exception. Any result of the remaining SemiAwaitables will
+// be discarded, independently of whether it's a value or an exception.
+//
+// Example:
+//   folly::coro::Task<Foo> getDataOneWay();
+//   folly::coro::Task<Foo> getDataAnotherWay();
+//
+//   std::pair<std::size_t, Foo> result = co_await folly::coro::collectAny(
+//       getDataOneWay(), getDataAnotherWay());
+//
+template <typename SemiAwaitable, typename... SemiAwaitables>
+auto collectAny(SemiAwaitable&& awaitable, SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<std::pair<
+        std::size_t,
+        folly::Try<detail::collect_any_component_t<
+            SemiAwaitable,
+            SemiAwaitables...>>>>;
 
 } // namespace coro
 } // namespace folly
