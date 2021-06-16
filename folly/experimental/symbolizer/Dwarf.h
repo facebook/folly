@@ -122,6 +122,9 @@ class Dwarf {
    * Best effort:
    * - fills @inlineFrames if mode == FULL_WITH_INLINE,
    * - calls @eachParameterName on the function parameters.
+   * 
+   * if @checkAddress is true, we verify that the address is mapped to
+   * a range in this CU before running the line number VM
    */
   bool findLocation(
       uintptr_t address,
@@ -129,7 +132,8 @@ class Dwarf {
       detail::CompilationUnit& cu,
       LocationInfo& info,
       folly::Range<SymbolizedFrame*> inlineFrames,
-      folly::FunctionRef<void(folly::StringPiece)> eachParameterName) const;
+      folly::FunctionRef<void(folly::StringPiece)> eachParameterName,
+      bool checkAddress = true) const;
 
   /**
    * Finds a subprogram debugging info entry that contains a given address among
