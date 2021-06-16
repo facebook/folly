@@ -81,7 +81,7 @@ struct sockaddr_un {
 // Someone thought it would be a good idea
 // to define a field via a macro...
 #undef s_host
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
 // Stub this out for now.
 using nfds_t = int;
 using socklen_t = int;

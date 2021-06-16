@@ -116,7 +116,7 @@ ssize_t sendto(
 int setsockopt(
     int s, int level, int optname, const char* optval, socklen_t optlen);
 
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
 
 // None of these are implemented or referenced right now.
 

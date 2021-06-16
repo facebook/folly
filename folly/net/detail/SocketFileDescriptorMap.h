@@ -34,7 +34,7 @@ struct SocketFileDescriptorMap {
 
   static SOCKET fdToSocket(int fd) noexcept;
   static int socketToFd(SOCKET sock) noexcept;
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   static int close(int fd) noexcept;
   static int close(void* sock) noexcept;
 

@@ -146,7 +146,7 @@ int SocketFileDescriptorMap::socketToFd(SOCKET sock) noexcept {
 } // namespace netops
 } // namespace folly
 
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
 
 // Stub this out for now.
 #include <stdexcept>

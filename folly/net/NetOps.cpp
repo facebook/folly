@@ -82,7 +82,7 @@ static R wrapSocketFunction(F f, NetworkSocket s, Args... args) {
 } // namespace
 
 NetworkSocket accept(NetworkSocket s, sockaddr* addr, socklen_t* addrlen) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return NetworkSocket(wrapSocketFunction<NetworkSocket::native_handle_type>(
@@ -91,7 +91,7 @@ NetworkSocket accept(NetworkSocket s, sockaddr* addr, socklen_t* addrlen) {
 }
 
 int bind(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   if (kIsWindows && name->sa_family == AF_UNIX) {
@@ -109,7 +109,7 @@ int bind(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
 }
 
 int close(NetworkSocket s) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return netops::detail::SocketFileDescriptorMap::close(s.data);
@@ -117,7 +117,7 @@ int close(NetworkSocket s) {
 }
 
 int connect(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   auto r = wrapSocketFunction<int>(::connect, s, name, namelen);
@@ -131,7 +131,7 @@ int connect(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
 }
 
 int getpeername(NetworkSocket s, sockaddr* name, socklen_t* namelen) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<int>(::getpeername, s, name, namelen);
@@ -139,7 +139,7 @@ int getpeername(NetworkSocket s, sockaddr* name, socklen_t* namelen) {
 }
 
 int getsockname(NetworkSocket s, sockaddr* name, socklen_t* namelen) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<int>(::getsockname, s, name, namelen);
@@ -148,7 +148,7 @@ int getsockname(NetworkSocket s, sockaddr* name, socklen_t* namelen) {
 
 int getsockopt(
     NetworkSocket s, int level, int optname, void* optval, socklen_t* optlen) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   auto ret = wrapSocketFunction<int>(
@@ -167,7 +167,7 @@ int getsockopt(
 }
 
 int inet_aton(const char* cp, in_addr* inp) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   inp->s_addr = inet_addr(cp);
@@ -176,7 +176,7 @@ int inet_aton(const char* cp, in_addr* inp) {
 }
 
 int listen(NetworkSocket s, int backlog) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<int>(::listen, s, backlog);
@@ -184,7 +184,7 @@ int listen(NetworkSocket s, int backlog) {
 }
 
 int poll(PollDescriptor fds[], nfds_t nfds, int timeout) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   // Make sure that PollDescriptor is byte-for-byte identical to pollfd,
@@ -223,7 +223,7 @@ int poll(PollDescriptor fds[], nfds_t nfds, int timeout) {
 #else
   return ::poll(files, nfds, timeout);
 #endif
-#endif // defined(__XROS__)
+#endif // defined(__XROS__) || defined(__EMSCRIPTEN__)
 }
 
 ssize_t recv(NetworkSocket s, void* buf, size_t len, int flags) {
@@ -248,7 +248,7 @@ ssize_t recv(NetworkSocket s, void* buf, size_t len, int flags) {
     }
   }
   return wrapSocketFunction<ssize_t>(::recv, s, (char*)buf, (int)len, flags);
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::recv, s, buf, len, flags);
@@ -310,7 +310,7 @@ ssize_t recvfrom(
   }
   return wrapSocketFunction<ssize_t>(
       ::recvfrom, s, (char*)buf, (int)len, flags, from, fromlen);
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(
@@ -362,7 +362,7 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
   int res = WSARecvMsg(h, &msg, &bytesReceived, nullptr, nullptr);
   errno = translate_wsa_error(WSAGetLastError());
   return res == 0 ? (ssize_t)bytesReceived : -1;
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::recvmsg, s, message, flags);
@@ -375,7 +375,7 @@ int recvmmsg(
     unsigned int vlen,
     unsigned int flags,
     timespec* timeout) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   if (reinterpret_cast<void*>(::recvmmsg) != nullptr) {
@@ -404,7 +404,7 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
 #ifdef _WIN32
   return wrapSocketFunction<ssize_t>(
       ::send, s, (const char*)buf, (int)len, flags);
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::send, s, buf, len, flags);
@@ -447,7 +447,7 @@ ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
     bytesSent += r;
   }
   return bytesSent;
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::sendmsg, socket, message, flags);
@@ -458,7 +458,7 @@ int sendmmsg(
     NetworkSocket socket, mmsghdr* msgvec, unsigned int vlen, int flags) {
 #if FOLLY_HAVE_SENDMMSG
   return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   // implement via sendmsg
@@ -492,7 +492,7 @@ ssize_t sendto(
 #ifdef _WIN32
   return wrapSocketFunction<ssize_t>(
       ::sendto, s, (const char*)buf, (int)len, flags, to, (int)tolen);
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<ssize_t>(::sendto, s, buf, len, flags, to, tolen);
@@ -517,7 +517,7 @@ int setsockopt(
   }
   return wrapSocketFunction<int>(
       ::setsockopt, s, level, optname, (char*)optval, optlen);
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<int>(
@@ -526,7 +526,7 @@ int setsockopt(
 }
 
 int shutdown(NetworkSocket s, int how) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return wrapSocketFunction<int>(::shutdown, s, how);
@@ -534,7 +534,7 @@ int shutdown(NetworkSocket s, int how) {
 }
 
 NetworkSocket socket(int af, int type, int protocol) {
-#if defined(__XROS__)
+#if defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return NetworkSocket(::socket(af, type, protocol));
@@ -667,7 +667,7 @@ int socketpair(int domain, int type, int protocol, NetworkSocket sv[2]) {
   sv[0] = NetworkSocket(static_cast<SOCKET>(pair[0]));
   sv[1] = NetworkSocket(static_cast<SOCKET>(pair[1]));
   return r;
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   int pair[2];
@@ -685,7 +685,7 @@ int set_socket_non_blocking(NetworkSocket s) {
 #ifdef _WIN32
   u_long nonBlockingEnabled = 1;
   return ioctlsocket(s.data, FIONBIO, &nonBlockingEnabled);
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   int flags = fcntl(s.data, F_GETFL, 0);
@@ -702,7 +702,7 @@ int set_socket_close_on_exec(NetworkSocket s) {
     return 0;
   }
   return -1;
-#elif defined(__XROS__)
+#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
   return fcntl(s.data, F_SETFD, FD_CLOEXEC);
