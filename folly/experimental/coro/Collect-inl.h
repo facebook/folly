@@ -296,7 +296,8 @@ auto collectAnyImpl(
 
   std::atomic<bool> resultHasBeenSet{false};
   std::pair<std::size_t, folly::Try<collect_any_component_t<SemiAwaitables...>>>
-      firstCompletion{0, {}};
+      firstCompletion;
+  firstCompletion.first = size_t(-1);
   co_await folly::coro::collectAll(folly::coro::co_withCancellation(
       cancelToken,
       folly::coro::co_invoke(

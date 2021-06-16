@@ -1698,6 +1698,22 @@ TEST_F(CollectAnyTest, OneVoidTask) {
   CHECK(completed);
 }
 
+TEST_F(CollectAnyTest, MoveOnlyType) {
+  bool completed = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    // Checks that the task actually runs and that move only results
+    // can be correctly returned
+    std::pair<std::size_t, folly::Try<std::unique_ptr<int>>> result =
+        co_await folly::coro::collectAny(
+            [&]() -> folly::coro::Task<std::unique_ptr<int>> {
+              completed = true;
+              co_return std::make_unique<int>(1);
+            }());
+    (void)result;
+  }());
+  CHECK(completed);
+}
+
 TEST_F(CollectAnyTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
   folly::coro::Baton baton1;
   folly::coro::Baton baton2;
