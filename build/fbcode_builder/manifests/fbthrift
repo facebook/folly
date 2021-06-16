@@ -30,3 +30,4 @@ fbcode/thrift = thrift
 ^fbcode/thrift/thrift-config\.h$
 ^fbcode/thrift/perf/canary.py$
 ^fbcode/thrift/perf/loadtest.py$
+^fbcode/thrift/.castle/.*
