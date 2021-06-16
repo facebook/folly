@@ -26,12 +26,20 @@ namespace folly {
 namespace detail {
 
 EventBaseLocalBase::~EventBaseLocalBase() {
-  auto locked = eventBases_.rlock();
-  for (auto* evb : *locked) {
-    evb->runInEventBaseThread([this, evb, key = key_] {
-      evb->localStorage_.erase(key);
-      evb->localStorageToDtor_.erase(this);
-    });
+  // Remove self from all registered EventBase instances.
+  // Notice that we could be racing with EventBase dtor similarly
+  // deregistering itself from all registered EventBaseLocal instances. Because
+  // both sides need to acquire two locks, but in inverse order, we retry if
+  // inner lock acquisition fails to prevent lock inversion deadlock.
+  while (true) {
+    auto locked = eventBases_.wlock();
+    if (locked->empty()) {
+      break;
+    }
+    auto* evb = *locked->begin();
+    if (evb->tryDeregister(*this)) {
+      locked->erase(evb);
+    }
   }
 }
 
@@ -46,15 +54,19 @@ void EventBaseLocalBase::erase(EventBase& evb) {
   evb.dcheckIsInEventBaseThread();
 
   evb.localStorage_.erase(key_);
-  evb.localStorageToDtor_.erase(this);
+  evb.localStorageToDtor_.wlock()->erase(this);
 
   eventBases_.wlock()->erase(&evb);
 }
 
-void EventBaseLocalBase::onEventBaseDestruction(EventBase& evb) {
+bool EventBaseLocalBase::tryDeregister(EventBase& evb) {
   evb.dcheckIsInEventBaseThread();
 
-  eventBases_.wlock()->erase(&evb);
+  if (auto locked = eventBases_.tryWLock()) {
+    locked->erase(&evb);
+    return true;
+  }
+  return false;
 }
 
 void EventBaseLocalBase::setVoid(
@@ -71,7 +83,7 @@ void EventBaseLocalBase::setVoid(
 
   if (!alreadyExists) {
     eventBases_.wlock()->insert(&evb);
-    evb.localStorageToDtor_.insert(this);
+    evb.localStorageToDtor_.wlock()->insert(this);
   }
 }
 

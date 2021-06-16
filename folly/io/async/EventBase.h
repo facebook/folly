@@ -64,11 +64,6 @@ class NotificationQueue;
 namespace detail {
 class EventBaseLocalBase;
 
-class EventBaseLocalBaseBase {
- public:
-  virtual void onEventBaseDestruction(EventBase& evb) = 0;
-  virtual ~EventBaseLocalBaseBase() = default;
-};
 } // namespace detail
 template <typename T>
 class EventBaseLocal;
@@ -955,7 +950,9 @@ class EventBase : public TimeoutManager,
   template <typename T>
   friend class EventBaseLocal;
   std::unordered_map<std::size_t, erased_unique_ptr> localStorage_;
-  std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
+  folly::Synchronized<std::unordered_set<detail::EventBaseLocalBase*>>
+      localStorageToDtor_;
+  bool tryDeregister(detail::EventBaseLocalBase&);
 
   folly::once_flag virtualEventBaseInitFlag_;
   std::unique_ptr<VirtualEventBase> virtualEventBase_;

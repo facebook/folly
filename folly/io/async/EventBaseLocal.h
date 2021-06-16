@@ -33,14 +33,17 @@ namespace folly {
 
 namespace detail {
 
-class EventBaseLocalBase : public EventBaseLocalBaseBase {
+class EventBaseLocalBase {
  public:
+  friend class folly::EventBase;
   EventBaseLocalBase() = default;
   EventBaseLocalBase(const EventBaseLocalBase&) = delete;
   EventBaseLocalBase& operator=(const EventBaseLocalBase&) = delete;
-  ~EventBaseLocalBase() override;
+  ~EventBaseLocalBase();
   void erase(EventBase& evb);
-  void onEventBaseDestruction(EventBase& evb) override;
+
+ private:
+  bool tryDeregister(EventBase& evb);
 
  protected:
   void setVoid(EventBase& evb, void* ptr, void (*dtor)(void*));

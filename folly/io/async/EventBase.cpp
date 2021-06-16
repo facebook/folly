@@ -31,6 +31,7 @@
 #include <folly/String.h>
 #include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/io/async/EventBaseBackendBase.h>
+#include <folly/io/async/EventBaseLocal.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
@@ -204,14 +205,35 @@ EventBase::~EventBase() {
   // Stop consumer before deleting NotificationQueue
   queue_->stopConsuming();
 
-  for (auto storage : localStorageToDtor_) {
-    storage->onEventBaseDestruction(*this);
+  // Remove self from all registered EventBaseLocal instances.
+  // Notice that we could be racing with EventBaseLocal dtor similarly
+  // deregistering itself from all registered EventBase instances. Because
+  // both sides need to acquire two locks, but in inverse order, we retry if
+  // inner lock acquisition fails to prevent lock inversion deadlock.
+  while (true) {
+    auto locked = localStorageToDtor_.wlock();
+    if (locked->empty()) {
+      break;
+    }
+    auto evbl = *locked->begin();
+    if (evbl->tryDeregister(*this)) {
+      locked->erase(evbl);
+    }
   }
   localStorage_.clear();
 
   evb_.reset();
 
   VLOG(5) << "EventBase(): Destroyed.";
+}
+
+bool EventBase::tryDeregister(detail::EventBaseLocalBase& evbl) {
+  if (auto locked = localStorageToDtor_.tryWLock()) {
+    locked->erase(&evbl);
+    runInEventBaseThread([this, key = evbl.key_] { localStorage_.erase(key); });
+    return true;
+  }
+  return false;
 }
 
 std::unique_ptr<EventBaseBackendBase> EventBase::getDefaultBackend() {
