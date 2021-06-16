@@ -634,6 +634,13 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   bool getTosReflect() { return tosReflect_; }
 
   /**
+   * Set/Get default TOS for listener socket
+   */
+  void setListenerTos(uint32_t tos);
+
+  uint32_t getListenerTos() const { return listenerTos_; }
+
+  /**
    * Get the number of connections dropped by the AsyncServerSocket
    */
   std::size_t getNumDroppedConnections() const {
@@ -956,6 +963,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   ConnectionEventCallback* connectionEventCallback_{nullptr};
   bool tosReflect_{false};
+  uint32_t listenerTos_{0};
   bool zeroCopyVal_{false};
   folly::observer::AtomicObserver<std::chrono::nanoseconds> queueTimeout_{
       folly::observer::makeStaticObserver(std::chrono::nanoseconds::zero())};

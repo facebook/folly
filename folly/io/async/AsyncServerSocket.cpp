@@ -791,6 +791,34 @@ void AsyncServerSocket::setTosReflect(bool enable) {
   tosReflect_ = true;
 }
 
+void AsyncServerSocket::setListenerTos(uint32_t tos) {
+  if (!kIsLinux || tos == 0) {
+    listenerTos_ = 0;
+    return;
+  }
+
+  for (auto& handler : sockets_) {
+    if (handler.socket_ == NetworkSocket()) {
+      continue;
+    }
+
+    const auto proto =
+        (handler.addressFamily_ == AF_INET) ? IPPROTO_IP : IPPROTO_IPV6;
+    const auto optName =
+        (handler.addressFamily_ == AF_INET) ? IP_TOS : IPV6_TCLASS;
+
+    int ret =
+        netops::setsockopt(handler.socket_, proto, optName, &tos, sizeof(tos));
+
+    if (ret == 0) {
+      VLOG(10) << "Set TOS " << tos << " for for socket " << handler.socket_;
+    } else {
+      folly::throwSystemError(errno, "failed to set TOS for socket");
+    }
+  }
+  listenerTos_ = tos;
+}
+
 void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
   // Put the socket in non-blocking mode
   if (netops::set_socket_non_blocking(fd) != 0) {

@@ -6209,6 +6209,131 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
   ASSERT_EQ(rc, 0);
   ASSERT_EQ(value, 0x2c);
 }
+
+TEST(AsyncSocketTest, V6AcceptedTosTest) {
+  EventBase eventBase;
+
+  // This test verifies if the ListenerTos set on a socket is
+  // propagated properly to accepted socket connections
+
+  // Create a server socket
+  std::shared_ptr<AsyncServerSocket> serverSocket(
+      AsyncServerSocket::newSocket(&eventBase));
+  folly::IPAddress ip("::1");
+  std::vector<folly::IPAddress> serverIp;
+  serverIp.push_back(ip);
+  serverSocket->bind(serverIp, 0);
+  serverSocket->listen(16);
+  folly::SocketAddress serverAddress;
+  serverSocket->getAddress(&serverAddress);
+
+  // Set listener TOS to 0x74 i.e. dscp 29
+  serverSocket->setListenerTos(0x74);
+
+  // Add a callback to accept one connection then stop the loop
+  TestAcceptCallback acceptCallback;
+  acceptCallback.setConnectionAcceptedFn(
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
+    serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+  });
+  serverSocket->addAcceptCallback(&acceptCallback, &eventBase);
+  serverSocket->startAccepting();
+
+  // Create a client socket, setsockopt() the TOS before connecting
+  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
+                         ConnCallback* ccb,
+                         EventBase* evb,
+                         folly::SocketAddress sAddr) {
+    clientSock = AsyncSocket::newSocket(evb);
+    SocketOptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
+    SocketOptionMap optionMap;
+    optionMap.insert({v6Opts, 0x2c});
+    SocketAddress bindAddr("0.0.0.0", 0);
+    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+  };
+
+  std::shared_ptr<AsyncSocket> socket(nullptr);
+  ConnCallback cb;
+  clientThread(socket, &cb, &eventBase, serverAddress);
+
+  eventBase.loop();
+
+  // Verify if the connection is accepted and if the accepted socket has
+  // setsockopt on the TOS for the same value that the listener was set to
+  auto fd = acceptCallback.getEvents()->at(1).fd;
+  ASSERT_NE(fd, NetworkSocket());
+  int value;
+  socklen_t valueLength = sizeof(value);
+  int rc =
+      netops::getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &value, &valueLength);
+  ASSERT_EQ(rc, 0);
+  ASSERT_EQ(value, 0x74);
+}
+
+TEST(AsyncSocketTest, V4AcceptedTosTest) {
+  EventBase eventBase;
+
+  // This test verifies if the ListenerTos set on a socket is
+  // propagated properly to accepted socket connections
+
+  // Create a server socket
+  std::shared_ptr<AsyncServerSocket> serverSocket(
+      AsyncServerSocket::newSocket(&eventBase));
+  folly::IPAddress ip("127.0.0.1");
+  std::vector<folly::IPAddress> serverIp;
+  serverIp.push_back(ip);
+  serverSocket->bind(serverIp, 0);
+  serverSocket->listen(16);
+  folly::SocketAddress serverAddress;
+  serverSocket->getAddress(&serverAddress);
+
+  // Set listener TOS to 0x74 i.e. dscp 29
+  serverSocket->setListenerTos(0x74);
+
+  // Add a callback to accept one connection then stop the loop
+  TestAcceptCallback acceptCallback;
+  acceptCallback.setConnectionAcceptedFn(
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
+    serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+  });
+  serverSocket->addAcceptCallback(&acceptCallback, &eventBase);
+  serverSocket->startAccepting();
+
+  // Create a client socket, setsockopt() the TOS before connecting
+  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
+                         ConnCallback* ccb,
+                         EventBase* evb,
+                         folly::SocketAddress sAddr) {
+    clientSock = AsyncSocket::newSocket(evb);
+    SocketOptionKey v4Opts = {IPPROTO_IP, IP_TOS};
+    SocketOptionMap optionMap;
+    optionMap.insert({v4Opts, 0x2c});
+    SocketAddress bindAddr("0.0.0.0", 0);
+    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+  };
+
+  std::shared_ptr<AsyncSocket> socket(nullptr);
+  ConnCallback cb;
+  clientThread(socket, &cb, &eventBase, serverAddress);
+
+  eventBase.loop();
+
+  // Verify if the connection is accepted and if the accepted socket has
+  // setsockopt on the TOS for the same value that the listener was set to
+  auto fd = acceptCallback.getEvents()->at(1).fd;
+  ASSERT_NE(fd, NetworkSocket());
+  int value;
+  socklen_t valueLength = sizeof(value);
+  int rc = netops::getsockopt(fd, IPPROTO_IP, IP_TOS, &value, &valueLength);
+  ASSERT_EQ(rc, 0);
+  ASSERT_EQ(value, 0x74);
+}
 #endif
 
 #if defined(__linux__)
