@@ -332,13 +332,13 @@ TEST(Future, thenError) {
   do {                    \
     EXPECT_TRUE(theFlag); \
     theFlag = false;      \
-  } while (0);
+  } while (0)
 
 #define EXPECT_NO_FLAG()   \
   do {                     \
     EXPECT_FALSE(theFlag); \
     theFlag = false;       \
-  } while (0);
+  } while (0)
 
   // By reference
   {

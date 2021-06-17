@@ -63,7 +63,7 @@ class fbvector;
     }                                             \
     for (; (first) != (last); ++(first))          \
       OP((first));                                \
-  } while (0);
+  } while (0)
 
 //=============================================================================
 ///////////////////////////////////////////////////////////////////////////////
@@ -376,7 +376,7 @@ class fbvector {
       //  version is about 0.5% slower on size 262144.
 
       // for (; first != last; ++first) first->~T();
-      FOLLY_FBV_UNROLL_PTR(first, last, FOLLY_FBV_OP)
+      FOLLY_FBV_UNROLL_PTR(first, last, FOLLY_FBV_OP);
 #undef FOLLY_FBV_OP
     }
   }
