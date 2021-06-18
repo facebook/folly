@@ -137,6 +137,9 @@
  */
 #define CO_GTEST_FATAL_FAILURE_(message) \
   co_return GTEST_MESSAGE_(message, ::testing::TestPartResult::kFatalFailure)
+
+#define CO_ASSERT_PRED_FORMAT1(pred_format, v1) \
+  GTEST_PRED_FORMAT1_(pred_format, v1, CO_GTEST_FATAL_FAILURE_)
 #define CO_ASSERT_PRED_FORMAT2(pred_format, v1, v2) \
   GTEST_PRED_FORMAT2_(pred_format, v1, v2, CO_GTEST_FATAL_FAILURE_)
 

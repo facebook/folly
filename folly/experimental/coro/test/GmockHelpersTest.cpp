@@ -23,6 +23,7 @@
 #include <gtest/gtest-death-test.h>
 
 #include <folly/experimental/coro/GmockHelpers.h>
+#include <folly/experimental/coro/GtestHelpers.h>
 
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
@@ -172,6 +173,10 @@ TEST(CoroLambdaGtest, CoThrowTest) {
 
   EXPECT_CALL(mock, getString()).WillOnce(CoThrow<std::string>(ex));
   EXPECT_THROW(folly::coro::blockingWait(mock.getString()), std::runtime_error);
+}
+
+CO_TEST(CoAssertThat, CoAssertThat) {
+  CO_ASSERT_THAT(1, Gt(0));
 }
 
 #endif // FOLLY_HAS_COROUTINES

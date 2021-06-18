@@ -20,6 +20,7 @@
 #include <type_traits>
 
 #include <folly/experimental/coro/Coroutine.h>
+#include <folly/experimental/coro/GtestHelpers.h>
 #include <folly/experimental/coro/Result.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GMock.h>
@@ -229,5 +230,9 @@ auto CoThrow(Ex&& e) {
 } // namespace gmock_helpers
 } // namespace coro
 } // namespace folly
+
+#define CO_ASSERT_THAT(value, matcher) \
+  CO_ASSERT_PRED_FORMAT1(              \
+      ::testing::internal::MakePredicateFormatterFromMatcher(matcher), value)
 
 #endif // FOLLY_HAS_COROUTINES
