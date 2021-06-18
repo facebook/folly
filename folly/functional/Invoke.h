@@ -381,6 +381,20 @@ struct invoke_traits : detail::invoke_traits_base<I> {
       : classname##__folly_detail_invoke_ns::__folly_detail_invoke_obj {}
 
 /***
+ *  FOLLY_CREATE_FREE_INVOKER_SUITE
+ *
+ *  Used to create an invoker type and associated variable bound to a specific
+ *  free-invocable name. The invoker variable is named like the free-invocable
+ *  name and the invoker type is named with a suffix of _fn.
+ *
+ *  See FOLLY_CREATE_FREE_INVOKER.
+ */
+#define FOLLY_CREATE_FREE_INVOKER_SUITE(membername, ...)               \
+  FOLLY_CREATE_FREE_INVOKER(membername##_fn, membername, __VA_ARGS__); \
+  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr membername##_fn   \
+      membername {}
+
+/***
  *  FOLLY_CREATE_MEMBER_INVOKER
  *
  *  Used to create an invoker type bound to a specific member-invocable name.
@@ -434,6 +448,20 @@ struct invoke_traits : detail::invoke_traits_base<I> {
   }
 
 /***
+ *  FOLLY_CREATE_MEMBER_INVOKER_SUITE
+ *
+ *  Used to create an invoker type and associated variable bound to a specific
+ *  member-invocable name. The invoker variable is named like the member-
+ *  invocable  name and the invoker type is named with a suffix of _fn.
+ *
+ *  See FOLLY_CREATE_MEMBER_INVOKER.
+ */
+#define FOLLY_CREATE_MEMBER_INVOKER_SUITE(membername)                \
+  FOLLY_CREATE_MEMBER_INVOKER(membername##_fn, membername);          \
+  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr membername##_fn \
+      membername {}
+
+/***
  *  FOLLY_CREATE_STATIC_MEMBER_INVOKER
  *
  *  Used to create an invoker type template bound to a specific static-member-
@@ -484,6 +512,22 @@ struct invoke_traits : detail::invoke_traits_base<I> {
       return U::membername(static_cast<Args&&>(args)...);                     \
     }                                                                         \
   }
+
+/***
+ *  FOLLY_CREATE_STATIC_MEMBER_INVOKER_SUITE
+ *
+ *  Used to create an invoker type template and associated variable template
+ *  bound to a specific static-member-invocable name. The invoker variable
+ *  template is named like the static-member-invocable name and the invoker type
+ *  template is named with a suffix of _fn.
+ *
+ *  See FOLLY_CREATE_STATIC_MEMBER_INVOKER.
+ */
+#define FOLLY_CREATE_STATIC_MEMBER_INVOKER_SUITE(membername)            \
+  FOLLY_CREATE_STATIC_MEMBER_INVOKER(membername##_fn, membername);      \
+  template <typename T>                                                 \
+  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr membername##_fn<T> \
+      membername {}
 
 namespace folly {
 
