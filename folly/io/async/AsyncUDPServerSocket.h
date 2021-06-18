@@ -246,6 +246,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     applyEventCallback();
   }
 
+  bool setTimestamping(int val) { return socket_->setTimestamping(val); }
+
  private:
   // AsyncUDPSocket::ReadCallback
   void getReadBuffer(void** buf, size_t* len) noexcept override {
