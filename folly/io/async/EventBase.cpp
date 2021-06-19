@@ -544,6 +544,8 @@ void EventBase::bumpHandlingTime() {
 void EventBase::terminateLoopSoon() {
   VLOG(5) << "EventBase(): Received terminateLoopSoon() command.";
 
+  auto keepAlive = getKeepAliveToken(this);
+
   // Set stop to true, so the event loop will know to exit.
   stop_.store(true, std::memory_order_relaxed);
 
@@ -553,7 +555,7 @@ void EventBase::terminateLoopSoon() {
   // receives another event.  Send an empty frame to the notification queue
   // so that the event loop will wake up even if there are no other events.
   try {
-    queue_->putMessage([&] { evb_->eb_event_base_loopbreak(); });
+    queue_->putMessage([] {});
   } catch (...) {
     // putMessage() can only fail when the queue is draining in ~EventBase.
   }

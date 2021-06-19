@@ -116,7 +116,7 @@ TEST(EventBaseLocalTest, DestructionOrder) {
 
 TEST(EventBaseLocalTest, DestructorStressTest) {
   std::atomic<folly::EventBase*> currentEvb;
-  folly::Baton<> baton, baton2;
+  folly::Baton<> baton;
   const int kIterations = 10000;
   auto thread1 = std::thread([&] {
     for (int i = 0; i < kIterations; i++) {
@@ -124,8 +124,6 @@ TEST(EventBaseLocalTest, DestructorStressTest) {
       currentEvb = &evb;
       baton.post();
       evb.loopForever();
-      baton2.wait();
-      baton2.reset();
     }
   });
   auto thread2 = std::thread([&] {
@@ -136,7 +134,6 @@ TEST(EventBaseLocalTest, DestructorStressTest) {
       auto evb = currentEvb.exchange(nullptr);
       evb->runInEventBaseThreadAndWait([&] { local.emplace(*evb, 4); });
       evb->terminateLoopSoon();
-      baton2.post();
     }
   });
 
