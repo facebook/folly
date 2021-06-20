@@ -78,6 +78,14 @@ template <
     typename D = std::default_delete<T>>
 class hazptr_obj_base;
 
+/** hazard_pointer_obj_base
+    class template name consistent with standard proposal */
+template <
+    typename T,
+    template <typename> class Atom = std::atomic,
+    typename D = std::default_delete<T>>
+using hazard_pointer_obj_base = hazptr_obj_base<T, Atom, D>;
+
 ///
 /// Classes related to link counted objects and automatic retirement.
 /// Defined in HazptrLinked.h
@@ -132,9 +140,19 @@ hazptr_priv<Atom>& hazptr_priv_tls();
 template <template <typename> class Atom = std::atomic>
 class hazptr_domain;
 
+/** hazard_pointer_domain
+    class name consistent with standard proposal */
+template <template <typename> class Atom = std::atomic>
+using hazard_pointer_domain = hazptr_domain<Atom>;
+
 /** default_hazptr_domain */
 template <template <typename> class Atom = std::atomic>
 hazptr_domain<Atom>& default_hazptr_domain();
+
+/** hazard_pointer_default_domain
+    function name consistent with standard proposal */
+template <template <typename> class Atom = std::atomic>
+hazard_pointer_domain<Atom>& hazard_pointer_default_domain();
 
 /** hazptr_domain_push_list */
 template <template <typename> class Atom = std::atomic>
@@ -161,6 +179,13 @@ template <template <typename> class Atom = std::atomic>
 void hazptr_cleanup(
     hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
 
+/** hazard_pointer_clean_up
+    function name consistent with standard proposal */
+template <template <typename> class Atom = std::atomic>
+void hazard_pointer_clean_up(
+    hazard_pointer_domain<Atom>& domain =
+        hazard_pointer_default_domain<Atom>()) noexcept;
+
 /** Global default domain defined in Hazptr.cpp */
 extern hazptr_domain<std::atomic> default_domain;
 
@@ -172,6 +197,11 @@ extern hazptr_domain<std::atomic> default_domain;
 /** hazptr_holder */
 template <template <typename> class Atom = std::atomic>
 class hazptr_holder;
+
+/** hazard_pointer
+    class name consistent with standard proposal  */
+template <template <typename> class Atom = std::atomic>
+using hazard_pointer = hazptr_holder<Atom>;
 
 /** Free function make_hazard_pointer constructs nonempty holder */
 template <template <typename> class Atom = std::atomic>

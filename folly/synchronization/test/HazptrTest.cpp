@@ -35,6 +35,10 @@ DEFINE_int32(num_threads, 6, "Number of threads");
 DEFINE_int64(num_ops, 1003, "Number of ops or pairs of ops per rep");
 
 using folly::default_hazptr_domain;
+using folly::hazard_pointer;
+using folly::hazard_pointer_clean_up;
+using folly::hazard_pointer_default_domain;
+using folly::hazard_pointer_obj_base;
 using folly::hazptr_array;
 using folly::hazptr_cleanup;
 using folly::hazptr_domain;
@@ -1224,6 +1228,13 @@ TEST(HazptrTest, reclamation_without_calling_cleanup) {
     t.join();
   }
   ASSERT_GT(c_.dtors(), 0);
+}
+
+TEST(HazptrTest, standard_names) {
+  struct Foo : hazard_pointer_obj_base<Foo> {};
+  DCHECK_EQ(&hazard_pointer_default_domain<>(), &default_hazptr_domain<>());
+  hazard_pointer<> h = make_hazard_pointer();
+  hazard_pointer_clean_up<>();
 }
 
 // Benchmark drivers

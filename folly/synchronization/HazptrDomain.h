@@ -784,6 +784,12 @@ FOLLY_ALWAYS_INLINE hazptr_domain<Atom>& default_hazptr_domain() {
   return hazptr_default_domain_helper<Atom>::get();
 }
 
+template <template <typename> class Atom>
+FOLLY_ALWAYS_INLINE hazard_pointer_domain<Atom>&
+hazard_pointer_default_domain() {
+  return default_hazptr_domain<Atom>();
+}
+
 /** hazptr_domain_push_retired: push a list of retired objects into a domain */
 template <template <typename> class Atom>
 void hazptr_domain_push_retired(
@@ -810,6 +816,11 @@ FOLLY_ALWAYS_INLINE void hazptr_retire(T* obj, D reclaim) {
 template <template <typename> class Atom>
 void hazptr_cleanup(hazptr_domain<Atom>& domain) noexcept {
   domain.cleanup();
+}
+
+template <template <typename> class Atom>
+void hazard_pointer_clean_up(hazard_pointer_domain<Atom>& domain) noexcept {
+  hazptr_cleanup(domain);
 }
 
 } // namespace folly
