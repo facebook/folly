@@ -451,6 +451,9 @@ bool Dwarf::findDebugInfoOffset(
  * Best effort:
  * - fills @inlineFrames if mode == FULL_WITH_INLINE,
  * - calls @eachParameterName on the function parameters.
+ *
+ * if @checkAddress is true, we verify that the address is mapped to
+ * a range in this CU before running the line number VM
  */
 bool Dwarf::findLocation(
     uintptr_t address,
@@ -458,7 +461,8 @@ bool Dwarf::findLocation(
     detail::CompilationUnit& cu,
     LocationInfo& locationInfo,
     folly::Range<SymbolizedFrame*> inlineFrames,
-    folly::FunctionRef<void(folly::StringPiece)> eachParameterName) const {
+    folly::FunctionRef<void(folly::StringPiece)> eachParameterName,
+    bool checkAddress) const {
   detail::Die die = getDieAtOffset(cu, cu.firstDie);
   // Partial compilation unit (DW_TAG_partial_unit) is not supported.
   FOLLY_SAFE_CHECK(
@@ -470,39 +474,96 @@ bool Dwarf::findLocation(
   folly::StringPiece compilationDirectory;
   folly::Optional<folly::StringPiece> mainFileName;
   folly::Optional<uint64_t> baseAddrCU;
+  folly::Optional<uint64_t> rangesOffset;
+  bool seenLowPC = false;
+  bool seenHighPC = false;
+  enum : unsigned {
+    kStmtList = 1U << 0,
+    kCompDir = 1U << 1,
+    kName = 1U << 2,
+    kLowPC = 1U << 3,
+    kHighPCOrRanges = 1U << 4,
+  };
+  unsigned expectedAttributes = kStmtList | kCompDir | kName | kLowPC;
+  bool foundAddress = !checkAddress;
+  if (!foundAddress) {
+    expectedAttributes |= kHighPCOrRanges;
+  }
   forEachAttribute(cu, die, [&](const detail::Attribute& attr) {
     switch (attr.spec.name) {
       case DW_AT_stmt_list:
+        expectedAttributes &= ~kStmtList;
         // Offset in .debug_line for the line number VM program for this
         // compilation unit
         lineOffset = boost::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_comp_dir:
+        expectedAttributes &= ~kCompDir;
         // Compilation directory
         compilationDirectory = boost::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_name:
+        expectedAttributes &= ~kName;
         // File name of main file being compiled
         mainFileName = boost::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_low_pc:
-      case DW_AT_entry_pc:
-        // 2.17.1: historically DW_AT_low_pc was used. DW_AT_entry_pc was
-        // introduced in DWARF3. Support either to determine the base address of
-        // the CU.
+        expectedAttributes &= ~kLowPC;
         baseAddrCU = boost::get<uint64_t>(attr.attrValue);
+        if (!foundAddress) {
+          if (address < *baseAddrCU) {
+            return false;
+          }
+          seenLowPC = true;
+          if (seenHighPC) {
+            foundAddress = true;
+          } else if (rangesOffset) {
+            if (!isAddrInRangeList(
+                    address, baseAddrCU, *rangesOffset, cu.addrSize)) {
+              return false;
+            }
+            foundAddress = true;
+          }
+        }
+        break;
+      case DW_AT_high_pc:
+        expectedAttributes &= ~kHighPCOrRanges;
+        if (!foundAddress) {
+          if (address >= boost::get<uint64_t>(attr.attrValue)) {
+            return false;
+          }
+          seenHighPC = true;
+          foundAddress = seenLowPC;
+        }
+        break;
+      case DW_AT_ranges:
+        // 3.1.1: CU entries have:
+        // - either DW_AT_low_pc and DW_AT_high_pc
+        // OR
+        // - DW_AT_ranges and optional DW_AT_low_pc
+        expectedAttributes &= ~kHighPCOrRanges;
+        if (!foundAddress) {
+          rangesOffset = boost::get<uint64_t>(attr.attrValue);
+          if (seenLowPC) {
+            if (!isAddrInRangeList(
+                    address, baseAddrCU, *rangesOffset, cu.addrSize)) {
+              return false;
+            }
+            foundAddress = true;
+          }
+        }
         break;
     }
-    return true; // continue forEachAttribute
+    return (expectedAttributes != 0); // continue forEachAttribute
   });
+
+  if (!foundAddress || !lineOffset) {
+    return false;
+  }
 
   if (mainFileName) {
     locationInfo.hasMainFile = true;
     locationInfo.mainFile = Path(compilationDirectory, "", *mainFileName);
-  }
-
-  if (!lineOffset) {
-    return false;
   }
 
   folly::StringPiece lineSection(debugLine_);
@@ -653,7 +714,13 @@ bool Dwarf::findAddress(
       // Read compilation unit header from .debug_info
       auto unit = getCompilationUnit(debugInfo_, offset);
       return findLocation(
-          address, mode, unit, locationInfo, inlineFrames, eachParameterName);
+          address,
+          mode,
+          unit,
+          locationInfo,
+          inlineFrames,
+          eachParameterName,
+          false /*checkAddress*/);
     } else if (mode == LocationInfoMode::FAST) {
       // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
       // in .debug_aranges for some functions, but always generates
@@ -681,7 +748,8 @@ bool Dwarf::findAddress(
             unit,
             locationInfo,
             inlineFrames,
-            eachParameterName)) {
+            eachParameterName,
+            true /*checkAddress*/)) {
       return true;
     }
   }
