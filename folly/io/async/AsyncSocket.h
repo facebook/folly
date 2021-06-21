@@ -1178,6 +1178,17 @@ class AsyncSocket : public AsyncTransport {
   FOLLY_NODISCARD virtual std::vector<AsyncTransport::LifecycleObserver*>
   getLifecycleObservers() const override;
 
+  /**
+   * Split iovec array at given byte offsets; produce a new array with result.
+   */
+  static void splitIovecArray(
+      const size_t startOffset,
+      const size_t endOffset,
+      const iovec* srcVec,
+      const size_t srcCount,
+      iovec* dstVec,
+      size_t& dstCount);
+
  protected:
   enum ReadResultEnum {
     READ_EOF = 0,

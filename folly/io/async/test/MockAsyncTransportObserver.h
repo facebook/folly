@@ -40,6 +40,8 @@ class MockAsyncTransportLifecycleObserver
   MOCK_METHOD2(
       byteEventsUnavailableMock,
       void(AsyncTransport*, const AsyncSocketException&));
+  MOCK_METHOD2(
+      prewriteMock, PrewriteRequest(AsyncTransport*, const PrewriteState&));
 
  private:
   void observerAttach(AsyncTransport* trans) noexcept override {
@@ -68,6 +70,10 @@ class MockAsyncTransportLifecycleObserver
   void byteEventsUnavailable(
       AsyncTransport* trans, const AsyncSocketException& ex) noexcept override {
     byteEventsUnavailableMock(trans, ex);
+  }
+  PrewriteRequest prewrite(
+      AsyncTransport* trans, const PrewriteState& state) noexcept override {
+    return prewriteMock(trans, state);
   }
 };
 
@@ -104,6 +110,10 @@ class MockAsyncTransportObserverForByteEvents
               byteEventsUnavailableCalledEx_.emplace(ex);
             }));
     transport->addLifecycleObserver(this);
+  }
+
+  const std::vector<AsyncTransport::ByteEvent>& getByteEvents() {
+    return byteEvents_;
   }
 
   folly::Optional<AsyncTransport::ByteEvent> getByteEventReceivedWithOffset(
