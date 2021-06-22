@@ -877,4 +877,20 @@ TEST(Expected, ConstructorConstructibleNotConvertible) {
     ce = e;
   }
 }
+
+TEST(Expected, TestUnique) {
+  auto mk = []() -> Expected<std::unique_ptr<int>, int> {
+    return std::make_unique<int>(1);
+  };
+
+  EXPECT_EQ(
+      2, **mk().then([](auto r) { return std::make_unique<int>(*r + 1); }));
+
+  // Test converting errors works
+  EXPECT_EQ(
+      2, **mk().then([](auto r) -> Expected<std::unique_ptr<int>, double> {
+        return std::make_unique<int>(*r + 1);
+      }));
+}
+
 } // namespace folly

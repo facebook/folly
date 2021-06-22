@@ -499,16 +499,18 @@ inline T&& operator,(T&& t, Unit) noexcept {
 
 struct ExpectedHelper {
   template <class Error, class T>
-  static constexpr Expected<T, Error> return_(T t) {
-    return folly::makeExpected<Error>(t);
+  static constexpr Expected<typename std::decay<T>::type, Error> return_(
+      T&& t) {
+    return folly::makeExpected<Error>(static_cast<T&&>(t));
   }
+
   template <
       class Error,
       class T,
       class U FOLLY_REQUIRES_TRAILING(
           expected_detail::IsConvertible<U&&, Error>::value)>
-  static constexpr Expected<T, Error> return_(Expected<T, U> t) {
-    return t;
+  static constexpr Expected<T, Error> return_(Expected<T, U>&& t) {
+    return Expected<T, Error>(static_cast<Expected<T, U>&&>(t));
   }
 
   template <class This>
