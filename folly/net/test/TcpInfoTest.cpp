@@ -17,12 +17,14 @@
 #include <cstring>
 #include <folly/net/TcpInfo.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
+#include <folly/net/test/TcpInfoTestUtil.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace testing;
 using namespace folly::tcpinfo;
+using namespace folly::tcpinfo::test;
 
 using us = std::chrono::microseconds;
 
@@ -37,81 +39,18 @@ const auto kTestUnknownCcName = "coolNewCCA"; // it's cool, new, and a CCA!
 
 class TcpInfoTest : public Test {
  public:
-  /**
-   * Mock to enable testing of socket buffer lookups.
-   */
-  class MockIoctlDispatcher : public TcpInfo::IoctlDispatcher {
-   public:
-    MockIoctlDispatcher() = default;
-    virtual ~MockIoctlDispatcher() = default;
-
-    /**
-     * Configures mocked methods to forward calls to default implementation.
-     */
-    void forwardToDefaultImpl() {
-      ON_CALL(*this, ioctl(testing::_, testing::_, testing::_))
-          .WillByDefault(
-              testing::Invoke([](int fd, unsigned long request, void* argp) {
-                return ::ioctl(fd, request, argp);
-              }));
-    }
-
-    MOCK_METHOD3(ioctl, int(int fd, unsigned long request, void* argp));
-  };
-
   template <typename T1>
   void setupExpectCallTcpInfo(NetworkSocket& s, const T1& tInfo) {
-    EXPECT_CALL(
-        mockNetOpsDispatcher_, getsockopt(s, IPPROTO_TCP, TCP_INFO, _, _))
-        .WillOnce(
-            WithArgs<3, 4>(Invoke([tInfo](void* optval, socklen_t* optlen) {
-              auto copied = std::min((unsigned int)sizeof tInfo, *optlen);
-              std::memcpy(optval, (void*)&tInfo, copied);
-              *optlen = copied;
-              return 0;
-            })));
+    TcpInfoTestUtil::setupExpectCallTcpInfo(mockNetOpsDispatcher_, s, tInfo);
   }
 
   void setupExpectCallCcName(NetworkSocket& s, const std::string& ccName) {
-    EXPECT_CALL(
-        mockNetOpsDispatcher_,
-        getsockopt(
-            s,
-            IPPROTO_TCP,
-            TCP_CONGESTION,
-            NotNull(),
-            Pointee(Eq(TcpInfo::kLinuxTcpCaNameMax))))
-        .WillOnce(WithArgs<3, 4>(Invoke([ccName](
-                                            void* optval, socklen_t* optlen) {
-          EXPECT_THAT(optlen, Pointee(Ge(ccName.size())));
-          std::copy(
-              ccName.begin(),
-              ccName.end(),
-              ((std::array<char, (unsigned int)TcpInfo::kLinuxTcpCaNameMax>*)
-                   optval)
-                  ->data());
-          *optlen = std::min<socklen_t>(ccName.size(), *optlen);
-          return 0;
-        })));
+    TcpInfoTestUtil::setupExpectCallCcName(mockNetOpsDispatcher_, s, ccName);
   }
 
   void setupExpectCallCcInfo(
       NetworkSocket& s, const folly::tcpinfo::tcp_cc_info& ccInfo) {
-    EXPECT_CALL(
-        mockNetOpsDispatcher_,
-        getsockopt(
-            s,
-            IPPROTO_TCP,
-            TCP_CC_INFO,
-            NotNull(),
-            Pointee(Eq(sizeof(folly::tcpinfo::tcp_cc_info)))))
-        .WillOnce(
-            WithArgs<3, 4>(Invoke([ccInfo](void* optval, socklen_t* optlen) {
-              auto copied = std::min((unsigned int)sizeof ccInfo, *optlen);
-              std::memcpy(optval, (void*)&(ccInfo), copied);
-              *optlen = copied;
-              return 0;
-            })));
+    TcpInfoTestUtil::setupExpectCallCcInfo(mockNetOpsDispatcher_, s, ccInfo);
   }
 
   struct ExpectCallMemInfoConfig {
@@ -497,7 +436,7 @@ class TcpInfoTest : public Test {
 
  protected:
   StrictMock<folly::netops::test::MockDispatcher> mockNetOpsDispatcher_;
-  StrictMock<MockIoctlDispatcher> mockIoctlDispatcher_;
+  StrictMock<TcpInfoTestUtil::MockIoctlDispatcher> mockIoctlDispatcher_;
 };
 
 TEST_F(TcpInfoTest, LegacyStruct) {
