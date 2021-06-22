@@ -83,17 +83,18 @@ Expected<TcpInfo, std::errc> TcpInfo::initFromFd(
   // try to get TCP_INFO
   TcpInfo info = {};
   socklen_t len = sizeof(TcpInfo::tcp_info);
-  info.tcpInfoBytesRead = netopsDispatcher.getsockopt(
+  auto ret = netopsDispatcher.getsockopt(
       fd,
       IPPROTO_TCP,
       folly::tcpinfo::tcp_info_sock_opt,
       (void*)&info.tcpInfo,
       &len);
-  if (info.tcpInfoBytesRead < 0) {
+  if (ret < 0) {
     int errnoCopy = errno;
     VLOG(4) << "Error calling getsockopt(): " << folly::errnoStr(errnoCopy);
     return folly::makeUnexpected(static_cast<std::errc>(errnoCopy));
   }
+  info.tcpInfoBytesRead = len;
 
   // if enabled, try to get information about the congestion control algo
   if (options.getCcInfo) {
@@ -295,9 +296,9 @@ Optional<uint64_t> TcpInfo::cwndInPackets() const {
 }
 
 Optional<uint64_t> TcpInfo::cwndInBytes() const {
-  auto cwndInPacketsOpt = cwndInPackets();
-  auto mssOpt = mss();
-  if (cwndInPacketsOpt || mssOpt) {
+  const auto cwndInPacketsOpt = cwndInPackets();
+  const auto mssOpt = mss();
+  if (cwndInPacketsOpt && mssOpt) {
     return cwndInPacketsOpt.value() * mssOpt.value();
   }
   return folly::none;
@@ -541,15 +542,15 @@ void TcpInfo::initCcInfoFromFd(
 
   tcpinfo::tcp_cc_info ccInfo = {};
   socklen_t len = sizeof(tcpinfo::tcp_cc_info);
-  int bytesRead = netopsDispatcher.getsockopt(
+  const int ret = netopsDispatcher.getsockopt(
       fd, IPPROTO_TCP, TCP_CC_INFO, (void*)&ccInfo, &len);
-  if (bytesRead < 0) {
+  if (ret < 0) {
     int errnoCopy = errno;
     VLOG(4) << "Error calling getsockopt(): " << folly::errnoStr(errnoCopy);
     return;
   }
   wrappedInfo.maybeCcInfo = ccInfo;
-  wrappedInfo.tcpCcInfoBytesRead = bytesRead;
+  wrappedInfo.tcpCcInfoBytesRead = len;
 #else
   return;
 #endif

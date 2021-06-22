@@ -67,7 +67,8 @@ class TcpInfoTest : public Test {
             WithArgs<3, 4>(Invoke([tInfo](void* optval, socklen_t* optlen) {
               auto copied = std::min((unsigned int)sizeof tInfo, *optlen);
               std::memcpy(optval, (void*)&tInfo, copied);
-              return copied;
+              *optlen = copied;
+              return 0;
             })));
   }
 
@@ -89,7 +90,8 @@ class TcpInfoTest : public Test {
               ((std::array<char, (unsigned int)TcpInfo::kLinuxTcpCaNameMax>*)
                    optval)
                   ->data());
-          return ccName.size();
+          *optlen = std::min<socklen_t>(ccName.size(), *optlen);
+          return 0;
         })));
   }
 
@@ -107,7 +109,8 @@ class TcpInfoTest : public Test {
             WithArgs<3, 4>(Invoke([ccInfo](void* optval, socklen_t* optlen) {
               auto copied = std::min((unsigned int)sizeof ccInfo, *optlen);
               std::memcpy(optval, (void*)&(ccInfo), copied);
-              return copied;
+              *optlen = copied;
+              return 0;
             })));
   }
 
@@ -501,10 +504,11 @@ TEST_F(TcpInfoTest, LegacyStruct) {
   NetworkSocket s(0);
   setupExpectCallTcpInfo(s, getTestLegacyTcpInfo());
 
-  auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = false, .getMemInfo = false},
-      mockNetOpsDispatcher_);
+  LookupOptions options = {};
+  options.getCcInfo = false;
+  options.getMemInfo = false;
+  auto wrappedTcpInfoExpect =
+      TcpInfo::initFromFd(s, options, mockNetOpsDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -519,10 +523,12 @@ TEST_F(TcpInfoTest, LegacyStruct) {
 TEST_F(TcpInfoTest, LatestStruct) {
   NetworkSocket s(0);
   setupExpectCallTcpInfo(s, getTestLatestTcpInfo());
-  auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = false, .getMemInfo = false},
-      mockNetOpsDispatcher_);
+
+  LookupOptions options = {};
+  options.getCcInfo = false;
+  options.getMemInfo = false;
+  auto wrappedTcpInfoExpect =
+      TcpInfo::initFromFd(s, options, mockNetOpsDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -539,11 +545,12 @@ TEST_F(TcpInfoTest, LatestStructWithCcInfo) {
   setupExpectCallTcpInfo(s, getTestLatestTcpInfo());
   setupExpectCallCcName(s, "bbr");
   setupExpectCallCcInfo(s, getTestBbrInfo());
+
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = false;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = false},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -561,11 +568,12 @@ TEST_F(TcpInfoTest, LatestStructWithMemInfo) {
       s,
       ExpectCallMemInfoConfig{
           .siocoutq = kTestSiocoutqVal, .siocinq = kTestSiocinqVal});
+
+  LookupOptions options = {};
+  options.getCcInfo = false;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = false, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -587,11 +595,12 @@ TEST_F(TcpInfoTest, LatestStructWithCcInfoAndMemInfo) {
       s,
       ExpectCallMemInfoConfig{
           .siocoutq = kTestSiocoutqVal, .siocinq = kTestSiocinqVal});
+
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -609,11 +618,12 @@ TEST_F(TcpInfoTest, LatestStructWithCcInfoAndMemInfoUnknownCc) {
       s,
       ExpectCallMemInfoConfig{
           .siocoutq = kTestSiocoutqVal, .siocinq = kTestSiocinqVal});
+
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -631,23 +641,25 @@ TEST_F(TcpInfoTest, LatestStructWithCcInfoAndMemInfoUnknownCc) {
 
 TEST_F(TcpInfoTest, FailUninitializedSocket) {
   NetworkSocket s;
+
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_FALSE(wrappedTcpInfoExpect.hasValue()); // complete failure
 }
 
 TEST_F(TcpInfoTest, FailTcpInfo) {
   NetworkSocket s(0);
+
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   EXPECT_CALL(mockNetOpsDispatcher_, getsockopt(s, IPPROTO_TCP, TCP_INFO, _, _))
       .WillOnce(Return(-1));
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_FALSE(wrappedTcpInfoExpect.hasValue()); // complete failure
 }
 
@@ -671,11 +683,11 @@ TEST_F(TcpInfoTest, FailCcName) {
           Pointee(Eq(TcpInfo::kLinuxTcpCaNameMax))))
       .WillOnce(Return(-1));
 
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -709,11 +721,11 @@ TEST_F(TcpInfoTest, FailCcInfo) {
           Pointee(Eq(sizeof(TcpInfo::tcp_cc_info)))))
       .WillOnce(Return(-1));
 
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -744,11 +756,11 @@ TEST_F(TcpInfoTest, FailSiocoutq) {
         return 0;
       })));
 
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -775,11 +787,11 @@ TEST_F(TcpInfoTest, FailSiocinq) {
   EXPECT_CALL(mockIoctlDispatcher_, ioctl(s.toFd(), SIOCINQ, testing::_))
       .WillOnce(Return(-1));
 
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
@@ -855,11 +867,11 @@ TEST_P(TcpInfoTestCcParam, FetchAllAndCheck) {
       FAIL();
   }
 
+  LookupOptions options = {};
+  options.getCcInfo = true;
+  options.getMemInfo = true;
   auto wrappedTcpInfoExpect = TcpInfo::initFromFd(
-      s,
-      LookupOptions{.getCcInfo = true, .getMemInfo = true},
-      mockNetOpsDispatcher_,
-      mockIoctlDispatcher_);
+      s, options, mockNetOpsDispatcher_, mockIoctlDispatcher_);
   ASSERT_TRUE(wrappedTcpInfoExpect.hasValue());
   const auto& wrappedTcpInfo = wrappedTcpInfoExpect.value();
 
