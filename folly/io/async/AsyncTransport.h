@@ -876,11 +876,30 @@ class AsyncTransport : public DelayedDestruction,
      * when observers are added / removed, based on the observer configuration.
      */
     struct Config {
+      virtual ~Config() = default;
+
       // receive ByteEvents
       bool byteEvents{false};
 
       // observer is notified during prewrite stage and can add WriteFlags
       bool prewrite{false};
+
+      /**
+       * Enable all events in config.
+       */
+      virtual void enableAllEvents() {
+        byteEvents = true;
+        prewrite = true;
+      }
+
+      /**
+       * Returns a config where all events are enabled.
+       */
+      static Config getConfigAllEventsEnabled() {
+        Config config = {};
+        config.enableAllEvents();
+        return config;
+      }
     };
 
     /**
