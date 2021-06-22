@@ -540,6 +540,29 @@ TYPED_TEST_P(ConcurrentHashMapTest, TryEmplaceEraseStressTest) {
   }
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, InsertOrAssignStressTest) {
+  DeterministicSchedule sched(DeterministicSchedule::uniform(FLAGS_seed));
+  std::atomic<int> iterations{10000};
+  std::vector<std::thread> threads;
+  unsigned int num_threads = 32;
+  threads.reserve(num_threads);
+  folly::ConcurrentHashMap<int, int> map;
+  for (uint32_t t = 0; t < num_threads; t++) {
+    threads.push_back(lib::thread([&]() {
+      int i = 0;
+      while (--iterations >= 0) {
+        auto res = map.insert_or_assign(0, ++i);
+        ASSERT_TRUE(res.second);
+        auto v = res.first->second;
+        ASSERT_EQ(v, i);
+      }
+    }));
+  }
+  for (auto& t : threads) {
+    join;
+  }
+}
+
 TYPED_TEST_P(ConcurrentHashMapTest, IterateStressTest) {
   DeterministicSchedule sched(DeterministicSchedule::uniform(FLAGS_seed));
 
@@ -1015,6 +1038,7 @@ REGISTER_TYPED_TEST_CASE_P(
     EraseTest,
     ForEachLoop,
     TryEmplaceEraseStressTest,
+    InsertOrAssignStressTest,
     IterateStressTest,
     RefcountTest,
     UpdateStressTest,

@@ -672,6 +672,7 @@ class alignas(64) BucketTable {
           }
           prev->store(cur, std::memory_order_release);
           it.setNode(cur, buckets, bcount, idx);
+          haznode.reset_protection(cur);
           g.unlock();
           // Release not under lock.
           node->release();
