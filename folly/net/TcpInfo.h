@@ -34,10 +34,10 @@ namespace tcpinfo {
 struct LookupOptions {
   // On supported platforms, whether to fetch the name of the  congestion
   // control algorithm and any information exposed via TCP_CC_INFO.
-  bool getCcInfo{true};
+  bool getCcInfo{false};
 
   // On supported platforms, whether to fetch socket buffer utilization.
-  bool getMemInfo{true};
+  bool getMemInfo{false};
 };
 
 /**
