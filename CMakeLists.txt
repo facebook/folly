@@ -15,6 +15,11 @@
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 # We use the GoogleTest module if it is available (only in CMake 3.9+)
 # It requires CMP0054 and CMP0057 to be enabled.
+
+set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl" )
+set(OPENSSL_LIBRARIES "/usr/local/opt/openssl/lib" )
+set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include" )
+
 if (POLICY CMP0054)
   cmake_policy(SET CMP0054 NEW)
 endif()
