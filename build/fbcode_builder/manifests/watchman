@@ -23,7 +23,8 @@ googletest
 rust
 
 [shipit.pathmap]
-fbcode/watchman = .
+fbcode/watchman = watchman
+fbcode/watchman/oss = .
 fbcode/eden/fs = eden/fs
 
 [shipit.strip]
