@@ -42,6 +42,7 @@ install_deps() {
         pkg-config
         snappy
         xz
+        fmt
     )
 
     # fetch deps
