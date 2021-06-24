@@ -320,6 +320,29 @@ auto collectAnyImpl(
   co_return firstCompletion;
 }
 
+template <typename... SemiAwaitables, size_t... Indices>
+auto collectAnyNoDiscardImpl(
+    std::index_sequence<Indices...>, SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<
+        std::tuple<collect_all_try_component_t<SemiAwaitables>...>> {
+  const CancellationToken& parentCancelToken =
+      co_await co_current_cancellation_token;
+  const CancellationSource cancelSource;
+  const CancellationToken cancelToken =
+      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+
+  std::tuple<collect_all_try_component_t<SemiAwaitables>...> results;
+  co_await folly::coro::collectAll(folly::coro::co_withCancellation(
+      cancelToken, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+        auto result = co_await folly::coro::co_awaitTry(
+            std::forward<SemiAwaitables>(awaitables));
+        cancelSource.requestCancellation();
+        std::get<Indices>(results) = std::move(result);
+      }))...);
+
+  co_return results;
+}
+
 } // namespace detail
 
 template <typename... SemiAwaitables>
@@ -1014,6 +1037,15 @@ auto collectAny(SemiAwaitable&& awaitable, SemiAwaitables&&... awaitables)
   return detail::collectAnyImpl(
       std::make_index_sequence<sizeof...(SemiAwaitables) + 1>{},
       static_cast<SemiAwaitable&&>(awaitable),
+      static_cast<SemiAwaitables&&>(awaitables)...);
+}
+
+template <typename... SemiAwaitables>
+auto collectAnyNoDiscard(SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<std::tuple<detail::collect_all_try_component_t<
+        remove_cvref_t<SemiAwaitables>>...>> {
+  return detail::collectAnyNoDiscardImpl(
+      std::make_index_sequence<sizeof...(SemiAwaitables)>{},
       static_cast<SemiAwaitables&&>(awaitables)...);
 }
 

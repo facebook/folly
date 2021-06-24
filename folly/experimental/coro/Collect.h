@@ -406,6 +406,33 @@ auto collectAny(SemiAwaitable&& awaitable, SemiAwaitables&&... awaitables)
             SemiAwaitable,
             SemiAwaitables...>>>>;
 
+///////////////////////////////////////////////////////////////////////////
+// collectAnyNoDiscard(SemiAwaitable<Ts>...) ->
+//   SemiAwaitable<std::tuple<folly::Try<Ts>...>>
+//
+// The collectAnyNoDiscard() function is similar to collectAny() in that it
+// co_awaits multiple SemiAwaitables and cancels any outstanding operations once
+// at least one has finished. Unlike collectAny(), it returns results from *all*
+// SemiAwaitables, including folly::OperationCancelled for operations that were
+// cancelled.
+//
+// collectAnyNoDiscard() is built on top of collectAll(), be aware of the
+// coroutine starting behavior described in collectAll() documentation.
+//
+// The returned tuple contains the results of all the SemiAwaitables.
+//
+// Example:
+//   folly::coro::Task<Foo> getDataOneWay();
+//   folly::coro::Task<Bar> getDataAnotherWay();
+//
+//   std::tuple<folly::Try<Foo>, folly::Try<Bar>> result = co_await
+//      folly::coro::collectAny(getDataOneWay(), getDataAnotherWay());
+//
+template <typename... SemiAwaitables>
+auto collectAnyNoDiscard(SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<std::tuple<detail::collect_all_try_component_t<
+        remove_cvref_t<SemiAwaitables>>...>>;
+
 } // namespace coro
 } // namespace folly
 
