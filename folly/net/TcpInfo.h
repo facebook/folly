@@ -19,8 +19,8 @@
 #include <chrono>
 
 #include <folly/Expected.h>
-#include <folly/FixedString.h>
 #include <folly/Optional.h>
+#include <folly/String.h>
 #include <folly/net/NetOpsDispatcher.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/net/TcpInfoTypes.h>

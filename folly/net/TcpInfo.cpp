@@ -15,7 +15,6 @@
  */
 
 #include <glog/logging.h>
-#include <folly/String.h>
 #include <folly/net/TcpInfo.h>
 #include <folly/portability/Sockets.h>
 
