@@ -287,14 +287,10 @@ auto collectAnyImpl(
         folly::Try<collect_any_component_t<SemiAwaitables...>>>> {
   const CancellationToken& parentCancelToken =
       co_await co_current_cancellation_token;
-
   const CancellationSource cancelSource;
-  CancellationCallback cancelCallback(parentCancelToken, [&]() noexcept {
-    cancelSource.requestCancellation();
-  });
-  const CancellationToken cancelToken = cancelSource.getToken();
+  const CancellationToken cancelToken =
+      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
 
-  std::atomic<bool> resultHasBeenSet{false};
   std::pair<std::size_t, folly::Try<collect_any_component_t<SemiAwaitables...>>>
       firstCompletion;
   firstCompletion.first = size_t(-1);
@@ -305,9 +301,8 @@ auto collectAnyImpl(
           -> folly::coro::Task<void> {
             auto result = co_await folly::coro::co_awaitTry(
                 static_cast<SemiAwaitables&&>(aw));
-            if (!resultHasBeenSet.load(std::memory_order_relaxed) &&
-                !resultHasBeenSet.exchange(true, std::memory_order_relaxed)) {
-              cancelSource.requestCancellation();
+            if (!cancelSource.requestCancellation()) {
+              // This is first entity to request cancellation.
               firstCompletion.first = Indices;
               firstCompletion.second = std::move(result);
             }
