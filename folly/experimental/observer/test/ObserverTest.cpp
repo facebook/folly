@@ -152,61 +152,33 @@ TEST(Observer, NullValue) {
 }
 
 TEST(Observer, Cycle) {
-  SimpleObservable<int> observable(0);
-  auto observer = observable.getObserver();
-  folly::Optional<Observer<int>> observerB;
-
-  auto observerA = makeObserver([observer, &observerB]() {
-    auto value = **observer;
-    if (value == 1) {
-      **observerB;
-    }
-    return value;
-  });
-
-  observerB = makeObserver([observerA]() { return **observerA; });
-
-  auto collectObserver = makeObserver([observer, observerA, &observerB]() {
-    auto value = **observer;
-    auto valueA = **observerA;
-    auto valueB = ***observerB;
-
-    if (value == 1) {
-      if (valueA == 0) {
-        EXPECT_EQ(0, valueB);
-      } else {
-        EXPECT_EQ(1, valueA);
-        EXPECT_EQ(0, valueB);
-      }
-    } else if (value == 2) {
-      EXPECT_EQ(value, valueA);
-      EXPECT_TRUE(valueB == 0 || valueB == 2);
-    } else {
-      EXPECT_EQ(value, valueA);
-      EXPECT_EQ(value, valueB);
-    }
-
-    return value;
-  });
-
-  folly::Baton<> baton;
-  auto waitingObserver = makeObserver([collectObserver, &baton]() {
-    *collectObserver;
-    baton.post();
-    return folly::Unit();
-  });
-
-  baton.reset();
-  EXPECT_EQ(0, **collectObserver);
-
-  for (size_t i = 1; i <= 3; ++i) {
-    observable.setValue(i);
-
-    EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
-    baton.reset();
-
-    EXPECT_EQ(i, **collectObserver);
+  if (!folly::kIsDebug) {
+    // Cycle detection is only available in debug builds
+    return;
   }
+
+  EXPECT_DEATH(
+      [] {
+        SimpleObservable<bool> observable(false);
+        folly::Optional<Observer<int>> observerB;
+
+        auto observerA =
+            makeObserver([observer = observable.getObserver(), &observerB]() {
+              if (**observer) {
+                return ***observerB;
+              }
+              return 42;
+            });
+
+        observerB = makeObserver([observerA]() { return **observerA; });
+
+        EXPECT_EQ(42, **observerA);
+        EXPECT_EQ(42, ***observerB);
+
+        observable.setValue(true);
+        folly::observer_detail::ObserverManager::waitForAllUpdates();
+      }(),
+      "Observer cycle detected.");
 }
 
 TEST(Observer, Stress) {

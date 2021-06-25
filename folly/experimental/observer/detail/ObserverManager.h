@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/experimental/observer/detail/Core.h>
 #include <folly/experimental/observer/detail/GraphCycleDetector.h>
 #include <folly/fibers/FiberManager.h>
@@ -132,6 +133,9 @@ class ObserverManager {
     }
 
     static void markRefreshDependency(const Core& core) {
+      if (!kIsDebug) {
+        return;
+      }
       if (!currentDependencies_) {
         return;
       }
@@ -140,12 +144,15 @@ class ObserverManager {
         bool hasCycle =
             !cycleDetector.addEdge(&currentDependencies_->core, &core);
         if (hasCycle) {
-          throw std::logic_error("Observer cycle detected.");
+          LOG(FATAL) << "Observer cycle detected.";
         }
       });
     }
 
     static void unmarkRefreshDependency(const Core& core) {
+      if (!kIsDebug) {
+        return;
+      }
       if (!currentDependencies_) {
         return;
       }
