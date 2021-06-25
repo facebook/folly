@@ -22,6 +22,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <boost/operators.hpp>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/detail/TurnSequencer.h>
@@ -76,7 +77,7 @@ class LockFreeRingBuffer {
  public:
   /// Opaque pointer to a past or future write.
   /// Can be moved relative to its current location but not in absolute terms.
-  struct Cursor {
+  struct Cursor : boost::totally_ordered<Cursor> {
     explicit Cursor(uint64_t initialTicket) noexcept : ticket(initialTicket) {}
 
     /// Returns true if this cursor now points to a different
@@ -99,6 +100,14 @@ class LockFreeRingBuffer {
       return prevTicket != ticket;
     }
 
+    bool operator==(const Cursor& that) const noexcept {
+      return ticket == that.ticket;
+    }
+
+    bool operator<(const Cursor& that) const noexcept {
+      return ticket < that.ticket;
+    }
+
    protected: // for test visibility reasons
     uint64_t ticket;
     friend class LockFreeRingBuffer;
@@ -109,6 +118,8 @@ class LockFreeRingBuffer {
 
   LockFreeRingBuffer(const LockFreeRingBuffer&) = delete;
   LockFreeRingBuffer& operator=(const LockFreeRingBuffer&) = delete;
+
+  uint32_t capacity() const noexcept { return capacity_; }
 
   /// Perform a single write of an object of type T.
   /// Writes can block iff a previous writer has not yet completed a write
@@ -135,7 +146,7 @@ class LockFreeRingBuffer {
   /// value is false, dest is to be considered partially read and in an
   /// inconsistent state. Readers are advised to discard it.
   template <typename V>
-  bool tryRead(V& dest, const Cursor& cursor) noexcept {
+  bool tryRead(V& dest, const Cursor& cursor) const noexcept {
     return slots_[idx(cursor.ticket)].tryRead(dest, turn(cursor.ticket));
   }
 
@@ -149,10 +160,10 @@ class LockFreeRingBuffer {
   }
 
   /// Returns a Cursor pointing to the first write that has not occurred yet.
-  Cursor currentHead() noexcept { return Cursor(ticket_.load()); }
+  Cursor currentHead() const noexcept { return Cursor(ticket_.load()); }
 
   /// Returns a Cursor pointing to the earliest readable write.
-  Cursor currentTail() noexcept {
+  Cursor currentTail() const noexcept {
     uint64_t ticket = ticket_.load();
 
     // can't go back more steps than we've taken
@@ -171,8 +182,6 @@ class LockFreeRingBuffer {
         static_cast<void const*>(slots_.get()), sizeof(Slot[capacity_]));
   }
 
-  ~LockFreeRingBuffer() {}
-
  private:
   using Slot = detail::RingBufferSlot<T, Atom, Storage>;
 
@@ -182,9 +191,9 @@ class LockFreeRingBuffer {
 
   Atom<uint64_t> ticket_;
 
-  uint32_t idx(uint64_t ticket) noexcept { return ticket % capacity_; }
+  uint32_t idx(uint64_t ticket) const noexcept { return ticket % capacity_; }
 
-  uint32_t turn(uint64_t ticket) noexcept {
+  uint32_t turn(uint64_t ticket) const noexcept {
     return (uint32_t)(ticket / capacity_);
   }
 }; // LockFreeRingBuffer
@@ -228,7 +237,7 @@ class RingBufferSlot {
   }
 
   template <typename V>
-  bool tryRead(V& dest, uint32_t turn) noexcept {
+  bool tryRead(V& dest, uint32_t turn) const noexcept {
     // The write that started at turn 0 ended at turn 2
     if (!sequencer_.isTurn((turn + 1) * 2)) {
       return false;
@@ -265,7 +274,7 @@ class RingBufferTrivialStorage {
     std::atomic_thread_fence(std::memory_order_release);
   }
 
-  void load(T& dest) {
+  void load(T& dest) const {
     std::atomic_thread_fence(std::memory_order_acquire);
     std::memcpy(&dest, &data_, sizeof(T));
   }
@@ -283,7 +292,7 @@ class [[deprecated(
  public:
   void store(const T& src) { data_ = src; }
 
-  void load(T & dest) { dest = data_; }
+  void load(T & dest) const { dest = data_; }
 
  private:
   T data_{};
