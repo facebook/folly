@@ -20,7 +20,7 @@
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/UnboundedQueue.h>
+#include <folly/experimental/coro/SmallUnboundedQueue.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/fibers/Semaphore.h>
 
@@ -56,7 +56,10 @@ namespace coro {
 //  close() method) becomes thread-safe. close() must be sequenced after all
 //  write()s in this mode.
 
-template <typename T, bool SingleProducer = true>
+template <
+    typename T,
+    bool SingleProducer = true,
+    template <typename, bool, bool> typename QueueType = SmallUnboundedQueue>
 class AsyncPipe {
  public:
   ~AsyncPipe() {
@@ -151,8 +154,7 @@ class AsyncPipe {
   bool isClosed() const { return queue_.expired(); }
 
  private:
-  using Queue =
-      folly::coro::UnboundedQueue<folly::Try<T>, SingleProducer, true>;
+  using Queue = QueueType<folly::Try<T>, SingleProducer, true>;
 
   class OnClosedCallback {
    public:
@@ -201,10 +203,13 @@ class AsyncPipe {
 //
 // close() functions the same as AsyncPipe, and must be invoked before
 // destruction if an onClose callback is attached.
-template <typename T, bool SingleProducer = true>
+template <
+    typename T,
+    bool SingleProducer = true,
+    template <typename, bool, bool> typename QueueType = SmallUnboundedQueue>
 class BoundedAsyncPipe {
  public:
-  using Pipe = AsyncPipe<T, SingleProducer>;
+  using Pipe = AsyncPipe<T, SingleProducer, QueueType>;
 
   static std::pair<AsyncGenerator<T&&>, BoundedAsyncPipe> create(
       size_t tokens, folly::Function<void()> onClosed = nullptr) {
