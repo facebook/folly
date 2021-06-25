@@ -125,6 +125,13 @@ class ObserverManager {
 
     static bool isActive() { return currentDependencies_; }
 
+    static void withDependencyRecordingDisabled(folly::FunctionRef<void()> f) {
+      auto* const dependencies = std::exchange(currentDependencies_, nullptr);
+      SCOPE_EXIT { currentDependencies_ = dependencies; };
+
+      f();
+    }
+
     static void markDependency(Core::Ptr dependency) {
       DCHECK(inManagerThread());
       DCHECK(currentDependencies_);

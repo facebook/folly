@@ -246,7 +246,9 @@ CallbackHandle::CallbackHandle(
     if (*rCanceled) {
       return folly::unit;
     }
-    callback(*observer);
+    auto snapshot = *observer;
+    observer_detail::ObserverManager::DependencyRecorder::
+        withDependencyRecordingDisabled([&] { callback(std::move(snapshot)); });
     return folly::unit;
   });
 }

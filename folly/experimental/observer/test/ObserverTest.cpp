@@ -376,6 +376,55 @@ TEST(Observer, SetCallback) {
   EXPECT_EQ(2, callbackCallsCount);
 }
 
+TEST(Observer, CallbackCalledOncePerSnapshot) {
+  SimpleObservable<folly::Unit> observable(folly::unit);
+  auto observer = observable.getObserver();
+
+  int value = 1;
+  SimpleObservable<int> intObservable(value);
+  auto squareObserver =
+      makeObserver([o = intObservable.getObserver()] { return **o * **o; });
+
+  folly::Baton baton;
+  size_t callbackCallsCount = 0;
+  auto callbackHandle = observer.addCallback([&](auto) {
+    // The main point of this test is that the callback depends on
+    // `squareObserver`. A refresh of `squareObserver` should not trigger the
+    // callback, since the callback is associated only with `observer`.
+    //
+    // Note that we do not guarantee that **squareObserver necessarily reflects
+    // the latest update.
+    EXPECT_GE(value * value, **squareObserver);
+
+    ++callbackCallsCount;
+    baton.post();
+  });
+
+  baton.wait();
+  baton.reset();
+  EXPECT_EQ(1, callbackCallsCount);
+
+  // Check that any second updates to squareObserver don't trigger the callback
+  // again
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(1, callbackCallsCount);
+
+  value = 2;
+  intObservable.setValue(value);
+  observable.setValue(folly::Unit{});
+
+  baton.wait();
+  baton.reset();
+  EXPECT_EQ(2, callbackCallsCount);
+
+  value = 3;
+  // Updating intObservable should not trigger the callback
+  intObservable.setValue(value);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(9, **squareObserver);
+  EXPECT_EQ(2, callbackCallsCount);
+}
+
 TEST(Observer, CallbackMemoryLeak) {
   folly::observer::SimpleObservable<int> observable(42);
   auto observer = observable.getObserver();
