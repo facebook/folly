@@ -1727,3 +1727,55 @@ TEST(IOBuf, FreeFn) {
   EXPECT_EQ(freeVal, 3);
   EXPECT_EQ(releaseVal, 0);
 }
+
+// Compute the chained capacity of a single non-chained IOBuf of capacity zero
+TEST(IOBuf, computeChainCapacityOfZeroSizeIOBuf) {
+  size_t size = 0;
+  uint8_t data[size];
+
+  // Create buffer of capacity 0
+  unique_ptr<IOBuf> buf(IOBuf::wrapBuffer(data, size));
+
+  EXPECT_EQ(buf->computeChainCapacity(), 0);
+}
+
+// Compute the chained capacity of a single non-chained IOBuf of capacity
+// non-zero
+TEST(IOBuf, computeChainCapacityOfNonZeroSizeIOBuf) {
+  size_t size = 20;
+  uint8_t data[size];
+
+  // Create buffer of capacity 20
+  unique_ptr<IOBuf> buf(IOBuf::wrapBuffer(data, size));
+
+  EXPECT_EQ(buf->computeChainCapacity(), 20);
+}
+
+// Compute the chained capacity of a chained IOBuf with chains having a variety
+// of zero and non-zero capacities.
+TEST(IOBuf, computeChainCapacityOfMixedCapacityChainedIOBuf) {
+  // Total capacity is 100
+  uint8_t data1[20];
+  uint8_t data2[0];
+  uint8_t data3[60];
+  uint8_t data4[15];
+  uint8_t data5[0];
+  uint8_t data6[5];
+
+  // Create IOBuf at head of chain
+  unique_ptr<IOBuf> buf(IOBuf::wrapBuffer(data1, sizeof(data1)));
+
+  // Create IOBuf chains
+  auto temp = buf.get();
+  temp->appendChain(IOBuf::wrapBuffer(data2, sizeof(data2)));
+  temp = temp->next();
+  temp->appendChain(IOBuf::wrapBuffer(data3, sizeof(data3)));
+  temp = temp->next();
+  temp->appendChain(IOBuf::wrapBuffer(data4, sizeof(data4)));
+  temp = temp->next();
+  temp->appendChain(IOBuf::wrapBuffer(data5, sizeof(data5)));
+  temp = temp->next();
+  temp->appendChain(IOBuf::wrapBuffer(data6, sizeof(data6)));
+
+  EXPECT_EQ(buf->computeChainCapacity(), 100);
+}

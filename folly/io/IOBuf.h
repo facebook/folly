@@ -840,6 +840,13 @@ class IOBuf {
   std::size_t computeChainDataLength() const;
 
   /**
+   * Get the capacity all IOBuf chains
+   *
+   * Beware that this method has to walk the entire chain.
+   */
+  std::size_t computeChainCapacity() const;
+
+  /**
    * Insert another IOBuf chain immediately before this IOBuf.
    *
    * For example, if there are two IOBuf chains (A, B, C) and (D, E, F),

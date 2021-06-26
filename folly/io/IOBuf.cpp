@@ -676,6 +676,14 @@ std::size_t IOBuf::computeChainDataLength() const {
   return fullLength;
 }
 
+std::size_t IOBuf::computeChainCapacity() const {
+  std::size_t fullCapacity = capacity_;
+  for (IOBuf* current = next_; current != this; current = current->next_) {
+    fullCapacity += current->capacity_;
+  }
+  return fullCapacity;
+}
+
 void IOBuf::prependChain(unique_ptr<IOBuf>&& iobuf) {
   // Take ownership of the specified IOBuf
   IOBuf* other = iobuf.release();
