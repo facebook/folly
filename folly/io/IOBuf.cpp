@@ -320,7 +320,15 @@ unique_ptr<IOBuf> IOBuf::create(std::size_t capacity) {
     // if we do not have space for the overhead, allocate the mem separateley
     if (mallocSize < minSize) {
       auto* buf = checkedMalloc(mallocSize);
-      return takeOwnership(buf, mallocSize, static_cast<size_t>(0));
+      return takeOwnership(
+          buf,
+          mallocSize,
+          static_cast<size_t>(0),
+          static_cast<size_t>(0),
+          nullptr, /*freeFn*/
+          reinterpret_cast<void*>(mallocSize), /*userData - used for sizedFree*/
+          true, /*freeOnError*/
+          TakeOwnershipOption::STORE_SIZE);
     }
   }
 
@@ -413,11 +421,6 @@ IOBuf::IOBuf(
   // since we use that for folly::sizedFree
   DCHECK(!userData || (userData && freeFn));
 
-  // add support for sized dealloc if freeFn is null
-  if (!userData && !freeFn) {
-    userData = reinterpret_cast<void*>(capacity);
-  }
-
   auto rollback = makeGuard([&] { //
     takeOwnershipError(freeOnError, buf, freeFn, userData);
   });
@@ -436,15 +439,14 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     std::size_t length,
     FreeFunction freeFn,
     void* userData,
-    bool freeOnError) {
+    bool freeOnError,
+    TakeOwnershipOption option) {
   // do not allow only user data without a freeFn
   // since we use that for folly::sizedFree
-  DCHECK(!userData || (userData && freeFn));
 
-  // add support for sized dealloc if freeFn is null
-  if (!userData && !freeFn) {
-    userData = reinterpret_cast<void*>(capacity);
-  }
+  DCHECK(
+      !userData || (userData && freeFn) ||
+      (userData && !freeFn && (option == TakeOwnershipOption::STORE_SIZE)));
 
   HeapFullStorage* storage = nullptr;
   auto rollback = makeGuard([&] {

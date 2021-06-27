@@ -230,6 +230,7 @@ class IOBuf {
   enum CopyBufferOp { COPY_BUFFER };
 
   enum class CombinedOption { DEFAULT, COMBINED, SEPARATE };
+  enum class TakeOwnershipOption { DEFAULT, STORE_SIZE };
 
   typedef ByteRange value_type;
   typedef Iterator iterator;
@@ -365,7 +366,8 @@ class IOBuf {
       std::size_t length,
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
-      bool freeOnError = true);
+      bool freeOnError = true,
+      TakeOwnershipOption option = TakeOwnershipOption::DEFAULT);
   IOBuf(
       TakeOwnershipOp,
       void* buf,
