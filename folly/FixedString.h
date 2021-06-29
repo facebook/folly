@@ -393,7 +393,8 @@ struct ReverseIterator {
 } // namespace detail
 
 // Defined in folly/hash/Hash.h
-std::uint32_t hsieh_hash32_buf(const void* buf, std::size_t len);
+std::uint32_t hsieh_hash32_buf_constexpr(
+    const unsigned char* buf, std::size_t len);
 
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** *
  * \class BasicFixedString
@@ -1026,10 +1027,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    */
   static constexpr std::size_t max_size() noexcept { return N; }
 
-  // We would need to reimplement folly::Hash to make this
-  // constexpr. :-(
-  std::uint32_t hash() const noexcept {
-    return folly::hsieh_hash32_buf(data_, size_);
+  constexpr std::uint32_t hash() const noexcept {
+    return folly::hsieh_hash32_buf_constexpr(data_, size_);
   }
 
   /**

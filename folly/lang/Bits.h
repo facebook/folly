@@ -344,7 +344,7 @@ FOLLY_POP_WARNING
  * Read an unaligned value of type T and return it.
  */
 template <class T>
-inline T loadUnaligned(const void* p) {
+inline constexpr T loadUnaligned(const void* p) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
   if (kHasUnalignedAccess) {
