@@ -726,7 +726,8 @@ if __name__ == "__main__":
             if platform == "win32":
                 machine_suffix = self.build_opts.host_type.as_tuple_string()
                 testpilot_args = [
-                    testpilot,
+                    "parexec-testinfra.exe",
+                    "C:/tools/testpilot/sc_testpilot.par",
                     # Need to force the repo type otherwise testpilot on windows
                     # can be confused (presumably sparse profile related)
                     "--force-repo",
@@ -740,7 +741,6 @@ if __name__ == "__main__":
                     "--test-config",
                     "platform=%s" % machine_suffix,
                     "buildsystem=getdeps",
-                    "--print-long-results",
                 ]
             else:
                 testpilot_args = [
