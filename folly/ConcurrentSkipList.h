@@ -173,7 +173,7 @@ class ConcurrentSkipList {
         head_(NodeType::create(recycler_.alloc(), height, value_type(), true)) {
   }
 
-  // Convenient function to get an Accessor to a new instance.
+  // Convenience function to get an Accessor to a new instance.
   static Accessor create(int height, const NodeAlloc& alloc) {
     return Accessor(createInstance(height, alloc));
   }
@@ -719,7 +719,8 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
   typedef T* pointer;
   typedef ptrdiff_t difference_type;
 
-  Skipper(const std::shared_ptr<SkipListType>& skipList) : accessor_(skipList) {
+  Skipper(std::shared_ptr<SkipListType> skipList)
+      : accessor_(std::move(skipList)) {
     init();
   }
 
@@ -751,6 +752,9 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
     }
     return *this;
   }
+
+  Accessor& accessor() { return accessor_; }
+  const Accessor& accessor() const { return accessor_; }
 
   bool good() const { return succs_[0] != nullptr; }
 
