@@ -36,11 +36,9 @@ TEST(Core, size) {
     std::atomic<futures::detail::State> state_;
     std::atomic<unsigned char> attached_;
     std::atomic<unsigned char> callbackReferences_;
-    futures::detail::SpinLock interruptLock_;
     KeepAliveOrDeferredGold executor_;
     std::shared_ptr<RequestContext> context_;
-    std::unique_ptr<exception_wrapper> interrupt_;
-    std::atomic<futures::detail::InterruptHandler*> interruptHandler_{};
+    std::atomic<uintptr_t> interrupt_;
     CoreBaseGold* proxy_;
   };
   class CoreGold : Try<Unit>, public CoreBaseGold {};

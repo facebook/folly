@@ -432,19 +432,48 @@ class CoreBase {
   ///   `setResult()`.
   template <typename F>
   void setInterruptHandler(F&& fn) {
-    std::lock_guard<SpinLock> lock(interruptLock_);
-    if (!hasResult()) {
-      if (interrupt_) {
-        fn(as_const(*interrupt_));
-      } else {
-        auto oldInterruptHandler = interruptHandler_.exchange(
-            new InterruptHandlerImpl<typename std::decay<F>::type>(
-                static_cast<F&&>(fn)),
-            std::memory_order_relaxed);
-        if (oldInterruptHandler) {
-          oldInterruptHandler->release();
+    using handler_type = InterruptHandlerImpl<std::decay_t<F>>;
+    if (hasResult()) {
+      return;
+    }
+    auto interrupt = interrupt_.load(std::memory_order_acquire);
+    switch (interrupt & InterruptMask) {
+      case InterruptInitial: { // store the handler
+        assert(!interrupt);
+        auto handler = new handler_type(static_cast<F&&>(fn));
+        auto exchanged = folly::atomic_compare_exchange_strong_explicit(
+            &interrupt_,
+            &interrupt,
+            reinterpret_cast<uintptr_t>(handler) | InterruptHasHandler,
+            std::memory_order_release,
+            std::memory_order_acquire);
+        if (exchanged) {
+          return;
         }
+        // lost the race!
+        delete handler;
+        if (interrupt & InterruptHasHandler) {
+          terminate_with<std::logic_error>("set-interrupt-handler race");
+        }
+        assert(interrupt & InterruptHasObject);
+        FOLLY_FALLTHROUGH;
       }
+      case InterruptHasObject: { // invoke over the stored object
+        auto exchanged = interrupt_.compare_exchange_strong(
+            interrupt, InterruptTerminal, std::memory_order_relaxed);
+        if (!exchanged) {
+          terminate_with<std::logic_error>("set-interrupt-handler race");
+        }
+        auto object = reinterpret_cast<exception_wrapper*>(
+            interrupt & ~InterruptHasObject);
+        fn(as_const(*object));
+        delete object;
+        return;
+      }
+      case InterruptHasHandler: // fail all calls after the first
+        terminate_with<std::logic_error>("set-interrupt-handler duplicate");
+      case InterruptTerminal: // fail all calls after the first
+        terminate_with<std::logic_error>("set-interrupt-handler after done");
     }
   }
 
@@ -456,6 +485,23 @@ class CoreBase {
   // Helper class that stores a pointer to the `Core` object and calls
   // `derefCallback` and `detachOne` in the destructor.
   class CoreAndCallbackReference;
+
+  // interrupt_ is an atomic acyclic finite state machine with guarded state
+  // which takes the form of either a pointer to a copy of the object passed to
+  // raise or a pointer to a copy of the handler passed to setInterruptHandler
+  //
+  // the object and the handler values are both at least pointer-aligned so they
+  // leave the bottom 2 bits free on all supported platforms; these bits are
+  // stolen for the state machine
+  enum : uintptr_t {
+    InterruptMask = 0x3u,
+  };
+  enum InterruptState : uintptr_t {
+    InterruptInitial = 0x0u,
+    InterruptHasHandler = 0x1u,
+    InterruptHasObject = 0x2u,
+    InterruptTerminal = 0x3u,
+  };
 
   void setCallback_(
       Callback&& callback,
@@ -477,13 +523,11 @@ class CoreBase {
   std::atomic<State> state_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
-  SpinLock interruptLock_;
   KeepAliveOrDeferred executor_;
   union {
     Context context_;
   };
-  std::unique_ptr<exception_wrapper> interrupt_{};
-  std::atomic<InterruptHandler*> interruptHandler_{};
+  std::atomic<uintptr_t> interrupt_{}; // see InterruptMask, InterruptState
   CoreBase* proxy_;
 };
 

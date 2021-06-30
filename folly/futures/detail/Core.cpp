@@ -310,25 +310,63 @@ DeferredWrapper CoreBase::stealDeferredExecutor() {
 }
 
 void CoreBase::raise(exception_wrapper e) {
-  std::lock_guard<SpinLock> lock(interruptLock_);
-  if (!interrupt_ && !hasResult()) {
-    interrupt_ = std::make_unique<exception_wrapper>(std::move(e));
-    auto interruptHandler = interruptHandler_.load(std::memory_order_relaxed);
-    if (interruptHandler) {
-      interruptHandler->handle(*interrupt_);
+  if (hasResult()) {
+    return;
+  }
+  auto interrupt = interrupt_.load(std::memory_order_acquire);
+  switch (interrupt & InterruptMask) {
+    case InterruptInitial: { // store the object
+      assert(!interrupt);
+      auto object = new exception_wrapper(std::move(e));
+      auto exchanged = folly::atomic_compare_exchange_strong_explicit(
+          &interrupt_,
+          &interrupt,
+          reinterpret_cast<uintptr_t>(object) | InterruptHasObject,
+          std::memory_order_release,
+          std::memory_order_acquire);
+      if (exchanged) {
+        return;
+      }
+      // lost the race!
+      e = std::move(*object);
+      delete object;
+      if (interrupt & InterruptHasObject) { // ignore all calls after the first
+        return;
+      }
+      assert(interrupt & InterruptHasHandler);
+      FOLLY_FALLTHROUGH;
     }
+    case InterruptHasHandler: { // invoke the stored handler
+      auto exchanged = interrupt_.compare_exchange_strong(
+          interrupt, InterruptTerminal, std::memory_order_relaxed);
+      if (!exchanged) { // ignore all calls after the first
+        return;
+      }
+      auto handler =
+          reinterpret_cast<InterruptHandler*>(interrupt & ~InterruptHasHandler);
+      handler->handle(e);
+      handler->release();
+      return;
+    }
+    case InterruptHasObject: // ignore all calls after the first
+      return;
+    case InterruptTerminal: // ignore all calls after the first
+      return;
   }
 }
 
 void CoreBase::initCopyInterruptHandlerFrom(const CoreBase& other) {
-  auto interruptHandler =
-      other.interruptHandler_.load(std::memory_order_acquire);
-  if (interruptHandler != nullptr) {
-    interruptHandler->acquire();
+  assert(!interrupt_.load(std::memory_order_relaxed));
+  auto interrupt = other.interrupt_.load(std::memory_order_acquire);
+  switch (interrupt & InterruptMask) {
+    case InterruptHasHandler: { // copy the handler
+      auto handler =
+          reinterpret_cast<InterruptHandler*>(interrupt & ~InterruptHasHandler);
+      handler->acquire();
+      interrupt_.store(interrupt, std::memory_order_release);
+      break;
+    }
   }
-  auto oldInterruptHandler =
-      interruptHandler_.exchange(interruptHandler, std::memory_order_release);
-  DCHECK(oldInterruptHandler == nullptr);
 }
 
 class CoreBase::CoreAndCallbackReference {
@@ -362,9 +400,20 @@ CoreBase::CoreBase(State state, unsigned char attached)
     : state_(state), attached_(attached) {}
 
 CoreBase::~CoreBase() {
-  auto interruptHandler = interruptHandler_.load(std::memory_order_relaxed);
-  if (interruptHandler != nullptr) {
-    interruptHandler->release();
+  auto interrupt = interrupt_.load(std::memory_order_acquire);
+  switch (interrupt & InterruptMask) {
+    case InterruptHasHandler: {
+      auto handler =
+          reinterpret_cast<InterruptHandler*>(interrupt & ~InterruptHasHandler);
+      handler->release();
+      break;
+    }
+    case InterruptHasObject: {
+      auto object =
+          reinterpret_cast<exception_wrapper*>(interrupt & ~InterruptHasObject);
+      delete object;
+      break;
+    }
   }
 }
 
