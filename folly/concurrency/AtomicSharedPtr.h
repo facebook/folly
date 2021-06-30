@@ -50,7 +50,7 @@
  * This version instead stores the 48 bits of address, plus 16 bits of
  * local count in a single 8byte pointer.  This avoids 'lock cmpxchg16b',
  * which is much slower than 'lock xchg' in the normal 'store' case.  In
- * the less-common aliased pointer scenaro, we just allocate it in a new
+ * the less-common aliased pointer scenario, we just allocate it in a new
  * block, and store a pointer to that instead.
  *
  * Note that even if we only want to use the 3-bits of pointer alignment,
