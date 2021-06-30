@@ -669,6 +669,21 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       : BasicFixedString{
             that, detail::fixedstring::checkOverflow(count, N), Indices{}} {}
 
+#if FOLLY_HAS_STRING_VIEW
+  /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
+   * Construct from a `std::basic_string_view<Char>`
+   * \param that The source basic_string_view
+   * \pre `that.size() <= N`
+   * \post `size() == that.size()`
+   * \post `0 == strncmp(data(), that.begin(), size())`
+   * \post `at(size()) == Char(0)`
+   * \throw std::out_of_range when that.size() > N
+   */
+  constexpr /* implicit */ BasicFixedString(
+      std::basic_string_view<Char> that) noexcept(false)
+      : BasicFixedString{that.data(), that.size()} {}
+#endif
+
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Construct an BasicFixedString that contains `count` characters, all
    *   of which are `ch`.
