@@ -1172,6 +1172,15 @@ TEST(Gen, Guard) {
       | eachTo<int>()
       | sum);
   EXPECT_EQ(
+      4,
+      from({"1", "a", "3", "99"})
+      | guard<runtime_error>([](runtime_error&, const char*) {
+          return true; // continue
+        })
+      | eachTo<int>()
+      | take(2) // Ensure take() is respected.
+      | sum);
+  EXPECT_EQ(
       1,
       from({"1", "a", "3"})
       | guard<runtime_error>([](runtime_error&, const char*) {
