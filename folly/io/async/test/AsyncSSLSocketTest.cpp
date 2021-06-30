@@ -586,6 +586,38 @@ TEST_F(NextProtocolTest, RandomizedAlpnTest) {
   }
   EXPECT_EQ(selectedProtocols.size(), 2);
 }
+
+TEST_F(NextProtocolTest, AlpnRequiredIfClientSupportsTestNoClientProtocol) {
+  clientCtx->setAdvertisedNextProtocols({});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
+  serverCtx->setRequireAlpnIfClientSupports(true);
+
+  connect();
+
+  expectHandshakeSuccess();
+  expectNoProtocol();
+}
+
+TEST_F(NextProtocolTest, AlpnRequiredIfClientSupportsTestOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub", "baz"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
+  serverCtx->setRequireAlpnIfClientSupports(true);
+
+  connect();
+
+  expectProtocol("baz");
+}
+
+TEST_F(NextProtocolTest, AlpnRequiredIfClientSupportsTestNoOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
+  serverCtx->setRequireAlpnIfClientSupports(true);
+
+  connect();
+
+  expectHandshakeError();
+}
+
 #endif
 
 #ifndef OPENSSL_NO_TLSEXT

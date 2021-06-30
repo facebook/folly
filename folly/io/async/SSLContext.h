@@ -530,6 +530,15 @@ class SSLContext {
    */
   void unsetNextProtocols();
   void deleteNextProtocolsStrings();
+
+  bool getRequireAlpnIfClientSupports() const {
+    return requireAlpnIfClientSupports_;
+  }
+
+  void setRequireAlpnIfClientSupports(bool require) {
+    requireAlpnIfClientSupports_ = require;
+  }
+
 #endif // FOLLY_OPENSSL_HAS_ALPN
 
   /**
@@ -668,6 +677,8 @@ class SSLContext {
       void* data);
 
   size_t pickNextProtocols();
+
+  bool requireAlpnIfClientSupports_{false};
 
 #endif // FOLLY_OPENSSL_HAS_ALPN
 
