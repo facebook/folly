@@ -46,6 +46,7 @@ libcurl
 fbcode/eden/oss = .
 fbcode/eden = eden
 fbcode/tools/lfs = tools/lfs
+fbcode/thrift/lib/rust = thrift/lib/rust
 
 [shipit.strip]
 ^fbcode/eden/fs/eden-config\.h$
