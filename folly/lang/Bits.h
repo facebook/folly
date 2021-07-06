@@ -350,7 +350,7 @@ inline constexpr T loadUnaligned(const void* p) {
   if (kHasUnalignedAccess) {
     return static_cast<const Unaligned<T>*>(p)->value;
   } else {
-    T value;
+    T value{};
     memcpy(&value, p, sizeof(T));
     return value;
   }
