@@ -23,6 +23,7 @@
 #include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/fibers/AddTasks.h>
 #include <folly/fibers/AtomicBatchDispatcher.h>
 #include <folly/fibers/BatchDispatcher.h>
@@ -1831,8 +1832,8 @@ TEST(FiberManager, batchSemaphore) {
         for (size_t i = 0; i < kTasks; ++i) {
           manager.addTask([&, completionCounter]() {
             for (size_t j = 0; j < kIterations; ++j) {
-              int tokens = j % 3 + 1;
-              switch (j % 3) {
+              int tokens = j % 4 + 1;
+              switch (j % 4) {
                 case 0:
                   sem.wait(tokens);
                   break;
@@ -1847,6 +1848,9 @@ TEST(FiberManager, batchSemaphore) {
                   }
                   break;
                 }
+                case 3:
+                  folly::coro::blockingWait(sem.co_wait(tokens));
+                  break;
               }
               counter += tokens;
               sem.signal(tokens);
@@ -1879,6 +1883,54 @@ TEST(FiberManager, batchSemaphore) {
   for (auto& worker : workers) {
     EXPECT_EQ(0, worker.counter);
   }
+}
+
+/**
+ * Verify that BatchSemaphore signals all waiters or fail by timeout.
+ * Overall idea is to linearize waiters in the semaphore's list,
+ * requesting incremental number of token. For example, [1, 2, 3, 4, 5] for a
+ * total semaphore capacity of 5 tokens. When releasing all 5 tokens at once an
+ * expected behavior is:
+ *  - Return 5 tokens: notify [1, 2] and block [3, 4, 5] - 2 tokens left
+ *  - Return 1 token: notify [3] and block [4, 5] - 0 tokens left
+ *  - Return 2 tokens: and block [4, 5] - 2 tokens left
+ *  - Return 3 tokens: notify [4] and block [5] - 1 token left
+ *  - Return 4 tokens: notify [5] - 0 tokens left
+ *  - Return 5 tokens: done - 5 tokens left
+ */
+TEST(FiberManager, batchSemaphoreSignalAll) {
+  static constexpr size_t kNumWaiters = 5;
+
+  BatchSemaphore sem(kNumWaiters);
+  sem.wait(kNumWaiters);
+
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  for (size_t task = 0; task < kNumWaiters; task++) {
+    fm.addTask([&, tokens = int64_t(task) + 1] {
+      // Wait for semaphore and fail if not notified
+      BatchSemaphore::Waiter waiter{tokens};
+      bool acquired = sem.try_wait(waiter, tokens);
+      if (!acquired &&
+          !waiter.baton.try_wait_for(std::chrono::milliseconds(1000))) {
+        FAIL() << "BatchSemaphore::Waiter has never been notified";
+      }
+
+      // Rotate to the next task
+      Baton b;
+      b.try_wait_for(std::chrono::milliseconds(1));
+
+      sem.signal(tokens);
+    });
+  }
+
+  fm.addTask([&] {
+    // Release all tokens and notify waiters
+    sem.signal(kNumWaiters);
+  });
+
+  evb.loop();
+  EXPECT_FALSE(fm.hasTasks());
 }
 
 template <typename ExecutorT>
