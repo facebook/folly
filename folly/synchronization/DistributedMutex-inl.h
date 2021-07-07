@@ -37,7 +37,7 @@
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicUtil.h>
-#include <folly/synchronization/DistributedMutex.h>
+#include <folly/synchronization/Lock.h>
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 #include <folly/synchronization/detail/Sleeper.h>
 
@@ -1700,3 +1700,31 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_for(
 } // namespace distributed_mutex
 } // namespace detail
 } // namespace folly
+
+namespace std {
+
+template <template <typename> class Atom, bool TimePublishing>
+class unique_lock<
+    ::folly::detail::distributed_mutex::DistributedMutex<Atom, TimePublishing>>
+    : public ::folly::unique_lock_base<
+          ::folly::detail::distributed_mutex::
+              DistributedMutex<Atom, TimePublishing>> {
+ public:
+  using ::folly::unique_lock_base<
+      ::folly::detail::distributed_mutex::
+          DistributedMutex<Atom, TimePublishing>>::unique_lock_base;
+};
+
+template <template <typename> class Atom, bool TimePublishing>
+class lock_guard<
+    ::folly::detail::distributed_mutex::DistributedMutex<Atom, TimePublishing>>
+    : public ::folly::lock_guard_base<
+          ::folly::detail::distributed_mutex::
+              DistributedMutex<Atom, TimePublishing>> {
+ public:
+  using ::folly::lock_guard_base<
+      ::folly::detail::distributed_mutex::
+          DistributedMutex<Atom, TimePublishing>>::lock_guard_base;
+};
+
+} // namespace std
