@@ -253,8 +253,8 @@ class ThreadLocalPtr {
     // The iterators obtained from Accessor are bidirectional iterators.
     class Iterator {
       friend class Accessor;
-      const Accessor* accessor_;
-      threadlocal_detail::ThreadEntryNode* e_;
+      const Accessor* accessor_{nullptr};
+      threadlocal_detail::ThreadEntryNode* e_{nullptr};
 
       void increment() {
         e_ = e_->getNext();
@@ -310,6 +310,8 @@ class ThreadLocalPtr {
       using reference = T const&;
       using pointer = T const*;
       using iterator_category = std::bidirectional_iterator_tag;
+
+      Iterator() = default;
 
       Iterator& operator++() {
         increment();
