@@ -557,20 +557,20 @@ void RequestContext::clearContextData(const RequestToken& val) {
   auto newCtx = std::move(newCtx_); // enforce that it is really moved-from
 
   auto& staticCtx = getStaticContext();
-  if (newCtx == staticCtx.first) {
+  if (newCtx == staticCtx.requestContext) {
     return newCtx;
   }
 
   FOLLY_SDT(
       folly,
       request_context_switch_before,
-      staticCtx.first.get(),
+      staticCtx.requestContext.get(),
       newCtx.get(),
-      staticCtx.first ? staticCtx.first->getRootId() : 0,
+      staticCtx.requestContext ? staticCtx.requestContext->getRootId() : 0,
       newCtx ? newCtx->getRootId() : 0);
 
   std::shared_ptr<RequestContext> prevCtx;
-  RequestContext* curCtx = staticCtx.first.get();
+  RequestContext* curCtx = staticCtx.requestContext.get();
   bool checkCur = curCtx && curCtx->state_.combined();
   bool checkNew = newCtx && newCtx->state_.combined();
   if (checkCur && checkNew) {
@@ -586,9 +586,10 @@ void RequestContext::clearContextData(const RequestToken& val) {
         data->onUnset();
       }
     }
-    prevCtx = std::move(staticCtx.first);
-    staticCtx.first = std::move(newCtx);
-    staticCtx.second.store(staticCtx.first->rootId_, std::memory_order_relaxed);
+    prevCtx = std::move(staticCtx.requestContext);
+    staticCtx.requestContext = std::move(newCtx);
+    staticCtx.rootId.store(
+        staticCtx.requestContext->getRootId(), std::memory_order_relaxed);
     for (auto it = newcb.begin(); it != newcb.end(); ++it) {
       DCHECK(it.key());
       auto data = it.key();
@@ -600,14 +601,14 @@ void RequestContext::clearContextData(const RequestToken& val) {
     if (curCtx) {
       curCtx->state_.onUnset();
     }
-    prevCtx = std::move(staticCtx.first);
-    staticCtx.first = std::move(newCtx);
-    if (staticCtx.first) {
-      staticCtx.second.store(
-          staticCtx.first->rootId_, std::memory_order_relaxed);
-      staticCtx.first->state_.onSet();
+    prevCtx = std::move(staticCtx.requestContext);
+    staticCtx.requestContext = std::move(newCtx);
+    if (staticCtx.requestContext) {
+      staticCtx.rootId.store(
+          staticCtx.requestContext->rootId_, std::memory_order_relaxed);
+      staticCtx.requestContext->state_.onSet();
     } else {
-      staticCtx.second.store(0, std::memory_order_relaxed);
+      staticCtx.rootId.store(0, std::memory_order_relaxed);
     }
   }
   return prevCtx;
@@ -623,7 +624,7 @@ RequestContext::getRootIdsFromAllThreads() {
   auto accessor = SingletonT::accessAllThreads();
   for (auto it = accessor.begin(); it != accessor.end(); ++it) {
     result.push_back(
-        {it->second.load(std::memory_order_relaxed),
+        {it->rootId.load(std::memory_order_relaxed),
          it.getThreadId(),
          it.getOSThreadId()});
   }
@@ -632,7 +633,7 @@ RequestContext::getRootIdsFromAllThreads() {
 
 /* static */ std::shared_ptr<RequestContext>
 RequestContext::setShallowCopyContext() {
-  auto& parent = getStaticContext().first;
+  auto& parent = getStaticContext().requestContext;
   auto child = parent ? RequestContext::copyAsChild(*parent)
                       : std::make_shared<RequestContext>();
   if (!parent) {
@@ -645,7 +646,7 @@ RequestContext::setShallowCopyContext() {
 }
 
 RequestContext* RequestContext::get() {
-  auto& context = getStaticContext().first;
+  auto& context = getStaticContext().requestContext;
   if (!context) {
     static RequestContext defaultContext(0);
     return std::addressof(defaultContext);

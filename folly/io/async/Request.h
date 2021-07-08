@@ -231,7 +231,7 @@ class RequestContext {
       std::shared_ptr<RequestContext>&& newCtx_);
 
   static std::shared_ptr<RequestContext> saveContext() {
-    return getStaticContext().first;
+    return getStaticContext().requestContext;
   }
 
  private:
@@ -242,8 +242,11 @@ class RequestContext {
   RequestContext(const RequestContext& ctx, intptr_t rootid, Tag tag);
   RequestContext(const RequestContext& ctx, Tag tag);
   explicit RequestContext(intptr_t rootId);
-  using StaticContext =
-      std::pair<std::shared_ptr<RequestContext>, std::atomic<intptr_t>>;
+
+  struct StaticContext {
+    std::shared_ptr<RequestContext> requestContext;
+    std::atomic<intptr_t> rootId{0};
+  };
 
  private:
   static StaticContext& getStaticContext();
