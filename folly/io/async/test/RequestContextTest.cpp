@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <cstdint>
 #include <thread>
 
 #include <folly/Memory.h>
@@ -22,6 +24,8 @@
 #include <folly/io/async/test/RequestContextHelper.h>
 #include <folly/portability/GTest.h>
 #include <folly/system/ThreadName.h>
+
+#include <boost/thread/barrier.hpp>
 
 using namespace folly;
 
@@ -521,5 +525,44 @@ TEST_F(RequestContextTest, ConcurrentDataRefRelease) {
     });
     th1.join();
     th2.join();
+  }
+}
+
+TEST_F(RequestContextTest, AccessAllThreadsDestructionGuard) {
+  constexpr auto kNumThreads = 128;
+
+  std::vector<std::thread> threads{kNumThreads};
+  boost::barrier barrier{kNumThreads + 1};
+
+  std::atomic<std::size_t> count{0};
+  for (auto& thread : threads) {
+    thread = std::thread([&] {
+      // Force creation of thread local
+      RequestContext::get();
+      ++count;
+      // Wait for all other threads to do the same
+      barrier.wait();
+      // Wait until signaled to die
+      barrier.wait();
+    });
+  }
+
+  barrier.wait();
+  // Sanity check
+  EXPECT_EQ(count.load(), kNumThreads);
+
+  {
+    auto accessor = RequestContext::accessAllThreads();
+    // Allow threads to die (but they should not as long as we hold accessor!)
+    barrier.wait();
+    auto accessorsCount = std::distance(accessor.begin(), accessor.end());
+    EXPECT_EQ(accessorsCount, kNumThreads + 1);
+    for (RequestContext::StaticContext& staticContext : accessor) {
+      EXPECT_EQ(staticContext.requestContext, nullptr);
+    }
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
   }
 }
