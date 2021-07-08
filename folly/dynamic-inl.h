@@ -235,6 +235,7 @@ struct dynamic::item_iterator : detail::IteratorAdaptor<
       dynamic::ObjectImpl::iterator,
       std::pair<dynamic const, dynamic>,
       std::forward_iterator_tag>;
+  item_iterator() = default;
   /* implicit */ item_iterator(dynamic::ObjectImpl::iterator b) : Super(b) {}
 
   using object_type = dynamic::ObjectImpl;
@@ -250,6 +251,7 @@ struct dynamic::value_iterator : detail::IteratorAdaptor<
       dynamic::ObjectImpl::iterator,
       dynamic,
       std::forward_iterator_tag>;
+  value_iterator() = default;
   /* implicit */ value_iterator(dynamic::ObjectImpl::iterator b) : Super(b) {}
 
   using object_type = dynamic::ObjectImpl;
@@ -268,6 +270,7 @@ struct dynamic::const_item_iterator
       dynamic::ObjectImpl::const_iterator,
       std::pair<dynamic const, dynamic> const,
       std::forward_iterator_tag>;
+  const_item_iterator() = default;
   /* implicit */ const_item_iterator(dynamic::ObjectImpl::const_iterator b)
       : Super(b) {}
   /* implicit */ const_item_iterator(const_item_iterator const& i)
@@ -287,6 +290,7 @@ struct dynamic::const_key_iterator : detail::IteratorAdaptor<
       dynamic::ObjectImpl::const_iterator,
       dynamic const,
       std::forward_iterator_tag>;
+  const_key_iterator() = default;
   /* implicit */ const_key_iterator(dynamic::ObjectImpl::const_iterator b)
       : Super(b) {}
 
@@ -305,6 +309,7 @@ struct dynamic::const_value_iterator : detail::IteratorAdaptor<
       dynamic::ObjectImpl::const_iterator,
       dynamic const,
       std::forward_iterator_tag>;
+  const_value_iterator() = default;
   /* implicit */ const_value_iterator(dynamic::ObjectImpl::const_iterator b)
       : Super(b) {}
   /* implicit */ const_value_iterator(value_iterator i) : Super(i.base()) {}
