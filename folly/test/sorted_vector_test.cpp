@@ -188,6 +188,7 @@ TEST(SortedVectorTypes, SimpleSetTest) {
   EXPECT_TRUE(range.second != cs2.end());
   EXPECT_TRUE(cs2.count(32) == 1);
   EXPECT_FALSE(cs2.find(32) == cs2.end());
+  EXPECT_TRUE(cs2.contains(32));
 
   // Bad insert hint.
   s2.insert(s2.begin() + 3, 33);
@@ -200,6 +201,7 @@ TEST(SortedVectorTypes, SimpleSetTest) {
   it = s2.find(32);
   EXPECT_FALSE(it == s2.end());
   s2.erase(it);
+  EXPECT_FALSE(cs2.contains(32));
   EXPECT_TRUE(s2.size() == oldSz);
   check_invariant(s2);
 
@@ -255,6 +257,13 @@ TEST(SortedVectorTypes, TransparentSetTest) {
   EXPECT_EQ(1, s.count(world));
   EXPECT_EQ(0, s.count(zebra));
 
+  // contains
+  EXPECT_FALSE(s.contains(buddy));
+  EXPECT_TRUE(s.contains(hello));
+  EXPECT_FALSE(s.contains(stake));
+  EXPECT_TRUE(s.contains(world));
+  EXPECT_FALSE(s.contains(zebra));
+
   // lower_bound
   EXPECT_TRUE(s.find(hello) == s.lower_bound(buddy));
   EXPECT_TRUE(s.find(hello) == s.lower_bound(hello));
@@ -305,8 +314,10 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   EXPECT_TRUE(m.count(32) == 1);
   EXPECT_DOUBLE_EQ(100.0, m.at(32));
   EXPECT_FALSE(m.find(32) == m.end());
+  EXPECT_TRUE(m.contains(32));
   m.erase(32);
   EXPECT_TRUE(m.find(32) == m.end());
+  EXPECT_FALSE(m.contains(32));
   check_invariant(m);
   EXPECT_THROW(m.at(32), std::out_of_range);
 

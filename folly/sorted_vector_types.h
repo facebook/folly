@@ -530,6 +530,13 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return find(key) == end() ? 0 : 1;
   }
 
+  bool contains(const key_type& key) const { return find(key) != end(); }
+
+  template <typename K>
+  if_is_transparent<K, bool> contains(const K& key) const {
+    return find(key) != end();
+  }
+
   iterator lower_bound(const key_type& key) {
     return std::lower_bound(begin(), end(), key, key_comp());
   }
@@ -1015,6 +1022,13 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   template <typename K>
   if_is_transparent<K, size_type> count(const K& key) const {
     return find(key) == end() ? 0 : 1;
+  }
+
+  bool contains(const key_type& key) const { return find(key) != end(); }
+
+  template <typename K>
+  if_is_transparent<K, bool> contains(const K& key) const {
+    return find(key) != end();
   }
 
   iterator lower_bound(const key_type& key) { return lower_bound(*this, key); }
