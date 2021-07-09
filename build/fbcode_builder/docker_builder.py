@@ -4,7 +4,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-'''
+
+"""
 
 Extends FBCodeBuilder to produce Docker context directories.
 
@@ -15,26 +16,23 @@ caching, you will want to:
    that change the least often, and
  - Put the steps that you are debugging towards the very end.
 
-'''
+"""
 import logging
 import os
 import shutil
 import tempfile
 
 from fbcode_builder import FBCodeBuilder
-from shell_quoting import (
-    raw_shell, shell_comment, shell_join, ShellQuoted, path_join
-)
+from shell_quoting import raw_shell, shell_comment, shell_join, ShellQuoted, path_join
 from utils import recursively_flatten_list, run_command
 
 
 class DockerFBCodeBuilder(FBCodeBuilder):
-
     def _user(self):
-        return self.option('user', 'root')
+        return self.option("user", "root")
 
     def _change_user(self):
-        return ShellQuoted('USER {u}').format(u=self._user())
+        return ShellQuoted("USER {u}").format(u=self._user())
 
     def setup(self):
         # Please add RPM-based OSes here as appropriate.
@@ -63,17 +61,18 @@ class DockerFBCodeBuilder(FBCodeBuilder):
         # it is present when the resulting container is run add to PATH
         actions = []
         if self.option("PYTHON_VENV", "OFF") == "ON":
-            actions = ShellQuoted('ENV PATH={p}:$PATH').format(
-                p=path_join(self.option('prefix'), "venv", "bin"))
-        return(actions)
+            actions = ShellQuoted("ENV PATH={p}:$PATH").format(
+                p=path_join(self.option("prefix"), "venv", "bin")
+            )
+        return actions
 
     def step(self, name, actions):
-        assert '\n' not in name, 'Name {0} would span > 1 line'.format(name)
-        b = ShellQuoted('')
-        return [ShellQuoted('### {0} ###'.format(name)), b] + actions + [b]
+        assert "\n" not in name, "Name {0} would span > 1 line".format(name)
+        b = ShellQuoted("")
+        return [ShellQuoted("### {0} ###".format(name)), b] + actions + [b]
 
     def run(self, shell_cmd):
-        return ShellQuoted('RUN {cmd}').format(cmd=shell_cmd)
+        return ShellQuoted("RUN {cmd}").format(cmd=shell_cmd)
 
     def set_env(self, key, value):
         return ShellQuoted("ENV {key}={val}").format(key=key, val=value)
@@ -84,12 +83,12 @@ class DockerFBCodeBuilder(FBCodeBuilder):
             # by root:root -- the explicit `mkdir` works around the bug:
             #   USER nobody
             #   WORKDIR build
-            ShellQuoted('USER root'),
-            ShellQuoted('RUN mkdir -p {d} && chown {u} {d}').format(
+            ShellQuoted("USER root"),
+            ShellQuoted("RUN mkdir -p {d} && chown {u} {d}").format(
                 d=dir, u=self._user()
             ),
             self._change_user(),
-            ShellQuoted('WORKDIR {dir}').format(dir=dir),
+            ShellQuoted("WORKDIR {dir}").format(dir=dir),
         ]
 
     def comment(self, comment):
@@ -99,60 +98,58 @@ class DockerFBCodeBuilder(FBCodeBuilder):
 
     def copy_local_repo(self, repo_dir, dest_name):
         fd, archive_path = tempfile.mkstemp(
-            prefix='local_repo_{0}_'.format(dest_name),
-            suffix='.tgz',
-            dir=os.path.abspath(self.option('docker_context_dir')),
+            prefix="local_repo_{0}_".format(dest_name),
+            suffix=".tgz",
+            dir=os.path.abspath(self.option("docker_context_dir")),
         )
         os.close(fd)
-        run_command('tar', 'czf', archive_path, '.', cwd=repo_dir)
+        run_command("tar", "czf", archive_path, ".", cwd=repo_dir)
         return [
-            ShellQuoted('ADD {archive} {dest_name}').format(
+            ShellQuoted("ADD {archive} {dest_name}").format(
                 archive=os.path.basename(archive_path), dest_name=dest_name
             ),
             # Docker permissions make very little sense... see also workdir()
-            ShellQuoted('USER root'),
-            ShellQuoted('RUN chown -R {u} {d}').format(
-                d=dest_name, u=self._user()
-            ),
+            ShellQuoted("USER root"),
+            ShellQuoted("RUN chown -R {u} {d}").format(d=dest_name, u=self._user()),
             self._change_user(),
         ]
 
     def _render_impl(self, steps):
-        return raw_shell(shell_join('\n', recursively_flatten_list(steps)))
+        return raw_shell(shell_join("\n", recursively_flatten_list(steps)))
 
     def debian_ccache_setup_steps(self):
-        source_ccache_tgz = self.option('ccache_tgz', '')
+        source_ccache_tgz = self.option("ccache_tgz", "")
         if not source_ccache_tgz:
-            logging.info('Docker ccache not enabled')
+            logging.info("Docker ccache not enabled")
             return []
 
-        dest_ccache_tgz = os.path.join(
-            self.option('docker_context_dir'), 'ccache.tgz'
-        )
+        dest_ccache_tgz = os.path.join(self.option("docker_context_dir"), "ccache.tgz")
 
         try:
             try:
                 os.link(source_ccache_tgz, dest_ccache_tgz)
             except OSError:
                 logging.exception(
-                    'Hard-linking {s} to {d} failed, falling back to copy'
-                    .format(s=source_ccache_tgz, d=dest_ccache_tgz)
+                    "Hard-linking {s} to {d} failed, falling back to copy".format(
+                        s=source_ccache_tgz, d=dest_ccache_tgz
+                    )
                 )
                 shutil.copyfile(source_ccache_tgz, dest_ccache_tgz)
         except Exception:
             logging.exception(
-                'Failed to copy or link {s} to {d}, aborting'
-                .format(s=source_ccache_tgz, d=dest_ccache_tgz)
+                "Failed to copy or link {s} to {d}, aborting".format(
+                    s=source_ccache_tgz, d=dest_ccache_tgz
+                )
             )
             raise
 
         return [
             # Separate layer so that in development we avoid re-downloads.
-            self.run(ShellQuoted('apt-get install -yq ccache')),
-            ShellQuoted('ADD ccache.tgz /'),
+            self.run(ShellQuoted("apt-get install -yq ccache")),
+            ShellQuoted("ADD ccache.tgz /"),
             ShellQuoted(
                 # Set CCACHE_DIR before the `ccache` invocations below.
-                'ENV CCACHE_DIR=/ccache '
+                "ENV CCACHE_DIR=/ccache "
                 # No clang support for now, so it's easiest to hardcode gcc.
                 'CC="ccache gcc" CXX="ccache g++" '
                 # Always log for ease of debugging. For real FB projects,
@@ -166,26 +163,28 @@ class DockerFBCodeBuilder(FBCodeBuilder):
                 #
                 #   apt-get install sharutils
                 #   bzip2 -9 < /tmp/ccache.log | uuencode -m ccache.log.bz2
-                'CCACHE_LOGFILE=/tmp/ccache.log'
+                "CCACHE_LOGFILE=/tmp/ccache.log"
             ),
-            self.run(ShellQuoted(
-                # Future: Skipping this part made this Docker step instant,
-                # saving ~1min of build time.  It's unclear if it is the
-                # chown or the du, but probably the chown -- since a large
-                # part of the cost is incurred at image save time.
-                #
-                # ccache.tgz may be empty, or may have the wrong
-                # permissions.
-                'mkdir -p /ccache && time chown -R nobody /ccache && '
-                'time du -sh /ccache && '
-                # Reset stats so `docker_build_with_ccache.sh` can print
-                # useful values at the end of the run.
-                'echo === Prev run stats === && ccache -s && ccache -z && '
-                # Record the current time to let travis_build.sh figure out
-                # the number of bytes in the cache that are actually used --
-                # this is crucial for tuning the maximum cache size.
-                'date +%s > /FBCODE_BUILDER_CCACHE_START_TIME && '
-                # The build running as `nobody` should be able to write here
-                'chown nobody /tmp/ccache.log'
-            )),
+            self.run(
+                ShellQuoted(
+                    # Future: Skipping this part made this Docker step instant,
+                    # saving ~1min of build time.  It's unclear if it is the
+                    # chown or the du, but probably the chown -- since a large
+                    # part of the cost is incurred at image save time.
+                    #
+                    # ccache.tgz may be empty, or may have the wrong
+                    # permissions.
+                    "mkdir -p /ccache && time chown -R nobody /ccache && "
+                    "time du -sh /ccache && "
+                    # Reset stats so `docker_build_with_ccache.sh` can print
+                    # useful values at the end of the run.
+                    "echo === Prev run stats === && ccache -s && ccache -z && "
+                    # Record the current time to let travis_build.sh figure out
+                    # the number of bytes in the cache that are actually used --
+                    # this is crucial for tuning the maximum cache size.
+                    "date +%s > /FBCODE_BUILDER_CCACHE_START_TIME && "
+                    # The build running as `nobody` should be able to write here
+                    "chown nobody /tmp/ccache.log"
+                )
+            ),
         ]

@@ -124,7 +124,7 @@ def populate_install_tree(inst_dir, path_map):
 
 
 def build_zipapp(args, path_map):
-    """ Create a self executing python binary using Python 3's built-in
+    """Create a self executing python binary using Python 3's built-in
     zipapp module.
 
     This type of Python binary is relatively simple, as zipapp is part of the
@@ -165,7 +165,7 @@ if __name__ == "__main__":
 
 
 def build_install_dir(args, path_map):
-    """ Create a directory that contains all of the sources, with a __main__
+    """Create a directory that contains all of the sources, with a __main__
     module to run the program.
     """
     # Populate a temporary directory first, then rename to the destination
@@ -188,7 +188,7 @@ def ensure_directory(path):
 
 
 def install_library(args, path_map):
-    """ Create an installation directory a python library. """
+    """Create an installation directory a python library."""
     out_dir = args.output
     out_manifest = args.output + ".manifest"
 

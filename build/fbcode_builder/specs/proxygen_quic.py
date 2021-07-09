@@ -5,10 +5,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import specs.gmock as gmock
+import specs.fizz as fizz
 import specs.fmt as fmt
 import specs.folly as folly
-import specs.fizz as fizz
+import specs.gmock as gmock
 import specs.mvfst as mvfst
 import specs.sodium as sodium
 import specs.wangle as wangle

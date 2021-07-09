@@ -8,8 +8,8 @@ from __future__ import unicode_literals
 
 def fbcode_builder_spec(builder):
     return {
-        'steps': [
-            builder.github_project_workdir('google/re2', 'build'),
-            builder.cmake_install('google/re2'),
+        "steps": [
+            builder.github_project_workdir("google/re2", "build"),
+            builder.cmake_install("google/re2"),
         ],
     }

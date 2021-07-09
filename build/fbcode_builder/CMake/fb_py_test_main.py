@@ -485,7 +485,7 @@ class Loader(object):
         return loader.suiteClass(suites)
 
 
-_COVERAGE_INI = '''\
+_COVERAGE_INI = """\
 [report]
 exclude_lines =
     pragma: no cover
@@ -495,7 +495,7 @@ exclude_lines =
     pragma:.*no${PY_IMPL}${PY_MAJOR}
     pragma:.*nopy${PY_MAJOR}
     pragma:.*nopy${PY_MAJOR}${PY_MINOR}
-'''
+"""
 
 
 class MainProgram(object):
@@ -734,7 +734,7 @@ class MainProgram(object):
         if not self.options.collect_coverage:
             return
 
-        with tempfile.NamedTemporaryFile('w', delete=False) as coverage_ini:
+        with tempfile.NamedTemporaryFile("w", delete=False) as coverage_ini:
             coverage_ini.write(_COVERAGE_INI)
             self._coverage_ini_path = coverage_ini.name
 
