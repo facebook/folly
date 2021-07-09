@@ -217,7 +217,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   void sendPing() {
-    scheduleTimeout(5);
+    scheduleTimeout(50);
     auto bufs = testData_.getInBufs();
     writePing(bufs);
   }
