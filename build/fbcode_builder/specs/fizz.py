@@ -9,7 +9,7 @@ import specs.fmt as fmt
 import specs.folly as folly
 import specs.gmock as gmock
 import specs.sodium as sodium
-
+import specs.zstd as zstd
 
 def fbcode_builder_spec(builder):
     builder.add_option(
@@ -22,7 +22,7 @@ def fbcode_builder_spec(builder):
         },
     )
     return {
-        "depends_on": [gmock, fmt, folly, sodium],
+        "depends_on": [gmock, fmt, folly, sodium, zstd],
         "steps": [
             builder.fb_github_cmake_install(
                 "fizz/fizz/build", github_org="facebookincubator"

@@ -26,6 +26,7 @@ BUILD_TESTS = OFF
 [dependencies]
 folly
 libsodium
+zstd
 
 [dependencies.all(test=on, not(os=windows))]
 googletest_1_8
