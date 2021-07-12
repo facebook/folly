@@ -11,6 +11,7 @@ import specs.gmock as gmock
 import specs.sodium as sodium
 import specs.zstd as zstd
 
+
 def fbcode_builder_spec(builder):
     builder.add_option(
         "fizz/fizz/build:cmake_defines",
