@@ -20,7 +20,6 @@
 #include <typeinfo>
 
 #include <folly/CppAttributes.h>
-#include <folly/Portability.h>
 #include <folly/detail/StaticSingletonManager.h>
 
 namespace folly {
@@ -28,7 +27,7 @@ namespace detail {
 
 class UniqueInstance {
  public:
-#if !FOLLY_HAS_RTTI || (__GNUC__ && __GNUC__ < 7 && !__clang__)
+#if __GNUC__ && __GNUC__ < 7 && !__clang__
   explicit UniqueInstance(...) noexcept {}
 #else
   template <template <typename...> class Z, typename... Key, typename... Mapped>
