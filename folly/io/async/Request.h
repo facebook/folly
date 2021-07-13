@@ -22,10 +22,8 @@
 #include <string>
 #include <utility>
 
-#include <folly/SingletonThreadLocal.h>
 #include <folly/Synchronized.h>
 #include <folly/container/F14Map.h>
-#include <folly/detail/Iterators.h>
 #include <folly/synchronization/Hazptr.h>
 
 namespace folly {
@@ -254,60 +252,6 @@ class RequestContext {
   static StaticContext& getStaticContext();
   static std::shared_ptr<RequestContext> setContextHelper(
       std::shared_ptr<RequestContext>& newCtx, StaticContext& staticCtx);
-
-  using StaticContextThreadLocal = SingletonThreadLocal<
-      RequestContext::StaticContext,
-      RequestContext /* Tag */>;
-
- public:
-  class StaticContextAccessor {
-   private:
-    using Inner = StaticContextThreadLocal::Accessor;
-    using IteratorBase = Inner::Iterator;
-    using IteratorTag = std::bidirectional_iterator_tag;
-
-    Inner inner_;
-
-    explicit StaticContextAccessor(Inner&& inner) noexcept
-        : inner_(std::move(inner)) {}
-
-   public:
-    friend class RequestContext;
-
-    class Iterator : public detail::IteratorAdaptor<
-                         Iterator,
-                         IteratorBase,
-                         StaticContext,
-                         IteratorTag> {
-      using Super = detail::
-          IteratorAdaptor<Iterator, IteratorBase, StaticContext, IteratorTag>;
-
-     public:
-      using Super::Super;
-
-      StaticContext& dereference() const { return *base(); }
-
-      RootIdInfo getRootIdInfo() const {
-        return {
-            base()->rootId.load(std::memory_order_relaxed),
-            base().getThreadId(),
-            base().getOSThreadId()};
-      }
-    };
-
-    StaticContextAccessor(const StaticContextAccessor&) = delete;
-    StaticContextAccessor& operator=(const StaticContextAccessor&) = delete;
-    StaticContextAccessor(StaticContextAccessor&&) = default;
-    StaticContextAccessor& operator=(StaticContextAccessor&&) = default;
-
-    Iterator begin() const { return Iterator(inner_.begin()); }
-    Iterator end() const { return Iterator(inner_.end()); }
-  };
-  // Returns an accessor object that blocks the construction and destruction of
-  // StaticContext objects on all threads. This is useful to quickly introspect
-  // the context from all threads while ensuring that their thread-local
-  // StaticContext object is not destroyed.
-  static StaticContextAccessor accessAllThreads();
 
   // Start shallow copy guard implementation details:
   // All methods are private to encourage proper use
