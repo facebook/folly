@@ -52,10 +52,6 @@ class UniqueInstance {
   struct key_t {};
 
   using Ptr = std::type_info const*;
-  struct PtrRange {
-    Ptr const* b;
-    Ptr const* e;
-  };
   struct Value {
     Ptr tmpl;
     Ptr const* ptrs;
