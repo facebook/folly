@@ -575,10 +575,8 @@ namespace folly {
 
 class XlogFileScopeInfo {
  public:
-#ifdef __INCLUDE_LEVEL__
   std::atomic<::folly::LogLevel> level;
   ::folly::LogCategory* category;
-#endif
 };
 
 /**
@@ -651,7 +649,6 @@ class XlogCategoryInfo {
   LogCategory* category_;
 };
 
-#ifdef __INCLUDE_LEVEL__
 /**
  * Specialization of XlogLevelInfo for XLOG() statements in the .cpp file being
  * compiled.  In this case we only define a single file-static LogLevel object
@@ -704,7 +701,6 @@ class XlogCategoryInfo<false> {
     return fileScopeInfo;
   }
 };
-#endif
 
 /**
  * Get the default XLOG() category name for the given filename.

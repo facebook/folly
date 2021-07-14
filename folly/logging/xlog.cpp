@@ -123,7 +123,6 @@ LogCategory* XlogCategoryInfo<IsInHeaderFile>::init(
       &isInitialized_);
 }
 
-#ifdef __INCLUDE_LEVEL__
 LogLevel XlogLevelInfo<false>::loadLevelFull(
     folly::StringPiece categoryName,
     bool isOverridden,
@@ -137,12 +136,12 @@ LogLevel XlogLevelInfo<false>::loadLevelFull(
   }
   return currentLevel;
 }
-#endif
+
 
 // Explicitly instantiations of XlogLevelInfo and XlogCategoryInfo
-// If __INCLUDE_LEVEL__ is not available only the "true" variants ever get
-// used, because we cannot determine if we are ever in the .cpp file being
-// compiled or not.
 template class XlogLevelInfo<true>;
 template class XlogCategoryInfo<true>;
+template class XlogLevelInfo<false>;
+template class XlogCategoryInfo<false>;
+
 } // namespace folly

@@ -111,7 +111,6 @@ LogStreamProcessor::LogStreamProcessor(
       message_{std::move(msg)},
       stream_{this} {}
 
-#ifdef __INCLUDE_LEVEL__
 namespace {
 LogCategory* getXlogCategory(XlogFileScopeInfo* fileScopeInfo) {
   // By the time a LogStreamProcessor is created, the XlogFileScopeInfo object
@@ -165,7 +164,6 @@ LogStreamProcessor::LogStreamProcessor(
           functionName,
           INTERNAL,
           std::string()) {}
-#endif
 
 /*
  * We intentionally define the LogStreamProcessor destructor in
