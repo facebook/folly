@@ -25,12 +25,14 @@
 
 #include <folly/Optional.h>
 #include <folly/Traits.h>
+#include <folly/container/Foreach.h>
 #include <folly/detail/AsyncTrace.h>
 #include <folly/executors/ExecutorWithPriority.h>
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/detail/Core.h>
+#include <folly/lang/Pretty.h>
 
 namespace folly {
 
@@ -1451,11 +1453,18 @@ collect(InputIterator first, InputIterator last) {
     ~Context() {
       if (!threw.load(std::memory_order_relaxed)) {
         // map Optional<T> -> T
-        std::transform(
-            result.begin(),
-            result.end(),
-            std::back_inserter(finalResult),
-            [](Optional<T>& o) { return std::move(o.value()); });
+        for (auto& value : result) {
+          // if any of the input futures were off the end of a weakRef(), the
+          // logic added in setCallback_ will not execute as an executor
+          // weakRef() drops all callbacks added silently without executing them
+          if (!value.has_value()) {
+            p.setException(BrokenPromise{pretty_name<std::vector<T>>()});
+            return;
+          }
+
+          finalResult.push_back(std::move(value.value()));
+        }
+
         p.setValue(std::move(finalResult));
       }
     }
@@ -1509,7 +1518,21 @@ SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
   struct Context {
     ~Context() {
       if (!threw.load(std::memory_order_relaxed)) {
-        p.setValue(unwrapTryTuple(std::move(results)));
+        // if any of the input futures were off the end of a weakRef(), the
+        // logic added in setCallback_ will not execute as an executor
+        // weakRef() drops all callbacks added silently without executing them
+        auto brokenPromise = false;
+        folly::for_each(results, [&](auto& result) {
+          if (!result.hasValue() && !result.hasException()) {
+            brokenPromise = true;
+          }
+        });
+
+        if (brokenPromise) {
+          p.setException(BrokenPromise{pretty_name<Result>()});
+        } else {
+          p.setValue(unwrapTryTuple(std::move(results)));
+        }
       }
     }
     Promise<Result> p;
