@@ -203,24 +203,24 @@ class QuotientMultiSet<Instructions>::Iterator {
   bool nextOccupied();
 
   const QuotientMultiSet<Instructions>* qms_;
-  uint64_t key_;
+  uint64_t key_ = 0;
 
   // State members for the quotient occupied position.
   // Block index of key_'s occupied slot.
-  size_t occBlockIndex_;
+  size_t occBlockIndex_ = -1;
   // Block offset of key_'s occupied slot.
-  uint64_t occOffsetInBlock_;
+  uint64_t occOffsetInBlock_ = 0;
   // Occupied words of the occupiedBlock_ after quotientBlockOffset_.
-  uint64_t occWord_;
+  uint64_t occWord_ = 0;
   // Block of the current occupied slot.
-  const Block* occBlock_;
+  const Block* occBlock_ = nullptr;
 
   // State member for the actual key position.
   // Position of the current key_.
-  size_t pos_;
+  size_t pos_ = -1;
 };
 
-/*
+/**
  * Class to build a QuotientMultiSet.
  *
  * The builder requires inserting elements in non-decreasing order.
