@@ -28,6 +28,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/net/NetOps.h>
+#include <folly/net/NetOpsDispatcher.h>
 #include <folly/net/NetworkSocket.h>
 
 namespace folly {
@@ -229,6 +230,13 @@ class AsyncUDPSocket : public EventHandler {
   void setZeroCopyReenableThreshold(size_t threshold) {
     zeroCopyReenableThreshold_ = threshold;
   }
+
+  /**
+   * Set extra control messages to send
+   */
+  virtual void setCmsgs(const SocketOptionMap& cmsgs);
+
+  virtual void appendCmsgs(const SocketOptionMap& cmsgs);
 
   /**
    * Send the data in buffer to destination. Returns the return code from
@@ -447,6 +455,28 @@ class AsyncUDPSocket : public EventHandler {
   void applyOptions(
       const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
 
+  /**
+   * Override netops::Dispatcher to be used for netops:: calls.
+   *
+   * Pass empty shared_ptr to reset to default.
+   * Override can be used by unit tests to intercept and mock netops:: calls.
+   */
+  virtual void setOverrideNetOpsDispatcher(
+      std::shared_ptr<netops::Dispatcher> dispatcher) {
+    netops_.setOverride(std::move(dispatcher));
+  }
+
+  /**
+   * Returns override netops::Dispatcher being used for netops:: calls.
+   *
+   * Returns empty shared_ptr if no override set.
+   * Override can be used by unit tests to intercept and mock netops:: calls.
+   */
+  virtual std::shared_ptr<netops::Dispatcher> getOverrideNetOpsDispatcher()
+      const {
+    return netops_.getOverride();
+  }
+
  protected:
   struct full_sockaddr_storage {
     sockaddr_storage storage;
@@ -455,7 +485,7 @@ class AsyncUDPSocket : public EventHandler {
 
   virtual ssize_t sendmsg(
       NetworkSocket socket, const struct msghdr* message, int flags) {
-    return netops::sendmsg(socket, message, flags);
+    return netops_->sendmsg(socket, message, flags);
   }
 
   virtual int sendmmsg(
@@ -463,7 +493,7 @@ class AsyncUDPSocket : public EventHandler {
       struct mmsghdr* msgvec,
       unsigned int vlen,
       int flags) {
-    return netops::sendmmsg(socket, msgvec, vlen, flags);
+    return netops_->sendmmsg(socket, msgvec, vlen, flags);
   }
 
   void fillMsgVec(
@@ -474,7 +504,7 @@ class AsyncUDPSocket : public EventHandler {
       struct iovec* iov,
       size_t iov_count,
       const int* gso,
-      char* gsoControl);
+      char* control);
 
   virtual int writeImpl(
       Range<SocketAddress const*> addrs,
@@ -482,7 +512,9 @@ class AsyncUDPSocket : public EventHandler {
       size_t count,
       struct mmsghdr* msgvec,
       const int* gso,
-      char* gsoControl);
+      char* control);
+
+  virtual ssize_t writevImpl(struct msghdr* msg, FOLLY_MAYBE_UNUSED int gso);
 
   size_t handleErrMessages() noexcept;
 
@@ -559,6 +591,10 @@ class AsyncUDPSocket : public EventHandler {
   std::unordered_map<uint32_t, std::unique_ptr<folly::IOBuf>> idZeroCopyBufMap_;
 
   IOBufFreeFunc ioBufFreeFunc_;
+
+  SocketOptionMap cmsgs_;
+
+  netops::DispatcherContainer netops_;
 };
 
 } // namespace folly
