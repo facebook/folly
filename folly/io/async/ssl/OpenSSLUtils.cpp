@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/io/async/AsyncSocketException.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 
 #include <unordered_map>
@@ -324,6 +325,26 @@ std::string OpenSSLUtils::getCommonName(X509* x509) {
   }
   // length tells us where the name ends
   return std::string(buf, length);
+}
+
+std::string OpenSSLUtils::encodeALPNString(
+    const std::vector<std::string>& supportedProtocols) {
+  unsigned int length = 0;
+  for (const auto& proto : supportedProtocols) {
+    if (proto.size() > std::numeric_limits<uint8_t>::max()) {
+      throw std::range_error("ALPN protocol string exceeds maximum length");
+    }
+    length += proto.size() + 1;
+  }
+
+  std::string encodedALPN;
+  encodedALPN.reserve(length);
+
+  for (const auto& proto : supportedProtocols) {
+    encodedALPN.append(1, static_cast<char>(proto.size()));
+    encodedALPN.append(proto);
+  }
+  return encodedALPN;
 }
 
 } // namespace ssl

@@ -949,6 +949,10 @@ class SNIClient : private AsyncSSLSocket::HandshakeCB,
     socket_->sslConn(this);
   }
 
+  std::string getApplicationProtocol() {
+    return socket_->getApplicationProtocol();
+  }
+
   bool serverNameMatch;
 
  private:
@@ -984,6 +988,10 @@ class SNIServer : private AsyncSSLSocket::HandshakeCB,
     ctx->setServerNameCallback(
         std::bind(&SNIServer::serverNameCallback, this, std::placeholders::_1));
     socket_->sslAccept(this);
+  }
+
+  std::string getApplicationProtocol() {
+    return socket_->getApplicationProtocol();
   }
 
   bool serverNameMatch;

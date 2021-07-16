@@ -382,6 +382,8 @@ class AsyncSSLSocket : public AsyncSocket {
   bool good() const override;
   bool connecting() const override;
   std::string getApplicationProtocol() const noexcept override;
+  void setSupportedApplicationProtocols(
+      const std::vector<std::string>& supportedProtocols);
 
   std::string getSecurityProtocol() const override {
     if (sslState_ == STATE_UNENCRYPTED) {
@@ -1004,6 +1006,8 @@ class AsyncSSLSocket : public AsyncSocket {
   std::chrono::milliseconds totalConnectTimeout_{0};
 
   std::string sslVerificationAlert_;
+
+  std::string encodedAlpn_;
 
   bool sessionResumptionAttempted_{false};
   // whether the SSL session was resumed using session ID or not

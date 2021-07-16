@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Range.h>
+#include <folly/io/async/AsyncSocketException.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
@@ -125,6 +126,8 @@ class OpenSSLUtils {
   static void* getBioAppData(BIO* b);
   static NetworkSocket getBioFd(BIO* b);
   static void setBioFd(BIO* b, NetworkSocket fd, int flags);
+  static std::string encodeALPNString(
+      const std::vector<std::string>& supported_protocols);
 };
 
 } // namespace ssl

@@ -757,6 +757,49 @@ TEST(AsyncSSLSocketTest, SNITestClientHelloNoHostname) {
   EXPECT_TRUE(!server.serverNameMatch);
 }
 
+/**
+ * 1. Create an SSLContext that does not have an ALPN
+ * 2. Use AsyncSSLSocket::setSupportedApplicationProtocols on the client and
+ * server, and assert that a common ALPN was negotiated.
+ */
+TEST(AsyncSSLSocketTest, SetSupportedApplicationProtocols) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto dfServerCtx = std::make_shared<SSLContext>();
+  // Use the same SSLContext to continue the handshake after
+  // tlsext_hostname match.
+  auto hskServerCtx = std::make_shared<SSLContext>();
+  const std::string serverExpectedServerName("xyz.newdev.facebook.com");
+
+  NetworkSocket fds[2];
+  getfds(fds);
+  getctx(clientCtx, dfServerCtx);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+
+  std::vector<std::string> protocols;
+  protocols.push_back("rs");
+
+  clientSock->setSupportedApplicationProtocols(protocols);
+  serverSock->setSupportedApplicationProtocols(protocols);
+
+  SNIClient client(std::move(clientSock));
+  SNIServer server(
+      std::move(serverSock),
+      dfServerCtx,
+      hskServerCtx,
+      serverExpectedServerName);
+
+  eventBase.loop();
+
+  EXPECT_TRUE(
+      client.getApplicationProtocol().compare(
+          server.getApplicationProtocol()) == 0);
+}
+
 #endif
 /**
  * Test SSL client socket

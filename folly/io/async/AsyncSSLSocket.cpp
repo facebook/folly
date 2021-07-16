@@ -437,6 +437,11 @@ std::string AsyncSSLSocket::getApplicationProtocol() const noexcept {
   return "";
 }
 
+void AsyncSSLSocket::setSupportedApplicationProtocols(
+    const std::vector<std::string>& supportedProtocols) {
+  encodedAlpn_ = OpenSSLUtils::encodeALPNString(supportedProtocols);
+}
+
 void AsyncSSLSocket::setEorTracking(bool track) {
   AsyncSocket::setEorTracking(track);
 }
@@ -869,6 +874,19 @@ void AsyncSSLSocket::sslConn(
     LOG(ERROR) << "AsyncSSLSocket::sslConn(this=" << this << ", fd=" << fd_
                << "): " << e.what();
     return failHandshake(__func__, *ex);
+  }
+
+  if (!encodedAlpn_.empty()) {
+    int result = SSL_set_alpn_protos(
+        ssl_.get(),
+        reinterpret_cast<const unsigned char*>(encodedAlpn_.c_str()),
+        static_cast<unsigned int>(encodedAlpn_.size()));
+    if (result != 0) {
+      static const Indestructible<AsyncSocketException> ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          "error setting SSL alpn protos");
+      return failHandshake(__func__, *ex);
+    }
   }
 
   if (!setupSSLBio()) {
