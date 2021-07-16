@@ -475,6 +475,13 @@ class Subprocess {
     }
 #endif
 
+#if defined(__linux__)
+    Options& setCpuSet(const cpu_set_t& cpuSet) {
+      cpuSet_ = cpuSet;
+      return *this;
+    }
+#endif
+
    private:
     typedef boost::container::flat_map<int, int> FdMap;
     FdMap fdActions_;
@@ -493,6 +500,9 @@ class Subprocess {
     // none means `vfork()` instead of a custom `clone()`
     // Optional<> is used because value of '0' means do clone without any flags.
     Optional<clone_flags_t> cloneFlags_;
+#endif
+#if defined(__linux__)
+    Optional<cpu_set_t> cpuSet_;
 #endif
   };
 

@@ -348,6 +348,27 @@ TEST(SimpleSubprocessTest, DetachExecFails) {
       "/no/such/file");
 }
 
+TEST(SimpleSubprocessTest, Affinity) {
+#ifdef __linux__
+  cpu_set_t cpuSet0;
+  CPU_ZERO(&cpuSet0);
+  CPU_SET(1, &cpuSet0);
+  CPU_SET(2, &cpuSet0);
+  CPU_SET(3, &cpuSet0);
+  Subprocess::Options options;
+  Subprocess proc(
+      std::vector<std::string>{"/bin/sleep", "5"}, options.setCpuSet(cpuSet0));
+  EXPECT_NE(proc.pid(), -1);
+  cpu_set_t cpuSet1;
+  CPU_ZERO(&cpuSet1);
+  auto ret = ::sched_getaffinity(proc.pid(), sizeof(cpu_set_t), &cpuSet1);
+  CHECK_EQ(ret, 0);
+  CHECK_EQ(::memcmp(&cpuSet0, &cpuSet1, sizeof(cpu_set_t)), 0);
+  auto retCode = proc.waitOrTerminateOrKill(1s, 1s);
+  EXPECT_TRUE(retCode.killed());
+#endif // __linux__
+}
+
 TEST(SimpleSubprocessTest, FromExistingProcess) {
   // Manually fork a child process using fork() without exec(), and test waiting
   // for it using the Subprocess API in the parent process.

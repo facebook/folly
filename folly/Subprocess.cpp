@@ -540,6 +540,14 @@ int Subprocess::prepareChild(
     }
   }
 
+#ifdef __linux__
+  // Best effort
+  if (options.cpuSet_.hasValue()) {
+    const auto& cpuSet = options.cpuSet_.value();
+    ::sched_setaffinity(0, sizeof(cpuSet), &cpuSet);
+  }
+#endif
+
   // We don't have to explicitly close the parent's end of all pipes,
   // as they all have the FD_CLOEXEC flag set and will be closed at
   // exec time.
