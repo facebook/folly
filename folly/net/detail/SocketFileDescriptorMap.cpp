@@ -156,19 +156,19 @@ namespace netops {
 namespace detail {
 
 int SocketFileDescriptorMap::close(int fd) noexcept {
-  throw std::logic_error("Not implemented!");
+  std::terminate();
 }
 
 int SocketFileDescriptorMap::close(void* sock) noexcept {
-  throw std::logic_error("Not implemented!");
+  std::terminate();
 }
 
 void* SocketFileDescriptorMap::fdToSocket(int fd) noexcept {
-  throw std::logic_error("Not implemented!");
+  std::terminate();
 }
 
 int SocketFileDescriptorMap::socketToFd(void* sock) noexcept {
-  throw std::logic_error("Not implemented!");
+  std::terminate();
 }
 
 } // namespace detail
