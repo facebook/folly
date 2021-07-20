@@ -19,6 +19,7 @@
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
+#include <folly/experimental/exception_tracer/SmartExceptionTracer.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -70,7 +71,13 @@
           new ::testing::internal::TestFactoryImpl<GTEST_TEST_CLASS_NAME_(     \
               test_suite_name, test_name)>);                                   \
   void GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::TestBody() {        \
-    folly::coro::blockingWait(co_TestBody());                                  \
+    try {                                                                      \
+      folly::coro::blockingWait(co_TestBody());                                \
+    } catch (const std::exception& ex) {                                       \
+      GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: "                \
+                        << folly::exception_tracer::getAsyncTrace(ex);         \
+      throw;                                                                   \
+    }                                                                          \
   }                                                                            \
   folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                              \
       test_suite_name, test_name)::co_TestBody()
