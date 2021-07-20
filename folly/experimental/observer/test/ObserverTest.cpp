@@ -585,6 +585,14 @@ TEST(Observer, MakeValueObserver) {
   EXPECT_EQ(observedIds, std::vector<int>({1, 2, 3, 4, 5}));
   EXPECT_EQ(observedValues, std::vector<int>({1, 2, 3}));
   EXPECT_EQ(observedValues2, std::vector<int>({1, 2, 3}));
+
+  size_t creatorCalls = 0;
+  auto o = makeValueObserver([&] {
+    ++creatorCalls;
+    return 42;
+  });
+  EXPECT_EQ(42, **o);
+  EXPECT_EQ(1, creatorCalls);
 }
 
 TEST(Observer, MakeStaticObserver) {

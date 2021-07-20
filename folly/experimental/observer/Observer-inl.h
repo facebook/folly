@@ -299,15 +299,16 @@ Observer<observer_detail::ResultOfUnwrapObserver<F>> makeValueObserver(
 template <typename F>
 Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeValueObserver(
     F&& creator) {
-  auto activeValue = creator();
-  return makeObserver([activeValue = std::move(activeValue),
-                       creator = std::forward<F>(creator)]() mutable {
-    auto newValue = creator();
-    if (!(*activeValue == *newValue)) {
-      activeValue = newValue;
-    }
-    return activeValue;
-  });
+  return makeObserver(
+      [activeValue =
+           std::shared_ptr<const observer_detail::ResultOfUnwrapSharedPtr<F>>(),
+       creator = std::forward<F>(creator)]() mutable {
+        auto newValue = creator();
+        if (!activeValue || !(*activeValue == *newValue)) {
+          activeValue = newValue;
+        }
+        return activeValue;
+      });
 }
 
 template <typename T>
