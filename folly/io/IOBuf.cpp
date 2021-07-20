@@ -476,7 +476,6 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
 
   // do not allow only user data without a freeFn
   // since we use that for folly::sizedFree
-
   DCHECK(
       !userData || (userData && freeFn) ||
       (userData && !freeFn && (option == TakeOwnershipOption::STORE_SIZE)));
