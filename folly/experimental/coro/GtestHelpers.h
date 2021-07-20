@@ -133,7 +133,13 @@
       test_suite_name, test_name)::gtest_registering_dummy_ =                  \
       GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::AddToRegistry();     \
   void GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::TestBody() {        \
-    folly::coro::blockingWait(co_TestBody());                                  \
+    try {                                                                      \
+      folly::coro::blockingWait(co_TestBody());                                \
+    } catch (const std::exception& ex) {                                       \
+      GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: "                \
+                        << folly::exception_tracer::getAsyncTrace(ex);         \
+      throw;                                                                   \
+    }                                                                          \
   }                                                                            \
   folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                              \
       test_suite_name, test_name)::co_TestBody()
