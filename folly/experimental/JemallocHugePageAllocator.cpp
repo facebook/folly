@@ -20,6 +20,7 @@
 
 #include <folly/portability/Malloc.h>
 #include <folly/portability/String.h>
+#include <folly/portability/SysMman.h>
 
 #include <glog/logging.h>
 
@@ -53,6 +54,7 @@ struct extent_hooks_s {
 #endif // JEMALLOC_VERSION_MAJOR
 
 bool folly::JemallocHugePageAllocator::hugePagesSupported{false};
+
 #endif // FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
 
 namespace folly {
@@ -66,12 +68,16 @@ void print_error(int err, const char* msg) {
 
 class HugePageArena {
  public:
-  int init(int nr_pages);
+  int init(int initial_nr_pages, int max_nr_pages);
+
+  /* forces the system to actually back more pages */
+  void init_more(int nr_pages);
+
   void* reserve(size_t size, size_t alignment);
 
   bool addressInArena(void* address) {
     auto addr = reinterpret_cast<uintptr_t>(address);
-    return addr >= start_ && addr < end_;
+    return addr >= start_ && addr < protEnd_;
   }
 
   size_t freeSpace() { return end_ - freePtr_; }
@@ -79,6 +85,10 @@ class HugePageArena {
   unsigned arenaIndex() { return arenaIndex_; }
 
  private:
+  void map_pages(size_t initial_nr_pages, size_t max_nr_pages);
+
+  bool setup_next_pages(uintptr_t nextFreePtr);
+
   static void* allocHook(
       extent_hooks_t* extent,
       void* new_addr,
@@ -91,6 +101,7 @@ class HugePageArena {
   uintptr_t start_{0};
   uintptr_t end_{0};
   uintptr_t freePtr_{0};
+  uintptr_t protEnd_{0};
   extent_alloc_t* originalAlloc_{nullptr};
   extent_hooks_t extentHooks_;
   unsigned arenaIndex_{0};
@@ -101,6 +112,12 @@ constexpr size_t kHugePageSize = 2 * 1024 * 1024;
 // Singleton arena instance
 HugePageArena arena;
 
+// TODO: Always reserve a big chunk (16GB) of virtual address space up front?
+// Doesn't allocate anything.
+// const bool _inited = []() {
+//   return folly::JemallocHugePageAllocator::init(0, 8192) != 0;
+// }();
+
 template <typename T, typename U>
 static inline T align_up(T val, U alignment) {
   DCHECK((alignment & (alignment - 1)) == 0);
@@ -109,23 +126,21 @@ static inline T align_up(T val, U alignment) {
 
 // mmap enough memory to hold the aligned huge pages, then use madvise
 // to get huge pages. This can be checked in /proc/<pid>/smaps.
-uintptr_t map_pages(size_t nr_pages) {
+// If successful, sets the arena member pointers to reflect the mapped memory.
+// Otherwise, leaves them unchanged (zeroed).
+void HugePageArena::map_pages(size_t initial_nr_pages, size_t max_nr_pages) {
   // Initial mmapped area is large enough to contain the aligned huge pages
-  size_t alloc_size = nr_pages * kHugePageSize;
+  size_t initial_alloc_size = initial_nr_pages * kHugePageSize;
+  size_t max_alloc_size = max_nr_pages * kHugePageSize;
   int mflags = MAP_PRIVATE | MAP_ANONYMOUS;
 #if defined(__FreeBSD__)
   mflags |= MAP_ALIGNED_SUPER;
 #endif
-  void* p = mmap(
-      nullptr,
-      alloc_size + kHugePageSize,
-      PROT_READ | PROT_WRITE,
-      mflags,
-      -1,
-      0);
+  void* p =
+      mmap(nullptr, max_alloc_size + kHugePageSize, PROT_NONE, mflags, -1, 0);
 
   if (p == MAP_FAILED) {
-    return 0;
+    return;
   }
 
   // Aligned start address
@@ -133,15 +148,55 @@ uintptr_t map_pages(size_t nr_pages) {
 
 #if !defined(__FreeBSD__)
   // Unmap left-over 4k pages
-  munmap(p, first_page - (uintptr_t)p);
-  munmap(
-      (void*)(first_page + alloc_size),
-      kHugePageSize - (first_page - (uintptr_t)p));
+  const size_t excess_head = first_page - (uintptr_t)p;
+  const size_t excess_tail = kHugePageSize - excess_head;
+  if (excess_head != 0) {
+    munmap(p, excess_head);
+  }
+  if (excess_tail != 0) {
+    munmap((void*)(first_page + max_alloc_size), excess_tail);
+  }
+#endif
+
+  start_ = freePtr_ = protEnd_ = first_page;
+  end_ = start_ + max_alloc_size;
+
+  setup_next_pages(start_ + initial_alloc_size);
+}
+
+void HugePageArena::init_more(int nr_pages) {
+  setup_next_pages(start_ + nr_pages * kHugePageSize);
+}
+
+// Warning: This can be called inside malloc(). Check the comments in
+// HugePageArena::allocHook to understand the restrictions that imposes before
+// making any change to this function.
+// Requirement: upto > freePtr_ && upto > protEnd_.
+// Returns whether the setup succeeded.
+bool HugePageArena::setup_next_pages(uintptr_t upto) {
+  const uintptr_t curPtr = protEnd_;
+  const uintptr_t endPtr = align_up(upto, kHugePageSize);
+  const size_t len = endPtr - curPtr;
+
+  if (len == 0) {
+    return true;
+  }
+
+  if (endPtr > end_) {
+    return false;
+  }
 
   // Tell the kernel to please give us huge pages for this range
-  madvise((void*)first_page, kHugePageSize * nr_pages, MADV_HUGEPAGE);
-  LOG(INFO) << nr_pages << " huge pages at " << (void*)first_page;
+  if (madvise((void*)curPtr, len, MADV_HUGEPAGE) != 0) {
+    return false;
+  }
 
+  // Make this memory accessible.
+  if (mprotect((void*)curPtr, len, PROT_READ | PROT_WRITE) != 0) {
+    return false;
+  }
+
+#if !defined(__FreeBSD__)
   // With THP set to madvise, page faults on these pages will block until a
   // huge page is found to service it. However, if memory becomes fragmented
   // before these pages are touched, then we end up blocking for kcompactd to
@@ -152,13 +207,13 @@ uintptr_t map_pages(size_t nr_pages) {
   // Note: this does not guarantee we won't be oomd killed here, it's just much
   // more unlikely given this should be among the very first things an
   // application does.
-  for (uintptr_t ptr = first_page; ptr < first_page + alloc_size;
-       ptr += kHugePageSize) {
+  for (uintptr_t ptr = curPtr; ptr < endPtr; ptr += kHugePageSize) {
     memset((void*)ptr, 0, 1);
   }
 #endif
 
-  return first_page;
+  protEnd_ = endPtr;
+  return true;
 }
 
 // WARNING WARNING WARNING
@@ -178,7 +233,7 @@ void* HugePageArena::allocHook(
     bool* zero,
     bool* commit,
     unsigned arena_ind) {
-  assert((size & (size - 1)) == 0);
+  assert((size & (kHugePageSize - 1)) == 0);
   void* res = nullptr;
   if (new_addr == nullptr) {
     res = arena.reserve(size, alignment);
@@ -195,9 +250,13 @@ void* HugePageArena::allocHook(
   return res;
 }
 
-int HugePageArena::init(int nr_pages) {
+int HugePageArena::init(int initial_nr_pages, int max_nr_pages) {
   DCHECK(start_ == 0);
   DCHECK(usingJEMalloc());
+
+  if (max_nr_pages < initial_nr_pages) {
+    max_nr_pages = initial_nr_pages;
+  }
 
   size_t len = sizeof(arenaIndex_);
   if (auto ret = mallctl("arenas.create", &arenaIndex_, &len, nullptr, 0)) {
@@ -284,11 +343,10 @@ int HugePageArena::init(int nr_pages) {
     return 0;
   }
 
-  start_ = freePtr_ = map_pages(nr_pages);
+  map_pages(initial_nr_pages, max_nr_pages);
   if (start_ == 0) {
     return false;
   }
-  end_ = start_ + (nr_pages * kHugePageSize);
   return MALLOCX_ARENA(arenaIndex_) | MALLOCX_TCACHE_NONE;
 }
 
@@ -300,6 +358,11 @@ void* HugePageArena::reserve(size_t size, size_t alignment) {
   if (newFreePtr > end_) {
     return nullptr;
   }
+  if (newFreePtr > protEnd_) {
+    if (!setup_next_pages(newFreePtr)) {
+      return nullptr;
+    }
+  }
   freePtr_ = newFreePtr;
   return reinterpret_cast<void*>(res);
 }
@@ -308,16 +371,17 @@ void* HugePageArena::reserve(size_t size, size_t alignment) {
 
 int JemallocHugePageAllocator::flags_{0};
 
-bool JemallocHugePageAllocator::init(int nr_pages) {
+bool JemallocHugePageAllocator::init(int initial_nr_pages, int max_nr_pages) {
   if (!usingJEMalloc()) {
     LOG(ERROR) << "Not linked with jemalloc?";
     hugePagesSupported = false;
   }
   if (hugePagesSupported) {
     if (flags_ == 0) {
-      flags_ = arena.init(nr_pages);
+      flags_ = arena.init(initial_nr_pages, max_nr_pages);
     } else {
-      LOG(WARNING) << "Already initialized";
+      /* was already initialized, let's just init the requested pages */
+      arena.init_more(initial_nr_pages);
     }
   } else {
     LOG(WARNING) << "Huge Page Allocator not supported";

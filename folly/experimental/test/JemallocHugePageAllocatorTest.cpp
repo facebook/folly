@@ -301,3 +301,41 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
     EXPECT_TRUE(jha::addressInArena(&map1[1][0]));
   }
 }
+
+TEST(JemallocHugePageAllocatorTest, Grow) {
+  bool initialized = jha::init(2, 8192);
+  if (initialized) {
+    EXPECT_NE(0, jha::freeSpace());
+  }
+
+  // This fits
+  void* ptr1 = jha::allocate(mb(1));
+  EXPECT_NE(nullptr, ptr1);
+
+  // This partially fits
+  void* ptr2 = jha::allocate(mb(6));
+  EXPECT_NE(nullptr, ptr2);
+
+  void* ptr3 = jha::allocate(mb(500));
+  EXPECT_NE(nullptr, ptr3);
+
+  void* ptr4 = jha::allocate(kb(4));
+  EXPECT_NE(nullptr, ptr4);
+
+  void* ptr5 = jha::allocate(kb(4));
+  EXPECT_NE(nullptr, ptr5);
+
+  if (initialized) {
+    EXPECT_TRUE(jha::addressInArena(ptr1));
+    EXPECT_TRUE(jha::addressInArena(ptr2));
+    EXPECT_TRUE(jha::addressInArena(ptr3));
+    EXPECT_TRUE(jha::addressInArena(ptr4));
+    EXPECT_TRUE(jha::addressInArena(ptr5));
+  }
+
+  jha::deallocate(ptr1);
+  jha::deallocate(ptr2);
+  jha::deallocate(ptr3);
+  jha::deallocate(ptr4);
+  jha::deallocate(ptr5);
+}
