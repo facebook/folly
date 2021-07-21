@@ -25,6 +25,8 @@
 
 namespace folly {
 
+constexpr size_t kCoreCachedSharedPtrDefaultNumSlots = 64;
+
 /**
  * This class creates core-local caches for a given shared_ptr, to
  * mitigate contention when acquiring/releasing it.
@@ -35,7 +37,7 @@ namespace folly {
  *
  * @author Giuseppe Ottaviano <ott@fb.com>
  */
-template <class T, size_t kNumSlots = 64>
+template <class T, size_t kNumSlots = kCoreCachedSharedPtrDefaultNumSlots>
 class CoreCachedSharedPtr {
  public:
   explicit CoreCachedSharedPtr(const std::shared_ptr<T>& p = nullptr) {
@@ -66,7 +68,7 @@ class CoreCachedSharedPtr {
   std::array<std::shared_ptr<T>, kNumSlots> slots_;
 };
 
-template <class T, size_t kNumSlots = 64>
+template <class T, size_t kNumSlots = kCoreCachedSharedPtrDefaultNumSlots>
 class CoreCachedWeakPtr {
  public:
   explicit CoreCachedWeakPtr(const CoreCachedSharedPtr<T, kNumSlots>& p) {
@@ -77,6 +79,10 @@ class CoreCachedWeakPtr {
 
   std::weak_ptr<T> get() const {
     return slots_[AccessSpreader<>::cachedCurrent(kNumSlots)];
+  }
+
+  std::shared_ptr<T> lock() const {
+    return slots_[AccessSpreader<>::cachedCurrent(kNumSlots)].lock();
   }
 
  private:
@@ -95,7 +101,7 @@ class CoreCachedWeakPtr {
  * get()s will never see a newer pointer on one core, and an older
  * pointer on another after a subsequent thread migration.
  */
-template <class T, size_t kNumSlots = 64>
+template <class T, size_t kNumSlots = kCoreCachedSharedPtrDefaultNumSlots>
 class AtomicCoreCachedSharedPtr {
  public:
   explicit AtomicCoreCachedSharedPtr(const std::shared_ptr<T>& p = nullptr) {
@@ -105,7 +111,7 @@ class AtomicCoreCachedSharedPtr {
   ~AtomicCoreCachedSharedPtr() {
     auto slots = slots_.load(std::memory_order_acquire);
     // Delete of AtomicCoreCachedSharedPtr must be synchronized, no
-    // need for stlots->retire().
+    // need for slots->retire().
     if (slots) {
       delete slots;
     }
