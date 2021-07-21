@@ -137,7 +137,7 @@ struct Printer {
         out_ += "null";
         break;
       case dynamic::STRING:
-        escapeString(v.asString(), out_, opts_);
+        escapeString(v.stringPiece(), out_, opts_);
         break;
       case dynamic::OBJECT:
         printObject(v, context);
