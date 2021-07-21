@@ -75,7 +75,7 @@ class AsyncScope {
   // Exceptions
   // ----------
   // IMPORTANT: Tasks submitted to the AsyncScope by calling .add() must
-  // ensure they to not complete with an exception. Exceptions propagating
+  // ensure they do not complete with an exception. Exceptions propagating
   // from the 'co_await awaitable' expression are logged using DFATAL.
   //
   // To avoid this occurring you should make sure to catch and handle any
@@ -98,8 +98,12 @@ class AsyncScope {
   // NOTE: You cannot pass a folly::coro::Task to this method.
   // You must first call .scheduleOn() to specify which executor the task
   // should run on.
+  //
+  // returnAddress customize entry point to async stack (useful if this is
+  // called from async code already). If not set will default to
+  // FOLLY_ASYNC_STACK_RETURN_ADDRESS()
   template <typename Awaitable>
-  void add(Awaitable&& awaitable);
+  void add(Awaitable&& awaitable, void* returnAddress = nullptr);
 
   // Asynchronously wait for all started tasks to complete.
   //
@@ -153,13 +157,16 @@ inline std::size_t AsyncScope::remaining() const noexcept {
 }
 
 template <typename Awaitable>
-FOLLY_NOINLINE inline void AsyncScope::add(Awaitable&& awaitable) {
+FOLLY_NOINLINE inline void AsyncScope::add(
+    Awaitable&& awaitable, void* returnAddress) {
   assert(
       !joined_ &&
       "It is invalid to add() more work after work has been joined");
   anyTasksStarted_.store(true, std::memory_order_relaxed);
   addImpl(static_cast<Awaitable&&>(awaitable))
-      .start(&barrier_, FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+      .start(
+          &barrier_,
+          returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
 }
 
 inline Task<void> AsyncScope::joinAsync() noexcept {
@@ -193,9 +200,12 @@ class CancellableAsyncScope {
   //
   // See the documentation on AsyncScope::add.
   template <typename Awaitable>
-  void add(Awaitable&& awaitable) {
-    scope_.add(co_withCancellation(
-        cancellationSource_.getToken(), static_cast<Awaitable&&>(awaitable)));
+  void add(Awaitable&& awaitable, void* returnAddress = nullptr) {
+    scope_.add(
+        co_withCancellation(
+            cancellationSource_.getToken(),
+            static_cast<Awaitable&&>(awaitable)),
+        returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
   }
 
   // Request cancellation for all started tasks that accepted a
