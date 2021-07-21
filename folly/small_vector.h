@@ -51,6 +51,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/Align.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
@@ -506,7 +507,7 @@ class small_vector : public detail::small_vector_base<
   small_vector(const std::allocator<Value>&) {}
 
   small_vector(small_vector const& o) {
-    if (folly::is_trivially_copyable<Value>::value && !o.isExtern()) {
+    if (kShouldCopyInlineTrivial && !o.isExtern()) {
       copyInlineTrivial<Value>(o);
       return;
     }
@@ -530,7 +531,7 @@ class small_vector : public detail::small_vector_base<
         this->u.setCapacity(o.u.getCapacity());
       }
     } else {
-      if (folly::is_trivially_copyable<Value>::value) {
+      if (kShouldCopyInlineTrivial) {
         copyInlineTrivial<Value>(o);
         o.resetSizePolicy();
       } else {
@@ -574,8 +575,7 @@ class small_vector : public detail::small_vector_base<
 
   small_vector& operator=(small_vector const& o) {
     if (FOLLY_LIKELY(this != &o)) {
-      if (folly::is_trivially_copyable<Value>::value && !this->isExtern() &&
-          !o.isExtern()) {
+      if (kShouldCopyInlineTrivial && !this->isExtern() && !o.isExtern()) {
         copyInlineTrivial<Value>(o);
       } else if (o.size() < capacity()) {
         const size_t oSize = o.size();
@@ -598,7 +598,7 @@ class small_vector : public detail::small_vector_base<
       }
 
       if (!o.isExtern()) {
-        if (folly::is_trivially_copyable<Value>::value) {
+        if (kShouldCopyInlineTrivial) {
           copyInlineTrivial<Value>(o);
           o.resetSizePolicy();
         } else {
@@ -1031,8 +1031,8 @@ class small_vector : public detail::small_vector_base<
   template <class T>
   typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
   copyInlineTrivial(small_vector const& o) {
-    // Copy the entire inline storage, instead of just the size, to make the
-    // loop fixed-size and unrollable.
+    // Copy the entire inline storage, instead of just size() values, to make
+    // the loop fixed-size and unrollable.
     std::copy(o.u.buffer(), o.u.buffer() + MaxInline, u.buffer());
     this->setSize(o.size());
   }
@@ -1279,6 +1279,13 @@ class small_vector : public detail::small_vector_base<
       sizeof(value_type) * MaxInline != 0,
       InlineStorageDataType,
       value_type*>::type InlineStorageType;
+
+  // If the values are trivially copyable and the storage is small enough, copy
+  // it entirely. Limit is half of a cache line, to minimize probability of
+  // introducing a cache miss.
+  static constexpr bool kShouldCopyInlineTrivial =
+      folly::is_trivially_copyable<Value>::value &&
+      sizeof(InlineStorageType) <= hardware_constructive_interference_size / 2;
 
   static bool constexpr kHasInlineCapacity =
       sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
