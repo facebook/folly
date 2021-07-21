@@ -37,6 +37,8 @@
 
 namespace folly {
 
+class OpenSSLTicketHandler;
+
 /**
  * Override the default password collector.
  */
@@ -580,6 +582,10 @@ class SSLContext {
 
   const SSLAcceptRunner* sslAcceptRunner() { return sslAcceptRunner_.get(); }
 
+  void setTicketHandler(std::unique_ptr<OpenSSLTicketHandler> handler);
+
+  OpenSSLTicketHandler* getTicketHandler() { return ticketHandler_.get(); }
+
   /**
    * Helper to match a hostname versus a pattern.
    */
@@ -650,6 +656,7 @@ class SSLContext {
   static bool initialized_;
 
   std::unique_ptr<SSLAcceptRunner> sslAcceptRunner_;
+  std::unique_ptr<OpenSSLTicketHandler> ticketHandler_;
 
 #if FOLLY_OPENSSL_HAS_ALPN
 
