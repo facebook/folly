@@ -19,13 +19,16 @@
 #include <array>
 #include <memory>
 
+#include <folly/Portability.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/container/Enumerate.h>
 #include <folly/synchronization/Hazptr.h>
 
 namespace folly {
 
-constexpr size_t kCoreCachedSharedPtrDefaultNumSlots = 64;
+// On mobile we do not expect high concurrency, and memory is more important, so
+// use more conservative caching.
+constexpr size_t kCoreCachedSharedPtrDefaultNumSlots = kIsMobile ? 4 : 64;
 
 /**
  * This class creates core-local caches for a given shared_ptr, to
@@ -40,9 +43,8 @@ constexpr size_t kCoreCachedSharedPtrDefaultNumSlots = 64;
 template <class T, size_t kNumSlots = kCoreCachedSharedPtrDefaultNumSlots>
 class CoreCachedSharedPtr {
  public:
-  explicit CoreCachedSharedPtr(const std::shared_ptr<T>& p = nullptr) {
-    reset(p);
-  }
+  CoreCachedSharedPtr() = default;
+  explicit CoreCachedSharedPtr(const std::shared_ptr<T>& p) { reset(p); }
 
   void reset(const std::shared_ptr<T>& p = nullptr) {
     // Allocate each Holder in a different CoreRawAllocator stripe to
@@ -71,7 +73,13 @@ class CoreCachedSharedPtr {
 template <class T, size_t kNumSlots = kCoreCachedSharedPtrDefaultNumSlots>
 class CoreCachedWeakPtr {
  public:
+  CoreCachedWeakPtr() = default;
   explicit CoreCachedWeakPtr(const CoreCachedSharedPtr<T, kNumSlots>& p) {
+    reset(p);
+  }
+
+  void reset() { *this = {}; }
+  void reset(const CoreCachedSharedPtr<T, kNumSlots>& p) {
     for (auto slot : folly::enumerate(slots_)) {
       *slot = p.slots_[slot.index];
     }
@@ -81,6 +89,7 @@ class CoreCachedWeakPtr {
     return slots_[AccessSpreader<>::cachedCurrent(kNumSlots)];
   }
 
+  // Faster than get().lock(), as it avoid one weak count cycle.
   std::shared_ptr<T> lock() const {
     return slots_[AccessSpreader<>::cachedCurrent(kNumSlots)].lock();
   }

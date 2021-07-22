@@ -126,6 +126,7 @@
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Synchronized.h>
+#include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/detail/Singleton.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
@@ -357,13 +358,18 @@ struct SingletonHolder : public SingletonHolderBase {
   folly::ReadMostlyMainPtr<T> instance_;
   // used to release all ReadMostlyMainPtrs at once
   folly::ReadMostlySharedPtr<T> instance_copy_;
-  // weak_ptr to the singleton instance, set when state is changed from Dead
-  // to Living. We never write to this object after initialization, so it is
-  // safe to read it from different threads w/o synchronization if we know
-  // that state is set to Living
+  // per-core shared_ptrs that in turn hold the instance shared_ptr, to avoid
+  // contention in acquiring them.
+  folly::CoreCachedSharedPtr<T> instance_core_cached_;
+  // weak references to the previous pointers. These are never written to after
+  // initialization, so they're safe to read without synchronization once the
+  // state has transitioned to Living.
+  // instance_weak_ is a reference to the main instance, so it is authoritative
+  // on whether the instance is expired.
   std::weak_ptr<T> instance_weak_;
-  // Fast equivalent of instance_weak_
   folly::ReadMostlyWeakPtr<T> instance_weak_fast_;
+  folly::CoreCachedWeakPtr<T> instance_weak_core_cached_;
+
   // Time we wait on destroy_baton after releasing Singleton shared_ptr.
   std::shared_ptr<folly::Baton<>> destroy_baton_;
   T* instance_ptr_ = nullptr;

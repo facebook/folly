@@ -117,7 +117,7 @@ std::weak_ptr<T> SingletonHolder<T>::get_weak() {
     createInstance();
   }
 
-  return instance_weak_;
+  return instance_weak_core_cached_.get();
 }
 
 template <typename T>
@@ -128,7 +128,7 @@ std::shared_ptr<T> SingletonHolder<T>::try_get() {
     createInstance();
   }
 
-  return instance_weak_.lock();
+  return instance_weak_core_cached_.lock();
 }
 
 template <typename T>
@@ -182,6 +182,7 @@ void SingletonHolder<T>::destroyInstance() {
     }
   }
   state_ = SingletonHolderState::Dead;
+  instance_core_cached_.reset();
   instance_.reset();
   instance_copy_.reset();
   if (destroy_baton_) {
@@ -310,8 +311,10 @@ void SingletonHolder<T>::createInstance() {
 
   instance_weak_ = instance;
   instance_ptr_ = instance.get();
+  instance_core_cached_.reset(instance);
   instance_.reset(std::move(instance));
   instance_weak_fast_ = instance_;
+  instance_weak_core_cached_.reset(instance_core_cached_);
 
   destroy_baton_ = std::move(destroy_baton);
   print_destructor_stack_trace_ = std::move(print_destructor_stack_trace);
