@@ -292,16 +292,15 @@ class FOLLY_NODISCARD AsyncGenerator {
       }
     }
 
-    folly::Try<Value> await_resume_try() {
-      folly::Try<Value> result;
+    folly::Try<NextResult> await_resume_try() {
       if (coro_) {
         if (coro_.promise().hasValue()) {
-          result.emplace(coro_.promise().getRvalue());
+          return folly::Try<NextResult>(NextResult{coro_});
         } else if (coro_.promise().hasException()) {
-          result.emplaceException(coro_.promise().getException());
+          return folly::Try<NextResult>(coro_.promise().getException());
         }
       }
-      return result;
+      return folly::Try<NextResult>(NextResult{});
     }
 
    private:
@@ -469,6 +468,23 @@ class AsyncGeneratorPromise {
     }
   }
 
+  YieldAwaiter yield_value(
+      co_result<typename AsyncGenerator<Reference, Value>::NextResult>&&
+          res) noexcept {
+    DCHECK(res.result().hasValue() || res.result().hasException());
+    if (res.result().hasException()) {
+      return yield_value(co_error(res.result().exception()));
+    } else if (res.result().hasValue()) {
+      if (res.result()->has_value()) {
+        return yield_value(std::move(res.result()->value()));
+      } else {
+        return_void();
+        return {};
+      }
+    }
+    return yield_value(co_error(UsingUninitializedTry{}));
+  }
+
   variant_awaitable<YieldAwaiter, ready_awaitable<>> await_transform(
       co_safe_point_t) noexcept {
     if (cancelToken_.isCancellationRequested()) {
@@ -506,7 +522,8 @@ class AsyncGeneratorPromise {
 
   void setCancellationToken(folly::CancellationToken cancelToken) noexcept {
     // Only keep the first cancellation token.
-    // ie. the inner-most cancellation scope of the consumer's calling context.
+    // ie. the inner-most cancellation scope of the consumer's calling
+    // context.
     if (!hasCancelTokenOverride_) {
       cancelToken_ = std::move(cancelToken);
       hasCancelTokenOverride_ = true;

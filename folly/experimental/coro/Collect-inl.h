@@ -256,12 +256,12 @@ auto makeUnorderedAsyncGeneratorImpl(
 
       if constexpr (!IsTry::value) {
         auto result = co_await co_awaitTry(results.next());
-        if (result.hasValue()) {
-          co_yield std::move(*result);
+        if (result.hasValue() && result->has_value()) {
+          co_yield std::move(**result);
           if (--expected) {
             continue;
           }
-          result = {}; // completion result
+          result.emplace(); // completion result
         }
         guard.dismiss();
         co_yield co_result(std::move(result));

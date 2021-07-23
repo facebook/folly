@@ -201,14 +201,14 @@ class TransformProcessorBase : public IChannelCallback {
       while (true) {
         auto outputResult =
             co_await folly::coro::co_awaitTry(outputGen->next());
-        if (!outputResult.hasValue() && !outputResult.hasException()) {
+        if (!outputResult.hasException() && !outputResult->has_value()) {
           break;
         }
         if (cancelToken.isCancellationRequested()) {
           co_return CloseResult();
         }
-        if (outputResult.hasValue()) {
-          sender_->senderPush(std::move(outputResult.value()));
+        if (!outputResult.hasException()) {
+          sender_->senderPush(std::move(outputResult->value()));
         } else {
           // The transform coroutine threw an exception. We will close the
           // output receiver.

@@ -585,13 +585,12 @@ TEST(AsyncGeneraor, CoAwaitTry) {
       CHECK(false);
     }();
 
-    folly::Try<std::string> item1 =
-        co_await folly::coro::co_awaitTry(gen.next());
+    auto item1 = co_await folly::coro::co_awaitTry(gen.next());
     CHECK(item1.hasValue());
-    CHECK(item1.value() == "foo");
+    CHECK(*item1.value() == "foo");
     auto item2 = co_await folly::coro::co_awaitTry(gen.next());
     CHECK(item2.hasValue());
-    CHECK(item2.value() == "bar");
+    CHECK(*item2.value() == "bar");
     auto item3 = co_await folly::coro::co_awaitTry(gen.next());
     CHECK(item3.hasException());
     CHECK(item3.exception().is_compatible_with<SomeError>());

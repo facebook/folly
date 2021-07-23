@@ -169,7 +169,7 @@ TEST(Timeout, AsyncGenerator) {
     // Completing synchronously with a value.
     auto result = co_await coro::timeout(
         []() -> coro::AsyncGenerator<int> { co_yield 42; }().next(), 1s);
-    EXPECT_EQ(42, result);
+    EXPECT_EQ(42, *result);
 
     // Test that it handles failing synchronously
     auto tryResult = co_await coro::co_awaitTry(coro::timeout(
