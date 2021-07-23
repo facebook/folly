@@ -18,17 +18,11 @@
 
 #include <folly/GLog.h>
 #include <folly/MapUtil.h>
-#include <folly/SingletonThreadLocal.h>
 #include <folly/experimental/SingleWriterFixedHashMap.h>
 #include <folly/synchronization/Hazptr.h>
 #include <folly/tracing/StaticTracepoint.h>
 
 namespace folly {
-
-namespace {
-using SingletonT =
-    SingletonThreadLocal<RequestContext::StaticContext, RequestContext>;
-}
 
 RequestToken::RequestToken(const std::string& str) {
   auto& cache = getCache();
@@ -615,18 +609,20 @@ void RequestContext::clearContextData(const RequestToken& val) {
 }
 
 RequestContext::StaticContext& RequestContext::getStaticContext() {
-  return SingletonT::get();
+  return StaticContextThreadLocal::get();
+}
+
+/* static */ RequestContext::StaticContextAccessor
+RequestContext::accessAllThreads() {
+  return StaticContextAccessor{StaticContextThreadLocal::accessAllThreads()};
 }
 
 /* static */ std::vector<RequestContext::RootIdInfo>
 RequestContext::getRootIdsFromAllThreads() {
   std::vector<RootIdInfo> result;
-  auto accessor = SingletonT::accessAllThreads();
+  auto accessor = RequestContext::accessAllThreads();
   for (auto it = accessor.begin(); it != accessor.end(); ++it) {
-    result.push_back(
-        {it->rootId.load(std::memory_order_relaxed),
-         it.getThreadId(),
-         it.getOSThreadId()});
+    result.push_back(it.getRootIdInfo());
   }
   return result;
 }
