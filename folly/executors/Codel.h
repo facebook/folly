@@ -19,11 +19,6 @@
 #include <atomic>
 #include <chrono>
 
-#include <folly/portability/GFlags.h>
-
-DECLARE_int32(codel_interval);
-DECLARE_int32(codel_target_delay);
-
 namespace folly {
 
 /// CoDel (controlled delay) is an active queue management algorithm from

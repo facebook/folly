@@ -313,8 +313,7 @@ class hazptr_domain {
         return;
     }
     if (std::is_same<Atom<int>, std::atomic<int>>{} &&
-        this == &default_hazptr_domain<Atom>() &&
-        FLAGS_folly_hazptr_use_executor) {
+        this == &default_hazptr_domain<Atom>() && hazptr_use_executor()) {
       invoke_reclamation_in_executor(rcount);
     } else {
       do_reclamation(rcount);
