@@ -833,8 +833,8 @@ TEST_F(CollectAllRangeTest, GeneatorFromRange) {
       }
     };
 
-    auto results = folly::coro::makeUnorderedAsyncGeneratorFromAwaitableRange(
-        scope, generateTasks());
+    auto results =
+        folly::coro::makeUnorderedAsyncGenerator(scope, generateTasks());
     // co_await doesn't work inside EXPECT_EQ
     EXPECT_TRUE(*(co_await results.next()) == 1);
     EXPECT_TRUE(*(co_await results.next()) == 2);
@@ -857,8 +857,8 @@ TEST_F(CollectAllRangeTest, GeneatorFromRangePartialConsume) {
       }
     };
 
-    auto results = folly::coro::makeUnorderedAsyncGeneratorFromAwaitableRange(
-        scope, generateTasks());
+    auto results =
+        folly::coro::makeUnorderedAsyncGenerator(scope, generateTasks());
     for (int i = 0; i < 3; ++i) {
       co_await results.next();
     }
@@ -884,8 +884,8 @@ TEST_F(CollectAllRangeTest, GeneatorFromRangeFailed) {
       }
     };
 
-    auto results = folly::coro::makeUnorderedAsyncGeneratorFromAwaitableRange(
-        scope, generateTasks());
+    auto results =
+        folly::coro::makeUnorderedAsyncGenerator(scope, generateTasks());
     // co_await doesn't work inside EXPECT_EQ
     EXPECT_TRUE(*(co_await results.next()) == 1);
     EXPECT_TRUE(*(co_await results.next()) == 2);
@@ -914,8 +914,8 @@ TEST_F(CollectAllRangeTest, GeneatorFromRangeCancelled) {
       }
     };
     auto start = std::chrono::steady_clock::now();
-    auto results = folly::coro::makeUnorderedAsyncGeneratorFromAwaitableRange(
-        scope, generateTasks());
+    auto results =
+        folly::coro::makeUnorderedAsyncGenerator(scope, generateTasks());
     auto result = co_await folly::coro::co_withCancellation(
         cancelSource.getToken(), co_awaitTry(results.next()));
     auto end = std::chrono::steady_clock::now();

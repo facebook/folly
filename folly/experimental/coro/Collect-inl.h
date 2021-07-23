@@ -212,7 +212,7 @@ auto collectAllImpl(
 }
 
 template <typename InputRange, typename IsTry>
-auto makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
+auto makeUnorderedAsyncGeneratorImpl(
     AsyncScope& scope, InputRange awaitables, IsTry) {
   using Item =
       async_generator_from_awaitable_range_item_t<InputRange, IsTry::value>;
@@ -1003,12 +1003,11 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
 }
 
 template <typename InputRange>
-auto makeUnorderedAsyncGeneratorFromAwaitableRange(
-    AsyncScope& scope, InputRange awaitables)
+auto makeUnorderedAsyncGenerator(AsyncScope& scope, InputRange awaitables)
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
         false>&&> {
-  return detail::makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
+  return detail::makeUnorderedAsyncGeneratorImpl(
       scope, std::move(awaitables), bool_constant<false>{});
 }
 
@@ -1018,7 +1017,7 @@ auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
         true>&&> {
-  return detail::makeUnorderedAsyncGeneratorFromAwaitableRangeImpl(
+  return detail::makeUnorderedAsyncGeneratorImpl(
       scope, std::move(awaitables), bool_constant<true>{});
 }
 

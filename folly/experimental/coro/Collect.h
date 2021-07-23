@@ -245,7 +245,7 @@ using async_generator_from_awaitable_range_item_t = conditional_t<
 }
 
 ////////////////////////////////////////////////////////////////////////////
-// makeUnorderedAsyncGeneratorFromAwaitableRange(AsyncScope&,
+// makeUnorderedAsyncGenerator(AsyncScope&,
 // RangeOf<SemiAwaitable<T>>&&) -> AsyncGenerator<T&&>
 // makeUnorderedAsyncGeneratorFromAwaitableTryRange(AsyncScope&,
 // RangeOf<SemiAwaitable<T>>&&) -> AsyncGenerator<Try<T>&&>
@@ -254,7 +254,7 @@ using async_generator_from_awaitable_range_item_t = conditional_t<
 // order of completion.
 // Destroying or cancelling the AsyncGenerator cancels the remaining awaitables.
 //
-// makeUnorderedAsyncGeneratorFromAwaitableRange cancels all remaining
+// makeUnorderedAsyncGenerator cancels all remaining
 // awaitables when any of them fail with an exception. Any results obtained
 // before the failure are still returned via the generator, then the first
 // exception in time. makeUnorderedAsyncGeneratorFromAwaitableTryRange does not
@@ -263,8 +263,7 @@ using async_generator_from_awaitable_range_item_t = conditional_t<
 // Awaitables are attached to the passed-in AsyncScope.
 
 template <typename InputRange>
-auto makeUnorderedAsyncGeneratorFromAwaitableRange(
-    AsyncScope& scope, InputRange awaitables)
+auto makeUnorderedAsyncGenerator(AsyncScope& scope, InputRange awaitables)
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
         false>&&>;
@@ -276,11 +275,11 @@ auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
         true>&&>;
 
 template <typename SemiAwaitable>
-auto makeUnorderedAsyncGeneratorFromAwaitableRange(
+auto makeUnorderedAsyncGenerator(
     AsyncScope& scope, std::vector<SemiAwaitable> awaitables)
-    -> decltype(makeUnorderedAsyncGeneratorFromAwaitableRange(
+    -> decltype(makeUnorderedAsyncGenerator(
         scope, awaitables | ranges::views::move)) {
-  co_return co_await makeUnorderedAsyncGeneratorFromAwaitableRange(
+  co_return co_await makeUnorderedAsyncGenerator(
       scope, awaitables | ranges::views::move);
 }
 template <typename SemiAwaitable>
