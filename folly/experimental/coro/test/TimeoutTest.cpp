@@ -179,6 +179,11 @@ TEST(Timeout, AsyncGenerator) {
                     .next(),
         1s));
     EXPECT_TRUE(tryResult.hasException<std::runtime_error>());
+
+    // Generator completing normally.
+    result = co_await coro::timeout(
+        []() -> coro::AsyncGenerator<int> { co_return; }().next(), 1s);
+    EXPECT_FALSE(result);
   }());
 }
 
