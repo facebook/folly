@@ -186,10 +186,12 @@ bool HugePageArena::setup_next_pages(uintptr_t upto) {
     return false;
   }
 
+#if !defined(__FreeBSD__)
   // Tell the kernel to please give us huge pages for this range
   if (madvise((void*)curPtr, len, MADV_HUGEPAGE) != 0) {
     return false;
   }
+#endif
 
   // Make this memory accessible.
   if (mprotect((void*)curPtr, len, PROT_READ | PROT_WRITE) != 0) {
