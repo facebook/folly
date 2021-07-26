@@ -161,7 +161,7 @@ auto collectAllTry(SemiAwaitables&&... awaitables)
 //
 // The collectAllRange() function can be used to concurrently await a collection
 // of SemiAwaitable objects, returning a std::vector of the individual results
-// once all operations have completed.
+// in the same order as the input once all operations have completed.
 //
 // If any of the operations fail with an exception then requests cancellation of
 // any outstanding operations and the entire operation fails with an exception,
@@ -204,11 +204,8 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void>;
 //
 // The collectAllTryRange() function can be used to concurrently await a
 // collection of SemiAwaitable objects and produces a std::vector of
-// Try<T> objects once all of the input operations have completed.
-//
-// The element of the returned vector contains the result of the corresponding
-// input operation in the same order that they appeared in the 'awaitables'
-// sequence.
+// Try<T> objects in the same order as the input once all of the input
+// operations have completed.
 //
 // The success/failure of individual results can be inspected by calling
 // .hasValue() or .hasException() on the elements of the returned vector.
