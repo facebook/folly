@@ -191,6 +191,34 @@ CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWork) {
   // this correctly.
   co_await scope.cancelAndJoinAsync();
   CO_ASSERT_EQ(0, scope.remaining());
+
+  folly::CancellationSource source;
+  folly::coro::CancellableAsyncScope scope2(source.getToken());
+
+  CO_ASSERT_EQ(0, scope2.remaining());
+  for (int i = 0; i < 10; ++i) {
+    scope2.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+  }
+  CO_ASSERT_EQ(10, scope2.remaining());
+
+  source.requestCancellation();
+  co_await scope2.joinAsync();
+  CO_ASSERT_EQ(0, scope2.remaining());
+
+  source = {};
+  folly::coro::CancellableAsyncScope scope3;
+
+  CO_ASSERT_EQ(0, scope3.remaining());
+  for (int i = 0; i < 10; ++i) {
+    scope3.add(
+        makeTask().scheduleOn(folly::getGlobalCPUExecutor()),
+        source.getToken());
+  }
+  CO_ASSERT_EQ(10, scope3.remaining());
+
+  source.requestCancellation();
+  co_await scope3.joinAsync();
+  CO_ASSERT_EQ(0, scope3.remaining());
 }
 
 #endif // FOLLY_HAS_COROUTINES
