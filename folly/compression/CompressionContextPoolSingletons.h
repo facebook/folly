@@ -65,13 +65,13 @@ using ZSTD_CCtx_Pool = CompressionCoreLocalContextPool<
     ZSTD_CCtx_Creator,
     ZSTD_CCtx_Deleter,
     ZSTD_CCtx_Resetter,
-    4>;
+    128>;
 using ZSTD_DCtx_Pool = CompressionCoreLocalContextPool<
     ZSTD_DCtx,
     ZSTD_DCtx_Creator,
     ZSTD_DCtx_Deleter,
     ZSTD_DCtx_Resetter,
-    4>;
+    128>;
 
 /**
  * Returns a clean ZSTD_CCtx.
