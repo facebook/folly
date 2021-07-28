@@ -819,9 +819,9 @@ TEST_F(CollectAllRangeTest, VectorOfTaskWithExecutorUsage) {
   }());
 }
 
-TEST_F(CollectAllRangeTest, GeneatorFromRange) {
+TEST_F(CollectAllRangeTest, GeneratorFromRange) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-    folly::coro::AsyncScope scope;
+    folly::coro::CancellableAsyncScope scope;
     auto makeTask = [](int i) -> folly::coro::Task<int> {
       co_await folly::coro::sleep(std::chrono::milliseconds(100 * i));
       co_return i;
@@ -846,7 +846,7 @@ TEST_F(CollectAllRangeTest, GeneatorFromRange) {
   }());
 }
 
-TEST_F(CollectAllRangeTest, GeneatorFromRangePartialConsume) {
+TEST_F(CollectAllRangeTest, GeneratorFromRangePartialConsume) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncScope scope;
     auto makeTask = [](int i) -> folly::coro::Task<int> { co_return i; };
@@ -866,7 +866,7 @@ TEST_F(CollectAllRangeTest, GeneatorFromRangePartialConsume) {
   }());
 }
 
-TEST_F(CollectAllRangeTest, GeneatorFromRangeFailed) {
+TEST_F(CollectAllRangeTest, GeneratorFromRangeFailed) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncScope scope;
     auto makeTask = [](int i) -> folly::coro::Task<int> {
@@ -896,7 +896,7 @@ TEST_F(CollectAllRangeTest, GeneatorFromRangeFailed) {
   }());
 }
 
-TEST_F(CollectAllRangeTest, GeneatorFromRangeCancelled) {
+TEST_F(CollectAllRangeTest, GeneratorFromRangeCancelled) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncScope scope;
     auto makeTask = [](int i) -> folly::coro::Task<int> {
@@ -910,6 +910,36 @@ TEST_F(CollectAllRangeTest, GeneatorFromRangeCancelled) {
         co_yield makeTask(i);
         if (i == 4) {
           cancelSource.requestCancellation();
+        }
+      }
+    };
+    auto start = std::chrono::steady_clock::now();
+    auto results =
+        folly::coro::makeUnorderedAsyncGenerator(scope, generateTasks());
+    auto result = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), co_awaitTry(results.next()));
+    auto end = std::chrono::steady_clock::now();
+
+    EXPECT_LT(end - start, std::chrono::milliseconds(1000));
+    EXPECT_TRUE(result.hasException<folly::OperationCancelled>());
+    co_await scope.joinAsync();
+  }());
+}
+
+TEST_F(CollectAllRangeTest, GeneratorFromRangeCancelledFromScope) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::coro::CancellableAsyncScope scope;
+    auto makeTask = [](int i) -> folly::coro::Task<int> {
+      co_await folly::coro::sleep(std::chrono::milliseconds(1000 * i));
+      co_return i;
+    };
+    folly::CancellationSource cancelSource;
+    auto generateTasks =
+        [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+      for (int i = 0; i < 10; ++i) {
+        co_yield makeTask(i);
+        if (i == 4) {
+          scope.requestCancellation();
         }
       }
     };
@@ -1107,9 +1137,9 @@ TEST_F(CollectAllTryRangeTest, KeepsRequestContextOfChildTasksIndependent) {
   }());
 }
 
-TEST_F(CollectAllTryRangeTest, GeneatorFromRange) {
+TEST_F(CollectAllTryRangeTest, GeneratorFromRange) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-    folly::coro::AsyncScope scope;
+    folly::coro::CancellableAsyncScope scope;
     auto makeTask = [](int i) -> folly::coro::Task<int> {
       co_await folly::coro::sleep(std::chrono::milliseconds(100 * i));
       co_return i;
@@ -1134,7 +1164,7 @@ TEST_F(CollectAllTryRangeTest, GeneatorFromRange) {
   }());
 }
 
-TEST_F(CollectAllTryRangeTest, GeneatorFromRangeFailed) {
+TEST_F(CollectAllTryRangeTest, GeneratorFromRangeFailed) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncScope scope;
     auto makeTask = [](int i) -> folly::coro::Task<int> {
@@ -1166,7 +1196,7 @@ TEST_F(CollectAllTryRangeTest, GeneatorFromRangeFailed) {
   }());
 }
 
-TEST_F(CollectAllTryRangeTest, GeneatorFromRangeCancelled) {
+TEST_F(CollectAllTryRangeTest, GeneratorFromRangeCancelled) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncScope scope;
     auto makeTask = [](int i) -> folly::coro::Task<int> {

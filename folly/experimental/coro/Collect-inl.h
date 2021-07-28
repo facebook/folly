@@ -211,7 +211,7 @@ auto collectAllImpl(
   }
 }
 
-template <typename InputRange, typename IsTry>
+template <typename InputRange, typename IsTry, typename AsyncScope>
 auto makeUnorderedAsyncGeneratorImpl(
     AsyncScope& scope, InputRange awaitables, IsTry) {
   using Item =
@@ -230,21 +230,25 @@ auto makeUnorderedAsyncGeneratorImpl(
     const auto context = RequestContext::saveContext();
 
     for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitablesParam)) {
-      scopeParam.add(
-          [](auto semiAwaitableParam,
-             auto& cancelSourceParam,
-             auto& p) -> Task<void> {
-            auto result = co_await co_withCancellation(
-                cancelSourceParam.getToken(),
-                co_awaitTry(std::move(semiAwaitableParam)));
-            if (!result.hasValue() && !IsTry::value) {
-              cancelSourceParam.requestCancellation();
-            }
-            p.write(std::move(result));
-          }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable),
-            cancelSource,
-            pipe)
-                             .scheduleOn(ex));
+      auto task = [](auto semiAwaitableParam,
+                     auto& cancelSourceParam,
+                     auto& p) -> Task<void> {
+        auto result = co_await co_awaitTry(std::move(semiAwaitableParam));
+        if (!result.hasValue() && !IsTry::value) {
+          cancelSourceParam.requestCancellation();
+        }
+        p.write(std::move(result));
+      }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable),
+                              cancelSource,
+                              pipe);
+      if constexpr (std::is_same_v<AsyncScope, folly::coro::AsyncScope>) {
+        scopeParam.add(
+            co_withCancellation(cancelSource.getToken(), std::move(task))
+                .scheduleOn(ex));
+      } else {
+        static_assert(std::is_same_v<AsyncScope, CancellableAsyncScope>);
+        scopeParam.add(std::move(task).scheduleOn(ex), cancelSource.getToken());
+      }
       ++expected;
       RequestContext::setContext(context);
     }
@@ -1014,6 +1018,26 @@ auto makeUnorderedAsyncGenerator(AsyncScope& scope, InputRange awaitables)
 template <typename InputRange>
 auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
     AsyncScope& scope, InputRange awaitables)
+    -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
+        InputRange,
+        true>&&> {
+  return detail::makeUnorderedAsyncGeneratorImpl(
+      scope, std::move(awaitables), bool_constant<true>{});
+}
+
+template <typename InputRange>
+auto makeUnorderedAsyncGenerator(
+    CancellableAsyncScope& scope, InputRange awaitables)
+    -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
+        InputRange,
+        false>&&> {
+  return detail::makeUnorderedAsyncGeneratorImpl(
+      scope, std::move(awaitables), bool_constant<false>{});
+}
+
+template <typename InputRange>
+auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+    CancellableAsyncScope& scope, InputRange awaitables)
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
         true>&&> {

@@ -288,6 +288,38 @@ auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
       scope, awaitables | ranges::views::move);
 }
 
+// Can also be used with CancellableAsyncScope
+
+template <typename InputRange>
+auto makeUnorderedAsyncGenerator(
+    CancellableAsyncScope& scope, InputRange awaitables)
+    -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
+        InputRange,
+        false>&&>;
+template <typename InputRange>
+auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+    CancellableAsyncScope& scope, InputRange awaitables)
+    -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
+        InputRange,
+        true>&&>;
+
+template <typename SemiAwaitable>
+auto makeUnorderedAsyncGenerator(
+    CancellableAsyncScope& scope, std::vector<SemiAwaitable> awaitables)
+    -> decltype(makeUnorderedAsyncGenerator(
+        scope, awaitables | ranges::views::move)) {
+  co_return co_await makeUnorderedAsyncGenerator(
+      scope, awaitables | ranges::views::move);
+}
+template <typename SemiAwaitable>
+auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+    CancellableAsyncScope& scope, std::vector<SemiAwaitable> awaitables)
+    -> decltype(makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+        scope, awaitables | ranges::views::move)) {
+  co_return co_await makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+      scope, awaitables | ranges::views::move);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // collectAllWindowed(RangeOf<SemiAwaitable<T>>&&, size_t maxConcurrency)
 //   -> SemiAwaitable<std::vector<T>>
