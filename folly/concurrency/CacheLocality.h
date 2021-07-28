@@ -32,6 +32,7 @@
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
+#include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
 
@@ -474,9 +475,9 @@ class CoreRawAllocator {
     }
   };
 
-  Allocator* get(size_t stripe) {
+  Allocator& get(size_t stripe) {
     assert(stripe < Stripes);
-    return &allocators_[stripe];
+    return allocators_[stripe];
   }
 
  private:
@@ -484,14 +485,11 @@ class CoreRawAllocator {
 };
 
 template <typename T, size_t Stripes>
-FOLLY_EXPORT
-    CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>
-    getCoreAllocator(size_t stripe) {
-  // We cannot make sure that the allocator will be destroyed after
-  // all the objects allocated with it, so we leak it.
-  static Indestructible<CoreRawAllocator<Stripes>> allocator;
-  return CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>(
-      *allocator->get(stripe));
+CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>
+getCoreAllocator(size_t stripe) {
+  using RawAllocator = CoreRawAllocator<Stripes>;
+  return CxxAllocatorAdaptor<T, typename RawAllocator::Allocator>(
+      detail::createGlobal<RawAllocator, void>().get(stripe));
 }
 
 } // namespace folly

@@ -1144,28 +1144,28 @@ TEST(AccessSpreader, Wrapping) {
 
 TEST(CoreRawAllocator, Basic) {
   CoreRawAllocator<32> alloc;
-  auto a = alloc.get(0);
-  auto res = a->allocate(8);
+  auto& a = alloc.get(0);
+  auto res = a.allocate(8);
   memset(res, 0, 8);
-  a->deallocate(res);
-  res = a->allocate(8);
+  a.deallocate(res);
+  res = a.allocate(8);
   EXPECT_TRUE((intptr_t)res % 8 == 0); // check alignment
   memset(res, 0, 8);
-  a->deallocate(res);
-  res = a->allocate(12);
+  a.deallocate(res);
+  res = a.allocate(12);
   EXPECT_TRUE((intptr_t)res % 16 == 0); // check alignment
   memset(res, 0, 12);
-  a->deallocate(res);
-  res = a->allocate(257);
+  a.deallocate(res);
+  res = a.allocate(257);
   memset(res, 0, 257);
-  a->deallocate(res);
+  a.deallocate(res);
 
   std::vector<void*> mems;
   for (int i = 0; i < 10000; i++) {
-    mems.push_back(a->allocate(1));
+    mems.push_back(a.allocate(1));
   }
   for (auto& mem : mems) {
-    a->deallocate(mem);
+    a.deallocate(mem);
   }
   mems.clear();
 }
