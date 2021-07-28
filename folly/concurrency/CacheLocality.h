@@ -484,8 +484,9 @@ class CoreRawAllocator {
 };
 
 template <typename T, size_t Stripes>
-CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>
-getCoreAllocator(size_t stripe) {
+FOLLY_EXPORT
+    CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>
+    getCoreAllocator(size_t stripe) {
   // We cannot make sure that the allocator will be destroyed after
   // all the objects allocated with it, so we leak it.
   static Indestructible<CoreRawAllocator<Stripes>> allocator;
