@@ -337,14 +337,11 @@ class SharedMutexImpl : std::conditional_t<
                             shared_mutex_detail::ThreadIdOwnershipTracker,
                             shared_mutex_detail::NopOwnershipTracker> {
  private:
-  static constexpr uint32_t MaxSpinCount = Policy::max_spin_count;
-  static constexpr uint32_t MaxSoftYieldCount = Policy::max_soft_yield_count;
   static constexpr bool AnnotateForThreadSanitizer =
       kIsSanitizeThread && !ReaderPriority && !Policy::skip_annotate_rwlock;
-  static constexpr bool TrackThreadId = Policy::track_thread_id;
 
   typedef std::conditional_t<
-      TrackThreadId,
+      Policy::track_thread_id,
       shared_mutex_detail::ThreadIdOwnershipTracker,
       shared_mutex_detail::NopOwnershipTracker>
       OwnershipTrackerBase;
@@ -912,7 +909,7 @@ class SharedMutexImpl : std::conditional_t<
 
   // The typical number of spins that a thread will wait for a state
   // transition.
-  static constexpr uint32_t kMaxSpinCount = MaxSpinCount;
+  static constexpr uint32_t kMaxSpinCount = Policy::max_spin_count;
 
   // The maximum number of soft yields before falling back to futex.
   // If the preemption heuristic is activated we will fall back before
@@ -920,7 +917,7 @@ class SharedMutexImpl : std::conditional_t<
   // to getrusage, with checks of the goal at each step).  Soft yields
   // aren't compatible with deterministic execution under test (unlike
   // futexWaitUntil, which has a capricious but deterministic back end).
-  static constexpr uint32_t kMaxSoftYieldCount = MaxSoftYieldCount;
+  static constexpr uint32_t kMaxSoftYieldCount = Policy::max_soft_yield_count;
 
   // If AccessSpreader assigns indexes from 0..k*n-1 on a system where some
   // level of the memory hierarchy is symmetrically divided into k pieces
