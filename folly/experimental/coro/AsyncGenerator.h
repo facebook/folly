@@ -349,8 +349,8 @@ class FOLLY_NODISCARD AsyncGenerator {
   friend AsyncGenerator tag_invoke(
       tag_t<co_invoke_fn>, tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
     auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
-    while (auto v = co_await r.next()) {
-      co_yield std::move(v).value();
+    while (true) {
+      co_yield co_result(co_await co_awaitTry(r.next()));
     }
   }
 
