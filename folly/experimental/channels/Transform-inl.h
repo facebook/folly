@@ -357,11 +357,12 @@ class ResumableTransformProcessor : public TransformProcessorBase<
     auto initializeResult =
         co_await folly::coro::co_awaitTry(initializeTransform_());
     if (initializeResult.hasException()) {
-      co_await processReceiverCancelled(
+      auto closeResult =
           initializeResult.template hasException<OnClosedException>()
-              ? CloseResult()
-              : CloseResult(std::move(initializeResult.exception())),
-          true /* noRetriesAllowed */);
+          ? CloseResult()
+          : CloseResult(std::move(initializeResult.exception()));
+      co_await processReceiverCancelled(
+          std::move(closeResult), true /* noRetriesAllowed */);
       co_return;
     }
     auto [initialValues, inputReceiver] = std::move(initializeResult.value());
