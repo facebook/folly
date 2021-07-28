@@ -244,7 +244,7 @@ using async_generator_from_awaitable_range_item_t = conditional_t<
 ////////////////////////////////////////////////////////////////////////////
 // makeUnorderedAsyncGenerator(AsyncScope&,
 // RangeOf<SemiAwaitable<T>>&&) -> AsyncGenerator<T&&>
-// makeUnorderedAsyncGeneratorFromAwaitableTryRange(AsyncScope&,
+// makeUnorderedTryAsyncGenerator(AsyncScope&,
 // RangeOf<SemiAwaitable<T>>&&) -> AsyncGenerator<Try<T>&&>
 
 // Returns an AsyncGenerator that yields results of passed-in awaitables in
@@ -254,7 +254,7 @@ using async_generator_from_awaitable_range_item_t = conditional_t<
 // makeUnorderedAsyncGenerator cancels all remaining
 // awaitables when any of them fail with an exception. Any results obtained
 // before the failure are still returned via the generator, then the first
-// exception in time. makeUnorderedAsyncGeneratorFromAwaitableTryRange does not
+// exception in time. makeUnorderedTryAsyncGenerator does not
 // cancel awaitables when one fails, and yields all results even when cancelled.
 //
 // Awaitables are attached to the passed-in AsyncScope.
@@ -265,8 +265,7 @@ auto makeUnorderedAsyncGenerator(AsyncScope& scope, InputRange awaitables)
         InputRange,
         false>&&>;
 template <typename InputRange>
-auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
-    AsyncScope& scope, InputRange awaitables)
+auto makeUnorderedTryAsyncGenerator(AsyncScope& scope, InputRange awaitables)
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
         true>&&>;
@@ -280,11 +279,11 @@ auto makeUnorderedAsyncGenerator(
       scope, awaitables | ranges::views::move);
 }
 template <typename SemiAwaitable>
-auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+auto makeUnorderedTryAsyncGenerator(
     AsyncScope& scope, std::vector<SemiAwaitable> awaitables)
-    -> decltype(makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+    -> decltype(makeUnorderedTryAsyncGenerator(
         scope, awaitables | ranges::views::move)) {
-  co_return co_await makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+  co_return co_await makeUnorderedTryAsyncGenerator(
       scope, awaitables | ranges::views::move);
 }
 
@@ -297,7 +296,7 @@ auto makeUnorderedAsyncGenerator(
         InputRange,
         false>&&>;
 template <typename InputRange>
-auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+auto makeUnorderedTryAsyncGenerator(
     CancellableAsyncScope& scope, InputRange awaitables)
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
@@ -312,11 +311,11 @@ auto makeUnorderedAsyncGenerator(
       scope, awaitables | ranges::views::move);
 }
 template <typename SemiAwaitable>
-auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+auto makeUnorderedTryAsyncGenerator(
     CancellableAsyncScope& scope, std::vector<SemiAwaitable> awaitables)
-    -> decltype(makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+    -> decltype(makeUnorderedTryAsyncGenerator(
         scope, awaitables | ranges::views::move)) {
-  co_return co_await makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+  co_return co_await makeUnorderedTryAsyncGenerator(
       scope, awaitables | ranges::views::move);
 }
 

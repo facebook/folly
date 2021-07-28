@@ -1016,8 +1016,7 @@ auto makeUnorderedAsyncGenerator(AsyncScope& scope, InputRange awaitables)
 }
 
 template <typename InputRange>
-auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
-    AsyncScope& scope, InputRange awaitables)
+auto makeUnorderedTryAsyncGenerator(AsyncScope& scope, InputRange awaitables)
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
         true>&&> {
@@ -1036,7 +1035,7 @@ auto makeUnorderedAsyncGenerator(
 }
 
 template <typename InputRange>
-auto makeUnorderedAsyncGeneratorFromAwaitableTryRange(
+auto makeUnorderedTryAsyncGenerator(
     CancellableAsyncScope& scope, InputRange awaitables)
     -> AsyncGenerator<detail::async_generator_from_awaitable_range_item_t<
         InputRange,
