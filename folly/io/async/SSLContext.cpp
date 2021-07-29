@@ -590,7 +590,7 @@ int SSLContext::alpnSelectCallback(
             item.length,
             in,
             inlen) != OPENSSL_NPN_NEGOTIATED) {
-      if (context->getRequireAlpnIfClientSupports()) {
+      if (!context->getAlpnAllowMismatch()) {
         return SSL_TLSEXT_ERR_ALERT_FATAL;
       } else {
         return SSL_TLSEXT_ERR_NOACK;

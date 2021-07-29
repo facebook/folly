@@ -587,10 +587,10 @@ TEST_F(NextProtocolTest, RandomizedAlpnTest) {
   EXPECT_EQ(selectedProtocols.size(), 2);
 }
 
-TEST_F(NextProtocolTest, AlpnRequiredIfClientSupportsTestNoClientProtocol) {
+TEST_F(NextProtocolTest, AlpnNotAllowMismatchNoClientProtocol) {
   clientCtx->setAdvertisedNextProtocols({});
   serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
-  serverCtx->setRequireAlpnIfClientSupports(true);
+  serverCtx->setAlpnAllowMismatch(false);
 
   connect();
 
@@ -598,20 +598,20 @@ TEST_F(NextProtocolTest, AlpnRequiredIfClientSupportsTestNoClientProtocol) {
   expectNoProtocol();
 }
 
-TEST_F(NextProtocolTest, AlpnRequiredIfClientSupportsTestOverlap) {
+TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithOverlap) {
   clientCtx->setAdvertisedNextProtocols({"blub", "baz"});
   serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
-  serverCtx->setRequireAlpnIfClientSupports(true);
+  serverCtx->setAlpnAllowMismatch(false);
 
   connect();
 
   expectProtocol("baz");
 }
 
-TEST_F(NextProtocolTest, AlpnRequiredIfClientSupportsTestNoOverlap) {
+TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithoutOverlap) {
   clientCtx->setAdvertisedNextProtocols({"blub"});
   serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
-  serverCtx->setRequireAlpnIfClientSupports(true);
+  serverCtx->setAlpnAllowMismatch(false);
 
   connect();
 
