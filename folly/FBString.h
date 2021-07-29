@@ -626,8 +626,7 @@ inline void fbstring_core<Char>::copySmall(const fbstring_core& rhs) {
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::copyMedium(
-    const fbstring_core& rhs) {
+FOLLY_NOINLINE void fbstring_core<Char>::copyMedium(const fbstring_core& rhs) {
   // Medium strings are copied eagerly. Don't forget to allocate
   // one extra Char for the null terminator.
   auto const allocSize = goodMallocSize((1 + rhs.ml_.size_) * sizeof(Char));
@@ -641,8 +640,7 @@ FOLLY_NOINLINE inline void fbstring_core<Char>::copyMedium(
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::copyLarge(
-    const fbstring_core& rhs) {
+FOLLY_NOINLINE void fbstring_core<Char>::copyLarge(const fbstring_core& rhs) {
   // Large strings are just refcounted
   ml_ = rhs.ml_;
   RefCounted::incrementRefs(ml_.data_);
@@ -697,7 +695,7 @@ inline void fbstring_core<Char>::initSmall(
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::initMedium(
+FOLLY_NOINLINE void fbstring_core<Char>::initMedium(
     const Char* const data, const size_t size) {
   // Medium strings are allocated normally. Don't forget to
   // allocate one extra Char for the terminating null.
@@ -712,7 +710,7 @@ FOLLY_NOINLINE inline void fbstring_core<Char>::initMedium(
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::initLarge(
+FOLLY_NOINLINE void fbstring_core<Char>::initLarge(
     const Char* const data, const size_t size) {
   // Large strings are allocated differently
   size_t effectiveCapacity = size;
@@ -724,7 +722,7 @@ FOLLY_NOINLINE inline void fbstring_core<Char>::initLarge(
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::unshare(size_t minCapacity) {
+FOLLY_NOINLINE void fbstring_core<Char>::unshare(size_t minCapacity) {
   assert(category() == Category::isLarge);
   size_t effectiveCapacity = std::max(minCapacity, ml_.capacity());
   auto const newRC = RefCounted::create(&effectiveCapacity);
@@ -749,8 +747,7 @@ inline Char* fbstring_core<Char>::mutableDataLarge() {
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::reserveLarge(
-    size_t minCapacity) {
+FOLLY_NOINLINE void fbstring_core<Char>::reserveLarge(size_t minCapacity) {
   assert(category() == Category::isLarge);
   if (RefCounted::refs(ml_.data_) > 1) { // Ensure unique
     // We must make it unique regardless; in-place reallocation is
@@ -773,7 +770,7 @@ FOLLY_NOINLINE inline void fbstring_core<Char>::reserveLarge(
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::reserveMedium(
+FOLLY_NOINLINE void fbstring_core<Char>::reserveMedium(
     const size_t minCapacity) {
   assert(category() == Category::isMedium);
   // String is not shared
@@ -806,7 +803,7 @@ FOLLY_NOINLINE inline void fbstring_core<Char>::reserveMedium(
 }
 
 template <class Char>
-FOLLY_NOINLINE inline void fbstring_core<Char>::reserveSmall(
+FOLLY_NOINLINE void fbstring_core<Char>::reserveSmall(
     size_t minCapacity, const bool disableSSO) {
   assert(category() == Category::isSmall);
   if (!disableSSO && minCapacity <= maxSmallSize) {
@@ -1686,7 +1683,7 @@ class basic_fbstring {
 };
 
 template <typename E, class T, class A, class S>
-FOLLY_NOINLINE inline typename basic_fbstring<E, T, A, S>::size_type
+FOLLY_NOINLINE typename basic_fbstring<E, T, A, S>::size_type
 basic_fbstring<E, T, A, S>::traitsLength(const value_type* s) {
   return s ? traits_type::length(s)
            : (throw_exception<std::logic_error>(
@@ -1776,8 +1773,8 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::append(
 }
 
 template <typename E, class T, class A, class S>
-FOLLY_NOINLINE inline basic_fbstring<E, T, A, S>&
-basic_fbstring<E, T, A, S>::append(const value_type* s, size_type n) {
+FOLLY_NOINLINE basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::append(
+    const value_type* s, size_type n) {
   Invariant checker(*this);
 
   if (FOLLY_UNLIKELY(!n)) {
@@ -1827,8 +1824,8 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::assign(
 }
 
 template <typename E, class T, class A, class S>
-FOLLY_NOINLINE inline basic_fbstring<E, T, A, S>&
-basic_fbstring<E, T, A, S>::assign(const value_type* s, const size_type n) {
+FOLLY_NOINLINE basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::assign(
+    const value_type* s, const size_type n) {
   Invariant checker(*this);
 
   if (n == 0) {
