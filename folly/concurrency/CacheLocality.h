@@ -382,20 +382,21 @@ class SimpleAllocator {
       return mem;
     }
 
-    // Bump-ptr allocation.
-    if (intptr_t(mem_) % 128 == 0) {
-      // Avoid allocating pointers that may look like malloc
-      // pointers.
-      mem_ += std::min(sz_, max_align_v);
-    }
-    if (mem_ && (mem_ + sz_ <= end_)) {
-      auto mem = mem_;
-      mem_ += sz_;
+    if (mem_) {
+      // Bump-ptr allocation.
+      if (intptr_t(mem_) % 128 == 0) {
+        // Avoid allocating pointers that may look like malloc
+        // pointers.
+        mem_ += std::min(sz_, max_align_v);
+      }
+      if (mem_ + sz_ <= end_) {
+        auto mem = mem_;
+        mem_ += sz_;
 
-      assert(intptr_t(mem) % 128 != 0);
-      return mem;
+        assert(intptr_t(mem) % 128 != 0);
+        return mem;
+      }
     }
-
     return allocateHard();
   }
   void deallocate(void* mem) {
