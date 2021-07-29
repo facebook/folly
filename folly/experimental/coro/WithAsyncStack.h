@@ -151,7 +151,7 @@ class WithAsyncStackAwaiter {
   auto await_resume() noexcept(
       noexcept(std::declval<Awaiter&>().await_resume()))
       -> decltype(std::declval<Awaiter&>().await_resume()) {
-    coroWrapper_ = {};
+    coroWrapper_ = WithAsyncStackCoroutine();
     return awaiter_.await_resume();
   }
 
@@ -159,7 +159,7 @@ class WithAsyncStackAwaiter {
   auto await_resume_try() noexcept(
       noexcept(std::declval<Awaiter2&>().await_resume_try()))
       -> decltype(std::declval<Awaiter2&>().await_resume_try()) {
-    coroWrapper_ = {};
+    coroWrapper_ = WithAsyncStackCoroutine();
     return awaiter_.await_resume_try();
   }
 
