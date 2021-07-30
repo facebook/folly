@@ -28,6 +28,7 @@ install-getdeps
 test-getdeps
 
 [shipit.pathmap]
+fbcode/common/rust = common/rust
 fbcode/eden/oss = .
 fbcode/eden = eden
 fbcode/tools/lfs = tools/lfs
