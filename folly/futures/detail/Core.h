@@ -464,8 +464,8 @@ class CoreBase {
         if (!exchanged) {
           terminate_with<std::logic_error>("set-interrupt-handler race");
         }
-        auto object = reinterpret_cast<exception_wrapper*>(
-            interrupt & ~InterruptHasObject);
+        auto pointer = interrupt & ~InterruptMask;
+        auto object = reinterpret_cast<exception_wrapper*>(pointer);
         fn(as_const(*object));
         delete object;
         return;
