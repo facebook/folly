@@ -193,9 +193,12 @@ class InterruptHandler {
 };
 
 template <class F>
-class InterruptHandlerImpl : public InterruptHandler {
+class InterruptHandlerImpl final : public InterruptHandler {
  public:
-  explicit InterruptHandlerImpl(F f) : f_(std::move(f)) {}
+  template <typename R>
+  explicit InterruptHandlerImpl(R&& f) noexcept(
+      noexcept(F(static_cast<R&&>(f))))
+      : f_(static_cast<R&&>(f)) {}
 
   void handle(const folly::exception_wrapper& ew) const override { f_(ew); }
 
