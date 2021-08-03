@@ -1,0 +1,14 @@
+[manifest]
+name = CLI11
+
+[download]
+url = https://github.com/CLIUtils/CLI11/archive/v1.9.0.tar.gz
+sha256 = 67640f37ec3be9289039930c987a492badc600645b65057023679f7bb99734e4
+
+[build]
+builder = cmake
+subdir = CLI11-1.9.0
+
+[cmake.defines]
+CLI11_BUILD_TESTS = OFF
+CLI11_BUILD_EXAMPLES = OFF
