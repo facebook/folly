@@ -34,6 +34,7 @@ re2
 python
 yaml-cpp
 libyaml
+CLI11
 
 [shipit.pathmap]
 fbcode/fboss/github = .
