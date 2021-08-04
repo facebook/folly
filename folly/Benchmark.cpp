@@ -326,22 +326,22 @@ class BenchmarkResultsPrinter {
           switch (ptr->type) {
             case UserMetric::Type::TIME:
               printf(
-                  "  %-*s",
+                  "  %*s",
                   int(name.length()),
                   readableTime(ptr->value, 2).c_str());
               break;
             case UserMetric::Type::METRIC:
               printf(
-                  "  %-*s",
+                  "  %*s",
                   int(name.length()),
                   metricReadable(ptr->value, 2).c_str());
               break;
             case UserMetric::Type::CUSTOM:
             default:
-              printf("  %-*" PRId64, int(name.length()), ptr->value);
+              printf("  %*" PRId64, int(name.length()), ptr->value);
           }
         } else {
-          printf("  %-*s", int(name.length()), "NaN");
+          printf("  %*s", int(name.length()), "NaN");
         }
       }
       printf("\n");
