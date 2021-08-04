@@ -97,7 +97,7 @@ class SkipListNode {
 
   inline SkipListNode* skip(int layer) const {
     DCHECK_LT(layer, height_);
-    return skip_[layer].load(std::memory_order_acquire);
+    return skip_[layer].load(std::memory_order_consume);
   }
 
   // next valid node as in the linked list
@@ -155,7 +155,7 @@ class SkipListNode {
     }
   }
 
-  uint16_t getFlags() const { return flags_.load(std::memory_order_acquire); }
+  uint16_t getFlags() const { return flags_.load(std::memory_order_consume); }
   void setFlags(uint16_t flags) {
     flags_.store(flags, std::memory_order_release);
   }
@@ -269,41 +269,43 @@ class NodeRecycler<
     dirty_.store(true, std::memory_order_relaxed);
   }
 
-  int addRef() { return refs_.fetch_add(1, std::memory_order_acq_rel); }
+  int addRef() { return refs_.fetch_add(1, std::memory_order_relaxed); }
 
   int releaseRef() {
-    // This if statement is purely an optimization. It's possible that this
-    // misses an opportunity to delete, but that's OK, we'll try again at
-    // the next opportunity. It does not harm the thread safety. For this
-    // reason, we can use relaxed loads to make the decision.
-    if (!dirty_.load(std::memory_order_relaxed) || refs() > 1) {
-      return refs_.fetch_add(-1, std::memory_order_acq_rel);
+    // We don't expect to clean the recycler immediately everytime it is OK
+    // to do so. Here, it is possible that multiple accessors all release at
+    // the same time but nobody would clean the recycler here. If this
+    // happens, the recycler will usually still get cleaned when
+    // such a race doesn't happen. The worst case is the recycler will
+    // eventually get deleted along with the skiplist.
+    if (LIKELY(!dirty_.load(std::memory_order_relaxed) || refs() > 1)) {
+      return refs_.fetch_add(-1, std::memory_order_relaxed);
     }
 
     std::unique_ptr<std::vector<NodeType*>> newNodes;
-    int ret;
     {
-      // The order at which we lock, add, swap, is very important for
-      // correctness.
       std::lock_guard<MicroSpinLock> g(lock_);
-      ret = refs_.fetch_add(-1, std::memory_order_acq_rel);
-      if (ret == 0) {
-        // When refs_ reachs 0, it is safe to remove all the current nodes
-        // in the recycler, as we already acquired the lock here so no more
-        // new nodes can be added, even though new accessors may be added
-        // after this.
-        newNodes.swap(nodes_);
-        dirty_.store(false, std::memory_order_relaxed);
+      if (nodes_.get() == nullptr || refs() > 1) {
+        return refs_.fetch_add(-1, std::memory_order_relaxed);
       }
+      // once refs_ reaches 1 and there is no other accessor, it is safe to
+      // remove all the current nodes in the recycler, as we already acquired
+      // the lock here so no more new nodes can be added, even though new
+      // accessors may be added after that.
+      newNodes.swap(nodes_);
+      dirty_.store(false, std::memory_order_relaxed);
     }
+
     // TODO(xliu) should we spawn a thread to do this when there are large
     // number of nodes in the recycler?
-    if (newNodes) {
-      for (auto& node : *newNodes) {
-        NodeType::destroy(alloc_, node);
-      }
+    for (auto& node : *newNodes) {
+      NodeType::destroy(alloc_, node);
     }
-    return ret;
+
+    // decrease the ref count at the very end, to minimize the
+    // chance of other threads acquiring lock_ to clear the deleted
+    // nodes again.
+    return refs_.fetch_add(-1, std::memory_order_relaxed);
   }
 
   NodeAlloc& alloc() { return alloc_; }
