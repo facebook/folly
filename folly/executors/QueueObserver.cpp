@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/concurrency/QueueObserver.h>
+#include <folly/executors/QueueObserver.h>
 
 namespace {
 std::unique_ptr<folly::QueueObserverFactory>

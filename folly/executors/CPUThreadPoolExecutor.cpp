@@ -20,7 +20,7 @@
 #include <atomic>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
-#include <folly/concurrency/QueueObserver.h>
+#include <folly/executors/QueueObserver.h>
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
