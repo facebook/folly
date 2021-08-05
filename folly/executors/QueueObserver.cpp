@@ -17,17 +17,23 @@
 #include <folly/executors/QueueObserver.h>
 
 namespace {
+
 std::unique_ptr<folly::QueueObserverFactory>
-make_queue_observer_factory_fallback(const std::string&, size_t) noexcept {
+make_queue_observer_factory_fallback(
+    const std::string&, size_t, folly::WorkerProvider*) noexcept {
   return std::unique_ptr<folly::QueueObserverFactory>();
 }
+
 } // namespace
 
 namespace folly {
+
 /* static */ std::unique_ptr<QueueObserverFactory> QueueObserverFactory::make(
-    const std::string& context, size_t numPriorities) {
+    const std::string& context,
+    size_t numPriorities,
+    WorkerProvider* workerProvider) {
   auto f = make_queue_observer_factory ? make_queue_observer_factory
                                        : make_queue_observer_factory_fallback;
-  return f(context, numPriorities);
+  return f(context, numPriorities, workerProvider);
 }
 } // namespace folly

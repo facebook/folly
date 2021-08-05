@@ -19,12 +19,46 @@
 #include <stdint.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <folly/Portability.h>
 
 namespace folly {
 
 class RequestContext;
+
+/**
+ * WorkerProvider is a simple interface that can be used
+ * to collect information about worker threads that are pulling work
+ * from a given queue.
+ */
+class WorkerProvider {
+ public:
+  virtual ~WorkerProvider() {}
+
+  /**
+   * Abstract type returned by the collectThreadIds() method.
+   * Implementations of the WorkerProvider interface need to define this class.
+   * The intent is to return a guard along with a list of worker IDs which can
+   * be removed on destruction of this object.
+   */
+  class KeepAlive {
+   public:
+    virtual ~KeepAlive() = 0;
+  };
+
+  // collectThreadIds() will return this aggregate type which includes an
+  // instance of the WorkersGuard.
+  struct IdsWithKeepAlive {
+    std::unique_ptr<KeepAlive> guard;
+    std::vector<pid_t> threadIds;
+  };
+
+  // Capture the Thread IDs of all threads consuming from a given queue.
+  // The provided vector should be populated with the OS Thread IDs and the
+  // method should return a SharedMutex which the caller can lock.
+  virtual IdsWithKeepAlive collectThreadIds() = 0;
+};
 
 class QueueObserver {
  public:
@@ -40,11 +74,13 @@ class QueueObserverFactory {
   virtual std::unique_ptr<QueueObserver> create(int8_t pri) = 0;
 
   static std::unique_ptr<QueueObserverFactory> make(
-      const std::string& context, size_t numPriorities);
+      const std::string& context,
+      size_t numPriorities,
+      WorkerProvider* workerProvider = nullptr);
 };
 
-using MakeQueueObserverFactory =
-    std::unique_ptr<QueueObserverFactory>(const std::string&, size_t);
+using MakeQueueObserverFactory = std::unique_ptr<QueueObserverFactory>(
+    const std::string&, size_t, WorkerProvider*);
 #if FOLLY_HAVE_WEAK_SYMBOLS
 FOLLY_ATTR_WEAK MakeQueueObserverFactory make_queue_observer_factory;
 #else
