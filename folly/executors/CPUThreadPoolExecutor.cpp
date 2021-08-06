@@ -272,6 +272,10 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   }
 
   thread->startupBaton.post();
+  osThreadIds_.wlock()->insert(folly::getOSThreadID());
+  // On thread exit, we should remove the thread ID from the tracking list.
+  auto threadIDsGuard = folly::makeGuard(
+      [this]() { osThreadIds_.wlock()->erase(folly::getOSThreadID()); });
   while (true) {
     auto task = taskQueue_->try_take_for(threadTimeout_);
 

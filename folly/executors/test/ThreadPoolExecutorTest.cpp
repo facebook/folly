@@ -924,6 +924,29 @@ TEST(ThreadPoolExecutorTest, AddPerf) {
   e.stop();
 }
 
+class OSThreadIDTestExecutor : public CPUThreadPoolExecutor {
+ public:
+  explicit OSThreadIDTestExecutor(size_t n) : CPUThreadPoolExecutor(n) {}
+  const std::unordered_set<pid_t>& getThreadIds() const {
+    return *osThreadIds_.rlock();
+  }
+};
+
+TEST(ThreadPoolExecutorTest, OSThreadIDsCollectionTest) {
+  OSThreadIDTestExecutor e(1);
+  const auto& idsList = e.getThreadIds();
+  std::atomic<uint64_t> flag{0};
+  Baton<> b;
+  e.add([&]() {
+    flag.exchange(getOSThreadID());
+    b.post();
+  });
+  b.wait();
+  EXPECT_EQ(idsList.count(flag.load()), 1);
+  e.join();
+  EXPECT_EQ(idsList.size(), 0);
+}
+
 template <typename TPE>
 static void WeakRefTest() {
   // test that adding a .then() after we have
