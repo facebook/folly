@@ -434,12 +434,20 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
 //  A type-erased smart-ptr with unique ownership to a heap-allocated object.
 using erased_unique_ptr = std::unique_ptr<void, void (*)(void*)>;
 
+namespace detail {
+// for erased_unique_ptr with types that specialize default_delete
+template <typename T>
+void erased_unique_ptr_delete(void* ptr) {
+  std::default_delete<T>()(static_cast<T*>(ptr));
+}
+} // namespace detail
+
 //  to_erased_unique_ptr
 //
 //  Converts an owning pointer to an object to an erased_unique_ptr.
 template <typename T>
 erased_unique_ptr to_erased_unique_ptr(T* const ptr) noexcept {
-  return {ptr, detail::thunk::ruin<T>};
+  return {ptr, detail::erased_unique_ptr_delete<T>};
 }
 
 //  to_erased_unique_ptr
