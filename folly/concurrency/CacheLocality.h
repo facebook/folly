@@ -259,7 +259,9 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
  private:
   struct GlobalState : detail::AccessSpreaderBase::GlobalState {};
   static_assert(
-      std::is_trivial<GlobalState>::value || kCpplibVer, "not trivial");
+      is_constexpr_default_constructible_v<GlobalState> &&
+          std::is_trivially_destructible<GlobalState>::value,
+      "unsuitable for global state");
 
  public:
   FOLLY_EXPORT static GlobalState& state() {
