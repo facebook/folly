@@ -18,6 +18,8 @@
 
 #include <folly/experimental/channels/detail/ChannelBridge.h>
 
+#include <optional>
+
 namespace folly {
 namespace channels {
 
