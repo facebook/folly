@@ -1110,6 +1110,14 @@ class AsyncSocket : public AsyncTransport {
     virtual void fdDetach(AsyncSocket* /* socket */) noexcept = 0;
 
     /**
+     * fdAttach() is invoked when the socket file descriptor is attached.
+     *
+     * @param socket      Socket for which handleNetworkSocketAttached was
+     * invoked.
+     */
+    virtual void fdAttach(AsyncSocket* /* socket */) noexcept {}
+
+    /**
      * move() will be invoked when a new AsyncSocket is being constructed via
      * constructor AsyncSocket(AsyncSocket* oldAsyncSocket) from an AsyncSocket
      * that has an observer attached.
@@ -1310,6 +1318,16 @@ class AsyncSocket : public AsyncTransport {
   virtual void handleWrite() noexcept;
   virtual void handleConnect() noexcept;
   void timeoutExpired() noexcept;
+
+  /**
+   * Handler for when the file descriptor is attached to the AsyncSocket.
+
+   * This updates the EventHandler to start using the fd and notifies all
+   * observers attached to the socket. This is necessary to let
+   * observers know about an attached fd immediately (i.e., on connection
+   * attempt) rather than when the connection succeeds.
+   */
+  virtual void handleNetworkSocketAttached();
 
   /**
    * Attempt to read from the socket into a single buffer

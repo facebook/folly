@@ -763,12 +763,9 @@ void AsyncSocket::connect(
           withAddr("failed to create socket"),
           errnoCopy);
     }
-    disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
-    if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
-      shutdownSocketSet->add(fd_);
-    }
-    ioHandler_.changeHandlerFD(fd_);
 
+    disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
+    handleNetworkSocketAttached();
     setCloseOnExec();
 
     // Put the socket in non-blocking mode
@@ -3059,6 +3056,22 @@ void AsyncSocket::timeoutExpired() noexcept {
         folly::sformat("write timed out after {}ms", sendTimeout_));
     failWrite(__func__, ex);
   }
+}
+
+void AsyncSocket::handleNetworkSocketAttached() {
+  VLOG(6) << "AsyncSocket::attachFd(this=" << this << ", fd=" << fd_
+          << ", evb=" << eventBase_ << " , state=" << state_
+          << ", events=" << std::hex << eventFlags_ << ")";
+  for (const auto& cb : lifecycleObservers_) {
+    if (auto dCb = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
+      dCb->fdAttach(this);
+    }
+  }
+
+  if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
+    shutdownSocketSet->add(fd_);
+  }
+  ioHandler_.changeHandlerFD(fd_);
 }
 
 ssize_t AsyncSocket::tfoSendMsg(

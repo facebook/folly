@@ -48,6 +48,7 @@ class MockAsyncSocketLifecycleObserver : public AsyncSocket::LifecycleObserver {
 
   // additional handlers specific to AsyncSocket::LifecycleObserver
   MOCK_METHOD1(fdDetachMock, void(AsyncSocket*));
+  MOCK_METHOD1(fdAttachMock, void(AsyncSocket*));
   MOCK_METHOD2(moveMock, void(AsyncSocket*, AsyncSocket*));
 
  private:
@@ -79,6 +80,7 @@ class MockAsyncSocketLifecycleObserver : public AsyncSocket::LifecycleObserver {
     byteEventsUnavailableMock(trans, ex);
   }
   void fdDetach(AsyncSocket* sock) noexcept override { fdDetachMock(sock); }
+  void fdAttach(AsyncSocket* sock) noexcept override { fdAttachMock(sock); }
   void move(AsyncSocket* olds, AsyncSocket* news) noexcept override {
     moveMock(olds, news);
   }
