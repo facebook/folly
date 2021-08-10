@@ -594,7 +594,7 @@ IOBuf::IOBuf(
       capacity_(capacity),
       flagsAndSharedInfo_(flagsAndSharedInfo) {
   assert(data >= buf);
-  assert(data + length <= buf + capacity);
+  assert(intptr_t(data) + length <= intptr_t(buf) + capacity);
 
   CHECK(!folly::asan_region_is_poisoned(buf, capacity));
 }
