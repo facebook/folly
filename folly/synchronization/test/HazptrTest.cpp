@@ -875,6 +875,53 @@ void recursive_destruction_test() {
   ASSERT_EQ(c_.dtors(), total);
 }
 
+// Used in cohort_safe_list_children_test
+struct NodeA : hazptr_obj_base_linked<NodeA> {
+  std::atomic<NodeA*> next_{nullptr};
+  int& sum_;
+  int val_;
+
+  NodeA(hazptr_obj_cohort<>& coh, int& sum, int v = 0) : sum_(sum), val_(v) {
+    this->set_cohort_tag(&coh);
+  }
+  ~NodeA() { sum_ += val_; }
+  void set_next(NodeA* ptr) { next_.store(ptr); }
+  template <typename S>
+  void push_links(bool m, S& s) {
+    if (m) {
+      auto p = next_.load();
+      if (p) {
+        s.push(p);
+      }
+    }
+  }
+};
+
+void cohort_safe_list_children_test() {
+  int sum = 0;
+  hazptr_obj_cohort<> cohort;
+  NodeA* p1 = new NodeA(cohort, sum, 1000);
+  NodeA* p2 = new NodeA(cohort, sum, 2000);
+  p2->acquire_link_safe();
+  p1->set_next(p2); // p2 is p1's child
+  hazard_pointer<> h = make_hazard_pointer<>();
+  h.reset_protection(p2);
+  p1->retire();
+  /* When p1 is retired, it is inserted into cohort, then pushed into
+     the domain's tagged list, then when p1 is found unprotected by
+     hazard pointers it will be pushed into cohort's safe list. When
+     p1 is reclaimed, p2 (p1's child) will be automatically retired to
+     the domain's tagged list. */
+  /* Retire enough nodes to trigger asynchronous reclamation to
+     reclaim p1. */
+  for (int i = 0; i < 1100; ++i) {
+    NodeA* p = new NodeA(cohort, sum);
+    p->retire();
+  }
+  /* At this point p1 should be reclaimed but not p2 */
+  DCHECK_EQ(sum, 1000);
+}
+
 void fork_test() {
   folly::enable_hazptr_thread_pool_executor();
   auto trigger_reclamation = [] {
@@ -1178,6 +1225,10 @@ TEST(HazptrTest, recursive_destruction) {
 
 TEST(HazptrTest, dsched_recursive_destruction) {
   recursive_destruction_test<DeterministicAtomic>();
+}
+
+TEST(HazptrTest, cohort_safe_list_children) {
+  cohort_safe_list_children_test();
 }
 
 TEST(HazptrTest, fork) {
