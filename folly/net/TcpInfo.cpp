@@ -24,7 +24,6 @@
 #endif
 
 namespace folly {
-namespace tcpinfo {
 namespace {
 
 constexpr std::array<
@@ -52,7 +51,6 @@ static_assert(
 
 using ms = std::chrono::milliseconds;
 using us = std::chrono::microseconds;
-using namespace tcpinfo;
 
 TcpInfo::IoctlDispatcher* TcpInfo::IoctlDispatcher::getDefaultInstance() {
   static TcpInfo::IoctlDispatcher dispatcher = {};
@@ -69,7 +67,7 @@ int TcpInfo::IoctlDispatcher::ioctl(int fd, unsigned long request, void* argp) {
 
 Expected<TcpInfo, std::errc> TcpInfo::initFromFd(
     const NetworkSocket& fd,
-    const LookupOptions& options,
+    const TcpInfo::LookupOptions& options,
     netops::Dispatcher& netopsDispatcher,
     IoctlDispatcher& ioctlDispatcher) {
 #ifndef FOLLY_HAVE_TCP_INFO
@@ -85,7 +83,7 @@ Expected<TcpInfo, std::errc> TcpInfo::initFromFd(
   auto ret = netopsDispatcher.getsockopt(
       fd,
       IPPROTO_TCP,
-      folly::tcpinfo::tcp_info_sock_opt,
+      folly::detail::tcp_info_sock_opt,
       (void*)&info.tcpInfo,
       &len);
   if (ret < 0) {
@@ -411,8 +409,10 @@ Optional<uint64_t> TcpInfo::bbrBwBytesPerSecond() const {
 #ifndef FOLLY_HAVE_TCP_CC_INFO
   return folly::none;
 #elif defined(__linux__)
-  auto bbrBwLoOpt = getFieldAsOptUInt64(&tcp_bbr_info::bbr_bw_lo);
-  auto bbrBwHiOpt = getFieldAsOptUInt64(&tcp_bbr_info::bbr_bw_hi);
+  auto bbrBwLoOpt =
+      getFieldAsOptUInt64(&folly::TcpInfo::tcp_bbr_info::bbr_bw_lo);
+  auto bbrBwHiOpt =
+      getFieldAsOptUInt64(&folly::TcpInfo::tcp_bbr_info::bbr_bw_hi);
   if (bbrBwLoOpt && bbrBwHiOpt) {
     return ((int64_t)*bbrBwHiOpt << 32) + *bbrBwLoOpt;
   }
@@ -428,7 +428,7 @@ Optional<std::chrono::microseconds> TcpInfo::bbrMinrtt() const {
 #ifndef FOLLY_HAVE_TCP_CC_INFO
   return folly::none;
 #elif defined(__linux__)
-  auto opt = getFieldAsOptUInt64(&tcp_bbr_info::bbr_min_rtt);
+  auto opt = getFieldAsOptUInt64(&folly::TcpInfo::tcp_bbr_info::bbr_min_rtt);
   return (opt) ? us(*opt) : folly::Optional<us>();
 #elif defined(__APPLE__)
   return folly::none;
@@ -441,7 +441,7 @@ Optional<uint64_t> TcpInfo::bbrPacingGain() const {
 #ifndef FOLLY_HAVE_TCP_CC_INFO
   return folly::none;
 #elif defined(__linux__)
-  return getFieldAsOptUInt64(&tcp_bbr_info::bbr_pacing_gain);
+  return getFieldAsOptUInt64(&folly::TcpInfo::tcp_bbr_info::bbr_pacing_gain);
 #elif defined(__APPLE__)
   return folly::none;
 #else
@@ -453,7 +453,7 @@ Optional<uint64_t> TcpInfo::bbrCwndGain() const {
 #ifndef FOLLY_HAVE_TCP_CC_INFO
   return folly::none;
 #elif defined(__linux__)
-  return getFieldAsOptUInt64(&tcp_bbr_info::bbr_cwnd_gain);
+  return getFieldAsOptUInt64(&folly::TcpInfo::tcp_bbr_info::bbr_cwnd_gain);
 #elif defined(__APPLE__)
   return folly::none;
 #else
@@ -539,8 +539,8 @@ void TcpInfo::initCcInfoFromFd(
       LOG(FATAL) << "CongestionControlName::NumCcTypes is not a valid CC type";
   }
 
-  tcpinfo::tcp_cc_info ccInfo = {};
-  socklen_t len = sizeof(tcpinfo::tcp_cc_info);
+  tcp_cc_info ccInfo = {};
+  socklen_t len = sizeof(tcp_cc_info);
   const int ret = netopsDispatcher.getsockopt(
       fd, IPPROTO_TCP, TCP_CC_INFO, (void*)&ccInfo, &len);
   if (ret < 0) {
@@ -574,5 +574,4 @@ void TcpInfo::initMemInfoFromFd(
 #endif
 }
 
-} // namespace tcpinfo
 } // namespace folly
