@@ -23,6 +23,7 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Executor.h>
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
@@ -403,6 +404,16 @@ class FOLLY_NODISCARD TaskWithExecutor {
           << "QueuedImmediateExecutor is not safe and is not supported for coro::Task. "
           << "If you need to run a task inline in a unit-test, you should use "
           << "coro::blockingWait instead.";
+      if constexpr (kIsDebug) {
+        if (dynamic_cast<InlineLikeExecutor*>(promise.executor_.get())) {
+          FB_LOG_ONCE(ERROR)
+              << "InlineLikeExecutor is not safe and is not supported for coro::Task. "
+              << "If you need to run a task inline in a unit-test, you should use "
+              << "coro::blockingWait or write your test using the CO_TEST* macros instead."
+              << "If you are using folly::getCPUExecutor, switch to getGlobalCPUExecutor "
+              << "or be sure to call setCPUExecutor first.";
+        }
+      }
 
       auto& calleeFrame = promise.getAsyncFrame();
       calleeFrame.setReturnAddress();
