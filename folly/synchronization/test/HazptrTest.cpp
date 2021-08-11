@@ -906,20 +906,30 @@ void cohort_safe_list_children_test() {
   p1->set_next(p2); // p2 is p1's child
   hazard_pointer<> h = make_hazard_pointer<>();
   h.reset_protection(p2);
-  p1->retire();
   /* When p1 is retired, it is inserted into cohort, then pushed into
      the domain's tagged list, then when p1 is found unprotected by
      hazard pointers it will be pushed into cohort's safe list. When
      p1 is reclaimed, p2 (p1's child) will be automatically retired to
      the domain's tagged list. */
-  /* Retire enough nodes to trigger asynchronous reclamation to
-     reclaim p1. */
-  for (int i = 0; i < 1100; ++i) {
+  p1->retire();
+  /* Retire enough nodes to invoke asynchronous reclamation until p1
+     and/or p2 are reclaimed. */
+  while (sum == 0) {
     NodeA* p = new NodeA(cohort, sum);
     p->retire();
   }
-  /* At this point p1 should be reclaimed but not p2 */
+  /* At this point p1 must be already reclaimed but not p2 */
   DCHECK_EQ(sum, 1000);
+  NodeA* p3 = new NodeA(cohort, sum, 3000);
+  p3->retire();
+  /* Retire more nodes to invoke asynchronous reclamation until p3
+     and/or p2 are reclaimed. */
+  while (sum == 1000) {
+    NodeA* p = new NodeA(cohort, sum);
+    p->retire();
+  }
+  /* At this point p3 must be already reclaimed but not p2 */
+  DCHECK_EQ(sum, 4000);
 }
 
 void fork_test() {
