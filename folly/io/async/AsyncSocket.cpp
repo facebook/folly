@@ -571,6 +571,7 @@ AsyncSocket::AsyncSocket(
     uint32_t zeroCopyBufId,
     const SocketAddress* peerAddress)
     : zeroCopyBufId_(zeroCopyBufId),
+      fd_(fd),
       eventBase_(evb),
       writeTimeout_(this, evb),
       ioHandler_(this, evb, fd),
@@ -578,7 +579,6 @@ AsyncSocket::AsyncSocket(
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd=" << fd
           << ", zeroCopyBufId=" << zeroCopyBufId << ")";
   init();
-  fd_ = fd;
   disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
   setCloseOnExec();
   state_ = StateEnum::ESTABLISHED;
@@ -621,7 +621,6 @@ void AsyncSocket::init() {
   shutdownFlags_ = 0;
   state_ = StateEnum::UNINIT;
   eventFlags_ = EventHandler::NONE;
-  fd_ = NetworkSocket();
   sendTimeout_ = 0;
   maxReadsPerEvent_ = 16;
   connectCallback_ = nullptr;
