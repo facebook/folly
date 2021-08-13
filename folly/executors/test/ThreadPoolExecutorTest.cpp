@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/CPortability.h>
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
+#include <folly/lang/Keep.h>
 
 #include <atomic>
 #include <memory>
@@ -43,6 +45,20 @@ using namespace std::chrono;
 static Func burnMs(uint64_t ms) {
   return [ms]() { std::this_thread::sleep_for(milliseconds(ms)); };
 }
+
+static WorkerProvider* kWorkerProviderGlobal = nullptr;
+
+namespace folly {
+
+#if FOLLY_HAVE_WEAK_SYMBOLS
+FOLLY_KEEP std::unique_ptr<QueueObserverFactory> make_queue_observer_factory(
+    const std::string&, size_t, WorkerProvider* workerProvider) {
+  kWorkerProviderGlobal = workerProvider;
+  return {};
+}
+#endif
+
+} // namespace folly
 
 template <class TPE>
 static void basic() {
@@ -924,27 +940,114 @@ TEST(ThreadPoolExecutorTest, AddPerf) {
   e.stop();
 }
 
-class OSThreadIDTestExecutor : public CPUThreadPoolExecutor {
- public:
-  explicit OSThreadIDTestExecutor(size_t n) : CPUThreadPoolExecutor(n) {}
-  const std::unordered_set<pid_t>& getThreadIds() const {
-    return *osThreadIds_.rlock();
-  }
+class ExecutorWorkerProviderTest : public ::testing::Test {
+ protected:
+  void SetUp() override { kWorkerProviderGlobal = nullptr; }
+  void TearDown() override { kWorkerProviderGlobal = nullptr; }
 };
 
-TEST(ThreadPoolExecutorTest, OSThreadIDsCollectionTest) {
-  OSThreadIDTestExecutor e(1);
-  const auto& idsList = e.getThreadIds();
-  std::atomic<uint64_t> flag{0};
-  Baton<> b;
-  e.add([&]() {
-    flag.exchange(getOSThreadID());
-    b.post();
-  });
-  b.wait();
-  EXPECT_EQ(idsList.count(flag.load()), 1);
+TEST_F(ExecutorWorkerProviderTest, ThreadCollectorBasicTest) {
+  // Start 4 threads and have all of them work on a task.
+  // Then invoke the ThreadIdCollector::collectThreadIds()
+  // method to capture the set of active thread ids.
+  boost::barrier barrier{5};
+  Synchronized<std::vector<pid_t>> expectedTids;
+  auto task = [&]() {
+    expectedTids.wlock()->push_back(folly::getOSThreadID());
+    barrier.wait();
+  };
+  CPUThreadPoolExecutor e(4);
+  for (int i = 0; i < 4; ++i) {
+    e.add(task);
+  }
+  barrier.wait();
+  {
+    const auto threadIdsWithKA = kWorkerProviderGlobal->collectThreadIds();
+    const auto& ids = threadIdsWithKA.threadIds;
+    auto locked = expectedTids.rlock();
+    EXPECT_EQ(ids.size(), locked->size());
+    EXPECT_TRUE(std::is_permutation(ids.begin(), ids.end(), locked->begin()));
+  }
   e.join();
-  EXPECT_EQ(idsList.size(), 0);
+}
+
+TEST_F(ExecutorWorkerProviderTest, ThreadCollectorMultipleInvocationTest) {
+  // Run some tasks via the executor and invoke
+  // WorkerProvider::collectThreadIds() at least twice to make sure that there
+  // is no deadlock in repeated invocations.
+  CPUThreadPoolExecutor e(1);
+  e.add([&]() {});
+  {
+    auto idsWithKA1 = kWorkerProviderGlobal->collectThreadIds();
+    auto idsWithKA2 = kWorkerProviderGlobal->collectThreadIds();
+    auto& ids1 = idsWithKA1.threadIds;
+    auto& ids2 = idsWithKA2.threadIds;
+    EXPECT_EQ(ids1.size(), 1);
+    EXPECT_EQ(ids1.size(), ids2.size());
+    EXPECT_EQ(ids1, ids2);
+  }
+  // Add some more threads and schedule tasks while the collector
+  // is capturing thread Ids.
+  std::array<folly::Baton<>, 4> bats;
+  {
+    auto idsWithKA1 = kWorkerProviderGlobal->collectThreadIds();
+    e.setNumThreads(4);
+    for (size_t i = 0; i < 4; ++i) {
+      e.add([i, &bats]() { bats[i].wait(); });
+    }
+    for (auto& bat : bats) {
+      bat.post();
+    }
+    auto idsWithKA2 = kWorkerProviderGlobal->collectThreadIds();
+    auto& ids1 = idsWithKA1.threadIds;
+    auto& ids2 = idsWithKA2.threadIds;
+    EXPECT_EQ(ids1.size(), 1);
+    EXPECT_EQ(ids2.size(), 4);
+  }
+  e.join();
+}
+
+TEST_F(ExecutorWorkerProviderTest, ThreadCollectorBlocksThreadExitTest) {
+  // We need to ensure that the collector's keep alive effectively
+  // blocks the executor's threads from exiting. This is done by verifying
+  // that a call to reduce the worker count via setNumThreads() does not
+  // actually reduce the workers (kills threads) while  the keep alive is
+  // in scope.
+  constexpr size_t kNumThreads = 4;
+  std::array<folly::Baton<>, kNumThreads> bats;
+  CPUThreadPoolExecutor e(kNumThreads);
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    e.add([i, &bats]() { bats[i].wait(); });
+  }
+  Baton<> baton;
+  Baton<> threadCountBaton;
+  auto bgCollector = std::thread([&]() {
+    {
+      auto idsWithKA = kWorkerProviderGlobal->collectThreadIds();
+      baton.post();
+      // Since this thread is holding the KeepAlive, it should block
+      // the main thread's `setNumThreads()` call which is trying to
+      // reduce the thread count of the executor. We verify that by
+      // checking that the baton isn't posted after a 100ms wait.
+      auto posted =
+          threadCountBaton.try_wait_for(std::chrono::milliseconds(100));
+      EXPECT_FALSE(posted);
+      auto& ids = idsWithKA.threadIds;
+      // The thread count should still be 4 since the collector's
+      // keep alive is active. To further verify that the threads are
+      EXPECT_EQ(ids.size(), kNumThreads);
+    }
+  });
+  baton.wait();
+  for (auto& bat : bats) {
+    bat.post();
+  }
+  e.setNumThreads(2);
+  threadCountBaton.post();
+  bgCollector.join();
+  // The thread count should now be reduced to 2.
+  EXPECT_EQ(e.numThreads(), 2);
+  e.join();
 }
 
 template <typename TPE>

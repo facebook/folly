@@ -28,6 +28,8 @@ make_queue_observer_factory_fallback(
 
 namespace folly {
 
+WorkerProvider::KeepAlive::~KeepAlive() {}
+
 /* static */ std::unique_ptr<QueueObserverFactory> QueueObserverFactory::make(
     const std::string& context,
     size_t numPriorities,

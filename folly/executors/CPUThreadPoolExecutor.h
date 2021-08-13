@@ -175,6 +175,8 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
 
  protected:
   BlockingQueue<CPUTask>* getTaskQueue();
+  std::unique_ptr<WorkerProvider> createWorkerProvider();
+  std::unique_ptr<WorkerProvider> threadIdCollector_{createWorkerProvider()};
 
  private:
   void threadRun(ThreadPtr thread) override;

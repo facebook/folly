@@ -289,7 +289,6 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::string namePrefix_;
   const bool isWaitForAll_; // whether to wait till event base loop exits
 
-  folly::Synchronized<std::unordered_set<pid_t>> osThreadIds_;
   ThreadList threadList_;
   SharedMutex threadListLock_;
   StoppedThreadQueue stoppedThreads_;
