@@ -27,9 +27,6 @@ namespace detail {
 
 class UniqueInstance {
  public:
-#if __GNUC__ && __GNUC__ < 7 && !__clang__
-  explicit UniqueInstance(...) noexcept {}
-#else
   template <template <typename...> class Z, typename... Key, typename... Mapped>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE explicit UniqueInstance(
       tag_t<Z<Key..., Mapped...>>, tag_t<Key...>, tag_t<Mapped...>) noexcept {
@@ -41,7 +38,6 @@ class UniqueInstance {
         {tag<Value, key_t<Z, Key...>>}};
     enforce(arg);
   }
-#endif
 
   UniqueInstance(UniqueInstance const&) = delete;
   UniqueInstance(UniqueInstance&&) = delete;
