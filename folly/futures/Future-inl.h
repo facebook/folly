@@ -363,35 +363,6 @@ FutureBase<T>::thenImplementation(
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
-  /* This is a bit tricky.
-
-     We can't just close over *this in case this Future gets moved. So we
-     make a new dummy Future. We could figure out something more
-     sophisticated that avoids making a new Future object when it can, as an
-     optimization. But this is correct.
-
-     core_ can't be moved, it is explicitly disallowed (as is copying). But
-     if there's ever a reason to allow it, this is one place that makes that
-     assumption and would need to be fixed. We use a standard shared pointer
-     for core_ (by copying it in), which means in essence obj holds a shared
-     pointer to itself.  But this shouldn't leak because Promise will not
-     outlive the continuation, because Promise will setException() with a
-     broken Promise if it is destructed before completed. We could use a
-     weak pointer but it would have to be converted to a shared pointer when
-     func is executed (because the Future returned by func may possibly
-     persist beyond the callback, if it gets moved), and so it is an
-     optimization to just make it shared from the get-go.
-
-     Two subtle but important points about this design. futures::detail::Core
-     has no back pointers to Future or Promise, so if Future or Promise get
-     moved (and they will be moved in performant code) we don't have to do
-     anything fancy. And because we store the continuation in the
-     futures::detail::Core, not in the Future, we can execute the continuation
-     even after the Future has gone out of scope. This is an intentional design
-     decision. It is likely we will want to be able to cancel a continuation
-     in some circumstances, but I think it should be explicit not implicit
-     in the destruction of the Future used to create it.
-     */
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
            std::move(p), static_cast<F&&>(func))](
