@@ -155,3 +155,14 @@
 #else
 #define FOLLY_ATTR_NO_UNIQUE_ADDRESS
 #endif
+
+/**
+ * Accesses to objects with types with this attribute are not subjected to
+ * type-based alias analysis, but are instead assumed to be able to alias any
+ * other type of objects, just like the char type.
+ */
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::may_alias)
+#define FOLLY_ATTR_MAY_ALIAS [[gnu::may_alias]]
+#else
+#define FOLLY_ATTR_MAY_ALIAS
+#endif
