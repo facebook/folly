@@ -3630,6 +3630,14 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
       AsyncSocketException::ALREADY_OPEN,
       "connect() called with socket in invalid state");
   connectEndTime_ = std::chrono::steady_clock::now();
+  if ((state_ == StateEnum::CONNECTING) || (state_ == StateEnum::ERROR)) {
+    for (const auto& cb : lifecycleObservers_) {
+      if (auto observer = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
+        // inform any lifecycle observes that the connection failed
+        observer->connectError(this, ex);
+      }
+    }
+  }
   if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {
     if (callback) {
       callback->connectErr(ex);
@@ -3673,6 +3681,18 @@ void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
   VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
           << "): connect err invoked with ex: " << ex.what();
   connectEndTime_ = std::chrono::steady_clock::now();
+  if ((state_ == StateEnum::CONNECTING) || (state_ == StateEnum::ERROR)) {
+    // invokeConnectErr() can be invoked when state is {FAST_OPEN, CLOSED,
+    // ESTABLISHED} (!?) and a bunch of other places that are not what this call
+    // back wants. This seems like a bug but work around here while we explore
+    // it independently
+    for (const auto& cb : lifecycleObservers_) {
+      if (auto observer = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
+        // inform any lifecycle observes that the connection failed
+        observer->connectError(this, ex);
+      }
+    }
+  }
   if (connectCallback_) {
     ConnectCallback* callback = connectCallback_;
     connectCallback_ = nullptr;

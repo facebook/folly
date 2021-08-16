@@ -1009,6 +1009,18 @@ class AsyncTransport : public DelayedDestruction,
     virtual void connect(AsyncTransport* /* transport */) noexcept = 0;
 
     /**
+     * connectError() will be invoked when connect() returns an error.
+     *
+     * Triggered before any application connection callback.
+     *
+     * @param transport   Transport that has connected.
+     * @param ex          Exception that describes why.
+     */
+    virtual void connectError(
+        AsyncTransport* /* transport */,
+        const AsyncSocketException& /* ex */) noexcept {}
+
+    /**
      * Invoked when the transport is being attached to an EventBase.
      *
      * Called from within the EventBase thread being attached.

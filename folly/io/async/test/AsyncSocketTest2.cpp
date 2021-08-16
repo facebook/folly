@@ -7588,6 +7588,32 @@ TEST(AsyncSocket, LifecycleObserverAttachThenDestroySocket) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
+TEST(AsyncSocket, LifecycleObserverAttachThenConnectError) {
+  auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
+  // port =1 is unreachble on localhost
+  folly::SocketAddress unreachable{"::1", 1};
+
+  EventBase evb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  EXPECT_CALL(*cb, observerAttachMock(socket.get()));
+  socket->addLifecycleObserver(cb.get());
+  EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
+  Mock::VerifyAndClearExpectations(cb.get());
+
+  // the current state machine calls AsyncSocket::invokeConnectionError() twice
+  // for this use-case...
+  EXPECT_CALL(*cb, fdAttachMock(socket.get()));
+  EXPECT_CALL(*cb, connectErrorMock(socket.get(), _)).Times(2);
+  EXPECT_CALL(*cb, closeMock(socket.get()));
+  socket->connect(nullptr, unreachable, 1);
+  evb.loop();
+  Mock::VerifyAndClearExpectations(cb.get());
+
+  EXPECT_CALL(*cb, destroyMock(socket.get()));
+  socket = nullptr;
+  Mock::VerifyAndClearExpectations(cb.get());
+}
+
 TEST(AsyncSocket, LifecycleObserverMultipleAttachThenDestroySocket) {
   auto cb1 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   auto cb2 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
