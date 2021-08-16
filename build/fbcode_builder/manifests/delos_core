@@ -1,0 +1,25 @@
+[manifest]
+name = delos_core
+fbsource_path = fbcode/delos_core
+shipit_project = delos_core
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookincubator/delos_core.git
+
+[build.os=linux]
+builder = cmake
+
+[build.not(os=linux)]
+builder = nop
+
+[dependencies]
+glog
+googletest
+folly
+fbthrift
+fb303
+re2
+
+[shipit.pathmap]
+fbcode/delos_core = .
