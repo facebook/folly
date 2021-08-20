@@ -1200,12 +1200,13 @@ class alignas(64) SIMDTable {
     if (!node) {
       std::tie(chunk_idx, tag_idx) =
           findEmptyInsertLocation(chunks, ccount, hp);
-      it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
       incSize();
     }
 
     Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
     chunk->setNodeAndTag(tag_idx, cur, hp.second);
+    it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
+    it.hazptrs_[1].reset_protection(cur);
 
     g.unlock();
     // Retire not under lock
@@ -1251,12 +1252,13 @@ class alignas(64) SIMDTable {
     if (!node) {
       std::tie(chunk_idx, tag_idx) =
           findEmptyInsertLocation(chunks, ccount, hp);
-      it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
       incSize();
     }
 
     Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
     chunk->setNodeAndTag(tag_idx, cur, hp.second);
+    it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
+    it.hazptrs_[1].reset_protection(cur);
 
     g.unlock();
     // Retire not under lock

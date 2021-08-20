@@ -525,7 +525,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, TryEmplaceEraseStressTest) {
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
   threads.reserve(num_threads);
-  folly::ConcurrentHashMap<int, int> map;
+  CHM<int, int> map;
   for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&]() {
       while (--iterations >= 0) {
@@ -546,7 +546,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, InsertOrAssignStressTest) {
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
   threads.reserve(num_threads);
-  folly::ConcurrentHashMap<int, int> map;
+  CHM<int, int> map;
   for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&]() {
       int i = 0;
@@ -913,7 +913,7 @@ using detector_erase = decltype(std::declval<T>().erase(std::declval<Arg>()));
 TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousLookup) {
   using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;
   using KeyEqual = folly::transparent<std::equal_to<folly::StringPiece>>;
-  using M = ConcurrentHashMap<std::string, bool, Hasher, KeyEqual>;
+  using M = CHM<std::string, bool, Hasher, KeyEqual>;
 
   constexpr auto hello = "hello"_sp;
   constexpr auto buddy = "buddy"_sp;
@@ -948,7 +948,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousInsert) {
   using P = std::pair<StringPiece, std::string>;
   using CP = std::pair<const StringPiece, std::string>;
 
-  ConcurrentHashMap<std::string, std::string, Hasher, KeyEqual> map;
+  CHM<std::string, std::string, Hasher, KeyEqual> map;
   P p{"foo", "hello"};
   StringPiece foo{"foo"};
   StringPiece bar{"bar"};
@@ -1008,6 +1008,15 @@ TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousInsert) {
       "there shouldn't be an erase() overload for this string map with an int param");
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, InsertOrAssignIterator) {
+  CHM<int, int> map;
+  auto [itr1, insert1] = map.insert_or_assign(1, 1);
+  auto [itr2, insert2] = map.insert_or_assign(1, 2);
+  auto itr3 = map.find(1);
+  EXPECT_EQ(itr3->second, 2);
+  EXPECT_EQ(itr2->second, 2);
+}
+
 REGISTER_TYPED_TEST_CASE_P(
     ConcurrentHashMapTest,
     MapTest,
@@ -1047,7 +1056,8 @@ REGISTER_TYPED_TEST_CASE_P(
     IteratorMove,
     IteratorLoop,
     HeterogeneousLookup,
-    HeterogeneousInsert);
+    HeterogeneousInsert,
+    InsertOrAssignIterator);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 
