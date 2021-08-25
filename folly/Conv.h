@@ -117,6 +117,7 @@
 #include <folly/Expected.h>
 #include <folly/FBString.h>
 #include <folly/Likely.h>
+#include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
 #include <folly/Unit.h>
@@ -641,6 +642,8 @@ toAppend(
       1); // max trailing padding zeros
   char buffer[256];
   StringBuilder builder(buffer, sizeof(buffer));
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
   switch (mode) {
     case DoubleToStringConverter::SHORTEST:
       conv.ToShortest(value, &builder);
@@ -657,6 +660,7 @@ toAppend(
       conv.ToPrecision(value, int(numDigits), &builder);
       break;
   }
+  FOLLY_POP_WARNING
   const size_t length = size_t(builder.position());
   builder.Finalize();
   result->append(buffer, length);

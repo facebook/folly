@@ -28,6 +28,7 @@
 #include <folly/Exception.h>
 #include <folly/FormatTraits.h>
 #include <folly/MapUtil.h>
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/ToAscii.h>
@@ -313,6 +314,8 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
     int padChars = static_cast<int>(arg.width - val.size());
     memset(padBuf, fill, size_t(std::min(padBufSize, padChars)));
 
+    FOLLY_PUSH_WARNING
+    FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
     switch (arg.align) {
       case FormatArg::Align::DEFAULT:
       case FormatArg::Align::LEFT:
@@ -331,6 +334,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
         abort();
         break;
     }
+    FOLLY_POP_WARNING
   }
 
   cb(val);
@@ -439,6 +443,8 @@ class FormatValue<
         sign = '-';
       } else {
         uval = static_cast<UT>(val_);
+        FOLLY_PUSH_WARNING
+        FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
         switch (arg.sign) {
           case FormatArg::Sign::PLUS_OR_MINUS:
             sign = '+';
@@ -453,6 +459,7 @@ class FormatValue<
             sign = '\0';
             break;
         }
+        FOLLY_POP_WARNING
       }
     } else {
       uval = static_cast<UT>(val_);

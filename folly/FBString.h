@@ -368,6 +368,8 @@ class fbstring_core {
 
   FOLLY_NOINLINE
   void reserve(size_t minCapacity, bool disableSSO = FBSTRING_DISABLE_SSO) {
+    FOLLY_PUSH_WARNING
+    FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
     switch (category()) {
       case Category::isSmall:
         reserveSmall(minCapacity, disableSSO);
@@ -381,6 +383,7 @@ class fbstring_core {
       default:
         folly::assume_unreachable();
     }
+    FOLLY_POP_WARNING
     assert(capacity() >= minCapacity);
   }
 
@@ -408,6 +411,8 @@ class fbstring_core {
   }
 
   size_t capacity() const {
+    FOLLY_PUSH_WARNING
+    FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
     switch (category()) {
       case Category::isSmall:
         return maxSmallSize;
@@ -423,6 +428,7 @@ class fbstring_core {
       default:
         break;
     }
+    FOLLY_POP_WARNING
     return ml_.capacity();
   }
 
