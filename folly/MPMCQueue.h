@@ -522,7 +522,7 @@ class MPMCQueue<T, Atom, true>
   }
 
   /// Try to expand the queue. Returns true if this expansion was
-  /// successful or a concurent expansion is in progress. Returns
+  /// successful or a concurrent expansion is in progress. Returns
   /// false if the queue has reached its maximum capacity or
   /// allocation has failed.
   bool tryExpand(const uint64_t state, const size_t cap) noexcept {
@@ -999,7 +999,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
     Atom<int> dstride_;
   };
 
-  /// The following two memebers are used by dynamic MPMCQueue.
+  /// The following two members are used by dynamic MPMCQueue.
   /// Ideally they should be in MPMCQueue<T,Atom,true>, but we get
   /// better cache locality if they are in the same cache line as
   /// dslots_ and dstride_.

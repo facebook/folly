@@ -878,7 +878,7 @@ struct Sig {
   }
 };
 
-// A functon type with no arguments means the user is trying to disambiguate
+// A function type with no arguments means the user is trying to disambiguate
 // a member function pointer.
 template <class R>
 struct Sig<R()> : Sig<R() const> {

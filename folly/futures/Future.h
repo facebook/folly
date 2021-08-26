@@ -2387,7 +2387,7 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
   return collectAll(c.begin(), c.end());
 }
 
-// Unsafe variant of collectAll, see coment above for details. Returns
+// Unsafe variant of collectAll, see comment above for details. Returns
 // a Future<std::tuple<Try<T1>, Try<T2>, ...>> on the Inline executor.
 template <typename... Fs>
 Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>

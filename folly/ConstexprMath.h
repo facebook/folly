@@ -240,7 +240,7 @@ constexpr T constexpr_sub_overflow_clamped(T a, T b) {
 //
 // Float NaNs are converted to 0 in integral type.
 //
-// Here's some comparision with static_cast<>:
+// Here's some comparison with static_cast<>:
 // (with FB-internal gcc-5-glibc-2.23 toolchain)
 //
 // static_cast<int32_t>(NaN) = 6
@@ -313,7 +313,7 @@ constexpr float kClampCastLowerBoundFloatToInt32F = -2147483520.0f;
 constexpr float kClampCastUpperBoundFloatToInt32F = 2147483520.0f;
 constexpr float kClampCastUpperBoundFloatToUInt32F = 4294967040.0f;
 
-// This works the same as constexpr_clamp, but the comparision are done in Src
+// This works the same as constexpr_clamp, but the comparison are done in Src
 // to prevent any implicit promotions.
 template <typename D, typename S>
 constexpr D constexpr_clamp_cast_helper(S src, S sl, S su, D dl, D du) {
