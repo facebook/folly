@@ -131,10 +131,8 @@ auto collectAllImpl(
         co_await co_current_cancellation_token;
 
     const CancellationSource cancelSource;
-    CancellationCallback cancelCallback(parentCancelToken, [&]() noexcept {
-      cancelSource.requestCancellation();
-    });
-    const CancellationToken cancelToken = cancelSource.getToken();
+    const CancellationToken cancelToken =
+        CancellationToken::merge(parentCancelToken, cancelSource.getToken());
 
     exception_wrapper firstException;
     std::atomic<bool> anyFailures{false};
@@ -156,8 +154,9 @@ auto collectAllImpl(
         }
       } catch (...) {
         anyFailures.store(true, std::memory_order_relaxed);
-        if (!cancelSource.requestCancellation()) {
-          // This was the first failure, remember it's error.
+        if (!cancelSource.requestCancellation() &&
+            !parentCancelToken.isCancellationRequested()) {
+          // This was the first failure, remember its error.
           firstException = exception_wrapper{std::current_exception()};
         }
       }
@@ -324,11 +323,9 @@ auto collectAnyNoDiscardImpl(
     std::index_sequence<Indices...>, SemiAwaitables&&... awaitables)
     -> folly::coro::Task<
         std::tuple<collect_all_try_component_t<SemiAwaitables>...>> {
-  const CancellationToken& parentCancelToken =
-      co_await co_current_cancellation_token;
   const CancellationSource cancelSource;
-  const CancellationToken cancelToken =
-      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+  const CancellationToken cancelToken = CancellationToken::merge(
+      co_await co_current_cancellation_token, cancelSource.getToken());
 
   std::tuple<collect_all_try_component_t<SemiAwaitables>...> results;
   co_await folly::coro::collectAll(folly::coro::co_withCancellation(
@@ -371,12 +368,9 @@ auto collectAllRange(InputRange awaitables)
     -> folly::coro::Task<std::vector<detail::collect_all_range_component_t<
         detail::range_reference_t<InputRange>>>> {
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
-
   const CancellationSource cancelSource;
-  CancellationCallback cancelCallback(
-      co_await co_current_cancellation_token,
-      [&]() noexcept { cancelSource.requestCancellation(); });
-  const CancellationToken cancelToken = cancelSource.getToken();
+  const CancellationToken cancelToken = CancellationToken::merge(
+      co_await co_current_cancellation_token, cancelSource.getToken());
 
   std::vector<detail::collect_all_try_range_component_t<
       detail::range_reference_t<InputRange>>>
@@ -464,12 +458,9 @@ template <
         int>>
 auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
-
-  CancellationSource cancelSource;
-  CancellationCallback cancelCallback(
-      co_await co_current_cancellation_token,
-      [&]() noexcept { cancelSource.requestCancellation(); });
-  const CancellationToken cancelToken = cancelSource.getToken();
+  const CancellationSource cancelSource;
+  const CancellationToken cancelToken = CancellationToken::merge(
+      co_await co_current_cancellation_token, cancelSource.getToken());
 
   exception_wrapper firstException;
   std::atomic<bool> anyFailures = false;
@@ -611,11 +602,9 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
   assert(maxConcurrency > 0);
 
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
-  const folly::CancellationSource cancelSource;
-  folly::CancellationCallback cancelCallback(
-      co_await folly::coro::co_current_cancellation_token,
-      [&]() noexcept { cancelSource.requestCancellation(); });
-  const folly::CancellationToken cancelToken = cancelSource.getToken();
+  const CancellationSource cancelSource;
+  const CancellationToken cancelToken = CancellationToken::merge(
+      co_await co_current_cancellation_token, cancelSource.getToken());
 
   exception_wrapper firstException;
   std::atomic<bool> anyFailures = false;
@@ -735,18 +724,19 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
 
-  const folly::CancellationSource cancelSource;
-  folly::CancellationCallback cancelCallback(
-      co_await folly::coro::co_current_cancellation_token,
-      [&]() noexcept { cancelSource.requestCancellation(); });
-  const folly::CancellationToken cancelToken = cancelSource.getToken();
+  const CancellationToken& parentCancelToken =
+      co_await co_current_cancellation_token;
+  const CancellationSource cancelSource;
+  const CancellationToken cancelToken =
+      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
 
   exception_wrapper firstException;
   std::atomic<bool> anyFailures = false;
 
   auto trySetFirstException = [&](exception_wrapper&& e) noexcept {
     anyFailures.store(true, std::memory_order_relaxed);
-    if (!cancelSource.requestCancellation()) {
+    if (!cancelSource.requestCancellation() &&
+        !parentCancelToken.isCancellationRequested()) {
       // This is first entity to request cancellation.
       firstException = std::move(e);
     }
