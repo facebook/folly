@@ -17,8 +17,6 @@ Here are some code samples to get started:
 ``` Cpp
 using folly::format;
 using folly::sformat;
-using folly::vformat;
-using folly::svformat;
 
 // Objects produced by format() can be streamed without creating
 // an intermediary string; {} yields the next argument using default
@@ -50,27 +48,9 @@ std::map<std::string, std::string> m { {"what", "answer"} };
 std::cout << format("The only {1[what]} is {0[1]}", v, m);
 // => "The only answer is 42"
 
-// If you only have one container argument, vformat makes the syntax simpler
-std::map<std::string, std::string> m { {"what", "answer"}, {"value", "42"} };
-std::cout << vformat("The only {what} is {value}", m);
-// => "The only answer is 42"
-// same as
-std::cout << format("The only {0[what]} is {0[value]}", m);
-// => "The only answer is 42"
-// And if you just want the string,
-std::string result = svformat("The only {what} is {value}", m);
-// => "The only answer is 42"
-std::string result = sformat("The only {0[what]} is {0[value]}", m);
-// => "The only answer is 42"
-
-// {} works for vformat too
-std::vector<int> v {42, 23};
-std::cout << vformat("{} {}", v);
-// => "42 23"
-
-// format and vformat work with pairs and tuples
+// format works with pairs and tuples
 std::tuple<int, std::string, int> t {42, "hello", 23};
-std::cout << vformat("{0} {2} {1}", t);
+std::cout << format("{0} {2} {1}", t);
 // => "42 23 hello"
 
 // Format supports width, alignment, arbitrary fill, and various
@@ -124,16 +104,6 @@ Format string (`format`):
   `m["foo"]["bar"]`.
 - `format_spec`: format specification, see below
 
-Format string (`vformat`):
-`"{" [ key ] [":" format_spec] "}"`
-
-- `key`: select the argument to format from the container argument;
-  works with random-access sequences and integer- and string-keyed maps.
-  Multiple level keys work as well, with components separated with "."; for
-  example, given `map<string, map<string, string>> m`, `{foo.bar}` selects
-  `m["foo"]["bar"]`.
-- `format_spec`: format specification, see below
-
 Format specification:
 `[[fill] align] [sign] ["#"] ["0"] [width] [","] ["." precision] ["."] [type]`
 
@@ -156,7 +126,7 @@ Format specification:
 - `width`: minimum field width. May be '`*`' to indicate that the field width
   is given by an argument. Defaults to the next argument (preceding the value
   to be formatted) but an explicit argument index may be given following the
-  '`*`'. Not supported in `vformat()`.
+  '`*`'.
 - '`,`' (comma): output comma as thousands' separator (only valid for integers,
   and only for decimal output)
 - `precision` (not allowed for integers):
