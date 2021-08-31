@@ -195,7 +195,15 @@ struct sock_txtime {
 #endif
 
 #ifndef SOL_UDP
-#define SOL_UDP 17
+#define SOL_UDP IPPROTO_UDP
+#endif
+
+#ifndef SOL_IP
+#define SOL_IP IPPROTO_IP
+#endif
+
+#ifndef SOL_IPV6
+#define SOL_IPV6 IPPROTO_IPV6
 #endif
 
 #ifndef ETH_MAX_MTU
@@ -232,11 +240,42 @@ struct mmsghdr {
 #ifndef IP_BIND_ADDRESS_NO_PORT
 #define IP_BIND_ADDRESS_NO_PORT 24
 #endif
-
 #endif
 
 namespace folly {
 namespace netops {
+// ECN (Explicit Congestion Notification) codepoints in RFC3168
+// mapped to the lower 2 bits of the TOS field.
+enum iptos_ecn : int {
+#ifdef IPTOS_ECN_MASK
+  kIptosEcnMask = IPTOS_ECN_MASK,
+#else
+  kIptosEcnMask = 0x03,
+#endif
+
+#ifdef IPTOS_ECN_NOT_ECT
+  kIptosEcnNotEct = IPTOS_ECN_NOT_ECT,
+#else
+  kIptosEcnNotEct = 0x00,
+#endif
+
+#ifdef IPTOS_ECN_ECT1
+  kIptosEcnEct1 = IPTOS_ECN_ECT1,
+#else
+  kIptosEcnEct1 = 0x01,
+#endif
+#ifdef IPTOS_ECN_ECT0
+  kIptosEcnEct0 = IPTOS_ECN_ECT0,
+#else
+  kIptosEcnEct0 = 0x02,
+#endif
+#ifdef IPTOS_ECN_CE
+  kIptosEcnCe = IPTOS_ECN_CE,
+#else
+  kIptosEcnCe = 0x03,
+#endif
+};
+
 // Poll descriptor is intended to be byte-for-byte identical to pollfd,
 // except that it is typed as containing a NetworkSocket for sane interactions.
 struct PollDescriptor {

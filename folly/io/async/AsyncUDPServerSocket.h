@@ -123,6 +123,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     socket_ = std::make_shared<AsyncUDPSocket>(evb_);
     socket_->setReusePort(reusePort_);
     socket_->setReuseAddr(reuseAddr_);
+    socket_->setTos(tos_);
+    socket_->setRecvTosHeader(recvTosHeader_);
     socket_->applyOptions(
         validateSocketOptions(
             options, addy.getFamily(), SocketOptionKey::ApplyPos::PRE_BIND),
@@ -141,6 +143,10 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
   void setReusePort(bool reusePort) { reusePort_ = reusePort; }
 
   void setReuseAddr(bool reuseAddr) { reuseAddr_ = reuseAddr; }
+
+  void setRecvTosHeader(bool recvTos) { recvTosHeader_ = recvTos; }
+
+  void setTos(uint8_t tos) { tos_ = tos; }
 
   folly::SocketAddress address() const {
     CHECK(socket_);
@@ -350,8 +356,10 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
   // Temporary buffer for data
   folly::IOBufQueue buf_;
 
+  bool recvTosHeader_{false};
   bool reusePort_{false};
   bool reuseAddr_{false};
+  uint8_t tos_{0};
 
   EventRecvmsgCallback* eventCb_{nullptr};
 };

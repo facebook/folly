@@ -39,6 +39,7 @@ namespace folly {
 class AsyncUDPSocket : public EventHandler {
  public:
   enum class FDOwnership { OWNS, SHARED };
+  enum class ECNType { ECN_NONE, ECN_ECT0, ECN_ECT1, ECN_CE };
 
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
@@ -50,11 +51,13 @@ class AsyncUDPSocket : public EventHandler {
       // RX timestamp if available
       using Timestamp = std::array<struct timespec, 3>;
       folly::Optional<Timestamp> ts;
+      ECNType ecnType;
 
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
-      static constexpr size_t kCmsgSpace =
-          CMSG_SPACE(sizeof(uint16_t)) + CMSG_SPACE(sizeof(Timestamp));
-#endif
+      // Space required for cmsghdr data. It should match to all header fields
+      // you plan to receive in AsyncUDPSocket::fromMsg
+      static const size_t kCmsgSpace = CMSG_SPACE(sizeof(uint16_t)) + // UDP_GRO
+          CMSG_SPACE(sizeof(Timestamp)) + // SO_TIMESTAMPNS
+          CMSG_SPACE(sizeof(int)); // IP_TOS | IPV6_TCLASS
     };
 
     /**
@@ -136,8 +139,7 @@ class AsyncUDPSocket : public EventHandler {
   };
 
   static void fromMsg(
-      FOLLY_MAYBE_UNUSED ReadCallback::OnDataAvailableParams& params,
-      FOLLY_MAYBE_UNUSED struct msghdr& msg);
+      ReadCallback::OnDataAvailableParams& params, struct msghdr& msg);
 
   using IOBufFreeFunc = folly::Function<void(std::unique_ptr<folly::IOBuf>&&)>;
 
@@ -347,6 +349,16 @@ class AsyncUDPSocket : public EventHandler {
   virtual void setReuseAddr(bool reuseAddr) { reuseAddr_ = reuseAddr; }
 
   /**
+   * Set ECN field of the flag on the socket. Default is 0 (non-ECN).
+   */
+  virtual void setTos(int ipTos) { ipTos_ = ipTos; }
+
+  /**
+   * If the socket should receive TOS/TCLASS field. Default is OFF.
+   */
+  virtual void setRecvTosHeader(bool recvTos) { recvTosHeader_ = recvTos; }
+
+  /**
    * Set SO_RCVBUF option on the socket, if not zero. Default is zero.
    */
   virtual void setRcvBuf(int rcvBuf) { rcvBuf_ = rcvBuf; }
@@ -496,6 +508,7 @@ class AsyncUDPSocket : public EventHandler {
     return netops_->sendmmsg(socket, msgvec, vlen, flags);
   }
 
+  // Prepares msgvec data structure (packets with control headers) for sending
   void fillMsgVec(
       Range<full_sockaddr_storage*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
@@ -529,6 +542,7 @@ class AsyncUDPSocket : public EventHandler {
 
  private:
   void init(sa_family_t family, BindOptions bindOptions);
+  void initEcn(sa_family_t family, NetworkSocket& socket);
 
   // EventHandler
   void handlerReady(uint16_t events) noexcept override;
@@ -551,6 +565,9 @@ class AsyncUDPSocket : public EventHandler {
 
   bool reuseAddr_{false};
   bool reusePort_{false};
+  // Send/receive TOS/TCLASS
+  int ipTos_{0};
+  bool recvTosHeader_{false};
   int rcvBuf_{0};
   int sndBuf_{0};
   int busyPollUs_{0};

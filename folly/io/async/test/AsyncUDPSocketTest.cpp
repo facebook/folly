@@ -26,6 +26,7 @@
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/net/NetOps.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -63,14 +64,14 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
       const folly::SocketAddress& client,
       std::unique_ptr<folly::IOBuf> data,
       bool truncated,
-      OnDataAvailableParams) noexcept override {
+      OnDataAvailableParams params) noexcept override {
     lastClient_ = client;
     lastMsg_ = data->clone()->moveToFbString().toStdString();
 
     auto len = data->computeChainDataLength();
     VLOG(4) << "Worker " << n_ << " read " << len << " bytes "
             << "(trun:" << truncated << ") from " << client.describe() << " - "
-            << lastMsg_;
+            << lastMsg_ << "ECN:" << (params.ecnType == params.ecnType);
 
     sendPong();
   }
@@ -78,6 +79,7 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
   void sendPong() noexcept {
     try {
       auto writeSocket = std::make_shared<folly::AsyncUDPSocket>(evb_);
+      writeSocket->setTos(folly::netops::kIptosEcnEct0);
       if (changePortForWrites_) {
         writeSocket->setReuseAddr(false);
         writeSocket->bind(folly::SocketAddress("127.0.0.1", 0));
@@ -112,6 +114,8 @@ class UDPServer {
 
     socket_ = std::make_unique<AsyncUDPServerSocket>(evb_, 1500);
     socket_->setReusePort(true);
+    socket_->setTos(folly::netops::kIptosEcnEct0);
+    socket_->setRecvTosHeader(true);
 
     try {
       socket_->bind(addr_);
@@ -194,6 +198,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     CHECK(evb_->isInEventBaseThread());
     server_ = server;
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
+    socket_->setTos(folly::netops::kIptosEcnEct0);
+    socket_->setRecvTosHeader(true);
 
     try {
       if (bindSocket_ == BindSocket::YES) {
@@ -265,12 +271,15 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
       const folly::SocketAddress& client,
       size_t len,
       bool truncated,
-      OnDataAvailableParams) noexcept override {
+      OnDataAvailableParams params) noexcept override {
     VLOG(4) << "Read " << len << " bytes (trun:" << truncated << ") from "
             << client.describe() << " - " << std::string(buf_, len);
     VLOG(4) << n_ << " left";
 
     ++pongRecvd_;
+    if (params.ecnType != folly::AsyncUDPSocket::ECNType::ECN_NONE) {
+      ++ecnMessagesRecvd_;
+    }
 
     sendPing();
   }
@@ -292,6 +301,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   int pongRecvd() const { return pongRecvd_; }
+  int ecnMessagesRecvd() const { return ecnMessagesRecvd_; }
 
   AsyncUDPSocket& getSocket() { return *socket_; }
 
@@ -316,6 +326,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
  private:
   int pongRecvd_{0};
+  int ecnMessagesRecvd_{0};
 
   int n_{0};
   char buf_[1024];
@@ -563,6 +574,13 @@ TEST_F(AsyncSocketIntegrationTest, PingPong) {
   auto pingClient = performPingPongTest(server->address(), folly::none);
   // This should succeed.
   ASSERT_GT(pingClient->pongRecvd(), 0);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongEcn) {
+  startServer();
+  auto pingClient = performPingPongTest(server->address(), folly::none);
+  // This should succeed.
+  ASSERT_GT(pingClient->ecnMessagesRecvd(), 0);
 }
 
 TEST_F(AsyncSocketIntegrationTest, PingPongNotify) {

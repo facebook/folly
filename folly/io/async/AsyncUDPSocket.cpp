@@ -24,6 +24,7 @@
 #include <folly/Utility.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/net/NetOps.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
@@ -50,25 +51,45 @@ void AsyncUDPSocket::fromMsg(
     FOLLY_MAYBE_UNUSED struct msghdr& msg) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   struct cmsghdr* cmsg;
-  uint16_t* grosizeptr;
+
   for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
        cmsg = CMSG_NXTHDR(&msg, cmsg)) {
     if (cmsg->cmsg_level == SOL_UDP) {
       if (cmsg->cmsg_type == UDP_GRO) {
+        uint16_t* grosizeptr;
         grosizeptr = (uint16_t*)CMSG_DATA(cmsg);
         params.gro = *grosizeptr;
       }
-    } else {
-      if (cmsg->cmsg_level == SOL_SOCKET) {
-        if (cmsg->cmsg_type == SO_TIMESTAMPING ||
-            cmsg->cmsg_type == SO_TIMESTAMPNS) {
-          ReadCallback::OnDataAvailableParams::Timestamp ts;
-          memcpy(
-              &ts,
-              reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
-              sizeof(ts));
-          params.ts = ts;
-        }
+    } else if (cmsg->cmsg_level == SOL_SOCKET) {
+      if (cmsg->cmsg_type == SO_TIMESTAMPING ||
+          cmsg->cmsg_type == SO_TIMESTAMPNS) {
+        ReadCallback::OnDataAvailableParams::Timestamp ts;
+        memcpy(
+            &ts,
+            reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
+            sizeof(ts));
+        params.ts = ts;
+      }
+    } else if (
+        (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_TOS) ||
+        (cmsg->cmsg_level == SOL_IPV6 && cmsg->cmsg_type == IPV6_TCLASS)) {
+      // Parsing ECN field based on
+      // https://tools.ietf.org/html/rfc3168#section-5 and populating it to
+      // params
+      int* tosptr = (int*)CMSG_DATA(cmsg);
+      int ecn = netops::kIptosEcnMask & (*tosptr);
+      switch (ecn) {
+        case netops::kIptosEcnEct0:
+          params.ecnType = ECNType::ECN_ECT0;
+          break;
+        case netops::kIptosEcnEct1:
+          params.ecnType = ECNType::ECN_ECT1;
+          break;
+        case netops::kIptosEcnCe:
+          params.ecnType = ECNType::ECN_CE;
+          break;
+        default:
+          params.ecnType = ECNType::ECN_NONE;
       }
     }
   }
@@ -194,6 +215,8 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
     }
   }
 
+  initEcn(family, socket);
+
   // success
   g.dismiss();
   fd_ = socket;
@@ -201,6 +224,58 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
 
   // attach to EventHandler
   EventHandler::changeHandlerFD(fd_);
+}
+
+void AsyncUDPSocket::initEcn(sa_family_t family, NetworkSocket& socket) {
+  int rcvtTclass = 0;
+  int rcvtTos = 0;
+#ifdef IPV6_RECVTCLASS
+  rcvtTclass = IPV6_RECVTCLASS;
+#endif
+#ifdef IP_RECVTOS
+  rcvtTos = IP_RECVTOS;
+#endif
+  // TOS field setup: sending and receiving
+  if (family == AF_INET6) {
+    if (ipTos_) {
+      if (netops::setsockopt(
+              socket, IPPROTO_IPV6, IPV6_TCLASS, &ipTos_, sizeof(ipTos_))) {
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
+      }
+    }
+
+    // The IPV6_RECVTCLASS supported primary in Linux.
+    int rcvtFlag = 1;
+    if (recvTosHeader_ && rcvtTclass &&
+        netops::setsockopt(
+            socket,
+            IPPROTO_IPV6,
+            IPV6_RECVTCLASS,
+            &rcvtFlag,
+            sizeof(rcvtFlag))) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "Failed to set IPV6_RECVTCLASS",
+          errno);
+    };
+  } else if (family == AF_INET) {
+    if (ipTos_) {
+      if (netops::setsockopt(
+              socket, IPPROTO_IP, IP_TOS, &ipTos_, sizeof(ipTos_))) {
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
+      }
+    }
+    // The IPV6_RECVTOS supported primary in Linux.
+    int rcvtFlag = 1;
+    if (recvTosHeader_ && rcvtTos &&
+        netops::setsockopt(
+            socket, IPPROTO_IP, rcvtTos, &rcvtFlag, sizeof(rcvtFlag))) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "Failed to set IP_RECVTOS", errno);
+    }
+  }
 }
 
 void AsyncUDPSocket::bind(
@@ -1021,6 +1096,11 @@ size_t AsyncUDPSocket::handleErrMessages() noexcept {
     for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
          cmsg != nullptr && cmsg->cmsg_len != 0;
          cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+      // Skip IP_TOS header: it still be part of the message
+      if ((cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_TOS) ||
+          (cmsg->cmsg_level == SOL_IPV6 && cmsg->cmsg_type == IPV6_TCLASS)) {
+        continue;
+      }
       ++num;
       if (isZeroCopyMsg(*cmsg)) {
         processZeroCopyMsg(*cmsg);
@@ -1089,39 +1169,29 @@ void AsyncUDPSocket::handleRead() noexcept {
     ssize_t bytesRead;
     ReadCallback::OnDataAvailableParams params;
 
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
-    bool use_gro = gro_.has_value() && (gro_.value() > 0);
-    bool use_ts = ts_.has_value() && (ts_.value() > 0);
-    if (use_gro || use_ts) {
-      char control[ReadCallback::OnDataAvailableParams::kCmsgSpace] = {};
+    char control[ReadCallback::OnDataAvailableParams::kCmsgSpace] = {};
 
-      struct msghdr msg = {};
-      struct iovec iov = {};
+    struct msghdr msg = {};
+    struct iovec iov = {};
 
-      iov.iov_base = buf;
-      iov.iov_len = len;
+    iov.iov_base = buf;
+    iov.iov_len = len;
 
-      msg.msg_iov = &iov;
-      msg.msg_iovlen = 1;
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
 
-      msg.msg_name = rawAddr;
-      msg.msg_namelen = addrLen;
+    msg.msg_name = rawAddr;
+    msg.msg_namelen = addrLen;
 
-      msg.msg_control = control;
-      msg.msg_controllen = sizeof(control);
+    msg.msg_control = control;
+    msg.msg_controllen = sizeof(control);
 
-      bytesRead = netops::recvmsg(fd_, &msg, MSG_TRUNC);
+    bytesRead = netops::recvmsg(fd_, &msg, MSG_TRUNC);
 
-      if (bytesRead >= 0) {
-        addrLen = msg.msg_namelen;
-        fromMsg(params, msg);
-      }
-    } else {
-      bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+    if (bytesRead >= 0) {
+      addrLen = msg.msg_namelen;
+      fromMsg(params, msg);
     }
-#else
-    bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
-#endif
     if (bytesRead >= 0) {
       clientAddress_.setFromSockaddr(rawAddr, addrLen);
 
