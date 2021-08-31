@@ -1017,6 +1017,32 @@ TYPED_TEST_P(ConcurrentHashMapTest, InsertOrAssignIterator) {
   EXPECT_EQ(itr2->second, 2);
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, EraseClonedNonCopyable) {
+  // Using a non-copyable value type to use the node structure with an
+  // extra level of indirection to key-value items.
+  using Value = std::unique_ptr<int>;
+  // [TODO] Fix the SIMD version to pass this test, then change the
+  // map type to CHM.
+  ConcurrentHashMap<int, Value> map;
+  int cloned = 32; // The item that will end up being cloned.
+  for (int i = 0; i < cloned; i++) {
+    map.try_emplace(256 * i, std::make_unique<int>(0));
+  }
+  auto [iter, _] = map.try_emplace(256 * cloned, std::make_unique<int>(0));
+  // Add more items to cause rehash that clones the item.
+  int num = 10000;
+  for (int i = cloned + 1; i < num; i++) {
+    map.try_emplace(256 * i, std::make_unique<int>(0));
+  }
+  // Erase items to invoke hazard pointer asynchronous reclamation.
+  for (int i = 0; i < num; i++) {
+    map.erase(256 * i);
+  }
+  // The cloned node and the associated key-value item should still be
+  // protected by iter from being reclaimed.
+  EXPECT_EQ(iter->first, 256 * cloned);
+}
+
 REGISTER_TYPED_TEST_CASE_P(
     ConcurrentHashMapTest,
     MapTest,
@@ -1057,7 +1083,8 @@ REGISTER_TYPED_TEST_CASE_P(
     IteratorLoop,
     HeterogeneousLookup,
     HeterogeneousInsert,
-    InsertOrAssignIterator);
+    InsertOrAssignIterator,
+    EraseClonedNonCopyable);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 

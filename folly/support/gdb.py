@@ -387,7 +387,7 @@ class ConcurrentHashMapPrinter:
     def children(self):
         "Returns an iterator of tuple(name, value)"
         return (
-            (f'[{str(item["first"])}]', item["second"])
+            (f'[{str(item["kv_"]["first"])}]', item["kv_"]["second"])
             for idx, item in enumerate(ConcurrentHashMapIterator(self.val))
         )
 

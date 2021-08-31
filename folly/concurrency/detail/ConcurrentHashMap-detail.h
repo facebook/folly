@@ -49,6 +49,8 @@ template <
     typename KeyType,
     typename ValueType,
     typename Allocator,
+    template <typename>
+    class Atom,
     typename Enabled = void>
 class ValueHolder {
  public:
@@ -71,44 +73,83 @@ class ValueHolder {
 // If the ValueType is not copy constructible, we can instead add
 // an extra indirection.  Adds more allocations / deallocations and
 // pulls in an extra cacheline.
-template <typename KeyType, typename ValueType, typename Allocator>
+template <
+    typename KeyType,
+    typename ValueType,
+    typename Allocator,
+    template <typename>
+    class Atom>
 class ValueHolder<
     KeyType,
     ValueType,
     Allocator,
+    Atom,
     std::enable_if_t<
         !std::is_nothrow_copy_constructible<ValueType>::value ||
         !std::is_nothrow_copy_constructible<KeyType>::value>> {
- public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
+  struct CountedItem {
+    value_type kv_;
+    Atom<uint32_t> numlinks_{1}; // Number of incoming links
+
+    template <typename Arg, typename... Args>
+    CountedItem(std::piecewise_construct_t, Arg&& k, Args&&... args)
+        : kv_(std::piecewise_construct,
+              std::forward_as_tuple(std::forward<Arg>(k)),
+              std::forward_as_tuple(std::forward<Args>(args)...)) {}
+
+    value_type& getItem() { return kv_; }
+
+    void acquireLink() {
+      uint32_t count = numlinks_.fetch_add(1, std::memory_order_release);
+      DCHECK_GE(count, 1);
+    }
+
+    bool releaseLink() {
+      uint32_t count = numlinks_.load(std::memory_order_acquire);
+      DCHECK_GE(count, 1);
+      if (count > 1) {
+        count = numlinks_.fetch_sub(1, std::memory_order_acq_rel);
+      }
+      return count == 1;
+    }
+  }; // CountedItem
+  // Back to ValueHolder specialization
+
+  CountedItem* item_; // Link to unique key-value item.
+
+ public:
   explicit ValueHolder(const ValueHolder& other) {
-    other.owned_ = false;
+    DCHECK(other.item_);
     item_ = other.item_;
+    item_->acquireLink();
   }
+
+  ValueHolder& operator=(const ValueHolder&) = delete;
 
   template <typename Arg, typename... Args>
   ValueHolder(std::piecewise_construct_t, Arg&& k, Args&&... args) {
-    item_ = (value_type*)Allocator().allocate(sizeof(value_type));
-    new (item_) value_type(
+    item_ = (CountedItem*)Allocator().allocate(sizeof(CountedItem));
+    new (item_) CountedItem(
         std::piecewise_construct,
-        std::forward_as_tuple(std::forward<Arg>(k)),
-        std::forward_as_tuple(std::forward<Args>(args)...));
+        std::forward<Arg>(k),
+        std::forward<Args>(args)...);
   }
 
   ~ValueHolder() {
-    if (owned_) {
-      item_->~value_type();
-      Allocator().deallocate((uint8_t*)item_, sizeof(value_type));
+    DCHECK(item_);
+    if (item_->releaseLink()) {
+      item_->~CountedItem();
+      Allocator().deallocate((uint8_t*)item_, sizeof(CountedItem));
     }
   }
 
-  value_type& getItem() { return *item_; }
-
- private:
-  value_type* item_;
-  mutable bool owned_{true};
-};
+  value_type& getItem() {
+    DCHECK(item_);
+    return item_->getItem();
+  }
+}; // ValueHolder specialization
 
 // hazptr deleter that can use an allocator.
 template <typename Allocator>
@@ -186,7 +227,7 @@ class NodeT : public hazptr_obj_base_linked<
     this->acquire_link_safe(); // defined in hazptr_obj_base_linked
   }
 
-  ValueHolder<KeyType, ValueType, Allocator> item_;
+  ValueHolder<KeyType, ValueType, Allocator, Atom> item_;
 };
 
 template <
