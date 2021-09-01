@@ -910,15 +910,13 @@ TEST_F(CollectAllRangeTest, GeneratorFromRange) {
       co_await folly::coro::sleep(std::chrono::milliseconds(100 * i));
       co_return i;
     };
-    auto generateTasks =
-        [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
-      for (int i = 5; i > 0; --i) {
-        co_yield makeTask(i);
-      }
-    };
+    std::vector<folly::coro::Task<int>> tasks;
+    for (int i = 5; i > 0; --i) {
+      tasks.push_back(makeTask(i));
+    }
 
     auto results =
-        folly::coro::makeUnorderedAsyncGenerator(scope, generateTasks());
+        folly::coro::makeUnorderedAsyncGenerator(scope, std::move(tasks));
     // co_await doesn't work inside EXPECT_EQ
     EXPECT_TRUE(*(co_await results.next()) == 1);
     EXPECT_TRUE(*(co_await results.next()) == 2);
@@ -1259,15 +1257,13 @@ TEST_F(CollectAllTryRangeTest, GeneratorFromRange) {
       co_await folly::coro::sleep(std::chrono::milliseconds(100 * i));
       co_return i;
     };
-    auto generateTasks =
-        [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
-      for (int i = 5; i > 0; --i) {
-        co_yield makeTask(i);
-      }
-    };
+    std::vector<folly::coro::Task<int>> tasks;
+    for (int i = 5; i > 0; --i) {
+      tasks.push_back(makeTask(i));
+    }
 
     auto results =
-        folly::coro::makeUnorderedTryAsyncGenerator(scope, generateTasks());
+        folly::coro::makeUnorderedTryAsyncGenerator(scope, std::move(tasks));
     // co_await doesn't work inside EXPECT_EQ
     EXPECT_TRUE(**(co_await results.next()) == 1);
     EXPECT_TRUE(**(co_await results.next()) == 2);

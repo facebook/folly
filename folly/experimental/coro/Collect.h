@@ -275,16 +275,22 @@ auto makeUnorderedAsyncGenerator(
     AsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedAsyncGenerator(
         scope, awaitables | ranges::views::move)) {
-  co_return co_await makeUnorderedAsyncGenerator(
-      scope, awaitables | ranges::views::move);
+  auto gen =
+      makeUnorderedAsyncGenerator(scope, awaitables | ranges::views::move);
+  while (true) {
+    co_yield co_result(co_await co_awaitTry(gen.next()));
+  }
 }
 template <typename SemiAwaitable>
 auto makeUnorderedTryAsyncGenerator(
     AsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedTryAsyncGenerator(
         scope, awaitables | ranges::views::move)) {
-  co_return co_await makeUnorderedTryAsyncGenerator(
-      scope, awaitables | ranges::views::move);
+  auto gen =
+      makeUnorderedTryAsyncGenerator(scope, awaitables | ranges::views::move);
+  while (true) {
+    co_yield co_result(co_await co_awaitTry(gen.next()));
+  }
 }
 
 // Can also be used with CancellableAsyncScope
@@ -307,16 +313,22 @@ auto makeUnorderedAsyncGenerator(
     CancellableAsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedAsyncGenerator(
         scope, awaitables | ranges::views::move)) {
-  co_return co_await makeUnorderedAsyncGenerator(
-      scope, awaitables | ranges::views::move);
+  auto gen =
+      makeUnorderedAsyncGenerator(scope, awaitables | ranges::views::move);
+  while (true) {
+    co_yield co_result(co_await co_awaitTry(gen.next()));
+  }
 }
 template <typename SemiAwaitable>
 auto makeUnorderedTryAsyncGenerator(
     CancellableAsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedTryAsyncGenerator(
         scope, awaitables | ranges::views::move)) {
-  co_return co_await makeUnorderedTryAsyncGenerator(
-      scope, awaitables | ranges::views::move);
+  auto gen =
+      makeUnorderedTryAsyncGenerator(scope, awaitables | ranges::views::move);
+  while (true) {
+    co_yield co_result(co_await co_awaitTry(gen.next()));
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
