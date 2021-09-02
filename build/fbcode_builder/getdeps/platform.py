@@ -101,7 +101,7 @@ class HostType(object):
             return None
         if self.distro in ("fedora", "centos"):
             return "rpm"
-        if self.distro in ("debian", "ubuntu"):
+        if self.distro.startswith(("debian", "ubuntu")):
             return "deb"
         return None
 
