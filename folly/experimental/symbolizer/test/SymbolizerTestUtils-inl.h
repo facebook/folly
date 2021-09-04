@@ -22,11 +22,13 @@
 
 extern "C" {
 // Fwd declare instead of #include <stdlib.h> to minimize generated DWARF.
-void qsort(
-    void* base,
-    unsigned long nmemb,
+void* lfind(
+    const void* key,
+    const void* base,
+    unsigned long* nmemb,
     unsigned long size,
     int (*compar)(const void*, const void*));
+
 } // "C"
 
 namespace folly {
@@ -38,28 +40,30 @@ namespace test {
  * cases that define and declare inline functions in different files.
  */
 
-__attribute__((__always_inline__)) inline void inlineA_qsort() {
+__attribute__((__always_inline__)) inline void inlineA_lfind() {
   int a[2] = {1, 2};
-  // Use qsort, which is in a different library
-  kLineno_qsort = __LINE__ + 1;
-  qsort(a, 2, sizeof(int), testComparator);
+  // Use lfind, which is in a different library
+  int key = 1;
+  unsigned long nmemb = 2;
+  kLineno_lfind = __LINE__ + 1;
+  lfind(&key, a, &nmemb, sizeof(int), testComparator);
 }
 
-__attribute__((__always_inline__)) inline void inlineB_inlineA_qsort() {
-  kLineno_inlineA_qsort = __LINE__ + 1;
-  inlineA_qsort();
+__attribute__((__always_inline__)) inline void inlineB_inlineA_lfind() {
+  kLineno_inlineA_lfind = __LINE__ + 1;
+  inlineA_lfind();
 }
 
 __attribute__((__always_inline__)) inline void
-ClassDifferentFile::memberInline_inlineA_qsort() const {
-  kLineno_inlineA_qsort = __LINE__ + 1;
-  inlineA_qsort();
+ClassDifferentFile::memberInline_inlineA_lfind() const {
+  kLineno_inlineA_lfind = __LINE__ + 1;
+  inlineA_lfind();
 }
 
 /* static */ __attribute__((__always_inline__)) inline void
-ClassDifferentFile::staticMemberInline_inlineA_qsort() {
-  kLineno_inlineA_qsort = __LINE__ + 1;
-  inlineA_qsort();
+ClassDifferentFile::staticMemberInline_inlineA_lfind() {
+  kLineno_inlineA_lfind = __LINE__ + 1;
+  inlineA_lfind();
 }
 
 } // namespace test
