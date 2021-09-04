@@ -151,9 +151,12 @@ void expectFrameEq(
   auto demangled = folly::demangle(frame.name);
   EXPECT_TRUE(demangled == shortName || demangled == fullName)
       << "Found: demangled=" << demangled
-      << " expecting shortName=" << shortName << " or fullName=" << fullName;
+      << " expecting shortName=" << shortName << " or fullName=" << fullName
+      << " address: " << frame.addr << " hex(address): " << std::hex
+      << frame.addr;
   EXPECT_EQ(normalizePath(frame.location.file.toString()), normalizePath(file))
-      << ' ' << fullName;
+      << ' ' << fullName << " address: " << frame.addr
+      << " hex(address): " << std::hex << frame.addr;
   EXPECT_EQ(frame.location.line, lineno) << ' ' << fullName;
 }
 
@@ -473,6 +476,12 @@ TEST(Dwarf, FindParameterNames) {
       info,
       extraInlineFrames,
       [&](const folly::StringPiece name) { names.push_back(name); });
+
+  if (names.empty()) {
+    // When using -fsplit-dwarf-inlining info about parameters will not be
+    // emitted for the inlined debug info.
+    return;
+  }
 
   ASSERT_EQ(2, names.size());
   ASSERT_EQ("a", names[0]);
