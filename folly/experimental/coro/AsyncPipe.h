@@ -96,7 +96,7 @@ class AsyncPipe {
     if (onClosed != nullptr) {
       cancellationSource.emplace();
       onClosedCallback = std::make_unique<OnClosedCallback>(
-          cancellationSource.value(), std::move(onClosed));
+          *cancellationSource, std::move(onClosed));
     }
     auto guard =
         folly::makeGuard([cancellationSource = std::move(cancellationSource)] {
