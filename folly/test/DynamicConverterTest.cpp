@@ -25,6 +25,8 @@
 #include <folly/FBVector.h>
 #include <folly/portability/GTest.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
 using namespace folly;
 using namespace folly::dynamicconverter_detail;
 

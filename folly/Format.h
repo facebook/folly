@@ -295,7 +295,11 @@ Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
  * intermediate format object.
  */
 template <class Container>
-inline std::string svformat(StringPiece fmt, Container&& container) {
+[[deprecated(
+    "Use fmt::format instead of folly::svformat for better performance, build "
+    "times and compatibility with std::format")]] //
+inline std::string
+svformat(StringPiece fmt, Container&& container) {
   return vformat(fmt, std::forward<Container>(container)).str();
 }
 

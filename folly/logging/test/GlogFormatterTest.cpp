@@ -25,6 +25,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/Stdlib.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
 using namespace folly;
 
 namespace {
