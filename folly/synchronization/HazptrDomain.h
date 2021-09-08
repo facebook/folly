@@ -180,6 +180,8 @@ class hazptr_domain {
   /** cleanup */
   void cleanup() noexcept {
     relaxed_cleanup();
+    inc_num_bulk_reclaims();
+    do_reclamation(0);
     wait_for_zero_bulk_reclaims(); // wait for concurrent bulk_reclaim-s
   }
 
@@ -251,6 +253,19 @@ class hazptr_domain {
         expected, newval, std::memory_order_acq_rel, std::memory_order_relaxed);
   }
 
+  uint16_t load_num_bulk_reclaims() {
+    return num_bulk_reclaims_.load(std::memory_order_acquire);
+  }
+
+  void inc_num_bulk_reclaims() {
+    num_bulk_reclaims_.fetch_add(1, std::memory_order_release);
+  }
+
+  void dec_num_bulk_reclaims() {
+    DCHECK_GT(load_num_bulk_reclaims(), 0);
+    num_bulk_reclaims_.fetch_sub(1, std::memory_order_release);
+  }
+
   /** hprec_acquire */
   hazptr_rec<Atom>* hprec_acquire() {
     auto rec = try_acquire_existing_hprec();
@@ -312,6 +327,7 @@ class hazptr_domain {
       if (rcount == 0)
         return;
     }
+    inc_num_bulk_reclaims();
     if (std::is_same<Atom<int>, std::atomic<int>>{} &&
         this == &default_hazptr_domain<Atom>() && hazptr_use_executor()) {
       invoke_reclamation_in_executor(rcount);
@@ -453,8 +469,9 @@ class hazptr_domain {
       }
       rcount = check_count_threshold();
       if (rcount == 0)
-        return;
+        break;
     }
+    dec_num_bulk_reclaims();
   }
 
   /** lookup_and_reclaim */
@@ -584,7 +601,7 @@ class hazptr_domain {
   }
 
   void wait_for_zero_bulk_reclaims() {
-    while (num_bulk_reclaims_.load(std::memory_order_acquire) > 0) {
+    while (load_num_bulk_reclaims() > 0) {
       std::this_thread::yield();
     }
   }
@@ -605,7 +622,7 @@ class hazptr_domain {
   }
 
   void bulk_reclaim(bool transitive = false) {
-    num_bulk_reclaims_.fetch_add(1, std::memory_order_acquire);
+    inc_num_bulk_reclaims();
     while (true) {
       auto obj = retired_.exchange(nullptr, std::memory_order_acquire);
       /*** Full fence ***/ asymmetricHeavyBarrier(AMBFlags::EXPEDITED);
@@ -620,7 +637,7 @@ class hazptr_domain {
         break;
       }
     }
-    num_bulk_reclaims_.fetch_sub(1, std::memory_order_release);
+    dec_num_bulk_reclaims();
   }
 
   bool bulk_lookup_and_reclaim(
