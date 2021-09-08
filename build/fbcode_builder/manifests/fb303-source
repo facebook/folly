@@ -6,6 +6,7 @@ shipit_fbcode_builder = false
 
 [git]
 repo_url = https://github.com/facebook/fb303.git
+rev = main
 
 [build]
 builder = nop
