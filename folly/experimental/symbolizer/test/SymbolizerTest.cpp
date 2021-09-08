@@ -403,7 +403,7 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionInDifferentFile) {
 }
 
 // No inline frames should be filled because of no extra frames.
-TEST(SymbolizerTest, InlineFunctionBasicNoExtraFrames) {
+TEST(SymbolizerTest, InlineFunctionNoExtraFrames) {
   SKIP_IF(!Symbolizer::isAvailable());
 
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 100);

@@ -364,7 +364,8 @@ detail::CompilationUnit Dwarf::getCompilationUnit(uint64_t offset) const {
   }
 
   detail::Die die = getDieAtOffset(cu, cu.firstDie);
-  if (die.abbr.tag != DW_TAG_compile_unit) {
+  if (die.abbr.tag != DW_TAG_compile_unit &&
+      die.abbr.tag != DW_TAG_skeleton_unit) {
     return cu;
   }
 
@@ -492,7 +493,10 @@ bool Dwarf::findLocation(
     bool checkAddress) const {
   detail::Die die = getDieAtOffset(cu, cu.firstDie);
   // Partial compilation unit (DW_TAG_partial_unit) is not supported.
-  FOLLY_SAFE_CHECK(die.abbr.tag == DW_TAG_compile_unit, "");
+  FOLLY_SAFE_CHECK(
+      die.abbr.tag == DW_TAG_compile_unit ||
+          die.abbr.tag == DW_TAG_skeleton_unit,
+      die.abbr.tag);
 
   // Offset in .debug_line for the line number VM program for this CU
   folly::Optional<uint64_t> lineOffset;
@@ -1013,10 +1017,11 @@ detail::Attribute Dwarf::readAttribute(
     case DW_FORM_ref_sup4:
     case DW_FORM_ref_sup8:
     case DW_FORM_strp_sup:
-      FOLLY_SAFE_CHECK(false, "Unexpected DWARF5 supplimentary object files");
+      FOLLY_SAFE_CHECK(
+          false, "Unexpected DWARF5 supplimentary object files: ", spec.form);
 
     default:
-      FOLLY_SAFE_CHECK(false, "invalid attribute form");
+      FOLLY_SAFE_CHECK(false, "invalid attribute form: ", spec.form);
   }
   return {spec, die, 0};
 }
@@ -1064,7 +1069,8 @@ bool Dwarf::isAddrInRangeList(
     folly::Optional<uint64_t> baseAddr,
     size_t offset,
     uint8_t addrSize) const {
-  FOLLY_SAFE_CHECK(addrSize == 4 || addrSize == 8, "wrong address size");
+  FOLLY_SAFE_CHECK(
+      addrSize == 4 || addrSize == 8, "wrong address size: ", int(addrSize));
   if (cu.version <= 4 && !debugRanges_.empty()) {
     const bool is64BitAddr = addrSize == 8;
     folly::StringPiece sp = debugRanges_;
@@ -1173,7 +1179,10 @@ bool Dwarf::isAddrInRangeList(
         } break;
 
         default:
-          FOLLY_SAFE_CHECK(false, "Unexpected debug_rnglists entry kind");
+          FOLLY_SAFE_CHECK(
+              false,
+              "Unexpected debug_rnglists entry kind: ",
+              static_cast<int>(kind));
       }
     }
   }
@@ -1470,7 +1479,8 @@ LineNumberAttribute readLineNumberAttribute(
           FOLLY_SAFE_CHECK(false, "Unexpected DW_FORM_strp_sup");
           break;
         default:
-          FOLLY_SAFE_CHECK(false, "Unexpected form for DW_LNCT_path");
+          FOLLY_SAFE_CHECK(
+              false, "Unexpected form for DW_LNCT_path: ", formCode);
           break;
       }
     } break;
@@ -1488,7 +1498,7 @@ LineNumberAttribute readLineNumberAttribute(
           break;
         default:
           FOLLY_SAFE_CHECK(
-              false, "Unexpected form for DW_LNCT_directory_index");
+              false, "Unexpected form for DW_LNCT_directory_index: ", formCode);
           break;
       }
     } break;
@@ -1508,7 +1518,8 @@ LineNumberAttribute readLineNumberAttribute(
           attrValue = readBytes(entries, readULEB(entries));
           break;
         default:
-          FOLLY_SAFE_CHECK(false, "Unexpected form for DW_LNCT_timestamp");
+          FOLLY_SAFE_CHECK(
+              false, "Unexpected form for DW_LNCT_timestamp: ", formCode);
       }
     } break;
 
@@ -1530,7 +1541,8 @@ LineNumberAttribute readLineNumberAttribute(
           attrValue = read<uint64_t>(entries);
           break;
         default:
-          FOLLY_SAFE_CHECK(false, "Unexpected form for DW_LNCT_size");
+          FOLLY_SAFE_CHECK(
+              false, "Unexpected form for DW_LNCT_size: ", formCode);
           break;
       }
     } break;
@@ -1541,14 +1553,16 @@ LineNumberAttribute readLineNumberAttribute(
           attrValue = readBytes(entries, 16);
           break;
         default:
-          FOLLY_SAFE_CHECK(false, "Unexpected form for DW_LNCT_MD5");
+          FOLLY_SAFE_CHECK(
+              false, "Unexpected form for DW_LNCT_MD5: ", formCode);
           break;
       }
     } break;
 
     default:
       // TODO: skip over vendor data as specified by the form instead.
-      FOLLY_SAFE_CHECK(false, "Unexpected vendor content type code");
+      FOLLY_SAFE_CHECK(
+          false, "Unexpected vendor content type code: ", contentTypeCode);
       break;
   }
   return {
@@ -1561,18 +1575,25 @@ LineNumberAttribute readLineNumberAttribute(
 void Dwarf::LineNumberVM::init() {
   version_ = read<uint16_t>(data_);
   FOLLY_SAFE_CHECK(
-      version_ >= 2 && version_ <= 5, "invalid version in line number VM");
+      version_ >= 2 && version_ <= 5,
+      "invalid version in line number VM: ",
+      version_);
   if (version_ == 5) {
     auto addressSize = read<uint8_t>(data_);
     FOLLY_SAFE_CHECK(
         addressSize == sizeof(uintptr_t),
-        "Unexpected Line Number Table address_size");
+        "Unexpected Line Number Table address_size: ",
+        addressSize);
     auto segment_selector_size = read<uint8_t>(data_);
     FOLLY_SAFE_CHECK(segment_selector_size == 0, "Segments not supported");
   }
   uint64_t headerLength = readOffset(data_, is64Bit_);
   FOLLY_SAFE_CHECK(
-      headerLength <= data_.size(), "invalid line number VM header length");
+      headerLength <= data_.size(),
+      "invalid line number VM header length: headerLength: ",
+      headerLength,
+      " data_.size(): ",
+      data_.size());
   folly::StringPiece header(data_.data(), headerLength);
   data_.assign(header.end(), data_.end());
 
