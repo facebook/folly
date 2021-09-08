@@ -251,9 +251,19 @@ struct SharedMutexToken {
   uint16_t slot_;
 };
 
+#ifndef FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT
+#define FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT 2
+#endif
+
+#ifndef FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT
+#define FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT 1
+#endif
+
 struct SharedMutexPolicyDefault {
-  static constexpr uint32_t max_spin_count = 2;
-  static constexpr uint32_t max_soft_yield_count = 1;
+  static constexpr uint32_t max_spin_count =
+      FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT;
+  static constexpr uint32_t max_soft_yield_count =
+      FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT;
   static constexpr bool track_thread_id = false;
   static constexpr bool skip_annotate_rwlock = false;
 };
