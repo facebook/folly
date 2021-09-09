@@ -146,8 +146,6 @@ class hazptr_obj {
   friend class hazptr_domain<Atom>;
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base;
-  template <typename, template <typename> class, typename>
-  friend class hazptr_obj_base_refcounted;
   friend class hazptr_obj_cohort<Atom>;
 
   Obj* next() const noexcept { return next_; }
@@ -177,7 +175,7 @@ class hazptr_obj {
 
   void push_to_retired(hazptr_domain<Atom>& domain) {
     hazptr_obj_list<Atom> l(this);
-    hazptr_domain_push_retired(l, true, domain);
+    hazptr_domain_push_retired(l, domain);
   }
 
   FOLLY_NOINLINE void pre_retire_check_fail() noexcept {
@@ -368,7 +366,7 @@ class hazptr_obj_cohort {
       }
       if (!children.empty()) {
         if (active()) {
-          hazptr_domain_push_list<Atom>(children);
+          hazptr_domain_push_retired<Atom>(children);
         } else {
           obj = children.head();
         }
@@ -393,7 +391,7 @@ class hazptr_obj_cohort {
           }
         }
         hazptr_obj_list<Atom> l(ll.head(), ll.tail(), c);
-        hazptr_domain_push_list<Atom>(l);
+        hazptr_domain_push_retired<Atom>(l);
         return;
       }
     }

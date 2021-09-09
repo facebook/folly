@@ -142,17 +142,10 @@ hazptr_domain<Atom>& default_hazptr_domain();
 template <template <typename> class Atom = std::atomic>
 hazard_pointer_domain<Atom>& hazard_pointer_default_domain();
 
-/** hazptr_domain_push_list */
-template <template <typename> class Atom = std::atomic>
-void hazptr_domain_push_list(
-    hazptr_obj_list<Atom>& l,
-    hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
-
 /** hazptr_domain_push_retired */
 template <template <typename> class Atom = std::atomic>
 void hazptr_domain_push_retired(
     hazptr_obj_list<Atom>& l,
-    bool check = true,
     hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
 
 /** hazptr_retire */
