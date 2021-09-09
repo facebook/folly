@@ -119,14 +119,6 @@ class hazptr_tc;
 template <template <typename> class Atom = std::atomic>
 hazptr_tc<Atom>& hazptr_tc_tls();
 
-/** hazptr_priv */
-template <template <typename> class Atom = std::atomic>
-class hazptr_priv;
-
-/** hazptr_priv_tls */
-template <template <typename> class Atom = std::atomic>
-hazptr_priv<Atom>& hazptr_priv_tls();
-
 ///
 /// Hazard pointer domain
 /// Defined in HazptrDomain.h

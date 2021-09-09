@@ -91,7 +91,6 @@ class hazptr_obj {
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base_linked;
   friend class hazptr_obj_list<Atom>;
-  friend class hazptr_priv<Atom>;
   friend class hazptr_detail::linked_list<Obj>;
   friend class hazptr_detail::shared_head_only_list<Obj, Atom>;
   friend class hazptr_detail::shared_head_tail_list<Obj, Atom>;
@@ -150,7 +149,6 @@ class hazptr_obj {
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base_refcounted;
   friend class hazptr_obj_cohort<Atom>;
-  friend class hazptr_priv<Atom>;
 
   Obj* next() const noexcept { return next_; }
 
@@ -178,12 +176,6 @@ class hazptr_obj {
   }
 
   void push_to_retired(hazptr_domain<Atom>& domain) {
-#if FOLLY_HAZPTR_THR_LOCAL
-    if (&domain == &default_hazptr_domain<Atom>() && !domain.shutdown_) {
-      hazptr_priv_tls<Atom>().push(this);
-      return;
-    }
-#endif
     hazptr_obj_list<Atom> l(this);
     hazptr_domain_push_retired(l, true, domain);
   }

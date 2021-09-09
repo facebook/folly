@@ -583,19 +583,6 @@ class hazptr_domain {
   }
 
   void relaxed_cleanup() noexcept {
-#if FOLLY_HAZPTR_THR_LOCAL
-    hazptr_obj<Atom>* h = nullptr;
-    hazptr_obj<Atom>* t = nullptr;
-    for (hazptr_priv<Atom>& priv :
-         hazptr_priv_singleton<Atom>::accessAllThreads()) {
-      priv.collect(h, t);
-    }
-    if (h) {
-      DCHECK(t);
-      hazptr_obj_list<Atom> l(h, t, 0);
-      push_retired(l);
-    }
-#endif
     rcount_.store(0, std::memory_order_release);
     bulk_reclaim(true);
   }
@@ -654,11 +641,6 @@ class hazptr_domain {
       }
       obj = next;
     }
-#if FOLLY_HAZPTR_THR_LOCAL
-    if (!shutdown_) {
-      hazptr_priv_tls<Atom>().push_all_to_domain(false);
-    }
-#endif
     bool done = ((children.count() == 0) && (retired() == nullptr));
     matched.splice(children);
     if (matched.count() > 0) {
