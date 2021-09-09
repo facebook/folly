@@ -106,6 +106,7 @@ class hazptr_domain {
   static constexpr int kListTooLarge = 100000;
   static constexpr uint64_t kSyncTimePeriod{2000000000}; // nanoseconds
   static constexpr uintptr_t kTagBit = hazptr_obj<Atom>::kTagBit;
+  static constexpr int kIgnoredLowBits = 8;
 
   static constexpr int kNumShards = 8;
   static constexpr int kShardMask = kNumShards - 1;
@@ -124,7 +125,7 @@ class hazptr_domain {
   Atom<int> hcount_{0};
   Atom<uint16_t> num_bulk_reclaims_{0};
   bool shutdown_{false};
-  RetiredList untagged_;
+  RetiredList untagged_[kNumShards];
   RetiredList tagged_[kNumShards];
   Atom<int> count_{0};
   Atom<uint64_t> due_time_{0};
@@ -280,7 +281,7 @@ class hazptr_domain {
     /*** Full fence ***/ asymmetricLightBarrier();
     List ll(l.head(), l.tail());
     if (!tagged) {
-      untagged_.push(ll, RetiredList::kMayNotBeLocked);
+      untagged_[calc_shard(l.head())].push(ll, RetiredList::kMayNotBeLocked);
     } else {
       tagged_[calc_shard(btag)].push(ll, RetiredList::kMayBeLocked);
     }
@@ -313,9 +314,14 @@ class hazptr_domain {
 
   /** calc_shard */
   size_t calc_shard(uintptr_t tag) {
-    size_t shard = std::hash<uintptr_t>{}(tag)&kShardMask;
+    size_t shard =
+        (std::hash<uintptr_t>{}(tag) >> kIgnoredLowBits) & kShardMask;
     DCHECK(shard < kNumShards);
     return shard;
+  }
+
+  size_t calc_shard(Obj* obj) {
+    return calc_shard(reinterpret_cast<uintptr_t>(obj));
   }
 
   /** check_due_time */
@@ -350,12 +356,23 @@ class hazptr_domain {
     return true;
   }
 
+  /** untagged_empty */
+  bool untagged_empty() {
+    for (int s = 0; s < kNumShards; ++s) {
+      if (!untagged_[s].empty())
+        return false;
+    }
+    return true;
+  }
+
   /** extract_retired_objects */
-  bool extract_retired_objects(Obj*& untagged, Obj* tagged[]) {
+  bool extract_retired_objects(Obj* untagged[], Obj* tagged[]) {
     bool empty = true;
-    untagged = untagged_.pop_all(RetiredList::kDontLock);
-    if (untagged) {
-      empty = false;
+    for (int s = 0; s < kNumShards; ++s) {
+      untagged[s] = untagged_[s].pop_all(RetiredList::kDontLock);
+      if (untagged[s]) {
+        empty = false;
+      }
     }
     for (int s = 0; s < kNumShards; ++s) {
       /* Tagged lists need to be locked because tagging is used to
@@ -413,26 +430,34 @@ class hazptr_domain {
   }
 
   /** match_reclaim_untagged */
-  int match_reclaim_untagged(Obj* untagged, Set& hs, bool& done) {
-    ObjList match, nomatch;
-    list_match_condition(untagged, match, nomatch, [&](Obj* o) {
-      return hs.count(o->raw_ptr()) > 0;
-    });
-    ObjList children;
-    int count = nomatch.count();
-    reclaim_unprotected(nomatch.head(), children);
-    done = untagged_.empty() && children.empty();
-    count -= children.count();
-    match.splice(children);
-    List l(match.head(), match.tail());
-    untagged_.push(l, RetiredList::kMayNotBeLocked);
+  int match_reclaim_untagged(Obj* untagged[], Set& hs, bool& done) {
+    done = true;
+    ObjList not_reclaimed;
+    int count = 0;
+    for (int s = 0; s < kNumShards; ++s) {
+      ObjList match, nomatch;
+      list_match_condition(untagged[s], match, nomatch, [&](Obj* o) {
+        return hs.count(o->raw_ptr()) > 0;
+      });
+      ObjList children;
+      count += nomatch.count();
+      reclaim_unprotected(nomatch.head(), children);
+      if (!untagged_empty() || !children.empty()) {
+        done = false;
+      }
+      count -= children.count();
+      not_reclaimed.splice(match);
+      not_reclaimed.splice(children);
+    }
+    List l(not_reclaimed.head(), not_reclaimed.tail());
+    untagged_[0].push(l, RetiredList::kMayNotBeLocked);
     return count;
   }
 
   /** do_reclamation */
   void do_reclamation(int rcount) {
     while (true) {
-      Obj* untagged;
+      Obj* untagged[kNumShards];
       Obj* tagged[kNumShards];
       bool done = true;
       if (extract_retired_objects(untagged, tagged)) {
@@ -494,8 +519,10 @@ class hazptr_domain {
   }
 
   void reclaim_all_objects() {
-    Obj* head = untagged_.pop_all(RetiredList::kDontLock);
-    reclaim_list_transitive(head);
+    for (int s = 0; s < kNumShards; ++s) {
+      Obj* head = untagged_[s].pop_all(RetiredList::kDontLock);
+      reclaim_list_transitive(head);
+    }
   }
 
   void reclaim_list_transitive(Obj* head) {
