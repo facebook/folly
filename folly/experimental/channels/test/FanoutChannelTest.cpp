@@ -33,17 +33,19 @@ class FanoutChannelFixture : public Test {
 
   ~FanoutChannelFixture() { executor_.drain(); }
 
-  using TCallback = StrictMock<MockNextCallback<int>>;
+  template <typename T>
+  using Callback = StrictMock<MockNextCallback<T>>;
 
-  std::pair<ChannelCallbackHandle, TCallback*> processValues(
-      Receiver<int> receiver) {
-    auto callback = std::make_unique<TCallback>();
+  template <typename T>
+  std::pair<ChannelCallbackHandle, Callback<T>*> processValues(
+      Receiver<T> receiver) {
+    auto callback = std::make_unique<Callback<T>>();
     auto callbackPtr = callback.get();
     auto handle = consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
         [cbk = std::move(callback)](
-            folly::Try<int> resultTry) mutable -> folly::coro::Task<bool> {
+            folly::Try<T> resultTry) mutable -> folly::coro::Task<bool> {
           (*cbk)(std::move(resultTry));
           co_return true;
         });
@@ -176,6 +178,41 @@ TEST_F(FanoutChannelFixture, ReceiversCancelled) {
   executor_.drain();
 
   EXPECT_FALSE(fanoutChannel.anyReceivers());
+
+  std::move(sender).close();
+  executor_.drain();
+
+  EXPECT_FALSE(fanoutChannel.anyReceivers());
+}
+
+TEST_F(FanoutChannelFixture, VectorBool) {
+  auto [inputReceiver, sender] = Channel<bool>::create();
+  auto fanoutChannel =
+      createFanoutChannel(std::move(inputReceiver), &executor_);
+
+  auto [handle1, callback1] = processValues(fanoutChannel.getNewReceiver(
+      [] { return toVector(true); } /* getInitialValues */));
+  auto [handle2, callback2] = processValues(fanoutChannel.getNewReceiver(
+      [] { return toVector(false); } /* getInitialValues */));
+
+  EXPECT_CALL(*callback1, onValue(true));
+  EXPECT_CALL(*callback2, onValue(false));
+
+  executor_.drain();
+
+  EXPECT_TRUE(fanoutChannel.anyReceivers());
+
+  EXPECT_CALL(*callback1, onValue(true));
+  EXPECT_CALL(*callback2, onValue(true));
+  EXPECT_CALL(*callback1, onValue(false));
+  EXPECT_CALL(*callback2, onValue(false));
+
+  EXPECT_CALL(*callback1, onClosed());
+  EXPECT_CALL(*callback2, onClosed());
+
+  sender.write(true);
+  sender.write(false);
+  executor_.drain();
 
   std::move(sender).close();
   executor_.drain();

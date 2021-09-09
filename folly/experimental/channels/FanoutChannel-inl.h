@@ -154,7 +154,10 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
                     getInitialValues = std::move(getInitialValues)]() mutable {
       if (getInitialValues) {
         auto initialValues = getInitialValues();
-        for (auto& value : initialValues) {
+        // use auto&& to deal with the annoying std::vector<bool>, for which
+        // auto& will not compile because std::vector<bool>::iterator::operator*
+        // returns a temporary for many implementations
+        for (auto&& value : initialValues) {
           sender->senderPush(std::move(value));
         }
       }
