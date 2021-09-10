@@ -93,6 +93,10 @@ int fsync(int fd) {
 }
 
 int ftruncate(int fd, off_t len) {
+  off_t origLoc = _lseek(fd, 0, SEEK_CUR);
+  if (origLoc == -1) {
+    return -1;
+  }
   if (_lseek(fd, len, SEEK_SET) == -1) {
     return -1;
   }
@@ -102,6 +106,9 @@ int ftruncate(int fd, off_t len) {
     return -1;
   }
   if (!SetEndOfFile(h)) {
+    return -1;
+  }
+  if (_lseek(fd, origLoc, SEEK_SET) == -1) {
     return -1;
   }
   return 0;
