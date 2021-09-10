@@ -221,4 +221,25 @@ CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWork) {
   CO_ASSERT_EQ(0, scope3.remaining());
 }
 
+CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWorkCoSchedule) {
+  using namespace std::chrono_literals;
+
+  auto makeTask = [&]() -> folly::coro::Task<> {
+    co_await folly::coro::sleep(300s);
+  };
+
+  folly::coro::CancellableAsyncScope scope;
+
+  CO_ASSERT_EQ(0, scope.remaining());
+  for (int i = 0; i < 10; ++i) {
+    co_await scope.co_schedule(makeTask());
+  }
+  CO_ASSERT_EQ(10, scope.remaining());
+
+  // Although we are suspended while sleeping, cancelAndJoinAsync will handle
+  // this correctly.
+  co_await scope.cancelAndJoinAsync();
+  CO_ASSERT_EQ(0, scope.remaining());
+}
+
 #endif // FOLLY_HAS_COROUTINES

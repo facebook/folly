@@ -18,6 +18,7 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/experimental/coro/Coroutine.h>
+#include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/BarrierTask.h>
@@ -222,6 +223,18 @@ class CancellableAsyncScope {
                   : cancellationToken_,
             static_cast<Awaitable&&>(awaitable)),
         returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+  }
+
+  // Schedules the given task on the current executor and adds it to the
+  // AsyncScope. The task will be provided a cancellation token to respond to
+  // cancelAndJoinAsync() in the future.
+  //
+  // Note that cancellation is cooperative, your task must handle cancellation
+  // in order to have any effect.
+  template <class T>
+  folly::coro::Task<void> co_schedule(folly::coro::Task<T>&& task) {
+    add(std::move(task).scheduleOn(co_await co_current_executor));
+    co_return;
   }
 
   // Request cancellation for all started tasks that accepted a
