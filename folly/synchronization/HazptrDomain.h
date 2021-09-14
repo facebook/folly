@@ -304,10 +304,7 @@ class hazptr_domain {
         return;
     }
     inc_num_bulk_reclaims();
-    if (std::is_same<Atom<int>, std::atomic<int>>{} &&
-        this == &default_hazptr_domain<Atom>() && hazptr_use_executor()) {
-      invoke_reclamation_in_executor(rcount);
-    } else {
+    if (!invoke_reclamation_in_executor(rcount)) {
       do_reclamation(rcount);
     }
   }
@@ -584,34 +581,36 @@ class hazptr_domain {
     return rec;
   }
 
-  void invoke_reclamation_in_executor(int rcount) {
+  bool invoke_reclamation_in_executor(int rcount) {
+    if (!std::is_same<Atom<int>, std::atomic<int>>{} ||
+        this != &default_hazptr_domain<Atom>() || !hazptr_use_executor()) {
+      return false;
+    }
     auto fn = exec_fn_.load(std::memory_order_acquire);
     auto ex = fn ? fn() : get_default_executor();
+    if (!ex) {
+      return false;
+    }
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
-    if (ex) {
-      auto recl_fn = [this, rcount] {
-        exec_backlog_.store(0, std::memory_order_relaxed);
-        do_reclamation(rcount);
-      };
-      if (ex == get_default_executor()) {
-        invoke_reclamation_may_deadlock(ex, recl_fn);
-      } else {
-        ex->add(recl_fn);
-      }
+    auto recl_fn = [this, rcount] {
+      exec_backlog_.store(0, std::memory_order_relaxed);
+      do_reclamation(rcount);
+    };
+    if (ex == get_default_executor()) {
+      invoke_reclamation_may_deadlock(ex, recl_fn);
     } else {
-      if (kIsDebug) {
-        LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
-      }
+      ex->add(recl_fn);
     }
     if (backlog >= 10) {
       hazptr_warning_executor_backlog(backlog);
     }
+    return true;
   }
 
   template <typename Func>
   void invoke_reclamation_may_deadlock(folly::Executor* ex, Func recl_fn) {
     ex->add(recl_fn);
-    // This program is using the default inline executor, which is an
+    // This program is using the default executor, which is an
     // inline executor. This is not necessarily a problem. But if this
     // program encounters deadlock, then this may be the cause. Most
     // likely this program did not call
