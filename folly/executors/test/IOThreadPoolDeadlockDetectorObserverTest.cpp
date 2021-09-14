@@ -15,6 +15,9 @@
  */
 
 #include <memory>
+
+#include <fmt/core.h>
+
 #include <folly/concurrency/DeadlockDetector.h>
 #include <folly/executors/IOThreadPoolDeadlockDetectorObserver.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
@@ -39,7 +42,9 @@ class DeadlockDetectorFactoryMock : public DeadlockDetectorFactory {
   std::unique_ptr<DeadlockDetector> create(
       folly::Executor* executor, const std::string& name) override {
     EXPECT_TRUE(executor != nullptr);
-    EXPECT_EQ("TestPool", name);
+    std::string expectedName =
+        fmt::format("TestPool:{}", folly::getOSThreadID());
+    EXPECT_EQ(expectedName, name);
     return std::make_unique<DeadlockDetectorMock>(counter_);
   }
 
