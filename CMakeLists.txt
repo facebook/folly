@@ -234,6 +234,23 @@ if (NOT ${LIBAIO_FOUND} AND NOT ${LIBURING_FOUND})
   )
 endif()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  check_cxx_compiler_flag(-fcoroutines COMPILER_HAS_F_COROUTINES)
+  if (COMPILER_HAS_F_COROUTINES)
+    message(
+      STATUS
+      "GCC has support for C++ coroutines, setting flag for Folly build."
+    )
+    add_compile_options(-fcoroutines)
+  else()
+    message(
+      STATUS
+      "GCC does not have support for C++ coroutines, "
+      "disabling Folly coroutine support."
+    )
+  endif()
+endif()
+
 if (${LIBSODIUM_FOUND})
   string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
   if (${IS_X86_64_ARCH} STREQUAL "-1")
