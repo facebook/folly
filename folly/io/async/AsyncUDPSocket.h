@@ -337,6 +337,12 @@ class AsyncUDPSocket : public EventHandler {
   }
 
   /**
+   * Set IP_FREEBIND to allow binding to an address that is nonlocal or doesn't
+   * exist yet.
+   */
+  virtual void setFreeBind(bool freeBind) { freeBind_ = freeBind; }
+
+  /**
    * Set reuse port mode to call bind() on the same address multiple times
    */
   virtual void setReusePort(bool reusePort) { reusePort_ = reusePort; }
@@ -551,6 +557,7 @@ class AsyncUDPSocket : public EventHandler {
 
   bool reuseAddr_{false};
   bool reusePort_{false};
+  bool freeBind_{false};
   int rcvBuf_{0};
   int sndBuf_{0};
   int busyPollUs_{0};

@@ -140,6 +140,26 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
     }
   }
 
+  if (freeBind_) {
+    int optname = 0;
+#if defined(IP_FREEBIND)
+    optname = IP_FREEBIND;
+#endif
+    if (!optname) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "IP_FREEBIND is not supported");
+    }
+    // put the socket in free bind mode
+    int value = 1;
+    if (netops::setsockopt(
+            socket, IPPROTO_IP, optname, &value, sizeof(value)) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to put socket in free bind mode",
+          errno);
+    }
+  }
+
   if (busyPollUs_ > 0) {
     int optname = 0;
 #if defined(SO_BUSY_POLL)
