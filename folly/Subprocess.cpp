@@ -41,6 +41,7 @@
 #include <folly/io/Cursor.h>
 #include <folly/lang/Assume.h>
 #include <folly/logging/xlog.h>
+#include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/SysSyscall.h>
@@ -553,11 +554,26 @@ int Subprocess::prepareChild(
   // exec time.
 
   // Close all fds that we're supposed to close.
+  // Redirect requested FDs to /dev/null or NUL.
   for (auto& p : options.fdActions_) {
     if (p.second == CLOSE) {
       if (::close(p.first) == -1) {
         return errno;
       }
+    } else if (p.second == DEV_NULL) {
+      // folly/portability/Fcntl provides an impl of open that will
+      // map this to NUL on Windows.
+      auto devNull = ::open("/dev/null", O_RDWR | O_CLOEXEC);
+      if (devNull == -1) {
+        return errno;
+      }
+      // note: dup2 will not set CLOEXEC on the destination
+      if (::dup2(devNull, p.first) == -1) {
+        // explicit close on error to avoid leaking fds
+        ::close(devNull);
+        return errno;
+      }
+      ::close(devNull);
     } else if (p.second != p.first) {
       if (::dup2(p.second, p.first) == -1) {
         return errno;

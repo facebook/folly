@@ -714,3 +714,36 @@ TEST(CommunicateSubprocessTest, TakeOwnershipOfPipes) {
   buf[2] = 0;
   EXPECT_EQ("3\n", std::string(buf));
 }
+
+TEST(CommunicateSubprocessTest, RedirectStdioToDevNull) {
+  std::vector<std::string> cmd({
+      "stat",
+      "-Lc",
+      "%t:%T",
+      "/dev/null",
+      "/dev/stdin",
+      "/dev/stderr",
+  });
+  auto options = Subprocess::Options()
+                     .pipeStdout()
+                     .stdinFd(folly::Subprocess::DEV_NULL)
+                     .stderrFd(folly::Subprocess::DEV_NULL)
+                     .usePath();
+  Subprocess proc(cmd, options);
+  auto out = proc.communicateIOBuf();
+
+  fbstring stdoutStr;
+  if (out.first.front()) {
+    stdoutStr = out.first.move()->moveToFbString();
+  }
+  LOG(ERROR) << stdoutStr;
+  std::vector<StringPiece> stdoutLines;
+  split('\n', stdoutStr, stdoutLines);
+
+  // 3 lines + empty string due to trailing newline
+  EXPECT_EQ(stdoutLines.size(), 4);
+  EXPECT_EQ(stdoutLines[0], stdoutLines[1]);
+  EXPECT_EQ(stdoutLines[0], stdoutLines[2]);
+
+  EXPECT_EQ(0, proc.wait().exitStatus());
+}
