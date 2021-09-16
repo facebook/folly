@@ -160,6 +160,7 @@ struct TcpInfo {
   Optional<uint64_t> bytesReceived() const;
   Optional<uint64_t> bytesRetransmitted() const;
   Optional<uint64_t> bytesNotSent() const;
+  Optional<uint64_t> bytesAcked() const;
 
   Optional<uint64_t> packetsSent() const;
   Optional<uint64_t> packetsWithDataSent() const;

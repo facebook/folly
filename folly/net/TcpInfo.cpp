@@ -190,6 +190,18 @@ Optional<uint64_t> TcpInfo::bytesNotSent() const {
 #endif
 }
 
+Optional<uint64_t> TcpInfo::bytesAcked() const {
+#ifndef FOLLY_HAVE_TCP_INFO
+  return folly::none;
+#elif defined(__linux__)
+  return getFieldAsOptUInt64(&tcp_info::tcpi_bytes_acked);
+#elif defined(__APPLE__)
+  return folly::none;
+#else
+  return folly::none;
+#endif
+}
+
 Optional<uint64_t> TcpInfo::packetsSent() const {
 #ifndef FOLLY_HAVE_TCP_INFO
   return folly::none;

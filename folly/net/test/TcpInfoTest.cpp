@@ -225,6 +225,7 @@ class TcpInfoTest : public Test {
     EXPECT_FALSE(wrappedTcpInfo.bytesSent());
     EXPECT_FALSE(wrappedTcpInfo.bytesReceived());
     EXPECT_FALSE(wrappedTcpInfo.bytesRetransmitted());
+    EXPECT_FALSE(wrappedTcpInfo.bytesAcked());
 
     EXPECT_FALSE(wrappedTcpInfo.packetsSent());
     EXPECT_FALSE(wrappedTcpInfo.packetsWithDataSent());
@@ -277,6 +278,7 @@ class TcpInfoTest : public Test {
         controlTcpInfo.tcpi_bytes_received, wrappedTcpInfo.bytesReceived());
     EXPECT_EQ(
         controlTcpInfo.tcpi_bytes_retrans, wrappedTcpInfo.bytesRetransmitted());
+    EXPECT_EQ(controlTcpInfo.tcpi_bytes_acked, wrappedTcpInfo.bytesAcked());
 
     EXPECT_EQ(controlTcpInfo.tcpi_segs_out, wrappedTcpInfo.packetsSent());
     EXPECT_EQ(
