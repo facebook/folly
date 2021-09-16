@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <stdexcept>
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/OpenSSL.h>
@@ -30,35 +31,49 @@ class OpenSSLHash {
  public:
   class Digest {
    public:
-    Digest() : ctx_(EVP_MD_CTX_new()) {}
+    Digest() { check_context_notnull(); }
 
-    Digest(const Digest& other) {
-      ctx_ = EvpMdCtxUniquePtr(EVP_MD_CTX_new());
-      if (other.md_ != nullptr) {
-        hash_init(other.md_);
-        check_libssl_result(
-            1, EVP_MD_CTX_copy_ex(ctx_.get(), other.ctx_.get()));
-      }
+    Digest(const Digest& that) {
+      check_context_notnull();
+      copy_impl(that);
     }
 
-    Digest& operator=(const Digest& other) {
-      this->~Digest();
-      return *new (this) Digest(other);
+    Digest(Digest&& that) noexcept(false) {
+      check_context_notnull();
+      move_impl(std::move(that));
+    }
+
+    Digest& operator=(const Digest& that) {
+      if (this != &that) {
+        copy_impl(that);
+      }
+      return *this;
+    }
+
+    Digest& operator=(Digest&& that) noexcept(false) {
+      if (this != &that) {
+        move_impl(std::move(that));
+        that.hash_reset();
+      }
+      return *this;
     }
 
     void hash_init(const EVP_MD* md) {
       md_ = md;
       check_libssl_result(1, EVP_DigestInit_ex(ctx_.get(), md, nullptr));
     }
+
     void hash_update(ByteRange data) {
       check_libssl_result(
           1, EVP_DigestUpdate(ctx_.get(), data.data(), data.size()));
     }
+
     void hash_update(const IOBuf& data) {
       for (auto r : data) {
         hash_update(r);
       }
     }
+
     void hash_final(MutableByteRange out) {
       const auto size = EVP_MD_size(md_);
       check_out_size(size_t(size), out);
@@ -69,8 +84,34 @@ class OpenSSLHash {
     }
 
    private:
-    const EVP_MD* md_ = nullptr;
-    EvpMdCtxUniquePtr ctx_{nullptr};
+    const EVP_MD* md_{nullptr};
+    EvpMdCtxUniquePtr ctx_{EVP_MD_CTX_new()};
+
+    void hash_reset() {
+      md_ = nullptr;
+      check_libssl_result(1, EVP_MD_CTX_reset(ctx_.get()));
+    }
+
+    void check_context_notnull() {
+      if (nullptr == ctx_) {
+        throw_exception<std::runtime_error>(
+            "EVP_MD_CTX_new() returned nullptr");
+      }
+    }
+
+    void copy_impl(const Digest& that) {
+      if (that.md_ != nullptr) {
+        hash_init(that.md_);
+        check_libssl_result(1, EVP_MD_CTX_copy_ex(ctx_.get(), that.ctx_.get()));
+      } else {
+        this->hash_reset();
+      }
+    }
+
+    void move_impl(Digest&& that) noexcept {
+      std::swap(this->md_, that.md_);
+      std::swap(this->ctx_, that.ctx_);
+    }
   };
 
   static void hash(MutableByteRange out, const EVP_MD* md, ByteRange data) {

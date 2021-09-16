@@ -45,36 +45,131 @@ TEST_F(OpenSSLHashTest, sha256) {
 }
 
 TEST_F(OpenSSLHashTest, sha256_hashcopy) {
-  std::array<uint8_t, 32> expected, actual;
+  std::array<uint8_t, 32> expected, actual1, actual2;
+  constexpr StringPiece data{"foobar"};
+
+  OpenSSLHash::hash(range(expected), EVP_sha256(), data);
 
   OpenSSLHash::Digest digest;
   digest.hash_init(EVP_sha256());
-  digest.hash_update(ByteRange(StringPiece("foobar")));
+  digest.hash_update(ByteRange(data));
 
-  OpenSSLHash::Digest copy(digest);
+  OpenSSLHash::Digest copy1(digest); // copy constructor
+  OpenSSLHash::Digest copy2 = digest; // copy assignment operator
 
-  digest.hash_final(range(expected));
-  copy.hash_final(range(actual));
+  copy1.hash_final(range(actual1));
+  copy2.hash_final(range(actual2));
+
+  EXPECT_EQ(expected, actual1);
+  EXPECT_EQ(expected, actual2);
+}
+
+TEST_F(OpenSSLHashTest, sha256_hashcopy_self) {
+  std::array<uint8_t, 32> expected, actual;
+  constexpr StringPiece data{"foobar"};
+
+  OpenSSLHash::hash(range(expected), EVP_sha256(), data);
+
+  OpenSSLHash::Digest digest;
+  digest.hash_init(EVP_sha256());
+  digest.hash_update(ByteRange(data));
+
+  OpenSSLHash::Digest* ptr = &digest;
+  digest = *ptr; // test copy of an object to itself
+
+  digest.hash_final(range(actual));
+
+  EXPECT_EQ(expected, actual);
+}
+
+TEST_F(OpenSSLHashTest, sha256_hashmove) {
+  std::array<uint8_t, 32> expected, actual1, actual2;
+  constexpr StringPiece data{"foobar"};
+
+  OpenSSLHash::hash(range(expected), EVP_sha256(), data);
+
+  OpenSSLHash::Digest digest;
+  digest.hash_init(EVP_sha256());
+  digest.hash_update(ByteRange(data));
+  OpenSSLHash::Digest copy1(std::move(digest)); // move constructor
+  copy1.hash_final(range(actual1));
+  EXPECT_EQ(expected, actual1);
+
+  digest = OpenSSLHash::Digest{}; // should be safe to reassign to moved object
+  digest.hash_init(EVP_sha256());
+  digest.hash_update(ByteRange(data));
+  OpenSSLHash::Digest copy2 = std::move(digest); // move assignment operator
+  copy2.hash_final(range(actual2));
+  EXPECT_EQ(expected, actual2);
+}
+
+TEST_F(OpenSSLHashTest, sha256_hashmove_self) {
+  std::array<uint8_t, 32> expected, actual;
+  constexpr StringPiece data{"foobar"};
+
+  OpenSSLHash::hash(range(expected), EVP_sha256(), data);
+
+  OpenSSLHash::Digest digest;
+  digest.hash_init(EVP_sha256());
+  digest.hash_update(ByteRange(data));
+
+  OpenSSLHash::Digest* ptr = &digest;
+  digest = std::move(*ptr); // test move of an object to itself
+
+  digest.hash_final(range(actual));
 
   EXPECT_EQ(expected, actual);
 }
 
 TEST_F(OpenSSLHashTest, sha256_hashcopy_intermediate) {
-  std::array<uint8_t, 32> expected, actual;
+  std::array<uint8_t, 32> expected, actual1, actual2;
+  constexpr StringPiece data1("foo");
+  constexpr StringPiece data2("bar");
 
   OpenSSLHash::Digest digest;
   digest.hash_init(EVP_sha256());
-  digest.hash_update(ByteRange(StringPiece("foo")));
+  digest.hash_update(ByteRange(data1));
 
-  OpenSSLHash::Digest copy(digest);
+  OpenSSLHash::Digest copy1(digest); // copy constructor
+  OpenSSLHash::Digest copy2 = digest; // copy assignment operator
 
-  digest.hash_update(ByteRange(StringPiece("bar")));
-  copy.hash_update(ByteRange(StringPiece("bar")));
-
+  digest.hash_update(ByteRange(data2));
   digest.hash_final(range(expected));
-  copy.hash_final(range(actual));
 
-  EXPECT_EQ(expected, actual);
+  copy1.hash_update(ByteRange(data2));
+  copy1.hash_final(range(actual1));
+  EXPECT_EQ(expected, actual1);
+
+  copy2.hash_update(ByteRange(data2));
+  copy2.hash_final(range(actual2));
+  EXPECT_EQ(expected, actual2);
+}
+
+TEST_F(OpenSSLHashTest, sha256_hashmove_intermediate) {
+  std::array<uint8_t, 32> expected, actual1, actual2;
+  constexpr StringPiece fulldata("foobar");
+  constexpr StringPiece data1("foo");
+  constexpr StringPiece data2("bar");
+
+  OpenSSLHash::hash(range(expected), EVP_sha256(), fulldata);
+
+  OpenSSLHash::Digest digest;
+  digest.hash_init(EVP_sha256());
+  digest.hash_update(ByteRange(data1));
+  OpenSSLHash::Digest copy1(std::move(digest)); // move constructor
+  copy1.hash_update(ByteRange(data2));
+  copy1.hash_final(range(actual1));
+  EXPECT_EQ(expected, actual1);
+
+  digest.hash_init(EVP_sha256()); // should be safe to re-init moved object
+  digest.hash_update(ByteRange(data1));
+  OpenSSLHash::Digest copy2 = std::move(digest); // move assignment operator
+  copy2.hash_update(ByteRange(data2));
+  copy2.hash_final(range(actual2));
+  EXPECT_EQ(expected, actual2);
+
+  // Make sure it's safe to re-init moved object after move operator=()
+  digest.hash_init(EVP_sha256());
 }
 
 TEST_F(OpenSSLHashTest, hmac_sha256) {
