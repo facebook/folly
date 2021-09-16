@@ -31,17 +31,11 @@ class OpenSSLHash {
  public:
   class Digest {
    public:
-    Digest() { check_context_notnull(); }
+    Digest() noexcept = default;
 
-    Digest(const Digest& that) {
-      check_context_notnull();
-      copy_impl(that);
-    }
+    Digest(const Digest& that) { copy_impl(that); }
 
-    Digest(Digest&& that) noexcept(false) {
-      check_context_notnull();
-      move_impl(std::move(that));
-    }
+    Digest(Digest&& that) noexcept { move_impl(std::move(that)); }
 
     Digest& operator=(const Digest& that) {
       if (this != &that) {
@@ -50,7 +44,7 @@ class OpenSSLHash {
       return *this;
     }
 
-    Digest& operator=(Digest&& that) noexcept(false) {
+    Digest& operator=(Digest&& that) noexcept {
       if (this != &that) {
         move_impl(std::move(that));
         that.hash_reset();
@@ -59,11 +53,22 @@ class OpenSSLHash {
     }
 
     void hash_init(const EVP_MD* md) {
-      md_ = md;
+      if (nullptr == ctx_) {
+        ctx_.reset(EVP_MD_CTX_new());
+        if (nullptr == ctx_) {
+          throw_exception<std::runtime_error>(
+              "EVP_MD_CTX_new() returned nullptr");
+        }
+      }
       check_libssl_result(1, EVP_DigestInit_ex(ctx_.get(), md, nullptr));
+      md_ = md;
     }
 
     void hash_update(ByteRange data) {
+      if (nullptr == ctx_) {
+        throw_exception<std::runtime_error>(
+            "hash_update() called without hash_init()");
+      }
       check_libssl_result(
           1, EVP_DigestUpdate(ctx_.get(), data.data(), data.size()));
     }
@@ -75,32 +80,29 @@ class OpenSSLHash {
     }
 
     void hash_final(MutableByteRange out) {
+      if (nullptr == ctx_) {
+        throw_exception<std::runtime_error>(
+            "hash_final() called without hash_init()");
+      }
       const auto size = EVP_MD_size(md_);
       check_out_size(size_t(size), out);
       unsigned int len = 0;
       check_libssl_result(1, EVP_DigestFinal_ex(ctx_.get(), out.data(), &len));
       check_libssl_result(size, int(len));
-      md_ = nullptr;
+      hash_reset();
     }
 
    private:
     const EVP_MD* md_{nullptr};
-    EvpMdCtxUniquePtr ctx_{EVP_MD_CTX_new()};
+    EvpMdCtxUniquePtr ctx_{nullptr};
 
-    void hash_reset() {
+    void hash_reset() noexcept {
+      ctx_.reset(nullptr);
       md_ = nullptr;
-      check_libssl_result(1, EVP_MD_CTX_reset(ctx_.get()));
-    }
-
-    void check_context_notnull() {
-      if (nullptr == ctx_) {
-        throw_exception<std::runtime_error>(
-            "EVP_MD_CTX_new() returned nullptr");
-      }
     }
 
     void copy_impl(const Digest& that) {
-      if (that.md_ != nullptr) {
+      if (that.md_ != nullptr && that.ctx_ != nullptr) {
         hash_init(that.md_);
         check_libssl_result(1, EVP_MD_CTX_copy_ex(ctx_.get(), that.ctx_.get()));
       } else {

@@ -82,6 +82,27 @@ TEST_F(OpenSSLHashTest, sha256_hashcopy_self) {
   EXPECT_EQ(expected, actual);
 }
 
+TEST_F(OpenSSLHashTest, sha256_hashcopy_from_default_constructed) {
+  std::array<uint8_t, 32> expected, actual1, actual2;
+  constexpr StringPiece data{"foobar"};
+
+  OpenSSLHash::hash(range(expected), EVP_sha256(), data);
+
+  OpenSSLHash::Digest digest;
+  OpenSSLHash::Digest copy1(digest); // copy constructor
+  OpenSSLHash::Digest copy2 = digest; // copy assignment operator
+
+  copy1.hash_init(EVP_sha256());
+  copy1.hash_update(ByteRange(data));
+  copy1.hash_final(range(actual1));
+  EXPECT_EQ(expected, actual1);
+
+  copy2.hash_init(EVP_sha256());
+  copy2.hash_update(ByteRange(data));
+  copy2.hash_final(range(actual2));
+  EXPECT_EQ(expected, actual2);
+}
+
 TEST_F(OpenSSLHashTest, sha256_hashmove) {
   std::array<uint8_t, 32> expected, actual1, actual2;
   constexpr StringPiece data{"foobar"};
@@ -119,6 +140,28 @@ TEST_F(OpenSSLHashTest, sha256_hashmove_self) {
   digest.hash_final(range(actual));
 
   EXPECT_EQ(expected, actual);
+}
+
+TEST_F(OpenSSLHashTest, sha256_hashmove_from_default_constructed) {
+  std::array<uint8_t, 32> expected, actual1, actual2;
+  constexpr StringPiece data{"foobar"};
+
+  OpenSSLHash::hash(range(expected), EVP_sha256(), data);
+
+  OpenSSLHash::Digest digest1;
+  OpenSSLHash::Digest copy1(std::move(digest1)); // move constructor
+  OpenSSLHash::Digest digest2;
+  OpenSSLHash::Digest copy2 = std::move(digest2); // move assignment operator
+
+  copy1.hash_init(EVP_sha256());
+  copy1.hash_update(ByteRange(data));
+  copy1.hash_final(range(actual1));
+  EXPECT_EQ(expected, actual1);
+
+  copy2.hash_init(EVP_sha256());
+  copy2.hash_update(ByteRange(data));
+  copy2.hash_final(range(actual2));
+  EXPECT_EQ(expected, actual2);
 }
 
 TEST_F(OpenSSLHashTest, sha256_hashcopy_intermediate) {
@@ -170,6 +213,17 @@ TEST_F(OpenSSLHashTest, sha256_hashmove_intermediate) {
 
   // Make sure it's safe to re-init moved object after move operator=()
   digest.hash_init(EVP_sha256());
+}
+
+TEST_F(OpenSSLHashTest, digest_update_without_init_throws) {
+  OpenSSLHash::Digest digest;
+  EXPECT_THROW(digest.hash_update(ByteRange{}), std::runtime_error);
+}
+
+TEST_F(OpenSSLHashTest, digest_final_without_init_throws) {
+  OpenSSLHash::Digest digest;
+  std::array<uint8_t, 32> out;
+  EXPECT_THROW(digest.hash_final(range(out)), std::runtime_error);
 }
 
 TEST_F(OpenSSLHashTest, hmac_sha256) {
