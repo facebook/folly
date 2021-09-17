@@ -16,7 +16,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <stdexcept>
+#include <utility>
+
+#include <folly/Exception.h>
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/OpenSSL.h>
@@ -31,7 +35,7 @@ class OpenSSLHash {
  public:
   class Digest {
    public:
-    Digest() noexcept = default;
+    Digest() noexcept {} // = default;
 
     Digest(const Digest& that) { copy_impl(that); }
 
@@ -143,34 +147,96 @@ class OpenSSLHash {
 
   class Hmac {
    public:
-    Hmac() : ctx_(HMAC_CTX_new()) {}
+    Hmac() noexcept {} // = default;
+
+    Hmac(const Hmac& that) { copy_impl(that); }
+
+    Hmac(Hmac&& that) noexcept { move_impl(std::move(that)); }
+
+    Hmac& operator=(const Hmac& that) {
+      if (this != &that) {
+        copy_impl(that);
+      }
+      return *this;
+    }
+
+    Hmac& operator=(Hmac&& that) noexcept {
+      if (this != &that) {
+        move_impl(std::move(that));
+        that.hash_reset();
+      }
+      return *this;
+    }
 
     void hash_init(const EVP_MD* md, ByteRange key) {
-      md_ = md;
+      ensure_ctx();
       check_libssl_result(
           1,
-          HMAC_Init_ex(ctx_.get(), key.data(), int(key.size()), md_, nullptr));
+          HMAC_Init_ex(ctx_.get(), key.data(), int(key.size()), md, nullptr));
+      md_ = md;
     }
+
     void hash_update(ByteRange data) {
+      if (ctx_ == nullptr) {
+        throw_exception<std::runtime_error>(
+            "hash_update() called without hash_init()");
+      }
       check_libssl_result(1, HMAC_Update(ctx_.get(), data.data(), data.size()));
     }
+
     void hash_update(const IOBuf& data) {
       for (auto r : data) {
         hash_update(r);
       }
     }
+
     void hash_final(MutableByteRange out) {
+      if (ctx_ == nullptr) {
+        throw_exception<std::runtime_error>(
+            "hash_final() called without hash_init()");
+      }
       const auto size = EVP_MD_size(md_);
       check_out_size(size_t(size), out);
       unsigned int len = 0;
       check_libssl_result(1, HMAC_Final(ctx_.get(), out.data(), &len));
       check_libssl_result(size, int(len));
-      md_ = nullptr;
+      hash_reset();
     }
 
    private:
-    const EVP_MD* md_ = nullptr;
+    const EVP_MD* md_{nullptr};
     HmacCtxUniquePtr ctx_{nullptr};
+
+    void ensure_ctx() {
+      if (ctx_ == nullptr) {
+        ctx_.reset(HMAC_CTX_new());
+        if (ctx_ == nullptr) {
+          throw_exception<std::runtime_error>(
+              "HMAC_CTX_new() returned nullptr");
+        }
+      }
+    }
+
+    void hash_reset() noexcept {
+      md_ = nullptr;
+      ctx_.reset(nullptr);
+    }
+
+    void copy_impl(const Hmac& that) {
+      if (that.md_ != nullptr && that.ctx_ != nullptr) {
+        ensure_ctx();
+        this->md_ = that.md_;
+        check_libssl_result(
+            1, HMAC_CTX_copy(this->ctx_.get(), that.ctx_.get()));
+      } else {
+        hash_reset();
+      }
+    }
+
+    void move_impl(Hmac&& that) noexcept {
+      std::swap(this->md_, that.md_);
+      std::swap(this->ctx_, that.ctx_);
+    }
   };
 
   static void hmac(
