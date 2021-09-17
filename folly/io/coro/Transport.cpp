@@ -305,12 +305,14 @@ Task<size_t> Transport::read(
   transport_->setReadCB(&cb);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
-
-  if (waitRet.hasException()) {
-    co_yield co_error(std::move(waitRet.exception()));
-  }
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
+  }
+  if (waitRet.hasException() &&
+      (!waitRet.tryGetExceptionObject<OperationCancelled>() ||
+       (!cb.eof && cb.length == 0))) {
+    // Got a non-cancel exception, or cancel with nothing read
+    co_yield co_error(std::move(waitRet.exception()));
   }
   transport_->setReadCB(nullptr);
   deferredReadEOF_ = (cb.eof && cb.length > 0);
@@ -338,11 +340,14 @@ Task<size_t> Transport::read(
   transport_->setReadCB(&cb);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
-  if (waitRet.hasException()) {
-    co_yield co_error(std::move(waitRet.exception()));
-  }
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
+  }
+  if (waitRet.hasException() &&
+      (!waitRet.tryGetExceptionObject<OperationCancelled>() ||
+       (!cb.eof && cb.length == 0))) {
+    // Got a non-cancel exception, or cancel with nothing read
+    co_yield co_error(std::move(waitRet.exception()));
   }
   transport_->setReadCB(nullptr);
   deferredReadEOF_ = (cb.eof && cb.length > 0);
