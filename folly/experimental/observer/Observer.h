@@ -384,17 +384,17 @@ class ReadMostlyTLObserver {
 
   struct LocalSnapshot {
     LocalSnapshot() {}
-    LocalSnapshot(const ReadMostlyMainPtr<const T>& data, int64_t version)
+    LocalSnapshot(const ReadMostlyMainPtr<const T>& data, size_t version)
         : data_(data), version_(version) {}
 
     ReadMostlyWeakPtr<const T> data_;
-    int64_t version_;
+    size_t version_;
   };
 
   Observer<T> observer_;
 
   mutable Synchronized<ReadMostlyMainPtr<const T>, std::mutex> globalData_;
-  mutable std::atomic<int64_t> globalVersion_{0};
+  mutable std::atomic<size_t> globalVersion_{0};
 
   ThreadLocal<LocalSnapshot> localSnapshot_;
 };
