@@ -158,7 +158,7 @@ class SingletonThreadLocal {
 
   static T* try_get() {
     auto* wrapper = getWrapperTL().getIfExist();
-    return wrapper ? &wrapper->object : nullptr;
+    return wrapper ? &static_cast<T&>(*wrapper) : nullptr;
   }
 
   class Accessor {
