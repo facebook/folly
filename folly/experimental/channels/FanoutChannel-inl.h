@@ -68,7 +68,7 @@ Receiver<ValueType> FanoutChannel<ValueType, ContextType>::subscribe(
 }
 
 template <typename ValueType, typename ContextType>
-bool FanoutChannel<ValueType, ContextType>::anySubscribers() {
+bool FanoutChannel<ValueType, ContextType>::anySubscribers() const {
   return processor_->anySubscribers();
 }
 

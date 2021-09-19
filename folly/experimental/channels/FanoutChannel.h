@@ -110,9 +110,9 @@ class FanoutChannel {
           getInitialValues = {});
 
   /**
-   * Returns whether this fanout channel has any output receivers.
+   * Returns whether this fanout channel has any subscribers.
    */
-  bool anySubscribers();
+  bool anySubscribers() const;
 
   /**
    * Closes the fanout channel.
