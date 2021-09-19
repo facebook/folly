@@ -154,9 +154,6 @@ class RequestContext {
   // Get the current context.
   static RequestContext* get();
 
-  // Get the current context, if it has already been created, or nullptr.
-  static RequestContext* try_get();
-
   intptr_t getRootId() const { return rootId_; }
 
   struct RootIdInfo {
@@ -255,7 +252,6 @@ class RequestContext {
 
  private:
   static StaticContext& getStaticContext();
-  static StaticContext* tryGetStaticContext();
   static std::shared_ptr<RequestContext> setContextHelper(
       std::shared_ptr<RequestContext>& newCtx, StaticContext& staticCtx);
 

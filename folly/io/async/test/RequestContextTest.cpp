@@ -566,22 +566,3 @@ TEST_F(RequestContextTest, AccessAllThreadsDestructionGuard) {
     thread.join();
   }
 }
-
-TEST(RequestContextTryGetTest, TryGetTest) {
-  // try_get() should not create a default RequestContext object if none exists.
-  EXPECT_EQ(RequestContext::try_get(), nullptr);
-  // Explicitly create a new instance so that subsequent calls to try_get()
-  // return it.
-  RequestContext::create();
-  EXPECT_NE(RequestContext::saveContext(), nullptr);
-  EXPECT_NE(RequestContext::try_get(), nullptr);
-  // Make sure that the pointers returned by both get() and try_get() point to
-  // the same underlying instance.
-  EXPECT_EQ(RequestContext::try_get(), RequestContext::get());
-  // Set some context data and read it out via try_get() accessor.
-  RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
-  auto rc = RequestContext::try_get();
-  EXPECT_TRUE(rc->hasContextData("test"));
-  auto* dataPtr = dynamic_cast<TestData*>(rc->getContextData("test"));
-  EXPECT_EQ(dataPtr->data_, 10);
-}
