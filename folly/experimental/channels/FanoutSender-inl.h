@@ -49,7 +49,7 @@ Receiver<ValueType> FanoutSender<ValueType>::subscribe(
   for (auto&& initialValue : initialValues) {
     newSender.write(std::move(initialValue));
   }
-  if (!anyReceivers()) {
+  if (!anySubscribers()) {
     // There are currently no output receivers. Store the new output receiver.
     senders_.set(detail::senderGetBridge(newSender).release());
   } else if (!hasSenderSet()) {
@@ -69,7 +69,7 @@ Receiver<ValueType> FanoutSender<ValueType>::subscribe(
 }
 
 template <typename ValueType>
-bool FanoutSender<ValueType>::anyReceivers() {
+bool FanoutSender<ValueType>::anySubscribers() {
   clearSendersWithClosedReceivers();
   return hasSenderSet() || getSingleSender() != nullptr;
 }
@@ -78,7 +78,7 @@ template <typename ValueType>
 template <typename U>
 void FanoutSender<ValueType>::write(U&& element) {
   clearSendersWithClosedReceivers();
-  if (!anyReceivers()) {
+  if (!anySubscribers()) {
     // There are currently no output receivers to write to.
     return;
   } else if (!hasSenderSet()) {
@@ -96,7 +96,7 @@ void FanoutSender<ValueType>::write(U&& element) {
 template <typename ValueType>
 void FanoutSender<ValueType>::close(folly::exception_wrapper ex) && {
   clearSendersWithClosedReceivers();
-  if (!anyReceivers()) {
+  if (!anySubscribers()) {
     // There are no output receivers to close.
     return;
   } else if (!hasSenderSet()) {

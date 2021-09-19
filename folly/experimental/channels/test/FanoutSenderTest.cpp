@@ -74,7 +74,7 @@ TEST_F(FanoutSenderFixture, WriteValue_FanoutBroadcastsValues) {
 
   executor_.drain();
 
-  EXPECT_TRUE(fanoutSender.anyReceivers());
+  EXPECT_TRUE(fanoutSender.anySubscribers());
 
   fanoutSender.write(1);
   fanoutSender.write(2);
@@ -97,7 +97,7 @@ TEST_F(FanoutSenderFixture, InputThrows_AllOutputReceiversGetException) {
 
   executor_.drain();
 
-  EXPECT_TRUE(fanoutSender.anyReceivers());
+  EXPECT_TRUE(fanoutSender.anySubscribers());
 
   fanoutSender.write(1);
   executor_.drain();
@@ -120,24 +120,24 @@ TEST_F(FanoutSenderFixture, ReceiversCancelled) {
 
   executor_.drain();
 
-  EXPECT_TRUE(fanoutSender.anyReceivers());
+  EXPECT_TRUE(fanoutSender.anySubscribers());
 
   fanoutSender.write(1);
   executor_.drain();
 
-  EXPECT_TRUE(fanoutSender.anyReceivers());
+  EXPECT_TRUE(fanoutSender.anySubscribers());
 
   handle1.reset();
   fanoutSender.write(2);
   executor_.drain();
 
-  EXPECT_TRUE(fanoutSender.anyReceivers());
+  EXPECT_TRUE(fanoutSender.anySubscribers());
 
   handle2.reset();
   fanoutSender.write(3);
   executor_.drain();
 
-  EXPECT_FALSE(fanoutSender.anyReceivers());
+  EXPECT_FALSE(fanoutSender.anySubscribers());
 
   std::move(fanoutSender).close();
   executor_.drain();

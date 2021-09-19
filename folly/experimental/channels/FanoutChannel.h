@@ -44,9 +44,9 @@ class IFanoutChannelProcessor;
  *   folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
  *
  *   auto fanoutChannel = createFanoutChannel(getReceiver(), getExecutor());
- *   auto receiver1 = fanoutChannel.newReceiver();
- *   auto receiver2 = fanoutChannel.newReceiver();
- *   auto receiver3 = fanoutChannel.newReceiver([]{ return {1, 2, 3}; });
+ *   auto receiver1 = fanoutChannel.subscribe();
+ *   auto receiver2 = fanoutChannel.subscribe();
+ *   auto receiver3 = fanoutChannel.subscribe([]{ return {1, 2, 3}; });
  */
 template <typename ValueType>
 class FanoutChannel {
@@ -72,13 +72,13 @@ class FanoutChannel {
    * receiver. Other functions on this class should not be called from within
    * getInitialValues, or a deadlock will occur.
    */
-  Receiver<ValueType> getNewReceiver(
+  Receiver<ValueType> subscribe(
       folly::Function<std::vector<ValueType>()> getInitialValues = {});
 
   /**
    * Returns whether this fanout channel has any output receivers.
    */
-  bool anyReceivers();
+  bool anySubscribers();
 
   /**
    * Closes the fanout channel.

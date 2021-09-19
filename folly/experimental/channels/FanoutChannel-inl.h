@@ -59,14 +59,14 @@ FanoutChannel<ValueType>::operator bool() const {
 }
 
 template <typename ValueType>
-Receiver<ValueType> FanoutChannel<ValueType>::getNewReceiver(
+Receiver<ValueType> FanoutChannel<ValueType>::subscribe(
     folly::Function<std::vector<ValueType>()> getInitialValues) {
-  return processor_->getNewReceiver(std::move(getInitialValues));
+  return processor_->subscribe(std::move(getInitialValues));
 }
 
 template <typename ValueType>
-bool FanoutChannel<ValueType>::anyReceivers() {
-  return processor_->anySenders();
+bool FanoutChannel<ValueType>::anySubscribers() {
+  return processor_->anySubscribers();
 }
 
 template <typename ValueType>
@@ -81,10 +81,10 @@ namespace detail {
 template <typename ValueType>
 class IFanoutChannelProcessor : public IChannelCallback {
  public:
-  virtual Receiver<ValueType> getNewReceiver(
+  virtual Receiver<ValueType> subscribe(
       folly::Function<std::vector<ValueType>()> getInitialValues) = 0;
 
-  virtual bool anySenders() = 0;
+  virtual bool anySubscribers() = 0;
 
   virtual void destroyHandle(CloseResult closeResult) = 0;
 };
@@ -149,7 +149,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * to determine the set of initial values that will (only) go to the new input
    * receiver.
    */
-  Receiver<ValueType> getNewReceiver(
+  Receiver<ValueType> subscribe(
       folly::Function<std::vector<ValueType>()> getInitialValues) override {
     auto state = state_.wlock();
     auto initialValues =
@@ -178,8 +178,8 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
   /**
    * Returns whether this fanout channel has any output receivers.
    */
-  bool anySenders() override {
-    return state_.wlock()->fanoutSender.anyReceivers();
+  bool anySubscribers() override {
+    return state_.wlock()->fanoutSender.anySubscribers();
   }
 
  private:

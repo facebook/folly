@@ -61,7 +61,7 @@ class FanoutSender {
   /**
    * Returns whether this fanout sender has any active output receivers.
    */
-  bool anyReceivers();
+  bool anySubscribers();
 
   /**
    * Sends the given value to all corresponding receivers.
