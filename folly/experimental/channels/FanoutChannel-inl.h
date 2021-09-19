@@ -25,16 +25,18 @@
 namespace folly {
 namespace channels {
 
-template <typename ValueType>
-FanoutChannel<ValueType>::FanoutChannel(TProcessor* processor)
+template <typename ValueType, typename ContextType>
+FanoutChannel<ValueType, ContextType>::FanoutChannel(TProcessor* processor)
     : processor_(processor) {}
 
-template <typename ValueType>
-FanoutChannel<ValueType>::FanoutChannel(FanoutChannel&& other) noexcept
+template <typename ValueType, typename ContextType>
+FanoutChannel<ValueType, ContextType>::FanoutChannel(
+    FanoutChannel&& other) noexcept
     : processor_(std::exchange(other.processor_, nullptr)) {}
 
-template <typename ValueType>
-FanoutChannel<ValueType>& FanoutChannel<ValueType>::operator=(
+template <typename ValueType, typename ContextType>
+FanoutChannel<ValueType, ContextType>&
+FanoutChannel<ValueType, ContextType>::operator=(
     FanoutChannel&& other) noexcept {
   if (&other == this) {
     return *this;
@@ -46,31 +48,33 @@ FanoutChannel<ValueType>& FanoutChannel<ValueType>::operator=(
   return *this;
 }
 
-template <typename ValueType>
-FanoutChannel<ValueType>::~FanoutChannel() {
+template <typename ValueType, typename ContextType>
+FanoutChannel<ValueType, ContextType>::~FanoutChannel() {
   if (processor_ != nullptr) {
     std::move(*this).close(folly::exception_wrapper());
   }
 }
 
-template <typename ValueType>
-FanoutChannel<ValueType>::operator bool() const {
+template <typename ValueType, typename ContextType>
+FanoutChannel<ValueType, ContextType>::operator bool() const {
   return processor_ != nullptr;
 }
 
-template <typename ValueType>
-Receiver<ValueType> FanoutChannel<ValueType>::subscribe(
-    folly::Function<std::vector<ValueType>()> getInitialValues) {
+template <typename ValueType, typename ContextType>
+Receiver<ValueType> FanoutChannel<ValueType, ContextType>::subscribe(
+    folly::Function<std::vector<ValueType>(const ContextType&)>
+        getInitialValues) {
   return processor_->subscribe(std::move(getInitialValues));
 }
 
-template <typename ValueType>
-bool FanoutChannel<ValueType>::anySubscribers() {
+template <typename ValueType, typename ContextType>
+bool FanoutChannel<ValueType, ContextType>::anySubscribers() {
   return processor_->anySubscribers();
 }
 
-template <typename ValueType>
-void FanoutChannel<ValueType>::close(folly::exception_wrapper ex) && {
+template <typename ValueType, typename ContextType>
+void FanoutChannel<ValueType, ContextType>::close(
+    folly::exception_wrapper ex) && {
   processor_->destroyHandle(
       ex ? detail::CloseResult(std::move(ex)) : detail::CloseResult());
   processor_ = nullptr;
@@ -78,11 +82,12 @@ void FanoutChannel<ValueType>::close(folly::exception_wrapper ex) && {
 
 namespace detail {
 
-template <typename ValueType>
+template <typename ValueType, typename ContextType>
 class IFanoutChannelProcessor : public IChannelCallback {
  public:
   virtual Receiver<ValueType> subscribe(
-      folly::Function<std::vector<ValueType>()> getInitialValues) = 0;
+      folly::Function<std::vector<ValueType>(const ContextType&)>
+          getInitialValues) = 0;
 
   virtual bool anySubscribers() = 0;
 
@@ -108,16 +113,20 @@ class IFanoutChannelProcessor : public IChannelCallback {
  * then be deleted once the input receiver transitions to the
  * CancellationProcessed state.
  */
-template <typename ValueType>
-class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
+template <typename ValueType, typename ContextType>
+class FanoutChannelProcessor
+    : public IFanoutChannelProcessor<ValueType, ContextType> {
  private:
   struct State {
+    State(ContextType _context) : context(std::move(_context)) {}
+
     ChannelState getReceiverState() {
       return detail::getReceiverState(receiver.get());
     }
 
     ChannelBridgePtr<ValueType> receiver;
     FanoutSender<ValueType> fanoutSender;
+    ContextType context;
     bool handleDeleted{false};
   };
 
@@ -125,8 +134,9 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
 
  public:
   explicit FanoutChannelProcessor(
-      folly::Executor::KeepAlive<folly::SequencedExecutor> executor)
-      : executor_(std::move(executor)) {}
+      folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+      ContextType context)
+      : executor_(std::move(executor)), state_(std::move(context)) {}
 
   /**
    * Starts fanning out values from the input receiver to all output receivers.
@@ -150,10 +160,11 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * receiver.
    */
   Receiver<ValueType> subscribe(
-      folly::Function<std::vector<ValueType>()> getInitialValues) override {
+      folly::Function<std::vector<ValueType>(const ContextType&)>
+          getInitialValues) override {
     auto state = state_.wlock();
-    auto initialValues =
-        getInitialValues ? getInitialValues() : std::vector<ValueType>();
+    auto initialValues = getInitialValues ? getInitialValues(state->context)
+                                          : std::vector<ValueType>();
     if (!state->receiver) {
       auto [receiver, sender] = Channel<ValueType>::create();
       for (auto&& value : initialValues) {
@@ -251,6 +262,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
       if (inputResult.hasValue()) {
         // We have received a normal value from the input receiver. Write it to
         // all output senders.
+        state->context.update(inputResult.value());
         state->fanoutSender.write(std::move(inputResult.value()));
       } else {
         // The input receiver was closed.
@@ -312,14 +324,15 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
 };
 } // namespace detail
 
-template <typename TReceiver, typename ValueType>
-FanoutChannel<ValueType> createFanoutChannel(
+template <typename TReceiver, typename ValueType, typename ContextType>
+FanoutChannel<ValueType, ContextType> createFanoutChannel(
     TReceiver inputReceiver,
-    folly::Executor::KeepAlive<folly::SequencedExecutor> executor) {
-  auto* processor =
-      new detail::FanoutChannelProcessor<ValueType>(std::move(executor));
+    folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+    ContextType context) {
+  auto* processor = new detail::FanoutChannelProcessor<ValueType, ContextType>(
+      std::move(executor), std::move(context));
   processor->start(std::move(inputReceiver));
-  return FanoutChannel<ValueType>(processor);
+  return FanoutChannel<ValueType, ContextType>(processor);
 }
 } // namespace channels
 } // namespace folly

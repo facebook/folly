@@ -60,16 +60,22 @@ class FanoutChannelFixture : public Test {
 };
 
 TEST_F(FanoutChannelFixture, ReceiveValue_FanoutBroadcastsValues) {
+  struct LatestVersion {
+    int version{-1};
+
+    void update(const int& newVersion) { version = newVersion; }
+  };
+
   auto [inputReceiver, sender] = Channel<int>::create();
-  auto fanoutChannel =
-      createFanoutChannel(std::move(inputReceiver), &executor_);
+  auto fanoutChannel = createFanoutChannel(
+      std::move(inputReceiver), &executor_, LatestVersion());
 
   EXPECT_FALSE(fanoutChannel.anySubscribers());
 
   auto [handle1, callback1] = processValues(fanoutChannel.subscribe(
-      []() { return toVector(100); } /* getInitialValues */));
+      [](const auto&) { return toVector(100); } /* getInitialValues */));
   auto [handle2, callback2] = processValues(fanoutChannel.subscribe(
-      []() { return toVector(200); } /* getInitialValues */));
+      [](const auto&) { return toVector(200); } /* getInitialValues */));
 
   EXPECT_TRUE(fanoutChannel.anySubscribers());
   EXPECT_CALL(*callback1, onValue(100));
@@ -84,10 +90,12 @@ TEST_F(FanoutChannelFixture, ReceiveValue_FanoutBroadcastsValues) {
   sender.write(2);
   executor_.drain();
 
-  auto [handle3, callback3] = processValues(fanoutChannel.subscribe(
-      []() { return toVector(300); } /* getInitialValues */));
+  auto [handle3, callback3] = processValues(
+      fanoutChannel.subscribe([](const LatestVersion& latestVersion) {
+        return toVector(latestVersion.version);
+      } /* getInitialValues */));
 
-  EXPECT_CALL(*callback3, onValue(300));
+  EXPECT_CALL(*callback3, onValue(2));
   executor_.drain();
 
   sender.write(3);
@@ -203,9 +211,9 @@ TEST_F(FanoutChannelFixture, VectorBool) {
       createFanoutChannel(std::move(inputReceiver), &executor_);
 
   auto [handle1, callback1] = processValues(fanoutChannel.subscribe(
-      [] { return toVector(true); } /* getInitialValues */));
+      [](const auto&) { return toVector(true); } /* getInitialValues */));
   auto [handle2, callback2] = processValues(fanoutChannel.subscribe(
-      [] { return toVector(false); } /* getInitialValues */));
+      [](const auto&) { return toVector(false); } /* getInitialValues */));
 
   EXPECT_CALL(*callback1, onValue(true));
   EXPECT_CALL(*callback2, onValue(false));
