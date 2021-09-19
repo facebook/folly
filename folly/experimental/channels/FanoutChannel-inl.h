@@ -19,6 +19,7 @@
 #include <folly/container/F14Set.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
+#include <folly/experimental/channels/FanoutSender.h>
 #include <folly/experimental/channels/detail/Utility.h>
 
 namespace folly {
@@ -48,7 +49,7 @@ FanoutChannel<ValueType>& FanoutChannel<ValueType>::operator=(
 template <typename ValueType>
 FanoutChannel<ValueType>::~FanoutChannel() {
   if (processor_ != nullptr) {
-    std::move(*this).close(std::nullopt /* ex */);
+    std::move(*this).close(folly::exception_wrapper());
   }
 }
 
@@ -60,7 +61,7 @@ FanoutChannel<ValueType>::operator bool() const {
 template <typename ValueType>
 Receiver<ValueType> FanoutChannel<ValueType>::getNewReceiver(
     folly::Function<std::vector<ValueType>()> getInitialValues) {
-  return processor_->newReceiver(std::move(getInitialValues));
+  return processor_->getNewReceiver(std::move(getInitialValues));
 }
 
 template <typename ValueType>
@@ -69,11 +70,9 @@ bool FanoutChannel<ValueType>::anyReceivers() {
 }
 
 template <typename ValueType>
-void FanoutChannel<ValueType>::close(
-    std::optional<folly::exception_wrapper> ex) && {
+void FanoutChannel<ValueType>::close(folly::exception_wrapper ex) && {
   processor_->destroyHandle(
-      ex.has_value() ? detail::CloseResult(std::move(ex.value()))
-                     : detail::CloseResult());
+      ex ? detail::CloseResult(std::move(ex)) : detail::CloseResult());
   processor_ = nullptr;
 }
 
@@ -82,7 +81,7 @@ namespace detail {
 template <typename ValueType>
 class IFanoutChannelProcessor : public IChannelCallback {
  public:
-  virtual Receiver<ValueType> newReceiver(
+  virtual Receiver<ValueType> getNewReceiver(
       folly::Function<std::vector<ValueType>()> getInitialValues) = 0;
 
   virtual bool anySenders() = 0;
@@ -94,34 +93,40 @@ class IFanoutChannelProcessor : public IChannelCallback {
  * This object fans out values from the input receiver to all output receivers.
  * The lifetime of this object is described by the following state machine.
  *
- * The input receiver and all active senders can be in one of three conceptual
- * states: Active, CancellationTriggered, or CancellationProcessed (removed).
- * When the input receiver and all senders reach the CancellationProcessed state
- * AND the user's FanoutChannel object is deleted, this object is deleted.
- *
- * When a sender receives a value indicating that the channel has been closed,
- * the state of that sender transitions from Active directly to
- * CancellationProcessed and the sender is removed.
+ * The input receiver can be in one of three conceptual states: Active,
+ * CancellationTriggered, or CancellationProcessed (removed). When the input
+ * receiver reaches the CancellationProcessed state AND the user's FanoutChannel
+ * object is deleted, this object is deleted.
  *
  * When an input receiver receives a value indicating that the channel has
  * been closed, the state of the input receiver transitions from Active directly
- * to CancellationProcessed, and the state of all remaining senders transitions
- * from Active to CancellationTriggered. Once we receive callbacks for all
- * senders indicating that the cancellation signal has been received, each such
- * sender is transitioned to the CancellationProcessed state (and this object
- * will be deleted once the user destroys their FanoutChannel object).
+ * to CancellationProcessed (and this object will be deleted once the user
+ * destroys their FanoutChannel object).
  *
  * When the user destroys their FanoutChannel object, the state of the input
- * receiver and all senders transitions from Active to  CancellationTriggered.
- * This object will then be deleted once the input receiver and each remaining
- * input receiver transitions to the CancellationProcessed state.
+ * receiver transitions from Active to CancellationTriggered. This object will
+ * then be deleted once the input receiver transitions to the
+ * CancellationProcessed state.
  */
 template <typename ValueType>
 class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
+ private:
+  struct State {
+    ChannelState getReceiverState() {
+      return detail::getReceiverState(receiver.get());
+    }
+
+    ChannelBridgePtr<ValueType> receiver;
+    FanoutSender<ValueType> fanoutSender;
+    bool handleDeleted{false};
+  };
+
+  using WLockedStatePtr = typename folly::Synchronized<State>::WLockedPtr;
+
  public:
   explicit FanoutChannelProcessor(
       folly::Executor::KeepAlive<folly::SequencedExecutor> executor)
-      : executor_(std::move(executor)), numSendersPlusHandle_(1) {}
+      : executor_(std::move(executor)) {}
 
   /**
    * Starts fanning out values from the input receiver to all output receivers.
@@ -129,14 +134,13 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * @param inputReceiver: The input receiver to fan out values from.
    */
   void start(Receiver<ValueType> inputReceiver) {
-    executor_->add([=, inputReceiver = std::move(inputReceiver)]() mutable {
-      auto [unbufferedInputReceiver, buffer] =
-          detail::receiverUnbuffer(std::move(inputReceiver));
-      receiver_ = std::move(unbufferedInputReceiver);
+    auto state = state_.wlock();
+    auto [unbufferedInputReceiver, buffer] =
+        detail::receiverUnbuffer(std::move(inputReceiver));
+    state->receiver = std::move(unbufferedInputReceiver);
 
-      // Start processing new values that come in from the input receiver.
-      processAllAvailableValues(std::move(buffer));
-    });
+    // Start processing new values that come in from the input receiver.
+    processAllAvailableValues(state, std::move(buffer));
   }
 
   /**
@@ -145,31 +149,20 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * to determine the set of initial values that will (only) go to the new input
    * receiver.
    */
-  Receiver<ValueType> newReceiver(
+  Receiver<ValueType> getNewReceiver(
       folly::Function<std::vector<ValueType>()> getInitialValues) override {
-    numSendersPlusHandle_++;
-    auto [receiver, sender] = Channel<ValueType>::create();
-    executor_->add([=,
-                    sender = std::move(senderGetBridge(sender)),
-                    getInitialValues = std::move(getInitialValues)]() mutable {
-      if (getInitialValues) {
-        auto initialValues = getInitialValues();
-        // use auto&& to deal with the annoying std::vector<bool>, for which
-        // auto& will not compile because std::vector<bool>::iterator::operator*
-        // returns a temporary for many implementations
-        for (auto&& value : initialValues) {
-          sender->senderPush(std::move(value));
-        }
+    auto state = state_.wlock();
+    auto initialValues =
+        getInitialValues ? getInitialValues() : std::vector<ValueType>();
+    if (!state->receiver) {
+      auto [receiver, sender] = Channel<ValueType>::create();
+      for (auto&& value : initialValues) {
+        sender.write(std::move(value));
       }
-      if (getReceiverState() != ChannelState::Active ||
-          !sender->senderWait(this)) {
-        sender->senderClose();
-        numSendersPlusHandle_--;
-      } else {
-        senders_.insert(std::move(sender));
-      }
-    });
-    return std::move(receiver);
+      std::move(sender).close();
+      return std::move(receiver);
+    }
+    return state->fanoutSender.subscribe(std::move(initialValues));
   }
 
   /**
@@ -177,69 +170,38 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    */
   void destroyHandle(CloseResult closeResult) {
     executor_->add([=, closeResult = std::move(closeResult)]() mutable {
-      processHandleDestroyed(std::move(closeResult));
+      auto state = state_.wlock();
+      processHandleDestroyed(state, std::move(closeResult));
     });
   }
 
   /**
    * Returns whether this fanout channel has any output receivers.
    */
-  bool anySenders() override { return numSendersPlusHandle_ > 1; }
-
-  ChannelState getReceiverState() {
-    return detail::getReceiverState(receiver_.get());
-  }
-
-  ChannelState getSenderState(ChannelBridge<ValueType>* sender) {
-    return detail::getSenderState(sender);
+  bool anySenders() override {
+    return state_.wlock()->fanoutSender.anyReceivers();
   }
 
  private:
-  bool isClosed() {
-    if (!receiver_) {
-      CHECK(!anySenders());
-      return true;
-    } else {
-      return false;
-    }
-  }
-
   /**
    * Called when one of the channels we are listening to has an update (either
    * a value from the input receiver or a cancellation from an output receiver).
    */
-  void consume(ChannelBridgeBase* bridge) override {
+  void consume(ChannelBridgeBase*) override {
     executor_->add([=]() {
-      if (receiver_.get() == bridge) {
-        // One or more values are now available from the input receiver.
-        CHECK_NE(getReceiverState(), ChannelState::CancellationProcessed);
-        processAllAvailableValues();
-      } else {
-        // The consumer of an output receiver has stopped consuming.
-        auto* sender = static_cast<ChannelBridge<ValueType>*>(bridge);
-        CHECK_NE(getSenderState(sender), ChannelState::CancellationProcessed);
-        sender->senderClose();
-        processSenderCancelled(sender);
-      }
+      // One or more values are now available from the input receiver.
+      auto state = state_.wlock();
+      CHECK_NE(state->getReceiverState(), ChannelState::CancellationProcessed);
+      processAllAvailableValues(state);
     });
   }
 
-  void canceled(ChannelBridgeBase* bridge) override {
+  void canceled(ChannelBridgeBase*) override {
     executor_->add([=]() {
-      if (receiver_.get() == bridge) {
-        // We previously cancelled this input receiver, either because the
-        // consumer of the output receiver stopped consuming or because of the
-        // destruction of the user's FanoutChannel object. Process the
-        // cancellation for this input receiver.
-        processReceiverCancelled(CloseResult());
-      } else {
-        // We previously cancelled the sender due to the closure of the input
-        // receiver or the destruction of the user's FanoutChannel object.
-        // Process the cancellation for the sender.
-        auto* sender = static_cast<ChannelBridge<ValueType>*>(bridge);
-        CHECK_EQ(getSenderState(sender), ChannelState::CancellationTriggered);
-        processSenderCancelled(sender);
-      }
+      // We previously cancelled this input receiver, due to the destruction of
+      // the handle. Process the cancellation for this input receiver.
+      auto state = state_.wlock();
+      processReceiverCancelled(state, CloseResult());
     });
   }
 
@@ -252,26 +214,27 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * will process cancellation for the input receiver.
    */
   void processAllAvailableValues(
+      WLockedStatePtr& state,
       std::optional<ReceiverQueue<ValueType>> buffer = std::nullopt) {
-    auto closeResult = receiver_->isReceiverCancelled()
+    auto closeResult = state->receiver->isReceiverCancelled()
         ? CloseResult()
-        : (buffer.has_value() ? processValues(std::move(buffer.value()))
+        : (buffer.has_value() ? processValues(state, std::move(buffer.value()))
                               : std::nullopt);
     while (!closeResult.has_value()) {
-      if (receiver_->receiverWait(this)) {
+      if (state->receiver->receiverWait(this)) {
         // There are no more values available right now. We will stop processing
         // until the channel fires the consume() callback (indicating that more
         // values are available).
         break;
       }
-      auto values = receiver_->receiverGetValues();
+      auto values = state->receiver->receiverGetValues();
       CHECK(!values.empty());
-      closeResult = processValues(std::move(values));
+      closeResult = processValues(state, std::move(values));
     }
     if (closeResult.has_value()) {
       // The receiver received a value indicating channel closure.
-      receiver_->receiverCancel();
-      processReceiverCancelled(std::move(closeResult.value()));
+      state->receiver->receiverCancel();
+      processReceiverCancelled(state, std::move(closeResult.value()));
     }
   }
 
@@ -280,16 +243,15 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * CloseResult if channel was closed, so the caller can stop attempting to
    * process values from it.
    */
-  std::optional<CloseResult> processValues(ReceiverQueue<ValueType> values) {
+  std::optional<CloseResult> processValues(
+      WLockedStatePtr& state, ReceiverQueue<ValueType> values) {
     while (!values.empty()) {
       auto inputResult = std::move(values.front());
       values.pop();
       if (inputResult.hasValue()) {
         // We have received a normal value from the input receiver. Write it to
         // all output senders.
-        for (auto& sender : senders_) {
-          sender->senderPush(inputResult.value());
-        }
+        state->fanoutSender.write(std::move(inputResult.value()));
       } else {
         // The input receiver was closed.
         return inputResult.hasException()
@@ -304,28 +266,15 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * Processes the cancellation of the input receiver. We will close all senders
    * with the exception received from the input receiver (if any).
    */
-  void processReceiverCancelled(CloseResult closeResult) {
-    CHECK_EQ(getReceiverState(), ChannelState::CancellationTriggered);
-    receiver_ = nullptr;
-    for (auto& sender : senders_) {
-      if (closeResult.exception.has_value()) {
-        sender->senderClose(closeResult.exception.value());
-      } else {
-        sender->senderClose();
-      }
-    }
-    maybeDelete();
-  }
-
-  /**
-   * Processes the cancellation of a sender (indicating that the consumer of
-   * the corresponding output receiver has stopped consuming).
-   */
-  void processSenderCancelled(ChannelBridge<ValueType>* sender) {
-    CHECK_EQ(getSenderState(sender), ChannelState::CancellationTriggered);
-    senders_.erase(sender);
-    numSendersPlusHandle_--;
-    maybeDelete();
+  void processReceiverCancelled(
+      WLockedStatePtr& state, CloseResult closeResult) {
+    CHECK_EQ(state->getReceiverState(), ChannelState::CancellationTriggered);
+    state->receiver = nullptr;
+    std::move(state->fanoutSender)
+        .close(
+            closeResult.exception.has_value() ? closeResult.exception.value()
+                                              : folly::exception_wrapper());
+    maybeDelete(state);
   }
 
   /**
@@ -333,20 +282,16 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * cancel the receiver and trigger cancellation for all senders not already
    * cancelled.
    */
-  void processHandleDestroyed(CloseResult closeResult) {
-    CHECK_GT(numSendersPlusHandle_, 0);
-    numSendersPlusHandle_--;
-    if (getReceiverState() == ChannelState::Active) {
-      receiver_->receiverCancel();
+  void processHandleDestroyed(WLockedStatePtr& state, CloseResult closeResult) {
+    state->handleDeleted = true;
+    if (state->getReceiverState() == ChannelState::Active) {
+      state->receiver->receiverCancel();
     }
-    for (auto& sender : senders_) {
-      if (closeResult.exception.has_value()) {
-        sender->senderClose(closeResult.exception.value());
-      } else {
-        sender->senderClose();
-      }
-    }
-    maybeDelete();
+    std::move(state->fanoutSender)
+        .close(
+            closeResult.exception.has_value() ? closeResult.exception.value()
+                                              : folly::exception_wrapper());
+    maybeDelete(state);
   }
 
   /**
@@ -354,27 +299,22 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
    * receiver and all senders, and if the user's FanoutChannel object was
    * destroyed.
    */
-  void maybeDelete() {
-    if (getReceiverState() == ChannelState::CancellationProcessed &&
-        numSendersPlusHandle_ == 0) {
+  void maybeDelete(WLockedStatePtr& state) {
+    if (state->getReceiverState() == ChannelState::CancellationProcessed &&
+        state->handleDeleted) {
+      state.unlock();
       delete this;
     }
   }
 
-  ChannelBridgePtr<ValueType> receiver_;
   folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
-  folly::F14FastSet<
-      ChannelBridgePtr<ValueType>,
-      ChannelBridgeHash<ValueType>,
-      ChannelBridgeEqual<ValueType>>
-      senders_;
-  std::atomic<size_t> numSendersPlusHandle_;
+  folly::Synchronized<State> state_;
 };
 } // namespace detail
 
-template <typename ReceiverType, typename ValueType>
+template <typename TReceiver, typename ValueType>
 FanoutChannel<ValueType> createFanoutChannel(
-    ReceiverType inputReceiver,
+    TReceiver inputReceiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor) {
   auto* processor =
       new detail::FanoutChannelProcessor<ValueType>(std::move(executor));

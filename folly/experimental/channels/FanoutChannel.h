@@ -28,7 +28,7 @@ class IFanoutChannelProcessor;
 }
 
 /**
- * A fanout channel allows one to fan out updates from a single input receiver
+ * A fanout channel allows fanning out updates from a single input receiver
  * to multiple output receivers.
  *
  * When a new output receiver is added, an optional function will be run that
@@ -37,17 +37,16 @@ class IFanoutChannelProcessor;
  *
  * Example:
  *
- *  // Function that returns a receiver:
- *  Receiver<int> getInpuReceiverType();
+ *   // Function that returns a receiver:
+ *   Receiver<int> getInputReceiver();
  *
- *  // Function that returns an executor
- *  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
+ *   // Function that returns an executor
+ *   folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
  *
- *  auto fanoutChannel = createFanoutChannel(geReceiverType(), getExecutor());
- *  auto receiver1 = fanoutChannel.newReceiver();
- *  auto receiver2 = fanoutChannel.newReceiver();
- *  auto receiver3 = fanoutChannel.newReceiver([]{ return {1, 2, 3}; });
- *  std::move(fanoutChannel).close();
+ *   auto fanoutChannel = createFanoutChannel(getReceiver(), getExecutor());
+ *   auto receiver1 = fanoutChannel.newReceiver();
+ *   auto receiver2 = fanoutChannel.newReceiver();
+ *   auto receiver3 = fanoutChannel.newReceiver([]{ return {1, 2, 3}; });
  */
 template <typename ValueType>
 class FanoutChannel {
@@ -66,9 +65,12 @@ class FanoutChannel {
 
   /**
    * Returns a new output receiver that will receive all values from the input
-   * receiver. If a getInitialValues parameter is provided, it will be executed
-   * to determine the set of initial values that will (only) go to the new input
    * receiver.
+   *
+   * If a getInitialValues parameter is provided, it will be executed
+   * to determine the set of initial values that will (only) go to the new input
+   * receiver. Other functions on this class should not be called from within
+   * getInitialValues, or a deadlock will occur.
    */
   Receiver<ValueType> getNewReceiver(
       folly::Function<std::vector<ValueType>()> getInitialValues = {});
@@ -81,7 +83,7 @@ class FanoutChannel {
   /**
    * Closes the fanout channel.
    */
-  void close(std::optional<folly::exception_wrapper> ex = std::nullopt) &&;
+  void close(folly::exception_wrapper ex = folly::exception_wrapper()) &&;
 
  private:
   TProcessor* processor_;

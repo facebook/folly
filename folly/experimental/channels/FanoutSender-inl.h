@@ -46,7 +46,7 @@ Receiver<ValueType> FanoutSender<ValueType>::subscribe(
     std::vector<ValueType> initialValues) {
   clearSendersWithClosedReceivers();
   auto [newReceiver, newSender] = Channel<ValueType>::create();
-  for (auto& initialValue : initialValues) {
+  for (auto&& initialValue : initialValues) {
     newSender.write(std::move(initialValue));
   }
   if (!anyReceivers()) {
