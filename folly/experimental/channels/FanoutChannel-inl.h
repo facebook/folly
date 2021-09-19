@@ -24,16 +24,16 @@
 namespace folly {
 namespace channels {
 
-template <typename TValue>
-FanoutChannel<TValue>::FanoutChannel(TProcessor* processor)
+template <typename ValueType>
+FanoutChannel<ValueType>::FanoutChannel(TProcessor* processor)
     : processor_(processor) {}
 
-template <typename TValue>
-FanoutChannel<TValue>::FanoutChannel(FanoutChannel&& other) noexcept
+template <typename ValueType>
+FanoutChannel<ValueType>::FanoutChannel(FanoutChannel&& other) noexcept
     : processor_(std::exchange(other.processor_, nullptr)) {}
 
-template <typename TValue>
-FanoutChannel<TValue>& FanoutChannel<TValue>::operator=(
+template <typename ValueType>
+FanoutChannel<ValueType>& FanoutChannel<ValueType>::operator=(
     FanoutChannel&& other) noexcept {
   if (&other == this) {
     return *this;
@@ -45,31 +45,31 @@ FanoutChannel<TValue>& FanoutChannel<TValue>::operator=(
   return *this;
 }
 
-template <typename TValue>
-FanoutChannel<TValue>::~FanoutChannel() {
+template <typename ValueType>
+FanoutChannel<ValueType>::~FanoutChannel() {
   if (processor_ != nullptr) {
     std::move(*this).close(std::nullopt /* ex */);
   }
 }
 
-template <typename TValue>
-FanoutChannel<TValue>::operator bool() const {
+template <typename ValueType>
+FanoutChannel<ValueType>::operator bool() const {
   return processor_ != nullptr;
 }
 
-template <typename TValue>
-Receiver<TValue> FanoutChannel<TValue>::getNewReceiver(
-    folly::Function<std::vector<TValue>()> getInitialValues) {
+template <typename ValueType>
+Receiver<ValueType> FanoutChannel<ValueType>::getNewReceiver(
+    folly::Function<std::vector<ValueType>()> getInitialValues) {
   return processor_->newReceiver(std::move(getInitialValues));
 }
 
-template <typename TValue>
-bool FanoutChannel<TValue>::anyReceivers() {
+template <typename ValueType>
+bool FanoutChannel<ValueType>::anyReceivers() {
   return processor_->anySenders();
 }
 
-template <typename TValue>
-void FanoutChannel<TValue>::close(
+template <typename ValueType>
+void FanoutChannel<ValueType>::close(
     std::optional<folly::exception_wrapper> ex) && {
   processor_->destroyHandle(
       ex.has_value() ? detail::CloseResult(std::move(ex.value()))
@@ -79,11 +79,11 @@ void FanoutChannel<TValue>::close(
 
 namespace detail {
 
-template <typename TValue>
+template <typename ValueType>
 class IFanoutChannelProcessor : public IChannelCallback {
  public:
-  virtual Receiver<TValue> newReceiver(
-      folly::Function<std::vector<TValue>()> getInitialValues) = 0;
+  virtual Receiver<ValueType> newReceiver(
+      folly::Function<std::vector<ValueType>()> getInitialValues) = 0;
 
   virtual bool anySenders() = 0;
 
@@ -116,8 +116,8 @@ class IFanoutChannelProcessor : public IChannelCallback {
  * This object will then be deleted once the input receiver and each remaining
  * input receiver transitions to the CancellationProcessed state.
  */
-template <typename TValue>
-class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
+template <typename ValueType>
+class FanoutChannelProcessor : public IFanoutChannelProcessor<ValueType> {
  public:
   explicit FanoutChannelProcessor(
       folly::Executor::KeepAlive<folly::SequencedExecutor> executor)
@@ -128,7 +128,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
    *
    * @param inputReceiver: The input receiver to fan out values from.
    */
-  void start(Receiver<TValue> inputReceiver) {
+  void start(Receiver<ValueType> inputReceiver) {
     executor_->add([=, inputReceiver = std::move(inputReceiver)]() mutable {
       auto [unbufferedInputReceiver, buffer] =
           detail::receiverUnbuffer(std::move(inputReceiver));
@@ -145,10 +145,10 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
    * to determine the set of initial values that will (only) go to the new input
    * receiver.
    */
-  Receiver<TValue> newReceiver(
-      folly::Function<std::vector<TValue>()> getInitialValues) override {
+  Receiver<ValueType> newReceiver(
+      folly::Function<std::vector<ValueType>()> getInitialValues) override {
     numSendersPlusHandle_++;
-    auto [receiver, sender] = Channel<TValue>::create();
+    auto [receiver, sender] = Channel<ValueType>::create();
     executor_->add([=,
                     sender = std::move(senderGetBridge(sender)),
                     getInitialValues = std::move(getInitialValues)]() mutable {
@@ -190,7 +190,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
     return detail::getReceiverState(receiver_.get());
   }
 
-  ChannelState getSenderState(ChannelBridge<TValue>* sender) {
+  ChannelState getSenderState(ChannelBridge<ValueType>* sender) {
     return detail::getSenderState(sender);
   }
 
@@ -216,7 +216,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
         processAllAvailableValues();
       } else {
         // The consumer of an output receiver has stopped consuming.
-        auto* sender = static_cast<ChannelBridge<TValue>*>(bridge);
+        auto* sender = static_cast<ChannelBridge<ValueType>*>(bridge);
         CHECK_NE(getSenderState(sender), ChannelState::CancellationProcessed);
         sender->senderClose();
         processSenderCancelled(sender);
@@ -236,7 +236,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
         // We previously cancelled the sender due to the closure of the input
         // receiver or the destruction of the user's FanoutChannel object.
         // Process the cancellation for the sender.
-        auto* sender = static_cast<ChannelBridge<TValue>*>(bridge);
+        auto* sender = static_cast<ChannelBridge<ValueType>*>(bridge);
         CHECK_EQ(getSenderState(sender), ChannelState::CancellationTriggered);
         processSenderCancelled(sender);
       }
@@ -252,7 +252,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
    * will process cancellation for the input receiver.
    */
   void processAllAvailableValues(
-      std::optional<ReceiverQueue<TValue>> buffer = std::nullopt) {
+      std::optional<ReceiverQueue<ValueType>> buffer = std::nullopt) {
     auto closeResult = receiver_->isReceiverCancelled()
         ? CloseResult()
         : (buffer.has_value() ? processValues(std::move(buffer.value()))
@@ -280,7 +280,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
    * CloseResult if channel was closed, so the caller can stop attempting to
    * process values from it.
    */
-  std::optional<CloseResult> processValues(ReceiverQueue<TValue> values) {
+  std::optional<CloseResult> processValues(ReceiverQueue<ValueType> values) {
     while (!values.empty()) {
       auto inputResult = std::move(values.front());
       values.pop();
@@ -321,7 +321,7 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
    * Processes the cancellation of a sender (indicating that the consumer of
    * the corresponding output receiver has stopped consuming).
    */
-  void processSenderCancelled(ChannelBridge<TValue>* sender) {
+  void processSenderCancelled(ChannelBridge<ValueType>* sender) {
     CHECK_EQ(getSenderState(sender), ChannelState::CancellationTriggered);
     senders_.erase(sender);
     numSendersPlusHandle_--;
@@ -361,25 +361,25 @@ class FanoutChannelProcessor : public IFanoutChannelProcessor<TValue> {
     }
   }
 
-  ChannelBridgePtr<TValue> receiver_;
+  ChannelBridgePtr<ValueType> receiver_;
   folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
   folly::F14FastSet<
-      ChannelBridgePtr<TValue>,
-      ChannelBridgeHash<TValue>,
-      ChannelBridgeEqual<TValue>>
+      ChannelBridgePtr<ValueType>,
+      ChannelBridgeHash<ValueType>,
+      ChannelBridgeEqual<ValueType>>
       senders_;
   std::atomic<size_t> numSendersPlusHandle_;
 };
 } // namespace detail
 
-template <typename TReceiver, typename TValue>
-FanoutChannel<TValue> createFanoutChannel(
-    TReceiver inputReceiver,
+template <typename ReceiverType, typename ValueType>
+FanoutChannel<ValueType> createFanoutChannel(
+    ReceiverType inputReceiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor) {
   auto* processor =
-      new detail::FanoutChannelProcessor<TValue>(std::move(executor));
+      new detail::FanoutChannelProcessor<ValueType>(std::move(executor));
   processor->start(std::move(inputReceiver));
-  return FanoutChannel<TValue>(processor);
+  return FanoutChannel<ValueType>(processor);
 }
 } // namespace channels
 } // namespace folly

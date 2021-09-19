@@ -23,7 +23,7 @@ namespace folly {
 namespace channels {
 
 namespace detail {
-template <typename TValue>
+template <typename ValueType>
 class IFanoutChannelProcessor;
 }
 
@@ -38,20 +38,20 @@ class IFanoutChannelProcessor;
  * Example:
  *
  *  // Function that returns a receiver:
- *  Receiver<int> getInputReceiver();
+ *  Receiver<int> getInpuReceiverType();
  *
  *  // Function that returns an executor
  *  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
  *
- *  auto fanoutChannel = createFanoutChannel(getReceiver(), getExecutor());
+ *  auto fanoutChannel = createFanoutChannel(geReceiverType(), getExecutor());
  *  auto receiver1 = fanoutChannel.newReceiver();
  *  auto receiver2 = fanoutChannel.newReceiver();
  *  auto receiver3 = fanoutChannel.newReceiver([]{ return {1, 2, 3}; });
  *  std::move(fanoutChannel).close();
  */
-template <typename TValue>
+template <typename ValueType>
 class FanoutChannel {
-  using TProcessor = detail::IFanoutChannelProcessor<TValue>;
+  using TProcessor = detail::IFanoutChannelProcessor<ValueType>;
 
  public:
   explicit FanoutChannel(TProcessor* processor);
@@ -70,8 +70,8 @@ class FanoutChannel {
    * to determine the set of initial values that will (only) go to the new input
    * receiver.
    */
-  Receiver<TValue> getNewReceiver(
-      folly::Function<std::vector<TValue>()> getInitialValues = {});
+  Receiver<ValueType> getNewReceiver(
+      folly::Function<std::vector<ValueType>()> getInitialValues = {});
 
   /**
    * Returns whether this fanout channel has any output receivers.
@@ -90,9 +90,11 @@ class FanoutChannel {
 /**
  * Creates a new fanout channel that fans out updates from an input receiver.
  */
-template <typename TReceiver, typename TValue = typename TReceiver::ValueType>
-FanoutChannel<TValue> createFanoutChannel(
-    TReceiver inputReceiver,
+template <
+    typename ReceiverType,
+    typename ValueType = typename ReceiverType::ValueType>
+FanoutChannel<ValueType> createFanoutChannel(
+    ReceiverType inputReceiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor);
 } // namespace channels
 } // namespace folly
