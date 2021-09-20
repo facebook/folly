@@ -22,6 +22,7 @@
 #include <folly/experimental/observer/detail/Core.h>
 #include <folly/experimental/observer/detail/GraphCycleDetector.h>
 #include <folly/fibers/FiberManager.h>
+#include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
 #include <folly/synchronization/SanitizeThread.h>
 
@@ -125,11 +126,12 @@ class ObserverManager {
 
     static bool isActive() { return currentDependencies_; }
 
-    static void withDependencyRecordingDisabled(folly::FunctionRef<void()> f) {
+    template <typename F>
+    static invoke_result_t<F> withDependencyRecordingDisabled(F f) {
       auto* const dependencies = std::exchange(currentDependencies_, nullptr);
       SCOPE_EXIT { currentDependencies_ = dependencies; };
 
-      f();
+      return f();
     }
 
     static void markDependency(Core::Ptr dependency) {
