@@ -608,8 +608,13 @@ void RequestContext::clearContextData(const RequestToken& val) {
   return prevCtx;
 }
 
-RequestContext::StaticContext& RequestContext::getStaticContext() {
+/* static */ RequestContext::StaticContext& RequestContext::getStaticContext() {
   return StaticContextThreadLocal::get();
+}
+
+/* static */ RequestContext::StaticContext*
+RequestContext::tryGetStaticContext() {
+  return StaticContextThreadLocal::try_get();
 }
 
 /* static */ RequestContext::StaticContextAccessor
@@ -641,7 +646,7 @@ RequestContext::setShallowCopyContext() {
   return child;
 }
 
-RequestContext* RequestContext::get() {
+/* static */ RequestContext* RequestContext::get() {
   auto& context = getStaticContext().requestContext;
   if (!context) {
     static RequestContext defaultContext(0);
@@ -649,4 +654,12 @@ RequestContext* RequestContext::get() {
   }
   return context.get();
 }
+
+/* static */ RequestContext* RequestContext::try_get() {
+  if (auto* staticContext = tryGetStaticContext()) {
+    return staticContext->requestContext.get();
+  }
+  return nullptr;
+}
+
 } // namespace folly
