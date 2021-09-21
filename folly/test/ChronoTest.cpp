@@ -21,6 +21,16 @@
 using namespace std::chrono;
 using namespace folly::chrono;
 
+static_assert( //
+    std::is_same_v<
+        steady_clock::time_point::duration,
+        coarse_steady_clock::time_point::duration>);
+
+static_assert( //
+    std::is_same_v<
+        system_clock::time_point::duration,
+        coarse_system_clock::time_point::duration>);
+
 namespace {
 
 class ChronoTest : public testing::Test {};

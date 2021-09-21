@@ -176,7 +176,7 @@ namespace folly {
 namespace chrono {
 
 struct coarse_steady_clock {
-  using duration = std::chrono::milliseconds;
+  using duration = std::chrono::steady_clock::duration;
   using rep = duration::rep;
   using period = duration::period;
   using time_point = std::chrono::time_point<coarse_steady_clock>;
@@ -200,7 +200,7 @@ struct coarse_steady_clock {
 };
 
 struct coarse_system_clock {
-  using duration = std::chrono::milliseconds;
+  using duration = std::chrono::system_clock::duration;
   using rep = duration::rep;
   using period = duration::period;
   using time_point = std::chrono::time_point<coarse_system_clock>;
