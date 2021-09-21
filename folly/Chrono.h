@@ -175,7 +175,43 @@ constexpr std::chrono::time_point<Clock, To> round(
 namespace folly {
 namespace chrono {
 
+//  steady_clock_spec
+//
+//  All clocks with this spec share epoch and tick rate.
+struct steady_clock_spec {};
+
+//  system_clock_spec
+//
+//  All clocks with this spec share epoch and tick rate.
+struct system_clock_spec {};
+
+//  clock_traits
+//
+//  Detects and reexports per-clock traits.
+//
+//  Specializable for clocks for which trait detection fails..
+template <typename Clock>
+struct clock_traits {
+ private:
+  template <typename C>
+  using detect_spec_ = typename C::folly_spec;
+
+ public:
+  using spec = detected_or_t<void, detect_spec_, Clock>;
+};
+
+template <>
+struct clock_traits<std::chrono::steady_clock> {
+  using spec = steady_clock_spec;
+};
+template <>
+struct clock_traits<std::chrono::system_clock> {
+  using spec = system_clock_spec;
+};
+
 struct coarse_steady_clock {
+  using folly_spec = steady_clock_spec;
+
   using duration = std::chrono::steady_clock::duration;
   using rep = duration::rep;
   using period = duration::period;
@@ -200,6 +236,8 @@ struct coarse_steady_clock {
 };
 
 struct coarse_system_clock {
+  using folly_spec = system_clock_spec;
+
   using duration = std::chrono::system_clock::duration;
   using rep = duration::rep;
   using period = duration::period;
