@@ -171,7 +171,7 @@ void LogCategory::setPropagateLevelMessagesToParent(LogLevel level) {
   propagateLevelMessagesToParent_.store(level, std::memory_order_relaxed);
 }
 
-LogLevel LogCategory::getPropagateLevelMessagesToParentRelaxed() {
+LogLevel LogCategory::getPropagateLevelMessagesToParentRelaxed() const {
   return propagateLevelMessagesToParent_.load(std::memory_order_relaxed);
 }
 
