@@ -36,6 +36,7 @@
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/MockAsyncSocketObserver.h>
 #include <folly/io/async/test/MockAsyncTransportObserver.h>
+#include <folly/io/async/test/TFOTest.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
 #include <folly/portability/GMock.h>
@@ -2599,6 +2600,10 @@ TEST(AsyncSocketTest, BufferCallbackKill) {
 
 #if FOLLY_ALLOW_TFO
 TEST(AsyncSocketTest, ConnectTFO) {
+  if (!folly::test::isTFOAvailable()) {
+    GTEST_SKIP() << "TFO not supported.";
+  }
+
   // Start listening on a local port
   TestServer server(true);
 
@@ -2649,6 +2654,10 @@ TEST(AsyncSocketTest, ConnectTFO) {
 }
 
 TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
+  if (!folly::test::isTFOAvailable()) {
+    GTEST_SKIP() << "TFO not supported.";
+  }
+
   // Start listening on a local port
   TestServer server(true);
 
@@ -3053,6 +3062,10 @@ TEST(AsyncSocketTest, TestTFOEagain) {
 // Sending a large amount of data in the first write which will
 // definitely not fit into MSS.
 TEST(AsyncSocketTest, ConnectTFOWithBigData) {
+  if (!folly::test::isTFOAvailable()) {
+    GTEST_SKIP() << "TFO not supported.";
+  }
+
   // Start listening on a local port
   TestServer server(true);
 

@@ -37,6 +37,7 @@
 #include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
 #include <folly/io/async/test/MockAsyncTransportObserver.h>
+#include <folly/io/async/test/TFOTest.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
@@ -2850,6 +2851,10 @@ MockAsyncTFOSSLSocket::UniquePtr setupSocketWithFallback(
 }
 
 TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFOFallback) {
+  if (!folly::test::isTFOAvailable()) {
+    GTEST_SKIP() << "TFO not supported.";
+  }
+
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   ReadCallback readCallback(&writeCallback);
