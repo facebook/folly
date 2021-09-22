@@ -553,14 +553,10 @@ int Subprocess::prepareChild(
   // as they all have the FD_CLOEXEC flag set and will be closed at
   // exec time.
 
-  // Close all fds that we're supposed to close.
-  // Redirect requested FDs to /dev/null or NUL.
+  // Redirect requested FDs to /dev/null or NUL
+  // dup2 any explicitly specified FDs
   for (auto& p : options.fdActions_) {
-    if (p.second == CLOSE) {
-      if (::close(p.first) == -1) {
-        return errno;
-      }
-    } else if (p.second == DEV_NULL) {
+    if (p.second == DEV_NULL) {
       // folly/portability/Fcntl provides an impl of open that will
       // map this to NUL on Windows.
       auto devNull = ::open("/dev/null", O_RDWR | O_CLOEXEC);

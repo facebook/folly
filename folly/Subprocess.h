@@ -253,8 +253,7 @@ class FOLLY_EXPORT SubprocessSpawnError : public SubprocessError {
  */
 class Subprocess {
  public:
-  // CLOSE is deprecated and will be removed, consider using DEV_NULL instead
-  static const int CLOSE = -1;
+  // removed CLOSE = -1
   static const int PIPE = -2;
   static const int PIPE_IN = -3;
   static const int PIPE_OUT = -4;
