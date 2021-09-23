@@ -18,6 +18,7 @@
 
 #ifdef _WIN32
 
+#include <optional>
 #include <shared_mutex>
 #include <unordered_map>
 
@@ -30,8 +31,19 @@ namespace folly {
 namespace netops {
 namespace detail {
 
-static std::unordered_map<SOCKET, int> socketMap;
-static std::shared_mutex socketMapMutex;
+namespace {
+
+struct SyncSocketMap {
+  std::unordered_map<SOCKET, int> map;
+  std::shared_mutex mutex;
+};
+
+SyncSocketMap& getSyncSocketMap() {
+  static auto& instance = *new SyncSocketMap();
+  return instance;
+}
+
+} // namespace
 
 static int closeOnlyFileDescriptor(int fd) {
   HANDLE h = (HANDLE)_get_osfhandle(fd);
@@ -79,11 +91,10 @@ static int closeOnlyFileDescriptor(int fd) {
 
 int SocketFileDescriptorMap::close(int fd) noexcept {
   auto hand = SocketFileDescriptorMap::fdToSocket(fd);
+  auto& smap = getSyncSocketMap();
   {
-    std::unique_lock<std::shared_mutex> lock{socketMapMutex};
-    if (socketMap.find(hand) != socketMap.end()) {
-      socketMap.erase(hand);
-    }
+    std::unique_lock lock{smap.mutex};
+    smap.map.erase(hand);
   }
   auto r = closeOnlyFileDescriptor(fd);
   if (r != 0) {
@@ -93,19 +104,18 @@ int SocketFileDescriptorMap::close(int fd) noexcept {
 }
 
 int SocketFileDescriptorMap::close(SOCKET sock) noexcept {
-  bool found = false;
-  int fd = 0;
+  std::optional<int> fd{};
+  auto& smap = getSyncSocketMap();
   {
-    std::unique_lock<std::shared_mutex> lock{socketMapMutex};
-    auto lookup = socketMap.find(sock);
-    found = lookup != socketMap.end();
-    if (found) {
-      fd = lookup->second;
+    std::shared_lock lock{smap.mutex};
+    auto it = smap.map.find(sock);
+    if (it != smap.map.end()) {
+      fd = it->second;
     }
   }
 
-  if (found) {
-    return SocketFileDescriptorMap::close(fd);
+  if (fd) {
+    return SocketFileDescriptorMap::close(fd.value());
   }
 
   return closesocket(sock);
@@ -124,22 +134,23 @@ int SocketFileDescriptorMap::socketToFd(SOCKET sock) noexcept {
     return -1;
   }
 
+  auto& smap = getSyncSocketMap();
   {
-    std::shared_lock<std::shared_mutex> lock{socketMapMutex};
-    auto const found = socketMap.find(sock);
-    if (found != socketMap.end()) {
-      return found->second;
+    std::shared_lock lock{smap.mutex};
+    auto const it = smap.map.find(sock);
+    if (it != smap.map.end()) {
+      return it->second;
     }
   }
 
-  std::unique_lock<std::shared_mutex> lock{socketMapMutex};
-  auto const found = socketMap.find(sock);
-  if (found != socketMap.end()) {
-    return found->second;
+  std::unique_lock lock{smap.mutex};
+  auto const it = smap.map.find(sock);
+  if (it != smap.map.end()) {
+    return it->second;
   }
 
   int fd = _open_osfhandle((intptr_t)sock, O_RDWR | O_BINARY);
-  socketMap.emplace(sock, fd);
+  smap.map.emplace(sock, fd);
   return fd;
 }
 } // namespace detail
