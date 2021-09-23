@@ -632,10 +632,14 @@ class EventBase : public TimeoutManager,
    * called when that latency is exceeded.
    * OBS: This functionality depends on time-measurement.
    */
-  void setMaxLatency(std::chrono::microseconds maxLatency, Func maxLatencyCob) {
+  void setMaxLatency(
+      std::chrono::microseconds maxLatency,
+      Func maxLatencyCob,
+      bool dampen = true) {
     assert(enableTimeMeasurement_);
     maxLatency_ = maxLatency;
     maxLatencyCob_ = std::move(maxLatencyCob);
+    dampenMaxLatency_ = dampen;
   }
 
   /**
@@ -916,6 +920,10 @@ class EventBase : public TimeoutManager,
   // avgLoopTime_ in that it's scaled down after triggering a callback
   // to reduce spamminess
   SmoothLoopTime maxLatencyLoopTime_;
+
+  // If true, max latency callbacks will use a dampened SmoothLoopTime, else
+  // they'll use the raw loop time.
+  bool dampenMaxLatency_ = true;
 
   // callback called when latency limit is exceeded
   Func maxLatencyCob_;

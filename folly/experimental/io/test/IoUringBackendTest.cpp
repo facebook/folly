@@ -1260,6 +1260,8 @@ REGISTER_TYPED_TEST_CASE_P(
     CallbackOrderTest,
     AlwaysEnqueueCallbackOrderTest,
     IdleTime,
+    MaxLatencyUndamped,
+    UnsetMaxLatencyUndamped,
     ThisLoop,
     EventBaseThreadLoop,
     EventBaseThreadName,

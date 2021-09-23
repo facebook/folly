@@ -413,13 +413,18 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
                << " notificationQueueSize: " << getNotificationQueueSize()
                << " nothingHandledYet(): " << nothingHandledYet();
 
-      // see if our average loop time has exceeded our limit
-      if ((maxLatency_ > std::chrono::microseconds::zero()) &&
-          (maxLatencyLoopTime_.get() > double(maxLatency_.count()))) {
-        maxLatencyCob_();
-        // back off temporarily -- don't keep spamming maxLatencyCob_
-        // if we're only a bit over the limit
-        maxLatencyLoopTime_.dampen(0.9);
+      if (maxLatency_ > std::chrono::microseconds::zero()) {
+        // see if our average loop time has exceeded our limit
+        if (dampenMaxLatency_ &&
+            (maxLatencyLoopTime_.get() > double(maxLatency_.count()))) {
+          maxLatencyCob_();
+          // back off temporarily -- don't keep spamming maxLatencyCob_
+          // if we're only a bit over the limit
+          maxLatencyLoopTime_.dampen(0.9);
+        } else if (!dampenMaxLatency_ && loop_time > maxLatency_) {
+          // If no damping, we compare the raw loop time
+          maxLatencyCob_();
+        }
       }
 
       // Our loop run did real work; reset the idle timer

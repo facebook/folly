@@ -1979,6 +1979,44 @@ TYPED_TEST_P(EventBaseTest, IdleTime) {
   ASSERT_EQ(21, tos->getTimeouts());
 }
 
+TYPED_TEST_P(EventBaseTest, MaxLatencyUndamped) {
+  auto eventBasePtr = getEventBase<TypeParam>();
+  folly::EventBase& eb = *eventBasePtr;
+  int maxDurationViolations = 0;
+  eb.setMaxLatency(
+      std::chrono::milliseconds{1}, [&]() { maxDurationViolations++; }, false);
+  eb.runInLoop(
+      [&]() {
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::microseconds{1001});
+        eb.terminateLoopSoon();
+      },
+      true);
+  eb.loop();
+  ASSERT_EQ(maxDurationViolations, 1);
+}
+
+TYPED_TEST_P(EventBaseTest, UnsetMaxLatencyUndamped) {
+  auto eventBasePtr = getEventBase<TypeParam>();
+  folly::EventBase& eb = *eventBasePtr;
+  int maxDurationViolations = 0;
+  eb.setMaxLatency(
+      std::chrono::milliseconds{1}, [&]() { maxDurationViolations++; }, false);
+  // Immediately unset it and make sure the counter isn't incremented. If the
+  // function gets called, this will raise an std::bad_function_call.
+  std::function<void()> bad_func = nullptr;
+  eb.setMaxLatency(std::chrono::milliseconds{0}, bad_func, false);
+  eb.runInLoop(
+      [&]() {
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::microseconds{1001});
+        eb.terminateLoopSoon();
+      },
+      true);
+  eb.loop();
+  ASSERT_EQ(maxDurationViolations, 0);
+}
+
 /**
  * Test that thisLoop functionality works with terminateLoopSoon
  */
