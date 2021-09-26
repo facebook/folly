@@ -223,7 +223,7 @@ struct List {
     hazptr_local<1, Atom> hptr;
     return protect_all(val, hptr[0]);
   }
-}; // NodeRC
+}; // List
 
 /** NodeAuto */
 template <template <typename> class Atom = std::atomic>
@@ -1288,6 +1288,8 @@ TEST(HazptrTest, reclamation_without_calling_cleanup) {
   for (auto& t : thr) {
     t.join();
   }
+  while (c_.dtors() == 0)
+    /* Wait for asynchronous reclamation. */;
   ASSERT_GT(c_.dtors(), 0);
 }
 
@@ -1445,7 +1447,7 @@ uint64_t list_hoh_bench(
 uint64_t list_protect_all_bench(
     std::string name, int nthreads, int size, bool provided = false) {
   auto repFn = [&] {
-    List<NodeRC<true>> l(size);
+    List<NodeRC<false>> l(size);
     auto init = [] {};
     auto fn = [&](int tid) {
       if (provided) {
