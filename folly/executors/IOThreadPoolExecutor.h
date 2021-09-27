@@ -102,6 +102,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   void stopThreads(size_t n) override;
   size_t getPendingTaskCountImpl() const override final;
 
+  const bool isWaitForAll_; // whether to wait till event base loop exits
   std::atomic<size_t> nextThread_;
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   folly::EventBaseManager* eventBaseManager_;

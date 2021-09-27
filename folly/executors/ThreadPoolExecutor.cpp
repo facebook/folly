@@ -48,10 +48,8 @@ DEFINE_int64(
 ThreadPoolExecutor::ThreadPoolExecutor(
     size_t /* maxThreads */,
     size_t minThreads,
-    std::shared_ptr<ThreadFactory> threadFactory,
-    bool isWaitForAll)
+    std::shared_ptr<ThreadFactory> threadFactory)
     : threadFactory_(std::move(threadFactory)),
-      isWaitForAll_(isWaitForAll),
       taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads),

@@ -69,8 +69,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   explicit ThreadPoolExecutor(
       size_t maxThreads,
       size_t minThreads,
-      std::shared_ptr<ThreadFactory> threadFactory,
-      bool isWaitForAll = false);
+      std::shared_ptr<ThreadFactory> threadFactory);
 
   ~ThreadPoolExecutor() override;
 
@@ -287,7 +286,6 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   std::shared_ptr<ThreadFactory> threadFactory_;
   std::string namePrefix_;
-  const bool isWaitForAll_; // whether to wait till event base loop exits
 
   ThreadList threadList_;
   SharedMutex threadListLock_;
