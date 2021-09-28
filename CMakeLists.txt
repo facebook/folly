@@ -849,6 +849,7 @@ if (BUILD_TESTS)
       TEST baton_test SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
       TEST lifo_sem_test SOURCES LifoSemTests.cpp
+      TEST relaxed_atomic_test SOURCES RelaxedAtomicTest.cpp
       TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
       TEST semaphore_test SOURCES SemaphoreTest.cpp
 
