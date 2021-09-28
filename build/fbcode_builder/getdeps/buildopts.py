@@ -105,6 +105,18 @@ class BuildOptions(object):
         self.lfs_path = lfs_path
         if vcvars_path is None and is_windows():
 
+            try:
+                # Allow a site-specific vcvarsall path.
+                from .facebook.vcvarsall import build_default_vcvarsall
+            except ImportError:
+                vcvarsall = []
+            else:
+                vcvarsall = (
+                    build_default_vcvarsall(self.fbsource_dir)
+                    if self.fbsource_dir is not None
+                    else []
+                )
+
             # On Windows, the compiler is not available in the PATH by
             # default so we need to run the vcvarsall script to populate the
             # environment. We use a glob to find some version of this script
@@ -113,7 +125,6 @@ class BuildOptions(object):
             # the version of boost in our manifest cannot be built with
             # VS 2019, so we're effectively tied to VS 2017 until we upgrade
             # the boost dependency.
-            vcvarsall = []
             for year in ["2017", "2019"]:
                 vcvarsall += glob.glob(
                     os.path.join(
