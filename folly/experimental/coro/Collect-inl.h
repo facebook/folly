@@ -1056,6 +1056,98 @@ auto collectAnyNoDiscard(SemiAwaitables&&... awaitables)
       static_cast<SemiAwaitables&&>(awaitables)...);
 }
 
+template <typename InputRange>
+auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
+    size_t,
+    folly::Try<detail::collect_all_range_component_t<
+        detail::range_reference_t<InputRange>>>>> {
+  const CancellationToken& parentCancelToken =
+      co_await co_current_cancellation_token;
+  const CancellationSource cancelSource;
+  const CancellationToken cancelToken =
+      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+
+  std::pair<
+      size_t,
+      folly::Try<detail::collect_all_range_component_t<
+          detail::range_reference_t<InputRange>>>>
+      firstCompletion;
+  firstCompletion.first = size_t(-1);
+
+  using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
+  auto makeTask = [&](awaitable_type semiAwaitable,
+                      size_t index) -> folly::coro::Task<void> {
+    auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
+    if (!cancelSource.requestCancellation()) {
+      // This is first entity to request cancellation.
+      firstCompletion.first = index;
+      firstCompletion.second = std::move(result);
+    }
+  };
+
+  // Create a task to await each input awaitable.
+  std::vector<folly::coro::Task<void>> tasks;
+
+  // TODO: Detect when the input range supports constant-time
+  // .size() and pre-reserve storage for that many elements in 'tasks'.
+
+  size_t taskCount = 0;
+  for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
+    tasks.push_back(makeTask(
+        static_cast<decltype(semiAwaitable)&&>(semiAwaitable), taskCount++));
+  }
+
+  co_await folly::coro::co_withCancellation(
+      cancelToken, folly::coro::collectAllRange(tasks | ranges::views::move));
+
+  if (parentCancelToken.isCancellationRequested()) {
+    co_yield co_cancelled;
+  }
+
+  co_return firstCompletion;
+}
+
+template <typename InputRange>
+auto collectAnyNoDiscardRange(InputRange awaitables)
+    -> folly::coro::Task<std::vector<detail::collect_all_try_range_component_t<
+        detail::range_reference_t<InputRange>>>> {
+  const CancellationToken& parentCancelToken =
+      co_await co_current_cancellation_token;
+  const CancellationSource cancelSource;
+  const CancellationToken cancelToken =
+      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+
+  std::vector<detail::collect_all_try_range_component_t<
+      detail::range_reference_t<InputRange>>>
+      results;
+
+  using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
+  auto makeTask = [&](awaitable_type semiAwaitable,
+                      size_t index) -> folly::coro::Task<void> {
+    auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
+    cancelSource.requestCancellation();
+    results[index] = std::move(result);
+  };
+
+  // Create a task to await each input awaitable.
+  std::vector<folly::coro::Task<void>> tasks;
+
+  // TODO: Detect when the input range supports constant-time
+  // .size() and pre-reserve storage for that many elements in 'tasks'.
+
+  size_t taskCount = 0;
+  for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
+    tasks.push_back(makeTask(
+        static_cast<decltype(semiAwaitable)&&>(semiAwaitable), taskCount++));
+  }
+
+  results.resize(taskCount);
+  co_await folly::coro::co_withCancellation(
+      cancelToken, folly::coro::collectAllRange(tasks | ranges::views::move));
+
+  co_return results;
+}
+
 } // namespace coro
 } // namespace folly
 
