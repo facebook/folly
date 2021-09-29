@@ -43,7 +43,7 @@ osxfuse
 libcurl
 
 [shipit.pathmap]
-fbcode/common/rust/shed/hostcaps = common/rust/shed/hostcaps
+fbcode/common/rust/shed = common/rust/shed
 fbcode/eden/oss = .
 fbcode/eden = eden
 fbcode/tools/lfs = tools/lfs
