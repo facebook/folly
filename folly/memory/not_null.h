@@ -94,7 +94,6 @@ class not_null_base : protected guaranteed_not_null_provider {
   /* implicit */ not_null_base(std::nullptr_t) = delete;
 
   not_null_base(const not_null_base& nn) = default;
-  not_null_base(not_null_base& nn) = default;
   not_null_base(not_null_base&& nn) = default;
 
   template <
