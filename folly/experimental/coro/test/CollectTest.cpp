@@ -49,7 +49,7 @@ TEST_F(CollectAllTest, WithNoArgs) {
     completed = true;
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAllTest, OneTaskWithValue) {
@@ -62,7 +62,7 @@ TEST_F(CollectAllTest, OneTaskWithValue) {
   bool completed = false;
   auto run = [&]() -> folly::coro::Task<void> {
     auto [result] = co_await folly::coro::collectAll(f());
-    CHECK_EQ("hello", result);
+    EXPECT_EQ("hello", result);
     completed = true;
   };
 
@@ -72,19 +72,19 @@ TEST_F(CollectAllTest, OneTaskWithValue) {
 
   executor.drain();
 
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   baton.post();
 
   // Posting the baton should have just scheduled the 'f()' coroutine
   // for resumption on the executor but should not have executed
   // until we drain the executor again.
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   executor.drain();
 
-  CHECK(completed);
-  CHECK(future.isReady());
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAllTest, OneVoidTask) {
@@ -99,7 +99,7 @@ TEST_F(CollectAllTest, OneVoidTask) {
         }());
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAllTest, CollectAllDoesntCompleteUntilAllTasksComplete) {
@@ -128,21 +128,21 @@ TEST_F(CollectAllTest, CollectAllDoesntCompleteUntilAllTasksComplete) {
 
   auto future = run().scheduleOn(&executor).start();
 
-  CHECK(!task1Started);
-  CHECK(!task2Started);
+  EXPECT_FALSE(task1Started);
+  EXPECT_FALSE(task2Started);
 
   executor.drain();
 
-  CHECK(task1Started);
-  CHECK(task2Started);
-  CHECK(!complete);
+  EXPECT_TRUE(task1Started);
+  EXPECT_TRUE(task2Started);
+  EXPECT_FALSE(complete);
   baton1.post();
   executor.drain();
-  CHECK(!complete);
+  EXPECT_FALSE(complete);
   baton2.post();
   executor.drain();
-  CHECK(complete);
-  CHECK(future.isReady());
+  EXPECT_TRUE(complete);
+  EXPECT_TRUE(future.isReady());
 }
 
 struct ErrorA : std::exception {};
@@ -184,12 +184,12 @@ TEST_F(CollectAllTest, ThrowsFirstError) {
       (void)x;
       (void)y;
       (void)z;
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorB&) {
       caughtException = true;
     }
   }());
-  CHECK(caughtException);
+  EXPECT_TRUE(caughtException);
 }
 
 TEST_F(CollectAllTest, SynchronousCompletionInLoopDoesntCauseStackOverflow) {
@@ -200,8 +200,8 @@ TEST_F(CollectAllTest, SynchronousCompletionInLoopDoesntCauseStackOverflow) {
       auto [n, s] = co_await folly::coro::collectAll(
           []() -> folly::coro::Task<int> { co_return 123; }(),
           []() -> folly::coro::Task<std::string> { co_return "abc"; }());
-      CHECK_EQ(n, 123);
-      CHECK_EQ(s, "abc");
+      EXPECT_EQ(n, 123);
+      EXPECT_EQ(s, "abc");
     }
   }());
 }
@@ -245,7 +245,7 @@ TEST_F(CollectAllTest, ParallelAccumulate) {
               return std::max(a, b);
             });
 
-        CHECK_EQ(999'989, result);
+        EXPECT_EQ(999'989, result);
       }()
                   .scheduleOn(&threadPool));
 }
@@ -269,7 +269,7 @@ TEST_F(CollectAllTest, CollectAllCancelsSubtasksWhenASubtaskFails) {
             co_await folly::coro::co_reschedule_on_current_executor;
             throw ErrorA{};
           }());
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
       (void)a;
       (void)b;
       (void)c;
@@ -277,7 +277,7 @@ TEST_F(CollectAllTest, CollectAllCancelsSubtasksWhenASubtaskFails) {
     }
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
+    EXPECT_LT(end - start, 1s);
   }());
 }
 
@@ -306,9 +306,9 @@ TEST_F(CollectAllTest, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
             }()));
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
-    CHECK_EQ(42, a);
-    CHECK_EQ(3.14f, b);
+    EXPECT_LT(end - start, 1s);
+    EXPECT_EQ(42, a);
+    EXPECT_EQ(3.14f, b);
     (void)c;
   }());
 }
@@ -324,10 +324,10 @@ TEST_F(CollectAllTest, CancellationTokenRemainsActiveAfterReturn) {
       scope.add(
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                auto token =
+                auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
-                EXPECT_TRUE(token.isCancellationRequested());
+                EXPECT_TRUE(innerToken.isCancellationRequested());
               }))
               .scheduleOn(ex));
     });
@@ -368,22 +368,22 @@ TEST_F(CollectAllTest, CollectAllKeepsRequestContextOfChildTasksIndependent) {
     auto initialContextData = getContextData();
 
     auto makeChildTask = [&]() -> folly::coro::Task<void> {
-      CHECK(getContextData() == initialContextData);
+      EXPECT_TRUE(getContextData() == initialContextData);
       folly::RequestContextScopeGuard childScope;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       setContextData();
       auto newContextData = getContextData();
-      CHECK(newContextData != nullptr);
-      CHECK(newContextData != initialContextData);
+      EXPECT_TRUE(newContextData != nullptr);
+      EXPECT_TRUE(newContextData != initialContextData);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == newContextData);
+      EXPECT_TRUE(getContextData() == newContextData);
     };
 
     co_await folly::coro::collectAll(makeChildTask(), makeChildTask());
 
-    CHECK(getContextData() == initialContextData);
+    EXPECT_TRUE(getContextData() == initialContextData);
   }());
 }
 
@@ -397,8 +397,8 @@ TEST_F(CollectAllTest, TaskWithExecutorUsage) {
                  &threadPool),
         []() -> folly::coro::Task<std::string> { co_return "coroutine"; }()
                     .scheduleOn(&threadPool));
-    CHECK(a == 42);
-    CHECK(b == "coroutine");
+    EXPECT_TRUE(a == 42);
+    EXPECT_TRUE(b == "coroutine");
   }());
 }
 
@@ -411,7 +411,7 @@ TEST_F(CollectAllTryTest, WithNoArgs) {
     completed = true;
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAllTryTest, OneTaskWithValue) {
@@ -424,7 +424,7 @@ TEST_F(CollectAllTryTest, OneTaskWithValue) {
   bool completed = false;
   auto run = [&]() -> folly::coro::Task<void> {
     auto [result] = co_await folly::coro::collectAllTry(f());
-    CHECK_EQ("hello", result.value());
+    EXPECT_EQ("hello", result.value());
     completed = true;
   };
 
@@ -434,19 +434,19 @@ TEST_F(CollectAllTryTest, OneTaskWithValue) {
 
   executor.drain();
 
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   baton.post();
 
   // Posting the baton should have just scheduled the 'f()' coroutine
   // for resumption on the executor but should not have executed
   // until we drain the executor again.
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   executor.drain();
 
-  CHECK(completed);
-  CHECK(future.isReady());
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAllTryTest, OneTaskWithError) {
@@ -458,9 +458,9 @@ TEST_F(CollectAllTryTest, OneTaskWithError) {
           }
           throw ErrorA{};
         }());
-    CHECK(!result.hasValue());
-    CHECK(result.hasException());
-    CHECK(result.exception().get_exception<ErrorA>() != nullptr);
+    EXPECT_FALSE(result.hasValue());
+    EXPECT_TRUE(result.hasException());
+    EXPECT_TRUE(result.exception().get_exception<ErrorA>() != nullptr);
   }());
 }
 
@@ -481,10 +481,10 @@ TEST_F(CollectAllTryTest, PartialFailure) {
           co_return;
         }(),
         []() -> folly::coro::Task<double> { co_return 3.1415; }());
-    CHECK(cRes.hasException());
-    CHECK(cRes.exception().get_exception<ErrorB>() != nullptr);
-    CHECK(dRes.hasValue());
-    CHECK_EQ(3.1415, dRes.value());
+    EXPECT_TRUE(cRes.hasException());
+    EXPECT_TRUE(cRes.exception().get_exception<ErrorB>() != nullptr);
+    EXPECT_TRUE(dRes.hasValue());
+    EXPECT_EQ(3.1415, dRes.value());
   }());
 }
 
@@ -499,8 +499,8 @@ TEST_F(CollectAllTryTest, CollectAllTryDoesNotCancelSubtasksWhenASubtaskFails) {
           co_await folly::coro::co_reschedule_on_current_executor;
           co_await folly::coro::co_reschedule_on_current_executor;
           co_await folly::coro::co_reschedule_on_current_executor;
-          CHECK(!(co_await folly::coro::co_current_cancellation_token)
-                     .isCancellationRequested());
+          EXPECT_FALSE((co_await folly::coro::co_current_cancellation_token)
+                           .isCancellationRequested());
           co_return 42;
         }(),
         []() -> folly::coro::Task<float> {
@@ -509,8 +509,8 @@ TEST_F(CollectAllTryTest, CollectAllTryDoesNotCancelSubtasksWhenASubtaskFails) {
           co_await folly::coro::co_reschedule_on_current_executor;
           co_await folly::coro::co_reschedule_on_current_executor;
           co_await folly::coro::co_reschedule_on_current_executor;
-          CHECK(!(co_await folly::coro::co_current_cancellation_token)
-                     .isCancellationRequested());
+          EXPECT_FALSE((co_await folly::coro::co_current_cancellation_token)
+                           .isCancellationRequested());
           co_return 3.14f;
         }(),
         []() -> folly::coro::Task<void> {
@@ -518,11 +518,11 @@ TEST_F(CollectAllTryTest, CollectAllTryDoesNotCancelSubtasksWhenASubtaskFails) {
           throw ErrorA{};
         }());
 
-    CHECK(a.hasValue());
-    CHECK_EQ(42, a.value());
-    CHECK(b.hasValue());
-    CHECK_EQ(3.14f, b.value());
-    CHECK(c.hasException());
+    EXPECT_TRUE(a.hasValue());
+    EXPECT_EQ(42, a.value());
+    EXPECT_TRUE(b.hasValue());
+    EXPECT_EQ(3.14f, b.value());
+    EXPECT_TRUE(c.hasException());
   }());
 }
 
@@ -551,10 +551,10 @@ TEST_F(CollectAllTryTest, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
             }()));
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
-    CHECK_EQ(42, a.value());
-    CHECK_EQ(3.14f, b.value());
-    CHECK(c.hasValue());
+    EXPECT_LT(end - start, 1s);
+    EXPECT_EQ(42, a.value());
+    EXPECT_EQ(3.14f, b.value());
+    EXPECT_TRUE(c.hasValue());
   }());
 }
 
@@ -569,10 +569,10 @@ TEST_F(CollectAllTryTest, CancellationTokenRemainsActiveAfterReturn) {
       scope.add(
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                auto token =
+                auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
-                EXPECT_TRUE(token.isCancellationRequested());
+                EXPECT_TRUE(innerToken.isCancellationRequested());
               }))
               .scheduleOn(ex));
     });
@@ -602,22 +602,22 @@ TEST_F(CollectAllTryTest, KeepsRequestContextOfChildTasksIndependent) {
     auto initialContextData = getContextData();
 
     auto makeChildTask = [&]() -> folly::coro::Task<void> {
-      CHECK(getContextData() == initialContextData);
+      EXPECT_TRUE(getContextData() == initialContextData);
       folly::RequestContextScopeGuard childScope;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       setContextData();
       auto newContextData = getContextData();
-      CHECK(newContextData != nullptr);
-      CHECK(newContextData != initialContextData);
+      EXPECT_TRUE(newContextData != nullptr);
+      EXPECT_TRUE(newContextData != initialContextData);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == newContextData);
+      EXPECT_TRUE(getContextData() == newContextData);
     };
 
     co_await folly::coro::collectAllTry(makeChildTask(), makeChildTask());
 
-    CHECK(getContextData() == initialContextData);
+    EXPECT_TRUE(getContextData() == initialContextData);
   }());
 }
 
@@ -650,7 +650,7 @@ TEST_F(CollectAllRangeTest, RangeOfVoidAllSucceeding) {
 
     co_await folly::coro::collectAllRange(std::move(tasks));
 
-    CHECK_EQ(3, count);
+    EXPECT_EQ(3, count);
   }());
 }
 
@@ -673,11 +673,11 @@ TEST_F(CollectAllRangeTest, RangeOfVoidSomeFailing) {
 
     try {
       co_await folly::coro::collectAllRange(std::move(tasks));
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorA&) {
     }
 
-    CHECK_EQ(5, count);
+    EXPECT_EQ(5, count);
   }());
 }
 
@@ -700,16 +700,16 @@ TEST_F(CollectAllRangeTest, RangeOfNonVoid) {
       tasks.push_back(makeTask());
     }
 
-    CHECK_EQ(0, count);
+    EXPECT_EQ(0, count);
 
     std::vector<int> results =
         co_await folly::coro::collectAllRange(std::move(tasks));
 
-    CHECK_EQ(taskCount, results.size());
-    CHECK_EQ(taskCount, count);
+    EXPECT_EQ(taskCount, results.size());
+    EXPECT_EQ(taskCount, count);
 
     for (int i = 0; i < taskCount; ++i) {
-      CHECK_EQ(i, results[i]);
+      EXPECT_EQ(i, results[i]);
     }
   }());
 }
@@ -740,13 +740,13 @@ TEST_F(CollectAllRangeTest, SubtasksCancelledWhenASubtaskFails) {
     auto start = std::chrono::steady_clock::now();
     try {
       co_await folly::coro::collectAllRange(generateTasks());
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorA&) {
     }
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
-    CHECK(consumedAllTasks);
+    EXPECT_LT(end - start, 1s);
+    EXPECT_TRUE(consumedAllTasks);
   }());
 }
 
@@ -768,7 +768,7 @@ TEST_F(CollectAllRangeTest, FailsWithErrorOfFirstTaskToFailWhenMultipleErrors) {
             }();
             co_yield folly::coro::sleep(2s);
           }());
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorB&) {
     }
   }());
@@ -795,7 +795,7 @@ TEST_F(CollectAllRangeTest, SubtasksCancelledWhenParentTaskCancelled) {
         cancelSource.requestCancellation();
 
         auto token = co_await folly::coro::co_current_cancellation_token;
-        CHECK(token.isCancellationRequested());
+        EXPECT_TRUE(token.isCancellationRequested());
       }();
 
       consumedAllTasks = true;
@@ -806,8 +806,8 @@ TEST_F(CollectAllRangeTest, SubtasksCancelledWhenParentTaskCancelled) {
         cancelSource.getToken(), folly::coro::collectAllRange(generateTasks()));
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
-    CHECK(consumedAllTasks);
+    EXPECT_LT(end - start, 1s);
+    EXPECT_TRUE(consumedAllTasks);
   }());
 }
 
@@ -824,10 +824,10 @@ TEST_F(CollectAllRangeTest, CancellationTokenRemainsActiveAfterReturn) {
         scope.add(
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                  auto token =
+                  auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
-                  EXPECT_TRUE(token.isCancellationRequested());
+                  EXPECT_TRUE(innerToken.isCancellationRequested());
                 }))
                 .scheduleOn(ex));
       });
@@ -858,17 +858,17 @@ TEST_F(CollectAllRangeTest, KeepsRequestContextOfChildTasksIndependent) {
     auto initialContextData = getContextData();
 
     auto makeChildTask = [&]() -> folly::coro::Task<void> {
-      CHECK(getContextData() == initialContextData);
+      EXPECT_TRUE(getContextData() == initialContextData);
       folly::RequestContextScopeGuard childScope;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       setContextData();
       auto newContextData = getContextData();
-      CHECK(newContextData != nullptr);
-      CHECK(newContextData != initialContextData);
+      EXPECT_TRUE(newContextData != nullptr);
+      EXPECT_TRUE(newContextData != initialContextData);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == newContextData);
+      EXPECT_TRUE(getContextData() == newContextData);
     };
 
     std::vector<folly::coro::Task<void>> tasks;
@@ -878,7 +878,7 @@ TEST_F(CollectAllRangeTest, KeepsRequestContextOfChildTasksIndependent) {
 
     co_await folly::coro::collectAllRange(std::move(tasks));
 
-    CHECK(getContextData() == initialContextData);
+    EXPECT_TRUE(getContextData() == initialContextData);
   }());
 }
 
@@ -895,11 +895,11 @@ TEST_F(CollectAllRangeTest, VectorOfTaskWithExecutorUsage) {
     }
 
     auto results = co_await folly::coro::collectAllRange(std::move(tasks));
-    CHECK(results.size() == 4);
-    CHECK(results[0] == 1);
-    CHECK(results[1] == 2);
-    CHECK(results[2] == 3);
-    CHECK(results[3] == 4);
+    EXPECT_TRUE(results.size() == 4);
+    EXPECT_TRUE(results[0] == 1);
+    EXPECT_TRUE(results[1] == 2);
+    EXPECT_TRUE(results[2] == 3);
+    EXPECT_TRUE(results[3] == 4);
   }());
 }
 
@@ -1059,12 +1059,12 @@ TEST_F(CollectAllTryRangeTest, RangeOfVoidSomeFailing) {
 
     auto results = co_await folly::coro::collectAllTryRange(std::move(tasks));
 
-    CHECK_EQ(5, results.size());
-    CHECK(results[0].hasValue());
-    CHECK(results[1].hasValue());
-    CHECK(results[2].hasException());
-    CHECK(results[3].hasValue());
-    CHECK(results[4].hasValue());
+    EXPECT_EQ(5, results.size());
+    EXPECT_TRUE(results[0].hasValue());
+    EXPECT_TRUE(results[1].hasValue());
+    EXPECT_TRUE(results[2].hasException());
+    EXPECT_TRUE(results[3].hasValue());
+    EXPECT_TRUE(results[4].hasValue());
   }());
 }
 
@@ -1088,17 +1088,17 @@ TEST_F(CollectAllTryRangeTest, RangeOfValueSomeFailing) {
 
     auto results = co_await folly::coro::collectAllTryRange(std::move(tasks));
 
-    CHECK_EQ(6, results.size());
-    CHECK(results[0].hasValue());
-    CHECK_EQ("testing", results[0].value());
-    CHECK(results[1].hasValue());
-    CHECK_EQ("testing", results[1].value());
-    CHECK(results[2].hasException());
-    CHECK(results[3].hasValue());
-    CHECK_EQ("testing", results[3].value());
-    CHECK(results[4].hasValue());
-    CHECK_EQ("testing", results[4].value());
-    CHECK(results[5].hasException());
+    EXPECT_EQ(6, results.size());
+    EXPECT_TRUE(results[0].hasValue());
+    EXPECT_EQ("testing", results[0].value());
+    EXPECT_TRUE(results[1].hasValue());
+    EXPECT_EQ("testing", results[1].value());
+    EXPECT_TRUE(results[2].hasException());
+    EXPECT_TRUE(results[3].hasValue());
+    EXPECT_EQ("testing", results[3].value());
+    EXPECT_TRUE(results[4].hasValue());
+    EXPECT_EQ("testing", results[4].value());
+    EXPECT_TRUE(results[5].hasException());
   }());
 }
 
@@ -1111,7 +1111,7 @@ TEST_F(CollectAllTryRangeTest, NotCancelledWhenSubtaskFails) {
         co_await folly::coro::co_reschedule_on_current_executor;
         co_await folly::coro::co_reschedule_on_current_executor;
         auto token = co_await folly::coro::co_current_cancellation_token;
-        CHECK(!token.isCancellationRequested());
+        EXPECT_FALSE(token.isCancellationRequested());
       };
 
       co_yield makeValidationTask();
@@ -1127,12 +1127,12 @@ TEST_F(CollectAllTryRangeTest, NotCancelledWhenSubtaskFails) {
     };
 
     auto results = co_await folly::coro::collectAllTryRange(generateTasks());
-    CHECK_EQ(5, results.size());
-    CHECK(results[0].hasValue());
-    CHECK(results[1].hasValue());
-    CHECK(results[2].hasException());
-    CHECK(results[3].hasValue());
-    CHECK(results[4].hasValue());
+    EXPECT_EQ(5, results.size());
+    EXPECT_TRUE(results[0].hasValue());
+    EXPECT_TRUE(results[1].hasValue());
+    EXPECT_TRUE(results[2].hasException());
+    EXPECT_TRUE(results[3].hasValue());
+    EXPECT_TRUE(results[4].hasValue());
   }());
 }
 
@@ -1157,7 +1157,7 @@ TEST_F(CollectAllTryRangeTest, SubtasksCancelledWhenParentTaskCancelled) {
         cancelSource.requestCancellation();
 
         auto token = co_await folly::coro::co_current_cancellation_token;
-        CHECK(token.isCancellationRequested());
+        EXPECT_TRUE(token.isCancellationRequested());
       }();
 
       consumedAllTasks = true;
@@ -1169,12 +1169,12 @@ TEST_F(CollectAllTryRangeTest, SubtasksCancelledWhenParentTaskCancelled) {
         folly::coro::collectAllTryRange(generateTasks()));
     auto end = std::chrono::steady_clock::now();
 
-    CHECK_EQ(11, results.size());
+    EXPECT_EQ(11, results.size());
     for (auto& result : results) {
-      CHECK(result.hasValue());
+      EXPECT_TRUE(result.hasValue());
     }
-    CHECK((end - start) < 1s);
-    CHECK(consumedAllTasks);
+    EXPECT_LT(end - start, 1s);
+    EXPECT_TRUE(consumedAllTasks);
   }());
 }
 
@@ -1191,10 +1191,10 @@ TEST_F(CollectAllTryRangeTest, CancellationTokenRemainsActiveAfterReturn) {
         scope.add(
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                  auto token =
+                  auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
-                  EXPECT_TRUE(token.isCancellationRequested());
+                  EXPECT_TRUE(innerToken.isCancellationRequested());
                 }))
                 .scheduleOn(ex));
       });
@@ -1226,17 +1226,17 @@ TEST_F(CollectAllTryRangeTest, KeepsRequestContextOfChildTasksIndependent) {
     auto initialContextData = getContextData();
 
     auto makeChildTask = [&]() -> folly::coro::Task<void> {
-      CHECK(getContextData() == initialContextData);
+      EXPECT_TRUE(getContextData() == initialContextData);
       folly::RequestContextScopeGuard childScope;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       setContextData();
       auto newContextData = getContextData();
-      CHECK(newContextData != nullptr);
-      CHECK(newContextData != initialContextData);
+      EXPECT_TRUE(newContextData != nullptr);
+      EXPECT_TRUE(newContextData != initialContextData);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == newContextData);
+      EXPECT_TRUE(getContextData() == newContextData);
     };
 
     std::vector<folly::coro::Task<void>> tasks;
@@ -1246,7 +1246,7 @@ TEST_F(CollectAllTryRangeTest, KeepsRequestContextOfChildTasksIndependent) {
 
     co_await folly::coro::collectAllTryRange(std::move(tasks));
 
-    CHECK(getContextData() == initialContextData);
+    EXPECT_TRUE(getContextData() == initialContextData);
   }());
 }
 
@@ -1354,9 +1354,9 @@ TEST_F(CollectAllWindowedTest, ConcurrentTasks) {
       }(),
       10));
 
-  CHECK_EQ(10'000, results.size());
+  EXPECT_EQ(10'000, results.size());
   for (int i = 0; i < 10'000; ++i) {
-    CHECK_EQ(folly::to<std::string>(i), results[i]);
+    EXPECT_EQ(folly::to<std::string>(i), results[i]);
   }
 }
 
@@ -1392,14 +1392,14 @@ TEST_F(CollectAllWindowedTest, WithGeneratorOfTaskOfValue) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto results = co_await folly::coro::collectAllWindowed(
         makeTaskGenerator(), maxConcurrency);
-    CHECK_EQ(100, results.size());
+    EXPECT_EQ(100, results.size());
     for (int i = 0; i < 100; ++i) {
-      CHECK_EQ(i, results[i]);
+      EXPECT_EQ(i, results[i]);
     }
   }());
 
-  CHECK_EQ(0, activeCount.load());
-  CHECK_EQ(100, completedCount);
+  EXPECT_EQ(0, activeCount.load());
+  EXPECT_EQ(100, completedCount);
 }
 
 TEST_F(CollectAllWindowedTest, WithGeneratorOfTaskOfVoid) {
@@ -1428,8 +1428,8 @@ TEST_F(CollectAllWindowedTest, WithGeneratorOfTaskOfVoid) {
         makeTaskGenerator(), maxConcurrency);
   }());
 
-  CHECK_EQ(0, activeCount.load());
-  CHECK_EQ(100, completedCount);
+  EXPECT_EQ(0, activeCount.load());
+  EXPECT_EQ(100, completedCount);
 }
 
 TEST_F(CollectAllWindowedTest, VectorOfVoidTask) {
@@ -1449,7 +1449,7 @@ TEST_F(CollectAllWindowedTest, VectorOfVoidTask) {
   folly::coro::blockingWait(
       folly::coro::collectAllWindowed(std::move(tasks), 5));
 
-  CHECK_EQ(10, count);
+  EXPECT_EQ(10, count);
 }
 
 TEST_F(CollectAllWindowedTest, VectorOfValueTask) {
@@ -1470,10 +1470,10 @@ TEST_F(CollectAllWindowedTest, VectorOfValueTask) {
   auto results = folly::coro::blockingWait(
       folly::coro::collectAllWindowed(std::move(tasks), 5));
 
-  CHECK_EQ(10, count);
-  CHECK_EQ(10, results.size());
+  EXPECT_EQ(10, count);
+  EXPECT_EQ(10, results.size());
   for (int i = 0; i < 10; ++i) {
-    CHECK_EQ(i, *results[i]);
+    EXPECT_EQ(i, *results[i]);
   }
 }
 
@@ -1498,7 +1498,7 @@ TEST_F(CollectAllWindowedTest, MultipleFailuresPropagatesFirstError) {
               }
             }(),
             5));
-    CHECK(false); // Should have thrown.
+    ADD_FAILURE() << "Hit unexpected codepath"; // Should have thrown.
   } catch (const ErrorB&) {
     // Expected.
   }
@@ -1526,13 +1526,13 @@ TEST_F(CollectAllWindowedTest, SubtasksCancelledWhenASubtaskFails) {
     auto start = std::chrono::steady_clock::now();
     try {
       co_await folly::coro::collectAllWindowed(generateTasks(), 2);
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorA&) {
     }
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
-    CHECK(consumedAllTasks);
+    EXPECT_LT(end - start, 1s);
+    EXPECT_TRUE(consumedAllTasks);
   }());
 }
 
@@ -1556,7 +1556,7 @@ TEST_F(CollectAllWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
         cancelSource.requestCancellation();
 
         auto token = co_await folly::coro::co_current_cancellation_token;
-        CHECK(token.isCancellationRequested());
+        EXPECT_TRUE(token.isCancellationRequested());
       }();
 
       co_yield sleepThatShouldBeCancelled(10s);
@@ -1571,8 +1571,8 @@ TEST_F(CollectAllWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
         folly::coro::collectAllWindowed(generateTasks(), 4));
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
-    CHECK(consumedAllTasks);
+    EXPECT_LT(end - start, 1s);
+    EXPECT_TRUE(consumedAllTasks);
   }());
 }
 
@@ -1589,10 +1589,10 @@ TEST_F(CollectAllWindowedTest, CancellationTokenRemainsActiveAfterReturn) {
         scope.add(
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                  auto token =
+                  auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
-                  EXPECT_TRUE(token.isCancellationRequested());
+                  EXPECT_TRUE(innerToken.isCancellationRequested());
                 }))
                 .scheduleOn(ex));
       });
@@ -1624,17 +1624,17 @@ TEST_F(CollectAllWindowedTest, KeepsRequestContextOfChildTasksIndependent) {
     auto initialContextData = getContextData();
 
     auto makeChildTask = [&]() -> folly::coro::Task<void> {
-      CHECK(getContextData() == initialContextData);
+      EXPECT_TRUE(getContextData() == initialContextData);
       folly::RequestContextScopeGuard childScope;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == nullptr);
+      EXPECT_TRUE(getContextData() == nullptr);
       setContextData();
       auto newContextData = getContextData();
-      CHECK(newContextData != nullptr);
-      CHECK(newContextData != initialContextData);
+      EXPECT_TRUE(newContextData != nullptr);
+      EXPECT_TRUE(newContextData != initialContextData);
       co_await folly::coro::co_reschedule_on_current_executor;
-      CHECK(getContextData() == newContextData);
+      EXPECT_TRUE(getContextData() == newContextData);
     };
 
     std::vector<folly::coro::Task<void>> tasks;
@@ -1644,7 +1644,7 @@ TEST_F(CollectAllWindowedTest, KeepsRequestContextOfChildTasksIndependent) {
 
     co_await folly::coro::collectAllWindowed(std::move(tasks), 2);
 
-    CHECK(getContextData() == initialContextData);
+    EXPECT_TRUE(getContextData() == initialContextData);
   }());
 }
 
@@ -1662,11 +1662,11 @@ TEST_F(CollectAllWindowedTest, VectorOfTaskWithExecutorUsage) {
 
     auto results =
         co_await folly::coro::collectAllWindowed(std::move(tasks), 2);
-    CHECK(results.size() == 4);
-    CHECK(results[0] == 1);
-    CHECK(results[1] == 2);
-    CHECK(results[2] == 3);
-    CHECK(results[3] == 4);
+    EXPECT_TRUE(results.size() == 4);
+    EXPECT_TRUE(results[0] == 1);
+    EXPECT_TRUE(results[1] == 2);
+    EXPECT_TRUE(results[2] == 3);
+    EXPECT_TRUE(results[3] == 4);
   }());
 }
 
@@ -1691,18 +1691,18 @@ TEST_F(CollectAllTryWindowedTest, PartialFailure) {
         }
       }(),
       5));
-  CHECK_EQ(10, results.size());
+  EXPECT_EQ(10, results.size());
 
   for (int i = 0; i < 10; ++i) {
     if (i == 3) {
-      CHECK(results[i].hasException());
-      CHECK(results[i].exception().is_compatible_with<ErrorA>());
+      EXPECT_TRUE(results[i].hasException());
+      EXPECT_TRUE(results[i].exception().is_compatible_with<ErrorA>());
     } else if (i == 7) {
-      CHECK(results[i].hasException());
-      CHECK(results[i].exception().is_compatible_with<ErrorB>());
+      EXPECT_TRUE(results[i].hasException());
+      EXPECT_TRUE(results[i].exception().is_compatible_with<ErrorB>());
     } else {
-      CHECK(results[i].hasValue());
-      CHECK_EQ(i, results[i].value());
+      EXPECT_TRUE(results[i].hasValue());
+      EXPECT_EQ(i, results[i].value());
     }
   }
 }
@@ -1730,14 +1730,14 @@ TEST_F(CollectAllTryWindowedTest, GeneratorFailure) {
   try {
     [[maybe_unused]] auto results = folly::coro::blockingWait(
         folly::coro::collectAllTryWindowed(generateTasks(), 5));
-    CHECK(false);
+    ADD_FAILURE() << "Hit unexpected codepath";
   } catch (const ErrorA&) {
   }
 
   // Even if the generator throws an exception we should still have launched
   // and waited for completion all of the prior tasks in the sequence.
-  CHECK_EQ(10, started);
-  CHECK_EQ(0, active);
+  EXPECT_EQ(10, started);
+  EXPECT_EQ(0, active);
 }
 
 TEST_F(CollectAllTryWindowedTest, NotCancelledWhenSubtaskFails) {
@@ -1754,7 +1754,7 @@ TEST_F(CollectAllTryWindowedTest, NotCancelledWhenSubtaskFails) {
         co_await folly::coro::co_reschedule_on_current_executor;
         co_await folly::coro::co_reschedule_on_current_executor;
         auto token = co_await folly::coro::co_current_cancellation_token;
-        CHECK(!token.isCancellationRequested());
+        EXPECT_FALSE(token.isCancellationRequested());
       };
 
       co_yield makeValidationTask();
@@ -1763,10 +1763,10 @@ TEST_F(CollectAllTryWindowedTest, NotCancelledWhenSubtaskFails) {
 
     auto results =
         co_await folly::coro::collectAllTryWindowed(generateTasks(), 2);
-    CHECK_EQ(3, results.size());
-    CHECK(results[0].hasException());
-    CHECK(results[1].hasValue());
-    CHECK(results[2].hasValue());
+    EXPECT_EQ(3, results.size());
+    EXPECT_TRUE(results[0].hasException());
+    EXPECT_TRUE(results[1].hasValue());
+    EXPECT_TRUE(results[2].hasValue());
   }());
 }
 
@@ -1790,7 +1790,7 @@ TEST_F(CollectAllTryWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
         cancelSource.requestCancellation();
 
         auto token = co_await folly::coro::co_current_cancellation_token;
-        CHECK(token.isCancellationRequested());
+        EXPECT_TRUE(token.isCancellationRequested());
       }();
 
       co_yield sleepThatShouldBeCancelled(10s);
@@ -1805,12 +1805,12 @@ TEST_F(CollectAllTryWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
         folly::coro::collectAllTryWindowed(generateTasks(), 4));
     auto end = std::chrono::steady_clock::now();
 
-    CHECK_EQ(5, results.size());
+    EXPECT_EQ(5, results.size());
     for (auto& result : results) {
-      CHECK(result.hasValue());
+      EXPECT_TRUE(result.hasValue());
     }
-    CHECK((end - start) < 1s);
-    CHECK(consumedAllTasks);
+    EXPECT_LT(end - start, 1s);
+    EXPECT_TRUE(consumedAllTasks);
   }());
 }
 
@@ -1827,10 +1827,10 @@ TEST_F(CollectAllTryWindowedTest, CancellationTokenRemainsActiveAfterReturn) {
         scope.add(
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                  auto token =
+                  auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
-                  EXPECT_TRUE(token.isCancellationRequested());
+                  EXPECT_TRUE(innerToken.isCancellationRequested());
                 }))
                 .scheduleOn(ex));
       });
@@ -1857,8 +1857,8 @@ TEST_F(CollectAnyTest, OneTaskWithValue) {
   bool completed = false;
   auto run = [&]() -> folly::coro::Task<void> {
     auto [index, result] = co_await folly::coro::collectAny(f());
-    CHECK_EQ("hello", result.value());
-    CHECK_EQ(0, index);
+    EXPECT_EQ("hello", result.value());
+    EXPECT_EQ(0, index);
     completed = true;
   };
 
@@ -1868,19 +1868,19 @@ TEST_F(CollectAnyTest, OneTaskWithValue) {
 
   executor.drain();
 
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   baton.post();
 
   // Posting the baton should have just scheduled the 'f()' coroutine
   // for resumption on the executor but should not have executed
   // until we drain the executor again.
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   executor.drain();
 
-  CHECK(completed);
-  CHECK(future.isReady());
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAnyTest, OneVoidTask) {
@@ -1895,7 +1895,7 @@ TEST_F(CollectAnyTest, OneVoidTask) {
         }());
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAnyTest, MoveOnlyType) {
@@ -1911,7 +1911,7 @@ TEST_F(CollectAnyTest, MoveOnlyType) {
             }());
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAnyTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
@@ -1935,29 +1935,29 @@ TEST_F(CollectAnyTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
           co_return 314;
         }());
     complete = true;
-    CHECK_EQ(taskTerminatingExpectedIndex, index);
-    CHECK_EQ(result.value(), 314);
+    EXPECT_EQ(taskTerminatingExpectedIndex, index);
+    EXPECT_EQ(result.value(), 314);
   };
 
   folly::ManualExecutor executor;
 
   auto future = run().scheduleOn(&executor).start();
 
-  CHECK(!task1Started);
-  CHECK(!task2Started);
+  EXPECT_FALSE(task1Started);
+  EXPECT_FALSE(task2Started);
 
   executor.drain();
 
-  CHECK(task1Started);
-  CHECK(task2Started);
-  CHECK(!complete);
+  EXPECT_TRUE(task1Started);
+  EXPECT_TRUE(task2Started);
+  EXPECT_FALSE(complete);
   baton2.post();
   executor.drain();
-  CHECK(!complete);
+  EXPECT_FALSE(complete);
   baton1.post();
   executor.drain();
-  CHECK(complete);
-  CHECK(future.isReady());
+  EXPECT_TRUE(complete);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAnyTest, ThrowsFirstError) {
@@ -1991,15 +1991,15 @@ TEST_F(CollectAnyTest, ThrowsFirstError) {
           }
           co_return 3;
         }());
-    CHECK_EQ(1, index);
+    EXPECT_EQ(1, index);
     try {
       result.value();
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorB&) {
       caughtException = true;
     }
   }());
-  CHECK(caughtException);
+  EXPECT_TRUE(caughtException);
 }
 
 TEST_F(CollectAnyTest, CollectAnyCancelsSubtasksWhenASubtaskCompletes) {
@@ -2021,15 +2021,15 @@ TEST_F(CollectAnyTest, CollectAnyCancelsSubtasksWhenASubtaskCompletes) {
           co_await folly::coro::co_reschedule_on_current_executor;
           throw ErrorA{};
         }());
-    CHECK_EQ(2, index);
+    EXPECT_EQ(2, index);
     try {
       result.value();
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorA&) {
     }
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
+    EXPECT_LT(end - start, 1s);
   }());
 }
 
@@ -2059,10 +2059,10 @@ TEST_F(CollectAnyTest, CollectAnyCancelsSubtasksWhenParentTaskCancelled) {
                 co_await sleepThatShouldBeCancelled(15s);
                 co_return 123;
               }()));
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const folly::OperationCancelled&) {
       auto end = std::chrono::steady_clock::now();
-      CHECK((end - start) < 1s);
+      EXPECT_LT(end - start, 1s);
     }
   }());
 }
@@ -2078,10 +2078,10 @@ TEST_F(CollectAnyTest, CancellationTokenRemainsActiveAfterReturn) {
       scope.add(
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                auto token =
+                auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
-                EXPECT_TRUE(token.isCancellationRequested());
+                EXPECT_TRUE(innerToken.isCancellationRequested());
               }))
               .scheduleOn(ex));
     });
@@ -2104,10 +2104,10 @@ TEST_F(CollectAnyNoDiscardTest, OneTask) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto [result] = co_await folly::coro::collectAnyNoDiscard(value());
-    CHECK(result.hasValue());
-    CHECK_EQ("hello", result.value());
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ("hello", result.value());
     std::tie(result) = co_await folly::coro::collectAnyNoDiscard(throws());
-    CHECK(result.hasException<ErrorA>());
+    EXPECT_TRUE(result.hasException<ErrorA>());
   }());
 }
 
@@ -2128,9 +2128,9 @@ TEST_F(CollectAnyNoDiscardTest, MultipleTasksWithValues) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto [first, second, third] = co_await folly::coro::collectAnyNoDiscard(
         busyWait(count, 3), busyWait(count, 3), busyWait(count, 3));
-    CHECK(first.hasValue());
-    CHECK(second.hasValue());
-    CHECK(third.hasValue());
+    EXPECT_TRUE(first.hasValue());
+    EXPECT_TRUE(second.hasValue());
+    EXPECT_TRUE(third.hasValue());
   }());
 }
 
@@ -2147,7 +2147,7 @@ TEST_F(CollectAnyNoDiscardTest, OneVoidTask) {
             }());
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAnyNoDiscardTest, DoesntCompleteUntilAllTasksComplete) {
@@ -2170,31 +2170,31 @@ TEST_F(CollectAnyNoDiscardTest, DoesntCompleteUntilAllTasksComplete) {
           co_return 314;
         }());
     complete = true;
-    CHECK(first.hasValue());
-    CHECK_EQ(first.value(), 42);
-    CHECK(second.hasValue());
-    CHECK_EQ(second.value(), 314);
+    EXPECT_TRUE(first.hasValue());
+    EXPECT_EQ(first.value(), 42);
+    EXPECT_TRUE(second.hasValue());
+    EXPECT_EQ(second.value(), 314);
   };
 
   folly::ManualExecutor executor;
 
   auto future = run().scheduleOn(&executor).start();
 
-  CHECK(!task1Started);
-  CHECK(!task2Started);
+  EXPECT_FALSE(task1Started);
+  EXPECT_FALSE(task2Started);
 
   executor.drain();
 
-  CHECK(task1Started);
-  CHECK(task2Started);
-  CHECK(!complete);
+  EXPECT_TRUE(task1Started);
+  EXPECT_TRUE(task2Started);
+  EXPECT_FALSE(complete);
   baton2.post();
   executor.drain();
-  CHECK(!complete);
+  EXPECT_FALSE(complete);
   baton1.post();
   executor.drain();
-  CHECK(complete);
-  CHECK(future.isReady());
+  EXPECT_TRUE(complete);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAnyNoDiscardTest, ThrowsAllErrors) {
@@ -2217,9 +2217,9 @@ TEST_F(CollectAnyNoDiscardTest, ThrowsAllErrors) {
         [&]() -> folly::coro::Task<int> {
           co_yield folly::coro::co_error(ErrorC{});
         }());
-    CHECK(first.hasException<ErrorA>());
-    CHECK(second.hasException<ErrorB>());
-    CHECK(third.hasException<ErrorC>());
+    EXPECT_TRUE(first.hasException<ErrorA>());
+    EXPECT_TRUE(second.hasException<ErrorB>());
+    EXPECT_TRUE(third.hasException<ErrorC>());
   }());
 }
 
@@ -2242,13 +2242,13 @@ TEST_F(CollectAnyNoDiscardTest, CancelSubtasksWhenASubtaskCompletes) {
           co_await folly::coro::co_reschedule_on_current_executor;
           co_yield folly::coro::co_error(ErrorA{});
         }());
-    CHECK(first.hasException<folly::OperationCancelled>());
-    CHECK(second.hasException<folly::OperationCancelled>());
-    CHECK(third.hasException<ErrorA>());
+    EXPECT_TRUE(first.hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(second.hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(third.hasException<ErrorA>());
 
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
+    EXPECT_LT(end - start, 1s);
   }());
 }
 
@@ -2278,10 +2278,10 @@ TEST_F(CollectAnyNoDiscardTest, CancelSubtasksWhenParentTaskCancelled) {
               co_return 123;
             }()));
     auto end = std::chrono::steady_clock::now();
-    CHECK((end - start) < 1s);
-    CHECK(first.hasException<folly::OperationCancelled>());
-    CHECK(second.hasException<folly::OperationCancelled>());
-    CHECK(third.hasException<folly::OperationCancelled>());
+    EXPECT_LT(end - start, 1s);
+    EXPECT_TRUE(first.hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(second.hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(third.hasException<folly::OperationCancelled>());
   }());
 }
 
@@ -2296,10 +2296,10 @@ TEST_F(CollectAnyNoDiscardTest, CancellationTokenRemainsActiveAfterReturn) {
       scope.add(
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                auto token =
+                auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
-                EXPECT_TRUE(token.isCancellationRequested());
+                EXPECT_TRUE(innerToken.isCancellationRequested());
               }))
               .scheduleOn(ex));
     });
@@ -2328,8 +2328,8 @@ TEST_F(CollectAnyRangeTest, OneTaskWithValue) {
     tasks.push_back(f());
     auto [index, result] =
         co_await folly::coro::collectAnyRange(std::move(tasks));
-    CHECK_EQ("hello", result.value());
-    CHECK_EQ(0, index);
+    EXPECT_EQ("hello", result.value());
+    EXPECT_EQ(0, index);
     completed = true;
   };
 
@@ -2339,19 +2339,19 @@ TEST_F(CollectAnyRangeTest, OneTaskWithValue) {
 
   executor.drain();
 
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   baton.post();
 
   // Posting the baton should have just scheduled the 'f()' coroutine
   // for resumption on the executor but should not have executed
   // until we drain the executor again.
-  CHECK(!completed);
+  EXPECT_FALSE(completed);
 
   executor.drain();
 
-  CHECK(completed);
-  CHECK(future.isReady());
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAnyRangeTest, OneVoidTask) {
@@ -2370,7 +2370,7 @@ TEST_F(CollectAnyRangeTest, OneVoidTask) {
         co_await folly::coro::collectAnyRange(generateTasks());
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAnyRangeTest, MoveOnlyType) {
@@ -2389,7 +2389,7 @@ TEST_F(CollectAnyRangeTest, MoveOnlyType) {
         co_await folly::coro::collectAnyRange(generateTasks());
     (void)result;
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAnyRangeTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
@@ -2418,29 +2418,29 @@ TEST_F(CollectAnyRangeTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
     auto [index, result] =
         co_await folly::coro::collectAnyRange(generateTasks());
     complete = true;
-    CHECK_EQ(taskTerminatingExpectedIndex, index);
-    CHECK_EQ(result.value(), 314);
+    EXPECT_EQ(taskTerminatingExpectedIndex, index);
+    EXPECT_EQ(result.value(), 314);
   };
 
   folly::ManualExecutor executor;
 
   auto future = run().scheduleOn(&executor).start();
 
-  CHECK(!task1Started);
-  CHECK(!task2Started);
+  EXPECT_FALSE(task1Started);
+  EXPECT_FALSE(task2Started);
 
   executor.drain();
 
-  CHECK(task1Started);
-  CHECK(task2Started);
-  CHECK(!complete);
+  EXPECT_TRUE(task1Started);
+  EXPECT_TRUE(task2Started);
+  EXPECT_FALSE(complete);
   baton2.post();
   executor.drain();
-  CHECK(!complete);
+  EXPECT_FALSE(complete);
   baton1.post();
   executor.drain();
-  CHECK(complete);
-  CHECK(future.isReady());
+  EXPECT_TRUE(complete);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAnyRangeTest, ThrowsFirstError) {
@@ -2480,15 +2480,15 @@ TEST_F(CollectAnyRangeTest, ThrowsFirstError) {
     // propagate out of collectAny().
     auto [index, result] =
         co_await folly::coro::collectAnyRange(generateTasks());
-    CHECK_EQ(1, index);
+    EXPECT_EQ(1, index);
     try {
       result.value();
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorB&) {
       caughtException = true;
     }
   }());
-  CHECK(caughtException);
+  EXPECT_TRUE(caughtException);
 }
 
 TEST_F(CollectAnyRangeTest, CollectAnyCancelsSubtasksWhenASubtaskCompletes) {
@@ -2512,15 +2512,15 @@ TEST_F(CollectAnyRangeTest, CollectAnyCancelsSubtasksWhenASubtaskCompletes) {
 
     auto [index, result] =
         co_await folly::coro::collectAnyRange(std::move(tasks));
-    CHECK_EQ(2, index);
+    EXPECT_EQ(2, index);
     try {
       result.value();
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const ErrorA&) {
     }
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
+    EXPECT_LT(end - start, 1s);
   }());
 }
 
@@ -2553,10 +2553,10 @@ TEST_F(CollectAnyRangeTest, CollectAnyCancelsSubtasksWhenParentTaskCancelled) {
       auto [index, result] = co_await folly::coro::co_withCancellation(
           cancelSource.getToken(),
           folly::coro::collectAnyRange(generateTasks()));
-      CHECK(false);
+      ADD_FAILURE() << "Hit unexpected codepath";
     } catch (const folly::OperationCancelled&) {
       auto end = std::chrono::steady_clock::now();
-      CHECK((end - start) < 1s);
+      EXPECT_LT(end - start, 1s);
     }
   }());
 }
@@ -2572,10 +2572,10 @@ TEST_F(CollectAnyRangeTest, CancellationTokenRemainsActiveAfterReturn) {
       scope.add(
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                auto token =
+                auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
-                EXPECT_TRUE(token.isCancellationRequested());
+                EXPECT_TRUE(innerToken.isCancellationRequested());
               }))
               .scheduleOn(ex));
     });
@@ -2607,17 +2607,17 @@ TEST_F(CollectAnyNoDiscardRangeTest, OneTask) {
       tasks.push_back(value());
       auto result =
           co_await folly::coro::collectAnyNoDiscardRange(std::move(tasks));
-      CHECK_EQ(result.size(), 1);
-      CHECK(result[0].hasValue());
-      CHECK_EQ("hello", result[0].value());
+      EXPECT_EQ(result.size(), 1);
+      EXPECT_TRUE(result[0].hasValue());
+      EXPECT_EQ("hello", result[0].value());
     }
     {
       std::vector<folly::coro::Task<std::string>> tasks;
       tasks.push_back(throws());
       auto result =
           co_await folly::coro::collectAnyNoDiscardRange(std::move(tasks));
-      CHECK_EQ(result.size(), 1);
-      CHECK(result[0].hasException<ErrorA>());
+      EXPECT_EQ(result.size(), 1);
+      EXPECT_TRUE(result[0].hasException<ErrorA>());
     }
   }());
 }
@@ -2643,10 +2643,10 @@ TEST_F(CollectAnyNoDiscardRangeTest, MultipleTasksWithValues) {
     tasks.push_back(busyWait(count, 3));
     auto result =
         co_await folly::coro::collectAnyNoDiscardRange(std::move(tasks));
-    CHECK_EQ(result.size(), 3);
-    CHECK(result[0].hasValue());
-    CHECK(result[1].hasValue());
-    CHECK(result[2].hasValue());
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_TRUE(result[0].hasValue());
+    EXPECT_TRUE(result[1].hasValue());
+    EXPECT_TRUE(result[2].hasValue());
   }());
 }
 
@@ -2665,7 +2665,7 @@ TEST_F(CollectAnyNoDiscardRangeTest, OneVoidTask) {
         co_await folly::coro::collectAnyNoDiscardRange(std::move(tasks));
     EXPECT_EQ(result.size(), 1);
   }());
-  CHECK(completed);
+  EXPECT_TRUE(completed);
 }
 
 TEST_F(CollectAnyNoDiscardRangeTest, DoesntCompleteUntilAllTasksComplete) {
@@ -2693,32 +2693,32 @@ TEST_F(CollectAnyNoDiscardRangeTest, DoesntCompleteUntilAllTasksComplete) {
     auto result =
         co_await folly::coro::collectAnyNoDiscardRange(generateTasks());
     complete = true;
-    CHECK_EQ(result.size(), 2);
-    CHECK(result[0].hasValue());
-    CHECK_EQ(result[0].value(), 42);
-    CHECK(result[1].hasValue());
-    CHECK_EQ(result[1].value(), 314);
+    EXPECT_EQ(result.size(), 2);
+    EXPECT_TRUE(result[0].hasValue());
+    EXPECT_EQ(result[0].value(), 42);
+    EXPECT_TRUE(result[1].hasValue());
+    EXPECT_EQ(result[1].value(), 314);
   };
 
   folly::ManualExecutor executor;
 
   auto future = run().scheduleOn(&executor).start();
 
-  CHECK(!task1Started);
-  CHECK(!task2Started);
+  EXPECT_FALSE(task1Started);
+  EXPECT_FALSE(task2Started);
 
   executor.drain();
 
-  CHECK(task1Started);
-  CHECK(task2Started);
-  CHECK(!complete);
+  EXPECT_TRUE(task1Started);
+  EXPECT_TRUE(task2Started);
+  EXPECT_FALSE(complete);
   baton2.post();
   executor.drain();
-  CHECK(!complete);
+  EXPECT_FALSE(complete);
   baton1.post();
   executor.drain();
-  CHECK(complete);
-  CHECK(future.isReady());
+  EXPECT_TRUE(complete);
+  EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(CollectAnyNoDiscardRangeTest, ThrowsAllErrors) {
@@ -2745,10 +2745,10 @@ TEST_F(CollectAnyNoDiscardRangeTest, ThrowsAllErrors) {
     };
     auto result =
         co_await folly::coro::collectAnyNoDiscardRange(generateTasks());
-    CHECK_EQ(result.size(), 3);
-    CHECK(result[0].hasException<ErrorA>());
-    CHECK(result[1].hasException<ErrorB>());
-    CHECK(result[2].hasException<ErrorC>());
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_TRUE(result[0].hasException<ErrorA>());
+    EXPECT_TRUE(result[1].hasException<ErrorB>());
+    EXPECT_TRUE(result[2].hasException<ErrorC>());
   }());
 }
 
@@ -2775,14 +2775,14 @@ TEST_F(CollectAnyNoDiscardRangeTest, CancelSubtasksWhenASubtaskCompletes) {
     };
     auto result =
         co_await folly::coro::collectAnyNoDiscardRange(generateTasks());
-    CHECK_EQ(result.size(), 3);
-    CHECK(result[0].hasException<folly::OperationCancelled>());
-    CHECK(result[1].hasException<folly::OperationCancelled>());
-    CHECK(result[2].hasException<ErrorA>());
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_TRUE(result[0].hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(result[1].hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(result[2].hasException<ErrorA>());
 
     auto end = std::chrono::steady_clock::now();
 
-    CHECK((end - start) < 1s);
+    EXPECT_LT(end - start, 1s);
   }());
 }
 
@@ -2816,11 +2816,11 @@ TEST_F(CollectAnyNoDiscardRangeTest, CancelSubtasksWhenParentTaskCancelled) {
         cancelSource.getToken(),
         folly::coro::collectAnyNoDiscardRange(generateTasks()));
     auto end = std::chrono::steady_clock::now();
-    CHECK((end - start) < 1s);
-    CHECK_EQ(result.size(), 3);
-    CHECK(result[0].hasException<folly::OperationCancelled>());
-    CHECK(result[1].hasException<folly::OperationCancelled>());
-    CHECK(result[2].hasException<folly::OperationCancelled>());
+    EXPECT_LT(end - start, 1s);
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_TRUE(result[0].hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(result[1].hasException<folly::OperationCancelled>());
+    EXPECT_TRUE(result[2].hasException<folly::OperationCancelled>());
   }());
 }
 
@@ -2837,10 +2837,10 @@ TEST_F(
       scope.add(
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-                auto token =
+                auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
-                EXPECT_TRUE(token.isCancellationRequested());
+                EXPECT_TRUE(innerToken.isCancellationRequested());
               }))
               .scheduleOn(ex));
     }));
