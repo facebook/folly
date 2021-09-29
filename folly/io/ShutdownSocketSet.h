@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <atomic>
 #include <cstdlib>
 #include <memory>
 
 #include <folly/File.h>
 #include <folly/net/NetworkSocket.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -139,7 +139,7 @@ class ShutdownSocketSet {
   };
 
   size_t const capacity_;
-  std::unique_ptr<std::atomic<uint8_t>[], Free> data_;
+  std::unique_ptr<relaxed_atomic<uint8_t>[], Free> data_;
   folly::File nullFile_;
 };
 

@@ -73,8 +73,8 @@ static NetworkSocket at(size_t p) {
 
 ShutdownSocketSet::ShutdownSocketSet(size_t capacity)
     : capacity_(cap(capacity)),
-      data_(static_cast<std::atomic<uint8_t>*>(
-          folly::checkedCalloc(capacity_, sizeof(std::atomic<uint8_t>)))),
+      data_(static_cast<relaxed_atomic<uint8_t>*>(
+          folly::checkedCalloc(capacity_, sizeof(relaxed_atomic<uint8_t>)))),
       nullFile_("/dev/null", O_RDWR) {}
 
 void ShutdownSocketSet::add(NetworkSocket fd) {
@@ -87,8 +87,7 @@ void ShutdownSocketSet::add(NetworkSocket fd) {
 
   auto& sref = data_[p];
   uint8_t prevState = FREE;
-  CHECK(sref.compare_exchange_strong(
-      prevState, IN_USE, std::memory_order_relaxed))
+  CHECK(sref.compare_exchange_strong(prevState, IN_USE))
       << "Invalid prev state for fd " << fd << ": " << int(prevState);
 }
 
@@ -102,19 +101,18 @@ void ShutdownSocketSet::remove(NetworkSocket fd) {
   auto& sref = data_[p];
   uint8_t prevState = 0;
 
-  prevState = sref.load(std::memory_order_relaxed);
+  prevState = sref.load();
   do {
     switch (prevState) {
       case IN_SHUTDOWN:
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        prevState = sref.load(std::memory_order_relaxed);
+        prevState = sref.load();
         continue;
       case FREE:
         LOG(FATAL) << "Invalid prev state for fd " << fd << ": "
                    << int(prevState);
     }
-  } while (
-      !sref.compare_exchange_weak(prevState, FREE, std::memory_order_relaxed));
+  } while (!sref.compare_exchange_weak(prevState, FREE));
 }
 
 int ShutdownSocketSet::close(NetworkSocket fd) {
@@ -125,7 +123,7 @@ int ShutdownSocketSet::close(NetworkSocket fd) {
   }
 
   auto& sref = data_[p];
-  uint8_t prevState = sref.load(std::memory_order_relaxed);
+  uint8_t prevState = sref.load();
   uint8_t newState = 0;
 
   do {
@@ -141,8 +139,7 @@ int ShutdownSocketSet::close(NetworkSocket fd) {
         LOG(FATAL) << "Invalid prev state for fd " << fd << ": "
                    << int(prevState);
     }
-  } while (!sref.compare_exchange_strong(
-      prevState, newState, std::memory_order_relaxed));
+  } while (!sref.compare_exchange_strong(prevState, newState));
 
   return newState == FREE ? folly::closeNoInt(fd) : 0;
 }
@@ -157,16 +154,14 @@ void ShutdownSocketSet::shutdown(NetworkSocket fd, bool abortive) {
 
   auto& sref = data_[p];
   uint8_t prevState = IN_USE;
-  if (!sref.compare_exchange_strong(
-          prevState, IN_SHUTDOWN, std::memory_order_relaxed)) {
+  if (!sref.compare_exchange_strong(prevState, IN_SHUTDOWN)) {
     return;
   }
 
   doShutdown(fd, abortive);
 
   prevState = IN_SHUTDOWN;
-  if (sref.compare_exchange_strong(
-          prevState, SHUT_DOWN, std::memory_order_relaxed)) {
+  if (sref.compare_exchange_strong(prevState, SHUT_DOWN)) {
     return;
   }
 
@@ -175,15 +170,14 @@ void ShutdownSocketSet::shutdown(NetworkSocket fd, bool abortive) {
 
   folly::closeNoInt(fd); // ignore errors, nothing to do
 
-  CHECK(
-      sref.compare_exchange_strong(prevState, FREE, std::memory_order_relaxed))
+  CHECK(sref.compare_exchange_strong(prevState, FREE))
       << "Invalid prev state for fd " << fd << ": " << int(prevState);
 }
 
 void ShutdownSocketSet::shutdownAll(bool abortive) {
   for (size_t p = 0; p < capacity_; ++p) {
     auto& sref = data_[p];
-    if (sref.load(std::memory_order_relaxed) == IN_USE) {
+    if (sref.load() == IN_USE) {
       shutdown(at(p), abortive);
     }
   }
