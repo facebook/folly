@@ -247,8 +247,12 @@ struct SharedMutexToken {
     DEFERRED_SHARED,
   };
 
-  Type type_;
-  uint16_t slot_;
+  Type type_{};
+  uint16_t slot_{};
+
+  constexpr SharedMutexToken() = default;
+
+  explicit operator bool() const { return type_ != Type::INVALID; }
 };
 
 #ifndef FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT
