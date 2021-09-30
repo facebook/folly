@@ -91,11 +91,13 @@
 #define FOLLY_OPENSSL_HAS_ALPN 0
 #endif
 
-// OpenSSL 1.1.1 and above have TLS 1.3 support
+// OpenSSL 1.1.1 and above have TLS 1.3 and BLAKE2B support
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
 #define FOLLY_OPENSSL_HAS_TLS13 1
+#define FOLLY_OPENSSL_HAS_BLAKE2B 1
 #else
 #define FOLLY_OPENSSL_HAS_TLS13 0
+#define FOLLY_OPENSSL_HAS_BLAKE2B 0
 #endif
 
 #if FOLLY_OPENSSL_IS_110 && \

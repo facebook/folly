@@ -144,6 +144,26 @@ class OpenSSLHash {
   static void sha256(MutableByteRange out, const IOBuf& data) {
     hash(out, EVP_sha256(), data);
   }
+  static void sha512(MutableByteRange out, ByteRange data) {
+    hash(out, EVP_sha512(), data);
+  }
+  static void sha512(MutableByteRange out, const IOBuf& data) {
+    hash(out, EVP_sha512(), data);
+  }
+#if FOLLY_OPENSSL_HAS_BLAKE2B
+  static void blake2s256(MutableByteRange out, ByteRange data) {
+    hash(out, EVP_blake2s256(), data);
+  }
+  static void blake2s256(MutableByteRange out, const IOBuf& data) {
+    hash(out, EVP_blake2s256(), data);
+  }
+  static void blake2b512(MutableByteRange out, ByteRange data) {
+    hash(out, EVP_blake2b512(), data);
+  }
+  static void blake2b512(MutableByteRange out, const IOBuf& data) {
+    hash(out, EVP_blake2b512(), data);
+  }
+#endif
 
   class Hmac {
    public:
@@ -270,6 +290,31 @@ class OpenSSLHash {
       MutableByteRange out, ByteRange key, const IOBuf& data) {
     hmac(out, EVP_sha256(), key, data);
   }
+  static void hmac_sha512(MutableByteRange out, ByteRange key, ByteRange data) {
+    hmac(out, EVP_sha512(), key, data);
+  }
+  static void hmac_sha512(
+      MutableByteRange out, ByteRange key, const IOBuf& data) {
+    hmac(out, EVP_sha512(), key, data);
+  }
+#if FOLLY_OPENSSL_HAS_BLAKE2B
+  static void hmac_blake2s256(
+      MutableByteRange out, ByteRange key, ByteRange data) {
+    hmac(out, EVP_blake2s256(), key, data);
+  }
+  static void hmac_blake2s256(
+      MutableByteRange out, ByteRange key, const IOBuf& data) {
+    hmac(out, EVP_blake2s256(), key, data);
+  }
+  static void hmac_blake2b512(
+      MutableByteRange out, ByteRange key, ByteRange data) {
+    hmac(out, EVP_blake2b512(), key, data);
+  }
+  static void hmac_blake2b512(
+      MutableByteRange out, ByteRange key, const IOBuf& data) {
+    hmac(out, EVP_blake2b512(), key, data);
+  }
+#endif
 
  private:
   static inline void check_out_size(size_t size, MutableByteRange out) {
