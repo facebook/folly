@@ -19,6 +19,7 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/lang/Keep.h>
+#include <folly/synchronization/Latch.h>
 
 #include <atomic>
 #include <memory>
@@ -42,8 +43,37 @@
 using namespace folly;
 using namespace std::chrono;
 
+// Like ASSERT_NEAR, for chrono duration types
+#define ASSERT_NEAR_NS(a, b, c)  \
+  do {                           \
+    ASSERT_NEAR(                 \
+        nanoseconds(a).count(),  \
+        nanoseconds(b).count(),  \
+        nanoseconds(c).count()); \
+  } while (0)
+
 static Func burnMs(uint64_t ms) {
   return [ms]() { std::this_thread::sleep_for(milliseconds(ms)); };
+}
+
+// Loop and burn cpu cycles
+FOLLY_MAYBE_UNUSED
+static void busyLoopFor(milliseconds ms) {
+  using clock = high_resolution_clock;
+  auto expires = clock::now() + ms;
+  while (clock::now() < expires) {
+    // (we want to burn cpu time)
+  }
+}
+
+// Loop without using much cpu time
+FOLLY_MAYBE_UNUSED
+static void idleLoopFor(milliseconds ms) {
+  using clock = high_resolution_clock;
+  auto expires = clock::now() + ms;
+  while (clock::now() < expires) {
+    /* sleep override */ std::this_thread::sleep_for(100ms);
+  }
 }
 
 static WorkerProvider* kWorkerProviderGlobal = nullptr;
@@ -315,6 +345,68 @@ TEST(ThreadPoolExecutorTest, IOTaskStats) {
 TEST(ThreadPoolExecutorTest, EDFTaskStats) {
   taskStats<EDFThreadPoolExecutor>();
 }
+
+#ifdef __linux__
+TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
+  CPUThreadPoolExecutor e(4);
+  ASSERT_EQ(e.numActiveThreads(), 0);
+  ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
+  // get busy
+  Latch latch(4);
+  auto busy_loop = [&] {
+    busyLoopFor(1s);
+    latch.count_down();
+  };
+  auto idle_loop = [&] {
+    idleLoopFor(1s);
+    latch.count_down();
+  };
+  e.add(busy_loop); // +1s cpu time
+  e.add(busy_loop); // +1s cpu time
+  e.add(idle_loop); // +0s cpu time
+  e.add(idle_loop); // +0s cpu time
+  latch.wait();
+  // pool should have used 2s cpu time (in 1s wall clock time)
+  auto elapsed0 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed0, 2s, 100ms);
+  // stop all threads
+  e.setNumThreads(0);
+  ASSERT_EQ(e.numActiveThreads(), 0);
+  // total pool CPU time should not have changed
+  auto elapsed1 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed0, elapsed1, 100ms);
+  // add a thread, do nothing, cpu time should stay the same
+  e.setNumThreads(1);
+  Baton<> baton;
+  e.add([&] { baton.post(); });
+  baton.wait();
+  ASSERT_EQ(e.numActiveThreads(), 1);
+  auto elapsed2 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed1, elapsed2, 100ms);
+  // now burn some more cycles
+  baton.reset();
+  e.add([&] {
+    busyLoopFor(500ms);
+    baton.post();
+  });
+  baton.wait();
+  auto elapsed3 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed3, elapsed2 + 500ms, 100ms);
+}
+#else
+TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
+  CPUThreadPoolExecutor e(1);
+  // Just make sure 0 is returned
+  ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
+  Baton<> baton;
+  e.add([&] {
+    busyLoopFor(500ms);
+    baton.post();
+  });
+  baton.wait();
+  ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
+}
+#endif
 
 template <class TPE>
 static void expiration() {
