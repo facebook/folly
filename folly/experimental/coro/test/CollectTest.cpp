@@ -2039,31 +2039,27 @@ TEST_F(CollectAnyTest, CollectAnyCancelsSubtasksWhenParentTaskCancelled) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto start = std::chrono::steady_clock::now();
     folly::CancellationSource cancelSource;
-    try {
-      auto [index, result] = co_await folly::coro::co_withCancellation(
-          cancelSource.getToken(),
-          folly::coro::collectAny(
-              [&]() -> folly::coro::Task<int> {
-                co_await sleepThatShouldBeCancelled(10s);
-                co_return 42;
-              }(),
-              [&]() -> folly::coro::Task<int> {
-                co_await sleepThatShouldBeCancelled(5s);
-                co_return 314;
-              }(),
-              [&]() -> folly::coro::Task<int> {
-                co_await folly::coro::co_reschedule_on_current_executor;
-                co_await folly::coro::co_reschedule_on_current_executor;
-                co_await folly::coro::co_reschedule_on_current_executor;
-                cancelSource.requestCancellation();
-                co_await sleepThatShouldBeCancelled(15s);
-                co_return 123;
-              }()));
-      ADD_FAILURE() << "Hit unexpected codepath";
-    } catch (const folly::OperationCancelled&) {
-      auto end = std::chrono::steady_clock::now();
-      EXPECT_LT(end - start, 1s);
-    }
+    auto [index, result] = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAny(
+            [&]() -> folly::coro::Task<int> {
+              co_await sleepThatShouldBeCancelled(10s);
+              co_return 42;
+            }(),
+            [&]() -> folly::coro::Task<int> {
+              co_await sleepThatShouldBeCancelled(5s);
+              co_return 314;
+            }(),
+            [&]() -> folly::coro::Task<int> {
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              cancelSource.requestCancellation();
+              co_await sleepThatShouldBeCancelled(15s);
+              co_return 123;
+            }()));
+    auto end = std::chrono::steady_clock::now();
+    EXPECT_LT(end - start, 1s);
   }());
 }
 
@@ -2530,34 +2526,29 @@ TEST_F(CollectAnyRangeTest, CollectAnyCancelsSubtasksWhenParentTaskCancelled) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto start = std::chrono::steady_clock::now();
     folly::CancellationSource cancelSource;
-    try {
-      auto generateTasks =
-          [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
-        co_yield [&]() -> folly::coro::Task<int> {
-          co_await sleepThatShouldBeCancelled(10s);
-          co_return 42;
-        }();
-        co_yield [&]() -> folly::coro::Task<int> {
-          co_await sleepThatShouldBeCancelled(5s);
-          co_return 314;
-        }();
-        co_yield [&]() -> folly::coro::Task<int> {
-          co_await folly::coro::co_reschedule_on_current_executor;
-          co_await folly::coro::co_reschedule_on_current_executor;
-          co_await folly::coro::co_reschedule_on_current_executor;
-          cancelSource.requestCancellation();
-          co_await sleepThatShouldBeCancelled(15s);
-          co_return 123;
-        }();
-      };
-      auto [index, result] = co_await folly::coro::co_withCancellation(
-          cancelSource.getToken(),
-          folly::coro::collectAnyRange(generateTasks()));
-      ADD_FAILURE() << "Hit unexpected codepath";
-    } catch (const folly::OperationCancelled&) {
-      auto end = std::chrono::steady_clock::now();
-      EXPECT_LT(end - start, 1s);
-    }
+    auto generateTasks =
+        [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+      co_yield [&]() -> folly::coro::Task<int> {
+        co_await sleepThatShouldBeCancelled(10s);
+        co_return 42;
+      }();
+      co_yield [&]() -> folly::coro::Task<int> {
+        co_await sleepThatShouldBeCancelled(5s);
+        co_return 314;
+      }();
+      co_yield [&]() -> folly::coro::Task<int> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        cancelSource.requestCancellation();
+        co_await sleepThatShouldBeCancelled(15s);
+        co_return 123;
+      }();
+    };
+    auto [index, result] = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), folly::coro::collectAnyRange(generateTasks()));
+    auto end = std::chrono::steady_clock::now();
+    EXPECT_LT(end - start, 1s);
   }());
 }
 

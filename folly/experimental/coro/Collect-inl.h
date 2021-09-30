@@ -135,7 +135,6 @@ auto collectAllImpl(
         CancellationToken::merge(parentCancelToken, cancelSource.getToken());
 
     exception_wrapper firstException;
-    std::atomic<bool> anyFailures{false};
 
     auto makeTask = [&](auto&& awaitable, auto& result) -> BarrierTask {
       using await_result = semi_await_result_t<decltype(awaitable)>;
@@ -153,9 +152,7 @@ auto collectAllImpl(
                   cancelToken, static_cast<decltype(awaitable)>(awaitable))));
         }
       } catch (...) {
-        anyFailures.store(true, std::memory_order_relaxed);
-        if (!cancelSource.requestCancellation() &&
-            !parentCancelToken.isCancellationRequested()) {
+        if (!cancelSource.requestCancellation()) {
           // This was the first failure, remember its error.
           firstException = exception_wrapper{std::current_exception()};
         }
@@ -194,15 +191,8 @@ auto collectAllImpl(
     // the use of co_viaIfAsync() within makeBarrierTask().
     co_await UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
 
-    if (anyFailures.load(std::memory_order_relaxed)) {
-      if (firstException) {
-        co_yield co_error(std::move(firstException));
-      }
-
-      // Parent task was cancelled before any child tasks failed.
-      // Complete with the OperationCancelled error instead of the
-      // child task's errors.
-      co_yield co_cancelled;
+    if (firstException) {
+      co_yield co_error(std::move(firstException));
     }
 
     co_return std::tuple<collect_all_component_t<SemiAwaitables>...>{
@@ -311,10 +301,6 @@ auto collectAnyImpl(
             }
           }))...);
 
-  if (parentCancelToken.isCancellationRequested()) {
-    co_yield co_cancelled;
-  }
-
   co_return firstCompletion;
 }
 
@@ -377,7 +363,6 @@ auto collectAllRange(InputRange awaitables)
       tryResults;
 
   exception_wrapper firstException;
-  std::atomic<bool> anyFailures = false;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
   auto makeTask = [&](awaitable_type semiAwaitable,
@@ -389,7 +374,6 @@ auto collectAllRange(InputRange awaitables)
           executor.get_alias(),
           co_withCancellation(cancelToken, std::move(semiAwaitable))));
     } catch (...) {
-      anyFailures.store(true, std::memory_order_relaxed);
       if (!cancelSource.requestCancellation()) {
         firstException = exception_wrapper{std::current_exception()};
       }
@@ -429,14 +413,8 @@ auto collectAllRange(InputRange awaitables)
   }
 
   // Check if there were any exceptions and rethrow the first one.
-  if (anyFailures.load(std::memory_order_relaxed)) {
-    if (firstException) {
-      co_yield co_error(std::move(firstException));
-    }
-
-    // Cancellation was requested of the parent Task before any of the
-    // child tasks failed.
-    co_yield co_cancelled;
+  if (firstException) {
+    co_yield co_error(std::move(firstException));
   }
 
   std::vector<detail::collect_all_range_component_t<
@@ -463,7 +441,6 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
       co_await co_current_cancellation_token, cancelSource.getToken());
 
   exception_wrapper firstException;
-  std::atomic<bool> anyFailures = false;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
   auto makeTask = [&](awaitable_type semiAwaitable) -> detail::BarrierTask {
@@ -472,7 +449,6 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
           executor.get_alias(),
           co_withCancellation(cancelToken, std::move(semiAwaitable)));
     } catch (...) {
-      anyFailures.store(true, std::memory_order_relaxed);
       if (!cancelSource.requestCancellation()) {
         firstException = exception_wrapper{std::current_exception()};
       }
@@ -509,10 +485,8 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   }
 
   // Check if there were any exceptions and rethrow the first one.
-  if (anyFailures.load(std::memory_order_relaxed)) {
-    if (firstException) {
-      co_yield co_error(std::move(firstException));
-    }
+  if (firstException) {
+    co_yield co_error(std::move(firstException));
   }
 }
 
@@ -607,10 +581,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       co_await co_current_cancellation_token, cancelSource.getToken());
 
   exception_wrapper firstException;
-  std::atomic<bool> anyFailures = false;
 
   const auto trySetFirstException = [&](exception_wrapper&& e) noexcept {
-    anyFailures.store(true, std::memory_order_relaxed);
     if (!cancelSource.requestCancellation()) {
       // This is first entity to request cancellation.
       firstException = std::move(e);
@@ -700,14 +672,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
 
-  if (iterationException) {
-    co_yield co_error(std::move(iterationException));
-  } else if (anyFailures.load(std::memory_order_relaxed)) {
-    if (firstException) {
-      co_yield co_error(std::move(firstException));
-    }
-
-    co_yield co_cancelled;
+  if (auto& ex = iterationException ? iterationException : firstException) {
+    co_yield co_error(std::move(ex));
   }
 }
 
@@ -731,12 +697,9 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       CancellationToken::merge(parentCancelToken, cancelSource.getToken());
 
   exception_wrapper firstException;
-  std::atomic<bool> anyFailures = false;
 
   auto trySetFirstException = [&](exception_wrapper&& e) noexcept {
-    anyFailures.store(true, std::memory_order_relaxed);
-    if (!cancelSource.requestCancellation() &&
-        !parentCancelToken.isCancellationRequested()) {
+    if (!cancelSource.requestCancellation()) {
       // This is first entity to request cancellation.
       firstException = std::move(e);
     }
@@ -846,16 +809,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
 
-  if (iterationException) {
-    co_yield co_error(std::move(iterationException));
-  } else if (anyFailures.load(std::memory_order_relaxed)) {
-    if (firstException) {
-      co_yield co_error(std::move(firstException));
-    }
-
-    // Otherwise, cancellation was requested before any of the child tasks
-    // failed so complete with the OperationCancelled error.
-    co_yield co_cancelled;
+  if (auto& ex = iterationException ? iterationException : firstException) {
+    co_yield co_error(std::move(ex));
   }
 
   std::vector<detail::collect_all_range_component_t<
@@ -1099,10 +1054,6 @@ auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
 
   co_await folly::coro::co_withCancellation(
       cancelToken, folly::coro::collectAllRange(tasks | ranges::views::move));
-
-  if (parentCancelToken.isCancellationRequested()) {
-    co_yield co_cancelled;
-  }
 
   co_return firstCompletion;
 }
