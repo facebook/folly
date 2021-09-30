@@ -439,7 +439,7 @@ struct small_vector_base {
 
   /*
    * Now inherit from them all.  This is done in such a convoluted
-   * way to make sure we get the empty base optimizaton on all these
+   * way to make sure we get the empty base optimization on all these
    * types to keep sizeof(small_vector<>) minimal.
    */
   typedef boost::totally_ordered1<

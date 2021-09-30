@@ -507,7 +507,7 @@ class Subprocess {
 #endif
   };
 
-  // Non-copiable, but movable
+  // Non-copyable, but movable
   Subprocess(const Subprocess&) = delete;
   Subprocess& operator=(const Subprocess&) = delete;
   Subprocess(Subprocess&&) = default;
@@ -907,7 +907,7 @@ class Subprocess {
   /**
    * The child's pipes are logically separate from the process metadata
    * (they may even be kept alive by the child's descendants).  This call
-   * lets you manage the pipes' lifetime separetely from the lifetime of the
+   * lets you manage the pipes' lifetime separately from the lifetime of the
    * child process.
    *
    * After this call, the Subprocess instance will have no knowledge of

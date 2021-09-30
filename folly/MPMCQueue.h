@@ -563,7 +563,7 @@ class MPMCQueue<T, Atom, true>
       this->dstate_.store((ticket << kSeqlockBits) + (2 * (index + 1)));
       return true;
     } else { // failed to acquire seqlock
-      // Someone acaquired the seqlock. Go back to the caller and get
+      // Someone acquired the seqlock. Go back to the caller and get
       // up-to-date info.
       return true;
     }
@@ -999,7 +999,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
     Atom<int> dstride_;
   };
 
-  /// The following two memebers are used by dynamic MPMCQueue.
+  /// The following two members are used by dynamic MPMCQueue.
   /// Ideally they should be in MPMCQueue<T,Atom,true>, but we get
   /// better cache locality if they are in the same cache line as
   /// dslots_ and dstride_.

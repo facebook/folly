@@ -753,7 +753,7 @@ size_t firstEscapableInWord(T s, const serialization_opts& opts) {
   };
 
   auto isChar = [&](uint8_t c) {
-    // A byte is == c iff it is 0 if xored with c.
+    // A byte is == c iff it is 0 if xor'd with c.
     return isLess(s ^ (kOnes * c), 1);
   };
 

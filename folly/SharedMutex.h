@@ -1329,7 +1329,7 @@ class SharedMutexImpl : std::conditional_t<
     assert(state < state + kIncrHasS);
   }
 
-  // It is straightfoward to make a token-less lock_shared() and
+  // It is straightforward to make a token-less lock_shared() and
   // unlock_shared() either by making the token-less version always use
   // INLINE_SHARED mode or by removing the token version.  Supporting
   // deferred operation for both types is trickier than it appears, because

@@ -297,7 +297,7 @@ template <std::size_t N, class I, typename... As>
  * \tparam T The (unqualified) type to which to cast the `Poly` object.
  * \tparam Poly The type of the `Poly` object.
  * \param that The `Poly` object to be cast.
- * \return A reference to the `T` object stored in or refered to by `that`.
+ * \return A reference to the `T` object stored in or referred to by `that`.
  * \throw BadPolyAccess if `that` is empty.
  * \throw BadPolyCast if `that` does not store or refer to an object of type
  *        `T`.
@@ -545,7 +545,7 @@ struct PolyVal : PolyImpl<I> {
 ////////////////////////////////////////////////////////////////////////////////
 /**
  * The implementation of `Poly` for when the interface type is
- * reference-quelified, like `Poly<SemuRegular &>`.
+ * reference-qualified, like `Poly<SemiRegular &>`.
  */
 template <class I>
 struct PolyRef : private PolyImpl<I> {
@@ -706,7 +706,7 @@ using PolyValOrRef = If<std::is_reference<I>::value, PolyRef<I>, PolyVal<I>>;
  * \li A *mapping* from a concrete type to a set of member function bindings.
  *
  * Below is a (heavily commented) example of a simple implementation of a
- * `std::function`-like polymorphic wrapper. Its interface has only a simgle
+ * `std::function`-like polymorphic wrapper. Its interface has only a single
  * member function: `operator()`
  *
  *     // An interface for a callable object of a particular signature, Fun

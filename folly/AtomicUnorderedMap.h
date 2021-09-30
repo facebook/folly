@@ -395,7 +395,7 @@ struct AtomicUnorderedInsertMap {
   size_t mmapRequested_;
   size_t numSlots_;
 
-  /// tricky, see keyToSlodIdx
+  /// tricky, see keyToSlotIdx
   size_t slotMask_;
 
   Allocator allocator_;

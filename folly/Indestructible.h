@@ -65,7 +65,7 @@ class Indestructible final {
 
   /**
    * Constructor accepting a single argument by forwarding reference, this
-   * allows using list initialzation without the overhead of things like
+   * allows using list initialization without the overhead of things like
    * in_place, etc and also works with std::initializer_list constructors
    * which can't be deduced, the default parameter helps there.
    *

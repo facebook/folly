@@ -144,7 +144,7 @@ template <
     int MAX_HEIGHT = 24>
 class ConcurrentSkipList {
   // MAX_HEIGHT needs to be at least 2 to suppress compiler
-  // warnings/errors (Werror=uninitialized tiggered due to preds_[1]
+  // warnings/errors (Werror=uninitialized triggered due to preds_[1]
   // being treated as a scalar in the compiler).
   static_assert(
       MAX_HEIGHT >= 2 && MAX_HEIGHT < 64,
@@ -268,7 +268,7 @@ class ConcurrentSkipList {
   }
 
   // lock all the necessary nodes for changing (adding or removing) the list.
-  // returns true if all the lock acquried successfully and the related nodes
+  // returns true if all the lock acquired successfully and the related nodes
   // are all validate (not in certain pending states), false otherwise.
   bool lockNodesForChange(
       int nodeHeight,
@@ -303,7 +303,7 @@ class ConcurrentSkipList {
   //     It could be either the newly added data, or the existed data in the
   //     list with the same key.
   //   pair.second stores whether the data is added successfully:
-  //     0 means not added, otherwise reutrns the new size.
+  //     0 means not added, otherwise returns the new size.
   template <typename U>
   std::pair<NodeType*, size_t> addOrGetData(U&& data) {
     NodeType *preds[MAX_HEIGHT], *succs[MAX_HEIGHT];
@@ -448,7 +448,7 @@ class ConcurrentSkipList {
 
   // Find node by first stepping down then stepping right. Based on benchmark
   // results, this is slightly faster than findNodeRightDown for better
-  // localality on the skipping pointers.
+  // locality on the skipping pointers.
   std::pair<NodeType*, int> findNodeDownRight(const value_type& data) const {
     NodeType* pred = head_.load(std::memory_order_acquire);
     int ht = pred->height();
@@ -561,7 +561,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   }
 
   // Unsafe initializer: the caller assumes the responsibility to keep
-  // skip_list valid during the whole life cycle of the Acessor.
+  // skip_list valid during the whole life cycle of the Accessor.
   explicit Accessor(ConcurrentSkipList* skip_list) : sl_(skip_list) {
     DCHECK(sl_ != nullptr);
     sl_->recycler_.addRef();

@@ -792,7 +792,7 @@ typename std::enable_if<
 toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
   // we are really careful here, calling toAppend with just one element does
   // not try to estimate space needed (as we already did that). If we call
-  // toAppend(v, delim, ....) we would do unnecesary size calculation
+  // toAppend(v, delim, ....) we would do unnecessary size calculation
   toAppend(v, detail::getLastElement(vs...));
   toAppend(delim, detail::getLastElement(vs...));
   toAppendDelimStrImpl(delim, vs...);
@@ -841,7 +841,7 @@ void toAppend(const pid_t a, Tgt* res) {
 #endif
 
 /**
- * Special version of the call that preallocates exaclty as much memory
+ * Special version of the call that preallocates exactly as much memory
  * as need for arguments to be stored in target. This means we are
  * not doing exponential growth when we append. If you are using it
  * in a loop you are aiming at your foot with a big perf-destroying
@@ -1482,7 +1482,7 @@ inline
 /**
  * tryTo/to that take the strings by pointer so the caller gets information
  * about how much of the string was consumed by the conversion. These do not
- * check for trailing whitepsace.
+ * check for trailing whitespace.
  */
 template <class Tgt>
 Expected<Tgt, detail::ParseToError<Tgt>> tryTo(StringPiece* src) {

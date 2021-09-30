@@ -233,7 +233,7 @@ const char* SocketAddress::getFamilyNameFrom(
 void SocketAddress::setFromPath(StringPiece path) {
   // Before we touch storage_, check to see if the length is too big.
   // Note that "storage_.un.addr->sun_path" may not be safe to evaluate here,
-  // but sizeof() just uses its type, and does't evaluate it.
+  // but sizeof() just uses its type, and doesn't evaluate it.
   if (path.size() > sizeof(storage_.un.addr->sun_path)) {
     throw std::invalid_argument(
         "socket path too large to fit into sockaddr_un");
@@ -434,7 +434,7 @@ void SocketAddress::setPort(uint16_t port) {
 void SocketAddress::convertToIPv4() {
   if (!tryConvertToIPv4()) {
     throw std::invalid_argument(
-        "convertToIPv4() called on an addresse that is "
+        "convertToIPv4() called on an address that is "
         "not an IPv4-mapped address");
   }
 }

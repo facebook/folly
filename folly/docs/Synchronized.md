@@ -498,7 +498,7 @@ problem is called reader starvation.
 
 One solution is to use a shared mutex type with read priority, such as
 `folly::SharedMutexReadPriority`. That can introduce less blocking under
-contention to the other threads attemping to acquire a shared lock to do the
+contention to the other threads attempting to acquire a shared lock to do the
 first check. However, that may backfire and cause threads which are attempting
 to acquire a unique lock (for the second check) to stall, waiting for a moment
 in time when there are no shared locks held on the mutex, a moment in time that
@@ -520,7 +520,7 @@ checks rather than blocking or being blocked by them.
 The example would then look like:
 
 ``` Cpp
-    struct MyObect {
+    struct MyObject {
       bool isUpdateRequired() const;
       void doUpdate();
     };

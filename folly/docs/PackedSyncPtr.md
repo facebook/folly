@@ -9,7 +9,7 @@ Because there is no memory overhead, an arbitrarily large number of locks can be
 used to minimize lock contention with no memory penalty.  Additionally,
 excellent cache performance is obtained by storing the lock inline with the
 pointer (no additional cache miss or false sharing).  Finally, because it uses a
-simple spinlock mechanism, the cost of aqcuiring an uncontended lock is minimal.
+simple spinlock mechanism, the cost of acquiring an uncontended lock is minimal.
 
 ### Usage
 ***

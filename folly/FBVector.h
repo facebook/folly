@@ -462,7 +462,7 @@ class fbvector {
   // uninitialized_copy
 
   // it is possible to add an optimization for the case where
-  // It = move(T*) and IsRelocatable<T> and Is0Initiailizable<T>
+  // It = move(T*) and IsRelocatable<T> and Is0Initializeable<T>
 
   // wrappers
   template <typename It>

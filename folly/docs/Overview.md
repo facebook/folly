@@ -62,7 +62,7 @@ highest-order unused 16 bits in a pointer as discriminator. So
 #### [`dynamic.h`](Dynamic.md)
 
 Dynamically-typed object, created with JSON objects in mind. `DynamicConverter.h` is
-a utility for effeciently converting from a `dynamic` to a more concrete structure when
+a utility for efficiently converting from a `dynamic` to a more concrete structure when
 the scheme is known (e.g. json -> `map<int,int>`).
 
 #### `EvictingCacheMap.h`

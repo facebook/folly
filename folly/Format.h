@@ -61,7 +61,7 @@ class FormatterTag {};
  */
 
 /* BaseFormatter class.
- * Overridable behaviours:
+ * Overridable behaviors:
  * You may override the actual formatting of positional parameters in
  * `doFormatArg`. The Formatter class provides the default implementation.
  *

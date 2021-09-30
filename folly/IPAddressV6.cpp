@@ -403,7 +403,7 @@ uint8_t IPAddressV6::getMulticastScope() const {
 }
 
 IPAddressV6 IPAddressV6::getSolicitedNodeAddress() const {
-  // Solicted node addresses must be constructed from unicast (or anycast)
+  // Solicited node addresses must be constructed from unicast (or anycast)
   // addresses
   DCHECK(!isMulticast());
 

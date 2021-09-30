@@ -85,8 +85,8 @@ int dupNoInt(int fd) {
   return int(wrapNoInt(dup, fd));
 }
 
-int dup2NoInt(int oldfd, int newfd) {
-  return int(wrapNoInt(dup2, oldfd, newfd));
+int dup2NoInt(int oldFd, int newFd) {
+  return int(wrapNoInt(dup2, oldFd, newFd));
 }
 
 int fdatasyncNoInt(int fd) {

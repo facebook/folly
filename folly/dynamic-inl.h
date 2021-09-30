@@ -1309,7 +1309,7 @@ inline std::string dynamic_view::move_string_or(Stringish&& val) {
 
 //////////////////////////////////////////////////////////////////////
 
-// Secialization of FormatValue so dynamic objects can be formatted
+// Specialization of FormatValue so dynamic objects can be formatted
 template <>
 class FormatValue<dynamic> {
  public:

@@ -35,7 +35,7 @@ folly::dynamic;` was used):
     map["something"] = 12;
     map["another_something"] = map["something"] * 2;
 
-    // Dynamic objects may be intialized this way
+    // Dynamic objects may be initialized this way
     dynamic map2 = dynamic::object("something", 12)("another_something", 24);
 ```
 
@@ -139,7 +139,7 @@ here's what it looks like:
     assert(parsed["key2"][0] == false);
     assert(parsed["key2"][1] == nullptr);
 
-    // Building the same document programatically.
+    // Building the same document programmatically.
     dynamic sonOfAJ = dynamic::object
       ("key", 12)
       ("key2", dynamic::array(false, nullptr, true, "yay"));

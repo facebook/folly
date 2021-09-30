@@ -32,7 +32,7 @@ extern bool const demangle_build_has_cxxabi;
 extern bool const demangle_build_has_liberty;
 
 /**
- * Return the demangled (prettyfied) version of a C++ type.
+ * Return the demangled (prettified) version of a C++ type.
  *
  * This function tries to produce a human-readable type, but the type name will
  * be returned unchanged in case of error or if demangling isn't supported on
@@ -48,7 +48,7 @@ inline fbstring demangle(const std::type_info& type) {
 }
 
 /**
- * Return the demangled (prettyfied) version of a C++ type in a user-provided
+ * Return the demangled (prettified) version of a C++ type in a user-provided
  * buffer.
  *
  * The semantics are the same as for snprintf or strlcpy: bufSize is the size

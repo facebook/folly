@@ -64,7 +64,7 @@ namespace folly {
 //
 // Implementation/Overhead Notes:
 //
-// By design, adding ConstructorCallback() to an object shoud be very light
+// By design, adding ConstructorCallback() to an object should be very light
 // weight.  From a memory context, this adds 1 byte of memory to the parent
 // class. From a CPU/performance perspective, the constructor does a load of an
 // atomic int and the cost of the actual callbacks themselves.  So if this

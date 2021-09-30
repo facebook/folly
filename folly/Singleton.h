@@ -187,7 +187,7 @@ class SingletonVault;
 namespace detail {
 
 // A TypeDescriptor is the unique handle for a given singleton.  It is
-// a combinaiton of the type and of the optional name, and is used as
+// a combination of the type and of the optional name, and is used as
 // a key in unordered_maps.
 class TypeDescriptor {
  public:

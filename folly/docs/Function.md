@@ -64,7 +64,7 @@ folly::Function<int(int) const> uf4 = Foo();
 folly::Function<int(int, int) const> uf5 = Foo();
 // uf5() returns 5
 ```
-If `cfoo` is a const-reference to a `Foo` object, `cfoo(int)` returns 4. If `foo` is a non-const reference to a `Foo` object, `foo(int)` returns 3. Normal const-to-non-const conversion behaviour applies: if you call `foo(int, int)` it will return 5: a non-const reference will invoke the const method if no non-const method is defined. Which leads to the following behaviour:
+If `cfoo` is a const-reference to a `Foo` object, `cfoo(int)` returns 4. If `foo` is a non-const reference to a `Foo` object, `foo(int)` returns 3. Normal const-to-non-const conversion behavior applies: if you call `foo(int, int)` it will return 5: a non-const reference will invoke the const method if no non-const method is defined. Which leads to the following behavior:
 ``` Cpp
 folly::Function<int(int, int)> uf5nc = Foo();
 // uf5nc() returns 5

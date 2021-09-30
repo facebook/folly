@@ -905,7 +905,7 @@ class Range {
   }
 
   /**
-   * Replaces all occurences of 'source' with 'dest'. Returns number
+   * Replaces all occurrences of 'source' with 'dest'. Returns number
    * of replacements made. Source and dest have to have the same
    * length. Throws if the lengths are different. If 'source' is a
    * pattern that is overlapping with itself, we perform sequential
@@ -942,7 +942,7 @@ class Range {
 
   /**
    * Splits this `Range` `[b, e)` in the position `i` dictated by the next
-   * occurence of `delimiter`.
+   * occurrence of `delimiter`.
    *
    * Returns a new `Range` `[b, i)` and adjusts this range to start right after
    * the delimiter's position. This range will be empty if the delimiter is not

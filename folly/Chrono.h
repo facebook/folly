@@ -189,7 +189,7 @@ struct system_clock_spec {};
 //
 //  Detects and reexports per-clock traits.
 //
-//  Specializable for clocks for which trait detection fails..
+//  Specializeable for clocks for which trait detection fails..
 template <typename Clock>
 struct clock_traits {
  private:

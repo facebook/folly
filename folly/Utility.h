@@ -158,7 +158,7 @@ inline in_place_index_tag<I> in_place_index(in_place_index_tag<I> = {}) {
  *  class Something {
  *  public:
  *    explicit Something(int);
- *    Something(std::intiializer_list<int>);
+ *    Something(std::initializer_list<int>);
  *
  *    operator int();
  *  };

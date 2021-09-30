@@ -116,7 +116,7 @@ numbers should be compared against some baseline.
 
 To support baseline-driven measurements, `folly/Benchmark.h` defines
 `BENCHMARK_RELATIVE`, which works much like `BENCHMARK`, except it
-considers the most recent lexically-ocurring `BENCHMARK` a baseline,
+considers the most recent lexically-occurring `BENCHMARK` a baseline,
 and fills the "relative" column. Say, for example, we want to use
 front insertion for a vector as a baseline and see how back insertion
 compares with it:
