@@ -26,8 +26,6 @@
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/detail/Traits.h>
 
-#include <range/v3/view/move.hpp>
-
 #include <functional>
 #include <iterator>
 #include <tuple>
@@ -67,6 +65,19 @@ using iterator_reference_t = typename std::iterator_traits<Iterator>::reference;
 
 template <typename Range>
 using range_reference_t = iterator_reference_t<range_iterator_t<Range>>;
+
+// A bare-bones std::range implementation that is similar to ranges::views::move
+template <typename Container>
+class MoveRange {
+ public:
+  explicit MoveRange(Container& container) : container_(container) {}
+
+  auto begin() { return std::make_move_iterator(container_.begin()); }
+  auto end() { return std::make_move_iterator(container_.end()); }
+
+ private:
+  Container& container_;
+};
 
 } // namespace detail
 
@@ -223,14 +234,14 @@ auto collectAllTryRange(InputRange awaitables)
 // such as Task<U>, are not lvalue awaitable.
 template <typename SemiAwaitable>
 auto collectAllRange(std::vector<SemiAwaitable> awaitables)
-    -> decltype(collectAllRange(awaitables | ranges::views::move)) {
-  co_return co_await collectAllRange(awaitables | ranges::views::move);
+    -> decltype(collectAllRange(detail::MoveRange(awaitables))) {
+  co_return co_await collectAllRange(detail::MoveRange(awaitables));
 }
 
 template <typename SemiAwaitable>
 auto collectAllTryRange(std::vector<SemiAwaitable> awaitables)
-    -> decltype(collectAllTryRange(awaitables | ranges::views::move)) {
-  co_return co_await collectAllTryRange(awaitables | ranges::views::move);
+    -> decltype(collectAllTryRange(detail::MoveRange(awaitables))) {
+  co_return co_await collectAllTryRange(detail::MoveRange(awaitables));
 }
 
 namespace detail {
@@ -274,9 +285,8 @@ template <typename SemiAwaitable>
 auto makeUnorderedAsyncGenerator(
     AsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedAsyncGenerator(
-        scope, awaitables | ranges::views::move)) {
-  auto gen =
-      makeUnorderedAsyncGenerator(scope, awaitables | ranges::views::move);
+        scope, detail::MoveRange(awaitables))) {
+  auto gen = makeUnorderedAsyncGenerator(scope, detail::MoveRange(awaitables));
   while (true) {
     co_yield co_result(co_await co_awaitTry(gen.next()));
   }
@@ -285,9 +295,9 @@ template <typename SemiAwaitable>
 auto makeUnorderedTryAsyncGenerator(
     AsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedTryAsyncGenerator(
-        scope, awaitables | ranges::views::move)) {
+        scope, detail::MoveRange(awaitables))) {
   auto gen =
-      makeUnorderedTryAsyncGenerator(scope, awaitables | ranges::views::move);
+      makeUnorderedTryAsyncGenerator(scope, detail::MoveRange(awaitables));
   while (true) {
     co_yield co_result(co_await co_awaitTry(gen.next()));
   }
@@ -312,9 +322,8 @@ template <typename SemiAwaitable>
 auto makeUnorderedAsyncGenerator(
     CancellableAsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedAsyncGenerator(
-        scope, awaitables | ranges::views::move)) {
-  auto gen =
-      makeUnorderedAsyncGenerator(scope, awaitables | ranges::views::move);
+        scope, detail::MoveRange(awaitables))) {
+  auto gen = makeUnorderedAsyncGenerator(scope, detail::MoveRange(awaitables));
   while (true) {
     co_yield co_result(co_await co_awaitTry(gen.next()));
   }
@@ -323,9 +332,9 @@ template <typename SemiAwaitable>
 auto makeUnorderedTryAsyncGenerator(
     CancellableAsyncScope& scope, std::vector<SemiAwaitable> awaitables)
     -> decltype(makeUnorderedTryAsyncGenerator(
-        scope, awaitables | ranges::views::move)) {
+        scope, detail::MoveRange(awaitables))) {
   auto gen =
-      makeUnorderedTryAsyncGenerator(scope, awaitables | ranges::views::move);
+      makeUnorderedTryAsyncGenerator(scope, detail::MoveRange(awaitables));
   while (true) {
     co_yield co_result(co_await co_awaitTry(gen.next()));
   }
@@ -397,18 +406,18 @@ template <typename SemiAwaitable>
 auto collectAllWindowed(
     std::vector<SemiAwaitable> awaitables, std::size_t maxConcurrency)
     -> decltype(collectAllWindowed(
-        awaitables | ranges::views::move, maxConcurrency)) {
+        detail::MoveRange(awaitables), maxConcurrency)) {
   co_return co_await collectAllWindowed(
-      awaitables | ranges::views::move, maxConcurrency);
+      detail::MoveRange(awaitables), maxConcurrency);
 }
 
 template <typename SemiAwaitable>
 auto collectAllTryWindowed(
     std::vector<SemiAwaitable> awaitables, std::size_t maxConcurrency)
     -> decltype(collectAllTryWindowed(
-        awaitables | ranges::views::move, maxConcurrency)) {
+        detail::MoveRange(awaitables), maxConcurrency)) {
   co_return co_await collectAllTryWindowed(
-      awaitables | ranges::views::move, maxConcurrency);
+      detail::MoveRange(awaitables), maxConcurrency);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -540,13 +549,13 @@ auto collectAnyNoDiscardRange(InputRange awaitables)
 // such as Task<U>, are not lvalue awaitable.
 template <typename SemiAwaitable>
 auto collectAnyRange(std::vector<SemiAwaitable> awaitables)
-    -> decltype(collectAnyRange(awaitables | ranges::views::move)) {
-  co_return co_await collectAnyRange(awaitables | ranges::views::move);
+    -> decltype(collectAnyRange(detail::MoveRange(awaitables))) {
+  co_return co_await collectAnyRange(detail::MoveRange(awaitables));
 }
 template <typename SemiAwaitable>
 auto collectAnyNoDiscardRange(std::vector<SemiAwaitable> awaitables)
-    -> decltype(collectAnyNoDiscardRange(awaitables | ranges::views::move)) {
-  co_return co_await collectAnyNoDiscardRange(awaitables | ranges::views::move);
+    -> decltype(collectAnyNoDiscardRange(detail::MoveRange(awaitables))) {
+  co_return co_await collectAnyNoDiscardRange(detail::MoveRange(awaitables));
 }
 
 } // namespace coro

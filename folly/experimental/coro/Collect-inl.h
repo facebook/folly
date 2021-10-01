@@ -1053,7 +1053,7 @@ auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
   }
 
   co_await folly::coro::co_withCancellation(
-      cancelToken, folly::coro::collectAllRange(tasks | ranges::views::move));
+      cancelToken, folly::coro::collectAllRange(detail::MoveRange(tasks)));
 
   co_return firstCompletion;
 }
@@ -1094,7 +1094,7 @@ auto collectAnyNoDiscardRange(InputRange awaitables)
 
   results.resize(taskCount);
   co_await folly::coro::co_withCancellation(
-      cancelToken, folly::coro::collectAllRange(tasks | ranges::views::move));
+      cancelToken, folly::coro::collectAllRange(detail::MoveRange(tasks)));
 
   co_return results;
 }
