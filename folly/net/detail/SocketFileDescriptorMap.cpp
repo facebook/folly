@@ -18,7 +18,6 @@
 
 #ifdef _WIN32
 
-#include <optional>
 #include <shared_mutex>
 #include <unordered_map>
 
@@ -93,7 +92,7 @@ int SocketFileDescriptorMap::close(int fd) noexcept {
   auto hand = SocketFileDescriptorMap::fdToSocket(fd);
   auto& smap = getSyncSocketMap();
   {
-    std::unique_lock lock{smap.mutex};
+    std::unique_lock<std::shared_mutex> lock{smap.mutex};
     smap.map.erase(hand);
   }
   auto r = closeOnlyFileDescriptor(fd);
@@ -104,18 +103,20 @@ int SocketFileDescriptorMap::close(int fd) noexcept {
 }
 
 int SocketFileDescriptorMap::close(SOCKET sock) noexcept {
-  std::optional<int> fd{};
+  bool found = false;
+  int fd = 0;
   auto& smap = getSyncSocketMap();
   {
-    std::shared_lock lock{smap.mutex};
+    std::shared_lock<std::shared_mutex> lock{smap.mutex};
     auto it = smap.map.find(sock);
     if (it != smap.map.end()) {
+      found = true;
       fd = it->second;
     }
   }
 
-  if (fd) {
-    return SocketFileDescriptorMap::close(fd.value());
+  if (found) {
+    return SocketFileDescriptorMap::close(fd);
   }
 
   return closesocket(sock);
@@ -136,14 +137,14 @@ int SocketFileDescriptorMap::socketToFd(SOCKET sock) noexcept {
 
   auto& smap = getSyncSocketMap();
   {
-    std::shared_lock lock{smap.mutex};
+    std::shared_lock<std::shared_mutex> lock{smap.mutex};
     auto const it = smap.map.find(sock);
     if (it != smap.map.end()) {
       return it->second;
     }
   }
 
-  std::unique_lock lock{smap.mutex};
+  std::unique_lock<std::shared_mutex> lock{smap.mutex};
   auto const it = smap.map.find(sock);
   if (it != smap.map.end()) {
     return it->second;
