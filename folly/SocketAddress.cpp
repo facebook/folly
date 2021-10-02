@@ -217,7 +217,7 @@ const char* SocketAddress::getFamilyNameFrom(
   case Family:                         \
     return #Family
 
-  switch (address->sa_family) {
+  switch ((int)address->sa_family) {
     GETFAMILYNAMEFROM_IMPL(AF_INET);
     GETFAMILYNAMEFROM_IMPL(AF_INET6);
     GETFAMILYNAMEFROM_IMPL(AF_UNIX);
@@ -322,6 +322,7 @@ void SocketAddress::setFromSockaddr(
   }
 }
 
+#ifndef __XROS__
 void SocketAddress::setFromSockaddr(const struct sockaddr_in* address) {
   assert(address->sin_family == AF_INET);
   setFromSockaddr((sockaddr*)address);
@@ -331,6 +332,7 @@ void SocketAddress::setFromSockaddr(const struct sockaddr_in6* address) {
   assert(address->sin6_family == AF_INET6);
   setFromSockaddr((sockaddr*)address);
 }
+#endif
 
 void SocketAddress::setFromSockaddr(
     const struct sockaddr_un* address, socklen_t addrlen) {
@@ -589,7 +591,7 @@ size_t SocketAddress::hash() const {
     }
   }
 
-  switch (getFamily()) {
+  switch ((int)getFamily()) {
     case AF_INET:
     case AF_INET6: {
       boost::hash_combine(seed, port_);
