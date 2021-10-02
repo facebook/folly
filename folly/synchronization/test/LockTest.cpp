@@ -304,6 +304,12 @@ class shared_lock<Mutex<X, S, U>>
   using folly::shared_lock_base<Mutex<X, S, U>>::shared_lock_base;
 };
 
+template <typename X, typename S, typename U>
+class lock_guard<Mutex<X, S, U>>
+    : public folly::unique_lock_guard_base<Mutex<X, S, U>> {
+  using folly::unique_lock_guard_base<Mutex<X, S, U>>::unique_lock_guard_base;
+};
+
 } // namespace std
 
 //  general helpers for use across test types
@@ -339,6 +345,27 @@ template <typename M>
 using s = folly::shared_lock<M>;
 template <typename M>
 using u = folly::upgrade_lock<M>;
+
+template <typename M>
+using xg = folly::unique_lock_guard<M>;
+template <typename M>
+using sg = folly::shared_lock_guard<M>;
+
+template <typename>
+struct lock_guard_lock_t_;
+template <typename M>
+struct lock_guard_lock_t_<folly::unique_lock_guard<M>> {
+  using type = folly::unique_lock<M>;
+};
+template <typename M>
+struct lock_guard_lock_t_<folly::shared_lock_guard<M>> {
+  using type = folly::shared_lock<M>;
+};
+template <typename LG>
+using lock_guard_lock_t = typename lock_guard_lock_t_<LG>::type;
+template <typename LG>
+using lock_guard_state_t =
+    folly::detail::lock_state_type_of_t<lock_guard_lock_t<LG>>;
 
 //  combinatorial test suite for lock types
 //
@@ -879,6 +906,75 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
     u, LockTest, decltype(LockTestParam<0, 0, 0, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
     U, LockTest, decltype(LockTestParam<0, 0, 1, u>{}));
+
+//  combinatorial test suite for lock guard types
+//
+//  combinations:
+//  - lock is: x (unique), s (shared)
+//  - lock has state?
+//
+//  lower x, s denote locks sans state
+//  upper X, S denote locks with state
+
+template <int X, int S, int U, template <typename> class L>
+struct LockGuardTestParam {
+  using unique_lock_state = std::conditional_t<X, UniqueLockState, void>;
+  using shared_lock_state = std::conditional_t<S, SharedLockState, void>;
+  using upgrade_lock_state = std::conditional_t<U, UpgradeLockState, void>;
+  template <typename M>
+  using lock_type = L<M>;
+};
+
+template <typename Param>
+struct LockGuardTest : testing::TestWithParam<Param> {};
+TYPED_TEST_SUITE_P(LockGuardTest);
+
+TYPED_TEST_P(LockGuardTest, construct_mutex) {
+  using mutex_type = param_mutex_t<TypeParam>;
+  using lock_guard_type = param_lock_t<TypeParam>;
+
+  mutex_type m;
+  {
+    lock_guard_type l{m};
+    EXPECT_EQ(held_v<lock_guard_lock_t<lock_guard_type>>, m.held);
+  }
+  EXPECT_EQ(Held::None, m.held);
+}
+
+TYPED_TEST_P(LockGuardTest, construct_mutex_adopt) {
+  using mutex_type = param_mutex_t<TypeParam>;
+  using lock_guard_type = param_lock_t<TypeParam>;
+  using state_type = lock_guard_state_t<lock_guard_type>;
+
+  mutex_type m;
+  m.held = held_v<lock_guard_lock_t<lock_guard_type>>;
+  m.locked_until = m.now + 1s;
+  {
+    lock_guard_type l = std::invoke([&] {
+      if constexpr (std::is_void_v<state_type>) {
+        return lock_guard_type{m, std::adopt_lock};
+      } else {
+        return lock_guard_type{m, std::adopt_lock, state_type{true}};
+      }
+    });
+    EXPECT_EQ(held_v<lock_guard_lock_t<lock_guard_type>>, m.held);
+  }
+  EXPECT_EQ(Held::None, m.held);
+}
+
+REGISTER_TYPED_TEST_SUITE_P(
+    LockGuardTest, //
+    construct_mutex,
+    construct_mutex_adopt);
+
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    x, LockGuardTest, decltype(LockGuardTestParam<0, 0, 0, xg>{}));
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    X, LockGuardTest, decltype(LockGuardTestParam<1, 0, 0, xg>{}));
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    s, LockGuardTest, decltype(LockGuardTestParam<0, 0, 0, sg>{}));
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    S, LockGuardTest, decltype(LockGuardTestParam<0, 1, 0, sg>{}));
 
 //  combinatorial test suite for lock transitions
 //

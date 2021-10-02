@@ -1718,13 +1718,13 @@ class unique_lock<
 template <template <typename> class Atom, bool TimePublishing>
 class lock_guard<
     ::folly::detail::distributed_mutex::DistributedMutex<Atom, TimePublishing>>
-    : public ::folly::lock_guard_base<
+    : public ::folly::unique_lock_guard_base<
           ::folly::detail::distributed_mutex::
               DistributedMutex<Atom, TimePublishing>> {
  public:
-  using ::folly::lock_guard_base<
+  using ::folly::unique_lock_guard_base<
       ::folly::detail::distributed_mutex::
-          DistributedMutex<Atom, TimePublishing>>::lock_guard_base;
+          DistributedMutex<Atom, TimePublishing>>::unique_lock_guard_base;
 };
 
 } // namespace std

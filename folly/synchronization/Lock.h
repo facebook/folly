@@ -472,7 +472,7 @@ class upgrade_lock : public upgrade_lock_base<Mutex> {
 //  When defining lockable-with-state mutex types, specialize std::lock_guard
 //  to derive this.
 template <typename Mutex>
-class lock_guard_base
+class unique_lock_guard_base
     : public detail::lock_guard_base<Mutex, detail::lock_policy_unique> {
  private:
   using base = detail::lock_guard_base<Mutex, detail::lock_policy_unique>;
@@ -481,10 +481,26 @@ class lock_guard_base
   using base::base;
 };
 
-//  lock_guard
+//  unique_lock_guard
 //
 //  Alias to std::lock_guard.
-using std::lock_guard;
+template <typename Mutex>
+using unique_lock_guard = std::lock_guard<Mutex>;
+
+//  shared_lock_guard
+//
+//  A lock-guard which holds shared locks, usable with any shared mutex type.
+//
+//  Works with both lockable mutex types and lockable-with-state mutex types.
+template <typename Mutex>
+class shared_lock_guard
+    : public detail::lock_guard_base<Mutex, detail::lock_policy_shared> {
+ private:
+  using base = detail::lock_guard_base<Mutex, detail::lock_policy_shared>;
+
+ public:
+  using base::base;
+};
 
 namespace detail {
 
