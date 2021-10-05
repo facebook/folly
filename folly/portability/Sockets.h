@@ -24,6 +24,10 @@ namespace folly {
 namespace portability {
 namespace sockets {
 
+#ifdef __XROS__
+#include <xros/portability/net/xr_socket_compat.h> // @manual
+#endif
+
 #ifdef _WIN32
 
 // Some Windows specific helper functions.
