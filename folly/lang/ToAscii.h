@@ -221,7 +221,8 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
   }
 
   //  blog2r is approx 1 / log<2>(Base), used in log change-of-base just below
-  constexpr auto const blog2r = 8. / constexpr_log2(constexpr_pow(Base, 8));
+  constexpr auto const blog2m = constexpr_log2(constexpr_pow(Base, 8));
+  constexpr auto const blog2r = 8. / double(blog2m);
 
   //  vlogb is approx log<Base>(v) = log<2>(v) / log<2>(Base)
   auto const vlogb = vlog2 * size_t(blog2r * 256) / 256;
