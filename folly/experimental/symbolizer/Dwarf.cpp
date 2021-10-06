@@ -26,6 +26,12 @@
 
 #include <dwarf.h>
 
+// We need a single dwarf5 tag, but may not be building against
+// a new enough libdwarf, so just define it ourselves.
+#ifndef DW_TAG_skeleton_unit
+#define DW_TAG_skeleton_unit 0x4a
+#endif
+
 namespace folly {
 namespace symbolizer {
 
