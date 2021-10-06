@@ -47,6 +47,17 @@ struct SSLCommonOptions {
   }
 
   /**
+   * The TLS 1.3 ciphersuites recommended for this options configuration.
+   */
+  static constexpr auto ciphersuites() {
+    return folly::make_array(
+        "TLS_AES_128_GCM_SHA256",
+        "TLS_AES_256_GCM_SHA384",
+        "TLS_CHACHA20_POLY1305_SHA256",
+        "TLS_AES_128_CCM_SHA256");
+  }
+
+  /**
    * The list of signature algorithms recommended for this options
    * configuration.
    */
@@ -104,6 +115,17 @@ struct SSLServerOptions {
         "AES128-SHA",
         "AES256-SHA");
   }
+
+  /**
+   * The TLS 1.3 ciphersuites recommended for this options configuration.
+   */
+  static constexpr auto ciphersuites() {
+    return folly::make_array(
+        "TLS_AES_128_GCM_SHA256",
+        "TLS_AES_256_GCM_SHA384",
+        "TLS_CHACHA20_POLY1305_SHA256",
+        "TLS_AES_128_CCM_SHA256");
+  }
 };
 
 /**
@@ -114,6 +136,11 @@ struct SSLServerOptions {
 template <typename TSSLOptions>
 void setCipherSuites(SSLContext& ctx) {
   try {
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+    std::string ciphersuites;
+    folly::join(':', TSSLOptions::ciphersuites(), ciphersuites);
+    ctx.setCiphersuitesOrThrow(std::move(ciphersuites));
+#endif
     ctx.setCipherList(TSSLOptions::ciphers());
   } catch (std::runtime_error const& e) {
     ssl_options_detail::logDfatal(e);
