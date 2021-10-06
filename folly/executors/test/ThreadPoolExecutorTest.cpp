@@ -38,6 +38,7 @@
 #include <folly/executors/thread_factory/InitThreadFactory.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/PThread.h>
 #include <folly/synchronization/detail/Spin.h>
 
 using namespace folly;
@@ -56,18 +57,23 @@ static Func burnMs(uint64_t ms) {
   return [ms]() { std::this_thread::sleep_for(milliseconds(ms)); };
 }
 
+#ifdef __linux__
+static std::chrono::nanoseconds thread_clock_now() {
+  timespec tp;
+  clockid_t clockid;
+  CHECK(!pthread_getcpuclockid(pthread_self(), &clockid));
+  CHECK(!clock_gettime(clockid, &tp));
+  return std::chrono::nanoseconds(tp.tv_nsec) + std::chrono::seconds(tp.tv_sec);
+}
+
 // Loop and burn cpu cycles
-FOLLY_MAYBE_UNUSED
-static void busyLoopFor(milliseconds ms) {
-  using clock = high_resolution_clock;
-  auto expires = clock::now() + ms;
-  while (clock::now() < expires) {
-    // (we want to burn cpu time)
+static void burnThreadCpu(milliseconds ms) {
+  auto expires = thread_clock_now() + ms;
+  while (thread_clock_now() < expires) {
   }
 }
 
 // Loop without using much cpu time
-FOLLY_MAYBE_UNUSED
 static void idleLoopFor(milliseconds ms) {
   using clock = high_resolution_clock;
   auto expires = clock::now() + ms;
@@ -75,6 +81,7 @@ static void idleLoopFor(milliseconds ms) {
     /* sleep override */ std::this_thread::sleep_for(100ms);
   }
 }
+#endif
 
 static WorkerProvider* kWorkerProviderGlobal = nullptr;
 
@@ -354,7 +361,7 @@ TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
   // get busy
   Latch latch(4);
   auto busy_loop = [&] {
-    busyLoopFor(1s);
+    burnThreadCpu(1s);
     latch.count_down();
   };
   auto idle_loop = [&] {
@@ -386,7 +393,7 @@ TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
   // now burn some more cycles
   baton.reset();
   e.add([&] {
-    busyLoopFor(500ms);
+    burnThreadCpu(500ms);
     baton.post();
   });
   baton.wait();
@@ -400,7 +407,9 @@ TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
   ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
   Baton<> baton;
   e.add([&] {
-    busyLoopFor(500ms);
+    auto expires = steady_clock::now() + 500ms;
+    while (steady_clock::now() < expires) {
+    }
     baton.post();
   });
   baton.wait();
