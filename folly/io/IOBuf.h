@@ -148,10 +148,12 @@ namespace folly {
  * Synchronization
  * ---------------
  *
- * When used in multithread programs, a single IOBuf object should only be used
- * in a single thread at a time.  If a caller uses a single IOBuf across
- * multiple threads the caller is responsible for using an external lock to
- * synchronize access to the IOBuf.
+ * When used in multithread programs, a single IOBuf object should only be
+ * accessed mutably by a single thread at a time.  All const member functions of
+ * IOBuf are safe to call concurrently with one another, but when a caller uses
+ * a single IOBuf across multiple threads and at least one thread calls a
+ * non-const member function, the caller is responsible for using an external
+ * lock to synchronize access to the IOBuf.
  *
  * Two separate IOBuf objects may be accessed concurrently in separate threads
  * without locking, even if they point to the same underlying buffer.  The
@@ -163,9 +165,10 @@ namespace folly {
  * another thread.
  *
  * For IOBuf chains, no two IOBufs in the same chain should be accessed
- * simultaneously in separate threads.  The caller must maintain a lock around
- * the entire chain if the chain, or individual IOBufs in the chain, may be
- * accessed by multiple threads.
+ * simultaneously in separate threads, except where all simultaneous accesses
+ * are to const member functions.  The caller must maintain a lock around the
+ * entire chain if the chain, or individual IOBufs in the chain, may be accessed
+ * by multiple threads with at least one of the threads needing to mutate.
  *
  *
  * IOBuf Object Allocation
@@ -1329,6 +1332,21 @@ class IOBuf {
   void cloneOneInto(IOBuf& other) const { other = cloneOneAsValue(); }
 
   /**
+   * Append the chain data into the provided container. This is meant to be used
+   * with containers such as std::string or std::vector<char>, but any container
+   * which supports reserve(), insert(), and has char or unsigned char value
+   * type is supported.
+   */
+  template <class Container>
+  void appendTo(Container& container) const;
+
+  /**
+   * Convenience version of appendTo().
+   */
+  template <class Container>
+  Container to() const;
+
+  /**
    * Return an iovector suitable for e.g. writev()
    *
    *   auto iov = buf->getIov();
@@ -1830,6 +1848,25 @@ inline IOBuf::Iterator IOBuf::begin() const {
 }
 inline IOBuf::Iterator IOBuf::end() const {
   return cend();
+}
+
+template <class Container>
+void IOBuf::appendTo(Container& container) const {
+  static_assert(
+      (std::is_same<typename Container::value_type, char>::value ||
+       std::is_same<typename Container::value_type, unsigned char>::value),
+      "Unsupported value type");
+  container.reserve(container.size() + computeChainDataLength());
+  for (auto data : *this) {
+    container.insert(container.end(), data.begin(), data.end());
+  }
+}
+
+template <class Container>
+Container IOBuf::to() const {
+  Container result;
+  appendTo(result);
+  return result;
 }
 
 } // namespace folly

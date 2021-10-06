@@ -168,12 +168,7 @@ bool Codec::canUncompress(
 std::string Codec::doCompressString(const StringPiece data) {
   const IOBuf inputBuffer{IOBuf::WRAP_BUFFER, data};
   auto outputBuffer = doCompress(&inputBuffer);
-  std::string output;
-  output.reserve(outputBuffer->computeChainDataLength());
-  for (auto range : *outputBuffer) {
-    output.append(reinterpret_cast<const char*>(range.data()), range.size());
-  }
-  return output;
+  return outputBuffer->to<std::string>();
 }
 
 std::string Codec::doUncompressString(

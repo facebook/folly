@@ -40,6 +40,8 @@ DEFINE_double(load_factor, 0.95, "Load factor of the multiset");
 
 #if FOLLY_QUOTIENT_MULTI_SET_SUPPORTED
 
+using std::string;
+
 namespace {
 
 static const unsigned int kRunsPerIteration = 5000000;
@@ -48,7 +50,7 @@ std::mt19937 rng;
 
 // Uniformly distributed keys.
 std::vector<uint64_t> uniform;
-std::string qmsData;
+string qmsData;
 
 uint64_t maxValue(uint32_t nbits) {
   return nbits == 64 ? std::numeric_limits<uint64_t>::max()
@@ -74,7 +76,7 @@ void buildQuotientMultiSet(std::vector<uint64_t>& keys) {
     }
   }
   builder.close(buff);
-  qmsData = buff.move()->coalesce().toString();
+  qmsData = buff.move()->to<string>();
 }
 
 std::vector<uint64_t> makeLookupKeys(size_t n, double hitRate) {

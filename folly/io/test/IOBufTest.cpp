@@ -1779,3 +1779,32 @@ TEST(IOBuf, computeChainCapacityOfMixedCapacityChainedIOBuf) {
 
   EXPECT_EQ(buf->computeChainCapacity(), 100);
 }
+
+TEST(IOBuf, AppendTo) {
+  using folly::range;
+
+  IOBuf buf;
+  EXPECT_EQ(buf.to<std::string>(), "");
+
+  auto temp = &buf;
+  temp->appendChain(IOBuf::copyBuffer("Hello"));
+  temp = temp->next();
+  temp->appendChain(IOBuf::copyBuffer(" and"));
+  temp = temp->next();
+  temp->appendChain(IOBuf::copyBuffer(" goodbye."));
+
+  auto testAppendTo = [&](auto c) {
+    const StringPiece kExpected = "Hello and goodbye.";
+    EXPECT_EQ(StringPiece(range(buf.to<decltype(c)>())), kExpected);
+
+    const StringPiece kPreviousData = "I was there before. ";
+    c.insert(c.end(), kPreviousData.begin(), kPreviousData.end());
+    buf.appendTo(c);
+    EXPECT_EQ(StringPiece(range(c)), kPreviousData.str() + kExpected.str());
+  };
+
+  testAppendTo(std::string{});
+  testAppendTo(fbstring{});
+  testAppendTo(std::vector<char>{});
+  testAppendTo(std::vector<unsigned char>{});
+}

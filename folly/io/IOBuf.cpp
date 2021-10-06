@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <limits>
 #include <stdexcept>
+#include <type_traits>
 
 #include <folly/Conv.h>
 #include <folly/Likely.h>
