@@ -177,7 +177,13 @@ size_t walkNormalStack(
     StackFrame* normalStackFrame,
     StackFrame* normalStackFrameStop) {
   size_t numFrames = 0;
-  while (numFrames < maxAddresses && normalStackFrame != nullptr) {
+  // Stack frame addresses should increase as we traverse the stack.
+  // If it doesn't, it means we have stack corruption, or an unusual calling
+  // convention. In this case, stop walking the stack early to avoid incorrect
+  // stack walking.
+  auto* normalStackFrameStart = normalStackFrame;
+  while (numFrames < maxAddresses && normalStackFrame != nullptr &&
+         normalStackFrame >= normalStackFrameStart) {
     auto* normalStackFrameNext = normalStackFrame->parentFrame;
     if (normalStackFrameStop != nullptr &&
         normalStackFrameNext == normalStackFrameStop) {
