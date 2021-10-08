@@ -608,13 +608,18 @@ void RequestContext::clearContextData(const RequestToken& val) {
   return prevCtx;
 }
 
+namespace {
+thread_local bool getStaticContextCalled = false;
+}
+
 /* static */ RequestContext::StaticContext& RequestContext::getStaticContext() {
+  getStaticContextCalled = true;
   return StaticContextThreadLocal::get();
 }
 
 /* static */ RequestContext::StaticContext*
 RequestContext::tryGetStaticContext() {
-  return StaticContextThreadLocal::try_get();
+  return getStaticContextCalled ? &StaticContextThreadLocal::get() : nullptr;
 }
 
 /* static */ RequestContext::StaticContextAccessor

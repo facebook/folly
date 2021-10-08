@@ -584,4 +584,19 @@ TEST(RequestContextTryGetTest, TryGetTest) {
   EXPECT_TRUE(rc->hasContextData("test"));
   auto* dataPtr = dynamic_cast<TestData*>(rc->getContextData("test"));
   EXPECT_EQ(dataPtr->data_, 10);
+
+  auto thread = std::thread([&] {
+    auto accessor = RequestContext::accessAllThreads();
+    // test there is no deadlock with try_get()
+    RequestContext::try_get();
+  });
+  thread.join();
+
+  thread = std::thread([&] {
+    RequestContext::get();
+    auto accessor = RequestContext::accessAllThreads();
+    // test there is no deadlock with get()
+    RequestContext::get();
+  });
+  thread.join();
 }
