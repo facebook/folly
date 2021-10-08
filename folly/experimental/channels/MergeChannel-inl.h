@@ -170,7 +170,7 @@ class MergeChannelProcessor
       receiversBySubscriptionId_.insert(
           std::make_pair(subscriptionId, unbufferedReceiver.get()));
       auto* receiverPtr = unbufferedReceiver.get();
-      receivers_.insert(std::move(unbufferedReceiver));
+      receivers_.insert(unbufferedReceiver.release());
       processAllAvailableValues(receiverPtr, std::move(buffer));
     });
   }
@@ -313,14 +313,15 @@ class MergeChannelProcessor
       ChannelBridge<TValue>* receiver, CloseResult closeResult) {
     CHECK(getReceiverState(receiver) == ChannelState::CancellationTriggered);
     receivers_.erase(receiver);
+    (ChannelBridgePtr<TValue>(receiver));
     if (closeResult.exception.has_value()) {
       // We received an exception. We need to close the sender and all
       // receivers.
       if (getSenderState() == ChannelState::Active) {
         sender_->senderClose(std::move(closeResult.exception.value()));
       }
-      for (auto& otherReceiver : receivers_) {
-        if (getReceiverState(otherReceiver.get()) == ChannelState::Active) {
+      for (auto* otherReceiver : receivers_) {
+        if (getReceiverState(otherReceiver) == ChannelState::Active) {
           otherReceiver->receiverCancel();
         }
       }
@@ -336,8 +337,8 @@ class MergeChannelProcessor
   void processSenderCancelled() {
     CHECK(getSenderState() == ChannelState::CancellationTriggered);
     sender_ = nullptr;
-    for (auto& receiver : receivers_) {
-      if (getReceiverState(receiver.get()) == ChannelState::Active) {
+    for (auto* receiver : receivers_) {
+      if (getReceiverState(receiver) == ChannelState::Active) {
         receiver->receiverCancel();
       }
     }
@@ -359,8 +360,8 @@ class MergeChannelProcessor
         sender_->senderClose();
       }
     }
-    for (auto& receiver : receivers_) {
-      if (getReceiverState(receiver.get()) == ChannelState::Active) {
+    for (auto* receiver : receivers_) {
+      if (getReceiverState(receiver) == ChannelState::Active) {
         receiver->receiverCancel();
       }
     }
@@ -389,11 +390,7 @@ class MergeChannelProcessor
 
   ChannelBridgePtr<TValue> sender_;
   folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
-  folly::F14FastSet<
-      ChannelBridgePtr<TValue>,
-      ChannelBridgeHash<TValue>,
-      ChannelBridgeEqual<TValue>>
-      receivers_;
+  folly::F14FastSet<ChannelBridge<TValue>*> receivers_;
   folly::F14FastMap<TSubscriptionId, ChannelBridge<TValue>*>
       receiversBySubscriptionId_;
   bool handleDestroyed_{false};

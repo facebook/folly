@@ -137,42 +137,6 @@ class ChannelBridge : public ChannelBridgeBase {
 
 template <typename TValue>
 using ChannelBridgePtr = typename ChannelBridge<TValue>::Ptr;
-
-template <typename TValue>
-struct ChannelBridgeHash {
-  using is_transparent = std::true_type;
-
-  bool operator()(ChannelBridgePtr<TValue> const& arg) const {
-    return std::hash<ChannelBridgePtr<TValue>>()(arg);
-  }
-
-  bool operator()(ChannelBridge<TValue>* const& arg) const {
-    return std::hash<ChannelBridge<TValue>*>()(arg);
-  }
-};
-
-template <typename TValue>
-struct ChannelBridgeEqual {
-  using is_transparent = std::true_type;
-
-  bool operator()(
-      ChannelBridgePtr<TValue> const& lhs,
-      ChannelBridgePtr<TValue> const& rhs) const {
-    return lhs.get() == rhs.get();
-  }
-
-  bool operator()(
-      ChannelBridge<TValue>* const& lhs,
-      ChannelBridgePtr<TValue> const& rhs) const {
-    return lhs == rhs.get();
-  }
-
-  bool operator()(
-      ChannelBridgePtr<TValue> const& lhs,
-      ChannelBridge<TValue>* const& rhs) const {
-    return lhs.get() == rhs;
-  }
-};
 } // namespace detail
 } // namespace channels
 } // namespace folly
