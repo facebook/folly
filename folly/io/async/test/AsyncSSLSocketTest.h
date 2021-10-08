@@ -875,11 +875,15 @@ class AlpnServer : private AsyncSSLSocket::HandshakeCB,
   explicit AlpnServer(AsyncSSLSocket::UniquePtr socket)
       : nextProto(nullptr), nextProtoLength(0), socket_(std::move(socket)) {
     socket_->sslAccept(this);
+    socket_->enableClientHelloParsing();
   }
 
   const unsigned char* nextProto;
   unsigned nextProtoLength;
   folly::Optional<AsyncSocketException> except;
+  const std::vector<std::string>& getClientAlpns() const {
+    return socket_->getClientAlpns();
+  }
 
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {

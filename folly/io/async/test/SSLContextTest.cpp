@@ -235,4 +235,15 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
 TEST_F(SSLContextTest, TestTLS13MinVersionThrow) {
   EXPECT_THROW(SSLContext{SSLContext::SSLVersion::TLSv1_3}, std::runtime_error);
 }
+
+TEST_F(SSLContextTest, AdvertisedNextProtocols) {
+  EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "");
+
+  ctx.setAdvertisedNextProtocols({"blub"});
+  EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "blub");
+
+  ctx.setAdvertisedNextProtocols({"foo", "bar", "baz"});
+  EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "foo,bar,baz");
+}
+
 } // namespace folly

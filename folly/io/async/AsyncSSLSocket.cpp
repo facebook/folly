@@ -1927,6 +1927,21 @@ void AsyncSSLSocket::resetClientHelloParsing(SSL* ssl) {
   clientHelloInfo_->clientHelloBuf_.clear();
 }
 
+void AsyncSSLSocket::parseClientAlpns(
+    AsyncSSLSocket* sock,
+    folly::io::Cursor& cursor,
+    uint16_t& extensionDataLength) {
+  cursor.skip(2);
+  extensionDataLength -= 2;
+  while (extensionDataLength) {
+    auto protoLength = cursor.readBE<uint8_t>();
+    extensionDataLength--;
+    auto proto = cursor.readFixedString(protoLength);
+    sock->clientHelloInfo_->clientAlpns_.push_back(proto);
+    extensionDataLength -= protoLength;
+  }
+}
+
 void AsyncSSLSocket::clientHelloParsingCallback(
     int written,
     int /* version */,
@@ -2051,6 +2066,10 @@ void AsyncSSLSocket::clientHelloParsingCallback(
             extensionDataLength -=
                 sizeof(typ) + sizeof(nameLength) + nameLength;
           }
+        } else if (
+            extensionType ==
+            ssl::TLSExtension::APPLICATION_LAYER_PROTOCOL_NEGOTIATION) {
+          parseClientAlpns(sock, cursor, extensionDataLength);
         } else {
           cursor.skip(extensionDataLength);
         }
@@ -2186,6 +2205,15 @@ void AsyncSSLSocket::getSSLServerCiphers(std::string& serverCiphers) const {
     serverCiphers.append(":");
     serverCiphers.append(cipher);
     i++;
+  }
+}
+
+const std::vector<std::string>& AsyncSSLSocket::getClientAlpns() const {
+  if (!parseClientHello_) {
+    static std::vector<std::string> emptyAlpns{};
+    return emptyAlpns;
+  } else {
+    return clientHelloInfo_->clientAlpns_;
   }
 }
 

@@ -769,6 +769,13 @@ class AsyncSSLSocket : public AsyncSocket {
   void getSSLServerCiphers(std::string& serverCiphers) const;
 
   /**
+   * Get the list of next protocols sent from the client. The protocols are
+   * directly as the client passed them and may be arbitrary byte sequences
+   * of arbitrary length.
+   */
+  const std::vector<std::string>& getClientAlpns() const;
+
+  /**
    * Method to check if peer verfication is set.
    *
    * @return true if peer verification is required.
@@ -780,6 +787,10 @@ class AsyncSSLSocket : public AsyncSocket {
   static int bioWrite(BIO* b, const char* in, int inl);
   static int bioRead(BIO* b, char* out, int outl);
   void resetClientHelloParsing(SSL* ssl);
+  static void parseClientAlpns(
+      AsyncSSLSocket* sock,
+      folly::io::Cursor& cursor,
+      uint16_t& extensionDataLength);
   static void clientHelloParsingCallback(
       int written,
       int version,

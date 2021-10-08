@@ -597,6 +597,7 @@ TEST_F(NextProtocolTest, AlpnNotAllowMismatchNoClientProtocol) {
 
   expectHandshakeSuccess();
   expectNoProtocol();
+  EXPECT_EQ(server->getClientAlpns(), std::vector<std::string>({}));
 }
 
 TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithOverlap) {
@@ -607,6 +608,8 @@ TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithOverlap) {
   connect();
 
   expectProtocol("baz");
+  EXPECT_EQ(
+      server->getClientAlpns(), std::vector<std::string>({"blub", "baz"}));
 }
 
 TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithoutOverlap) {
@@ -617,6 +620,7 @@ TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithoutOverlap) {
   connect();
 
   expectHandshakeError();
+  EXPECT_EQ(server->getClientAlpns(), std::vector<std::string>({"blub"}));
 }
 
 #endif

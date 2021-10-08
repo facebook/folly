@@ -487,6 +487,8 @@ class SSLContext {
   void setOptions(long options);
 
 #if FOLLY_OPENSSL_HAS_ALPN
+  std::string getAdvertisedNextProtocols();
+
   /**
    * Set the list of protocols that this SSL context supports. In client
    * mode, this is the list of protocols that will be advertised for Application

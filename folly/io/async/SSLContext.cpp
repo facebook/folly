@@ -600,6 +600,22 @@ int SSLContext::alpnSelectCallback(
   return SSL_TLSEXT_ERR_OK;
 }
 
+std::string SSLContext::getAdvertisedNextProtocols() {
+  if (advertisedNextProtocols_.empty()) {
+    return "";
+  }
+  std::string alpns(
+      (const char*)advertisedNextProtocols_[0].protocols + 1,
+      advertisedNextProtocols_[0].length - 1);
+  auto len = advertisedNextProtocols_[0].protocols[0];
+  for (size_t i = len; i < alpns.length();) {
+    len = alpns[i];
+    alpns[i] = ',';
+    i += len + 1;
+  }
+  return alpns;
+}
+
 bool SSLContext::setAdvertisedNextProtocols(
     const std::list<std::string>& protocols) {
   return setRandomizedAdvertisedNextProtocols({{1, protocols}});

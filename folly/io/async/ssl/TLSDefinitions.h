@@ -96,6 +96,7 @@ struct ClientHelloInfo {
   // long as each ServerName has a distinct type). In practice, the only one
   // we really care about is HOST_NAME.
   std::string clientHelloSNIHostname_;
+  std::vector<std::string> clientAlpns_;
 };
 
 } // namespace ssl
