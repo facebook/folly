@@ -408,6 +408,13 @@ void AsyncSSLSocket::shutdownWriteNow() {
   closeNow();
 }
 
+bool AsyncSSLSocket::readable() const {
+  if (ssl_ != nullptr && SSL_pending(ssl_.get()) > 0) {
+    return true;
+  }
+  return AsyncSocket::readable();
+}
+
 bool AsyncSSLSocket::good() const {
   return (
       AsyncSocket::good() &&

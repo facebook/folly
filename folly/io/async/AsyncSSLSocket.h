@@ -379,6 +379,7 @@ class AsyncSSLSocket : public AsyncSocket {
   void closeNow() override;
   void shutdownWrite() override;
   void shutdownWriteNow() override;
+  bool readable() const override;
   bool good() const override;
   bool connecting() const override;
   std::string getApplicationProtocol() const noexcept override;

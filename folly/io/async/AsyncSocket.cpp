@@ -1905,6 +1905,10 @@ bool AsyncSocket::readable() const {
   if (fd_ == NetworkSocket()) {
     return false;
   }
+
+  if (preReceivedData_ && !preReceivedData_->empty()) {
+    return true;
+  }
   netops::PollDescriptor fds[1];
   fds[0].fd = fd_;
   fds[0].events = POLLIN;

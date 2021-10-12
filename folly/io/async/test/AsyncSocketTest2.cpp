@@ -8057,6 +8057,7 @@ TEST(AsyncSocket, PreReceivedDataOnly) {
   peekCallback.dataAvailableCallback = [&]() {
     peekCallback.verifyData("hello", 5);
     acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello"));
+    EXPECT_TRUE(acceptedSocket->readable());
     acceptedSocket->setReadCB(&readCallback);
   };
   readCallback.dataAvailableCallback = [&]() {

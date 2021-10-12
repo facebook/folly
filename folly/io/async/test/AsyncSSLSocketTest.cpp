@@ -204,6 +204,54 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
   EXPECT_EQ(socket->getSSLSocket()->getTotalConnectTimeout().count(), 10000);
 }
 
+TEST(AsyncSSLSocketTest, ConnectWriteReadCloseReadable) {
+  // Same as above, but test AsyncSSLSocket::readable along the way
+
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback);
+
+  // Set up SSL context.
+  std::shared_ptr<SSLContext> sslContext(new SSLContext());
+  sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  // sslContext->loadTrustedCertificates("./trusted-ca-certificate.pem");
+  // sslContext->authenticate(true, false);
+
+  // connect
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->open(std::chrono::milliseconds(10000));
+
+  // write()
+  uint8_t buf[128];
+  memset(buf, 'a', sizeof(buf));
+  socket->write(buf, sizeof(buf));
+
+  // read()
+  uint8_t readbuf[128];
+  // The TLS record includes the full 128 bytes.  Even though we only read 1
+  // byte out of the socket, the rest of the full record decrypted and buffered
+  // in the underlying SSL session.
+  uint32_t bytesRead = socket->read(readbuf, 1);
+  EXPECT_EQ(bytesRead, 1);
+  // The socket has no data pending in the kernel
+  EXPECT_FALSE(socket->getSocket()->AsyncSocket::readable());
+  // But the socket is readable
+  EXPECT_TRUE(socket->getSocket()->readable());
+  bytesRead += socket->readAll(readbuf + 1, sizeof(readbuf) - 1);
+  EXPECT_EQ(bytesRead, 128);
+  EXPECT_EQ(memcmp(buf, readbuf, bytesRead), 0);
+
+  // close()
+  socket->close();
+
+  cerr << "ConnectWriteReadClose test completed" << endl;
+  EXPECT_EQ(socket->getSSLSocket()->getTotalConnectTimeout().count(), 10000);
+}
+
 /**
  * Check that zero copy options are a noop under AsyncSSLSocket since they
  * aren't supported.
