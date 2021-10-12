@@ -21,8 +21,6 @@
 
 #include <glog/logging.h>
 
-#include <folly/Utility.h>
-
 namespace folly {
 
 namespace detail {
@@ -384,9 +382,7 @@ inline FixedMergingCancellationState<N>::FixedMergingCancellationState(
 
 template <typename... Ts>
 inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
-  std::array<bool, sizeof...(Ts)> cancellable{{tokens.canBeCancelled()...}};
-  bool canBeCancelled =
-      std::any_of(cancellable.begin(), cancellable.end(), identity);
+  bool canBeCancelled = (tokens.canBeCancelled() || ...);
   return canBeCancelled
       ? CancellationToken(
             detail::FixedMergingCancellationState<sizeof...(Ts)>::create(
