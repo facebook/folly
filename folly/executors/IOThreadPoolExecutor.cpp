@@ -159,7 +159,7 @@ IOThreadPoolExecutor::pickThread() {
     // the second case, `!me` so we'll crash anyway.
     return me;
   }
-  auto thread = ths[nextThread_.fetch_add(1, std::memory_order_relaxed) % n];
+  auto thread = ths[nextThread_++ % n];
   return std::static_pointer_cast<IOThread>(thread);
 }
 
