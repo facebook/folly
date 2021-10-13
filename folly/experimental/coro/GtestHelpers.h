@@ -144,6 +144,48 @@
   folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                              \
       test_suite_name, test_name)::co_TestBody()
 
+#define CO_TYPED_TEST(CaseName, TestName)                                     \
+  static_assert(                                                              \
+      sizeof(GTEST_STRINGIFY_(TestName)) > 1, "test-name must not be empty"); \
+  template <typename gtest_TypeParam_>                                        \
+  class GTEST_TEST_CLASS_NAME_(CaseName, TestName)                            \
+      : public CaseName<gtest_TypeParam_> {                                   \
+   private:                                                                   \
+    typedef CaseName<gtest_TypeParam_> TestFixture;                           \
+    typedef gtest_TypeParam_ TypeParam;                                       \
+    void TestBody() override;                                                 \
+    folly::coro::Task<void> co_TestBody();                                    \
+  };                                                                          \
+  static bool gtest_##CaseName##_##TestName##_registered_                     \
+      GTEST_ATTRIBUTE_UNUSED_ = ::testing::internal::TypeParameterizedTest<   \
+          CaseName,                                                           \
+          ::testing::internal::TemplateSel<GTEST_TEST_CLASS_NAME_(            \
+              CaseName, TestName)>,                                           \
+          GTEST_TYPE_PARAMS_(CaseName)>::                                     \
+          Register(                                                           \
+              "",                                                             \
+              ::testing::internal::CodeLocation(__FILE__, __LINE__),          \
+              GTEST_STRINGIFY_(CaseName),                                     \
+              GTEST_STRINGIFY_(TestName),                                     \
+              0,                                                              \
+              ::testing::internal::GenerateNames<                             \
+                  GTEST_NAME_GENERATOR_(CaseName),                            \
+                  GTEST_TYPE_PARAMS_(CaseName)>());                           \
+  template <typename gtest_TypeParam_>                                        \
+  void GTEST_TEST_CLASS_NAME_(                                                \
+      CaseName, TestName)<gtest_TypeParam_>::TestBody() {                     \
+    try {                                                                     \
+      folly::coro::blockingWait(co_TestBody());                               \
+    } catch (const std::exception& ex) {                                      \
+      GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: "               \
+                        << folly::exception_tracer::getAsyncTrace(ex);        \
+      throw;                                                                  \
+    }                                                                         \
+  }                                                                           \
+  template <typename gtest_TypeParam_>                                        \
+  folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                             \
+      CaseName, TestName)<gtest_TypeParam_>::co_TestBody()
+
 /**
  * Coroutine versions of GTests's Assertion predicate macros. Use these in place
  * of ASSERT_* in CO_TEST or coroutine functions.
