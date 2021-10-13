@@ -34,10 +34,12 @@ void IOThreadPoolDeadlockDetectorObserver::threadStarted(
   auto eventBase = folly::IOThreadPoolExecutor::getEventBase(h);
   // This Observer only works with IOThreadPoolExecutor class.
   CHECK_NOTNULL(eventBase);
-  auto thid = folly::to<std::string>(folly::getOSThreadID());
-  auto name = name_ + ":" + thid;
-  detectors_.wlock()->insert_or_assign(
-      h, deadlockDetectorFactory_->create(eventBase, name));
+  eventBase->runInEventBaseThread([=] {
+    auto thid = folly::to<std::string>(folly::getOSThreadID());
+    auto name = name_ + ":" + thid;
+    detectors_.wlock()->insert_or_assign(
+        h, deadlockDetectorFactory_->create(eventBase, name));
+  });
 }
 
 void IOThreadPoolDeadlockDetectorObserver::threadStopped(

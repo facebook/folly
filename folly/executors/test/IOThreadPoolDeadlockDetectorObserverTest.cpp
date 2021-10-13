@@ -45,14 +45,21 @@ class DeadlockDetectorFactoryMock : public DeadlockDetectorFactory {
     std::string expectedName =
         fmt::format("TestPool:{}", folly::getOSThreadID());
     EXPECT_EQ(expectedName, name);
+    name_ = name;
+    baton.post();
     return std::make_unique<DeadlockDetectorMock>(counter_);
   }
 
   int32_t getCounter() { return counter_->load(); }
 
+  std::string getName() const { return name_.copy(); }
+
+  folly::Baton<> baton;
+
  private:
   std::shared_ptr<std::atomic<int32_t>> counter_ =
       std::make_shared<std::atomic<int32_t>>(0);
+  folly::Synchronized<std::string> name_;
 };
 
 TEST(
@@ -63,6 +70,9 @@ TEST(
 
   auto executor = std::make_shared<IOThreadPoolExecutor>(
       1, std::make_shared<folly::NamedThreadFactory>("TestPool"));
+  pid_t thid;
+  executor->getEventBase()->runInEventBaseThreadAndWait(
+      [&] { thid = folly::getOSThreadID(); });
 
   auto observer = std::make_shared<folly::IOThreadPoolDeadlockDetectorObserver>(
       deadlockDetectorFactory.get(), "TestPool");
@@ -71,14 +81,20 @@ TEST(
       << "Deadlock detector not yet registered";
 
   executor->addObserver(observer);
+  deadlockDetectorFactory->baton.wait();
+  deadlockDetectorFactory->baton.reset();
   ASSERT_EQ(1, deadlockDetectorFactory->getCounter())
       << "Deadlock detector must be registered by observer";
+  EXPECT_EQ(
+      fmt::format("TestPool:{}", thid), deadlockDetectorFactory->getName());
 
   executor->removeObserver(observer);
   ASSERT_EQ(0, deadlockDetectorFactory->getCounter())
       << "Removing observer must destroy deadlock detector";
 
   executor->addObserver(observer);
+  deadlockDetectorFactory->baton.wait();
+  deadlockDetectorFactory->baton.reset();
   ASSERT_EQ(1, deadlockDetectorFactory->getCounter())
       << "Deadlock detector must be registered by observer";
 
