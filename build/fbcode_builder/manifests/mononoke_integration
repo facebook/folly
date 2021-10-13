@@ -29,7 +29,6 @@ fbcode/eden/mononoke/tests/integration = eden/mononoke/tests/integration
 
 [dependencies]
 eden_scm
-eden_scm_lib_edenapi_tools
 jq
 mononoke
 nmap
