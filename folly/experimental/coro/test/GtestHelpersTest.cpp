@@ -51,3 +51,43 @@ INSTANTIATE_TEST_CASE_P(
         {2, 2, 4},
         {-1, -6, 6},
     }));
+
+namespace {
+
+// allow same test case to be used over different types.
+template <typename T>
+struct GtestHelpersTypedTest : public ::testing::Test {
+  using type = T;
+
+  folly::coro::Task<std::string> type_str() const {
+    co_return std::string(folly::demangle(typeid(type).name()));
+  }
+};
+
+struct Foo {};
+
+// also allow same test case to be used with different fixture classes.
+template <>
+struct GtestHelpersTypedTest<Foo> : public ::testing::Test {
+  using type = Foo;
+
+  folly::coro::Task<std::string> type_str() const { co_return "Foo_x"; }
+};
+
+using CoroTypedTests = ::testing::Types<int, char, Foo>;
+
+TYPED_TEST_SUITE(GtestHelpersTypedTest, CoroTypedTests);
+
+CO_TYPED_TEST(GtestHelpersTypedTest, Test_type_str) {
+  using type = typename std::remove_reference_t<decltype(*this)>::type;
+
+  if constexpr (std::is_same_v<Foo, type>) {
+    EXPECT_EQ(co_await this->type_str(), "Foo_x");
+  } else if constexpr (std::is_same_v<int, type>) {
+    EXPECT_EQ(co_await this->type_str(), "int");
+  } else if constexpr (std::is_same_v<char, type>) {
+    EXPECT_EQ(co_await this->type_str(), "char");
+  }
+}
+
+} // namespace
