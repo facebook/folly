@@ -21,7 +21,6 @@
 #include <folly/concurrency/CacheLocality.h>
 
 namespace folly {
-namespace detail {
 
 template <typename DigestT>
 DigestBuilder<DigestT>::DigestBuilder(size_t bufferSize, size_t digestSize)
@@ -82,5 +81,4 @@ void DigestBuilder<DigestT>::append(double value) {
   }
 }
 
-} // namespace detail
 } // namespace folly

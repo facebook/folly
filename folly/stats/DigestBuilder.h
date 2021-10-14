@@ -22,7 +22,6 @@
 #include <folly/SpinLock.h>
 
 namespace folly {
-namespace detail {
 
 /*
  * Stat digests, such as TDigest, can be expensive to merge. It is faster to
@@ -72,7 +71,6 @@ class DigestBuilder {
   size_t digestSize_;
 };
 
-} // namespace detail
 } // namespace folly
 
-#include <folly/stats/detail/DigestBuilder-inl.h>
+#include <folly/stats/DigestBuilder-inl.h>

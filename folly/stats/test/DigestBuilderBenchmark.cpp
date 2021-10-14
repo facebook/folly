@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/stats/detail/DigestBuilder.h>
+#include <folly/stats/DigestBuilder.h>
 
 #include <chrono>
 #include <condition_variable>
@@ -29,7 +29,6 @@
 DEFINE_int32(digest_merge_time_ns, 5500, "Time to merge into the digest");
 
 using namespace folly;
-using namespace folly::detail;
 
 class FreeDigest {
  public:
