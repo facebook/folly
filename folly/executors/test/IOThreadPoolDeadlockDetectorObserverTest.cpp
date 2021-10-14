@@ -46,8 +46,9 @@ class DeadlockDetectorFactoryMock : public DeadlockDetectorFactory {
         fmt::format("TestPool:{}", folly::getOSThreadID());
     EXPECT_EQ(expectedName, name);
     name_ = name;
+    auto retval = std::make_unique<DeadlockDetectorMock>(counter_);
     baton.post();
-    return std::make_unique<DeadlockDetectorMock>(counter_);
+    return retval;
   }
 
   int32_t getCounter() { return counter_->load(); }
