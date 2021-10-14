@@ -107,7 +107,7 @@ class ConstructorCallback {
      *
      * NOTE that nCBs > 0 will always imply that callbacks_ is non-nullptr
      */
-    for (int i = 0; i < nCBs; i++) {
+    for (size_t i = 0; i < nCBs; i++) {
       (*This::callbacks_)[i](t);
     }
   }
@@ -160,12 +160,12 @@ class ConstructorCallback {
   static This::CallbackArray* getCallbackArray();
 
   static This::CallbackArray* callbacks_;
-  static std::atomic<int> nConstructorCallbacks_;
+  static std::atomic<size_t> nConstructorCallbacks_;
 };
 
 template <class T, std::size_t MaxCallbacks>
-std::atomic<int> ConstructorCallback<T, MaxCallbacks>::nConstructorCallbacks_{
-    0};
+std::atomic<size_t>
+    ConstructorCallback<T, MaxCallbacks>::nConstructorCallbacks_{0};
 
 template <class T, std::size_t MaxCallbacks>
 folly::SharedMutex& ConstructorCallback<T, MaxCallbacks>::getMutex() {
