@@ -683,7 +683,7 @@ class detail::csl_iterator : public detail::IteratorFacade<
   csl_iterator(
       const csl_iterator<OtherVal, OtherNode>& other,
       typename std::enable_if<
-          std::is_convertible<OtherVal, ValT>::value>::type* = nullptr)
+          std::is_convertible<OtherVal*, ValT*>::value>::type* = nullptr)
       : node_(other.node_) {}
 
   size_t nodeSize() const {
