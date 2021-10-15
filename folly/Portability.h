@@ -470,6 +470,12 @@ constexpr auto kGlibcxxVer = _GLIBCXX_RELEASE;
 constexpr auto kGlibcxxVer = 0;
 #endif
 
+#if __GLIBCXX__ && defined(_GLIBCXX_ASSERTIONS)
+constexpr auto kGlibcxxAssertions = true;
+#else
+constexpr auto kGlibcxxAssertions = false;
+#endif
+
 #if _LIBCPP_VERSION
 constexpr auto kIsLibcpp = true;
 #else

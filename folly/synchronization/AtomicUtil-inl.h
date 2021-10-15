@@ -42,18 +42,40 @@ constexpr std::memory_order atomic_compare_exchange_succ(
   assert(fail != release);
   assert(fail != acq_rel);
 
-  //  Clang TSAN ignores the passed failure order and infers failure order from
-  //  success order in atomic compare-exchange operations, which is broken for
-  //  cases like success-release/failure-acquire, so return a success order with
-  //  the failure order mixed in.
   auto const bump = succ == release ? acq_rel : succ;
   auto const high = fail < bump ? bump : fail;
   return !cond || fail == relaxed ? succ : high;
 }
 
+//  atomic_compare_exchange_succ
+//
+//  Return a success order with, conditionally, the failure order mixed in.
+//
+//  Until C++17, atomic compare-exchange operations require the success order to
+//  be at least as strong as the failure order. C++17 drops this requirement. As
+//  an implication, were this rule in force, an implementation is free to ignore
+//  the explicit failure order and to infer one from the success order.
+//
+//    https://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange
+//
+//  The libstdc++ library with assertions enabled enforces this rule, including
+//  under C++17, but only until and not since libstdc++12.
+//
+//    https://github.com/gcc-mirror/gcc/commit/dba1ab212292839572fda60df00965e094a11252
+//
+//  Clang TSAN ignores the passed failure order and infers failure order from
+//  success order in atomic compare-exchange operations, which is broken for
+//  cases like success-release/failure-acquire.
+//
+//    https://github.com/google/sanitizers/issues/970
+//
+//  Handle all of these cases.
 constexpr std::memory_order atomic_compare_exchange_succ(
     std::memory_order succ, std::memory_order fail) {
-  constexpr auto const cond = kIsSanitizeThread && kIsClang;
+  constexpr auto const cond = false //
+      || (FOLLY_CPLUSPLUS < 201702L) //
+      || (kGlibcxxVer && kGlibcxxVer < 12 && kGlibcxxAssertions) //
+      || (kIsSanitizeThread && kIsClang);
   return atomic_compare_exchange_succ(cond, succ, fail);
 }
 
