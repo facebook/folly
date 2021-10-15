@@ -1547,7 +1547,7 @@ class AsyncSocket : public AsyncTransport {
   std::unordered_map<uint32_t, folly::IOBuf*> idZeroCopyBufPtrMap_;
   std::unordered_map<folly::IOBuf*, IOBufInfo> idZeroCopyBufInfoMap_;
 
-  StateEnum state_; ///< StateEnum describing current state
+  StateEnum state_{StateEnum::UNINIT}; ///< StateEnum describing current state
   uint8_t shutdownFlags_; ///< Shutdown state (ShutdownFlags)
   uint16_t eventFlags_; ///< EventBase::HandlerFlags settings
   NetworkSocket fd_; ///< The socket file descriptor
@@ -1575,8 +1575,8 @@ class AsyncSocket : public AsyncTransport {
   WriteRequest* writeReqTail_; ///< End of WriteRequest chain
   std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   size_t appBytesReceived_; ///< Num of bytes received from socket
-  size_t appBytesWritten_; ///< Num of bytes written to socket
-  size_t rawBytesWritten_; ///< Num of (raw) bytes written to socket
+  size_t appBytesWritten_{0}; ///< Num of bytes written to socket
+  size_t rawBytesWritten_{0}; ///< Num of (raw) bytes written to socket
   // The total num of bytes passed to AsyncSocket's write functions. It doesn't
   // include failed writes, but it does include buffered writes.
   size_t totalAppBytesScheduledForWrite_;

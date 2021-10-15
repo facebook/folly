@@ -588,15 +588,24 @@ AsyncSocket::AsyncSocket(
 }
 
 AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
-    : AsyncSocket(
-          oldAsyncSocket->getEventBase(),
-          oldAsyncSocket->detachNetworkSocket(),
-          oldAsyncSocket->getZeroCopyBufId(),
-          &oldAsyncSocket->addr_) {
-  appBytesWritten_ = oldAsyncSocket->appBytesWritten_;
-  rawBytesWritten_ = oldAsyncSocket->rawBytesWritten_;
-  byteEventHelper_ = std::move(oldAsyncSocket->byteEventHelper_);
-  preReceivedData_ = std::move(oldAsyncSocket->preReceivedData_);
+    : zeroCopyBufId_(oldAsyncSocket->getZeroCopyBufId()),
+      state_(oldAsyncSocket->state_),
+      fd_(oldAsyncSocket->detachNetworkSocket()),
+      addr_(oldAsyncSocket->addr_),
+      eventBase_(oldAsyncSocket->getEventBase()),
+      writeTimeout_(this, eventBase_),
+      ioHandler_(this, eventBase_, fd_),
+      immediateReadHandler_(this),
+      appBytesWritten_(oldAsyncSocket->appBytesWritten_),
+      rawBytesWritten_(oldAsyncSocket->rawBytesWritten_),
+      preReceivedData_(std::move(oldAsyncSocket->preReceivedData_)),
+      byteEventHelper_(std::move(oldAsyncSocket->byteEventHelper_)) {
+  VLOG(5) << "move AsyncSocket(" << oldAsyncSocket << "->" << this
+          << ", evb=" << eventBase_ << ", fd=" << fd_
+          << ", zeroCopyBufId=" << zeroCopyBufId_ << ")";
+  init();
+  disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
+  setCloseOnExec();
 
   // inform lifecycle observers to give them an opportunity to unsubscribe from
   // events for the old socket and subscribe to the new socket; we do not move
@@ -619,7 +628,6 @@ void AsyncSocket::init() {
     eventBase_->dcheckIsInEventBaseThread();
   }
   shutdownFlags_ = 0;
-  state_ = StateEnum::UNINIT;
   eventFlags_ = EventHandler::NONE;
   sendTimeout_ = 0;
   maxReadsPerEvent_ = 16;
@@ -630,9 +638,7 @@ void AsyncSocket::init() {
   writeReqHead_ = nullptr;
   writeReqTail_ = nullptr;
   wShutdownSocketSet_.reset();
-  appBytesWritten_ = 0;
   appBytesReceived_ = 0;
-  rawBytesWritten_ = 0;
   totalAppBytesScheduledForWrite_ = 0;
   sendMsgParamCallback_ = &defaultSendMsgParamsCallback;
 }
