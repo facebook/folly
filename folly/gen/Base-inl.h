@@ -2447,6 +2447,7 @@ const T& operator|(const Optional<T>& opt, const Unwrap&) {
 
 class ToVirtualGen : public Operator<ToVirtualGen> {
  public:
+  using Operator<ToVirtualGen>::Operator;
   template <
       class Source,
       class Generator = VirtualGenMoveOnly<typename Source::ValueType>>
