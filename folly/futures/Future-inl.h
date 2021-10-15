@@ -34,13 +34,21 @@
 #include <folly/futures/detail/Core.h>
 #include <folly/lang/Pretty.h>
 
+#if defined(FOLLY_DISABLE_FUTURE_FIBERS_BATON)
+#include <folly/synchronization/Baton.h>
+#endif
+
 namespace folly {
 
 class Timekeeper;
 
 namespace futures {
 namespace detail {
+#if defined(FOLLY_DISABLE_FUTURE_FIBERS_BATON)
+typedef folly::Baton<> FutureBatonType;
+#else
 typedef folly::fibers::Baton FutureBatonType;
+#endif
 } // namespace detail
 } // namespace futures
 
@@ -461,13 +469,18 @@ class WaitExecutor final : public folly::Executor {
 
   void drive() {
     baton_.wait();
+
+#if !defined(FOLLY_DISABLE_FUTURE_FIBERS_BATON)
     fibers::runInMainContext([&]() {
+#endif
       baton_.reset();
       auto funcs = std::move(queue_.wlock()->funcs);
       for (auto& func : funcs) {
         std::exchange(func, nullptr)();
       }
+#if !defined(FOLLY_DISABLE_FUTURE_FIBERS_BATON)
     });
+#endif
   }
 
   using Clock = std::chrono::steady_clock;
@@ -476,14 +489,18 @@ class WaitExecutor final : public folly::Executor {
     if (!baton_.try_wait_until(deadline)) {
       return false;
     }
+#if !defined(FOLLY_DISABLE_FUTURE_FIBERS_BATON)
     return fibers::runInMainContext([&]() {
+#endif
       baton_.reset();
       auto funcs = std::move(queue_.wlock()->funcs);
       for (auto& func : funcs) {
         std::exchange(func, nullptr)();
       }
       return true;
+#if !defined(FOLLY_DISABLE_FUTURE_FIBERS_BATON)
     });
+#endif
   }
 
   void detach() {
