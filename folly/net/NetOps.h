@@ -121,11 +121,6 @@ struct mmsghdr {
   unsigned int msg_len;
 };
 
-struct sockaddr_un {
-  sa_family_t sun_family;
-  char sun_path[108];
-};
-
 #define SHUT_RDWR 5
 
 #else
