@@ -35,6 +35,7 @@
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -191,7 +192,8 @@ class AccessSpreaderBase {
       kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
       "stripeByCpu element type isn't wide enough");
 
-  using CompactStripeTable = std::atomic<CompactStripe>[kMaxCpus + 1][kMaxCpus];
+  using CompactStripeTable =
+      relaxed_atomic<CompactStripe>[kMaxCpus + 1][kMaxCpus];
 
   struct GlobalState {
     /// For each level of splitting up to kMaxCpus, maps the cpu (mod
@@ -281,8 +283,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
 
     unsigned cpu;
     s.getcpu.load(std::memory_order_relaxed)(&cpu, nullptr, nullptr);
-    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpu % kMaxCpus].load(
-        std::memory_order_relaxed);
+    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpu % kMaxCpus];
   }
 
   /// Returns the stripe associated with the current CPU.  The returned
@@ -296,8 +297,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
     if (kIsMobile) {
       return current(numStripes);
     }
-    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)]
-        .load(std::memory_order_relaxed);
+    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)];
   }
 
   /// Returns the maximum stripe value that can be returned under any
