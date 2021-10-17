@@ -307,7 +307,7 @@ class Baton {
       // Awoken by the deadline passing.
       if (rv == detail::FutexResult::TIMEDOUT) {
         assert(deadline != (std::chrono::time_point<Clock, Duration>::max()));
-        state_.store(TIMED_OUT, std::memory_order_release);
+        state_.store(TIMED_OUT, std::memory_order_relaxed);
         return false;
       }
 
