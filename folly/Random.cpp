@@ -17,7 +17,6 @@
 #include <folly/Random.h>
 
 #include <array>
-#include <atomic>
 #include <mutex>
 #include <random>
 
@@ -30,6 +29,7 @@
 #include <folly/portability/Config.h>
 #include <folly/portability/SysTime.h>
 #include <folly/portability/Unistd.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 #include <glog/logging.h>
 
@@ -92,15 +92,12 @@ class BufferedRandomDevice {
  public:
   static constexpr size_t kDefaultBufferSize = 128;
 
-  static void notifyNewGlobalEpoch() {
-    globalEpoch_.fetch_add(1, std::memory_order_relaxed);
-  }
+  static void notifyNewGlobalEpoch() { ++globalEpoch_; }
 
   explicit BufferedRandomDevice(size_t bufferSize = kDefaultBufferSize);
 
   void get(void* data, size_t size) {
-    auto const globalEpoch = globalEpoch_.load(std::memory_order_relaxed);
-    if (LIKELY(globalEpoch == epoch_ && size <= remaining())) {
+    if (LIKELY(epoch_ == globalEpoch_ && size <= remaining())) {
       memcpy(data, ptr_, size);
       ptr_ += size;
     } else {
@@ -115,7 +112,7 @@ class BufferedRandomDevice {
     return size_t(buffer_.get() + bufferSize_ - ptr_);
   }
 
-  static std::atomic<size_t> globalEpoch_;
+  static relaxed_atomic<size_t> globalEpoch_;
 
   size_t epoch_{size_t(-1)}; // refill on first use
   const size_t bufferSize_;
@@ -123,7 +120,7 @@ class BufferedRandomDevice {
   unsigned char* ptr_;
 };
 
-std::atomic<size_t> BufferedRandomDevice::globalEpoch_{0};
+relaxed_atomic<size_t> BufferedRandomDevice::globalEpoch_{0};
 struct RandomTag {};
 
 BufferedRandomDevice::BufferedRandomDevice(size_t bufferSize)
@@ -145,8 +142,7 @@ BufferedRandomDevice::BufferedRandomDevice(size_t bufferSize)
 }
 
 void BufferedRandomDevice::getSlow(unsigned char* data, size_t size) {
-  auto const globalEpoch = globalEpoch_.load(std::memory_order_relaxed);
-  if (globalEpoch != epoch_) {
+  if (epoch_ != globalEpoch_) {
     epoch_ = globalEpoch_;
     ptr_ = buffer_.get() + bufferSize_;
   }
