@@ -22,17 +22,20 @@
 //    https://github.com/llvm-mirror/compiler-rt/blob/master/include/sanitizer/asan_interface.h
 extern "C" void* __asan_region_is_poisoned(void*, std::size_t);
 
-namespace folly {
-namespace detail {
+namespace {
 
 FOLLY_CREATE_EXTERN_ACCESSOR(
     asan_region_is_poisoned_access_v, __asan_region_is_poisoned);
 
-void* asan_region_is_poisoned_(void* const ptr, std::size_t len) {
-  constexpr auto fun =
-      asan_region_is_poisoned_access_v<kIsLibrarySanitizeAddress>;
-  return fun ? fun(ptr, len) : nullptr;
-}
+} // namespace
+
+static constexpr auto const E = folly::kIsLibrarySanitizeAddress;
+
+namespace folly {
+namespace detail {
+
+FOLLY_STORAGE_CONSTEXPR asan_region_is_poisoned_t* const
+    asan_region_is_poisoned_v = asan_region_is_poisoned_access_v<E>;
 
 } // namespace detail
 } // namespace folly

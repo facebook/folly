@@ -22,9 +22,10 @@ namespace folly {
 
 namespace detail {
 
-void* asan_region_is_poisoned_(void* ptr, std::size_t len);
+using asan_region_is_poisoned_t = void*(void* ptr, std::size_t len);
+extern asan_region_is_poisoned_t* const asan_region_is_poisoned_v;
 
-}
+} // namespace detail
 
 //  asan_region_is_poisoned
 //
@@ -35,9 +36,8 @@ void* asan_region_is_poisoned_(void* ptr, std::size_t len);
 //  always returns nullptr.
 FOLLY_ALWAYS_INLINE static void* asan_region_is_poisoned(
     void* const ptr, std::size_t const len) {
-  return kIsSanitizeAddress //
-      ? detail::asan_region_is_poisoned_(ptr, len)
-      : nullptr;
+  auto fun = detail::asan_region_is_poisoned_v;
+  return kIsSanitizeAddress ? fun(ptr, len) : nullptr;
 }
 
 } // namespace folly
