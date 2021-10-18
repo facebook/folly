@@ -750,6 +750,7 @@ void AsyncSocket::connect(
   assert(fd_ == NetworkSocket());
   state_ = StateEnum::CONNECTING;
   connectCallback_ = callback;
+  invokeConnectAttempt();
 
   sockaddr_storage addrStorage;
   auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
@@ -3697,10 +3698,7 @@ void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
     // back wants. This seems like a bug but work around here while we explore
     // it independently
     for (const auto& cb : lifecycleObservers_) {
-      if (auto observer = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
-        // inform any lifecycle observes that the connection failed
-        observer->connectError(this, ex);
-      }
+      cb->connectError(this, ex);
     }
   }
   if (connectCallback_) {
@@ -3715,9 +3713,9 @@ void AsyncSocket::invokeConnectSuccess() {
           << "): connect success invoked";
   connectEndTime_ = std::chrono::steady_clock::now();
   bool enableByteEventsForObserver = false;
-  for (const auto& observer : lifecycleObservers_) {
-    observer->connect(this);
-    enableByteEventsForObserver |= ((observer->getConfig().byteEvents) ? 1 : 0);
+  for (const auto& cb : lifecycleObservers_) {
+    cb->connectSuccess(this);
+    enableByteEventsForObserver |= ((cb->getConfig().byteEvents) ? 1 : 0);
   }
   if (enableByteEventsForObserver) {
     enableByteEvents();
@@ -3726,6 +3724,14 @@ void AsyncSocket::invokeConnectSuccess() {
     ConnectCallback* callback = connectCallback_;
     connectCallback_ = nullptr;
     callback->connectSuccess();
+  }
+}
+
+void AsyncSocket::invokeConnectAttempt() {
+  VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
+          << "): connect attempt";
+  for (const auto& cb : lifecycleObservers_) {
+    cb->connectAttempt(this);
   }
 }
 

@@ -1481,6 +1481,7 @@ class AsyncSocket : public AsyncTransport {
   void failByteEvents(const AsyncSocketException& ex);
   virtual void invokeConnectErr(const AsyncSocketException& ex);
   virtual void invokeConnectSuccess();
+  virtual void invokeConnectAttempt();
   void invalidState(ConnectCallback* callback);
   void invalidState(ErrMessageCallback* callback);
   void invalidState(ReadCallback* callback);

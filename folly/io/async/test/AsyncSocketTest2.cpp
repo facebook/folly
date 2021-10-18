@@ -7598,8 +7598,9 @@ TEST(AsyncSocket, LifecycleObserverAttachThenDestroySocket) {
   EXPECT_THAT(socket->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -7625,6 +7626,7 @@ TEST(AsyncSocket, LifecycleObserverAttachThenConnectError) {
 
   // the current state machine calls AsyncSocket::invokeConnectionError() twice
   // for this use-case...
+  EXPECT_CALL(*cb, connectAttemptMock(socket.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket.get()));
   EXPECT_CALL(*cb, connectErrorMock(socket.get(), _)).Times(2);
   EXPECT_CALL(*cb, closeMock(socket.get()));
@@ -7658,16 +7660,18 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenDestroySocket) {
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
-  EXPECT_CALL(*cb1, connectMock(socket.get()));
-  EXPECT_CALL(*cb2, connectMock(socket.get()));
+  InSequence s;
+  EXPECT_CALL(*cb1, connectAttemptMock(socket.get()));
+  EXPECT_CALL(*cb2, connectAttemptMock(socket.get()));
   EXPECT_CALL(*cb1, fdAttachMock(socket.get()));
   EXPECT_CALL(*cb2, fdAttachMock(socket.get()));
+  EXPECT_CALL(*cb1, connectSuccessMock(socket.get()));
+  EXPECT_CALL(*cb2, connectSuccessMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb1.get());
   Mock::VerifyAndClearExpectations(cb2.get());
 
-  InSequence s;
   EXPECT_CALL(*cb1, closeMock(socket.get()));
   EXPECT_CALL(*cb2, closeMock(socket.get()));
   EXPECT_CALL(*cb1, destroyMock(socket.get()));
@@ -7803,8 +7807,9 @@ TEST(AsyncSocket, LifecycleObserverDetach) {
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket1.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket1.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket1.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -7832,8 +7837,9 @@ TEST(AsyncSocket, LifecycleObserverMoveResubscribe) {
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket1.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket1.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket1.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -7879,8 +7885,9 @@ TEST(AsyncSocket, LifecycleObserverMoveDoNotResubscribe) {
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket1.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket1.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket1.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -7931,8 +7938,9 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterConnect) {
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -7952,8 +7960,9 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterClose) {
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -7977,8 +7986,9 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackcloseDuringDestroy) {
   socket->addLifecycleObserver(cb.get());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket.get()));
   EXPECT_CALL(*cb, fdAttachMock(socket.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket.get()));
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());
@@ -8006,7 +8016,8 @@ TEST(AsyncSocket, LifecycleObserverBaseClassMoveNoCrash) {
   EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, connectMock(socket1.get()));
+  EXPECT_CALL(*cb, connectAttemptMock(socket1.get()));
+  EXPECT_CALL(*cb, connectSuccessMock(socket1.get()));
   socket1->connect(nullptr, server.getAddress(), 30);
   evb.loop();
   Mock::VerifyAndClearExpectations(cb.get());

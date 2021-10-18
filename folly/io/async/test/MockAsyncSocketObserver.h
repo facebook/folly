@@ -37,7 +37,8 @@ class MockAsyncSocketLifecycleObserver : public AsyncSocket::LifecycleObserver {
   MOCK_METHOD1(observerDetachMock, void(AsyncTransport*));
   MOCK_METHOD1(destroyMock, void(AsyncTransport*));
   MOCK_METHOD1(closeMock, void(AsyncTransport*));
-  MOCK_METHOD1(connectMock, void(AsyncTransport*));
+  MOCK_METHOD1(connectAttemptMock, void(AsyncTransport*));
+  MOCK_METHOD1(connectSuccessMock, void(AsyncTransport*));
   MOCK_METHOD2(
       connectErrorMock, void(AsyncTransport*, const AsyncSocketException&));
   MOCK_METHOD2(evbAttachMock, void(AsyncTransport*, EventBase*));
@@ -63,7 +64,12 @@ class MockAsyncSocketLifecycleObserver : public AsyncSocket::LifecycleObserver {
   }
   void destroy(AsyncTransport* trans) noexcept override { destroyMock(trans); }
   void close(AsyncTransport* trans) noexcept override { closeMock(trans); }
-  void connect(AsyncTransport* trans) noexcept override { connectMock(trans); }
+  void connectAttempt(AsyncTransport* trans) noexcept override {
+    connectAttemptMock(trans);
+  }
+  void connectSuccess(AsyncTransport* trans) noexcept override {
+    connectSuccessMock(trans);
+  }
   void connectError(
       AsyncTransport* trans, const AsyncSocketException& ex) noexcept override {
     connectErrorMock(trans, ex);

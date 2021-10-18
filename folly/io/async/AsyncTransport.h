@@ -1000,13 +1000,22 @@ class AsyncTransport : public DelayedDestruction,
     virtual void close(AsyncTransport* /* transport */) noexcept = 0;
 
     /**
-     * connect() will be invoked when connect() returns successfully.
+     * connectAttempt() will be invoked when connect() is called.
+     *
+     * Triggered before any application connection callback.
+     *
+     * @param transport   Transport that attempts to connect.
+     */
+    virtual void connectAttempt(AsyncTransport* /* transport */) noexcept {}
+
+    /**
+     * connectSuccess() will be invoked when connect() returns successfully.
      *
      * Triggered before any application connection callback.
      *
      * @param transport   Transport that has connected.
      */
-    virtual void connect(AsyncTransport* /* transport */) noexcept = 0;
+    virtual void connectSuccess(AsyncTransport* /* transport */) noexcept {}
 
     /**
      * connectError() will be invoked when connect() returns an error.
