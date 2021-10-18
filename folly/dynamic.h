@@ -292,7 +292,7 @@ struct dynamic {
     auto self = *this;
     return ++*this, self;
   }
-  dynamic operator-(int) {
+  dynamic operator--(int) {
     auto self = *this;
     return --*this, self;
   }
