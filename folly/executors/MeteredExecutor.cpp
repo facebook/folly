@@ -22,14 +22,15 @@
 
 namespace folly {
 
-MeteredExecutor::MeteredExecutor(KeepAlive keepAlive)
-    : kaInner_(std::move(keepAlive)) {
+MeteredExecutor::MeteredExecutor(KeepAlive keepAlive, Options options)
+    : options_(std::move(options)), kaInner_(std::move(keepAlive)) {
   queue_.setMaxReadAtOnce(1);
   queue_.arm();
 }
 
-MeteredExecutor::MeteredExecutor(std::unique_ptr<Executor> executor)
-    : MeteredExecutor(getKeepAliveToken(*executor)) {
+MeteredExecutor::MeteredExecutor(
+    std::unique_ptr<Executor> executor, Options options)
+    : MeteredExecutor(getKeepAliveToken(*executor), std::move(options)) {
   ownedExecutor_ = std::move(executor);
 }
 
@@ -37,8 +38,28 @@ void MeteredExecutor::setMaxReadAtOnce(uint32_t maxAtOnce) {
   queue_.setMaxReadAtOnce(maxAtOnce);
 }
 
+std::unique_ptr<QueueObserver> MeteredExecutor::setupQueueObserver() {
+  if (options_.enableQueueObserver) {
+    std::string name = "unk";
+    if (options_.name != "") {
+      name = options_.name;
+    }
+    if (auto factory = folly::QueueObserverFactory::make(
+            "mex." + name, options_.numPriorities)) {
+      return factory->create(options_.priority);
+    }
+  }
+  return nullptr;
+}
+
 void MeteredExecutor::add(Func func) {
-  if (queue_.push(std::move(func))) {
+  auto task = Task(std::move(func));
+  auto rctxp = RequestContext::saveContext();
+  if (queueObserver_) {
+    auto payload = queueObserver_->onEnqueued(rctxp.get());
+    task.setQueueObserverPayload(payload);
+  }
+  if (queue_.push(std::move(rctxp), std::move(task))) {
     scheduleCallback();
   }
 }
@@ -61,27 +82,30 @@ MeteredExecutor::~MeteredExecutor() {
 }
 
 MeteredExecutor::Consumer::~Consumer() {
-  DCHECK(!first_);
+  DCHECK(!first_ || !first_->hasFunc());
 }
 
 void MeteredExecutor::Consumer::executeIfNotEmpty() {
   if (first_) {
     RequestContextScopeGuard guard(std::move(firstRctx_));
     auto first = std::move(first_);
-    first();
+    first->run();
   }
 }
 
 void MeteredExecutor::Consumer::operator()(
-    Func&& func, std::shared_ptr<RequestContext>&& rctx) {
+    Task&& task, std::shared_ptr<RequestContext>&& rctx) {
+  if (self_.queueObserver_) {
+    self_.queueObserver_->onDequeued(first_->getQueueObserverPayload());
+  }
   if (!first_) {
-    first_ = std::move(func);
+    first_ = std::make_optional<Task>(std::move(task));
     firstRctx_ = std::move(rctx);
   } else {
     self_.kaInner_->add(
-        [func = std::move(func), rctx = std::move(rctx)]() mutable {
+        [task = std::move(task), rctx = std::move(rctx)]() mutable {
           RequestContextScopeGuard guard(std::move(rctx));
-          func();
+          task.run();
         });
   }
 }
