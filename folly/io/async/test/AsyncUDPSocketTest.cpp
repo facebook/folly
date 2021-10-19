@@ -368,24 +368,13 @@ class UDPNotifyClient : public UDPClient {
   }
 
   void onRecvMmsg(AsyncUDPSocket& sock) {
-    std::vector<struct mmsghdr> msgs;
-    msgs.reserve(numMsgs_);
-    memset(msgs.data(), 0, sizeof(struct mmsghdr) * numMsgs_);
-
     const socklen_t addrLen = sizeof(struct sockaddr_storage);
 
     const size_t dataSize = 1024;
-    std::vector<char> buf;
-    buf.reserve(numMsgs_ * dataSize);
-    memset(buf.data(), 0, numMsgs_ * dataSize);
-
-    std::vector<struct sockaddr_storage> addrs;
-    addrs.reserve(numMsgs_);
-    memset(addrs.data(), 0, sizeof(struct sockaddr_storage) * numMsgs_);
-
-    std::vector<struct iovec> iovecs;
-    iovecs.reserve(numMsgs_);
-    memset(iovecs.data(), 0, sizeof(struct iovec) * numMsgs_);
+    std::vector<char> buf(numMsgs_ * dataSize);
+    std::vector<struct mmsghdr> msgs(numMsgs_);
+    std::vector<struct sockaddr_storage> addrs(numMsgs_);
+    std::vector<struct iovec> iovecs(numMsgs_);
 
     for (unsigned int i = 0; i < numMsgs_; ++i) {
       struct msghdr* msg = &msgs[i].msg_hdr;

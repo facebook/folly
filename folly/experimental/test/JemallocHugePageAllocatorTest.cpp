@@ -251,11 +251,11 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   // This should work, just won't get huge pages since
   // init hasn't been called yet
   vec.reserve(100);
-  EXPECT_NE(nullptr, &vec[0]);
+  EXPECT_NE(nullptr, vec.data());
 
   // Reserve & initialize, not on huge pages
   MyVec vec2(100);
-  EXPECT_NE(nullptr, &vec[0]);
+  EXPECT_NE(nullptr, vec.data());
 
   // F14 maps need quite a lot of memory by default
   bool initialized = jha::init(4);
@@ -265,7 +265,7 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
 
   // Reallocate, this time on huge pages
   vec.reserve(200);
-  EXPECT_NE(nullptr, &vec[0]);
+  EXPECT_NE(nullptr, vec.data());
 
   MyMap map1;
   map1[0] = {1, 2, 3};
@@ -274,7 +274,7 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   map2[0] = {1, 2, 3};
 
   if (initialized) {
-    EXPECT_TRUE(jha::addressInArena(&vec[0]));
+    EXPECT_TRUE(jha::addressInArena(vec.data()));
     EXPECT_TRUE(jha::addressInArena(&map1[0]));
     EXPECT_TRUE(jha::addressInArena(&map1[0][0]));
     EXPECT_TRUE(jha::addressInArena(&map2[0]));
