@@ -26,9 +26,9 @@
 
 #include <folly/Conv.h>
 #include <folly/Exception.h>
-#include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/hash/Hash.h>
+#include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 
 namespace folly {
