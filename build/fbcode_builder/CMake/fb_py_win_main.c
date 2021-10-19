@@ -3,8 +3,8 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define PATH_SIZE 32768
 
@@ -18,19 +18,27 @@ void add_search_path(const wchar_t* path) {
   wchar_t** lppPart = NULL;
 
   if (!GetFullPathNameW(path, PATH_SIZE, buffer, lppPart)) {
-    fwprintf(stderr, L"warning: %d unable to expand path %s\n", GetLastError(), path);
+    fwprintf(
+        stderr,
+        L"warning: %d unable to expand path %s\n",
+        GetLastError(),
+        path);
     return;
   }
 
   if (!AddDllDirectory(buffer)) {
     DWORD error = GetLastError();
     if (error != ERROR_FILE_NOT_FOUND) {
-      fwprintf(stderr, L"warning: %d unable to set DLL search path for %s\n", GetLastError(), path);
+      fwprintf(
+          stderr,
+          L"warning: %d unable to set DLL search path for %s\n",
+          GetLastError(),
+          path);
     }
   }
 }
 
-int locate_py_main(int argc, wchar_t **argv) {
+int locate_py_main(int argc, wchar_t** argv) {
   /*
    * We have to dynamically locate Python3.dll because we may be loading a
    * Python native module while running. If that module is built with a
@@ -48,11 +56,12 @@ int locate_py_main(int argc, wchar_t **argv) {
   add_search_path(L"C:\\Python37\\");
   add_search_path(L"C:\\Python38\\");
 
-  python_dll = LoadLibraryExW(L"python3.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+  python_dll =
+      LoadLibraryExW(L"python3.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 
   int returncode = 0;
   if (python_dll != NULL) {
-    pymain = (Py_Main) GetProcAddress(python_dll, "Py_Main");
+    pymain = (Py_Main)GetProcAddress(python_dll, "Py_Main");
 
     if (pymain != NULL) {
       returncode = (pymain)(argc, argv);
