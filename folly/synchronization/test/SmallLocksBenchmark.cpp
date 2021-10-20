@@ -31,7 +31,6 @@
 #include <folly/lang/Aligned.h>
 #include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/SmallLocks.h>
-#include <folly/synchronization/Utility.h>
 
 /* "Work cycle" is just an additional nop loop iteration.
  * A smaller number of work cyles will result in more contention,
@@ -132,7 +131,7 @@ class FlatCombiningMutexCaching
 
 template <typename Mutex, typename CriticalSection>
 auto lock_and(Mutex& mutex, std::size_t, CriticalSection func) {
-  auto lck = folly::make_unique_lock(mutex);
+  auto lck = std::unique_lock{mutex};
   return func();
 }
 template <typename F>

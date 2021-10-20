@@ -502,6 +502,33 @@ class shared_lock_guard
   using base::base;
 };
 
+//  make_unique_lock
+//
+//  Returns a unique_lock constructed with the given arguments. Deduces the
+//  mutex type.
+template <typename Mutex, typename... A>
+FOLLY_NODISCARD unique_lock<Mutex> make_unique_lock(Mutex& mutex, A&&... a) {
+  return unique_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+}
+
+//  make_shared_lock
+//
+//  Returns a shared_lock constructed with the given arguments. Deduces the
+//  mutex type.
+template <typename Mutex, typename... A>
+FOLLY_NODISCARD shared_lock<Mutex> make_shared_lock(Mutex& mutex, A&&... a) {
+  return shared_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+}
+
+//  make_upgrade_lock
+//
+//  Returns an upgrade_lock constructed with the given arguments. Deduces the
+//  mutex type.
+template <typename Mutex, typename... A>
+FOLLY_NODISCARD upgrade_lock<Mutex> make_upgrade_lock(Mutex& mutex, A&&... a) {
+  return upgrade_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+}
+
 namespace detail {
 
 template <typename L>
