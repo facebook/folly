@@ -254,7 +254,7 @@ TEST(Future, hasPostconditionValid) {
   DOIT(f.raise(std::logic_error("foo")));
   DOIT(f.cancel());
   DOIT(f.wait());
-  DOIT(std::move(f.wait()));
+  DOIT(std::move(f).wait());
 
 #undef DOIT
 }
