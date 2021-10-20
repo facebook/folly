@@ -54,6 +54,9 @@ async::Async<std::tuple<int, float, std::string>> getTuple() {
 }
 
 struct NonCopyableNonMoveable {
+  constexpr NonCopyableNonMoveable() noexcept = default;
+  ~NonCopyableNonMoveable() = default;
+
   NonCopyableNonMoveable(const NonCopyableNonMoveable&) = delete;
   NonCopyableNonMoveable(NonCopyableNonMoveable&&) = delete;
   NonCopyableNonMoveable& operator=(NonCopyableNonMoveable const&) = delete;
