@@ -20,6 +20,7 @@
 #include <iterator>
 #include <memory>
 #include <stdexcept>
+#include <folly/detail/StaticSingletonManager.h>
 
 #include <folly/Format.h>
 #include <folly/Function.h>
@@ -99,8 +100,10 @@ class ConstructorCallback {
     // nConstructorCallbacks_ was set to zero, and thus prevents issuing
     // callbacks on garbage data.
 
+    auto nCBs =
+        This::global().nConstructorCallbacks_.load(std::memory_order_acquire);
+
     // fire callbacks to inform listeners about the new constructor
-    auto nCBs = This::nConstructorCallbacks_.load(std::memory_order_acquire);
     /****
      * We don't need the full lock here, just the atomic int to tell us
      * how far into the array to go/how many callbacks are registered
@@ -108,7 +111,7 @@ class ConstructorCallback {
      * NOTE that nCBs > 0 will always imply that callbacks_ is non-nullptr
      */
     for (size_t i = 0; i < nCBs; i++) {
-      (*This::callbacks_)[i](t);
+      (This::global().callbacks_)[i](t);
     }
   }
 
@@ -130,63 +133,30 @@ class ConstructorCallback {
    */
   static void addNewConstructorCallback(NewConstructorCallback cb) {
     // Ensure that a single callback is added at a time
-    std::lock_guard<SharedMutex> g(This::getMutex());
-    auto idx = nConstructorCallbacks_.load(std::memory_order_acquire);
-    if (callbacks_ == nullptr) {
-      // Get a pointer to the callback array if we've not already done
-      // so.
-      //
-      // NOTE: this only happens once per class (e.g., when the first
-      // callback is registered) and we're already locked on getMutex()
-      // so this should be very cheap.
-      //
-      // NOTE: store a raw/dumb pointer to avoid a race condition
-      // and -Wglobal-error issues on shutdown
-      callbacks_ = This::getCallbackArray();
-    }
-    if (idx >= (*callbacks_).size()) {
+    std::lock_guard<SharedMutex> g(This::global().mutex_);
+    auto idx =
+        This::global().nConstructorCallbacks_.load(std::memory_order_acquire);
+
+    if (idx >= (This::global().callbacks_).size()) {
       throw std::length_error(
           folly::sformat("Too many callbacks - max {}", MaxCallbacks));
     }
-    (*callbacks_)[idx] = std::move(cb);
+    (This::global().callbacks_)[idx] = std::move(cb);
     // Only increment nConstructorCallbacks_ after fully initializing the array
     // entry. This step makes the new array entry visible to other threads.
-    nConstructorCallbacks_.store(idx + 1, std::memory_order_release);
+    This::global().nConstructorCallbacks_.store(
+        idx + 1, std::memory_order_release);
   }
 
  private:
-  // allocate an array internal to function to avoid init() races
-  static folly::SharedMutex& getMutex();
-  static This::CallbackArray* getCallbackArray();
-
-  static This::CallbackArray* callbacks_;
-  static std::atomic<size_t> nConstructorCallbacks_;
+  // use createGlobal to avoid races on shutdown
+  struct GlobalStorage {
+    folly::SharedMutex mutex_;
+    This::CallbackArray callbacks_{};
+    std::atomic<size_t> nConstructorCallbacks_{0};
+  };
+  static auto& global() {
+    return folly::detail::createGlobal<GlobalStorage, void>();
+  }
 };
-
-template <class T, std::size_t MaxCallbacks>
-std::atomic<size_t>
-    ConstructorCallback<T, MaxCallbacks>::nConstructorCallbacks_{0};
-
-template <class T, std::size_t MaxCallbacks>
-folly::SharedMutex& ConstructorCallback<T, MaxCallbacks>::getMutex() {
-  static folly::SharedMutex mutex;
-  return mutex;
-}
-
-template <class T, std::size_t MaxCallbacks>
-typename ConstructorCallback<T, MaxCallbacks>::CallbackArray*
-    ConstructorCallback<T, MaxCallbacks>::callbacks_;
-
-template <class T, std::size_t MaxCallbacks>
-typename ConstructorCallback<T, MaxCallbacks>::CallbackArray*
-ConstructorCallback<T, MaxCallbacks>::getCallbackArray() {
-  // NOTE the compiler implicitly generates a lock here
-  // to avoid double (static) allocation of this object
-  // we avoid paying the cost of the lock by only calling this
-  // function once per class (while we're already locked on getMutex())
-  // and recording the pointer info
-  static ConstructorCallback<T, MaxCallbacks>::CallbackArray a{};
-  return &a;
-}
-
 } // namespace folly
