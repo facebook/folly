@@ -413,6 +413,7 @@ class Yield : public GenImpl<Value, Yield<Value, Source>> {
 template <class Value>
 class Empty : public GenImpl<Value, Empty<Value>> {
  public:
+  Empty() = default;
   template <class Handler>
   bool apply(Handler&&) const {
     return true;
@@ -1290,6 +1291,7 @@ class GroupByAdjacent : public Operator<GroupByAdjacent<Selector>> {
 template <class Expected>
 class TypeAssertion : public Operator<TypeAssertion<Expected>> {
  public:
+  TypeAssertion() = default;
   template <class Source, class Value>
   const Source& compose(const GenImpl<Value, Source>& source) const {
     static_assert(
