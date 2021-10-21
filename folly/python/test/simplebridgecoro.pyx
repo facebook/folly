@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import asyncio
-from folly.coro cimport cFollyCoroTask, bridgeCoroTask
+from folly.coro cimport cFollyCoroTask, bridgeCoroTask, bridgeCoroTaskWithCancellation, cFollyCancellationSource
 from folly cimport cFollyTry
+from folly.executor cimport get_executor
 from libc.stdint cimport uint64_t
 from cpython.ref cimport PyObject
 from cython.operator cimport dereference as deref
 
 cdef extern from "folly/python/test/simplecoro.h" namespace "folly::python::test":
     cdef cFollyCoroTask[uint64_t] coro_getValueX5(uint64_t val)
+    cdef cFollyCoroTask[uint64_t] coro_returnFiveAfterCancelled()
 
 
 def get_value_x5_coro(int val):
@@ -32,6 +34,24 @@ def get_value_x5_coro(int val):
         <PyObject *>fut
     )
     return fut
+
+
+async def return_five_after_cancelled():
+    cancellation_source = cFollyCancellationSource()
+    loop = asyncio.get_event_loop()
+    fut = loop.create_future()
+    bridgeCoroTaskWithCancellation[uint64_t](
+        get_executor(),
+        coro_returnFiveAfterCancelled(),
+        handle_uint64_t,
+        <PyObject *>fut,
+        cancellation_source.getToken(),
+    )
+    try:
+        return await asyncio.shield(fut)
+    except asyncio.CancelledError:
+        cancellation_source.requestCancellation()
+        return await fut
 
 
 cdef void handle_uint64_t(cFollyTry[uint64_t]&& res, PyObject* userData):

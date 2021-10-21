@@ -25,6 +25,7 @@
 #include <folly/Executor.h>
 #include <folly/Portability.h>
 
+#include <folly/CancellationToken.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/python/AsyncioExecutor.h>
 #include <folly/python/executor.h>
@@ -39,7 +40,8 @@ void bridgeCoroTask(
     folly::Executor* executor,
     folly::coro::Task<T>&& coroFrom,
     folly::Function<void(folly::Try<T>&&, PyObject*)> callback,
-    PyObject* userData) {
+    PyObject* userData,
+    folly::CancellationToken&& cancellationToken) {
   // We are handing over a pointer to a python object to c++ and need
   // to make sure it isn't removed by python in that time.
   Py_INCREF(userData);
@@ -48,7 +50,22 @@ void bridgeCoroTask(
       [callback = std::move(callback), userData, guard = std::move(guard)](
           folly::Try<T>&& result) mutable {
         callback(std::move(result), userData);
-      });
+      },
+      std::move(cancellationToken));
+}
+
+template <typename T>
+void bridgeCoroTask(
+    folly::Executor* executor,
+    folly::coro::Task<T>&& coroFrom,
+    folly::Function<void(folly::Try<T>&&, PyObject*)> callback,
+    PyObject* userData) {
+  bridgeCoroTask(
+      executor,
+      std::move(coroFrom),
+      std::move(callback),
+      userData,
+      folly::CancellationToken());
 }
 
 template <typename T>
