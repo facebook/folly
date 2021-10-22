@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
 
@@ -69,8 +70,11 @@ decltype(auto) overload(Cases&&... cases) {
 
 namespace overload_detail {
 FOLLY_CREATE_MEMBER_INVOKER(valueless_by_exception, valueless_by_exception);
+FOLLY_PUSH_WARNING
+FOLLY_MSVC_DISABLE_WARNING(4003) /* not enough arguments to macro */
 FOLLY_CREATE_FREE_INVOKER(visit, visit);
 FOLLY_CREATE_FREE_INVOKER(apply_visitor, apply_visitor);
+FOLLY_POP_WARNING
 } // namespace overload_detail
 
 /*
