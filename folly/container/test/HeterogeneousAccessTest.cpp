@@ -203,7 +203,11 @@ Range<int const*> foo(small_vector<int, 2> const& sv) {
 
 TEST(HeterogeneousAccess, transparentMatches) {
   runTestMatches<std::string>("abcd");
+#if !defined(__cpp_lib_char8_t) || __cpp_lib_char8_t < 201907
   runTestMatches<std::string>(u8"abcd");
+#else
+  runTestMatches<std::u8string>(u8"abcd");
+#endif
   runTestMatches<std::wstring>(L"abcd");
   runTestMatches<std::u16string>(u"abcd");
   runTestMatches<std::u32string>(U"abcd");
