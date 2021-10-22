@@ -21,7 +21,6 @@
 #include <random>
 
 #include <folly/CppAttributes.h>
-#include <folly/File.h>
 #include <folly/FileUtil.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/ThreadLocal.h>
