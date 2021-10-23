@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include <folly/SingletonThreadLocal.h>
@@ -127,6 +128,29 @@ class RequestData {
   void releaseRefClearDeleteSlow();
 
   std::atomic<int> keepAliveCounter_{0};
+};
+
+/**
+ * ImmutableRequestData is a folly::RequestData that holds an immutable value.
+ * It is thread-safe (a requirement of RequestData) because it is immutable.
+ */
+template <typename T>
+class ImmutableRequestData : public folly::RequestData {
+ public:
+  template <
+      typename... Args,
+      typename = typename std::enable_if<
+          std::is_constructible<T, Args...>::value>::type>
+  explicit ImmutableRequestData(Args&&... args) noexcept(
+      std::is_nothrow_constructible<T, Args...>::value)
+      : val_(std::forward<Args>(args)...) {}
+
+  const T& value() const { return val_; }
+
+  bool hasCallback() override { return false; }
+
+ private:
+  const T val_;
 };
 
 using RequestDataItem = std::pair<RequestToken, std::unique_ptr<RequestData>>;

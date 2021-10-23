@@ -600,3 +600,20 @@ TEST(RequestContextTryGetTest, TryGetTest) {
   });
   thread.join();
 }
+
+TEST(ImmutableRequestTest, simple) {
+  ImmutableRequestData<int> ird(4);
+  EXPECT_EQ(ird.value(), 4);
+}
+
+TEST(ImmutableRequestTest, type_traits) {
+  using IRDI = ImmutableRequestData<int>;
+
+  auto c1 = std::is_constructible<IRDI, int>::value;
+  EXPECT_TRUE(c1);
+  auto n1 = std::is_nothrow_constructible<IRDI, int>::value;
+  EXPECT_TRUE(n1);
+
+  auto c2 = std::is_constructible<IRDI, int, int>::value;
+  EXPECT_FALSE(c2);
+}
