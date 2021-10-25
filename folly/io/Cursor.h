@@ -1239,12 +1239,14 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
   void insert(std::unique_ptr<folly::IOBuf> buf) {
     if (buf) {
-      queueCache_.queue()->append(std::move(buf), true);
+      queueCache_.queue()->append(
+          std::move(buf), /* pack */ true, /* allowTailReuse */ true);
     }
   }
 
   void insert(const folly::IOBuf& buf) {
-    queueCache_.queue()->append(buf, true);
+    queueCache_.queue()->append(
+        buf, /* pack */ true, /* allowTailReuse */ true);
   }
 
   template <CursorAccess access>

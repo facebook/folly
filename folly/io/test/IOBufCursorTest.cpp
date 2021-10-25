@@ -614,6 +614,26 @@ TEST(IOBuf, QueueAppenderInsertClone) {
   EXPECT_EQ(x, queue.front()->next()->data()[0]);
 }
 
+TEST(IOBuf, QueueAppenderReuseTail) {
+  folly::IOBufQueue queue;
+  QueueAppender appender{&queue, 100};
+  constexpr StringPiece prologue = "hello";
+  appender.pushAtMost(
+      reinterpret_cast<const uint8_t*>(prologue.data()), prologue.size());
+  size_t expectedCapacity = queue.front()->capacity();
+
+  auto unpackable = IOBuf::create(folly::IOBufQueue::kMaxPackCopy + 1);
+  unpackable->append(folly::IOBufQueue::kMaxPackCopy + 1);
+  expectedCapacity += unpackable->capacity();
+  appender.insert(std::move(unpackable));
+
+  constexpr StringPiece epilogue = " world";
+  appender.pushAtMost(
+      reinterpret_cast<const uint8_t*>(epilogue.data()), epilogue.size());
+
+  EXPECT_EQ(queue.front()->computeChainCapacity(), expectedCapacity);
+}
+
 TEST(IOBuf, QueueAppenderRWCursor) {
   folly::IOBufQueue queue;
 

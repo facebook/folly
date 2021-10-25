@@ -95,7 +95,8 @@ namespace folly {
  * In other words, when multiple IOBufs share the same underlying buffer, the
  * data() and tail() methods on each IOBuf may point to a different segment of
  * the data.  However, the buffer() and bufferEnd() methods will point to the
- * same location for all IOBufs sharing the same underlying buffer.
+ * same location for all IOBufs sharing the same underlying buffer, unless the
+ * tail was trimmed with trimWritableTail().
  *
  *       +-----------+     +---------+
  *       |  IOBuf 1  |     | IOBuf 2 |
@@ -782,6 +783,15 @@ class IOBuf {
   void trimEnd(std::size_t amount) {
     DCHECK_LE(amount, length_);
     length_ -= amount;
+  }
+
+  /**
+   * Adjust the buffer end pointer to reduce the buffer capacity. This can be
+   * used to pass the ownership of the writable tail to another IOBuf.
+   */
+  void trimWritableTail(std::size_t amount) {
+    DCHECK_LE(amount, tailroom());
+    capacity_ -= amount;
   }
 
   /**

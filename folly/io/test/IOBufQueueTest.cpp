@@ -20,6 +20,7 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <fmt/format.h>
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
@@ -157,15 +158,15 @@ TEST(IOBufQueue, AppendIOBufRefChain) {
 TEST(IOBufQueue, AppendIOBufRefChainPartial) {
   IOBufQueue queue(clOptions);
   queue.append(*stringToIOBuf("abc", 3), true);
-  queue.preallocate(10, 10, 10);
+  queue.preallocate(16, 16, 16);
   auto numElements = queue.front()->countChainElements();
-  auto chain = stringToIOBuf("Hello", 5);
-  chain->prependChain(stringToIOBuf("World!", 6));
-  chain->prependChain(stringToIOBuf("Test", 4));
+  auto chain = stringToIOBuf("This fits in 16B", 16);
+  chain->prependChain(stringToIOBuf("Hello ", 5));
+  chain->prependChain(stringToIOBuf("World", 5));
   queue.append(*chain, true);
   // Make sure that we performed a copy of first IOBuf and cloned the rest.
   EXPECT_EQ(numElements + 2, queue.front()->countChainElements());
-  EXPECT_EQ("abcHelloWorld!Test", queueToString(queue));
+  EXPECT_EQ("abcThis fits in 16BHelloWorld", queueToString(queue));
 }
 
 TEST(IOBufQueue, Split) {
@@ -526,4 +527,77 @@ TEST(IOBufQueue, Gather) {
       reinterpret_cast<const char*>(queue.front()->data()),
       queue.front()->length());
   EXPECT_EQ("hello world", s);
+}
+
+TEST(IOBufQueue, ReuseTail) {
+  const auto test = [](bool asValue, bool withEmptyHead) {
+    SCOPED_TRACE(
+        fmt::format("asValue={}, withEmptyHead={}", asValue, withEmptyHead));
+
+    IOBufQueue queue;
+    IOBufQueue::WritableRangeCache cache(&queue);
+
+    constexpr size_t kInitialCapacity = 1024;
+    queue.preallocate(kInitialCapacity, kInitialCapacity);
+    size_t expectedCapacity = queue.front()->capacity();
+
+    const auto makeUnpackable = [] {
+      auto unpackable = IOBuf::create(IOBufQueue::kMaxPackCopy + 1);
+      unpackable->append(IOBufQueue::kMaxPackCopy + 1);
+      return unpackable;
+    };
+
+    auto unpackable = makeUnpackable();
+    expectedCapacity += unpackable->capacity();
+
+    std::unique_ptr<IOBuf> buf;
+    size_t packableLength = 0;
+    if (withEmptyHead) {
+      // In this case, the unpackable buffer should just shift the empty head
+      // buffer forward.
+      buf = std::move(unpackable);
+    } else {
+      queue.append("hello ");
+      buf = stringToIOBuf(SCL("world"));
+      packableLength = buf->length();
+      buf->appendChain(std::move(unpackable));
+    }
+
+    const auto oldTail = reinterpret_cast<uint8_t*>(queue.writableTail());
+    const auto oldTailroom = queue.tailroom();
+
+    // Append two buffers in a row to verify that the reused tail gets pushed
+    // forward without wrapping.
+    for (size_t i = 0; i < 2; ++i) {
+      SCOPED_TRACE(fmt::format("i={}", i));
+
+      if (asValue) {
+        queue.append(
+            std::move(buf), /* pack */ true, /* allowTailReuse */ true);
+      } else {
+        queue.append(*buf, /* pack */ true, /* allowTailReuse */ true);
+      }
+
+      // We should be able to avoid allocating new memory because we still had
+      // room in the old tail, even after packing the first IOBuf.
+      EXPECT_EQ(queue.writableTail(), oldTail + packableLength);
+      EXPECT_EQ(queue.tailroom(), oldTailroom - packableLength);
+      EXPECT_EQ(queue.front()->computeChainCapacity(), expectedCapacity);
+      EXPECT_EQ(
+          queue.front()->countChainElements(), i + (withEmptyHead ? 2 : 3));
+
+      if (i == 0) {
+        buf = makeUnpackable();
+        expectedCapacity += buf->capacity();
+      }
+    }
+  };
+
+  // Test both unique_ptr and value overloads, and check that an empty head is
+  // handled correctly.
+  for (bool asValue : {false, true}) {
+    for (bool withEmptyHead : {false, true}) {
+      test(asValue, withEmptyHead);
+    }
+  }
 }
