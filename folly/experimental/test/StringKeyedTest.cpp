@@ -59,7 +59,7 @@ struct MemoryLeakCheckerAllocator {
       : alloc_(other.allocator()) {}
 
   value_type* allocate(size_t n, const void* hint = nullptr) {
-    auto p = alloc_.allocate(n, hint);
+    auto p = std::allocator_traits<Alloc>::allocate(alloc_, n, hint);
     allocated += n * sizeof(value_type);
     return p;
   }
@@ -69,14 +69,19 @@ struct MemoryLeakCheckerAllocator {
     freed += n * sizeof(value_type);
   }
 
-  size_t max_size() const { return alloc_.max_size(); }
+  size_t max_size() const {
+    return std::allocator_traits<Alloc>::max_size(alloc_);
+  }
 
   template <class... Args>
   void construct(value_type* p, Args&&... args) {
-    alloc_.construct(p, std::forward<Args>(args)...);
+    std::allocator_traits<Alloc>::construct(
+        alloc_, p, std::forward<Args>(args)...);
   }
 
-  void destroy(value_type* p) { alloc_.destroy(p); }
+  void destroy(value_type* p) {
+    std::allocator_traits<Alloc>::destroy(alloc_, p);
+  }
 
   template <class U>
   struct rebind {

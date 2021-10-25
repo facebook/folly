@@ -135,6 +135,7 @@ TEST(CoroGTestHelpers, CoReturnByMoveWithImplicitConversionTest) {
   MockFoo mock;
 
   struct ImplicitToStringMoveOnly {
+    constexpr ImplicitToStringMoveOnly() noexcept = default;
     ImplicitToStringMoveOnly(const ImplicitToStringMoveOnly&) = delete;
     ImplicitToStringMoveOnly& operator=(const ImplicitToStringMoveOnly&) =
         delete;
