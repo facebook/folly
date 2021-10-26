@@ -183,6 +183,22 @@ class hazptr_domain {
     wait_for_zero_bulk_reclaims(); // wait for concurrent bulk_reclaim-s
   }
 
+  /** delete_hazard_pointers -- Used only for benchmarking */
+  void delete_hazard_pointers() {
+    // Call cleanup() to ensure that there is no lagging concurrent
+    // asynchronous reclamation in progress.
+    cleanup();
+    auto rec = head();
+    while (rec) {
+      auto next = rec->next();
+      rec->~hazptr_rec<Atom>();
+      hazptr_rec_alloc{}.deallocate(rec, 1);
+      rec = next;
+    }
+    hazptrs_.store(nullptr);
+    hcount_.store(0);
+  }
+
   /** cleanup_cohort_tag */
   void cleanup_cohort_tag(const hazptr_obj_cohort<Atom>* cohort) noexcept {
     auto tag = reinterpret_cast<uintptr_t>(cohort) + kTagBit;

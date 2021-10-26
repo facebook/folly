@@ -50,6 +50,7 @@ using folly::hazptr_obj_cohort;
 using folly::hazptr_retire;
 using folly::hazptr_root;
 using folly::hazptr_tc;
+using folly::hazptr_tc_evict;
 using folly::HazptrLockFreeLIFO;
 using folly::HazptrSWMRSet;
 using folly::HazptrWideCAS;
@@ -1504,6 +1505,44 @@ uint64_t cohort_bench(std::string name, int nthreads) {
   return bench(name, ops, repFn);
 }
 
+uint64_t tc_miss_bench(std::string name, int nthreads) {
+  hazptr_tc_evict();
+  hazard_pointer_default_domain<>().delete_hazard_pointers();
+  // Thread cache capacity
+  constexpr int C = hazptr_tc<>::capacity();
+  // Number of unavailable hazard pointers that will be at the head of
+  // the main list of hazard pointers before reaching available ones.
+  constexpr int N = 10000;
+  // Max number of threads
+  constexpr int P = 100;
+  hazard_pointer<> aa[N + 2 * C * P];
+  // The following creates N+2*C*P hazard pointers
+  for (int i = 0; i < N + 2 * C * P; ++i) {
+    aa[i] = make_hazard_pointer<>();
+  }
+  // Make the last 2*C*P in the domain's hazard pointer list available
+  for (int i = 0; i < 2 * C * P; ++i) {
+    aa[i] = hazard_pointer<>();
+  }
+  hazptr_tc_evict();
+  // The domain now has N unavailable hazard pointers at the head of
+  // the list following by C*P available ones.
+  auto repFn = [&] {
+    auto init = [] {};
+    auto fn = [&](int tid) {
+      for (int j = tid; j < ops / 1000; j += nthreads) {
+        // By using twice the TC capacity, each iteration does one
+        // filling and one eviction of the TC.
+        hazptr_array<C> a1 = make_hazard_pointer_array<C>();
+        hazptr_array<C> a2 = make_hazard_pointer_array<C>();
+      }
+    };
+    auto endFn = [] {};
+    return run_once(nthreads, init, fn, endFn);
+  };
+  return bench(name, ops, repFn);
+}
+
 const int nthr[] = {1, 10};
 const int sizes[] = {10, 20};
 
@@ -1526,6 +1565,10 @@ void benches() {
     local_bench<2>("", i);
     std::cout << "10x construct/destruct hazptr_local<3>        ";
     local_bench<3>("", i);
+    std::cout << "10x construct/destruct hazptr_array<9>        ";
+    array_bench<9>("", i);
+    std::cout << "1/1000 TC hit + miss & overflow               ";
+    tc_miss_bench("", i);
     std::cout << "allocate/retire/reclaim object                ";
     obj_bench("", i);
     for (int j : sizes) {

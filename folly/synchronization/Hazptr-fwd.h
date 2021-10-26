@@ -119,6 +119,9 @@ class hazptr_tc;
 template <template <typename> class Atom = std::atomic>
 hazptr_tc<Atom>& hazptr_tc_tls();
 
+/** hazptr_tc_evict -- Used only for benchmarking */
+void hazptr_tc_evict();
+
 ///
 /// Hazard pointer domain
 /// Defined in HazptrDomain.h

@@ -91,6 +91,7 @@ class hazptr_tc {
   friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
   template <uint8_t M, template <typename> class A>
   friend hazptr_array<M, A> make_hazard_pointer_array();
+  friend void hazptr_tc_evict();
 
   FOLLY_ALWAYS_INLINE
   hazptr_tc_entry<Atom>& operator[](uint8_t i) noexcept {
@@ -111,17 +112,7 @@ class hazptr_tc {
       entry_[count_++].fill(hprec);
       return true;
     }
-    hazptr_warning_tc_overflow();
     return false;
-  }
-
-  FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_tc_overflow() {
-    static std::atomic<uint64_t> warning_count{0};
-    if ((warning_count++ % 10000) == 0) {
-      LOG(WARNING) << "Hazptr thread cache overflow "
-                   << std::this_thread::get_id();
-      ;
-    }
   }
 
   FOLLY_ALWAYS_INLINE uint8_t count() const noexcept { return count_; }
@@ -144,6 +135,8 @@ class hazptr_tc {
     }
   }
 
+  void evict() { evict(count()); }
+
   bool local() const noexcept { // for debugging only
     return local_;
   }
@@ -158,6 +151,11 @@ struct hazptr_tc_tls_tag {};
 template <template <typename> class Atom>
 FOLLY_ALWAYS_INLINE hazptr_tc<Atom>& hazptr_tc_tls() {
   return folly::SingletonThreadLocal<hazptr_tc<Atom>, hazptr_tc_tls_tag>::get();
+}
+
+/** hazptr_tc_evict -- Used only for benchmarking */
+inline void hazptr_tc_evict() {
+  hazptr_tc_tls<>().evict();
 }
 
 } // namespace folly
