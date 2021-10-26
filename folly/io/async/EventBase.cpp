@@ -421,8 +421,8 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
           // back off temporarily -- don't keep spamming maxLatencyCob_
           // if we're only a bit over the limit
           maxLatencyLoopTime_.dampen(0.9);
-        } else if (!dampenMaxLatency_ && loop_time > maxLatency_) {
-          // If no damping, we compare the raw loop time
+        } else if (!dampenMaxLatency_ && busy > maxLatency_) {
+          // If no damping, we compare the raw busy time
           maxLatencyCob_();
         }
       }
