@@ -89,7 +89,7 @@ class hazptr_holder {
         }
       }
 #endif
-      domain->hprec_release(hprec_);
+      domain->release_hprec(hprec_);
     }
   }
 
@@ -189,7 +189,9 @@ FOLLY_ALWAYS_INLINE hazptr_holder<Atom> make_hazard_pointer(
     }
   }
 #endif
-  auto hprec = domain.hprec_acquire();
+  auto hprec = domain.acquire_hprecs(1);
+  DCHECK(hprec);
+  DCHECK(hprec->next_avail() == nullptr);
   return hazptr_holder<Atom>(hprec);
 }
 
@@ -331,9 +333,15 @@ FOLLY_ALWAYS_INLINE hazptr_array<M, Atom> make_hazard_pointer_array() {
   }
   tc.set_count(offset);
 #else
+  auto hprec = hazard_pointer_default_domain<Atom>().acquire_hprecs(M);
   for (uint8_t i = 0; i < M; ++i) {
-    new (&h[i]) hazptr_holder<Atom>(make_hazard_pointer<Atom>());
+    DCHECK(hprec);
+    auto next = hprec->next_avail();
+    hprec->set_next_avail(nullptr);
+    new (&h[i]) hazptr_holder<Atom>(hprec);
+    hprec = next;
   }
+  DCHECK(hprec == nullptr);
 #endif
   a.empty_ = false;
   return a;

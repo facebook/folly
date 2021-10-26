@@ -95,6 +95,7 @@ constexpr int hazptr_domain_rcount_threshold() {
 template <template <typename> class Atom>
 class hazptr_domain {
   using Obj = hazptr_obj<Atom>;
+  using Rec = hazptr_rec<Atom>;
   using List = hazptr_detail::linked_list<Obj>;
   using ObjList = hazptr_obj_list<Atom>;
   using RetiredList = hazptr_detail::shared_head_only_list<Obj, Atom>;
@@ -106,6 +107,7 @@ class hazptr_domain {
   static constexpr int kListTooLarge = 100000;
   static constexpr uint64_t kSyncTimePeriod{2000000000}; // nanoseconds
   static constexpr uintptr_t kTagBit = hazptr_obj<Atom>::kTagBit;
+  static constexpr uintptr_t kLockBit = 1;
   static constexpr int kIgnoredLowBits = 8;
 
   static constexpr int kNumShards = 8;
@@ -117,7 +119,8 @@ class hazptr_domain {
     return &folly::QueuedImmediateExecutor::instance();
   }
 
-  Atom<hazptr_rec<Atom>*> hazptrs_{nullptr};
+  Atom<Rec*> hazptrs_{nullptr};
+  Atom<uintptr_t> avail_{reinterpret_cast<uintptr_t>(nullptr)};
   Atom<uint64_t> sync_time_{0};
   /* Using signed int for rcount_ because it may transiently be negative.
      Using signed int for all integer variables that may be involved in
@@ -188,15 +191,16 @@ class hazptr_domain {
     // Call cleanup() to ensure that there is no lagging concurrent
     // asynchronous reclamation in progress.
     cleanup();
-    auto rec = head();
+    Rec* rec = head();
     while (rec) {
       auto next = rec->next();
-      rec->~hazptr_rec<Atom>();
+      rec->~Rec();
       hazptr_rec_alloc{}.deallocate(rec, 1);
       rec = next;
     }
     hazptrs_.store(nullptr);
     hcount_.store(0);
+    avail_.store(reinterpret_cast<uintptr_t>(nullptr));
   }
 
   /** cleanup_cohort_tag */
@@ -224,13 +228,13 @@ class hazptr_domain {
   }
 
  private:
-  using hazptr_rec_alloc = AlignedSysAllocator<
-      hazptr_rec<Atom>,
-      FixedAlign<alignof(hazptr_rec<Atom>)>>;
+  using hazptr_rec_alloc = AlignedSysAllocator<Rec, FixedAlign<alignof(Rec)>>;
 
   friend void hazptr_domain_push_retired<Atom>(
       hazptr_obj_list<Atom>&, hazptr_domain<Atom>&) noexcept;
   friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
+  template <uint8_t M, template <typename> class A>
+  friend hazptr_array<M, A> make_hazard_pointer_array();
   friend class hazptr_holder<Atom>;
   friend class hazptr_obj<Atom>;
   friend class hazptr_obj_cohort<Atom>;
@@ -278,14 +282,48 @@ class hazptr_domain {
     num_bulk_reclaims_.fetch_sub(1, std::memory_order_release);
   }
 
-  /** hprec_acquire */
-  hazptr_rec<Atom>* hprec_acquire() {
-    auto rec = try_acquire_existing_hprec();
-    return rec != nullptr ? rec : acquire_new_hprec();
+  uintptr_t load_avail() { return avail_.load(std::memory_order_acquire); }
+
+  void store_avail(uintptr_t val) {
+    avail_.store(val, std::memory_order_release);
   }
 
-  /** hprec_release */
-  void hprec_release(hazptr_rec<Atom>* hprec) noexcept { hprec->release(); }
+  bool cas_avail(uintptr_t& expval, uintptr_t newval) {
+    return avail_.compare_exchange_weak(
+        expval, newval, std::memory_order_acq_rel, std::memory_order_acquire);
+  }
+
+  /** acquire_hprecs */
+  Rec* acquire_hprecs(uint8_t num) {
+    DCHECK_GE(num, 1);
+    // C++17: auto [n, head] = try_pop_available_hprecs(num);
+    uint8_t n;
+    Rec* head;
+    std::tie(n, head) = try_pop_available_hprecs(num);
+    for (; n < num; ++n) {
+      Rec* rec = create_new_hprec();
+      DCHECK(rec->next_avail() == nullptr);
+      rec->set_next_avail(head);
+      head = rec;
+    }
+    DCHECK(head);
+    return head;
+  }
+
+  /** release_hprec */
+  void release_hprec(Rec* hprec) noexcept {
+    DCHECK(hprec);
+    DCHECK(hprec->next_avail() == nullptr);
+    push_available_hprecs(hprec, hprec);
+  }
+
+  /** release_hprecs */
+  void release_hprecs(Rec* head, Rec* tail) noexcept {
+    DCHECK(head);
+    DCHECK(tail);
+    DCHECK(tail->next_avail() == nullptr);
+    push_available_hprecs(head, tail);
+  }
 
   /** push_list */
   void push_list(ObjList& l) {
@@ -523,7 +561,7 @@ class hazptr_domain {
     }
   }
 
-  hazptr_rec<Atom>* head() const noexcept {
+  Rec* head() const noexcept {
     return hazptrs_.load(std::memory_order_acquire);
   }
 
@@ -555,8 +593,7 @@ class hazptr_domain {
     auto rec = head();
     while (rec) {
       auto next = rec->next();
-      DCHECK(!rec->active());
-      rec->~hazptr_rec<Atom>();
+      rec->~Rec();
       hazptr_rec_alloc{}.deallocate(rec, 1);
       rec = next;
     }
@@ -568,22 +605,92 @@ class hazptr_domain {
     }
   }
 
-  hazptr_rec<Atom>* try_acquire_existing_hprec() {
-    auto rec = head();
+  std::pair<uint8_t, Rec*> try_pop_available_hprecs(uint8_t num) {
+    DCHECK_GE(num, 1);
+    while (true) {
+      uintptr_t avail = load_avail();
+      if (avail == reinterpret_cast<uintptr_t>(nullptr)) {
+        return {0, nullptr};
+      }
+      if ((avail & kLockBit) == 0) {
+        // Try to lock avail list
+        if (cas_avail(avail, avail | kLockBit)) {
+          // Lock acquired
+          Rec* head = reinterpret_cast<Rec*>(avail);
+          uint8_t nn = pop_available_hprecs_release_lock(num, head);
+          // Lock released
+          DCHECK_GE(nn, 1);
+          DCHECK_LE(nn, num);
+          return {nn, head};
+        }
+      } else {
+        std::this_thread::yield();
+      }
+    }
+  }
+
+  uint8_t pop_available_hprecs_release_lock(uint8_t num, Rec* head) {
+    // Lock already acquired
+    DCHECK_GE(num, 1);
+    DCHECK(head);
+    Rec* tail = head;
+    uint8_t nn = 1;
+    Rec* next = tail->next_avail();
+    while ((next != nullptr) && (nn < num)) {
+      DCHECK_EQ(reinterpret_cast<uintptr_t>(next) & kLockBit, 0);
+      tail = next;
+      next = tail->next_avail();
+      ++nn;
+    }
+    uintptr_t newval = reinterpret_cast<uintptr_t>(next);
+    DCHECK_EQ(newval & kLockBit, 0);
+    // Release lock
+    store_avail(newval);
+    tail->set_next_avail(nullptr);
+    return nn;
+  }
+
+  void push_available_hprecs(Rec* head, Rec* tail) {
+    DCHECK(head);
+    DCHECK(tail);
+    DCHECK(tail->next_avail() == nullptr);
+    if (kIsDebug) {
+      dcheck_connected(head, tail);
+    }
+    uintptr_t newval = reinterpret_cast<uintptr_t>(head);
+    DCHECK_EQ(newval & kLockBit, 0);
+    while (true) {
+      uintptr_t avail = load_avail();
+      if ((avail & kLockBit) == 0) {
+        // Try to push if unlocked
+        auto next = reinterpret_cast<Rec*>(avail);
+        tail->set_next_avail(next);
+        if (cas_avail(avail, newval)) {
+          break;
+        }
+      } else {
+        std::this_thread::yield();
+      }
+    }
+  }
+
+  void dcheck_connected(Rec* head, Rec* tail) {
+    Rec* rec = head;
+    bool connected = false;
     while (rec) {
-      auto next = rec->next();
-      if (rec->try_acquire()) {
-        return rec;
+      Rec* next = rec->next_avail();
+      if (rec == tail) {
+        connected = true;
+        DCHECK(next == nullptr);
       }
       rec = next;
     }
-    return nullptr;
+    DCHECK(connected);
   }
 
-  hazptr_rec<Atom>* acquire_new_hprec() {
+  Rec* create_new_hprec() {
     auto rec = hazptr_rec_alloc{}.allocate(1);
-    new (rec) hazptr_rec<Atom>();
-    rec->set_active();
+    new (rec) Rec();
     rec->set_domain(this);
     while (true) {
       auto h = head();

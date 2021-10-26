@@ -1530,7 +1530,7 @@ uint64_t tc_miss_bench(std::string name, int nthreads) {
   auto repFn = [&] {
     auto init = [] {};
     auto fn = [&](int tid) {
-      for (int j = tid; j < ops / 1000; j += nthreads) {
+      for (int j = tid; j < ops; j += nthreads) {
         // By using twice the TC capacity, each iteration does one
         // filling and one eviction of the TC.
         hazptr_array<C> a1 = make_hazard_pointer_array<C>();
@@ -1567,7 +1567,7 @@ void benches() {
     local_bench<3>("", i);
     std::cout << "10x construct/destruct hazptr_array<9>        ";
     array_bench<9>("", i);
-    std::cout << "1/1000 TC hit + miss & overflow               ";
+    std::cout << "TC hit + miss & overflow                      ";
     tc_miss_bench("", i);
     std::cout << "allocate/retire/reclaim object                ";
     obj_bench("", i);

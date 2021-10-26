@@ -56,8 +56,6 @@ class hazptr_tc_entry {
   }
 
   FOLLY_ALWAYS_INLINE hazptr_rec<Atom>* get() const noexcept { return hprec_; }
-
-  void evict() { hprec_->release(); }
 }; // hazptr_tc_entry
 
 /**
@@ -74,15 +72,13 @@ class hazptr_tc {
   bool local_{false}; // for debug mode only
 
  public:
-  ~hazptr_tc() {
-    for (uint8_t i = 0; i < count(); ++i) {
-      entry_[i].evict();
-    }
-  }
+  ~hazptr_tc() { evict(count()); }
 
   static constexpr uint8_t capacity() noexcept { return kCapacity; }
 
  private:
+  using Rec = hazptr_rec<Atom>;
+
   template <uint8_t, template <typename> class>
   friend class hazptr_array;
   friend class hazptr_holder<Atom>;
@@ -122,17 +118,37 @@ class hazptr_tc {
   FOLLY_NOINLINE void fill(uint8_t num) {
     DCHECK_LE(count_ + num, capacity());
     auto& domain = default_hazptr_domain<Atom>();
+    Rec* hprec = domain.acquire_hprecs(num);
     for (uint8_t i = 0; i < num; ++i) {
-      auto hprec = domain.hprec_acquire();
+      DCHECK(hprec);
+      Rec* next = hprec->next_avail();
+      hprec->set_next_avail(nullptr);
       entry_[count_++].fill(hprec);
+      hprec = next;
     }
+    DCHECK(hprec == nullptr);
   }
 
   FOLLY_NOINLINE void evict(uint8_t num) {
     DCHECK_GE(count_, num);
-    for (uint8_t i = 0; i < num; ++i) {
-      entry_[--count_].evict();
+    if (num == 0) {
+      return;
     }
+    Rec* head = nullptr;
+    Rec* tail = nullptr;
+    for (uint8_t i = 0; i < num; ++i) {
+      Rec* rec = entry_[--count_].get();
+      DCHECK(rec);
+      rec->set_next_avail(head);
+      head = rec;
+      if (!tail) {
+        tail = rec;
+      }
+    }
+    DCHECK(head);
+    DCHECK(tail);
+    DCHECK(tail->next_avail() == nullptr);
+    hazard_pointer_default_domain<Atom>().release_hprecs(head, tail);
   }
 
   void evict() { evict(count()); }
