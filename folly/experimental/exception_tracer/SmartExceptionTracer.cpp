@@ -16,9 +16,11 @@
 
 #include <folly/experimental/exception_tracer/SmartExceptionTracer.h>
 
+#include <glog/logging.h>
 #include <folly/MapUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
+#include <folly/container/F14Map.h>
 #include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
 #include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
@@ -39,24 +41,28 @@ struct ExceptionMeta {
   StackTrace traceAsync;
 };
 
-Synchronized<std::unordered_map<void*, ExceptionMeta>>& getMeta() {
+using SynchronizedExceptionMeta = folly::Synchronized<ExceptionMeta>;
+
+auto& getMetaMap() {
   // Leaky Meyers Singleton
-  static Indestructible<Synchronized<std::unordered_map<void*, ExceptionMeta>>>
+  static Indestructible<Synchronized<
+      folly::F14FastMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>>>
       meta;
   return *meta;
 }
 
 void metaDeleter(void* ex) noexcept {
-  auto deleter = getMeta().withWLock([&](auto& locked) noexcept {
+  auto syncMeta = getMetaMap().withWLock([ex](auto& locked) noexcept {
     auto iter = locked.find(ex);
-    auto* innerDeleter = iter->second.deleter;
+    auto ret = std::move(iter->second);
     locked.erase(iter);
-    return innerDeleter;
+    return ret;
   });
 
   // If the thrown object was allocated statically it may not have a deleter.
-  if (deleter) {
-    deleter(ex);
+  auto meta = syncMeta->wlock();
+  if (meta->deleter) {
+    meta->deleter(ex);
   }
 }
 
@@ -74,27 +80,33 @@ void throwCallback(
   SCOPE_EXIT { handlingThrow = false; };
   handlingThrow = true;
 
-  getMeta().withWLockPtr([&](auto wlock) noexcept {
-    // This can allocate memory potentially causing problems in an OOM
-    // situation so we catch and short circuit.
-    try {
-      auto& meta = (*wlock)[ex];
-      auto rlock = wlock.moveFromWriteToRead();
+  // This can allocate memory potentially causing problems in an OOM
+  // situation so we catch and short circuit.
+  try {
+    auto newMeta = std::make_unique<SynchronizedExceptionMeta>();
+    newMeta->withWLock([&deleter](auto& lockedMeta) {
       // Override the deleter with our custom one and capture the old one.
-      meta.deleter = std::exchange(*deleter, metaDeleter);
+      lockedMeta.deleter = std::exchange(*deleter, metaDeleter);
 
-      ssize_t n = symbolizer::getStackTrace(meta.trace.addresses, kMaxFrames);
+      ssize_t n =
+          symbolizer::getStackTrace(lockedMeta.trace.addresses, kMaxFrames);
       if (n != -1) {
-        meta.trace.frameCount = n;
+        lockedMeta.trace.frameCount = n;
       }
       ssize_t nAsync = symbolizer::getAsyncStackTraceSafe(
-          meta.traceAsync.addresses, kMaxFrames);
+          lockedMeta.traceAsync.addresses, kMaxFrames);
       if (nAsync != -1) {
-        meta.traceAsync.frameCount = nAsync;
+        lockedMeta.traceAsync.frameCount = nAsync;
       }
-    } catch (const std::bad_alloc&) {
-    }
-  });
+    });
+
+    auto oldMeta = getMetaMap().withWLock([ex, &newMeta](auto& wlock) {
+      return std::exchange(wlock[ex], std::move(newMeta));
+    });
+    DCHECK(oldMeta == nullptr);
+
+  } catch (const std::bad_alloc&) {
+  }
 }
 
 struct Initialize {
@@ -111,16 +123,26 @@ ExceptionInfo getTraceWithFunc(
     const std::exception& ex, ExceptionMetaFunc func) {
   ExceptionInfo info;
   info.type = &typeid(ex);
-  getMeta().withRLock([&](auto& locked) noexcept {
-    auto* meta = get_ptr(locked, (void*)&ex);
-    // If we can't find the exception, return an empty stack trace.
-    if (!meta) {
-      return;
-    }
+  auto rlockedMeta = getMetaMap().withRLock(
+      [&](const auto& locked) noexcept
+      -> SynchronizedExceptionMeta::RLockedPtr {
+        auto* meta = get_ptr(locked, (void*)&ex);
+        // If we can't find the exception, return an empty stack trace.
+        if (!meta) {
+          return {};
+        }
+        CHECK(*meta);
+        // Acquire the meta rlock while holding the map's rlock, to block meta's
+        // destruction.
+        return (*meta)->rlock();
+      });
 
-    auto [traceBeginIt, traceEndIt] = func(*meta);
-    info.frames.assign(traceBeginIt, traceEndIt);
-  });
+  if (!rlockedMeta) {
+    return info;
+  }
+
+  auto [traceBeginIt, traceEndIt] = func(*rlockedMeta);
+  info.frames.assign(traceBeginIt, traceEndIt);
   return info;
 }
 
