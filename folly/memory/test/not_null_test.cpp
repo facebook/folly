@@ -562,26 +562,41 @@ class MyAllocator : public std::allocator<int> {
   template <typename... Args>
   int* allocate(Args&&... args) {
     ++*count_;
-    return std::allocator<int>::allocate(std::forward<Args>(args)...);
+    Alloc alloc;
+    return AllocTraits::allocate(alloc, std::forward<Args>(args)...);
   }
 
   template <typename U, typename... Args>
   void construct(U* p, Args&&... args) {
     ++*count_;
-    return std::allocator<int>::construct(p, std::forward<Args>(args)...);
+    Alloc alloc;
+    AllocTraits::construct(alloc, p, std::forward<Args>(args)...);
   }
 
  public:
-  using std::allocator<int>::value_type;
-  using std::allocator<int>::pointer;
-  using std::allocator<int>::const_pointer;
-  using std::allocator<int>::reference;
-  using std::allocator<int>::const_reference;
-  using std::allocator<int>::size_type;
-  using std::allocator<int>::difference_type;
-  using std::allocator<int>::propagate_on_container_move_assignment;
-  using std::allocator<int>::rebind;
-  using std::allocator<int>::is_always_equal;
+  using Alloc = std::allocator<int>;
+  using AllocTraits = std::allocator_traits<Alloc>;
+  using value_type = AllocTraits::value_type;
+
+  using pointer = AllocTraits::pointer;
+  using const_pointer = AllocTraits::const_pointer;
+  using reference = value_type&;
+  using const_reference = value_type const&;
+  using size_type = AllocTraits::size_type;
+  using difference_type = AllocTraits::difference_type;
+
+  using propagate_on_container_move_assignment =
+      AllocTraits::propagate_on_container_move_assignment;
+#if __cplusplus <= 202001L
+  using Alloc::is_always_equal;
+  using Alloc::rebind;
+#else
+  using is_always_equal = AllocTraits::is_always_equal;
+  template <class U>
+  struct rebind {
+    using other = std::allocator<U>;
+  };
+#endif
 
  private:
   int* count_;
