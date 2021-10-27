@@ -31,28 +31,36 @@ const size_t MIN_ALLOC_SIZE = 2000;
 const size_t MAX_ALLOC_SIZE = 8000;
 
 /**
- * Convenience function to append chain src to chain dst.
+ * Convenience functions to append chain src to chain dst.
  */
+template <class Src, class Next>
+void packInto(IOBuf* tail, Src& src, Next next) {
+  if (tail->isSharedOne()) {
+    return;
+  }
+
+  // Copy up to kMaxPackCopy bytes if we can free buffers; this helps reduce
+  // waste (the tail's tailroom and the head's headroom) when joining two
+  // IOBufQueues together.
+  size_t copyRemaining = folly::IOBufQueue::kMaxPackCopy;
+  std::size_t n;
+  while (src && (n = src->length()) <= copyRemaining && n <= tail->tailroom()) {
+    if (n > 0) {
+      memcpy(tail->writableTail(), src->data(), n);
+      tail->append(n);
+      copyRemaining -= n;
+    }
+    src = next(std::move(src));
+  }
+}
+
 void appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
   if (dst == nullptr) {
     dst = std::move(src);
   } else {
     IOBuf* tail = dst->prev();
     if (pack) {
-      // Copy up to kMaxPackCopy bytes if we can free buffers; this helps
-      // reduce wastage (the tail's tailroom and the head's headroom) when
-      // joining two IOBufQueues together.
-      size_t copyRemaining = folly::IOBufQueue::kMaxPackCopy;
-      std::size_t n;
-      while (src && (n = src->length()) <= copyRemaining &&
-             n <= tail->tailroom()) {
-        if (n > 0) {
-          memcpy(tail->writableTail(), src->data(), n);
-          tail->append(n);
-          copyRemaining -= n;
-        }
-        src = src->pop();
-      }
+      packInto(tail, src, [](auto&& cur) { return cur->pop(); });
     }
     if (src) {
       tail->appendChain(std::move(src));
@@ -164,22 +172,14 @@ void IOBufQueue::append(
     chainLength_ += buf.computeChainDataLength();
   }
 
-  size_t copyRemaining = kMaxPackCopy;
-  std::size_t n;
-  const folly::IOBuf* src = &buf;
   folly::IOBuf* tail = head_->prev();
-  while ((n = src->length()) <= copyRemaining && n <= tail->tailroom()) {
-    if (n > 0) {
-      memcpy(tail->writableTail(), src->data(), n);
-      tail->append(n);
-      copyRemaining -= n;
-    }
-    src = src->next();
-
-    // Consumed full input.
-    if (src == &buf) {
-      return;
-    }
+  const folly::IOBuf* src = &buf;
+  packInto(tail, src, [&](auto&& cur) {
+    auto next = cur->next();
+    return next != &buf ? next : nullptr;
+  });
+  if (!src) {
+    return; // Consumed full input.
   }
 
   // Clone the rest.

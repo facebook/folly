@@ -42,8 +42,9 @@ struct Initializer {
 };
 Initializer initializer;
 
-unique_ptr<IOBuf> stringToIOBuf(const char* s, size_t len) {
-  unique_ptr<IOBuf> buf = IOBuf::create(len);
+unique_ptr<IOBuf> stringToIOBuf(
+    const char* s, size_t len, size_t tailroom = 0) {
+  unique_ptr<IOBuf> buf = IOBuf::create(len + tailroom);
   memcpy(buf->writableTail(), s, len);
   buf->append(len);
   return buf;
@@ -600,4 +601,15 @@ TEST(IOBufQueue, ReuseTail) {
       test(asValue, withEmptyHead);
     }
   }
+}
+
+TEST(IOBufQueue, PackWithSharedTail) {
+  auto buf = stringToIOBuf("Hello ", 6, 10);
+  IOBufQueue queue;
+  queue.append(buf->clone());
+  *buf->writableTail() = 'X';
+  buf->append(1);
+  queue.append(stringToIOBuf("world", 5), /* pack */ true);
+  // buf is shared, packing should not modify it.
+  EXPECT_EQ(buf->data()[6], 'X');
 }
