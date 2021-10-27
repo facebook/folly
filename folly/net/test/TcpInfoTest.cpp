@@ -27,8 +27,8 @@ using namespace folly::test;
 
 using us = std::chrono::microseconds;
 
-const auto kTestSiocoutqVal = 10;
-const auto kTestSiocinqVal = 100;
+const auto kTestSiocoutqVal = 10U;
+const auto kTestSiocinqVal = 100U;
 const auto kTestUnknownCcName = "coolNewCCA"; // it's cool, new, and a CCA!
 
 // tests are only supported on Linux right now
@@ -239,7 +239,7 @@ class TcpInfoTest : public Test {
         controlTcpInfo.tcpi_unacked + controlTcpInfo.tcpi_retrans -
             (controlTcpInfo.tcpi_sacked + controlTcpInfo.tcpi_lost),
         wrappedTcpInfo.packetsInFlight());
-    EXPECT_NE(0, wrappedTcpInfo.packetsInFlight());
+    EXPECT_NE(0U, wrappedTcpInfo.packetsInFlight());
 
     EXPECT_EQ(controlTcpInfo.tcpi_snd_cwnd, wrappedTcpInfo.cwndInPackets());
     EXPECT_EQ(
@@ -296,7 +296,7 @@ class TcpInfoTest : public Test {
         controlTcpInfo.tcpi_unacked + controlTcpInfo.tcpi_retrans -
             (controlTcpInfo.tcpi_sacked + controlTcpInfo.tcpi_lost),
         wrappedTcpInfo.packetsInFlight());
-    EXPECT_NE(0, wrappedTcpInfo.packetsInFlight());
+    EXPECT_NE(0U, wrappedTcpInfo.packetsInFlight());
 
     EXPECT_EQ(controlTcpInfo.tcpi_snd_cwnd, wrappedTcpInfo.cwndInPackets());
     EXPECT_EQ(
