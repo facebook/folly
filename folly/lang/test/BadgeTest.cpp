@@ -26,7 +26,7 @@ class OtherFriendClass;
 
 using SingleBadge = folly::badge<FriendClass>;
 using OtherSingleBadge = folly::badge<OtherFriendClass>;
-using MultipleBadges = folly::badges<FriendClass, OtherFriendClass>;
+using MultipleBadges = folly::any_badge<FriendClass, OtherFriendClass>;
 
 class ProtectedClass {
  public:

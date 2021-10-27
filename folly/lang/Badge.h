@@ -16,9 +16,9 @@
 
 #pragma once
 
-#if __has_include(<variant>)
-#include <variant>
-#endif
+#include <type_traits>
+
+#include <folly/Traits.h>
 
 namespace folly {
 
@@ -54,15 +54,14 @@ class badge {
   badge() {}
 };
 
-#if __has_include(<variant>)
 /**
- * For cases when multiple badge holders are required to call a function we can
- * use std::variant<...> over individual badges.
+ * For cases when multiple badge holders need to call a function we can
+ * use folly::any_badge over each individual holder allowed.
  *
  * Example:
  *   class ProtectedClass: {
  *    public:
- *     static void func(folly::badges<FriendClass, OtherFriendClass>);
+ *     static void func(folly::any_badge<FriendClass, OtherFriendClass>);
  *    };
  *
  *   void FriendClass::callProtectedFunc() {
@@ -73,7 +72,12 @@ class badge {
  *   }
  */
 template <typename... Holders>
-using badges = std::variant<badge<Holders>...>;
-#endif
+class any_badge {
+ public:
+  template <
+      typename Holder,
+      std::enable_if_t<folly::IsOneOf<Holder, Holders...>::value, int> = 0>
+  /* implicit */ any_badge(badge<Holder>) {}
+};
 
 } // namespace folly
