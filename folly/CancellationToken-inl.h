@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <tuple>
 #include <utility>
 
 #include <glog/logging.h>
@@ -114,6 +115,21 @@ class FixedMergingCancellationState : public CancellationState {
 
  private:
   std::array<CancellationCallback, N> callbacks_;
+};
+
+template <typename... Data>
+class CancellationStateWithData : public CancellationState {
+  template <typename... Args>
+  CancellationStateWithData(Args&&... data);
+
+ public:
+  template <typename... Args>
+  FOLLY_NODISCARD static std::
+      pair<CancellationStateSourcePtr, std::tuple<Data...>*>
+      create(Args&&... data);
+
+ private:
+  std::tuple<Data...> data_;
 };
 
 inline void CancellationStateTokenDeleter::operator()(
@@ -370,6 +386,9 @@ inline CancellationStateTokenPtr FixedMergingCancellationState<N>::create(
       new FixedMergingCancellationState<N>(std::forward<Ts>(tokens)...)};
 }
 
+template <typename... Data>
+struct WithDataTag {};
+
 template <size_t N>
 template <typename... Ts>
 inline FixedMergingCancellationState<N>::FixedMergingCancellationState(
@@ -378,7 +397,29 @@ inline FixedMergingCancellationState<N>::FixedMergingCancellationState(
       callbacks_{
           {{std::forward<Ts>(tokens), [this] { requestCancellation(); }}...}} {}
 
+template <typename... Data>
+template <typename... Args>
+CancellationStateWithData<Data...>::CancellationStateWithData(Args&&... data)
+    : data_(std::forward<Args>(data)...) {}
+
+template <typename... Data>
+template <typename... Args>
+std::pair<CancellationStateSourcePtr, std::tuple<Data...>*>
+CancellationStateWithData<Data...>::create(Args&&... data) {
+  auto* state =
+      new CancellationStateWithData<Data...>(std::forward<Args>(data)...);
+  return {CancellationStateSourcePtr{state}, &state->data_};
+}
+
 } // namespace detail
+
+template <typename... Data, typename... Args>
+std::pair<CancellationSource, std::tuple<Data...>*> CancellationSource::create(
+    detail::WithDataTag<Data...>, Args&&... data) {
+  auto [state, dataPtr] = detail::CancellationStateWithData<Data...>::create(
+      std::forward<Args>(data)...);
+  return {CancellationSource{std::move(state)}, dataPtr};
+}
 
 template <typename... Ts>
 inline CancellationToken CancellationToken::merge(Ts&&... tokens) {

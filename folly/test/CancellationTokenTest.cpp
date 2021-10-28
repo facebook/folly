@@ -292,3 +292,25 @@ TEST(CancellationTokenTest, MergedToken) {
   token = CancellationToken::merge(CancellationToken());
   EXPECT_FALSE(token.canBeCancelled());
 }
+
+TEST(CancellationTokenTest, TokenWithData) {
+  struct Guard {
+    int& counter;
+    explicit Guard(int& c) : counter(c) {}
+    ~Guard() { ++counter; }
+  };
+  int counter = 0;
+
+  {
+    CancellationToken token;
+    {
+      auto [source, data] =
+          CancellationSource::create(detail::WithDataTag<Guard>{}, counter);
+      EXPECT_EQ(counter, 0);
+      token = source.getToken();
+      EXPECT_EQ(counter, 0);
+    }
+    EXPECT_EQ(counter, 0);
+  }
+  EXPECT_EQ(counter, 1);
+}
