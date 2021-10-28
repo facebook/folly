@@ -98,7 +98,7 @@ class AutoTimer final {
   template <typename... Args>
   DoubleSeconds logFormat(Args&&... args) {
     auto now = Clock::now();
-    return logImpl(now, format(std::forward<Args>(args)...).str());
+    return logImpl(now, fmt::format(std::forward<Args>(args)...));
   }
 
  private:
