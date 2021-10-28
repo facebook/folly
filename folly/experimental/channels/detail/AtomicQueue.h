@@ -31,20 +31,23 @@ namespace detail {
 template <typename T>
 class Queue {
  public:
-  Queue() {}
-  Queue(Queue&& other) : head_(std::exchange(other.head_, nullptr)) {}
-  Queue& operator=(Queue&& other) {
+  constexpr Queue() noexcept {}
+  constexpr Queue(Queue&& other) noexcept
+      : head_(std::exchange(other.head_, nullptr)) {}
+  Queue& operator=(Queue&& other) noexcept {
     clear();
     std::swap(head_, other.head_);
     return *this;
   }
   ~Queue() { clear(); }
 
-  bool empty() const { return !head_; }
+  bool empty() const noexcept { return !head_; }
 
-  T& front() { return head_->value; }
+  T& front() noexcept { return head_->value; }
 
-  void pop() { std::unique_ptr<Node>(std::exchange(head_, head_->next)); }
+  void pop() noexcept {
+    std::unique_ptr<Node>(std::exchange(head_, head_->next));
+  }
 
   void clear() {
     while (!empty()) {
@@ -61,8 +64,8 @@ class Queue {
     Node* next{nullptr};
   };
 
-  explicit Queue(Node* head) : head_(head) {}
-  static Queue fromReversed(Node* tail) {
+  constexpr explicit Queue(Node* head) noexcept : head_(head) {}
+  static Queue fromReversed(Node* tail) noexcept {
     // Reverse a linked list.
     Node* head{nullptr};
     while (tail) {
