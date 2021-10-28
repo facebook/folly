@@ -51,7 +51,7 @@ namespace folly {
 template <typename Holder>
 class badge {
   friend Holder;
-  badge() {}
+  badge() noexcept {}
 };
 
 /**
@@ -77,7 +77,7 @@ class any_badge {
   template <
       typename Holder,
       std::enable_if_t<folly::IsOneOf<Holder, Holders...>::value, int> = 0>
-  /* implicit */ any_badge(badge<Holder>) {}
+  /* implicit */ any_badge(badge<Holder>) noexcept {}
 };
 
 } // namespace folly
