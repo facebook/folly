@@ -303,7 +303,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // Start execution of this task eagerly and return a folly::SemiFuture<T>
   // that will complete with the result.
   FOLLY_NOINLINE SemiFuture<lift_unit_t<StorageType>> start() && {
-    Promise<lift_unit_t<StorageType>> p;
+    folly::Promise<lift_unit_t<StorageType>> p;
 
     auto sf = p.getSemiFuture();
 
@@ -343,7 +343,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // assuming the current thread is already on the associated executor,
   // and return a folly::SemiFuture<T> that will complete with the result.
   FOLLY_NOINLINE SemiFuture<lift_unit_t<StorageType>> startInlineUnsafe() && {
-    Promise<lift_unit_t<StorageType>> p;
+    folly::Promise<lift_unit_t<StorageType>> p;
 
     auto sf = p.getSemiFuture();
 
@@ -626,7 +626,7 @@ class FOLLY_NODISCARD Task {
         [task = std::move(*this),
          returnAddress = FOLLY_ASYNC_STACK_RETURN_ADDRESS()](
             const Executor::KeepAlive<>& executor, Try<Unit>&&) mutable {
-          Promise<lift_unit_t<StorageType>> p;
+          folly::Promise<lift_unit_t<StorageType>> p;
 
           auto sf = p.getSemiFuture();
 
