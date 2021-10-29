@@ -28,7 +28,7 @@
 namespace folly {
 
 /**
- * An abstract LogWriter implementation that provides functionaility for
+ * An abstract LogWriter implementation that provides functionality for
  * asynchronous IO operations. Users can subclass this class and provide their
  * own IO operation implementation by overriding `performIO` method. This class
  * will automatically manage incoming log messages and call the method in
