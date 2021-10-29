@@ -741,6 +741,7 @@ class AsyncTransport : public DelayedDestruction,
    */
   virtual size_t getAppBytesBuffered() const { return 0; }
   virtual size_t getRawBytesBuffered() const { return 0; }
+  virtual size_t getAllocatedBytesBuffered() const { return 0; }
 
   /**
    * Callback class to signal changes in the transport's internal buffers.

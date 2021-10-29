@@ -161,9 +161,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
   }
 
   void destroy() override {
-    if (ioBuf_ && releaseIOBufCallback_) {
-      releaseIOBufCallback_->releaseIOBuf(std::move(ioBuf_));
-    }
+    socket_->releaseIOBuf(std::move(ioBuf_), releaseIOBufCallback_);
     this->~BytesWriteRequest();
     free(this);
   }
@@ -217,9 +215,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
         for (uint32_t i = opsWritten_; i != 0; --i) {
           assert(ioBuf_);
           auto next = ioBuf_->pop();
-          if (releaseIOBufCallback_) {
-            releaseIOBufCallback_->releaseIOBuf(std::move(ioBuf_));
-          }
+          socket_->releaseIOBuf(std::move(ioBuf_), releaseIOBufCallback_);
           ioBuf_ = std::move(next);
         }
       }
@@ -650,6 +646,7 @@ AsyncSocket::~AsyncSocket() {
   for (const auto& cb : lifecycleObservers_) {
     cb->destroy(this);
   }
+  DCHECK_EQ(allocatedBytesBuffered_, 0);
 }
 
 void AsyncSocket::destroy() {
@@ -1280,9 +1277,7 @@ void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
   auto iter1 = idZeroCopyBufInfoMap_.find(ptr);
   CHECK(iter1 != idZeroCopyBufInfoMap_.end());
   if (0 == --iter1->second.count_) {
-    if (iter1->second.cb_) {
-      iter1->second.cb_->releaseIOBuf(std::move(iter1->second.buf_));
-    }
+    releaseIOBuf(std::move(iter1->second.buf_), iter1->second.cb_);
     idZeroCopyBufInfoMap_.erase(iter1);
   }
 
@@ -1337,6 +1332,19 @@ void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
 #else
   (void)cmsg;
 #endif
+}
+
+void AsyncSocket::releaseIOBuf(
+    std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback) {
+  if (!buf) {
+    return;
+  }
+  const size_t allocated = buf->computeChainCapacity();
+  DCHECK_GE(allocatedBytesBuffered_, allocated);
+  allocatedBytesBuffered_ -= allocated;
+  if (callback) {
+    callback->releaseIOBuf(std::move(buf));
+  }
 }
 
 void AsyncSocket::enableByteEvents() {
@@ -1517,13 +1525,12 @@ void AsyncSocket::writeImpl(
   auto* releaseIOBufCallback =
       callback ? callback->getReleaseIOBufCallback() : nullptr;
 
-  SCOPE_EXIT {
-    if (ioBuf && releaseIOBufCallback) {
-      releaseIOBufCallback->releaseIOBuf(std::move(ioBuf));
-    }
-  };
+  SCOPE_EXIT { releaseIOBuf(std::move(ioBuf), releaseIOBufCallback); };
 
   totalAppBytesScheduledForWrite_ += totalBytes;
+  if (ioBuf) {
+    allocatedBytesBuffered_ += ioBuf->computeChainCapacity();
+  }
 
   if (shutdownFlags_ & (SHUT_WRITE | SHUT_WRITE_PENDING)) {
     // No new writes may be performed after the write side of the socket has
@@ -1567,11 +1574,7 @@ void AsyncSocket::writeImpl(
         if (countWritten && isZeroCopyRequest(flags)) {
           addZeroCopyBuf(std::move(ioBuf), releaseIOBufCallback);
         } else {
-          if (releaseIOBufCallback) {
-            releaseIOBufCallback->releaseIOBuf(std::move(ioBuf));
-          } else {
-            ioBuf.reset();
-          }
+          releaseIOBuf(std::move(ioBuf), releaseIOBufCallback);
         }
 
         // We successfully wrote everything.

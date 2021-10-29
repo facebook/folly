@@ -734,6 +734,10 @@ class AsyncSocket : public AsyncTransport {
   }
   size_t getRawBytesBuffered() const override { return getAppBytesBuffered(); }
 
+  size_t getAllocatedBytesBuffered() const override {
+    return allocatedBytesBuffered_;
+  }
+
   // End of methods inherited from AsyncTransport
 
   std::chrono::nanoseconds getConnectTime() const {
@@ -1510,6 +1514,9 @@ class AsyncSocket : public AsyncTransport {
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
 
+  void releaseIOBuf(
+      std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback);
+
   /**
    * Attempt to enable Observer ByteEvents for this socket.
    *
@@ -1581,6 +1588,8 @@ class AsyncSocket : public AsyncTransport {
   // The total num of bytes passed to AsyncSocket's write functions. It doesn't
   // include failed writes, but it does include buffered writes.
   size_t totalAppBytesScheduledForWrite_;
+  // Num of bytes allocated in IOBufs pending write.
+  size_t allocatedBytesBuffered_{0};
 
   // Lifecycle observers.
   //
