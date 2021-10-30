@@ -647,11 +647,15 @@ map<void*, int> AllocTracker::Owner;
 
 template <class T>
 struct Alloc : AllocTracker, Ticker {
-  typedef typename std::allocator<T>::pointer pointer;
-  typedef typename std::allocator<T>::const_pointer const_pointer;
-  typedef typename std::allocator<T>::difference_type difference_type;
-  typedef typename std::allocator<T>::size_type size_type;
-  typedef typename std::allocator<T>::value_type value_type;
+  typedef typename std::allocator_traits<std::allocator<T>>::pointer pointer;
+  typedef typename std::allocator_traits<std::allocator<T>>::const_pointer
+      const_pointer;
+  typedef typename std::allocator_traits<std::allocator<T>>::difference_type
+      difference_type;
+  typedef
+      typename std::allocator_traits<std::allocator<T>>::size_type size_type;
+  typedef
+      typename std::allocator_traits<std::allocator<T>>::value_type value_type;
 
   //-----
   // impl
@@ -710,14 +714,15 @@ struct Alloc : AllocTracker, Ticker {
   template <class U, class... Args>
   void construct(U* p, Args&&... args) {
     Tick("construct");
-    a.construct(p, std::forward<Args>(args)...);
+    std::allocator_traits<std::allocator<T>>::construct(
+        a, p, std::forward<Args>(args)...);
     Constructed++;
   }
 
   template <class U>
   void destroy(U* p) {
     Destroyed++;
-    a.destroy(p);
+    std::allocator_traits<std::allocator<T>>::destroy(a, p);
   }
 
   //--------------

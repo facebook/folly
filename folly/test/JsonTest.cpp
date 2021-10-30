@@ -29,15 +29,20 @@ using folly::json::parse_error;
 using folly::json::print_error;
 
 TEST(Json, Unicode) {
-  auto val = parseJson(u8"\"I \u2665 UTF-8\"");
-  EXPECT_EQ(u8"I \u2665 UTF-8", val.asString());
+  auto val = parseJson(reinterpret_cast<const char*>(u8"\"I \u2665 UTF-8\""));
+  EXPECT_EQ(reinterpret_cast<const char*>(u8"I \u2665 UTF-8"), val.asString());
   val = parseJson("\"I \\u2665 UTF-8\"");
-  EXPECT_EQ(u8"I \u2665 UTF-8", val.asString());
-  val = parseJson(u8"\"I \U0001D11E playing in G-clef\"");
-  EXPECT_EQ(u8"I \U0001D11E playing in G-clef", val.asString());
+  EXPECT_EQ(reinterpret_cast<const char*>(u8"I \u2665 UTF-8"), val.asString());
+  val = parseJson(
+      reinterpret_cast<const char*>(u8"\"I \U0001D11E playing in G-clef\""));
+  EXPECT_EQ(
+      reinterpret_cast<const char*>(u8"I \U0001D11E playing in G-clef"),
+      val.asString());
 
   val = parseJson("\"I \\uD834\\uDD1E playing in G-clef\"");
-  EXPECT_EQ(u8"I \U0001D11E playing in G-clef", val.asString());
+  EXPECT_EQ(
+      reinterpret_cast<const char*>(u8"I \U0001D11E playing in G-clef"),
+      val.asString());
 }
 
 TEST(Json, Parse) {
@@ -568,7 +573,7 @@ TEST(Json, JsonNonAsciiEncoding) {
 
 TEST(Json, UTF8Retention) {
   // test retention with valid utf8 strings
-  std::string input = u8"\u2665";
+  std::string input = reinterpret_cast<const char*>(u8"\u2665");
   std::string jsonInput = folly::toJson(input);
   std::string output = folly::parseJson(jsonInput).asString();
   std::string jsonOutput = folly::toJson(output);
@@ -587,7 +592,7 @@ TEST(Json, UTF8EncodeNonAsciiRetention) {
   opts.encode_non_ascii = true;
 
   // test encode_non_ascii valid utf8 strings
-  std::string input = u8"\u2665";
+  std::string input = reinterpret_cast<const char*>(u8"\u2665");
   std::string jsonInput = folly::json::serialize(input, opts);
   std::string output = folly::parseJson(jsonInput).asString();
   std::string jsonOutput = folly::json::serialize(output, opts);
@@ -623,19 +628,20 @@ TEST(Json, UTF8Validation) {
   opts.skip_invalid_utf8 = true;
   EXPECT_EQ(
       folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts),
-      u8"\"a\xe0\xa0\x80z\ufffd\ufffd\"");
+      reinterpret_cast<const char*>(u8"\"a\xe0\xa0\x80z\ufffd\ufffd\""));
   EXPECT_EQ(
       folly::json::serialize("a\xe0\xa0\x80z\xc0\x80\x80", opts),
-      u8"\"a\xe0\xa0\x80z\ufffd\ufffd\ufffd\"");
+      reinterpret_cast<const char*>(u8"\"a\xe0\xa0\x80z\ufffd\ufffd\ufffd\""));
   EXPECT_EQ(
       folly::json::serialize("z\xc0\x80z\xe0\xa0\x80", opts),
-      u8"\"z\ufffd\ufffdz\xe0\xa0\x80\"");
+      reinterpret_cast<const char*>(u8"\"z\ufffd\ufffdz\xe0\xa0\x80\""));
   EXPECT_EQ(
       folly::json::serialize("\xF6\x8D\x9B\xBC", opts),
-      u8"\"\ufffd\ufffd\ufffd\ufffd\"");
+      reinterpret_cast<const char*>(u8"\"\ufffd\ufffd\ufffd\ufffd\""));
   EXPECT_EQ(
       folly::json::serialize("invalid\xF6\x8D\x9B\xBCinbetween", opts),
-      u8"\"invalid\ufffd\ufffd\ufffd\ufffdinbetween\"");
+      reinterpret_cast<const char*>(
+          u8"\"invalid\ufffd\ufffd\ufffd\ufffdinbetween\""));
 
   opts.encode_non_ascii = true;
   EXPECT_EQ(

@@ -1198,7 +1198,7 @@ const_dynamic_view::descend_unchecked_(Key const& key) const noexcept {
     if /* constexpr */ (!std::is_integral<Key>::value) {
       return nullptr;
     }
-    if (key < 0 || key >= parray->size()) {
+    if (key < 0 || folly::to_unsigned(key) >= parray->size()) {
       return nullptr;
     }
     return &(*parray)[size_t(key)];
