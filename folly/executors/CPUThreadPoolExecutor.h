@@ -134,7 +134,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       Func expireCallback = nullptr) override;
 
   void addWithPriority(Func func, int8_t priority) override;
-  void add(
+  virtual void add(
       Func func,
       int8_t priority,
       std::chrono::milliseconds expiration,
