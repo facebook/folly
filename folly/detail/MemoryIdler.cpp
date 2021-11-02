@@ -137,7 +137,9 @@ static void fetchStackLimits() {
     return;
   }
   assert(addr != nullptr);
-  assert(rawSize >= PTHREAD_STACK_MIN);
+  assert(
+      0 < PTHREAD_STACK_MIN &&
+      rawSize >= static_cast<size_t>(PTHREAD_STACK_MIN));
 
   // glibc subtracts guard page from stack size, even though pthread docs
   // seem to imply the opposite
