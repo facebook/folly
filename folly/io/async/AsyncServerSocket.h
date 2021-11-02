@@ -50,6 +50,11 @@
 #define SO_NO_TRANSPARENT_TLS 200
 #endif
 
+// TODO(yichengfb): remove this
+// For temporarily marking the new interface of
+// folly::AsyncServerSocket::AcceptCallback::connectionAccepted()
+#define FOLLY_ASYNCSERVERSOCKET_ACCEPTINFO_DEFINED 1
+
 namespace folly {
 
 /**
@@ -140,6 +145,10 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
   class AcceptCallback {
    public:
+    struct AcceptInfo {
+      std::chrono::steady_clock::time_point timeBeforeEnqueue;
+    };
+
     virtual ~AcceptCallback() = default;
 
     /**
@@ -157,9 +166,14 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
      * @param clientAddr  A reference to a SocketAddress struct containing the
      *                    client's address.  This struct is only guaranteed to
      *                    remain valid until connectionAccepted() returns.
+     * @param info        A simple structure that contains auxiliary information
+     *                    about this accepted socket, for example, when it's
+     *                    getting pushed into the waiting queue.
      */
     virtual void connectionAccepted(
-        NetworkSocket fd, const SocketAddress& clientAddr) noexcept = 0;
+        NetworkSocket fd,
+        const SocketAddress& clientAddr,
+        AcceptInfo info) noexcept = 0;
 
     /**
      * acceptError() is called if an error occurs while accepting.
@@ -789,6 +803,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     NetworkSocket fd;
     SocketAddress clientAddr;
     std::chrono::steady_clock::time_point deadline;
+    std::chrono::steady_clock::time_point timeBeforeEnqueue;
 
     bool isExpired() const {
       return deadline.time_since_epoch().count() != 0 &&

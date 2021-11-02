@@ -89,7 +89,7 @@ AtomicNotificationQueueTaskStatus AsyncServerSocket::NewConnMessage::operator()(
     acceptor.connectionEventCallback_->onConnectionDequeuedByAcceptorCallback(
         fd, clientAddr);
   }
-  acceptor.callback_->connectionAccepted(fd, clientAddr);
+  acceptor.callback_->connectionAccepted(fd, clientAddr, {timeBeforeEnqueue});
   return AtomicNotificationQueueTaskStatus::CONSUMED;
 }
 
@@ -1066,11 +1066,13 @@ void AsyncServerSocket::dispatchSocket(
     NetworkSocket socket, SocketAddress&& address) {
   uint32_t startingIndex = callbackIndex_;
 
+  auto timeBeforeEnqueue = std::chrono::steady_clock::now();
+
   // Short circuit if the callback is in the primary EventBase thread
 
   CallbackInfo* info = nextCallback();
   if (info->eventBase == nullptr || info->eventBase == this->eventBase_) {
-    info->callback->connectionAccepted(socket, address);
+    info->callback->connectionAccepted(socket, address, {timeBeforeEnqueue});
     return;
   }
 
@@ -1079,9 +1081,10 @@ void AsyncServerSocket::dispatchSocket(
   auto queueTimeout = *queueTimeout_;
   std::chrono::steady_clock::time_point deadline;
   if (queueTimeout.count() != 0) {
-    deadline = std::chrono::steady_clock::now() + queueTimeout;
+    deadline = timeBeforeEnqueue + queueTimeout;
   }
-  NewConnMessage msg{socket, std::move(address), deadline};
+
+  NewConnMessage msg{socket, std::move(address), deadline, timeBeforeEnqueue};
 
   // Loop until we find a free queue to write to
   while (true) {

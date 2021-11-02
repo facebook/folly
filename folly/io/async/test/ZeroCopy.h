@@ -223,7 +223,8 @@ class ZeroCopyTestServer : public folly::AsyncServerSocket::AcceptCallback {
 
   void connectionAccepted(
       folly::NetworkSocket fd,
-      const folly::SocketAddress& /* unused */) noexcept override {
+      const folly::SocketAddress& /* unused */,
+      AcceptInfo /* info */) noexcept override {
     auto client = std::make_shared<ZeroCopyTestAsyncSocket>(
         nullptr, evb_, fd, numLoops_, bufferSize_, zeroCopy_);
     clients_[client.get()] = client;

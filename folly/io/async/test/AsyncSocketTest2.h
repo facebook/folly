@@ -182,7 +182,8 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
 
   void connectionAccepted(
       NetworkSocket fd,
-      const folly::SocketAddress& clientAddr) noexcept override {
+      const folly::SocketAddress& clientAddr,
+      AcceptInfo /* info */) noexcept override {
     events_.emplace_back(fd, clientAddr);
 
     if (connectionAcceptedFn_) {
