@@ -33,5 +33,11 @@ class OpenSSLTransportCertificate : public AsyncTransportCertificate {
   // TODO: Once all callsites using getX509() perform dynamic casts to this
   // OpenSSLTransportCertificate type, we can move that method to be declared
   // here instead.
+
+  static ssl::X509UniquePtr tryExtractX509(
+      const AsyncTransportCertificate* cert) {
+    auto opensslCert = dynamic_cast<const OpenSSLTransportCertificate*>(cert);
+    return opensslCert ? opensslCert->getX509() : nullptr;
+  }
 };
 } // namespace folly
