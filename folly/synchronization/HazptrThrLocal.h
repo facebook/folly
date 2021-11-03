@@ -87,7 +87,7 @@ class hazptr_tc {
   friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
   template <uint8_t M, template <typename> class A>
   friend hazptr_array<M, A> make_hazard_pointer_array();
-  friend void hazptr_tc_evict();
+  friend void hazptr_tc_evict<Atom>();
 
   FOLLY_ALWAYS_INLINE
   hazptr_tc_entry<Atom>& operator[](uint8_t i) noexcept {
@@ -170,8 +170,9 @@ FOLLY_ALWAYS_INLINE hazptr_tc<Atom>& hazptr_tc_tls() {
 }
 
 /** hazptr_tc_evict -- Used only for benchmarking */
-inline void hazptr_tc_evict() {
-  hazptr_tc_tls<>().evict();
+template <template <typename> class Atom>
+void hazptr_tc_evict() {
+  hazptr_tc_tls<Atom>().evict();
 }
 
 } // namespace folly

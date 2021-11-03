@@ -120,6 +120,7 @@ template <template <typename> class Atom = std::atomic>
 hazptr_tc<Atom>& hazptr_tc_tls();
 
 /** hazptr_tc_evict -- Used only for benchmarking */
+template <template <typename> class Atom = std::atomic>
 void hazptr_tc_evict();
 
 ///
