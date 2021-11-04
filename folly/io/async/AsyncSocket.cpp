@@ -567,7 +567,9 @@ AsyncSocket::AsyncSocket(
     uint32_t zeroCopyBufId,
     const SocketAddress* peerAddress)
     : zeroCopyBufId_(zeroCopyBufId),
+      state_(StateEnum::ESTABLISHED),
       fd_(fd),
+      addr_(peerAddress ? *peerAddress : folly::SocketAddress()),
       eventBase_(evb),
       writeTimeout_(this, evb),
       ioHandler_(this, evb, fd),
@@ -577,10 +579,6 @@ AsyncSocket::AsyncSocket(
   init();
   disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
   setCloseOnExec();
-  state_ = StateEnum::ESTABLISHED;
-  if (peerAddress) {
-    addr_ = *peerAddress;
-  }
 }
 
 AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
@@ -623,7 +621,6 @@ void AsyncSocket::init() {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
-  shutdownFlags_ = 0;
   eventFlags_ = EventHandler::NONE;
   sendTimeout_ = 0;
   maxReadsPerEvent_ = 16;

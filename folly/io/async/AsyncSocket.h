@@ -1556,7 +1556,7 @@ class AsyncSocket : public AsyncTransport {
   std::unordered_map<folly::IOBuf*, IOBufInfo> idZeroCopyBufInfoMap_;
 
   StateEnum state_{StateEnum::UNINIT}; ///< StateEnum describing current state
-  uint8_t shutdownFlags_; ///< Shutdown state (ShutdownFlags)
+  uint8_t shutdownFlags_{0}; ///< Shutdown state (ShutdownFlags)
   uint16_t eventFlags_; ///< EventBase::HandlerFlags settings
   NetworkSocket fd_; ///< The socket file descriptor
   mutable folly::SocketAddress addr_; ///< The address we tried to connect to
