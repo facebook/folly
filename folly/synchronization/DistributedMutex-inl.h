@@ -1182,9 +1182,9 @@ lockImplementation(
     // previous value is zeroed out
     //
     // we use memory_order_acq_rel here because we want the read-modify-write
-    // operation to be both acquire and release.  Acquire becasue if this is a
+    // operation to be both acquire and release.  Acquire because if this is a
     // successful lock acquisition, we want to acquire state any other thread
-    // has released from a prior unlock.  We want release semantics becasue
+    // has released from a prior unlock.  We want release semantics because
     // other threads that read the address of this value should see the full
     // well-initialized node we are going to wait on if the mutex acquisition
     // was unsuccessful
