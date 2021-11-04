@@ -2,8 +2,9 @@
 name = openssl
 
 [rpms]
-openssl-devel
 openssl
+openssl-devel
+openssl-libs
 
 [debs]
 libssl-dev
