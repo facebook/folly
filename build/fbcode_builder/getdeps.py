@@ -366,7 +366,10 @@ class InstallSysDepsCmd(ProjectCmdBase):
             if packages:
                 run_cmd(["apt", "install", "-y"] + packages)
         else:
-            print("I don't know how to install any packages on this system")
+            host_tuple = loader.build_opts.host_type.as_tuple_string()
+            print(
+                f"I don't know how to install any packages on this system {host_tuple}"
+            )
 
 
 @cmd("list-deps", "lists the transitive deps for a given project")

@@ -99,7 +99,7 @@ class HostType(object):
     def get_package_manager(self):
         if not self.is_linux():
             return None
-        if self.distro in ("fedora", "centos"):
+        if self.distro in ("fedora", "centos", "centos stream"):
             return "rpm"
         if self.distro.startswith(("debian", "ubuntu")):
             return "deb"
