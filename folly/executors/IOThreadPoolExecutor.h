@@ -83,6 +83,9 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
+  static std::mutex* getEventBaseShutdownMutex(
+      ThreadPoolExecutor::ThreadHandle*);
+
   folly::EventBaseManager* getEventBaseManager();
 
  private:

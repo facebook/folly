@@ -40,11 +40,18 @@ class DeadlockDetectorMock : public DeadlockDetector {
 class DeadlockDetectorFactoryMock : public DeadlockDetectorFactory {
  public:
   std::unique_ptr<DeadlockDetector> create(
-      folly::Executor* executor, const std::string& name) override {
+      folly::Executor* executor,
+      const std::string& name,
+      std::unique_ptr<WorkerProvider> tidCollector) override {
     EXPECT_TRUE(executor != nullptr);
-    std::string expectedName =
-        fmt::format("TestPool:{}", folly::getOSThreadID());
+    auto tid = folly::getOSThreadID();
+    std::string expectedName = fmt::format("TestPool:{}", tid);
     EXPECT_EQ(expectedName, name);
+    {
+      auto tids = tidCollector->collectThreadIds();
+      EXPECT_EQ(1, tids.threadIds.size());
+      EXPECT_EQ(tid, tids.threadIds[0]);
+    }
     name_ = name;
     auto retval = std::make_unique<DeadlockDetectorMock>(counter_);
     baton.post();
