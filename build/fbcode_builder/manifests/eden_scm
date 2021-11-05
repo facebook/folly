@@ -48,7 +48,6 @@ fbcode/fboss/common = common
 
 [dependencies]
 fb303-source
-fbthrift
 fbthrift-source
 openssl
 rust-shed
