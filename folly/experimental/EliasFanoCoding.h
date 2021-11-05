@@ -96,7 +96,7 @@ template <
     size_t kSkipQuantum = 0, // 0 = disabled
     size_t kForwardQuantum = 0, // 0 = disabled
     bool kUpperFirst = false>
-struct EliasFanoEncoderV2 {
+struct EliasFanoEncoder {
   static_assert(
       std::is_integral_v<Value> && std::is_unsigned_v<Value>,
       "Value should be unsigned integral");
@@ -136,14 +136,14 @@ struct EliasFanoEncoderV2 {
     if (begin == end) {
       return MutableCompressedList();
     }
-    EliasFanoEncoderV2 encoder(size_t(end - begin), *(end - 1));
+    EliasFanoEncoder encoder(size_t(end - begin), *(end - 1));
     for (; begin != end; ++begin) {
       encoder.add(*begin);
     }
     return encoder.finish();
   }
 
-  explicit EliasFanoEncoderV2(const MutableCompressedList& result)
+  explicit EliasFanoEncoder(const MutableCompressedList& result)
       : lower_(result.lower),
         upper_(result.upper),
         skipPointers_(reinterpret_cast<SkipValueType*>(result.skipPointers)),
@@ -153,8 +153,8 @@ struct EliasFanoEncoderV2 {
     std::fill(result.data.begin(), result.data.end(), '\0');
   }
 
-  EliasFanoEncoderV2(size_t size, ValueType upperBound)
-      : EliasFanoEncoderV2(
+  EliasFanoEncoder(size_t size, ValueType upperBound)
+      : EliasFanoEncoder(
             Layout::fromUpperBoundAndSize(upperBound, size).allocList()) {}
 
   void add(ValueType value) {
@@ -237,7 +237,7 @@ template <
     size_t kSkipQuantum,
     size_t kForwardQuantum,
     bool kUpperFirst>
-struct EliasFanoEncoderV2<
+struct EliasFanoEncoder<
     Value,
     SkipValue,
     kSkipQuantum,

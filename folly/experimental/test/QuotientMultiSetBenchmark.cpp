@@ -108,7 +108,7 @@ const folly::F14FastSet<uint64_t>& getF14Baseline() {
 }
 
 using EFEncoder =
-    folly::compression::EliasFanoEncoderV2<uint64_t, uint64_t, 128, 128>;
+    folly::compression::EliasFanoEncoder<uint64_t, uint64_t, 128, 128>;
 
 const folly::compression::MutableEliasFanoCompressedList& getEFBaseline() {
   folly::BenchmarkSuspender guard;

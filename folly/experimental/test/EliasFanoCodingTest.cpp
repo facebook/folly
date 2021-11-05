@@ -46,7 +46,7 @@ TEST(EliasFanoCoding, defaultNumLowerBits) {
   // Encoder::defaultNumLowerBits agree.
   static constexpr size_t kNumIterations = 750;
   auto compare = [](size_t upperBound, size_t size) {
-    using Encoder = EliasFanoEncoderV2<size_t>;
+    using Encoder = EliasFanoEncoder<size_t>;
     EXPECT_EQ(
         int(slowDefaultNumLowerBits(upperBound, size)),
         int(Encoder::defaultNumLowerBits(upperBound, size)))
@@ -86,7 +86,7 @@ TEST(EliasFanoCoding, defaultNumLowerBits) {
 class EliasFanoCodingTest : public ::testing::Test {
  public:
   void doTestEmpty() {
-    using Encoder = EliasFanoEncoderV2<uint32_t, size_t>;
+    using Encoder = EliasFanoEncoder<uint32_t, size_t>;
     using Reader = EliasFanoReader<Encoder>;
     testEmpty<Reader, Encoder>();
   }
@@ -98,7 +98,7 @@ class EliasFanoCodingTest : public ::testing::Test {
       typename SkipValueType,
       bool kUpperFirst>
   void doTest() {
-    using Encoder = EliasFanoEncoderV2<
+    using Encoder = EliasFanoEncoder<
         ValueType,
         SkipValueType,
         kSkipQuantum,
@@ -138,7 +138,7 @@ class EliasFanoCodingTest : public ::testing::Test {
   // corresponding types, by using 16-bit types for everything.
   template <size_t kSkipQuantum, size_t kForwardQuantum, bool kUpperFirst>
   void doTestDense() {
-    using Encoder = EliasFanoEncoderV2<
+    using Encoder = EliasFanoEncoder<
         uint16_t,
         uint16_t,
         kSkipQuantum,
@@ -208,7 +208,7 @@ TEST_F(EliasFanoCodingTest, SkipForwardPointersDense) {
 }
 
 TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
-  typedef EliasFanoEncoderV2<uint32_t, uint32_t, 2, 2> Encoder;
+  typedef EliasFanoEncoder<uint32_t, uint32_t, 2, 2> Encoder;
   typedef EliasFanoReader<Encoder, instructions::Default> Reader;
   constexpr uint32_t kLargeValue = 127;
 
@@ -233,7 +233,7 @@ TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
 
 namespace bm {
 
-typedef EliasFanoEncoderV2<uint32_t, uint32_t, 128, 128> Encoder;
+typedef EliasFanoEncoder<uint32_t, uint32_t, 128, 128> Encoder;
 
 std::vector<uint64_t> data;
 std::vector<size_t> order;
@@ -344,7 +344,7 @@ BENCHMARK(Encode) {
 BENCHMARK_DRAW_LINE();
 
 BENCHMARK(defaultNumLowerBits, iters) {
-  using Encoder = EliasFanoEncoderV2<size_t>;
+  using Encoder = EliasFanoEncoder<size_t>;
 
   size_t i = 0;
   while (iters--) {
