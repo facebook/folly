@@ -130,15 +130,15 @@ void testNext(const std::vector<uint64_t>& data, const List& list) {
   EXPECT_FALSE(reader.valid());
 
   for (size_t i = 0; i < data.size(); ++i) {
-    EXPECT_TRUE(reader.next());
-    EXPECT_TRUE(reader.valid());
-    EXPECT_EQ(reader.value(), data[i]);
-    EXPECT_EQ(reader.position(), i);
+    EXPECT_TRUE(reader.next()) << i << " " << data.size();
+    EXPECT_TRUE(reader.valid()) << i << " " << data.size();
+    EXPECT_EQ(reader.value(), data[i]) << i << " " << data.size();
+    EXPECT_EQ(reader.position(), i) << i << " " << data.size();
     maybeTestPreviousValue(data, reader, i);
     maybeTestPrevious(data, reader, i);
   }
-  EXPECT_FALSE(reader.next());
-  EXPECT_FALSE(reader.valid());
+  EXPECT_FALSE(reader.next()) << data.size();
+  EXPECT_FALSE(reader.valid()) << data.size();
   EXPECT_EQ(reader.position(), reader.size());
 }
 
@@ -149,6 +149,11 @@ void testSkip(
   Reader reader(list);
 
   for (size_t i = skipStep - 1; i < data.size(); i += skipStep) {
+    // Destination must be representable.
+    if (i + skipStep > std::numeric_limits<typename Reader::SizeType>::max()) {
+      return;
+    }
+
     // Also test that skip(0) stays in place.
     for (auto step : {skipStep, size_t(0)}) {
       EXPECT_TRUE(reader.skip(step));
@@ -357,6 +362,8 @@ void testEmpty() {
 
 template <class Reader, class Encoder>
 void testAll(const std::vector<uint64_t>& data) {
+  SCOPED_TRACE(__PRETTY_FUNCTION__);
+
   auto list = Encoder::encode(data.begin(), data.end());
   testNext<Reader>(data, list);
   testSkip<Reader>(data, list);

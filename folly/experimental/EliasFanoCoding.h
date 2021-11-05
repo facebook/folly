@@ -177,6 +177,7 @@ struct EliasFanoEncoderV2 {
 
     if constexpr (forwardQuantum != 0) {
       if ((size_ + 1) % forwardQuantum == 0) {
+        DCHECK_LE(upperBits, std::numeric_limits<SkipValueType>::max());
         const auto k = size_ / forwardQuantum;
         // Store the number of preceding 0-bits.
         forwardPointers_[k] = upperBits;
@@ -199,6 +200,7 @@ struct EliasFanoEncoderV2 {
  private:
   void fillSkipPointersUpTo(ValueType fillBoundary) {
     if constexpr (skipQuantum != 0) {
+      DCHECK_LE(size_, std::numeric_limits<SkipValueType>::max());
       // The first skip pointer is omitted (it would always be 0), so the
       // calculation is shifted by 1.
       while ((skipPointersSize_ + 1) * skipQuantum <= fillBoundary) {
@@ -257,6 +259,7 @@ struct EliasFanoEncoderV2<
     // *** Validity checks.
     // Shift by numLowerBits must be valid.
     CHECK_LT(static_cast<int>(numLowerBits), 8 * sizeof(Value));
+    // max() - 1 is reserved.
     CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
     CHECK_LE(
         upperBound >> numLowerBits, std::numeric_limits<SkipValueType>::max());
@@ -354,6 +357,15 @@ struct EliasFanoEncoderV2<
 
 namespace detail {
 
+// Add a and b in the domain of T. This guarantees that if T is a sub-int type,
+// we cast away the promotion to int, so that unsigned overflow and underflow
+// work as expected.
+template <class T, class U>
+FOLLY_ALWAYS_INLINE T addT(T a, U b) {
+  static_assert(std::is_unsigned_v<T>);
+  return static_cast<T>(a + static_cast<T>(b));
+}
+
 template <class Encoder, class Instructions, class SizeType>
 class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
                         SkipPointers<Encoder::skipQuantum> {
@@ -384,7 +396,8 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   FOLLY_ALWAYS_INLINE ValueType previous() {
     size_t inner;
     block_t block;
-    getPreviousInfo(block, inner, outer_);
+    DCHECK_GE(outer_, 0);
+    getPreviousInfo(block, inner, outer_); // Updates outer_.
     block_ = loadUnaligned<block_t>(start_ + outer_);
     block_ ^= block;
     --position_;
@@ -445,7 +458,10 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
     // Use skip pointer.
     if constexpr (Encoder::skipQuantum > 0) {
-      if (UNLIKELY(v >= value_ + Encoder::skipQuantum)) {
+      // NOTE: The addition can overflow here, but that means value_ is within
+      // skipQuantum_ distance from the maximum representable value, and thus
+      // the last value, so the comparison is still correct.
+      if (UNLIKELY(v >= addT(value_, Encoder::skipQuantum))) {
         const size_t steps = v / Encoder::skipQuantum;
         const size_t dest = loadUnaligned<SkipValueType>(
             this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
@@ -496,7 +512,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     auto position = position_;
 
     if constexpr (Encoder::skipQuantum > 0) {
-      if (v >= value_ + Encoder::skipQuantum) {
+      if (v >= addT(value_, Encoder::skipQuantum)) {
         auto outer = outer_;
         const size_t steps = v / Encoder::skipQuantum;
         const size_t dest = loadUnaligned<SkipValueType>(
@@ -597,17 +613,19 @@ template <
     class Encoder,
     class Instructions = instructions::Default,
     bool kUnchecked = false,
-    class SizeType = typename Encoder::SkipValueType>
+    class SizeT = typename Encoder::SkipValueType>
 class EliasFanoReader {
  public:
   using EncoderType = Encoder;
   using ValueType = typename Encoder::ValueType;
+  using SizeType = SizeT;
 
   explicit EliasFanoReader(const typename Encoder::CompressedList& list)
       : upper_(list),
         lower_(list.lower),
         size_(list.size),
         numLowerBits_(list.numLowerBits) {
+    DCHECK_LE(list.size, std::numeric_limits<SizeType>::max());
     DCHECK(Instructions::supported());
     // To avoid extra branching during skipTo() while reading
     // upper sequence we need to know the last element.
@@ -635,34 +653,32 @@ class EliasFanoReader {
       return false;
     }
     upper_.previous();
-    value_ =
-        readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
+    value_ = readLowerPart(position()) | (upper_.value() << numLowerBits_);
     return true;
   }
 
   bool next() {
-    if (!kUnchecked && UNLIKELY(position() + 1 >= size_)) {
+    if (!kUnchecked && UNLIKELY(detail::addT(position(), 1) >= size_)) {
       return setDone();
     }
     upper_.next();
-    value_ =
-        readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
+    value_ = readLowerPart(position()) | (upper_.value() << numLowerBits_);
     return true;
   }
 
   /**
    * Advances by n elements. n = 0 is allowed and has no effect. Returns false
-   * if the end of the list is reached.
+   * if the end of the list is reached. position() + n must be representable by
+   * SizeType.
    */
   bool skip(SizeType n) {
     if (n == 0) {
       return valid();
     }
 
-    if (kUnchecked || LIKELY(position() + n < size_)) {
+    if (kUnchecked || LIKELY(detail::addT(position(), n) < size_)) {
       upper_.skip(n);
-      value_ =
-          readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
+      value_ = readLowerPart(position()) | (upper_.value() << numLowerBits_);
       return true;
     }
 
@@ -675,8 +691,8 @@ class EliasFanoReader {
    * at position -1). Returns false if no such element exists.
    */
   bool skipTo(ValueType value) {
-    if (value != kInvalidValue) {
-      DCHECK_GE(value + 1, value_ + 1);
+    if (value_ != kInvalidValue) {
+      DCHECK_GE(value, value_);
     }
 
     if (!kUnchecked && UNLIKELY(value > lastValue_)) {
@@ -696,9 +712,8 @@ class EliasFanoReader {
    * upper and lower bits.
    */
   void prepareSkipTo(ValueType value) const {
-    // Also works when value_ == kInvalidValue.
-    if (value != kInvalidValue) {
-      DCHECK_GE(value + 1, value_ + 1);
+    if (value_ != kInvalidValue) {
+      DCHECK_GE(value, value_);
     }
 
     if ((!kUnchecked && value > lastValue_) || (value == value_)) {
@@ -719,11 +734,12 @@ class EliasFanoReader {
    * false if n >= size().
    */
   bool jump(SizeType n) {
-    if (n + 1 < upper_.position() + 1) { // Also works if position() == -1.
+    // Also works if position() == -1.
+    if (detail::addT(n, 1) < detail::addT(position(), 1)) {
       reset();
       n += 1; // Initial position is -1.
     } else {
-      n -= upper_.position();
+      n -= position();
     }
     return skip(n);
   }
@@ -745,7 +761,7 @@ class EliasFanoReader {
       // iterating backwards to its first element.
       auto valueLower = Instructions::bzhi(value_, numLowerBits_);
       while (!upper_.isAtBeginningOfRun() &&
-             readLowerPart(upper_.position() - 1) == valueLower) {
+             readLowerPart(position() - 1) == valueLower) {
         upper_.previous();
       }
       return true;
@@ -768,7 +784,7 @@ class EliasFanoReader {
   ValueType previousValue() const {
     DCHECK_GT(position(), 0);
     DCHECK_LT(position(), size());
-    return readLowerPart(upper_.position() - 1) |
+    return readLowerPart(position() - 1) |
         (upper_.previousValue() << numLowerBits_);
   }
 
@@ -808,8 +824,7 @@ class EliasFanoReader {
 
   FOLLY_ALWAYS_INLINE void iterateTo(ValueType value) {
     while (true) {
-      value_ =
-          readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
+      value_ = readLowerPart(position()) | (upper_.value() << numLowerBits_);
       if (LIKELY(value_ >= value)) {
         break;
       }

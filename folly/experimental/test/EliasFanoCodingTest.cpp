@@ -85,8 +85,8 @@ TEST(EliasFanoCoding, defaultNumLowerBits) {
 class EliasFanoCodingTest : public ::testing::Test {
  public:
   void doTestEmpty() {
-    typedef EliasFanoEncoderV2<uint32_t, size_t> Encoder;
-    typedef EliasFanoReader<Encoder> Reader;
+    using Encoder = EliasFanoEncoderV2<uint32_t, size_t>;
+    using Reader = EliasFanoReader<Encoder>;
     testEmpty<Reader, Encoder>();
   }
 
@@ -97,13 +97,12 @@ class EliasFanoCodingTest : public ::testing::Test {
       typename SkipValueType,
       bool kUpperFirst>
   void doTest() {
-    typedef EliasFanoEncoderV2<
+    using Encoder = EliasFanoEncoderV2<
         ValueType,
         SkipValueType,
         kSkipQuantum,
         kForwardQuantum,
-        kUpperFirst>
-        Encoder;
+        kUpperFirst>;
     using Reader = EliasFanoReader<Encoder, instructions::Default, false>;
     testAll<Reader, Encoder>({0});
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
@@ -117,17 +116,38 @@ class EliasFanoCodingTest : public ::testing::Test {
 
   template <size_t kSkipQuantum, size_t kForwardQuantum, typename ValueType>
   void doTestAll() {
-    // Note: SkipValue of uint8/16 aren't well-supported. For now we only test
-    // ValueType for uint32/64.
-    static_assert(
-        std::is_same<ValueType, uint32_t>::value ||
-        std::is_same<ValueType, uint64_t>::value);
-    // TODO(ott): improve test coverage for SkipValue of uint8/16 once such
-    // types are well supported.
     doTest<kSkipQuantum, kForwardQuantum, ValueType, uint32_t, true>();
     doTest<kSkipQuantum, kForwardQuantum, ValueType, uint32_t, false>();
     doTest<kSkipQuantum, kForwardQuantum, ValueType, uint64_t, true>();
     doTest<kSkipQuantum, kForwardQuantum, ValueType, uint64_t, false>();
+  }
+
+  // Test lists where values and sizes are close to the numeric limits of the
+  // corresponding types, by using 16-bit types for everything.
+  template <size_t kSkipQuantum, size_t kForwardQuantum, bool kUpperFirst>
+  void doTestDense() {
+    using Encoder = EliasFanoEncoderV2<
+        uint16_t,
+        uint16_t,
+        kSkipQuantum,
+        kForwardQuantum,
+        kUpperFirst>;
+    using Reader = EliasFanoReader<Encoder, instructions::Default, false>;
+    constexpr size_t kMaxU16 = std::numeric_limits<uint16_t>::max();
+
+    // kMaxU16 is reserved for both value and size.
+    testAll<Reader, Encoder>(generateSeqList(1, kMaxU16 - 1));
+    // Test various sizes close to the limit.
+    for (size_t i = 1; i <= 16; ++i) {
+      testAll<Reader, Encoder>(generateRandomList(
+          kMaxU16 - i, kMaxU16 - 1, /* withDuplicates */ true));
+    }
+  }
+
+  template <size_t kSkipQuantum, size_t kForwardQuantum>
+  void doTestDenseAll() {
+    doTestDense<kSkipQuantum, kForwardQuantum, true>();
+    doTestDense<kSkipQuantum, kForwardQuantum, false>();
   }
 };
 
@@ -138,21 +158,25 @@ TEST_F(EliasFanoCodingTest, Empty) {
 TEST_F(EliasFanoCodingTest, Simple) {
   doTestAll<0, 0, uint32_t>();
   doTestAll<0, 0, uint64_t>();
+  doTestDenseAll<0, 0>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipPointers) {
   doTestAll<128, 0, uint32_t>();
   doTestAll<128, 0, uint64_t>();
+  doTestDenseAll<128, 0>();
 }
 
 TEST_F(EliasFanoCodingTest, ForwardPointers) {
   doTestAll<0, 128, uint32_t>();
   doTestAll<0, 128, uint64_t>();
+  doTestDenseAll<0, 128>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
   doTestAll<128, 128, uint32_t>();
   doTestAll<128, 128, uint64_t>();
+  doTestDenseAll<128, 128>();
 }
 
 TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
