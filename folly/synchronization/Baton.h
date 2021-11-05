@@ -288,7 +288,26 @@ class Baton {
       }
     }
 
-    // guess we have to block :(
+    // Try transitioning from the spinning phase to the blocking phase via a CAS
+    // on state_.
+    //
+    // The transition may conceptually be interrupted by a post, i.e., race with
+    // a post and lose, in which case the wait operation succeeds and so returns
+    // true.
+    //
+    // The memory orders in this CAS seem backwards but are correct: CAS failure
+    // immediately precedes return-true and return-true requires an immediately-
+    // preceding load-acquire on state_ to protect the caller, which is about to
+    // use whatever memory this baton guards. Therefore, CAS failure must have a
+    // load-acquire attached to it.
+    //
+    // CAS success means that the transition from spinning to blocking finished.
+    // After blocking, there is a load-acquire immediately preceding return-true
+    // corresponding to the store-release in post, so no success load-acquire is
+    // needed here.
+    //
+    // No success store-release is needed either since only the same thread will
+    // load the state, which happens later in wait during and after blocking.
     uint32_t expected = INIT;
     if (!folly::atomic_compare_exchange_strong_explicit<Atom>(
             &state_,
@@ -296,7 +315,11 @@ class Baton {
             static_cast<uint32_t>(WAITING),
             std::memory_order_relaxed,
             std::memory_order_acquire)) {
-      // CAS failed, last minute reprieve
+      // CAS failed. The baton must have been posted between the last spin and
+      // the CAS, so it is not necessary to transition from the spinning phase
+      // to the blocking phase. Therefore the wait succeeds.
+      //
+      // Match the post store-release with the CAS failure load-acquire above.
       assert(expected == EARLY_DELIVERY);
       return true;
     }
@@ -334,6 +357,10 @@ class Baton {
       uint32_t s = state_.load(std::memory_order_acquire);
       assert(s == WAITING || s == LATE_DELIVERY);
       if (s == LATE_DELIVERY) {
+        // The baton was posted and this is not just a spurious wakeup.
+        // Therefore the wait succeeds.
+        //
+        // Match the post store-release with the simple load-acquire above.
         return true;
       }
     }
