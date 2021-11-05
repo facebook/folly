@@ -332,6 +332,7 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
     return setValue(inner);
   }
 
+  template <bool kCanBeAtValue = true>
   bool skipTo(ValueType v) {
     // Also works when value_ == kInvalidValue.
     if (v != kInvalidValue) {
@@ -340,7 +341,7 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
 
     if (!kUnchecked && v > upperBound_) {
       return setDone();
-    } else if (v == value_) {
+    } else if (kCanBeAtValue && v == value_) {
       return true;
     }
 

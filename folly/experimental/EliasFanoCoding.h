@@ -725,12 +725,18 @@ class EliasFanoReader {
    * the current position.
    * Requires that value >= value() (or that the reader is positioned before the
    * first element). Returns false if no such element exists.
+   * If kCanBeAtValue is false, the requirement above becomes value > value().
    */
+  template <bool kCanBeAtValue = true>
   bool skipTo(ValueType value) {
     if (valid()) {
-      DCHECK_GE(value, value_);
-      if (UNLIKELY(value == value_)) {
-        return true;
+      if constexpr (kCanBeAtValue) {
+        DCHECK_GE(value, value_);
+        if (UNLIKELY(value == value_)) {
+          return true;
+        }
+      } else {
+        DCHECK_GT(value, value_);
       }
     }
 
@@ -753,11 +759,16 @@ class EliasFanoReader {
    * Prepare to skip to `value` by prefetching appropriate memory in both the
    * upper and lower bits.
    */
+  template <bool kCanBeAtValue = true>
   void prepareSkipTo(ValueType value) const {
     if (valid()) {
-      DCHECK_GE(value, value_);
-      if (UNLIKELY(value == value_)) {
-        return;
+      if constexpr (kCanBeAtValue) {
+        DCHECK_GE(value, value_);
+        if (UNLIKELY(value == value_)) {
+          return;
+        }
+      } else {
+        DCHECK_GT(value, value_);
       }
     }
 
