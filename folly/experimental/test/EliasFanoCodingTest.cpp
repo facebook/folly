@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <folly/Benchmark.h>
+#include <folly/Random.h>
 #include <folly/experimental/EliasFanoCoding.h>
 #include <folly/experimental/Select64.h>
 #include <folly/experimental/test/CodingTestUtils.h>
@@ -106,12 +107,23 @@ class EliasFanoCodingTest : public ::testing::Test {
     using Reader = EliasFanoReader<Encoder, instructions::Default, false>;
     testAll<Reader, Encoder>({0});
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
+    // Test a list with size multiple of kForwardQuantum and universe multiple
+    // of kSkipQuantum, to exercise corner cases in the construction of forward
+    // and skip lists.
+    testAll<Reader, Encoder>(generateRandomList(
+        std::max<size_t>(8 * kForwardQuantum, 1024),
+        std::max<size_t>(16 * kSkipQuantum, 2048)));
     testAll<Reader, Encoder>(generateRandomList(
         100 * 1000, 10 * 1000 * 1000, /* withDuplicates */ true));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
-    // max() cannot be read, as it is assumed an invalid value.
-    // TODO(ott): It should be possible to lift this constraint.
-    testAll<Reader, Encoder>({0, 1, std::numeric_limits<uint32_t>::max() - 1});
+    testAll<Reader, Encoder>({0, 1, std::numeric_limits<uint32_t>::max()});
+    // Test data with additional trailing 0s in the upperBits by extending
+    // the upper bound.
+    constexpr uint64_t minUpperBoundExtension = 2;
+    constexpr uint64_t maxUpperBoundExtension = 1024;
+    testAll<Reader, Encoder>(
+        generateRandomList(100 * 1000, 10 * 1000 * 1000),
+        folly::Random::rand32(minUpperBoundExtension, maxUpperBoundExtension));
   }
 
   template <size_t kSkipQuantum, size_t kForwardQuantum, typename ValueType>
@@ -135,12 +147,12 @@ class EliasFanoCodingTest : public ::testing::Test {
     using Reader = EliasFanoReader<Encoder, instructions::Default, false>;
     constexpr size_t kMaxU16 = std::numeric_limits<uint16_t>::max();
 
-    // kMaxU16 is reserved for both value and size.
+    // Max SizeType value is reserved.
     testAll<Reader, Encoder>(generateSeqList(1, kMaxU16 - 1));
     // Test various sizes close to the limit.
     for (size_t i = 1; i <= 16; ++i) {
-      testAll<Reader, Encoder>(generateRandomList(
-          kMaxU16 - i, kMaxU16 - 1, /* withDuplicates */ true));
+      testAll<Reader, Encoder>(
+          generateRandomList(kMaxU16 - i, kMaxU16, /* withDuplicates */ true));
     }
   }
 
@@ -155,27 +167,43 @@ TEST_F(EliasFanoCodingTest, Empty) {
   doTestEmpty();
 }
 
-TEST_F(EliasFanoCodingTest, Simple) {
+TEST_F(EliasFanoCodingTest, Simple32Bit) {
   doTestAll<0, 0, uint32_t>();
+}
+TEST_F(EliasFanoCodingTest, Simple64Bit) {
   doTestAll<0, 0, uint64_t>();
+}
+TEST_F(EliasFanoCodingTest, SimpleDense) {
   doTestDenseAll<0, 0>();
 }
 
-TEST_F(EliasFanoCodingTest, SkipPointers) {
+TEST_F(EliasFanoCodingTest, SkipPointers32Bit) {
   doTestAll<128, 0, uint32_t>();
+}
+TEST_F(EliasFanoCodingTest, SkipPointers64Bit) {
   doTestAll<128, 0, uint64_t>();
+}
+TEST_F(EliasFanoCodingTest, SkipPointersDense) {
   doTestDenseAll<128, 0>();
 }
 
-TEST_F(EliasFanoCodingTest, ForwardPointers) {
+TEST_F(EliasFanoCodingTest, ForwardPointers32Bit) {
   doTestAll<0, 128, uint32_t>();
+}
+TEST_F(EliasFanoCodingTest, ForwardPointers64Bit) {
   doTestAll<0, 128, uint64_t>();
+}
+TEST_F(EliasFanoCodingTest, ForwardPointersDense) {
   doTestDenseAll<0, 128>();
 }
 
-TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
+TEST_F(EliasFanoCodingTest, SkipForwardPointers32Bit) {
   doTestAll<128, 128, uint32_t>();
+}
+TEST_F(EliasFanoCodingTest, SkipForwardPointers64Bit) {
   doTestAll<128, 128, uint64_t>();
+}
+TEST_F(EliasFanoCodingTest, SkipForwardPointersDense) {
   doTestDenseAll<128, 128>();
 }
 
