@@ -442,6 +442,7 @@ if __name__ == "__main__":
         build_dir,
         inst_dir,
         defines,
+        loader=None,
         final_install_prefix=None,
         extra_cmake_defines=None,
     ):
@@ -457,6 +458,7 @@ if __name__ == "__main__":
         self.defines = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
+        self.loader = loader
 
     def _invalidate_cache(self):
         for name in [
@@ -565,6 +567,24 @@ if __name__ == "__main__":
             # executables during the build to discover the set of
             # tests.
             defines["CMAKE_BUILD_WITH_INSTALL_RPATH"] = "ON"
+
+        boost_169_is_required = False
+        if self.loader:
+            for m in self.loader.manifests_in_dependency_order():
+                preinstalled = m.get_section_as_dict("preinstalled.env", self.ctx)
+                boost_169_is_required = "BOOST_ROOT_1_69_0" in preinstalled.keys()
+                if boost_169_is_required:
+                    break
+
+        if (
+            boost_169_is_required
+            and self.build_opts.allow_system_packages
+            and self.build_opts.host_type.get_package_manager()
+            and self.build_opts.host_type.get_package_manager() == "rpm"
+        ):
+            # Boost 1.69 rpms don't install cmake config to the system, so to point to them explicitly
+            defines["BOOST_INCLUDEDIR"] = "/usr/include/boost169"
+            defines["BOOST_LIBRARYDIR"] = "/usr/lib64/boost169"
 
         defines.update(self.defines)
         define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]

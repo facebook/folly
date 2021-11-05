@@ -497,6 +497,7 @@ class ManifestParser(object):
                 build_dir,
                 inst_dir,
                 defines,
+                loader,
                 final_install_prefix,
                 extra_cmake_defines,
             )
