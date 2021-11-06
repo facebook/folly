@@ -180,10 +180,8 @@ class FanoutChannelProcessor
    * This is called when the user's FanoutChannel object has been destroyed.
    */
   void destroyHandle(CloseResult closeResult) {
-    executor_->add([=, closeResult = std::move(closeResult)]() mutable {
-      auto state = state_.wlock();
-      processHandleDestroyed(state, std::move(closeResult));
-    });
+    auto state = state_.wlock();
+    processHandleDestroyed(state, std::move(closeResult));
   }
 
   /**
