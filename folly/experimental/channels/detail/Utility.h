@@ -158,8 +158,8 @@ class SenderCancellationCallback : public IChannelCallback {
    * if the callback was not previously triggered.
    */
   void consume(ChannelBridgeBase*) override {
+    cancelSource_.requestCancellation();
     executor_->add([=]() {
-      cancelSource_.requestCancellation();
       CHECK(!callbackToFire_.isFulfilled());
       callbackToFire_.setValue(CallbackToFire::Consume);
     });
@@ -170,8 +170,8 @@ class SenderCancellationCallback : public IChannelCallback {
    * if the callback was not previously triggered.
    */
   void canceled(ChannelBridgeBase*) override {
+    cancelSource_.requestCancellation();
     executor_->add([=]() {
-      cancelSource_.requestCancellation();
       CHECK(!callbackToFire_.isFulfilled());
       callbackToFire_.setValue(CallbackToFire::Canceled);
     });
