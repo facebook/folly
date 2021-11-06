@@ -25,8 +25,7 @@ namespace folly {
 // generic TimerFD based timeout manager
 class TimerFDTimeoutManager : public TimerFD {
  public:
-  using UniquePtr =
-      std::unique_ptr<TimerFDTimeoutManager, DelayedDestruction::Destructor>;
+  using UniquePtr = DelayedDestructionUniquePtr<TimerFDTimeoutManager>;
   using SharedPtr = std::shared_ptr<TimerFDTimeoutManager>;
 
  public:

@@ -83,6 +83,8 @@ class NotificationQueue {
    */
   class Consumer : public DelayedDestruction, private EventHandler {
    public:
+    using UniquePtr = DelayedDestructionUniquePtr<Consumer>;
+
     enum : uint16_t { kDefaultMaxReadAtOnce = 10 };
 
     Consumer()
@@ -92,8 +94,7 @@ class NotificationQueue {
 
     // create a consumer in-place, without the need to build new class
     template <typename TCallback>
-    static std::unique_ptr<Consumer, DelayedDestruction::Destructor> make(
-        TCallback&& callback);
+    static UniquePtr make(TCallback&& callback);
 
     /**
      * messageAvailable() will be invoked whenever a new
@@ -888,17 +889,11 @@ struct notification_queue_consumer_wrapper
 
 template <typename MessageT>
 template <typename TCallback>
-std::unique_ptr<
-    typename NotificationQueue<MessageT>::Consumer,
-    DelayedDestruction::Destructor>
-NotificationQueue<MessageT>::Consumer::make(TCallback&& callback) {
-  return std::unique_ptr<
-      NotificationQueue<MessageT>::Consumer,
-      DelayedDestruction::Destructor>(
-      new detail::notification_queue_consumer_wrapper<
-          MessageT,
-          typename std::decay<TCallback>::type>(
-          std::forward<TCallback>(callback)));
+auto NotificationQueue<MessageT>::Consumer::make(TCallback&& callback)
+    -> UniquePtr {
+  using CB = typename std::decay<TCallback>::type;
+  using W = detail::notification_queue_consumer_wrapper<MessageT, CB>;
+  return makeDelayedDestructionUniquePtr<W>(std::forward<TCallback>(callback));
 }
 
 } // namespace folly

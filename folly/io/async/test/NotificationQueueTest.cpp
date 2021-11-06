@@ -378,10 +378,8 @@ void QueueTest::destroyCallback() {
   // This way one consumer will be destroyed from inside its messageAvailable()
   // callback, and one consume will be destroyed when it isn't inside
   // messageAvailable().
-  std::unique_ptr<DestroyTestConsumer, DelayedDestruction::Destructor>
-      consumer1(new DestroyTestConsumer);
-  std::unique_ptr<DestroyTestConsumer, DelayedDestruction::Destructor>
-      consumer2(new DestroyTestConsumer);
+  auto consumer1 = makeDelayedDestructionUniquePtr<DestroyTestConsumer>();
+  auto consumer2 = makeDelayedDestructionUniquePtr<DestroyTestConsumer>();
   std::function<void(int)> fn = [&](int) {
     consumer1 = nullptr;
     consumer2 = nullptr;

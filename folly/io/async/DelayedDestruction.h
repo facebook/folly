@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include <folly/io/async/DelayedDestructionBase.h>
 
 namespace folly {
@@ -111,4 +113,14 @@ class DelayedDestruction : public DelayedDestructionBase {
     delete this;
   }
 };
+
+template <typename T>
+using DelayedDestructionUniquePtr =
+    std::unique_ptr<T, DelayedDestruction::Destructor>;
+
+template <typename T, typename... A>
+DelayedDestructionUniquePtr<T> makeDelayedDestructionUniquePtr(A&&... a) {
+  return DelayedDestructionUniquePtr<T>{new T(static_cast<A&&>(a)...)};
+}
+
 } // namespace folly
