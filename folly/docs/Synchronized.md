@@ -711,7 +711,7 @@ locking of two objects and offering their innards.  It returns a
 ```
 
 Note that C++ 17 introduces
-(structured binding syntax)[(http://wg21.link/P0144r2)]
+[structured binding syntax](http://wg21.link/P0144r2)
 which will make the returned tuple more convenient to use:
 
 ``` Cpp
