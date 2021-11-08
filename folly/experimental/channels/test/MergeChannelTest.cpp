@@ -159,6 +159,69 @@ TEST_F(
   executor_.drain();
 }
 
+TEST_F(MergeChannelFixture, ReceiveValues_RemoveReceiver) {
+  auto [receiver1, sender1] = Channel<int>::create();
+  auto [receiver2, sender2] = Channel<int>::create();
+  auto [mergedReceiver, mergeChannel] =
+      createMergeChannel<int, std::string>(&executor_);
+
+  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
+  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
+  executor_.drain();
+
+  EXPECT_CALL(onNext_, onValue(1));
+  EXPECT_CALL(onNext_, onValue(2));
+  EXPECT_CALL(onNext_, onValue(3));
+  EXPECT_CALL(onNext_, onClosed());
+
+  auto callbackHandle = processValues(std::move(mergedReceiver));
+
+  sender1.write(1);
+  sender2.write(2);
+  executor_.drain();
+
+  mergeChannel.removeReceiver("sub2");
+
+  sender1.write(3);
+  sender2.write(4);
+  executor_.drain();
+
+  std::move(mergeChannel).close();
+  executor_.drain();
+}
+
+TEST_F(MergeChannelFixture, ReceiveValues_RemoveReceiver_AfterClose) {
+  auto [receiver1, sender1] = Channel<int>::create();
+  auto [receiver2, sender2] = Channel<int>::create();
+  auto [mergedReceiver, mergeChannel] =
+      createMergeChannel<int, std::string>(&executor_);
+
+  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
+  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
+  executor_.drain();
+
+  EXPECT_CALL(onNext_, onValue(1));
+  EXPECT_CALL(onNext_, onValue(2));
+  EXPECT_CALL(onNext_, onValue(3));
+  EXPECT_CALL(onNext_, onClosed());
+
+  auto callbackHandle = processValues(std::move(mergedReceiver));
+
+  sender1.write(1);
+  sender2.write(2);
+  executor_.drain();
+
+  std::move(sender2).close();
+  executor_.drain();
+
+  mergeChannel.removeReceiver("sub2");
+  sender1.write(3);
+  executor_.drain();
+
+  std::move(mergeChannel).close();
+  executor_.drain();
+}
+
 TEST_F(MergeChannelFixture, OneInputClosed_ContinuesMerging) {
   auto [receiver1, sender1] = Channel<int>::create();
   auto [receiver2, sender2] = Channel<int>::create();

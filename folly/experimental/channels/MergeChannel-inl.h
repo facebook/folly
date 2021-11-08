@@ -158,11 +158,11 @@ class MergeChannelProcessor
       auto [unbufferedReceiver, buffer] =
           detail::receiverUnbuffer(std::move(receiver));
       auto existingReceiverIt = receiversBySubscriptionId_.find(subscriptionId);
-      if (existingReceiverIt != receiversBySubscriptionId_.end() &&
-          receivers_.contains(existingReceiverIt->second)) {
-        // We already have a receiver with the given subscription ID. Trigger
-        // cancellation on that previous receiver.
-        if (!existingReceiverIt->second->isReceiverCancelled()) {
+      if (existingReceiverIt != receiversBySubscriptionId_.end()) {
+        if (receivers_.contains(existingReceiverIt->second) &&
+            !existingReceiverIt->second->isReceiverCancelled()) {
+          // We already have a receiver with the given subscription ID. Trigger
+          // cancellation on that previous receiver.
           existingReceiverIt->second->receiverCancel();
         }
         receiversBySubscriptionId_.erase(existingReceiverIt);
@@ -187,7 +187,8 @@ class MergeChannelProcessor
       if (receiverIt == receiversBySubscriptionId_.end()) {
         return;
       }
-      if (!receiverIt->second->isReceiverCancelled()) {
+      if (receivers_.contains(receiverIt->second) &&
+          !receiverIt->second->isReceiverCancelled()) {
         receiverIt->second->receiverCancel();
       }
       receiversBySubscriptionId_.erase(receiverIt);
@@ -390,10 +391,18 @@ class MergeChannelProcessor
 
   ChannelBridgePtr<TValue> sender_;
   folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
-  folly::F14FastSet<ChannelBridge<TValue>*> receivers_;
-  folly::F14FastMap<TSubscriptionId, ChannelBridge<TValue>*>
-      receiversBySubscriptionId_;
   bool handleDestroyed_{false};
+
+  // The set of receivers that feed into this MergeChannel. This set "owns" its
+  // receivers. MergeChannelProcessor must free any receiver removed from this
+  // set.
+  folly::F14FastSet<ChannelBridge<TValue>*> receivers_;
+
+  // A non-owning map from subscription ID to receiver. If the receiver for a
+  // given subscription ID is not present in receivers_, it has been freed and
+  // must not be used.
+  folly::F14FastMap<TSubscriptionId, ChannelBridge<TValue>*> //
+      receiversBySubscriptionId_;
 };
 } // namespace detail
 
