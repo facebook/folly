@@ -7,7 +7,7 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebookexperimental/eden.git
 
-[build.not(os=windows)]
+[build.os=linux]
 builder = make
 subdir = eden/scm
 disable_env_override_pkgconfig = 1
@@ -16,6 +16,10 @@ disable_env_override_path = 1
 [build.os=windows]
 # For now the biggest blocker is missing "make" on windows, but there are bound
 # to be more
+builder = nop
+
+[build.os=darwin]
+# Disable for now to get clean CI
 builder = nop
 
 [make.build_args]
