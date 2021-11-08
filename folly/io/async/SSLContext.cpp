@@ -838,6 +838,7 @@ void SSLContext::setupCtx(SSL_CTX* ctx) {
 
   SSL_CTX_set_ex_data(ctx, getExDataIndex(), this);
   SSL_CTX_sess_set_new_cb(ctx, SSLContext::newSessionCallback);
+  SSL_CTX_sess_set_remove_cb(ctx, SSLContext::removeSessionCallback);
 }
 
 SSLContext* SSLContext::getFromSSLCtx(const SSL_CTX* ctx) {
@@ -864,6 +865,15 @@ int SSLContext::newSessionCallback(SSL* ssl, SSL_SESSION* session) {
   }
 
   return 1;
+}
+
+void SSLContext::removeSessionCallback(SSL_CTX* ctx, SSL_SESSION* session) {
+  SSLContext* context = getFromSSLCtx(ctx);
+
+  auto& cb = context->sessionLifecycleCallbacks_;
+  if (cb) {
+    cb->onRemoveSession(ctx, session);
+  }
 }
 
 void SSLContext::setSessionLifecycleCallbacks(
