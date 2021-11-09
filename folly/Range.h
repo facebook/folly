@@ -665,6 +665,9 @@ class Range {
     e_ -= n;
   }
 
+  // Returns a window into the current range, starting at first, and spans
+  // length characters (or until the end of the current range, whichever comes
+  // first). Throws if first is past the end of the current range.
   Range subpiece(size_type first, size_type length = npos) const {
     if (UNLIKELY(first > size())) {
       throw_exception<std::out_of_range>("index out of range");
