@@ -914,3 +914,47 @@ TEST(Observer, Fibers) {
   std::move(f1).getVia(&evb);
   std::move(f2).getVia(&evb);
 }
+
+std::mutex lockingObservableLock;
+std::atomic<size_t> lockingObservableValue{0};
+folly::Function<void()> lockingObservableCallback;
+
+TEST(Observer, ObservableLockInversion) {
+  struct LockingObservable {
+    using element_type = size_t;
+
+    std::shared_ptr<const size_t> get() {
+      std::lock_guard<std::mutex> lg(lockingObservableLock);
+      return std::make_shared<const size_t>(lockingObservableValue.load());
+    }
+
+    void subscribe(folly::Function<void()> cb) {
+      lockingObservableCallback = std::move(cb);
+    }
+
+    void unsubscribe() { lockingObservableCallback = nullptr; }
+  };
+
+  auto observer =
+      folly::observer::ObserverCreator<LockingObservable>().getObserver();
+
+  EXPECT_EQ(0, **observer);
+
+  constexpr size_t kNumIters = 1000;
+
+  std::thread updater([&] {
+    for (size_t i = 1; i <= kNumIters; ++i) {
+      lockingObservableValue = i;
+      lockingObservableCallback();
+    }
+  });
+
+  while (true) {
+    std::lock_guard<std::mutex> lg(lockingObservableLock);
+    if (**makeObserver([&] { return **observer; }) == kNumIters) {
+      break;
+    }
+  }
+
+  updater.join();
+}

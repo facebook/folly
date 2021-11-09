@@ -55,8 +55,16 @@ class ObserverCreatorContext {
     // Additionally it helps avoid races between two different subscription
     // callbacks (getting new value from observable and storing it into value_
     // is not atomic).
+    //
+    // Note that state_ lock is acquired only after Traits::get. Traits::get
+    // is running application code (that may acquire locks) and so it's
+    // important to not hold state_ lock while running it to avoid possible lock
+    // inversion with another code path that needs state_ lock (e.g. get()).
+    std::lock_guard<std::mutex> updateLockGuard(updateLock_);
+    auto newValue = Traits::get(observable_);
+
     auto state = state_.lock();
-    if (!state->updateValue(Traits::get(observable_))) {
+    if (!state->updateValue(std::move(newValue))) {
       // Value didn't change, so we can skip the version update.
       return;
     }
@@ -72,6 +80,7 @@ class ObserverCreatorContext {
   }
 
  private:
+  std::mutex updateLock_;
   struct State {
     bool updateValue(std::shared_ptr<const T> newValue) {
       auto newValuePtr = newValue.get();
