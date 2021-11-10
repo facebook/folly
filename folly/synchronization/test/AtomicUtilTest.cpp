@@ -270,7 +270,8 @@ TEST_F(AtomicFetchResetTest, EnsureFetchAndUsed) {
 
 TEST_F(AtomicFetchSetTest, FetchSetDefault) {
   auto fetch_set = [](auto&&... args) {
-    return detail::atomic_fetch_set_default(args..., std::memory_order_seq_cst);
+    return detail::atomic_fetch_set_fallback(
+        args..., std::memory_order_seq_cst);
   };
 
   atomic_fetch_set_basic<std::uint16_t>(fetch_set);
@@ -286,7 +287,7 @@ TEST_F(AtomicFetchSetTest, FetchSetDefault) {
 
 TEST_F(AtomicFetchSetTest, FetchResetDefault) {
   auto fetch_reset = [](auto&&... args) {
-    return detail::atomic_fetch_reset_default(
+    return detail::atomic_fetch_reset_fallback(
         args..., std::memory_order_seq_cst);
   };
 
@@ -304,7 +305,8 @@ TEST_F(AtomicFetchSetTest, FetchResetDefault) {
 TEST_F(AtomicFetchSetTest, FetchSetX86) {
   if (folly::kIsArchAmd64) {
     auto fetch_set = [](auto&&... args) {
-      return detail::atomic_fetch_set_x86(args..., std::memory_order_seq_cst);
+      return detail::atomic_fetch_set_native(
+          args..., std::memory_order_seq_cst);
     };
 
     atomic_fetch_set_basic<std::uint16_t>(fetch_set);
@@ -322,7 +324,8 @@ TEST_F(AtomicFetchSetTest, FetchSetX86) {
 TEST_F(AtomicFetchResetTest, FetchResetX86) {
   if (folly::kIsArchAmd64) {
     auto fetch_reset = [](auto&&... args) {
-      return detail::atomic_fetch_reset_x86(args..., std::memory_order_seq_cst);
+      return detail::atomic_fetch_reset_native(
+          args..., std::memory_order_seq_cst);
     };
 
     atomic_fetch_reset_basic<std::uint16_t>(fetch_reset);

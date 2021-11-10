@@ -113,7 +113,7 @@ namespace detail {
 // this optimization and clang cannot - https://gcc.godbolt.org/z/Q83rxX
 
 template <typename Atomic>
-bool atomic_fetch_set_default(
+bool atomic_fetch_set_fallback(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   using Integer = decltype(atomic.load());
   auto mask = Integer{0b1} << static_cast<Integer>(bit);
@@ -121,7 +121,7 @@ bool atomic_fetch_set_default(
 }
 
 template <typename Atomic>
-bool atomic_fetch_reset_default(
+bool atomic_fetch_reset_fallback(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   using Integer = decltype(atomic.load());
   auto mask = Integer{0b1} << static_cast<Integer>(bit);
@@ -142,7 +142,7 @@ constexpr auto is_atomic<std::atomic<Integer>> = true;
 #if defined(_MSC_VER)
 
 template <typename Integer>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   static_assert(alignof(std::atomic<Integer>) == alignof(Integer), "");
   static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer), "");
@@ -157,20 +157,20 @@ inline bool atomic_fetch_set_x86(
         static_cast<long long>(bit));
   } else {
     assert(sizeof(Integer) != 4 && sizeof(Integer) != 8);
-    return atomic_fetch_set_default(atomic, bit, order);
+    return atomic_fetch_set_fallback(atomic, bit, order);
   }
 }
 
 template <typename Atomic>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
   static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
-  return atomic_fetch_set_default(atomic, bit, order);
+  return atomic_fetch_set_fallback(atomic, bit, order);
 }
 
 template <typename Integer>
-inline bool atomic_fetch_reset_x86(
+inline bool atomic_fetch_reset_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   static_assert(alignof(std::atomic<Integer>) == alignof(Integer), "");
   static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer), "");
@@ -185,22 +185,22 @@ inline bool atomic_fetch_reset_x86(
         static_cast<long long>(bit));
   } else {
     assert(sizeof(Integer) != 4 && sizeof(Integer) != 8);
-    return atomic_fetch_reset_default(atomic, bit, order);
+    return atomic_fetch_reset_fallback(atomic, bit, order);
   }
 }
 
 template <typename Atomic>
-inline bool atomic_fetch_reset_x86(
+inline bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order mo) {
   static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
   static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
-  return atomic_fetch_reset_default(atomic, bit, mo);
+  return atomic_fetch_reset_fallback(atomic, bit, mo);
 }
 
 #else
 
 template <typename Integer>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   auto previous = false;
 
@@ -224,21 +224,21 @@ inline bool atomic_fetch_set_x86(
                  : "memory", "flags");
   } else {
     assert(sizeof(Integer) == 1);
-    return atomic_fetch_set_default(atomic, bit, order);
+    return atomic_fetch_set_fallback(atomic, bit, order);
   }
 
   return previous;
 }
 
 template <typename Atomic>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   static_assert(!is_atomic<Atomic>, "");
-  return atomic_fetch_set_default(atomic, bit, order);
+  return atomic_fetch_set_fallback(atomic, bit, order);
 }
 
 template <typename Integer>
-inline bool atomic_fetch_reset_x86(
+inline bool atomic_fetch_reset_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   auto previous = false;
 
@@ -262,17 +262,17 @@ inline bool atomic_fetch_reset_x86(
                  : "memory", "flags");
   } else {
     assert(sizeof(Integer) == 1);
-    return atomic_fetch_reset_default(atomic, bit, order);
+    return atomic_fetch_reset_fallback(atomic, bit, order);
   }
 
   return previous;
 }
 
 template <typename Atomic>
-bool atomic_fetch_reset_x86(
+bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   static_assert(!is_atomic<Atomic>, "");
-  return atomic_fetch_reset_default(atomic, bit, order);
+  return atomic_fetch_reset_fallback(atomic, bit, order);
 }
 
 #endif
@@ -280,12 +280,13 @@ bool atomic_fetch_reset_x86(
 #else
 
 template <typename Atomic>
-bool atomic_fetch_set_x86(Atomic&, std::size_t, std::memory_order) noexcept {
+bool atomic_fetch_set_native(Atomic&, std::size_t, std::memory_order) noexcept {
   // This should never be called on non x86_64 platforms.
   std::terminate();
 }
 template <typename Atomic>
-bool atomic_fetch_reset_x86(Atomic&, std::size_t, std::memory_order) noexcept {
+bool atomic_fetch_reset_native(
+    Atomic&, std::size_t, std::memory_order) noexcept {
   // This should never be called on non x86_64 platforms.
   std::terminate();
 }
@@ -304,10 +305,10 @@ bool atomic_fetch_set(Atomic& atomic, std::size_t bit, std::memory_order mo) {
   // do the optimized thing on x86 builds.  Also, some versions of TSAN do not
   // properly instrument the inline assembly, so avoid it when TSAN is enabled
   if (folly::kIsArchAmd64 && !folly::kIsSanitizeThread) {
-    return detail::atomic_fetch_set_x86(atomic, bit, mo);
+    return detail::atomic_fetch_set_native(atomic, bit, mo);
   } else {
     // otherwise default to the default implementation using fetch_or()
-    return detail::atomic_fetch_set_default(atomic, bit, mo);
+    return detail::atomic_fetch_set_fallback(atomic, bit, mo);
   }
 }
 
@@ -321,10 +322,10 @@ bool atomic_fetch_reset(Atomic& atomic, std::size_t bit, std::memory_order mo) {
   // do the optimized thing on x86 builds.  Also, some versions of TSAN do not
   // properly instrument the inline assembly, so avoid it when TSAN is enabled
   if (folly::kIsArchAmd64 && !folly::kIsSanitizeThread) {
-    return detail::atomic_fetch_reset_x86(atomic, bit, mo);
+    return detail::atomic_fetch_reset_native(atomic, bit, mo);
   } else {
     // otherwise default to the default implementation using fetch_and()
-    return detail::atomic_fetch_reset_default(atomic, bit, mo);
+    return detail::atomic_fetch_reset_fallback(atomic, bit, mo);
   }
 }
 
