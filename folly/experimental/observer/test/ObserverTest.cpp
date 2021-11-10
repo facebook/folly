@@ -951,7 +951,7 @@ TEST(Observer, ObservableLockInversion) {
 
   while (true) {
     std::lock_guard<std::mutex> lg(lockingObservableLock);
-    if (**makeObserver([&] { return **observer; }) == kNumIters) {
+    if (**makeObserver([o = observer] { return **o; }) == kNumIters) {
       break;
     }
   }
