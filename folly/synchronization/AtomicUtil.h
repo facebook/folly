@@ -57,7 +57,7 @@ bool atomic_compare_exchange_strong_explicit(
 //
 //  Equivalent to Atomic::fetch_or with a mask. For example, if the bit
 //  argument to this function is 1, the mask passed to the corresponding
-//  Atomic::fetch_or would be 0b1.
+//  Atomic::fetch_or would be 0b10.
 //
 //  Uses an optimized implementation when available, otherwise falling back to
 //  Atomic::fetch_or with mask. The optimization is currently available for
@@ -76,7 +76,7 @@ bool atomic_fetch_set(
 //
 //  Equivalent to Atomic::fetch_and with a mask. For example, if the bit
 //  argument to this function is 1, the mask passed to the corresponding
-//  Atomic::fetch_and would be ~0b1.
+//  Atomic::fetch_and would be ~0b10.
 //
 //  Uses an optimized implementation when available, otherwise falling back to
 //  Atomic::fetch_and with mask. The optimization is currently available for
