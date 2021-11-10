@@ -458,7 +458,7 @@ class AsyncUDPSocket : public EventHandler {
 
   void setTrafficClass(int tclass);
 
-  void applyOptions(
+  virtual void applyOptions(
       const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
 
   /**
