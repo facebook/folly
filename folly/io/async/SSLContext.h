@@ -86,55 +86,11 @@ class SSLAcceptRunner {
  */
 class SSLContext {
  public:
-  /**
-   * SessionLifecycleCallbacks can be used to receive notifications about
-   * `SSL_SESSION`s that are constructed by OpenSSL after establishing a TLS
-   * connection.
-   *
-   * SSL_SESSIONs contain properties of the TLS connection, such as the traffic
-   * keys negotiated as part of the handshake, the certificate of the peer, etc.
-   * This information can be stored in a cache, so that it can later be used for
-   * TLS session resumption (see AsyncSSLSocket::setSSLSession)
-   *
-   * SessionLifecycleCallbacks is intended to allow an implementation of a SSL
-   * session cache.
-   */
   struct SessionLifecycleCallbacks {
-    /**
-     * SessionLifecycleCallbacks::onNewSession is invoked when a new session has
-     * been created by OpenSSL which can be stored in a session cache.
-     *
-     * Multiple `onNewSession` invocations can occur for a given connection.
-     * Implementations must be prepared to handle this.
-     *
-     * @param ssl      The `ssl` object corresponding to the connection that
-     * established the session
-     * @param session  The SSL_SESSION object that should be stored.
-     */
-    virtual void onNewSession(
-        SSL* /*ssl */, folly::ssl::SSLSessionUniquePtr /* session */) = 0;
-
-    /**
-     * SessionLifecycleCallbacks::onRemoveSession is invoked when OpenSSL
-     * considers a session expired for any reason. (For example, OpenSSL may
-     * want to remove a session after it was used for a resumed connection). The
-     * session should be considered "invalid".
-     *
-     * It's important to note that for TLS 1.3 connections, OpenSSL will invoke
-     * this after the handshake to discourage session reuse.
-     *
-     * The interface is asymmetric w.r.t `onNewSession` intentionally; OpenSSL's
-     * underlying functions require this signature.
-     *
-     * @param ctx     The SSL_CTX of the SSL that established the original
-     * session.
-     * @param session A *non-owning* pointer to the SSL_SESSION that should be
-     * removed. Do not attempt to SSL_SESSION_free this.
-     */
-    virtual void onRemoveSession(
-        SSL_CTX* /* ctx */, SSL_SESSION* /* session */) = 0;
+    virtual void onNewSession(SSL*, folly::ssl::SSLSessionUniquePtr) = 0;
     virtual ~SessionLifecycleCallbacks() = default;
   };
+
   enum SSLVersion {
     SSLv2,
     SSLv3,
@@ -758,8 +714,6 @@ class SSLContext {
       nullptr};
 
   static int newSessionCallback(SSL* ssl, SSL_SESSION* session);
-
-  static void removeSessionCallback(SSL_CTX* ctx, SSL_SESSION* session);
 };
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
