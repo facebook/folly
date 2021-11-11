@@ -60,7 +60,7 @@ bool Baton::waitImpl(WaitOperation* awaiter) const noexcept {
   } while (!folly::atomic_compare_exchange_weak_explicit(
       &state_,
       &oldValue,
-      static_cast<void*>(awaiter),
+      awaiter,
       std::memory_order_release,
       std::memory_order_acquire));
   return true;

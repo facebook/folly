@@ -19,6 +19,8 @@
 #include <atomic>
 #include <cstdint>
 
+#include <folly/Traits.h>
+
 namespace folly {
 
 //  atomic_compare_exchange_weak_explicit
@@ -30,8 +32,8 @@ namespace folly {
 template <template <typename> class Atom = std::atomic, typename T>
 bool atomic_compare_exchange_weak_explicit(
     Atom<T>* obj,
-    T* expected,
-    T desired,
+    type_t<T>* expected,
+    type_t<T> desired,
     std::memory_order succ,
     std::memory_order fail);
 
@@ -44,8 +46,8 @@ bool atomic_compare_exchange_weak_explicit(
 template <template <typename> class Atom = std::atomic, typename T>
 bool atomic_compare_exchange_strong_explicit(
     Atom<T>* obj,
-    T* expected,
-    T desired,
+    type_t<T>* expected,
+    type_t<T> desired,
     std::memory_order succ,
     std::memory_order fail);
 

@@ -312,7 +312,7 @@ class Baton {
     if (!folly::atomic_compare_exchange_strong_explicit<Atom>(
             &state_,
             &expected,
-            static_cast<uint32_t>(WAITING),
+            WAITING,
             std::memory_order_relaxed,
             std::memory_order_acquire)) {
       // CAS failed. The baton must have been posted between the last spin and
