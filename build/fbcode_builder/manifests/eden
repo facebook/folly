@@ -22,6 +22,7 @@ libgit2
 lz4
 pexpect
 python-toml
+python-filelock
 
 [dependencies.fb=on]
 rust
