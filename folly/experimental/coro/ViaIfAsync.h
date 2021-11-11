@@ -39,7 +39,7 @@ namespace coro {
 
 namespace detail {
 
-class ViaCoroutinePromiseBase {
+class ViaCoroutinePromiseBase : public ExtendedCoroutinePromise {
  public:
   static void* operator new(std::size_t size) {
     return ::folly_coro_async_malloc(size);
@@ -61,7 +61,7 @@ class ViaCoroutinePromiseBase {
     executor_ = std::move(executor);
   }
 
-  void setContinuation(coroutine_handle<> continuation) noexcept {
+  void setContinuation(ExtendedCoroutineHandle continuation) noexcept {
     continuation_ = continuation;
   }
 
@@ -83,15 +83,24 @@ class ViaCoroutinePromiseBase {
   void executeContinuation() noexcept {
     RequestContextScopeGuard contextScope{std::move(context_)};
     if (asyncFrame_ != nullptr) {
-      folly::resumeCoroutineWithNewAsyncStackRoot(continuation_, *asyncFrame_);
+      folly::resumeCoroutineWithNewAsyncStackRoot(
+          continuation_.getHandle(), *asyncFrame_);
     } else {
       continuation_.resume();
     }
   }
 
+ public:
+  coroutine_handle<> getHandle() final { return continuation_.getHandle(); }
+  coroutine_handle<> getErrorHandle(exception_wrapper& ex) final {
+    return continuation_.getErrorHandle(ex);
+  }
+
  protected:
+  virtual ~ViaCoroutinePromiseBase() = default;
+
   folly::Executor::KeepAlive<> executor_;
-  coroutine_handle<> continuation_;
+  ExtendedCoroutineHandle continuation_;
   folly::AsyncStackFrame* asyncFrame_ = nullptr;
   std::shared_ptr<RequestContext> context_;
 };
@@ -99,7 +108,7 @@ class ViaCoroutinePromiseBase {
 template <bool IsStackAware>
 class ViaCoroutine {
  public:
-  class promise_type : public ViaCoroutinePromiseBase {
+  class promise_type final : public ViaCoroutinePromiseBase {
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }
 
@@ -155,7 +164,7 @@ class ViaCoroutine {
     coro_.promise().setExecutor(std::move(executor));
   }
 
-  void setContinuation(coroutine_handle<> continuation) noexcept {
+  void setContinuation(ExtendedCoroutineHandle continuation) noexcept {
     coro_.promise().setContinuation(continuation);
   }
 
@@ -609,6 +618,81 @@ using semi_await_try_result_t =
     await_result_t<decltype(folly::coro::co_viaIfAsync(
         std::declval<folly::Executor::KeepAlive<>>(),
         folly::coro::co_awaitTry(std::declval<T>())))>;
+
+namespace detail {
+
+template <typename T>
+class NothrowAwaitable {
+ public:
+  template <typename T2>
+  explicit NothrowAwaitable(T2&& awaitable) noexcept(
+      std::is_nothrow_constructible_v<T, T2>)
+      : inner_(static_cast<T2&&>(awaitable)) {}
+
+  template <typename Factory>
+  explicit NothrowAwaitable(std::in_place_t, Factory&& factory)
+      : inner_(factory()) {}
+
+  T&& unwrap() { return std::move(inner_); }
+
+  template <
+      typename T2 = T,
+      typename Result = decltype(folly::coro::co_withCancellation(
+          std::declval<const folly::CancellationToken&>(), std::declval<T2>()))>
+  friend NothrowAwaitable<Result> co_withCancellation(
+      const folly::CancellationToken& cancelToken,
+      NothrowAwaitable&& awaitable) {
+    return NothrowAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
+                                      return folly::coro::co_withCancellation(
+                                          cancelToken,
+                                          static_cast<T&&>(awaitable.inner_));
+                                    }};
+  }
+
+  template <
+      typename T2 = T,
+      typename Result =
+          decltype(folly::coro::co_withAsyncStack(std::declval<T2>()))>
+  friend NothrowAwaitable<Result>
+  tag_invoke(cpo_t<co_withAsyncStack>, NothrowAwaitable&& awaitable) noexcept(
+      noexcept(folly::coro::co_withAsyncStack(std::declval<T2>()))) {
+    return NothrowAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
+                                      return folly::coro::co_withAsyncStack(
+                                          static_cast<T&&>(awaitable.inner_));
+                                    }};
+  }
+
+  template <
+      typename T2 = T,
+      typename Result = decltype(folly::coro::co_viaIfAsync(
+          std::declval<folly::Executor::KeepAlive<>>(), std::declval<T2>()))>
+  friend NothrowAwaitable<Result> co_viaIfAsync(
+      folly::Executor::KeepAlive<> executor,
+      NothrowAwaitable&&
+          awaitable) noexcept(noexcept(folly::coro::
+                                           co_viaIfAsync(
+                                               std::declval<folly::Executor::
+                                                                KeepAlive<>>(),
+                                               std::declval<T2>()))) {
+    return NothrowAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
+                                      return folly::coro::co_viaIfAsync(
+                                          std::move(executor),
+                                          static_cast<T&&>(awaitable.inner_));
+                                    }};
+  }
+
+ private:
+  T inner_;
+};
+
+} // namespace detail
+
+template <typename Awaitable>
+detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
+    Awaitable&& awaitable) {
+  return detail::NothrowAwaitable<remove_cvref_t<Awaitable>>{
+      static_cast<Awaitable&&>(awaitable)};
+}
 
 } // namespace coro
 } // namespace folly

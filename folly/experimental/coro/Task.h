@@ -66,7 +66,7 @@ class TaskPromiseBase {
     template <typename Promise>
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES coroutine_handle<>
     await_suspend(coroutine_handle<Promise> coro) noexcept {
-      TaskPromiseBase& promise = coro.promise();
+      auto& promise = coro.promise();
       // If the continuation has been exchanged, then we expect that the
       // exchanger will handle the lifetime of the async stack. See
       // ScopeExitTaskPromise's FinalAwaiter for more details.
@@ -75,6 +75,10 @@ class TaskPromiseBase {
       // a virtual wrapper over coroutine_handle that handles the pop for us.
       if (promise.ownsAsyncFrame_) {
         folly::popAsyncStackFrameCallee(promise.asyncFrame_);
+      }
+      if (promise.result_.hasException()) {
+        return promise.continuation_.getErrorHandle(
+            promise.result_.exception());
       }
       return promise.continuation_.getHandle();
     }
@@ -85,7 +89,8 @@ class TaskPromiseBase {
   friend class FinalAwaiter;
 
  protected:
-  TaskPromiseBase() noexcept {}
+  TaskPromiseBase() noexcept = default;
+  ~TaskPromiseBase() = default;
 
   template <typename Promise>
   variant_awaitable<FinalAwaiter, ready_awaitable<>> do_safe_point(
@@ -111,10 +116,21 @@ class TaskPromiseBase {
 
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) {
+    bypassExceptionThrowing_ =
+        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
+        ? BypassExceptionThrowing::ACTIVE
+        : BypassExceptionThrowing::INACTIVE;
+
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
             cancelToken_, static_cast<Awaitable&&>(awaitable))));
+  }
+
+  template <typename Awaitable>
+  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
+    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
+    return await_transform(awaitable.unwrap());
   }
 
   auto await_transform(co_current_executor_t) noexcept {
@@ -161,6 +177,13 @@ class TaskPromiseBase {
   folly::CancellationToken cancelToken_;
   bool hasCancelTokenOverride_ = false;
   bool ownsAsyncFrame_ = true;
+
+ protected:
+  enum class BypassExceptionThrowing : uint8_t {
+    INACTIVE,
+    ACTIVE,
+    REQUESTED,
+  } bypassExceptionThrowing_{BypassExceptionThrowing::INACTIVE};
 };
 
 template <typename T>
@@ -220,6 +243,16 @@ class TaskPromise final : public TaskPromiseBase,
     return do_safe_point(*this);
   }
 
+  coroutine_handle<> getErrorHandle(exception_wrapper& ex) override {
+    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      auto finalAwaiter = yield_value(co_error(std::move(ex)));
+      DCHECK(!finalAwaiter.await_ready());
+      return finalAwaiter.await_suspend(
+          coroutine_handle<TaskPromise>::from_promise(*this));
+    }
+    return coroutine_handle<TaskPromise>::from_promise(*this);
+  }
+
  private:
   Try<StorageType> result_;
 };
@@ -263,6 +296,14 @@ class TaskPromise<void> final
 
   auto await_transform(co_safe_point_t) noexcept {
     return do_safe_point(*this);
+  }
+
+  coroutine_handle<> getErrorHandle(exception_wrapper& ex) override {
+    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      return yield_value(co_error(std::move(ex)))
+          .await_suspend(coroutine_handle<TaskPromise>::from_promise(*this));
+    }
+    return coroutine_handle<TaskPromise>::from_promise(*this);
   }
 
  private:
