@@ -76,7 +76,7 @@ class TaskPromiseBase {
       if (promise.ownsAsyncFrame_) {
         folly::popAsyncStackFrameCallee(promise.asyncFrame_);
       }
-      return promise.continuation_;
+      return promise.continuation_.getHandle();
     }
 
     [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
@@ -151,11 +151,11 @@ class TaskPromiseBase {
       coroutine_handle<> continuation) noexcept {
     return {
         std::exchange(p.ownsAsyncFrame_, false),
-        std::exchange(p.continuation_, continuation),
+        std::exchange(p.continuation_, {continuation}).getHandle(),
     };
   }
 
-  coroutine_handle<> continuation_;
+  ExtendedCoroutineHandle continuation_;
   folly::AsyncStackFrame asyncFrame_;
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
@@ -164,7 +164,8 @@ class TaskPromiseBase {
 };
 
 template <typename T>
-class TaskPromise : public TaskPromiseBase {
+class TaskPromise final : public TaskPromiseBase,
+                          public ExtendedCoroutinePromiseImpl<TaskPromise<T>> {
  public:
   static_assert(
       !std::is_rvalue_reference_v<T>,
@@ -224,7 +225,9 @@ class TaskPromise : public TaskPromiseBase {
 };
 
 template <>
-class TaskPromise<void> : public TaskPromiseBase {
+class TaskPromise<void> final
+    : public TaskPromiseBase,
+      public ExtendedCoroutinePromiseImpl<TaskPromise<void>> {
  public:
   friend class TaskPromiseBase;
 

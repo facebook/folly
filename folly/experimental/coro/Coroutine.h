@@ -166,6 +166,68 @@ class variant_awaitable : private std::variant<A...> {
 
 #endif // __has_include(<variant>)
 
+// Extended promise interface folly::coro types are expected to implement
+class ExtendedCoroutinePromise {
+ public:
+  virtual coroutine_handle<> getHandle() = 0;
+
+ protected:
+  ~ExtendedCoroutinePromise() = default;
+};
+
+template <typename Promise>
+class ExtendedCoroutinePromiseImpl : public ExtendedCoroutinePromise {
+ public:
+  coroutine_handle<> getHandle() final {
+    return coroutine_handle<Promise>::from_promise(
+        *static_cast<Promise*>(this));
+  }
+
+ protected:
+  ~ExtendedCoroutinePromiseImpl() = default;
+};
+
+// Extended version of coroutine_handle<void>
+// Assumes (and enforces) assumption that coroutine_handle is a pointer
+class ExtendedCoroutineHandle {
+ public:
+  template <typename Promise>
+  /*implicit*/ ExtendedCoroutineHandle(
+      coroutine_handle<Promise> handle) noexcept
+      : basic_(handle), extended_(fromBasic(handle)) {}
+
+  /*implicit*/ ExtendedCoroutineHandle(coroutine_handle<> handle) noexcept
+      : basic_(handle) {}
+
+  /*implicit*/ ExtendedCoroutineHandle(ExtendedCoroutinePromise* ptr) noexcept
+      : basic_(ptr->getHandle()), extended_(ptr) {}
+
+  ExtendedCoroutineHandle() noexcept = default;
+
+  void resume() { basic_.resume(); }
+
+  void destroy() { basic_.destroy(); }
+
+  coroutine_handle<> getHandle() const noexcept { return basic_; }
+
+  ExtendedCoroutinePromise* getPromise() const noexcept { return extended_; }
+
+  explicit operator bool() const noexcept { return !!extended_; }
+
+ private:
+  template <typename Promise>
+  static auto fromBasic(coroutine_handle<Promise> handle) noexcept {
+    if constexpr (std::is_convertible_v<Promise*, ExtendedCoroutinePromise*>) {
+      return static_cast<ExtendedCoroutinePromise*>(&handle.promise());
+    } else {
+      return nullptr;
+    }
+  }
+
+  coroutine_handle<> basic_;
+  ExtendedCoroutinePromise* extended_{nullptr};
+};
+
 } // namespace folly::coro
 
 #endif
