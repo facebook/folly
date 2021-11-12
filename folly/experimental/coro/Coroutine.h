@@ -27,7 +27,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
-#if __has_include(<coroutine>)
+#if __has_include(<coroutine>) && !defined(LLVM_COROUTINES)
 #include <coroutine>
 #else
 #include <experimental/coroutine>
@@ -51,7 +51,7 @@ class exception_wrapper;
 
 namespace folly::coro {
 
-#if __has_include(<coroutine>)
+#if __has_include(<coroutine>) && !defined(LLVM_COROUTINES)
 namespace impl = std;
 #else
 namespace impl = std::experimental;
