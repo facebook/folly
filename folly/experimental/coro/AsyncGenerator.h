@@ -297,7 +297,8 @@ class FOLLY_NODISCARD AsyncGenerator {
         if (coro_.promise().hasValue()) {
           return folly::Try<NextResult>(NextResult{coro_});
         } else if (coro_.promise().hasException()) {
-          return folly::Try<NextResult>(coro_.promise().getException());
+          return folly::Try<NextResult>(
+              std::move(coro_.promise().getException()));
         }
       }
       return folly::Try<NextResult>(NextResult{});
@@ -391,9 +392,6 @@ class AsyncGeneratorPromise {
         break;
       case State::EXCEPTION_WRAPPER:
         folly::coro::detail::deactivate(exceptionWrapper_);
-        break;
-      case State::EXCEPTION_PTR:
-        folly::coro::detail::deactivate(exceptionPtr_);
         break;
       case State::DONE:
       case State::INVALID:
@@ -495,8 +493,8 @@ class AsyncGeneratorPromise {
 
   void unhandled_exception() noexcept {
     DCHECK(state_ == State::INVALID);
-    folly::coro::detail::activate(exceptionPtr_, std::current_exception());
-    state_ = State::EXCEPTION_PTR;
+    folly::coro::detail::activate(exceptionWrapper_, std::current_exception());
+    state_ = State::EXCEPTION_WRAPPER;
   }
 
   void return_void() noexcept {
@@ -540,23 +538,17 @@ class AsyncGeneratorPromise {
   }
 
   bool hasException() const noexcept {
-    return state_ == State::EXCEPTION_WRAPPER || state_ == State::EXCEPTION_PTR;
+    return state_ == State::EXCEPTION_WRAPPER;
   }
 
-  folly::exception_wrapper getException() noexcept {
+  folly::exception_wrapper& getException() noexcept {
     DCHECK(hasException());
-    if (state_ == State::EXCEPTION_WRAPPER) {
-      return std::move(exceptionWrapper_.get());
-    } else {
-      return exception_wrapper(std::move(exceptionPtr_.get()));
-    }
+    return exceptionWrapper_.get();
   }
 
   void throwIfException() {
     if (state_ == State::EXCEPTION_WRAPPER) {
       exceptionWrapper_.get().throw_exception();
-    } else if (state_ == State::EXCEPTION_PTR) {
-      std::rethrow_exception(std::move(exceptionPtr_.get()));
     }
   }
 
@@ -587,7 +579,6 @@ class AsyncGeneratorPromise {
   enum class State : std::uint8_t {
     INVALID,
     VALUE,
-    EXCEPTION_PTR,
     EXCEPTION_WRAPPER,
     DONE,
   };
@@ -597,13 +588,7 @@ class AsyncGeneratorPromise {
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
   union {
-    // Store both an exception_wrapper and an exception_ptr to
-    // avoid needing to rethrow the exception in unhandled_exception()
-    // to ensure we capture the type-information into the exception_wrapper
-    // just in case we are only going to rethrow it back into the awaiting
-    // coroutine.
     ManualLifetime<folly::exception_wrapper> exceptionWrapper_;
-    ManualLifetime<std::exception_ptr> exceptionPtr_;
     ManualLifetime<Reference> value_;
   };
   State state_ = State::INVALID;
