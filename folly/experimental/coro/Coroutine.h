@@ -45,10 +45,6 @@
 
 #if FOLLY_HAS_COROUTINES
 
-namespace folly {
-class exception_wrapper;
-}
-
 namespace folly::coro {
 
 #if __has_include(<coroutine>) && !defined(LLVM_COROUTINES)
@@ -174,11 +170,6 @@ class variant_awaitable : private std::variant<A...> {
 class ExtendedCoroutinePromise {
  public:
   virtual coroutine_handle<> getHandle() = 0;
-  // Types may provide a more efficient resumption path when they know they will
-  // be receiving an error result from the awaitee.
-  virtual coroutine_handle<> getErrorHandle(exception_wrapper&) {
-    return getHandle();
-  }
 
  protected:
   ~ExtendedCoroutinePromise() = default;
@@ -220,13 +211,6 @@ class ExtendedCoroutineHandle {
   coroutine_handle<> getHandle() const noexcept { return basic_; }
 
   ExtendedCoroutinePromise* getPromise() const noexcept { return extended_; }
-
-  coroutine_handle<> getErrorHandle(exception_wrapper& ex) {
-    if (extended_) {
-      return extended_->getErrorHandle(ex);
-    }
-    return basic_;
-  }
 
   explicit operator bool() const noexcept { return !!extended_; }
 
