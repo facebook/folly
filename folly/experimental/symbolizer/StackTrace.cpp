@@ -86,7 +86,11 @@ inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
   return true;
 }
 
+// on ppc64le, fails with
+// function can never be inlined because it uses setjmp
+#if FOLLY_PPC64 == 0
 FOLLY_ALWAYS_INLINE
+#endif
 ssize_t getStackTraceInPlace(
     unw_context_t& context,
     unw_cursor_t& cursor,
