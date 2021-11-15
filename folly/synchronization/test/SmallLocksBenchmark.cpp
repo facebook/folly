@@ -401,7 +401,7 @@ BENCHMARK(PicoSpinLockUncontendedBenchmark, iters) {
 }
 
 BENCHMARK(MicroLockUncontendedBenchmark, iters) {
-  runUncontended<InitLock<folly::MicroLock>>(iters);
+  runUncontended<folly::MicroLock>(iters);
 }
 
 BENCHMARK(SharedMutexUncontendedBenchmark, iters) {
@@ -718,7 +718,7 @@ int main(int argc, char** argv) {
           "folly::MicroSpinLock", numThreads);
       fairnessTest<InitLock<folly::PicoSpinLock<std::uint16_t>>>(
           "folly::PicoSpinLock<std::uint16_t>", numThreads);
-      fairnessTest<InitLock<folly::MicroLock>>("folly::MicroLock", numThreads);
+      fairnessTest<folly::MicroLock>("folly::MicroLock", numThreads);
       fairnessTest<folly::SharedMutex>("folly::SharedMutex", numThreads);
       fairnessTest<folly::DistributedMutex>(
           "folly::DistributedMutex", numThreads);

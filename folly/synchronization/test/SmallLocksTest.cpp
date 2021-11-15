@@ -267,7 +267,6 @@ TEST(SmallLocks, MicroLock) {
 
   x.a = 'a';
   x.b = origB;
-  x.alock.init();
   x.d = origD;
 
   // This thread touches other parts of the host word to show that
@@ -317,7 +316,6 @@ TEST(SmallLocks, MicroLock) {
 
 TEST(SmallLocks, MicroLockTryLock) {
   MicroLock lock;
-  lock.init();
   EXPECT_TRUE(lock.try_lock());
   EXPECT_FALSE(lock.try_lock());
   lock.unlock();
@@ -325,7 +323,6 @@ TEST(SmallLocks, MicroLockTryLock) {
 
 TEST(SmallLocks, MicroLockWithData) {
   MicroLock lock;
-  lock.init();
   EXPECT_EQ(lock.load(std::memory_order_relaxed), 0);
 
   EXPECT_EQ(lock.lockAndLoad(), 0);
@@ -363,7 +360,6 @@ TEST(SmallLocks, MicroLockDataAlignment) {
     uint8_t padding2;
   } thing;
   auto& lock = thing.lock;
-  lock.init();
 
   EXPECT_EQ(lock.lockAndLoad(), 0);
   lock.unlockAndStore(60);

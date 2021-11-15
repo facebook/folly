@@ -168,7 +168,7 @@ class basic_once_flag {
 
 class compact_once_flag {
  public:
-  compact_once_flag() noexcept { mutex_.init(); }
+  compact_once_flag() = default;
   compact_once_flag(const compact_once_flag&) = delete;
   compact_once_flag& operator=(const compact_once_flag&) = delete;
 

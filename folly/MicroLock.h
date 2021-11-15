@@ -94,7 +94,7 @@ namespace folly {
 
 class MicroLockCore {
  protected:
-  uint8_t lock_;
+  uint8_t lock_{};
   /**
    * Arithmetic shift required to get to the byte from the word.
    */
@@ -183,11 +183,6 @@ class MicroLockCore {
    */
   void unlockAndStore(uint8_t value) noexcept;
   void unlock() noexcept;
-
-  /**
-   * Initializes the lock state and sets the data bits to 0.
-   */
-  void init() noexcept { lock_ = 0; }
 };
 
 inline detail::Futex<>* MicroLockCore::word() const noexcept {
