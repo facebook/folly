@@ -129,4 +129,20 @@ TEST_F(ScopeExitTest, NonMoveableState) {
   EXPECT_EQ(count, 2);
 }
 
+TEST_F(ScopeExitTest, OneExitActionThroughNoThrow) {
+  EXPECT_THROW(
+      folly::coro::blockingWait([this]() -> Task<> {
+        co_await co_scope_exit([this]() -> Task<> {
+          ++count;
+          co_return;
+        });
+        co_await co_nothrow([]() -> Task<> {
+          throw std::runtime_error("Something bad happened!");
+          co_return;
+        }());
+      }()),
+      std::runtime_error);
+  EXPECT_EQ(count, 1);
+}
+
 #endif // FOLLY_HAS_COROUTINES

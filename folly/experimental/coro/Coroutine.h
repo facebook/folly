@@ -45,6 +45,11 @@
 
 #if FOLLY_HAS_COROUTINES
 
+namespace folly {
+class exception_wrapper;
+struct AsyncStackFrame;
+} // namespace folly
+
 namespace folly::coro {
 
 #if __has_include(<coroutine>) && !defined(LLVM_COROUTINES)
@@ -166,10 +171,17 @@ class variant_awaitable : private std::variant<A...> {
 
 #endif // __has_include(<variant>)
 
+class ExtendedCoroutineHandle;
+
 // Extended promise interface folly::coro types are expected to implement
 class ExtendedCoroutinePromise {
  public:
   virtual coroutine_handle<> getHandle() = 0;
+  // Types may provide a more efficient resumption path when they know they will
+  // be receiving an error result from the awaitee.
+  // If they do, they might also update the active stack frame.
+  virtual std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
+      exception_wrapper&);
 
  protected:
   ~ExtendedCoroutinePromise() = default;
@@ -212,6 +224,14 @@ class ExtendedCoroutineHandle {
 
   ExtendedCoroutinePromise* getPromise() const noexcept { return extended_; }
 
+  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
+      exception_wrapper& ex) {
+    if (extended_) {
+      return extended_->getErrorHandle(ex);
+    }
+    return {basic_, nullptr};
+  }
+
   explicit operator bool() const noexcept { return !!extended_; }
 
  private:
@@ -227,6 +247,11 @@ class ExtendedCoroutineHandle {
   coroutine_handle<> basic_;
   ExtendedCoroutinePromise* extended_{nullptr};
 };
+
+inline std::pair<ExtendedCoroutineHandle, AsyncStackFrame*>
+ExtendedCoroutinePromise::getErrorHandle(exception_wrapper&) {
+  return {getHandle(), nullptr};
+}
 
 } // namespace folly::coro
 
