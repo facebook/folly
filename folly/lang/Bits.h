@@ -73,7 +73,7 @@
 
 namespace folly {
 
-#if __cpp_lib_bit_cast
+#ifdef __cpp_lib_bit_cast
 
 using std::bit_cast;
 

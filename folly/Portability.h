@@ -46,7 +46,7 @@ constexpr bool kHasUnalignedAccess = false;
 // msvc should come first, so if clang is in msvc mode it gets the right defines
 
 // NOTE: this will only do checking in msvc with versions that support /analyze
-#if _MSC_VER
+#ifdef _MSC_VER
 #ifdef _USE_ATTRIBUTES_FOR_SAL
 #undef _USE_ATTRIBUTES_FOR_SAL
 #endif
@@ -143,7 +143,7 @@ constexpr bool kIsSanitizeAddress = true;
 constexpr bool kIsSanitizeAddress = false;
 #endif
 
-#if FOLLY_SANITIZE_THREAD
+#ifdef FOLLY_SANITIZE_THREAD
 constexpr bool kIsSanitizeThread = true;
 #else
 constexpr bool kIsSanitizeThread = false;
@@ -220,7 +220,7 @@ constexpr bool kIsSanitize = false;
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
-#if FOLLY_USE_LIBCPP
+#ifdef FOLLY_USE_LIBCPP
 #include <__config> // @manual
 #define FOLLY_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
 #define FOLLY_NAMESPACE_STD_END _LIBCPP_END_NAMESPACE_STD
@@ -366,6 +366,8 @@ constexpr auto kHasWeakSymbols = false;
 #ifndef FOLLY_NEON
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #define FOLLY_NEON 1
+#else
+#define FOLLY_NEON 0
 #endif
 #endif
 
@@ -423,7 +425,7 @@ constexpr bool const kHasRtti = FOLLY_HAS_RTTI;
 
 namespace folly {
 
-#if __OBJC__
+#ifdef __OBJC__
 constexpr auto kIsObjC = true;
 #else
 constexpr auto kIsObjC = false;
@@ -476,7 +478,7 @@ constexpr auto kGlibcxxAssertions = true;
 constexpr auto kGlibcxxAssertions = false;
 #endif
 
-#if _LIBCPP_VERSION
+#ifdef _LIBCPP_VERSION
 constexpr auto kIsLibcpp = true;
 #else
 constexpr auto kIsLibcpp = false;
@@ -488,7 +490,7 @@ constexpr auto kIsLibstdcpp = true;
 constexpr auto kIsLibstdcpp = false;
 #endif
 
-#if _MSC_VER
+#ifdef _MSC_VER
 constexpr auto kMscVer = _MSC_VER;
 #else
 constexpr auto kMscVer = 0;
@@ -508,7 +510,7 @@ constexpr auto kIsClang = false;
 constexpr auto kClangVerMajor = 0;
 #endif
 
-#if FOLLY_MICROSOFT_ABI_VER
+#ifdef FOLLY_MICROSOFT_ABI_VER
 constexpr auto kMicrosoftAbiVer = FOLLY_MICROSOFT_ABI_VER;
 #else
 constexpr auto kMicrosoftAbiVer = 0;
@@ -516,7 +518,7 @@ constexpr auto kMicrosoftAbiVer = 0;
 
 // cpplib is an implementation of the standard library, and is the one typically
 // used with the msvc compiler
-#if _CPPLIB_VER
+#ifdef _CPPLIB_VER
 constexpr auto kCpplibVer = _CPPLIB_VER;
 #else
 constexpr auto kCpplibVer = 0;
@@ -534,7 +536,7 @@ constexpr auto kCpplibVer = 0;
 //    FOLLY_STORAGE_CONSTEXPR int const num = 3;
 //
 //  True as of MSVC 2017.
-#if _MSC_VER
+#ifdef _MSC_VER
 #define FOLLY_STORAGE_CONSTEXPR
 #else
 #define FOLLY_STORAGE_CONSTEXPR constexpr

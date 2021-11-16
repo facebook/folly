@@ -104,12 +104,12 @@
 /* Define a convenience macro to test when thread sanitizer is being used
  * across the different compilers (e.g. clang, gcc) */
 #ifndef FOLLY_SANITIZE_THREAD
-#if FOLLY_HAS_FEATURE(thread_sanitizer) || __SANITIZE_THREAD__
+#if FOLLY_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
 #define FOLLY_SANITIZE_THREAD 1
 #endif
 #endif
 
-#if FOLLY_SANITIZE_THREAD
+#ifdef FOLLY_SANITIZE_THREAD
 #define FOLLY_DISABLE_THREAD_SANITIZER \
   __attribute__((no_sanitize_thread, noinline))
 #else
@@ -121,12 +121,12 @@
  * across the different compilers (e.g. clang, gcc)
  */
 #ifndef FOLLY_SANITIZE_MEMORY
-#if FOLLY_HAS_FEATURE(memory_sanitizer) || __SANITIZE_MEMORY__
+#if FOLLY_HAS_FEATURE(memory_sanitizer) || defined(__SANITIZE_MEMORY__)
 #define FOLLY_SANITIZE_MEMORY 1
 #endif
 #endif
 
-#if FOLLY_SANITIZE_MEMORY
+#ifdef FOLLY_SANITIZE_MEMORY
 #define FOLLY_DISABLE_MEMORY_SANITIZER \
   __attribute__((no_sanitize_memory, noinline))
 #else

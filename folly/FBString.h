@@ -2545,7 +2545,7 @@ operator<<(
         typename basic_fbstring<E, T, A, S>::value_type,
         typename basic_fbstring<E, T, A, S>::traits_type>& os,
     const basic_fbstring<E, T, A, S>& str) {
-#if _LIBCPP_VERSION
+#ifdef _LIBCPP_VERSION
   typedef std::basic_ostream<
       typename basic_fbstring<E, T, A, S>::value_type,
       typename basic_fbstring<E, T, A, S>::traits_type>
