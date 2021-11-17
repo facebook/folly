@@ -18,7 +18,7 @@
 
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
-#ifdef FOLLY_USE_LIBSTDCPP
+#if FOLLY_USE_LIBSTDCPP
 
 #include <folly/concurrency/AtomicSharedPtr.h>
 
@@ -236,10 +236,10 @@ int main(int, char**) {
   return 0;
 }
 
-#else // #ifdef FOLLY_USE_LIBSTDCPP
+#else // #if FOLLY_USE_LIBSTDCPP
 
 int main(int, char**) {
   return 1;
 }
 
-#endif // #ifdef FOLLY_USE_LIBSTDCPP
+#endif // #if FOLLY_USE_LIBSTDCPP
