@@ -137,7 +137,7 @@ constexpr bool kIsLibrarySanitizeAddress = true;
 constexpr bool kIsLibrarySanitizeAddress = false;
 #endif
 
-#if FOLLY_SANITIZE_ADDRESS
+#ifdef FOLLY_SANITIZE_ADDRESS
 constexpr bool kIsSanitizeAddress = true;
 #else
 constexpr bool kIsSanitizeAddress = false;
@@ -149,7 +149,7 @@ constexpr bool kIsSanitizeThread = true;
 constexpr bool kIsSanitizeThread = false;
 #endif
 
-#if FOLLY_SANITIZE
+#ifdef FOLLY_SANITIZE
 constexpr bool kIsSanitize = true;
 #else
 constexpr bool kIsSanitize = false;

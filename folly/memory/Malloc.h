@@ -28,7 +28,8 @@
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
  */
-#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
+#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && \
+    !defined(FOLLY_SANITIZE)
 // We have JEMalloc, so use it.
 #else
 #ifndef MALLOCX_LG_ALIGN
@@ -67,11 +68,11 @@ namespace folly {
 /**
  * Determine if we are using jemalloc or not.
  */
-#if defined(FOLLY_ASSUME_NO_JEMALLOC) || FOLLY_SANITIZE
+#if defined(FOLLY_ASSUME_NO_JEMALLOC) || defined(FOLLY_SANITIZE)
   inline bool usingJEMalloc() noexcept {
     return false;
   }
-#elif defined(USE_JEMALLOC) && !FOLLY_SANITIZE
+#elif defined(USE_JEMALLOC) && !defined(FOLLY_SANITIZE)
   inline bool usingJEMalloc() noexcept {
     return true;
   }
@@ -136,11 +137,11 @@ inline bool getTCMallocNumericProperty(const char* name, size_t* out) noexcept {
   return MallocExtension_Internal_GetNumericProperty(name, strlen(name), out);
 }
 
-#if defined(FOLLY_ASSUME_NO_TCMALLOC) || FOLLY_SANITIZE
+#if defined(FOLLY_ASSUME_NO_TCMALLOC) || defined(FOLLY_SANITIZE)
   inline bool usingTCMalloc() noexcept {
     return false;
   }
-#elif defined(USE_TCMALLOC) && !FOLLY_SANITIZE
+#elif defined(USE_TCMALLOC) && !defined(FOLLY_SANITIZE)
   inline bool usingTCMalloc() noexcept {
     return true;
   }

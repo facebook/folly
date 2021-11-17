@@ -72,7 +72,7 @@
  * folly itself was compiled with ASAN enabled.
  */
 #ifndef FOLLY_SANITIZE_ADDRESS
-#if FOLLY_HAS_FEATURE(address_sanitizer) || __SANITIZE_ADDRESS__
+#if FOLLY_HAS_FEATURE(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
 #define FOLLY_SANITIZE_ADDRESS 1
 #endif
 #endif
@@ -144,7 +144,7 @@
 #endif
 #endif
 
-#if FOLLY_SANITIZE
+#ifdef FOLLY_SANITIZE
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
   __attribute__((no_sanitize(__VA_ARGS__)))
 #else
