@@ -320,14 +320,16 @@ TEST(Observer, SubscribeCallback) {
         folly::observer::ObserverCreator<Observable, Traits>().getObserver();
 
     EXPECT_TRUE(updatesCob);
-    EXPECT_EQ(2, getCallsStart);
-    EXPECT_EQ(2, getCallsFinish);
+
+    EXPECT_GE(2, getCallsStart);
+    EXPECT_GE(2, getCallsFinish);
 
     updatesCob();
-    EXPECT_EQ(3, getCallsStart);
-    EXPECT_EQ(3, getCallsFinish);
 
     folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+    EXPECT_EQ(3, getCallsStart);
+    EXPECT_EQ(3, getCallsFinish);
 
     slowGet = true;
     cobThread = std::thread([] { updatesCob(); });

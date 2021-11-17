@@ -48,7 +48,7 @@ class ObserverCreatorContext {
     return state->value;
   }
 
-  void update() {
+  observer_detail::Core::Ptr update() {
     // This mutex ensures there's no race condition between initial update()
     // call and update() calls from the subsciption callback.
     //
@@ -66,12 +66,13 @@ class ObserverCreatorContext {
     auto state = state_.lock();
     if (!state->updateValue(std::move(newValue))) {
       // Value didn't change, so we can skip the version update.
-      return;
+      return nullptr;
     }
 
     if (!std::exchange(state->updateRequested, true)) {
-      observer_detail::ObserverManager::scheduleRefreshNewVersion(coreWeak_);
+      return coreWeak_.lock();
     }
+    return nullptr;
   }
 
   template <typename F>
@@ -157,16 +158,22 @@ ObserverCreator<Observable, Traits>::getObserver() && {
       [context = std::move(contextPrimary)]() { return context->get(); });
 
   context_->setCore(observer.core_);
-  context_->subscribe([contextWeak = std::move(contextWeak)] {
-    if (auto context = contextWeak.lock()) {
-      context->update();
-    }
-  });
+
+  auto scheduleUpdate = [contextWeak = std::move(contextWeak)] {
+    observer_detail::ObserverManager::scheduleRefreshNewVersion(
+        [contextWeak]() -> observer_detail::Core::Ptr {
+          if (auto context = contextWeak.lock()) {
+            return context->update();
+          }
+          return nullptr;
+        });
+  };
+
+  context_->subscribe(scheduleUpdate);
 
   // Do an extra update in case observable was updated between observer creation
   // and setting updates callback.
-  context_->update();
-  context_.reset();
+  scheduleUpdate();
 
   return observer;
 }

@@ -80,14 +80,14 @@ class ObserverManager {
         });
   }
 
-  static void scheduleRefreshNewVersion(Core::WeakPtr coreWeak) {
+  static void scheduleRefreshNewVersion(Function<Core::Ptr()> coreFunc) {
     auto updatesManager = getUpdatesManager();
 
     if (!updatesManager) {
       return;
     }
 
-    updatesManager->scheduleNext(std::move(coreWeak));
+    updatesManager->scheduleNext(std::move(coreFunc));
   }
 
   static void initCore(Core::Ptr core) {
@@ -200,7 +200,7 @@ class ObserverManager {
     UpdatesManager();
     ~UpdatesManager();
     void scheduleCurrent(Function<void()>);
-    void scheduleNext(Core::WeakPtr);
+    void scheduleNext(Function<Core::Ptr()>);
     void waitForAllUpdates();
 
    private:

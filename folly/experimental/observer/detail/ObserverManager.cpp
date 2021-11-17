@@ -103,35 +103,29 @@ class ObserverManager::UpdatesManager::NextQueue {
       folly::setThreadName(
           folly::sformat("{}NQ", kObserverManagerThreadNamePrefix));
 
-      Core::WeakPtr queueCoreWeak;
+      Function<Core::Ptr()> queueCoreFunc;
 
       while (true) {
-        queue_.dequeue(queueCoreWeak);
-        if (stop_) {
-          return;
-        }
-
         std::vector<Core::Ptr> cores;
-        {
-          if (auto queueCore = queueCoreWeak.lock()) {
-            cores.emplace_back(std::move(queueCore));
+        queue_.dequeue(queueCoreFunc);
+        do {
+          if (stop_) {
+            return;
           }
-        }
+
+          {
+            if (auto queueCore = queueCoreFunc()) {
+              cores.emplace_back(std::move(queueCore));
+            }
+          }
+        } while (cores.size() < kNextBatchSize &&
+                 queue_.try_dequeue(queueCoreFunc));
 
         {
           SharedMutexReadPriority::WriteHolder wh(manager.versionMutex_);
 
           // We can't pick more tasks from the queue after we bumped the
           // version, so we have to do this while holding the lock.
-          while (cores.size() < kNextBatchSize &&
-                 queue_.try_dequeue(queueCoreWeak)) {
-            if (stop_) {
-              return;
-            }
-            if (auto queueCore = queueCoreWeak.lock()) {
-              cores.emplace_back(std::move(queueCore));
-            }
-          }
 
           for (auto& corePtr : cores) {
             corePtr->setForceRefresh();
@@ -159,12 +153,14 @@ class ObserverManager::UpdatesManager::NextQueue {
     });
   }
 
-  void add(Core::WeakPtr core) { queue_.enqueue(std::move(core)); }
+  void add(Function<Core::Ptr()> coreFunc) {
+    queue_.enqueue(std::move(coreFunc));
+  }
 
   ~NextQueue() {
     stop_ = true;
     // Write to the queue to notify the thread.
-    queue_.enqueue(Core::WeakPtr());
+    queue_.enqueue([]() -> Core::Ptr { return nullptr; });
     thread_.join();
   }
 
@@ -174,13 +170,13 @@ class ObserverManager::UpdatesManager::NextQueue {
     emptyWaiters_.wlock()->push_back(std::move(promise));
 
     // Write to the queue to notify the thread.
-    queue_.enqueue(Core::WeakPtr());
+    queue_.enqueue([]() -> Core::Ptr { return nullptr; });
 
     future.get();
   }
 
  private:
-  UMPSCQueue<Core::WeakPtr, true> queue_;
+  UMPSCQueue<Function<Core::Ptr()>, true> queue_;
   std::thread thread_;
   std::atomic<bool> stop_{false};
   folly::Synchronized<std::vector<std::promise<void>>> emptyWaiters_;
@@ -202,8 +198,9 @@ void ObserverManager::UpdatesManager::scheduleCurrent(Function<void()> task) {
   currentQueue_->add(std::move(task));
 }
 
-void ObserverManager::UpdatesManager::scheduleNext(Core::WeakPtr core) {
-  nextQueue_->add(std::move(core));
+void ObserverManager::UpdatesManager::scheduleNext(
+    Function<Core::Ptr()> coreFunc) {
+  nextQueue_->add(std::move(coreFunc));
 }
 
 void ObserverManager::waitForAllUpdates() {
