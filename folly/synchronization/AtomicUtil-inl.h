@@ -115,7 +115,7 @@ template <typename Atomic>
 bool atomic_fetch_set_fallback(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   using Integer = decltype(atomic.load());
-  auto mask = Integer{0b1} << static_cast<Integer>(bit);
+  auto mask = Integer(Integer{0b1} << bit);
   return (atomic.fetch_or(mask, order) & mask);
 }
 
@@ -123,8 +123,8 @@ template <typename Atomic>
 bool atomic_fetch_reset_fallback(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   using Integer = decltype(atomic.load());
-  auto mask = Integer{0b1} << static_cast<Integer>(bit);
-  return (atomic.fetch_and(static_cast<Integer>(~mask), order) & mask);
+  auto mask = Integer(Integer{0b1} << bit);
+  return (atomic.fetch_and(Integer(~mask), order) & mask);
 }
 
 /**
