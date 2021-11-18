@@ -209,7 +209,7 @@ class F14BasicMap {
 
   F14BasicMap& operator=(std::initializer_list<value_type> ilist) {
     clear();
-    bulkInsert(ilist.begin(), ilist.end(), false);
+    bulkInsert(ilist.begin(), ilist.end(), true);
     return *this;
   }
 
