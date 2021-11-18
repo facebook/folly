@@ -299,13 +299,13 @@ class Try {
    *          type `From` permits `std::is_convertible<From*, Ex*>`; otherwise,
    *          returns `nullptr`.
    */
-  template <class E>
-  E* tryGetExceptionObject() {
-    return hasException() ? e_.get_exception<E>() : nullptr;
+  template <class Ex>
+  Ex* tryGetExceptionObject() {
+    return hasException() ? e_.get_exception<Ex>() : nullptr;
   }
-  template <class E>
-  E const* tryGetExceptionObject() const {
-    return hasException() ? e_.get_exception<E>() : nullptr;
+  template <class Ex>
+  Ex const* tryGetExceptionObject() const {
+    return hasException() ? e_.get_exception<Ex>() : nullptr;
   }
 
   /*
