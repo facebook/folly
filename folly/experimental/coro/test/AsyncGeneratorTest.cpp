@@ -629,4 +629,56 @@ TEST(AsyncGenerator, SafePoint) {
   }());
 }
 
+TEST(AsyncGenerator, CoAwaitNothrow) {
+  auto res =
+      folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {
+        auto gen = []() -> folly::coro::AsyncGenerator<int> {
+          auto inner = []() -> folly::coro::AsyncGenerator<int> {
+            co_yield 42;
+            throw std::runtime_error("");
+          }();
+          co_yield *co_await co_nothrow(inner.next());
+          try {
+            co_yield *co_await co_nothrow(inner.next());
+          } catch (...) {
+            ADD_FAILURE();
+          }
+          ADD_FAILURE();
+        }();
+
+        co_await co_nothrow(gen.next());
+        try {
+          co_await co_nothrow(gen.next());
+        } catch (...) {
+          ADD_FAILURE();
+        }
+        ADD_FAILURE();
+      }()));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+TEST(AsyncGenerator, CoAwaitNothrowMultiTask) {
+  auto res =
+      folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {
+        auto gen = co_await
+            []() -> folly::coro::Task<folly::coro::AsyncGenerator<int>> {
+          auto gen = []() -> folly::coro::AsyncGenerator<int> {
+            co_yield 42;
+            throw std::runtime_error("");
+          }();
+
+          co_await co_nothrow(gen.next());
+          co_return gen;
+        }();
+
+        try {
+          co_await co_nothrow(gen.next());
+        } catch (...) {
+          ADD_FAILURE();
+        }
+        ADD_FAILURE();
+      }()));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
 #endif

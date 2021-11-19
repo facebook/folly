@@ -262,7 +262,7 @@ class FOLLY_NODISCARD AsyncGenerator {
     bool await_ready() noexcept { return !coro_; }
 
     template <typename Promise>
-    FOLLY_NOINLINE auto await_suspend(
+    FOLLY_NOINLINE coroutine_handle<> await_suspend(
         coroutine_handle<Promise> continuation) noexcept {
       auto& promise = coro_.promise();
 
@@ -367,7 +367,9 @@ class FOLLY_NODISCARD AsyncGenerator {
 namespace detail {
 
 template <typename Reference, typename Value>
-class AsyncGeneratorPromise {
+class AsyncGeneratorPromise final
+    : public ExtendedCoroutinePromiseImpl<
+          AsyncGeneratorPromise<Reference, Value>> {
   class YieldAwaiter {
    public:
     bool await_ready() noexcept { return false; }
@@ -377,7 +379,12 @@ class AsyncGeneratorPromise {
       // Pop AsyncStackFrame first as clearContext() clears the frame state.
       folly::popAsyncStackFrameCallee(promise.getAsyncFrame());
       promise.clearContext();
-      return promise.continuation_;
+      if (promise.hasException()) {
+        auto [handle, frame] =
+            promise.continuation_.getErrorHandle(promise.getException());
+        return handle.getHandle();
+      }
+      return promise.continuation_.getHandle();
     }
     void await_resume() noexcept {}
   };
@@ -504,10 +511,20 @@ class AsyncGeneratorPromise {
 
   template <typename U>
   auto await_transform(U&& value) {
+    bypassExceptionThrowing_ =
+        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
+        ? BypassExceptionThrowing::ACTIVE
+        : BypassExceptionThrowing::INACTIVE;
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
             cancelToken_, static_cast<U&&>(value))));
+  }
+
+  template <typename Awaitable>
+  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
+    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
+    return await_transform(awaitable.unwrap());
   }
 
   auto await_transform(folly::coro::co_current_executor_t) noexcept {
@@ -533,7 +550,7 @@ class AsyncGeneratorPromise {
     executor_ = std::move(executor);
   }
 
-  void setContinuation(coroutine_handle<> continuation) noexcept {
+  void setContinuation(ExtendedCoroutineHandle continuation) noexcept {
     continuation_ = continuation;
   }
 
@@ -568,6 +585,21 @@ class AsyncGeneratorPromise {
 
   folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
 
+  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
+      exception_wrapper& ex) override {
+    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      auto yieldAwaiter = yield_value(co_error(std::move(ex)));
+      DCHECK(!yieldAwaiter.await_ready());
+      return {
+          yieldAwaiter.await_suspend(
+              coroutine_handle<AsyncGeneratorPromise>::from_promise(*this)),
+          // yieldAwaiter.await_suspend pops a frame
+          getAsyncFrame().getParentFrame()};
+    }
+    return {
+        coroutine_handle<AsyncGeneratorPromise>::from_promise(*this), nullptr};
+  }
+
  private:
   void clearContext() noexcept {
     executor_ = {};
@@ -583,7 +615,7 @@ class AsyncGeneratorPromise {
     DONE,
   };
 
-  coroutine_handle<> continuation_;
+  ExtendedCoroutineHandle continuation_;
   folly::AsyncStackFrame asyncFrame_;
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
@@ -593,6 +625,12 @@ class AsyncGeneratorPromise {
   };
   State state_ = State::INVALID;
   bool hasCancelTokenOverride_ = false;
+
+  enum class BypassExceptionThrowing : uint8_t {
+    INACTIVE,
+    ACTIVE,
+    REQUESTED,
+  } bypassExceptionThrowing_{BypassExceptionThrowing::INACTIVE};
 };
 
 } // namespace detail
