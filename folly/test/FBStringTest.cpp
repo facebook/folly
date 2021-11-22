@@ -1729,6 +1729,138 @@ TEST(WFBString, compareToStdWStringLong) {
 #if FOLLY_HAS_STRING_VIEW
 struct custom_traits : public std::char_traits<char> {};
 
+TEST(FBString, constructFromStringView) {
+  std::string_view sv = "foo";
+  folly::fbstring s(sv);
+  EXPECT_EQ(s, "foo");
+  std::basic_string_view<char, custom_traits> sv2 = "bar2";
+  folly::basic_fbstring<char, custom_traits> s2(sv2);
+  EXPECT_EQ(s2, "bar2");
+}
+
+TEST(FBString, appendStringView) {
+  std::string_view sv = "_suffix";
+  folly::fbstring s("prefix");
+  s.append(sv);
+  EXPECT_EQ(s, "prefix_suffix");
+  std::basic_string_view<char, custom_traits> sv2 = "_suffix";
+  folly::basic_fbstring<char, custom_traits> s2("prefix");
+  EXPECT_EQ(s2 += sv2, "prefix_suffix");
+}
+
+TEST(FBString, replaceFromStringView1) {
+  folly::fbstring s("Am I a string?");
+  std::string_view sv = "string_view";
+  s.replace(7, 6, sv);
+  EXPECT_EQ(s, "Am I a string_view?");
+  folly::basic_fbstring<char, custom_traits> s2("Am I a string?");
+  std::basic_string_view<char, custom_traits> sv2 = "string_view";
+  s2.replace(7, 6, sv2);
+  EXPECT_EQ(s2, "Am I a string_view?");
+}
+
+TEST(FBString, replaceFromStringView2) {
+  folly::fbstring s("We are a string");
+  std::string_view sv = "string_view";
+  s.replace(std::next(s.begin(), 9), s.end(), sv);
+  EXPECT_EQ(s, "We are a string_view");
+  folly::basic_fbstring<char, custom_traits> s2("We are a string");
+  std::basic_string_view<char, custom_traits> sv2 = "string_view";
+  s2.replace(std::next(s2.begin(), 9), s2.end(), sv2);
+  EXPECT_EQ(s2, "We are a string_view");
+}
+
+TEST(FBString, replaceFromStringView3) {
+  folly::fbstring s("key1=value1,key2=value2");
+  std::string_view sv = "key1=val1,key2=val2";
+  s.replace(5, 6, sv, 5, 4);
+  EXPECT_EQ(s, "key1=val1,key2=value2");
+  folly::basic_fbstring<char, custom_traits> s2("key1=value1,key2=value2");
+  std::basic_string_view<char, custom_traits> sv2 = "key1=val1,key2=val2";
+  s2.replace(5, 6, sv2, 5, 4);
+  EXPECT_EQ(s2, "key1=val1,key2=value2");
+}
+
+TEST(FBString, findFromStringView) {
+  folly::fbstring s("barfoobarfoo");
+  std::string_view sv = "bar";
+  EXPECT_EQ(s.find(sv, 1), 6U);
+  folly::basic_fbstring<char, custom_traits> s2("barfoobarfoo");
+  std::basic_string_view<char, custom_traits> sv2 = "bar";
+  EXPECT_EQ(s2.find(sv2), 0U);
+}
+
+TEST(FBString, rfindFromStringView) {
+  folly::fbstring s("barfoobarfoo");
+  std::string_view sv = "foo";
+  EXPECT_EQ(s.rfind(sv), 9U);
+  folly::basic_fbstring<char, custom_traits> s2("barfoobarfoo");
+  std::basic_string_view<char, custom_traits> sv2 = "bar";
+  EXPECT_EQ(s2.rfind(sv2, 1), 0U);
+}
+
+TEST(FBString, findFirstOfFromStringView) {
+  folly::fbstring s("barfoobarfoo");
+  std::string_view sv = "ro";
+  EXPECT_EQ(s.find_first_of(sv), 2U);
+  folly::basic_fbstring<char, custom_traits> s2("barfoobarfoo");
+  std::basic_string_view<char, custom_traits> sv2 = "ro";
+  EXPECT_EQ(s2.find_first_of(sv2, 3), 4U);
+}
+
+TEST(FBString, findLastOfFromStringView) {
+  folly::fbstring s("barfoobarfoo");
+  std::string_view sv = "far";
+  EXPECT_EQ(s.find_last_of(sv), 9U);
+  folly::basic_fbstring<char, custom_traits> s2("barfoobarfoo");
+  std::basic_string_view<char, custom_traits> sv2 = "far";
+  EXPECT_EQ(s2.find_last_of(sv2, 8U), 8U);
+}
+
+TEST(FBString, findFirstNotOfFromStringView) {
+  folly::fbstring s("barfoobarfoo");
+  std::string_view sv = "a";
+  EXPECT_EQ(s.find_first_not_of(sv), 0U);
+  folly::basic_fbstring<char, custom_traits> s2("barfoobarfoo");
+  std::basic_string_view<char, custom_traits> sv2 = "a";
+  EXPECT_EQ(s2.find_first_not_of(sv2, 7), 8U);
+}
+
+TEST(FBString, findLastNotOfFromStringView) {
+  folly::fbstring s("barfoobarfoo");
+  std::string_view sv = "or";
+  EXPECT_EQ(s.find_last_not_of(sv), 9U);
+  folly::basic_fbstring<char, custom_traits> s2("barfoobarfoo");
+  folly::basic_fbstring<char, custom_traits> sv2 = "zyu";
+  EXPECT_EQ(s2.find_last_not_of(sv2), 11U);
+}
+
+TEST(FBString, startsWithStringView) {
+  folly::fbstring s("barfoobarfoo");
+  EXPECT_FALSE(s.starts_with(std::string_view("barb")));
+  EXPECT_TRUE(s.starts_with(std::string_view("bar")));
+  EXPECT_TRUE(s.starts_with(std::string_view("ba")));
+  EXPECT_TRUE(s.starts_with(std::string_view("b")));
+  EXPECT_TRUE(s.starts_with(std::string_view("")));
+
+  EXPECT_FALSE(s.starts_with(std::string_view("f")));
+  EXPECT_TRUE(s.starts_with(std::string_view("barfoobarfoo")));
+  EXPECT_FALSE(s.starts_with(std::string_view("barfoobarfoo1")));
+}
+
+TEST(FBString, endsWithStringView) {
+  folly::fbstring s("barfoobarfoo");
+  EXPECT_FALSE(s.ends_with(std::string_view("ffoo")));
+  EXPECT_TRUE(s.ends_with(std::string_view("foo")));
+  EXPECT_TRUE(s.ends_with(std::string_view("oo")));
+  EXPECT_TRUE(s.ends_with(std::string_view("o")));
+  EXPECT_TRUE(s.ends_with(std::string_view("")));
+
+  EXPECT_FALSE(s.ends_with(std::string_view("f")));
+  EXPECT_TRUE(s.ends_with(std::string_view("barfoobarfoo")));
+  EXPECT_FALSE(s.ends_with(std::string_view("1barfoobarfoo")));
+}
+
 TEST(FBString, convertToStringView) {
   folly::fbstring s("foo");
   std::string_view sv = s;

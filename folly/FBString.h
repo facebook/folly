@@ -23,6 +23,7 @@
 #include <atomic>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <iosfwd>
 #include <limits>
@@ -407,8 +408,7 @@ class fbstring_core {
       auto maybeSmallSize = size_t(maxSmallSize) -
           size_t(static_cast<UChar>(small_[maxSmallSize]));
       // With this syntax, GCC and Clang generate a CMOV instead of a branch.
-      ret =
-          (static_cast<ptrdiff_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
+      ret = (static_cast<intmax_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
     } else {
       ret = (category() == Category::isSmall) ? smallSize() : ret;
     }
@@ -1103,6 +1103,17 @@ class basic_fbstring {
     assign(il.begin(), il.end());
   }
 
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  explicit basic_fbstring(const SV& sv, const A& = A()) : basic_fbstring(sv.data(), sv.size()) {}
+
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  explicit basic_fbstring(const SV& sv, size_type pos, size_type n, const A& = A())
+    : basic_fbstring(sv.substr(pos, n)) {}
+#endif
+
   ~basic_fbstring() noexcept {}
 
   basic_fbstring& operator=(const basic_fbstring& lhs);
@@ -1250,6 +1261,14 @@ class basic_fbstring {
 
   basic_fbstring& operator+=(const value_type* s) { return append(s); }
 
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  basic_fbstring& operator+=(const SV& sv) {
+    return append(sv);
+  }
+#endif
+
   basic_fbstring& operator+=(const value_type c) {
     push_back(c);
     return *this;
@@ -1282,6 +1301,14 @@ class basic_fbstring {
   basic_fbstring& append(std::initializer_list<value_type> il) {
     return append(il.begin(), il.end());
   }
+
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  basic_fbstring& append(const SV& sv) {
+    return append(sv.begin(), sv.end());
+  }
+#endif
 
   void push_back(const value_type c) { // primitive
     store_.push_back(c);
@@ -1426,6 +1453,14 @@ class basic_fbstring {
     return replace(pos1, n1, str.data(), str.size());
   }
 
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  basic_fbstring& replace(size_type pos1, size_type n1, const SV& sv) {
+    return replace(pos1, n1, sv.data(), sv.size());
+  }
+#endif
+
   // Replaces at most n1 chars of *this, starting with pos1,
   // with at most n2 chars of str starting with pos2
   basic_fbstring& replace(
@@ -1469,6 +1504,23 @@ class basic_fbstring {
   basic_fbstring& replace(iterator i1, iterator i2, const value_type* s) {
     return replace(i1, i2, s, traitsLength(s));
   }
+
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  basic_fbstring& replace(iterator i1, iterator i2, const SV& sv) {
+    return replace(i1, i2, sv.data(), sv.length());
+  }
+
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  basic_fbstring& replace(size_type pos1, size_type n1, const SV& sv,
+                          size_type pos2, size_type n2 = npos) {
+    enforce<std::out_of_range>(pos2 <= sv.length(), "");
+    return replace(
+        pos1, n1, sv.data() + pos2, std::min(n2, sv.size() - pos2));
+  }
+#endif
 
  private:
   basic_fbstring& replaceImplDiscr(
@@ -1570,6 +1622,18 @@ class basic_fbstring {
     return find(&c, pos, 1);
   }
 
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T>>::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  size_type find(const SV& sv, size_type pos = 0) const 
+#if FOLLY_CPLUSPLUS > 201703L
+  noexcept(std::is_nothrow_convertible_v<const SV&, std::basic_string_view<E, T>>)
+#endif
+  {
+    return find(sv.data(), pos, sv.length());
+  }
+#endif
+
   size_type rfind(const basic_fbstring& str, size_type pos = npos) const {
     return rfind(str.data(), pos, str.length());
   }
@@ -1583,6 +1647,18 @@ class basic_fbstring {
   size_type rfind(value_type c, size_type pos = npos) const {
     return rfind(&c, pos, 1);
   }
+
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  size_type rfind(const SV& sv, size_type pos = npos) const 
+#if FOLLY_CPLUSPLUS > 201703L
+  noexcept(std::is_nothrow_convertible_v<const SV&, std::basic_string_view<E, T>>)
+#endif
+  {
+    return rfind(sv.data(), pos, sv.length());
+  }
+#endif
 
   size_type find_first_of(const basic_fbstring& str, size_type pos = 0) const {
     return find_first_of(str.data(), pos, str.length());
@@ -1599,6 +1675,18 @@ class basic_fbstring {
     return find_first_of(&c, pos, 1);
   }
 
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  size_type find_first_of(const SV& sv, size_type pos = 0) const 
+#if FOLLY_CPLUSPLUS > 201703L
+  noexcept(std::is_nothrow_convertible_v<const SV&, std::basic_string_view<E, T>>)
+#endif
+  {
+    return find_first_of(sv.data(), pos, sv.length());
+  }
+#endif
+
   size_type find_last_of(
       const basic_fbstring& str, size_type pos = npos) const {
     return find_last_of(str.data(), pos, str.length());
@@ -1613,6 +1701,18 @@ class basic_fbstring {
   size_type find_last_of(value_type c, size_type pos = npos) const {
     return find_last_of(&c, pos, 1);
   }
+
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  size_type find_last_of(const SV& sv, size_type pos = npos) const 
+#if FOLLY_CPLUSPLUS > 201703L
+  noexcept(std::is_nothrow_convertible_v<const SV&, std::basic_string_view<E, T>>)
+#endif 
+  {
+    return find_last_of(sv.data(), pos, sv.length());
+  }
+#endif
 
   size_type find_first_not_of(
       const basic_fbstring& str, size_type pos = 0) const {
@@ -1630,6 +1730,18 @@ class basic_fbstring {
     return find_first_not_of(&c, pos, 1);
   }
 
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  size_type find_first_not_of(const SV& sv, size_type pos = 0) const 
+#if FOLLY_CPLUSPLUS > 201703L
+  noexcept(std::is_nothrow_convertible_v<const SV&, std::basic_string_view<E, T>>)
+#endif
+  {
+    return find_first_not_of(sv.data(), pos, sv.length());
+  }
+#endif
+
   size_type find_last_not_of(
       const basic_fbstring& str, size_type pos = npos) const {
     return find_last_not_of(str.data(), pos, str.length());
@@ -1645,6 +1757,18 @@ class basic_fbstring {
   size_type find_last_not_of(value_type c, size_type pos = npos) const {
     return find_last_not_of(&c, pos, 1);
   }
+
+#if FOLLY_HAS_STRING_VIEW
+  template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
+                                             !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
+  size_type find_last_not_of(const SV& sv, size_type pos = npos) const 
+#if FOLLY_CPLUSPLUS > 201703L
+  noexcept(std::is_nothrow_convertible_v<const SV&, std::basic_string_view<E, T>>)
+#endif
+  {
+    return find_last_not_of(sv.data(), pos, sv.length());
+  }
+#endif
 
   basic_fbstring substr(size_type pos = 0, size_type n = npos) const& {
     enforce<std::out_of_range>(pos <= size(), "");
@@ -1716,6 +1840,35 @@ class basic_fbstring {
     return lhs.spaceship(rhs.data(), rhs.size());
   }
 #endif // FOLLY_CPLUSPLUS >= 202002L
+
+#if FOLLY_HAS_STRING_VIEW
+  bool starts_with(std::basic_string_view<E, T> sv) const noexcept {
+    return sv.size() <= size() && traits_type::compare(data(), sv.data(), sv.size()) == 0;
+  }
+
+  bool starts_with(const E* s) const {
+    return starts_with(std::basic_string_view<E, T>(s, traitsLength(s)));
+  }
+#endif
+
+  bool starts_with(E c) const noexcept {
+    return !empty() && front() == c;
+  }
+
+#if FOLLY_HAS_STRING_VIEW
+  bool ends_with(std::basic_string_view<E, T> sv) const noexcept {
+    const auto ourSize = size();
+    return sv.size() <= ourSize && traits_type::compare(data() + ourSize - sv.size(), sv.data(), sv.size()) == 0;
+  }
+
+  bool ends_with(const E* s) const {
+    return ends_with(std::basic_string_view<E, T>(s, traitsLength(s)));
+  }
+#endif
+
+  bool ends_with(E c) const noexcept {
+    return !empty() && back() == c;
+  }
 
  private:
 #if FOLLY_CPLUSPLUS >= 202002L
@@ -2188,9 +2341,8 @@ basic_fbstring<E, T, A, S>::rfind(
   if (n == 0) {
     return pos;
   }
-
-  const_iterator i(begin() + pos);
-  for (;; --i) {
+ 
+  for (const_iterator i(begin() + pos);; --i) {
     if (traits_type::eq(*i, *s) && traits_type::compare(&*i, s, n) == 0) {
       return i - begin();
     }
