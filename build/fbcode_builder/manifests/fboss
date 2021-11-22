@@ -6,7 +6,6 @@ shipit_fbcode_builder = true
 
 [git]
 repo_url = https://github.com/facebook/fboss.git
-rev = main
 
 [build.os=linux]
 builder = cmake

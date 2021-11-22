@@ -234,7 +234,7 @@ class GitFetcher(Fetcher):
                     rev = m.group(1)
                     print("Using pinned rev %s for %s" % (rev, repo_url))
 
-        self.rev = rev or "master"
+        self.rev = rev or "main"
         self.origin_repo = repo_url
         self.manifest = manifest
         self.depth = depth if depth else GitFetcher.DEFAULT_DEPTH
@@ -252,7 +252,7 @@ class GitFetcher(Fetcher):
         )
         if target_hash == current_hash:
             # It's up to date, so there are no changes.  This doesn't detect eg:
-            # if origin/master moved and rev='master', but that's ok for our purposes;
+            # if origin/main moved and rev='main', but that's ok for our purposes;
             # we should be using explicit hashes or eg: a stable branch for the cases
             # that we care about, and it isn't unreasonable to require that the user
             # explicitly perform a clean build if those have moved.  For the most

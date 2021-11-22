@@ -6,6 +6,7 @@ shipit_fbcode_builder = true
 
 [git]
 repo_url = https://github.com/facebookexternal/f4d.git
+rev = master
 
 [build.os=windows]
 builder = nop
