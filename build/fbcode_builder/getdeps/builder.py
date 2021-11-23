@@ -187,7 +187,13 @@ class MakeBuilder(BuilderBase):
 
 class CMakeBootStrapBuilder(MakeBuilder):
     def _build(self, install_dirs, reconfigure):
-        self._run_cmd(["./bootstrap", "--prefix=" + self.inst_dir])
+        self._run_cmd(
+            [
+                "./bootstrap",
+                "--prefix=" + self.inst_dir,
+                f"--parallel={self.build_opts.num_jobs}",
+            ]
+        )
         super(CMakeBootStrapBuilder, self)._build(install_dirs, reconfigure)
 
 
