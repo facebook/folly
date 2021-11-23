@@ -340,6 +340,12 @@ struct lock_policy_upgrade {
 };
 
 template <typename Mutex>
+using lock_policy_hybrid = conditional_t<
+    is_invocable_v<access::lock_shared_fn, Mutex&>,
+    lock_policy_shared,
+    lock_policy_unique>;
+
+template <typename Mutex>
 using lock_base_unique = lock_base<Mutex, lock_policy_unique>;
 
 template <typename Mutex>
@@ -347,6 +353,9 @@ using lock_base_shared = lock_base<Mutex, lock_policy_shared>;
 
 template <typename Mutex>
 using lock_base_upgrade = lock_base<Mutex, lock_policy_upgrade>;
+
+template <typename Mutex>
+using lock_base_hybrid = lock_base<Mutex, lock_policy_hybrid<Mutex>>;
 
 } // namespace detail
 
@@ -406,7 +415,7 @@ class shared_lock_base : public detail::lock_base_shared<Mutex> {
   friend void swap(self& a, self& b) noexcept { a.swap(b); }
 };
 
-//  upgrade_lock
+//  upgrade_lock_base
 //
 //  A lock-holder base which holds upgrade locks, usable with any upgrade mutex
 //  type.
@@ -426,6 +435,26 @@ class upgrade_lock_base : public detail::lock_base_upgrade<Mutex> {
  private:
   using base = detail::lock_base_upgrade<Mutex>;
   using self = upgrade_lock_base;
+
+ public:
+  using base::base;
+
+  void swap(self& that) noexcept { base::swap(that); }
+
+  friend void swap(self& a, self& b) noexcept { a.swap(b); }
+};
+
+//  hybrid_lock_base
+//
+//  A lock-holder base which holds shared locks for shared mutex types or
+//  exclusive locks otherwise.
+//
+//  See unique_lock_base and shared_lock_base.
+template <typename Mutex>
+class hybrid_lock_base : public detail::lock_base_hybrid<Mutex> {
+ private:
+  using base = detail::lock_base_hybrid<Mutex>;
+  using self = hybrid_lock_base;
 
  public:
   using base::base;
@@ -462,6 +491,23 @@ class upgrade_lock : public upgrade_lock_base<Mutex> {
  public:
   using upgrade_lock_base<Mutex>::upgrade_lock_base;
 };
+
+//  hybrid_lock
+//
+//  A lock-holder type which holds shared locks for shared mutex types or
+//  exclusive locks otherwise.
+//
+//  See unique_lock and shared_lock.
+template <typename Mutex>
+class hybrid_lock : public hybrid_lock_base<Mutex> {
+ public:
+  using hybrid_lock_base<Mutex>::hybrid_lock_base;
+};
+
+#if __cpp_deduction_guides >= 201703
+template <typename Mutex, typename... A>
+explicit hybrid_lock(Mutex&, A const&...) -> hybrid_lock<Mutex>;
+#endif
 
 //  lock_guard_base
 //
@@ -502,6 +548,26 @@ class shared_lock_guard
   using base::base;
 };
 
+//  hybrid_lock_guard
+//
+//  For shared mutex types, effectively shared_lock_guard; otherwise,
+//  effectively unique_lock_guard.
+template <typename Mutex>
+class hybrid_lock_guard
+    : public detail::lock_guard_base<Mutex, detail::lock_policy_hybrid<Mutex>> {
+ private:
+  using base =
+      detail::lock_guard_base<Mutex, detail::lock_policy_hybrid<Mutex>>;
+
+ public:
+  using base::base;
+};
+
+#if __cpp_deduction_guides >= 201703
+template <typename Mutex, typename... A>
+explicit hybrid_lock_guard(Mutex&, A const&...) -> hybrid_lock_guard<Mutex>;
+#endif
+
 //  make_unique_lock
 //
 //  Returns a unique_lock constructed with the given arguments. Deduces the
@@ -527,6 +593,15 @@ FOLLY_NODISCARD shared_lock<Mutex> make_shared_lock(Mutex& mutex, A&&... a) {
 template <typename Mutex, typename... A>
 FOLLY_NODISCARD upgrade_lock<Mutex> make_upgrade_lock(Mutex& mutex, A&&... a) {
   return upgrade_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+}
+
+//  make_hybrid_lock
+//
+//  Returns a hybrid_lock constructed with the given arguments. Deduces the
+//  mutex type.
+template <typename Mutex, typename... A>
+FOLLY_NODISCARD hybrid_lock<Mutex> make_hybrid_lock(Mutex& mutex, A&&... a) {
+  return hybrid_lock<Mutex>{mutex, static_cast<A&&>(a)...};
 }
 
 namespace detail {
