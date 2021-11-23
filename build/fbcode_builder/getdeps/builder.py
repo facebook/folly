@@ -885,14 +885,17 @@ class OpenSSLBuilder(BuilderBase):
 
         perl = path_search(env, "perl", "perl")
 
+        make_j_args = []
         if self.build_opts.is_windows():
             make = "nmake.exe"
             args = ["VC-WIN64A-masm", "-utf-8"]
         elif self.build_opts.is_darwin():
             make = "make"
+            make_j_args = ["-j%s" % self.build_opts.num_jobs]
             args = ["darwin64-x86_64-cc"]
         elif self.build_opts.is_linux():
             make = "make"
+            make_j_args = ["-j%s" % self.build_opts.num_jobs]
             args = (
                 ["linux-x86_64"] if not self.build_opts.is_arm() else ["linux-aarch64"]
             )
@@ -915,7 +918,10 @@ class OpenSSLBuilder(BuilderBase):
                 "no-tests",
             ]
         )
-        self._run_cmd([make, "install_sw", "install_ssldirs"])
+        make_build = [make] + make_j_args
+        self._run_cmd(make_build)
+        make_install = [make, "install_sw", "install_ssldirs"]
+        self._run_cmd(make_install)
 
 
 class Boost(BuilderBase):
