@@ -726,8 +726,6 @@ if __name__ == "__main__":
             # better signals for flaky tests.
             retry = 0
 
-        from sys import platform
-
         testpilot = path_search(env, "testpilot")
         tpx = path_search(env, "tpx")
         if (tpx or testpilot) and not no_testpilot:
