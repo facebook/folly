@@ -220,8 +220,7 @@ constexpr bool kIsSanitize = false;
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
-#if FOLLY_USE_LIBCPP
-#include <__config> // @manual
+#if defined(_LIBCPP_VERSION)
 #define FOLLY_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
 #define FOLLY_NAMESPACE_STD_END _LIBCPP_END_NAMESPACE_STD
 #else

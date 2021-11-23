@@ -205,7 +205,6 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   return exceptions;
 }
 
-#if FOLLY_USE_LIBSTDCPP
 namespace {
 
 std::terminate_handler origTerminate = abort;
@@ -244,7 +243,6 @@ void installHandlers() {
   };
   static Once once;
 }
-#endif // FOLLY_USE_LIBSTDCPP
 
 } // namespace exception_tracer
 } // namespace folly

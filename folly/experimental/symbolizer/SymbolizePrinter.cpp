@@ -183,7 +183,7 @@ void SymbolizePrinter::println(
 namespace {
 
 int getFD(const std::ios& stream) {
-#if FOLLY_USE_LIBSTDCPP && FOLLY_HAS_RTTI
+#if defined(__GLIBCXX__) && FOLLY_HAS_RTTI
   std::streambuf* buf = stream.rdbuf();
   using namespace __gnu_cxx;
 
@@ -201,7 +201,7 @@ int getFD(const std::ios& stream) {
   }
 #else
   (void)stream;
-#endif // __GNUC__
+#endif
   return -1;
 }
 

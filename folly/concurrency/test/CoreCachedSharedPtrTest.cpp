@@ -18,7 +18,7 @@
 
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
-#if FOLLY_USE_LIBSTDCPP
+#if defined(__GLIBCXX__)
 
 #include <atomic>
 #include <memory>
@@ -318,7 +318,7 @@ int main(int argc, char** argv) {
   return ret;
 }
 
-#endif // #if FOLLY_USE_LIBSTDCPP
+#endif // defined(__GLIBCXX__)
 
 #if 0
 // On Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz, 2 sockets, 28 cores, 56 threads.

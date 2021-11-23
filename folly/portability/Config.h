@@ -28,6 +28,10 @@
 #include <bits/c++config.h> // @manual
 #endif
 
+#if __has_include(<__config>)
+#include <__config> // @manual
+#endif
+
 #ifdef __ANDROID__
 #include <android/api-level.h> // @manual
 #endif
