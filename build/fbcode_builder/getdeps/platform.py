@@ -41,7 +41,7 @@ def get_linux_type():
     if name:
         name = name.lower()
         name = re.sub("linux", "", name)
-        name = name.strip()
+        name = name.strip().replace(" ", "_")
 
     version_id = os_vars.get("VERSION_ID")
     if version_id:
