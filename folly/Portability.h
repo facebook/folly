@@ -483,7 +483,7 @@ constexpr auto kIsLibcpp = true;
 constexpr auto kIsLibcpp = false;
 #endif
 
-#if FOLLY_USE_LIBSTDCPP
+#if __GLIBCXX__
 constexpr auto kIsLibstdcpp = true;
 #else
 constexpr auto kIsLibstdcpp = false;
