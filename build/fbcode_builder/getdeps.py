@@ -553,6 +553,8 @@ class BuildCmd(ProjectCmdBase):
                     # Only populate the cache from continuous build runs
                     if args.schedule_type == "continuous":
                         cached_project.upload()
+                elif args.verbose:
+                    print("found good %s" % built_marker)
 
             install_dirs.append(inst_dir)
 
@@ -1026,6 +1028,13 @@ def parse_args():
     add_common_arg(
         "--allow-system-packages",
         help="Allow satisfying third party deps from installed system packages",
+        action="store_true",
+        default=False,
+    )
+    add_common_arg(
+        "-v",
+        "--verbose",
+        help="Print more output",
         action="store_true",
         default=False,
     )
