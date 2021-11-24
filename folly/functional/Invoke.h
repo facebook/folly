@@ -32,6 +32,10 @@
 #include <folly/Utility.h>
 #include <folly/lang/CustomizationPoint.h>
 
+#define FOLLY_DETAIL_FORWARD_REF(a) static_cast<decltype(a)&&>(a)
+#define FOLLY_DETAIL_FORWARD_BODY(e) \
+  noexcept(noexcept(e))->decltype(e) { return e; }
+
 /**
  *  include or backport:
  *  * std::invoke
@@ -460,6 +464,36 @@ struct invoke_traits : detail::invoke_traits_base<I> {
   FOLLY_CREATE_MEMBER_INVOKER(membername##_fn, membername);          \
   FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr membername##_fn \
       membername {}
+
+/***
+ *  FOLLY_INVOKE_MEMBER
+ *
+ *  An invoker expression resulting in an invocable which, when invoked, invokes
+ *  the member on the object with the given arguments.
+ *
+ *  Example:
+ *
+ *    FOLLY_INVOKE_MEMBER(find)(map, key)
+ *
+ *  Equivalent to:
+ *
+ *    map.find(key)
+ *
+ *  But also equivalent to:
+ *
+ *    std::invoke(FOLLY_INVOKE_MEMBER(find), map, key)
+ *
+ *  As an implementation detail, the resulting callable is a lambda. This has
+ *  two observable consequences.
+ *  * Since C++17 only, lambda invocations may be marked constexpr.
+ *  * Since C++20 only, lambda definitions may appear in an unevaluated context,
+ *    namely, in an operand to decltype, noexcept, sizeof, or typeid.
+ */
+#define FOLLY_INVOKE_MEMBER(membername)                 \
+  [](auto&& __folly_param_o, auto&&... __folly_param_a) \
+      FOLLY_LAMBDA_CONSTEXPR FOLLY_DETAIL_FORWARD_BODY( \
+          FOLLY_DETAIL_FORWARD_REF(__folly_param_o)     \
+              .membername(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
 
 /***
  *  FOLLY_CREATE_STATIC_MEMBER_INVOKER

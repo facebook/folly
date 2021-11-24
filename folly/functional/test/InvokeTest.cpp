@@ -275,6 +275,18 @@ TEST_F(InvokeTest, member_is_nothrow_invocable_r) {
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, Obj, int>));
 }
 
+TEST_F(InvokeTest, invoke_member) {
+  auto test = FOLLY_INVOKE_MEMBER(test);
+
+  Obj fn;
+
+  EXPECT_TRUE(noexcept(test(fn, 1, 2)));
+  EXPECT_FALSE(noexcept(test(fn, 1, "2")));
+
+  EXPECT_EQ('a', test(fn, 1, 2));
+  EXPECT_EQ(17, test(fn, 1, "2"));
+}
+
 namespace {
 
 namespace invoker {

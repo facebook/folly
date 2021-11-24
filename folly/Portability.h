@@ -541,6 +541,19 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR constexpr
 #endif
 
+//  FOLLY_LAMBDA_CONSTEXPR
+//
+//  C++17 permits a lambda to be marked constexpr.
+//
+//  Example:
+//
+//    []() FOLLY_LAMBDA_CONSTEXPR { /* ... */ }
+#if FOLLY_CPLUSPLUS >= 201703L
+#define FOLLY_LAMBDA_CONSTEXPR constexpr
+#else
+#define FOLLY_LAMBDA_CONSTEXPR
+#endif
+
 #if __cplusplus >= 201703L
 // folly::coro requires C++17 support
 #if defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES)
