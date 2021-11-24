@@ -857,7 +857,7 @@ jobs:
 """
             )
 
-            getdeps = f"{py3} build/fbcode_builder/getdeps.py"
+            getdepscmd = f"{py3} build/fbcode_builder/getdeps.py"
 
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
@@ -889,12 +889,12 @@ jobs:
             for m in projects:
                 if m != manifest:
                     out.write("    - name: Fetch %s\n" % m.name)
-                    out.write(f"      run: {getdeps} fetch --no-tests {m.name}\n")
+                    out.write(f"      run: {getdepscmd} fetch --no-tests {m.name}\n")
 
             for m in projects:
                 if m != manifest:
                     out.write("    - name: Build %s\n" % m.name)
-                    out.write(f"      run: {getdeps} build --no-tests {m.name}\n")
+                    out.write(f"      run: {getdepscmd} build --no-tests {m.name}\n")
 
             out.write("    - name: Build %s\n" % manifest.name)
 
@@ -905,7 +905,7 @@ jobs:
                 )
 
             out.write(
-                f"      run: {getdeps} build --src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd} build --src-dir=. {manifest.name} {project_prefix}\n"
             )
 
             out.write("    - name: Copy artifacts\n")
@@ -919,7 +919,7 @@ jobs:
                 strip = ""
 
             out.write(
-                f"      run: {getdeps} fixup-dyn-deps{strip} "
+                f"      run: {getdepscmd} fixup-dyn-deps{strip} "
                 f"--src-dir=. {manifest.name} _artifacts/{job_name} {project_prefix} "
                 f"--final-install-prefix /usr/local\n"
             )
@@ -931,7 +931,7 @@ jobs:
 
             out.write("    - name: Test %s\n" % manifest.name)
             out.write(
-                f"      run: {getdeps} test --src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd} test --src-dir=. {manifest.name} {project_prefix}\n"
             )
 
     def setup_project_cmd_parser(self, parser):
