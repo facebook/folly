@@ -25,9 +25,9 @@ tools/rust/ossconfigs = .
 
 [dependencies]
 fbthrift
-# macOS doesn't expose the openssl api so we need to build our own.
-# Windows doesn't have openssl and Linux might contain an old version,
-# so we get to provide it
+
+# We use the system openssl on linux
+[dependencies.not(os=linux)]
 openssl
 
 [dependencies.fb=on]

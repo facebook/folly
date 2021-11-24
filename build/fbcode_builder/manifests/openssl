@@ -13,7 +13,8 @@ libssl-dev
 url = https://www.openssl.org/source/openssl-1.1.1i.tar.gz
 sha256 = e8be6a35fe41d10603c3cc635e93289ed00bf34b79671a3a4de64fcee00d5242
 
-[build]
+# We use the system openssl on linux
+[build.not(os=linux)]
 builder = openssl
 subdir = openssl-1.1.1i
 

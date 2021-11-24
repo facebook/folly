@@ -53,8 +53,11 @@ fbcode/fboss/common = common
 [dependencies]
 fb303-source
 fbthrift-source
-openssl
 rust-shed
+
+# We use the system openssl on linux
+[dependencies.not(os=linux)]
+openssl
 
 [dependencies.fb=on]
 rust
