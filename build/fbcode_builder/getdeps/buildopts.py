@@ -284,6 +284,15 @@ class BuildOptions(object):
             ):
                 # This must be the openssl library, let Rust know about it
                 env["OPENSSL_DIR"] = d
+                # And let openssl know to pick up the system certs if present
+                for system_ssl_cfg in ["/etc/pki/tls", "/etc/ssl"]:
+                    if os.path.isdir(system_ssl_cfg):
+                        cert_dir = system_ssl_cfg + "/certs"
+                        if os.path.isdir(cert_dir):
+                            env["SSL_CERT_DIR"] = cert_dir
+                        cert_file = system_ssl_cfg + "/cert.pem"
+                        if os.path.isfile(cert_file):
+                            env["SSL_CERT_FILE"] = cert_file
 
         return env
 
