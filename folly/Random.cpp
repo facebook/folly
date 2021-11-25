@@ -21,8 +21,6 @@
 #include <random>
 
 #include <folly/CppAttributes.h>
-#include <folly/File.h>
-#include <folly/FileUtil.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/ThreadLocal.h>
 #include <folly/detail/FileUtilDetail.h>
@@ -35,6 +33,8 @@
 
 #ifdef _MSC_VER
 #include <wincrypt.h> // @manual
+#else
+#include <fcntl.h>
 #endif
 
 #if FOLLY_HAVE_GETRANDOM
@@ -81,7 +81,7 @@ void readRandomDevice(void* data, size_t size) {
     // Keep the random device open for the duration of the program.
     static int randomFd = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     PCHECK(randomFd >= 0);
-    bytesRead = readFull(randomFd, data, size);
+    bytesRead = fileutil_detail::wrapFull(::read, randomFd, data, size);
   }
   PCHECK(bytesRead >= 0);
   CHECK_EQ(size_t(bytesRead), size);
