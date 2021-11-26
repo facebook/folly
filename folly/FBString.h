@@ -81,14 +81,15 @@ inline std::pair<InIt, OutIt> copy_n(
   return std::make_pair(b, d);
 }
 
-template <class Pod, class T>
-inline void podFill(Pod* b, Pod* e, T c) {
-  assert(b && e && b <= e);
+template <class Pod, class SizeType, class T>
+inline void pod_fill_n(Pod* b, SizeType n, T c) {
+  assert(b);
   constexpr auto kUseMemset = sizeof(T) == 1;
   if /* constexpr */ (kUseMemset) {
-    memset(b, c, size_t(e - b));
+    memset(b, c, n);
   } else {
-    auto const ee = b + ((e - b) & ~7u);
+    auto const ee = b + (n & ~7u);
+    auto *e = b + n;
     for (; b != ee; b += 8) {
       b[0] = c;
       b[1] = c;
@@ -1073,7 +1074,7 @@ class basic_fbstring {
   FOLLY_NOINLINE
   basic_fbstring(size_type n, value_type c, const A& /*a*/ = A()) {
     auto const pData = store_.expandNoinit(n);
-    fbstring_detail::podFill(pData, pData + n, c);
+    fbstring_detail::pod_fill_n(pData, n, c);
   }
 
   template <class InIt>
@@ -1433,14 +1434,14 @@ class basic_fbstring {
     return *this;
   }
 
-  iterator erase(iterator position) {
+  iterator erase(const_iterator position) {
     const size_type pos(position - begin());
     enforce<std::out_of_range>(pos <= size(), "");
     erase(pos, 1);
     return begin() + pos;
   }
 
-  iterator erase(iterator first, iterator last) {
+  iterator erase(const_iterator first, const_iterator last) {
     const size_type pos(first - begin());
     erase(pos, last - first);
     return begin() + pos;
@@ -1497,18 +1498,18 @@ class basic_fbstring {
     return replace(b, b + n1, s_or_n2, n_or_c);
   }
 
-  basic_fbstring& replace(iterator i1, iterator i2, const basic_fbstring& str) {
+  basic_fbstring& replace(const_iterator i1, const_iterator i2, const basic_fbstring& str) {
     return replace(i1, i2, str.data(), str.length());
   }
 
-  basic_fbstring& replace(iterator i1, iterator i2, const value_type* s) {
+  basic_fbstring& replace(const_iterator i1, const_iterator i2, const value_type* s) {
     return replace(i1, i2, s, traitsLength(s));
   }
 
 #if FOLLY_HAS_STRING_VIEW
   template <class SV, typename std::enable_if<std::is_convertible<const SV&, std::basic_string_view<E, T> >::value &&
                                              !std::is_convertible<const SV&, const E*>::value, bool>::type = true>
-  basic_fbstring& replace(iterator i1, iterator i2, const SV& sv) {
+  basic_fbstring& replace(const_iterator i1, const_iterator i2, const SV& sv) {
     return replace(i1, i2, sv.data(), sv.length());
   }
 
@@ -1524,23 +1525,23 @@ class basic_fbstring {
 
  private:
   basic_fbstring& replaceImplDiscr(
-      iterator i1,
-      iterator i2,
+      const_iterator i1,
+      const_iterator i2,
       const value_type* s,
       size_type n,
       std::integral_constant<int, 2>);
 
   basic_fbstring& replaceImplDiscr(
-      iterator i1,
-      iterator i2,
+      const_iterator i1,
+      const_iterator i2,
       size_type n2,
       value_type c,
       std::integral_constant<int, 1>);
 
   template <class InputIter>
   basic_fbstring& replaceImplDiscr(
-      iterator i1,
-      iterator i2,
+      const_iterator i1,
+      const_iterator i2,
       InputIter b,
       InputIter e,
       std::integral_constant<int, 0>);
@@ -1548,8 +1549,8 @@ class basic_fbstring {
  private:
   template <class FwdIterator>
   bool replaceAliased(
-      iterator /* i1 */,
-      iterator /* i2 */,
+      const_iterator /* i1 */,
+      const_iterator /* i2 */,
       FwdIterator /* s1 */,
       FwdIterator /* s2 */,
       std::false_type) {
@@ -1558,20 +1559,20 @@ class basic_fbstring {
 
   template <class FwdIterator>
   bool replaceAliased(
-      iterator i1, iterator i2, FwdIterator s1, FwdIterator s2, std::true_type);
+      const_iterator i1, const_iterator i2, FwdIterator s1, FwdIterator s2, std::true_type);
 
   template <class FwdIterator>
   void replaceImpl(
-      iterator i1,
-      iterator i2,
+      const_iterator i1,
+      const_iterator i2,
       FwdIterator s1,
       FwdIterator s2,
       std::forward_iterator_tag);
 
   template <class InputIterator>
   void replaceImpl(
-      iterator i1,
-      iterator i2,
+      const_iterator i1,
+      const_iterator i2,
       InputIterator b,
       InputIterator e,
       std::input_iterator_tag);
@@ -1579,7 +1580,7 @@ class basic_fbstring {
  public:
   template <class T1, class T2>
   basic_fbstring& replace(
-      iterator i1, iterator i2, T1 first_or_n_or_s, T2 last_or_c_or_n) {
+      const_iterator i1, const_iterator i2, T1 first_or_n_or_s, T2 last_or_c_or_n) {
     constexpr bool num1 = std::numeric_limits<T1>::is_specialized,
                    num2 = std::numeric_limits<T2>::is_specialized;
     using Sel =
@@ -1953,7 +1954,7 @@ inline void basic_fbstring<E, T, A, S>::resize(
   } else {
     auto const delta = n - size;
     auto pData = store_.expandNoinit(delta);
-    fbstring_detail::podFill(pData, pData + delta, c);
+    fbstring_detail::pod_fill_n(pData, delta, c);
   }
   assert(this->size() == n);
 }
@@ -2016,7 +2017,7 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::append(
     size_type n, value_type c) {
   Invariant checker(*this);
   auto pData = store_.expandNoinit(n, /* expGrowth = */ true);
-  fbstring_detail::podFill(pData, pData + n, c);
+  fbstring_detail::pod_fill_n(pData, n, c);
   return *this;
 }
 
@@ -2164,7 +2165,7 @@ basic_fbstring<E, T, A, S>::insertImplDiscr(
   store_.expandNoinit(n, /* expGrowth = */ true);
   auto b = begin();
   fbstring_detail::podMove(b + pos, b + oldSize, b + pos + n);
-  fbstring_detail::podFill(b + pos, b + pos + n, c);
+  fbstring_detail::pod_fill_n(b + pos, n, c);
 
   return b + pos;
 }
@@ -2222,8 +2223,8 @@ basic_fbstring<E, T, A, S>::insertImpl(
 
 template <typename E, class T, class A, class S>
 inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::replaceImplDiscr(
-    iterator i1,
-    iterator i2,
+    const_iterator i1,
+    const_iterator i2,
     const value_type* s,
     size_type n,
     std::integral_constant<int, 2>) {
@@ -2235,17 +2236,17 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::replaceImplDiscr(
 
 template <typename E, class T, class A, class S>
 inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::replaceImplDiscr(
-    iterator i1,
-    iterator i2,
+    const_iterator i1,
+    const_iterator i2,
     size_type n2,
     value_type c,
     std::integral_constant<int, 1>) {
   const size_type n1 = i2 - i1;
   if (n1 > n2) {
-    std::fill(i1, i1 + n2, c);
+    std::fill_n(const_cast<iterator>(i1), n2, c);
     erase(i1 + n2, i2);
   } else {
-    std::fill(i1, i2, c);
+    std::fill(const_cast<iterator>(i1), const_cast<iterator>(i2), c);
     insert(i2, n2 - n1, c);
   }
   assert(isSane());
@@ -2255,8 +2256,8 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::replaceImplDiscr(
 template <typename E, class T, class A, class S>
 template <class InputIter>
 inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::replaceImplDiscr(
-    iterator i1,
-    iterator i2,
+    const_iterator i1,
+    const_iterator i2,
     InputIter b,
     InputIter e,
     std::integral_constant<int, 0>) {
@@ -2268,7 +2269,7 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::replaceImplDiscr(
 template <typename E, class T, class A, class S>
 template <class FwdIterator>
 inline bool basic_fbstring<E, T, A, S>::replaceAliased(
-    iterator i1, iterator i2, FwdIterator s1, FwdIterator s2, std::true_type) {
+    const_iterator i1, const_iterator i2, FwdIterator s1, FwdIterator s2, std::true_type) {
   std::less_equal<const value_type*> le{};
   const bool aliased = le(&*begin(), &*s1) && le(&*s1, &*end());
   if (!aliased) {
@@ -2277,7 +2278,7 @@ inline bool basic_fbstring<E, T, A, S>::replaceAliased(
   // Aliased replace, copy to new string
   basic_fbstring temp;
   temp.reserve(size() - (i2 - i1) + std::distance(s1, s2));
-  temp.append(begin(), i1).append(s1, s2).append(i2, end());
+  temp.append(cbegin(), i1).append(s1, s2).append(i2, cend());
   swap(temp);
   return true;
 }
@@ -2285,8 +2286,8 @@ inline bool basic_fbstring<E, T, A, S>::replaceAliased(
 template <typename E, class T, class A, class S>
 template <class FwdIterator>
 inline void basic_fbstring<E, T, A, S>::replaceImpl(
-    iterator i1,
-    iterator i2,
+    const_iterator i1,
+    const_iterator i2,
     FwdIterator s1,
     FwdIterator s2,
     std::forward_iterator_tag) {
@@ -2307,11 +2308,11 @@ inline void basic_fbstring<E, T, A, S>::replaceImpl(
 
   if (n1 > n2) {
     // shrinks
-    std::copy(s1, s2, i1);
+    std::copy(s1, s2, const_cast<iterator>(i1));
     erase(i1 + n2, i2);
   } else {
     // grows
-    s1 = fbstring_detail::copy_n(s1, n1, i1).first;
+    s1 = fbstring_detail::copy_n(s1, n1, const_cast<iterator>(i1)).first;
     insert(i2, s1, s2);
   }
   assert(isSane());
@@ -2320,13 +2321,13 @@ inline void basic_fbstring<E, T, A, S>::replaceImpl(
 template <typename E, class T, class A, class S>
 template <class InputIterator>
 inline void basic_fbstring<E, T, A, S>::replaceImpl(
-    iterator i1,
-    iterator i2,
+    const_iterator i1,
+    const_iterator i2,
     InputIterator b,
     InputIterator e,
     std::input_iterator_tag) {
   basic_fbstring temp(begin(), i1);
-  temp.append(b, e).append(i2, end());
+  temp.append(b, e).append(i2, cend());
   swap(temp);
 }
 
