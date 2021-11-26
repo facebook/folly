@@ -491,7 +491,7 @@ struct invoke_traits : detail::invoke_traits_base<I> {
  */
 #define FOLLY_INVOKE_MEMBER(membername)                 \
   [](auto&& __folly_param_o, auto&&... __folly_param_a) \
-      FOLLY_LAMBDA_CONSTEXPR FOLLY_DETAIL_FORWARD_BODY( \
+      FOLLY_CXX17_CONSTEXPR FOLLY_DETAIL_FORWARD_BODY(  \
           FOLLY_DETAIL_FORWARD_REF(__folly_param_o)     \
               .membername(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
 

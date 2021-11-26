@@ -541,17 +541,14 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR constexpr
 #endif
 
-//  FOLLY_LAMBDA_CONSTEXPR
+//  FOLLY_CXX17_CONSTEXPR
 //
-//  C++17 permits a lambda to be marked constexpr.
-//
-//  Example:
-//
-//    []() FOLLY_LAMBDA_CONSTEXPR { /* ... */ }
+//  C++17 permits more cases to be marked constexpr, including lambda bodies and
+//  the `if` keyword.
 #if FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_LAMBDA_CONSTEXPR constexpr
+#define FOLLY_CXX17_CONSTEXPR constexpr
 #else
-#define FOLLY_LAMBDA_CONSTEXPR
+#define FOLLY_CXX17_CONSTEXPR
 #endif
 
 #if __cplusplus >= 201703L
