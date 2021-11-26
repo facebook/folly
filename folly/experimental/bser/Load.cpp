@@ -106,7 +106,8 @@ static dynamic decodeObject(Cursor& curs) {
       throwDecodeError(curs, "expected String");
     }
     auto key = decodeString(curs);
-    obj[key] = parseBser(curs);
+    auto keyv = StringPiece(key); // to evade MSVC C4866
+    obj[keyv] = parseBser(curs);
   }
   return obj;
 }
@@ -126,14 +127,15 @@ static dynamic decodeTemplate(Cursor& curs) {
     dynamic obj = dynamic::object;
 
     for (auto& name : names) {
+      StringPiece keyv = name.getString(); // to evade MSVC C4866
       auto bytes = curs.peekBytes();
       if ((BserType)bytes.at(0) == BserType::Skip) {
-        obj[name.getString()] = nullptr;
+        obj[keyv] = nullptr;
         curs.skipAtMost(1);
         continue;
       }
 
-      obj[name.getString()] = parseBser(curs);
+      obj[keyv] = parseBser(curs);
     }
 
     arr.push_back(std::move(obj));
