@@ -198,17 +198,38 @@ class CMakeBootStrapBuilder(MakeBuilder):
 
 
 class AutoconfBuilder(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, args):
+    def __init__(
+        self,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+        args,
+        conf_env_args,
+    ):
         super(AutoconfBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
         self.args = args or []
+        self.conf_env_args = conf_env_args or {}
 
     def _build(self, install_dirs, reconfigure):
         configure_path = os.path.join(self.src_dir, "configure")
         autogen_path = os.path.join(self.src_dir, "autogen.sh")
 
         env = self._compute_env(install_dirs)
+
+        # Some configure scripts need additional env values passed derived from cmds
+        for (k, cmd_args) in self.conf_env_args.items():
+            out = (
+                subprocess.check_output(cmd_args, env=dict(env.items()))
+                .decode("utf-8")
+                .strip()
+            )
+            if out:
+                env.set(k, out)
 
         if not os.path.exists(configure_path):
             print("%s doesn't exist, so reconfiguring" % configure_path)

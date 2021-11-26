@@ -69,8 +69,6 @@ SCHEMA = {
             "builder": REQUIRED,
             "subdir": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
-            "disable_env_override_pkgconfig": OPTIONAL,
-            "disable_env_override_path": OPTIONAL,
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
@@ -84,6 +82,7 @@ SCHEMA = {
     },
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
+    "autoconf.envcmd.LDFLAGS": {"optional_section": True},
     "rpms": {"optional_section": True},
     "debs": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
@@ -101,6 +100,7 @@ SCHEMA = {
 # using the expression syntax to enable/disable sections
 ALLOWED_EXPR_SECTIONS = [
     "autoconf.args",
+    "autoconf.envcmd.LDFLAGS",
     "build",
     "cmake.defines",
     "dependencies",
@@ -469,8 +469,19 @@ class ManifestParser(object):
 
         if builder == "autoconf":
             args = self.get_section_as_args("autoconf.args", ctx)
+            conf_env_args = {}
+            ldflags_cmd = self.get_section_as_args("autoconf.envcmd.LDFLAGS", ctx)
+            if ldflags_cmd:
+                conf_env_args["LDFLAGS"] = ldflags_cmd
             return AutoconfBuilder(
-                build_options, ctx, self, src_dir, build_dir, inst_dir, args
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+                args,
+                conf_env_args,
             )
 
         if builder == "boost":

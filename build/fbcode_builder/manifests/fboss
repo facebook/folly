@@ -31,7 +31,7 @@ libnl
 libsai
 OpenNSA
 re2
-python
+python_3_7
 yaml-cpp
 libyaml
 CLI11

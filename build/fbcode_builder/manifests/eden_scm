@@ -10,8 +10,6 @@ repo_url = https://github.com/facebookexperimental/eden.git
 [build.os=linux]
 builder = make
 subdir = eden/scm
-disable_env_override_pkgconfig = 1
-disable_env_override_path = 1
 
 [build.os=windows]
 # For now the biggest blocker is missing "make" on windows, but there are bound
@@ -53,6 +51,7 @@ fbcode/fboss/common = common
 [dependencies]
 fb303-source
 fbthrift-source
+python
 rust-shed
 
 # We use the system openssl on linux
