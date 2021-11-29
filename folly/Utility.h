@@ -271,25 +271,49 @@ FOLLY_INLINE_VARIABLE constexpr identity_fn identity;
 
 namespace moveonly_ { // Protection from unintended ADL.
 
+template <bool Copy, bool Move>
+class EnableCopyMove {
+ protected:
+  constexpr EnableCopyMove() noexcept = default;
+  ~EnableCopyMove() noexcept = default;
+
+  EnableCopyMove(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove& operator=(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove(const EnableCopyMove&) noexcept = default;
+  EnableCopyMove& operator=(const EnableCopyMove&) noexcept = default;
+};
+
 /**
  * Disallow copy but not move in derived types. This is essentially
  * boost::noncopyable (the implementation is almost identical) but it
  * doesn't delete move constructor and move assignment.
  */
-class MoveOnly {
+template <>
+class EnableCopyMove<false, true> {
  protected:
-  constexpr MoveOnly() = default;
-  ~MoveOnly() = default;
+  constexpr EnableCopyMove() noexcept = default;
+  ~EnableCopyMove() noexcept = default;
 
-  MoveOnly(MoveOnly&&) = default;
-  MoveOnly& operator=(MoveOnly&&) = default;
-  MoveOnly(const MoveOnly&) = delete;
-  MoveOnly& operator=(const MoveOnly&) = delete;
+  EnableCopyMove(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove& operator=(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove(const EnableCopyMove&) = delete;
+  EnableCopyMove& operator=(const EnableCopyMove&) = delete;
 };
 
+template <>
+class EnableCopyMove<false, false> {
+ protected:
+  constexpr EnableCopyMove() noexcept = default;
+  ~EnableCopyMove() noexcept = default;
+
+  EnableCopyMove(EnableCopyMove&&) = delete;
+  EnableCopyMove& operator=(EnableCopyMove&&) = delete;
+  EnableCopyMove(const EnableCopyMove&) = delete;
+  EnableCopyMove& operator=(const EnableCopyMove&) = delete;
+};
 } // namespace moveonly_
 
-using MoveOnly = moveonly_::MoveOnly;
+using MoveOnly = moveonly_::EnableCopyMove<false, true>;
 
 struct to_signed_fn {
   template <typename..., typename T>

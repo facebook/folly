@@ -774,3 +774,13 @@ TEST(Try, TestUnwrapForward) {
   auto unwrapped = unwrapTryTuple(std::move(original));
   EXPECT_EQ(*std::get<0>(unwrapped), 1);
 }
+
+TEST(Try, CopyConstructible) {
+  EXPECT_TRUE(std::is_copy_constructible<Try<int>>::value);
+  EXPECT_FALSE(std::is_copy_constructible<Try<MoveConstructOnly>>::value);
+}
+
+TEST(Try, CTAD) {
+  folly::Try t1(folly::unit);
+  folly::Try t2(42);
+}
