@@ -41,9 +41,9 @@
 #include <folly/portability/Unistd.h>
 #include <folly/system/Pid.h>
 
-#if defined(__linux__) && !defined(__ANDROID__)
+#if __has_include(<sys/eventfd.h>)
 #define FOLLY_HAVE_EVENTFD
-#include <folly/io/async/EventFDWrapper.h>
+#include <sys/eventfd.h>
 #endif
 
 namespace folly {
