@@ -393,10 +393,9 @@ struct invoke_traits : detail::invoke_traits_base<I> {
  *
  *  See FOLLY_CREATE_FREE_INVOKER.
  */
-#define FOLLY_CREATE_FREE_INVOKER_SUITE(membername, ...)               \
-  FOLLY_CREATE_FREE_INVOKER(membername##_fn, membername, __VA_ARGS__); \
-  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr membername##_fn   \
-      membername {}
+#define FOLLY_CREATE_FREE_INVOKER_SUITE(funcname, ...)             \
+  FOLLY_CREATE_FREE_INVOKER(funcname##_fn, funcname, __VA_ARGS__); \
+  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr funcname##_fn funcname {}
 
 /***
  *  FOLLY_CREATE_MEMBER_INVOKER
