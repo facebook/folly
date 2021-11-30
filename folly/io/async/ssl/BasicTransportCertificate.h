@@ -33,7 +33,7 @@ class BasicTransportCertificate : public folly::OpenSSLTransportCertificate {
       return nullptr;
     }
     return std::make_unique<BasicTransportCertificate>(
-        cert->getIdentity(), cert->getX509());
+        cert->getIdentity(), OpenSSLTransportCertificate::tryExtractX509(cert));
   }
 
   BasicTransportCertificate(
