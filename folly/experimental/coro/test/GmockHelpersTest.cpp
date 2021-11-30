@@ -43,6 +43,7 @@ class Foo {
   virtual folly::coro::Task<std::vector<std::string>> getValues() = 0;
 
   virtual folly::coro::Task<std::string> getString() = 0;
+  virtual folly::coro::Task<std::string> getStringArg(std::string) = 0;
 
   virtual folly::coro::Task<void> getVoid() = 0;
 };
@@ -52,6 +53,7 @@ class MockFoo : Foo {
   MOCK_METHOD0(getValues, folly::coro::Task<std::vector<std::string>>());
 
   MOCK_METHOD0(getString, folly::coro::Task<std::string>());
+  MOCK_METHOD1(getStringArg, folly::coro::Task<std::string>(std::string));
   MOCK_METHOD0(getVoid, folly::coro::Task<void>());
 };
 
@@ -178,6 +180,21 @@ TEST(CoroLambdaGtest, CoThrowTest) {
 
 CO_TEST(CoAssertThat, CoAssertThat) {
   CO_ASSERT_THAT(1, Gt(0));
+}
+
+CO_TEST(CoroGTestHelpers, CoInvokeMemberFunction) {
+  struct S {
+    folly::coro::Task<std::string> arg(std::string x) { co_return x + " bar"; }
+    folly::coro::Task<std::string> noArg() { co_return "foo"; }
+  } s;
+
+  MockFoo mock;
+  EXPECT_CALL(mock, getStringArg(_))
+      .WillOnce(CoInvoke(&s, &S::arg))
+      .WillOnce(CoInvokeWithoutArgs(&s, &S::noArg));
+
+  EXPECT_EQ(co_await mock.getStringArg("baz"), "baz bar");
+  EXPECT_EQ(co_await mock.getStringArg(""), "foo");
 }
 
 #endif // FOLLY_HAS_COROUTINES

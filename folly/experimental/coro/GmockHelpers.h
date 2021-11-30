@@ -70,6 +70,14 @@ auto CoInvoke(F&& f) {
   });
 }
 
+// Member function overload
+template <class Class, typename MethodPtr>
+auto CoInvoke(Class* obj_ptr, MethodPtr method_ptr) {
+  return ::testing::Invoke([=](auto&&... a) {
+    return co_invoke(method_ptr, obj_ptr, static_cast<decltype(a)>(a)...);
+  });
+}
+
 // CoInvoke variant that does not pass arguments to callback function.
 //
 // Example:
@@ -89,6 +97,13 @@ template <typename F>
 auto CoInvokeWithoutArgs(F&& f) {
   return ::testing::InvokeWithoutArgs(
       [f = static_cast<F&&>(f)]() { return co_invoke(f); });
+}
+
+// Member function overload
+template <class Class, typename MethodPtr>
+auto CoInvokeWithoutArgs(Class* obj_ptr, MethodPtr method_ptr) {
+  return ::testing::InvokeWithoutArgs(
+      [=]() { return co_invoke(method_ptr, obj_ptr); });
 }
 
 namespace detail {
