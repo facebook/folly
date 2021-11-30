@@ -119,29 +119,42 @@ constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
  *    std::in_place_index
  */
 
-struct in_place_tag {};
+#if FOLLY_CPLUSPLUS >= 201703L
+
+using std::in_place_t;
+
+using std::in_place_type_t;
+
+using std::in_place_index_t;
+
+using std::in_place;
+
+using std::in_place_type;
+
+using std::in_place_index;
+
+#else
+
+struct in_place_t {
+  explicit in_place_t() = default;
+};
+FOLLY_INLINE_VARIABLE constexpr in_place_t in_place{};
+
 template <class>
-struct in_place_type_tag {};
+struct in_place_type_t {
+  explicit in_place_type_t() = default;
+};
+template <class T>
+FOLLY_INLINE_VARIABLE constexpr in_place_type_t<T> in_place_type{};
+
 template <std::size_t>
-struct in_place_index_tag {};
-
-using in_place_t = in_place_tag (&)(in_place_tag);
-template <class T>
-using in_place_type_t = in_place_type_tag<T> (&)(in_place_type_tag<T>);
+struct in_place_index_t {
+  explicit in_place_index_t() = default;
+};
 template <std::size_t I>
-using in_place_index_t = in_place_index_tag<I> (&)(in_place_index_tag<I>);
+FOLLY_INLINE_VARIABLE constexpr in_place_index_t<I> in_place_index{};
 
-inline in_place_tag in_place(in_place_tag = {}) {
-  return {};
-}
-template <class T>
-inline in_place_type_tag<T> in_place_type(in_place_type_tag<T> = {}) {
-  return {};
-}
-template <std::size_t I>
-inline in_place_index_tag<I> in_place_index(in_place_index_tag<I> = {}) {
-  return {};
-}
+#endif
 
 /**
  * Initializer lists are a powerful compile time syntax introduced in C++11
