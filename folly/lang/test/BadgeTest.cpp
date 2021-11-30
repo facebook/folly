@@ -23,26 +23,38 @@ namespace {
 
 class FriendClass;
 class OtherFriendClass;
+class DummyClass;
 
 using SingleBadge = folly::badge<FriendClass>;
 using OtherSingleBadge = folly::badge<OtherFriendClass>;
 using MultipleBadges = folly::any_badge<FriendClass, OtherFriendClass>;
+using SubsetBadges = folly::any_badge<FriendClass, OtherFriendClass>;
+using SupersetBadges =
+    folly::any_badge<FriendClass, OtherFriendClass, DummyClass>;
 
 class ProtectedClass {
  public:
   static void single(SingleBadge) {}
   static void multiple(MultipleBadges) {}
+  static void subset(SubsetBadges badges) { superset(badges); }
+  static void superset(SupersetBadges) {}
 };
 
 class FriendClass {
  public:
-  static void single() { ProtectedClass::single({}); }
+  static void single() {
+    ProtectedClass::single({});
+    folly::any_badge<FriendClass> badge = SingleBadge{};
+    ProtectedClass::single(badge);
+  }
   static void multiple() { ProtectedClass::multiple(SingleBadge{}); }
+  static void subset() { ProtectedClass::subset(SingleBadge{}); }
 };
 
 class OtherFriendClass {
  public:
   static void multiple() { ProtectedClass::multiple(OtherSingleBadge{}); }
+  static void subset() { ProtectedClass::subset(OtherSingleBadge{}); }
 };
 
 } // namespace
@@ -64,4 +76,14 @@ TEST(BadgeTest, test_multiple_badges) {
   // check a badge can be constructed from the allowed context
   FriendClass::multiple();
   OtherFriendClass::multiple();
+}
+
+TEST(BadgeTest, test_subset_badges) {
+  // check a badge cannot be constructed outside of the context
+  EXPECT_FALSE(std::is_default_constructible_v<SubsetBadges>);
+  EXPECT_FALSE(std::is_default_constructible_v<SupersetBadges>);
+
+  // check a badge subset can be converted to superset anywhere
+  FriendClass::subset();
+  OtherFriendClass::subset();
 }

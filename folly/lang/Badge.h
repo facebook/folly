@@ -22,6 +22,9 @@
 
 namespace folly {
 
+template <typename... Holders>
+class any_badge;
+
 /**
  * Badge pattern allows us to abstract over friend classes and make friend
  * feature more scoped. Using this simple technique we can specify a badge tag
@@ -50,13 +53,19 @@ namespace folly {
  */
 template <typename Holder>
 class badge {
+ public:
   friend Holder;
-  badge() noexcept {}
+  /* implicit */ badge(any_badge<Holder>) noexcept {}
+
+ private:
+  /* implicit */ badge() noexcept {}
 };
 
 /**
  * For cases when multiple badge holders need to call a function we can
  * use folly::any_badge over each individual holder allowed.
+ * We allow subsets of badges to lift into supersets:
+ * folly::any_badge<A, B> lifts into folly::any_badge<A, B, C>.
  *
  * Example:
  *   class ProtectedClass: {
@@ -76,8 +85,14 @@ class any_badge {
  public:
   template <
       typename Holder,
-      std::enable_if_t<folly::IsOneOf<Holder, Holders...>::value, int> = 0>
+      typename = std::enable_if_t<folly::IsOneOf<Holder, Holders...>::value>>
   /* implicit */ any_badge(badge<Holder>) noexcept {}
+
+  template <
+      typename... OtherHolders,
+      typename = std::enable_if_t<folly::StrictConjunction<
+          folly::IsOneOf<OtherHolders, Holders...>...>::value>>
+  /* implicit */ any_badge(any_badge<OtherHolders...>) noexcept {}
 };
 
 } // namespace folly
