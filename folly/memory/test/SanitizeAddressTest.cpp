@@ -16,15 +16,53 @@
 
 #include <folly/memory/SanitizeAddress.h>
 
+#include <new>
+
 #include <folly/portability/GTest.h>
 
 class SanitizeAddressTest : public testing::Test {};
 
-TEST_F(SanitizeAddressTest, asan_region_is_poisoned) {
-  auto data = malloc(4096);
-  EXPECT_EQ(nullptr, folly::asan_region_is_poisoned(data, 4096));
-  free(data);
+TEST_F(SanitizeAddressTest, asan_poison) {
+  constexpr auto page = size_t(1 << 12);
+  constexpr auto size = page * 4;
+  constexpr auto offs = 27;
+  enum class opaque : unsigned char {};
+
+  // malloc
+
+  auto const addr =
+      static_cast<opaque*>(operator new (size, std::align_val_t{page}));
+
+  EXPECT_EQ(nullptr, folly::asan_region_is_poisoned(addr, size));
+  EXPECT_EQ(0, folly::asan_address_is_poisoned(addr + offs));
+
+  // poison
+
+  folly::asan_poison_memory_region(addr + page, page);
   EXPECT_EQ(
-      folly::kIsSanitizeAddress ? data : nullptr,
-      folly::asan_region_is_poisoned(data, 4096));
+      folly::kIsSanitizeAddress ? addr + page : nullptr,
+      folly::asan_region_is_poisoned(addr, size));
+  EXPECT_EQ(
+      nullptr,
+      folly::asan_region_is_poisoned(addr + 2 * page, size - 2 * page));
+  EXPECT_EQ(
+      folly::kIsSanitizeAddress ? 1 : 0,
+      folly::asan_address_is_poisoned(addr + page + offs));
+  EXPECT_EQ(0, folly::asan_address_is_poisoned(addr + 2 * page + offs));
+
+  // unpoison
+
+  folly::asan_unpoison_memory_region(addr + page, page);
+  EXPECT_EQ(nullptr, folly::asan_region_is_poisoned(addr, size));
+  EXPECT_EQ(0, folly::asan_address_is_poisoned(addr + page + offs));
+
+  // free
+
+  operator delete (addr, size, std::align_val_t{page});
+  EXPECT_EQ(
+      folly::kIsSanitizeAddress ? addr : nullptr,
+      folly::asan_region_is_poisoned(addr, size));
+  EXPECT_EQ(
+      folly::kIsSanitizeAddress ? 1 : 0,
+      folly::asan_address_is_poisoned(addr + offs));
 }
