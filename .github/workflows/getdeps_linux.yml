@@ -5,10 +5,10 @@ name: linux
 on:
   push:
     branches:
-    - master
+    - main
   pull_request:
     branches:
-    - master
+    - main
 
 jobs:
   build:
@@ -67,7 +67,7 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts
       run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --strip --src-dir=. folly _artifacts/linux  --project-install-prefix folly:/usr/local --final-install-prefix /usr/local
-    - uses: actions/upload-artifact@master
+    - uses: actions/upload-artifact@main
       with:
         name: folly
         path: _artifacts
