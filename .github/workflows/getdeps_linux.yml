@@ -67,7 +67,7 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts
       run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --strip --src-dir=. folly _artifacts/linux  --project-install-prefix folly:/usr/local --final-install-prefix /usr/local
-    - uses: actions/upload-artifact@main
+    - uses: actions/upload-artifact@v2
       with:
         name: folly
         path: _artifacts
