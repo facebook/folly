@@ -956,7 +956,7 @@ jobs:
         )
         parser.add_argument(
             "--main-branch",
-            default="master",
+            default="main",
             help="Main branch to trigger GitHub Action on",
         )
 
