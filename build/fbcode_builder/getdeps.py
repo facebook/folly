@@ -786,6 +786,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         ]
 
         for p in platforms:
+            if args.os_types and p.ostype not in args.os_types:
+                continue
             self.write_job_for_platform(p, args)
 
     def get_run_on(self, args):
@@ -958,6 +960,14 @@ jobs:
             "--main-branch",
             default="main",
             help="Main branch to trigger GitHub Action on",
+        )
+        parser.add_argument(
+            "--os-type",
+            help="Filter to just this OS type to run",
+            choices=["linux", "darwin", "windows"],
+            action="append",
+            dest="os_types",
+            default=[],
         )
 
 
