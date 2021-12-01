@@ -14,6 +14,8 @@
 
 import asyncio
 from cython.operator cimport dereference as deref
+from cpython.weakref cimport PyWeakref_NewRef, PyWeakref_GetObject
+from cpython cimport PyObject
 from libcpp.memory cimport unique_ptr
 from folly.executor cimport get_executor
 from libcpp.cast cimport (
@@ -27,9 +29,20 @@ from folly.fiber_manager cimport (
     cFiberManagerOptions)
 from weakref import WeakKeyDictionary
 
-#asynico Loops to FiberManager
-loop_to_controller = WeakKeyDictionary()
 
+#asynico Loops to FiberManager
+cdef object loop_to_controller = WeakKeyDictionary()
+
+# weak reference to the last seen event loop
+cdef object last_loop = None
+# FiberManager for the last seen event loop
+cdef object last_manager = None
+
+# cleanup callback that would clean last_manager
+# if object referenced by last_loop is collected
+def clean_last_manager(_wr):
+    global last_manager
+    last_manager = None
 
 cdef class FiberManager:
     cdef unique_ptr[cFiberManager] cManager
@@ -56,11 +69,20 @@ cdef class FiberManager:
 
 
 cdef cFiberManager* get_fiber_manager(const cFiberManagerOptions& opts):
-   loop = asyncio.get_event_loop()
-   try:
-       manager = <FiberManager>(loop_to_controller[loop])
-   except KeyError:
-       manager = FiberManager()
-       manager.init(opts)
-       loop_to_controller[loop] = manager
-   return manager.cManager.get()
+    global last_loop, last_manager
+
+    loop = asyncio.get_event_loop()
+    cdef FiberManager manager = None
+
+    if last_loop is not None and <PyObject*>loop is PyWeakref_GetObject(last_loop):
+        manager = last_manager
+    if manager is None:
+        try:
+            manager = <FiberManager>(loop_to_controller[loop])
+        except KeyError:
+            manager = FiberManager()
+            manager.init(opts)
+            loop_to_controller[loop] = manager
+        last_loop = PyWeakref_NewRef(loop, clean_last_manager)
+        last_manager = manager
+    return manager.cManager.get()
