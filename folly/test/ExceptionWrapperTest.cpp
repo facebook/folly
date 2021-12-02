@@ -794,3 +794,9 @@ TEST(ExceptionWrapper, self_swap_test) {
   auto& ew2 = ew;
   ew = std::move(ew2); // should not crash
 }
+
+TEST(ExceptionWrapper, termiante_with_test) {
+  auto ew = make_exception_wrapper<int>(42);
+  EXPECT_DEATH(
+      try { ew.terminate_with(); } catch (...){}, "int");
+}

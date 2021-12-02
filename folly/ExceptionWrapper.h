@@ -470,6 +470,9 @@ class exception_wrapper final {
   //! \pre `bool(*this)`
   [[noreturn]] void throw_exception() const;
 
+  //! Terminates the process with the wrapped expression.
+  [[noreturn]] void terminate_with() const noexcept { throw_exception(); }
+
   //! Throws the wrapped expression nested into another exception.
   //! \pre `bool(*this)`
   //! \param ex Exception in *this will be thrown nested into ex;
