@@ -37,7 +37,7 @@ DigestT DigestBuilder<DigestT>::build() {
   digestPtrs.reserve(cpuLocalBuffers_.size());
 
   for (auto& cpuLocalBuffer : cpuLocalBuffers_) {
-    std::unique_lock<SharedMutex> g(cpuLocalBuffer.mutex);
+    std::unique_lock<SharedMutexSuppressTSAN> g(cpuLocalBuffer.mutex);
     valuesVec.push_back(std::move(cpuLocalBuffer.buffer));
     if (cpuLocalBuffer.digest) {
       digestPtrs.push_back(std::move(cpuLocalBuffer.digest));
@@ -70,7 +70,7 @@ template <typename DigestT>
 void DigestBuilder<DigestT>::append(double value) {
   auto cpuLocalBuf = &cpuLocalBuffers_[AccessSpreader<>::cachedCurrent(
       cpuLocalBuffers_.size())];
-  std::unique_lock<SharedMutex> g(cpuLocalBuf->mutex);
+  std::unique_lock<SharedMutexSuppressTSAN> g(cpuLocalBuf->mutex);
   cpuLocalBuf->buffer.push_back(value);
   if (cpuLocalBuf->buffer.size() == bufferSize_) {
     if (!cpuLocalBuf->digest) {

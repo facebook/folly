@@ -55,7 +55,7 @@ class DigestBuilder {
  private:
   struct alignas(hardware_destructive_interference_size) CpuLocalBuffer {
    public:
-    mutable SharedMutex mutex;
+    mutable SharedMutexSuppressTSAN mutex;
     std::vector<double> buffer;
     std::unique_ptr<DigestT> digest;
 
