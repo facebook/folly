@@ -42,7 +42,6 @@
 #include <folly/system/Pid.h>
 
 #if __has_include(<sys/eventfd.h>)
-#define FOLLY_HAVE_EVENTFD
 #include <sys/eventfd.h>
 #endif
 
@@ -236,10 +235,8 @@ class NotificationQueue {
   };
 
   enum class FdType {
-    PIPE,
-#ifdef FOLLY_HAVE_EVENTFD
+    PIPE = 1,
     EVENTFD,
-#endif
   };
 
   /**
@@ -258,18 +255,18 @@ class NotificationQueue {
    * mostly for testing purposes.
    */
   explicit NotificationQueue(
-      uint32_t maxSize = 0,
-#ifdef FOLLY_HAVE_EVENTFD
-      FdType fdType = FdType::EVENTFD)
-#else
-      FdType fdType = FdType::PIPE)
-#endif
+      uint32_t maxSize = 0, FdType fdType = FdType::EVENTFD)
       : eventfd_(-1),
         pipeFds_{-1, -1},
         advisoryMaxQueueSize_(maxSize),
         pid_(folly::get_cached_pid()) {
+#if !__has_include(<sys/eventfd.h>)
+    if (fdType == FdType::EVENTFD) {
+      fdType = FdType::PIPE;
+    }
+#endif
 
-#ifdef FOLLY_HAVE_EVENTFD
+#if __has_include(<sys/eventfd.h>)
     if (fdType == FdType::EVENTFD) {
       eventfd_ = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
       if (eventfd_ == -1) {
@@ -289,6 +286,7 @@ class NotificationQueue {
       }
     }
 #endif
+
     if (fdType == FdType::PIPE) {
       if (pipe(pipeFds_)) {
         folly::throwSystemError(

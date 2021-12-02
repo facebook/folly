@@ -499,7 +499,6 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
   }
 }
 
-#ifdef FOLLY_HAVE_EVENTFD
 TEST(NotificationQueueTest, SendOneEventFD) {
   QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.sendOne();
@@ -529,7 +528,6 @@ TEST(NotificationQueueTest, DestroyCallbackEventFD) {
   QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.destroyCallback();
 }
-#endif
 
 TEST(NotificationQueueTest, SendOnePipe) {
   QueueTest qt(0, IntQueue::FdType::PIPE);

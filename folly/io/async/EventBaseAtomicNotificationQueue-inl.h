@@ -28,7 +28,7 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
     : pid_(get_cached_pid()),
       notificationQueue_(),
       consumer_(std::move(consumer)) {
-#ifdef FOLLY_HAVE_EVENTFD
+#if __has_include(<sys/eventfd.h>)
   eventfd_ = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if (eventfd_ == -1) {
     if (errno == ENOSYS || errno == EINVAL) {

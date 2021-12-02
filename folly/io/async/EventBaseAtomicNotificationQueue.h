@@ -24,7 +24,6 @@
 #include <folly/portability/Unistd.h>
 
 #if __has_include(<sys/eventfd.h>)
-#define FOLLY_HAVE_EVENTFD
 #include <sys/eventfd.h>
 #endif
 
