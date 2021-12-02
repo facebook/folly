@@ -16,18 +16,24 @@
 
 #pragma once
 
-#include <folly/Executor.h>
+#include <memory>
+
 #include <folly/python/AsyncioExecutor.h>
 
 namespace folly {
 namespace python {
+namespace test {
 
-folly::Executor* getExecutor();
+class TestAsyncioExecutor : public AsyncioExecutor {
+ public:
+  void add(Func) override {}
+  void driveNoDiscard() noexcept override {}
+};
 
-// Returns -1 if an executor was already set for loop, 0 otherwise. A NULL
-// executor clears the current executor (caller is responsible for freeing
-// any existing executor).
-int setExecutorForLoop(PyObject* loop, AsyncioExecutor* executor);
+inline std::unique_ptr<TestAsyncioExecutor> makeTestAsyncioExecutor() {
+  return std::make_unique<TestAsyncioExecutor>();
+}
 
+} // namespace test
 } // namespace python
 } // namespace folly
