@@ -339,6 +339,18 @@ class InstallSysDepsCmd(ProjectCmdBase):
             action="store_true",
             default=False,
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            default=False,
+            help="Don't install, just print the commands specs we would run",
+        )
+        parser.add_argument(
+            "--package-type",
+            choices=["rpm", "deb"],
+            default=None,
+            help="Allow overriding the package type so can see deb from centos",
+        )
 
     def run_project_cmd(self, args, loader, manifest):
         if args.recursive:
@@ -346,7 +358,6 @@ class InstallSysDepsCmd(ProjectCmdBase):
         else:
             projects = [manifest]
 
-        cache = cache_module.create_cache()
         all_packages = {}
         for m in projects:
             ctx = loader.ctx_gen.get_context(m.name)
@@ -356,20 +367,34 @@ class InstallSysDepsCmd(ProjectCmdBase):
                 merged += v
                 all_packages[k] = merged
 
-        manager = loader.build_opts.host_type.get_package_manager()
+        if args.package_type:
+            manager = args.package_type
+        else:
+            manager = loader.build_opts.host_type.get_package_manager()
+
+        cmd_args = None
         if manager == "rpm":
             packages = sorted(list(set(all_packages["rpm"])))
             if packages:
-                run_cmd(["dnf", "install", "-y"] + packages)
+                cmd_args = ["dnf", "install", "-y"] + packages
         elif manager == "deb":
             packages = sorted(list(set(all_packages["deb"])))
             if packages:
-                run_cmd(["apt", "install", "-y"] + packages)
+                cmd_args = ["apt", "install", "-y"] + packages
         else:
             host_tuple = loader.build_opts.host_type.as_tuple_string()
             print(
                 f"I don't know how to install any packages on this system {host_tuple}"
             )
+            return
+
+        if cmd_args:
+            if args.dry_run:
+                print(" ".join(cmd_args))
+            else:
+                run_cmd(cmd_args)
+        else:
+            print("no packages to install")
 
 
 @cmd("list-deps", "lists the transitive deps for a given project")
