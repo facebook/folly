@@ -736,7 +736,8 @@ class EventBase : public TimeoutManager,
   class SmoothLoopTime {
    public:
     explicit SmoothLoopTime(std::chrono::microseconds timeInterval)
-        : expCoeff_(-1.0 / timeInterval.count()), value_(0.0) {
+        : expCoeff_(-1.0 / static_cast<double>(timeInterval.count())),
+          value_(0.0) {
       VLOG(11) << "expCoeff_ " << expCoeff_ << " " << __PRETTY_FUNCTION__;
     }
 
@@ -749,8 +750,9 @@ class EventBase : public TimeoutManager,
     double get() const {
       // Add the outstanding buffered times linearly, to avoid
       // expensive exponentiation
-      auto lcoeff = buffer_time_.count() * -expCoeff_;
-      return value_ * (1.0 - lcoeff) + lcoeff * busy_buffer_.count();
+      auto lcoeff = static_cast<double>(buffer_time_.count()) * -expCoeff_;
+      return value_ * (1.0 - lcoeff) +
+          lcoeff * static_cast<double>(busy_buffer_.count());
     }
 
     void dampen(double factor) { value_ *= factor; }

@@ -722,7 +722,7 @@ void EventBase::initNotificationQueue() {
 
 void EventBase::SmoothLoopTime::setTimeInterval(
     std::chrono::microseconds timeInterval) {
-  expCoeff_ = -1.0 / timeInterval.count();
+  expCoeff_ = -1.0 / static_cast<double>(timeInterval.count());
   VLOG(11) << "expCoeff_ " << expCoeff_ << " " << __PRETTY_FUNCTION__;
 }
 
@@ -735,9 +735,10 @@ void EventBase::SmoothLoopTime::addSample(
   if ((buffer_time_ + total) > buffer_interval_ && buffer_cnt_ > 0) {
     // See https://en.wikipedia.org/wiki/Exponential_smoothing for
     // more info on this calculation.
-    double coeff = exp(buffer_time_.count() * expCoeff_);
-    value_ =
-        value_ * coeff + (1.0 - coeff) * (busy_buffer_.count() / buffer_cnt_);
+    double coeff = exp(static_cast<double>(buffer_time_.count()) * expCoeff_);
+    value_ = value_ * coeff +
+        (1.0 - coeff) *
+            (static_cast<double>(busy_buffer_.count()) / buffer_cnt_);
     buffer_time_ = std::chrono::microseconds{0};
     busy_buffer_ = std::chrono::microseconds{0};
     buffer_cnt_ = 0;
