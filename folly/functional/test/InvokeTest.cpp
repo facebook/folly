@@ -87,6 +87,7 @@ namespace invoker {
 FOLLY_CREATE_FREE_INVOKER_SUITE(go);
 FOLLY_CREATE_FREE_INVOKER_SUITE(swap, std, unswappable);
 FOLLY_CREATE_FREE_INVOKER_SUITE(no_such_thing);
+FOLLY_CREATE_QUAL_INVOKER_SUITE(std_swap, ::std::swap);
 
 } // namespace invoker
 
@@ -219,6 +220,40 @@ TEST_F(InvokeTest, free_invoke_swap) {
 
   EXPECT_TRUE((
       traits::is_invocable_r_v<AltSwappableRet, AltSwappable&, AltSwappable&>));
+}
+
+TEST_F(InvokeTest, qual_invoke_swap) {
+  using traits = folly::invoke_traits<decltype(invoker::std_swap)>;
+
+  int a = 3;
+  int b = 4;
+
+  traits::invoke(a, b);
+  EXPECT_EQ(4, a);
+  EXPECT_EQ(3, b);
+
+  swappable::Obj x{3};
+  swappable::Obj y{4};
+
+  traits::invoke(x, y);
+  EXPECT_EQ(4, x.x_);
+  EXPECT_EQ(3, y.x_);
+
+  std::swap(x, y);
+  EXPECT_EQ(3, x.x_);
+  EXPECT_EQ(4, y.x_);
+}
+
+TEST_F(InvokeTest, invoke_qual) {
+  auto go = FOLLY_INVOKE_QUAL(::std::swap);
+
+  int a = 3;
+  int b = 4;
+  EXPECT_TRUE(noexcept(go(a, b)));
+
+  go(a, b);
+  EXPECT_EQ(4, a);
+  EXPECT_EQ(3, b);
 }
 
 TEST_F(InvokeTest, member_invoke) {
