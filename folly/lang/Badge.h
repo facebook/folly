@@ -32,6 +32,10 @@ class any_badge;
  * holders). Badge can only be constructed by the specified badge holder binding
  * the tagged functions to that call site.
  *
+ * As a rule, it is poor form to pass a badge to arbitrary code. It is poor form
+ * for virtual, type-erased, or template functions to accept badges or to be
+ * passed badges.
+ *
  * Example:
  *   class ProtectedClass: {
  *     ...
