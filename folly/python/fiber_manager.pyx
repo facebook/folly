@@ -31,12 +31,12 @@ from weakref import WeakKeyDictionary
 
 
 #asynico Loops to FiberManager
-cdef object loop_to_controller = WeakKeyDictionary()
+loop_to_controller = WeakKeyDictionary()
 
 # weak reference to the last seen event loop
-cdef object last_loop = None
+last_loop = None
 # FiberManager for the last seen event loop
-cdef object last_manager = None
+last_manager = None
 
 # cleanup callback that would clean last_manager
 # if object referenced by last_loop is collected
