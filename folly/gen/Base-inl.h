@@ -135,14 +135,14 @@ class ReferencedSource
 
   template <class Body>
   void foreach(Body&& body) const {
-    for (auto& value : *container_) {
+    for (auto&& value : *container_) {
       body(std::forward<Value>(value));
     }
   }
 
   template <class Handler>
   bool apply(Handler&& handler) const {
-    for (auto& value : *container_) {
+    for (auto&& value : *container_) {
       if (!handler(std::forward<Value>(value))) {
         return false;
       }
