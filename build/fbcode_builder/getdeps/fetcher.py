@@ -175,23 +175,34 @@ class SystemPackageFetcher(object):
         if self.installed is not None:
             return self.installed
 
+        cmd = None
         if self.manager == "rpm":
-            result = run_cmd(["rpm", "-q"] + self.packages, allow_fail=True)
-            self.installed = result == 0
+            cmd = ["rpm", "-q"] + sorted(self.packages)
         elif self.manager == "deb":
-            result = run_cmd(["dpkg", "-s"] + self.packages, allow_fail=True)
-            self.installed = result == 0
+            cmd = ["dpkg", "-s"] + sorted(self.packages)
+
+        if cmd:
+            proc = subprocess.run(cmd, capture_output=True)
+            if proc.returncode == 0:
+                # captured as binary as we will hash this later
+                self.installed = proc.stdout
+            else:
+                # Need all packages to be present to consider us installed
+                self.installed = False
         else:
             self.installed = False
 
-        return self.installed
+        return bool(self.installed)
 
     def update(self):
         assert self.installed
         return ChangeStatus(all_changed=False)
 
     def hash(self):
-        return "0" * 40
+        if self.packages_are_installed():
+            return hashlib.sha256(self.installed).hexdigest()
+        else:
+            return "0" * 40
 
     def get_src_dir(self):
         return None
