@@ -220,7 +220,7 @@ class ExtendedCoroutineHandle {
     return {basic_, nullptr};
   }
 
-  explicit operator bool() const noexcept { return !!extended_; }
+  explicit operator bool() const noexcept { return !!basic_; }
 
  private:
   template <typename Promise>
