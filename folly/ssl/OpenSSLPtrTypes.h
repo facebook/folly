@@ -121,6 +121,115 @@ FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(BNCtx, BN_CTX, BN_CTX_free);
 FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(SSL, SSL, SSL_free);
 FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(SSLSession, SSL_SESSION, SSL_SESSION_free);
 
+// OpenSSL STACK_OF(T) can both represent owned or borrowed values.
+//
+// This isn't represented in the OpenSSL "safestack" type (e.g. STACK_OF(Foo)).
+// Whether or not a STACK is owning or borrowing is determined purely based on
+// which destructor is called.
+// * sk_T_free     - This only deallocates the STACK, but does not free the
+//                   contained items within. This is the "borrowing" version.
+// * sk_T_pop_free - This deallocates both the STACK and it invokes a free
+//                   function for each element. This is the "owning" version.
+//
+// The below macro,
+//    FOLLY_SSL_DETAIL_DEFINE_STACK_PTR_TYPE(Alias, Element)
+//
+// can be used to define two unique_ptr types that correspond to the "owned"
+// or "borrowing" version of each.
+//
+// For example,
+//    FOLLY_SSL_DETAIL_DEFINE_STACK_PTR_TYPE(X509Name, X509_NAME)
+// creates two unique ptr type aliases
+//    * OwningStackOfX509NameUniquePtr
+//    * BorrowingStackOfX509NameUniquePtr
+// which corresponds to a unique_ptr of `STACK_OF(X509_NAME)` that will invoke
+// the appropriate destructor:
+//    * OwningStackOf* -> Invokes sk_T_free
+//    * BorrowingStackOf* -> Invokes sk_T_pop_free
+//
+// IMPLEMENTATION NOTES:
+//    * While the _current_ implementation of OpenSSL's STACK_OF APIs utilize
+//      type erased OPENSSL_sk_* APIs, this is technically an implementation
+//      detail. It is tempting to simply create a template type that invokes
+//      the appropriate type casting and OPENSSL_sk_* invocations, but we must
+//      avoid copying implementation details for how the sk_* generated
+//      user-facing APIs are implemented.
+//    * In other words, our own macro implementation below *must not* use
+//      OPENSSL_sk_* APIs. They *must* only use the corresponding sk_T_free,
+//      sk_T_pop_free user APIs (i.e. those that can be found in OpenSSL
+//      documentation).
+namespace detail {
+template <
+    class StackType,
+    class ElementType,
+    void (*OwningStackDestructor)(StackType*, void (*)(ElementType*)),
+    void (*ElementDestructor)(ElementType*)>
+struct OpenSSLOwnedStackDeleter {
+  void operator()(StackType* stack) const {
+    OwningStackDestructor(stack, ElementDestructor);
+  }
+};
+
+} // namespace detail
+
+#if FOLLY_OPENSSL_PREREQ(1, 1, 0)
+#define FOLLY_SSL_DETAIL_OWNING_STACK_DESTRUCTOR(T) \
+  ::folly::ssl::detail::                            \
+      OpenSSLOwnedStackDeleter<STACK_OF(T), T, sk_##T##_pop_free, T##_free>
+
+#define FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR(T) \
+  ::folly::static_function_deleter<STACK_OF(T), &sk_##T##_free>
+
+#else
+namespace detail {
+
+template <class ElementType, void (*ElementDestructor)(ElementType*)>
+struct OpenSSL102OwnedStackDestructor {
+  template <class T>
+  void operator()(T* stack) const {
+    sk_pop_free(
+        reinterpret_cast<_STACK*>(stack), ((void (*)(void*))ElementDestructor));
+  }
+};
+
+struct OpenSSL102BorrowedStackDestructor {
+  template <class T>
+  void operator()(T* stack) const {
+    sk_free(reinterpret_cast<_STACK*>(stack));
+  }
+};
+} // namespace detail
+#define FOLLY_SSL_DETAIL_OWNING_STACK_DESTRUCTOR(T) \
+  ::folly::ssl::detail::OpenSSL102OwnedStackDestructor<T, T##_free>
+#define FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR(T) \
+  ::folly::ssl::detail::OpenSSL102BorrowedStackDestructor
+#endif
+
+#define FOLLY_SSL_DETAIL_DEFINE_OWNING_STACK_PTR_TYPE(             \
+    element_alias, element_type)                                   \
+  using OwningStackOf##element_alias##UniquePtr = std::unique_ptr< \
+      STACK_OF(element_type),                                      \
+      FOLLY_SSL_DETAIL_OWNING_STACK_DESTRUCTOR(element_type)>
+
+#define FOLLY_SSL_DETAIL_DEFINE_BORROWING_STACK_PTR_TYPE(             \
+    element_alias, element_type)                                      \
+  using BorrowingStackOf##element_alias##UniquePtr = std::unique_ptr< \
+      STACK_OF(element_type),                                         \
+      FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR(element_type)>
+
+#define FOLLY_SSL_DETAIL_DEFINE_STACK_PTR_TYPE(element_alias, element_type) \
+  FOLLY_SSL_DETAIL_DEFINE_BORROWING_STACK_PTR_TYPE(                         \
+      element_alias, element_type);                                         \
+  FOLLY_SSL_DETAIL_DEFINE_OWNING_STACK_PTR_TYPE(element_alias, element_type)
+
+FOLLY_SSL_DETAIL_DEFINE_STACK_PTR_TYPE(X509Name, X509_NAME);
+
+#undef FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR
+#undef FOLLY_SSL_DETAIL_OWNING_STACK_DESTRUCTOR
+#undef FOLLY_SSL_DETAIL_DEFINE_OWNING_STACK_PTR_TYPE
+#undef FOLLY_SSL_DETAIL_DEFINE_BORROWING_STACK_PTR_TYPE
+#undef FOLLY_SSL_DETAIL_DEFINE_STACK_PTR_TYPE
 #undef FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE
+
 } // namespace ssl
 } // namespace folly

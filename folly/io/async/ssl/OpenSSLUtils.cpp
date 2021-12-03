@@ -347,6 +347,54 @@ std::string OpenSSLUtils::encodeALPNString(
   return encodedALPN;
 }
 
+/**
+ * Deserializes PEM encoded X509 objects from the supplied source BIO, invoking
+ * a callback for each X509, until the BIO is exhausted or until we were unable
+ * to read an X509.
+ */
+template <class Callback>
+static void forEachX509(BIO* source, Callback cb) {
+  while (true) {
+    ssl::X509UniquePtr x509(
+        PEM_read_bio_X509(source, nullptr, nullptr, nullptr));
+    if (x509 == nullptr) {
+      ERR_clear_error();
+      break;
+    }
+    cb(std::move(x509));
+  }
+}
+
+static std::vector<X509NameUniquePtr> getSubjectNamesFromBIO(BIO* b) {
+  std::vector<X509NameUniquePtr> ret;
+  forEachX509(b, [&](auto&& name) {
+    // X509_get_subject_name borrows the X509_NAME, so we must dup it.
+    ret.push_back(
+        X509NameUniquePtr(X509_NAME_dup(X509_get_subject_name(name.get()))));
+  });
+  return ret;
+}
+
+std::vector<X509NameUniquePtr> OpenSSLUtils::subjectNamesInPEMFile(
+    const char* filename) {
+  BioUniquePtr bio(BIO_new_file(filename, "r"));
+  if (!bio) {
+    throw std::runtime_error(
+        "OpenSSLUtils::subjectNamesInPEMFile: failed to open file");
+  }
+  return getSubjectNamesFromBIO(bio.get());
+}
+
+std::vector<X509NameUniquePtr> OpenSSLUtils::subjectNamesInPEMBuffer(
+    folly::ByteRange buffer) {
+  BioUniquePtr bio(BIO_new_mem_buf(buffer.data(), buffer.size()));
+  if (!bio) {
+    throw std::runtime_error(
+        "OpenSSLUtils::subjectNamesInPEMBuffer: failed to create BIO");
+  }
+  return getSubjectNamesFromBIO(bio.get());
+}
+
 } // namespace ssl
 } // namespace folly
 

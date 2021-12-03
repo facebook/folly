@@ -1057,7 +1057,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   serverCtx->loadPrivateKey(kTestKey);
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->loadClientCAList(kTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("AES256-SHA:AES128-SHA");
@@ -1104,7 +1104,7 @@ TEST(AsyncSSLSocketTest, GetClientCertificate) {
   serverCtx->loadPrivateKey(kTestKey);
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kClientTestCA);
-  serverCtx->loadClientCAList(kClientTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kClientTestCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("AES256-SHA:AES128-SHA");
@@ -1711,7 +1711,7 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxEnableVerify) {
   serverCtx->loadPrivateKey(kTestKey);
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->loadClientCAList(kTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
@@ -1828,7 +1828,7 @@ TEST(AsyncSSLSocketTest, ClientCertHandshakeSuccess) {
   serverCtx->loadPrivateKey(kTestKey);
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->loadClientCAList(kTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
@@ -1889,7 +1889,7 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
   serverCtx->loadPrivateKey(kTestKey);
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->loadClientCAList(kTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
@@ -2106,7 +2106,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTest) {
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->loadClientCAList(kTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
   auto rsaPointers =
       setupCustomRSA(kTestCert, kTestKey, jobEvbThread.getEventBase());
@@ -2145,7 +2145,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestFailure) {
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->loadClientCAList(kTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
   // Set the wrong key for the cert
   auto rsaPointers =
       setupCustomRSA(kTestCert, kClientTestKey, jobEvbThread.getEventBase());
@@ -2184,7 +2184,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->loadClientCAList(kTestCA);
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
   auto rsaPointers =
       setupCustomRSA(kTestCert, kTestKey, jobEvbThread->getEventBase());

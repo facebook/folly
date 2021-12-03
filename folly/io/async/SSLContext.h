@@ -398,11 +398,48 @@ class SSLContext {
    * @param store X509 certificate store.
    */
   virtual void loadTrustedCertificates(X509_STORE* store);
+
   /**
-   * Load a client CA list for validating clients
+   * setSupportedClientCertificateAuthorityNames sets the list of acceptable
+   * client certificate authoritites that will be sent to the client.
+   *
+   * This corresponds to the `certificate_authorities` extension.
+   *
+   * This function does *not* alter the way client authentication is performed
+   * in any discernible manner.
+   *
+   * Certain TLS client implementations will use this list of names to aid in
+   * the client certificate selection process.
+   *
+   * folly::AsyncSSLSocket, which is based on OpenSSL, in particular will
+   * *not* use this information. folly::AsyncSSLSocket will send client
+   * certificates to whatever `SSLContext::loadCertificate` points to,
+   * regardless of what the server sends in `certificate_authorities`.
+   *
+   * @param names  A vector of X509_NAMEs to send. This typically corresponds
+   *               to the Subject of each client certificate authority used
+   *               in the trust store.
+   *               `OpenSSLUtil::loadNamesFromFile`.
+   * @throws std::exception
    */
-  virtual void loadClientCAList(const char* path);
+  void setSupportedClientCertificateAuthorityNames(
+      std::vector<ssl::X509NameUniquePtr> names);
+
   /**
+   * setSupportedClientCertificateAuthorityNamesFromFile sets the list of
+   * acceptable client certificate authorities that will be sent to the client.
+   *
+   * See `SSLContext::setSupportedClientCertificateAuthorityNames`.
+   *
+   * @param path   Path to a file containing PEM encoded X509 certificates.
+   * @throws std::exception
+   */
+  void setSupportedClientCertificateAuthorityNamesFromFile(const char* path) {
+    return setSupportedClientCertificateAuthorityNames(
+        ssl::OpenSSLUtils::subjectNamesInPEMFile(path));
+  }
+
+  /*
    * Override default OpenSSL password collector.
    *
    * @param collector Instance of user defined password collector

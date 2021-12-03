@@ -113,6 +113,33 @@ class OpenSSLUtils {
   static std::string getCommonName(X509* x509);
 
   /**
+   * Get a list of subject names corresponding to each certificate in a
+   * PEM encoded file.
+   *
+   * @param filename   Path to a file containing PEM encoded X509 certificates.
+   * @return A vector of X509_NAMEs corresponding to the subject of each
+   *         certificate.
+   * @throws std::exception For any errors encountered while reading in
+   *                        certificates from the file.
+   */
+  static std::vector<X509NameUniquePtr> subjectNamesInPEMFile(
+      const char* filename);
+
+  /**
+   * Get a list of subject names corresponding to each certificate in a
+   * buffer containing PEM data.
+   *
+   * @param buffer  A contiguous region of memory containing PEM encoded
+   *                certificates.
+   * @return A vector of X509_NAMEs corresponding to the subject of each
+   *         certificate.
+   * @throws std::exception For any errors encountered while reading in
+   *                        certificates from the file.
+   */
+  static std::vector<X509NameUniquePtr> subjectNamesInPEMBuffer(
+      folly::ByteRange buffer);
+
+  /**
    * Wrappers for BIO operations that may be different across different
    * versions/flavors of OpenSSL (including forks like BoringSSL)
    */
@@ -129,6 +156,5 @@ class OpenSSLUtils {
   static std::string encodeALPNString(
       const std::vector<std::string>& supported_protocols);
 };
-
 } // namespace ssl
 } // namespace folly

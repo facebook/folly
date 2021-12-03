@@ -499,13 +499,29 @@ void SSLContext::loadTrustedCertificates(X509_STORE* store) {
   SSL_CTX_set_cert_store(ctx_, store);
 }
 
-void SSLContext::loadClientCAList(const char* path) {
-  auto clientCAs = SSL_load_client_CA_file(path);
-  if (clientCAs == nullptr) {
-    LOG(ERROR) << "Unable to load ca file: " << path << " " << getErrors();
-    return;
+void SSLContext::setSupportedClientCertificateAuthorityNames(
+    std::vector<ssl::X509NameUniquePtr> names) {
+  // SSL_CTX_set_client_CA_list *takes ownership* of a STACK_OF(X509_NAME)
+  // where each pointer in the STACK is an *owned* X509.
+  ssl::OwningStackOfX509NameUniquePtr nameList(sk_X509_NAME_new(nullptr));
+  if (!nameList) {
+    throw std::runtime_error(
+        "SSLContext::setSupportedClientCertificateAuthorityNames failed to allocate name list");
   }
-  SSL_CTX_set_client_CA_list(ctx_, clientCAs);
+
+  // Release ownership of the X509_NAME into the stack.
+  //
+  // If exceptions are thrown, all elements are properly cleaned up because of
+  // the *UniquePtr wrappers.
+  for (auto& name : names) {
+    if (!sk_X509_NAME_push(nameList.get(), name.release())) {
+      throw std::runtime_error(
+          "SSLContext::setSupportedClientCertificateAuthorityNames failed to add X509_NAME");
+    }
+  }
+
+  // And finally pass ownership over the whole X509_NAME stack to OpenSSL
+  SSL_CTX_set_client_CA_list(ctx_, nameList.release());
 }
 
 void SSLContext::passwordCollector(
