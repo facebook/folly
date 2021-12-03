@@ -133,6 +133,20 @@ struct IsCharPointer<const char*> {
   using type = int;
 };
 
+template <class T>
+struct IsUnsignedCharPointer {};
+
+template <>
+struct IsUnsignedCharPointer<unsigned char*> {
+  using type = int;
+};
+
+template <>
+struct IsUnsignedCharPointer<const unsigned char*> {
+  using const_type = int;
+  using type = int;
+};
+
 } // namespace detail
 
 /**
@@ -297,6 +311,26 @@ class Range {
       e_ = b_ + size;
     }
   }
+
+  // Allow explicit construction of ByteRange from std::string_view or
+  // std::string.  Given that we allow implicit construction of ByteRange from
+  // StringPiece, it makes sense to allow this explicit construction, and avoids
+  // callers having to say ByteRange{StringPiece{str}} when they want a
+  // ByteRange pointing to data in a std::string.
+  template <
+      class Container,
+      class T = Iter,
+      typename detail::IsUnsignedCharPointer<T>::const_type = 0,
+      class = typename std::enable_if<
+            std::is_same<typename Container::const_pointer, const char*>::value
+          >::type,
+      class = decltype(
+          Iter(std::declval<Container const&>().data()),
+          Iter(
+              std::declval<Container const&>().data() +
+              std::declval<Container const&>().size()))>
+  explicit Range(const Container& str)
+      : b_(reinterpret_cast<Iter>(str.data())), e_(b_ + str.size()) {}
 
   // Allow implicit conversion from Range<const char*> (aka StringPiece) to
   // Range<const unsigned char*> (aka ByteRange), as they're both frequently

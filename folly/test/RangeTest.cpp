@@ -303,6 +303,22 @@ TEST(StringPiece, ToByteRange) {
   EXPECT_EQ(a.end(), c.end());
 }
 
+TEST(ByteRange, FromString) {
+  std::string s("hello");
+  ByteRange b(s);
+  EXPECT_EQ(
+      static_cast<const void*>(s.data()), static_cast<const void*>(b.begin()));
+  EXPECT_EQ(s.size(), b.size());
+
+#if FOLLY_HAS_STRING_VIEW
+  std::string_view sv(s);
+  ByteRange b2(sv);
+  EXPECT_EQ(
+      static_cast<const void*>(s.data()), static_cast<const void*>(b2.begin()));
+  EXPECT_EQ(s.size(), b2.size());
+#endif
+}
+
 TEST(StringPiece, InvalidRange) {
   StringPiece a("hello");
   EXPECT_EQ(a, a.subpiece(0, 10));
