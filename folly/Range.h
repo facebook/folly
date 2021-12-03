@@ -124,13 +124,13 @@ struct IsCharPointer {};
 
 template <>
 struct IsCharPointer<char*> {
-  typedef int type;
+  using type = int;
 };
 
 template <>
 struct IsCharPointer<const char*> {
-  typedef int const_type;
-  typedef int type;
+  using const_type = int;
+  using type = int;
 };
 
 } // namespace detail
@@ -153,13 +153,13 @@ class Range {
   using string = std::basic_string<char, std::char_traits<char>, Alloc>;
 
  public:
-  typedef std::size_t size_type;
-  typedef Iter iterator;
-  typedef Iter const_iterator;
-  typedef typename std::remove_reference<
-      typename std::iterator_traits<Iter>::reference>::type value_type;
+  using size_type = std::size_t;
+  using iterator = Iter;
+  using const_iterator = Iter;
+  using value_type = typename std::remove_reference<
+      typename std::iterator_traits<Iter>::reference>::type;
   using difference_type = typename std::iterator_traits<Iter>::difference_type;
-  typedef typename std::iterator_traits<Iter>::reference reference;
+  using reference = typename std::iterator_traits<Iter>::reference;
 
   /**
    * For MutableStringPiece and MutableByteRange we define StringPiece
@@ -167,14 +167,14 @@ class Range {
    * identity). We do that to enable operations such as find with
    * args which are const.
    */
-  typedef typename std::conditional<
+  using const_range_type = typename std::conditional<
       std::is_same<Iter, char*>::value ||
           std::is_same<Iter, unsigned char*>::value,
       Range<const value_type*>,
-      Range<Iter>>::type const_range_type;
+      Range<Iter>>::type;
 
-  typedef std::char_traits<typename std::remove_const<value_type>::type>
-      traits_type;
+  using traits_type =
+      std::char_traits<typename std::remove_const<value_type>::type>;
 
   static const size_type npos;
 
@@ -1134,10 +1134,10 @@ constexpr Range<T const*> crange(std::array<T, n> const& array) {
   return Range<T const*>{array};
 }
 
-typedef Range<const char*> StringPiece;
-typedef Range<char*> MutableStringPiece;
-typedef Range<const unsigned char*> ByteRange;
-typedef Range<unsigned char*> MutableByteRange;
+using StringPiece = Range<const char*>;
+using MutableStringPiece = Range<char*>;
+using ByteRange = Range<const unsigned char*>;
+using MutableByteRange = Range<unsigned char*>;
 
 template <class C>
 std::basic_ostream<C>& operator<<(
