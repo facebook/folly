@@ -63,7 +63,7 @@ void appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
       packInto(tail, src, [](auto&& cur) { return cur->pop(); });
     }
     if (src) {
-      tail->appendChain(std::move(src));
+      tail->insertAfterThisOne(std::move(src));
     }
   }
 }

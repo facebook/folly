@@ -26,6 +26,6 @@ def make_chain(data):
     cdef IOBuf tbuf
     cdef IOBuf last = head
     for tbuf in data:
-        last._this.appendChain(tbuf.c_clone())
+        last._this.insertAfterThisOne(tbuf.c_clone())
         last = last.next
     return head

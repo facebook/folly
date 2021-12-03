@@ -443,7 +443,7 @@ TEST(IOBuf, Chaining) {
 
   iob1->prependChain(std::move(iob2));
   iob1->prependChain(std::move(iob4));
-  iob2ptr->appendChain(std::move(iob3));
+  iob2ptr->insertAfterThisOne(std::move(iob3));
   iob1->prependChain(std::move(iob5));
 
   EXPECT_EQ(iob2ptr, iob1->next());
@@ -640,9 +640,9 @@ TEST(IOBuf, Chaining) {
   iob4 = IOBuf::create(7);
   iob4->append(7);
   iob4ptr = iob4.get();
-  iob1->appendChain(std::move(iob2));
-  iob1->prev()->appendChain(std::move(iob3));
-  iob1->prev()->appendChain(std::move(iob4));
+  iob1->insertAfterThisOne(std::move(iob2));
+  iob1->prev()->insertAfterThisOne(std::move(iob3));
+  iob1->prev()->insertAfterThisOne(std::move(iob4));
   EXPECT_EQ(4, iob1->countChainElements());
   EXPECT_EQ(16, iob1->computeChainDataLength());
 
@@ -1523,8 +1523,8 @@ TEST(IOBuf, CoalesceEmptyBuffers) {
   auto b2 = fromStr("hello");
   auto b3 = IOBuf::takeOwnership(nullptr, 0);
 
-  b2->appendChain(std::move(b3));
-  b1->appendChain(std::move(b2));
+  b2->insertAfterThisOne(std::move(b3));
+  b1->insertAfterThisOne(std::move(b2));
 
   auto br = b1->coalesce();
 
@@ -1617,8 +1617,8 @@ TEST(IOBuf, fillIov) {
   auto buf3 = IOBuf::create(4096);
   append(buf3, "hello again");
 
-  buf2->appendChain(std::move(buf3));
-  buf->appendChain(std::move(buf2));
+  buf2->insertAfterThisOne(std::move(buf3));
+  buf->insertAfterThisOne(std::move(buf2));
 
   constexpr size_t iovCount = 3;
   struct iovec vec[iovCount];
@@ -1648,8 +1648,8 @@ TEST(IOBuf, fillIov2) {
   auto buf3 = IOBuf::create(4096);
   append(buf2, "hello again");
 
-  buf2->appendChain(std::move(buf3));
-  buf->appendChain(std::move(buf2));
+  buf2->insertAfterThisOne(std::move(buf3));
+  buf->insertAfterThisOne(std::move(buf2));
 
   constexpr size_t iovCount = 2;
   struct iovec vec[iovCount];
@@ -1767,15 +1767,15 @@ TEST(IOBuf, computeChainCapacityOfMixedCapacityChainedIOBuf) {
 
   // Create IOBuf chains
   auto temp = buf.get();
-  temp->appendChain(IOBuf::wrapBuffer(data2, sizeof(data2)));
+  temp->insertAfterThisOne(IOBuf::wrapBuffer(data2, sizeof(data2)));
   temp = temp->next();
-  temp->appendChain(IOBuf::wrapBuffer(data3, sizeof(data3)));
+  temp->insertAfterThisOne(IOBuf::wrapBuffer(data3, sizeof(data3)));
   temp = temp->next();
-  temp->appendChain(IOBuf::wrapBuffer(data4, sizeof(data4)));
+  temp->insertAfterThisOne(IOBuf::wrapBuffer(data4, sizeof(data4)));
   temp = temp->next();
-  temp->appendChain(IOBuf::wrapBuffer(data5, sizeof(data5)));
+  temp->insertAfterThisOne(IOBuf::wrapBuffer(data5, sizeof(data5)));
   temp = temp->next();
-  temp->appendChain(IOBuf::wrapBuffer(data6, sizeof(data6)));
+  temp->insertAfterThisOne(IOBuf::wrapBuffer(data6, sizeof(data6)));
 
   EXPECT_EQ(buf->computeChainCapacity(), 100);
 }
@@ -1787,11 +1787,11 @@ TEST(IOBuf, AppendTo) {
   EXPECT_EQ(buf.to<std::string>(), "");
 
   auto temp = &buf;
-  temp->appendChain(IOBuf::copyBuffer("Hello"));
+  temp->insertAfterThisOne(IOBuf::copyBuffer("Hello"));
   temp = temp->next();
-  temp->appendChain(IOBuf::copyBuffer(" and"));
+  temp->insertAfterThisOne(IOBuf::copyBuffer(" and"));
   temp = temp->next();
-  temp->appendChain(IOBuf::copyBuffer(" goodbye."));
+  temp->insertAfterThisOne(IOBuf::copyBuffer(" goodbye."));
 
   auto testAppendTo = [&](auto c) {
     const StringPiece kExpected = "Hello and goodbye.";

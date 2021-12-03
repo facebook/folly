@@ -561,7 +561,7 @@ TEST(IOBufQueue, ReuseTail) {
       queue.append("hello ");
       buf = stringToIOBuf(SCL("world"));
       packableLength = buf->length();
-      buf->appendChain(std::move(unpackable));
+      buf->insertAfterThisOne(std::move(unpackable));
     }
 
     const auto oldTail = reinterpret_cast<uint8_t*>(queue.writableTail());

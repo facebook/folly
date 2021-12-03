@@ -133,8 +133,9 @@ namespace folly {
  * chain is deleted, all other chained elements are also deleted.  Conceptually
  * it is simplest to treat this as if the head of the chain owns all other
  * IOBufs in the chain.  When you delete the head of the chain, it will delete
- * the other elements as well.  For this reason, prependChain() and
- * appendChain() take ownership of the new elements being added to this chain.
+ * the other elements as well.  For this reason, appendToChain() and
+ * insertAfterThisOne() take ownership of the new elements being added to this
+ * chain.
  *
  * When the coalesce() method is used to coalesce an entire IOBuf chain into a
  * single IOBuf, all other IOBufs in the chain are eliminated and automatically
@@ -860,54 +861,53 @@ class IOBuf {
   std::size_t computeChainCapacity() const;
 
   /**
-   * Insert another IOBuf chain immediately before this IOBuf.
+   * Append another IOBuf chain to the end of this chain.
    *
    * For example, if there are two IOBuf chains (A, B, C) and (D, E, F),
-   * and B->prependChain(D) is called, the (D, E, F) chain will be subsumed
+   * and A->appendToChain(D) is called, the (D, E, F) chain will be subsumed
    * and become part of the chain starting at A, which will now look like
-   * (A, D, E, F, B, C)
-   *
-   * Note that since IOBuf chains are circular, head->prependChain(other) can
-   * be used to append the other chain at the very end of the chain pointed to
-   * by head.  For example, if there are two IOBuf chains (A, B, C) and
-   * (D, E, F), and A->prependChain(D) is called, the chain starting at A will
-   * now consist of (A, B, C, D, E, F)
-   *
-   * The elements in the specified IOBuf chain will become part of this chain,
-   * and will be owned by the head of this chain.  When this chain is
-   * destroyed, all elements in the supplied chain will also be destroyed.
-   *
-   * For this reason, appendChain() only accepts an rvalue-reference to a
-   * unique_ptr(), to make it clear that it is taking ownership of the supplied
-   * chain.  If you have a raw pointer, you can pass in a new temporary
-   * unique_ptr around the raw pointer.  If you have an existing,
-   * non-temporary unique_ptr, you must call std::move(ptr) to make it clear
-   * that you are destroying the original pointer.
+   * (A, B, C, D, E, F)
    */
-  void prependChain(std::unique_ptr<IOBuf>&& iobuf);
+  void appendToChain(std::unique_ptr<IOBuf>&& iobuf);
 
   /**
-   * Append another IOBuf chain immediately after this IOBuf.
+   * Insert an IOBuf chain immediately after this chain element.
    *
    * For example, if there are two IOBuf chains (A, B, C) and (D, E, F),
-   * and B->appendChain(D) is called, the (D, E, F) chain will be subsumed
-   * and become part of the chain starting at A, which will now look like
-   * (A, B, D, E, F, C)
+   * and B->insertAfterThisOne(D) is called, the (D, E, F) chain will be
+   * subsumed and become part of the chain starting at A, which will now look
+   * like (A, B, D, E, F, C)
    *
-   * The elements in the specified IOBuf chain will become part of this chain,
-   * and will be owned by the head of this chain.  When this chain is
-   * destroyed, all elements in the supplied chain will also be destroyed.
+   * Note if X is an IOBuf chain with just a single element, X->appendToChain()
+   * and X->insertAfterThisOne() behave identically.
+   */
+  void insertAfterThisOne(std::unique_ptr<IOBuf>&& iobuf) {
+    // Just use appendToChain() on the next element in our chain
+    next_->appendToChain(std::move(iobuf));
+  }
+
+  /**
+   * Deprecated name for appendToChain()
    *
-   * For this reason, appendChain() only accepts an rvalue-reference to a
-   * unique_ptr(), to make it clear that it is taking ownership of the supplied
-   * chain.  If you have a raw pointer, you can pass in a new temporary
-   * unique_ptr around the raw pointer.  If you have an existing,
-   * non-temporary unique_ptr, you must call std::move(ptr) to make it clear
-   * that you are destroying the original pointer.
+   * IOBuf chains are circular, so appending to the end of the chain is
+   * logically equivalent to prepending to the current head (but keeping the
+   * chain head pointing to the same element).  That was the reason this method
+   * was originally called prependChain().  However, almost every time this
+   * method is called the intent is to append to the end of a chain, so the
+   * `prependChain()` name is very confusing to most callers.
+   */
+  void prependChain(std::unique_ptr<IOBuf>&& iobuf) {
+    appendToChain(std::move(iobuf));
+  }
+
+  /**
+   * Deprecated name for insertAfterThisOne()
+   *
+   * Beware: appendToChain() and appendChain() are two different methods,
+   * and you probably want appendToChain() instead of this one.
    */
   void appendChain(std::unique_ptr<IOBuf>&& iobuf) {
-    // Just use prependChain() on the next element in our chain
-    next_->prependChain(std::move(iobuf));
+    insertAfterThisOne(std::move(iobuf));
   }
 
   /**

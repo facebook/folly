@@ -998,7 +998,7 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
       }
       this->crtBuf_->trimEnd(this->length());
       this->absolutePos_ += this->crtPos_ - this->crtBegin_;
-      this->crtBuf_->appendChain(std::move(buf));
+      this->crtBuf_->insertAfterThisOne(std::move(buf));
 
       if (nextBuf == this->buffer_) {
         // We've just appended to the end of the buffer, so advance to the end.

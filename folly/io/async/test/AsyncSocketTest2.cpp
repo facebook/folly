@@ -1437,7 +1437,7 @@ TEST(AsyncSocketTest, WriteIOBuf) {
   unique_ptr<IOBuf> buf3(IOBuf::create(buf3Length));
   memset(buf3->writableData(), 'd', buf3Length);
   buf3->append(buf3Length);
-  buf2->appendChain(std::move(buf3));
+  buf2->appendToChain(std::move(buf3));
   unique_ptr<IOBuf> buf2Copy(buf2->clone());
   buf2Copy->coalesce();
   WriteCallback wcb3;
@@ -2542,7 +2542,7 @@ TEST(AsyncSocketTest, BufferTestChain) {
   memset(buf2, 'f', sizeof(buf2));
 
   auto buf = folly::IOBuf::copyBuffer(buf1, sizeof(buf1));
-  buf->appendChain(folly::IOBuf::copyBuffer(buf2, sizeof(buf2)));
+  buf->appendToChain(folly::IOBuf::copyBuffer(buf2, sizeof(buf2)));
   ASSERT_EQ(sizeof(buf1) + sizeof(buf2), buf->computeChainDataLength());
 
   BufferCallback bcb(socket.get(), buf->computeChainDataLength());

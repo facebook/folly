@@ -383,7 +383,7 @@ unique_ptr<IOBuf> IOBuf::createChain(
     unique_ptr<IOBuf> newBuf = create(
         std::min(totalCapacity - allocatedCapacity, size_t(maxBufCapacity)));
     allocatedCapacity += newBuf->capacity();
-    out->prependChain(std::move(newBuf));
+    out->appendToChain(std::move(newBuf));
   }
 
   return out;
@@ -702,7 +702,7 @@ std::size_t IOBuf::computeChainCapacity() const {
   return fullCapacity;
 }
 
-void IOBuf::prependChain(unique_ptr<IOBuf>&& iobuf) {
+void IOBuf::appendToChain(unique_ptr<IOBuf>&& iobuf) {
   // Take ownership of the specified IOBuf
   IOBuf* other = iobuf.release();
 
@@ -724,7 +724,7 @@ unique_ptr<IOBuf> IOBuf::clone() const {
   auto tmp = cloneOne();
 
   for (IOBuf* current = next_; current != this; current = current->next_) {
-    tmp->prependChain(current->cloneOne());
+    tmp->appendToChain(current->cloneOne());
   }
 
   return tmp;
@@ -757,7 +757,7 @@ IOBuf IOBuf::cloneAsValue() const {
   auto tmp = cloneOneAsValue();
 
   for (IOBuf* current = next_; current != this; current = current->next_) {
-    tmp.prependChain(current->cloneOne());
+    tmp.appendToChain(current->cloneOne());
   }
 
   return tmp;
@@ -1333,7 +1333,7 @@ unique_ptr<IOBuf> IOBuf::wrapIov(const iovec* vec, size_t count) {
       if (!result) {
         result = std::move(buf);
       } else {
-        result->prependChain(std::move(buf));
+        result->appendToChain(std::move(buf));
       }
     }
   }
@@ -1358,7 +1358,7 @@ std::unique_ptr<IOBuf> IOBuf::takeOwnershipIov(
       if (!result) {
         result = std::move(buf);
       } else {
-        result->prependChain(std::move(buf));
+        result->appendToChain(std::move(buf));
       }
     }
   }

@@ -699,7 +699,7 @@ TEST(IOBuf, CursorOperators) {
   {
     std::unique_ptr<IOBuf> chain(IOBuf::create(20));
     chain->append(10);
-    chain->appendChain(chain->clone());
+    chain->appendToChain(chain->clone());
     EXPECT_EQ(20, chain->computeChainDataLength());
 
     Cursor curs1(chain.get());
@@ -744,7 +744,7 @@ TEST(IOBuf, CursorOperators) {
   {
     auto chain = IOBuf::create(10);
     chain->append(10);
-    chain->appendChain(chain->clone());
+    chain->appendToChain(chain->clone());
     EXPECT_EQ(2, chain->countChainElements());
     EXPECT_EQ(20, chain->computeChainDataLength());
 
@@ -1258,7 +1258,7 @@ TEST(IOBuf, BoundedCursorSanity) {
   EXPECT_THROW(subC.skip(1), std::out_of_range);
 
   // multi-item chain
-  chain1->appendChain(chain1->clone());
+  chain1->appendToChain(chain1->clone());
   EXPECT_EQ(2, chain1->countChainElements());
   EXPECT_EQ(20, chain1->computeChainDataLength());
 
@@ -1458,7 +1458,7 @@ TEST(IOBuf, BoundedCursorOperators) {
   {
     auto chain = IOBuf::create(10);
     chain->append(10);
-    chain->appendChain(chain->clone());
+    chain->appendToChain(chain->clone());
     EXPECT_EQ(2, chain->countChainElements());
     EXPECT_EQ(20, chain->computeChainDataLength());
 

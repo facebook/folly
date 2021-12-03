@@ -153,7 +153,7 @@ size_t prependHeader(std::unique_ptr<IOBuf>& buf, uint32_t fileId) {
   } else {
     auto b = IOBuf::create(headerSize());
     b->append(headerSize());
-    b->appendChain(std::move(buf));
+    b->insertAfterThisOne(std::move(buf));
     buf = std::move(b);
   }
   auto header = reinterpret_cast<Header*>(buf->writableData());
