@@ -182,7 +182,7 @@ class SystemPackageFetcher(object):
             cmd = ["dpkg", "-s"] + sorted(self.packages)
 
         if cmd:
-            proc = subprocess.run(cmd, capture_output=True)
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if proc.returncode == 0:
                 # captured as binary as we will hash this later
                 self.installed = proc.stdout
