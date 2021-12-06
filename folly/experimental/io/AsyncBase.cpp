@@ -16,7 +16,6 @@
 
 #include <folly/experimental/io/AsyncBase.h>
 
-#include <sys/eventfd.h>
 #include <cerrno>
 #include <ostream>
 #include <stdexcept>
@@ -30,6 +29,10 @@
 #include <folly/Likely.h>
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
+
+#if __has_include(<sys/eventfd.h>)
+#include <sys/eventfd.h>
+#endif
 
 namespace folly {
 
@@ -93,8 +96,12 @@ AsyncBase::AsyncBase(size_t capacity, PollMode pollMode) : capacity_(capacity) {
   CHECK_GT(capacity_, 0);
   completed_.reserve(capacity_);
   if (pollMode == POLLABLE) {
+#if __has_include(<sys/eventfd.h>)
     pollFd_ = eventfd(0, EFD_NONBLOCK);
     checkUnixError(pollFd_, "AsyncBase: eventfd creation failed");
+#else
+    // fallthrough to not-pollable, observed as: pollFd() == -1
+#endif
   }
 }
 
