@@ -12,4 +12,8 @@ builder = nop
 
 [shipit.pathmap]
 fbcode/fb303/github = .
+fbcode/fb303/public_autocargo = fb303
 fbcode/fb303 = fb303
+
+[shipit.strip]
+^fbcode/fb303/(?!public_autocargo).+/Cargo\.toml$
