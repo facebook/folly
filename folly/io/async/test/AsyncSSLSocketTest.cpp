@@ -1141,16 +1141,12 @@ TEST(AsyncSSLSocketTest, GetClientCertificate) {
   auto clientSelfCert = cliSocket->getSelfCertificate();
   CHECK(clientSelfCert);
 
-  auto serverOpenSSLPeerCert =
-      dynamic_cast<const OpenSSLTransportCertificate*>(serverPeerCert);
-  CHECK(serverOpenSSLPeerCert);
-  auto serverX509 = serverOpenSSLPeerCert->getX509();
+  auto serverX509 =
+      folly::OpenSSLTransportCertificate::tryExtractX509(serverPeerCert);
   CHECK(serverX509);
 
-  auto clientOpenSSLSelfCert =
-      dynamic_cast<const OpenSSLTransportCertificate*>(clientSelfCert);
-  CHECK(clientOpenSSLSelfCert);
-  auto clientX509 = clientSelfCert->getX509();
+  auto clientX509 =
+      folly::OpenSSLTransportCertificate::tryExtractX509(clientSelfCert);
   CHECK(clientX509);
 
   // The two certs should be the same.
