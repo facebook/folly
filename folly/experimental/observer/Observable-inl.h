@@ -48,30 +48,37 @@ class ObserverCreatorContext {
     return state->value;
   }
 
-  observer_detail::Core::Ptr update() {
-    // This mutex ensures there's no race condition between initial update()
-    // call and update() calls from the subsciption callback.
-    //
-    // Additionally it helps avoid races between two different subscription
-    // callbacks (getting new value from observable and storing it into value_
-    // is not atomic).
-    //
-    // Note that state_ lock is acquired only after Traits::get. Traits::get
-    // is running application code (that may acquire locks) and so it's
-    // important to not hold state_ lock while running it to avoid possible lock
-    // inversion with another code path that needs state_ lock (e.g. get()).
-    std::lock_guard<std::mutex> updateLockGuard(updateLock_);
-    auto newValue = Traits::get(observable_);
+  observer_detail::Core::Ptr update() noexcept {
+    try {
+      // This mutex ensures there's no race condition between initial update()
+      // call and update() calls from the subsciption callback.
+      //
+      // Additionally it helps avoid races between two different subscription
+      // callbacks (getting new value from observable and storing it into value_
+      // is not atomic).
+      //
+      // Note that state_ lock is acquired only after Traits::get. Traits::get
+      // is running application code (that may acquire locks) and so it's
+      // important to not hold state_ lock while running it to avoid possible
+      // lock inversion with another code path that needs state_ lock (e.g.
+      // get()).
+      std::lock_guard<std::mutex> updateLockGuard(updateLock_);
+      auto newValue = Traits::get(observable_);
 
-    auto state = state_.lock();
-    if (!state->updateValue(std::move(newValue))) {
-      // Value didn't change, so we can skip the version update.
-      return nullptr;
+      auto state = state_.lock();
+      if (!state->updateValue(std::move(newValue))) {
+        // Value didn't change, so we can skip the version update.
+        return nullptr;
+      }
+
+      if (!std::exchange(state->updateRequested, true)) {
+        return coreWeak_.lock();
+      }
+    } catch (...) {
+      LOG(ERROR) << "Observer update failed: "
+                 << folly::exceptionStr(std::current_exception());
     }
 
-    if (!std::exchange(state->updateRequested, true)) {
-      return coreWeak_.lock();
-    }
     return nullptr;
   }
 

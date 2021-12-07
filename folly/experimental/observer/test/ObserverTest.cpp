@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+#include <stdexcept>
 #include <thread>
 
+#include <utility>
 #include <folly/Singleton.h>
 #include <folly/experimental/observer/Observer.h>
 #include <folly/experimental/observer/SimpleObservable.h>
@@ -959,4 +961,55 @@ TEST(Observer, ObservableLockInversion) {
   }
 
   updater.join();
+}
+
+folly::Function<void()> throwingObservableCallback;
+
+TEST(Observer, ObservableGetThrow) {
+  struct ThrowingObservable {
+    using element_type = size_t;
+
+    std::shared_ptr<const size_t> get() {
+      if (getCalled_.exchange(true)) {
+        throw std::logic_error("Transient error");
+      }
+
+      return std::make_shared<const size_t>(42);
+    }
+
+    void subscribe(folly::Function<void()> cb) {
+      throwingObservableCallback = std::move(cb);
+    }
+
+    void unsubscribe() { throwingObservableCallback = nullptr; }
+
+   private:
+    std::atomic<bool> getCalled_{false};
+  };
+
+  auto observer =
+      folly::observer::ObserverCreator<ThrowingObservable>().getObserver();
+
+  EXPECT_EQ(42, **observer);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(42, **observer);
+  throwingObservableCallback();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(42, **observer);
+
+  struct ExpectedException {};
+  struct AlwaysThrowingObservable {
+    using element_type = size_t;
+
+    std::shared_ptr<const size_t> get() { throw ExpectedException(); }
+
+    void subscribe(folly::Function<void()>) {}
+
+    void unsubscribe() {}
+  };
+
+  EXPECT_THROW(
+      folly::observer::ObserverCreator<AlwaysThrowingObservable>()
+          .getObserver(),
+      ExpectedException);
 }
