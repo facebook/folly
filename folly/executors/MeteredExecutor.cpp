@@ -96,7 +96,7 @@ void MeteredExecutor::Consumer::executeIfNotEmpty() {
 void MeteredExecutor::Consumer::operator()(
     Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   if (self_.queueObserver_) {
-    self_.queueObserver_->onDequeued(first_->getQueueObserverPayload());
+    self_.queueObserver_->onDequeued(task.getQueueObserverPayload());
   }
   if (!first_) {
     first_ = std::make_optional<Task>(std::move(task));
