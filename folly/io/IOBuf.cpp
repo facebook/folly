@@ -784,9 +784,19 @@ IOBuf IOBuf::cloneCoalescedAsValue() const {
 
 IOBuf IOBuf::cloneCoalescedAsValueWithHeadroomTailroom(
     std::size_t newHeadroom, std::size_t newTailroom) const {
-  if (!isChained() && newHeadroom <= headroom() && newTailroom <= tailroom()) {
+  if (isChained() || newHeadroom != headroom()) {
+    // Fall through to slow code path.
+  } else if (newTailroom == tailroom()) {
     return cloneOneAsValue();
+  } else if (newTailroom < tailroom()) {
+    const std::size_t newCapacity =
+        goodExtBufferSize(length_ + newHeadroom + newTailroom) -
+        sizeof(SharedInfo);
+    if (tailroom() <= newCapacity - newHeadroom - length_) {
+      return cloneOneAsValue();
+    }
   }
+
   // Coalesce into newBuf
   const std::size_t newLength = computeChainDataLength();
   const std::size_t newCapacity = newLength + newHeadroom + newTailroom;
