@@ -521,8 +521,23 @@ class IOBufQueue {
    * Clear the queue.  Note that this does not release the buffers, it
    * just sets their length to zero; useful if you want to reuse the
    * same queue without reallocating.
+   *
+   * DEPRECATED: If the queue is chained, only the last buffer will actually be
+   * reused. In most cases, reset() should be used instead, or if reuse is
+   * intended, clearAndTryReuseLargestBuffer().
    */
   void clear();
+
+  /**
+   * Clear the queue, freeing all the buffers. Options are preserved.
+   */
+  void reset() { move(); }
+
+  /**
+   * Clear the queue, but try to clear and keep the largest buffer for reuse
+   * when possible. Options are preserved.
+   */
+  void clearAndTryReuseLargestBuffer();
 
   /**
    * Append the queue to a std::string. Non-destructive.

@@ -408,6 +408,23 @@ void IOBufQueue::clear() {
   chainLength_ = 0;
 }
 
+void IOBufQueue::clearAndTryReuseLargestBuffer() {
+  auto guard = updateGuard();
+  std::unique_ptr<folly::IOBuf> best;
+  while (head_) {
+    auto buf = std::exchange(head_, head_->pop());
+    if (!buf->isSharedOne() &&
+        (best == nullptr || buf->capacity() > best->capacity())) {
+      best = std::move(buf);
+    }
+  }
+  if (best != nullptr) {
+    best->clear();
+    head_ = std::move(best);
+  }
+  chainLength_ = 0;
+}
+
 void IOBufQueue::appendToString(std::string& out) const {
   if (!head_) {
     return;

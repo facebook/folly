@@ -126,6 +126,43 @@ TEST(IOBufQueue, AppendStringPiece) {
   EXPECT_EQ(0, memcmp(chain->data(), chain2->data(), s.length()));
 }
 
+TEST(IOBufQueue, Reset) {
+  IOBufQueue queue(clOptions);
+  queue.preallocate(8, 8);
+  queue.append(SCL("Hello "));
+  queue.preallocate(16, 16);
+  queue.append(SCL("World"));
+  EXPECT_EQ(2, queue.front()->countChainElements());
+  queue.reset();
+  EXPECT_EQ(queue.front(), nullptr);
+  checkConsistency(queue);
+}
+
+TEST(IOBufQueue, ClearAndTryReuseLargestBuffer) {
+  IOBufQueue queue(clOptions);
+  queue.preallocate(8, 8);
+  queue.append(SCL("Hello "));
+
+  queue.preallocate(16, 16);
+  queue.append(SCL("World "));
+  // The current tail will be kept.
+  const IOBuf* kept = queue.front()->prev();
+
+  // The new tail is larger but cannot be reused because it's shared.
+  queue.preallocate(32, 32);
+  queue.append(SCL("abc"));
+  const auto shared = queue.front()->prev()->cloneOne();
+  EXPECT_EQ(3, queue.front()->countChainElements());
+
+  queue.clearAndTryReuseLargestBuffer();
+  ASSERT_TRUE(queue.front());
+  EXPECT_TRUE(queue.empty());
+  // Only the largest non-shared buffer is kept.
+  EXPECT_EQ(1, queue.front()->countChainElements());
+  ASSERT_EQ(kept, queue.front());
+  checkConsistency(queue);
+}
+
 TEST(IOBufQueue, AppendIOBufRef) {
   IOBufQueue queue(clOptions);
   queue.append(*stringToIOBuf("abc", 3), true);
