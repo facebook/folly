@@ -432,9 +432,9 @@ struct invoke_traits : detail::invoke_traits_base<I> {
  *  An invoker expression resulting in an invocable which, when invoked, invokes
  *  the free-invocable qualified name with the given arguments.
  */
-#define FOLLY_INVOKE_QUAL(funcpath)                     \
-  [](auto&&... __folly_param_a)                         \
-      FOLLY_LAMBDA_CONSTEXPR FOLLY_DETAIL_FORWARD_BODY( \
+#define FOLLY_INVOKE_QUAL(funcpath)                    \
+  [](auto&&... __folly_param_a)                        \
+      FOLLY_CXX17_CONSTEXPR FOLLY_DETAIL_FORWARD_BODY( \
           funcpath(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
 
 /***
