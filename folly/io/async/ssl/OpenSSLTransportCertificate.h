@@ -30,9 +30,11 @@ class OpenSSLTransportCertificate : public AsyncTransportCertificate {
  public:
   virtual ~OpenSSLTransportCertificate() = default;
 
-  // TODO: Once all callsites using getX509() perform dynamic casts to this
-  // OpenSSLTransportCertificate type, we can move that method to be declared
-  // here instead.
+  /**
+   * Returns an X509 structure associated with this Certificate. This may be
+   * null.
+   */
+  virtual folly::ssl::X509UniquePtr getX509() const = 0;
 
   static ssl::X509UniquePtr tryExtractX509(
       const AsyncTransportCertificate* cert) {
