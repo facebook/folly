@@ -1942,20 +1942,13 @@ TYPED_TEST_P(EventBaseTest, IdleTime) {
   int latencyCallbacks = 0;
   eventBase.setMaxLatency(std::chrono::microseconds(6000), [&]() {
     ++latencyCallbacks;
-    if (latencyCallbacks != 1) {
-      FAIL() << "Unexpected latency callback";
-    }
-
-    if (tos0.getTimeouts() < 6) {
+    if (latencyCallbacks != 1 || tos0.getTimeouts() < 6) {
       // This could only happen if the host this test is running
       // on is heavily loaded.
-      int64_t usElapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-                              std::chrono::steady_clock::now() - testStart)
-                              .count();
-      EXPECT_LE(43800, usElapsed);
       hostOverloaded = true;
       return;
     }
+
     EXPECT_EQ(6, tos0.getTimeouts());
     EXPECT_GE(6100, eventBase.getAvgLoopTime() - 1200);
     EXPECT_LE(6100, eventBase.getAvgLoopTime() + 1200);
