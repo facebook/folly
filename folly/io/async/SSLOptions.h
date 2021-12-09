@@ -26,7 +26,7 @@ namespace ssl_options_detail {
 void logDfatal(std::exception const&);
 } // namespace ssl_options_detail
 
-struct SSLCommonOptions {
+struct SSLOptionsCompatibility {
   /**
    * The cipher list recommended for this options configuration.
    */
@@ -94,9 +94,11 @@ struct SSLCommonOptions {
 };
 
 /**
- * Recommended SSL options for server-side scenario.
+ * SSLServerOptionsCompatibility contains algorithms that are not recommended
+ * for modern servers, but are included to maintain comaptibility with
+ * very old clients.
  */
-struct SSLServerOptions {
+struct SSLServerOptionsCompatibility {
   /**
    * The list of ciphers recommended for server use.
    */
@@ -127,6 +129,61 @@ struct SSLServerOptions {
         "TLS_AES_128_CCM_SHA256");
   }
 };
+
+/**
+ * SSLOptions2021 contains options that any new client or server from 2021
+ * onwards should be using.
+ *
+ * It contains:
+ *   * AEAD only ciphers with ephemeral key exchanges. (No support for RSA key
+ *     encapsulation)
+ *   * Signature algorithms that do not include insecure digests (such as SHA1)
+ *
+ **/
+struct SSLOptions2021 {
+  static constexpr auto ciphers() {
+    return folly::make_array(
+        "ECDHE-ECDSA-AES128-GCM-SHA256",
+        "ECDHE-RSA-AES128-GCM-SHA256",
+        "ECDHE-ECDSA-AES256-GCM-SHA384",
+        "ECDHE-RSA-AES256-GCM-SHA384",
+        "ECDHE-ECDSA-CHACHA20-POLY1305",
+        "ECDHE-RSA-CHACHA20-POLY1305");
+  }
+
+  static constexpr auto ciphersuites() {
+    return folly::make_array(
+        "TLS_AES_128_GCM_SHA256",
+        "TLS_AES_256_GCM_SHA384",
+        "TLS_CHACHA20_POLY1305_SHA256",
+        "TLS_AES_128_CCM_SHA256");
+  }
+
+  static constexpr auto sigalgs() {
+    return folly::make_array(
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "rsa_pss_pss_sha512",
+        "rsa_pss_rsae_sha512",
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "RSA+SHA512",
+        "ECDSA+SHA512",
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "rsa_pss_pss_sha384",
+        "rsa_pss_rsae_sha384",
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "RSA+SHA384",
+        "ECDSA+SHA384",
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "rsa_pss_pss_sha256",
+        "rsa_pss_rsae_sha256",
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
+        "RSA+SHA256",
+        "ECDSA+SHA256");
+  }
+};
+
+using SSLCommonOptions = SSLOptionsCompatibility;
+using SSLServerOptions = SSLServerOptionsCompatibility;
 
 /**
  * Set the cipher suite of ctx to that in TSSLOptions, and print any runtime
