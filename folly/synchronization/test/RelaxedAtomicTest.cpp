@@ -26,7 +26,7 @@ using RelaxedAtomicBooleanTestTypes = testing::Types<
     std::atomic<bool> volatile,
     folly::relaxed_atomic<bool>,
     folly::relaxed_atomic<bool> volatile>;
-TYPED_TEST_CASE(RelaxedAtomicBooleanTest, RelaxedAtomicBooleanTestTypes);
+TYPED_TEST_SUITE(RelaxedAtomicBooleanTest, RelaxedAtomicBooleanTestTypes);
 
 TYPED_TEST(RelaxedAtomicBooleanTest, is_lock_free) {
   TypeParam v{true};
@@ -86,7 +86,7 @@ using RelaxedAtomicPointerTestTypes = testing::Types<
     std::atomic<int*> volatile,
     folly::relaxed_atomic<int*>,
     folly::relaxed_atomic<int*> volatile>;
-TYPED_TEST_CASE(RelaxedAtomicPointerTest, RelaxedAtomicPointerTestTypes);
+TYPED_TEST_SUITE(RelaxedAtomicPointerTest, RelaxedAtomicPointerTestTypes);
 
 TYPED_TEST(RelaxedAtomicPointerTest, is_lock_free) {
   int n[] = {-1};
@@ -210,7 +210,7 @@ using RelaxedAtomicIntegralTestTypes = testing::Types<
     std::atomic<int> volatile,
     folly::relaxed_atomic<int>,
     folly::relaxed_atomic<int> volatile>;
-TYPED_TEST_CASE(RelaxedAtomicIntegralTest, RelaxedAtomicIntegralTestTypes);
+TYPED_TEST_SUITE(RelaxedAtomicIntegralTest, RelaxedAtomicIntegralTestTypes);
 
 TYPED_TEST(RelaxedAtomicIntegralTest, is_lock_free) {
   TypeParam v{3};

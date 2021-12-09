@@ -84,7 +84,7 @@ class EventBaseTest : public EventBaseTestBase {
   EventBaseTest() = default;
 };
 
-TYPED_TEST_CASE_P(EventBaseTest);
+TYPED_TEST_SUITE_P(EventBaseTest);
 
 template <typename T>
 class EventBaseTest1 : public EventBaseTestBase {
@@ -113,7 +113,7 @@ std::unique_ptr<EventBase> getEventBase(
   }
 }
 
-TYPED_TEST_CASE_P(EventBaseTest1);
+TYPED_TEST_SUITE_P(EventBaseTest1);
 
 enum { BUF_SIZE = 4096 };
 

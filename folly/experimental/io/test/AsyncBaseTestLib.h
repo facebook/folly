@@ -248,7 +248,7 @@ void testReads(
 
 template <typename T>
 class AsyncTest : public ::testing::Test {};
-TYPED_TEST_CASE_P(AsyncTest);
+TYPED_TEST_SUITE_P(AsyncTest);
 
 TYPED_TEST_P(AsyncTest, ZeroAsyncDataNotPollable) {
   test::async_base_test_lib_detail::testReads<TypeParam>(
@@ -473,7 +473,7 @@ TYPED_TEST_P(AsyncTest, Cancel) {
 // batch tests
 template <typename T>
 class AsyncBatchTest : public ::testing::Test {};
-TYPED_TEST_CASE_P(AsyncBatchTest);
+TYPED_TEST_SUITE_P(AsyncBatchTest);
 
 TYPED_TEST_P(AsyncBatchTest, BatchRead) {
   TypeParam aioReader;

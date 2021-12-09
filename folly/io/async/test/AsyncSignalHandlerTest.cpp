@@ -24,7 +24,7 @@ struct DefaultBackendProvider {
   }
 };
 
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     AsyncSignalHandlerTest, AsyncSignalHandlerTest, DefaultBackendProvider);
 
 TEST(AsyncSignalHandler, destructionOrder) {

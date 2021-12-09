@@ -35,7 +35,7 @@ DEFINE_int64(seed, 0, "Seed for random number generators");
 
 template <typename T>
 class ConcurrentHashMapTest : public ::testing::Test {};
-TYPED_TEST_CASE_P(ConcurrentHashMapTest);
+TYPED_TEST_SUITE_P(ConcurrentHashMapTest);
 
 template <template <
     typename,
@@ -1043,7 +1043,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, EraseClonedNonCopyable) {
   EXPECT_EQ(iter->first, 256 * cloned);
 }
 
-REGISTER_TYPED_TEST_CASE_P(
+REGISTER_TYPED_TEST_SUITE_P(
     ConcurrentHashMapTest,
     MapTest,
     MaxSizeTest,
@@ -1096,5 +1096,5 @@ typedef ::testing::Types<MapFactory<BucketTable>, MapFactory<SIMDTable>>
 typedef ::testing::Types<MapFactory<BucketTable>> MapFactoryTypes;
 #endif
 
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     MapFactoryTypesInstantiation, ConcurrentHashMapTest, MapFactoryTypes);

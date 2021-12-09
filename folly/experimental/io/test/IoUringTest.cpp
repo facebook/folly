@@ -23,7 +23,7 @@ using folly::IoUring;
 namespace folly {
 namespace test {
 namespace async_base_test_lib_detail {
-REGISTER_TYPED_TEST_CASE_P(
+REGISTER_TYPED_TEST_SUITE_P(
     AsyncTest,
     ZeroAsyncDataNotPollable,
     ZeroAsyncDataPollable,
@@ -36,9 +36,9 @@ REGISTER_TYPED_TEST_CASE_P(
     NonBlockingWait,
     Cancel);
 
-REGISTER_TYPED_TEST_CASE_P(AsyncBatchTest, BatchRead);
+REGISTER_TYPED_TEST_SUITE_P(AsyncBatchTest, BatchRead);
 
-INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, IoUring);
+INSTANTIATE_TYPED_TEST_SUITE_P(AsyncTest, AsyncTest, IoUring);
 
 class BatchIoUring : public IoUring {
  public:
@@ -46,7 +46,7 @@ class BatchIoUring : public IoUring {
   BatchIoUring()
       : IoUring(kBatchNumEntries, folly::AsyncBase::NOT_POLLABLE, kMaxSubmit) {}
 };
-INSTANTIATE_TYPED_TEST_CASE_P(AsyncBatchTest, AsyncBatchTest, BatchIoUring);
+INSTANTIATE_TYPED_TEST_SUITE_P(AsyncBatchTest, AsyncBatchTest, BatchIoUring);
 
 TEST(IoUringTest, RegisteredBuffers) {
   constexpr size_t kNumEntries = 2;

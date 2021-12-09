@@ -784,7 +784,7 @@ class TcpInfoTestCcParam
   }
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     CcParamTests,
     TcpInfoTestCcParam,
     ::testing::ValuesIn(TcpInfoTestCcParam::getTestingValues()));

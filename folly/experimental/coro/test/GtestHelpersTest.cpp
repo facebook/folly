@@ -42,7 +42,7 @@ CO_TEST_P(GtestHelpersMultiplicationTest, BasicTest) {
   EXPECT_EQ(product, param.expectedProduct);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     GtestHelpersMultiplicationTest,
     GtestHelpersMultiplicationTest,
     ValuesIn(std::vector<GtestHelpersMultiplicationTestParam>{

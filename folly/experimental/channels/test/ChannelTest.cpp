@@ -219,22 +219,22 @@ TEST_P(ChannelFixture, CancellationRespected) {
   EXPECT_TRUE(sender.isReceiverCancelled());
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Coro_WithTry,
     ChannelFixture,
     testing::Values(ConsumptionMode::CoroWithTry));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Coro_WithoutTry,
     ChannelFixture,
     testing::Values(ConsumptionMode::CoroWithoutTry));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Callback_WithHandle,
     ChannelFixture,
     testing::Values(ConsumptionMode::CallbackWithHandle));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Callback_WithHandleList,
     ChannelFixture,
     testing::Values(ConsumptionMode::CallbackWithHandleList));
@@ -325,22 +325,22 @@ TEST_P(ChannelFixtureStress, Cancelled_ThenClosedImmediately_NoException) {
       AnyOf(Eq(CloseType::NoException), Eq(CloseType::Cancelled)));
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Coro_WithTry,
     ChannelFixtureStress,
     testing::Values(ConsumptionMode::CoroWithTry));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Coro_WithoutTry,
     ChannelFixtureStress,
     testing::Values(ConsumptionMode::CoroWithoutTry));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Callback_WithHandle,
     ChannelFixtureStress,
     testing::Values(ConsumptionMode::CallbackWithHandle));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Channel_Callback_WithHandleList,
     ChannelFixtureStress,
     testing::Values(ConsumptionMode::CallbackWithHandleList));

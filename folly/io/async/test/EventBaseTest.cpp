@@ -21,7 +21,7 @@
 namespace folly {
 namespace test {
 
-REGISTER_TYPED_TEST_CASE_P(
+REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest,
     ReadEvent,
     ReadPersist,
@@ -76,7 +76,7 @@ REGISTER_TYPED_TEST_CASE_P(
     LoopKeepAliveAtomic,
     LoopKeepAliveCast);
 
-REGISTER_TYPED_TEST_CASE_P(
+REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,
     DrivableExecutorTest,
     IOExecutorTest,
@@ -96,9 +96,9 @@ struct DefaultBackendProvider {
     return folly::EventBase::getDefaultBackend();
   }
 };
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     EventBaseTest, EventBaseTest, DefaultBackendProvider);
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     EventBaseTest1, EventBaseTest1, DefaultBackendProvider);
 } // namespace test
 } // namespace folly
