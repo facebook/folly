@@ -17,79 +17,68 @@
 #include <folly/experimental/io/SimpleAsyncIO.h>
 
 #include <folly/String.h>
-#if __has_include(<folly/experimental/io/AsyncIO.h>) && __has_include(<libaio.h>)
-#define AIO_SUPPORTED
-#include <folly/experimental/io/AsyncIO.h>
-#endif
-#if __has_include(<folly/experimental/io/IoUring.h>) && __has_include(<liburing.h>)
-#define IOURING_SUPPORTED
-#include <folly/experimental/io/IoUring.h>
-#endif
-
-#if !defined(AIO_SUPPORTED) && !defined(IOURING_SUPPORTED)
-#error "Cannot build without at least one of AsyncIO.h and IoUring.h"
-#endif
-
 #include <folly/experimental/coro/Baton.h>
+#include <folly/experimental/io/AsyncIO.h>
+#include <folly/experimental/io/IoUring.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {
+
+#if __has_include(<libaio.h>)
+static constexpr bool has_aio = true;
+using aio_type = AsyncIO;
+#else
+static constexpr bool has_aio = false;
+using aio_type = void;
+#endif
+
+#if __has_include(<liburing.h>)
+static constexpr auto has_io_uring_rt = &IoUring::isAvailable;
+using io_uring_type = IoUring;
+#else
+static constexpr auto has_io_uring_rt = +[] { return false; };
+using io_uring_type = void;
+#endif
+
+template <typename AsyncIOType>
+void SimpleAsyncIO::init() {
+  asyncIO_ = std::make_unique<AsyncIOType>(maxRequests_, AsyncBase::POLLABLE);
+  opsFreeList_.withWLock([this](auto& freeList) {
+    for (size_t i = 0; i < maxRequests_; ++i) {
+      freeList.push(std::make_unique<typename AsyncIOType::Op>());
+    }
+  });
+}
+
+template <>
+void SimpleAsyncIO::init<void>() {}
 
 SimpleAsyncIO::SimpleAsyncIO(Config cfg)
     : maxRequests_(cfg.maxRequests_),
       completionExecutor_(cfg.completionExecutor_),
       terminating_(false) {
-#if !defined(AIO_SUPPORTED)
-  if (cfg.mode_ == AIO) {
-    LOG(WARNING)
-        << "aio mode requested but not available at link time, falling back to io_uring.";
+  static bool has_io_uring = has_io_uring_rt();
+  if (!has_aio && !has_io_uring) {
+    LOG(FATAL) << "neither aio nor io_uring is available";
+  }
+  if (cfg.mode_ == AIO && !has_aio) {
+    LOG(WARNING) << "aio requested but unavailable: falling back to io_uring";
     cfg.setMode(IOURING);
   }
-#endif
-#if !defined(IOURING_SUPPORTED)
-  if (cfg.mode_ == IOURING) {
-    LOG(WARNING)
-        << "io_uring mode requested but not available at link time, falling back to aio.";
+  if (cfg.mode_ == IOURING && !has_io_uring) {
+    LOG(WARNING) << "io_uring requested but unavailable: falling back to aio";
     cfg.setMode(AIO);
   }
-#else
-  if (cfg.mode_ == IOURING && !IoUring::isAvailable()) {
-#if defined(AIO_SUPPORTED)
-    LOG(WARNING)
-        << "io_uring requested but not available at runtime, falling back to aio mode.";
-    cfg.setMode(AIO);
-#else
-    LOG(FATAL)
-        << "io_uring requested but not available at runtime, aio not available at link time, cannot proceed.";
-#endif
-  }
-#endif
   switch (cfg.mode_) {
-#if defined(AIO_SUPPORTED)
     case AIO:
-      asyncIO_ = std::make_unique<AsyncIO>(maxRequests_, AsyncBase::POLLABLE);
-      opsFreeList_.withWLock(
-          [this](std::queue<std::unique_ptr<AsyncBaseOp>>& freeList) {
-            for (size_t i = 0; i < maxRequests_; ++i) {
-              freeList.push(std::make_unique<AsyncIOOp>());
-            }
-          });
+      init<aio_type>();
       break;
-#endif
-#ifdef IOURING_SUPPORTED
     case IOURING:
-      asyncIO_ = std::make_unique<IoUring>(maxRequests_, AsyncBase::POLLABLE);
-      opsFreeList_.withWLock(
-          [this](std::queue<std::unique_ptr<AsyncBaseOp>>& freeList) {
-            for (size_t i = 0; i < maxRequests_; ++i) {
-              freeList.push(std::make_unique<IoUringOp>());
-            }
-          });
+      init<io_uring_type>();
       break;
-#endif
     default:
       // Should never happen...
-      LOG(FATAL) << "Unavailable mode " << (int)cfg.mode_ << " requested.";
+      LOG(FATAL) << "unrecognized mode " << (int)cfg.mode_ << " requested";
       break;
   }
 

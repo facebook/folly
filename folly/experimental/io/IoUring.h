@@ -16,10 +16,12 @@
 
 #pragma once
 
-#include <liburing.h>
-
 #include <folly/SharedMutex.h>
 #include <folly/experimental/io/AsyncBase.h>
+
+#if __has_include(<liburing.h>)
+
+#include <liburing.h>
 
 namespace folly {
 
@@ -117,3 +119,5 @@ class IoUring : public AsyncBase {
 
 using IoUringQueue = AsyncBaseQueue;
 } // namespace folly
+
+#endif

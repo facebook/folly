@@ -16,7 +16,6 @@
 
 #include <folly/experimental/io/IoUring.h>
 
-#include <sys/eventfd.h>
 #include <cerrno>
 #include <ostream>
 #include <stdexcept>
@@ -30,6 +29,8 @@
 #include <folly/Likely.h>
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
+
+#if __has_include(<liburing.h>)
 
 // helpers
 namespace {
@@ -338,3 +339,5 @@ Range<AsyncBase::Op**> IoUring::doWait(
 }
 
 } // namespace folly
+
+#endif

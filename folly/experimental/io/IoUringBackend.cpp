@@ -15,7 +15,6 @@
  */
 
 #include <signal.h>
-#include <sys/timerfd.h>
 
 #include <folly/FileUtil.h>
 #include <folly/Likely.h>
@@ -27,6 +26,12 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Sockets.h>
 #include <folly/synchronization/CallOnce.h>
+
+#if __has_include(<sys/timerfd.h>)
+#include <sys/timerfd.h>
+#endif
+
+#if __has_include(<liburing.h>)
 
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_pre_hook(uint64_t* call_time);
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
@@ -1302,3 +1307,5 @@ void IoUringBackend::processFileOp(IoSqe* sqe, int64_t res) noexcept {
 }
 
 } // namespace folly
+
+#endif // __has_include(<liburing.h>)

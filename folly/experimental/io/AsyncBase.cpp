@@ -87,7 +87,7 @@ void AsyncBaseOp::init() {
 
 std::string AsyncBaseOp::fd2name(int fd) {
   auto link = fs::path{"/proc/self/fd"} / folly::to<std::string>(fd);
-  return fs::read_symlink(link);
+  return fs::read_symlink(link).string();
 }
 
 AsyncBase::AsyncBase(size_t capacity, PollMode pollMode) : capacity_(capacity) {

@@ -201,39 +201,6 @@ list(APPEND hfiles
   ${FOLLY_DIR}/test/TestUtils.h
 )
 
-# Exclude specific sources if we do not have third-party libraries
-# required to build them.
-if (NOT ${LIBAIO_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/io/AsyncIO.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/io/AsyncIO.h
-  )
-endif()
-if (NOT ${LIBURING_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/io/IoUring.cpp
-    ${FOLLY_DIR}/experimental/io/IoUringBackend.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/io/IoUring.h
-    ${FOLLY_DIR}/experimental/io/IoUringBackend.h
-  )
-endif()
-if (NOT ${LIBAIO_FOUND} AND NOT ${LIBURING_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/io/AsyncBase.cpp
-    ${FOLLY_DIR}/experimental/io/PollIoBackend.cpp
-    ${FOLLY_DIR}/experimental/io/SimpleAsyncIO.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/io/AsyncBase.h
-    ${FOLLY_DIR}/experimental/io/PollIoBackend.h
-    ${FOLLY_DIR}/experimental/io/SimpleAsyncIO.h
-  )
-endif()
-
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   check_cxx_compiler_flag(-fcoroutines COMPILER_HAS_F_COROUTINES)
   if (COMPILER_HAS_F_COROUTINES)

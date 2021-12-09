@@ -16,7 +16,6 @@
 
 #include <folly/experimental/io/AsyncIO.h>
 
-#include <sys/eventfd.h>
 #include <cerrno>
 #include <ostream>
 #include <stdexcept>
@@ -31,6 +30,8 @@
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
 #include <folly/small_vector.h>
+
+#if __has_include(<libaio.h>)
 
 // debugging helpers
 namespace {
@@ -274,3 +275,5 @@ Range<AsyncBase::Op**> AsyncIO::doWait(
 }
 
 } // namespace folly
+
+#endif

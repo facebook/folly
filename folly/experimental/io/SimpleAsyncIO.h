@@ -164,6 +164,9 @@ class SimpleAsyncIO : public EventHandler {
 
   virtual void handlerReady(uint16_t events) noexcept override;
 
+  template <typename AsyncIOType>
+  void init();
+
   size_t maxRequests_;
   Executor::KeepAlive<> completionExecutor_;
   std::unique_ptr<AsyncBase> asyncIO_;

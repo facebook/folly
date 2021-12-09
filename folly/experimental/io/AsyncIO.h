@@ -16,9 +16,11 @@
 
 #pragma once
 
-#include <libaio.h>
-
 #include <folly/experimental/io/AsyncBase.h>
+
+#if __has_include(<libaio.h>)
+
+#include <libaio.h>
 
 namespace folly {
 
@@ -94,3 +96,5 @@ class AsyncIO : public AsyncBase {
 
 using AsyncIOQueue = AsyncBaseQueue;
 } // namespace folly
+
+#endif
