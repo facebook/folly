@@ -28,6 +28,7 @@
 #include <folly/Format.h>
 #include <folly/Likely.h>
 #include <folly/String.h>
+#include <folly/portability/Filesystem.h>
 #include <folly/portability/Unistd.h>
 
 #if __has_include(<sys/eventfd.h>)
@@ -85,11 +86,8 @@ void AsyncBaseOp::init() {
 }
 
 std::string AsyncBaseOp::fd2name(int fd) {
-  std::string path = folly::to<std::string>("/proc/self/fd/", fd);
-  char link[PATH_MAX];
-  const ssize_t length =
-      std::max<ssize_t>(readlink(path.c_str(), link, PATH_MAX), 0);
-  return path.assign(link, length);
+  auto link = fs::path{"/proc/self/fd"} / folly::to<std::string>(fd);
+  return fs::read_symlink(link);
 }
 
 AsyncBase::AsyncBase(size_t capacity, PollMode pollMode) : capacity_(capacity) {
