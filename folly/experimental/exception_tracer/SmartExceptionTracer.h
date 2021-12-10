@@ -23,6 +23,10 @@
 
 #if defined(__GLIBCXX__)
 
+// These functions report stack traces if available.
+// To enable collecting stack traces your binary must also include the
+// smart_exception_stack_trace_hooks target.
+
 namespace folly {
 namespace exception_tracer {
 
