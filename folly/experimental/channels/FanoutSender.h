@@ -64,6 +64,11 @@ class FanoutSender {
   bool anySubscribers();
 
   /**
+   * Returns the number of output receivers for this fanout sender.
+   */
+  std::uint64_t numSubscribers() const;
+
+  /**
    * Sends the given value to all corresponding receivers.
    */
   template <typename U = ValueType>

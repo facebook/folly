@@ -75,6 +75,21 @@ bool FanoutSender<ValueType>::anySubscribers() {
 }
 
 template <typename ValueType>
+std::uint64_t FanoutSender<ValueType>::numSubscribers() const {
+  if (senders_.index() == 0) {
+    auto sender =
+        senders_.get(folly::tag_t<detail::ChannelBridge<ValueType>>{});
+    return sender ? 1 : 0;
+  } else if (senders_.index() == 1) {
+    auto senders = senders_.get(
+        folly::tag_t<folly::F14FastSet<detail::ChannelBridgePtr<ValueType>>>{});
+    return senders ? senders->size() : 0;
+  } else {
+    return 0;
+  }
+}
+
+template <typename ValueType>
 template <typename U>
 void FanoutSender<ValueType>::write(U&& element) {
   clearSendersWithClosedReceivers();

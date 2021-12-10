@@ -142,5 +142,19 @@ TEST_F(FanoutSenderFixture, ReceiversCancelled) {
   std::move(fanoutSender).close();
   executor_.drain();
 }
+
+TEST_F(FanoutSenderFixture, NumSubscribers) {
+  auto sender = FanoutSender<int>{};
+  EXPECT_EQ(sender.numSubscribers(), 0);
+
+  auto receiver1 = std::make_unique<Receiver<int>>(sender.subscribe());
+  EXPECT_EQ(sender.numSubscribers(), 1);
+
+  auto receiver2 = std::make_unique<Receiver<int>>(sender.subscribe());
+  EXPECT_EQ(sender.numSubscribers(), 2);
+
+  auto receiver3 = std::make_unique<Receiver<int>>(sender.subscribe());
+  EXPECT_EQ(sender.numSubscribers(), 3);
+}
 } // namespace channels
 } // namespace folly

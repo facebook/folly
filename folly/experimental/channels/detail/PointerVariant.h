@@ -45,14 +45,14 @@ class PointerVariant {
   /**
    * Returns the zero-based index of the type that is currently held.
    */
-  size_t index() { return static_cast<size_t>(storage_ & kTypeMask); }
+  size_t index() const { return static_cast<size_t>(storage_ & kTypeMask); }
 
   /**
    * Returns the pointer stored in the PointerVariant, if the type matches the
    * first type. If the stored type does not match the first type, an exception
    * will be thrown.
    */
-  inline FirstType* get(folly::tag_t<FirstType>) {
+  inline FirstType* get(folly::tag_t<FirstType>) const {
     ensureCorrectType(false /* secondType */);
     return reinterpret_cast<FirstType*>(storage_ & kPointerMask);
   }
@@ -62,7 +62,7 @@ class PointerVariant {
    * second type. If the stored type does not match the second type, an
    * exception will be thrown.
    */
-  inline SecondType* get(folly::tag_t<SecondType>) {
+  inline SecondType* get(folly::tag_t<SecondType>) const {
     ensureCorrectType(true /* secondType */);
     return reinterpret_cast<SecondType*>(storage_ & kPointerMask);
   }
@@ -82,7 +82,7 @@ class PointerVariant {
   }
 
  private:
-  void ensureCorrectType(bool secondType) {
+  void ensureCorrectType(bool secondType) const {
     if (secondType != !!(storage_ & kTypeMask)) {
       throw std::runtime_error(fmt::format(
           "Incorrect type specified. Given: {}, Stored: {}",
