@@ -1931,7 +1931,7 @@ void AsyncSSLSocket::enableClientHelloParsing() {
 void AsyncSSLSocket::resetClientHelloParsing(SSL* ssl) {
   SSL_set_msg_callback(ssl, nullptr);
   SSL_set_msg_callback_arg(ssl, nullptr);
-  clientHelloInfo_->clientHelloBuf_.clear();
+  clientHelloInfo_->clientHelloBuf_.reset();
 }
 
 void AsyncSSLSocket::parseClientAlpns(
