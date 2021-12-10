@@ -130,7 +130,7 @@ TEST(IOBufQueue, Reset) {
   IOBufQueue queue(clOptions);
   queue.preallocate(8, 8);
   queue.append(SCL("Hello "));
-  queue.preallocate(16, 16);
+  queue.preallocate(128, 128);
   queue.append(SCL("World"));
   EXPECT_EQ(2, queue.front()->countChainElements());
   queue.reset();
@@ -143,13 +143,15 @@ TEST(IOBufQueue, ClearAndTryReuseLargestBuffer) {
   queue.preallocate(8, 8);
   queue.append(SCL("Hello "));
 
-  queue.preallocate(16, 16);
+  // Separate allocation sizes enough that, if they're internally rounded up,
+  // all the buffers have different capacities.
+  queue.preallocate(128, 128);
   queue.append(SCL("World "));
   // The current tail will be kept.
   const IOBuf* kept = queue.front()->prev();
 
   // The new tail is larger but cannot be reused because it's shared.
-  queue.preallocate(32, 32);
+  queue.preallocate(256, 256);
   queue.append(SCL("abc"));
   const auto shared = queue.front()->prev()->cloneOne();
   EXPECT_EQ(3, queue.front()->countChainElements());
