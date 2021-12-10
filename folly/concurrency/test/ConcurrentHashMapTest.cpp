@@ -112,6 +112,10 @@ TYPED_TEST_P(ConcurrentHashMapTest, MapTest) {
   EXPECT_FALSE(foomap.empty());
   foomap.clear();
   EXPECT_TRUE(foomap.empty());
+  EXPECT_TRUE(foomap.insert(3, 0).second);
+  EXPECT_FALSE(foomap.empty());
+  foomap.erase(3);
+  EXPECT_TRUE(foomap.empty());
 }
 
 TYPED_TEST_P(ConcurrentHashMapTest, MaxSizeTest) {

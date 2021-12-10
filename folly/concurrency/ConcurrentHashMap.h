@@ -222,6 +222,12 @@ class ConcurrentHashMap {
     }
     cohort_.store(o.cohort(), std::memory_order_relaxed);
     o.cohort_.store(nullptr, std::memory_order_relaxed);
+    beginSeg_.store(
+        o.beginSeg_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    o.beginSeg_.store(NumShards, std::memory_order_relaxed);
+    endSeg_.store(
+        o.endSeg_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    o.endSeg_.store(0, std::memory_order_relaxed);
   }
 
   ConcurrentHashMap& operator=(ConcurrentHashMap&& o) {
@@ -241,11 +247,19 @@ class ConcurrentHashMap {
     cohort_shutdown_cleanup();
     cohort_.store(o.cohort(), std::memory_order_relaxed);
     o.cohort_.store(nullptr, std::memory_order_relaxed);
+    beginSeg_.store(
+        o.beginSeg_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    o.beginSeg_.store(NumShards, std::memory_order_relaxed);
+    endSeg_.store(
+        o.endSeg_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    o.endSeg_.store(0, std::memory_order_relaxed);
     return *this;
   }
 
   ~ConcurrentHashMap() {
-    for (uint64_t i = 0; i < NumShards; i++) {
+    uint64_t begin = beginSeg_.load(std::memory_order_acquire);
+    uint64_t end = endSeg_.load(std::memory_order_acquire);
+    for (uint64_t i = begin; i < end; ++i) {
       auto seg = segments_[i].load(std::memory_order_relaxed);
       if (seg) {
         seg->~SegmentT();
@@ -256,7 +270,12 @@ class ConcurrentHashMap {
   }
 
   bool empty() const noexcept {
-    for (uint64_t i = 0; i < NumShards; i++) {
+    uint64_t begin = beginSeg_.load(std::memory_order_acquire);
+    uint64_t end = endSeg_.load(std::memory_order_acquire);
+    // Note: beginSeg_ and endSeg_ are only conservative hints of the
+    // range of non-empty segments. This function cannot conclude that
+    // a map is nonempty merely because beginSeg_ < endSeg_.
+    for (uint64_t i = begin; i < end; ++i) {
       auto seg = segments_[i].load(std::memory_order_acquire);
       if (seg) {
         if (!seg->empty()) {
@@ -425,7 +444,7 @@ class ConcurrentHashMap {
     auto segment = pickSegment(pos->first);
     ConstIterator res(this, segment);
     ensureSegment(segment)->erase(res.it_, pos.it_);
-    res.next(); // May point to segment end, and need to advance.
+    res.advanceIfAtSegmentEnd();
     return res;
   }
 
@@ -457,7 +476,9 @@ class ConcurrentHashMap {
 
   // NOT noexcept, initializes new shard segments vs.
   void clear() {
-    for (uint64_t i = 0; i < NumShards; i++) {
+    uint64_t begin = beginSeg_.load(std::memory_order_acquire);
+    uint64_t end = endSeg_.load(std::memory_order_acquire);
+    for (uint64_t i = begin; i < end; ++i) {
       auto seg = segments_[i].load(std::memory_order_acquire);
       if (seg) {
         seg->clear();
@@ -469,7 +490,9 @@ class ConcurrentHashMap {
     count = count >> ShardBits;
     if (!count)
       return;
-    for (uint64_t i = 0; i < NumShards; i++) {
+    uint64_t begin = beginSeg_.load(std::memory_order_acquire);
+    uint64_t end = endSeg_.load(std::memory_order_acquire);
+    for (uint64_t i = begin; i < end; ++i) {
       auto seg = segments_[i].load(std::memory_order_acquire);
       if (seg) {
         seg->rehash(count);
@@ -480,7 +503,9 @@ class ConcurrentHashMap {
   // This is a rolling size, and is not exact at any moment in time.
   size_t size() const noexcept {
     size_t res = 0;
-    for (uint64_t i = 0; i < NumShards; i++) {
+    uint64_t begin = beginSeg_.load(std::memory_order_acquire);
+    uint64_t end = endSeg_.load(std::memory_order_acquire);
+    for (uint64_t i = begin; i < end; ++i) {
       auto seg = segments_[i].load(std::memory_order_acquire);
       if (seg) {
         res += seg->size();
@@ -492,7 +517,9 @@ class ConcurrentHashMap {
   float max_load_factor() const { return load_factor_; }
 
   void max_load_factor(float factor) {
-    for (uint64_t i = 0; i < NumShards; i++) {
+    uint64_t begin = beginSeg_.load(std::memory_order_acquire);
+    uint64_t end = endSeg_.load(std::memory_order_acquire);
+    for (uint64_t i = begin; i < end; ++i) {
       auto seg = segments_[i].load(std::memory_order_acquire);
       if (seg) {
         seg->max_load_factor(factor);
@@ -510,7 +537,7 @@ class ConcurrentHashMap {
 
     ConstIterator& operator++() {
       ++it_;
-      next();
+      advanceIfAtSegmentEnd();
       return *this;
     }
 
@@ -544,32 +571,43 @@ class ConcurrentHashMap {
    private:
     // cbegin iterator
     explicit ConstIterator(const ConcurrentHashMap* parent)
-        : it_(parent->ensureSegment(0)->cbegin()),
-          segment_(0),
+        : it_(nullptr),
+          segment_(parent->beginSeg_.load(std::memory_order_acquire)),
           parent_(parent) {
-      // Always iterate to the first element, could be in any shard.
-      next();
+      advanceToSegmentBegin();
     }
 
     // cend iterator
     explicit ConstIterator(uint64_t shards) : it_(nullptr), segment_(shards) {}
 
-    void next() {
-      while (segment_ < parent_->NumShards &&
-             it_ == parent_->ensureSegment(segment_)->cend()) {
-        SegmentT* seg{nullptr};
-        while (!seg) {
-          segment_++;
-          if (segment_ < parent_->NumShards) {
-            seg = parent_->segments_[segment_].load(std::memory_order_acquire);
-            if (!seg) {
-              continue;
-            }
-            it_ = seg->cbegin();
-          }
-          break;
-        }
+    void advanceIfAtSegmentEnd() {
+      DCHECK_LT(segment_, parent_->NumShards);
+      SegmentT* seg =
+          parent_->segments_[segment_].load(std::memory_order_acquire);
+      DCHECK(seg);
+      if (it_ == seg->cend()) {
+        ++segment_;
+        advanceToSegmentBegin();
       }
+    }
+
+    FOLLY_ALWAYS_INLINE void advanceToSegmentBegin() {
+      // Advance to the beginning of the next nonempty segment
+      // starting from segment_.
+      uint64_t end = parent_->endSeg_.load(std::memory_order_acquire);
+      while (segment_ < end) {
+        SegmentT* seg =
+            parent_->segments_[segment_].load(std::memory_order_acquire);
+        if (seg) {
+          it_ = seg->cbegin();
+          if (it_ != seg->cend()) {
+            return;
+          }
+        }
+        ++segment_;
+      }
+      // All segments are empty. Advance to end.
+      segment_ = parent_->NumShards;
     }
 
     typename SegmentT::Iterator it_;
@@ -658,9 +696,24 @@ class ConcurrentHashMap {
         Allocator().deallocate((uint8_t*)newseg, sizeof(SegmentT));
       } else {
         seg = newseg;
+        updateBeginAndEndSegments(i);
       }
     }
     return seg;
+  }
+
+  void updateBeginAndEndSegments(uint64_t i) const {
+    uint64_t val = beginSeg_.load(std::memory_order_acquire);
+    while (i < val && !casSeg(beginSeg_, val, i)) {
+    }
+    val = endSeg_.load(std::memory_order_acquire);
+    while (i + 1 > val && !casSeg(endSeg_, val, i + 1)) {
+    }
+  }
+
+  bool casSeg(Atom<uint64_t>& seg, uint64_t& expval, uint64_t newval) const {
+    return seg.compare_exchange_weak(
+        expval, newval, std::memory_order_acq_rel, std::memory_order_acquire);
   }
 
   hazptr_obj_cohort<Atom>* cohort() const noexcept {
@@ -694,6 +747,8 @@ class ConcurrentHashMap {
   size_t size_{0};
   size_t max_size_{0};
   mutable Atom<hazptr_obj_cohort<Atom>*> cohort_{nullptr};
+  mutable Atom<uint64_t> beginSeg_{NumShards};
+  mutable Atom<uint64_t> endSeg_{0};
 };
 
 #if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
