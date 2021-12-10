@@ -15,7 +15,7 @@ BOOST_ROOT_1_69_0
 [debs]
 libboost-all-dev
 
-[rpms]
+[rpms.all(distro=centos_stream,distro_vers=8)]
 boost169
 boost169-math
 boost169-test
@@ -47,6 +47,9 @@ boost169-wave
 boost169-python3
 boost169-serialization
 boost169-program-options
+
+[rpms.not(all(distro=centos_stream,distro_vers=8))]
+boost-devel
 
 [build]
 builder = boost

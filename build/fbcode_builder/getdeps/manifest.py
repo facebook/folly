@@ -110,6 +110,8 @@ ALLOWED_EXPR_SECTIONS = [
     "download",
     "git",
     "install.files",
+    "rpms",
+    "debs",
 ]
 
 
