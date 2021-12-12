@@ -395,19 +395,6 @@ std::unique_ptr<folly::IOBuf> IOBufQueue::pop_front() {
   return retBuf;
 }
 
-void IOBufQueue::clear() {
-  if (!head_) {
-    return;
-  }
-  auto guard = updateGuard();
-  IOBuf* buf = head_.get();
-  do {
-    buf->clear();
-    buf = buf->next();
-  } while (buf != head_.get());
-  chainLength_ = 0;
-}
-
 void IOBufQueue::clearAndTryReuseLargestBuffer() {
   auto guard = updateGuard();
   std::unique_ptr<folly::IOBuf> best;
