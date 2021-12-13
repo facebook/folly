@@ -62,7 +62,7 @@ documentation.
 ### What's in it?
 
 Because of folly's fairly flat structure, the best way to see what's in it
-is to look at the headers in [top level `folly/` directory](https://github.com/facebook/folly/tree/master/folly). You can also
+is to look at the headers in [top level `folly/` directory](https://github.com/facebook/folly/tree/main/folly). You can also
 check the [`docs` folder](folly/docs) for documentation, starting with the
 [overview](folly/docs/Overview.md).
 
