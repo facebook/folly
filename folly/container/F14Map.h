@@ -329,9 +329,9 @@ class F14BasicMap {
     // is easy to disable at a particular call site by asking for an
     // initialCapacity of 1.
     bool autoReserve =
-        std::is_same<
-            typename std::iterator_traits<InputIt>::iterator_category,
-            std::random_access_iterator_tag>::value &&
+        std::is_base_of<
+            std::random_access_iterator_tag,
+            typename std::iterator_traits<InputIt>::iterator_category>::value &&
         initialCapacity == 0;
     bulkInsert(first, last, autoReserve);
   }
@@ -343,9 +343,9 @@ class F14BasicMap {
     // ourself to situations that mimic bulk construction without an
     // explicit initialCapacity.
     bool autoReserve =
-        std::is_same<
-            typename std::iterator_traits<InputIt>::iterator_category,
-            std::random_access_iterator_tag>::value &&
+        std::is_base_of<
+            std::random_access_iterator_tag,
+            typename std::iterator_traits<InputIt>::iterator_category>::value &&
         bucket_count() == 0;
     bulkInsert(first, last, autoReserve);
   }
