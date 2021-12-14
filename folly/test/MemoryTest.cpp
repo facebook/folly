@@ -213,6 +213,14 @@ TEST(SysAllocator, allocate_unique) {
   EXPECT_EQ(3., *ptr);
 }
 
+TEST(SysAllocator, allocate_unique_different_type) {
+  using Alloc = SysAllocator<char>;
+  Alloc const alloc;
+  std::unique_ptr<float, allocator_delete<SysAllocator<float>>> ptr =
+      allocate_unique<float>(alloc, 3.);
+  EXPECT_EQ(3., *ptr);
+}
+
 TEST(SysAllocator, vector) {
   using Alloc = SysAllocator<float>;
   Alloc const alloc;
@@ -241,7 +249,8 @@ TEST(AlignedSysAllocator, equality_fixed) {
 TEST(AlignedSysAllocator, allocate_unique_fixed) {
   using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
   Alloc const alloc;
-  auto ptr = allocate_unique<float>(alloc, 3.);
+  std::unique_ptr<float, allocator_delete<Alloc>> ptr =
+      allocate_unique<float>(alloc, 3.);
   EXPECT_EQ(3., *ptr);
   EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
 }
@@ -342,18 +351,39 @@ struct CountedAllocatorStats {
 };
 
 template <typename T>
-class CountedAllocator : public std::allocator<T> {
+class CountedAllocator {
  private:
   CountedAllocatorStats* stats_;
+  std::allocator<T> alloc;
 
  public:
+  using value_type = T;
+  constexpr CountedAllocator(CountedAllocator const&) = default;
+  CountedAllocator<T>& operator=(CountedAllocator const&) = default;
+
+  template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
+  /* implicit */ constexpr CountedAllocator(
+      CountedAllocator<U> const& other) noexcept
+      : stats_(other.stats_) {}
+
   explicit CountedAllocator(CountedAllocatorStats& stats) noexcept
       : stats_(&stats) {}
+
+  T* allocate(size_t count) { return alloc.allocate(count); }
   void deallocate(T* p, size_t n) {
-    std::allocator<T>::deallocate(p, n);
+    alloc.deallocate(p, n);
     ++stats_->deallocates;
   }
 };
+
+template <class T, class U>
+bool operator==(const CountedAllocator<T>&, const CountedAllocator<U>&) {
+  return true;
+}
+template <class T, class U>
+bool operator!=(const CountedAllocator<T>&, const CountedAllocator<U>&) {
+  return false;
+}
 
 TEST(allocate_unique, ctor_failure) {
   struct CtorThrows {

@@ -752,12 +752,18 @@ class allocator_delete : private std::remove_reference<Alloc>::type {
  * allocate_unique, like std::allocate_shared but for std::unique_ptr
  */
 template <typename T, typename Alloc, typename... Args>
-std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
-    Alloc const& alloc, Args&&... args) {
-  using traits = std::allocator_traits<Alloc>;
+std::unique_ptr<
+    T,
+    allocator_delete<
+        typename std::allocator_traits<Alloc>::template rebind_alloc<T>>>
+allocate_unique(Alloc const& alloc, Args&&... args) {
+  using TAlloc =
+      typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
+
+  using traits = std::allocator_traits<TAlloc>;
   struct DeferCondDeallocate {
     bool& cond;
-    Alloc& copy;
+    TAlloc& copy;
     T* p;
     ~DeferCondDeallocate() {
       if (FOLLY_UNLIKELY(!cond)) {
@@ -765,7 +771,7 @@ std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
       }
     }
   };
-  auto copy = alloc;
+  auto copy = TAlloc(alloc);
   auto const p = traits::allocate(copy, 1);
   {
     bool constructed = false;
@@ -773,7 +779,7 @@ std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
     traits::construct(copy, p, static_cast<Args&&>(args)...);
     constructed = true;
   }
-  return {p, allocator_delete<Alloc>(std::move(copy))};
+  return {p, allocator_delete<TAlloc>(std::move(copy))};
 }
 
 struct SysBufferDeleter {
