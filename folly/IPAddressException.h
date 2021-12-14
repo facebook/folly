@@ -22,6 +22,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/detail/IPAddress.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -44,38 +45,22 @@ enum class CIDRNetworkError {
 /**
  * Exception for invalid IP addresses.
  */
-class FOLLY_EXPORT IPAddressFormatException : public std::exception {
+class FOLLY_EXPORT IPAddressFormatException : public std::runtime_error {
  public:
-  explicit IPAddressFormatException(std::string msg) noexcept
-      : msg_(std::move(msg)) {}
-  IPAddressFormatException(const IPAddressFormatException&) = default;
-  IPAddressFormatException(IPAddressFormatException&&) = default;
-  IPAddressFormatException& operator=(const IPAddressFormatException&) =
-      default;
-  IPAddressFormatException& operator=(IPAddressFormatException&&) = default;
-
-  ~IPAddressFormatException() noexcept override {}
-  const char* what() const noexcept override { return msg_.c_str(); }
-
- private:
-  std::string msg_;
+  using std::runtime_error::runtime_error;
 };
 
 class FOLLY_EXPORT InvalidAddressFamilyException
     : public IPAddressFormatException {
  public:
-  explicit InvalidAddressFamilyException(std::string msg) noexcept
-      : IPAddressFormatException(std::move(msg)) {}
+  explicit InvalidAddressFamilyException(const char* msg)
+      : IPAddressFormatException{msg} {}
+  explicit InvalidAddressFamilyException(const std::string& msg) noexcept
+      : IPAddressFormatException{msg} {}
   explicit InvalidAddressFamilyException(sa_family_t family) noexcept
       : InvalidAddressFamilyException(
             "Address family " + detail::familyNameStr(family) +
             " is not AF_INET or AF_INET6") {}
-  InvalidAddressFamilyException(const InvalidAddressFamilyException&) = default;
-  InvalidAddressFamilyException(InvalidAddressFamilyException&&) = default;
-  InvalidAddressFamilyException& operator=(
-      const InvalidAddressFamilyException&) = default;
-  InvalidAddressFamilyException& operator=(InvalidAddressFamilyException&&) =
-      default;
 };
 
 } // namespace folly
