@@ -537,24 +537,19 @@ class IOBuf {
    * copyBuffer() above, with the size argument of 3.
    */
   static std::unique_ptr<IOBuf> copyBuffer(
-      const std::string& buf,
-      std::size_t headroom = 0,
-      std::size_t minTailroom = 0);
+      StringPiece buf, std::size_t headroom = 0, std::size_t minTailroom = 0);
   IOBuf(
       CopyBufferOp op,
-      const std::string& buf,
+      StringPiece buf,
       std::size_t headroom = 0,
       std::size_t minTailroom = 0)
       : IOBuf(op, buf.data(), buf.size(), headroom, minTailroom) {}
-
   /**
    * A version of copyBuffer() that returns a null pointer if the input string
    * is empty.
    */
   static std::unique_ptr<IOBuf> maybeCopyBuffer(
-      const std::string& buf,
-      std::size_t headroom = 0,
-      std::size_t minTailroom = 0);
+      StringPiece buf, std::size_t headroom = 0, std::size_t minTailroom = 0);
 
   /**
    * Convenience function to free a chain of IOBufs held by a unique_ptr.
@@ -1780,12 +1775,12 @@ inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
 }
 
 inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
-    const std::string& buf, std::size_t headroom, std::size_t minTailroom) {
+    StringPiece buf, std::size_t headroom, std::size_t minTailroom) {
   return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
 }
 
 inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(
-    const std::string& buf, std::size_t headroom, std::size_t minTailroom) {
+    StringPiece buf, std::size_t headroom, std::size_t minTailroom) {
   if (buf.empty()) {
     return nullptr;
   }

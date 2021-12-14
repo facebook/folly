@@ -77,6 +77,22 @@ BENCHMARK(copyBenchmark, iters) {
   }
 }
 
+BENCHMARK(copyBufferFromStringBenchmark, iters) {
+  std::string s("Hello World");
+  while (iters--) {
+    auto copy = IOBuf::copyBuffer(s);
+    folly::doNotOptimizeAway(copy->capacity());
+  }
+}
+
+BENCHMARK(copyBufferFromStringPieceBenchmark, iters) {
+  folly::StringPiece s("Hello World");
+  while (iters--) {
+    auto copy = IOBuf::copyBuffer(s);
+    folly::doNotOptimizeAway(copy->capacity());
+  }
+}
+
 BENCHMARK(cloneCoalescedBaseline, iters) {
   std::unique_ptr<IOBuf> buf = IOBuf::createChain(100, 10);
   while (iters--) {

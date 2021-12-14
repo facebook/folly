@@ -1808,3 +1808,21 @@ TEST(IOBuf, AppendTo) {
   testAppendTo(std::vector<char>{});
   testAppendTo(std::vector<unsigned char>{});
 }
+
+TEST(IOBuf, FromStringView) {
+  auto literalHelloBuffer = IOBuf::copyBuffer("Hello");
+  std::string hello("Hello");
+  auto fromStringHelloBuffer = IOBuf::copyBuffer(hello);
+  std::string_view hello2("Hello");
+  auto fromStringViewHelloBuffer = IOBuf::copyBuffer(hello2);
+
+  std::string fromLiteral;
+  literalHelloBuffer->appendTo(fromLiteral);
+  std::string fromString;
+  fromStringHelloBuffer->appendTo(fromString);
+  std::string fromStringView;
+  fromStringViewHelloBuffer->appendTo(fromStringView);
+
+  EXPECT_EQ(fromStringView, fromString);
+  EXPECT_EQ(fromLiteral, fromString);
+}
