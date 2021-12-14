@@ -18,6 +18,8 @@
 
 #include <cstdint>
 
+#include <folly/CancellationToken.h>
+#include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/Task.h>
 
 namespace folly {
@@ -29,6 +31,15 @@ folly::coro::Task<uint64_t> coro_getValueX5(uint64_t val) {
     throw std::invalid_argument("0 is not allowed");
   }
   co_return val * 5;
+}
+
+folly::coro::Task<uint64_t> coro_returnFiveAfterCancelled() {
+  folly::coro::Baton baton;
+  const folly::CancellationToken& ct =
+      co_await folly::coro::co_current_cancellation_token;
+  folly::CancellationCallback cb{ct, [&] { baton.post(); }};
+  co_await baton;
+  co_return 5;
 }
 } // namespace test
 } // namespace python

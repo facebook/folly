@@ -32,11 +32,17 @@ class SocketOptionKey {
  public:
   enum class ApplyPos { POST_BIND = 0, PRE_BIND = 1 };
 
-  bool operator<(const SocketOptionKey& other) const {
-    if (level == other.level) {
-      return optname < other.optname;
+  friend bool operator<(
+      const SocketOptionKey& lhs, const SocketOptionKey& rhs) {
+    if (lhs.level == rhs.level) {
+      return lhs.optname < rhs.optname;
     }
-    return level < other.level;
+    return lhs.level < rhs.level;
+  }
+
+  friend bool operator==(
+      const SocketOptionKey& lhs, const SocketOptionKey& rhs) {
+    return lhs.level == rhs.level && lhs.optname == rhs.optname;
   }
 
   int apply(NetworkSocket fd, int val) const;

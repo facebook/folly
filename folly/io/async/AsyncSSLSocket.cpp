@@ -408,6 +408,13 @@ void AsyncSSLSocket::shutdownWriteNow() {
   closeNow();
 }
 
+bool AsyncSSLSocket::readable() const {
+  if (ssl_ != nullptr && SSL_pending(ssl_.get()) > 0) {
+    return true;
+  }
+  return AsyncSocket::readable();
+}
+
 bool AsyncSSLSocket::good() const {
   return (
       AsyncSocket::good() &&
@@ -435,6 +442,11 @@ std::string AsyncSSLSocket::getApplicationProtocol() const noexcept {
     return std::string(reinterpret_cast<const char*>(protoName), protoLength);
   }
   return "";
+}
+
+void AsyncSSLSocket::setSupportedApplicationProtocols(
+    const std::vector<std::string>& supportedProtocols) {
+  encodedAlpn_ = OpenSSLUtils::encodeALPNString(supportedProtocols);
 }
 
 void AsyncSSLSocket::setEorTracking(bool track) {
@@ -869,6 +881,19 @@ void AsyncSSLSocket::sslConn(
     LOG(ERROR) << "AsyncSSLSocket::sslConn(this=" << this << ", fd=" << fd_
                << "): " << e.what();
     return failHandshake(__func__, *ex);
+  }
+
+  if (!encodedAlpn_.empty()) {
+    int result = SSL_set_alpn_protos(
+        ssl_.get(),
+        reinterpret_cast<const unsigned char*>(encodedAlpn_.c_str()),
+        static_cast<unsigned int>(encodedAlpn_.size()));
+    if (result != 0) {
+      static const Indestructible<AsyncSocketException> ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          "error setting SSL alpn protos");
+      return failHandshake(__func__, *ex);
+    }
   }
 
   if (!setupSSLBio()) {
@@ -1906,7 +1931,22 @@ void AsyncSSLSocket::enableClientHelloParsing() {
 void AsyncSSLSocket::resetClientHelloParsing(SSL* ssl) {
   SSL_set_msg_callback(ssl, nullptr);
   SSL_set_msg_callback_arg(ssl, nullptr);
-  clientHelloInfo_->clientHelloBuf_.clear();
+  clientHelloInfo_->clientHelloBuf_.reset();
+}
+
+void AsyncSSLSocket::parseClientAlpns(
+    AsyncSSLSocket* sock,
+    folly::io::Cursor& cursor,
+    uint16_t& extensionDataLength) {
+  cursor.skip(2);
+  extensionDataLength -= 2;
+  while (extensionDataLength) {
+    auto protoLength = cursor.readBE<uint8_t>();
+    extensionDataLength--;
+    auto proto = cursor.readFixedString(protoLength);
+    sock->clientHelloInfo_->clientAlpns_.push_back(proto);
+    extensionDataLength -= protoLength;
+  }
 }
 
 void AsyncSSLSocket::clientHelloParsingCallback(
@@ -2033,6 +2073,10 @@ void AsyncSSLSocket::clientHelloParsingCallback(
             extensionDataLength -=
                 sizeof(typ) + sizeof(nameLength) + nameLength;
           }
+        } else if (
+            extensionType ==
+            ssl::TLSExtension::APPLICATION_LAYER_PROTOCOL_NEGOTIATION) {
+          parseClientAlpns(sock, cursor, extensionDataLength);
         } else {
           cursor.skip(extensionDataLength);
         }
@@ -2168,6 +2212,15 @@ void AsyncSSLSocket::getSSLServerCiphers(std::string& serverCiphers) const {
     serverCiphers.append(":");
     serverCiphers.append(cipher);
     i++;
+  }
+}
+
+const std::vector<std::string>& AsyncSSLSocket::getClientAlpns() const {
+  if (!parseClientHello_) {
+    static std::vector<std::string> emptyAlpns{};
+    return emptyAlpns;
+  } else {
+    return clientHelloInfo_->clientAlpns_;
   }
 }
 

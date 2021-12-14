@@ -25,6 +25,7 @@
 
 #include <boost/preprocessor/control/if.hpp>
 
+#include <folly/Exception.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
@@ -160,9 +161,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
   }
 
   void destroy() override {
-    if (ioBuf_ && releaseIOBufCallback_) {
-      releaseIOBufCallback_->releaseIOBuf(std::move(ioBuf_));
-    }
+    socket_->releaseIOBuf(std::move(ioBuf_), releaseIOBufCallback_);
     this->~BytesWriteRequest();
     free(this);
   }
@@ -216,9 +215,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
         for (uint32_t i = opsWritten_; i != 0; --i) {
           assert(ioBuf_);
           auto next = ioBuf_->pop();
-          if (releaseIOBufCallback_) {
-            releaseIOBufCallback_->releaseIOBuf(std::move(ioBuf_));
-          }
+          socket_->releaseIOBuf(std::move(ioBuf_), releaseIOBufCallback_);
           ioBuf_ = std::move(next);
         }
       }
@@ -521,6 +518,8 @@ void disableTransparentFunctions(
 #endif
 }
 
+constexpr size_t kSmallIoVecSize = 64;
+
 } // namespace
 
 AsyncSocket::AsyncSocket()
@@ -568,6 +567,9 @@ AsyncSocket::AsyncSocket(
     uint32_t zeroCopyBufId,
     const SocketAddress* peerAddress)
     : zeroCopyBufId_(zeroCopyBufId),
+      state_(StateEnum::ESTABLISHED),
+      fd_(fd),
+      addr_(peerAddress ? *peerAddress : folly::SocketAddress()),
       eventBase_(evb),
       writeTimeout_(this, evb),
       ioHandler_(this, evb, fd),
@@ -575,25 +577,29 @@ AsyncSocket::AsyncSocket(
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd=" << fd
           << ", zeroCopyBufId=" << zeroCopyBufId << ")";
   init();
-  fd_ = fd;
   disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
   setCloseOnExec();
-  state_ = StateEnum::ESTABLISHED;
-  if (peerAddress) {
-    addr_ = *peerAddress;
-  }
 }
 
 AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
-    : AsyncSocket(
-          oldAsyncSocket->getEventBase(),
-          oldAsyncSocket->detachNetworkSocket(),
-          oldAsyncSocket->getZeroCopyBufId(),
-          &oldAsyncSocket->addr_) {
-  appBytesWritten_ = oldAsyncSocket->appBytesWritten_;
-  rawBytesWritten_ = oldAsyncSocket->rawBytesWritten_;
-  byteEventHelper_ = std::move(oldAsyncSocket->byteEventHelper_);
-  preReceivedData_ = std::move(oldAsyncSocket->preReceivedData_);
+    : zeroCopyBufId_(oldAsyncSocket->getZeroCopyBufId()),
+      state_(oldAsyncSocket->state_),
+      fd_(oldAsyncSocket->detachNetworkSocket()),
+      addr_(oldAsyncSocket->addr_),
+      eventBase_(oldAsyncSocket->getEventBase()),
+      writeTimeout_(this, eventBase_),
+      ioHandler_(this, eventBase_, fd_),
+      immediateReadHandler_(this),
+      appBytesWritten_(oldAsyncSocket->appBytesWritten_),
+      rawBytesWritten_(oldAsyncSocket->rawBytesWritten_),
+      preReceivedData_(std::move(oldAsyncSocket->preReceivedData_)),
+      byteEventHelper_(std::move(oldAsyncSocket->byteEventHelper_)) {
+  VLOG(5) << "move AsyncSocket(" << oldAsyncSocket << "->" << this
+          << ", evb=" << eventBase_ << ", fd=" << fd_
+          << ", zeroCopyBufId=" << zeroCopyBufId_ << ")";
+  init();
+  disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
+  setCloseOnExec();
 
   // inform lifecycle observers to give them an opportunity to unsubscribe from
   // events for the old socket and subscribe to the new socket; we do not move
@@ -615,10 +621,7 @@ void AsyncSocket::init() {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
-  shutdownFlags_ = 0;
-  state_ = StateEnum::UNINIT;
   eventFlags_ = EventHandler::NONE;
-  fd_ = NetworkSocket();
   sendTimeout_ = 0;
   maxReadsPerEvent_ = 16;
   connectCallback_ = nullptr;
@@ -628,9 +631,7 @@ void AsyncSocket::init() {
   writeReqHead_ = nullptr;
   writeReqTail_ = nullptr;
   wShutdownSocketSet_.reset();
-  appBytesWritten_ = 0;
   appBytesReceived_ = 0;
-  rawBytesWritten_ = 0;
   totalAppBytesScheduledForWrite_ = 0;
   sendMsgParamCallback_ = &defaultSendMsgParamsCallback;
 }
@@ -642,6 +643,7 @@ AsyncSocket::~AsyncSocket() {
   for (const auto& cb : lifecycleObservers_) {
     cb->destroy(this);
   }
+  DCHECK_EQ(allocatedBytesBuffered_, 0);
 }
 
 void AsyncSocket::destroy() {
@@ -742,6 +744,7 @@ void AsyncSocket::connect(
   assert(fd_ == NetworkSocket());
   state_ = StateEnum::CONNECTING;
   connectCallback_ = callback;
+  invokeConnectAttempt();
 
   sockaddr_storage addrStorage;
   auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
@@ -760,12 +763,9 @@ void AsyncSocket::connect(
           withAddr("failed to create socket"),
           errnoCopy);
     }
-    disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
-    if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
-      shutdownSocketSet->add(fd_);
-    }
-    ioHandler_.changeHandlerFD(fd_);
 
+    disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
+    handleNetworkSocketAttached();
     setCloseOnExec();
 
     // Put the socket in non-blocking mode
@@ -1274,9 +1274,7 @@ void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
   auto iter1 = idZeroCopyBufInfoMap_.find(ptr);
   CHECK(iter1 != idZeroCopyBufInfoMap_.end());
   if (0 == --iter1->second.count_) {
-    if (iter1->second.cb_) {
-      iter1->second.cb_->releaseIOBuf(std::move(iter1->second.buf_));
-    }
+    releaseIOBuf(std::move(iter1->second.buf_), iter1->second.cb_);
     idZeroCopyBufInfoMap_.erase(iter1);
   }
 
@@ -1331,6 +1329,19 @@ void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
 #else
   (void)cmsg;
 #endif
+}
+
+void AsyncSocket::releaseIOBuf(
+    std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback) {
+  if (!buf) {
+    return;
+  }
+  const size_t allocated = buf->computeChainCapacity();
+  DCHECK_GE(allocatedBytesBuffered_, allocated);
+  allocatedBytesBuffered_ -= allocated;
+  if (callback) {
+    callback->releaseIOBuf(std::move(buf));
+  }
 }
 
 void AsyncSocket::enableByteEvents() {
@@ -1468,13 +1479,12 @@ void AsyncSocket::writeChain(
     flags |= WriteFlags::WRITE_MSG_ZEROCOPY;
   }
 
-  constexpr size_t kSmallSizeMax = 64;
   size_t count = buf->countChainElements();
-  if (count <= kSmallSizeMax) {
+  if (count <= kSmallIoVecSize) {
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
-    iovec vec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallSizeMax)];
+    iovec vec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallIoVecSize)];
     FOLLY_POP_WARNING
 
     writeChainImpl(callback, vec, count, std::move(buf), flags);
@@ -1512,13 +1522,12 @@ void AsyncSocket::writeImpl(
   auto* releaseIOBufCallback =
       callback ? callback->getReleaseIOBufCallback() : nullptr;
 
-  SCOPE_EXIT {
-    if (ioBuf && releaseIOBufCallback) {
-      releaseIOBufCallback->releaseIOBuf(std::move(ioBuf));
-    }
-  };
+  SCOPE_EXIT { releaseIOBuf(std::move(ioBuf), releaseIOBufCallback); };
 
   totalAppBytesScheduledForWrite_ += totalBytes;
+  if (ioBuf) {
+    allocatedBytesBuffered_ += ioBuf->computeChainCapacity();
+  }
 
   if (shutdownFlags_ & (SHUT_WRITE | SHUT_WRITE_PENDING)) {
     // No new writes may be performed after the write side of the socket has
@@ -1562,11 +1571,7 @@ void AsyncSocket::writeImpl(
         if (countWritten && isZeroCopyRequest(flags)) {
           addZeroCopyBuf(std::move(ioBuf), releaseIOBufCallback);
         } else {
-          if (releaseIOBufCallback) {
-            releaseIOBufCallback->releaseIOBuf(std::move(ioBuf));
-          } else {
-            ioBuf.reset();
-          }
+          releaseIOBuf(std::move(ioBuf), releaseIOBufCallback);
         }
 
         // We successfully wrote everything.
@@ -1907,6 +1912,10 @@ bool AsyncSocket::readable() const {
   if (fd_ == NetworkSocket()) {
     return false;
   }
+
+  if (preReceivedData_ && !preReceivedData_->empty()) {
+    return true;
+  }
   netops::PollDescriptor fds[1];
   fds[0].fd = fd_;
   fds[0].events = POLLIN;
@@ -2020,7 +2029,8 @@ void AsyncSocket::cacheAddresses() {
       cacheLocalAddress();
       cachePeerAddress();
     } catch (const std::system_error& e) {
-      if (e.code() != std::error_code(ENOTCONN, std::system_category())) {
+      if (e.code() !=
+          std::error_code(ENOTCONN, errorCategoryForErrnoDomain())) {
         VLOG(2) << "Error caching addresses: " << e.code().value() << ", "
                 << e.code().message();
       }
@@ -2394,10 +2404,10 @@ void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) {
   readCallback_->getReadBuffer(buf, buflen);
 }
 
-size_t AsyncSocket::prepareReadBuffers(struct iovec* iovs, size_t num) {
+void AsyncSocket::prepareReadBuffers(IOBufIovecBuilder::IoVecVec& iovs) {
   // no matter what, buffers should be prepared for non-ssl socket
   CHECK(readCallback_);
-  return readCallback_->getReadBuffers(iovs, num);
+  readCallback_->getReadBuffers(iovs);
 }
 
 size_t AsyncSocket::handleErrMessages() noexcept {
@@ -2573,6 +2583,57 @@ AsyncSocket::getLifecycleObservers() const {
       lifecycleObservers_.begin(), lifecycleObservers_.end());
 }
 
+void AsyncSocket::splitIovecArray(
+    const size_t startOffset,
+    const size_t endOffset,
+    const iovec* srcVec,
+    const size_t srcCount,
+    iovec* dstVec,
+    size_t& dstCount) {
+  CHECK_GE(endOffset, startOffset);
+  CHECK_GE(dstCount, srcCount);
+  dstCount = 0;
+
+  const size_t targetBytes = endOffset - startOffset + 1;
+  size_t dstBytes = 0;
+  size_t processedBytes = 0;
+  for (size_t i = 0; i < srcCount; processedBytes += srcVec[i].iov_len, i++) {
+    iovec currentOp = srcVec[i];
+    if (currentOp.iov_len == 0) { // to handle the oddballs
+      continue;
+    }
+
+    // if we haven't found the start offset yet, see if it is in this op
+    if (dstCount == 0) {
+      if (processedBytes + currentOp.iov_len < startOffset + 1) {
+        continue; // start offset isn't in this op
+      }
+
+      // offset iov_base to get the start offset
+      const size_t trimFromStart = startOffset - processedBytes;
+      currentOp.iov_base =
+          reinterpret_cast<uint8_t*>(currentOp.iov_base) + trimFromStart;
+      currentOp.iov_len -= trimFromStart;
+    }
+
+    // trim the end of the iovec, if needed
+    ssize_t trimFromEnd = (dstBytes + currentOp.iov_len) - targetBytes;
+    if (trimFromEnd > 0) {
+      currentOp.iov_len -= trimFromEnd;
+    }
+
+    dstVec[dstCount] = currentOp;
+    dstCount++;
+    dstBytes += currentOp.iov_len;
+    CHECK_GE(targetBytes, dstBytes);
+    if (targetBytes == dstBytes) {
+      break; // done
+    }
+  }
+
+  CHECK_EQ(targetBytes, dstBytes);
+}
+
 void AsyncSocket::handleRead() noexcept {
   VLOG(5) << "AsyncSocket::handleRead() this=" << this << ", fd=" << fd_
           << ", state=" << state_;
@@ -2606,12 +2667,12 @@ void AsyncSocket::handleRead() noexcept {
     // Get the buffer(s) to read into.
     void* buf = nullptr;
     size_t buflen = 0, offset = 0, num = 0;
-    static constexpr size_t kNumIov = 16;
-    std::array<struct iovec, kNumIov> iovs;
+    IOBufIovecBuilder::IoVecVec iovs; // this can be an Asyncsocket member too
 
     try {
       if (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec) {
-        num = prepareReadBuffers(iovs.data(), iovs.size());
+        prepareReadBuffers(iovs);
+        num = iovs.size();
         VLOG(5) << "prepareReadBuffers() bufs=" << iovs.data()
                 << ", num=" << num;
       } else {
@@ -3007,6 +3068,22 @@ void AsyncSocket::timeoutExpired() noexcept {
   }
 }
 
+void AsyncSocket::handleNetworkSocketAttached() {
+  VLOG(6) << "AsyncSocket::attachFd(this=" << this << ", fd=" << fd_
+          << ", evb=" << eventBase_ << " , state=" << state_
+          << ", events=" << std::hex << eventFlags_ << ")";
+  for (const auto& cb : lifecycleObservers_) {
+    if (auto dCb = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
+      dCb->fdAttach(this);
+    }
+  }
+
+  if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
+    shutdownSocketSet->add(fd_);
+  }
+  ioHandler_.changeHandlerFD(fd_);
+}
+
 ssize_t AsyncSocket::tfoSendMsg(
     NetworkSocket fd, struct msghdr* msg, int msg_flags) {
   return detail::tfo_sendmsg(fd, msg, msg_flags);
@@ -3014,56 +3091,188 @@ ssize_t AsyncSocket::tfoSendMsg(
 
 AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     const iovec* vec, size_t count, WriteFlags flags) {
-  const bool byteEventsEnabled =
-      (byteEventHelper_ && byteEventHelper_->byteEventsEnabled &&
-       !byteEventHelper_->maybeEx.has_value());
+  // lambda to gather and merge PrewriteRequests from observers
+  auto mergePrewriteRequests = [this,
+                                vec,
+                                count,
+                                flags,
+                                maybeVecTotalBytes =
+                                    folly::Optional<size_t>()]() mutable {
+    AsyncTransport::LifecycleObserver::PrewriteRequest mergedRequest = {};
+    if (lifecycleObservers_.empty()) {
+      return mergedRequest;
+    }
 
-  struct msghdr msg = {};
-  msg.msg_name = nullptr;
-  msg.msg_namelen = 0;
-  msg.msg_iov = const_cast<struct iovec*>(vec);
-  msg.msg_iovlen = std::min<size_t>(count, kIovMax);
-  msg.msg_flags = 0; // ignored, must forward flags via sendmsg parameter
-  msg.msg_control = nullptr;
-  msg.msg_controllen =
-      sendMsgParamCallback_->getAncillaryDataSize(flags, byteEventsEnabled);
-  CHECK_GE(
-      AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,
-      msg.msg_controllen);
-
-  if (msg.msg_controllen != 0) {
-    msg.msg_control = reinterpret_cast<char*>(alloca(msg.msg_controllen));
-    sendMsgParamCallback_->getAncillaryData(
-        flags, msg.msg_control, byteEventsEnabled);
-  }
-  int msg_flags = sendMsgParamCallback_->getFlags(flags, zeroCopyEnabled_);
-
-  const auto prewriteRawBytesWritten = getRawBytesWritten();
-  auto writeResult = sendSocketMessage(fd_, &msg, msg_flags);
-  if (writeResult.writeReturn > 0 && byteEventsEnabled &&
-      isSet(flags, WriteFlags::TIMESTAMP_WRITE)) {
-    CHECK_GT(getRawBytesWritten(), prewriteRawBytesWritten); // sanity check
-    ByteEvent byteEvent = {};
-    byteEvent.type = ByteEvent::Type::WRITE;
-    byteEvent.offset = getRawBytesWritten() - 1;
-    byteEvent.maybeWriteFlags = flags;
-    for (const auto& observer : lifecycleObservers_) {
-      if (observer->getConfig().byteEvents) {
-        observer->byteEvent(this, byteEvent);
+    // determine total number of bytes in vec, reuse once determined
+    if (!maybeVecTotalBytes.has_value()) {
+      maybeVecTotalBytes = 0;
+      for (size_t i = 0; i < count; ++i) {
+        maybeVecTotalBytes.value() += vec[i].iov_len;
       }
     }
+    auto& vecTotalBytes = maybeVecTotalBytes.value();
+
+    const auto startOffset = getRawBytesWritten();
+    const auto endOffset = getRawBytesWritten() + vecTotalBytes - 1;
+    const AsyncTransport::LifecycleObserver::PrewriteState prewriteState = [&] {
+      AsyncTransport::LifecycleObserver::PrewriteState state = {};
+      state.startOffset = startOffset;
+      state.endOffset = endOffset;
+      state.writeFlags = flags;
+      state.ts = std::chrono::steady_clock::now();
+      return state;
+    }();
+    for (const auto& observer : lifecycleObservers_) {
+      if (!observer->getConfig().prewrite) {
+        continue;
+      }
+
+      const auto request = observer->prewrite(this, prewriteState);
+
+      mergedRequest.writeFlagsToAdd |= request.writeFlagsToAdd;
+      if (request.maybeOffsetToSplitWrite.has_value()) {
+        CHECK_GE(endOffset, request.maybeOffsetToSplitWrite.value());
+        if (
+            // case 1: offset not set in merged request
+            !mergedRequest.maybeOffsetToSplitWrite.has_value() ||
+            // case 2: offset in merged request > offset in current request
+            mergedRequest.maybeOffsetToSplitWrite >
+                request.maybeOffsetToSplitWrite) {
+          mergedRequest.maybeOffsetToSplitWrite =
+              request.maybeOffsetToSplitWrite; // update
+          mergedRequest.writeFlagsToAddAtOffset =
+              request.writeFlagsToAddAtOffset; // reset
+        } else if (
+            // case 3: offset in merged request == offset in current request
+            request.maybeOffsetToSplitWrite ==
+            mergedRequest.maybeOffsetToSplitWrite) {
+          mergedRequest.writeFlagsToAddAtOffset |=
+              request.writeFlagsToAddAtOffset; // merge
+        }
+        // case 4: offset in merged request < offset in current request
+        // (do nothing)
+      }
+    }
+
+    // if maybeOffsetToSplitWrite points to end of the vector, remove the split
+    if (mergedRequest.maybeOffsetToSplitWrite.has_value() && // explicit
+        mergedRequest.maybeOffsetToSplitWrite == endOffset) {
+      mergedRequest.maybeOffsetToSplitWrite.reset(); // no split needed
+    }
+
+    return mergedRequest;
+  };
+
+  // lambda to prepare and send a message, and handle byte events
+  // parameters have L at the end to prevent shadowing warning from gcc
+  auto prepSendMsg = [this](
+                         const iovec* vecL,
+                         const size_t countL,
+                         const WriteFlags flagsL) {
+    const bool byteEventsEnabled =
+        (byteEventHelper_ && byteEventHelper_->byteEventsEnabled &&
+         !byteEventHelper_->maybeEx.has_value());
+
+    struct msghdr msg = {};
+    msg.msg_name = nullptr;
+    msg.msg_namelen = 0;
+    msg.msg_iov = const_cast<struct iovec*>(vecL);
+    msg.msg_iovlen = std::min<size_t>(countL, kIovMax);
+    msg.msg_flags = 0; // passed to sendSocketMessage below, it sets them
+    msg.msg_control = nullptr;
+    msg.msg_controllen =
+        sendMsgParamCallback_->getAncillaryDataSize(flagsL, byteEventsEnabled);
+    CHECK_GE(
+        AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,
+        msg.msg_controllen);
+
+    if (msg.msg_controllen != 0) {
+      msg.msg_control = reinterpret_cast<char*>(alloca(msg.msg_controllen));
+      sendMsgParamCallback_->getAncillaryData(
+          flagsL, msg.msg_control, byteEventsEnabled);
+    }
+
+    const auto prewriteRawBytesWritten = getRawBytesWritten();
+    int msg_flags = sendMsgParamCallback_->getFlags(flagsL, zeroCopyEnabled_);
+    auto writeResult = sendSocketMessage(fd_, &msg, msg_flags);
+
+    if (writeResult.writeReturn < 0 && zeroCopyEnabled_ && errno == ENOBUFS) {
+      // workaround for running with zerocopy enabled but without a big enough
+      // memlock value - see ulimit -l
+      zeroCopyEnabled_ = false;
+      zeroCopyReenableCounter_ = zeroCopyReenableThreshold_;
+      msg_flags = sendMsgParamCallback_->getFlags(flagsL, zeroCopyEnabled_);
+      writeResult = sendSocketMessage(fd_, &msg, msg_flags);
+    }
+
+    if (writeResult.writeReturn > 0 && byteEventsEnabled &&
+        isSet(flagsL, WriteFlags::TIMESTAMP_WRITE)) {
+      CHECK_GT(getRawBytesWritten(), prewriteRawBytesWritten); // sanity check
+      ByteEvent byteEvent = {};
+      byteEvent.type = ByteEvent::Type::WRITE;
+      byteEvent.offset = getRawBytesWritten() - 1;
+      byteEvent.maybeRawBytesWritten = writeResult.writeReturn;
+      byteEvent.maybeRawBytesTriedToWrite = 0;
+      for (size_t i = 0; i < countL; ++i) {
+        byteEvent.maybeRawBytesTriedToWrite.value() += vecL[i].iov_len;
+      }
+      byteEvent.maybeWriteFlags = flagsL;
+      for (const auto& observer : lifecycleObservers_) {
+        if (observer->getConfig().byteEvents) {
+          observer->byteEvent(this, byteEvent);
+        }
+      }
+    }
+
+    return writeResult;
+  };
+
+  // get PrewriteRequests (if any), merge flags with write flags
+  const auto prewriteRequest = mergePrewriteRequests();
+  auto mergedFlags = flags | prewriteRequest.writeFlagsToAdd |
+      prewriteRequest.writeFlagsToAddAtOffset;
+
+  // if no PrewriteRequests, or none requiring the write to be split, proceed
+  if (!prewriteRequest.maybeOffsetToSplitWrite.has_value()) {
+    return prepSendMsg(vec, count, mergedFlags);
   }
 
-  if (writeResult.writeReturn < 0 && zeroCopyEnabled_ && errno == ENOBUFS) {
-    // workaround for running with zerocopy enabled but without a big enough
-    // memlock value - see ulimit -l
-    zeroCopyEnabled_ = false;
-    zeroCopyReenableCounter_ = zeroCopyReenableThreshold_;
-    msg_flags = sendMsgParamCallback_->getFlags(flags, zeroCopyEnabled_);
-    writeResult = sendSocketMessage(fd_, &msg, msg_flags);
-  }
+  // we need to split the write...
+  // add CORK flag to inform the OS that more data is on the way...
+  mergedFlags |= WriteFlags::CORK;
 
-  return writeResult;
+  // TODO(bschlinker): When prewrite splits a write, try to continue writing
+  // after a write returns; this will improve efficiency.
+  const auto splitWriteAtOffset = *prewriteRequest.maybeOffsetToSplitWrite;
+  if (count <= kSmallIoVecSize) {
+    // suppress "warning: variable length array 'vec' is used [-Wvla]"
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wvla")
+    iovec tmpVec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallIoVecSize)];
+    FOLLY_POP_WARNING
+
+    size_t tmpVecCount = count;
+    splitIovecArray(
+        0,
+        splitWriteAtOffset - getRawBytesWritten(),
+        vec,
+        count,
+        tmpVec,
+        tmpVecCount);
+    return prepSendMsg(tmpVec, tmpVecCount, mergedFlags);
+  } else {
+    auto tmpVecPtr = std::make_unique<iovec[]>(count);
+    auto tmpVec = tmpVecPtr.get();
+    size_t tmpVecCount = count;
+    splitIovecArray(
+        0,
+        splitWriteAtOffset - getRawBytesWritten(),
+        vec,
+        count,
+        tmpVec,
+        tmpVecCount);
+    return prepSendMsg(tmpVec, tmpVecCount, mergedFlags);
+  }
 }
 
 AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
@@ -3432,6 +3641,14 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
       AsyncSocketException::ALREADY_OPEN,
       "connect() called with socket in invalid state");
   connectEndTime_ = std::chrono::steady_clock::now();
+  if ((state_ == StateEnum::CONNECTING) || (state_ == StateEnum::ERROR)) {
+    for (const auto& cb : lifecycleObservers_) {
+      if (auto observer = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
+        // inform any lifecycle observes that the connection failed
+        observer->connectError(this, ex);
+      }
+    }
+  }
   if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {
     if (callback) {
       callback->connectErr(ex);
@@ -3475,6 +3692,15 @@ void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
   VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
           << "): connect err invoked with ex: " << ex.what();
   connectEndTime_ = std::chrono::steady_clock::now();
+  if ((state_ == StateEnum::CONNECTING) || (state_ == StateEnum::ERROR)) {
+    // invokeConnectErr() can be invoked when state is {FAST_OPEN, CLOSED,
+    // ESTABLISHED} (!?) and a bunch of other places that are not what this call
+    // back wants. This seems like a bug but work around here while we explore
+    // it independently
+    for (const auto& cb : lifecycleObservers_) {
+      cb->connectError(this, ex);
+    }
+  }
   if (connectCallback_) {
     ConnectCallback* callback = connectCallback_;
     connectCallback_ = nullptr;
@@ -3487,9 +3713,9 @@ void AsyncSocket::invokeConnectSuccess() {
           << "): connect success invoked";
   connectEndTime_ = std::chrono::steady_clock::now();
   bool enableByteEventsForObserver = false;
-  for (const auto& observer : lifecycleObservers_) {
-    observer->connect(this);
-    enableByteEventsForObserver |= ((observer->getConfig().byteEvents) ? 1 : 0);
+  for (const auto& cb : lifecycleObservers_) {
+    cb->connectSuccess(this);
+    enableByteEventsForObserver |= ((cb->getConfig().byteEvents) ? 1 : 0);
   }
   if (enableByteEventsForObserver) {
     enableByteEvents();
@@ -3498,6 +3724,14 @@ void AsyncSocket::invokeConnectSuccess() {
     ConnectCallback* callback = connectCallback_;
     connectCallback_ = nullptr;
     callback->connectSuccess();
+  }
+}
+
+void AsyncSocket::invokeConnectAttempt() {
+  VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
+          << "): connect attempt";
+  for (const auto& cb : lifecycleObservers_) {
+    cb->connectAttempt(this);
   }
 }
 

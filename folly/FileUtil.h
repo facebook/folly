@@ -43,7 +43,7 @@ int openNoInt(const char* name, int flags, mode_t mode = 0666);
 int closeNoInt(int fd);
 int closeNoInt(NetworkSocket fd);
 int dupNoInt(int fd);
-int dup2NoInt(int oldfd, int newfd);
+int dup2NoInt(int oldFd, int newFd);
 int fsyncNoInt(int fd);
 int fdatasyncNoInt(int fd);
 int ftruncateNoInt(int fd, off_t len);

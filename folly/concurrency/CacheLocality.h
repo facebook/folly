@@ -32,8 +32,10 @@
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
+#include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -190,7 +192,8 @@ class AccessSpreaderBase {
       kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
       "stripeByCpu element type isn't wide enough");
 
-  using CompactStripeTable = std::atomic<CompactStripe>[kMaxCpus + 1][kMaxCpus];
+  using CompactStripeTable =
+      relaxed_atomic<CompactStripe>[kMaxCpus + 1][kMaxCpus];
 
   struct GlobalState {
     /// For each level of splitting up to kMaxCpus, maps the cpu (mod
@@ -206,7 +209,9 @@ class AccessSpreaderBase {
     std::atomic<Getcpu::Func> getcpu; // nullptr -> not initialized
   };
   static_assert(
-      std::is_trivial<GlobalState>::value || kCpplibVer, "not trivial");
+      is_constexpr_default_constructible_v<GlobalState> &&
+          std::is_trivially_destructible<GlobalState>::value,
+      "unsuitable for global state");
 
   /// Always claims to be on CPU zero, node zero
   static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*);
@@ -256,7 +261,9 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
  private:
   struct GlobalState : detail::AccessSpreaderBase::GlobalState {};
   static_assert(
-      std::is_trivial<GlobalState>::value || kCpplibVer, "not trivial");
+      is_constexpr_default_constructible_v<GlobalState> &&
+          std::is_trivially_destructible<GlobalState>::value,
+      "unsuitable for global state");
 
  public:
   FOLLY_EXPORT static GlobalState& state() {
@@ -276,8 +283,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
 
     unsigned cpu;
     s.getcpu.load(std::memory_order_relaxed)(&cpu, nullptr, nullptr);
-    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpu % kMaxCpus].load(
-        std::memory_order_relaxed);
+    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpu % kMaxCpus];
   }
 
   /// Returns the stripe associated with the current CPU.  The returned
@@ -291,8 +297,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
     if (kIsMobile) {
       return current(numStripes);
     }
-    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)]
-        .load(std::memory_order_relaxed);
+    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)];
   }
 
   /// Returns the maximum stripe value that can be returned under any
@@ -379,20 +384,21 @@ class SimpleAllocator {
       return mem;
     }
 
-    // Bump-ptr allocation.
-    if (intptr_t(mem_) % 128 == 0) {
-      // Avoid allocating pointers that may look like malloc
-      // pointers.
-      mem_ += std::min(sz_, max_align_v);
-    }
-    if (mem_ && (mem_ + sz_ <= end_)) {
-      auto mem = mem_;
-      mem_ += sz_;
+    if (mem_) {
+      // Bump-ptr allocation.
+      if (intptr_t(mem_) % 128 == 0) {
+        // Avoid allocating pointers that may look like malloc
+        // pointers.
+        mem_ += std::min(sz_, max_align_v);
+      }
+      if (mem_ + sz_ <= end_) {
+        auto mem = mem_;
+        mem_ += sz_;
 
-      assert(intptr_t(mem) % 128 != 0);
-      return mem;
+        assert(intptr_t(mem) % 128 != 0);
+        return mem;
+      }
     }
-
     return allocateHard();
   }
   void deallocate(void* mem) {
@@ -472,9 +478,9 @@ class CoreRawAllocator {
     }
   };
 
-  Allocator* get(size_t stripe) {
+  Allocator& get(size_t stripe) {
     assert(stripe < Stripes);
-    return &allocators_[stripe];
+    return allocators_[stripe];
   }
 
  private:
@@ -484,11 +490,9 @@ class CoreRawAllocator {
 template <typename T, size_t Stripes>
 CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>
 getCoreAllocator(size_t stripe) {
-  // We cannot make sure that the allocator will be destroyed after
-  // all the objects allocated with it, so we leak it.
-  static Indestructible<CoreRawAllocator<Stripes>> allocator;
-  return CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>(
-      *allocator->get(stripe));
+  using RawAllocator = CoreRawAllocator<Stripes>;
+  return CxxAllocatorAdaptor<T, typename RawAllocator::Allocator>(
+      detail::createGlobal<RawAllocator, void>().get(stripe));
 }
 
 } // namespace folly

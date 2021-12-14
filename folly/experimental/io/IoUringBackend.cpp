@@ -15,7 +15,6 @@
  */
 
 #include <signal.h>
-#include <sys/timerfd.h>
 
 #include <folly/FileUtil.h>
 #include <folly/Likely.h>
@@ -27,6 +26,12 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Sockets.h>
 #include <folly/synchronization/CallOnce.h>
+
+#if __has_include(<sys/timerfd.h>)
+#include <sys/timerfd.h>
+#endif
+
+#if __has_include(<liburing.h>)
 
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_pre_hook(uint64_t* call_time);
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
@@ -112,12 +117,6 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
 }
 
 } // namespace
-
-static constexpr int64_t kUnlimitedMlock = -1;
-DEFINE_int64(
-    io_uring_mlock_size,
-    kUnlimitedMlock,
-    "Maximum bytes to mlock - use 0 for no changes, -1 for unlimited");
 
 namespace {
 class SQGroupInfoRegistry {
@@ -388,22 +387,6 @@ IoUringBackend::IoUringBackend(Options options)
   if (timerFd_ < 0) {
     throw std::runtime_error("timerfd_create error");
   }
-  FOLLY_MAYBE_UNUSED static bool sMlockInit = []() {
-    int ret = 0;
-    if (FLAGS_io_uring_mlock_size) {
-      struct rlimit rlim;
-      if (FLAGS_io_uring_mlock_size == kUnlimitedMlock) {
-        rlim.rlim_cur = RLIM_INFINITY;
-        rlim.rlim_max = RLIM_INFINITY;
-      } else {
-        rlim.rlim_cur = FLAGS_io_uring_mlock_size;
-        rlim.rlim_max = FLAGS_io_uring_mlock_size;
-      }
-      ret = setrlimit(RLIMIT_MEMLOCK, &rlim); // best effort
-    }
-
-    return ret ? false : true;
-  }();
 
   ::memset(&ioRing_, 0, sizeof(ioRing_));
   ::memset(&params_, 0, sizeof(params_));
@@ -1324,3 +1307,5 @@ void IoUringBackend::processFileOp(IoSqe* sqe, int64_t res) noexcept {
 }
 
 } // namespace folly
+
+#endif // __has_include(<liburing.h>)

@@ -25,3 +25,15 @@ class Futures(unittest.TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(simplebridgecoro.get_value_x5_coro(val))
         self.assertEqual(val * 5, res)
+
+    def test_cancellation(self):
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(self._return_five_after_cancelled())
+        self.assertEqual(5, res)
+
+    async def _return_five_after_cancelled(self):
+        task = asyncio.create_task(simplebridgecoro.return_five_after_cancelled())
+        await asyncio.sleep(0.1)
+        self.assertFalse(task.done())
+        task.cancel()
+        return await task

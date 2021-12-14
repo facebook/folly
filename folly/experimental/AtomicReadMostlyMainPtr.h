@@ -143,14 +143,16 @@ class AtomicReadMostlyMainPtr {
     DCHECK(newMain.get() == nullptr)
         << "Invariant should ensure that at most one version is non-null";
     newMain.reset(std::move(ptr));
-    // If order is acq_rel, it should degrade to just release, since this is a
-    // store rather than an RMW. (Of course, this is such a slow method that we
-    // don't really care, but precision is its own reward. If TSAN one day
-    // understands asymmetric barriers, this will also improve its error
-    // detection here). We get our "acquire-y-ness" from the mutex.
+    // If order is acq_rel, it should degrade to just release, and if acquire to
+    // relaxed, since this is a store rather than an RMW. (Of course, this is
+    // such a slow method that we don't really care, but precision is its own
+    // reward. If TSAN one day understands asymmetric barriers, this will also
+    // improve its error detection here). We get our "acquire-y-ness" from the
+    // mutex.
     auto realOrder =
-        (order == std::memory_order_acq_rel ? std::memory_order_release
-                                            : order);
+        (order == std::memory_order_acq_rel       ? std::memory_order_release
+             : order == std::memory_order_acquire ? std::memory_order_relaxed
+                                                  : order);
     // After this, read-side critical sections can access both versions, but
     // new ones will use newMain.
     // This is also synchronization point with loads.

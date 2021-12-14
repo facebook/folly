@@ -135,14 +135,14 @@ class ReferencedSource
 
   template <class Body>
   void foreach(Body&& body) const {
-    for (auto& value : *container_) {
+    for (auto&& value : *container_) {
       body(std::forward<Value>(value));
     }
   }
 
   template <class Handler>
   bool apply(Handler&& handler) const {
-    for (auto& value : *container_) {
+    for (auto&& value : *container_) {
       if (!handler(std::forward<Value>(value))) {
         return false;
       }
@@ -413,6 +413,7 @@ class Yield : public GenImpl<Value, Yield<Value, Source>> {
 template <class Value>
 class Empty : public GenImpl<Value, Empty<Value>> {
  public:
+  Empty() = default;
   template <class Handler>
   bool apply(Handler&&) const {
     return true;
@@ -804,10 +805,8 @@ class Stride : public Operator<Stride> {
       size_t distance = stride_;
       return source_.apply([&](Value value) -> bool {
         if (++distance >= stride_) {
-          if (!handler(std::forward<Value>(value))) {
-            return false;
-          }
           distance = 0;
+          return handler(std::forward<Value>(value));
         }
         return true;
       });
@@ -1292,6 +1291,7 @@ class GroupByAdjacent : public Operator<GroupByAdjacent<Selector>> {
 template <class Expected>
 class TypeAssertion : public Operator<TypeAssertion<Expected>> {
  public:
+  TypeAssertion() = default;
   template <class Source, class Value>
   const Source& compose(const GenImpl<Value, Source>& source) const {
     static_assert(
@@ -1730,28 +1730,28 @@ class RangeConcat : public Operator<RangeConcat> {
  **/
 template <class Exception, class ErrorHandler>
 class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {
-  ErrorHandler handler_;
+  ErrorHandler exceptionHandler_;
 
  public:
-  explicit GuardImpl(ErrorHandler handler) : handler_(std::move(handler)) {}
+  explicit GuardImpl(ErrorHandler handler)
+      : exceptionHandler_(std::move(handler)) {}
 
   template <class Value, class Source>
   class Generator : public GenImpl<Value, Generator<Value, Source>> {
     Source source_;
-    ErrorHandler handler_;
+    ErrorHandler exceptionHandler_;
 
    public:
     explicit Generator(Source source, ErrorHandler handler)
-        : source_(std::move(source)), handler_(std::move(handler)) {}
+        : source_(std::move(source)), exceptionHandler_(std::move(handler)) {}
 
     template <class Handler>
     bool apply(Handler&& handler) const {
       return source_.apply([&](Value value) -> bool {
         try {
-          handler(std::forward<Value>(value));
-          return true;
+          return handler(std::forward<Value>(value));
         } catch (Exception& e) {
-          return handler_(e, std::forward<Value>(value));
+          return exceptionHandler_(e, std::forward<Value>(value));
         }
       });
     }
@@ -1762,12 +1762,12 @@ class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {
 
   template <class Value, class Source, class Gen = Generator<Value, Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
-    return Gen(std::move(source.self()), handler_);
+    return Gen(std::move(source.self()), exceptionHandler_);
   }
 
   template <class Value, class Source, class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
-    return Gen(source.self(), handler_);
+    return Gen(source.self(), exceptionHandler_);
   }
 };
 
@@ -1805,10 +1805,7 @@ class Dereference : public Operator<Dereference> {
     template <class Handler>
     bool apply(Handler&& handler) const {
       return source_.apply([&](Value value) -> bool {
-        if (value) {
-          return handler(*std::forward<Value>(value));
-        }
-        return true;
+        return !value || handler(*std::forward<Value>(value));
       });
     }
 
@@ -2452,6 +2449,7 @@ const T& operator|(const Optional<T>& opt, const Unwrap&) {
 
 class ToVirtualGen : public Operator<ToVirtualGen> {
  public:
+  using Operator<ToVirtualGen>::Operator;
   template <
       class Source,
       class Generator = VirtualGenMoveOnly<typename Source::ValueType>>

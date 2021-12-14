@@ -19,20 +19,57 @@
 #include <folly/lang/Extern.h>
 
 //  Address Sanitizer interface may be found at:
-//    https://github.com/llvm-mirror/compiler-rt/blob/master/include/sanitizer/asan_interface.h
+//    https://github.com/llvm/llvm-project/blob/main/compiler-rt/include/sanitizer/asan_interface.h
+//    https://github.com/llvm/llvm-project/blob/main/compiler-rt/include/sanitizer/common_interface_defs.h
+extern "C" void __asan_poison_memory_region(void const volatile*, std::size_t);
+extern "C" void __asan_unpoison_memory_region(
+    void const volatile*, std::size_t);
 extern "C" void* __asan_region_is_poisoned(void*, std::size_t);
+extern "C" int __asan_address_is_poisoned(void const volatile*);
+extern "C" void __sanitizer_start_switch_fiber(
+    void**, void const*, std::size_t);
+extern "C" void __sanitizer_finish_switch_fiber(
+    void*, void const**, std::size_t*);
+
+namespace {
+
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    asan_poison_memory_region_access_v, __asan_poison_memory_region);
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    asan_unpoison_memory_region_access_v, __asan_unpoison_memory_region);
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    asan_region_is_poisoned_access_v, __asan_region_is_poisoned);
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    asan_address_is_poisoned_access_v, __asan_address_is_poisoned);
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    sanitizer_start_switch_fiber_access_v, __sanitizer_start_switch_fiber);
+FOLLY_CREATE_EXTERN_ACCESSOR(
+    sanitizer_finish_switch_fiber_access_v, __sanitizer_finish_switch_fiber);
+
+constexpr bool E = folly::kIsLibrarySanitizeAddress;
+
+} // namespace
 
 namespace folly {
 namespace detail {
 
-FOLLY_CREATE_EXTERN_ACCESSOR(
-    asan_region_is_poisoned_access_v, __asan_region_is_poisoned);
+FOLLY_STORAGE_CONSTEXPR asan_mark_memory_region_t* const
+    asan_poison_memory_region_v = asan_poison_memory_region_access_v<E>;
 
-void* asan_region_is_poisoned_(void* const ptr, std::size_t len) {
-  constexpr auto fun =
-      asan_region_is_poisoned_access_v<kIsLibrarySanitizeAddress>;
-  return fun ? fun(ptr, len) : nullptr;
-}
+FOLLY_STORAGE_CONSTEXPR asan_mark_memory_region_t* const
+    asan_unpoison_memory_region_v = asan_unpoison_memory_region_access_v<E>;
+
+FOLLY_STORAGE_CONSTEXPR asan_region_is_poisoned_t* const
+    asan_region_is_poisoned_v = asan_region_is_poisoned_access_v<E>;
+
+FOLLY_STORAGE_CONSTEXPR asan_address_is_poisoned_t* const
+    asan_address_is_poisoned_v = asan_address_is_poisoned_access_v<E>;
+
+FOLLY_STORAGE_CONSTEXPR sanitizer_start_switch_fiber_t* const
+    sanitizer_start_switch_fiber_v = sanitizer_start_switch_fiber_access_v<E>;
+
+FOLLY_STORAGE_CONSTEXPR sanitizer_finish_switch_fiber_t* const
+    sanitizer_finish_switch_fiber_v = sanitizer_finish_switch_fiber_access_v<E>;
 
 } // namespace detail
 } // namespace folly

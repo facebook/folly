@@ -201,37 +201,21 @@ list(APPEND hfiles
   ${FOLLY_DIR}/test/TestUtils.h
 )
 
-# Exclude specific sources if we do not have third-party libraries
-# required to build them.
-if (NOT ${LIBAIO_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/io/AsyncIO.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/io/AsyncIO.h
-  )
-endif()
-if (NOT ${LIBURING_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/io/IoUring.cpp
-    ${FOLLY_DIR}/experimental/io/IoUringBackend.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/io/IoUring.h
-    ${FOLLY_DIR}/experimental/io/IoUringBackend.h
-  )
-endif()
-if (NOT ${LIBAIO_FOUND} AND NOT ${LIBURING_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/io/AsyncBase.cpp
-    ${FOLLY_DIR}/experimental/io/PollIoBackend.cpp
-    ${FOLLY_DIR}/experimental/io/SimpleAsyncIO.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/io/AsyncBase.h
-    ${FOLLY_DIR}/experimental/io/PollIoBackend.h
-    ${FOLLY_DIR}/experimental/io/SimpleAsyncIO.h
-  )
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  check_cxx_compiler_flag(-fcoroutines COMPILER_HAS_F_COROUTINES)
+  if (COMPILER_HAS_F_COROUTINES)
+    message(
+      STATUS
+      "GCC has support for C++ coroutines, setting flag for Folly build."
+    )
+    add_compile_options(-fcoroutines)
+  else()
+    message(
+      STATUS
+      "GCC does not have support for C++ coroutines, "
+      "disabling Folly coroutine support."
+    )
+  endif()
 endif()
 
 if (${LIBSODIUM_FOUND})
@@ -832,6 +816,7 @@ if (BUILD_TESTS)
       TEST baton_test SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
       TEST lifo_sem_test SOURCES LifoSemTests.cpp
+      TEST relaxed_atomic_test SOURCES RelaxedAtomicTest.cpp
       TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
       TEST semaphore_test SOURCES SemaphoreTest.cpp
 

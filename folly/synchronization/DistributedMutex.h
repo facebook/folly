@@ -189,7 +189,7 @@ class DistributedMutex {
    * It is undefined behavior to unlock from a thread that did not lock the
    * mutex
    */
-  void unlock(DistributedMutexStateProxy);
+  void unlock(DistributedMutexStateProxy const&);
 
   /**
    * Try to acquire the mutex
@@ -340,4 +340,3 @@ using DistributedMutex = detail::distributed_mutex::DistributedMutex<>;
 } // namespace folly
 
 #include <folly/synchronization/DistributedMutex-inl.h>
-#include <folly/synchronization/DistributedMutexSpecializations.h>

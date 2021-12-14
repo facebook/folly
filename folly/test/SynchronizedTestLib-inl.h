@@ -72,7 +72,7 @@ void runParallel(size_t numThreads, const Function& function) {
     // as close to the same time as possible.
     {
       auto lockedGo = go.lock();
-      goCV.wait(lockedGo.getUniqueLock(), [&] { return *lockedGo; });
+      goCV.wait(lockedGo.as_lock(), [&] { return *lockedGo; });
     }
 
     function(threadIndex);
@@ -86,9 +86,8 @@ void runParallel(size_t numThreads, const Function& function) {
   // Wait for all threads to become ready
   {
     auto readyLocked = threadsReady.lock();
-    readyCV.wait(readyLocked.getUniqueLock(), [&] {
-      return *readyLocked == numThreads;
-    });
+    readyCV.wait(
+        readyLocked.as_lock(), [&] { return *readyLocked == numThreads; });
   }
   // Now signal the threads that they can go
   go = true;
@@ -102,7 +101,7 @@ void runParallel(size_t numThreads, const Function& function) {
 
 // testBasic() version for shared lock types
 template <class Mutex>
-typename std::enable_if<folly::LockTraits<Mutex>::is_shared>::type
+std::enable_if_t<folly::detail::kSynchronizedMutexIsShared<void, Mutex>>
 testBasicImpl() {
   folly::Synchronized<std::vector<int>, Mutex> obj;
   const auto& constObj = obj;
@@ -154,7 +153,7 @@ testBasicImpl() {
 
 // testBasic() version for non-shared lock types
 template <class Mutex>
-typename std::enable_if<!folly::LockTraits<Mutex>::is_shared>::type
+std::enable_if_t<!folly::detail::kSynchronizedMutexIsShared<void, Mutex>>
 testBasicImpl() {
   folly::Synchronized<std::vector<int>, Mutex> obj;
   const auto& constObj = obj;
@@ -199,7 +198,7 @@ void testBasic() {
 
 // testWithLock() version for shared lock types
 template <class Mutex>
-typename std::enable_if<folly::LockTraits<Mutex>::is_shared>::type
+std::enable_if_t<folly::detail::kSynchronizedMutexIsShared<void, Mutex>>
 testWithLock() {
   folly::Synchronized<std::vector<int>, Mutex> obj;
   const auto& constObj = obj;
@@ -298,7 +297,7 @@ testWithLock() {
 
 // testWithLock() version for non-shared lock types
 template <class Mutex>
-typename std::enable_if<!folly::LockTraits<Mutex>::is_shared>::type
+std::enable_if_t<!folly::detail::kSynchronizedMutexIsShared<void, Mutex>>
 testWithLock() {
   folly::Synchronized<std::vector<int>, Mutex> obj;
 
@@ -388,7 +387,7 @@ void testUnlockCommon() {
 
 // testUnlock() version for shared lock types
 template <class Mutex>
-typename std::enable_if<folly::LockTraits<Mutex>::is_shared>::type
+std::enable_if_t<folly::detail::kSynchronizedMutexIsShared<void, Mutex>>
 testUnlock() {
   folly::Synchronized<int, Mutex> value{10};
   {
@@ -421,7 +420,7 @@ testUnlock() {
 
 // testUnlock() version for non-shared lock types
 template <class Mutex>
-typename std::enable_if<!folly::LockTraits<Mutex>::is_shared>::type
+std::enable_if_t<!folly::detail::kSynchronizedMutexIsShared<void, Mutex>>
 testUnlock() {
   folly::Synchronized<int, Mutex> value{10};
   {

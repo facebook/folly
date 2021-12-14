@@ -247,11 +247,40 @@ struct SharedMutexToken {
     DEFERRED_SHARED,
   };
 
-  Type type_;
-  uint16_t slot_;
+  Type type_{};
+  uint16_t slot_{};
+
+  constexpr SharedMutexToken() = default;
+
+  explicit operator bool() const { return type_ != Type::INVALID; }
+};
+
+#ifndef FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT
+#define FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT 2
+#endif
+
+#ifndef FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT
+#define FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT 1
+#endif
+
+struct SharedMutexPolicyDefault {
+  static constexpr uint32_t max_spin_count =
+      FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT;
+  static constexpr uint32_t max_soft_yield_count =
+      FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT;
+  static constexpr bool track_thread_id = false;
+  static constexpr bool skip_annotate_rwlock = false;
 };
 
 namespace shared_mutex_detail {
+
+struct PolicyTracked : SharedMutexPolicyDefault {
+  static constexpr bool track_thread_id = true;
+};
+struct PolicySuppressTSAN : SharedMutexPolicyDefault {
+  static constexpr bool skip_annotate_rwlock = true;
+};
+
 // Returns a guard that gives permission for the current thread to
 // annotate, and adjust the annotation bits in, the SharedMutex at ptr.
 std::unique_lock<std::mutex> annotationGuard(void* ptr);
@@ -316,16 +345,17 @@ template <
     bool ReaderPriority,
     typename Tag_ = void,
     template <typename> class Atom = std::atomic,
-    bool BlockImmediately = false,
-    bool AnnotateForThreadSanitizer = kIsSanitizeThread && !ReaderPriority,
-    bool TrackThreadId = false>
+    typename Policy = SharedMutexPolicyDefault>
 class SharedMutexImpl : std::conditional_t<
-                            TrackThreadId,
+                            Policy::track_thread_id,
                             shared_mutex_detail::ThreadIdOwnershipTracker,
                             shared_mutex_detail::NopOwnershipTracker> {
  private:
+  static constexpr bool AnnotateForThreadSanitizer =
+      kIsSanitizeThread && !ReaderPriority && !Policy::skip_annotate_rwlock;
+
   typedef std::conditional_t<
-      TrackThreadId,
+      Policy::track_thread_id,
       shared_mutex_detail::ThreadIdOwnershipTracker,
       shared_mutex_detail::NopOwnershipTracker>
       OwnershipTrackerBase;
@@ -892,11 +922,8 @@ class SharedMutexImpl : std::conditional_t<
   static constexpr uint32_t kNumSharedToStartDeferring = 2;
 
   // The typical number of spins that a thread will wait for a state
-  // transition.  There is no bound on the number of threads that can wait
-  // for a writer, so we are pretty conservative here to limit the chance
-  // that we are starving the writer of CPU.  Each spin is 6 or 7 nanos,
-  // almost all of which is in the pause instruction.
-  static constexpr uint32_t kMaxSpinCount = !BlockImmediately ? 1000 : 2;
+  // transition.
+  static constexpr uint32_t kMaxSpinCount = Policy::max_spin_count;
 
   // The maximum number of soft yields before falling back to futex.
   // If the preemption heuristic is activated we will fall back before
@@ -904,7 +931,7 @@ class SharedMutexImpl : std::conditional_t<
   // to getrusage, with checks of the goal at each step).  Soft yields
   // aren't compatible with deterministic execution under test (unlike
   // futexWaitUntil, which has a capricious but deterministic back end).
-  static constexpr uint32_t kMaxSoftYieldCount = !BlockImmediately ? 1000 : 0;
+  static constexpr uint32_t kMaxSoftYieldCount = Policy::max_soft_yield_count;
 
   // If AccessSpreader assigns indexes from 0..k*n-1 on a system where some
   // level of the memory hierarchy is symmetrically divided into k pieces
@@ -1076,12 +1103,12 @@ class SharedMutexImpl : std::conditional_t<
       if ((state & goal) == 0) {
         return true;
       }
-      asm_volatile_pause();
-      ++spinCount;
-      if (UNLIKELY(spinCount >= kMaxSpinCount)) {
+      if (UNLIKELY(spinCount == kMaxSpinCount)) {
         return ctx.canBlock() &&
             yieldWaitForZeroBits(state, goal, waitMask, ctx);
       }
+      asm_volatile_pause();
+      ++spinCount;
     }
   }
 
@@ -1302,7 +1329,7 @@ class SharedMutexImpl : std::conditional_t<
     assert(state < state + kIncrHasS);
   }
 
-  // It is straightfoward to make a token-less lock_shared() and
+  // It is straightforward to make a token-less lock_shared() and
   // unlock_shared() either by making the token-less version always use
   // INLINE_SHARED mode or by removing the token version.  Supporting
   // deferred operation for both types is trickier than it appears, because
@@ -1561,27 +1588,21 @@ class SharedMutexImpl : std::conditional_t<
     friend class UpgradeHolder;
     SharedMutexImpl* lock_;
   };
-
-  // Adapters for Synchronized<>
-  friend void acquireRead(SharedMutexImpl& lock) { lock.lock_shared(); }
-  friend void acquireReadWrite(SharedMutexImpl& lock) { lock.lock(); }
-  friend void releaseRead(SharedMutexImpl& lock) { lock.unlock_shared(); }
-  friend void releaseReadWrite(SharedMutexImpl& lock) { lock.unlock(); }
-  friend bool acquireRead(SharedMutexImpl& lock, unsigned int ms) {
-    return lock.try_lock_shared_for(std::chrono::milliseconds(ms));
-  }
-  friend bool acquireReadWrite(SharedMutexImpl& lock, unsigned int ms) {
-    return lock.try_lock_for(std::chrono::milliseconds(ms));
-  }
 };
 
-typedef SharedMutexImpl<true> SharedMutexReadPriority;
-typedef SharedMutexImpl<false> SharedMutexWritePriority;
-typedef SharedMutexWritePriority SharedMutex;
-typedef SharedMutexImpl<false, void, std::atomic, false, false, true>
-    SharedMutexTracked;
-typedef SharedMutexImpl<false, void, std::atomic, false, false>
-    SharedMutexSuppressTSAN;
+using SharedMutexReadPriority = SharedMutexImpl<true>;
+using SharedMutexWritePriority = SharedMutexImpl<false>;
+using SharedMutex = SharedMutexWritePriority;
+using SharedMutexTracked = SharedMutexImpl<
+    false,
+    void,
+    std::atomic,
+    shared_mutex_detail::PolicyTracked>;
+using SharedMutexSuppressTSAN = SharedMutexImpl<
+    false,
+    void,
+    std::atomic,
+    shared_mutex_detail::PolicySuppressTSAN>;
 
 // Prevent the compiler from instantiating these in other translation units.
 // They are instantiated once in SharedMutex.cpp
@@ -1593,23 +1614,11 @@ template <
     typename Tag_,
     template <typename>
     class Atom,
-    bool BlockImmediately,
-    bool AnnotateForThreadSanitizer,
-    bool TrackThreadId>
-alignas(hardware_destructive_interference_size) typename SharedMutexImpl<
-    ReaderPriority,
-    Tag_,
-    Atom,
-    BlockImmediately,
-    AnnotateForThreadSanitizer,
-    TrackThreadId>::DeferredReaderSlot
-    SharedMutexImpl<
-        ReaderPriority,
-        Tag_,
-        Atom,
-        BlockImmediately,
-        AnnotateForThreadSanitizer,
-        TrackThreadId>::deferredReaders
+    typename Policy>
+alignas(hardware_destructive_interference_size)
+    typename SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::
+        DeferredReaderSlot
+    SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::deferredReaders
         [shared_mutex_detail::kMaxDeferredReadersAllocated *
          kDeferredSeparationFactor] = {};
 
@@ -1618,16 +1627,9 @@ template <
     typename Tag_,
     template <typename>
     class Atom,
-    bool BlockImmediately,
-    bool AnnotateForThreadSanitizer,
-    bool TrackThreadId>
-bool SharedMutexImpl<
-    ReaderPriority,
-    Tag_,
-    Atom,
-    BlockImmediately,
-    AnnotateForThreadSanitizer,
-    TrackThreadId>::tryUnlockTokenlessSharedDeferred() {
+    typename Policy>
+bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::
+    tryUnlockTokenlessSharedDeferred() {
   auto bestSlot = tls_lastTokenlessSlot().load(std::memory_order_relaxed);
   // use do ... while to avoid calling
   // shared_mutex_detail::getMaxDeferredReaders() unless necessary
@@ -1650,18 +1652,10 @@ template <
     typename Tag_,
     template <typename>
     class Atom,
-    bool BlockImmediately,
-    bool AnnotateForThreadSanitizer,
-    bool TrackThreadId>
+    typename Policy>
 template <class WaitContext>
-bool SharedMutexImpl<
-    ReaderPriority,
-    Tag_,
-    Atom,
-    BlockImmediately,
-    AnnotateForThreadSanitizer,
-    TrackThreadId>::
-    lockSharedImpl(uint32_t& state, Token* token, WaitContext& ctx) {
+bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
+    uint32_t& state, Token* token, WaitContext& ctx) {
   const uint32_t maxDeferredReaders =
       shared_mutex_detail::getMaxDeferredReaders();
   while (true) {

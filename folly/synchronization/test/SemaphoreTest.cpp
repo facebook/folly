@@ -26,33 +26,12 @@
 #include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
+#include <folly/synchronization/Latch.h>
 #include <folly/synchronization/test/Barrier.h>
 
 using namespace folly::test;
 
 namespace {
-
-class WaitForAll {
- public:
-  explicit WaitForAll(size_t rem) : remaining(rem) {}
-
-  void post() {
-    std::unique_lock<std::mutex> l{m};
-    assert(remaining);
-    if (!--remaining) {
-      c.notify_one();
-    }
-  }
-  void wait() {
-    std::unique_lock<std::mutex> l{m};
-    c.wait(l, [&] { return !remaining; });
-  }
-
- private:
-  size_t remaining;
-  std::mutex m;
-  std::condition_variable c;
-};
 
 template <SemaphoreWakePolicy WakePolicy>
 auto wake_policy(PolicySemaphore<WakePolicy> const&) {
@@ -84,7 +63,7 @@ void test_handoff_destruction() {
   for (auto r = 0ull; r < rounds; ++r) {
     std::array<void*, nthreads> sems{};
     std::array<std::thread, nthreads> threads;
-    WaitForAll ready(nthreads);
+    folly::Latch ready(nthreads);
     for (auto thi = 0ull; thi < nthreads; ++thi) {
       sems[thi] = mmap(
           nullptr,
@@ -97,7 +76,7 @@ void test_handoff_destruction() {
       auto sem_ = new (sems[thi]) Sem(0);
       threads[thi] = std::thread([&, thi, sem_] {
         auto& sem = *reinterpret_cast<Sem*>(sem_);
-        sem.wait([&] { ready.post(); }, [&, thi] { ++waits[thi]; });
+        sem.wait([&] { ready.count_down(); }, [&, thi] { ++waits[thi]; });
         sem.~Sem();
         mprotect(sem_, sizeof(Sem), PROT_NONE);
       });
@@ -126,11 +105,11 @@ void test_wake_policy() {
   for (auto i = 0ull; i < rounds; ++i) {
     std::vector<uint64_t> wait_seq;
     std::vector<uint64_t> wake_seq;
-    WaitForAll ready(nthreads); // first nthreads waits, then nthreads posts
+    folly::Latch ready(nthreads); // first nthreads waits, then nthreads posts
     for (auto thi = 0ull; thi < nthreads; ++thi) {
       threads[thi] = std::thread([&, thi] {
         sem.wait(
-            [&, thi] { wait_seq.push_back(thi), ready.post(); },
+            [&, thi] { wait_seq.push_back(thi), ready.count_down(); },
             [&, thi] { wake_seq.push_back(thi); });
       });
     }

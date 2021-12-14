@@ -47,6 +47,15 @@ struct Foo {
 using FooSingletonTL = SingletonThreadLocal<Foo>;
 } // namespace
 
+TEST(SingletonThreadLocalTest, TryGet) {
+  struct Foo {};
+  using FooTL = SingletonThreadLocal<Foo>;
+  EXPECT_EQ(nullptr, FooTL::try_get());
+  FooTL::get();
+  EXPECT_NE(nullptr, FooTL::try_get());
+  EXPECT_EQ(&FooTL::get(), FooTL::try_get());
+}
+
 TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   static constexpr std::size_t targetThreadCount{64};
   std::atomic<std::size_t> completedThreadCount{0};

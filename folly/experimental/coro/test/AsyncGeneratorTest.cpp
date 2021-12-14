@@ -585,13 +585,12 @@ TEST(AsyncGeneraor, CoAwaitTry) {
       CHECK(false);
     }();
 
-    folly::Try<std::string> item1 =
-        co_await folly::coro::co_awaitTry(gen.next());
+    auto item1 = co_await folly::coro::co_awaitTry(gen.next());
     CHECK(item1.hasValue());
-    CHECK(item1.value() == "foo");
+    CHECK(*item1.value() == "foo");
     auto item2 = co_await folly::coro::co_awaitTry(gen.next());
     CHECK(item2.hasValue());
-    CHECK(item2.value() == "bar");
+    CHECK(*item2.value() == "bar");
     auto item3 = co_await folly::coro::co_awaitTry(gen.next());
     CHECK(item3.hasException());
     CHECK(item3.exception().is_compatible_with<SomeError>());
@@ -628,6 +627,58 @@ TEST(AsyncGenerator, SafePoint) {
     EXPECT_THROW(result.value(), folly::OperationCancelled);
     EXPECT_EQ(step_type::before_cancel_sp, step);
   }());
+}
+
+TEST(AsyncGenerator, CoAwaitNothrow) {
+  auto res =
+      folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {
+        auto gen = []() -> folly::coro::AsyncGenerator<int> {
+          auto inner = []() -> folly::coro::AsyncGenerator<int> {
+            co_yield 42;
+            throw std::runtime_error("");
+          }();
+          co_yield *co_await co_nothrow(inner.next());
+          try {
+            co_yield *co_await co_nothrow(inner.next());
+          } catch (...) {
+            ADD_FAILURE();
+          }
+          ADD_FAILURE();
+        }();
+
+        co_await co_nothrow(gen.next());
+        try {
+          co_await co_nothrow(gen.next());
+        } catch (...) {
+          ADD_FAILURE();
+        }
+        ADD_FAILURE();
+      }()));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+TEST(AsyncGenerator, CoAwaitNothrowMultiTask) {
+  auto res =
+      folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {
+        auto gen = co_await
+            []() -> folly::coro::Task<folly::coro::AsyncGenerator<int>> {
+          auto gen = []() -> folly::coro::AsyncGenerator<int> {
+            co_yield 42;
+            throw std::runtime_error("");
+          }();
+
+          co_await co_nothrow(gen.next());
+          co_return gen;
+        }();
+
+        try {
+          co_await co_nothrow(gen.next());
+        } catch (...) {
+          ADD_FAILURE();
+        }
+        ADD_FAILURE();
+      }()));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
 }
 
 #endif

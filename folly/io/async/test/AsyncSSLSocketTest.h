@@ -875,11 +875,15 @@ class AlpnServer : private AsyncSSLSocket::HandshakeCB,
   explicit AlpnServer(AsyncSSLSocket::UniquePtr socket)
       : nextProto(nullptr), nextProtoLength(0), socket_(std::move(socket)) {
     socket_->sslAccept(this);
+    socket_->enableClientHelloParsing();
   }
 
   const unsigned char* nextProto;
   unsigned nextProtoLength;
   folly::Optional<AsyncSocketException> except;
+  const std::vector<std::string>& getClientAlpns() const {
+    return socket_->getClientAlpns();
+  }
 
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
@@ -949,6 +953,10 @@ class SNIClient : private AsyncSSLSocket::HandshakeCB,
     socket_->sslConn(this);
   }
 
+  std::string getApplicationProtocol() {
+    return socket_->getApplicationProtocol();
+  }
+
   bool serverNameMatch;
 
  private:
@@ -984,6 +992,10 @@ class SNIServer : private AsyncSSLSocket::HandshakeCB,
     ctx->setServerNameCallback(
         std::bind(&SNIServer::serverNameCallback, this, std::placeholders::_1));
     socket_->sslAccept(this);
+  }
+
+  std::string getApplicationProtocol() {
+    return socket_->getApplicationProtocol();
   }
 
   bool serverNameMatch;

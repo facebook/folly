@@ -19,6 +19,7 @@
 #include <folly/FileUtil.h>
 #include <folly/io/async/test/SSLUtil.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 using namespace std;
@@ -185,6 +186,29 @@ TEST_F(SSLContextTest, TestLoadCertificateChain) {
   EXPECT_EQ(1, sk_X509_num(stack));
 }
 
+TEST_F(SSLContextTest, TestSetSupportedClientCAs) {
+  constexpr auto kCertChainPath = "folly/io/async/test/certs/client_chain.pem";
+  ctx.setSupportedClientCertificateAuthorityNamesFromFile(kCertChainPath);
+
+  STACK_OF(X509_NAME)* names = SSL_CTX_get_client_CA_list(ctx.getSSLCtx());
+  EXPECT_EQ(2, sk_X509_NAME_num(names));
+
+  static const char* kExpectedCNs[] = {"Leaf Certificate", "Intermediate CA"};
+  for (int i = 0; i < sk_X509_NAME_num(names); i++) {
+    auto name = sk_X509_NAME_value(names, i);
+    int indexCN = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
+    EXPECT_NE(indexCN, -1);
+
+    auto entry = X509_NAME_get_entry(name, indexCN);
+    ASSERT_NE(entry, nullptr);
+    auto asnStringCN = X509_NAME_ENTRY_get_data(entry);
+    std::string commonName(
+        reinterpret_cast<const char*>(ASN1_STRING_get0_data(asnStringCN)),
+        ASN1_STRING_length(asnStringCN));
+    EXPECT_EQ(commonName, std::string(kExpectedCNs[i]));
+  }
+}
+
 TEST_F(SSLContextTest, TestGetFromSSLCtx) {
   // Positive test
   SSLContext* contextPtr = SSLContext::getFromSSLCtx(ctx.getSSLCtx());
@@ -231,4 +255,19 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
       std::runtime_error);
 }
 #endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
+
+TEST_F(SSLContextTest, TestTLS13MinVersionThrow) {
+  EXPECT_THROW(SSLContext{SSLContext::SSLVersion::TLSv1_3}, std::runtime_error);
+}
+
+TEST_F(SSLContextTest, AdvertisedNextProtocols) {
+  EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "");
+
+  ctx.setAdvertisedNextProtocols({"blub"});
+  EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "blub");
+
+  ctx.setAdvertisedNextProtocols({"foo", "bar", "baz"});
+  EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "foo,bar,baz");
+}
+
 } // namespace folly

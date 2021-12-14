@@ -31,7 +31,7 @@ std::string getSingletonStackTrace() {
   auto addresses =
       std::make_unique<symbolizer::FrameArray<kMaxStackTraceDepth>>();
 
-  if (!getStackTraceSafe(*addresses)) {
+  if (!getStackTrace(*addresses)) {
     return "";
   } else {
     symbolizer::ElfCache elfCache;

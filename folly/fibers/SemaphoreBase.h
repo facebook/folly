@@ -99,7 +99,7 @@ class SemaphoreBase {
   SemiFuture<Unit> future_wait_common(int64_t tokens);
 
   bool waitSlow(Waiter& waiter, int64_t tokens);
-  bool signalSlow(int64_t tokens, int64_t oldVal);
+  bool signalSlow(int64_t tokens);
 
   size_t capacity_;
   // Atomic counter

@@ -30,6 +30,7 @@
 // here. See portability/openssl.h.
 // clang-format off
 #include <folly/portability/Windows.h>
+// @lint-ignore CLANGTIDY
 #include <openssl/crypto.h>
 // clang-format on
 
@@ -41,6 +42,7 @@
 
 // OpenSSL requires us to provide the implementation of CRYPTO_dynlock_value
 // so it must be done in the global namespace.
+// @lint-ignore CLANGTIDY
 struct CRYPTO_dynlock_value {
   std::mutex mutex;
 };
@@ -71,10 +73,10 @@ bool isSSLLockDisabled(int lockId) {
 
 namespace {
 struct SSLLock {
-  explicit SSLLock(LockType inLockType = LockType::MUTEX)
+  FOLLY_MAYBE_UNUSED explicit SSLLock(LockType inLockType = LockType::MUTEX)
       : lockType(inLockType) {}
 
-  void lock(bool read) {
+  FOLLY_MAYBE_UNUSED void lock(bool read) {
     if (lockType == LockType::MUTEX) {
       mutex.lock();
     } else if (lockType == LockType::SPINLOCK) {
@@ -89,7 +91,7 @@ struct SSLLock {
     // lockType == LOCK_NONE, no-op
   }
 
-  void unlock(bool read) {
+  FOLLY_MAYBE_UNUSED void unlock(bool read) {
     if (lockType == LockType::MUTEX) {
       mutex.unlock();
     } else if (lockType == LockType::SPINLOCK) {

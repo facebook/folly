@@ -1,10 +1,6 @@
 [manifest]
 name = snappy
 
-[rpms]
-snappy
-snappy-devel
-
 [debs]
 libsnappy-dev
 

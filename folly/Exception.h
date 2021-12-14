@@ -35,15 +35,22 @@ namespace folly {
 //
 // The *Explicit functions take an explicit value for errno.
 
+// On linux and similar platforms the value of `errno` is a mixture of
+// POSIX-`errno`-domain error codes and per-OS extended error codes. So the
+// most appropriate category to use is `system_category`.
+//
+// On Windows `system_category` means codes that can be returned by Win32 API
+// `GetLastError` and codes from the `errno`-domain must be reported as
+// `generic_category`.
+inline const std::error_category& errorCategoryForErrnoDomain() noexcept {
+  if (kIsWindows) {
+    return std::generic_category();
+  }
+  return std::system_category();
+}
+
 inline std::system_error makeSystemErrorExplicit(int err, const char* msg) {
-  // TODO: The C++ standard indicates that std::generic_category() should be
-  // used for POSIX errno codes.
-  //
-  // We should ideally change this to use std::generic_category() instead of
-  // std::system_category().  However, undertaking this change will require
-  // updating existing call sites that currently catch exceptions thrown by
-  // this code and currently expect std::system_category.
-  return std::system_error(err, std::system_category(), msg);
+  return std::system_error(err, errorCategoryForErrnoDomain(), msg);
 }
 
 template <class... Args>

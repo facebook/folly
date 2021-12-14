@@ -23,7 +23,7 @@
 namespace folly {
 namespace detail {
 
-struct DefaultTag {};
+struct FOLLY_EXPORT DefaultTag {};
 
 template <typename T>
 struct DefaultMake {

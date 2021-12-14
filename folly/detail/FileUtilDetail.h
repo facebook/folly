@@ -20,6 +20,8 @@
 #include <cstddef>
 #include <type_traits>
 
+#include <folly/portability/SysTypes.h>
+
 //  Private functions for wrapping file-io against interrupt and partial op
 //  completions.
 //
@@ -29,8 +31,6 @@
 
 namespace folly {
 namespace fileutil_detail {
-
-using ssize_t = std::make_signed_t<size_t>;
 
 // Wrap call to f(args) in loop to retry on EINTR
 template <class F, class... Args>

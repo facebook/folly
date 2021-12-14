@@ -18,6 +18,8 @@
 
 #include <atomic>
 
+#include <folly/lang/Assume.h>
+
 namespace folly {
 namespace detail {
 
@@ -32,9 +34,9 @@ inline std::memory_order default_failure_memory_order(
     case std::memory_order_consume:
     case std::memory_order_acquire:
     case std::memory_order_seq_cst:
-    default:
       return successMode;
   }
+  assume_unreachable();
 }
 
 inline char const* memory_order_to_str(std::memory_order mo) {

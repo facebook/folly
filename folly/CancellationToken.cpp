@@ -164,7 +164,7 @@ bool CancellationState::requestCancellation() noexcept {
       // This was the last item in the queue when we dequeued it.
       // No more items should be added to the queue after we have
       // marked the state as cancelled, only removed from the queue.
-      // Avoid acquring/releasing the lock in this case.
+      // Avoid acquiring/releasing the lock in this case.
       return false;
     }
 

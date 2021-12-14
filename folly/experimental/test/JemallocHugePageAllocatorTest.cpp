@@ -251,11 +251,11 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   // This should work, just won't get huge pages since
   // init hasn't been called yet
   vec.reserve(100);
-  EXPECT_NE(nullptr, &vec[0]);
+  EXPECT_NE(nullptr, vec.data());
 
   // Reserve & initialize, not on huge pages
   MyVec vec2(100);
-  EXPECT_NE(nullptr, &vec[0]);
+  EXPECT_NE(nullptr, vec.data());
 
   // F14 maps need quite a lot of memory by default
   bool initialized = jha::init(4);
@@ -265,7 +265,7 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
 
   // Reallocate, this time on huge pages
   vec.reserve(200);
-  EXPECT_NE(nullptr, &vec[0]);
+  EXPECT_NE(nullptr, vec.data());
 
   MyMap map1;
   map1[0] = {1, 2, 3};
@@ -274,7 +274,7 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   map2[0] = {1, 2, 3};
 
   if (initialized) {
-    EXPECT_TRUE(jha::addressInArena(&vec[0]));
+    EXPECT_TRUE(jha::addressInArena(vec.data()));
     EXPECT_TRUE(jha::addressInArena(&map1[0]));
     EXPECT_TRUE(jha::addressInArena(&map1[0][0]));
     EXPECT_TRUE(jha::addressInArena(&map2[0]));
@@ -300,4 +300,42 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   if (initialized) {
     EXPECT_TRUE(jha::addressInArena(&map1[1][0]));
   }
+}
+
+TEST(JemallocHugePageAllocatorTest, Grow) {
+  bool initialized = jha::init(2, 8192);
+  if (initialized) {
+    EXPECT_NE(0, jha::freeSpace());
+  }
+
+  // This fits
+  void* ptr1 = jha::allocate(mb(1));
+  EXPECT_NE(nullptr, ptr1);
+
+  // This partially fits
+  void* ptr2 = jha::allocate(mb(6));
+  EXPECT_NE(nullptr, ptr2);
+
+  void* ptr3 = jha::allocate(mb(500));
+  EXPECT_NE(nullptr, ptr3);
+
+  void* ptr4 = jha::allocate(kb(4));
+  EXPECT_NE(nullptr, ptr4);
+
+  void* ptr5 = jha::allocate(kb(4));
+  EXPECT_NE(nullptr, ptr5);
+
+  if (initialized) {
+    EXPECT_TRUE(jha::addressInArena(ptr1));
+    EXPECT_TRUE(jha::addressInArena(ptr2));
+    EXPECT_TRUE(jha::addressInArena(ptr3));
+    EXPECT_TRUE(jha::addressInArena(ptr4));
+    EXPECT_TRUE(jha::addressInArena(ptr5));
+  }
+
+  jha::deallocate(ptr1);
+  jha::deallocate(ptr2);
+  jha::deallocate(ptr3);
+  jha::deallocate(ptr4);
+  jha::deallocate(ptr5);
 }

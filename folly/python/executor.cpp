@@ -19,7 +19,6 @@
 #include <stdexcept>
 
 #include <folly/CppAttributes.h>
-#include <folly/python/AsyncioExecutor.h>
 #include <folly/python/executor_api.h> // @manual
 
 namespace folly {
@@ -27,17 +26,26 @@ namespace python {
 
 namespace {
 
-void do_import() {
-  if (0 != import_folly__executor()) {
-    throw std::runtime_error("import_folly__executor failed");
+void ensure_imported() {
+  static bool imported = false;
+  if (!imported) {
+    if (0 != import_folly__executor()) {
+      throw std::runtime_error("import_folly__executor failed");
+    }
+    imported = true;
   }
 }
 
 } // namespace
 
 folly::Executor* getExecutor() {
-  FOLLY_MAYBE_UNUSED static bool done = (do_import(), false);
+  ensure_imported();
   return get_running_executor(false); // TODO: fried set this to true
+}
+
+int setExecutorForLoop(PyObject* loop, AsyncioExecutor* executor) {
+  ensure_imported();
+  return set_executor_for_loop(loop, executor);
 }
 
 } // namespace python

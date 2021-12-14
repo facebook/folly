@@ -250,12 +250,14 @@ class Baton {
   static constexpr intptr_t TIMEOUT = -2;
   static constexpr intptr_t THREAD_WAITING = -3;
 
+  struct _futex_wrapper {
+    folly::detail::Futex<> futex{};
+    int32_t _unused_packing;
+  };
+
   union {
     std::atomic<intptr_t> waiter_;
-    struct {
-      folly::detail::Futex<> futex{};
-      int32_t _unused_packing;
-    } futex_;
+    struct _futex_wrapper futex_;
   };
 };
 

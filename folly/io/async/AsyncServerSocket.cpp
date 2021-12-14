@@ -26,6 +26,7 @@
 #include <cstring>
 
 #include <folly/FileUtil.h>
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
@@ -88,7 +89,7 @@ AtomicNotificationQueueTaskStatus AsyncServerSocket::NewConnMessage::operator()(
     acceptor.connectionEventCallback_->onConnectionDequeuedByAcceptorCallback(
         fd, clientAddr);
   }
-  acceptor.callback_->connectionAccepted(fd, clientAddr);
+  acceptor.callback_->connectionAccepted(fd, clientAddr, {timeBeforeEnqueue});
   return AtomicNotificationQueueTaskStatus::CONSUMED;
 }
 
@@ -790,6 +791,34 @@ void AsyncServerSocket::setTosReflect(bool enable) {
   tosReflect_ = true;
 }
 
+void AsyncServerSocket::setListenerTos(uint32_t tos) {
+  if (!kIsLinux || tos == 0) {
+    listenerTos_ = 0;
+    return;
+  }
+
+  for (auto& handler : sockets_) {
+    if (handler.socket_ == NetworkSocket()) {
+      continue;
+    }
+
+    const auto proto =
+        (handler.addressFamily_ == AF_INET) ? IPPROTO_IP : IPPROTO_IPV6;
+    const auto optName =
+        (handler.addressFamily_ == AF_INET) ? IP_TOS : IPV6_TCLASS;
+
+    int ret =
+        netops::setsockopt(handler.socket_, proto, optName, &tos, sizeof(tos));
+
+    if (ret == 0) {
+      VLOG(10) << "Set TOS " << tos << " for for socket " << handler.socket_;
+    } else {
+      folly::throwSystemError(errno, "failed to set TOS for socket");
+    }
+  }
+  listenerTos_ = tos;
+}
+
 void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
   // Put the socket in non-blocking mode
   if (netops::set_socket_non_blocking(fd) != 0) {
@@ -1037,11 +1066,13 @@ void AsyncServerSocket::dispatchSocket(
     NetworkSocket socket, SocketAddress&& address) {
   uint32_t startingIndex = callbackIndex_;
 
+  auto timeBeforeEnqueue = std::chrono::steady_clock::now();
+
   // Short circuit if the callback is in the primary EventBase thread
 
   CallbackInfo* info = nextCallback();
   if (info->eventBase == nullptr || info->eventBase == this->eventBase_) {
-    info->callback->connectionAccepted(socket, address);
+    info->callback->connectionAccepted(socket, address, {timeBeforeEnqueue});
     return;
   }
 
@@ -1050,9 +1081,10 @@ void AsyncServerSocket::dispatchSocket(
   auto queueTimeout = *queueTimeout_;
   std::chrono::steady_clock::time_point deadline;
   if (queueTimeout.count() != 0) {
-    deadline = std::chrono::steady_clock::now() + queueTimeout;
+    deadline = timeBeforeEnqueue + queueTimeout;
   }
-  NewConnMessage msg{socket, std::move(address), deadline};
+
+  NewConnMessage msg{socket, std::move(address), deadline, timeBeforeEnqueue};
 
   // Loop until we find a free queue to write to
   while (true) {
@@ -1085,8 +1117,9 @@ void AsyncServerSocket::dispatchSocket(
       // should use pauseAccepting() to temporarily back off accepting new
       // connections, before they reach the point where their threads can't
       // even accept new messages.
-      LOG_EVERY_N(ERROR, 100) << "failed to dispatch newly accepted socket:"
-                              << " all accept callback queues are full";
+      FB_LOG_EVERY_MS(ERROR, 1000)
+          << "failed to dispatch newly accepted socket:"
+          << " all accept callback queues are full";
       closeNoInt(socket);
       if (connectionEventCallback_) {
         connectionEventCallback_->onConnectionDropped(socket, addr);
@@ -1123,7 +1156,7 @@ void AsyncServerSocket::dispatchError(const char* msgstr, int errnoValue) {
     if (callbackIndex_ == startingIndex) {
       // The notification queues for all of the callbacks were full.
       // We can't really do anything at this point.
-      LOG_EVERY_N(ERROR, 100)
+      FB_LOG_EVERY_MS(ERROR, 1000)
           << "failed to dispatch accept error: all accept"
           << " callback queues are full: error msg:  " << msg.msg << ": "
           << errnoValue;

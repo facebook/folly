@@ -217,11 +217,8 @@ CheckResult checkThrowErrno(
   try {
     fn();
   } catch (const std::system_error& ex) {
-    // TODO: POSIX errno values should use std::generic_category(), but
-    // folly/Exception.h incorrectly throws them using std::system_category()
-    // at the moment.
-    // For now we also accept std::system_category so that we will also handle
-    // exceptions from folly/Exception.h correctly.
+    // POSIX errno can use either std::generic_category() or
+    // std::system_category() on POSIX platforms.
     if (ex.code().category() != std::generic_category() &&
         ex.code().category() != std::system_category()) {
       return CheckResult(false)

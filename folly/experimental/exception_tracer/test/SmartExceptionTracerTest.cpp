@@ -64,8 +64,7 @@ TEST(SmartExceptionTracer, EmptyExceptionWrapper) {
   std::ostringstream ss;
   ss << info;
   ASSERT_TRUE(
-      ss.str().find("Exception type: (unknown type) (0 frames)") !=
-      std::string::npos);
+      ss.str().find("Exception type: (unknown type)") != std::string::npos);
 }
 
 TEST(SmartExceptionTracer, InvalidException) {
@@ -77,8 +76,7 @@ TEST(SmartExceptionTracer, InvalidException) {
     std::ostringstream ss;
     ss << info;
     ASSERT_TRUE(
-        ss.str().find("Exception type: (unknown type) (0 frames)") !=
-        std::string::npos);
+        ss.str().find("Exception type: (unknown type)") != std::string::npos);
   }
 }
 
@@ -89,8 +87,7 @@ TEST(SmartExceptionTracer, UnthrownException) {
   std::ostringstream ss;
   ss << info;
   ASSERT_TRUE(
-      ss.str().find("Exception type: std::runtime_error (0 frames)") !=
-      std::string::npos);
+      ss.str().find("Exception type: std::runtime_error") != std::string::npos);
 }
 
 namespace {

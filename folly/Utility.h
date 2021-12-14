@@ -119,29 +119,42 @@ constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
  *    std::in_place_index
  */
 
-struct in_place_tag {};
+#if FOLLY_CPLUSPLUS >= 201703L
+
+using std::in_place_t;
+
+using std::in_place_type_t;
+
+using std::in_place_index_t;
+
+using std::in_place;
+
+using std::in_place_type;
+
+using std::in_place_index;
+
+#else
+
+struct in_place_t {
+  explicit in_place_t() = default;
+};
+FOLLY_INLINE_VARIABLE constexpr in_place_t in_place{};
+
 template <class>
-struct in_place_type_tag {};
+struct in_place_type_t {
+  explicit in_place_type_t() = default;
+};
+template <class T>
+FOLLY_INLINE_VARIABLE constexpr in_place_type_t<T> in_place_type{};
+
 template <std::size_t>
-struct in_place_index_tag {};
-
-using in_place_t = in_place_tag (&)(in_place_tag);
-template <class T>
-using in_place_type_t = in_place_type_tag<T> (&)(in_place_type_tag<T>);
+struct in_place_index_t {
+  explicit in_place_index_t() = default;
+};
 template <std::size_t I>
-using in_place_index_t = in_place_index_tag<I> (&)(in_place_index_tag<I>);
+FOLLY_INLINE_VARIABLE constexpr in_place_index_t<I> in_place_index{};
 
-inline in_place_tag in_place(in_place_tag = {}) {
-  return {};
-}
-template <class T>
-inline in_place_type_tag<T> in_place_type(in_place_type_tag<T> = {}) {
-  return {};
-}
-template <std::size_t I>
-inline in_place_index_tag<I> in_place_index(in_place_index_tag<I> = {}) {
-  return {};
-}
+#endif
 
 /**
  * Initializer lists are a powerful compile time syntax introduced in C++11
@@ -158,7 +171,7 @@ inline in_place_index_tag<I> in_place_index(in_place_index_tag<I> = {}) {
  *  class Something {
  *  public:
  *    explicit Something(int);
- *    Something(std::intiializer_list<int>);
+ *    Something(std::initializer_list<int>);
  *
  *    operator int();
  *  };
@@ -271,25 +284,49 @@ FOLLY_INLINE_VARIABLE constexpr identity_fn identity;
 
 namespace moveonly_ { // Protection from unintended ADL.
 
+template <bool Copy, bool Move>
+class EnableCopyMove {
+ protected:
+  constexpr EnableCopyMove() noexcept = default;
+  ~EnableCopyMove() noexcept = default;
+
+  EnableCopyMove(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove& operator=(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove(const EnableCopyMove&) noexcept = default;
+  EnableCopyMove& operator=(const EnableCopyMove&) noexcept = default;
+};
+
 /**
  * Disallow copy but not move in derived types. This is essentially
  * boost::noncopyable (the implementation is almost identical) but it
  * doesn't delete move constructor and move assignment.
  */
-class MoveOnly {
+template <>
+class EnableCopyMove<false, true> {
  protected:
-  constexpr MoveOnly() = default;
-  ~MoveOnly() = default;
+  constexpr EnableCopyMove() noexcept = default;
+  ~EnableCopyMove() noexcept = default;
 
-  MoveOnly(MoveOnly&&) = default;
-  MoveOnly& operator=(MoveOnly&&) = default;
-  MoveOnly(const MoveOnly&) = delete;
-  MoveOnly& operator=(const MoveOnly&) = delete;
+  EnableCopyMove(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove& operator=(EnableCopyMove&&) noexcept = default;
+  EnableCopyMove(const EnableCopyMove&) = delete;
+  EnableCopyMove& operator=(const EnableCopyMove&) = delete;
 };
 
+template <>
+class EnableCopyMove<false, false> {
+ protected:
+  constexpr EnableCopyMove() noexcept = default;
+  ~EnableCopyMove() noexcept = default;
+
+  EnableCopyMove(EnableCopyMove&&) = delete;
+  EnableCopyMove& operator=(EnableCopyMove&&) = delete;
+  EnableCopyMove(const EnableCopyMove&) = delete;
+  EnableCopyMove& operator=(const EnableCopyMove&) = delete;
+};
 } // namespace moveonly_
 
-using MoveOnly = moveonly_::MoveOnly;
+using MoveOnly = moveonly_::EnableCopyMove<false, true>;
 
 struct to_signed_fn {
   template <typename..., typename T>

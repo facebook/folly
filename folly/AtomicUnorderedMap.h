@@ -395,7 +395,7 @@ struct AtomicUnorderedInsertMap {
   size_t mmapRequested_;
   size_t numSlots_;
 
-  /// tricky, see keyToSlodIdx
+  /// tricky, see keyToSlotIdx
   size_t slotMask_;
 
   Allocator allocator_;
@@ -486,7 +486,7 @@ using AtomicUnorderedInsertMap64 = AtomicUnorderedInsertMap<
     uint64_t,
     Allocator>;
 
-/// MutableAtom is a tiny wrapper than gives you the option of atomically
+/// MutableAtom is a tiny wrapper that gives you the option of atomically
 /// updating values inserted into an AtomicUnorderedInsertMap<K,
 /// MutableAtom<V>>.  This relies on AtomicUnorderedInsertMap's guarantee
 /// that it doesn't move values.
@@ -497,7 +497,7 @@ struct MutableAtom {
   explicit MutableAtom(const T& init) : data(init) {}
 };
 
-/// MutableData is a tiny wrapper than gives you the option of using an
+/// MutableData is a tiny wrapper that gives you the option of using an
 /// external concurrency control mechanism to updating values inserted
 /// into an AtomicUnorderedInsertMap.
 template <typename T>

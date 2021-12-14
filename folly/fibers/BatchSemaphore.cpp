@@ -20,17 +20,7 @@ namespace folly {
 namespace fibers {
 
 void BatchSemaphore::signal(int64_t tokens) {
-  auto oldVal = tokens_.load(std::memory_order_acquire);
-  do {
-    if (signalSlow(tokens, oldVal)) {
-      return;
-    }
-    oldVal = tokens_.load(std::memory_order_acquire);
-  } while (!tokens_.compare_exchange_weak(
-      oldVal,
-      oldVal + tokens,
-      std::memory_order_release,
-      std::memory_order_acquire));
+  signalSlow(tokens);
 }
 
 void BatchSemaphore::wait(int64_t tokens) {

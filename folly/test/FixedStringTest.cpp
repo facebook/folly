@@ -109,6 +109,16 @@ TEST(FixedStringCtorTest, FromStringOffsetAndCount) {
   // constexpr folly::FixedString<5> s4{s, 6, 6};
 }
 
+#if FOLLY_HAS_STRING_VIEW
+TEST(FixedStringCtorTest, FromStringView) {
+  constexpr folly::FixedString<11> s{
+      std::string_view{"hello world"},
+  };
+  static_assert(s == "hello world", "");
+  static_assert(s.size() == 11u, "");
+}
+#endif
+
 TEST(FixedStringCtorTest, FromInitializerList) {
   constexpr folly::FixedString<11> s{
       'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'};

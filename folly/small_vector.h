@@ -51,6 +51,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/Align.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
@@ -108,7 +109,7 @@ namespace detail {
  * extra copies and moves for non-trivial types.
  */
 template <class T, class Create>
-typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
+typename std::enable_if<!is_trivially_copyable_v<T>>::type
 moveObjectsRightAndCreate(
     T* const first,
     T* const lastConstructed,
@@ -164,7 +165,7 @@ moveObjectsRightAndCreate(
 // memory may be uninitialized, and std::move_backward() won't work when it
 // can't memmove().
 template <class T, class Create>
-typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
+typename std::enable_if<is_trivially_copyable_v<T>>::type
 moveObjectsRightAndCreate(
     T* const first,
     T* const lastConstructed,
@@ -196,6 +197,26 @@ void populateMemForward(T* mem, std::size_t n, Function const& op) {
       ++idx;
     }
     rollback.dismiss();
+  }
+}
+
+/*
+ * Copies `fromSize` elements from `from' to `to', where `to' is only
+ * initialized up to `toSize`, but has enough storage for `fromSize'. If
+ * `toSize' > `fromSize', the extra elements are destructed.
+ */
+template <class Iterator1, class Iterator2>
+void partiallyUninitializedCopy(
+    Iterator1 from, size_t fromSize, Iterator2 to, size_t toSize) {
+  const size_t minSize = std::min(fromSize, toSize);
+  std::copy(from, from + minSize, to);
+  if (fromSize > toSize) {
+    std::uninitialized_copy(from + minSize, from + fromSize, to + minSize);
+  } else {
+    for (auto it = to + minSize; it != to + toSize; ++it) {
+      using Value = typename std::decay<decltype(*it)>::type;
+      it->~Value();
+    }
   }
 }
 
@@ -245,6 +266,8 @@ struct IntegralSizePolicyBase {
 
   void swapSizePolicy(IntegralSizePolicyBase& o) { std::swap(size_, o.size_); }
 
+  void resetSizePolicy() { size_ = 0; }
+
  protected:
   static bool constexpr kShouldUseHeap = ShouldUseHeap;
 
@@ -274,7 +297,7 @@ struct IntegralSizePolicy<SizeType, true>
    * ranges don't overlap.
    */
   template <class T>
-  typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
+  typename std::enable_if<!is_trivially_copyable_v<T>>::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::size_t idx = 0;
     {
@@ -297,8 +320,8 @@ struct IntegralSizePolicy<SizeType, true>
 
   // Specialization for trivially copyable types.
   template <class T>
-  typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
-  moveToUninitialized(T* first, T* last, T* out) {
+  typename std::enable_if<is_trivially_copyable_v<T>>::type moveToUninitialized(
+      T* first, T* last, T* out) {
     std::memmove(
         static_cast<void*>(out),
         static_cast<void const*>(first),
@@ -416,7 +439,7 @@ struct small_vector_base {
 
   /*
    * Now inherit from them all.  This is done in such a convoluted
-   * way to make sure we get the empty base optimizaton on all these
+   * way to make sure we get the empty base optimization on all these
    * types to keep sizeof(small_vector<>) minimal.
    */
   typedef boost::totally_ordered1<
@@ -484,6 +507,11 @@ class small_vector : public detail::small_vector_base<
   small_vector(const std::allocator<Value>&) {}
 
   small_vector(small_vector const& o) {
+    if (kShouldCopyInlineTrivial && !o.isExtern()) {
+      copyInlineTrivial<Value>(o);
+      return;
+    }
+
     auto n = o.size();
     makeSize(n);
     {
@@ -497,14 +525,24 @@ class small_vector : public detail::small_vector_base<
   small_vector(small_vector&& o) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
     if (o.isExtern()) {
-      swap(o);
+      this->u.pdata_.heap_ = o.u.pdata_.heap_;
+      this->swapSizePolicy(o);
+      if (kHasInlineCapacity) {
+        this->u.setCapacity(o.u.getCapacity());
+      }
     } else {
-      auto n = o.size();
-      std::uninitialized_copy(
-          std::make_move_iterator(o.begin()),
-          std::make_move_iterator(o.end()),
-          begin());
-      this->setSize(n);
+      if (kShouldCopyInlineTrivial) {
+        copyInlineTrivial<Value>(o);
+        o.resetSizePolicy();
+      } else {
+        auto n = o.size();
+        std::uninitialized_copy(
+            std::make_move_iterator(o.begin()),
+            std::make_move_iterator(o.end()),
+            begin());
+        this->setSize(n);
+        o.clear();
+      }
     }
   }
 
@@ -537,18 +575,50 @@ class small_vector : public detail::small_vector_base<
 
   small_vector& operator=(small_vector const& o) {
     if (FOLLY_LIKELY(this != &o)) {
-      assign(o.begin(), o.end());
+      if (kShouldCopyInlineTrivial && !this->isExtern() && !o.isExtern()) {
+        copyInlineTrivial<Value>(o);
+      } else if (o.size() < capacity()) {
+        const size_t oSize = o.size();
+        detail::partiallyUninitializedCopy(o.begin(), oSize, begin(), size());
+        this->setSize(oSize);
+      } else {
+        assign(o.begin(), o.end());
+      }
     }
     return *this;
   }
 
   small_vector& operator=(small_vector&& o) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
-    // TODO: optimization:
-    // if both are internal, use move assignment where possible
     if (FOLLY_LIKELY(this != &o)) {
-      clear();
-      swap(o);
+      // If either is external, reduce to the default-constructed case for this,
+      // since there is nothing that we can move in-place.
+      if (this->isExtern() || o.isExtern()) {
+        reset();
+      }
+
+      if (!o.isExtern()) {
+        if (kShouldCopyInlineTrivial) {
+          copyInlineTrivial<Value>(o);
+          o.resetSizePolicy();
+        } else {
+          const size_t oSize = o.size();
+          detail::partiallyUninitializedCopy(
+              std::make_move_iterator(o.u.buffer()),
+              oSize,
+              this->u.buffer(),
+              size());
+          this->setSize(oSize);
+          o.clear();
+        }
+      } else {
+        this->u.pdata_.heap_ = o.u.pdata_.heap_;
+        // this was already reset above, so it's empty and internal.
+        this->swapSizePolicy(o);
+        if (kHasInlineCapacity) {
+          this->u.setCapacity(o.u.getCapacity());
+        }
+      }
     }
     return *this;
   }
@@ -605,15 +675,15 @@ class small_vector : public detail::small_vector_base<
     if (this->isExtern() && o.isExtern()) {
       this->swapSizePolicy(o);
 
-      auto thisCapacity = this->capacity();
-      auto oCapacity = o.capacity();
-
       auto* tmp = u.pdata_.heap_;
       u.pdata_.heap_ = o.u.pdata_.heap_;
       o.u.pdata_.heap_ = tmp;
 
-      this->setCapacity(oCapacity);
-      o.setCapacity(thisCapacity);
+      if (kHasInlineCapacity) {
+        const auto capacity_ = this->u.getCapacity();
+        this->setCapacity(o.u.getCapacity());
+        o.u.setCapacity(capacity_);
+      }
 
       return;
     }
@@ -665,7 +735,7 @@ class small_vector : public detail::small_vector_base<
         for (; i < oldIntern.size(); ++i) {
           oldIntern[i].~value_type();
         }
-        oldIntern.setSize(0);
+        oldIntern.resetSizePolicy();
         oldExtern.u.pdata_.heap_ = oldExternHeap;
         oldExtern.setCapacity(oldExternCapacity);
       });
@@ -958,6 +1028,27 @@ class small_vector : public detail::small_vector_base<
     this->setSize(sz);
   }
 
+  template <class T>
+  typename std::enable_if<is_trivially_copyable_v<T>>::type copyInlineTrivial(
+      small_vector const& o) {
+    // Copy the entire inline storage, instead of just size() values, to make
+    // the loop fixed-size and unrollable.
+    std::copy(o.u.buffer(), o.u.buffer() + MaxInline, u.buffer());
+    this->setSize(o.size());
+  }
+
+  template <class T>
+  typename std::enable_if<!is_trivially_copyable_v<T>>::type copyInlineTrivial(
+      small_vector const&) {
+    assume_unreachable();
+  }
+
+  void reset() {
+    clear();
+    freeHeap();
+    this->resetSizePolicy();
+  }
+
   // The std::false_type argument is part of disambiguating the
   // iterator insert functions from integral types (see insert().)
   template <class It>
@@ -1188,6 +1279,13 @@ class small_vector : public detail::small_vector_base<
       sizeof(value_type) * MaxInline != 0,
       InlineStorageDataType,
       value_type*>::type InlineStorageType;
+
+  // If the values are trivially copyable and the storage is small enough, copy
+  // it entirely. Limit is half of a cache line, to minimize probability of
+  // introducing a cache miss.
+  static constexpr bool kShouldCopyInlineTrivial =
+      is_trivially_copyable_v<Value> &&
+      sizeof(InlineStorageType) <= hardware_constructive_interference_size / 2;
 
   static bool constexpr kHasInlineCapacity =
       sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);

@@ -52,6 +52,8 @@ uint64_t getOSThreadID() {
   return uint64_t(tid);
 #elif defined(__XROS__)
   return uint64_t(xr_execution_get_id());
+#elif defined(__EMSCRIPTEN__)
+  return 0;
 #else
   return uint64_t(syscall(FOLLY_SYS_gettid));
 #endif

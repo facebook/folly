@@ -82,8 +82,6 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
     }
 
     co_return std::move(resultTry).value();
-  } catch (const std::exception& ex) {
-    error = exception_wrapper{std::current_exception(), ex};
   } catch (...) {
     error = exception_wrapper{std::current_exception()};
   }

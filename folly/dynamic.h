@@ -60,8 +60,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/operators.hpp>
-
 #include <folly/Expected.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
@@ -85,7 +83,7 @@ using detect_construct_string = decltype(std::string(
     FOLLY_DECLVAL(T const&).data(), FOLLY_DECLVAL(T const&).size()));
 }
 
-struct dynamic : private boost::operators<dynamic> {
+struct dynamic {
   enum Type {
     NULLT,
     ARRAY,
@@ -223,13 +221,23 @@ struct dynamic : private boost::operators<dynamic> {
    * "Deep" equality comparison.  This will compare all the way down
    * an object or array, and is potentially expensive.
    */
-  bool operator==(dynamic const& o) const;
+  friend bool operator==(dynamic const& a, dynamic const& b);
+  friend bool operator!=(dynamic const& a, dynamic const& b) {
+    return !(a == b);
+  }
 
   /*
    * For all types except object this returns the natural ordering on
    * those types.  For objects, we throw TypeError.
    */
-  bool operator<(dynamic const& o) const;
+  friend bool operator<(dynamic const& a, dynamic const& b);
+  friend bool operator>(dynamic const& a, dynamic const& b) { return b < a; }
+  friend bool operator<=(dynamic const& a, dynamic const& b) {
+    return !(b < a);
+  }
+  friend bool operator>=(dynamic const& a, dynamic const& b) {
+    return !(a < b);
+  }
 
   /*
    * General operators.
@@ -250,6 +258,44 @@ struct dynamic : private boost::operators<dynamic> {
   dynamic& operator^=(dynamic const&);
   dynamic& operator++();
   dynamic& operator--();
+
+  friend dynamic operator+(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) += b);
+  }
+  friend dynamic operator-(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) -= b);
+  }
+  friend dynamic operator*(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) *= b);
+  }
+  friend dynamic operator/(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) /= b);
+  }
+  friend dynamic operator%(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) %= b);
+  }
+  friend dynamic operator|(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) |= b);
+  }
+  friend dynamic operator&(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) &= b);
+  }
+  friend dynamic operator^(dynamic const& a, dynamic const& b) {
+    return std::move(copy(a) ^= b);
+  }
+
+  friend dynamic operator+(dynamic&& a, dynamic const& b) {
+    return std::move(a += b);
+  }
+
+  dynamic operator++(int) {
+    auto self = *this;
+    return ++*this, self;
+  }
+  dynamic operator--(int) {
+    auto self = *this;
+    return --*this, self;
+  }
 
   /*
    * Assignment from other dynamics.  Because of the implicit conversion

@@ -811,10 +811,12 @@ template <class Derived>
 class Writable {
  public:
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value>::type write(T value) {
+  typename std::enable_if<std::is_arithmetic<T>::value>::type write(
+      T value, size_t n = sizeof(T)) {
+    assert(n <= sizeof(T));
     const uint8_t* u8 = reinterpret_cast<const uint8_t*>(&value);
     Derived* d = static_cast<Derived*>(this);
-    d->push(u8, sizeof(T));
+    d->push(u8, n);
   }
 
   template <class T>
@@ -996,7 +998,7 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
       }
       this->crtBuf_->trimEnd(this->length());
       this->absolutePos_ += this->crtPos_ - this->crtBegin_;
-      this->crtBuf_->appendChain(std::move(buf));
+      this->crtBuf_->insertAfterThisOne(std::move(buf));
 
       if (nextBuf == this->buffer_) {
         // We've just appended to the end of the buffer, so advance to the end.
@@ -1201,13 +1203,15 @@ class QueueAppender : public detail::Writable<QueueAppender> {
   }
 
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value>::type write(T value) {
+  typename std::enable_if<std::is_arithmetic<T>::value>::type write(
+      T value, size_t n = sizeof(T)) {
     // We can't fail.
+    assert(n <= sizeof(T));
     if (length() >= sizeof(T)) {
       storeUnaligned(queueCache_.writableData(), value);
-      queueCache_.appendUnsafe(sizeof(T));
+      queueCache_.appendUnsafe(n);
     } else {
-      writeSlow<T>(value);
+      writeSlow<T>(value, n);
     }
   }
 
@@ -1235,12 +1239,14 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
   void insert(std::unique_ptr<folly::IOBuf> buf) {
     if (buf) {
-      queueCache_.queue()->append(std::move(buf), true);
+      queueCache_.queue()->append(
+          std::move(buf), /* pack */ true, /* allowTailReuse */ true);
     }
   }
 
   void insert(const folly::IOBuf& buf) {
-    queueCache_.queue()->append(buf, true);
+    queueCache_.queue()->append(
+        buf, /* pack */ true, /* allowTailReuse */ true);
   }
 
   template <CursorAccess access>
@@ -1259,12 +1265,13 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value>::type FOLLY_NOINLINE
-  writeSlow(T value) {
+  writeSlow(T value, size_t n = sizeof(T)) {
+    assert(n <= sizeof(T));
     queueCache_.queue()->preallocate(sizeof(T), growth_);
     queueCache_.fillCache();
 
     storeUnaligned(queueCache_.writableData(), value);
-    queueCache_.appendUnsafe(sizeof(T));
+    queueCache_.appendUnsafe(n);
   }
 };
 

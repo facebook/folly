@@ -74,6 +74,10 @@ class MockDispatcher : public Dispatcher {
   MOCK_METHOD3(
       sendmsg, ssize_t(NetworkSocket s, const msghdr* message, int flags));
 
+  MOCK_METHOD4(
+      sendmmsg,
+      int(NetworkSocket s, mmsghdr* msgvec, unsigned int vlen, int flags));
+
   MOCK_METHOD5(
       setsockopt,
       int(NetworkSocket s,

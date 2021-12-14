@@ -18,9 +18,11 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/experimental/observer/detail/Core.h>
 #include <folly/experimental/observer/detail/GraphCycleDetector.h>
 #include <folly/fibers/FiberManager.h>
+#include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
 #include <folly/synchronization/SanitizeThread.h>
 
@@ -78,14 +80,14 @@ class ObserverManager {
         });
   }
 
-  static void scheduleRefreshNewVersion(Core::WeakPtr coreWeak) {
+  static void scheduleRefreshNewVersion(Function<Core::Ptr()> coreFunc) {
     auto updatesManager = getUpdatesManager();
 
     if (!updatesManager) {
       return;
     }
 
-    updatesManager->scheduleNext(std::move(coreWeak));
+    updatesManager->scheduleNext(std::move(coreFunc));
   }
 
   static void initCore(Core::Ptr core) {
@@ -124,6 +126,14 @@ class ObserverManager {
 
     static bool isActive() { return currentDependencies_; }
 
+    template <typename F>
+    static invoke_result_t<F> withDependencyRecordingDisabled(F f) {
+      auto* const dependencies = std::exchange(currentDependencies_, nullptr);
+      SCOPE_EXIT { currentDependencies_ = dependencies; };
+
+      return f();
+    }
+
     static void markDependency(Core::Ptr dependency) {
       DCHECK(inManagerThread());
       DCHECK(currentDependencies_);
@@ -132,6 +142,9 @@ class ObserverManager {
     }
 
     static void markRefreshDependency(const Core& core) {
+      if (!kIsDebug) {
+        return;
+      }
       if (!currentDependencies_) {
         return;
       }
@@ -140,12 +153,15 @@ class ObserverManager {
         bool hasCycle =
             !cycleDetector.addEdge(&currentDependencies_->core, &core);
         if (hasCycle) {
-          throw std::logic_error("Observer cycle detected.");
+          LOG(FATAL) << "Observer cycle detected.";
         }
       });
     }
 
     static void unmarkRefreshDependency(const Core& core) {
+      if (!kIsDebug) {
+        return;
+      }
       if (!currentDependencies_) {
         return;
       }
@@ -184,7 +200,7 @@ class ObserverManager {
     UpdatesManager();
     ~UpdatesManager();
     void scheduleCurrent(Function<void()>);
-    void scheduleNext(Core::WeakPtr);
+    void scheduleNext(Function<Core::Ptr()>);
     void waitForAllUpdates();
 
    private:

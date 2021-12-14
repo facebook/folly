@@ -26,6 +26,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/RWSpinLock.h>
 #include <folly/test/SynchronizedTestLib.h>
 
@@ -39,6 +40,7 @@ template <class Mutex>
 class SynchronizedTest : public testing::Test {};
 
 using SynchronizedTestTypes = testing::Types<
+    folly::DistributedMutex,
     folly::SharedMutexReadPriority,
     folly::SharedMutexWritePriority,
     std::mutex,
@@ -742,83 +744,62 @@ using LPtr = LockedPtr<Synchronized<int>, LockPolicy>;
 namespace {
 template <template <typename...> class Trait>
 void testLockedPtrCompatibilityExclusive() {
-  EXPECT_TRUE((
-      Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyTryExclusive>&&>::value));
   EXPECT_TRUE((Trait<
-               LPtr<LockPolicyExclusive>,
-               LPtr<LockPolicyFromUpgradeToExclusive>&&>::value));
+               LPtr<detail::SynchronizedLockPolicyExclusive>,
+               LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
 
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyExclusive>&, LPtr<LockPolicyShared>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyTryShared>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyUpgrade>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyTryUpgrade>&&>::value));
   EXPECT_FALSE((Trait<
-                LPtr<LockPolicyExclusive>,
-                LPtr<LockPolicyFromExclusiveToUpgrade>&&>::value));
+                LPtr<detail::SynchronizedLockPolicyExclusive>&,
+                LPtr<detail::SynchronizedLockPolicyShared>&&>::value));
   EXPECT_FALSE((Trait<
-                LPtr<LockPolicyExclusive>,
-                LPtr<LockPolicyFromExclusiveToShared>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyExclusive>, LPtr<LockPolicyFromUpgradeToShared>&&>::
-           value));
+                LPtr<detail::SynchronizedLockPolicyExclusive>,
+                LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyExclusive>,
+                LPtr<detail::SynchronizedLockPolicyUpgrade>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyExclusive>,
+                LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
 }
 
 template <template <typename...> class Trait>
 void testLockedPtrCompatibilityShared() {
-  EXPECT_TRUE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyTryShared>&&>::value));
-  EXPECT_TRUE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromUpgradeToShared>&&>::
-           value));
-  EXPECT_TRUE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromExclusiveToShared>&&>::
-           value));
+  EXPECT_TRUE((Trait<
+               LPtr<detail::SynchronizedLockPolicyShared>,
+               LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
 
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyExclusive>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyTryExclusive>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyUpgrade>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyTryUpgrade>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromExclusiveToUpgrade>&&>::
-           value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyShared>, LPtr<LockPolicyFromUpgradeToExclusive>&&>::
-           value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyShared>,
+                LPtr<detail::SynchronizedLockPolicyExclusive>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyShared>,
+                LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyShared>,
+                LPtr<detail::SynchronizedLockPolicyUpgrade>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyShared>,
+                LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
 }
 
 template <template <typename...> class Trait>
 void testLockedPtrCompatibilityUpgrade() {
-  EXPECT_TRUE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyTryUpgrade>&&>::value));
-  EXPECT_TRUE((
-      Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromExclusiveToUpgrade>&&>::
-          value));
+  EXPECT_TRUE((Trait<
+               LPtr<detail::SynchronizedLockPolicyUpgrade>,
+               LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
 
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyExclusive>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyTryExclusive>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyShared>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyTryShared>&&>::value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromExclusiveToShared>&&>::
-           value));
-  EXPECT_FALSE(
-      (Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromUpgradeToShared>&&>::
-           value));
-  EXPECT_FALSE((
-      Trait<LPtr<LockPolicyUpgrade>, LPtr<LockPolicyFromUpgradeToExclusive>&&>::
-          value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyUpgrade>,
+                LPtr<detail::SynchronizedLockPolicyExclusive>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyUpgrade>,
+                LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyUpgrade>,
+                LPtr<detail::SynchronizedLockPolicyShared>&&>::value));
+  EXPECT_FALSE((Trait<
+                LPtr<detail::SynchronizedLockPolicyUpgrade>,
+                LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
 }
 } // namespace
 

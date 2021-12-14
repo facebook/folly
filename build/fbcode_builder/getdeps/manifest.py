@@ -21,6 +21,7 @@ from .builder import (
     OpenNSABuilder,
     OpenSSLBuilder,
     SqliteBuilder,
+    CMakeBootStrapBuilder,
 )
 from .expr import parse_expr
 from .fetcher import (
@@ -68,8 +69,6 @@ SCHEMA = {
             "builder": REQUIRED,
             "subdir": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
-            "disable_env_override_pkgconfig": OPTIONAL,
-            "disable_env_override_path": OPTIONAL,
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
@@ -83,6 +82,7 @@ SCHEMA = {
     },
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
+    "autoconf.envcmd.LDFLAGS": {"optional_section": True},
     "rpms": {"optional_section": True},
     "debs": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
@@ -100,6 +100,7 @@ SCHEMA = {
 # using the expression syntax to enable/disable sections
 ALLOWED_EXPR_SECTIONS = [
     "autoconf.args",
+    "autoconf.envcmd.LDFLAGS",
     "build",
     "cmake.defines",
     "dependencies",
@@ -109,6 +110,8 @@ ALLOWED_EXPR_SECTIONS = [
     "download",
     "git",
     "install.files",
+    "rpms",
+    "debs",
 ]
 
 
@@ -437,26 +440,50 @@ class ManifestParser(object):
                 build_dir = os.path.join(build_dir, subdir)
             print("build_dir is %s" % build_dir)  # just to quiet lint
 
-        if builder == "make":
+        if builder == "make" or builder == "cmakebootstrap":
             build_args = self.get_section_as_args("make.build_args", ctx)
             install_args = self.get_section_as_args("make.install_args", ctx)
             test_args = self.get_section_as_args("make.test_args", ctx)
-            return MakeBuilder(
+            if builder == "cmakebootstrap":
+                return CMakeBootStrapBuilder(
+                    build_options,
+                    ctx,
+                    self,
+                    src_dir,
+                    None,
+                    inst_dir,
+                    build_args,
+                    install_args,
+                    test_args,
+                )
+            else:
+                return MakeBuilder(
+                    build_options,
+                    ctx,
+                    self,
+                    src_dir,
+                    None,
+                    inst_dir,
+                    build_args,
+                    install_args,
+                    test_args,
+                )
+
+        if builder == "autoconf":
+            args = self.get_section_as_args("autoconf.args", ctx)
+            conf_env_args = {}
+            ldflags_cmd = self.get_section_as_args("autoconf.envcmd.LDFLAGS", ctx)
+            if ldflags_cmd:
+                conf_env_args["LDFLAGS"] = ldflags_cmd
+            return AutoconfBuilder(
                 build_options,
                 ctx,
                 self,
                 src_dir,
-                None,
+                build_dir,
                 inst_dir,
-                build_args,
-                install_args,
-                test_args,
-            )
-
-        if builder == "autoconf":
-            args = self.get_section_as_args("autoconf.args", ctx)
-            return AutoconfBuilder(
-                build_options, ctx, self, src_dir, build_dir, inst_dir, args
+                args,
+                conf_env_args,
             )
 
         if builder == "boost":
@@ -483,6 +510,7 @@ class ManifestParser(object):
                 build_dir,
                 inst_dir,
                 defines,
+                loader,
                 final_install_prefix,
                 extra_cmake_defines,
             )

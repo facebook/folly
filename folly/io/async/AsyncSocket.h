@@ -27,6 +27,7 @@
 #include <folly/SocketAddress.h>
 #include <folly/detail/SocketFastOpen.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/IOBufIovecBuilder.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocketException.h>
@@ -733,6 +734,10 @@ class AsyncSocket : public AsyncTransport {
   }
   size_t getRawBytesBuffered() const override { return getAppBytesBuffered(); }
 
+  size_t getAllocatedBytesBuffered() const override {
+    return allocatedBytesBuffered_;
+  }
+
   // End of methods inherited from AsyncTransport
 
   std::chrono::nanoseconds getConnectTime() const {
@@ -1109,6 +1114,14 @@ class AsyncSocket : public AsyncTransport {
     virtual void fdDetach(AsyncSocket* /* socket */) noexcept = 0;
 
     /**
+     * fdAttach() is invoked when the socket file descriptor is attached.
+     *
+     * @param socket      Socket for which handleNetworkSocketAttached was
+     * invoked.
+     */
+    virtual void fdAttach(AsyncSocket* /* socket */) noexcept {}
+
+    /**
      * move() will be invoked when a new AsyncSocket is being constructed via
      * constructor AsyncSocket(AsyncSocket* oldAsyncSocket) from an AsyncSocket
      * that has an observer attached.
@@ -1176,6 +1189,17 @@ class AsyncSocket : public AsyncTransport {
    */
   FOLLY_NODISCARD virtual std::vector<AsyncTransport::LifecycleObserver*>
   getLifecycleObservers() const override;
+
+  /**
+   * Split iovec array at given byte offsets; produce a new array with result.
+   */
+  static void splitIovecArray(
+      const size_t startOffset,
+      const size_t endOffset,
+      const iovec* srcVec,
+      const size_t srcCount,
+      iovec* dstVec,
+      size_t& dstCount);
 
  protected:
   enum ReadResultEnum {
@@ -1292,12 +1316,22 @@ class AsyncSocket : public AsyncTransport {
   virtual void checkForImmediateRead() noexcept;
   virtual void handleInitialReadWrite() noexcept;
   virtual void prepareReadBuffer(void** buf, size_t* buflen);
-  virtual size_t prepareReadBuffers(struct iovec* iovs, size_t num);
+  virtual void prepareReadBuffers(IOBufIovecBuilder::IoVecVec& iovs);
   virtual size_t handleErrMessages() noexcept;
   virtual void handleRead() noexcept;
   virtual void handleWrite() noexcept;
   virtual void handleConnect() noexcept;
   void timeoutExpired() noexcept;
+
+  /**
+   * Handler for when the file descriptor is attached to the AsyncSocket.
+
+   * This updates the EventHandler to start using the fd and notifies all
+   * observers attached to the socket. This is necessary to let
+   * observers know about an attached fd immediately (i.e., on connection
+   * attempt) rather than when the connection succeeds.
+   */
+  virtual void handleNetworkSocketAttached();
 
   /**
    * Attempt to read from the socket into a single buffer
@@ -1451,6 +1485,7 @@ class AsyncSocket : public AsyncTransport {
   void failByteEvents(const AsyncSocketException& ex);
   virtual void invokeConnectErr(const AsyncSocketException& ex);
   virtual void invokeConnectSuccess();
+  virtual void invokeConnectAttempt();
   void invalidState(ConnectCallback* callback);
   void invalidState(ErrMessageCallback* callback);
   void invalidState(ReadCallback* callback);
@@ -1478,6 +1513,9 @@ class AsyncSocket : public AsyncTransport {
       std::unique_ptr<folly::IOBuf>&& buf, ReleaseIOBufCallback* cb);
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
+
+  void releaseIOBuf(
+      std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback);
 
   /**
    * Attempt to enable Observer ByteEvents for this socket.
@@ -1517,8 +1555,8 @@ class AsyncSocket : public AsyncTransport {
   std::unordered_map<uint32_t, folly::IOBuf*> idZeroCopyBufPtrMap_;
   std::unordered_map<folly::IOBuf*, IOBufInfo> idZeroCopyBufInfoMap_;
 
-  StateEnum state_; ///< StateEnum describing current state
-  uint8_t shutdownFlags_; ///< Shutdown state (ShutdownFlags)
+  StateEnum state_{StateEnum::UNINIT}; ///< StateEnum describing current state
+  uint8_t shutdownFlags_{0}; ///< Shutdown state (ShutdownFlags)
   uint16_t eventFlags_; ///< EventBase::HandlerFlags settings
   NetworkSocket fd_; ///< The socket file descriptor
   mutable folly::SocketAddress addr_; ///< The address we tried to connect to
@@ -1545,11 +1583,13 @@ class AsyncSocket : public AsyncTransport {
   WriteRequest* writeReqTail_; ///< End of WriteRequest chain
   std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   size_t appBytesReceived_; ///< Num of bytes received from socket
-  size_t appBytesWritten_; ///< Num of bytes written to socket
-  size_t rawBytesWritten_; ///< Num of (raw) bytes written to socket
+  size_t appBytesWritten_{0}; ///< Num of bytes written to socket
+  size_t rawBytesWritten_{0}; ///< Num of (raw) bytes written to socket
   // The total num of bytes passed to AsyncSocket's write functions. It doesn't
   // include failed writes, but it does include buffered writes.
   size_t totalAppBytesScheduledForWrite_;
+  // Num of bytes allocated in IOBufs pending write.
+  size_t allocatedBytesBuffered_{0};
 
   // Lifecycle observers.
   //

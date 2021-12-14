@@ -1,0 +1,13 @@
+[manifest]
+name = libyaml
+
+[download]
+url = http://pyyaml.org/download/libyaml/yaml-0.1.7.tar.gz
+sha256 = 8088e457264a98ba451a90b8661fcb4f9d6f478f7265d48322a196cec2480729
+
+[build.os=linux]
+builder = autoconf
+subdir = yaml-0.1.7
+
+[build.not(os=linux)]
+builder = nop

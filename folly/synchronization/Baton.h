@@ -288,15 +288,38 @@ class Baton {
       }
     }
 
-    // guess we have to block :(
+    // Try transitioning from the spinning phase to the blocking phase via a CAS
+    // on state_.
+    //
+    // The transition may conceptually be interrupted by a post, i.e., race with
+    // a post and lose, in which case the wait operation succeeds and so returns
+    // true.
+    //
+    // The memory orders in this CAS seem backwards but are correct: CAS failure
+    // immediately precedes return-true and return-true requires an immediately-
+    // preceding load-acquire on state_ to protect the caller, which is about to
+    // use whatever memory this baton guards. Therefore, CAS failure must have a
+    // load-acquire attached to it.
+    //
+    // CAS success means that the transition from spinning to blocking finished.
+    // After blocking, there is a load-acquire immediately preceding return-true
+    // corresponding to the store-release in post, so no success load-acquire is
+    // needed here.
+    //
+    // No success store-release is needed either since only the same thread will
+    // load the state, which happens later in wait during and after blocking.
     uint32_t expected = INIT;
     if (!folly::atomic_compare_exchange_strong_explicit<Atom>(
             &state_,
             &expected,
-            static_cast<uint32_t>(WAITING),
+            WAITING,
             std::memory_order_relaxed,
             std::memory_order_acquire)) {
-      // CAS failed, last minute reprieve
+      // CAS failed. The baton must have been posted between the last spin and
+      // the CAS, so it is not necessary to transition from the spinning phase
+      // to the blocking phase. Therefore the wait succeeds.
+      //
+      // Match the post store-release with the CAS failure load-acquire above.
       assert(expected == EARLY_DELIVERY);
       return true;
     }
@@ -307,7 +330,7 @@ class Baton {
       // Awoken by the deadline passing.
       if (rv == detail::FutexResult::TIMEDOUT) {
         assert(deadline != (std::chrono::time_point<Clock, Duration>::max()));
-        state_.store(TIMED_OUT, std::memory_order_release);
+        state_.store(TIMED_OUT, std::memory_order_relaxed);
         return false;
       }
 
@@ -317,7 +340,7 @@ class Baton {
       // state_ is the truth even if FUTEX_WAIT reported a matching
       // FUTEX_WAKE, since we aren't using type-stable storage and we
       // don't guarantee reuse.  The scenario goes like this: thread
-      // A's last touch of a Baton is a call to wake(), which stores
+      // A's last touch of a Baton is a call to post(), which stores
       // LATE_DELIVERY and gets an unlucky context switch before delivering
       // the corresponding futexWake.  Thread B sees LATE_DELIVERY
       // without consuming a futex event, because it calls futexWait
@@ -334,6 +357,10 @@ class Baton {
       uint32_t s = state_.load(std::memory_order_acquire);
       assert(s == WAITING || s == LATE_DELIVERY);
       if (s == LATE_DELIVERY) {
+        // The baton was posted and this is not just a spurious wakeup.
+        // Therefore the wait succeeds.
+        //
+        // Match the post store-release with the simple load-acquire above.
         return true;
       }
     }

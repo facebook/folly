@@ -66,29 +66,31 @@ void printExceptionInfo(
   } else {
     out << "(unknown type)";
   }
-  out << " (" << info.frames.size()
-      << (info.frames.size() == 1 ? " frame" : " frames") << ")\n";
+  static constexpr size_t kInternalFramesNumber = 3;
+
+  // Skip our own internal frames.
+  size_t frameCount = info.frames.size();
+  if (frameCount <= kInternalFramesNumber) {
+    out << "\n";
+    return;
+  }
+  auto addresses = info.frames.data() + kInternalFramesNumber;
+  frameCount -= kInternalFramesNumber;
+
+  out << " (" << frameCount << (frameCount == 1 ? " frame" : " frames")
+      << ")\n";
   try {
-    size_t frameCount = info.frames.size();
+    std::vector<SymbolizedFrame> frames;
+    frames.resize(frameCount);
 
-    // Skip our own internal frames
-    static constexpr size_t kInternalFramesNumber = 3;
-    if (frameCount > kInternalFramesNumber) {
-      auto addresses = info.frames.data() + kInternalFramesNumber;
-      frameCount -= kInternalFramesNumber;
+    Symbolizer symbolizer(
+        (options & SymbolizePrinter::NO_FILE_AND_LINE)
+            ? LocationInfoMode::DISABLED
+            : Symbolizer::kDefaultLocationInfoMode);
+    symbolizer.symbolize(addresses, frames.data(), frameCount);
 
-      std::vector<SymbolizedFrame> frames;
-      frames.resize(frameCount);
-
-      Symbolizer symbolizer(
-          (options & SymbolizePrinter::NO_FILE_AND_LINE)
-              ? LocationInfoMode::DISABLED
-              : Symbolizer::kDefaultLocationInfoMode);
-      symbolizer.symbolize(addresses, frames.data(), frameCount);
-
-      OStreamSymbolizePrinter osp(out, options);
-      osp.println(frames.data(), frameCount);
-    }
+    OStreamSymbolizePrinter osp(out, options);
+    osp.println(frames.data(), frameCount);
   } catch (const std::exception& e) {
     out << "\n !! caught " << folly::exceptionStr(e) << "\n";
   } catch (...) {
@@ -203,7 +205,6 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   return exceptions;
 }
 
-#if FOLLY_USE_LIBSTDCPP
 namespace {
 
 std::terminate_handler origTerminate = abort;
@@ -242,7 +243,6 @@ void installHandlers() {
   };
   static Once once;
 }
-#endif // FOLLY_USE_LIBSTDCPP
 
 } // namespace exception_tracer
 } // namespace folly

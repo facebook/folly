@@ -23,6 +23,7 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Executor.h>
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
@@ -31,6 +32,7 @@
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Result.h>
+#include <folly/experimental/coro/ScopeExit.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
@@ -64,9 +66,22 @@ class TaskPromiseBase {
     template <typename Promise>
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES coroutine_handle<>
     await_suspend(coroutine_handle<Promise> coro) noexcept {
-      TaskPromiseBase& promise = coro.promise();
-      folly::popAsyncStackFrameCallee(promise.asyncFrame_);
-      return promise.continuation_;
+      auto& promise = coro.promise();
+      // If the continuation has been exchanged, then we expect that the
+      // exchanger will handle the lifetime of the async stack. See
+      // ScopeExitTaskPromise's FinalAwaiter for more details.
+      //
+      // This is a bit untidy, and hopefully something we can replace with
+      // a virtual wrapper over coroutine_handle that handles the pop for us.
+      if (promise.ownsAsyncFrame_) {
+        folly::popAsyncStackFrameCallee(promise.asyncFrame_);
+      }
+      if (promise.result_.hasException()) {
+        auto [handle, frame] =
+            promise.continuation_.getErrorHandle(promise.result_.exception());
+        return handle.getHandle();
+      }
+      return promise.continuation_.getHandle();
     }
 
     [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
@@ -75,7 +90,8 @@ class TaskPromiseBase {
   friend class FinalAwaiter;
 
  protected:
-  TaskPromiseBase() noexcept {}
+  TaskPromiseBase() noexcept = default;
+  ~TaskPromiseBase() = default;
 
   template <typename Promise>
   variant_awaitable<FinalAwaiter, ready_awaitable<>> do_safe_point(
@@ -101,10 +117,21 @@ class TaskPromiseBase {
 
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) {
+    bypassExceptionThrowing_ =
+        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
+        ? BypassExceptionThrowing::ACTIVE
+        : BypassExceptionThrowing::INACTIVE;
+
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
             cancelToken_, static_cast<Awaitable&&>(awaitable))));
+  }
+
+  template <typename Awaitable>
+  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
+    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
+    return await_transform(awaitable.unwrap());
   }
 
   auto await_transform(co_current_executor_t) noexcept {
@@ -124,6 +151,10 @@ class TaskPromiseBase {
 
   folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
 
+  folly::Executor::KeepAlive<> getExecutor() const noexcept {
+    return executor_;
+  }
+
  private:
   template <typename T>
   friend class folly::coro::TaskWithExecutor;
@@ -131,15 +162,34 @@ class TaskPromiseBase {
   template <typename T>
   friend class folly::coro::Task;
 
-  coroutine_handle<> continuation_;
+  friend std::tuple<bool, coroutine_handle<>> tag_invoke(
+      cpo_t<co_attachScopeExit>,
+      TaskPromiseBase& p,
+      coroutine_handle<> continuation) noexcept {
+    return {
+        std::exchange(p.ownsAsyncFrame_, false),
+        std::exchange(p.continuation_, {continuation}).getHandle(),
+    };
+  }
+
+  ExtendedCoroutineHandle continuation_;
   folly::AsyncStackFrame asyncFrame_;
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
   bool hasCancelTokenOverride_ = false;
+  bool ownsAsyncFrame_ = true;
+
+ protected:
+  enum class BypassExceptionThrowing : uint8_t {
+    INACTIVE,
+    ACTIVE,
+    REQUESTED,
+  } bypassExceptionThrowing_{BypassExceptionThrowing::INACTIVE};
 };
 
 template <typename T>
-class TaskPromise : public TaskPromiseBase {
+class TaskPromise final : public TaskPromiseBase,
+                          public ExtendedCoroutinePromiseImpl<TaskPromise<T>> {
  public:
   static_assert(
       !std::is_rvalue_reference_v<T>,
@@ -154,8 +204,7 @@ class TaskPromise : public TaskPromiseBase {
   Task<T> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_.emplaceException(
-        exception_wrapper::from_exception_ptr(std::current_exception()));
+    result_.emplaceException(exception_wrapper{std::current_exception()});
   }
 
   template <typename U = T>
@@ -195,12 +244,28 @@ class TaskPromise : public TaskPromiseBase {
     return do_safe_point(*this);
   }
 
+  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
+      exception_wrapper& ex) override {
+    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      auto finalAwaiter = yield_value(co_error(std::move(ex)));
+      DCHECK(!finalAwaiter.await_ready());
+      return {
+          finalAwaiter.await_suspend(
+              coroutine_handle<TaskPromise>::from_promise(*this)),
+          // finalAwaiter.await_suspend pops a frame
+          getAsyncFrame().getParentFrame()};
+    }
+    return {coroutine_handle<TaskPromise>::from_promise(*this), nullptr};
+  }
+
  private:
   Try<StorageType> result_;
 };
 
 template <>
-class TaskPromise<void> : public TaskPromiseBase {
+class TaskPromise<void> final
+    : public TaskPromiseBase,
+      public ExtendedCoroutinePromiseImpl<TaskPromise<void>> {
  public:
   friend class TaskPromiseBase;
 
@@ -211,8 +276,7 @@ class TaskPromise<void> : public TaskPromiseBase {
   Task<void> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_.emplaceException(
-        exception_wrapper::from_exception_ptr(std::current_exception()));
+    result_.emplaceException(exception_wrapper{std::current_exception()});
   }
 
   void return_void() noexcept { result_.emplace(); }
@@ -237,6 +301,20 @@ class TaskPromise<void> : public TaskPromiseBase {
 
   auto await_transform(co_safe_point_t) noexcept {
     return do_safe_point(*this);
+  }
+
+  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
+      exception_wrapper& ex) override {
+    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      auto finalAwaiter = yield_value(co_error(std::move(ex)));
+      DCHECK(!finalAwaiter.await_ready());
+      return {
+          finalAwaiter.await_suspend(
+              coroutine_handle<TaskPromise>::from_promise(*this)),
+          // finalAwaiter.await_suspend pops a frame
+          getAsyncFrame().getParentFrame()};
+    }
+    return {coroutine_handle<TaskPromise>::from_promise(*this), nullptr};
   }
 
  private:
@@ -280,7 +358,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // Start execution of this task eagerly and return a folly::SemiFuture<T>
   // that will complete with the result.
   FOLLY_NOINLINE SemiFuture<lift_unit_t<StorageType>> start() && {
-    Promise<lift_unit_t<StorageType>> p;
+    folly::Promise<lift_unit_t<StorageType>> p;
 
     auto sf = p.getSemiFuture();
 
@@ -320,7 +398,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // assuming the current thread is already on the associated executor,
   // and return a folly::SemiFuture<T> that will complete with the result.
   FOLLY_NOINLINE SemiFuture<lift_unit_t<StorageType>> startInlineUnsafe() && {
-    Promise<lift_unit_t<StorageType>> p;
+    folly::Promise<lift_unit_t<StorageType>> p;
 
     auto sf = p.getSemiFuture();
 
@@ -360,11 +438,6 @@ class FOLLY_NODISCARD TaskWithExecutor {
   detail::InlineTaskDetached startImpl(TaskWithExecutor task, F cb) {
     try {
       cb(co_await folly::coro::co_awaitTry(std::move(task)));
-// This causes clang internal error on Windows.
-#if !(defined(_WIN32) && defined(__clang__))
-    } catch (const std::exception& e) {
-      cb(Try<StorageType>(exception_wrapper(std::current_exception(), e)));
-#endif
     } catch (...) {
       cb(Try<StorageType>(exception_wrapper(std::current_exception())));
     }
@@ -374,11 +447,6 @@ class FOLLY_NODISCARD TaskWithExecutor {
   detail::InlineTaskDetached startInlineImpl(TaskWithExecutor task, F cb) {
     try {
       cb(co_await InlineTryAwaitable{std::exchange(task.coro_, {})});
-// This causes clang internal error on Windows.
-#if !(defined(_WIN32) && defined(__clang__))
-    } catch (const std::exception& e) {
-      cb(Try<StorageType>(exception_wrapper(std::current_exception(), e)));
-#endif
     } catch (...) {
       cb(Try<StorageType>(exception_wrapper(std::current_exception())));
     }
@@ -415,6 +483,16 @@ class FOLLY_NODISCARD TaskWithExecutor {
           << "QueuedImmediateExecutor is not safe and is not supported for coro::Task. "
           << "If you need to run a task inline in a unit-test, you should use "
           << "coro::blockingWait instead.";
+      if constexpr (kIsDebug) {
+        if (dynamic_cast<InlineLikeExecutor*>(promise.executor_.get())) {
+          FB_LOG_ONCE(ERROR)
+              << "InlineLikeExecutor is not safe and is not supported for coro::Task. "
+              << "If you need to run a task inline in a unit-test, you should use "
+              << "coro::blockingWait or write your test using the CO_TEST* macros instead."
+              << "If you are using folly::getCPUExecutor, switch to getGlobalCPUExecutor "
+              << "or be sure to call setCPUExecutor first.";
+        }
+      }
 
       auto& calleeFrame = promise.getAsyncFrame();
       calleeFrame.setReturnAddress();
@@ -603,7 +681,7 @@ class FOLLY_NODISCARD Task {
         [task = std::move(*this),
          returnAddress = FOLLY_ASYNC_STACK_RETURN_ADDRESS()](
             const Executor::KeepAlive<>& executor, Try<Unit>&&) mutable {
-          Promise<lift_unit_t<StorageType>> p;
+          folly::Promise<lift_unit_t<StorageType>> p;
 
           auto sf = p.getSemiFuture();
 
@@ -636,7 +714,8 @@ class FOLLY_NODISCARD Task {
   template <typename F, typename... A, typename F_, typename... A_>
   friend Task tag_invoke(
       tag_t<co_invoke_fn>, tag_t<Task, F, A...>, F_ f, A_... a) {
-    co_return co_await invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
+    co_yield co_result(co_await co_awaitTry(
+        invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
   }
 
  private:

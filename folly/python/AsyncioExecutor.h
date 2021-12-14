@@ -34,22 +34,23 @@ namespace python {
 
 class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
  public:
-  using Func = folly::Func;
-
-  ~AsyncioExecutor() override {
+  virtual ~AsyncioExecutor() override {
     keepAliveRelease();
     while (keepAliveCounter_ > 0) {
       drive();
     }
   }
 
-  void add(Func func) override { queue_.putMessage(std::move(func)); }
+  void drive() noexcept final {
+    if (FOLLY_DETAIL_PY_ISFINALIZING()) {
+      // if Python is finalizing calling scheduled functions MAY segfault.
+      // any code that could have been called is now inconsequential.
+      return;
+    }
+    driveNoDiscard();
+  }
 
-  int fileno() const { return consumer_.getFd(); }
-
-  void drive() noexcept override { driveImpl(/* canDiscard = */ true); }
-
-  void driveNoDiscard() noexcept { driveImpl(/* canDiscard = */ false); }
+  virtual void driveNoDiscard() noexcept = 0;
 
  protected:
   bool keepAliveAcquire() noexcept override {
@@ -66,13 +67,19 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
   }
 
  private:
-  void driveImpl(bool canDiscard) noexcept {
+  std::atomic<size_t> keepAliveCounter_{1};
+};
+
+class NotificationQueueAsyncioExecutor : public AsyncioExecutor {
+ public:
+  using Func = folly::Func;
+
+  void add(Func func) override { queue_.putMessage(std::move(func)); }
+
+  int fileno() const { return consumer_.getFd(); }
+
+  void driveNoDiscard() noexcept override {
     consumer_.consume([&](Func&& func) {
-      if (canDiscard && FOLLY_DETAIL_PY_ISFINALIZING()) {
-        // if Python is finalizing calling scheduled functions MAY segfault.
-        // any code that could have been called is now inconsequential.
-        return;
-      }
       try {
         func();
       } catch (...) {
@@ -85,8 +92,7 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
 
   folly::NotificationQueue<Func> queue_;
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
-  std::atomic<size_t> keepAliveCounter_{1};
-}; // AsyncioExecutor
+}; // NotificationQueueAsyncioExecutor
 
 } // namespace python
 } // namespace folly

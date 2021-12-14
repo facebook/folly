@@ -322,6 +322,79 @@ class F14Printer:
         return "map" if self.is_map else "array"
 
 
+class ConcurrentHashMapIterator:
+    """Iterator for folly's ConcurrentHashMap"""
+
+    def __init__(self, hashmap):
+        self._segments = hashmap["segments_"]
+        # Iterator state across segments
+        self.segment_idx = 0
+        self.segment = None
+        self.num_segments = int(hashmap["NumShards"])
+        # Iterator state across buckets within a segment
+        self.bucket_idx = -1
+        self.segment_buckets = None
+        self.segment_num_buckets = None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.segment_idx >= self.num_segments:
+            raise StopIteration
+        # Update cached segment
+        if self.segment is None:
+            self.bucket_idx = -1
+            _segment_ptr = self._segments[self.segment_idx]["_M_b"]["_M_p"]
+            # Check if the segment has been initialized or setp over it
+            if int(_segment_ptr) == 0:
+                self.segment_idx += 1
+                return self.__next__()
+            self.segment = _segment_ptr.dereference()["impl_"]
+            _buckets = self.segment["buckets_"]["_M_b"]["_M_p"]
+            # Can this even happen?
+            if int(_buckets) == 0:
+                self.segment_idx += 1
+                return self.__next__()
+            self.segment_buckets = _buckets.dereference()["buckets_"]
+            self.segment_num_buckets = int(self.segment["bucket_count_"]["_M_i"])
+
+        self.bucket_idx += 1
+        # Check if we're done with this segment
+        if self.bucket_idx >= self.segment_num_buckets:
+            self.segment_idx += 1
+            self.segment = None
+            return self.__next__()
+
+        # Skip null items
+        ptr = self.segment_buckets[self.bucket_idx]["link_"]["_M_b"]["_M_p"]
+        return self.__next__() if int(ptr) == 0 else ptr["item_"]["item_"]
+
+
+class ConcurrentHashMapPrinter:
+    """Print a ConcurrentHashMap"""
+
+    def __init__(self, val):
+        self.val = val
+        self.key_type = val.type.template_argument(0)
+        self.val_type = val.type.template_argument(1)
+
+    def to_string(self):
+        # DEBUG: consume iterator to get map size and print it
+        # mapsize = len(list(self.children()))
+        return f"folly::ConcurrentHashMap<{self.key_type}, {self.val_type}, ...>"
+
+    def children(self):
+        "Returns an iterator of tuple(name, value)"
+        return (
+            (f'[{str(item["kv_"]["first"])}]', item["kv_"]["second"])
+            for idx, item in enumerate(ConcurrentHashMapIterator(self.val))
+        )
+
+    def display_hint(self):
+        return "folly::ConcurrentHashMap"
+
+
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter("folly")
     pp.add_printer("fbstring", "^folly::basic_fbstring<char,.*$", FBStringPrinter)
@@ -342,6 +415,10 @@ def build_pretty_printer():
     pp.add_printer("F14ValueSet", "^folly::F14ValueSet<.*$", F14Printer)
     pp.add_printer("F14VectorSet", "^folly::F14VectorSet<.*$", F14Printer)
     pp.add_printer("F14FastSet", "^folly::F14FastSet<.*$", F14Printer)
+
+    pp.add_printer(
+        "ConcurrentHashMap", "^folly::ConcurrentHashMap<.*$", ConcurrentHashMapPrinter
+    )
     return pp
 
 

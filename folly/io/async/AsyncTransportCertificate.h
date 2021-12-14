@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <folly/portability/OpenSSL.h>
-#include <folly/ssl/OpenSSLPtrTypes.h>
+#include <string>
 
 namespace folly {
 
@@ -38,11 +37,5 @@ class AsyncTransportCertificate {
    * implementations of AsyncTransport.
    */
   virtual std::string getIdentity() const = 0;
-
-  /**
-   * Returns an X509 structure associated with this Certificate. This may be
-   * null.
-   */
-  virtual folly::ssl::X509UniquePtr getX509() const = 0;
 };
 } // namespace folly

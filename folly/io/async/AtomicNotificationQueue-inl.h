@@ -101,8 +101,10 @@ AtomicNotificationQueue<Task>::AtomicQueue::~AtomicQueue() {
 
 template <typename Task>
 template <typename... Args>
-bool AtomicNotificationQueue<Task>::AtomicQueue::push(Args&&... args) {
-  std::unique_ptr<Node> node(new Node(std::forward<Args>(args)...));
+bool AtomicNotificationQueue<Task>::AtomicQueue::pushImpl(
+    std::shared_ptr<RequestContext> rctx, Args&&... args) {
+  std::unique_ptr<Node> node(
+      new Node(std::move(rctx), std::forward<Args>(args)...));
   auto head = head_.load(std::memory_order_relaxed);
   while (true) {
     node->next =
@@ -116,6 +118,20 @@ bool AtomicNotificationQueue<Task>::AtomicQueue::push(Args&&... args) {
       return reinterpret_cast<intptr_t>(head) == kQueueArmedTag;
     }
   }
+}
+
+template <typename Task>
+template <typename... Args>
+bool AtomicNotificationQueue<Task>::AtomicQueue::push(Args&&... args) {
+  auto rctx = RequestContext::saveContext();
+  return pushImpl(std::move(rctx), std::forward<Args>(args)...);
+}
+
+template <typename Task>
+template <typename... Args>
+bool AtomicNotificationQueue<Task>::AtomicQueue::push(
+    std::shared_ptr<RequestContext> rctx, Args&&... args) {
+  return pushImpl(std::move(rctx), std::forward<Args>(args)...);
 }
 
 template <typename Task>
@@ -195,6 +211,14 @@ template <typename... Args>
 bool AtomicNotificationQueue<Task>::push(Args&&... args) {
   pushCount_.fetch_add(1, std::memory_order_relaxed);
   return atomicQueue_.push(std::forward<Args>(args)...);
+}
+
+template <typename Task>
+template <typename... Args>
+bool AtomicNotificationQueue<Task>::push(
+    std::shared_ptr<RequestContext> rctx, Args&&... args) {
+  pushCount_.fetch_add(1, std::memory_order_relaxed);
+  return atomicQueue_.push(std::move(rctx), std::forward<Args>(args)...);
 }
 
 template <typename Task>

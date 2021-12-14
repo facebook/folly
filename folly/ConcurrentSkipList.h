@@ -144,7 +144,7 @@ template <
     int MAX_HEIGHT = 24>
 class ConcurrentSkipList {
   // MAX_HEIGHT needs to be at least 2 to suppress compiler
-  // warnings/errors (Werror=uninitialized tiggered due to preds_[1]
+  // warnings/errors (Werror=uninitialized triggered due to preds_[1]
   // being treated as a scalar in the compiler).
   static_assert(
       MAX_HEIGHT >= 2 && MAX_HEIGHT < 64,
@@ -173,7 +173,7 @@ class ConcurrentSkipList {
         head_(NodeType::create(recycler_.alloc(), height, value_type(), true)) {
   }
 
-  // Convenient function to get an Accessor to a new instance.
+  // Convenience function to get an Accessor to a new instance.
   static Accessor create(int height, const NodeAlloc& alloc) {
     return Accessor(createInstance(height, alloc));
   }
@@ -250,7 +250,7 @@ class ConcurrentSkipList {
     return foundLayer;
   }
 
-  int height() const { return head_.load(std::memory_order_consume)->height(); }
+  int height() const { return head_.load(std::memory_order_acquire)->height(); }
 
   int maxLayer() const { return height() - 1; }
 
@@ -268,7 +268,7 @@ class ConcurrentSkipList {
   }
 
   // lock all the necessary nodes for changing (adding or removing) the list.
-  // returns true if all the lock acquried successfully and the related nodes
+  // returns true if all the lock acquired successfully and the related nodes
   // are all validate (not in certain pending states), false otherwise.
   bool lockNodesForChange(
       int nodeHeight,
@@ -303,7 +303,7 @@ class ConcurrentSkipList {
   //     It could be either the newly added data, or the existed data in the
   //     list with the same key.
   //   pair.second stores whether the data is added successfully:
-  //     0 means not added, otherwise reutrns the new size.
+  //     0 means not added, otherwise returns the new size.
   template <typename U>
   std::pair<NodeType*, size_t> addOrGetData(U&& data) {
     NodeType *preds[MAX_HEIGHT], *succs[MAX_HEIGHT];
@@ -401,12 +401,12 @@ class ConcurrentSkipList {
   }
 
   const value_type* first() const {
-    auto node = head_.load(std::memory_order_consume)->skip(0);
+    auto node = head_.load(std::memory_order_acquire)->skip(0);
     return node ? &node->data() : nullptr;
   }
 
   const value_type* last() const {
-    NodeType* pred = head_.load(std::memory_order_consume);
+    NodeType* pred = head_.load(std::memory_order_acquire);
     NodeType* node = nullptr;
     for (int layer = maxLayer(); layer >= 0; --layer) {
       do {
@@ -434,7 +434,7 @@ class ConcurrentSkipList {
       int* max_layer) const {
     *max_layer = maxLayer();
     return findInsertionPoint(
-        head_.load(std::memory_order_consume), *max_layer, data, preds, succs);
+        head_.load(std::memory_order_acquire), *max_layer, data, preds, succs);
   }
 
   // Find node for access. Returns a paired values:
@@ -448,9 +448,9 @@ class ConcurrentSkipList {
 
   // Find node by first stepping down then stepping right. Based on benchmark
   // results, this is slightly faster than findNodeRightDown for better
-  // localality on the skipping pointers.
+  // locality on the skipping pointers.
   std::pair<NodeType*, int> findNodeDownRight(const value_type& data) const {
-    NodeType* pred = head_.load(std::memory_order_consume);
+    NodeType* pred = head_.load(std::memory_order_acquire);
     int ht = pred->height();
     NodeType* node = nullptr;
 
@@ -478,7 +478,7 @@ class ConcurrentSkipList {
   // find node by first stepping right then stepping down.
   // We still keep this for reference purposes.
   std::pair<NodeType*, int> findNodeRightDown(const value_type& data) const {
-    NodeType* pred = head_.load(std::memory_order_consume);
+    NodeType* pred = head_.load(std::memory_order_acquire);
     NodeType* node = nullptr;
     auto top = maxLayer();
     int found = 0;
@@ -502,7 +502,7 @@ class ConcurrentSkipList {
   }
 
   void growHeight(int height) {
-    NodeType* oldHead = head_.load(std::memory_order_consume);
+    NodeType* oldHead = head_.load(std::memory_order_acquire);
     if (oldHead->height() >= height) { // someone else already did this
       return;
     }
@@ -561,7 +561,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   }
 
   // Unsafe initializer: the caller assumes the responsibility to keep
-  // skip_list valid during the whole life cycle of the Acessor.
+  // skip_list valid during the whole life cycle of the Accessor.
   explicit Accessor(ConcurrentSkipList* skip_list) : sl_(skip_list) {
     DCHECK(sl_ != nullptr);
     sl_->recycler_.addRef();
@@ -598,7 +598,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   size_type count(const key_type& data) const { return contains(data); }
 
   iterator begin() const {
-    NodeType* head = sl_->head_.load(std::memory_order_consume);
+    NodeType* head = sl_->head_.load(std::memory_order_acquire);
     return iterator(head->next());
   }
   iterator end() const { return iterator(nullptr); }
@@ -683,7 +683,7 @@ class detail::csl_iterator : public detail::IteratorFacade<
   csl_iterator(
       const csl_iterator<OtherVal, OtherNode>& other,
       typename std::enable_if<
-          std::is_convertible<OtherVal, ValT>::value>::type* = nullptr)
+          std::is_convertible<OtherVal*, ValT*>::value>::type* = nullptr)
       : node_(other.node_) {}
 
   size_t nodeSize() const {
@@ -719,7 +719,8 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
   typedef T* pointer;
   typedef ptrdiff_t difference_type;
 
-  Skipper(const std::shared_ptr<SkipListType>& skipList) : accessor_(skipList) {
+  Skipper(std::shared_ptr<SkipListType> skipList)
+      : accessor_(std::move(skipList)) {
     init();
   }
 
@@ -751,6 +752,9 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
     }
     return *this;
   }
+
+  Accessor& accessor() { return accessor_; }
+  const Accessor& accessor() const { return accessor_; }
 
   bool good() const { return succs_[0] != nullptr; }
 
@@ -810,7 +814,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
 
  private:
   NodeType* head() const {
-    return accessor_.skiplist()->head_.load(std::memory_order_consume);
+    return accessor_.skiplist()->head_.load(std::memory_order_acquire);
   }
 
   Accessor accessor_;

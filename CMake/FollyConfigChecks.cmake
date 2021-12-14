@@ -149,30 +149,6 @@ check_cxx_source_runs("
   FOLLY_HAVE_LINUX_VDSO
 )
 
-check_type_size(__int128 INT128_SIZE LANGUAGE CXX)
-if (NOT INT128_SIZE STREQUAL "")
-  set(FOLLY_HAVE_INT128_T ON)
-  check_cxx_source_compiles("
-    #include <functional>
-    #include <type_traits>
-    #include <utility>
-    static_assert(
-      ::std::is_same<::std::make_signed<unsigned __int128>::type,
-                     __int128>::value,
-      \"signed form of 'unsigned __uint128' must be '__int128'.\");
-    static_assert(
-        sizeof(::std::hash<__int128>{}(0)) > 0, \
-        \"std::hash<__int128> is disabled.\");
-    int main() { return 0; }"
-    HAVE_INT128_TRAITS
-  )
-  if (HAVE_INT128_TRAITS)
-    set(FOLLY_SUPPLY_MISSING_INT128_TRAITS OFF)
-  else()
-    set(FOLLY_SUPPLY_MISSING_INT128_TRAITS ON)
-  endif()
-endif()
-
 check_cxx_source_runs("
   #include <cstddef>
   #include <cwchar>
@@ -189,24 +165,6 @@ check_cxx_source_compiles("
     return 0;
   }"
   FOLLY_HAVE_EXTRANDOM_SFMT19937
-)
-
-check_cxx_source_compiles("
-  #include <type_traits>
-  #if !_LIBCPP_VERSION
-  #error No libc++
-  #endif
-  int main() { return 0; }"
-  FOLLY_USE_LIBCPP
-)
-
-check_cxx_source_compiles("
-  #include <type_traits>
-  #if !__GLIBCXX__
-  #error No libstdc++
-  #endif
-  int main() { return 0; }"
-  FOLLY_USE_LIBSTDCPP
 )
 
 check_cxx_source_runs("

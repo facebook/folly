@@ -303,6 +303,22 @@ TEST(StringPiece, ToByteRange) {
   EXPECT_EQ(a.end(), c.end());
 }
 
+TEST(ByteRange, FromString) {
+  std::string s("hello");
+  ByteRange b(s);
+  EXPECT_EQ(
+      static_cast<const void*>(s.data()), static_cast<const void*>(b.begin()));
+  EXPECT_EQ(s.size(), b.size());
+
+#if FOLLY_HAS_STRING_VIEW
+  std::string_view sv(s);
+  ByteRange b2(sv);
+  EXPECT_EQ(
+      static_cast<const void*>(s.data()), static_cast<const void*>(b2.begin()));
+  EXPECT_EQ(s.size(), b2.size());
+#endif
+}
+
 TEST(StringPiece, InvalidRange) {
   StringPiece a("hello");
   EXPECT_EQ(a, a.subpiece(0, 10));
@@ -1424,6 +1440,8 @@ TEST(Range, LiteralSuffix) {
   constexpr auto literalPiece = "hello"_sp;
   constexpr StringPiece piece = "hello";
   EXPECT_EQ(literalPiece, piece);
+
+#if __cplusplus <= 202001L
   constexpr auto literalPiece8 = u8"hello"_sp;
 #if __cpp_char8_t >= 201811L
   constexpr Range<char8_t const*> piece8 = u8"hello";
@@ -1431,6 +1449,8 @@ TEST(Range, LiteralSuffix) {
   constexpr Range<char const*> piece8 = u8"hello";
 #endif
   EXPECT_EQ(literalPiece8, piece8);
+#endif
+
   constexpr auto literalPiece16 = u"hello"_sp;
   constexpr Range<char16_t const*> piece16{u"hello", 5};
   EXPECT_EQ(literalPiece16, piece16);

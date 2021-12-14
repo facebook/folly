@@ -30,6 +30,40 @@
 
 namespace folly {
 namespace detail {
+
+/**
+ * TFOAvailability describes support for TCP Fast Open (TFO).
+ */
+enum class TFOAvailability {
+  /**
+   * TFOAvailability::None indicates that the current environment
+   * does not support TFO (or we could not detect support via probing).
+   */
+  None,
+  /**
+   * TFOAvailability::WithCookies indicates that TFO is supported by the
+   * platform. However, in order for TFO data to be used or for TFO to
+   * be attempted, a prior connection to the same peer must have successfully
+   * taken place so that the peer could issue a cookie.
+   */
+  WithCookies,
+  /**
+   * TFOAvailability::Unconditional indicates that TFO will always be
+   * unconditionally sent or accepted, regardless of whether or not prior
+   * connections have taken place.
+   */
+  Unconditional
+};
+
+/**
+ * PlatformTFOSettings describes TFO support for client connections and
+ * server connections.
+ */
+struct PlatformTFOSettings {
+  TFOAvailability client{TFOAvailability::None};
+  TFOAvailability server{TFOAvailability::None};
+};
+
 /**
  * tfo_sendto has the same semantics as sendmsg, but is used to
  * send with TFO data.
@@ -45,5 +79,11 @@ int tfo_enable(NetworkSocket sockfd, size_t max_queue_size);
  * Check if TFO succeeded in being used.
  */
 bool tfo_succeeded(NetworkSocket sockfd);
+
+/**
+ * Check if TFO is supported by the kernel.
+ */
+PlatformTFOSettings tfo_platform_availability();
+
 } // namespace detail
 } // namespace folly

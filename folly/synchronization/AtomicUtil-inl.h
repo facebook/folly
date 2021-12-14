@@ -23,7 +23,6 @@
 #include <type_traits>
 
 #include <folly/Portability.h>
-#include <folly/Traits.h>
 
 #ifdef _WIN32
 #include <intrin.h>
@@ -42,18 +41,40 @@ constexpr std::memory_order atomic_compare_exchange_succ(
   assert(fail != release);
   assert(fail != acq_rel);
 
-  //  Clang TSAN ignores the passed failure order and infers failure order from
-  //  success order in atomic compare-exchange operations, which is broken for
-  //  cases like success-release/failure-acquire, so return a success order with
-  //  the failure order mixed in.
   auto const bump = succ == release ? acq_rel : succ;
   auto const high = fail < bump ? bump : fail;
   return !cond || fail == relaxed ? succ : high;
 }
 
+//  atomic_compare_exchange_succ
+//
+//  Return a success order with, conditionally, the failure order mixed in.
+//
+//  Until C++17, atomic compare-exchange operations require the success order to
+//  be at least as strong as the failure order. C++17 drops this requirement. As
+//  an implication, were this rule in force, an implementation is free to ignore
+//  the explicit failure order and to infer one from the success order.
+//
+//    https://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange
+//
+//  The libstdc++ library with assertions enabled enforces this rule, including
+//  under C++17, but only until and not since libstdc++12.
+//
+//    https://github.com/gcc-mirror/gcc/commit/dba1ab212292839572fda60df00965e094a11252
+//
+//  Clang TSAN ignores the passed failure order and infers failure order from
+//  success order in atomic compare-exchange operations, which is broken for
+//  cases like success-release/failure-acquire.
+//
+//    https://github.com/google/sanitizers/issues/970
+//
+//  Handle all of these cases.
 constexpr std::memory_order atomic_compare_exchange_succ(
     std::memory_order succ, std::memory_order fail) {
-  constexpr auto const cond = kIsSanitizeThread && kIsClang;
+  constexpr auto const cond = false //
+      || (FOLLY_CPLUSPLUS < 201702L) //
+      || (kGlibcxxVer && kGlibcxxVer < 12 && kGlibcxxAssertions) //
+      || (kIsSanitizeThread && kIsClang);
   return atomic_compare_exchange_succ(cond, succ, fail);
 }
 
@@ -62,8 +83,8 @@ constexpr std::memory_order atomic_compare_exchange_succ(
 template <template <typename> class Atom, typename T>
 bool atomic_compare_exchange_weak_explicit(
     Atom<T>* obj,
-    T* expected,
-    T desired,
+    type_t<T>* expected,
+    type_t<T> desired,
     std::memory_order succ,
     std::memory_order fail) {
   succ = detail::atomic_compare_exchange_succ(succ, fail);
@@ -73,8 +94,8 @@ bool atomic_compare_exchange_weak_explicit(
 template <template <typename> class Atom, typename T>
 bool atomic_compare_exchange_strong_explicit(
     Atom<T>* obj,
-    T* expected,
-    T desired,
+    type_t<T>* expected,
+    type_t<T> desired,
     std::memory_order succ,
     std::memory_order fail) {
   succ = detail::atomic_compare_exchange_succ(succ, fail);
@@ -91,19 +112,19 @@ namespace detail {
 // this optimization and clang cannot - https://gcc.godbolt.org/z/Q83rxX
 
 template <typename Atomic>
-bool atomic_fetch_set_default(
+bool atomic_fetch_set_fallback(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   using Integer = decltype(atomic.load());
-  auto mask = Integer{0b1} << static_cast<Integer>(bit);
+  auto mask = Integer(Integer{0b1} << bit);
   return (atomic.fetch_or(mask, order) & mask);
 }
 
 template <typename Atomic>
-bool atomic_fetch_reset_default(
+bool atomic_fetch_reset_fallback(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   using Integer = decltype(atomic.load());
-  auto mask = Integer{0b1} << static_cast<Integer>(bit);
-  return (atomic.fetch_and(static_cast<Integer>(~mask), order) & mask);
+  auto mask = Integer(Integer{0b1} << bit);
+  return (atomic.fetch_and(Integer(~mask), order) & mask);
 }
 
 /**
@@ -120,7 +141,7 @@ constexpr auto is_atomic<std::atomic<Integer>> = true;
 #if defined(_MSC_VER)
 
 template <typename Integer>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   static_assert(alignof(std::atomic<Integer>) == alignof(Integer), "");
   static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer), "");
@@ -135,20 +156,20 @@ inline bool atomic_fetch_set_x86(
         static_cast<long long>(bit));
   } else {
     assert(sizeof(Integer) != 4 && sizeof(Integer) != 8);
-    return atomic_fetch_set_default(atomic, bit, order);
+    return atomic_fetch_set_fallback(atomic, bit, order);
   }
 }
 
 template <typename Atomic>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
   static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
-  return atomic_fetch_set_default(atomic, bit, order);
+  return atomic_fetch_set_fallback(atomic, bit, order);
 }
 
 template <typename Integer>
-inline bool atomic_fetch_reset_x86(
+inline bool atomic_fetch_reset_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   static_assert(alignof(std::atomic<Integer>) == alignof(Integer), "");
   static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer), "");
@@ -163,22 +184,22 @@ inline bool atomic_fetch_reset_x86(
         static_cast<long long>(bit));
   } else {
     assert(sizeof(Integer) != 4 && sizeof(Integer) != 8);
-    return atomic_fetch_reset_default(atomic, bit, order);
+    return atomic_fetch_reset_fallback(atomic, bit, order);
   }
 }
 
 template <typename Atomic>
-inline bool atomic_fetch_reset_x86(
+inline bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order mo) {
   static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
   static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
-  return atomic_fetch_reset_default(atomic, bit, mo);
+  return atomic_fetch_reset_fallback(atomic, bit, mo);
 }
 
 #else
 
 template <typename Integer>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   auto previous = false;
 
@@ -202,21 +223,21 @@ inline bool atomic_fetch_set_x86(
                  : "memory", "flags");
   } else {
     assert(sizeof(Integer) == 1);
-    return atomic_fetch_set_default(atomic, bit, order);
+    return atomic_fetch_set_fallback(atomic, bit, order);
   }
 
   return previous;
 }
 
 template <typename Atomic>
-inline bool atomic_fetch_set_x86(
+inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   static_assert(!is_atomic<Atomic>, "");
-  return atomic_fetch_set_default(atomic, bit, order);
+  return atomic_fetch_set_fallback(atomic, bit, order);
 }
 
 template <typename Integer>
-inline bool atomic_fetch_reset_x86(
+inline bool atomic_fetch_reset_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
   auto previous = false;
 
@@ -240,17 +261,17 @@ inline bool atomic_fetch_reset_x86(
                  : "memory", "flags");
   } else {
     assert(sizeof(Integer) == 1);
-    return atomic_fetch_reset_default(atomic, bit, order);
+    return atomic_fetch_reset_fallback(atomic, bit, order);
   }
 
   return previous;
 }
 
 template <typename Atomic>
-bool atomic_fetch_reset_x86(
+bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
   static_assert(!is_atomic<Atomic>, "");
-  return atomic_fetch_reset_default(atomic, bit, order);
+  return atomic_fetch_reset_fallback(atomic, bit, order);
 }
 
 #endif
@@ -258,12 +279,13 @@ bool atomic_fetch_reset_x86(
 #else
 
 template <typename Atomic>
-bool atomic_fetch_set_x86(Atomic&, std::size_t, std::memory_order) noexcept {
+bool atomic_fetch_set_native(Atomic&, std::size_t, std::memory_order) noexcept {
   // This should never be called on non x86_64 platforms.
   std::terminate();
 }
 template <typename Atomic>
-bool atomic_fetch_reset_x86(Atomic&, std::size_t, std::memory_order) noexcept {
+bool atomic_fetch_reset_native(
+    Atomic&, std::size_t, std::memory_order) noexcept {
   // This should never be called on non x86_64 platforms.
   std::terminate();
 }
@@ -282,10 +304,10 @@ bool atomic_fetch_set(Atomic& atomic, std::size_t bit, std::memory_order mo) {
   // do the optimized thing on x86 builds.  Also, some versions of TSAN do not
   // properly instrument the inline assembly, so avoid it when TSAN is enabled
   if (folly::kIsArchAmd64 && !folly::kIsSanitizeThread) {
-    return detail::atomic_fetch_set_x86(atomic, bit, mo);
+    return detail::atomic_fetch_set_native(atomic, bit, mo);
   } else {
     // otherwise default to the default implementation using fetch_or()
-    return detail::atomic_fetch_set_default(atomic, bit, mo);
+    return detail::atomic_fetch_set_fallback(atomic, bit, mo);
   }
 }
 
@@ -299,10 +321,10 @@ bool atomic_fetch_reset(Atomic& atomic, std::size_t bit, std::memory_order mo) {
   // do the optimized thing on x86 builds.  Also, some versions of TSAN do not
   // properly instrument the inline assembly, so avoid it when TSAN is enabled
   if (folly::kIsArchAmd64 && !folly::kIsSanitizeThread) {
-    return detail::atomic_fetch_reset_x86(atomic, bit, mo);
+    return detail::atomic_fetch_reset_native(atomic, bit, mo);
   } else {
     // otherwise default to the default implementation using fetch_and()
-    return detail::atomic_fetch_reset_default(atomic, bit, mo);
+    return detail::atomic_fetch_reset_fallback(atomic, bit, mo);
   }
 }
 

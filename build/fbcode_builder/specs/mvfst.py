@@ -5,9 +5,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import specs.gmock as gmock
-import specs.folly as folly
 import specs.fizz as fizz
+import specs.folly as folly
+import specs.gmock as gmock
 
 
 def fbcode_builder_spec(builder):

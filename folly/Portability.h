@@ -46,7 +46,7 @@ constexpr bool kHasUnalignedAccess = false;
 // msvc should come first, so if clang is in msvc mode it gets the right defines
 
 // NOTE: this will only do checking in msvc with versions that support /analyze
-#if _MSC_VER
+#ifdef _MSC_VER
 #ifdef _USE_ATTRIBUTES_FOR_SAL
 #undef _USE_ATTRIBUTES_FOR_SAL
 #endif
@@ -137,19 +137,19 @@ constexpr bool kIsLibrarySanitizeAddress = true;
 constexpr bool kIsLibrarySanitizeAddress = false;
 #endif
 
-#if FOLLY_SANITIZE_ADDRESS
+#ifdef FOLLY_SANITIZE_ADDRESS
 constexpr bool kIsSanitizeAddress = true;
 #else
 constexpr bool kIsSanitizeAddress = false;
 #endif
 
-#if FOLLY_SANITIZE_THREAD
+#ifdef FOLLY_SANITIZE_THREAD
 constexpr bool kIsSanitizeThread = true;
 #else
 constexpr bool kIsSanitizeThread = false;
 #endif
 
-#if FOLLY_SANITIZE
+#ifdef FOLLY_SANITIZE
 constexpr bool kIsSanitize = true;
 #else
 constexpr bool kIsSanitize = false;
@@ -220,8 +220,7 @@ constexpr bool kIsSanitize = false;
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
-#if FOLLY_USE_LIBCPP
-#include <__config> // @manual
+#if defined(_LIBCPP_VERSION)
 #define FOLLY_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
 #define FOLLY_NAMESPACE_STD_END _LIBCPP_END_NAMESPACE_STD
 #else
@@ -255,7 +254,10 @@ constexpr bool kIsSanitize = false;
 // SSE4.2 intrinsics unless -march argument is specified.
 // So cannot unconditionally define __SSE4_2__ in clang.
 #ifndef __clang__
+#if !defined(_M_ARM) && !defined(_M_ARM64)
 #define __SSE4_2__ 1
+#endif // !defined(_M_ARM) && !defined(_M_ARM64)
+
 // compiler specific to compiler specific
 // nolint
 #define __PRETTY_FUNCTION__ __FUNCSIG__
@@ -363,6 +365,8 @@ constexpr auto kHasWeakSymbols = false;
 #ifndef FOLLY_NEON
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #define FOLLY_NEON 1
+#else
+#define FOLLY_NEON 0
 #endif
 #endif
 
@@ -420,7 +424,7 @@ constexpr bool const kHasRtti = FOLLY_HAS_RTTI;
 
 namespace folly {
 
-#if __OBJC__
+#ifdef __OBJC__
 constexpr auto kIsObjC = true;
 #else
 constexpr auto kIsObjC = false;
@@ -467,19 +471,25 @@ constexpr auto kGlibcxxVer = _GLIBCXX_RELEASE;
 constexpr auto kGlibcxxVer = 0;
 #endif
 
-#if _LIBCPP_VERSION
+#if __GLIBCXX__ && defined(_GLIBCXX_ASSERTIONS)
+constexpr auto kGlibcxxAssertions = true;
+#else
+constexpr auto kGlibcxxAssertions = false;
+#endif
+
+#ifdef _LIBCPP_VERSION
 constexpr auto kIsLibcpp = true;
 #else
 constexpr auto kIsLibcpp = false;
 #endif
 
-#if FOLLY_USE_LIBSTDCPP
+#if __GLIBCXX__
 constexpr auto kIsLibstdcpp = true;
 #else
 constexpr auto kIsLibstdcpp = false;
 #endif
 
-#if _MSC_VER
+#ifdef _MSC_VER
 constexpr auto kMscVer = _MSC_VER;
 #else
 constexpr auto kMscVer = 0;
@@ -499,7 +509,7 @@ constexpr auto kIsClang = false;
 constexpr auto kClangVerMajor = 0;
 #endif
 
-#if FOLLY_MICROSOFT_ABI_VER
+#ifdef FOLLY_MICROSOFT_ABI_VER
 constexpr auto kMicrosoftAbiVer = FOLLY_MICROSOFT_ABI_VER;
 #else
 constexpr auto kMicrosoftAbiVer = 0;
@@ -507,7 +517,7 @@ constexpr auto kMicrosoftAbiVer = 0;
 
 // cpplib is an implementation of the standard library, and is the one typically
 // used with the msvc compiler
-#if _CPPLIB_VER
+#ifdef _CPPLIB_VER
 constexpr auto kCpplibVer = _CPPLIB_VER;
 #else
 constexpr auto kCpplibVer = 0;
@@ -525,10 +535,20 @@ constexpr auto kCpplibVer = 0;
 //    FOLLY_STORAGE_CONSTEXPR int const num = 3;
 //
 //  True as of MSVC 2017.
-#if _MSC_VER
+#ifdef _MSC_VER
 #define FOLLY_STORAGE_CONSTEXPR
 #else
 #define FOLLY_STORAGE_CONSTEXPR constexpr
+#endif
+
+//  FOLLY_CXX17_CONSTEXPR
+//
+//  C++17 permits more cases to be marked constexpr, including lambda bodies and
+//  the `if` keyword.
+#if FOLLY_CPLUSPLUS >= 201703L
+#define FOLLY_CXX17_CONSTEXPR constexpr
+#else
+#define FOLLY_CXX17_CONSTEXPR
 #endif
 
 #if __cplusplus >= 201703L

@@ -29,9 +29,7 @@
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
 
-#ifndef _WIN32
-#include <net/if.h>
-#else
+#ifdef _WIN32
 // Because of the massive pain that is libnl, this can't go into the socket
 // portability header as you can't include <linux/if.h> and <net/if.h> in
 // the same translation unit without getting errors -_-...
@@ -40,6 +38,9 @@
 
 // Alias the max size of an interface name to what posix expects.
 #define IFNAMSIZ IF_NAMESIZE
+#elif defined __XROS__
+#else
+#include <net/if.h>
 #endif
 
 using std::ostream;
@@ -403,7 +404,7 @@ uint8_t IPAddressV6::getMulticastScope() const {
 }
 
 IPAddressV6 IPAddressV6::getSolicitedNodeAddress() const {
-  // Solicted node addresses must be constructed from unicast (or anycast)
+  // Solicited node addresses must be constructed from unicast (or anycast)
   // addresses
   DCHECK(!isMulticast());
 

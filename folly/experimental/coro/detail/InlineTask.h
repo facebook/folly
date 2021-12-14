@@ -116,7 +116,7 @@ class InlineTaskPromise : public InlineTaskPromiseBase {
 
   void unhandled_exception() noexcept {
     result_.emplaceException(
-        folly::exception_wrapper::from_exception_ptr(std::current_exception()));
+        folly::exception_wrapper{std::current_exception()});
   }
 
   T result() { return std::move(result_).value(); }
@@ -143,7 +143,7 @@ class InlineTaskPromise<void> : public InlineTaskPromiseBase {
 
   void unhandled_exception() noexcept {
     result_.emplaceException(
-        folly::exception_wrapper::from_exception_ptr(std::current_exception()));
+        folly::exception_wrapper{std::current_exception()});
   }
 
   void result() { return result_.value(); }

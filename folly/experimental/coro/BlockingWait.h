@@ -98,7 +98,7 @@ class BlockingWaitPromise final : public BlockingWaitPromiseBase {
 
   void unhandled_exception() noexcept {
     result_->emplaceException(
-        folly::exception_wrapper::from_exception_ptr(std::current_exception()));
+        folly::exception_wrapper{std::current_exception()});
   }
 
   template <
@@ -126,7 +126,7 @@ class BlockingWaitPromise<T&> final : public BlockingWaitPromiseBase {
 
   void unhandled_exception() noexcept {
     result_->emplaceException(
-        folly::exception_wrapper::from_exception_ptr(std::current_exception()));
+        folly::exception_wrapper{std::current_exception()});
   }
 
   auto yield_value(T&& value) noexcept {
@@ -171,8 +171,7 @@ class BlockingWaitPromise<void> final : public BlockingWaitPromiseBase {
   void return_void() noexcept {}
 
   void unhandled_exception() noexcept {
-    result_->emplaceException(
-        exception_wrapper::from_exception_ptr(std::current_exception()));
+    result_->emplaceException(exception_wrapper{std::current_exception()});
   }
 
   void setTry(folly::Try<void>* result) noexcept { result_ = result; }

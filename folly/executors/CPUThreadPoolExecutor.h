@@ -20,7 +20,7 @@
 
 #include <array>
 
-#include <folly/concurrency/QueueObserver.h>
+#include <folly/executors/QueueObserver.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
 DECLARE_bool(dynamic_cputhreadpoolexecutor);
@@ -134,7 +134,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       Func expireCallback = nullptr) override;
 
   void addWithPriority(Func func, int8_t priority) override;
-  void add(
+  virtual void add(
       Func func,
       int8_t priority,
       std::chrono::milliseconds expiration,
@@ -175,6 +175,8 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
 
  protected:
   BlockingQueue<CPUTask>* getTaskQueue();
+  std::unique_ptr<WorkerProvider> createWorkerProvider();
+  std::unique_ptr<WorkerProvider> threadIdCollector_{createWorkerProvider()};
 
  private:
   void threadRun(ThreadPtr thread) override;

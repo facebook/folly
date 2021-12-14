@@ -175,23 +175,34 @@ class SystemPackageFetcher(object):
         if self.installed is not None:
             return self.installed
 
+        cmd = None
         if self.manager == "rpm":
-            result = run_cmd(["rpm", "-q"] + self.packages, allow_fail=True)
-            self.installed = result == 0
+            cmd = ["rpm", "-q"] + sorted(self.packages)
         elif self.manager == "deb":
-            result = run_cmd(["dpkg", "-s"] + self.packages, allow_fail=True)
-            self.installed = result == 0
+            cmd = ["dpkg", "-s"] + sorted(self.packages)
+
+        if cmd:
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if proc.returncode == 0:
+                # captured as binary as we will hash this later
+                self.installed = proc.stdout
+            else:
+                # Need all packages to be present to consider us installed
+                self.installed = False
         else:
             self.installed = False
 
-        return self.installed
+        return bool(self.installed)
 
     def update(self):
         assert self.installed
         return ChangeStatus(all_changed=False)
 
     def hash(self):
-        return "0" * 40
+        if self.packages_are_installed():
+            return hashlib.sha256(self.installed).hexdigest()
+        else:
+            return "0" * 40
 
     def get_src_dir(self):
         return None
@@ -234,7 +245,7 @@ class GitFetcher(Fetcher):
                     rev = m.group(1)
                     print("Using pinned rev %s for %s" % (rev, repo_url))
 
-        self.rev = rev or "master"
+        self.rev = rev or "main"
         self.origin_repo = repo_url
         self.manifest = manifest
         self.depth = depth if depth else GitFetcher.DEFAULT_DEPTH
@@ -252,7 +263,7 @@ class GitFetcher(Fetcher):
         )
         if target_hash == current_hash:
             # It's up to date, so there are no changes.  This doesn't detect eg:
-            # if origin/master moved and rev='master', but that's ok for our purposes;
+            # if origin/main moved and rev='main', but that's ok for our purposes;
             # we should be using explicit hashes or eg: a stable branch for the cases
             # that we care about, and it isn't unreasonable to require that the user
             # explicitly perform a clean build if those have moved.  For the most

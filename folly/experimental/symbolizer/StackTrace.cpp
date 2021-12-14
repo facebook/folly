@@ -86,7 +86,11 @@ inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
   return true;
 }
 
+// on ppc64le, fails with
+// function can never be inlined because it uses setjmp
+#if FOLLY_PPC64 == 0
 FOLLY_ALWAYS_INLINE
+#endif
 ssize_t getStackTraceInPlace(
     unw_context_t& context,
     unw_cursor_t& cursor,
@@ -177,7 +181,13 @@ size_t walkNormalStack(
     StackFrame* normalStackFrame,
     StackFrame* normalStackFrameStop) {
   size_t numFrames = 0;
-  while (numFrames < maxAddresses && normalStackFrame != nullptr) {
+  // Stack frame addresses should increase as we traverse the stack.
+  // If it doesn't, it means we have stack corruption, or an unusual calling
+  // convention. In this case, stop walking the stack early to avoid incorrect
+  // stack walking.
+  auto* normalStackFrameStart = normalStackFrame;
+  while (numFrames < maxAddresses && normalStackFrame != nullptr &&
+         normalStackFrame >= normalStackFrameStart) {
     auto* normalStackFrameNext = normalStackFrame->parentFrame;
     if (normalStackFrameStop != nullptr &&
         normalStackFrameNext == normalStackFrameStop) {

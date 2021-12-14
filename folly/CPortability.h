@@ -72,7 +72,7 @@
  * folly itself was compiled with ASAN enabled.
  */
 #ifndef FOLLY_SANITIZE_ADDRESS
-#if FOLLY_HAS_FEATURE(address_sanitizer) || __SANITIZE_ADDRESS__
+#if FOLLY_HAS_FEATURE(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
 #define FOLLY_SANITIZE_ADDRESS 1
 #endif
 #endif
@@ -104,12 +104,12 @@
 /* Define a convenience macro to test when thread sanitizer is being used
  * across the different compilers (e.g. clang, gcc) */
 #ifndef FOLLY_SANITIZE_THREAD
-#if FOLLY_HAS_FEATURE(thread_sanitizer) || __SANITIZE_THREAD__
+#if FOLLY_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
 #define FOLLY_SANITIZE_THREAD 1
 #endif
 #endif
 
-#if FOLLY_SANITIZE_THREAD
+#ifdef FOLLY_SANITIZE_THREAD
 #define FOLLY_DISABLE_THREAD_SANITIZER \
   __attribute__((no_sanitize_thread, noinline))
 #else
@@ -121,12 +121,12 @@
  * across the different compilers (e.g. clang, gcc)
  */
 #ifndef FOLLY_SANITIZE_MEMORY
-#if FOLLY_HAS_FEATURE(memory_sanitizer) || __SANITIZE_MEMORY__
+#if FOLLY_HAS_FEATURE(memory_sanitizer) || defined(__SANITIZE_MEMORY__)
 #define FOLLY_SANITIZE_MEMORY 1
 #endif
 #endif
 
-#if FOLLY_SANITIZE_MEMORY
+#ifdef FOLLY_SANITIZE_MEMORY
 #define FOLLY_DISABLE_MEMORY_SANITIZER \
   __attribute__((no_sanitize_memory, noinline))
 #else
@@ -144,16 +144,18 @@
 #endif
 #endif
 
-#if FOLLY_SANITIZE
+#ifdef FOLLY_SANITIZE
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
   __attribute__((no_sanitize(__VA_ARGS__)))
 #else
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
 #endif // FOLLY_SANITIZE
 
-#define FOLLY_DISABLE_SANITIZERS                                 \
-  FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_THREAD_SANITIZER \
-      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("undefined")
+#define FOLLY_DISABLE_SANITIZERS  \
+  FOLLY_DISABLE_ADDRESS_SANITIZER \
+  FOLLY_DISABLE_THREAD_SANITIZER  \
+  FOLLY_DISABLE_MEMORY_SANITIZER  \
+  FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("undefined")
 
 /**
  * Macro for marking functions as having public visibility.

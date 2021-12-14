@@ -24,6 +24,8 @@
 
 namespace folly {
 
+using namespace string_piece_literals;
+
 namespace {
 folly::dynamic& insertAtKey(
     folly::dynamic* d, bool allow_non_string_keys, const folly::dynamic& key) {
@@ -31,7 +33,13 @@ folly::dynamic& insertAtKey(
     return (*d)[key];
   } else if (key.isNumber() || key.isBool()) {
     // folly::dynamic allows non-null scalars for keys.
-    return allow_non_string_keys ? (*d)[key] : (*d)[key.asString()];
+    if (allow_non_string_keys) {
+      return (*d)[key];
+    } else {
+      auto keyc = key.asString();
+      auto keyv = StringPiece(keyc); // to evade MSVC C4866
+      return (*d)[keyv];
+    }
   }
   // One cause might be oddness like p.optional(dynamic::array(...), ...);
   throw DynamicParserLogicError(
@@ -67,16 +75,16 @@ void DynamicParser::reportError(
   } else {
     // The e["value"].isNull() trick cannot be used because value().type()
     // *can* be folly::dynamic::Type::NULLT, so we must hash again.
-    e["value"] = value();
+    e["value"_sp] = value();
   }
 
   // Differentiate between "parsing value" and "looking up key" errors.
   auto& e_msg = [&]() -> folly::dynamic& {
     if (lookup_k == nullptr) { // {object,array}Items, or post-key-lookup
-      return e["error"];
+      return e["error"_sp];
     }
     // Multiple key lookups can report errors on the same collection.
-    auto& key_errors = e["key_errors"];
+    auto& key_errors = e["key_errors"_sp];
     if (key_errors.isNull()) {
       // Treat arrays as integer-keyed objects.
       key_errors = folly::dynamic::object();
@@ -136,7 +144,7 @@ folly::dynamic& DynamicParser::ParserStack::errors(
   // Materialize the lazy "key + parent's type" error objects we'll need.
   CHECK(!subErrors_.empty()) << "Internal bug: out of suberrors";
   for (const auto& suberror_key : unmaterializedSubErrorKeys_) {
-    auto& nested = (*subErrors_.back())["nested"];
+    auto& nested = (*subErrors_.back())["nested"_sp];
     if (nested.isNull()) {
       nested = folly::dynamic::object();
     }

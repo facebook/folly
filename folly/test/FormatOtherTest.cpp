@@ -26,6 +26,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
 using namespace folly;
 
 TEST(FormatOther, dynamic) {

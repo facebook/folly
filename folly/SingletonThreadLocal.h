@@ -132,13 +132,11 @@ class SingletonThreadLocal {
   SingletonThreadLocal() = delete;
 
   FOLLY_ALWAYS_INLINE static WrapperTL& getWrapperTL() {
+    (void)unique; // force the object not to be thrown out as unused
     return detail::createGlobal<WrapperTL, Tag>();
   }
 
-  FOLLY_NOINLINE static Wrapper& getWrapper() {
-    (void)unique; // force the object not to be thrown out as unused
-    return *getWrapperTL();
-  }
+  FOLLY_NOINLINE static Wrapper& getWrapper() { return *getWrapperTL(); }
 
   FOLLY_NOINLINE static Wrapper& getSlow(LocalCache& cache) {
     if (threadlocal_detail::StaticMetaBase::dying()) {
@@ -156,6 +154,11 @@ class SingletonThreadLocal {
     }
     static thread_local LocalCache cache;
     return FOLLY_LIKELY(!!cache.cache) ? *cache.cache : getSlow(cache);
+  }
+
+  static T* try_get() {
+    auto* wrapper = getWrapperTL().getIfExist();
+    return wrapper ? &static_cast<T&>(*wrapper) : nullptr;
   }
 
   class Accessor {

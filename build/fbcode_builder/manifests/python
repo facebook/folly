@@ -8,10 +8,27 @@ python3-devel
 [debs]
 python3-all-dev
 
-[download.os=linux]
-url = https://www.python.org/ftp/python/3.7.6/Python-3.7.6.tgz
-sha256 = aeee681c235ad336af116f08ab6563361a0c81c537072c1b309d6e4050aa2114
+[download]
+url = https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
+sha256 = 316aa33f3b7707d041e73f246efedb297a70898c4b91f127f66dc8d80c596f1a
 
-[build.os=linux]
+[build]
 builder = autoconf
-subdir = Python-3.7.6
+subdir = Python-3.8.12
+
+[autoconf.args]
+--enable-shared
+--with-ensurepip=install
+
+# python's pkg-config libffi detection is broken
+# See https://bugs.python.org/issue34823 for clearest description
+# and pending PR https://github.com/python/cpython/pull/20451
+# The documented workaround requires an environment variable derived from
+# pkg-config to be passed into its configure step
+[autoconf.envcmd.LDFLAGS]
+pkg-config
+--libs-only-L
+libffi
+
+[dependencies]
+libffi

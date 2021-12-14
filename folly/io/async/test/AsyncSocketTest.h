@@ -207,127 +207,11 @@ class ReadCallback : public folly::AsyncTransport::ReadCallback {
 };
 
 class ReadvCallback : public folly::AsyncTransport::ReadCallback {
- private:
-  class IOBufVecQueue {
-   private:
-    struct RefCountMem {
-      explicit RefCountMem(size_t size) {
-        mem_ = ::malloc(size);
-        len_ = size;
-      }
-
-      ~RefCountMem() { ::free(mem_); }
-
-      void* usableMem() const {
-        return reinterpret_cast<uint8_t*>(mem_) + used_;
-      }
-
-      size_t usableSize() const { return len_ - used_; }
-
-      void incUsedMem(size_t len) { used_ += len; }
-
-      static void freeMem(void* buf, void* userData) {
-        std::ignore = buf;
-        reinterpret_cast<RefCountMem*>(userData)->decRef();
-      }
-
-      void addRef() { ++count_; }
-
-      void decRef() {
-        if (--count_ == 0) {
-          delete this;
-        }
-      }
-
-     private:
-      std::atomic<size_t> count_{1};
-      void* mem_{nullptr};
-      size_t len_{0};
-      size_t used_{0};
-    };
-
-   public:
-    struct Options {
-      static constexpr size_t kBlockSize = 16 * 1024;
-      size_t blockSize_{kBlockSize};
-    };
-
-    IOBufVecQueue() = default;
-    explicit IOBufVecQueue(const Options& options) : options_(options) {}
-    ~IOBufVecQueue() {
-      for (auto& buf : buffers_) {
-        buf->decRef();
-      }
-    }
-
-    static Options getBlockSizeOptions(size_t blockSize) {
-      Options options;
-      options.blockSize_ = blockSize;
-
-      return options;
-    }
-
-    size_t preallocate(size_t len, struct iovec* iovs, size_t num) {
-      size_t total = 0;
-      size_t i = 0;
-      for (; (i < num) && (total < len); ++i) {
-        if (i >= buffers_.size()) {
-          buffers_.push_back(new RefCountMem(options_.blockSize_));
-        }
-
-        iovs[i].iov_base = buffers_[i]->usableMem();
-        iovs[i].iov_len = buffers_[i]->usableSize();
-
-        total += buffers_[i]->usableSize();
-      }
-
-      return i;
-    }
-
-    std::unique_ptr<folly::IOBuf> postallocate(size_t len) {
-      std::unique_ptr<folly::IOBuf> ret, tmp;
-
-      while (len > 0) {
-        CHECK(!buffers_.empty());
-        auto* buf = buffers_.front();
-        auto size = buf->usableSize();
-
-        if (len >= size) {
-          // no need to inc the ref count since we're transferring ownership
-          tmp = folly::IOBuf::takeOwnership(
-              buf->usableMem(), size, RefCountMem::freeMem, buf);
-          buffers_.pop_front();
-          len -= size;
-        } else {
-          buf->addRef();
-          tmp = folly::IOBuf::takeOwnership(
-              buf->usableMem(), len, RefCountMem::freeMem, buf);
-          buf->incUsedMem(len);
-          len = 0;
-        }
-
-        CHECK(!tmp->isShared());
-
-        if (ret) {
-          ret->prependChain(std::move(tmp));
-        } else {
-          ret = std::move(tmp);
-        }
-      }
-
-      return ret;
-    }
-
-   private:
-    Options options_;
-    std::deque<RefCountMem*> buffers_;
-  };
-
  public:
   ReadvCallback(size_t bufferSize, size_t len)
       : state_(STATE_WAITING),
         exception_(folly::AsyncSocketException::UNKNOWN, "none"),
-        queue_(IOBufVecQueue::getBlockSizeOptions(bufferSize)),
+        queue_(folly::IOBufIovecBuilder::Options().setBlockSize(bufferSize)),
         len_(len) {
     setReadMode(folly::AsyncTransport::ReadCallback::ReadMode::ReadVec);
   }
@@ -341,12 +225,12 @@ class ReadvCallback : public folly::AsyncTransport::ReadCallback {
     CHECK(false); // this should not be called
   }
 
-  size_t getReadBuffers(struct iovec* iovs, size_t num) override {
-    return queue_.preallocate(len_, iovs, num);
+  void getReadBuffers(folly::IOBufIovecBuilder::IoVecVec& iovs) override {
+    queue_.allocateBuffers(iovs, len_);
   }
 
   void readDataAvailable(size_t len) noexcept override {
-    auto tmp = queue_.postallocate(len);
+    auto tmp = queue_.extractIOBufChain(len);
     if (!buf_) {
       buf_ = std::move(tmp);
     } else {
@@ -374,7 +258,7 @@ class ReadvCallback : public folly::AsyncTransport::ReadCallback {
  private:
   StateEnum state_;
   folly::AsyncSocketException exception_;
-  IOBufVecQueue queue_;
+  folly::IOBufIovecBuilder queue_;
   std::unique_ptr<folly::IOBuf> buf_;
   const size_t len_;
 };

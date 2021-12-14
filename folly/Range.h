@@ -124,13 +124,27 @@ struct IsCharPointer {};
 
 template <>
 struct IsCharPointer<char*> {
-  typedef int type;
+  using type = int;
 };
 
 template <>
 struct IsCharPointer<const char*> {
-  typedef int const_type;
-  typedef int type;
+  using const_type = int;
+  using type = int;
+};
+
+template <class T>
+struct IsUnsignedCharPointer {};
+
+template <>
+struct IsUnsignedCharPointer<unsigned char*> {
+  using type = int;
+};
+
+template <>
+struct IsUnsignedCharPointer<const unsigned char*> {
+  using const_type = int;
+  using type = int;
 };
 
 } // namespace detail
@@ -153,13 +167,13 @@ class Range {
   using string = std::basic_string<char, std::char_traits<char>, Alloc>;
 
  public:
-  typedef std::size_t size_type;
-  typedef Iter iterator;
-  typedef Iter const_iterator;
-  typedef typename std::remove_reference<
-      typename std::iterator_traits<Iter>::reference>::type value_type;
+  using size_type = std::size_t;
+  using iterator = Iter;
+  using const_iterator = Iter;
+  using value_type = typename std::remove_reference<
+      typename std::iterator_traits<Iter>::reference>::type;
   using difference_type = typename std::iterator_traits<Iter>::difference_type;
-  typedef typename std::iterator_traits<Iter>::reference reference;
+  using reference = typename std::iterator_traits<Iter>::reference;
 
   /**
    * For MutableStringPiece and MutableByteRange we define StringPiece
@@ -167,14 +181,14 @@ class Range {
    * identity). We do that to enable operations such as find with
    * args which are const.
    */
-  typedef typename std::conditional<
+  using const_range_type = typename std::conditional<
       std::is_same<Iter, char*>::value ||
           std::is_same<Iter, unsigned char*>::value,
       Range<const value_type*>,
-      Range<Iter>>::type const_range_type;
+      Range<Iter>>::type;
 
-  typedef std::char_traits<typename std::remove_const<value_type>::type>
-      traits_type;
+  using traits_type =
+      std::char_traits<typename std::remove_const<value_type>::type>;
 
   static const size_type npos;
 
@@ -297,6 +311,26 @@ class Range {
       e_ = b_ + size;
     }
   }
+
+  // Allow explicit construction of ByteRange from std::string_view or
+  // std::string.  Given that we allow implicit construction of ByteRange from
+  // StringPiece, it makes sense to allow this explicit construction, and avoids
+  // callers having to say ByteRange{StringPiece{str}} when they want a
+  // ByteRange pointing to data in a std::string.
+  template <
+      class Container,
+      class T = Iter,
+      typename detail::IsUnsignedCharPointer<T>::const_type = 0,
+      class = typename std::enable_if<
+            std::is_same<typename Container::const_pointer, const char*>::value
+          >::type,
+      class = decltype(
+          Iter(std::declval<Container const&>().data()),
+          Iter(
+              std::declval<Container const&>().data() +
+              std::declval<Container const&>().size()))>
+  explicit Range(const Container& str)
+      : b_(reinterpret_cast<Iter>(str.data())), e_(b_ + str.size()) {}
 
   // Allow implicit conversion from Range<const char*> (aka StringPiece) to
   // Range<const unsigned char*> (aka ByteRange), as they're both frequently
@@ -665,6 +699,9 @@ class Range {
     e_ -= n;
   }
 
+  // Returns a window into the current range, starting at first, and spans
+  // length characters (or until the end of the current range, whichever comes
+  // first). Throws if first is past the end of the current range.
   Range subpiece(size_type first, size_type length = npos) const {
     if (UNLIKELY(first > size())) {
       throw_exception<std::out_of_range>("index out of range");
@@ -905,7 +942,7 @@ class Range {
   }
 
   /**
-   * Replaces all occurences of 'source' with 'dest'. Returns number
+   * Replaces all occurrences of 'source' with 'dest'. Returns number
    * of replacements made. Source and dest have to have the same
    * length. Throws if the lengths are different. If 'source' is a
    * pattern that is overlapping with itself, we perform sequential
@@ -942,7 +979,7 @@ class Range {
 
   /**
    * Splits this `Range` `[b, e)` in the position `i` dictated by the next
-   * occurence of `delimiter`.
+   * occurrence of `delimiter`.
    *
    * Returns a new `Range` `[b, i)` and adjusts this range to start right after
    * the delimiter's position. This range will be empty if the delimiter is not
@@ -1131,10 +1168,10 @@ constexpr Range<T const*> crange(std::array<T, n> const& array) {
   return Range<T const*>{array};
 }
 
-typedef Range<const char*> StringPiece;
-typedef Range<char*> MutableStringPiece;
-typedef Range<const unsigned char*> ByteRange;
-typedef Range<unsigned char*> MutableByteRange;
+using StringPiece = Range<const char*>;
+using MutableStringPiece = Range<char*>;
+using ByteRange = Range<const unsigned char*>;
+using MutableByteRange = Range<unsigned char*>;
 
 template <class C>
 std::basic_ostream<C>& operator<<(
@@ -1483,7 +1520,7 @@ constexpr Range<char const*> operator"" _sp(
   return Range<char const*>(str, len);
 }
 
-#if __cpp_char8_t >= 201811L
+#if defined(__cpp_char8_t) && __cpp_char8_t >= 201811L
 constexpr Range<char8_t const*> operator"" _sp(
     char8_t const* str, size_t len) noexcept {
   return Range<char8_t const*>(str, len);

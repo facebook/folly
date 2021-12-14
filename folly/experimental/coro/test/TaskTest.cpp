@@ -26,6 +26,7 @@
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/futures/Future.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
 #include <type_traits>
@@ -545,6 +546,28 @@ TEST_F(TaskTest, MakeTask) {
   }());
 }
 
+TEST_F(TaskTest, ScheduleOnRestoresExecutor) {
+  folly::ScopedEventBaseThread ebt;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    co_await [&]() -> folly::coro::Task<void> {
+      EXPECT_TRUE(ebt.getEventBase()->inRunningEventBaseThread());
+      co_return;
+    }()
+                          .scheduleOn(&ebt);
+    EXPECT_FALSE(ebt.getEventBase()->inRunningEventBaseThread());
+    try {
+      co_await [&]() -> folly::coro::Task<void> {
+        EXPECT_TRUE(ebt.getEventBase()->inRunningEventBaseThread());
+        throw std::runtime_error("");
+        co_return;
+      }()
+                            .scheduleOn(&ebt);
+    } catch (...) {
+    }
+    EXPECT_FALSE(ebt.getEventBase()->inRunningEventBaseThread());
+  }());
+}
+
 TEST_F(TaskTest, CoAwaitTryWithScheduleOn) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto t = []() -> folly::coro::Task<int> { co_return 42; }();
@@ -630,4 +653,88 @@ TEST_F(TaskTest, SafePoint) {
   }());
 }
 
+TEST_F(TaskTest, CoAwaitNothrow) {
+  auto res =
+      folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {
+        auto t = []() -> folly::coro::Task<int> { co_return 42; }();
+
+        int result = co_await folly::coro::co_nothrow(std::move(t));
+        EXPECT_EQ(42, result);
+
+        t = []() -> folly::coro::Task<int> {
+          co_yield folly::coro::co_error(std::runtime_error(""));
+        }();
+
+        try {
+          result = co_await folly::coro::co_nothrow(std::move(t));
+        } catch (...) {
+          ADD_FAILURE();
+        }
+        ADD_FAILURE();
+      }()));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+TEST_F(TaskTest, CoAwaitNothrowWithScheduleOn) {
+  auto res =
+      folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {
+        auto t = []() -> folly::coro::Task<int> { co_return 42; }();
+
+        int result = co_await folly::coro::co_nothrow(
+            std::move(t).scheduleOn(folly::getGlobalCPUExecutor()));
+        EXPECT_EQ(42, result);
+
+        t = []() -> folly::coro::Task<int> {
+          co_yield folly::coro::co_error(std::runtime_error(""));
+        }();
+
+        try {
+          result = co_await folly::coro::co_nothrow(
+              std::move(t).scheduleOn(folly::getGlobalCPUExecutor()));
+        } catch (...) {
+          ADD_FAILURE();
+        }
+        ADD_FAILURE();
+      }()));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+TEST_F(TaskTest, CoAwaitThrowAfterNothrow) {
+  auto res =
+      folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {
+        auto t = []() -> folly::coro::Task<int> { co_return 42; }();
+
+        int result = co_await folly::coro::co_nothrow(std::move(t));
+        EXPECT_EQ(42, result);
+
+        t = []() -> folly::coro::Task<int> {
+          co_yield folly::coro::co_error(std::runtime_error(""));
+        }();
+
+        try {
+          result = co_await std::move(t);
+          ADD_FAILURE();
+        } catch (...) {
+          throw std::logic_error("translated");
+        }
+      }()));
+  EXPECT_TRUE(res.hasException<std::logic_error>());
+}
+
+TEST_F(TaskTest, CoAwaitNothrowDestructorOrdering) {
+  int i = 0;
+  folly::coro::blockingWait(co_awaitTry([&]() -> folly::coro::Task<> {
+    co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
+      SCOPE_EXIT { i *= i; };
+      co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
+        SCOPE_EXIT { i *= 3; };
+        co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
+          SCOPE_EXIT { i += 1; };
+          co_return;
+        }());
+      }());
+    }());
+  }()));
+  EXPECT_EQ(i, 9);
+}
 #endif

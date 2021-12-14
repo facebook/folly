@@ -72,6 +72,7 @@ class MockAsyncTransport : public AsyncTransport {
   MOCK_METHOD1(
       setReplaySafetyCallback, void(AsyncTransport::ReplaySafetyCallback*));
   MOCK_CONST_METHOD0(getSecurityProtocol, std::string());
+  MOCK_CONST_METHOD0(getPeerCertificate, const AsyncTransportCertificate*());
 };
 
 class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {

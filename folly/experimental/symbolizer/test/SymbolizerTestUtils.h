@@ -29,34 +29,34 @@ extern void* gComparatorGetStackTraceArg;
 int testComparator(const void* ap, const void* bp);
 
 // Set to the line number in the caller function when calling
-// qsort/inlineA_qsort/inlineB_inlineA_qsort.
-extern int kLineno_qsort;
-extern int kLineno_inlineA_qsort;
-extern int kLineno_inlineB_inlineA_qsort;
+// lfind/inlineA_lfind/inlineB_inlineA_lfind.
+extern int kLineno_lfind;
+extern int kLineno_inlineA_lfind;
+extern int kLineno_inlineB_inlineA_lfind;
 
 // Debug Info for inlined functions is emitted in the functions where they're
 // inlined in. The SymbolizeTest.o object file has many dependencies and will
 // have a huge amount of debug info. To simplify debugging call inlined
 // functions through these trampolines so that all debug info worth inspecting
 // is emitted in the tiny SymbolizerTestUtils.o
-void call_inlineA_qsort();
-void call_inlineB_inlineA_qsort();
-void call_inlineLTO_inlineA_qsort();
-void call_same_file_memberInline_inlineA_qsort();
-void call_same_file_staticMemberInline_inlineA_qsort();
-void call_different_file_memberInline_inlineA_qsort();
-void call_different_file_staticMemberInline_inlineA_qsort();
-void call_lexicalBlock_inlineB_inlineA_qsort();
+void call_inlineA_lfind();
+void call_inlineB_inlineA_lfind();
+void call_inlineLTO_inlineA_lfind();
+void call_same_file_memberInline_inlineA_lfind();
+void call_same_file_staticMemberInline_inlineA_lfind();
+void call_different_file_memberInline_inlineA_lfind();
+void call_different_file_staticMemberInline_inlineA_lfind();
+void call_lexicalBlock_inlineB_inlineA_lfind();
 
-// NOTE: inlineLTO_inlineA_qsort is only inlined with LTO/ThinLTO.
-void inlineLTO_inlineA_qsort();
+// NOTE: inlineLTO_inlineA_lfind is only inlined with LTO/ThinLTO.
+void inlineLTO_inlineA_lfind();
 
 class ClassDifferentFile {
  public:
-  __attribute__((__always_inline__)) inline void memberInline_inlineA_qsort()
+  __attribute__((__always_inline__)) inline void memberInline_inlineA_lfind()
       const;
   __attribute__((__always_inline__)) inline static void
-  staticMemberInline_inlineA_qsort();
+  staticMemberInline_inlineA_lfind();
 
   int dummy() const { return dummy_; }
   int dummy_ = 0;

@@ -91,7 +91,7 @@ constexpr poly_table<Deg> make_poly_table() {
   uint64_t table[8][256][poly_size(Deg)] = {};
   // table[i][q] is Q(X) * X^(k+8*i) mod P(X),
   // where k is the number of bits in the fingerprint (and deg(P)) and
-  // Q(X) = q7*X^7 + q6*X^6 + ... + q1*X + q0 is a degree-7 polyonomial
+  // Q(X) = q7*X^7 + q6*X^6 + ... + q1*X + q0 is a degree-7 polynomial
   // whose coefficients are the bits of q.
   for (uint16_t x = 0; x < 256; x++) {
     FingerprintPolynomial<Deg> t;

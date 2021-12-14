@@ -253,10 +253,11 @@ class FOLLY_EXPORT SubprocessSpawnError : public SubprocessError {
  */
 class Subprocess {
  public:
-  static const int CLOSE = -1;
+  // removed CLOSE = -1
   static const int PIPE = -2;
   static const int PIPE_IN = -3;
   static const int PIPE_OUT = -4;
+  static const int DEV_NULL = -5;
 
   /**
    * See Subprocess::Options::dangerousPostForkPreExecCallback() for usage.
@@ -475,6 +476,13 @@ class Subprocess {
     }
 #endif
 
+#if defined(__linux__)
+    Options& setCpuSet(const cpu_set_t& cpuSet) {
+      cpuSet_ = cpuSet;
+      return *this;
+    }
+#endif
+
    private:
     typedef boost::container::flat_map<int, int> FdMap;
     FdMap fdActions_;
@@ -494,9 +502,12 @@ class Subprocess {
     // Optional<> is used because value of '0' means do clone without any flags.
     Optional<clone_flags_t> cloneFlags_;
 #endif
+#if defined(__linux__)
+    Optional<cpu_set_t> cpuSet_;
+#endif
   };
 
-  // Non-copiable, but movable
+  // Non-copyable, but movable
   Subprocess(const Subprocess&) = delete;
   Subprocess& operator=(const Subprocess&) = delete;
   Subprocess(Subprocess&&) = default;
@@ -896,7 +907,7 @@ class Subprocess {
   /**
    * The child's pipes are logically separate from the process metadata
    * (they may even be kept alive by the child's descendants).  This call
-   * lets you manage the pipes' lifetime separetely from the lifetime of the
+   * lets you manage the pipes' lifetime separately from the lifetime of the
    * child process.
    *
    * After this call, the Subprocess instance will have no knowledge of

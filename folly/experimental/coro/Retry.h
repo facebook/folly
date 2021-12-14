@@ -66,8 +66,6 @@ auto retryWhen(Func func, RetryDelayFunc retryDelay)
         assert(result.hasException());
         error = std::move(result.exception());
       }
-    } catch (const std::exception& e) {
-      error = exception_wrapper(std::current_exception(), e);
     } catch (...) {
       error = exception_wrapper(std::current_exception());
     }
@@ -163,16 +161,18 @@ class ExponentialBackoffWithJitter {
         decider_(static_cast<Decider2&&>(decider)) {}
 
   Task<void> operator()(exception_wrapper&& ew) & {
+    using dist = std::normal_distribution<double>;
+
     if (retryCount_ == maxRetries_ || !decider_(ew)) {
       co_yield folly::coro::co_error(std::move(ew));
     }
 
     ++retryCount_;
 
-    auto dist = std::normal_distribution<double>(0.0, relativeJitterStdDev_);
-
     // The jitter will be a value between [e^-stdev]
-    auto jitter = std::exp(dist(randomGen_));
+    auto jitter = relativeJitterStdDev_ > 0
+        ? std::exp(dist{0., relativeJitterStdDev_}(randomGen_))
+        : 1.;
     auto backoffRep =
         jitter * minBackoff_.count() * std::pow(2, retryCount_ - 1u);
 

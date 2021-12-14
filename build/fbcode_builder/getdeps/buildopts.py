@@ -105,6 +105,18 @@ class BuildOptions(object):
         self.lfs_path = lfs_path
         if vcvars_path is None and is_windows():
 
+            try:
+                # Allow a site-specific vcvarsall path.
+                from .facebook.vcvarsall import build_default_vcvarsall
+            except ImportError:
+                vcvarsall = []
+            else:
+                vcvarsall = (
+                    build_default_vcvarsall(self.fbsource_dir)
+                    if self.fbsource_dir is not None
+                    else []
+                )
+
             # On Windows, the compiler is not available in the PATH by
             # default so we need to run the vcvarsall script to populate the
             # environment. We use a glob to find some version of this script
@@ -113,7 +125,6 @@ class BuildOptions(object):
             # the version of boost in our manifest cannot be built with
             # VS 2019, so we're effectively tied to VS 2017 until we upgrade
             # the boost dependency.
-            vcvarsall = []
             for year in ["2017", "2019"]:
                 vcvarsall += glob.glob(
                     os.path.join(
@@ -140,6 +151,9 @@ class BuildOptions(object):
 
     def is_windows(self):
         return self.host_type.is_windows()
+
+    def is_arm(self):
+        return self.host_type.is_arm()
 
     def get_vcvars_path(self):
         return self.vcvars_path
@@ -219,33 +233,29 @@ class BuildOptions(object):
         for d in install_dirs:
             bindir = os.path.join(d, "bin")
 
-            if not (
-                manifest and manifest.get("build", "disable_env_override_pkgconfig")
-            ):
-                pkgconfig = os.path.join(d, "lib/pkgconfig")
-                if os.path.exists(pkgconfig):
-                    add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+            pkgconfig = os.path.join(d, "lib/pkgconfig")
+            if os.path.exists(pkgconfig):
+                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
 
-                pkgconfig = os.path.join(d, "lib64/pkgconfig")
-                if os.path.exists(pkgconfig):
-                    add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+            pkgconfig = os.path.join(d, "lib64/pkgconfig")
+            if os.path.exists(pkgconfig):
+                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
 
-            if not (manifest and manifest.get("build", "disable_env_override_path")):
-                add_path_entry(env, "CMAKE_PREFIX_PATH", d)
+            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
 
-                # Allow resolving shared objects built earlier (eg: zstd
-                # doesn't include the full path to the dylib in its linkage
-                # so we need to give it an assist)
-                if lib_path:
-                    for lib in ["lib", "lib64"]:
-                        libdir = os.path.join(d, lib)
-                        if os.path.exists(libdir):
-                            add_path_entry(env, lib_path, libdir)
+            # Allow resolving shared objects built earlier (eg: zstd
+            # doesn't include the full path to the dylib in its linkage
+            # so we need to give it an assist)
+            if lib_path:
+                for lib in ["lib", "lib64"]:
+                    libdir = os.path.join(d, lib)
+                    if os.path.exists(libdir):
+                        add_path_entry(env, lib_path, libdir)
 
-                # Allow resolving binaries (eg: cmake, ninja) and dlls
-                # built by earlier steps
-                if os.path.exists(bindir):
-                    add_path_entry(env, "PATH", bindir, append=False)
+            # Allow resolving binaries (eg: cmake, ninja) and dlls
+            # built by earlier steps
+            if os.path.exists(bindir):
+                add_path_entry(env, "PATH", bindir, append=False)
 
             # If rustc is present in the `bin` directory, set RUSTC to prevent
             # cargo uses the rustc installed in the system.
@@ -270,6 +280,15 @@ class BuildOptions(object):
             ):
                 # This must be the openssl library, let Rust know about it
                 env["OPENSSL_DIR"] = d
+                # And let openssl know to pick up the system certs if present
+                for system_ssl_cfg in ["/etc/pki/tls", "/etc/ssl"]:
+                    if os.path.isdir(system_ssl_cfg):
+                        cert_dir = system_ssl_cfg + "/certs"
+                        if os.path.isdir(cert_dir):
+                            env["SSL_CERT_DIR"] = cert_dir
+                        cert_file = system_ssl_cfg + "/cert.pem"
+                        if os.path.isfile(cert_file):
+                            env["SSL_CERT_FILE"] = cert_file
 
         return env
 

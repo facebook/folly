@@ -58,6 +58,10 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD4(
       recvmmsg,
       int(struct mmsghdr*, unsigned int, unsigned int, struct timespec*));
+  MOCK_METHOD1(setCmsgs, void(const SocketOptionMap&));
+  MOCK_METHOD1(appendCmsgs, void(const SocketOptionMap&));
+  MOCK_METHOD2(
+      applyOptions, void(const SocketOptionMap&, SocketOptionKey::ApplyPos));
 };
 
 } // namespace test

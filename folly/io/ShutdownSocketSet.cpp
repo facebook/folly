@@ -27,58 +27,103 @@
 
 namespace folly {
 
-ShutdownSocketSet::ShutdownSocketSet(int maxFd)
-    : maxFd_(maxFd),
-      data_(static_cast<std::atomic<uint8_t>*>(
-          folly::checkedCalloc(size_t(maxFd), sizeof(std::atomic<uint8_t>)))),
+using handle_t = NetworkSocket::native_handle_type;
+static constexpr auto handle_tag = std::is_integral<handle_t>{};
+static constexpr auto invalid_pos = ~size_t(0);
+
+template <typename Cap>
+static size_t cap_(std::false_type, Cap) {
+  return 0;
+}
+template <typename Cap, typename H = handle_t>
+static size_t cap_(std::true_type, Cap cap) {
+  cap = cap == invalid_pos ? 0 : cap;
+  auto max = static_cast<Cap>(std::numeric_limits<H>::max());
+  return cap > max ? max : cap;
+}
+static size_t cap(size_t capacity) {
+  return cap_(handle_tag, capacity);
+}
+
+template <typename Data>
+static size_t pos_(std::false_type, Data) {
+  return invalid_pos;
+}
+template <typename Data>
+static size_t pos_(std::true_type, Data data) {
+  return to_unsigned(data);
+}
+static size_t pos(NetworkSocket fd) {
+  return fd.data == NetworkSocket::invalid_handle_value
+      ? invalid_pos
+      : pos_(handle_tag, fd.data);
+}
+
+template <typename Pos>
+static NetworkSocket at_(std::false_type, Pos) {
+  return NetworkSocket();
+}
+template <typename Pos>
+static NetworkSocket at_(std::true_type, Pos p) {
+  return NetworkSocket(static_cast<NetworkSocket::native_handle_type>(p));
+}
+static NetworkSocket at(size_t p) {
+  return p == invalid_pos ? NetworkSocket() : at_(handle_tag, p);
+}
+
+ShutdownSocketSet::ShutdownSocketSet(size_t capacity)
+    : capacity_(cap(capacity)),
+      data_(static_cast<relaxed_atomic<uint8_t>*>(
+          folly::checkedCalloc(capacity_, sizeof(relaxed_atomic<uint8_t>)))),
       nullFile_("/dev/null", O_RDWR) {}
 
 void ShutdownSocketSet::add(NetworkSocket fd) {
-  // Silently ignore any fds >= maxFd_, very unlikely
+  // Silently ignore any fds >= capacity_, very unlikely
   DCHECK_NE(fd, NetworkSocket());
-  if (fd.data >= maxFd_) {
+  auto p = pos(fd);
+  if (p >= capacity_) {
     return;
   }
 
-  auto& sref = data_[size_t(fd.data)];
+  auto& sref = data_[p];
   uint8_t prevState = FREE;
-  CHECK(sref.compare_exchange_strong(
-      prevState, IN_USE, std::memory_order_relaxed))
+  CHECK(sref.compare_exchange_strong(prevState, IN_USE))
       << "Invalid prev state for fd " << fd << ": " << int(prevState);
 }
 
 void ShutdownSocketSet::remove(NetworkSocket fd) {
   DCHECK_NE(fd, NetworkSocket());
-  if (fd.data >= maxFd_) {
+  auto p = pos(fd);
+  if (p >= capacity_) {
     return;
   }
 
-  auto& sref = data_[size_t(fd.data)];
+  auto& sref = data_[p];
   uint8_t prevState = 0;
 
-  prevState = sref.load(std::memory_order_relaxed);
+  prevState = sref.load();
   do {
     switch (prevState) {
       case IN_SHUTDOWN:
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        prevState = sref.load(std::memory_order_relaxed);
+        prevState = sref.load();
         continue;
       case FREE:
         LOG(FATAL) << "Invalid prev state for fd " << fd << ": "
                    << int(prevState);
     }
-  } while (
-      !sref.compare_exchange_weak(prevState, FREE, std::memory_order_relaxed));
+  } while (!sref.compare_exchange_weak(prevState, FREE));
 }
 
 int ShutdownSocketSet::close(NetworkSocket fd) {
   DCHECK_NE(fd, NetworkSocket());
-  if (fd.data >= maxFd_) {
+  auto p = pos(fd);
+  if (p >= capacity_) {
     return folly::closeNoInt(fd);
   }
 
-  auto& sref = data_[size_t(fd.data)];
-  uint8_t prevState = sref.load(std::memory_order_relaxed);
+  auto& sref = data_[p];
+  uint8_t prevState = sref.load();
   uint8_t newState = 0;
 
   do {
@@ -94,31 +139,29 @@ int ShutdownSocketSet::close(NetworkSocket fd) {
         LOG(FATAL) << "Invalid prev state for fd " << fd << ": "
                    << int(prevState);
     }
-  } while (!sref.compare_exchange_strong(
-      prevState, newState, std::memory_order_relaxed));
+  } while (!sref.compare_exchange_strong(prevState, newState));
 
   return newState == FREE ? folly::closeNoInt(fd) : 0;
 }
 
 void ShutdownSocketSet::shutdown(NetworkSocket fd, bool abortive) {
   DCHECK_NE(fd, NetworkSocket());
-  if (fd.data >= maxFd_) {
+  auto p = pos(fd);
+  if (p >= capacity_) {
     doShutdown(fd, abortive);
     return;
   }
 
-  auto& sref = data_[size_t(fd.data)];
+  auto& sref = data_[p];
   uint8_t prevState = IN_USE;
-  if (!sref.compare_exchange_strong(
-          prevState, IN_SHUTDOWN, std::memory_order_relaxed)) {
+  if (!sref.compare_exchange_strong(prevState, IN_SHUTDOWN)) {
     return;
   }
 
   doShutdown(fd, abortive);
 
   prevState = IN_SHUTDOWN;
-  if (sref.compare_exchange_strong(
-          prevState, SHUT_DOWN, std::memory_order_relaxed)) {
+  if (sref.compare_exchange_strong(prevState, SHUT_DOWN)) {
     return;
   }
 
@@ -127,18 +170,15 @@ void ShutdownSocketSet::shutdown(NetworkSocket fd, bool abortive) {
 
   folly::closeNoInt(fd); // ignore errors, nothing to do
 
-  CHECK(
-      sref.compare_exchange_strong(prevState, FREE, std::memory_order_relaxed))
+  CHECK(sref.compare_exchange_strong(prevState, FREE))
       << "Invalid prev state for fd " << fd << ": " << int(prevState);
 }
 
 void ShutdownSocketSet::shutdownAll(bool abortive) {
-  for (int i = 0; i < maxFd_; ++i) {
-    auto& sref = data_[size_t(i)];
-    if (sref.load(std::memory_order_relaxed) == IN_USE) {
-      shutdown(
-          NetworkSocket(static_cast<NetworkSocket::native_handle_type>(i)),
-          abortive);
+  for (size_t p = 0; p < capacity_; ++p) {
+    auto& sref = data_[p];
+    if (sref.load() == IN_USE) {
+      shutdown(at(p), abortive);
     }
   }
 }

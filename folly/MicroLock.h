@@ -94,7 +94,7 @@ namespace folly {
 
 class MicroLockCore {
  protected:
-  uint8_t lock_;
+  uint8_t lock_{};
   /**
    * Arithmetic shift required to get to the byte from the word.
    */
@@ -155,14 +155,14 @@ class MicroLockCore {
   }
 
   template <typename Func>
-  FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_MEMORY_SANITIZER void
-  unlockAndStoreWithModifier(Func modifier) noexcept;
+  FOLLY_DISABLE_SANITIZERS void unlockAndStoreWithModifier(
+      Func modifier) noexcept;
 
  public:
   /**
    * Loads the data stored in the unused bits of the lock atomically.
    */
-  FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_MEMORY_SANITIZER uint8_t
+  FOLLY_DISABLE_SANITIZERS uint8_t
   load(std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return decodeDataFromWord(word()->load(order));
   }
@@ -172,7 +172,7 @@ class MicroLockCore {
    * used by the lock, the most significant 2 bits of the provided value will be
    * ignored.
    */
-  FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_MEMORY_SANITIZER void store(
+  FOLLY_DISABLE_SANITIZERS void store(
       uint8_t value,
       std::memory_order order = std::memory_order_seq_cst) noexcept;
 
@@ -183,11 +183,6 @@ class MicroLockCore {
    */
   void unlockAndStore(uint8_t value) noexcept;
   void unlock() noexcept;
-
-  /**
-   * Initializes the lock state and sets the data bits to 0.
-   */
-  void init() noexcept { lock_ = 0; }
 };
 
 inline detail::Futex<>* MicroLockCore::word() const noexcept {
@@ -265,11 +260,9 @@ class MicroLockBase : public MicroLockCore {
    * data, in which case reading and locking should be done in one atomic
    * operation.
    */
-  FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_MEMORY_SANITIZER uint8_t
-  lockAndLoad() noexcept;
+  FOLLY_DISABLE_SANITIZERS uint8_t lockAndLoad() noexcept;
   void lock() noexcept { lockAndLoad(); }
-  FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_MEMORY_SANITIZER bool
-  try_lock() noexcept;
+  FOLLY_DISABLE_SANITIZERS bool try_lock() noexcept;
 
   /**
    * A lock guard which allows reading and writing to the unused bits of the

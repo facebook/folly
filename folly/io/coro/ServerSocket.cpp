@@ -50,7 +50,8 @@ class AcceptCallback : public folly::AsyncServerSocket::AcceptCallback {
 
   void connectionAccepted(
       folly::NetworkSocket fdNetworkSocket,
-      const folly::SocketAddress& clientAddr) noexcept override {
+      const folly::SocketAddress& clientAddr,
+      AcceptInfo /* info */) noexcept override {
     VLOG(5) << "Connection accepted from: " << clientAddr.describe();
     // unregister handlers while in the callback
     socket_->pauseAccepting();

@@ -339,6 +339,18 @@ class InstallSysDepsCmd(ProjectCmdBase):
             action="store_true",
             default=False,
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            default=False,
+            help="Don't install, just print the commands specs we would run",
+        )
+        parser.add_argument(
+            "--package-type",
+            choices=["rpm", "deb"],
+            default=None,
+            help="Allow overriding the package type so can see deb from centos",
+        )
 
     def run_project_cmd(self, args, loader, manifest):
         if args.recursive:
@@ -346,7 +358,6 @@ class InstallSysDepsCmd(ProjectCmdBase):
         else:
             projects = [manifest]
 
-        cache = cache_module.create_cache()
         all_packages = {}
         for m in projects:
             ctx = loader.ctx_gen.get_context(m.name)
@@ -356,17 +367,34 @@ class InstallSysDepsCmd(ProjectCmdBase):
                 merged += v
                 all_packages[k] = merged
 
-        manager = loader.build_opts.host_type.get_package_manager()
+        if args.package_type:
+            manager = args.package_type
+        else:
+            manager = loader.build_opts.host_type.get_package_manager()
+
+        cmd_args = None
         if manager == "rpm":
             packages = sorted(list(set(all_packages["rpm"])))
             if packages:
-                run_cmd(["dnf", "install", "-y"] + packages)
+                cmd_args = ["dnf", "install", "-y"] + packages
         elif manager == "deb":
             packages = sorted(list(set(all_packages["deb"])))
             if packages:
-                run_cmd(["apt", "install", "-y"] + packages)
+                cmd_args = ["apt", "install", "-y"] + packages
         else:
-            print("I don't know how to install any packages on this system")
+            host_tuple = loader.build_opts.host_type.as_tuple_string()
+            print(
+                f"I don't know how to install any packages on this system {host_tuple}"
+            )
+            return
+
+        if cmd_args:
+            if args.dry_run:
+                print(" ".join(cmd_args))
+            else:
+                run_cmd(cmd_args)
+        else:
+            print("no packages to install")
 
 
 @cmd("list-deps", "lists the transitive deps for a given project")
@@ -550,6 +578,8 @@ class BuildCmd(ProjectCmdBase):
                     # Only populate the cache from continuous build runs
                     if args.schedule_type == "continuous":
                         cached_project.upload()
+                elif args.verbose:
+                    print("found good %s" % built_marker)
 
             install_dirs.append(inst_dir)
 
@@ -772,13 +802,6 @@ class TestCmd(ProjectCmdBase):
 @cmd("generate-github-actions", "generate a GitHub actions configuration")
 class GenerateGitHubActionsCmd(ProjectCmdBase):
     RUN_ON_ALL = """ [push, pull_request]"""
-    RUN_ON_DEFAULT = """
-  push:
-    branches:
-    - master
-  pull_request:
-    branches:
-    - master"""
 
     def run_project_cmd(self, args, loader, manifest):
         platforms = [
@@ -788,16 +811,29 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         ]
 
         for p in platforms:
+            if args.os_types and p.ostype not in args.os_types:
+                continue
             self.write_job_for_platform(p, args)
+
+    def get_run_on(self, args):
+        if args.run_on_all_branches:
+            return self.RUN_ON_ALL
+        return f"""
+  push:
+    branches:
+    - {args.main_branch}
+  pull_request:
+    branches:
+    - {args.main_branch}"""
 
     # TODO: Break up complex function
     def write_job_for_platform(self, platform, args):  # noqa: C901
         build_opts = setup_build_options(args, platform)
-        ctx_gen = build_opts.get_context_generator()
+        ctx_gen = build_opts.get_context_generator(facebook_internal=False)
         loader = ManifestLoader(build_opts, ctx_gen)
         manifest = loader.load_manifest(args.project)
         manifest_ctx = loader.ctx_gen.get_context(manifest.name)
-        run_on = self.RUN_ON_ALL if args.run_on_all_branches else self.RUN_ON_DEFAULT
+        run_on = self.get_run_on(args)
 
         # Some projects don't do anything "useful" as a leaf project, only
         # as a dep for a leaf project. Check for those here; we don't want
@@ -850,7 +886,7 @@ jobs:
 """
             )
 
-            getdeps = f"{py3} build/fbcode_builder/getdeps.py"
+            getdepscmd = f"{py3} build/fbcode_builder/getdeps.py"
 
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
@@ -882,12 +918,12 @@ jobs:
             for m in projects:
                 if m != manifest:
                     out.write("    - name: Fetch %s\n" % m.name)
-                    out.write(f"      run: {getdeps} fetch --no-tests {m.name}\n")
+                    out.write(f"      run: {getdepscmd} fetch --no-tests {m.name}\n")
 
             for m in projects:
                 if m != manifest:
                     out.write("    - name: Build %s\n" % m.name)
-                    out.write(f"      run: {getdeps} build --no-tests {m.name}\n")
+                    out.write(f"      run: {getdepscmd} build --no-tests {m.name}\n")
 
             out.write("    - name: Build %s\n" % manifest.name)
 
@@ -898,7 +934,7 @@ jobs:
                 )
 
             out.write(
-                f"      run: {getdeps} build --src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd} build --src-dir=. {manifest.name} {project_prefix}\n"
             )
 
             out.write("    - name: Copy artifacts\n")
@@ -912,19 +948,19 @@ jobs:
                 strip = ""
 
             out.write(
-                f"      run: {getdeps} fixup-dyn-deps{strip} "
+                f"      run: {getdepscmd} fixup-dyn-deps{strip} "
                 f"--src-dir=. {manifest.name} _artifacts/{job_name} {project_prefix} "
                 f"--final-install-prefix /usr/local\n"
             )
 
-            out.write("    - uses: actions/upload-artifact@master\n")
+            out.write("    - uses: actions/upload-artifact@v2\n")
             out.write("      with:\n")
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
 
             out.write("    - name: Test %s\n" % manifest.name)
             out.write(
-                f"      run: {getdeps} test --src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd} test --src-dir=. {manifest.name} {project_prefix}\n"
             )
 
     def setup_project_cmd_parser(self, parser):
@@ -944,6 +980,19 @@ jobs:
         )
         parser.add_argument(
             "--ubuntu-version", default="18.04", help="Version of Ubuntu to use"
+        )
+        parser.add_argument(
+            "--main-branch",
+            default="main",
+            help="Main branch to trigger GitHub Action on",
+        )
+        parser.add_argument(
+            "--os-type",
+            help="Filter to just this OS type to run",
+            choices=["linux", "darwin", "windows"],
+            action="append",
+            dest="os_types",
+            default=[],
         )
 
 
@@ -1014,6 +1063,13 @@ def parse_args():
     add_common_arg(
         "--allow-system-packages",
         help="Allow satisfying third party deps from installed system packages",
+        action="store_true",
+        default=False,
+    )
+    add_common_arg(
+        "-v",
+        "--verbose",
+        help="Print more output",
         action="store_true",
         default=False,
     )

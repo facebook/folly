@@ -43,6 +43,20 @@ TEST(StreamingStatsTest, Constructor) {
   EXPECT_DOUBLE_EQ(stats.maximum(), 10.0);
 }
 
+TEST(StreamingStatsTest, ConstructFromValues) {
+  StreamingStats<double> stats1;
+  for (double i = 0.0; i < 100; i++) {
+    stats1.add(i);
+  }
+
+  StreamingStats<double> stats2(stats1.state());
+  EXPECT_EQ(stats1.count(), stats2.count());
+  EXPECT_EQ(stats1.mean(), stats2.mean());
+  EXPECT_EQ(stats1.m2(), stats2.m2());
+  EXPECT_EQ(stats1.minimum(), stats2.minimum());
+  EXPECT_EQ(stats1.maximum(), stats2.maximum());
+}
+
 template <typename SampleDataType>
 class StreamingStatsTest : public testing::Test {
  public:

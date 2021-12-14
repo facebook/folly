@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+#include <folly/CPortability.h>
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
+#include <folly/lang/Keep.h>
+#include <folly/synchronization/Latch.h>
 
 #include <atomic>
 #include <memory>
@@ -35,14 +38,64 @@
 #include <folly/executors/thread_factory/InitThreadFactory.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/PThread.h>
 #include <folly/synchronization/detail/Spin.h>
 
 using namespace folly;
 using namespace std::chrono;
 
+// Like ASSERT_NEAR, for chrono duration types
+#define ASSERT_NEAR_NS(a, b, c)  \
+  do {                           \
+    ASSERT_NEAR(                 \
+        nanoseconds(a).count(),  \
+        nanoseconds(b).count(),  \
+        nanoseconds(c).count()); \
+  } while (0)
+
 static Func burnMs(uint64_t ms) {
   return [ms]() { std::this_thread::sleep_for(milliseconds(ms)); };
 }
+
+#ifdef __linux__
+static std::chrono::nanoseconds thread_clock_now() {
+  timespec tp;
+  clockid_t clockid;
+  CHECK(!pthread_getcpuclockid(pthread_self(), &clockid));
+  CHECK(!clock_gettime(clockid, &tp));
+  return std::chrono::nanoseconds(tp.tv_nsec) + std::chrono::seconds(tp.tv_sec);
+}
+
+// Loop and burn cpu cycles
+static void burnThreadCpu(milliseconds ms) {
+  auto expires = thread_clock_now() + ms;
+  while (thread_clock_now() < expires) {
+  }
+}
+
+// Loop without using much cpu time
+static void idleLoopFor(milliseconds ms) {
+  using clock = high_resolution_clock;
+  auto expires = clock::now() + ms;
+  while (clock::now() < expires) {
+    /* sleep override */ std::this_thread::sleep_for(100ms);
+  }
+}
+#endif
+
+static WorkerProvider* kWorkerProviderGlobal = nullptr;
+
+namespace folly {
+
+#if FOLLY_HAVE_WEAK_SYMBOLS
+FOLLY_KEEP std::unique_ptr<QueueObserverFactory> make_queue_observer_factory(
+    const std::string&, size_t, WorkerProvider* workerProvider) {
+  kWorkerProviderGlobal = workerProvider;
+  return {};
+}
+#endif
+
+} // namespace folly
 
 template <class TPE>
 static void basic() {
@@ -299,6 +352,70 @@ TEST(ThreadPoolExecutorTest, IOTaskStats) {
 TEST(ThreadPoolExecutorTest, EDFTaskStats) {
   taskStats<EDFThreadPoolExecutor>();
 }
+
+#ifdef __linux__
+TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
+  CPUThreadPoolExecutor e(4);
+  ASSERT_EQ(e.numActiveThreads(), 0);
+  ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
+  // get busy
+  Latch latch(4);
+  auto busy_loop = [&] {
+    burnThreadCpu(1s);
+    latch.count_down();
+  };
+  auto idle_loop = [&] {
+    idleLoopFor(1s);
+    latch.count_down();
+  };
+  e.add(busy_loop); // +1s cpu time
+  e.add(busy_loop); // +1s cpu time
+  e.add(idle_loop); // +0s cpu time
+  e.add(idle_loop); // +0s cpu time
+  latch.wait();
+  // pool should have used 2s cpu time (in 1s wall clock time)
+  auto elapsed0 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed0, 2s, 100ms);
+  // stop all threads
+  e.setNumThreads(0);
+  ASSERT_EQ(e.numActiveThreads(), 0);
+  // total pool CPU time should not have changed
+  auto elapsed1 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed0, elapsed1, 100ms);
+  // add a thread, do nothing, cpu time should stay the same
+  e.setNumThreads(1);
+  Baton<> baton;
+  e.add([&] { baton.post(); });
+  baton.wait();
+  ASSERT_EQ(e.numActiveThreads(), 1);
+  auto elapsed2 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed1, elapsed2, 100ms);
+  // now burn some more cycles
+  baton.reset();
+  e.add([&] {
+    burnThreadCpu(500ms);
+    baton.post();
+  });
+  baton.wait();
+  auto elapsed3 = e.getUsedCpuTime();
+  ASSERT_NEAR_NS(elapsed3, elapsed2 + 500ms, 100ms);
+}
+#else
+TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
+  CPUThreadPoolExecutor e(1);
+  // Just make sure 0 is returned
+  ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
+  Baton<> baton;
+  e.add([&] {
+    auto expires = steady_clock::now() + 500ms;
+    while (steady_clock::now() < expires) {
+    }
+    baton.post();
+  });
+  baton.wait();
+  ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
+}
+#endif
 
 template <class TPE>
 static void expiration() {
@@ -922,6 +1039,116 @@ TEST(ThreadPoolExecutorTest, AddPerf) {
     e.add([&]() { e.add([]() { /* sleep override */ usleep(1000); }); });
   }
   e.stop();
+}
+
+class ExecutorWorkerProviderTest : public ::testing::Test {
+ protected:
+  void SetUp() override { kWorkerProviderGlobal = nullptr; }
+  void TearDown() override { kWorkerProviderGlobal = nullptr; }
+};
+
+TEST_F(ExecutorWorkerProviderTest, ThreadCollectorBasicTest) {
+  // Start 4 threads and have all of them work on a task.
+  // Then invoke the ThreadIdCollector::collectThreadIds()
+  // method to capture the set of active thread ids.
+  boost::barrier barrier{5};
+  Synchronized<std::vector<pid_t>> expectedTids;
+  auto task = [&]() {
+    expectedTids.wlock()->push_back(folly::getOSThreadID());
+    barrier.wait();
+  };
+  CPUThreadPoolExecutor e(4);
+  for (int i = 0; i < 4; ++i) {
+    e.add(task);
+  }
+  barrier.wait();
+  {
+    const auto threadIdsWithKA = kWorkerProviderGlobal->collectThreadIds();
+    const auto& ids = threadIdsWithKA.threadIds;
+    auto locked = expectedTids.rlock();
+    EXPECT_EQ(ids.size(), locked->size());
+    EXPECT_TRUE(std::is_permutation(ids.begin(), ids.end(), locked->begin()));
+  }
+  e.join();
+}
+
+TEST_F(ExecutorWorkerProviderTest, ThreadCollectorMultipleInvocationTest) {
+  // Run some tasks via the executor and invoke
+  // WorkerProvider::collectThreadIds() at least twice to make sure that there
+  // is no deadlock in repeated invocations.
+  CPUThreadPoolExecutor e(1);
+  e.add([&]() {});
+  {
+    auto idsWithKA1 = kWorkerProviderGlobal->collectThreadIds();
+    auto idsWithKA2 = kWorkerProviderGlobal->collectThreadIds();
+    auto& ids1 = idsWithKA1.threadIds;
+    auto& ids2 = idsWithKA2.threadIds;
+    EXPECT_EQ(ids1.size(), 1);
+    EXPECT_EQ(ids1.size(), ids2.size());
+    EXPECT_EQ(ids1, ids2);
+  }
+  // Add some more threads and schedule tasks while the collector
+  // is capturing thread Ids.
+  std::array<folly::Baton<>, 4> bats;
+  {
+    auto idsWithKA1 = kWorkerProviderGlobal->collectThreadIds();
+    e.setNumThreads(4);
+    for (size_t i = 0; i < 4; ++i) {
+      e.add([i, &bats]() { bats[i].wait(); });
+    }
+    for (auto& bat : bats) {
+      bat.post();
+    }
+    auto idsWithKA2 = kWorkerProviderGlobal->collectThreadIds();
+    auto& ids1 = idsWithKA1.threadIds;
+    auto& ids2 = idsWithKA2.threadIds;
+    EXPECT_EQ(ids1.size(), 1);
+    EXPECT_EQ(ids2.size(), 4);
+  }
+  e.join();
+}
+
+TEST_F(ExecutorWorkerProviderTest, ThreadCollectorBlocksThreadExitTest) {
+  // We need to ensure that the collector's keep alive effectively
+  // blocks the executor's threads from exiting. This is done by verifying
+  // that a call to reduce the worker count via setNumThreads() does not
+  // actually reduce the workers (kills threads) while  the keep alive is
+  // in scope.
+  constexpr size_t kNumThreads = 4;
+  std::array<folly::Baton<>, kNumThreads> bats;
+  CPUThreadPoolExecutor e(kNumThreads);
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    e.add([i, &bats]() { bats[i].wait(); });
+  }
+  Baton<> baton;
+  Baton<> threadCountBaton;
+  auto bgCollector = std::thread([&]() {
+    {
+      auto idsWithKA = kWorkerProviderGlobal->collectThreadIds();
+      baton.post();
+      // Since this thread is holding the KeepAlive, it should block
+      // the main thread's `setNumThreads()` call which is trying to
+      // reduce the thread count of the executor. We verify that by
+      // checking that the baton isn't posted after a 100ms wait.
+      auto posted =
+          threadCountBaton.try_wait_for(std::chrono::milliseconds(100));
+      EXPECT_FALSE(posted);
+      auto& ids = idsWithKA.threadIds;
+      // The thread count should still be 4 since the collector's
+      // keep alive is active. To further verify that the threads are
+      EXPECT_EQ(ids.size(), kNumThreads);
+    }
+  });
+  baton.wait();
+  for (auto& bat : bats) {
+    bat.post();
+  }
+  e.setNumThreads(2);
+  threadCountBaton.post();
+  bgCollector.join();
+  // The thread count should now be reduced to 2.
+  EXPECT_EQ(e.numThreads(), 2);
+  e.join();
 }
 
 template <typename TPE>

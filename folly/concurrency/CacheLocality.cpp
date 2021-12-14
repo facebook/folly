@@ -26,9 +26,9 @@
 
 #include <folly/Conv.h>
 #include <folly/Exception.h>
-#include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/hash/Hash.h>
+#include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 
 namespace folly {
@@ -374,17 +374,14 @@ bool AccessSpreaderBase::initialize(
       assert(index < n);
       // as index goes from 0..n, post-transform value goes from
       // 0..numStripes
-      row[cpu].store(
-          static_cast<CompactStripe>((index * numStripes) / n),
-          std::memory_order_relaxed);
+      row[cpu] = static_cast<CompactStripe>((index * numStripes) / n);
       assert(row[cpu] < numStripes);
     }
     size_t filled = n;
     while (filled < kMaxCpus) {
       size_t len = std::min(filled, kMaxCpus - filled);
       for (size_t i = 0; i < len; ++i) {
-        row[filled + i].store(
-            row[i].load(std::memory_order_relaxed), std::memory_order_relaxed);
+        row[filled + i] = row[i].load();
       }
       filled += len;
     }

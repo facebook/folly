@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <atomic>
 #include <cstdlib>
 #include <memory>
 
 #include <folly/File.h>
 #include <folly/net/NetworkSocket.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -31,12 +31,12 @@ namespace folly {
 class ShutdownSocketSet {
  public:
   /**
-   * Create a socket set that can handle file descriptors < maxFd.
+   * Create a socket set that can handle file descriptors within the capacity.
    * The default value (256Ki) is high enough for just about all
    * applications, even if you increased the number of file descriptors
    * on your system.
    */
-  explicit ShutdownSocketSet(int maxFd = 1 << 18);
+  explicit ShutdownSocketSet(size_t capacity = 1 << 18);
 
   ShutdownSocketSet(const ShutdownSocketSet&) = delete;
   ShutdownSocketSet& operator=(const ShutdownSocketSet&) = delete;
@@ -138,8 +138,8 @@ class ShutdownSocketSet {
     }
   };
 
-  const int maxFd_;
-  std::unique_ptr<std::atomic<uint8_t>[], Free> data_;
+  size_t const capacity_;
+  std::unique_ptr<relaxed_atomic<uint8_t>[], Free> data_;
   folly::File nullFile_;
 };
 

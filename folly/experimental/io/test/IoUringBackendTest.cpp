@@ -1067,7 +1067,7 @@ TEST(IoUringBackend, SendmsgRecvmsg) {
   auto sendFd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
   CHECK_GT(sendFd, 0);
   auto recvFd = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-  CHECK_GT(sendFd, 0);
+  CHECK_GT(recvFd, 0);
 
   folly::SocketAddress addr("::1", 0);
 
@@ -1128,9 +1128,6 @@ TEST(IoUringBackend, SendmsgRecvmsg) {
 
   sendMsg.msg_name = reinterpret_cast<void*>(&addrStorage);
   sendMsg.msg_namelen = recvAddr.getActualSize();
-
-  sendMsg.msg_iov = &sendIov;
-  sendMsg.msg_iovlen = 1;
 
   recvMsg.msg_iov = &recvIov;
   recvMsg.msg_iovlen = 1;
@@ -1224,7 +1221,7 @@ struct IoUringPollSQCQBackendProvider {
   }
 };
 
-REGISTER_TYPED_TEST_CASE_P(
+REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest,
     ReadEvent,
     ReadPersist,
@@ -1263,6 +1260,8 @@ REGISTER_TYPED_TEST_CASE_P(
     CallbackOrderTest,
     AlwaysEnqueueCallbackOrderTest,
     IdleTime,
+    MaxLatencyUndamped,
+    UnsetMaxLatencyUndamped,
     ThisLoop,
     EventBaseThreadLoop,
     EventBaseThreadName,
@@ -1277,7 +1276,7 @@ REGISTER_TYPED_TEST_CASE_P(
     LoopKeepAliveAtomic,
     LoopKeepAliveCast);
 
-REGISTER_TYPED_TEST_CASE_P(
+REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,
     DrivableExecutorTest,
     IOExecutorTest,
@@ -1293,25 +1292,25 @@ REGISTER_TYPED_TEST_CASE_P(
     EventBaseExecutionObserver);
 
 // Instantiate the non registered fd tests
-INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest, IoUringBackendProvider);
-INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest1, IoUringBackendProvider);
+INSTANTIATE_TYPED_TEST_SUITE_P(IoUring, EventBaseTest, IoUringBackendProvider);
+INSTANTIATE_TYPED_TEST_SUITE_P(IoUring, EventBaseTest1, IoUringBackendProvider);
 
 // Instantiate the registered fd tests
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringRegFd, EventBaseTest, IoUringRegFdBackendProvider);
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringRegFd, EventBaseTest1, IoUringRegFdBackendProvider);
 
 // Instantiate the poll CQ tests
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollCQ, EventBaseTest, IoUringPollCQBackendProvider);
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollCQ, EventBaseTest1, IoUringPollCQBackendProvider);
 
 // Instantiate the poll SQ/CQ tests
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollSQCQ, EventBaseTest, IoUringPollCQBackendProvider);
-INSTANTIATE_TYPED_TEST_CASE_P(
+INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollSQCQ, EventBaseTest1, IoUringPollCQBackendProvider);
 } // namespace test
 } // namespace folly

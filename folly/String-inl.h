@@ -556,7 +556,7 @@ void humanify(const String1& input, String2& output) {
   // hexlify doubles a string's size; backslashify can potentially
   // explode it by 4x.  Now, the printable range of the ascii
   // "spectrum" is around 95 out of 256 values, so a "random" binary
-  // string should be around 60% unprintable.  We use a 50% hueristic
+  // string should be around 60% unprintable.  We use a 50% heuristic
   // here, so if a string is 60% unprintable, then we just use hex
   // output.  Otherwise we backslash.
   //

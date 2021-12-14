@@ -16,90 +16,25 @@
 
 #include <folly/experimental/exception_tracer/SmartExceptionTracer.h>
 
+#include <glog/logging.h>
 #include <folly/MapUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
+#include <folly/container/F14Map.h>
 #include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
+#include <folly/experimental/exception_tracer/SmartExceptionTracerSingleton.h>
 #include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
+#if defined(__GLIBCXX__)
+
 namespace folly {
 namespace exception_tracer {
 namespace {
 
-struct ExceptionMeta {
-  void (*deleter)(void*);
-  // normal stack trace
-  StackTrace trace;
-  // async stack trace
-  StackTrace traceAsync;
-};
-
-Synchronized<std::unordered_map<void*, ExceptionMeta>>& getMeta() {
-  // Leaky Meyers Singleton
-  static Indestructible<Synchronized<std::unordered_map<void*, ExceptionMeta>>>
-      meta;
-  return *meta;
-}
-
-void metaDeleter(void* ex) noexcept {
-  auto deleter = getMeta().withWLock([&](auto& locked) noexcept {
-    auto iter = locked.find(ex);
-    auto* innerDeleter = iter->second.deleter;
-    locked.erase(iter);
-    return innerDeleter;
-  });
-
-  // If the thrown object was allocated statically it may not have a deleter.
-  if (deleter) {
-    deleter(ex);
-  }
-}
-
-// This callback runs when an exception is thrown so we can grab the stack
-// trace. To manage the lifetime of the stack trace we override the deleter with
-// our own wrapper.
-void throwCallback(
-    void* ex, std::type_info*, void (**deleter)(void*)) noexcept {
-  // Make this code reentrant safe in case we throw an exception while
-  // handling an exception. Thread local variables are zero initialized.
-  static thread_local bool handlingThrow;
-  if (handlingThrow) {
-    return;
-  }
-  SCOPE_EXIT { handlingThrow = false; };
-  handlingThrow = true;
-
-  getMeta().withWLockPtr([&](auto wlock) noexcept {
-    // This can allocate memory potentially causing problems in an OOM
-    // situation so we catch and short circuit.
-    try {
-      auto& meta = (*wlock)[ex];
-      auto rlock = wlock.moveFromWriteToRead();
-      // Override the deleter with our custom one and capture the old one.
-      meta.deleter = std::exchange(*deleter, metaDeleter);
-
-      ssize_t n = symbolizer::getStackTrace(meta.trace.addresses, kMaxFrames);
-      if (n != -1) {
-        meta.trace.frameCount = n;
-      }
-      ssize_t nAsync = symbolizer::getAsyncStackTraceSafe(
-          meta.traceAsync.addresses, kMaxFrames);
-      if (nAsync != -1) {
-        meta.traceAsync.frameCount = nAsync;
-      }
-    } catch (const std::bad_alloc&) {
-    }
-  });
-}
-
-struct Initialize {
-  Initialize() { registerCxaThrowCallback(throwCallback); }
-};
-
-Initialize initialize;
+std::atomic_bool loggedMessage{false};
 
 // ExceptionMetaFunc takes a `const ExceptionMeta&` and
 // returns a pair of iterators to represent a range of addresses for
@@ -107,18 +42,35 @@ Initialize initialize;
 template <typename ExceptionMetaFunc>
 ExceptionInfo getTraceWithFunc(
     const std::exception& ex, ExceptionMetaFunc func) {
+  if (!detail::isSmartExceptionTracerHookEnabled() &&
+      !loggedMessage.load(std::memory_order_relaxed)) {
+    LOG(WARNING)
+        << "Smart exception tracer library not linked, stack traces not available";
+    loggedMessage = true;
+  }
+
   ExceptionInfo info;
   info.type = &typeid(ex);
-  getMeta().withRLock([&](auto& locked) noexcept {
-    auto* meta = get_ptr(locked, (void*)&ex);
-    // If we can't find the exception, return an empty stack trace.
-    if (!meta) {
-      return;
-    }
+  auto rlockedMeta = detail::getMetaMap().withRLock(
+      [&](const auto& locked) noexcept
+      -> detail::SynchronizedExceptionMeta::RLockedPtr {
+        auto* meta = get_ptr(locked, (void*)&ex);
+        // If we can't find the exception, return an empty stack trace.
+        if (!meta) {
+          return {};
+        }
+        CHECK(*meta);
+        // Acquire the meta rlock while holding the map's rlock, to block meta's
+        // destruction.
+        return (*meta)->rlock();
+      });
 
-    auto [traceBeginIt, traceEndIt] = func(*meta);
-    info.frames.assign(traceBeginIt, traceEndIt);
-  });
+  if (!rlockedMeta) {
+    return info;
+  }
+
+  auto [traceBeginIt, traceEndIt] = func(*rlockedMeta);
+  info.frames.assign(traceBeginIt, traceEndIt);
   return info;
 }
 
@@ -145,13 +97,13 @@ ExceptionInfo getTraceWithFunc(
   return ExceptionInfo();
 }
 
-auto getAsyncStackTraceItPair(const ExceptionMeta& meta) {
+auto getAsyncStackTraceItPair(const detail::ExceptionMeta& meta) {
   return std::make_pair(
       meta.traceAsync.addresses,
       meta.traceAsync.addresses + meta.traceAsync.frameCount);
 }
 
-auto getNormalStackTraceItPair(const ExceptionMeta& meta) {
+auto getNormalStackTraceItPair(const detail::ExceptionMeta& meta) {
   return std::make_pair(
       meta.trace.addresses, meta.trace.addresses + meta.trace.frameCount);
 }
@@ -184,5 +136,7 @@ ExceptionInfo getAsyncTrace(const std::exception& ex) {
 
 } // namespace exception_tracer
 } // namespace folly
+
+#endif // defined(__GLIBCXX__)
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

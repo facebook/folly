@@ -73,7 +73,7 @@
 
 namespace folly {
 
-#if __cpp_lib_bit_cast
+#ifdef __cpp_lib_bit_cast
 
 using std::bit_cast;
 
@@ -344,13 +344,13 @@ FOLLY_POP_WARNING
  * Read an unaligned value of type T and return it.
  */
 template <class T>
-inline T loadUnaligned(const void* p) {
+inline constexpr T loadUnaligned(const void* p) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
   if (kHasUnalignedAccess) {
     return static_cast<const Unaligned<T>*>(p)->value;
   } else {
-    T value;
+    T value{};
     memcpy(&value, p, sizeof(T));
     return value;
   }

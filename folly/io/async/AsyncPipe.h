@@ -35,9 +35,7 @@ class AsyncPipeReader : public EventHandler,
                         public AsyncReader,
                         public DelayedDestruction {
  public:
-  typedef std::
-      unique_ptr<AsyncPipeReader, folly::DelayedDestruction::Destructor>
-          UniquePtr;
+  using UniquePtr = folly::DelayedDestructionUniquePtr<AsyncPipeReader>;
 
   static UniquePtr newReader(
       folly::EventBase* eventBase, NetworkSocket pipeFd) {
@@ -96,9 +94,7 @@ class AsyncPipeWriter : public EventHandler,
                         public AsyncWriter,
                         public DelayedDestruction {
  public:
-  typedef std::
-      unique_ptr<AsyncPipeWriter, folly::DelayedDestruction::Destructor>
-          UniquePtr;
+  using UniquePtr = folly::DelayedDestructionUniquePtr<AsyncPipeWriter>;
 
   static UniquePtr newWriter(
       folly::EventBase* eventBase, NetworkSocket pipeFd) {

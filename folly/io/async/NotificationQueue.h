@@ -41,9 +41,8 @@
 #include <folly/portability/Unistd.h>
 #include <folly/system/Pid.h>
 
-#if defined(__linux__) && !defined(__ANDROID__)
-#define FOLLY_HAVE_EVENTFD
-#include <folly/io/async/EventFDWrapper.h>
+#if __has_include(<sys/eventfd.h>)
+#include <sys/eventfd.h>
 #endif
 
 namespace folly {
@@ -83,6 +82,8 @@ class NotificationQueue {
    */
   class Consumer : public DelayedDestruction, private EventHandler {
    public:
+    using UniquePtr = DelayedDestructionUniquePtr<Consumer>;
+
     enum : uint16_t { kDefaultMaxReadAtOnce = 10 };
 
     Consumer()
@@ -92,8 +93,7 @@ class NotificationQueue {
 
     // create a consumer in-place, without the need to build new class
     template <typename TCallback>
-    static std::unique_ptr<Consumer, DelayedDestruction::Destructor> make(
-        TCallback&& callback);
+    static UniquePtr make(TCallback&& callback);
 
     /**
      * messageAvailable() will be invoked whenever a new
@@ -235,10 +235,8 @@ class NotificationQueue {
   };
 
   enum class FdType {
-    PIPE,
-#ifdef FOLLY_HAVE_EVENTFD
+    PIPE = 1,
     EVENTFD,
-#endif
   };
 
   /**
@@ -257,18 +255,18 @@ class NotificationQueue {
    * mostly for testing purposes.
    */
   explicit NotificationQueue(
-      uint32_t maxSize = 0,
-#ifdef FOLLY_HAVE_EVENTFD
-      FdType fdType = FdType::EVENTFD)
-#else
-      FdType fdType = FdType::PIPE)
-#endif
+      uint32_t maxSize = 0, FdType fdType = FdType::EVENTFD)
       : eventfd_(-1),
         pipeFds_{-1, -1},
         advisoryMaxQueueSize_(maxSize),
         pid_(folly::get_cached_pid()) {
+#if !__has_include(<sys/eventfd.h>)
+    if (fdType == FdType::EVENTFD) {
+      fdType = FdType::PIPE;
+    }
+#endif
 
-#ifdef FOLLY_HAVE_EVENTFD
+#if __has_include(<sys/eventfd.h>)
     if (fdType == FdType::EVENTFD) {
       eventfd_ = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
       if (eventfd_ == -1) {
@@ -288,6 +286,7 @@ class NotificationQueue {
       }
     }
 #endif
+
     if (fdType == FdType::PIPE) {
       if (pipe(pipeFds_)) {
         folly::throwSystemError(
@@ -888,17 +887,11 @@ struct notification_queue_consumer_wrapper
 
 template <typename MessageT>
 template <typename TCallback>
-std::unique_ptr<
-    typename NotificationQueue<MessageT>::Consumer,
-    DelayedDestruction::Destructor>
-NotificationQueue<MessageT>::Consumer::make(TCallback&& callback) {
-  return std::unique_ptr<
-      NotificationQueue<MessageT>::Consumer,
-      DelayedDestruction::Destructor>(
-      new detail::notification_queue_consumer_wrapper<
-          MessageT,
-          typename std::decay<TCallback>::type>(
-          std::forward<TCallback>(callback)));
+auto NotificationQueue<MessageT>::Consumer::make(TCallback&& callback)
+    -> UniquePtr {
+  using CB = typename std::decay<TCallback>::type;
+  using W = detail::notification_queue_consumer_wrapper<MessageT, CB>;
+  return makeDelayedDestructionUniquePtr<W>(std::forward<TCallback>(callback));
 }
 
 } // namespace folly

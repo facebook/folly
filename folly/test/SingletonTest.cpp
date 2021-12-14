@@ -315,7 +315,6 @@ TEST(Singleton, SharedPtrUsage) {
 
   auto shared_s1 = weak_s1.lock();
   EXPECT_EQ(shared_s1.get(), s1);
-  EXPECT_EQ(shared_s1.use_count(), 2);
 
   auto old_serial = shared_s1->serial_number;
 
@@ -763,8 +762,8 @@ TEST(Singleton, DoubleRegistrationLogging) {
   auto p = Subprocess(
       std::vector<std::string>{sub.string()},
       Subprocess::Options()
-          .stdinFd(Subprocess::CLOSE)
-          .stdoutFd(Subprocess::CLOSE)
+          .stdinFd(Subprocess::DEV_NULL)
+          .stdoutFd(Subprocess::DEV_NULL)
           .pipeStderr()
           .closeOtherFds());
   auto err = p.communicate("").second;

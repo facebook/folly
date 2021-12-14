@@ -29,6 +29,11 @@ namespace coro {
 /// coroutine to co_await the baton and suspend until the baton is posted by
 /// some thread via a call to .post().
 ///
+/// This primitive is typically used in the construction of larger library types
+/// rather than directly in user code.
+///
+/// As a primitive, this is not cancellation-aware.
+///
 /// The Baton supports being awaited by multiple coroutines at a time. If the
 /// baton is not ready at the time it is awaited then an awaiting coroutine
 /// suspends. All suspended coroutines waiting for the baton to be posted will

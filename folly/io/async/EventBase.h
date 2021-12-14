@@ -64,11 +64,6 @@ class NotificationQueue;
 namespace detail {
 class EventBaseLocalBase;
 
-class EventBaseLocalBaseBase {
- public:
-  virtual void onEventBaseDestruction(EventBase& evb) = 0;
-  virtual ~EventBaseLocalBaseBase() = default;
-};
 } // namespace detail
 template <typename T>
 class EventBaseLocal;
@@ -637,10 +632,14 @@ class EventBase : public TimeoutManager,
    * called when that latency is exceeded.
    * OBS: This functionality depends on time-measurement.
    */
-  void setMaxLatency(std::chrono::microseconds maxLatency, Func maxLatencyCob) {
+  void setMaxLatency(
+      std::chrono::microseconds maxLatency,
+      Func maxLatencyCob,
+      bool dampen = true) {
     assert(enableTimeMeasurement_);
     maxLatency_ = maxLatency;
     maxLatencyCob_ = std::move(maxLatencyCob);
+    dampenMaxLatency_ = dampen;
   }
 
   /**
@@ -737,7 +736,8 @@ class EventBase : public TimeoutManager,
   class SmoothLoopTime {
    public:
     explicit SmoothLoopTime(std::chrono::microseconds timeInterval)
-        : expCoeff_(-1.0 / timeInterval.count()), value_(0.0) {
+        : expCoeff_(-1.0 / static_cast<double>(timeInterval.count())),
+          value_(0.0) {
       VLOG(11) << "expCoeff_ " << expCoeff_ << " " << __PRETTY_FUNCTION__;
     }
 
@@ -750,8 +750,9 @@ class EventBase : public TimeoutManager,
     double get() const {
       // Add the outstanding buffered times linearly, to avoid
       // expensive exponentiation
-      auto lcoeff = buffer_time_.count() * -expCoeff_;
-      return value_ * (1.0 - lcoeff) + lcoeff * busy_buffer_.count();
+      auto lcoeff = static_cast<double>(buffer_time_.count()) * -expCoeff_;
+      return value_ * (1.0 - lcoeff) +
+          lcoeff * static_cast<double>(busy_buffer_.count());
     }
 
     void dampen(double factor) { value_ *= factor; }
@@ -922,6 +923,10 @@ class EventBase : public TimeoutManager,
   // to reduce spamminess
   SmoothLoopTime maxLatencyLoopTime_;
 
+  // If true, max latency callbacks will use a dampened SmoothLoopTime, else
+  // they'll use the raw loop time.
+  bool dampenMaxLatency_ = true;
+
   // callback called when latency limit is exceeded
   Func maxLatencyCob_;
 
@@ -955,7 +960,9 @@ class EventBase : public TimeoutManager,
   template <typename T>
   friend class EventBaseLocal;
   std::unordered_map<std::size_t, erased_unique_ptr> localStorage_;
-  std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
+  folly::Synchronized<std::unordered_set<detail::EventBaseLocalBase*>>
+      localStorageToDtor_;
+  bool tryDeregister(detail::EventBaseLocalBase&);
 
   folly::once_flag virtualEventBaseInitFlag_;
   std::unique_ptr<VirtualEventBase> virtualEventBase_;

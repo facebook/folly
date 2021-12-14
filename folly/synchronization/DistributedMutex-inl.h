@@ -37,7 +37,7 @@
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicUtil.h>
-#include <folly/synchronization/DistributedMutex.h>
+#include <folly/synchronization/Lock.h>
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 #include <folly/synchronization/detail/Sleeper.h>
 
@@ -751,25 +751,11 @@ inline std::uint64_t recover(std::uint64_t from) {
 template <template <typename> class Atomic, bool TimePublishing>
 class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
  public:
-  // DistributedMutexStateProxy is move constructible and assignable for
-  // convenience
-  DistributedMutexStateProxy(DistributedMutexStateProxy&& other) {
-    *this = std::move(other);
-  }
+  DistributedMutexStateProxy() = default;
 
-  DistributedMutexStateProxy& operator=(DistributedMutexStateProxy&& other) {
-    DCHECK(!(*this)) << "Cannot move into a valid DistributedMutexStateProxy";
-
-    next_ = std::exchange(other.next_, nullptr);
-    expected_ = std::exchange(other.expected_, 0);
-    timedWaiters_ = std::exchange(other.timedWaiters_, false);
-    combined_ = std::exchange(other.combined_, false);
-    waker_ = std::exchange(other.waker_, 0);
-    waiters_ = std::exchange(other.waiters_, nullptr);
-    ready_ = std::exchange(other.ready_, nullptr);
-
-    return *this;
-  }
+  DistributedMutexStateProxy(DistributedMutexStateProxy const&) = default;
+  DistributedMutexStateProxy& operator=(DistributedMutexStateProxy const&) =
+      default;
 
   // The proxy is valid when a mutex acquisition attempt was successful,
   // lock() is guaranteed to return a valid proxy, try_lock() is not
@@ -1125,11 +1111,7 @@ auto tryLockNoLoad(Atomic& atomic, DistributedMutex<A, T>&) {
   // If this fails, then it is a no-op
   using Proxy = typename DistributedMutex<A, T>::DistributedMutexStateProxy;
   auto previous = atomic_fetch_set(atomic, 0, std::memory_order_acquire);
-  if (!previous) {
-    return Proxy{nullptr, kLocked};
-  }
-
-  return Proxy{nullptr, 0};
+  return Proxy{nullptr, previous ? 0 : kLocked};
 }
 
 template <template <typename> class Atomic, bool TimePublishing>
@@ -1200,9 +1182,9 @@ lockImplementation(
     // previous value is zeroed out
     //
     // we use memory_order_acq_rel here because we want the read-modify-write
-    // operation to be both acquire and release.  Acquire becasue if this is a
+    // operation to be both acquire and release.  Acquire because if this is a
     // successful lock acquisition, we want to acquire state any other thread
-    // has released from a prior unlock.  We want release semantics becasue
+    // has released from a prior unlock.  We want release semantics because
     // other threads that read the address of this value should see the full
     // well-initialized node we are going to wait on if the mutex acquisition
     // was unsuccessful
@@ -1551,7 +1533,8 @@ bool tryUnlockClean(Atomic& state, Proxy& proxy, Sleepers sleepers) {
 
 template <template <typename> class Atomic, bool Publish>
 void DistributedMutex<Atomic, Publish>::unlock(
-    DistributedMutex::DistributedMutexStateProxy proxy) {
+    DistributedMutex::DistributedMutexStateProxy const& proxy_) {
+  auto proxy = proxy_;
   // we always wake up ready threads and timed waiters if we saw either
   DCHECK(proxy) << "Invalid proxy passed to DistributedMutex::unlock()";
   DCHECK(!proxy.combined_) << "Cannot unlock mutex after a successful combine";
@@ -1717,3 +1700,31 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_for(
 } // namespace distributed_mutex
 } // namespace detail
 } // namespace folly
+
+namespace std {
+
+template <template <typename> class Atom, bool TimePublishing>
+class unique_lock<
+    ::folly::detail::distributed_mutex::DistributedMutex<Atom, TimePublishing>>
+    : public ::folly::unique_lock_base<
+          ::folly::detail::distributed_mutex::
+              DistributedMutex<Atom, TimePublishing>> {
+ public:
+  using ::folly::unique_lock_base<
+      ::folly::detail::distributed_mutex::
+          DistributedMutex<Atom, TimePublishing>>::unique_lock_base;
+};
+
+template <template <typename> class Atom, bool TimePublishing>
+class lock_guard<
+    ::folly::detail::distributed_mutex::DistributedMutex<Atom, TimePublishing>>
+    : public ::folly::unique_lock_guard_base<
+          ::folly::detail::distributed_mutex::
+              DistributedMutex<Atom, TimePublishing>> {
+ public:
+  using ::folly::unique_lock_guard_base<
+      ::folly::detail::distributed_mutex::
+          DistributedMutex<Atom, TimePublishing>>::unique_lock_guard_base;
+};
+
+} // namespace std

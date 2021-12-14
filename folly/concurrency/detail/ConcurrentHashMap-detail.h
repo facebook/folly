@@ -49,6 +49,8 @@ template <
     typename KeyType,
     typename ValueType,
     typename Allocator,
+    template <typename>
+    class Atom,
     typename Enabled = void>
 class ValueHolder {
  public:
@@ -71,44 +73,83 @@ class ValueHolder {
 // If the ValueType is not copy constructible, we can instead add
 // an extra indirection.  Adds more allocations / deallocations and
 // pulls in an extra cacheline.
-template <typename KeyType, typename ValueType, typename Allocator>
+template <
+    typename KeyType,
+    typename ValueType,
+    typename Allocator,
+    template <typename>
+    class Atom>
 class ValueHolder<
     KeyType,
     ValueType,
     Allocator,
+    Atom,
     std::enable_if_t<
         !std::is_nothrow_copy_constructible<ValueType>::value ||
         !std::is_nothrow_copy_constructible<KeyType>::value>> {
- public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
+  struct CountedItem {
+    value_type kv_;
+    Atom<uint32_t> numlinks_{1}; // Number of incoming links
+
+    template <typename Arg, typename... Args>
+    CountedItem(std::piecewise_construct_t, Arg&& k, Args&&... args)
+        : kv_(std::piecewise_construct,
+              std::forward_as_tuple(std::forward<Arg>(k)),
+              std::forward_as_tuple(std::forward<Args>(args)...)) {}
+
+    value_type& getItem() { return kv_; }
+
+    void acquireLink() {
+      uint32_t count = numlinks_.fetch_add(1, std::memory_order_release);
+      DCHECK_GE(count, 1);
+    }
+
+    bool releaseLink() {
+      uint32_t count = numlinks_.load(std::memory_order_acquire);
+      DCHECK_GE(count, 1);
+      if (count > 1) {
+        count = numlinks_.fetch_sub(1, std::memory_order_acq_rel);
+      }
+      return count == 1;
+    }
+  }; // CountedItem
+  // Back to ValueHolder specialization
+
+  CountedItem* item_; // Link to unique key-value item.
+
+ public:
   explicit ValueHolder(const ValueHolder& other) {
-    other.owned_ = false;
+    DCHECK(other.item_);
     item_ = other.item_;
+    item_->acquireLink();
   }
+
+  ValueHolder& operator=(const ValueHolder&) = delete;
 
   template <typename Arg, typename... Args>
   ValueHolder(std::piecewise_construct_t, Arg&& k, Args&&... args) {
-    item_ = (value_type*)Allocator().allocate(sizeof(value_type));
-    new (item_) value_type(
+    item_ = (CountedItem*)Allocator().allocate(sizeof(CountedItem));
+    new (item_) CountedItem(
         std::piecewise_construct,
-        std::forward_as_tuple(std::forward<Arg>(k)),
-        std::forward_as_tuple(std::forward<Args>(args)...));
+        std::forward<Arg>(k),
+        std::forward<Args>(args)...);
   }
 
   ~ValueHolder() {
-    if (owned_) {
-      item_->~value_type();
-      Allocator().deallocate((uint8_t*)item_, sizeof(value_type));
+    DCHECK(item_);
+    if (item_->releaseLink()) {
+      item_->~CountedItem();
+      Allocator().deallocate((uint8_t*)item_, sizeof(CountedItem));
     }
   }
 
-  value_type& getItem() { return *item_; }
-
- private:
-  value_type* item_;
-  mutable bool owned_{true};
-};
+  value_type& getItem() {
+    DCHECK(item_);
+    return item_->getItem();
+  }
+}; // ValueHolder specialization
 
 // hazptr deleter that can use an allocator.
 template <typename Allocator>
@@ -186,7 +227,7 @@ class NodeT : public hazptr_obj_base_linked<
     this->acquire_link_safe(); // defined in hazptr_obj_base_linked
   }
 
-  ValueHolder<KeyType, ValueType, Allocator> item_;
+  ValueHolder<KeyType, ValueType, Allocator, Atom> item_;
 };
 
 template <
@@ -353,13 +394,13 @@ class alignas(64) BucketTable {
 
     auto idx = getIdx(bcount, h);
     auto prev = &buckets->buckets_[idx]();
-    auto node = hazcurr.get_protected(*prev);
+    auto node = hazcurr.protect(*prev);
     while (node) {
       if (KeyEqual()(k, node->getItem().first)) {
         res.setNode(node, buckets, bcount, idx);
         return true;
       }
-      node = haznext.get_protected(node->next_);
+      node = haznext.protect(node->next_);
       hazcurr.swap(haznext);
     }
     return false;
@@ -396,7 +437,7 @@ class alignas(64) BucketTable {
           }
 
           if (iter) {
-            iter->hazptrs_[0].reset(buckets);
+            iter->hazptrs_[0].reset_protection(buckets);
             iter->setNode(
                 node->next_.load(std::memory_order_acquire),
                 buckets,
@@ -510,8 +551,9 @@ class alignas(64) BucketTable {
  public:
   class Iterator {
    public:
-    FOLLY_ALWAYS_INLINE Iterator() {}
-    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_(nullptr) {}
+    FOLLY_ALWAYS_INLINE Iterator()
+        : hazptrs_(make_hazard_pointer_array<3, Atom>()) {}
+    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_() {}
     FOLLY_ALWAYS_INLINE ~Iterator() {}
 
     void setNode(
@@ -534,7 +576,7 @@ class alignas(64) BucketTable {
 
     const Iterator& operator++() {
       DCHECK(node_);
-      node_ = hazptrs_[2].get_protected(node_->next_);
+      node_ = hazptrs_[2].protect(node_->next_);
       hazptrs_[1].swap(hazptrs_[2]);
       if (!node_) {
         ++idx_;
@@ -549,7 +591,7 @@ class alignas(64) BucketTable {
           break;
         }
         DCHECK(buckets_);
-        node_ = hazptrs_[1].get_protected(buckets_->buckets_[idx_]());
+        node_ = hazptrs_[1].protect(buckets_->buckets_[idx_]());
         if (node_) {
           break;
         }
@@ -604,7 +646,7 @@ class alignas(64) BucketTable {
     while (true) {
       auto seqlock = seqlock_.load(std::memory_order_acquire);
       bcount = bucket_count_.load(std::memory_order_acquire);
-      buckets = hazptr.get_protected(buckets_);
+      buckets = hazptr.protect(buckets_);
       auto seqlock2 = seqlock_.load(std::memory_order_acquire);
       if (!(seqlock & 1) && (seqlock == seqlock2)) {
         break;
@@ -646,12 +688,12 @@ class alignas(64) BucketTable {
     auto prev = head;
     auto& hazbuckets = it.hazptrs_[0];
     auto& haznode = it.hazptrs_[1];
-    hazbuckets.reset(buckets);
+    hazbuckets.reset_protection(buckets);
     while (node) {
       // Is the key found?
       if (KeyEqual()(k, node->getItem().first)) {
         it.setNode(node, buckets, bcount, idx);
-        haznode.reset(node);
+        haznode.reset_protection(node);
         if (type == InsertType::MATCH) {
           if (!match(node->getItem().second)) {
             return false;
@@ -671,6 +713,7 @@ class alignas(64) BucketTable {
           }
           prev->store(cur, std::memory_order_release);
           it.setNode(cur, buckets, bcount, idx);
+          haznode.reset_protection(cur);
           g.unlock();
           // Release not under lock.
           node->release();
@@ -682,8 +725,8 @@ class alignas(64) BucketTable {
       node = node->next_.load(std::memory_order_relaxed);
     }
     if (type != InsertType::DOES_NOT_EXIST && type != InsertType::ANY) {
-      haznode.reset();
-      hazbuckets.reset();
+      haznode.reset_protection();
+      hazbuckets.reset_protection();
       return false;
     }
     // Node not found, check for rehash on ANY
@@ -698,7 +741,7 @@ class alignas(64) BucketTable {
       buckets = buckets_.load(std::memory_order_relaxed);
       DCHECK(buckets); // Use-after-destruction by user.
       bcount <<= 1;
-      hazbuckets.reset(buckets);
+      hazbuckets.reset_protection(buckets);
       idx = getIdx(bcount, h);
       head = &buckets->buckets_[idx]();
       headnode = head->load(std::memory_order_relaxed);
@@ -716,7 +759,7 @@ class alignas(64) BucketTable {
     cur->next_.store(headnode, std::memory_order_relaxed);
     head->store(cur, std::memory_order_release);
     it.setNode(cur, buckets, bcount, idx);
-    haznode.reset(cur);
+    haznode.reset_protection(cur);
     return true;
   }
 
@@ -1009,8 +1052,9 @@ class alignas(64) SIMDTable {
 
   class Iterator {
    public:
-    FOLLY_ALWAYS_INLINE Iterator() {}
-    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_(nullptr) {}
+    FOLLY_ALWAYS_INLINE Iterator()
+        : hazptrs_(make_hazard_pointer_array<2, Atom>()) {}
+    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_() {}
     FOLLY_ALWAYS_INLINE ~Iterator() {}
 
     void setNode(
@@ -1096,7 +1140,7 @@ class alignas(64) SIMDTable {
         }
         DCHECK(chunks_);
         // Note that iteration could also be implemented with tag filtering
-        node_ = hazptrs_[1].get_protected(
+        node_ = hazptrs_[1].protect(
             chunks_->getChunk(chunk_idx_, chunk_count_)->item(tag_idx_));
         if (node_) {
           break;
@@ -1197,12 +1241,13 @@ class alignas(64) SIMDTable {
     if (!node) {
       std::tie(chunk_idx, tag_idx) =
           findEmptyInsertLocation(chunks, ccount, hp);
-      it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
       incSize();
     }
 
     Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
     chunk->setNodeAndTag(tag_idx, cur, hp.second);
+    it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
+    it.hazptrs_[1].reset_protection(cur);
 
     g.unlock();
     // Retire not under lock
@@ -1248,12 +1293,13 @@ class alignas(64) SIMDTable {
     if (!node) {
       std::tie(chunk_idx, tag_idx) =
           findEmptyInsertLocation(chunks, ccount, hp);
-      it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
       incSize();
     }
 
     Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
     chunk->setNodeAndTag(tag_idx, cur, hp.second);
+    it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
+    it.hazptrs_[1].reset_protection(cur);
 
     g.unlock();
     // Retire not under lock
@@ -1284,13 +1330,13 @@ class alignas(64) SIMDTable {
       auto hits = chunk->tagMatchIter(hp.second);
       while (hits.hasNext()) {
         size_t tag_idx = hits.next();
-        Node* node = hazz.get_protected(chunk->item(tag_idx));
+        Node* node = hazz.protect(chunk->item(tag_idx));
         if (LIKELY(node && KeyEqual()(k, node->getItem().first))) {
           chunk_idx = chunk_idx & (ccount - 1);
           res.setNode(node, chunks, ccount, chunk_idx, tag_idx);
           return true;
         }
-        hazz.reset();
+        hazz.reset_protection();
       }
 
       if (LIKELY(chunk->outboundOverflowCount() == 0)) {
@@ -1348,7 +1394,7 @@ class alignas(64) SIMDTable {
 
     decSize();
     if (iter) {
-      iter->hazptrs_[0].reset(chunks);
+      iter->hazptrs_[0].reset_protection(chunks);
       iter->setNode(nullptr, chunks, ccount, chunk_idx, tag_idx + 1);
       iter->next();
     }
@@ -1467,9 +1513,9 @@ class alignas(64) SIMDTable {
     DCHECK(chunks); // Use-after-destruction by user.
     node = find_internal(k, hp, chunks, ccount, chunk_idx, tag_idx);
 
-    it.hazptrs_[0].reset(chunks);
+    it.hazptrs_[0].reset_protection(chunks);
     if (node) {
-      it.hazptrs_[1].reset(node);
+      it.hazptrs_[1].reset_protection(node);
       it.setNode(node, chunks, ccount, chunk_idx, tag_idx);
       if (type == InsertType::MATCH) {
         if (!match(node->getItem().second)) {
@@ -1480,7 +1526,7 @@ class alignas(64) SIMDTable {
       }
     } else {
       if (type != InsertType::DOES_NOT_EXIST && type != InsertType::ANY) {
-        it.hazptrs_[0].reset();
+        it.hazptrs_[0].reset_protection();
         return false;
       }
       // Already checked for rehash on DOES_NOT_EXIST, now check on ANY
@@ -1493,7 +1539,7 @@ class alignas(64) SIMDTable {
         ccount = chunk_count_.load(std::memory_order_relaxed);
         chunks = chunks_.load(std::memory_order_relaxed);
         DCHECK(chunks); // Use-after-destruction by user.
-        it.hazptrs_[0].reset(chunks);
+        it.hazptrs_[0].reset_protection(chunks);
       }
     }
     return true;
@@ -1542,7 +1588,7 @@ class alignas(64) SIMDTable {
     while (true) {
       auto seqlock = seqlock_.load(std::memory_order_acquire);
       ccount = chunk_count_.load(std::memory_order_acquire);
-      chunks = hazptr.get_protected(chunks_);
+      chunks = hazptr.protect(chunks_);
       auto seqlock2 = seqlock_.load(std::memory_order_acquire);
       if (!(seqlock & 1) && (seqlock == seqlock2)) {
         break;

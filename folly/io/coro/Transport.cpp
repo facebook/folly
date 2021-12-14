@@ -19,6 +19,7 @@
 #include <functional>
 
 #include <folly/experimental/coro/Baton.h>
+#include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/coro/Transport.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -71,6 +72,15 @@ class CallbackBase {
   // to wrap AsyncTransport errors
   folly::exception_wrapper error_;
 
+  void storeException(const folly::AsyncSocketException& ex) {
+    auto sslErr = dynamic_cast<const folly::SSLException*>(&ex);
+    if (sslErr) {
+      error_ = folly::make_exception_wrapper<folly::SSLException>(*sslErr);
+    } else {
+      error_ = folly::make_exception_wrapper<folly::AsyncSocketException>(ex);
+    }
+  }
+
  private:
   virtual void cancel() noexcept = 0;
 };
@@ -91,7 +101,7 @@ class ConnectCallback : public CallbackBase,
   void connectSuccess() noexcept override { post(); }
 
   void connectErr(const folly::AsyncSocketException& ex) noexcept override {
-    error_ = folly::exception_wrapper(ex);
+    storeException(ex);
     post();
   }
   folly::AsyncSocket& socket_;
@@ -199,7 +209,7 @@ class ReadCallback : public CallbackBase,
     // disable callbacks
     transport_.setReadCB(nullptr);
     cancelTimeout();
-    error_ = folly::exception_wrapper(ex);
+    storeException(ex);
     post();
   }
 
@@ -217,8 +227,8 @@ class ReadCallback : public CallbackBase,
     // If the timeout fires but this ReadCallback did get some data, ignore it.
     // post() has already happend from readDataAvailable.
     if (length == 0) {
-      error_ = folly::exception_wrapper(folly::AsyncSocketException(
-          Error::TIMED_OUT, "Timed out waiting for data", errno));
+      error_ = folly::make_exception_wrapper<folly::AsyncSocketException>(
+          Error::TIMED_OUT, "Timed out waiting for data", errno);
       post();
     }
   }
@@ -295,12 +305,14 @@ Task<size_t> Transport::read(
   transport_->setReadCB(&cb);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
-
-  if (waitRet.hasException()) {
-    co_yield co_error(std::move(waitRet.exception()));
-  }
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
+  }
+  if (waitRet.hasException() &&
+      (!waitRet.tryGetExceptionObject<OperationCancelled>() ||
+       (!cb.eof && cb.length == 0))) {
+    // Got a non-cancel exception, or cancel with nothing read
+    co_yield co_error(std::move(waitRet.exception()));
   }
   transport_->setReadCB(nullptr);
   deferredReadEOF_ = (cb.eof && cb.length > 0);
@@ -328,11 +340,14 @@ Task<size_t> Transport::read(
   transport_->setReadCB(&cb);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
-  if (waitRet.hasException()) {
-    co_yield co_error(std::move(waitRet.exception()));
-  }
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
+  }
+  if (waitRet.hasException() &&
+      (!waitRet.tryGetExceptionObject<OperationCancelled>() ||
+       (!cb.eof && cb.length == 0))) {
+    // Got a non-cancel exception, or cancel with nothing read
+    co_yield co_error(std::move(waitRet.exception()));
   }
   transport_->setReadCB(nullptr);
   deferredReadEOF_ = (cb.eof && cb.length > 0);

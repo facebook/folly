@@ -84,7 +84,7 @@ class EventBaseTest : public EventBaseTestBase {
   EventBaseTest() = default;
 };
 
-TYPED_TEST_CASE_P(EventBaseTest);
+TYPED_TEST_SUITE_P(EventBaseTest);
 
 template <typename T>
 class EventBaseTest1 : public EventBaseTestBase {
@@ -113,7 +113,7 @@ std::unique_ptr<EventBase> getEventBase(
   }
 }
 
-TYPED_TEST_CASE_P(EventBaseTest1);
+TYPED_TEST_SUITE_P(EventBaseTest1);
 
 enum { BUF_SIZE = 4096 };
 
@@ -1942,20 +1942,13 @@ TYPED_TEST_P(EventBaseTest, IdleTime) {
   int latencyCallbacks = 0;
   eventBase.setMaxLatency(std::chrono::microseconds(6000), [&]() {
     ++latencyCallbacks;
-    if (latencyCallbacks != 1) {
-      FAIL() << "Unexpected latency callback";
-    }
-
-    if (tos0.getTimeouts() < 6) {
+    if (latencyCallbacks != 1 || tos0.getTimeouts() < 6) {
       // This could only happen if the host this test is running
       // on is heavily loaded.
-      int64_t usElapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-                              std::chrono::steady_clock::now() - testStart)
-                              .count();
-      EXPECT_LE(43800, usElapsed);
       hostOverloaded = true;
       return;
     }
+
     EXPECT_EQ(6, tos0.getTimeouts());
     EXPECT_GE(6100, eventBase.getAvgLoopTime() - 1200);
     EXPECT_LE(6100, eventBase.getAvgLoopTime() + 1200);
@@ -1977,6 +1970,44 @@ TYPED_TEST_P(EventBaseTest, IdleTime) {
   ASSERT_LE(5900, eventBase.getAvgLoopTime() + 1200);
   ASSERT_TRUE(!!tos);
   ASSERT_EQ(21, tos->getTimeouts());
+}
+
+TYPED_TEST_P(EventBaseTest, MaxLatencyUndamped) {
+  auto eventBasePtr = getEventBase<TypeParam>();
+  folly::EventBase& eb = *eventBasePtr;
+  int maxDurationViolations = 0;
+  eb.setMaxLatency(
+      std::chrono::milliseconds{1}, [&]() { maxDurationViolations++; }, false);
+  eb.runInLoop(
+      [&]() {
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::microseconds{1001});
+        eb.terminateLoopSoon();
+      },
+      true);
+  eb.loop();
+  ASSERT_EQ(maxDurationViolations, 1);
+}
+
+TYPED_TEST_P(EventBaseTest, UnsetMaxLatencyUndamped) {
+  auto eventBasePtr = getEventBase<TypeParam>();
+  folly::EventBase& eb = *eventBasePtr;
+  int maxDurationViolations = 0;
+  eb.setMaxLatency(
+      std::chrono::milliseconds{1}, [&]() { maxDurationViolations++; }, false);
+  // Immediately unset it and make sure the counter isn't incremented. If the
+  // function gets called, this will raise an std::bad_function_call.
+  std::function<void()> bad_func = nullptr;
+  eb.setMaxLatency(std::chrono::milliseconds{0}, bad_func, false);
+  eb.runInLoop(
+      [&]() {
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::microseconds{1001});
+        eb.terminateLoopSoon();
+      },
+      true);
+  eb.loop();
+  ASSERT_EQ(maxDurationViolations, 0);
 }
 
 /**

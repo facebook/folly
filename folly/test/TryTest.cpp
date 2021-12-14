@@ -428,9 +428,10 @@ TEST(Try, ValueOverloads) {
   {
     auto obj = Try<int>{make_exception_wrapper<std::range_error>("oops")};
     EXPECT_THROW(obj.value(), std::range_error);
-    EXPECT_THROW(std::move(obj.value()), std::range_error);
-    EXPECT_THROW(as_const(obj.value()), std::range_error);
-    EXPECT_THROW(std::move(as_const(obj.value())), std::range_error);
+    EXPECT_THROW(std::ignore = std::move(obj.value()), std::range_error);
+    EXPECT_THROW(std::ignore = as_const(obj.value()), std::range_error);
+    EXPECT_THROW(
+        std::ignore = std::move(as_const(obj.value())), std::range_error);
   }
 }
 
@@ -772,4 +773,14 @@ TEST(Try, TestUnwrapForward) {
   auto original = std::make_tuple(Try<UPtr_t>{std::make_unique<int>(1)});
   auto unwrapped = unwrapTryTuple(std::move(original));
   EXPECT_EQ(*std::get<0>(unwrapped), 1);
+}
+
+TEST(Try, CopyConstructible) {
+  EXPECT_TRUE(std::is_copy_constructible<Try<int>>::value);
+  EXPECT_FALSE(std::is_copy_constructible<Try<MoveConstructOnly>>::value);
+}
+
+TEST(Try, CTAD) {
+  folly::Try t1(folly::unit);
+  folly::Try t2(42);
 }

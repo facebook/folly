@@ -614,6 +614,26 @@ TEST(IOBuf, QueueAppenderInsertClone) {
   EXPECT_EQ(x, queue.front()->next()->data()[0]);
 }
 
+TEST(IOBuf, QueueAppenderReuseTail) {
+  folly::IOBufQueue queue;
+  QueueAppender appender{&queue, 100};
+  constexpr StringPiece prologue = "hello";
+  appender.pushAtMost(
+      reinterpret_cast<const uint8_t*>(prologue.data()), prologue.size());
+  size_t expectedCapacity = queue.front()->capacity();
+
+  auto unpackable = IOBuf::create(folly::IOBufQueue::kMaxPackCopy + 1);
+  unpackable->append(folly::IOBufQueue::kMaxPackCopy + 1);
+  expectedCapacity += unpackable->capacity();
+  appender.insert(std::move(unpackable));
+
+  constexpr StringPiece epilogue = " world";
+  appender.pushAtMost(
+      reinterpret_cast<const uint8_t*>(epilogue.data()), epilogue.size());
+
+  EXPECT_EQ(queue.front()->computeChainCapacity(), expectedCapacity);
+}
+
 TEST(IOBuf, QueueAppenderRWCursor) {
   folly::IOBufQueue queue;
 
@@ -679,7 +699,7 @@ TEST(IOBuf, CursorOperators) {
   {
     std::unique_ptr<IOBuf> chain(IOBuf::create(20));
     chain->append(10);
-    chain->appendChain(chain->clone());
+    chain->appendToChain(chain->clone());
     EXPECT_EQ(20, chain->computeChainDataLength());
 
     Cursor curs1(chain.get());
@@ -724,7 +744,7 @@ TEST(IOBuf, CursorOperators) {
   {
     auto chain = IOBuf::create(10);
     chain->append(10);
-    chain->appendChain(chain->clone());
+    chain->appendToChain(chain->clone());
     EXPECT_EQ(2, chain->countChainElements());
     EXPECT_EQ(20, chain->computeChainDataLength());
 
@@ -1238,7 +1258,7 @@ TEST(IOBuf, BoundedCursorSanity) {
   EXPECT_THROW(subC.skip(1), std::out_of_range);
 
   // multi-item chain
-  chain1->appendChain(chain1->clone());
+  chain1->appendToChain(chain1->clone());
   EXPECT_EQ(2, chain1->countChainElements());
   EXPECT_EQ(20, chain1->computeChainDataLength());
 
@@ -1438,7 +1458,7 @@ TEST(IOBuf, BoundedCursorOperators) {
   {
     auto chain = IOBuf::create(10);
     chain->append(10);
-    chain->appendChain(chain->clone());
+    chain->appendToChain(chain->clone());
     EXPECT_EQ(2, chain->countChainElements());
     EXPECT_EQ(20, chain->computeChainDataLength());
 

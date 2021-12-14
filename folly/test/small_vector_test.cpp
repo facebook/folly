@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
+#include <fmt/format.h>
 
 #include <folly/Conv.h>
 #include <folly/Traits.h>
@@ -1190,4 +1191,122 @@ TEST(small_vector, erase_if) {
   EXPECT_EQ(1u, v[0]);
   EXPECT_EQ(3u, v[1]);
   EXPECT_EQ(5u, v[2]);
+}
+
+namespace {
+
+class NonTrivialInt {
+ public:
+  NonTrivialInt() {}
+  /* implicit */ NonTrivialInt(int value)
+      : value_(std::make_shared<int>(value)) {}
+
+  operator int() const { return *value_; }
+
+ private:
+  std::shared_ptr<const int> value_;
+};
+
+// Move and copy constructor and assignment have several special cases depending
+// on relative sizes, so test all combinations.
+template <class T, size_t N>
+void testMoveAndCopy() {
+  const auto fill = [](auto& v, size_t n) {
+    v.resize(n);
+    std::iota(v.begin(), v.end(), 0);
+  };
+  const auto verify = [](const auto& v, size_t n) {
+    ASSERT_EQ(v.size(), n);
+    for (size_t i = 0; i < n; ++i) {
+      EXPECT_EQ(v[i], i);
+    }
+  };
+
+  using Vec = small_vector<T, N>;
+  SCOPED_TRACE(fmt::format("N = {}", N));
+
+  const size_t kMinCapacity = Vec{}.capacity();
+
+  for (size_t from = 0; from < 16; ++from) {
+    SCOPED_TRACE(fmt::format("from = {}", from));
+
+    {
+      SCOPED_TRACE("Move-construction");
+      Vec a;
+      fill(a, from);
+      const auto aCapacity = a.capacity();
+      Vec b = std::move(a);
+      verify(b, from);
+      EXPECT_EQ(b.capacity(), aCapacity);
+      verify(a, 0);
+      EXPECT_EQ(a.capacity(), kMinCapacity);
+    }
+    {
+      SCOPED_TRACE("Copy-construction");
+      Vec a;
+      fill(a, from);
+      Vec b = a;
+      verify(b, from);
+      verify(a, from);
+    }
+
+    for (size_t to = 0; to < 16; ++to) {
+      SCOPED_TRACE(fmt::format("to = {}", to));
+      {
+        SCOPED_TRACE("Move-assignment");
+        Vec a;
+        fill(a, from);
+        Vec b;
+        fill(b, to);
+
+        const auto aCapacity = a.capacity();
+        b = std::move(a);
+        verify(b, from);
+        EXPECT_EQ(b.capacity(), aCapacity);
+        verify(a, 0);
+        EXPECT_EQ(a.capacity(), kMinCapacity);
+      }
+      {
+        SCOPED_TRACE("Copy-assignment");
+        Vec a;
+        fill(a, from);
+        Vec b;
+        fill(b, to);
+
+        b = a;
+        verify(b, from);
+        verify(a, from);
+      }
+      {
+        SCOPED_TRACE("swap");
+        Vec a;
+        fill(a, from);
+        Vec b;
+        fill(b, to);
+
+        const auto aCapacity = a.capacity();
+        const auto bCapacity = b.capacity();
+        swap(a, b);
+        verify(b, from);
+        EXPECT_EQ(b.capacity(), aCapacity);
+        verify(a, to);
+        EXPECT_EQ(a.capacity(), bCapacity);
+      }
+    }
+  }
+}
+
+} // namespace
+
+TEST(small_vector, MoveAndCopyTrivial) {
+  testMoveAndCopy<int, 0>();
+  // Capacity does not fit inline.
+  testMoveAndCopy<int, 2>();
+  // Capacity does fits inline.
+  testMoveAndCopy<int, 4>();
+}
+
+TEST(small_vector, MoveAndCopyNonTrivial) {
+  testMoveAndCopy<NonTrivialInt, 0>();
+  testMoveAndCopy<NonTrivialInt, 4>();
 }

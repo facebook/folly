@@ -275,7 +275,7 @@ class AtomicHashMap {
    *   allowed to be different from the type of keys actually stored (KeyT).
    *
    *   This enables use cases where materializing the key is costly and usually
-   *   redudant, e.g., canonicalizing/interning a set of strings and being able
+   *   redundant, e.g., canonicalizing/interning a set of strings and being able
    *   to look up by StringPiece. To use this feature, LookupHashFcn must take
    *   a LookupKeyT, and LookupEqualFcn must take KeyT and LookupKeyT as first
    *   and second parameter, respectively.

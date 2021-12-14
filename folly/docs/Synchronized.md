@@ -498,7 +498,7 @@ problem is called reader starvation.
 
 One solution is to use a shared mutex type with read priority, such as
 `folly::SharedMutexReadPriority`. That can introduce less blocking under
-contention to the other threads attemping to acquire a shared lock to do the
+contention to the other threads attempting to acquire a shared lock to do the
 first check. However, that may backfire and cause threads which are attempting
 to acquire a unique lock (for the second check) to stall, waiting for a moment
 in time when there are no shared locks held on the mutex, a moment in time that
@@ -520,7 +520,7 @@ checks rather than blocking or being blocked by them.
 The example would then look like:
 
 ``` Cpp
-    struct MyObect {
+    struct MyObject {
       bool isUpdateRequired() const;
       void doUpdate();
     };
@@ -654,7 +654,7 @@ When used with a `std::mutex`, `Synchronized` supports using a
 in the internal data.
 
 The `LockedPtr` returned by `Synchronized<T, std::mutex>::lock()` has a
-`getUniqueLock()` method that returns a reference to a
+`as_lock()` method that returns a reference to a
 `std::unique_lock<std::mutex>`, which can be given to the
 `std::condition_variable`:
 
@@ -665,7 +665,7 @@ The `LockedPtr` returned by `Synchronized<T, std::mutex>::lock()` has a
     // Assuming some other thread will put data on vec and signal
     // emptySignal, we can then wait on it as follows:
     auto locked = vec.lock();
-    emptySignal.wait(locked.getUniqueLock(),
+    emptySignal.wait(locked.as_lock(),
                      [&] { return !locked->empty(); });
 ```
 
@@ -711,7 +711,7 @@ locking of two objects and offering their innards.  It returns a
 ```
 
 Note that C++ 17 introduces
-(structured binding syntax)[(http://wg21.link/P0144r2)]
+[structured binding syntax](http://wg21.link/P0144r2)
 which will make the returned tuple more convenient to use:
 
 ``` Cpp

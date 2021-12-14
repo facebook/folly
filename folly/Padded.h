@@ -264,7 +264,7 @@ Iterator<typename Container::iterator> end(Container& c) {
  *
  * Converts a sequence of Node into a sequence of its underlying elements
  * (with enough functionality to make it useful, although it's not fully
- * compatible with the STL containre requiremenets, see below).
+ * compatible with the STL container requirements, see below).
  *
  * Provides iterators (of the same category as those of the underlying
  * container), size(), front(), back(), push_back(), pop_back(), and const /

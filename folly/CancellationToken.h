@@ -46,6 +46,8 @@ using CancellationStateTokenPtr =
     std::unique_ptr<CancellationState, CancellationStateTokenDeleter>;
 using CancellationStateSourcePtr =
     std::unique_ptr<CancellationState, CancellationStateSourceDeleter>;
+template <typename...>
+struct WithDataTag;
 } // namespace detail
 
 // A CancellationToken is an object that can be passed into an function or
@@ -201,6 +203,10 @@ class CancellationSource {
 
   friend bool operator==(
       const CancellationSource& a, const CancellationSource& b) noexcept;
+
+  template <typename... Data, typename... Args>
+  static std::pair<CancellationSource, std::tuple<Data...>*> create(
+      detail::WithDataTag<Data...>, Args&&...);
 
  private:
   explicit CancellationSource(

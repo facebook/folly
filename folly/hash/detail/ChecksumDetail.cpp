@@ -117,9 +117,26 @@ namespace detail {
 
 #if FOLLY_SSE_PREREQ(4, 2)
 
+static __m128i crc32MulAdd(__m128i x, __m128i a, __m128i multiplier) {
+  /*
+   * Note: the immediate constant for PCLMULQDQ specifies which
+   * 64-bit halves of the 128-bit vectors to multiply:
+   *
+   * 0x00 means low halves (higher degree polynomial terms for us)
+   * 0x11 means high halves (lower degree polynomial terms for us)
+   */
+  const __m128i t = _mm_xor_si128(a, _mm_clmulepi64_si128(x, multiplier, 0x00));
+  return _mm_xor_si128(t, _mm_clmulepi64_si128(x, multiplier, 0x11));
+}
+
 uint32_t crc32_hw_aligned(
     uint32_t remainder, const __m128i* p, size_t vec_count) {
+  if (vec_count == 0) {
+    return remainder;
+  }
+
   /* Constants precomputed by gen_crc32_multipliers.c.  Do not edit! */
+  const __m128i multipliers_8 = _mm_set_epi32(0, 0x910EEEC1, 0, 0x33FFF533);
   const __m128i multipliers_4 = _mm_set_epi32(0, 0x1D9513D7, 0, 0x8F352D95);
   const __m128i multipliers_2 = _mm_set_epi32(0, 0x81256527, 0, 0xF1DA05AA);
   const __m128i multipliers_1 = _mm_set_epi32(0, 0xCCAA009E, 0, 0xAE689191);
@@ -130,7 +147,8 @@ uint32_t crc32_hw_aligned(
 
   const __m128i* const end = p + vec_count;
   const __m128i* const end512 = p + (vec_count & ~3);
-  __m128i x0, x1, x2, x3;
+  const __m128i* const end1024 = p + (vec_count & ~7);
+  __m128i x0, x1, x2, x3, x4, x5, x6, x7;
 
   /*
    * Account for the current 'remainder', i.e. the CRC of the part of
@@ -156,59 +174,56 @@ uint32_t crc32_hw_aligned(
   x0 = *p++;
   x0 = _mm_xor_si128(x0, _mm_set_epi32(0, 0, 0, remainder));
 
-  if (p > end512) /* only 128, 256, or 384 bits of input? */
+  if (p > end512) { /* only 128, 256, or 384 bits of input? */
     goto _128_bits_at_a_time;
+  }
   x1 = *p++;
   x2 = *p++;
   x3 = *p++;
+  if (p > end1024) { /* Less than 1024 bits of input available */
+    goto _512_bits_at_a_time;
+  }
+  x4 = *p++;
+  x5 = *p++;
+  x6 = *p++;
+  x7 = *p++;
 
+  for (; p != end1024; p += 8) {
+    x0 = crc32MulAdd(x0, p[0], multipliers_8);
+    x1 = crc32MulAdd(x1, p[1], multipliers_8);
+    x2 = crc32MulAdd(x2, p[2], multipliers_8);
+    x3 = crc32MulAdd(x3, p[3], multipliers_8);
+    x4 = crc32MulAdd(x4, p[4], multipliers_8);
+    x5 = crc32MulAdd(x5, p[5], multipliers_8);
+    x6 = crc32MulAdd(x6, p[6], multipliers_8);
+    x7 = crc32MulAdd(x7, p[7], multipliers_8);
+  }
+
+  /* Fold 1024 bits => 512 bits */
+  x0 = crc32MulAdd(x0, x4, multipliers_4);
+  x1 = crc32MulAdd(x1, x5, multipliers_4);
+  x2 = crc32MulAdd(x2, x6, multipliers_4);
+  x3 = crc32MulAdd(x3, x7, multipliers_4);
+
+_512_bits_at_a_time:
   /* Fold 512 bits at a time */
   for (; p != end512; p += 4) {
-    __m128i y0, y1, y2, y3;
-
-    y0 = p[0];
-    y1 = p[1];
-    y2 = p[2];
-    y3 = p[3];
-
-    /*
-     * Note: the immediate constant for PCLMULQDQ specifies which
-     * 64-bit halves of the 128-bit vectors to multiply:
-     *
-     * 0x00 means low halves (higher degree polynomial terms for us)
-     * 0x11 means high halves (lower degree polynomial terms for us)
-     */
-    y0 = _mm_xor_si128(y0, _mm_clmulepi64_si128(x0, multipliers_4, 0x00));
-    y1 = _mm_xor_si128(y1, _mm_clmulepi64_si128(x1, multipliers_4, 0x00));
-    y2 = _mm_xor_si128(y2, _mm_clmulepi64_si128(x2, multipliers_4, 0x00));
-    y3 = _mm_xor_si128(y3, _mm_clmulepi64_si128(x3, multipliers_4, 0x00));
-    y0 = _mm_xor_si128(y0, _mm_clmulepi64_si128(x0, multipliers_4, 0x11));
-    y1 = _mm_xor_si128(y1, _mm_clmulepi64_si128(x1, multipliers_4, 0x11));
-    y2 = _mm_xor_si128(y2, _mm_clmulepi64_si128(x2, multipliers_4, 0x11));
-    y3 = _mm_xor_si128(y3, _mm_clmulepi64_si128(x3, multipliers_4, 0x11));
-
-    x0 = y0;
-    x1 = y1;
-    x2 = y2;
-    x3 = y3;
+    x0 = crc32MulAdd(x0, p[0], multipliers_4);
+    x1 = crc32MulAdd(x1, p[1], multipliers_4);
+    x2 = crc32MulAdd(x2, p[2], multipliers_4);
+    x3 = crc32MulAdd(x3, p[3], multipliers_4);
   }
 
   /* Fold 512 bits => 128 bits */
-  x2 = _mm_xor_si128(x2, _mm_clmulepi64_si128(x0, multipliers_2, 0x00));
-  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x1, multipliers_2, 0x00));
-  x2 = _mm_xor_si128(x2, _mm_clmulepi64_si128(x0, multipliers_2, 0x11));
-  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x1, multipliers_2, 0x11));
-  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x2, multipliers_1, 0x00));
-  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x2, multipliers_1, 0x11));
-  x0 = x3;
+  x2 = crc32MulAdd(x0, x2, multipliers_2);
+  x3 = crc32MulAdd(x1, x3, multipliers_2);
+  x0 = crc32MulAdd(x2, x3, multipliers_1);
 
 _128_bits_at_a_time:
   while (p != end) {
     /* Fold 128 bits into next 128 bits */
     x1 = *p++;
-    x1 = _mm_xor_si128(x1, _mm_clmulepi64_si128(x0, multipliers_1, 0x00));
-    x1 = _mm_xor_si128(x1, _mm_clmulepi64_si128(x0, multipliers_1, 0x11));
-    x0 = x1;
+    x0 = crc32MulAdd(x0, x1, multipliers_1);
   }
 
   /* Now there are just 128 bits left, stored in 'x0'. */

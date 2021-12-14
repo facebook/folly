@@ -678,7 +678,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // not copyable
   Function(const Function&) = delete;
 
-#if __OBJC__
+#ifdef __OBJC__
   // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
   /*implicit*/ Function(ReturnType (^objCBlock)(Args... args))
@@ -766,7 +766,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   Function& operator=(const Function&) = delete;
 
-#if __OBJC__
+#ifdef __OBJC__
   // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
   /* implicit */ Function& operator=(ReturnType (^objCBlock)(Args... args)) {

@@ -261,6 +261,8 @@ class ElfFile {
   /** Find the section containing the given address */
   const ElfShdr* getSectionContainingAddress(ElfAddr addr) const noexcept;
 
+  const char* filepath() const { return filepath_; }
+
  private:
   OpenResult init() noexcept;
   void reset() noexcept;

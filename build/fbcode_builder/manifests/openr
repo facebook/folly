@@ -23,6 +23,7 @@ fbzmq
 folly
 googletest
 re2
+range-v3
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON

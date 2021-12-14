@@ -95,7 +95,8 @@ namespace folly {
  * In other words, when multiple IOBufs share the same underlying buffer, the
  * data() and tail() methods on each IOBuf may point to a different segment of
  * the data.  However, the buffer() and bufferEnd() methods will point to the
- * same location for all IOBufs sharing the same underlying buffer.
+ * same location for all IOBufs sharing the same underlying buffer, unless the
+ * tail was trimmed with trimWritableTail().
  *
  *       +-----------+     +---------+
  *       |  IOBuf 1  |     | IOBuf 2 |
@@ -132,8 +133,9 @@ namespace folly {
  * chain is deleted, all other chained elements are also deleted.  Conceptually
  * it is simplest to treat this as if the head of the chain owns all other
  * IOBufs in the chain.  When you delete the head of the chain, it will delete
- * the other elements as well.  For this reason, prependChain() and
- * appendChain() take ownership of the new elements being added to this chain.
+ * the other elements as well.  For this reason, appendToChain() and
+ * insertAfterThisOne() take ownership of the new elements being added to this
+ * chain.
  *
  * When the coalesce() method is used to coalesce an entire IOBuf chain into a
  * single IOBuf, all other IOBufs in the chain are eliminated and automatically
@@ -148,10 +150,12 @@ namespace folly {
  * Synchronization
  * ---------------
  *
- * When used in multithread programs, a single IOBuf object should only be used
- * in a single thread at a time.  If a caller uses a single IOBuf across
- * multiple threads the caller is responsible for using an external lock to
- * synchronize access to the IOBuf.
+ * When used in multithread programs, a single IOBuf object should only be
+ * accessed mutably by a single thread at a time.  All const member functions of
+ * IOBuf are safe to call concurrently with one another, but when a caller uses
+ * a single IOBuf across multiple threads and at least one thread calls a
+ * non-const member function, the caller is responsible for using an external
+ * lock to synchronize access to the IOBuf.
  *
  * Two separate IOBuf objects may be accessed concurrently in separate threads
  * without locking, even if they point to the same underlying buffer.  The
@@ -163,9 +167,10 @@ namespace folly {
  * another thread.
  *
  * For IOBuf chains, no two IOBufs in the same chain should be accessed
- * simultaneously in separate threads.  The caller must maintain a lock around
- * the entire chain if the chain, or individual IOBufs in the chain, may be
- * accessed by multiple threads.
+ * simultaneously in separate threads, except where all simultaneous accesses
+ * are to const member functions.  The caller must maintain a lock around the
+ * entire chain if the chain, or individual IOBufs in the chain, may be accessed
+ * by multiple threads with at least one of the threads needing to mutate.
  *
  *
  * IOBuf Object Allocation
@@ -228,6 +233,7 @@ class IOBuf {
   enum WrapBufferOp { WRAP_BUFFER };
   enum TakeOwnershipOp { TAKE_OWNERSHIP };
   enum CopyBufferOp { COPY_BUFFER };
+  enum SizedFree { SIZED_FREE };
 
   enum class CombinedOption { DEFAULT, COMBINED, SEPARATE };
 
@@ -327,7 +333,14 @@ class IOBuf {
       void* userData = nullptr,
       bool freeOnError = true) {
     return takeOwnership(
-        buf, capacity, 0, capacity, freeFn, userData, freeOnError);
+        buf,
+        capacity,
+        0,
+        capacity,
+        freeFn,
+        userData,
+        freeOnError,
+        TakeOwnershipOption::DEFAULT);
   }
   IOBuf(
       TakeOwnershipOp op,
@@ -346,7 +359,14 @@ class IOBuf {
       void* userData = nullptr,
       bool freeOnError = true) {
     return takeOwnership(
-        buf, capacity, 0, length, freeFn, userData, freeOnError);
+        buf,
+        capacity,
+        0,
+        length,
+        freeFn,
+        userData,
+        freeOnError,
+        TakeOwnershipOption::DEFAULT);
   }
   IOBuf(
       TakeOwnershipOp op,
@@ -365,7 +385,36 @@ class IOBuf {
       std::size_t length,
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
-      bool freeOnError = true);
+      bool freeOnError = true) {
+    return takeOwnership(
+        buf,
+        capacity,
+        offset,
+        length,
+        freeFn,
+        userData,
+        freeOnError,
+        TakeOwnershipOption::DEFAULT);
+  }
+
+  static std::unique_ptr<IOBuf> takeOwnership(
+      SizedFree,
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
+      std::size_t length,
+      bool freeOnError = true) {
+    return takeOwnership(
+        buf,
+        capacity,
+        offset,
+        length,
+        nullptr,
+        reinterpret_cast<void*>(capacity),
+        freeOnError,
+        TakeOwnershipOption::STORE_SIZE);
+  }
+
   IOBuf(
       TakeOwnershipOp,
       void* buf,
@@ -374,6 +423,15 @@ class IOBuf {
       std::size_t length,
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
+      bool freeOnError = true);
+
+  IOBuf(
+      TakeOwnershipOp,
+      SizedFree,
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
+      std::size_t length,
       bool freeOnError = true);
 
   /**
@@ -729,6 +787,15 @@ class IOBuf {
   }
 
   /**
+   * Adjust the buffer end pointer to reduce the buffer capacity. This can be
+   * used to pass the ownership of the writable tail to another IOBuf.
+   */
+  void trimWritableTail(std::size_t amount) {
+    DCHECK_LE(amount, tailroom());
+    capacity_ -= amount;
+  }
+
+  /**
    * Clear the buffer.
    *
    * Postcondition: headroom() == 0, length() == 0, tailroom() == capacity()
@@ -787,54 +854,60 @@ class IOBuf {
   std::size_t computeChainDataLength() const;
 
   /**
-   * Insert another IOBuf chain immediately before this IOBuf.
+   * Get the capacity all IOBuf chains
    *
-   * For example, if there are two IOBuf chains (A, B, C) and (D, E, F),
-   * and B->prependChain(D) is called, the (D, E, F) chain will be subsumed
-   * and become part of the chain starting at A, which will now look like
-   * (A, D, E, F, B, C)
-   *
-   * Note that since IOBuf chains are circular, head->prependChain(other) can
-   * be used to append the other chain at the very end of the chain pointed to
-   * by head.  For example, if there are two IOBuf chains (A, B, C) and
-   * (D, E, F), and A->prependChain(D) is called, the chain starting at A will
-   * now consist of (A, B, C, D, E, F)
-   *
-   * The elements in the specified IOBuf chain will become part of this chain,
-   * and will be owned by the head of this chain.  When this chain is
-   * destroyed, all elements in the supplied chain will also be destroyed.
-   *
-   * For this reason, appendChain() only accepts an rvalue-reference to a
-   * unique_ptr(), to make it clear that it is taking ownership of the supplied
-   * chain.  If you have a raw pointer, you can pass in a new temporary
-   * unique_ptr around the raw pointer.  If you have an existing,
-   * non-temporary unique_ptr, you must call std::move(ptr) to make it clear
-   * that you are destroying the original pointer.
+   * Beware that this method has to walk the entire chain.
    */
-  void prependChain(std::unique_ptr<IOBuf>&& iobuf);
+  std::size_t computeChainCapacity() const;
 
   /**
-   * Append another IOBuf chain immediately after this IOBuf.
+   * Append another IOBuf chain to the end of this chain.
    *
    * For example, if there are two IOBuf chains (A, B, C) and (D, E, F),
-   * and B->appendChain(D) is called, the (D, E, F) chain will be subsumed
+   * and A->appendToChain(D) is called, the (D, E, F) chain will be subsumed
    * and become part of the chain starting at A, which will now look like
-   * (A, B, D, E, F, C)
+   * (A, B, C, D, E, F)
+   */
+  void appendToChain(std::unique_ptr<IOBuf>&& iobuf);
+
+  /**
+   * Insert an IOBuf chain immediately after this chain element.
    *
-   * The elements in the specified IOBuf chain will become part of this chain,
-   * and will be owned by the head of this chain.  When this chain is
-   * destroyed, all elements in the supplied chain will also be destroyed.
+   * For example, if there are two IOBuf chains (A, B, C) and (D, E, F),
+   * and B->insertAfterThisOne(D) is called, the (D, E, F) chain will be
+   * subsumed and become part of the chain starting at A, which will now look
+   * like (A, B, D, E, F, C)
    *
-   * For this reason, appendChain() only accepts an rvalue-reference to a
-   * unique_ptr(), to make it clear that it is taking ownership of the supplied
-   * chain.  If you have a raw pointer, you can pass in a new temporary
-   * unique_ptr around the raw pointer.  If you have an existing,
-   * non-temporary unique_ptr, you must call std::move(ptr) to make it clear
-   * that you are destroying the original pointer.
+   * Note if X is an IOBuf chain with just a single element, X->appendToChain()
+   * and X->insertAfterThisOne() behave identically.
+   */
+  void insertAfterThisOne(std::unique_ptr<IOBuf>&& iobuf) {
+    // Just use appendToChain() on the next element in our chain
+    next_->appendToChain(std::move(iobuf));
+  }
+
+  /**
+   * Deprecated name for appendToChain()
+   *
+   * IOBuf chains are circular, so appending to the end of the chain is
+   * logically equivalent to prepending to the current head (but keeping the
+   * chain head pointing to the same element).  That was the reason this method
+   * was originally called prependChain().  However, almost every time this
+   * method is called the intent is to append to the end of a chain, so the
+   * `prependChain()` name is very confusing to most callers.
+   */
+  void prependChain(std::unique_ptr<IOBuf>&& iobuf) {
+    appendToChain(std::move(iobuf));
+  }
+
+  /**
+   * Deprecated name for insertAfterThisOne()
+   *
+   * Beware: appendToChain() and appendChain() are two different methods,
+   * and you probably want appendToChain() instead of this one.
    */
   void appendChain(std::unique_ptr<IOBuf>&& iobuf) {
-    // Just use prependChain() on the next element in our chain
-    next_->prependChain(std::move(iobuf));
+    insertAfterThisOne(std::move(iobuf));
   }
 
   /**
@@ -1269,6 +1342,21 @@ class IOBuf {
   void cloneOneInto(IOBuf& other) const { other = cloneOneAsValue(); }
 
   /**
+   * Append the chain data into the provided container. This is meant to be used
+   * with containers such as std::string or std::vector<char>, but any container
+   * which supports reserve(), insert(), and has char or unsigned char value
+   * type is supported.
+   */
+  template <class Container>
+  void appendTo(Container& container) const;
+
+  /**
+   * Convenience version of appendTo().
+   */
+  template <class Container>
+  Container to() const;
+
+  /**
    * Return an iovector suitable for e.g. writev()
    *
    *   auto iov = buf->getIov();
@@ -1389,6 +1477,17 @@ class IOBuf {
   IOBuf& operator=(const IOBuf& other);
 
  private:
+  enum class TakeOwnershipOption { DEFAULT, STORE_SIZE };
+  static std::unique_ptr<IOBuf> takeOwnership(
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
+      std::size_t length,
+      FreeFunction freeFn,
+      void* userData,
+      bool freeOnError,
+      TakeOwnershipOption option);
+
   enum FlagsEnum : uintptr_t {
     // Adding any more flags would not work on 32-bit architectures,
     // as these flags are stashed in the least significant 2 bits of a
@@ -1759,6 +1858,25 @@ inline IOBuf::Iterator IOBuf::begin() const {
 }
 inline IOBuf::Iterator IOBuf::end() const {
   return cend();
+}
+
+template <class Container>
+void IOBuf::appendTo(Container& container) const {
+  static_assert(
+      (std::is_same<typename Container::value_type, char>::value ||
+       std::is_same<typename Container::value_type, unsigned char>::value),
+      "Unsupported value type");
+  container.reserve(container.size() + computeChainDataLength());
+  for (auto data : *this) {
+    container.insert(container.end(), data.begin(), data.end());
+  }
+}
+
+template <class Container>
+Container IOBuf::to() const {
+  Container result;
+  appendTo(result);
+  return result;
 }
 
 } // namespace folly

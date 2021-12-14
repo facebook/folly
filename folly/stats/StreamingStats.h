@@ -37,10 +37,25 @@ class StreamingStats final {
   static_assert(std::is_floating_point_v<StatsType>);
 
  public:
+  struct StreamingState {
+    size_t count = 0;
+    StatsType mean = 0;
+    StatsType m2 = 0;
+    SampleDataType min = std::numeric_limits<SampleDataType>::max();
+    SampleDataType max = std::numeric_limits<SampleDataType>::lowest();
+  };
+
   template <class Iterator>
   StreamingStats(Iterator first, Iterator last) noexcept {
     add(first, last);
   }
+
+  explicit StreamingStats(StreamingState state)
+      : count_(state.count),
+        mean_(state.mean),
+        m2_(state.m2),
+        min_(state.min),
+        max_(state.max) {}
 
   StreamingStats() = default;
 
@@ -104,6 +119,11 @@ class StreamingStats final {
     return mean_;
   }
 
+  StatsType m2() const {
+    checkMinimumDataSize(1);
+    return m2_;
+  }
+
   StatsType populationVariance() const {
     checkMinimumDataSize(2);
     return var_(0);
@@ -122,6 +142,16 @@ class StreamingStats final {
   StatsType sampleStandardDeviation() const {
     checkMinimumDataSize(2);
     return std_(1);
+  }
+
+  StreamingState state() const {
+    StreamingState state;
+    state.count = count_;
+    state.m2 = m2_;
+    state.max = max_;
+    state.mean = mean_;
+    state.min = min_;
+    return state;
   }
 
  private:

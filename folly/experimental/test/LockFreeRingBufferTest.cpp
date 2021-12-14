@@ -257,4 +257,20 @@ TEST(LockFreeRingBuffer, contendedReadsAndWrites) {
   }
 }
 
+TEST(LockFreeRingBuffer, cursorComparison) {
+  LockFreeRingBuffer<int> rb{2};
+  rb.write(5);
+  EXPECT_TRUE(rb.currentHead() == rb.currentHead());
+  EXPECT_FALSE(rb.currentHead() == rb.currentTail());
+
+  EXPECT_TRUE(rb.currentHead() != rb.currentTail());
+  EXPECT_FALSE(rb.currentHead() != rb.currentHead());
+
+  EXPECT_TRUE(rb.currentHead() > rb.currentTail());
+  EXPECT_FALSE(rb.currentTail() > rb.currentHead());
+
+  EXPECT_TRUE(rb.currentTail() < rb.currentHead());
+  EXPECT_FALSE(rb.currentHead() < rb.currentTail());
+}
+
 } // namespace folly

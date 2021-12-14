@@ -25,8 +25,10 @@
 
 namespace folly {
 
+namespace detail {
 template <class T>
-Try<T>::Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
+TryBase<T>::TryBase(TryBase<T>&& t) noexcept(
+    std::is_nothrow_move_constructible<T>::value)
     : contains_(t.contains_) {
   if (contains_ == Contains::VALUE) {
     ::new (static_cast<void*>(std::addressof(value_))) T(std::move(t.value_));
@@ -36,28 +38,7 @@ Try<T>::Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
 }
 
 template <class T>
-template <class T2>
-Try<T>::Try(typename std::enable_if<
-            std::is_same<Unit, T2>::value,
-            Try<void> const&>::type t) noexcept
-    : contains_(Contains::NOTHING) {
-  if (t.hasValue()) {
-    contains_ = Contains::VALUE;
-    ::new (static_cast<void*>(std::addressof(value_))) T();
-  } else if (t.hasException()) {
-    contains_ = Contains::EXCEPTION;
-    new (&e_) exception_wrapper(t.exception());
-  }
-}
-
-Try<void>::Try(const Try<Unit>& t) noexcept : hasValue_(!t.hasException()) {
-  if (t.hasException()) {
-    new (&e_) exception_wrapper(t.exception());
-  }
-}
-
-template <class T>
-Try<T>& Try<T>::operator=(Try<T>&& t) noexcept(
+TryBase<T>& TryBase<T>::operator=(TryBase<T>&& t) noexcept(
     std::is_nothrow_move_constructible<T>::value) {
   if (this == &t) {
     return *this;
@@ -77,11 +58,8 @@ Try<T>& Try<T>::operator=(Try<T>&& t) noexcept(
 }
 
 template <class T>
-Try<T>::Try(const Try<T>& t) noexcept(
+TryBase<T>::TryBase(const TryBase<T>& t) noexcept(
     std::is_nothrow_copy_constructible<T>::value) {
-  static_assert(
-      std::is_copy_constructible<T>::value,
-      "T must be copyable for Try<T> to be copyable");
   contains_ = t.contains_;
   if (contains_ == Contains::VALUE) {
     ::new (static_cast<void*>(std::addressof(value_))) T(t.value_);
@@ -91,12 +69,8 @@ Try<T>::Try(const Try<T>& t) noexcept(
 }
 
 template <class T>
-Try<T>& Try<T>::operator=(const Try<T>& t) noexcept(
+TryBase<T>& TryBase<T>::operator=(const TryBase<T>& t) noexcept(
     std::is_nothrow_copy_constructible<T>::value) {
-  static_assert(
-      std::is_copy_constructible<T>::value,
-      "T must be copyable for Try<T> to be copyable");
-
   if (this == &t) {
     return *this;
   }
@@ -115,11 +89,44 @@ Try<T>& Try<T>::operator=(const Try<T>& t) noexcept(
 }
 
 template <class T>
-Try<T>::~Try() {
+void TryBase<T>::destroy() noexcept {
+  auto oldContains = std::exchange(contains_, Contains::NOTHING);
+  if (LIKELY(oldContains == Contains::VALUE)) {
+    value_.~T();
+  } else if (UNLIKELY(oldContains == Contains::EXCEPTION)) {
+    e_.~exception_wrapper();
+  }
+}
+
+template <class T>
+template <class T2>
+TryBase<T>::TryBase(typename std::enable_if<
+                    std::is_same<Unit, T2>::value,
+                    Try<void> const&>::type t) noexcept
+    : contains_(Contains::NOTHING) {
+  if (t.hasValue()) {
+    contains_ = Contains::VALUE;
+    ::new (static_cast<void*>(std::addressof(value_))) T();
+  } else if (t.hasException()) {
+    contains_ = Contains::EXCEPTION;
+    new (&e_) exception_wrapper(t.exception());
+  }
+}
+
+template <class T>
+TryBase<T>::~TryBase() {
   if (LIKELY(contains_ == Contains::VALUE)) {
     value_.~T();
   } else if (UNLIKELY(contains_ == Contains::EXCEPTION)) {
     e_.~exception_wrapper();
+  }
+}
+
+} // namespace detail
+
+Try<void>::Try(const Try<Unit>& t) noexcept : hasValue_(!t.hasException()) {
+  if (t.hasException()) {
+    new (&this->e_) exception_wrapper(t.exception());
   }
 }
 
@@ -128,10 +135,10 @@ template <typename... Args>
 T& Try<T>::emplace(Args&&... args) noexcept(
     std::is_nothrow_constructible<T, Args&&...>::value) {
   this->destroy();
-  ::new (static_cast<void*>(std::addressof(value_)))
+  ::new (static_cast<void*>(std::addressof(this->value_)))
       T(static_cast<Args&&>(args)...);
-  contains_ = Contains::VALUE;
-  return value_;
+  this->contains_ = Contains::VALUE;
+  return this->value_;
 }
 
 template <typename T>
@@ -139,33 +146,33 @@ template <typename... Args>
 exception_wrapper& Try<T>::emplaceException(Args&&... args) noexcept(
     std::is_nothrow_constructible<exception_wrapper, Args&&...>::value) {
   this->destroy();
-  new (&e_) exception_wrapper(static_cast<Args&&>(args)...);
-  contains_ = Contains::EXCEPTION;
-  return e_;
+  new (&this->e_) exception_wrapper(static_cast<Args&&>(args)...);
+  this->contains_ = Contains::EXCEPTION;
+  return this->e_;
 }
 
 template <class T>
 T& Try<T>::value() & {
   throwUnlessValue();
-  return value_;
+  return this->value_;
 }
 
 template <class T>
 T&& Try<T>::value() && {
   throwUnlessValue();
-  return std::move(value_);
+  return std::move(this->value_);
 }
 
 template <class T>
 const T& Try<T>::value() const& {
   throwUnlessValue();
-  return value_;
+  return this->value_;
 }
 
 template <class T>
 const T&& Try<T>::value() const&& {
   throwUnlessValue();
-  return std::move(value_);
+  return std::move(this->value_);
 }
 
 template <class T>
@@ -183,11 +190,11 @@ T Try<T>::value_or(U&& defaultValue) && {
 
 template <class T>
 void Try<T>::throwUnlessValue() const {
-  switch (contains_) {
+  switch (this->contains_) {
     case Contains::VALUE:
       return;
     case Contains::EXCEPTION:
-      e_.throw_exception();
+      this->e_.throw_exception();
     case Contains::NOTHING:
     default:
       throw_exception<UsingUninitializedTry>();
@@ -199,27 +206,17 @@ void Try<T>::throwIfFailed() const {
   throwUnlessValue();
 }
 
-template <class T>
-void Try<T>::destroy() noexcept {
-  auto oldContains = std::exchange(contains_, Contains::NOTHING);
-  if (LIKELY(oldContains == Contains::VALUE)) {
-    value_.~T();
-  } else if (UNLIKELY(oldContains == Contains::EXCEPTION)) {
-    e_.~exception_wrapper();
-  }
-}
-
 Try<void>& Try<void>::operator=(const Try<void>& t) noexcept {
   if (t.hasException()) {
     if (hasException()) {
-      e_ = t.e_;
+      this->e_ = t.e_;
     } else {
-      new (&e_) exception_wrapper(t.e_);
+      new (&this->e_) exception_wrapper(t.e_);
       hasValue_ = false;
     }
   } else {
     if (hasException()) {
-      e_.~exception_wrapper();
+      this->e_.~exception_wrapper();
       hasValue_ = true;
     }
   }
@@ -230,16 +227,16 @@ template <typename... Args>
 exception_wrapper& Try<void>::emplaceException(Args&&... args) noexcept(
     std::is_nothrow_constructible<exception_wrapper, Args&&...>::value) {
   if (hasException()) {
-    e_.~exception_wrapper();
+    this->e_.~exception_wrapper();
   }
-  new (&e_) exception_wrapper(static_cast<Args&&>(args)...);
+  new (&this->e_) exception_wrapper(static_cast<Args&&>(args)...);
   hasValue_ = false;
-  return e_;
+  return this->e_;
 }
 
 void Try<void>::throwIfFailed() const {
   if (hasException()) {
-    e_.throw_exception();
+    this->e_.throw_exception();
   }
 }
 
@@ -255,8 +252,6 @@ makeTryWithNoUnwrap(F&& f) {
   using ResultType = invoke_result_t<F>;
   try {
     return Try<ResultType>(f());
-  } catch (std::exception& e) {
-    return Try<ResultType>(exception_wrapper(std::current_exception(), e));
   } catch (...) {
     return Try<ResultType>(exception_wrapper(std::current_exception()));
   }
@@ -269,8 +264,6 @@ typename std::
   try {
     f();
     return Try<void>();
-  } catch (std::exception& e) {
-    return Try<void>(exception_wrapper(std::current_exception(), e));
   } catch (...) {
     return Try<void>(exception_wrapper(std::current_exception()));
   }
@@ -290,8 +283,6 @@ typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
   using ResultType = invoke_result_t<F>;
   try {
     return f();
-  } catch (std::exception& e) {
-    return ResultType(exception_wrapper(std::current_exception(), e));
   } catch (...) {
     return ResultType(exception_wrapper(std::current_exception()));
   }
@@ -301,9 +292,6 @@ template <typename T, typename... Args>
 T* tryEmplace(Try<T>& t, Args&&... args) noexcept {
   try {
     return std::addressof(t.emplace(static_cast<Args&&>(args)...));
-  } catch (const std::exception& ex) {
-    t.emplaceException(std::current_exception(), ex);
-    return nullptr;
   } catch (...) {
     t.emplaceException(std::current_exception());
     return nullptr;
@@ -321,9 +309,6 @@ T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept {
       "Unable to initialise a value of type T with the result of 'func'");
   try {
     return std::addressof(t.emplace(static_cast<Func&&>(func)()));
-  } catch (const std::exception& ex) {
-    t.emplaceException(std::current_exception(), ex);
-    return nullptr;
   } catch (...) {
     t.emplaceException(std::current_exception());
     return nullptr;
@@ -339,9 +324,6 @@ bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept {
     static_cast<Func&&>(func)();
     t.emplace();
     return true;
-  } catch (const std::exception& ex) {
-    t.emplaceException(std::current_exception(), ex);
-    return false;
   } catch (...) {
     t.emplaceException(std::current_exception());
     return false;
@@ -379,8 +361,6 @@ template <typename T>
 void tryAssign(Try<T>& t, Try<T>&& other) noexcept {
   try {
     t = std::move(other);
-  } catch (const std::exception& ex) {
-    t.emplaceException(std::current_exception(), ex);
   } catch (...) {
     t.emplaceException(std::current_exception());
   }

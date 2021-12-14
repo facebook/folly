@@ -4,7 +4,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-'Miscellaneous utility functions.'
+
+"Miscellaneous utility functions."
 
 import itertools
 import logging
@@ -12,21 +13,19 @@ import os
 import shutil
 import subprocess
 import sys
-
 from contextlib import contextmanager
 
 
 def recursively_flatten_list(l):
     return itertools.chain.from_iterable(
-        (recursively_flatten_list(i) if type(i) is list else (i,))
-            for i in l
+        (recursively_flatten_list(i) if type(i) is list else (i,)) for i in l
     )
 
 
 def run_command(*cmd, **kwargs):
-    'The stdout of most fbcode_builder utilities is meant to be parsed.'
-    logging.debug('Running: {0} with {1}'.format(cmd, kwargs))
-    kwargs['stdout'] = sys.stderr
+    "The stdout of most fbcode_builder utilities is meant to be parsed."
+    logging.debug("Running: {0} with {1}".format(cmd, kwargs))
+    kwargs["stdout"] = sys.stderr
     subprocess.check_call(cmd, **kwargs)
 
 
@@ -40,13 +39,13 @@ def make_temp_dir(d):
 
 
 def _inner_read_config(path):
-    '''
+    """
     Helper to read a named config file.
     The grossness with the global is a workaround for this python bug:
     https://bugs.python.org/issue21591
     The bug prevents us from defining either a local function or a lambda
     in the scope of read_fbcode_builder_config below.
-    '''
+    """
     global _project_dir
     full_path = os.path.join(_project_dir, path)
     return read_fbcode_builder_config(full_path)
@@ -60,37 +59,37 @@ def read_fbcode_builder_config(filename):
     global _project_dir
     _project_dir = os.path.dirname(filename)
 
-    scope = {'read_fbcode_builder_config': _inner_read_config}
+    scope = {"read_fbcode_builder_config": _inner_read_config}
     with open(filename) as config_file:
-        code = compile(config_file.read(), filename, mode='exec')
+        code = compile(config_file.read(), filename, mode="exec")
     exec(code, scope)
-    return scope['config']
+    return scope["config"]
 
 
 def steps_for_spec(builder, spec, processed_modules=None):
-    '''
+    """
     Sets `builder` configuration, and returns all the builder steps
     necessary to build `spec` and its dependencies.
 
     Traverses the dependencies in depth-first order, honoring the sequencing
     in each 'depends_on' list.
-    '''
+    """
     if processed_modules is None:
         processed_modules = set()
     steps = []
-    for module in spec.get('depends_on', []):
+    for module in spec.get("depends_on", []):
         if module not in processed_modules:
             processed_modules.add(module)
-            steps.extend(steps_for_spec(
-                builder,
-                module.fbcode_builder_spec(builder),
-                processed_modules
-            ))
-    steps.extend(spec.get('steps', []))
+            steps.extend(
+                steps_for_spec(
+                    builder, module.fbcode_builder_spec(builder), processed_modules
+                )
+            )
+    steps.extend(spec.get("steps", []))
     return steps
 
 
 def build_fbcode_builder_config(config):
     return lambda builder: builder.build(
-        steps_for_spec(builder, config['fbcode_builder_spec'](builder))
+        steps_for_spec(builder, config["fbcode_builder_spec"](builder))
     )

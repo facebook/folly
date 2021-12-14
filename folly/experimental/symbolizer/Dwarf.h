@@ -122,6 +122,9 @@ class Dwarf {
    * Best effort:
    * - fills @inlineFrames if mode == FULL_WITH_INLINE,
    * - calls @eachParameterName on the function parameters.
+   *
+   * if @checkAddress is true, we verify that the address is mapped to
+   * a range in this CU before running the line number VM
    */
   bool findLocation(
       uintptr_t address,
@@ -129,7 +132,8 @@ class Dwarf {
       detail::CompilationUnit& cu,
       LocationInfo& info,
       folly::Range<SymbolizedFrame*> inlineFrames,
-      folly::FunctionRef<void(folly::StringPiece)> eachParameterName) const;
+      folly::FunctionRef<void(folly::StringPiece)> eachParameterName,
+      bool checkAddress = true) const;
 
   /**
    * Finds a subprogram debugging info entry that contains a given address among
@@ -161,6 +165,9 @@ class Dwarf {
   /** Get an ELF section by name. */
   folly::StringPiece getSection(const char* name) const;
 
+  detail::CompilationUnit getCompilationUnit(uint64_t offset) const;
+  detail::CompilationUnit findCompilationUnit(uint64_t targetOffset) const;
+
   /** cu must exist during the life cycle of created detail::Die. */
   detail::Die getDieAtOffset(
       const detail::CompilationUnit& cu, uint64_t offset) const;
@@ -187,6 +194,12 @@ class Dwarf {
    */
   detail::DIEAbbreviation getAbbreviation(uint64_t code, uint64_t offset) const;
 
+  detail::Attribute readAttribute(
+      const detail::CompilationUnit& cu,
+      const detail::Die& die,
+      detail::AttributeSpec spec,
+      folly::StringPiece& info) const;
+
   /**
    * Iterates over all attributes of a debugging info entry,  calling the given
    * callable for each. If all attributes are visited, then return the offset of
@@ -208,18 +221,24 @@ class Dwarf {
    * .debug_ranges.
    */
   bool isAddrInRangeList(
+      const detail::CompilationUnit& cu,
       uint64_t address,
       folly::Optional<uint64_t> baseAddr,
       size_t offset,
       uint8_t addrSize) const;
 
   const ElfFile* elf_;
-  const folly::StringPiece debugInfo_; // .debug_info
   const folly::StringPiece debugAbbrev_; // .debug_abbrev
-  const folly::StringPiece debugLine_; // .debug_line
-  const folly::StringPiece debugStr_; // .debug_str
+  const folly::StringPiece debugAddr_; // .debug_addr (DWARF 5)
   const folly::StringPiece debugAranges_; // .debug_aranges
+  const folly::StringPiece debugInfo_; // .debug_info
+  const folly::StringPiece debugLine_; // .debug_line
+  const folly::StringPiece debugLineStr_; // .debug_line_str (DWARF 5)
+  const folly::StringPiece debugLoclists_; // .debug_loclists (DWARF 5)
   const folly::StringPiece debugRanges_; // .debug_ranges
+  const folly::StringPiece debugRnglists_; // .debug_rnglists (DWARF 5)
+  const folly::StringPiece debugStr_; // .debug_str
+  const folly::StringPiece debugStrOffsets_; // .debug_str_offsets (DWARF 5)
 };
 
 class Dwarf::Section {
@@ -246,15 +265,15 @@ class Dwarf::Section {
 class Dwarf::LineNumberVM {
  public:
   LineNumberVM(
-      folly::StringPiece data, folly::StringPiece compilationDirectory);
+      folly::StringPiece data,
+      folly::StringPiece compilationDirectory,
+      folly::StringPiece debugStr,
+      folly::StringPiece debugLineStr);
 
   bool findAddress(uintptr_t target, Path& file, uint64_t& line);
 
   /** Gets full file name at given index including directory. */
-  Path getFullFileName(uint64_t index) const {
-    auto fn = getFileName(index);
-    return Path({}, getIncludeDirectory(fn.directoryIndex), fn.relativeName);
-  }
+  Path getFullFileName(uint64_t index) const;
 
  private:
   void init();
@@ -300,6 +319,8 @@ class Dwarf::LineNumberVM {
   bool is64Bit_;
   folly::StringPiece data_;
   folly::StringPiece compilationDirectory_;
+  folly::StringPiece debugStr_; // needed for DWARF 5
+  folly::StringPiece debugLineStr_; // DWARF 5
 
   // Header
   uint16_t version_;
@@ -310,11 +331,25 @@ class Dwarf::LineNumberVM {
   uint8_t opcodeBase_;
   const uint8_t* standardOpcodeLengths_;
 
-  folly::StringPiece includeDirectories_;
-  size_t includeDirectoryCount_;
+  // 6.2.4 The Line Number Program Header.
+  struct {
+    size_t includeDirectoryCount;
+    folly::StringPiece includeDirectories;
+    size_t fileNameCount;
+    folly::StringPiece fileNames;
+  } v4_;
 
-  folly::StringPiece fileNames_;
-  size_t fileNameCount_;
+  struct {
+    uint8_t directoryEntryFormatCount;
+    folly::StringPiece directoryEntryFormat;
+    uint64_t directoriesCount;
+    folly::StringPiece directories;
+
+    uint8_t fileNameEntryFormatCount;
+    folly::StringPiece fileNameEntryFormat;
+    uint64_t fileNamesCount;
+    folly::StringPiece fileNames;
+  } v5_;
 
   // State machine registers
   uint64_t address_;

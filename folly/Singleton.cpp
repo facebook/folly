@@ -50,12 +50,12 @@ static void singleton_hs_init_weak(int* argc, char** argv[])
 SingletonVault::Type SingletonVault::defaultVaultType() {
 #if FOLLY_SINGLETON_HAVE_DLSYM
   bool isPython = dlsym(RTLD_DEFAULT, "Py_Main");
-  bool isHaskel =
+  bool isHaskell =
       detail::singleton_hs_init_weak || dlsym(RTLD_DEFAULT, "hs_init");
   bool isJVM = dlsym(RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
   bool isD = dlsym(RTLD_DEFAULT, "_d_run_main");
 
-  return isPython || isHaskel || isJVM || isD ? Type::Relaxed : Type::Strict;
+  return isPython || isHaskell || isJVM || isD ? Type::Relaxed : Type::Strict;
 #else
   return Type::Relaxed;
 #endif

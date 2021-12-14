@@ -270,13 +270,14 @@ template <class T>
 class TestAlloc {
  public:
   using Alloc = std::allocator<T>;
-  using value_type = typename Alloc::value_type;
+  using AllocTraits = std::allocator_traits<Alloc>;
+  using value_type = typename AllocTraits::value_type;
 
-  using pointer = typename Alloc::pointer;
-  using const_pointer = typename Alloc::const_pointer;
-  using reference = typename Alloc::reference;
-  using const_reference = typename Alloc::const_reference;
-  using size_type = typename Alloc::size_type;
+  using pointer = typename AllocTraits::pointer;
+  using const_pointer = typename AllocTraits::const_pointer;
+  using reference = value_type&;
+  using const_reference = value_type const&;
+  using size_type = typename AllocTraits::size_type;
 
   using propagate_on_container_swap = std::true_type;
   using propagate_on_container_copy_assignment = std::true_type;
@@ -628,6 +629,12 @@ TEST(Hash, Strings) {
   EXPECT_EQ(h2(a2), h2(a2.str()));
   EXPECT_EQ(h2(a3), h2(a3.str()));
   EXPECT_EQ(h2(a4), h2(a4.str()));
+
+  // Check compatibility with std::string_view.
+  EXPECT_EQ(h2(a1), h2(std::string_view{a1}));
+  EXPECT_EQ(h2(a2), h2(std::string_view{a2}));
+  EXPECT_EQ(h2(a3), h2(std::string_view{a3}));
+  EXPECT_EQ(h2(a4), h2(std::string_view{a4}));
 }
 
 namespace {

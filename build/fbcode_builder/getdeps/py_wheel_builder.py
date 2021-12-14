@@ -11,6 +11,7 @@ import email
 import os
 import re
 import stat
+from typing import List
 
 from .builder import BuilderBase, CMakeBuilder
 
@@ -182,6 +183,7 @@ class PythonWheelBuilder(BuilderBase):
             src_dir=self.build_dir,
             build_dir=self.build_dir,
             inst_dir=self.inst_dir,
+            loader=None,
             defines={},
             final_install_prefix=None,
         )

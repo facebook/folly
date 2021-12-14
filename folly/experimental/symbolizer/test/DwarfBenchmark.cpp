@@ -32,7 +32,7 @@ using namespace folly::symbolizer::test;
 FOLLY_NOINLINE void lexicalBlockBar() try {
   size_t unused = 0;
   unused++;
-  inlineB_inlineA_qsort();
+  inlineB_inlineA_lfind();
 } catch (...) {
   folly::assume_unreachable();
 }
@@ -45,7 +45,7 @@ void run(LocationInfoMode mode, size_t n) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   lexicalBlockBar();
   symbolizer.symbolize(frames);
-  // The address of the line where lexicalBlockBar calls inlineB_inlineA_qsort.
+  // The address of the line where lexicalBlockBar calls inlineB_inlineA_lfind.
   uintptr_t address = frames.frames[7].addr;
 
   ElfFile elf("/proc/self/exe");

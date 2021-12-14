@@ -254,7 +254,10 @@ if(sodium_USE_STATIC_LIBS)
 else()
     set(_LIB_TYPE SHARED)
 endif()
-add_library(sodium ${_LIB_TYPE} IMPORTED)
+
+if(NOT TARGET sodium)
+    add_library(sodium ${_LIB_TYPE} IMPORTED)
+endif()
 
 set_target_properties(sodium PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${sodium_INCLUDE_DIR}"

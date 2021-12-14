@@ -154,7 +154,7 @@ class LogCategory {
    * Get which messages processed by this category will be processed by the
    * parent category
    */
-  LogLevel getPropagateLevelMessagesToParentRelaxed();
+  LogLevel getPropagateLevelMessagesToParentRelaxed() const;
 
   /**
    * Get the LoggerDB that this LogCategory belongs to.

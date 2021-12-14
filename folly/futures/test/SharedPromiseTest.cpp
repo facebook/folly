@@ -157,3 +157,12 @@ TEST(SharedPromise, ConstMethods) {
   EXPECT_TRUE(fut.isReady());
   EXPECT_EQ(42, std::move(fut).get());
 }
+
+TEST(SharedPromise, InterruptHandlerSetsException) {
+  folly::SharedPromise<int> p;
+  p.setInterruptHandler([&](auto&& ew) { p.setException(ew); });
+  auto f = p.getSemiFuture();
+  f.cancel();
+  ASSERT_TRUE(f.isReady());
+  EXPECT_THROW(std::move(f).get(), FutureCancellation);
+}

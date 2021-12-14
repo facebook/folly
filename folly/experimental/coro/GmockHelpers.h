@@ -20,6 +20,7 @@
 #include <type_traits>
 
 #include <folly/experimental/coro/Coroutine.h>
+#include <folly/experimental/coro/GtestHelpers.h>
 #include <folly/experimental/coro/Result.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GMock.h>
@@ -69,6 +70,14 @@ auto CoInvoke(F&& f) {
   });
 }
 
+// Member function overload
+template <class Class, typename MethodPtr>
+auto CoInvoke(Class* obj_ptr, MethodPtr method_ptr) {
+  return ::testing::Invoke([=](auto&&... a) {
+    return co_invoke(method_ptr, obj_ptr, static_cast<decltype(a)>(a)...);
+  });
+}
+
 // CoInvoke variant that does not pass arguments to callback function.
 //
 // Example:
@@ -88,6 +97,13 @@ template <typename F>
 auto CoInvokeWithoutArgs(F&& f) {
   return ::testing::InvokeWithoutArgs(
       [f = static_cast<F&&>(f)]() { return co_invoke(f); });
+}
+
+// Member function overload
+template <class Class, typename MethodPtr>
+auto CoInvokeWithoutArgs(Class* obj_ptr, MethodPtr method_ptr) {
+  return ::testing::InvokeWithoutArgs(
+      [=]() { return co_invoke(method_ptr, obj_ptr); });
 }
 
 namespace detail {
@@ -229,5 +245,9 @@ auto CoThrow(Ex&& e) {
 } // namespace gmock_helpers
 } // namespace coro
 } // namespace folly
+
+#define CO_ASSERT_THAT(value, matcher) \
+  CO_ASSERT_PRED_FORMAT1(              \
+      ::testing::internal::MakePredicateFormatterFromMatcher(matcher), value)
 
 #endif // FOLLY_HAS_COROUTINES

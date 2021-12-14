@@ -18,6 +18,7 @@
 
 #include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 struct Foo {
   Foo(int n_, std::function<void()> dtorFn_)
@@ -111,4 +112,31 @@ TEST(EventBaseLocalTest, DestructionOrder) {
            })
         .get();
   }
+}
+
+TEST(EventBaseLocalTest, DestructorStressTest) {
+  std::atomic<folly::EventBase*> currentEvb;
+  folly::Baton<> baton;
+  const int kIterations = 10000;
+  auto thread1 = std::thread([&] {
+    for (int i = 0; i < kIterations; i++) {
+      folly::EventBase evb;
+      currentEvb = &evb;
+      baton.post();
+      evb.loopForever();
+    }
+  });
+  auto thread2 = std::thread([&] {
+    for (int i = 0; i < kIterations; i++) {
+      folly::EventBaseLocal<int> local;
+      baton.wait();
+      baton.reset();
+      auto evb = currentEvb.exchange(nullptr);
+      evb->runInEventBaseThreadAndWait([&] { local.emplace(*evb, 4); });
+      evb->terminateLoopSoon();
+    }
+  });
+
+  thread1.join();
+  thread2.join();
 }

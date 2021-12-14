@@ -384,17 +384,17 @@ class ReadMostlyTLObserver {
 
   struct LocalSnapshot {
     LocalSnapshot() {}
-    LocalSnapshot(const ReadMostlyMainPtr<const T>& data, int64_t version)
+    LocalSnapshot(const ReadMostlyMainPtr<const T>& data, size_t version)
         : data_(data), version_(version) {}
 
     ReadMostlyWeakPtr<const T> data_;
-    int64_t version_;
+    size_t version_;
   };
 
   Observer<T> observer_;
 
   mutable Synchronized<ReadMostlyMainPtr<const T>, std::mutex> globalData_;
-  mutable std::atomic<int64_t> globalVersion_{0};
+  mutable std::atomic<size_t> globalVersion_{0};
 
   ThreadLocal<LocalSnapshot> localSnapshot_;
 };
@@ -404,14 +404,20 @@ class HazptrObserver {
   template <typename Holder>
   struct HazptrSnapshot {
     template <typename State>
-    explicit HazptrSnapshot(const std::atomic<State*>& state)
-        : holder_(), ptr_(get(holder_).get_protected(state)->snapshot_.get()) {}
+    explicit HazptrSnapshot(const std::atomic<State*>& state) : holder_() {
+      make(holder_);
+      ptr_ = get(holder_).protect(state)->snapshot_.get();
+    }
 
     const T& operator*() const { return *get(); }
     const T* operator->() const { return get(); }
     const T* get() const { return ptr_; }
 
    private:
+    static void make(hazptr_holder<>& holder) {
+      holder = folly::make_hazard_pointer<>();
+    }
+    static void make(hazptr_local<1>&) {}
     static hazptr_holder<>& get(hazptr_holder<>& holder) { return holder; }
     static hazptr_holder<>& get(hazptr_local<1>& holder) { return holder[0]; }
 

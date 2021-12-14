@@ -48,14 +48,14 @@ class hazptr_tc_entry {
   template <uint8_t, template <typename> class>
   friend class hazptr_local;
   friend class hazptr_tc<Atom>;
+  template <uint8_t M, template <typename> class A>
+  friend hazptr_array<M, A> make_hazard_pointer_array();
 
   FOLLY_ALWAYS_INLINE void fill(hazptr_rec<Atom>* hprec) noexcept {
     hprec_ = hprec;
   }
 
   FOLLY_ALWAYS_INLINE hazptr_rec<Atom>* get() const noexcept { return hprec_; }
-
-  void evict() { hprec_->release(); }
 }; // hazptr_tc_entry
 
 /**
@@ -72,20 +72,22 @@ class hazptr_tc {
   bool local_{false}; // for debug mode only
 
  public:
-  ~hazptr_tc() {
-    for (uint8_t i = 0; i < count(); ++i) {
-      entry_[i].evict();
-    }
-  }
+  ~hazptr_tc() { evict(count()); }
 
   static constexpr uint8_t capacity() noexcept { return kCapacity; }
 
  private:
+  using Rec = hazptr_rec<Atom>;
+
   template <uint8_t, template <typename> class>
   friend class hazptr_array;
   friend class hazptr_holder<Atom>;
   template <uint8_t, template <typename> class>
   friend class hazptr_local;
+  friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
+  template <uint8_t M, template <typename> class A>
+  friend hazptr_array<M, A> make_hazard_pointer_array();
+  friend void hazptr_tc_evict<Atom>();
 
   FOLLY_ALWAYS_INLINE
   hazptr_tc_entry<Atom>& operator[](uint8_t i) noexcept {
@@ -106,17 +108,7 @@ class hazptr_tc {
       entry_[count_++].fill(hprec);
       return true;
     }
-    hazptr_warning_tc_overflow();
     return false;
-  }
-
-  FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_tc_overflow() {
-    static std::atomic<uint64_t> warning_count{0};
-    if ((warning_count++ % 10000) == 0) {
-      LOG(WARNING) << "Hazptr thread cache overflow "
-                   << std::this_thread::get_id();
-      ;
-    }
   }
 
   FOLLY_ALWAYS_INLINE uint8_t count() const noexcept { return count_; }
@@ -126,18 +118,40 @@ class hazptr_tc {
   FOLLY_NOINLINE void fill(uint8_t num) {
     DCHECK_LE(count_ + num, capacity());
     auto& domain = default_hazptr_domain<Atom>();
+    Rec* hprec = domain.acquire_hprecs(num);
     for (uint8_t i = 0; i < num; ++i) {
-      auto hprec = domain.hprec_acquire();
+      DCHECK(hprec);
+      Rec* next = hprec->next_avail();
+      hprec->set_next_avail(nullptr);
       entry_[count_++].fill(hprec);
+      hprec = next;
     }
+    DCHECK(hprec == nullptr);
   }
 
   FOLLY_NOINLINE void evict(uint8_t num) {
     DCHECK_GE(count_, num);
-    for (uint8_t i = 0; i < num; ++i) {
-      entry_[--count_].evict();
+    if (num == 0) {
+      return;
     }
+    Rec* head = nullptr;
+    Rec* tail = nullptr;
+    for (uint8_t i = 0; i < num; ++i) {
+      Rec* rec = entry_[--count_].get();
+      DCHECK(rec);
+      rec->set_next_avail(head);
+      head = rec;
+      if (!tail) {
+        tail = rec;
+      }
+    }
+    DCHECK(head);
+    DCHECK(tail);
+    DCHECK(tail->next_avail() == nullptr);
+    hazard_pointer_default_domain<Atom>().release_hprecs(head, tail);
   }
+
+  void evict() { evict(count()); }
 
   bool local() const noexcept { // for debugging only
     return local_;
@@ -155,149 +169,10 @@ FOLLY_ALWAYS_INLINE hazptr_tc<Atom>& hazptr_tc_tls() {
   return folly::SingletonThreadLocal<hazptr_tc<Atom>, hazptr_tc_tls_tag>::get();
 }
 
-/**
- *  hazptr_priv
- *
- *  Per-thread list of retired objects to be pushed in bulk to domain.
- */
+/** hazptr_tc_evict -- Used only for benchmarking */
 template <template <typename> class Atom>
-class hazptr_priv {
-  static constexpr int kThreshold = 20;
-
-  Atom<hazptr_obj<Atom>*> head_;
-  Atom<hazptr_obj<Atom>*> tail_;
-  int rcount_;
-  bool in_dtor_;
-
- public:
-  hazptr_priv() : head_(nullptr), tail_(nullptr), rcount_(0), in_dtor_(false) {}
-
-  ~hazptr_priv() {
-    in_dtor_ = true;
-    if (!empty()) {
-      push_all_to_domain(false);
-    }
-  }
-
- private:
-  friend class hazptr_domain<Atom>;
-  friend class hazptr_obj<Atom>;
-
-  bool empty() const noexcept { return head() == nullptr; }
-
-  void push(hazptr_obj<Atom>* obj) {
-    DCHECK(!in_dtor_);
-    push_in_priv_list(obj);
-  }
-
-  void push_in_priv_list(hazptr_obj<Atom>* obj) {
-    while (true) {
-      if (tail()) {
-        if (push_in_non_empty_list(obj)) {
-          break;
-        }
-      } else {
-        if (push_in_empty_list(obj)) {
-          break;
-        }
-      }
-    }
-    if (++rcount_ >= kThreshold) {
-      push_all_to_domain(true);
-    }
-  }
-
-  void push_all_to_domain(bool check_to_reclaim) {
-    hazptr_obj<Atom>* h = nullptr;
-    hazptr_obj<Atom>* t = nullptr;
-    collect(h, t);
-    if (h) {
-      DCHECK(t);
-      hazptr_obj_list<Atom> l(h, t, rcount_);
-      hazptr_domain_push_retired<Atom>(l, check_to_reclaim);
-      rcount_ = 0;
-    }
-  }
-
-  void collect(
-      hazptr_obj<Atom>*& colHead, hazptr_obj<Atom>*& colTail) noexcept {
-    // This function doesn't change rcount_.
-    // The value rcount_ is accurate excluding the effects of calling collect().
-    auto h = exchange_head();
-    if (h) {
-      auto t = exchange_tail();
-      DCHECK(t);
-      if (colTail) {
-        colTail->set_next(h);
-      } else {
-        colHead = h;
-      }
-      colTail = t;
-    }
-  }
-
-  hazptr_obj<Atom>* head() const noexcept {
-    return head_.load(std::memory_order_acquire);
-  }
-
-  hazptr_obj<Atom>* tail() const noexcept {
-    return tail_.load(std::memory_order_acquire);
-  }
-
-  void set_head(hazptr_obj<Atom>* obj) noexcept {
-    head_.store(obj, std::memory_order_release);
-  }
-
-  bool cas_head(hazptr_obj<Atom>* expected, hazptr_obj<Atom>* obj) noexcept {
-    return head_.compare_exchange_weak(
-        expected, obj, std::memory_order_acq_rel, std::memory_order_relaxed);
-  }
-
-  bool cas_tail(hazptr_obj<Atom>* expected, hazptr_obj<Atom>* obj) noexcept {
-    return tail_.compare_exchange_weak(
-        expected, obj, std::memory_order_acq_rel, std::memory_order_relaxed);
-  }
-
-  hazptr_obj<Atom>* exchange_head() noexcept {
-    return head_.exchange(nullptr, std::memory_order_acq_rel);
-  }
-
-  hazptr_obj<Atom>* exchange_tail() noexcept {
-    return tail_.exchange(nullptr, std::memory_order_acq_rel);
-  }
-
-  bool push_in_non_empty_list(hazptr_obj<Atom>* obj) noexcept {
-    auto h = head();
-    if (h) {
-      obj->set_next(h);
-      if (cas_head(h, obj)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool push_in_empty_list(hazptr_obj<Atom>* obj) noexcept {
-    hazptr_obj<Atom>* t = nullptr;
-    obj->set_next(nullptr);
-    if (cas_tail(t, obj)) {
-      set_head(obj);
-      return true;
-    }
-    return false;
-  }
-}; // hazptr_priv
-
-/** hazptr_priv_tls */
-struct HazptrTag {};
-
-template <template <typename> class Atom>
-using hazptr_priv_singleton =
-    folly::SingletonThreadLocal<hazptr_priv<Atom>, HazptrTag>;
-
-template <template <typename> class Atom>
-FOLLY_ALWAYS_INLINE hazptr_priv<Atom>& hazptr_priv_tls() {
-  return hazptr_priv_singleton<Atom>::get();
+void hazptr_tc_evict() {
+  hazptr_tc_tls<Atom>().evict();
 }
 
 } // namespace folly

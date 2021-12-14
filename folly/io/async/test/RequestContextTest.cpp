@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <cstdint>
 #include <thread>
 
 #include <folly/Memory.h>
@@ -22,6 +24,8 @@
 #include <folly/io/async/test/RequestContextHelper.h>
 #include <folly/portability/GTest.h>
 #include <folly/system/ThreadName.h>
+
+#include <boost/thread/barrier.hpp>
 
 using namespace folly;
 
@@ -522,4 +526,94 @@ TEST_F(RequestContextTest, ConcurrentDataRefRelease) {
     th1.join();
     th2.join();
   }
+}
+
+TEST_F(RequestContextTest, AccessAllThreadsDestructionGuard) {
+  constexpr auto kNumThreads = 128;
+
+  std::vector<std::thread> threads{kNumThreads};
+  boost::barrier barrier{kNumThreads + 1};
+
+  std::atomic<std::size_t> count{0};
+  for (auto& thread : threads) {
+    thread = std::thread([&] {
+      // Force creation of thread local
+      RequestContext::get();
+      ++count;
+      // Wait for all other threads to do the same
+      barrier.wait();
+      // Wait until signaled to die
+      barrier.wait();
+    });
+  }
+
+  barrier.wait();
+  // Sanity check
+  EXPECT_EQ(count.load(), kNumThreads);
+
+  {
+    auto accessor = RequestContext::accessAllThreads();
+    // Allow threads to die (but they should not as long as we hold accessor!)
+    barrier.wait();
+    auto accessorsCount = std::distance(accessor.begin(), accessor.end());
+    EXPECT_EQ(accessorsCount, kNumThreads + 1);
+    for (RequestContext::StaticContext& staticContext : accessor) {
+      EXPECT_EQ(staticContext.requestContext, nullptr);
+    }
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+}
+
+TEST(RequestContextTryGetTest, TryGetTest) {
+  // try_get() should not create a default RequestContext object if none exists.
+  EXPECT_EQ(RequestContext::try_get(), nullptr);
+  // Explicitly create a new instance so that subsequent calls to try_get()
+  // return it.
+  RequestContext::create();
+  EXPECT_NE(RequestContext::saveContext(), nullptr);
+  EXPECT_NE(RequestContext::try_get(), nullptr);
+  // Make sure that the pointers returned by both get() and try_get() point to
+  // the same underlying instance.
+  EXPECT_EQ(RequestContext::try_get(), RequestContext::get());
+  // Set some context data and read it out via try_get() accessor.
+  RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
+  auto rc = RequestContext::try_get();
+  EXPECT_TRUE(rc->hasContextData("test"));
+  auto* dataPtr = dynamic_cast<TestData*>(rc->getContextData("test"));
+  EXPECT_EQ(dataPtr->data_, 10);
+
+  auto thread = std::thread([&] {
+    auto accessor = RequestContext::accessAllThreads();
+    // test there is no deadlock with try_get()
+    RequestContext::try_get();
+  });
+  thread.join();
+
+  thread = std::thread([&] {
+    RequestContext::get();
+    auto accessor = RequestContext::accessAllThreads();
+    // test there is no deadlock with get()
+    RequestContext::get();
+  });
+  thread.join();
+}
+
+TEST(ImmutableRequestTest, simple) {
+  ImmutableRequestData<int> ird(4);
+  EXPECT_EQ(ird.value(), 4);
+}
+
+TEST(ImmutableRequestTest, type_traits) {
+  using IRDI = ImmutableRequestData<int>;
+
+  auto c1 = std::is_constructible<IRDI, int>::value;
+  EXPECT_TRUE(c1);
+  auto n1 = std::is_nothrow_constructible<IRDI, int>::value;
+  EXPECT_TRUE(n1);
+
+  auto c2 = std::is_constructible<IRDI, int, int>::value;
+  EXPECT_FALSE(c2);
 }

@@ -16,7 +16,10 @@
 
 #include <folly/executors/ThreadPoolExecutor.h>
 
+#include <ctime>
+
 #include <folly/executors/GlobalThreadPoolList.h>
+#include <folly/portability/PThread.h>
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
 #include <folly/tracing/StaticTracepoint.h>
 
@@ -48,10 +51,8 @@ DEFINE_int64(
 ThreadPoolExecutor::ThreadPoolExecutor(
     size_t /* maxThreads */,
     size_t minThreads,
-    std::shared_ptr<ThreadFactory> threadFactory,
-    bool isWaitForAll)
+    std::shared_ptr<ThreadFactory> threadFactory)
     : threadFactory_(std::move(threadFactory)),
-      isWaitForAll_(isWaitForAll),
       taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads),
@@ -348,6 +349,20 @@ std::string ThreadPoolExecutor::getNameHelper() const {
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);
+
+std::chrono::nanoseconds ThreadPoolExecutor::Thread::usedCpuTime() const {
+  using std::chrono::nanoseconds;
+  using std::chrono::seconds;
+  timespec tp{};
+#ifdef __linux__
+  clockid_t clockid;
+  auto th = const_cast<std::thread&>(handle).native_handle();
+  if (!pthread_getcpuclockid(th, &clockid)) {
+    clock_gettime(clockid, &tp);
+  }
+#endif
+  return nanoseconds(tp.tv_nsec) + seconds(tp.tv_sec);
+}
 
 void ThreadPoolExecutor::subscribeToTaskStats(TaskStatsCallback cb) {
   if (*taskStatsCallbacks_->inCallback) {

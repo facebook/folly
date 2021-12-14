@@ -29,4 +29,8 @@ namespace folly {
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX hazptr_domain<std::atomic> default_domain;
 
+bool hazptr_use_executor() {
+  return FLAGS_folly_hazptr_use_executor;
+}
+
 } // namespace folly

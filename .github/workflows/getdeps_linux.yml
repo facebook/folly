@@ -5,18 +5,16 @@ name: linux
 on:
   push:
     branches:
-    - master
+    - main
   pull_request:
     branches:
-    - master
+    - main
 
 jobs:
   build:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
-    - name: Install system deps
-      run: sudo python3 build/fbcode_builder/getdeps.py install-system-deps --recursive folly
     - name: Fetch boost
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch ninja
@@ -69,7 +67,7 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts
       run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --strip --src-dir=. folly _artifacts/linux  --project-install-prefix folly:/usr/local --final-install-prefix /usr/local
-    - uses: actions/upload-artifact@master
+    - uses: actions/upload-artifact@v2
       with:
         name: folly
         path: _artifacts

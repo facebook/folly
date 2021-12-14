@@ -31,7 +31,7 @@ namespace folly {
 
 namespace qms_detail {
 
-/*
+/**
  * Reference: Faster Remainder by Direct Computation: Applications to Compilers
  * and Software Libraries, Software: Practice and Experience 49 (6), 2019.
  */
@@ -287,13 +287,7 @@ uint64_t QuotientMultiSet<Instructions>::getBlockPayload(
 template <class Instructions>
 QuotientMultiSet<Instructions>::Iterator::Iterator(
     const QuotientMultiSet<Instructions>* qms)
-    : qms_(qms),
-      key_(0),
-      occBlockIndex_(-1),
-      occOffsetInBlock_(0),
-      occWord_(0),
-      occBlock_(nullptr),
-      pos_(-1) {}
+    : qms_(qms) {}
 
 template <class Instructions>
 bool QuotientMultiSet<Instructions>::Iterator::next() {
@@ -326,7 +320,7 @@ bool QuotientMultiSet<Instructions>::Iterator::next() {
 template <class Instructions>
 bool QuotientMultiSet<Instructions>::Iterator::skipTo(uint64_t key) {
   if (key > qms_->maxKey_) {
-    return false;
+    return setEnd();
   }
   const auto qr =
       qms_detail::getQuotientAndRemainder(key, qms_->divisor_, qms_->fraction_);

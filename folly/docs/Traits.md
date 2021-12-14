@@ -20,11 +20,11 @@ information about a given type.
 ### IsRelocatable
 ***
 
-In C++, the default way to move an object is by 
-calling the copy constructor and destroying the old copy 
-instead of directly copying the memory contents by using memcpy(). 
-The conservative approach of moving an object assumes that the copied 
-object is not relocatable. 
+In C++, the default way to move an object is by
+calling the copy constructor and destroying the old copy
+instead of directly copying the memory contents by using memcpy().
+The conservative approach of moving an object assumes that the copied
+object is not relocatable.
 The two following code sequences should be semantically equivalent for a
 relocatable type:
 
@@ -44,8 +44,8 @@ relocatable type:
 ```
 
 Very few C++ types are non-relocatable.
-The type defined below maintains a pointer inside an embedded buffer and 
-hence would be non-relocatable. Moving the object by simply copying its 
+The type defined below maintains a pointer inside an embedded buffer and
+hence would be non-relocatable. Moving the object by simply copying its
 memory contents would leave the internal pointer pointing to the old buffer.
 
 ```Cpp
@@ -60,8 +60,8 @@ public:
 };
 ```
 
-We can optimize the task of moving a relocatable type T using memcpy. 
-IsRelocatable<T>::value describes the ability of moving around memory 
+We can optimize the task of moving a relocatable type T using memcpy.
+IsRelocatable<T>::value describes the ability of moving around memory
 a value of type T by using memcpy.
 
 ### Usage
@@ -78,7 +78,7 @@ a value of type T by using memcpy.
 
   * Declaring a type as relocatable
 
-    Appending the lines below after definition of My*Type 
+    Appending the lines below after definition of My*Type
     (`MyParameterizedType` or `MySimpleType`) will declare it as relocatable
 
     ```Cpp
@@ -95,7 +95,7 @@ a value of type T by using memcpy.
     }
     ```
 
-  * To make it easy to state assumptions for a regular type or a family of 
+  * To make it easy to state assumptions for a regular type or a family of
     parameterized type, various macros can be used as shown below.
 
   * Stating that a type is Relocatable using a macro
@@ -110,15 +110,15 @@ a value of type T by using memcpy.
     }
     ```
 
-`fbvector` only works with relocatable objects. If assumptions are not stated 
-explicitly, `fbvector<MySimpleType>` or `fbvector<MyParameterizedType>` 
+`fbvector` only works with relocatable objects. If assumptions are not stated
+explicitly, `fbvector<MySimpleType>` or `fbvector<MyParameterizedType>`
 will fail to compile due to assertion below:
 
 ```Cpp
 static_assert(IsRelocatable<My*Type>::value, "");
 ```
 
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE*(type) macros can be used to state that type 
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE*(type) macros can be used to state that type
 is relocatable and has nothrow constructor.
 
   * Stating that a type is `fbvector-compatible` using macros
@@ -132,15 +132,15 @@ is relocatable and has nothrow constructor.
     FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(MyParameterizedType)
     ```
 
-Similarly, 
+Similarly,
 
-  * FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(MyTypeHavingOneParameter) macro is 
+  * FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(MyTypeHavingOneParameter) macro is
     for family of parameterized types having 1 parameter
 
-  * FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(MyTypeHavingThreeParameters) macro is 
+  * FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(MyTypeHavingThreeParameters) macro is
     for family of parameterized types having 3 parameters
 
-  * FOLLY_ASSUME_FBVECTOR_COMPATIBLE_4(MyTypeHavingFourParameters) macro is 
+  * FOLLY_ASSUME_FBVECTOR_COMPATIBLE_4(MyTypeHavingFourParameters) macro is
     for family of parameterized types having 4 parameters
 
 Few common types, namely `std::basic_string`, `std::vector`, `std::list`,

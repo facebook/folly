@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/SharedMutex.h>
-#include <folly/stats/detail/DigestBuilder.h>
+#include <folly/stats/DigestBuilder.h>
 #include <folly/stats/detail/SlidingWindow.h>
 
 namespace folly {

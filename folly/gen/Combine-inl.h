@@ -116,7 +116,7 @@ class Zip : public Operator<Zip<Container>> {
     template <class Handler>
     bool apply(Handler&& handler) const {
       auto iter = container_->begin();
-      return (source_.apply([&](Value value) -> bool {
+      return source_.apply([&](Value value) -> bool {
         if (iter == container_->end()) {
           return false;
         }
@@ -126,7 +126,7 @@ class Zip : public Operator<Zip<Container>> {
         }
         ++iter;
         return true;
-      }));
+      });
     }
   };
 

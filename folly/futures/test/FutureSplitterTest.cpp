@@ -165,11 +165,7 @@ TEST(FutureSplitter, splitFutureFailure) {
       p.getSemiFuture().via(&InlineExecutor::instance()));
   auto f1 = sp.getFuture();
   EXPECT_FALSE(f1.isReady());
-  try {
-    throw std::runtime_error("Oops");
-  } catch (std::exception& e) {
-    p.setException(exception_wrapper(std::current_exception(), e));
-  }
+  p.setException(exception_wrapper{std::runtime_error("Oops")});
   EXPECT_TRUE(f1.isReady());
   EXPECT_TRUE(f1.hasException());
   auto f2 = sp.getFuture();

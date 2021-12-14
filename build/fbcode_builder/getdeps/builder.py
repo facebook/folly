@@ -185,18 +185,51 @@ class MakeBuilder(BuilderBase):
         self._run_cmd(cmd, env=env)
 
 
+class CMakeBootStrapBuilder(MakeBuilder):
+    def _build(self, install_dirs, reconfigure):
+        self._run_cmd(
+            [
+                "./bootstrap",
+                "--prefix=" + self.inst_dir,
+                f"--parallel={self.build_opts.num_jobs}",
+            ]
+        )
+        super(CMakeBootStrapBuilder, self)._build(install_dirs, reconfigure)
+
+
 class AutoconfBuilder(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, args):
+    def __init__(
+        self,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+        args,
+        conf_env_args,
+    ):
         super(AutoconfBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
         self.args = args or []
+        self.conf_env_args = conf_env_args or {}
 
     def _build(self, install_dirs, reconfigure):
         configure_path = os.path.join(self.src_dir, "configure")
         autogen_path = os.path.join(self.src_dir, "autogen.sh")
 
         env = self._compute_env(install_dirs)
+
+        # Some configure scripts need additional env values passed derived from cmds
+        for (k, cmd_args) in self.conf_env_args.items():
+            out = (
+                subprocess.check_output(cmd_args, env=dict(env.items()))
+                .decode("utf-8")
+                .strip()
+            )
+            if out:
+                env.set(k, out)
 
         if not os.path.exists(configure_path):
             print("%s doesn't exist, so reconfiguring" % configure_path)
@@ -436,6 +469,7 @@ if __name__ == "__main__":
         build_dir,
         inst_dir,
         defines,
+        loader=None,
         final_install_prefix=None,
         extra_cmake_defines=None,
     ):
@@ -451,6 +485,7 @@ if __name__ == "__main__":
         self.defines = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
+        self.loader = loader
 
     def _invalidate_cache(self):
         for name in [
@@ -559,6 +594,24 @@ if __name__ == "__main__":
             # executables during the build to discover the set of
             # tests.
             defines["CMAKE_BUILD_WITH_INSTALL_RPATH"] = "ON"
+
+        boost_169_is_required = False
+        if self.loader:
+            for m in self.loader.manifests_in_dependency_order():
+                preinstalled = m.get_section_as_dict("preinstalled.env", self.ctx)
+                boost_169_is_required = "BOOST_ROOT_1_69_0" in preinstalled.keys()
+                if boost_169_is_required:
+                    break
+
+        if (
+            boost_169_is_required
+            and self.build_opts.allow_system_packages
+            and self.build_opts.host_type.get_package_manager()
+            and self.build_opts.host_type.get_package_manager() == "rpm"
+        ):
+            # Boost 1.69 rpms don't install cmake config to the system, so to point to them explicitly
+            defines["BOOST_INCLUDEDIR"] = "/usr/include/boost169"
+            defines["BOOST_LIBRARYDIR"] = "/usr/lib64/boost169"
 
         defines.update(self.defines)
         define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]
@@ -700,8 +753,6 @@ if __name__ == "__main__":
             # better signals for flaky tests.
             retry = 0
 
-        from sys import platform
-
         testpilot = path_search(env, "testpilot")
         tpx = path_search(env, "tpx")
         if (tpx or testpilot) and not no_testpilot:
@@ -720,7 +771,8 @@ if __name__ == "__main__":
             if platform == "win32":
                 machine_suffix = self.build_opts.host_type.as_tuple_string()
                 testpilot_args = [
-                    testpilot,
+                    "parexec-testinfra.exe",
+                    "C:/tools/testpilot/sc_testpilot.par",
                     # Need to force the repo type otherwise testpilot on windows
                     # can be confused (presumably sparse profile related)
                     "--force-repo",
@@ -734,7 +786,7 @@ if __name__ == "__main__":
                     "--test-config",
                     "platform=%s" % machine_suffix,
                     "buildsystem=getdeps",
-                    "--print-long-results",
+                    "--return-nonzero-on-failures",
                 ]
             else:
                 testpilot_args = [
@@ -746,12 +798,15 @@ if __name__ == "__main__":
                     "--print-long-results",
                 ]
 
+            if owner:
+                testpilot_args += ["--contacts", owner]
+
             if tpx and env:
                 testpilot_args.append("--env")
                 testpilot_args.extend(f"{key}={val}" for key, val in env.items())
 
-            if owner:
-                testpilot_args += ["--contacts", owner]
+            if test_filter:
+                testpilot_args += ["--", test_filter]
 
             if schedule_type == "continuous":
                 runs.append(
@@ -790,9 +845,6 @@ if __name__ == "__main__":
                 )
             else:
                 runs.append(["--collection", "oss-diff", "--purpose", "diff"])
-
-            if test_filter:
-                testpilot_args += [test_filter]
 
             for run in runs:
                 self._run_cmd(
@@ -860,15 +912,20 @@ class OpenSSLBuilder(BuilderBase):
 
         perl = path_search(env, "perl", "perl")
 
+        make_j_args = []
         if self.build_opts.is_windows():
             make = "nmake.exe"
             args = ["VC-WIN64A-masm", "-utf-8"]
         elif self.build_opts.is_darwin():
             make = "make"
+            make_j_args = ["-j%s" % self.build_opts.num_jobs]
             args = ["darwin64-x86_64-cc"]
         elif self.build_opts.is_linux():
             make = "make"
-            args = ["linux-x86_64"]
+            make_j_args = ["-j%s" % self.build_opts.num_jobs]
+            args = (
+                ["linux-x86_64"] if not self.build_opts.is_arm() else ["linux-aarch64"]
+            )
         else:
             raise Exception("don't know how to build openssl for %r" % self.ctx)
 
@@ -888,7 +945,10 @@ class OpenSSLBuilder(BuilderBase):
                 "no-tests",
             ]
         )
-        self._run_cmd([make, "install_sw", "install_ssldirs"])
+        make_build = [make] + make_j_args
+        self._run_cmd(make_build)
+        make_install = [make, "install_sw", "install_ssldirs"]
+        self._run_cmd(make_install)
 
 
 class Boost(BuilderBase):

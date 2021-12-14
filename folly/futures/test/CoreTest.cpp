@@ -22,22 +22,28 @@
 using namespace folly;
 
 TEST(Core, size) {
-  static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
-  struct Gold {
-    typename std::aligned_storage<lambdaBufSize>::type lambdaBuf_;
-    folly::Optional<Try<Unit>> result_;
+  struct KeepAliveOrDeferredGold {
+    enum class State {};
+    State state_;
+    Executor* executor_;
+  };
+  class CoreBaseGold {
+   public:
+    virtual ~CoreBaseGold() = 0;
+
+   private:
     folly::Function<void(Try<Unit>&&)> callback_;
     std::atomic<futures::detail::State> state_;
     std::atomic<unsigned char> attached_;
-    std::atomic<bool> interruptHandlerSet_;
-    futures::detail::SpinLock interruptLock_;
-    int8_t priority_;
-    Executor* executor_;
+    std::atomic<unsigned char> callbackReferences_;
+    KeepAliveOrDeferredGold executor_;
     std::shared_ptr<RequestContext> context_;
-    std::unique_ptr<exception_wrapper> interrupt_;
-    std::function<void(exception_wrapper const&)> interruptHandler_;
+    std::atomic<uintptr_t> interrupt_;
+    CoreBaseGold* proxy_;
   };
+  class CoreGold : Try<Unit>, public CoreBaseGold {};
   // If this number goes down, it's fine!
   // If it goes up, please seek professional advice ;-)
-  EXPECT_GE(sizeof(Gold), sizeof(futures::detail::Core<Unit>));
+  EXPECT_EQ(sizeof(CoreGold), sizeof(futures::detail::Core<Unit>));
+  EXPECT_EQ(alignof(CoreGold), alignof(futures::detail::Core<Unit>));
 }

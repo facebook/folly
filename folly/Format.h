@@ -61,7 +61,7 @@ class FormatterTag {};
  */
 
 /* BaseFormatter class.
- * Overridable behaviours:
+ * Overridable behaviors:
  * You may override the actual formatting of positional parameters in
  * `doFormatArg`. The Formatter class provides the default implementation.
  *
@@ -286,7 +286,11 @@ inline std::string sformat(StringPiece fmt, Args&&... args) {
  * but the latter is cleaner.
  */
 template <class Container>
-Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
+[[deprecated(
+    "Use fmt::format instead of folly::vformat for better performance, build "
+    "times and compatibility with std::format")]] //
+Formatter<true, Container>
+vformat(StringPiece fmt, Container&& container) {
   return Formatter<true, Container>(fmt, std::forward<Container>(container));
 }
 
@@ -295,7 +299,11 @@ Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
  * intermediate format object.
  */
 template <class Container>
-inline std::string svformat(StringPiece fmt, Container&& container) {
+[[deprecated(
+    "Use fmt::format instead of folly::svformat for better performance, build "
+    "times and compatibility with std::format")]] //
+inline std::string
+svformat(StringPiece fmt, Container&& container) {
   return vformat(fmt, std::forward<Container>(container)).str();
 }
 

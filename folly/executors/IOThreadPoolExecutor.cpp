@@ -86,8 +86,8 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     : ThreadPoolExecutor(
           numThreads,
           FLAGS_dynamic_iothreadpoolexecutor ? 0 : numThreads,
-          std::move(threadFactory),
-          waitForAll),
+          std::move(threadFactory)),
+      isWaitForAll_(waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(numThreads);
@@ -100,8 +100,8 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
     bool waitForAll)
-    : ThreadPoolExecutor(
-          maxThreads, minThreads, std::move(threadFactory), waitForAll),
+    : ThreadPoolExecutor(maxThreads, minThreads, std::move(threadFactory)),
+      isWaitForAll_(waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(maxThreads);
@@ -159,7 +159,7 @@ IOThreadPoolExecutor::pickThread() {
     // the second case, `!me` so we'll crash anyway.
     return me;
   }
-  auto thread = ths[nextThread_.fetch_add(1, std::memory_order_relaxed) % n];
+  auto thread = ths[nextThread_++ % n];
   return std::static_pointer_cast<IOThread>(thread);
 }
 
@@ -178,6 +178,17 @@ EventBase* IOThreadPoolExecutor::getEventBase(
 
   if (thread) {
     return thread->eventBase;
+  }
+
+  return nullptr;
+}
+
+std::mutex* IOThreadPoolExecutor::getEventBaseShutdownMutex(
+    ThreadPoolExecutor::ThreadHandle* h) {
+  auto thread = dynamic_cast<IOThread*>(h);
+
+  if (thread) {
+    return &thread->eventBaseShutdownMutex_;
   }
 
   return nullptr;

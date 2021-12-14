@@ -19,8 +19,6 @@
 #include <atomic>
 #include <memory>
 
-#include <folly/portability/GFlags.h>
-
 ///
 /// Forward declatations and implicit documentation of all hazptr
 /// top-level classes, functions, macros, default values, and globals.
@@ -32,8 +30,6 @@
 #else
 #define FOLLY_HAZPTR_THR_LOCAL true
 #endif
-
-DECLARE_bool(folly_hazptr_use_executor);
 
 namespace folly {
 
@@ -78,6 +74,14 @@ template <
     typename D = std::default_delete<T>>
 class hazptr_obj_base;
 
+/** hazard_pointer_obj_base
+    class template name consistent with standard proposal */
+template <
+    typename T,
+    template <typename> class Atom = std::atomic,
+    typename D = std::default_delete<T>>
+using hazard_pointer_obj_base = hazptr_obj_base<T, Atom, D>;
+
 ///
 /// Classes related to link counted objects and automatic retirement.
 /// Defined in HazptrLinked.h
@@ -115,13 +119,9 @@ class hazptr_tc;
 template <template <typename> class Atom = std::atomic>
 hazptr_tc<Atom>& hazptr_tc_tls();
 
-/** hazptr_priv */
+/** hazptr_tc_evict -- Used only for benchmarking */
 template <template <typename> class Atom = std::atomic>
-class hazptr_priv;
-
-/** hazptr_priv_tls */
-template <template <typename> class Atom = std::atomic>
-hazptr_priv<Atom>& hazptr_priv_tls();
+void hazptr_tc_evict();
 
 ///
 /// Hazard pointer domain
@@ -132,21 +132,24 @@ hazptr_priv<Atom>& hazptr_priv_tls();
 template <template <typename> class Atom = std::atomic>
 class hazptr_domain;
 
+/** hazard_pointer_domain
+    class name consistent with standard proposal */
+template <template <typename> class Atom = std::atomic>
+using hazard_pointer_domain = hazptr_domain<Atom>;
+
 /** default_hazptr_domain */
 template <template <typename> class Atom = std::atomic>
 hazptr_domain<Atom>& default_hazptr_domain();
 
-/** hazptr_domain_push_list */
+/** hazard_pointer_default_domain
+    function name consistent with standard proposal */
 template <template <typename> class Atom = std::atomic>
-void hazptr_domain_push_list(
-    hazptr_obj_list<Atom>& l,
-    hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
+hazard_pointer_domain<Atom>& hazard_pointer_default_domain();
 
 /** hazptr_domain_push_retired */
 template <template <typename> class Atom = std::atomic>
 void hazptr_domain_push_retired(
     hazptr_obj_list<Atom>& l,
-    bool check = true,
     hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
 
 /** hazptr_retire */
@@ -161,8 +164,18 @@ template <template <typename> class Atom = std::atomic>
 void hazptr_cleanup(
     hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
 
+/** hazard_pointer_clean_up
+    function name consistent with standard proposal */
+template <template <typename> class Atom = std::atomic>
+void hazard_pointer_clean_up(
+    hazard_pointer_domain<Atom>& domain =
+        hazard_pointer_default_domain<Atom>()) noexcept;
+
 /** Global default domain defined in Hazptr.cpp */
 extern hazptr_domain<std::atomic> default_domain;
+
+/** Defined in Hazptr.cpp */
+bool hazptr_use_executor();
 
 ///
 /// Classes related to hazard pointer holders.
@@ -173,6 +186,16 @@ extern hazptr_domain<std::atomic> default_domain;
 template <template <typename> class Atom = std::atomic>
 class hazptr_holder;
 
+/** hazard_pointer
+    class name consistent with standard proposal  */
+template <template <typename> class Atom = std::atomic>
+using hazard_pointer = hazptr_holder<Atom>;
+
+/** Free function make_hazard_pointer constructs nonempty holder */
+template <template <typename> class Atom = std::atomic>
+hazptr_holder<Atom> make_hazard_pointer(
+    hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>());
+
 /** Free function swap of hazptr_holder-s */
 template <template <typename> class Atom = std::atomic>
 void swap(hazptr_holder<Atom>&, hazptr_holder<Atom>&) noexcept;
@@ -180,6 +203,10 @@ void swap(hazptr_holder<Atom>&, hazptr_holder<Atom>&) noexcept;
 /** hazptr_array */
 template <uint8_t M = 1, template <typename> class Atom = std::atomic>
 class hazptr_array;
+
+/** Free function make_hazard_pointer_array constructs nonempty array */
+template <uint8_t M = 1, template <typename> class Atom = std::atomic>
+hazptr_array<M, Atom> make_hazard_pointer_array();
 
 /** hazptr_local */
 template <uint8_t M = 1, template <typename> class Atom = std::atomic>

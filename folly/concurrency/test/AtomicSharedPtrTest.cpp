@@ -18,7 +18,7 @@
 
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
-#ifdef FOLLY_USE_LIBSTDCPP
+#if defined(__GLIBCXX__)
 
 #include <folly/concurrency/test/AtomicSharedPtrCounted.h>
 
@@ -187,4 +187,4 @@ TEST(AtomicSharedPtr, DeterministicTest) {
     DSched::join(t);
   }
 }
-#endif // #ifdef FOLLY_USE_LIBSTDCPP
+#endif // defined(__GLIBCXX__)

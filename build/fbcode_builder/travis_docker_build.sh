@@ -11,7 +11,7 @@ travis_cache_dir=${travis_cache_dir:-}
 # The docker build never times out, unless specified
 docker_build_timeout=${docker_build_timeout:-}
 
-cur_dir="$(readlink -f "$(dirname "$0")")"
+cur_dir="$(realpath "$(dirname "$0")")"
 
 if [[ "$travis_cache_dir" == "" ]]; then
   echo "ccache disabled, enable by setting env. var. travis_cache_dir"

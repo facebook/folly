@@ -300,7 +300,7 @@ FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
          !folly::atomic_compare_exchange_weak_explicit<Atom>(
              &state_,
              &before,
-             static_cast<std::uint32_t>(BLOCKED),
+             BLOCKED,
              std::memory_order_relaxed,
              std::memory_order_acquire)) {
     if (before == READY) {

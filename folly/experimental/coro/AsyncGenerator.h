@@ -40,235 +40,10 @@
 
 namespace folly {
 namespace coro {
-
-template <typename Reference, typename Value>
-class AsyncGenerator;
-
 namespace detail {
 
 template <typename Reference, typename Value>
-class AsyncGeneratorPromise {
-  class YieldAwaiter {
-   public:
-    bool await_ready() noexcept { return false; }
-    coroutine_handle<> await_suspend(
-        coroutine_handle<AsyncGeneratorPromise> h) noexcept {
-      AsyncGeneratorPromise& promise = h.promise();
-      // Pop AsyncStackFrame first as clearContext() clears the frame state.
-      folly::popAsyncStackFrameCallee(promise.getAsyncFrame());
-      promise.clearContext();
-      return promise.continuation_;
-    }
-    void await_resume() noexcept {}
-  };
-
- public:
-  AsyncGeneratorPromise() noexcept {}
-
-  ~AsyncGeneratorPromise() {
-    switch (state_) {
-      case State::VALUE:
-        folly::coro::detail::deactivate(value_);
-        break;
-      case State::EXCEPTION_WRAPPER:
-        folly::coro::detail::deactivate(exceptionWrapper_);
-        break;
-      case State::EXCEPTION_PTR:
-        folly::coro::detail::deactivate(exceptionPtr_);
-        break;
-      case State::DONE:
-      case State::INVALID:
-        break;
-    }
-  }
-
-  static void* operator new(std::size_t size) {
-    return ::folly_coro_async_malloc(size);
-  }
-
-  static void operator delete(void* ptr, std::size_t size) {
-    ::folly_coro_async_free(ptr, size);
-  }
-
-  AsyncGenerator<Reference, Value> get_return_object() noexcept;
-
-  suspend_always initial_suspend() noexcept { return {}; }
-
-  YieldAwaiter final_suspend() noexcept {
-    DCHECK(!hasValue());
-    return {};
-  }
-
-  YieldAwaiter yield_value(Reference&& value) noexcept(
-      std::is_nothrow_move_constructible<Reference>::value) {
-    DCHECK(state_ == State::INVALID);
-    folly::coro::detail::activate(value_, static_cast<Reference&&>(value));
-    state_ = State::VALUE;
-    return YieldAwaiter{};
-  }
-
-  // In the case where 'Reference' is not actually a reference-type we
-  // allow implicit conversion from the co_yield argument to Reference.
-  // However, we don't want to allow this for cases where 'Reference' _is_
-  // a reference because this could result in the reference binding to a
-  // temporary that results from an implicit conversion.
-  template <
-      typename U,
-      std::enable_if_t<
-          !std::is_reference_v<Reference> &&
-              std::is_convertible_v<U&&, Reference>,
-          int> = 0>
-  YieldAwaiter yield_value(U&& value) noexcept(
-      std::is_nothrow_constructible_v<Reference, U>) {
-    DCHECK(state_ == State::INVALID);
-    folly::coro::detail::activate(value_, static_cast<U&&>(value));
-    state_ = State::VALUE;
-    return {};
-  }
-
-  YieldAwaiter yield_value(co_error&& error) noexcept {
-    DCHECK(state_ == State::INVALID);
-    folly::coro::detail::activate(
-        exceptionWrapper_, std::move(error.exception()));
-    state_ = State::EXCEPTION_WRAPPER;
-    return {};
-  }
-
-  YieldAwaiter yield_value(co_result<Value>&& res) noexcept {
-    if (res.result().hasValue()) {
-      return yield_value(std::move(res.result().value()));
-    } else if (res.result().hasException()) {
-      return yield_value(co_error(res.result().exception()));
-    } else {
-      return_void();
-      return {};
-    }
-  }
-
-  variant_awaitable<YieldAwaiter, ready_awaitable<>> await_transform(
-      co_safe_point_t) noexcept {
-    if (cancelToken_.isCancellationRequested()) {
-      return yield_value(co_cancelled);
-    }
-    return ready_awaitable<>{};
-  }
-
-  void unhandled_exception() noexcept {
-    DCHECK(state_ == State::INVALID);
-    folly::coro::detail::activate(exceptionPtr_, std::current_exception());
-    state_ = State::EXCEPTION_PTR;
-  }
-
-  void return_void() noexcept {
-    DCHECK(state_ == State::INVALID);
-    state_ = State::DONE;
-  }
-
-  template <typename U>
-  auto await_transform(U&& value) {
-    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
-        executor_.get_alias(),
-        folly::coro::co_withCancellation(
-            cancelToken_, static_cast<U&&>(value))));
-  }
-
-  auto await_transform(folly::coro::co_current_executor_t) noexcept {
-    return ready_awaitable<folly::Executor*>{executor_.get()};
-  }
-
-  auto await_transform(folly::coro::co_current_cancellation_token_t) noexcept {
-    return ready_awaitable<const folly::CancellationToken&>{cancelToken_};
-  }
-
-  void setCancellationToken(folly::CancellationToken cancelToken) noexcept {
-    // Only keep the first cancellation token.
-    // ie. the inner-most cancellation scope of the consumer's calling context.
-    if (!hasCancelTokenOverride_) {
-      cancelToken_ = std::move(cancelToken);
-      hasCancelTokenOverride_ = true;
-    }
-  }
-
-  void setExecutor(folly::Executor::KeepAlive<> executor) noexcept {
-    DCHECK(executor);
-    executor_ = std::move(executor);
-  }
-
-  void setContinuation(coroutine_handle<> continuation) noexcept {
-    continuation_ = continuation;
-  }
-
-  bool hasException() const noexcept {
-    return state_ == State::EXCEPTION_WRAPPER || state_ == State::EXCEPTION_PTR;
-  }
-
-  folly::exception_wrapper getException() noexcept {
-    DCHECK(hasException());
-    if (state_ == State::EXCEPTION_WRAPPER) {
-      return std::move(exceptionWrapper_.get());
-    } else {
-      return exception_wrapper::from_exception_ptr(
-          std::move(exceptionPtr_.get()));
-    }
-  }
-
-  void throwIfException() {
-    if (state_ == State::EXCEPTION_WRAPPER) {
-      exceptionWrapper_.get().throw_exception();
-    } else if (state_ == State::EXCEPTION_PTR) {
-      std::rethrow_exception(std::move(exceptionPtr_.get()));
-    }
-  }
-
-  decltype(auto) getRvalue() noexcept {
-    DCHECK(hasValue());
-    return std::move(value_).get();
-  }
-
-  void clearValue() noexcept {
-    if (hasValue()) {
-      state_ = State::INVALID;
-      folly::coro::detail::deactivate(value_);
-    }
-  }
-
-  bool hasValue() const noexcept { return state_ == State::VALUE; }
-
-  folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
-
- private:
-  void clearContext() noexcept {
-    executor_ = {};
-    cancelToken_ = {};
-    hasCancelTokenOverride_ = false;
-    asyncFrame_ = {};
-  }
-
-  enum class State : std::uint8_t {
-    INVALID,
-    VALUE,
-    EXCEPTION_PTR,
-    EXCEPTION_WRAPPER,
-    DONE,
-  };
-
-  coroutine_handle<> continuation_;
-  folly::AsyncStackFrame asyncFrame_;
-  folly::Executor::KeepAlive<> executor_;
-  folly::CancellationToken cancelToken_;
-  union {
-    // Store both an exception_wrapper and an exception_ptr to
-    // avoid needing to rethrow the exception in unhandled_exception()
-    // to ensure we capture the type-information into the exception_wrapper
-    // just in case we are only going to rethrow it back into the awaiting
-    // coroutine.
-    ManualLifetime<folly::exception_wrapper> exceptionWrapper_;
-    ManualLifetime<std::exception_ptr> exceptionPtr_;
-    ManualLifetime<Reference> value_;
-  };
-  State state_ = State::INVALID;
-  bool hasCancelTokenOverride_ = false;
-};
+class AsyncGeneratorPromise;
 
 } // namespace detail
 
@@ -487,7 +262,7 @@ class FOLLY_NODISCARD AsyncGenerator {
     bool await_ready() noexcept { return !coro_; }
 
     template <typename Promise>
-    FOLLY_NOINLINE auto await_suspend(
+    FOLLY_NOINLINE coroutine_handle<> await_suspend(
         coroutine_handle<Promise> continuation) noexcept {
       auto& promise = coro_.promise();
 
@@ -517,16 +292,16 @@ class FOLLY_NODISCARD AsyncGenerator {
       }
     }
 
-    folly::Try<Value> await_resume_try() {
-      folly::Try<Value> result;
+    folly::Try<NextResult> await_resume_try() {
       if (coro_) {
         if (coro_.promise().hasValue()) {
-          result.emplace(coro_.promise().getRvalue());
+          return folly::Try<NextResult>(NextResult{coro_});
         } else if (coro_.promise().hasException()) {
-          result.emplaceException(coro_.promise().getException());
+          return folly::Try<NextResult>(
+              std::move(coro_.promise().getException()));
         }
       }
-      return result;
+      return folly::Try<NextResult>(NextResult{});
     }
 
    private:
@@ -575,8 +350,8 @@ class FOLLY_NODISCARD AsyncGenerator {
   friend AsyncGenerator tag_invoke(
       tag_t<co_invoke_fn>, tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
     auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
-    while (auto v = co_await r.next()) {
-      co_yield std::move(v).value();
+    while (true) {
+      co_yield co_result(co_await co_awaitTry(r.next()));
     }
   }
 
@@ -592,15 +367,273 @@ class FOLLY_NODISCARD AsyncGenerator {
 namespace detail {
 
 template <typename Reference, typename Value>
-AsyncGenerator<Reference, Value>
-AsyncGeneratorPromise<Reference, Value>::get_return_object() noexcept {
-  return AsyncGenerator<Reference, Value>{
-      coroutine_handle<AsyncGeneratorPromise<Reference, Value>>::from_promise(
-          *this)};
-}
+class AsyncGeneratorPromise final
+    : public ExtendedCoroutinePromiseImpl<
+          AsyncGeneratorPromise<Reference, Value>> {
+  class YieldAwaiter {
+   public:
+    bool await_ready() noexcept { return false; }
+    coroutine_handle<> await_suspend(
+        coroutine_handle<AsyncGeneratorPromise> h) noexcept {
+      AsyncGeneratorPromise& promise = h.promise();
+      // Pop AsyncStackFrame first as clearContext() clears the frame state.
+      folly::popAsyncStackFrameCallee(promise.getAsyncFrame());
+      promise.clearContext();
+      if (promise.hasException()) {
+        auto [handle, frame] =
+            promise.continuation_.getErrorHandle(promise.getException());
+        return handle.getHandle();
+      }
+      return promise.continuation_.getHandle();
+    }
+    void await_resume() noexcept {}
+  };
+
+ public:
+  AsyncGeneratorPromise() noexcept {}
+
+  ~AsyncGeneratorPromise() {
+    switch (state_) {
+      case State::VALUE:
+        folly::coro::detail::deactivate(value_);
+        break;
+      case State::EXCEPTION_WRAPPER:
+        folly::coro::detail::deactivate(exceptionWrapper_);
+        break;
+      case State::DONE:
+      case State::INVALID:
+        break;
+    }
+  }
+
+  static void* operator new(std::size_t size) {
+    return ::folly_coro_async_malloc(size);
+  }
+
+  static void operator delete(void* ptr, std::size_t size) {
+    ::folly_coro_async_free(ptr, size);
+  }
+
+  AsyncGenerator<Reference, Value> get_return_object() noexcept {
+    return AsyncGenerator<Reference, Value>{
+        coroutine_handle<AsyncGeneratorPromise<Reference, Value>>::from_promise(
+            *this)};
+  }
+
+  suspend_always initial_suspend() noexcept { return {}; }
+
+  YieldAwaiter final_suspend() noexcept {
+    DCHECK(!hasValue());
+    return {};
+  }
+
+  YieldAwaiter yield_value(Reference&& value) noexcept(
+      std::is_nothrow_move_constructible<Reference>::value) {
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(value_, static_cast<Reference&&>(value));
+    state_ = State::VALUE;
+    return YieldAwaiter{};
+  }
+
+  // In the case where 'Reference' is not actually a reference-type we
+  // allow implicit conversion from the co_yield argument to Reference.
+  // However, we don't want to allow this for cases where 'Reference' _is_
+  // a reference because this could result in the reference binding to a
+  // temporary that results from an implicit conversion.
+  template <
+      typename U,
+      std::enable_if_t<
+          !std::is_reference_v<Reference> &&
+              std::is_convertible_v<U&&, Reference>,
+          int> = 0>
+  YieldAwaiter yield_value(U&& value) noexcept(
+      std::is_nothrow_constructible_v<Reference, U>) {
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(value_, static_cast<U&&>(value));
+    state_ = State::VALUE;
+    return {};
+  }
+
+  YieldAwaiter yield_value(co_error&& error) noexcept {
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(
+        exceptionWrapper_, std::move(error.exception()));
+    state_ = State::EXCEPTION_WRAPPER;
+    return {};
+  }
+
+  YieldAwaiter yield_value(co_result<Value>&& res) noexcept {
+    if (res.result().hasValue()) {
+      return yield_value(std::move(res.result().value()));
+    } else if (res.result().hasException()) {
+      return yield_value(co_error(res.result().exception()));
+    } else {
+      return_void();
+      return {};
+    }
+  }
+
+  YieldAwaiter yield_value(
+      co_result<typename AsyncGenerator<Reference, Value>::NextResult>&&
+          res) noexcept {
+    DCHECK(res.result().hasValue() || res.result().hasException());
+    if (res.result().hasException()) {
+      return yield_value(co_error(res.result().exception()));
+    } else if (res.result().hasValue()) {
+      if (res.result()->has_value()) {
+        return yield_value(std::move(res.result()->value()));
+      } else {
+        return_void();
+        return {};
+      }
+    }
+    return yield_value(co_error(UsingUninitializedTry{}));
+  }
+
+  variant_awaitable<YieldAwaiter, ready_awaitable<>> await_transform(
+      co_safe_point_t) noexcept {
+    if (cancelToken_.isCancellationRequested()) {
+      return yield_value(co_cancelled);
+    }
+    return ready_awaitable<>{};
+  }
+
+  void unhandled_exception() noexcept {
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(exceptionWrapper_, std::current_exception());
+    state_ = State::EXCEPTION_WRAPPER;
+  }
+
+  void return_void() noexcept {
+    DCHECK(state_ == State::INVALID);
+    state_ = State::DONE;
+  }
+
+  template <typename U>
+  auto await_transform(U&& value) {
+    bypassExceptionThrowing_ =
+        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
+        ? BypassExceptionThrowing::ACTIVE
+        : BypassExceptionThrowing::INACTIVE;
+    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
+        executor_.get_alias(),
+        folly::coro::co_withCancellation(
+            cancelToken_, static_cast<U&&>(value))));
+  }
+
+  template <typename Awaitable>
+  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
+    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
+    return await_transform(awaitable.unwrap());
+  }
+
+  auto await_transform(folly::coro::co_current_executor_t) noexcept {
+    return ready_awaitable<folly::Executor*>{executor_.get()};
+  }
+
+  auto await_transform(folly::coro::co_current_cancellation_token_t) noexcept {
+    return ready_awaitable<const folly::CancellationToken&>{cancelToken_};
+  }
+
+  void setCancellationToken(folly::CancellationToken cancelToken) noexcept {
+    // Only keep the first cancellation token.
+    // ie. the inner-most cancellation scope of the consumer's calling
+    // context.
+    if (!hasCancelTokenOverride_) {
+      cancelToken_ = std::move(cancelToken);
+      hasCancelTokenOverride_ = true;
+    }
+  }
+
+  void setExecutor(folly::Executor::KeepAlive<> executor) noexcept {
+    DCHECK(executor);
+    executor_ = std::move(executor);
+  }
+
+  void setContinuation(ExtendedCoroutineHandle continuation) noexcept {
+    continuation_ = continuation;
+  }
+
+  bool hasException() const noexcept {
+    return state_ == State::EXCEPTION_WRAPPER;
+  }
+
+  folly::exception_wrapper& getException() noexcept {
+    DCHECK(hasException());
+    return exceptionWrapper_.get();
+  }
+
+  void throwIfException() {
+    if (state_ == State::EXCEPTION_WRAPPER) {
+      exceptionWrapper_.get().throw_exception();
+    }
+  }
+
+  decltype(auto) getRvalue() noexcept {
+    DCHECK(hasValue());
+    return std::move(value_).get();
+  }
+
+  void clearValue() noexcept {
+    if (hasValue()) {
+      state_ = State::INVALID;
+      folly::coro::detail::deactivate(value_);
+    }
+  }
+
+  bool hasValue() const noexcept { return state_ == State::VALUE; }
+
+  folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
+
+  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
+      exception_wrapper& ex) override {
+    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      auto yieldAwaiter = yield_value(co_error(std::move(ex)));
+      DCHECK(!yieldAwaiter.await_ready());
+      return {
+          yieldAwaiter.await_suspend(
+              coroutine_handle<AsyncGeneratorPromise>::from_promise(*this)),
+          // yieldAwaiter.await_suspend pops a frame
+          getAsyncFrame().getParentFrame()};
+    }
+    return {
+        coroutine_handle<AsyncGeneratorPromise>::from_promise(*this), nullptr};
+  }
+
+ private:
+  void clearContext() noexcept {
+    executor_ = {};
+    cancelToken_ = {};
+    hasCancelTokenOverride_ = false;
+    asyncFrame_ = {};
+  }
+
+  enum class State : std::uint8_t {
+    INVALID,
+    VALUE,
+    EXCEPTION_WRAPPER,
+    DONE,
+  };
+
+  ExtendedCoroutineHandle continuation_;
+  folly::AsyncStackFrame asyncFrame_;
+  folly::Executor::KeepAlive<> executor_;
+  folly::CancellationToken cancelToken_;
+  union {
+    ManualLifetime<folly::exception_wrapper> exceptionWrapper_;
+    ManualLifetime<Reference> value_;
+  };
+  State state_ = State::INVALID;
+  bool hasCancelTokenOverride_ = false;
+
+  enum class BypassExceptionThrowing : uint8_t {
+    INACTIVE,
+    ACTIVE,
+    REQUESTED,
+  } bypassExceptionThrowing_{BypassExceptionThrowing::INACTIVE};
+};
 
 } // namespace detail
-
 } // namespace coro
 } // namespace folly
 

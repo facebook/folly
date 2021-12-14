@@ -29,6 +29,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
@@ -433,12 +434,20 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
 //  A type-erased smart-ptr with unique ownership to a heap-allocated object.
 using erased_unique_ptr = std::unique_ptr<void, void (*)(void*)>;
 
+namespace detail {
+// for erased_unique_ptr with types that specialize default_delete
+template <typename T>
+void erased_unique_ptr_delete(void* ptr) {
+  std::default_delete<T>()(static_cast<T*>(ptr));
+}
+} // namespace detail
+
 //  to_erased_unique_ptr
 //
 //  Converts an owning pointer to an object to an erased_unique_ptr.
 template <typename T>
 erased_unique_ptr to_erased_unique_ptr(T* const ptr) noexcept {
-  return {ptr, detail::thunk::ruin<T>};
+  return {ptr, detail::erased_unique_ptr_delete<T>};
 }
 
 //  to_erased_unique_ptr
@@ -472,6 +481,21 @@ erased_unique_ptr copy_to_erased_unique_ptr(T&& obj) {
 inline erased_unique_ptr empty_erased_unique_ptr() {
   return {nullptr, nullptr};
 }
+
+//  reinterpret_pointer_cast
+//
+//  import or backport
+#if FOLLY_CPLUSPLUS >= 201703L && __cpp_lib_shared_ptr_arrays >= 201611
+using std::reinterpret_pointer_cast;
+#else
+template <typename T, typename U>
+std::shared_ptr<T> reinterpret_pointer_cast(
+    const std::shared_ptr<U>& r) noexcept {
+  auto p =
+      reinterpret_cast<typename std::shared_ptr<T>::element_type*>(r.get());
+  return std::shared_ptr<T>{r, p};
+}
+#endif
 
 /**
  * SysAllocator
@@ -728,12 +752,18 @@ class allocator_delete : private std::remove_reference<Alloc>::type {
  * allocate_unique, like std::allocate_shared but for std::unique_ptr
  */
 template <typename T, typename Alloc, typename... Args>
-std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
-    Alloc const& alloc, Args&&... args) {
-  using traits = std::allocator_traits<Alloc>;
+std::unique_ptr<
+    T,
+    allocator_delete<
+        typename std::allocator_traits<Alloc>::template rebind_alloc<T>>>
+allocate_unique(Alloc const& alloc, Args&&... args) {
+  using TAlloc =
+      typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
+
+  using traits = std::allocator_traits<TAlloc>;
   struct DeferCondDeallocate {
     bool& cond;
-    Alloc& copy;
+    TAlloc& copy;
     T* p;
     ~DeferCondDeallocate() {
       if (FOLLY_UNLIKELY(!cond)) {
@@ -741,7 +771,7 @@ std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
       }
     }
   };
-  auto copy = alloc;
+  auto copy = TAlloc(alloc);
   auto const p = traits::allocate(copy, 1);
   {
     bool constructed = false;
@@ -749,7 +779,7 @@ std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
     traits::construct(copy, p, static_cast<Args&&>(args)...);
     constructed = true;
   }
-  return {p, allocator_delete<Alloc>(std::move(copy))};
+  return {p, allocator_delete<TAlloc>(std::move(copy))};
 }
 
 struct SysBufferDeleter {

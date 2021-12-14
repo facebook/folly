@@ -204,7 +204,7 @@ TEST(SemiFuture, hasPostconditionValid) {
   DOIT(f.raise(std::logic_error("foo")));
   DOIT(f.cancel());
   DOIT(f.wait());
-  DOIT(std::move(f.wait()));
+  DOIT(std::move(f).wait());
 
 #undef DOIT
 }
@@ -727,13 +727,13 @@ TEST(SemiFuture, onError) {
   do {                    \
     EXPECT_TRUE(theFlag); \
     theFlag = false;      \
-  } while (0);
+  } while (0)
 
 #define EXPECT_NO_FLAG()   \
   do {                     \
     EXPECT_FALSE(theFlag); \
     theFlag = false;       \
-  } while (0);
+  } while (0)
 
   // By reference
   {

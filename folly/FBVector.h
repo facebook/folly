@@ -63,7 +63,7 @@ class fbvector;
     }                                             \
     for (; (first) != (last); ++(first))          \
       OP((first));                                \
-  } while (0);
+  } while (0)
 
 //=============================================================================
 ///////////////////////////////////////////////////////////////////////////////
@@ -376,7 +376,7 @@ class fbvector {
       //  version is about 0.5% slower on size 262144.
 
       // for (; first != last; ++first) first->~T();
-      FOLLY_FBV_UNROLL_PTR(first, last, FOLLY_FBV_OP)
+      FOLLY_FBV_UNROLL_PTR(first, last, FOLLY_FBV_OP);
 #undef FOLLY_FBV_OP
     }
   }
@@ -462,7 +462,7 @@ class fbvector {
   // uninitialized_copy
 
   // it is possible to add an optimization for the case where
-  // It = move(T*) and IsRelocatable<T> and Is0Initiailizable<T>
+  // It = move(T*) and IsRelocatable<T> and Is0Initializeable<T>
 
   // wrappers
   template <typename It>
@@ -610,7 +610,7 @@ class fbvector {
   //  second exception being thrown. This is a known and unavoidable
   //  deficiency. In lieu of a strong exception guarantee, relocate_undo does
   //  the next best thing: it provides a weak exception guarantee by
-  //  destorying the new data, but leaving the old data in an indeterminate
+  //  destroying the new data, but leaving the old data in an indeterminate
   //  state. Note that that indeterminate state will be valid, since the
   //  old data has not been destroyed; it has merely been the source of a
   //  move, which is required to leave the source in a valid state.

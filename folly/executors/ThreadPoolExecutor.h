@@ -69,8 +69,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   explicit ThreadPoolExecutor(
       size_t maxThreads,
       size_t minThreads,
-      std::shared_ptr<ThreadFactory> threadFactory,
-      bool isWaitForAll = false);
+      std::shared_ptr<ThreadFactory> threadFactory);
 
   ~ThreadPoolExecutor() override;
 
@@ -125,6 +124,17 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   PoolStats getPoolStats() const;
   size_t getPendingTaskCount() const;
   const std::string& getName() const;
+
+  /**
+   * Return the cumulative CPU time used by all threads in the pool, including
+   * those that are no longer alive. Requires system support for per-thread CPU
+   * clocks. If not available, the function returns 0. This operation can be
+   * expensive.
+   */
+  std::chrono::nanoseconds getUsedCpuTime() const {
+    SharedMutex::ReadHolder r{&threadListLock_};
+    return threadList_.getUsedCpuTime();
+  }
 
   struct TaskStats {
     TaskStats() : expired(false), waitTime(0), runTime(0), requestId(0) {}
@@ -190,6 +200,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
     ~Thread() override = default;
 
+    std::chrono::nanoseconds usedCpuTime() const;
+
     static std::atomic<uint64_t> nextId;
     uint64_t id;
     std::thread handle;
@@ -252,6 +264,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
       CHECK(itPair.first != vec_.end());
       CHECK(std::next(itPair.first) == itPair.second);
       vec_.erase(itPair.first);
+      pastCpuUsed_ += state->usedCpuTime();
     }
 
     bool contains(const ThreadPtr& ts) const {
@@ -260,6 +273,14 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
     const std::vector<ThreadPtr>& get() const { return vec_; }
 
+    std::chrono::nanoseconds getUsedCpuTime() const {
+      auto acc{pastCpuUsed_};
+      for (const auto& thread : vec_) {
+        acc += thread->usedCpuTime();
+      }
+      return acc;
+    }
+
    private:
     struct Compare {
       bool operator()(const ThreadPtr& ts1, const ThreadPtr& ts2) const {
@@ -267,6 +288,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
       }
     };
     std::vector<ThreadPtr> vec_;
+    // cpu time used by threads that are no longer alive
+    std::chrono::nanoseconds pastCpuUsed_{0};
   };
 
   class StoppedThreadQueue : public BlockingQueue<ThreadPtr> {
@@ -287,7 +310,6 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   std::shared_ptr<ThreadFactory> threadFactory_;
   std::string namePrefix_;
-  const bool isWaitForAll_; // whether to wait till event base loop exits
 
   ThreadList threadList_;
   SharedMutex threadListLock_;

@@ -104,8 +104,7 @@ static void fetchStackLimits() {
   pthread_attr_t attr;
   if ((err = pthread_getattr_np(pthread_self(), &attr))) {
     // some restricted environments can't access /proc
-    FB_LOG_EVERY_MS(WARNING, 60000)
-        << "pthread_getaddr_np failed errno=" << err;
+    FB_LOG_ONCE(ERROR) << "pthread_getaddr_np failed errno=" << err;
     tls_stackSize = 1;
     return;
   }
@@ -115,7 +114,7 @@ static void fetchStackLimits() {
   size_t rawSize;
   if ((err = pthread_attr_getstack(&attr, &addr, &rawSize))) {
     // unexpected, but it is better to continue in prod than do nothing
-    FB_LOG_EVERY_MS(ERROR, 10000) << "pthread_attr_getstack error " << err;
+    FB_LOG_ONCE(ERROR) << "pthread_attr_getstack error " << err;
     assert(false);
     tls_stackSize = 1;
     return;
@@ -131,14 +130,16 @@ static void fetchStackLimits() {
     //
     // Very large stack size is a bug (hence the assert), but we can
     // carry on if we are in prod.
-    FB_LOG_EVERY_MS(ERROR, 10000)
-        << "pthread_attr_getstack returned insane stack size " << rawSize;
+    FB_LOG_ONCE(ERROR) << "pthread_attr_getstack returned insane stack size "
+                       << rawSize;
     assert(false);
     tls_stackSize = 1;
     return;
   }
   assert(addr != nullptr);
-  assert(rawSize >= PTHREAD_STACK_MIN);
+  assert(
+      0 < PTHREAD_STACK_MIN &&
+      rawSize >= static_cast<size_t>(PTHREAD_STACK_MIN));
 
   // glibc subtracts guard page from stack size, even though pthread docs
   // seem to imply the opposite

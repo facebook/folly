@@ -61,7 +61,7 @@ class TestReadCallback : public folly::AsyncReader::ReadCallback {
   void reset() {
     movable_ = false;
     error_ = false;
-    readBuffer_.clear();
+    readBuffer_.reset();
   }
 
   folly::IOBufQueue readBuffer_{folly::IOBufQueue::cacheChainLength()};

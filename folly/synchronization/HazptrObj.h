@@ -81,26 +81,24 @@ namespace folly {
  */
 template <template <typename> class Atom>
 class hazptr_obj {
-  using ReclaimFnPtr = void (*)(hazptr_obj<Atom>*, hazptr_obj_list<Atom>&);
+  using Obj = hazptr_obj<Atom>;
+  using ObjList = hazptr_obj_list<Atom>;
+  using ReclaimFnPtr = void (*)(Obj*, ObjList&);
 
-  template <template <typename> class>
-  friend class hazptr_domain;
+  friend class hazptr_domain<Atom>;
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base;
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base_linked;
-  template <template <typename> class>
-  friend class hazptr_obj_list;
-  template <template <typename> class>
-  friend class hazptr_priv;
-  friend class hazptr_detail::linked_list<hazptr_obj<Atom>>;
-  friend class hazptr_detail::shared_head_only_list<hazptr_obj<Atom>, Atom>;
-  friend class hazptr_detail::shared_head_tail_list<hazptr_obj<Atom>, Atom>;
+  friend class hazptr_obj_list<Atom>;
+  friend class hazptr_detail::linked_list<Obj>;
+  friend class hazptr_detail::shared_head_only_list<Obj, Atom>;
+  friend class hazptr_detail::shared_head_tail_list<Obj, Atom>;
 
   static constexpr uintptr_t kTagBit = 1u;
 
   ReclaimFnPtr reclaim_;
-  hazptr_obj<Atom>* next_;
+  Obj* next_;
   uintptr_t cohort_tag_;
 
  public:
@@ -111,19 +109,15 @@ class hazptr_obj {
 
   hazptr_obj() noexcept : next_(this), cohort_tag_(0) {}
 
-  hazptr_obj(const hazptr_obj<Atom>& o) noexcept
-      : next_(this), cohort_tag_(o.cohort_tag_) {}
+  hazptr_obj(const Obj& o) noexcept : next_(this), cohort_tag_(o.cohort_tag_) {}
 
-  hazptr_obj(hazptr_obj<Atom>&& o) noexcept
-      : next_(this), cohort_tag_(o.cohort_tag_) {}
+  hazptr_obj(Obj&& o) noexcept : next_(this), cohort_tag_(o.cohort_tag_) {}
 
   /** Copy operator */
-  hazptr_obj<Atom>& operator=(const hazptr_obj<Atom>&) noexcept {
-    return *this;
-  }
+  Obj& operator=(const Obj&) noexcept { return *this; }
 
   /** Move operator */
-  hazptr_obj<Atom>& operator=(hazptr_obj<Atom>&&) noexcept { return *this; }
+  Obj& operator=(Obj&&) noexcept { return *this; }
 
   /** cohort_tag */
   uintptr_t cohort_tag() { return cohort_tag_; }
@@ -152,14 +146,11 @@ class hazptr_obj {
   friend class hazptr_domain<Atom>;
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base;
-  template <typename, template <typename> class, typename>
-  friend class hazptr_obj_base_refcounted;
   friend class hazptr_obj_cohort<Atom>;
-  friend class hazptr_priv<Atom>;
 
-  hazptr_obj<Atom>* next() const noexcept { return next_; }
+  Obj* next() const noexcept { return next_; }
 
-  void set_next(hazptr_obj* obj) noexcept { next_ = obj; }
+  void set_next(Obj* obj) noexcept { next_ = obj; }
 
   ReclaimFnPtr reclaim() noexcept { return reclaim_; }
 
@@ -183,14 +174,8 @@ class hazptr_obj {
   }
 
   void push_to_retired(hazptr_domain<Atom>& domain) {
-#if FOLLY_HAZPTR_THR_LOCAL
-    if (&domain == &default_hazptr_domain<Atom>() && !domain.shutdown_) {
-      hazptr_priv_tls<Atom>().push(this);
-      return;
-    }
-#endif
     hazptr_obj_list<Atom> l(this);
-    hazptr_domain_push_retired(l, true, domain);
+    hazptr_domain_push_retired(l, domain);
   }
 
   FOLLY_NOINLINE void pre_retire_check_fail() noexcept {
@@ -371,7 +356,7 @@ class hazptr_obj_cohort {
   }
 
   /** reclaim_list */
-  void reclaim_list(hazptr_obj<Atom>* obj) {
+  void reclaim_list(Obj* obj) {
     while (obj) {
       hazptr_obj_list<Atom> children;
       while (obj) {
@@ -379,7 +364,13 @@ class hazptr_obj_cohort {
         (*(obj->reclaim()))(obj, children);
         obj = next;
       }
-      obj = children.head();
+      if (!children.empty()) {
+        if (active()) {
+          hazptr_domain_push_retired<Atom>(children);
+        } else {
+          obj = children.head();
+        }
+      }
     }
   }
 
@@ -400,7 +391,7 @@ class hazptr_obj_cohort {
           }
         }
         hazptr_obj_list<Atom> l(ll.head(), ll.tail(), c);
-        hazptr_domain_push_list<Atom>(l);
+        hazptr_domain_push_retired<Atom>(l);
         return;
       }
     }

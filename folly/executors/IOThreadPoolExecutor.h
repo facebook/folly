@@ -16,12 +16,11 @@
 
 #pragma once
 
-#include <atomic>
-
 #include <folly/Portability.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/io/async/EventBaseManager.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -84,6 +83,9 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
+  static std::mutex* getEventBaseShutdownMutex(
+      ThreadPoolExecutor::ThreadHandle*);
+
   folly::EventBaseManager* getEventBaseManager();
 
  private:
@@ -102,7 +104,8 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   void stopThreads(size_t n) override;
   size_t getPendingTaskCountImpl() const override final;
 
-  std::atomic<size_t> nextThread_;
+  const bool isWaitForAll_; // whether to wait till event base loop exits
+  relaxed_atomic<size_t> nextThread_;
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   folly::EventBaseManager* eventBaseManager_;
 };

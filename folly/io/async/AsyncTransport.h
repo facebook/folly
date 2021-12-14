@@ -21,6 +21,7 @@
 
 #include <folly/Optional.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/IOBufIovecBuilder.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTransportCertificate.h>
 #include <folly/io/async/DelayedDestruction.h>
@@ -206,7 +207,7 @@ class AsyncReader {
      * returned different buffers, the ReadCallback is responsible for ensuring
      * that they are not leaked.
      *
-     * If getReadBuffera() throws an exception or returns a zero length array
+     * If getReadBuffers() throws an exception or returns a zero length array
      * the ReadCallback will be uninstalled and its readError() method will be
      * invoked.
      *
@@ -215,14 +216,10 @@ class AsyncReader {
      * set a different read callback.)
      *
      * @param iovs      getReadBuffers() will copy up to num iovec entries into
-     *                  iovs. iovs cannot be nullptr unless num is 0
-     * @param num       number of iovec entries in the iovs array
-     * @return          number of entried copied to the iovs array
-     *                  this is less than or equal to num
+     *                  iovs
      */
-    virtual size_t getReadBuffers(
-        FOLLY_MAYBE_UNUSED struct iovec* iovs, FOLLY_MAYBE_UNUSED size_t num) {
-      return 0;
+    virtual void getReadBuffers(IOBufIovecBuilder::IoVecVec& iovs) {
+      iovs.clear();
     }
 
     /**
@@ -744,6 +741,7 @@ class AsyncTransport : public DelayedDestruction,
    */
   virtual size_t getAppBytesBuffered() const { return 0; }
   virtual size_t getRawBytesBuffered() const { return 0; }
+  virtual size_t getAllocatedBytesBuffered() const { return 0; }
 
   /**
    * Callback class to signal changes in the transport's internal buffers.
@@ -801,32 +799,47 @@ class AsyncTransport : public DelayedDestruction,
    * Structure used to communicate ByteEvents, such as TX and ACK timestamps.
    */
   struct ByteEvent {
-    enum Type : uint8_t { WRITE = 1, SCHED = 2, TX = 3, ACK = 4 };
+    // types of events; start from 0 to enable indexing in arrays
+    enum Type : uint8_t {
+      WRITE = 0,
+      SCHED = 1,
+      TX = 2,
+      ACK = 3,
+    };
     // type
     Type type;
 
     // offset of corresponding byte in raw byte stream
-    uint64_t offset{0};
+    size_t offset{0};
 
     // transport timestamp, as recorded by AsyncTransport implementation
     std::chrono::steady_clock::time_point ts = {
         std::chrono::steady_clock::now()};
 
-    // kernel software timestamp; for Linux this is CLOCK_REALTIME
+    // kernel software timestamp for non-WRITE; for Linux this is CLOCK_REALTIME
     // see https://www.kernel.org/doc/Documentation/networking/timestamping.txt
     folly::Optional<std::chrono::nanoseconds> maybeSoftwareTs;
 
-    // hardware timestamp; see kernel documentation
+    // hardware timestamp for non-WRITE events; see kernel documentation
     // see https://www.kernel.org/doc/Documentation/networking/timestamping.txt
     folly::Optional<std::chrono::nanoseconds> maybeHardwareTs;
 
+    // for WRITE events, the number of raw bytes written to the socket
+    // optional to prevent accidental misuse in other event types
+    folly::Optional<size_t> maybeRawBytesWritten;
+
+    // for WRITE events, the number of raw bytes we tried to write to the socket
+    // optional to prevent accidental misuse in other event types
+    folly::Optional<size_t> maybeRawBytesTriedToWrite;
+
     // for WRITE ByteEvents, additional WriteFlags passed
+    // optional to prevent accidental misuse in other event types
     folly::Optional<WriteFlags> maybeWriteFlags;
 
     /**
      * For WRITE events, returns if SCHED timestamp requested.
      */
-    bool schedTimestampRequested() const {
+    bool schedTimestampRequestedOnWrite() const {
       CHECK_EQ(Type::WRITE, type);
       CHECK(maybeWriteFlags.has_value());
       return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_SCHED);
@@ -835,7 +848,7 @@ class AsyncTransport : public DelayedDestruction,
     /**
      * For WRITE events, returns if TX timestamp requested.
      */
-    bool txTimestampRequested() const {
+    bool txTimestampRequestedOnWrite() const {
       CHECK_EQ(Type::WRITE, type);
       CHECK(maybeWriteFlags.has_value());
       return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_TX);
@@ -844,7 +857,7 @@ class AsyncTransport : public DelayedDestruction,
     /**
      * For WRITE events, returns if ACK timestamp requested.
      */
-    bool ackTimestampRequested() const {
+    bool ackTimestampRequestedOnWrite() const {
       CHECK_EQ(Type::WRITE, type);
       CHECK(maybeWriteFlags.has_value());
       return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_ACK);
@@ -864,8 +877,68 @@ class AsyncTransport : public DelayedDestruction,
      * when observers are added / removed, based on the observer configuration.
      */
     struct Config {
-      // enables full support for ByteEvents
+      virtual ~Config() = default;
+
+      // receive ByteEvents
       bool byteEvents{false};
+
+      // observer is notified during prewrite stage and can add WriteFlags
+      bool prewrite{false};
+
+      /**
+       * Enable all events in config.
+       */
+      virtual void enableAllEvents() {
+        byteEvents = true;
+        prewrite = true;
+      }
+
+      /**
+       * Returns a config where all events are enabled.
+       */
+      static Config getConfigAllEventsEnabled() {
+        Config config = {};
+        config.enableAllEvents();
+        return config;
+      }
+    };
+
+    /**
+     * Information provided to observer during prewrite event.
+     *
+     * Based on this information, an observer can build a PrewriteRequest.
+     */
+    struct PrewriteState {
+      // raw byte stream offsets
+      size_t startOffset{0};
+      size_t endOffset{0};
+
+      // flags already set
+      WriteFlags writeFlags{WriteFlags::NONE};
+
+      // transport timestamp, as recorded by AsyncTransport implementation
+      //
+      // supports sequencing of PrewriteState events and ByteEvents for debug
+      std::chrono::steady_clock::time_point ts = {
+          std::chrono::steady_clock::now()};
+    };
+
+    /**
+     * Request that can be generated by observer in response to prewrite event.
+     *
+     * An observer can use a PrewriteRequest to request WriteFlags to be added
+     * to a write and/or to request that the write be split up, both of which
+     * can be used for timestamping.
+     */
+    struct PrewriteRequest {
+      // offset to split write at; may be split at earlier offset by another req
+      folly::Optional<size_t> maybeOffsetToSplitWrite;
+
+      // write flags to be added if write split at requested offset
+      WriteFlags writeFlagsToAddAtOffset{WriteFlags::NONE};
+
+      // write flags to be added regardless of where write happens
+      WriteFlags writeFlagsToAdd{WriteFlags::NONE};
     };
 
     /**
@@ -884,7 +957,9 @@ class AsyncTransport : public DelayedDestruction,
     virtual ~LifecycleObserver() = default;
 
     /**
-     * Returns observers configuration.
+     * Returns observer's configuration.
+     *
+     * @return            Observer configuration.
      */
     const Config& getConfig() { return observerConfig_; }
 
@@ -926,13 +1001,34 @@ class AsyncTransport : public DelayedDestruction,
     virtual void close(AsyncTransport* /* transport */) noexcept = 0;
 
     /**
-     * connect() will be invoked when connect() returns successfully.
+     * connectAttempt() will be invoked when connect() is called.
+     *
+     * Triggered before any application connection callback.
+     *
+     * @param transport   Transport that attempts to connect.
+     */
+    virtual void connectAttempt(AsyncTransport* /* transport */) noexcept {}
+
+    /**
+     * connectSuccess() will be invoked when connect() returns successfully.
      *
      * Triggered before any application connection callback.
      *
      * @param transport   Transport that has connected.
      */
-    virtual void connect(AsyncTransport* /* transport */) noexcept = 0;
+    virtual void connectSuccess(AsyncTransport* /* transport */) noexcept {}
+
+    /**
+     * connectError() will be invoked when connect() returns an error.
+     *
+     * Triggered before any application connection callback.
+     *
+     * @param transport   Transport that has connected.
+     * @param ex          Exception that describes why.
+     */
+    virtual void connectError(
+        AsyncTransport* /* transport */,
+        const AsyncSocketException& /* ex */) noexcept {}
 
     /**
      * Invoked when the transport is being attached to an EventBase.
@@ -1000,6 +1096,33 @@ class AsyncTransport : public DelayedDestruction,
     virtual void byteEventsUnavailable(
         AsyncTransport* /* transport */,
         const AsyncSocketException& /* ex */) noexcept {}
+
+    /**
+     * Invoked before each write to the transport if prewrite support enabled.
+     *
+     * The observer receives information about the pending write in the
+     * PrewriteState and can request ByteEvents / socket timestamps by returning
+     * a PrewriteRequest. The request contains the offset to split the write at
+     * (if any) and WriteFlags to apply.
+     *
+     * PrewriteRequests are aggregated across observers. The write buffer is
+     * split at the lowest offset returned by all observers. Flags are applied
+     * based on configuration within the PrewriteRequest. Requests are not
+     * sticky and expire after each write.
+     *
+     * Fewer bytes may be written than indicated in the PrewriteState or in the
+     * PrewriteRequest split if the underlying transport / socket / kernel
+     * blocks on write.
+     *
+     * @param transport   Transport that ByteEvents are now unavailable for.
+     * @param state       Pending write start and end offsets and flags.
+     * @return            Request containing offset to split write at and flags.
+     */
+    virtual PrewriteRequest prewrite(
+        AsyncTransport* /* transport */, const PrewriteState& /* state */) {
+      folly::terminate_with<std::runtime_error>(
+          "prewrite() called but not defined");
+    }
 
    protected:
     // observer configuration; cannot be changed post instantiation

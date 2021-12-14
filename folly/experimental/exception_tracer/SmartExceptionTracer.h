@@ -21,6 +21,12 @@
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
+#if defined(__GLIBCXX__)
+
+// These functions report stack traces if available.
+// To enable collecting stack traces your binary must also include the
+// smart_exception_stack_trace_hooks target.
+
 namespace folly {
 namespace exception_tracer {
 
@@ -38,5 +44,7 @@ ExceptionInfo getAsyncTrace(const exception_wrapper& ew);
 
 } // namespace exception_tracer
 } // namespace folly
+
+#endif // defined(__GLIBCXX__)
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

@@ -107,6 +107,8 @@ class StaticSingletonManagerWithRtti {
   using Key = std::type_info;
   using Make = void*();
   using Cache = std::atomic<void*>;
+  template <typename T, typename Tag>
+  struct FOLLY_EXPORT Src {};
   struct Arg {
     Cache cache{}; // should be first field
     Key const* key;
@@ -116,7 +118,7 @@ class StaticSingletonManagerWithRtti {
     // function, but typeid is not constexpr under msvc
     template <typename T, typename Tag>
     /* implicit */ constexpr Arg(tag_t<T, Tag>) noexcept
-        : key{FOLLY_TYPE_INFO_OF(tag_t<T, Tag>)}, make{thunk::make<T>} {}
+        : key{FOLLY_TYPE_INFO_OF(Src<T, Tag>)}, make{thunk::make<T>} {}
   };
 
   template <bool Noexcept>

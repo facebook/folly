@@ -67,25 +67,25 @@ TypeError::TypeError(
 #define FB_DYNAMIC_APPLY(type, apply) \
   do {                                \
     switch ((type)) {                 \
-      case NULLT:                     \
+      case dynamic::NULLT:            \
         apply(std::nullptr_t);        \
         break;                        \
-      case ARRAY:                     \
-        apply(Array);                 \
+      case dynamic::ARRAY:            \
+        apply(dynamic::Array);        \
         break;                        \
-      case BOOL:                      \
+      case dynamic::BOOL:             \
         apply(bool);                  \
         break;                        \
-      case DOUBLE:                    \
+      case dynamic::DOUBLE:           \
         apply(double);                \
         break;                        \
-      case INT64:                     \
+      case dynamic::INT64:            \
         apply(int64_t);               \
         break;                        \
-      case OBJECT:                    \
-        apply(ObjectImpl);            \
+      case dynamic::OBJECT:           \
+        apply(dynamic::ObjectImpl);   \
         break;                        \
-      case STRING:                    \
+      case dynamic::STRING:           \
         apply(std::string);           \
         break;                        \
       default:                        \
@@ -94,31 +94,34 @@ TypeError::TypeError(
     }                                 \
   } while (0)
 
-bool dynamic::operator<(dynamic const& o) const {
-  if (UNLIKELY(type_ == OBJECT || o.type_ == OBJECT)) {
-    throw_exception<TypeError>("object", type_);
+bool operator<(dynamic const& a, dynamic const& b) {
+  constexpr auto obj = dynamic::OBJECT;
+  if (UNLIKELY(a.type_ == obj || b.type_ == obj)) {
+    auto type = a.type_ == obj ? b.type_ : b.type_ == obj ? a.type_ : obj;
+    throw_exception<TypeError>("object", type);
   }
-  if (type_ != o.type_) {
-    return type_ < o.type_;
+  if (a.type_ != b.type_) {
+    return a.type_ < b.type_;
   }
 
-#define FB_X(T) return CompareOp<T>::comp(*getAddress<T>(), *o.getAddress<T>())
-  FB_DYNAMIC_APPLY(type_, FB_X);
+#define FB_X(T) \
+  return dynamic::CompareOp<T>::comp(*a.getAddress<T>(), *b.getAddress<T>())
+  FB_DYNAMIC_APPLY(a.type_, FB_X);
 #undef FB_X
 }
 
-bool dynamic::operator==(dynamic const& o) const {
-  if (type() != o.type()) {
-    if (isNumber() && o.isNumber()) {
-      auto& integ = isInt() ? *this : o;
-      auto& doubl = isInt() ? o : *this;
+bool operator==(dynamic const& a, dynamic const& b) {
+  if (a.type() != b.type()) {
+    if (a.isNumber() && b.isNumber()) {
+      auto& integ = a.isInt() ? a : b;
+      auto& doubl = a.isInt() ? b : a;
       return integ.asInt() == doubl.asDouble();
     }
     return false;
   }
 
-#define FB_X(T) return *getAddress<T>() == *o.getAddress<T>();
-  FB_DYNAMIC_APPLY(type_, FB_X);
+#define FB_X(T) return *a.getAddress<T>() == *b.getAddress<T>();
+  FB_DYNAMIC_APPLY(a.type_, FB_X);
 #undef FB_X
 }
 
