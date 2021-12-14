@@ -26,7 +26,7 @@ bool IntervalRateLimiter::checkSlow() {
     return false;
   }
 
-  if (!timestamp_.compare_exchange_strong(ts, now, std::memory_order_release, std::memory_order_relaxed)) {
+  if (!timestamp_.compare_exchange_strong(ts, now, std::memory_order_relaxed, std::memory_order_relaxed)) {
     // We raced with another thread that reset the timestamp.
     // We treat this as if we fell into the previous interval, and so we
     // rate-limit ourself.
