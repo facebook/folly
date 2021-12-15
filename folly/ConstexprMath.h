@@ -26,24 +26,24 @@ namespace folly {
 // a and b are equivalent objects, we return b to make
 // sorting stable.
 // See http://stepanovpapers.com/notes.pdf for details.
-template <typename T>
-constexpr T constexpr_max(T a) {
-  return a;
-}
 template <typename T, typename... Ts>
-constexpr T constexpr_max(T a, T b, Ts... ts) {
-  return b < a ? constexpr_max(a, ts...) : constexpr_max(b, ts...);
+constexpr T constexpr_max(T a, Ts... ts) {
+  T list[] = {ts..., a}; // 0-length arrays are illegal
+  for (auto i = 0u; i < sizeof...(Ts); ++i) {
+    a = list[i] < a ? a : list[i];
+  }
+  return a;
 }
 
 // When a and b are equivalent objects, we return a to
 // make sorting stable.
-template <typename T>
-constexpr T constexpr_min(T a) {
-  return a;
-}
 template <typename T, typename... Ts>
-constexpr T constexpr_min(T a, T b, Ts... ts) {
-  return b < a ? constexpr_min(b, ts...) : constexpr_min(a, ts...);
+constexpr T constexpr_min(T a, Ts... ts) {
+  T list[] = {ts..., a}; // 0-length arrays are illegal
+  for (auto i = 0u; i < sizeof...(Ts); ++i) {
+    a = list[i] < a ? list[i] : a;
+  }
+  return a;
 }
 
 template <typename T, typename Less>
