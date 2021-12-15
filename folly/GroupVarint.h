@@ -39,7 +39,7 @@
 
 #if FOLLY_HAVE_GROUP_VARINT
 
-#if FOLLY_SSE >= 3
+#if FOLLY_SSE >= 4
 #include <nmmintrin.h>
 namespace folly {
 namespace detail {
@@ -199,7 +199,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     return decode_simple(p, dest, dest + 1, dest + 2, dest + 3);
   }
 
-#if FOLLY_SSE >= 3
+#if FOLLY_SSE >= 4
   /**
    * Just like the non-SSSE3 decode below, but with the additional constraint
    * that we must be able to read at least 17 bytes from the input pointer, p.
@@ -242,7 +242,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     return p + detail::groupVarintLengths[key];
   }
 
-#else /* !__SSSE3__ */
+#else // FOLLY_SSE >= 4
   static const char* decode(
       const char* p, uint32_t* a, uint32_t* b, uint32_t* c, uint32_t* d) {
     return decode_simple(p, a, b, c, d);
@@ -251,7 +251,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
   static const char* decode(const char* p, uint32_t* dest) {
     return decode_simple(p, dest);
   }
-#endif /* __SSSE3__ */
+#endif // FOLLY_SSE >= 4
 
  private:
   static uint8_t key(uint32_t x) {
