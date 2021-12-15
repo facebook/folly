@@ -57,6 +57,28 @@
  * best if you always invoke the compiler from the root directory of your
  * project repository.
  */
+
+/*
+ * The global value of FOLLY_XLOG_MIN_LEVEL. All the messages logged to
+ * XLOG(XXX) with severity less than FOLLY_XLOG_MIN_LEVEL will not be displayed.
+ * If it can be determined at compile time that the message will not be printed,
+ * the statement will be compiled out.
+ * FOLLY_XLOG_MIN_LEVEL should be below FATAL.
+ *
+ *
+ * Example: to strip out messages less than ERR, use the value of ERR below.
+ */
+#ifndef FOLLY_XLOG_MIN_LEVEL
+#define FOLLY_XLOG_MIN_LEVEL MIN_LEVEL
+#endif
+
+namespace folly {
+constexpr auto kLoggingMinLevel = LogLevel::FOLLY_XLOG_MIN_LEVEL;
+static_assert(
+    !isLogLevelFatal(kLoggingMinLevel),
+    "Cannot set FOLLY_XLOG_MIN_LEVEL to disable fatal messages");
+} // namespace folly
+
 #define XLOG(level, ...)                   \
   XLOG_IMPL(                               \
       ::folly::LogLevel::level,            \
@@ -434,15 +456,15 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *
  * See XlogLevelInfo for the implementation details.
  */
-#define XLOG_IS_ON_IMPL(level)                              \
-  ([] {                                                     \
-    static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>   \
-        folly_detail_xlog_level;                            \
-    return folly_detail_xlog_level.check(                   \
-        (level),                                            \
-        xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0), \
-        xlog_detail::isXlogCategoryOverridden(0),           \
-        &xlog_detail::xlogFileScopeInfo);                   \
+#define XLOG_IS_ON_IMPL(level)                                \
+  ((level >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && [] { \
+    static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>     \
+        folly_detail_xlog_level;                              \
+    return folly_detail_xlog_level.check(                     \
+        (level),                                              \
+        xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0),   \
+        xlog_detail::isXlogCategoryOverridden(0),             \
+        &xlog_detail::xlogFileScopeInfo);                     \
   }())
 
 /**
