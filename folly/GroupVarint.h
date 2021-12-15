@@ -226,18 +226,10 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
         _mm_load_si128((const __m128i*)detail::groupVarintSSEMasks[key].data());
     __m128i r = _mm_shuffle_epi8(val, mask);
 
-    // Extracting 32 bits at a time out of an XMM register is a SSE4 feature
-#if FOLLY_SSE >= 4
     *a = uint32_t(_mm_extract_epi32(r, 0));
     *b = uint32_t(_mm_extract_epi32(r, 1));
     *c = uint32_t(_mm_extract_epi32(r, 2));
     *d = uint32_t(_mm_extract_epi32(r, 3));
-#else /* !__SSE4__ */
-    *a = _mm_extract_epi16(r, 0) + (_mm_extract_epi16(r, 1) << 16);
-    *b = _mm_extract_epi16(r, 2) + (_mm_extract_epi16(r, 3) << 16);
-    *c = _mm_extract_epi16(r, 4) + (_mm_extract_epi16(r, 5) << 16);
-    *d = _mm_extract_epi16(r, 6) + (_mm_extract_epi16(r, 7) << 16);
-#endif /* __SSE4__ */
 
     return p + detail::groupVarintLengths[key];
   }
