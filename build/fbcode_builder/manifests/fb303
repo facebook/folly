@@ -15,7 +15,6 @@ folly
 gflags
 glog
 fbthrift
-rust-shed
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
