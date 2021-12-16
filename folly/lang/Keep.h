@@ -20,7 +20,25 @@
 
 //  FOLLY_KEEP
 //
-//  When applied to a function, prevents removal of the function.
+//  When applied to a function, prevents removal of the function. Useful for
+//  marking functions which it is desirable to keep.
+//
+//  A common use-case is for keeping unused functions in test or benchmark
+//  programs which serve as convenient targets for inspecting how the compiler
+//  translates source code to machine code. Such functions may be disassembled
+//  for inspection in the debugger of with the objdump tool, and are often, for
+//  lack of imagination, called check functions in test and benchmark programs.
+//
+//  Example:
+//
+//      extern "C" FOLLY_KEEP void check_throw_int_0() {
+//        throw 0;
+//      }
+//
+//      $ objdump -dCM intel-mnemonic path/to/binary | less
+//      # less permits searching for check_throw_int_0
+//
+//      $ gdb path/to/binary -q -batch -ex 'disassemble check_throw_int_0'
 //
 //  Functions may be removed when building with both function-sections and
 //  gc-sections. It is tricky to keep them; this utility captures the steps
