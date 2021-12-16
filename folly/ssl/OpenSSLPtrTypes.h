@@ -146,39 +146,34 @@ FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(SSLSession, SSL_SESSION, SSL_SESSION_free);
 // the appropriate destructor:
 //    * OwningStackOf* -> Invokes sk_T_free
 //    * BorrowingStackOf* -> Invokes sk_T_pop_free
-//
-// IMPLEMENTATION NOTES:
-//    * While the _current_ implementation of OpenSSL's STACK_OF APIs utilize
-//      type erased OPENSSL_sk_* APIs, this is technically an implementation
-//      detail. It is tempting to simply create a template type that invokes
-//      the appropriate type casting and OPENSSL_sk_* invocations, but we must
-//      avoid copying implementation details for how the sk_* generated
-//      user-facing APIs are implemented.
-//    * In other words, our own macro implementation below *must not* use
-//      OPENSSL_sk_* APIs. They *must* only use the corresponding sk_T_free,
-//      sk_T_pop_free user APIs (i.e. those that can be found in OpenSSL
-//      documentation).
+#if FOLLY_OPENSSL_PREREQ(1, 1, 0)
 namespace detail {
 template <
     class StackType,
     class ElementType,
-    void (*OwningStackDestructor)(StackType*, void (*)(ElementType*)),
     void (*ElementDestructor)(ElementType*)>
 struct OpenSSLOwnedStackDeleter {
   void operator()(StackType* stack) const {
-    OwningStackDestructor(stack, ElementDestructor);
+    OPENSSL_sk_pop_free(
+        reinterpret_cast<OPENSSL_STACK*>(stack),
+        reinterpret_cast<OPENSSL_sk_freefunc>(ElementDestructor));
+  }
+};
+
+template <class StackType>
+struct OpenSSLBorrowedStackDestructor {
+  void operator()(StackType* stack) {
+    OPENSSL_sk_free(reinterpret_cast<OPENSSL_STACK*>(stack));
   }
 };
 
 } // namespace detail
 
-#if FOLLY_OPENSSL_PREREQ(1, 1, 0)
 #define FOLLY_SSL_DETAIL_OWNING_STACK_DESTRUCTOR(T) \
-  ::folly::ssl::detail::                            \
-      OpenSSLOwnedStackDeleter<STACK_OF(T), T, sk_##T##_pop_free, T##_free>
+  ::folly::ssl::detail::OpenSSLOwnedStackDeleter<STACK_OF(T), T, T##_free>
 
 #define FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR(T) \
-  ::folly::static_function_deleter<STACK_OF(T), &sk_##T##_free>
+  ::folly::ssl::detail::OpenSSLBorrowedStackDestructor<STACK_OF(T)>
 
 #else
 namespace detail {
