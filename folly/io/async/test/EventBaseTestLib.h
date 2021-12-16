@@ -1937,7 +1937,6 @@ TYPED_TEST_P(EventBaseTest, IdleTime) {
   eventBase.loopOnce(EVLOOP_NONBLOCK);
   eventBase.setLoadAvgMsec(std::chrono::milliseconds(1000));
   eventBase.resetLoadAvg(5900.0);
-  auto testStart = std::chrono::steady_clock::now();
 
   int latencyCallbacks = 0;
   eventBase.setMaxLatency(std::chrono::microseconds(6000), [&]() {
