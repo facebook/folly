@@ -266,17 +266,19 @@ function(folly_define_tests)
 
   set(cur_test 0)
   while (cur_test LESS test_count)
-    if (
-      1
-      # TODO: Use IN_LIST after cmake 3.3
-      AND (test_${cur_test}_tag MATCHES "\\bBROKEN\\b" OR BUILD_BROKEN_TESTS)
-      AND (test_${cur_test}_tag MATCHES "\\bSLOW\\b" OR BUILD_SLOW_TESTS)
-      AND (test_${cur_test}_tag MATCHES "\\bHANGING\\b" OR BUILD_HANGING_TESTS)
-      AND (test_${cur_test}_tag MATCHES "\\bWINDOWS_DISABLED\\b" OR NOT WIN32)
-      AND (test_${cur_test}_tag MATCHES "\\bAPPLE_DISABLED\\b" OR NOT APPLE)
-    )
-      set(cur_test_name ${test_${cur_test}_name})
-      set(cur_dir_name ${directory_${test_${cur_test}_directory}_name})
+    set(cur_test_name ${test_${cur_test}_name})
+    set(cur_dir_name ${directory_${test_${cur_test}_directory}_name})
+    if ("BROKEN" IN_LIST test_${cur_test}_tag AND NOT BUILD_BROKEN_TESTS)
+      message("Skipping broken test ${cur_dir_name}${cur_test_name}, enable with BUILD_BROKEN_TESTS")
+    elseif ("SLOW" IN_LIST test_${cur_test}_tag AND NOT BUILD_SLOW_TESTS)
+      message("Skipping slow test ${cur_dir_name}${cur_test_name}, enable with BUILD_SLOW_TESTS")
+    elseif ("HANGING" IN_LIST test_${cur_test}_tag AND NOT BUILD_HANGING_TESTS)
+      message("Skipping hanging test ${cur_dir_name}${cur_test_name}, enable with BUILD_HANGING_TESTS")
+    elseif ("WINDOWS_DISABLED" IN_LIST test_${cur_test}_tag AND WIN32)
+      message("Skipping windows disabled test ${cur_dir_name}${cur_test_name}, enable with WINDOWS_DISABLED")
+    elseif ("APPLE_DISABLED" IN_LIST test_${cur_test}_tag AND APPLE)
+      message("Skipping apple disabled test ${cur_dir_name}${cur_test_name}, enable with APPLE_DISABLED")
+    else()
       add_executable(${cur_test_name}
         ${test_${cur_test}_headers}
         ${test_${cur_test}_sources}

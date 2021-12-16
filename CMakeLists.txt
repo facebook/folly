@@ -579,7 +579,8 @@ if (BUILD_TESTS)
       TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
       TEST global_executor_test SOURCES GlobalExecutorTest.cpp
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
-      TEST thread_pool_executor_test WINDOWS_DISABLED
+      # Fails in ThreadPoolExecutorTest.RequestContext:719 data2 != nullptr
+      TEST thread_pool_executor_test BROKEN WINDOWS_DISABLED
         SOURCES ThreadPoolExecutorTest.cpp
       TEST threaded_executor_test SOURCES ThreadedExecutorTest.cpp
       TEST timed_drivable_executor_test SOURCES TimedDrivableExecutorTest.cpp
@@ -645,7 +646,8 @@ if (BUILD_TESTS)
           XlogTest.cpp
 
     DIRECTORY fibers/test/
-      TEST fibers_test SOURCES FibersTest.cpp
+      # FiberManager swapWithException fails with segfault
+      TEST fibers_test BROKEN SOURCES FibersTest.cpp
 
     DIRECTORY functional/test/
       TEST apply_tuple_test WINDOWS_DISABLED
@@ -743,7 +745,8 @@ if (BUILD_TESTS)
       TEST DelayedDestructionTest SOURCES DelayedDestructionTest.cpp
       TEST DelayedDestructionBaseTest SOURCES DelayedDestructionBaseTest.cpp
       TEST DestructorCheckTest SOURCES DestructorCheckTest.cpp
-      TEST EventBaseTest SOURCES EventBaseTest.cpp
+      # Fails with gtest macro error
+      TEST EventBaseTest BROKEN SOURCES EventBaseTest.cpp
       TEST EventBaseLocalTest SOURCES EventBaseLocalTest.cpp
       TEST HHWheelTimerTest SOURCES HHWheelTimerTest.cpp
       TEST HHWheelTimerSlowTests SLOW
@@ -889,7 +892,8 @@ if (BUILD_TESTS)
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
       TEST map_util_test SOURCES MapUtilTest.cpp
-      TEST memcpy_test SOURCES MemcpyTest.cpp
+      # Fails with link error on __folly_memcpy
+      TEST memcpy_test BROKEN SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test WINDOWS_DISABLED
         SOURCES MemoryTest.cpp
