@@ -451,14 +451,11 @@ TEST_F(
   auto [untransformedReceiver, sender] = Channel<int>::create();
   auto transformedReceiver = resumableTransform(
       &executor_,
-      [alreadyInitialized = false,
-       receiver = std::move(untransformedReceiver)]() mutable
+      toVector("abc"s, "def"s),
+      [receiver = std::move(untransformedReceiver)](
+          std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
-        if (alreadyInitialized) {
-          throw OnClosedException();
-        }
-        alreadyInitialized = true;
-        co_return std::make_pair(toVector("abc"s, "def"s), std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
@@ -492,14 +489,11 @@ TEST_F(
   auto [untransformedReceiver, sender] = Channel<int>::create();
   auto transformedReceiver = resumableTransform(
       &executor_,
-      [alreadyInitialized = false,
-       receiver = std::move(untransformedReceiver)]() mutable
+      toVector("abc"s, "def"s),
+      [receiver = std::move(untransformedReceiver)](
+          std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
-        if (alreadyInitialized) {
-          throw OnClosedException();
-        }
-        alreadyInitialized = true;
-        co_return std::make_pair(toVector("abc"s, "def"s), std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
@@ -533,17 +527,13 @@ TEST_F(
   auto [untransformedReceiver, sender] = Channel<int>::create();
   auto transformedReceiver = resumableTransform(
       &executor_,
-      [alreadyInitialized = false,
-       receiver = std::move(untransformedReceiver)]() mutable
+      toVector("abc"s, "def"s),
+      [receiver = std::move(untransformedReceiver)](
+          std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
-        if (alreadyInitialized) {
-          throw OnClosedException();
-        }
-        alreadyInitialized = true;
-        co_return std::make_pair(toVector("abc"s, "def"s), std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
-        LOG(INFO) << "Got value " << result.hasException();
         co_yield folly::to<std::string>(result.value());
       });
 
@@ -570,18 +560,23 @@ TEST_F(
   auto [untransformedReceiver, sender] = Channel<int>::create();
   auto transformedReceiver = resumableTransform(
       &executor_,
-      [numTimesInitialized = 0, &receiver = untransformedReceiver]() mutable
+      toVector("abc1"s),
+      [&receiver = untransformedReceiver](
+          std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
-        if (numTimesInitialized > 1) {
-          throw OnClosedException();
-        }
-        numTimesInitialized++;
-        co_return std::make_pair(
-            toVector(folly::to<std::string>("abc", numTimesInitialized)),
-            std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
-        co_yield folly::to<std::string>(result.value());
+      [numReinitializations = 0](folly::Try<int> result) mutable
+      -> folly::coro::AsyncGenerator<std::string&&> {
+        try {
+          co_yield folly::to<std::string>(result.value());
+        } catch (const OnClosedException&) {
+          if (numReinitializations >= 1) {
+            throw;
+          }
+          numReinitializations++;
+          throw ReinitializeException(toVector("abc2"s));
+        }
       });
 
   EXPECT_CALL(onNext_, onValue("abc1"));
@@ -616,12 +611,13 @@ TEST_F(
   auto [untransformedReceiver, sender] = Channel<int>::create();
   auto transformedReceiver = resumableTransform(
       &executor_,
-      [alreadyInitialized = false,
-       receiver = std::move(untransformedReceiver)]() mutable
+      toVector("abc"s),
+      [alreadyInitialized = false, receiver = std::move(untransformedReceiver)](
+          std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         CHECK(!alreadyInitialized);
         alreadyInitialized = true;
-        co_return std::make_pair(toVector("abc"s), std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
@@ -648,18 +644,18 @@ TEST_F(
   auto [untransformedReceiver, sender] = Channel<int>::create();
   auto transformedReceiver = resumableTransform(
       &executor_,
-      [numTimesInitialized = 0, &receiver = untransformedReceiver]() mutable
+      toVector("abc1"s),
+      [&receiver = untransformedReceiver](
+          std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
-        numTimesInitialized++;
-        co_return std::make_pair(
-            toVector(folly::to<std::string>("abc", numTimesInitialized)),
-            std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (result.hasValue()) {
           co_yield folly::to<std::string>(result.value());
         } else {
           EXPECT_THROW(result.throwUnlessValue(), std::runtime_error);
+          throw ReinitializeException(toVector("abc2"s));
         }
       });
 
@@ -694,12 +690,13 @@ TEST_F(ResumableTransformFixture, TransformThrows_NoReinitialization_Rethrows) {
   bool transformThrows = false;
   auto transformedReceiver = resumableTransform(
       &executor_,
-      [alreadyInitialized = false, &receiver = untransformedReceiver]() mutable
+      toVector("abc"s),
+      [alreadyInitialized = false, &receiver = untransformedReceiver](
+          std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         CHECK(!alreadyInitialized);
         alreadyInitialized = true;
-        co_return std::make_pair(
-            toVector(folly::to<std::string>("abc")), std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [&](folly::Try<int> result)
           -> folly::coro::AsyncGenerator<std::string&&> {
@@ -769,20 +766,27 @@ TEST_F(ResumableTransformFixtureStress, Close) {
   bool close = false;
   consumer_->startConsuming(resumableTransform(
       folly::SerialExecutor::create(&transformExecutor),
-      [&]() -> folly::coro::Task<
-                std::pair<std::vector<std::string>, Receiver<int>>> {
-        if (close) {
-          throw OnClosedException();
-        }
+      toVector("start"s),
+      [&](std::vector<std::string> initializeArg)
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         auto [receiver, sender] = Channel<int>::create();
         auto newProducer = makeProducer();
         newProducer->startProducing(
             std::move(sender), std::nullopt /* closeEx */);
         setProducer(std::move(newProducer));
-        co_return std::make_pair(toVector("start"s), std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
-        co_yield folly::to<std::string>(std::move(result.value()));
+      [&](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
+        try {
+          co_yield folly::to<std::string>(std::move(result.value()));
+        } catch (const OnClosedException&) {
+          if (close) {
+            throw;
+          } else {
+            throw ReinitializeException(toVector("start"s));
+          }
+        }
       }));
 
   waitForProducer();
@@ -808,7 +812,8 @@ TEST_F(ResumableTransformFixtureStress, CancelDuringReinitialization) {
       folly::makeGuard([&]() { resumableTransformDestroyed.setValue(); });
   consumer_->startConsuming(resumableTransform(
       folly::SerialExecutor::create(&transformExecutor),
-      [&, g = std::move(guard)]()
+      toVector("start"s),
+      [&, g = std::move(guard)](std::vector<std::string> initializeArg)
           -> folly::coro::Task<
               std::pair<std::vector<std::string>, Receiver<int>>> {
         initializationStarted.setValue(folly::unit);
@@ -820,10 +825,14 @@ TEST_F(ResumableTransformFixtureStress, CancelDuringReinitialization) {
         newProducer->startProducing(
             std::move(sender), std::nullopt /* closeEx */);
         setProducer(std::move(newProducer));
-        co_return std::make_pair(toVector("start"s), std::move(receiver));
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
-        co_yield folly::to<std::string>(std::move(result.value()));
+        try {
+          co_yield folly::to<std::string>(std::move(result.value()));
+        } catch (const OnClosedException&) {
+          throw ReinitializeException(toVector("start"s));
+        }
       }));
 
   initializationStarted.getSemiFuture().get();

@@ -316,6 +316,7 @@ class TransformProcessor : public TransformProcessorBase<
  * the resumableTransform function.
  */
 template <
+    typename InitializeArg,
     typename InputValueType,
     typename OutputValueType,
     typename TransformerType>
@@ -328,15 +329,16 @@ class ResumableTransformProcessor : public TransformProcessorBase<
       TransformProcessorBase<InputValueType, OutputValueType, TransformerType>;
   using Base::Base;
 
-  void initialize() {
-    this->transformer_.getExecutor()->add([=]() {
-      runOperationWithSenderCancellation(
-          this->transformer_.getExecutor(),
-          this->sender_,
-          false /* currentlyWaiting */,
-          this /* channelCallbackToRestore */,
-          initializeImpl());
-    });
+  void initialize(InitializeArg initializeArg) {
+    this->transformer_.getExecutor()->add(
+        [=, initializeArg = std::move(initializeArg)]() mutable {
+          runOperationWithSenderCancellation(
+              this->transformer_.getExecutor(),
+              this->sender_,
+              false /* currentlyWaiting */,
+              this /* channelCallbackToRestore */,
+              initializeImpl(std::move(initializeArg)));
+        });
   }
 
  private:
@@ -346,10 +348,10 @@ class ResumableTransformProcessor : public TransformProcessorBase<
    * resumableTransform is created, and again whenever the previous input
    * receiver closed without an exception.
    */
-  folly::coro::Task<void> initializeImpl() {
+  folly::coro::Task<void> initializeImpl(InitializeArg initializeArg) {
     auto cancelToken = co_await folly::coro::co_current_cancellation_token;
     auto initializeResult = co_await folly::coro::co_awaitTry(
-        this->transformer_.initializeTransform());
+        this->transformer_.initializeTransform(std::move(initializeArg)));
     if (initializeResult.hasException()) {
       auto closeResult =
           initializeResult.template hasException<OnClosedException>()
@@ -389,19 +391,24 @@ class ResumableTransformProcessor : public TransformProcessorBase<
     auto cancelToken = co_await folly::coro::co_current_cancellation_token;
     if (this->getSenderState() == ChannelState::Active &&
         !cancelToken.isCancellationRequested()) {
-      if (closeResult.exception.has_value()) {
+      if (!closeResult.exception.has_value()) {
+        // We were closed without an exception. We will close the sender without
+        // an exception.
+        this->sender_->senderClose();
+      } else if (
+          noRetriesAllowed ||
+          !closeResult.exception
+               ->is_compatible_with<ReinitializeException<InitializeArg>>()) {
         // We were closed with an exception. We will close the sender with that
         // exception.
         this->sender_->senderClose(std::move(closeResult.exception.value()));
-      } else if (noRetriesAllowed) {
-        // We were closed without an exception, but no retries are allowed. This
-        // means that the user-provided initialization function threw an
-        // OnClosedException.
-        this->sender_->senderClose();
       } else {
-        // We were not closed with an exception. We will re-run the user's
-        // initialization function and resume the resumableTransform.
-        co_await initializeImpl();
+        // We were closed with a ReinitializeException. We will re-run the
+        // user's initialization function and resume the resumableTransform.
+        auto* reinitializeEx =
+            closeResult.exception
+                ->get_exception<ReinitializeException<InitializeArg>>();
+        co_await initializeImpl(reinitializeEx->initializeArg);
         co_return;
       }
     }
@@ -435,6 +442,7 @@ class DefaultTransformer {
 };
 
 template <
+    typename InitializeArg,
     typename InputValueType,
     typename OutputValueType,
     typename InitializeTransformFunc,
@@ -454,7 +462,9 @@ class DefaultResumableTransformer : public DefaultTransformer<
       : Base(std::move(executor), std::move(transformValue)),
         initializeTransform_(std::move(initializeTransform)) {}
 
-  auto initializeTransform() { return initializeTransform_(); }
+  auto initializeTransform(InitializeArg initializeArg) {
+    return initializeTransform_(std::move(initializeArg));
+  }
 
  private:
   InitializeTransformFunc initializeTransform_;
@@ -495,6 +505,7 @@ Receiver<OutputValueType> transform(
 }
 
 template <
+    typename InitializeArg,
     typename InitializeTransformFunc,
     typename TransformValueFunc,
     typename ReceiverType,
@@ -502,32 +513,39 @@ template <
     typename OutputValueType>
 Receiver<OutputValueType> resumableTransform(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+    InitializeArg initializeArg,
     InitializeTransformFunc initializeTransform,
     TransformValueFunc transformValue) {
-  return resumableTransform(detail::DefaultResumableTransformer<
-                            InputValueType,
-                            OutputValueType,
-                            InitializeTransformFunc,
-                            TransformValueFunc>(
-      std::move(executor),
-      std::move(initializeTransform),
-      std::move(transformValue)));
+  return resumableTransform(
+      std::move(initializeArg),
+      detail::DefaultResumableTransformer<
+          InitializeArg,
+          InputValueType,
+          OutputValueType,
+          InitializeTransformFunc,
+          TransformValueFunc>(
+          std::move(executor),
+          std::move(initializeTransform),
+          std::move(transformValue)));
 }
 
 template <
+    typename InitializeArg,
     typename TransformerType,
     typename ReceiverType,
     typename InputValueType,
     typename OutputValueType>
-Receiver<OutputValueType> resumableTransform(TransformerType transformer) {
+Receiver<OutputValueType> resumableTransform(
+    InitializeArg initializeArg, TransformerType transformer) {
   auto [outputReceiver, outputSender] = Channel<OutputValueType>::create();
   using TProcessor = detail::ResumableTransformProcessor<
+      InitializeArg,
       InputValueType,
       OutputValueType,
       TransformerType>;
   auto* processor =
       new TProcessor(std::move(outputSender), std::move(transformer));
-  processor->initialize();
+  processor->initialize(std::move(initializeArg));
   return std::move(outputReceiver);
 }
 

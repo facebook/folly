@@ -101,62 +101,77 @@ Receiver<OutputValueType> transform(
 /**
  * This function is similar to the above transform function. However, instead of
  * taking a single input receiver, it takes an initialization function that
- * returns a std::pair<std::vector<OutputValueType>, Receiver<InputValueType>>.
+ * accepts a value of type InitializeArg, and returns a
+ * std::pair<std::vector<OutputValueType>, Receiver<InputValueType>>.
  *
  *  - If the InitializeTransform function returns successfully, the vector's
  *      output values will be immediately sent to the output receiver. The input
  *      receiver is then processed as described in the transform function's
- *      documentation, until it is closed (without an exception). At that point,
- *      the InitializationTransform is re-run, and the transform begins anew.
+ *      documentation, unless and until it throws a ReinitializeException. At
+ *      that point, the InitializationTransform is re-run with the InitializeArg
+ *      specified in the ReinitializeException, and the transform begins anew.
  *
- *  - If the InitializeTransform function throws an OnClosedException, the
- *      output receiver is closed (with no exception).
+ *  - If the InitializeTransform function or the TransformValue function throws
+ *      an OnClosedException, the output receiver is closed (with no exception).
  *
- *  - If the InitializeTransform function throws any other type of exception,
- *      the output receiver is closed with that exception.
- *
- *  - If the TransformValue function throws any exception other than
- *      OnClosedException, the output receiver is closed with that exception.
+ *  - If the InitializeTransform function or the TransformValue function throws
+ *      any other type of exception, the output receiver is closed with that
+ *      exception.
  *
  * @param executor: A folly::SequencedExecutor used to transform the values.
+ *
+ * @param initializeArg: The initial argument passed to the InitializeTransform
+ *  function.
  *
  * @param initializeTransform: The InitializeTransform function as described
  *  above.
  *
- * @param transformValue: A function as described above.
+ * @param transformValue: The TransformValue function as described above.
  *
  * Example:
  *
+ *  struct InitializeArg {
+ *    std::string param;
+ *  }
+ *
  *  // Function that returns a receiver
- *  Receiver<int> getInputReceiver();
+ *  Receiver<int> getInputReceiver(InitializeArg initializeArg);
  *
  *  // Function that returns an executor
  *  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
  *
  *  Receiver<std::string> outputReceiver = transform(
  *      getExecutor(),
- *      []() -> folly::coro::Task<
+ *      InitializeArg{"param"},
+ *      [](InitializeArg initializeArg) -> folly::coro::Task<
  *                  std::pair<std::vector<std::string>, Receiver<int>> {
  *          co_return std::make_pair(
  *              std::vector<std::string>({"Initialized"}),
- *              getInputReceiver());
+ *              getInputReceiver(initializeArg));
  *      },
  *      [](folly::Try<int> try) -> folly::coro::AsyncGenerator<std::string&&> {
- *          co_yield folly::to<std::string>(try.value());
+ *          try {
+ *            co_yield folly::to<std::string>(try.value());
+ *          } catch (const SomeApplicationException& ex) {
+ *            throw ReinitializeException(InitializeArg{ex.getParam()});
+ *          }
  *      });
  *
  */
 template <
+    typename InitializeArg,
     typename InitializeTransformFunc,
     typename TransformValueFunc,
     typename ReceiverType = typename folly::invoke_result_t<
-        InitializeTransformFunc>::StorageType::second_type,
+        InitializeTransformFunc,
+        InitializeArg>::StorageType::second_type,
     typename InputValueType = typename ReceiverType::ValueType,
     typename OutputValueType = typename folly::invoke_result_t<
         TransformValueFunc,
         folly::Try<InputValueType>>::value_type>
 Receiver<OutputValueType> resumableTransform(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+    InitializeArg initializeArg,
     InitializeTransformFunc initializeTransform,
     TransformValueFunc transformValue);
 
@@ -167,21 +182,23 @@ Receiver<OutputValueType> resumableTransform(
  * folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
  *
  * std::pair<std::vector<OutputValueType>, Receiver<InputValueType>>
- * initializeTransform();
+ * initializeTransform(InitializeArg initializeArg);
  *
  * folly::coro::AsyncGenerator<OutputValueType&&> transformValue(
  *     folly::Try<InputValueType> inputValue);
  */
 template <
+    typename InitializeArg,
     typename TransformerType,
     typename ReceiverType =
-        typename decltype(std::declval<TransformerType>()
-                              .initializeTransform())::StorageType::second_type,
+        typename decltype(std::declval<TransformerType>().initializeTransform(
+            std::declval<InitializeArg>()))::StorageType::second_type,
     typename InputValueType = typename ReceiverType::ValueType,
     typename OutputValueType =
         typename decltype(std::declval<TransformerType>().transformValue(
             std::declval<folly::Try<InputValueType>>()))::value_type>
-Receiver<OutputValueType> resumableTransform(TransformerType transformer);
+Receiver<OutputValueType> resumableTransform(
+    InitializeArg initializeArg, TransformerType transformer);
 
 /**
  * An OnClosedException passed to a transform callback indicates that the input
@@ -192,6 +209,22 @@ struct OnClosedException : public std::exception {
   const char* what() const noexcept override {
     return "A transform has closed the channel.";
   }
+};
+
+/**
+ * A ReinitializeException thrown by a transform callback indicates that the
+ * resumable transform needs to be re-initialized.
+ */
+template <typename InitializeArg>
+struct ReinitializeException : public std::exception {
+  explicit ReinitializeException(InitializeArg _initializeArg)
+      : initializeArg(std::move(_initializeArg)) {}
+
+  const char* what() const noexcept override {
+    return "This resumable transform should be re-initialized.";
+  }
+
+  InitializeArg initializeArg;
 };
 } // namespace channels
 } // namespace folly
