@@ -71,6 +71,11 @@ void MergeChannel<KeyType, ValueType>::removeReceiver(KeyType key) {
 }
 
 template <typename KeyType, typename ValueType>
+folly::F14FastSet<KeyType> MergeChannel<KeyType, ValueType>::getReceiverKeys() {
+  return processor_->getReceiverKeys();
+}
+
+template <typename KeyType, typename ValueType>
 void MergeChannel<KeyType, ValueType>::close(
     std::optional<folly::exception_wrapper> ex) && {
   processor_->destroyHandle(
@@ -87,6 +92,8 @@ class IMergeChannelProcessor : public IChannelCallback {
   virtual void addNewReceiver(KeyType key, Receiver<ValueType> receiver) = 0;
 
   virtual void removeReceiver(KeyType key) = 0;
+
+  virtual folly::F14FastSet<KeyType> getReceiverKeys() = 0;
 
   virtual void destroyHandle(CloseResult closeResult) = 0;
 };
@@ -130,13 +137,41 @@ class IMergeChannelProcessor : public IChannelCallback {
 template <typename KeyType, typename ValueType>
 class MergeChannelProcessor
     : public IMergeChannelProcessor<KeyType, ValueType> {
+ private:
+  struct State {
+    explicit State(
+        ChannelBridgePtr<MergeChannelEvent<KeyType, ValueType>> _sender)
+        : sender(std::move(_sender)) {}
+
+    ChannelState getSenderState() {
+      return detail::getSenderState(sender.get());
+    }
+
+    // The output sender for the merge channel.
+    ChannelBridgePtr<MergeChannelEvent<KeyType, ValueType>> sender;
+
+    // A non-owning map from key to receiver.
+    folly::F14NodeMap<KeyType, ChannelBridge<ValueType>*> receiversByKey;
+
+    // The set of receivers that feed into this MergeChannel. This map "owns"
+    // its receivers. MergeChannelProcessor must free any receiver removed from
+    // this map.
+    folly::F14NodeMap<ChannelBridge<ValueType>*, const KeyType*> receivers;
+
+    // Whether or not the handle to the MergeChannel has been destroyed.
+    bool handleDestroyed{false};
+  };
+
+  using WLockedStatePtr = typename folly::Synchronized<State>::WLockedPtr;
+
  public:
   MergeChannelProcessor(
-      Sender<ValueType> sender,
+      Sender<MergeChannelEvent<KeyType, ValueType>> sender,
       folly::Executor::KeepAlive<folly::SequencedExecutor> executor)
-      : sender_(std::move(detail::senderGetBridge(sender))),
-        executor_(std::move(executor)) {
-    CHECK(sender_->senderWait(this));
+      : executor_(std::move(executor)),
+        state_(State(std::move(detail::senderGetBridge(sender)))) {
+    auto state = state_.wlock();
+    CHECK(state->sender->senderWait(this));
   }
 
   /**
@@ -144,57 +179,75 @@ class MergeChannelProcessor
    * removal.
    */
   void addNewReceiver(KeyType key, Receiver<ValueType> receiver) {
-    executor_->add(
-        [=, key = std::move(key), receiver = std::move(receiver)]() mutable {
-          if (getSenderState() != ChannelState::Active) {
-            return;
-          }
-          auto [unbufferedReceiver, buffer] =
-              detail::receiverUnbuffer(std::move(receiver));
-          auto existingReceiverIt = receiversByKey_.find(key);
-          if (existingReceiverIt != receiversByKey_.end()) {
-            if (receivers_.contains(existingReceiverIt->second) &&
-                !existingReceiverIt->second->isReceiverCancelled()) {
-              // We already have a receiver with the given key. Trigger
-              // cancellation on that previous receiver.
-              existingReceiverIt->second->receiverCancel();
-            }
-            receiversByKey_.erase(existingReceiverIt);
-          }
-          receiversByKey_.insert(std::make_pair(key, unbufferedReceiver.get()));
-          auto* receiverPtr = unbufferedReceiver.get();
-          receivers_.insert(unbufferedReceiver.release());
-          processAllAvailableValues(receiverPtr, std::move(buffer));
-        });
+    auto state = state_.wlock();
+    if (state->getSenderState() != ChannelState::Active) {
+      return;
+    }
+    auto [unbufferedReceiver, buffer] =
+        detail::receiverUnbuffer(std::move(receiver));
+    auto existingReceiverIt = state->receiversByKey.find(key);
+    if (existingReceiverIt != state->receiversByKey.end()) {
+      CHECK(state->receivers.contains(existingReceiverIt->second));
+      if (!existingReceiverIt->second->isReceiverCancelled()) {
+        // We already have a receiver with the given key. Trigger cancellation
+        // on that previous receiver.
+        existingReceiverIt->second->receiverCancel();
+      }
+      auto keyToRemove = existingReceiverIt->first;
+      state->receivers[existingReceiverIt->second] = nullptr;
+      state->receiversByKey.erase(existingReceiverIt);
+      state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
+          keyToRemove, MergeChannelReceiverRemoved{}});
+    }
+    auto [it, _] = state->receiversByKey.insert(
+        std::make_pair(key, unbufferedReceiver.get()));
+    auto* receiverPtr = unbufferedReceiver.get();
+    state->receivers.insert(
+        std::make_pair(unbufferedReceiver.release(), &it->first));
+    state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
+        key, MergeChannelReceiverAdded{}});
+    processAllAvailableValues(state, receiverPtr, std::move(buffer));
   }
 
   /**
    * Removes the receiver with the given key.
    */
   void removeReceiver(KeyType key) {
-    executor_->add([=]() {
-      if (getSenderState() != ChannelState::Active) {
-        return;
-      }
-      auto receiverIt = receiversByKey_.find(key);
-      if (receiverIt == receiversByKey_.end()) {
-        return;
-      }
-      if (receivers_.contains(receiverIt->second) &&
-          !receiverIt->second->isReceiverCancelled()) {
-        receiverIt->second->receiverCancel();
-      }
-      receiversByKey_.erase(receiverIt);
-    });
+    auto state = state_.wlock();
+    if (state->getSenderState() != ChannelState::Active) {
+      return;
+    }
+    auto receiverIt = state->receiversByKey.find(key);
+    if (receiverIt == state->receiversByKey.end()) {
+      return;
+    }
+    CHECK(state->receivers.contains(receiverIt->second));
+    if (!receiverIt->second->isReceiverCancelled()) {
+      receiverIt->second->receiverCancel();
+    }
+    auto keyToRemove = receiverIt->first;
+    state->receivers[receiverIt->second] = nullptr;
+    state->receiversByKey.erase(receiverIt);
+    state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
+        keyToRemove, MergeChannelReceiverRemoved{}});
+  }
+
+  folly::F14FastSet<KeyType> getReceiverKeys() {
+    auto state = state_.rlock();
+    auto receiverKeys = folly::F14FastSet<KeyType>();
+    receiverKeys.reserve(state->receiversByKey.size());
+    for (const auto& [key, _] : state->receiversByKey) {
+      receiverKeys.insert(key);
+    }
+    return receiverKeys;
   }
 
   /**
    * Called when the user's MergeChannel object is destroyed.
    */
   void destroyHandle(CloseResult closeResult) {
-    executor_->add([=, closeResult = std::move(closeResult)]() mutable {
-      processHandleDestroyed(std::move(closeResult));
-    });
+    auto state = state_.wlock();
+    processHandleDestroyed(state, std::move(closeResult));
   }
 
   /**
@@ -203,17 +256,18 @@ class MergeChannelProcessor
    */
   void consume(ChannelBridgeBase* bridge) override {
     executor_->add([=]() {
-      if (bridge == sender_.get()) {
+      auto state = state_.wlock();
+      if (bridge == state->sender.get()) {
         // The consumer of the output receiver has stopped consuming.
-        CHECK(getSenderState() != ChannelState::CancellationProcessed);
-        sender_->senderClose();
-        processSenderCancelled();
+        CHECK(state->getSenderState() != ChannelState::CancellationProcessed);
+        state->sender->senderClose();
+        processSenderCancelled(state);
       } else {
         // One or more values are now available from an input receiver.
         auto* receiver = static_cast<ChannelBridge<ValueType>*>(bridge);
         CHECK(
             getReceiverState(receiver) != ChannelState::CancellationProcessed);
-        processAllAvailableValues(receiver);
+        processAllAvailableValues(state, receiver);
       }
     });
   }
@@ -224,19 +278,20 @@ class MergeChannelProcessor
    */
   void canceled(ChannelBridgeBase* bridge) override {
     executor_->add([=]() {
-      if (bridge == sender_.get()) {
+      auto state = state_.wlock();
+      if (bridge == state->sender.get()) {
         // We previously cancelled the sender due to an input receiver closure
         // with an exception (or the closure of all input receivers without an
         // exception). Process the cancellation for the sender.
-        CHECK(getSenderState() == ChannelState::CancellationTriggered);
-        processSenderCancelled();
+        CHECK(state->getSenderState() == ChannelState::CancellationTriggered);
+        processSenderCancelled(state);
       } else {
         // We previously cancelled this input receiver, either because the
         // consumer of the output receiver stopped consuming or because another
         // input receiver received an exception. Process the cancellation for
         // this input receiver.
         auto* receiver = static_cast<ChannelBridge<ValueType>*>(bridge);
-        processReceiverCancelled(receiver, CloseResult());
+        processReceiverCancelled(state, receiver, CloseResult());
       }
     });
   }
@@ -251,12 +306,16 @@ class MergeChannelProcessor
    * will process cancellation for the input receiver.
    */
   void processAllAvailableValues(
+      WLockedStatePtr& state,
       ChannelBridge<ValueType>* receiver,
       std::optional<ReceiverQueue<ValueType>> buffer = std::nullopt) {
+    CHECK(state->receivers.contains(receiver));
+    const auto* key = state->receivers.at(receiver);
     auto closeResult = receiver->isReceiverCancelled()
         ? CloseResult()
-        : (buffer.has_value() ? processValues(std::move(buffer.value()))
-                              : std::nullopt);
+        : (buffer.has_value()
+               ? processValues(state, std::move(buffer.value()), key)
+               : std::nullopt);
     while (!closeResult.has_value()) {
       if (receiver->receiverWait(this)) {
         // There are no more values available right now. We will stop processing
@@ -266,12 +325,12 @@ class MergeChannelProcessor
       }
       auto values = receiver->receiverGetValues();
       CHECK(!values.empty());
-      closeResult = processValues(std::move(values));
+      closeResult = processValues(state, std::move(values), key);
     }
     if (closeResult.has_value()) {
       // The receiver received a value indicating channel closure.
       receiver->receiverCancel();
-      processReceiverCancelled(receiver, std::move(closeResult.value()));
+      processReceiverCancelled(state, receiver, std::move(closeResult.value()));
     }
   }
 
@@ -280,14 +339,18 @@ class MergeChannelProcessor
    * CloseResult if the given channel was closed, so the caller can stop
    * attempting to process values from it.
    */
-  std::optional<CloseResult> processValues(ReceiverQueue<ValueType> values) {
+  std::optional<CloseResult> processValues(
+      WLockedStatePtr& state,
+      ReceiverQueue<ValueType> values,
+      const KeyType* key) {
     while (!values.empty()) {
       auto inputResult = std::move(values.front());
       values.pop();
       if (inputResult.hasValue()) {
         // We have received a normal value from an input receiver. Write it to
         // the output receiver.
-        sender_->senderPush(std::move(inputResult.value()));
+        state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
+            *key, std::move(inputResult.value())});
       } else {
         // The input receiver was closed.
         return inputResult.hasException()
@@ -299,28 +362,29 @@ class MergeChannelProcessor
   }
 
   /**
-   * Processes the cancellation of an input receiver. If the cancellation was
-   * due to receipt of an exception, we will also trigger cancellation for the
-   * sender (and all other input receivers).
+   * Processes the cancellation of an input receiver.
    */
   void processReceiverCancelled(
-      ChannelBridge<ValueType>* receiver, CloseResult closeResult) {
+      WLockedStatePtr& state,
+      ChannelBridge<ValueType>* receiver,
+      CloseResult closeResult) {
     CHECK(getReceiverState(receiver) == ChannelState::CancellationTriggered);
-    receivers_.erase(receiver);
-    (ChannelBridgePtr<ValueType>(receiver));
-    if (closeResult.exception.has_value()) {
-      // We received an exception. We need to close the sender and all
-      // receivers.
-      if (getSenderState() == ChannelState::Active) {
-        sender_->senderClose(std::move(closeResult.exception.value()));
-      }
-      for (auto* otherReceiver : receivers_) {
-        if (getReceiverState(otherReceiver) == ChannelState::Active) {
-          otherReceiver->receiverCancel();
-        }
+    auto* key = state->receivers.at(receiver);
+    if (key != nullptr) {
+      auto keyToRemove = *key;
+      CHECK_EQ(state->receiversByKey.erase(keyToRemove), 1);
+      if (state->getSenderState() == ChannelState::Active) {
+        state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
+            keyToRemove,
+            MergeChannelReceiverClosed{
+                closeResult.exception.has_value()
+                    ? std::move(closeResult.exception.value())
+                    : folly::exception_wrapper()}});
       }
     }
-    maybeDelete();
+    state->receivers.erase(receiver);
+    (ChannelBridgePtr<ValueType>(receiver));
+    maybeDelete(state);
   }
 
   /**
@@ -328,15 +392,15 @@ class MergeChannelProcessor
    * the output receiver has stopped consuming). We will trigger cancellation
    * for all input receivers not already cancelled.
    */
-  void processSenderCancelled() {
-    CHECK(getSenderState() == ChannelState::CancellationTriggered);
-    sender_ = nullptr;
-    for (auto* receiver : receivers_) {
+  void processSenderCancelled(WLockedStatePtr& state) {
+    CHECK(state->getSenderState() == ChannelState::CancellationTriggered);
+    state->sender = nullptr;
+    for (auto [receiver, _] : state->receivers) {
       if (getReceiverState(receiver) == ChannelState::Active) {
         receiver->receiverCancel();
       }
     }
-    maybeDelete();
+    maybeDelete(state);
   }
 
   /**
@@ -344,22 +408,27 @@ class MergeChannelProcessor
    * close the sender and trigger cancellation for all input receivers not
    * already cancelled.
    */
-  void processHandleDestroyed(CloseResult closeResult) {
-    CHECK(!handleDestroyed_);
-    handleDestroyed_ = true;
-    if (getSenderState() == ChannelState::Active) {
+  void processHandleDestroyed(WLockedStatePtr& state, CloseResult closeResult) {
+    CHECK(!state->handleDestroyed);
+    state->handleDestroyed = true;
+    if (state->getSenderState() == ChannelState::Active) {
+      for (auto [key, receiver] : state->receiversByKey) {
+        state->receivers[receiver] = nullptr;
+        state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
+            key, MergeChannelReceiverRemoved{}});
+      }
       if (closeResult.exception.has_value()) {
-        sender_->senderClose(std::move(closeResult.exception.value()));
+        state->sender->senderClose(std::move(closeResult.exception.value()));
       } else {
-        sender_->senderClose();
+        state->sender->senderClose();
       }
     }
-    for (auto* receiver : receivers_) {
+    for (auto [receiver, _] : state->receivers) {
       if (getReceiverState(receiver) == ChannelState::Active) {
         receiver->receiverCancel();
       }
     }
-    maybeDelete();
+    maybeDelete(state);
   }
 
   /**
@@ -367,9 +436,10 @@ class MergeChannelProcessor
    * sender and all input receivers, and if the user's MergeChannel object was
    * destroyed.
    */
-  void maybeDelete() {
-    if (getSenderState() == ChannelState::CancellationProcessed &&
-        receivers_.empty() && handleDestroyed_) {
+  void maybeDelete(WLockedStatePtr& state) {
+    if (state->getSenderState() == ChannelState::CancellationProcessed &&
+        state->receivers.empty() && state->handleDestroyed) {
+      state.unlock();
       delete this;
     }
   }
@@ -378,30 +448,19 @@ class MergeChannelProcessor
     return detail::getReceiverState(receiver);
   }
 
-  ChannelState getSenderState() {
-    return detail::getSenderState(sender_.get());
-  }
-
-  ChannelBridgePtr<ValueType> sender_;
   folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
-  bool handleDestroyed_{false};
-
-  // The set of receivers that feed into this MergeChannel. This set "owns" its
-  // receivers. MergeChannelProcessor must free any receiver removed from this
-  // set.
-  folly::F14FastSet<ChannelBridge<ValueType>*> receivers_;
-
-  // A non-owning map from key to receiver. If the receiver for a given key is
-  // not present in receivers_, it has been freed and must not be used.
-  folly::F14FastMap<KeyType, ChannelBridge<ValueType>*> receiversByKey_;
+  folly::Synchronized<State> state_;
 };
 } // namespace detail
 
 template <typename KeyType, typename ValueType>
-std::pair<Receiver<ValueType>, MergeChannel<KeyType, ValueType>>
+std::pair<
+    Receiver<MergeChannelEvent<KeyType, ValueType>>,
+    MergeChannel<KeyType, ValueType>>
 createMergeChannel(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor) {
-  auto [receiver, sender] = Channel<ValueType>::create();
+  auto [receiver, sender] =
+      Channel<MergeChannelEvent<KeyType, ValueType>>::create();
   auto* processor = new detail::MergeChannelProcessor<KeyType, ValueType>(
       std::move(sender), std::move(executor));
   return std::make_pair(

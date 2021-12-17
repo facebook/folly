@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/container/F14Set.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
 
@@ -27,11 +28,29 @@ template <typename KeyType, typename ValueType>
 class IMergeChannelProcessor;
 }
 
+struct MergeChannelReceiverAdded {};
+struct MergeChannelReceiverRemoved {};
+struct MergeChannelReceiverClosed {
+  folly::exception_wrapper exception;
+};
+
+template <typename KeyType, typename ValueType>
+struct MergeChannelEvent {
+  using EventType = std::variant<
+      ValueType,
+      MergeChannelReceiverAdded,
+      MergeChannelReceiverRemoved,
+      MergeChannelReceiverClosed>;
+
+  KeyType key;
+  EventType event;
+};
+
 /**
- * A merge channel allows one to merge multiple receivers into a single output
- * receiver. The set of receivers being merged can be changed at runtime. Each
- * receiver is added with a key that can be used to remove the receiver at a
- * later point.
+ * A merge channel allows one to merge multiple receivers into a single
+ * output receiver. The set of receivers being merged can be changed at
+ * runtime. Each receiver is added with a key that can be used to remove
+ * the receiver at a later point.
  *
  * Example:
  *
@@ -82,6 +101,11 @@ class MergeChannel {
   void removeReceiver(KeyType key);
 
   /**
+   * Returns a set of keys for receivers that are merged into this MergeChannel.
+   */
+  folly::F14FastSet<KeyType> getReceiverKeys();
+
+  /**
    * Closes the merge channel.
    */
   void close(std::optional<folly::exception_wrapper> ex = std::nullopt) &&;
@@ -96,7 +120,9 @@ class MergeChannel {
  * @param executor: The SequencedExecutor to use for merging values.
  */
 template <typename KeyType, typename ValueType>
-std::pair<Receiver<ValueType>, MergeChannel<KeyType, ValueType>>
+std::pair<
+    Receiver<MergeChannelEvent<KeyType, ValueType>>,
+    MergeChannel<KeyType, ValueType>>
 createMergeChannel(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor);
 } // namespace channels

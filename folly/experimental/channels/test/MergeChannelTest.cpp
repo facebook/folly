@@ -25,7 +25,84 @@
 namespace folly {
 namespace channels {
 
+using namespace std::string_literals;
 using namespace testing;
+
+template <typename T, typename U>
+bool isMatch(
+    const std::string& type,
+    const T& actual,
+    const U& expected,
+    testing::MatchResultListener* resultListener) {
+  if (expected != actual) {
+    *resultListener << folly::sformat(
+        "{} mismatch: ({} != {})", type, actual, expected);
+    return false;
+  }
+  return true;
+}
+
+MATCHER_P(ReceiverAdded, expectedKey, "") {
+  return isMatch(
+             "Is receiver added event",
+             std::holds_alternative<MergeChannelReceiverAdded>(arg.event),
+             true,
+             result_listener) &&
+      isMatch("Key", arg.key, expectedKey, result_listener);
+}
+
+MATCHER_P(ReceiverRemoved, expectedKey, "") {
+  return isMatch(
+             "Is receiver removed event",
+             std::holds_alternative<MergeChannelReceiverRemoved>(arg.event),
+             true,
+             result_listener) &&
+      isMatch("Key", arg.key, expectedKey, result_listener);
+}
+
+MATCHER_P2(ValueReceived, expectedKey, expectedValue, "") {
+  return isMatch(
+             "Is value received event",
+             std::holds_alternative<int>(arg.event),
+             true,
+             result_listener) &&
+      isMatch("Key", arg.key, expectedKey, result_listener) &&
+      isMatch(
+             "Value", std::get<int>(arg.event), expectedValue, result_listener);
+}
+
+MATCHER_P(ReceiverClosed, expectedKey, "") {
+  return isMatch(
+             "Is receiver closed event",
+             std::holds_alternative<MergeChannelReceiverClosed>(arg.event),
+             true,
+             result_listener) &&
+      isMatch("Key", arg.key, expectedKey, result_listener) &&
+      isMatch(
+             "Exception present",
+             !!std::get<MergeChannelReceiverClosed>(arg.event).exception,
+             false,
+             result_listener);
+}
+
+MATCHER_P(ReceiverClosedRuntimeError, expectedKey, "") {
+  if (!std::holds_alternative<MergeChannelReceiverClosed>(arg.event)) {
+    *result_listener << "Event is not for a closed receiver";
+    return false;
+  }
+  return isMatch("Key", arg.key, expectedKey, result_listener) &&
+      isMatch(
+             "Exception present",
+             !!std::get<MergeChannelReceiverClosed>(arg.event).exception,
+             true,
+             result_listener) &&
+      isMatch(
+             "Runtime error present",
+             std::get<MergeChannelReceiverClosed>(arg.event)
+                 .exception.template is_compatible_with<std::runtime_error>(),
+             true,
+             result_listener);
+}
 
 class MergeChannelFixture : public Test {
  protected:
@@ -35,18 +112,27 @@ class MergeChannelFixture : public Test {
 
   using TCallback = StrictMock<MockNextCallback<int>>;
 
-  ChannelCallbackHandle processValues(Receiver<int> receiver) {
+  ChannelCallbackHandle processValues(
+      Receiver<MergeChannelEvent<std::string, int>> receiver) {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](folly::Try<int> resultTry) -> folly::coro::Task<bool> {
+        [=](folly::Try<MergeChannelEvent<std::string, int>> resultTry)
+            -> folly::coro::Task<bool> {
+          if (resultTry.hasValue()) {
+            std::visit(
+                [](const auto& eventType) {
+                  LOG(INFO) << "Type: " << typeid(eventType).name();
+                },
+                resultTry.value().event);
+          }
           onNext_(std::move(resultTry));
           co_return true;
         });
   }
 
   folly::ManualExecutor executor_;
-  StrictMock<MockNextCallback<int>> onNext_;
+  StrictMock<MockNextCallback<MergeChannelEvent<std::string, int>>> onNext_;
 };
 
 TEST_F(MergeChannelFixture, ReceiveValues_ReturnMergedValues) {
@@ -56,17 +142,23 @@ TEST_F(MergeChannelFixture, ReceiveValues_ReturnMergedValues) {
   auto [mergedReceiver, mergeChannel] =
       createMergeChannel<std::string, int>(&executor_);
 
-  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
-  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
-  executor_.drain();
-
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
-  EXPECT_CALL(onNext_, onValue(5));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub3"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 3)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub3"s, 5)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub3"s)));
   EXPECT_CALL(onNext_, onClosed());
 
   auto callbackHandle = processValues(std::move(mergedReceiver));
+
+  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
+  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
+  executor_.drain();
 
   sender1.write(1);
   sender2.write(2);
@@ -93,17 +185,23 @@ TEST_F(
   auto [mergedReceiver, mergeChannel] =
       createMergeChannel<std::string, int>(&executor_);
 
-  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
-  mergeChannel.addNewReceiver("sub2", std::move(receiver2a));
-  executor_.drain();
-
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
-  EXPECT_CALL(onNext_, onValue(5));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s))).RetiresOnSaturation();
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 3)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 5)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub2"s))).RetiresOnSaturation();
   EXPECT_CALL(onNext_, onClosed());
 
   auto callbackHandle = processValues(std::move(mergedReceiver));
+
+  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
+  mergeChannel.addNewReceiver("sub2", std::move(receiver2a));
+  executor_.drain();
 
   sender1.write(1);
   sender2a.write(2);
@@ -129,17 +227,23 @@ TEST_F(
   auto [mergedReceiver, mergeChannel] =
       createMergeChannel<std::string, int>(&executor_);
 
-  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
-  mergeChannel.addNewReceiver("sub2", std::move(receiver2a));
-  executor_.drain();
-
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
-  EXPECT_CALL(onNext_, onValue(5));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosed("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s))).RetiresOnSaturation();
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 3)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 5)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub2"s)));
   EXPECT_CALL(onNext_, onClosed());
 
   auto callbackHandle = processValues(std::move(mergedReceiver));
+
+  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
+  mergeChannel.addNewReceiver("sub2", std::move(receiver2a));
+  executor_.drain();
 
   sender1.write(1);
   sender2a.write(2);
@@ -165,16 +269,20 @@ TEST_F(MergeChannelFixture, ReceiveValues_RemoveReceiver) {
   auto [mergedReceiver, mergeChannel] =
       createMergeChannel<std::string, int>(&executor_);
 
-  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
-  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
-  executor_.drain();
-
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 3)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub1"s)));
   EXPECT_CALL(onNext_, onClosed());
 
   auto callbackHandle = processValues(std::move(mergedReceiver));
+
+  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
+  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
+  executor_.drain();
 
   sender1.write(1);
   sender2.write(2);
@@ -196,16 +304,20 @@ TEST_F(MergeChannelFixture, ReceiveValues_RemoveReceiver_AfterClose) {
   auto [mergedReceiver, mergeChannel] =
       createMergeChannel<std::string, int>(&executor_);
 
-  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
-  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
-  executor_.drain();
-
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosed("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 3)));
+  EXPECT_CALL(onNext_, onValue(ReceiverRemoved("sub1"s)));
   EXPECT_CALL(onNext_, onClosed());
 
   auto callbackHandle = processValues(std::move(mergedReceiver));
+
+  mergeChannel.addNewReceiver("sub1", std::move(receiver1));
+  mergeChannel.addNewReceiver("sub2", std::move(receiver2));
+  executor_.drain();
 
   sender1.write(1);
   sender2.write(2);
@@ -229,19 +341,25 @@ TEST_F(MergeChannelFixture, OneInputClosed_ContinuesMerging) {
   auto [mergedReceiver, mergeChannel] =
       createMergeChannel<std::string, int>(&executor_);
 
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub3"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub3"s, 3)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosed("sub3"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 4)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 5)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosed("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosed("sub2"s)));
+  EXPECT_CALL(onNext_, onClosed());
+
+  auto callbackHandle = processValues(std::move(mergedReceiver));
+
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
   mergeChannel.addNewReceiver("sub3", std::move(receiver3));
   executor_.drain();
-
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
-  EXPECT_CALL(onNext_, onValue(4));
-  EXPECT_CALL(onNext_, onValue(5));
-  EXPECT_CALL(onNext_, onClosed());
-
-  auto callbackHandle = processValues(std::move(mergedReceiver));
 
   sender1.write(1);
   sender2.write(2);
@@ -261,24 +379,32 @@ TEST_F(MergeChannelFixture, OneInputClosed_ContinuesMerging) {
   executor_.drain();
 }
 
-TEST_F(MergeChannelFixture, OneInputThrows_OutputClosedWithException) {
+TEST_F(MergeChannelFixture, OneInputThrows_ContinuesMerging) {
   auto [receiver1, sender1] = Channel<int>::create();
   auto [receiver2, sender2] = Channel<int>::create();
   auto [receiver3, sender3] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
       createMergeChannel<std::string, int>(&executor_);
 
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub3"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub3"s, 3)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosedRuntimeError("sub3"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 4)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 5)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosed("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverClosed("sub2"s)));
+  EXPECT_CALL(onNext_, onClosed());
+
+  auto callbackHandle = processValues(std::move(mergedReceiver));
+
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
   mergeChannel.addNewReceiver("sub3", std::move(receiver3));
   executor_.drain();
-
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
-  EXPECT_CALL(onNext_, onRuntimeError("std::runtime_error: Error"));
-
-  auto callbackHandle = processValues(std::move(mergedReceiver));
 
   sender1.write(1);
   sender2.write(2);
@@ -290,6 +416,9 @@ TEST_F(MergeChannelFixture, OneInputThrows_OutputClosedWithException) {
   sender2.write(5);
   std::move(sender1).close();
   std::move(sender2).close();
+  executor_.drain();
+
+  std::move(mergeChannel).close();
   executor_.drain();
 }
 
@@ -305,9 +434,12 @@ TEST_F(MergeChannelFixture, Cancelled) {
   mergeChannel.addNewReceiver("sub3", std::move(receiver3));
   executor_.drain();
 
-  EXPECT_CALL(onNext_, onValue(1));
-  EXPECT_CALL(onNext_, onValue(2));
-  EXPECT_CALL(onNext_, onValue(3));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub1"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub2"s)));
+  EXPECT_CALL(onNext_, onValue(ReceiverAdded("sub3"s)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub1"s, 1)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub2"s, 2)));
+  EXPECT_CALL(onNext_, onValue(ValueReceived("sub3"s, 3)));
   EXPECT_CALL(onNext_, onCancelled());
 
   auto callbackHandle = processValues(std::move(mergedReceiver));
@@ -350,11 +482,18 @@ class MergeChannelFixtureStress : public Test {
         });
   }
 
-  static std::unique_ptr<StressTestConsumer<ProducedValue>> makeConsumer() {
-    return std::make_unique<StressTestConsumer<ProducedValue>>(
+  static std::unique_ptr<
+      StressTestConsumer<MergeChannelEvent<int, ProducedValue>>>
+  makeConsumer() {
+    return std::make_unique<
+        StressTestConsumer<MergeChannelEvent<int, ProducedValue>>>(
         ConsumptionMode::CallbackWithHandle,
-        [lastReceived = toVector(-1, -1, -1)](ProducedValue value) mutable {
-          EXPECT_EQ(value.value, ++lastReceived[value.producerIndex]);
+        [lastReceived = toVector(-1, -1, -1)](
+            MergeChannelEvent<int, ProducedValue> result) mutable {
+          if (std::holds_alternative<ProducedValue>(result.event)) {
+            auto value = std::get<ProducedValue>(result.event);
+            EXPECT_EQ(value.value, ++lastReceived[value.producerIndex]);
+          }
         });
   }
 
@@ -367,7 +506,8 @@ class MergeChannelFixtureStress : public Test {
       std::chrono::milliseconds{5000};
 
   std::vector<std::unique_ptr<StressTestProducer<ProducedValue>>> producers_;
-  std::unique_ptr<StressTestConsumer<ProducedValue>> consumer_;
+  std::unique_ptr<StressTestConsumer<MergeChannelEvent<int, ProducedValue>>>
+      consumer_;
 };
 
 TEST_F(MergeChannelFixtureStress, HandleClosed) {
@@ -394,40 +534,6 @@ TEST_F(MergeChannelFixtureStress, HandleClosed) {
 
   std::move(mergeChannel).close();
   EXPECT_EQ(consumer_->waitForClose().get(), CloseType::NoException);
-}
-
-TEST_F(MergeChannelFixtureStress, InputChannelReceivesException) {
-  folly::CPUThreadPoolExecutor mergeChannelExecutor(1);
-  auto [mergeReceiver, mergeChannel] = createMergeChannel<int, ProducedValue>(
-      folly::SerialExecutor::create(&mergeChannelExecutor));
-  consumer_->startConsuming(std::move(mergeReceiver));
-
-  auto [receiver0, sender0] = Channel<ProducedValue>::create();
-  producers_.at(0)->startProducing(
-      std::move(sender0), std::runtime_error("Error"));
-  mergeChannel.addNewReceiver(0 /* subscriptionId */, std::move(receiver0));
-
-  sleepFor(kTestTimeout / 4);
-
-  auto [receiver1, sender1] = Channel<ProducedValue>::create();
-  producers_.at(1)->startProducing(
-      std::move(sender1), std::runtime_error("Error"));
-  mergeChannel.addNewReceiver(1 /* subscriptionId */, std::move(receiver1));
-
-  sleepFor(kTestTimeout / 4);
-
-  mergeChannel.removeReceiver(0 /* subscriptionId */);
-
-  sleepFor(kTestTimeout / 4);
-
-  producers_.at(0)->stopProducing();
-
-  sleepFor(kTestTimeout / 4);
-
-  auto closeFuture = consumer_->waitForClose();
-  EXPECT_FALSE(closeFuture.isReady());
-  producers_.at(1)->stopProducing();
-  EXPECT_EQ(std::move(closeFuture).get(), CloseType::Exception);
 }
 
 TEST_F(MergeChannelFixtureStress, Cancelled) {
