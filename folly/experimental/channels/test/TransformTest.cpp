@@ -345,6 +345,81 @@ TEST_F(SimpleTransformFixture, Chained) {
   executor_.drain();
 }
 
+TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
+  auto rateLimiter = RateLimiter::create(1 /* maxConcurrent */);
+
+  auto [untransformedReceiver1, sender1] = Channel<int>::create();
+  auto [controlReceiver1, controlSender1] = Channel<folly::Unit>::create();
+  int transform1Executions = 0;
+  auto transformedReceiver1 = transform(
+      std::move(untransformedReceiver1),
+      &executor_,
+      [&, &controlReceiver1 = controlReceiver1](folly::Try<int> result)
+          -> folly::coro::AsyncGenerator<std::string&&> {
+        transform1Executions++;
+        co_await controlReceiver1.next();
+        co_yield folly::to<std::string>(result.value());
+      },
+      rateLimiter);
+
+  auto [untransformedReceiver2, sender2] = Channel<int>::create();
+  auto [controlReceiver2, controlSender2] = Channel<folly::Unit>::create();
+  int transform2Executions = 0;
+  auto transformedReceiver2 = transform(
+      std::move(untransformedReceiver2),
+      &executor_,
+      [&, &controlReceiver2 = controlReceiver2](folly::Try<int> result)
+          -> folly::coro::AsyncGenerator<std::string&&> {
+        transform2Executions++;
+        co_await controlReceiver2.next();
+        co_yield folly::to<std::string>(result.value());
+      },
+      rateLimiter);
+
+  auto callbackHandle1 = processValues(std::move(transformedReceiver1));
+  auto callbackHandle2 = processValues(std::move(transformedReceiver2));
+
+  EXPECT_CALL(onNext_, onValue("1"));
+  EXPECT_CALL(onNext_, onValue("1000"));
+  EXPECT_CALL(onNext_, onValue("2"));
+  EXPECT_CALL(onNext_, onValue("2000"));
+  EXPECT_CALL(onNext_, onClosed()).Times(2);
+
+  sender1.write(1);
+  sender2.write(1000);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 1);
+  EXPECT_EQ(transform2Executions, 0);
+  controlSender1.write(folly::unit);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 1);
+  EXPECT_EQ(transform2Executions, 1);
+  controlSender2.write(folly::unit);
+  executor_.drain();
+
+  sender2.write(2000);
+  sender1.write(2);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 1);
+  EXPECT_EQ(transform2Executions, 2);
+  controlSender2.write(folly::unit);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 2);
+  EXPECT_EQ(transform2Executions, 2);
+  controlSender1.write(folly::unit);
+  executor_.drain();
+
+  std::move(sender1).close();
+  std::move(sender2).close();
+  std::move(controlSender1).close();
+  std::move(controlSender2).close();
+  executor_.drain();
+}
+
 class TransformFixtureStress : public Test {
  protected:
   TransformFixtureStress()
@@ -719,6 +794,112 @@ TEST_F(ResumableTransformFixture, TransformThrows_NoReinitialization_Rethrows) {
 
   transformThrows = true;
   sender.write(100);
+  executor_.drain();
+}
+
+TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
+  auto rateLimiter = RateLimiter::create(1 /* maxConcurrent */);
+
+  auto [untransformedReceiver1, sender1] = Channel<int>::create();
+  auto [controlReceiver1, controlSender1] = Channel<folly::Unit>::create();
+  int transform1Executions = 0;
+  auto transformedReceiver1 = resumableTransform(
+      &executor_,
+      toVector("init1"s),
+      [&,
+       receiver = std::move(untransformedReceiver1),
+       &controlReceiver1 =
+           controlReceiver1](std::vector<std::string> initializeArg) mutable
+      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+        transform1Executions++;
+        co_await controlReceiver1.next();
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
+      },
+      [&, &controlReceiver1 = controlReceiver1](folly::Try<int> result)
+          -> folly::coro::AsyncGenerator<std::string&&> {
+        transform1Executions++;
+        co_await controlReceiver1.next();
+        co_yield folly::to<std::string>(result.value());
+      },
+      rateLimiter);
+
+  auto [untransformedReceiver2, sender2] = Channel<int>::create();
+  auto [controlReceiver2, controlSender2] = Channel<folly::Unit>::create();
+  int transform2Executions = 0;
+  auto transformedReceiver2 = resumableTransform(
+      &executor_,
+      toVector("init2"s),
+      [&,
+       receiver = std::move(untransformedReceiver2),
+       &controlReceiver2 =
+           controlReceiver2](std::vector<std::string> initializeArg) mutable
+      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+        transform2Executions++;
+        co_await controlReceiver2.next();
+        co_return std::make_pair(std::move(initializeArg), std::move(receiver));
+      },
+      [&, &controlReceiver2 = controlReceiver2](folly::Try<int> result)
+          -> folly::coro::AsyncGenerator<std::string&&> {
+        transform2Executions++;
+        co_await controlReceiver2.next();
+        co_yield folly::to<std::string>(result.value());
+      },
+      rateLimiter);
+
+  auto callbackHandle1 = processValues(std::move(transformedReceiver1));
+  auto callbackHandle2 = processValues(std::move(transformedReceiver2));
+
+  EXPECT_CALL(onNext_, onValue("init1"));
+  EXPECT_CALL(onNext_, onValue("init2"));
+  EXPECT_CALL(onNext_, onValue("1"));
+  EXPECT_CALL(onNext_, onValue("1000"));
+  EXPECT_CALL(onNext_, onValue("2"));
+  EXPECT_CALL(onNext_, onValue("2000"));
+  EXPECT_CALL(onNext_, onClosed()).Times(2);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 1);
+  EXPECT_EQ(transform2Executions, 0);
+  controlSender1.write(folly::unit);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 1);
+  EXPECT_EQ(transform2Executions, 1);
+  controlSender2.write(folly::unit);
+  executor_.drain();
+
+  sender1.write(1);
+  sender2.write(1000);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 2);
+  EXPECT_EQ(transform2Executions, 1);
+  controlSender1.write(folly::unit);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 2);
+  EXPECT_EQ(transform2Executions, 2);
+  controlSender2.write(folly::unit);
+  executor_.drain();
+
+  sender2.write(2000);
+  sender1.write(2);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 2);
+  EXPECT_EQ(transform2Executions, 3);
+  controlSender2.write(folly::unit);
+  executor_.drain();
+
+  EXPECT_EQ(transform1Executions, 3);
+  EXPECT_EQ(transform2Executions, 3);
+  controlSender1.write(folly::unit);
+  executor_.drain();
+
+  std::move(sender1).close();
+  std::move(sender2).close();
+  std::move(controlSender1).close();
+  std::move(controlSender2).close();
   executor_.drain();
 }
 

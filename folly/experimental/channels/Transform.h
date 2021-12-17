@@ -18,6 +18,7 @@
 
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
+#include <folly/experimental/channels/RateLimiter.h>
 
 namespace folly {
 namespace channels {
@@ -52,6 +53,10 @@ namespace channels {
  *
  * @param transformValue: A function as described above.
  *
+ * @param rateLimiter: An optional rate limiter. If specified, the given rate
+ *     limiter will limit the number of transformation functions that are
+ *     simultaneously running.
+ *
  * Example:
  *
  *  // Function that returns a receiver
@@ -77,7 +82,8 @@ template <
 Receiver<OutputValueType> transform(
     ReceiverType inputReceiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-    TransformValueFunc transformValue);
+    TransformValueFunc transformValue,
+    std::shared_ptr<RateLimiter> rateLimiter = nullptr);
 
 /**
  * This overload accepts arguments in the form of a transformer object. The
@@ -87,6 +93,8 @@ Receiver<OutputValueType> transform(
  *
  * folly::coro::AsyncGenerator<OutputValueType&&> transformValue(
  *     folly::Try<InputValueType> inputValue);
+ *
+ * std::shared_ptr<RateLimiter> getRateLimiter(); // Can return nullptr
  */
 template <
     typename ReceiverType,
@@ -127,6 +135,10 @@ Receiver<OutputValueType> transform(
  *  above.
  *
  * @param transformValue: The TransformValue function as described above.
+ *
+ * @param rateLimiter: An optional rate limiter. If specified, the given rate
+ *     limiter will limit the number of transformation functions that are
+ *     simultaneously running.
  *
  * Example:
  *
@@ -173,7 +185,8 @@ Receiver<OutputValueType> resumableTransform(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     InitializeArg initializeArg,
     InitializeTransformFunc initializeTransform,
-    TransformValueFunc transformValue);
+    TransformValueFunc transformValue,
+    std::shared_ptr<RateLimiter> rateLimiter = nullptr);
 
 /**
  * This overload accepts arguments in the form of a transformer object. The
@@ -186,6 +199,8 @@ Receiver<OutputValueType> resumableTransform(
  *
  * folly::coro::AsyncGenerator<OutputValueType&&> transformValue(
  *     folly::Try<InputValueType> inputValue);
+ *
+ * std::shared_ptr<RateLimiter> getRateLimiter(); // Can return nullptr
  */
 template <
     typename InitializeArg,

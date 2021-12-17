@@ -65,14 +65,15 @@ class TransformProcessorBase : public IChannelCallback {
 
   template <typename ReceiverType>
   void startTransform(ReceiverType receiver) {
-    transformer_.getExecutor()->add(
-        [=, receiver = std::move(receiver)]() mutable {
+    executeWhenReady(
+        [=, receiver = std::move(receiver)](RateLimiter::Token token) mutable {
           runOperationWithSenderCancellation(
               transformer_.getExecutor(),
               this->sender_,
               false /* alreadyStartedWaiting */,
               this /* channelCallbackToRestore */,
-              startTransformImpl(std::move(receiver)));
+              startTransformImpl(std::move(receiver)),
+              std::move(token));
         });
   }
 
@@ -97,7 +98,7 @@ class TransformProcessorBase : public IChannelCallback {
    * sender).
    */
   void consume(ChannelBridgeBase* bridge) override {
-    transformer_.getExecutor()->add([=]() {
+    executeWhenReady([=](RateLimiter::Token token) {
       if (bridge == receiver_.get()) {
         // We have received new values from the input receiver.
         CHECK_NE(getReceiverState(), ChannelState::CancellationProcessed);
@@ -106,7 +107,8 @@ class TransformProcessorBase : public IChannelCallback {
             this->sender_,
             true /* alreadyStartedWaiting */,
             this /* channelCallbackToRestore */,
-            processAllAvailableValues());
+            processAllAvailableValues(),
+            std::move(token));
       } else {
         CHECK_NE(getSenderState(), ChannelState::CancellationProcessed);
         // The consumer of the output receiver has stopped consuming.
@@ -123,15 +125,19 @@ class TransformProcessorBase : public IChannelCallback {
    * listening to.
    */
   void canceled(ChannelBridgeBase* bridge) override {
-    transformer_.getExecutor()->add([=]() {
+    executeWhenReady([=](RateLimiter::Token token) {
       if (bridge == receiver_.get()) {
         // We previously cancelled the input receiver (because the consumer of
         // the output receiver stopped consuming). Process the cancellation for
         // the input receiver.
         CHECK_EQ(getReceiverState(), ChannelState::CancellationTriggered);
-        processReceiverCancelled(CloseResult())
-            .scheduleOn(transformer_.getExecutor())
-            .start();
+        runOperationWithSenderCancellation(
+            transformer_.getExecutor(),
+            this->sender_,
+            true /* alreadyStartedWaiting */,
+            this /* channelCallbackToRestore */,
+            processReceiverCancelled(CloseResult()),
+            std::move(token));
       } else {
         // We previously cancelled the sender due to the closure of the input
         // receiver. Process the cancellation for the sender.
@@ -268,6 +274,18 @@ class TransformProcessorBase : public IChannelCallback {
     return detail::getSenderState(sender_.get());
   }
 
+  void executeWhenReady(folly::Function<void(RateLimiter::Token)> func) {
+    auto rateLimiter = transformer_.getRateLimiter();
+    if (rateLimiter != nullptr) {
+      rateLimiter->executeWhenReady(
+          std::move(func), transformer_.getExecutor());
+    } else {
+      transformer_.getExecutor()->add([func = std::move(func)]() mutable {
+        func(RateLimiter::Token(nullptr));
+      });
+    }
+  }
+
   ChannelBridgePtr<InputValueType> receiver_;
   ChannelBridgePtr<OutputValueType> sender_;
   TransformerType transformer_;
@@ -330,15 +348,16 @@ class ResumableTransformProcessor : public TransformProcessorBase<
   using Base::Base;
 
   void initialize(InitializeArg initializeArg) {
-    this->transformer_.getExecutor()->add(
-        [=, initializeArg = std::move(initializeArg)]() mutable {
-          runOperationWithSenderCancellation(
-              this->transformer_.getExecutor(),
-              this->sender_,
-              false /* currentlyWaiting */,
-              this /* channelCallbackToRestore */,
-              initializeImpl(std::move(initializeArg)));
-        });
+    this->executeWhenReady([=, initializeArg = std::move(initializeArg)](
+                               RateLimiter::Token token) mutable {
+      runOperationWithSenderCancellation(
+          this->transformer_.getExecutor(),
+          this->sender_,
+          false /* currentlyWaiting */,
+          this /* channelCallbackToRestore */,
+          initializeImpl(std::move(initializeArg)),
+          std::move(token));
+    });
   }
 
  private:
@@ -416,16 +435,44 @@ class ResumableTransformProcessor : public TransformProcessorBase<
   }
 };
 
+template <bool Enabled>
+class RateLimiterHolder;
+
+template <>
+class RateLimiterHolder<true> {
+ public:
+  explicit RateLimiterHolder(std::shared_ptr<RateLimiter> rateLimiter)
+      : rateLimiter_(std::move(rateLimiter)) {}
+
+  std::shared_ptr<RateLimiter> getRateLimiter() { return rateLimiter_; }
+
+ private:
+  std::shared_ptr<RateLimiter> rateLimiter_;
+};
+
+template <>
+class RateLimiterHolder<false> {
+ public:
+  explicit RateLimiterHolder(std::shared_ptr<RateLimiter> rateLimiter) {
+    CHECK_NULL(rateLimiter.get());
+  }
+
+  std::shared_ptr<RateLimiter> getRateLimiter() { return nullptr; }
+};
+
 template <
     typename InputValueType,
     typename OutputValueType,
-    typename TransformValueFunc>
-class DefaultTransformer {
+    typename TransformValueFunc,
+    bool RateLimiterEnabled>
+class DefaultTransformer : public RateLimiterHolder<RateLimiterEnabled> {
  public:
   DefaultTransformer(
       folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-      TransformValueFunc transformValue)
-      : executor_(std::move(executor)),
+      TransformValueFunc transformValue,
+      std::shared_ptr<RateLimiter> rateLimiter)
+      : RateLimiterHolder<RateLimiterEnabled>(std::move(rateLimiter)),
+        executor_(std::move(executor)),
         transformValue_(std::move(transformValue)) {}
 
   folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor() {
@@ -446,20 +493,29 @@ template <
     typename InputValueType,
     typename OutputValueType,
     typename InitializeTransformFunc,
-    typename TransformValueFunc>
+    typename TransformValueFunc,
+    bool RateLimiterEnabled>
 class DefaultResumableTransformer : public DefaultTransformer<
                                         InputValueType,
                                         OutputValueType,
-                                        TransformValueFunc> {
+                                        TransformValueFunc,
+                                        RateLimiterEnabled> {
  public:
-  using Base =
-      DefaultTransformer<InputValueType, OutputValueType, TransformValueFunc>;
+  using Base = DefaultTransformer<
+      InputValueType,
+      OutputValueType,
+      TransformValueFunc,
+      RateLimiterEnabled>;
 
   DefaultResumableTransformer(
       folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
       InitializeTransformFunc initializeTransform,
-      TransformValueFunc transformValue)
-      : Base(std::move(executor), std::move(transformValue)),
+      TransformValueFunc transformValue,
+      std::shared_ptr<RateLimiter> rateLimiter)
+      : Base(
+            std::move(executor),
+            std::move(transformValue),
+            std::move(rateLimiter)),
         initializeTransform_(std::move(initializeTransform)) {}
 
   auto initializeTransform(InitializeArg initializeArg) {
@@ -479,13 +535,34 @@ template <
 Receiver<OutputValueType> transform(
     ReceiverType inputReceiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-    TransformValueFunc transformValue) {
-  return transform(
-      std::move(inputReceiver),
-      detail::DefaultTransformer<
-          InputValueType,
-          OutputValueType,
-          TransformValueFunc>(std::move(executor), std::move(transformValue)));
+    TransformValueFunc transformValue,
+    std::shared_ptr<RateLimiter> rateLimiter) {
+  if (rateLimiter != nullptr) {
+    using TransformerType = detail::DefaultTransformer<
+        InputValueType,
+        OutputValueType,
+        TransformValueFunc,
+        true /* RateLimiterEnabled */>;
+    return transform(
+        std::move(inputReceiver),
+        TransformerType(
+            std::move(executor),
+            std::move(transformValue),
+            std::move(rateLimiter)));
+
+  } else {
+    using TransformerType = detail::DefaultTransformer<
+        InputValueType,
+        OutputValueType,
+        TransformValueFunc,
+        false /* RateLimiterEnabled */>;
+    return transform(
+        std::move(inputReceiver),
+        TransformerType(
+            std::move(executor),
+            std::move(transformValue),
+            nullptr /* rateLimiter */));
+  }
 }
 
 template <
@@ -515,18 +592,39 @@ Receiver<OutputValueType> resumableTransform(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     InitializeArg initializeArg,
     InitializeTransformFunc initializeTransform,
-    TransformValueFunc transformValue) {
-  return resumableTransform(
-      std::move(initializeArg),
-      detail::DefaultResumableTransformer<
-          InitializeArg,
-          InputValueType,
-          OutputValueType,
-          InitializeTransformFunc,
-          TransformValueFunc>(
-          std::move(executor),
-          std::move(initializeTransform),
-          std::move(transformValue)));
+    TransformValueFunc transformValue,
+    std::shared_ptr<RateLimiter> rateLimiter) {
+  if (rateLimiter != nullptr) {
+    using TransformerType = detail::DefaultResumableTransformer<
+        InitializeArg,
+        InputValueType,
+        OutputValueType,
+        InitializeTransformFunc,
+        TransformValueFunc,
+        true /* RateLimiterEnabled */>;
+    return resumableTransform(
+        std::move(initializeArg),
+        TransformerType(
+            std::move(executor),
+            std::move(initializeTransform),
+            std::move(transformValue),
+            std::move(rateLimiter)));
+  } else {
+    using TransformerType = detail::DefaultResumableTransformer<
+        InitializeArg,
+        InputValueType,
+        OutputValueType,
+        InitializeTransformFunc,
+        TransformValueFunc,
+        false /* RateLimiterEnabled */>;
+    return resumableTransform(
+        std::move(initializeArg),
+        TransformerType(
+            std::move(executor),
+            std::move(initializeTransform),
+            std::move(transformValue),
+            nullptr /* rateLimiter */));
+  }
 }
 
 template <

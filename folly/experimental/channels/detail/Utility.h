@@ -22,6 +22,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
+#include <folly/experimental/channels/RateLimiter.h>
 #include <folly/experimental/coro/Task.h>
 
 namespace folly {
@@ -225,6 +226,8 @@ class SenderCancellationCallback : public IChannelCallback {
  *  coroutine operation is complete.
  *
  * @param operation: The operation to run.
+ *
+ * @param token: The rate limiter token for this operation.
  */
 template <typename TSender>
 void runOperationWithSenderCancellation(
@@ -232,7 +235,8 @@ void runOperationWithSenderCancellation(
     TSender& sender,
     bool alreadyStartedWaiting,
     IChannelCallback* channelCallbackToRestore,
-    folly::coro::Task<void> operation) noexcept {
+    folly::coro::Task<void> operation,
+    RateLimiter::Token token) noexcept {
   if (alreadyStartedWaiting && (!sender || !sender->cancelSenderWait())) {
     // The output receiver was cancelled before starting this operation
     // (indicating that the channel callback already ran).
@@ -242,6 +246,7 @@ void runOperationWithSenderCancellation(
       [&sender,
        executor,
        channelCallbackToRestore,
+       token = std::move(token),
        operation = std::move(operation)]() mutable -> folly::coro::Task<void> {
         auto senderCancellationCallback = SenderCancellationCallback(
             sender, executor, channelCallbackToRestore);
