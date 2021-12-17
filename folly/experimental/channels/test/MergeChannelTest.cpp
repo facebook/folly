@@ -54,7 +54,7 @@ TEST_F(MergeChannelFixture, ReceiveValues_ReturnMergedValues) {
   auto [receiver2, sender2] = Channel<int>::create();
   auto [receiver3, sender3] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
@@ -91,7 +91,7 @@ TEST_F(
   auto [receiver2a, sender2a] = Channel<int>::create();
   auto [receiver2b, sender2b] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2a));
@@ -127,7 +127,7 @@ TEST_F(
   auto [receiver2a, sender2a] = Channel<int>::create();
   auto [receiver2b, sender2b] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2a));
@@ -163,7 +163,7 @@ TEST_F(MergeChannelFixture, ReceiveValues_RemoveReceiver) {
   auto [receiver1, sender1] = Channel<int>::create();
   auto [receiver2, sender2] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
@@ -194,7 +194,7 @@ TEST_F(MergeChannelFixture, ReceiveValues_RemoveReceiver_AfterClose) {
   auto [receiver1, sender1] = Channel<int>::create();
   auto [receiver2, sender2] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
@@ -227,7 +227,7 @@ TEST_F(MergeChannelFixture, OneInputClosed_ContinuesMerging) {
   auto [receiver2, sender2] = Channel<int>::create();
   auto [receiver3, sender3] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
@@ -266,7 +266,7 @@ TEST_F(MergeChannelFixture, OneInputThrows_OutputClosedWithException) {
   auto [receiver2, sender2] = Channel<int>::create();
   auto [receiver3, sender3] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
@@ -298,7 +298,7 @@ TEST_F(MergeChannelFixture, Cancelled) {
   auto [receiver2, sender2] = Channel<int>::create();
   auto [receiver3, sender3] = Channel<int>::create();
   auto [mergedReceiver, mergeChannel] =
-      createMergeChannel<int, std::string>(&executor_);
+      createMergeChannel<std::string, int>(&executor_);
 
   mergeChannel.addNewReceiver("sub1", std::move(receiver1));
   mergeChannel.addNewReceiver("sub2", std::move(receiver2));
@@ -372,7 +372,7 @@ class MergeChannelFixtureStress : public Test {
 
 TEST_F(MergeChannelFixtureStress, HandleClosed) {
   folly::CPUThreadPoolExecutor mergeChannelExecutor(1);
-  auto [mergeReceiver, mergeChannel] = createMergeChannel<ProducedValue, int>(
+  auto [mergeReceiver, mergeChannel] = createMergeChannel<int, ProducedValue>(
       folly::SerialExecutor::create(&mergeChannelExecutor));
   consumer_->startConsuming(std::move(mergeReceiver));
 
@@ -398,7 +398,7 @@ TEST_F(MergeChannelFixtureStress, HandleClosed) {
 
 TEST_F(MergeChannelFixtureStress, InputChannelReceivesException) {
   folly::CPUThreadPoolExecutor mergeChannelExecutor(1);
-  auto [mergeReceiver, mergeChannel] = createMergeChannel<ProducedValue, int>(
+  auto [mergeReceiver, mergeChannel] = createMergeChannel<int, ProducedValue>(
       folly::SerialExecutor::create(&mergeChannelExecutor));
   consumer_->startConsuming(std::move(mergeReceiver));
 
@@ -432,7 +432,7 @@ TEST_F(MergeChannelFixtureStress, InputChannelReceivesException) {
 
 TEST_F(MergeChannelFixtureStress, Cancelled) {
   folly::CPUThreadPoolExecutor mergeChannelExecutor(1);
-  auto [mergeReceiver, mergeChannel] = createMergeChannel<ProducedValue, int>(
+  auto [mergeReceiver, mergeChannel] = createMergeChannel<int, ProducedValue>(
       folly::SerialExecutor::create(&mergeChannelExecutor));
   consumer_->startConsuming(std::move(mergeReceiver));
 
@@ -458,7 +458,7 @@ TEST_F(MergeChannelFixtureStress, Cancelled) {
 
 TEST_F(MergeChannelFixtureStress, Cancelled_ThenHandleClosedImmediately) {
   folly::CPUThreadPoolExecutor mergeChannelExecutor(1);
-  auto [mergeReceiver, mergeChannel] = createMergeChannel<ProducedValue, int>(
+  auto [mergeReceiver, mergeChannel] = createMergeChannel<int, ProducedValue>(
       folly::SerialExecutor::create(&mergeChannelExecutor));
   consumer_->startConsuming(std::move(mergeReceiver));
 
@@ -487,7 +487,7 @@ TEST_F(MergeChannelFixtureStress, Cancelled_ThenHandleClosedImmediately) {
 
 TEST_F(MergeChannelFixtureStress, HandleClosed_ThenCancelledImmediately) {
   folly::CPUThreadPoolExecutor mergeChannelExecutor(1);
-  auto [mergeReceiver, mergeChannel] = createMergeChannel<ProducedValue, int>(
+  auto [mergeReceiver, mergeChannel] = createMergeChannel<int, ProducedValue>(
       folly::SerialExecutor::create(&mergeChannelExecutor));
   consumer_->startConsuming(std::move(mergeReceiver));
 

@@ -25,18 +25,16 @@
 namespace folly {
 namespace channels {
 
-template <typename TValue, typename TSubscriptionId>
-MergeChannel<TValue, TSubscriptionId>::MergeChannel(TProcessor* processor)
+template <typename KeyType, typename ValueType>
+MergeChannel<KeyType, ValueType>::MergeChannel(TProcessor* processor)
     : processor_(processor) {}
 
-template <typename TValue, typename TSubscriptionId>
-MergeChannel<TValue, TSubscriptionId>::MergeChannel(
-    MergeChannel&& other) noexcept
+template <typename KeyType, typename ValueType>
+MergeChannel<KeyType, ValueType>::MergeChannel(MergeChannel&& other) noexcept
     : processor_(std::exchange(other.processor_, nullptr)) {}
 
-template <typename TValue, typename TSubscriptionId>
-MergeChannel<TValue, TSubscriptionId>&
-MergeChannel<TValue, TSubscriptionId>::operator=(
+template <typename KeyType, typename ValueType>
+MergeChannel<KeyType, ValueType>& MergeChannel<KeyType, ValueType>::operator=(
     MergeChannel&& other) noexcept {
   if (&other == this) {
     return *this;
@@ -48,33 +46,32 @@ MergeChannel<TValue, TSubscriptionId>::operator=(
   return *this;
 }
 
-template <typename TValue, typename TSubscriptionId>
-MergeChannel<TValue, TSubscriptionId>::~MergeChannel() {
+template <typename KeyType, typename ValueType>
+MergeChannel<KeyType, ValueType>::~MergeChannel() {
   if (processor_) {
     std::move(*this).close(std::nullopt /* ex */);
   }
 }
 
-template <typename TValue, typename TSubscriptionId>
-MergeChannel<TValue, TSubscriptionId>::operator bool() const {
+template <typename KeyType, typename ValueType>
+MergeChannel<KeyType, ValueType>::operator bool() const {
   return processor_;
 }
 
-template <typename TValue, typename TSubscriptionId>
+template <typename KeyType, typename ValueType>
 template <typename TReceiver>
-void MergeChannel<TValue, TSubscriptionId>::addNewReceiver(
-    TSubscriptionId subscriptionId, TReceiver receiver) {
-  processor_->addNewReceiver(subscriptionId, std::move(receiver));
+void MergeChannel<KeyType, ValueType>::addNewReceiver(
+    KeyType key, TReceiver receiver) {
+  processor_->addNewReceiver(key, std::move(receiver));
 }
 
-template <typename TValue, typename TSubscriptionId>
-void MergeChannel<TValue, TSubscriptionId>::removeReceiver(
-    TSubscriptionId subscriptionId) {
-  processor_->removeReceiver(subscriptionId);
+template <typename KeyType, typename ValueType>
+void MergeChannel<KeyType, ValueType>::removeReceiver(KeyType key) {
+  processor_->removeReceiver(key);
 }
 
-template <typename TValue, typename TSubscriptionId>
-void MergeChannel<TValue, TSubscriptionId>::close(
+template <typename KeyType, typename ValueType>
+void MergeChannel<KeyType, ValueType>::close(
     std::optional<folly::exception_wrapper> ex) && {
   processor_->destroyHandle(
       ex.has_value() ? detail::CloseResult(std::move(ex.value()))
@@ -84,13 +81,12 @@ void MergeChannel<TValue, TSubscriptionId>::close(
 
 namespace detail {
 
-template <typename TValue, typename TSubscriptionId>
+template <typename KeyType, typename ValueType>
 class IMergeChannelProcessor : public IChannelCallback {
  public:
-  virtual void addNewReceiver(
-      TSubscriptionId subscriptionId, Receiver<TValue> receiver) = 0;
+  virtual void addNewReceiver(KeyType key, Receiver<ValueType> receiver) = 0;
 
-  virtual void removeReceiver(TSubscriptionId subscriptionId) = 0;
+  virtual void removeReceiver(KeyType key) = 0;
 
   virtual void destroyHandle(CloseResult closeResult) = 0;
 };
@@ -131,12 +127,12 @@ class IMergeChannelProcessor : public IChannelCallback {
  * transitions to the CancellationProcessed state (after we receive each
  * cancelled callback).
  */
-template <typename TValue, typename TSubscriptionId>
+template <typename KeyType, typename ValueType>
 class MergeChannelProcessor
-    : public IMergeChannelProcessor<TValue, TSubscriptionId> {
+    : public IMergeChannelProcessor<KeyType, ValueType> {
  public:
   MergeChannelProcessor(
-      Sender<TValue> sender,
+      Sender<ValueType> sender,
       folly::Executor::KeepAlive<folly::SequencedExecutor> executor)
       : sender_(std::move(detail::senderGetBridge(sender))),
         executor_(std::move(executor)) {
@@ -144,54 +140,51 @@ class MergeChannelProcessor
   }
 
   /**
-   * Adds a new receiver to be merged, along with a subscription ID to allow for
-   * later removal.
+   * Adds a new receiver to be merged, along with a key to allow for later
+   * removal.
    */
-  void addNewReceiver(
-      TSubscriptionId subscriptionId, Receiver<TValue> receiver) {
-    executor_->add([=,
-                    subscriptionId = std::move(subscriptionId),
-                    receiver = std::move(receiver)]() mutable {
-      if (getSenderState() != ChannelState::Active) {
-        return;
-      }
-      auto [unbufferedReceiver, buffer] =
-          detail::receiverUnbuffer(std::move(receiver));
-      auto existingReceiverIt = receiversBySubscriptionId_.find(subscriptionId);
-      if (existingReceiverIt != receiversBySubscriptionId_.end()) {
-        if (receivers_.contains(existingReceiverIt->second) &&
-            !existingReceiverIt->second->isReceiverCancelled()) {
-          // We already have a receiver with the given subscription ID. Trigger
-          // cancellation on that previous receiver.
-          existingReceiverIt->second->receiverCancel();
-        }
-        receiversBySubscriptionId_.erase(existingReceiverIt);
-      }
-      receiversBySubscriptionId_.insert(
-          std::make_pair(subscriptionId, unbufferedReceiver.get()));
-      auto* receiverPtr = unbufferedReceiver.get();
-      receivers_.insert(unbufferedReceiver.release());
-      processAllAvailableValues(receiverPtr, std::move(buffer));
-    });
+  void addNewReceiver(KeyType key, Receiver<ValueType> receiver) {
+    executor_->add(
+        [=, key = std::move(key), receiver = std::move(receiver)]() mutable {
+          if (getSenderState() != ChannelState::Active) {
+            return;
+          }
+          auto [unbufferedReceiver, buffer] =
+              detail::receiverUnbuffer(std::move(receiver));
+          auto existingReceiverIt = receiversByKey_.find(key);
+          if (existingReceiverIt != receiversByKey_.end()) {
+            if (receivers_.contains(existingReceiverIt->second) &&
+                !existingReceiverIt->second->isReceiverCancelled()) {
+              // We already have a receiver with the given key. Trigger
+              // cancellation on that previous receiver.
+              existingReceiverIt->second->receiverCancel();
+            }
+            receiversByKey_.erase(existingReceiverIt);
+          }
+          receiversByKey_.insert(std::make_pair(key, unbufferedReceiver.get()));
+          auto* receiverPtr = unbufferedReceiver.get();
+          receivers_.insert(unbufferedReceiver.release());
+          processAllAvailableValues(receiverPtr, std::move(buffer));
+        });
   }
 
   /**
-   * Removes the receiver with the given subscription ID.
+   * Removes the receiver with the given key.
    */
-  void removeReceiver(TSubscriptionId subscriptionId) {
+  void removeReceiver(KeyType key) {
     executor_->add([=]() {
       if (getSenderState() != ChannelState::Active) {
         return;
       }
-      auto receiverIt = receiversBySubscriptionId_.find(subscriptionId);
-      if (receiverIt == receiversBySubscriptionId_.end()) {
+      auto receiverIt = receiversByKey_.find(key);
+      if (receiverIt == receiversByKey_.end()) {
         return;
       }
       if (receivers_.contains(receiverIt->second) &&
           !receiverIt->second->isReceiverCancelled()) {
         receiverIt->second->receiverCancel();
       }
-      receiversBySubscriptionId_.erase(receiverIt);
+      receiversByKey_.erase(receiverIt);
     });
   }
 
@@ -217,7 +210,7 @@ class MergeChannelProcessor
         processSenderCancelled();
       } else {
         // One or more values are now available from an input receiver.
-        auto* receiver = static_cast<ChannelBridge<TValue>*>(bridge);
+        auto* receiver = static_cast<ChannelBridge<ValueType>*>(bridge);
         CHECK(
             getReceiverState(receiver) != ChannelState::CancellationProcessed);
         processAllAvailableValues(receiver);
@@ -242,7 +235,7 @@ class MergeChannelProcessor
         // consumer of the output receiver stopped consuming or because another
         // input receiver received an exception. Process the cancellation for
         // this input receiver.
-        auto* receiver = static_cast<ChannelBridge<TValue>*>(bridge);
+        auto* receiver = static_cast<ChannelBridge<ValueType>*>(bridge);
         processReceiverCancelled(receiver, CloseResult());
       }
     });
@@ -258,8 +251,8 @@ class MergeChannelProcessor
    * will process cancellation for the input receiver.
    */
   void processAllAvailableValues(
-      ChannelBridge<TValue>* receiver,
-      std::optional<ReceiverQueue<TValue>> buffer = std::nullopt) {
+      ChannelBridge<ValueType>* receiver,
+      std::optional<ReceiverQueue<ValueType>> buffer = std::nullopt) {
     auto closeResult = receiver->isReceiverCancelled()
         ? CloseResult()
         : (buffer.has_value() ? processValues(std::move(buffer.value()))
@@ -287,7 +280,7 @@ class MergeChannelProcessor
    * CloseResult if the given channel was closed, so the caller can stop
    * attempting to process values from it.
    */
-  std::optional<CloseResult> processValues(ReceiverQueue<TValue> values) {
+  std::optional<CloseResult> processValues(ReceiverQueue<ValueType> values) {
     while (!values.empty()) {
       auto inputResult = std::move(values.front());
       values.pop();
@@ -311,10 +304,10 @@ class MergeChannelProcessor
    * sender (and all other input receivers).
    */
   void processReceiverCancelled(
-      ChannelBridge<TValue>* receiver, CloseResult closeResult) {
+      ChannelBridge<ValueType>* receiver, CloseResult closeResult) {
     CHECK(getReceiverState(receiver) == ChannelState::CancellationTriggered);
     receivers_.erase(receiver);
-    (ChannelBridgePtr<TValue>(receiver));
+    (ChannelBridgePtr<ValueType>(receiver));
     if (closeResult.exception.has_value()) {
       // We received an exception. We need to close the sender and all
       // receivers.
@@ -381,7 +374,7 @@ class MergeChannelProcessor
     }
   }
 
-  ChannelState getReceiverState(ChannelBridge<TValue>* receiver) {
+  ChannelState getReceiverState(ChannelBridge<ValueType>* receiver) {
     return detail::getReceiverState(receiver);
   }
 
@@ -389,32 +382,30 @@ class MergeChannelProcessor
     return detail::getSenderState(sender_.get());
   }
 
-  ChannelBridgePtr<TValue> sender_;
+  ChannelBridgePtr<ValueType> sender_;
   folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
   bool handleDestroyed_{false};
 
   // The set of receivers that feed into this MergeChannel. This set "owns" its
   // receivers. MergeChannelProcessor must free any receiver removed from this
   // set.
-  folly::F14FastSet<ChannelBridge<TValue>*> receivers_;
+  folly::F14FastSet<ChannelBridge<ValueType>*> receivers_;
 
-  // A non-owning map from subscription ID to receiver. If the receiver for a
-  // given subscription ID is not present in receivers_, it has been freed and
-  // must not be used.
-  folly::F14FastMap<TSubscriptionId, ChannelBridge<TValue>*> //
-      receiversBySubscriptionId_;
+  // A non-owning map from key to receiver. If the receiver for a given key is
+  // not present in receivers_, it has been freed and must not be used.
+  folly::F14FastMap<KeyType, ChannelBridge<ValueType>*> receiversByKey_;
 };
 } // namespace detail
 
-template <typename TValue, typename TSubscriptionId>
-std::pair<Receiver<TValue>, MergeChannel<TValue, TSubscriptionId>>
+template <typename KeyType, typename ValueType>
+std::pair<Receiver<ValueType>, MergeChannel<KeyType, ValueType>>
 createMergeChannel(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor) {
-  auto [receiver, sender] = Channel<TValue>::create();
-  auto* processor = new detail::MergeChannelProcessor<TValue, TSubscriptionId>(
+  auto [receiver, sender] = Channel<ValueType>::create();
+  auto* processor = new detail::MergeChannelProcessor<KeyType, ValueType>(
       std::move(sender), std::move(executor));
   return std::make_pair(
-      std::move(receiver), MergeChannel<TValue, TSubscriptionId>(processor));
+      std::move(receiver), MergeChannel<KeyType, ValueType>(processor));
 }
 } // namespace channels
 } // namespace folly

@@ -23,15 +23,15 @@ namespace folly {
 namespace channels {
 
 namespace detail {
-template <typename TValue, typename TSubscriptionId>
+template <typename KeyType, typename ValueType>
 class IMergeChannelProcessor;
 }
 
 /**
  * A merge channel allows one to merge multiple receivers into a single output
  * receiver. The set of receivers being merged can be changed at runtime. Each
- * receiver is added with a subscription ID, that can be used to remove the
- * receiver at a later point.
+ * receiver is added with a key that can be used to remove the receiver at a
+ * later point.
  *
  * Example:
  *
@@ -42,19 +42,19 @@ class IMergeChannelProcessor;
  *  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
  *
  *  auto [outputReceiver, mergeChannel]
- *      = createMergeChannel<int, std::string>(getExecutor());
+ *      = createMergeChannel<std::string, int>(getExecutor());
  *  mergeChannel.addNewReceiver("abc", subscribe("abc"));
  *  mergeChannel.addNewReceiver("def", subscribe("def"));
  *  mergeChannel.removeReceiver("abc");
  *  std::move(mergeChannel).close();
  */
-template <typename TValue, typename TSubscriptionId>
+template <typename KeyType, typename ValueType>
 class MergeChannel {
-  using TProcessor = detail::IMergeChannelProcessor<TValue, TSubscriptionId>;
+  using TProcessor = detail::IMergeChannelProcessor<KeyType, ValueType>;
 
  public:
   explicit MergeChannel(
-      detail::IMergeChannelProcessor<TValue, TSubscriptionId>* processor);
+      detail::IMergeChannelProcessor<KeyType, ValueType>* processor);
   MergeChannel(MergeChannel&& other) noexcept;
   MergeChannel& operator=(MergeChannel&& other) noexcept;
   ~MergeChannel();
@@ -65,21 +65,21 @@ class MergeChannel {
   explicit operator bool() const;
 
   /**
-   * Adds a new receiver to be merged, along with a given subscription ID. If
-   * the subscription ID matches the ID of an existing receiver, that existing
-   * receiver is replaced with the new one (and changes to the old receiver will
-   * no longer be merged). An added receiver can later be removed by passing the
-   * subscription ID to removeReceiver.
+   * Adds a new receiver to be merged, along with a given key. If the key
+   * matches the key of an existing receiver, that existing receiver is replaced
+   * with the new one (and updates from the old receiver will no longer be
+   * merged). An added receiver can later be removed by passing the same key to
+   * removeReceiver.
    */
   template <typename TReceiver>
-  void addNewReceiver(TSubscriptionId subscriptionId, TReceiver receiver);
+  void addNewReceiver(KeyType key, TReceiver receiver);
 
   /**
-   * Removes the receiver added with the given subscription ID. The receiver
-   * will be asynchronously removed, so the consumer may still receive some
-   * values from this receiver after this call.
+   * Removes the receiver added with the given key. The receiver will be
+   * asynchronously removed, so the consumer may still receive some values from
+   * this receiver after this call.
    */
-  void removeReceiver(TSubscriptionId subscriptionId);
+  void removeReceiver(KeyType key);
 
   /**
    * Closes the merge channel.
@@ -95,8 +95,8 @@ class MergeChannel {
  *
  * @param executor: The SequencedExecutor to use for merging values.
  */
-template <typename TValue, typename TSubscriptionId>
-std::pair<Receiver<TValue>, MergeChannel<TValue, TSubscriptionId>>
+template <typename KeyType, typename ValueType>
+std::pair<Receiver<ValueType>, MergeChannel<KeyType, ValueType>>
 createMergeChannel(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor);
 } // namespace channels
