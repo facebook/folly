@@ -878,7 +878,9 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   const_iterator end() const { return m_.cont_.end(); }
   reverse_iterator rbegin() { return m_.cont_.rbegin(); }
   reverse_iterator rend() { return m_.cont_.rend(); }
+  const_reverse_iterator crbegin() const { return m_.cont_.crbegin(); }
   const_reverse_iterator rbegin() const { return m_.cont_.rbegin(); }
+  const_reverse_iterator crend() const { return m_.cont_.crend(); }
   const_reverse_iterator rend() const { return m_.cont_.rend(); }
 
   void clear() { return m_.cont_.clear(); }
