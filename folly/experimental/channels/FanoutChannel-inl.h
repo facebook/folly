@@ -73,6 +73,13 @@ bool FanoutChannel<ValueType, ContextType>::anySubscribers() const {
 }
 
 template <typename ValueType, typename ContextType>
+void FanoutChannel<ValueType, ContextType>::closeSubscribers(
+    folly::exception_wrapper ex) {
+  processor_->closeSubscribers(
+      ex ? detail::CloseResult(std::move(ex)) : detail::CloseResult());
+}
+
+template <typename ValueType, typename ContextType>
 void FanoutChannel<ValueType, ContextType>::close(
     folly::exception_wrapper ex) && {
   processor_->destroyHandle(
@@ -90,6 +97,8 @@ class IFanoutChannelProcessor : public IChannelCallback {
           getInitialValues) = 0;
 
   virtual bool anySubscribers() = 0;
+
+  virtual void closeSubscribers(CloseResult closeResult) = 0;
 
   virtual void destroyHandle(CloseResult closeResult) = 0;
 };
@@ -174,6 +183,17 @@ class FanoutChannelProcessor
       return std::move(receiver);
     }
     return state->fanoutSender.subscribe(std::move(initialValues));
+  }
+
+  /**
+   * Closes all subscribers without closing the fanout channel.
+   */
+  void closeSubscribers(CloseResult closeResult) {
+    auto state = state_.wlock();
+    std::move(state->fanoutSender)
+        .close(
+            closeResult.exception.has_value() ? closeResult.exception.value()
+                                              : folly::exception_wrapper());
   }
 
   /**

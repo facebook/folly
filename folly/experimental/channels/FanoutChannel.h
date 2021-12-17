@@ -115,6 +115,13 @@ class FanoutChannel {
   bool anySubscribers() const;
 
   /**
+   * Closes all subscribers, without closing the fanout channel. New subscribers
+   * can be added after this call.
+   */
+  void closeSubscribers(
+      folly::exception_wrapper ex = folly::exception_wrapper());
+
+  /**
    * Closes the fanout channel.
    */
   void close(folly::exception_wrapper ex = folly::exception_wrapper()) &&;

@@ -205,6 +205,45 @@ TEST_F(FanoutChannelFixture, ReceiversCancelled) {
   EXPECT_FALSE(fanoutChannel.anySubscribers());
 }
 
+TEST_F(FanoutChannelFixture, SubscribersClosed) {
+  auto [inputReceiver, sender] = Channel<int>::create();
+  auto fanoutChannel =
+      createFanoutChannel(std::move(inputReceiver), &executor_);
+
+  auto [handle1, callback1] = processValues(fanoutChannel.subscribe());
+  auto [handle2, callback2] = processValues(fanoutChannel.subscribe());
+  executor_.drain();
+
+  EXPECT_TRUE(fanoutChannel.anySubscribers());
+
+  EXPECT_CALL(*callback1, onValue(1));
+  EXPECT_CALL(*callback2, onValue(1));
+  sender.write(1);
+  executor_.drain();
+
+  EXPECT_TRUE(fanoutChannel.anySubscribers());
+
+  EXPECT_CALL(*callback1, onClosed());
+  EXPECT_CALL(*callback2, onClosed());
+  fanoutChannel.closeSubscribers();
+  executor_.drain();
+
+  EXPECT_FALSE(fanoutChannel.anySubscribers());
+
+  auto [handle3, callback3] = processValues(fanoutChannel.subscribe());
+  executor_.drain();
+
+  EXPECT_TRUE(fanoutChannel.anySubscribers());
+
+  EXPECT_CALL(*callback3, onValue(2));
+  sender.write(2);
+  executor_.drain();
+
+  EXPECT_CALL(*callback3, onClosed());
+  std::move(fanoutChannel).close();
+  executor_.drain();
+}
+
 TEST_F(FanoutChannelFixture, VectorBool) {
   auto [inputReceiver, sender] = Channel<bool>::create();
   auto fanoutChannel =
