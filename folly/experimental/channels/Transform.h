@@ -26,8 +26,8 @@ namespace channels {
  * Returns an output receiver that applies a given transformation function to
  * each value from an input receiver.
  *
- * The TransformValue function takes a Try<TInputValue>, and returns a
- * folly::coro::AsyncGenerator<TOutputValue>.
+ * The TransformValue function takes a Try<InputValueType>, and returns a
+ * folly::coro::AsyncGenerator<OutputValueType>.
  *
  *   - If the TransformValue function yields one or more output values, those
  *      output values are sent to the output receiver.
@@ -68,21 +68,21 @@ namespace channels {
  *      });
  */
 template <
-    typename TReceiver,
+    typename ReceiverType,
     typename TransformValueFunc,
-    typename TInputValue = typename TReceiver::ValueType,
-    typename TOutputValue = typename folly::invoke_result_t<
+    typename InputValueType = typename ReceiverType::ValueType,
+    typename OutputValueType = typename folly::invoke_result_t<
         TransformValueFunc,
-        folly::Try<TInputValue>>::value_type>
-Receiver<TOutputValue> transform(
-    TReceiver inputReceiver,
+        folly::Try<InputValueType>>::value_type>
+Receiver<OutputValueType> transform(
+    ReceiverType inputReceiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     TransformValueFunc transformValue);
 
 /**
  * This function is similar to the above transform function. However, instead of
  * taking a single input receiver, it takes an initialization function that
- * returns a std::pair<std::vector<TOutputValue>, Receiver<TInputValue>>.
+ * returns a std::pair<std::vector<OutputValueType>, Receiver<InputValueType>>.
  *
  *  - If the InitializeTransform function returns successfully, the vector's
  *      output values will be immediately sent to the output receiver. The input
@@ -130,13 +130,13 @@ Receiver<TOutputValue> transform(
 template <
     typename InitializeTransformFunc,
     typename TransformValueFunc,
-    typename TReceiver = typename folly::invoke_result_t<
+    typename ReceiverType = typename folly::invoke_result_t<
         InitializeTransformFunc>::StorageType::second_type,
-    typename TInputValue = typename TReceiver::ValueType,
-    typename TOutputValue = typename folly::invoke_result_t<
+    typename InputValueType = typename ReceiverType::ValueType,
+    typename OutputValueType = typename folly::invoke_result_t<
         TransformValueFunc,
-        folly::Try<TInputValue>>::value_type>
-Receiver<TOutputValue> resumableTransform(
+        folly::Try<InputValueType>>::value_type>
+Receiver<OutputValueType> resumableTransform(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     InitializeTransformFunc initializeTransform,
     TransformValueFunc transformValue);
