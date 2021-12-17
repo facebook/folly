@@ -59,10 +59,10 @@ template <typename Holder>
 class badge {
  public:
   friend Holder;
-  /* implicit */ badge(any_badge<Holder>) noexcept {}
+  /* implicit */ constexpr badge(any_badge<Holder>) noexcept {}
 
  private:
-  /* implicit */ badge() noexcept {}
+  /* implicit */ constexpr badge() noexcept {}
 };
 
 /**
@@ -90,13 +90,13 @@ class any_badge {
   template <
       typename Holder,
       typename = std::enable_if_t<folly::IsOneOf<Holder, Holders...>::value>>
-  /* implicit */ any_badge(badge<Holder>) noexcept {}
+  /* implicit */ constexpr any_badge(badge<Holder>) noexcept {}
 
   template <
       typename... OtherHolders,
       typename = std::enable_if_t<folly::StrictConjunction<
           folly::IsOneOf<OtherHolders, Holders...>...>::value>>
-  /* implicit */ any_badge(any_badge<OtherHolders...>) noexcept {}
+  /* implicit */ constexpr any_badge(any_badge<OtherHolders...>) noexcept {}
 };
 
 } // namespace folly
