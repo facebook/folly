@@ -19,6 +19,7 @@
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
 #include <folly/experimental/channels/detail/Utility.h>
+#include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Task.h>
 
 namespace folly {
@@ -54,27 +55,25 @@ namespace detail {
 template <
     typename InputValueType,
     typename OutputValueType,
-    typename TransformValueFunc>
+    typename TransformerType>
 class TransformProcessorBase : public IChannelCallback {
  public:
   TransformProcessorBase(
-      Sender<OutputValueType> sender,
-      folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-      TransformValueFunc transformValue)
+      Sender<OutputValueType> sender, TransformerType transformer)
       : sender_(std::move(senderGetBridge(sender))),
-        executor_(std::move(executor)),
-        transformValue_(std::move(transformValue)) {}
+        transformer_(std::move(transformer)) {}
 
   template <typename ReceiverType>
   void startTransform(ReceiverType receiver) {
-    executor_->add([=, receiver = std::move(receiver)]() mutable {
-      runOperationWithSenderCancellation(
-          this->executor_,
-          this->sender_,
-          false /* alreadyStartedWaiting */,
-          this /* channelCallbackToRestore */,
-          startTransformImpl(std::move(receiver)));
-    });
+    transformer_.getExecutor()->add(
+        [=, receiver = std::move(receiver)]() mutable {
+          runOperationWithSenderCancellation(
+              transformer_.getExecutor(),
+              this->sender_,
+              false /* alreadyStartedWaiting */,
+              this /* channelCallbackToRestore */,
+              startTransformImpl(std::move(receiver)));
+        });
   }
 
  protected:
@@ -98,12 +97,12 @@ class TransformProcessorBase : public IChannelCallback {
    * sender).
    */
   void consume(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    transformer_.getExecutor()->add([=]() {
       if (bridge == receiver_.get()) {
         // We have received new values from the input receiver.
         CHECK_NE(getReceiverState(), ChannelState::CancellationProcessed);
         runOperationWithSenderCancellation(
-            this->executor_,
+            transformer_.getExecutor(),
             this->sender_,
             true /* alreadyStartedWaiting */,
             this /* channelCallbackToRestore */,
@@ -124,13 +123,15 @@ class TransformProcessorBase : public IChannelCallback {
    * listening to.
    */
   void canceled(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    transformer_.getExecutor()->add([=]() {
       if (bridge == receiver_.get()) {
         // We previously cancelled the input receiver (because the consumer of
         // the output receiver stopped consuming). Process the cancellation for
         // the input receiver.
         CHECK_EQ(getReceiverState(), ChannelState::CancellationTriggered);
-        processReceiverCancelled(CloseResult()).scheduleOn(executor_).start();
+        processReceiverCancelled(CloseResult())
+            .scheduleOn(transformer_.getExecutor())
+            .start();
       } else {
         // We previously cancelled the sender due to the closure of the input
         // receiver. Process the cancellation for the sender.
@@ -190,8 +191,9 @@ class TransformProcessorBase : public IChannelCallback {
       if (!inputResult.hasValue() && !inputResult.hasException()) {
         inputResult = folly::Try<InputValueType>(OnClosedException());
       }
-      auto outputGen = folly::makeTryWith(
-          [&]() { return transformValue_(std::move(inputResult)); });
+      auto outputGen = folly::makeTryWith([&]() {
+        return transformer_.transformValue(std::move(inputResult));
+      });
       if (!outputGen.hasValue()) {
         // The transform function threw an exception and was not a coroutine.
         // We will close the output receiver.
@@ -268,8 +270,7 @@ class TransformProcessorBase : public IChannelCallback {
 
   ChannelBridgePtr<InputValueType> receiver_;
   ChannelBridgePtr<OutputValueType> sender_;
-  folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
-  TransformValueFunc transformValue_;
+  TransformerType transformer_;
 };
 
 /**
@@ -280,16 +281,14 @@ class TransformProcessorBase : public IChannelCallback {
 template <
     typename InputValueType,
     typename OutputValueType,
-    typename TransformValueFunc>
+    typename TransformerType>
 class TransformProcessor : public TransformProcessorBase<
                                InputValueType,
                                OutputValueType,
-                               TransformValueFunc> {
+                               TransformerType> {
  public:
-  using Base = TransformProcessorBase<
-      InputValueType,
-      OutputValueType,
-      TransformValueFunc>;
+  using Base =
+      TransformProcessorBase<InputValueType, OutputValueType, TransformerType>;
   using Base::Base;
 
  private:
@@ -319,30 +318,20 @@ class TransformProcessor : public TransformProcessorBase<
 template <
     typename InputValueType,
     typename OutputValueType,
-    typename InitializeTransformFunc,
-    typename TransformValueFunc>
+    typename TransformerType>
 class ResumableTransformProcessor : public TransformProcessorBase<
                                         InputValueType,
                                         OutputValueType,
-                                        TransformValueFunc> {
+                                        TransformerType> {
  public:
-  using Base = TransformProcessorBase<
-      InputValueType,
-      OutputValueType,
-      TransformValueFunc>;
-
-  ResumableTransformProcessor(
-      Sender<OutputValueType> sender,
-      folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-      InitializeTransformFunc initializeTransform,
-      TransformValueFunc transformValue)
-      : Base(std::move(sender), std::move(executor), std::move(transformValue)),
-        initializeTransform_(std::move(initializeTransform)) {}
+  using Base =
+      TransformProcessorBase<InputValueType, OutputValueType, TransformerType>;
+  using Base::Base;
 
   void initialize() {
-    this->executor_->add([=]() {
+    this->transformer_.getExecutor()->add([=]() {
       runOperationWithSenderCancellation(
-          this->executor_,
+          this->transformer_.getExecutor(),
           this->sender_,
           false /* currentlyWaiting */,
           this /* channelCallbackToRestore */,
@@ -359,8 +348,8 @@ class ResumableTransformProcessor : public TransformProcessorBase<
    */
   folly::coro::Task<void> initializeImpl() {
     auto cancelToken = co_await folly::coro::co_current_cancellation_token;
-    auto initializeResult =
-        co_await folly::coro::co_awaitTry(initializeTransform_());
+    auto initializeResult = co_await folly::coro::co_awaitTry(
+        this->transformer_.initializeTransform());
     if (initializeResult.hasException()) {
       auto closeResult =
           initializeResult.template hasException<OnClosedException>()
@@ -418,7 +407,56 @@ class ResumableTransformProcessor : public TransformProcessorBase<
     }
     this->maybeDelete();
   }
+};
 
+template <
+    typename InputValueType,
+    typename OutputValueType,
+    typename TransformValueFunc>
+class DefaultTransformer {
+ public:
+  DefaultTransformer(
+      folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+      TransformValueFunc transformValue)
+      : executor_(std::move(executor)),
+        transformValue_(std::move(transformValue)) {}
+
+  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor() {
+    return executor_;
+  }
+
+  auto transformValue(folly::Try<InputValueType> inputValue) {
+    return transformValue_(std::move(inputValue));
+  }
+
+ private:
+  folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
+  TransformValueFunc transformValue_;
+};
+
+template <
+    typename InputValueType,
+    typename OutputValueType,
+    typename InitializeTransformFunc,
+    typename TransformValueFunc>
+class DefaultResumableTransformer : public DefaultTransformer<
+                                        InputValueType,
+                                        OutputValueType,
+                                        TransformValueFunc> {
+ public:
+  using Base =
+      DefaultTransformer<InputValueType, OutputValueType, TransformValueFunc>;
+
+  DefaultResumableTransformer(
+      folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+      InitializeTransformFunc initializeTransform,
+      TransformValueFunc transformValue)
+      : Base(std::move(executor), std::move(transformValue)),
+        initializeTransform_(std::move(initializeTransform)) {}
+
+  auto initializeTransform() { return initializeTransform_(); }
+
+ private:
   InitializeTransformFunc initializeTransform_;
 };
 } // namespace detail
@@ -432,11 +470,26 @@ Receiver<OutputValueType> transform(
     ReceiverType inputReceiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     TransformValueFunc transformValue) {
+  return transform(
+      std::move(inputReceiver),
+      detail::DefaultTransformer<
+          InputValueType,
+          OutputValueType,
+          TransformValueFunc>(std::move(executor), std::move(transformValue)));
+}
+
+template <
+    typename ReceiverType,
+    typename TransformerType,
+    typename InputValueType,
+    typename OutputValueType>
+Receiver<OutputValueType> transform(
+    ReceiverType inputReceiver, TransformerType transformer) {
   auto [outputReceiver, outputSender] = Channel<OutputValueType>::create();
   using TProcessor = detail::
-      TransformProcessor<InputValueType, OutputValueType, TransformValueFunc>;
-  auto* processor = new TProcessor(
-      std::move(outputSender), std::move(executor), std::move(transformValue));
+      TransformProcessor<InputValueType, OutputValueType, TransformerType>;
+  auto* processor =
+      new TProcessor(std::move(outputSender), std::move(transformer));
   processor->startTransform(std::move(inputReceiver));
   return std::move(outputReceiver);
 }
@@ -449,21 +502,34 @@ template <
     typename OutputValueType>
 Receiver<OutputValueType> resumableTransform(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-    InitializeTransformFunc initializeTransformFunc,
+    InitializeTransformFunc initializeTransform,
     TransformValueFunc transformValue) {
+  return resumableTransform(detail::DefaultResumableTransformer<
+                            InputValueType,
+                            OutputValueType,
+                            InitializeTransformFunc,
+                            TransformValueFunc>(
+      std::move(executor),
+      std::move(initializeTransform),
+      std::move(transformValue)));
+}
+
+template <
+    typename TransformerType,
+    typename ReceiverType,
+    typename InputValueType,
+    typename OutputValueType>
+Receiver<OutputValueType> resumableTransform(TransformerType transformer) {
   auto [outputReceiver, outputSender] = Channel<OutputValueType>::create();
   using TProcessor = detail::ResumableTransformProcessor<
       InputValueType,
       OutputValueType,
-      InitializeTransformFunc,
-      TransformValueFunc>;
-  auto* processor = new TProcessor(
-      std::move(outputSender),
-      executor,
-      std::move(initializeTransformFunc),
-      std::move(transformValue));
+      TransformerType>;
+  auto* processor =
+      new TProcessor(std::move(outputSender), std::move(transformer));
   processor->initialize();
   return std::move(outputReceiver);
 }
+
 } // namespace channels
 } // namespace folly

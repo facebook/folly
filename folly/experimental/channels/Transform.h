@@ -80,6 +80,25 @@ Receiver<OutputValueType> transform(
     TransformValueFunc transformValue);
 
 /**
+ * This overload accepts arguments in the form of a transformer object. The
+ * transformer object must have the following functions:
+ *
+ * folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
+ *
+ * folly::coro::AsyncGenerator<OutputValueType&&> transformValue(
+ *     folly::Try<InputValueType> inputValue);
+ */
+template <
+    typename ReceiverType,
+    typename TransformerType,
+    typename InputValueType = typename ReceiverType::ValueType,
+    typename OutputValueType =
+        typename decltype(std::declval<TransformerType>().transformValue(
+            std::declval<folly::Try<InputValueType>>()))::value_type>
+Receiver<OutputValueType> transform(
+    ReceiverType inputReceiver, TransformerType transformer);
+
+/**
  * This function is similar to the above transform function. However, instead of
  * taking a single input receiver, it takes an initialization function that
  * returns a std::pair<std::vector<OutputValueType>, Receiver<InputValueType>>.
@@ -140,6 +159,29 @@ Receiver<OutputValueType> resumableTransform(
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     InitializeTransformFunc initializeTransform,
     TransformValueFunc transformValue);
+
+/**
+ * This overload accepts arguments in the form of a transformer object. The
+ * transformer object must have the following functions:
+ *
+ * folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
+ *
+ * std::pair<std::vector<OutputValueType>, Receiver<InputValueType>>
+ * initializeTransform();
+ *
+ * folly::coro::AsyncGenerator<OutputValueType&&> transformValue(
+ *     folly::Try<InputValueType> inputValue);
+ */
+template <
+    typename TransformerType,
+    typename ReceiverType =
+        typename decltype(std::declval<TransformerType>()
+                              .initializeTransform())::StorageType::second_type,
+    typename InputValueType = typename ReceiverType::ValueType,
+    typename OutputValueType =
+        typename decltype(std::declval<TransformerType>().transformValue(
+            std::declval<folly::Try<InputValueType>>()))::value_type>
+Receiver<OutputValueType> resumableTransform(TransformerType transformer);
 
 /**
  * An OnClosedException passed to a transform callback indicates that the input
