@@ -25,6 +25,13 @@ namespace {
 class UtilityTest : public testing::Test {};
 } // namespace
 
+// Tests for FOLLY_DECLVAL macro:
+
+static_assert(std::is_same_v<decltype(FOLLY_DECLVAL(int)), int>);
+static_assert(std::is_same_v<decltype(FOLLY_DECLVAL(int&)), int&>);
+static_assert(std::is_same_v<decltype(FOLLY_DECLVAL(int&&)), int&&>);
+static_assert(noexcept(FOLLY_DECLVAL(int)));
+
 TEST_F(UtilityTest, copy) {
   struct MyData {};
   struct Worker {
@@ -141,10 +148,3 @@ TEST_F(UtilityTest, to_narrow) {
     EXPECT_EQ(100, actual);
   }
 }
-
-// Tests for FOLLY_DECLVAL macro:
-
-static_assert(std::is_same<decltype(FOLLY_DECLVAL(int)), int>::value);
-static_assert(std::is_same<decltype(FOLLY_DECLVAL(int&)), int&>::value);
-static_assert(std::is_same<decltype(FOLLY_DECLVAL(int&&)), int&&>::value);
-static_assert(noexcept(FOLLY_DECLVAL(int)));
