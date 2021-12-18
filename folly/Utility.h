@@ -60,6 +60,23 @@ T declval() noexcept;
 #define FOLLY_DECLVAL(...) ::folly::detail::declval<__VA_ARGS__>()
 #endif
 
+namespace detail {
+template <typename T>
+T decay_(T) noexcept;
+
+//  decay_t
+//
+//  Like std::decay_t but possibly faster to compile.
+//
+//  Marked as detail since this differs from std::decay_t in some respects:
+//  * incomplete decayed types are forbidden
+//  * non-moveable decayed types are forbidden
+//
+//  mimic: std::decay_t, C++14
+template <typename T>
+using decay_t = decltype(detail::decay_(FOLLY_DECLVAL(T &&)));
+} // namespace detail
+
 /**
  *  copy
  *
@@ -103,9 +120,9 @@ T declval() noexcept;
  */
 
 template <typename T>
-constexpr typename std::decay<T>::type copy(T&& value) noexcept(
-    noexcept(typename std::decay<T>::type(std::forward<T>(value)))) {
-  return std::forward<T>(value);
+constexpr detail::decay_t<T> copy(T&& value) noexcept(
+    noexcept(detail::decay_t<T>(static_cast<T&&>(value)))) {
+  return static_cast<T&&>(value);
 }
 
 /**

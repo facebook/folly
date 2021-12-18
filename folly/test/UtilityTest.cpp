@@ -32,6 +32,31 @@ static_assert(std::is_same_v<decltype(FOLLY_DECLVAL(int&)), int&>);
 static_assert(std::is_same_v<decltype(FOLLY_DECLVAL(int&&)), int&&>);
 static_assert(noexcept(FOLLY_DECLVAL(int)));
 
+// Tests for folly::decay_t:
+
+template <typename T>
+using dec = folly::detail::decay_t<T>;
+static_assert(std::is_same_v<int, dec<int>>);
+static_assert(std::is_same_v<int, dec<int&>>);
+static_assert(std::is_same_v<int, dec<int&&>>);
+static_assert(std::is_same_v<int, dec<int const>>);
+static_assert(std::is_same_v<int, dec<int const&&>>);
+static_assert(std::is_same_v<int, dec<int const&>>);
+static_assert(std::is_same_v<int, dec<int volatile>>);
+static_assert(std::is_same_v<int, dec<int volatile&>>);
+static_assert(std::is_same_v<int, dec<int volatile&&>>);
+static_assert(std::is_same_v<int, dec<int const volatile>>);
+static_assert(std::is_same_v<int, dec<int const volatile&>>);
+static_assert(std::is_same_v<int, dec<int const volatile&&>>);
+static_assert(std::is_same_v<int*, dec<int*>>);
+static_assert(std::is_same_v<int*, dec<int[]>>);
+static_assert(std::is_same_v<int*, dec<int[7]>>);
+static_assert(std::is_same_v<int*, dec<int*&>>);
+static_assert(std::is_same_v<int*, dec<int (&)[]>>);
+static_assert(std::is_same_v<int*, dec<int (&)[7]>>);
+static_assert(std::is_same_v<int (*)(), dec<int (*)()>>);
+static_assert(std::is_same_v<int (*)(), dec<int (&)()>>);
+
 TEST_F(UtilityTest, copy) {
   struct MyData {};
   struct Worker {
