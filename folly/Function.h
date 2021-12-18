@@ -290,7 +290,7 @@ template <
     typename To,
     typename = typename std::enable_if<
         !std::is_reference<To>::value || std::is_reference<From>::value>::type>
-using SafeResultOf = decltype(static_cast<To>(std::declval<From>()));
+using SafeResultOf = decltype(void(static_cast<To>(std::declval<From>())));
 
 #if defined(_MSC_VER)
 //  Need a workaround for MSVC to avoid the inscrutable error:
