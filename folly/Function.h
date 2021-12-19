@@ -290,7 +290,7 @@ template <
     typename To,
     typename = typename std::enable_if<
         !std::is_reference<To>::value || std::is_reference<From>::value>::type>
-using SafeResultOf = decltype(void(static_cast<To>(std::declval<From>())));
+using IfSafeResultImpl = decltype(void(static_cast<To>(std::declval<From>())));
 
 #if defined(_MSC_VER)
 //  Need a workaround for MSVC to avoid the inscrutable error:
@@ -359,9 +359,8 @@ struct FunctionTraits<ReturnType(Args...)> {
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = ConstSignature;
 
-  template <typename F>
-  using ResultOf =
-      SafeResultOf<CallableResult<std::decay_t<F>&, Args...>, ReturnType>;
+  template <typename F, typename R = CallableResult<std::decay_t<F>&, Args...>>
+  using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) {
@@ -412,9 +411,10 @@ struct FunctionTraits<ReturnType(Args...) const> {
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = NonConstSignature;
 
-  template <typename F>
-  using ResultOf =
-      SafeResultOf<CallableResult<const std::decay_t<F>&, Args...>, ReturnType>;
+  template <
+      typename F,
+      typename R = CallableResult<const std::decay_t<F>&, Args...>>
+  using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) {
@@ -466,9 +466,8 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = ConstSignature;
 
-  template <typename F>
-  using ResultOf =
-      SafeResultOf<CallableResult<std::decay_t<F>&, Args...>, ReturnType>;
+  template <typename F, typename R = CallableResult<std::decay_t<F>&, Args...>>
+  using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
@@ -519,9 +518,10 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = NonConstSignature;
 
-  template <typename F>
-  using ResultOf =
-      SafeResultOf<CallableResult<const std::decay_t<F>&, Args...>, ReturnType>;
+  template <
+      typename F,
+      typename R = CallableResult<const std::decay_t<F>&, Args...>>
+  using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
@@ -709,7 +709,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * signature matches (i.e. it returns an object convertible to `R` when called
    * with `Args...`).
    *
-   * \note `typename Traits::template ResultOf<Fun>` prevents this overload
+   * \note `typename Traits::template IfSafeResult<Fun>` prevents this overload
    * from being selected by overload resolution when `fun` is not a compatible
    * function.
    *
@@ -725,7 +725,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename Fun,
       typename =
           std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
-      typename = typename Traits::template ResultOf<Fun>>
+      typename = typename Traits::template IfSafeResult<Fun>>
   /* implicit */ Function(Fun fun) noexcept(
       IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>())))
       : Function(std::move(fun), IsSmall<Fun>{}) {}
@@ -741,7 +741,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Signature,
-      typename = typename Traits::template ResultOf<Function<Signature>>>
+      typename = typename Traits::template IfSafeResult<Function<Signature>>>
   Function(Function<Signature>&& that) noexcept(
       noexcept(Function(std::move(that), CoerceTag{})))
       : Function(std::move(that), CoerceTag{}) {}
@@ -827,7 +827,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Signature,
-      typename = typename Traits::template ResultOf<Function<Signature>>>
+      typename = typename Traits::template IfSafeResult<Function<Signature>>>
   Function& operator=(Function<Signature>&& that) noexcept(
       noexcept(Function(std::move(that)))) {
     return (*this = Function(std::move(that)));
