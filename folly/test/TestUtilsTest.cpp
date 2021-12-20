@@ -84,13 +84,25 @@ TEST(TestUtilsRangeTest, Wide) {
   EXPECT_EQ(PrintToString(kHelloString), PrintToString(kHelloStringPiece));
 }
 
-TEST(TestUtilsRangeTest, Utf16) {
+// gtest-printer.h has added an overload to PrintTo for u16string, which is
+// present in platform010 but not present in platform009:
+//   void PrintTo(const ::std::u16string& s, ::std::ostream* os)
+// Before this overload existed, u16string was printed as an array of unicode
+// characters, "{ U+0068, U+0065, U+006C, U+006C, U+006F }", but this has been
+// prettified to "u\"hello\"". As such, it no longer matches the string piece
+// printer.
+// This is not worth fixing: adding a PrintTo overload for Range<const char16_t>
+// and friends would be liable to break when gtest further changes their
+// printer. Disable the test; no other folly tests are broken on account of this
+// PrintTo discrepancy.
+TEST(TestUtilsRangeTest, DISABLED_Utf16) {
   constexpr auto kHelloStringPiece = u"hello"_sp;
   const auto kHelloString = u"hello"s;
   EXPECT_EQ(PrintToString(kHelloString), PrintToString(kHelloStringPiece));
 }
 
-TEST(TestUtilsRangeTest, Utf32) {
+// Also broken on platform010, as with TestUtilsRangeTest.Utf16
+TEST(TestUtilsRangeTest, DISABLED_Utf32) {
   constexpr auto kHelloStringPiece = U"hello"_sp;
   const auto kHelloString = U"hello"s;
   EXPECT_EQ(PrintToString(kHelloString), PrintToString(kHelloStringPiece));
