@@ -48,7 +48,7 @@ set(PACKAGE_BUGREPORT "https://github.com/facebook/folly/issues")
 # 150+ tests in the root folder anyone? No? I didn't think so.
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-project(${PACKAGE_NAME} CXX C)
+project(${PACKAGE_NAME} CXX C ASM)
 
 set(INCLUDE_INSTALL_DIR include CACHE STRING
     "The subdirectory where header files should be installed")
@@ -315,8 +315,23 @@ else()
   )
 endif()
 
-add_library(folly_base OBJECT
+list(APPEND folly_base_files
   ${files} ${hfiles}
+)
+
+if (NOT MSVC)
+  set_property(
+    SOURCE
+    ${FOLLY_DIR}/memcpy.S
+    APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
+  )
+  list(APPEND folly_base_files
+    ${FOLLY_DIR}/memcpy.S
+  )
+endif()
+
+add_library(folly_base OBJECT
+  ${folly_base_files}
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
 )
 if (BUILD_SHARED_LIBS)
@@ -901,8 +916,7 @@ if (BUILD_TESTS)
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
       TEST map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
-      # Fails with link error on __folly_memcpy
-      TEST memcpy_test BROKEN SOURCES MemcpyTest.cpp
+      TEST memcpy_test SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test WINDOWS_DISABLED
         SOURCES MemoryTest.cpp
