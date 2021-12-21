@@ -353,8 +353,8 @@ TEST(ThreadPoolExecutorTest, EDFTaskStats) {
   taskStats<EDFThreadPoolExecutor>();
 }
 
-#ifdef __linux__
 TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
+#ifdef __linux__
   CPUThreadPoolExecutor e(4);
   ASSERT_EQ(e.numActiveThreads(), 0);
   ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
@@ -399,9 +399,7 @@ TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
   baton.wait();
   auto elapsed3 = e.getUsedCpuTime();
   ASSERT_NEAR_NS(elapsed3, elapsed2 + 500ms, 100ms);
-}
 #else
-TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
   CPUThreadPoolExecutor e(1);
   // Just make sure 0 is returned
   ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
@@ -414,8 +412,8 @@ TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
   });
   baton.wait();
   ASSERT_EQ(e.getUsedCpuTime(), nanoseconds(0));
-}
 #endif
+}
 
 template <class TPE>
 static void expiration() {
