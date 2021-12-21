@@ -594,8 +594,9 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return std::equal_range(begin(), end(), key, key_comp());
   }
 
-  // Nothrow as long as swap() on the Compare type is nothrow.
-  void swap(sorted_vector_set& o) {
+  void swap(sorted_vector_set& o) noexcept(
+      IsNothrowSwappable<Compare>::value&& noexcept(
+          std::declval<Container&>().swap(o.m_.cont_))) {
     using std::swap; // Allow ADL for swap(); fall back to std::swap().
     Compare& a = m_;
     Compare& b = o.m_;
