@@ -300,15 +300,16 @@ TEST(ConcurrentSkipList, TestMovableData) {
       accessor.find(std::unique_ptr<int>(new int(N))) == accessor.end());
 }
 
-void testConcurrentAdd(int numThreads) {
+TEST(ConcurrentSkipList, ConcurrentAdd) {
+  int numThreads = 100;
   auto skipList(SkipListType::create(kHeadHeight));
 
   vector<std::thread> threads;
   vector<SetType> verifiers(numThreads);
   try {
     for (int i = 0; i < numThreads; ++i) {
-      threads.push_back(
-          std::thread(&randomAdding, 100, skipList, &verifiers[i], kMaxValue));
+      threads.push_back(std::thread(
+          &randomAdding, 1000000, skipList, &verifiers[i], kMaxValue));
     }
   } catch (const std::system_error& e) {
     LOG(WARNING) << "Caught " << exceptionStr(e) << ": could only create "
@@ -321,15 +322,6 @@ void testConcurrentAdd(int numThreads) {
   SetType all;
   FOR_EACH (s, verifiers) { all.insert(s->begin(), s->end()); }
   verifyEqual(skipList, all);
-}
-
-TEST(ConcurrentSkipList, ConcurrentAdd) {
-  // test it many times
-  // TSAN has a thread limit around 8k.
-  auto maxNumThreads = folly::kIsSanitizeThread ? 8000 : 10000;
-  for (int numThreads = 10; numThreads < maxNumThreads; numThreads += 1000) {
-    testConcurrentAdd(numThreads);
-  }
 }
 
 void testConcurrentRemoval(int numThreads, int maxValue) {
