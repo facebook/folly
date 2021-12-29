@@ -129,6 +129,25 @@ const std::string kTestCertBundle = folly::stripLeftMargin(R"(
   -----END CERTIFICATE-----
 )");
 
+const std::map<std::string, std::string> testCertWithSanExts{
+    {"1.3.6.1.5.5.7.1.1",
+     "0h\x6\b+\x6\x1\x5\x5\a0\x2\x86\\https://phabricator.fb.com/diffusion/"
+     "FBCODE/browse/master/ti/test_certs/ca_cert.pem?view=raw"},
+    {"2.5.29.35",
+     "\x80\x14\x17\xDF\x29\x9\x29\xBF\x7B\x9F\x1A\x7F\xE9\x46\x49\xC8\x3B\xED"
+     "\xB3\xB9\xE8\x7B"},
+    {"2.5.29.19", "\x0"},
+    {"2.16.840.1.113730.1.13", "OpenSSL Generated Certificate"},
+    {"2.5.29.17",
+     "\x82\x12"
+     "anotherexample.com\x82\x12*.thirdexample.com"},
+    {"2.5.29.14",
+     "\x71\xD6\x49\x9D\x64\x47\xD7\x1E\x65\x8B\x1E\x94\x83\x23\x42\xE1\xF2\x19"
+     "\x9F\xC3"},
+    {"1.2.3.4.1", "Custom Extension 1"},
+    {"1.2.3.4.2", "Custom Extension 2"},
+};
+
 class OpenSSLCertUtilsTest : public TestWithParam<bool> {
  public:
   void SetUp() override {
@@ -186,6 +205,26 @@ static void validateTestCertWithSAN(X509* x509) {
   EXPECT_EQ(2, altNames.size());
   EXPECT_EQ("anotherexample.com", altNames[0]);
   EXPECT_EQ("*.thirdexample.com", altNames[1]);
+}
+
+static void addCustomExt(
+    X509* x509, const std::string& oid, const std::string& data) {
+  std::string extValue("\x0C");
+  extValue.push_back(static_cast<char>(data.length()));
+  extValue.append(data);
+  folly::ssl::ASN1StrUniquePtr asn1String(ASN1_UTF8STRING_new());
+  ASN1_STRING_set(asn1String.get(), extValue.c_str(), extValue.size());
+  folly::ssl::ASN1ObjUniquePtr object(OBJ_txt2obj(oid.c_str(), 1));
+  folly::ssl::X509ExtensionUniquePtr ext(X509_EXTENSION_create_by_OBJ(
+      nullptr, object.get(), false, asn1String.get()));
+  if (!ext) {
+    throw std::runtime_error(
+        folly::to<std::string>("Could not create extension ", oid));
+  }
+  if (!X509_add_ext(x509, ext.get(), -1)) {
+    throw std::runtime_error(
+        folly::to<std::string>("Could not add extension ", oid));
+  }
 }
 
 TEST_P(OpenSSLCertUtilsTest, TestX509CN) {
@@ -373,4 +412,35 @@ TEST_P(OpenSSLCertUtilsTest, TestReadStoreDuplicate) {
       folly::StringPiece(dupBundle));
   EXPECT_NE(store, nullptr);
   EXPECT_EQ(ERR_get_error(), 0);
+}
+
+TEST_P(OpenSSLCertUtilsTest, TestAllExtensions) {
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+  // Adding a couple of curtom extensions
+  addCustomExt(x509.get(), "1.2.3.4.1", "Custom Extension 1");
+  addCustomExt(x509.get(), "1.2.3.4.2", "Custom Extension 2");
+
+  std::vector<std::pair<std::string, std::string>> extensions =
+      folly::ssl::OpenSSLCertUtils::getAllExtensions(*x509);
+  for (auto const& pair : extensions) {
+    std::string name = pair.first;
+    std::string value = pair.second;
+    if (testCertWithSanExts.find(name) != testCertWithSanExts.end()) {
+      EXPECT_EQ(value, testCertWithSanExts.find(name)->second);
+    }
+  }
+}
+
+TEST_P(OpenSSLCertUtilsTest, TestGetExtension) {
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+  addCustomExt(x509.get(), "1.2.3.4.1", "Custom Extension 1");
+  addCustomExt(x509.get(), "1.2.3.4.2", "Custom Extension 2");
+  for (const auto& [name, value] : testCertWithSanExts) {
+    std::vector<std::string> extensionValues =
+        folly::ssl::OpenSSLCertUtils::getExtension(*x509, name);
+    EXPECT_EQ(extensionValues.size(), 1);
+    EXPECT_EQ(extensionValues[0], value);
+  }
 }

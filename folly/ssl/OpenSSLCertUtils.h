@@ -17,6 +17,8 @@
 #pragma once
 
 #include <chrono>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -58,6 +60,26 @@ class OpenSSLCertUtils {
    * Get a string representation of the not-after (expiration) time
    */
   static std::string getNotAfterTime(X509& x509);
+
+  /*
+   * Get a set of strings containing data for a given cert extension
+   * @param x509     Reference to an X509
+   * @param oid      extension OID string like "1.2.3.4"
+   * @return a std::vector<std::string> containing raw bytes from the extension
+   *         entries with the requested name
+   */
+  static std::vector<std::string> getExtension(
+      X509& x509, folly::StringPiece oid);
+
+  /*
+   * return a vector of name <-> value pairs for all  extensions contaiend
+   * in the cert
+   * @param x509     Reference to an X509
+   * @return a vector of string pairs where first value in every pair is
+   *         extension oid, and the second value is the extension value.
+   */
+  static std::vector<std::pair<std::string, std::string>> getAllExtensions(
+      X509& x509);
 
   /*
    * Summarize the CN, Subject, Issuer, Validity, and extensions as a string

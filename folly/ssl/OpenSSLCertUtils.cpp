@@ -30,6 +30,48 @@ std::string getOpenSSLErrorString(unsigned long err) {
   ERR_error_string_n(err, errBuff.data(), errBuff.size());
   return std::string(errBuff.data());
 }
+
+std::string asn1ToString(ASN1_STRING* a) {
+  auto strType = ASN1_STRING_type(a);
+  if (strType == V_ASN1_UTF8STRING || strType == V_ASN1_OCTET_STRING) {
+    long len = ASN1_STRING_length(a);
+    int type, xclass;
+    const unsigned char* data = ASN1_STRING_get0_data(a);
+    ASN1_get_object(&data, &len, &type, &xclass, len);
+    return std::string(reinterpret_cast<const char*>(data), len);
+  } else {
+    unsigned char* data = const_cast<unsigned char*>(ASN1_STRING_get0_data(a));
+    int len = ASN1_STRING_length(a);
+    if (len <= 0) {
+      return std::string();
+    }
+    return std::string(reinterpret_cast<char*>(data), len);
+  }
+}
+
+std::string getExtOid(X509_EXTENSION* extension) {
+  CHECK_NOTNULL(extension);
+  ASN1_OBJECT* object = X509_EXTENSION_get_object(extension);
+  // Query for extension OID
+  constexpr int buf_size = 256;
+  std::string ret(buf_size, '\0');
+  auto length = OBJ_obj2txt(ret.data(), ret.size(), object, 1);
+
+  if (length > buf_size) {
+    // Reserve one byte for the terminating zero
+    ret.resize(length, '\0');
+    OBJ_obj2txt(ret.data(), ret.size(), object, 1);
+  }
+  ret.resize(length);
+  return ret;
+}
+
+std::string getExtData(X509_EXTENSION* extension) {
+  CHECK_NOTNULL(extension);
+  auto asnValue = X509_EXTENSION_get_data(extension);
+  return asnValue ? asn1ToString(asnValue) : std::string();
+}
+
 } // namespace
 
 Optional<std::string> OpenSSLCertUtils::getCommonName(X509& x509) {
@@ -125,6 +167,31 @@ Optional<std::string> OpenSSLCertUtils::getIssuer(X509& x509) {
   char* bioData = nullptr;
   size_t bioLen = BIO_get_mem_data(bio.get(), &bioData);
   return std::string(bioData, bioLen);
+}
+
+std::vector<std::string> OpenSSLCertUtils::getExtension(
+    X509& x509, folly::StringPiece oid) {
+  std::vector<std::string> extValues;
+  for (int i = 0; i < X509_get_ext_count(&x509); i++) {
+    X509_EXTENSION* extension = X509_get_ext(&x509, i);
+    std::string extensionOid = getExtOid(extension);
+    if (extensionOid == oid) {
+      extValues.push_back(getExtData(extension));
+    }
+  }
+  return extValues;
+}
+
+std::vector<std::pair<std::string, std::string>>
+OpenSSLCertUtils::getAllExtensions(X509& x509) {
+  std::vector<std::pair<std::string, std::string>> extensions;
+  for (int i = 0; i < X509_get_ext_count(&x509); i++) {
+    X509_EXTENSION* extension = X509_get_ext(&x509, i);
+    std::string oid = getExtOid(extension);
+    std::string value = getExtData(extension);
+    extensions.push_back(std::make_pair(oid, value));
+  }
+  return extensions;
 }
 
 folly::Optional<std::string> OpenSSLCertUtils::toString(X509& x509) {
