@@ -118,8 +118,10 @@ const uint32_t kMaxAbbreviationEntries = 1000;
 
 // Read (bitwise) one object of type T
 template <class T>
-typename std::enable_if<std::is_pod<T>::value, T>::type read(
-    folly::StringPiece& sp) {
+typename std::enable_if<
+    std::is_standard_layout<T>::value && std::is_trivial<T>::value,
+    T>::type
+read(folly::StringPiece& sp) {
   FOLLY_SAFE_CHECK(sp.size() >= sizeof(T), "underflow");
   T x;
   memcpy(&x, sp.data(), sizeof(T));

@@ -137,7 +137,8 @@ class PackedSyncPtr {
 } FOLLY_PACK_ATTR;
 
 static_assert(
-    std::is_pod<PackedSyncPtr<void>>::value,
+    std::is_standard_layout<PackedSyncPtr<void>>::value &&
+        std::is_trivial<PackedSyncPtr<void>>::value,
     "PackedSyncPtr must be kept a POD type.");
 static_assert(
     sizeof(PackedSyncPtr<void>) == 8,
