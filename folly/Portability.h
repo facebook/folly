@@ -594,8 +594,8 @@ constexpr auto kCpplibVer = 0;
 // <experimental/coroutine> which will conflict with anyone who wants to load
 // the LLVM implementation of coroutines on Windows.
 #define FOLLY_HAS_COROUTINES 0
-#elif (__cpp_coroutines >= 201703L || __cpp_impl_coroutine >= 201902L) && \
-    (__has_include(<coroutine>) || __has_include(<experimental/coroutine>))
+#elif (__cpp_impl_coroutine >= 201902L && __has_include(<coroutine>)) || \
+    (__cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>))
 #define FOLLY_HAS_COROUTINES 1
 // This is mainly to workaround bugs triggered by LTO, when stack allocated
 // variables in await_suspend end up on a coroutine frame.
