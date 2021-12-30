@@ -243,7 +243,7 @@ class ElfFile {
    *
    *  auto sym = getSymbolByName("someGlobalValue");
    *  auto addr = getSymbolValue<ElfAddr>(sym.second);
-   *  const char* str = &getSymbolValue<const char>(addr);
+   *  const char* str = &getAddressValue<const char>(addr);
    */
   template <class T>
   const T& getAddressValue(const ElfAddr addr) const noexcept {
