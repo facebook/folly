@@ -28,14 +28,12 @@ class MeteredExecutorTest : public testing::Test {
  protected:
   void createAdapter(
       int numLevels,
-      int maxReadAtOnce = 1,
       std::unique_ptr<Executor> exc =
           std::make_unique<CPUThreadPoolExecutor>(1)) {
     executors_.resize(numLevels + 1);
     executors_[0] = exc.get();
     for (int i = 0; i < numLevels; i++) {
       auto mlsa = std::make_unique<MeteredExecutor>(std::move(exc));
-      mlsa->setMaxReadAtOnce(maxReadAtOnce);
       exc = std::move(mlsa);
       executors_[i + 1] = exc.get();
     }
@@ -168,10 +166,8 @@ TEST_P(MeteredExecutorTestP, TwoLevelsWithKeepAlives) {
   auto hipri_exec = std::make_unique<CPUThreadPoolExecutor>(1);
   auto hipri_ka = getKeepAliveToken(hipri_exec.get());
   auto mipri_exec = std::make_unique<MeteredExecutor>(hipri_ka);
-  mipri_exec->setMaxReadAtOnce(maxReadAtOnce);
   auto mipri_ka = getKeepAliveToken(mipri_exec.get());
   auto lopri_exec = std::make_unique<MeteredExecutor>(mipri_ka);
-  lopri_exec->setMaxReadAtOnce(maxReadAtOnce);
   executors_ = {hipri_exec.get(), mipri_exec.get(), lopri_exec.get()};
 
   int32_t v = 0;
@@ -201,7 +197,7 @@ TEST_P(MeteredExecutorTestP, TwoLevelsWithKeepAlives) {
 }
 
 TEST_P(MeteredExecutorTestP, RequestContext) {
-  createAdapter(3, maxReadAtOnce);
+  createAdapter(3);
 
   folly::Baton baton;
   add([&] { baton.wait(); });
@@ -256,7 +252,7 @@ TEST_F(MeteredExecutorTest, ResetJoins) {
 
 TEST_F(MeteredExecutorTest, ConcurrentShutdown) {
   // ensure no data races on shutdown when executor has 2 threads
-  createAdapter(2, 1, std::make_unique<CPUThreadPoolExecutor>(2));
+  createAdapter(2, std::make_unique<CPUThreadPoolExecutor>(2));
 }
 
 TEST_F(MeteredExecutorTest, CostOfMeteredExecutors) {
@@ -287,7 +283,7 @@ TEST_F(MeteredExecutorTest, CostOfMeteredExecutors) {
   auto drive = [exc = exc.get()] { exc->drive(); };
   auto getCount = [exc = exc.get()] { return std::exchange(exc->count, 0); };
   auto driveOnAdd = [exc = exc.get()] { exc->driveWhenAdded = true; };
-  createAdapter(3, 1, std::move(exc));
+  createAdapter(3, std::move(exc));
 
   // When queues are empty, we will schedule as many tasks on the main
   // executor as there are executors in the chain.

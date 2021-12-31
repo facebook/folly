@@ -59,8 +59,6 @@ class MeteredExecutor : public DefaultKeepAliveExecutor {
   explicit MeteredExecutor(KeepAlive keepAlive, Options options = Options());
   ~MeteredExecutor() override;
 
-  void setMaxReadAtOnce(uint32_t maxAtOnce);
-
   void add(Func func) override;
 
   size_t pendingTasks() const { return queue_.size(); }

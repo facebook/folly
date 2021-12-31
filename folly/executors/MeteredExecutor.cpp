@@ -34,10 +34,6 @@ MeteredExecutor::MeteredExecutor(
   ownedExecutor_ = std::move(executor);
 }
 
-void MeteredExecutor::setMaxReadAtOnce(uint32_t maxAtOnce) {
-  queue_.setMaxReadAtOnce(maxAtOnce);
-}
-
 std::unique_ptr<QueueObserver> MeteredExecutor::setupQueueObserver() {
   if (options_.enableQueueObserver) {
     std::string name = "unk";
@@ -98,16 +94,9 @@ void MeteredExecutor::Consumer::operator()(
   if (self_.queueObserver_) {
     self_.queueObserver_->onDequeued(task.getQueueObserverPayload());
   }
-  if (!first_) {
-    first_ = std::make_optional<Task>(std::move(task));
-    firstRctx_ = std::move(rctx);
-  } else {
-    self_.kaInner_->add(
-        [task = std::move(task), rctx = std::move(rctx)]() mutable {
-          RequestContextScopeGuard guard(std::move(rctx));
-          task.run();
-        });
-  }
+  DCHECK(!first_);
+  first_ = std::make_optional<Task>(std::move(task));
+  firstRctx_ = std::move(rctx);
 }
 
 } // namespace folly
