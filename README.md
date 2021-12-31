@@ -1,7 +1,7 @@
 Folly: Facebook Open-source Library
------------------------------------
+===================================
 
-### What is `folly`?
+# What is `folly`?
 
 <img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
 
@@ -22,7 +22,7 @@ designs that are more idiosyncratic than they would otherwise be (see
 e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
 scale is a unifying theme in all of Folly.
 
-### Logical Design
+# Logical Design
 
 Folly is a collection of relatively independent components, some as
 simple as a few symbols. There is no restriction on internal
@@ -39,7 +39,7 @@ Folly has an `experimental` directory as well. This designation connotes
 primarily that we feel the API may change heavily over time. This code,
 typically, is still in heavy use and is well tested.
 
-### Physical Design
+# Physical Design
 
 At the top level Folly uses the classic "stuttering" scheme
 `folly/folly` used by Boost and others. The first directory serves as
@@ -59,68 +59,110 @@ components, usually named `ComponentXyzTest.cpp` for each
 `ComponentXyz.*`. The `folly/folly/docs` directory contains
 documentation.
 
-### What's in it?
+# What's in it?
 
 Because of folly's fairly flat structure, the best way to see what's in it
-is to look at the headers in [top level `folly/` directory](https://github.com/facebook/folly/tree/master/folly). You can also
+is to look at the headers in [top level `folly/` directory](https://github.com/facebook/folly/tree/main/folly). You can also
 check the [`docs` folder](folly/docs) for documentation, starting with the
 [overview](folly/docs/Overview.md).
 
 Folly is published on GitHub at https://github.com/facebook/folly
 
-### Build Notes
+# Build Notes
 
 Because folly does not provide any ABI compatibility guarantees from commit to
 commit, we generally recommend building folly as a static library.
-
-#### build.sh
-
-The simplest way to build folly is using the `build.sh` script in the top-level
-of the repository.  `build.sh` can be used on Linux and MacOS, on Windows use
-the `build.bat` script instead.
-
-This script will download and build all of the necessary dependencies first,
-and will then build folly.  This will help ensure that you build with recent
-versions of all of the dependent libraries, regardless of what versions are
-installed locally on your system.
-
-By default this script will build and install folly and its dependencies in a
-scratch directory.  You can also specify a `--scratch-path` argument to control
-the location of the scratch directory used for the build.  There are also
-`--install-dir` and `--install-prefix` arguments to provide some more
-fine-grained control of the installation directories.  However, given that
-folly provides no compatibility guarantees between commits we generally
-recommend building and installing the libraries to a temporary location, and
-then pointing your project's build at this temporary location, rather than
-installing folly in the traditional system installation directories.  e.g., if
-you are building with CMake you can use the `CMAKE_PREFIX_PATH` variable to
-allow CMake to find folly in this temporary installation directory when
-building your project.
-
-#### Dependencies
 
 folly supports gcc (5.1+), clang, or MSVC. It should run on Linux (x86-32,
 x86-64, and ARM), iOS, macOS, and Windows (x86-64). The CMake build is only
 tested on some of these platforms; at a minimum, we aim to support macOS and
 Linux (on the latest Ubuntu LTS release or newer.)
 
-folly requires a version of boost compiled with C++14 support.
+## `getdeps.py`
 
-googletest is required to build and run folly's tests.  You can download
-it from https://github.com/google/googletest/archive/release-1.8.0.tar.gz
-The following commands can be used to download and install it:
+This script is used by many of Meta's OSS tools.  It will download and build all of the necessary dependencies first, and will then invoke cmake etc to build folly.  This will help ensure that you build with relevant versions of all of the dependent libraries, taking into account what versions are installed locally on your system.
 
-```
-wget https://github.com/google/googletest/archive/release-1.8.0.tar.gz && \
-tar zxf release-1.8.0.tar.gz && \
-rm -f release-1.8.0.tar.gz && \
-cd googletest-release-1.8.0 && \
-cmake . && \
-make && \
-make install
-```
+It's written in python so you'll need python3.6 or later on your PATH.  It works on Linux, macOS and Windows.
 
-#### Finding dependencies in non-default locations
+The settings for folly's cmake build are held in its getdeps manifest `build/fbcode_builder/manifests/folly`, which you can edit locally if desired.
+
+### Dependencies
+
+If on Linux you can install system dependencies to save building them:
+
+    # Clone the repo
+    git clone https://github.com/facebook/folly
+    # Install dependencies
+    cd folly
+    sudo ./build/fbcode_builder/getdeps.py install-system-deps --recursive
+
+If you'd like to see the packages before installing them:
+
+    ./build/fbcode_builder/getdeps.py install-system-deps --dry-run --recursive
+
+On other platforms or if on Linux and without system dependencies `getdeps.py` will mostly download and build them for you during the build step.
+
+Some of the dependencies `getdeps.py` uses and installs are:
+
+  * a version of boost compiled with C++14 support.
+  * googletest is required to build and run folly's tests
+
+### Build
+
+This script will download and build all of the necessary dependencies first,
+and will then invoke cmake etc to build folly.  This will help ensure that you build with relevant versions of all of the dependent libraries, taking into account what versions are installed locally on your system.
+
+`getdeps.py` currently requires python 3.6+ to be on your path.
+
+`getdeps.py` will invoke cmake etc
+
+    # Clone the repo
+    git clone https://github.com/facebook/folly
+    cd folly
+    # Build, using system dependencies if available
+    python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build
+
+It puts output in its scratch area:
+
+  * `installed/folly/lib/libfolly.a`: Library
+
+You can also specify a `--scratch-path` argument to control
+the location of the scratch directory used for the build. You can find the default scratch install location from logs or with `python3 ./build/fbcode_builder/getdeps.py show-inst-dir`
+
+There are also
+`--install-dir` and `--install-prefix` arguments to provide some more
+fine-grained control of the installation directories. However, given that
+folly provides no compatibility guarantees between commits we generally
+recommend building and installing the libraries to a temporary location, and
+then pointing your project's build at this temporary location, rather than
+installing folly in the traditional system installation directories.  e.g., if you are building with CMake you can use the `CMAKE_PREFIX_PATH` variable to allow CMake to find folly in this temporary installation directory when
+building your project.
+
+If you want to invoke `cmake` again to iterate, there is a helpful `run_cmake.py` script output in the scratch build directory.  You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`
+
+### Run tests
+
+By default `getdeps.py` will build the tests for folly. To run them:
+
+    cd folly
+    python3 ./build/fbcode_builder/getdeps.py --allow-system-packages test
+
+### `build.sh`/`build.bat` wrapper
+
+`build.sh` can be used on Linux and MacOS, on Windows use
+the `build.bat` script instead. Its a wrapper around `getdeps.py`
+
+## Build with cmake directly
+
+If you don't want to let getdeps invoke cmake for you then by default, building the tests is disabled as part of the CMake `all` target.
+To build the tests, specify `-DBUILD_TESTS=ON` to CMake at configure time.
+
+NB if you want to invoke `cmake` again to iterate on a `getdeps.py` build, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`
+
+Running tests with ctests also works if you cd to the build dir, e.g. `
+`(cd $(python3 ./build/fbcode_builder/getdeps.py show-build-dir) && ctest)`
+
+### Finding dependencies in non-default locations
 
 If you have boost, gtest, or other dependencies installed in a non-default
 location, you can use the `CMAKE_INCLUDE_PATH` and `CMAKE_LIBRARY_PATH`
@@ -136,73 +178,33 @@ cmake \
   -DCMAKE_LIBRARY_PATH=/alt/lib/path1:/alt/lib/path2 ...
 ```
 
-#### Building tests
+## Ubuntu LTS, CentOS Stream, Fedora
 
-By default, building the tests is disabled as part of the CMake `all` target.
-To build the tests, specify `-DBUILD_TESTS=ON` to CMake at configure time.
+Use the `getdeps.py` approach above. We test in CI on Ubuntu LTS, and occasionally on other distros.
 
-#### Ubuntu 16.04 LTS
+If you find the set of system packages is not quite right for your chosen distro,  you can specify distro version specific overrides in the dependency manifests (e.g. https://github.com/facebook/folly/blob/main/build/fbcode_builder/manifests/boost ).   You could probably make it work on most recent Ubuntu/Debian or Fedora/Redhat derived distributions.
 
-The following packages are required (feel free to cut and paste the apt-get
-command below):
+At time of writing (Dec 2021) there is a build break on GCC 11.x based systems in lang_badge_test.  If you don't need badge functionality you can work around by commenting it out from CMakeLists.txt (unfortunately fbthrift does need it)
 
-```
-sudo apt-get install \
-    g++ \
-    cmake \
-    libboost-all-dev \
-    libevent-dev \
-    libdouble-conversion-dev \
-    libgoogle-glog-dev \
-    libgflags-dev \
-    libiberty-dev \
-    liblz4-dev \
-    liblzma-dev \
-    libsnappy-dev \
-    make \
-    zlib1g-dev \
-    binutils-dev \
-    libjemalloc-dev \
-    libssl-dev \
-    pkg-config \
-    libunwind-dev
-```
+## Windows (Vcpkg)
 
-Folly relies on [fmt](https://github.com/fmtlib/fmt) which needs to be installed from source.
-The following commands will download, compile, and install fmt.
+Note that many tests are disabled for folly Windows builds,  you can see them in the log from the cmake configure step, or by looking for WINDOWS_DISABLED in `CMakeLists.txt`
 
-```
-git clone https://github.com/fmtlib/fmt.git && cd fmt
+That said, `getdeps.py` builds work on Windows and are tested in CI.
 
-mkdir _build && cd _build
-cmake ..
+If you prefer, you can try Vcpkg.  folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg) and releases may be built via `vcpkg install folly:x64-windows`.
 
-make -j$(nproc)
-sudo make install
-```
+You may also use `vcpkg install folly:x64-windows --head` to build against `main`.
 
-If advanced debugging functionality is required, use:
+## macOS
 
-```
-sudo apt-get install \
-    libunwind8-dev \
-    libelf-dev \
-    libdwarf-dev
-```
+`getdeps.py` builds work on macOS and are tested in CI, however if you prefer, you can try one of the macOS package managers
 
-In the folly directory (e.g. the checkout root or the archive unpack root), run:
-```
-  mkdir _build && cd _build
-  cmake ..
-  make -j $(nproc)
-  make install # with either sudo or DESTDIR as necessary
-```
-
-#### OS X (Homebrew)
+### Homebrew
 
 folly is available as a Formula and releases may be built via `brew install folly`.
 
-You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `master`:
+You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `main`:
 
 ```
   ./folly/build/bootstrap-osx-homebrew.sh
@@ -210,7 +212,7 @@ You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `maste
 
 This will create a build directory `_build` in the top-level.
 
-#### OS X (MacPorts)
+### MacPorts
 
 Install the required packages from MacPorts:
 
@@ -252,50 +254,3 @@ Download and install folly with the parameters listed below:
   make
   sudo make install
 ```
-
-#### Windows (Vcpkg)
-
-folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg) and releases may be built via `vcpkg install folly:x64-windows`.
-
-You may also use `vcpkg install folly:x64-windows --head` to build against `master`.
-
-#### Other Linux distributions
-
-- double-conversion (https://github.com/google/double-conversion)
-
-  Download and build double-conversion.
-  You may need to tell cmake where to find it.
-
-  [double-conversion/] `ln -s src double-conversion`
-
-  [folly/] `mkdir build && cd build`
-  [folly/build/] `cmake "-DCMAKE_INCLUDE_PATH=$DOUBLE_CONVERSION_HOME/include" "-DCMAKE_LIBRARY_PATH=$DOUBLE_CONVERSION_HOME/lib" ..`
-
-  [folly/build/] `make`
-
-- additional platform specific dependencies:
-
-  Fedora >= 21 64-bit (last tested on Fedora 28 64-bit)
-    - gcc
-    - gcc-c++
-    - cmake
-    - automake
-    - boost-devel
-    - libtool
-    - lz4-devel
-    - lzma-devel
-    - snappy-devel
-    - zlib-devel
-    - glog-devel
-    - gflags-devel
-    - scons
-    - double-conversion-devel
-    - openssl-devel
-    - libevent-devel
-    - fmt-devel
-    - libsodium-devel
-
-  Optional
-    - libdwarf-devel
-    - elfutils-libelf-devel
-    - libunwind-devel
