@@ -298,7 +298,7 @@ auto makeRefBlockingWaitTask(Awaitable&& awaitable)
 
 class BlockingWaitExecutor final : public folly::DrivableExecutor {
  public:
-  ~BlockingWaitExecutor() {
+  ~BlockingWaitExecutor() override {
     while (keepAliveCount_.load() > 0) {
       drive();
     }
