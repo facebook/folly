@@ -46,7 +46,7 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
       EventBase::Options eventBaseOptions,
       EventBaseManager* ebm,
       StringPiece name);
-  ~ScopedEventBaseThread();
+  ~ScopedEventBaseThread() override;
 
   EventBase* getEventBase() const { return &eb_; }
 
