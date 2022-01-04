@@ -28,7 +28,7 @@ namespace folly {
  */
 class OpenSSLTransportCertificate : public AsyncTransportCertificate {
  public:
-  virtual ~OpenSSLTransportCertificate() = default;
+  virtual ~OpenSSLTransportCertificate() override = default;
 
   /**
    * Returns an X509 structure associated with this Certificate. This may be
