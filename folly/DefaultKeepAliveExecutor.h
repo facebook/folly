@@ -30,7 +30,7 @@ namespace folly {
 /// threadsafe.
 class DefaultKeepAliveExecutor : public virtual Executor {
  public:
-  virtual ~DefaultKeepAliveExecutor() { DCHECK(!keepAlive_); }
+  virtual ~DefaultKeepAliveExecutor() override { DCHECK(!keepAlive_); }
 
   template <typename ExecutorT>
   static auto getWeakRef(ExecutorT& executor) {

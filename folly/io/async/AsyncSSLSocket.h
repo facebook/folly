@@ -166,7 +166,7 @@ class AsyncSSLSocket : public AsyncSocket {
           sslSocket_(sslSocket),
           dg_(std::move(dg)) {}
 
-    ~DefaultOpenSSLAsyncFinishCallback() {
+    ~DefaultOpenSSLAsyncFinishCallback() override {
       pipeReader_->setReadCB(nullptr);
       sslSocket_->setAsyncOperationFinishCallback(nullptr);
     }
