@@ -6,6 +6,7 @@ cmake
 
 [dependencies]
 ninja
+openssl
 
 [download.os=windows]
 url = https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-windows-x86_64.zip
