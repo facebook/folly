@@ -3078,6 +3078,37 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
       serverSSLSock->getRawBytesReceived(), clientSock->getRawBytesWritten());
 }
 
+TEST(AsyncSSLSocketTest, TestNullConnectCallbackError) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  std::array<NetworkSocket, 2> fds;
+  getfds(fds.data());
+  getctx(clientCtx, serverCtx);
+  // Mismatched ciphers
+  clientCtx->ciphers(
+      "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256");
+  serverCtx->ciphers(
+      "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384");
+
+  AsyncSSLSocket::UniquePtr clientSockPtr(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSockPtr(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+  auto clientSock = clientSockPtr.get();
+
+  clientSock->sslConn(nullptr);
+
+  ExpectSSLWriteErrorCallback wcb;
+  wcb.setSocket(std::move(clientSockPtr));
+  clientSock->write(&wcb, "abc", 3);
+
+  SSLHandshakeServer server(std::move(serverSockPtr), true, true);
+  eventBase.loop();
+
+  EXPECT_FALSE(server.handshakeSuccess_);
+}
+
 /**
  * Test overriding the flags passed to "sendmsg()" system call,
  * and verifying that write requests fail properly.

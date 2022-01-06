@@ -707,7 +707,7 @@ void AsyncSSLSocket::failHandshake(
     handshakeTimeout_.cancelTimeout();
   }
   invokeHandshakeErr(ex);
-  finishFail();
+  finishFail(ex);
 }
 
 void AsyncSSLSocket::invokeHandshakeErr(const AsyncSocketException& ex) {

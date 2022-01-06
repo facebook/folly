@@ -209,6 +209,21 @@ class ExpectWriteErrorCallback : public WriteCallbackBase {
   }
 };
 
+class ExpectSSLWriteErrorCallback : public WriteCallbackBase {
+ public:
+  explicit ExpectSSLWriteErrorCallback(SendMsgParamsCallbackBase* mcb = nullptr)
+      : WriteCallbackBase(mcb) {}
+
+  ~ExpectSSLWriteErrorCallback() override {
+    EXPECT_EQ(STATE_FAILED, state);
+    EXPECT_EQ(
+        exception.getType(),
+        AsyncSocketException::AsyncSocketExceptionType::SSL_ERROR);
+    // Suppress the assert in  ~WriteCallbackBase()
+    state = STATE_SUCCEEDED;
+  }
+};
+
 class ReadCallbackBase : public AsyncTransport::ReadCallback {
  public:
   explicit ReadCallbackBase(WriteCallbackBase* wcb)
