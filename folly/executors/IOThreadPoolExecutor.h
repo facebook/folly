@@ -88,7 +88,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   folly::EventBaseManager* getEventBaseManager();
 
- private:
+ protected:
   struct alignas(Thread) IOThread : public Thread {
     IOThread(IOThreadPoolExecutor* pool)
         : Thread(pool), shouldRun(true), pendingTasks(0) {}
@@ -98,6 +98,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
     std::mutex eventBaseShutdownMutex_;
   };
 
+ private:
   ThreadPtr makeThread() override;
   std::shared_ptr<IOThread> pickThread();
   void threadRun(ThreadPtr thread) override;

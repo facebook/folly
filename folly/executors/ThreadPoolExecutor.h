@@ -172,8 +172,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     virtual ~Observer() = default;
   };
 
-  void addObserver(std::shared_ptr<Observer>);
-  void removeObserver(std::shared_ptr<Observer>);
+  virtual void addObserver(std::shared_ptr<Observer>);
+  virtual void removeObserver(std::shared_ptr<Observer>);
 
   void setThreadDeathTimeout(std::chrono::milliseconds timeout) {
     threadTimeout_ = timeout;
