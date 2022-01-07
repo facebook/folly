@@ -40,6 +40,8 @@ namespace {
 ////////////////////////////////////////////////////
 // native implementation using the futex() syscall
 
+// The native implementation of futex wake must be async-signal-safe.
+
 #ifdef __linux__
 
 /// Certain toolchains (like Android's) don't include the full futex API in
@@ -160,6 +162,8 @@ FutexResult nativeFutexWaitImpl(
 
 ///////////////////////////////////////////////////////
 // compatibility implementation using standard C++ API
+
+// This implementation may be non-async-signal-safe.
 
 using Lot = ParkingLot<uint32_t>;
 Lot parkingLot;

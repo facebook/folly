@@ -55,6 +55,11 @@ namespace folly {
 /// DeterministicSchedule.  By having a much more restrictive
 /// lifecycle we can also add a bunch of assertions that can help to
 /// catch race conditions ahead of time.
+///
+/// Baton post with MayBlock == false is async-signal-safe.
+/// When MayBlock == true, Baton post is async-signal-safe if
+/// Futex wake is so.
+
 template <bool MayBlock = true, template <typename> class Atom = std::atomic>
 class Baton {
  public:
