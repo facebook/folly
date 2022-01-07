@@ -43,7 +43,7 @@ class ObserverCreatorContext {
   }
 
   std::shared_ptr<const T> get() {
-    auto state = state_.lock();
+    auto state = state_.wlock();
     state->updateRequested = false;
     return state->value;
   }
@@ -62,10 +62,10 @@ class ObserverCreatorContext {
       // important to not hold state_ lock while running it to avoid possible
       // lock inversion with another code path that needs state_ lock (e.g.
       // get()).
-      std::lock_guard<std::mutex> updateLockGuard(updateLock_);
+      std::lock_guard<SharedMutex> updateLockGuard(updateLock_);
       auto newValue = Traits::get(observable_);
 
-      auto state = state_.lock();
+      auto state = state_.wlock();
       if (!state->updateValue(std::move(newValue))) {
         // Value didn't change, so we can skip the version update.
         return nullptr;
@@ -88,7 +88,7 @@ class ObserverCreatorContext {
   }
 
  private:
-  std::mutex updateLock_;
+  SharedMutex updateLock_;
   struct State {
     bool updateValue(std::shared_ptr<const T> newValue) {
       auto newValuePtr = newValue.get();
@@ -102,7 +102,7 @@ class ObserverCreatorContext {
     std::shared_ptr<const T> value;
     bool updateRequested{false};
   };
-  folly::Synchronized<State, std::mutex> state_;
+  folly::Synchronized<State> state_;
 
   observer_detail::Core::WeakPtr coreWeak_;
 
