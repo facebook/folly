@@ -68,7 +68,7 @@ class OpenSSLHash {
       md_ = md;
     }
 
-    void hash_update(ByteRange data) {
+    void hash_update(const ByteRange& data) {
       if (nullptr == ctx_) {
         throw_exception<std::runtime_error>(
             "hash_update() called without hash_init()");
@@ -78,7 +78,7 @@ class OpenSSLHash {
     }
 
     void hash_update(const IOBuf& data) {
-      for (auto r : data) {
+      for (const auto& r : data) {
         hash_update(r);
       }
     }
@@ -196,7 +196,7 @@ class OpenSSLHash {
       md_ = md;
     }
 
-    void hash_update(ByteRange data) {
+    void hash_update(const ByteRange& data) {
       if (ctx_ == nullptr) {
         throw_exception<std::runtime_error>(
             "hash_update() called without hash_init()");
@@ -205,7 +205,7 @@ class OpenSSLHash {
     }
 
     void hash_update(const IOBuf& data) {
-      for (auto r : data) {
+      for (const auto& r : data) {
         hash_update(r);
       }
     }
