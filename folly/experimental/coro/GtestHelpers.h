@@ -239,4 +239,13 @@
 #define CO_SKIP(message) \
   co_return GTEST_MESSAGE_(message, ::testing::TestPartResult::kSkip)
 
+/**
+ * Coroutine version of SKIP_IF()
+ */
+#define CO_SKIP_IF(expr, message) \
+  GTEST_AMBIGUOUS_ELSE_BLOCKER_   \
+  if (!(expr)) {                  \
+  } else                          \
+    CO_SKIP(message)
+
 #endif // FOLLY_HAS_COROUTINES
