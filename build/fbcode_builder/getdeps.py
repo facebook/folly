@@ -347,7 +347,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
         )
         parser.add_argument(
             "--package-type",
-            choices=["rpm", "deb"],
+            choices=["rpm", "deb", "pacman-package"],
             default=None,
             help="Allow overriding the package type so can see deb from centos",
         )
@@ -381,6 +381,10 @@ class InstallSysDepsCmd(ProjectCmdBase):
             packages = sorted(list(set(all_packages["deb"])))
             if packages:
                 cmd_args = ["apt", "install", "-y"] + packages
+        elif manager == "pacman-package":
+            packages = sorted(list(set(all_packages["pacman-package"])))
+            if packages:
+                cmd_args = ["pacman", "-S"] + packages
         else:
             host_tuple = loader.build_opts.host_type.as_tuple_string()
             print(
