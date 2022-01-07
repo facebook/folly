@@ -179,7 +179,7 @@ foo = bar
 foo = baz
 """,
         )
-        self.assertEqual(p.get_section_as_dict("cmake.defines"), {"foo": "bar"})
+        self.assertEqual(p.get_section_as_dict("cmake.defines", {}), {"foo": "bar"})
         self.assertEqual(
             p.get_section_as_dict("cmake.defines", {"test": "on"}), {"foo": "baz"}
         )

@@ -581,7 +581,10 @@ class BuildCmd(ProjectCmdBase):
                 elif args.verbose:
                     print("found good %s" % built_marker)
 
-            install_dirs.append(inst_dir)
+            # Paths are resolved from front. We prepend rather than append as
+            # the last project in topo order is the project itself, which
+            # should be first in the path, then its deps and so on.
+            install_dirs.insert(0, inst_dir)
 
     def compute_dep_change_status(self, m, built_marker, loader):
         reconfigure = False
@@ -589,7 +592,7 @@ class BuildCmd(ProjectCmdBase):
         st = os.lstat(built_marker)
 
         ctx = loader.ctx_gen.get_context(m.name)
-        dep_list = sorted(m.get_section_as_dict("dependencies", ctx).keys())
+        dep_list = m.get_dependencies(ctx)
         for dep in dep_list:
             if reconfigure and sources_changed:
                 break

@@ -192,19 +192,7 @@ class ManifestLoader(object):
             # to produce the same order regardless of how they are listed
             # in the project manifest files.
             ctx = self.ctx_gen.get_context(m.name)
-            dep_list = sorted(m.get_section_as_dict("dependencies", ctx).keys())
-            builder = m.get("build", "builder", ctx=ctx)
-            if builder in ("cmake", "python-wheel"):
-                dep_list.append("cmake")
-            elif builder == "autoconf" and m.name not in (
-                "autoconf",
-                "libtool",
-                "automake",
-            ):
-                # they need libtool and its deps (automake, autoconf) so add
-                # those as deps (but obviously not if we're building those
-                # projects themselves)
-                dep_list.append("libtool")
+            dep_list = m.get_dependencies(ctx)
 
             dep_count = 0
             for dep_name in dep_list:
@@ -303,7 +291,7 @@ class ManifestLoader(object):
 
         manifest.update_hash(hasher, ctx)
 
-        dep_list = sorted(manifest.get_section_as_dict("dependencies", ctx).keys())
+        dep_list = manifest.get_dependencies(ctx)
         for dep in dep_list:
             dep_manifest = self.load_manifest(dep)
             dep_hash = self.get_project_hash(dep_manifest)

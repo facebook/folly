@@ -246,6 +246,24 @@ class ManifestParser(object):
 
         return defval
 
+    def get_dependencies(self, ctx):
+        dep_list = list(self.get_section_as_dict("dependencies", ctx).keys())
+        dep_list.sort()
+        builder = self.get("build", "builder", ctx=ctx)
+        if builder in ("cmake", "python-wheel"):
+            dep_list.insert(0, "cmake")
+        elif builder == "autoconf" and self.name not in (
+            "autoconf",
+            "libtool",
+            "automake",
+        ):
+            # they need libtool and its deps (automake, autoconf) so add
+            # those as deps (but obviously not if we're building those
+            # projects themselves)
+            dep_list.insert(0, "libtool")
+
+        return dep_list
+
     def get_section_as_args(self, section, ctx=None):
         """Intended for use with the make.[build_args/install_args] and
         autoconf.args sections, this method collects the entries and returns an
@@ -290,9 +308,8 @@ class ManifestParser(object):
                 res.append((key, value))
         return res
 
-    def get_section_as_dict(self, section, ctx=None):
+    def get_section_as_dict(self, section, ctx):
         d = {}
-        ctx = ctx or {}
 
         for s in self._config.sections():
             if s != section:

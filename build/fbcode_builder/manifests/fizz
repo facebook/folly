@@ -30,7 +30,7 @@ zlib
 zstd
 
 [dependencies.all(test=on, not(os=windows))]
-googletest_1_8
+googletest
 
 [shipit.pathmap]
 fbcode/fizz/public_tld = .

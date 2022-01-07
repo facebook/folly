@@ -1359,12 +1359,12 @@ incremental = false
         is also cargo-builded and if yes then extract it's git configs and
         install dir
         """
-        dependencies = self.manifest.get_section_as_dict("dependencies", ctx=self.ctx)
+        dependencies = self.manifest.get_dependencies(self.ctx)
         if not dependencies:
             return []
 
         dep_to_git = {}
-        for dep in dependencies.keys():
+        for dep in dependencies:
             dep_manifest = self.loader.load_manifest(dep)
             dep_builder = dep_manifest.get("build", "builder", ctx=self.ctx)
             if dep_builder not in ["cargo", "nop"] or dep == "rust":
@@ -1374,7 +1374,7 @@ incremental = false
                 # toolchain.
                 continue
 
-            git_conf = dep_manifest.get_section_as_dict("git", ctx=self.ctx)
+            git_conf = dep_manifest.get_section_as_dict("git", self.ctx)
             if "repo_url" not in git_conf:
                 raise Exception(
                     "A cargo dependency requires git.repo_url to be defined."
