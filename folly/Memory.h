@@ -49,7 +49,7 @@ inline void* allocateBytes(size_t n) {
 }
 
 inline void deallocateBytes(void* p, size_t n) {
-#if __cpp_sized_deallocation
+#if defined(__cpp_sized_deallocation)
   return ::operator delete(p, n);
 #else
   (void)n;
@@ -57,11 +57,12 @@ inline void deallocateBytes(void* p, size_t n) {
 #endif
 }
 
-#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 ||   \
-    (defined(__ANDROID__) && (__ANDROID_API__ > 16)) ||     \
-    (defined(__APPLE__) &&                                  \
-     (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_6 ||      \
-      __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0)) || \
+#if (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L) || \
+    (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE >= 600) ||         \
+    (defined(__ANDROID__) && (__ANDROID_API__ > 16)) ||         \
+    (defined(__APPLE__) &&                                      \
+     (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_6 ||          \
+      __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0)) ||     \
     defined(__FreeBSD__) || defined(__wasm32__)
 
 inline void* aligned_malloc(size_t size, size_t align) {
@@ -118,7 +119,7 @@ void rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
   static_assert(
       sizeof(BaseType) == kBaseAlign && alignof(BaseType) == kBaseAlign, "");
 
-#if __cpp_sized_deallocation
+#if defined(__cpp_sized_deallocation)
   if (kCanBypass && kAlign == kBaseAlign) {
     // until std::allocator uses sized deallocation, it is worth the
     // effort to bypass it when we are able
@@ -357,7 +358,7 @@ std::weak_ptr<T> to_weak_ptr(const std::shared_ptr<T>& ptr) {
   return ptr;
 }
 
-#if __GLIBCXX__
+#if defined(__GLIBCXX__)
 namespace detail {
 void weak_ptr_set_stored_ptr(std::weak_ptr<void>& w, void* ptr);
 
@@ -396,7 +397,7 @@ template struct GenerateWeakPtrInternalsAccessor<
  */
 template <typename T, typename U>
 std::weak_ptr<U> to_weak_ptr_aliasing(const std::shared_ptr<T>& r, U* ptr) {
-#if __GLIBCXX__
+#if defined(__GLIBCXX__)
   std::weak_ptr<void> wv(r);
   detail::weak_ptr_set_stored_ptr(wv, ptr);
   return reinterpret_cast<std::weak_ptr<U>&&>(wv);

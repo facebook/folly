@@ -35,7 +35,7 @@ static_assert(__GNUC__ >= 5, "__GNUC__ >= 5");
 
 // Unaligned loads and stores
 namespace folly {
-#if FOLLY_HAVE_UNALIGNED_ACCESS
+#if defined(FOLLY_HAVE_UNALIGNED_ACCESS) && FOLLY_HAVE_UNALIGNED_ACCESS
 constexpr bool kHasUnalignedAccess = true;
 #else
 constexpr bool kHasUnalignedAccess = false;
@@ -230,7 +230,7 @@ constexpr bool kIsSanitize = false;
 
 // If the new c++ ABI is used, __cxx11 inline namespace needs to be added to
 // some types, e.g. std::list.
-#if _GLIBCXX_USE_CXX11_ABI
+#if defined(_GLIBCXX_USE_CXX11_ABI) && _GLIBCXX_USE_CXX11_ABI
 #define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN \
   inline _GLIBCXX_BEGIN_NAMESPACE_CXX11
 #define FOLLY_GLIBCXX_NAMESPACE_CXX11_END _GLIBCXX_END_NAMESPACE_CXX11
@@ -266,10 +266,11 @@ constexpr bool kIsSanitize = false;
 #endif
 
 // Define FOLLY_HAS_EXCEPTIONS
-#if __cpp_exceptions >= 199711 || FOLLY_HAS_FEATURE(cxx_exceptions)
+#if (defined(__cpp_exceptions) && __cpp_exceptions >= 199711) || \
+    FOLLY_HAS_FEATURE(cxx_exceptions)
 #define FOLLY_HAS_EXCEPTIONS 1
 #elif __GNUC__
-#if __EXCEPTIONS
+#if defined(__EXCEPTIONS) && __EXCEPTIONS
 #define FOLLY_HAS_EXCEPTIONS 1
 #else // __EXCEPTIONS
 #define FOLLY_HAS_EXCEPTIONS 0
@@ -459,19 +460,19 @@ constexpr bool kIsAppleMacOS = FOLLY_APPLE_MACOS == 1;
 constexpr bool kIsAppleTVOS = FOLLY_APPLE_TVOS == 1;
 constexpr bool kIsAppleWatchOS = FOLLY_APPLE_WATCHOS == 1;
 
-#if __GLIBCXX__
+#if defined(__GLIBCXX__)
 constexpr auto kIsGlibcxx = true;
 #else
 constexpr auto kIsGlibcxx = false;
 #endif
 
-#if __GLIBCXX__ && _GLIBCXX_RELEASE // major version, 7+
+#if defined(__GLIBCXX__) && _GLIBCXX_RELEASE // major version, 7+
 constexpr auto kGlibcxxVer = _GLIBCXX_RELEASE;
 #else
 constexpr auto kGlibcxxVer = 0;
 #endif
 
-#if __GLIBCXX__ && defined(_GLIBCXX_ASSERTIONS)
+#if defined(__GLIBCXX__) && defined(_GLIBCXX_ASSERTIONS)
 constexpr auto kGlibcxxAssertions = true;
 #else
 constexpr auto kGlibcxxAssertions = false;
@@ -483,7 +484,7 @@ constexpr auto kIsLibcpp = true;
 constexpr auto kIsLibcpp = false;
 #endif
 
-#if __GLIBCXX__
+#if defined(__GLIBCXX__)
 constexpr auto kIsLibstdcpp = true;
 #else
 constexpr auto kIsLibstdcpp = false;

@@ -21,7 +21,8 @@
 #include <folly/CPortability.h>
 #include <folly/portability/Config.h>
 
-#if (defined(USE_JEMALLOC) || FOLLY_USE_JEMALLOC) && !defined(FOLLY_SANITIZE)
+#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && \
+    !defined(FOLLY_SANITIZE)
 #if defined(FOLLY_ASSUME_NO_JEMALLOC)
 #error \
     "Both USE_JEMALLOC/FOLLY_USE_JEMALLOC and FOLLY_ASSUME_NO_JEMALLOC defined"
