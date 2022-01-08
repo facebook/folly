@@ -7,6 +7,9 @@ tcl
 [debs]
 tcl
 
+[pacman-packages]
+tcl
+
 [download]
 url = https://github.com/tcltk/tcl/archive/core-8-7a3.tar.gz
 sha256 = 22d748f0c9652f3ecc195fed3f24a1b6eea8d449003085e6651197951528982e

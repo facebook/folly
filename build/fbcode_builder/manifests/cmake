@@ -4,6 +4,9 @@ name = cmake
 [rpms]
 cmake
 
+[pacman-packages]
+cmake
+
 [dependencies]
 ninja
 openssl

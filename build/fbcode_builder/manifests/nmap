@@ -7,6 +7,9 @@ nmap
 [debs]
 nmap
 
+[pacman-packages]
+nmap
+
 [download.not(os=windows)]
 url = https://api.github.com/repos/nmap/nmap/tarball/ef8213a36c2e89233c806753a57b5cd473605408
 sha256 = eda39e5a8ef4964fac7db16abf91cc11ff568eac0fa2d680b0bfa33b0ed71f4a

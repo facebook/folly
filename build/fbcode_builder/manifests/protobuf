@@ -7,6 +7,9 @@ protobuf-devel
 [debs]
 libprotobuf-dev
 
+[pacman-packages]
+protobuf
+
 [git]
 repo_url = https://github.com/protocolbuffers/protobuf.git
 rev = master

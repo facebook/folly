@@ -7,6 +7,9 @@ sqlite
 [debs]
 sqlite3
 
+[pacman-packages]
+sqlite
+
 [download.os=linux]
 url = https://github.com/sqlite/sqlite/archive/version-3.33.0.tar.gz
 sha256 = 48e5f989eefe9af0ac758096f82ead0f3c7b58118ac17cc5810495bd5084a331
