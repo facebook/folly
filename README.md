@@ -12,7 +12,7 @@ at Facebook**. In particular, it's often a dependency of Facebook's other
 open source C++ efforts and place where those projects can share code.
 
 It complements (as opposed to competing against) offerings
-such as Boost and of course `std`. In fact, we embark on defining our
+such as Boost of course `std`. In fact, we embark on defining our
 own component only when something we need is either not available, or
 does not meet the needed performance profile. We endeavor to remove
 things from folly if or when `std` or Boost obsoletes them.
