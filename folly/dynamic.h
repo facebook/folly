@@ -771,9 +771,7 @@ struct dynamic {
 
   /*
    * Get a hash code.  This function is called by a std::hash<>
-   * specialization, also.
-   *
-   * Throws TypeError if this is an object, array, or null.
+   * specialization.
    */
   std::size_t hash() const;
 

@@ -23,9 +23,15 @@
 #include <folly/Range.h>
 #include <folly/json.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/ComparisonOperatorTestUtil.h>
 
 using folly::dynamic;
 using folly::StringPiece;
+
+namespace folly {
+namespace test {
+
+using namespace detail;
 
 TEST(Dynamic, Default) {
   dynamic obj;
@@ -498,6 +504,204 @@ TEST(Dynamic, Operator) {
   dynamic nums = 4;
   dynamic math = some / nums;
   EXPECT_EQ(math, 3);
+}
+
+namespace {
+
+void testOrderingOperatorsThrowForObjectTypes(
+    const dynamic& valueA, const dynamic& valueB) {
+  ASSERT_TRUE(valueA.isObject() || valueB.isObject())
+      << "This function is only intended for objects";
+
+  // The compiler will complain with "relational comparison result unused" if
+  // we don't send the result of comparison operations somewhere. So we just use
+  // an empty lambda which seems to satisfy it.
+  auto swallow = [](bool /*unused*/) {};
+
+#define FB_EXPECT_THROW(boolExpr) \
+  EXPECT_THROW(swallow(boolExpr), folly::TypeError)
+
+  FB_EXPECT_THROW(valueA < valueB);
+  FB_EXPECT_THROW(valueB < valueA);
+
+  FB_EXPECT_THROW(valueA <= valueB);
+  FB_EXPECT_THROW(valueB <= valueA);
+
+  FB_EXPECT_THROW(valueA >= valueB);
+  FB_EXPECT_THROW(valueB >= valueA);
+
+  FB_EXPECT_THROW(valueA > valueB);
+  FB_EXPECT_THROW(valueB > valueA);
+
+#undef FB_EXPECT_THROW
+}
+
+void testComparisonOperatorsForEqualDynamicValues(
+    const dynamic& valueA, const dynamic& valueB) {
+  testEqualityOperatorsForEqualValues(valueA, valueB);
+
+  if (valueA.isNull() && valueB.isNull()) {
+    // There's a bug in null vs null ordering comparison. This test is mainly
+    // for highlighting the behavior which will be fixed in a subsequent commit.
+    EXPECT_TRUE(valueA < valueB);
+    EXPECT_TRUE(valueA > valueB);
+    EXPECT_FALSE(valueB <= valueA);
+    EXPECT_FALSE(valueB >= valueA);
+  } else if (valueA.isObject() || valueB.isObject()) {
+    // Objects don't support ordering
+    testOrderingOperatorsThrowForObjectTypes(valueA, valueB);
+  } else {
+    testOrderingOperatorsForEqualValues(valueA, valueB);
+  }
+}
+
+void testOrderingOperatorsForNotEqualDynamicValues(
+    const dynamic& smallerValue, const dynamic& largerValue) {
+  if (smallerValue.isObject() || largerValue.isObject()) {
+    // Objects don't support ordering
+    testOrderingOperatorsThrowForObjectTypes(smallerValue, largerValue);
+  } else {
+    testOrderingOperatorsForNotEqualValues(smallerValue, largerValue);
+  }
+}
+
+void testComparisonOperatorsForNotEqualDynamicValues(
+    const dynamic& smallerValue, const dynamic& largerValue) {
+  testEqualityOperatorsForNotEqualValues(smallerValue, largerValue);
+
+  // Ordering is special for dynamics due to objects
+  testOrderingOperatorsForNotEqualDynamicValues(smallerValue, largerValue);
+}
+
+// Calls func on all index pair permutations of 0 to (numValues - 1) where
+// smallerIndex < largerIndex.
+void executeOnOrderedIndexPairs(
+    size_t numValues,
+    std::function<void(size_t smallerIndex, size_t largerIndex)> func) {
+  // The `Idx` naming below is used to avoid local variable shadow warnings with
+  // the func parameter names, which are unnecessary but serving as
+  // documentation.
+  for (size_t smallerIdx = 0; smallerIdx < numValues; ++smallerIdx) {
+    for (size_t largerIdx = smallerIdx + 1; largerIdx < numValues;
+         ++largerIdx) {
+      func(smallerIdx, largerIdx);
+    }
+  }
+}
+
+// Returns values of each type of dynamic, sorted in strictly increasing order
+// as defined by dynamic::operator<
+std::vector<dynamic> getUniqueOrderedValuesForAllTypes() {
+  return {
+      // NULLT
+      nullptr,
+
+      // ARRAY
+      dynamic::array(0, 1, 2),
+      dynamic::array(2, 0, 1),
+
+      // BOOL
+      false,
+      true,
+
+      // DOUBLE
+      -1.1,
+      2.2,
+
+      // INT64
+      -1,
+      2,
+
+      // OBJECT - NOTE these don't actually have ordering comparison, so could
+      // be anywhere
+      dynamic::object("a", dynamic::array(1, 2, 3)),
+      dynamic::object("b", dynamic::array(1, 2, 3)),
+
+      // STRING
+      "abc",
+      "def",
+  };
+}
+
+std::vector<std::pair<dynamic, dynamic>> getNumericallyEqualOrderedPairs() {
+  // Double is intentionally first since in dynamic::Type it is before int64.
+  return {
+      {-2.0, -2},
+      {0.0, 0},
+      {1.0, 1},
+      {dynamic::array(1.0), dynamic::array(1)},
+      {dynamic::object("a", dynamic::array(1.0)),
+       dynamic::object("a", dynamic::array(1))},
+  };
+}
+
+} // namespace
+
+TEST(Dynamic, ComparisonOperatorsOnNotEqualValuesOfAllTypes) {
+  auto values = getUniqueOrderedValuesForAllTypes();
+
+  // Test ordering operators
+  executeOnOrderedIndexPairs(
+      values.size(), [&](size_t smallerIndex, size_t largerIndex) {
+        testComparisonOperatorsForNotEqualDynamicValues(
+            values[smallerIndex] /*smallerValue*/,
+            values[largerIndex] /*largerValue*/);
+      });
+}
+
+TEST(Dynamic, ComparisonOperatorsOnSameValuesOfSameTypes) {
+  for (const auto& value : getUniqueOrderedValuesForAllTypes()) {
+    testComparisonOperatorsForEqualDynamicValues(value, value);
+  }
+}
+
+TEST(Dynamic, ComparisonOperatorsForNumericallyEqualIntAndDoubles) {
+  for (const auto& [valueA, valueB] : getNumericallyEqualOrderedPairs()) {
+    testEqualityOperatorsForEqualValues(valueA, valueB);
+
+    // Ints and doubles are equivalent for equality operators, but not for
+    // ordering operators currently. This will be fixed in an upcoming commit.
+    testOrderingOperatorsForNotEqualDynamicValues(valueA, valueB);
+  }
+}
+
+TEST(Dynamic, HashDoesNotThrow) {
+  for (const auto& value : getUniqueOrderedValuesForAllTypes()) {
+    EXPECT_NO_THROW(std::hash<dynamic>()(value)) << value;
+  }
+}
+
+// NOTE: This test currently fails - but will be fixed in an upcoming commit.
+// The reason it's not enabled with EXPECT_NE is that some build modes seem to
+// set hashing of ints/doubles to return 0 to presumably help catch issues with
+// hash dependencies.
+//
+// TEST(Dynamic, HashForNumericallyEqualIntAndDoubles) {
+//   for (const auto& [valueA, valueB] : getNumericallyEqualOrderedPairs()) {
+//     // This is just highlighting that the same hashing functions will apply
+//     // to numerically equal values.
+//     EXPECT_EQ(std::hash<dynamic>()(valueA), std::hash<dynamic>()(valueB))
+//         << "valueA: " << valueA << ", valueB: " << valueB;
+//   }
+// }
+
+TEST(Dynamic, ComparisonOperatorsForNonEquivalenctCases) {
+  // Mainly highlighting some cases for wich implicit conversion is not done.
+  // Within each group they are ordered per dynamic::Type enum value.
+  std::vector<std::vector<dynamic>> notEqualValueTestCases{
+      {nullptr, false, 0},
+      {true, 1},
+      {1, "1"},
+  };
+
+  for (const auto& testCase : notEqualValueTestCases) {
+    executeOnOrderedIndexPairs(
+        testCase.size(), [&](size_t smallerIndex, size_t largerIndex) {
+          testComparisonOperatorsForNotEqualDynamicValues(
+              testCase[smallerIndex] /*smallerValue*/,
+              testCase[largerIndex] /*largerValue*/);
+        });
+  }
 }
 
 TEST(Dynamic, Conversions) {
@@ -1303,3 +1507,6 @@ TEST(Dynamic, EqualNestedValues) {
   dynamic obj2 = obj1;
   EXPECT_EQ(obj1, obj2);
 }
+
+} // namespace test
+} // namespace folly
