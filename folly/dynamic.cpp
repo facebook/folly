@@ -101,6 +101,12 @@ bool operator<(dynamic const& a, dynamic const& b) {
     throw_exception<TypeError>("object", type);
   }
   if (a.type_ != b.type_) {
+    if (a.isNumber() && b.isNumber()) {
+      // The only isNumber() types are double and int64 - so guaranteed one will
+      // be double and one will be int.
+      return a.isInt() ? a.asInt() < b.asDouble() : a.asDouble() < b.asInt();
+    }
+
     return a.type_ < b.type_;
   }
 

@@ -548,22 +548,16 @@ void testComparisonOperatorsForEqualDynamicValues(
   }
 }
 
-void testOrderingOperatorsForNotEqualDynamicValues(
+void testComparisonOperatorsForNotEqualDynamicValues(
     const dynamic& smallerValue, const dynamic& largerValue) {
+  testEqualityOperatorsForNotEqualValues(smallerValue, largerValue);
+
   if (smallerValue.isObject() || largerValue.isObject()) {
     // Objects don't support ordering
     testOrderingOperatorsThrowForObjectTypes(smallerValue, largerValue);
   } else {
     testOrderingOperatorsForNotEqualValues(smallerValue, largerValue);
   }
-}
-
-void testComparisonOperatorsForNotEqualDynamicValues(
-    const dynamic& smallerValue, const dynamic& largerValue) {
-  testEqualityOperatorsForNotEqualValues(smallerValue, largerValue);
-
-  // Ordering is special for dynamics due to objects
-  testOrderingOperatorsForNotEqualDynamicValues(smallerValue, largerValue);
 }
 
 // Calls func on all index pair permutations of 0 to (numValues - 1) where
@@ -597,13 +591,11 @@ std::vector<dynamic> getUniqueOrderedValuesForAllTypes() {
       false,
       true,
 
-      // DOUBLE
+      // DOUBLE / INT64
       -1.1,
-      2.2,
-
-      // INT64
       -1,
       2,
+      2.2,
 
       // OBJECT - NOTE these don't actually have ordering comparison, so could
       // be anywhere
@@ -616,8 +608,7 @@ std::vector<dynamic> getUniqueOrderedValuesForAllTypes() {
   };
 }
 
-std::vector<std::pair<dynamic, dynamic>> getNumericallyEqualOrderedPairs() {
-  // Double is intentionally first since in dynamic::Type it is before int64.
+std::vector<std::pair<dynamic, dynamic>> getNumericallyEqualPairs() {
   return {
       {-2.0, -2},
       {0.0, 0},
@@ -649,12 +640,8 @@ TEST(Dynamic, ComparisonOperatorsOnSameValuesOfSameTypes) {
 }
 
 TEST(Dynamic, ComparisonOperatorsForNumericallyEqualIntAndDoubles) {
-  for (const auto& [valueA, valueB] : getNumericallyEqualOrderedPairs()) {
-    testEqualityOperatorsForEqualValues(valueA, valueB);
-
-    // Ints and doubles are equivalent for equality operators, but not for
-    // ordering operators currently. This will be fixed in an upcoming commit.
-    testOrderingOperatorsForNotEqualDynamicValues(valueA, valueB);
+  for (const auto& [valueA, valueB] : getNumericallyEqualPairs()) {
+    testComparisonOperatorsForEqualDynamicValues(valueA, valueB);
   }
 }
 

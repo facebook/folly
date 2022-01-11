@@ -220,6 +220,10 @@ struct dynamic {
   /*
    * "Deep" equality comparison.  This will compare all the way down
    * an object or array, and is potentially expensive.
+   *
+   * NOTE: Implicit conversion will be done between ints and doubles, so numeric
+   * equality will apply between those cases. Other dynamic value comparisons of
+   * different types will always return false.
    */
   friend bool operator==(dynamic const& a, dynamic const& b);
   friend bool operator!=(dynamic const& a, dynamic const& b) {
@@ -229,6 +233,10 @@ struct dynamic {
   /*
    * For all types except object this returns the natural ordering on
    * those types.  For objects, we throw TypeError.
+   *
+   * NOTE: Implicit conversion will be done between ints and doubles, so numeric
+   * ordering will apply between those cases. Other dynamic value comparisons of
+   * different types will maintain consistent ordering within a binary run.
    */
   friend bool operator<(dynamic const& a, dynamic const& b);
   friend bool operator>(dynamic const& a, dynamic const& b) { return b < a; }
