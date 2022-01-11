@@ -68,6 +68,10 @@ ssize_t getStackTrace(
 
 namespace {
 
+// Heuristic for guessing the maximum stack frame size. This is needed to ensure
+// we do not have stack corruption while walking the stack.
+constexpr uint64_t kMaxExpectedStackFrameSize = 0x1000000000;
+
 #if FOLLY_HAVE_LIBUNWIND
 
 inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
@@ -181,14 +185,18 @@ size_t walkNormalStack(
     StackFrame* normalStackFrame,
     StackFrame* normalStackFrameStop) {
   size_t numFrames = 0;
-  // Stack frame addresses should increase as we traverse the stack.
-  // If it doesn't, it means we have stack corruption, or an unusual calling
-  // convention. In this case, stop walking the stack early to avoid incorrect
-  // stack walking.
-  auto* normalStackFrameStart = normalStackFrame;
-  while (numFrames < maxAddresses && normalStackFrame != nullptr &&
-         normalStackFrame >= normalStackFrameStart) {
+  while (numFrames < maxAddresses && normalStackFrame != nullptr) {
     auto* normalStackFrameNext = normalStackFrame->parentFrame;
+    if (!(normalStackFrameNext > normalStackFrame &&
+          normalStackFrameNext <
+              normalStackFrame + kMaxExpectedStackFrameSize)) {
+      // Stack frame addresses should increase as we traverse the stack.
+      // If it doesn't, it means we have stack corruption, or an unusual calling
+      // convention. Ensure that each subsequent frame's address is within a
+      // valid range. If it does not, stop walking the stack early to avoid
+      // incorrect stack walking.
+      break;
+    }
     if (normalStackFrameStop != nullptr &&
         normalStackFrameNext == normalStackFrameStop) {
       // Reached end of normal stack, need to transition to the async stack.
