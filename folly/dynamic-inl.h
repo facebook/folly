@@ -567,7 +567,7 @@ struct dynamic::CompareOp<dynamic::ObjectImpl> {
 template <>
 struct dynamic::CompareOp<std::nullptr_t> {
   static bool comp(std::nullptr_t const&, std::nullptr_t const&) {
-    return true;
+    return false;
   }
 };
 

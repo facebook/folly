@@ -540,14 +540,7 @@ void testComparisonOperatorsForEqualDynamicValues(
     const dynamic& valueA, const dynamic& valueB) {
   testEqualityOperatorsForEqualValues(valueA, valueB);
 
-  if (valueA.isNull() && valueB.isNull()) {
-    // There's a bug in null vs null ordering comparison. This test is mainly
-    // for highlighting the behavior which will be fixed in a subsequent commit.
-    EXPECT_TRUE(valueA < valueB);
-    EXPECT_TRUE(valueA > valueB);
-    EXPECT_FALSE(valueB <= valueA);
-    EXPECT_FALSE(valueB >= valueA);
-  } else if (valueA.isObject() || valueB.isObject()) {
+  if (valueA.isObject() || valueB.isObject()) {
     // Objects don't support ordering
     testOrderingOperatorsThrowForObjectTypes(valueA, valueB);
   } else {
