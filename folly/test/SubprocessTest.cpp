@@ -747,3 +747,17 @@ TEST(CommunicateSubprocessTest, RedirectStdioToDevNull) {
 
   EXPECT_EQ(0, proc.wait().exitStatus());
 }
+
+TEST(CloseOtherDescriptorsSubprocessTest, ClosesFileDescriptors) {
+  // Open another filedescriptor and check to make sure that it is not opened in
+  // child process
+  int fd = ::open("/", O_RDONLY);
+  auto guard = makeGuard([fd] { ::close(fd); });
+  auto options = Subprocess::Options().closeOtherFds().pipeStdout();
+  Subprocess proc(
+      std::vector<std::string>{"/bin/ls", "/proc/self/fd"}, options);
+  auto p = proc.communicate();
+  // stdin, stdout, stderr, and /proc/self/fd should be fds [0,3] in the child
+  EXPECT_EQ("0\n1\n2\n3\n", p.first);
+  proc.wait();
+}

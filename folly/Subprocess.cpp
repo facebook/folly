@@ -41,6 +41,7 @@
 #include <folly/io/Cursor.h>
 #include <folly/lang/Assume.h>
 #include <folly/logging/xlog.h>
+#include <folly/portability/Dirent.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Stdlib.h>
@@ -516,6 +517,67 @@ void Subprocess::spawnInternal(
 }
 FOLLY_POP_WARNING
 
+// If requested, close all other file descriptors.  Don't close
+// any fds in options.fdActions_, and don't touch stdin, stdout, stderr.
+// Ignore errors.
+//
+//
+// This function is called in the child after fork but before exec so
+// there is very little it can do. It cannot allocate memory and
+// it cannot lock a mutex, just as if it were running in a signal
+// handler.
+void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
+#if defined(__linux__)
+  int dirfd = open("/proc/self/fd", O_RDONLY);
+  if (dirfd != -1) {
+    char buffer[32768];
+    int res;
+    while ((res = syscall(SYS_getdents64, dirfd, buffer, sizeof(buffer))) > 0) {
+      // linux_dirent64 is part of the kernel ABI for the getdents64 system
+      // call. It is currently the same as struct dirent64 in both glibc and
+      // musl, but those are library specific and could change. linux_dirent64
+      // is not defined in the standard set of Linux userspace headers
+      // (/usr/include/linux)
+      //
+      // We do not use the POSIX interfaces (opendir, readdir, etc..) for
+      // reading a directory since they may allocate memory / grab a lock, which
+      // is unsafe in this context.
+      struct linux_dirent64 {
+        uint64_t d_ino;
+        int64_t d_off;
+        uint16_t d_reclen;
+        unsigned char d_type;
+        char d_name[0];
+      } const* entry;
+      for (int offset = 0; offset < res; offset += entry->d_reclen) {
+        entry = reinterpret_cast<struct linux_dirent64*>(buffer + offset);
+        if (entry->d_type != DT_LNK) {
+          continue;
+        }
+        char* end_p = nullptr;
+        errno = 0;
+        int fd = static_cast<int>(::strtol(entry->d_name, &end_p, 10));
+        if (errno == ERANGE || fd < 3 || end_p == entry->d_name) {
+          continue;
+        }
+        if ((fd != dirfd) && (fdActions.count(fd) == 0)) {
+          ::close(fd);
+        }
+      }
+    }
+    ::close(dirfd);
+    return;
+  }
+#endif
+  // If not running on Linux or if we failed to open /proc/self/fd, try to close
+  // all possible open file descriptors.
+  for (int fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
+    if (fdActions.count(fd) == 0) {
+      ::close(fd);
+    }
+  }
+}
+
 int Subprocess::prepareChild(
     const Options& options,
     const sigset_t* sigmask,
@@ -577,15 +639,8 @@ int Subprocess::prepareChild(
     }
   }
 
-  // If requested, close all other file descriptors.  Don't close
-  // any fds in options.fdActions_, and don't touch stdin, stdout, stderr.
-  // Ignore errors.
   if (options.closeOtherFds_) {
-    for (int fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
-      if (options.fdActions_.count(fd) == 0) {
-        ::close(fd);
-      }
-    }
+    closeInheritedFds(options.fdActions_);
   }
 
 #if defined(__linux__)

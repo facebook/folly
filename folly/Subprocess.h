@@ -954,6 +954,9 @@ class Subprocess {
       char** env,
       const Options& options) const;
 
+  // Closes fds inherited from parent in child process
+  static void closeInheritedFds(const Options::FdMap& fdActions);
+
   /**
    * Read from the error pipe, and throw SubprocessSpawnError if the child
    * failed before calling exec().
