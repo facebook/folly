@@ -174,12 +174,13 @@ template <typename T>
 using async_inner_type_t = typename async_inner_type<T>::type;
 
 // async_invocable_inner_type
-template <typename F>
-using async_invocable_inner_type = async_inner_type<invoke_result_t<F>>;
+template <typename F, typename... Args>
+using async_invocable_inner_type =
+    async_inner_type<invoke_result_t<F, Args...>>;
 
-template <typename F>
+template <typename F, typename... Args>
 using async_invocable_inner_type_t =
-    typename async_invocable_inner_type<F>::type;
+    typename async_invocable_inner_type<F, Args...>::type;
 
 } // namespace async
 } // namespace fibers
