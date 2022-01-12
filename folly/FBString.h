@@ -19,33 +19,31 @@
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <cstddef>
+#include <cstring>
 #include <iosfwd>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
-
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view>
-#endif
+#include <utility>
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
-
-#include <algorithm>
-#include <cassert>
-#include <cstring>
-#include <string>
-#include <utility>
-
 #include <folly/Traits.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
+
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view>
+#endif
 
 FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
