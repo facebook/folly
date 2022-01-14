@@ -130,7 +130,7 @@ template <class T, class U>
 auto doEmplaceAssign(long, T& t, U&& u)
     -> decltype(void(T(static_cast<U&&>(u)))) {
   t.~T();
-  ::new ((void*)std::addressof(t)) T(static_cast<U&&>(u));
+  ::new (static_cast<void*>(std::addressof(t))) T(static_cast<U&&>(u));
 }
 
 template <class T, class... Us>
@@ -143,7 +143,7 @@ template <class T, class... Us>
 auto doEmplaceAssign(long, T& t, Us&&... us)
     -> decltype(void(T(static_cast<Us&&>(us)...))) {
   t.~T();
-  ::new ((void*)std::addressof(t)) T(static_cast<Us&&>(us)...);
+  ::new (static_cast<void*>(std::addressof(t))) T(static_cast<Us&&>(us)...);
 }
 
 struct EmptyTag {};
@@ -395,7 +395,7 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
           0, this->value(), static_cast<Vs&&>(vs)...);
     } else {
       this->clear();
-      ::new ((void*)std::addressof(this->value()))
+      ::new (static_cast<void*>(std::addressof(this->value())))
           Value(static_cast<Vs&&>(vs)...);
       this->which_ = Which::eValue;
     }
@@ -407,7 +407,7 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
           0, this->error(), static_cast<Es&&>(es)...);
     } else {
       this->clear();
-      ::new ((void*)std::addressof(this->error()))
+      ::new (static_cast<void*>(std::addressof(this->error())))
           Error(static_cast<Es&&>(es)...);
       this->which_ = Which::eError;
     }

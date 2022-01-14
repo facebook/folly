@@ -81,10 +81,14 @@ struct is_similar_instantiation
 namespace detail {
 
 struct is_constexpr_default_constructible_ {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
   template <typename T>
   static constexpr auto make(tag_t<T>) -> decltype(void(T()), 0) {
     return (void(T()), 0);
   }
+#pragma clang diagnostic pop
+
   // second param should just be: int = (void(T()), 0)
   // but under clang 10, crash: https://bugs.llvm.org/show_bug.cgi?id=47620
   // and, with assertions disabled, expectation failures showing compiler

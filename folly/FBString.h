@@ -1686,6 +1686,8 @@ class basic_fbstring {
   Storage store_;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
 template <typename E, class T, class A, class S>
 FOLLY_NOINLINE typename basic_fbstring<E, T, A, S>::size_type
 basic_fbstring<E, T, A, S>::traitsLength(const value_type* s) {
@@ -1694,6 +1696,7 @@ basic_fbstring<E, T, A, S>::traitsLength(const value_type* s) {
                   "basic_fbstring: null pointer initializer not valid"),
               0);
 }
+#pragma clang diagnostic pop
 
 template <typename E, class T, class A, class S>
 inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::operator=(

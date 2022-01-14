@@ -409,7 +409,7 @@ typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
   const char* c = value;
   if (c) {
     return folly::StringPiece(value).size();
-  };
+  }
   return 0;
 }
 
@@ -1128,8 +1128,11 @@ FOLLY_NODISCARD inline typename std::enable_if< //
     is_arithmetic_v<Tgt>,
     Expected<StringPiece, ConversionCode>>::type
 parseTo(StringPiece src, Tgt& out) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
   return detail::convertTo<Tgt>(&src).then(
       [&](Tgt res) { return void(out = res), src; });
+#pragma clang diagnostic pop
 }
 
 /*******************************************************************************
