@@ -33,13 +33,33 @@ namespace coro {
 // produced by 'sources', interleaving them in the order that the values
 // are produced.
 //
-// If any of the input streams completes with an error then the error
-// is produced from the output stream and the remainder of the input streams
-// are truncated, discarding any remaining values.
+// The resulting stream will terminate when the end of the 'sources' stream has
+// been reached and the ends of all of the input streams it produced have been
+// reached.
 //
-// The resulting stream will terminate only when the end of the 'sources'
-// stream has been reached and the ends of all of the input streams it
-// produced have been reached.
+// On exception, cancellation, or output stream destruction: cancels remaining
+// input streams and 'sources', discards any remaining values, and produces an
+// exception (if an input stream produced an exception) or end-of-stream
+// (if next() call was cancelled).
+//
+// Structured concurrency: if the output stream produced an empty value
+// (end-of-stream) or an exception, it's guaranteed that 'sources' and all input
+// generators have been destroyed.
+// If the output stream is destroyed before reaching end-of-stream or exception,
+// the remaining input generators are cancelled and detached; beware of
+// use-after-free.
+//
+// Normally cancelling output stream's next() call cancels the stream, discards
+// any remaining values, and returns an end-of-stream. But there are caveats:
+//  * If there's an item ready to be delivered, next() call returns it without
+//    checking for cancellation. So if input streams are fast, and next() is
+//    called infrequently, cancellation may go unprocessed indefinitely unless
+//    you also check for cancellation on your side (which you should probably do
+//    anyway unless you're calling next() in a tight loop).
+//  * It's possible that the cancelled next() registers the cancellation but
+//    returns a value anyway (if it was produced at just the right moment). Then
+//    a later next() call would return end-of-stream even if it was called with
+//    a different, non-cancelled cancellation token.
 template <typename Reference, typename Value>
 AsyncGenerator<Reference, Value> merge(
     folly::Executor::KeepAlive<> executor,

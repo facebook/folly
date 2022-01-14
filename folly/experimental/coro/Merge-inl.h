@@ -49,6 +49,7 @@ AsyncGenerator<Reference, Value> merge(
     coro::Mutex mutex;
     coro::Baton recordPublished;
     coro::Baton recordConsumed;
+    coro::Baton allTasksCompleted;
     CallbackRecord<Reference> record;
   };
 
@@ -161,7 +162,9 @@ AsyncGenerator<Reference, Value> merge(
   // Start a task that consumes the stream of input streams.
   makeConsumerTask(state, std::move(sources))
       .scheduleOn(executor)
-      .start([](auto&&) {}, state->cancelSource.getToken());
+      .start(
+          [state](auto&&) { state->allTasksCompleted.post(); },
+          state->cancelSource.getToken());
 
   // Consume values produced by the input streams.
   while (true) {
@@ -178,12 +181,18 @@ AsyncGenerator<Reference, Value> merge(
     if (state->record.hasValue()) {
       // next value
       co_yield std::move(state->record).value();
-    } else if (state->record.hasError()) {
-      std::move(state->record).error().throw_exception();
     } else {
-      // none
-      assert(state->record.hasNone());
-      break;
+      // We're closing the output stream. In the spirit of structured
+      // concurrency, let's make sure to not leave any background tasks behind.
+      co_await state->allTasksCompleted;
+
+      if (state->record.hasError()) {
+        std::move(state->record).error().throw_exception();
+      } else {
+        // none
+        assert(state->record.hasNone());
+        break;
+      }
     }
   }
 }
