@@ -75,7 +75,7 @@ TEST(ExceptionTest, Simple) {
   auto exnpath = tmpdir.path() / "ExceptionTest";
   auto fp = fopen(exnpath.string().c_str(), "w+b");
   ASSERT_TRUE(fp != nullptr);
-  SCOPE_EXIT { fclose(fp); };
+  FOLLY_SCOPE_EXIT { fclose(fp); };
 
   EXPECT_NO_THROW(checkFopenError(fp, "hello", " world"));
   errno = ERANGE;

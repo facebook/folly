@@ -79,7 +79,7 @@ class SmallUnboundedQueue : detail::SmallUnboundedQueueBase<!SingleConsumer> {
       buffer_ = queue_.getMessages();
       DCHECK(!buffer_.empty());
     }
-    SCOPE_EXIT { buffer_.pop(); };
+    FOLLY_SCOPE_EXIT { buffer_.pop(); };
     co_return std::move(buffer_.front());
   }
 

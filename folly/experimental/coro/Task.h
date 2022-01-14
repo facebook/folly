@@ -514,12 +514,12 @@ class FOLLY_NODISCARD TaskWithExecutor {
     T await_resume() {
       DCHECK(coro_);
       // Eagerly destroy the coroutine-frame once we have retrieved the result.
-      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      FOLLY_SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result()).value();
     }
 
     folly::Try<StorageType> await_resume_try() {
-      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      FOLLY_SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
     }
 
@@ -568,7 +568,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     folly::Try<StorageType> await_resume() {
       DCHECK(coro_);
       // Eagerly destroy the coroutine-frame once we have retrieved the result.
-      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      FOLLY_SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
     }
 
@@ -761,13 +761,13 @@ class FOLLY_NODISCARD Task {
 
     T await_resume() {
       DCHECK(coro_);
-      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      FOLLY_SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result()).value();
     }
 
     folly::Try<StorageType> await_resume_try() {
       DCHECK(coro_);
-      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      FOLLY_SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
     }
 

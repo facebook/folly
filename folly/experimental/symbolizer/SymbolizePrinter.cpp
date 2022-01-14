@@ -71,7 +71,7 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
     return;
   }
 
-  SCOPE_EXIT { color(Color::DEFAULT); };
+  FOLLY_SCOPE_EXIT { color(Color::DEFAULT); };
 
   if (!(options_ & NO_FRAME_ADDRESS) && !(options_ & TERSE_FILE_AND_LINE)) {
     color(kAddressColor);

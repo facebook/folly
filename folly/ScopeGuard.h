@@ -221,7 +221,7 @@ namespace detail {
  * If the parameter is false, then the function is executed if no new uncaught
  * exceptions are present at the end of the scope.
  *
- * Used to implement SCOPE_FAIL and SCOPE_SUCCESS below.
+ * Used to implement FOLLY_SCOPE_FAIL and FOLLY_SCOPE_SUCCESS below.
  */
 template <typename FunctionType, bool ExecuteOnException>
 class ScopeGuardForNewException {
@@ -248,7 +248,7 @@ class ScopeGuardForNewException {
 };
 
 /**
- * Internal use for the macro SCOPE_FAIL below
+ * Internal use for the macro FOLLY_SCOPE_FAIL below
  */
 enum class ScopeGuardOnFail {};
 
@@ -261,7 +261,7 @@ operator+(detail::ScopeGuardOnFail, FunctionType&& fn) {
 }
 
 /**
- * Internal use for the macro SCOPE_SUCCESS below
+ * Internal use for the macro FOLLY_SCOPE_SUCCESS below
  */
 enum class ScopeGuardOnSuccess {};
 
@@ -276,7 +276,7 @@ operator+(ScopeGuardOnSuccess, FunctionType&& fn) {
 #endif // native uncaught_exception() supported
 
 /**
- * Internal use for the macro SCOPE_EXIT below
+ * Internal use for the macro FOLLY_SCOPE_EXIT below
  */
 enum class ScopeGuardOnExit {};
 
@@ -290,18 +290,18 @@ ScopeGuardImpl<typename std::decay<FunctionType>::type, true> operator+(
 
 } // namespace folly
 
-#define SCOPE_EXIT                               \
-  auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = \
+#define FOLLY_SCOPE_EXIT                               \
+  auto FB_ANONYMOUS_VARIABLE(FOLLY_SCOPE_EXIT_STATE) = \
       ::folly::detail::ScopeGuardOnExit() + [&]() noexcept
 
 #if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
     defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD) ||          \
     defined(FOLLY_EXCEPTION_COUNT_USE_STD)
-#define SCOPE_FAIL                               \
-  auto FB_ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = \
+#define FOLLY_SCOPE_FAIL                               \
+  auto FB_ANONYMOUS_VARIABLE(FOLLY_SCOPE_FAIL_STATE) = \
       ::folly::detail::ScopeGuardOnFail() + [&]() noexcept
 
-#define SCOPE_SUCCESS                               \
-  auto FB_ANONYMOUS_VARIABLE(SCOPE_SUCCESS_STATE) = \
+#define FOLLY_SCOPE_SUCCESS                               \
+  auto FB_ANONYMOUS_VARIABLE(FOLLY_SCOPE_SUCCESS_STATE) = \
       ::folly::detail::ScopeGuardOnSuccess() + [&]()
 #endif // native uncaught_exception() supported

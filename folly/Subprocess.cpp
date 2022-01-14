@@ -283,7 +283,7 @@ void Subprocess::spawn(
 #else
   checkUnixError(::pipe(errFds), "pipe");
 #endif
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     CHECK_ERR(::close(errFds[0]));
     if (errFds[1] >= 0) {
       CHECK_ERR(::close(errFds[1]));
@@ -346,7 +346,7 @@ void Subprocess::spawnInternal(
   // Parent work, pre-fork: create pipes
   std::vector<int> childFds;
   // Close all of the childFds as we leave this scope
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     // These are only pipes, closing them shouldn't fail
     for (int cfd : childFds) {
       CHECK_ERR(::close(cfd));
@@ -430,7 +430,7 @@ void Subprocess::spawnInternal(
 
   r = pthread_sigmask(SIG_SETMASK, &allBlocked, &oldSignals);
   checkPosixError(r, "pthread_sigmask");
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     // Restore signal mask
     r = pthread_sigmask(SIG_SETMASK, &oldSignals, nullptr);
     CHECK_EQ(r, 0) << "pthread_sigmask: " << errnoStr(r); // shouldn't fail

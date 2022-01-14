@@ -82,7 +82,7 @@ class ScopeExitTaskPromiseBase {
     template <typename Promise>
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES coroutine_handle<>
     await_suspend(coroutine_handle<Promise> coro) noexcept {
-      SCOPE_EXIT { coro.destroy(); };
+      FOLLY_SCOPE_EXIT { coro.destroy(); };
 
       ScopeExitTaskPromiseBase& promise = coro.promise();
       // If this is true, then this ScopeExitTask is the final one to be

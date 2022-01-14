@@ -347,7 +347,7 @@ bool ZlibStreamCodec::doCompressStream(
   deflateStream_->avail_in = input.size();
   deflateStream_->next_out = output.data();
   deflateStream_->avail_out = output.size();
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     input.uncheckedAdvance(input.size() - deflateStream_->avail_in);
     output.uncheckedAdvance(output.size() - deflateStream_->avail_out);
   };
@@ -380,7 +380,7 @@ bool ZlibStreamCodec::doUncompressStream(
   inflateStream_->avail_in = input.size();
   inflateStream_->next_out = output.data();
   inflateStream_->avail_out = output.size();
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     input.advance(input.size() - inflateStream_->avail_in);
     output.advance(output.size() - inflateStream_->avail_out);
   };

@@ -643,7 +643,7 @@ TEST(Singleton, SingletonEagerInitParallel) {
               }).shouldEagerInit();
 
   for (size_t i = 0; i < kIters; i++) {
-    SCOPE_EXIT {
+    FOLLY_SCOPE_EXIT {
       // clean up each time
       vault.destroyInstances();
       vault.reenableInstances();

@@ -337,7 +337,7 @@ TEST(RetryingTest, large_retries) {
   if (!folly::kIsSanitize) { // sanitizers reserve outside of the rlimit
     PCHECK(setrlimit(RLIMIT_AS, &newMemLimit) == 0);
   }
-  SCOPE_EXIT { PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0); };
+  FOLLY_SCOPE_EXIT { PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0); };
 #endif
 
   TestExecutor executor(4);

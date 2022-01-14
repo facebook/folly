@@ -202,7 +202,7 @@ class DeterministicSchedule {
             FOLLY_TEST_DSCHED_VLOG("running");
             afterSharedAccess();
           }
-          SCOPE_EXIT {
+          FOLLY_SCOPE_EXIT {
             if (sched) {
               sched->beforeThreadExit();
             }

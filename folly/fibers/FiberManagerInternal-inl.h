@@ -72,7 +72,7 @@ inline void FiberManager::activateFiber(Fiber* fiber) {
   auto stack = fiber->getStack();
   void* asanFakeStack;
   registerStartSwitchStackWithAsan(&asanFakeStack, stack.first, stack.second);
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     registerFinishSwitchStackWithAsan(asanFakeStack, nullptr, nullptr);
     fiber->asanMainStackBase_ = nullptr;
     fiber->asanMainStackSize_ = 0;
@@ -94,7 +94,7 @@ inline void FiberManager::deactivateFiber(Fiber* fiber) {
       &fiber->asanFakeStack_,
       fiber->asanMainStackBase_,
       fiber->asanMainStackSize_);
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     registerFinishSwitchStackWithAsan(
         fiber->asanFakeStack_,
         &fiber->asanMainStackBase_,
@@ -108,7 +108,7 @@ inline void FiberManager::deactivateFiber(Fiber* fiber) {
 }
 
 inline void FiberManager::runReadyFiber(Fiber* fiber) {
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     assert(currentFiber_ == nullptr);
     assert(activeFiber_ == nullptr);
   };
@@ -228,7 +228,7 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
   FiberTailQueue yieldedFibers;
   auto prevYieldedFibers = std::exchange(yieldedFibers_, &yieldedFibers);
 
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     // Restore the previous AsyncStackRoot and make sure that none of
     // the fibers left any AsyncStackRoot pointers lying around.
     auto* oldAsyncRoot = folly::exchangeCurrentAsyncStackRoot(curAsyncRoot);
@@ -260,7 +260,7 @@ inline size_t FiberManager::recordStackPosition(size_t position) {
 
 inline void FiberManager::loopUntilNoReadyImpl() {
   runFibersHelper([&] {
-    SCOPE_EXIT { isLoopScheduled_ = false; };
+    FOLLY_SCOPE_EXIT { isLoopScheduled_ = false; };
 
     bool hadRemote = true;
     while (hadRemote) {
@@ -309,7 +309,7 @@ inline void FiberManager::runEagerFiber(Fiber* fiber) {
 inline void FiberManager::runEagerFiberImpl(Fiber* fiber) {
   folly::fibers::runInMainContext([&] {
     auto prevCurrentFiber = std::exchange(currentFiber_, fiber);
-    SCOPE_EXIT { currentFiber_ = prevCurrentFiber; };
+    FOLLY_SCOPE_EXIT { currentFiber_ = prevCurrentFiber; };
     runFibersHelper([&] { runReadyFiber(fiber); });
   });
 }

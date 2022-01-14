@@ -45,7 +45,7 @@ size_t Core::refresh(size_t version) {
   CHECK(ObserverManager::inManagerThread());
 
   ObserverManager::DependencyRecorder::markRefreshDependency(*this);
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     ObserverManager::DependencyRecorder::unmarkRefreshDependency(*this);
   };
 

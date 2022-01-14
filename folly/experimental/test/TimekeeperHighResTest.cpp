@@ -103,13 +103,13 @@ FOLLY_POP_WARNING
 
 TEST(Timekeeper, futureSleepHandlesNullTimekeeperSingleton) {
   Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
-  SCOPE_EXIT { Singleton<ThreadWheelTimekeeper>::make_mock(); };
+  FOLLY_SCOPE_EXIT { Singleton<ThreadWheelTimekeeper>::make_mock(); };
   EXPECT_THROW(futures::sleep(one_ms).get(), FutureNoTimekeeper);
 }
 
 TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
   Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
-  SCOPE_EXIT { Singleton<ThreadWheelTimekeeper>::make_mock(); };
+  FOLLY_SCOPE_EXIT { Singleton<ThreadWheelTimekeeper>::make_mock(); };
   Promise<int> p;
   auto f = p.getFuture().within(one_ms);
   EXPECT_THROW(std::move(f).get(), FutureNoTimekeeper);
@@ -117,7 +117,7 @@ TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
 
 TEST(Timekeeper, semiFutureWithinHandlesNullTimekeeperSingleton) {
   Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
-  SCOPE_EXIT { Singleton<ThreadWheelTimekeeper>::make_mock(); };
+  FOLLY_SCOPE_EXIT { Singleton<ThreadWheelTimekeeper>::make_mock(); };
   Promise<int> p;
   auto f = p.getSemiFuture().within(one_ms);
   EXPECT_THROW(std::move(f).get(), FutureNoTimekeeper);

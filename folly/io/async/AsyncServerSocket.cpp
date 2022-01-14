@@ -454,7 +454,7 @@ void AsyncServerSocket::bind(uint16_t port) {
         "bad getaddrinfo");
   }
 
-  SCOPE_EXIT { freeaddrinfo(res0); };
+  FOLLY_SCOPE_EXIT { freeaddrinfo(res0); };
 
   auto setupAddress = [&](struct addrinfo* res) {
     auto s = netops::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -610,7 +610,7 @@ void AsyncServerSocket::addAcceptCallback(
 
   callbacks_.emplace_back(callback, eventBase);
 
-  SCOPE_SUCCESS {
+  FOLLY_SCOPE_SUCCESS {
     // If this is the first accept callback and we are supposed to be accepting,
     // start accepting.
     if (runStartAccepting) {

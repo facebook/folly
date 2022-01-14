@@ -131,7 +131,7 @@ bool readFile(
       "readFile: only containers with byte-sized elements accepted");
 
   size_t soFar = 0; // amount of bytes successfully read
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     assert(out.size() >= soFar); // resize better doesn't throw
     out.resize(soFar);
   };
@@ -183,7 +183,7 @@ bool readFile(
     return false;
   }
 
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     // Ignore errors when closing the file
     closeNoInt(fd);
   };

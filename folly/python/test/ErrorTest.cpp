@@ -82,7 +82,7 @@ TEST_F(ErrorTest, testException) {
   expectThrowsWithMessage(
       []() {
         PyObject *args, *exc;
-        SCOPE_EXIT {
+        FOLLY_SCOPE_EXIT {
           Py_XDECREF(args);
           Py_XDECREF(exc);
         };

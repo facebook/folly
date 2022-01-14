@@ -67,7 +67,7 @@ class GlobalCache {
       EventBaseT& evb,
       const FiberManager::Options& opts) {
     bool constructed = false;
-    SCOPE_EXIT {
+    FOLLY_SCOPE_EXIT {
       if (constructed) {
         evb.runOnDestruction(makeOnEventBaseDestructionCallback(key));
       }

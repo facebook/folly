@@ -108,7 +108,7 @@ static void fetchStackLimits() {
     tls_stackSize = 1;
     return;
   }
-  SCOPE_EXIT { pthread_attr_destroy(&attr); };
+  FOLLY_SCOPE_EXIT { pthread_attr_destroy(&attr); };
 
   void* addr;
   size_t rawSize;

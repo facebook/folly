@@ -243,10 +243,10 @@ TEST(ScopeGuard, TryCatchFinally) {
   testFinally(ErrorBehavior::UNHANDLED_ERROR);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_EXIT) {
+TEST(ScopeGuard, TEST_FOLLY_SCOPE_EXIT) {
   int x = 0;
   {
-    SCOPE_EXIT { ++x; };
+    FOLLY_SCOPE_EXIT { ++x; };
     EXPECT_EQ(0, x);
   }
   EXPECT_EQ(1, x);
@@ -260,7 +260,7 @@ class Foo {
       auto e = std::current_exception();
       int test = 0;
       {
-        SCOPE_EXIT { ++test; };
+        FOLLY_SCOPE_EXIT { ++test; };
         EXPECT_EQ(0, test);
       }
       EXPECT_EQ(1, test);
@@ -270,7 +270,7 @@ class Foo {
   }
 };
 
-TEST(ScopeGuard, TEST_SCOPE_FAILURE2) {
+TEST(ScopeGuard, TEST_FOLLY_SCOPE_FAILURE2) {
   try {
     Foo f;
     throw std::runtime_error("test");
@@ -283,8 +283,8 @@ void testScopeFailAndScopeSuccess(ErrorBehavior error, bool expectFail) {
   bool scopeSuccessExecuted = false;
 
   try {
-    SCOPE_FAIL { scopeFailExecuted = true; };
-    SCOPE_SUCCESS { scopeSuccessExecuted = true; };
+    FOLLY_SCOPE_FAIL { scopeFailExecuted = true; };
+    FOLLY_SCOPE_SUCCESS { scopeSuccessExecuted = true; };
 
     try {
       if (error == ErrorBehavior::HANDLED_ERROR) {
@@ -302,12 +302,12 @@ void testScopeFailAndScopeSuccess(ErrorBehavior error, bool expectFail) {
   EXPECT_EQ(!expectFail, scopeSuccessExecuted);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_FAIL_EXCEPTION_PTR) {
+TEST(ScopeGuard, TEST_FOLLY_SCOPE_FAIL_EXCEPTION_PTR) {
   bool catchExecuted = false;
   bool failExecuted = false;
 
   try {
-    SCOPE_FAIL { failExecuted = true; };
+    FOLLY_SCOPE_FAIL { failExecuted = true; };
 
     std::exception_ptr ep;
     try {
@@ -324,15 +324,15 @@ TEST(ScopeGuard, TEST_SCOPE_FAIL_EXCEPTION_PTR) {
   EXPECT_TRUE(failExecuted);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_FAIL_AND_SCOPE_SUCCESS) {
+TEST(ScopeGuard, TEST_FOLLY_SCOPE_FAIL_AND_FOLLY_SCOPE_SUCCESS) {
   testScopeFailAndScopeSuccess(ErrorBehavior::SUCCESS, false);
   testScopeFailAndScopeSuccess(ErrorBehavior::HANDLED_ERROR, false);
   testScopeFailAndScopeSuccess(ErrorBehavior::UNHANDLED_ERROR, true);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_SUCCESS_THROW) {
+TEST(ScopeGuard, TEST_FOLLY_SCOPE_SUCCESS_THROW) {
   auto lambda = []() {
-    SCOPE_SUCCESS { throw std::runtime_error("ehm"); };
+    FOLLY_SCOPE_SUCCESS { throw std::runtime_error("ehm"); };
   };
   EXPECT_THROW(lambda(), std::runtime_error);
 }

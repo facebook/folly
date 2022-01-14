@@ -77,7 +77,7 @@ static int closeOnlyFileDescriptor(int fd) {
     // We told it to continue execution, so nothing here would
     // be run anyways.
   }
-  // We're at the core, we don't get the luxery of SCOPE_EXIT because
+  // We're at the core, we don't get the luxery of FOLLY_SCOPE_EXIT because
   // of circular dependencies.
   if (!SetHandleInformation(h, protectFlag, handleFlags)) {
     return -1;

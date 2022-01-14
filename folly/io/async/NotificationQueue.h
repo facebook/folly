@@ -416,7 +416,7 @@ class NotificationQueue {
    * unmodified.
    */
   bool tryConsume(MessageT& result) {
-    SCOPE_EXIT { syncSignalAndQueue(); };
+    FOLLY_SCOPE_EXIT { syncSignalAndQueue(); };
 
     checkPid();
     std::unique_ptr<Node> data;
@@ -661,13 +661,13 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
   DestructorGuard dg(this);
   uint32_t numProcessed = 0;
   setActive(true);
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     if (queue_) {
       queue_->syncSignalAndQueue();
     }
   };
-  SCOPE_EXIT { setActive(false, /* shouldLock = */ true); };
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT { setActive(false, /* shouldLock = */ true); };
+  FOLLY_SCOPE_EXIT {
     if (numConsumed != nullptr) {
       *numConsumed = numProcessed;
     }
@@ -833,7 +833,7 @@ bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained(
 template <typename MessageT>
 template <typename F>
 void NotificationQueue<MessageT>::SimpleConsumer::consume(F&& foreach) {
-  SCOPE_EXIT { queue_.syncSignalAndQueue(); };
+  FOLLY_SCOPE_EXIT { queue_.syncSignalAndQueue(); };
 
   queue_.checkPid();
 

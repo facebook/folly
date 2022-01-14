@@ -1522,7 +1522,7 @@ void AsyncSocket::writeImpl(
   auto* releaseIOBufCallback =
       callback ? callback->getReleaseIOBufCallback() : nullptr;
 
-  SCOPE_EXIT { releaseIOBuf(std::move(ioBuf), releaseIOBufCallback); };
+  FOLLY_SCOPE_EXIT { releaseIOBuf(std::move(ioBuf), releaseIOBufCallback); };
 
   totalAppBytesScheduledForWrite_ += totalBytes;
   if (ioBuf) {
@@ -3278,7 +3278,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
 AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     NetworkSocket fd, struct msghdr* msg, int msg_flags) {
   ssize_t totalWritten = 0;
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     if (totalWritten > 0) {
       rawBytesWritten_ += totalWritten;
     }

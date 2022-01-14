@@ -128,7 +128,7 @@ TEST_F(BlockingWaitTest, ReturnRvalueReferenceFromAwaiter) {
 TEST_F(BlockingWaitTest, AsynchronousCompletionOnAnotherThread) {
   folly::coro::Baton baton;
   std::thread t{[&] { baton.post(); }};
-  SCOPE_EXIT { t.join(); };
+  FOLLY_SCOPE_EXIT { t.join(); };
   folly::coro::blockingWait(baton);
 }
 
@@ -176,7 +176,7 @@ class SimplePromise {
 TEST_F(BlockingWaitTest, WaitOnSimpleAsyncPromise) {
   SimplePromise<std::string> p;
   std::thread t{[&] { p.emplace("hello coroutines!"); }};
-  SCOPE_EXIT { t.join(); };
+  FOLLY_SCOPE_EXIT { t.join(); };
   auto result = folly::coro::blockingWait(p);
   EXPECT_EQ("hello coroutines!", result);
 }
@@ -191,7 +191,7 @@ struct MoveCounting {
 TEST_F(BlockingWaitTest, WaitOnMoveOnlyAsyncPromise) {
   SimplePromise<MoveCounting> p;
   std::thread t{[&] { p.emplace(); }};
-  SCOPE_EXIT { t.join(); };
+  FOLLY_SCOPE_EXIT { t.join(); };
   auto result = folly::coro::blockingWait(p);
 
   // Number of move-constructions:

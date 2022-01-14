@@ -118,7 +118,7 @@ TEST(Expected, CoroutineException) {
 TEST(Expected, CoroutineCleanedUp) {
   int count_dest = 0;
   auto r = [&]() -> Expected<int, Err> {
-    SCOPE_EXIT { ++count_dest; };
+    FOLLY_SCOPE_EXIT { ++count_dest; };
     auto x = co_await Expected<int, Err>(makeUnexpected(Err::badder()));
     ADD_FAILURE() << "Should not be resuming";
     co_return x;

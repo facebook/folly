@@ -334,7 +334,7 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   LOG_IF(DFATAL, invokingLoop_) << message;
 
   invokingLoop_ = true;
-  SCOPE_EXIT { invokingLoop_ = false; };
+  FOLLY_SCOPE_EXIT { invokingLoop_ = false; };
 
   int res = 0;
   bool ranLoopCallbacks;
@@ -515,12 +515,12 @@ void EventBase::applyLoopKeepAlive() {
 void EventBase::loopForever() {
   bool ret;
   {
-    SCOPE_EXIT { applyLoopKeepAlive(); };
+    FOLLY_SCOPE_EXIT { applyLoopKeepAlive(); };
     // Make sure notification queue events are treated as normal events.
     // We can't use loopKeepAlive() here since LoopKeepAlive token can only be
     // released inside a loop.
     ++loopKeepAliveCount_;
-    SCOPE_EXIT { --loopKeepAliveCount_; };
+    FOLLY_SCOPE_EXIT { --loopKeepAliveCount_; };
     ret = loop();
   }
 
@@ -654,7 +654,7 @@ void EventBase::runInEventBaseThreadAndWait(Func fn) noexcept {
 
   Baton<> ready;
   runInEventBaseThread([&ready, fn = std::move(fn)]() mutable {
-    SCOPE_EXIT { ready.post(); };
+    FOLLY_SCOPE_EXIT { ready.post(); };
     // A trick to force the stored functor to be executed and then destructed
     // before posting the baton and waking the waiting thread.
     copy(std::move(fn))();

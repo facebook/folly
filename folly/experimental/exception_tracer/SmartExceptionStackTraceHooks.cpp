@@ -52,7 +52,7 @@ void throwCallback(
   if (handlingThrow) {
     return;
   }
-  SCOPE_EXIT { handlingThrow = false; };
+  FOLLY_SCOPE_EXIT { handlingThrow = false; };
   handlingThrow = true;
 
   // This can allocate memory potentially causing problems in an OOM

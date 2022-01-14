@@ -142,7 +142,7 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       std::chrono::steady_clock::now(), std::memory_order_relaxed);
   thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
     *thread->taskStatsCallbacks->inCallback = true;
-    SCOPE_EXIT { *thread->taskStatsCallbacks->inCallback = false; };
+    FOLLY_SCOPE_EXIT { *thread->taskStatsCallbacks->inCallback = false; };
     try {
       for (auto& callback : callbacks) {
         callback(stats);

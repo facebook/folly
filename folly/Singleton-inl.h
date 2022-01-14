@@ -270,7 +270,7 @@ void SingletonHolder<T>::createInstance() {
     return;
   }
 
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     // Clean up creator thread when complete, and also, in case of errors here,
     // so that subsequent attempts don't think this is still in the process of
     // being built.

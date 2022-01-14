@@ -324,7 +324,7 @@ void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
     exe.add([=] {
       // decrement counter and notify if requested, whether initialization
       // was successful, was skipped (already initialized), or exception thrown.
-      SCOPE_EXIT {
+      FOLLY_SCOPE_EXIT {
         if (--(*countdown) == 0) {
           if (done != nullptr) {
             done->post();

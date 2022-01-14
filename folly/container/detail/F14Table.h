@@ -1499,7 +1499,7 @@ class F14Table : public Policy {
     auto undoState =
         this->beforeBuild(src.size(), bucket_count(), std::forward<T>(src));
     bool success = false;
-    SCOPE_EXIT {
+    FOLLY_SCOPE_EXIT {
       this->afterBuild(
           undoState, success, src.size(), bucket_count(), std::forward<T>(src));
     };
@@ -1596,7 +1596,7 @@ class F14Table : public Policy {
       ByteAlloc a{this->alloc()};
       fullness = &*std::allocator_traits<ByteAlloc>::allocate(a, cc);
     }
-    SCOPE_EXIT {
+    FOLLY_SCOPE_EXIT {
       if (cc > stackBuf.size()) {
         ByteAlloc a{this->alloc()};
         std::allocator_traits<ByteAlloc>::deallocate(
@@ -1618,7 +1618,7 @@ class F14Table : public Policy {
     auto undoState =
         this->beforeBuild(src.size(), bucket_count(), std::forward<T>(src));
     bool success = false;
-    SCOPE_EXIT {
+    FOLLY_SCOPE_EXIT {
       this->afterBuild(
           undoState, success, src.size(), bucket_count(), std::forward<T>(src));
     };
@@ -1803,8 +1803,8 @@ class F14Table : public Policy {
     chunkMask_ = static_cast<InternalSizeType>(newChunkCount - 1);
 
     bool success = false;
-    SCOPE_EXIT {
-      // this SCOPE_EXIT reverts chunks_ and chunkMask_ if necessary
+    FOLLY_SCOPE_EXIT {
+      // this FOLLY_SCOPE_EXIT reverts chunks_ and chunkMask_ if necessary
       BytePtr finishedRawAllocation = nullptr;
       std::size_t finishedAllocSize = 0;
       if (LIKELY(success)) {
@@ -1866,7 +1866,7 @@ class F14Table : public Policy {
             &*std::allocator_traits<ByteAlloc>::allocate(a, newChunkCount);
       }
       std::memset(fullness, '\0', newChunkCount);
-      SCOPE_EXIT {
+      FOLLY_SCOPE_EXIT {
         if (newChunkCount > stackBuf.size()) {
           ByteAlloc a{this->alloc()};
           std::allocator_traits<ByteAlloc>::deallocate(

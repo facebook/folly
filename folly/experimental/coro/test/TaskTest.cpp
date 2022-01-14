@@ -725,11 +725,11 @@ TEST_F(TaskTest, CoAwaitNothrowDestructorOrdering) {
   int i = 0;
   folly::coro::blockingWait(co_awaitTry([&]() -> folly::coro::Task<> {
     co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
-      SCOPE_EXIT { i *= i; };
+      FOLLY_SCOPE_EXIT { i *= i; };
       co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
-        SCOPE_EXIT { i *= 3; };
+        FOLLY_SCOPE_EXIT { i *= 3; };
         co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
-          SCOPE_EXIT { i += 1; };
+          FOLLY_SCOPE_EXIT { i += 1; };
           co_return;
         }());
       }());

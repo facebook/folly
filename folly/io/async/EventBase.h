@@ -804,7 +804,7 @@ class EventBase : public TimeoutManager,
   /// Implements the DrivableExecutor interface
   void drive() override {
     ++loopKeepAliveCount_;
-    SCOPE_EXIT { --loopKeepAliveCount_; };
+    FOLLY_SCOPE_EXIT { --loopKeepAliveCount_; };
     loopOnce();
   }
 

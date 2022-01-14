@@ -369,7 +369,7 @@ void combineNThreads(int numThreads, std::chrono::seconds duration) {
           EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
           EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 1);
           std::this_thread::yield();
-          SCOPE_EXIT {
+          FOLLY_SCOPE_EXIT {
             EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
           };
           EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 2);
@@ -421,7 +421,7 @@ void combineWithLockNThreads(int numThreads, std::chrono::seconds duration) {
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 1);
         std::this_thread::yield();
-        SCOPE_EXIT {
+        FOLLY_SCOPE_EXIT {
           EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
         };
         EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 2);
@@ -476,7 +476,7 @@ void combineWithTryLockNThreads(int numThreads, std::chrono::seconds duration) {
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 1);
         std::this_thread::yield();
-        SCOPE_EXIT {
+        FOLLY_SCOPE_EXIT {
           EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
         };
         EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 2);
@@ -547,7 +547,7 @@ void combineWithLockTryAndTimedNThreads(
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 1);
         std::this_thread::yield();
-        SCOPE_EXIT {
+        FOLLY_SCOPE_EXIT {
           EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
         };
         EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 2);
@@ -1717,7 +1717,7 @@ void concurrentLocksManyMutexes(int numThreads, std::chrono::seconds duration) {
           EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
           EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 1);
           std::this_thread::yield();
-          SCOPE_EXIT {
+          FOLLY_SCOPE_EXIT {
             EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
           };
           EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 2);
@@ -1868,7 +1868,7 @@ void concurrentExceptionPropagationStress(
             EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
             EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 1);
             std::this_thread::yield();
-            SCOPE_EXIT {
+            FOLLY_SCOPE_EXIT {
               EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
             };
             EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 2);
@@ -1990,7 +1990,7 @@ void concurrentBigValueReturnStress(
           std::this_thread::yield();
           // return an entire cacheline worth of data
           auto current = value.fetch_add(1, std::memory_order_relaxed);
-          SCOPE_EXIT {
+          FOLLY_SCOPE_EXIT {
             EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
           };
           EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 2);

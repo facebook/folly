@@ -27,7 +27,7 @@ extern "C" {
 int dprintf(int fd, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  SCOPE_EXIT { va_end(args); };
+  FOLLY_SCOPE_EXIT { va_end(args); };
 
   int ret = vsnprintf(nullptr, 0, fmt, args);
   if (ret <= 0) {
@@ -35,7 +35,7 @@ int dprintf(int fd, const char* fmt, ...) {
   }
   size_t len = size_t(ret);
   char* buf = new char[len + 1];
-  SCOPE_EXIT { delete[] buf; };
+  FOLLY_SCOPE_EXIT { delete[] buf; };
   if (size_t(vsnprintf(buf, len + 1, fmt, args)) == len &&
       write(fd, buf, len) == ssize_t(len)) {
     return ret;

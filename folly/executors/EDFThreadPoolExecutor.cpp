@@ -377,7 +377,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     auto& inCallback = *thread->taskStatsCallbacks->inCallback;
     thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
       inCallback = true;
-      SCOPE_EXIT { inCallback = false; };
+      FOLLY_SCOPE_EXIT { inCallback = false; };
       invokeCatchingExns("EDFThreadPoolExecutor: stats callback", [&] {
         for (auto& callback : callbacks) {
           callback(stats);
@@ -429,7 +429,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
   // No tasks on the horizon, so go sleep
   numIdleThreads_.fetch_add(1, std::memory_order_seq_cst);
 
-  SCOPE_EXIT { numIdleThreads_.fetch_sub(1, std::memory_order_seq_cst); };
+  FOLLY_SCOPE_EXIT { numIdleThreads_.fetch_sub(1, std::memory_order_seq_cst); };
 
   for (;;) {
     if (UNLIKELY(shouldStop())) {

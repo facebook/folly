@@ -163,7 +163,7 @@ bool ZSTDStreamCodec::doCompressStream(
   }
   ZSTD_inBuffer in = {input.data(), input.size(), 0};
   ZSTD_outBuffer out = {output.data(), output.size(), 0};
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     input.uncheckedAdvance(in.pos);
     output.uncheckedAdvance(out.pos);
   };
@@ -202,7 +202,7 @@ bool ZSTDStreamCodec::doUncompressStream(
   }
   ZSTD_inBuffer in = {input.data(), input.size(), 0};
   ZSTD_outBuffer out = {output.data(), output.size(), 0};
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     input.uncheckedAdvance(in.pos);
     output.uncheckedAdvance(out.pos);
   };

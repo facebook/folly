@@ -260,7 +260,7 @@ class Parallel : public Operator<Parallel<Ops>> {
           inQueue_.openConsumer();
           outQueue_.openProducer();
           workers_.emplace_back([this] {
-            SCOPE_EXIT {
+            FOLLY_SCOPE_EXIT {
               inQueue_.closeOutputConsumer();
               outQueue_.closeInputProducer();
             };

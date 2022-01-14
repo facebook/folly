@@ -31,7 +31,7 @@ namespace {
 std::string pyObjectToString(PyObject* obj) {
   constexpr StringPiece kConversionFail = "Error conversion failed";
   PyObject *pyStr, *pyBytes;
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     Py_XDECREF(pyStr);
     Py_XDECREF(pyBytes);
     // Swallow any errors that arise in this function
@@ -66,7 +66,7 @@ std::string pyObjectToString(PyObject* obj) {
 
 void handlePythonError(StringPiece errPrefix) {
   PyObject *ptype, *pvalue, *ptraceback;
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     Py_XDECREF(ptype);
     Py_XDECREF(pvalue);
     Py_XDECREF(ptraceback);

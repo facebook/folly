@@ -107,7 +107,7 @@ bool OpenSSLUtils::validatePeerCertNames(
   // Try to extract the names within the SAN extension from the certificate
   auto altNames = reinterpret_cast<STACK_OF(GENERAL_NAME)*>(
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     if (altNames != nullptr) {
       sk_GENERAL_NAME_pop_free(altNames, GENERAL_NAME_free);
     }
@@ -168,12 +168,12 @@ static std::unordered_map<uint16_t, std::string> getOpenSSLCipherNames() {
   if ((ctx = SSL_CTX_new(meth)) == nullptr) {
     return ret;
   }
-  SCOPE_EXIT { SSL_CTX_free(ctx); };
+  FOLLY_SCOPE_EXIT { SSL_CTX_free(ctx); };
 
   if ((ssl = SSL_new(ctx)) == nullptr) {
     return ret;
   }
-  SCOPE_EXIT { SSL_free(ssl); };
+  FOLLY_SCOPE_EXIT { SSL_free(ssl); };
 
   STACK_OF(SSL_CIPHER)* sk = SSL_get_ciphers(ssl);
   for (int i = 0; i < sk_SSL_CIPHER_num(sk); i++) {

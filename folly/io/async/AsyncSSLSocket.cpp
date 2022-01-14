@@ -1606,7 +1606,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
   // memory block either on stack or on heap. If it is on heap, we release it
   // manually when scope exits
   char* combinedBuf{nullptr};
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     // Note, always keep this check consistent with what we do below
     if (combinedBuf != nullptr && minWriteSize_ > MAX_STACK_BUF_SIZE) {
       delete[] combinedBuf;

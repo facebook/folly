@@ -534,7 +534,7 @@ TEST(IoUringBackend, OpenAt) {
   int dfd = ::open(dirPath.string().c_str(), O_DIRECTORY | O_RDONLY, 0666);
   CHECK_GE(dfd, 0);
 
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     ::close(dfd);
     ::unlink(filePath.string().c_str());
   };
@@ -569,7 +569,7 @@ TEST(IoUringBackend, OpenAt2) {
   int dfd = ::open(dirPath.string().c_str(), O_DIRECTORY | O_RDONLY, 0666);
   CHECK_GE(dfd, 0);
 
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     ::close(dfd);
     ::unlink(filePath.string().c_str());
   };
@@ -601,7 +601,7 @@ TEST(IoUringBackend, Close) {
   int fd = ::open(path.string().c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
   CHECK_GE(fd, 0);
 
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     if (fd >= 0) {
       ::close(fd);
     }
@@ -634,7 +634,7 @@ TEST(IoUringBackend, Fallocate) {
   int fd = ::open(path.string().c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
   CHECK_GE(fd, 0);
 
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     if (fd >= 0) {
       ::close(fd);
       ::unlink(path.string().c_str());
@@ -721,7 +721,7 @@ TEST(IoUringBackend, RegisteredFds) {
   int eventFd = ::eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE | EFD_NONBLOCK);
   CHECK_GT(eventFd, 0);
 
-  SCOPE_EXIT { ::close(eventFd); };
+  FOLLY_SCOPE_EXIT { ::close(eventFd); };
 
   // verify for useRegisteredFds = false we get a nullptr FdRegistrationRecord
   auto* record = backendNoReg->registerFd(eventFd);
@@ -771,7 +771,7 @@ TEST(IoUringBackend, FileReadWrite) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  FOLLY_SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
@@ -836,7 +836,7 @@ TEST(IoUringBackend, FileReadvWritev) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  FOLLY_SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
@@ -929,7 +929,7 @@ TEST(IoUringBackend, FileReadMany) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  FOLLY_SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
@@ -988,7 +988,7 @@ TEST(IoUringBackend, FileWriteMany) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  FOLLY_SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);

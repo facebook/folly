@@ -494,7 +494,7 @@ TEST_F(WriteFileAtomic, directoryPermissions) {
   //
   // Make the test directory read-only
   setDirPerms(0555);
-  SCOPE_EXIT {
+  FOLLY_SCOPE_EXIT {
     // Restore directory permissions before we exit, just to ensure the code
     // will be able to clean up the directory.
     try {

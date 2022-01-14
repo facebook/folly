@@ -377,7 +377,7 @@ TEST(Aha, LookupAny) {
   auto arr = AHACstrInt::create(12);
 
   char* f_char = strdup("f");
-  SCOPE_EXIT { free(f_char); };
+  FOLLY_SCOPE_EXIT { free(f_char); };
   arr->insert(std::make_pair(f_char, 42));
 
   EXPECT_EQ(42, arr->find("f")->second);
