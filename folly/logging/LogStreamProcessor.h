@@ -186,7 +186,6 @@ class LogStreamProcessor {
             INTERNAL,
             formatLogString(fmt, std::forward<Args>(args)...)) {}
 
-#ifdef __INCLUDE_LEVEL__
   /*
    * Versions of the above constructors to use in XLOG() macros that appear in
    * .cpp files.  These are only used if the compiler supports the
@@ -254,7 +253,6 @@ class LogStreamProcessor {
             functionName,
             INTERNAL,
             formatLogString(fmt, std::forward<Args>(args)...)) {}
-#endif
 
   ~LogStreamProcessor() noexcept;
 
