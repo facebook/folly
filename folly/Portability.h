@@ -371,7 +371,7 @@ constexpr auto kHasWeakSymbols = false;
 #endif
 #endif
 
-#if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
+#if defined(FOLLY_UNUSUAL_GFLAGS_NAMESPACE)
 namespace FOLLY_GFLAGS_NAMESPACE {}
 namespace gflags {
 using namespace FOLLY_GFLAGS_NAMESPACE;
