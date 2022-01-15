@@ -323,7 +323,7 @@ struct LastElement : std::decay<decltype(LastElementImpl<Ts...>::call(
  * Conversions from integral types to string types.
  ******************************************************************************/
 
-#if FOLLY_HAVE_INT128_T
+#if defined(FOLLY_HAVE_INT128_T)
 namespace detail {
 
 template <typename IntegerType>
@@ -472,7 +472,7 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
   result->append(value.data(), value.size());
 }
 
-#if FOLLY_HAVE_INT128_T
+#if defined(FOLLY_HAVE_INT128_T)
 /**
  * Special handling for 128 bit integers.
  */
@@ -717,7 +717,7 @@ struct HasLengthEstimator : std::false_type {};
 template <class Src>
 constexpr typename std::enable_if<
     !std::is_fundamental<Src>::value &&
-#if FOLLY_HAVE_INT128_T
+#if defined(FOLLY_HAVE_INT128_T)
         // On OSX 10.10, is_fundamental<__int128> is false :-O
         !std::is_same<__int128, Src>::value &&
         !std::is_same<unsigned __int128, Src>::value &&
@@ -1023,7 +1023,7 @@ extern template Expected<long long, ConversionCode> digits_to<long long>(
 extern template Expected<unsigned long long, ConversionCode>
 digits_to<unsigned long long>(const char*, const char*) noexcept;
 
-#if FOLLY_HAVE_INT128_T
+#if defined(FOLLY_HAVE_INT128_T)
 extern template Expected<__int128, ConversionCode> digits_to<__int128>(
     const char*, const char*) noexcept;
 extern template Expected<unsigned __int128, ConversionCode>
@@ -1060,7 +1060,7 @@ extern template Expected<long long, ConversionCode> str_to_integral<long long>(
 extern template Expected<unsigned long long, ConversionCode>
 str_to_integral<unsigned long long>(StringPiece* src) noexcept;
 
-#if FOLLY_HAVE_INT128_T
+#if defined(FOLLY_HAVE_INT128_T)
 extern template Expected<__int128, ConversionCode> str_to_integral<__int128>(
     StringPiece* src) noexcept;
 extern template Expected<unsigned __int128, ConversionCode>

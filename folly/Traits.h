@@ -827,7 +827,7 @@ struct make_unsigned : std::make_unsigned<T> {};
 template <typename T>
 using make_unsigned_t = typename make_unsigned<T>::type;
 
-#if FOLLY_HAVE_INT128_T
+#if defined(FOLLY_HAVE_INT128_T)
 
 using int128_t = signed __int128;
 using uint128_t = unsigned __int128;

@@ -544,7 +544,7 @@ struct hasher<signed char> : detail::integral_hasher<signed char> {};
 template <> // char is a different type from both signed char and unsigned char
 struct hasher<char> : detail::integral_hasher<char> {};
 
-#if FOLLY_HAVE_INT128_T
+#if defined(FOLLY_HAVE_INT128_T)
 template <>
 struct hasher<signed __int128> : detail::integral_hasher<signed __int128> {};
 
