@@ -26,7 +26,7 @@ namespace coro {
 
 // Merge the results of a number of input streams.
 //
-// The 'executor' parameter represents specifies the execution context to
+// The 'executor' parameter specifies the execution context to
 // be used for awaiting each value from the sources.
 // The 'sources' parameter represents an async-stream of async-streams.
 // The resulting generator merges the results from each of the streams
@@ -37,17 +37,16 @@ namespace coro {
 // been reached and the ends of all of the input streams it produced have been
 // reached.
 //
-// On exception, cancellation, or output stream destruction: cancels remaining
-// input streams and 'sources', discards any remaining values, and produces an
-// exception (if an input stream produced an exception) or end-of-stream
-// (if next() call was cancelled).
+// On exception or cancellation, cancels remaining input streams and 'sources',
+// discards any remaining values, and produces an exception (if an input stream
+// produced an exception) or end-of-stream (if next() call was cancelled).
 //
 // Structured concurrency: if the output stream produced an empty value
 // (end-of-stream) or an exception, it's guaranteed that 'sources' and all input
 // generators have been destroyed.
-// If the output stream is destroyed before reaching end-of-stream or exception,
-// the remaining input generators are cancelled and detached; beware of
-// use-after-free.
+// If the output stream is destroyed early (before reaching end-of-stream or
+// exception), the remaining input generators are cancelled and detached; beware
+// of use-after-free.
 //
 // Normally cancelling output stream's next() call cancels the stream, discards
 // any remaining values, and returns an end-of-stream. But there are caveats:
