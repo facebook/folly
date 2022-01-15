@@ -183,7 +183,7 @@ check_cxx_source_runs("
   int main(int argc, char** argv) {
     return call_vsnprintf(\"%\", 1) < 0 ? 0 : 1;
   }"
-  HAVE_VSNPRINTF_ERRORS
+  FOLLY_HAVE_VSNPRINTF_ERRORS
 )
 
 if (FOLLY_HAVE_LIBGFLAGS)

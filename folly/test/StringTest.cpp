@@ -107,7 +107,7 @@ void vprintfError(const char* fmt, ...) {
   va_start(ap, fmt);
   FOLLY_SCOPE_EXIT { va_end(ap); };
 
-#ifdef HAVE_VSNPRINTF_ERRORS
+#ifdef FOLLY_HAVE_VSNPRINTF_ERRORS
   // OSX's sprintf family does not return a negative number on a bad format
   // string, but Linux does. It's unclear to me which behavior is more
   // correct.
