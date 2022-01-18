@@ -263,6 +263,7 @@ class ManifestLoader(object):
         env["os"] = self.build_opts.host_type.ostype
         env["distro"] = self.build_opts.host_type.distro
         env["distro_vers"] = self.build_opts.host_type.distrovers
+        env["shared_libs"] = str(self.build_opts.shared_libs)
         for name in [
             "CXXFLAGS",
             "CPPFLAGS",

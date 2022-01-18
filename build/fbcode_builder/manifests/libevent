@@ -25,5 +25,8 @@ EVENT__DISABLE_BENCHMARK = ON
 EVENT__DISABLE_SAMPLES = ON
 EVENT__DISABLE_REGRESS = ON
 
+[cmake.defines.shared_libs=on]
+EVENT__BUILD_SHARED_LIBRARIES = ON
+
 [dependencies.not(os=linux)]
 openssl

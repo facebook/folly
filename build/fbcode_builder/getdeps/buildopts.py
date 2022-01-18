@@ -56,6 +56,7 @@ class BuildOptions(object):
         vcvars_path=None,
         allow_system_packages=False,
         lfs_path=None,
+        shared_libs=False,
     ):
         """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                              or for shipit-transformed repos, the build dir that
@@ -69,6 +70,7 @@ class BuildOptions(object):
         num_jobs - the level of concurrency to use while building
         use_shipit - use real shipit instead of the simple shipit transformer
         vcvars_path - Path to external VS toolchain's vsvarsall.bat
+        shared_libs - whether to build shared libraries
         """
         if not num_jobs:
             import multiprocessing
@@ -103,6 +105,7 @@ class BuildOptions(object):
         self.use_shipit = use_shipit
         self.allow_system_packages = allow_system_packages
         self.lfs_path = lfs_path
+        self.shared_libs = shared_libs
         if vcvars_path is None and is_windows():
 
             try:
@@ -183,6 +186,7 @@ class BuildOptions(object):
                 "distro_vers": host_type.distrovers,
                 "fb": "on" if facebook_internal else "off",
                 "test": "off",
+                "shared_libs": "on" if self.shared_libs else "off",
             }
         )
 
@@ -455,20 +459,30 @@ def setup_build_options(args, host_type=None):
     if not is_windows():
         scratch_dir = os.path.realpath(scratch_dir)
 
-    # Save any extra cmake defines passed by the user in an env variable, so it
+    # Save these args passed by the user in an env variable, so it
     # can be used while hashing this build.
     os.environ["GETDEPS_CMAKE_DEFINES"] = getattr(args, "extra_cmake_defines", "") or ""
 
     host_type = _check_host_type(args, host_type)
+
+    build_args = {
+        k: v
+        for (k, v) in vars(args).items()
+        if k
+        in {
+            "num_jobs",
+            "use_shipit",
+            "vcvars_path",
+            "allow_system_packages",
+            "lfs_path",
+            "shared_libs",
+        }
+    }
 
     return BuildOptions(
         fbcode_builder_dir,
         scratch_dir,
         host_type,
         install_dir=args.install_prefix,
-        num_jobs=args.num_jobs,
-        use_shipit=args.use_shipit,
-        vcvars_path=args.vcvars_path,
-        allow_system_packages=args.allow_system_packages,
-        lfs_path=args.lfs_path,
+        **build_args
     )

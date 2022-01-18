@@ -486,6 +486,8 @@ if __name__ == "__main__":
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
         self.loader = loader
+        if build_opts.shared_libs:
+            self.defines["BUILD_SHARED_LIBS"] = "ON"
 
     def _invalidate_cache(self):
         for name in [
@@ -968,7 +970,7 @@ class Boost(BuilderBase):
     def _build(self, install_dirs, reconfigure):
         env = self._compute_env(install_dirs)
         linkage = ["static"]
-        if self.build_opts.is_windows():
+        if self.build_opts.is_windows() or self.build_opts.shared_libs:
             linkage.append("shared")
 
         args = []
@@ -1118,7 +1120,7 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
 
         defines = {
             "CMAKE_INSTALL_PREFIX": self.inst_dir,
-            "BUILD_SHARED_LIBS": "OFF",
+            "BUILD_SHARED_LIBS": "ON" if self.build_opts.shared_libs else "OFF",
             "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         }
         define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]

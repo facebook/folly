@@ -100,6 +100,9 @@ class ProjectCmdBase(SubCmd):
         else:
             ctx_gen.set_value_for_project(args.project, "test", "off")
 
+        if opts.shared_libs:
+            ctx_gen.set_value_for_all_projects("shared_libs", "on")
+
         loader = ManifestLoader(opts, ctx_gen)
         self.process_project_dir_arguments(args, loader)
 
@@ -708,6 +711,12 @@ class BuildCmd(ProjectCmdBase):
                 "when compiling the current project and all its deps. "
                 'e.g: \'{"CMAKE_CXX_FLAGS": "--bla"}\''
             ),
+        )
+        parser.add_argument(
+            "--shared-libs",
+            help="Build shared libraries if possible",
+            action="store_true",
+            default=False,
         )
 
 
