@@ -203,12 +203,9 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
     }
     if (active > numThreads) {
       numThreadsToJoin = active - numThreads;
-      if (numThreadsToJoin > active - minthreads) {
-        numThreadsToJoin = active - minthreads;
-      }
+      assert(numThreadsToJoin <= active - minthreads);
       ThreadPoolExecutor::removeThreads(numThreadsToJoin, false);
-      activeThreads_.store(
-          active - numThreadsToJoin, std::memory_order_relaxed);
+      activeThreads_.store(numThreads, std::memory_order_relaxed);
     } else if (pending > 0 || !observers_.empty() || active < minthreads) {
       size_t numToAdd = std::min(pending, numThreads - active);
       if (!observers_.empty()) {
