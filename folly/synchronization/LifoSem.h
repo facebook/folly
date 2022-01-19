@@ -365,6 +365,17 @@ struct LifoSemBase {
   LifoSemBase(LifoSemBase const&) = delete;
   LifoSemBase& operator=(LifoSemBase const&) = delete;
 
+  /// Returns true on a successful handoff, and return false without changing
+  /// the value of the semaphore if there are no waiters
+  bool tryPost() {
+    auto idx = incrOrPop(1, true);
+    if (idx != 0) {
+      idxToNode(idx).handoff().post();
+      return true;
+    }
+    return false;
+  }
+
   /// Silently saturates if value is already 2^32-1
   bool post() {
     auto idx = incrOrPop(1);
@@ -661,7 +672,7 @@ struct LifoSemBase {
   /// Either increments by n and returns 0, or pops a node and returns it.
   /// If n + the stripe's value overflows, then the stripe's value
   /// saturates silently at 2^32-1
-  uint32_t incrOrPop(uint32_t n) {
+  uint32_t incrOrPop(uint32_t n, const bool skip_increment = false) {
     while (true) {
       assert(n > 0);
 
@@ -679,6 +690,8 @@ struct LifoSemBase {
           return head.idx();
         }
       } else {
+        if (skip_increment)
+          return 0;
         auto after = head.withValueIncr(n);
         if (head_->compare_exchange_strong(head, after)) {
           // successful incr

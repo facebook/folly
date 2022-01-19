@@ -41,6 +41,7 @@ class LifoSemTest : public testing::Test {
 
 TEST(LifoSem, basic) {
   LifoSem sem;
+  EXPECT_FALSE(sem.tryPost());
   EXPECT_FALSE(sem.tryWait());
   sem.post();
   EXPECT_TRUE(sem.tryWait());
@@ -396,6 +397,14 @@ BENCHMARK(single_thread_lifo_postwait, iters) {
     sem.post();
     asm_volatile_memory();
     sem.wait();
+    asm_volatile_memory();
+  }
+}
+
+BENCHMARK(single_thread_lifo_trypost, iters) {
+  LifoSem sem;
+  for (size_t n = 0; n < iters; ++n) {
+    EXPECT_FALSE(sem.tryPost());
     asm_volatile_memory();
   }
 }
