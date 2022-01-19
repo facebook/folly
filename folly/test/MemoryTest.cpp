@@ -37,17 +37,6 @@ static constexpr std::size_t kTooBig = folly::constexpr_max(
     std::size_t{std::numeric_limits<uint32_t>::max()},
     std::size_t{1} << (8 * sizeof(std::size_t) - 14));
 
-TEST(allocateBytes, simple) {
-  auto p = allocateBytes(10);
-  EXPECT_TRUE(p != nullptr);
-  deallocateBytes(p, 10);
-}
-
-TEST(allocateBytes, zero) {
-  auto p = allocateBytes(0);
-  deallocateBytes(p, 0);
-}
-
 TEST(operatorNewDelete, zero) {
   auto p = ::operator new(0);
   EXPECT_TRUE(p != nullptr);
