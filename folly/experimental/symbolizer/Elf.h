@@ -273,7 +273,9 @@ class ElfFile {
 
   template <class T>
   const T& at(ElfOff offset) const noexcept {
-    static_assert(std::is_pod<T>::value, "non-pod");
+    static_assert(
+        std::is_standard_layout<T>::value && std::is_trivial<T>::value,
+        "non-pod");
     FOLLY_SAFE_CHECK(
         offset + sizeof(T) <= length_,
         "Offset (",

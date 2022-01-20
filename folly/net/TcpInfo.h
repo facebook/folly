@@ -232,7 +232,7 @@ struct TcpInfo {
    */
   template <typename T1, typename T2>
   static size_t constexpr getFieldOffset(T1 T2::*field) {
-    static_assert(std::is_pod<T1>());
+    static_assert(std::is_standard_layout<T1>() && std::is_trivial<T1>());
     constexpr T2 dummy{};
     return size_t(&(dummy.*field)) - size_t(&dummy);
   }

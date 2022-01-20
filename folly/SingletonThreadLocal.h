@@ -77,7 +77,10 @@ class SingletonThreadLocal {
   struct LocalCache {
     Wrapper* cache;
   };
-  static_assert(std::is_pod<LocalCache>::value, "non-pod");
+  static_assert(
+      std::is_standard_layout<LocalCache>::value &&
+          std::is_trivial<LocalCache>::value,
+      "non-pod");
 
   struct LocalLifetime;
 
