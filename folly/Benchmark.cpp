@@ -42,6 +42,9 @@ using namespace std;
 DEFINE_bool(benchmark, false, "Run benchmarks.");
 
 DEFINE_bool(json, false, "Output in JSON format.");
+
+DEFINE_bool(bm_estimate_time, false, "Estimate running time");
+
 DEFINE_string(
     bm_relative_to,
     "",
@@ -180,6 +183,96 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
   // If the benchmark was basically drowned in baseline noise, it's
   // possible it became negative.
   return std::make_pair(max(0.0, iter->first), iter->second);
+}
+
+static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
+    const BenchmarkFun& fun, const double globalBaseline) {
+  using std::chrono::duration_cast;
+  using std::chrono::high_resolution_clock;
+  using std::chrono::microseconds;
+  using std::chrono::nanoseconds;
+  using std::chrono::seconds;
+  using EpochResultType = std::pair<double, UserCounters>;
+
+  // They key here is accuracy; too low numbers means the accuracy was
+  // coarse. We up the ante until we get to at least minNanoseconds
+  // timings.
+  static_assert(
+      std::is_same<high_resolution_clock::duration, nanoseconds>::value,
+      "High resolution clock must be nanosecond resolution.");
+
+  // Estimate single iteration running time for 1 sec
+  double estPerIter = 0.0; // Estimated nanosec per iteration
+  auto estStart = high_resolution_clock::now();
+  const auto estBudget = seconds(1);
+  for (auto n = 1; n < 1000; n *= 2) {
+    detail::TimeIterData timeIterData = fun(static_cast<unsigned int>(n));
+    auto now = high_resolution_clock::now();
+    auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
+    estPerIter = double(nsecs.count() - globalBaseline) / n;
+    if (now - estStart > estBudget) {
+      break;
+    }
+  }
+  // Can't estimate running time, so make it a baseline
+  if (estPerIter <= 0.0) {
+    estPerIter = globalBaseline;
+  }
+
+  // We do measurements in several epochs to account for jitter.
+  constexpr unsigned int epochs = 1000;
+  size_t actualEpochs = 0;
+  const unsigned int estimateCount = max(1.0, 5e+7 / estPerIter);
+  std::vector<EpochResultType> epochResults(epochs);
+  const auto maxRunTime = seconds(5);
+  auto globalStart = high_resolution_clock::now();
+
+  // Run benchmark up to epoch times with at least 0.5 sec each
+  // Or until we run out of alowed time (5sec)
+  for (size_t tryId = 0; tryId < epochs; tryId++) {
+    detail::TimeIterData timeIterData = fun(estimateCount);
+    auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
+
+    if (nsecs.count() > globalBaseline) {
+      auto nsecIter =
+          double(nsecs.count() - globalBaseline) / timeIterData.niter;
+      epochResults[actualEpochs++] =
+          std::make_pair(nsecIter, std::move(timeIterData.userCounters));
+    }
+    // Check if we are out of time quota
+    auto now = high_resolution_clock::now();
+    if (now - globalStart > maxRunTime) {
+      break;
+    }
+  }
+
+  // Sort results by running time
+  std::sort(
+      epochResults.begin(),
+      epochResults.begin() + actualEpochs,
+      [](const EpochResultType& a, const EpochResultType& b) {
+        return a.first < b.first;
+      });
+
+  const auto getPercentile = [](size_t count, double p) -> size_t {
+    return static_cast<size_t>(count * p);
+  };
+
+  const size_t epochP25 = getPercentile(actualEpochs, 0.25);
+  const size_t epochP75 = getPercentile(actualEpochs, 0.75);
+  if (epochP75 - epochP25 == 0) {
+    return std::make_pair(NAN, UserCounters());
+  }
+
+  double geomeanNsec = 1.0;
+  for (size_t tryId = epochP25; tryId < epochP75; tryId++) {
+    geomeanNsec *= epochResults[tryId].first;
+  }
+  geomeanNsec =
+      std::pow(geomeanNsec, 1.0 / static_cast<double>(epochP75 - epochP25));
+
+  return std::make_pair(
+      geomeanNsec, epochResults[epochP25 + (epochP75 - epochP25) / 2].second);
 }
 
 struct ScaleInfo {
@@ -517,7 +610,9 @@ runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
       if (bmRegex && !boost::regex_search(bm.name, *bmRegex)) {
         continue;
       }
-      elapsed = runBenchmarkGetNSPerIteration(bm.func, globalBaseline.first);
+      elapsed = FLAGS_bm_estimate_time
+          ? runBenchmarkGetNSPerIterationEstimate(bm.func, globalBaseline.first)
+          : runBenchmarkGetNSPerIteration(bm.func, globalBaseline.first);
     }
 
     // if customized user counters is used, it cannot print the result in real
