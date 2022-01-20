@@ -16,11 +16,13 @@
 
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
+#include <signal.h>
 #include <array>
 #include <cstdlib>
 
 #include <folly/Demangle.h>
 #include <folly/Range.h>
+#include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
@@ -28,6 +30,8 @@
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Unistd.h>
+#include <folly/synchronization/Baton.h>
 #include <folly/test/TestUtils.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
@@ -64,6 +68,47 @@ TEST(Symbolizer, Single) {
     basename.advance(pos + 1);
   }
   EXPECT_EQ("SymbolizerTest.cpp", basename.str());
+}
+
+TEST(Symbolizer, SingleCustomExePath) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
+  auto pid = ::fork();
+  if (pid == -1) {
+    SKIP("fork failed");
+  } else if (pid == 0) {
+    // child process waits forever, parent will kill
+    folly::Baton<> baton;
+    baton.wait();
+  } else {
+    // parent process
+
+    // kill the child process on cleanup
+    auto guard = folly::makeGuard([pid] {
+      auto error = ::kill(pid, SIGKILL);
+      ASSERT_EQ(0, error);
+    });
+
+    // path to executable for child binary
+    auto exePath = folly::to<std::string>("/proc/", pid, "/exe");
+
+    // It looks like we could only use .debug_aranges with "-g2", with
+    // "-g1 -gdwarf-aranges", the code has to fallback to line-tables to
+    // get the file name.
+    Symbolizer symbolizer(
+        nullptr, LocationInfoMode::FULL, 0, std::move(exePath));
+    SymbolizedFrame a;
+    ASSERT_TRUE(symbolizer.symbolize(reinterpret_cast<uintptr_t>(foo), a));
+    EXPECT_EQ("folly::symbolizer::test::foo()", folly::demangle(a.name));
+
+    auto path = a.location.file.toString();
+    folly::StringPiece basename(path);
+    auto pos = basename.rfind('/');
+    if (pos != folly::StringPiece::npos) {
+      basename.advance(pos + 1);
+    }
+    EXPECT_EQ("SymbolizerTest.cpp", basename.str());
+  }
 }
 
 // Test stack frames...

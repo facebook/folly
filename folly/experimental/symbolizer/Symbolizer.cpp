@@ -124,8 +124,13 @@ bool Symbolizer::isAvailable() {
 }
 
 Symbolizer::Symbolizer(
-    ElfCacheBase* cache, LocationInfoMode mode, size_t symbolCacheSize)
-    : cache_(cache ? cache : defaultElfCache()), mode_(mode) {
+    ElfCacheBase* cache,
+    LocationInfoMode mode,
+    size_t symbolCacheSize,
+    std::string exePath)
+    : cache_(cache ? cache : defaultElfCache()),
+      mode_(mode),
+      exePath_(std::move(exePath)) {
   if (symbolCacheSize > 0) {
     symbolCache_.emplace(folly::in_place, symbolCacheSize);
   }
@@ -149,7 +154,7 @@ size_t Symbolizer::symbolize(
 
   char selfPath[PATH_MAX + 8];
   ssize_t selfSize;
-  if ((selfSize = readlink("/proc/self/exe", selfPath, PATH_MAX + 1)) == -1) {
+  if ((selfSize = readlink(exePath_.c_str(), selfPath, PATH_MAX + 1)) == -1) {
     // Something has gone terribly wrong.
     return 0;
   }

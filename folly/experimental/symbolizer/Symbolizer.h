@@ -106,7 +106,8 @@ class Symbolizer {
   explicit Symbolizer(
       ElfCacheBase* cache,
       LocationInfoMode mode = kDefaultLocationInfoMode,
-      size_t symbolCacheSize = 0);
+      size_t symbolCacheSize = 0,
+      std::string exePath = "/proc/self/exe");
 
   /**
    *  Symbolize given addresses and return the number of @frames filled:
@@ -150,6 +151,7 @@ class Symbolizer {
  private:
   ElfCacheBase* const cache_;
   const LocationInfoMode mode_;
+  const std::string exePath_;
 
   // SymbolCache contains mapping between an address and its frames. The first
   // frame is the normal function call, and the following are stacked inline
