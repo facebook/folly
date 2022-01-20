@@ -75,7 +75,7 @@ class BuildOptions(object):
         if not num_jobs:
             import multiprocessing
 
-            num_jobs = multiprocessing.cpu_count() // 2
+            num_jobs = max(1, multiprocessing.cpu_count() // 2)
 
         if not install_dir:
             install_dir = os.path.join(scratch_dir, "installed")
