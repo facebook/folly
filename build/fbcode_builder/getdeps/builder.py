@@ -793,6 +793,7 @@ if __name__ == "__main__":
             else:
                 testpilot_args = [
                     tpx,
+                    "--force-local-execution",
                     "--buck-test-info",
                     buck_test_info_name,
                     "--retry=%d" % retry,
