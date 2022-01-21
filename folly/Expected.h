@@ -964,11 +964,13 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     return *this;
   }
 
+#ifdef _MSC_VER
   // Used only when an Expected is used with coroutines on MSVC
   /* implicit */ Expected(const expected_detail::PromiseReturn<Value, Error>& p)
       : Expected{} {
     p.promise_->value_ = this;
   }
+#endif
 
   template <class... Ts FOLLY_REQUIRES_TRAILING(
       std::is_constructible<Value, Ts&&...>::value)>
