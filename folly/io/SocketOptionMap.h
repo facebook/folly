@@ -46,6 +46,7 @@ class SocketOptionKey {
   }
 
   int apply(NetworkSocket fd, int val) const;
+  int apply(NetworkSocket fd, const void* val, socklen_t len) const;
 
   int level;
   int optname;
@@ -54,16 +55,28 @@ class SocketOptionKey {
 
 // Maps from a socket option key to its value
 using SocketOptionMap = std::map<SocketOptionKey, int>;
+using SocketNontrivialOptionMap = std::map<SocketOptionKey, std::string>;
 
 extern const SocketOptionMap emptySocketOptionMap;
+extern const SocketNontrivialOptionMap emptySocketNontrivialOptionMap;
 
 int applySocketOptions(
     NetworkSocket fd,
     const SocketOptionMap& options,
     SocketOptionKey::ApplyPos pos);
 
+int applySocketOptions(
+    NetworkSocket fd,
+    const SocketNontrivialOptionMap& options,
+    SocketOptionKey::ApplyPos pos);
+
 SocketOptionMap validateSocketOptions(
     const SocketOptionMap& options,
+    sa_family_t family,
+    SocketOptionKey::ApplyPos pos);
+
+SocketNontrivialOptionMap validateSocketOptions(
+    const SocketNontrivialOptionMap& options,
     sa_family_t family,
     SocketOptionKey::ApplyPos pos);
 

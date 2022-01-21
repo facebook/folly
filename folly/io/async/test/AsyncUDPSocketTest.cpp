@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 
 #include <thread>
@@ -1096,4 +1097,30 @@ TEST_F(AsyncUDPSocketTest, TestWritemCmsg) {
   }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
   socket_->close();
+}
+
+TEST_F(AsyncUDPSocketTest, TestApplyNontrivialOptionsPostBind) {
+  EventBase evb;
+  AsyncUDPSocket socket(&evb);
+  ASSERT_FALSE(socket.isBound());
+  folly::SocketAddress address("127.0.0.1", 443);
+  socket.connect(address);
+  ASSERT_TRUE(socket.isBound());
+
+  const auto& localAddr = socket.address();
+  ASSERT_TRUE(localAddr.isInitialized());
+  ASSERT_GT(localAddr.getPort(), 0);
+
+  folly::SocketNontrivialOptionMap options =
+      folly::emptySocketNontrivialOptionMap;
+  struct linger sl {
+    .l_onoff = 1, .l_linger = 123,
+  };
+
+  options.insert(
+      {folly::SocketOptionKey{SOL_SOCKET, SO_LINGER},
+       std::string((char*)&sl, sizeof(sl))});
+
+  socket.applyNontrivialOptions(
+      options, folly::SocketOptionKey::ApplyPos::POST_BIND);
 }

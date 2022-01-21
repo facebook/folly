@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <folly/io/SocketOptionMap.h>
 
 #include <folly/Function.h>
 #include <folly/ScopeGuard.h>
@@ -460,6 +461,9 @@ class AsyncUDPSocket : public EventHandler {
 
   virtual void applyOptions(
       const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
+
+  virtual void applyNontrivialOptions(
+      const SocketNontrivialOptionMap& options, SocketOptionKey::ApplyPos pos);
 
   /**
    * Override netops::Dispatcher to be used for netops:: calls.

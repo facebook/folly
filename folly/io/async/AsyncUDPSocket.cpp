@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 
 #include <cerrno>
@@ -1367,6 +1368,17 @@ void AsyncUDPSocket::applyOptions(
     throw AsyncSocketException(
         AsyncSocketException::INTERNAL_ERROR,
         "failed to set socket option",
+        result);
+  }
+}
+
+void AsyncUDPSocket::applyNontrivialOptions(
+    const SocketNontrivialOptionMap& options, SocketOptionKey::ApplyPos pos) {
+  auto result = applySocketOptions(fd_, options, pos);
+  if (result) {
+    throw AsyncSocketException(
+        AsyncSocketException::INTERNAL_ERROR,
+        "failed to set nontrivial socket option",
         result);
   }
 }

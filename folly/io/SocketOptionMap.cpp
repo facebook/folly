@@ -23,9 +23,15 @@
 namespace folly {
 
 const SocketOptionMap emptySocketOptionMap;
+const SocketNontrivialOptionMap emptySocketNontrivialOptionMap;
 
 int SocketOptionKey::apply(NetworkSocket fd, int val) const {
   return netops::setsockopt(fd, level, optname, &val, sizeof(val));
+}
+
+int SocketOptionKey::apply(
+    NetworkSocket fd, const void* val, socklen_t len) const {
+  return netops::setsockopt(fd, level, optname, val, len);
 }
 
 int applySocketOptions(
@@ -43,11 +49,46 @@ int applySocketOptions(
   return 0;
 }
 
+int applySocketOptions(
+    NetworkSocket fd,
+    const SocketNontrivialOptionMap& options,
+    SocketOptionKey::ApplyPos pos) {
+  for (const auto& opt : options) {
+    if (opt.first.applyPos_ == pos) {
+      auto rv =
+          opt.first.apply(fd, (void*)opt.second.data(), opt.second.size());
+      if (rv) {
+        return errno;
+      }
+    }
+  }
+  return 0;
+}
+
 SocketOptionMap validateSocketOptions(
     const SocketOptionMap& options,
     sa_family_t family,
     SocketOptionKey::ApplyPos pos) {
   SocketOptionMap validOptions;
+  for (const auto& option : options) {
+    if (pos != option.first.applyPos_) {
+      continue;
+    }
+    if ((family == AF_INET && option.first.level == IPPROTO_IP) ||
+        (family == AF_INET6 && option.first.level == IPPROTO_IPV6) ||
+        option.first.level == IPPROTO_UDP || option.first.level == SOL_SOCKET ||
+        option.first.level == SOL_UDP) {
+      validOptions.insert(option);
+    }
+  }
+  return validOptions;
+}
+
+SocketNontrivialOptionMap validateSocketOptions(
+    const SocketNontrivialOptionMap& options,
+    sa_family_t family,
+    SocketOptionKey::ApplyPos pos) {
+  SocketNontrivialOptionMap validOptions;
   for (const auto& option : options) {
     if (pos != option.first.applyPos_) {
       continue;
