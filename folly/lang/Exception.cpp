@@ -18,6 +18,9 @@
 
 #include <atomic>
 #include <cassert>
+#include <cstring>
+
+#include <folly/lang/New.h>
 
 //  Accesses std::type_info and std::exception_ptr internals. Since these vary
 //  by platform and library, import or copy the structure and function
@@ -413,5 +416,49 @@ void* exception_ptr_get_object(
 }
 
 #endif // defined(_WIN32)
+
+struct exception_shared_string::state {
+  // refcount ops use relaxed order since the string is immutable: side-effects
+  // need not be made visible to the destructor since there are none
+  static constexpr auto relaxed = std::memory_order_relaxed;
+  std::atomic<std::size_t> refs{0u};
+  std::size_t const size{0u};
+  static constexpr std::size_t object_size(std::size_t const len) noexcept {
+    return sizeof(state) + len + 1u;
+  }
+  static state* make(char const* const str, std::size_t const len) {
+    assert(len == std::strlen(str));
+    auto addr = operator_new(object_size(len), align_val_t{alignof(state)});
+    return new (addr) state(str, len);
+  }
+  state(char const* const str, std::size_t const len) noexcept : size{len} {
+    std::memcpy(static_cast<void*>(this + 1u), str, len + 1u);
+  }
+  char const* what() const noexcept {
+    return static_cast<char const*>(static_cast<void const*>(this + 1u));
+  }
+  void copy() noexcept { refs.fetch_add(1u, relaxed); }
+  void ruin() noexcept {
+    if (!refs.load(relaxed) || !refs.fetch_sub(1u, relaxed)) {
+      operator_delete(this, object_size(size), align_val_t{alignof(state)});
+    }
+  }
+};
+
+exception_shared_string::exception_shared_string(char const* const str)
+    : exception_shared_string{str, std::strlen(str)} {}
+exception_shared_string::exception_shared_string(
+    char const* const str, std::size_t const len)
+    : state_{state::make(str, len)} {}
+exception_shared_string::exception_shared_string(
+    exception_shared_string const& that) noexcept
+    : state_{(that.state_->copy(), that.state_)} {}
+exception_shared_string::~exception_shared_string() {
+  state_->ruin();
+}
+
+char const* exception_shared_string::what() const noexcept {
+  return state_->what();
+}
 
 } // namespace folly

@@ -338,4 +338,34 @@ T* exception_ptr_get_object(std::exception_ptr const& ptr) noexcept {
   return static_cast<T*>(object);
 }
 
+//  exception_shared_string
+//
+//  An immutable refcounted string, with the same layout as a pointer, suitable
+//  for use in an exception. Exceptions are intended to cheaply nothrow-copy-
+//  constructible and mostly do not need to optimize moves, and this affects how
+//  exception messages are best stored.
+class exception_shared_string {
+ private:
+  static void test_params_(char const*, std::size_t);
+
+  struct state;
+  state* const state_;
+
+ public:
+  explicit exception_shared_string(char const*);
+  exception_shared_string(char const*, std::size_t);
+  template <
+      typename String,
+      typename = decltype(test_params_(
+          FOLLY_DECLVAL(String const&).data(),
+          FOLLY_DECLVAL(String const&).size()))>
+  explicit exception_shared_string(String const& str)
+      : exception_shared_string{str.data(), str.size()} {}
+  exception_shared_string(exception_shared_string const&) noexcept;
+  ~exception_shared_string();
+  void operator=(exception_shared_string const&) = delete;
+
+  char const* what() const noexcept;
+};
+
 } // namespace folly

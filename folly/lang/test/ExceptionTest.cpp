@@ -212,3 +212,15 @@ TEST_F(ExceptionTest, exception_ptr_vmi) {
   EXPECT_EQ(1, folly::exception_ptr_get_object<A1>(ptr)->value);
   EXPECT_EQ(44, *(C*)(folly::exception_ptr_get_object(ptr)));
 }
+
+TEST_F(ExceptionTest, exception_shared_string) {
+  constexpr auto c = "hello, world!";
+
+  auto s0 = folly::exception_shared_string(c);
+  auto s1 = s0;
+  auto s2 = s1;
+  EXPECT_STREQ(c, s2.what());
+
+  EXPECT_STREQ(c, folly::exception_shared_string(std::string_view(c)).what());
+  EXPECT_STREQ(c, folly::exception_shared_string(std::string(c)).what());
+}
