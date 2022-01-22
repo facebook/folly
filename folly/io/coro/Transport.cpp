@@ -167,6 +167,14 @@ class ReadCallback : public CallbackBase,
   //
   // ReadCallback methods
   //
+  bool isBufferMovable() noexcept override { return readBuf_; }
+
+  void readBufferAvailable(
+      std::unique_ptr<folly::IOBuf> readBuf) noexcept override {
+    CHECK(readBuf_);
+    readBuf_->append(std::move(readBuf));
+    post();
+  }
 
   // this is called right before readDataAvailable(), always
   // in the same sequence
@@ -330,6 +338,7 @@ Task<size_t> Transport::read(
   }
   VLOG(5) << "Transport::read(), expecting minReadSize=" << minReadSize;
 
+  auto readBufStartLength = readBuf.chainLength();
   ReadCallback cb{
       eventBase_->timer(),
       *transport_,
@@ -350,8 +359,9 @@ Task<size_t> Transport::read(
     co_yield co_error(std::move(waitRet.exception()));
   }
   transport_->setReadCB(nullptr);
-  deferredReadEOF_ = (cb.eof && cb.length > 0);
-  co_return cb.length;
+  auto length = readBuf.chainLength() - readBufStartLength;
+  deferredReadEOF_ = (cb.eof && length > 0);
+  co_return length;
 }
 
 Task<folly::Unit> Transport::write(
