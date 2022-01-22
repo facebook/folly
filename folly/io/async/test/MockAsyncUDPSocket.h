@@ -34,6 +34,11 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD2(
       write, ssize_t(const SocketAddress&, const std::unique_ptr<IOBuf>&));
   MOCK_METHOD3(
+      writem,
+      int(Range<SocketAddress const*>,
+          const std::unique_ptr<folly::IOBuf>*,
+          size_t));
+  MOCK_METHOD3(
       writeGSO,
       ssize_t(
           const folly::SocketAddress&,
