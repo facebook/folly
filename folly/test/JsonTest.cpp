@@ -16,6 +16,7 @@
 
 #include <folly/json.h>
 
+#include <cstdint>
 #include <iterator>
 #include <limits>
 
@@ -695,7 +696,7 @@ TEST(Json, ParseDoubleFallback) {
   EXPECT_EQ(
       std::numeric_limits<int64_t>::max(),
       parseJson("{\"a\":9223372036854775807}").items().begin()->second.asInt());
-  // with double_fallback
+  // with double_fallback numbers outside int64_t range are parsed as double
   folly::json::serialization_opts opts;
   opts.double_fallback = true;
   EXPECT_EQ(
@@ -722,6 +723,38 @@ TEST(Json, ParseDoubleFallback) {
           .items()
           .begin()
           ->second.asDouble());
+  // show that some precision gets lost
+  EXPECT_EQ(
+      847605071342477612345678900000.0,
+      parseJson("{\"a\":847605071342477612345678912345}", opts)
+          .items()
+          .begin()
+          ->second.asDouble());
+  EXPECT_DOUBLE_EQ(
+      -9223372036854775809.0,
+      parseJson("{\"a\":-9223372036854775809}", opts) // first smaller than min
+          .items()
+          .begin()
+          ->second.asDouble());
+  EXPECT_DOUBLE_EQ(
+      9223372036854775808.0,
+      parseJson("{\"a\":9223372036854775808}", opts) // first larger than max
+          .items()
+          .begin()
+          ->second.asDouble());
+  EXPECT_DOUBLE_EQ(
+      -10000000000000000000.0,
+      parseJson("{\"a\":-10000000000000000000}", opts) // minus + 20 digits
+          .items()
+          .begin()
+          ->second.asDouble());
+  EXPECT_DOUBLE_EQ(
+      10000000000000000000.0,
+      parseJson("{\"a\":10000000000000000000}", opts) // 20 digits
+          .items()
+          .begin()
+          ->second.asDouble());
+  // numbers within int64_t range are deserialized as int64_t, no loss
   EXPECT_EQ(
       std::numeric_limits<int64_t>::min(),
       parseJson("{\"a\":-9223372036854775808}", opts)
@@ -734,16 +767,48 @@ TEST(Json, ParseDoubleFallback) {
           .items()
           .begin()
           ->second.asInt());
-  // show that some precision gets lost
   EXPECT_EQ(
-      847605071342477612345678900000.0,
-      parseJson("{\"a\":847605071342477612345678912345}", opts)
+      INT64_C(-1234567890123456789),
+      parseJson("{\"a\":-1234567890123456789}", opts) // minus + 19 digits
           .items()
           .begin()
-          ->second.asDouble());
+          ->second.asInt());
+  EXPECT_EQ(
+      INT64_C(1234567890123456789),
+      parseJson("{\"a\":1234567890123456789}", opts) // 19 digits
+          .items()
+          .begin()
+          ->second.asInt());
+  EXPECT_EQ(
+      INT64_C(-123456789012345678),
+      parseJson("{\"a\":-123456789012345678}", opts) // minus + 18 digits
+          .items()
+          .begin()
+          ->second.asInt());
+  EXPECT_EQ(
+      INT64_C(123456789012345678),
+      parseJson("{\"a\":123456789012345678}", opts) // 18 digits
+          .items()
+          .begin()
+          ->second.asInt());
   EXPECT_EQ(
       toJson(parseJson(R"({"a":-9223372036854775808})", opts)),
       R"({"a":-9223372036854775808})");
+  EXPECT_EQ(
+      toJson(parseJson(R"({"a":9223372036854775807})", opts)),
+      R"({"a":9223372036854775807})");
+  EXPECT_EQ(
+      toJson(parseJson(R"({"a":-1234567890123456789})", opts)),
+      R"({"a":-1234567890123456789})");
+  EXPECT_EQ(
+      toJson(parseJson(R"({"a":1234567890123456789})", opts)),
+      R"({"a":1234567890123456789})");
+  EXPECT_EQ(
+      toJson(parseJson(R"({"a":-123456789012345678})", opts)),
+      R"({"a":-123456789012345678})");
+  EXPECT_EQ(
+      toJson(parseJson(R"({"a":123456789012345678})", opts)),
+      R"({"a":123456789012345678})");
 }
 
 TEST(Json, ParseNumbersAsStrings) {
