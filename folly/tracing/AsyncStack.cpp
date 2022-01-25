@@ -22,8 +22,8 @@
 
 #include <glog/logging.h>
 
-#include <folly/BenchmarkUtil.h>
 #include <folly/Likely.h>
+#include <folly/lang/Hint.h>
 
 #if defined(__linux__)
 #define FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD 1
@@ -146,7 +146,7 @@ FOLLY_NOINLINE static void* detached_task() noexcept {
 
   // Add this after the call to prevent the compiler from
   // turning the call to get_return_address() into a tailcall.
-  folly::doNotOptimizeAway(p);
+  compiler_must_not_elide(p);
 
   return p;
 }

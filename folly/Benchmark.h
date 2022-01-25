@@ -23,6 +23,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/Hint.h>
 #include <folly/portability/GFlags.h>
 
 #include <cassert>

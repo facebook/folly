@@ -16,7 +16,7 @@
 
 #include <folly/experimental/coro/detail/Malloc.h>
 
-#include <folly/BenchmarkUtil.h>
+#include <folly/lang/Hint.h>
 #include <folly/lang/New.h>
 
 extern "C" {
@@ -27,7 +27,7 @@ void* folly_coro_async_malloc(std::size_t size) {
 
   // Add this after the call to prevent the compiler from
   // turning the call to operator new() into a tailcall.
-  folly::doNotOptimizeAway(p);
+  folly::compiler_must_not_elide(p);
 
   return p;
 }
@@ -38,6 +38,6 @@ void folly_coro_async_free(void* ptr, std::size_t size) {
 
   // Add this after the call to prevent the compiler from
   // turning the call to operator delete() into a tailcall.
-  folly::doNotOptimizeAway(size);
+  folly::compiler_must_not_elide(size);
 }
 } // extern "C"
