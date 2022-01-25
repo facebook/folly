@@ -6,7 +6,6 @@
 This file contains the main module code for Python test programs.
 """
 
-from __future__ import print_function
 
 import contextlib
 import ctypes
