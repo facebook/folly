@@ -240,7 +240,7 @@ class AtomicNotificationQueue {
   AtomicQueue atomicQueue_;
   Queue queue_;
   std::atomic<ssize_t> taskExecuteCount_{0};
-  int32_t maxReadAtOnce_{10};
+  uint32_t maxReadAtOnce_{10};
 };
 
 /**

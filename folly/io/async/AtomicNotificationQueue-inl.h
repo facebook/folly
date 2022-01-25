@@ -321,7 +321,7 @@ bool AtomicNotificationQueue<Task>::drive(Consumer&& consumer) {
     nextQueue = atomicQueue_.getTasks();
   }
   const bool wasAnyProcessed = !queue_.empty() || !nextQueue.empty();
-  for (int32_t numConsumed = 0;
+  for (uint32_t numConsumed = 0;
        maxReadAtOnce_ == 0 || numConsumed < maxReadAtOnce_;) {
     if (queue_.empty()) {
       queue_ = std::move(nextQueue);
