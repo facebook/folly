@@ -347,10 +347,27 @@ class InstallSysDepsCmd(ProjectCmdBase):
             help="Don't install, just print the commands specs we would run",
         )
         parser.add_argument(
-            "--package-type",
-            choices=["rpm", "deb"],
+            "--os-type",
+            help="Filter to just this OS type to run",
+            choices=["linux", "darwin", "windows"],
+            action="store",
+            dest="ostype",
             default=None,
-            help="Allow overriding the package type so can see deb from centos",
+        )
+        parser.add_argument(
+            "--distro",
+            help="Filter to just this distro to run",
+            choices=["ubuntu", "centos_stream"],
+            action="store",
+            dest="distro",
+            default=None,
+        )
+        parser.add_argument(
+            "--distro-version",
+            help="Filter to just this distro version",
+            action="store",
+            dest="distrovers",
+            default=None,
         )
 
     def run_project_cmd(self, args, loader, manifest):
@@ -358,6 +375,27 @@ class InstallSysDepsCmd(ProjectCmdBase):
             projects = loader.manifests_in_dependency_order()
         else:
             projects = [manifest]
+
+        rebuild_ctx_gen = False
+        if args.ostype:
+            loader.build_opts.host_type.ostype = args.ostype
+            loader.build_opts.host_type.distro = None
+            loader.build_opts.host_type.distrovers = None
+            rebuild_ctx_gen = True
+
+        if args.distro:
+            loader.build_opts.host_type.distro = args.distro
+            loader.build_opts.host_type.distrovers = None
+            rebuild_ctx_gen = True
+
+        if args.distrovers:
+            loader.build_opts.host_type.distrovers = args.distrovers
+            rebuild_ctx_gen = True
+
+        if rebuild_ctx_gen:
+            loader.ctx_gen = loader.build_opts.get_context_generator()
+
+        manager = loader.build_opts.host_type.get_package_manager()
 
         all_packages = {}
         for m in projects:
@@ -368,18 +406,13 @@ class InstallSysDepsCmd(ProjectCmdBase):
                 merged += v
                 all_packages[k] = merged
 
-        if args.package_type:
-            manager = args.package_type
-        else:
-            manager = loader.build_opts.host_type.get_package_manager()
-
         cmd_args = None
         if manager == "rpm":
-            packages = sorted(list(set(all_packages["rpm"])))
+            packages = sorted(set(all_packages["rpm"]))
             if packages:
                 cmd_args = ["dnf", "install", "-y"] + packages
         elif manager == "deb":
-            packages = sorted(list(set(all_packages["deb"])))
+            packages = sorted(set(all_packages["deb"]))
             if packages:
                 cmd_args = ["apt", "install", "-y"] + packages
         else:

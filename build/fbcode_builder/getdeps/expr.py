@@ -139,7 +139,9 @@ class Parser(object):
         if op == "=":
             if name not in self.valid_variables:
                 raise Exception("unknown variable %r in expression" % (name,))
-            return EqualExpr(name, self.lex.get_token())
+            # remove shell quote from value so can test things with period in them, e.g "18.04"
+            unquoted = " ".join(shlex.split(self.lex.get_token()))
+            return EqualExpr(name, unquoted)
 
         raise Exception(
             "Unexpected token sequence '%s %s' in %s" % (name, op, self.text)
