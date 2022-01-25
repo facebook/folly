@@ -79,6 +79,7 @@ SCHEMA = {
     "autoconf.envcmd.LDFLAGS": {"optional_section": True},
     "rpms": {"optional_section": True},
     "debs": {"optional_section": True},
+    "pps": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
     "b2.args": {"optional_section": True},
     "make.build_args": {"optional_section": True},
@@ -106,6 +107,7 @@ ALLOWED_EXPR_SECTIONS = [
     "install.files",
     "rpms",
     "debs",
+    "pps",
 ]
 
 
@@ -352,6 +354,7 @@ class ManifestParser(object):
         return {
             "rpm": self.get_section_as_args("rpms", ctx),
             "deb": self.get_section_as_args("debs", ctx),
+            "pacman-package": self.get_section_as_args("pps", ctx),
         }
 
     def _is_satisfied_by_preinstalled_environment(self, ctx):

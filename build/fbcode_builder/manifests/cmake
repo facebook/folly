@@ -4,6 +4,9 @@ name = cmake
 [rpms]
 cmake
 
+[pps]
+cmake
+
 [dependencies]
 ninja
 
