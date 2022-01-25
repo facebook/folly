@@ -10,18 +10,13 @@ import os
 import subprocess
 import sys
 import tempfile
+from typing import Optional, Mapping
 
 from .copytree import containing_repo_type
 from .envfuncs import Env, add_path_entry
 from .fetcher import get_fbsource_repo_data
 from .manifest import ContextGenerator
 from .platform import HostType, is_windows
-
-
-try:
-    import typing  # noqa: F401
-except ImportError:
-    pass
 
 
 def detect_project(path):
@@ -312,10 +307,9 @@ def list_win32_subst_letters():
 
 
 def find_existing_win32_subst_for_path(
-    path,  # type: str
-    subst_mapping,  # type: typing.Mapping[str, str]
-):
-    # type: (...) -> typing.Optional[str]
+    path: str,
+    subst_mapping: Mapping[str, str],
+) -> Optional[str]:
     path = ntpath.normcase(ntpath.normpath(path))
     for letter, target in subst_mapping.items():
         if ntpath.normcase(target) == path:
