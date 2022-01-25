@@ -134,12 +134,29 @@
 #endif
 
 /**
+ * Define a convenience macro to test when dataflow sanitizer is being used
+ * across the different compilers (e.g. clang, gcc)
+ */
+#ifndef FOLLY_SANITIZE_DATAFLOW
+#if FOLLY_HAS_FEATURE(dataflow_sanitizer) || defined(__SANITIZE_DATAFLOW__)
+#define FOLLY_SANITIZE_DATAFLOW 1
+#endif
+#endif
+
+#ifdef FOLLY_SANITIZE_DATAFLOW
+#define FOLLY_DISABLE_DATAFLOW_SANITIZER \
+  __attribute__((no_sanitize_dataflow, noinline))
+#else
+#define FOLLY_DISABLE_DATAFLOW_SANITIZER
+#endif
+
+/**
  * Define a convenience macro to test when ASAN, UBSAN, TSAN or MSAN sanitizer
  * are being used
  */
 #ifndef FOLLY_SANITIZE
 #if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) || \
-    defined(FOLLY_SANITIZE_MEMORY)
+    defined(FOLLY_SANITIZE_MEMORY) || defined(FOLLY_SANITIZE_DATAFLOW)
 #define FOLLY_SANITIZE 1
 #endif
 #endif

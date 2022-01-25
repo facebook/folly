@@ -149,6 +149,12 @@ constexpr bool kIsSanitizeThread = true;
 constexpr bool kIsSanitizeThread = false;
 #endif
 
+#ifdef FOLLY_SANITIZE_DATAFLOW
+constexpr bool kIsSanitizeDataflow = true;
+#else
+constexpr bool kIsSanitizeDataflow = false;
+#endif
+
 #ifdef FOLLY_SANITIZE
 constexpr bool kIsSanitize = true;
 #else
