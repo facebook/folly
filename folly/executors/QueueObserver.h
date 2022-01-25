@@ -19,9 +19,12 @@
 #include <stdint.h>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <folly/Portability.h>
+#include <folly/Synchronized.h>
+#include <folly/portability/SysTypes.h>
 
 namespace folly {
 
@@ -58,6 +61,19 @@ class WorkerProvider {
   // The provided vector should be populated with the OS Thread IDs and the
   // method should return a SharedMutex which the caller can lock.
   virtual IdsWithKeepAlive collectThreadIds() = 0;
+};
+
+class ThreadIdWorkerProvider : public WorkerProvider {
+ public:
+  IdsWithKeepAlive collectThreadIds() override final;
+  void addTid(pid_t tid);
+
+  // Will block until all KeepAlives have been destroyed, if any exist
+  void removeTid(pid_t tid);
+
+ private:
+  Synchronized<std::unordered_set<pid_t>> osThreadIds_;
+  SharedMutex threadsExitMutex_;
 };
 
 class QueueObserver {

@@ -41,37 +41,6 @@ namespace {
 using default_queue = UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>;
 using default_queue_alloc =
     AlignedSysAllocator<default_queue, FixedAlign<alignof(default_queue)>>;
-
-class ThreadIdCollector : public WorkerProvider {
- public:
-  ThreadIdCollector() {}
-
-  IdsWithKeepAlive collectThreadIds() override final {
-    auto keepAlive = std::make_unique<WorkerKeepAlive>(
-        SharedMutex::ReadHolder{&threadsExitMutex_});
-    auto locked = osThreadIds_.rlock();
-    return {std::move(keepAlive), {locked->begin(), locked->end()}};
-  }
-
-  Synchronized<std::unordered_set<pid_t>> osThreadIds_;
-  SharedMutex threadsExitMutex_;
-
- private:
-  class WorkerKeepAlive : public WorkerProvider::KeepAlive {
-   public:
-    explicit WorkerKeepAlive(SharedMutex::ReadHolder idsLock)
-        : threadsExitLock_(std::move(idsLock)) {}
-    ~WorkerKeepAlive() override {}
-
-   private:
-    SharedMutex::ReadHolder threadsExitLock_;
-  };
-};
-
-inline ThreadIdCollector* upcast(std::unique_ptr<WorkerProvider>& wpPtr) {
-  return static_cast<ThreadIdCollector*>(wpPtr.get());
-}
-
 } // namespace
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
@@ -303,14 +272,12 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   }
 
   thread->startupBaton.post();
-  auto collectorPtr = upcast(threadIdCollector_);
-  collectorPtr->osThreadIds_.wlock()->insert(folly::getOSThreadID());
+  threadIdCollector_->addTid(folly::getOSThreadID());
   // On thread exit, we should remove the thread ID from the tracking list.
-  auto threadIDsGuard = folly::makeGuard([collectorPtr]() {
+  auto threadIDsGuard = folly::makeGuard([this]() {
     // The observer could be capturing a stack trace from this thread
     // so it should block until the collection finishes to exit.
-    collectorPtr->osThreadIds_.wlock()->erase(folly::getOSThreadID());
-    SharedMutex::WriteHolder w{collectorPtr->threadsExitMutex_};
+    threadIdCollector_->removeTid(folly::getOSThreadID());
   });
   while (true) {
     auto task = taskQueue_->try_take_for(threadTimeout_);
@@ -369,10 +336,6 @@ CPUThreadPoolExecutor::createQueueObserverFactory() {
       "cpu." + getName(),
       taskQueue_->getNumPriorities(),
       threadIdCollector_.get());
-}
-
-std::unique_ptr<WorkerProvider> CPUThreadPoolExecutor::createWorkerProvider() {
-  return std::make_unique<ThreadIdCollector>();
 }
 
 } // namespace folly
