@@ -20,9 +20,18 @@
 #include <cstdarg>
 
 #include <folly/Memory.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
 using folly::Function;
+
+extern "C" FOLLY_KEEP void check_folly_function_move(void* src, void* dst) {
+  new (dst) Function<void()>(std::move(*static_cast<Function<void()>*>(src)));
+}
+
+extern "C" FOLLY_KEEP void check_folly_function_nuke(void* fun) {
+  static_cast<Function<void()>*>(fun)->~Function();
+}
 
 namespace {
 int func_int_int_add_25(int x) {
