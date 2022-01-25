@@ -1225,7 +1225,7 @@ incremental = false
             self._patchup_workspace()
 
         try:
-            from getdeps.facebook.rust import vendored_crates
+            from .facebook.rust import vendored_crates
 
             vendored_crates(self.build_opts, build_source_dir)
         except ImportError:

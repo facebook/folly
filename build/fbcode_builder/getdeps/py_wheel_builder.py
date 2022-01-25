@@ -9,7 +9,7 @@ import email
 import os
 import re
 import stat
-from typing import List
+from typing import Dict, List
 
 from .builder import BuilderBase, CMakeBuilder
 
@@ -93,10 +93,14 @@ endif()
 # something like the following pip3 command:
 #   pip3 --isolated install --no-cache-dir --no-index --system \
 #       --target <install_dir> <wheel_file>
+# pyre-fixme[13] fields initialized in _build
 class PythonWheelBuilder(BuilderBase):
     """This Builder can take Python wheel archives and install them as python libraries
     that can be used by add_fb_python_library()/add_fb_python_executable() CMake rules.
     """
+
+    dist_info_dir: str
+    template_format_dict: Dict[str, str]
 
     def _build(self, install_dirs: List[str], reconfigure: bool) -> None:
         # When we are invoked, self.src_dir contains the unpacked wheel contents.
@@ -183,7 +187,7 @@ class PythonWheelBuilder(BuilderBase):
         )
         cmake_builder.build(install_dirs=install_dirs, reconfigure=reconfigure)
 
-    def _write_cmakelists(self, path_mapping: List[str], dependencies) -> None:
+    def _write_cmakelists(self, path_mapping: Dict[str, str], dependencies) -> None:
         cmake_path = os.path.join(self.build_dir, "CMakeLists.txt")
         with open(cmake_path, "w") as f:
             f.write(CMAKE_HEADER.format(**self.template_format_dict))
@@ -215,7 +219,9 @@ class PythonWheelBuilder(BuilderBase):
         with open(output_path, "w") as f:
             f.write(CMAKE_CONFIG_FILE.format(**self.template_format_dict))
 
-    def _add_sources(self, path_mapping: List[str], src_path: str, install_path: str):
+    def _add_sources(
+        self, path_mapping: Dict[str, str], src_path: str, install_path: str
+    ):
         s = os.lstat(src_path)
         if not stat.S_ISDIR(s.st_mode):
             path_mapping[src_path] = install_path

@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import configparser
 import io
 import os
 
@@ -32,11 +33,6 @@ from .fetcher import (
 )
 from .py_wheel_builder import PythonWheelBuilder
 
-
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
 
 REQUIRED = "REQUIRED"
 OPTIONAL = "OPTIONAL"
@@ -414,7 +410,7 @@ class ManifestParser(object):
             # We need to defer this import until now to avoid triggering
             # a cycle when the facebook/__init__.py is loaded.
             try:
-                from getdeps.facebook.lfs import LFSCachingArchiveFetcher
+                from .facebook.lfs import LFSCachingArchiveFetcher
 
                 return LFSCachingArchiveFetcher(
                     build_options, self, url, self.get("download", "sha256", ctx=ctx)

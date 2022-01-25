@@ -17,20 +17,14 @@ import time
 import zipfile
 from datetime import datetime
 from typing import Dict, NamedTuple
+from urllib.parse import urlparse
+from urllib.request import urlretrieve
 
 from .copytree import prefetch_dir_if_eden
 from .envfuncs import Env
 from .errors import TransientFailure
 from .platform import is_windows
 from .runcmd import run_cmd
-
-
-try:
-    from urllib import urlretrieve
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-    from urllib.request import urlretrieve
 
 
 def file_name_is_cmake_file(file_name):

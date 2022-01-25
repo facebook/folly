@@ -19,6 +19,7 @@ import os
 from collections import namedtuple
 
 
+# pyre-fixme[13] This is too magical for Pyre.
 class ShellQuoted(namedtuple("ShellQuoted", ("do_not_use_raw_str",))):
     """
 
