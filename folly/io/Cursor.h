@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <cstdarg>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <stdexcept>
@@ -71,7 +72,7 @@ class CursorBase {
     if (crtBuf_) {
       crtPos_ = crtBegin_ = crtBuf_->data();
       crtEnd_ = crtBuf_->tail();
-      if (crtPos_ + len < crtEnd_) {
+      if (uintptr_t(crtPos_) + len < uintptr_t(crtEnd_)) {
         crtEnd_ = crtPos_ + len;
       }
       remainingLen_ = len - (crtEnd_ - crtPos_);
@@ -106,7 +107,7 @@ class CursorBase {
     if (cursor.isBounded() && len > cursor.remainingLen_ + cursor.length()) {
       throw_exception<std::out_of_range>("underflow");
     }
-    if (crtPos_ + len < crtEnd_) {
+    if (uintptr_t(crtPos_) + len < uintptr_t(crtEnd_)) {
       crtEnd_ = crtPos_ + len;
     }
     remainingLen_ = len - (crtEnd_ - crtPos_);
@@ -241,7 +242,7 @@ class CursorBase {
       crtBegin_ = crtBuf_->data();
       crtEnd_ = crtBuf_->tail();
       if (isBounded()) {
-        if (crtBegin_ + remainingLen_ < crtEnd_) {
+        if (uintptr_t(crtBegin_) + remainingLen_ < uintptr_t(crtEnd_)) {
           crtEnd_ = crtBegin_ + remainingLen_;
         }
         remainingLen_ -= crtEnd_ - crtBegin_;
@@ -303,7 +304,7 @@ class CursorBase {
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
       T& val) {
-    if (LIKELY(crtPos_ + sizeof(T) <= crtEnd_)) {
+    if (LIKELY(uintptr_t(crtPos_) + sizeof(T) <= uintptr_t(crtEnd_))) {
       val = loadUnaligned<T>(data());
       crtPos_ += sizeof(T);
       return true;
@@ -327,7 +328,7 @@ class CursorBase {
 
   template <class T>
   T read() {
-    if (LIKELY(crtPos_ + sizeof(T) <= crtEnd_)) {
+    if (LIKELY(uintptr_t(crtPos_) + sizeof(T) <= uintptr_t(crtEnd_))) {
       T val = loadUnaligned<T>(data());
       crtPos_ += sizeof(T);
       return val;
@@ -408,7 +409,7 @@ class CursorBase {
 
   size_t skipAtMost(size_t len) {
     dcheckIntegrity();
-    if (LIKELY(crtPos_ + len < crtEnd_)) {
+    if (LIKELY(uintptr_t(crtPos_) + len < uintptr_t(crtEnd_))) {
       crtPos_ += len;
       return len;
     }
@@ -417,7 +418,7 @@ class CursorBase {
 
   void skip(size_t len) {
     dcheckIntegrity();
-    if (LIKELY(crtPos_ + len < crtEnd_)) {
+    if (LIKELY(uintptr_t(crtPos_) + len < uintptr_t(crtEnd_))) {
       crtPos_ += len;
     } else {
       skipSlow(len);
@@ -454,7 +455,7 @@ class CursorBase {
   size_t pullAtMost(void* buf, size_t len) {
     dcheckIntegrity();
     // Fast path: it all fits in one buffer.
-    if (LIKELY(crtPos_ + len <= crtEnd_)) {
+    if (LIKELY(uintptr_t(crtPos_) + len <= uintptr_t(crtEnd_))) {
       memcpy(buf, data(), len);
       crtPos_ += len;
       return len;
@@ -467,7 +468,7 @@ class CursorBase {
       return;
     }
     dcheckIntegrity();
-    if (LIKELY(crtPos_ + len <= crtEnd_)) {
+    if (LIKELY(uintptr_t(crtPos_) + len <= uintptr_t(crtEnd_))) {
       memcpy(buf, data(), len);
       crtPos_ += len;
     } else {
@@ -646,7 +647,7 @@ class CursorBase {
     crtPos_ = crtBegin_ = crtBuf_->data();
     crtEnd_ = crtBuf_->tail();
     if (isBounded()) {
-      if (crtPos_ + remainingLen_ < crtEnd_) {
+      if (uintptr_t(crtPos_) + remainingLen_ < uintptr_t(crtEnd_)) {
         crtEnd_ = crtPos_ + remainingLen_;
       }
       remainingLen_ -= crtEnd_ - crtPos_;
