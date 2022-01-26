@@ -690,8 +690,9 @@ struct LifoSemBase {
           return head.idx();
         }
       } else {
-        if (skip_increment)
+        if (skip_increment) {
           return 0;
+        }
         auto after = head.withValueIncr(n);
         if (head_->compare_exchange_strong(head, after)) {
           // successful incr
