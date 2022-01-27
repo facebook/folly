@@ -21,6 +21,7 @@
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/lang/Hint.h>
 #include <folly/test/TestUtils.h>
 
 #include <boost/regex.hpp>
@@ -288,6 +289,7 @@ FOLLY_NOINLINE void funcF() {
 
 FOLLY_NOINLINE void funcE() {
   funcF();
+  compiler_must_not_elide(0); // prevent tail-call above
 }
 
 FOLLY_NOINLINE folly::coro::Task<void> co_funcD() {
@@ -306,6 +308,7 @@ FOLLY_NOINLINE void funcB2_blocking() {
 
 FOLLY_NOINLINE void funcB1() {
   funcB2_blocking();
+  compiler_must_not_elide(0); // prevent tail-call above
 }
 
 FOLLY_NOINLINE folly::coro::Task<void> co_funcB0() {
