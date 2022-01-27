@@ -19,6 +19,7 @@ fizz
 fmt
 googletest
 libsodium
+python
 python-six
 zstd
 

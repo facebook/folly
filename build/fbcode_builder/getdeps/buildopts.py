@@ -240,6 +240,11 @@ class BuildOptions(object):
 
             add_path_entry(env, "CMAKE_PREFIX_PATH", d)
 
+            # Tell the thrift compiler about includes it needs to consider
+            thriftdir = os.path.join(d, "include/thrift-files")
+            if os.path.exists(thriftdir):
+                add_path_entry(env, "THRIFT_INCLUDE_PATH", thriftdir)
+
             # Allow resolving shared objects built earlier (eg: zstd
             # doesn't include the full path to the dylib in its linkage
             # so we need to give it an assist)
