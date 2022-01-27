@@ -56,12 +56,23 @@ FOLLY_MSVC_DISABLE_WARNING(4250)
  */
 class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
  public:
+  struct Options {
+    Options() : waitForAll(false) {}
+
+    Options& setWaitForAll(bool b) {
+      this->waitForAll = b;
+      return *this;
+    }
+
+    bool waitForAll;
+  };
+
   explicit IOThreadPoolExecutor(
       size_t numThreads,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("IOThreadPool"),
       folly::EventBaseManager* ebm = folly::EventBaseManager::get(),
-      bool waitForAll = false);
+      Options options = Options());
 
   IOThreadPoolExecutor(
       size_t maxThreads,
@@ -69,7 +80,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("IOThreadPool"),
       folly::EventBaseManager* ebm = folly::EventBaseManager::get(),
-      bool waitForAll = false);
+      Options options = Options());
 
   ~IOThreadPoolExecutor() override;
 

@@ -82,12 +82,12 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t numThreads,
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
-    bool waitForAll)
+    Options options)
     : ThreadPoolExecutor(
           numThreads,
           FLAGS_dynamic_iothreadpoolexecutor ? 0 : numThreads,
           std::move(threadFactory)),
-      isWaitForAll_(waitForAll),
+      isWaitForAll_(options.waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(numThreads);
@@ -99,9 +99,9 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t minThreads,
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
-    bool waitForAll)
+    Options options)
     : ThreadPoolExecutor(maxThreads, minThreads, std::move(threadFactory)),
-      isWaitForAll_(waitForAll),
+      isWaitForAll_(options.waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(maxThreads);
