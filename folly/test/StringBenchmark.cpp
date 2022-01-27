@@ -120,7 +120,7 @@ BENCHMARK(fmtAppendfBenchmark, iters) {
   for (size_t i = 0; i < iters; ++i) {
     fmt::memory_buffer buf;
     for (size_t j = 0; j < kAppendBufSize; ++j) {
-      fmt::format_to(buf, "{}", 1);
+      fmt::format_to(std::back_inserter(buf), "{}", 1);
     }
     string s = fmt::to_string(buf);
     DCHECK_EQ(s.size(), kAppendBufSize);
