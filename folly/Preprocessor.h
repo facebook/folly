@@ -69,7 +69,10 @@
  */
 #define FB_SINGLE_ARG(...) __VA_ARGS__
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #define FOLLY_PP_DETAIL_APPEND_VA_ARG(...) , ##__VA_ARGS__
+#pragma clang diagnostic pop
 
 /**
  * Helper macro that just ignores its parameters.

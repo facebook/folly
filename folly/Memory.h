@@ -69,7 +69,8 @@ inline void* aligned_malloc(size_t size, size_t align) {
   // use posix_memalign, but mimic the behaviour of memalign
   void* ptr = nullptr;
   int rc = posix_memalign(&ptr, align, size);
-  return rc == 0 ? (errno = 0, ptr) : (errno = rc, nullptr);
+  return rc == 0 ? (static_cast<void>(errno = 0), ptr)
+                 : (static_cast<void>(errno = rc), nullptr);
 }
 
 inline void aligned_free(void* aligned_ptr) {

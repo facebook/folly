@@ -755,7 +755,8 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename Class,
       // Prevent this overload from being selected when `ptr` is not a
       // compatible member function pointer.
-      typename = decltype(Function(std::mem_fn((Member Class::*)0)))>
+      typename =
+          decltype(Function(std::mem_fn(static_cast<Member Class::*>(0))))>
   /* implicit */ Function(Member Class::*ptr) noexcept {
     if (ptr) {
       *this = std::mem_fn(ptr);

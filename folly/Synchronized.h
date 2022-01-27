@@ -35,7 +35,12 @@
 #include <folly/functional/ApplyTuple.h>
 #include <folly/synchronization/Lock.h>
 
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsuggest-override"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #include <glog/logging.h>
+#pragma clang diagnostic pop
 
 #include <array>
 #include <mutex>

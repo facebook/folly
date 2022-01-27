@@ -1679,7 +1679,8 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
         // starting point for our empty-slot search, can change after
         // calling waitForZeroBits
         uint32_t bestSlot =
-            (uint32_t)folly::AccessSpreader<Atom>::current(maxDeferredReaders);
+            static_cast<uint32_t>(folly::AccessSpreader<Atom>::current
+            (maxDeferredReaders));
 
         // deferred readers are already enabled, or it is time to
         // enable them if we can find a slot
@@ -1748,7 +1749,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
       // success
       if (token != nullptr) {
         token->type_ = Token::Type::DEFERRED_SHARED;
-        token->slot_ = (uint16_t)slot;
+        token->slot_ = static_cast<uint16_t>(slot);
       }
       return true;
     }
