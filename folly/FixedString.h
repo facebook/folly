@@ -68,7 +68,7 @@ using FixedStringBase = FixedStringBase_<>;
 // it's testing for fails. In this way, precondition violations are reported
 // at compile-time instead of at runtime.
 [[noreturn]] inline void assertOutOfBounds() {
-  assert(!"Array index out of bounds in BasicFixedString");
+  assert(false && "Array index out of bounds in BasicFixedString");
   throw_exception<std::out_of_range>(
       "Array index out of bounds in BasicFixedString");
 }
@@ -89,7 +89,9 @@ constexpr std::size_t checkOverflowIfDebug(std::size_t i, std::size_t size) {
 
 // Intentionally NOT constexpr. See note above for assertOutOfBounds
 [[noreturn]] inline void assertNotNullTerminated() noexcept {
-  assert(!"Non-null terminated string used to initialize a BasicFixedString");
+  assert(
+      false &&
+      "Non-null terminated string used to initialize a BasicFixedString");
   std::terminate(); // Fail hard, fail fast.
 }
 

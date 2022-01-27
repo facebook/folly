@@ -328,9 +328,10 @@ inline exception_wrapper::exception_wrapper(
 namespace exception_wrapper_detail {
 template <class Ex>
 Ex&& dont_slice(Ex&& ex) {
-  assert(typeid(ex) == typeid(std::decay_t<Ex>) ||
-       !"Dynamic and static exception types don't match. Exception would "
-        "be sliced when storing in exception_wrapper.");
+  assert(
+      (typeid(ex) == typeid(std::decay_t<Ex>)) &&
+      "Dynamic and static exception types don't match. Exception would "
+      "be sliced when storing in exception_wrapper.");
   return std::forward<Ex>(ex);
 }
 } // namespace exception_wrapper_detail
