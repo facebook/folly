@@ -2562,7 +2562,10 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiber) {
 
 static int newCloseCb(SSL* ssl, SSL_SESSION*) {
   AsyncSSLSocket::getFromSSL(ssl)->closeNow();
-  return 1;
+
+  // We do not want ownership over the supplied SSL_SESSION*, we return 0 to
+  // tell OpenSSL to free it on our behalf.
+  return 0;
 }
 
 #if FOLLY_OPENSSL_IS_110
