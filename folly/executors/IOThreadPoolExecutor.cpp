@@ -92,6 +92,9 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
       eventBaseManager_(ebm) {
   setNumThreads(numThreads);
   registerThreadPoolExecutor(this);
+  if (options.enableThreadIdCollection) {
+    threadIdCollector_ = std::make_unique<ThreadIdWorkerProvider>();
+  }
 }
 
 IOThreadPoolExecutor::IOThreadPoolExecutor(
@@ -106,6 +109,9 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
       eventBaseManager_(ebm) {
   setNumThreads(maxThreads);
   registerThreadPoolExecutor(this);
+  if (options.enableThreadIdCollection) {
+    threadIdCollector_ = std::make_unique<ThreadIdWorkerProvider>();
+  }
 }
 
 IOThreadPoolExecutor::~IOThreadPoolExecutor() {
@@ -208,6 +214,16 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
   ioThread->eventBase = eventBaseManager_->getEventBase();
   thisThread_.reset(new std::shared_ptr<IOThread>(ioThread));
+
+  auto tid = folly::getOSThreadID();
+  if (threadIdCollector_) {
+    threadIdCollector_->addTid(tid);
+  }
+  SCOPE_EXIT {
+    if (threadIdCollector_) {
+      threadIdCollector_->removeTid(tid);
+    }
+  };
 
   auto idler = std::make_unique<MemoryIdlerTimeout>(ioThread->eventBase);
   ioThread->eventBase->runBeforeLoop(idler.get());

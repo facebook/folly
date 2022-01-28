@@ -18,6 +18,7 @@
 
 #include <folly/Portability.h>
 #include <folly/executors/IOExecutor.h>
+#include <folly/executors/QueueObserver.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/synchronization/RelaxedAtomic.h>
@@ -57,14 +58,19 @@ FOLLY_MSVC_DISABLE_WARNING(4250)
 class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
  public:
   struct Options {
-    Options() : waitForAll(false) {}
+    Options() : waitForAll(false), enableThreadIdCollection(false) {}
 
     Options& setWaitForAll(bool b) {
       this->waitForAll = b;
       return *this;
     }
+    Options& setEnableThreadIdCollection(bool b) {
+      this->enableThreadIdCollection = b;
+      return *this;
+    }
 
     bool waitForAll;
+    bool enableThreadIdCollection;
   };
 
   explicit IOThreadPoolExecutor(
@@ -99,6 +105,11 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   folly::EventBaseManager* getEventBaseManager();
 
+  // Returns nullptr unless explicitly enabled through constructor
+  folly::WorkerProvider* getThreadIdCollector() {
+    return threadIdCollector_.get();
+  }
+
  protected:
   struct alignas(Thread) IOThread : public Thread {
     IOThread(IOThreadPoolExecutor* pool)
@@ -120,6 +131,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   relaxed_atomic<size_t> nextThread_;
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   folly::EventBaseManager* eventBaseManager_;
+  std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_;
 };
 
 FOLLY_POP_WARNING
