@@ -19,9 +19,12 @@ fizz
 fmt
 googletest
 libsodium
-python
 python-six
 zstd
+
+[dependencies.not(os=windows)]
+# python doesn't build on Windows yet
+python
 
 [shipit.pathmap]
 fbcode/thrift/public_tld = .
