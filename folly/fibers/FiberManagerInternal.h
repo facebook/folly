@@ -89,14 +89,18 @@ class FiberManager : public ::folly::Executor {
     size_t stackSize{kDefaultStackSize};
 
     /**
-     * Sanitizers need a lot of extra stack space. 16x is a conservative
-     * estimate, but 8x also worked with tests where it mattered. Similarly,
-     * debug builds need extra stack space due to reduced inlining.
+     * Sanitizers need a lot of extra stack space. Benchmarks results at
+     * https://www.usenix.org/system/files/conference/atc12/atc12-final39.pdf,
+     * table 2, show that average stack increase with ASAN is 10% and extreme is
+     * 306%. Setting to 400% as "works for majority of clients" setting. If
+     * stack data layout of the service leads to even higher ASAN memory
+     * overhead, those services can tune their fiber stack sizes further.
      *
-     * Note that over-allocating here does not necessarily increase RSS, since
-     * unused memory is pretty much free.
+     * Even in the absence of ASAN, debug builds still need extra stack space
+     * due to reduced inlining.
+     *
      */
-    size_t stackSizeMultiplier{kIsSanitize ? 16 : (kIsDebug ? 2 : 1)};
+    size_t stackSizeMultiplier{kIsSanitize ? 4 : (kIsDebug ? 2 : 1)};
 
     /**
      * Record exact amount of stack used.
