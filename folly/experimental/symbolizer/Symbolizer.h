@@ -244,6 +244,15 @@ class SafeStackTracePrinter {
 };
 
 /**
+ * Gets the stack trace for the current thread and returns a string
+ * representation. Convenience function meant for debugging and logging.
+ * Empty string indicates stack trace functionality is not available.
+ *
+ * NOT async-signal-safe.
+ */
+std::string getStackTraceStr();
+
+/**
  * Gets the async stack trace for the current thread and returns a string
  * representation. Convenience function meant for debugging and logging.
  *

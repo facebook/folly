@@ -400,6 +400,33 @@ void SafeStackTracePrinter::printStackTrace(bool symbolize) {
   }
 }
 
+std::string getStackTraceStr() {
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
+  // Get and symbolize stack trace
+  constexpr size_t kMaxStackTraceDepth = 100;
+  FrameArray<kMaxStackTraceDepth> addresses;
+
+  if (!getStackTrace(addresses)) {
+    return "";
+  } else {
+    symbolizer::ElfCache elfCache;
+
+    symbolizer::Symbolizer symbolizer(&elfCache);
+    symbolizer.symbolize(addresses);
+
+    symbolizer::StringSymbolizePrinter printer;
+    printer.println(addresses);
+    return printer.str();
+  }
+
+#else
+
+  return "";
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+}
+
 std::string getAsyncStackTraceStr() {
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
