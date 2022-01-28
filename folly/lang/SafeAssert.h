@@ -91,6 +91,35 @@
   FOLLY_DETAIL_SAFE_CHECK_IMPL(      \
       0, 1, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
 
+//  FOLLY_SAFE_PCHECK
+//
+//  Equivalent to FOLLY_SAFE_CHECK but includes errno in the context information
+//  printed to stderr.
+//
+//  multi-thread-safe
+//  async-signal-safe
+#define FOLLY_SAFE_DPCHECK(expr, ...) \
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(       \
+      1, 1, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
+
+//  FOLLY_SAFE_FATAL
+//
+//  Equivalent to FOLLY_SAFE_CHECK(false, ...)
+//
+//  multi-thread-safe
+//  async-signal-safe
+#define FOLLY_SAFE_FATAL(...) \
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(0, 0, false, nullptr, __VA_ARGS__)
+
+//  FOLLY_SAFE_DFATAL
+//
+//  Equivalent to FOLLY_SAFE_DCHECK(false, ...)
+//
+//  multi-thread-safe
+//  async-signal-safe
+#define FOLLY_SAFE_DFATAL(...) \
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(1, 0, false, nullptr, __VA_ARGS__)
+
 namespace folly {
 namespace detail {
 

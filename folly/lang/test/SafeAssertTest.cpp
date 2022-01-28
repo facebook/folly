@@ -67,3 +67,9 @@ TEST(SafeAssert, AssertionFailureErrno) {
       ([] { FOLLY_SAFE_PCHECK((errno = 999) && false, "hello"); }()),
       folly::to<std::string>("Error: 999 \\(<unknown>\\)"));
 }
+
+TEST(SafeAssert, Fatal) {
+  EXPECT_DEATH( //
+      ([] { FOLLY_SAFE_FATAL("hello"); })(),
+      "Message: hello");
+}

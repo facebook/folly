@@ -521,8 +521,10 @@ void flushStderr() {
   auto const& arg = *arg_;
   char buf[to_ascii_size_max_decimal<uint64_t>];
 
-  writeStderr("\n\nAssertion failure: ");
-  writeStderr(arg.expr + 1, strlen(arg.expr) - 2);
+  if (arg.expr) {
+    writeStderr("\n\nAssertion failure: ");
+    writeStderr(arg.expr + 1, strlen(arg.expr) - 2);
+  }
   if (*arg.msg_types != safe_assert_msg_type::term) {
     writeStderr("\nMessage: ");
     auto msg_types = arg.msg_types;
