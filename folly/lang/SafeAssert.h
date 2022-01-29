@@ -46,9 +46,10 @@
               ::folly::detail::safe_assert_msg_types<                     \
                   decltype(::folly::detail::safe_assert_msg_types_seq_of( \
                       __VA_ARGS__))>::value.data};                        \
-      ::folly::detail::safe_assert_terminate<p>(                          \
-          __folly_detail_safe_assert_arg FOLLY_PP_DETAIL_APPEND_VA_ARG(   \
-              __VA_ARGS__));                                              \
+      constexpr ::folly::detail::safe_assert_terminate_w<p>               \
+          __folly_detail_safe_assert_terminate_w{                         \
+              __folly_detail_safe_assert_arg};                            \
+      __folly_detail_safe_assert_terminate_w(__VA_ARGS__);                \
     }                                                                     \
   } while (false)
 
@@ -173,11 +174,19 @@ template <bool P>
 [[noreturn]] FOLLY_COLD FOLLY_NOINLINE void safe_assert_terminate(
     safe_assert_arg const* arg, ...) noexcept; // the true backing function
 
-template <bool P, typename... A>
-[[noreturn]] FOLLY_ERASE void safe_assert_terminate(
-    safe_assert_arg const& arg, A... a) noexcept {
-  safe_assert_terminate<P>(&arg, safe_assert_msg_cast_one(a)...);
-}
+template <bool P>
+struct safe_assert_terminate_w {
+  safe_assert_arg const& arg;
+
+  FOLLY_ERASE constexpr safe_assert_terminate_w(
+      safe_assert_arg const& arg_) noexcept
+      : arg{arg_} {}
+
+  template <typename... A>
+  [[noreturn]] FOLLY_ERASE void operator()(A... a) const noexcept {
+    safe_assert_terminate<P>(&arg, safe_assert_msg_cast_one(a)...);
+  }
+};
 
 } // namespace detail
 } // namespace folly
