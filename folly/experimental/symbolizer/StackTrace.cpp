@@ -70,7 +70,12 @@ namespace {
 
 // Heuristic for guessing the maximum stack frame size. This is needed to ensure
 // we do not have stack corruption while walking the stack.
-constexpr uint64_t kMaxExpectedStackFrameSize = 0x1000000000;
+constexpr size_t kMaxExpectedStackFrameSizeLg2 = sizeof(size_t) == 8
+    ? 36 // 64GB
+    : 28 // 256MB
+    ;
+constexpr size_t kMaxExpectedStackFrameSize //
+    = size_t(1) << kMaxExpectedStackFrameSizeLg2;
 
 #if FOLLY_HAVE_LIBUNWIND
 
