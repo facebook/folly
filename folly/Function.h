@@ -565,8 +565,25 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 };
 #endif
 
+// These are control functions. They type-erase the operations of move-
+// construction, destruction, and conversion to bool.
+//
+// The interface operations are noexcept, so the implementations are as well.
+// Having the implementations be noexcept in the type permits callers to omit
+// exception-handling machinery.
+
+// Portably aliasing the type pointer-to-noexcept-function is tricky. Compilers
+// sometimes reject the straightforward approach with an error. Even with this
+// technique, some compilers accept the program while discarding the exception
+// specification. This is best-effort.
+std::size_t exec_(Op, Data*, Data*) noexcept;
+using Exec = decltype(&exec_);
+#if __cpp_noexcept_function_type >= 201510L || FOLLY_CPLUSPLUS >= 201702
+static_assert(noexcept(Exec(nullptr)(Op{}, nullptr, nullptr)), "");
+#endif
+
 template <typename Fun>
-std::size_t execSmall(Op o, Data* src, Data* dst) {
+std::size_t execSmall(Op o, Data* src, Data* dst) noexcept {
   switch (o) {
     case Op::MOVE:
       ::new (static_cast<void*>(&dst->tiny))
@@ -582,7 +599,7 @@ std::size_t execSmall(Op o, Data* src, Data* dst) {
 }
 
 template <typename Fun>
-std::size_t execBig(Op o, Data* src, Data* dst) {
+std::size_t execBig(Op o, Data* src, Data* dst) noexcept {
   switch (o) {
     case Op::MOVE:
       dst->big = src->big;
@@ -613,7 +630,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   using Traits = detail::function::FunctionTraits<FunctionType>;
   using Call = typename Traits::Call;
-  using Exec = std::size_t (*)(Op, Data*, Data*);
+  using Exec = detail::function::Exec;
 
   template <typename Fun>
   using IsSmall = detail::function::IsSmall<Fun>;
