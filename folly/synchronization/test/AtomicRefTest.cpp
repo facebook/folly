@@ -32,7 +32,8 @@ TEST_F(AtomicRefTest, integer) {
     auto ref = folly::make_atomic_ref(value);
     EXPECT_EQ(17, ref.load(std::memory_order_relaxed));
     ref.store(55, std::memory_order_relaxed);
-    EXPECT_EQ(55, ref.load(std::memory_order_relaxed));
+    EXPECT_EQ(55, ref.exchange(42, std::memory_order_relaxed));
+    EXPECT_EQ(42, ref.load(std::memory_order_relaxed));
   }
 
   {

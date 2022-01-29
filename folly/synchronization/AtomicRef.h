@@ -43,6 +43,11 @@ struct atomic_ref_base {
     return atomic().load(order);
   }
 
+  T exchange(T desired, std::memory_order order = std::memory_order_seq_cst)
+      const noexcept {
+    return atomic().exchange(desired, order);
+  }
+
   bool compare_exchange_weak(
       T& expected,
       T desired,
