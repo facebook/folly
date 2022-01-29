@@ -22,6 +22,98 @@
 #include <folly/init/Init.h>
 #include <folly/lang/Keep.h>
 
+#define FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(op, width)                       \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_var_drop_fallback(          \
+          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+    folly::detail::atomic_fetch_##op##_fallback(                             \
+        atomic, bit, std::memory_order_relaxed);                             \
+  }                                                                          \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_var_drop_native(            \
+          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+    folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed);        \
+  }                                                                          \
+  extern "C" FOLLY_KEEP bool                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_var_keep_fallback(          \
+          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+    return folly::detail::atomic_fetch_##op##_fallback(                      \
+        atomic, bit, std::memory_order_relaxed);                             \
+  }                                                                          \
+  extern "C" FOLLY_KEEP bool                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_var_keep_native(            \
+          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+    return folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed); \
+  }                                                                          \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_var_cond_fallback(          \
+          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+    if (folly::detail::atomic_fetch_##op##_fallback(                         \
+            atomic, bit, std::memory_order_relaxed)) {                       \
+      folly::detail::keep_sink_nx();                                         \
+    }                                                                        \
+  }                                                                          \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_var_cond_native(            \
+          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+    if (folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed)) {  \
+      folly::detail::keep_sink_nx();                                         \
+    }                                                                        \
+  }
+
+#define FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(op, width, bit)                  \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_drop_fallback(  \
+          std::atomic<std::uint##width##_t>& atomic) {                       \
+    folly::detail::atomic_fetch_##op##_fallback(                             \
+        atomic, bit, std::memory_order_relaxed);                             \
+  }                                                                          \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_drop_native(    \
+          std::atomic<std::uint##width##_t>& atomic) {                       \
+    folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed);        \
+  }                                                                          \
+  extern "C" FOLLY_KEEP bool                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_keep_fallback(  \
+          std::atomic<std::uint##width##_t>& atomic) {                       \
+    return folly::detail::atomic_fetch_##op##_fallback(                      \
+        atomic, bit, std::memory_order_relaxed);                             \
+  }                                                                          \
+  extern "C" FOLLY_KEEP bool                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_keep_native(    \
+          std::atomic<std::uint##width##_t>& atomic) {                       \
+    return folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed); \
+  }                                                                          \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_cond_fallback(  \
+          std::atomic<std::uint##width##_t>& atomic) {                       \
+    if (folly::detail::atomic_fetch_##op##_fallback(                         \
+            atomic, bit, std::memory_order_relaxed)) {                       \
+      folly::detail::keep_sink_nx();                                         \
+    }                                                                        \
+  }                                                                          \
+  extern "C" FOLLY_KEEP void                                                 \
+      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_cond_native(    \
+          std::atomic<std::uint##width##_t>& atomic) {                       \
+    if (folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed)) {  \
+      folly::detail::keep_sink_nx();                                         \
+    }                                                                        \
+  }
+
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(set, 8)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(set, 8, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(set, 16)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(set, 16, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(set, 16, 11)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(reset, 8)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 8, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(reset, 16)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 16, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 16, 11)
+
+#undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX
+#undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR
+
 namespace atomic_util_access {
 FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_set, folly);
 FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_reset, folly);
