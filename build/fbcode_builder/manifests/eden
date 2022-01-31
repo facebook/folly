@@ -44,6 +44,8 @@ osxfuse
 libcurl
 
 [shipit.pathmap]
+# for internal builds that use getdeps
+fbcode/common/rust/fbwhoami = common/rust/fbwhoami
 fbcode/common/rust/shed = common/rust/shed
 fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
