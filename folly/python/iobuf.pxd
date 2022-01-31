@@ -24,6 +24,7 @@ from cython.view cimport memoryview
 
 cdef extern from "folly/io/IOBuf.h" namespace "folly":
     cdef cppclass cIOBuf "folly::IOBuf":
+        cIOBuf()
         uint64_t length()
         const_uchar* data()
         bint empty()
