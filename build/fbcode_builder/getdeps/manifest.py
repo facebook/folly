@@ -10,7 +10,6 @@ import os
 from .builder import (
     AutoconfBuilder,
     Boost,
-    CargoBuilder,
     CMakeBuilder,
     BistroBuilder,
     Iproute2Builder,
@@ -22,6 +21,7 @@ from .builder import (
     SqliteBuilder,
     CMakeBootStrapBuilder,
 )
+from .cargo import CargoBuilder
 from .expr import parse_expr
 from .fetcher import (
     ArchiveFetcher,
