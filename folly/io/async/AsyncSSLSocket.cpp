@@ -1214,6 +1214,7 @@ void AsyncSSLSocket::handleAccept() noexcept {
     /* lazily create the SSL structure */
     try {
       ssl_.reset(ctx_->createSSL());
+      SSL_set_mode(ssl_.get(), SSL_MODE_ASYNC);
     } catch (std::exception& e) {
       sslState_ = STATE_ERROR;
       static const Indestructible<AsyncSocketException> ex(
