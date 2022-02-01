@@ -127,6 +127,14 @@ bool atomic_fetch_reset_fallback(
   return (atomic.fetch_and(Integer(~mask), order) & mask);
 }
 
+template <typename Atomic>
+bool atomic_fetch_flip_fallback(
+    Atomic& atomic, std::size_t bit, std::memory_order order) {
+  using Integer = decltype(atomic.load());
+  auto mask = Integer(Integer{0b1} << bit);
+  return (atomic.fetch_xor(mask, order) & mask);
+}
+
 /**
  * A simple trait to determine if the given type is an instantiation of
  * std::atomic
@@ -194,6 +202,14 @@ inline bool atomic_fetch_reset_native(
   static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
   static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
   return atomic_fetch_reset_fallback(atomic, bit, mo);
+}
+
+template <typename Atomic>
+inline bool atomic_fetch_flip_native(
+    Atomic& atomic, std::size_t bit, std::memory_order mo) {
+  static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
+  static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
+  return atomic_fetch_flip_fallback(atomic, bit, mo);
 }
 
 #else
@@ -274,6 +290,44 @@ bool atomic_fetch_reset_native(
   return atomic_fetch_reset_fallback(atomic, bit, order);
 }
 
+template <typename Integer>
+inline bool atomic_fetch_flip_native(
+    std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
+  auto previous = false;
+
+  if /* constexpr */ (sizeof(Integer) == 2) {
+    auto pointer = reinterpret_cast<std::uint16_t*>(&atomic);
+    asm volatile("lock; btcw %1, (%2); setc %0"
+                 : "=r"(previous)
+                 : "ri"(static_cast<std::uint16_t>(bit)), "r"(pointer)
+                 : "memory", "flags");
+  } else if /* constexpr */ (sizeof(Integer) == 4) {
+    auto pointer = reinterpret_cast<std::uint32_t*>(&atomic);
+    asm volatile("lock; btcl %1, (%2); setc %0"
+                 : "=r"(previous)
+                 : "ri"(static_cast<std::uint32_t>(bit)), "r"(pointer)
+                 : "memory", "flags");
+  } else if /* constexpr */ (sizeof(Integer) == 8) {
+    auto pointer = reinterpret_cast<std::uint64_t*>(&atomic);
+    asm volatile("lock; btcq %1, (%2); setc %0"
+                 : "=r"(previous)
+                 : "ri"(static_cast<std::uint64_t>(bit)), "r"(pointer)
+                 : "memory", "flags");
+  } else {
+    assert(sizeof(Integer) == 1);
+    return atomic_fetch_flip_fallback(atomic, bit, order);
+  }
+
+  return previous;
+}
+
+template <typename Atomic>
+bool atomic_fetch_flip_native(
+    Atomic& atomic, std::size_t bit, std::memory_order order) {
+  static_assert(!is_atomic<Atomic>, "");
+  return atomic_fetch_flip_fallback(atomic, bit, order);
+}
+
 #endif
 
 #else
@@ -285,6 +339,12 @@ bool atomic_fetch_set_native(Atomic&, std::size_t, std::memory_order) noexcept {
 }
 template <typename Atomic>
 bool atomic_fetch_reset_native(
+    Atomic&, std::size_t, std::memory_order) noexcept {
+  // This should never be called on non x86_64 platforms.
+  std::terminate();
+}
+template <typename Atomic>
+bool atomic_fetch_flip_native(
     Atomic&, std::size_t, std::memory_order) noexcept {
   // This should never be called on non x86_64 platforms.
   std::terminate();
@@ -325,6 +385,23 @@ bool atomic_fetch_reset(Atomic& atomic, std::size_t bit, std::memory_order mo) {
   } else {
     // otherwise default to the default implementation using fetch_and()
     return detail::atomic_fetch_reset_fallback(atomic, bit, mo);
+  }
+}
+
+template <typename Atomic>
+bool atomic_fetch_flip(Atomic& atomic, std::size_t bit, std::memory_order mo) {
+  using Integer = decltype(atomic.load());
+  static_assert(std::is_unsigned<Integer>{}, "");
+  static_assert(!std::is_const<Atomic>{}, "");
+  assert(bit < (sizeof(Integer) * 8));
+
+  // do the optimized thing on x86 builds.  Also, some versions of TSAN do not
+  // properly instrument the inline assembly, so avoid it when TSAN is enabled
+  if (folly::kIsArchAmd64 && !folly::kIsSanitizeThread) {
+    return detail::atomic_fetch_flip_native(atomic, bit, mo);
+  } else {
+    // otherwise default to the default implementation using fetch_and()
+    return detail::atomic_fetch_flip_fallback(atomic, bit, mo);
   }
 }
 

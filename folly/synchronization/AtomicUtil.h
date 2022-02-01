@@ -89,6 +89,24 @@ bool atomic_fetch_reset(
     std::size_t bit,
     std::memory_order order = std::memory_order_seq_cst);
 
+//  atomic_fetch_flip
+//
+//  Flips the bit at the given index in the binary representation of the integer
+//  from 1 to 0 or from 0 to 1. Returns the previous value of the bit.
+//
+//  Equivalent to Atomic::fetch_xor with a mask. For example, if the bit
+//  argument to this function is 1, the mask passed to the corresponding
+//  Atomic::fetch_xor would be 0b1.
+//
+//  Uses an optimized implementation when available, otherwise falling back to
+//  Atomic::fetch_xor with mask. The optimization is currently available for
+//  std::atomic on x86, using the btc instruction.
+template <typename Atomic>
+bool atomic_fetch_flip(
+    Atomic& atomic,
+    std::size_t bit,
+    std::memory_order order = std::memory_order_seq_cst);
+
 } // namespace folly
 
 #include <folly/synchronization/AtomicUtil-inl.h>

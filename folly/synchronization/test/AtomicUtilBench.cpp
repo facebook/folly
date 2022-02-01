@@ -110,6 +110,11 @@ FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 8, 3)
 FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(reset, 16)
 FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 16, 3)
 FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 16, 11)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(flip, 8)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(flip, 8, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(flip, 16)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(flip, 16, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(flip, 16, 11)
 
 #undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX
 #undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR
@@ -117,8 +122,10 @@ FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 16, 11)
 namespace atomic_util_access {
 FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_set, folly);
 FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_reset, folly);
+FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_flip, folly);
 FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_set_fallback, folly::detail);
 FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_reset_fallback, folly::detail);
+FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_flip_fallback, folly::detail);
 } // namespace atomic_util_access
 
 namespace {
