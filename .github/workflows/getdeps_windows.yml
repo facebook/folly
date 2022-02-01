@@ -22,10 +22,6 @@ jobs:
       run: git config --system core.longpaths true
     - name: Fetch boost
       run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
-    - name: Fetch perl
-      run: python build/fbcode_builder/getdeps.py fetch --no-tests perl
-    - name: Fetch openssl
-      run: python build/fbcode_builder/getdeps.py fetch --no-tests openssl
     - name: Fetch ninja
       run: python build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
@@ -40,22 +36,22 @@ jobs:
       run: python build/fbcode_builder/getdeps.py fetch --no-tests glog
     - name: Fetch googletest
       run: python build/fbcode_builder/getdeps.py fetch --no-tests googletest
-    - name: Fetch libevent
-      run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
     - name: Fetch lz4
       run: python build/fbcode_builder/getdeps.py fetch --no-tests lz4
+    - name: Fetch perl
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests perl
+    - name: Fetch openssl
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests openssl
     - name: Fetch snappy
       run: python build/fbcode_builder/getdeps.py fetch --no-tests snappy
     - name: Fetch zlib
       run: python build/fbcode_builder/getdeps.py fetch --no-tests zlib
     - name: Fetch zstd
       run: python build/fbcode_builder/getdeps.py fetch --no-tests zstd
+    - name: Fetch libevent
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
     - name: Build boost
       run: python build/fbcode_builder/getdeps.py build --no-tests boost
-    - name: Build perl
-      run: python build/fbcode_builder/getdeps.py build --no-tests perl
-    - name: Build openssl
-      run: python build/fbcode_builder/getdeps.py build --no-tests openssl
     - name: Build ninja
       run: python build/fbcode_builder/getdeps.py build --no-tests ninja
     - name: Build cmake
@@ -70,16 +66,20 @@ jobs:
       run: python build/fbcode_builder/getdeps.py build --no-tests glog
     - name: Build googletest
       run: python build/fbcode_builder/getdeps.py build --no-tests googletest
-    - name: Build libevent
-      run: python build/fbcode_builder/getdeps.py build --no-tests libevent
     - name: Build lz4
       run: python build/fbcode_builder/getdeps.py build --no-tests lz4
+    - name: Build perl
+      run: python build/fbcode_builder/getdeps.py build --no-tests perl
+    - name: Build openssl
+      run: python build/fbcode_builder/getdeps.py build --no-tests openssl
     - name: Build snappy
       run: python build/fbcode_builder/getdeps.py build --no-tests snappy
     - name: Build zlib
       run: python build/fbcode_builder/getdeps.py build --no-tests zlib
     - name: Build zstd
       run: python build/fbcode_builder/getdeps.py build --no-tests zstd
+    - name: Build libevent
+      run: python build/fbcode_builder/getdeps.py build --no-tests libevent
     - name: Build folly
       run: python build/fbcode_builder/getdeps.py build --src-dir=. folly 
     - name: Copy artifacts
