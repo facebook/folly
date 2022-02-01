@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: windows-2016
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Export boost environment
       run: "echo BOOST_ROOT=%BOOST_ROOT_1_69_0% >> %GITHUB_ENV%"
       shell: cmd

@@ -934,7 +934,7 @@ jobs:
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
             out.write("    steps:\n")
-            out.write("    - uses: actions/checkout@v1\n")
+            out.write("    - uses: actions/checkout@v2\n")
 
             if build_opts.is_windows():
                 # cmake relies on BOOST_ROOT but GH deliberately don't set it in order
