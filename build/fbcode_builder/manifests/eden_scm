@@ -27,7 +27,6 @@ test-getdeps
 
 [shipit.pathmap]
 fbcode/common/rust = common/rust
-fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
 fbcode/eden/oss = .
 fbcode/eden = eden
