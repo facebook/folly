@@ -371,6 +371,8 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
   ExpectedStorage& operator=(ExpectedStorage&&) = default;
   using ExpectedUnion<Value, Error>::ExpectedUnion;
   ~ExpectedStorage() { clear(); }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcovered-switch-default"
   void clear() noexcept {
     switch (this->which_) {
       case Which::eValue:
@@ -383,6 +385,7 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
       default:
         break;
     }
+#pragma clang diagnostic pop
     this->which_ = Which::eEmpty;
   }
   bool uninitializedByException() const noexcept {
