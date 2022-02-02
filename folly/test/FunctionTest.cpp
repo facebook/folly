@@ -18,6 +18,7 @@
 
 #include <array>
 #include <cstdarg>
+#include <functional>
 
 #include <folly/Memory.h>
 #include <folly/lang/Keep.h>
@@ -197,6 +198,21 @@ static_assert(
 #endif
 
 static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
+
+struct RecStd {
+  using type = std::function<RecStd()>;
+  /* implicit */ RecStd(type f) : func(f) {}
+  explicit operator type() { return func; }
+  type func;
+};
+
+// Recursive class - regression case
+struct RecFolly {
+  using type = folly::Function<RecFolly()>;
+  /* implicit */ RecFolly(type f) : func(std::move(f)) {}
+  explicit operator type() { return std::move(func); }
+  type func;
+};
 
 // TEST =====================================================================
 // InvokeFunctor & InvokeReference

@@ -758,7 +758,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Signature,
-      typename = typename Traits::template IfSafeResult<Function<Signature>>>
+      typename Fun = Function<Signature>,
+      // prevent gcc from making this a better match than move-ctor
+      typename = std::enable_if_t<!std::is_same<Function, Fun>::value>,
+      typename = typename Traits::template IfSafeResult<Fun>>
   Function(Function<Signature>&& that) noexcept(
       noexcept(Function(std::move(that), CoerceTag{})))
       : Function(std::move(that), CoerceTag{}) {}
@@ -800,18 +803,12 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * then `*this` is left in a valid but unspecified state.
    */
   Function& operator=(Function&& that) noexcept {
-    // Q: Why is it safe to destroy and reconstruct this object in place?
-    // A: Two reasons: First, `Function` is a final class, so in doing this
-    //    we aren't slicing off any derived parts. And second, the move
-    //    operation is guaranteed not to throw so we always leave the object
-    //    in a valid state.
-    // In the case of self-move (this == &that), this leaves the object in
-    // a default-constructed state. First the object is destroyed, then we
-    // pass the destroyed object to the move constructor. The first thing the
-    // move constructor does is default-construct the object. That object is
-    // "moved" into itself, which is a no-op for a default-constructed Function.
-    this->~Function();
-    ::new (this) Function(std::move(that));
+    exec(Op::NUKE, &data_, nullptr);
+    that.exec(Op::MOVE, &that.data_, &data_);
+    exec_ = that.exec_;
+    call_ = that.call_;
+    that.exec_ = nullptr;
+    that.call_ = &Traits::uninitCall;
     return *this;
   }
 
