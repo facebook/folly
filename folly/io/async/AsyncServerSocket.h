@@ -50,11 +50,6 @@
 #define SO_NO_TRANSPARENT_TLS 200
 #endif
 
-// TODO(yichengfb): remove this
-// For temporarily marking the new interface of
-// folly::AsyncServerSocket::AcceptCallback::connectionAccepted()
-#define FOLLY_ASYNCSERVERSOCKET_ACCEPTINFO_DEFINED 1
-
 namespace folly {
 
 /**
