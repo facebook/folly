@@ -37,6 +37,7 @@ cdef extern from "folly/io/IOBuf.h" namespace "folly":
         void insertAfterThisOne(unique_ptr[cIOBuf]&& ciobuf)
         void appendToChain(unique_ptr[cIOBuf]&& ciobuf)
         void appendChain(unique_ptr[cIOBuf]&& ciobuf)  # deprecated
+        cIOBuf cloneAsValue()
 
 
 cdef extern from "folly/io/IOBuf.h" namespace "folly::IOBuf":
