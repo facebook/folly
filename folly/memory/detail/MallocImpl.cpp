@@ -33,7 +33,7 @@ const char* mallctlnametomibWeak = nullptr;
 const char* mallctlbymibWeak = nullptr;
 const char* MallocExtension_Internal_GetNumericPropertyWeak = nullptr;
 #elif !FOLLY_HAVE_WEAK_SYMBOLS
-#if (!defined(USE_JEMALLOC) && !defined(FOLLY_USE_JEMALLOC)) || FOLLY_SANITIZE
+#if (!(defined(USE_JEMALLOC) && USE_JEMALLOC != 0) && !defined(FOLLY_USE_JEMALLOC)) || FOLLY_SANITIZE
 void* (*mallocx)(size_t, int) = nullptr;
 void* (*rallocx)(void*, size_t, int) = nullptr;
 size_t (*xallocx)(void*, size_t, size_t, int) = nullptr;
