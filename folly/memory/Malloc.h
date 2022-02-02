@@ -28,7 +28,7 @@
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
  */
-#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && \
+#if ((defined(USE_JEMALLOC) && USE_JEMALLOC != 0) || defined(FOLLY_USE_JEMALLOC)) && \
     !defined(FOLLY_SANITIZE)
 // We have JEMalloc, so use it.
 #else
@@ -72,7 +72,7 @@ namespace folly {
   inline bool usingJEMalloc() noexcept {
     return false;
   }
-#elif defined(USE_JEMALLOC) && !defined(FOLLY_SANITIZE)
+#elif (defined(USE_JEMALLOC) && USE_JEMALLOC != 0) && !defined(FOLLY_SANITIZE)
   inline bool usingJEMalloc() noexcept {
     return true;
   }
