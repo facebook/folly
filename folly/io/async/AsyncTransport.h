@@ -238,6 +238,79 @@ class AsyncReader {
 
     virtual void readDataAvailable(size_t len) noexcept = 0;
 
+    class ZeroCopyMemStore {
+     public:
+      struct Entry {
+        void* data{nullptr};
+        size_t len{0}; // in use
+        size_t capacity{0}; // capacity
+        ZeroCopyMemStore* store{nullptr};
+
+        void put() {
+          DCHECK(store);
+          store->put(this);
+        }
+      };
+
+      struct EntryDeleter {
+        void operator()(Entry* entry) { entry->put(); }
+      };
+
+      using EntryPtr = std::unique_ptr<Entry, EntryDeleter>;
+
+      virtual ~ZeroCopyMemStore() = default;
+
+      virtual EntryPtr get() = 0;
+      virtual void put(Entry*) = 0;
+    };
+
+    /* the next 4 methods can be used if the  callback wants to support zerocopy
+     * RX on Linux as described in https://lwn.net/Articles/754681/ If the
+     * current kernel version does not support zerocopy RX, the callback will
+     * revert to regular recv processing
+     * In case we support zerocopy RX, the callback might be notified of buffer
+     * chains composed of mmap memory and also memory allocated via the
+     * getZeroCopyReadBuffer method
+     */
+
+    /**
+     * Return a ZeroCopyMemStore to use if the callback would like to enable
+     * zero-copy reads.  Return nullptr to disable zero-copy reads.
+     *
+     * The caller must ensure that the ZeroCopyMemStore remains valid for as
+     * long as this callback is installed and reading data, and until put()
+     * has been called for every outstanding Entry allocated with get().
+     */
+    virtual ZeroCopyMemStore* readZeroCopyEnabled() noexcept { return nullptr; }
+
+    /**
+     * Get a buffer to read data into when using zero-copy reads if some data
+     * cannot be read using a zero-copy page.
+     *
+     * When data is available, some data may be returned in zero-copy pages,
+     * followed by some amount of data in this fallback buffer.
+     */
+    virtual void getZeroCopyFallbackBuffer(
+        void** /*bufReturn*/, size_t* /*lenReturn*/) noexcept {
+      CHECK(false);
+    }
+
+    /**
+     * readZeroCopyDataAvailable() will be called when data is available from a
+     * zero-copy read.
+     *
+     * The data returned may be in two separate parts: data that was actually
+     * read using zero copy pages will be in zeroCopyData.  Additionally, some
+     * number of bytes may have been placed in the fallback buffer returned by
+     * getZeroCopyFallbackBuffer().  additionalBytes indicates the number of
+     * bytes placed in getZeroCopyFallbackBuffer().
+     */
+    virtual void readZeroCopyDataAvailable(
+        std::unique_ptr<IOBuf>&& /*zeroCopyData*/,
+        size_t /*additionalBytes*/) noexcept {
+      CHECK(false);
+    }
+
     /**
      * When data becomes available, isBufferMovable() will be invoked to figure
      * out which API will be used, readBufferAvailable() or
@@ -410,6 +483,17 @@ class AsyncWriter {
   virtual bool setZeroCopy(bool /*enable*/) { return false; }
 
   virtual bool getZeroCopy() const { return false; }
+
+  struct RXZerocopyParams {
+    bool enable{false};
+    size_t mapSize{0};
+  };
+
+  FOLLY_NODISCARD virtual bool setRXZeroCopy(RXZerocopyParams /*params*/) {
+    return false;
+  }
+
+  FOLLY_NODISCARD virtual bool getRXZeroCopy() const { return false; }
 
   using ZeroCopyEnableFunc =
       std::function<bool(const std::unique_ptr<folly::IOBuf>& buf)>;

@@ -40,6 +40,7 @@ using sa_family_t = ADDRESS_FAMILY;
 #define SOL_UDP 0x0
 #define UDP_SEGMENT 0x0
 #define IP_BIND_ADDRESS_NO_PORT 0
+#define TCP_ZEROCOPY_RECEIVE 0
 
 // We don't actually support either of these flags
 // currently.
@@ -139,6 +140,11 @@ struct mmsghdr {
 #define FOLLY_HAVE_MSG_ERRQUEUE 1
 #ifndef FOLLY_HAVE_SO_TIMESTAMPING
 #define FOLLY_HAVE_SO_TIMESTAMPING 1
+#ifndef TCP_ZEROCOPY_RECEIVE
+#define TCP_ZEROCOPY_RECEIVE 35
+#endif
+#else
+#define TCP_ZEROCOPY_RECEIVE 0
 #endif
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
@@ -206,6 +212,24 @@ enum tstamp_flags {
 struct sock_txtime {
   __kernel_clockid_t clockid; /* reference clockid */
   __u32 flags; /* as defined by enum txtime_flags */
+};
+
+/* Copied from uapi/linux/tcp.h */
+/* setsockopt(fd, IPPROTO_TCP, TCP_ZEROCOPY_RECEIVE, ...) */
+
+struct tcp_zerocopy_receive {
+  __u64 address; /* in: address of mapping */
+  __u32 length; /* in/out: number of bytes to map/mapped */
+  __u32 recv_skip_hint; /* out: amount of bytes to skip */
+  __u32 inq; /* out: amount of bytes in read queue */
+  __s32 err; /* out: socket error */
+  __u64 copybuf_address; /* in: copybuf address (small reads) */
+  __s32 copybuf_len; /* in/out: copybuf bytes avail/used or error */
+  __u32 flags; /* in: flags */
+  __u64 msg_control; /* ancillary data */
+  __u64 msg_controllen;
+  __u32 msg_flags;
+  __u32 reserved; /* set to 0 for now */
 };
 } // namespace netops
 } // namespace folly

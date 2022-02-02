@@ -298,6 +298,147 @@ class BufferCallback : public folly::AsyncTransport::BufferCallback {
   bool bufferCleared_{false};
 };
 
+class ZeroCopyReadCallback : public folly::AsyncTransport::ReadCallback {
+ public:
+  explicit ZeroCopyReadCallback(
+      folly::AsyncTransport::ReadCallback::ZeroCopyMemStore* memStore,
+      size_t _maxBufferSz = 4096)
+      : memStore_(memStore),
+        state(STATE_WAITING),
+        exception(folly::AsyncSocketException::UNKNOWN, "none"),
+        maxBufferSz(_maxBufferSz) {}
+
+  ~ZeroCopyReadCallback() override { currentBuffer.free(); }
+
+  // zerocopy
+  folly::AsyncTransport::ReadCallback::ZeroCopyMemStore*
+  readZeroCopyEnabled() noexcept override {
+    return memStore_;
+  }
+
+  void getZeroCopyFallbackBuffer(
+      void** bufReturn, size_t* lenReturn) noexcept override {
+    if (!currentZeroCopyBuffer.buffer) {
+      currentZeroCopyBuffer.allocate(maxBufferSz);
+    }
+    *bufReturn = currentZeroCopyBuffer.buffer;
+    *lenReturn = currentZeroCopyBuffer.length;
+  }
+
+  void readZeroCopyDataAvailable(
+      std::unique_ptr<folly::IOBuf>&& zeroCopyData,
+      size_t additionalBytes) noexcept override {
+    auto ioBuf = std::move(zeroCopyData);
+    if (additionalBytes) {
+      auto tmp = folly::IOBuf::takeOwnership(
+          currentZeroCopyBuffer.buffer,
+          currentZeroCopyBuffer.length,
+          0,
+          additionalBytes);
+      currentZeroCopyBuffer.reset();
+      if (ioBuf) {
+        ioBuf->prependChain(std::move(tmp));
+      } else {
+        ioBuf = std::move(tmp);
+      }
+    }
+
+    if (!data_) {
+      data_ = std::move(ioBuf);
+    } else {
+      data_->prependChain(std::move(ioBuf));
+    }
+  }
+
+  void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+    if (!currentBuffer.buffer) {
+      currentBuffer.allocate(maxBufferSz);
+    }
+    *bufReturn = currentBuffer.buffer;
+    *lenReturn = currentBuffer.length;
+  }
+
+  void readDataAvailable(size_t len) noexcept override {
+    auto ioBuf = folly::IOBuf::takeOwnership(
+        currentBuffer.buffer, currentBuffer.length, 0, len);
+    currentBuffer.reset();
+
+    if (!data_) {
+      data_ = std::move(ioBuf);
+    } else {
+      data_->prependChain(std::move(ioBuf));
+    }
+  }
+
+  void readEOF() noexcept override { state = STATE_SUCCEEDED; }
+
+  void readErr(const folly::AsyncSocketException& ex) noexcept override {
+    state = STATE_FAILED;
+    exception = ex;
+  }
+
+  void verifyData(const std::string& expected) const {
+    verifyData((const unsigned char*)expected.data(), expected.size());
+  }
+
+  void verifyData(const unsigned char* expected, size_t expectedLen) const {
+    CHECK(!!data_);
+    auto len = data_->computeChainDataLength();
+    CHECK_EQ(len, expectedLen);
+
+    auto* buf = data_.get();
+    auto* current = buf;
+    size_t offset = 0;
+
+    do {
+      size_t cmpLen = std::min(current->length(), expectedLen - offset);
+      CHECK_EQ(cmpLen, current->length());
+      CHECK_EQ(memcmp(current->data(), expected + offset, cmpLen), 0);
+      offset += cmpLen;
+
+      current = current->next();
+    } while (current != buf);
+
+    std::ignore = expected;
+    CHECK_EQ(offset, expectedLen);
+  }
+
+  class Buffer {
+   public:
+    Buffer() = default;
+    Buffer(char* buf, size_t len) : buffer(buf), length(len) {}
+    ~Buffer() {
+      if (buffer) {
+        ::free(buffer);
+      }
+    }
+
+    void reset() {
+      buffer = nullptr;
+      length = 0;
+    }
+    void allocate(size_t len) {
+      CHECK(buffer == nullptr);
+      buffer = static_cast<char*>(malloc(len));
+      length = len;
+    }
+    void free() {
+      ::free(buffer);
+      reset();
+    }
+
+    char* buffer{nullptr};
+    size_t length{0};
+  };
+  folly::AsyncTransport::ReadCallback::ZeroCopyMemStore* memStore_;
+  StateEnum state;
+  folly::AsyncSocketException exception;
+  Buffer currentBuffer, currentZeroCopyBuffer;
+  VoidCallback dataAvailableCallback;
+  const size_t maxBufferSz;
+  std::unique_ptr<folly::IOBuf> data_;
+};
+
 class ReadVerifier {};
 
 class TestSendMsgParamsCallback

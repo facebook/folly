@@ -37,6 +37,7 @@
 #include <folly/io/SocketOptionMap.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/SysMman.h>
 #include <folly/portability/SysUio.h>
 #include <folly/portability/Unistd.h>
 
@@ -45,6 +46,109 @@
 #include <linux/sockios.h>
 #include <sys/ioctl.h>
 #endif
+
+using ZeroCopyMemStore = folly::AsyncReader::ReadCallback::ZeroCopyMemStore;
+
+namespace {
+class ZeroCopyMMapMemStoreFallback : public ZeroCopyMemStore {
+ public:
+  ZeroCopyMMapMemStoreFallback(size_t /*entries*/, size_t /*size*/) {}
+  ~ZeroCopyMMapMemStoreFallback() override = default;
+  ZeroCopyMemStore::EntryPtr get() override { return nullptr; }
+
+  void put(ZeroCopyMemStore::Entry* /*entry*/) override {}
+};
+
+#if TCP_ZEROCOPY_RECEIVE
+std::unique_ptr<folly::IOBuf> getRXZeroCopyIOBuf(
+    ZeroCopyMemStore::EntryPtr&& ptr) {
+  auto* entry = ptr.release();
+  return folly::IOBuf::takeOwnership(
+      entry->data,
+      entry->len,
+      entry->len,
+      [](void* /*buf*/, void* userData) {
+        reinterpret_cast<ZeroCopyMemStore::Entry*>(userData)->put();
+      },
+      entry);
+}
+
+class ZeroCopyMMapMemStoreReal : public ZeroCopyMemStore {
+ public:
+  ZeroCopyMMapMemStoreReal(size_t entries, size_t size) {
+    // we just need a socket so the kernel
+    // will set the vma->vm_ops = &tcp_vm_ops
+    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (fd >= 0) {
+      void* addr =
+          ::mmap(nullptr, entries * size, PROT_READ, MAP_SHARED, fd, 0);
+      ::close(fd);
+      if (addr != MAP_FAILED) {
+        addr_ = addr;
+        numEntries_ = entries;
+        entrySize_ = size;
+        entries_.resize(numEntries_);
+        for (size_t i = 0; i < numEntries_; i++) {
+          entries_[i].data =
+              reinterpret_cast<uint8_t*>(addr_) + (i * entrySize_);
+          entries_[i].capacity = entrySize_;
+          entries_[i].store = this;
+          avail_.push_back(&entries_[i]);
+        }
+      }
+    }
+  }
+  ~ZeroCopyMMapMemStoreReal() override {
+    CHECK_EQ(avail_.size(), numEntries_);
+    if (addr_) {
+      ::munmap(addr_, numEntries_ * entrySize_);
+    }
+  }
+
+  ZeroCopyMemStore::EntryPtr get() override {
+    std::unique_lock<std::mutex> lk(availMutex_);
+    if (!avail_.empty()) {
+      auto* entry = avail_.front();
+      avail_.pop_front();
+      DCHECK(entry->len == 0);
+      DCHECK(entry->capacity == entrySize_);
+
+      ZeroCopyMemStore::EntryPtr ret(entry);
+
+      return ret;
+    }
+
+    return nullptr;
+  }
+
+  void put(ZeroCopyMemStore::Entry* entry) override {
+    if (entry) {
+      DCHECK(entry->store == this);
+      if (entry->len) {
+        auto ret = ::madvise(entry->data, entry->len, MADV_DONTNEED);
+        entry->len = 0;
+        DCHECK(!ret);
+      }
+
+      std::unique_lock<std::mutex> lk(availMutex_);
+      avail_.push_back(entry);
+    }
+  }
+
+ private:
+  std::vector<ZeroCopyMemStore::Entry> entries_;
+  std::mutex availMutex_;
+  std::deque<ZeroCopyMemStore::Entry*> avail_;
+  void* addr_{nullptr};
+  size_t numEntries_{0};
+  size_t entrySize_{0};
+};
+
+using ZeroCopyMMapMemStore = ZeroCopyMMapMemStoreReal;
+#else
+using ZeroCopyMMapMemStore = ZeroCopyMMapMemStoreFallback;
+#endif
+} // namespace
 
 #if FOLLY_HAVE_VLA
 #define FOLLY_HAVE_VLA_01 1
@@ -65,6 +169,11 @@ static constexpr bool msgErrQueueSupported =
 #else
     false;
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
+
+std::unique_ptr<ZeroCopyMemStore> AsyncSocket::createDefaultZeroCopyMemStore(
+    size_t entries, size_t size) {
+  return std::make_unique<ZeroCopyMMapMemStore>(entries, size);
+}
 
 static AsyncSocketException const& getSocketClosedLocallyEx() {
   static auto& ex = *new AsyncSocketException(
@@ -2634,6 +2743,202 @@ void AsyncSocket::splitIovecArray(
   CHECK_EQ(targetBytes, dstBytes);
 }
 
+AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
+#if TCP_ZEROCOPY_RECEIVE
+  if (!zerocopyReadSupported_) {
+    return ReadCode::READ_NOT_SUPPORTED;
+  }
+
+  auto* memStore = readCallback_->readZeroCopyEnabled();
+  if (!memStore) {
+    // set zerocopyReadSupported_ to false to avoid further virtual calls
+    zerocopyReadSupported_ = false;
+    return ReadCode::READ_NOT_SUPPORTED;
+  }
+
+  if (preReceivedData_ && !preReceivedData_->empty()) {
+    VLOG(5) << "AsyncSocket::performReadInternal() this=" << this
+            << ", reading pre-received data";
+
+    readCallback_->readZeroCopyDataAvailable(
+        std::move(preReceivedData_), 0 /*additionalBytes*/);
+
+    return ReadCode::READ_DONE;
+  }
+
+  auto ptr = memStore->get();
+
+  void* copybuf = nullptr;
+  size_t copybuf_len = 0;
+  readCallback_->getZeroCopyFallbackBuffer(&copybuf, &copybuf_len);
+
+  folly::netops::tcp_zerocopy_receive zc = {};
+  socklen_t zc_len = sizeof(zc);
+
+  zc.address = reinterpret_cast<uint64_t>(ptr->data);
+  zc.length = ptr->capacity;
+  auto zc_length = zc.length;
+
+  zc.copybuf_address = reinterpret_cast<__u64>(copybuf);
+  zc.copybuf_len = copybuf_len;
+  auto zc_copybuf_len = zc.copybuf_len;
+
+  auto ret =
+      ::getsockopt(fd_.toFd(), IPPROTO_TCP, TCP_ZEROCOPY_RECEIVE, &zc, &zc_len);
+  if (!ret) {
+    // check for errors
+    if (zc.err) {
+      readErr_ = READ_ERROR;
+      AsyncSocketException ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr(" TCP_ZEROCOPY_RECEIVE) failed"),
+          zc.err);
+      return failRead(__func__, ex);
+    }
+
+    std::unique_ptr<folly::IOBuf> buf;
+    if (zc.length) {
+      // adjust the len
+      ptr->len = zc.length;
+      auto tmp = getRXZeroCopyIOBuf(std::move(ptr));
+      buf = std::move(tmp);
+    }
+
+    auto len = zc.length + zc.copybuf_len;
+    if (len) {
+      readCallback_->readZeroCopyDataAvailable(std::move(buf), zc.copybuf_len);
+
+      // if there is no buffer data, we continue if we filled up the zerocopy
+      // buffer otherwise we're done
+      if (zc.copybuf_len == 0) {
+        return (zc.length == zc_length) ? ReadCode::READ_CONTINUE
+                                        : ReadCode::READ_DONE;
+      }
+
+      // we continue if we filled up the copy buffer
+      return (zc.copybuf_len == zc_copybuf_len) ? ReadCode::READ_CONTINUE
+                                                : ReadCode::READ_DONE;
+    } else {
+      // No more data to read right now.
+      return ReadCode::READ_DONE;
+    }
+  } else {
+    if (errno == EIO) {
+      // EOF
+      readErr_ = READ_EOF;
+      // EOF
+      shutdownFlags_ |= SHUT_READ;
+      if (!updateEventRegistration(0, EventHandler::READ)) {
+        // we've already been moved into STATE_ERROR
+        assert(state_ == StateEnum::ERROR);
+        assert(readCallback_ == nullptr);
+        return ReadCode::READ_DONE;
+      }
+
+      ReadCallback* callback = readCallback_;
+      readCallback_ = nullptr;
+      callback->readEOF();
+      return ReadCode::READ_DONE;
+    }
+
+    // treat any other error as not supported, fall back to regular read
+    zerocopyReadSupported_ = false;
+  }
+#endif
+  return ReadCode::READ_NOT_SUPPORTED;
+}
+
+AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
+  auto readMode = readCallback_->getReadMode();
+  // Get the buffer(s) to read into.
+  void* buf = nullptr;
+  size_t offset = 0, num = 0;
+  size_t buflen = 0;
+  IOBufIovecBuilder::IoVecVec iovs; // this can be an AsyncSocket member too
+
+  try {
+    if (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec) {
+      prepareReadBuffers(iovs);
+      num = iovs.size();
+      VLOG(5) << "prepareReadBuffers() bufs=" << iovs.data() << ", num=" << num;
+    } else {
+      prepareReadBuffer(&buf, &buflen);
+      VLOG(5) << "prepareReadBuffer() buf=" << buf << ", buflen=" << buflen;
+    }
+  } catch (const AsyncSocketException& ex) {
+    return failRead(__func__, ex);
+  } catch (const std::exception& ex) {
+    AsyncSocketException tex(
+        AsyncSocketException::BAD_ARGS,
+        string("ReadCallback::getReadBuffer() "
+               "threw exception: ") +
+            ex.what());
+    return failRead(__func__, tex);
+  } catch (...) {
+    AsyncSocketException ex(
+        AsyncSocketException::BAD_ARGS,
+        "ReadCallback::getReadBuffer() threw "
+        "non-exception type");
+    return failRead(__func__, ex);
+  }
+  if ((num == 0) && (buf == nullptr || buflen == 0)) {
+    AsyncSocketException ex(
+        AsyncSocketException::BAD_ARGS,
+        "ReadCallback::getReadBuffer() returned "
+        "empty buffer");
+    return failRead(__func__, ex);
+  }
+
+  // Perform the read
+  auto readResult = (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec)
+      ? performReadv(iovs.data(), num)
+      : performRead(&buf, &buflen, &offset);
+
+  auto bytesRead = readResult.readReturn;
+  VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got " << bytesRead
+          << " bytes";
+  if (bytesRead > 0) {
+    readCallback_->readDataAvailable(size_t(bytesRead));
+
+    // Continue reading if we filled the available buffer
+    return (size_t(bytesRead) < buflen) ? ReadCode::READ_DONE
+                                        : ReadCode::READ_CONTINUE;
+
+  } else if (bytesRead == READ_BLOCKING) {
+    // No more data to read right now.
+    return ReadCode::READ_DONE;
+  } else if (bytesRead == READ_ERROR) {
+    readErr_ = READ_ERROR;
+    if (readResult.exception) {
+      return failRead(__func__, *readResult.exception);
+    }
+    auto errnoCopy = errno;
+    AsyncSocketException ex(
+        AsyncSocketException::INTERNAL_ERROR,
+        withAddr("recv() failed"),
+        errnoCopy);
+    return failRead(__func__, ex);
+  } else {
+    assert(bytesRead == READ_EOF);
+    readErr_ = READ_EOF;
+    // EOF
+    shutdownFlags_ |= SHUT_READ;
+    if (!updateEventRegistration(0, EventHandler::READ)) {
+      // we've already been moved into STATE_ERROR
+      assert(state_ == StateEnum::ERROR);
+      assert(readCallback_ == nullptr);
+      return ReadCode::READ_DONE;
+    }
+
+    ReadCallback* callback = readCallback_;
+    readCallback_ = nullptr;
+    callback->readEOF();
+    return ReadCode::READ_DONE;
+  }
+
+  return ReadCode::READ_DONE; // redundant
+}
+
 void AsyncSocket::handleRead() noexcept {
   VLOG(5) << "AsyncSocket::handleRead() this=" << this << ", fd=" << fd_
           << ", state=" << state_;
@@ -2663,109 +2968,34 @@ void AsyncSocket::handleRead() noexcept {
   size_t numReads = maxReadsPerEvent_ ? maxReadsPerEvent_ : size_t(-1);
   EventBase* originalEventBase = eventBase_;
   while (readCallback_ && eventBase_ == originalEventBase && numReads--) {
-    auto readMode = readCallback_->getReadMode();
-    // Get the buffer(s) to read into.
-    void* buf = nullptr;
-    size_t buflen = 0, offset = 0, num = 0;
-    IOBufIovecBuilder::IoVecVec iovs; // this can be an Asyncsocket member too
-
-    try {
-      if (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec) {
-        prepareReadBuffers(iovs);
-        num = iovs.size();
-        VLOG(5) << "prepareReadBuffers() bufs=" << iovs.data()
-                << ", num=" << num;
-      } else {
-        prepareReadBuffer(&buf, &buflen);
-        VLOG(5) << "prepareReadBuffer() buf=" << buf << ", buflen=" << buflen;
-      }
-    } catch (const AsyncSocketException& ex) {
-      return failRead(__func__, ex);
-    } catch (const std::exception& ex) {
-      AsyncSocketException tex(
-          AsyncSocketException::BAD_ARGS,
-          string("ReadCallback::getReadBuffer() "
-                 "threw exception: ") +
-              ex.what());
-      return failRead(__func__, tex);
-    } catch (...) {
-      AsyncSocketException ex(
-          AsyncSocketException::BAD_ARGS,
-          "ReadCallback::getReadBuffer() threw "
-          "non-exception type");
-      return failRead(__func__, ex);
-    }
-    if ((num == 0) && (buf == nullptr || buflen == 0)) {
-      AsyncSocketException ex(
-          AsyncSocketException::BAD_ARGS,
-          "ReadCallback::getReadBuffer() returned "
-          "empty buffer");
-      return failRead(__func__, ex);
+    auto ret = processZeroCopyRead();
+    if (ret == ReadCode::READ_NOT_SUPPORTED) {
+      ret = processNormalRead();
     }
 
-    // Perform the read
-    auto readResult = (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec)
-        ? performReadv(iovs.data(), num)
-        : performRead(&buf, &buflen, &offset);
-    auto bytesRead = readResult.readReturn;
-    VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got "
-            << bytesRead << " bytes";
-    if (bytesRead > 0) {
-      readCallback_->readDataAvailable(size_t(bytesRead));
-
-      // Fall through and continue around the loop if the read
-      // completely filled the available buffer.
-      // Note that readCallback_ may have been uninstalled or changed inside
-      // readDataAvailable().
-      if (size_t(bytesRead) < buflen) {
+    switch (ret) {
+      case ReadCode::READ_NOT_SUPPORTED:
+        CHECK(false);
+      case ReadCode::READ_CONTINUE:
+        break;
+      case ReadCode::READ_DONE:
         return;
-      }
-    } else if (bytesRead == READ_BLOCKING) {
-      // No more data to read right now.
-      return;
-    } else if (bytesRead == READ_ERROR) {
-      readErr_ = READ_ERROR;
-      if (readResult.exception) {
-        return failRead(__func__, *readResult.exception);
-      }
-      auto errnoCopy = errno;
-      AsyncSocketException ex(
-          AsyncSocketException::INTERNAL_ERROR,
-          withAddr("recv() failed"),
-          errnoCopy);
-      return failRead(__func__, ex);
-    } else {
-      assert(bytesRead == READ_EOF);
-      readErr_ = READ_EOF;
-      // EOF
-      shutdownFlags_ |= SHUT_READ;
-      if (!updateEventRegistration(0, EventHandler::READ)) {
-        // we've already been moved into STATE_ERROR
-        assert(state_ == StateEnum::ERROR);
-        assert(readCallback_ == nullptr);
-        return;
-      }
+    };
 
-      ReadCallback* callback = readCallback_;
-      readCallback_ = nullptr;
-      callback->readEOF();
-      return;
+    if (readCallback_ && eventBase_ == originalEventBase) {
+      // We might still have data in the socket.
+      // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
+      scheduleImmediateRead();
     }
-  }
-
-  if (readCallback_ && eventBase_ == originalEventBase) {
-    // We might still have data in the socket.
-    // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
-    scheduleImmediateRead();
   }
 }
 
 /**
- * This function attempts to write as much data as possible, until no more data
- * can be written.
+ * This function attempts to write as much data as possible, until no more
+ * data can be written.
  *
- * - If it sends all available data, it unregisters for write events, and stops
- *   the writeTimeout_.
+ * - If it sends all available data, it unregisters for write events, and
+ * stops the writeTimeout_.
  *
  * - If not all of the data can be sent immediately, it reschedules
  *   writeTimeout_ (if a non-zero timeout is set), and ensures the handler is
@@ -2811,9 +3041,9 @@ void AsyncSocket::handleWrite() noexcept {
         writeReqTail_ = nullptr;
         // This is the last write request.
         // Unregister for write events and cancel the send timer
-        // before we invoke the callback.  We have to update the state properly
-        // before calling the callback, since it may want to detach us from
-        // the EventBase.
+        // before we invoke the callback.  We have to update the state
+        // properly before calling the callback, since it may want to detach
+        // us from the EventBase.
         if (eventFlags_ & EventHandler::WRITE) {
           if (!updateEventRegistration(0, EventHandler::WRITE)) {
             assert(state_ == StateEnum::ERROR);
@@ -2871,8 +3101,8 @@ void AsyncSocket::handleWrite() noexcept {
       if (bufferCallback_) {
         bufferCallback_->onEgressBuffered();
       }
-      // Stop after a partial write; it's highly likely that a subsequent write
-      // attempt will just return EAGAIN.
+      // Stop after a partial write; it's highly likely that a subsequent
+      // write attempt will just return EAGAIN.
       //
       // Ensure that we are registered for write events.
       if ((eventFlags_ & EventHandler::WRITE) == 0) {
@@ -2911,8 +3141,8 @@ void AsyncSocket::checkForImmediateRead() noexcept {
   //
   // Checking if the socket is readable now also seems like it would probably
   // be a pessimism.  In most cases it probably wouldn't be readable, and we
-  // would just waste an extra system call.  Even if it is readable, waiting to
-  // find out from libevent on the next event loop doesn't seem that bad.
+  // would just waste an extra system call.  Even if it is readable, waiting
+  // to find out from libevent on the next event loop doesn't seem that bad.
   //
   // The exception to this is if we have pre-received data. In that case there
   // is definitely data available immediately.
@@ -3004,9 +3234,9 @@ void AsyncSocket::handleConnect() noexcept {
   // If SHUT_WRITE_PENDING is set and we don't have any write requests to
   // perform, immediately shutdown the write half of the socket.
   if ((shutdownFlags_ & SHUT_WRITE_PENDING) && writeReqHead_ == nullptr) {
-    // SHUT_READ shouldn't be set.  If close() is called on the socket while we
-    // are still connecting we just abort the connect rather than waiting for
-    // it to complete.
+    // SHUT_READ shouldn't be set.  If close() is called on the socket while
+    // we are still connecting we just abort the connect rather than waiting
+    // for it to complete.
     assert((shutdownFlags_ & SHUT_READ) == 0);
     netops_->shutdown(fd_, SHUT_WR);
     shutdownFlags_ |= SHUT_WRITE;
@@ -3154,7 +3384,8 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
       }
     }
 
-    // if maybeOffsetToSplitWrite points to end of the vector, remove the split
+    // if maybeOffsetToSplitWrite points to end of the vector, remove the
+    // split
     if (mergedRequest.maybeOffsetToSplitWrite.has_value() && // explicit
         mergedRequest.maybeOffsetToSplitWrite == endOffset) {
       mergedRequest.maybeOffsetToSplitWrite.reset(); // no split needed
@@ -3402,8 +3633,8 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
 /**
  * Re-register the EventHandler after eventFlags_ has changed.
  *
- * If an error occurs, fail() is called to move the socket into the error state
- * and call all currently installed callbacks.  After an error, the
+ * If an error occurs, fail() is called to move the socket into the error
+ * state and call all currently installed callbacks.  After an error, the
  * AsyncSocket is completely unregistered.
  *
  * @return Returns true on success, or false on error.
@@ -3520,7 +3751,8 @@ void AsyncSocket::failConnect(const char* fn, const AsyncSocketException& ex) {
   finishFail(ex);
 }
 
-void AsyncSocket::failRead(const char* fn, const AsyncSocketException& ex) {
+AsyncSocket::ReadCode AsyncSocket::failRead(
+    const char* fn, const AsyncSocketException& ex) {
   VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
           << ", state=" << state_ << " host=" << addr_.describe()
           << "): failed while reading in " << fn << "(): " << ex.what();
@@ -3533,6 +3765,9 @@ void AsyncSocket::failRead(const char* fn, const AsyncSocketException& ex) {
   }
 
   finishFail(ex);
+
+  // done handling the error, we can exit the loop
+  return AsyncSocket::ReadCode::READ_DONE;
 }
 
 void AsyncSocket::failErrMessageRead(
@@ -3558,8 +3793,8 @@ void AsyncSocket::failWrite(const char* fn, const AsyncSocketException& ex) {
   startFail();
 
   // Only invoke the first write callback, since the error occurred while
-  // writing this request.  Let any other pending write callbacks be invoked in
-  // finishFail().
+  // writing this request.  Let any other pending write callbacks be invoked
+  // in finishFail().
   if (writeReqHead_ != nullptr) {
     WriteRequest* req = writeReqHead_;
     writeReqHead_ = req->getNext();
@@ -3694,9 +3929,9 @@ void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
   connectEndTime_ = std::chrono::steady_clock::now();
   if ((state_ == StateEnum::CONNECTING) || (state_ == StateEnum::ERROR)) {
     // invokeConnectErr() can be invoked when state is {FAST_OPEN, CLOSED,
-    // ESTABLISHED} (!?) and a bunch of other places that are not what this call
-    // back wants. This seems like a bug but work around here while we explore
-    // it independently
+    // ESTABLISHED} (!?) and a bunch of other places that are not what this
+    // call back wants. This seems like a bug but work around here while we
+    // explore it independently
     for (const auto& cb : lifecycleObservers_) {
       cb->connectError(this, ex);
     }
