@@ -9,6 +9,7 @@ repo_url = https://github.com/facebook/folly.git
 
 [build]
 builder = cmake
+job_weight_mib = 1024
 
 [dependencies]
 gflags

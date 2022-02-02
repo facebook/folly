@@ -53,6 +53,7 @@ boost-devel
 
 [build]
 builder = boost
+job_weight_mib = 512
 
 [b2.args]
 --with-atomic

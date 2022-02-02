@@ -42,7 +42,7 @@ class CargoBuilder(BuilderBase):
             "cargo",
             operation,
             "--workspace",
-            "-j%s" % self.build_opts.num_jobs,
+            "-j%s" % self.num_jobs,
         ] + args
         self._run_cmd(cmd, cwd=self.workspace_dir(), env=env)
 

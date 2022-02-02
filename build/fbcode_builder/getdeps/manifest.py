@@ -63,6 +63,7 @@ SCHEMA = {
             "builder": REQUIRED,
             "subdir": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
+            "job_weight_mib": OPTIONAL,
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},

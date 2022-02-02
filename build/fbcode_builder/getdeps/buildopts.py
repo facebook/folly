@@ -16,7 +16,7 @@ from .copytree import containing_repo_type
 from .envfuncs import Env, add_path_entry
 from .fetcher import get_fbsource_repo_data
 from .manifest import ContextGenerator
-from .platform import HostType, is_windows
+from .platform import HostType, is_windows, get_available_ram
 
 
 def detect_project(path):
@@ -65,10 +65,6 @@ class BuildOptions(object):
         vcvars_path - Path to external VS toolchain's vsvarsall.bat
         shared_libs - whether to build shared libraries
         """
-        if not num_jobs:
-            import multiprocessing
-
-            num_jobs = max(1, multiprocessing.cpu_count() // 2)
 
         if not install_dir:
             install_dir = os.path.join(scratch_dir, "installed")
@@ -90,7 +86,7 @@ class BuildOptions(object):
         else:
             self.fbsource_dir = None
 
-        self.num_jobs = num_jobs
+        self.specified_num_jobs = num_jobs
         self.scratch_dir = scratch_dir
         self.install_dir = install_dir
         self.fbcode_builder_dir = fbcode_builder_dir
@@ -156,6 +152,17 @@ class BuildOptions(object):
 
     def is_linux(self):
         return self.host_type.is_linux()
+
+    def get_num_jobs(self, job_weight):
+        """Given an estimated job_weight in MiB, compute a reasonable concurrency limit."""
+        if self.specified_num_jobs:
+            return self.specified_num_jobs
+
+        available_ram = get_available_ram()
+
+        import multiprocessing
+
+        return max(1, min(multiprocessing.cpu_count(), available_ram // job_weight))
 
     def get_context_generator(self, host_tuple=None, facebook_internal=None):
         """Create a manifest ContextGenerator for the specified target platform."""
