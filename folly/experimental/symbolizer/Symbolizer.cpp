@@ -400,41 +400,15 @@ void SafeStackTracePrinter::printStackTrace(bool symbolize) {
   }
 }
 
-std::string getStackTraceStr() {
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+namespace {
+constexpr size_t kMaxStackTraceDepth = 100;
 
-  // Get and symbolize stack trace
-  constexpr size_t kMaxStackTraceDepth = 100;
-  FrameArray<kMaxStackTraceDepth> addresses;
+template <size_t N, typename StackTraceFunc>
+std::string getStackTraceStrImpl(StackTraceFunc func) {
+  FrameArray<N> addresses;
 
-  if (!getStackTrace(addresses)) {
-    return "";
-  } else {
-    symbolizer::ElfCache elfCache;
-
-    symbolizer::Symbolizer symbolizer(&elfCache);
-    symbolizer.symbolize(addresses);
-
-    symbolizer::StringSymbolizePrinter printer;
-    printer.println(addresses);
-    return printer.str();
-  }
-
-#else
-
-  return "";
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-}
-
-std::string getAsyncStackTraceStr() {
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
-  // Get and symbolize stack trace
-  constexpr size_t kMaxStackTraceDepth = 100;
-  FrameArray<kMaxStackTraceDepth> addresses;
-
-  if (!getAsyncStackTraceSafe(addresses)) {
+  if (!func(addresses)) {
     return "";
   } else {
     ElfCache elfCache;
@@ -445,13 +419,19 @@ std::string getAsyncStackTraceStr() {
     printer.println(addresses);
     return printer.str();
   }
-
-#else
-
-  return "";
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 }
+} // namespace
+
+std::string getStackTraceStr() {
+  return getStackTraceStrImpl<kMaxStackTraceDepth>(
+      getStackTrace<kMaxStackTraceDepth>);
+}
+
+std::string getAsyncStackTraceStr() {
+  return getStackTraceStrImpl<kMaxStackTraceDepth>(
+      getAsyncStackTraceSafe<kMaxStackTraceDepth>);
+}
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 #if FOLLY_HAVE_SWAPCONTEXT
 
