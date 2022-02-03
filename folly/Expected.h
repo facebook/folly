@@ -55,14 +55,133 @@
 namespace folly {
 
 /**
- * Forward declarations
+ * An exception type thrown by Expected on catastrophic logic errors.
+ */
+class FOLLY_EXPORT BadExpectedAccess : public std::logic_error {
+ public:
+  BadExpectedAccess() : std::logic_error("bad Expected access") {}
+};
+
+namespace expected_detail {
+namespace expected_detail_ExpectedHelper {
+struct ExpectedHelper;
+}
+/* using override */ using expected_detail_ExpectedHelper::ExpectedHelper;
+} // namespace expected_detail
+
+/**
+ * Unexpected - a helper type used to disambiguate the construction of
+ * Expected objects in the error state.
  */
 template <class Error>
-class Unexpected;
+class Unexpected final {
+  template <class E>
+  friend class Unexpected;
+  template <class V, class E>
+  friend class Expected;
+  friend struct expected_detail::ExpectedHelper;
 
+ public:
+  /**
+   * Unexpected::BadExpectedAccess - An exception type thrown by Expected
+   * when the user tries to access the nested value but the Expected object is
+   * actually storing an error code.
+   */
+  class FOLLY_EXPORT BadExpectedAccess : public folly::BadExpectedAccess {
+   public:
+    explicit BadExpectedAccess(Error err)
+        : folly::BadExpectedAccess{}, error_(std::move(err)) {}
+    /**
+     * The error code that was held by the Expected object when the user
+     * erroneously requested the value.
+     */
+    Error error() const { return error_; }
+
+   private:
+    Error error_;
+  };
+
+  /**
+   * Constructors
+   */
+  Unexpected() = default;
+  Unexpected(const Unexpected&) = default;
+  Unexpected(Unexpected&&) = default;
+  Unexpected& operator=(const Unexpected&) = default;
+  Unexpected& operator=(Unexpected&&) = default;
+  FOLLY_COLD constexpr /* implicit */ Unexpected(const Error& err)
+      : error_(err) {}
+  FOLLY_COLD constexpr /* implicit */ Unexpected(Error&& err)
+      : error_(std::move(err)) {}
+
+  template <class Other FOLLY_REQUIRES_TRAILING(
+      std::is_constructible<Error, Other&&>::value)>
+  constexpr /* implicit */ Unexpected(Unexpected<Other> that)
+      : error_(std::move(that.error())) {}
+
+  /**
+   * Assignment
+   */
+  template <class Other FOLLY_REQUIRES_TRAILING(
+      std::is_assignable<Error&, Other&&>::value)>
+  Unexpected& operator=(Unexpected<Other> that) {
+    error_ = std::move(that.error());
+  }
+
+  /**
+   * Observers
+   */
+  Error& error() & { return error_; }
+  const Error& error() const& { return error_; }
+  Error&& error() && { return std::move(error_); }
+
+ private:
+  struct MakeBadExpectedAccess {
+    template <class E>
+    BadExpectedAccess operator()(E&& err) const {
+      return BadExpectedAccess(static_cast<E&&>(err));
+    }
+  };
+
+  Error error_;
+};
+
+template <
+    class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
+inline bool operator==(
+    const Unexpected<Error>& lhs, const Unexpected<Error>& rhs) {
+  return lhs.error() == rhs.error();
+}
+
+template <
+    class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
+inline bool operator!=(
+    const Unexpected<Error>& lhs, const Unexpected<Error>& rhs) {
+  return !(lhs == rhs);
+}
+
+/**
+ * For constructing an Unexpected object from an error code. Unexpected objects
+ * are implicitly convertible to Expected object in the error state. Usage is
+ * as follows:
+ *
+ * enum class MyErrorCode { BAD_ERROR, WORSE_ERROR };
+ * Expected<int, MyErrorCode> myAPI() {
+ *   int i = // ...;
+ *   return i ? makeExpected<MyErrorCode>(i)
+ *            : makeUnexpected(MyErrorCode::BAD_ERROR);
+ * }
+ */
 template <class Error>
-constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(Error&&);
+constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(
+    Error&& err) {
+  return Unexpected<typename std::decay<Error>::type>{
+      static_cast<Error&&>(err)};
+}
 
+/**
+ * Forward declarations
+ */
 template <class Value, class Error>
 class Expected;
 
@@ -574,7 +693,6 @@ struct ExpectedHelper {
   FOLLY_POP_WARNING
 };
 } // namespace expected_detail_ExpectedHelper
-/* using override */ using expected_detail_ExpectedHelper::ExpectedHelper;
 
 struct UnexpectedTag {};
 
@@ -588,127 +706,9 @@ inline expected_detail::UnexpectedTag unexpected(
   return {};
 }
 
-/**
- * An exception type thrown by Expected on catastrophic logic errors.
- */
-class FOLLY_EXPORT BadExpectedAccess : public std::logic_error {
- public:
-  BadExpectedAccess() : std::logic_error("bad Expected access") {}
-};
-
 namespace expected_detail {
 // empty
 } // namespace expected_detail
-
-/**
- * Unexpected - a helper type used to disambiguate the construction of
- * Expected objects in the error state.
- */
-template <class Error>
-class Unexpected final {
-  template <class E>
-  friend class Unexpected;
-  template <class V, class E>
-  friend class Expected;
-  friend struct expected_detail::ExpectedHelper;
-
- public:
-  /**
-   * Unexpected::BadExpectedAccess - An exception type thrown by Expected
-   * when the user tries to access the nested value but the Expected object is
-   * actually storing an error code.
-   */
-  class FOLLY_EXPORT BadExpectedAccess : public folly::BadExpectedAccess {
-   public:
-    explicit BadExpectedAccess(Error err)
-        : folly::BadExpectedAccess{}, error_(std::move(err)) {}
-    /**
-     * The error code that was held by the Expected object when the user
-     * erroneously requested the value.
-     */
-    Error error() const { return error_; }
-
-   private:
-    Error error_;
-  };
-
-  /**
-   * Constructors
-   */
-  Unexpected() = default;
-  Unexpected(const Unexpected&) = default;
-  Unexpected(Unexpected&&) = default;
-  Unexpected& operator=(const Unexpected&) = default;
-  Unexpected& operator=(Unexpected&&) = default;
-  FOLLY_COLD constexpr /* implicit */ Unexpected(const Error& err)
-      : error_(err) {}
-  FOLLY_COLD constexpr /* implicit */ Unexpected(Error&& err)
-      : error_(std::move(err)) {}
-
-  template <class Other FOLLY_REQUIRES_TRAILING(
-      std::is_constructible<Error, Other&&>::value)>
-  constexpr /* implicit */ Unexpected(Unexpected<Other> that)
-      : error_(std::move(that.error())) {}
-
-  /**
-   * Assignment
-   */
-  template <class Other FOLLY_REQUIRES_TRAILING(
-      std::is_assignable<Error&, Other&&>::value)>
-  Unexpected& operator=(Unexpected<Other> that) {
-    error_ = std::move(that.error());
-  }
-
-  /**
-   * Observers
-   */
-  Error& error() & { return error_; }
-  const Error& error() const& { return error_; }
-  Error&& error() && { return std::move(error_); }
-
- private:
-  struct MakeBadExpectedAccess {
-    template <class E>
-    BadExpectedAccess operator()(E&& err) const {
-      return BadExpectedAccess(static_cast<E&&>(err));
-    }
-  };
-
-  Error error_;
-};
-
-template <
-    class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
-inline bool operator==(
-    const Unexpected<Error>& lhs, const Unexpected<Error>& rhs) {
-  return lhs.error() == rhs.error();
-}
-
-template <
-    class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
-inline bool operator!=(
-    const Unexpected<Error>& lhs, const Unexpected<Error>& rhs) {
-  return !(lhs == rhs);
-}
-
-/**
- * For constructing an Unexpected object from an error code. Unexpected objects
- * are implicitly convertible to Expected object in the error state. Usage is
- * as follows:
- *
- * enum class MyErrorCode { BAD_ERROR, WORSE_ERROR };
- * Expected<int, MyErrorCode> myAPI() {
- *   int i = // ...;
- *   return i ? makeExpected<MyErrorCode>(i)
- *            : makeUnexpected(MyErrorCode::BAD_ERROR);
- * }
- */
-template <class Error>
-constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(
-    Error&& err) {
-  return Unexpected<typename std::decay<Error>::type>{
-      static_cast<Error&&>(err)};
-}
 
 /**
  * Expected - For holding a value or an error. Useful as an alternative to
