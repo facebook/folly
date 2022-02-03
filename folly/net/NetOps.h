@@ -144,7 +144,9 @@ struct mmsghdr {
 #define TCP_ZEROCOPY_RECEIVE 35
 #endif
 #else
+#ifndef TCP_ZEROCOPY_RECEIVE
 #define TCP_ZEROCOPY_RECEIVE 0
+#endif
 #endif
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
