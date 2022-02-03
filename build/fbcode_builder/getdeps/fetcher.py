@@ -447,14 +447,28 @@ class ShipitPathMap(object):
         # Record the full set of files that should be in the tree
         full_file_list = set()
 
+        if sys.platform == "win32":
+            # Let's not assume st_dev has a consistent value on Windows.
+            def st_dev(path):
+                return 1
+
+        else:
+
+            def st_dev(path):
+                return os.lstat(path).st_dev
+
         for fbsource_subdir in self.roots:
             dir_to_mirror = os.path.join(fbsource_root, fbsource_subdir)
+            root_dev = st_dev(dir_to_mirror)
             prefetch_dir_if_eden(dir_to_mirror)
             if not os.path.exists(dir_to_mirror):
                 raise Exception(
                     "%s doesn't exist; check your sparse profile!" % dir_to_mirror
                 )
-            for root, _dirs, files in os.walk(dir_to_mirror):
+
+            for root, dirs, files in os.walk(dir_to_mirror):
+                dirs[:] = [d for d in dirs if root_dev == st_dev(os.path.join(root, d))]
+
                 for src_file in files:
                     full_name = os.path.join(root, src_file)
                     rel_name = os.path.relpath(full_name, fbsource_root)
