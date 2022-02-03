@@ -2791,7 +2791,7 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
       readErr_ = READ_ERROR;
       AsyncSocketException ex(
           AsyncSocketException::INTERNAL_ERROR,
-          withAddr(" TCP_ZEROCOPY_RECEIVE) failed"),
+          withAddr("TCP_ZEROCOPY_RECEIVE failed"),
           zc.err);
       return failRead(__func__, ex);
     }
