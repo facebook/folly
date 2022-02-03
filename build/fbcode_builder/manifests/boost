@@ -2,15 +2,15 @@
 name = boost
 
 [download.not(os=windows)]
-url = https://versaweb.dl.sourceforge.net/project/boost/boost/1.69.0/boost_1_69_0.tar.bz2
-sha256 = 8f32d4617390d1c2d16f26a27ab60d97807b35440d45891fa340fc2648b04406
+url = https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
+sha256 = 94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7
 
 [download.os=windows]
-url = https://versaweb.dl.sourceforge.net/project/boost/boost/1.69.0/boost_1_69_0.zip
-sha256 = d074bcbcc0501c4917b965fc890e303ee70d8b01ff5712bae4a6c54f2b6b4e52
+url = https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.zip
+sha256 = f22143b5528e081123c3c5ed437e92f648fe69748e95fa6e2bd41484e2986cc3
 
 [preinstalled.env]
-BOOST_ROOT_1_69_0
+BOOST_ROOT_1_78_0
 
 [debs]
 libboost-all-dev
@@ -85,6 +85,16 @@ job_weight_mib = 512
 --with-timer
 --with-type_erasure
 --with-wave
+
+[bootstrap.args.os=darwin]
+# Not really gcc, but CI puts a broken clang in the PATH, and saying gcc
+# here selects the correct one from Xcode.
+--with-toolset=gcc
+
+[b2.args.os=linux]
+# RHEL hardened gcc is not compatible with PCH
+# https://bugzilla.redhat.com/show_bug.cgi?id=1806545
+pch=off
 
 [b2.args.os=darwin]
 toolset=clang

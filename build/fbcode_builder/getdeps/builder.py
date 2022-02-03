@@ -984,14 +984,17 @@ class Boost(BuilderBase):
             args.append("--user-config=%s" % user_config)
 
         for link in linkage:
+            bootstrap_args = self.manifest.get_section_as_args(
+                "bootstrap.args", self.ctx
+            )
             if self.build_opts.is_windows():
                 bootstrap = os.path.join(self.src_dir, "bootstrap.bat")
-                self._run_cmd([bootstrap], cwd=self.src_dir, env=env)
+                self._run_cmd([bootstrap] + bootstrap_args, cwd=self.src_dir, env=env)
                 args += ["address-model=64"]
             else:
                 bootstrap = os.path.join(self.src_dir, "bootstrap.sh")
                 self._run_cmd(
-                    [bootstrap, "--prefix=%s" % self.inst_dir],
+                    [bootstrap, "--prefix=%s" % self.inst_dir] + bootstrap_args,
                     cwd=self.src_dir,
                     env=env,
                 )

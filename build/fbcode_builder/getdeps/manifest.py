@@ -6,6 +6,7 @@
 import configparser
 import io
 import os
+from typing import List
 
 from .builder import (
     AutoconfBuilder,
@@ -81,6 +82,7 @@ SCHEMA = {
     "rpms": {"optional_section": True},
     "debs": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
+    "bootstrap.args": {"optional_section": True},
     "b2.args": {"optional_section": True},
     "make.build_args": {"optional_section": True},
     "make.install_args": {"optional_section": True},
@@ -101,6 +103,7 @@ ALLOWED_EXPR_SECTIONS = [
     "dependencies",
     "make.build_args",
     "make.install_args",
+    "bootstrap.args",
     "b2.args",
     "download",
     "git",
@@ -259,7 +262,7 @@ class ManifestParser(object):
 
         return dep_list
 
-    def get_section_as_args(self, section, ctx=None):
+    def get_section_as_args(self, section, ctx=None) -> List[str]:
         """Intended for use with the make.[build_args/install_args] and
         autoconf.args sections, this method collects the entries and returns an
         array of strings.

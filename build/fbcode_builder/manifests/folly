@@ -51,6 +51,7 @@ fbcode/folly = folly
 
 [cmake.defines]
 BUILD_SHARED_LIBS=OFF
+BOOST_LINK_STATIC=ON
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
