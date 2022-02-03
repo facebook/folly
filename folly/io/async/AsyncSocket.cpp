@@ -2981,12 +2981,12 @@ void AsyncSocket::handleRead() noexcept {
       case ReadCode::READ_DONE:
         return;
     };
+  }
 
-    if (readCallback_ && eventBase_ == originalEventBase) {
-      // We might still have data in the socket.
-      // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
-      scheduleImmediateRead();
-    }
+  if (readCallback_ && eventBase_ == originalEventBase) {
+    // We might still have data in the socket.
+    // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
+    scheduleImmediateRead();
   }
 }
 
