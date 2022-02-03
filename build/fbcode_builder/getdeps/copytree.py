@@ -59,7 +59,9 @@ def prefetch_dir_if_eden(dirpath):
         return
     glob = f"{os.path.relpath(dirpath, root).replace(os.sep, '/')}/**"
     print(f"Prefetching {glob}")
-    subprocess.call(["edenfsctl", "prefetch", "--repo", root, "--silent", glob])
+    subprocess.call(
+        ["edenfsctl", "prefetch", "--repo", root, "--silent", glob, "--background"]
+    )
     PREFETCHED_DIRS.add(dirpath)
 
 
