@@ -260,8 +260,6 @@ template <typename Fun, typename = Fun*>
 using IsSmall = Conjunction<
     bool_constant<(sizeof(Fun) <= sizeof(Data::tiny))>,
     std::is_nothrow_move_constructible<Fun>>;
-using SmallTag = std::true_type;
-using HeapTag = std::false_type;
 
 struct CoerceTag {};
 
@@ -582,37 +580,47 @@ using Exec = decltype(&exec_);
 static_assert(noexcept(Exec(nullptr)(Op{}, nullptr, nullptr)), "");
 #endif
 
-template <typename Fun>
-std::size_t execSmall(Op o, Data* src, Data* dst) noexcept {
-  switch (o) {
-    case Op::MOVE:
-      ::new (static_cast<void*>(&dst->tiny))
-          Fun(std::move(*static_cast<Fun*>(static_cast<void*>(&src->tiny))));
-      FOLLY_FALLTHROUGH;
-    case Op::NUKE:
-      static_cast<Fun*>(static_cast<void*>(&src->tiny))->~Fun();
-      break;
-    case Op::HEAP:
-      break;
-  }
-  return 0U;
-}
+struct DispatchSmall {
+  template <typename Fun, typename Base>
+  static constexpr auto call = Base::template callSmall<Fun>;
 
-template <typename Fun>
-std::size_t execBig(Op o, Data* src, Data* dst) noexcept {
-  switch (o) {
-    case Op::MOVE:
-      dst->big = src->big;
-      src->big = nullptr;
-      break;
-    case Op::NUKE:
-      delete static_cast<Fun*>(src->big);
-      break;
-    case Op::HEAP:
-      break;
+  template <typename Fun>
+  static std::size_t exec(Op o, Data* src, Data* dst) noexcept {
+    switch (o) {
+      case Op::MOVE:
+        ::new (static_cast<void*>(&dst->tiny))
+            Fun(std::move(*static_cast<Fun*>(static_cast<void*>(&src->tiny))));
+        FOLLY_FALLTHROUGH;
+      case Op::NUKE:
+        static_cast<Fun*>(static_cast<void*>(&src->tiny))->~Fun();
+        break;
+      case Op::HEAP:
+        break;
+    }
+    return 0U;
   }
-  return sizeof(Fun);
-}
+};
+
+struct DispatchBig {
+  template <typename Fun, typename Base>
+  static constexpr auto call = Base::template callBig<Fun>;
+
+  template <typename Fun>
+  static std::size_t exec(Op o, Data* src, Data* dst) noexcept {
+    switch (o) {
+      case Op::MOVE:
+        dst->big = src->big;
+        src->big = nullptr;
+        break;
+      case Op::NUKE:
+        delete static_cast<Fun*>(src->big);
+        break;
+      case Op::HEAP:
+        break;
+    }
+    return sizeof(Fun);
+  }
+};
 
 } // namespace function
 } // namespace detail
@@ -624,8 +632,6 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // namespace for convenience.
   using Data = detail::function::Data;
   using Op = detail::function::Op;
-  using SmallTag = detail::function::SmallTag;
-  using HeapTag = detail::function::HeapTag;
   using CoerceTag = detail::function::CoerceTag;
 
   using Traits = detail::function::FunctionTraits<FunctionType>;
@@ -655,29 +661,15 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       Function<typename Traits::NonConstSignature>&&) noexcept;
   friend class Function<typename Traits::OtherSignature>;
 
-  template <typename Fun>
-  Function(Fun&& fun, SmallTag) noexcept {
-    using FunT = typename std::decay<Fun>::type;
-    if (!detail::function::isEmptyFunction(fun)) {
-      ::new (static_cast<void*>(&data_.tiny)) FunT(static_cast<Fun&&>(fun));
-      call_ = &Traits::template callSmall<FunT>;
-      exec_ = &detail::function::execSmall<FunT>;
-    }
-  }
-
-  template <typename Fun>
-  Function(Fun&& fun, HeapTag) {
-    using FunT = typename std::decay<Fun>::type;
-    if (!detail::function::isEmptyFunction(fun)) {
-      data_.big = new FunT(static_cast<Fun&&>(fun));
-      call_ = &Traits::template callBig<FunT>;
-      exec_ = &detail::function::execBig<FunT>;
-    }
-  }
-
   template <typename Signature>
-  Function(Function<Signature>&& that, CoerceTag)
-      : Function(static_cast<Function<Signature>&&>(that), HeapTag{}) {}
+  Function(Function<Signature>&& fun, CoerceTag) {
+    using Fun = Function<Signature>;
+    if (fun) {
+      data_.big = new Fun(static_cast<Fun&&>(fun));
+      call_ = Traits::template callBig<Fun>;
+      exec_ = detail::function::DispatchBig::exec<Fun>;
+    }
+  }
 
   Function(Function<typename Traits::OtherSignature>&& that, CoerceTag) noexcept
       : call_(that.call_), exec_(that.exec_) {
@@ -744,8 +736,22 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
           std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
       typename = typename Traits::template IfSafeResult<Fun>>
   /* implicit */ Function(Fun fun) noexcept(
-      IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>())))
-      : Function(std::move(fun), IsSmall<Fun>{}) {}
+      IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>()))) {
+    using Dispatch = conditional_t<
+        IsSmall<Fun>::value,
+        detail::function::DispatchSmall,
+        detail::function::DispatchBig>;
+    if (detail::function::isEmptyFunction(fun)) {
+      return;
+    }
+    if FOLLY_CXX17_CONSTEXPR (IsSmall<Fun>::value) {
+      ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
+    } else {
+      data_.big = new Fun(static_cast<Fun&&>(fun));
+    }
+    call_ = Dispatch::template call<Fun, Traits>;
+    exec_ = Dispatch::template exec<Fun>;
+  }
 
   /**
    * For move-constructing from a `folly::Function<X(Ys...) [const?]>`.
