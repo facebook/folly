@@ -90,7 +90,7 @@ class ProjectCmdBase(SubCmd):
                 )
             args.project = opts.repo_project
 
-        ctx_gen = opts.get_context_generator(facebook_internal=args.facebook_internal)
+        ctx_gen = opts.get_context_generator()
         if args.test_dependencies:
             ctx_gen.set_value_for_all_projects("test", "on")
         if args.enable_tests:

@@ -50,6 +50,7 @@ class BuildOptions(object):
         allow_system_packages=False,
         lfs_path=None,
         shared_libs=False,
+        facebook_internal=None,
     ):
         """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                              or for shipit-transformed repos, the build dir that
@@ -86,6 +87,13 @@ class BuildOptions(object):
         else:
             self.fbsource_dir = None
 
+        if facebook_internal is None:
+            if self.fbsource_dir:
+                facebook_internal = True
+            else:
+                facebook_internal = False
+
+        self.facebook_internal = facebook_internal
         self.specified_num_jobs = num_jobs
         self.scratch_dir = scratch_dir
         self.install_dir = install_dir
@@ -164,7 +172,7 @@ class BuildOptions(object):
 
         return max(1, min(multiprocessing.cpu_count(), available_ram // job_weight))
 
-    def get_context_generator(self, host_tuple=None, facebook_internal=None):
+    def get_context_generator(self, host_tuple=None):
         """Create a manifest ContextGenerator for the specified target platform."""
         if host_tuple is None:
             host_type = self.host_type
@@ -173,18 +181,12 @@ class BuildOptions(object):
         else:
             host_type = HostType.from_tuple_string(host_tuple)
 
-        # facebook_internal is an Optional[bool]
-        # If it is None, default to assuming this is a Facebook-internal build if
-        # we are running in an fbsource repository.
-        if facebook_internal is None:
-            facebook_internal = self.fbsource_dir is not None
-
         return ContextGenerator(
             {
                 "os": host_type.ostype,
                 "distro": host_type.distro,
                 "distro_vers": host_type.distrovers,
-                "fb": "on" if facebook_internal else "off",
+                "fb": "on" if self.facebook_internal else "off",
                 "fbsource": "on" if self.fbsource_dir else "off",
                 "test": "off",
                 "shared_libs": "on" if self.shared_libs else "off",
@@ -503,7 +505,8 @@ def setup_build_options(args, host_type=None):
         scratch_dir,
         host_type,
         install_dir=args.install_prefix,
-        **build_args
+        facebook_internal=args.facebook_internal,
+        **build_args,
     )
 
 
