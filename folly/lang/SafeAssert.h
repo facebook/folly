@@ -83,8 +83,8 @@
 
 //  FOLLY_SAFE_PCHECK
 //
-//  Equivalent to FOLLY_SAFE_CHECK but includes errno in the context information
-//  printed to stderr.
+//  Equivalent to FOLLY_SAFE_CHECK but includes errno in the contextual
+//  information printed to stderr.
 //
 //  multi-thread-safe
 //  async-signal-safe
@@ -92,10 +92,10 @@
   FOLLY_DETAIL_SAFE_CHECK_IMPL(      \
       0, 1, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
 
-//  FOLLY_SAFE_PCHECK
+//  FOLLY_SAFE_DPCHECK
 //
-//  Equivalent to FOLLY_SAFE_CHECK but includes errno in the context information
-//  printed to stderr.
+//  Equivalent to FOLLY_SAFE_DCHECK but includes errno in the contextual
+//  information printed to stderr.
 //
 //  multi-thread-safe
 //  async-signal-safe
@@ -105,7 +105,8 @@
 
 //  FOLLY_SAFE_FATAL
 //
-//  Equivalent to FOLLY_SAFE_CHECK(false, ...)
+//  Equivalent to FOLLY_SAFE_CHECK(false, ...) but excludes any failing
+//  expression from the contextual information printed to stderr.
 //
 //  multi-thread-safe
 //  async-signal-safe
@@ -114,7 +115,8 @@
 
 //  FOLLY_SAFE_DFATAL
 //
-//  Equivalent to FOLLY_SAFE_DCHECK(false, ...)
+//  Equivalent to FOLLY_SAFE_DCHECK(false, ...) but excludes any failing
+//  expression from the contextual information printed to stderr.
 //
 //  multi-thread-safe
 //  async-signal-safe
