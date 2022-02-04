@@ -1738,3 +1738,7 @@ TEST(FBString, convertToStringView) {
   EXPECT_EQ(sv2, "bar");
 }
 #endif
+
+TEST(FBString, Format) {
+  EXPECT_EQ("  foo", fmt::format("{:>5}", folly::fbstring("foo")));
+}
