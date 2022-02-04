@@ -218,6 +218,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <new>
@@ -580,6 +581,36 @@ using Exec = decltype(&exec_);
 static_assert(noexcept(Exec(nullptr)(Op{}, nullptr, nullptr)), "");
 #endif
 
+// This is intentionally instantiated per size rather than per function in order
+// to minimize the number of instantiations. It would be safe to minimize
+// instantiations even more by simply having a single non-template function that
+// copies sizeof(Data) bytes rather than only copying sizeof(Fun) bytes, but
+// then for small function types it would be likely to cross cache lines without
+// need. But it is only necessary to handle those sizes which are multiples of
+// the alignof(Data), and to round up other sizes.
+struct DispatchSmallTrivial {
+  template <typename Fun, typename Base>
+  static constexpr auto call = Base::template callSmall<Fun>;
+
+  template <std::size_t Size>
+  static std::size_t exec_(Op o, Data* src, Data* dst) noexcept {
+    switch (o) {
+      case Op::MOVE:
+        std::memcpy(static_cast<void*>(dst), static_cast<void*>(src), Size);
+        break;
+      case Op::NUKE:
+        break;
+      case Op::HEAP:
+        break;
+    }
+    return 0U;
+  }
+  template <std::size_t size, std::size_t adjust = alignof(Data) - 1>
+  static constexpr std::size_t size_ = (size + adjust) & ~adjust;
+  template <typename Fun>
+  static constexpr auto exec = exec_<size_<sizeof(Fun)>>;
+};
+
 struct DispatchSmall {
   template <typename Fun, typename Base>
   static constexpr auto call = Base::template callSmall<Fun>;
@@ -667,7 +698,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
     if (fun) {
       data_.big = new Fun(static_cast<Fun&&>(fun));
       call_ = Traits::template callBig<Fun>;
-      exec_ = detail::function::DispatchBig::exec<Fun>;
+      exec_ = Exec(detail::function::DispatchBig::exec<Fun>);
     }
   }
 
@@ -738,9 +769,12 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   /* implicit */ Function(Fun fun) noexcept(
       IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>()))) {
     using Dispatch = conditional_t<
-        IsSmall<Fun>::value,
-        detail::function::DispatchSmall,
-        detail::function::DispatchBig>;
+        IsSmall<Fun>::value && is_trivially_copyable_v<Fun>,
+        detail::function::DispatchSmallTrivial,
+        conditional_t<
+            IsSmall<Fun>::value,
+            detail::function::DispatchSmall,
+            detail::function::DispatchBig>>;
     if (detail::function::isEmptyFunction(fun)) {
       return;
     }
@@ -750,7 +784,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       data_.big = new Fun(static_cast<Fun&&>(fun));
     }
     call_ = Dispatch::template call<Fun, Traits>;
-    exec_ = Dispatch::template exec<Fun>;
+    exec_ = Exec(Dispatch::template exec<Fun>);
   }
 
   /**

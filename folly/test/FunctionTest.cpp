@@ -1227,3 +1227,44 @@ TEST(Function, AllocatedSize) {
       << "Lambda-derived Function's allocated size is smaller than the "
          "lambda's capture size";
 }
+
+TEST(Function, TrivialSmallBig) {
+  auto tl = [] { return 7; };
+  static_assert(std::is_trivially_copyable_v<decltype(tl)>);
+
+  struct move_nx {
+    move_nx() {}
+    ~move_nx() {}
+    move_nx(move_nx&&) noexcept {}
+    void operator=(move_nx&&) = delete;
+  };
+  auto sl = [o = move_nx{}] { return 7; };
+  static_assert(!std::is_trivially_copyable_v<decltype(sl)>);
+  static_assert(std::is_nothrow_move_constructible_v<decltype(sl)>);
+
+  struct move_x {
+    move_x() {}
+    ~move_x() {}
+    move_x(move_x&&) noexcept(false) {}
+    void operator=(move_x&&) = delete;
+  };
+  auto hl = [o = move_x{}] { return 7; };
+  static_assert(!std::is_trivially_copyable_v<decltype(hl)>);
+  static_assert(!std::is_nothrow_move_constructible_v<decltype(hl)>);
+
+  Function<int()> t{std::move(tl)};
+  Function<int()> s{std::move(sl)};
+  Function<int()> h{std::move(hl)};
+
+  EXPECT_EQ(7, t());
+  EXPECT_EQ(7, s());
+  EXPECT_EQ(7, h());
+
+  auto t2 = std::move(t);
+  auto s2 = std::move(s);
+  auto h2 = std::move(h);
+
+  EXPECT_EQ(7, t2());
+  EXPECT_EQ(7, s2());
+  EXPECT_EQ(7, h2());
+}
