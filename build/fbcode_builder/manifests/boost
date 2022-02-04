@@ -10,6 +10,8 @@ url = https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_7
 sha256 = f22143b5528e081123c3c5ed437e92f648fe69748e95fa6e2bd41484e2986cc3
 
 [preinstalled.env]
+# Here we list the acceptable versions that cmake needs a hint to find
+BOOST_ROOT_1_69_0
 BOOST_ROOT_1_78_0
 
 [debs]
