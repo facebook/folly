@@ -43,8 +43,12 @@ osxfuse
 [dependencies.not(os=windows)]
 libcurl
 
-[shipit.pathmap]
+[shipit.pathmap.fb=on]
 # for internal builds that use getdeps
+fbcode/common/rust/fbwhoami = common/rust/fbwhoami
+
+[shipit.pathmap]
+# remove once autocargo in place for edenfs
 fbcode/common/rust/fbwhoami = common/rust/fbwhoami
 fbcode/common/rust/shed = common/rust/shed
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
@@ -72,8 +76,10 @@ INSTALL_PYTHON_LIB=ON
 [cmake.defines.all(not(fb=on),os=windows)]
 ENABLE_GIT=OFF
 
-[cmake.defines.fb=on]
+[cmake.defines.fbsource=on]
 USE_CARGO_VENDOR=ON
+
+[cmake.defines.fb=on]
 IS_FB_BUILD=ON
 
 [depends.environment]

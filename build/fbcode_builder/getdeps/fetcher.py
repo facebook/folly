@@ -542,10 +542,11 @@ def get_fbsource_repo_data(build_options):
 
 
 class SimpleShipitTransformerFetcher(Fetcher):
-    def __init__(self, build_options, manifest):
+    def __init__(self, build_options, manifest, ctx):
         self.build_options = build_options
         self.manifest = manifest
         self.repo_dir = os.path.join(build_options.scratch_dir, "shipit", manifest.name)
+        self.ctx = ctx
 
     def clean(self):
         if os.path.exists(self.repo_dir):
@@ -553,13 +554,15 @@ class SimpleShipitTransformerFetcher(Fetcher):
 
     def update(self):
         mapping = ShipitPathMap()
-        for src, dest in self.manifest.get_section_as_ordered_pairs("shipit.pathmap"):
+        for src, dest in self.manifest.get_section_as_ordered_pairs(
+            "shipit.pathmap", self.ctx
+        ):
             mapping.add_mapping(src, dest)
         if self.manifest.shipit_fbcode_builder:
             mapping.add_mapping(
                 "fbcode/opensource/fbcode_builder", "build/fbcode_builder"
             )
-        for pattern in self.manifest.get_section_as_args("shipit.strip"):
+        for pattern in self.manifest.get_section_as_args("shipit.strip", self.ctx):
             mapping.add_exclusion(pattern)
 
         return mapping.mirror(self.build_options.fbsource_dir, self.repo_dir)

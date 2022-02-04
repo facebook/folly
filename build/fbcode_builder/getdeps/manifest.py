@@ -110,6 +110,8 @@ ALLOWED_EXPR_SECTIONS = [
     "install.files",
     "rpms",
     "debs",
+    "shipit.pathmap",
+    "shipit.strip",
 ]
 
 
@@ -382,7 +384,7 @@ class ManifestParser(object):
             and build_options.fbsource_dir
             and self.shipit_project
         ):
-            return SimpleShipitTransformerFetcher(build_options, self)
+            return SimpleShipitTransformerFetcher(build_options, self, ctx)
 
         if (
             self.fbsource_path
