@@ -273,7 +273,7 @@ constexpr initlist_construct_t initlist_construct{};
 //
 //  mimic: std::sorted_unique_t, std::sorted_unique, p0429r6
 struct sorted_unique_t {};
-constexpr sorted_unique_t sorted_unique;
+constexpr sorted_unique_t sorted_unique{};
 
 //  sorted_equivalent_t, sorted_equivalent
 //
@@ -296,7 +296,7 @@ constexpr sorted_unique_t sorted_unique;
 //
 //  mimic: std::sorted_equivalent_t, std::sorted_equivalent, p0429r6
 struct sorted_equivalent_t {};
-constexpr sorted_equivalent_t sorted_equivalent;
+constexpr sorted_equivalent_t sorted_equivalent{};
 
 template <typename T>
 struct transparent : T {
@@ -330,7 +330,7 @@ struct identity_fn {
   }
 };
 using Identity = identity_fn;
-FOLLY_INLINE_VARIABLE constexpr identity_fn identity;
+FOLLY_INLINE_VARIABLE constexpr identity_fn identity{};
 
 namespace moveonly_ { // Protection from unintended ADL.
 
@@ -390,7 +390,7 @@ struct to_signed_fn {
     return m < t ? -static_cast<S>(~t) + S{-1} : static_cast<S>(t);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_signed_fn to_signed;
+FOLLY_INLINE_VARIABLE constexpr to_signed_fn to_signed{};
 
 struct to_unsigned_fn {
   template <typename..., typename T>
@@ -400,7 +400,7 @@ struct to_unsigned_fn {
     return static_cast<U>(t);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_unsigned_fn to_unsigned;
+FOLLY_INLINE_VARIABLE constexpr to_unsigned_fn to_unsigned{};
 
 template <typename Src>
 class to_narrow_convertible {
@@ -458,7 +458,7 @@ struct to_narrow_fn {
     return to_narrow_convertible<Src>{src};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_narrow_fn to_narrow;
+FOLLY_INLINE_VARIABLE constexpr to_narrow_fn to_narrow{};
 
 struct to_underlying_fn {
   template <typename..., class E>
@@ -467,6 +467,6 @@ struct to_underlying_fn {
     return static_cast<std::underlying_type_t<E>>(e);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying;
+FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying{};
 
 } // namespace folly
