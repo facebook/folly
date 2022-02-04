@@ -193,8 +193,10 @@ class HostType(object):
         )
 
     def get_package_manager(self):
-        if not self.is_linux():
+        if not self.is_linux() and not self.is_darwin():
             return None
+        if self.is_darwin():
+            return "homebrew"
         if self.distro in ("fedora", "centos", "centos_stream"):
             return "rpm"
         if self.distro.startswith(("debian", "ubuntu")):

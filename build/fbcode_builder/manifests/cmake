@@ -1,6 +1,9 @@
 [manifest]
 name = cmake
 
+[homebrew]
+cmake
+
 [rpms]
 cmake
 

@@ -1,6 +1,9 @@
 [manifest]
 name = zstd
 
+[homebrew]
+zstd
+
 [rpms]
 libzstd-devel
 libzstd

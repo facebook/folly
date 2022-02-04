@@ -1,6 +1,9 @@
 [manifest]
 name = lz4
 
+[homebrew]
+lz4
+
 [rpms]
 lz4-devel
 lz4-static

@@ -1,13 +1,16 @@
 [manifest]
 name = openssl
 
+[debs]
+libssl-dev
+
+[homebrew]
+openssl@1.1
+
 [rpms]
 openssl
 openssl-devel
 openssl-libs
-
-[debs]
-libssl-dev
 
 [download]
 url = https://www.openssl.org/source/openssl-1.1.1l.tar.gz

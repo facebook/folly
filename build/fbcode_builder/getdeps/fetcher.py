@@ -158,6 +158,7 @@ class SystemPackageFetcher(object):
     def __init__(self, build_options, packages):
         self.manager = build_options.host_type.get_package_manager()
         self.packages = packages.get(self.manager)
+        self.host_type = build_options.host_type
         if self.packages:
             self.installed = None
         else:
@@ -172,6 +173,8 @@ class SystemPackageFetcher(object):
             cmd = ["rpm", "-q"] + sorted(self.packages)
         elif self.manager == "deb":
             cmd = ["dpkg", "-s"] + sorted(self.packages)
+        elif self.manager == "homebrew":
+            cmd = ["brew", "ls", "--versions"] + sorted(self.packages)
 
         if cmd:
             proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -181,8 +184,22 @@ class SystemPackageFetcher(object):
             else:
                 # Need all packages to be present to consider us installed
                 self.installed = False
+
         else:
             self.installed = False
+
+        # Hack to make openssl discovery with homebrew work. If openssl was
+        # built with autoconf we could use autoconf.envcmd.OPENSSL_ROOT_DIR
+        # from the manifest, but it isn't, so handle the special case here.
+        if (
+            self.installed
+            and self.host_type.is_darwin()
+            and self.manager == "homebrew"
+            and "openssl@1.1" in self.packages
+        ):
+            candidate = homebrew_package_prefix("openssl@1.1")
+            if os.path.exists(candidate):
+                os.environ["OPENSSL_ROOT_DIR"] = candidate
 
         return bool(self.installed)
 
@@ -789,3 +806,14 @@ class ArchiveFetcher(Fetcher):
 
     def get_src_dir(self):
         return self.src_dir
+
+
+def homebrew_package_prefix(package):
+    cmd = ["brew", "--prefix", package]
+    try:
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        return
+
+    if proc.returncode == 0:
+        return proc.stdout.decode("utf-8").rstrip()

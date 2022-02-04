@@ -415,6 +415,11 @@ class InstallSysDepsCmd(ProjectCmdBase):
             packages = sorted(set(all_packages["deb"]))
             if packages:
                 cmd_args = ["apt", "install", "-y"] + packages
+        elif manager == "homebrew":
+            packages = sorted(set(all_packages["homebrew"]))
+            if packages:
+                cmd_args = ["brew", "install"] + packages
+
         else:
             host_tuple = loader.build_opts.host_type.as_tuple_string()
             print(

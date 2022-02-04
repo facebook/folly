@@ -1,10 +1,13 @@
 [manifest]
 name = tree
 
-[rpms]
+[debs]
 tree
 
-[debs]
+[homebrew]
+tree
+
+[rpms]
 tree
 
 [download.os=linux]

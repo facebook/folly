@@ -1,12 +1,15 @@
 [manifest]
 name = zlib
 
+[debs]
+zlib1g-dev
+
+[homebrew]
+zlib
+
 [rpms]
 zlib-devel
 zlib-static
-
-[debs]
-zlib1g-dev
 
 [download]
 url = http://www.zlib.net/zlib-1.2.11.tar.gz

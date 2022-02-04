@@ -1,10 +1,13 @@
 [manifest]
 name = flex
 
-[rpms]
+[debs]
 flex
 
-[debs]
+[homebrew]
+flex
+
+[rpms]
 flex
 
 [download.not(os=windows)]

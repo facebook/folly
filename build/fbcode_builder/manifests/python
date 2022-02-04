@@ -1,6 +1,9 @@
 [manifest]
 name = python
 
+[homebrew]
+python@3.8
+
 [rpms]
 python3
 python3-devel

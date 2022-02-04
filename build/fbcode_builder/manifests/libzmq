@@ -1,12 +1,15 @@
 [manifest]
 name = libzmq
 
+[debs]
+libzmq3-dev
+
+[homebrew]
+zeromq
+
 [rpms]
 zeromq-devel
 zeromq
-
-[debs]
-libzmq3-dev
 
 [download]
 url = https://github.com/zeromq/libzmq/releases/download/v4.3.1/zeromq-4.3.1.tar.gz

@@ -81,6 +81,7 @@ SCHEMA = {
     "autoconf.envcmd.LDFLAGS": {"optional_section": True},
     "rpms": {"optional_section": True},
     "debs": {"optional_section": True},
+    "homebrew": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
     "bootstrap.args": {"optional_section": True},
     "b2.args": {"optional_section": True},
@@ -112,6 +113,7 @@ ALLOWED_EXPR_SECTIONS = [
     "debs",
     "shipit.pathmap",
     "shipit.strip",
+    "homebrew",
 ]
 
 
@@ -358,6 +360,7 @@ class ManifestParser(object):
         return {
             "rpm": self.get_section_as_args("rpms", ctx),
             "deb": self.get_section_as_args("debs", ctx),
+            "homebrew": self.get_section_as_args("homebrew", ctx),
         }
 
     def _is_satisfied_by_preinstalled_environment(self, ctx):

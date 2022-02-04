@@ -88,7 +88,7 @@ The settings for folly's cmake build are held in its getdeps manifest `build/fbc
 
 ### Dependencies
 
-If on Linux you can install system dependencies to save building them:
+If on Linux or MacOS (with homebrew installed) you can install system dependencies to save building them:
 
     # Clone the repo
     git clone https://github.com/facebook/folly

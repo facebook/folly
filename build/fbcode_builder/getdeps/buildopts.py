@@ -14,7 +14,7 @@ from typing import Optional, Mapping
 
 from .copytree import containing_repo_type
 from .envfuncs import Env, add_path_entry
-from .fetcher import get_fbsource_repo_data
+from .fetcher import get_fbsource_repo_data, homebrew_package_prefix
 from .manifest import ContextGenerator
 from .platform import HostType, is_windows, get_available_ram
 
@@ -206,6 +206,12 @@ class BuildOptions(object):
             sdkroot = subprocess.check_output(["xcrun", "--show-sdk-path"])
             env["SDKROOT"] = sdkroot.decode().strip()
 
+        # MacOS includes a version of bison so homebrew won't automatically add
+        # its own version to PATH. Find where the homebrew bison is and prepend
+        # it to PATH.
+        if self.is_darwin() and self.host_type.get_package_manager() == "homebrew":
+            add_homebrew_package_to_path(env, "bison")
+
         if self.fbsource_dir:
             env["YARN_YARN_OFFLINE_MIRROR"] = os.path.join(
                 self.fbsource_dir, "xplat/third-party/yarn/offline-mirror"
@@ -299,6 +305,14 @@ class BuildOptions(object):
                         cert_file = system_ssl_cfg + "/cert.pem"
                         if os.path.isfile(cert_file):
                             env["SSL_CERT_FILE"] = cert_file
+
+        # Try extra hard to find openssl, needed with homebrew on macOS
+        if (
+            self.is_darwin()
+            and "OPENSSL_DIR" not in env
+            and "OPENSSL_ROOT_DIR" in os.environ
+        ):
+            env["OPENSSL_ROOT_DIR"] = os.environ["OPENSSL_ROOT_DIR"]
 
         return env
 
@@ -491,3 +505,9 @@ def setup_build_options(args, host_type=None):
         install_dir=args.install_prefix,
         **build_args
     )
+
+
+def add_homebrew_package_to_path(env, package):
+    prefix = homebrew_package_prefix(package)
+    if prefix and os.path.exists(os.path.join(prefix, "bin")):
+        add_path_entry(env, "PATH", os.path.join(prefix, "bin"), append=False)

@@ -1,6 +1,9 @@
 [manifest]
 name = libgit2
 
+[homebrew]
+libgit2
+
 [rpms]
 libgit2-devel
 

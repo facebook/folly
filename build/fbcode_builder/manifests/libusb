@@ -1,12 +1,15 @@
 [manifest]
 name = libusb
 
+[debs]
+libusb-1.0-0-dev
+
+[homebrew]
+libusb
+
 [rpms]
 libusb-devel
 libusb
-
-[debs]
-libusb-1.0-0-dev
 
 [download]
 url = https://github.com/libusb/libusb/releases/download/v1.0.22/libusb-1.0.22.tar.bz2

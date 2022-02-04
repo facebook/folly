@@ -15,6 +15,9 @@ BOOST_ROOT_1_78_0
 [debs]
 libboost-all-dev
 
+[homebrew]
+boost
+
 [rpms.all(distro=centos_stream,distro_vers=8)]
 boost169
 boost169-math

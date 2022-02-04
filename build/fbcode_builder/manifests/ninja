@@ -1,10 +1,13 @@
 [manifest]
 name = ninja
 
-[rpms]
+[debs]
 ninja-build
 
-[debs]
+[homebrew]
+ninja
+
+[rpms]
 ninja-build
 
 [download.os=windows]

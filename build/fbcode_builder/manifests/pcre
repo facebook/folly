@@ -1,6 +1,9 @@
 [manifest]
 name = pcre
 
+[homebrew]
+pcre
+
 [rpms]
 pcre-devel
 pcre-static
@@ -15,4 +18,3 @@ sha256 = 0b8e7465dc5e98c757cc3650a20a7843ee4c3edf50aaf60bb33fd879690d2c73
 [build]
 builder = cmake
 subdir = pcre-8.43
-

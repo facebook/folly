@@ -1,12 +1,15 @@
 [manifest]
 name = re2
 
-[rpms]
+[homebrew]
 re2
-re2-devel
 
 [debs]
 libre2-dev
+
+[rpms]
+re2
+re2-devel
 
 [download]
 url = https://github.com/google/re2/archive/2019-06-01.tar.gz
