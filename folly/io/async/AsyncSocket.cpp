@@ -1230,6 +1230,10 @@ void AsyncSocket::setReadCB(ReadCallback* callback) {
 
   DestructorGuard dg(this);
   eventBase_->dcheckIsInEventBaseThread();
+  // This new callback might support zero copy reads, so reset the
+  // zerocopyReadDisabled_ flag to its default value so we will
+  // check for support again on the next read attempt.
+  zerocopyReadDisabled_ = false;
 
   switch ((StateEnum)state_) {
     case StateEnum::CONNECTING:
@@ -2745,14 +2749,14 @@ void AsyncSocket::splitIovecArray(
 
 AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
 #if TCP_ZEROCOPY_RECEIVE
-  if (!zerocopyReadSupported_) {
+  if (zerocopyReadDisabled_) {
     return ReadCode::READ_NOT_SUPPORTED;
   }
 
   auto* memStore = readCallback_->readZeroCopyEnabled();
   if (!memStore) {
-    // set zerocopyReadSupported_ to false to avoid further virtual calls
-    zerocopyReadSupported_ = false;
+    // set zerocopyReadDisabled_ to true to avoid further virtual calls
+    zerocopyReadDisabled_ = true;
     return ReadCode::READ_NOT_SUPPORTED;
   }
 
@@ -2842,7 +2846,7 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
     }
 
     // treat any other error as not supported, fall back to regular read
-    zerocopyReadSupported_ = false;
+    zerocopyReadDisabled_ = true;
   }
 #endif
   return ReadCode::READ_NOT_SUPPORTED;
