@@ -48,7 +48,7 @@ class StaticSingletonManagerSansRtti {
   static void* create_(Arg&) noexcept(Noexcept); // no defn; only for decltype
 
   template <bool Noexcept>
-  using Create = decltype(create_<Noexcept>);
+  using Create = decltype(&create_<Noexcept>);
 
  public:
   template <bool Noexcept>
@@ -62,7 +62,7 @@ class StaticSingletonManagerSansRtti {
     }
 
    private:
-    Create<Noexcept>* create;
+    Create<Noexcept> create;
   };
 
   template <typename T, typename Tag>
@@ -125,7 +125,7 @@ class StaticSingletonManagerWithRtti {
   FOLLY_NOINLINE static void* create_(Arg&) noexcept(Noexcept);
 
   template <bool Noexcept>
-  using Create = decltype(create_<Noexcept>);
+  using Create = decltype(&create_<Noexcept>);
 
  public:
   template <bool Noexcept>
@@ -139,7 +139,7 @@ class StaticSingletonManagerWithRtti {
     }
 
    private:
-    Create<Noexcept>* create;
+    Create<Noexcept> create;
   };
 
   template <typename T, typename Tag>
