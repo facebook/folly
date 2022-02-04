@@ -24,7 +24,7 @@ pexpect
 python-toml
 python-filelock
 
-[dependencies.fb=on]
+[dependencies.fbsource=on]
 rust
 
 # macOS ships with sqlite3, and some of the core system

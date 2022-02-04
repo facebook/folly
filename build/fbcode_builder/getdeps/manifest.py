@@ -586,7 +586,15 @@ class ManifestContext(object):
     This object should be passed as the `ctx` parameter in ManifestParser.get() calls.
     """
 
-    ALLOWED_VARIABLES = {"os", "distro", "distro_vers", "fb", "test", "shared_libs"}
+    ALLOWED_VARIABLES = {
+        "os",
+        "distro",
+        "distro_vers",
+        "fb",
+        "fbsource",
+        "test",
+        "shared_libs",
+    }
 
     def __init__(self, ctx_dict):
         assert set(ctx_dict.keys()) == self.ALLOWED_VARIABLES

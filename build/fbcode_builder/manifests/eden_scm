@@ -56,5 +56,5 @@ rust-shed
 [dependencies.not(os=linux)]
 openssl
 
-[dependencies.fb=on]
+[dependencies.fbsource=on]
 rust

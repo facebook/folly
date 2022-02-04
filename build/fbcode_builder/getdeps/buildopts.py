@@ -185,6 +185,7 @@ class BuildOptions(object):
                 "distro": host_type.distro,
                 "distro_vers": host_type.distrovers,
                 "fb": "on" if facebook_internal else "off",
+                "fbsource": "on" if self.fbsource_dir else "off",
                 "test": "off",
                 "shared_libs": "on" if self.shared_libs else "off",
             }
