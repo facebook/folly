@@ -402,11 +402,21 @@ struct to_unsigned_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr to_unsigned_fn to_unsigned{};
 
+namespace detail {
+template <typename Src, typename Dst>
+FOLLY_INLINE_VARIABLE constexpr bool is_to_narrow_convertible_v =
+    (std::is_integral<Dst>::value) &&
+    (std::is_signed<Dst>::value == std::is_signed<Src>::value);
+}
+
 template <typename Src>
 class to_narrow_convertible {
- public:
   static_assert(std::is_integral<Src>::value, "not an integer");
 
+  template <typename Dst>
+  struct to_ : bool_constant<detail::is_to_narrow_convertible_v<Src, Dst>> {};
+
+ public:
   explicit constexpr to_narrow_convertible(Src const& value) noexcept
       : value_(value) {}
 #if __cplusplus >= 201703L
@@ -419,12 +429,7 @@ class to_narrow_convertible {
   to_narrow_convertible& operator=(to_narrow_convertible const&) = default;
   to_narrow_convertible& operator=(to_narrow_convertible&&) = default;
 
-  template <
-      typename Dst,
-      std::enable_if_t<
-          std::is_integral<Dst>::value &&
-              std::is_signed<Dst>::value == std::is_signed<Src>::value,
-          int> = 0>
+  template <typename Dst, std::enable_if_t<to_<Dst>::value, int> = 0>
   /* implicit */ constexpr operator Dst() const noexcept {
     FOLLY_PUSH_WARNING
     FOLLY_MSVC_DISABLE_WARNING(4244) // lossy conversion: arguments
