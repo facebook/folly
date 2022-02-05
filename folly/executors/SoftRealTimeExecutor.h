@@ -24,13 +24,14 @@ namespace folly {
 // scheduling with a deadline assigned to each task. __Soft__ real-time
 // means that not every deadline is guaranteed to be met.
 class SoftRealTimeExecutor : public virtual Executor {
+ public:
   void add(Func) override = 0;
 
   // Add a task with an assigned abstract deadline.
   //
   // NOTE: The type of `deadline` was chosen to be an integral rather than
   // a typed time point or duration (e.g., `std::chrono::time_point`) to allow
-  // for flexbility. While the deadline for a task may be a time point,
+  // for flexibility. While the deadline for a task may be a time point,
   // it could also be a duration or the size of the task, which emulates
   // rate-monotonic scheduling that prioritizes small tasks. It also enables
   // for example, tiered scheduling (strictly prioritizing a category of tasks)
