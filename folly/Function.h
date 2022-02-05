@@ -619,8 +619,8 @@ struct DispatchSmall {
   static std::size_t exec(Op o, Data* src, Data* dst) noexcept {
     switch (o) {
       case Op::MOVE:
-        ::new (static_cast<void*>(&dst->tiny))
-            Fun(std::move(*static_cast<Fun*>(static_cast<void*>(&src->tiny))));
+        ::new (static_cast<void*>(&dst->tiny)) Fun(static_cast<Fun&&>(
+            *static_cast<Fun*>(static_cast<void*>(&src->tiny))));
         FOLLY_FALLTHROUGH;
       case Op::NUKE:
         static_cast<Fun*>(static_cast<void*>(&src->tiny))->~Fun();
@@ -868,10 +868,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       // Q: Why is is safe to destroy and reconstruct this object in place?
       // A: See the explanation in the move assignment operator.
       this->~Function();
-      ::new (this) Function(std::move(fun));
+      ::new (this) Function(static_cast<Fun&&>(fun));
     } else {
       // Construct a temporary and (nothrow) swap.
-      Function(std::move(fun)).swap(*this);
+      Function(static_cast<Fun&&>(fun)).swap(*this);
     }
     return *this;
   }
