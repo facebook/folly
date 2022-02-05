@@ -2733,7 +2733,9 @@ struct IsSomeString<fbstring> : std::true_type {};
 } // namespace folly
 
 template <>
-struct fmt::formatter<folly::fbstring> : formatter<fmt::string_view> {
+struct fmt::formatter<folly::fbstring> : private formatter<fmt::string_view> {
+  using formatter<fmt::string_view>::parse;
+
   template <typename Context>
   typename Context::iterator format(
       const folly::fbstring& s, Context& ctx) const {
