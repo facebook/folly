@@ -103,6 +103,34 @@ TEST(Dynamic, ObjectBasics) {
   dynamic obj2 = dynamic::object;
   EXPECT_TRUE(obj2.isObject());
 
+  dynamic obj3 = dynamic::object("a", false);
+  EXPECT_EQ(obj3.at("a"), false);
+  EXPECT_EQ(obj3.size(), 1);
+  {
+    const auto [it, inserted] = obj3.emplace("a", true);
+    EXPECT_EQ(obj3.size(), 1);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, false);
+  }
+  {
+    const auto [it, inserted] = obj3.emplace("b", true);
+    EXPECT_EQ(obj3.size(), 2);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, true);
+  }
+  {
+    const auto [it, inserted] = obj3.try_emplace("a", true);
+    EXPECT_EQ(obj3.size(), 2);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, false);
+  }
+  {
+    const auto [it, inserted] = obj3.try_emplace("c", true);
+    EXPECT_EQ(obj3.size(), 3);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, true);
+  }
+
   dynamic d3 = nullptr;
   EXPECT_TRUE(d3 == nullptr);
   d3 = dynamic::object;

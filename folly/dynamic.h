@@ -682,6 +682,30 @@ struct dynamic {
   template <class K, class V>
   IfNotIterator<K, void> insert(K&&, V&& val);
 
+  /**
+   * Inserts an element into an object constructed in-place with the given args
+   * if there is no existing element with the key, or throws if it's not an
+   * object. Returns a pair consisting of an iterator to the inserted element,
+   * or the already existing element if no insertion happened, and a bool
+   * denoting whether the insertion took place.
+   *
+   * Invalidates iterators.
+   */
+  template <class... Args>
+  std::pair<item_iterator, bool> emplace(Args&&... args);
+
+  /**
+   * Inserts an element into an object with the given key and value constructed
+   * in-place with the given args if there is no existing element with the key,
+   * or throws if it's not an object. Returns a pair consisting of an iterator
+   * to the inserted element, or the already existing element if no insertion
+   * happened, and a bool denoting whether the insertion took place.
+   *
+   * Invalidates iterators.
+   */
+  template <class K, class... Args>
+  std::pair<item_iterator, bool> try_emplace(K&& key, Args&&... args);
+
   /*
    * Inserts the supplied value into array, or throw if not array
    * Shifts existing values in the array to the right
