@@ -173,3 +173,10 @@ TEST_F(UtilityTest, to_narrow) {
     EXPECT_EQ(100, actual);
   }
 }
+
+TEST_F(UtilityTest, to_integral) {
+  {
+    constexpr uint32_t actual = folly::to_integral(100.0f);
+    EXPECT_EQ(100, actual);
+  }
+}
