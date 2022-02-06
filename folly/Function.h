@@ -358,7 +358,7 @@ struct FunctionTraits<ReturnType(Args...)> {
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = ConstSignature;
 
-  template <typename F, typename R = CallableResult<std::decay_t<F>&, Args...>>
+  template <typename F, typename R = CallableResult<F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
@@ -410,9 +410,7 @@ struct FunctionTraits<ReturnType(Args...) const> {
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = NonConstSignature;
 
-  template <
-      typename F,
-      typename R = CallableResult<const std::decay_t<F>&, Args...>>
+  template <typename F, typename R = CallableResult<const F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
@@ -465,7 +463,7 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = ConstSignature;
 
-  template <typename F, typename R = CallableResult<std::decay_t<F>&, Args...>>
+  template <typename F, typename R = CallableResult<F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
@@ -517,9 +515,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = NonConstSignature;
 
-  template <
-      typename F,
-      typename R = CallableResult<const std::decay_t<F>&, Args...>>
+  template <typename F, typename R = CallableResult<const F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
