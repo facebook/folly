@@ -17,6 +17,7 @@ glog
 googletest
 boost
 libevent
+libsodium
 double-conversion
 fmt
 lz4
