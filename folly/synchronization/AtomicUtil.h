@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstdint>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 
 namespace folly {
@@ -64,11 +65,14 @@ bool atomic_compare_exchange_strong_explicit(
 //  Uses an optimized implementation when available, otherwise falling back to
 //  Atomic::fetch_or with mask. The optimization is currently available for
 //  std::atomic on x86, using the bts instruction.
-template <typename Atomic>
-bool atomic_fetch_set(
-    Atomic& atomic,
-    std::size_t bit,
-    std::memory_order order = std::memory_order_seq_cst);
+struct atomic_fetch_set_fn {
+  template <typename Atomic>
+  bool operator()(
+      Atomic& atomic,
+      std::size_t bit,
+      std::memory_order order = std::memory_order_seq_cst) const;
+};
+FOLLY_INLINE_VARIABLE constexpr atomic_fetch_set_fn atomic_fetch_set{};
 
 //  atomic_fetch_reset
 //
@@ -83,11 +87,14 @@ bool atomic_fetch_set(
 //  Uses an optimized implementation when available, otherwise falling back to
 //  Atomic::fetch_and with mask. The optimization is currently available for
 //  std::atomic on x86, using the btr instruction.
-template <typename Atomic>
-bool atomic_fetch_reset(
-    Atomic& atomic,
-    std::size_t bit,
-    std::memory_order order = std::memory_order_seq_cst);
+struct atomic_fetch_reset_fn {
+  template <typename Atomic>
+  bool operator()(
+      Atomic& atomic,
+      std::size_t bit,
+      std::memory_order order = std::memory_order_seq_cst) const;
+};
+FOLLY_INLINE_VARIABLE constexpr atomic_fetch_reset_fn atomic_fetch_reset{};
 
 //  atomic_fetch_flip
 //
@@ -101,11 +108,14 @@ bool atomic_fetch_reset(
 //  Uses an optimized implementation when available, otherwise falling back to
 //  Atomic::fetch_xor with mask. The optimization is currently available for
 //  std::atomic on x86, using the btc instruction.
-template <typename Atomic>
-bool atomic_fetch_flip(
-    Atomic& atomic,
-    std::size_t bit,
-    std::memory_order order = std::memory_order_seq_cst);
+struct atomic_fetch_flip_fn {
+  template <typename Atomic>
+  bool operator()(
+      Atomic& atomic,
+      std::size_t bit,
+      std::memory_order order = std::memory_order_seq_cst) const;
+};
+FOLLY_INLINE_VARIABLE constexpr atomic_fetch_flip_fn atomic_fetch_flip{};
 
 } // namespace folly
 
