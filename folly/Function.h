@@ -282,14 +282,14 @@ constexpr bool isEmptyFunction(T const& t) {
 }
 
 template <typename F, typename... Args>
-using CallableResult = decltype(std::declval<F>()(std::declval<Args>()...));
+using CallableResult = decltype(FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(Args &&)...));
 
 template <
     typename From,
     typename To,
     typename = typename std::enable_if<
         !std::is_reference<To>::value || std::is_reference<From>::value>::type>
-using IfSafeResultImpl = decltype(void(static_cast<To>(std::declval<From>())));
+using IfSafeResultImpl = decltype(void(static_cast<To>(FOLLY_DECLVAL(From))));
 
 #if defined(_MSC_VER)
 //  Need a workaround for MSVC to avoid the inscrutable error:
@@ -763,7 +763,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
           std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
       typename = typename Traits::template IfSafeResult<Fun>>
   /* implicit */ Function(Fun fun) noexcept(
-      IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>()))) {
+      IsSmall<Fun>::value&& noexcept(Fun(static_cast<Fun&&>(fun)))) {
     using Dispatch = conditional_t<
         IsSmall<Fun>::value && is_trivially_copyable_v<Fun>,
         detail::function::DispatchSmallTrivial,
@@ -852,15 +852,14 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * Assigns a callable object to this `Function`. If the operation fails,
    * `*this` is left unmodified.
    *
-   * \note `typename = decltype(Function(std::declval<Fun>()))` prevents this
+   * \note `typename = decltype(Function(FOLLY_DECLVAL(Fun&&)))` prevents this
    * overload from being selected by overload resolution when `fun` is not a
    * compatible function.
    */
-  template <typename Fun, typename = decltype(Function(std::declval<Fun>()))>
-  Function& operator=(Fun fun) noexcept(
-      noexcept(/* implicit */ Function(std::declval<Fun>()))) {
+  template <typename Fun, bool Nx = noexcept(Function(FOLLY_DECLVAL(Fun&&)))>
+  Function& operator=(Fun fun) noexcept(Nx) {
     // Doing this in place is more efficient when we can do so safely.
-    if (noexcept(/* implicit */ Function(std::declval<Fun>()))) {
+    if (Nx) {
       // Q: Why is is safe to destroy and reconstruct this object in place?
       // A: See the explanation in the move assignment operator.
       this->~Function();
