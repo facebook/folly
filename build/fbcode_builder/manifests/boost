@@ -103,3 +103,6 @@ pch=off
 
 [b2.args.os=darwin]
 toolset=clang
+
+[b2.args.all(os=windows,fb=on)]
+toolset=msvc-14.2

@@ -486,6 +486,14 @@ if __name__ == "__main__":
         self.defines = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
+
+        try:
+            from .facebook.vcvarsall import extra_vc_cmake_defines
+        except ImportError:
+            pass
+        else:
+            self.defines.update(extra_vc_cmake_defines)
+
         self.loader = loader
         if build_opts.shared_libs:
             self.defines["BUILD_SHARED_LIBS"] = "ON"
