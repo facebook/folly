@@ -20,8 +20,38 @@
 #include <cstdint>
 
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 
 namespace folly {
+
+//  register_pass_max_size
+//
+//  The platform-specific maximum size of a value which may be passed by-value
+//  in registers.
+//
+//  According to each platform ABI, trivially-copyable types up to this maximum
+//  size may, if the stars align, be passed by-value in registers rather than
+//  implicitly by-reference to stack copies.
+//
+//  Approximate. Accuracy is not promised.
+constexpr std::size_t register_pass_max_size = kMscVer ? 8u : 16u;
+
+//  register_pass_v
+//
+//  Whether a value may be passed in a register.
+//
+//  Trivially-copyable values up to register_pass_max_size in width may be
+//  passed by-value in registers rather than implicitly by-reference to stack
+//  copies.
+//
+//  Approximate. Accuracy is not promised.
+template <typename T>
+constexpr bool is_register_pass_v =
+    (sizeof(T) <= register_pass_max_size) && is_trivially_copyable_v<T>;
+template <typename T>
+constexpr bool is_register_pass_v<T&> = true;
+template <typename T>
+constexpr bool is_register_pass_v<T&&> = true;
 
 //  has_extended_alignment
 //

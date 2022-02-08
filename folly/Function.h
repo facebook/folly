@@ -229,6 +229,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {
@@ -303,7 +304,7 @@ template <typename T>
 using CallArg = T&&;
 #else
 template <typename T>
-using CallArg = conditional_t<is_trivially_copyable<T>::value, T, T&&>;
+using CallArg = conditional_t<is_register_pass_v<T>, T, T&&>;
 #endif
 
 template <typename F, typename R, typename... A>
