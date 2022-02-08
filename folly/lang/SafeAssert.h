@@ -31,7 +31,7 @@
 #define FOLLY_DETAIL_SAFE_CHECK_LINKAGE static
 #endif
 
-#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, expr, expr_s, ...)             \
+#define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, u, expr, ...)                  \
   do {                                                                    \
     if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&              \
         !static_cast<bool>(expr)) {                                       \
@@ -39,7 +39,7 @@
           __folly_detail_safe_assert_fun = __func__;                      \
       FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr ::folly::detail::         \
           safe_assert_arg __folly_detail_safe_assert_arg{                 \
-              FOLLY_PP_STRINGIZE(expr_s),                                 \
+              u ? nullptr : #expr,                                        \
               __FILE__,                                                   \
               __LINE__,                                                   \
               __folly_detail_safe_assert_fun,                             \
@@ -66,8 +66,7 @@
 //  multi-thread-safe
 //  async-signal-safe
 #define FOLLY_SAFE_CHECK(expr, ...) \
-  FOLLY_DETAIL_SAFE_CHECK_IMPL(     \
-      0, 0, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(0, 0, 0, expr, __VA_ARGS__)
 
 //  FOLLY_SAFE_DCHECK
 //
@@ -78,8 +77,7 @@
 //  multi-thread-safe
 //  async-signal-safe
 #define FOLLY_SAFE_DCHECK(expr, ...) \
-  FOLLY_DETAIL_SAFE_CHECK_IMPL(      \
-      1, 0, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(1, 0, 0, expr, __VA_ARGS__)
 
 //  FOLLY_SAFE_PCHECK
 //
@@ -89,8 +87,7 @@
 //  multi-thread-safe
 //  async-signal-safe
 #define FOLLY_SAFE_PCHECK(expr, ...) \
-  FOLLY_DETAIL_SAFE_CHECK_IMPL(      \
-      0, 1, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(0, 1, 0, expr, __VA_ARGS__)
 
 //  FOLLY_SAFE_DPCHECK
 //
@@ -100,8 +97,7 @@
 //  multi-thread-safe
 //  async-signal-safe
 #define FOLLY_SAFE_DPCHECK(expr, ...) \
-  FOLLY_DETAIL_SAFE_CHECK_IMPL(       \
-      1, 1, (expr), FOLLY_PP_STRINGIZE(expr), __VA_ARGS__)
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(1, 1, 0, expr, __VA_ARGS__)
 
 //  FOLLY_SAFE_FATAL
 //
@@ -111,7 +107,7 @@
 //  multi-thread-safe
 //  async-signal-safe
 #define FOLLY_SAFE_FATAL(...) \
-  FOLLY_DETAIL_SAFE_CHECK_IMPL(0, 0, false, nullptr, __VA_ARGS__)
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(0, 0, 1, false, __VA_ARGS__)
 
 //  FOLLY_SAFE_DFATAL
 //
@@ -121,7 +117,7 @@
 //  multi-thread-safe
 //  async-signal-safe
 #define FOLLY_SAFE_DFATAL(...) \
-  FOLLY_DETAIL_SAFE_CHECK_IMPL(1, 0, false, nullptr, __VA_ARGS__)
+  FOLLY_DETAIL_SAFE_CHECK_IMPL(1, 0, 1, false, __VA_ARGS__)
 
 namespace folly {
 namespace detail {

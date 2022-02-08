@@ -523,7 +523,7 @@ void flushStderr() {
 
   if (arg.expr) {
     writeStderr("\n\nAssertion failure: ");
-    writeStderr(arg.expr + 1, strlen(arg.expr) - 2);
+    writeStderr(arg.expr);
   }
   if (*arg.msg_types != safe_assert_msg_type::term) {
     writeStderr("\nMessage: ");
