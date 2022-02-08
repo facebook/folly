@@ -26,11 +26,15 @@ install-getdeps
 test-getdeps
 
 [shipit.pathmap]
-fbcode/common/rust = common/rust
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
+fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
 fbcode/eden/oss = .
 fbcode/eden = eden
+fbcode/eden/fs/public_autocargo = eden/fs
+fbcode/eden/mononoke/public_autocargo = eden/mononoke
+fbcode/eden/scm/lib/public_autocargo = eden/scm/lib
 fbcode/tools/lfs = tools/lfs
+# This is to pick up the fb303.thrift stubs
 fbcode/fboss/common = common
 
 [shipit.strip]
@@ -38,10 +42,13 @@ fbcode/fboss/common = common
 ^fbcode/eden/fs/eden-config\.h$
 ^fbcode/eden/fs/py/eden/config\.py$
 ^fbcode/eden/hg/.*$
-^fbcode/eden/mononoke/(?!lfs_protocol)
+^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/scm/lib(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/scm/build/.*$
 ^fbcode/eden/scm/lib/third-party/rust/.*/Cargo.toml$
 ^fbcode/eden/.*/\.cargo/.*$
+^.*/facebook/.*$
 ^.*/fb/.*$
 /Cargo\.lock$
 \.pyc$
