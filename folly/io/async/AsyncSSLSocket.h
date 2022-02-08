@@ -906,6 +906,7 @@ class AsyncSSLSocket : public AsyncSocket {
 
   WriteResult interpretSSLError(int rc, int error);
   ReadResult performRead(void** buf, size_t* buflen, size_t* offset) override;
+  ReadResult performReadv(struct iovec* iovs, size_t num) override;
   WriteResult performWrite(
       const iovec* vec,
       uint32_t count,

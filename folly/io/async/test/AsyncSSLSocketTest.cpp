@@ -163,11 +163,9 @@ std::string getFileAsBuf(const char* fileName) {
   return buffer;
 }
 
-/**
- * Test connecting to, writing to, reading from, and closing the
- * connection to the SSL server.
- */
-TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
+namespace {
+void connectWriteReadClose(
+    folly::AsyncReader::ReadCallback::ReadMode readMode) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   ReadCallback readCallback(&writeCallback);
@@ -184,6 +182,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
   // connect
   auto socket =
       std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->setReadMode(readMode);
   socket->open(std::chrono::milliseconds(10000));
 
   // write()
@@ -202,6 +201,20 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
 
   cerr << "ConnectWriteReadClose test completed" << endl;
   EXPECT_EQ(socket->getSSLSocket()->getTotalConnectTimeout().count(), 10000);
+}
+} // namespace
+
+/**
+ * Test connecting to, writing to, reading from, and closing the
+ * connection to the SSL server.
+ */
+TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
+  connectWriteReadClose(folly::AsyncReader::ReadCallback::ReadMode::ReadBuffer);
+}
+
+TEST(AsyncSSLSocketTest, ConnectWriteReadvClose) {
+  connectWriteReadClose(folly::AsyncReader::ReadCallback::ReadMode::ReadVec);
+  ;
 }
 
 TEST(AsyncSSLSocketTest, ConnectWriteReadCloseReadable) {

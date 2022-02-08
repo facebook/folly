@@ -1533,6 +1533,34 @@ AsyncSocket::ReadResult AsyncSSLSocket::performRead(
   }
 }
 
+AsyncSocket::ReadResult AsyncSSLSocket::performReadv(
+    struct iovec* iovs, size_t num) {
+  ssize_t totalRead = 0;
+  ssize_t res = 1;
+  for (size_t i = 0; i < num && res > 0; i++) {
+    auto* buf = iovs[i].iov_base;
+    auto bufLen = iovs[i].iov_len;
+    while (bufLen > 0 && res > 0) {
+      // Should offset be into buf?  It seems unused.  Also buf and buflen
+      // are not really out params anymore.
+      size_t offset = 0;
+      auto readRes = performRead(&buf, &bufLen, &offset);
+      res = readRes.readReturn;
+      if (res > 0) {
+        CHECK_GE(bufLen, res);
+        buf = static_cast<uint8_t*>(buf) + res;
+        bufLen -= res;
+        totalRead += res;
+      } else if (ReadResultEnum(res) == READ_ERROR) {
+        return readRes;
+      } else if (ReadResultEnum(res) == READ_BLOCKING) {
+        return ReadResult(totalRead);
+      }
+    }
+  }
+  return ReadResult(totalRead);
+}
+
 void AsyncSSLSocket::handleWrite() noexcept {
   VLOG(5) << "AsyncSSLSocket::handleWrite() this=" << this << ", fd=" << fd_
           << ", state=" << int(state_) << ", "

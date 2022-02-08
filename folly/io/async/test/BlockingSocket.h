@@ -125,8 +125,19 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
   void readDataAvailable(size_t len) noexcept override {
     readBuf_ += len;
     readLen_ -= len;
+
     if (readLen_ == 0) {
       sock_->setReadCB(nullptr);
+    }
+  }
+  void getReadBuffers(folly::IOBufIovecBuilder::IoVecVec& iovs) override {
+    // we reuse the same readBuf_
+    iovs.clear();
+    for (size_t i = 0; i < readLen_; i++) {
+      struct iovec iov;
+      iov.iov_base = &readBuf_[i];
+      iov.iov_len = 1;
+      iovs.push_back(iov);
     }
   }
   void readEOF() noexcept override {}
