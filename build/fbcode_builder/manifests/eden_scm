@@ -47,6 +47,8 @@ fbcode/fboss/common = common
 \.pyc$
 
 [dependencies]
+fb303
+fbthrift
 fb303-source
 fbthrift-source
 python
