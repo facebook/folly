@@ -17,10 +17,12 @@
 #pragma once
 
 #include <cassert>
+#include <new>
 #include <type_traits>
 #include <utility>
 
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 
 namespace folly {
 
@@ -61,7 +63,7 @@ template <typename T>
 class Indestructible final {
  public:
   template <typename S = T, typename = decltype(S())>
-  constexpr Indestructible() noexcept(noexcept(T())) {}
+  constexpr Indestructible() noexcept(noexcept(T())) : storage_{in_place} {}
 
   /**
    * Constructor accepting a single argument by forwarding reference, this
@@ -87,7 +89,7 @@ class Indestructible final {
       std::enable_if_t<!std::is_convertible<U&&, T>::value>* = nullptr>
   explicit constexpr Indestructible(U&& u) noexcept(
       noexcept(T(std::declval<U>())))
-      : storage_(std::forward<U>(u)) {}
+      : storage_{in_place, std::forward<U>(u)} {}
   template <
       typename U = T,
       std::enable_if_t<std::is_constructible<T, U&&>::value>* = nullptr,
@@ -97,12 +99,12 @@ class Indestructible final {
       std::enable_if_t<std::is_convertible<U&&, T>::value>* = nullptr>
   /* implicit */ constexpr Indestructible(U&& u) noexcept(
       noexcept(T(std::declval<U>())))
-      : storage_(std::forward<U>(u)) {}
+      : storage_{in_place, std::forward<U>(u)} {}
 
   template <typename... Args, typename = decltype(T(std::declval<Args>()...))>
   explicit constexpr Indestructible(Args&&... args) noexcept(
       noexcept(T(std::declval<Args>()...)))
-      : storage_(std::forward<Args>(args)...) {}
+      : storage_{in_place, std::forward<Args>(args)...} {}
   template <
       typename U,
       typename... Args,
@@ -111,31 +113,14 @@ class Indestructible final {
   explicit constexpr Indestructible(std::initializer_list<U> il, Args... args) noexcept(
       noexcept(T(
           std::declval<std::initializer_list<U>&>(), std::declval<Args>()...)))
-      : storage_(il, std::forward<Args>(args)...) {}
-
-  ~Indestructible() = default;
+      : storage_{in_place, il, std::forward<Args>(args)...} {}
 
   Indestructible(Indestructible const&) = delete;
   Indestructible& operator=(Indestructible const&) = delete;
 
-  Indestructible(Indestructible&& other) noexcept(
-      noexcept(T(std::declval<T>())))
-      : storage_(std::move(other.storage_.value)) {
-    other.erased_ = true;
-  }
-  Indestructible& operator=(Indestructible&& other) noexcept(
-      noexcept(T(std::declval<T>()))) {
-    storage_.value = std::move(other.storage_.value);
-    other.erased_ = true;
-  }
-
-  T* get() noexcept {
-    check();
-    return &storage_.value;
-  }
+  T* get() noexcept { return reinterpret_cast<T*>(&storage_.bytes); }
   T const* get() const noexcept {
-    check();
-    return &storage_.value;
+    return reinterpret_cast<T const*>(&storage_.bytes);
   }
   T& operator*() noexcept { return *get(); }
   T const& operator*() const noexcept { return *get(); }
@@ -143,23 +128,16 @@ class Indestructible final {
   T const* operator->() const noexcept { return get(); }
 
  private:
-  void check() const noexcept { assert(!erased_); }
-
-  union Storage {
-    T value;
-
-    template <typename S = T, typename = decltype(S())>
-    constexpr Storage() noexcept(noexcept(T())) : value() {}
+  struct Storage {
+    aligned_storage_for_t<T> bytes;
 
     template <typename... Args, typename = decltype(T(std::declval<Args>()...))>
-    explicit constexpr Storage(Args&&... args) noexcept(
-        noexcept(T(std::declval<Args>()...)))
-        : value(std::forward<Args>(args)...) {}
-
-    ~Storage() {}
+    explicit constexpr Storage(in_place_t, Args&&... args) noexcept(
+        noexcept(T(std::declval<Args>()...))) {
+      ::new (&bytes) T(std::forward<Args>(args)...);
+    }
   };
 
   Storage storage_{};
-  bool erased_{false};
 };
 } // namespace folly
