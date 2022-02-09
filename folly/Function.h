@@ -258,11 +258,6 @@ union Data {
   std::aligned_storage<6 * sizeof(void*)>::type tiny;
 };
 
-template <typename Fun, typename = Fun*>
-using IsSmall = Conjunction<
-    bool_constant<(sizeof(Fun) <= sizeof(Data::tiny))>,
-    std::is_nothrow_move_constructible<Fun>>;
-
 struct CoerceTag {};
 
 template <typename T>
@@ -666,9 +661,6 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   using Call = typename Traits::Call;
   using Exec = detail::function::Exec;
 
-  template <typename Fun>
-  using IsSmall = detail::function::IsSmall<Fun>;
-
   // The `data_` member is mutable to allow `constCastFunction` to work without
   // invoking undefined behavior. Const-correctness is only violated when
   // `FunctionType` is a const function type (e.g., `int() const`) and `*this`
@@ -762,20 +754,22 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename Fun,
       typename =
           std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
-      typename = typename Traits::template IfSafeResult<Fun>>
+      typename = typename Traits::template IfSafeResult<Fun>,
+      bool IsSmall = sizeof(Fun) <=
+          sizeof(Data::tiny) && noexcept(Fun(FOLLY_DECLVAL(Fun)))>
   /* implicit */ Function(Fun fun) noexcept(
-      IsSmall<Fun>::value&& noexcept(Fun(static_cast<Fun&&>(fun)))) {
+      IsSmall&& noexcept(Fun(static_cast<Fun&&>(fun)))) {
     using Dispatch = conditional_t<
-        IsSmall<Fun>::value && is_trivially_copyable_v<Fun>,
+        IsSmall && is_trivially_copyable_v<Fun>,
         detail::function::DispatchSmallTrivial,
         conditional_t<
-            IsSmall<Fun>::value,
+            IsSmall,
             detail::function::DispatchSmall,
             detail::function::DispatchBig>>;
     if (detail::function::isEmptyFunction(fun)) {
       return;
     }
-    if FOLLY_CXX17_CONSTEXPR (IsSmall<Fun>::value) {
+    if FOLLY_CXX17_CONSTEXPR (IsSmall) {
       ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
     } else {
       data_.big = new Fun(static_cast<Fun&&>(fun));
