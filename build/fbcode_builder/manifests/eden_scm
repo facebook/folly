@@ -41,7 +41,7 @@ fbcode/fboss/common = common
 ^fbcode/configerator/structs/hg(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/fs/eden-config\.h$
 ^fbcode/eden/fs/py/eden/config\.py$
-^fbcode/eden/hg/.*$
+^fbcode/eden/hg-server/.*$
 ^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/scm/lib(?!/public_autocargo).*/Cargo\.toml$
