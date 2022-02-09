@@ -255,10 +255,6 @@ void EDFThreadPoolExecutor::add(Func f) {
   add(std::move(f), kLatestDeadline);
 }
 
-void EDFThreadPoolExecutor::add(Func f, uint64_t deadline) {
-  add(std::move(f), 1, deadline);
-}
-
 void EDFThreadPoolExecutor::add(Func f, std::size_t total, uint64_t deadline) {
   if (UNLIKELY(isJoin_.load(std::memory_order_relaxed) || total == 0)) {
     return;

@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+
 #include <folly/Executor.h>
 
 namespace folly {
@@ -33,10 +37,15 @@ class SoftRealTimeExecutor : public virtual Executor {
   // a typed time point or duration (e.g., `std::chrono::time_point`) to allow
   // for flexibility. While the deadline for a task may be a time point,
   // it could also be a duration or the size of the task, which emulates
-  // rate-monotonic scheduling that prioritizes small tasks. It also enables
+  // rate-monotonic scheduling that prioritizes small tasks. It also enables,
   // for example, tiered scheduling (strictly prioritizing a category of tasks)
   // by assigning the high-bit of the deadline.
-  virtual void add(Func, uint64_t deadline) = 0;
+  void add(Func func, uint64_t deadline) {
+    add(std::move(func), /* total */ 1, deadline);
+  }
+
+  virtual void add(Func, std::size_t total, uint64_t deadline) = 0;
+  virtual void add(std::vector<Func>, uint64_t deadline) = 0;
 };
 
 } // namespace folly
