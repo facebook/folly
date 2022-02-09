@@ -11,3 +11,6 @@ sha256 = beda37e94f9746874436c8090c045fd80ae6f8a51f7c668c932a2b110a4fc277
 [build]
 builder = cmake
 subdir = cpptoml-0.1.2
+
+[cmake.defines.os=freebsd]
+ENABLE_LIBCXX=NO

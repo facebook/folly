@@ -12,6 +12,7 @@ import stat
 import subprocess
 import sys
 from struct import unpack
+from typing import Optional
 
 from .envfuncs import path_search
 
@@ -419,10 +420,13 @@ class MachDeps(DepBase):
         )
 
 
-def create_dyn_dep_munger(buildopts, install_dirs, strip=False):
+def create_dyn_dep_munger(buildopts, install_dirs, strip=False) -> Optional[DepBase]:
     if buildopts.is_linux():
         return ElfDeps(buildopts, install_dirs, strip)
     if buildopts.is_darwin():
         return MachDeps(buildopts, install_dirs, strip)
     if buildopts.is_windows():
         return WinDeps(buildopts, install_dirs, strip)
+    if buildopts.is_freebsd():
+        return ElfDeps(buildopts, install_dirs, strip)
+    return None

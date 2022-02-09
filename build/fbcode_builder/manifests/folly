@@ -54,6 +54,9 @@ fbcode/folly = folly
 BUILD_SHARED_LIBS=OFF
 BOOST_LINK_STATIC=ON
 
+[cmake.defines.os=freebsd]
+LIBDWARF_FOUND=NO
+
 [cmake.defines.test=on]
 BUILD_TESTS=ON
 

@@ -100,10 +100,23 @@ class BuilderBase(object):
 
     @property
     def num_jobs(self) -> int:
-        # 1.5 GiB is a lot to assume, but it's typical of Facebook-style C++.
-        # Some manifests are even heavier and should override.
+        # This is a hack, but we don't have a "defaults manifest" that we can
+        # customize per platform.
+        # TODO: Introduce some sort of defaults config that can select by
+        # platform, just like manifest contexts.
+        if sys.platform.startswith("freebsd"):
+            # clang on FreeBSD is quite memory-efficient.
+            default_job_weight = 512
+        else:
+            # 1.5 GiB is a lot to assume, but it's typical of Facebook-style C++.
+            # Some manifests are even heavier and should override.
+            default_job_weight = 1536
         return self.build_opts.get_num_jobs(
-            int(self.manifest.get("build", "job_weight_mib", 1536, ctx=self.ctx))
+            int(
+                self.manifest.get(
+                    "build", "job_weight_mib", default_job_weight, ctx=self.ctx
+                )
+            )
         )
 
     def run_tests(

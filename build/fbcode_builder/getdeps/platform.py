@@ -130,6 +130,32 @@ def _get_available_ram_windows() -> int:
     return (ms.ullAvailPhys + ms.ullTotalPhys) // (2 * 1024 * 1024)
 
 
+def _get_available_ram_freebsd() -> int:
+    import ctypes.util
+
+    libc = ctypes.CDLL(ctypes.util.find_library("libc"), use_errno=True)
+    sysctlbyname = libc.sysctlbyname
+    sysctlbyname.restype = ctypes.c_int
+    sysctlbyname.argtypes = [
+        ctypes.c_char_p,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_size_t),
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+    ]
+    # hw.usermem is pretty close to what we want.
+    memsize = ctypes.c_int64()
+    memsizesize = ctypes.c_size_t(8)
+    res = sysctlbyname(
+        b"hw.usermem", ctypes.byref(memsize), ctypes.byref(memsizesize), None, 0
+    )
+    if res != 0:
+        raise NotImplementedError(
+            f"failed to retrieve hw.memsize sysctl: {ctypes.get_errno()}"
+        )
+    return memsize.value // (1024 * 1024)
+
+
 def get_available_ram() -> int:
     """
     Returns a platform-appropriate available RAM metric in MiB.
@@ -140,6 +166,8 @@ def get_available_ram() -> int:
         return _get_available_ram_macos()
     elif sys.platform == "win32":
         return _get_available_ram_windows()
+    elif sys.platform.startswith("freebsd"):
+        return _get_available_ram_freebsd()
     else:
         raise NotImplementedError(
             f"platform {sys.platform} does not have an implementation of get_available_ram"
@@ -158,6 +186,8 @@ class HostType(object):
             elif is_windows():
                 ostype = "windows"
                 distrovers = str(sys.getwindowsversion().major)
+            elif sys.platform.startswith("freebsd"):
+                ostype = "freebsd"
             else:
                 ostype = sys.platform
 
@@ -184,6 +214,9 @@ class HostType(object):
 
     def is_linux(self):
         return self.ostype == "linux"
+
+    def is_freebsd(self):
+        return self.ostype == "freebsd"
 
     def as_tuple_string(self):
         return "%s-%s-%s" % (

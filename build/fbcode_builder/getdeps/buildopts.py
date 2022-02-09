@@ -161,6 +161,9 @@ class BuildOptions(object):
     def is_linux(self):
         return self.host_type.is_linux()
 
+    def is_freebsd(self):
+        return self.host_type.is_freebsd()
+
     def get_num_jobs(self, job_weight):
         """Given an estimated job_weight in MiB, compute a reasonable concurrency limit."""
         if self.specified_num_jobs:

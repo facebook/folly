@@ -14,3 +14,8 @@ gflags
 
 [cmake.defines]
 BUILD_SHARED_LIBS=ON
+BUILD_TESTING=NO
+
+[cmake.defines.os=freebsd]
+HAVE_TR1_UNORDERED_MAP=OFF
+HAVE_TR1_UNORDERED_SET=OFF

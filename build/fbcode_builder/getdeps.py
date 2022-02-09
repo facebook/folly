@@ -773,7 +773,10 @@ class FixupDeps(ProjectCmdBase):
                 dep_munger = create_dyn_dep_munger(
                     loader.build_opts, install_dirs, args.strip
                 )
-                dep_munger.process_deps(args.destdir, args.final_install_prefix)
+                if dep_munger is None:
+                    print(f"dynamic dependency fixups not supported on {sys.platform}")
+                else:
+                    dep_munger.process_deps(args.destdir, args.final_install_prefix)
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument("destdir", help="Where to copy the fixed up executables")
