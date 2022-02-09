@@ -54,6 +54,8 @@ static constexpr bool msgErrQueueSupported =
     false;
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
+AsyncServerSocket::AcceptCallback::~AcceptCallback() = default;
+
 const uint32_t AsyncServerSocket::kDefaultMaxAcceptAtOnce;
 const uint32_t AsyncServerSocket::kDefaultCallbackAcceptAtOnce;
 const uint32_t AsyncServerSocket::kDefaultMaxMessagesInQueue;

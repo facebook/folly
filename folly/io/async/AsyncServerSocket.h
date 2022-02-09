@@ -144,7 +144,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
       std::chrono::steady_clock::time_point timeBeforeEnqueue;
     };
 
-    virtual ~AcceptCallback() = default;
+    virtual ~AcceptCallback();
 
     /**
      * connectionAccepted() is called whenever a new client connection is
