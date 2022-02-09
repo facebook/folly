@@ -18,7 +18,6 @@
 
 #include <stdexcept>
 
-#include <folly/CppAttributes.h>
 #include <folly/python/executor_api.h> // @manual
 
 namespace folly {
