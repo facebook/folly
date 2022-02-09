@@ -63,6 +63,7 @@ SCHEMA = {
         "fields": {
             "builder": REQUIRED,
             "subdir": OPTIONAL,
+            "make_binary": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
             "job_weight_mib": OPTIONAL,
         },

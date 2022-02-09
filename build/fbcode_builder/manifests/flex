@@ -22,6 +22,10 @@ sha256 = 3dc27a16c21b717bcc5de8590b564d4392a0b8577170c058729d067d95ded825
 builder = autoconf
 subdir = flex-2.6.4
 
+[build.os=freebsd]
+builder = autoconf
+make_binary = gmake
+
 [build.os=windows]
 builder = nop
 
