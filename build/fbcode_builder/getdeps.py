@@ -906,12 +906,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             artifacts = "linux"
             runs_on = f"ubuntu-{args.ubuntu_version}"
         elif build_opts.is_windows():
-            # We're targeting the windows-2016 image because it has
-            # Visual Studio 2017 installed, and at the time of writing,
-            # the version of boost in the manifests (1.69) is not
-            # buildable with Visual Studio 2019
             artifacts = "windows"
-            runs_on = "windows-2016"
+            runs_on = "windows-2019"
             # The windows runners are python 3 by default; python2.exe
             # is available if needed.
             py3 = "python"
