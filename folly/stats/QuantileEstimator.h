@@ -65,9 +65,9 @@ template <typename ClockT = std::chrono::steady_clock>
 class SlidingWindowQuantileEstimator {
  public:
   using TimePoint = typename ClockT::time_point;
+  using Duration = typename ClockT::duration;
 
-  SlidingWindowQuantileEstimator(
-      std::chrono::seconds windowDuration, size_t nWindows = 60);
+  SlidingWindowQuantileEstimator(Duration windowDuration, size_t nWindows = 60);
 
   QuantileEstimates estimateQuantiles(
       Range<const double*> quantiles, TimePoint now = ClockT::now());

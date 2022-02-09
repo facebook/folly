@@ -42,7 +42,7 @@ void SimpleQuantileEstimator<ClockT>::addValue(double value, TimePoint now) {
 
 template <typename ClockT>
 SlidingWindowQuantileEstimator<ClockT>::SlidingWindowQuantileEstimator(
-    std::chrono::seconds windowDuration, size_t nWindows)
+    Duration windowDuration, size_t nWindows)
     : bufferedSlidingWindow_(nWindows, windowDuration, 1000, 100) {}
 
 template <typename ClockT>
