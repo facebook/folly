@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2016
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v2
     - name: Export boost environment
