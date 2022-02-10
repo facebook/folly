@@ -299,7 +299,7 @@ endif()
 
 add_library(folly_deps INTERFACE)
 
-find_package(fmt CONFIG)
+find_package(fmt 8 CONFIG)
 if (NOT DEFINED fmt_CONFIG)
     # Fallback on a normal search on the current system
     find_package(Fmt MODULE REQUIRED)
