@@ -349,7 +349,6 @@ struct FunctionTraits;
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...)> {
   using Call = ReturnType (*)(CallArg<Args>..., Data&);
-  using IsConst = std::false_type;
   using ConstSignature = ReturnType(Args...) const;
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = ConstSignature;
@@ -401,7 +400,6 @@ struct FunctionTraits<ReturnType(Args...)> {
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) const> {
   using Call = ReturnType (*)(CallArg<Args>..., Data&);
-  using IsConst = std::true_type;
   using ConstSignature = ReturnType(Args...) const;
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = NonConstSignature;
@@ -454,7 +452,6 @@ struct FunctionTraits<ReturnType(Args...) const> {
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) noexcept> {
   using Call = ReturnType (*)(CallArg<Args>..., Data&) noexcept;
-  using IsConst = std::false_type;
   using ConstSignature = ReturnType(Args...) const noexcept;
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = ConstSignature;
@@ -506,7 +503,6 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) const noexcept> {
   using Call = ReturnType (*)(CallArg<Args>..., Data&) noexcept;
-  using IsConst = std::true_type;
   using ConstSignature = ReturnType(Args...) const noexcept;
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = NonConstSignature;
