@@ -462,11 +462,12 @@ class alignas(64) BucketTable {
   }
 
   void clear(hazptr_obj_cohort<Atom>* cohort) {
-    size_t bcount = bucket_count_.load(std::memory_order_relaxed);
+    size_t bcount;
     Buckets* buckets;
-    auto newbuckets = Buckets::create(bcount, cohort);
     {
       std::lock_guard<Mutex> g(m_);
+      bcount = bucket_count_.load(std::memory_order_relaxed);
+      auto newbuckets = Buckets::create(bcount, cohort);
       buckets = buckets_.load(std::memory_order_relaxed);
       buckets_.store(newbuckets, std::memory_order_release);
       clearSize();
@@ -1405,11 +1406,12 @@ class alignas(64) SIMDTable {
   }
 
   void clear(hazptr_obj_cohort<Atom>* cohort) {
-    size_t ccount = chunk_count_.load(std::memory_order_relaxed);
+    size_t ccount;
     Chunks* chunks;
-    auto newchunks = Chunks::create(ccount, cohort);
     {
       std::lock_guard<Mutex> g(m_);
+      ccount = chunk_count_.load(std::memory_order_relaxed);
+      auto newchunks = Chunks::create(ccount, cohort);
       chunks = chunks_.load(std::memory_order_relaxed);
       chunks_.store(newchunks, std::memory_order_release);
       clearSize();
