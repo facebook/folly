@@ -151,6 +151,18 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_FALSE(cew.with_exception([&](std::runtime_error&) {}));
   EXPECT_FALSE(cew.with_exception([&](int&) {}));
   */
+
+  // Test with lambda capturing move-only type.
+  // Just needs to compile.
+  struct MoveOnly {
+    MoveOnly() = default;
+    MoveOnly(const MoveOnly&) = delete;
+    MoveOnly& operator=(const MoveOnly&) = delete;
+    MoveOnly(MoveOnly&&) noexcept = default;
+    void Foo() const {}
+  };
+  MoveOnly move_only;
+  cew.with_exception([move_only = std::move(move_only)](const std::exception&) { move_only.Foo(); };
 }
 
 TEST(ExceptionWrapper, get_or_make_exception_ptr_test) {
