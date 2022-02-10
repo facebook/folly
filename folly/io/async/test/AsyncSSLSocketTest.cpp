@@ -1105,6 +1105,67 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   EXPECT_TRUE(!server.handshakeError_);
 }
 
+TEST(AsyncSSLSocketTest, SSLGetEKM) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+
+  NetworkSocket fds[2];
+  getfds(fds);
+  getctx(clientCtx, serverCtx);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  EXPECT_EQ(
+      nullptr, clientSock->getExportedKeyingMaterial("test", nullptr, 12));
+
+  serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
+  clientSock->sslConn(nullptr, std::chrono::milliseconds::zero());
+  eventBase.loop();
+  auto ekm = clientSock->getExportedKeyingMaterial("test", nullptr, 32);
+
+  EXPECT_NE(nullptr, ekm);
+  EXPECT_EQ(ekm->computeChainDataLength(), 32);
+  // non null context
+  EXPECT_NE(
+      nullptr,
+      clientSock->getExportedKeyingMaterial(
+          "test", IOBuf::copyBuffer("haha"), 32));
+  // empty label
+  EXPECT_NE(
+      nullptr,
+      clientSock->getExportedKeyingMaterial("", IOBuf::copyBuffer("haha"), 32));
+
+  auto serverEkm = serverSock->getExportedKeyingMaterial("test", nullptr, 32);
+  EXPECT_TRUE(folly::IOBufEqualTo{}(ekm, serverEkm));
+}
+
+TEST(AsyncSSLSocketTest, SSLGetEKMFailsOnTLS10) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  SSL_CTX_set_max_proto_version(serverCtx->getSSLCtx(), TLS1_VERSION);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+  getctx(clientCtx, serverCtx);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
+  clientSock->sslConn(nullptr, std::chrono::milliseconds::zero());
+  eventBase.loop();
+  auto ekm = clientSock->getExportedKeyingMaterial("test", nullptr, 32);
+
+  EXPECT_EQ(nullptr, ekm);
+}
+
 /**
  * Verify that server is able to get client cert by getPeerCert() API.
  */

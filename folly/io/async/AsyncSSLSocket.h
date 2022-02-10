@@ -393,6 +393,11 @@ class AsyncSSLSocket : public AsyncSocket {
     return "TLS";
   }
 
+  std::unique_ptr<folly::IOBuf> getExportedKeyingMaterial(
+      folly::StringPiece label,
+      std::unique_ptr<IOBuf> context,
+      uint16_t length) const override;
+
   void setEorTracking(bool track) override;
   size_t getRawBytesWritten() const override;
   size_t getRawBytesReceived() const override;
