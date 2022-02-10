@@ -154,6 +154,14 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     return transport_->getSecurityProtocol();
   }
 
+  std::unique_ptr<IOBuf> getExportedKeyingMaterial(
+      folly::StringPiece label,
+      std::unique_ptr<IOBuf> context,
+      uint16_t length) const override {
+    return transport_->getExportedKeyingMaterial(
+        label, std::move(context), length);
+  }
+
   bool isReplaySafe() const override { return transport_->isReplaySafe(); }
 
   void setReplaySafetyCallback(

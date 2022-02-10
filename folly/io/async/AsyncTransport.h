@@ -807,6 +807,20 @@ class AsyncTransport : public DelayedDestruction,
    */
   virtual std::string getSecurityProtocol() const { return ""; }
 
+  /*
+   * A transport may be able to produce exported keying material (ekm, per
+   * rfc5705), that can be used to bind some arbitrary data to it. This can be
+   * useful in contexts where you may want a token to only be used on the
+   * transport it was created for. If the transport is incapable of producing
+   * the ekm, this should return nullptr.
+   */
+  virtual std::unique_ptr<IOBuf> getExportedKeyingMaterial(
+      folly::StringPiece /* label */,
+      std::unique_ptr<IOBuf> /* context */,
+      uint16_t /* length */) const {
+    return nullptr;
+  }
+
   /**
    * @return True iff end of record tracking is enabled
    */
