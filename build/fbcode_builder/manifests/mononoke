@@ -1,5 +1,5 @@
 [manifest]
-name = eden_scm
+name = mononoke
 fbsource_path = fbcode/eden
 shipit_project = eden
 shipit_fbcode_builder = true
@@ -8,57 +8,44 @@ shipit_fbcode_builder = true
 repo_url = https://github.com/facebookexperimental/eden.git
 
 [build.not(os=windows)]
-builder = make
-subdir = eden/scm
+builder = cargo
 
 [build.os=windows]
-# For now the biggest blocker is missing "make" on windows, but there are bound
-# to be more
+# building Mononoke on windows is not supported
 builder = nop
 
-[make.build_args]
-getdepsbuild
-
-[make.install_args]
-install-getdeps
-
-[make.test_args]
-test-getdeps
+[cargo]
+build_doc = true
+workspace_dir = eden/mononoke
 
 [shipit.pathmap]
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
 fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
+fbcode/configerator/structs/scm/mononoke/public_autocargo = configerator/structs/scm/mononoke
+fbcode/configerator/structs/scm/mononoke = configerator/structs/scm/mononoke
 fbcode/eden/oss = .
 fbcode/eden = eden
 fbcode/eden/fs/public_autocargo = eden/fs
 fbcode/eden/mononoke/public_autocargo = eden/mononoke
 fbcode/eden/scm/public_autocargo = eden/scm
 fbcode/tools/lfs = tools/lfs
+tools/rust/ossconfigs = .
 
 [shipit.strip]
 ^fbcode/configerator/structs/scm/hg(?!/public_autocargo).*/Cargo\.toml$
-^fbcode/eden/fs/eden-config\.h$
-^fbcode/eden/fs/py/eden/config\.py$
-^fbcode/eden/hg-server/.*$
+^fbcode/configerator/structs/scm/mononoke(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/scm/lib/third-party/rust/.*/Cargo\.toml$
 ^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
-^fbcode/eden/scm(?!/public_autocargo|/edenscmnative).*/Cargo\.toml$
-^fbcode/eden/scm/build/.*$
-^fbcode/eden/.*/\.cargo/.*$
+# strip other scm code  unrelated to mononoke to prevent triggering unnecessary checks
+^fbcode/eden/(?!mononoke|/scm/lib/xdiff.*)/.*$
 ^.*/facebook/.*$
 ^.*/fb/.*$
-/Cargo\.lock$
-\.pyc$
 
 [dependencies]
 fb303
 fbthrift
-python
 rust-shed
 
-# We use the system openssl on linux
-[dependencies.not(os=linux)]
-openssl
-
-[dependencies.fbsource=on]
+[dependencies.fb=on]
 rust
