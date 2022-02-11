@@ -159,16 +159,16 @@ void SimpleAsyncIO::submitOp(
 
   op->setNotificationCallback(
       [this, completor{std::move(completor)}, opHolder{std::move(opHolder)}](
-          AsyncBaseOp* op) mutable {
-        CHECK(op == opHolder.get());
-        int rc = op->result();
+          AsyncBaseOp* op_) mutable {
+        CHECK(op_ == opHolder.get());
+        int rc = op_->result();
 
         completionExecutor_->add(
             [rc, completor{std::move(completor)}]() mutable { completor(rc); });
 
         // NB: the moment we put the opHolder, the destructor might delete the
         // current instance. So do not access any member variables after this
-        // point! Also, obviously, do not access op.
+        // point! Also, obviously, do not access op_.
         putOp(std::move(opHolder));
       });
   asyncIO_->submit(op);

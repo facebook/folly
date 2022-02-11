@@ -62,7 +62,11 @@
 #endif
 
 #if __GNUC__ && __linux__
+#if defined(__clang__) || FOLLY_ARM || FOLLY_AARCH64
 #define FOLLY_KEEP_DETAIL_ATTR_NAKED [[gnu::naked]]
+#else
+#define FOLLY_KEEP_DETAIL_ATTR_NAKED
+#endif
 #define FOLLY_KEEP_DETAIL_ATTR_NOINLINE [[gnu::noinline]]
 #else
 #define FOLLY_KEEP_DETAIL_ATTR_NAKED

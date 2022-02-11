@@ -27,6 +27,7 @@
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
+#include <folly/lang/CString.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
 
@@ -78,7 +79,7 @@ ElfFile::OpenResult ElfFile::openNoThrow(
   // Always close fd and unmap in case of failure along the way to avoid
   // check failure above if we leave fd != -1 and the object is recycled
   auto guard = makeGuard([&] { reset(); });
-  strncat(filepath_, name, kFilepathMaxLen - 1);
+  strlcpy(filepath_, name, kFilepathMaxLen - 1);
   fd_ = ::open(name, options.writable() ? O_RDWR : O_RDONLY);
   if (fd_ == -1) {
     return {kSystemError, "open"};
@@ -160,7 +161,7 @@ ElfFile::ElfFile(ElfFile&& other) noexcept
       length_(other.length_),
       baseAddress_(other.baseAddress_) {
   // copy other.filepath_, leaving filepath_ zero-terminated, always.
-  strncat(filepath_, other.filepath_, kFilepathMaxLen - 1);
+  strlcpy(filepath_, other.filepath_, kFilepathMaxLen - 1);
   other.filepath_[0] = 0;
   other.fd_ = -1;
   other.file_ = static_cast<char*>(MAP_FAILED);
@@ -173,7 +174,7 @@ ElfFile& ElfFile::operator=(ElfFile&& other) noexcept {
   reset();
 
   // copy other.filepath_, leaving filepath_ zero-terminated, always.
-  strncat(filepath_, other.filepath_, kFilepathMaxLen - 1);
+  strlcpy(filepath_, other.filepath_, kFilepathMaxLen - 1);
   fd_ = other.fd_;
   file_ = other.file_;
   length_ = other.length_;

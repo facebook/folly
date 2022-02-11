@@ -411,7 +411,7 @@ TEST_F(RequestContextTest, ThreadId) {
 
   EventBase base;
   base.runInEventBaseThread([&]() {
-    RequestContextScopeGuard g;
+    RequestContextScopeGuard g_;
     folly::setThreadName("DummyThread2");
     rootids = RequestContext::getRootIdsFromAllThreads();
     base.terminateLoopSoon();

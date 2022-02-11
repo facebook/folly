@@ -385,7 +385,10 @@ std::weak_ptr<U> to_weak_ptr_aliasing(const std::shared_ptr<T>& r, U* ptr) {
 #if defined(__GLIBCXX__)
   std::weak_ptr<void> wv(r);
   detail::weak_ptr_set_stored_ptr(wv, ptr);
+  FOLLY_PUSH_WARNING
+  FOLLY_GCC_DISABLE_WARNING("-Wstrict-aliasing")
   return reinterpret_cast<std::weak_ptr<U>&&>(wv);
+  FOLLY_POP_WARNING
 #else
   return std::shared_ptr<U>(r, ptr);
 #endif
