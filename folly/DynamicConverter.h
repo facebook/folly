@@ -181,6 +181,12 @@ inline std::move_iterator<Transformer<T, It>> conversionIterator(const It& it) {
 template <typename T, typename Enable = void>
 struct DynamicConverter;
 
+// dynamic
+template <>
+struct DynamicConverter<dynamic> {
+  static dynamic convert(const dynamic& d) { return d; }
+};
+
 // boolean
 template <>
 struct DynamicConverter<bool> {
