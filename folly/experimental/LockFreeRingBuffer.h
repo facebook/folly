@@ -179,7 +179,7 @@ class LockFreeRingBuffer {
   /// dumped memory regions.
   std::pair<void const*, size_t> internalBufferLocation() const {
     return std::make_pair(
-        static_cast<void const*>(slots_.get()), sizeof(Slot[capacity_]));
+        static_cast<void const*>(slots_.get()), capacity_ * sizeof(Slot));
   }
 
  private:
