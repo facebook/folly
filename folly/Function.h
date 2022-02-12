@@ -539,7 +539,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
-    throw_exception<std::bad_function_call>();
+    terminate_with<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) const noexcept {
