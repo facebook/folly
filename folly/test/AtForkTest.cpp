@@ -22,6 +22,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 TEST(ThreadLocal, AtFork) {
@@ -93,7 +94,12 @@ TEST(ThreadLocal, AtForkOrdering) {
   if (pid) {
     int status;
     auto pid2 = wait(&status);
-    EXPECT_EQ(status, 0);
+    EXPECT_TRUE(WIFEXITED(status));
+    EXPECT_THAT(
+        WEXITSTATUS(status),
+        folly::kIsSanitizeThread //
+            ? testing::AnyOfArray({0, 66})
+            : testing::AnyOfArray({0}));
     EXPECT_EQ(pid, pid2);
   } else {
     exit(0);
