@@ -847,7 +847,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * overload from being selected by overload resolution when `fun` is not a
    * compatible function.
    */
-  template <typename Fun, bool Nx = noexcept(Function(FOLLY_DECLVAL(Fun&&)))>
+  template <
+      typename Fun,
+      typename...,
+      bool Nx = noexcept(Function(FOLLY_DECLVAL(Fun&&)))>
   Function& operator=(Fun fun) noexcept(Nx) {
     // Doing this in place is more efficient when we can do so safely.
     if (Nx) {
@@ -867,6 +870,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Signature,
+      typename...,
       typename = typename Traits::template IfSafeResult<Function<Signature>>>
   Function& operator=(Function<Signature>&& that) noexcept(
       noexcept(Function(std::move(that)))) {
