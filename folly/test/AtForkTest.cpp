@@ -25,7 +25,9 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-TEST(ThreadLocal, AtFork) {
+class AtForkTest : public testing::Test {};
+
+TEST_F(AtForkTest, prepare) {
   int foo;
   bool forked = false;
   folly::detail::AtFork::registerHandler(
@@ -41,11 +43,11 @@ TEST(ThreadLocal, AtFork) {
       : fork();
   if (pid) {
     int status;
-    auto pid2 = wait(&status);
+    auto pid2 = waitpid(pid, &status, 0);
     EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
   } else {
-    exit(0);
+    _exit(0);
   }
   EXPECT_TRUE(forked);
   forked = false;
@@ -53,17 +55,16 @@ TEST(ThreadLocal, AtFork) {
   pid = fork();
   if (pid) {
     int status;
-    auto pid2 = wait(&status);
+    auto pid2 = waitpid(pid, &status, 0);
     EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
   } else {
-    exit(0);
+    _exit(0);
   }
   EXPECT_FALSE(forked);
 }
 
-TEST(ThreadLocal, AtForkOrdering) {
-  std::atomic<bool> done{false};
+TEST_F(AtForkTest, ordering) {
   std::atomic<bool> started{false};
   std::mutex a;
   std::mutex b;
@@ -93,7 +94,7 @@ TEST(ThreadLocal, AtForkOrdering) {
       : fork();
   if (pid) {
     int status;
-    auto pid2 = wait(&status);
+    auto pid2 = waitpid(pid, &status, 0);
     EXPECT_TRUE(WIFEXITED(status));
     EXPECT_THAT(
         WEXITSTATUS(status),
@@ -102,8 +103,7 @@ TEST(ThreadLocal, AtForkOrdering) {
             : testing::AnyOfArray({0}));
     EXPECT_EQ(pid, pid2);
   } else {
-    exit(0);
+    _exit(0);
   }
-  done = true;
   thr.join();
 }
