@@ -166,7 +166,7 @@ uint64_t step_approx(uint32_t wait) {
 }
 
 uint64_t step_exact(uint32_t wait) {
-  return -log(1 - 1.0 / wait) * kScale;
+  return folly::to_integral(-log(1 - 1.0 / wait) * kScale);
 }
 
 TEST(coinflip_test, approx_ge_exact) {

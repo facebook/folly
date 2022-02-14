@@ -656,7 +656,7 @@ static void runMixed(
         std::minstd_rand engine;
         engine.seed(t);
 
-        long writeThreshold = writeFraction * 0x7fffffff;
+        long writeThreshold = to_integral(writeFraction * 0x7fffffff);
         Lock privateLock;
         Lock* lock = useSeparateLocks ? &privateLock : &(padded.globalLock);
         Locker locker;

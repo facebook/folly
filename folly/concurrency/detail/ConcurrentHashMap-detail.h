@@ -266,7 +266,7 @@ class alignas(64) BucketTable {
          (folly::popcount(max_size_ - 1) + ShardBits <= 32)));
     auto buckets = Buckets::create(initial_buckets, cohort);
     buckets_.store(buckets, std::memory_order_release);
-    load_factor_nodes_ = initial_buckets * load_factor_;
+    load_factor_nodes_ = to_integral(initial_buckets * load_factor_);
     bucket_count_.store(initial_buckets, std::memory_order_relaxed);
   }
 
@@ -332,7 +332,7 @@ class alignas(64) BucketTable {
     auto buckets = buckets_.load(std::memory_order_relaxed);
     DCHECK(buckets); // Use-after-destruction by user.
     auto newbuckets = Buckets::create(bucket_count, cohort);
-    load_factor_nodes_ = bucket_count * load_factor_;
+    load_factor_nodes_ = to_integral(bucket_count * load_factor_);
     for (size_t i = 0; i < oldcount; i++) {
       auto bucket = &buckets->buckets_[i]();
       auto node = bucket->load(std::memory_order_relaxed);
@@ -1556,7 +1556,8 @@ class alignas(64) SIMDTable {
     }
     auto new_chunks = Chunks::create(new_chunk_count, cohort);
     auto old_chunks = chunks_.load(std::memory_order_relaxed);
-    grow_threshold_ = new_chunk_count * Chunk::kCapacity * load_factor_;
+    grow_threshold_ =
+        to_integral(new_chunk_count * Chunk::kCapacity * load_factor_);
 
     for (size_t i = 0; i < old_chunk_count; i++) {
       DCHECK(old_chunks); // Use-after-destruction by user.

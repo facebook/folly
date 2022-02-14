@@ -503,7 +503,7 @@ ReturnType BucketedTimeSeries<VT, CT>::rangeAdjust(
   TimePoint intervalEnd = std::min(end, nextBucketStart);
   float scale =
       (intervalEnd - intervalStart) * 1.f / (nextBucketStart - bucketStart);
-  return input * scale;
+  return static_cast<ReturnType>(input * scale);
 }
 
 template <typename VT, typename CT>

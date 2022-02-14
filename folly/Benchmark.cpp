@@ -222,7 +222,7 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
   // We do measurements in several epochs to account for jitter.
   constexpr unsigned int epochs = 1000;
   size_t actualEpochs = 0;
-  const unsigned int estimateCount = max(1.0, 5e+7 / estPerIter);
+  const unsigned int estimateCount = to_integral(max(1.0, 5e+7 / estPerIter));
   std::vector<EpochResultType> epochResults(epochs);
   const auto maxRunTime = seconds(5);
   auto globalStart = high_resolution_clock::now();

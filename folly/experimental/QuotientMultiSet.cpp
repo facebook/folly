@@ -28,7 +28,7 @@ QuotientMultiSetBuilder::QuotientMultiSetBuilder(
     size_t keyBits, size_t expectedElements, double loadFactor)
     : keyBits_(keyBits), maxKey_(qms_detail::maxValue(keyBits_)) {
   expectedElements = std::max<size_t>(expectedElements, 1);
-  uint64_t numSlots = ceil(expectedElements / loadFactor);
+  uint64_t numSlots = to_integral(ceil(expectedElements / loadFactor));
 
   // Make sure 1:1 mapping between key space and <divisor, remainder> pairs.
   divisor_ = divCeil(maxKey_, numSlots);

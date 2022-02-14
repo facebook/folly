@@ -352,7 +352,8 @@ static void runFairness(std::size_t numThreads) {
   }
 
   // Calulate some stats
-  unsigned long sum = std::accumulate(results.begin(), results.end(), 0.0);
+  unsigned long sum =
+      folly::to_integral(std::accumulate(results.begin(), results.end(), 0.0));
   double m = sum / results.size();
 
   double accum = 0.0;

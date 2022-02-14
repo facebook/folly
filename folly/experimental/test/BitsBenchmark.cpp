@@ -30,7 +30,7 @@ std::vector<uint8_t> buffer(kBufferSize + 16);
 
 template <class T>
 void benchmarkSet(size_t n, T) {
-  size_t size = sizeof(T) * 6.9; // use 6.9 bits/byte
+  size_t size = folly::to_integral(sizeof(T) * 6.9); // use 6.9 bits/byte
   const size_t k = 16;
   T values[k];
   BENCHMARK_SUSPEND {
@@ -78,7 +78,7 @@ std::atomic<int64_t> sum(0);
 
 template <class T>
 void benchmarkGet(size_t n, T x) {
-  size_t size = sizeof(T) * 6.9; // use 6.9 bits/byte
+  size_t size = folly::to_integral(sizeof(T) * 6.9); // use 6.9 bits/byte
   for (size_t i = 0; i < n; ++i) {
     size_t bit = (i * 2973) % (kBufferSize * 8);
     size_t drop = i % size;

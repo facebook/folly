@@ -830,7 +830,12 @@ TEST(Function, ReturnConvertible) {
   Function<double()> f1 = []() -> int { return 5; };
   EXPECT_EQ(5.0, f1());
 
-  Function<int()> f2 = []() -> double { return 5.2; };
+  struct Convertible {
+    double value;
+    /* implicit */ Convertible(double v) noexcept : value{v} {}
+    /* implicit */ operator int() const noexcept { return int(value); }
+  };
+  Function<int()> f2 = []() -> Convertible { return 5.2; };
   EXPECT_EQ(5, f2());
 
   CDerived derived;
@@ -868,14 +873,20 @@ TEST(Function, ConvertReturnType) {
   };
   struct CDerived : CBase {};
 
+  struct Convertible {
+    double value;
+    /* implicit */ Convertible(double v) noexcept : value{v} {}
+    /* implicit */ operator int() const noexcept { return int(value); }
+  };
+
   Function<int()> f1 = []() -> int { return 5; };
   Function<double()> cf1 = std::move(f1);
   EXPECT_EQ(5.0, cf1());
-  Function<int()> ccf1 = std::move(cf1);
+  Function<Convertible()> ccf1 = std::move(cf1);
   EXPECT_EQ(5, ccf1());
 
   Function<double()> f2 = []() -> double { return 5.2; };
-  Function<int()> cf2 = std::move(f2);
+  Function<Convertible()> cf2 = std::move(f2);
   EXPECT_EQ(5, cf2());
   Function<double()> ccf2 = std::move(cf2);
   EXPECT_EQ(5.0, ccf2());

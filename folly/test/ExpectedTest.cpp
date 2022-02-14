@@ -887,8 +887,11 @@ TEST(Expected, TestUnique) {
       2, **mk().then([](auto r) { return std::make_unique<int>(*r + 1); }));
 
   // Test converting errors works
+  struct Convertible {
+    /* implicit */ operator int() const noexcept { return 17; }
+  };
   EXPECT_EQ(
-      2, **mk().then([](auto r) -> Expected<std::unique_ptr<int>, double> {
+      2, **mk().then([](auto r) -> Expected<std::unique_ptr<int>, Convertible> {
         return std::make_unique<int>(*r + 1);
       }));
 }
