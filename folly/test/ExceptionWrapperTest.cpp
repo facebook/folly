@@ -16,6 +16,7 @@
 
 #include <folly/ExceptionWrapper.h>
 
+#include <memory>
 #include <stdexcept>
 
 #include <folly/Conv.h>
@@ -152,17 +153,8 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_FALSE(cew.with_exception([&](int&) {}));
   */
 
-  // Test with lambda capturing move-only type.
-  // Just needs to compile.
-  struct MoveOnly {
-    MoveOnly() = default;
-    MoveOnly(const MoveOnly&) = delete;
-    MoveOnly& operator=(const MoveOnly&) = delete;
-    MoveOnly(MoveOnly&&) noexcept = default;
-    void Foo() const {}
-  };
-  MoveOnly move_only;
-  cew.with_exception([move_only = std::move(move_only)](const std::exception&) { move_only.Foo(); };
+  // a move-only callback type:
+  cew.with_exception([v = std::make_unique<int>(7)](const std::exception&) {});
 }
 
 TEST(ExceptionWrapper, get_or_make_exception_ptr_test) {
