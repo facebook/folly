@@ -226,22 +226,22 @@ inline bool atomic_fetch_flip_native(
 
 #define FOLLY_DETAIL_ATOMIC_BIT_OP_DEFINE(instr)                          \
   struct atomic_fetch_bit_op_native_##instr##_fn {                        \
-    template <typename I>                                                 \
-    FOLLY_ERASE bool operator()(I* ptr, I bit) const {                    \
+    template <typename Int>                                               \
+    FOLLY_ERASE bool operator()(Int* ptr, Int bit) const {                \
       bool out = false;                                                   \
-      if (sizeof(I) == 2) {                                               \
+      if (sizeof(Int) == 2) {                                             \
         asm volatile("lock " #instr "w %1, (%2); setc %0"                 \
                      : "=r"(out)                                          \
                      : "ri"(bit), "r"(ptr)                                \
                      : "memory", "flags");                                \
       }                                                                   \
-      if (sizeof(I) == 4) {                                               \
+      if (sizeof(Int) == 4) {                                             \
         asm volatile("lock " #instr "l %1, (%2); setc %0"                 \
                      : "=r"(out)                                          \
                      : "ri"(bit), "r"(ptr)                                \
                      : "memory", "flags");                                \
       }                                                                   \
-      if (sizeof(I) == 8) {                                               \
+      if (sizeof(Int) == 8) {                                             \
         asm volatile("lock " #instr "q %1, (%2); setc %0"                 \
                      : "=r"(out)                                          \
                      : "ri"(bit), "r"(ptr)                                \

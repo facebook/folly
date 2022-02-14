@@ -107,12 +107,12 @@ TEST_F(AtomicCompareExchangeSuccTest, examples) {
 
 namespace {
 
-template <typename I>
-struct with_seq_cst : private I {
-  explicit with_seq_cst(I i) noexcept : I{i} {}
+template <typename L>
+struct with_seq_cst : private L {
+  explicit with_seq_cst(L i) noexcept : L{i} {}
   template <typename... A>
   constexpr decltype(auto) operator()(A&&... a) const noexcept {
-    return I::operator()(static_cast<A&&>(a)..., std::memory_order_seq_cst);
+    return L::operator()(static_cast<A&&>(a)..., std::memory_order_seq_cst);
   }
 };
 

@@ -1831,10 +1831,10 @@ std::vector<Future<Result>> window(
 // reduce
 
 template <class T>
-template <class I, class F>
-Future<I> Future<T>::reduce(I&& initial, F&& func) && {
+template <class In, class F>
+Future<In> Future<T>::reduce(In&& initial, F&& func) && {
   return std::move(*this).thenValue(
-      [minitial = static_cast<I&&>(initial),
+      [minitial = static_cast<In&&>(initial),
        mfunc = static_cast<F&&>(func)](T&& vals) mutable {
         auto ret = std::move(minitial);
         for (auto& val : vals) {
