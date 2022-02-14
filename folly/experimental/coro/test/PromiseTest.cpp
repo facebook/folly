@@ -49,6 +49,12 @@ CO_TEST(PromiseTest, ImmediateException) {
   EXPECT_TRUE(res.hasException<std::runtime_error>());
 }
 
+CO_TEST(PromiseTest, ImmediateExceptionVoid) {
+  auto [promise, future] = coro::makePromiseContract<void>();
+  promise.setException(std::runtime_error(""));
+  EXPECT_THROW(co_await std::move(future), std::runtime_error);
+}
+
 CO_TEST(PromiseTest, SuspendValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
   auto waiter = [](auto future) -> coro::Task<int> {

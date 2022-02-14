@@ -143,6 +143,8 @@ class Future {
     T await_resume() {
       if constexpr (!std::is_void_v<T>) {
         return std::move(future_.state_.result.value());
+      } else {
+        future_.state_.result.throwIfFailed();
       }
     }
 
