@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import base64
+import copy
 import hashlib
 import os
 
@@ -178,6 +179,7 @@ class ManifestLoader(object):
             deps = [manifest]
         # The list of manifests in dependency order
         dep_order = []
+        system_packages = {}
 
         while len(deps) > 0:
             m = deps.pop(0)
@@ -212,6 +214,19 @@ class ManifestLoader(object):
 
             # Its deps are done, so we can emit it
             seen.add(m.name)
+            # Capture system packages as we may need to set PATHs to then later
+            if (
+                self.build_opts.allow_system_packages
+                and self.build_opts.host_type.get_package_manager()
+            ):
+                packages = m.get_required_system_packages(ctx)
+                for pkg_type, v in packages.items():
+                    merged = system_packages.get(pkg_type, [])
+                    if v not in merged:
+                        merged += v
+                    system_packages[pkg_type] = merged
+                # A manifest depends on all system packages in it dependencies as well
+                m.resolved_system_packages = copy.copy(system_packages)
             dep_order.append(m)
 
         return dep_order

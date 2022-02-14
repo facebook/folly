@@ -36,3 +36,7 @@ libffi
 
 [dependencies]
 libffi
+# eden tests expect the python bz2 support
+bz2
+# eden tests expect the python curses support
+ncurses

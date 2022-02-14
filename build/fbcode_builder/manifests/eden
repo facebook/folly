@@ -7,6 +7,9 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebookexperimental/eden.git
 
+[github.actions]
+run_tests = off
+
 [build]
 builder = cmake
 
@@ -37,11 +40,17 @@ sqlite3
 [dependencies.os=darwin]
 osxfuse
 
+[dependencies.not(os=windows)]
 # TODO: teach getdeps to compile curl on Windows.
 # Enabling curl on Windows requires us to find a way to compile libcurl with
 # msvc.
-[dependencies.not(os=windows)]
 libcurl
+# Added so that OSS doesn't see system "python" which is python 2 on darwin and some linux
+python
+
+[dependencies.all(fb=off)]
+# Outside Meta hg is not installed, or if it is, its not the one we want to test with
+eden_scm
 
 [shipit.pathmap.fb=on]
 # for internal builds that use getdeps

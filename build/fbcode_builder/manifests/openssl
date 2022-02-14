@@ -6,6 +6,7 @@ libssl-dev
 
 [homebrew]
 openssl@1.1
+# on homebrew need the matching curl and ca-
 
 [rpms]
 openssl

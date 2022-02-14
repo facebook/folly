@@ -188,19 +188,6 @@ class SystemPackageFetcher(object):
         else:
             self.installed = False
 
-        # Hack to make openssl discovery with homebrew work. If openssl was
-        # built with autoconf we could use autoconf.envcmd.OPENSSL_ROOT_DIR
-        # from the manifest, but it isn't, so handle the special case here.
-        if (
-            self.installed
-            and self.host_type.is_darwin()
-            and self.manager == "homebrew"
-            and "openssl@1.1" in self.packages
-        ):
-            candidate = homebrew_package_prefix("openssl@1.1")
-            if os.path.exists(candidate):
-                os.environ["OPENSSL_ROOT_DIR"] = candidate
-
         return bool(self.installed)
 
     def update(self):

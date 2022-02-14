@@ -1,0 +1,30 @@
+[manifest]
+name = ncurses
+
+[debs]
+libncurses-dev
+
+[homebrew]
+ncurses
+
+[rpms]
+ncurses-devel
+
+[download]
+url = https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.3.tar.gz
+sha256 = 97fc51ac2b085d4cde31ef4d2c3122c21abc217e9090a43a30fc5ec21684e059
+
+[build.not(os=windows)]
+builder = autoconf
+subdir = ncurses-6.3
+
+[autoconf.args]
+--without-cxx-binding
+--without-ada
+
+[autoconf.args.os=linux]
+--enable-shared
+--with-shared
+
+[build.os=windows]
+builder = nop

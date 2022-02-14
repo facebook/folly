@@ -971,19 +971,25 @@ jobs:
                 out.write("    - name: Fix Git config\n")
                 out.write("      run: git config --system core.longpaths true\n")
 
-            projects = loader.manifests_in_dependency_order()
-
             allow_sys_arg = ""
             if (
                 build_opts.allow_system_packages
-                and build_opts.is_linux()
                 and build_opts.host_type.get_package_manager()
             ):
                 allow_sys_arg = " --allow-system-packages"
                 out.write("    - name: Install system deps\n")
+                sudo_arg = "sudo "
+                if build_opts.is_darwin():
+                    # brew is installed as regular user
+                    sudo_arg = ""
                 out.write(
-                    f"      run: sudo python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive {manifest.name}\n"
+                    f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive {manifest.name}\n"
                 )
+
+            projects = loader.manifests_in_dependency_order()
+
+            main_repo_url = manifest.get_repo_url(manifest_ctx)
+            has_same_repo_dep = False
 
             for m in projects:
                 if m != manifest:
@@ -995,19 +1001,27 @@ jobs:
                         out.write("        default: true\n")
                         out.write("        profile: minimal\n")
                     else:
-                        out.write("    - name: Fetch %s\n" % m.name)
-                        out.write(
-                            f"      run: {getdepscmd}{allow_sys_arg} fetch --no-tests {m.name}\n"
-                        )
+                        ctx = loader.ctx_gen.get_context(m.name)
+                        if m.get_repo_url(ctx) != main_repo_url:
+                            out.write("    - name: Fetch %s\n" % m.name)
+                            out.write(
+                                f"      run: {getdepscmd}{allow_sys_arg} fetch --no-tests {m.name}\n"
+                            )
 
             for m in projects:
                 if m != manifest:
                     if m.name == "rust":
                         continue
                     else:
+                        src_dir_arg = ""
+                        ctx = loader.ctx_gen.get_context(m.name)
+                        if main_repo_url and m.get_repo_url(ctx) == main_repo_url:
+                            # Its in the same repo, so src-dir is also .
+                            src_dir_arg = "--src-dir=. "
+                            has_same_repo_dep = True
                         out.write("    - name: Build %s\n" % m.name)
                         out.write(
-                            f"      run: {getdepscmd}{allow_sys_arg} build --no-tests {m.name}\n"
+                            f"      run: {getdepscmd}{allow_sys_arg} build {src_dir_arg}--no-tests {m.name}\n"
                         )
 
             out.write("    - name: Build %s\n" % manifest.name)
@@ -1018,8 +1032,13 @@ jobs:
                     " --project-install-prefix %s:/usr/local" % manifest.name
                 )
 
+            # If we have dep from same repo, we already built it and don't want to rebuild it again
+            no_deps_arg = ""
+            if has_same_repo_dep:
+                no_deps_arg = "--no-deps "
+
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build --src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
             )
 
             out.write("    - name: Copy artifacts\n")
@@ -1043,10 +1062,11 @@ jobs:
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
 
-            out.write("    - name: Test %s\n" % manifest.name)
-            out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} test --src-dir=. {manifest.name} {project_prefix}\n"
-            )
+            if manifest.get("github.actions", "run_tests", ctx=manifest_ctx) != "off":
+                out.write("    - name: Test %s\n" % manifest.name)
+                out.write(
+                    f"      run: {getdepscmd}{allow_sys_arg} test --src-dir=. {manifest.name} {project_prefix}\n"
+                )
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(

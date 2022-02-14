@@ -77,6 +77,12 @@ SCHEMA = {
             "manifests_to_build": OPTIONAL,
         },
     },
+    "github.actions": {
+        "optional_section": True,
+        "fields": {
+            "run_tests": OPTIONAL,
+        },
+    },
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
     "autoconf.envcmd.LDFLAGS": {"optional_section": True},
@@ -115,6 +121,7 @@ ALLOWED_EXPR_SECTIONS = [
     "shipit.pathmap",
     "shipit.strip",
     "homebrew",
+    "github.actions",
 ]
 
 
@@ -223,6 +230,7 @@ class ManifestParser(object):
         self.fbsource_path = self.get("manifest", "fbsource_path")
         self.shipit_project = self.get("manifest", "shipit_project")
         self.shipit_fbcode_builder = self.get("manifest", "shipit_fbcode_builder")
+        self.resolved_system_packages = {}
 
         if self.name != os.path.basename(file_name):
             raise Exception(
@@ -378,6 +386,9 @@ class ManifestParser(object):
 
         return True
 
+    def get_repo_url(self, ctx):
+        return self.get("git", "repo_url", ctx=ctx)
+
     def create_fetcher(self, build_options, ctx):
         use_real_shipit = (
             ShipitTransformerFetcher.available() and build_options.use_shipit
@@ -409,7 +420,7 @@ class ManifestParser(object):
             if package_fetcher.packages_are_installed():
                 return package_fetcher
 
-        repo_url = self.get("git", "repo_url", ctx=ctx)
+        repo_url = self.get_repo_url(ctx)
         if repo_url:
             rev = self.get("git", "rev")
             depth = self.get("git", "depth")
