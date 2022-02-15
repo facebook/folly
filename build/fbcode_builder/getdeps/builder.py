@@ -29,7 +29,7 @@ class BuilderBase(object):
         inst_dir,
         env=None,
         final_install_prefix=None,
-    ):
+    ) -> None:
         self.env = Env()
         if env:
             self.env.update(env)
@@ -57,7 +57,14 @@ class BuilderBase(object):
                 return [vcvarsall, "amd64", "&&"]
         return []
 
-    def _run_cmd(self, cmd, cwd=None, env=None, use_cmd_prefix=True, allow_fail=False):
+    def _run_cmd(
+        self,
+        cmd,
+        cwd=None,
+        env=None,
+        use_cmd_prefix: bool = True,
+        allow_fail: bool = False,
+    ):
         if env:
             e = self.env.copy()
             e.update(env)
@@ -79,7 +86,7 @@ class BuilderBase(object):
             allow_fail=allow_fail,
         )
 
-    def build(self, install_dirs, reconfigure):
+    def build(self, install_dirs, reconfigure: bool) -> None:
         print("Building %s..." % self.manifest.name)
 
         if self.build_dir is not None:
@@ -97,6 +104,7 @@ class BuilderBase(object):
             script_path = self.get_dev_run_script_path()
             dep_munger = create_dyn_dep_munger(self.build_opts, install_dirs)
             dep_dirs = self.get_dev_run_extra_path_dirs(install_dirs, dep_munger)
+            # pyre-fixme[16]: Optional type has no attribute `emit_dev_run_script`.
             dep_munger.emit_dev_run_script(script_path, dep_dirs)
 
     @property
@@ -122,12 +130,12 @@ class BuilderBase(object):
 
     def run_tests(
         self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
-    ):
+    ) -> None:
         """Execute any tests that we know how to run.  If they fail,
         raise an exception."""
         pass
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         """Perform the build.
         install_dirs contains the list of installation directories for
         the dependencies of this project.
@@ -166,7 +174,7 @@ class MakeBuilder(BuilderBase):
         build_args,
         install_args,
         test_args,
-    ):
+    ) -> None:
         super(MakeBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
@@ -181,7 +189,7 @@ class MakeBuilder(BuilderBase):
     def _get_prefix(self):
         return ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
 
         env = self._compute_env(install_dirs)
 
@@ -208,7 +216,7 @@ class MakeBuilder(BuilderBase):
 
     def run_tests(
         self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
-    ):
+    ) -> None:
         if not self.test_args:
             return
 
@@ -219,7 +227,7 @@ class MakeBuilder(BuilderBase):
 
 
 class CMakeBootStrapBuilder(MakeBuilder):
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         self._run_cmd(
             [
                 "./bootstrap",
@@ -241,7 +249,7 @@ class AutoconfBuilder(BuilderBase):
         inst_dir,
         args,
         conf_env_args,
-    ):
+    ) -> None:
         super(AutoconfBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
@@ -252,7 +260,7 @@ class AutoconfBuilder(BuilderBase):
     def _make_binary(self):
         return self.manifest.get("build", "make_binary", "make", ctx=self.ctx)
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         configure_path = os.path.join(self.src_dir, "configure")
         autogen_path = os.path.join(self.src_dir, "autogen.sh")
 
@@ -295,12 +303,12 @@ class Iproute2Builder(BuilderBase):
     # Thus, explicitly copy sources from src_dir to build_dir, bulid,
     # and then install to inst_dir using DESTDIR
     # lastly, also copy include from build_dir to inst_dir
-    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir):
+    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir) -> None:
         super(Iproute2Builder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
 
-    def _patch(self):
+    def _patch(self) -> None:
         # FBOSS build currently depends on an old version of iproute2 (commit
         # 7ca63aef7d1b0c808da0040c6b366ef7a61f38c1). This is missing a commit
         # (ae717baf15fb4d30749ada3948d9445892bac239) needed to build iproute2
@@ -313,7 +321,7 @@ class Iproute2Builder(BuilderBase):
             f.write("#include <stdint.h>\n")
             f.write(data)
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         configure_path = os.path.join(self.src_dir, "configure")
 
         env = self.env.copy()
@@ -334,7 +342,7 @@ class Iproute2Builder(BuilderBase):
 
 
 class BistroBuilder(BuilderBase):
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         p = os.path.join(self.src_dir, "bistro", "bistro")
         env = self._compute_env(install_dirs)
         env["PATH"] = env["PATH"] + ":" + os.path.join(p, "bin")
@@ -361,7 +369,7 @@ class BistroBuilder(BuilderBase):
 
     def run_tests(
         self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
-    ):
+    ) -> None:
         env = self._compute_env(install_dirs)
         build_dir = os.path.join(self.src_dir, "bistro", "bistro", "cmake", "Release")
         NUM_RETRIES = 5
@@ -508,7 +516,7 @@ if __name__ == "__main__":
         loader=None,
         final_install_prefix=None,
         extra_cmake_defines=None,
-    ):
+    ) -> None:
         super(CMakeBuilder, self).__init__(
             build_opts,
             ctx,
@@ -533,7 +541,7 @@ if __name__ == "__main__":
         if build_opts.shared_libs:
             self.defines["BUILD_SHARED_LIBS"] = "ON"
 
-    def _invalidate_cache(self):
+    def _invalidate_cache(self) -> None:
         for name in [
             "CMakeCache.txt",
             "CMakeFiles/CMakeError.log",
@@ -545,14 +553,14 @@ if __name__ == "__main__":
             elif os.path.exists(name):
                 os.unlink(name)
 
-    def _needs_reconfigure(self):
+    def _needs_reconfigure(self) -> bool:
         for name in ["CMakeCache.txt", "build.ninja"]:
             name = os.path.join(self.build_dir, name)
             if not os.path.exists(name):
                 return True
         return False
 
-    def _write_build_script(self, **kwargs):
+    def _write_build_script(self, **kwargs) -> None:
         env_lines = ["    {!r}: {!r},".format(k, v) for k, v in kwargs["env"].items()]
         kwargs["env_str"] = "\n".join(["{"] + env_lines + ["}"])
 
@@ -668,7 +676,7 @@ if __name__ == "__main__":
 
         return define_args
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         reconfigure = reconfigure or self._needs_reconfigure()
 
         env = self._compute_env(install_dirs)
@@ -713,8 +721,8 @@ if __name__ == "__main__":
         )
 
     def run_tests(
-        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
-    ):
+        self, install_dirs, schedule_type, owner, test_filter, retry: int, no_testpilot
+    ) -> None:
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
@@ -917,19 +925,21 @@ if __name__ == "__main__":
                     # Only add this option in the second run.
                     args += ["--rerun-failed"]
                 count += 1
+            # pyre-fixme[61]: `retcode` is undefined, or not always defined.
             if retcode != 0:
                 # Allow except clause in getdeps.main to catch and exit gracefully
                 # This allows non-testpilot runs to fail through the same logic as failed testpilot runs, which may become handy in case if post test processing is needed in the future
+                # pyre-fixme[61]: `retcode` is undefined, or not always defined.
                 raise subprocess.CalledProcessError(retcode, args)
 
 
 class NinjaBootstrap(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, build_dir, src_dir, inst_dir):
+    def __init__(self, build_opts, ctx, manifest, build_dir, src_dir, inst_dir) -> None:
         super(NinjaBootstrap, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         self._run_cmd([sys.executable, "configure.py", "--bootstrap"], cwd=self.src_dir)
         src_ninja = os.path.join(self.src_dir, "ninja")
         dest_ninja = os.path.join(self.inst_dir, "bin/ninja")
@@ -941,12 +951,12 @@ class NinjaBootstrap(BuilderBase):
 
 
 class OpenSSLBuilder(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, build_dir, src_dir, inst_dir):
+    def __init__(self, build_opts, ctx, manifest, build_dir, src_dir, inst_dir) -> None:
         super(OpenSSLBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         configure = os.path.join(self.src_dir, "Configure")
 
         # prefer to resolve the perl that we installed from
@@ -1001,7 +1011,7 @@ class OpenSSLBuilder(BuilderBase):
 class Boost(BuilderBase):
     def __init__(
         self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, b2_args
-    ):
+    ) -> None:
         children = os.listdir(src_dir)
         assert len(children) == 1, "expected a single directory entry: %r" % (children,)
         boost_src = children[0]
@@ -1012,7 +1022,7 @@ class Boost(BuilderBase):
         )
         self.b2_args = b2_args
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         env = self._compute_env(install_dirs)
         linkage = ["static"]
         if self.build_opts.is_windows() or self.build_opts.shared_libs:
@@ -1068,12 +1078,12 @@ class Boost(BuilderBase):
 
 
 class NopBuilder(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir):
+    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir) -> None:
         super(NopBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, None, inst_dir
         )
 
-    def build(self, install_dirs, reconfigure):
+    def build(self, install_dirs, reconfigure) -> None:
         print("Installing %s -> %s" % (self.src_dir, self.inst_dir))
         parent = os.path.dirname(self.inst_dir)
         if not os.path.exists(parent):
@@ -1116,12 +1126,12 @@ class OpenNSABuilder(NopBuilder):
     # In future, if more builders require git-lfs, we would consider installing
     # git-lfs as part of the sandcastle infra as against repeating similar
     # logic for each builder that requires git-lfs.
-    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir):
+    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir) -> None:
         super(OpenNSABuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, inst_dir
         )
 
-    def build(self, install_dirs, reconfigure):
+    def build(self, install_dirs, reconfigure) -> None:
         env = self._compute_env(install_dirs)
         self._run_cmd(["git", "lfs", "install", "--local"], cwd=self.src_dir, env=env)
         self._run_cmd(["git", "lfs", "pull"], cwd=self.src_dir, env=env)
@@ -1130,12 +1140,12 @@ class OpenNSABuilder(NopBuilder):
 
 
 class SqliteBuilder(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir):
+    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir) -> None:
         super(SqliteBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         for f in ["sqlite3.c", "sqlite3.h", "sqlite3ext.h"]:
             src = os.path.join(self.src_dir, f)
             dest = os.path.join(self.build_dir, f)

@@ -9,18 +9,18 @@ import sys
 
 
 class Env(object):
-    def __init__(self, src=None):
+    def __init__(self, src=None) -> None:
         self._dict = {}
         if src is None:
             self.update(os.environ)
         else:
             self.update(src)
 
-    def update(self, src):
+    def update(self, src) -> None:
         for k, v in src.items():
             self.set(k, v)
 
-    def copy(self):
+    def copy(self) -> "Env":
         return Env(self._dict)
 
     def _key(self, key):
@@ -64,7 +64,7 @@ class Env(object):
             raise KeyError(key)
         return val
 
-    def unset(self, key):
+    def unset(self, key) -> None:
         if key is None:
             raise KeyError("attempting to unset env[None]")
 
@@ -72,13 +72,13 @@ class Env(object):
         if key:
             del self._dict[key]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key) -> None:
         self.unset(key)
 
     def __repr__(self):
         return repr(self._dict)
 
-    def set(self, key, value):
+    def set(self, key, value) -> None:
         if key is None:
             raise KeyError("attempting to assign env[None] = %r" % value)
 
@@ -99,13 +99,13 @@ class Env(object):
         self.unset(key)
         self._dict[key] = value
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value) -> None:
         self.set(key, value)
 
     def __iter__(self):
         return self._dict.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._dict)
 
     def keys(self):
@@ -118,7 +118,9 @@ class Env(object):
         return self._dict.items()
 
 
-def add_path_entry(env, name, item, append=True, separator=os.pathsep):
+def add_path_entry(
+    env, name, item, append: bool = True, separator: str = os.pathsep
+) -> None:
     """Cause `item` to be added to the path style env var named
     `name` held in the `env` dict.  `append` specifies whether
     the item is added to the end (the default) or should be
@@ -135,7 +137,7 @@ def add_path_entry(env, name, item, append=True, separator=os.pathsep):
     env.set(name, separator.join(val))
 
 
-def add_flag(env, name, flag, append=True):
+def add_flag(env, name, flag, append: bool = True) -> None:
     """Cause `flag` to be added to the CXXFLAGS-style env var named
     `name` held in the `env` dict.  `append` specifies whether the
     flag is added to the end (the default) or should be prepended if
@@ -152,7 +154,7 @@ _path_search_cache = {}
 _not_found = object()
 
 
-def tpx_path():
+def tpx_path() -> str:
     return "xplat/testinfra/tpx/ctp.tpx"
 
 

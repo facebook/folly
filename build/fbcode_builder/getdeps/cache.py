@@ -10,7 +10,7 @@ class ArtifactCache(object):
     The primary use case is for storing the build products on CI
     systems to accelerate the build"""
 
-    def download_to_file(self, name, dest_file_name):
+    def download_to_file(self, name, dest_file_name) -> bool:
         """If `name` exists in the cache, download it and place it
         in the specified `dest_file_name` location on the filesystem.
         If a transient issue was encountered a TransientFailure shall
@@ -21,7 +21,7 @@ class ArtifactCache(object):
         All other conditions shall raise an appropriate exception."""
         return False
 
-    def upload_from_file(self, name, source_file_name):
+    def upload_from_file(self, name, source_file_name) -> None:
         """Causes `name` to be populated in the cache by uploading
         the contents of `source_file_name` to the storage system.
         If a transient issue was encountered a TransientFailure shall
@@ -31,7 +31,7 @@ class ArtifactCache(object):
         pass
 
 
-def create_cache():
+def create_cache() -> None:
     """This function is monkey patchable to provide an actual
     implementation"""
     return None

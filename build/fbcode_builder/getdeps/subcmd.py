@@ -8,11 +8,11 @@ class SubCmd(object):
     NAME = None
     HELP = None
 
-    def run(self, args):
+    def run(self, args) -> int:
         """perform the command"""
         return 0
 
-    def setup_parser(self, parser):
+    def setup_parser(self, parser) -> None:
         # Subclasses should override setup_parser() if they have any
         # command line options or arguments.
         pass
@@ -21,7 +21,7 @@ class SubCmd(object):
 CmdTable = []
 
 
-def add_subcommands(parser, common_args, cmd_table=CmdTable):
+def add_subcommands(parser, common_args, cmd_table=CmdTable) -> None:
     """Register parsers for the defined commands with the provided parser"""
     for cls in cmd_table:
         command = cls()

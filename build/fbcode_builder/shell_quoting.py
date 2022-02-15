@@ -43,10 +43,10 @@ class ShellQuoted(namedtuple("ShellQuoted", ("do_not_use_raw_str",))):
             "or ShellQuoted.format() instead".format(repr(self))
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}({1})".format(self.__class__.__name__, repr(self.do_not_use_raw_str))
 
-    def format(self, **kwargs):
+    def format(self, **kwargs) -> "ShellQuoted":
         """
 
         Use instead of str.format() when the arguments are either
@@ -65,7 +65,7 @@ class ShellQuoted(namedtuple("ShellQuoted", ("do_not_use_raw_str",))):
         )
 
 
-def shell_quote(s):
+def shell_quote(s) -> ShellQuoted:
     "Quotes a string if it is not already quoted"
     return (
         s
@@ -74,19 +74,19 @@ def shell_quote(s):
     )
 
 
-def raw_shell(s):
+def raw_shell(s: ShellQuoted):
     "Not a member of ShellQuoted so we get a useful error for raw strings"
     if isinstance(s, ShellQuoted):
         return s.do_not_use_raw_str
     raise RuntimeError("{0} should have been ShellQuoted".format(s))
 
 
-def shell_join(delim, it):
+def shell_join(delim, it) -> ShellQuoted:
     "Joins an iterable of ShellQuoted with a delimiter between each two"
     return ShellQuoted(delim.join(raw_shell(s) for s in it))
 
 
-def path_join(*args):
+def path_join(*args) -> ShellQuoted:
     "Joins ShellQuoted and raw pieces of paths to make a shell-quoted path"
     return ShellQuoted(os.path.join(*[raw_shell(shell_quote(s)) for s in args]))
 

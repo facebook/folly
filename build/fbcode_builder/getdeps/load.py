@@ -56,7 +56,7 @@ class Loader(object):
 
 
 class ResourceLoader(Loader):
-    def __init__(self, namespace, manifests_dir):
+    def __init__(self, namespace, manifests_dir) -> None:
         self.namespace = namespace
         self.manifests_dir = manifests_dir
 
@@ -82,7 +82,7 @@ class ResourceLoader(Loader):
 
         raise ManifestNotFound(project_name)
 
-    def _load_manifest(self, path):
+    def _load_manifest(self, path: str):
         import pkg_resources
 
         contents = pkg_resources.resource_string(self.namespace, path).decode("utf8")
@@ -96,7 +96,7 @@ class ResourceLoader(Loader):
 LOADER = Loader()
 
 
-def patch_loader(namespace, manifests_dir="manifests"):
+def patch_loader(namespace, manifests_dir: str = "manifests") -> None:
     global LOADER
     LOADER = ResourceLoader(namespace, manifests_dir)
 
@@ -119,7 +119,7 @@ class ManifestLoader(object):
     relationships and project hash values for this build configuration.
     """
 
-    def __init__(self, build_opts, ctx_gen=None):
+    def __init__(self, build_opts, ctx_gen=None) -> None:
         self._loader = LOADER
         self.build_opts = build_opts
         if ctx_gen is None:
@@ -231,16 +231,16 @@ class ManifestLoader(object):
 
         return dep_order
 
-    def set_project_src_dir(self, project_name, path):
+    def set_project_src_dir(self, project_name, path) -> None:
         self._fetcher_overrides[project_name] = fetcher.LocalDirFetcher(path)
 
-    def set_project_build_dir(self, project_name, path):
+    def set_project_build_dir(self, project_name, path) -> None:
         self._build_dir_overrides[project_name] = path
 
-    def set_project_install_dir(self, project_name, path):
+    def set_project_install_dir(self, project_name, path) -> None:
         self._install_dir_overrides[project_name] = path
 
-    def set_project_install_prefix(self, project_name, path):
+    def set_project_install_prefix(self, project_name, path) -> None:
         self._install_prefix_overrides[project_name] = path
 
     def create_fetcher(self, manifest):
@@ -258,7 +258,7 @@ class ManifestLoader(object):
             self._project_hashes[manifest.name] = h
         return h
 
-    def _compute_project_hash(self, manifest):
+    def _compute_project_hash(self, manifest) -> str:
         """This recursive function computes a hash for a given manifest.
         The hash takes into account some environmental factors on the
         host machine and includes the hashes of its dependencies.

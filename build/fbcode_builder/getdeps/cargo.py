@@ -23,7 +23,7 @@ class CargoBuilder(BuilderBase):
         workspace_dir,
         manifests_to_build,
         loader,
-    ):
+    ) -> None:
         super(CargoBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
@@ -32,7 +32,7 @@ class CargoBuilder(BuilderBase):
         self.manifests_to_build = manifests_to_build and manifests_to_build.split(",")
         self.loader = loader
 
-    def run_cargo(self, install_dirs, operation, args=None):
+    def run_cargo(self, install_dirs, operation, args=None) -> None:
         args = args or []
         env = self._compute_env(install_dirs)
         # Enable using nightly features with stable compiler
@@ -55,12 +55,12 @@ class CargoBuilder(BuilderBase):
     def manifest_dir(self, manifest):
         return os.path.join(self.build_source_dir(), manifest)
 
-    def recreate_dir(self, src, dst):
+    def recreate_dir(self, src, dst) -> None:
         if os.path.isdir(dst):
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
 
-    def _build(self, install_dirs, reconfigure):
+    def _build(self, install_dirs, reconfigure) -> None:
         build_source_dir = self.build_source_dir()
         self.recreate_dir(self.src_dir, build_source_dir)
 
@@ -121,7 +121,7 @@ incremental = false
 
     def run_tests(
         self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
-    ):
+    ) -> None:
         if test_filter:
             args = ["--", test_filter]
         else:
@@ -138,7 +138,7 @@ incremental = false
                 if self.build_doc:
                     self.run_cargo(install_dirs, "doc", ["--no-deps"] + margs)
 
-    def _patchup_workspace(self):
+    def _patchup_workspace(self) -> None:
         """
         This method makes some assumptions about the state of the project and
         its cargo dependendies:
@@ -184,7 +184,7 @@ incremental = false
                     f.write("\n")
                 f.write(config)
 
-    def _resolve_config(self):
+    def _resolve_config(self) -> str:
         """
         Returns a configuration to be put inside root Cargo.toml file which
         patches the dependencies git code with local getdeps versions.

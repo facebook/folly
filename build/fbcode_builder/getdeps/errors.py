@@ -13,5 +13,5 @@ class TransientFailure(Exception):
 
 
 class ManifestNotFound(Exception):
-    def __init__(self, manifest_name):
+    def __init__(self, manifest_name) -> None:
         super(Exception, self).__init__("Unable to find manifest '%s'" % manifest_name)

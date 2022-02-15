@@ -212,7 +212,7 @@ class PythonWheelBuilder(BuilderBase):
 
             f.write(CMAKE_FOOTER.format(**self.template_format_dict))
 
-    def _write_cmake_config_template(self):
+    def _write_cmake_config_template(self) -> None:
         config_path_name = self.manifest.name + "-config.cmake.in"
         output_path = os.path.join(self.build_dir, config_path_name)
 

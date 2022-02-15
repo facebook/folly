@@ -44,14 +44,14 @@ class BuildOptions(object):
         scratch_dir,
         host_type,
         install_dir=None,
-        num_jobs=0,
-        use_shipit=False,
+        num_jobs: int = 0,
+        use_shipit: bool = False,
         vcvars_path=None,
-        allow_system_packages=False,
+        allow_system_packages: bool = False,
         lfs_path=None,
-        shared_libs=False,
+        shared_libs: bool = False,
         facebook_internal=None,
-    ):
+    ) -> None:
         """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                              or for shipit-transformed repos, the build dir that
                              has been mapped into that dir.
@@ -176,7 +176,7 @@ class BuildOptions(object):
     def is_freebsd(self):
         return self.host_type.is_freebsd()
 
-    def get_num_jobs(self, job_weight):
+    def get_num_jobs(self, job_weight: int):
         """Given an estimated job_weight in MiB, compute a reasonable concurrency limit."""
         if self.specified_num_jobs:
             return self.specified_num_jobs
@@ -324,8 +324,8 @@ class BuildOptions(object):
         return False
 
     def add_prefix_to_env(
-        self, d, env, append=True, add_library_path=False
-    ):  # noqa: C901
+        self, d, env, append: bool = True, add_library_path: bool = False
+    ) -> bool:  # noqa: C901
         bindir = os.path.join(d, "bin")
         found = False
         pkgconfig = os.path.join(d, "lib", "pkgconfig")
@@ -472,7 +472,7 @@ def find_unused_drive_letter():
     return available[-1]
 
 
-def create_subst_path(path):
+def create_subst_path(path) -> str:
     for _attempt in range(0, 24):
         drive = find_existing_win32_subst_for_path(
             path, subst_mapping=list_win32_subst_letters()
@@ -512,7 +512,7 @@ def _check_host_type(args, host_type):
     return host_type
 
 
-def setup_build_options(args, host_type=None):
+def setup_build_options(args, host_type=None) -> BuildOptions:
     """Create a BuildOptions object based on the arguments"""
 
     fbcode_builder_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -9,7 +9,7 @@ import shlex
 import sys
 
 
-def is_windows():
+def is_windows() -> bool:
     """Returns true if the system we are currently running on
     is a Windows system"""
     return sys.platform.startswith("win")
@@ -52,7 +52,7 @@ def get_linux_type():
 # but getdeps can't take third-party dependencies.
 
 
-def _get_available_ram_linux():
+def _get_available_ram_linux() -> int:
     # TODO: Ideally, this function would inspect the current cgroup for any
     # limits, rather than solely relying on system RAM.
     with open("/proc/meminfo") as f:
@@ -175,7 +175,7 @@ def get_available_ram() -> int:
 
 
 class HostType(object):
-    def __init__(self, ostype=None, distro=None, distrovers=None):
+    def __init__(self, ostype=None, distro=None, distrovers=None) -> None:
         if ostype is None:
             distro = None
             distrovers = None
@@ -185,6 +185,7 @@ class HostType(object):
                 ostype = "darwin"
             elif is_windows():
                 ostype = "windows"
+                # pyre-fixme[16]: Module `sys` has no attribute `getwindowsversion`.
                 distrovers = str(sys.getwindowsversion().major)
             elif sys.platform.startswith("freebsd"):
                 ostype = "freebsd"
@@ -218,7 +219,7 @@ class HostType(object):
     def is_freebsd(self):
         return self.ostype == "freebsd"
 
-    def as_tuple_string(self):
+    def as_tuple_string(self) -> str:
         return "%s-%s-%s" % (
             self.ostype,
             self.distro or "none",
@@ -237,7 +238,7 @@ class HostType(object):
         return None
 
     @staticmethod
-    def from_tuple_string(s):
+    def from_tuple_string(s) -> "HostType":
         ostype, distro, distrovers = s.split("-")
         return HostType(ostype=ostype, distro=distro, distrovers=distrovers)
 

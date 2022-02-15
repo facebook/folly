@@ -22,7 +22,7 @@ class RunCommandError(Exception):
     pass
 
 
-def _print_env_diff(env, log_fn):
+def _print_env_diff(env, log_fn) -> None:
     current_keys = set(os.environ.keys())
     wanted_env = set(env.keys())
 
@@ -44,7 +44,7 @@ def _print_env_diff(env, log_fn):
             log_fn("+ %s=%s \\\n" % (k, shellquote(env[k])))
 
 
-def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
+def run_cmd(cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None):
     def log_to_stdout(msg):
         sys.stdout.buffer.write(msg.encode(errors="surrogateescape"))
 
@@ -64,7 +64,7 @@ def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
         )
 
 
-def _run_cmd(cmd, env, cwd, allow_fail, log_fn):
+def _run_cmd(cmd, env, cwd, allow_fail, log_fn) -> int:
     log_fn("---\n")
     try:
         cmd_str = " \\\n+      ".join(shellquote(arg) for arg in cmd)
