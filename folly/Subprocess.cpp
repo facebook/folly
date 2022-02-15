@@ -1041,7 +1041,6 @@ void Subprocess::communicate(
 
       if ((events & (POLLHUP | POLLERR)) && !closed) {
         toClose.push_back(i);
-        closed = true;
       }
     }
 
