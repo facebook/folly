@@ -105,9 +105,10 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       std::shared_ptr<ThreadFactory> threadFactory,
       Options opt = {});
 
-  CPUThreadPoolExecutor(
+  explicit CPUThreadPoolExecutor(
       std::pair<size_t, size_t> numThreads,
-      std::shared_ptr<ThreadFactory> threadFactory,
+      std::shared_ptr<ThreadFactory> threadFactory =
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"),
       Options opt = {});
 
   CPUThreadPoolExecutor(
