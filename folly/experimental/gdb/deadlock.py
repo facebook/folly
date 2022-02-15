@@ -166,7 +166,7 @@ def simple_cycles(G):  # noqa: C901
     """
 
     def _unblock(thisnode, blocked, B):
-        stack = set([thisnode])
+        stack = {thisnode}
         while stack:
             node = stack.pop()
             if node in blocked:
