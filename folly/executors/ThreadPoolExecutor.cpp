@@ -420,10 +420,7 @@ void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
       o->threadPreviouslyStarted(thread.get());
     }
   }
-  while (activeThreads_.load(std::memory_order_relaxed) <
-         maxThreads_.load(std::memory_order_relaxed)) {
-    ensureActiveThreads();
-  }
+  ensureMaxActiveThreads();
 }
 
 void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
@@ -521,6 +518,13 @@ void ThreadPoolExecutor::ensureActiveThreads() {
   }
   ThreadPoolExecutor::addThreads(1);
   activeThreads_.store(active + 1, std::memory_order_relaxed);
+}
+
+void ThreadPoolExecutor::ensureMaxActiveThreads() {
+  while (activeThreads_.load(std::memory_order_relaxed) <
+         maxThreads_.load(std::memory_order_relaxed)) {
+    ensureActiveThreads();
+  }
 }
 
 // If an idle thread times out, only join it if there are at least

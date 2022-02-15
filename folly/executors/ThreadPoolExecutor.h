@@ -325,6 +325,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   folly::ThreadPoolListHook threadPoolHook_;
 
   // Dynamic thread sizing functions and variables
+  void ensureMaxActiveThreads();
   void ensureActiveThreads();
   void ensureJoined();
   bool minActive();
