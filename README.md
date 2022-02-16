@@ -22,6 +22,9 @@ designs that are more idiosyncratic than they would otherwise be (see
 e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
 scale is a unifying theme in all of Folly.
 
+## Check it out in the intro video
+[![Explain Like I’m 5: Folly](https://img.youtube.com/vi/Wr_IfOICYSs/0.jpg)](https://www.youtube.com/watch?v=Wr_IfOICYSs)
+
 # Logical Design
 
 Folly is a collection of relatively independent components, some as
