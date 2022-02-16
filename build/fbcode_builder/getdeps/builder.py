@@ -86,14 +86,22 @@ class BuilderBase(object):
             allow_fail=allow_fail,
         )
 
-    def build(self, install_dirs, reconfigure: bool) -> None:
-        print("Building %s..." % self.manifest.name)
-
+    def _reconfigure(self, reconfigure):
         if self.build_dir is not None:
             if not os.path.isdir(self.build_dir):
                 os.makedirs(self.build_dir)
                 reconfigure = True
+        return reconfigure
 
+    def prepare(self, install_dirs, reconfigure):
+        print("Preparing %s..." % self.manifest.name)
+        reconfigure = self._reconfigure(reconfigure)
+        self._prepare(install_dirs=install_dirs, reconfigure=reconfigure)
+
+    def build(self, install_dirs, reconfigure) -> None:
+        print("Building %s..." % self.manifest.name)
+        reconfigure = self._reconfigure(reconfigure)
+        self._prepare(install_dirs=install_dirs, reconfigure=reconfigure)
         self._build(install_dirs=install_dirs, reconfigure=reconfigure)
 
         # On Windows, emit a wrapper script that can be used to run build artifacts
@@ -133,6 +141,12 @@ class BuilderBase(object):
     ) -> None:
         """Execute any tests that we know how to run.  If they fail,
         raise an exception."""
+        pass
+
+    def _prepare(self, install_dirs, reconfigure):
+        """Prepare the build. Useful when need to generate config,
+        but builder is not the primary build system.
+        e.g. cargo when called from cmake"""
         pass
 
     def _build(self, install_dirs, reconfigure) -> None:

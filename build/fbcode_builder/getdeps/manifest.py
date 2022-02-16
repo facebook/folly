@@ -75,6 +75,8 @@ SCHEMA = {
             "build_doc": OPTIONAL,
             "workspace_dir": OPTIONAL,
             "manifests_to_build": OPTIONAL,
+            # Where to write cargo config (defaults to build_dir/.cargo/config)
+            "cargo_config_file": OPTIONAL,
         },
     },
     "github.actions": {
@@ -83,6 +85,7 @@ SCHEMA = {
             "run_tests": OPTIONAL,
         },
     },
+    "crate.pathmap": {"optional_section": True},
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
     "autoconf.envcmd.LDFLAGS": {"optional_section": True},
@@ -447,6 +450,12 @@ class ManifestParser(object):
             "project %s has no fetcher configuration matching %s" % (self.name, ctx)
         )
 
+    def get_builder_name(self, ctx):
+        builder = self.get("build", "builder", ctx=ctx)
+        if not builder:
+            raise Exception("project %s has no builder for %r" % (self.name, ctx))
+        return builder
+
     def create_builder(  # noqa:C901
         self,
         build_options,
@@ -458,9 +467,7 @@ class ManifestParser(object):
         final_install_prefix=None,
         extra_cmake_defines=None,
     ):
-        builder = self.get("build", "builder", ctx=ctx)
-        if not builder:
-            raise Exception("project %s has no builder for %r" % (self.name, ctx))
+        builder = self.get_builder_name(ctx)
         build_in_src_dir = self.get("build", "build_in_src_dir", "false", ctx=ctx)
         if build_in_src_dir == "true":
             # Some scripts don't work when they are configured and build in
@@ -574,26 +581,49 @@ class ManifestParser(object):
             )
 
         if builder == "cargo":
-            build_doc = self.get("cargo", "build_doc", False, ctx)
-            workspace_dir = self.get("cargo", "workspace_dir", None, ctx)
-            manifests_to_build = self.get("cargo", "manifests_to_build", None, ctx)
-            return CargoBuilder(
-                build_options,
-                ctx,
-                self,
-                src_dir,
-                build_dir,
-                inst_dir,
-                build_doc,
-                workspace_dir,
-                manifests_to_build,
-                loader,
+            return self.create_cargo_builder(
+                build_options, ctx, src_dir, build_dir, inst_dir, loader
             )
 
         if builder == "OpenNSA":
             return OpenNSABuilder(build_options, ctx, self, src_dir, inst_dir)
 
         raise KeyError("project %s has no known builder" % (self.name))
+
+    def create_prepare_builders(
+        self, build_options, ctx, src_dir, build_dir, inst_dir, loader
+    ):
+        """Create builders that have a prepare step run, e.g. to write config files"""
+        prepare_builders = []
+        builder = self.get_builder_name(ctx)
+        cargo = self.get_section_as_dict("cargo", ctx)
+        if not builder == "cargo" and cargo:
+            cargo_builder = self.create_cargo_builder(
+                build_options, ctx, src_dir, build_dir, inst_dir, loader
+            )
+            prepare_builders.append(cargo_builder)
+        return prepare_builders
+
+    def create_cargo_builder(
+        self, build_options, ctx, src_dir, build_dir, inst_dir, loader
+    ):
+        build_doc = self.get("cargo", "build_doc", False, ctx)
+        workspace_dir = self.get("cargo", "workspace_dir", None, ctx)
+        manifests_to_build = self.get("cargo", "manifests_to_build", None, ctx)
+        cargo_config_file = self.get("cargo", "cargo_config_file", None, ctx)
+        return CargoBuilder(
+            build_options,
+            ctx,
+            self,
+            src_dir,
+            build_dir,
+            inst_dir,
+            build_doc,
+            workspace_dir,
+            manifests_to_build,
+            loader,
+            cargo_config_file,
+        )
 
 
 class ManifestContext(object):

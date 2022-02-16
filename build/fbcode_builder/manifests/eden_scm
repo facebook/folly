@@ -53,8 +53,10 @@ fbcode/tools/lfs = tools/lfs
 [dependencies]
 fb303
 fbthrift
-python
 rust-shed
+
+[dependencies.not(os=windows)]
+python
 
 # We use the system openssl on linux
 [dependencies.not(os=linux)]

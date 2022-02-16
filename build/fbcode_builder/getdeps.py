@@ -599,6 +599,18 @@ class BuildCmd(ProjectCmdBase):
                     if os.path.exists(built_marker):
                         os.unlink(built_marker)
                     src_dir = fetcher.get_src_dir()
+                    # Prepare builders write out config before the main builder runs
+                    prepare_builders = m.create_prepare_builders(
+                        loader.build_opts,
+                        ctx,
+                        src_dir,
+                        build_dir,
+                        inst_dir,
+                        loader,
+                    )
+                    for preparer in prepare_builders:
+                        preparer.prepare(install_dirs, reconfigure=reconfigure)
+
                     builder = m.create_builder(
                         loader.build_opts,
                         src_dir,
