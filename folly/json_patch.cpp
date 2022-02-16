@@ -20,8 +20,8 @@
 
 #include <folly/container/Enumerate.h>
 
-namespace {
-using folly::StringPiece;
+namespace folly {
+
 // JSON patch operation names
 constexpr StringPiece kOperationTest = "test";
 constexpr StringPiece kOperationRemove = "remove";
@@ -34,9 +34,6 @@ constexpr StringPiece kOpTag = "op";
 constexpr StringPiece kValueTag = "value";
 constexpr StringPiece kPathTag = "path";
 constexpr StringPiece kFromTag = "from";
-} // namespace
-
-namespace folly {
 
 // static
 Expected<json_patch, json_patch::parse_error> json_patch::try_parse(
@@ -157,6 +154,7 @@ std::vector<json_patch::patch_operation> const& json_patch::ops() const {
 }
 
 namespace {
+
 // clang-format off
 Expected<Unit, json_patch::patch_application_error_code>
 // clang-format on
@@ -164,13 +162,13 @@ do_remove(dynamic::resolved_json_pointer<dynamic>& ptr) {
   using error_code = json_patch::patch_application_error_code;
 
   if (!ptr.hasValue()) {
-    return folly::makeUnexpected(error_code::path_not_found);
+    return makeUnexpected(error_code::path_not_found);
   }
 
   auto parent = ptr->parent;
 
   if (!parent) {
-    return folly::makeUnexpected(error_code::other);
+    return makeUnexpected(error_code::other);
   }
 
   if (parent->isObject()) {
@@ -183,7 +181,7 @@ do_remove(dynamic::resolved_json_pointer<dynamic>& ptr) {
     return unit;
   }
 
-  return folly::makeUnexpected(error_code::other);
+  return makeUnexpected(error_code::other);
 }
 
 // clang-format off
@@ -228,7 +226,7 @@ do_add(
       case res_err_code::element_not_object_or_array:
       case res_err_code::json_pointer_out_of_bounds:
       default:
-        return folly::makeUnexpected(app_err_code::other);
+        return makeUnexpected(app_err_code::other);
     }
   }
   return unit;
@@ -238,24 +236,21 @@ do_add(
 // clang-format off
 Expected<Unit, json_patch::patch_application_error>
 // clang-format on
-json_patch::apply(dynamic& obj) {
+json_patch::apply(dynamic& obj) const {
   using op_code = patch_operation_code;
   using error_code = patch_application_error_code;
   using error = patch_application_error;
 
-  for (auto it : enumerate(ops_)) {
-    auto const index = it.index;
-    auto const& op = *it;
+  for (const auto& [index, op] : enumerate(ops_)) {
     auto resolved_path = obj.try_get_ptr(op.path);
 
     switch (op.op_code) {
       case op_code::test:
         if (!resolved_path.hasValue()) {
-          return folly::makeUnexpected(
-              error{error_code::path_not_found, index});
+          return makeUnexpected(error{error_code::path_not_found, index});
         }
         if (*resolved_path->value != *op.value) {
-          return folly::makeUnexpected(error{error_code::test_failed, index});
+          return makeUnexpected(error{error_code::test_failed, index});
         }
         break;
       case op_code::remove: {
@@ -277,8 +272,7 @@ json_patch::apply(dynamic& obj) {
         if (resolved_path.hasValue()) {
           *resolved_path->value = *op.value;
         } else {
-          return folly::makeUnexpected(
-              error{error_code::path_not_found, index});
+          return makeUnexpected(error{error_code::path_not_found, index});
         }
         break;
       }
