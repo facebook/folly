@@ -10,9 +10,6 @@ repo_url = https://github.com/facebookexperimental/eden.git
 [github.actions]
 run_tests = off
 
-[cargo]
-cargo_config_file = _cargo_home/config
-
 [build]
 builder = cmake
 
@@ -29,7 +26,6 @@ lz4
 pexpect
 python-toml
 python-filelock
-rust-shed
 
 [dependencies.fbsource=on]
 rust
@@ -104,8 +100,6 @@ INSTALL_PYTHON_LIB=ON
 ENABLE_GIT=OFF
 
 [cmake.defines.fbsource=on]
-# OFF as getdeps will write the cargo config file
-GENERATE_CARGO_VENDOR_CONFIG=OFF
 USE_CARGO_VENDOR=ON
 
 [cmake.defines.fb=on]
