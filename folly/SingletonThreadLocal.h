@@ -160,7 +160,7 @@ class SingletonThreadLocal {
   }
 
   static T* try_get() {
-    auto* wrapper = getWrapperTL().getIfExist();
+    auto* wrapper = getWrapperTL().get_existing();
     return wrapper ? &static_cast<T&>(*wrapper) : nullptr;
   }
 
