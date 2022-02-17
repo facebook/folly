@@ -620,9 +620,8 @@ runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
     // counters have been used, then the header can be printed out properly
     if (printer != nullptr) {
       printer->print({{bm.file, bm.name, elapsed.first, elapsed.second}});
-    } else {
-      results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
     }
+    results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
 
     // get all counter names
     for (auto const& kv : elapsed.second) {
@@ -676,9 +675,10 @@ void runBenchmarks() {
       });
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
-  auto benchmarkResults = runBenchmarksWithPrinter(
-      FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter ? &printer
-                                                                 : nullptr);
+  const bool shouldPrintInline =
+      FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter;
+  auto benchmarkResults =
+      runBenchmarksWithPrinter(shouldPrintInline ? &printer : nullptr);
 
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
 
@@ -687,7 +687,7 @@ void runBenchmarks() {
   } else if (!FLAGS_bm_relative_to.empty()) {
     printResultComparison(
         resultsFromFile(FLAGS_bm_relative_to), benchmarkResults.second);
-  } else {
+  } else if (!shouldPrintInline) {
     printer = BenchmarkResultsPrinter{std::move(benchmarkResults.first)};
     printer.print(benchmarkResults.second);
     printer.separator('=');
