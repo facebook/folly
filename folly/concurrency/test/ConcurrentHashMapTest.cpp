@@ -1047,7 +1047,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, EraseClonedNonCopyable) {
   EXPECT_EQ(iter->first, 256 * cloned);
 }
 
-TYPED_TEST_P(ConcurrentHashMapTest, DISABLED_ConcurrentInsertClear) {
+TYPED_TEST_P(ConcurrentHashMapTest, ConcurrentInsertClear) {
   DeterministicSchedule sched(DeterministicSchedule::uniform(FLAGS_seed));
 
   /* 8192 and 8x / 9x multipliers are values that tend to reproduce
@@ -1140,7 +1140,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     HeterogeneousInsert,
     InsertOrAssignIterator,
     EraseClonedNonCopyable,
-    DISABLED_ConcurrentInsertClear);
+    ConcurrentInsertClear);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 
