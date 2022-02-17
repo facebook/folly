@@ -790,6 +790,7 @@ if __name__ == "__main__":
                 working_dir = get_property(test, "WORKING_DIRECTORY")
                 labels = []
                 machine_suffix = self.build_opts.host_type.as_tuple_string()
+                labels.append("tpx-fb-test-type=3")
                 labels.append("tpx_test_config::buildsystem=getdeps")
                 labels.append("tpx_test_config::platform={}".format(machine_suffix))
 
