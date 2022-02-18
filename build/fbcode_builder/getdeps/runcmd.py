@@ -44,7 +44,7 @@ def _print_env_diff(env, log_fn) -> None:
             log_fn("+ %s=%s \\\n" % (k, shellquote(env[k])))
 
 
-def run_cmd(cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None):
+def run_cmd(cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None) -> int:
     def log_to_stdout(msg):
         sys.stdout.buffer.write(msg.encode(errors="surrogateescape"))
 

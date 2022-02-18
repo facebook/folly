@@ -86,14 +86,14 @@ class BuilderBase(object):
             allow_fail=allow_fail,
         )
 
-    def _reconfigure(self, reconfigure):
+    def _reconfigure(self, reconfigure) -> bool:
         if self.build_dir is not None:
             if not os.path.isdir(self.build_dir):
                 os.makedirs(self.build_dir)
                 reconfigure = True
         return reconfigure
 
-    def prepare(self, install_dirs, reconfigure):
+    def prepare(self, install_dirs, reconfigure) -> None:
         print("Preparing %s..." % self.manifest.name)
         reconfigure = self._reconfigure(reconfigure)
         self._prepare(install_dirs=install_dirs, reconfigure=reconfigure)
@@ -143,7 +143,7 @@ class BuilderBase(object):
         raise an exception."""
         pass
 
-    def _prepare(self, install_dirs, reconfigure):
+    def _prepare(self, install_dirs, reconfigure) -> None:
         """Prepare the build. Useful when need to generate config,
         but builder is not the primary build system.
         e.g. cargo when called from cmake"""
@@ -690,7 +690,7 @@ if __name__ == "__main__":
 
         return define_args
 
-    def _build(self, install_dirs, reconfigure) -> None:
+    def _build(self, install_dirs, reconfigure: bool) -> None:
         reconfigure = reconfigure or self._needs_reconfigure()
 
         env = self._compute_env(install_dirs)

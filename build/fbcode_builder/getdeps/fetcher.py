@@ -275,7 +275,7 @@ class GitFetcher(Fetcher):
 
         return ChangeStatus(True)
 
-    def update(self):
+    def update(self) -> ChangeStatus:
         if os.path.exists(self.repo_dir):
             return self._update()
         self._clone()
@@ -556,7 +556,7 @@ class SimpleShipitTransformerFetcher(Fetcher):
         if os.path.exists(self.repo_dir):
             shutil.rmtree(self.repo_dir)
 
-    def update(self):
+    def update(self) -> ChangeStatus:
         mapping = ShipitPathMap()
         for src, dest in self.manifest.get_section_as_ordered_pairs(
             "shipit.pathmap", self.ctx
