@@ -146,7 +146,7 @@ class Latch {
   }
 
  private:
-  FOLLY_ALWAYS_INLINE void terminate_if(bool cond) noexcept {
+  FOLLY_ALWAYS_INLINE constexpr void terminate_if(bool cond) noexcept {
     if (cond) {
       folly::terminate_with<std::invalid_argument>(
           "argument outside expected range");
