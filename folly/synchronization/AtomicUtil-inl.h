@@ -230,22 +230,22 @@ inline bool atomic_fetch_flip_native(
     FOLLY_ERASE bool operator()(Int* ptr, Int bit) const {                \
       bool out = false;                                                   \
       if (sizeof(Int) == 2) {                                             \
-        asm volatile("lock " #instr "w %1, (%2); setc %0"                 \
-                     : "=r"(out)                                          \
+        asm volatile("lock " #instr "w %1, (%2)"                          \
+                     : "=@ccc"(out)                                       \
                      : "ri"(bit), "r"(ptr)                                \
-                     : "memory", "flags");                                \
+                     : "memory");                                         \
       }                                                                   \
       if (sizeof(Int) == 4) {                                             \
-        asm volatile("lock " #instr "l %1, (%2); setc %0"                 \
-                     : "=r"(out)                                          \
+        asm volatile("lock " #instr "l %1, (%2)"                          \
+                     : "=@ccc"(out)                                       \
                      : "ri"(bit), "r"(ptr)                                \
-                     : "memory", "flags");                                \
+                     : "memory");                                         \
       }                                                                   \
       if (sizeof(Int) == 8) {                                             \
-        asm volatile("lock " #instr "q %1, (%2); setc %0"                 \
-                     : "=r"(out)                                          \
+        asm volatile("lock " #instr "q %1, (%2)"                          \
+                     : "=@ccc"(out)                                       \
                      : "ri"(bit), "r"(ptr)                                \
-                     : "memory", "flags");                                \
+                     : "memory");                                         \
       }                                                                   \
       return out;                                                         \
     }                                                                     \
