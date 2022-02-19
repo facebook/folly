@@ -24,19 +24,19 @@
 #include <folly/functional/Invoke.h>
 #include <folly/portability/GTest.h>
 
+static constexpr auto relaxed = std::memory_order_relaxed;
+static constexpr auto consume = std::memory_order_consume;
+static constexpr auto acquire = std::memory_order_acquire;
+static constexpr auto release = std::memory_order_release;
+static constexpr auto acq_rel = std::memory_order_acq_rel;
+static constexpr auto seq_cst = std::memory_order_seq_cst;
+
 namespace folly {
 
 class AtomicCompareExchangeSuccTest : public testing::Test {};
 
 TEST_F(AtomicCompareExchangeSuccTest, examples) {
   using detail::atomic_compare_exchange_succ;
-
-  auto const relaxed = std::memory_order_relaxed;
-  auto const consume = std::memory_order_consume;
-  auto const acquire = std::memory_order_acquire;
-  auto const release = std::memory_order_release;
-  auto const acq_rel = std::memory_order_acq_rel;
-  auto const seq_cst = std::memory_order_seq_cst;
 
   // noop table
   EXPECT_EQ(relaxed, atomic_compare_exchange_succ(false, relaxed, relaxed));
@@ -108,16 +108,17 @@ TEST_F(AtomicCompareExchangeSuccTest, examples) {
 namespace {
 
 template <typename L>
-struct with_seq_cst : private L {
-  explicit with_seq_cst(L i) noexcept : L{i} {}
+struct with_order : private L {
+  std::memory_order o_;
+  explicit with_order(std::memory_order o, L i) noexcept : L{i}, o_{o} {}
   template <typename... A>
   constexpr decltype(auto) operator()(A&&... a) const noexcept {
-    return L::operator()(static_cast<A&&>(a)..., std::memory_order_seq_cst);
+    return L::operator()(static_cast<A&&>(a)..., o_);
   }
 };
 
-template <typename Integer, typename Op = folly::atomic_fetch_set_fn>
-void atomic_fetch_set_basic(Op fetch_set = {}) {
+template <typename Integer, typename Op>
+void atomic_fetch_set_basic(Op fetch_set) {
   {
     auto&& atomic = std::atomic<Integer>{0};
     EXPECT_EQ(fetch_set(atomic, 0), false);
@@ -156,8 +157,8 @@ void atomic_fetch_set_basic(Op fetch_set = {}) {
   }
 }
 
-template <typename Integer, typename Op = folly::atomic_fetch_reset_fn>
-void atomic_fetch_reset_basic(Op fetch_reset = {}) {
+template <typename Integer, typename Op>
+void atomic_fetch_reset_basic(Op fetch_reset) {
   {
     auto&& atomic = std::atomic<Integer>{0};
     EXPECT_EQ(fetch_reset(atomic, 0), false);
@@ -179,8 +180,8 @@ void atomic_fetch_reset_basic(Op fetch_reset = {}) {
   }
 }
 
-template <typename Integer, typename Op = folly::atomic_fetch_flip_fn>
-void atomic_fetch_flip_basic(Op fetch_flip = {}) {
+template <typename Integer, typename Op>
+void atomic_fetch_flip_basic(Op fetch_flip) {
   {
     auto&& atomic = std::atomic<Integer>{0};
     EXPECT_EQ(fetch_flip(atomic, 0), false);
@@ -207,25 +208,20 @@ class Atomic {
  public:
   using value_type = Integer;
 
-  Integer fetch_or(
-      Integer value, std::memory_order = std::memory_order_seq_cst) {
+  Integer fetch_or(Integer value, std::memory_order = seq_cst) {
     ++counts.set;
     return std::exchange(integer_, integer_ | value);
   }
-  Integer fetch_and(
-      Integer value, std::memory_order = std::memory_order_seq_cst) {
+  Integer fetch_and(Integer value, std::memory_order = seq_cst) {
     ++counts.reset;
     return std::exchange(integer_, integer_ & value);
   }
-  Integer fetch_xor(
-      Integer value, std::memory_order = std::memory_order_seq_cst) {
+  Integer fetch_xor(Integer value, std::memory_order = seq_cst) {
     ++counts.flip;
     return std::exchange(integer_, integer_ ^ value);
   }
 
-  Integer load(std::memory_order = std::memory_order_seq_cst) {
-    return integer_;
-  }
+  Integer load(std::memory_order = seq_cst) { return integer_; }
 
   Integer integer_{0};
 
@@ -237,8 +233,8 @@ class Atomic {
   counts_ counts;
 };
 
-template <typename Integer, typename Op = folly::atomic_fetch_set_fn>
-void atomic_fetch_set_non_std_atomic(Op fetch_set = {}) {
+template <typename Integer, typename Op>
+void atomic_fetch_set_non_std_atomic(Op fetch_set) {
   auto atomic = Atomic<Integer>{};
   auto& sets = atomic.counts.set;
   auto& resets = atomic.counts.reset;
@@ -257,8 +253,8 @@ void atomic_fetch_set_non_std_atomic(Op fetch_set = {}) {
   EXPECT_EQ(atomic.integer_, 0b101);
 }
 
-template <typename Integer, typename Op = folly::atomic_fetch_reset_fn>
-void atomic_fetch_reset_non_std_atomic(Op fetch_reset = {}) {
+template <typename Integer, typename Op>
+void atomic_fetch_reset_non_std_atomic(Op fetch_reset) {
   auto atomic = Atomic<Integer>{};
   auto& sets = atomic.counts.set;
   auto& resets = atomic.counts.reset;
@@ -278,8 +274,8 @@ void atomic_fetch_reset_non_std_atomic(Op fetch_reset = {}) {
   EXPECT_EQ(atomic.integer_, 0b010);
 }
 
-template <typename Integer, typename Op = folly::atomic_fetch_flip_fn>
-void atomic_fetch_flip_non_std_atomic(Op fetch_flip = {}) {
+template <typename Integer, typename Op>
+void atomic_fetch_flip_non_std_atomic(Op fetch_flip) {
   auto atomic = Atomic<Integer>{};
   auto& sets = atomic.counts.set;
   auto& resets = atomic.counts.reset;
@@ -305,129 +301,141 @@ class AtomicFetchResetTest : public ::testing::Test {};
 class AtomicFetchFlipTest : public ::testing::Test {};
 
 TEST_F(AtomicFetchSetTest, Basic) {
-  atomic_fetch_set_basic<std::uint16_t>();
-  atomic_fetch_set_basic<std::uint32_t>();
-  atomic_fetch_set_basic<std::uint64_t>();
-  atomic_fetch_set_basic<std::uint8_t>();
+  auto op = with_order{seq_cst, folly::atomic_fetch_set};
+
+  atomic_fetch_set_basic<std::uint16_t>(op);
+  atomic_fetch_set_basic<std::uint32_t>(op);
+  atomic_fetch_set_basic<std::uint64_t>(op);
+  atomic_fetch_set_basic<std::uint8_t>(op);
 }
 
 TEST_F(AtomicFetchResetTest, Basic) {
-  atomic_fetch_reset_basic<std::uint16_t>();
-  atomic_fetch_reset_basic<std::uint32_t>();
-  atomic_fetch_reset_basic<std::uint64_t>();
-  atomic_fetch_reset_basic<std::uint8_t>();
+  auto op = with_order{seq_cst, folly::atomic_fetch_reset};
+
+  atomic_fetch_reset_basic<std::uint16_t>(op);
+  atomic_fetch_reset_basic<std::uint32_t>(op);
+  atomic_fetch_reset_basic<std::uint64_t>(op);
+  atomic_fetch_reset_basic<std::uint8_t>(op);
 }
 
 TEST_F(AtomicFetchFlipTest, Basic) {
-  atomic_fetch_flip_basic<std::uint16_t>();
-  atomic_fetch_flip_basic<std::uint32_t>();
-  atomic_fetch_flip_basic<std::uint64_t>();
-  atomic_fetch_flip_basic<std::uint8_t>();
+  auto op = with_order{seq_cst, folly::atomic_fetch_flip};
+
+  atomic_fetch_flip_basic<std::uint16_t>(op);
+  atomic_fetch_flip_basic<std::uint32_t>(op);
+  atomic_fetch_flip_basic<std::uint64_t>(op);
+  atomic_fetch_flip_basic<std::uint8_t>(op);
 }
 
 TEST_F(AtomicFetchSetTest, EnsureFetchOrUsed) {
-  atomic_fetch_set_non_std_atomic<std::uint8_t>();
-  atomic_fetch_set_non_std_atomic<std::uint16_t>();
-  atomic_fetch_set_non_std_atomic<std::uint32_t>();
-  atomic_fetch_set_non_std_atomic<std::uint64_t>();
+  auto op = with_order{seq_cst, folly::atomic_fetch_set};
+
+  atomic_fetch_set_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchResetTest, EnsureFetchAndUsed) {
-  atomic_fetch_reset_non_std_atomic<std::uint8_t>();
-  atomic_fetch_reset_non_std_atomic<std::uint16_t>();
-  atomic_fetch_reset_non_std_atomic<std::uint32_t>();
-  atomic_fetch_reset_non_std_atomic<std::uint64_t>();
+  auto op = with_order{seq_cst, folly::atomic_fetch_reset};
+
+  atomic_fetch_reset_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchFlipTest, EnsureFetchXorUsed) {
-  atomic_fetch_flip_non_std_atomic<std::uint8_t>();
-  atomic_fetch_flip_non_std_atomic<std::uint16_t>();
-  atomic_fetch_flip_non_std_atomic<std::uint32_t>();
-  atomic_fetch_flip_non_std_atomic<std::uint64_t>();
+  auto op = with_order{seq_cst, folly::atomic_fetch_flip};
+
+  atomic_fetch_flip_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchSetTest, FetchSetFallback) {
-  auto fetch_set = with_seq_cst{folly::detail::atomic_fetch_set_fallback};
+  auto op = with_order{seq_cst, folly::detail::atomic_fetch_set_fallback};
 
-  atomic_fetch_set_basic<std::uint16_t>(fetch_set);
-  atomic_fetch_set_basic<std::uint32_t>(fetch_set);
-  atomic_fetch_set_basic<std::uint64_t>(fetch_set);
-  atomic_fetch_set_basic<std::uint8_t>(fetch_set);
+  atomic_fetch_set_basic<std::uint16_t>(op);
+  atomic_fetch_set_basic<std::uint32_t>(op);
+  atomic_fetch_set_basic<std::uint64_t>(op);
+  atomic_fetch_set_basic<std::uint8_t>(op);
 
-  atomic_fetch_set_non_std_atomic<std::uint8_t>(fetch_set);
-  atomic_fetch_set_non_std_atomic<std::uint16_t>(fetch_set);
-  atomic_fetch_set_non_std_atomic<std::uint32_t>(fetch_set);
-  atomic_fetch_set_non_std_atomic<std::uint64_t>(fetch_set);
+  atomic_fetch_set_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchResetTest, FetchResetFallback) {
-  auto fetch_reset = with_seq_cst{folly::detail::atomic_fetch_reset_fallback};
+  auto op = with_order{seq_cst, folly::detail::atomic_fetch_reset_fallback};
 
-  atomic_fetch_reset_basic<std::uint16_t>(fetch_reset);
-  atomic_fetch_reset_basic<std::uint32_t>(fetch_reset);
-  atomic_fetch_reset_basic<std::uint64_t>(fetch_reset);
-  atomic_fetch_reset_basic<std::uint8_t>(fetch_reset);
+  atomic_fetch_reset_basic<std::uint16_t>(op);
+  atomic_fetch_reset_basic<std::uint32_t>(op);
+  atomic_fetch_reset_basic<std::uint64_t>(op);
+  atomic_fetch_reset_basic<std::uint8_t>(op);
 
-  atomic_fetch_reset_non_std_atomic<std::uint8_t>(fetch_reset);
-  atomic_fetch_reset_non_std_atomic<std::uint16_t>(fetch_reset);
-  atomic_fetch_reset_non_std_atomic<std::uint32_t>(fetch_reset);
-  atomic_fetch_reset_non_std_atomic<std::uint64_t>(fetch_reset);
+  atomic_fetch_reset_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchFlipTest, FetchFlipFallback) {
-  auto fetch_flip = with_seq_cst{folly::detail::atomic_fetch_flip_fallback};
+  auto op = with_order{seq_cst, folly::detail::atomic_fetch_flip_fallback};
 
-  atomic_fetch_flip_basic<std::uint16_t>(fetch_flip);
-  atomic_fetch_flip_basic<std::uint32_t>(fetch_flip);
-  atomic_fetch_flip_basic<std::uint64_t>(fetch_flip);
-  atomic_fetch_flip_basic<std::uint8_t>(fetch_flip);
+  atomic_fetch_flip_basic<std::uint16_t>(op);
+  atomic_fetch_flip_basic<std::uint32_t>(op);
+  atomic_fetch_flip_basic<std::uint64_t>(op);
+  atomic_fetch_flip_basic<std::uint8_t>(op);
 
-  atomic_fetch_flip_non_std_atomic<std::uint8_t>(fetch_flip);
-  atomic_fetch_flip_non_std_atomic<std::uint16_t>(fetch_flip);
-  atomic_fetch_flip_non_std_atomic<std::uint32_t>(fetch_flip);
-  atomic_fetch_flip_non_std_atomic<std::uint64_t>(fetch_flip);
+  atomic_fetch_flip_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchSetTest, FetchSetDefault) {
-  auto fetch_set = folly::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
 
-  atomic_fetch_set_basic<std::uint16_t>(fetch_set);
-  atomic_fetch_set_basic<std::uint32_t>(fetch_set);
-  atomic_fetch_set_basic<std::uint64_t>(fetch_set);
-  atomic_fetch_set_basic<std::uint8_t>(fetch_set);
+  atomic_fetch_set_basic<std::uint16_t>(op);
+  atomic_fetch_set_basic<std::uint32_t>(op);
+  atomic_fetch_set_basic<std::uint64_t>(op);
+  atomic_fetch_set_basic<std::uint8_t>(op);
 
-  atomic_fetch_set_non_std_atomic<std::uint8_t>(fetch_set);
-  atomic_fetch_set_non_std_atomic<std::uint16_t>(fetch_set);
-  atomic_fetch_set_non_std_atomic<std::uint32_t>(fetch_set);
-  atomic_fetch_set_non_std_atomic<std::uint64_t>(fetch_set);
+  atomic_fetch_set_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_set_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchResetTest, FetchResetDefault) {
-  auto fetch_reset = folly::atomic_fetch_reset;
+  auto op = folly::atomic_fetch_reset;
 
-  atomic_fetch_reset_basic<std::uint16_t>(fetch_reset);
-  atomic_fetch_reset_basic<std::uint32_t>(fetch_reset);
-  atomic_fetch_reset_basic<std::uint64_t>(fetch_reset);
-  atomic_fetch_reset_basic<std::uint8_t>(fetch_reset);
+  atomic_fetch_reset_basic<std::uint16_t>(op);
+  atomic_fetch_reset_basic<std::uint32_t>(op);
+  atomic_fetch_reset_basic<std::uint64_t>(op);
+  atomic_fetch_reset_basic<std::uint8_t>(op);
 
-  atomic_fetch_reset_non_std_atomic<std::uint8_t>(fetch_reset);
-  atomic_fetch_reset_non_std_atomic<std::uint16_t>(fetch_reset);
-  atomic_fetch_reset_non_std_atomic<std::uint32_t>(fetch_reset);
-  atomic_fetch_reset_non_std_atomic<std::uint64_t>(fetch_reset);
+  atomic_fetch_reset_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_reset_non_std_atomic<std::uint64_t>(op);
 }
 
 TEST_F(AtomicFetchFlipTest, FetchFlipDefault) {
-  auto fetch_flip = folly::atomic_fetch_flip;
+  auto op = folly::atomic_fetch_flip;
 
-  atomic_fetch_flip_basic<std::uint16_t>(fetch_flip);
-  atomic_fetch_flip_basic<std::uint32_t>(fetch_flip);
-  atomic_fetch_flip_basic<std::uint64_t>(fetch_flip);
-  atomic_fetch_flip_basic<std::uint8_t>(fetch_flip);
+  atomic_fetch_flip_basic<std::uint16_t>(op);
+  atomic_fetch_flip_basic<std::uint32_t>(op);
+  atomic_fetch_flip_basic<std::uint64_t>(op);
+  atomic_fetch_flip_basic<std::uint8_t>(op);
 
-  atomic_fetch_flip_non_std_atomic<std::uint8_t>(fetch_flip);
-  atomic_fetch_flip_non_std_atomic<std::uint16_t>(fetch_flip);
-  atomic_fetch_flip_non_std_atomic<std::uint32_t>(fetch_flip);
-  atomic_fetch_flip_non_std_atomic<std::uint64_t>(fetch_flip);
+  atomic_fetch_flip_non_std_atomic<std::uint8_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint16_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint32_t>(op);
+  atomic_fetch_flip_non_std_atomic<std::uint64_t>(op);
 }
 
 } // namespace folly
