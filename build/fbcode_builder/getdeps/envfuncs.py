@@ -158,7 +158,7 @@ def tpx_path() -> str:
     return "xplat/testinfra/tpx/ctp.tpx"
 
 
-def path_search(env, exename, defval=None):
+def path_search(env, exename: str, defval=None):
     """Search for exename in the PATH specified in env.
     exename is eg: `ninja` and this function knows to append a .exe
     to the end on windows.
