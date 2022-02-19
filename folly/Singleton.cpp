@@ -205,7 +205,7 @@ FatalHelper __attribute__((__init_priority__(101))) fatalHelper;
 } // namespace
 
 SingletonVault::SingletonVault(Type type) noexcept : type_(type) {
-  detail::AtFork::registerHandler(
+  AtFork::registerHandler(
       this,
       /*prepare*/
       [this]() {
@@ -231,7 +231,7 @@ SingletonVault::SingletonVault(Type type) noexcept : type_(type) {
 }
 
 SingletonVault::~SingletonVault() {
-  detail::AtFork::unregisterHandler(this);
+  AtFork::unregisterHandler(this);
   destroyInstances();
 }
 

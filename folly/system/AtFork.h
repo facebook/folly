@@ -22,8 +22,10 @@
 
 namespace folly {
 
-namespace detail {
-
+//  AtFork
+//
+//  Wraps pthread_atfork on platforms with pthread_atfork, but with additional
+//  facilities.
 struct AtFork {
   static void init();
   static void registerHandler(
@@ -37,5 +39,4 @@ struct AtFork {
   static pid_t forkInstrumented(fork_t forkFn);
 };
 
-} // namespace detail
 } // namespace folly

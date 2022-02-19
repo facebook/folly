@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/AtFork.h>
+#include <folly/system/AtFork.h>
 
 #include <list>
 #include <mutex>
@@ -25,8 +25,6 @@
 #include <folly/synchronization/SanitizeThread.h>
 
 namespace folly {
-
-namespace detail {
 
 namespace {
 
@@ -165,5 +163,4 @@ pid_t AtFork::forkInstrumented(fork_t forkFn) {
   }
   return ret;
 }
-} // namespace detail
 } // namespace folly

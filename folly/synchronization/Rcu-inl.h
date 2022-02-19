@@ -15,8 +15,8 @@
  */
 
 #include <folly/Function.h>
-#include <folly/detail/AtFork.h>
 #include <folly/detail/TurnSequencer.h>
+#include <folly/system/AtFork.h>
 
 namespace folly {
 
@@ -34,7 +34,7 @@ rcu_domain<Tag>::rcu_domain(Executor* executor) noexcept
   // supported.  Using read locks in other atfork handlers is not
   // supported.  Other atfork handlers launching new child threads
   // that use read locks *is* supported.
-  detail::AtFork::registerHandler(
+  AtFork::registerHandler(
       this,
       [this]() { return syncMutex_.try_lock(); },
       [this]() { syncMutex_.unlock(); },
@@ -46,7 +46,7 @@ rcu_domain<Tag>::rcu_domain(Executor* executor) noexcept
 
 template <typename Tag>
 rcu_domain<Tag>::~rcu_domain() {
-  detail::AtFork::unregisterHandler(this);
+  AtFork::unregisterHandler(this);
 }
 
 template <typename Tag>
