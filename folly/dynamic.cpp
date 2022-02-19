@@ -290,6 +290,26 @@ dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
       arr.begin() + (first - arr.begin()), arr.begin() + (last - arr.begin()));
 }
 
+namespace {
+
+//  UBSAN traps on casts from floating-point to integral types when the
+//  floating-point value at runtime is outside of the representable range of the
+//  interal type. This is normally helpful for catching bugs. But the goal here
+//  is to test at runtime whether the floating-point value could roundtrip via
+//  the integral type back to the floating-point type unchanged. For this, UBSAN
+//  must be suppressed. It is possibleto emulate such tests, but emulation is
+//  slower.
+template <typename D, typename S>
+FOLLY_DISABLE_SANITIZERS D static_cast_nosan(S s) {
+  return static_cast<D>(s);
+}
+template <typename D, typename S>
+FOLLY_ERASE D static_cast_unchecked(S s) {
+  return kIsSanitize ? static_cast_nosan<D>(s) : static_cast<D>(s);
+}
+
+} // namespace
+
 std::size_t dynamic::hash() const {
   switch (type()) {
     case NULLT:
@@ -309,8 +329,18 @@ std::size_t dynamic::hash() const {
       return static_cast<std::size_t>(folly::hash::hash_range(begin(), end()));
     case INT64:
       return std::hash<int64_t>()(getInt());
-    case DOUBLE:
-      return std::hash<double>()(getDouble());
+    case DOUBLE: {
+      double valueAsDouble = getDouble();
+      int64_t valueAsDoubleAsInt =
+          static_cast_unchecked<int64_t>(valueAsDouble);
+      // Given that we do implicit conversion in operator==, have identical
+      // values hash the same to keep behavior consistent, but leave others use
+      // double hashing to avoid restricting the hash range unnecessarily.
+      if (double(valueAsDoubleAsInt) == valueAsDouble) {
+        return std::hash<int64_t>()(valueAsDoubleAsInt);
+      }
+      return std::hash<double>()(valueAsDouble);
+    }
     case BOOL:
       return std::hash<bool>()(getBool());
     case STRING:
