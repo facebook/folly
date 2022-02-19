@@ -41,6 +41,7 @@ TEST_F(AtForkTest, prepare) {
   auto pid = folly::kIsSanitizeThread
       ? folly::detail::AtFork::forkInstrumented(fork)
       : fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
     auto pid2 = waitpid(pid, &status, 0);
@@ -53,6 +54,7 @@ TEST_F(AtForkTest, prepare) {
   forked = false;
   folly::detail::AtFork::unregisterHandler(&foo);
   pid = fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
     auto pid2 = waitpid(pid, &status, 0);
@@ -92,6 +94,7 @@ TEST_F(AtForkTest, ordering) {
   auto pid = folly::kIsSanitizeThread
       ? folly::detail::AtFork::forkInstrumented(fork)
       : fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
     auto pid2 = waitpid(pid, &status, 0);
