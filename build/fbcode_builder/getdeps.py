@@ -988,9 +988,13 @@ jobs:
                 build_opts.allow_system_packages
                 and build_opts.host_type.get_package_manager()
             ):
-                allow_sys_arg = " --allow-system-packages"
-                out.write("    - name: Install system deps\n")
                 sudo_arg = "sudo "
+                allow_sys_arg = " --allow-system-packages"
+                if build_opts.host_type.get_package_manager() == "deb":
+                    out.write("    - name: Update system package info\n")
+                    out.write(f"      run: {sudo_arg}apt-get update\n")
+
+                out.write("    - name: Install system deps\n")
                 if build_opts.is_darwin():
                     # brew is installed as regular user
                     sudo_arg = ""
