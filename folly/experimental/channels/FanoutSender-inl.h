@@ -44,11 +44,17 @@ FanoutSender<ValueType>::~FanoutSender() {
 template <typename ValueType>
 Receiver<ValueType> FanoutSender<ValueType>::subscribe(
     std::vector<ValueType> initialValues) {
-  clearSendersWithClosedReceivers();
   auto [newReceiver, newSender] = Channel<ValueType>::create();
   for (auto&& initialValue : initialValues) {
     newSender.write(std::move(initialValue));
   }
+  subscribe(std::move(newSender));
+  return std::move(newReceiver);
+}
+
+template <typename ValueType>
+void FanoutSender<ValueType>::subscribe(Sender<ValueType> newSender) {
+  clearSendersWithClosedReceivers();
   if (!anySubscribers()) {
     // There are currently no output receivers. Store the new output receiver.
     senders_.set(detail::senderGetBridge(newSender).release());
@@ -65,7 +71,6 @@ Receiver<ValueType> FanoutSender<ValueType>::subscribe(
     auto* senderSet = getSenderSet();
     senderSet->insert(std::move(detail::senderGetBridge(newSender)));
   }
-  return std::move(newReceiver);
 }
 
 template <typename ValueType>
