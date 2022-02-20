@@ -30,9 +30,9 @@ struct AtFork {
   static void init();
   static void registerHandler(
       void const* handle,
-      folly::Function<bool()> prepare,
-      folly::Function<void()> parent,
-      folly::Function<void()> child);
+      Function<bool()> prepare,
+      Function<void()> parent,
+      Function<void()> child);
   static void unregisterHandler(void const* handle);
 
   using fork_t = pid_t();

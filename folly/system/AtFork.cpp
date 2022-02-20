@@ -41,9 +41,9 @@ thread_local bool SkipAtForkHandlers::value;
 
 struct AtForkTask {
   void const* handle;
-  folly::Function<bool()> prepare;
-  folly::Function<void()> parent;
-  folly::Function<void()> child;
+  Function<bool()> prepare;
+  Function<void()> parent;
+  Function<void()> child;
 };
 
 class AtForkList {
@@ -128,9 +128,9 @@ void AtFork::init() {
 
 void AtFork::registerHandler(
     void const* handle,
-    folly::Function<bool()> prepare,
-    folly::Function<void()> parent,
-    folly::Function<void()> child) {
+    Function<bool()> prepare,
+    Function<void()> parent,
+    Function<void()> child) {
   std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);
   AtForkList::instance().tasks.push_back(
       {handle, std::move(prepare), std::move(parent), std::move(child)});
