@@ -111,8 +111,7 @@ class AtForkList {
   AtForkList() {
     int ret = 0;
 #if FOLLY_HAVE_PTHREAD_ATFORK // if no pthread_atfork, probably no fork either
-    ret = pthread_atfork(
-        &AtForkList::prepare, &AtForkList::parent, &AtForkList::child);
+    ret = pthread_atfork(&prepare, &parent, &child);
 #endif
     if (ret != 0) {
       throw_exception<std::system_error>(
