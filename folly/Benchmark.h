@@ -37,6 +37,7 @@
 #include <glog/logging.h>
 
 DECLARE_bool(benchmark);
+DECLARE_uint32(bm_result_width_chars);
 
 namespace folly {
 

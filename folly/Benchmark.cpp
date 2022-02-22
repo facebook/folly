@@ -75,6 +75,9 @@ DEFINE_int64(
 DEFINE_int32(
     bm_max_secs, 1, "Maximum # of seconds we'll spend on each benchmark.");
 
+DEFINE_uint32(
+    bm_result_width_chars, 76, "Width of results table in characters");
+
 namespace folly {
 
 std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
@@ -352,7 +355,7 @@ class BenchmarkResultsPrinter {
             size_t{0},
             [](size_t acc, auto&& name) { return acc + 2 + name.length(); })} {}
 
-  static constexpr unsigned int columns{76};
+  unsigned int columns = FLAGS_bm_result_width_chars;
   void separator(char pad) {
     puts(string(columns + namesLength_, pad).c_str());
   }
@@ -505,7 +508,7 @@ void printResultComparison(
   }
   //
   // Width available
-  static const unsigned int columns = 76;
+  const unsigned int columns = FLAGS_bm_result_width_chars;
 
   // Compute the longest benchmark name
   size_t longestName = 0;
