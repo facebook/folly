@@ -20,6 +20,7 @@
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
+#include <folly/futures/Future.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -64,7 +65,7 @@ toSemiFuture(SemiAwaitable&& a) {
 
 // Converts the given SemiAwaitable to a Future, starting it on the Executor
 template <typename SemiAwaitable>
-Future<
+folly::Future<
     lift_unit_t<semi_await_result_t<remove_reference_wrapper_t<SemiAwaitable>>>>
 toFuture(SemiAwaitable&& a, Executor::KeepAlive<> ex) {
   return toTask(std::forward<SemiAwaitable>(a)).scheduleOn(ex).start().via(ex);
