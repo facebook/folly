@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
