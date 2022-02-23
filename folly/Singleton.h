@@ -750,6 +750,7 @@ class LeakySingleton {
     }
 
     auto& entry = entryInstance();
+    std::lock_guard<std::mutex> lg(entry.mutex);
     if (entry.ptr) {
       annotate_object_leaked(std::exchange(entry.ptr, nullptr));
     }
