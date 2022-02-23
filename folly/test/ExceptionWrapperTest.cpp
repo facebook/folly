@@ -23,6 +23,7 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
+using namespace ::testing;
 
 class AbstractIntException : public std::exception {
  public:
@@ -76,13 +77,9 @@ TEST(ExceptionWrapper, throw_test) {
   std::vector<exception_wrapper> container;
   container.push_back(ew);
 
-  try {
-    container[0].throw_exception();
-  } catch (std::runtime_error& err) {
-    std::string expected = "payload";
-    std::string actual = err.what();
-    EXPECT_EQ(expected, actual);
-  }
+  EXPECT_THAT(
+      [&]() { container[0].throw_exception(); },
+      ThrowsMessage<std::runtime_error>(StrEq("payload")));
 }
 
 // Tests that when we call throw_with_nested, we can unnest it later.
@@ -90,15 +87,13 @@ TEST(ExceptionWrapper, throw_with_nested) {
   auto ew = make_exception_wrapper<std::runtime_error>("inner");
   try {
     ew.throw_with_nested(std::runtime_error("outer"));
-    ADD_FAILURE();
+    // throw_with_nested is marked [[noreturn]] so an exception is guaranteed.
   } catch (std::runtime_error& outer) {
     EXPECT_STREQ(outer.what(), "outer");
-    try {
-      std::rethrow_if_nested(outer);
-      ADD_FAILURE();
-    } catch (std::runtime_error& inner) {
-      EXPECT_STREQ(inner.what(), "inner");
-    }
+
+    EXPECT_THAT(
+        [&]() { std::rethrow_if_nested(outer); },
+        ThrowsMessage<std::runtime_error>(StrEq("inner")));
   }
 }
 
@@ -438,6 +433,7 @@ TEST(ExceptionWrapper, non_std_exception_test) {
   // access their value is to explicity rethrow and catch it.
   try {
     ew.throw_exception();
+    // throw_exception is marked [[noreturn]] so an exception is guaranteed.
   } catch /* nolint */ (int& i) {
     EXPECT_EQ(i, expected);
   }
@@ -624,29 +620,9 @@ TEST(ExceptionWrapper, handle_std_exception_propagated) {
   exception_wrapper const ew_small(std::runtime_error{"hello world"});
   exception_wrapper const ew_big(BigRuntimeError{"hello world"});
 
-  try {
-    ew_eptr.handle();
-  } catch (const std::runtime_error&) {
-    SUCCEED();
-  } catch (const std::exception&) {
-    ADD_FAILURE();
-  }
-
-  try {
-    ew_small.handle();
-  } catch (const std::runtime_error&) {
-    SUCCEED();
-  } catch (const std::exception&) {
-    ADD_FAILURE();
-  }
-
-  try {
-    ew_big.handle();
-  } catch (const std::runtime_error&) {
-    SUCCEED();
-  } catch (const std::exception&) {
-    ADD_FAILURE();
-  }
+  EXPECT_THROW(ew_eptr.handle(), std::runtime_error);
+  EXPECT_THROW(ew_small.handle(), std::runtime_error);
+  EXPECT_THROW(ew_big.handle(), std::runtime_error);
 }
 
 TEST(ExceptionWrapper, handle_non_std_exception_small) {
@@ -795,7 +771,7 @@ TEST(ExceptionWrapper, self_swap_test) {
   ew = std::move(ew2); // should not crash
 }
 
-TEST(ExceptionWrapper, termiante_with_test) {
+TEST(ExceptionWrapper, terminate_with_test) {
   auto ew = make_exception_wrapper<int>(42);
   EXPECT_DEATH(
       try { ew.terminate_with(); } catch (...){}, "int");
