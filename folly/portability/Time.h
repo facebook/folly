@@ -50,9 +50,9 @@
 #define CLOCK_PROCESS_CPUTIME_ID 2
 #define CLOCK_THREAD_CPUTIME_ID 3
 
-typedef uint8_t clockid_t;
-extern "C" int clock_gettime(clockid_t clk_id, struct timespec* ts);
-extern "C" int clock_getres(clockid_t clk_id, struct timespec* ts);
+typedef clockid_t clockid;
+extern "C" int clock_gettime(clockid clk_id, struct timespec* ts);
+extern "C" int clock_getres(clockid clk_id, struct timespec* ts);
 #endif
 
 #ifdef _WIN32
