@@ -21,39 +21,38 @@
 
 #include <folly/portability/Config.h>
 
-// OSX is a pain. The XCode 8 SDK always declares clock_gettime
-// even if the target OS version doesn't support it, so you get
-// an error at runtime because it can't resolve the symbol. We
-// solve that by pretending we have it here in the header and
-// then enable our implementation on the source side so that
-// gets linked in instead.
-#if defined(__MACH__) &&                                               \
-        ((!defined(TARGET_OS_OSX) || TARGET_OS_OSX) &&                 \
-         (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12)) || \
-    (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE != 0 &&             \
-     (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_10_0))
-
+#if defined(__MACH__) && defined(__CLOCK_AVAILABILITY)
+// CMake might not look for clock_gettime in the <time.h> from the selected SDK
 #ifdef FOLLY_HAVE_CLOCK_GETTIME
 #undef FOLLY_HAVE_CLOCK_GETTIME
 #endif
 
+// If __CLOCK_AVAILABILITY is defined, all clock APIs are declared
 #define FOLLY_HAVE_CLOCK_GETTIME 1
-#define FOLLY_FORCE_CLOCK_GETTIME_DEFINITION 1
+
+// Force use of the folly_* versions to avoid NULL weak symbol at runtime case
+#define clock_gettime folly_clock_gettime
+#define clock_getres folly_clock_getres
 
 #endif
 
-// These aren't generic implementations, so we can only declare them on
-// platforms we support.
-#if !FOLLY_HAVE_CLOCK_GETTIME && (defined(__MACH__) || defined(_WIN32))
+#if !FOLLY_HAVE_CLOCK_GETTIME
+// These symbols and type are not defined if we haven't found clock_gettime yet
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1
 #define CLOCK_PROCESS_CPUTIME_ID 2
 #define CLOCK_THREAD_CPUTIME_ID 3
 
 typedef uint8_t clockid_t;
-extern "C" int clock_gettime(clockid_t clk_id, struct timespec* ts);
-extern "C" int clock_getres(clockid_t clk_id, struct timespec* ts);
+
+// Force use of the folly_* versions as a fallback
+#define clock_gettime folly_clock_gettime
+#define clock_getres folly_clock_getres
+
 #endif
+
+extern "C" int folly_clock_gettime(clockid_t clk_id, struct timespec* ts);
+extern "C" int folly_clock_getres(clockid_t clk_id, struct timespec* ts);
 
 #ifdef _WIN32
 #define TM_YEAR_BASE (1900)
