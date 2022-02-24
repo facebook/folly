@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-#include <folly/FollyMemcpy.h>
-
 #include <cstring>
 
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+
+extern "C" {
+void* __folly_memcpy(
+    void* __restrict dst, const void* __restrict src, size_t size);
+}
 
 extern "C" FOLLY_KEEP void check_c_memcpy(void* d, void* s, size_t n) {
   memcpy(d, s, n);
