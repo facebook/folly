@@ -31,16 +31,16 @@ enum class align_val_t : std::size_t {};
 
 //  operator_new
 struct operator_new_fn {
-  FOLLY_NODISCARD void* operator()( //
+  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s) const {
     return ::operator new(s);
   }
-  FOLLY_NODISCARD void* operator()( //
+  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s,
       std::nothrow_t const&) const noexcept {
     return ::operator new(s, std::nothrow);
   }
-  FOLLY_NODISCARD void* operator()( //
+  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s,
       FOLLY_MAYBE_UNUSED align_val_t const a) const {
 #if __cpp_aligned_new >= 201606 || _CPPLIB_VER
@@ -49,7 +49,7 @@ struct operator_new_fn {
     return ::operator new(s);
 #endif
   }
-  FOLLY_NODISCARD void* operator()( //
+  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s,
       FOLLY_MAYBE_UNUSED align_val_t const a,
       std::nothrow_t const&) const noexcept {
@@ -64,11 +64,11 @@ FOLLY_INLINE_VARIABLE constexpr operator_new_fn operator_new{};
 
 //  operator_delete
 struct operator_delete_fn {
-  void operator()( //
+  FOLLY_ERASE void operator()( //
       void* const p) const noexcept {
     return ::operator delete(p);
   }
-  void operator()( //
+  FOLLY_ERASE void operator()( //
       void* const p,
       FOLLY_MAYBE_UNUSED std::size_t const s) const noexcept {
 #if __cpp_sized_deallocation >= 201309L || _CPPLIB_VER
@@ -77,7 +77,7 @@ struct operator_delete_fn {
     return ::operator delete(p);
 #endif
   }
-  void operator()( //
+  FOLLY_ERASE void operator()( //
       void* const p,
       FOLLY_MAYBE_UNUSED align_val_t const a) const noexcept {
 #if __cpp_aligned_new >= 201606 || _CPPLIB_VER
@@ -86,7 +86,7 @@ struct operator_delete_fn {
     return ::operator delete(p);
 #endif
   }
-  void operator()( //
+  FOLLY_ERASE void operator()( //
       void* const p,
       FOLLY_MAYBE_UNUSED std::size_t const s,
       FOLLY_MAYBE_UNUSED align_val_t const a) const noexcept {
