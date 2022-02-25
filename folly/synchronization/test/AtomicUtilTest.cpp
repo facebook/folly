@@ -327,6 +327,33 @@ TEST_F(AtomicFetchFlipTest, Basic) {
   atomic_fetch_flip_basic<std::uint8_t>(op);
 }
 
+TEST_F(AtomicFetchSetTest, BasicRelaxed) {
+  auto op = with_order{relaxed, folly::atomic_fetch_set};
+
+  atomic_fetch_set_basic<std::uint16_t>(op);
+  atomic_fetch_set_basic<std::uint32_t>(op);
+  atomic_fetch_set_basic<std::uint64_t>(op);
+  atomic_fetch_set_basic<std::uint8_t>(op);
+}
+
+TEST_F(AtomicFetchResetTest, BasicRelaxed) {
+  auto op = with_order{relaxed, folly::atomic_fetch_reset};
+
+  atomic_fetch_reset_basic<std::uint16_t>(op);
+  atomic_fetch_reset_basic<std::uint32_t>(op);
+  atomic_fetch_reset_basic<std::uint64_t>(op);
+  atomic_fetch_reset_basic<std::uint8_t>(op);
+}
+
+TEST_F(AtomicFetchFlipTest, BasicRelaxed) {
+  auto op = with_order{relaxed, folly::atomic_fetch_flip};
+
+  atomic_fetch_flip_basic<std::uint16_t>(op);
+  atomic_fetch_flip_basic<std::uint32_t>(op);
+  atomic_fetch_flip_basic<std::uint64_t>(op);
+  atomic_fetch_flip_basic<std::uint8_t>(op);
+}
+
 TEST_F(AtomicFetchSetTest, EnsureFetchOrUsed) {
   auto op = with_order{seq_cst, folly::atomic_fetch_set};
 
