@@ -334,10 +334,9 @@ TEST(RetryingTest, large_retries) {
   newMemLimit.rlim_cur =
       std::min(static_cast<rlim_t>(1UL << 30), oldMemLimit.rlim_max);
   newMemLimit.rlim_max = oldMemLimit.rlim_max;
-  if (!folly::kIsSanitize) { // sanitizers reserve outside of the rlimit
-    PCHECK(setrlimit(RLIMIT_AS, &newMemLimit) == 0);
-  }
-  SCOPE_EXIT { PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0); };
+  auto const lowered = // sanitizers reserve outside of the rlimit
+      !folly::kIsSanitize && setrlimit(RLIMIT_AS, &newMemLimit) != 0;
+  SCOPE_EXIT { PCHECK(!lowered || setrlimit(RLIMIT_AS, &oldMemLimit) == 0); };
 #endif
 
   TestExecutor executor(4);
