@@ -72,10 +72,13 @@
 
 #if defined(__AVX2__)
 
+#if defined(PREFETCH)
+#undef PREFETCH
+#endif
 #if __PRFCHW__ // Broadwell+
-#define FOLLY_MEMCPY_PREFETCH prefetchw
+#define PREFETCH prefetchw
 #else
-#define FOLLY_MEMCPY_PREFETCH prefetcht0
+#define PREFETCH prefetcht0
 #endif
 
 // This threshold is half of L1 cache on a Skylake machine, which means that
@@ -140,8 +143,8 @@ __folly_memcpy:
         test        %rdx, %rdx
         je          .L_EQ0
 
-        FOLLY_MEMCPY_PREFETCH (%rdi)
-        FOLLY_MEMCPY_PREFETCH -1(%rdi,%rdx)
+        PREFETCH    (%rdi)
+        PREFETCH    -1(%rdi,%rdx)
 
         cmp         $8, %rdx
         jb          .L_GE1_LE7
@@ -198,7 +201,7 @@ __folly_memcpy:
         cmp         $64, %rdx
         jbe         .L_GE33_LE64
 
-        FOLLY_MEMCPY_PREFETCH 64(%rdi)
+        PREFETCH    64(%rdi)
 
         vmovdqu     32(%rsi), %ymm1
         vmovdqu     -64(%rsi,%rdx), %ymm6
@@ -206,7 +209,7 @@ __folly_memcpy:
         cmp         $128, %rdx
         jbe         .L_GE65_LE128
 
-        FOLLY_MEMCPY_PREFETCH 128(%rdi)
+        PREFETCH    128(%rdi)
 
         vmovdqu     64(%rsi), %ymm2
         vmovdqu     -96(%rsi,%rdx), %ymm5
@@ -214,7 +217,7 @@ __folly_memcpy:
         cmp         $192, %rdx
         jbe         .L_GE129_LE192
 
-        FOLLY_MEMCPY_PREFETCH 192(%rdi)
+        PREFETCH    192(%rdi)
 
         vmovdqu     96(%rsi), %ymm3
         vmovdqu     -128(%rsi,%rdx), %ymm4
@@ -223,7 +226,7 @@ __folly_memcpy:
         jbe         .L_GE193_LE256
 
 .L_GE257:
-        FOLLY_MEMCPY_PREFETCH 256(%rdi)
+        PREFETCH    256(%rdi)
 
         // Check if there is an overlap. If there is an overlap then the caller
         // has a bug since this is undefined behavior. However, for legacy
@@ -278,8 +281,8 @@ __folly_memcpy:
 
         .align      2
 .L_ALIGNED_DST_LOOP:
-        FOLLY_MEMCPY_PREFETCH 128(%rdi)
-        FOLLY_MEMCPY_PREFETCH 192(%rdi)
+        PREFETCH    128(%rdi)
+        PREFETCH    192(%rdi)
 
         vmovdqu     (%rsi), %ymm0
         vmovdqu     32(%rsi), %ymm1
@@ -364,8 +367,8 @@ __folly_memcpy:
 
 
 .L_OVERLAP_FWD_ALIGNED_DST_LOOP:
-        FOLLY_MEMCPY_PREFETCH 128(%rdi)
-        FOLLY_MEMCPY_PREFETCH 192(%rdi)
+        PREFETCH    128(%rdi)
+        PREFETCH    192(%rdi)
 
         vmovdqu       (%rsi), %ymm0
         vmovdqu     32(%rsi), %ymm1
@@ -416,8 +419,8 @@ __folly_memcpy:
 
 
 .L_OVERLAP_BWD_ALIGNED_DST_LOOP:
-        FOLLY_MEMCPY_PREFETCH -128(%rdi)
-        FOLLY_MEMCPY_PREFETCH -192(%rdi)
+        PREFETCH    -128(%rdi)
+        PREFETCH    -192(%rdi)
 
         vmovdqu      -32(%rsi), %ymm4
         vmovdqu      -64(%rsi), %ymm5
