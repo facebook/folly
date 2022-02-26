@@ -232,19 +232,19 @@ inline bool atomic_fetch_flip_native(
       bool out = false;                                                   \
       if (order == std::memory_order_relaxed) {                           \
         if (sizeof(Int) == 2) {                                           \
-          asm volatile("lock " #instr "w %2, %1"                          \
-                       : "=@ccc"(out), "+m"(*ptr)                         \
-                       : "ri"(bit));                                      \
+          asm("lock " #instr "w %2, %1"                                   \
+              : "=@ccc"(out), "+m"(*ptr)                                  \
+              : "ri"(bit));                                               \
         }                                                                 \
         if (sizeof(Int) == 4) {                                           \
-          asm volatile("lock " #instr "l %2, %1"                          \
-                       : "=@ccc"(out), "+m"(*ptr)                         \
-                       : "ri"(bit));                                      \
+          asm("lock " #instr "l %2, %1"                                   \
+              : "=@ccc"(out), "+m"(*ptr)                                  \
+              : "ri"(bit));                                               \
         }                                                                 \
         if (sizeof(Int) == 8) {                                           \
-          asm volatile("lock " #instr "q %2, %1"                          \
-                       : "=@ccc"(out), "+m"(*ptr)                         \
-                       : "ri"(bit));                                      \
+          asm("lock " #instr "q %2, %1"                                   \
+              : "=@ccc"(out), "+m"(*ptr)                                  \
+              : "ri"(bit));                                               \
         }                                                                 \
       } else {                                                            \
         if (sizeof(Int) == 2) {                                           \
