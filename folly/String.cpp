@@ -119,8 +119,7 @@ FOLLY_STORAGE_CONSTEXPR decltype(cUnescapeTable) cUnescapeTable =
     make_array_with<256>(string_table_c_unescape_make_item{});
 FOLLY_STORAGE_CONSTEXPR decltype(hexTable) hexTable =
     make_array_with<256>(string_table_hex_make_item{});
-FOLLY_STORAGE_CONSTEXPR decltype(uriEscapeTable) uriEscapeTable =
-    make_array_with<256>(string_table_uri_escape_make_item{});
+
 
 } // namespace detail
 
