@@ -280,7 +280,8 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     threadIdCollector_->removeTid(folly::getOSThreadID());
   });
   while (true) {
-    auto task = taskQueue_->try_take_for(threadTimeout_);
+    auto task = taskQueue_->try_take_for(
+        threadTimeout_.load(std::memory_order_relaxed));
 
     // Handle thread stopping, either by task timeout, or
     // by 'poison' task added in join() or stop().
