@@ -16,6 +16,7 @@
 
 #include <folly/ExceptionWrapper.h>
 
+#include <memory>
 #include <stdexcept>
 
 #include <folly/Conv.h>
@@ -146,6 +147,9 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_FALSE(cew.with_exception([&](std::runtime_error&) {}));
   EXPECT_FALSE(cew.with_exception([&](int&) {}));
   */
+
+  // a move-only callback type:
+  cew.with_exception([v = std::make_unique<int>(7)](const std::exception&) {});
 }
 
 TEST(ExceptionWrapper, get_or_make_exception_ptr_test) {
