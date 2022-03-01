@@ -118,7 +118,8 @@ void BENCHFUN(resize)(size_t iters, size_t arg) {
 BENCHMARK_PARAM(BENCHFUN(resize), 524288)
 
 void BENCHFUN(findSuccessful)(size_t iters, size_t /* arg */) {
-  size_t pos, len;
+  size_t pos = 0;
+  size_t len = 0;
   STRING s;
 
   BENCHMARK_SUSPEND {
