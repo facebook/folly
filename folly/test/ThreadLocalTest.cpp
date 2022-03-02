@@ -40,6 +40,7 @@
 
 #include <folly/Memory.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
@@ -47,6 +48,15 @@
 #include <folly/system/ThreadId.h>
 
 using namespace folly;
+
+extern "C" FOLLY_KEEP int* check_thread_local_get(ThreadLocal<int>& o) {
+  return o.get();
+}
+
+extern "C" FOLLY_KEEP int* check_thread_local_get_existing(
+    ThreadLocal<int>& o) {
+  return o.get_existing();
+}
 
 struct Widget {
   static int totalVal_;
@@ -242,7 +252,7 @@ TEST(ThreadLocal, GetWithoutCreateUncreated) {
   Widget::totalMade_ = 0;
   ThreadLocal<Widget> w;
   std::thread([&w]() {
-    auto ptr = w.getIfExist();
+    auto ptr = w.get_existing();
     if (ptr) {
       ptr->val_++;
     }
@@ -256,7 +266,7 @@ TEST(ThreadLocal, GetWithoutCreateGets) {
   ThreadLocal<Widget> w;
   std::thread([&w]() {
     w->val_++;
-    auto ptr = w.getIfExist();
+    auto ptr = w.get_existing();
     if (ptr) {
       ptr->val_++;
     }

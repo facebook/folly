@@ -59,6 +59,11 @@ class FanoutSender {
   Receiver<ValueType> subscribe(std::vector<ValueType> initialValues = {});
 
   /**
+   * Subscribes with an already-created sender.
+   */
+  void subscribe(Sender<ValueType> sender);
+
+  /**
    * Returns whether this fanout sender has any active output receivers.
    */
   bool anySubscribers();

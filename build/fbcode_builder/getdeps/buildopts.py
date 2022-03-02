@@ -176,7 +176,7 @@ class BuildOptions(object):
     def is_freebsd(self):
         return self.host_type.is_freebsd()
 
-    def get_num_jobs(self, job_weight: int):
+    def get_num_jobs(self, job_weight: int) -> int:
         """Given an estimated job_weight in MiB, compute a reasonable concurrency limit."""
         if self.specified_num_jobs:
             return self.specified_num_jobs
@@ -315,7 +315,7 @@ class BuildOptions(object):
 
         return env
 
-    def add_homebrew_package_to_env(self, package, env):
+    def add_homebrew_package_to_env(self, package, env) -> bool:
         prefix = homebrew_package_prefix(package)
         if prefix and os.path.exists(prefix):
             return self.add_prefix_to_env(
@@ -472,7 +472,7 @@ def find_unused_drive_letter():
     return available[-1]
 
 
-def create_subst_path(path) -> str:
+def create_subst_path(path: str) -> str:
     for _attempt in range(0, 24):
         drive = find_existing_win32_subst_for_path(
             path, subst_mapping=list_win32_subst_letters()

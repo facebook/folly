@@ -34,7 +34,7 @@ TEST_F(HardwareTest, RtmBasicUsage) {
     EXPECT_FALSE(rtmEnabled());
   }
 
-  unsigned status;
+  unsigned status = 0;
   static constexpr uint8_t kAbortCode = 1;
   unsigned successCounts = 0;
   unsigned abortCounts = 0;

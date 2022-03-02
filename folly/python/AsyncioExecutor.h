@@ -80,13 +80,8 @@ class NotificationQueueAsyncioExecutor : public AsyncioExecutor {
 
   void driveNoDiscard() noexcept override {
     consumer_.consume([&](Func&& func) {
-      try {
-        func();
-      } catch (...) {
-        LOG(ERROR) << "Exception thrown by NotificationQueueExecutor task."
-                   << "Exception message: "
-                   << folly::exceptionStr(std::current_exception());
-      }
+      invokeCatchingExns(
+          "NotificationQueueExecutor: task", std::exchange(func, {}));
     });
   }
 

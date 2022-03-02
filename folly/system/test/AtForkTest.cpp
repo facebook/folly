@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/AtFork.h>
+#include <folly/system/AtFork.h>
 
 #include <atomic>
 #include <mutex>
@@ -30,7 +30,7 @@ class AtForkTest : public testing::Test {};
 TEST_F(AtForkTest, prepare) {
   int foo;
   bool forked = false;
-  folly::detail::AtFork::registerHandler(
+  folly::AtFork::registerHandler(
       &foo,
       [&] {
         forked = true;
@@ -38,9 +38,10 @@ TEST_F(AtForkTest, prepare) {
       },
       [] {},
       [] {});
-  auto pid = folly::kIsSanitizeThread
-      ? folly::detail::AtFork::forkInstrumented(fork)
+  auto pid = folly::kIsSanitizeThread //
+      ? folly::AtFork::forkInstrumented(fork)
       : fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
     auto pid2 = waitpid(pid, &status, 0);
@@ -51,8 +52,9 @@ TEST_F(AtForkTest, prepare) {
   }
   EXPECT_TRUE(forked);
   forked = false;
-  folly::detail::AtFork::unregisterHandler(&foo);
+  folly::AtFork::unregisterHandler(&foo);
   pid = fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
     auto pid2 = waitpid(pid, &status, 0);
@@ -70,12 +72,12 @@ TEST_F(AtForkTest, ordering) {
   std::mutex b;
   int foo;
   int foo2;
-  folly::detail::AtFork::registerHandler(
+  folly::AtFork::registerHandler(
       &foo,
       [&] { return a.try_lock(); },
       [&] { a.unlock(); },
       [&] { a.unlock(); });
-  folly::detail::AtFork::registerHandler(
+  folly::AtFork::registerHandler(
       &foo2,
       [&] { return b.try_lock(); },
       [&] { b.unlock(); },
@@ -89,9 +91,10 @@ TEST_F(AtForkTest, ordering) {
   });
   while (!started) {
   }
-  auto pid = folly::kIsSanitizeThread
-      ? folly::detail::AtFork::forkInstrumented(fork)
+  auto pid = folly::kIsSanitizeThread //
+      ? folly::AtFork::forkInstrumented(fork)
       : fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
     auto pid2 = waitpid(pid, &status, 0);

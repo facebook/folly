@@ -61,7 +61,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
 
   void reset() {
     // Delete all but source node, and reset dependency properties
-    Handle source_node;
+    Handle source_node = 0;
     std::unordered_set<Handle> memo;
     for (auto& node : nodes) {
       for (Handle handle : node.dependencies) {

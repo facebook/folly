@@ -227,25 +227,44 @@ inline bool atomic_fetch_flip_native(
 #define FOLLY_DETAIL_ATOMIC_BIT_OP_DEFINE(instr)                          \
   struct atomic_fetch_bit_op_native_##instr##_fn {                        \
     template <typename Int>                                               \
-    FOLLY_ERASE bool operator()(Int* ptr, Int bit) const {                \
+    FOLLY_ERASE bool operator()(                                          \
+        Int* ptr, Int bit, std::memory_order order) const {               \
       bool out = false;                                                   \
-      if (sizeof(Int) == 2) {                                             \
-        asm volatile("lock " #instr "w %1, (%2); setc %0"                 \
-                     : "=r"(out)                                          \
-                     : "ri"(bit), "r"(ptr)                                \
-                     : "memory", "flags");                                \
-      }                                                                   \
-      if (sizeof(Int) == 4) {                                             \
-        asm volatile("lock " #instr "l %1, (%2); setc %0"                 \
-                     : "=r"(out)                                          \
-                     : "ri"(bit), "r"(ptr)                                \
-                     : "memory", "flags");                                \
-      }                                                                   \
-      if (sizeof(Int) == 8) {                                             \
-        asm volatile("lock " #instr "q %1, (%2); setc %0"                 \
-                     : "=r"(out)                                          \
-                     : "ri"(bit), "r"(ptr)                                \
-                     : "memory", "flags");                                \
+      if (order == std::memory_order_relaxed) {                           \
+        if (sizeof(Int) == 2) {                                           \
+          asm("lock " #instr "w %2, %1"                                   \
+              : "=@ccc"(out), "+m"(*ptr)                                  \
+              : "ri"(bit));                                               \
+        }                                                                 \
+        if (sizeof(Int) == 4) {                                           \
+          asm("lock " #instr "l %2, %1"                                   \
+              : "=@ccc"(out), "+m"(*ptr)                                  \
+              : "ri"(bit));                                               \
+        }                                                                 \
+        if (sizeof(Int) == 8) {                                           \
+          asm("lock " #instr "q %2, %1"                                   \
+              : "=@ccc"(out), "+m"(*ptr)                                  \
+              : "ri"(bit));                                               \
+        }                                                                 \
+      } else {                                                            \
+        if (sizeof(Int) == 2) {                                           \
+          asm volatile("lock " #instr "w %1, (%2)"                        \
+                       : "=@ccc"(out)                                     \
+                       : "ri"(bit), "r"(ptr)                              \
+                       : "memory");                                       \
+        }                                                                 \
+        if (sizeof(Int) == 4) {                                           \
+          asm volatile("lock " #instr "l %1, (%2)"                        \
+                       : "=@ccc"(out)                                     \
+                       : "ri"(bit), "r"(ptr)                              \
+                       : "memory");                                       \
+        }                                                                 \
+        if (sizeof(Int) == 8) {                                           \
+          asm volatile("lock " #instr "q %1, (%2)"                        \
+                       : "=@ccc"(out)                                     \
+                       : "ri"(bit), "r"(ptr)                              \
+                       : "memory");                                       \
+        }                                                                 \
       }                                                                   \
       return out;                                                         \
     }                                                                     \
@@ -273,7 +292,7 @@ FOLLY_ERASE bool atomic_fetch_bit_op_native_(
   if (atomic_size < lo_size || atomic_size > hi_size || folly::kIsSanitize) {
     return fb(atomic, bit, order);
   }
-  return op(reinterpret_cast<Integer*>(&atomic), Integer(bit));
+  return op(reinterpret_cast<Integer*>(&atomic), Integer(bit), order);
 }
 
 template <typename Integer>

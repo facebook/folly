@@ -75,6 +75,9 @@ DEFINE_int64(
 DEFINE_int32(
     bm_max_secs, 1, "Maximum # of seconds we'll spend on each benchmark.");
 
+DEFINE_uint32(
+    bm_result_width_chars, 76, "Width of results table in characters");
+
 namespace folly {
 
 std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
@@ -352,7 +355,7 @@ class BenchmarkResultsPrinter {
             size_t{0},
             [](size_t acc, auto&& name) { return acc + 2 + name.length(); })} {}
 
-  static constexpr unsigned int columns{76};
+  unsigned int columns = FLAGS_bm_result_width_chars;
   void separator(char pad) {
     puts(string(columns + namesLength_, pad).c_str());
   }
@@ -505,7 +508,7 @@ void printResultComparison(
   }
   //
   // Width available
-  static const unsigned int columns = 76;
+  const unsigned int columns = FLAGS_bm_result_width_chars;
 
   // Compute the longest benchmark name
   size_t longestName = 0;
@@ -620,9 +623,8 @@ runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
     // counters have been used, then the header can be printed out properly
     if (printer != nullptr) {
       printer->print({{bm.file, bm.name, elapsed.first, elapsed.second}});
-    } else {
-      results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
     }
+    results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
 
     // get all counter names
     for (auto const& kv : elapsed.second) {
@@ -676,9 +678,10 @@ void runBenchmarks() {
       });
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
-  auto benchmarkResults = runBenchmarksWithPrinter(
-      FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter ? &printer
-                                                                 : nullptr);
+  const bool shouldPrintInline =
+      FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter;
+  auto benchmarkResults =
+      runBenchmarksWithPrinter(shouldPrintInline ? &printer : nullptr);
 
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
 
@@ -687,7 +690,7 @@ void runBenchmarks() {
   } else if (!FLAGS_bm_relative_to.empty()) {
     printResultComparison(
         resultsFromFile(FLAGS_bm_relative_to), benchmarkResults.second);
-  } else {
+  } else if (!shouldPrintInline) {
     printer = BenchmarkResultsPrinter{std::move(benchmarkResults.first)};
     printer.print(benchmarkResults.second);
     printer.separator('=');

@@ -52,6 +52,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       -Wno-deprecated-declarations
       -Wno-sign-compare
       -Wno-unused
+      -Wuninitialized
       -Wunused-label
       -Wunused-result
       ${FOLLY_CXX_FLAGS}

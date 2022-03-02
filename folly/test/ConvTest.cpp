@@ -520,6 +520,32 @@ TEST(Conv, FBStringToString) {
   EXPECT_EQ(ret2, "foo2");
 }
 
+TEST(Conv, RoundTripInfinityBetweenFloatingPointTypes) {
+  // float -> double -> float
+  EXPECT_EQ(
+      to<float>(to<double>(numeric_limits<float>::infinity())),
+      numeric_limits<float>::infinity());
+  EXPECT_EQ(
+      to<float>(to<double>(-numeric_limits<float>::infinity())),
+      -numeric_limits<float>::infinity());
+
+  // float -> long double -> float
+  EXPECT_EQ(
+      to<float>(to<long double>(numeric_limits<float>::infinity())),
+      numeric_limits<float>::infinity());
+  EXPECT_EQ(
+      to<float>(to<long double>(-numeric_limits<float>::infinity())),
+      -numeric_limits<float>::infinity());
+
+  // double -> long double -> double
+  EXPECT_EQ(
+      to<double>(to<long double>(numeric_limits<double>::infinity())),
+      numeric_limits<double>::infinity());
+  EXPECT_EQ(
+      to<double>(to<long double>(-numeric_limits<double>::infinity())),
+      -numeric_limits<double>::infinity());
+}
+
 TEST(Conv, StringPieceToDouble) {
   vector<tuple<const char*, const char*, double>> strs{
       make_tuple("2134123.125 zorro", " zorro", 2134123.125),

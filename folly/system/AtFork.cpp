@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/AtFork.h>
+#include <folly/system/AtFork.h>
 
 #include <list>
 #include <mutex>
@@ -25,8 +25,6 @@
 #include <folly/synchronization/SanitizeThread.h>
 
 namespace folly {
-
-namespace detail {
 
 namespace {
 
@@ -43,9 +41,9 @@ thread_local bool SkipAtForkHandlers::value;
 
 struct AtForkTask {
   void const* handle;
-  folly::Function<bool()> prepare;
-  folly::Function<void()> parent;
-  folly::Function<void()> child;
+  Function<bool()> prepare;
+  Function<void()> parent;
+  Function<void()> child;
 };
 
 class AtForkList {
@@ -113,8 +111,7 @@ class AtForkList {
   AtForkList() {
     int ret = 0;
 #if FOLLY_HAVE_PTHREAD_ATFORK // if no pthread_atfork, probably no fork either
-    ret = pthread_atfork(
-        &AtForkList::prepare, &AtForkList::parent, &AtForkList::child);
+    ret = pthread_atfork(&prepare, &parent, &child);
 #endif
     if (ret != 0) {
       throw_exception<std::system_error>(
@@ -130,9 +127,9 @@ void AtFork::init() {
 
 void AtFork::registerHandler(
     void const* handle,
-    folly::Function<bool()> prepare,
-    folly::Function<void()> parent,
-    folly::Function<void()> child) {
+    Function<bool()> prepare,
+    Function<void()> parent,
+    Function<void()> child) {
   std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);
   AtForkList::instance().tasks.push_back(
       {handle, std::move(prepare), std::move(parent), std::move(child)});
@@ -165,5 +162,4 @@ pid_t AtFork::forkInstrumented(fork_t forkFn) {
   }
   return ret;
 }
-} // namespace detail
 } // namespace folly

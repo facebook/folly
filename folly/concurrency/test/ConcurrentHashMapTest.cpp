@@ -1047,7 +1047,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, EraseClonedNonCopyable) {
   EXPECT_EQ(iter->first, 256 * cloned);
 }
 
-TYPED_TEST_P(ConcurrentHashMapTest, DISABLED_ConcurrentInsertClear) {
+TYPED_TEST_P(ConcurrentHashMapTest, ConcurrentInsertClear) {
   DeterministicSchedule sched(DeterministicSchedule::uniform(FLAGS_seed));
 
   /* 8192 and 8x / 9x multipliers are values that tend to reproduce
@@ -1072,8 +1072,12 @@ TYPED_TEST_P(ConcurrentHashMapTest, DISABLED_ConcurrentInsertClear) {
       m(chm_base_size);
 
   std::vector<std::thread> threads;
-  constexpr size_t num_threads = 32;
-  constexpr size_t rounds_per_thread = 100000;
+  /* 32 threads and 50k rounds are a compromise between trying to create
+   * race conditions in insert()/clear(), and finishing test in reasonable
+   * time */
+  constexpr int load_divisor = folly::kIsSanitizeThread ? 4 : 1;
+  constexpr size_t num_threads = 32 / load_divisor;
+  constexpr size_t rounds_per_thread = 50000 / load_divisor;
   threads.reserve(num_threads);
   for (size_t t = 0; t < num_threads; t++) {
     threads.emplace_back([&, t]() {
@@ -1140,7 +1144,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     HeterogeneousInsert,
     InsertOrAssignIterator,
     EraseClonedNonCopyable,
-    DISABLED_ConcurrentInsertClear);
+    ConcurrentInsertClear);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 

@@ -221,7 +221,7 @@ class PythonWheelBuilder(BuilderBase):
 
     def _add_sources(
         self, path_mapping: Dict[str, str], src_path: str, install_path: str
-    ):
+    ) -> None:
         s = os.lstat(src_path)
         if not stat.S_ISDIR(s.st_mode):
             path_mapping[src_path] = install_path

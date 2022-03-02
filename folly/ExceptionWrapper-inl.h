@@ -491,7 +491,7 @@ inline bool exception_wrapper::with_exception_(This& this_, Fn fn_) {
   using from_ex = with_exception_from_ex_;
   using from = conditional_t<std::is_void<Ex>::value, from_fn, from_ex>;
   using type = typename from::template apply<Ex, Fn>;
-  return with_exception_(this_, fn_, tag<type>);
+  return with_exception_(this_, std::move(fn_), tag<type>);
 }
 
 template <class This, class... CatchFns>

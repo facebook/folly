@@ -20,6 +20,7 @@
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
+#include <folly/futures/Future.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -43,12 +44,12 @@ Task<semi_await_result_t<SemiAwaitable>> toTask(
         co_return co_await a.get();
       });
 }
-inline Task<void> toTask(Future<Unit> a) {
+inline Task<void> toTask(folly::Future<Unit> a) {
   return co_invoke([a = std::move(a)]() mutable -> Task<void> {
     co_yield co_result(co_await co_awaitTry(std::move(a)));
   });
 }
-inline Task<void> toTask(SemiFuture<Unit> a) {
+inline Task<void> toTask(folly::SemiFuture<Unit> a) {
   return co_invoke([a = std::move(a)]() mutable -> Task<void> {
     co_yield co_result(co_await co_awaitTry(std::move(a)));
   });
@@ -56,7 +57,7 @@ inline Task<void> toTask(SemiFuture<Unit> a) {
 
 // Converts the given SemiAwaitable to a SemiFuture (without starting it)
 template <typename SemiAwaitable>
-SemiFuture<
+folly::SemiFuture<
     lift_unit_t<semi_await_result_t<remove_reference_wrapper_t<SemiAwaitable>>>>
 toSemiFuture(SemiAwaitable&& a) {
   return toTask(std::forward<SemiAwaitable>(a)).semi();
@@ -64,7 +65,7 @@ toSemiFuture(SemiAwaitable&& a) {
 
 // Converts the given SemiAwaitable to a Future, starting it on the Executor
 template <typename SemiAwaitable>
-Future<
+folly::Future<
     lift_unit_t<semi_await_result_t<remove_reference_wrapper_t<SemiAwaitable>>>>
 toFuture(SemiAwaitable&& a, Executor::KeepAlive<> ex) {
   return toTask(std::forward<SemiAwaitable>(a)).scheduleOn(ex).start().via(ex);

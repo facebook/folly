@@ -18,6 +18,7 @@
 
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
+#include <folly/experimental/channels/OnClosedException.h>
 #include <folly/experimental/channels/RateLimiter.h>
 
 namespace folly {
@@ -214,17 +215,6 @@ template <
             std::declval<folly::Try<InputValueType>>()))::value_type>
 Receiver<OutputValueType> resumableTransform(
     InitializeArg initializeArg, TransformerType transformer);
-
-/**
- * An OnClosedException passed to a transform callback indicates that the input
- * channel was closed. An OnClosedException can also be thrown by a transform
- * callback, which will close the output channel.
- */
-struct OnClosedException : public std::exception {
-  const char* what() const noexcept override {
-    return "A transform has closed the channel.";
-  }
-};
 
 /**
  * A ReinitializeException thrown by a transform callback indicates that the

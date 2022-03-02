@@ -64,7 +64,7 @@ class BuilderBase(object):
         env=None,
         use_cmd_prefix: bool = True,
         allow_fail: bool = False,
-    ):
+    ) -> int:
         if env:
             e = self.env.copy()
             e.update(env)
@@ -86,19 +86,19 @@ class BuilderBase(object):
             allow_fail=allow_fail,
         )
 
-    def _reconfigure(self, reconfigure):
+    def _reconfigure(self, reconfigure: bool) -> bool:
         if self.build_dir is not None:
             if not os.path.isdir(self.build_dir):
                 os.makedirs(self.build_dir)
                 reconfigure = True
         return reconfigure
 
-    def prepare(self, install_dirs, reconfigure):
+    def prepare(self, install_dirs, reconfigure: bool) -> None:
         print("Preparing %s..." % self.manifest.name)
         reconfigure = self._reconfigure(reconfigure)
         self._prepare(install_dirs=install_dirs, reconfigure=reconfigure)
 
-    def build(self, install_dirs, reconfigure) -> None:
+    def build(self, install_dirs, reconfigure: bool) -> None:
         print("Building %s..." % self.manifest.name)
         reconfigure = self._reconfigure(reconfigure)
         self._prepare(install_dirs=install_dirs, reconfigure=reconfigure)
@@ -143,7 +143,7 @@ class BuilderBase(object):
         raise an exception."""
         pass
 
-    def _prepare(self, install_dirs, reconfigure):
+    def _prepare(self, install_dirs, reconfigure) -> None:
         """Prepare the build. Useful when need to generate config,
         but builder is not the primary build system.
         e.g. cargo when called from cmake"""
@@ -690,7 +690,7 @@ if __name__ == "__main__":
 
         return define_args
 
-    def _build(self, install_dirs, reconfigure) -> None:
+    def _build(self, install_dirs, reconfigure: bool) -> None:
         reconfigure = reconfigure or self._needs_reconfigure()
 
         env = self._compute_env(install_dirs)
@@ -790,6 +790,7 @@ if __name__ == "__main__":
                 working_dir = get_property(test, "WORKING_DIRECTORY")
                 labels = []
                 machine_suffix = self.build_opts.host_type.as_tuple_string()
+                labels.append("tpx-fb-test-type=3")
                 labels.append("tpx_test_config::buildsystem=getdeps")
                 labels.append("tpx_test_config::platform={}".format(machine_suffix))
 

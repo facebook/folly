@@ -481,3 +481,43 @@ TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_FALSE(is_constexpr_default_constructible_v<NoDefaultCtor>);
   EXPECT_FALSE(is_constexpr_default_constructible<NoDefaultCtor>{});
 }
+
+TEST(Traits, uint_bits) {
+  EXPECT_TRUE((std::is_same_v<uint8_t, uint_bits_t<8>>));
+  EXPECT_TRUE((std::is_same_v<uint16_t, uint_bits_t<16>>));
+  EXPECT_TRUE((std::is_same_v<uint32_t, uint_bits_t<32>>));
+  EXPECT_TRUE((std::is_same_v<uint64_t, uint_bits_t<64>>));
+#if FOLLY_HAVE_INT128_T
+  EXPECT_TRUE((std::is_same_v<uint128_t, uint_bits_t<128>>));
+#endif // FOLLY_HAVE_INT128_T
+}
+
+TEST(Traits, uint_bits_lg) {
+  EXPECT_TRUE((std::is_same_v<uint8_t, uint_bits_lg_t<3>>));
+  EXPECT_TRUE((std::is_same_v<uint16_t, uint_bits_lg_t<4>>));
+  EXPECT_TRUE((std::is_same_v<uint32_t, uint_bits_lg_t<5>>));
+  EXPECT_TRUE((std::is_same_v<uint64_t, uint_bits_lg_t<6>>));
+#if FOLLY_HAVE_INT128_T
+  EXPECT_TRUE((std::is_same_v<uint128_t, uint_bits_lg_t<7>>));
+#endif // FOLLY_HAVE_INT128_T
+}
+
+TEST(Traits, int_bits) {
+  EXPECT_TRUE((std::is_same_v<int8_t, int_bits_t<8>>));
+  EXPECT_TRUE((std::is_same_v<int16_t, int_bits_t<16>>));
+  EXPECT_TRUE((std::is_same_v<int32_t, int_bits_t<32>>));
+  EXPECT_TRUE((std::is_same_v<int64_t, int_bits_t<64>>));
+#if FOLLY_HAVE_INT128_T
+  EXPECT_TRUE((std::is_same_v<int128_t, int_bits_t<128>>));
+#endif // FOLLY_HAVE_INT128_T
+}
+
+TEST(Traits, int_bits_lg) {
+  EXPECT_TRUE((std::is_same_v<int8_t, int_bits_lg_t<3>>));
+  EXPECT_TRUE((std::is_same_v<int16_t, int_bits_lg_t<4>>));
+  EXPECT_TRUE((std::is_same_v<int32_t, int_bits_lg_t<5>>));
+  EXPECT_TRUE((std::is_same_v<int64_t, int_bits_lg_t<6>>));
+#if FOLLY_HAVE_INT128_T
+  EXPECT_TRUE((std::is_same_v<int128_t, int_bits_lg_t<7>>));
+#endif // FOLLY_HAVE_INT128_T
+}

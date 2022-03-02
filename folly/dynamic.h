@@ -804,6 +804,13 @@ struct dynamic {
   /*
    * Get a hash code.  This function is called by a std::hash<>
    * specialization.
+   *
+   * Note: an int64_t and double will both produce the same hash if they are
+   * numerically equal before rounding. So the int64_t 2 will have the same hash
+   * as the double 2.0. But no double will intentionally hash to the hash of a
+   * value that only when rounded will compare as equal. E.g. No double will
+   * intentionally hash to the hash of INT64_MAX (2^63 - 1) given that a double
+   * cannot represent this value.
    */
   std::size_t hash() const;
 

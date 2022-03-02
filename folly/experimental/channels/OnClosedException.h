@@ -16,26 +16,20 @@
 
 #pragma once
 
-#include <sys/types.h>
-
-#include <folly/Function.h>
+#include <exception>
 
 namespace folly {
+namespace channels {
 
-namespace detail {
-
-struct AtFork {
-  static void init();
-  static void registerHandler(
-      void const* handle,
-      folly::Function<bool()> prepare,
-      folly::Function<void()> parent,
-      folly::Function<void()> child);
-  static void unregisterHandler(void const* handle);
-
-  using fork_t = pid_t();
-  static pid_t forkInstrumented(fork_t forkFn);
+/**
+ * An OnClosedException passed to a transform or multiplex callback indicates
+ * that the input channel was closed. An OnClosedException can also be thrown by
+ * a transform or multiplex callback, which will close the output channel.
+ */
+struct OnClosedException : public std::exception {
+  const char* what() const noexcept override {
+    return "The channel has been closed.";
+  }
 };
-
-} // namespace detail
+} // namespace channels
 } // namespace folly

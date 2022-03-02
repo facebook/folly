@@ -91,7 +91,7 @@ def path_join(*args) -> ShellQuoted:
     return ShellQuoted(os.path.join(*[raw_shell(shell_quote(s)) for s in args]))
 
 
-def shell_comment(c):
+def shell_comment(c: ShellQuoted) -> ShellQuoted:
     "Do not shell-escape raw strings in comments, but do handle line breaks."
     return ShellQuoted("# {c}").format(
         c=ShellQuoted(

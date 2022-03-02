@@ -30,7 +30,7 @@
 static_assert(FOLLY_CPLUSPLUS >= 201402L, "__cplusplus >= 201402L");
 
 #if defined(__GNUC__) && !defined(__clang__)
-static_assert(__GNUC__ >= 5, "__GNUC__ >= 5");
+static_assert(__GNUC__ >= 7, "__GNUC__ >= 5");
 #endif
 
 // Unaligned loads and stores

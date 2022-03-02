@@ -55,8 +55,8 @@ ThreadPoolExecutor::ThreadPoolExecutor(
     : threadFactory_(std::move(threadFactory)),
       taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
       threadPoolHook_("folly::ThreadPoolExecutor"),
-      minThreads_(minThreads),
-      threadTimeout_(FLAGS_threadtimeout_ms) {
+      minThreads_(minThreads) {
+  threadTimeout_ = std::chrono::milliseconds(FLAGS_threadtimeout_ms);
   namePrefix_ = getNameHelper();
 }
 

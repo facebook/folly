@@ -122,7 +122,7 @@ directory = "{vendored_dir}"
 
         return dep_to_git
 
-    def _prepare(self, install_dirs, reconfigure):
+    def _prepare(self, install_dirs, reconfigure) -> None:
         build_source_dir = self.build_source_dir()
         self.recreate_dir(self.src_dir, build_source_dir)
 

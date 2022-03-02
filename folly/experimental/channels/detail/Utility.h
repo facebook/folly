@@ -23,6 +23,7 @@
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
 #include <folly/experimental/channels/RateLimiter.h>
+#include <folly/experimental/coro/Promise.h>
 #include <folly/experimental/coro/Task.h>
 
 namespace folly {
@@ -93,7 +94,8 @@ class SenderCancellationCallback : public IChannelCallback {
       IChannelCallback* channelCallback)
       : sender_(sender),
         executor_(std::move(executor)),
-        channelCallback_(channelCallback) {
+        channelCallback_(channelCallback),
+        callbackToFire_(folly::coro::makePromiseContract<CallbackToFire>()) {
     if (channelCallback_ == nullptr) {
       // The sender was already canceled runOperationWithSenderCancellation was
       // even called. This means the cancelled callback already was fired, so
@@ -108,7 +110,7 @@ class SenderCancellationCallback : public IChannelCallback {
       // that the cancelled callback was never called. We will therefore set it
       // to fire here, when the operation is complete.
       cancelSource_.requestCancellation();
-      callbackToFire_.setValue(CallbackToFire::Consume);
+      callbackToFire_.first.setValue(CallbackToFire::Consume);
     }
   }
 
@@ -117,21 +119,30 @@ class SenderCancellationCallback : public IChannelCallback {
       co_return;
     }
     auto callbackToFire = std::optional<CallbackToFire>();
-    if (callbackToFire_.isFulfilled()) {
+    bool promiseSet = false;
+    if (callbackToFire_.second.isReady()) {
       // The callback was fired.
-      callbackToFire = co_await callbackToFire_.getSemiFuture();
+      promiseSet = true;
+      callbackToFire = co_await std::move(callbackToFire_.second);
     } else {
       // The callback has not yet been fired.
       if (!sender_->cancelSenderWait()) {
         // The sender has been cancelled, but the callback has not been called
         // yet. Wait for the callback to be called.
-        callbackToFire = co_await callbackToFire_.getSemiFuture();
+        promiseSet = true;
+        callbackToFire = co_await std::move(callbackToFire_.second);
       } else if (!sender_->senderWait(channelCallback_)) {
         // The sender was cancelled between the call to cancelSenderWait and
         // the call to senderWait. This means that the cancelled callback was
         // never called. We will therefore set it to fire here.
         callbackToFire = CallbackToFire::Consume;
       }
+    }
+    if (!promiseSet) {
+      // Set a default value here, so we don't need to waste time constructing a
+      // broken promise exception when the promise is destructed. This value
+      // will not be read.
+      callbackToFire_.first.setValue(CallbackToFire::Consume);
     }
     if (callbackToFire.has_value()) {
       switch (callbackToFire.value()) {
@@ -161,8 +172,8 @@ class SenderCancellationCallback : public IChannelCallback {
   void consume(ChannelBridgeBase*) override {
     cancelSource_.requestCancellation();
     executor_->add([=]() {
-      CHECK(!callbackToFire_.isFulfilled());
-      callbackToFire_.setValue(CallbackToFire::Consume);
+      CHECK(!callbackToFire_.second.isReady());
+      callbackToFire_.first.setValue(CallbackToFire::Consume);
     });
   }
 
@@ -173,8 +184,8 @@ class SenderCancellationCallback : public IChannelCallback {
   void canceled(ChannelBridgeBase*) override {
     cancelSource_.requestCancellation();
     executor_->add([=]() {
-      CHECK(!callbackToFire_.isFulfilled());
-      callbackToFire_.setValue(CallbackToFire::Canceled);
+      CHECK(!callbackToFire_.second.isReady());
+      callbackToFire_.first.setValue(CallbackToFire::Canceled);
     });
   }
 
@@ -185,7 +196,10 @@ class SenderCancellationCallback : public IChannelCallback {
   folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
   IChannelCallback* channelCallback_;
   folly::CancellationSource cancelSource_;
-  folly::Promise<CallbackToFire> callbackToFire_;
+  std::pair<
+      folly::coro::Promise<CallbackToFire>,
+      folly::coro::Future<CallbackToFire>>
+      callbackToFire_;
 };
 
 /**

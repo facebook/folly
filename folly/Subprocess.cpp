@@ -37,7 +37,6 @@
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
-#include <folly/detail/AtFork.h>
 #include <folly/io/Cursor.h>
 #include <folly/lang/Assume.h>
 #include <folly/logging/xlog.h>
@@ -47,6 +46,7 @@
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/AtFork.h>
 #include <folly/system/Shell.h>
 
 constexpr int kExecFailure = 127;
@@ -449,12 +449,12 @@ void Subprocess::spawnInternal(
     if (options.detach_) {
       // If we are detaching we must use fork() instead of vfork() for the first
       // fork, since we aren't going to simply call exec() in the child.
-      pid = detail::AtFork::forkInstrumented(fork);
+      pid = AtFork::forkInstrumented(fork);
     } else {
       if (kIsSanitizeThread) {
         // TSAN treats vfork as fork, so use the instrumented version
         // instead
-        pid = detail::AtFork::forkInstrumented(fork);
+        pid = AtFork::forkInstrumented(fork);
       } else {
         pid = vfork();
       }
@@ -475,7 +475,7 @@ void Subprocess::spawnInternal(
         if (kIsSanitizeThread) {
           // TSAN treats vfork as fork, so use the instrumented version
           // instead
-          pid = detail::AtFork::forkInstrumented(fork);
+          pid = AtFork::forkInstrumented(fork);
         } else {
           pid = vfork();
         }

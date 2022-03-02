@@ -2567,7 +2567,7 @@ template <typename Range>
 auto rangev3_will_be_consumed(Range&& r) {
   // intentionally use `r` instead of `std::forward<Range>(r)`; see above.
   // range-v3 ranges copy in O(1) so it is appropriate.
-  return ranges::views::all(r);
+  return ::ranges::views::all(r);
 }
 #endif // FOLLY_USE_RANGEV3
 

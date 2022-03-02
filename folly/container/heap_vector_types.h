@@ -1240,7 +1240,7 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
 
   void swap(heap_vector_container& o) noexcept(
       std::is_nothrow_swappable<Compare>::value&& noexcept(
-          Container().swap(m_.cont_))) {
+          std::declval<Container&>().swap(std::declval<Container&>()))) {
     using std::swap; // Allow ADL for swap(); fall back to std::swap().
     Compare& a = m_;
     Compare& b = o.m_;
