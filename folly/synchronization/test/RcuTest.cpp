@@ -49,7 +49,7 @@ TEST(RcuTest, Guard) {
   auto foo = new des(&del);
   { rcu_reader g; }
   rcu_retire(foo);
-  synchronize_rcu();
+  rcu_synchronize();
   EXPECT_TRUE(del);
 }
 
@@ -58,7 +58,7 @@ TEST(RcuTest, SlowReader) {
   {
     rcu_reader g;
 
-    t = std::thread([&]() { synchronize_rcu(); });
+    t = std::thread([&]() { rcu_synchronize(); });
     usleep(100); // Wait for synchronize to start
   }
   t.join();
@@ -121,7 +121,7 @@ TEST(RcuTest, Stress) {
   done = true;
   updater.join();
   // Cleanup for asan
-  synchronize_rcu();
+  rcu_synchronize();
   for (uint32_t i = 0; i < sz; i++) {
     delete ints[i].exchange(nullptr);
   }
@@ -132,7 +132,7 @@ TEST(RcuTest, Synchronize) {
   for (unsigned th = 0; th < FLAGS_threads; th++) {
     threads.push_back(std::thread([&]() {
       for (int i = 0; i < 10; i++) {
-        synchronize_rcu();
+        rcu_synchronize();
       }
     }));
   }
@@ -144,7 +144,7 @@ TEST(RcuTest, Synchronize) {
 TEST(RcuTest, NewDomainTest) {
   struct UniqueTag;
   rcu_domain<UniqueTag> newdomain(nullptr);
-  synchronize_rcu(&newdomain);
+  rcu_synchronize(newdomain);
 }
 
 TEST(RcuTest, NewDomainGuardTest) {
@@ -154,7 +154,7 @@ TEST(RcuTest, NewDomainGuardTest) {
   auto foo = new des(&del);
   { rcu_reader_domain<UniqueTag> g(&newdomain); }
   rcu_retire(foo, {}, &newdomain);
-  synchronize_rcu(&newdomain);
+  rcu_synchronize(newdomain);
   EXPECT_TRUE(del);
 }
 
@@ -163,25 +163,25 @@ TEST(RcuTest, MovableReader) {
     rcu_reader g;
     rcu_reader f(std::move(g));
   }
-  synchronize_rcu();
+  rcu_synchronize();
   {
     rcu_reader g(std::defer_lock);
     rcu_reader f;
     g = std::move(f);
   }
-  synchronize_rcu();
+  rcu_synchronize();
 }
 
 TEST(RcuTest, SynchronizeInCall) {
-  rcu_default_domain()->call([]() { synchronize_rcu(); });
-  synchronize_rcu();
+  rcu_default_domain()->call([]() { rcu_synchronize(); });
+  rcu_synchronize();
 }
 
 TEST(RcuTest, MoveReaderBetweenThreads) {
   rcu_reader g;
   std::thread t([f = std::move(g)] {});
   t.join();
-  synchronize_rcu();
+  rcu_synchronize();
 }
 
 TEST(RcuTest, ForkTest) {
@@ -192,14 +192,14 @@ TEST(RcuTest, ForkTest) {
   if (pid) {
     // parent
     rcu_default_domain()->unlock_shared(std::move(epoch));
-    synchronize_rcu();
+    rcu_synchronize();
     int status = -1;
     auto pid2 = waitpid(pid, &status, 0);
     EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
   } else {
     // child
-    synchronize_rcu();
+    rcu_synchronize();
     exit(0); // Do not print gtest results
   }
 }
@@ -242,7 +242,7 @@ TEST(RcuTest, ThreadDeath) {
     rcu_retire(foo);
   });
   t.join();
-  synchronize_rcu();
+  rcu_synchronize();
   EXPECT_TRUE(del);
 }
 
@@ -256,7 +256,7 @@ TEST(RcuTest, RcuObjBase) {
 
   auto foo = new base_test(&retired);
   foo->retire();
-  synchronize_rcu();
+  rcu_synchronize();
   EXPECT_TRUE(retired);
 }
 

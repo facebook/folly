@@ -229,7 +229,7 @@
 // specialized queues could be used if available, since only a single reader
 // reads the queue, and can splice all of the items to the executor if possible.
 //
-// synchronize_rcu() call latency is on the order of 10ms.  Multiple
+// rcu_synchronize() call latency is on the order of 10ms.  Multiple
 // separate threads can share a synchronized period and should scale.
 //
 // rcu_retire() is a queue push, and on the order of 150 ns, however,
@@ -315,7 +315,7 @@ class rcu_token {
 };
 
 // Defines an RCU domain.  RCU readers within a given domain block updaters
-// (synchronize_rcu, call, retire, or rcu_retire) only within that same
+// (rcu_synchronize, call, retire, or rcu_retire) only within that same
 // domain, and have no effect on updaters associated with other rcu_domains.
 //
 // Custom domains are normally not necessary because the default domain works
@@ -358,13 +358,13 @@ class rcu_domain {
   FOLLY_ALWAYS_INLINE void unlock_shared(rcu_token<Tag>&&);
 
   // Invokes cbin(this) and then deletes this some time after all pre-existing
-  // RCU readers have completed.  See synchronize_rcu() for more information
+  // RCU readers have completed.  See rcu_synchronize() for more information
   // about RCU readers and domains.
   template <typename T>
   void call(T&& cbin);
 
   // Invokes node->cb_(node) some time after all pre-existing RCU readers
-  // have completed.  See synchronize_rcu() for more information about RCU
+  // have completed.  See rcu_synchronize() for more information about RCU
   // readers and domains.
   void retire(list_node* node) noexcept;
 
@@ -484,16 +484,26 @@ inline void swap(
 // RCU readers will normally be marked using the RAII interface rcu_reader,
 // as in folly::rcu_reader rcuGuard.
 //
-// Note that synchronize_rcu is not obligated to wait for RCU readers that
-// start after synchronize_rcu starts.  Note also that holding a lock across
-// synchronize_rcu that is acquired by any deleter (as in is passed to
+// Note that rcu_synchronize is not obligated to wait for RCU readers that
+// start after rcu_synchronize starts.  Note also that holding a lock across
+// rcu_synchronize that is acquired by any deleter (as in is passed to
 // rcu_retire, retire, or call) will result in deadlock.  Note that such
 // deadlock will normally only occur with user-written deleters, as in the
 // default of delele will normally be immune to such deadlocks.
 template <typename Tag = RcuTag>
+inline void rcu_synchronize(
+    rcu_domain<Tag>& domain = *rcu_default_domain()) noexcept {
+  domain.synchronize();
+}
+
+// A legacy wrapper around rcu_synchronize. This wrapper was deprecated in favor
+// of rcu_synchronize to match the specification in the C++ Concurrency
+// Technical Specification 2:
+// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/n4895.pdf
+template <typename Tag = RcuTag>
 inline void synchronize_rcu(
     rcu_domain<Tag>* domain = rcu_default_domain()) noexcept {
-  domain->synchronize();
+  rcu_synchronize(*domain);
 }
 
 // Waits for all in-flight deleters to complete.
