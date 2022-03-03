@@ -49,19 +49,19 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   }
 
   // mock the calls to SSL_write to see the buffer length and contents
-  MOCK_METHOD(int, sslWriteImpl, (SSL * ssl, const void* buf, int n));
+  MOCK_METHOD3(sslWriteImpl, int(SSL* ssl, const void* buf, int n));
 
   // mock the calls to SSL_get_error to insert errors
-  MOCK_METHOD(int, sslGetErrorImpl, (const SSL* s, int ret_code));
+  MOCK_METHOD2(sslGetErrorImpl, int(const SSL* s, int ret_code));
 
   // mock the calls to sendSocketMessage to see the msg_flags
-  MOCK_METHOD(
-      AsyncSocket::WriteResult,
+  MOCK_METHOD3(
       sendSocketMessage,
-      (NetworkSocket fd, struct msghdr* msg, int msg_flags));
+      AsyncSocket::WriteResult(
+          NetworkSocket fd, struct msghdr* msg, int msg_flags));
 
   // mock the calls to getRawBytesWritten()
-  MOCK_METHOD(size_t, getRawBytesWritten, (), (const));
+  MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
 
   // public wrapper for protected interface
   WriteResult testPerformWrite(

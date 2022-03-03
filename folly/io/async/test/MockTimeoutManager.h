@@ -26,20 +26,19 @@ namespace test {
 
 class MockTimeoutManager : public folly::TimeoutManager {
  public:
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD2(
       attachTimeoutManager,
-      (folly::AsyncTimeout*, folly::TimeoutManager::InternalEnum));
+      void(folly::AsyncTimeout*, folly::TimeoutManager::InternalEnum));
 
-  MOCK_METHOD(void, detachTimeoutManager, (folly::AsyncTimeout*));
+  MOCK_METHOD1(detachTimeoutManager, void(folly::AsyncTimeout*));
 
-  MOCK_METHOD(
-      bool, scheduleTimeout, (folly::AsyncTimeout*, std::chrono::milliseconds));
+  MOCK_METHOD2(
+      scheduleTimeout, bool(folly::AsyncTimeout*, std::chrono::milliseconds));
 
-  MOCK_METHOD(void, cancelTimeout, (folly::AsyncTimeout*));
+  MOCK_METHOD1(cancelTimeout, void(folly::AsyncTimeout*));
 
-  MOCK_METHOD(void, bumpHandlingTime, ());
-  MOCK_METHOD(bool, isInTimeoutManagerThread, ());
+  MOCK_METHOD0(bumpHandlingTime, void());
+  MOCK_METHOD0(isInTimeoutManagerThread, bool());
 };
 } // namespace test
 } // namespace folly

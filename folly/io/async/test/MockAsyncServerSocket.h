@@ -30,19 +30,18 @@ class MockAsyncServerSocket : public AsyncServerSocket {
 
   // We explicitly do not mock destroy(), since the base class implementation
   // in DelayedDestruction is what actually deletes the object.
-  // MOCK_METHOD(void, destroy, ());
-  MOCK_METHOD(void, bind, (const folly::SocketAddress& address));
-  MOCK_METHOD(
-      void,
+  // MOCK_METHOD0(destroy,
+  //             void());
+  MOCK_METHOD1(bind, void(const folly::SocketAddress& address));
+  MOCK_METHOD2(
       bind,
-      (const std::vector<folly::IPAddress>& ipAddresses, uint16_t port));
-  MOCK_METHOD(void, bind, (uint16_t port));
-  MOCK_METHOD(void, listen, (int backlog));
-  MOCK_METHOD(void, startAccepting, ());
-  MOCK_METHOD(
-      void,
+      void(const std::vector<folly::IPAddress>& ipAddresses, uint16_t port));
+  MOCK_METHOD1(bind, void(uint16_t port));
+  MOCK_METHOD1(listen, void(int backlog));
+  MOCK_METHOD0(startAccepting, void());
+  MOCK_METHOD3(
       addAcceptCallback,
-      (AcceptCallback * callback, EventBase* eventBase, uint32_t maxAtOnce));
+      void(AcceptCallback* callback, EventBase* eventBase, uint32_t maxAtOnce));
 };
 
 } // namespace test

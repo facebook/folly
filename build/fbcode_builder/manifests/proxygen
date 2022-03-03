@@ -32,7 +32,7 @@ wangle
 mvfst
 
 [dependencies.test=on]
-googletest
+googletest_1_8
 
 [shipit.pathmap]
 fbcode/proxygen/public_tld = .

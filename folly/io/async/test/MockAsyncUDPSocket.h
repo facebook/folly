@@ -26,48 +26,47 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   explicit MockAsyncUDPSocket(EventBase* evb) : AsyncUDPSocket(evb) {}
   ~MockAsyncUDPSocket() override {}
 
-  MOCK_METHOD(const SocketAddress&, address, (), (const));
-  MOCK_METHOD(
-      void,
+  MOCK_CONST_METHOD0(address, const SocketAddress&());
+  MOCK_METHOD2(
       bind,
-      (const SocketAddress&, AsyncUDPSocket::BindOptions bindOptions));
-  MOCK_METHOD(void, setFD, (NetworkSocket, AsyncUDPSocket::FDOwnership));
-  MOCK_METHOD(
-      ssize_t, write, (const SocketAddress&, const std::unique_ptr<IOBuf>&));
-  MOCK_METHOD(
-      int,
+      void(const SocketAddress&, AsyncUDPSocket::BindOptions bindOptions));
+  MOCK_METHOD2(setFD, void(NetworkSocket, AsyncUDPSocket::FDOwnership));
+  MOCK_METHOD2(
+      write, ssize_t(const SocketAddress&, const std::unique_ptr<IOBuf>&));
+  MOCK_METHOD3(
       writem,
-      (Range<SocketAddress const*>,
-       const std::unique_ptr<folly::IOBuf>*,
-       size_t));
-  MOCK_METHOD(
-      ssize_t,
+      int(Range<SocketAddress const*>,
+          const std::unique_ptr<folly::IOBuf>*,
+          size_t));
+  MOCK_METHOD3(
       writeGSO,
-      (const folly::SocketAddress&, const std::unique_ptr<folly::IOBuf>&, int));
-  MOCK_METHOD(
-      ssize_t, writev, (const SocketAddress&, const struct iovec*, size_t));
-  MOCK_METHOD(void, resumeRead, (ReadCallback*));
-  MOCK_METHOD(void, pauseRead, ());
-  MOCK_METHOD(void, close, ());
-  MOCK_METHOD(void, setDFAndTurnOffPMTU, ());
-  MOCK_METHOD(NetworkSocket, getNetworkSocket, (), (const));
-  MOCK_METHOD(void, setReusePort, (bool));
-  MOCK_METHOD(void, setReuseAddr, (bool));
-  MOCK_METHOD(void, dontFragment, (bool));
-  MOCK_METHOD(void, setErrMessageCallback, (ErrMessageCallback*));
-  MOCK_METHOD(void, connect, (const SocketAddress&));
-  MOCK_METHOD(bool, isBound, (), (const));
-  MOCK_METHOD(int, getGSO, ());
-  MOCK_METHOD(bool, setGSO, (int));
-  MOCK_METHOD(ssize_t, recvmsg, (struct msghdr*, int));
-  MOCK_METHOD(
-      int,
+      ssize_t(
+          const folly::SocketAddress&,
+          const std::unique_ptr<folly::IOBuf>&,
+          int));
+  MOCK_METHOD3(
+      writev, ssize_t(const SocketAddress&, const struct iovec*, size_t));
+  MOCK_METHOD1(resumeRead, void(ReadCallback*));
+  MOCK_METHOD0(pauseRead, void());
+  MOCK_METHOD0(close, void());
+  MOCK_METHOD0(setDFAndTurnOffPMTU, void());
+  MOCK_CONST_METHOD0(getNetworkSocket, NetworkSocket());
+  MOCK_METHOD1(setReusePort, void(bool));
+  MOCK_METHOD1(setReuseAddr, void(bool));
+  MOCK_METHOD1(dontFragment, void(bool));
+  MOCK_METHOD1(setErrMessageCallback, void(ErrMessageCallback*));
+  MOCK_METHOD1(connect, void(const SocketAddress&));
+  MOCK_CONST_METHOD0(isBound, bool());
+  MOCK_METHOD0(getGSO, int());
+  MOCK_METHOD1(setGSO, bool(int));
+  MOCK_METHOD2(recvmsg, ssize_t(struct msghdr*, int));
+  MOCK_METHOD4(
       recvmmsg,
-      (struct mmsghdr*, unsigned int, unsigned int, struct timespec*));
-  MOCK_METHOD(void, setCmsgs, (const SocketOptionMap&));
-  MOCK_METHOD(void, appendCmsgs, (const SocketOptionMap&));
-  MOCK_METHOD(
-      void, applyOptions, (const SocketOptionMap&, SocketOptionKey::ApplyPos));
+      int(struct mmsghdr*, unsigned int, unsigned int, struct timespec*));
+  MOCK_METHOD1(setCmsgs, void(const SocketOptionMap&));
+  MOCK_METHOD1(appendCmsgs, void(const SocketOptionMap&));
+  MOCK_METHOD2(
+      applyOptions, void(const SocketOptionMap&, SocketOptionKey::ApplyPos));
 };
 
 } // namespace test

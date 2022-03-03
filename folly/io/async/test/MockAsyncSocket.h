@@ -30,15 +30,15 @@ class MockAsyncSocket : public AsyncSocket {
 
   explicit MockAsyncSocket(EventBase* base) : AsyncSocket(base) {}
 
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD6(
       connect_,
-      (AsyncSocket::ConnectCallback*,
-       const folly::SocketAddress&,
-       int,
-       const folly::SocketOptionMap&,
-       const folly::SocketAddress&,
-       const std::string&));
+      void(
+          AsyncSocket::ConnectCallback*,
+          const folly::SocketAddress&,
+          int,
+          const folly::SocketOptionMap&,
+          const folly::SocketAddress&,
+          const std::string&));
   void connect(
       AsyncSocket::ConnectCallback* callback,
       const folly::SocketAddress& address,
@@ -49,38 +49,33 @@ class MockAsyncSocket : public AsyncSocket {
     connect_(callback, address, timeout, options, bindAddr, ifName);
   }
 
-  MOCK_METHOD(void, getPeerAddress, (folly::SocketAddress*), (const));
-  MOCK_METHOD(NetworkSocket, detachNetworkSocket, ());
-  MOCK_METHOD(NetworkSocket, getNetworkSocket, (), (const));
-  MOCK_METHOD(void, closeNow, ());
-  MOCK_METHOD(bool, good, (), (const));
-  MOCK_METHOD(bool, readable, (), (const));
-  MOCK_METHOD(bool, hangup, (), (const));
-  MOCK_METHOD(void, getLocalAddress, (SocketAddress*), (const));
-  MOCK_METHOD(void, setReadCB, (ReadCallback*));
-  MOCK_METHOD(void, _setPreReceivedData, (std::unique_ptr<IOBuf>&));
-  MOCK_METHOD(size_t, getRawBytesWritten, (), (const));
-  MOCK_METHOD(int, setSockOptVirtual, (int, int, void const*, socklen_t));
-  MOCK_METHOD(void, setErrMessageCB, (AsyncSocket::ErrMessageCallback*));
-  MOCK_METHOD(void, setSendMsgParamCB, (AsyncSocket::SendMsgParamsCallback*));
-  MOCK_METHOD(std::string, getSecurityProtocol, (), (const));
+  MOCK_CONST_METHOD1(getPeerAddress, void(folly::SocketAddress*));
+  MOCK_METHOD0(detachNetworkSocket, NetworkSocket());
+  MOCK_CONST_METHOD0(getNetworkSocket, NetworkSocket());
+  MOCK_METHOD0(closeNow, void());
+  MOCK_CONST_METHOD0(good, bool());
+  MOCK_CONST_METHOD0(readable, bool());
+  MOCK_CONST_METHOD0(hangup, bool());
+  MOCK_CONST_METHOD1(getLocalAddress, void(SocketAddress*));
+  MOCK_METHOD1(setReadCB, void(ReadCallback*));
+  MOCK_METHOD1(_setPreReceivedData, void(std::unique_ptr<IOBuf>&));
+  MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
+  MOCK_METHOD4(setSockOptVirtual, int(int, int, void const*, socklen_t));
+  MOCK_METHOD1(setErrMessageCB, void(AsyncSocket::ErrMessageCallback*));
+  MOCK_METHOD1(setSendMsgParamCB, void(AsyncSocket::SendMsgParamsCallback*));
+  MOCK_CONST_METHOD0(getSecurityProtocol, std::string());
   void setPreReceivedData(std::unique_ptr<IOBuf> data) override {
     return _setPreReceivedData(data);
   }
 
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       addLifecycleObserver,
-      (folly::AsyncTransport::LifecycleObserver * observer));
-  MOCK_METHOD(
-      bool,
+      void(folly::AsyncTransport::LifecycleObserver* observer));
+  MOCK_METHOD1(
       removeLifecycleObserver,
-      (folly::AsyncTransport::LifecycleObserver * observer));
-  MOCK_METHOD(
-      std::vector<AsyncTransport::LifecycleObserver*>,
-      getLifecycleObservers,
-      (),
-      (const));
+      bool(folly::AsyncTransport::LifecycleObserver* observer));
+  MOCK_CONST_METHOD0(
+      getLifecycleObservers, std::vector<AsyncTransport::LifecycleObserver*>());
 };
 
 } // namespace test

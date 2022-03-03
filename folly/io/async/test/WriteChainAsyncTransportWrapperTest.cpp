@@ -31,12 +31,12 @@ class TestWriteChainAsyncTransportWrapper
   TestWriteChainAsyncTransportWrapper()
       : WriteChainAsyncTransportWrapper<folly::AsyncTransport>(nullptr) {}
 
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD3(
       writeChain,
-      (folly::AsyncTransport::WriteCallback*,
-       std::shared_ptr<folly::IOBuf>,
-       folly::WriteFlags));
+      void(
+          folly::AsyncTransport::WriteCallback*,
+          std::shared_ptr<folly::IOBuf>,
+          folly::WriteFlags));
 
   // gmock doesn't work with the IOBuf&& so we have to wrap this.
   void writeChain(

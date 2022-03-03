@@ -2861,10 +2861,8 @@ class MockAsyncTFOSocket : public AsyncSocket {
 
   explicit MockAsyncTFOSocket(EventBase* evb) : AsyncSocket(evb) {}
 
-  MOCK_METHOD(
-      ssize_t,
-      tfoSendMsg,
-      (NetworkSocket fd, struct msghdr* msg, int msg_flags));
+  MOCK_METHOD3(
+      tfoSendMsg, ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 TEST(AsyncSocketTest, TestTFOUnsupported) {
@@ -3176,8 +3174,8 @@ TEST(AsyncSocketTest, ConnectTFOWithBigData) {
 
 class MockEvbChangeCallback : public AsyncSocket::EvbChangeCallback {
  public:
-  MOCK_METHOD(void, evbAttached, (AsyncSocket*));
-  MOCK_METHOD(void, evbDetached, (AsyncSocket*));
+  MOCK_METHOD1(evbAttached, void(AsyncSocket*));
+  MOCK_METHOD1(evbDetached, void(AsyncSocket*));
 };
 
 TEST(AsyncSocketTest, EvbCallbacks) {
