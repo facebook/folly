@@ -306,8 +306,8 @@ struct MockTraits {
 
   ~MockTraits() { instance = nullptr; }
 
-  MOCK_METHOD2(onAllocate, void(std::string*, std::string));
-  MOCK_METHOD1(onRecycle, void(std::string*));
+  MOCK_METHOD(void, onAllocate, (std::string*, std::string));
+  MOCK_METHOD(void, onRecycle, (std::string*));
 
   struct Forwarder {
     static void initialize(std::string* ptr) { new (ptr) std::string(); }

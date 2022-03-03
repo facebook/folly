@@ -63,28 +63,31 @@ class MockDispatcher : public Dispatcher {
         }));
   }
 
-  MOCK_METHOD5(
+  MOCK_METHOD(
+      int,
       getsockopt,
-      int(NetworkSocket s,
-          int level,
-          int optname,
-          void* optval,
-          socklen_t* optlen));
+      (NetworkSocket s,
+       int level,
+       int optname,
+       void* optval,
+       socklen_t* optlen));
 
-  MOCK_METHOD3(
-      sendmsg, ssize_t(NetworkSocket s, const msghdr* message, int flags));
+  MOCK_METHOD(
+      ssize_t, sendmsg, (NetworkSocket s, const msghdr* message, int flags));
 
-  MOCK_METHOD4(
+  MOCK_METHOD(
+      int,
       sendmmsg,
-      int(NetworkSocket s, mmsghdr* msgvec, unsigned int vlen, int flags));
+      (NetworkSocket s, mmsghdr* msgvec, unsigned int vlen, int flags));
 
-  MOCK_METHOD5(
+  MOCK_METHOD(
+      int,
       setsockopt,
-      int(NetworkSocket s,
-          int level,
-          int optname,
-          const void* optval,
-          socklen_t optlen));
+      (NetworkSocket s,
+       int level,
+       int optname,
+       const void* optval,
+       socklen_t optlen));
 };
 
 } // namespace test

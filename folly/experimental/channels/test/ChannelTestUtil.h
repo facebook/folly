@@ -60,10 +60,10 @@ class MockNextCallback {
     }
   }
 
-  MOCK_METHOD1_T(onValue, void(TValue));
-  MOCK_METHOD0(onClosed, void());
-  MOCK_METHOD0(onCancelled, void());
-  MOCK_METHOD1(onRuntimeError, void(std::string));
+  MOCK_METHOD(void, onValue, (TValue));
+  MOCK_METHOD(void, onClosed, ());
+  MOCK_METHOD(void, onCancelled, ());
+  MOCK_METHOD(void, onRuntimeError, (std::string));
 };
 
 enum class ConsumptionMode {

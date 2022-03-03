@@ -2827,8 +2827,10 @@ class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
       std::shared_ptr<folly::SSLContext> sslCtx, EventBase* evb)
       : AsyncSSLSocket(sslCtx, evb) {}
 
-  MOCK_METHOD3(
-      tfoSendMsg, ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
+  MOCK_METHOD(
+      ssize_t,
+      tfoSendMsg,
+      (NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 #if defined __linux__

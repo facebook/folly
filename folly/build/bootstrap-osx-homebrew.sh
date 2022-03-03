@@ -67,7 +67,7 @@ cmake \
     ..
 
 # fetch googletest, if doesn't exist
-GTEST_VER=1.8.0
+GTEST_VER=1.10.0
 GTEST_DIR=gtest-${GTEST_VER}
 if [ ! -d ${GTEST_DIR} ]; then
     mkdir ${GTEST_DIR}
