@@ -1,6 +1,10 @@
 Folly: Facebook Open-source Library
 ===================================
 
+<a href="https://opensource.facebook.com/support-ukraine">
+  <img src="https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB" alt="Support Ukraine - Help Provide Humanitarian Aid to Ukraine." />
+</a>
+
 # What is `folly`?
 
 <img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
