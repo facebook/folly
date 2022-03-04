@@ -198,7 +198,7 @@ EventBase::~EventBase() {
 
   DCHECK_EQ(0u, runBeforeLoopCallbacks_.size());
 
-  (void)runLoopCallbacks();
+  runLoopCallbacks();
 
   queue_->drain();
 
