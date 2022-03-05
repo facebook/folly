@@ -496,16 +496,6 @@ inline void rcu_synchronize(
   domain.synchronize();
 }
 
-// A legacy wrapper around rcu_synchronize. This wrapper was deprecated in favor
-// of rcu_synchronize to match the specification in the C++ Concurrency
-// Technical Specification 2:
-// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/n4895.pdf
-template <typename Tag = RcuTag>
-inline void synchronize_rcu(
-    rcu_domain<Tag>* domain = rcu_default_domain()) noexcept {
-  rcu_synchronize(*domain);
-}
-
 // Waits for all in-flight deleters to complete.
 //
 // An in-flight deleter is one that has already been passed to rcu_retire,
