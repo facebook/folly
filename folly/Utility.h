@@ -378,6 +378,52 @@ class EnableCopyMove<false, false> {
 
 using MoveOnly = moveonly_::EnableCopyMove<false, true>;
 
+//  unsafe_default_uninitialized
+//  unsafe_default_uninitialized_cv
+//
+//  An object which is explicitly convertible to any default-constructible type
+//  and which, upon conversion, yields a default-initialized value of that type.
+//
+//  https://en.cppreference.com/w/cpp/language/default_initialization
+//
+//  For fundamental types, a default-initalized instance may have indeterminate
+//  value. Reading an indeterminate value is undefined behavior but may offer a
+//  performance optimization. When using an indeterminate value as a performance
+//  optimization, it is best to be explicit.
+//
+//  Useful as an escape hatch when enabling warnings or errors:
+//  * gcc:
+//    * uninitialized
+//    * maybe-uninitialized
+//  * clang:
+//    * uninitialized
+//    * conditional-uninitialized
+//    * sometimes-uninitialized
+//    * uninitialized-const-reference
+//  * msvc:
+//    * C4701: potentially uninitialized local variable used
+//    * C4703: potentially uninitialized local pointer variable used
+//
+//  Example:
+//
+//      int local = folly::unsafe_default_initialized;
+//      store_value_into_int_ptr(&value); // suppresses possible warning
+//      use_value(value); // suppresses possible warning
+struct unsafe_default_initialized_cv {
+  template <typename T>
+  FOLLY_ERASE constexpr /* implicit */ operator T() const noexcept {
+    T uninit;
+    FOLLY_PUSH_WARNING
+    FOLLY_MSVC_DISABLE_WARNING(4701)
+    FOLLY_MSVC_DISABLE_WARNING(4703)
+    FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
+    return uninit;
+    FOLLY_POP_WARNING
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr unsafe_default_initialized_cv
+    unsafe_default_initialized{};
+
 struct to_signed_fn {
   template <typename..., typename T>
   constexpr auto operator()(T const& t) const noexcept ->
