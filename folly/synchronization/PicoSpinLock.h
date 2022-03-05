@@ -71,7 +71,7 @@ namespace folly {
 template <class IntType, int Bit = sizeof(IntType) * 8 - 1>
 struct PicoSpinLock {
   // Internally we deal with the unsigned version of the type.
-  typedef typename std::make_unsigned<IntType>::type UIntType;
+  using UIntType = std::make_unsigned_t<IntType>;
 
   static_assert(
       std::is_integral<IntType>::value, "PicoSpinLock needs an integral type");
@@ -80,7 +80,7 @@ struct PicoSpinLock {
       "PicoSpinLock can't work on integers smaller than 2 bytes");
 
  public:
-  static const UIntType kLockBitMask_ = UIntType(1) << Bit;
+  static constexpr UIntType kLockBitMask_ = UIntType(1) << Bit;
   mutable UIntType lock_;
 
   /*
