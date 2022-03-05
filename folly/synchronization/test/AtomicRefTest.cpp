@@ -51,6 +51,30 @@ TEST_F(AtomicRefTest, integer) {
     EXPECT_EQ(17, prev);
     EXPECT_EQ(13, value);
   }
+
+  {
+    long value = 17;
+    auto ref = folly::make_atomic_ref(value);
+    auto prev = ref.fetch_and(18, std::memory_order_relaxed);
+    EXPECT_EQ(17, prev);
+    EXPECT_EQ(16, value);
+  }
+
+  {
+    long value = 17;
+    auto ref = folly::make_atomic_ref(value);
+    auto prev = ref.fetch_or(18, std::memory_order_relaxed);
+    EXPECT_EQ(17, prev);
+    EXPECT_EQ(19, value);
+  }
+
+  {
+    long value = 17;
+    auto ref = folly::make_atomic_ref(value);
+    auto prev = ref.fetch_xor(19, std::memory_order_relaxed);
+    EXPECT_EQ(17, prev);
+    EXPECT_EQ(2, value);
+  }
 }
 
 TEST_F(AtomicRefTest, integer_compare_exchange_weak) {
