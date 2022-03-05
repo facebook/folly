@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <deque>
 #include <functional>
+#include <list>
 #include <map>
 #include <set>
 #include <tuple>
@@ -29,6 +30,13 @@
 #include <vector>
 
 #include <folly/portability/GTest.h>
+
+class IteratorTest : public testing::Test {};
+
+TEST_F(IteratorTest, range_has_known_distance_v) {
+  EXPECT_FALSE(folly::range_has_known_distance_v<std::list<int>&>);
+  EXPECT_TRUE(folly::range_has_known_distance_v<std::vector<int>&>);
+}
 
 namespace {
 /**

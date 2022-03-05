@@ -24,9 +24,58 @@
 #include <utility>
 
 #include <folly/Utility.h>
+#include <folly/container/Access.h>
 #include <folly/lang/RValueReferenceWrapper.h>
 
 namespace folly {
+
+namespace detail {
+template <typename Iter>
+using iterator_category_of_t_ = typename Iter::iterator_category;
+}
+
+//  iterator_has_known_distance_v
+//
+//  Whether std::distance over a pair of iterators is reasonably known to give
+//  the distance without advancing the iterators or copies of them.
+template <typename Iter, typename SentinelIter>
+FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v = false;
+template <typename Iter>
+FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v<Iter, Iter> =
+    std::is_base_of<
+        std::random_access_iterator_tag,
+        detected_or_t<void, detail::iterator_category_of_t_, Iter>>::value;
+
+//  range_has_known_distance_v
+//
+//  Whether std::distance over the begin and end iterators is reasonably known
+//  to give the distance without advancing the iterators or copies of them.
+//
+//  Useful for conditionally reserving memory in advance of iterating the range.
+//
+//  Note: Many use-cases are better served by range-v3 or std::ranges.
+//
+//  Example:
+//
+//      std::vector<result_type> results;
+//      auto elems = /* some range */;
+//      auto const elemsb = folly::access::begin(elems);
+//      auto const elemse = folly::access::end(elems);
+//
+//      if constexpr (range_has_known_distance_v<decltype(elems)>) {
+//        auto const dist = std::distance(elemsb, elemse);
+//        results.reserve(static_cast<std::size_t>(dist));
+//      }
+//
+//      for (auto elemsi = elemsb; elemsi != elemsi; ++i) {
+//        results.push_back(do_work(*elemsi));
+//      }
+//      return results;
+template <typename Range>
+FOLLY_INLINE_VARIABLE constexpr bool range_has_known_distance_v =
+    iterator_has_known_distance_v<
+        invoke_result_t<access::begin_fn, Range>,
+        invoke_result_t<access::end_fn, Range>>;
 
 /**
  * Argument tuple for variadic emplace/constructor calls. Stores arguments by
