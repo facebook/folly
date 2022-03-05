@@ -48,6 +48,7 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
+#include <folly/synchronization/AtomicRef.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/SanitizeThread.h>
 #include <folly/synchronization/detail/Sleeper.h>
@@ -92,8 +93,9 @@ struct PicoSpinLock {
    */
   void init(IntType initialValue = 0) {
     CHECK(!(initialValue & kLockBitMask_));
-    reinterpret_cast<std::atomic<UIntType>*>(&lock_)->store(
-        UIntType(initialValue), std::memory_order_release);
+    auto ref = make_atomic_ref(lock_);
+    auto val = UIntType(initialValue);
+    ref.store(val, std::memory_order_release);
   }
 
   /*
@@ -106,10 +108,9 @@ struct PicoSpinLock {
    * as you normally get.)
    */
   IntType getData() const {
-    auto res = reinterpret_cast<std::atomic<UIntType>*>(&lock_)->load(
-                   std::memory_order_relaxed) &
-        ~kLockBitMask_;
-    return res;
+    auto ref = make_atomic_ref(lock_);
+    auto val = ref.load(std::memory_order_relaxed);
+    return val & ~kLockBitMask_;
   }
 
   /*
@@ -120,10 +121,10 @@ struct PicoSpinLock {
    */
   void setData(IntType w) {
     CHECK(!(w & kLockBitMask_));
-    auto l = reinterpret_cast<std::atomic<UIntType>*>(&lock_);
-    l->store(
-        (l->load(std::memory_order_relaxed) & kLockBitMask_) | w,
-        std::memory_order_relaxed);
+    auto ref = make_atomic_ref(lock_);
+    auto val = ref.load(std::memory_order_relaxed);
+    val = (val & kLockBitMask_) | w;
+    ref.store(val, std::memory_order_relaxed);
   }
 
   /*
@@ -154,22 +155,18 @@ struct PicoSpinLock {
    * integer.
    */
   void unlock() const {
+    auto ref = make_atomic_ref(lock_);
     annotate_rwlock_released(
         this, annotate_rwlock_level::wrlock, __FILE__, __LINE__);
-    auto previous = atomic_fetch_reset(
-        *reinterpret_cast<std::atomic<UIntType>*>(&lock_),
-        Bit,
-        std::memory_order_release);
+    auto previous = atomic_fetch_reset(ref, Bit, std::memory_order_release);
     DCHECK(previous);
   }
 
  private:
   // called by lock/try_lock - this is not TSAN aware
   bool try_lock_internal() const {
-    auto previous = atomic_fetch_set(
-        *reinterpret_cast<std::atomic<UIntType>*>(&lock_),
-        Bit,
-        std::memory_order_acquire);
+    auto ref = make_atomic_ref(lock_);
+    auto previous = atomic_fetch_set(ref, Bit, std::memory_order_acquire);
     return !previous;
   }
 };
