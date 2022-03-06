@@ -19,6 +19,7 @@
 #include <folly/Try.h>
 #include <folly/Unit.h>
 #include <folly/container/Access.h>
+#include <folly/container/Iterator.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/AsyncScope.h>
 #include <folly/experimental/coro/Coroutine.h>
