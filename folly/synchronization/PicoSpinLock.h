@@ -31,7 +31,6 @@
  */
 
 #pragma once
-#define FOLLY_PICO_SPIN_LOCK_H_
 
 /*
  * @author Keith Adams <kma@fb.com>

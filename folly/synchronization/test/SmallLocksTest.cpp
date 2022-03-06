@@ -40,10 +40,7 @@
 using folly::MicroLock;
 using folly::MicroSpinLock;
 using folly::MSLGuard;
-
-#ifdef FOLLY_PICO_SPIN_LOCK_H_
 using folly::PicoSpinLock;
-#endif
 
 DEFINE_int64(
     stress_test_seconds, 2, "Number of seconds for which to run stress tests");
@@ -69,13 +66,11 @@ struct ignore1 {
 } FOLLY_PACK_ATTR;
 static_assert(sizeof(ignore1) == 3, "Size check failed");
 static_assert(sizeof(MicroSpinLock) == 1, "Size check failed");
-#ifdef FOLLY_PICO_SPIN_LOCK_H_
 struct ignore2 {
   PicoSpinLock<uint32_t> psl;
   int16_t foo;
 } FOLLY_PACK_ATTR;
 static_assert(sizeof(ignore2) == 6, "Size check failed");
-#endif
 FOLLY_PACK_POP
 
 LockedVal v;
@@ -93,7 +88,6 @@ void splock_test() {
   }
 }
 
-#ifdef FOLLY_PICO_SPIN_LOCK_H_
 template <class T>
 struct PslTest {
   PicoSpinLock<T> lock;
@@ -127,7 +121,6 @@ void doPslTest() {
     t.join();
   }
 }
-#endif
 
 struct TestClobber {
   TestClobber() { lock_.init(); }
@@ -158,7 +151,6 @@ TEST(SmallLocks, SpinLockCorrectness) {
   }
 }
 
-#ifdef FOLLY_PICO_SPIN_LOCK_H_
 TEST(SmallLocks, PicoSpinCorrectness) {
   doPslTest<int16_t>();
   doPslTest<uint16_t>();
@@ -210,7 +202,6 @@ TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
     }
   }
 }
-#endif
 
 TEST(SmallLocks, RegClobber) {
   TestClobber().go();
