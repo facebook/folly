@@ -20,7 +20,7 @@ folly
 proxygen
 fbthrift
 libsodium
-googletest_1_8
+googletest
 sqlite3
 
 [shipit.pathmap]
