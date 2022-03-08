@@ -78,6 +78,11 @@ DEFINE_int32(
 DEFINE_uint32(
     bm_result_width_chars, 76, "Width of results table in characters");
 
+DEFINE_uint32(
+    bm_max_trials,
+    1000,
+    "Maximum number of trials (iterations) executed for each benchmark.");
+
 namespace folly {
 
 std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
@@ -141,18 +146,18 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
   static const auto minNanoseconds = std::max<nanoseconds>(
       nanoseconds(100000), microseconds(FLAGS_bm_min_usec));
 
-  // We do measurements in several epochs and take the minimum, to
-  // account for jitter.
-  static const unsigned int epochs = 1000;
   // We establish a total time budget as we don't want a measurement
-  // to take too long. This will curtail the number of actual epochs.
+  // to take too long. This will curtail the number of actual trials.
   const auto timeBudget = seconds(FLAGS_bm_max_secs);
   auto global = high_resolution_clock::now();
 
-  std::vector<std::pair<double, UserCounters>> epochResults(epochs);
-  size_t actualEpochs = 0;
+  std::vector<std::pair<double, UserCounters>> trialResults(
+      FLAGS_bm_max_trials);
+  size_t actualTrials = 0;
 
-  for (; actualEpochs < epochs; ++actualEpochs) {
+  // We do measurements in several trials (epochs) and take the minimum, to
+  // account for jitter.
+  for (; actualTrials < FLAGS_bm_max_trials; ++actualTrials) {
     const auto maxIters = uint32_t(FLAGS_bm_max_iters);
     for (auto n = uint32_t(FLAGS_bm_min_iters); n < maxIters; n *= 2) {
       detail::TimeIterData timeIterData = fun(static_cast<unsigned int>(n));
@@ -162,16 +167,16 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
       // We got an accurate enough timing, done. But only save if
       // smaller than the current result.
       auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
-      epochResults[actualEpochs] = std::make_pair(
+      trialResults[actualTrials] = std::make_pair(
           max(0.0, double(nsecs.count()) / timeIterData.niter - globalBaseline),
           std::move(timeIterData.userCounters));
-      // Done with the current epoch, we got a meaningful timing.
+      // Done with the current trial, we got a meaningful timing.
       break;
     }
     auto now = high_resolution_clock::now();
     if (now - global >= timeBudget) {
       // No more time budget available.
-      ++actualEpochs;
+      ++actualTrials;
       break;
     }
   }
@@ -179,8 +184,8 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
   // Current state of the art: get the minimum. After some
   // experimentation, it seems taking the minimum is the best.
   auto iter = min_element(
-      epochResults.begin(),
-      epochResults.begin() + actualEpochs,
+      trialResults.begin(),
+      trialResults.begin() + actualTrials,
       [](const auto& a, const auto& b) { return a.first < b.first; });
 
   // If the benchmark was basically drowned in baseline noise, it's
@@ -195,7 +200,7 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
   using std::chrono::microseconds;
   using std::chrono::nanoseconds;
   using std::chrono::seconds;
-  using EpochResultType = std::pair<double, UserCounters>;
+  using TrialResultType = std::pair<double, UserCounters>;
 
   // They key here is accuracy; too low numbers means the accuracy was
   // coarse. We up the ante until we get to at least minNanoseconds
@@ -222,24 +227,23 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
     estPerIter = globalBaseline;
   }
 
-  // We do measurements in several epochs to account for jitter.
-  constexpr unsigned int epochs = 1000;
-  size_t actualEpochs = 0;
+  // We do measurements in several trials (epochs) to account for jitter.
+  size_t actualTrials = 0;
   const unsigned int estimateCount = to_integral(max(1.0, 5e+7 / estPerIter));
-  std::vector<EpochResultType> epochResults(epochs);
+  std::vector<TrialResultType> trialResults(FLAGS_bm_max_trials);
   const auto maxRunTime = seconds(5);
   auto globalStart = high_resolution_clock::now();
 
-  // Run benchmark up to epoch times with at least 0.5 sec each
+  // Run benchmark up to trial times with at least 0.5 sec each
   // Or until we run out of alowed time (5sec)
-  for (size_t tryId = 0; tryId < epochs; tryId++) {
+  for (size_t tryId = 0; tryId < FLAGS_bm_max_trials; tryId++) {
     detail::TimeIterData timeIterData = fun(estimateCount);
     auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
 
     if (nsecs.count() > globalBaseline) {
       auto nsecIter =
           double(nsecs.count() - globalBaseline) / timeIterData.niter;
-      epochResults[actualEpochs++] =
+      trialResults[actualTrials++] =
           std::make_pair(nsecIter, std::move(timeIterData.userCounters));
     }
     // Check if we are out of time quota
@@ -251,9 +255,9 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
 
   // Sort results by running time
   std::sort(
-      epochResults.begin(),
-      epochResults.begin() + actualEpochs,
-      [](const EpochResultType& a, const EpochResultType& b) {
+      trialResults.begin(),
+      trialResults.begin() + actualTrials,
+      [](const TrialResultType& a, const TrialResultType& b) {
         return a.first < b.first;
       });
 
@@ -261,21 +265,21 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
     return static_cast<size_t>(count * p);
   };
 
-  const size_t epochP25 = getPercentile(actualEpochs, 0.25);
-  const size_t epochP75 = getPercentile(actualEpochs, 0.75);
-  if (epochP75 - epochP25 == 0) {
+  const size_t trialP25 = getPercentile(actualTrials, 0.25);
+  const size_t trialP75 = getPercentile(actualTrials, 0.75);
+  if (trialP75 - trialP25 == 0) {
     return std::make_pair(NAN, UserCounters());
   }
 
   double geomeanNsec = 1.0;
-  for (size_t tryId = epochP25; tryId < epochP75; tryId++) {
-    geomeanNsec *= epochResults[tryId].first;
+  for (size_t tryId = trialP25; tryId < trialP75; tryId++) {
+    geomeanNsec *= trialResults[tryId].first;
   }
   geomeanNsec =
-      std::pow(geomeanNsec, 1.0 / static_cast<double>(epochP75 - epochP25));
+      std::pow(geomeanNsec, 1.0 / static_cast<double>(trialP75 - trialP25));
 
   return std::make_pair(
-      geomeanNsec, epochResults[epochP25 + (epochP75 - epochP25) / 2].second);
+      geomeanNsec, trialResults[trialP25 + (trialP75 - trialP25) / 2].second);
 }
 
 struct ScaleInfo {
