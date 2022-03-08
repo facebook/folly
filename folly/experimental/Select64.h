@@ -86,6 +86,7 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
   return place + detail::kSelectInByte[byteRank][((x >> place) & 0xFF)];
 }
 
+#if FOLLY_X64 || defined(__i386)
 template <>
 FOLLY_ALWAYS_INLINE uint64_t
 select64<compression::instructions::Haswell>(uint64_t x, uint64_t k) {
@@ -103,5 +104,6 @@ select64<compression::instructions::Haswell>(uint64_t x, uint64_t k) {
   return _tzcnt_u64(_pdep_u64(1ULL << k, x));
 #endif
 }
+#endif
 
 } // namespace folly

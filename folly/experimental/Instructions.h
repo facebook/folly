@@ -81,6 +81,7 @@ struct Default {
   }
 };
 
+#if FOLLY_X64 || defined(__i386__)
 struct Nehalem : public Default {
   static bool supported(const folly::CpuId& cpuId = {}) {
     return cpuId.popcnt();
@@ -146,6 +147,7 @@ struct Haswell : public Nehalem {
 #endif
   }
 };
+#endif
 
 enum class Type {
   DEFAULT,
@@ -155,6 +157,7 @@ enum class Type {
 
 inline Type detect() {
   const static Type type = [] {
+#if FOLLY_X64 || defined(__i386)
     if (instructions::Haswell::supported()) {
       VLOG(2) << "Will use folly::compression::instructions::Haswell";
       return Type::HASWELL;
@@ -165,12 +168,16 @@ inline Type detect() {
       VLOG(2) << "Will use folly::compression::instructions::Default";
       return Type::DEFAULT;
     }
+#else
+    return Type::DEFAULT;
+#endif
   }();
   return type;
 }
 
 template <class F>
 auto dispatch(Type type, F&& f) -> decltype(f(std::declval<Default>())) {
+#if FOLLY_X64 || defined(__i386)
   switch (type) {
     case Type::HASWELL:
       return f(Haswell());
@@ -179,6 +186,9 @@ auto dispatch(Type type, F&& f) -> decltype(f(std::declval<Default>())) {
     case Type::DEFAULT:
       return f(Default());
   }
+#else
+  return f(Default());
+#endif
 
   assume_unreachable();
 }
