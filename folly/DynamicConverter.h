@@ -159,12 +159,14 @@ class Transformer
 
  public:
   explicit Transformer(const It& it) : Transformer::iterator_adaptor_(it) {}
+
+  ttype&& operator*() const { return std::move(dereference()); }
 };
 
 // conversion factory
 template <typename T, typename It>
-inline std::move_iterator<Transformer<T, It>> conversionIterator(const It& it) {
-  return std::make_move_iterator(Transformer<T, It>(it));
+inline Transformer<T, It> conversionIterator(const It& it) {
+  return Transformer<T, It>(it);
 }
 
 } // namespace dynamicconverter_detail
