@@ -279,7 +279,7 @@ typename Container::difference_type distance(
 // The smallest element (index = 0) of heap container is stored at cont[3] and
 // so on.
 template <typename size_type, typename Offsets>
-static size_type getOffsets(
+size_type getOffsets(
     size_type size, Offsets& offsets, size_type index, size_type offset = 1) {
   for (; offset <= size; offset <<= 1) {
     index = getOffsets(size, offsets, index, 2 * offset + 1) - 1;
@@ -1030,6 +1030,7 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   void reserve(size_type s) { return m_.cont_.reserve(s); }
   void shrink_to_fit() { m_.cont_.shrink_to_fit(); }
   size_type capacity() const { return m_.cont_.capacity(); }
+  const value_type* data() const noexcept { return m_.cont_.data(); }
 
   std::pair<iterator, bool> insert(const value_type& value) {
     iterator it = lower_bound(m_.getKey(value));
@@ -1367,14 +1368,29 @@ template <
     class Allocator = std::allocator<T>,
     class GrowthPolicy = void,
     class Container = std::vector<T, Allocator>>
-using heap_vector_set = detail::heap_vector_detail::heap_vector_container<
-    T,
-    Compare,
-    Allocator,
-    GrowthPolicy,
-    Container,
-    T,
-    detail::heap_vector_detail::value_compare_set<Compare, T>>;
+class heap_vector_set
+    : public detail::heap_vector_detail::heap_vector_container<
+          T,
+          Compare,
+          Allocator,
+          GrowthPolicy,
+          Container,
+          T,
+          detail::heap_vector_detail::value_compare_set<Compare, T>> {
+ private:
+  using heap_vector_container =
+      detail::heap_vector_detail::heap_vector_container<
+          T,
+          Compare,
+          Allocator,
+          GrowthPolicy,
+          Container,
+          T,
+          detail::heap_vector_detail::value_compare_set<Compare, T>>;
+
+ public:
+  using heap_vector_container::heap_vector_container;
+};
 
 // Swap function that can be found using ADL.
 template <class T, class C, class A, class G>
