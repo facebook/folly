@@ -152,8 +152,8 @@ TEST(RcuTest, NewDomainGuardTest) {
   rcu_domain<UniqueTag> newdomain(nullptr);
   bool del = false;
   auto foo = new des(&del);
-  { rcu_reader_domain<UniqueTag> g(&newdomain); }
-  rcu_retire(foo, {}, &newdomain);
+  { rcu_reader_domain<UniqueTag> g(newdomain); }
+  rcu_retire(foo, {}, newdomain);
   rcu_synchronize(newdomain);
   EXPECT_TRUE(del);
 }
@@ -173,7 +173,7 @@ TEST(RcuTest, MovableReader) {
 }
 
 TEST(RcuTest, SynchronizeInCall) {
-  rcu_default_domain()->call([]() { rcu_synchronize(); });
+  rcu_default_domain().call([]() { rcu_synchronize(); });
   rcu_synchronize();
 }
 
@@ -186,12 +186,12 @@ TEST(RcuTest, MoveReaderBetweenThreads) {
 
 TEST(RcuTest, ForkTest) {
   rcu_token<RcuTag> epoch;
-  std::thread t([&]() { epoch = rcu_default_domain()->lock_shared(); });
+  std::thread t([&]() { epoch = rcu_default_domain().lock_shared(); });
   t.join();
   auto pid = fork();
   if (pid) {
     // parent
-    rcu_default_domain()->unlock_shared(std::move(epoch));
+    rcu_default_domain().unlock_shared(std::move(epoch));
     rcu_synchronize();
     int status = -1;
     auto pid2 = waitpid(pid, &status, 0);
@@ -263,9 +263,9 @@ TEST(RcuTest, RcuObjBase) {
 TEST(RcuTest, Tsan) {
   int data = 0;
   std::thread t1([&] {
-    auto epoch = rcu_default_domain()->lock_shared();
+    auto epoch = rcu_default_domain().lock_shared();
     data = 1;
-    rcu_default_domain()->unlock_shared(std::move(epoch));
+    rcu_default_domain().unlock_shared(std::move(epoch));
     // Delay before exiting so the thread is still alive for TSAN detection.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   });
@@ -274,7 +274,7 @@ TEST(RcuTest, Tsan) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // This should establish a happens-before relationship between the earlier
     // write (data = 1) and this write below (data = 2).
-    rcu_default_domain()->synchronize();
+    rcu_default_domain().synchronize();
     data = 2;
   });
 

@@ -409,8 +409,8 @@ class rcu_domain {
 
 extern folly::Indestructible<rcu_domain<RcuTag>*> rcu_default_domain_;
 
-inline rcu_domain<RcuTag>* rcu_default_domain() {
-  return *rcu_default_domain_;
+inline rcu_domain<RcuTag>& rcu_default_domain() {
+  return **rcu_default_domain_;
 }
 
 // Main reader guard class.  Use rcu_reader instead unless you need to
@@ -421,12 +421,12 @@ template <typename Tag = RcuTag>
 class rcu_reader_domain {
  public:
   explicit FOLLY_ALWAYS_INLINE rcu_reader_domain(
-      rcu_domain<Tag>* domain = rcu_default_domain()) noexcept
-      : epoch_(domain->lock_shared()), domain_(domain) {}
+      rcu_domain<Tag>& domain = rcu_default_domain()) noexcept
+      : epoch_(domain.lock_shared()), domain_(&domain) {}
   explicit rcu_reader_domain(
       std::defer_lock_t,
-      rcu_domain<Tag>* domain = rcu_default_domain()) noexcept
-      : domain_(domain) {}
+      rcu_domain<Tag>& domain = rcu_default_domain()) noexcept
+      : domain_(&domain) {}
   rcu_reader_domain(const rcu_reader_domain&) = delete;
   rcu_reader_domain(rcu_reader_domain&& other) noexcept
       : epoch_(std::move(other.epoch_)),
@@ -492,7 +492,7 @@ inline void swap(
 // default of delele will normally be immune to such deadlocks.
 template <typename Tag = RcuTag>
 inline void rcu_synchronize(
-    rcu_domain<Tag>& domain = *rcu_default_domain()) noexcept {
+    rcu_domain<Tag>& domain = rcu_default_domain()) noexcept {
   domain.synchronize();
 }
 
@@ -505,8 +505,8 @@ inline void rcu_synchronize(
 // And yes, the current implementation is buggy, and will be fixed.
 template <typename Tag = RcuTag>
 inline void rcu_barrier(
-    rcu_domain<Tag>* domain = rcu_default_domain()) noexcept {
-  domain->synchronize();
+    rcu_domain<Tag>& domain = rcu_default_domain()) noexcept {
+  domain.synchronize();
 }
 
 // Free-function retire.  Always allocates.
@@ -519,8 +519,8 @@ template <
     typename D = std::default_delete<T>,
     typename Tag = RcuTag>
 void rcu_retire(
-    T* p, D d = {}, rcu_domain<Tag>* domain = rcu_default_domain()) {
-  domain->call([p, del = std::move(d)]() { del(p); });
+    T* p, D d = {}, rcu_domain<Tag>& domain = rcu_default_domain()) {
+  domain.call([p, del = std::move(d)]() { del(p); });
 }
 
 // Base class for rcu objects.  retire() will use preallocated storage
@@ -531,11 +531,11 @@ template <
     typename Tag = RcuTag>
 class rcu_obj_base : detail::ThreadCachedListsBase::Node {
  public:
-  void retire(D d = {}, rcu_domain<Tag>* domain = rcu_default_domain()) {
+  void retire(D d = {}, rcu_domain<Tag>& domain = rcu_default_domain()) {
     // This implementation assumes folly::Function has enough
     // inline storage for D, otherwise, it allocates.
     this->cb_ = [this, d = std::move(d)]() { d(static_cast<T*>(this)); };
-    domain->retire(this);
+    domain.retire(this);
   }
 };
 
