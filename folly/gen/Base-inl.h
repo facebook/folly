@@ -24,7 +24,13 @@
 #include <folly/container/F14Set.h>
 #include <folly/functional/Invoke.h>
 
-#if FOLLY_USE_RANGEV3
+// inner condition from:
+// https://github.com/ericniebler/range-v3/blob/0.11.0/include/range/v3/detail/config.hpp#L222
+#define FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3 \
+  __has_include(<range/v3/version.hpp>) && \
+    (!_MSC_VER || !(_MSC_VER < 1920 || _MSVC_LANG < 201703L))
+
+#if FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
 #endif
@@ -2458,7 +2464,7 @@ class ToVirtualGen : public Operator<ToVirtualGen> {
   }
 };
 
-#if FOLLY_USE_RANGEV3
+#if FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3
 template <class RangeV3, class Value>
 class RangeV3Source
     : public gen::GenImpl<Value, RangeV3Source<RangeV3, Value>> {
@@ -2539,10 +2545,10 @@ struct from_rangev3_copy_fn {
     return RangeV3CopySource<RangeDecay, Value>(std::move(r));
   }
 };
-#endif // FOLLY_USE_RANGEV3
+#endif // FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3
 } // namespace detail
 
-#if FOLLY_USE_RANGEV3
+#if FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3
 /*
  ******************************************************************************
  * Pipe fittings between a container/range-v3 and a folly::gen.
@@ -2569,7 +2575,7 @@ auto rangev3_will_be_consumed(Range&& r) {
   // range-v3 ranges copy in O(1) so it is appropriate.
   return ::ranges::views::all(r);
 }
-#endif // FOLLY_USE_RANGEV3
+#endif // FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3
 
 /**
  * VirtualGen<T> - For wrapping template types in simple polymorphic wrapper.
