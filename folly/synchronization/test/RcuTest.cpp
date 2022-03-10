@@ -82,14 +82,14 @@ TEST(RcuTest, CopyGuard) {
 }
 
 TEST(RcuTest, Stress) {
-  std::vector<std::thread> threads;
+  std::vector<std::thread> readers;
   constexpr uint32_t sz = 1000;
   std::atomic<int*> ints[sz];
   for (uint32_t i = 0; i < sz; i++) {
     ints[i].store(new int(0));
   }
   for (unsigned th = 0; th < FLAGS_threads; th++) {
-    threads.push_back(std::thread([&]() {
+    readers.push_back(std::thread([&]() {
       for (int i = 0; i < FLAGS_iters / 100; i++) {
         rcu_reader g;
         int sum = 0;
@@ -105,21 +105,34 @@ TEST(RcuTest, Stress) {
     }));
   }
   std::atomic<bool> done{false};
-  std::thread updater([&]() {
-    while (!done.load()) {
-      auto newint = new int(0);
-      auto oldint = ints[folly::Random::rand32() % sz].exchange(newint);
-      rcu_retire<int>(oldint, [](int* obj) {
-        *obj = folly::Random::rand32();
-        delete obj;
-      });
-    }
-  });
-  for (auto& t : threads) {
+  std::vector<std::thread> updaters;
+  for (unsigned th = 0; th < FLAGS_threads; th++) {
+    updaters.push_back(std::thread([&]() {
+      while (!done.load()) {
+        auto newint = new int(0);
+        auto oldint = ints[folly::Random::rand32() % sz].exchange(newint);
+        if (folly::Random::rand32() % 2 == 0) {
+          rcu_retire<int>(oldint, [](int* obj) {
+            *obj = folly::Random::rand32();
+            delete obj;
+          });
+        } else {
+          rcu_synchronize();
+          *oldint = folly::Random::rand32();
+          delete oldint;
+        }
+      }
+    }));
+  }
+  for (auto& t : readers) {
     t.join();
   }
   done = true;
-  updater.join();
+
+  for (auto& t : updaters) {
+    t.join();
+  }
+
   // Cleanup for asan
   rcu_synchronize();
   for (uint32_t i = 0; i < sz; i++) {
