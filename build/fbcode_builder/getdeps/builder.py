@@ -1098,7 +1098,7 @@ class NopBuilder(BuilderBase):
             build_opts, ctx, manifest, src_dir, None, inst_dir
         )
 
-    def build(self, install_dirs, reconfigure) -> None:
+    def build(self, install_dirs, reconfigure: bool) -> None:
         print("Installing %s -> %s" % (self.src_dir, self.inst_dir))
         parent = os.path.dirname(self.inst_dir)
         if not os.path.exists(parent):
