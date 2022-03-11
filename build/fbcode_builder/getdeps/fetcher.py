@@ -525,12 +525,15 @@ def get_fbsource_repo_data(build_options) -> FbsourceRepoData:
     if cached_data:
         return cached_data
 
-    cmd = ["hg", "log", "-r.", "-T{node}\n{date|hgdate}"]
-    env = Env()
-    env.set("HGPLAIN", "1")
-    log_data = subprocess.check_output(
-        cmd, cwd=build_options.fbsource_dir, env=dict(env.items())
-    ).decode("ascii")
+    if "GETDEPS_HG_REPO_DATA" in os.environ:
+        log_data = os.environ["GETDEPS_HG_REPO_DATA"]
+    else:
+        cmd = ["hg", "log", "-r.", "-T{node}\n{date|hgdate}"]
+        env = Env()
+        env.set("HGPLAIN", "1")
+        log_data = subprocess.check_output(
+            cmd, cwd=build_options.fbsource_dir, env=dict(env.items())
+        ).decode("ascii")
 
     (hash, datestr) = log_data.split("\n")
 
