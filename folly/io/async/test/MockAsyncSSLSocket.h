@@ -30,15 +30,15 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
       bool deferSecurityNegotiation = false)
       : AsyncSSLSocket(ctx, base, deferSecurityNegotiation) {}
 
-  MOCK_METHOD6(
+  MOCK_METHOD(
+      void,
       connect_,
-      void(
-          AsyncSocket::ConnectCallback*,
-          const folly::SocketAddress&,
-          int,
-          const folly::SocketOptionMap&,
-          const folly::SocketAddress&,
-          const std::string&));
+      (AsyncSocket::ConnectCallback*,
+       const folly::SocketAddress&,
+       int,
+       const folly::SocketOptionMap&,
+       const folly::SocketAddress&,
+       const std::string&));
   void connect(
       AsyncSocket::ConnectCallback* callback,
       const folly::SocketAddress& address,
@@ -49,17 +49,23 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
     connect_(callback, address, timeout, options, bindAddr, ifName);
   }
 
-  MOCK_CONST_METHOD1(getLocalAddress, void(folly::SocketAddress*));
-  MOCK_CONST_METHOD1(getPeerAddress, void(folly::SocketAddress*));
-  MOCK_METHOD0(closeNow, void());
-  MOCK_CONST_METHOD0(good, bool());
-  MOCK_CONST_METHOD0(readable, bool());
-  MOCK_CONST_METHOD0(hangup, bool());
-  MOCK_CONST_METHOD2(
-      getSelectedNextProtocol, void(const unsigned char**, unsigned*));
-  MOCK_CONST_METHOD2(
-      getSelectedNextProtocolNoThrow, bool(const unsigned char**, unsigned*));
-  MOCK_METHOD1(setReadCB, void(ReadCallback*));
+  MOCK_METHOD(void, getLocalAddress, (folly::SocketAddress*), (const));
+  MOCK_METHOD(void, getPeerAddress, (folly::SocketAddress*), (const));
+  MOCK_METHOD(void, closeNow, ());
+  MOCK_METHOD(bool, good, (), (const));
+  MOCK_METHOD(bool, readable, (), (const));
+  MOCK_METHOD(bool, hangup, (), (const));
+  MOCK_METHOD(
+      void,
+      getSelectedNextProtocol,
+      (const unsigned char**, unsigned*),
+      (const));
+  MOCK_METHOD(
+      bool,
+      getSelectedNextProtocolNoThrow,
+      (const unsigned char**, unsigned*),
+      (const));
+  MOCK_METHOD(void, setReadCB, (ReadCallback*));
 
   void sslConn(
       AsyncSSLSocket::HandshakeCB* cb,
@@ -91,19 +97,19 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
     sslAcceptMockable(cb, timeout, verify);
   }
 
-  MOCK_METHOD3(
+  MOCK_METHOD(
+      void,
       sslConnectMockable,
-      void(
-          AsyncSSLSocket::HandshakeCB*,
-          std::chrono::milliseconds,
-          const SSLContext::SSLVerifyPeerEnum&));
+      (AsyncSSLSocket::HandshakeCB*,
+       std::chrono::milliseconds,
+       const SSLContext::SSLVerifyPeerEnum&));
 
-  MOCK_METHOD3(
+  MOCK_METHOD(
+      void,
       sslAcceptMockable,
-      void(
-          AsyncSSLSocket::HandshakeCB*,
-          std::chrono::milliseconds,
-          const SSLContext::SSLVerifyPeerEnum&));
+      (AsyncSSLSocket::HandshakeCB*,
+       std::chrono::milliseconds,
+       const SSLContext::SSLVerifyPeerEnum&));
 };
 
 } // namespace test

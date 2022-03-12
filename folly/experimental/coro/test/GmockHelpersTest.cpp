@@ -50,11 +50,11 @@ class Foo {
 
 class MockFoo : Foo {
  public:
-  MOCK_METHOD0(getValues, folly::coro::Task<std::vector<std::string>>());
+  MOCK_METHOD(folly::coro::Task<std::vector<std::string>>, getValues, ());
 
-  MOCK_METHOD0(getString, folly::coro::Task<std::string>());
-  MOCK_METHOD1(getStringArg, folly::coro::Task<std::string>(std::string));
-  MOCK_METHOD0(getVoid, folly::coro::Task<void>());
+  MOCK_METHOD(folly::coro::Task<std::string>, getString, ());
+  MOCK_METHOD(folly::coro::Task<std::string>, getStringArg, (std::string));
+  MOCK_METHOD(folly::coro::Task<void>, getVoid, ());
 };
 
 } // namespace

@@ -647,10 +647,10 @@ class MockErrMessageCallback : public AsyncUDPSocket::ErrMessageCallback {
  public:
   ~MockErrMessageCallback() override = default;
 
-  MOCK_METHOD1(errMessage_, void(const cmsghdr&));
+  MOCK_METHOD(void, errMessage_, (const cmsghdr&));
   void errMessage(const cmsghdr& cmsg) noexcept override { errMessage_(cmsg); }
 
-  MOCK_METHOD1(errMessageError_, void(const folly::AsyncSocketException&));
+  MOCK_METHOD(void, errMessageError_, (const folly::AsyncSocketException&));
   void errMessageError(
       const folly::AsyncSocketException& ex) noexcept override {
     errMessageError_(ex);
@@ -661,20 +661,21 @@ class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
  public:
   ~MockUDPReadCallback() override = default;
 
-  MOCK_METHOD2(getReadBuffer_, void(void**, size_t*));
+  MOCK_METHOD(void, getReadBuffer_, (void**, size_t*));
   void getReadBuffer(void** buf, size_t* len) noexcept override {
     getReadBuffer_(buf, len);
   }
 
-  MOCK_METHOD0(shouldOnlyNotify, bool());
-  MOCK_METHOD1(onNotifyDataAvailable_, void(folly::AsyncUDPSocket&));
+  MOCK_METHOD(bool, shouldOnlyNotify, ());
+  MOCK_METHOD(void, onNotifyDataAvailable_, (folly::AsyncUDPSocket&));
   void onNotifyDataAvailable(folly::AsyncUDPSocket& sock) noexcept override {
     onNotifyDataAvailable_(sock);
   }
 
-  MOCK_METHOD4(
+  MOCK_METHOD(
+      void,
       onDataAvailable_,
-      void(const folly::SocketAddress&, size_t, bool, OnDataAvailableParams));
+      (const folly::SocketAddress&, size_t, bool, OnDataAvailableParams));
   void onDataAvailable(
       const folly::SocketAddress& client,
       size_t len,
@@ -683,12 +684,12 @@ class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
     onDataAvailable_(client, len, truncated, params);
   }
 
-  MOCK_METHOD1(onReadError_, void(const folly::AsyncSocketException&));
+  MOCK_METHOD(void, onReadError_, (const folly::AsyncSocketException&));
   void onReadError(const folly::AsyncSocketException& ex) noexcept override {
     onReadError_(ex);
   }
 
-  MOCK_METHOD0(onReadClosed_, void());
+  MOCK_METHOD(void, onReadClosed_, ());
   void onReadClosed() noexcept override { onReadClosed_(); }
 };
 

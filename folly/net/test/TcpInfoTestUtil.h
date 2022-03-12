@@ -47,7 +47,7 @@ class TcpInfoTestUtil {
               }));
     }
 
-    MOCK_METHOD3(ioctl, int(int fd, unsigned long request, void* argp));
+    MOCK_METHOD(int, ioctl, (int fd, unsigned long request, void* argp));
   };
 
   template <typename T1>
