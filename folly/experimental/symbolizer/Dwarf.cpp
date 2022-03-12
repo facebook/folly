@@ -339,7 +339,16 @@ detail::CompilationUnit Dwarf::getCompilationUnit(uint64_t offset) const {
   cu.version = read<uint16_t>(chunk);
   FOLLY_SAFE_CHECK(cu.version >= 2 && cu.version <= 5, "invalid info version");
 
-  if (cu.version == 5) {
+  if (cu.version < 5) {
+    // DWARF4 has a single type of unit in .debug_info
+    cu.unitType = DW_UT_compile;
+    // 3) debug_abbrev_offset
+    cu.abbrevOffset = readOffset(chunk, cu.is64Bit);
+    // 4) address_size
+    cu.addrSize = read<uint8_t>(chunk);
+    FOLLY_SAFE_CHECK(cu.addrSize == sizeof(uintptr_t), "invalid address size");
+#if !defined(__FreeBSD__)
+  } else {
     // DWARF5: 7.5.1.1 Full and Partial Compilation Unit Headers
     // 3) unit_type (new DWARF 5)
     cu.unitType = read<uint8_t>(chunk);
@@ -357,14 +366,7 @@ detail::CompilationUnit Dwarf::getCompilationUnit(uint64_t offset) const {
       // 6) dwo_id
       read<uint64_t>(chunk);
     }
-  } else {
-    // DWARF4 has a single type of unit in .debug_info
-    cu.unitType = DW_UT_compile;
-    // 3) debug_abbrev_offset
-    cu.abbrevOffset = readOffset(chunk, cu.is64Bit);
-    // 4) address_size
-    cu.addrSize = read<uint8_t>(chunk);
-    FOLLY_SAFE_CHECK(cu.addrSize == sizeof(uintptr_t), "invalid address size");
+#endif
   }
   cu.firstDie = chunk.data() - debugInfo_.data();
   if (cu.version < 5) {
@@ -389,7 +391,9 @@ detail::CompilationUnit Dwarf::getCompilationUnit(uint64_t offset) const {
       case DW_AT_loclists_base:
         cu.loclistsBase = boost::get<uint64_t>(attr.attrValue);
         break;
+#if !defined(__FreeBSD__)
       case DW_AT_rnglists_base:
+#endif
       case DW_AT_GNU_ranges_base:
         cu.rnglistsBase = boost::get<uint64_t>(attr.attrValue);
         break;
@@ -736,6 +740,7 @@ bool Dwarf::findAddress(
     folly::Range<SymbolizedFrame*> inlineFrames,
     folly::FunctionRef<void(const folly::StringPiece name)> eachParameterName)
     const {
+#if !defined(__FreeBSD__)
   if (mode == LocationInfoMode::DISABLED) {
     return false;
   }
@@ -797,6 +802,7 @@ bool Dwarf::findAddress(
       return true;
     }
   }
+#endif
   return false;
 }
 
@@ -968,6 +974,7 @@ detail::Attribute Dwarf::readAttribute(
 
     case DW_FORM_addrx:
       return {spec, die, readDebugAddr(readULEB(info))};
+#if !defined(__FreeBSD__)
     case DW_FORM_addrx1:
       return {spec, die, readDebugAddr(readU64<1>(info))};
     case DW_FORM_addrx2:
@@ -976,6 +983,7 @@ detail::Attribute Dwarf::readAttribute(
       return {spec, die, readDebugAddr(readU64<3>(info))};
     case DW_FORM_addrx4:
       return {spec, die, readDebugAddr(readU64<4>(info))};
+#endif
 
     case DW_FORM_line_strp:
       return {
@@ -986,6 +994,7 @@ detail::Attribute Dwarf::readAttribute(
 
     case DW_FORM_strx:
       return {spec, die, getStringUsingOffsetTable(readULEB(info))};
+#if !defined(__FreeBSD__)
     case DW_FORM_strx1:
       return {spec, die, getStringUsingOffsetTable(readU64<1>(info))};
     case DW_FORM_strx2:
@@ -994,6 +1003,7 @@ detail::Attribute Dwarf::readAttribute(
       return {spec, die, getStringUsingOffsetTable(readU64<3>(info))};
     case DW_FORM_strx4:
       return {spec, die, getStringUsingOffsetTable(readU64<4>(info))};
+#endif
 
     case DW_FORM_rnglistx: {
       auto index = readULEB(info);
@@ -1022,8 +1032,10 @@ detail::Attribute Dwarf::readAttribute(
     case DW_FORM_data16:
       return {spec, die, readBytes(info, 16)};
 
+#if !defined(__FreeBSD__)
     case DW_FORM_ref_sup4:
     case DW_FORM_ref_sup8:
+#endif
     case DW_FORM_strp_sup:
       FOLLY_SAFE_CHECK(
           false, "Unexpected DWARF5 supplimentary object files: ", spec.form);
@@ -1221,11 +1233,14 @@ bool Dwarf::findSubProgramDieForAddress(
             // The value of the DW_AT_high_pc attribute can be
             // an address (DW_FORM_addr*) or an offset (DW_FORM_data*).
             isHighPcAddr = attr.spec.form == DW_FORM_addr || //
-                attr.spec.form == DW_FORM_addrx || //
-                attr.spec.form == DW_FORM_addrx1 || //
-                attr.spec.form == DW_FORM_addrx2 || //
-                attr.spec.form == DW_FORM_addrx3 || //
-                attr.spec.form == DW_FORM_addrx4;
+                attr.spec.form == DW_FORM_addrx 
+#if !defined(__FreeBSD__)
+		|| attr.spec.form == DW_FORM_addrx1 //
+                || attr.spec.form == DW_FORM_addrx2 //
+                || attr.spec.form == DW_FORM_addrx3 //
+                || attr.spec.form == DW_FORM_addrx4
+#endif
+		;
             highPc = boost::get<uint64_t>(attr.attrValue);
             break;
         }
@@ -1317,11 +1332,14 @@ void Dwarf::findInlinedSubroutineDieForAddress(
           // The value of the DW_AT_high_pc attribute can be
           // an address (DW_FORM_addr*) or an offset (DW_FORM_data*).
           isHighPcAddr = attr.spec.form == DW_FORM_addr || //
-              attr.spec.form == DW_FORM_addrx || //
-              attr.spec.form == DW_FORM_addrx1 || //
-              attr.spec.form == DW_FORM_addrx2 || //
-              attr.spec.form == DW_FORM_addrx3 || //
-              attr.spec.form == DW_FORM_addrx4;
+              attr.spec.form == DW_FORM_addrx //
+#if !defined(__FreeBSD__)
+              || attr.spec.form == DW_FORM_addrx1 //
+              || attr.spec.form == DW_FORM_addrx2 //
+              || attr.spec.form == DW_FORM_addrx3 //
+              || attr.spec.form == DW_FORM_addrx4
+#endif
+	      ;
           highPc = boost::get<uint64_t>(attr.attrValue);
           break;
         case DW_AT_abstract_origin:
