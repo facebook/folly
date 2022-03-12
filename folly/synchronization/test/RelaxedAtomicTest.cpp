@@ -18,6 +18,34 @@
 
 #include <folly/portability/GTest.h>
 
+class RelaxedAtomicTest : public testing::Test {};
+
+TEST_F(RelaxedAtomicTest, deduce_bool) {
+  folly::relaxed_atomic v{false};
+  EXPECT_EQ(false, v.load());
+  EXPECT_TRUE((std::is_same_v<bool, decltype(v)::value_type>));
+}
+
+TEST_F(RelaxedAtomicTest, deduce_int) {
+  folly::relaxed_atomic v{0};
+  EXPECT_EQ(0, v.load());
+  EXPECT_TRUE((std::is_same_v<int, decltype(v)::value_type>));
+}
+
+TEST_F(RelaxedAtomicTest, deduce_float) {
+  folly::relaxed_atomic v{0.f};
+  EXPECT_EQ(0, v.load());
+  EXPECT_TRUE((std::is_same_v<float, decltype(v)::value_type>));
+}
+
+TEST_F(RelaxedAtomicTest, deduce_ptr) {
+  struct foo {};
+  foo f;
+  folly::relaxed_atomic v{&f};
+  EXPECT_EQ(&f, v.load());
+  EXPECT_TRUE((std::is_same_v<foo*, decltype(v)::value_type>));
+}
+
 template <typename AtomicType>
 struct RelaxedAtomicBooleanTest : testing::Test {};
 
