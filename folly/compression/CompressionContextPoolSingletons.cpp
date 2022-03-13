@@ -16,29 +16,6 @@
 
 #include <folly/compression/CompressionContextPoolSingletons.h>
 
-#include <stdlib.h>
-
-#include <folly/Portability.h>
-
-#ifndef FOLLY_COMPRESSION_USE_HUGEPAGES
-#if defined(__linux__) && !defined(__ANDROID__)
-#define FOLLY_COMPRESSION_USE_HUGEPAGES 1
-#else
-#define FOLLY_COMPRESSION_USE_HUGEPAGES 0
-#endif
-#endif
-
-#if FOLLY_COMPRESSION_USE_HUGEPAGES
-#include <folly/experimental/JemallocHugePageAllocator.h>
-#endif
-
-#if FOLLY_HAVE_LIBZSTD
-#ifndef ZSTD_STATIC_LINKING_ONLY
-#define ZSTD_STATIC_LINKING_ONLY
-#endif
-#include <zstd.h>
-#endif
-
 namespace folly {
 namespace compression {
 namespace contexts {
@@ -48,46 +25,14 @@ namespace {
 // These objects have no static dependencies and therefore no SIOF issues.
 ZSTD_CCtx_Pool zstd_cctx_pool_singleton;
 ZSTD_DCtx_Pool zstd_dctx_pool_singleton;
-
-#if FOLLY_COMPRESSION_USE_HUGEPAGES
-constexpr bool use_huge_pages = kIsArchAmd64;
-
-void* huge_page_alloc(void*, size_t size) {
-  if (size < 16 * 4096) {
-    // Arbritrary cutoff: ZSTD_CCtx'es only ever make two kinds of allocations:
-    // 1. one small one for the CCtx itself.
-    // 2. "big" ones for the workspace (ZSTD_cwksp)
-    // The CCtx allocation doesn't need to be in a huge page.
-    return malloc(size);
-  }
-  return JemallocHugePageAllocator::allocate(size);
-}
-
-void huge_page_free(void*, void* address) {
-  return JemallocHugePageAllocator::deallocate(address);
-}
-
-ZSTD_customMem huge_page_custom_mem = {
-    use_huge_pages ? huge_page_alloc : nullptr,
-    use_huge_pages ? huge_page_free : nullptr,
-    nullptr,
-};
-#else
-ZSTD_customMem huge_page_custom_mem = {
-    nullptr,
-    nullptr,
-    nullptr,
-};
-#endif
-
 } // anonymous namespace
 
 ZSTD_CCtx* ZSTD_CCtx_Creator::operator()() const noexcept {
-  return ZSTD_createCCtx_advanced(huge_page_custom_mem);
+  return ZSTD_createCCtx();
 }
 
 ZSTD_DCtx* ZSTD_DCtx_Creator::operator()() const noexcept {
-  return ZSTD_createDCtx_advanced(huge_page_custom_mem);
+  return ZSTD_createDCtx();
 }
 
 void ZSTD_CCtx_Deleter::operator()(ZSTD_CCtx* ctx) const noexcept {
