@@ -627,6 +627,19 @@ class EventBase : public TimeoutManager,
    */
   void runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept;
 
+  /*
+   * Like runInEventBaseThread, but runs function immediately instead of at the
+   * end of the loop when called from the eventbase thread.
+   */
+  template <typename T>
+  void runImmediatelyOrRunInEventBaseThread(void (*fn)(T*), T* arg) noexcept;
+
+  /*
+   * Like runInEventBaseThread, but runs function immediately instead of at the
+   * end of the loop when called from the eventbase thread.
+   */
+  void runImmediatelyOrRunInEventBaseThread(Func fn) noexcept;
+
   /**
    * Set the maximum desired latency in us and provide a callback which will be
    * called when that latency is exceeded.
@@ -991,6 +1004,12 @@ template <typename T>
 void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(
     void (*fn)(T*), T* arg) noexcept {
   return runImmediatelyOrRunInEventBaseThreadAndWait([=] { fn(arg); });
+}
+
+template <typename T>
+void EventBase::runImmediatelyOrRunInEventBaseThread(
+    void (*fn)(T*), T* arg) noexcept {
+  return runImmediatelyOrRunInEventBaseThread([=] { fn(arg); });
 }
 
 } // namespace folly

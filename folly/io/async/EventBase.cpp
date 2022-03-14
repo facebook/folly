@@ -670,6 +670,14 @@ void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept {
   }
 }
 
+void EventBase::runImmediatelyOrRunInEventBaseThread(Func fn) noexcept {
+  if (isInEventBaseThread()) {
+    fn();
+  } else {
+    runInEventBaseThreadAlwaysEnqueue(std::move(fn));
+  }
+}
+
 void EventBase::runLoopCallbacks(LoopCallbackList& currentCallbacks) {
   while (!currentCallbacks.empty()) {
     LoopCallback* callback = &currentCallbacks.front();

@@ -1249,6 +1249,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     RunInEventBaseThreadAndWait,
     RunImmediatelyOrRunInEventBaseThreadAndWaitCross,
     RunImmediatelyOrRunInEventBaseThreadAndWaitWithin,
+    RunImmediatelyOrRunInEventBaseThreadAndWaitNotLooping,
+    RunImmediatelyOrRunInEventBaseThreadCross,
     RunImmediatelyOrRunInEventBaseThreadNotLooping,
     RepeatedRunInLoop,
     RunInLoopNoTimeMeasurement,
