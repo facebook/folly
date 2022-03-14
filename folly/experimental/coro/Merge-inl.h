@@ -316,7 +316,12 @@ AsyncGenerator<Reference, Value> merge(
 
   auto state = std::make_shared<SharedState>(executor);
 
-  SCOPE_EXIT { state->cancelSource.requestCancellation(); };
+  SCOPE_EXIT {
+    state->cancelSource.requestCancellation();
+    // Make sure we resume the worker thread so that it has a chance to notice
+    // that cancellation has been requested.
+    state->recordConsumed.post();
+  };
 
   // Start a task that consumes the stream of input streams.
   makeConsumerTask(state, std::move(sources))
@@ -335,11 +340,10 @@ AsyncGenerator<Reference, Value> merge(
     }
     state->recordPublished.reset();
 
-    SCOPE_EXIT { state->recordConsumed.post(); };
-
     if (state->record.hasValue()) {
       // next value
       co_yield std::move(state->record).value();
+      state->recordConsumed.post();
     } else {
       // We're closing the output stream. In the spirit of structured
       // concurrency, let's make sure to not leave any background tasks behind.
