@@ -16,6 +16,8 @@
 
 #include <folly/experimental/coro/Promise.h>
 
+#include <tuple>
+
 #include <folly/Portability.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
@@ -238,5 +240,13 @@ CO_TEST(PromiseTest, MakeFuture) {
   EXPECT_TRUE(future3.isReady());
   auto res3 = co_await co_awaitTry(std::move(future3));
   EXPECT_TRUE(res3.hasValue());
+}
+
+CO_TEST(PromiseTest, MoveAssign) {
+  coro::Promise<void> promise;
+  coro::Future<void> future;
+  std::tie(promise, future) = coro::makePromiseContract<void>();
+  promise.setValue();
+  co_await std::move(future);
 }
 #endif

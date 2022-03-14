@@ -60,6 +60,13 @@ struct PromiseState {
 template <typename T>
 class Promise {
  public:
+  /**
+   * Construct an empty Promise.
+   *
+   * This object is not valid use until you initialize it with move assignment.
+   */
+  Promise() = default;
+
   Promise(Promise&& other) noexcept
       : ct_(std::move(other.ct_)),
         state_(std::exchange(other.state_, nullptr)) {}
@@ -117,7 +124,7 @@ class Promise {
       : ct_(std::move(ct)), state_(&state) {}
 
   CancellationToken ct_;
-  detail::PromiseState<T>* state_;
+  detail::PromiseState<T>* state_{nullptr};
 
   friend std::pair<Promise<T>, Future<T>> makePromiseContract<T>();
 };
@@ -125,6 +132,13 @@ class Promise {
 template <typename T>
 class Future {
  public:
+  /**
+   * Construct an empty Future.
+   *
+   * This object is not valid use until you initialize it with move assignment.
+   */
+  Future() = default;
+
   Future(Future&&) noexcept = default;
   Future& operator=(Future&&) noexcept = default;
   Future(const Future&) = delete;
