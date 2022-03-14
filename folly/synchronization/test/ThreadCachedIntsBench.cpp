@@ -15,32 +15,57 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/synchronization/Rcu.h>
+#include <folly/synchronization/detail/ThreadCachedInts.h>
 
 using namespace folly;
 
-BENCHMARK(RcuReader, iters) {
+BENCHMARK(IncrementStatic, iters) {
   BenchmarkSuspender susp;
 
-  { rcu_reader g; }
+  detail::ThreadCachedInts<void> ints;
+  ints.increment(0);
+  ints.decrement(0);
+
   susp.dismiss();
 
-  // run the test loop
-  while (iters--) {
-    rcu_reader g;
+  for (unsigned i = 0; i < iters; i++) {
+    ints.increment(0);
   }
 }
 
-BENCHMARK(RcuRetire, iters) {
+BENCHMARK(IncrementDecrementSameLoop, iters) {
   BenchmarkSuspender susp;
 
-  rcu_retire<int>(nullptr, [](int*) {});
+  detail::ThreadCachedInts<void> ints;
+  ints.increment(0);
+  ints.decrement(0);
+
   susp.dismiss();
 
-  while (iters--) {
-    rcu_retire<int>(nullptr, [](int*) {});
+  for (unsigned i = 0; i < iters; i++) {
+    ints.increment(0);
+    ints.decrement(0);
   }
 }
+
+BENCHMARK(IncrementDecrementSeparateLoop, iters) {
+  BenchmarkSuspender susp;
+
+  detail::ThreadCachedInts<void> ints;
+  ints.increment(0);
+  ints.decrement(0);
+
+  susp.dismiss();
+
+  for (unsigned i = 0; i < iters; i++) {
+    ints.increment(0);
+  }
+  for (unsigned i = 0; i < iters; i++) {
+    ints.decrement(0);
+  }
+}
+
+BENCHMARK_DRAW_LINE();
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
