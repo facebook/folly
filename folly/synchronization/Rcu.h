@@ -437,7 +437,7 @@ class rcu_reader_domain {
       domain_->unlock_shared(std::move(epoch_.value()));
     }
     epoch_ = std::move(other.epoch_);
-    domain_ = std::move(other.domain_);
+    domain_ = std::exchange(other.domain_, nullptr);
     return *this;
   }
 
@@ -448,8 +448,8 @@ class rcu_reader_domain {
   }
 
   void swap(rcu_reader_domain& other) noexcept {
+    DCHECK(domain_ == other.domain_);
     std::swap(epoch_, other.epoch_);
-    std::swap(domain_, other.domain_);
   }
 
   FOLLY_ALWAYS_INLINE void lock() noexcept {
