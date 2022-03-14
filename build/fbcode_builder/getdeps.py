@@ -595,6 +595,8 @@ class BuildCmd(ProjectCmdBase):
                     else {}
                 )
 
+                extra_b2_args = args.extra_b2_args or []
+
                 if sources_changed or reconfigure or not os.path.exists(built_marker):
                     if os.path.exists(built_marker):
                         os.unlink(built_marker)
@@ -620,6 +622,7 @@ class BuildCmd(ProjectCmdBase):
                         loader,
                         final_install_prefix=loader.get_project_install_prefix(m),
                         extra_cmake_defines=extra_cmake_defines,
+                        extra_b2_args=extra_b2_args,
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
@@ -759,6 +762,15 @@ class BuildCmd(ProjectCmdBase):
                 "when compiling the current project and all its deps. "
                 'e.g: \'{"CMAKE_CXX_FLAGS": "--bla"}\''
             ),
+        )
+        parser.add_argument(
+            "--extra-b2-args",
+            help=(
+                "Repeatable argument that contains extra arguments to pass "
+                "to b2, which compiles boost. "
+                "e.g.: 'cxxflags=-fPIC' 'cflags=-fPIC'"
+            ),
+            action="append",
         )
         parser.add_argument(
             "--shared-libs",
