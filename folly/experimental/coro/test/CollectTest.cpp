@@ -23,6 +23,7 @@
 #include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Generator.h>
+#include <folly/experimental/coro/GtestHelpers.h>
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
@@ -926,6 +927,36 @@ TEST_F(CollectAllRangeTest, GeneratorFromRange) {
     EXPECT_FALSE(co_await results.next());
     co_await scope.joinAsync();
   }());
+}
+
+CO_TEST_F(CollectAllRangeTest, GeneratorFromVoidRange) {
+  folly::coro::CancellableAsyncScope scope;
+  auto makeTask = [](int i) -> folly::coro::Task<void> {
+    co_await folly::coro::sleep(std::chrono::milliseconds(100 * i));
+    if (i == 4) {
+      throw std::runtime_error("fail on 4");
+    }
+    co_return;
+  };
+  std::vector<folly::coro::Task<void>> tasks;
+  for (int i = 5; i > 0; --i) {
+    tasks.push_back(makeTask(i));
+  }
+
+  auto results =
+      folly::coro::makeUnorderedAsyncGenerator(scope, std::move(tasks));
+  // The first 3 results should be produced normally
+  co_await results.next();
+  co_await results.next();
+  co_await results.next();
+  // The next should generate an exception
+  try {
+    co_await results.next();
+    ADD_FAILURE() << "expected an exception";
+  } catch (const std::runtime_error& ex) {
+    EXPECT_STREQ(ex.what(), "fail on 4");
+  }
+  co_await scope.joinAsync();
 }
 
 TEST_F(CollectAllRangeTest, GeneratorFromRangePartialConsume) {
