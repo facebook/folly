@@ -254,5 +254,13 @@ class CaptureFD {
   off_t readOffset_; // for incremental reading
 };
 
+//  find_resource
+//
+//  Finds the file path of a resource which was built alongside a test binary.
+//
+//  Care must be taken to set up the test and resource build rules in accordance
+//  with this function.
+fs::path find_resource(const std::string& resource);
+
 } // namespace test
 } // namespace folly

@@ -27,6 +27,7 @@
 #include <folly/SingletonThreadLocal.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
@@ -231,8 +232,9 @@ TEST(SingletonThreadLocalTest, AccessAllThreads) {
 
 #ifndef _WIN32
 TEST(SingletonThreadLocalDeathTest, Overload) {
-  auto exe = fs::executable_path();
-  auto lib = exe.parent_path() / "singleton_thread_local_overload.so";
+  auto const lib = folly::test::find_resource(
+      "folly/test/singleton_thread_local_overload.so");
+
   auto message = stripLeftMargin(R"MESSAGE(
     Overloaded unique instance over <int, DeathTag, ...> with differing trailing arguments:
       folly::SingletonThreadLocal<int, DeathTag, Make1, DeathTag>
