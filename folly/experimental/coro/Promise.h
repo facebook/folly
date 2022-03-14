@@ -133,7 +133,7 @@ class Future {
   class WaitOperation : private Baton::WaitOperation {
    public:
     explicit WaitOperation(Future& future) noexcept
-        : Baton::WaitOperation(future.state_.ready),
+        : Baton::WaitOperation(future.state_->ready),
           future_(future),
           cb_(std::move(future.ct_), [&] { future_.cancel(); }) {}
 
@@ -142,14 +142,14 @@ class Future {
 
     T await_resume() {
       if constexpr (!std::is_void_v<T>) {
-        return std::move(future_.state_.result.value());
+        return std::move(future_.state_->result.value());
       } else {
-        future_.state_.result.throwIfFailed();
+        future_.state_->result.throwIfFailed();
       }
     }
 
     folly::Try<T> await_resume_try() {
-      return std::move(future_.state_.result);
+      return std::move(future_.state_->result);
     }
 
    private:
@@ -161,7 +161,7 @@ class Future {
     return WaitOperation{*this};
   }
 
-  bool isReady() const noexcept { return state_.ready.ready(); }
+  bool isReady() const noexcept { return state_->ready.ready(); }
 
   friend Future co_withCancellation(
       folly::CancellationToken ct, Future&& future) noexcept {
@@ -173,18 +173,18 @@ class Future {
 
  private:
   Future(CancellationSource cs, detail::PromiseState<T>& state)
-      : cs_(std::move(cs)), state_(state) {}
+      : cs_(std::move(cs)), state_(&state) {}
 
   void cancel() {
-    if (!state_.fulfilled.exchange(true, std::memory_order_relaxed)) {
+    if (!state_->fulfilled.exchange(true, std::memory_order_relaxed)) {
       cs_.requestCancellation();
-      state_.result.emplaceException(OperationCancelled{});
-      state_.ready.post();
+      state_->result.emplaceException(OperationCancelled{});
+      state_->ready.post();
     }
   }
 
   CancellationSource cs_;
-  detail::PromiseState<T>& state_;
+  detail::PromiseState<T>* state_{nullptr};
   // The token inherited when the future is awaited
   CancellationToken ct_;
   bool hasCancelTokenOverride_{false};

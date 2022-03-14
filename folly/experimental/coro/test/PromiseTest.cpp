@@ -29,6 +29,13 @@
 using namespace folly;
 using namespace ::testing;
 
+static_assert(
+    std::is_move_assignable<folly::coro::Promise<void>>::value,
+    "promise should be move assignable");
+static_assert(
+    std::is_move_assignable<folly::coro::Future<void>>::value,
+    "future should be move assignable");
+
 CO_TEST(PromiseTest, ImmediateValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
   promise.setValue(42);
