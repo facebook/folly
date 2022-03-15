@@ -259,7 +259,7 @@ struct relaxed_atomic<T*> : detail::relaxed_atomic_base<T*> {
   }
 };
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 template <typename T>
 relaxed_atomic(T) -> relaxed_atomic<T>;
 #endif
