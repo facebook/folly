@@ -54,6 +54,10 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
 
   std::thread::id getThreadId() const { return th_.get_id(); }
 
+  std::thread::native_handle_type getNativeHandle() {
+    return th_.native_handle();
+  }
+
   void add(Func func) override { getEventBase()->add(std::move(func)); }
 
  protected:
