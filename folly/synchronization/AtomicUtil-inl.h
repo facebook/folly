@@ -28,6 +28,9 @@
 
 namespace folly {
 
+template <typename T>
+class atomic_ref;
+
 namespace detail {
 
 constexpr std::memory_order atomic_compare_exchange_succ(
@@ -303,6 +306,12 @@ inline bool atomic_fetch_set_native(
   return atomic_fetch_bit_op_native_(atomic, bit, order, op, fb);
 }
 
+template <typename Integer>
+inline bool atomic_fetch_set_native(
+    atomic_ref<Integer>& atomic, std::size_t bit, std::memory_order order) {
+  return atomic_fetch_set_native(atomic.atomic(), bit, order);
+}
+
 template <typename Atomic>
 inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
@@ -318,6 +327,12 @@ inline bool atomic_fetch_reset_native(
   return atomic_fetch_bit_op_native_(atomic, bit, order, op, fb);
 }
 
+template <typename Integer>
+inline bool atomic_fetch_reset_native(
+    atomic_ref<Integer>& atomic, std::size_t bit, std::memory_order order) {
+  return atomic_fetch_reset_native(atomic.atomic(), bit, order);
+}
+
 template <typename Atomic>
 bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
@@ -331,6 +346,12 @@ inline bool atomic_fetch_flip_native(
   auto op = atomic_fetch_bit_op_native_btc;
   auto fb = atomic_fetch_flip_fallback;
   return atomic_fetch_bit_op_native_(atomic, bit, order, op, fb);
+}
+
+template <typename Integer>
+inline bool atomic_fetch_flip_native(
+    atomic_ref<Integer>& atomic, std::size_t bit, std::memory_order order) {
+  return atomic_fetch_flip_native(atomic.atomic(), bit, order);
 }
 
 template <typename Atomic>
