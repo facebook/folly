@@ -583,6 +583,8 @@ if (BUILD_TESTS)
         SOURCES DynamicBoundedQueueTest.cpp
       TEST priority_unbounded_queue_set_test
         SOURCES PriorityUnboundedQueueSetTest.cpp
+      TEST thread_cached_synchronized_test
+        SOURCES ThreadCachedSynchronizedTest.cpp
       TEST unbounded_queue_test SOURCES UnboundedQueueTest.cpp
 
     DIRECTORY detail/test/
