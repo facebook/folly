@@ -270,12 +270,16 @@ class RingBufferTrivialStorage {
   }
 
   void store(const T& src) {
+    // technically undefined behavior: once p1478 is accepted in a future c++,
+    // this memcpy may be replaced with atomic_store_per_byte_memcpy
     std::memcpy(&data_, &src, sizeof(T));
-    std::atomic_thread_fence(std::memory_order_release);
+    // The sequencer protects this store with its own state_ store-release
   }
 
   void load(T& dest) const {
-    std::atomic_thread_fence(std::memory_order_acquire);
+    // the sequencer protects this load with its own state_ load-acquire
+    // technically undefined behavior: once p1478 is accepted in a future c++,
+    // this memcpy may be replaced with atomic_store_per_byte_memcpy
     std::memcpy(&dest, &data_, sizeof(T));
   }
 
