@@ -348,25 +348,57 @@ static string metricReadable(double n, unsigned int decimals) {
 }
 
 namespace {
+
+constexpr std::string_view kUnitHeaders = "relative  time/iter   iters/s";
+constexpr std::string_view kUnitHeadersPadding = "     ";
+void printHeaderContents(std::string_view file) {
+  printf(
+      "%-.*s%*s%*s",
+      static_cast<int>(file.size()),
+      file.data(),
+      static_cast<int>(kUnitHeadersPadding.size()),
+      kUnitHeadersPadding.data(),
+      static_cast<int>(kUnitHeaders.size()),
+      kUnitHeaders.data());
+}
+
+void printDefaultHeaderContents(std::string_view file, size_t columns) {
+  const size_t maxFileNameChars =
+      columns - kUnitHeaders.size() - kUnitHeadersPadding.size();
+
+  if (file.size() <= maxFileNameChars) {
+    printHeaderContents(file);
+  } else {
+    std::string truncatedFile = std::string(file.begin(), file.end());
+    constexpr std::string_view overflowFilePrefix = "[...]";
+    const int overflow = truncatedFile.size() - maxFileNameChars;
+    truncatedFile.erase(0, overflow);
+    truncatedFile.replace(0, overflowFilePrefix.size(), overflowFilePrefix);
+    printHeaderContents(truncatedFile);
+  }
+}
+
+void printSeparator(char pad, unsigned int columns) {
+  puts(string(columns, pad).c_str());
+}
+
 class BenchmarkResultsPrinter {
  public:
-  BenchmarkResultsPrinter() = default;
+  BenchmarkResultsPrinter() : columns_(FLAGS_bm_result_width_chars) {}
   explicit BenchmarkResultsPrinter(std::set<std::string> counterNames)
       : counterNames_(std::move(counterNames)),
         namesLength_{std::accumulate(
             counterNames_.begin(),
             counterNames_.end(),
             size_t{0},
-            [](size_t acc, auto&& name) { return acc + 2 + name.length(); })} {}
+            [](size_t acc, auto&& name) { return acc + 2 + name.length(); })},
+        columns_(FLAGS_bm_result_width_chars + namesLength_) {}
 
-  unsigned int columns = FLAGS_bm_result_width_chars;
-  void separator(char pad) {
-    puts(string(columns + namesLength_, pad).c_str());
-  }
+  void separator(char pad) { printSeparator(pad, columns_); }
 
-  void header(const string& file) {
+  void header(std::string_view file) {
     separator('=');
-    printf("%-*srelative  time/iter  iters/s", columns - 28, file.c_str());
+    printDefaultHeaderContents(file, columns_);
     for (auto const& name : counterNames_) {
       printf("  %s", name.c_str());
     }
@@ -388,33 +420,38 @@ class BenchmarkResultsPrinter {
         separator('-');
         continue;
       }
-      bool useBaseline /* = void */;
+      bool useBaseline = false;
       if (s[0] == '%') {
         s.erase(0, 1);
-        useBaseline = true;
+        if (hasBaseline_) {
+          useBaseline = hasBaseline_;
+          hasBaseline_ = false; // Consume the baseline.
+        }
       } else {
         baselineNsPerIter_ = datum.timeInNs;
+        hasBaseline_ = true;
         useBaseline = false;
       }
-      s.resize(columns - 29, ' ');
-      auto nsPerIter = datum.timeInNs;
-      auto secPerIter = nsPerIter / 1E9;
-      auto itersPerSec = (secPerIter == 0)
+      s.resize(columns_ - kUnitHeaders.size(), ' ');
+      const auto nsPerIter = datum.timeInNs;
+      const auto secPerIter = nsPerIter / 1E9;
+      const auto itersPerSec = (secPerIter == 0)
           ? std::numeric_limits<double>::infinity()
           : (1 / secPerIter);
       if (!useBaseline) {
         // Print without baseline
         printf(
-            "%*s           %9s  %7s",
+            "%*s%8.8s  %9.9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
+            "", // Padding for "relative" header.
             readableTime(secPerIter, 2).c_str(),
             metricReadable(itersPerSec, 2).c_str());
       } else {
         // Print with baseline
-        auto rel = baselineNsPerIter_ / nsPerIter * 100.0;
+        const auto rel = baselineNsPerIter_ / nsPerIter * 100.0;
         printf(
-            "%*s %7.2f%%  %9s  %7s",
+            "%*s%7.5g%%  %9.9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
             rel,
@@ -451,6 +488,8 @@ class BenchmarkResultsPrinter {
  private:
   std::set<std::string> counterNames_;
   size_t namesLength_{0};
+  size_t columns_{0};
+  bool hasBaseline_{false};
   double baselineNsPerIter_{numeric_limits<double>::max()};
   string lastFile_;
 };
@@ -510,24 +549,15 @@ void printResultComparison(
   for (auto& baseResult : base) {
     baselines[resultKey(baseResult)] = baseResult.timeInNs;
   }
-  //
+
   // Width available
-  const unsigned int columns = FLAGS_bm_result_width_chars;
+  const size_t columns = FLAGS_bm_result_width_chars;
 
-  // Compute the longest benchmark name
-  size_t longestName = 0;
-  for (auto& datum : test) {
-    longestName = max(longestName, datum.name.size());
-  }
-
-  // Print a horizontal rule
-  auto separator = [&](char pad) { puts(string(columns, pad).c_str()); };
-
-  // Print header for a file
-  auto header = [&](const string& file) {
-    separator('=');
-    printf("%-*srelative  time/iter  iters/s\n", columns - 28, file.c_str());
-    separator('=');
+  auto header = [&](const string_view& file) {
+    printSeparator('=', columns);
+    printDefaultHeaderContents(file, columns);
+    printf("\n");
+    printSeparator('=', columns);
   };
 
   string lastFile;
@@ -544,7 +574,7 @@ void printResultComparison(
 
     string s = datum.name;
     if (s == "-") {
-      separator('-');
+      printSeparator('-', columns);
       continue;
     }
     if (s[0] == '%') {
@@ -576,7 +606,7 @@ void printResultComparison(
           metricReadable(itersPerSec, 2).c_str());
     }
   }
-  separator('=');
+  printSeparator('=', columns);
 }
 
 void checkRunMode() {
