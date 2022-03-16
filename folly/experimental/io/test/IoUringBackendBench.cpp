@@ -23,6 +23,7 @@
 #include <folly/init/Init.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GFlags.h>
 
 DEFINE_bool(run_tests, false, "Run tests");
@@ -30,6 +31,7 @@ DEFINE_int32(backend_type, 0, "0 - default 1 - io_uring");
 DEFINE_bool(socket_pair, false, "use socket pair");
 DEFINE_bool(timer_fd, false, "use timer fd");
 DEFINE_bool(async_read, true, "async read");
+DEFINE_bool(async_refill, true, "async refill");
 
 using namespace folly;
 
@@ -68,15 +70,30 @@ void printTS() {
             << " avg time " << (sTotal / sNum);
 }
 
+class EventFD;
+struct EventFDRefillInfo {
+  size_t num{0};
+  size_t curr{0};
+  size_t refillNum{0};
+  EventBase* evb_{nullptr};
+  std::vector<std::unique_ptr<EventFD>>* events{nullptr};
+};
+
 class EventFD : public EventHandler, public folly::EventReadCallback {
  public:
-  EventFD(uint64_t num, uint64_t& total, bool persist, EventBase* eventBase)
-      : EventFD(total, createFd(num), persist, eventBase) {}
+  EventFD(
+      uint64_t num,
+      uint64_t& total,
+      bool persist,
+      EventBase* eventBase,
+      EventFDRefillInfo* refillInfo)
+      : EventFD(total, createFd(num), persist, eventBase, refillInfo) {}
+
   ~EventFD() override {
     unregisterHandler();
 
     if (fd_ > 0) {
-      changeHandlerFD(NetworkSocket());
+      unregisterHandler();
       ::close(fd_);
       fd_ = -1;
     }
@@ -126,6 +143,21 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
         evb_->terminateLoopSoon();
       }
     }
+    if (refillInfo_ && refillInfo_->events) {
+      processOne();
+    }
+  }
+
+  void processOne() {
+    ++refillInfo_->curr;
+    if (refillInfo_->curr >= refillInfo_->num) {
+      refillInfo_->curr = 0;
+      refillInfo_->evb_->runInEventBaseThreadAlwaysEnqueue([&]() {
+        for (auto& ev : *refillInfo_->events) {
+          ev->write(refillInfo_->refillNum);
+        }
+      });
+    }
   }
 
   struct EFDIoVec : public folly::EventReadCallback::IoVec {
@@ -164,6 +196,10 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
       registerHandler(folly::EventHandler::READ);
     }
 
+    if (refillInfo_ && refillInfo_->events) {
+      processOne();
+    }
+
     if (total_ > 0) {
       --total_;
       if (total_ == 0) {
@@ -184,15 +220,23 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
     int fd = ::eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE);
     CHECK_GT(fd, 0);
     CHECK_EQ(writeNoInt(fd, &num, sizeof(num)), sizeof(num));
+    CHECK_EQ(fcntl(fd, F_SETFL, O_NONBLOCK), 0);
+
     return fd;
   }
 
-  EventFD(uint64_t& total, int fd, bool persist, EventBase* eventBase)
+  EventFD(
+      uint64_t& total,
+      int fd,
+      bool persist,
+      EventBase* eventBase,
+      EventFDRefillInfo* refillInfo)
       : EventHandler(eventBase, NetworkSocket::fromFd(fd)),
         total_(total),
         fd_(fd),
         persist_(persist),
-        evb_(eventBase) {
+        evb_(eventBase),
+        refillInfo_(refillInfo) {
     if (persist_) {
       registerHandler(folly::EventHandler::READ | folly::EventHandler::PERSIST);
     } else {
@@ -204,6 +248,7 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
   int fd_{-1};
   bool persist_;
   EventBase* evb_;
+  EventFDRefillInfo* refillInfo_;
   std::unique_ptr<IoVec> ioVecPtr_;
 };
 
@@ -523,7 +568,8 @@ void runBM(
     bool persist,
     bool asyncRead,
     size_t numEvents,
-    size_t numReadPerLoop = 1) {
+    size_t numReadPerLoop = 1,
+    size_t refillNum = 0) {
   BenchmarkSuspender suspender;
   static constexpr uint64_t kNum = 2000000000;
   if (iters > kNum) {
@@ -531,10 +577,25 @@ void runBM(
   }
   uint64_t total = numEvents;
   auto evb = EventBaseProvider::getEventBase(type);
+  std::unique_ptr<ScopedEventBaseThread> refillThread;
+  EventFDRefillInfo refillInfo;
   std::vector<std::unique_ptr<EventFD>> eventsVec;
   eventsVec.reserve(numEvents);
+  uint64_t num = refillNum ? refillNum : kNum;
+  if (refillNum) {
+    refillInfo.events = &eventsVec;
+    refillInfo.num = eventsVec.size();
+    refillInfo.refillNum = refillNum;
+    if (FLAGS_async_refill) {
+      refillThread = std::make_unique<ScopedEventBaseThread>();
+      refillInfo.evb_ = refillThread->getEventBase();
+    } else {
+      refillInfo.evb_ = evb.get();
+    }
+  }
   for (size_t i = 0; i < numEvents; i++) {
-    auto ev = std::make_unique<EventFD>(kNum, total, persist, evb.get());
+    auto ev =
+        std::make_unique<EventFD>(num, total, persist, evb.get(), &refillInfo);
     ev->setNumReadPerLoop(numReadPerLoop);
     ev->useAsyncReadCallback(asyncRead);
     eventsVec.emplace_back(std::move(ev));
@@ -544,6 +605,8 @@ void runBM(
   suspender.dismiss();
   evb->loopForever();
   suspender.rehire();
+  refillThread.reset();
+  evb.reset();
 }
 
 void runTestsEFD() {
@@ -551,7 +614,8 @@ void runTestsEFD() {
       FLAGS_backend_type ? EventBaseProvider::Type::IO_URING
                          : EventBaseProvider::DEFAULT);
   uint64_t total = (uint64_t)(-1);
-  EventFD evFd(0, total, true, evb.get());
+  EventFDRefillInfo refillInfo;
+  EventFD evFd(0, total, true, evb.get(), &refillInfo);
   evFd.useAsyncReadCallback(FLAGS_async_read);
   std::thread setThread([&]() {
     ::pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, nullptr);
@@ -607,6 +671,81 @@ void runTestsSP() {
 
 } // namespace
 
+// refill
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(
+    runBM,
+    default_persist_1_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    1,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    default_persist_1_read_4_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    1,
+    4,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_1_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    false,
+    1,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_async_read_1_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    true,
+    1,
+    1,
+    1)
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(
+    runBM,
+    default_persist_16_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    16,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    default_persist_16_read_4_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    16,
+    4,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_16_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    false,
+    16,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_async_read_16_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    true,
+    16)
+BENCHMARK_DRAW_LINE();
+// no refill
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM(
     runBM, default_persist_1, EventBaseProvider::Type::DEFAULT, true, false, 1)
