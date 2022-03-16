@@ -157,7 +157,7 @@ class Symbolizer {
   // frame is the normal function call, and the following are stacked inline
   // function calls if any.
   using CachedSymbolizedFrames =
-      std::array<SymbolizedFrame, 1 + Dwarf::kMaxInlineLocationInfoPerFrame>;
+      std::array<SymbolizedFrame, 1 + kMaxInlineLocationInfoPerFrame>;
   using SymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
   folly::Optional<Synchronized<SymbolCache>> symbolCache_;
 };

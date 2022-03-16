@@ -1,0 +1,118 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// DWARF record parser
+
+#pragma once
+
+#include <boost/variant.hpp>
+
+#include <folly/Function.h>
+#include <folly/Range.h>
+#include <folly/experimental/symbolizer/DwarfLineNumberVM.h>
+#include <folly/experimental/symbolizer/DwarfSection.h>
+#include <folly/experimental/symbolizer/DwarfUtil.h>
+#include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/SymbolizedFrame.h>
+
+namespace folly {
+namespace symbolizer {
+
+#if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
+
+struct CallLocation;
+
+class DwarfImpl {
+ public:
+  explicit DwarfImpl(CompilationUnit& cu);
+
+  /**
+   * Find the @locationInfo for @address in the compilation unit @cu.
+   *
+   * Best effort:
+   * - fills @inlineFrames if mode == FULL_WITH_INLINE,
+   * - calls @eachParameterName on the function parameters.
+   *
+   * if @checkAddress is true, we verify that the address is mapped to
+   * a range in this CU before running the line number VM
+   */
+  bool findLocation(
+      uintptr_t address,
+      const LocationInfoMode mode,
+      LocationInfo& info,
+      folly::Range<SymbolizedFrame*> inlineFrames,
+      folly::FunctionRef<void(folly::StringPiece)> eachParameterName,
+      bool checkAddress = true) const;
+
+ private:
+  using AttributeValue = boost::variant<uint64_t, folly::StringPiece>;
+
+  /**
+   * Finds a subprogram debugging info entry that contains a given address among
+   * children of given die. Depth first search.
+   */
+  bool findSubProgramDieForAddress(
+      const Die& die,
+      uint64_t address,
+      folly::Optional<uint64_t> baseAddrCU,
+      Die& subprogram) const;
+
+  /**
+   * Finds inlined subroutine DIEs and their caller lines that contains a given
+   * address among children of given die. Depth first search.
+   */
+  void findInlinedSubroutineDieForAddress(
+      const Die& die,
+      const DwarfLineNumberVM& lineVM,
+      uint64_t address,
+      folly::Optional<uint64_t> baseAddrCU,
+      folly::Range<CallLocation*> locations,
+      size_t& numFound) const;
+
+  CompilationUnit findCompilationUnit(uint64_t targetOffset) const;
+
+  /**
+   * Find the actual definition DIE instead of declaration for the given die.
+   */
+  Die findDefinitionDie(const CompilationUnit& cu, const Die& die) const;
+
+  /**
+   * Iterates over all children of a debugging info entry, calling the given
+   * callable for each. Iteration is stopped early if any of the calls return
+   * false. Returns the offset of next DIE after iterations.
+   */
+  size_t forEachChild(
+      const Die& die, folly::FunctionRef<bool(const Die& die)> f) const;
+
+  template <class T>
+  folly::Optional<T> getAttribute(const Die& die, uint64_t attrName) const;
+  /**
+   * Check if the given address is in the range list at the given offset in
+   * .debug_ranges.
+   */
+  bool isAddrInRangeList(
+      uint64_t address,
+      folly::Optional<uint64_t> baseAddr,
+      size_t offset,
+      uint8_t addrSize) const;
+
+  CompilationUnit& cu_;
+};
+
+#endif
+
+} // namespace symbolizer
+} // namespace folly
