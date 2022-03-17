@@ -7,12 +7,13 @@ import errno
 import glob
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
 import sys
 from struct import unpack
-from typing import Optional
+from typing import List, Optional
 
 from .envfuncs import path_search
 
@@ -31,6 +32,9 @@ class DepBase(object):
         self.env = buildopts.compute_env_for_install_dirs(install_dirs)
         self.install_dirs = install_dirs
         self.strip = strip
+
+        # Deduplicates dependency processing. Keyed on the library
+        # destination path.
         self.processed_deps = set()
 
     def list_dynamic_deps(self, objfile):
@@ -102,12 +106,18 @@ class DepBase(object):
             # Resolve this dep: does it exist in any of our installation
             # directories?  If so, then it is a candidate for processing
             dep = self.resolve_loader_path(d)
-            print("dep: %s -> %s" % (d, dep))
             if dep:
                 # pyre-fixme[16]: `DepBase` has no attribute `munged_lib_dir`.
                 dest_dep = os.path.join(self.munged_lib_dir, os.path.basename(dep))
-                if dep not in self.processed_deps:
-                    self.processed_deps.add(dep)
+                print("dep: %s -> %s" % (d, dest_dep))
+                if dest_dep in self.processed_deps:
+                    # A previous dependency with the same name has already
+                    # been installed at dest_dep, so there is no need to copy
+                    # or munge the dependency again.
+                    # TODO: audit that both source paths have the same inode number
+                    pass
+                else:
+                    self.processed_deps.add(dest_dep)
                     copyfile(dep, dest_dep)
                     self.munge_in_place(dest_dep, final_lib_dir)
 
@@ -119,7 +129,7 @@ class DepBase(object):
     def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir):
         raise RuntimeError("rewrite_dep not implemented")
 
-    def resolve_loader_path(self, dep):
+    def resolve_loader_path(self, dep: str) -> Optional[str]:
         if os.path.isabs(dep):
             return dep
         d = os.path.basename(dep)
@@ -152,6 +162,10 @@ class DepBase(object):
         """override this to define how to remove debug information
         from an object file"""
         pass
+
+    def check_call_verbose(self, args: List[str]) -> None:
+        print(" ".join(map(shlex.quote, args)))
+        subprocess.check_call(args)
 
 
 class WinDeps(DepBase):
@@ -350,7 +364,7 @@ class ElfDeps(DepBase):
             # pyre-fixme[16]: `ElfDeps` has no attribute `munged_lib_dir`.
             os.path.relpath(new_dep, self.munged_lib_dir),
         )
-        subprocess.check_call(
+        self.check_call_verbose(
             [self.patchelf, "--replace-needed", depname, final_dep, objfile]
         )
 
@@ -363,7 +377,7 @@ class ElfDeps(DepBase):
             return magic == b"\x7fELF"
 
     def strip_debug_info(self, objfile) -> None:
-        subprocess.check_call(["strip", objfile])
+        self.check_call_verbose(["strip", objfile])
 
 
 # MACH-O magic number
@@ -412,7 +426,7 @@ class MachDeps(DepBase):
             # Erase the original location from the id of the shared
             # object.  It doesn't appear to hurt to retain it, but
             # it does look weird, so let's rewrite it to be sure.
-            subprocess.check_call(
+            self.check_call_verbose(
                 ["install_name_tool", "-id", os.path.basename(objfile), objfile]
             )
         final_dep = os.path.join(
@@ -421,7 +435,7 @@ class MachDeps(DepBase):
             os.path.relpath(new_dep, self.munged_lib_dir),
         )
 
-        subprocess.check_call(
+        self.check_call_verbose(
             ["install_name_tool", "-change", depname, final_dep, objfile]
         )
 
