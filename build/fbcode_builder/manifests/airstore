@@ -15,8 +15,15 @@ builder = cmake
 builder = nop
 
 [dependencies]
+boost
+fizz
+fmt
 folly
 googletest
+libsodium
+proxygen
+wangle
+zstd
 
 [shipit.pathmap]
 fbcode/fair_infra/data/airstore = .
