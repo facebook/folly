@@ -97,22 +97,22 @@ FOLLY_KEEP std::unique_ptr<QueueObserverFactory> make_queue_observer_factory(
 
 } // namespace folly
 
+template <typename T>
+class ThreadPoolExecutorTypedTest : public ::testing::Test {};
+
+using ValueTypes = ::testing::
+    Types<CPUThreadPoolExecutor, IOThreadPoolExecutor, EDFThreadPoolExecutor>;
+
+TYPED_TEST_SUITE(ThreadPoolExecutorTypedTest, ValueTypes);
+
 template <class TPE>
 static void basic() {
   // Create and destroy
   TPE tpe(10);
 }
 
-TEST(ThreadPoolExecutorTest, CPUBasic) {
-  basic<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IOBasic) {
-  basic<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFBasic) {
-  basic<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, Basic) {
+  basic<TypeParam>();
 }
 
 template <class TPE>
@@ -125,16 +125,8 @@ static void resize() {
   EXPECT_EQ(150, tpe.numThreads());
 }
 
-TEST(ThreadPoolExecutorTest, CPUResize) {
-  resize<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IOResize) {
-  resize<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFResize) {
-  resize<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, Resize) {
+  resize<TypeParam>();
 }
 
 template <class TPE>
@@ -170,16 +162,8 @@ void stop<IOThreadPoolExecutor>() {
   EXPECT_EQ(10, completed);
 }
 
-TEST(ThreadPoolExecutorTest, CPUStop) {
-  stop<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IOStop) {
-  stop<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFStop) {
-  stop<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, Stop) {
+  stop<TypeParam>();
 }
 
 template <class TPE>
@@ -197,16 +181,8 @@ static void join() {
   EXPECT_EQ(1000, completed);
 }
 
-TEST(ThreadPoolExecutorTest, CPUJoin) {
-  join<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IOJoin) {
-  join<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFJoin) {
-  join<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, Join) {
+  join<TypeParam>();
 }
 
 template <class TPE>
@@ -242,16 +218,8 @@ void destroy<IOThreadPoolExecutor>() {
   EXPECT_EQ(10, completed);
 }
 
-TEST(ThreadPoolExecutorTest, CPUDestroy) {
-  destroy<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IODestroy) {
-  destroy<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFDestroy) {
-  destroy<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, Destroy) {
+  destroy<TypeParam>();
 }
 
 template <class TPE>
@@ -271,16 +239,8 @@ static void resizeUnderLoad() {
   EXPECT_EQ(1000, completed);
 }
 
-TEST(ThreadPoolExecutorTest, CPUResizeUnderLoad) {
-  resizeUnderLoad<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IOResizeUnderLoad) {
-  resizeUnderLoad<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFResizeUnderLoad) {
-  resizeUnderLoad<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, ResizeUnderLoad) {
+  resizeUnderLoad<TypeParam>();
 }
 
 template <class TPE>
@@ -341,16 +301,8 @@ static void taskStats() {
   EXPECT_EQ(2, c);
 }
 
-TEST(ThreadPoolExecutorTest, CPUTaskStats) {
-  taskStats<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IOTaskStats) {
-  taskStats<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFTaskStats) {
-  taskStats<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, TaskStats) {
+  taskStats<TypeParam>();
 }
 
 TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
@@ -492,16 +444,8 @@ static void futureExecutor() {
   EXPECT_EQ(6, c);
 }
 
-TEST(ThreadPoolExecutorTest, CPUFuturePool) {
-  futureExecutor<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, IOFuturePool) {
-  futureExecutor<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFFuturePool) {
-  futureExecutor<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, FuturePool) {
+  futureExecutor<TypeParam>();
 }
 
 TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
@@ -562,16 +506,8 @@ static void testObserver() {
   observer->checkCalls();
 }
 
-TEST(ThreadPoolExecutorTest, IOObserver) {
-  testObserver<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, CPUObserver) {
-  testObserver<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFObserver) {
-  testObserver<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, Observer) {
+  testObserver<TypeParam>();
 }
 
 TEST(ThreadPoolExecutorTest, AddWithPriority) {
@@ -863,16 +799,8 @@ static void removeThreadTest() {
   EXPECT_NE(id1, id2);
 }
 
-TEST(ThreadPoolExecutorTest, RemoveThreadTestIO) {
-  removeThreadTest<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, RemoveThreadTestCPU) {
-  removeThreadTest<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, RemoveThreadTestEDF) {
-  removeThreadTest<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, RemoveThread) {
+  removeThreadTest<TypeParam>();
 }
 
 template <typename TPE>
@@ -898,16 +826,8 @@ static void resizeThreadWhileExecutingTest() {
   EXPECT_EQ(1000, completed);
 }
 
-TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestIO) {
-  resizeThreadWhileExecutingTest<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestCPU) {
-  resizeThreadWhileExecutingTest<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestEDF) {
-  resizeThreadWhileExecutingTest<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, ResizeThreadWhileExecuting) {
+  resizeThreadWhileExecutingTest<TypeParam>();
 }
 
 template <typename TPE>
@@ -926,16 +846,8 @@ void keepAliveTest() {
   EXPECT_EQ(42, std::move(f).get());
 }
 
-TEST(ThreadPoolExecutorTest, KeepAliveTestIO) {
-  keepAliveTest<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, KeepAliveTestCPU) {
-  keepAliveTest<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, KeepAliveTestEDF) {
-  keepAliveTest<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, KeepAlive) {
+  keepAliveTest<TypeParam>();
 }
 
 int getNumThreadPoolExecutors() {
@@ -959,16 +871,8 @@ static void registersToExecutorListTest() {
   EXPECT_EQ(0, getNumThreadPoolExecutors());
 }
 
-TEST(ThreadPoolExecutorTest, registersToExecutorListTestIO) {
-  registersToExecutorListTest<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, registersToExecutorListTestCPU) {
-  registersToExecutorListTest<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, registersToExecutorListTestEDF) {
-  registersToExecutorListTest<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, RegistersToExecutorList) {
+  registersToExecutorListTest<TypeParam>();
 }
 
 template <typename TPE>
@@ -978,16 +882,8 @@ static void testUsesNameFromNamedThreadFactory() {
   EXPECT_EQ("my_executor", tpe.getName());
 }
 
-TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryIO) {
-  testUsesNameFromNamedThreadFactory<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryCPU) {
-  testUsesNameFromNamedThreadFactory<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryEDF) {
-  testUsesNameFromNamedThreadFactory<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, UsesNameFromNamedThreadFactory) {
+  testUsesNameFromNamedThreadFactory<TypeParam>();
 }
 
 TEST(ThreadPoolExecutorTest, DynamicThreadsTest) {
@@ -1218,16 +1114,8 @@ class SingleThreadedCPUThreadPoolExecutor : public CPUThreadPoolExecutor,
       : CPUThreadPoolExecutor(1) {}
 };
 
-TEST(ThreadPoolExecutorTest, WeakRefTestIO) {
-  WeakRefTest<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, WeakRefTestCPU) {
-  WeakRefTest<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, WeakRefTestEDF) {
-  WeakRefTest<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, WeakRef) {
+  WeakRefTest<TypeParam>();
 }
 
 TEST(ThreadPoolExecutorTest, WeakRefTestSingleThreadedCPU) {
@@ -1242,16 +1130,8 @@ TEST(ThreadPoolExecutorTest, WeakRefTestSequential) {
                Executor::KeepAlive<SequencedExecutor>>));
 }
 
-TEST(ThreadPoolExecutorTest, VirtualExecutorTestIO) {
-  virtualExecutorTest<IOThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, VirtualExecutorTestCPU) {
-  virtualExecutorTest<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, VirtualExecutorTestEDF) {
-  virtualExecutorTest<EDFThreadPoolExecutor>();
+TYPED_TEST(ThreadPoolExecutorTypedTest, VirtualExecutor) {
+  virtualExecutorTest<TypeParam>();
 }
 
 // Test use of guard inside executors
@@ -1283,17 +1163,7 @@ static void currentThreadTestDisabled(folly::StringPiece executorName) {
   EXPECT_EQ(ctxForbid->tag, executorName);
 }
 
-TEST(ThreadPoolExecutorTest, CPUCurrentThreadExecutor) {
-  currentThreadTest<CPUThreadPoolExecutor>("CPU-ExecutorName");
-  currentThreadTestDisabled<CPUThreadPoolExecutor>("CPU-ExecutorName");
-}
-
-TEST(ThreadPoolExecutorTest, IOCurrentThreadExecutor) {
-  currentThreadTest<IOThreadPoolExecutor>("IO-ExecutorName");
-  currentThreadTestDisabled<IOThreadPoolExecutor>("IO-ExecutorName");
-}
-
-TEST(ThreadPoolExecutorTest, EDFCurrentThreadExecutor) {
-  currentThreadTest<EDFThreadPoolExecutor>("EDF-ExecutorName");
-  currentThreadTestDisabled<EDFThreadPoolExecutor>("EDF-ExecutorName");
+TYPED_TEST(ThreadPoolExecutorTypedTest, CurrentThreadExecutor) {
+  currentThreadTest<TypeParam>("ExecutorName");
+  currentThreadTestDisabled<TypeParam>("ExecutorName");
 }
