@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include <folly/Expected.h>
 #include <folly/Optional.h>
 #include <folly/dynamic.h>
@@ -90,7 +92,7 @@ class json_patch {
   json_patch() = default;
   ~json_patch() = default;
 
-  static folly::Expected<json_patch, parse_error> try_parse(
+  static Expected<json_patch, parse_error> try_parse(
       dynamic const& obj) noexcept;
 
   std::vector<patch_operation> const& ops() const;
@@ -115,7 +117,7 @@ class json_patch {
    * Mutate supplied object in accordance with patch operations. Leaves
    * object in partially modified state if one of the operations fails.
    */
-  Expected<Unit, patch_application_error> apply(folly::dynamic& obj);
+  Expected<Unit, patch_application_error> apply(dynamic& obj) const;
 
  private:
   std::vector<patch_operation> ops_;

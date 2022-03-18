@@ -378,23 +378,23 @@ inline uint32_t hsieh_hash32_str(const std::string& str) noexcept {
 
 namespace detail {
 
-template <typename I>
+template <typename Int>
 struct integral_hasher {
   using folly_is_avalanching =
-      bool_constant<(sizeof(I) >= 8 || sizeof(size_t) == 4)>;
+      bool_constant<(sizeof(Int) >= 8 || sizeof(size_t) == 4)>;
 
-  size_t operator()(I const& i) const noexcept {
-    static_assert(sizeof(I) <= 16, "Input type is too wide");
-    /* constexpr */ if (sizeof(I) <= 4) {
+  size_t operator()(Int const& i) const noexcept {
+    static_assert(sizeof(Int) <= 16, "Input type is too wide");
+    /* constexpr */ if (sizeof(Int) <= 4) {
       auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
       auto const u32 = static_cast<uint32_t>(i32);
       return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
-    } else if (sizeof(I) <= 8) {
+    } else if (sizeof(Int) <= 8) {
       auto const u64 = static_cast<uint64_t>(i);
       return static_cast<size_t>(hash::twang_mix64(u64));
     } else {
       auto const u = to_unsigned(i);
-      auto const hi = static_cast<uint64_t>(u >> sizeof(I) * 4);
+      auto const hi = static_cast<uint64_t>(u >> sizeof(Int) * 4);
       auto const lo = static_cast<uint64_t>(u);
       return hash::hash_128_to_64(hi, lo);
     }

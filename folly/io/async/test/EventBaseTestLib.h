@@ -1487,13 +1487,46 @@ TYPED_TEST_P(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadAndWaitWithin) {
   });
 }
 
-TYPED_TEST_P(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadNotLooping) {
+TYPED_TEST_P(
+    EventBaseTest, RunImmediatelyOrRunInEventBaseThreadAndWaitNotLooping) {
   auto evbPtr = getEventBase<TypeParam>();
   SKIP_IF(!evbPtr) << "Backend not available";
   folly::EventBase& eb = *evbPtr;
   auto mutated = false;
   eb.runImmediatelyOrRunInEventBaseThreadAndWait([&] { mutated = true; });
   EXPECT_TRUE(mutated);
+}
+
+TYPED_TEST_P(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadCross) {
+  auto evbPtr = getEventBase<TypeParam>();
+  SKIP_IF(!evbPtr) << "Backend not available";
+  folly::EventBase& eb = *evbPtr;
+  std::thread th(&EventBase::loopForever, &eb);
+  SCOPE_EXIT {
+    eb.terminateLoopSoon();
+    th.join();
+  };
+  // wait for loop to start
+  eb.runInEventBaseThreadAndWait([] {});
+  Baton<> baton1, baton2;
+  EXPECT_FALSE(eb.isInEventBaseThread());
+
+  eb.runImmediatelyOrRunInEventBaseThread([&] {
+    baton1.wait();
+    baton2.post();
+  });
+  EXPECT_FALSE(baton2.ready());
+  baton1.post();
+  EXPECT_TRUE(baton2.try_wait_for(std::chrono::milliseconds(100)));
+}
+
+TYPED_TEST_P(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadNotLooping) {
+  auto evbPtr = getEventBase<TypeParam>();
+  SKIP_IF(!evbPtr) << "Backend not available";
+  folly::EventBase& eb = *evbPtr;
+  Baton<> baton;
+  eb.runImmediatelyOrRunInEventBaseThread([&] { baton.post(); });
+  EXPECT_TRUE(baton.ready());
 }
 
 ///////////////////////////////////////////////////////////////////////////

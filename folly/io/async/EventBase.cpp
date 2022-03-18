@@ -198,7 +198,7 @@ EventBase::~EventBase() {
 
   DCHECK_EQ(0u, runBeforeLoopCallbacks_.size());
 
-  (void)runLoopCallbacks();
+  runLoopCallbacks();
 
   queue_->drain();
 
@@ -667,6 +667,14 @@ void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept {
     fn();
   } else {
     runInEventBaseThreadAndWait(std::move(fn));
+  }
+}
+
+void EventBase::runImmediatelyOrRunInEventBaseThread(Func fn) noexcept {
+  if (isInEventBaseThread()) {
+    fn();
+  } else {
+    runInEventBaseThreadAlwaysEnqueue(std::move(fn));
   }
 }
 

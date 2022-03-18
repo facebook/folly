@@ -19,6 +19,7 @@
 #include <folly/Try.h>
 #include <folly/Unit.h>
 #include <folly/container/Access.h>
+#include <folly/container/Iterator.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/AsyncScope.h>
 #include <folly/experimental/coro/Coroutine.h>
@@ -47,7 +48,7 @@ using collect_all_component_t =
 
 template <typename SemiAwaitable>
 using collect_all_range_component_t = decay_rvalue_reference_t<
-    lift_lvalue_reference_t<semi_await_result_t<SemiAwaitable>>>;
+    lift_lvalue_reference_t<lift_unit_t<semi_await_result_t<SemiAwaitable>>>>;
 
 template <typename SemiAwaitable>
 using collect_all_try_range_component_t =

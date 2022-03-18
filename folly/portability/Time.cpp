@@ -18,6 +18,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/Likely.h>
+#include <folly/Utility.h>
 
 #include <cassert>
 
@@ -99,7 +100,7 @@ static int clock_thread_cputime(struct timespec* ts) {
 }
 
 FOLLY_ATTR_WEAK int clock_gettime(clockid_t clk_id, struct timespec* ts) {
-  switch (clk_id) {
+  switch (folly::to_underlying(clk_id)) {
     case CLOCK_REALTIME: {
       auto now = std::chrono::system_clock::now().time_since_epoch();
       duration_to_ts(now, ts);

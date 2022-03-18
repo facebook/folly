@@ -75,6 +75,14 @@ DEFINE_int64(
 DEFINE_int32(
     bm_max_secs, 1, "Maximum # of seconds we'll spend on each benchmark.");
 
+DEFINE_uint32(
+    bm_result_width_chars, 76, "Width of results table in characters");
+
+DEFINE_uint32(
+    bm_max_trials,
+    1000,
+    "Maximum number of trials (iterations) executed for each benchmark.");
+
 namespace folly {
 
 std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
@@ -138,18 +146,18 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
   static const auto minNanoseconds = std::max<nanoseconds>(
       nanoseconds(100000), microseconds(FLAGS_bm_min_usec));
 
-  // We do measurements in several epochs and take the minimum, to
-  // account for jitter.
-  static const unsigned int epochs = 1000;
   // We establish a total time budget as we don't want a measurement
-  // to take too long. This will curtail the number of actual epochs.
+  // to take too long. This will curtail the number of actual trials.
   const auto timeBudget = seconds(FLAGS_bm_max_secs);
   auto global = high_resolution_clock::now();
 
-  std::vector<std::pair<double, UserCounters>> epochResults(epochs);
-  size_t actualEpochs = 0;
+  std::vector<std::pair<double, UserCounters>> trialResults(
+      FLAGS_bm_max_trials);
+  size_t actualTrials = 0;
 
-  for (; actualEpochs < epochs; ++actualEpochs) {
+  // We do measurements in several trials (epochs) and take the minimum, to
+  // account for jitter.
+  for (; actualTrials < FLAGS_bm_max_trials; ++actualTrials) {
     const auto maxIters = uint32_t(FLAGS_bm_max_iters);
     for (auto n = uint32_t(FLAGS_bm_min_iters); n < maxIters; n *= 2) {
       detail::TimeIterData timeIterData = fun(static_cast<unsigned int>(n));
@@ -159,16 +167,16 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
       // We got an accurate enough timing, done. But only save if
       // smaller than the current result.
       auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
-      epochResults[actualEpochs] = std::make_pair(
+      trialResults[actualTrials] = std::make_pair(
           max(0.0, double(nsecs.count()) / timeIterData.niter - globalBaseline),
           std::move(timeIterData.userCounters));
-      // Done with the current epoch, we got a meaningful timing.
+      // Done with the current trial, we got a meaningful timing.
       break;
     }
     auto now = high_resolution_clock::now();
     if (now - global >= timeBudget) {
       // No more time budget available.
-      ++actualEpochs;
+      ++actualTrials;
       break;
     }
   }
@@ -176,8 +184,8 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
   // Current state of the art: get the minimum. After some
   // experimentation, it seems taking the minimum is the best.
   auto iter = min_element(
-      epochResults.begin(),
-      epochResults.begin() + actualEpochs,
+      trialResults.begin(),
+      trialResults.begin() + actualTrials,
       [](const auto& a, const auto& b) { return a.first < b.first; });
 
   // If the benchmark was basically drowned in baseline noise, it's
@@ -192,7 +200,7 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
   using std::chrono::microseconds;
   using std::chrono::nanoseconds;
   using std::chrono::seconds;
-  using EpochResultType = std::pair<double, UserCounters>;
+  using TrialResultType = std::pair<double, UserCounters>;
 
   // They key here is accuracy; too low numbers means the accuracy was
   // coarse. We up the ante until we get to at least minNanoseconds
@@ -219,24 +227,23 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
     estPerIter = globalBaseline;
   }
 
-  // We do measurements in several epochs to account for jitter.
-  constexpr unsigned int epochs = 1000;
-  size_t actualEpochs = 0;
-  const unsigned int estimateCount = max(1.0, 5e+7 / estPerIter);
-  std::vector<EpochResultType> epochResults(epochs);
+  // We do measurements in several trials (epochs) to account for jitter.
+  size_t actualTrials = 0;
+  const unsigned int estimateCount = to_integral(max(1.0, 5e+7 / estPerIter));
+  std::vector<TrialResultType> trialResults(FLAGS_bm_max_trials);
   const auto maxRunTime = seconds(5);
   auto globalStart = high_resolution_clock::now();
 
-  // Run benchmark up to epoch times with at least 0.5 sec each
+  // Run benchmark up to trial times with at least 0.5 sec each
   // Or until we run out of alowed time (5sec)
-  for (size_t tryId = 0; tryId < epochs; tryId++) {
+  for (size_t tryId = 0; tryId < FLAGS_bm_max_trials; tryId++) {
     detail::TimeIterData timeIterData = fun(estimateCount);
     auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
 
     if (nsecs.count() > globalBaseline) {
       auto nsecIter =
           double(nsecs.count() - globalBaseline) / timeIterData.niter;
-      epochResults[actualEpochs++] =
+      trialResults[actualTrials++] =
           std::make_pair(nsecIter, std::move(timeIterData.userCounters));
     }
     // Check if we are out of time quota
@@ -248,9 +255,9 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
 
   // Sort results by running time
   std::sort(
-      epochResults.begin(),
-      epochResults.begin() + actualEpochs,
-      [](const EpochResultType& a, const EpochResultType& b) {
+      trialResults.begin(),
+      trialResults.begin() + actualTrials,
+      [](const TrialResultType& a, const TrialResultType& b) {
         return a.first < b.first;
       });
 
@@ -258,21 +265,21 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
     return static_cast<size_t>(count * p);
   };
 
-  const size_t epochP25 = getPercentile(actualEpochs, 0.25);
-  const size_t epochP75 = getPercentile(actualEpochs, 0.75);
-  if (epochP75 - epochP25 == 0) {
+  const size_t trialP25 = getPercentile(actualTrials, 0.25);
+  const size_t trialP75 = getPercentile(actualTrials, 0.75);
+  if (trialP75 - trialP25 == 0) {
     return std::make_pair(NAN, UserCounters());
   }
 
   double geomeanNsec = 1.0;
-  for (size_t tryId = epochP25; tryId < epochP75; tryId++) {
-    geomeanNsec *= epochResults[tryId].first;
+  for (size_t tryId = trialP25; tryId < trialP75; tryId++) {
+    geomeanNsec *= trialResults[tryId].first;
   }
   geomeanNsec =
-      std::pow(geomeanNsec, 1.0 / static_cast<double>(epochP75 - epochP25));
+      std::pow(geomeanNsec, 1.0 / static_cast<double>(trialP75 - trialP25));
 
   return std::make_pair(
-      geomeanNsec, epochResults[epochP25 + (epochP75 - epochP25) / 2].second);
+      geomeanNsec, trialResults[trialP25 + (trialP75 - trialP25) / 2].second);
 }
 
 struct ScaleInfo {
@@ -341,25 +348,57 @@ static string metricReadable(double n, unsigned int decimals) {
 }
 
 namespace {
+
+constexpr std::string_view kUnitHeaders = "relative  time/iter   iters/s";
+constexpr std::string_view kUnitHeadersPadding = "     ";
+void printHeaderContents(std::string_view file) {
+  printf(
+      "%-.*s%*s%*s",
+      static_cast<int>(file.size()),
+      file.data(),
+      static_cast<int>(kUnitHeadersPadding.size()),
+      kUnitHeadersPadding.data(),
+      static_cast<int>(kUnitHeaders.size()),
+      kUnitHeaders.data());
+}
+
+void printDefaultHeaderContents(std::string_view file, size_t columns) {
+  const size_t maxFileNameChars =
+      columns - kUnitHeaders.size() - kUnitHeadersPadding.size();
+
+  if (file.size() <= maxFileNameChars) {
+    printHeaderContents(file);
+  } else {
+    std::string truncatedFile = std::string(file.begin(), file.end());
+    constexpr std::string_view overflowFilePrefix = "[...]";
+    const int overflow = truncatedFile.size() - maxFileNameChars;
+    truncatedFile.erase(0, overflow);
+    truncatedFile.replace(0, overflowFilePrefix.size(), overflowFilePrefix);
+    printHeaderContents(truncatedFile);
+  }
+}
+
+void printSeparator(char pad, unsigned int columns) {
+  puts(string(columns, pad).c_str());
+}
+
 class BenchmarkResultsPrinter {
  public:
-  BenchmarkResultsPrinter() = default;
+  BenchmarkResultsPrinter() : columns_(FLAGS_bm_result_width_chars) {}
   explicit BenchmarkResultsPrinter(std::set<std::string> counterNames)
       : counterNames_(std::move(counterNames)),
         namesLength_{std::accumulate(
             counterNames_.begin(),
             counterNames_.end(),
             size_t{0},
-            [](size_t acc, auto&& name) { return acc + 2 + name.length(); })} {}
+            [](size_t acc, auto&& name) { return acc + 2 + name.length(); })},
+        columns_(FLAGS_bm_result_width_chars + namesLength_) {}
 
-  static constexpr unsigned int columns{76};
-  void separator(char pad) {
-    puts(string(columns + namesLength_, pad).c_str());
-  }
+  void separator(char pad) { printSeparator(pad, columns_); }
 
-  void header(const string& file) {
+  void header(std::string_view file) {
     separator('=');
-    printf("%-*srelative  time/iter  iters/s", columns - 28, file.c_str());
+    printDefaultHeaderContents(file, columns_);
     for (auto const& name : counterNames_) {
       printf("  %s", name.c_str());
     }
@@ -381,33 +420,38 @@ class BenchmarkResultsPrinter {
         separator('-');
         continue;
       }
-      bool useBaseline /* = void */;
+      bool useBaseline = false;
       if (s[0] == '%') {
         s.erase(0, 1);
-        useBaseline = true;
+        if (hasBaseline_) {
+          useBaseline = hasBaseline_;
+          hasBaseline_ = false; // Consume the baseline.
+        }
       } else {
         baselineNsPerIter_ = datum.timeInNs;
+        hasBaseline_ = true;
         useBaseline = false;
       }
-      s.resize(columns - 29, ' ');
-      auto nsPerIter = datum.timeInNs;
-      auto secPerIter = nsPerIter / 1E9;
-      auto itersPerSec = (secPerIter == 0)
+      s.resize(columns_ - kUnitHeaders.size(), ' ');
+      const auto nsPerIter = datum.timeInNs;
+      const auto secPerIter = nsPerIter / 1E9;
+      const auto itersPerSec = (secPerIter == 0)
           ? std::numeric_limits<double>::infinity()
           : (1 / secPerIter);
       if (!useBaseline) {
         // Print without baseline
         printf(
-            "%*s           %9s  %7s",
+            "%*s%8.8s  %9.9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
+            "", // Padding for "relative" header.
             readableTime(secPerIter, 2).c_str(),
             metricReadable(itersPerSec, 2).c_str());
       } else {
         // Print with baseline
-        auto rel = baselineNsPerIter_ / nsPerIter * 100.0;
+        const auto rel = baselineNsPerIter_ / nsPerIter * 100.0;
         printf(
-            "%*s %7.2f%%  %9s  %7s",
+            "%*s%7.5g%%  %9.9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
             rel,
@@ -444,6 +488,8 @@ class BenchmarkResultsPrinter {
  private:
   std::set<std::string> counterNames_;
   size_t namesLength_{0};
+  size_t columns_{0};
+  bool hasBaseline_{false};
   double baselineNsPerIter_{numeric_limits<double>::max()};
   string lastFile_;
 };
@@ -503,24 +549,15 @@ void printResultComparison(
   for (auto& baseResult : base) {
     baselines[resultKey(baseResult)] = baseResult.timeInNs;
   }
-  //
+
   // Width available
-  static const unsigned int columns = 76;
+  const size_t columns = FLAGS_bm_result_width_chars;
 
-  // Compute the longest benchmark name
-  size_t longestName = 0;
-  for (auto& datum : test) {
-    longestName = max(longestName, datum.name.size());
-  }
-
-  // Print a horizontal rule
-  auto separator = [&](char pad) { puts(string(columns, pad).c_str()); };
-
-  // Print header for a file
-  auto header = [&](const string& file) {
-    separator('=');
-    printf("%-*srelative  time/iter  iters/s\n", columns - 28, file.c_str());
-    separator('=');
+  auto header = [&](const string_view& file) {
+    printSeparator('=', columns);
+    printDefaultHeaderContents(file, columns);
+    printf("\n");
+    printSeparator('=', columns);
   };
 
   string lastFile;
@@ -537,7 +574,7 @@ void printResultComparison(
 
     string s = datum.name;
     if (s == "-") {
-      separator('-');
+      printSeparator('-', columns);
       continue;
     }
     if (s[0] == '%') {
@@ -569,7 +606,7 @@ void printResultComparison(
           metricReadable(itersPerSec, 2).c_str());
     }
   }
-  separator('=');
+  printSeparator('=', columns);
 }
 
 void checkRunMode() {
@@ -620,9 +657,8 @@ runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
     // counters have been used, then the header can be printed out properly
     if (printer != nullptr) {
       printer->print({{bm.file, bm.name, elapsed.first, elapsed.second}});
-    } else {
-      results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
     }
+    results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
 
     // get all counter names
     for (auto const& kv : elapsed.second) {
@@ -676,9 +712,10 @@ void runBenchmarks() {
       });
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
-  auto benchmarkResults = runBenchmarksWithPrinter(
-      FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter ? &printer
-                                                                 : nullptr);
+  const bool shouldPrintInline =
+      FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter;
+  auto benchmarkResults =
+      runBenchmarksWithPrinter(shouldPrintInline ? &printer : nullptr);
 
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
 
@@ -687,7 +724,7 @@ void runBenchmarks() {
   } else if (!FLAGS_bm_relative_to.empty()) {
     printResultComparison(
         resultsFromFile(FLAGS_bm_relative_to), benchmarkResults.second);
-  } else {
+  } else if (!shouldPrintInline) {
     printer = BenchmarkResultsPrinter{std::move(benchmarkResults.first)};
     printer.print(benchmarkResults.second);
     printer.separator('=');

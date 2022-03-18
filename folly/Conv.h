@@ -103,6 +103,7 @@
 #include <cassert>
 #include <cctype>
 #include <climits>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
@@ -1190,6 +1191,9 @@ typename std::enable_if<
         !std::is_same<Tgt, Src>::value,
     Expected<Tgt, ConversionCode>>::type
 convertTo(const Src& value) noexcept {
+  if (FOLLY_UNLIKELY(std::isinf(value))) {
+    return static_cast<Tgt>(value);
+  }
   if /* constexpr */ (
       std::numeric_limits<Tgt>::max() < std::numeric_limits<Src>::max()) {
     if (value > std::numeric_limits<Tgt>::max()) {

@@ -27,6 +27,7 @@
 #include <folly/FileUtil.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
+#include <folly/ext/test_ext.h>
 #include <folly/portability/Fcntl.h>
 
 #ifdef _WIN32
@@ -221,6 +222,28 @@ std::string CaptureFD::readIncremental() {
   readOffset_ += off_t(size);
   chunkCob_(StringPiece(buf.get(), buf.get() + size));
   return std::string(buf.get(), size);
+}
+
+fs::path find_resource(const std::string& resource) {
+  auto const pos = resource.find_last_of('/');
+  if (pos == std::string::npos) {
+    throw std::invalid_argument("invalid: " + resource);
+  }
+  auto const dir = resource.substr(0, pos);
+  auto const tgt = resource.substr(pos + 1);
+  auto const exe = fs::executable_path();
+  auto const ext = folly::ext::test_find_resource;
+  auto const fns = std::vector<fs::path>{
+      ext == nullptr ? fs::path() : fs::path(ext(resource)),
+      exe.parent_path().parent_path() / tgt / tgt,
+      exe.parent_path() / tgt,
+  };
+  for (auto const& fn : fns) {
+    if (fs::exists(fn)) {
+      return fn;
+    }
+  }
+  throw std::runtime_error("missing: " + resource);
 }
 
 } // namespace test

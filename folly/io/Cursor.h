@@ -631,7 +631,7 @@ class CursorBase {
         (std::size_t)(crtEnd_ - crtBegin_) <= crtBuf_->length());
   }
 
-  ~CursorBase() {}
+  ~CursorBase() = default;
 
   BufType* head() { return buffer_; }
 

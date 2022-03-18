@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <string>
-
-#include <folly/CPortability.h>
+#include <folly/ext/test_ext.h>
 
 namespace folly {
-namespace detail {
+namespace ext {
 
-// empty-string indicates stack-trace functionality is not available
-std::string getSingletonStackTrace();
+test_find_resource_t* test_find_resource = nullptr;
 
-} // namespace detail
+} // namespace ext
 } // namespace folly

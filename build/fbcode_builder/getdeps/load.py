@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import base64
+import copy
 import hashlib
 import os
 
@@ -55,7 +56,7 @@ class Loader(object):
 
 
 class ResourceLoader(Loader):
-    def __init__(self, namespace, manifests_dir):
+    def __init__(self, namespace, manifests_dir) -> None:
         self.namespace = namespace
         self.manifests_dir = manifests_dir
 
@@ -81,7 +82,7 @@ class ResourceLoader(Loader):
 
         raise ManifestNotFound(project_name)
 
-    def _load_manifest(self, path):
+    def _load_manifest(self, path: str):
         import pkg_resources
 
         contents = pkg_resources.resource_string(self.namespace, path).decode("utf8")
@@ -95,7 +96,7 @@ class ResourceLoader(Loader):
 LOADER = Loader()
 
 
-def patch_loader(namespace, manifests_dir="manifests"):
+def patch_loader(namespace, manifests_dir: str = "manifests") -> None:
     global LOADER
     LOADER = ResourceLoader(namespace, manifests_dir)
 
@@ -118,7 +119,7 @@ class ManifestLoader(object):
     relationships and project hash values for this build configuration.
     """
 
-    def __init__(self, build_opts, ctx_gen=None):
+    def __init__(self, build_opts, ctx_gen=None) -> None:
         self._loader = LOADER
         self.build_opts = build_opts
         if ctx_gen is None:
@@ -178,6 +179,7 @@ class ManifestLoader(object):
             deps = [manifest]
         # The list of manifests in dependency order
         dep_order = []
+        system_packages = {}
 
         while len(deps) > 0:
             m = deps.pop(0)
@@ -212,20 +214,33 @@ class ManifestLoader(object):
 
             # Its deps are done, so we can emit it
             seen.add(m.name)
+            # Capture system packages as we may need to set PATHs to then later
+            if (
+                self.build_opts.allow_system_packages
+                and self.build_opts.host_type.get_package_manager()
+            ):
+                packages = m.get_required_system_packages(ctx)
+                for pkg_type, v in packages.items():
+                    merged = system_packages.get(pkg_type, [])
+                    if v not in merged:
+                        merged += v
+                    system_packages[pkg_type] = merged
+                # A manifest depends on all system packages in it dependencies as well
+                m.resolved_system_packages = copy.copy(system_packages)
             dep_order.append(m)
 
         return dep_order
 
-    def set_project_src_dir(self, project_name, path):
+    def set_project_src_dir(self, project_name, path) -> None:
         self._fetcher_overrides[project_name] = fetcher.LocalDirFetcher(path)
 
-    def set_project_build_dir(self, project_name, path):
+    def set_project_build_dir(self, project_name, path) -> None:
         self._build_dir_overrides[project_name] = path
 
-    def set_project_install_dir(self, project_name, path):
+    def set_project_install_dir(self, project_name, path) -> None:
         self._install_dir_overrides[project_name] = path
 
-    def set_project_install_prefix(self, project_name, path):
+    def set_project_install_prefix(self, project_name, path) -> None:
         self._install_prefix_overrides[project_name] = path
 
     def create_fetcher(self, manifest):
@@ -243,7 +258,7 @@ class ManifestLoader(object):
             self._project_hashes[manifest.name] = h
         return h
 
-    def _compute_project_hash(self, manifest):
+    def _compute_project_hash(self, manifest) -> str:
         """This recursive function computes a hash for a given manifest.
         The hash takes into account some environmental factors on the
         host machine and includes the hashes of its dependencies.

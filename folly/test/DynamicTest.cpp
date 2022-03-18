@@ -16,6 +16,7 @@
 
 #include <folly/dynamic.h>
 
+#include <cmath>
 #include <iterator>
 
 #include <glog/logging.h>
@@ -102,6 +103,34 @@ TEST(Dynamic, ObjectBasics) {
 
   dynamic obj2 = dynamic::object;
   EXPECT_TRUE(obj2.isObject());
+
+  dynamic obj3 = dynamic::object("a", false);
+  EXPECT_EQ(obj3.at("a"), false);
+  EXPECT_EQ(obj3.size(), 1);
+  {
+    const auto [it, inserted] = obj3.emplace("a", true);
+    EXPECT_EQ(obj3.size(), 1);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, false);
+  }
+  {
+    const auto [it, inserted] = obj3.emplace("b", true);
+    EXPECT_EQ(obj3.size(), 2);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, true);
+  }
+  {
+    const auto [it, inserted] = obj3.try_emplace("a", true);
+    EXPECT_EQ(obj3.size(), 2);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, false);
+  }
+  {
+    const auto [it, inserted] = obj3.try_emplace("c", true);
+    EXPECT_EQ(obj3.size(), 3);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, true);
+  }
 
   dynamic d3 = nullptr;
   EXPECT_TRUE(d3 == nullptr);
@@ -576,6 +605,17 @@ void executeOnOrderedIndexPairs(
   }
 }
 
+using int64Limits = std::numeric_limits<int64_t>;
+using doubleLimits = std::numeric_limits<double>;
+
+double nextLower(double value) {
+  return std::nextafter(value, doubleLimits::lowest());
+}
+
+double nextHigher(double value) {
+  return std::nextafter(value, doubleLimits::max());
+}
+
 // Returns values of each type of dynamic, sorted in strictly increasing order
 // as defined by dynamic::operator<
 std::vector<dynamic> getUniqueOrderedValuesForAllTypes() {
@@ -592,10 +632,18 @@ std::vector<dynamic> getUniqueOrderedValuesForAllTypes() {
       true,
 
       // DOUBLE / INT64
+      doubleLimits::lowest(),
+      nextLower(-1.0 * std::pow(2.0, 63)),
+      int64Limits::lowest(),
+      int64Limits::lowest() + 1,
       -1.1,
       -1,
       2,
       2.2,
+      int64Limits::max() - 1,
+      int64Limits::max(),
+      doubleLimits::max(),
+      doubleLimits::infinity(),
 
       // OBJECT - NOTE these don't actually have ordering comparison, so could
       // be anywhere
@@ -609,10 +657,27 @@ std::vector<dynamic> getUniqueOrderedValuesForAllTypes() {
 }
 
 std::vector<std::pair<dynamic, dynamic>> getNumericallyEqualPairs() {
+  auto getDoubleInt64Pair =
+      [](int64_t valueAsInt64) -> std::pair<dynamic, dynamic> {
+    return {valueAsInt64, static_cast<double>(valueAsInt64)};
+  };
+
   return {
       {-2.0, -2},
       {0.0, 0},
       {1.0, 1},
+
+      // Represents int64 min
+      getDoubleInt64Pair(folly::to_integral(std::pow(-2.0, 63))),
+
+      // Whatever double comes after int64 min
+      getDoubleInt64Pair(folly::to_integral(nextHigher(std::pow(-2.0, 63)))),
+
+      // Note int64 max can't be represented in double since it is (2^63 - 1)
+      // and at that range doubles only go in step sizes of 1024. So just go to
+      // whatever is closest.
+      getDoubleInt64Pair(folly::to_integral(nextLower(std::pow(2.0, 63)))),
+
       {dynamic::array(1.0), dynamic::array(1)},
       {dynamic::object("a", dynamic::array(1.0)),
        dynamic::object("a", dynamic::array(1))},
@@ -651,22 +716,35 @@ TEST(Dynamic, HashDoesNotThrow) {
   }
 }
 
-// NOTE: This test currently fails - but will be fixed in an upcoming commit.
-// The reason it's not enabled with EXPECT_NE is that some build modes seem to
-// set hashing of ints/doubles to return 0 to presumably help catch issues with
-// hash dependencies.
-//
-// TEST(Dynamic, HashForNumericallyEqualIntAndDoubles) {
-//   for (const auto& [valueA, valueB] : getNumericallyEqualOrderedPairs()) {
-//     // This is just highlighting that the same hashing functions will apply
-//     // to numerically equal values.
-//     EXPECT_EQ(std::hash<dynamic>()(valueA), std::hash<dynamic>()(valueB))
-//         << "valueA: " << valueA << ", valueB: " << valueB;
-//   }
-// }
+namespace {
+template <typename TExpectedHashType>
+void verifyHashMatches(double value) {
+  EXPECT_EQ(
+      std::hash<TExpectedHashType>()(static_cast<TExpectedHashType>(value)),
+      std::hash<dynamic>()(value))
+      << "value: " << value;
+}
+} // namespace
+
+TEST(Dynamic, HashOnDoublesUsesCorrectUnderlyingHasher) {
+  verifyHashMatches<double>(-1.5);
+  verifyHashMatches<int64_t>(-1.0);
+  verifyHashMatches<int64_t>(0.0);
+  verifyHashMatches<double>(0.2);
+  verifyHashMatches<int64_t>(2.0);
+}
+
+TEST(Dynamic, HashForNumericallyEqualIntAndDoubles) {
+  for (const auto& [valueA, valueB] : getNumericallyEqualPairs()) {
+    // This is just highlighting that the same hashing functions will apply
+    // to numerically equal values.
+    EXPECT_EQ(std::hash<dynamic>()(valueA), std::hash<dynamic>()(valueB))
+        << "valueA: " << valueA << ", valueB: " << valueB;
+  }
+}
 
 TEST(Dynamic, ComparisonOperatorsForNonEquivalenctCases) {
-  // Mainly highlighting some cases for wich implicit conversion is not done.
+  // Mainly highlighting some cases for which implicit conversion is not done.
   // Within each group they are ordered per dynamic::Type enum value.
   std::vector<std::vector<dynamic>> notEqualValueTestCases{
       {nullptr, false, 0},

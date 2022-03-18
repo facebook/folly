@@ -316,9 +316,10 @@ TEST(Bits, BitCastBasic) {
 }
 
 TEST(Bits, BitCastCompatibilityTest) {
+  static_assert(sizeof(double) == sizeof(std::uint64_t));
   auto one = folly::Random::rand64();
-  auto pointer = folly::bit_cast<std::uintptr_t>(one);
-  auto two = folly::bit_cast<std::uint64_t>(pointer);
+  auto dbl = folly::bit_cast<double>(one);
+  auto two = folly::bit_cast<std::uint64_t>(dbl);
   EXPECT_EQ(one, two);
 }
 

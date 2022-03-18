@@ -325,6 +325,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   folly::ThreadPoolListHook threadPoolHook_;
 
   // Dynamic thread sizing functions and variables
+  void ensureMaxActiveThreads();
   void ensureActiveThreads();
   void ensureJoined();
   bool minActive();
@@ -337,7 +338,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::atomic<size_t> activeThreads_{0};
 
   std::atomic<size_t> threadsToJoin_{0};
-  std::chrono::milliseconds threadTimeout_{0};
+  std::atomic<std::chrono::milliseconds> threadTimeout_;
 
   void joinKeepAliveOnce() {
     if (!std::exchange(keepAliveJoined_, true)) {

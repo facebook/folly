@@ -30,7 +30,7 @@
 
 #include <folly/Demangle.h>
 #include <folly/ScopeGuard.h>
-#include <folly/detail/SingletonStackTrace.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/FmtCompile.h>
 
@@ -97,7 +97,7 @@ std::string TypeDescriptor::name() const {
 
 [[noreturn]] void singletonWarnLeakyInstantiatingNotRegisteredAndAbort(
     const TypeDescriptor& type) {
-  auto trace = detail::getSingletonStackTrace();
+  auto trace = symbolizer::getStackTraceStr();
   LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
              << "\n"
              << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
@@ -132,7 +132,7 @@ void singletonWarnDestroyInstanceLeak(
 
 [[noreturn]] void singletonWarnCreateUnregisteredAndAbort(
     const TypeDescriptor& type) {
-  auto trace = detail::getSingletonStackTrace();
+  auto trace = symbolizer::getStackTraceStr();
   LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
              << "\n"
              << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
@@ -141,7 +141,7 @@ void singletonWarnDestroyInstanceLeak(
 
 [[noreturn]] void singletonWarnCreateBeforeRegistrationCompleteAndAbort(
     const TypeDescriptor& type) {
-  auto trace = detail::getSingletonStackTrace();
+  auto trace = symbolizer::getStackTraceStr();
   LOG(FATAL) << "Singleton " << type.name() << " requested before "
              << "registrationComplete() call.\n"
              << "This usually means that either main() never called "
@@ -152,7 +152,7 @@ void singletonWarnDestroyInstanceLeak(
 }
 
 void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
-  auto trace = detail::getSingletonStackTrace();
+  auto trace = symbolizer::getStackTraceStr();
   LOG(ERROR) << "Singleton " << type.name() << " was released.\n"
              << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
 }
@@ -205,7 +205,7 @@ FatalHelper __attribute__((__init_priority__(101))) fatalHelper;
 } // namespace
 
 SingletonVault::SingletonVault(Type type) noexcept : type_(type) {
-  detail::AtFork::registerHandler(
+  AtFork::registerHandler(
       this,
       /*prepare*/
       [this]() {
@@ -231,7 +231,7 @@ SingletonVault::SingletonVault(Type type) noexcept : type_(type) {
 }
 
 SingletonVault::~SingletonVault() {
-  detail::AtFork::unregisterHandler(this);
+  AtFork::unregisterHandler(this);
   destroyInstances();
 }
 

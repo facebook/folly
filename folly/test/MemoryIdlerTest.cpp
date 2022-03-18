@@ -57,7 +57,7 @@ struct MockClock {
   using duration = std::chrono::steady_clock::duration;
   using time_point = std::chrono::time_point<MockClock, duration>;
 
-  MOCK_METHOD0(nowImpl, time_point());
+  MOCK_METHOD(time_point, nowImpl, ());
 
   /// Hold on to the returned shared_ptr until the end of the test
   static std::shared_ptr<StrictMock<MockClock>> setup() {
@@ -85,10 +85,12 @@ template <typename T>
 struct MockAtom : public std::atomic<T> {
   explicit MockAtom(T init = 0) : std::atomic<T>(init) {}
 
-  MOCK_CONST_METHOD2(futexWait, FutexResult(uint32_t, uint32_t));
-  MOCK_CONST_METHOD3(
+  MOCK_METHOD(FutexResult, futexWait, (uint32_t, uint32_t), (const));
+  MOCK_METHOD(
+      FutexResult,
       futexWaitUntil,
-      FutexResult(uint32_t, const MockClock::time_point&, uint32_t));
+      (uint32_t, const MockClock::time_point&, uint32_t),
+      (const));
 };
 
 FutexResult futexWait(

@@ -1,6 +1,10 @@
 Folly: Facebook Open-source Library
 ===================================
 
+<a href="https://opensource.facebook.com/support-ukraine">
+  <img src="https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB" alt="Support Ukraine - Help Provide Humanitarian Aid to Ukraine." />
+</a>
+
 # What is `folly`?
 
 <img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
@@ -21,6 +25,9 @@ Performance concerns permeate much of Folly, sometimes leading to
 designs that are more idiosyncratic than they would otherwise be (see
 e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
 scale is a unifying theme in all of Folly.
+
+## Check it out in the intro video
+[![Explain Like I’m 5: Folly](https://img.youtube.com/vi/Wr_IfOICYSs/0.jpg)](https://www.youtube.com/watch?v=Wr_IfOICYSs)
 
 # Logical Design
 
@@ -88,7 +95,7 @@ The settings for folly's cmake build are held in its getdeps manifest `build/fbc
 
 ### Dependencies
 
-If on Linux you can install system dependencies to save building them:
+If on Linux or MacOS (with homebrew installed) you can install system dependencies to save building them:
 
     # Clone the repo
     git clone https://github.com/facebook/folly

@@ -576,7 +576,9 @@ int fchmod(int fd, mode_t mode) {
       reinterpret_cast<int (*)(int, mode_t)>(dlsym(RTLD_NEXT, "fchmod"));
   // For sanity, make sure we didn't find ourself,
   // since that would cause infinite recursion.
-  CHECK_NE(realFunction, fchmod);
+  CHECK_NE(
+      reinterpret_cast<uintptr_t>(realFunction),
+      reinterpret_cast<uintptr_t>(&fchmod));
 
   if (FChmodFailure::shouldFail()) {
     errno = EINVAL;

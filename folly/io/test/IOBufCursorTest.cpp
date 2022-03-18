@@ -96,6 +96,7 @@ TEST(IOBuf, copy_assign_convert) {
   EXPECT_EQ(1, cursor2.read<uint8_t>());
   EXPECT_EQ(2, cursor3.read<uint8_t>());
   EXPECT_EQ(3, cursor4.read<uint8_t>());
+  EXPECT_EQ(3, cursor5.read<uint8_t>());
 }
 
 TEST(IOBuf, arithmetic) {

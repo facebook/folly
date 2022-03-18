@@ -64,6 +64,14 @@
   (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
    OPENSSL_VERSION_NUMBER < 0x10100000L)
 #define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+// OPENSSL_VERSION_{MAJOR,MINOR} only introduced in 3.0, so need to
+// test if they are defined first
+#if defined(OPENSSL_VERSION_MAJOR) && defined(OPENSSL_VERSION_MINOR)
+#define FOLLY_OPENSSL_IS_30X \
+  OPENSSL_VERSION_MAJOR == 3 && OPENSSL_VERSION_MINOR == 0
+#else
+#define FOLLY_OPENSSL_IS_30X 0
+#endif
 
 // Defined according to version number description in
 // https://www.openssl.org/docs/man1.1.1/man3/OPENSSL_VERSION_NUMBER.html

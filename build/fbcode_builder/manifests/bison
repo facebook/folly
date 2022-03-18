@@ -1,10 +1,13 @@
 [manifest]
 name = bison
 
-[rpms]
+[debs]
 bison
 
-[debs]
+[homebrew]
+bison
+
+[rpms]
 bison
 
 [download.not(os=windows)]

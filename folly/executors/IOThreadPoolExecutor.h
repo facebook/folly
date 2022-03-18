@@ -98,6 +98,10 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   folly::EventBase* getEventBase() override;
 
+  // Ensures that the maximum number of active threads is running and returns
+  // the EventBase associated with each thread.
+  std::vector<folly::Executor::KeepAlive<folly::EventBase>> getAllEventBases();
+
   static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
   static std::mutex* getEventBaseShutdownMutex(

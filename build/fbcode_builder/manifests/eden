@@ -7,6 +7,9 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebookexperimental/eden.git
 
+[github.actions]
+run_tests = off
+
 [build]
 builder = cmake
 
@@ -24,7 +27,7 @@ pexpect
 python-toml
 python-filelock
 
-[dependencies.fb=on]
+[dependencies.fbsource=on]
 rust
 
 # macOS ships with sqlite3, and some of the core system
@@ -37,33 +40,57 @@ sqlite3
 [dependencies.os=darwin]
 osxfuse
 
+[dependencies.not(os=windows)]
 # TODO: teach getdeps to compile curl on Windows.
 # Enabling curl on Windows requires us to find a way to compile libcurl with
 # msvc.
-[dependencies.not(os=windows)]
 libcurl
+# Added so that OSS doesn't see system "python" which is python 2 on darwin and some linux
+python
 
-[shipit.pathmap]
+[dependencies.all(fb=off)]
+# Outside Meta hg is not installed, or if it is, its not the one we want to test with
+eden_scm
+
+[shipit.pathmap.fb=on]
 # for internal builds that use getdeps
+fbcode/fb303 = fb303
 fbcode/common/rust/fbwhoami = common/rust/fbwhoami
 fbcode/common/rust/shed = common/rust/shed
+fbcode/thrift/lib/rust = thrift/lib/rust
+
+[shipit.pathmap]
+# Map hostcaps for now as eden C++ includes its .h. Rust-shed should install it
+fbcode/common/rust/shed/hostcaps = common/rust/shed/hostcaps
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
 fbcode/eden/oss = .
 fbcode/eden = eden
 fbcode/tools/lfs = tools/lfs
-fbcode/thrift/lib/rust = thrift/lib/rust
+
+[shipit.pathmap.fb=off]
+fbcode/eden/fs/public_autocargo = eden/fs
+fbcode/eden/scm/public_autocargo = eden/scm
+fbcode/common/rust/shed/hostcaps/public_cargo = common/rust/shed/hostcaps
+fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
 
 [shipit.strip]
-^fbcode/configerator/structs/hg(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/fs/eden-config\.h$
 ^fbcode/eden/fs/py/eden/config\.py$
-^fbcode/eden/hg/.*$
+^fbcode/eden/hg-server/.*$
 ^fbcode/eden/mononoke/(?!lfs_protocol)
 ^fbcode/eden/scm/build/.*$
 ^fbcode/eden/scm/lib/third-party/rust/.*/Cargo.toml$
 ^fbcode/eden/.*/\.cargo/.*$
 /Cargo\.lock$
 \.pyc$
+
+[shipit.strip.fb=off]
+^fbcode/common/rust/shed(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/configerator/structs/scm/hg(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/scm(?!/public_autocargo|/edenscmnative).*/Cargo\.toml$
+^.*/facebook/.*$
+^.*/fb/.*$
 
 [cmake.defines.all(fb=on,os=windows)]
 ENABLE_GIT=OFF
@@ -72,8 +99,10 @@ INSTALL_PYTHON_LIB=ON
 [cmake.defines.all(not(fb=on),os=windows)]
 ENABLE_GIT=OFF
 
-[cmake.defines.fb=on]
+[cmake.defines.fbsource=on]
 USE_CARGO_VENDOR=ON
+
+[cmake.defines.fb=on]
 IS_FB_BUILD=ON
 
 [depends.environment]

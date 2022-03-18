@@ -21,7 +21,7 @@
 namespace folly {
 
 InlineExecutor& InlineExecutor::instance_slow() noexcept {
-  static auto instance = Indestructible<InlineExecutor>{};
+  static Indestructible<InlineExecutor> instance;
   cache.store(&*instance, std::memory_order_release);
   return *instance;
 }

@@ -682,6 +682,30 @@ struct dynamic {
   template <class K, class V>
   IfNotIterator<K, void> insert(K&&, V&& val);
 
+  /**
+   * Inserts an element into an object constructed in-place with the given args
+   * if there is no existing element with the key, or throws if it's not an
+   * object. Returns a pair consisting of an iterator to the inserted element,
+   * or the already existing element if no insertion happened, and a bool
+   * denoting whether the insertion took place.
+   *
+   * Invalidates iterators.
+   */
+  template <class... Args>
+  std::pair<item_iterator, bool> emplace(Args&&... args);
+
+  /**
+   * Inserts an element into an object with the given key and value constructed
+   * in-place with the given args if there is no existing element with the key,
+   * or throws if it's not an object. Returns a pair consisting of an iterator
+   * to the inserted element, or the already existing element if no insertion
+   * happened, and a bool denoting whether the insertion took place.
+   *
+   * Invalidates iterators.
+   */
+  template <class K, class... Args>
+  std::pair<item_iterator, bool> try_emplace(K&& key, Args&&... args);
+
   /*
    * Inserts the supplied value into array, or throw if not array
    * Shifts existing values in the array to the right
@@ -780,6 +804,13 @@ struct dynamic {
   /*
    * Get a hash code.  This function is called by a std::hash<>
    * specialization.
+   *
+   * Note: an int64_t and double will both produce the same hash if they are
+   * numerically equal before rounding. So the int64_t 2 will have the same hash
+   * as the double 2.0. But no double will intentionally hash to the hash of a
+   * value that only when rounded will compare as equal. E.g. No double will
+   * intentionally hash to the hash of INT64_MAX (2^63 - 1) given that a double
+   * cannot represent this value.
    */
   std::size_t hash() const;
 

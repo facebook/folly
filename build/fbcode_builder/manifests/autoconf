@@ -1,10 +1,13 @@
 [manifest]
 name = autoconf
 
-[rpms]
+[debs]
 autoconf
 
-[debs]
+[homebrew]
+autoconf
+
+[rpms]
 autoconf
 
 [download]

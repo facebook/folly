@@ -268,6 +268,7 @@ int mlock2wrapper(
     FOLLY_MAYBE_UNUSED size_t len,
     MemoryMapping::LockFlags flags) {
   int intFlags = 0;
+  (void)intFlags;
   if (flags.lockOnFault) {
     // MLOCK_ONFAULT, only available in non-portable headers.
     intFlags |= 0x01;

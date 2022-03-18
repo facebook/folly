@@ -16,6 +16,8 @@
 
 #include <folly/experimental/coro/Promise.h>
 
+#include <tuple>
+
 #include <folly/Portability.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
@@ -28,6 +30,13 @@
 
 using namespace folly;
 using namespace ::testing;
+
+static_assert(
+    std::is_move_assignable<folly::coro::Promise<void>>::value,
+    "promise should be move assignable");
+static_assert(
+    std::is_move_assignable<folly::coro::Future<void>>::value,
+    "future should be move assignable");
 
 CO_TEST(PromiseTest, ImmediateValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
@@ -47,6 +56,12 @@ CO_TEST(PromiseTest, ImmediateException) {
   promise.setException(std::runtime_error(""));
   auto res = co_await co_awaitTry(std::move(future));
   EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+CO_TEST(PromiseTest, ImmediateExceptionVoid) {
+  auto [promise, future] = coro::makePromiseContract<void>();
+  promise.setException(std::runtime_error(""));
+  EXPECT_THROW(co_await std::move(future), std::runtime_error);
 }
 
 CO_TEST(PromiseTest, SuspendValue) {
@@ -225,5 +240,13 @@ CO_TEST(PromiseTest, MakeFuture) {
   EXPECT_TRUE(future3.isReady());
   auto res3 = co_await co_awaitTry(std::move(future3));
   EXPECT_TRUE(res3.hasValue());
+}
+
+CO_TEST(PromiseTest, MoveAssign) {
+  coro::Promise<void> promise;
+  coro::Future<void> future;
+  std::tie(promise, future) = coro::makePromiseContract<void>();
+  promise.setValue();
+  co_await std::move(future);
 }
 #endif

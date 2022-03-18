@@ -383,7 +383,12 @@ class hazptr_domain {
     auto due = load_due_time();
     if (time < due || !cas_due_time(due, time + kSyncTimePeriod))
       return 0;
-    return exchange_count(0);
+    int rcount = exchange_count(0);
+    if (rcount < 0) {
+      add_count(rcount);
+      return 0;
+    }
+    return rcount;
   }
 
   /** check_count_threshold */
@@ -507,6 +512,7 @@ class hazptr_domain {
 
   /** do_reclamation */
   void do_reclamation(int rcount) {
+    DCHECK_GE(rcount, 0);
     while (true) {
       Obj* untagged[kNumShards];
       Obj* tagged[kNumShards];

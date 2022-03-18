@@ -62,10 +62,6 @@ static void ensureAsyncRootTlsKeyIsInitialised() noexcept {
           << result << ")";
       std::terminate();
     }
-
-    VLOG(2) << "Initialising folly_async_stack_root_tls_key at address "
-            << (void*)(&folly_async_stack_root_tls_key)
-            << " with pthread_key_t " << folly_async_stack_root_tls_key;
   });
 }
 

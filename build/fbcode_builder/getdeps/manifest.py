@@ -6,6 +6,7 @@
 import configparser
 import io
 import os
+from typing import List
 
 from .builder import (
     AutoconfBuilder,
@@ -62,7 +63,9 @@ SCHEMA = {
         "fields": {
             "builder": REQUIRED,
             "subdir": OPTIONAL,
+            "make_binary": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
+            "job_weight_mib": OPTIONAL,
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
@@ -72,14 +75,25 @@ SCHEMA = {
             "build_doc": OPTIONAL,
             "workspace_dir": OPTIONAL,
             "manifests_to_build": OPTIONAL,
+            # Where to write cargo config (defaults to build_dir/.cargo/config)
+            "cargo_config_file": OPTIONAL,
         },
     },
+    "github.actions": {
+        "optional_section": True,
+        "fields": {
+            "run_tests": OPTIONAL,
+        },
+    },
+    "crate.pathmap": {"optional_section": True},
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
     "autoconf.envcmd.LDFLAGS": {"optional_section": True},
     "rpms": {"optional_section": True},
     "debs": {"optional_section": True},
+    "homebrew": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
+    "bootstrap.args": {"optional_section": True},
     "b2.args": {"optional_section": True},
     "make.build_args": {"optional_section": True},
     "make.install_args": {"optional_section": True},
@@ -100,12 +114,17 @@ ALLOWED_EXPR_SECTIONS = [
     "dependencies",
     "make.build_args",
     "make.install_args",
+    "bootstrap.args",
     "b2.args",
     "download",
     "git",
     "install.files",
     "rpms",
     "debs",
+    "shipit.pathmap",
+    "shipit.strip",
+    "homebrew",
+    "github.actions",
 ]
 
 
@@ -214,6 +233,7 @@ class ManifestParser(object):
         self.fbsource_path = self.get("manifest", "fbsource_path")
         self.shipit_project = self.get("manifest", "shipit_project")
         self.shipit_fbcode_builder = self.get("manifest", "shipit_fbcode_builder")
+        self.resolved_system_packages = {}
 
         if self.name != os.path.basename(file_name):
             raise Exception(
@@ -258,7 +278,7 @@ class ManifestParser(object):
 
         return dep_list
 
-    def get_section_as_args(self, section, ctx=None):
+    def get_section_as_args(self, section, ctx=None) -> List[str]:
         """Intended for use with the make.[build_args/install_args] and
         autoconf.args sections, this method collects the entries and returns an
         array of strings.
@@ -352,6 +372,7 @@ class ManifestParser(object):
         return {
             "rpm": self.get_section_as_args("rpms", ctx),
             "deb": self.get_section_as_args("debs", ctx),
+            "homebrew": self.get_section_as_args("homebrew", ctx),
         }
 
     def _is_satisfied_by_preinstalled_environment(self, ctx):
@@ -368,6 +389,9 @@ class ManifestParser(object):
 
         return True
 
+    def get_repo_url(self, ctx):
+        return self.get("git", "repo_url", ctx=ctx)
+
     def create_fetcher(self, build_options, ctx):
         use_real_shipit = (
             ShipitTransformerFetcher.available() and build_options.use_shipit
@@ -378,7 +402,7 @@ class ManifestParser(object):
             and build_options.fbsource_dir
             and self.shipit_project
         ):
-            return SimpleShipitTransformerFetcher(build_options, self)
+            return SimpleShipitTransformerFetcher(build_options, self, ctx)
 
         if (
             self.fbsource_path
@@ -399,7 +423,7 @@ class ManifestParser(object):
             if package_fetcher.packages_are_installed():
                 return package_fetcher
 
-        repo_url = self.get("git", "repo_url", ctx=ctx)
+        repo_url = self.get_repo_url(ctx)
         if repo_url:
             rev = self.get("git", "rev")
             depth = self.get("git", "depth")
@@ -426,6 +450,12 @@ class ManifestParser(object):
             "project %s has no fetcher configuration matching %s" % (self.name, ctx)
         )
 
+    def get_builder_name(self, ctx):
+        builder = self.get("build", "builder", ctx=ctx)
+        if not builder:
+            raise Exception("project %s has no builder for %r" % (self.name, ctx))
+        return builder
+
     def create_builder(  # noqa:C901
         self,
         build_options,
@@ -436,10 +466,9 @@ class ManifestParser(object):
         loader,
         final_install_prefix=None,
         extra_cmake_defines=None,
+        extra_b2_args=None,
     ):
-        builder = self.get("build", "builder", ctx=ctx)
-        if not builder:
-            raise Exception("project %s has no builder for %r" % (self.name, ctx))
+        builder = self.get_builder_name(ctx)
         build_in_src_dir = self.get("build", "build_in_src_dir", "false", ctx=ctx)
         if build_in_src_dir == "true":
             # Some scripts don't work when they are configured and build in
@@ -499,6 +528,8 @@ class ManifestParser(object):
 
         if builder == "boost":
             args = self.get_section_as_args("b2.args", ctx)
+            if extra_b2_args is not None:
+                args += extra_b2_args
             return Boost(build_options, ctx, self, src_dir, build_dir, inst_dir, args)
 
         if builder == "bistro":
@@ -553,26 +584,49 @@ class ManifestParser(object):
             )
 
         if builder == "cargo":
-            build_doc = self.get("cargo", "build_doc", False, ctx)
-            workspace_dir = self.get("cargo", "workspace_dir", None, ctx)
-            manifests_to_build = self.get("cargo", "manifests_to_build", None, ctx)
-            return CargoBuilder(
-                build_options,
-                ctx,
-                self,
-                src_dir,
-                build_dir,
-                inst_dir,
-                build_doc,
-                workspace_dir,
-                manifests_to_build,
-                loader,
+            return self.create_cargo_builder(
+                build_options, ctx, src_dir, build_dir, inst_dir, loader
             )
 
         if builder == "OpenNSA":
             return OpenNSABuilder(build_options, ctx, self, src_dir, inst_dir)
 
         raise KeyError("project %s has no known builder" % (self.name))
+
+    def create_prepare_builders(
+        self, build_options, ctx, src_dir, build_dir, inst_dir, loader
+    ):
+        """Create builders that have a prepare step run, e.g. to write config files"""
+        prepare_builders = []
+        builder = self.get_builder_name(ctx)
+        cargo = self.get_section_as_dict("cargo", ctx)
+        if not builder == "cargo" and cargo:
+            cargo_builder = self.create_cargo_builder(
+                build_options, ctx, src_dir, build_dir, inst_dir, loader
+            )
+            prepare_builders.append(cargo_builder)
+        return prepare_builders
+
+    def create_cargo_builder(
+        self, build_options, ctx, src_dir, build_dir, inst_dir, loader
+    ):
+        build_doc = self.get("cargo", "build_doc", False, ctx)
+        workspace_dir = self.get("cargo", "workspace_dir", None, ctx)
+        manifests_to_build = self.get("cargo", "manifests_to_build", None, ctx)
+        cargo_config_file = self.get("cargo", "cargo_config_file", None, ctx)
+        return CargoBuilder(
+            build_options,
+            ctx,
+            self,
+            src_dir,
+            build_dir,
+            inst_dir,
+            build_doc,
+            workspace_dir,
+            manifests_to_build,
+            loader,
+            cargo_config_file,
+        )
 
 
 class ManifestContext(object):
@@ -582,7 +636,15 @@ class ManifestContext(object):
     This object should be passed as the `ctx` parameter in ManifestParser.get() calls.
     """
 
-    ALLOWED_VARIABLES = {"os", "distro", "distro_vers", "fb", "test", "shared_libs"}
+    ALLOWED_VARIABLES = {
+        "os",
+        "distro",
+        "distro_vers",
+        "fb",
+        "fbsource",
+        "test",
+        "shared_libs",
+    }
 
     def __init__(self, ctx_dict):
         assert set(ctx_dict.keys()) == self.ALLOWED_VARIABLES

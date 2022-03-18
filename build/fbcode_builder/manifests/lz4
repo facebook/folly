@@ -1,8 +1,13 @@
 [manifest]
 name = lz4
 
+[homebrew]
+lz4
+
 [rpms]
 lz4-devel
+# centos (not centos_stream that is Meta internal) 8 is missing this
+[rpms.not(all(distro=centos,distro_vers=8))]
 lz4-static
 
 [debs]

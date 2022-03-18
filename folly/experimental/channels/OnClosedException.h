@@ -14,37 +14,22 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
-#include <folly/synchronization/Rcu.h>
+#pragma once
 
-using namespace folly;
+#include <exception>
 
-BENCHMARK(RcuReader, iters) {
-  BenchmarkSuspender susp;
+namespace folly {
+namespace channels {
 
-  { rcu_reader g; }
-  susp.dismiss();
-
-  // run the test loop
-  while (iters--) {
-    rcu_reader g;
+/**
+ * An OnClosedException passed to a transform or multiplex callback indicates
+ * that the input channel was closed. An OnClosedException can also be thrown by
+ * a transform or multiplex callback, which will close the output channel.
+ */
+struct OnClosedException : public std::exception {
+  const char* what() const noexcept override {
+    return "The channel has been closed.";
   }
-}
-
-BENCHMARK(RcuRetire, iters) {
-  BenchmarkSuspender susp;
-
-  rcu_retire<int>(nullptr, [](int*) {});
-  susp.dismiss();
-
-  while (iters--) {
-    rcu_retire<int>(nullptr, [](int*) {});
-  }
-}
-
-int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  folly::runBenchmarks();
-
-  return 0;
-}
+};
+} // namespace channels
+} // namespace folly

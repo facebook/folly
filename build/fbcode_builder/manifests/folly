@@ -9,6 +9,7 @@ repo_url = https://github.com/facebook/folly.git
 
 [build]
 builder = cmake
+job_weight_mib = 1024
 
 [dependencies]
 gflags
@@ -16,6 +17,7 @@ glog
 googletest
 boost
 libevent
+libsodium
 double-conversion
 fmt
 lz4
@@ -50,6 +52,10 @@ fbcode/folly = folly
 
 [cmake.defines]
 BUILD_SHARED_LIBS=OFF
+BOOST_LINK_STATIC=ON
+
+[cmake.defines.os=freebsd]
+LIBDWARF_FOUND=NO
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON

@@ -61,7 +61,7 @@ template <typename SampleDataType>
 class StreamingStatsTest : public testing::Test {
  public:
   void SetUp() override {
-    for (SampleDataType value = 1.0; value < 11.0; value += 1.0) {
+    for (SampleDataType value = 1; value < 11; value += 1) {
       stats.add(value);
     }
   }

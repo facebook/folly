@@ -1879,8 +1879,8 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  template <class I, class F>
-  Future<I> reduce(I&& initial, F&& func) &&;
+  template <class In, class F>
+  Future<In> reduce(In&& initial, F&& func) &&;
 
   /// Moves-out `*this`, creating/returning a corresponding SemiFuture.
   /// Result will behave like `*this` except result won't have an Executor.

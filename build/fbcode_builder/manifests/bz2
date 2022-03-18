@@ -1,0 +1,30 @@
+[manifest]
+name = bz2
+
+[debs]
+libbz2-dev
+
+[homebrew]
+bzip2
+
+[rpms]
+bzip2-devel
+
+[download]
+url = https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
+sha256 = ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269
+
+[build.not(os=windows)]
+builder = make
+subdir = bzip2-1.0.8
+
+[make.build_args.os=linux]
+# python bz2 support on linux needs dynamic library
+-f
+Makefile-libbz2_so
+
+[make.install_args]
+install
+
+[build.os=windows]
+builder = nop

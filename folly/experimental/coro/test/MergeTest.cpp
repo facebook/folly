@@ -32,6 +32,7 @@
 #if FOLLY_HAS_COROUTINES
 
 using namespace folly::coro;
+using namespace std::chrono_literals;
 
 class MergeTest : public testing::Test {};
 
@@ -99,6 +100,40 @@ TEST_F(MergeTest, TruncateStream) {
     }
 
     CHECK_EQ(3, completed);
+  }());
+}
+
+TEST_F(MergeTest, TruncateStreamMultiThreaded) {
+  blockingWait([]() -> Task<void> {
+    std::atomic<int> completed = 0;
+    folly::Baton allCompleted;
+    {
+      auto generator = merge(
+          folly::getGlobalCPUExecutor(),
+          co_invoke([&]() -> AsyncGenerator<AsyncGenerator<int>> {
+            auto makeGenerator = [&]() -> AsyncGenerator<int> {
+              SCOPE_EXIT {
+                if (++completed == 3) {
+                  allCompleted.post();
+                }
+              };
+              co_yield 1;
+              co_yield 2;
+            };
+
+            co_yield co_invoke(makeGenerator);
+            co_yield co_invoke(makeGenerator);
+            co_yield co_invoke(makeGenerator);
+          }));
+
+      auto item = co_await generator.next();
+      CHECK_EQ(1, *item);
+      co_await generator.next();
+      // Truncate the stream after consuming only 2 of the 6 values it
+      // would have produced.
+    }
+
+    CHECK(allCompleted.try_wait_for(1s));
   }());
 }
 

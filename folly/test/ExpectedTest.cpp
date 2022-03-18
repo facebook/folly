@@ -572,7 +572,7 @@ TEST(Expected, AssignmentContained) {
 
 TEST(Expected, Exceptions) {
   Expected<int, E> empty;
-  EXPECT_THROW(empty.value(), Unexpected<E>::BadExpectedAccess);
+  EXPECT_THROW(empty.value(), BadExpectedAccess<E>);
 }
 
 struct ThrowingBadness {
@@ -763,7 +763,7 @@ TEST(Expected, ThenOrThrow) {
     EXPECT_THROW(
         (Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.thenOrThrow(
             [](std::unique_ptr<int> p) { return *p; })),
-        Unexpected<E>::BadExpectedAccess);
+        BadExpectedAccess<E>);
   }
 
   {
@@ -786,7 +786,7 @@ TEST(Expected, ThenOrThrow) {
     EXPECT_THROW(
         (Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.thenOrThrow(
             [](std::unique_ptr<int> p) { return *p; }, [](E) {})),
-        Unexpected<E>::BadExpectedAccess);
+        BadExpectedAccess<E>);
   }
 }
 
@@ -887,8 +887,11 @@ TEST(Expected, TestUnique) {
       2, **mk().then([](auto r) { return std::make_unique<int>(*r + 1); }));
 
   // Test converting errors works
+  struct Convertible {
+    /* implicit */ operator int() const noexcept { return 17; }
+  };
   EXPECT_EQ(
-      2, **mk().then([](auto r) -> Expected<std::unique_ptr<int>, double> {
+      2, **mk().then([](auto r) -> Expected<std::unique_ptr<int>, Convertible> {
         return std::make_unique<int>(*r + 1);
       }));
 }

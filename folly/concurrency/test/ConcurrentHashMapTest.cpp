@@ -1047,6 +1047,61 @@ TYPED_TEST_P(ConcurrentHashMapTest, EraseClonedNonCopyable) {
   EXPECT_EQ(iter->first, 256 * cloned);
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, ConcurrentInsertClear) {
+  DeterministicSchedule sched(DeterministicSchedule::uniform(FLAGS_seed));
+
+  /* 8192 and 8x / 9x multipliers are values that tend to reproduce
+   * race condition (fixed by this change) more frequently.
+   * Test keeps CHM size limited to chm_max_size and clear() if it exceeds.
+   * Key space for CHM is limited to chm_max_key and exceeds max size by
+   * small margin.
+   * Test imitates serial traversal over key space by multiple threads,
+   * triggering clear() by multiple threads at once.
+   */
+  constexpr unsigned long chm_base_size = 8192;
+  constexpr unsigned long chm_max_size = chm_base_size * 8;
+  constexpr unsigned long chm_max_key = chm_base_size * 9;
+  CHM<unsigned long,
+      unsigned long,
+      std::hash<unsigned long>,
+      std::equal_to<unsigned long>,
+      std::allocator<uint8_t>,
+      8,
+      Atom,
+      Mutex>
+      m(chm_base_size);
+
+  std::vector<std::thread> threads;
+  /* 32 threads and 50k rounds are a compromise between trying to create
+   * race conditions in insert()/clear(), and finishing test in reasonable
+   * time */
+  constexpr int load_divisor = folly::kIsSanitizeThread ? 4 : 1;
+  constexpr size_t num_threads = 32 / load_divisor;
+  constexpr size_t rounds_per_thread = 50000 / load_divisor;
+  threads.reserve(num_threads);
+  for (size_t t = 0; t < num_threads; t++) {
+    threads.emplace_back([&, t]() {
+      for (size_t i = 0; i < rounds_per_thread; ++i) {
+        /* Code simulates traversal over whole key space by all threads
+         * combined, with each thread contributing to semi-unique set of keys.
+         * Each thread is assigned its own key sequence,
+         * with thread_X traversing values X, 32+X, 32*2+X, 32*3+X, ...
+         * 32*N+X mod chm_max_key.
+         */
+        const unsigned long k = (i * num_threads + t) % chm_max_key;
+        if (m.size() >= chm_max_size) {
+          m.clear();
+        }
+        m.insert_or_assign(k, k);
+      }
+    });
+  }
+
+  for (auto& t : threads) {
+    join;
+  }
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
     ConcurrentHashMapTest,
     MapTest,
@@ -1088,7 +1143,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     HeterogeneousLookup,
     HeterogeneousInsert,
     InsertOrAssignIterator,
-    EraseClonedNonCopyable);
+    EraseClonedNonCopyable,
+    ConcurrentInsertClear);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 

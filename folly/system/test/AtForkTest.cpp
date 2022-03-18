@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/AtFork.h>
+#include <folly/system/AtFork.h>
 
 #include <atomic>
 #include <mutex>
@@ -22,12 +22,15 @@
 
 #include <glog/logging.h>
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-TEST(ThreadLocal, AtFork) {
+class AtForkTest : public testing::Test {};
+
+TEST_F(AtForkTest, prepare) {
   int foo;
   bool forked = false;
-  folly::detail::AtFork::registerHandler(
+  folly::AtFork::registerHandler(
       &foo,
       [&] {
         forked = true;
@@ -35,45 +38,46 @@ TEST(ThreadLocal, AtFork) {
       },
       [] {},
       [] {});
-  auto pid = folly::kIsSanitizeThread
-      ? folly::detail::AtFork::forkInstrumented(fork)
+  auto pid = folly::kIsSanitizeThread //
+      ? folly::AtFork::forkInstrumented(fork)
       : fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
-    auto pid2 = wait(&status);
+    auto pid2 = waitpid(pid, &status, 0);
     EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
   } else {
-    exit(0);
+    _exit(0);
   }
   EXPECT_TRUE(forked);
   forked = false;
-  folly::detail::AtFork::unregisterHandler(&foo);
+  folly::AtFork::unregisterHandler(&foo);
   pid = fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
-    auto pid2 = wait(&status);
+    auto pid2 = waitpid(pid, &status, 0);
     EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
   } else {
-    exit(0);
+    _exit(0);
   }
   EXPECT_FALSE(forked);
 }
 
-TEST(ThreadLocal, AtForkOrdering) {
-  std::atomic<bool> done{false};
+TEST_F(AtForkTest, ordering) {
   std::atomic<bool> started{false};
   std::mutex a;
   std::mutex b;
   int foo;
   int foo2;
-  folly::detail::AtFork::registerHandler(
+  folly::AtFork::registerHandler(
       &foo,
       [&] { return a.try_lock(); },
       [&] { a.unlock(); },
       [&] { a.unlock(); });
-  folly::detail::AtFork::registerHandler(
+  folly::AtFork::registerHandler(
       &foo2,
       [&] { return b.try_lock(); },
       [&] { b.unlock(); },
@@ -87,17 +91,22 @@ TEST(ThreadLocal, AtForkOrdering) {
   });
   while (!started) {
   }
-  auto pid = folly::kIsSanitizeThread
-      ? folly::detail::AtFork::forkInstrumented(fork)
+  auto pid = folly::kIsSanitizeThread //
+      ? folly::AtFork::forkInstrumented(fork)
       : fork();
+  PCHECK(pid != -1);
   if (pid) {
     int status;
-    auto pid2 = wait(&status);
-    EXPECT_EQ(status, 0);
+    auto pid2 = waitpid(pid, &status, 0);
+    EXPECT_TRUE(WIFEXITED(status));
+    EXPECT_THAT(
+        WEXITSTATUS(status),
+        folly::kIsSanitizeThread //
+            ? testing::AnyOfArray({0, 66})
+            : testing::AnyOfArray({0}));
     EXPECT_EQ(pid, pid2);
   } else {
-    exit(0);
+    _exit(0);
   }
-  done = true;
   thr.join();
 }

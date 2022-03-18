@@ -393,6 +393,11 @@ class AsyncSSLSocket : public AsyncSocket {
     return "TLS";
   }
 
+  std::unique_ptr<folly::IOBuf> getExportedKeyingMaterial(
+      folly::StringPiece label,
+      std::unique_ptr<IOBuf> context,
+      uint16_t length) const override;
+
   void setEorTracking(bool track) override;
   size_t getRawBytesWritten() const override;
   size_t getRawBytesReceived() const override;
@@ -906,6 +911,7 @@ class AsyncSSLSocket : public AsyncSocket {
 
   WriteResult interpretSSLError(int rc, int error);
   ReadResult performRead(void** buf, size_t* buflen, size_t* offset) override;
+  ReadResult performReadv(struct iovec* iovs, size_t num) override;
   WriteResult performWrite(
       const iovec* vec,
       uint32_t count,

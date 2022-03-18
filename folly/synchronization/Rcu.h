@@ -229,7 +229,7 @@
 // specialized queues could be used if available, since only a single reader
 // reads the queue, and can splice all of the items to the executor if possible.
 //
-// synchronize_rcu() call latency is on the order of 10ms.  Multiple
+// rcu_synchronize() call latency is on the order of 10ms.  Multiple
 // separate threads can share a synchronized period and should scale.
 //
 // rcu_retire() is a queue push, and on the order of 150 ns, however,
@@ -315,7 +315,7 @@ class rcu_token {
 };
 
 // Defines an RCU domain.  RCU readers within a given domain block updaters
-// (synchronize_rcu, call, retire, or rcu_retire) only within that same
+// (rcu_synchronize, call, retire, or rcu_retire) only within that same
 // domain, and have no effect on updaters associated with other rcu_domains.
 //
 // Custom domains are normally not necessary because the default domain works
@@ -358,13 +358,13 @@ class rcu_domain {
   FOLLY_ALWAYS_INLINE void unlock_shared(rcu_token<Tag>&&);
 
   // Invokes cbin(this) and then deletes this some time after all pre-existing
-  // RCU readers have completed.  See synchronize_rcu() for more information
+  // RCU readers have completed.  See rcu_synchronize() for more information
   // about RCU readers and domains.
   template <typename T>
   void call(T&& cbin);
 
   // Invokes node->cb_(node) some time after all pre-existing RCU readers
-  // have completed.  See synchronize_rcu() for more information about RCU
+  // have completed.  See rcu_synchronize() for more information about RCU
   // readers and domains.
   void retire(list_node* node) noexcept;
 
@@ -409,8 +409,8 @@ class rcu_domain {
 
 extern folly::Indestructible<rcu_domain<RcuTag>*> rcu_default_domain_;
 
-inline rcu_domain<RcuTag>* rcu_default_domain() {
-  return *rcu_default_domain_;
+inline rcu_domain<RcuTag>& rcu_default_domain() {
+  return **rcu_default_domain_;
 }
 
 // Main reader guard class.  Use rcu_reader instead unless you need to
@@ -421,12 +421,12 @@ template <typename Tag = RcuTag>
 class rcu_reader_domain {
  public:
   explicit FOLLY_ALWAYS_INLINE rcu_reader_domain(
-      rcu_domain<Tag>* domain = rcu_default_domain()) noexcept
-      : epoch_(domain->lock_shared()), domain_(domain) {}
+      rcu_domain<Tag>& domain = rcu_default_domain()) noexcept
+      : epoch_(domain.lock_shared()), domain_(&domain) {}
   explicit rcu_reader_domain(
       std::defer_lock_t,
-      rcu_domain<Tag>* domain = rcu_default_domain()) noexcept
-      : domain_(domain) {}
+      rcu_domain<Tag>& domain = rcu_default_domain()) noexcept
+      : domain_(&domain) {}
   rcu_reader_domain(const rcu_reader_domain&) = delete;
   rcu_reader_domain(rcu_reader_domain&& other) noexcept
       : epoch_(std::move(other.epoch_)),
@@ -437,7 +437,7 @@ class rcu_reader_domain {
       domain_->unlock_shared(std::move(epoch_.value()));
     }
     epoch_ = std::move(other.epoch_);
-    domain_ = std::move(other.domain_);
+    domain_ = std::exchange(other.domain_, nullptr);
     return *this;
   }
 
@@ -448,8 +448,8 @@ class rcu_reader_domain {
   }
 
   void swap(rcu_reader_domain& other) noexcept {
+    DCHECK(domain_ == other.domain_);
     std::swap(epoch_, other.epoch_);
-    std::swap(domain_, other.domain_);
   }
 
   FOLLY_ALWAYS_INLINE void lock() noexcept {
@@ -484,16 +484,16 @@ inline void swap(
 // RCU readers will normally be marked using the RAII interface rcu_reader,
 // as in folly::rcu_reader rcuGuard.
 //
-// Note that synchronize_rcu is not obligated to wait for RCU readers that
-// start after synchronize_rcu starts.  Note also that holding a lock across
-// synchronize_rcu that is acquired by any deleter (as in is passed to
+// Note that rcu_synchronize is not obligated to wait for RCU readers that
+// start after rcu_synchronize starts.  Note also that holding a lock across
+// rcu_synchronize that is acquired by any deleter (as in is passed to
 // rcu_retire, retire, or call) will result in deadlock.  Note that such
 // deadlock will normally only occur with user-written deleters, as in the
 // default of delele will normally be immune to such deadlocks.
 template <typename Tag = RcuTag>
-inline void synchronize_rcu(
-    rcu_domain<Tag>* domain = rcu_default_domain()) noexcept {
-  domain->synchronize();
+inline void rcu_synchronize(
+    rcu_domain<Tag>& domain = rcu_default_domain()) noexcept {
+  domain.synchronize();
 }
 
 // Waits for all in-flight deleters to complete.
@@ -505,8 +505,8 @@ inline void synchronize_rcu(
 // And yes, the current implementation is buggy, and will be fixed.
 template <typename Tag = RcuTag>
 inline void rcu_barrier(
-    rcu_domain<Tag>* domain = rcu_default_domain()) noexcept {
-  domain->synchronize();
+    rcu_domain<Tag>& domain = rcu_default_domain()) noexcept {
+  domain.synchronize();
 }
 
 // Free-function retire.  Always allocates.
@@ -519,8 +519,8 @@ template <
     typename D = std::default_delete<T>,
     typename Tag = RcuTag>
 void rcu_retire(
-    T* p, D d = {}, rcu_domain<Tag>* domain = rcu_default_domain()) {
-  domain->call([p, del = std::move(d)]() { del(p); });
+    T* p, D d = {}, rcu_domain<Tag>& domain = rcu_default_domain()) {
+  domain.call([p, del = std::move(d)]() { del(p); });
 }
 
 // Base class for rcu objects.  retire() will use preallocated storage
@@ -531,11 +531,11 @@ template <
     typename Tag = RcuTag>
 class rcu_obj_base : detail::ThreadCachedListsBase::Node {
  public:
-  void retire(D d = {}, rcu_domain<Tag>* domain = rcu_default_domain()) {
+  void retire(D d = {}, rcu_domain<Tag>& domain = rcu_default_domain()) {
     // This implementation assumes folly::Function has enough
     // inline storage for D, otherwise, it allocates.
     this->cb_ = [this, d = std::move(d)]() { d(static_cast<T*>(this)); };
-    domain->retire(this);
+    domain.retire(this);
   }
 };
 

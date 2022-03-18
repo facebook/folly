@@ -23,6 +23,7 @@
 #include <folly/init/Init.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GFlags.h>
 
 DEFINE_bool(run_tests, false, "Run tests");
@@ -30,6 +31,7 @@ DEFINE_int32(backend_type, 0, "0 - default 1 - io_uring");
 DEFINE_bool(socket_pair, false, "use socket pair");
 DEFINE_bool(timer_fd, false, "use timer fd");
 DEFINE_bool(async_read, true, "async read");
+DEFINE_bool(async_refill, true, "async refill");
 
 using namespace folly;
 
@@ -68,15 +70,30 @@ void printTS() {
             << " avg time " << (sTotal / sNum);
 }
 
+class EventFD;
+struct EventFDRefillInfo {
+  size_t num{0};
+  size_t curr{0};
+  size_t refillNum{0};
+  EventBase* evb_{nullptr};
+  std::vector<std::unique_ptr<EventFD>>* events{nullptr};
+};
+
 class EventFD : public EventHandler, public folly::EventReadCallback {
  public:
-  EventFD(uint64_t num, uint64_t& total, bool persist, EventBase* eventBase)
-      : EventFD(total, createFd(num), persist, eventBase) {}
+  EventFD(
+      uint64_t num,
+      uint64_t& total,
+      bool persist,
+      EventBase* eventBase,
+      EventFDRefillInfo* refillInfo)
+      : EventFD(total, createFd(num), persist, eventBase, refillInfo) {}
+
   ~EventFD() override {
     unregisterHandler();
 
     if (fd_ > 0) {
-      changeHandlerFD(NetworkSocket());
+      unregisterHandler();
       ::close(fd_);
       fd_ = -1;
     }
@@ -90,6 +107,10 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
     }
   }
 
+  void setNumReadPerLoop(size_t numReadPerLoop) {
+    numReadPerLoop_ = numReadPerLoop;
+  }
+
   ssize_t write(uint64_t val) {
     uint64_t data = val;
 
@@ -98,26 +119,44 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
 
   // from folly::EventHandler
   void handlerReady(uint16_t /*events*/) noexcept override {
-    if (FLAGS_run_tests) {
-      sReadTS0 = sNotifyTS = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < numReadPerLoop_; ++i) {
+      if (FLAGS_run_tests) {
+        sReadTS0 = sNotifyTS = std::chrono::steady_clock::now();
+      }
+      uint64_t data = 0;
+      auto ret = ::read(fd_, &data, sizeof(data));
+
+      if (FLAGS_run_tests) {
+        sReadTS1 = std::chrono::steady_clock::now();
+        printTS();
+      }
+      CHECK_EQ(ret, sizeof(data));
+      CHECK_EQ(data, 1);
     }
-    uint64_t data = 0;
-    auto ret = ::read(fd_, &data, sizeof(data));
-    if (FLAGS_run_tests) {
-      sReadTS1 = std::chrono::steady_clock::now();
-      printTS();
-    }
-    CHECK_EQ(ret, sizeof(data));
-    CHECK_EQ(data, 1);
 
     if (!persist_) {
       registerHandler(folly::EventHandler::READ);
     }
     if (total_ > 0) {
-      --total_;
+      total_ -= std::min(numReadPerLoop_, total_);
       if (total_ == 0) {
         evb_->terminateLoopSoon();
       }
+    }
+    if (refillInfo_ && refillInfo_->events) {
+      processOne();
+    }
+  }
+
+  void processOne() {
+    ++refillInfo_->curr;
+    if (refillInfo_->curr >= refillInfo_->num) {
+      refillInfo_->curr = 0;
+      refillInfo_->evb_->runInEventBaseThreadAlwaysEnqueue([&]() {
+        for (auto& ev : *refillInfo_->events) {
+          ev->write(refillInfo_->refillNum);
+        }
+      });
     }
   }
 
@@ -157,6 +196,10 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
       registerHandler(folly::EventHandler::READ);
     }
 
+    if (refillInfo_ && refillInfo_->events) {
+      processOne();
+    }
+
     if (total_ > 0) {
       --total_;
       if (total_ == 0) {
@@ -177,15 +220,23 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
     int fd = ::eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE);
     CHECK_GT(fd, 0);
     CHECK_EQ(writeNoInt(fd, &num, sizeof(num)), sizeof(num));
+    CHECK_EQ(fcntl(fd, F_SETFL, O_NONBLOCK), 0);
+
     return fd;
   }
 
-  EventFD(uint64_t& total, int fd, bool persist, EventBase* eventBase)
+  EventFD(
+      uint64_t& total,
+      int fd,
+      bool persist,
+      EventBase* eventBase,
+      EventFDRefillInfo* refillInfo)
       : EventHandler(eventBase, NetworkSocket::fromFd(fd)),
         total_(total),
         fd_(fd),
         persist_(persist),
-        evb_(eventBase) {
+        evb_(eventBase),
+        refillInfo_(refillInfo) {
     if (persist_) {
       registerHandler(folly::EventHandler::READ | folly::EventHandler::PERSIST);
     } else {
@@ -193,9 +244,11 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
     }
   }
   uint64_t& total_;
+  size_t numReadPerLoop_{1};
   int fd_{-1};
   bool persist_;
   EventBase* evb_;
+  EventFDRefillInfo* refillInfo_;
   std::unique_ptr<IoVec> ioVecPtr_;
 };
 
@@ -514,7 +567,9 @@ void runBM(
     EventBaseProvider::Type type,
     bool persist,
     bool asyncRead,
-    size_t numEvents) {
+    size_t numEvents,
+    size_t numReadPerLoop = 1,
+    size_t refillNum = 0) {
   BenchmarkSuspender suspender;
   static constexpr uint64_t kNum = 2000000000;
   if (iters > kNum) {
@@ -522,10 +577,26 @@ void runBM(
   }
   uint64_t total = numEvents;
   auto evb = EventBaseProvider::getEventBase(type);
+  std::unique_ptr<ScopedEventBaseThread> refillThread;
+  EventFDRefillInfo refillInfo;
   std::vector<std::unique_ptr<EventFD>> eventsVec;
   eventsVec.reserve(numEvents);
+  uint64_t num = refillNum ? refillNum : kNum;
+  if (refillNum) {
+    refillInfo.events = &eventsVec;
+    refillInfo.num = eventsVec.size();
+    refillInfo.refillNum = refillNum;
+    if (FLAGS_async_refill) {
+      refillThread = std::make_unique<ScopedEventBaseThread>();
+      refillInfo.evb_ = refillThread->getEventBase();
+    } else {
+      refillInfo.evb_ = evb.get();
+    }
+  }
   for (size_t i = 0; i < numEvents; i++) {
-    auto ev = std::make_unique<EventFD>(kNum, total, persist, evb.get());
+    auto ev =
+        std::make_unique<EventFD>(num, total, persist, evb.get(), &refillInfo);
+    ev->setNumReadPerLoop(numReadPerLoop);
     ev->useAsyncReadCallback(asyncRead);
     eventsVec.emplace_back(std::move(ev));
   }
@@ -534,6 +605,8 @@ void runBM(
   suspender.dismiss();
   evb->loopForever();
   suspender.rehire();
+  refillThread.reset();
+  evb.reset();
 }
 
 void runTestsEFD() {
@@ -541,7 +614,8 @@ void runTestsEFD() {
       FLAGS_backend_type ? EventBaseProvider::Type::IO_URING
                          : EventBaseProvider::DEFAULT);
   uint64_t total = (uint64_t)(-1);
-  EventFD evFd(0, total, true, evb.get());
+  EventFDRefillInfo refillInfo;
+  EventFD evFd(0, total, true, evb.get(), &refillInfo);
   evFd.useAsyncReadCallback(FLAGS_async_read);
   std::thread setThread([&]() {
     ::pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, nullptr);
@@ -597,9 +671,92 @@ void runTestsSP() {
 
 } // namespace
 
+// refill
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(
+    runBM,
+    default_persist_1_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    1,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    default_persist_1_read_4_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    1,
+    4,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_1_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    false,
+    1,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_async_read_1_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    true,
+    1,
+    1,
+    1)
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(
+    runBM,
+    default_persist_16_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    16,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    default_persist_16_read_4_refill,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    16,
+    4,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_16_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    false,
+    16,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    io_uring_persist_async_read_16_refill,
+    EventBaseProvider::Type::IO_URING,
+    true,
+    true,
+    16)
+BENCHMARK_DRAW_LINE();
+// no refill
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM(
     runBM, default_persist_1, EventBaseProvider::Type::DEFAULT, true, false, 1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    default_persist_1_read_4,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    1,
+    4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     io_uring_persist_1,
@@ -624,6 +781,14 @@ BENCHMARK_NAMED_PARAM(
     16)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
+    default_persist_16_read_4,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    16,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
     io_uring_persist_16,
     EventBaseProvider::Type::IO_URING,
     true,
@@ -644,6 +809,14 @@ BENCHMARK_NAMED_PARAM(
     true,
     false,
     64)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    default_persist_64_read_4,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    64,
+    4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     io_uring_persist_64,
@@ -668,6 +841,14 @@ BENCHMARK_NAMED_PARAM(
     128)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
+    default_persist_128_read_4,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    128,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
     io_uring_persist_128,
     EventBaseProvider::Type::IO_URING,
     true,
@@ -688,6 +869,14 @@ BENCHMARK_NAMED_PARAM(
     true,
     false,
     256)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    default_persist_256_read_4,
+    EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    256,
+    4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     io_uring_persist_256,
@@ -836,50 +1025,53 @@ int main(int argc, char** argv) {
 /*
 ./io_uring_backend_bench --bm_min_iters=100000
 ============================================================================
-folly/experimental/io/test/IoUringBackendBench.cpprelative  time/iter
-iters/s
+folly/experimental/io/test/IoUringBackendBench.cpprelative  time/iter  iters/s
 ============================================================================
 ----------------------------------------------------------------------------
-runBM(default_persist_1)                                     1.08us  923.02K
-runBM(io_uring_persist_1)                         87.81%     1.23us  810.49K
-runBM(io_uring_persist_async_read_1)             140.61%   770.50ns    1.30M
+runBM(default_persist_1)                                   599.99ns    1.67M
+runBM(default_persist_1_read_4)                  176.18%   340.56ns    2.94M
+runBM(io_uring_persist_1)                         89.12%   673.23ns    1.49M
+runBM(io_uring_persist_async_read_1)             132.72%   452.06ns    2.21M
 ----------------------------------------------------------------------------
-runBM(default_persist_16)                                    9.89us  101.08K
-runBM(io_uring_persist_16)                        83.26%    11.88us   84.16K
-runBM(io_uring_persist_async_read_16)            209.88%     4.71us  212.14K
+runBM(default_persist_16)                                    5.46us  183.04K
+runBM(default_persist_16_read_4)                 120.65%     4.53us  220.85K
+runBM(io_uring_persist_16)                        86.63%     6.31us  158.58K
+runBM(io_uring_persist_async_read_16)            205.47%     2.66us  376.10K
 ----------------------------------------------------------------------------
-runBM(default_persist_64)                                   39.12us   25.56K
-runBM(io_uring_persist_64)                        84.50%    46.30us   21.60K
-runBM(io_uring_persist_async_read_64)            223.12%    17.53us   57.03K
+runBM(default_persist_64)                                   22.29us   44.87K
+runBM(default_persist_64_read_4)                 118.33%    18.83us   53.10K
+runBM(io_uring_persist_64)                        90.85%    24.53us   40.77K
+runBM(io_uring_persist_async_read_64)            218.56%    10.20us   98.07K
 ----------------------------------------------------------------------------
-runBM(default_persist_128)                                  77.54us   12.90K
-runBM(io_uring_persist_128)                       84.65%    91.60us   10.92K
-runBM(io_uring_persist_async_read_128)           218.13%    35.55us   28.13K
+runBM(default_persist_128)                                  42.10us   23.75K
+runBM(default_persist_128_read_4)                119.11%    35.35us   28.29K
+runBM(io_uring_persist_128)                       88.84%    47.39us   21.10K
+runBM(io_uring_persist_async_read_128)           196.95%    21.38us   46.78K
 ----------------------------------------------------------------------------
-runBM(default_persist_256)                                 152.62us    6.55K
-runBM(io_uring_persist_256)                       83.51%   182.75us    5.47K
-runBM(io_uring_persist_async_read_256)           218.24%    69.94us   14.30K
+runBM(default_persist_256)                                  84.18us   11.88K
+runBM(default_persist_256_read_4)                113.78%    73.98us   13.52K
+runBM(io_uring_persist_256)                       87.72%    95.96us   10.42K
+runBM(io_uring_persist_async_read_256)           199.68%    42.16us   23.72K
 ----------------------------------------------------------------------------
 ----------------------------------------------------------------------------
-runBM(default_no_persist_1)                                  2.41us  414.21K
-runBM(io_uring_no_persist_1)                     191.12%     1.26us  791.66K
-runBM(io_uring_no_persist_async_read_1)          296.14%   815.23ns    1.23M
+runBM(default_no_persist_1)                                  1.37us  730.68K
+runBM(io_uring_no_persist_1)                     207.09%   660.87ns    1.51M
+runBM(io_uring_no_persist_async_read_1)          294.15%   465.27ns    2.15M
 ----------------------------------------------------------------------------
-runBM(default_no_persist_16)                                32.58us   30.70K
-runBM(io_uring_no_persist_16)                    267.32%    12.19us   82.06K
-runBM(io_uring_no_persist_async_read_16)         594.11%     5.48us  182.37K
+runBM(default_no_persist_16)                                19.82us   50.46K
+runBM(io_uring_no_persist_16)                    314.58%     6.30us  158.73K
+runBM(io_uring_no_persist_async_read_16)         638.66%     3.10us  322.25K
 ----------------------------------------------------------------------------
-runBM(default_no_persist_64)                               136.17us    7.34K
-runBM(io_uring_no_persist_64)                    282.68%    48.17us   20.76K
-runBM(io_uring_no_persist_async_read_64)         603.59%    22.56us   44.33K
+runBM(default_no_persist_64)                                85.58us   11.69K
+runBM(io_uring_no_persist_64)                    342.52%    24.98us   40.03K
+runBM(io_uring_no_persist_async_read_64)         595.89%    14.36us   69.63K
 ----------------------------------------------------------------------------
-runBM(default_no_persist_128)                              275.07us    3.64K
-runBM(io_uring_no_persist_128)                   283.90%    96.89us   10.32K
-runBM(io_uring_no_persist_async_read_128)        636.71%    43.20us   23.15K
+runBM(default_no_persist_128)                              170.66us    5.86K
+runBM(io_uring_no_persist_128)                   341.57%    49.96us   20.01K
+runBM(io_uring_no_persist_async_read_128)        602.88%    28.31us   35.33K
 ----------------------------------------------------------------------------
-runBM(default_no_persist_256)                              550.00us    1.82K
-runBM(io_uring_no_persist_256)                   292.57%   187.99us    5.32K
-runBM(io_uring_no_persist_async_read256)         641.95%    85.68us   11.67K
+runBM(default_no_persist_256)                              349.99us    2.86K
+runBM(io_uring_no_persist_256)                   340.59%   102.76us    9.73K
+runBM(io_uring_no_persist_async_read256)         642.10%    54.51us   18.35K
 ----------------------------------------------------------------------------
-============================================================================
 */

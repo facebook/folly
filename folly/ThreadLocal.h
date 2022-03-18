@@ -71,7 +71,7 @@ class ThreadLocal {
   }
 
   // may return null
-  FOLLY_ERASE T* getIfExist() const { return tlp_.get(); }
+  FOLLY_ERASE T* get_existing() const { return tlp_.get(); }
 
   T* operator->() const { return get(); }
 

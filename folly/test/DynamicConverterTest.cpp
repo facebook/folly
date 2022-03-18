@@ -71,6 +71,23 @@ TEST(DynamicConverter, template_metaprogramming) {
   EXPECT_EQ(r2t, true);
 }
 
+TEST(DynamicConverter, dynamics) {
+  dynamic d1 = 12;
+  auto d2 = convertTo<dynamic>(d1);
+  EXPECT_EQ(12, d2.getInt());
+
+  dynamic d3 = dynamic::array(1, 2, 3);
+  auto v = convertTo<std::vector<dynamic>>(d3);
+  EXPECT_EQ(1, v.at(0).getInt());
+  EXPECT_EQ(2, v.at(1).getInt());
+  EXPECT_EQ(3, v.at(2).getInt());
+
+  dynamic d4 = dynamic::object("1", 1)("2", 2.3);
+  auto m = convertTo<std::map<std::string, dynamic>>(d4);
+  EXPECT_EQ(1, m.at("1").getInt());
+  EXPECT_EQ(2.3, m.at("2").getDouble());
+}
+
 TEST(DynamicConverter, arithmetic_types) {
   dynamic d1 = 12;
   auto i1 = convertTo<int>(d1);

@@ -18,8 +18,8 @@
 
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
-#include <folly/detail/AtFork.h>
 #include <folly/logging/LoggerDB.h>
+#include <folly/system/AtFork.h>
 #include <folly/system/ThreadName.h>
 
 namespace folly {
@@ -27,7 +27,7 @@ namespace folly {
 constexpr size_t AsyncLogWriter::kDefaultMaxBufferSize;
 
 AsyncLogWriter::AsyncLogWriter() {
-  folly::detail::AtFork::registerHandler(
+  folly::AtFork::registerHandler(
       this,
       [this] { return preFork(); },
       [this] { postForkParent(); },
@@ -58,7 +58,7 @@ AsyncLogWriter::~AsyncLogWriter() {
   // Unregister the atfork handler after stopping the I/O thread.
   // preFork(), postForkParent(), and postForkChild() calls can run
   // concurrently with the destructor until unregisterHandler() returns.
-  folly::detail::AtFork::unregisterHandler(this);
+  folly::AtFork::unregisterHandler(this);
 }
 
 void AsyncLogWriter::cleanup() {

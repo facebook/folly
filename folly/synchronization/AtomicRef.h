@@ -100,11 +100,26 @@ struct atomic_ref_integral_base : atomic_ref_base<T> {
       const noexcept {
     return atomic().fetch_sub(arg, order);
   }
+
+  T fetch_and(T arg, std::memory_order order = std::memory_order_seq_cst)
+      const noexcept {
+    return atomic().fetch_and(arg, order);
+  }
+
+  T fetch_or(T arg, std::memory_order order = std::memory_order_seq_cst)
+      const noexcept {
+    return atomic().fetch_or(arg, order);
+  }
+
+  T fetch_xor(T arg, std::memory_order order = std::memory_order_seq_cst)
+      const noexcept {
+    return atomic().fetch_xor(arg, order);
+  }
 };
 
 template <typename T>
 using atomic_ref_select = conditional_t<
-    std::is_integral<T>::value,
+    std::is_integral<T>::value && !std::is_same<T, bool>::value,
     atomic_ref_integral_base<T>,
     atomic_ref_base<T>>;
 

@@ -19,24 +19,52 @@
 
 using namespace folly;
 
-void runTest(int iters) {
+BENCHMARK(IncrementStatic, iters) {
   BenchmarkSuspender susp;
 
-  detail::ThreadCachedInts<void> counters;
-  counters.increment(0);
+  detail::ThreadCachedInts<void> ints;
+  ints.increment(0);
+  ints.decrement(0);
 
   susp.dismiss();
 
-  // run the test loop
-  for (int i = 0; i < iters; i++) {
-    counters.increment(0);
+  for (unsigned i = 0; i < iters; i++) {
+    ints.increment(0);
   }
 }
 
-BENCHMARK_DRAW_LINE();
-BENCHMARK(Increment, iters) {
-  runTest(iters);
+BENCHMARK(IncrementDecrementSameLoop, iters) {
+  BenchmarkSuspender susp;
+
+  detail::ThreadCachedInts<void> ints;
+  ints.increment(0);
+  ints.decrement(0);
+
+  susp.dismiss();
+
+  for (unsigned i = 0; i < iters; i++) {
+    ints.increment(0);
+    ints.decrement(0);
+  }
 }
+
+BENCHMARK(IncrementDecrementSeparateLoop, iters) {
+  BenchmarkSuspender susp;
+
+  detail::ThreadCachedInts<void> ints;
+  ints.increment(0);
+  ints.decrement(0);
+
+  susp.dismiss();
+
+  for (unsigned i = 0; i < iters; i++) {
+    ints.increment(0);
+  }
+  for (unsigned i = 0; i < iters; i++) {
+    ints.decrement(0);
+  }
+}
+
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char* argv[]) {

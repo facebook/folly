@@ -1,10 +1,13 @@
 [manifest]
 name = automake
 
-[rpms]
+[homebrew]
 automake
 
 [debs]
+automake
+
+[rpms]
 automake
 
 [download]

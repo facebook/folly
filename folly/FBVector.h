@@ -74,6 +74,12 @@ class fbvector;
 
 namespace folly {
 
+namespace detail {
+inline void* thunk_return_nullptr() {
+  return nullptr;
+}
+} // namespace detail
+
 template <class T, class Allocator>
 class fbvector {
   //===========================================================================
@@ -981,26 +987,15 @@ class fbvector {
         xallocx(p, newCapacityBytes, 0, 0) == newCapacityBytes) {
       impl_.z_ += newCap - oldCap;
     } else {
-      T* newB; // intentionally uninitialized
-      if (!catch_exception(
-              [&] {
-                newB = M_allocate(newCap);
-                return true;
-              },
-              [&] { //
-                return false;
-              })) {
+      T* newB = static_cast<T*>(catch_exception(
+          [&] { return M_allocate(newCap); }, //
+          &detail::thunk_return_nullptr));
+      if (!newB) {
         return;
       }
       if (!catch_exception(
-              [&] {
-                M_relocate(newB);
-                return true;
-              },
-              [&] {
-                M_deallocate(newB, newCap);
-                return false;
-              })) {
+              [&] { return M_relocate(newB), true; },
+              [&] { return M_deallocate(newB, newCap), false; })) {
         return;
       }
       if (impl_.b_) {

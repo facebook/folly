@@ -178,6 +178,19 @@ EventBase* IOThreadPoolExecutor::getEventBase() {
   return pickThread()->eventBase;
 }
 
+std::vector<Executor::KeepAlive<EventBase>>
+IOThreadPoolExecutor::getAllEventBases() {
+  ensureMaxActiveThreads();
+  std::vector<Executor::KeepAlive<EventBase>> evbs;
+  SharedMutex::ReadHolder r{&threadListLock_};
+  const auto& threads = threadList_.get();
+  evbs.reserve(threads.size());
+  for (const auto& thr : threads) {
+    evbs.emplace_back(static_cast<IOThread&>(*thr).eventBase);
+  }
+  return evbs;
+}
+
 EventBase* IOThreadPoolExecutor::getEventBase(
     ThreadPoolExecutor::ThreadHandle* h) {
   auto thread = dynamic_cast<IOThread*>(h);

@@ -262,7 +262,7 @@ class FOLLY_NODISCARD AsyncGenerator {
     bool await_ready() noexcept { return !coro_; }
 
     template <typename Promise>
-    FOLLY_NOINLINE coroutine_handle<> await_suspend(
+    FOLLY_NOINLINE auto await_suspend(
         coroutine_handle<Promise> continuation) noexcept {
       auto& promise = coro_.promise();
 

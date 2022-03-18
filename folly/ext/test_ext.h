@@ -16,26 +16,13 @@
 
 #pragma once
 
-#include <sys/types.h>
-
-#include <folly/Function.h>
+#include <string>
 
 namespace folly {
+namespace ext {
 
-namespace detail {
+using test_find_resource_t = std::string(std::string const&);
+extern test_find_resource_t* test_find_resource;
 
-struct AtFork {
-  static void init();
-  static void registerHandler(
-      void const* handle,
-      folly::Function<bool()> prepare,
-      folly::Function<void()> parent,
-      folly::Function<void()> child);
-  static void unregisterHandler(void const* handle);
-
-  using fork_t = pid_t();
-  static pid_t forkInstrumented(fork_t forkFn);
-};
-
-} // namespace detail
+} // namespace ext
 } // namespace folly

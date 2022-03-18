@@ -188,8 +188,9 @@ FOLLY_ERASE R invoke_cold(F&& f, A&&... a) //
 ///         i);
 ///   }
 template <typename F, typename... A>
-[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void invoke_noreturn_cold(
-    F&& f, A&&... a) {
+[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void
+invoke_noreturn_cold(F&& f, A&&... a) noexcept(
+    /* formatting */ noexcept(static_cast<F&&>(f)(static_cast<A&&>(a)...))) {
   static_cast<F&&>(f)(static_cast<A&&>(a)...);
   std::terminate();
 }
@@ -273,7 +274,9 @@ template <
     typename R = std::common_type_t<
         decltype(FOLLY_DECLVAL(Try &&)()),
         decltype(FOLLY_DECLVAL(Catch &&)(FOLLY_DECLVAL(CatchA &&)...))>>
-FOLLY_ERASE_TRYCATCH R catch_exception(Try&& t, Catch&& c, CatchA&&... a) {
+FOLLY_ERASE_TRYCATCH R
+catch_exception(Try&& t, Catch&& c, CatchA&&... a) noexcept(
+    noexcept(static_cast<Catch&&>(c)(static_cast<CatchA&&>(a)...))) {
 #if FOLLY_HAS_EXCEPTIONS
   try {
     return static_cast<Try&&>(t)();

@@ -163,11 +163,9 @@ std::string getFileAsBuf(const char* fileName) {
   return buffer;
 }
 
-/**
- * Test connecting to, writing to, reading from, and closing the
- * connection to the SSL server.
- */
-TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
+namespace {
+void connectWriteReadClose(
+    folly::AsyncReader::ReadCallback::ReadMode readMode) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   ReadCallback readCallback(&writeCallback);
@@ -184,6 +182,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
   // connect
   auto socket =
       std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->setReadMode(readMode);
   socket->open(std::chrono::milliseconds(10000));
 
   // write()
@@ -202,6 +201,20 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
 
   cerr << "ConnectWriteReadClose test completed" << endl;
   EXPECT_EQ(socket->getSSLSocket()->getTotalConnectTimeout().count(), 10000);
+}
+} // namespace
+
+/**
+ * Test connecting to, writing to, reading from, and closing the
+ * connection to the SSL server.
+ */
+TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
+  connectWriteReadClose(folly::AsyncReader::ReadCallback::ReadMode::ReadBuffer);
+}
+
+TEST(AsyncSSLSocketTest, ConnectWriteReadvClose) {
+  connectWriteReadClose(folly::AsyncReader::ReadCallback::ReadMode::ReadVec);
+  ;
 }
 
 TEST(AsyncSSLSocketTest, ConnectWriteReadCloseReadable) {
@@ -1090,6 +1103,67 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   EXPECT_TRUE(server.handshakeVerify_);
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_TRUE(!server.handshakeError_);
+}
+
+TEST(AsyncSSLSocketTest, SSLGetEKM) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+
+  NetworkSocket fds[2];
+  getfds(fds);
+  getctx(clientCtx, serverCtx);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  EXPECT_EQ(
+      nullptr, clientSock->getExportedKeyingMaterial("test", nullptr, 12));
+
+  serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
+  clientSock->sslConn(nullptr, std::chrono::milliseconds::zero());
+  eventBase.loop();
+  auto ekm = clientSock->getExportedKeyingMaterial("test", nullptr, 32);
+
+  EXPECT_NE(nullptr, ekm);
+  EXPECT_EQ(ekm->computeChainDataLength(), 32);
+  // non null context
+  EXPECT_NE(
+      nullptr,
+      clientSock->getExportedKeyingMaterial(
+          "test", IOBuf::copyBuffer("haha"), 32));
+  // empty label
+  EXPECT_NE(
+      nullptr,
+      clientSock->getExportedKeyingMaterial("", IOBuf::copyBuffer("haha"), 32));
+
+  auto serverEkm = serverSock->getExportedKeyingMaterial("test", nullptr, 32);
+  EXPECT_TRUE(folly::IOBufEqualTo{}(ekm, serverEkm));
+}
+
+TEST(AsyncSSLSocketTest, SSLGetEKMFailsOnTLS10) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  SSL_CTX_set_max_proto_version(serverCtx->getSSLCtx(), TLS1_VERSION);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+  getctx(clientCtx, serverCtx);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
+  clientSock->sslConn(nullptr, std::chrono::milliseconds::zero());
+  eventBase.loop();
+  auto ekm = clientSock->getExportedKeyingMaterial("test", nullptr, 32);
+
+  EXPECT_EQ(nullptr, ekm);
 }
 
 /**
@@ -2753,8 +2827,10 @@ class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
       std::shared_ptr<folly::SSLContext> sslCtx, EventBase* evb)
       : AsyncSSLSocket(sslCtx, evb) {}
 
-  MOCK_METHOD3(
-      tfoSendMsg, ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
+  MOCK_METHOD(
+      ssize_t,
+      tfoSendMsg,
+      (NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 #if defined __linux__

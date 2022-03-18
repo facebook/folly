@@ -58,7 +58,7 @@ TEST(TestAutoTimer, HandleBasicClosure) {
   timer.log("foo");
   ASSERT_EQ("foo", StubLogger::m);
   ASSERT_EQ(2, StubLogger::t);
-  timer.logFormat("bar {}", 5e-2);
+  timer.logFormat(fmt::runtime("bar {}"), 5e-2);
   ASSERT_EQ("bar 0.05", StubLogger::m);
   ASSERT_EQ(0, StubLogger::t);
 }
@@ -70,7 +70,7 @@ TEST(TestAutoTimer, HandleBasic) {
   timer.log("foo");
   ASSERT_EQ("foo", StubLogger::m);
   ASSERT_EQ(2, StubLogger::t);
-  timer.logFormat("bar {}", 5e-2);
+  timer.logFormat(fmt::runtime("bar {}"), 5e-2);
   ASSERT_EQ("bar 0.05", StubLogger::m);
   ASSERT_EQ(0, StubLogger::t);
 }

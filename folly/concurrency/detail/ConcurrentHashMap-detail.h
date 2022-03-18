@@ -266,7 +266,7 @@ class alignas(64) BucketTable {
          (folly::popcount(max_size_ - 1) + ShardBits <= 32)));
     auto buckets = Buckets::create(initial_buckets, cohort);
     buckets_.store(buckets, std::memory_order_release);
-    load_factor_nodes_ = initial_buckets * load_factor_;
+    load_factor_nodes_ = to_integral(initial_buckets * load_factor_);
     bucket_count_.store(initial_buckets, std::memory_order_relaxed);
   }
 
@@ -332,7 +332,7 @@ class alignas(64) BucketTable {
     auto buckets = buckets_.load(std::memory_order_relaxed);
     DCHECK(buckets); // Use-after-destruction by user.
     auto newbuckets = Buckets::create(bucket_count, cohort);
-    load_factor_nodes_ = bucket_count * load_factor_;
+    load_factor_nodes_ = to_integral(bucket_count * load_factor_);
     for (size_t i = 0; i < oldcount; i++) {
       auto bucket = &buckets->buckets_[i]();
       auto node = bucket->load(std::memory_order_relaxed);
@@ -462,11 +462,12 @@ class alignas(64) BucketTable {
   }
 
   void clear(hazptr_obj_cohort<Atom>* cohort) {
-    size_t bcount = bucket_count_.load(std::memory_order_relaxed);
+    size_t bcount;
     Buckets* buckets;
-    auto newbuckets = Buckets::create(bcount, cohort);
     {
       std::lock_guard<Mutex> g(m_);
+      bcount = bucket_count_.load(std::memory_order_relaxed);
+      auto newbuckets = Buckets::create(bcount, cohort);
       buckets = buckets_.load(std::memory_order_relaxed);
       buckets_.store(newbuckets, std::memory_order_release);
       clearSize();
@@ -1405,11 +1406,12 @@ class alignas(64) SIMDTable {
   }
 
   void clear(hazptr_obj_cohort<Atom>* cohort) {
-    size_t ccount = chunk_count_.load(std::memory_order_relaxed);
+    size_t ccount;
     Chunks* chunks;
-    auto newchunks = Chunks::create(ccount, cohort);
     {
       std::lock_guard<Mutex> g(m_);
+      ccount = chunk_count_.load(std::memory_order_relaxed);
+      auto newchunks = Chunks::create(ccount, cohort);
       chunks = chunks_.load(std::memory_order_relaxed);
       chunks_.store(newchunks, std::memory_order_release);
       clearSize();
@@ -1554,7 +1556,8 @@ class alignas(64) SIMDTable {
     }
     auto new_chunks = Chunks::create(new_chunk_count, cohort);
     auto old_chunks = chunks_.load(std::memory_order_relaxed);
-    grow_threshold_ = new_chunk_count * Chunk::kCapacity * load_factor_;
+    grow_threshold_ =
+        to_integral(new_chunk_count * Chunk::kCapacity * load_factor_);
 
     for (size_t i = 0; i < old_chunk_count; i++) {
       DCHECK(old_chunks); // Use-after-destruction by user.

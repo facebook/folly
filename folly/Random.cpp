@@ -128,7 +128,7 @@ BufferedRandomDevice::BufferedRandomDevice(size_t bufferSize)
       buffer_(new unsigned char[bufferSize]),
       ptr_(buffer_.get() + bufferSize) { // refill on first use
   FOLLY_MAYBE_UNUSED static auto const init = [] {
-    detail::AtFork::registerHandler(
+    AtFork::registerHandler(
         nullptr,
         /*prepare*/ []() { return true; },
         /*parent*/ []() {},

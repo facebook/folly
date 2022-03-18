@@ -1,6 +1,9 @@
 [manifest]
 name = python
 
+[homebrew]
+python@3.8
+
 [rpms]
 python3
 python3-devel
@@ -33,3 +36,7 @@ libffi
 
 [dependencies]
 libffi
+# eden tests expect the python bz2 support
+bz2
+# eden tests expect the python curses support
+ncurses

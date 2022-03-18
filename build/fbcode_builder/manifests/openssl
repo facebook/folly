@@ -1,20 +1,24 @@
 [manifest]
 name = openssl
 
+[debs]
+libssl-dev
+
+[homebrew]
+openssl@1.1
+# on homebrew need the matching curl and ca-
+
 [rpms]
 openssl
 openssl-devel
 openssl-libs
-
-[debs]
-libssl-dev
 
 [download]
 url = https://www.openssl.org/source/openssl-1.1.1l.tar.gz
 sha256 = 0b7a3e5e59c34827fe0c3a74b7ec8baef302b98fa80088d7f9153aa16fa76bd1
 
 # We use the system openssl on linux
-[build.not(os=linux)]
+[build.not(any(os=linux, os=freebsd))]
 builder = openssl
 subdir = openssl-1.1.1l
 

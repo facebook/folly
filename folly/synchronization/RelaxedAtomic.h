@@ -40,6 +40,8 @@ struct relaxed_atomic_base : protected std::atomic<T> {
   using atomic = std::atomic<T>;
 
  public:
+  using value_type = T;
+
   using atomic::atomic;
 
   T operator=(T desired) noexcept {
@@ -102,6 +104,8 @@ struct relaxed_atomic_integral_base : private relaxed_atomic_base<T> {
   using base = relaxed_atomic_base<T>;
 
  public:
+  using typename base::value_type;
+
   using base::relaxed_atomic_base;
   using base::operator=;
   using base::operator T;
@@ -183,6 +187,8 @@ struct relaxed_atomic<bool> : detail::relaxed_atomic_base<bool> {
   using base = detail::relaxed_atomic_base<bool>;
 
  public:
+  using typename base::value_type;
+
   using base::relaxed_atomic_base;
   using base::operator=;
   using base::operator bool;
@@ -196,6 +202,8 @@ struct relaxed_atomic : detail::relaxed_atomic_base<T> {
   using base = detail::relaxed_atomic_base<T>;
 
  public:
+  using typename base::value_type;
+
   using base::relaxed_atomic_base;
   using base::operator=;
   using base::operator T;
@@ -208,6 +216,8 @@ struct relaxed_atomic<T*> : detail::relaxed_atomic_base<T*> {
   using base = detail::relaxed_atomic_base<T*>;
 
  public:
+  using typename base::value_type;
+
   using detail::relaxed_atomic_base<T*>::relaxed_atomic_base;
   using base::operator=;
   using base::operator T*;
@@ -248,6 +258,11 @@ struct relaxed_atomic<T*> : detail::relaxed_atomic_base<T*> {
     return fetch_sub(arg) - arg;
   }
 };
+
+#if __cpp_deduction_guides >= 201611
+template <typename T>
+relaxed_atomic(T) -> relaxed_atomic<T>;
+#endif
 
 #define FOLLY_RELAXED_ATOMIC_DEFINE_INTEGRAL_SPECIALIZATION(type)            \
   template <>                                                                \

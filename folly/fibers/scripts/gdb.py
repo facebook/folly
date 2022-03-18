@@ -905,7 +905,7 @@ def get_fiber_manager_map_vevb():
 # reset the caches when we continue; the current fibers will almost certainly change
 def clear_fiber_caches(*args):
     # default to only clearing manager and info caches
-    caches = set(arg.string() for arg in args) or {"managers", "info"}
+    caches = {arg.string() for arg in args} or {"managers", "info"}
     cleared = set()
     if "managers" in caches:
         cleared.add("manager")

@@ -110,16 +110,14 @@ FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 8, 3)
 FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(reset, 16)
 FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 16, 3)
 FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(reset, 16, 11)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(flip, 8)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(flip, 8, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(flip, 16)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(flip, 16, 3)
+FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(flip, 16, 11)
 
 #undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX
 #undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR
-
-namespace atomic_util_access {
-FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_set, folly);
-FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_reset, folly);
-FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_set_fallback, folly::detail);
-FOLLY_CREATE_FREE_INVOKER_SUITE(atomic_fetch_reset_fallback, folly::detail);
-} // namespace atomic_util_access
 
 namespace {
 
@@ -240,12 +238,12 @@ BENCHMARK(atomic_fetch_set_u8_var_drop_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u8_var_drop_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_var_(uint8_t(0), op, what_constant<what::drop>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u8_var_drop_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_var_(uint8_t(0), op, what_constant<what::drop>{}, iters);
 }
 
@@ -255,12 +253,12 @@ BENCHMARK(atomic_fetch_set_u8_var_keep_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u8_var_keep_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_var_(uint8_t(0), op, what_constant<what::keep>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u8_var_keep_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_var_(uint8_t(0), op, what_constant<what::keep>{}, iters);
 }
 
@@ -270,12 +268,12 @@ BENCHMARK(atomic_fetch_set_u8_var_cond_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u8_var_cond_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_var_(uint8_t(0), op, what_constant<what::cond>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u8_var_cond_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_var_(uint8_t(0), op, what_constant<what::cond>{}, iters);
 }
 
@@ -287,12 +285,12 @@ BENCHMARK(atomic_fetch_set_u8_fix_drop_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u8_fix_drop_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_fix_(uint8_t(0), op, what_constant<what::drop>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u8_fix_drop_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_fix_(uint8_t(0), op, what_constant<what::drop>{}, iters);
 }
 
@@ -302,12 +300,12 @@ BENCHMARK(atomic_fetch_set_u8_fix_keep_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u8_fix_keep_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_fix_(uint8_t(0), op, what_constant<what::keep>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u8_fix_keep_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_fix_(uint8_t(0), op, what_constant<what::keep>{}, iters);
 }
 
@@ -317,12 +315,12 @@ BENCHMARK(atomic_fetch_set_u8_fix_cond_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u8_fix_cond_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_fix_(uint8_t(0), op, what_constant<what::cond>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u8_fix_cond_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_fix_(uint8_t(0), op, what_constant<what::cond>{}, iters);
 }
 
@@ -334,12 +332,12 @@ BENCHMARK(atomic_fetch_set_u16_var_drop_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u16_var_drop_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_var_(uint16_t(0), op, what_constant<what::drop>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u16_var_drop_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_var_(uint16_t(0), op, what_constant<what::drop>{}, iters);
 }
 
@@ -349,12 +347,12 @@ BENCHMARK(atomic_fetch_set_u16_var_keep_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u16_var_keep_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_var_(uint16_t(0), op, what_constant<what::keep>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u16_var_keep_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_var_(uint16_t(0), op, what_constant<what::keep>{}, iters);
 }
 
@@ -364,12 +362,12 @@ BENCHMARK(atomic_fetch_set_u16_var_cond_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u16_var_cond_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_var_(uint16_t(0), op, what_constant<what::cond>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u16_var_cond_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_var_(uint16_t(0), op, what_constant<what::cond>{}, iters);
 }
 
@@ -381,12 +379,12 @@ BENCHMARK(atomic_fetch_set_u16_fix_drop_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u16_fix_drop_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_fix_(uint16_t(0), op, what_constant<what::drop>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u16_fix_drop_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_fix_(uint16_t(0), op, what_constant<what::drop>{}, iters);
 }
 
@@ -396,12 +394,12 @@ BENCHMARK(atomic_fetch_set_u16_fix_keep_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u16_fix_keep_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_fix_(uint16_t(0), op, what_constant<what::keep>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u16_fix_keep_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_fix_(uint16_t(0), op, what_constant<what::keep>{}, iters);
 }
 
@@ -411,12 +409,12 @@ BENCHMARK(atomic_fetch_set_u16_fix_cond_monopoly, iters) {
 }
 
 BENCHMARK(atomic_fetch_set_u16_fix_cond_fallback, iters) {
-  auto op = atomic_util_access::atomic_fetch_set_fallback;
+  auto op = folly::detail::atomic_fetch_set_fallback;
   atomic_fetch_op_fix_(uint16_t(0), op, what_constant<what::cond>{}, iters);
 }
 
 BENCHMARK(atomic_fetch_set_u16_fix_cond_native, iters) {
-  auto op = atomic_util_access::atomic_fetch_set;
+  auto op = folly::atomic_fetch_set;
   atomic_fetch_op_fix_(uint16_t(0), op, what_constant<what::cond>{}, iters);
 }
 

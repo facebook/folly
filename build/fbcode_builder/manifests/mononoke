@@ -1,0 +1,51 @@
+[manifest]
+name = mononoke
+fbsource_path = fbcode/eden
+shipit_project = eden
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookexperimental/eden.git
+
+[build.not(os=windows)]
+builder = cargo
+
+[build.os=windows]
+# building Mononoke on windows is not supported
+builder = nop
+
+[cargo]
+build_doc = true
+workspace_dir = eden/mononoke
+
+[shipit.pathmap]
+fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
+fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
+fbcode/configerator/structs/scm/mononoke/public_autocargo = configerator/structs/scm/mononoke
+fbcode/configerator/structs/scm/mononoke = configerator/structs/scm/mononoke
+fbcode/eden/oss = .
+fbcode/eden = eden
+fbcode/eden/fs/public_autocargo = eden/fs
+fbcode/eden/mononoke/public_autocargo = eden/mononoke
+fbcode/eden/scm/public_autocargo = eden/scm
+fbcode/tools/lfs = tools/lfs
+tools/rust/ossconfigs = .
+
+[shipit.strip]
+^fbcode/configerator/structs/scm/hg(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/configerator/structs/scm/mononoke(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/scm/lib/third-party/rust/.*/Cargo\.toml$
+^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
+# strip other scm code  unrelated to mononoke to prevent triggering unnecessary checks
+^fbcode/eden/(?!mononoke|/scm/lib/xdiff.*)/.*$
+^.*/facebook/.*$
+^.*/fb/.*$
+
+[dependencies]
+fb303
+fbthrift
+rust-shed
+
+[dependencies.fb=on]
+rust

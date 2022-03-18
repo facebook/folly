@@ -444,6 +444,53 @@ std::string AsyncSSLSocket::getApplicationProtocol() const noexcept {
   return "";
 }
 
+std::unique_ptr<IOBuf> AsyncSSLSocket::getExportedKeyingMaterial(
+    folly::StringPiece label,
+    std::unique_ptr<IOBuf> context,
+    uint16_t length) const {
+  if (!ssl_ || sslState_ != STATE_ESTABLISHED) {
+    return nullptr;
+  }
+
+  /*
+   * We would like to only export EKM in the case where the extended master
+   * secret is used (per rfc7627). Note that for TLS1.3 this is by default. For
+   * TLS1.2 this has to be negotiated, so we will check that specifically. The
+   * usage of extended master secret prevents synchronization of master secrets
+   * across sessions.
+   */
+  if (getSSLVersion() < TLS1_2_VERSION) {
+    return nullptr;
+  }
+
+  if (getSSLVersion() == TLS1_2_VERSION && !SSL_get_extms_support(ssl_.get())) {
+    return nullptr;
+  }
+  auto buf = IOBuf::create(length);
+  const unsigned char* contextBuf = nullptr;
+  size_t contextLength = 0;
+  if (context) {
+    auto contextBytes = context->coalesce();
+    contextBuf = contextBytes.data();
+    contextLength = contextBytes.size();
+  }
+
+  if (SSL_export_keying_material(
+          ssl_.get(),
+          buf->writableTail(),
+          (size_t)length,
+          label.data(),
+          label.size(),
+          contextBuf,
+          contextLength,
+          contextBuf != nullptr) != 1) {
+    return nullptr;
+  }
+  buf->append(length);
+
+  return buf;
+}
+
 void AsyncSSLSocket::setSupportedApplicationProtocols(
     const std::vector<std::string>& supportedProtocols) {
   encodedAlpn_ = OpenSSLUtils::encodeALPNString(supportedProtocols);
@@ -1532,6 +1579,34 @@ AsyncSocket::ReadResult AsyncSSLSocket::performRead(
     appBytesReceived_ += bytes;
     return ReadResult(bytes);
   }
+}
+
+AsyncSocket::ReadResult AsyncSSLSocket::performReadv(
+    struct iovec* iovs, size_t num) {
+  ssize_t totalRead = 0;
+  ssize_t res = 1;
+  for (size_t i = 0; i < num && res > 0; i++) {
+    auto* buf = iovs[i].iov_base;
+    auto bufLen = iovs[i].iov_len;
+    while (bufLen > 0 && res > 0) {
+      // Should offset be into buf?  It seems unused.  Also buf and buflen
+      // are not really out params anymore.
+      size_t offset = 0;
+      auto readRes = performRead(&buf, &bufLen, &offset);
+      res = readRes.readReturn;
+      if (res > 0) {
+        CHECK_GE(bufLen, res);
+        buf = static_cast<uint8_t*>(buf) + res;
+        bufLen -= res;
+        totalRead += res;
+      } else if (ReadResultEnum(res) == READ_ERROR) {
+        return readRes;
+      } else if (ReadResultEnum(res) == READ_BLOCKING) {
+        return ReadResult(totalRead);
+      }
+    }
+  }
+  return ReadResult(totalRead);
 }
 
 void AsyncSSLSocket::handleWrite() noexcept {

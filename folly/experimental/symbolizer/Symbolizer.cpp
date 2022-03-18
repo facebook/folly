@@ -181,7 +181,6 @@ size_t Symbolizer::symbolize(
     // behavior appears to be documented, so checking for the empty string is
     // as good as anything.
     auto const objPath = lmap->l_name[0] != '\0' ? lmap->l_name : selfPath;
-
     auto const elfFile = cache_->getFile(objPath);
     if (!elfFile) {
       continue;
@@ -231,7 +230,7 @@ size_t Symbolizer::symbolize(
         if (mode_ == LocationInfoMode::FULL_WITH_INLINE &&
             frameCount > addrCount) {
           size_t maxInline = std::min<size_t>(
-              Dwarf::kMaxInlineLocationInfoPerFrame, frameCount - addrCount);
+              kMaxInlineLocationInfoPerFrame, frameCount - addrCount);
           // First use the trailing empty frames (index starting from addrCount)
           // to get the inline call stack, then rotate these inline functions
           // before the caller at `frame[i]`.
@@ -400,41 +399,15 @@ void SafeStackTracePrinter::printStackTrace(bool symbolize) {
   }
 }
 
-std::string getStackTraceStr() {
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+namespace {
+constexpr size_t kMaxStackTraceDepth = 100;
 
-  // Get and symbolize stack trace
-  constexpr size_t kMaxStackTraceDepth = 100;
-  FrameArray<kMaxStackTraceDepth> addresses;
+template <size_t N, typename StackTraceFunc>
+std::string getStackTraceStrImpl(StackTraceFunc func) {
+  FrameArray<N> addresses;
 
-  if (!getStackTrace(addresses)) {
-    return "";
-  } else {
-    symbolizer::ElfCache elfCache;
-
-    symbolizer::Symbolizer symbolizer(&elfCache);
-    symbolizer.symbolize(addresses);
-
-    symbolizer::StringSymbolizePrinter printer;
-    printer.println(addresses);
-    return printer.str();
-  }
-
-#else
-
-  return "";
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-}
-
-std::string getAsyncStackTraceStr() {
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
-  // Get and symbolize stack trace
-  constexpr size_t kMaxStackTraceDepth = 100;
-  FrameArray<kMaxStackTraceDepth> addresses;
-
-  if (!getAsyncStackTraceSafe(addresses)) {
+  if (!func(addresses)) {
     return "";
   } else {
     ElfCache elfCache;
@@ -445,13 +418,19 @@ std::string getAsyncStackTraceStr() {
     printer.println(addresses);
     return printer.str();
   }
-
-#else
-
-  return "";
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 }
+} // namespace
+
+std::string getStackTraceStr() {
+  return getStackTraceStrImpl<kMaxStackTraceDepth>(
+      getStackTrace<kMaxStackTraceDepth>);
+}
+
+std::string getAsyncStackTraceStr() {
+  return getStackTraceStrImpl<kMaxStackTraceDepth>(
+      getAsyncStackTraceSafe<kMaxStackTraceDepth>);
+}
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 #if FOLLY_HAVE_SWAPCONTEXT
 

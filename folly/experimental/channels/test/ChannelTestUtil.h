@@ -33,6 +33,16 @@ std::vector<T> toVector(T firstItem, Others... items) {
   return itemsVector;
 }
 
+template <typename TPair, typename... Others>
+folly::F14FastMap<typename TPair::first_type, typename TPair::second_type>
+toMap(TPair firstPair, Others... items) {
+  folly::F14FastMap<typename TPair::first_type, typename TPair::second_type>
+      itemsMap;
+  itemsMap.insert(std::move(firstPair));
+  [[maybe_unused]] int dummy[] = {(itemsMap.insert(std::move(items)), 0)...};
+  return itemsMap;
+}
+
 template <typename TValue>
 class MockNextCallback {
  public:
@@ -50,10 +60,10 @@ class MockNextCallback {
     }
   }
 
-  MOCK_METHOD1_T(onValue, void(TValue));
-  MOCK_METHOD0(onClosed, void());
-  MOCK_METHOD0(onCancelled, void());
-  MOCK_METHOD1(onRuntimeError, void(std::string));
+  MOCK_METHOD(void, onValue, (TValue));
+  MOCK_METHOD(void, onClosed, ());
+  MOCK_METHOD(void, onCancelled, ());
+  MOCK_METHOD(void, onRuntimeError, (std::string));
 };
 
 enum class ConsumptionMode {

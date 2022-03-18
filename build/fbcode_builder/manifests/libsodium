@@ -1,12 +1,15 @@
 [manifest]
 name = libsodium
 
+[debs]
+libsodium-dev
+
+[homebrew]
+libsodium
+
 [rpms]
 libsodium-devel
 libsodium-static
-
-[debs]
-libsodium-dev
 
 [download.not(os=windows)]
 url = https://github.com/jedisct1/libsodium/releases/download/1.0.17/libsodium-1.0.17.tar.gz

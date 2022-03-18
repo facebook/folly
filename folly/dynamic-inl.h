@@ -843,6 +843,20 @@ inline dynamic::IfNotIterator<K, void> dynamic::insert(K&& key, V&& val) {
   obj[std::forward<K>(key)] = std::forward<V>(val);
 }
 
+template <class... Args>
+inline std::pair<dynamic::item_iterator, bool> dynamic::emplace(
+    Args&&... args) {
+  auto& obj = get<ObjectImpl>();
+  return obj.emplace(std::forward<Args>(args)...);
+}
+
+template <class K, class... Args>
+inline std::pair<dynamic::item_iterator, bool> dynamic::try_emplace(
+    K&& key, Args&&... args) {
+  auto& obj = get<ObjectImpl>();
+  return obj.try_emplace(std::forward<K>(key), std::forward<Args>(args)...);
+}
+
 template <class T>
 inline dynamic::iterator dynamic::insert(const_iterator pos, T&& value) {
   auto& arr = get<Array>();

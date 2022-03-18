@@ -43,6 +43,32 @@ inline Unit getValueOrUnit([[maybe_unused]] Try<void>&& value) {
   return Unit{};
 }
 
+template <
+    typename InputRange,
+    typename Make,
+    typename Iter = invoke_result_t<access::begin_fn, InputRange&>,
+    typename Elem = remove_cvref_t<decltype(*std::declval<Iter&>())>,
+    typename RTask = invoke_result_t<Make&, Elem, std::size_t>>
+std::vector<RTask> collectMakeInnerTaskVec(InputRange& awaitables, Make& make) {
+  std::vector<RTask> tasks;
+
+  auto abegin = access::begin(awaitables);
+  auto aend = access::end(awaitables);
+
+  if constexpr (is_invocable_v<folly::access::size_fn, InputRange&>) {
+    tasks.reserve(static_cast<std::size_t>(folly::access::size(awaitables)));
+  } else if constexpr (range_has_known_distance_v<InputRange&>) {
+    tasks.reserve(static_cast<std::size_t>(std::distance(abegin, aend)));
+  }
+
+  std::size_t index = 0;
+  for (auto aiter = abegin; aiter != aend; ++aiter) {
+    tasks.push_back(make(std::move(*aiter), index++));
+  }
+
+  return tasks;
+}
+
 template <typename SemiAwaitable, typename Result>
 BarrierTask makeCollectAllTryTask(
     Executor::KeepAlive<> executor,
@@ -380,19 +406,9 @@ auto collectAllRange(InputRange awaitables)
     }
   };
 
-  // Create a task to await each input awaitable.
-  std::vector<detail::BarrierTask> tasks;
+  auto tasks = detail::collectMakeInnerTaskVec(awaitables, makeTask);
 
-  // TODO: Detect when the input range supports constant-time
-  // .size() and pre-reserve storage for that many elements in 'tasks'.
-
-  std::size_t taskCount = 0;
-  for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
-    tasks.push_back(makeTask(
-        static_cast<decltype(semiAwaitable)&&>(semiAwaitable), taskCount++));
-  }
-
-  tryResults.resize(taskCount);
+  tryResults.resize(tasks.size());
 
   // Save the initial context and restore it after starting each task
   // as the task may have modified the context before suspending and we
@@ -443,7 +459,8 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   exception_wrapper firstException;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable) -> detail::BarrierTask {
+  auto makeTask = [&](awaitable_type semiAwaitable,
+                      std::size_t) -> detail::BarrierTask {
     try {
       co_await co_viaIfAsync(
           executor.get_alias(),
@@ -455,16 +472,7 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
     }
   };
 
-  // Create a task to await each input awaitable.
-  std::vector<detail::BarrierTask> tasks;
-
-  // TODO: Detect when the input range supports constant-time
-  // .size() and pre-reserve storage for that many elements in 'tasks'.
-
-  for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
-    tasks.push_back(
-        makeTask(static_cast<decltype(semiAwaitable)&&>(semiAwaitable)));
-  }
+  auto tasks = detail::collectMakeInnerTaskVec(awaitables, makeTask);
 
   // Save the initial context and restore it after starting each task
   // as the task may have modified the context before suspending and we
@@ -504,8 +512,8 @@ auto collectAllTryRange(InputRange awaitables)
   const CancellationToken& cancelToken = co_await co_current_cancellation_token;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](std::size_t index,
-                      awaitable_type semiAwaitable) -> detail::BarrierTask {
+  auto makeTask = [&](awaitable_type semiAwaitable,
+                      std::size_t index) -> detail::BarrierTask {
     assert(index < results.size());
     auto& result = results[index];
     try {
@@ -525,19 +533,7 @@ auto collectAllTryRange(InputRange awaitables)
     }
   };
 
-  // Create a task to await each input awaitable.
-  std::vector<detail::BarrierTask> tasks;
-
-  // TODO: Detect when the input range supports constant-time
-  // .size() and pre-reserve storage for that many elements in 'tasks'.
-
-  {
-    std::size_t index = 0;
-    for (auto&& semiAwaitable : awaitables) {
-      tasks.push_back(makeTask(
-          index++, static_cast<decltype(semiAwaitable)&&>(semiAwaitable)));
-    }
-  }
+  auto tasks = detail::collectMakeInnerTaskVec(awaitables, makeTask);
 
   // Now that we know how many tasks there are, allocate that
   // many Try objects to store the results before we start
@@ -1040,17 +1036,7 @@ auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
     }
   };
 
-  // Create a task to await each input awaitable.
-  std::vector<folly::coro::Task<void>> tasks;
-
-  // TODO: Detect when the input range supports constant-time
-  // .size() and pre-reserve storage for that many elements in 'tasks'.
-
-  size_t taskCount = 0;
-  for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
-    tasks.push_back(makeTask(
-        static_cast<decltype(semiAwaitable)&&>(semiAwaitable), taskCount++));
-  }
+  auto tasks = detail::collectMakeInnerTaskVec(awaitables, makeTask);
 
   co_await folly::coro::co_withCancellation(
       cancelToken, folly::coro::collectAllRange(detail::MoveRange(tasks)));
@@ -1080,19 +1066,9 @@ auto collectAnyNoDiscardRange(InputRange awaitables)
     results[index] = std::move(result);
   };
 
-  // Create a task to await each input awaitable.
-  std::vector<folly::coro::Task<void>> tasks;
+  auto tasks = detail::collectMakeInnerTaskVec(awaitables, makeTask);
 
-  // TODO: Detect when the input range supports constant-time
-  // .size() and pre-reserve storage for that many elements in 'tasks'.
-
-  size_t taskCount = 0;
-  for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
-    tasks.push_back(makeTask(
-        static_cast<decltype(semiAwaitable)&&>(semiAwaitable), taskCount++));
-  }
-
-  results.resize(taskCount);
+  results.resize(tasks.size());
   co_await folly::coro::co_withCancellation(
       cancelToken, folly::coro::collectAllRange(detail::MoveRange(tasks)));
 

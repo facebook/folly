@@ -18,6 +18,7 @@
 
 #include <array>
 #include <cstdarg>
+#include <functional>
 
 #include <folly/Memory.h>
 #include <folly/lang/Keep.h>
@@ -197,6 +198,21 @@ static_assert(
 #endif
 
 static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
+
+struct RecStd {
+  using type = std::function<RecStd()>;
+  /* implicit */ RecStd(type f) : func(f) {}
+  explicit operator type() { return func; }
+  type func;
+};
+
+// Recursive class - regression case
+struct RecFolly {
+  using type = folly::Function<RecFolly()>;
+  /* implicit */ RecFolly(type f) : func(std::move(f)) {}
+  explicit operator type() { return std::move(func); }
+  type func;
+};
 
 // TEST =====================================================================
 // InvokeFunctor & InvokeReference
@@ -814,7 +830,12 @@ TEST(Function, ReturnConvertible) {
   Function<double()> f1 = []() -> int { return 5; };
   EXPECT_EQ(5.0, f1());
 
-  Function<int()> f2 = []() -> double { return 5.2; };
+  struct Convertible {
+    double value;
+    /* implicit */ Convertible(double v) noexcept : value{v} {}
+    /* implicit */ operator int() const noexcept { return int(value); }
+  };
+  Function<int()> f2 = []() -> Convertible { return 5.2; };
   EXPECT_EQ(5, f2());
 
   CDerived derived;
@@ -852,14 +873,20 @@ TEST(Function, ConvertReturnType) {
   };
   struct CDerived : CBase {};
 
+  struct Convertible {
+    double value;
+    /* implicit */ Convertible(double v) noexcept : value{v} {}
+    /* implicit */ operator int() const noexcept { return int(value); }
+  };
+
   Function<int()> f1 = []() -> int { return 5; };
   Function<double()> cf1 = std::move(f1);
   EXPECT_EQ(5.0, cf1());
-  Function<int()> ccf1 = std::move(cf1);
+  Function<Convertible()> ccf1 = std::move(cf1);
   EXPECT_EQ(5, ccf1());
 
   Function<double()> f2 = []() -> double { return 5.2; };
-  Function<int()> cf2 = std::move(f2);
+  Function<Convertible()> cf2 = std::move(f2);
   EXPECT_EQ(5, cf2());
   Function<double()> ccf2 = std::move(cf2);
   EXPECT_EQ(5.0, ccf2());
@@ -1210,4 +1237,45 @@ TEST(Function, AllocatedSize) {
   EXPECT_GE(fromLambda.heapAllocatedMemory(), kCaptureBytes)
       << "Lambda-derived Function's allocated size is smaller than the "
          "lambda's capture size";
+}
+
+TEST(Function, TrivialSmallBig) {
+  auto tl = [] { return 7; };
+  static_assert(std::is_trivially_copyable_v<decltype(tl)>);
+
+  struct move_nx {
+    move_nx() {}
+    ~move_nx() {}
+    move_nx(move_nx&&) noexcept {}
+    void operator=(move_nx&&) = delete;
+  };
+  auto sl = [o = move_nx{}] { return 7; };
+  static_assert(!std::is_trivially_copyable_v<decltype(sl)>);
+  static_assert(std::is_nothrow_move_constructible_v<decltype(sl)>);
+
+  struct move_x {
+    move_x() {}
+    ~move_x() {}
+    move_x(move_x&&) noexcept(false) {}
+    void operator=(move_x&&) = delete;
+  };
+  auto hl = [o = move_x{}] { return 7; };
+  static_assert(!std::is_trivially_copyable_v<decltype(hl)>);
+  static_assert(!std::is_nothrow_move_constructible_v<decltype(hl)>);
+
+  Function<int()> t{std::move(tl)};
+  Function<int()> s{std::move(sl)};
+  Function<int()> h{std::move(hl)};
+
+  EXPECT_EQ(7, t());
+  EXPECT_EQ(7, s());
+  EXPECT_EQ(7, h());
+
+  auto t2 = std::move(t);
+  auto s2 = std::move(s);
+  auto h2 = std::move(h);
+
+  EXPECT_EQ(7, t2());
+  EXPECT_EQ(7, s2());
+  EXPECT_EQ(7, h2());
 }

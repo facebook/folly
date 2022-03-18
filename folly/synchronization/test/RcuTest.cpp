@@ -49,7 +49,7 @@ TEST(RcuTest, Guard) {
   auto foo = new des(&del);
   { rcu_reader g; }
   rcu_retire(foo);
-  synchronize_rcu();
+  rcu_synchronize();
   EXPECT_TRUE(del);
 }
 
@@ -58,7 +58,7 @@ TEST(RcuTest, SlowReader) {
   {
     rcu_reader g;
 
-    t = std::thread([&]() { synchronize_rcu(); });
+    t = std::thread([&]() { rcu_synchronize(); });
     usleep(100); // Wait for synchronize to start
   }
   t.join();
@@ -82,14 +82,14 @@ TEST(RcuTest, CopyGuard) {
 }
 
 TEST(RcuTest, Stress) {
-  std::vector<std::thread> threads;
+  std::vector<std::thread> readers;
   constexpr uint32_t sz = 1000;
   std::atomic<int*> ints[sz];
   for (uint32_t i = 0; i < sz; i++) {
     ints[i].store(new int(0));
   }
   for (unsigned th = 0; th < FLAGS_threads; th++) {
-    threads.push_back(std::thread([&]() {
+    readers.push_back(std::thread([&]() {
       for (int i = 0; i < FLAGS_iters / 100; i++) {
         rcu_reader g;
         int sum = 0;
@@ -105,23 +105,36 @@ TEST(RcuTest, Stress) {
     }));
   }
   std::atomic<bool> done{false};
-  std::thread updater([&]() {
-    while (!done.load()) {
-      auto newint = new int(0);
-      auto oldint = ints[folly::Random::rand32() % sz].exchange(newint);
-      rcu_retire<int>(oldint, [](int* obj) {
-        *obj = folly::Random::rand32();
-        delete obj;
-      });
-    }
-  });
-  for (auto& t : threads) {
+  std::vector<std::thread> updaters;
+  for (unsigned th = 0; th < FLAGS_threads; th++) {
+    updaters.push_back(std::thread([&]() {
+      while (!done.load()) {
+        auto newint = new int(0);
+        auto oldint = ints[folly::Random::rand32() % sz].exchange(newint);
+        if (folly::Random::rand32() % 2 == 0) {
+          rcu_retire<int>(oldint, [](int* obj) {
+            *obj = folly::Random::rand32();
+            delete obj;
+          });
+        } else {
+          rcu_synchronize();
+          *oldint = folly::Random::rand32();
+          delete oldint;
+        }
+      }
+    }));
+  }
+  for (auto& t : readers) {
     t.join();
   }
   done = true;
-  updater.join();
+
+  for (auto& t : updaters) {
+    t.join();
+  }
+
   // Cleanup for asan
-  synchronize_rcu();
+  rcu_synchronize();
   for (uint32_t i = 0; i < sz; i++) {
     delete ints[i].exchange(nullptr);
   }
@@ -132,7 +145,7 @@ TEST(RcuTest, Synchronize) {
   for (unsigned th = 0; th < FLAGS_threads; th++) {
     threads.push_back(std::thread([&]() {
       for (int i = 0; i < 10; i++) {
-        synchronize_rcu();
+        rcu_synchronize();
       }
     }));
   }
@@ -144,7 +157,7 @@ TEST(RcuTest, Synchronize) {
 TEST(RcuTest, NewDomainTest) {
   struct UniqueTag;
   rcu_domain<UniqueTag> newdomain(nullptr);
-  synchronize_rcu(&newdomain);
+  rcu_synchronize(newdomain);
 }
 
 TEST(RcuTest, NewDomainGuardTest) {
@@ -152,9 +165,9 @@ TEST(RcuTest, NewDomainGuardTest) {
   rcu_domain<UniqueTag> newdomain(nullptr);
   bool del = false;
   auto foo = new des(&del);
-  { rcu_reader_domain<UniqueTag> g(&newdomain); }
-  rcu_retire(foo, {}, &newdomain);
-  synchronize_rcu(&newdomain);
+  { rcu_reader_domain<UniqueTag> g(newdomain); }
+  rcu_retire(foo, {}, newdomain);
+  rcu_synchronize(newdomain);
   EXPECT_TRUE(del);
 }
 
@@ -163,43 +176,43 @@ TEST(RcuTest, MovableReader) {
     rcu_reader g;
     rcu_reader f(std::move(g));
   }
-  synchronize_rcu();
+  rcu_synchronize();
   {
     rcu_reader g(std::defer_lock);
     rcu_reader f;
     g = std::move(f);
   }
-  synchronize_rcu();
+  rcu_synchronize();
 }
 
 TEST(RcuTest, SynchronizeInCall) {
-  rcu_default_domain()->call([]() { synchronize_rcu(); });
-  synchronize_rcu();
+  rcu_default_domain().call([]() { rcu_synchronize(); });
+  rcu_synchronize();
 }
 
 TEST(RcuTest, MoveReaderBetweenThreads) {
   rcu_reader g;
   std::thread t([f = std::move(g)] {});
   t.join();
-  synchronize_rcu();
+  rcu_synchronize();
 }
 
 TEST(RcuTest, ForkTest) {
   rcu_token<RcuTag> epoch;
-  std::thread t([&]() { epoch = rcu_default_domain()->lock_shared(); });
+  std::thread t([&]() { epoch = rcu_default_domain().lock_shared(); });
   t.join();
   auto pid = fork();
   if (pid) {
     // parent
-    rcu_default_domain()->unlock_shared(std::move(epoch));
-    synchronize_rcu();
+    rcu_default_domain().unlock_shared(std::move(epoch));
+    rcu_synchronize();
     int status = -1;
     auto pid2 = waitpid(pid, &status, 0);
     EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
   } else {
     // child
-    synchronize_rcu();
+    rcu_synchronize();
     exit(0); // Do not print gtest results
   }
 }
@@ -242,7 +255,7 @@ TEST(RcuTest, ThreadDeath) {
     rcu_retire(foo);
   });
   t.join();
-  synchronize_rcu();
+  rcu_synchronize();
   EXPECT_TRUE(del);
 }
 
@@ -256,16 +269,16 @@ TEST(RcuTest, RcuObjBase) {
 
   auto foo = new base_test(&retired);
   foo->retire();
-  synchronize_rcu();
+  rcu_synchronize();
   EXPECT_TRUE(retired);
 }
 
 TEST(RcuTest, Tsan) {
   int data = 0;
   std::thread t1([&] {
-    auto epoch = rcu_default_domain()->lock_shared();
+    auto epoch = rcu_default_domain().lock_shared();
     data = 1;
-    rcu_default_domain()->unlock_shared(std::move(epoch));
+    rcu_default_domain().unlock_shared(std::move(epoch));
     // Delay before exiting so the thread is still alive for TSAN detection.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   });
@@ -274,7 +287,7 @@ TEST(RcuTest, Tsan) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // This should establish a happens-before relationship between the earlier
     // write (data = 1) and this write below (data = 2).
-    rcu_default_domain()->synchronize();
+    rcu_default_domain().synchronize();
     data = 2;
   });
 

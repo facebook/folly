@@ -19,7 +19,7 @@ folly
 pcre
 googletest
 
-[dependencies.fb=on]
+[dependencies.fbsource=on]
 rust
 
 [shipit.pathmap]

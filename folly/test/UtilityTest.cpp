@@ -18,7 +18,27 @@
 
 #include <type_traits>
 
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+
+namespace folly {
+
+extern "C" FOLLY_KEEP int check_unsafe_default_initialized_int_ret() {
+  int a = folly::unsafe_default_initialized;
+  return a;
+}
+
+extern "C" FOLLY_KEEP void check_unsafe_default_initialized_int_set(int* p) {
+  int a = folly::unsafe_default_initialized;
+  *p = a;
+}
+
+extern "C" FOLLY_KEEP void check_unsafe_default_initialized_int_pass() {
+  int a = folly::unsafe_default_initialized;
+  folly::detail::keep_sink_nx(a);
+}
+
+} // namespace folly
 
 namespace {
 
@@ -170,6 +190,13 @@ TEST_F(UtilityTest, to_unsigned) {
 TEST_F(UtilityTest, to_narrow) {
   {
     constexpr uint32_t actual = folly::to_narrow(uint64_t(100));
+    EXPECT_EQ(100, actual);
+  }
+}
+
+TEST_F(UtilityTest, to_integral) {
+  {
+    constexpr uint32_t actual = folly::to_integral(100.0f);
     EXPECT_EQ(100, actual);
   }
 }

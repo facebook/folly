@@ -50,11 +50,6 @@
 #define SO_NO_TRANSPARENT_TLS 200
 #endif
 
-// TODO(yichengfb): remove this
-// For temporarily marking the new interface of
-// folly::AsyncServerSocket::AcceptCallback::connectionAccepted()
-#define FOLLY_ASYNCSERVERSOCKET_ACCEPTINFO_DEFINED 1
-
 namespace folly {
 
 /**
@@ -149,7 +144,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
       std::chrono::steady_clock::time_point timeBeforeEnqueue;
     };
 
-    virtual ~AcceptCallback() = default;
+    virtual ~AcceptCallback();
 
     /**
      * connectionAccepted() is called whenever a new client connection is

@@ -25,15 +25,16 @@ namespace test {
 
 class MockAsyncTransport : public AsyncTransport {
  public:
-  MOCK_METHOD1(setEventCallback, void(EventRecvmsgCallback*));
-  MOCK_METHOD1(setReadCB, void(ReadCallback*));
-  MOCK_CONST_METHOD0(getReadCallback, ReadCallback*());
-  MOCK_CONST_METHOD0(getReadCB, ReadCallback*());
-  MOCK_METHOD4(write, void(WriteCallback*, const void*, size_t, WriteFlags));
-  MOCK_METHOD4(writev, void(WriteCallback*, const iovec*, size_t, WriteFlags));
-  MOCK_METHOD3(
+  MOCK_METHOD(void, setEventCallback, (EventRecvmsgCallback*));
+  MOCK_METHOD(void, setReadCB, (ReadCallback*));
+  MOCK_METHOD(ReadCallback*, getReadCallback, (), (const));
+  MOCK_METHOD(ReadCallback*, getReadCB, (), (const));
+  MOCK_METHOD(void, write, (WriteCallback*, const void*, size_t, WriteFlags));
+  MOCK_METHOD(void, writev, (WriteCallback*, const iovec*, size_t, WriteFlags));
+  MOCK_METHOD(
+      void,
       writeChain,
-      void(WriteCallback*, std::shared_ptr<folly::IOBuf>, WriteFlags));
+      (WriteCallback*, std::shared_ptr<folly::IOBuf>, WriteFlags));
 
   void writeChain(
       WriteCallback* callback,
@@ -42,67 +43,68 @@ class MockAsyncTransport : public AsyncTransport {
     writeChain(callback, std::shared_ptr<folly::IOBuf>(iob.release()), flags);
   }
 
-  MOCK_METHOD0(close, void());
-  MOCK_METHOD0(closeNow, void());
-  MOCK_METHOD0(closeWithReset, void());
-  MOCK_METHOD0(shutdownWrite, void());
-  MOCK_METHOD0(shutdownWriteNow, void());
-  MOCK_CONST_METHOD0(good, bool());
-  MOCK_CONST_METHOD0(readable, bool());
-  MOCK_CONST_METHOD0(connecting, bool());
-  MOCK_CONST_METHOD0(error, bool());
-  MOCK_METHOD1(attachEventBase, void(EventBase*));
-  MOCK_METHOD0(detachEventBase, void());
-  MOCK_CONST_METHOD0(isDetachable, bool());
-  MOCK_CONST_METHOD0(getEventBase, EventBase*());
-  MOCK_METHOD1(setSendTimeout, void(uint32_t));
-  MOCK_CONST_METHOD0(getSendTimeout, uint32_t());
-  MOCK_CONST_METHOD1(getLocalAddress, void(folly::SocketAddress*));
-  MOCK_CONST_METHOD1(getPeerAddress, void(folly::SocketAddress*));
-  MOCK_CONST_METHOD0(getAppBytesWritten, size_t());
-  MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
-  MOCK_CONST_METHOD0(getAppBytesReceived, size_t());
-  MOCK_CONST_METHOD0(getRawBytesReceived, size_t());
-  MOCK_CONST_METHOD0(getAppBytesBuffered, size_t());
-  MOCK_CONST_METHOD0(getRawBytesBuffered, size_t());
-  MOCK_CONST_METHOD0(isEorTrackingEnabled, bool());
-  MOCK_METHOD1(setEorTracking, void(bool));
-  MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransport*());
-  MOCK_CONST_METHOD0(isReplaySafe, bool());
-  MOCK_METHOD1(
-      setReplaySafetyCallback, void(AsyncTransport::ReplaySafetyCallback*));
-  MOCK_CONST_METHOD0(getSecurityProtocol, std::string());
-  MOCK_CONST_METHOD0(getPeerCertificate, const AsyncTransportCertificate*());
+  MOCK_METHOD(void, close, ());
+  MOCK_METHOD(void, closeNow, ());
+  MOCK_METHOD(void, closeWithReset, ());
+  MOCK_METHOD(void, shutdownWrite, ());
+  MOCK_METHOD(void, shutdownWriteNow, ());
+  MOCK_METHOD(bool, good, (), (const));
+  MOCK_METHOD(bool, readable, (), (const));
+  MOCK_METHOD(bool, connecting, (), (const));
+  MOCK_METHOD(bool, error, (), (const));
+  MOCK_METHOD(void, attachEventBase, (EventBase*));
+  MOCK_METHOD(void, detachEventBase, ());
+  MOCK_METHOD(bool, isDetachable, (), (const));
+  MOCK_METHOD(EventBase*, getEventBase, (), (const));
+  MOCK_METHOD(void, setSendTimeout, (uint32_t));
+  MOCK_METHOD(uint32_t, getSendTimeout, (), (const));
+  MOCK_METHOD(void, getLocalAddress, (folly::SocketAddress*), (const));
+  MOCK_METHOD(void, getPeerAddress, (folly::SocketAddress*), (const));
+  MOCK_METHOD(size_t, getAppBytesWritten, (), (const));
+  MOCK_METHOD(size_t, getRawBytesWritten, (), (const));
+  MOCK_METHOD(size_t, getAppBytesReceived, (), (const));
+  MOCK_METHOD(size_t, getRawBytesReceived, (), (const));
+  MOCK_METHOD(size_t, getAppBytesBuffered, (), (const));
+  MOCK_METHOD(size_t, getRawBytesBuffered, (), (const));
+  MOCK_METHOD(bool, isEorTrackingEnabled, (), (const));
+  MOCK_METHOD(void, setEorTracking, (bool));
+  MOCK_METHOD(AsyncTransport*, getWrappedTransport, (), (const));
+  MOCK_METHOD(bool, isReplaySafe, (), (const));
+  MOCK_METHOD(
+      void, setReplaySafetyCallback, (AsyncTransport::ReplaySafetyCallback*));
+  MOCK_METHOD(std::string, getSecurityProtocol, (), (const));
+  MOCK_METHOD(
+      const AsyncTransportCertificate*, getPeerCertificate, (), (const));
 };
 
 class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
  public:
-  MOCK_METHOD0(onReplaySafe_, void());
+  MOCK_METHOD(void, onReplaySafe_, (), (noexcept));
   void onReplaySafe() noexcept override { onReplaySafe_(); }
 };
 
 class MockReadCallback : public AsyncTransport::ReadCallback {
  public:
-  MOCK_METHOD2(getReadBuffer, void(void**, size_t*));
+  MOCK_METHOD(void, getReadBuffer, (void**, size_t*));
 
-  MOCK_METHOD1(readDataAvailable_, void(size_t));
+  MOCK_METHOD(void, readDataAvailable_, (size_t), (noexcept));
   void readDataAvailable(size_t size) noexcept override {
     readDataAvailable_(size);
   }
 
-  MOCK_METHOD0(isBufferMovable_, bool());
+  MOCK_METHOD(bool, isBufferMovable_, (), (noexcept));
   bool isBufferMovable() noexcept override { return isBufferMovable_(); }
 
-  MOCK_METHOD1(readBufferAvailable_, void(std::unique_ptr<folly::IOBuf>&));
+  MOCK_METHOD(void, readBufferAvailable_, (std::unique_ptr<folly::IOBuf>&));
   void readBufferAvailable(
       std::unique_ptr<folly::IOBuf> readBuf) noexcept override {
     readBufferAvailable_(readBuf);
   }
 
-  MOCK_METHOD0(readEOF_, void());
+  MOCK_METHOD(void, readEOF_, (), (noexcept));
   void readEOF() noexcept override { readEOF_(); }
 
-  MOCK_METHOD1(readErr_, void(const AsyncSocketException&));
+  MOCK_METHOD(void, readErr_, (const AsyncSocketException&), (noexcept));
   void readErr(const AsyncSocketException& ex) noexcept override {
     readErr_(ex);
   }
@@ -110,10 +112,11 @@ class MockReadCallback : public AsyncTransport::ReadCallback {
 
 class MockWriteCallback : public AsyncTransport::WriteCallback {
  public:
-  MOCK_METHOD0(writeSuccess_, void());
+  MOCK_METHOD(void, writeSuccess_, (), (noexcept));
   void writeSuccess() noexcept override { writeSuccess_(); }
 
-  MOCK_METHOD2(writeErr_, void(size_t, const AsyncSocketException&));
+  MOCK_METHOD(
+      void, writeErr_, (size_t, const AsyncSocketException&), (noexcept));
   void writeErr(size_t size, const AsyncSocketException& ex) noexcept override {
     writeErr_(size, ex);
   }

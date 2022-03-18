@@ -651,6 +651,31 @@ class AsyncSocket : public AsyncTransport {
     }
   }
 
+  /**
+   * Create a memory store to use for zero copy reads.
+   *
+   * The memory store contains a fixed number of entries, each with a fixed
+   * size.  When data is read using zero-copy the kernel will place it in one
+   * of these entries, and it will be returned to the callback with
+   * readZeroCopyDataAvailable().  The callback must release the IOBuf
+   * reference to make the entry available again for future zero-copy reads.
+   * If all entries are exhausted the read code will fall back to non-zero-copy
+   * reads.
+   *
+   * Note: it is the caller's responsibility to ensure that they do not destroy
+   * the ZeroCopyMemStore while it still has any outstanding entries in use.
+   * The caller must ensure the ZeroCopyMemStore exists until all callers have
+   * finished using any data returned via zero-copy reads, and released the
+   * IOBuf objects containing that data.
+   *
+   * @param entries  The number of entries to allocate in the memory store.
+   * @param size     The size of each entry, in bytes.  This should be a
+   *                 multiple of the kernel page size.
+   */
+
+  static std::unique_ptr<AsyncReader::ReadCallback::ZeroCopyMemStore>
+  createDefaultZeroCopyMemStore(size_t entries, size_t size);
+
   bool setZeroCopy(bool enable) override;
   bool getZeroCopy() const override { return zeroCopyEnabled_; }
 
@@ -1467,13 +1492,19 @@ class AsyncSocket : public AsyncTransport {
   void doClose();
 
   // error handling methods
+  enum class ReadCode {
+    READ_NOT_SUPPORTED = 0,
+    READ_CONTINUE = 1,
+    READ_DONE = 2,
+  };
+
   void startFail();
   void finishFail();
   void finishFail(const AsyncSocketException& ex);
   void invokeAllErrors(const AsyncSocketException& ex);
   void fail(const char* fn, const AsyncSocketException& ex);
   void failConnect(const char* fn, const AsyncSocketException& ex);
-  void failRead(const char* fn, const AsyncSocketException& ex);
+  ReadCode failRead(const char* fn, const AsyncSocketException& ex);
   void failErrMessageRead(const char* fn, const AsyncSocketException& ex);
   void failWrite(
       const char* fn,
@@ -1517,6 +1548,8 @@ class AsyncSocket : public AsyncTransport {
   void releaseIOBuf(
       std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback);
 
+  ReadCode processZeroCopyRead();
+  ReadCode processNormalRead();
   /**
    * Attempt to enable Observer ByteEvents for this socket.
    *
@@ -1629,6 +1662,9 @@ class AsyncSocket : public AsyncTransport {
   // zerocopy re-enable logic
   size_t zeroCopyReenableThreshold_{0};
   size_t zeroCopyReenableCounter_{0};
+
+  // zerocopy read
+  bool zerocopyReadDisabled_{false};
 
   // subclasses may cache these on first call to get
   mutable std::unique_ptr<const AsyncTransportCertificate> peerCertData_{

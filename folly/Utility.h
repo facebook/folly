@@ -273,7 +273,7 @@ constexpr initlist_construct_t initlist_construct{};
 //
 //  mimic: std::sorted_unique_t, std::sorted_unique, p0429r6
 struct sorted_unique_t {};
-constexpr sorted_unique_t sorted_unique;
+constexpr sorted_unique_t sorted_unique{};
 
 //  sorted_equivalent_t, sorted_equivalent
 //
@@ -296,7 +296,7 @@ constexpr sorted_unique_t sorted_unique;
 //
 //  mimic: std::sorted_equivalent_t, std::sorted_equivalent, p0429r6
 struct sorted_equivalent_t {};
-constexpr sorted_equivalent_t sorted_equivalent;
+constexpr sorted_equivalent_t sorted_equivalent{};
 
 template <typename T>
 struct transparent : T {
@@ -330,7 +330,7 @@ struct identity_fn {
   }
 };
 using Identity = identity_fn;
-FOLLY_INLINE_VARIABLE constexpr identity_fn identity;
+FOLLY_INLINE_VARIABLE constexpr identity_fn identity{};
 
 namespace moveonly_ { // Protection from unintended ADL.
 
@@ -378,6 +378,52 @@ class EnableCopyMove<false, false> {
 
 using MoveOnly = moveonly_::EnableCopyMove<false, true>;
 
+//  unsafe_default_uninitialized
+//  unsafe_default_uninitialized_cv
+//
+//  An object which is explicitly convertible to any default-constructible type
+//  and which, upon conversion, yields a default-initialized value of that type.
+//
+//  https://en.cppreference.com/w/cpp/language/default_initialization
+//
+//  For fundamental types, a default-initalized instance may have indeterminate
+//  value. Reading an indeterminate value is undefined behavior but may offer a
+//  performance optimization. When using an indeterminate value as a performance
+//  optimization, it is best to be explicit.
+//
+//  Useful as an escape hatch when enabling warnings or errors:
+//  * gcc:
+//    * uninitialized
+//    * maybe-uninitialized
+//  * clang:
+//    * uninitialized
+//    * conditional-uninitialized
+//    * sometimes-uninitialized
+//    * uninitialized-const-reference
+//  * msvc:
+//    * C4701: potentially uninitialized local variable used
+//    * C4703: potentially uninitialized local pointer variable used
+//
+//  Example:
+//
+//      int local = folly::unsafe_default_initialized;
+//      store_value_into_int_ptr(&value); // suppresses possible warning
+//      use_value(value); // suppresses possible warning
+struct unsafe_default_initialized_cv {
+  template <typename T>
+  FOLLY_ERASE constexpr /* implicit */ operator T() const noexcept {
+    T uninit;
+    FOLLY_PUSH_WARNING
+    FOLLY_MSVC_DISABLE_WARNING(4701)
+    FOLLY_MSVC_DISABLE_WARNING(4703)
+    FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
+    return uninit;
+    FOLLY_POP_WARNING
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr unsafe_default_initialized_cv
+    unsafe_default_initialized{};
+
 struct to_signed_fn {
   template <typename..., typename T>
   constexpr auto operator()(T const& t) const noexcept ->
@@ -390,7 +436,7 @@ struct to_signed_fn {
     return m < t ? -static_cast<S>(~t) + S{-1} : static_cast<S>(t);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_signed_fn to_signed;
+FOLLY_INLINE_VARIABLE constexpr to_signed_fn to_signed{};
 
 struct to_unsigned_fn {
   template <typename..., typename T>
@@ -400,13 +446,23 @@ struct to_unsigned_fn {
     return static_cast<U>(t);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_unsigned_fn to_unsigned;
+FOLLY_INLINE_VARIABLE constexpr to_unsigned_fn to_unsigned{};
+
+namespace detail {
+template <typename Src, typename Dst>
+FOLLY_INLINE_VARIABLE constexpr bool is_to_narrow_convertible_v =
+    (std::is_integral<Dst>::value) &&
+    (std::is_signed<Dst>::value == std::is_signed<Src>::value);
+}
 
 template <typename Src>
 class to_narrow_convertible {
- public:
   static_assert(std::is_integral<Src>::value, "not an integer");
 
+  template <typename Dst>
+  struct to_ : bool_constant<detail::is_to_narrow_convertible_v<Src, Dst>> {};
+
+ public:
   explicit constexpr to_narrow_convertible(Src const& value) noexcept
       : value_(value) {}
 #if __cplusplus >= 201703L
@@ -419,12 +475,7 @@ class to_narrow_convertible {
   to_narrow_convertible& operator=(to_narrow_convertible const&) = default;
   to_narrow_convertible& operator=(to_narrow_convertible&&) = default;
 
-  template <
-      typename Dst,
-      std::enable_if_t<
-          std::is_integral<Dst>::value &&
-              std::is_signed<Dst>::value == std::is_signed<Src>::value,
-          int> = 0>
+  template <typename Dst, std::enable_if_t<to_<Dst>::value, int> = 0>
   /* implicit */ constexpr operator Dst() const noexcept {
     FOLLY_PUSH_WARNING
     FOLLY_MSVC_DISABLE_WARNING(4244) // lossy conversion: arguments
@@ -458,7 +509,62 @@ struct to_narrow_fn {
     return to_narrow_convertible<Src>{src};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_narrow_fn to_narrow;
+FOLLY_INLINE_VARIABLE constexpr to_narrow_fn to_narrow{};
+
+template <typename Src>
+class to_integral_convertible {
+  static_assert(std::is_floating_point<Src>::value, "not a floating-point");
+
+  template <typename Dst>
+  static constexpr bool to_ = std::is_integral<Dst>::value;
+
+ public:
+  explicit constexpr to_integral_convertible(Src const& value) noexcept
+      : value_(value) {}
+
+#if __cplusplus >= 201703L
+  explicit to_integral_convertible(to_integral_convertible const&) = default;
+  explicit to_integral_convertible(to_integral_convertible&&) = default;
+#else
+  to_integral_convertible(to_integral_convertible const&) = default;
+  to_integral_convertible(to_integral_convertible&&) = default;
+#endif
+  to_integral_convertible& operator=(to_integral_convertible const&) = default;
+  to_integral_convertible& operator=(to_integral_convertible&&) = default;
+
+  template <typename Dst, std::enable_if_t<to_<Dst>, int> = 0>
+  /* implicit */ constexpr operator Dst() const noexcept {
+    FOLLY_PUSH_WARNING
+    FOLLY_MSVC_DISABLE_WARNING(4244) // lossy conversion: arguments
+    FOLLY_MSVC_DISABLE_WARNING(4267) // lossy conversion: variables
+    FOLLY_GNU_DISABLE_WARNING("-Wconversion")
+    return value_;
+    FOLLY_POP_WARNING
+  }
+
+ private:
+  Src value_;
+};
+
+//  to_integral
+//
+//  A utility for performing explicit floating-point-to-integral conversion
+//  without specifying the destination type. Sometimes preferable to
+//  static_cast<Dst>(src) to document the intended semantics of the cast.
+//
+//  Models explicit conversion with an elided destination type. Sits in between
+//  a stricter explicit conversion with a named destination type and a more
+//  lenient implicit conversion. Implemented with implicit conversion in order
+//  to take advantage of the undefined-behavior sanitizer's inspection of all
+//  implicit conversions.
+struct to_integral_fn {
+  template <typename..., typename Src>
+  constexpr auto operator()(Src const& src) const noexcept
+      -> to_integral_convertible<Src> {
+    return to_integral_convertible<Src>{src};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr to_integral_fn to_integral{};
 
 struct to_underlying_fn {
   template <typename..., class E>
@@ -467,6 +573,6 @@ struct to_underlying_fn {
     return static_cast<std::underlying_type_t<E>>(e);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying;
+FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying{};
 
 } // namespace folly

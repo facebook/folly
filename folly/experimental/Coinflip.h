@@ -25,6 +25,7 @@
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
 #include <folly/Random.h>
+#include <folly/Utility.h>
 
 namespace folly {
 
@@ -164,7 +165,7 @@ class Coinflip {
     // is a user-initialized state and that this shouldn't automatically
     // generate an event.
     double U = Random::randDouble01(std::forward<RNG>(rng));
-    return -log(1 - U) * kScale + 1;
+    return to_integral(-log(1 - U) * kScale + 1);
   }
 
   template <class RNG = ThreadLocalPRNG>
@@ -182,7 +183,7 @@ class Coinflip {
       // will only happen when *counter is manually initialized to 0.
       return coinflip_naive(wait, std::forward<RNG>(rng));
     }
-    const uint64_t step_precise = -log(1 - 1.0 / wait) * kScale;
+    const uint64_t step_precise = to_integral(-log(1 - 1.0 / wait) * kScale);
     // The false positive rate is close to 50% when wait is a power of 2 and
     // is close to 0% when wait-1 is a power of 2.
     return old_counter <= step_precise;

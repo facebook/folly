@@ -157,7 +157,7 @@ class Symbolizer {
   // frame is the normal function call, and the following are stacked inline
   // function calls if any.
   using CachedSymbolizedFrames =
-      std::array<SymbolizedFrame, 1 + Dwarf::kMaxInlineLocationInfoPerFrame>;
+      std::array<SymbolizedFrame, 1 + kMaxInlineLocationInfoPerFrame>;
   using SymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
   folly::Optional<Synchronized<SymbolCache>> symbolCache_;
 };
@@ -243,6 +243,8 @@ class SafeStackTracePrinter {
   std::unique_ptr<FrameArray<kMaxStackTraceDepth>> addresses_;
 };
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 /**
  * Gets the stack trace for the current thread and returns a string
  * representation. Convenience function meant for debugging and logging.
@@ -255,10 +257,24 @@ std::string getStackTraceStr();
 /**
  * Gets the async stack trace for the current thread and returns a string
  * representation. Convenience function meant for debugging and logging.
+ * Empty string indicates stack trace functionality is not available.
  *
  * NOT async-signal-safe.
  */
 std::string getAsyncStackTraceStr();
+
+#else
+// Define these in the header, as headers are always available, but not all
+// platforms can link against the symbolizer library cpp sources.
+
+inline std::string getStackTraceStr() {
+  return "";
+}
+
+inline std::string getAsyncStackTraceStr() {
+  return "";
+}
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 #if FOLLY_HAVE_SWAPCONTEXT
 

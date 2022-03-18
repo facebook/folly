@@ -212,7 +212,7 @@ class PythonWheelBuilder(BuilderBase):
 
             f.write(CMAKE_FOOTER.format(**self.template_format_dict))
 
-    def _write_cmake_config_template(self):
+    def _write_cmake_config_template(self) -> None:
         config_path_name = self.manifest.name + "-config.cmake.in"
         output_path = os.path.join(self.build_dir, config_path_name)
 
@@ -221,7 +221,7 @@ class PythonWheelBuilder(BuilderBase):
 
     def _add_sources(
         self, path_mapping: Dict[str, str], src_path: str, install_path: str
-    ):
+    ) -> None:
         s = os.lstat(src_path)
         if not stat.S_ISDIR(s.st_mode):
             path_mapping[src_path] = install_path

@@ -1,12 +1,15 @@
 [manifest]
 name = sqlite3
 
+[debs]
+libsqlite3-dev
+
+[homebrew]
+sqlite
+
 [rpms]
 sqlite-devel
 sqlite-libs
-
-[debs]
-libsqlite3-dev
 
 [download]
 url = https://sqlite.org/2019/sqlite-amalgamation-3280000.zip

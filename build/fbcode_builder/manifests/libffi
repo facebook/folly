@@ -1,12 +1,15 @@
 [manifest]
 name = libffi
 
+[debs]
+libffi-dev
+
+[homebrew]
+libffi
+
 [rpms]
 libffi-devel
 libffi
-
-[debs]
-libffi-dev
 
 [download]
 url = https://github.com/libffi/libffi/releases/download/v3.4.2/libffi-3.4.2.tar.gz

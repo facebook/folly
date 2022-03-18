@@ -235,7 +235,6 @@ void* HugePageArena::allocHook(
     bool* zero,
     bool* commit,
     unsigned arena_ind) {
-  assert((size & (kHugePageSize - 1)) == 0);
   void* res = nullptr;
   if (new_addr == nullptr) {
     res = arena.reserve(size, alignment);

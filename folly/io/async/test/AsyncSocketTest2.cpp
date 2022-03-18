@@ -631,6 +631,59 @@ TEST_P(AsyncSocketConnectTest, ConnectAndReadv) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
+TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
+  TestServer server;
+
+  // connect()
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  if (GetParam() == TFOState::ENABLED) {
+    socket->enableTFO();
+  }
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+
+  static constexpr size_t kBuffSize = 4096;
+  static constexpr size_t kDataSize = 128 * 1024;
+
+  static constexpr size_t kNumEntries = 1024;
+  static constexpr size_t kEntrySize = 128 * 1024;
+
+  auto memStore =
+      AsyncSocket::createDefaultZeroCopyMemStore(kNumEntries, kEntrySize);
+  ZeroCopyReadCallback rcb(memStore.get(), kBuffSize);
+  socket->setReadCB(&rcb);
+
+  if (GetParam() == TFOState::ENABLED) {
+    // Trigger a connection
+    socket->writeChain(nullptr, IOBuf::copyBuffer("hey"));
+  }
+
+  // Even though we haven't looped yet, we should be able to accept
+  // the connection and send data to it.
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+  std::string data(kDataSize, ' ');
+  // generate random data
+  std::mt19937 rng(folly::randomNumberSeed());
+  for (size_t i = 0; i < data.size(); ++i) {
+    data[i] = static_cast<char>(rng());
+  }
+  acceptedSocket->write(
+      reinterpret_cast<unsigned char*>(data.data()), data.size());
+  acceptedSocket->flush();
+  acceptedSocket->close();
+
+  // Loop
+  evb.loop();
+
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+  rcb.verifyData(data);
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
+}
+
 /**
  * Test installing a read callback and then closing immediately before the
  * connect attempt finishes.
@@ -2808,8 +2861,10 @@ class MockAsyncTFOSocket : public AsyncSocket {
 
   explicit MockAsyncTFOSocket(EventBase* evb) : AsyncSocket(evb) {}
 
-  MOCK_METHOD3(
-      tfoSendMsg, ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
+  MOCK_METHOD(
+      ssize_t,
+      tfoSendMsg,
+      (NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 TEST(AsyncSocketTest, TestTFOUnsupported) {
@@ -3121,8 +3176,8 @@ TEST(AsyncSocketTest, ConnectTFOWithBigData) {
 
 class MockEvbChangeCallback : public AsyncSocket::EvbChangeCallback {
  public:
-  MOCK_METHOD1(evbAttached, void(AsyncSocket*));
-  MOCK_METHOD1(evbDetached, void(AsyncSocket*));
+  MOCK_METHOD(void, evbAttached, (AsyncSocket*));
+  MOCK_METHOD(void, evbDetached, (AsyncSocket*));
 };
 
 TEST(AsyncSocketTest, EvbCallbacks) {

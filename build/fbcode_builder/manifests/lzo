@@ -1,11 +1,14 @@
 [manifest]
 name = lzo
 
-[rpms]
-lzo-devel
-
 [debs]
 liblzo2-dev
+
+[homebrew]
+lzo
+
+[rpms]
+lzo-devel
 
 [download]
 url = http://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz 

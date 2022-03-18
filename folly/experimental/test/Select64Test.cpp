@@ -26,9 +26,11 @@
 extern "C" uint64_t check_select64_default(uint64_t x, uint64_t k) {
   return folly::select64<folly::compression::instructions::Default>(x, k);
 }
+#if FOLLY_X64 || defined(__i386)
 extern "C" uint64_t check_select64_haswell(uint64_t x, uint64_t k) {
   return folly::select64<folly::compression::instructions::Haswell>(x, k);
 }
+#endif
 
 class Select64Test : public testing::Test {};
 

@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -865,5 +866,34 @@ struct make_unsigned<uint128_t> {
   using type = uint128_t;
 };
 #endif // FOLLY_HAVE_INT128_T
+
+namespace traits_detail {
+template <std::size_t>
+struct uint_bits_t_ {};
+template <>
+struct uint_bits_t_<8> : type_t_<std::uint8_t> {};
+template <>
+struct uint_bits_t_<16> : type_t_<std::uint16_t> {};
+template <>
+struct uint_bits_t_<32> : type_t_<std::uint32_t> {};
+template <>
+struct uint_bits_t_<64> : type_t_<std::uint64_t> {};
+#if FOLLY_HAVE_INT128_T
+template <>
+struct uint_bits_t_<128> : type_t_<uint128_t> {};
+#endif // FOLLY_HAVE_INT128_T
+} // namespace traits_detail
+
+template <std::size_t bits>
+using uint_bits_t = _t<traits_detail::uint_bits_t_<bits>>;
+
+template <std::size_t lg_bits>
+using uint_bits_lg_t = uint_bits_t<(1u << lg_bits)>;
+
+template <std::size_t bits>
+using int_bits_t = make_signed_t<uint_bits_t<bits>>;
+
+template <std::size_t lg_bits>
+using int_bits_lg_t = make_signed_t<uint_bits_lg_t<lg_bits>>;
 
 } // namespace folly

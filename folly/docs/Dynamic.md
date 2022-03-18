@@ -72,6 +72,40 @@ Explicit type conversions can be requested for some of the basic types:
 
 For more complicated conversions, see [DynamicConverter](DynamicConverter.md).
 
+### Comparison Operators and Hashing
+#### Equality Operators
+Equality operators (`==`, `!=`) are supported for all types.
+
+For dynamics of the same type, the underlying equality operator shall apply.
+
+For comparisons between different numeric types (double and int64), numeric
+equality will apply - thus `2.0 == 2`.
+
+Values of any other different types will be deemed to not be equal.
+
+#### Ordering operators
+Ordering operators (`<`, `<=`, `>`, `>=`) are supported for all types, except
+`dynamic::object` which will throw if it is involved in an ordering operator.
+
+For dynamics of the same type, the underlying ordering operator shall apply.
+
+For comparisons between different numeric types (double and int64), numeric
+ordering will apply - thus `1.5 < 2`.
+
+Ordering of values between other different types will maintain total ordering
+properties and be consistent within a given binary run, and thus safe for use in
+e.g. `std::set`. The actual ordering is undefined and could change across
+versions, thus a dependency should not be taken outside of the total ordering
+property within a given binary.
+
+#### Hashing
+Hashing is supported by all types, and the hashes of two values will match if
+they are equal per `dynamic::operator==`.
+
+As a result, numerical types have the same numerical hashing regardless of int64
+vs double - so e.g. `std::hash<dynamic>()(2)` will give the same value as
+`std::hash<dynamic>()(2.0)`.
+
 ### Iteration and Lookup
 ***
 

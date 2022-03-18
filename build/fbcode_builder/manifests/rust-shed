@@ -25,10 +25,11 @@ tools/rust/ossconfigs = .
 
 [dependencies]
 fbthrift
+fb303
 
 # We use the system openssl on linux
 [dependencies.not(os=linux)]
 openssl
 
-[dependencies.fb=on]
+[dependencies.fbsource=on]
 rust

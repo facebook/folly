@@ -427,7 +427,7 @@ class ResumableTransformProcessor : public TransformProcessorBase<
         auto* reinitializeEx =
             closeResult.exception
                 ->get_exception<ReinitializeException<InitializeArg>>();
-        co_await initializeImpl(reinitializeEx->initializeArg);
+        co_await initializeImpl(std::move(reinitializeEx->initializeArg));
         co_return;
       }
     }

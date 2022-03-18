@@ -683,7 +683,10 @@ class EliasFanoReader {
   using SizeType = SizeT;
 
   explicit EliasFanoReader(const typename Encoder::CompressedList& list)
-      : upper_(list), lower_(list.lower), numLowerBits_(list.numLowerBits) {
+      : upper_(list),
+        lower_(list.lower),
+        value_(),
+        numLowerBits_(list.numLowerBits) {
     DCHECK_LE(list.size, std::numeric_limits<SizeType>::max());
     DCHECK(Instructions::supported());
   }

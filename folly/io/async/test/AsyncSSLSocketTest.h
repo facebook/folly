@@ -478,8 +478,8 @@ class EmptyReadCallback : public ReadCallback {
 
 class MockCertificateIdentityVerifier : public CertificateIdentityVerifier {
  public:
-  MOCK_CONST_METHOD1(
-      verifyLeafImpl, Try<Unit>(const AsyncTransportCertificate&));
+  MOCK_METHOD(
+      Try<Unit>, verifyLeafImpl, (const AsyncTransportCertificate&), (const));
   // decorate to add noexcept
   virtual Try<Unit> verifyLeaf(const AsyncTransportCertificate& leafCertificate)
       const noexcept override {
@@ -489,7 +489,7 @@ class MockCertificateIdentityVerifier : public CertificateIdentityVerifier {
 
 class MockHandshakeCB : public AsyncSSLSocket::HandshakeCB {
  public:
-  MOCK_METHOD3(handshakeVerImpl, bool(AsyncSSLSocket*, bool, X509_STORE_CTX*));
+  MOCK_METHOD(bool, handshakeVerImpl, (AsyncSSLSocket*, bool, X509_STORE_CTX*));
   virtual bool handshakeVer(
       AsyncSSLSocket* sock,
       bool preverifyOk,
@@ -497,13 +497,13 @@ class MockHandshakeCB : public AsyncSSLSocket::HandshakeCB {
     return handshakeVerImpl(sock, preverifyOk, ctx);
   }
 
-  MOCK_METHOD1(handshakeSucImpl, void(AsyncSSLSocket*));
+  MOCK_METHOD(void, handshakeSucImpl, (AsyncSSLSocket*));
   virtual void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
     handshakeSucImpl(sock);
   }
 
-  MOCK_METHOD2(
-      handshakeErrImpl, void(AsyncSSLSocket*, const AsyncSocketException&));
+  MOCK_METHOD(
+      void, handshakeErrImpl, (AsyncSSLSocket*, const AsyncSocketException&));
   virtual void handshakeErr(
       AsyncSSLSocket* sock, const AsyncSocketException& ex) noexcept override {
     handshakeErrImpl(sock, ex);

@@ -91,7 +91,10 @@ class SingleWriterFixedHashMap {
     elem_ = std::make_unique<Elem[]>(capacity_);
     if (capacity_ == o.capacity_ &&
         (o.used_ < o.capacity_ || o.size() == o.capacity_)) {
-      memcpy(elem_.get(), o.elem_.get(), capacity_ * sizeof(Elem));
+      std::memcpy(
+          static_cast<void*>(elem_.get()),
+          static_cast<const void*>(o.elem_.get()),
+          capacity_ * sizeof(Elem));
       used_ = o.used_;
       setSize(o.size());
       return;

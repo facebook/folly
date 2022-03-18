@@ -45,12 +45,22 @@ extern "C" FOLLY_KEEP std::exception const* check_get_object_exception(
 
 extern "C" FOLLY_KEEP void check_cond_catch_exception(bool c) {
   auto try_ = [=] { c ? folly::throw_exception(0) : void(); };
-  auto catch_ = folly::detail::keep_sink<>;
-  folly::catch_exception(try_, std::bind(catch_));
+  auto catch_ = []() { folly::detail::keep_sink(); };
+  folly::catch_exception(try_, catch_);
+}
+extern "C" FOLLY_KEEP void check_cond_catch_exception_nx(bool c) {
+  auto try_ = [=] { c ? folly::throw_exception(0) : void(); };
+  auto catch_ = []() noexcept { folly::detail::keep_sink_nx(); };
+  folly::catch_exception(try_, catch_);
 }
 extern "C" FOLLY_KEEP void check_cond_catch_exception_ptr(bool c) {
   auto try_ = [=] { c ? folly::throw_exception(0) : void(); };
   auto catch_ = folly::detail::keep_sink<>;
+  folly::catch_exception(try_, catch_);
+}
+extern "C" FOLLY_KEEP void check_cond_catch_exception_ptr_nx(bool c) {
+  auto try_ = [=] { c ? folly::throw_exception(0) : void(); };
+  auto catch_ = folly::detail::keep_sink_nx<>;
   folly::catch_exception(try_, catch_);
 }
 
