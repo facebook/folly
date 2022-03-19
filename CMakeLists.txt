@@ -216,6 +216,21 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       "disabling Folly coroutine support."
     )
   endif()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  check_cxx_compiler_flag(-fcoroutines-ts COMPILER_HAS_F_COROUTINES_TS)
+  if (COMPILER_HAS_F_COROUTINES_TS)
+    message(
+      STATUS
+      "Clang has support for C++ coroutines, setting flag for Folly build."
+    )
+    add_compile_options(-fcoroutines-ts)
+  else()
+    message(
+      STATUS
+      "Clang does not have support for C++ coroutines, "
+      "disabling Folly coroutine support."
+    )
+  endif()
 endif()
 
 if (${LIBSODIUM_FOUND})
