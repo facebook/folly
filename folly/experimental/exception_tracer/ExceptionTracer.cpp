@@ -31,8 +31,6 @@
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if defined(__GLIBCXX__)
-
 #include <dlfcn.h>
 
 namespace {
@@ -52,6 +50,8 @@ GetCaughtExceptionStackTraceStackType getCaughtExceptionStackTraceStackFn;
 
 namespace folly {
 namespace exception_tracer {
+
+#if defined(__GLIBCXX__)
 
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
   printExceptionInfo(out, info, SymbolizePrinter::COLOR_IF_TTY);
@@ -244,9 +244,16 @@ void installHandlers() {
   static Once once;
 }
 
+#else
+
+std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
+  return out << "backtrace only available for libstdc++\n";
+}
+
+#endif // defined(__GLIBCXX__)
+
 } // namespace exception_tracer
 } // namespace folly
 
-#endif // defined(__GLIBCXX__)
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
