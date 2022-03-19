@@ -62,34 +62,25 @@ function(apply_folly_compile_options_to_target THETARGET)
   )
 endfunction()
 
+function(set_compile_option_for_coroutines compiler_id compiler_option)
+  check_cxx_compiler_flag(${compiler_option} COMPILER_SUPPORTS_COROUTINES)
+  if (COMPILER_SUPPORTS_COROUTINES)
+    message(
+      STATUS
+      "${compiler_id} has support for C++ coroutines, setting flag for Folly build."
+    )
+    add_compile_options(${compiler_option})
+  else()
+    message(
+      STATUS
+      "${compiler_id} does not have support for C++ coroutines, "
+      "disabling Folly coroutine support."
+    )
+  endif()
+endfunction()
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  check_cxx_compiler_flag(-fcoroutines COMPILER_HAS_F_COROUTINES)
-  if (COMPILER_HAS_F_COROUTINES)
-    message(
-      STATUS
-      "GCC has support for C++ coroutines, setting flag for Folly build."
-    )
-    add_compile_options(-fcoroutines)
-  else()
-    message(
-      STATUS
-      "GCC does not have support for C++ coroutines, "
-      "disabling Folly coroutine support."
-    )
-  endif()
+  set_compile_option_for_coroutines("GNU" -fcoroutines)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  check_cxx_compiler_flag(-fcoroutines-ts COMPILER_HAS_F_COROUTINES_TS)
-  if (COMPILER_HAS_F_COROUTINES_TS)
-    message(
-      STATUS
-      "Clang has support for C++ coroutines, setting flag for Folly build."
-    )
-    add_compile_options(-fcoroutines-ts)
-  else()
-    message(
-      STATUS
-      "Clang does not have support for C++ coroutines, "
-      "disabling Folly coroutine support."
-    )
-  endif()
+  set_compile_option_for_coroutines("Clang" -fcoroutines-ts)
 endif()

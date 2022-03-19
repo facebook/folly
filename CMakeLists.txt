@@ -967,8 +967,7 @@ if (BUILD_TESTS)
     )
   endif()
 
-  if ((NOT CMAKE_CXX_STANDARD LESS 20) AND
-      (COMPILER_HAS_F_COROUTINES OR COMPILER_HAS_F_COROUTINES_TS))
+  if ((NOT CMAKE_CXX_STANDARD LESS 20) AND COMPILER_SUPPORTS_COROUTINES)
     folly_define_tests(
       DIRECTORY experimental/coro/test/
         TEST coro_accumulate_test SOURCES AccumulateTest.cpp
