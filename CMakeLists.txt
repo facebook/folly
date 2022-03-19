@@ -999,6 +999,44 @@ if (BUILD_TESTS)
     )
   endif()
 
+  if ((NOT CMAKE_CXX_STANDARD LESS 20) AND
+      (COMPILER_HAS_F_COROUTINES OR COMPILER_HAS_F_COROUTINES_TS))
+    folly_define_tests(
+      DIRECTORY experimental/coro/test/
+        TEST coro_accumulate_test SOURCES AccumulateTest.cpp
+        TEST coro_asyncscope_test SOURCES AsyncScopeTest.cpp
+        TEST coro_async_generator_test SOURCES AsyncGeneratorTest.cpp
+        TEST coro_async_pipe_test SOURCES AsyncPipeTest.cpp
+        TEST coro_async_scope_test SOURCES AsyncScopeTest.cpp
+        TEST coro_async_stack_test SOURCES AsyncStackTest.cpp
+        TEST coro_baton_test SOURCES BatonTest.cpp
+        TEST coro_blocking_wait_test SOURCES BlockingWaitTest.cpp
+        TEST coro_bounded_queuetest SOURCES BoundedQueueTest.cpp
+        TEST coro_test SOURCES CoroTest.cpp
+        TEST coro_current_executortest SOURCES CurrentExecutorTest.cpp
+        TEST coro_error_test SOURCES ErrorTest.cpp
+        TEST coro_filter_test SOURCES FilterTest.cpp
+        TEST coro_future_util_test SOURCES FutureUtilTest.cpp
+        TEST coro_generator_test SOURCES GeneratorTest.cpp
+        TEST coro_gmock_helpers_test SOURCES GmockHelpersTest.cpp
+        TEST coro_gtest_helpers_test SOURCES GtestHelpersTest.cpp
+        TEST coro_inlinetask_test SOURCES InlineTaskTest.cpp
+        TEST coro_merge_test SOURCES MergeTest.cpp
+        TEST coro_mutex_test SOURCES MutexTest.cpp
+        TEST coro_promise_test SOURCES PromiseTest.cpp
+        TEST coro_retry_test SOURCES RetryTest.cpp
+        TEST coro_rust_adaptors_test SOURCES RustAdaptorsTest.cpp
+        TEST coro_scope_exit_test SOURCES ScopeExitTest.cpp
+        TEST coro_shared_mutex_test SOURCES SharedMutexTest.cpp
+        TEST coro_small_unbounded_queue_test SOURCES SmallUnboundedQueueTest.cpp
+        TEST coro_task_test SOURCES TaskTest.cpp
+        TEST coro_timeout_test SOURCES TimeoutTest.cpp
+        TEST coro_traits_test SOURCES TraitsTest.cpp
+        TEST coro_transform_test SOURCES TransformTest.cpp
+        TEST coro_unbounded_queue_test SOURCES UnboundedQueueTest.cpp
+    )
+  endif()
+
   get_target_property(pic folly POSITION_INDEPENDENT_CODE)
   if (pic)
     add_library(singleton_thread_local_overload
