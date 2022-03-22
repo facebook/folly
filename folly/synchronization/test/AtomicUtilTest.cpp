@@ -138,6 +138,17 @@ struct atomic_ref_<folly::atomic_ref<Integer>> {
   constexpr explicit operator type&() & { return ref_; }
 };
 
+#if __cpp_lib_atomic_ref >= 201806L
+template <typename Integer>
+struct atomic_ref_<std::atomic_ref<Integer>> {
+  using type = std::atomic_ref<Integer>;
+  Integer value_;
+  type ref_{value_};
+  constexpr explicit atomic_ref_(Integer value) noexcept : value_{value} {}
+  constexpr explicit operator type&() & { return ref_; }
+};
+#endif
+
 template <template <typename> class Atom>
 struct atomic_ref_of {
   template <typename Integer>
@@ -540,15 +551,27 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
     std_atomic, AtomicFetchSetTest, atomic_ref_of<std::atomic>);
 INSTANTIATE_TYPED_TEST_SUITE_P(
     folly_atomic_ref, AtomicFetchSetTest, atomic_ref_of<folly::atomic_ref>);
+#if __cpp_lib_atomic_ref >= 201806L
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    std_atomic_ref, AtomicFetchSetTest, atomic_ref_of<std::atomic_ref>);
+#endif
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
     std_atomic, AtomicFetchResetTest, atomic_ref_of<std::atomic>);
 INSTANTIATE_TYPED_TEST_SUITE_P(
     folly_atomic_ref, AtomicFetchResetTest, atomic_ref_of<folly::atomic_ref>);
+#if __cpp_lib_atomic_ref >= 201806L
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    std_atomic_ref, AtomicFetchResetTest, atomic_ref_of<std::atomic_ref>);
+#endif
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
     std_atomic, AtomicFetchFlipTest, atomic_ref_of<std::atomic>);
 INSTANTIATE_TYPED_TEST_SUITE_P(
     folly_atomic_ref, AtomicFetchFlipTest, atomic_ref_of<folly::atomic_ref>);
+#if __cpp_lib_atomic_ref >= 201806L
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    std_atomic_ref, AtomicFetchFlipTest, atomic_ref_of<std::atomic_ref>);
+#endif
 
 } // namespace folly

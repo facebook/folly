@@ -298,6 +298,22 @@ FOLLY_ERASE bool atomic_fetch_bit_op_native_(
   return op(reinterpret_cast<Integer*>(&atomic), Integer(bit), order);
 }
 
+#if __cpp_lib_atomic_ref >= 201806L
+template <typename Integer, typename Op, typename Fb>
+FOLLY_ERASE bool atomic_fetch_bit_op_native_(
+    std::atomic_ref<Integer>& atomic,
+    std::size_t bit,
+    std::memory_order order,
+    Op op,
+    Fb fb) {
+  if constexpr (!std::atomic_ref<Integer>::is_always_lock_free) {
+    return fb(atomic, bit, order);
+  }
+  auto& ref = **reinterpret_cast<std::atomic<Integer>**>(&atomic);
+  return atomic_fetch_bit_op_native_(ref, bit, order, op, fb);
+}
+#endif
+
 template <typename Integer>
 inline bool atomic_fetch_set_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
@@ -311,6 +327,18 @@ inline bool atomic_fetch_set_native(
     atomic_ref<Integer>& atomic, std::size_t bit, std::memory_order order) {
   return atomic_fetch_set_native(atomic.atomic(), bit, order);
 }
+
+#if __cpp_lib_atomic_ref >= 201806L
+template <typename Integer>
+inline bool atomic_fetch_set_native(
+    std::atomic_ref<Integer>& atomic,
+    std::size_t bit,
+    std::memory_order order) {
+  auto op = atomic_fetch_bit_op_native_bts;
+  auto fb = atomic_fetch_set_fallback;
+  return atomic_fetch_bit_op_native_(atomic, bit, order, op, fb);
+}
+#endif
 
 template <typename Atomic>
 inline bool atomic_fetch_set_native(
@@ -333,6 +361,18 @@ inline bool atomic_fetch_reset_native(
   return atomic_fetch_reset_native(atomic.atomic(), bit, order);
 }
 
+#if __cpp_lib_atomic_ref >= 201806L
+template <typename Integer>
+inline bool atomic_fetch_reset_native(
+    std::atomic_ref<Integer>& atomic,
+    std::size_t bit,
+    std::memory_order order) {
+  auto op = atomic_fetch_bit_op_native_btr;
+  auto fb = atomic_fetch_reset_fallback;
+  return atomic_fetch_bit_op_native_(atomic, bit, order, op, fb);
+}
+#endif
+
 template <typename Atomic>
 bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
@@ -353,6 +393,18 @@ inline bool atomic_fetch_flip_native(
     atomic_ref<Integer>& atomic, std::size_t bit, std::memory_order order) {
   return atomic_fetch_flip_native(atomic.atomic(), bit, order);
 }
+
+#if __cpp_lib_atomic_ref >= 201806L
+template <typename Integer>
+inline bool atomic_fetch_flip_native(
+    std::atomic_ref<Integer>& atomic,
+    std::size_t bit,
+    std::memory_order order) {
+  auto op = atomic_fetch_bit_op_native_btc;
+  auto fb = atomic_fetch_flip_fallback;
+  return atomic_fetch_bit_op_native_(atomic, bit, order, op, fb);
+}
+#endif
 
 template <typename Atomic>
 bool atomic_fetch_flip_native(
