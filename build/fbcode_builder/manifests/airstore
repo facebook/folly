@@ -21,6 +21,8 @@ fmt
 folly
 googletest
 libsodium
+libevent
+double-conversion
 proxygen
 wangle
 zstd
