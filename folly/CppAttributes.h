@@ -166,3 +166,9 @@
 #else
 #define FOLLY_ATTR_MAY_ALIAS
 #endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::pure)
+#define FOLLY_ATTR_PURE gnu::pure
+#else
+#define FOLLY_ATTR_PURE
+#endif
