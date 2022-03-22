@@ -16,10 +16,16 @@
 
 #include <folly/Benchmark.h>
 #include <folly/synchronization/detail/ThreadCachedInts.h>
+#include <folly/synchronization/detail/ThreadCachedReaders.h>
 
 template <typename Tag>
 void decrement_cached_epoch(folly::detail::ThreadCachedInts<Tag>& ints) {
   ints.decrement(0);
+}
+
+template <typename Tag>
+void decrement_cached_epoch(folly::detail::ThreadCachedReaders<Tag>& readers) {
+  readers.decrement();
 }
 
 template <typename ThreadCachedEpoch>
