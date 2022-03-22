@@ -168,9 +168,8 @@ class [[nodiscard]] ScopeExitTask {
 
   friend auto co_viaIfAsync(
       Executor::KeepAlive<> executor, ScopeExitTask&& t) noexcept {
-    DCHECK(t.coro_);
     // Child task inherits the awaiting task's executor
-    t.coro_.promise().executor_ = std::move(executor);
+    t.setExecutor(std::move(executor));
     return Awaiter{std::exchange(t.coro_, {})};
   }
 
@@ -178,6 +177,12 @@ class [[nodiscard]] ScopeExitTask {
   // designed to always run at the end of their parent coroutine.
 
  private:
+  void setExecutor(folly::Executor::KeepAlive<>&& executor) noexcept {
+    DCHECK(coro_);
+    DCHECK(executor);
+    coro_.promise().executor_ = std::move(executor);
+  }
+
   class Awaiter {
    public:
     explicit Awaiter(handle_t coro) noexcept : coro_(coro) {}
