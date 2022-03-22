@@ -81,6 +81,19 @@ TEST(RcuTest, CopyGuard) {
   EXPECT_TRUE(del);
 }
 
+static void delete_or_retire_oldint(int* oldint) {
+  if (folly::Random::rand32() % 2 == 0) {
+    rcu_retire<int>(oldint, [](int* obj) {
+      *obj = folly::Random::rand32();
+      delete obj;
+    });
+  } else {
+    rcu_synchronize();
+    *oldint = folly::Random::rand32();
+    delete oldint;
+  }
+}
+
 TEST(RcuTest, Stress) {
   std::vector<std::thread> readers;
   constexpr uint32_t sz = 1000;
@@ -111,16 +124,7 @@ TEST(RcuTest, Stress) {
       while (!done.load()) {
         auto newint = new int(0);
         auto oldint = ints[folly::Random::rand32() % sz].exchange(newint);
-        if (folly::Random::rand32() % 2 == 0) {
-          rcu_retire<int>(oldint, [](int* obj) {
-            *obj = folly::Random::rand32();
-            delete obj;
-          });
-        } else {
-          rcu_synchronize();
-          *oldint = folly::Random::rand32();
-          delete oldint;
-        }
+        delete_or_retire_oldint(oldint);
       }
     }));
   }
@@ -294,4 +298,37 @@ TEST(RcuTest, Tsan) {
   t1.join();
   t2.join();
   EXPECT_EQ(data, 2);
+}
+
+TEST(RcuTest, DeeplyNestedReaders) {
+  std::vector<std::thread> readers;
+  std::atomic<int*> int_ptr = std::atomic<int*>(nullptr);
+  int_ptr.store(new int(0));
+  for (unsigned th = 0; th < 32; th++) {
+    readers.push_back(std::thread([&]() {
+      std::vector<rcu_reader> domain_readers;
+      for (unsigned i = 0; i < 8192; i++) {
+        domain_readers.emplace_back();
+        EXPECT_EQ(*(int_ptr.load(std::memory_order_acquire)), 0);
+      }
+    }));
+  }
+
+  std::atomic<bool> done{false};
+  auto updater = std::thread([&]() {
+    while (!done.load()) {
+      auto newint = new int(0);
+      auto oldint = int_ptr.exchange(newint, std::memory_order_acq_rel);
+      delete_or_retire_oldint(oldint);
+    }
+  });
+  for (auto& t : readers) {
+    t.join();
+  }
+  done = true;
+  updater.join();
+
+  // Clean up to avoid ASAN complaining about a leak.
+  rcu_synchronize();
+  delete int_ptr.exchange(nullptr, std::memory_order_acquire);
 }
