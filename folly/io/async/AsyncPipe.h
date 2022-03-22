@@ -75,6 +75,13 @@ class AsyncPipeReader : public EventHandler,
     closeCb_ = closeCb;
   }
 
+  /**
+   * Function to change the state of exitEarlyFromHandlerReady_
+  */
+ void setExitEarlyFromHandlerReadyFlag(bool flag){
+   exitEarlyFromHandlerReady_ = flag;
+ }
+
  private:
   ~AsyncPipeReader() override;
 
@@ -85,6 +92,13 @@ class AsyncPipeReader : public EventHandler,
   NetworkSocket fd_;
   AsyncReader::ReadCallback* readCallback_{nullptr};
   std::function<void(NetworkSocket)> closeCb_;
+  // the readCallback_ cannot be set to nullptr when async openssl engine is using
+  // async pipe reader to communicate with QAT SW/HW engine because a single SSL handshake
+  // operation in AsyncSSLSocket includes multiple calls to openssl engine for crypto
+  // acceleration which leads to multiple invocation of AsyncPipeReader::handlerReady() function.   
+  // So, this flag is used to communicate the progress of async openssl operation in AsyncSSLSocket
+  // such that we exit from the while(readCallback_) even if the readCallback_ is not nullptr.
+  bool exitEarlyFromHandlerReady_{false};
 };
 
 /**

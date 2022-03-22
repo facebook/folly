@@ -154,7 +154,9 @@ class AsyncSSLSocket : public AsyncSocket {
   };
 
   /**
-   * A class to wait for asynchronous operations with OpenSSL 1.1.0
+   * A class to wait for asynchronous operations with OpenSSL 1.1.0.
+   * It handles the communication with the openssl engine using async
+   * pipe reader.
    */
   class DefaultOpenSSLAsyncFinishCallback : public ReadCallback {
    public:
@@ -168,19 +170,34 @@ class AsyncSSLSocket : public AsyncSocket {
 
     ~DefaultOpenSSLAsyncFinishCallback() override {
       pipeReader_->setReadCB(nullptr);
+      pipeReader_->setExitEarlyFromHandlerReadyFlag(false);
       sslSocket_->setAsyncOperationFinishCallback(nullptr);
     }
 
     void readDataAvailable(size_t len) noexcept override {
       CHECK_EQ(len, 1u);
       sslSocket_->restartSSLAccept();
+      if (sslSocket_->opensslAsyncRunning_) {
+        pipeReader_->setExitEarlyFromHandlerReadyFlag(true);
+        return;
+      }
+      pipeReader_->setReadCB(nullptr);
+      sslSocket_->setAsyncOperationFinishCallback(nullptr);
+    }
+
+    /**
+     * @brief Function to unregister the handler for async openssl operation.
+     * 
+     */
+    void closeAsyncOperationHandler() noexcept {
+      pipeReader_->setExitEarlyFromHandlerReadyFlag(false);
       pipeReader_->setReadCB(nullptr);
       sslSocket_->setAsyncOperationFinishCallback(nullptr);
     }
 
     void getReadBuffer(void** bufReturn, size_t* lenReturn) noexcept override {
-      *bufReturn = &byte_;
-      *lenReturn = 1;
+      *bufReturn = &quadWord_;
+      *lenReturn = sizeof(quadWord_);
     }
 
     void readEOF() noexcept override {}
@@ -188,7 +205,7 @@ class AsyncSSLSocket : public AsyncSocket {
     void readErr(const folly::AsyncSocketException&) noexcept override {}
 
    private:
-    uint8_t byte_{0};
+    uint64_t quadWord_{0}; // QAT engine uses uint64_t data type to write to pipe fd
     AsyncPipeReader::UniquePtr pipeReader_;
     AsyncSSLSocket* sslSocket_{nullptr};
     DestructorGuard dg_;
@@ -861,7 +878,7 @@ class AsyncSSLSocket : public AsyncSocket {
 
   // This can be called for OpenSSL 1.1.0 async operation finishes
   void setAsyncOperationFinishCallback(std::unique_ptr<ReadCallback> cb) {
-    asyncOperationFinishCallback_ = std::move(cb);
+    osslAsyncOperationHandler_ = std::move(cb);
   }
 
   // Only enable if security negotiation is deferred
@@ -928,7 +945,20 @@ class AsyncSSLSocket : public AsyncSocket {
 
   // Virtual wrapper around SSL_write, solely for testing/mockability
   virtual int sslWriteImpl(SSL* ssl, const void* buf, int n) {
+    ERR_clear_error();
     return SSL_write(ssl, buf, n);
+  }
+
+  // Virtual wrapper around SSL_write, solely for testing/mockability
+  virtual int sslReadImpl(SSL* ssl, void* buf, int n) {
+    ERR_clear_error();
+    return SSL_read(ssl, buf, n);
+  }
+
+  // Virtual wrapper around SSL_write, solely for testing/mockability
+  virtual int sslAcceptImpl(SSL* ssl) {
+    ERR_clear_error();
+    return SSL_accept(ssl);
   }
 
   // Virtual wrapper around SSL_get_error, solely for testing/mockability
@@ -1031,11 +1061,19 @@ class AsyncSSLSocket : public AsyncSocket {
   // whether the SSL session was resumed using session ID or not
   bool sessionIDResumed_{false};
   // This can be called for OpenSSL 1.1.0 async operation finishes
-  std::unique_ptr<ReadCallback> asyncOperationFinishCallback_;
+  // The following line is commented because it cannot be used to track
+  // the running operations in DefaultOpenSSLAsyncFinishCallback
+  // std::unique_ptr<ReadCallback> asyncOperationFinishCallback_; 
+  // Created a unique_ptr to DefaultOpenSSLAsyncFinishCallback so that
+  // we have better control of async operations in openssl
+  std::unique_ptr<DefaultOpenSSLAsyncFinishCallback> osslAsyncOperationHandler_;
   // Whether this socket is currently waiting on SSL_accept
   bool waitingOnAccept_{false};
   // Manages the session for the socket
   folly::ssl::SSLSessionManager sslSessionManager_;
+  // This flag indicates that SSL handshake in async mode openssl is using QAT engine to offload
+  // crypto operation for acceleration.
+  bool opensslAsyncRunning_{false};
 };
 
 } // namespace folly

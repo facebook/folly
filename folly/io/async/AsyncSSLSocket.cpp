@@ -80,11 +80,10 @@ void setup_SSL_CTX(SSL_CTX* ctx) {
 #ifdef SSL_MODE_RELEASE_BUFFERS
   SSL_CTX_set_mode(
       ctx,
-      SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE |
-          SSL_MODE_RELEASE_BUFFERS);
+      SSL_MODE_ASYNC | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_RELEASE_BUFFERS);
 #else
   SSL_CTX_set_mode(
-      ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE);
+      ctx, SSL_MODE_ASYNC | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE);
 #endif
 // SSL_CTX_set_mode is a Macro
 #ifdef SSL_MODE_WRITE_IOVEC
@@ -354,6 +353,12 @@ AsyncSSLSocket::~AsyncSSLSocket() {
           << ", evb=" << eventBase_ << ", fd=" << fd_
           << ", state=" << int(state_) << ", sslState=" << sslState_
           << ", events=" << eventFlags_ << ")";
+  // if we are in async mode
+  VLOG(3) << "**************************************************************************************";
+  VLOG(3) << "AsyncSSLSocket::~AsyncSSLSocket(): Closing the async pipe reader.";
+  VLOG(3) << "**************************************************************************************";
+  auto osslAsyncOperationHandlerPtr = osslAsyncOperationHandler_.get();
+  osslAsyncOperationHandlerPtr->closeAsyncOperationHandler();
 }
 
 void AsyncSSLSocket::init() {
@@ -361,7 +366,6 @@ void AsyncSSLSocket::init() {
   // AsyncSSLSocket instances and not as part of library load.
   static const auto sslBioMethodInitializer = initsslBioMethod();
   (void)sslBioMethodInitializer;
-
   setup_SSL_CTX(ctx_->getSSLCtx());
 }
 
@@ -1161,7 +1165,9 @@ bool AsyncSSLSocket::willBlock(
 
 #ifdef SSL_ERROR_WANT_ASYNC
     if (error == SSL_ERROR_WANT_ASYNC) {
+      opensslAsyncRunning_ = true;
       size_t numfds;
+      size_t numaddfds, numdelfds; 
       if (SSL_get_all_async_fds(ssl_.get(), nullptr, &numfds) <= 0) {
         VLOG(4) << "SSL_ERROR_WANT_ASYNC but no async FDs set!";
         return false;
@@ -1171,28 +1177,37 @@ bool AsyncSSLSocket::willBlock(
                 << numfds;
         return false;
       }
-      OSSL_ASYNC_FD ofd; // This should just be an int in POSIX
+      if (SSL_get_changed_async_fds(ssl_.get(), nullptr, &numaddfds, nullptr, &numdelfds) <= 0) {
+        VLOG(4) << "SSL_ERROR_WANT_ASYNC but no async FDs added or deleted!";
+        return false;
+      }
+      OSSL_ASYNC_FD ofd, addedfd, deletedfd; // This should just be an int in POSIX
       if (SSL_get_all_async_fds(ssl_.get(), &ofd, &numfds) <= 0) {
         VLOG(4) << "SSL_ERROR_WANT_ASYNC cant get async fd";
         return false;
       }
-
-      // On POSIX systems, OSSL_ASYNC_FD is type int, but on win32
-      // it has type HANDLE.
-      // Our NetworkSocket::native_handle_type is type SOCKET on
-      // win32, which means that we need to explicitly construct
-      // a native handle type to pass to the constructor.
-      auto native_handle = NetworkSocket::native_handle_type(ofd);
-
-      auto asyncPipeReader =
-          AsyncPipeReader::newReader(eventBase_, NetworkSocket(native_handle));
-      auto asyncPipeReaderPtr = asyncPipeReader.get();
-      if (!asyncOperationFinishCallback_) {
-        asyncOperationFinishCallback_.reset(
-            new DefaultOpenSSLAsyncFinishCallback(
-                std::move(asyncPipeReader), this, DestructorGuard(this)));
+      if (SSL_get_changed_async_fds(ssl_.get(), &addedfd, &numaddfds, &deletedfd, &numdelfds) <= 0) {
+        VLOG(4) << "SSL_ERROR_WANT_ASYNC cant get added and deleted fds.";
+        return false;
       }
-      asyncPipeReaderPtr->setReadCB(asyncOperationFinishCallback_.get());
+      if (numaddfds) {
+        // On POSIX systems, OSSL_ASYNC_FD is type int, but on win32
+        // it has type HANDLE.
+        // Our NetworkSocket::native_handle_type is type SOCKET on
+        // win32, which means that we need to explicitly construct
+        // a native handle type to pass to the constructor.
+        auto native_handle = NetworkSocket::native_handle_type(ofd);
+        auto asyncPipeReader =
+            AsyncPipeReader::newReader(eventBase_, NetworkSocket(native_handle));
+        auto asyncPipeReaderPtr = asyncPipeReader.get();
+        asyncPipeReaderPtr->setExitEarlyFromHandlerReadyFlag(true);
+        if (!osslAsyncOperationHandler_) {
+          osslAsyncOperationHandler_.reset(
+              new DefaultOpenSSLAsyncFinishCallback(
+                  std::move(asyncPipeReader), this, DestructorGuard(this)));
+        }
+        asyncPipeReaderPtr->setReadCB(osslAsyncOperationHandler_.get());
+      }
     }
 #endif
 
@@ -1330,6 +1345,7 @@ void AsyncSSLSocket::handleReturnFromSSLAccept(int ret) {
     }
   }
 
+  opensslAsyncRunning_ = false;
   handshakeComplete_ = true;
   updateEventRegistration(0, EventHandler::READ | EventHandler::WRITE);
 

@@ -120,7 +120,18 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
     ssize_t bytesRead =
         folly::fileutil_detail::wrapNoInt(recv_internal, fd_, buf, buflen);
 #else
-    ssize_t bytesRead = folly::readNoInt(fd_.toFd(), buf, buflen);
+    // Async OpenSSL uses read pipe to communicate with the QAT SW/HW engine
+    // The special thing about this communication is the when the engine write to
+    // the pipe, we can't read it because the QAT engines occasionally reads the pipe fd
+    // itself when it is pausing openssl. So, we dont want to read it here when async openssl
+    // is communicating with QAT engine
+    ssize_t bytesRead;
+    if (!exitEarlyFromHandlerReady_) {
+      bytesRead = folly::readNoInt(fd_.toFd(), buf, buflen);
+    } else {
+      // setting the bytesRead to sizeof(uint64_t) because qat engine writes uint64_t data
+      bytesRead = sizeof(uint64_t);
+    }
 #endif
 
     if (bytesRead > 0) {
@@ -129,6 +140,10 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
         readCallback_->readBufferAvailable(std::move(ioBuf));
       } else {
         readCallback_->readDataAvailable(size_t(bytesRead));
+        if (exitEarlyFromHandlerReady_) {
+          VLOG(3) << "AsyncPipeReader::handlerReady() this=" << this << "Breaking from while loop to continue async openssl operation.";
+          break;
+        }
       }
       // Fall through and continue around the loop if the read
       // completely filled the available buffer.
