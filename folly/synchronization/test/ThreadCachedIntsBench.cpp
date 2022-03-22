@@ -16,53 +16,20 @@
 
 #include <folly/Benchmark.h>
 #include <folly/synchronization/detail/ThreadCachedInts.h>
+#include <folly/synchronization/test/ThreadCachedEpochBench.h>
 
-using namespace folly;
+using TCI = folly::detail::ThreadCachedInts<void>;
 
-BENCHMARK(IncrementStatic, iters) {
-  BenchmarkSuspender susp;
-
-  detail::ThreadCachedInts<void> ints;
-  ints.increment(0);
-  ints.decrement(0);
-
-  susp.dismiss();
-
-  for (unsigned i = 0; i < iters; i++) {
-    ints.increment(0);
-  }
+BENCHMARK(IncrementLoop, iters) {
+  bm_increment_loop<TCI>(iters);
 }
 
 BENCHMARK(IncrementDecrementSameLoop, iters) {
-  BenchmarkSuspender susp;
-
-  detail::ThreadCachedInts<void> ints;
-  ints.increment(0);
-  ints.decrement(0);
-
-  susp.dismiss();
-
-  for (unsigned i = 0; i < iters; i++) {
-    ints.increment(0);
-    ints.decrement(0);
-  }
+  bm_increment_decrement_same_loop<TCI>(iters);
 }
 
 BENCHMARK(IncrementDecrementSeparateLoop, iters) {
-  BenchmarkSuspender susp;
-
-  detail::ThreadCachedInts<void> ints;
-  ints.increment(0);
-  ints.decrement(0);
-
-  susp.dismiss();
-
-  for (unsigned i = 0; i < iters; i++) {
-    ints.increment(0);
-  }
-  for (unsigned i = 0; i < iters; i++) {
-    ints.decrement(0);
-  }
+  bm_increment_decrement_separate_loop<TCI>(iters);
 }
 
 BENCHMARK_DRAW_LINE();
