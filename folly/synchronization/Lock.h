@@ -504,7 +504,7 @@ class hybrid_lock : public hybrid_lock_base<Mutex> {
   using hybrid_lock_base<Mutex>::hybrid_lock_base;
 };
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 template <typename Mutex, typename... A>
 explicit hybrid_lock(Mutex&, A const&...) -> hybrid_lock<Mutex>;
 #endif
@@ -563,7 +563,7 @@ class hybrid_lock_guard
   using base::base;
 };
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 template <typename Mutex, typename... A>
 explicit hybrid_lock_guard(Mutex&, A const&...) -> hybrid_lock_guard<Mutex>;
 #endif
