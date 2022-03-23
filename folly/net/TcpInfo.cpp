@@ -31,15 +31,15 @@ constexpr std::array<
     static_cast<std::underlying_type_t<TcpInfo::CongestionControlName>>(
         TcpInfo::CongestionControlName::NumCcTypes)>
     kCcNames{
-        "UNKNOWN",
-        "CUBIC",
-        "BIC",
-        "DCTCP",
-        "DCTCP_RENO",
-        "BBR",
-        "RENO",
-        "DCTCP_CUBIC",
-        "VEGAS"};
+        {"UNKNOWN",
+         "CUBIC",
+         "BIC",
+         "DCTCP",
+         "DCTCP_RENO",
+         "BBR",
+         "RENO",
+         "DCTCP_CUBIC",
+         "VEGAS"}};
 static_assert(
     kCcNames.size() ==
         static_cast<std::underlying_type_t<TcpInfo::CongestionControlName>>(
