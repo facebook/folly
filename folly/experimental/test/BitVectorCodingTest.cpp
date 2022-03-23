@@ -19,6 +19,8 @@
 #include <random>
 #include <vector>
 
+#include <folly/Portability.h>
+#if FOLLY_X64
 #include <folly/Benchmark.h>
 #include <folly/experimental/BitVectorCoding.h>
 #include <folly/experimental/Select64.h>
@@ -211,3 +213,4 @@ int main(int argc, char** argv) {
 
   return ret;
 }
+#endif
