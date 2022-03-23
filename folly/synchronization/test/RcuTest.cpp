@@ -16,6 +16,7 @@
 
 #include <folly/synchronization/Rcu.h>
 
+#include <atomic>
 #include <thread>
 #include <vector>
 
@@ -99,7 +100,7 @@ TEST(RcuTest, Stress) {
   constexpr uint32_t sz = 1000;
   std::atomic<int*> ints[sz];
   for (uint32_t i = 0; i < sz; i++) {
-    ints[i].store(new int(0));
+    ints[i].store(new int(0), std::memory_order_release);
   }
   for (unsigned th = 0; th < FLAGS_threads; th++) {
     readers.push_back(std::thread([&]() {
@@ -121,9 +122,10 @@ TEST(RcuTest, Stress) {
   std::vector<std::thread> updaters;
   for (unsigned th = 0; th < FLAGS_threads; th++) {
     updaters.push_back(std::thread([&]() {
-      while (!done.load()) {
+      while (!done.load(std::memory_order_acquire)) {
         auto newint = new int(0);
-        auto oldint = ints[folly::Random::rand32() % sz].exchange(newint);
+        auto oldint = ints[folly::Random::rand32() % sz].exchange(
+            newint, std::memory_order_acq_rel);
         delete_or_retire_oldint(oldint);
       }
     }));
@@ -131,7 +133,7 @@ TEST(RcuTest, Stress) {
   for (auto& t : readers) {
     t.join();
   }
-  done = true;
+  done.store(true, std::memory_order_release);
 
   for (auto& t : updaters) {
     t.join();
@@ -140,7 +142,7 @@ TEST(RcuTest, Stress) {
   // Cleanup for asan
   rcu_synchronize();
   for (uint32_t i = 0; i < sz; i++) {
-    delete ints[i].exchange(nullptr);
+    delete ints[i].exchange(nullptr, std::memory_order_acq_rel);
   }
 }
 
@@ -235,7 +237,7 @@ TEST(RcuTest, ThreadLocalList) {
       --done;
     });
   }
-  while (done.load() > 0) {
+  while (done.load(std::memory_order_acquire) > 0) {
     folly::detail::ThreadCachedLists<TTag>::ListHead list{};
     lists.collect(list);
     list.forEach([](folly::detail::ThreadCachedLists<TTag>::Node* node) {
@@ -303,7 +305,7 @@ TEST(RcuTest, Tsan) {
 TEST(RcuTest, DeeplyNestedReaders) {
   std::vector<std::thread> readers;
   std::atomic<int*> int_ptr = std::atomic<int*>(nullptr);
-  int_ptr.store(new int(0));
+  int_ptr.store(new int(0), std::memory_order_release);
   for (unsigned th = 0; th < 32; th++) {
     readers.push_back(std::thread([&]() {
       std::vector<rcu_reader> domain_readers;
@@ -316,7 +318,7 @@ TEST(RcuTest, DeeplyNestedReaders) {
 
   std::atomic<bool> done{false};
   auto updater = std::thread([&]() {
-    while (!done.load()) {
+    while (!done.load(std::memory_order_acquire)) {
       auto newint = new int(0);
       auto oldint = int_ptr.exchange(newint, std::memory_order_acq_rel);
       delete_or_retire_oldint(oldint);
@@ -325,10 +327,10 @@ TEST(RcuTest, DeeplyNestedReaders) {
   for (auto& t : readers) {
     t.join();
   }
-  done = true;
+  done.store(true, std::memory_order_release);
   updater.join();
 
   // Clean up to avoid ASAN complaining about a leak.
   rcu_synchronize();
-  delete int_ptr.exchange(nullptr, std::memory_order_acquire);
+  delete int_ptr.exchange(nullptr, std::memory_order_acq_rel);
 }
