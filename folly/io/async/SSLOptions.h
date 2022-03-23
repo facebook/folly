@@ -53,8 +53,7 @@ struct SSLOptionsCompatibility {
     return folly::make_array(
         "TLS_AES_128_GCM_SHA256",
         "TLS_AES_256_GCM_SHA384",
-        "TLS_CHACHA20_POLY1305_SHA256",
-        "TLS_AES_128_CCM_SHA256");
+        "TLS_CHACHA20_POLY1305_SHA256");
   }
 
   /**
@@ -125,8 +124,7 @@ struct SSLServerOptionsCompatibility {
     return folly::make_array(
         "TLS_AES_128_GCM_SHA256",
         "TLS_AES_256_GCM_SHA384",
-        "TLS_CHACHA20_POLY1305_SHA256",
-        "TLS_AES_128_CCM_SHA256");
+        "TLS_CHACHA20_POLY1305_SHA256");
   }
 };
 
@@ -155,8 +153,7 @@ struct SSLOptions2021 {
     return folly::make_array(
         "TLS_AES_128_GCM_SHA256",
         "TLS_AES_256_GCM_SHA384",
-        "TLS_CHACHA20_POLY1305_SHA256",
-        "TLS_AES_128_CCM_SHA256");
+        "TLS_CHACHA20_POLY1305_SHA256");
   }
 
   static constexpr auto sigalgs() {
