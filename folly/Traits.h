@@ -50,6 +50,42 @@ using bool_constant = std::integral_constant<bool, B>;
 template <std::size_t I>
 using index_constant = std::integral_constant<std::size_t, I>;
 
+//  always_false
+//
+//  A variable template that is always false but requires template arguments to
+//  be provided (which are then ignored). This is useful in very specific cases
+//  where we want type-dependent expressions to defer static_assert's.
+//
+//  A common use-case is for exhaustive constexpr if branches:
+//
+//    template <typename T>
+//    void foo(T value) {
+//      if constexpr (std::is_integral_v<T>) foo_integral(value);
+//      else if constexpr (std::is_same_v<T, std::string>) foo_string(value);
+//      else static_assert(always_false<T>, "Unsupported type");
+//    }
+//
+//  If we had used static_assert(false), then this would always fail to compile,
+//  even if foo is never instantiated!
+//
+//  Another use case is if a template that is expected to always be specialized
+//  is erroneously instantiated with the base template.
+//
+//    template <typename T>
+//    struct Foo {
+//      static_assert(always_false<T>, "Unsupported type");
+//    };
+//    template <>
+//    struct Foo<int> {};
+//
+//    Foo<int> a;         // fine
+//    Foo<std::string> b; // fails! And you get a nice (custom) error message
+//
+//  This is similar to leaving the base template undefined but we get a nicer
+//  compiler error message with static_assert.
+template <typename...>
+FOLLY_INLINE_VARIABLE constexpr bool always_false = false;
+
 namespace detail {
 
 //  is_instantiation_of_v
