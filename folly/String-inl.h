@@ -264,10 +264,9 @@ inline bool atDelim(const char* s, StringPiece sp) {
 
 // These are used to short-circuit internalSplit() in the case of
 // 1-character strings.
-inline char delimFront(char c) {
+inline char delimFront(char) {
   // This one exists only for compile-time; it should never be called.
   std::abort();
-  return c;
 }
 inline char delimFront(StringPiece s) {
   assert(!s.empty() && s.start() != nullptr);
