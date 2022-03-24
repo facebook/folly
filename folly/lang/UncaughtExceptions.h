@@ -18,44 +18,25 @@
 
 #include <exception>
 
-#if !defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) && defined(__GNUG__)
-#define FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS
-namespace __cxxabiv1 {
-// forward declaration (originally defined in unwind-cxx.h from from libstdc++)
-struct __cxa_eh_globals;
-// declared in cxxabi.h from libstdc++-v3
-#if !defined(__FreeBSD__)
-extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
-#else
-// Signature mismatch with FreeBSD case
-extern "C" __cxa_eh_globals* __cxa_get_globals(void);
-#endif
-} // namespace __cxxabiv1
-#elif defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) || defined(_MSC_VER)
-#define FOLLY_EXCEPTION_COUNT_USE_STD
-#else
-// Raise an error when trying to use this on unsupported platforms.
-#error "Unsupported platform, don't include this header."
-#endif
+#include <folly/CppAttributes.h>
 
 namespace folly {
 
-/**
- * Returns the number of uncaught exceptions.
- *
- * This function is based on Evgeny Panasyuk's implementation from here:
- * http://fburl.com/15190026
- */
-inline int uncaught_exceptions() noexcept {
-#if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS)
-  // __cxa_get_globals returns a __cxa_eh_globals* (defined in unwind-cxx.h).
-  // The offset below returns __cxa_eh_globals::uncaughtExceptions.
-  return *(reinterpret_cast<unsigned int*>(
-      static_cast<char*>(static_cast<void*>(__cxxabiv1::__cxa_get_globals())) +
-      sizeof(void*)));
-#elif defined(FOLLY_EXCEPTION_COUNT_USE_STD)
-  return std::uncaught_exceptions();
-#endif
+namespace detail {
+[[FOLLY_ATTR_PURE]] int uncaught_exceptions_() noexcept;
 }
+
+#if __cpp_lib_uncaught_exceptions >= 201411L || defined(_CPPLIB_VER)
+
+/* using override */ using std::uncaught_exceptions;
+
+#else
+
+//  mimic: std::uncaught_exceptions, c++17
+[[FOLLY_ATTR_PURE]] inline int uncaught_exceptions() noexcept {
+  return detail::uncaught_exceptions_();
+}
+
+#endif
 
 } // namespace folly

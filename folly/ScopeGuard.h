@@ -208,10 +208,6 @@ makeDismissedGuard(F&& f) noexcept(
 
 namespace detail {
 
-#if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
-    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD) ||          \
-    defined(FOLLY_EXCEPTION_COUNT_USE_STD)
-
 /**
  * ScopeGuard used for executing a function when leaving the current scope
  * depending on the presence of a new uncaught exception.
@@ -273,8 +269,6 @@ operator+(ScopeGuardOnSuccess, FunctionType&& fn) {
       false>(std::forward<FunctionType>(fn));
 }
 
-#endif // native uncaught_exception() supported
-
 /**
  * Internal use for the macro SCOPE_EXIT below
  */
@@ -330,10 +324,6 @@ ScopeGuardImpl<typename std::decay<FunctionType>::type, true> operator+(
   auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = \
       ::folly::detail::ScopeGuardOnExit() + [&]() noexcept
 
-#if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
-    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD) ||          \
-    defined(FOLLY_EXCEPTION_COUNT_USE_STD)
-
 //  SCOPE_FAIL
 //
 //  Like SCOPE_EXIT, but the code in the braces only executes when the
@@ -380,5 +370,3 @@ ScopeGuardImpl<typename std::decay<FunctionType>::type, true> operator+(
 #define SCOPE_SUCCESS                               \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_SUCCESS_STATE) = \
       ::folly::detail::ScopeGuardOnSuccess() + [&]()
-
-#endif // native uncaught_exception() supported
