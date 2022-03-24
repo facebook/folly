@@ -22,6 +22,8 @@
 #include <tuple>
 #include <type_traits>
 
+#include <folly/ConstexprMath.h>
+
 #ifdef _WIN32
 #include <intrin.h>
 #endif
@@ -292,10 +294,17 @@ FOLLY_ERASE bool atomic_fetch_bit_op_native_(
   constexpr auto lo_size = std::size_t(2);
   constexpr auto hi_size = std::size_t(8);
   // some versions of TSAN do not properly instrument the inline assembly
-  if (atomic_size < lo_size || atomic_size > hi_size || folly::kIsSanitize) {
+  if (atomic_size > hi_size || folly::kIsSanitize) {
     return fb(atomic, bit, order);
   }
-  return op(reinterpret_cast<Integer*>(&atomic), Integer(bit), order);
+  auto address = reinterpret_cast<std::uintptr_t>(&atomic);
+  // there is a minimum word size - if too small, enlarge
+  constexpr auto word_size = constexpr_clamp(atomic_size, lo_size, hi_size);
+  using word_type = uint_bits_t<word_size * 8>;
+  auto adjust = std::size_t(address % lo_size);
+  address -= adjust;
+  bit += 8 * adjust;
+  return op(reinterpret_cast<word_type*>(address), word_type(bit), order);
 }
 
 #if __cpp_lib_atomic_ref >= 201806L

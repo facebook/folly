@@ -123,29 +123,30 @@ struct atomic_ref_;
 
 template <typename Integer>
 struct atomic_ref_<std::atomic<Integer>> {
-  using type = std::atomic<Integer>;
-  type atomic_;
-  constexpr explicit atomic_ref_(Integer value) noexcept : atomic_{value} {}
-  constexpr explicit operator type&() & { return atomic_; }
+  using reference = std::atomic<Integer>&;
+  std::atomic<Integer> value_;
+  atomic_ref_() noexcept : value_{} {}
+  constexpr explicit atomic_ref_(Integer value) noexcept : value_{value} {}
+  constexpr operator reference() & { return reference(value_); }
 };
 
 template <typename Integer>
 struct atomic_ref_<folly::atomic_ref<Integer>> {
-  using type = folly::atomic_ref<Integer>;
+  using reference = folly::atomic_ref<Integer>;
   Integer value_;
-  type ref_{value_};
+  atomic_ref_() noexcept : value_{} {}
   constexpr explicit atomic_ref_(Integer value) noexcept : value_{value} {}
-  constexpr explicit operator type&() & { return ref_; }
+  constexpr operator reference() & { return reference(value_); }
 };
 
 #if __cpp_lib_atomic_ref >= 201806L
 template <typename Integer>
 struct atomic_ref_<std::atomic_ref<Integer>> {
-  using type = std::atomic_ref<Integer>;
+  using reference = std::atomic_ref<Integer>;
   Integer value_;
-  type ref_{value_};
+  atomic_ref_() noexcept : value_{} {}
   constexpr explicit atomic_ref_(Integer value) noexcept : value_{value} {}
-  constexpr explicit operator type&() & { return ref_; }
+  constexpr operator reference() & { return reference(value_); }
 };
 #endif
 
@@ -158,10 +159,13 @@ struct atomic_ref_of {
 template <typename TypeParam, typename Integer, typename Op>
 void atomic_fetch_set_basic(Op fetch_set) {
   using raw_ = typename TypeParam::template apply<Integer>;
+  using obj_ = atomic_ref_<raw_>;
+  using ref_ = typename obj_::reference;
+  constexpr auto Size = 8 / (sizeof(Integer) % 16);
+  static_assert(Size > 0);
 
-  {
-    atomic_ref_<raw_> atomic_{0b0};
-    auto& atomic = static_cast<raw_&>(atomic_);
+  for (ref_ atomic : std::array<obj_, Size>{}) {
+    atomic.store(0b0);
     EXPECT_EQ(fetch_set(atomic, 0), false);
     EXPECT_EQ(fetch_set(atomic, 1), false);
     EXPECT_EQ(atomic.load(), 0b11);
@@ -169,9 +173,8 @@ void atomic_fetch_set_basic(Op fetch_set) {
     EXPECT_EQ(atomic.load(), 0b111);
   }
 
-  {
-    atomic_ref_<raw_> atomic_{0b1};
-    auto& atomic = static_cast<raw_&>(atomic_);
+  for (ref_ atomic : std::array<obj_, Size>{}) {
+    atomic.store(0b1);
     EXPECT_EQ(fetch_set(atomic, 0), true);
     EXPECT_EQ(fetch_set(atomic, 0), true);
     EXPECT_EQ(fetch_set(atomic, 1), false);
@@ -186,8 +189,8 @@ void atomic_fetch_set_basic(Op fetch_set) {
       // optimized away.  This is testing the feasability of this code in
       // situations where bit is not known at compile time and will likely force
       // a register load
-      atomic_ref_<raw_> atomic_{0b0};
-      auto& atomic = static_cast<raw_&>(atomic_);
+      obj_ atomic_{0b0};
+      ref_ atomic = atomic_;
       auto&& bit = 0;
       folly::makeUnpredictable(bit);
 
@@ -203,10 +206,12 @@ void atomic_fetch_set_basic(Op fetch_set) {
 template <typename TypeParam, typename Integer, typename Op>
 void atomic_fetch_reset_basic(Op fetch_reset) {
   using raw_ = typename TypeParam::template apply<Integer>;
+  using obj_ = atomic_ref_<raw_>;
+  using ref_ = typename obj_::reference;
+  constexpr auto Size = 8 / (sizeof(Integer) % 16);
+  static_assert(Size > 0);
 
-  {
-    atomic_ref_<raw_> atomic_{0b0};
-    auto& atomic = static_cast<raw_&>(atomic_);
+  for (ref_ atomic : std::array<obj_, Size>{}) {
     EXPECT_EQ(fetch_reset(atomic, 0), false);
     EXPECT_EQ(fetch_reset(atomic, 1), false);
     atomic.store(0b11);
@@ -215,9 +220,7 @@ void atomic_fetch_reset_basic(Op fetch_reset) {
     EXPECT_EQ(atomic.load(), 0);
   }
 
-  {
-    atomic_ref_<raw_> atomic_{0b0};
-    auto& atomic = static_cast<raw_&>(atomic_);
+  for (ref_ atomic : std::array<obj_, Size>{}) {
     EXPECT_EQ(fetch_reset(atomic, 0), false);
     EXPECT_EQ(fetch_reset(atomic, 1), false);
     atomic.store(0b11);
@@ -230,10 +233,12 @@ void atomic_fetch_reset_basic(Op fetch_reset) {
 template <typename TypeParam, typename Integer, typename Op>
 void atomic_fetch_flip_basic(Op fetch_flip) {
   using raw_ = typename TypeParam::template apply<Integer>;
+  using obj_ = atomic_ref_<raw_>;
+  using ref_ = typename obj_::reference;
+  constexpr auto Size = 8 / (sizeof(Integer) % 16);
+  static_assert(Size > 0);
 
-  {
-    atomic_ref_<raw_> atomic_{0b0};
-    auto& atomic = static_cast<raw_&>(atomic_);
+  for (ref_ atomic : std::array<obj_, Size>{}) {
     EXPECT_EQ(fetch_flip(atomic, 0), false);
     EXPECT_EQ(fetch_flip(atomic, 1), false);
     atomic.store(0b11);
@@ -242,9 +247,7 @@ void atomic_fetch_flip_basic(Op fetch_flip) {
     EXPECT_EQ(atomic.load(), 0);
   }
 
-  {
-    atomic_ref_<raw_> atomic_{0b0};
-    auto& atomic = static_cast<raw_&>(atomic_);
+  for (ref_ atomic : std::array<obj_, Size>{}) {
     EXPECT_EQ(fetch_flip(atomic, 0), false);
     EXPECT_EQ(fetch_flip(atomic, 1), false);
     atomic.store(0b10);
