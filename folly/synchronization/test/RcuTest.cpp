@@ -26,6 +26,7 @@
 #include <folly/Random.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 using namespace folly;
 
@@ -118,11 +119,11 @@ TEST(RcuTest, Stress) {
       }
     }));
   }
-  std::atomic<bool> done{false};
+  folly::relaxed_atomic<bool> done{false};
   std::vector<std::thread> updaters;
   for (unsigned th = 0; th < FLAGS_threads; th++) {
     updaters.push_back(std::thread([&]() {
-      while (!done.load(std::memory_order_acquire)) {
+      while (!done) {
         auto newint = new int(0);
         auto oldint = ints[folly::Random::rand32() % sz].exchange(
             newint, std::memory_order_acq_rel);
@@ -133,7 +134,7 @@ TEST(RcuTest, Stress) {
   for (auto& t : readers) {
     t.join();
   }
-  done.store(true, std::memory_order_release);
+  done = true;
 
   for (auto& t : updaters) {
     t.join();
@@ -227,7 +228,7 @@ TEST(RcuTest, ThreadLocalList) {
   struct TTag;
   folly::detail::ThreadCachedLists<TTag> lists;
   std::vector<std::thread> threads{FLAGS_threads};
-  std::atomic<unsigned long> done{FLAGS_threads};
+  folly::relaxed_atomic<unsigned long> done{FLAGS_threads};
   for (auto& tr : threads) {
     tr = std::thread([&]() {
       for (int i = 0; i < FLAGS_iters; i++) {
@@ -237,7 +238,7 @@ TEST(RcuTest, ThreadLocalList) {
       --done;
     });
   }
-  while (done.load(std::memory_order_acquire) > 0) {
+  while (done > 0) {
     folly::detail::ThreadCachedLists<TTag>::ListHead list{};
     lists.collect(list);
     list.forEach([](folly::detail::ThreadCachedLists<TTag>::Node* node) {
@@ -316,9 +317,9 @@ TEST(RcuTest, DeeplyNestedReaders) {
     }));
   }
 
-  std::atomic<bool> done{false};
+  folly::relaxed_atomic<bool> done{false};
   auto updater = std::thread([&]() {
-    while (!done.load(std::memory_order_acquire)) {
+    while (!done) {
       auto newint = new int(0);
       auto oldint = int_ptr.exchange(newint, std::memory_order_acq_rel);
       delete_or_retire_oldint(oldint);
@@ -327,7 +328,7 @@ TEST(RcuTest, DeeplyNestedReaders) {
   for (auto& t : readers) {
     t.join();
   }
-  done.store(true, std::memory_order_release);
+  done = true;
   updater.join();
 
   // Clean up to avoid ASAN complaining about a leak.
