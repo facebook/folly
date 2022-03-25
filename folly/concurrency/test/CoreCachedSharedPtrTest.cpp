@@ -18,7 +18,9 @@
 
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
-#if defined(__GLIBCXX__)
+// PackedSyncPtr requires x64, ppc64 or aarch64, skip these tests for
+// other arches
+#if defined(__GLIBCXX__) && (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64)
 
 #include <atomic>
 #include <memory>
