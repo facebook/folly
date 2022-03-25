@@ -140,6 +140,20 @@ TEST_F(UtilityTest, forward_like) {
   // folly::forward_like<const int&>(1);
 }
 
+TEST_F(UtilityTest, inheritable) {
+  struct foo : folly::index_constant<47> {};
+  struct bar final : folly::index_constant<89> {};
+  using ifoo = folly::detail::inheritable<foo>;
+  using ibar = folly::detail::inheritable<bar>;
+  EXPECT_TRUE(std::is_empty_v<ifoo>);
+  EXPECT_FALSE(std::is_empty_v<ibar>);
+  struct tester : ifoo, ibar {};
+  EXPECT_EQ(47, static_cast<foo const&>(tester{}));
+  EXPECT_EQ(89, static_cast<bar const&>(tester{}));
+  EXPECT_EQ(47, static_cast<foo const&>(folly::copy(tester{})));
+  EXPECT_EQ(89, static_cast<bar const&>(folly::copy(tester{})));
+}
+
 TEST_F(UtilityTest, MoveOnly) {
   class FooBar : folly::MoveOnly {
     int a;

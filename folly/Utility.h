@@ -332,6 +332,59 @@ struct identity_fn {
 using Identity = identity_fn;
 FOLLY_INLINE_VARIABLE constexpr identity_fn identity{};
 
+namespace detail {
+
+template <typename T>
+struct inheritable_inherit_ : T {
+  using T::T;
+  template <
+      typename... A,
+      std::enable_if_t<std::is_constructible<T, A...>::value, int> = 0>
+  /* implicit */ FOLLY_ERASE inheritable_inherit_(A&&... a) noexcept(
+      noexcept(T(static_cast<A&&>(a)...)))
+      : T(static_cast<A&&>(a)...) {}
+};
+
+template <typename T>
+struct inheritable_contain_ {
+  T v;
+  template <
+      typename... A,
+      std::enable_if_t<std::is_constructible<T, A...>::value, int> = 0>
+  /* implicit */ FOLLY_ERASE inheritable_contain_(A&&... a) noexcept(
+      noexcept(T(static_cast<A&&>(a)...)))
+      : v(static_cast<A&&>(a)...) {}
+  FOLLY_ERASE operator T&() & noexcept { return v; }
+  FOLLY_ERASE operator T&&() && noexcept { return static_cast<T&&>(v); }
+  FOLLY_ERASE operator T const &() const& noexcept { return v; }
+  FOLLY_ERASE operator T const &&() const&& noexcept {
+    return static_cast<T const&&>(v);
+  }
+};
+
+template <bool>
+struct inheritable_;
+template <>
+struct inheritable_<false> {
+  template <typename T>
+  using apply = inheritable_inherit_<T>;
+};
+template <>
+struct inheritable_<true> {
+  template <typename T>
+  using apply = inheritable_contain_<T>;
+};
+
+//  inheritable
+//
+//  A class wrapping an arbitrary type T which is always inheritable, and which
+//  enables empty-base-optimization when possible.
+template <typename T>
+using inheritable =
+    typename inheritable_<std::is_final<T>::value>::template apply<T>;
+
+} // namespace detail
+
 namespace moveonly_ { // Protection from unintended ADL.
 
 template <bool Copy, bool Move>
