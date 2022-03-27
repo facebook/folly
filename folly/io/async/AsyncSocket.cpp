@@ -3976,12 +3976,12 @@ void AsyncSocket::invokeConnectAttempt() {
 
 void AsyncSocket::invalidState(ReadCallback* callback) {
   VLOG(4) << "AsyncSocket(this=" << this << ", fd=" << fd_
-          << "): setReadCallback(" << callback << ") called in invalid state "
+          << "): setReadCB(" << callback << ") called in invalid state "
           << state_;
 
   AsyncSocketException ex(
       AsyncSocketException::NOT_OPEN,
-      "setReadCallback() called with socket in "
+      "setReadCB() called with socket in "
       "invalid state");
   if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {
     if (callback) {
