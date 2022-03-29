@@ -26,7 +26,7 @@ namespace folly {
  * Generic interface applications may implement to convey self or peer
  * certificate related information.
  */
-class OpenSSLTransportCertificate : public AsyncTransportCertificate {
+class OpenSSLTransportCertificate : virtual public AsyncTransportCertificate {
  public:
   virtual ~OpenSSLTransportCertificate() override = default;
 
