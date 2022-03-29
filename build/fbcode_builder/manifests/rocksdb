@@ -2,8 +2,8 @@
 name = rocksdb
 
 [download]
-url = https://github.com/facebook/rocksdb/archive/v6.8.1.tar.gz
-sha256 = ca192a06ed3bcb9f09060add7e9d0daee1ae7a8705a3d5ecbe41867c5e2796a2
+url = https://github.com/facebook/rocksdb/archive/refs/tags/v7.0.2.tar.gz
+sha256 = d808c87074aef7a4ea8e329b1b3de718a95cf2895dbe606036d75e66af10d05a
 
 [dependencies]
 lz4
@@ -11,7 +11,7 @@ snappy
 
 [build]
 builder = cmake
-subdir = rocksdb-6.8.1
+subdir = rocksdb-7.0.2
 
 [cmake.defines]
 WITH_SNAPPY=ON
