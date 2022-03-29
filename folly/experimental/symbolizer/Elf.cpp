@@ -439,6 +439,18 @@ const char* ElfFile::getSymbolName(Symbol symbol) const noexcept {
       *getSectionByIndex(symbol.first->sh_link), symbol.second->st_name);
 }
 
+std::pair<const int, char const*> ElfFile::posixFadvise(
+    int const advice) const noexcept {
+  if (fd_ == -1) {
+    return {1, "file not open"};
+  }
+  int res = posix_fadvise(fd_, 0, 0, advice);
+  if (res != 0) {
+    return {res, "posix_fadvise failed for file"};
+  }
+  return {res, ""};
+}
+
 } // namespace symbolizer
 } // namespace folly
 

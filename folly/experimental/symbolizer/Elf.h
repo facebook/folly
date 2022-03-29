@@ -19,6 +19,7 @@
 #pragma once
 #define FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
 
+#include <fcntl.h>
 #include <cstdio>
 #include <initializer_list>
 #include <stdexcept>
@@ -262,6 +263,13 @@ class ElfFile {
   const ElfShdr* getSectionContainingAddress(ElfAddr addr) const noexcept;
 
   const char* filepath() const { return filepath_; }
+
+  /**
+   * Announce an intention to access file data in a specific pattern in the
+   * future. https://man7.org/linux/man-pages/man2/posix_fadvise.2.html
+   */
+  std::pair<const int, char const*> posixFadvise(
+      int const advice) const noexcept;
 
  private:
   OpenResult init() noexcept;
