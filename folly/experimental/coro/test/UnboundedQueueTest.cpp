@@ -30,14 +30,19 @@
 
 TEST(UnboundedQueueTest, EnqueueDeque) {
   folly::coro::UnboundedQueue<std::string, true, true> queue;
+
   constexpr auto val = "a string";
   std::string val1 = val;
+
   EXPECT_TRUE(queue.empty());
   EXPECT_EQ(queue.size(), 0);
+
   queue.enqueue(val1);
   EXPECT_FALSE(queue.empty());
+
   queue.enqueue(std::move(val1));
   EXPECT_EQ(queue.size(), 2);
+
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     for (int i = 0; i < 2; ++i) {
       auto val2 = co_await queue.dequeue();
@@ -206,6 +211,37 @@ TEST(UnboundedQueueTest, TryDequeue) {
   ex.drain();
   EXPECT_TRUE(fut.isReady());
   EXPECT_EQ(std::move(fut).get(), 13);
+}
+
+TEST(UnboundedQueueTest, TryPeekMultiConsumer) {
+  folly::coro::UnboundedQueue<int, false, false> queue;
+  ASSERT_DEATH({ queue.try_peek(); }, "");
+
+  queue.enqueue(42);
+  ASSERT_DEATH({ queue.try_peek(); }, "");
+}
+
+TEST(UnboundedQueueTest, TryPeekSingleConsumer) {
+  folly::coro::UnboundedQueue<int, false, true> queue;
+  EXPECT_EQ(nullptr, queue.try_peek());
+
+  queue.enqueue(42);
+  EXPECT_EQ(42, *queue.try_peek());
+
+  queue.enqueue(13);
+  EXPECT_EQ(42, *queue.try_peek());
+
+  queue.enqueue(63);
+  EXPECT_EQ(42, *queue.try_peek());
+
+  EXPECT_EQ(42, queue.try_dequeue());
+  EXPECT_EQ(13, *queue.try_peek());
+
+  EXPECT_EQ(13, queue.try_dequeue());
+  EXPECT_EQ(63, *queue.try_peek());
+
+  EXPECT_EQ(63, queue.try_dequeue());
+  EXPECT_EQ(nullptr, queue.try_peek());
 }
 
 #endif

@@ -61,6 +61,8 @@ class UnboundedQueue {
 
   bool empty() { return queue_.empty(); }
 
+  const T* try_peek() noexcept { return queue_.try_peek(); }
+
   size_t size() { return queue_.size(); }
 
  private:
