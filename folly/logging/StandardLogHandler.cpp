@@ -41,9 +41,12 @@ void StandardLogHandler::handleMessage(
   if (message.getLevel() < getLevel()) {
     return;
   }
-  writer_->writeMessage(formatter_->formatMessage(message, handlerCategory));
+  std::string formattedMessage =
+      formatter_->formatMessage(message, handlerCategory);
   if (message.getLevel() >= syncLevel_.load(std::memory_order_relaxed)) {
-    flush();
+    writer_->writeMessageSync(std::move(formattedMessage));
+  } else {
+    writer_->writeMessage(std::move(formattedMessage));
   }
 }
 

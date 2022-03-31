@@ -65,6 +65,18 @@ class LogWriter {
   }
 
   /**
+   * Write a message synchronously.
+   *
+   * By default, a synchronous message write is simply a message write followed
+   * by a flush(), but different async log handlers may override this to create
+   * different synchronous write behaviours.
+   */
+  virtual void writeMessageSync(std::string&& buffer, uint32_t flags = 0) {
+    writeMessage(buffer, flags);
+    flush();
+  }
+
+  /**
    * Block until all messages that have already been sent to this LogWriter
    * have been written.
    *
