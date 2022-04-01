@@ -257,17 +257,23 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   }
 
   // We only support executable and shared object files
-  if (elfHeader.e_type != ET_EXEC && elfHeader.e_type != ET_DYN &&
-      elfHeader.e_type != ET_CORE) {
+  if (elfHeader.e_type != ET_REL && elfHeader.e_type != ET_EXEC &&
+      elfHeader.e_type != ET_DYN && elfHeader.e_type != ET_CORE) {
     return {kInvalidElfFile, "invalid ELF file type"};
   }
 
-  if (elfHeader.e_phnum == 0) {
-    return {kInvalidElfFile, "no program header!"};
-  }
+  // We support executable and shared object files and extracting debug info
+  // from relocatable objects (.dwo sections in .o/.dwo files). The e_phnum and
+  // e_phentsize header fileds are not required for relocatable files.
+  // https://docs.oracle.com/cd/E19620-01/805-4693/6j4emccrq/index.html
+  if (elfHeader.e_type != ET_REL) {
+    if (elfHeader.e_phnum == 0) {
+      return {kInvalidElfFile, "no program header!"};
+    }
 
-  if (elfHeader.e_phentsize != sizeof(ElfPhdr)) {
-    return {kInvalidElfFile, "invalid program header entry size"};
+    if (elfHeader.e_phentsize != sizeof(ElfPhdr)) {
+      return {kInvalidElfFile, "invalid program header entry size"};
+    }
   }
 
   if (elfHeader.e_shentsize != sizeof(ElfShdr)) {
@@ -278,13 +284,15 @@ ElfFile::OpenResult ElfFile::init() noexcept {
 
   // Program headers are sorted by load address, so the first PT_LOAD
   // header gives us the base address.
-  const ElfPhdr* programHeader =
-      iterateProgramHeaders([](auto& h) { return h.p_type == PT_LOAD; });
+  if (elfHeader.e_type != ET_REL) {
+    const ElfPhdr* programHeader =
+        iterateProgramHeaders([](auto& h) { return h.p_type == PT_LOAD; });
 
-  if (!programHeader) {
-    return {kInvalidElfFile, "could not find base address"};
+    if (!programHeader) {
+      return {kInvalidElfFile, "could not find base address"};
+    }
+    baseAddress_ = programHeader->p_vaddr;
   }
-  baseAddress_ = programHeader->p_vaddr;
 
   return {kSuccess, nullptr};
 }

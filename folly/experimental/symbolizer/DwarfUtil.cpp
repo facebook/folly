@@ -18,9 +18,13 @@
 
 #include <array>
 #include <type_traits>
+#include <glog/logging.h>
 
 #include <folly/Optional.h>
+#include <folly/Range.h>
+#include <folly/experimental/symbolizer/Elf.h>
 #include <folly/portability/Config.h>
+#include <folly/portability/Unistd.h>
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 
@@ -34,6 +38,19 @@
 
 namespace folly {
 namespace symbolizer {
+
+folly::StringPiece getElfSection(const ElfFile* elf, const char* name) {
+  const ElfShdr* elfSection = elf->getSectionByName(name);
+  if (!elfSection) {
+    return {};
+  }
+#ifdef SHF_COMPRESSED
+  if (elfSection->sh_flags & SHF_COMPRESSED) {
+    return {};
+  }
+#endif
+  return elf->getSectionBody(*elfSection);
+}
 
 // Read (bitwise) an unsigned number of N bytes (N in 1, 2, 3, 4).
 template <size_t N>
@@ -159,19 +176,86 @@ DIEAbbreviation getAbbreviation(
   FOLLY_SAFE_CHECK(false, "could not find abbreviation code");
 }
 
-} // namespace
+// Parse compilation unit info, abbrev and str_offsets offset from
+// .debug_cu_index section.
+bool findCompiliationOffset(
+    folly::StringPiece debugCuIndex, uint64_t dwoId, CompilationUnit& cu) {
+  if (debugCuIndex.empty()) {
+    return false;
+  }
 
-CompilationUnit getCompilationUnit(
-    const DebugSections& debugSections, uint64_t offset) {
-  const folly::StringPiece debugInfo = debugSections.debugInfo;
-  FOLLY_SAFE_DCHECK(offset < debugInfo.size(), "unexpected offset");
-  CompilationUnit cu;
-  cu.debugSections = debugSections;
+  // GCC Debug Fission defines the version as an unsigned 32-bit field
+  // with value of 2, see debugCuIndex "Format of the CU and TU Index Sections"
+  // at https://gcc.gnu.org/wiki/DebugFissionDWP.
+  // DWARFv5 not supported yet, see Section 7.3.5.3.
+  read<uint32_t>(debugCuIndex);
+  auto numColumns = read<uint32_t>(debugCuIndex);
+  auto numUnits = read<uint32_t>(debugCuIndex);
+  auto numBuckets = read<uint32_t>(debugCuIndex);
 
+  // Get index of the CU matches the given dwo id.
+  folly::StringPiece signatureSection = debugCuIndex;
+  folly::StringPiece indexesSection = debugCuIndex;
+  indexesSection.advance(numBuckets * sizeof(uint64_t));
+  ssize_t idx = -1;
+  for (unsigned i = 0; i < numUnits; i++) {
+    uint64_t hash = read<uint64_t>(signatureSection);
+    uint32_t index = read<uint32_t>(indexesSection);
+    if (hash == dwoId) {
+      idx = index;
+      break;
+    }
+  }
+  if (idx <= 0) {
+    return false;
+  }
+
+  // Skip signature and parallel table of indexes
+  debugCuIndex.advance(numBuckets * sizeof(uint64_t));
+  debugCuIndex.advance(numBuckets * sizeof(uint32_t));
+
+  // column headers
+  ssize_t infoSectionIndex = -1;
+  ssize_t abbrevSectionIndex = -1;
+  ssize_t strOffsetsSectionIndex = -1;
+  for (unsigned i = 0; i != numColumns; ++i) {
+    auto index = read<uint32_t>(debugCuIndex);
+    if (index == DW_SECT_INFO) {
+      infoSectionIndex = i;
+    } else if (index == DW_SECT_ABBREV) {
+      abbrevSectionIndex = i;
+    } else if (index == DW_SECT_STR_OFFSETS) {
+      strOffsetsSectionIndex = i;
+    }
+  }
+
+  if (infoSectionIndex == -1 || abbrevSectionIndex == -1 ||
+      strOffsetsSectionIndex == -1) {
+    return false;
+  }
+
+  // debugCuIndex offsets
+  debugCuIndex.advance((idx - 1) * numColumns * sizeof(uint32_t));
+  for (unsigned i = 0; i != numColumns; ++i) {
+    auto offset = read<uint32_t>(debugCuIndex);
+    if (i == infoSectionIndex) {
+      cu.offset = offset;
+    }
+    if (i == abbrevSectionIndex) {
+      cu.abbrevOffset = offset;
+    }
+    if (i == strOffsetsSectionIndex) {
+      cu.strOffsetsBase = offset;
+    }
+  }
+  return true;
+}
+
+bool parseCompilationUnitMetadata(CompilationUnit& cu, size_t offset) {
+  auto debugInfo = cu.debugSections.debugInfo;
   folly::StringPiece chunk(debugInfo);
   cu.offset = offset;
   chunk.advance(offset);
-
   // 1) unit_length
   auto initialLength = read<uint32_t>(chunk);
   cu.is64Bit = (initialLength == uint32_t(-1));
@@ -187,38 +271,43 @@ CompilationUnit getCompilationUnit(
     // DWARF5: 7.5.1.1 Full and Partial Compilation Unit Headers
     // 3) unit_type (new DWARF 5)
     cu.unitType = read<uint8_t>(chunk);
-    if (cu.unitType != DW_UT_compile && cu.unitType != DW_UT_skeleton) {
-      return cu;
+    if (cu.unitType != DW_UT_compile && cu.unitType != DW_UT_skeleton &&
+        cu.unitType != DW_UT_split_compile) {
+      return false;
     }
     // 4) address_size
     cu.addrSize = read<uint8_t>(chunk);
     FOLLY_SAFE_CHECK(cu.addrSize == sizeof(uintptr_t), "invalid address size");
 
     // 5) debug_abbrev_offset
-    cu.abbrevOffset = readOffset(chunk, cu.is64Bit);
+    // This can be already set in from .debug_cu_index if dwp file is used.
+    uint64_t abbrevOffset = readOffset(chunk, cu.is64Bit);
+    if (!cu.abbrevOffset.hasValue()) {
+      cu.abbrevOffset = abbrevOffset;
+    }
 
-    if (cu.unitType == DW_UT_skeleton) {
+    if (cu.unitType == DW_UT_skeleton || cu.unitType == DW_UT_split_compile) {
       // 6) dwo_id
-      read<uint64_t>(chunk);
+      cu.dwoId = read<uint64_t>(chunk);
     }
   } else {
     // DWARF4 has a single type of unit in .debug_info
     cu.unitType = DW_UT_compile;
     // 3) debug_abbrev_offset
-    cu.abbrevOffset = readOffset(chunk, cu.is64Bit);
+    // This can be already set in from .debug_cu_index if dwp file is used.
+    uint64_t abbrevOffset = readOffset(chunk, cu.is64Bit);
+    if (!cu.abbrevOffset.hasValue()) {
+      cu.abbrevOffset = abbrevOffset;
+    }
     // 4) address_size
     cu.addrSize = read<uint8_t>(chunk);
     FOLLY_SAFE_CHECK(cu.addrSize == sizeof(uintptr_t), "invalid address size");
   }
   cu.firstDie = chunk.data() - debugInfo.data();
-  if (cu.version < 5) {
-    return cu;
-  }
-
   Die die = getDieAtOffset(cu, cu.firstDie);
   if (die.abbr.tag != DW_TAG_compile_unit &&
       die.abbr.tag != DW_TAG_skeleton_unit) {
-    return cu;
+    return false;
   }
 
   // Read the DW_AT_*_base attributes.
@@ -226,24 +315,159 @@ CompilationUnit getCompilationUnit(
   // will not have valid values during this first pass!
   forEachAttribute(cu, die, [&](const Attribute& attr) {
     switch (attr.spec.name) {
+      case DW_AT_comp_dir:
+        cu.compDir = boost::get<folly::StringPiece>(attr.attrValue);
+        break;
       case DW_AT_addr_base:
       case DW_AT_GNU_addr_base:
         cu.addrBase = boost::get<uint64_t>(attr.attrValue);
+        break;
+      case DW_AT_GNU_ranges_base:
+        cu.rangesBase = boost::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_loclists_base:
         cu.loclistsBase = boost::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_rnglists_base:
-      case DW_AT_GNU_ranges_base:
         cu.rnglistsBase = boost::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_str_offsets_base:
         cu.strOffsetsBase = boost::get<uint64_t>(attr.attrValue);
         break;
+      case DW_AT_GNU_dwo_name:
+        cu.dwoName = boost::get<folly::StringPiece>(attr.attrValue);
+        break;
+      case DW_AT_GNU_dwo_id:
+        cu.dwoId = boost::get<uint64_t>(attr.attrValue);
+        break;
     }
     return true; // continue forEachAttribute
   });
 
+  // Whether the CompiliationUnit is a skeleton unit and doesn't have any
+  // children. For Dwarf5, we can check whether the type is
+  // DW_TAG_skeleton_unit. For Dwarf4, there is no special skeleton type, so we
+  // just check if it has any children by checking the offset and size.
+  cu.isSkeleton = die.abbr.tag == DW_TAG_skeleton_unit || cu.dwoId.hasValue();
+  return true;
+}
+
+} // namespace
+
+CompilationUnits getCompilationUnits(
+    ElfCacheBase* elfCache,
+    const DebugSections& debugSections,
+    uint64_t offset,
+    bool requireSplitDwarf) {
+  const folly::StringPiece debugInfo = debugSections.debugInfo;
+  FOLLY_SAFE_DCHECK(offset < debugInfo.size(), "unexpected offset");
+  CompilationUnits cu;
+  cu.mainCompilationUnit.debugSections = debugSections;
+
+  if (!parseCompilationUnitMetadata(cu.mainCompilationUnit, offset)) {
+    return cu;
+  }
+
+  if (!requireSplitDwarf || !cu.mainCompilationUnit.isSkeleton ||
+      !cu.mainCompilationUnit.dwoId.hasValue() ||
+      !cu.mainCompilationUnit.dwoName.hasValue()) {
+    cu.mainCompilationUnit.rangesBase.reset();
+    return cu;
+  }
+
+  CompilationUnit splitCU;
+  // https://gcc.gnu.org/wiki/DebugFission
+  // In order for the debugger to find the contribution to the .debug_addr
+  // section corresponding to a particular compilation unit, the skeleton
+  // DW_TAG_compile_unit entry in the .o file's .debug_info section will also
+  // contain a DW_AT_addr_base attribute whose value points to the base of that
+  // compilation unit's .debug_addr contribution.
+  splitCU.addrBase = cu.mainCompilationUnit.addrBase;
+  // The skeleton DW_TAG_compile_unit entry in the .o file’s .debug_info section
+  // will contain a DW_AT_ranges_base attribute whose (relocated) value points
+  // to the base of that compilation unit’s .debug_ranges contribution. All
+  // values using DW_FORM_sec_offset for a DW_AT_ranges or DW_AT_start_scope
+  // attribute (i.e., those attributes whose values are of class rangelistptr)
+  // must be interpreted as offsets relative to the base address given by the
+  // DW_AT_ranges_base attribute in the skeleton compilation unit DIE.
+  splitCU.rangesBase = cu.mainCompilationUnit.rangesBase;
+
+  // Read from dwo file.
+  static const size_t kPathLimit = 4 << 10; // 4KB
+  ElfFile* elf = nullptr;
+  {
+    char path[kPathLimit];
+    if (cu.mainCompilationUnit.compDir.size() + strlen("/") +
+            cu.mainCompilationUnit.dwoName->size() + 1 >
+        kPathLimit) {
+      return cu;
+    }
+    strncat(
+        path,
+        cu.mainCompilationUnit.compDir.data(),
+        cu.mainCompilationUnit.compDir.size());
+    strncat(path, "/", 1);
+    strncat(
+        path,
+        cu.mainCompilationUnit.dwoName->data(),
+        cu.mainCompilationUnit.dwoName->size());
+    elf = elfCache->getFile(path).get();
+  }
+
+  // Read from dwp file if dwo file doesn't exist.
+  bool useDWP = false;
+  if (elf == nullptr) {
+    if (strlen(cu.mainCompilationUnit.debugSections.elf->filepath()) + 5 >
+        kPathLimit) {
+      return cu;
+    }
+    char dwpPath[kPathLimit];
+    strcpy(dwpPath, cu.mainCompilationUnit.debugSections.elf->filepath());
+    strncat(dwpPath, ".dwp", 4);
+    elf = elfCache->getFile(dwpPath).get();
+    if (elf == nullptr) {
+      return cu;
+    }
+    useDWP = true;
+  }
+
+  splitCU.debugSections = {
+      .elf = elf,
+      .debugCuIndex = getElfSection(elf, ".debug_cu_index"),
+      .debugAbbrev = getElfSection(elf, ".debug_abbrev.dwo"),
+      .debugAddr = cu.mainCompilationUnit.debugSections.debugAddr,
+      .debugAranges = cu.mainCompilationUnit.debugSections.debugAranges,
+      .debugInfo = getElfSection(elf, ".debug_info.dwo"),
+      .debugLine = getElfSection(elf, ".debug_line.dwo"),
+      .debugLineStr = cu.mainCompilationUnit.debugSections.debugLineStr,
+      .debugLoclists = cu.mainCompilationUnit.debugSections.debugLoclists,
+      .debugRanges = cu.mainCompilationUnit.debugSections.debugRanges,
+      .debugRnglists = cu.mainCompilationUnit.debugSections.debugRnglists,
+      .debugStr = getElfSection(elf, ".debug_str.dwo"),
+      .debugStrOffsets = getElfSection(elf, ".debug_str_offsets.dwo")};
+  if (splitCU.debugSections.debugInfo.empty() ||
+      splitCU.debugSections.debugAbbrev.empty() ||
+      splitCU.debugSections.debugLine.empty() ||
+      splitCU.debugSections.debugStr.empty()) {
+    return cu;
+  }
+
+  if (useDWP) {
+    if (!findCompiliationOffset(
+            splitCU.debugSections.debugCuIndex,
+            *cu.mainCompilationUnit.dwoId,
+            splitCU) ||
+        !parseCompilationUnitMetadata(splitCU, splitCU.offset)) {
+      return cu;
+    }
+  } else {
+    if (!parseCompilationUnitMetadata(splitCU, 0) || !splitCU.dwoId ||
+        *splitCU.dwoId != *cu.mainCompilationUnit.dwoId) {
+      return cu;
+    }
+  }
+
+  cu.splitCU.emplace(std::move(splitCU));
   return cu;
 }
 
@@ -264,7 +488,9 @@ Die getDieAtOffset(const CompilationUnit& cu, uint64_t offset) {
   die.abbr = !cu.abbrCache.empty() && die.code < kMaxAbbreviationEntries
       ? cu.abbrCache[die.code - 1]
       : getAbbreviation(
-            cu.debugSections.debugAbbrev, die.code, cu.abbrevOffset);
+            cu.debugSections.debugAbbrev,
+            die.code,
+            cu.abbrevOffset.value_or(0));
 
   return die;
 }
@@ -274,9 +500,10 @@ Attribute readAttribute(
     const Die& die,
     AttributeSpec spec,
     folly::StringPiece& info) {
-  // DWARF 5 introduces new FORMs whose values are relative to some base attrs:
-  // DW_AT_str_offsets_base, DW_AT_rnglists_base, DW_AT_addr_base.
-  // Debug Fission DWARF 4 uses GNU DW_AT_GNU_ranges_base & DW_AT_GNU_addr_base.
+  // DWARF 5 introduces new FORMs whose values are relative to some base
+  // attrs: DW_AT_str_offsets_base, DW_AT_rnglists_base, DW_AT_addr_base.
+  // Debug Fission DWARF 4 uses GNU DW_AT_GNU_ranges_base &
+  // DW_AT_GNU_addr_base.
   //
   // The order in which attributes appear in a CU is not defined.
   // The DW_AT_*_base attrs may appear after attributes that need them.
@@ -284,16 +511,18 @@ Attribute readAttribute(
   // reading the CU header. During this first pass return empty values
   // when encountering a FORM that depends on DW_AT_*_base.
   auto getStringUsingOffsetTable = [&](uint64_t index) {
-    if (!cu.strOffsetsBase.has_value()) {
+    if (!cu.strOffsetsBase.has_value() &&
+        !(cu.version < 5 && cu.dwoId.has_value())) {
       return folly::StringPiece();
     }
     // DWARF 5: 7.26 String Offsets Table
-    // The DW_AT_str_offsets_base attribute points to the first entry following
-    // the header. The entries are indexed sequentially from this base entry,
-    // starting from 0.
-    auto sp = cu.debugSections.debugStrOffsets.subpiece(
-        *cu.strOffsetsBase +
-        index * (cu.is64Bit ? sizeof(uint64_t) : sizeof(uint32_t)));
+    // The DW_AT_str_offsets_base attribute points to the first entry
+    // following the header. The entries are indexed sequentially from
+    // this base entry, starting from 0. For DWARF 4 version DWO files,
+    // the value of DW_AT_str_offsets_base is implicitly zero.
+    auto strOffsetsOffset = cu.strOffsetsBase.value_or(0) +
+        index * (cu.is64Bit ? sizeof(uint64_t) : sizeof(uint32_t));
+    auto sp = cu.debugSections.debugStrOffsets.subpiece(strOffsetsOffset);
     uint64_t strOffset = readOffset(sp, cu.is64Bit);
     return getStringFromStringSection(cu.debugSections.debugStr, strOffset);
   };
@@ -303,9 +532,9 @@ Attribute readAttribute(
       return uint64_t(0);
     }
     // DWARF 5: 7.27 Address Table
-    // The DW_AT_addr_base attribute points to the first entry following the
-    // header. The entries are indexed sequentially from this base entry,
-    // starting from 0.
+    // The DW_AT_addr_base attribute points to the first entry following
+    // the header. The entries are indexed sequentially from this base
+    // entry, starting from 0.
     auto sp = cu.debugSections.debugAddr.subpiece(
         *cu.addrBase + index * sizeof(uint64_t));
     return read<uint64_t>(sp);
@@ -371,13 +600,14 @@ Attribute readAttribute(
 
     // DWARF 5:
     case DW_FORM_implicit_const: // form is explicitly specified
-      // For attributes with this form, the attribute specification contains a
-      // third part, which is a signed LEB128 number. The value of this number
-      // is used as the value of the attribute, and no value is stored in the
-      // .debug_info section.
+      // For attributes with this form, the attribute specification
+      // contains a third part, which is a signed LEB128 number. The value
+      // of this number is used as the value of the attribute, and no
+      // value is stored in the .debug_info section.
       return {spec, die, spec.implicitConst};
 
     case DW_FORM_addrx:
+    case DW_FORM_GNU_addr_index:
       return {spec, die, readDebugAddr(readULEB(info))};
     case DW_FORM_addrx1:
       return {spec, die, readDebugAddr(readU64<1>(info))};
@@ -405,6 +635,9 @@ Attribute readAttribute(
       return {spec, die, getStringUsingOffsetTable(readU64<3>(info))};
     case DW_FORM_strx4:
       return {spec, die, getStringUsingOffsetTable(readU64<4>(info))};
+
+    case DW_FORM_GNU_str_index:
+      return {spec, die, getStringUsingOffsetTable(readULEB(info))};
 
     case DW_FORM_rnglistx: {
       auto index = readULEB(info);
@@ -448,8 +681,9 @@ Attribute readAttribute(
 }
 
 /*
- * Iterate over all attributes of the given DIE, calling the given callable
- * for each. Iteration is stopped early if any of the calls return false.
+ * Iterate over all attributes of the given DIE, calling the given
+ * callable for each. Iteration is stopped early if any of the calls
+ * return false.
  */
 size_t forEachAttribute(
     const CompilationUnit& cu,

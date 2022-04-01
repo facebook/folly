@@ -20,6 +20,7 @@
 #include <type_traits>
 
 #include <folly/Optional.h>
+#include <folly/experimental/symbolizer/DwarfUtil.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
@@ -42,13 +43,15 @@ struct CallLocation {
   folly::StringPiece name;
 };
 
-DwarfImpl::DwarfImpl(CompilationUnit& cu) : cu_(cu) {}
+DwarfImpl::DwarfImpl(
+    ElfCacheBase* elfCache, CompilationUnits& cu, LocationInfoMode mode)
+    : elfCache_(elfCache), cu_(cu), mode_(mode) {}
 
 /**
  * Find the @locationInfo for @address in the compilation unit @cu_.
  *
  * Best effort:
- * - fills @inlineFrames if mode == FULL_WITH_INLINE,
+ * - fills @inlineFrames if mode_ == FULL_WITH_INLINE,
  * - calls @eachParameterName on the function parameters.
  *
  * if @checkAddress is true, we verify that the address is mapped to
@@ -56,12 +59,12 @@ DwarfImpl::DwarfImpl(CompilationUnit& cu) : cu_(cu) {}
  */
 bool DwarfImpl::findLocation(
     uintptr_t address,
-    const LocationInfoMode mode,
     LocationInfo& locationInfo,
     folly::Range<SymbolizedFrame*> inlineFrames,
     folly::FunctionRef<void(folly::StringPiece)> eachParameterName,
     bool checkAddress) const {
-  Die die = getDieAtOffset(cu_, cu_.firstDie);
+  auto mainCu = cu_.mainCompilationUnit;
+  Die die = getDieAtOffset(mainCu, mainCu.firstDie);
   // Partial compilation unit (DW_TAG_partial_unit) is not supported.
   FOLLY_SAFE_CHECK(
       die.abbr.tag == DW_TAG_compile_unit ||
@@ -88,7 +91,8 @@ bool DwarfImpl::findLocation(
   if (!foundAddress) {
     expectedAttributes |= kHighPCOrRanges;
   }
-  forEachAttribute(cu_, die, [&](const Attribute& attr) {
+
+  forEachAttribute(mainCu, die, [&](const Attribute& attr) {
     switch (attr.spec.name) {
       case DW_AT_stmt_list:
         expectedAttributes &= ~kStmtList;
@@ -118,7 +122,11 @@ bool DwarfImpl::findLocation(
             foundAddress = true;
           } else if (rangesOffset) {
             if (!isAddrInRangeList(
-                    address, baseAddrCU, *rangesOffset, cu_.addrSize)) {
+                    mainCu,
+                    address,
+                    baseAddrCU,
+                    *rangesOffset,
+                    mainCu.addrSize)) {
               return false;
             }
             foundAddress = true;
@@ -145,7 +153,11 @@ bool DwarfImpl::findLocation(
           rangesOffset = boost::get<uint64_t>(attr.attrValue);
           if (seenLowPC) {
             if (!isAddrInRangeList(
-                    address, baseAddrCU, *rangesOffset, cu_.addrSize)) {
+                    mainCu,
+                    address,
+                    baseAddrCU,
+                    *rangesOffset,
+                    mainCu.addrSize)) {
               return false;
             }
             foundAddress = true;
@@ -165,10 +177,10 @@ bool DwarfImpl::findLocation(
     locationInfo.mainFile = Path(compilationDirectory, "", *mainFileName);
   }
 
-  folly::StringPiece lineSection(cu_.debugSections.debugLine);
+  folly::StringPiece lineSection(mainCu.debugSections.debugLine);
   lineSection.advance(*lineOffset);
   DwarfLineNumberVM lineVM(
-      lineSection, compilationDirectory, cu_.debugSections);
+      lineSection, compilationDirectory, mainCu.debugSections);
 
   // Execute line number VM program to find file and line
   locationInfo.hasFileAndLine =
@@ -180,36 +192,42 @@ bool DwarfImpl::findLocation(
   // NOTE: locationInfo was found, so findLocation returns success bellow.
   // Missing inline function / parameter name is not a failure (best effort).
   bool checkInline =
-      (mode == LocationInfoMode::FULL_WITH_INLINE && !inlineFrames.empty());
+      (mode_ == LocationInfoMode::FULL_WITH_INLINE && !inlineFrames.empty());
   if (!checkInline && !eachParameterName) {
     return true;
   }
 
+  auto& cu = cu_.defaultCompilationUnit();
+  if (cu_.splitCU.hasValue()) {
+    die = getDieAtOffset(*cu_.splitCU, cu_.splitCU->firstDie);
+  }
+
   // Cache abbreviation.
   std::array<DIEAbbreviation, kMaxAbbreviationEntries> abbrs;
-  cu_.abbrCache = folly::range(abbrs);
-  folly::StringPiece abbrev = cu_.debugSections.debugAbbrev;
-  abbrev.advance(cu_.abbrevOffset);
+  cu.abbrCache = folly::range(abbrs);
+  folly::StringPiece abbrev = cu.debugSections.debugAbbrev;
+  abbrev.advance(cu.abbrevOffset.value_or(0));
   DIEAbbreviation abbr;
   while (readAbbreviation(abbrev, abbr)) {
     // Abbreviation code 0 is reserved for null debugging information entries.
     if (abbr.code != 0 && abbr.code <= kMaxAbbreviationEntries) {
-      cu_.abbrCache.data()[abbr.code - 1] = abbr;
+      cu.abbrCache.data()[abbr.code - 1] = abbr;
     }
   }
 
   // Find the subprogram that matches the given address.
   Die subprogram;
-  if (!findSubProgramDieForAddress(die, address, baseAddrCU, subprogram)) {
+  if (!findSubProgramDieForAddress(cu, die, address, baseAddrCU, subprogram)) {
     // Even though @cu contains @address, it's possible
     // that the corresponding DW_TAG_subprogram DIE is missing.
     return true;
   }
 
   if (eachParameterName) {
-    forEachChild(subprogram, [&](const Die& child) {
+    forEachChild(cu, subprogram, [&](const Die& child) {
       if (child.abbr.tag == DW_TAG_formal_parameter) {
-        if (auto name = getAttribute<folly::StringPiece>(child, DW_AT_name)) {
+        if (auto name =
+                getAttribute<folly::StringPiece>(cu, child, DW_AT_name)) {
           eachParameterName(*name);
         }
       }
@@ -222,7 +240,6 @@ bool DwarfImpl::findLocation(
   }
 
   // NOTE: @subprogram is the DIE of caller function.
-
   // Use an extra location and get its call file and call line, so that
   // they can be used for the second last location when we don't have
   // enough inline frames for all inline functions call stack.
@@ -231,17 +248,27 @@ bool DwarfImpl::findLocation(
   CallLocation callLocations[kMaxInlineLocationInfoPerFrame + 1];
   size_t numFound = 0;
   findInlinedSubroutineDieForAddress(
+      cu,
       subprogram,
       lineVM,
       address,
       baseAddrCU,
       folly::Range<CallLocation*>(callLocations, size),
       numFound);
-  if (numFound == 0) {
-    return true;
-  }
-
   folly::Range<CallLocation*> inlineLocations(callLocations, numFound);
+  fillInlineFrames(address, locationInfo, inlineLocations, inlineFrames);
+  return true;
+}
+
+void DwarfImpl::fillInlineFrames(
+    uintptr_t address,
+    LocationInfo& locationInfo,
+    folly::Range<CallLocation*> inlineLocations,
+    folly::Range<SymbolizedFrame*> inlineFrames) const {
+  if (inlineLocations.empty()) {
+    return;
+  }
+  size_t numFound = inlineLocations.size();
   const auto innerMostFile = locationInfo.file;
   const auto innerMostLine = locationInfo.line;
 
@@ -292,17 +319,17 @@ bool DwarfImpl::findLocation(
     inlineFrames[i].location.file = inlineLocations[i].file;
     inlineFrames[i].location.line = inlineLocations[i].line;
   }
-  return true;
 }
 
 // Finds the Compilation Unit starting at offset.
-CompilationUnit DwarfImpl::findCompilationUnit(uint64_t targetOffset) const {
+CompilationUnit DwarfImpl::findCompilationUnit(
+    const CompilationUnit& cu, uint64_t targetOffset) const {
   FOLLY_SAFE_DCHECK(
-      targetOffset < cu_.debugSections.debugInfo.size(),
+      targetOffset < cu.debugSections.debugInfo.size(),
       "unexpected target address");
   uint64_t offset = 0;
-  while (offset < cu_.debugSections.debugInfo.size()) {
-    folly::StringPiece chunk(cu_.debugSections.debugInfo);
+  while (offset < cu.debugSections.debugInfo.size()) {
+    folly::StringPiece chunk(cu.debugSections.debugInfo);
     chunk.advance(offset);
 
     auto initialLength = read<uint32_t>(chunk);
@@ -316,7 +343,8 @@ CompilationUnit DwarfImpl::findCompilationUnit(uint64_t targetOffset) const {
     }
     offset += size;
   }
-  return getCompilationUnit(cu_.debugSections, offset);
+  return getCompilationUnits(elfCache_, cu.debugSections, offset, false)
+      .mainCompilationUnit;
 }
 
 Die DwarfImpl::findDefinitionDie(
@@ -324,7 +352,7 @@ Die DwarfImpl::findDefinitionDie(
   // Find the real definition instead of declaration.
   // DW_AT_specification: Incomplete, non-defining, or separate declaration
   // corresponding to a declaration
-  auto offset = getAttribute<uint64_t>(die, DW_AT_specification);
+  auto offset = getAttribute<uint64_t>(cu, die, DW_AT_specification);
   if (!offset) {
     return die;
   }
@@ -332,14 +360,16 @@ Die DwarfImpl::findDefinitionDie(
 }
 
 size_t DwarfImpl::forEachChild(
-    const Die& die, folly::FunctionRef<bool(const Die& die)> f) const {
+    const CompilationUnit& cu,
+    const Die& die,
+    folly::FunctionRef<bool(const Die& die)> f) const {
   size_t nextDieOffset =
-      forEachAttribute(cu_, die, [&](const Attribute&) { return true; });
+      forEachAttribute(cu, die, [&](const Attribute&) { return true; });
   if (!die.abbr.hasChildren) {
     return nextDieOffset;
   }
 
-  auto childDie = getDieAtOffset(cu_, nextDieOffset);
+  auto childDie = getDieAtOffset(cu, nextDieOffset);
   while (childDie.code != 0) {
     if (!f(childDie)) {
       return childDie.offset;
@@ -347,8 +377,8 @@ size_t DwarfImpl::forEachChild(
 
     // NOTE: Don't run `f` over grandchildren, just skip over them.
     size_t siblingOffset =
-        forEachChild(childDie, [](const Die&) { return true; });
-    childDie = getDieAtOffset(cu_, siblingOffset);
+        forEachChild(cu, childDie, [](const Die&) { return true; });
+    childDie = getDieAtOffset(cu, siblingOffset);
   }
 
   // childDie is now a dummy die whose offset is to the code 0 marking the
@@ -358,9 +388,9 @@ size_t DwarfImpl::forEachChild(
 
 template <class T>
 folly::Optional<T> DwarfImpl::getAttribute(
-    const Die& die, uint64_t attrName) const {
+    const CompilationUnit& cu, const Die& die, uint64_t attrName) const {
   folly::Optional<T> result;
-  forEachAttribute(cu_, die, [&](const Attribute& attr) {
+  forEachAttribute(cu, die, [&](const Attribute& attr) {
     if (attr.spec.name == attrName) {
       result = boost::get<T>(attr.attrValue);
       return false;
@@ -371,15 +401,16 @@ folly::Optional<T> DwarfImpl::getAttribute(
 }
 
 bool DwarfImpl::isAddrInRangeList(
+    const CompilationUnit& cu,
     uint64_t address,
     folly::Optional<uint64_t> baseAddr,
     size_t offset,
     uint8_t addrSize) const {
   FOLLY_SAFE_CHECK(
       addrSize == 4 || addrSize == 8, "wrong address size: ", int(addrSize));
-  if (cu_.version <= 4 && !cu_.debugSections.debugRanges.empty()) {
+  if (cu.version <= 4 && !cu.debugSections.debugRanges.empty()) {
     const bool is64BitAddr = addrSize == 8;
-    folly::StringPiece sp = cu_.debugSections.debugRanges;
+    folly::StringPiece sp = cu.debugSections.debugRanges;
     sp.advance(offset);
     const uint64_t maxAddr = is64BitAddr ? std::numeric_limits<uint64_t>::max()
                                          : std::numeric_limits<uint32_t>::max();
@@ -398,10 +429,11 @@ bool DwarfImpl::isAddrInRangeList(
 
       // Check if the given address falls in the range list entry.
       // 2.17.3 Non-Contiguous Address Ranges
-      // The applicable base address of a range list entry is determined by the
-      // closest preceding base address selection entry (see below) in the same
-      // range list. If there is no such selection entry, then the applicable
-      // base address defaults to the base address of the compilation unit.
+      // The applicable base address of a range list entry is determined by
+      // the closest preceding base address selection entry (see below) in the
+      // same range list. If there is no such selection entry, then the
+      // applicable base address defaults to the base address of the
+      // compilation unit.
       if (baseAddr && address >= begin + *baseAddr &&
           address < end + *baseAddr) {
         return true;
@@ -409,9 +441,9 @@ bool DwarfImpl::isAddrInRangeList(
     };
   }
 
-  if (cu_.version == 5 && !cu_.debugSections.debugRnglists.empty() &&
-      cu_.addrBase.has_value()) {
-    auto debugRnglists = cu_.debugSections.debugRnglists;
+  if (cu.version == 5 && !cu.debugSections.debugRnglists.empty() &&
+      cu.addrBase.has_value()) {
+    auto debugRnglists = cu.debugSections.debugRnglists;
     debugRnglists.advance(offset);
 
     while (!debugRnglists.empty()) {
@@ -421,20 +453,20 @@ bool DwarfImpl::isAddrInRangeList(
           return false;
         case DW_RLE_base_addressx: {
           auto index = readULEB(debugRnglists);
-          auto sp = cu_.debugSections.debugAddr.subpiece(
-              *cu_.addrBase + index * sizeof(uint64_t));
+          auto sp = cu.debugSections.debugAddr.subpiece(
+              *cu.addrBase + index * sizeof(uint64_t));
           baseAddr = read<uint64_t>(sp);
         } break;
 
         case DW_RLE_startx_endx: {
           auto indexStart = readULEB(debugRnglists);
           auto indexEnd = readULEB(debugRnglists);
-          auto spStart = cu_.debugSections.debugAddr.subpiece(
-              *cu_.addrBase + indexStart * sizeof(uint64_t));
+          auto spStart = cu.debugSections.debugAddr.subpiece(
+              *cu.addrBase + indexStart * sizeof(uint64_t));
           auto start = read<uint64_t>(spStart);
 
-          auto spEnd = cu_.debugSections.debugAddr.subpiece(
-              *cu_.addrBase + indexEnd * sizeof(uint64_t));
+          auto spEnd = cu.debugSections.debugAddr.subpiece(
+              *cu.addrBase + indexEnd * sizeof(uint64_t));
           auto end = read<uint64_t>(spEnd);
           if (address >= start && address < end) {
             return true;
@@ -444,13 +476,10 @@ bool DwarfImpl::isAddrInRangeList(
         case DW_RLE_startx_length: {
           auto indexStart = readULEB(debugRnglists);
           auto length = readULEB(debugRnglists);
-          auto spStart = cu_.debugSections.debugAddr.subpiece(
-              *cu_.addrBase + indexStart * sizeof(uint64_t));
+          auto spStart = cu.debugSections.debugAddr.subpiece(
+              *cu.addrBase + indexStart * sizeof(uint64_t));
           auto start = read<uint64_t>(spStart);
-
-          auto spEnd = cu_.debugSections.debugAddr.subpiece(
-              *cu_.addrBase + indexStart * sizeof(uint64_t) + length);
-          auto end = read<uint64_t>(spEnd);
+          auto end = start + length;
           if (start != end && address >= start && address < end) {
             return true;
           }
@@ -497,17 +526,18 @@ bool DwarfImpl::isAddrInRangeList(
 }
 
 bool DwarfImpl::findSubProgramDieForAddress(
+    const CompilationUnit& cu,
     const Die& die,
     uint64_t address,
     folly::Optional<uint64_t> baseAddrCU,
     Die& subprogram) const {
-  forEachChild(die, [&](const Die& childDie) {
+  forEachChild(cu, die, [&](const Die& childDie) {
     if (childDie.abbr.tag == DW_TAG_subprogram) {
       folly::Optional<uint64_t> lowPc;
       folly::Optional<uint64_t> highPc;
       folly::Optional<bool> isHighPcAddr;
       folly::Optional<uint64_t> rangeOffset;
-      forEachAttribute(cu_, childDie, [&](const Attribute& attr) {
+      forEachAttribute(cu, childDie, [&](const Attribute& attr) {
         switch (attr.spec.name) {
           case DW_AT_ranges:
             rangeOffset = boost::get<uint64_t>(attr.attrValue);
@@ -537,10 +567,12 @@ bool DwarfImpl::findSubProgramDieForAddress(
         return false; // stop forEachChild
       }
 
-      bool rangeMatch =
-          rangeOffset &&
-          isAddrInRangeList(
-              address, baseAddrCU, rangeOffset.value(), cu_.addrSize);
+      bool rangeMatch = rangeOffset &&
+          isAddrInRangeList(cu,
+                            address,
+                            baseAddrCU,
+                            rangeOffset.value() + cu.rangesBase.value_or(0),
+                            cu.addrSize);
       if (rangeMatch) {
         subprogram = childDie;
         return false; // stop forEachChild
@@ -549,7 +581,7 @@ bool DwarfImpl::findSubProgramDieForAddress(
 
     // Continue forEachChild to next sibling DIE only if not already found.
     return !findSubProgramDieForAddress(
-        childDie, address, baseAddrCU, subprogram);
+        cu, childDie, address, baseAddrCU, subprogram);
   });
   return subprogram.abbr.tag == DW_TAG_subprogram;
 }
@@ -565,6 +597,7 @@ bool DwarfImpl::findSubProgramDieForAddress(
  *   DW_TAG_subprogram) which we find using DW_AT_abstract_origin.
  */
 void DwarfImpl::findInlinedSubroutineDieForAddress(
+    const CompilationUnit& cu,
     const Die& die,
     const DwarfLineNumberVM& lineVM,
     uint64_t address,
@@ -575,7 +608,7 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     return;
   }
 
-  forEachChild(die, [&](const Die& childDie) {
+  forEachChild(cu, die, [&](const Die& childDie) {
     // Between a DW_TAG_subprogram and and DW_TAG_inlined_subroutine we might
     // have arbitrary intermediary "nodes", including DW_TAG_common_block,
     // DW_TAG_lexical_block, DW_TAG_try_block, DW_TAG_catch_block and
@@ -590,7 +623,7 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
         childDie.abbr.tag == DW_TAG_common_block ||
         childDie.abbr.tag == DW_TAG_lexical_block) {
       findInlinedSubroutineDieForAddress(
-          childDie, lineVM, address, baseAddrCU, locations, numFound);
+          cu, childDie, lineVM, address, baseAddrCU, locations, numFound);
       return true;
     }
 
@@ -602,7 +635,7 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     folly::Optional<uint64_t> callFile;
     folly::Optional<uint64_t> callLine;
     folly::Optional<uint64_t> rangeOffset;
-    forEachAttribute(cu_, childDie, [&](const Attribute& attr) {
+    forEachAttribute(cu, childDie, [&](const Attribute& attr) {
       switch (attr.spec.name) {
         case DW_AT_ranges:
           rangeOffset = boost::get<uint64_t>(attr.attrValue);
@@ -646,13 +679,16 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     //  - A DW_AT_ranges attribute for a non-contiguous range of addresses.
     // TODO: Support DW_TAG_entry_point and DW_TAG_common_block that don't
     // have DW_AT_low_pc/DW_AT_high_pc pairs and DW_AT_ranges.
-    // TODO: Support relocated address which requires lookup in relocation map.
+    // TODO: Support relocated address which requires lookup in relocation
+    // map.
     bool pcMatch = lowPc && highPc && isHighPcAddr && address >= *lowPc &&
         (address < (*isHighPcAddr ? *highPc : (*lowPc + *highPc)));
-    bool rangeMatch =
-        rangeOffset &&
-        isAddrInRangeList(
-            address, baseAddrCU, rangeOffset.value(), cu_.addrSize);
+    bool rangeMatch = rangeOffset &&
+        isAddrInRangeList(cu,
+                          address,
+                          baseAddrCU,
+                          rangeOffset.value() + cu.rangesBase.value_or(0),
+                          cu.addrSize);
     if (!pcMatch && !rangeMatch) {
       // Address doesn't match. Keep searching other children.
       return true;
@@ -670,8 +706,8 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     auto getFunctionName = [&](const CompilationUnit& srcu,
                                uint64_t dieOffset) {
       auto declDie = getDieAtOffset(srcu, dieOffset);
-      // Jump to the actual function definition instead of declaration for name
-      // and line info.
+      // Jump to the actual function definition instead of declaration for
+      // name and line info.
       auto defDie = findDefinitionDie(srcu, declDie);
 
       folly::StringPiece name;
@@ -701,8 +737,8 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     // - the reference can identify any debugging information entry within the
     //   compilation unit (DW_FORM_ref1, DW_FORM_ref2, DW_FORM_ref4,
     //   DW_FORM_ref8, DW_FORM_ref_udata). This type of reference is an offset
-    //   from the first byte of the compilation header for the compilation unit
-    //   containing the reference.
+    //   from the first byte of the compilation header for the compilation
+    //   unit containing the reference.
     // - the reference can identify any debugging information entry within a
     //   .debug_info section; in particular, it may refer to an entry in a
     //   different compilation unit (DW_FORM_ref_addr)
@@ -710,12 +746,11 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     //   has been placed in its own type unit.
     //   Not applicable for DW_AT_abstract_origin.
     locations[numFound].name = (*abstractOriginRefType != DW_FORM_ref_addr)
-        ? getFunctionName(cu_, cu_.offset + *abstractOrigin)
+        ? getFunctionName(cu, cu.offset + *abstractOrigin)
         : getFunctionName(
-              findCompilationUnit(*abstractOrigin), *abstractOrigin);
-
+              findCompilationUnit(cu, *abstractOrigin), *abstractOrigin);
     findInlinedSubroutineDieForAddress(
-        childDie, lineVM, address, baseAddrCU, locations, ++numFound);
+        cu, childDie, lineVM, address, baseAddrCU, locations, ++numFound);
 
     return false;
   });

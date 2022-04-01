@@ -57,7 +57,7 @@ using ElfSym = FOLLY_ELF_ELFW(Sym);
  *
  * We handle native files only (32-bit files on a 32-bit platform, 64-bit files
  * on a 64-bit platform), and only executables (ET_EXEC) shared objects
- * (ET_DYN) and core files (ET_CORE).
+ * (ET_DYN), core files (ET_CORE) and relocatable file (ET_REL).
  */
 class ElfFile {
  public:

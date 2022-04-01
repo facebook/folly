@@ -96,6 +96,7 @@ ElfCache* defaultElfCache() {
 }
 
 void setSymbolizedFrame(
+    ElfCacheBase* const elfCache,
     SymbolizedFrame& frame,
     const std::shared_ptr<ElfFile>& file,
     uintptr_t address,
@@ -113,7 +114,7 @@ void setSymbolizedFrame(
   frame.file = file;
   frame.name = file->getSymbolName(sym);
 
-  Dwarf(file.get())
+  Dwarf(elfCache, file.get())
       .findAddress(address, mode, frame.location, extraInlineFrames);
 }
 
@@ -237,7 +238,8 @@ size_t Symbolizer::symbolize(
           folly::Range<SymbolizedFrame*> inlineFrameRange(
               frames.begin() + addrCount,
               frames.begin() + addrCount + maxInline);
-          setSymbolizedFrame(frame, elfFile, adjusted, mode_, inlineFrameRange);
+          setSymbolizedFrame(
+              cache_, frame, elfFile, adjusted, mode_, inlineFrameRange);
 
           numInlined = countFrames(inlineFrameRange);
           // Rotate inline frames right before its caller frame.
@@ -247,7 +249,7 @@ size_t Symbolizer::symbolize(
               frames.begin() + addrCount + numInlined);
           addrCount += numInlined;
         } else {
-          setSymbolizedFrame(frame, elfFile, adjusted, mode_);
+          setSymbolizedFrame(cache_, frame, elfFile, adjusted, mode_);
         }
         --remaining;
         if (symbolCache_) {

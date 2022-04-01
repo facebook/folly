@@ -32,20 +32,21 @@
 namespace folly {
 namespace symbolizer {
 
-Dwarf::Dwarf(const ElfFile* elf)
-    : defaultDebugSections_{
+Dwarf::Dwarf(ElfCacheBase* elfCache, const ElfFile* elf)
+    : elfCache_(elfCache),
+      defaultDebugSections_{
           .elf = elf,
-          .debugAbbrev = getSection(".debug_abbrev"),
-          .debugAddr = getSection(".debug_addr"),
-          .debugAranges = getSection(".debug_aranges"),
-          .debugInfo = getSection(".debug_info"),
-          .debugLine = getSection(".debug_line"),
-          .debugLineStr = getSection(".debug_line_str"),
-          .debugLoclists = getSection(".debug_loclists"),
-          .debugRanges = getSection(".debug_ranges"),
-          .debugRnglists = getSection(".debug_rnglists"),
-          .debugStr = getSection(".debug_str"),
-          .debugStrOffsets = getSection(".debug_str_offsets")} {
+          .debugAbbrev = getElfSection(elf, ".debug_abbrev"),
+          .debugAddr = getElfSection(elf, ".debug_addr"),
+          .debugAranges = getElfSection(elf, ".debug_aranges"),
+          .debugInfo = getElfSection(elf, ".debug_info"),
+          .debugLine = getElfSection(elf, ".debug_line"),
+          .debugLineStr = getElfSection(elf, ".debug_line_str"),
+          .debugLoclists = getElfSection(elf, ".debug_loclists"),
+          .debugRanges = getElfSection(elf, ".debug_ranges"),
+          .debugRnglists = getElfSection(elf, ".debug_rnglists"),
+          .debugStr = getElfSection(elf, ".debug_str"),
+          .debugStrOffsets = getElfSection(elf, ".debug_str_offsets")} {
   // Optional sections:
   //  - defaultDebugSections_.debugAranges: for fast address range lookup.
   //     If missing .debug_info can be used - but it's much slower (linear
@@ -59,19 +60,6 @@ Dwarf::Dwarf(const ElfFile* elf)
       defaultDebugSections_.debugStr.empty()) {
     defaultDebugSections_.elf = nullptr;
   }
-}
-
-folly::StringPiece Dwarf::getSection(const char* name) const {
-  const ElfShdr* elfSection = defaultDebugSections_.elf->getSectionByName(name);
-  if (!elfSection) {
-    return {};
-  }
-#ifdef SHF_COMPRESSED
-  if (elfSection->sh_flags & SHF_COMPRESSED) {
-    return {};
-  }
-#endif
-  return defaultDebugSections_.elf->getSectionBody(*elfSection);
 }
 
 namespace {
@@ -148,14 +136,18 @@ bool Dwarf::findAddress(
     if (findDebugInfoOffset(
             address, defaultDebugSections_.debugAranges, offset)) {
       // Read compilation unit header from .debug_info
-      auto unit = getCompilationUnit(defaultDebugSections_, offset);
-      if (unit.unitType != DW_UT_compile && unit.unitType != DW_UT_skeleton) {
+      auto unit = getCompilationUnits(
+          elfCache_,
+          defaultDebugSections_,
+          offset,
+          mode == LocationInfoMode::FULL_WITH_INLINE);
+      if (unit.mainCompilationUnit.unitType != DW_UT_compile &&
+          unit.mainCompilationUnit.unitType != DW_UT_skeleton) {
         return false;
       }
-      DwarfImpl impl(unit);
+      DwarfImpl impl(elfCache_, unit, mode);
       return impl.findLocation(
           address,
-          mode,
           locationInfo,
           inlineFrames,
           eachParameterName,
@@ -179,15 +171,19 @@ bool Dwarf::findAddress(
   // and look for the address in each compilation unit.
   uint64_t offset = 0;
   while (offset < defaultDebugSections_.debugInfo.size()) {
-    auto unit = getCompilationUnit(defaultDebugSections_, offset);
-    offset += unit.size;
-    if (unit.unitType != DW_UT_compile && unit.unitType != DW_UT_skeleton) {
+    auto unit = getCompilationUnits(
+        elfCache_,
+        defaultDebugSections_,
+        offset,
+        mode == LocationInfoMode::FULL_WITH_INLINE);
+    offset += unit.mainCompilationUnit.size;
+    if (unit.mainCompilationUnit.unitType != DW_UT_compile &&
+        unit.mainCompilationUnit.unitType != DW_UT_skeleton) {
       continue;
     }
-    DwarfImpl impl(unit);
+    DwarfImpl impl(elfCache_, unit, mode);
     if (impl.findLocation(
             address,
-            mode,
             locationInfo,
             inlineFrames,
             eachParameterName,

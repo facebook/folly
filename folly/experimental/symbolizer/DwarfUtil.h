@@ -23,6 +23,7 @@
 #include <folly/Function.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 #include <dwarf.h>
@@ -43,6 +44,7 @@ const uint32_t kMaxAbbreviationEntries = 1000;
 // A struct contains an Elf object and different debug sections.
 struct DebugSections {
   const ElfFile* elf;
+  folly::StringPiece debugCuIndex; // .debug_cu_index
   folly::StringPiece debugAbbrev; // .debug_abbrev
   folly::StringPiece debugAddr; // .debug_addr (DWARF 5)
   folly::StringPiece debugAranges; // .debug_aranges
@@ -64,10 +66,11 @@ struct DIEAbbreviation {
   folly::StringPiece attributes;
 };
 
-// A top level chunk in the .debug_info that contains a compilation unit.
+// A struct that contains the metadata of a compilation unit.
 struct CompilationUnit {
   DebugSections debugSections;
 
+  bool isSkeleton = false;
   bool is64Bit = false;
   uint8_t version = 0;
   uint8_t unitType = DW_UT_compile; // DW_UT_compile or DW_UT_skeleton
@@ -77,10 +80,16 @@ struct CompilationUnit {
   uint32_t size = 0;
   // Offset in .debug_info for the first DIE in this compilation unit.
   uint32_t firstDie = 0;
-  uint64_t abbrevOffset = 0;
+  folly::Optional<uint64_t> abbrevOffset;
 
+  // Compilation directory.
+  folly::StringPiece compDir = ".";
   // The beginning of the CU's contribution to .debug_addr
-  folly::Optional<uint64_t> addrBase; // DW_AT_addr_base (DWARF 5)
+  // DW_AT_addr_base (DWARF 5, DebugFission)
+  folly::Optional<uint64_t> addrBase;
+  // The beginning of the CU's contribution to .debug_addr
+  // DW_AT_ranges_base (DebugFission)
+  folly::Optional<uint64_t> rangesBase;
   // The beginning of the offsets table (immediately following the
   // header) of the CU's contribution to .debug_loclists
   folly::Optional<uint64_t> loclistsBase; // DW_AT_loclists_base (DWARF 5)
@@ -91,9 +100,28 @@ struct CompilationUnit {
   // contribution to the .debug_str_offsets (or .debug_str_offsets.dwo) section.
   folly::Optional<uint64_t> strOffsetsBase; // DW_AT_str_offsets_base (DWARF 5)
 
+  // The actual dwo file and id contains the debug sections for this
+  // compilation unit.
+  folly::Optional<folly::StringPiece> dwoName;
+  folly::Optional<uint64_t> dwoId;
+
   // Only the CompilationUnit that contains the caller functions needs this.
   // Indexed by (abbr.code - 1) if (abbr.code - 1) < abbrCache.size();
   folly::Range<DIEAbbreviation*> abbrCache;
+};
+
+// Contains the main compilation unit in the binary file and an optional
+// compilation unit in dwo/dwp file if the main one is a skeleton.
+struct CompilationUnits {
+  CompilationUnit mainCompilationUnit;
+  folly::Optional<CompilationUnit> splitCU;
+
+  CompilationUnit& defaultCompilationUnit() {
+    if (splitCU.hasValue()) {
+      return *splitCU;
+    }
+    return mainCompilationUnit;
+  }
 };
 
 // Debugging information entry to define a low-level representation of a
@@ -123,6 +151,9 @@ struct Attribute {
   const Die& die;
   boost::variant<uint64_t, folly::StringPiece> attrValue;
 };
+
+// Get an ELF section by name.
+folly::StringPiece getElfSection(const ElfFile* elf, const char* name);
 
 // All following read* functions read from a StringPiece, advancing the
 // StringPiece, and aborting if there's not enough room.
@@ -168,8 +199,11 @@ folly::StringPiece readNullTerminated(folly::StringPiece& sp);
 folly::StringPiece getStringFromStringSection(
     folly::StringPiece str, uint64_t offset);
 
-CompilationUnit getCompilationUnit(
-    const DebugSections& debugSections, uint64_t offset);
+CompilationUnits getCompilationUnits(
+    ElfCacheBase* elfCache,
+    const DebugSections& debugSections,
+    uint64_t offset,
+    bool requireSplitDwarf = false);
 
 /** cu must exist during the life cycle of created Die. */
 Die getDieAtOffset(const CompilationUnit& cu, uint64_t offset);

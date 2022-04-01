@@ -24,6 +24,7 @@
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/DwarfUtil.h>
 #include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 
 namespace folly {
@@ -62,7 +63,7 @@ class Dwarf {
    */
  public:
   /** Create a DWARF parser around an ELF file. */
-  explicit Dwarf(const ElfFile* elf);
+  Dwarf(ElfCacheBase* elfCache, const ElfFile* elf);
 
   /**
    * Find the file and line number information corresponding to address.
@@ -78,9 +79,7 @@ class Dwarf {
           eachParameterName = {}) const;
 
  private:
-  /** Get an ELF section by name. */
-  folly::StringPiece getSection(const char* name) const;
-
+  ElfCacheBase* elfCache_;
   DebugSections defaultDebugSections_;
 };
 

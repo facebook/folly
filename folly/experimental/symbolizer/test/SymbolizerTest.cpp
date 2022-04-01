@@ -508,13 +508,15 @@ int64_t functionWithTwoParameters(size_t a, int32_t b) {
 TEST(Dwarf, FindParameterNames) {
   SKIP_IF(!Symbolizer::isAvailable());
 
+  ElfCache elfCache;
+
   auto address = reinterpret_cast<uintptr_t>(functionWithTwoParameters);
   Symbolizer symbolizer;
   SymbolizedFrame frame;
   ASSERT_TRUE(symbolizer.symbolize(address, frame));
 
   std::vector<folly::StringPiece> names;
-  Dwarf dwarf(frame.file.get());
+  Dwarf dwarf(&elfCache, frame.file.get());
   LocationInfo info;
   folly::Range<SymbolizedFrame*> extraInlineFrames = {};
   dwarf.findAddress(

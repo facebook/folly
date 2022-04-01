@@ -26,6 +26,7 @@
 #include <folly/experimental/symbolizer/DwarfSection.h>
 #include <folly/experimental/symbolizer/DwarfUtil.h>
 #include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 
 namespace folly {
@@ -37,7 +38,8 @@ struct CallLocation;
 
 class DwarfImpl {
  public:
-  explicit DwarfImpl(CompilationUnit& cu);
+  explicit DwarfImpl(
+      ElfCacheBase* elfCache, CompilationUnits& cu, LocationInfoMode mode);
 
   /**
    * Find the @locationInfo for @address in the compilation unit @cu.
@@ -51,7 +53,6 @@ class DwarfImpl {
    */
   bool findLocation(
       uintptr_t address,
-      const LocationInfoMode mode,
       LocationInfo& info,
       folly::Range<SymbolizedFrame*> inlineFrames,
       folly::FunctionRef<void(folly::StringPiece)> eachParameterName,
@@ -65,6 +66,7 @@ class DwarfImpl {
    * children of given die. Depth first search.
    */
   bool findSubProgramDieForAddress(
+      const CompilationUnit& cu,
       const Die& die,
       uint64_t address,
       folly::Optional<uint64_t> baseAddrCU,
@@ -75,6 +77,7 @@ class DwarfImpl {
    * address among children of given die. Depth first search.
    */
   void findInlinedSubroutineDieForAddress(
+      const CompilationUnit& cu,
       const Die& die,
       const DwarfLineNumberVM& lineVM,
       uint64_t address,
@@ -82,7 +85,8 @@ class DwarfImpl {
       folly::Range<CallLocation*> locations,
       size_t& numFound) const;
 
-  CompilationUnit findCompilationUnit(uint64_t targetOffset) const;
+  CompilationUnit findCompilationUnit(
+      const CompilationUnit& cu, uint64_t targetOffset) const;
 
   /**
    * Find the actual definition DIE instead of declaration for the given die.
@@ -95,21 +99,33 @@ class DwarfImpl {
    * false. Returns the offset of next DIE after iterations.
    */
   size_t forEachChild(
-      const Die& die, folly::FunctionRef<bool(const Die& die)> f) const;
+      const CompilationUnit& cu,
+      const Die& die,
+      folly::FunctionRef<bool(const Die& die)> f) const;
 
   template <class T>
-  folly::Optional<T> getAttribute(const Die& die, uint64_t attrName) const;
+  folly::Optional<T> getAttribute(
+      const CompilationUnit& cu, const Die& die, uint64_t attrName) const;
   /**
    * Check if the given address is in the range list at the given offset in
    * .debug_ranges.
    */
   bool isAddrInRangeList(
+      const CompilationUnit& cu,
       uint64_t address,
       folly::Optional<uint64_t> baseAddr,
       size_t offset,
       uint8_t addrSize) const;
 
-  CompilationUnit& cu_;
+  void fillInlineFrames(
+      uintptr_t address,
+      LocationInfo& locationInfo,
+      folly::Range<CallLocation*> inlineLocations,
+      folly::Range<SymbolizedFrame*> inlineFrames) const;
+
+  ElfCacheBase* elfCache_;
+  CompilationUnits& cu_;
+  const LocationInfoMode mode_;
 };
 
 #endif
