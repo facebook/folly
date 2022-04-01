@@ -425,6 +425,9 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
  */
 template <typename T>
 std::unique_ptr<T> copy_through_unique_ptr(const std::unique_ptr<T>& t) {
+  static_assert(
+      !std::is_polymorphic<T>::value || std::is_final<T>::value,
+      "possibly slicing");
   return t ? std::make_unique<T>(*t) : nullptr;
 }
 
