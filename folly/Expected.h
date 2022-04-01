@@ -697,6 +697,102 @@ struct ExpectedHelper {
     throw_exception<BadExpectedAccess<ExpectedErrorType<This>>>(
         static_cast<This&&>(ex).error());
   }
+
+  /**
+   * Note: the condition for specialization is easy to miss here - this is for
+   * where Err fails is_void, AND the else chain is not void returning. Invoked
+   * when orElse handles a chain.
+   */
+  template <
+      class This,
+      class No,
+      class... AndFns,
+      class E = ExpectedErrorType<This>,
+      class V = ExpectedValueType<This>,
+      class T = ExpectedHelper,
+      class RetValue = decltype(T::then_(
+                                    T::template return_<E>((std::declval<No>()(
+                                        std::declval<This>().error()))),
+                                    std::declval<AndFns>()...)
+                                    .value()),
+      typename std::enable_if<!std::is_same<
+          std::remove_reference<RetValue>,
+          std::remove_reference<folly::Unit&&>>::value>::type* = nullptr,
+      class Err = decltype(std::declval<No>()(std::declval<This&>().error()))
+          FOLLY_REQUIRES_TRAILING(!std::is_void<Err>::value)>
+  static auto orElse_(This&& ex, No&& no, AndFns&&... fns) -> Expected<V, E> {
+    // Note - this basically decays into then_ once the first type (No) is
+    // called for the error.
+    if (LIKELY(ex.which_ == expected_detail::Which::eValue)) {
+      return T::template return_<E>((T::then_(T::template return_<E>(
+          // Uses the comma operator defined above IFF the lambda
+          // returns non-void.
+          static_cast<decltype(ex)&&>(ex).value()))));
+    }
+    return T::then_(
+        T::template return_<E>(
+            (static_cast<No&&>(no)(static_cast<This&&>(ex).error()))),
+        static_cast<AndFns&&>(fns)...);
+  }
+
+  /**
+   * Note: the condition for specialization is easy to miss here - this is for
+   * where Err fails is_void AND the else chain is void returning. Invoked when
+   * orElse handles a chain.
+   */
+  template <
+      class This,
+      class No,
+      class... AndFns,
+      class E = ExpectedErrorType<This>,
+      class T = ExpectedHelper,
+      class RetValue = decltype(T::then_(
+                                    T::template return_<E>((std::declval<No>()(
+                                        std::declval<This>().error()))),
+                                    std::declval<AndFns>()...)
+                                    .value()),
+      typename std::enable_if<std::is_same<
+          std::remove_reference<RetValue>,
+          std::remove_reference<folly::Unit&&>>::value>::type* = nullptr,
+      class Err = decltype(std::declval<No>()(std::declval<This&>().error()))
+          FOLLY_REQUIRES_TRAILING(!std::is_void<Err>::value)>
+  static auto orElse_(This&& ex, No&& no, AndFns&&... fns)
+      -> Expected<folly::Unit, E> {
+    // Note - this basically decays into then_ once the first type (No) is
+    // called for the error.
+    if (std::forward<This>(ex).which_ == expected_detail::Which::eValue) {
+      // Void returning method on else must either throw, or be replaced with a
+      // chain that ends in a valid result.""
+      throw_exception<BadExpectedAccess<void>>();
+    }
+    return T::then_(
+        T::template return_<E>(
+            (static_cast<No&&>(no)(static_cast<This&&>(ex).error()))),
+        static_cast<AndFns&&>(fns)...);
+  }
+
+  /**
+   * Note: the condition for specialization is easy to miss here - this is for
+   * where Err passes is_void. Invoked when orElse handles a void returning
+   * func.
+   */
+  template <
+      class This,
+      class No,
+      class... AndFns,
+      class E = ExpectedErrorType<This>,
+      class V = ExpectedValueType<This>,
+      class T = ExpectedHelper,
+      class Err = decltype(std::declval<No>()(std::declval<This&>().error()))
+          FOLLY_REQUIRES_TRAILING(std::is_void<Err>::value)>
+  static auto orElse_(This&& ex, No&& no, AndFns&&...) -> Expected<V, E> {
+    if (LIKELY(ex.which_ == expected_detail::Which::eValue)) {
+      return return_<E>(static_cast<decltype(ex)&&>(ex).value());
+    }
+    static_cast<No&&>(no)(static_cast<This&&>(ex).error());
+    return makeUnexpected(static_cast<decltype(ex)&&>(ex).error());
+  }
+
   FOLLY_POP_WARNING
 };
 } // namespace expected_detail_ExpectedHelper
@@ -1144,6 +1240,43 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
       throw_exception<BadExpectedAccess<void>>();
     }
     return expected_detail::ExpectedHelper::then_(
+        std::move(base()), static_cast<Fns&&>(fns)...);
+  }
+
+  /**
+   * orElse - returns if it has a value, otherwise it calls a function with the
+   * error type
+   */
+  template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
+  auto orElse(Fns&&... fns)
+      const& -> decltype(expected_detail::ExpectedHelper::orElse_(
+          std::declval<const Base&>(), std::declval<Fns>()...)) {
+    if (this->uninitializedByException()) {
+      throw_exception<BadExpectedAccess<void>>();
+    }
+    return expected_detail::ExpectedHelper::orElse_(
+        base(), static_cast<Fns&&>(fns)...);
+  }
+
+  template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
+  auto
+  orElse(Fns&&... fns) & -> decltype(expected_detail::ExpectedHelper::orElse_(
+      std::declval<Base&>(), std::declval<Fns>()...)) {
+    if (this->uninitializedByException()) {
+      throw_exception<BadExpectedAccess<void>>();
+    }
+    return expected_detail::ExpectedHelper::orElse_(
+        base(), static_cast<Fns&&>(fns)...);
+  }
+
+  template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
+  auto
+  orElse(Fns&&... fns) && -> decltype(expected_detail::ExpectedHelper::orElse_(
+      std::declval<Base&&>(), std::declval<Fns>()...)) {
+    if (this->uninitializedByException()) {
+      throw_exception<BadExpectedAccess<void>>();
+    }
+    return expected_detail::ExpectedHelper::orElse_(
         std::move(base()), static_cast<Fns&&>(fns)...);
   }
 

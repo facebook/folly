@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <iomanip>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -787,6 +789,75 @@ TEST(Expected, ThenOrThrow) {
         (Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.thenOrThrow(
             [](std::unique_ptr<int> p) { return *p; }, [](E) {})),
         BadExpectedAccess<E>);
+  }
+}
+
+TEST(Expected, orElse) {
+  {
+    auto e =
+        Expected<std::unique_ptr<int>, E>{in_place, std::make_unique<int>(42)}
+            .orElse([](E) { throw std::runtime_error(""); });
+    EXPECT_EQ(42, *e.value());
+  }
+
+  {
+    EXPECT_THROW(
+        (Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.orElse(
+            [](E) { throw std::runtime_error(""); })),
+        std::runtime_error);
+  }
+
+  // Chaining
+  {
+    auto ex = Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.orElse(
+        [](E) { return 42; },
+        [](auto i) { return i == 42 ? std::string("yes") : std::string("no"); },
+        [](auto s) {
+          return std::make_unique<int>(s == std::string("yes") ? 10 : 5);
+        });
+    EXPECT_TRUE(bool(ex));
+    EXPECT_EQ(10, *ex.value());
+  }
+
+  {
+    auto ex = Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.orElse(
+        [](E) { return makeExpected<E>(42); },
+        [](int i) {
+          return i == 42 ? std::make_unique<int>(10) : std::make_unique<int>(5);
+        });
+    EXPECT_TRUE(bool(ex));
+    EXPECT_EQ(10, *ex.value());
+  }
+
+  // Chaining to throw
+  {
+    EXPECT_THROW(
+        (Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.orElse(
+            [](E) { return makeExpected<E>(42); },
+            [](int) { throw std::runtime_error("what"); })),
+        std::runtime_error);
+  }
+  // Chaining without error, void returning
+  {
+    auto e = Expected<std::string, E>{in_place, "Hello World"}.orElse(
+        [](E) {
+          EXPECT_TRUE(false);
+          throw std::runtime_error("");
+        },
+        [](int) {
+          EXPECT_TRUE(false);
+          throw std::runtime_error("what");
+        });
+    EXPECT_EQ("Hello World", e.value());
+  }
+
+  // Chaining without error, non void returning
+  {
+    auto e = Expected<std::string, E>{in_place, "Hello World"}.orElse([](E) {
+      EXPECT_TRUE(false);
+      return std::string("Goodbye World");
+    });
+    EXPECT_EQ(std::string("Hello World"), e.value());
   }
 }
 
