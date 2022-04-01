@@ -22,7 +22,6 @@
 #include <type_traits>
 
 #include <boost/iterator/iterator_adaptor.hpp>
-#include <boost/mpl/has_xxx.hpp>
 
 #include <folly/Likely.h>
 #include <folly/Optional.h>
@@ -58,10 +57,10 @@ namespace folly {
 
 namespace dynamicconverter_detail {
 
-BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type)
-BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
-BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
-BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type)
+FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_value_type, value_type);
+FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_iterator, iterator);
+FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_mapped_type, mapped_type);
+FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_key_type, key_type);
 
 template <typename T>
 struct iterator_class_is_container {
