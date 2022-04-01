@@ -163,6 +163,17 @@ TEST(copy_to_shared_ptr, example) {
   EXPECT_EQ(17, *s);
 }
 
+TEST(copy_through_unique_ptr, example) {
+  std::unique_ptr<int> p = std::make_unique<int>(17);
+  std::unique_ptr<int> s = copy_through_unique_ptr(p);
+  EXPECT_EQ(17, *s);
+  EXPECT_EQ(17, *p);
+
+  p.reset();
+  s = copy_through_unique_ptr(p);
+  EXPECT_EQ(s, nullptr);
+}
+
 TEST(to_erased_unique_ptr, example) {
   erased_unique_ptr ptr = empty_erased_unique_ptr();
 

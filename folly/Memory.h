@@ -418,6 +418,16 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
   return std::make_shared<remove_cvref_t<T>>(static_cast<T&&>(t));
 }
 
+/**
+ *  copy_through_unique_ptr
+ *
+ *  If the argument is nonnull, allocates a copy of its pointee.
+ */
+template <typename T>
+std::unique_ptr<T> copy_through_unique_ptr(const std::unique_ptr<T>& t) {
+  return t ? std::make_unique<T>(*t) : nullptr;
+}
+
 //  erased_unique_ptr
 //
 //  A type-erased smart-ptr with unique ownership to a heap-allocated object.
