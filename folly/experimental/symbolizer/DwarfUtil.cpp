@@ -402,6 +402,7 @@ CompilationUnits getCompilationUnits(
         kPathLimit) {
       return cu;
     }
+    path[0] = '\0';
     strncat(
         path,
         cu.mainCompilationUnit.compDir.data(),
