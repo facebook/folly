@@ -167,6 +167,17 @@ class Random {
   }
 
   /**
+   * Returns true 1/n of the time. If n == 0, always returns false
+   */
+  static bool secureOneIn64(uint64_t n) {
+    if (n < 2) {
+      return n;
+    }
+    SecureRNG<uint64_t> srng;
+    return rand64(0, n, srng) == 0;
+  }
+
+  /**
    * Returns a secure double in [0, 1)
    */
   static double secureRandDouble01() {
@@ -306,12 +317,25 @@ class Random {
   /**
    * Returns true 1/n of the time. If n == 0, always returns false
    */
+  static bool oneIn64(uint64_t n) { return oneIn64(n, ThreadLocalPRNG()); }
+
+  /**
+   * Returns true 1/n of the time. If n == 0, always returns false
+   */
   template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
   static bool oneIn(uint32_t n, RNG&& rng) {
     if (n < 2) {
       return n;
     }
-    return rand32(0, n, rng) == 0;
+    return rand32(0, n, std::forward<RNG>(rng)) == 0;
+  }
+
+  template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
+  static bool oneIn64(uint64_t n, RNG&& rng) {
+    if (n < 2) {
+      return n;
+    }
+    return rand64(0, n, std::forward<RNG>(rng)) == 0;
   }
 
   /**
