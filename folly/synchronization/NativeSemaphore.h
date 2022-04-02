@@ -18,6 +18,7 @@
 
 #include <cerrno>
 #include <limits>
+#include <stdexcept>
 
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
