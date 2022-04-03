@@ -1554,7 +1554,7 @@ struct formatter<folly::StringPiece> : private formatter<string_view> {
   using formatter<string_view>::parse;
 
   template <typename Context>
-  typename Context::iterator format(folly::StringPiece s, Context& ctx) const {
+  typename Context::iterator format(folly::StringPiece s, Context& ctx) {
     return formatter<string_view>::format({s.data(), s.size()}, ctx);
   }
 };
