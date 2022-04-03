@@ -25,28 +25,6 @@ namespace folly {
 
 namespace detail {
 
-#if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins) || \
-    FOLLY_HAS_BUILTIN(__builtin_strlen) || defined(_MSC_VER)
-#define FOLLY_DETAIL_STRLEN __builtin_strlen
-#else
-#define FOLLY_DETAIL_STRLEN ::std::strlen
-#endif
-
-#if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins) || \
-    FOLLY_HAS_BUILTIN(__builtin_strcmp)
-#define FOLLY_DETAIL_STRCMP __builtin_strcmp
-#else
-#define FOLLY_DETAIL_STRCMP ::std::strcmp
-#endif
-
-// This overload is preferred if Char is char and if FOLLY_DETAIL_STRLEN
-// yields a compile-time constant.
-template <
-    typename Char,
-    std::size_t = FOLLY_DETAIL_STRLEN(static_cast<const Char*>(""))>
-constexpr std::size_t constexpr_strlen_internal(const Char* s, int) noexcept {
-  return FOLLY_DETAIL_STRLEN(s);
-}
 template <typename Char>
 constexpr std::size_t constexpr_strlen_internal(
     const Char* s, unsigned) noexcept {
@@ -66,15 +44,6 @@ static_assert(
     constexpr_strlen_fallback("123456789") == 9,
     "Someone appears to have broken constexpr_strlen...");
 
-// This overload is preferred if Char is char and if FOLLY_DETAIL_STRCMP
-// yields a compile-time constant.
-template <
-    typename Char,
-    int = FOLLY_DETAIL_STRCMP(static_cast<const Char*>(""), "")>
-constexpr int constexpr_strcmp_internal(
-    const Char* s1, const Char* s2, int) noexcept {
-  return FOLLY_DETAIL_STRCMP(s1, s2);
-}
 template <typename Char>
 constexpr int constexpr_strcmp_internal(
     const Char* s1, const Char* s2, unsigned) noexcept {
@@ -98,11 +67,11 @@ constexpr int constexpr_strcmp_fallback(
 
 template <typename Char>
 constexpr std::size_t constexpr_strlen(const Char* s) noexcept {
-  return detail::constexpr_strlen_internal(s, 0);
+  return detail::constexpr_strlen_internal(s, 0u);
 }
 
 template <typename Char>
 constexpr int constexpr_strcmp(const Char* s1, const Char* s2) noexcept {
-  return detail::constexpr_strcmp_internal(s1, s2, 0);
+  return detail::constexpr_strcmp_internal(s1, s2, 0u);
 }
 } // namespace folly
