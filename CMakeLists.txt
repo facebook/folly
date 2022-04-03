@@ -788,7 +788,7 @@ if (BUILD_TESTS)
 
     DIRECTORY lang/test/
       TEST lang_aligned_test SOURCES AlignedTest.cpp
-      TEST lang_badge_test SOURCES BadgeTest.cpp
+    #   TEST lang_badge_test SOURCES BadgeTest.cpp
       TEST lang_bits_test SOURCES BitsTest.cpp
       TEST lang_byte_test SOURCES ByteTest.cpp
       TEST lang_c_string_test SOURCES CStringTest.cpp
