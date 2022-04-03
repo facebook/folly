@@ -48,9 +48,9 @@ void run(LocationInfoMode mode, size_t n) {
   // The address of the line where lexicalBlockBar calls inlineB_inlineA_lfind.
   uintptr_t address = frames.frames[7].addr;
 
-  auto cache = new ElfCache();
+  ElfCache cache;
   ElfFile elf("/proc/self/exe");
-  Dwarf dwarf(cache, &elf);
+  Dwarf dwarf(&cache, &elf);
   auto inlineFrames = std::array<SymbolizedFrame, 10>();
   suspender.dismiss();
 
@@ -58,6 +58,8 @@ void run(LocationInfoMode mode, size_t n) {
     LocationInfo info;
     dwarf.findAddress(address, mode, info, folly::range(inlineFrames));
   }
+
+  suspender.rehire();
 }
 
 } // namespace

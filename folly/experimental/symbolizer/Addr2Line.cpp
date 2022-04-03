@@ -57,8 +57,8 @@ void addr2line(std::shared_ptr<ElfFile> elfFile, uintptr_t address) {
   frames[0].file = elfFile;
   frames[0].name = elfFile->getSymbolName(sym);
 
-  auto cache = new ElfCache();
-  Dwarf(cache, elfFile.get())
+  ElfCache cache;
+  Dwarf(&cache, elfFile.get())
       .findAddress(
           address,
           LocationInfoMode::FULL_WITH_INLINE,
