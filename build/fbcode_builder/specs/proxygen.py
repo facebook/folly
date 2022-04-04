@@ -20,7 +20,7 @@ def fbcode_builder_spec(builder):
             # These 2 are set to ON in `proxygen_quic.py`
             "BUILD_QUIC": "OFF",
             "BUILD_TESTS": "OFF",
-            # For bistro
+            # NB May no longer be needed now that Bistro is gone.
             "BUILD_SHARED_LIBS": "OFF",
         },
     )

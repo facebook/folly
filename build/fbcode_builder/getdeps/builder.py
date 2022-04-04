@@ -355,56 +355,6 @@ class Iproute2Builder(BuilderBase):
         self._run_cmd(install_cmd, env=env)
 
 
-class BistroBuilder(BuilderBase):
-    def _build(self, install_dirs, reconfigure) -> None:
-        p = os.path.join(self.src_dir, "bistro", "bistro")
-        env = self._compute_env(install_dirs)
-        env["PATH"] = env["PATH"] + ":" + os.path.join(p, "bin")
-        env["TEMPLATES_PATH"] = os.path.join(p, "include", "thrift", "templates")
-        self._run_cmd(
-            [
-                os.path.join(".", "cmake", "run-cmake.sh"),
-                "Release",
-                "-DCMAKE_INSTALL_PREFIX=" + self.inst_dir,
-            ],
-            cwd=p,
-            env=env,
-        )
-        self._run_cmd(
-            [
-                "make",
-                "install",
-                "-j",
-                str(self.num_jobs),
-            ],
-            cwd=os.path.join(p, "cmake", "Release"),
-            env=env,
-        )
-
-    def run_tests(
-        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
-    ) -> None:
-        env = self._compute_env(install_dirs)
-        build_dir = os.path.join(self.src_dir, "bistro", "bistro", "cmake", "Release")
-        NUM_RETRIES = 5
-        for i in range(NUM_RETRIES):
-            cmd = ["ctest", "--output-on-failure"]
-            if i > 0:
-                cmd.append("--rerun-failed")
-            cmd.append(build_dir)
-            try:
-                self._run_cmd(
-                    cmd,
-                    cwd=build_dir,
-                    env=env,
-                )
-            except Exception:
-                print(f"Tests failed... retrying ({i+1}/{NUM_RETRIES})")
-            else:
-                return
-        raise Exception(f"Tests failed even after {NUM_RETRIES} retries")
-
-
 class CMakeBuilder(BuilderBase):
     MANUAL_BUILD_SCRIPT = """\
 #!{sys.executable}

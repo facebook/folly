@@ -12,7 +12,6 @@ from .builder import (
     AutoconfBuilder,
     Boost,
     CMakeBuilder,
-    BistroBuilder,
     Iproute2Builder,
     MakeBuilder,
     NinjaBootstrap,
@@ -531,16 +530,6 @@ class ManifestParser(object):
             if extra_b2_args is not None:
                 args += extra_b2_args
             return Boost(build_options, ctx, self, src_dir, build_dir, inst_dir, args)
-
-        if builder == "bistro":
-            return BistroBuilder(
-                build_options,
-                ctx,
-                self,
-                src_dir,
-                build_dir,
-                inst_dir,
-            )
 
         if builder == "cmake":
             defines = self.get_section_as_dict("cmake.defines", ctx)
