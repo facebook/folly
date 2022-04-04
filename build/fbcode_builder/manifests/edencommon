@@ -1,0 +1,28 @@
+[manifest]
+name = edencommon
+fbsource_path = fbcode/eden/common
+shipit_project = edencommon
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookexperimental/edencommon.git
+
+[build]
+builder = cmake
+
+[dependencies]
+folly
+gflags
+glog
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
+
+[shipit.pathmap]
+fbcode/eden/common/oss = .
+
+[shipit.strip]
+@README.facebook@
