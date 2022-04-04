@@ -22,6 +22,7 @@ BUILD_TESTS=ON
 BUILD_TESTS=OFF
 
 [shipit.pathmap]
+fbcode/eden/common = eden/common
 fbcode/eden/common/oss = .
 
 [shipit.strip]

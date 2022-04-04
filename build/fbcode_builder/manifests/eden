@@ -26,6 +26,7 @@ lz4
 pexpect
 python-toml
 python-filelock
+edencommon
 
 [dependencies.fbsource=on]
 rust
