@@ -36,7 +36,7 @@
 namespace folly {
 namespace symbolizer {
 
-// Indicates inline funtion `name` is called  at `line@file`.
+// Indicates inline function `name` is called  at `line@file`.
 struct CallLocation {
   Path file = {};
   uint64_t line = 0;
@@ -540,7 +540,11 @@ bool DwarfImpl::findSubProgramDieForAddress(
       forEachAttribute(cu, childDie, [&](const Attribute& attr) {
         switch (attr.spec.name) {
           case DW_AT_ranges:
-            rangeOffset = boost::get<uint64_t>(attr.attrValue);
+            // NOTE: For backwards compatibility reasons, DW_AT_GNU_ranges_base
+            // applies only to DIE within dwo, but not within skeleton CU.
+            rangeOffset = boost::get<uint64_t>(attr.attrValue) +
+                (cu.version > 4 || !cu.isSkeleton ? cu.rangesBase.value_or(0)
+                                                  : 0);
             break;
           case DW_AT_low_pc:
             lowPc = boost::get<uint64_t>(attr.attrValue);
@@ -568,11 +572,7 @@ bool DwarfImpl::findSubProgramDieForAddress(
       }
 
       bool rangeMatch = rangeOffset &&
-          isAddrInRangeList(cu,
-                            address,
-                            baseAddrCU,
-                            rangeOffset.value() + cu.rangesBase.value_or(0),
-                            cu.addrSize);
+          isAddrInRangeList(cu, address, baseAddrCU, *rangeOffset, cu.addrSize);
       if (rangeMatch) {
         subprogram = childDie;
         return false; // stop forEachChild
@@ -609,11 +609,11 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
   }
 
   forEachChild(cu, die, [&](const Die& childDie) {
-    // Between a DW_TAG_subprogram and and DW_TAG_inlined_subroutine we might
+    // Between a DW_TAG_subprogram and DW_TAG_inlined_subroutine we might
     // have arbitrary intermediary "nodes", including DW_TAG_common_block,
     // DW_TAG_lexical_block, DW_TAG_try_block, DW_TAG_catch_block and
     // DW_TAG_with_stmt, etc.
-    // We can't filter with locationhere since its range may be not specified.
+    // We can't filter with location here since its range may be not specified.
     // See section 2.6.2: A location list containing only an end of list entry
     // describes an object that exists in the source code but not in the
     // executable program.
@@ -638,7 +638,11 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     forEachAttribute(cu, childDie, [&](const Attribute& attr) {
       switch (attr.spec.name) {
         case DW_AT_ranges:
-          rangeOffset = boost::get<uint64_t>(attr.attrValue);
+          // NOTE: For backwards compatibility reasons, DW_AT_GNU_ranges_base
+          // applies only to DIE within dwo, but not within skeleton CU.
+          rangeOffset = boost::get<uint64_t>(attr.attrValue) +
+              (cu.version > 4 || !cu.isSkeleton ? cu.rangesBase.value_or(0)
+                                                : 0);
           break;
         case DW_AT_low_pc:
           lowPc = boost::get<uint64_t>(attr.attrValue);
@@ -684,11 +688,7 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     bool pcMatch = lowPc && highPc && isHighPcAddr && address >= *lowPc &&
         (address < (*isHighPcAddr ? *highPc : (*lowPc + *highPc)));
     bool rangeMatch = rangeOffset &&
-        isAddrInRangeList(cu,
-                          address,
-                          baseAddrCU,
-                          rangeOffset.value() + cu.rangesBase.value_or(0),
-                          cu.addrSize);
+        isAddrInRangeList(cu, address, baseAddrCU, *rangeOffset, cu.addrSize);
     if (!pcMatch && !rangeMatch) {
       // Address doesn't match. Keep searching other children.
       return true;

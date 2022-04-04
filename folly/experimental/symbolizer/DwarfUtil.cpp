@@ -407,7 +407,7 @@ CompilationUnits getCompilationUnits(
         path,
         cu.mainCompilationUnit.compDir.data(),
         cu.mainCompilationUnit.compDir.size());
-    strncat(path, "/", 1);
+    strcat(path, "/");
     strncat(
         path,
         cu.mainCompilationUnit.dwoName->data(),
@@ -424,7 +424,7 @@ CompilationUnits getCompilationUnits(
     }
     char dwpPath[kPathLimit];
     strcpy(dwpPath, cu.mainCompilationUnit.debugSections.elf->filepath());
-    strncat(dwpPath, ".dwp", 4);
+    strcat(dwpPath, ".dwp");
     elf = elfCache->getFile(dwpPath).get();
     if (elf == nullptr) {
       return cu;

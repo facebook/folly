@@ -87,7 +87,7 @@ struct CompilationUnit {
   // The beginning of the CU's contribution to .debug_addr
   // DW_AT_addr_base (DWARF 5, DebugFission)
   folly::Optional<uint64_t> addrBase;
-  // The beginning of the CU's contribution to .debug_addr
+  // The beginning of the CU's contribution to .debug_ranges
   // DW_AT_ranges_base (DebugFission)
   folly::Optional<uint64_t> rangesBase;
   // The beginning of the offsets table (immediately following the
