@@ -40,6 +40,13 @@ namespace folly {
 namespace symbolizer {
 namespace test {
 
+#define SCOPED_TRACE_FRAMES(frames) \
+  SCOPED_TRACE([&] {                \
+    StringSymbolizePrinter printer; \
+    printer.println(frames);        \
+    return printer.str();           \
+  }())
+
 void foo() {}
 
 FOLLY_NOINLINE void bar() {
@@ -140,6 +147,8 @@ void runElfCacheTest(Symbolizer& symbolizer) {
     frames.frames[i].clear();
   }
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
+
   ASSERT_LE(4, frames.frameCount);
   for (size_t i = 1; i < 4; ++i) {
     EXPECT_STREQ(goldenFrames.frames[i].name, frames.frames[i].name);
@@ -172,12 +181,15 @@ TEST(SymbolizerTest, SymbolCache) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   bar();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   FrameArray<100> frames2;
   gComparatorGetStackTraceArg = &frames2;
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   bar();
   symbolizer.symbolize(frames2);
+  SCOPED_TRACE_FRAMES(frames2);
+
   for (size_t i = 0; i < frames.frameCount; i++) {
     EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
   }
@@ -229,6 +241,7 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -268,6 +281,7 @@ TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_B_A_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   std::array<SymbolizedFrame, 2> limitedFrames;
 
@@ -300,6 +314,7 @@ TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_lexicalBlock_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -334,6 +349,7 @@ TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {
   // NOTE: inlineLTO_inlineA_lfind is only inlined with LTO/ThinLTO.
   call_inlineLTO_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[5],
@@ -353,6 +369,7 @@ TEST(SymbolizerTest, InlineClassMemberFunctionSameFile) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_same_file_memberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -379,6 +396,7 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionSameFile) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_same_file_staticMemberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -405,6 +423,7 @@ TEST(SymbolizerTest, InlineClassMemberFunctionInDifferentFile) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_different_file_memberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -431,6 +450,7 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionInDifferentFile) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_different_file_staticMemberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -457,6 +477,7 @@ TEST(SymbolizerTest, InlineFunctionNoExtraFrames) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<9>;
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   Symbolizer symbolizer2(nullptr, LocationInfoMode::FULL, 100);
   FrameArray<9> frames2;
@@ -464,6 +485,7 @@ TEST(SymbolizerTest, InlineFunctionNoExtraFrames) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<9>;
   call_inlineB_inlineA_lfind();
   symbolizer2.symbolize(frames2);
+  SCOPED_TRACE_FRAMES(frames2);
 
   expectFramesEq<9>(frames, frames2);
 }
@@ -478,6 +500,7 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -536,6 +559,8 @@ TEST(Dwarf, FindParameterNames) {
   ASSERT_EQ("a", names[0]);
   ASSERT_EQ("b", names[1]);
 }
+
+#undef SCOPED_TRACE_FRAMES
 
 } // namespace test
 } // namespace symbolizer

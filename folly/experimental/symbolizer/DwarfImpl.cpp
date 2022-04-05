@@ -540,11 +540,8 @@ bool DwarfImpl::findSubProgramDieForAddress(
       forEachAttribute(cu, childDie, [&](const Attribute& attr) {
         switch (attr.spec.name) {
           case DW_AT_ranges:
-            // NOTE: For backwards compatibility reasons, DW_AT_GNU_ranges_base
-            // applies only to DIE within dwo, but not within skeleton CU.
             rangeOffset = boost::get<uint64_t>(attr.attrValue) +
-                (cu.version > 4 || !cu.isSkeleton ? cu.rangesBase.value_or(0)
-                                                  : 0);
+                cu.rangesBase.value_or(0);
             break;
           case DW_AT_low_pc:
             lowPc = boost::get<uint64_t>(attr.attrValue);
@@ -638,11 +635,8 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
     forEachAttribute(cu, childDie, [&](const Attribute& attr) {
       switch (attr.spec.name) {
         case DW_AT_ranges:
-          // NOTE: For backwards compatibility reasons, DW_AT_GNU_ranges_base
-          // applies only to DIE within dwo, but not within skeleton CU.
-          rangeOffset = boost::get<uint64_t>(attr.attrValue) +
-              (cu.version > 4 || !cu.isSkeleton ? cu.rangesBase.value_or(0)
-                                                : 0);
+          rangeOffset =
+              boost::get<uint64_t>(attr.attrValue) + cu.rangesBase.value_or(0);
           break;
         case DW_AT_low_pc:
           lowPc = boost::get<uint64_t>(attr.attrValue);

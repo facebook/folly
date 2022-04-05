@@ -70,7 +70,6 @@ struct DIEAbbreviation {
 struct CompilationUnit {
   DebugSections debugSections;
 
-  bool isSkeleton = false;
   bool is64Bit = false;
   uint8_t version = 0;
   uint8_t unitType = DW_UT_compile; // DW_UT_compile or DW_UT_skeleton

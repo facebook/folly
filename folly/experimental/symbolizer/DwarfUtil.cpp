@@ -344,11 +344,6 @@ bool parseCompilationUnitMetadata(CompilationUnit& cu, size_t offset) {
     return true; // continue forEachAttribute
   });
 
-  // Whether the CompiliationUnit is a skeleton unit and doesn't have any
-  // children. For Dwarf5, we can check whether the type is
-  // DW_TAG_skeleton_unit. For Dwarf4, there is no special skeleton type, so we
-  // just check if it has any children by checking the offset and size.
-  cu.isSkeleton = die.abbr.tag == DW_TAG_skeleton_unit || cu.dwoId.hasValue();
   return true;
 }
 
@@ -368,8 +363,7 @@ CompilationUnits getCompilationUnits(
     return cu;
   }
 
-  if (!requireSplitDwarf || !cu.mainCompilationUnit.isSkeleton ||
-      !cu.mainCompilationUnit.dwoId.hasValue() ||
+  if (!requireSplitDwarf || !cu.mainCompilationUnit.dwoId.hasValue() ||
       !cu.mainCompilationUnit.dwoName.hasValue()) {
     cu.mainCompilationUnit.rangesBase.reset();
     return cu;
@@ -391,6 +385,12 @@ CompilationUnits getCompilationUnits(
   // must be interpreted as offsets relative to the base address given by the
   // DW_AT_ranges_base attribute in the skeleton compilation unit DIE.
   splitCU.rangesBase = cu.mainCompilationUnit.rangesBase;
+
+  // NOTE: For backwards compatibility reasons, DW_AT_GNU_ranges_base
+  // applies only to DIE within dwo, but not within skeleton CU.
+  if (cu.mainCompilationUnit.version <= 4) {
+    cu.mainCompilationUnit.rangesBase.reset();
+  }
 
   // Read from dwo file.
   static const size_t kPathLimit = 4 << 10; // 4KB
