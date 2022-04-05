@@ -50,18 +50,13 @@ rcu_domain<Tag>::~rcu_domain() {
 }
 
 template <typename Tag>
-rcu_token<Tag> rcu_domain<Tag>::lock_shared() {
-  auto idx = version_.load(std::memory_order_acquire);
-  uint8_t epoch = to_narrow(idx & 1);
-  counters_.increment(epoch);
-
-  return rcu_token<Tag>(epoch);
+void rcu_domain<Tag>::lock_shared() {
+  counters_.increment(version_.load(std::memory_order_acquire));
 }
 
 template <typename Tag>
-void rcu_domain<Tag>::unlock_shared(rcu_token<Tag>&& token) {
-  DCHECK(0 == token.epoch_ || 1 == token.epoch_);
-  counters_.decrement(token.epoch_);
+void rcu_domain<Tag>::unlock_shared() {
+  counters_.decrement();
 }
 
 template <typename Tag>
@@ -144,7 +139,7 @@ void rcu_domain<Tag>::synchronize() noexcept {
  */
 template <typename Tag>
 void rcu_domain<Tag>::half_sync(bool blocking, list_head& finished) {
-  uint64_t curr = version_.load(std::memory_order_acquire);
+  auto curr = version_.load(std::memory_order_acquire);
   auto next = curr + 1;
 
   // Push all work to a queue for moving through two epochs.  One
@@ -159,7 +154,7 @@ void rcu_domain<Tag>::half_sync(bool blocking, list_head& finished) {
   if (blocking) {
     counters_.waitForZero(next & 1);
   } else {
-    if (counters_.readFull(next & 1) != 0) {
+    if (!counters_.epochIsClear(next & 1)) {
       return;
     }
   }

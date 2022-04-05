@@ -24,8 +24,8 @@
 #include <folly/Optional.h>
 #include <folly/detail/TurnSequencer.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
-#include <folly/synchronization/detail/ThreadCachedInts.h>
 #include <folly/synchronization/detail/ThreadCachedLists.h>
+#include <folly/synchronization/detail/ThreadCachedReaders.h>
 
 // Implementation of proposed Read-Copy-Update (RCU) C++ API
 // http://open-std.org/JTC1/SC22/WG21/docs/papers/2017/p0566r3.pdf
@@ -168,13 +168,15 @@
 //
 // rcu_domain:
 //   A "universe" of deferred execution. Each rcu_domain has an
-//   executor on which deferred functions may execute. Readers obtain
-//   Tokens from an rcu_domain and release them back to it.
-//   rcu_domains should in general be completely separated; it's never
-//   correct to pass a token from one domain to another, and
-//   rcu_reader objects created on one domain do not prevent functions
-//   deferred on other domains from running. It's intended that most
-//   callers should only ever use the default, global domain.
+//   executor on which deferred functions may execute. Readers enter
+//   a read region in an rcu_domain by creating an instance of an
+//   rcu_reader_domain object on the domain. The rcu_reader_domain provides
+//   RAII semantics for read region protection.
+//
+//   rcu_domains should in general be completely separated; rcu_reader objects
+//   created on one domain do not prevent functions deferred on other domains
+//   from running. It's intended that most callers should only ever use the
+//   default, global domain.
 //
 //   Creation of a domain takes a template tag argument, which
 //   defaults to RcuTag. To access different domains, you have to pass a
@@ -294,26 +296,6 @@ struct RcuTag;
 template <typename Tag = RcuTag>
 class rcu_domain;
 
-// Opaque token used to match up lock_shared() and unlock_shared()
-// pairs.
-template <typename Tag>
-class rcu_token {
- public:
-  rcu_token() {}
-  ~rcu_token() = default;
-
-  rcu_token(const rcu_token&) = delete;
-  rcu_token(rcu_token&& other) = default;
-  rcu_token& operator=(const rcu_token& other) = delete;
-  rcu_token& operator=(rcu_token&& other) = default;
-
- private:
-  explicit rcu_token(uint8_t epoch) : epoch_(epoch) {}
-
-  friend class rcu_domain<Tag>;
-  uint8_t epoch_;
-};
-
 // Defines an RCU domain.  RCU readers within a given domain block updaters
 // (rcu_synchronize, call, retire, or rcu_retire) only within that same
 // domain, and have no effect on updaters associated with other rcu_domains.
@@ -354,8 +336,8 @@ class rcu_domain {
   // all preceding lock_shared() sections are finished.
 
   // Note: can potentially allocate on thread first use.
-  FOLLY_ALWAYS_INLINE rcu_token<Tag> lock_shared();
-  FOLLY_ALWAYS_INLINE void unlock_shared(rcu_token<Tag>&&);
+  FOLLY_ALWAYS_INLINE void lock_shared();
+  FOLLY_ALWAYS_INLINE void unlock_shared();
 
   // Invokes cbin(this) and then deletes this some time after all pre-existing
   // RCU readers have completed.  See rcu_synchronize() for more information
@@ -374,7 +356,7 @@ class rcu_domain {
   void synchronize() noexcept;
 
  private:
-  detail::ThreadCachedInts<Tag> counters_;
+  detail::ThreadCachedReaders<Tag> counters_;
   // Global epoch.
   std::atomic<uint64_t> version_{0};
   // Future epochs being driven by threads in synchronize
@@ -422,49 +404,46 @@ class rcu_reader_domain {
  public:
   explicit FOLLY_ALWAYS_INLINE rcu_reader_domain(
       rcu_domain<Tag>& domain = rcu_default_domain()) noexcept
-      : epoch_(domain.lock_shared()), domain_(&domain) {}
+      : domain_(&domain) {
+    lock();
+  }
   explicit rcu_reader_domain(
       std::defer_lock_t,
       rcu_domain<Tag>& domain = rcu_default_domain()) noexcept
-      : domain_(&domain) {}
+      : domain_(&domain), locked_(false) {}
   rcu_reader_domain(const rcu_reader_domain&) = delete;
   rcu_reader_domain(rcu_reader_domain&& other) noexcept
-      : epoch_(std::move(other.epoch_)),
-        domain_(std::exchange(other.domain_, nullptr)) {}
+      : domain_(std::exchange(other.domain_, nullptr)),
+        locked_(std::exchange(other.locked_, false)) {}
   rcu_reader_domain& operator=(const rcu_reader_domain&) = delete;
   rcu_reader_domain& operator=(rcu_reader_domain&& other) noexcept {
-    if (epoch_.has_value()) {
-      domain_->unlock_shared(std::move(epoch_.value()));
-    }
-    epoch_ = std::move(other.epoch_);
+    unlock();
     domain_ = std::exchange(other.domain_, nullptr);
+    locked_ = std::exchange(other.locked_, false);
     return *this;
   }
 
-  FOLLY_ALWAYS_INLINE ~rcu_reader_domain() noexcept {
-    if (epoch_.has_value()) {
-      domain_->unlock_shared(std::move(epoch_.value()));
-    }
-  }
+  FOLLY_ALWAYS_INLINE ~rcu_reader_domain() noexcept { unlock(); }
 
   void swap(rcu_reader_domain& other) noexcept {
     DCHECK(domain_ == other.domain_);
-    std::swap(epoch_, other.epoch_);
+    std::swap(locked_, other.locked_);
   }
 
   FOLLY_ALWAYS_INLINE void lock() noexcept {
-    DCHECK(!epoch_.has_value());
-    epoch_ = domain_->lock_shared();
+    locked_ = true;
+    domain_->lock_shared();
   }
 
   FOLLY_ALWAYS_INLINE void unlock() noexcept {
-    DCHECK(epoch_.has_value());
-    domain_->unlock_shared(std::move(epoch_.value()));
+    if (locked_) {
+      domain_->unlock_shared();
+    }
   }
 
  private:
-  Optional<rcu_token<Tag>> epoch_;
   rcu_domain<Tag>* domain_;
+  bool locked_;
 };
 
 // Mark an RCU read-side critical section using RAII style, as in

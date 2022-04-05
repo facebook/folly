@@ -197,21 +197,12 @@ TEST(RcuTest, SynchronizeInCall) {
   rcu_synchronize();
 }
 
-TEST(RcuTest, MoveReaderBetweenThreads) {
-  rcu_reader g;
-  std::thread t([f = std::move(g)] {});
-  t.join();
-  rcu_synchronize();
-}
-
 TEST(RcuTest, ForkTest) {
-  rcu_token<RcuTag> epoch;
-  std::thread t([&]() { epoch = rcu_default_domain().lock_shared(); });
-  t.join();
+  rcu_default_domain().lock_shared();
   auto pid = fork();
   if (pid) {
     // parent
-    rcu_default_domain().unlock_shared(std::move(epoch));
+    rcu_default_domain().unlock_shared();
     rcu_synchronize();
     int status = -1;
     auto pid2 = waitpid(pid, &status, 0);
@@ -283,9 +274,9 @@ TEST(RcuTest, RcuObjBase) {
 TEST(RcuTest, Tsan) {
   int data = 0;
   std::thread t1([&] {
-    auto epoch = rcu_default_domain().lock_shared();
+    rcu_default_domain().lock_shared();
     data = 1;
-    rcu_default_domain().unlock_shared(std::move(epoch));
+    rcu_default_domain().unlock_shared();
     // Delay before exiting so the thread is still alive for TSAN detection.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   });
