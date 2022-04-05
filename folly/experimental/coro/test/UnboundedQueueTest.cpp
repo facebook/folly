@@ -213,14 +213,6 @@ TEST(UnboundedQueueTest, TryDequeue) {
   EXPECT_EQ(std::move(fut).get(), 13);
 }
 
-TEST(UnboundedQueueTest, TryPeekMultiConsumer) {
-  folly::coro::UnboundedQueue<int, false, false> queue;
-  ASSERT_DEATH({ queue.try_peek(); }, "");
-
-  queue.enqueue(42);
-  ASSERT_DEATH({ queue.try_peek(); }, "");
-}
-
 TEST(UnboundedQueueTest, TryPeekSingleConsumer) {
   folly::coro::UnboundedQueue<int, false, true> queue;
   EXPECT_EQ(nullptr, queue.try_peek());

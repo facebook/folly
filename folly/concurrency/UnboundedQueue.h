@@ -332,8 +332,7 @@ class UnboundedQueue {
 
   /** try_peek */
   FOLLY_ALWAYS_INLINE const T* try_peek() noexcept {
-    /* This function is supported only for USPSC and UMPSC queues. */
-    DCHECK(SingleConsumer);
+    static_assert(SingleConsumer, "not single-consumer");
     return tryPeekUntil(std::chrono::steady_clock::time_point::min());
   }
 
@@ -499,6 +498,8 @@ class UnboundedQueue {
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE const T* tryPeekUntil(
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
+    // This function is supported only for USPSC and UMPSC queues.
+    DCHECK(SingleConsumer);
     Segment* s = head();
     Ticket t = consumerTicket();
     DCHECK_GE(t, s->minTicket());

@@ -320,7 +320,7 @@ void enq_deq_test(const int nprod, const int ncons) {
       int v = -1;
       int vpeek = -1;
 
-      if (SingleConsumer) {
+      if constexpr (SingleConsumer) {
         while (true) {
           auto res = q.try_peek();
           if (res) {
