@@ -75,23 +75,6 @@ ThreadPoolExecutor::Task::Task(
   enqueueTime_ = std::chrono::steady_clock::now();
 }
 
-namespace {
-
-template <class F>
-void nothrow(const char* name, F&& f) {
-  try {
-    f();
-  } catch (const std::exception& e) {
-    LOG(ERROR) << "ThreadPoolExecutor: " << name << " threw unhandled "
-               << typeid(e).name() << " exception: " << e.what();
-  } catch (...) {
-    LOG(ERROR) << "ThreadPoolExecutor: " << name
-               << " threw unhandled non-exception object";
-  }
-}
-
-} // namespace
-
 void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   thread->idle.store(false, std::memory_order_relaxed);
   auto startTime = std::chrono::steady_clock::now();
