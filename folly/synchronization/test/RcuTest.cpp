@@ -198,11 +198,11 @@ TEST(RcuTest, SynchronizeInCall) {
 }
 
 TEST(RcuTest, ForkTest) {
-  rcu_default_domain().lock_shared();
+  rcu_default_domain().lock();
   auto pid = fork();
   if (pid) {
     // parent
-    rcu_default_domain().unlock_shared();
+    rcu_default_domain().unlock();
     rcu_synchronize();
     int status = -1;
     auto pid2 = waitpid(pid, &status, 0);
@@ -274,9 +274,9 @@ TEST(RcuTest, RcuObjBase) {
 TEST(RcuTest, Tsan) {
   int data = 0;
   std::thread t1([&] {
-    rcu_default_domain().lock_shared();
+    rcu_default_domain().lock();
     data = 1;
-    rcu_default_domain().unlock_shared();
+    rcu_default_domain().unlock();
     // Delay before exiting so the thread is still alive for TSAN detection.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   });

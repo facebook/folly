@@ -157,9 +157,8 @@
 //
 // This gets us close to the speed of the second solution, without
 // leaking memory. A rcu_reader costs about 4 ns, faster than the
-// lock_shared() / unlock_shared() pair in the more traditional
-// mutex-based approach from our first attempt, and the writer
-// never blocks the readers.
+// lock() / unlock() pair in the more traditional mutex-based approach from our
+// first attempt, and the writer never blocks the readers.
 
 // Notes
 
@@ -333,11 +332,11 @@ class rcu_domain {
 
   // Reader locks: Prevent any calls from occuring, retired memory
   // from being freed, and synchronize() calls from completing until
-  // all preceding lock_shared() sections are finished.
+  // all preceding lock() sections are finished.
 
   // Note: can potentially allocate on thread first use.
-  FOLLY_ALWAYS_INLINE void lock_shared();
-  FOLLY_ALWAYS_INLINE void unlock_shared();
+  FOLLY_ALWAYS_INLINE void lock();
+  FOLLY_ALWAYS_INLINE void unlock();
 
   // Invokes cbin(this) and then deletes this some time after all pre-existing
   // RCU readers have completed.  See rcu_synchronize() for more information
@@ -432,12 +431,12 @@ class rcu_reader_domain {
 
   FOLLY_ALWAYS_INLINE void lock() noexcept {
     locked_ = true;
-    domain_->lock_shared();
+    domain_->lock();
   }
 
   FOLLY_ALWAYS_INLINE void unlock() noexcept {
     if (locked_) {
-      domain_->unlock_shared();
+      domain_->unlock();
     }
   }
 

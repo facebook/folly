@@ -59,11 +59,11 @@ class AtomicReadMostlyMainPtr {
 
   ReadMostlySharedPtr<T> load(
       std::memory_order order = std::memory_order_seq_cst) const {
-    detail::atomicReadMostlyDomain->lock_shared();
+    detail::atomicReadMostlyDomain->lock();
     // Synchronization point with the store in storeLocked().
     auto index = curMainPtrIndex_.load(order);
     auto result = mainPtrs_[index].getShared();
-    detail::atomicReadMostlyDomain->unlock_shared();
+    detail::atomicReadMostlyDomain->unlock();
     return result;
   }
 

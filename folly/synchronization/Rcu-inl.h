@@ -50,12 +50,12 @@ rcu_domain<Tag>::~rcu_domain() {
 }
 
 template <typename Tag>
-void rcu_domain<Tag>::lock_shared() {
+void rcu_domain<Tag>::lock() {
   counters_.increment(version_.load(std::memory_order_acquire));
 }
 
 template <typename Tag>
-void rcu_domain<Tag>::unlock_shared() {
+void rcu_domain<Tag>::unlock() {
   counters_.decrement();
 }
 
