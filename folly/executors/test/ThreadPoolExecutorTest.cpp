@@ -283,7 +283,7 @@ static void taskStats() {
   TPE tpe(1);
   std::atomic<int> c(0);
   auto now = std::chrono::steady_clock::now();
-  tpe.subscribeToTaskStats([&](ThreadPoolExecutor::TaskStats stats) {
+  tpe.subscribeToTaskStats([&](const ThreadPoolExecutor::TaskStats& stats) {
     int i = c++;
     EXPECT_LT(now, stats.enqueueTime);
     EXPECT_LT(milliseconds(0), stats.runTime);
@@ -371,7 +371,7 @@ template <class TPE>
 static void expiration() {
   TPE tpe(1);
   std::atomic<int> statCbCount(0);
-  tpe.subscribeToTaskStats([&](ThreadPoolExecutor::TaskStats stats) {
+  tpe.subscribeToTaskStats([&](const ThreadPoolExecutor::TaskStats& stats) {
     int i = statCbCount++;
     if (i == 0) {
       EXPECT_FALSE(stats.expired);

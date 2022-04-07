@@ -145,7 +145,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     uint64_t requestId;
   };
 
-  using TaskStatsCallback = std::function<void(TaskStats)>;
+  using TaskStatsCallback = std::function<void(const TaskStats&)>;
   void subscribeToTaskStats(TaskStatsCallback cb);
 
   /**
