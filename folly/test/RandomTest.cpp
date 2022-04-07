@@ -196,7 +196,9 @@ TEST(Random, oneIn64) {
   //   4294967295
   //   >>> (2 ** 63 + 1) & 0xFFFFFFFF
   //   1
-  EXPECT_FALSE(folly::Random::oneIn64((2 ^ 63) + 1));
+  uint64_t kAlmostMax = (uint64_t(1) << 63) + 1;
+  EXPECT_FALSE(folly::Random::oneIn64(kAlmostMax));
+  EXPECT_TRUE(folly::Random::oneIn(kAlmostMax));
 }
 
 #ifndef _WIN32
