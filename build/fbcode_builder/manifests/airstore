@@ -26,6 +26,7 @@ double-conversion
 proxygen
 wangle
 zstd
+xz
 
 [shipit.pathmap]
 fbcode/fair_infra/data/airstore = .

@@ -22,6 +22,7 @@ double-conversion
 fmt
 lz4
 snappy
+xz
 zstd
 # no openssl or zlib in the linux case, why?
 # these are usually installed on the system
