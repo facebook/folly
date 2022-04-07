@@ -65,6 +65,8 @@ SCHEMA = {
             "make_binary": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
             "job_weight_mib": OPTIONAL,
+            "patchfile": OPTIONAL,
+            "patchfile_opts": OPTIONAL,
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
