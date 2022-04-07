@@ -44,7 +44,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
-#include <folly/synchronization/detail/ThreadCachedInts.h>
 #include <folly/system/ThreadId.h>
 
 using namespace folly;
@@ -445,36 +444,6 @@ TEST(ThreadLocal, Movable2) {
 
   // Make sure that we have 4 different instances of *tl
   EXPECT_EQ(4, tls.size());
-}
-
-namespace {
-class ThreadCachedIntWidget {
- public:
-  ThreadCachedIntWidget() {}
-
-  ~ThreadCachedIntWidget() {
-    if (ints_) {
-      ints_->increment(0);
-    }
-  }
-
-  void set(detail::ThreadCachedInts<void>* ints) { ints_ = ints; }
-
- private:
-  detail::ThreadCachedInts<void>* ints_{nullptr};
-};
-} // namespace
-
-TEST(ThreadLocal, TCICreateOnThreadExit) {
-  detail::ThreadCachedInts<void> ints;
-  ThreadLocal<ThreadCachedIntWidget> w;
-
-  std::thread([&] {
-    // make sure the ints object is created
-    ints.increment(1);
-    // now the widget
-    w->set(&ints);
-  }).join();
 }
 
 namespace {

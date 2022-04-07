@@ -15,18 +15,7 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/synchronization/detail/ThreadCachedInts.h>
 #include <folly/synchronization/detail/ThreadCachedReaders.h>
-
-template <typename Tag>
-void decrement_cached_epoch(folly::detail::ThreadCachedInts<Tag>& ints) {
-  ints.decrement(0);
-}
-
-template <typename Tag>
-void decrement_cached_epoch(folly::detail::ThreadCachedReaders<Tag>& readers) {
-  readers.decrement();
-}
 
 template <typename ThreadCachedEpoch>
 void bm_increment_loop(unsigned iters) {
@@ -34,7 +23,7 @@ void bm_increment_loop(unsigned iters) {
 
   ThreadCachedEpoch cachedEpoch;
   cachedEpoch.increment(0);
-  decrement_cached_epoch(cachedEpoch);
+  cachedEpoch.decrement();
 
   susp.dismiss();
 
@@ -49,13 +38,13 @@ void bm_increment_decrement_same_loop(unsigned iters) {
 
   ThreadCachedEpoch cachedEpoch;
   cachedEpoch.increment(0);
-  decrement_cached_epoch(cachedEpoch);
+  cachedEpoch.decrement();
 
   susp.dismiss();
 
   for (unsigned i = 0; i < iters; i++) {
     cachedEpoch.increment(0);
-    decrement_cached_epoch(cachedEpoch);
+    cachedEpoch.decrement();
   }
 }
 
@@ -65,7 +54,7 @@ void bm_increment_decrement_separate_loop(unsigned iters) {
 
   ThreadCachedEpoch cachedEpoch;
   cachedEpoch.increment(0);
-  decrement_cached_epoch(cachedEpoch);
+  cachedEpoch.decrement();
 
   susp.dismiss();
 
@@ -73,6 +62,6 @@ void bm_increment_decrement_separate_loop(unsigned iters) {
     cachedEpoch.increment(0);
   }
   for (unsigned i = 0; i < iters; i++) {
-    decrement_cached_epoch(cachedEpoch);
+    cachedEpoch.decrement();
   }
 }
