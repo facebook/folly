@@ -21,6 +21,7 @@
 
 #include <folly/Optional.h>
 #include <folly/experimental/symbolizer/DwarfUtil.h>
+#include <folly/lang/SafeAssert.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
@@ -66,10 +67,11 @@ bool DwarfImpl::findLocation(
   auto mainCu = cu_.mainCompilationUnit;
   Die die = getDieAtOffset(mainCu, mainCu.firstDie);
   // Partial compilation unit (DW_TAG_partial_unit) is not supported.
-  FOLLY_SAFE_CHECK(
-      die.abbr.tag == DW_TAG_compile_unit ||
-          die.abbr.tag == DW_TAG_skeleton_unit,
-      die.abbr.tag);
+  if (die.abbr.tag != DW_TAG_compile_unit &&
+      die.abbr.tag != DW_TAG_skeleton_unit) {
+    FOLLY_SAFE_DFATAL("Unsupported die.abbr.tag: ", die.abbr.tag);
+    return false;
+  }
 
   // Offset in .debug_line for the line number VM program for this CU
   folly::Optional<uint64_t> lineOffset;
@@ -335,15 +337,19 @@ CompilationUnit DwarfImpl::findCompilationUnit(
     auto initialLength = read<uint32_t>(chunk);
     auto is64Bit = (initialLength == (uint32_t)-1);
     auto size = is64Bit ? read<uint64_t>(chunk) : initialLength;
-    FOLLY_SAFE_CHECK(size <= chunk.size(), "invalid chunk size");
+    if (size > chunk.size()) {
+      FOLLY_SAFE_DFATAL(
+          "invalid chunk size: ", size, " chunk.size(): ", chunk.size());
+      break;
+    }
     size += is64Bit ? 12 : 4;
-
     if (offset + size > targetOffset) {
       break;
     }
     offset += size;
   }
-  return getCompilationUnits(elfCache_, cu.debugSections, offset, false)
+  return getCompilationUnits(
+             elfCache_, cu.debugSections, offset, /* requireSplitDwarf */ false)
       .mainCompilationUnit;
 }
 
@@ -406,8 +412,10 @@ bool DwarfImpl::isAddrInRangeList(
     folly::Optional<uint64_t> baseAddr,
     size_t offset,
     uint8_t addrSize) const {
-  FOLLY_SAFE_CHECK(
-      addrSize == 4 || addrSize == 8, "wrong address size: ", int(addrSize));
+  if (addrSize != 4 && addrSize != 8) {
+    FOLLY_SAFE_DFATAL("wrong address size: ", int(addrSize));
+    return false;
+  }
   if (cu.version <= 4 && !cu.debugSections.debugRanges.empty()) {
     const bool is64BitAddr = addrSize == 8;
     folly::StringPiece sp = cu.debugSections.debugRanges;
@@ -515,10 +523,9 @@ bool DwarfImpl::isAddrInRangeList(
         } break;
 
         default:
-          FOLLY_SAFE_CHECK(
-              false,
-              "Unexpected debug_rnglists entry kind: ",
-              static_cast<int>(kind));
+          FOLLY_SAFE_DFATAL(
+              "Unexpected debug_rnglists entry kind: ", static_cast<int>(kind));
+          return false;
       }
     }
   }

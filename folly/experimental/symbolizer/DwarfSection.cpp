@@ -38,7 +38,14 @@ bool DwarfSection::next(folly::StringPiece& chunk) {
   auto initialLength = read<uint32_t>(chunk);
   is64Bit_ = (initialLength == uint32_t(-1));
   auto length = is64Bit_ ? read<uint64_t>(chunk) : initialLength;
-  FOLLY_SAFE_CHECK(length <= chunk.size(), "invalid DWARF section");
+  if (length > chunk.size()) {
+    FOLLY_SAFE_DFATAL(
+        "invalid DWARF section, length: ",
+        length,
+        " chunk.size(): ",
+        chunk.size());
+    return false;
+  }
   chunk.reset(chunk.data(), length);
   data_.assign(chunk.end(), data_.end());
   return true;

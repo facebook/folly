@@ -38,7 +38,7 @@ class DwarfLineNumberVM {
   Path getFullFileName(uint64_t index) const;
 
  private:
-  void init();
+  bool init();
   void reset();
 
   /** Execute until we commit one new row to the line number matrix */
@@ -78,6 +78,7 @@ class DwarfLineNumberVM {
   bool nextDefineFile(folly::StringPiece& program, FileName& fn) const;
 
   // Initialization
+  bool initializationSuccess_ = false;
   bool is64Bit_;
   folly::StringPiece data_;
   folly::StringPiece compilationDirectory_;

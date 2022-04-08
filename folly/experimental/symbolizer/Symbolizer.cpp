@@ -142,7 +142,14 @@ size_t Symbolizer::symbolize(
     folly::Range<SymbolizedFrame*> frames) {
   size_t addrCount = addrs.size();
   size_t frameCount = frames.size();
-  FOLLY_SAFE_CHECK(addrCount <= frameCount, "Not enough frames.");
+  if (addrCount > frameCount) {
+    FOLLY_SAFE_DFATAL(
+        "Not enough frames: addrCount: ",
+        addrCount,
+        " frameCount: ",
+        frameCount);
+    return 0;
+  }
   size_t remaining = addrCount;
 
   auto const dbg = detail::get_r_debug();

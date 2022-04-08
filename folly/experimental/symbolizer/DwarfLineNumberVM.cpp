@@ -16,6 +16,7 @@
 
 #include <folly/experimental/symbolizer/DwarfLineNumberVM.h>
 
+#include <folly/Optional.h>
 #include <folly/experimental/symbolizer/DwarfSection.h>
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
@@ -30,10 +31,13 @@ DwarfLineNumberVM::DwarfLineNumberVM(
     : compilationDirectory_(compilationDirectory),
       debugSections_(debugSections) {
   DwarfSection section(data);
-  FOLLY_SAFE_CHECK(section.next(data_), "invalid line number VM");
+  if (!section.next(data_)) {
+    FOLLY_SAFE_DFATAL("invalid line number VM");
+    reset();
+    return;
+  }
   is64Bit_ = section.is64Bit();
-  init();
-  reset();
+  initializationSuccess_ = init();
 }
 
 void DwarfLineNumberVM::reset() {
@@ -50,13 +54,15 @@ void DwarfLineNumberVM::reset() {
   discriminator_ = 0;
 }
 
+namespace {
+
 struct LineNumberAttribute {
   uint64_t contentTypeCode;
   uint64_t formCode;
   boost::variant<uint64_t, folly::StringPiece> attrValue;
 };
 
-LineNumberAttribute readLineNumberAttribute(
+folly::Optional<LineNumberAttribute> readLineNumberAttribute(
     bool is64Bit,
     folly::StringPiece& format,
     folly::StringPiece& entries,
@@ -81,11 +87,12 @@ LineNumberAttribute readLineNumberAttribute(
               debugStr, readOffset(entries, is64Bit));
           break;
         case DW_FORM_strp_sup:
-          FOLLY_SAFE_CHECK(false, "Unexpected DW_FORM_strp_sup");
+          FOLLY_SAFE_DFATAL("Unexpected DW_FORM_strp_sup");
+          return folly::none;
           break;
         default:
-          FOLLY_SAFE_CHECK(
-              false, "Unexpected form for DW_LNCT_path: ", formCode);
+          FOLLY_SAFE_DFATAL("Unexpected form for DW_LNCT_path: ", formCode);
+          return folly::none;
           break;
       }
     } break;
@@ -102,8 +109,9 @@ LineNumberAttribute readLineNumberAttribute(
           attrValue = readULEB(entries);
           break;
         default:
-          FOLLY_SAFE_CHECK(
-              false, "Unexpected form for DW_LNCT_directory_index: ", formCode);
+          FOLLY_SAFE_DFATAL(
+              "Unexpected form for DW_LNCT_directory_index: ", formCode);
+          return folly::none;
           break;
       }
     } break;
@@ -123,8 +131,9 @@ LineNumberAttribute readLineNumberAttribute(
           attrValue = readBytes(entries, readULEB(entries));
           break;
         default:
-          FOLLY_SAFE_CHECK(
-              false, "Unexpected form for DW_LNCT_timestamp: ", formCode);
+          FOLLY_SAFE_DFATAL(
+              "Unexpected form for DW_LNCT_timestamp: ", formCode);
+          return folly::none;
       }
     } break;
 
@@ -146,8 +155,8 @@ LineNumberAttribute readLineNumberAttribute(
           attrValue = read<uint64_t>(entries);
           break;
         default:
-          FOLLY_SAFE_CHECK(
-              false, "Unexpected form for DW_LNCT_size: ", formCode);
+          FOLLY_SAFE_DFATAL("Unexpected form for DW_LNCT_size: ", formCode);
+          return folly::none;
           break;
       }
     } break;
@@ -158,60 +167,76 @@ LineNumberAttribute readLineNumberAttribute(
           attrValue = readBytes(entries, 16);
           break;
         default:
-          FOLLY_SAFE_CHECK(
-              false, "Unexpected form for DW_LNCT_MD5: ", formCode);
+          FOLLY_SAFE_DFATAL("Unexpected form for DW_LNCT_MD5: ", formCode);
+          return folly::none;
           break;
       }
     } break;
 
     default:
       // TODO: skip over vendor data as specified by the form instead.
-      FOLLY_SAFE_CHECK(
-          false, "Unexpected vendor content type code: ", contentTypeCode);
+      FOLLY_SAFE_DFATAL(
+          "Unexpected vendor content type code: ", contentTypeCode);
+      return folly::none;
       break;
   }
-  return {
+  return LineNumberAttribute{
       .contentTypeCode = contentTypeCode,
       .formCode = formCode,
       .attrValue = attrValue,
   };
 }
 
-void DwarfLineNumberVM::init() {
+} // namespace
+
+bool DwarfLineNumberVM::init() {
   version_ = read<uint16_t>(data_);
-  FOLLY_SAFE_CHECK(
-      version_ >= 2 && version_ <= 5,
-      "invalid version in line number VM: ",
-      version_);
+  if (version_ < 2 || version_ > 5) {
+    FOLLY_SAFE_DFATAL("invalid version in line number VM: ", version_);
+    return false;
+  }
   if (version_ == 5) {
     auto addressSize = read<uint8_t>(data_);
-    FOLLY_SAFE_CHECK(
-        addressSize == sizeof(uintptr_t),
-        "Unexpected Line Number Table address_size: ",
-        addressSize);
+    if (addressSize != sizeof(uintptr_t)) {
+      FOLLY_SAFE_DFATAL(
+          "Unexpected Line Number Table address_size: ", addressSize);
+      return false;
+    }
     auto segment_selector_size = read<uint8_t>(data_);
-    FOLLY_SAFE_CHECK(segment_selector_size == 0, "Segments not supported");
+    if (segment_selector_size != 0) {
+      FOLLY_SAFE_DFATAL("Segments not supported");
+      return false;
+    }
   }
   uint64_t headerLength = readOffset(data_, is64Bit_);
-  FOLLY_SAFE_CHECK(
-      headerLength <= data_.size(),
-      "invalid line number VM header length: headerLength: ",
-      headerLength,
-      " data_.size(): ",
-      data_.size());
+  if (headerLength > data_.size()) {
+    FOLLY_SAFE_DFATAL(
+        "invalid line number VM header length: headerLength: ",
+        headerLength,
+        " data_.size(): ",
+        data_.size());
+    return false;
+  }
+
   folly::StringPiece header(data_.data(), headerLength);
   data_.assign(header.end(), data_.end());
 
   minLength_ = read<uint8_t>(header);
   if (version_ >= 4) { // Version 2 and 3 records don't have this
     uint8_t maxOpsPerInstruction = read<uint8_t>(header);
-    FOLLY_SAFE_CHECK(maxOpsPerInstruction == 1, "VLIW not supported");
+    if (maxOpsPerInstruction != 1) {
+      FOLLY_SAFE_DFATAL("VLIW not supported");
+      return false;
+    }
   }
   defaultIsStmt_ = read<uint8_t>(header);
   lineBase_ = read<int8_t>(header); // yes, signed
   lineRange_ = read<uint8_t>(header);
   opcodeBase_ = read<uint8_t>(header);
-  FOLLY_SAFE_CHECK(opcodeBase_ != 0, "invalid opcode base");
+  if (opcodeBase_ == 0) {
+    FOLLY_SAFE_DFATAL("invalid opcode base");
+    return false;
+  }
   standardOpcodeLengths_ = reinterpret_cast<const uint8_t*>(header.data());
   header.advance(opcodeBase_ - 1);
 
@@ -249,12 +274,14 @@ void DwarfLineNumberVM::init() {
     for (uint64_t i = 0; i < v5_.directoriesCount; i++) {
       folly::StringPiece format = v5_.directoryEntryFormat;
       for (uint8_t f = 0; f < v5_.directoryEntryFormatCount; f++) {
-        readLineNumberAttribute(
-            is64Bit_,
-            format,
-            header,
-            debugSections_.debugStr,
-            debugSections_.debugLineStr);
+        if (!readLineNumberAttribute(
+                is64Bit_,
+                format,
+                header,
+                debugSections_.debugStr,
+                debugSections_.debugLineStr)) {
+          return false;
+        }
       }
     }
     v5_.directories.assign(tmp, header.data());
@@ -273,16 +300,19 @@ void DwarfLineNumberVM::init() {
     for (uint64_t i = 0; i < v5_.fileNamesCount; i++) {
       folly::StringPiece format = v5_.fileNameEntryFormat;
       for (uint8_t f = 0; f < v5_.fileNameEntryFormatCount; f++) {
-        readLineNumberAttribute(
-            is64Bit_,
-            format,
-            header,
-            debugSections_.debugStr,
-            debugSections_.debugLineStr);
+        if (!readLineNumberAttribute(
+                is64Bit_,
+                format,
+                header,
+                debugSections_.debugStr,
+                debugSections_.debugLineStr)) {
+          return false;
+        }
       }
     }
     v5_.fileNames.assign(tmp, header.data());
   }
+  return true;
 }
 
 bool DwarfLineNumberVM::next(folly::StringPiece& program) {
@@ -296,9 +326,15 @@ bool DwarfLineNumberVM::next(folly::StringPiece& program) {
 
 DwarfLineNumberVM::FileName DwarfLineNumberVM::getFileName(
     uint64_t index) const {
+  FileName fn;
+  if (!initializationSuccess_) {
+    return fn;
+  }
   if (version_ <= 4) {
-    FOLLY_SAFE_CHECK(index != 0, "invalid file index 0");
-    FileName fn;
+    if (index == 0) {
+      FOLLY_SAFE_DFATAL("invalid file index 0");
+      return fn;
+    }
     if (index <= v4_.fileNameCount) {
       folly::StringPiece fileNames = v4_.fileNames;
       for (; index; --index) {
@@ -313,13 +349,23 @@ DwarfLineNumberVM::FileName DwarfLineNumberVM::getFileName(
 
     folly::StringPiece program = data_;
     for (; index; --index) {
-      FOLLY_SAFE_CHECK(nextDefineFile(program, fn), "invalid file index");
+      if (!nextDefineFile(program, fn)) {
+        FOLLY_SAFE_DFATAL("invalid file index: ", index);
+        return fn;
+      }
     }
 
     return fn;
   } else {
-    FileName fn;
-    FOLLY_SAFE_CHECK(index < v5_.fileNamesCount, "invalid file index");
+    if (index >= v5_.fileNamesCount) {
+      FOLLY_SAFE_DFATAL(
+          "invalid file index: ",
+          index,
+          " v5_.fileNamesCount: ",
+          v5_.fileNamesCount);
+      return fn;
+    }
+
     folly::StringPiece fileNames = v5_.fileNames;
     for (uint64_t i = 0; i < v5_.fileNamesCount; i++) {
       folly::StringPiece format = v5_.fileNameEntryFormat;
@@ -330,13 +376,16 @@ DwarfLineNumberVM::FileName DwarfLineNumberVM::getFileName(
             fileNames,
             debugSections_.debugStr,
             debugSections_.debugLineStr);
+        if (!attr) {
+          return fn;
+        }
         if (i == index) {
-          switch (attr.contentTypeCode) {
+          switch (attr->contentTypeCode) {
             case DW_LNCT_path:
-              fn.relativeName = boost::get<folly::StringPiece>(attr.attrValue);
+              fn.relativeName = boost::get<folly::StringPiece>(attr->attrValue);
               break;
             case DW_LNCT_directory_index:
-              fn.directoryIndex = boost::get<uint64_t>(attr.attrValue);
+              fn.directoryIndex = boost::get<uint64_t>(attr->attrValue);
               break;
           }
         }
@@ -354,24 +403,39 @@ folly::StringPiece DwarfLineNumberVM::getIncludeDirectory(
       // directories field and a directory index of 0 implicitly referred to
       // that directory as found in the DW_AT_comp_dir attribute of the
       // compilation unit debugging information entry.
-      return folly::StringPiece();
+      return {};
     }
 
-    FOLLY_SAFE_CHECK(
-        index <= v4_.includeDirectoryCount, "invalid include directory");
+    if (index > v4_.includeDirectoryCount) {
+      FOLLY_SAFE_DFATAL(
+          "invalid include directory: index: ",
+          index,
+          " v4_.includeDirectoryCount: ",
+          v4_.includeDirectoryCount);
+      return {};
+    }
 
     folly::StringPiece includeDirectories = v4_.includeDirectories;
     folly::StringPiece dir;
     for (; index; --index) {
       dir = readNullTerminated(includeDirectories);
       if (dir.empty()) {
-        abort(); // BUG
+        FOLLY_SAFE_DFATAL(
+            "Unexpected empty null-terminated directory name: index: ", index);
+        return {};
       }
     }
 
     return dir;
   } else {
-    FOLLY_SAFE_CHECK(index < v5_.directoriesCount, "invalid file index");
+    if (index >= v5_.directoriesCount) {
+      FOLLY_SAFE_DFATAL(
+          "invalid file index: index: ",
+          index,
+          " v5_.directoriesCount: ",
+          v5_.directoriesCount);
+      return {};
+    }
     folly::StringPiece directories = v5_.directories;
     for (uint64_t i = 0; i < v5_.directoriesCount; i++) {
       folly::StringPiece format = v5_.directoryEntryFormat;
@@ -382,8 +446,11 @@ folly::StringPiece DwarfLineNumberVM::getIncludeDirectory(
             directories,
             debugSections_.debugStr,
             debugSections_.debugLineStr);
-        if (i == index && attr.contentTypeCode == DW_LNCT_path) {
-          return boost::get<folly::StringPiece>(attr.attrValue);
+        if (!attr) {
+          return {};
+        }
+        if (i == index && attr->contentTypeCode == DW_LNCT_path) {
+          return boost::get<folly::StringPiece>(attr->attrValue);
         }
       }
     }
@@ -427,15 +494,22 @@ bool DwarfLineNumberVM::nextDefineFile(
     // Extended opcode
     auto length = readULEB(program);
     // the opcode itself should be included in the length, so length >= 1
-    FOLLY_SAFE_CHECK(length != 0, "invalid extended opcode length");
+    if (length == 0) {
+      FOLLY_SAFE_DFATAL("unexpected extended opcode length = 0");
+      return false;
+    }
     read<uint8_t>(program); // extended opcode
     --length;
 
     if (opcode == DW_LNE_define_file) {
-      FOLLY_SAFE_CHECK(version_ < 5, "DW_LNE_define_file deprecated in DWARF5");
-      FOLLY_SAFE_CHECK(
-          readFileName(program, fn),
-          "invalid empty file in DW_LNE_define_file");
+      if (version_ == 5) {
+        FOLLY_SAFE_DFATAL("DW_LNE_define_file deprecated in DWARF5");
+        return false;
+      }
+      if (!readFileName(program, fn)) {
+        FOLLY_SAFE_DFATAL("invalid empty file in DW_LNE_define_file");
+        return false;
+      }
       return true;
     }
 
@@ -530,7 +604,10 @@ DwarfLineNumberVM::StepResult DwarfLineNumberVM::step(
   // Extended opcode
   auto length = readULEB(program);
   // the opcode itself should be included in the length, so length >= 1
-  FOLLY_SAFE_CHECK(length != 0, "invalid extended opcode length");
+  if (length == 0) {
+    FOLLY_SAFE_DFATAL("unexpected extended opcode length = 0");
+    return END;
+  }
   auto extendedOpcode = read<uint8_t>(program);
   --length;
 
@@ -541,7 +618,10 @@ DwarfLineNumberVM::StepResult DwarfLineNumberVM::step(
       address_ = read<uintptr_t>(program);
       return CONTINUE;
     case DW_LNE_define_file:
-      FOLLY_SAFE_CHECK(version_ < 5, "DW_LNE_define_file deprecated in DWARF5");
+      if (version_ == 5) {
+        FOLLY_SAFE_DFATAL("DW_LNE_define_file deprecated in DWARF5");
+        return END;
+      }
       // We can't process DW_LNE_define_file here, as it would require us to
       // use unbounded amounts of state (ie. use the heap).  We'll do a second
       // pass (using nextDefineFile()) if necessary.
@@ -571,6 +651,9 @@ Path DwarfLineNumberVM::getFullFileName(uint64_t index) const {
 
 bool DwarfLineNumberVM::findAddress(
     uintptr_t target, Path& file, uint64_t& line) {
+  if (!initializationSuccess_) {
+    return false;
+  }
   folly::StringPiece program = data_;
 
   // Within each sequence of instructions, the address may only increase.

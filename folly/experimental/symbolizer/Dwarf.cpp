@@ -64,15 +64,6 @@ Dwarf::Dwarf(ElfCacheBase* elfCache, const ElfFile* elf)
 
 namespace {
 
-// Skip over padding until sp.data() - start is a multiple of alignment
-void skipPadding(folly::StringPiece& sp, const char* start, size_t alignment) {
-  size_t remainder = (sp.data() - start) % alignment;
-  if (remainder) {
-    FOLLY_SAFE_CHECK(alignment - remainder <= sp.size(), "invalid padding");
-    sp.advance(alignment - remainder);
-  }
-}
-
 /**
  * Find @address in .debug_aranges and return the offset in
  * .debug_info for compilation unit to which this address belongs.
@@ -83,18 +74,44 @@ bool findDebugInfoOffset(
   folly::StringPiece chunk;
   while (section.next(chunk)) {
     auto version = read<uint16_t>(chunk);
-    FOLLY_SAFE_CHECK(version == 2, "invalid aranges version");
+    if (version != 2) {
+      FOLLY_SAFE_DFATAL("invalid aranges version: ", version);
+      return false;
+    }
 
     offset = readOffset(chunk, section.is64Bit());
     auto addressSize = read<uint8_t>(chunk);
-    FOLLY_SAFE_CHECK(addressSize == sizeof(uintptr_t), "invalid address size");
+    if (addressSize != sizeof(uintptr_t)) {
+      FOLLY_SAFE_DFATAL("invalid address size: ", addressSize);
+      return false;
+    }
     auto segmentSize = read<uint8_t>(chunk);
-    FOLLY_SAFE_CHECK(segmentSize == 0, "segmented architecture not supported");
+    if (segmentSize != 0) {
+      FOLLY_SAFE_DFATAL("segmented architecture not supported: ", segmentSize);
+      return false;
+    }
 
     // Padded to a multiple of 2 addresses.
     // Strangely enough, this is the only place in the DWARF spec that requires
     // padding.
-    skipPadding(chunk, aranges.data(), 2 * sizeof(uintptr_t));
+    {
+      size_t alignment = 2 * sizeof(uintptr_t);
+      size_t remainder = (chunk.data() - aranges.data()) % alignment;
+      if (remainder != 0) {
+        if (alignment - remainder > chunk.size()) {
+          FOLLY_SAFE_DFATAL(
+              "invalid padding: alignment: ",
+              alignment,
+              " remainder: ",
+              remainder,
+              " chunk.size(): ",
+              chunk.size());
+          return false;
+        }
+        chunk.advance(alignment - remainder);
+      }
+    }
+
     for (;;) {
       auto start = read<uintptr_t>(chunk);
       auto length = read<uintptr_t>(chunk);

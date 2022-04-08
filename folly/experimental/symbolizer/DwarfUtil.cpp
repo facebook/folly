@@ -149,7 +149,10 @@ bool readAbbreviation(folly::StringPiece& section, DIEAbbreviation& abbr) {
   // attributes
   const char* attributeBegin = section.data();
   for (;;) {
-    FOLLY_SAFE_CHECK(!section.empty(), "invalid attribute section");
+    if (section.empty()) {
+      FOLLY_SAFE_DFATAL("invalid attribute section");
+      return false;
+    }
     auto spec = readAttributeSpec(section);
     if (!spec) {
       break;
@@ -173,7 +176,8 @@ DIEAbbreviation getAbbreviation(
     }
   }
 
-  FOLLY_SAFE_CHECK(false, "could not find abbreviation code");
+  FOLLY_SAFE_DFATAL("could not find abbreviation code");
+  return {};
 }
 
 // Parse compilation unit info, abbrev and str_offsets offset from
@@ -260,12 +264,19 @@ bool parseCompilationUnitMetadata(CompilationUnit& cu, size_t offset) {
   auto initialLength = read<uint32_t>(chunk);
   cu.is64Bit = (initialLength == uint32_t(-1));
   cu.size = cu.is64Bit ? read<uint64_t>(chunk) : initialLength;
-  FOLLY_SAFE_CHECK(cu.size <= chunk.size(), "invalid chunk size");
+  if (cu.size > chunk.size()) {
+    FOLLY_SAFE_DFATAL(
+        "invalid size: ", cu.size, " chunk.size(): ", chunk.size());
+    return false;
+  }
   cu.size += cu.is64Bit ? 12 : 4;
 
   // 2) version
   cu.version = read<uint16_t>(chunk);
-  FOLLY_SAFE_CHECK(cu.version >= 2 && cu.version <= 5, "invalid info version");
+  if (cu.version < 2 || cu.version > 5) {
+    FOLLY_SAFE_DFATAL("invalid info version: ", cu.version);
+    return false;
+  }
 
   if (cu.version == 5) {
     // DWARF5: 7.5.1.1 Full and Partial Compilation Unit Headers
@@ -277,7 +288,10 @@ bool parseCompilationUnitMetadata(CompilationUnit& cu, size_t offset) {
     }
     // 4) address_size
     cu.addrSize = read<uint8_t>(chunk);
-    FOLLY_SAFE_CHECK(cu.addrSize == sizeof(uintptr_t), "invalid address size");
+    if (cu.addrSize != sizeof(uintptr_t)) {
+      FOLLY_SAFE_DFATAL("invalid address size: ", cu.addrSize);
+      return false;
+    }
 
     // 5) debug_abbrev_offset
     // This can be already set in from .debug_cu_index if dwp file is used.
@@ -301,7 +315,10 @@ bool parseCompilationUnitMetadata(CompilationUnit& cu, size_t offset) {
     }
     // 4) address_size
     cu.addrSize = read<uint8_t>(chunk);
-    FOLLY_SAFE_CHECK(cu.addrSize == sizeof(uintptr_t), "invalid address size");
+    if (cu.addrSize != sizeof(uintptr_t)) {
+      FOLLY_SAFE_DFATAL("invalid address size: ", cu.addrSize);
+      return false;
+    }
   }
   cu.firstDie = chunk.data() - debugInfo.data();
   Die die = getDieAtOffset(cu, cu.firstDie);
@@ -672,11 +689,13 @@ Attribute readAttribute(
     case DW_FORM_ref_sup4:
     case DW_FORM_ref_sup8:
     case DW_FORM_strp_sup:
-      FOLLY_SAFE_CHECK(
-          false, "Unexpected DWARF5 supplimentary object files: ", spec.form);
+      FOLLY_SAFE_DFATAL(
+          "Unexpected DWARF5 supplimentary object files: ", spec.form);
+      return {spec, die, 0};
 
     default:
-      FOLLY_SAFE_CHECK(false, "invalid attribute form: ", spec.form);
+      FOLLY_SAFE_DFATAL("invalid attribute form: ", spec.form);
+      return {spec, die, 0};
   }
   return {spec, die, 0};
 }
