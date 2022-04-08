@@ -42,6 +42,7 @@ class CpuId {
   // statically linked binaries which don't depend on the PLT)
   FOLLY_ALWAYS_INLINE CpuId() {
 #if defined(_MSC_VER) && (FOLLY_X64 || defined(_M_IX86))
+#if !defined(__clang__)
     int reg[4];
     __cpuid(static_cast<int*>(reg), 0);
     const int n = reg[0];
@@ -55,6 +56,40 @@ class CpuId {
       f7b_ = uint32_t(reg[1]);
       f7c_ = uint32_t(reg[2]);
     }
+#else
+    // Clang compiler has a bug (fixed in https://reviews.llvm.org/D101338) in
+    // which the `__cpuid` intrinsic does not save and restore `rbx` as it needs
+    // to due to being a reserved register. So in that case, do the `cpuid`
+    // ourselves. Clang supports inline assembly anyway.
+    uint32_t n;
+    __asm__(
+        "pushq %%rbx\n\t"
+        "cpuid\n\t"
+        "popq %%rbx\n\t"
+        : "=a"(n)
+        : "a"(0)
+        : "rcx", "rdx");
+    if (n >= 1) {
+      uint32_t f1a;
+      __asm__(
+          "pushq %%rbx\n\t"
+          "cpuid\n\t"
+          "popq %%rbx\n\t"
+          : "=a"(f1a), "=c"(f1c_), "=d"(f1d_)
+          : "a"(1)
+          :);
+    }
+    if (n >= 7) {
+      __asm__(
+          "pushq %%rbx\n\t"
+          "cpuid\n\t"
+          "movq %%rbx, %%rax\n\t"
+          "popq %%rbx"
+          : "=a"(f7b_), "=c"(f7c_)
+          : "a"(7), "c"(0)
+          : "rdx");
+    }
+#endif
 #elif defined(__i386__) && defined(__PIC__) && !defined(__clang__) && \
     defined(__GNUC__)
     // The following block like the normal cpuid branch below, but gcc
