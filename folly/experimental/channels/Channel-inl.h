@@ -40,6 +40,11 @@ bool receiverWait(
 }
 
 template <typename TValue>
+detail::IChannelCallback* cancelReceiverWait(Receiver<TValue>& receiver) {
+  return receiver.bridge_->cancelReceiverWait();
+}
+
+template <typename TValue>
 std::optional<folly::Try<TValue>> receiverGetValue(Receiver<TValue>& receiver) {
   if (receiver.buffer_.empty()) {
     receiver.buffer_ = receiver.bridge_->receiverGetValues();
@@ -64,9 +69,13 @@ receiverUnbuffer(Receiver<TValue>&& receiver) {
 template <typename TValue>
 class Receiver<TValue>::Waiter : public detail::IChannelCallback {
  public:
-  Waiter(Receiver<TValue>* receiver, folly::CancellationToken cancelToken)
+  Waiter(
+      Receiver<TValue>* receiver,
+      folly::CancellationToken cancelToken,
+      bool closeOnCancel)
       : state_(State{.receiver = receiver}),
-        cancelCallback_(makeCancellationCallback(std::move(cancelToken))) {}
+        cancelCallback_(
+            makeCancellationCallback(std::move(cancelToken), closeOnCancel)) {}
 
   bool await_ready() const noexcept {
     // We are ready immediately if the receiver is either cancelled or closed.
@@ -105,18 +114,26 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
   };
 
   std::unique_ptr<folly::CancellationCallback> makeCancellationCallback(
-      folly::CancellationToken cancelToken) {
+      folly::CancellationToken cancelToken, bool closeOnCancel) {
     if (!cancelToken.canBeCancelled()) {
       return nullptr;
     }
     return std::make_unique<folly::CancellationCallback>(
-        std::move(cancelToken), [this] {
+        std::move(cancelToken), [this, closeOnCancel] {
           auto receiver = state_.withWLock([&](State& state) {
             state.cancelled = true;
             return std::exchange(state.receiver, nullptr);
           });
-          if (receiver) {
+          if (!receiver) {
+            return;
+          }
+          if (closeOnCancel) {
             std::move(*receiver).cancel();
+          } else {
+            auto* callback = detail::cancelReceiverWait(*receiver);
+            if (callback) {
+              callback->canceled(nullptr);
+            }
           }
         });
   }
@@ -161,11 +178,17 @@ struct Receiver<TValue>::NextSemiAwaitable {
  public:
   explicit NextSemiAwaitable(
       Receiver<TValue>* receiver,
+      bool closeOnCancel,
       std::optional<folly::CancellationToken> cancelToken = std::nullopt)
-      : receiver_(receiver), cancelToken_(std::move(cancelToken)) {}
+      : receiver_(receiver),
+        closeOnCancel_(closeOnCancel),
+        cancelToken_(std::move(cancelToken)) {}
 
   [[nodiscard]] Waiter operator co_await() {
-    return Waiter(receiver_, cancelToken_.value_or(folly::CancellationToken()));
+    return Waiter(
+        receiver_,
+        cancelToken_.value_or(folly::CancellationToken()),
+        closeOnCancel_);
   }
 
   friend NextSemiAwaitable co_withCancellation(
@@ -173,11 +196,13 @@ struct Receiver<TValue>::NextSemiAwaitable {
     if (awaitable.cancelToken_.has_value()) {
       return std::move(awaitable);
     }
-    return NextSemiAwaitable(awaitable.receiver_, std::move(cancelToken));
+    return NextSemiAwaitable(
+        awaitable.receiver_, awaitable.closeOnCancel_, std::move(cancelToken));
   }
 
  private:
   Receiver<TValue>* receiver_;
+  bool closeOnCancel_;
   std::optional<folly::CancellationToken> cancelToken_;
 };
 } // namespace channels
