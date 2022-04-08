@@ -22,7 +22,6 @@ double-conversion
 fmt
 lz4
 snappy
-xz
 zstd
 # no openssl or zlib in the linux case, why?
 # these are usually installed on the system
@@ -42,6 +41,11 @@ openssl
 [dependencies.os=windows]
 openssl
 zlib
+
+# xz depends on autoconf which does not build on 
+# Windows
+[dependencies.not(os=windows)]
+xz
 
 [shipit.pathmap]
 fbcode/folly/public_tld = .
