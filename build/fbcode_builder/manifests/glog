@@ -2,12 +2,12 @@
 name = glog
 
 [download]
-url = https://github.com/google/glog/archive/v0.4.0.tar.gz
-sha256 = f28359aeba12f30d73d9e4711ef356dc842886968112162bc73002645139c39c
+url = https://github.com/google/glog/archive/v0.5.0.tar.gz
+sha256 = eede71f28371bf39aa69b45de23b329d37214016e2055269b3b5e7cfd40b59f5
 
 [build]
 builder = cmake
-subdir = glog-0.4.0
+subdir = glog-0.5.0
 
 [dependencies]
 gflags
@@ -15,6 +15,7 @@ gflags
 [cmake.defines]
 BUILD_SHARED_LIBS=ON
 BUILD_TESTING=NO
+WITH_PKGCONFIG=ON
 
 [cmake.defines.os=freebsd]
 HAVE_TR1_UNORDERED_MAP=OFF
