@@ -1124,7 +1124,7 @@ class OpenNSABuilder(NopBuilder):
             build_opts, ctx, manifest, src_dir, inst_dir
         )
 
-    def build(self, install_dirs, reconfigure) -> None:
+    def build(self, install_dirs, reconfigure: bool) -> None:
         env = self._compute_env(install_dirs)
         self._run_cmd(["git", "lfs", "install", "--local"], cwd=self.src_dir, env=env)
         self._run_cmd(["git", "lfs", "pull"], cwd=self.src_dir, env=env)
