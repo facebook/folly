@@ -1737,6 +1737,18 @@ TEST(FiberManager, semaphore) {
   static constexpr size_t kNumThreads = 16;
 
   Semaphore sem(kNumTokens);
+  EXPECT_EQ(sem.getCapacity(), kNumTokens);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens);
+
+  sem.wait();
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens - 1);
+  sem.wait();
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens - 2);
+
+  sem.signal();
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens - 1);
+  sem.signal();
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens);
 
   struct Worker {
     explicit Worker(Semaphore& s) : sem(s), t([&] { run(); }) {}
@@ -1806,6 +1818,9 @@ TEST(FiberManager, semaphore) {
   for (auto& worker : workers) {
     EXPECT_EQ(0, worker.counter);
   }
+
+  EXPECT_EQ(sem.getCapacity(), kNumTokens);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens);
 }
 
 TEST(FiberManager, batchSemaphore) {
@@ -1815,6 +1830,18 @@ TEST(FiberManager, batchSemaphore) {
   static constexpr size_t kNumThreads = 16;
 
   BatchSemaphore sem(kNumTokens);
+  EXPECT_EQ(sem.getCapacity(), kNumTokens);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens);
+
+  sem.wait(20);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens - 20);
+  sem.wait(30);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens - 20 - 30);
+
+  sem.signal(30);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens - 20);
+  sem.signal(20);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens);
 
   struct Worker {
     explicit Worker(BatchSemaphore& s) : sem(s), t([&] { run(); }) {}
@@ -1883,6 +1910,9 @@ TEST(FiberManager, batchSemaphore) {
   for (auto& worker : workers) {
     EXPECT_EQ(0, worker.counter);
   }
+
+  EXPECT_EQ(sem.getCapacity(), kNumTokens);
+  EXPECT_EQ(sem.getAvailableTokens(), kNumTokens);
 }
 
 /**

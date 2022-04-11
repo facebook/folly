@@ -230,5 +230,9 @@ size_t Semaphore::getCapacity() const {
   return capacity_;
 }
 
+size_t Semaphore::getAvailableTokens() const {
+  return tokens_.load(std::memory_order_relaxed);
+}
+
 } // namespace fibers
 } // namespace folly

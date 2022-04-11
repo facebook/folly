@@ -57,6 +57,8 @@ class SemaphoreBase {
 
   size_t getCapacity() const;
 
+  size_t getAvailableTokens() const;
+
  protected:
   /*
    * Wait for request capacity in the semaphore.

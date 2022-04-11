@@ -105,6 +105,8 @@ class Semaphore {
 
   size_t getCapacity() const;
 
+  size_t getAvailableTokens() const;
+
  private:
   bool waitSlow(Waiter& waiter);
   bool signalSlow();
