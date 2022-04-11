@@ -1336,6 +1336,8 @@ class AsyncSocket : public AsyncTransport {
     }
   }
 
+  void drainErrorQueue() noexcept;
+
   // event notification methods
   void ioReady(uint16_t events) noexcept;
   virtual void checkForImmediateRead() noexcept;
