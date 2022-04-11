@@ -15,11 +15,7 @@ zlib-static
 url = http://zlib.net/zlib-1.2.12.tar.gz
 sha256 = 91844808532e5ce316b3c010929493c0244f3d37593afd6de04f71821d5136d9
 
-[build.os=windows]
+[build]
 builder = cmake
 subdir = zlib-1.2.12
-
-# Every platform but windows ships with zlib, so just skip
-# building on not(windows)
-[build.not(os=windows)]
-builder = nop
+patchfile = zlib_dont_build_more_than_needed.patch
