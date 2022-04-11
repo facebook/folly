@@ -33,6 +33,7 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseThread.h>
+#include <folly/io/async/SSLOptions.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
@@ -1327,6 +1328,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloTwoPackets) {
 TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
   EventBase eventBase;
   auto ctx = std::make_shared<SSLContext>();
+  ctx->setSupportedGroups(std::vector<std::string>({"P-256"}));
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -3187,6 +3189,76 @@ TEST(AsyncSSLSocketTest, TestNullConnectCallbackError) {
 
   EXPECT_FALSE(server.handshakeSuccess_);
 }
+
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+TEST(AsyncSSLSocketTest, TestSSLSetClientOptionsP256) {
+  EventBase evb;
+  std::array<NetworkSocket, 2> fds;
+  getfds(fds.data());
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->setSupportedGroups(std::vector<std::string>({"P-256"}));
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(kTestKey);
+  ssl::SSLCommonOptions::setClientOptions(*clientCtx);
+
+  auto clientSocket =
+      AsyncSSLSocket::newSocket(clientCtx, &evb, fds[0], false, true);
+  std::shared_ptr<AsyncSSLSocket> serverSocket =
+      AsyncSSLSocket::newSocket(serverCtx, &evb, fds[1], true, true);
+
+  ReadCallbackTerminator readCallback(&evb, nullptr);
+  serverSocket->setReadCB(&readCallback);
+  readCallback.setSocket(serverSocket);
+  serverSocket->sslAccept(nullptr);
+  clientSocket->sslConn(nullptr);
+
+  uint8_t buf[128];
+  memset(buf, 'a', sizeof(buf));
+  clientSocket->write(nullptr, buf, sizeof(buf));
+
+  EventBaseAborter eba(&evb, 3000);
+
+  evb.loop();
+
+  auto sharedGroupName = serverSocket->getNegotiatedGroup();
+  EXPECT_THAT(sharedGroupName, testing::HasSubstr("prime256v1"));
+}
+
+TEST(AsyncSSLSocketTest, TestSSLSetClientOptionsX25519) {
+  EventBase evb;
+  std::array<NetworkSocket, 2> fds;
+  getfds(fds.data());
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->setSupportedGroups(std::vector<std::string>({"X25519", "P-256"}));
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(kTestKey);
+  ssl::SSLCommonOptions::setClientOptions(*clientCtx);
+
+  auto clientSocket =
+      AsyncSSLSocket::newSocket(clientCtx, &evb, fds[0], false, true);
+  std::shared_ptr<AsyncSSLSocket> serverSocket =
+      AsyncSSLSocket::newSocket(serverCtx, &evb, fds[1], true, true);
+
+  ReadCallbackTerminator readCallback(&evb, nullptr);
+  serverSocket->setReadCB(&readCallback);
+  readCallback.setSocket(serverSocket);
+  serverSocket->sslAccept(nullptr);
+  clientSocket->sslConn(nullptr);
+
+  uint8_t buf[128];
+  memset(buf, 'a', sizeof(buf));
+  clientSocket->write(nullptr, buf, sizeof(buf));
+
+  EventBaseAborter eba(&evb, 3000);
+
+  evb.loop();
+
+  auto sharedGroupName = serverSocket->getNegotiatedGroup();
+  EXPECT_THAT(sharedGroupName, testing::HasSubstr("X25519"));
+}
+#endif
 
 /**
  * Test overriding the flags passed to "sendmsg()" system call,

@@ -243,6 +243,8 @@ class SSLContext {
    */
   void setClientECCurvesList(const std::vector<std::string>& ecCurves);
 
+  void setSupportedGroups(const std::vector<std::string>& groups);
+
   /**
    * Method to add support for a specific elliptic curve encryption algorithm.
    *

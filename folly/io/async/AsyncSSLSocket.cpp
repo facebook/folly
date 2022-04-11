@@ -1310,6 +1310,16 @@ void AsyncSSLSocket::handleAccept() noexcept {
       });
 }
 
+const char* AsyncSSLSocket::getNegotiatedGroup() const {
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+  auto nid = SSL_get_shared_group(const_cast<SSL*>(this->getSSL()), 0);
+  const char* longname = OBJ_nid2ln((int)nid);
+  return longname;
+#else
+  return nullptr;
+#endif
+}
+
 void AsyncSSLSocket::handleReturnFromSSLAccept(int ret) {
   if (sslState_ != STATE_ACCEPTING) {
     return;

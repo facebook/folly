@@ -28,6 +28,13 @@ void logDfatal(std::exception const&);
 
 struct SSLOptionsCompatibility {
   /**
+   * The group list for this options configuration.
+   **/
+  static constexpr auto groups() {
+    return folly::make_array("X25519", "P-256", "P-384");
+  }
+
+  /**
    * The cipher list recommended for this options configuration.
    */
   static constexpr auto ciphers() {
@@ -98,6 +105,12 @@ struct SSLOptionsCompatibility {
  * very old clients.
  */
 struct SSLServerOptionsCompatibility {
+  /**
+   * The group list for this options configuration.
+   **/
+  static constexpr auto groups() {
+    return folly::make_array("X25519", "P-256", "P-384");
+  }
   /**
    * The list of ciphers recommended for server use.
    */
@@ -196,6 +209,22 @@ void setCipherSuites(SSLContext& ctx) {
     ctx.setCiphersuitesOrThrow(std::move(ciphersuites));
 #endif
     ctx.setCipherList(TSSLOptions::ciphers());
+  } catch (std::runtime_error const& e) {
+    ssl_options_detail::logDfatal(e);
+  }
+}
+
+/**
+ * Set the groups of ctx to that in TSSLOptions, and print any runtime
+ * error it catches.
+ * @param ctx The SSLContext to apply the desired groups to.
+ */
+template <typename TSSLOptions>
+void setGroups(SSLContext& ctx) {
+  try {
+    const auto& groups_arr = TSSLOptions::groups();
+    ctx.setSupportedGroups(
+        std::vector<std::string>(groups_arr.begin(), groups_arr.end()));
   } catch (std::runtime_error const& e) {
     ssl_options_detail::logDfatal(e);
   }

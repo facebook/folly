@@ -193,6 +193,20 @@ void SSLContext::setClientECCurvesList(
 #endif
 }
 
+void SSLContext::setSupportedGroups(const std::vector<std::string>& groups) {
+  if (groups.empty()) {
+    return;
+  }
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+  std::string groupsList;
+  join(":", groups, groupsList);
+  int rc = SSL_CTX_set1_groups_list(ctx_, groupsList.c_str());
+  if (rc == 0) {
+    throw std::runtime_error("SSL_CTX_set1_curves " + getErrors());
+  }
+#endif
+}
+
 void SSLContext::setServerECCurve(const std::string& curveName) {
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL && !defined(OPENSSL_NO_ECDH)
   EC_KEY* ecdh = nullptr;

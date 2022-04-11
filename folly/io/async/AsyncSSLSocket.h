@@ -873,6 +873,8 @@ class AsyncSSLSocket : public AsyncSocket {
     return false;
   }
 
+  const char* getNegotiatedGroup() const;
+
  private:
   /**
    * Handle the return from invoking SSL_accept

@@ -42,12 +42,7 @@ void SSLCommonOptions::setClientOptions(SSLContext& ctx) {
     LOG(DFATAL) << exceptionStr(e);
   }
 
-  try {
-    ctx.setClientECCurvesList({"P-256", "P-384"});
-  } catch (std::runtime_error const& e) {
-    LOG(DFATAL) << exceptionStr(e);
-  }
-
+  setGroups<SSLCommonOptions>(ctx);
   setCipherSuites<SSLCommonOptions>(ctx);
   setSignatureAlgorithms<SSLCommonOptions>(ctx);
 }
