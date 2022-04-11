@@ -26,6 +26,7 @@ double-conversion
 proxygen
 wangle
 zstd
+zlib
 xz
 
 [shipit.pathmap]
