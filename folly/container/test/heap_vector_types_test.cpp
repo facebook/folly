@@ -916,6 +916,13 @@ TEST(HeapVectorTypes, TestMapCreationFromVector) {
       {5, 3},
   });
   EXPECT_EQ(contents, expected_contents);
+
+  // test very large vector
+  std::vector<std::pair<int, int>> vec2;
+  for (int i = 0; i < 100000; i++)
+    vec2.emplace_back(i, i);
+  heap_vector_map<int, int> vmap2(std::move(vec2));
+  check_invariant(vmap2);
 }
 
 TEST(HeapVectorTypes, TestSetCreationFromSmallVector) {

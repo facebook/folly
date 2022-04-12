@@ -316,11 +316,17 @@ void heapify(Container& cont) {
 
   std::function<void(size_type, size_type)> rotate = [&](size_type next,
                                                          size_type index) {
-    if (index == next)
-      return;
-    rotate(offsets[next], index);
-    cont[offsets[next]] = std::move(cont[next]);
-    offsets[next] = size;
+    std::vector<size_type> worklist;
+    while (index != next) {
+      worklist.push_back(next);
+      next = offsets[next];
+    }
+    while (!worklist.empty()) {
+      auto cur = worklist.back();
+      worklist.pop_back();
+      cont[offsets[cur]] = std::move(cont[cur]);
+      offsets[cur] = size;
+    }
   };
 
   for (size_type index = 0; index < size; index++) {
