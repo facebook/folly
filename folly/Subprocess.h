@@ -93,6 +93,10 @@
 
 #pragma once
 
+#ifdef _WIN32
+#error Subprocess is not supported on Windows.
+#endif
+
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
