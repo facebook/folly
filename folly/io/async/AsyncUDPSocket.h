@@ -344,6 +344,11 @@ class AsyncUDPSocket : public EventHandler {
   virtual void setFreeBind(bool freeBind) { freeBind_ = freeBind; }
 
   /**
+   * Set IP_TRANSPARENT to allow enables transparent proxying on the socket
+   */
+  virtual void setTransparent(bool transparent) { transparent_ = transparent; }
+
+  /**
    * Set reuse port mode to call bind() on the same address multiple times
    */
   virtual void setReusePort(bool reusePort) { reusePort_ = reusePort; }
@@ -562,6 +567,7 @@ class AsyncUDPSocket : public EventHandler {
   bool reuseAddr_{false};
   bool reusePort_{false};
   bool freeBind_{false};
+  bool transparent_{false};
   int rcvBuf_{0};
   int sndBuf_{0};
   int busyPollUs_{0};

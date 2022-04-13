@@ -161,6 +161,26 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
     }
   }
 
+  if (transparent_) {
+    int optname = 0;
+#if defined(IP_TRANSPARENT)
+    optname = IP_TRANSPARENT;
+#endif
+    if (!optname) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "IP_TRANSPARENT is not supported");
+    }
+    // set the socket IP transparent mode
+    int value = 1;
+    if (netops::setsockopt(
+            socket, IPPROTO_IP, optname, &value, sizeof(value)) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to set socket IP transparent mode",
+          errno);
+    }
+  }
+
   if (busyPollUs_ > 0) {
     int optname = 0;
 #if defined(SO_BUSY_POLL)
