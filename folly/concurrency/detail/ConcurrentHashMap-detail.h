@@ -244,7 +244,7 @@ class alignas(64) BucketTable {
   // Slightly higher than 1.0, in case hashing to shards isn't
   // perfectly balanced, reserve(size) will still work without
   // rehashing.
-  static constexpr float kDefaultLoadFactor = 1.05;
+  static constexpr float kDefaultLoadFactor = 1.05f;
   typedef std::pair<const KeyType, ValueType> value_type;
 
   using Node =
@@ -266,7 +266,8 @@ class alignas(64) BucketTable {
          (folly::popcount(max_size_ - 1) + ShardBits <= 32)));
     auto buckets = Buckets::create(initial_buckets, cohort);
     buckets_.store(buckets, std::memory_order_release);
-    load_factor_nodes_ = to_integral(initial_buckets * load_factor_);
+    load_factor_nodes_ =
+        to_integral(static_cast<float>(initial_buckets) * load_factor_);
     bucket_count_.store(initial_buckets, std::memory_order_relaxed);
   }
 
@@ -332,7 +333,8 @@ class alignas(64) BucketTable {
     auto buckets = buckets_.load(std::memory_order_relaxed);
     DCHECK(buckets); // Use-after-destruction by user.
     auto newbuckets = Buckets::create(bucket_count, cohort);
-    load_factor_nodes_ = to_integral(bucket_count * load_factor_);
+    load_factor_nodes_ =
+        to_integral(static_cast<float>(bucket_count) * load_factor_);
     for (size_t i = 0; i < oldcount; i++) {
       auto bucket = &buckets->buckets_[i]();
       auto node = bucket->load(std::memory_order_relaxed);
