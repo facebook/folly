@@ -2394,9 +2394,6 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
     return;
   }
 
-  const auto startRawBytesReceived = getRawBytesReceived();
-  const auto startRawBytesWritten = getRawBytesWritten();
-
   if (relevantEvents == EventHandler::READ) {
     handleRead();
   } else if (relevantEvents == EventHandler::WRITE) {
@@ -2420,29 +2417,6 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
     VLOG(4) << "AsyncSocket::ioRead() called with unexpected events "
             << std::hex << events << "(this=" << this << ")";
     abort();
-  }
-
-  // It is possible that there are messages in the error queue yet
-  // `handleErrMessages()` returns without reading them because no error
-  // message callback is set and byte events are disabled. This could happen
-  // when a write is performed to an AsyncSocket with byte events enabled,
-  // triggers timestamps, and the fd is detached from the AsyncSocket and
-  // attached to a new AsyncSocket before the error messages generated for those
-  // timestamps arrive on the error queue. These `orphan` messages in the error
-  // queue will cause us to spin: `ioReady()` will be repeatedly invoked, but
-  // because we are not reading from the socket error queue, the state will
-  // never be cleared.
-  //
-  // To prevent spinning under such circumstances, we
-  // drain the queue if the read or write handlers did not read or write
-  // anything on an invocation of `ioReady()`. Because these handlers can modify
-  // the event flags, we check these flags again before draining the error
-  // queue.
-
-  if (startRawBytesReceived == getRawBytesReceived() &&
-      startRawBytesWritten == getRawBytesWritten() &&
-      eventFlags_ != EventHandler::NONE && eventFlags_ == events) {
-    drainErrorQueue();
   }
 }
 
@@ -2549,44 +2523,6 @@ void AsyncSocket::prepareReadBuffers(IOBufIovecBuilder::IoVecVec& iovs) {
   readCallback_->getReadBuffers(iovs);
 }
 
-void AsyncSocket::drainErrorQueue() noexcept {
-  VLOG(5) << "AsyncSocket::drainErrorQueue() this=" << this << ", fd=" << fd_
-          << ", state=" << state_;
-
-  if (errMessageCallback_ != nullptr ||
-      (byteEventHelper_ && byteEventHelper_->byteEventsEnabled)) {
-    VLOG(7) << "AsyncSocket::drainErrorQueue(): "
-            << "err message callback installed or "
-            << "ByteEvents enabled - exiting.";
-    return;
-  }
-
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  int ret;
-  while (fd_ != NetworkSocket()) {
-    uint8_t ctrl[1024];
-    unsigned char data;
-    struct msghdr msg;
-    iovec entry;
-
-    entry.iov_base = &data;
-    entry.iov_len = sizeof(data);
-    msg.msg_iov = &entry;
-    msg.msg_iovlen = 1;
-    msg.msg_name = nullptr;
-    msg.msg_namelen = 0;
-    msg.msg_control = ctrl;
-    msg.msg_controllen = sizeof(ctrl);
-    msg.msg_flags = 0;
-
-    ret = netops_->recvmsg(fd_, &msg, MSG_ERRQUEUE);
-    if (ret < 0) {
-      return;
-    }
-  }
-#endif
-}
-
 size_t AsyncSocket::handleErrMessages() noexcept {
   // This method has non-empty implementation only for platforms
   // supporting per-socket error queues.
@@ -2618,8 +2554,7 @@ size_t AsyncSocket::handleErrMessages() noexcept {
 
   int ret;
   size_t num = 0;
-  // the socket may be closed by errMessage callback, so check on each
-  // iteration
+  // the socket may be closed by errMessage callback, so check on each iteration
   while (fd_ != NetworkSocket()) {
     ret = netops_->recvmsg(fd_, &msg, MSG_ERRQUEUE);
     VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
