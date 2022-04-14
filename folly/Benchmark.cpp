@@ -45,6 +45,11 @@ DEFINE_bool(json, false, "Output in JSON format.");
 
 DEFINE_bool(bm_estimate_time, false, "Estimate running time");
 
+DEFINE_bool(
+    bm_profile, false, "Run benchmarks with constant number of iterations");
+
+DEFINE_int64(bm_profile_iters, 1000, "Number of iterations for profiling");
+
 DEFINE_string(
     bm_relative_to,
     "",
@@ -280,6 +285,28 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
 
   return std::make_pair(
       geomeanNsec, trialResults[trialP25 + (trialP75 - trialP25) / 2].second);
+}
+
+static std::pair<double, UserCounters> runProfilingGetNSPerIteration(
+    const BenchmarkFun& fun, const double globalBaseline) {
+  using std::chrono::duration_cast;
+  using std::chrono::high_resolution_clock;
+  using std::chrono::nanoseconds;
+
+  // They key here is accuracy; too low numbers means the accuracy was
+  // coarse. We up the ante until we get to at least minNanoseconds
+  // timings.
+  static_assert(
+      std::is_same<high_resolution_clock::duration, nanoseconds>::value,
+      "High resolution clock must be nanosecond resolution.");
+
+  // This is a very simple measurement with a single epoch
+  // and should be used only for profiling purposes
+  detail::TimeIterData timeIterData = fun(FLAGS_bm_profile_iters);
+
+  auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
+  auto nsecIter = double(nsecs.count()) / timeIterData.niter - globalBaseline;
+  return std::make_pair(nsecIter, std::move(timeIterData.userCounters));
 }
 
 struct ScaleInfo {
@@ -647,9 +674,14 @@ runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
       if (bmRegex && !boost::regex_search(bm.name, *bmRegex)) {
         continue;
       }
-      elapsed = FLAGS_bm_estimate_time
-          ? runBenchmarkGetNSPerIterationEstimate(bm.func, globalBaseline.first)
-          : runBenchmarkGetNSPerIteration(bm.func, globalBaseline.first);
+      if (FLAGS_bm_profile) {
+        elapsed = runProfilingGetNSPerIteration(bm.func, globalBaseline.first);
+      } else {
+        elapsed = FLAGS_bm_estimate_time
+            ? runBenchmarkGetNSPerIterationEstimate(
+                  bm.func, globalBaseline.first)
+            : runBenchmarkGetNSPerIteration(bm.func, globalBaseline.first);
+      }
     }
 
     // if customized user counters is used, it cannot print the result in real
@@ -702,6 +734,11 @@ std::vector<BenchmarkResult> runBenchmarksWithResults() {
 
 void runBenchmarks() {
   CHECK(!benchmarks().empty());
+
+  if (FLAGS_bm_profile) {
+    printf(
+        "WARNING: Running with constant number of iterations. Results might be jittery.\n");
+  }
 
   checkRunMode();
 
