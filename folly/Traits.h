@@ -625,6 +625,27 @@ FOLLY_INLINE_VARIABLE constexpr bool is_transparent_v =
 template <typename T>
 struct is_transparent : bool_constant<is_transparent_v<T>> {};
 
+namespace detail {
+template <typename T>
+using sizeof_t = decltype(sizeof(T));
+} // namespace detail
+
+//  is_complete_v
+//  is_complete
+//
+//  A trait to test if the provided type T is a complete type or not.
+//  See https://en.cppreference.com/w/cpp/language/type.
+//
+//  If is_complete_v<T> is used (possibly cv-ref qualified), then the type T
+//  must always be incomplete. That is, it's not safe to instantiate
+//  is_complete_v<T> on a forward-declared class type T and then again after the
+//  class T is defined. Doing so would be an ODR violation for is_complete_v.
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_complete_v =
+    Disjunction<is_detected<detail::sizeof_t, T>, std::is_function<T>>::value;
+template <typename T>
+struct is_complete : bool_constant<is_complete_v<T>> {};
+
 } // namespace folly
 
 /**

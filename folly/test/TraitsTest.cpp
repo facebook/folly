@@ -343,6 +343,23 @@ TEST(Traits, is_detected_v) {
   EXPECT_FALSE((folly::is_detected_v<detector_find, double, char>));
 }
 
+TEST(Traits, is_complete) {
+  struct Incomplete;
+  struct Complete {};
+  enum FwdDeclaredEnum : int;
+  enum IncompleteEnum { IS_COMPLETE = folly::is_complete_v<IncompleteEnum> };
+
+  EXPECT_TRUE(folly::is_complete_v<Complete>);
+  EXPECT_FALSE(folly::is_complete_v<Incomplete>);
+  EXPECT_TRUE(folly::is_complete_v<FwdDeclaredEnum>);
+  EXPECT_FALSE(IncompleteEnum::IS_COMPLETE);
+  EXPECT_FALSE(folly::is_complete_v<const void>);
+  EXPECT_TRUE(folly::is_complete_v<int[10]>);
+  EXPECT_FALSE(folly::is_complete_v<int[]>);
+  EXPECT_FALSE(folly::is_complete_v<Incomplete[10]>);
+  EXPECT_TRUE(folly::is_complete_v<void()>);
+}
+
 TEST(Traits, aligned_storage_for_t) {
   struct alignas(2) Foo {
     char data[4];
