@@ -230,7 +230,9 @@ class FiberManager : public ::folly::Executor {
    * Does not include the number of remotely enqueued tasks that have not been
    * run yet.
    */
-  size_t numActiveTasks() const noexcept { return fibersActive_; }
+  size_t numActiveTasks() const noexcept {
+    return fibersActive_.load(std::memory_order_relaxed);
+  }
 
   /**
    * @return true if there are tasks ready to run.
@@ -497,7 +499,8 @@ class FiberManager : public ::folly::Executor {
   std::atomic<size_t> fibersAllocated_{0};
   // total number of fibers in the free pool
   std::atomic<size_t> fibersPoolSize_{0};
-  size_t fibersActive_{0}; /**< number of running or blocked fibers */
+  std::atomic<size_t> fibersActive_{
+      0}; /**< number of running or blocked fibers */
   size_t fiberId_{0}; /**< id of last fiber used */
 
   /**
