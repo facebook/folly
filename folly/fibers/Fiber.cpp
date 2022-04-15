@@ -75,6 +75,10 @@ Fiber::Fiber(FiberManager& fiberManager)
       fiberStackLimit_(fiberManager_.stackAllocator_.allocate(fiberStackSize_)),
       fiberImpl_([this] { fiberFunc(); }, fiberStackLimit_, fiberStackSize_) {
   fiberManager_.allFibers_.push_back(*this);
+
+#ifdef FOLLY_SANITIZE_THREAD
+  tsanCtx_ = __tsan_create_fiber(0);
+#endif
 }
 
 void Fiber::init(bool recordStackUsed) {
@@ -110,6 +114,11 @@ Fiber::~Fiber() {
   }
   fiberManager_.unpoisonFiberStack(this);
 #endif
+
+#ifdef FOLLY_SANITIZE_THREAD
+  __tsan_destroy_fiber(tsanCtx_);
+#endif
+
   fiberManager_.stackAllocator_.deallocate(fiberStackLimit_, fiberStackSize_);
 }
 

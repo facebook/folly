@@ -80,7 +80,17 @@ inline void FiberManager::activateFiber(Fiber* fiber) {
 #endif
 
   activeFiber_ = fiber;
+
+#ifdef FOLLY_SANITIZE_THREAD
+  auto tsanCtx = __tsan_get_current_fiber();
+  __tsan_switch_to_fiber(fiber->tsanCtx_, 0);
+#endif
+
   fiber->fiberImpl_.activate();
+
+#ifdef FOLLY_SANITIZE_THREAD
+  __tsan_switch_to_fiber(tsanCtx, 0);
+#endif
 }
 
 inline void FiberManager::deactivateFiber(Fiber* fiber) {

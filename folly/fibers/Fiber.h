@@ -28,6 +28,11 @@
 #include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/io/async/Request.h>
 
+// include after CPortability.h defines this
+#ifdef FOLLY_SANITIZE_THREAD
+#include <sanitizer/tsan_interface.h>
+#endif
+
 namespace folly {
 struct AsyncStackRoot;
 
@@ -129,6 +134,9 @@ class Fiber {
   bool stackFilledWithMagic_{false};
   std::chrono::steady_clock::time_point currStartTime_;
   std::chrono::steady_clock::duration prevDuration_{0};
+#ifdef FOLLY_SANITIZE_THREAD
+  void* tsanCtx_{nullptr};
+#endif
 
   /**
    * Points to next fiber in remote ready list
