@@ -279,18 +279,18 @@ typename Container::difference_type distance(
 // The smallest element (index = 0) of heap container is stored at cont[3] and
 // so on.
 template <typename size_type, typename Offsets>
-size_type getOffsets(
-    size_type size, Offsets& offsets, size_type index, size_type offset = 1) {
-  for (; offset <= size; offset <<= 1) {
-    index = getOffsets(size, offsets, index, 2 * offset + 1) - 1;
-    offsets[index] = offset - 1;
-  }
-  return index;
-}
-
-template <typename size_type, typename Offsets>
 void getOffsets(size_type size, Offsets& offsets) {
-  getOffsets(size, offsets, size);
+  size_type i = 0;
+  size_type offset = 0;
+  size_type index = size;
+  do {
+    for (size_type o = offset; o < size; o = 2 * o + 2) {
+      offsets[i++] = o;
+    }
+    offset = offsets[--i];
+    offsets[--index] = offset;
+    offset = 2 * offset + 1;
+  } while (i || offset < size);
 }
 
 // Inplace conversion of a sorted vector to heap layout
