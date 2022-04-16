@@ -12,14 +12,12 @@ builder = cmake
 
 [build.not(os=linux)]
 # boost.fiber is required and that is not available on macos.
-# libzmq doesn't currently build on windows.
 builder = nop
 
 [dependencies]
 boost
 fb303
 fbthrift
-fbzmq
 folly
 googletest
 re2
