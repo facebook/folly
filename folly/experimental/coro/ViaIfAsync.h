@@ -76,6 +76,10 @@ class ViaCoroutinePromiseBase {
 
  protected:
   void scheduleContinuation() noexcept {
+    // Pass the coroutine's RequestContext to Executor::add(), in case the
+    // Executor implementation wants to know what runs on it (e.g. for stats).
+    RequestContextScopeGuard contextScope{context_};
+
     executor_->add([this]() noexcept { this->executeContinuation(); });
   }
 
