@@ -322,6 +322,7 @@ TEST_F(ObserverContainerTest, CtrObserverNeverAttached) {
 TEST_F(ObserverContainerTest, CtrObserverNeverAttachedWithChecks) {
   auto obj1 = std::make_unique<TestSubject>();
   EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
   EXPECT_THAT(
       obj1->observerCtr
           .findObservers<TestSubject::ObserverContainer::Observer>(),
@@ -337,6 +338,8 @@ TEST_F(ObserverContainerTest, CtrObserverAddRemove) {
 
   auto obj1 = std::make_unique<TestSubject>();
   EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
   EXPECT_THAT(
       obj1->observerCtr
           .findObservers<TestSubject::ObserverContainer::Observer>(),
@@ -350,6 +353,10 @@ TEST_F(ObserverContainerTest, CtrObserverAddRemove) {
 
   EXPECT_EQ(1, obj1->observerCtr.numObservers());
   EXPECT_THAT(
+      obj1->observerCtr.getObservers(), UnorderedElementsAre(observer1.get()));
+  EXPECT_THAT(
+      obj1->observerCtr.findObservers(), UnorderedElementsAre(observer1.get()));
+  EXPECT_THAT(
       obj1->observerCtr
           .findObservers<TestSubject::ObserverContainer::Observer>(),
       UnorderedElementsAre(observer1.get()));
@@ -359,6 +366,8 @@ TEST_F(ObserverContainerTest, CtrObserverAddRemove) {
   obj1->observerCtr.removeObserver(observer1.get());
 
   EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
   EXPECT_THAT(
       obj1->observerCtr
           .findObservers<TestSubject::ObserverContainer::Observer>(),
@@ -1213,7 +1222,7 @@ TEST_F(ObserverContainerTest, CtrInvokeAddRemoveObserverOnInvoke) {
   obj1 = nullptr;
 }
 
-TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
+TEST_F(ObserverContainerTest, CtrGetFindObserversWithDetach) {
   using MockObserver = MockObserver<TestSubject::ObserverContainer>;
   using MockManagedObserver =
       MockManagedObserver<TestSubject::ObserverContainer>;
@@ -1225,6 +1234,7 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
 
   // should be no observers
   EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
   EXPECT_THAT(obj1->observerCtr.findObservers<>(), IsEmpty());
   EXPECT_THAT(
       obj1->observerCtr
@@ -1271,6 +1281,8 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
   addObserver(obs1);
   EXPECT_EQ(1, obj1->observerCtr.numObservers());
   EXPECT_THAT(
+      obj1->observerCtr.getObservers(), UnorderedElementsAre(obs1.get()));
+  EXPECT_THAT(
       obj1->observerCtr.findObservers<>(), UnorderedElementsAre(obs1.get()));
   EXPECT_THAT(
       obj1->observerCtr
@@ -1293,6 +1305,9 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
   auto obs2 = std::make_unique<StrictMock<MockManagedObserver>>();
   addObserver(obs2);
   EXPECT_EQ(2, obj1->observerCtr.numObservers());
+  EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(obs1.get(), obs2.get()));
   EXPECT_THAT(
       obj1->observerCtr.findObservers<>(),
       UnorderedElementsAre(obs1.get(), obs2.get()));
@@ -1319,6 +1334,9 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
   addObserver(obs3);
   EXPECT_EQ(3, obj1->observerCtr.numObservers());
   EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(obs1.get(), obs2.get(), obs3.get()));
+  EXPECT_THAT(
       obj1->observerCtr.findObservers<>(),
       UnorderedElementsAre(obs1.get(), obs2.get(), obs3.get()));
   EXPECT_THAT(
@@ -1344,6 +1362,9 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
   addObserver(obs4);
   EXPECT_EQ(4, obj1->observerCtr.numObservers());
   EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(obs1.get(), obs2.get(), obs3.get(), obs4.get()));
+  EXPECT_THAT(
       obj1->observerCtr.findObservers<>(),
       UnorderedElementsAre(obs1.get(), obs2.get(), obs3.get(), obs4.get()));
   EXPECT_THAT(
@@ -1368,6 +1389,10 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
   auto obs5 = std::make_unique<StrictMock<MockManagedObserver>>();
   addObserver(obs5);
   EXPECT_EQ(5, obj1->observerCtr.numObservers());
+  EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(
+          obs1.get(), obs2.get(), obs3.get(), obs4.get(), obs5.get()));
   EXPECT_THAT(
       obj1->observerCtr.findObservers<>(),
       UnorderedElementsAre(
@@ -1395,6 +1420,15 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
   auto obs6 = std::make_unique<StrictMock<MockManagedObserverSpecialized>>();
   addObserver(obs6);
   EXPECT_EQ(6, obj1->observerCtr.numObservers());
+  EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(
+          obs1.get(),
+          obs2.get(),
+          obs3.get(),
+          obs4.get(),
+          obs5.get(),
+          obs6.get()));
   EXPECT_THAT(
       obj1->observerCtr.findObservers<>(),
       UnorderedElementsAre(
@@ -1435,6 +1469,9 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
   removeObserver(obs4);
   EXPECT_EQ(4, obj1->observerCtr.numObservers());
   EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(obs1.get(), obs2.get(), obs5.get(), obs6.get()));
+  EXPECT_THAT(
       obj1->observerCtr.findObservers<>(),
       UnorderedElementsAre(obs1.get(), obs2.get(), obs5.get(), obs6.get()));
   EXPECT_THAT(
@@ -1463,6 +1500,7 @@ TEST_F(ObserverContainerTest, CtrFindObserversWithDetach) {
 
   // should be no observers
   EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
   EXPECT_THAT(obj1->observerCtr.findObservers<>(), IsEmpty());
   EXPECT_THAT(
       obj1->observerCtr

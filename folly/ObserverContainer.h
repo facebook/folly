@@ -616,6 +616,13 @@ class ObserverContainerBase {
   }
 
   /**
+   * Get all observers.
+   *
+   * @return             List of observers in the container.
+   */
+  std::vector<Observer*> getObservers() { return findObservers<Observer>(); }
+
+  /**
    * Returns if any observer in the container is subscribed to a given event.
    *
    * TODO(bschlinker): The current implementation scans the entire container to
