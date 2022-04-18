@@ -1660,12 +1660,14 @@ TEST_F(ObserverContainerTest, ObserverAttachedThenObjectDestroyed) {
   auto obj1 = std::make_unique<TestSubject>();
   auto observer1 = std::make_unique<StrictMock<MockObserver>>(
       MockObserver::EventSetBuilder().enableAllEvents().build());
+  MockObserver::Safety dc(*observer1.get());
   observer1->useDefaultInvokeMockHandler();
   observer1->useDefaultPostInvokeMockHandler();
 
   EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*observer1, attachedMock(obj1.get()));
   obj1->observerCtr.addObserver(observer1.get());
+  EXPECT_FALSE(dc.destroyed());
 
   EXPECT_CALL(*observer1, specialMock(obj1.get()));
   obj1->doSomethingSpecial();
@@ -1673,6 +1675,66 @@ TEST_F(ObserverContainerTest, ObserverAttachedThenObjectDestroyed) {
   EXPECT_CALL(*observer1, destroyedMock(obj1.get(), _));
   EXPECT_CALL(*observer1, removedFromObserverContainerMock(&obj1->observerCtr));
   obj1 = nullptr;
+  EXPECT_FALSE(dc.destroyed());
+}
+
+TEST_F(ObserverContainerTest, SharedPtrObserverAttachedThenObjectDestroyed) {
+  using MockObserver = MockObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_shared<StrictMock<MockObserver>>(
+      MockObserver::EventSetBuilder().enableAllEvents().build());
+  MockObserver::Safety dc(*observer1.get());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1);
+  EXPECT_FALSE(dc.destroyed());
+
+  EXPECT_CALL(*observer1, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  EXPECT_CALL(*observer1, destroyedMock(obj1.get(), _));
+  EXPECT_CALL(*observer1, removedFromObserverContainerMock(&obj1->observerCtr));
+  obj1 = nullptr;
+  EXPECT_FALSE(dc.destroyed());
+}
+
+TEST_F(
+    ObserverContainerTest,
+    SharedPtrObserverAttachedThenObjectAndObserverDestroyed) {
+  using MockObserver = MockObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_shared<StrictMock<MockObserver>>(
+      MockObserver::EventSetBuilder().enableAllEvents().build());
+  MockObserver::Safety dc(*observer1.get());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1);
+  EXPECT_FALSE(dc.destroyed());
+
+  // now that observer1 is attached, we release shared_ptr but keep raw ptr
+  // since the container holds shared_ptr too, observer should not be destroyed
+  auto observer1Raw = observer1.get();
+  observer1 = nullptr;
+  EXPECT_FALSE(dc.destroyed()); // should still exist
+
+  EXPECT_CALL(*observer1Raw, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  EXPECT_CALL(*observer1Raw, destroyedMock(obj1.get(), _));
+  EXPECT_CALL(
+      *observer1Raw, removedFromObserverContainerMock(&obj1->observerCtr));
+  obj1 = nullptr;
+  EXPECT_TRUE(dc.destroyed()); // destroyed when observer destroyed
 }
 
 TEST_F(ObserverContainerTest, ObserverAttachedThenObserverDetached) {
@@ -2312,53 +2374,53 @@ TEST_F(ObserverContainerStoreTest, AddRemoveSize) {
   Store store;
 
   // add observer 1, then remove
-  TestStoreObserver obs1;
+  auto obs1 = std::make_shared<TestStoreObserver>();
   EXPECT_EQ(0, store.size());
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
 
   // add observer 2, then remove
-  TestStoreObserver obs2;
+  auto obs2 = std::make_shared<TestStoreObserver>();
   EXPECT_EQ(0, store.size());
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.remove(&obs2));
+  EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(0, store.size());
 
   // add observer 1 and 2, then remove
   EXPECT_EQ(0, store.size());
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
-  EXPECT_TRUE(store.remove(&obs2));
+  EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
 }
 
 TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
-  EXPECT_EQ(0, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
-  EXPECT_EQ(0, obs1.getCount()); // sanity check no side effects on getCount()
-  EXPECT_EQ(0, obs2.getCount()); // sanity check no side effects on getCount()
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
+  EXPECT_EQ(0, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
+  EXPECT_EQ(0, obs1->getCount()); // sanity check no side effects on getCount()
+  EXPECT_EQ(0, obs2->getCount()); // sanity check no side effects on getCount()
 
   // add observer 1, invoke, then remove
   EXPECT_EQ(0, store.size());
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
-  EXPECT_EQ(1, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
+  EXPECT_EQ(1, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
 
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
@@ -2366,15 +2428,15 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
 
   // add observer 2, invoke, then remove
   EXPECT_EQ(0, store.size());
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
-  EXPECT_EQ(1, obs1.getCount());
-  EXPECT_EQ(1, obs2.getCount());
+  EXPECT_EQ(1, obs1->getCount());
+  EXPECT_EQ(1, obs2->getCount());
 
-  EXPECT_TRUE(store.remove(&obs2));
+  EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(0, store.size());
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
@@ -2382,31 +2444,31 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_EQ(0, store.size());
 
   // add each observer and invoke, and then do the reverse
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
-  EXPECT_EQ(2, obs1.getCount());
-  EXPECT_EQ(1, obs2.getCount());
+  EXPECT_EQ(2, obs1->getCount());
+  EXPECT_EQ(1, obs2->getCount());
 
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
-  EXPECT_EQ(3, obs1.getCount());
-  EXPECT_EQ(2, obs2.getCount());
+  EXPECT_EQ(3, obs1->getCount());
+  EXPECT_EQ(2, obs2->getCount());
 
-  EXPECT_TRUE(store.remove(&obs2));
+  EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
-  EXPECT_EQ(4, obs1.getCount());
-  EXPECT_EQ(2, obs2.getCount());
+  EXPECT_EQ(4, obs1->getCount());
+  EXPECT_EQ(2, obs2->getCount());
 
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
   store.invokeForEachObserver(
       [](auto observer) { observer->incrementCount(); },
@@ -2415,46 +2477,46 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
 
 TEST_F(ObserverContainerStoreTest, AddRemoveDuplicateAdd) {
   Store store;
-  TestStoreObserver obs1;
+  auto obs1 = std::make_shared<TestStoreObserver>();
 
   EXPECT_EQ(0, store.size());
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
-  EXPECT_FALSE(store.add(&obs1));
+  EXPECT_FALSE(store.add(obs1));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
 }
 
 TEST_F(ObserverContainerStoreTest, AddRemoveDuplicateRemove) {
   Store store;
-  TestStoreObserver obs1;
+  auto obs1 = std::make_shared<TestStoreObserver>();
 
   EXPECT_EQ(0, store.size());
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
-  EXPECT_FALSE(store.remove(&obs1));
+  EXPECT_FALSE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
 }
 
 TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyInvokeAdded) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
-  EXPECT_EQ(0, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
-  EXPECT_EQ(0, obs1.getCount()); // sanity check no side effects on getCount()
-  EXPECT_EQ(0, obs2.getCount()); // sanity check no side effects on getCount()
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
+  EXPECT_EQ(0, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
+  EXPECT_EQ(0, obs1->getCount()); // sanity check no side effects on getCount()
+  EXPECT_EQ(0, obs2->getCount()); // sanity check no side effects on getCount()
 
   // add observer1, then during invoke, try to add observer2
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
-          EXPECT_TRUE(store.add(&obs2)); // add observer 2
+        if (observer == obs1.get()) {
+          EXPECT_TRUE(store.add(obs2)); // add observer 2
         }
         observer->incrementCount();
       },
@@ -2462,32 +2524,32 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyInvokeAdded) {
   EXPECT_EQ(2, store.size());
 
   // both observers should have a count of 1
-  EXPECT_EQ(1, obs1.getCount());
-  EXPECT_EQ(1, obs2.getCount());
+  EXPECT_EQ(1, obs1->getCount());
+  EXPECT_EQ(1, obs2->getCount());
 
   // remove both observers
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.remove(&obs2));
+  EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(0, store.size());
 }
 
 TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyDoNotInvokeAdded) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
-  EXPECT_EQ(0, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
-  EXPECT_EQ(0, obs1.getCount()); // sanity check no side effects on getCount()
-  EXPECT_EQ(0, obs2.getCount()); // sanity check no side effects on getCount()
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
+  EXPECT_EQ(0, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
+  EXPECT_EQ(0, obs1->getCount()); // sanity check no side effects on getCount()
+  EXPECT_EQ(0, obs2->getCount()); // sanity check no side effects on getCount()
 
   // add observer1, then during invoke, try to add observer2
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
-          EXPECT_TRUE(store.add(&obs2)); // add observer 2
+        if (observer == obs1.get()) {
+          EXPECT_TRUE(store.add(obs2)); // add observer 2
         }
         observer->incrementCount();
       },
@@ -2495,29 +2557,29 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyDoNotInvokeAdded) {
   EXPECT_EQ(2, store.size());
 
   // incrementCount should have only been invoked for observer1
-  EXPECT_EQ(1, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
+  EXPECT_EQ(1, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
 
   // remove both observers
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(1, store.size());
-  EXPECT_TRUE(store.remove(&obs2));
+  EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(0, store.size());
 }
 
 TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyCheckNoChange) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
 
   // add observer1, then during invoke, try to add observer2
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
+        if (observer == obs1.get()) {
           // adding observers during iteration isn't allowed; expect exit
-          EXPECT_EXIT(store.add(&obs2), testing::KilledBySignal(SIGABRT), ".*");
+          EXPECT_EXIT(store.add(obs2), testing::KilledBySignal(SIGABRT), ".*");
         }
         observer->incrementCount();
       },
@@ -2526,17 +2588,17 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyCheckNoChange) {
 
 TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyCheckNoAdded) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
 
   // add observer1, then during invoke, try to add observer2
-  EXPECT_TRUE(store.add(&obs1));
+  EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
+        if (observer == obs1.get()) {
           // adding observers during iteration isn't allowed; expect exit
-          EXPECT_EXIT(store.add(&obs2), testing::KilledBySignal(SIGABRT), ".*");
+          EXPECT_EXIT(store.add(obs2), testing::KilledBySignal(SIGABRT), ".*");
         }
         observer->incrementCount();
       },
@@ -2545,21 +2607,21 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyCheckNoAdded) {
 
 TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyInvokeAdded) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
-  EXPECT_EQ(0, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
-  EXPECT_EQ(0, obs1.getCount()); // sanity check no side effects on getCount()
-  EXPECT_EQ(0, obs2.getCount()); // sanity check no side effects on getCount()
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
+  EXPECT_EQ(0, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
+  EXPECT_EQ(0, obs1->getCount()); // sanity check no side effects on getCount()
+  EXPECT_EQ(0, obs2->getCount()); // sanity check no side effects on getCount()
 
   // add observers 1 and 2, then during invoke, remove observer2
-  EXPECT_TRUE(store.add(&obs1));
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs1));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
-          EXPECT_TRUE(store.remove(&obs2)); // remove observer 2
+        if (observer == obs1.get()) {
+          EXPECT_TRUE(store.remove(obs2)); // remove observer 2
         }
         observer->incrementCount();
       },
@@ -2568,31 +2630,31 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyInvokeAdded) {
 
   // incrementCount should have only been invoked for observer1
   // observer2 would have been removed already
-  EXPECT_EQ(1, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
+  EXPECT_EQ(1, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
 
   // remove observer 1
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
 }
 
 TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyDoNotInvokeAdded) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
-  EXPECT_EQ(0, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
-  EXPECT_EQ(0, obs1.getCount()); // sanity check no side effects on getCount()
-  EXPECT_EQ(0, obs2.getCount()); // sanity check no side effects on getCount()
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
+  EXPECT_EQ(0, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
+  EXPECT_EQ(0, obs1->getCount()); // sanity check no side effects on getCount()
+  EXPECT_EQ(0, obs2->getCount()); // sanity check no side effects on getCount()
 
   // add observers 1 and 2, then during invoke, remove observer2
-  EXPECT_TRUE(store.add(&obs1));
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs1));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
-          EXPECT_TRUE(store.remove(&obs2)); // remove observer 2
+        if (observer == obs1.get()) {
+          EXPECT_TRUE(store.remove(obs2)); // remove observer 2
         }
         observer->incrementCount();
       },
@@ -2601,33 +2663,33 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyDoNotInvokeAdded) {
 
   // incrementCount should have only been invoked for observer1
   // observer2 would have been removed already
-  EXPECT_EQ(1, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
+  EXPECT_EQ(1, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
 
   // remove observer 1
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
 }
 
 TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyCheckNoChange) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
-  EXPECT_EQ(0, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
-  EXPECT_EQ(0, obs1.getCount()); // sanity check no side effects on getCount()
-  EXPECT_EQ(0, obs2.getCount()); // sanity check no side effects on getCount()
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
+  EXPECT_EQ(0, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
+  EXPECT_EQ(0, obs1->getCount()); // sanity check no side effects on getCount()
+  EXPECT_EQ(0, obs2->getCount()); // sanity check no side effects on getCount()
 
   // add observers 1 and 2, then during invoke, remove observer2
-  EXPECT_TRUE(store.add(&obs1));
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs1));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
+        if (observer == obs1.get()) {
           // adding observers during iteration isn't allowed; expect exit
           EXPECT_EXIT(
-              store.remove(&obs2), testing::KilledBySignal(SIGABRT), ".*");
+              store.remove(obs2), testing::KilledBySignal(SIGABRT), ".*");
         }
         observer->incrementCount();
       },
@@ -2636,21 +2698,21 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyCheckNoChange) {
 
 TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyCheckNoAdded) {
   Store store;
-  TestStoreObserver obs1;
-  TestStoreObserver obs2;
-  EXPECT_EQ(0, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
-  EXPECT_EQ(0, obs1.getCount()); // sanity check no side effects on getCount()
-  EXPECT_EQ(0, obs2.getCount()); // sanity check no side effects on getCount()
+  auto obs1 = std::make_shared<TestStoreObserver>();
+  auto obs2 = std::make_shared<TestStoreObserver>();
+  EXPECT_EQ(0, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
+  EXPECT_EQ(0, obs1->getCount()); // sanity check no side effects on getCount()
+  EXPECT_EQ(0, obs2->getCount()); // sanity check no side effects on getCount()
 
   // add observers 1 and 2, then during invoke, remove observer2
-  EXPECT_TRUE(store.add(&obs1));
-  EXPECT_TRUE(store.add(&obs2));
+  EXPECT_TRUE(store.add(obs1));
+  EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
       [&obs1, &obs2, &store](auto observer) {
-        if (observer == &obs1) {
-          EXPECT_TRUE(store.remove(&obs2)); // remove observer 2
+        if (observer == obs1.get()) {
+          EXPECT_TRUE(store.remove(obs2)); // remove observer 2
         }
         observer->incrementCount();
       },
@@ -2659,10 +2721,10 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyCheckNoAdded) {
 
   // incrementCount should have only been invoked for observer1
   // observer2 would have been removed already
-  EXPECT_EQ(1, obs1.getCount());
-  EXPECT_EQ(0, obs2.getCount());
+  EXPECT_EQ(1, obs1->getCount());
+  EXPECT_EQ(0, obs2->getCount());
 
   // remove observer 1
-  EXPECT_TRUE(store.remove(&obs1));
+  EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
 }

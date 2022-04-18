@@ -46,7 +46,7 @@ class ObserverContainerStoreBase {
    * @param observer     Observer to add.
    * @return             Whether observer was added (not already present).
    */
-  virtual bool add(Observer* observer) = 0;
+  virtual bool add(std::shared_ptr<Observer> observer) = 0;
 
   /**
    * Remove an observer pointer from the store.
@@ -54,7 +54,7 @@ class ObserverContainerStoreBase {
    * @param observer     Observer to remove.
    * @return             Whether observer found and removed from store.
    */
-  virtual bool remove(Observer* observer) = 0;
+  virtual bool remove(std::shared_ptr<Observer> observer) = 0;
 
   /**
    * Get number of observers in store.
@@ -125,7 +125,7 @@ class ObserverContainerStore : public ObserverContainerStoreBase<Observer> {
    * @param observer     Observer to add.
    * @return             Whether observer was added (not already present).
    */
-  bool add(Observer* observer) override {
+  bool add(std::shared_ptr<Observer> observer) override {
     // attempts to add the same observer multiple times are rejected
     if (std::find(observers_.begin(), observers_.end(), observer) !=
         observers_.end()) {
@@ -161,7 +161,7 @@ class ObserverContainerStore : public ObserverContainerStoreBase<Observer> {
    * @param observer     Observer to remove.
    * @return             Whether observer found and removed from store.
    */
-  bool remove(Observer* observer) override {
+  bool remove(std::shared_ptr<Observer> observer) override {
     const auto it = std::find(observers_.begin(), observers_.end(), observer);
     if (it == observers_.end()) {
       return false;
@@ -253,12 +253,13 @@ class ObserverContainerStore : public ObserverContainerStoreBase<Observer> {
         continue;
       }
 
-      fn(observer);
+      fn(observer.get());
     }
   }
 
  private:
-  using container_type = typename Policy::template container<Observer*>;
+  using container_type =
+      typename Policy::template container<std::shared_ptr<Observer>>;
 
   // The actual list of observers.
   container_type observers_;
@@ -571,7 +572,21 @@ class ObserverContainerBase {
    *
    * @param observer     Observer to add.
    */
-  virtual void addObserver(Observer* observer) = 0;
+  virtual void addObserver(std::shared_ptr<Observer> observer) = 0;
+
+  /**
+   * Adds an observer to the container.
+   *
+   * If the observer is already in the container, this is a no-op.
+   *
+   * @param observer     Observer to add.
+   */
+  virtual void addObserver(Observer* observer) {
+    // create a shared_ptr holding an unmanaged ptr
+    // this does not trigger control block allocation
+    return addObserver(
+        std::shared_ptr<Observer>(std::shared_ptr<void>(), observer));
+  }
 
   /**
    * Removes an observer from the container.
@@ -579,7 +594,20 @@ class ObserverContainerBase {
    * @param observer     Observer to remove.
    * @return             Whether the observer was found and removed.
    */
-  virtual bool removeObserver(Observer* observer) = 0;
+  virtual bool removeObserver(std::shared_ptr<Observer> observer) = 0;
+
+  /**
+   * Removes an observer from the container.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether the observer was found and removed.
+   */
+  virtual bool removeObserver(Observer* observer) {
+    // create a shared_ptr holding an unmanaged ptr
+    // this does not trigger control block allocation
+    return removeObserver(
+        std::shared_ptr<Observer>(std::shared_ptr<void>(), observer));
+  }
 
   /**
    * Get number of observers in container.
@@ -846,9 +874,7 @@ class ObserverContainer : public ObserverContainerBase<
   using EventEnum = typename ContainerBase::EventEnum;
   using StoreBase = ObserverContainerStoreBase<Observer>;
 
-  explicit ObserverContainer(Observed* obj)
-      : ObserverContainerBase<ObserverInterface, Observed, ContainerPolicy>(),
-        obj_(CHECK_NOTNULL(obj)) {}
+  explicit ObserverContainer(Observed* obj) : obj_(CHECK_NOTNULL(obj)) {}
 
   ~ObserverContainer() override {
     using InvokeWhileIteratingPolicy =
@@ -871,6 +897,9 @@ class ObserverContainer : public ObserverContainerBase<
    */
   Observed* getObject() const override { return obj_; }
 
+  using ContainerBase::addObserver;
+  using ContainerBase::removeObserver;
+
   /**
    * Adds an observer to the container.
    *
@@ -878,13 +907,13 @@ class ObserverContainer : public ObserverContainerBase<
    *
    * @param observer     Observer to add.
    */
-  void addObserver(Observer* observer) override {
-    CHECK_NOTNULL(observer);
+  void addObserver(std::shared_ptr<Observer> observer) override {
+    CHECK_NOTNULL(observer.get());
     if (getStore().add(observer)) {
       DestructorCheck::Safety dc(*observer);
-      this->invokeAddedToContainer(observer, this);
+      this->invokeAddedToContainer(observer.get(), this);
       if (!dc.destroyed()) {
-        this->invokeAttached(observer, obj_);
+        this->invokeAttached(observer.get(), obj_);
       }
     }
   }
@@ -895,13 +924,13 @@ class ObserverContainer : public ObserverContainerBase<
    * @param observer     Observer to remove.
    * @return             Whether the observer was found and removed.
    */
-  bool removeObserver(Observer* observer) override {
-    CHECK_NOTNULL(observer);
+  bool removeObserver(std::shared_ptr<Observer> observer) override {
+    CHECK_NOTNULL(observer.get());
     if (getStore().remove(observer)) {
       DestructorCheck::Safety dc(*observer);
-      this->invokeDetached(observer, obj_);
+      this->invokeDetached(observer.get(), obj_);
       if (!dc.destroyed()) {
-        this->invokeRemovedFromContainer(observer, this);
+        this->invokeRemovedFromContainer(observer.get(), this);
       }
       return true;
     }
