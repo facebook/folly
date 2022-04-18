@@ -22,7 +22,6 @@
 #include <type_traits>
 
 #include <boost/iterator/iterator_adaptor.hpp>
-#include <boost/mpl/has_xxx.hpp>
 
 #include <folly/Likely.h>
 #include <folly/Optional.h>
@@ -58,35 +57,45 @@ namespace folly {
 
 namespace dynamicconverter_detail {
 
-BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type)
-BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
-BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
-BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type)
+template <typename T>
+using detect_member_type_value_type = typename T::value_type;
+template <typename T>
+using detect_member_type_iterator = typename T::iterator;
+template <typename T>
+using detect_member_type_mapped_type = typename T::mapped_type;
+template <typename T>
+using detect_member_type_key_type = typename T::key_type;
 
 template <typename T>
 struct iterator_class_is_container {
   typedef std::reverse_iterator<typename T::iterator> some_iterator;
   enum {
-    value = has_value_type<T>::value &&
+    value = is_detected_v<detect_member_type_value_type, T> &&
         std::is_constructible<T, some_iterator, some_iterator>::value
   };
 };
 
 template <typename T>
-using class_is_container =
-    Conjunction<has_iterator<T>, iterator_class_is_container<T>>;
+using class_is_container = Conjunction<
+    is_detected<detect_member_type_iterator, T>,
+    iterator_class_is_container<T>>;
 
 template <typename T>
-using is_range = StrictConjunction<has_value_type<T>, has_iterator<T>>;
+using is_range = StrictConjunction<
+    is_detected<detect_member_type_value_type, T>,
+    is_detected<detect_member_type_iterator, T>>;
 
 template <typename T>
 using is_container = StrictConjunction<std::is_class<T>, class_is_container<T>>;
 
 template <typename T>
-using is_map = StrictConjunction<is_range<T>, has_mapped_type<T>>;
+using is_map = StrictConjunction<
+    is_range<T>,
+    is_detected<detect_member_type_mapped_type, T>>;
 
 template <typename T>
-using is_associative = StrictConjunction<is_range<T>, has_key_type<T>>;
+using is_associative =
+    StrictConjunction<is_range<T>, is_detected<detect_member_type_key_type, T>>;
 
 } // namespace dynamicconverter_detail
 
