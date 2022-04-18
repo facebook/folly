@@ -1285,8 +1285,8 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
         m_.cont_.begin(), m_.cont_.end());
   }
 
-  const Range<typename Container::iterator> iterate() const noexcept {
-    return Range<typename Container::iterator>(
+  const Range<typename Container::const_iterator> iterate() const noexcept {
+    return Range<typename Container::const_iterator>(
         m_.cont_.begin(), m_.cont_.end());
   }
 
