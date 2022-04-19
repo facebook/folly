@@ -147,9 +147,8 @@ class AsyncScope {
 };
 
 inline AsyncScope::~AsyncScope() {
-  CHECK(
-      (!anyTasksStarted_.load(std::memory_order_relaxed) || joined_) &&
-      "cleanup() not yet complete");
+  CHECK(!anyTasksStarted_.load(std::memory_order_relaxed) || joined_)
+      << "AsyncScope::cleanup() not yet complete";
 }
 
 inline std::size_t AsyncScope::remaining() const noexcept {
