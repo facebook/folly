@@ -558,6 +558,13 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CXX17_CONSTEXPR
 #endif
 
+// C++20 constinit
+#if __cpp_constinit >= 201907L
+#define FOLLY_CONSTINIT constinit
+#else
+#define FOLLY_CONSTINIT
+#endif
+
 #if __cplusplus >= 201703L
 // folly::coro requires C++17 support
 #if defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES)
