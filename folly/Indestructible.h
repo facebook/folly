@@ -127,6 +127,9 @@ class Indestructible final {
   T* operator->() noexcept { return get(); }
   T const* operator->() const noexcept { return get(); }
 
+  /* implicit */ operator T&() noexcept { return *get(); }
+  /* implicit */ operator T const &() const noexcept { return *get(); }
+
  private:
   struct Storage {
     aligned_storage_for_t<T> bytes;

@@ -138,3 +138,13 @@ TEST_F(IndestructibleTest, list_initialization_explicit_implicit) {
   EXPECT_TRUE((!std::is_convertible<E, Indestructible<E>>::value));
   EXPECT_TRUE((std::is_convertible<I, Indestructible<I>>::value));
 }
+
+TEST_F(IndestructibleTest, conversion) {
+  using I = std::map<string, string>;
+  folly::Indestructible<I> map{I{{"foo", "bar"}}};
+  DeferredDtor s{map};
+  I& r = map;
+  EXPECT_EQ(1, r.count("foo"));
+  I const& cr = std::as_const(map);
+  EXPECT_EQ(1, cr.count("foo"));
+}
