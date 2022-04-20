@@ -182,13 +182,13 @@ class thread_cached_synchronized {
   }
   template <typename F, typename R = invoke_result_t<F, value_type&>>
   R mutate(F f) {
-    unique_lock lock{truth_.mutex};
+    unique_lock<Mutex> lock{truth_.mutex};
     return mutate_locked(f);
   }
 
   template <typename A>
   bool mutate_cx(value_type& expected, A&& desired) {
-    unique_lock lock{truth_.mutex};
+    unique_lock<Mutex> lock{truth_.mutex};
     auto const eq = folly::as_const(truth_.value) == folly::as_const(expected);
     if (eq) {
       truth_.value = // value first: mutation may throw
@@ -207,7 +207,7 @@ class thread_cached_synchronized {
   }
 
   FOLLY_NOINLINE value_type& get_slow() const {
-    hybrid_lock lock{truth_.mutex};
+    hybrid_lock<Mutex> lock{truth_.mutex};
     auto cache = cache_.get();
     if (cache == nullptr) {
       cache = new cache_state{truth_.value}; // value first: copy may throw
