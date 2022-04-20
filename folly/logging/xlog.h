@@ -636,8 +636,8 @@ namespace folly {
 
 class XlogFileScopeInfo {
  public:
-  std::atomic<::folly::LogLevel> level;
-  ::folly::LogCategory* category;
+  std::atomic<::folly::LogLevel> level{folly::LogLevel::UNINITIALIZED};
+  ::folly::LogCategory* category{nullptr};
 };
 
 /**
@@ -903,6 +903,6 @@ constexpr inline bool isXlogCategoryOverridden(T) {
  * entire .cpp file, rather than needing a separate copy for each XLOG()
  * statement.
  */
-::folly::XlogFileScopeInfo xlogFileScopeInfo;
+FOLLY_CONSTINIT ::folly::XlogFileScopeInfo xlogFileScopeInfo;
 } // namespace
 } // namespace xlog_detail
