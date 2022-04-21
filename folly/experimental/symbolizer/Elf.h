@@ -269,6 +269,8 @@ class ElfFile {
    * future. https://man7.org/linux/man-pages/man2/posix_fadvise.2.html
    */
   std::pair<const int, char const*> posixFadvise(
+      off_t offset, off_t len, int const advice) const noexcept;
+  std::pair<const int, char const*> posixFadvise(
       int const advice) const noexcept;
 
  private:

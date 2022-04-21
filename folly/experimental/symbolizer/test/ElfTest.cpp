@@ -114,6 +114,22 @@ TEST_F(ElfTest, PosixFadvise) {
   EXPECT_STREQ("", res.second);
 }
 
+TEST_F(ElfTest, PosixFadviseOffSetAndLen) {
+  auto posixFadviseCalled = false;
+  elfFile_.iterateSections(
+      [&](const folly::symbolizer::ElfShdr& section) -> bool {
+        if (section.sh_type == SHT_SYMTAB) {
+          posixFadviseCalled = true;
+          auto res = elfFile_.posixFadvise(
+              section.sh_offset, section.sh_size, POSIX_FADV_DONTNEED);
+          EXPECT_EQ(0, res.first);
+          EXPECT_STREQ("", res.second);
+        }
+        return false;
+      });
+  EXPECT_TRUE(posixFadviseCalled);
+}
+
 TEST_F(ElfTest, PosixFadviseNotOpen) {
   folly::test::TemporaryFile tmpFile;
   const static folly::StringPiece contents = "!";

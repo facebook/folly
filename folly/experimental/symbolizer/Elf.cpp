@@ -448,15 +448,20 @@ const char* ElfFile::getSymbolName(Symbol symbol) const noexcept {
 }
 
 std::pair<const int, char const*> ElfFile::posixFadvise(
-    int const advice) const noexcept {
+    off_t offset, off_t len, int const advice) const noexcept {
   if (fd_ == -1) {
     return {1, "file not open"};
   }
-  int res = posix_fadvise(fd_, 0, 0, advice);
+  int res = posix_fadvise(fd_, offset, len, advice);
   if (res != 0) {
     return {res, "posix_fadvise failed for file"};
   }
   return {res, ""};
+}
+
+std::pair<const int, char const*> ElfFile::posixFadvise(
+    int const advice) const noexcept {
+  return posixFadvise(0, 0, advice);
 }
 
 } // namespace symbolizer
