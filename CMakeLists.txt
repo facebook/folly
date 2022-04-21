@@ -155,6 +155,15 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "Benchmark.cpp$"
     "Test.cpp$"
 )
+
+# Exclude exception tracer, which is necessary to statically link libstdc++
+if (${FOLLY_NO_EXCEPTION_TRACER})
+  REMOVE_MATCHES_FROM_LISTS(files hfiles
+    MATCHES
+      "^${FOLLY_DIR}/experimental/exception_tracer/"
+  )
+endif()
+
 list(REMOVE_ITEM files
   ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
   ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
