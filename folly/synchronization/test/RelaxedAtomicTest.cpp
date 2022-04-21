@@ -18,6 +18,9 @@
 
 #include <folly/portability/GTest.h>
 
+// gcc7.5 appears to have trouble with these deductions
+#if !__GNUC__ || __GNUC__ >= 8 || __clang__
+
 class RelaxedAtomicTest : public testing::Test {};
 
 TEST_F(RelaxedAtomicTest, deduce_bool) {
@@ -45,6 +48,8 @@ TEST_F(RelaxedAtomicTest, deduce_ptr) {
   EXPECT_EQ(&f, v.load());
   EXPECT_TRUE((std::is_same_v<foo*, decltype(v)::value_type>));
 }
+
+#endif
 
 template <typename AtomicType>
 struct RelaxedAtomicBooleanTest : testing::Test {};
