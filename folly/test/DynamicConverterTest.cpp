@@ -20,56 +20,56 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 #include <vector>
 
+#include <folly/Expected.h>
 #include <folly/FBVector.h>
+#include <folly/Optional.h>
 #include <folly/portability/GTest.h>
 
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
-using namespace folly;
-using namespace folly::dynamicconverter_detail;
+namespace folly {
 
-TEST(DynamicConverter, template_metaprogramming) {
-  struct A {};
+namespace { // static tests
 
-  bool c1f = is_container<int>::value;
-  bool c2f = is_container<std::pair<int, int>>::value;
-  bool c3f = is_container<A>::value;
-  bool c4f = class_is_container<A>::value;
+using namespace dynamicconverter_detail;
+struct Foo {};
 
-  bool c1t = is_container<std::vector<int>>::value;
-  bool c2t = is_container<std::set<int>>::value;
-  bool c3t = is_container<std::map<int, int>>::value;
-  bool c4t = class_is_container<std::vector<A>>::value;
+static_assert(!is_container<int>::value);
+static_assert(!is_container<std::pair<int, int>>::value);
+static_assert(!is_container<Foo>::value);
+static_assert(!class_is_container<Foo>::value);
 
-  EXPECT_EQ(c1f, false);
-  EXPECT_EQ(c2f, false);
-  EXPECT_EQ(c3f, false);
-  EXPECT_EQ(c4f, false);
-  EXPECT_EQ(c1t, true);
-  EXPECT_EQ(c2t, true);
-  EXPECT_EQ(c3t, true);
-  EXPECT_EQ(c4t, true);
+static_assert(is_container<std::vector<int>>::value);
+static_assert(is_container<std::set<int>>::value);
+static_assert(is_container<std::map<int, int>>::value);
+static_assert(class_is_container<std::vector<Foo>>::value);
 
-  bool m1f = is_map<int>::value;
-  bool m2f = is_map<std::set<int>>::value;
+static_assert(!is_map<int>::value);
+static_assert(!is_map<std::set<int>>::value);
 
-  bool m1t = is_map<std::map<int, int>>::value;
+static_assert(is_map<std::map<int, int>>::value);
 
-  EXPECT_EQ(m1f, false);
-  EXPECT_EQ(m2f, false);
-  EXPECT_EQ(m1t, true);
+static_assert(!is_range<int>::value);
 
-  bool r1f = is_range<int>::value;
+static_assert(is_range<std::set<int>>::value);
+static_assert(is_range<std::vector<int>>::value);
 
-  bool r1t = is_range<std::set<int>>::value;
-  bool r2t = is_range<std::vector<int>>::value;
+static_assert(is_like_pointer<Expected<int, std::nullptr_t>>::value);
+static_assert(is_like_pointer<std::optional<int>>::value);
+static_assert(is_like_pointer<folly::Optional<int>>::value);
+static_assert(is_like_pointer<int*>::value);
+static_assert(is_like_pointer<std::unique_ptr<int>>::value);
 
-  EXPECT_EQ(r1f, false);
-  EXPECT_EQ(r1t, true);
-  EXPECT_EQ(r2t, true);
-}
+static_assert(is_optional<Expected<int, std::nullptr_t>>::value);
+static_assert(is_optional<std::optional<int>>::value);
+static_assert(is_optional<folly::Optional<int>>::value);
+static_assert(!is_optional<int*>::value);
+static_assert(!is_optional<std::unique_ptr<int>>::value);
+
+} // namespace
 
 TEST(DynamicConverter, dynamics) {
   dynamic d1 = 12;
@@ -160,6 +160,23 @@ TEST(DynamicConverter, simple_builtins) {
   EXPECT_EQ(i4.second, "C++");
 }
 
+TEST(DynamicConverter, optional) {
+  using Optionals = std::pair<std::optional<int>, Optional<int>>;
+  const dynamic null;
+  EXPECT_TRUE(Optionals(4, 5) == convertTo<Optionals>(dynamic::array(4, 5)));
+  EXPECT_TRUE(Optionals() == convertTo<Optionals>(dynamic::array(null, null)));
+  EXPECT_TRUE(toDynamic(Optionals(4, 5)) == dynamic::array(4, 5));
+  EXPECT_TRUE(toDynamic(Optionals()) == dynamic::array(null, null));
+}
+
+TEST(DynamicConverter, pointer) {
+  const int x = 7;
+  using Pointers = std::pair<const int*, int*>;
+  const dynamic null;
+  EXPECT_TRUE(toDynamic(Pointers(&x, nullptr)) == dynamic::array(7, null));
+  // Cannot convert to pointers.
+}
+
 TEST(DynamicConverter, simple_fbvector) {
   dynamic d1 = dynamic::array(1, 2, 3);
   auto i1 = convertTo<folly::fbvector<int>>(d1);
@@ -235,12 +252,12 @@ struct A {
   int i;
   bool operator==(const A& o) const { return i == o.i; }
 };
-namespace folly {
+
 template <>
 struct DynamicConverter<A> {
   static A convert(const dynamic& d) { return {convertTo<int>(d["i"])}; }
 };
-} // namespace folly
+
 TEST(DynamicConverter, custom_class) {
   dynamic d1 = dynamic::object("i", 17);
   auto i1 = convertTo<A>(d1);
@@ -327,7 +344,6 @@ struct Token {
       : kind_(kind), lexeme_(lexeme) {}
 };
 
-namespace folly {
 template <>
 struct DynamicConverter<Token> {
   static Token convert(const dynamic& d) {
@@ -336,7 +352,6 @@ struct DynamicConverter<Token> {
     return Token(k, lex);
   }
 };
-} // namespace folly
 
 TEST(DynamicConverter, example) {
   dynamic d1 = dynamic::object("KIND", 2)("LEXEME", "a token");
@@ -393,6 +408,12 @@ TEST(DynamicConverter, construct) {
         range(vi.begin() + 1, vi.begin() + 4));
     dynamic d =
         dynamic::array(dynamic::array(2, 3, 4), dynamic::array(3, 4, 5));
+    EXPECT_EQ(d, toDynamic(c));
+  }
+
+  {
+    vector<Optional<int>> c{3, none, 4};
+    dynamic d = dynamic::array(3, dynamic(), 4);
     EXPECT_EQ(d, toDynamic(c));
   }
 
@@ -475,12 +496,11 @@ struct B {
   ~B() { destroyB++; }
   int x_;
 };
-namespace folly {
+
 template <>
 struct DynamicConverter<B> {
   static B convert(const dynamic& d) { return B(convertTo<int>(d)); }
 };
-} // namespace folly
 
 TEST(DynamicConverter, double_destroy) {
   dynamic d = dynamic::array(1, 3, 5, 7, 9, 11, 13, 15, 17);
@@ -496,3 +516,5 @@ TEST(DynamicConverter, simple_vector_bool) {
   auto actual = convertTo<decltype(bools)>(d);
   EXPECT_EQ(bools, actual);
 }
+
+} // namespace folly
