@@ -42,7 +42,7 @@ fbcode/tools/lfs = tools/lfs
 ^fbcode/eden/hg-server/.*$
 ^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
-^fbcode/eden/scm(?!/public_autocargo|/edenscmnative).*/Cargo\.toml$
+^fbcode/eden/scm(?!/public_autocargo|/edenscmnative/bindings).*/Cargo\.toml$
 ^fbcode/eden/scm/build/.*$
 ^fbcode/eden/.*/\.cargo/.*$
 ^.*/facebook/.*$
