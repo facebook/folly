@@ -16,6 +16,7 @@
 
 #include <folly/Overload.h>
 
+#include <optional>
 #include <variant>
 
 #include <boost/variant.hpp>
@@ -143,6 +144,62 @@ TEST(Overload, BoostPattern) {
   EXPECT_TRUE(variant_match(one, is_one_const_copy));
   EXPECT_FALSE(variant_match(two, is_one_copy));
   EXPECT_FALSE(variant_match(two, is_one_const_copy));
+}
+
+TEST(Overload, ReturnType) {
+  using V = std::variant<std::monostate, One>;
+  V null(std::monostate{});
+  V one(One{});
+
+  using R = std::optional<int>;
+
+  EXPECT_FALSE(variant_match(
+      null,
+      [](const std::monostate&) -> R { return std::nullopt; },
+      [](const One&) -> R { return 1; }));
+  EXPECT_EQ(
+      1,
+      variant_match(
+          one,
+          [](const std::monostate&) -> R { return std::nullopt; },
+          [](const One&) -> R { return 1; }));
+
+  EXPECT_FALSE(variant_match<R>(
+      null,
+      [](const std::monostate&) { return std::nullopt; },
+      [](const One&) { return 1; }));
+  EXPECT_EQ(
+      1,
+      variant_match<R>(
+          one,
+          [](const std::monostate&) { return std::nullopt; },
+          [](const One&) { return 1; }));
+
+  int null_result = -1;
+  variant_match<void>(
+      null,
+      [&null_result](const std::monostate&) {
+        null_result = 0;
+        return std::nullopt;
+      },
+      [&null_result](const One&) {
+        null_result = 1;
+        return 1;
+      });
+  EXPECT_EQ(0, null_result);
+
+  int one_result = -1;
+  variant_match<void>(
+      one,
+      [&one_result](const std::monostate&) {
+        one_result = 0;
+        return std::nullopt;
+      },
+      [&one_result](const One&) {
+        one_result = 1;
+        return 1;
+      });
+  EXPECT_EQ(1, one_result);
 }
 
 } // namespace test

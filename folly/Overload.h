@@ -101,4 +101,26 @@ decltype(auto) variant_match(Variant&& variant, Cases&&... cases) {
       overload(std::forward<Cases>(cases)...), std::forward<Variant>(variant));
 }
 
+template <typename R, typename Variant, typename... Cases>
+R variant_match(Variant&& variant, Cases&&... cases) {
+  auto f = [&](auto&& v) -> R {
+#if __cpp_if_constexpr >= 201606L
+    if constexpr (std::is_void<R>::value) {
+      overload(std::forward<Cases>(cases)...)(v);
+    } else {
+      return overload(std::forward<Cases>(cases)...)(v);
+    }
+#else
+    return static_cast<R>(overload(std::forward<Cases>(cases)...)(v));
+#endif
+  };
+  using invoker = std::conditional_t<
+      folly::Conjunction<
+          is_invocable<overload_detail::valueless_by_exception, Variant>,
+          is_invocable<overload_detail::visit, decltype(f), Variant>>::value,
+      overload_detail::visit,
+      overload_detail::apply_visitor>;
+  return invoker{}(f, std::forward<Variant>(variant));
+}
+
 } // namespace folly
