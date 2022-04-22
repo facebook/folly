@@ -22,6 +22,7 @@
 #include <folly/Function.h>
 #include <folly/ThreadLocal.h>
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -29,8 +30,21 @@ namespace detail {
 
 // Use memory_order_seq_cst for accesses to increments/decrements if we're
 // running under TSAN, because TSAN ignores barriers completely.
-constexpr std::memory_order kReadersMemoryOrder =
-    kIsSanitizeThread ? std::memory_order_seq_cst : std::memory_order_relaxed;
+template <bool>
+struct thread_cached_readers_atomic_;
+template <>
+struct thread_cached_readers_atomic_<false> {
+  template <typename T>
+  using apply = folly::relaxed_atomic<T>;
+};
+template <>
+struct thread_cached_readers_atomic_<true> {
+  template <typename T>
+  using apply = std::atomic<T>;
+};
+template <typename T>
+using thread_cached_readers_atomic = typename thread_cached_readers_atomic_<
+    kIsSanitizeThread>::template apply<T>;
 
 // A data structure that keeps a per-thread cache of a bitfield that contains
 // the current active epoch for readers in the thread, and the number of active
@@ -51,7 +65,8 @@ constexpr std::memory_order kReadersMemoryOrder =
 // as being able to detect long-running readers (T113951078).
 template <typename Tag>
 class ThreadCachedReaders {
-  std::atomic<uint64_t> orphan_epoch_readers_ = std::atomic<uint64_t>(0);
+  using atomic_type = detail::thread_cached_readers_atomic<uint64_t>;
+  atomic_type orphan_epoch_readers_{0};
   folly::detail::Futex<> waiting_{0};
 
   class EpochCount {
@@ -59,12 +74,12 @@ class ThreadCachedReaders {
     ThreadCachedReaders* readers_;
     explicit constexpr EpochCount(ThreadCachedReaders* readers) noexcept
         : readers_(readers), epoch_readers_{}, cache_(readers->tls_cache_) {}
-    std::atomic<uint64_t> epoch_readers_;
+    atomic_type epoch_readers_;
     EpochCount*& cache_; // reference to the cached ptr
     ~EpochCount() noexcept {
       // Set the cached epoch and readers.
-      readers_->orphan_epoch_readers_.store(
-          epoch_readers_.load(kReadersMemoryOrder), kReadersMemoryOrder);
+      uint64_t epoch_readers = epoch_readers_;
+      readers_->orphan_epoch_readers_ = epoch_readers;
       folly::asymmetricLightBarrier(); // B
       detail::futexWake(&readers_->waiting_);
       // reset the cache_ on destructor so we can handle the delete/recreate.
@@ -99,16 +114,14 @@ class ThreadCachedReaders {
     if (tls_cache_ == nullptr) {
       init();
     }
-    uint64_t epoch_reader =
-        tls_cache_->epoch_readers_.load(kReadersMemoryOrder);
+    uint64_t epoch_reader = tls_cache_->epoch_readers_;
     if (readers_from_epoch_reader(epoch_reader) != 0) {
       DCHECK(
           readers_from_epoch_reader(epoch_reader) <
           std::numeric_limits<uint32_t>::max());
-      tls_cache_->epoch_readers_.store(epoch_reader + 1, kReadersMemoryOrder);
+      tls_cache_->epoch_readers_ = epoch_reader + 1;
     } else {
-      tls_cache_->epoch_readers_.store(
-          create_epoch_reader(epoch, 1), kReadersMemoryOrder);
+      tls_cache_->epoch_readers_ = create_epoch_reader(epoch, 1);
     }
     folly::asymmetricLightBarrier(); // A
   }
@@ -117,10 +130,9 @@ class ThreadCachedReaders {
     folly::asymmetricLightBarrier(); // B
 
     DCHECK(tls_cache_ != nullptr);
-    uint64_t epoch_reader =
-        tls_cache_->epoch_readers_.load(kReadersMemoryOrder);
+    uint64_t epoch_reader = tls_cache_->epoch_readers_;
     DCHECK(readers_from_epoch_reader(epoch_reader) > 0);
-    tls_cache_->epoch_readers_.store(epoch_reader - 1, kReadersMemoryOrder);
+    tls_cache_->epoch_readers_ = epoch_reader - 1;
 
     folly::asymmetricLightBarrier(); // C
     if (waiting_.load(std::memory_order_acquire)) {
@@ -136,7 +148,7 @@ class ThreadCachedReaders {
   }
 
   bool epochIsClear(uint8_t epoch) {
-    uint64_t orphaned = orphan_epoch_readers_.load(kReadersMemoryOrder);
+    uint64_t orphaned = orphan_epoch_readers_;
     if (epochHasReaders(epoch, orphaned)) {
       return false;
     }
@@ -152,7 +164,7 @@ class ThreadCachedReaders {
     folly::asymmetricHeavyBarrier();
     auto access = cs_.accessAllThreads();
     return !std::any_of(access.begin(), access.end(), [&](auto& i) {
-      return epochHasReaders(epoch, i.epoch_readers_.load(kReadersMemoryOrder));
+      return epochHasReaders(epoch, i.epoch_readers_);
     });
   }
 
@@ -180,9 +192,9 @@ class ThreadCachedReaders {
   // touch orphan_ and clear out all counts.
   void resetAfterFork() {
     if (tls_cache_) {
-      tls_cache_->epoch_readers_.store(0, kReadersMemoryOrder);
+      tls_cache_->epoch_readers_ = 0;
     }
-    orphan_epoch_readers_.store(0, kReadersMemoryOrder);
+    orphan_epoch_readers_ = 0;
     folly::asymmetricLightBarrier();
   }
 };
