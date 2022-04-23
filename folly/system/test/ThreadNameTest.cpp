@@ -56,16 +56,8 @@ TEST(ThreadName, setThreadName_other_pthread) {
   SCOPE_EXIT { th.join(); };
   handle_set.wait();
   SCOPE_EXIT { let_thread_end.post(); };
-#ifndef __XROS__
   EXPECT_EQ(
       expectedSetOtherThreadNameResult, setThreadName(handle, kThreadName));
-#else
-  // XROS portability pthread implementation supports setting other pthread
-  // name. However setting name of another `std::thread` is not supported, hence
-  // `canSetOtherThreadName()` is more pessimistic than `setThreadName()`.
-  EXPECT_FALSE(expectedSetOtherThreadNameResult);
-  EXPECT_TRUE(setThreadName(handle, kThreadName));
-#endif
 }
 #endif
 

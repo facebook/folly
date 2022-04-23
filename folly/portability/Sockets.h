@@ -24,10 +24,6 @@ namespace folly {
 namespace portability {
 namespace sockets {
 
-#ifdef __XROS__
-#include <xros/portability/net/xr_socket_compat.h> // @manual
-#endif
-
 #ifdef _WIN32
 
 // Some Windows specific helper functions.
@@ -120,7 +116,7 @@ ssize_t sendto(
 int setsockopt(
     int s, int level, int optname, const char* optval, socklen_t optlen);
 
-#elif defined(__XROS__) || defined(__EMSCRIPTEN__)
+#elif defined(__EMSCRIPTEN__)
 
 // None of these are implemented or referenced right now.
 

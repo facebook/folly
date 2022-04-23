@@ -38,7 +38,6 @@
 
 // Alias the max size of an interface name to what posix expects.
 #define IFNAMSIZ IF_NAMESIZE
-#elif defined __XROS__
 #else
 #include <net/if.h>
 #endif

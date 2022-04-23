@@ -102,27 +102,6 @@ struct mmsghdr {
   struct msghdr msg_hdr;
   unsigned int msg_len;
 };
-#elif defined(__XROS__)
-#include <xros/portability/net/xr_socket_compat.h> // @manual
-
-// Stub this out for now.
-using nfds_t = int;
-struct msghdr {
-  void* msg_name;
-  socklen_t msg_namelen;
-  struct iovec* msg_iov;
-  size_t msg_iovlen;
-  void* msg_control;
-  size_t msg_controllen;
-  int msg_flags;
-};
-
-struct mmsghdr {
-  struct msghdr msg_hdr;
-  unsigned int msg_len;
-};
-
-#define SHUT_RDWR 5
 
 #else
 

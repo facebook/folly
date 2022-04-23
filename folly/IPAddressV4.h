@@ -29,10 +29,6 @@
 #include <folly/detail/IPAddress.h>
 #include <folly/hash/Hash.h>
 
-#ifdef __XROS__
-#include <xros/portability/third_party/include/netinet/in.h> // @manual
-#endif
-
 namespace folly {
 
 class IPAddress;

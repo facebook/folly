@@ -37,13 +37,7 @@
 
 // This looks a bit weird, but it's necessary to avoid
 // having an undefined compiler function called.
-#if defined(__XROS__)
-#if FOLLY_HAVE_PTHREAD
-#define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
-#else
-#define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 0
-#endif
-#elif defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
+#if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
 #if __GLIBC_PREREQ(2, 12)
 // has pthread_setname_np(pthread_t, const char*) (2 params)
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
@@ -77,7 +71,7 @@ namespace folly {
 
 namespace {
 
-#if FOLLY_HAVE_PTHREAD && !defined(_WIN32) && !defined(__XROS__)
+#if FOLLY_HAVE_PTHREAD && !defined(_WIN32)
 pthread_t stdTidToPthreadId(std::thread::id tid) {
   static_assert(
       std::is_same<pthread_t, std::thread::native_handle_type>::value,
@@ -108,8 +102,7 @@ bool canSetCurrentThreadName() {
 }
 
 bool canSetOtherThreadName() {
-#if (FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME && !defined(__XROS__)) || \
-    defined(_WIN32)
+#if (FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME) || defined(_WIN32)
   return true;
 #else
   return false;
@@ -137,7 +130,7 @@ Optional<std::string> getThreadName(std::thread::id id) {
 #if (                                           \
     FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
     FOLLY_HAS_PTHREAD_SETNAME_NP_NAME) &&       \
-    !defined(__ANDROID__) && !defined(__XROS__)
+    !defined(__ANDROID__)
   // Android NDK does not yet support pthread_getname_np.
   if (id != std::thread::id()) {
     return getPThreadName(stdTidToPthreadId(id));
@@ -204,9 +197,6 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
     }
     return true;
   }();
-#elif defined(__XROS__)
-  return std::this_thread::get_id() == tid &&
-      setThreadName(pthread_self(), name);
 #else
   return setThreadName(stdTidToPthreadId(tid), name);
 #endif

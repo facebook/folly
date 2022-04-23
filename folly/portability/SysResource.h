@@ -16,7 +16,7 @@
 
 #pragma once
 
-#if !defined(_WIN32) && !defined(__XROS__)
+#if !defined(_WIN32)
 #include <sys/resource.h>
 #else
 #include <cstdint>

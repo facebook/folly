@@ -356,7 +356,6 @@ class SocketAddress {
    */
   void setFromSockaddr(const struct sockaddr* address, socklen_t addrlen);
 
-#ifndef __XROS__
   /**
    * Initialize this SocketAddress from a struct sockaddr_in.
    */
@@ -366,7 +365,6 @@ class SocketAddress {
    * Initialize this SocketAddress from a struct sockaddr_in6.
    */
   void setFromSockaddr(const struct sockaddr_in6* address);
-#endif
 
   /**
    * Initialize this SocketAddress from a struct sockaddr_un.
