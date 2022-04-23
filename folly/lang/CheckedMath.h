@@ -169,18 +169,12 @@ bool checked_mul(T* result, T a, T b) {
 #elif _MSC_VER
   static_assert(sizeof(T) <= sizeof(unsigned __int64));
   if (sizeof(T) < sizeof(uint64_t)) {
-    return detail::generic_checked_small_mul(result, a, b);
+    return detail::generic_checked_mul(result, a, b);
   } else {
     unsigned __int64 high;
     unsigned __int64 low = _umul128(a, b, &high);
-    // unsigned right shift is guaranteed to be 0
-    // if sizeof(T) == sizeof(unsigned __int64)
-    if (FOLLY_UNLIKELY(low >> (sizeof(T) * 8) != 0)) {
-      *result = {};
-      return false;
-    }
     if (FOLLY_LIKELY(high == 0)) {
-      *result = low;
+      *result = static_cast<T>(low);
       return true;
     }
     *result = {};
