@@ -95,6 +95,7 @@ TEST(TemporaryFile, moveAssignment) {
     fd = g.fd();
     f = std::move(g);
   }
+  EXPECT_TRUE(fs::exists(f.path()));
   EXPECT_EQ(fs::path("."), f.path().parent_path());
   EXPECT_EQ(f.fd(), fd);
 

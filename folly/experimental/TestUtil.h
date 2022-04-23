@@ -77,7 +77,7 @@ class TemporaryFile {
     scope_ = other.scope_;
     closeOnDestruction_ = other.closeOnDestruction_;
     fd_ = std::exchange(other.fd_, -1);
-    path_ = other.path_;
+    path_ = std::exchange(other.path_, fs::path());
   }
 };
 
