@@ -214,3 +214,10 @@ TEST_F(UtilityTest, to_integral) {
     EXPECT_EQ(100, actual);
   }
 }
+
+TEST_F(UtilityTest, to_floating_point) {
+  {
+    constexpr float actual = folly::to_floating_point(100);
+    EXPECT_EQ(100.f, actual);
+  }
+}

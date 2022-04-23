@@ -619,6 +619,63 @@ struct to_integral_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr to_integral_fn to_integral{};
 
+template <typename Src>
+class to_floating_point_convertible {
+  static_assert(std::is_integral<Src>::value, "not a floating-point");
+
+  template <typename Dst>
+  static constexpr bool to_ = std::is_floating_point<Dst>::value;
+
+ public:
+  explicit constexpr to_floating_point_convertible(Src const& value) noexcept
+      : value_(value) {}
+
+#if __cplusplus >= 201703L
+  explicit to_floating_point_convertible(to_floating_point_convertible const&) =
+      default;
+  explicit to_floating_point_convertible(to_floating_point_convertible&&) =
+      default;
+#else
+  to_floating_point_convertible(to_floating_point_convertible const&) = default;
+  to_floating_point_convertible(to_floating_point_convertible&&) = default;
+#endif
+  to_floating_point_convertible& operator=(
+      to_floating_point_convertible const&) = default;
+  to_floating_point_convertible& operator=(to_floating_point_convertible&&) =
+      default;
+
+  template <typename Dst, std::enable_if_t<to_<Dst>, int> = 0>
+  /* implicit */ constexpr operator Dst() const noexcept {
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wconversion")
+    return value_;
+    FOLLY_POP_WARNING
+  }
+
+ private:
+  Src value_;
+};
+
+//  to_floating_point
+//
+//  A utility for performing explicit integral-to-floating-point conversion
+//  without specifying the destination type. Sometimes preferable to
+//  static_cast<Dst>(src) to document the intended semantics of the cast.
+//
+//  Models explicit conversion with an elided destination type. Sits in between
+//  a stricter explicit conversion with a named destination type and a more
+//  lenient implicit conversion. Implemented with implicit conversion in order
+//  to take advantage of the undefined-behavior sanitizer's inspection of all
+//  implicit conversions.
+struct to_floating_point_fn {
+  template <typename..., typename Src>
+  constexpr auto operator()(Src const& src) const noexcept
+      -> to_floating_point_convertible<Src> {
+    return to_floating_point_convertible<Src>{src};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr to_floating_point_fn to_floating_point{};
+
 struct to_underlying_fn {
   template <typename..., class E>
   constexpr std::underlying_type_t<E> operator()(E e) const noexcept {
