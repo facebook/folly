@@ -47,6 +47,24 @@ void init(int* argc, char*** argv, bool removeFlags) {
   init(argc, argv, options);
 }
 
+#if FOLLY_USE_SYMBOLIZER
+// Newer versions of glog require the function passed to InstallFailureFunction
+// to be noreturn. But glog spells that in multiple possible ways, depending on
+// platform. But glog's choice of spelling does not match how the
+// noreturn-ability of std::abort is spelled. Some compilers consider this a
+// type mismatch on the function-ptr type. To fix the type mismatch, we wrap
+// std::abort and mimic the condition and the spellings from glog here.
+#if defined(__GNUC__)
+__attribute__((noreturn))
+#else
+[[noreturn]]
+#endif
+static void
+wrapped_abort() {
+  abort();
+}
+#endif
+
 void init(int* argc, char*** argv, InitOptions options) {
 #if !defined(_WIN32)
   // Install the handler now, to trap errors received during startup.
@@ -76,7 +94,7 @@ void init(int* argc, char*** argv, InitOptions options) {
 
 #if FOLLY_USE_SYMBOLIZER
   // Don't use glog's DumpStackTraceAndExit; rely on our signal handler.
-  google::InstallFailureFunction(abort);
+  google::InstallFailureFunction(wrapped_abort);
 
   // Actually install the callbacks into the handler.
   folly::symbolizer::installFatalSignalCallbacks();
