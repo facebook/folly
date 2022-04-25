@@ -58,14 +58,16 @@ void basic_test() {
   ASSERT_EQ(q.size(), 0);
   int v;
   ASSERT_FALSE(q.try_dequeue(v));
+  ASSERT_FALSE(q.try_dequeue().hasValue());
 
   q.enqueue(1);
   ASSERT_TRUE(q.try_enqueue(2));
   ASSERT_TRUE(q.try_enqueue_until(3, deadline));
   ASSERT_TRUE(q.try_enqueue_for(4, dur));
+  q.enqueue(5);
 
-  ASSERT_EQ(q.size(), 4);
-  ASSERT_EQ(q.weight(), 1000);
+  ASSERT_EQ(q.size(), 5);
+  ASSERT_EQ(q.weight(), 1500);
   ASSERT_FALSE(q.empty());
 
   q.dequeue(v);
@@ -76,6 +78,7 @@ void basic_test() {
   ASSERT_EQ(v, 3);
   ASSERT_TRUE(q.try_dequeue_for(v, dur));
   ASSERT_EQ(v, 4);
+  ASSERT_EQ(*q.try_dequeue(), 5);
 
   ASSERT_TRUE(q.empty());
   ASSERT_EQ(q.size(), 0);

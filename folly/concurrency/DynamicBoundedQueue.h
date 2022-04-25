@@ -393,6 +393,14 @@ class DynamicBoundedQueue {
     return false;
   }
 
+  FOLLY_ALWAYS_INLINE folly::Optional<T> try_dequeue() {
+    auto elem = q_.try_dequeue();
+    if (elem.hasValue()) {
+      addCredit(WeightFn()(*elem));
+    }
+    return elem;
+  }
+
   /** try_dequeue_until */
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool try_dequeue_until(
