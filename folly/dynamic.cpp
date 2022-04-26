@@ -514,6 +514,18 @@ const dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) const& {
   assume_unreachable();
 }
 
+void dynamic::reserve(std::size_t capacity) {
+  if (auto* ar = get_nothrow<Array>()) {
+    ar->reserve(capacity);
+  } else if (auto* obj = get_nothrow<ObjectImpl>()) {
+    obj->reserve(capacity);
+  } else if (auto* str = get_nothrow<std::string>()) {
+    str->reserve(capacity);
+  } else {
+    throw_exception<TypeError>("array/object/string", type());
+  }
+}
+
 //////////////////////////////////////////////////////////////////////
 
 } // namespace folly

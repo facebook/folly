@@ -673,6 +673,16 @@ struct dynamic {
   void resize(std::size_t n, dynamic const& = nullptr);
 
   /*
+   * If this is an array, an object, or a string, reserves the requested
+   * capacity in the underlying container.  Otherwise throws TypeError.
+   *
+   * May invalidate iterators, and does not give any additional guarantees on
+   * iterator invalidation on subsequent insertions; the only purpose is for
+   * optimization.
+   */
+  void reserve(std::size_t capacity);
+
+  /*
    * Inserts the supplied key-value pair to an object, or throws if
    * it's not an object. If the key already exists, insert will overwrite the
    * value, i.e., similar to insert_or_assign.
