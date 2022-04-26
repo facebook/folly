@@ -159,6 +159,16 @@ TEST(Pmap, Exception) {
 #if __GNUC__ == 7 && __GNUC_MINOR__ == 5 && !__clang__
   LOG(INFO) << "some versions of gcc miscompile the code below without this";
 #endif
-  std::vector<char const*> input{"a"};
-  EXPECT_THROW(from(input) | pmap(To<int>()) | count, std::runtime_error);
+
+  // Exception from source
+  EXPECT_THROW(
+      just("a") | eachTo<int>() | pmap(To<float>()) | sum, std::runtime_error);
+
+  // Exception from predicate
+  EXPECT_THROW(just("b") | pmap(To<int>()) | sum, std::runtime_error);
+
+  // Exception from downstream
+  EXPECT_THROW(
+      just("c") | pmap(To<std::string>()) | eachTo<int>() | sum,
+      std::runtime_error);
 }

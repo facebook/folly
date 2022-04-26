@@ -19,7 +19,6 @@
 #endif
 
 #include <atomic>
-#include <cassert>
 #include <exception>
 #include <thread>
 #include <type_traits>
@@ -31,9 +30,7 @@
 #include <folly/experimental/EventCount.h>
 #include <folly/functional/Invoke.h>
 
-namespace folly {
-namespace gen {
-namespace detail {
+namespace folly::gen::detail {
 
 /**
  * PMap - Map in parallel (using threads). For producing a sequence of
@@ -77,6 +74,9 @@ class PMap : public Operator<PMap<Predicate>> {
       Pipeline pipeline_;
       EventCount wake_;
 
+      // Total active item count as observed by the single thread owning *this.
+      size_t active_ = 0;
+
      public:
       ExecutionPipeline(const Predicate& pred, size_t nThreads)
           : pred_(pred), pipeline_(nThreads, nThreads) {
@@ -87,35 +87,49 @@ class PMap : public Operator<PMap<Predicate>> {
       }
 
       ~ExecutionPipeline() {
-        assert(pipeline_.sizeGuess() == 0);
-        assert(done_.load());
+        done_.store(true, std::memory_order_release);
+        wake_.notifyAll();
+        // Drain the pipeline in cases where all results were not consumed,
+        // either due to an exception or do to termination requested by consumer
+        // like take(n).
+        for (Result result; readPendingResult(result);) {
+        }
         for (auto& w : workers_) {
           w.join();
         }
       }
 
-      void stop() {
-        // prevent workers from consuming more than we produce.
-        done_.store(true, std::memory_order_release);
-        wake_.notifyAll();
-      }
-
       bool write(Value&& value) {
-        bool wrote = pipeline_.write(std::forward<Value>(value));
-        if (wrote) {
-          wake_.notify();
+        if (!pipeline_.write(std::forward<Value>(value))) {
+          return false;
         }
-        return wrote;
+        ++active_;
+        wake_.notify();
+        return true;
       }
 
       void blockingWrite(Value&& value) {
         pipeline_.blockingWrite(std::forward<Value>(value));
+        ++active_;
         wake_.notify();
       }
 
-      bool read(Result& result) { return pipeline_.read(result); }
+      bool read(Result& result) {
+        if (!pipeline_.read(result)) {
+          return false;
+        }
+        --active_;
+        return true;
+      }
 
-      void blockingRead(Result& result) { pipeline_.blockingRead(result); }
+      bool readPendingResult(Result& result) {
+        if (active_ == 0) {
+          return false;
+        }
+        pipeline_.blockingRead(result);
+        --active_;
+        return true;
+      }
 
      private:
       void predApplier() {
@@ -169,35 +183,23 @@ class PMap : public Operator<PMap<Predicate>> {
     void foreach(Body&& body) const {
       ExecutionPipeline pipeline(pred_, nThreads_);
 
-      size_t wrote = 0;
-      size_t read = 0;
       source_.foreach([&](Value value) {
         if (pipeline.write(std::forward<Value>(value))) {
           // input queue not yet full, saturate it before we process
           // anything downstream
-          ++wrote;
           return;
         }
 
         // input queue full; drain ready items from the queue
-        Result result;
-        while (pipeline.read(result)) {
-          ++read;
+        for (Result result; pipeline.read(result);) {
           body(getOutput(result));
         }
 
         // write the value we were going to write before we made room.
         pipeline.blockingWrite(std::forward<Value>(value));
-        ++wrote;
       });
-
-      pipeline.stop();
-
       // flush the output queue
-      while (read < wrote) {
-        Result result;
-        pipeline.blockingRead(result);
-        ++read;
+      for (Result result; pipeline.readPendingResult(result);) {
         body(getOutput(result));
       }
     }
@@ -206,45 +208,35 @@ class PMap : public Operator<PMap<Predicate>> {
     bool apply(Handler&& handler) const {
       ExecutionPipeline pipeline(pred_, nThreads_);
 
-      size_t wrote = 0;
-      size_t read = 0;
-      bool more = true;
-      source_.apply([&](Value value) {
-        if (pipeline.write(std::forward<Value>(value))) {
-          // input queue not yet full, saturate it before we process
-          // anything downstream
-          ++wrote;
-          return true;
-        }
+      if (!source_.apply([&](Value value) {
+            if (pipeline.write(std::forward<Value>(value))) {
+              // input queue not yet full, saturate it before we process
+              // anything downstream
+              return true;
+            }
 
-        // input queue full; drain ready items from the queue
-        Result result;
-        while (pipeline.read(result)) {
-          ++read;
-          if (!handler(getOutput(result))) {
-            more = false;
-            return false;
-          }
-        }
+            // input queue full; drain ready items from the queue
+            for (Result result; pipeline.read(result);) {
+              if (!handler(getOutput(result))) {
+                return false;
+              }
+            }
 
-        // write the value we were going to write before we made room.
-        pipeline.blockingWrite(std::forward<Value>(value));
-        ++wrote;
-        return true;
-      });
-
-      pipeline.stop();
+            // write the value we were going to write before we made room.
+            pipeline.blockingWrite(std::forward<Value>(value));
+            return true;
+          })) {
+        return false;
+      }
 
       // flush the output queue
-      while (read < wrote) {
-        Result result;
-        pipeline.blockingRead(result);
-        ++read;
-        if (more && !handler(getOutput(result))) {
-          more = false;
+      for (Result result; pipeline.readPendingResult(result);) {
+        if (!handler(getOutput(result))) {
+          return false;
         }
       }
-      return more;
+
+      return true;
     }
 
     static constexpr bool infinite = Source::infinite;
@@ -260,6 +252,5 @@ class PMap : public Operator<PMap<Predicate>> {
     return Gen(source.self(), pred_, nThreads_);
   }
 };
-} // namespace detail
-} // namespace gen
-} // namespace folly
+
+} // namespace folly::gen::detail
