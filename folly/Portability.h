@@ -559,7 +559,7 @@ constexpr auto kCpplibVer = 0;
 #endif
 
 // C++20 constinit
-#if __cpp_constinit >= 201907L
+#if defined(__cpp_constinit) && __cpp_constinit >= 201907L
 #define FOLLY_CONSTINIT constinit
 #else
 #define FOLLY_CONSTINIT
