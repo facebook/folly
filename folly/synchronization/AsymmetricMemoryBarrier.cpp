@@ -81,10 +81,11 @@ void mprotectMembarrier() {
 
 void asymmetricHeavyBarrier(AMBFlags flags) {
   if (kIsLinux) {
-    static const bool useSysMembarrier = detail::sysMembarrierAvailable();
+    static const bool useSysMembarrier =
+        detail::sysMembarrierPrivateExpeditedAvailable();
     // sys_membarrier currently does not support EXPEDITED
     if (useSysMembarrier && flags != AMBFlags::EXPEDITED) {
-      auto r = detail::sysMembarrier();
+      auto r = detail::sysMembarrierPrivateExpedited();
       checkUnixError(r, "membarrier");
     } else {
       mprotectMembarrier();

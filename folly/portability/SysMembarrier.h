@@ -19,7 +19,8 @@
 namespace folly {
 namespace detail {
 
-int sysMembarrier();
-bool sysMembarrierAvailable();
+int sysMembarrierPrivateExpedited();
+bool sysMembarrierPrivateExpeditedAvailable();
+
 } // namespace detail
 } // namespace folly
