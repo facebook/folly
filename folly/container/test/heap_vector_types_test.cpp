@@ -602,7 +602,7 @@ TEST(HeapVectorTypes, GrowthPolicy) {
   EXPECT_FALSE(it == a.end());
   if (it != a.end()) {
     EXPECT_EQ(it->val_, 0);
-    EXPECT_EQ(it->count_, 23);
+    EXPECT_EQ(it->count_, folly::kIsLibcpp ? 22 : 23);
   }
 }
 
