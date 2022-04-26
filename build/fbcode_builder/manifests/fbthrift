@@ -19,7 +19,6 @@ job_weight_mib = 2048
 
 [dependencies]
 bison
-flex
 folly
 wangle
 fizz
