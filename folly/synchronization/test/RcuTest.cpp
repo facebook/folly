@@ -197,21 +197,24 @@ TEST(RcuTest, SynchronizeInCall) {
   rcu_synchronize();
 }
 
-TEST(RcuTest, ForkTest) {
+TEST(RcuTest, SafeForkTest) {
   rcu_default_domain().lock();
+  rcu_default_domain().unlock();
   auto pid = fork();
-  if (pid) {
-    // parent
-    rcu_default_domain().unlock();
+  if (pid > 0) {
+    // Parent branch -- wait for child to exit.
     rcu_synchronize();
     int status = -1;
     auto pid2 = waitpid(pid, &status, 0);
-    EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
-  } else {
-    // child
+    EXPECT_EQ(status, 0);
+  } else if (pid == 0) {
     rcu_synchronize();
-    exit(0); // Do not print gtest results
+    // Exit quickly to avoid spamming gtest output to console.
+    exit(0);
+  } else {
+    // Skip the test if fork() fails.
+    GTEST_SKIP();
   }
 }
 

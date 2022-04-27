@@ -186,17 +186,6 @@ class ThreadCachedReaders {
     }
     waiting_.store(0, std::memory_order_relaxed);
   }
-
-  // We are guaranteed to be called while StaticMeta lock is still
-  // held because of ordering in AtForkList.  We can therefore safely
-  // touch orphan_ and clear out all counts.
-  void resetAfterFork() {
-    if (tls_cache_) {
-      tls_cache_->epoch_readers_ = 0;
-    }
-    orphan_epoch_readers_ = 0;
-    folly::asymmetricLightBarrier();
-  }
 };
 
 template <typename Tag>

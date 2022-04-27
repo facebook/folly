@@ -16,7 +16,6 @@
 
 #include <folly/Function.h>
 #include <folly/detail/TurnSequencer.h>
-#include <folly/system/AtFork.h>
 
 namespace folly {
 
@@ -29,24 +28,6 @@ rcu_domain<Tag>::rcu_domain(Executor* executor) noexcept
   // Please use a unique tag for each domain.
   CHECK(!singleton_);
   singleton_ = true;
-
-  // Register fork handlers.  Holding read locks across fork is not
-  // supported.  Using read locks in other atfork handlers is not
-  // supported.  Other atfork handlers launching new child threads
-  // that use read locks *is* supported.
-  AtFork::registerHandler(
-      this,
-      [this]() { return syncMutex_.try_lock(); },
-      [this]() { syncMutex_.unlock(); },
-      [this]() {
-        counters_.resetAfterFork();
-        syncMutex_.unlock();
-      });
-}
-
-template <typename Tag>
-rcu_domain<Tag>::~rcu_domain() {
-  AtFork::unregisterHandler(this);
 }
 
 template <typename Tag>

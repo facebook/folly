@@ -188,6 +188,15 @@
 //   the default executor type.
 
 // API correctness limitations:
+//
+//  - fork():
+//    Invoking fork() in a multithreaded program with any thread other than the
+//    forking thread being present in a read region will result in undefined
+//    behavior. Similarly, a forking thread must immediately invoke exec if
+//    fork() is invoked while in a read region. Invoking fork() inside of a read
+//    region, and then exiting before invoking exec(), will similarly result in
+//    undefined behavior.
+//
 //  - Exceptions:
 //    In short, nothing about this is exception safe. retire functions should
 //    not throw exceptions in their destructors, move constructors or call
@@ -328,7 +337,6 @@ class rcu_domain {
   rcu_domain(rcu_domain&&) = delete;
   rcu_domain& operator=(const rcu_domain&) = delete;
   rcu_domain& operator=(rcu_domain&&) = delete;
-  ~rcu_domain();
 
   // Reader locks: Prevent any calls from occuring, retired memory
   // from being freed, and synchronize() calls from completing until
