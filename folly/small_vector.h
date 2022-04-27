@@ -220,7 +220,7 @@ void partiallyUninitializedCopy(
   }
 }
 
-template <class SizeType, bool ShouldUseHeap>
+template <class SizeType, bool ShouldUseHeap, bool AlwaysUseHeap>
 struct IntegralSizePolicyBase {
   typedef SizeType InternalSizeType;
 
@@ -229,11 +229,16 @@ struct IntegralSizePolicyBase {
  protected:
   static constexpr std::size_t policyMaxSize() { return SizeType(~kClearMask); }
 
-  std::size_t doSize() const { return size_ & ~kClearMask; }
+  std::size_t doSize() const {
+    return AlwaysUseHeap ? size_ : size_ & ~kClearMask;
+  }
 
-  std::size_t isExtern() const { return kExternMask & size_; }
+  std::size_t isExtern() const { return AlwaysUseHeap || kExternMask & size_; }
 
   void setExtern(bool b) {
+    if (AlwaysUseHeap) {
+      return;
+    }
     if (b) {
       size_ |= kExternMask;
     } else {
@@ -241,9 +246,14 @@ struct IntegralSizePolicyBase {
     }
   }
 
-  std::size_t isHeapifiedCapacity() const { return kCapacityMask & size_; }
+  std::size_t isHeapifiedCapacity() const {
+    return AlwaysUseHeap || kCapacityMask & size_;
+  }
 
   void setHeapifiedCapacity(bool b) {
+    if (AlwaysUseHeap) {
+      return;
+    }
     if (b) {
       size_ |= kCapacityMask;
     } else {
@@ -252,7 +262,7 @@ struct IntegralSizePolicyBase {
   }
   void setSize(std::size_t sz) {
     assert(sz <= policyMaxSize());
-    size_ = (kClearMask & size_) | SizeType(sz);
+    size_ = AlwaysUseHeap ? sz : (kClearMask & size_) | SizeType(sz);
   }
 
   void incrementSize(std::size_t n) {
@@ -269,7 +279,8 @@ struct IntegralSizePolicyBase {
   void resetSizePolicy() { size_ = 0; }
 
  protected:
-  static bool constexpr kShouldUseHeap = ShouldUseHeap;
+  static bool constexpr kShouldUseHeap = ShouldUseHeap || AlwaysUseHeap;
+  static bool constexpr kAlwaysUseHeap = AlwaysUseHeap;
 
  private:
   // We reserve two most significant bits of size_.
@@ -285,12 +296,12 @@ struct IntegralSizePolicyBase {
   SizeType size_;
 };
 
-template <class SizeType, bool ShouldUseHeap>
+template <class SizeType, bool ShouldUseHeap, bool AlwaysUseHeap>
 struct IntegralSizePolicy;
 
-template <class SizeType>
-struct IntegralSizePolicy<SizeType, true>
-    : public IntegralSizePolicyBase<SizeType, true> {
+template <class SizeType, bool AlwaysUseHeap>
+struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
+    : public IntegralSizePolicyBase<SizeType, true, AlwaysUseHeap> {
  public:
   /*
    * Move a range to a range of uninitialized memory.  Assumes the
@@ -345,7 +356,9 @@ struct IntegralSizePolicy<SizeType, true>
       auto rollback = makeGuard([&] { //
         out[pos].~T();
       });
-      this->moveToUninitialized(begin, begin + pos, out);
+      if (begin) {
+        this->moveToUninitialized(begin, begin + pos, out);
+      }
       rollback.dismiss();
     }
     // move old elements to the right of the new one
@@ -363,9 +376,9 @@ struct IntegralSizePolicy<SizeType, true>
   }
 };
 
-template <class SizeType>
-struct IntegralSizePolicy<SizeType, false>
-    : public IntegralSizePolicyBase<SizeType, false> {
+template <class SizeType, bool AlwaysUseHeap>
+struct IntegralSizePolicy<SizeType, false, AlwaysUseHeap>
+    : public IntegralSizePolicyBase<SizeType, false, AlwaysUseHeap> {
  public:
   template <class T>
   void moveToUninitialized(T* /*first*/, T* /*last*/, T* /*out*/) {
@@ -435,7 +448,11 @@ struct small_vector_base {
   /*
    * Make the real policy base classes.
    */
-  typedef IntegralSizePolicy<SizeType, !HasNoHeap::value> ActualSizePolicy;
+  typedef IntegralSizePolicy<
+      SizeType,
+      !HasNoHeap::value,
+      RequestedMaxInline == 0>
+      ActualSizePolicy;
 
   /*
    * Now inherit from them all.  This is done in such a convoluted
@@ -484,7 +501,9 @@ class small_vector : public detail::small_vector_base<
   static constexpr auto kSizeOfValuePtr = sizeof(Value*);
   static constexpr auto kSizeOfValue = sizeof(Value);
   static constexpr std::size_t MaxInline{
-      constexpr_max(kSizeOfValuePtr / kSizeOfValue, RequestedMaxInline)};
+      RequestedMaxInline == 0
+          ? 0
+          : constexpr_max(kSizeOfValuePtr / kSizeOfValue, RequestedMaxInline)};
 
  public:
   typedef std::size_t size_type;
@@ -526,6 +545,7 @@ class small_vector : public detail::small_vector_base<
       std::is_nothrow_move_constructible<Value>::value) {
     if (o.isExtern()) {
       this->u.pdata_.heap_ = o.u.pdata_.heap_;
+      o.u.pdata_.heap_ = nullptr;
       this->swapSizePolicy(o);
       if (kHasInlineCapacity) {
         this->u.setCapacity(o.u.getCapacity());
@@ -613,6 +633,7 @@ class small_vector : public detail::small_vector_base<
         }
       } else {
         this->u.pdata_.heap_ = o.u.pdata_.heap_;
+        o.u.pdata_.heap_ = nullptr;
         // this was already reset above, so it's empty and internal.
         this->swapSizePolicy(o);
         if (kHasInlineCapacity) {
@@ -1053,6 +1074,9 @@ class small_vector : public detail::small_vector_base<
   // iterator insert functions from integral types (see insert().)
   template <class It>
   iterator insertImpl(iterator pos, It first, It last, std::false_type) {
+    if (first == last) {
+      return pos;
+    }
     using categ = typename std::iterator_traits<It>::iterator_category;
     using it_ref = typename std::iterator_traits<It>::reference;
     if (std::is_same<categ, std::input_iterator_tag>::value) {
@@ -1205,7 +1229,6 @@ class small_vector : public detail::small_vector_base<
     const size_t sizeBytes =
         newCapacity * sizeof(value_type) + allocationExtraBytes;
     void* newh = checkedMalloc(sizeBytes);
-
     value_type* newp = static_cast<value_type*>(
         heapifyCapacity ? detail::shiftPointer(newh, kHeapifyCapacitySize)
                         : newh);
@@ -1220,7 +1243,9 @@ class small_vector : public detail::small_vector_base<
             begin(), end(), newp, pos, std::forward<EmplaceFunc>(emplaceFunc));
       } else {
         // move without inserting new element
-        this->moveToUninitialized(begin(), end(), newp);
+        if (data()) {
+          this->moveToUninitialized(begin(), end(), newp);
+        }
       }
       rollback.dismiss();
     }
@@ -1228,7 +1253,6 @@ class small_vector : public detail::small_vector_base<
       val.~value_type();
     }
     freeHeap();
-
     // Store shifted pointer if capacity is heapified
     u.pdata_.heap_ = newp;
     this->setHeapifiedCapacity(heapifyCapacity);
@@ -1263,8 +1287,9 @@ class small_vector : public detail::small_vector_base<
     value_type* heap_;
 
     InternalSizeType getCapacity() const {
-      return *static_cast<InternalSizeType*>(
-          detail::unshiftPointer(heap_, kHeapifyCapacitySize));
+      return heap_ ? *static_cast<InternalSizeType*>(
+                         detail::unshiftPointer(heap_, kHeapifyCapacitySize))
+                   : 0;
     }
     void setCapacity(InternalSizeType c) {
       *static_cast<InternalSizeType*>(
@@ -1287,7 +1312,7 @@ class small_vector : public detail::small_vector_base<
       is_trivially_copyable_v<Value> &&
       sizeof(InlineStorageType) <= hardware_constructive_interference_size / 2;
 
-  static bool constexpr kHasInlineCapacity =
+  static bool constexpr kHasInlineCapacity = !BaseType::kAlwaysUseHeap &&
       sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
 
   // This value should we multiple of word size.
@@ -1309,6 +1334,7 @@ class small_vector : public detail::small_vector_base<
   };
 
   static bool constexpr kMustTrackHeapifiedCapacity =
+      BaseType::kAlwaysUseHeap ||
       !is_invocable_r_v<size_t, AllocationSize, void*>;
 
   // Threshold to control capacity heapifying.
@@ -1328,6 +1354,9 @@ class small_vector : public detail::small_vector_base<
   }
 
   void freeHeap() {
+    if (!u.pdata_.heap_) {
+      return;
+    }
     if (this->isExtern()) {
       if (hasCapacity()) {
         auto extraBytes = u.pdata_.allocationExtraBytes();
