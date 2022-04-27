@@ -412,6 +412,16 @@ class DynamicBoundedQueue {
     return false;
   }
 
+  template <typename Clock, typename Duration>
+  FOLLY_ALWAYS_INLINE folly::Optional<T> try_dequeue_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    auto elem = q_.try_dequeue_until(deadline);
+    if (elem.hasValue()) {
+      addCredit(WeightFn()(*elem));
+    }
+    return elem;
+  }
+
   /** try_dequeue_for */
   template <typename Rep, typename Period>
   FOLLY_ALWAYS_INLINE bool try_dequeue_for(
@@ -421,6 +431,16 @@ class DynamicBoundedQueue {
       return true;
     }
     return false;
+  }
+
+  template <typename Rep, typename Period>
+  FOLLY_ALWAYS_INLINE folly::Optional<T> try_dequeue_for(
+      const std::chrono::duration<Rep, Period>& duration) {
+    auto elem = q_.try_dequeue_for(duration);
+    if (elem.hasValue()) {
+      addCredit(WeightFn()(*elem));
+    }
+    return elem;
   }
 
   /// Secondary functions
