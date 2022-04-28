@@ -567,7 +567,10 @@ constexpr auto kCpplibVer = 0;
 
 #if __cplusplus >= 201703L
 // folly::coro requires C++17 support
-#if defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES)
+#if defined(__NVCC__)
+// For now, NVCC matches other compilers but does not offer coroutines.
+#define FOLLY_HAS_COROUTINES 0
+#elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES)
 // LLVM and MSVC coroutines are ABI incompatible, so for the MSVC implementation
 // of <experimental/coroutine> on Windows we *don't* have coroutines.
 //
