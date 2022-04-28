@@ -37,6 +37,7 @@ python
 yaml-cpp
 libyaml
 CLI11
+exprtk
 
 [shipit.pathmap]
 fbcode/fboss/github = .
