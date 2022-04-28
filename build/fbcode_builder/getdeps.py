@@ -395,10 +395,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
         if rebuild_ctx_gen:
             loader.ctx_gen = loader.build_opts.get_context_generator()
 
-
-
         manager = loader.build_opts.host_type.get_package_manager()
-
 
         all_packages = {}
         for m in projects:
