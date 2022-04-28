@@ -395,7 +395,10 @@ class InstallSysDepsCmd(ProjectCmdBase):
         if rebuild_ctx_gen:
             loader.ctx_gen = loader.build_opts.get_context_generator()
 
+
+
         manager = loader.build_opts.host_type.get_package_manager()
+
 
         all_packages = {}
         for m in projects:
@@ -407,7 +410,11 @@ class InstallSysDepsCmd(ProjectCmdBase):
                 all_packages[k] = merged
 
         cmd_args = None
-        if manager == "rpm":
+        if manager == "yum":
+            packages = sorted(set(all_packages["yum"]))
+            if packages:
+                cmd_args = ["yum", "install", "-y"] + packages
+        elif manager == "rpm":
             packages = sorted(set(all_packages["rpm"]))
             if packages:
                 cmd_args = ["dnf", "install", "-y"] + packages
