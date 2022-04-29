@@ -201,7 +201,6 @@ class FBCodeBuilder(object):
             "build-essential",
             "cmake",
             "curl",
-            "flex",
             "git",
             "gperf",
             "joe",
