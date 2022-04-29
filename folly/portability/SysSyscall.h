@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <cerrno>
+
 #include <folly/CPortability.h>
 #include <folly/Portability.h>
 
@@ -55,14 +57,14 @@ namespace detail {
 //  mimic: syscall(2), linux
 template <typename... A>
 FOLLY_ERASE long linux_syscall(long number, A... a) {
-#if defined(_WIN32)
+#if defined(_WIN32) || (defined(__EMSCRIPTEN__) && !defined(syscall))
   errno = ENOSYS;
   return -1;
 #else
   // syscall is deprecated under iOS >= 10.0
   FOLLY_PUSH_WARNING
   FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
-  return ::syscall(number, a...);
+  return syscall(number, a...);
   FOLLY_POP_WARNING
 #endif
 }
