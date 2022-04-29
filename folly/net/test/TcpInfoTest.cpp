@@ -495,6 +495,11 @@ TEST_F(TcpInfoTest, LatestStruct) {
   checkNoMemoryInfo(wrappedTcpInfo);
 }
 
+TEST_F(TcpInfoTest, ConstructorWithLatestTcpInfo) {
+  TcpInfo wrappedTcpInfo{getTestLatestTcpInfo()};
+  checkTcpInfoAgainstLatest(wrappedTcpInfo);
+}
+
 TEST_F(TcpInfoTest, LatestStructWithCcInfo) {
   NetworkSocket s(0);
   setupExpectCallTcpInfo(s, getTestLatestTcpInfo());

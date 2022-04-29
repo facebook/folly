@@ -272,6 +272,10 @@ struct TcpInfo {
  public:
   using tcp_info = folly::detail::tcp_info;
 
+  TcpInfo() = default;
+  explicit TcpInfo(const tcp_info& tInfo)
+      : tcpInfo(tInfo), tcpInfoBytesRead{sizeof(TcpInfo::tcp_info)} {}
+
   /**
    * Returns pointer containing requested field from tcp_info struct.
    *
