@@ -28,17 +28,6 @@ namespace folly {
 
 namespace {
 
-struct SkipAtForkHandlers {
-  static thread_local bool value;
-
-  struct Guard {
-    bool saved = value;
-    Guard() { value = true; }
-    ~Guard() { value = saved; }
-  };
-};
-thread_local bool SkipAtForkHandlers::value;
-
 struct AtForkTask {
   void const* handle;
   Function<bool()> prepare;
@@ -48,18 +37,9 @@ struct AtForkTask {
 
 class AtForkList {
  public:
-  static AtForkList& instance() {
-    static auto instance = new AtForkList();
-    return *instance;
-  }
-
-  static void prepare() noexcept {
-    if (SkipAtForkHandlers::value) {
-      return;
-    }
-    instance().tasksLock.lock();
+  void prepare() noexcept {
+    tasksLock.lock();
     while (true) {
-      auto& tasks = instance().tasks;
       auto task = tasks.rbegin();
       for (; task != tasks.rend(); ++task) {
         if (!task->prepare()) {
@@ -75,40 +55,38 @@ class AtForkList {
     }
   }
 
-  static void parent() noexcept {
-    if (SkipAtForkHandlers::value) {
-      return;
-    }
-    auto& tasks = instance().tasks;
+  void parent() noexcept {
     for (auto& task : tasks) {
       task.parent();
     }
-    instance().tasksLock.unlock();
+    tasksLock.unlock();
   }
 
-  static void child() noexcept {
-    if (SkipAtForkHandlers::value) {
-      return;
-    }
-    // if we fork a multithreaded process
-    // some of the TSAN mutexes might be locked
-    // so we just enable ignores for everything
-    // while handling the child callbacks
-    // This might still be an issue if we do not exec right away
-    annotate_ignore_thread_sanitizer_guard g(__FILE__, __LINE__);
-
-    auto& tasks = instance().tasks;
+  void child() noexcept {
     for (auto& task : tasks) {
       task.child();
     }
-    instance().tasksLock.unlock();
+    tasksLock.unlock();
   }
 
   std::mutex tasksLock;
   std::list<AtForkTask> tasks;
+};
 
- private:
-  AtForkList() {
+struct SkipAtForkHandlers {
+  static thread_local bool value;
+
+  struct Guard {
+    bool saved = value;
+    Guard() { value = true; }
+    ~Guard() { value = saved; }
+  };
+};
+thread_local bool SkipAtForkHandlers::value;
+
+struct AtForkListSingleton {
+  static AtForkList& make() {
+    auto& instance = *new AtForkList();
     int ret = 0;
 #if FOLLY_HAVE_PTHREAD_ATFORK // if no pthread_atfork, probably no fork either
     ret = pthread_atfork(&prepare, &parent, &child);
@@ -117,12 +95,44 @@ class AtForkList {
       throw_exception<std::system_error>(
           ret, std::generic_category(), "pthread_atfork failed");
     }
+    return instance;
+  }
+
+  static AtForkList& get() {
+    static auto& instance = make();
+    return instance;
+  }
+
+  static void prepare() {
+    if (!SkipAtForkHandlers::value) {
+      get().prepare();
+    }
+  }
+
+  static void parent() {
+    if (!SkipAtForkHandlers::value) {
+      get().parent();
+    }
+  }
+
+  static void child() {
+    if (!SkipAtForkHandlers::value) {
+      // if we fork a multithreaded process
+      // some of the TSAN mutexes might be locked
+      // so we just enable ignores for everything
+      // while handling the child callbacks
+      // This might still be an issue if we do not exec right away
+      annotate_ignore_thread_sanitizer_guard g(__FILE__, __LINE__);
+
+      get().child();
+    }
   }
 };
+
 } // namespace
 
 void AtFork::init() {
-  AtForkList::instance();
+  AtForkListSingleton::get();
 }
 
 void AtFork::registerHandler(
@@ -130,8 +140,9 @@ void AtFork::registerHandler(
     Function<bool()> prepare,
     Function<void()> parent,
     Function<void()> child) {
-  std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);
-  AtForkList::instance().tasks.push_back(
+  auto& list = AtForkListSingleton::get();
+  std::lock_guard<std::mutex> lg(list.tasksLock);
+  list.tasks.push_back(
       {handle, std::move(prepare), std::move(parent), std::move(child)});
 }
 
@@ -139,7 +150,7 @@ void AtFork::unregisterHandler(void const* handle) {
   if (!handle) {
     return;
   }
-  auto& list = AtForkList::instance();
+  auto& list = AtForkListSingleton::get();
   std::lock_guard<std::mutex> lg(list.tasksLock);
   for (auto it = list.tasks.begin(); it != list.tasks.end(); ++it) {
     if (it->handle == handle) {
@@ -150,15 +161,19 @@ void AtFork::unregisterHandler(void const* handle) {
 }
 
 pid_t AtFork::forkInstrumented(fork_t forkFn) {
-  AtForkList::prepare();
+  if (SkipAtForkHandlers::value) {
+    return forkFn();
+  }
+  auto& list = AtForkListSingleton::get();
+  list.prepare();
   auto ret = [&] {
     SkipAtForkHandlers::Guard guard;
     return forkFn();
   }();
   if (ret) {
-    AtForkList::parent();
+    list.parent();
   } else {
-    AtForkList::child();
+    list.child();
   }
   return ret;
 }
