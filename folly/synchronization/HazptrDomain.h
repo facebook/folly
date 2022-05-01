@@ -518,7 +518,7 @@ class hazptr_domain {
       Obj* tagged[kNumShards];
       bool done = true;
       if (extract_retired_objects(untagged, tagged)) {
-        /*** Full fence ***/ asymmetricHeavyBarrier(AMBFlags::EXPEDITED);
+        /*** Full fence ***/ asymmetricHeavyBarrier();
         Set hs = load_hazptr_vals();
         rcount -= match_tagged(tagged, hs);
         rcount -= match_reclaim_untagged(untagged, hs, done);

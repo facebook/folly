@@ -79,12 +79,11 @@ void mprotectMembarrier() {
 }
 } // namespace
 
-void asymmetricHeavyBarrier(AMBFlags flags) {
+void asymmetricHeavyBarrier() {
   if (kIsLinux) {
     static const bool useSysMembarrier =
         detail::sysMembarrierPrivateExpeditedAvailable();
-    // sys_membarrier currently does not support EXPEDITED
-    if (useSysMembarrier && flags != AMBFlags::EXPEDITED) {
+    if (useSysMembarrier) {
       auto r = detail::sysMembarrierPrivateExpedited();
       checkUnixError(r, "membarrier");
     } else {
