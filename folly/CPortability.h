@@ -186,6 +186,9 @@
 // noinline
 #ifdef _MSC_VER
 #define FOLLY_NOINLINE __declspec(noinline)
+#elif defined(__HIP_PLATFORM_HCC__)
+// HIP software stack defines its own __noinline__ macro.
+#define FOLLY_NOINLINE __attribute__((noinline))
 #elif defined(__GNUC__)
 #define FOLLY_NOINLINE __attribute__((__noinline__))
 #else
