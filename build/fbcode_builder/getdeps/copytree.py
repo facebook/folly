@@ -57,6 +57,8 @@ def prefetch_dir_if_eden(dirpath) -> None:
     root = find_eden_root(dirpath)
     if root is None:
         return
+    # pyre-fixme[6]: For 1st param expected `bytes` but got `str`.
+    # pyre-fixme[6]: For 2nd param expected `bytes` but got `str`.
     glob = f"{os.path.relpath(dirpath, root).replace(os.sep, '/')}/**"
     print(f"Prefetching {glob}")
     subprocess.call(
