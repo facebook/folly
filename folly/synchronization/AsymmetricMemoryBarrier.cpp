@@ -27,40 +27,22 @@ namespace folly {
 
 namespace {
 
-struct DummyPageCreator {
-  DummyPageCreator() { get(); }
-
-  static void* get() {
-    static auto ptr = kIsLinux ? create() : nullptr;
-    return ptr;
-  }
-
- private:
-  static void* create() {
-    auto ptr = mmap(nullptr, 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    checkUnixError(reinterpret_cast<ssize_t>(ptr), "mmap");
-
-    // Optimistically try to lock the page so it stays resident. Could make
-    // the heavy barrier faster.
-    auto r = mlock(ptr, 1);
-    if (r != 0) {
-      // Do nothing.
-    }
-
-    return ptr;
-  }
-};
-
-// Make sure dummy page is always initialized before shutdown.
-DummyPageCreator dummyPageCreator;
-
 void mprotectMembarrier() {
-  auto dummyPage = dummyPageCreator.get();
-
   // This function is required to be safe to call on shutdown,
   // so we must leak the mutex.
   static Indestructible<std::mutex> mprotectMutex;
   std::lock_guard<std::mutex> lg(*mprotectMutex);
+
+  // Ensure that we have a dummy page. The page is not used to store data;
+  // rather, it is used only for the side-effects of page operations.
+  static void* dummyPage = nullptr;
+  if (dummyPage == nullptr) {
+    dummyPage = mmap(nullptr, 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    checkUnixError(reinterpret_cast<ssize_t>(dummyPage), "mmap");
+    // Optimistically try to lock the page so it stays resident, in theory
+    // making the heavy barrier faster than otherwise.
+    std::ignore = mlock(dummyPage, 1);
+  }
 
   int r = 0;
 
@@ -77,6 +59,7 @@ void mprotectMembarrier() {
   r = mprotect(dummyPage, 1, PROT_READ);
   checkUnixError(r, "mprotect");
 }
+
 } // namespace
 
 void asymmetricHeavyBarrier() {
@@ -93,4 +76,5 @@ void asymmetricHeavyBarrier() {
     std::atomic_thread_fence(std::memory_order_seq_cst);
   }
 }
+
 } // namespace folly
