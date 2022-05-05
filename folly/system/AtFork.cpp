@@ -69,6 +69,29 @@ class AtForkList {
     tasksLock.unlock();
   }
 
+  void append(
+      void const* handle,
+      Function<bool()> prepare,
+      Function<void()> parent,
+      Function<void()> child) {
+    std::unique_lock<std::mutex> lg{tasksLock};
+    tasks.push_back(
+        {handle, std::move(prepare), std::move(parent), std::move(child)});
+  }
+
+  void remove(void const* handle) {
+    if (!handle) {
+      return;
+    }
+    std::unique_lock<std::mutex> lg{tasksLock};
+    for (auto it = tasks.begin(); it != tasks.end(); ++it) {
+      if (it->handle == handle) {
+        tasks.erase(it);
+        return;
+      }
+    }
+  }
+
   std::mutex tasksLock;
   std::list<AtForkTask> tasks;
 };
@@ -141,23 +164,12 @@ void AtFork::registerHandler(
     Function<void()> parent,
     Function<void()> child) {
   auto& list = AtForkListSingleton::get();
-  std::lock_guard<std::mutex> lg(list.tasksLock);
-  list.tasks.push_back(
-      {handle, std::move(prepare), std::move(parent), std::move(child)});
+  list.append(handle, std::move(prepare), std::move(parent), std::move(child));
 }
 
 void AtFork::unregisterHandler(void const* handle) {
-  if (!handle) {
-    return;
-  }
   auto& list = AtForkListSingleton::get();
-  std::lock_guard<std::mutex> lg(list.tasksLock);
-  for (auto it = list.tasks.begin(); it != list.tasks.end(); ++it) {
-    if (it->handle == handle) {
-      list.tasks.erase(it);
-      return;
-    }
-  }
+  list.remove(handle);
 }
 
 pid_t AtFork::forkInstrumented(fork_t forkFn) {
