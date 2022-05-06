@@ -114,6 +114,7 @@
 
 #include <double-conversion/double-conversion.h> // V8 JavaScript implementation
 
+#include <folly/CPortability.h>
 #include <folly/Demangle.h>
 #include <folly/Expected.h>
 #include <folly/FBString.h>
@@ -149,11 +150,11 @@ enum class ConversionCode : unsigned char {
   NUM_ERROR_CODES, // has to be the last entry
 };
 
-struct ConversionErrorBase : std::range_error {
+struct FOLLY_EXPORT ConversionErrorBase : std::range_error {
   using std::range_error::range_error;
 };
 
-class ConversionError : public ConversionErrorBase {
+class FOLLY_EXPORT ConversionError : public ConversionErrorBase {
  public:
   ConversionError(const std::string& str, ConversionCode code)
       : ConversionErrorBase(str), code_(code) {}
