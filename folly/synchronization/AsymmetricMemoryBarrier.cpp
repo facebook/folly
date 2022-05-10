@@ -39,9 +39,6 @@ void mprotectMembarrier() {
   if (dummyPage == nullptr) {
     dummyPage = mmap(nullptr, 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     checkUnixError(reinterpret_cast<ssize_t>(dummyPage), "mmap");
-    // Optimistically try to lock the page so it stays resident, in theory
-    // making the heavy barrier faster than otherwise.
-    std::ignore = mlock(dummyPage, 1);
   }
 
   int r = 0;
