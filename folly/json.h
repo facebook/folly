@@ -59,6 +59,13 @@ struct serialization_opts {
   // operator<<.
   bool allow_non_string_keys{false};
 
+  // If true, integer keys are allowed irrespective of 'allow_non_string_keys'
+  // in parsing, and are converted to strings in serialization. Other types are
+  // accepted accoring to 'allow_non_string_keys'. If set, validate_keys is
+  // enabled. Any key sorting will be applied on the stored integers, if present
+  // in the input object.
+  bool convert_int_keys{false};
+
   /*
    * If true, refuse to serialize 64-bit numbers that cannot be
    * precisely represented by fit a double---instead, throws an

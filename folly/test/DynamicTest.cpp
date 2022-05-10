@@ -585,6 +585,7 @@ void testComparisonOperatorsForEqualDynamicValues(
   } else {
     testOrderingOperatorsForEqualValues(valueA, valueB);
   }
+  EXPECT_EQ(valueA.hash(), valueB.hash());
 }
 
 void testComparisonOperatorsForNotEqualDynamicValues(

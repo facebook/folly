@@ -152,28 +152,43 @@ struct Printer {
 
  private:
   void printKV(
+      dynamic const& o,
       const std::pair<const dynamic, dynamic>& p,
       const Context* context) const {
-    if (!opts_.allow_non_string_keys && !p.first.isString()) {
+    if (opts_.convert_int_keys && p.first.isInt()) {
+      auto strKey = p.first.asString();
+      if (o.count(strKey)) {
+        throw json::print_error(folly::to<std::string>(
+            "folly::toJson: Source object has integer and string keys "
+            "representing the same value: ",
+            p.first.asInt()));
+      }
+      (*this)(p.first.asString(), Context(context, p.first, true));
+    } else if (!opts_.allow_non_string_keys && !p.first.isString()) {
       throw json::print_error(
           "folly::toJson: JSON object key " +
-          toStringOr(p.first, "<unprintable key>") +
-          " was not a string when serializing key at " +
+          toStringOr(p.first, "<unprintable key>") + " was not a string " +
+          (opts_.convert_int_keys ? "or integer " : "") +
+          "when serializing key at " +
           Context(context, p.first, true).locationDescription());
+    } else {
+      (*this)(p.first, Context(context, p.first, true)); // Key
     }
-    (*this)(p.first, Context(context, p.first, true)); // Key
     mapColon();
     (*this)(p.second, Context(context, p.first, false)); // Value
   }
 
   template <typename Iterator>
   void printKVPairs(
-      Iterator begin, Iterator end, const Context* context) const {
-    printKV(*begin, context);
+      dynamic const& o,
+      Iterator begin,
+      Iterator end,
+      const Context* context) const {
+    printKV(o, *begin, context);
     for (++begin; begin != end; ++begin) {
       out_ += ',';
       newline();
-      printKV(*begin, context);
+      printKV(o, *begin, context);
     }
   }
 
@@ -200,9 +215,9 @@ struct Printer {
       } else {
         sort_keys_by(refs.begin(), refs.end(), std::less<>());
       }
-      printKVPairs(refs.cbegin(), refs.cend(), context);
+      printKVPairs(o, refs.cbegin(), refs.cend(), context);
     } else {
-      printKVPairs(o.items().begin(), o.items().end(), context);
+      printKVPairs(o, o.items().begin(), o.items().end(), context);
     }
     outdent();
     newline();
@@ -431,16 +446,19 @@ dynamic parseValue(Input& in, json::metadata_map* map);
 std::string parseString(Input& in);
 dynamic parseNumber(Input& in);
 
-template <class K>
 void parseObjectKeyValue(
-    Input& in, dynamic& ret, K&& key, json::metadata_map* map, bool distinct) {
+    Input& in,
+    dynamic& ret,
+    dynamic&& key,
+    json::metadata_map* map,
+    bool distinct) {
   auto keyLineNumber = in.getLineNum();
   in.skipWhitespace();
   in.expect(':');
   in.skipWhitespace();
   auto valueLineNumber = in.getLineNum();
   auto value = parseValue(in, map);
-  auto [it, inserted] = ret.try_emplace(std::forward<K>(key), std::move(value));
+  auto [it, inserted] = ret.try_emplace(std::move(key), std::move(value));
   if (!inserted) {
     if (distinct) {
       in.error("duplicate key inserted");
@@ -467,20 +485,20 @@ dynamic parseObject(Input& in, json::metadata_map* map) {
   }
 
   const auto& opts = in.getOpts();
-  const bool distinct = opts.validate_keys;
+  const bool distinct = opts.validate_keys || opts.convert_int_keys;
   for (;;) {
     if (opts.allow_trailing_comma && *in == '}') {
       break;
     }
-    if (*in == '\"') { // string
-      auto key = parseString(in);
-      parseObjectKeyValue(in, ret, std::move(key), map, distinct);
-    } else if (!opts.allow_non_string_keys) {
-      in.error("expected string for object key name");
-    } else {
-      auto key = parseValue(in, map);
-      parseObjectKeyValue(in, ret, std::move(key), map, distinct);
+    dynamic key = parseValue(in, map);
+    if (opts.convert_int_keys && key.isInt()) {
+      key = key.asString();
+    } else if (!opts.allow_non_string_keys && !key.isString()) {
+      in.error(
+          opts.convert_int_keys ? "expected string or integer for object key"
+                                : "expected string for object key");
     }
+    parseObjectKeyValue(in, ret, std::move(key), map, distinct);
 
     in.skipWhitespace();
     if (*in != ',') {

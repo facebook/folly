@@ -359,6 +359,43 @@ TEST(Json, DuplicateKeys) {
       parseJson("{\"a\": 2, \"a\": 1}", {.validate_keys = true}), parse_error);
 }
 
+TEST(Json, ParseConvertInt) {
+  EXPECT_THROW(parseJson("{2: 4}"), parse_error);
+  dynamic obj = dynamic::object("2", 4);
+  EXPECT_EQ(obj, parseJson("{2: 4}", {.convert_int_keys = true}));
+  EXPECT_THROW(
+      parseJson("{2: 4, \"2\": 5}", {.convert_int_keys = true}), parse_error);
+  EXPECT_THROW(
+      parseJson("{2: 4, 2: 5}", {.convert_int_keys = true}), parse_error);
+}
+
+TEST(Json, PrintConvertInt) {
+  dynamic obj = dynamic::object(2, 4);
+  EXPECT_THROW(toJson(obj), print_error);
+  EXPECT_EQ(
+      "{2:4}", folly::json::serialize(obj, {.allow_non_string_keys = true}));
+  EXPECT_EQ(
+      "{\"2\":4}", folly::json::serialize(obj, {.convert_int_keys = true}));
+  EXPECT_EQ(
+      "{\"2\":4}",
+      folly::json::serialize(
+          obj,
+          {
+              .allow_non_string_keys = true,
+              .convert_int_keys = true,
+          }));
+
+  obj["2"] = 5; // Would lead to duplicate keys in output JSON.
+  EXPECT_THROW(
+      folly::json::serialize(
+          obj,
+          {
+              .allow_non_string_keys = true,
+              .convert_int_keys = true,
+          }),
+      print_error);
+}
+
 TEST(Json, ParseTrailingComma) {
   folly::json::serialization_opts on, off;
   on.allow_trailing_comma = true;
