@@ -363,7 +363,7 @@ class rcu_domain {
   void synchronize() noexcept;
 
  private:
-  detail::ThreadCachedReaders<Tag> counters_;
+  detail::ThreadCachedReaders counters_;
   // Global epoch.
   std::atomic<uint64_t> version_{0};
   // Future epochs being driven by threads in synchronize

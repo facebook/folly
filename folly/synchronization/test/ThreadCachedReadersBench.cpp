@@ -18,7 +18,7 @@
 #include <folly/synchronization/detail/ThreadCachedReaders.h>
 #include <folly/synchronization/test/ThreadCachedEpochBench.h>
 
-using TCR = folly::detail::ThreadCachedReaders<void>;
+using TCR = folly::detail::ThreadCachedReaders;
 
 BENCHMARK(IncrementLoop, iters) {
   bm_increment_loop<TCR>(iters);

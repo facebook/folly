@@ -23,6 +23,7 @@
 #include <folly/ThreadLocal.h>
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
 #include <folly/synchronization/RelaxedAtomic.h>
+#include <folly/synchronization/detail/ThreadCachedTag.h>
 
 namespace folly {
 
@@ -63,7 +64,6 @@ using thread_cached_readers_atomic = typename thread_cached_readers_atomic_<
 //
 // These implications afford us debugging opportunities, such
 // as being able to detect long-running readers (T113951078).
-template <typename Tag>
 class ThreadCachedReaders {
   using atomic_type = detail::thread_cached_readers_atomic<uint64_t>;
   atomic_type orphan_epoch_readers_{0};
@@ -73,28 +73,21 @@ class ThreadCachedReaders {
    public:
     ThreadCachedReaders* readers_;
     explicit constexpr EpochCount(ThreadCachedReaders* readers) noexcept
-        : readers_(readers), epoch_readers_{}, cache_(readers->tls_cache_) {}
+        : readers_(readers), epoch_readers_{} {}
     atomic_type epoch_readers_;
-    EpochCount*& cache_; // reference to the cached ptr
     ~EpochCount() noexcept {
       // Set the cached epoch and readers.
       uint64_t epoch_readers = epoch_readers_;
       readers_->orphan_epoch_readers_ = epoch_readers;
       folly::asymmetricLightBarrier(); // B
       detail::futexWake(&readers_->waiting_);
-      // reset the cache_ on destructor so we can handle the delete/recreate.
-      cache_ = nullptr;
     }
   };
-  folly::ThreadLocalPtr<EpochCount, Tag> cs_;
-
-  // Cache the count of nested readers and their epochs in a thread local.
-  static thread_local EpochCount* tls_cache_;
+  folly::ThreadLocalPtr<EpochCount, ThreadCachedTag> cs_;
 
   void init() {
     auto ret = new EpochCount(this);
     cs_.reset(ret);
-    tls_cache_ = ret;
   }
 
   static uint32_t readers_from_epoch_reader(uint64_t epoch_reader) {
@@ -111,17 +104,19 @@ class ThreadCachedReaders {
 
  public:
   FOLLY_ALWAYS_INLINE void increment(uint64_t epoch) {
-    if (tls_cache_ == nullptr) {
+    auto tls_cache = cs_.get();
+    if (tls_cache == nullptr) {
       init();
+      tls_cache = cs_.get();
     }
-    uint64_t epoch_reader = tls_cache_->epoch_readers_;
+    uint64_t epoch_reader = tls_cache->epoch_readers_;
     if (readers_from_epoch_reader(epoch_reader) != 0) {
       DCHECK(
           readers_from_epoch_reader(epoch_reader) <
           std::numeric_limits<uint32_t>::max());
-      tls_cache_->epoch_readers_ = epoch_reader + 1;
+      tls_cache->epoch_readers_ = epoch_reader + 1;
     } else {
-      tls_cache_->epoch_readers_ = create_epoch_reader(epoch, 1);
+      tls_cache->epoch_readers_ = create_epoch_reader(epoch, 1);
     }
     folly::asymmetricLightBarrier(); // A
   }
@@ -129,10 +124,11 @@ class ThreadCachedReaders {
   FOLLY_ALWAYS_INLINE void decrement() {
     folly::asymmetricLightBarrier(); // B
 
-    DCHECK(tls_cache_ != nullptr);
-    uint64_t epoch_reader = tls_cache_->epoch_readers_;
+    auto tls_cache = cs_.get();
+    DCHECK(tls_cache != nullptr);
+    uint64_t epoch_reader = tls_cache->epoch_readers_;
     DCHECK(readers_from_epoch_reader(epoch_reader) > 0);
-    tls_cache_->epoch_readers_ = epoch_reader - 1;
+    tls_cache->epoch_readers_ = epoch_reader - 1;
 
     folly::asymmetricLightBarrier(); // C
     if (waiting_.load(std::memory_order_acquire)) {
@@ -187,10 +183,6 @@ class ThreadCachedReaders {
     waiting_.store(0, std::memory_order_relaxed);
   }
 };
-
-template <typename Tag>
-thread_local typename detail::ThreadCachedReaders<Tag>::EpochCount*
-    detail::ThreadCachedReaders<Tag>::tls_cache_ = nullptr;
 
 } // namespace detail
 } // namespace folly
