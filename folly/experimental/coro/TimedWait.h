@@ -45,7 +45,7 @@ timed_wait(Awaitable awaitable, Duration duration) {
   std::move(sleepFuture)
       .setCallback_([posted, &baton, executor = co_await co_current_executor](
                         auto&&, auto&&) {
-        if (!posted->exchange(true, std::memory_order_relaxed)) {
+        if (!posted->exchange(true, std::memory_order_acq_rel)) {
           executor->add([&baton] { baton.post(); });
         } else {
           delete posted;
@@ -61,7 +61,7 @@ timed_wait(Awaitable awaitable, Duration duration) {
     std::move(t)
         .scheduleOn(co_await co_current_executor)
         .start([posted, &baton, &result](auto&& r) {
-          if (!posted->exchange(true, std::memory_order_relaxed)) {
+          if (!posted->exchange(true, std::memory_order_acq_rel)) {
             result = std::move(r);
             baton.post();
           } else {
