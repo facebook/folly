@@ -219,8 +219,7 @@ TEST(RcuTest, SafeForkTest) {
 }
 
 TEST(RcuTest, ThreadLocalList) {
-  struct TTag;
-  folly::detail::ThreadCachedLists<TTag> lists;
+  folly::detail::ThreadCachedLists lists;
   std::vector<std::thread> threads{FLAGS_threads};
   folly::relaxed_atomic<unsigned long> done{FLAGS_threads};
   for (auto& tr : threads) {
@@ -233,20 +232,19 @@ TEST(RcuTest, ThreadLocalList) {
     });
   }
   while (done > 0) {
-    folly::detail::ThreadCachedLists<TTag>::ListHead list{};
+    folly::detail::ThreadCachedLists::ListHead list{};
     lists.collect(list);
-    list.forEach([](folly::detail::ThreadCachedLists<TTag>::Node* node) {
-      delete node;
-    });
+    list.forEach(
+        [](folly::detail::ThreadCachedLists::Node* node) { delete node; });
   }
   for (auto& thread : threads) {
     thread.join();
   }
   // Run cleanup pass one more time to make ASAN happy
-  folly::detail::ThreadCachedLists<TTag>::ListHead list{};
+  folly::detail::ThreadCachedLists::ListHead list{};
   lists.collect(list);
   list.forEach(
-      [](folly::detail::ThreadCachedLists<TTag>::Node* node) { delete node; });
+      [](folly::detail::ThreadCachedLists::Node* node) { delete node; });
 }
 
 TEST(RcuTest, ThreadDeath) {

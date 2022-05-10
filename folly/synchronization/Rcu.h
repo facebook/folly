@@ -323,8 +323,8 @@ class rcu_domain;
 // The domain must survive all its readers.
 template <typename Tag>
 class rcu_domain {
-  using list_head = typename detail::ThreadCachedLists<Tag>::ListHead;
-  using list_node = typename detail::ThreadCachedLists<Tag>::Node;
+  using list_head = typename detail::ThreadCachedLists::ListHead;
+  using list_node = typename detail::ThreadCachedLists::Node;
 
  public:
   /*
@@ -379,7 +379,7 @@ class rcu_domain {
   static constexpr uint64_t syncTimePeriod_{1600 * 2 /* full sync is 2x */};
   std::atomic<uint64_t> syncTime_{0};
   // call()s waiting to move through two epochs.
-  detail::ThreadCachedLists<Tag> q_;
+  detail::ThreadCachedLists q_;
   // Executor callbacks will eventually be run on.
   Executor* executor_{nullptr};
   static bool singleton_; // Ensure uniqueness per-tag.
