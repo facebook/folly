@@ -54,91 +54,77 @@ namespace folly {
 namespace json {
 
 struct serialization_opts {
-  explicit serialization_opts()
-      : allow_non_string_keys(false),
-        javascript_safe(false),
-        pretty_formatting(false),
-        pretty_formatting_indent_width(2),
-        encode_non_ascii(false),
-        validate_utf8(false),
-        allow_trailing_comma(false),
-        sort_keys(false),
-        skip_invalid_utf8(false),
-        allow_nan_inf(false),
-        double_mode(double_conversion::DoubleToStringConverter::SHORTEST),
-        double_num_digits(0), // ignored when mode is SHORTEST
-        double_fallback(false),
-        parse_numbers_as_strings(false),
-        recursion_limit(100),
-        extra_ascii_to_escape_bitmap{{0, 0}} {}
-
   // If true, keys in an object can be non-strings.  (In strict
   // JSON, object keys must be strings.)  This is used by dynamic's
   // operator<<.
-  bool allow_non_string_keys;
+  bool allow_non_string_keys{false};
 
   /*
    * If true, refuse to serialize 64-bit numbers that cannot be
    * precisely represented by fit a double---instead, throws an
    * exception if the document contains this.
    */
-  bool javascript_safe;
+  bool javascript_safe{false};
 
   // If true, the serialized json will contain space and newlines to
   // try to be minimally "pretty".
-  bool pretty_formatting;
+  bool pretty_formatting{false};
 
   // The number of spaces to indent by when pretty_formatting is enabled.
-  unsigned int pretty_formatting_indent_width;
+  unsigned int pretty_formatting_indent_width{2};
 
   // If true, non-ASCII utf8 characters would be encoded as \uXXXX:
   // - if the code point is in [U+0000..U+FFFF] => encode as a single \uXXXX
   // - if the code point is > U+FFFF => encode as 2 UTF-16 surrogate pairs.
-  bool encode_non_ascii;
+  bool encode_non_ascii{false};
 
   // Check that strings are valid utf8
-  bool validate_utf8;
+  bool validate_utf8{false};
+
+  // Check that keys are distinct
+  bool validate_keys{false};
 
   // Allow trailing comma in lists of values / items
-  bool allow_trailing_comma;
+  bool allow_trailing_comma{false};
 
   // Sort keys of all objects before printing out (potentially slow)
   // using dynamic::operator<.
   // Has no effect if sort_keys_by is set.
-  bool sort_keys;
+  bool sort_keys{false};
 
   // Sort keys of all objects before printing out (potentially slow)
   // using the provided less functor.
   Function<bool(dynamic const&, dynamic const&) const> sort_keys_by;
 
   // Replace invalid utf8 characters with U+FFFD and continue
-  bool skip_invalid_utf8;
+  bool skip_invalid_utf8{false};
 
   // true to allow NaN or INF values
-  bool allow_nan_inf;
+  bool allow_nan_inf{false};
 
   // Options for how to print floating point values.  See Conv.h
   // toAppend implementation for floating point for more info
-  double_conversion::DoubleToStringConverter::DtoaMode double_mode;
-  unsigned int double_num_digits;
+  double_conversion::DoubleToStringConverter::DtoaMode double_mode{
+      double_conversion::DoubleToStringConverter::SHORTEST};
+  unsigned int double_num_digits{0}; // ignored when mode is SHORTEST
 
   // Fallback to double when a value that looks like integer is too big to
   // fit in an int64_t. Can result in loss a of precision.
-  bool double_fallback;
+  bool double_fallback{false};
 
   // Do not parse numbers. Instead, store them as strings and leave the
   // conversion up to the user.
-  bool parse_numbers_as_strings;
+  bool parse_numbers_as_strings{false};
 
   // Recursion limit when parsing.
-  unsigned int recursion_limit;
+  unsigned int recursion_limit{100};
 
   // Bitmap representing ASCII characters to escape with unicode
   // representations. The least significant bit of the first in the pair is
   // ASCII value 0; the most significant bit of the second in the pair is ASCII
   // value 127. Some specific characters in this range are always escaped
   // regardless of the bitmask - namely characters less than 0x20, \, and ".
-  std::array<uint64_t, 2> extra_ascii_to_escape_bitmap;
+  std::array<uint64_t, 2> extra_ascii_to_escape_bitmap{};
 };
 
 /*

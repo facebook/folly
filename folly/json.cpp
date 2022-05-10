@@ -389,7 +389,7 @@ struct Input {
     return range_.subpiece(0, 16 /* arbitrary */).toString();
   }
 
-  dynamic error(char const* what) const {
+  [[noreturn]] dynamic error(char const* what) const {
     throw json::make_parse_error(lineNum_, context(), what);
   }
 
@@ -433,23 +433,24 @@ dynamic parseNumber(Input& in);
 
 template <class K>
 void parseObjectKeyValue(
-    Input& in, dynamic& ret, K&& key, json::metadata_map* map) {
+    Input& in, dynamic& ret, K&& key, json::metadata_map* map, bool distinct) {
   auto keyLineNumber = in.getLineNum();
   in.skipWhitespace();
   in.expect(':');
   in.skipWhitespace();
-  K tmp;
-  if (map) {
-    tmp = K(key);
-  }
   auto valueLineNumber = in.getLineNum();
-  ret.insert(std::forward<K>(key), parseValue(in, map));
+  auto value = parseValue(in, map);
+  auto [it, inserted] = ret.try_emplace(std::forward<K>(key), std::move(value));
+  if (!inserted) {
+    if (distinct) {
+      in.error("duplicate key inserted");
+    }
+    it->second = std::move(value);
+  }
   if (map) {
-    auto val = ret.get_ptr(tmp);
-    // We just inserted it, so it should be there!
-    DCHECK(val != nullptr);
     map->emplace(
-        val, json::parse_metadata{{{keyLineNumber}}, {{valueLineNumber}}});
+        &it->second,
+        json::parse_metadata{{{keyLineNumber}}, {{valueLineNumber}}});
   }
 }
 
@@ -465,18 +466,20 @@ dynamic parseObject(Input& in, json::metadata_map* map) {
     return ret;
   }
 
+  const auto& opts = in.getOpts();
+  const bool distinct = opts.validate_keys;
   for (;;) {
-    if (in.getOpts().allow_trailing_comma && *in == '}') {
+    if (opts.allow_trailing_comma && *in == '}') {
       break;
     }
     if (*in == '\"') { // string
       auto key = parseString(in);
-      parseObjectKeyValue(in, ret, std::move(key), map);
-    } else if (!in.getOpts().allow_non_string_keys) {
+      parseObjectKeyValue(in, ret, std::move(key), map, distinct);
+    } else if (!opts.allow_non_string_keys) {
       in.error("expected string for object key name");
     } else {
       auto key = parseValue(in, map);
-      parseObjectKeyValue(in, ret, std::move(key), map);
+      parseObjectKeyValue(in, ret, std::move(key), map, distinct);
     }
 
     in.skipWhitespace();

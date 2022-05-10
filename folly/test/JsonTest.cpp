@@ -349,6 +349,16 @@ TEST(Json, TestLineNumbers) {
   map.clear();
 }
 
+TEST(Json, DuplicateKeys) {
+  dynamic obj = dynamic::object("a", 1);
+  EXPECT_EQ(obj, parseJson("{\"a\": 1}"));
+
+  // Default behavior keeps *last* value.
+  EXPECT_EQ(obj, parseJson("{\"a\": 2, \"a\": 1}"));
+  EXPECT_THROW(
+      parseJson("{\"a\": 2, \"a\": 1}", {.validate_keys = true}), parse_error);
+}
+
 TEST(Json, ParseTrailingComma) {
   folly::json::serialization_opts on, off;
   on.allow_trailing_comma = true;
