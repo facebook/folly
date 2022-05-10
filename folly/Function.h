@@ -264,15 +264,14 @@ template <typename T>
 using FunctionNullptrTest =
     decltype(static_cast<bool>(static_cast<T const&>(T(nullptr)) == nullptr));
 
-template <
-    typename T,
-    std::enable_if_t<!is_detected_v<FunctionNullptrTest, T>, int> = 0>
+template <typename T>
+constexpr bool IsNullptrCompatible = is_detected_v<FunctionNullptrTest, T>;
+
+template <typename T, std::enable_if_t<!IsNullptrCompatible<T>, int> = 0>
 constexpr bool isEmptyFunction(T const&) {
   return false;
 }
-template <
-    typename T,
-    std::enable_if_t<is_detected_v<FunctionNullptrTest, T>, int> = 0>
+template <typename T, std::enable_if_t<IsNullptrCompatible<T>, int> = 0>
 constexpr bool isEmptyFunction(T const& t) {
   return static_cast<bool>(t == nullptr);
 }
@@ -762,8 +761,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
             IsSmall,
             detail::function::DispatchSmall,
             detail::function::DispatchBig>>;
-    if (detail::function::isEmptyFunction(fun)) {
-      return;
+    if FOLLY_CXX17_CONSTEXPR (detail::function::IsNullptrCompatible<Fun>) {
+      if (detail::function::isEmptyFunction(fun)) {
+        return;
+      }
     }
     if FOLLY_CXX17_CONSTEXPR (IsSmall) {
       ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
@@ -1081,11 +1082,15 @@ class FunctionRef<ReturnType(Args...)> final {
     // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
     // is a const type) inside `FunctionRef::call`
     auto& ref = fun; // work around forwarding lint advice
-    if (!detail::function::isEmptyFunction(ref)) {
-      auto ptr = std::addressof(ref);
-      object_ = const_cast<void*>(static_cast<void const*>(ptr));
-      call_ = &FunctionRef::template call<Fun>;
+    if FOLLY_CXX17_CONSTEXPR ( //
+        detail::function::IsNullptrCompatible<std::decay_t<Fun>>) {
+      if (detail::function::isEmptyFunction(fun)) {
+        return;
+      }
     }
+    auto ptr = std::addressof(ref);
+    object_ = const_cast<void*>(static_cast<void const*>(ptr));
+    call_ = &FunctionRef::template call<Fun>;
   }
 
   /**
