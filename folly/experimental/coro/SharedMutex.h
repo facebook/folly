@@ -86,7 +86,7 @@ namespace coro {
 ///      co_return values_.count(value) > 0;
 ///    }
 ///  };
-class SharedMutexFair {
+class SharedMutexFair : private folly::moveonly_::EnableCopyMove<false, false> {
   template <typename Awaiter>
   class LockOperation;
   class LockAwaiter;
