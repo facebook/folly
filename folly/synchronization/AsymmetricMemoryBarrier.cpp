@@ -27,6 +27,13 @@ namespace folly {
 
 namespace {
 
+// The intention is to force a memory barrier in every core running any of the
+// process's threads. There is not a wide selection of options, but we do have
+// one trick: force a TLB shootdown. There are multiple scenarios in which a TLB
+// shootdown occurs, two of which are relevant: (1) when a resident page is
+// swapped out, and (2) when the protection on a resident page is downgraded.
+// We cannot force (1) and we cannot force (2). But we can force at least one of
+// the outcomes (1) or (2) to happen!
 void mprotectMembarrier() {
   // This function is required to be safe to call on shutdown,
   // so we must leak the mutex.
@@ -52,7 +59,9 @@ void mprotectMembarrier() {
   *static_cast<char*>(dummyPage) = 0;
 
   // Downgrade the page. Forces a memory barrier in every core running any
-  // of the process's threads. On a sane platform.
+  // of the process's threads, if the page is resident. On a sane platform.
+  // If the page has been swapped out and is no longer resident, then the
+  // memory barrier has already occurred.
   r = mprotect(dummyPage, 1, PROT_READ);
   checkUnixError(r, "mprotect");
 }
