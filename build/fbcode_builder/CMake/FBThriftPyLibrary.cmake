@@ -84,7 +84,7 @@ function(add_fbthrift_py_library LIB_NAME THRIFT_FILE)
       "${CMAKE_COMMAND}" -E make_directory "${output_dir}"
     COMMAND
       "${FBTHRIFT_COMPILER}"
-      --strict
+      --legacy-strict
       --gen "py:${GEN_ARG_STR}"
       "${thrift_include_options}"
       -o "${output_dir}"

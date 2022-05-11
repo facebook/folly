@@ -112,7 +112,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
       "${CMAKE_COMMAND}" -E make_directory "${output_dir}"
     COMMAND
       "${FBTHRIFT_COMPILER}"
-      --strict
+      --legacy-strict
       --gen "mstch_cpp2:${GEN_ARG_STR}"
       "${thrift_include_options}"
       -o "${output_dir}"
