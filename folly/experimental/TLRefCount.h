@@ -107,7 +107,7 @@ class TLRefCount {
       refCountPtr->state_ = State::GLOBAL_TRANSITION;
     }
 
-    asymmetricHeavyBarrier();
+    asymmetric_thread_fence_heavy(std::memory_order_seq_cst);
 
     for (auto refCountPtr : refCountPtrs) {
       std::weak_ptr<void> collectGuardWeak = refCountPtr->collectGuard_;
@@ -183,15 +183,15 @@ class TLRefCount {
       }
 
       // This is equivalent to atomic fetch_add. We know that this operation
-      // is always performed from a single thread. asymmetricLightBarrier()
-      // makes things faster than atomic fetch_add on platforms with native
-      // support.
+      // is always performed from a single thread.
+      // asymmetric_thread_fence_light() makes things faster than atomic
+      // fetch_add on platforms with native support.
       auto count = count_.load(std::memory_order_relaxed) + delta;
       inUpdate_.store(true, std::memory_order_relaxed);
       SCOPE_EXIT { inUpdate_.store(false, std::memory_order_release); };
       count_.store(count, std::memory_order_release);
 
-      asymmetricLightBarrier();
+      asymmetric_thread_fence_light(std::memory_order_seq_cst);
 
       if (UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
         std::lock_guard<std::mutex> lg(collectMutex_);

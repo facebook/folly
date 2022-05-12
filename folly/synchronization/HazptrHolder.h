@@ -119,7 +119,8 @@ class hazptr_holder {
        for stealing bits of the pointer word */
     auto p = ptr;
     reset_protection(f(p));
-    /*** Full fence ***/ folly::asymmetricLightBarrier();
+    /*** Full fence ***/ folly::asymmetric_thread_fence_light(
+        std::memory_order_seq_cst);
     ptr = src.load(std::memory_order_acquire);
     if (UNLIKELY(p != ptr)) {
       reset_protection();

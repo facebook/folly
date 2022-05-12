@@ -453,7 +453,7 @@ bool ThreadPoolExecutor::tryTimeoutThread() {
   // queues have seq_cst ordering, some do not, so add an explicit
   // barrier.  tryTimeoutThread is the slow path and only happens once
   // every thread timeout; use asymmetric barrier to keep add() fast.
-  asymmetricHeavyBarrier();
+  asymmetric_thread_fence_heavy(std::memory_order_seq_cst);
 
   // If this is based on idle thread timeout, then
   // adjust vars appropriately (otherwise stop() or join()
@@ -482,7 +482,7 @@ void ThreadPoolExecutor::ensureActiveThreads() {
 
   // Matches barrier in tryTimeoutThread().  Ensure task added
   // is seen before loading activeThreads_ below.
-  asymmetricLightBarrier();
+  asymmetric_thread_fence_light(std::memory_order_seq_cst);
 
   // Fast path assuming we are already at max threads.
   auto active = activeThreads_.load(std::memory_order_relaxed);

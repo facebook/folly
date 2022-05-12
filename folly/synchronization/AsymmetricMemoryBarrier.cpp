@@ -22,6 +22,7 @@
 #include <folly/Indestructible.h>
 #include <folly/portability/SysMembarrier.h>
 #include <folly/portability/SysMman.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -45,41 +46,45 @@ void mprotectMembarrier() {
   static void* dummyPage = nullptr;
   if (dummyPage == nullptr) {
     dummyPage = mmap(nullptr, 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    checkUnixError(reinterpret_cast<ssize_t>(dummyPage), "mmap");
+    FOLLY_SAFE_PCHECK(MAP_FAILED != dummyPage);
   }
-
-  int r = 0;
 
   // We want to downgrade the page while it is resident. To do that, it must
   // first be upgraded and forced to be resident.
-  r = mprotect(dummyPage, 1, PROT_READ | PROT_WRITE);
-  checkUnixError(r, "mprotect");
+  FOLLY_SAFE_PCHECK(-1 != mprotect(dummyPage, 1, PROT_READ | PROT_WRITE));
 
   // Force the page to be resident. If it is already resident, almost no-op.
-  *static_cast<char*>(dummyPage) = 0;
+  *static_cast<char volatile*>(dummyPage) = 0;
 
   // Downgrade the page. Forces a memory barrier in every core running any
   // of the process's threads, if the page is resident. On a sane platform.
   // If the page has been swapped out and is no longer resident, then the
   // memory barrier has already occurred.
-  r = mprotect(dummyPage, 1, PROT_READ);
-  checkUnixError(r, "mprotect");
+  FOLLY_SAFE_PCHECK(-1 != mprotect(dummyPage, 1, PROT_READ));
+}
+
+bool sysMembarrierAvailableCached() {
+  // Optimistic concurrency variation on static local variable
+  static relaxed_atomic<char> cache{0};
+  char value = cache;
+  if (value == 0) {
+    value = detail::sysMembarrierPrivateExpeditedAvailable() ? 1 : -1;
+    cache = value;
+  }
+  return value == 1;
 }
 
 } // namespace
 
-void asymmetricHeavyBarrier() {
+void asymmetric_thread_fence_heavy_fn::impl_(std::memory_order order) noexcept {
   if (kIsLinux) {
-    static const bool useSysMembarrier =
-        detail::sysMembarrierPrivateExpeditedAvailable();
-    if (useSysMembarrier) {
-      auto r = detail::sysMembarrierPrivateExpedited();
-      checkUnixError(r, "membarrier");
+    if (sysMembarrierAvailableCached()) {
+      FOLLY_SAFE_PCHECK(-1 != detail::sysMembarrierPrivateExpedited());
     } else {
       mprotectMembarrier();
     }
   } else {
-    std::atomic_thread_fence(std::memory_order_seq_cst);
+    std::atomic_thread_fence(order);
   }
 }
 

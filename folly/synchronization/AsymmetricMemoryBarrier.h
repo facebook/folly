@@ -22,13 +22,39 @@
 
 namespace folly {
 
-FOLLY_ALWAYS_INLINE void asymmetricLightBarrier() {
-  if (kIsLinux) {
-    asm_volatile_memory();
-  } else {
-    std::atomic_thread_fence(std::memory_order_seq_cst);
+//  asymmetric_thread_fence_light
+//
+//  mimic: std::experimental::asymmetric_thread_fence_light, p1202r4
+//  http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1202r4.pdf
+struct asymmetric_thread_fence_light_fn {
+  FOLLY_ALWAYS_INLINE void operator()(std::memory_order order) const noexcept {
+    if (kIsLinux) {
+      asm_volatile_memory();
+    } else {
+      std::atomic_thread_fence(order);
+    }
   }
-}
+};
+FOLLY_INLINE_VARIABLE constexpr asymmetric_thread_fence_light_fn
+    asymmetric_thread_fence_light{};
 
-void asymmetricHeavyBarrier();
+//  asymmetric_thread_fence_heavy
+//
+//  mimic: std::experimental::asymmetric_thread_fence_heavy, p1202r4
+//  http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1202r4.pdf
+struct asymmetric_thread_fence_heavy_fn {
+  FOLLY_ALWAYS_INLINE void operator()(std::memory_order order) const noexcept {
+    if (kIsLinux) {
+      impl_(order);
+    } else {
+      std::atomic_thread_fence(order);
+    }
+  }
+
+ private:
+  static void impl_(std::memory_order) noexcept;
+};
+FOLLY_INLINE_VARIABLE constexpr asymmetric_thread_fence_heavy_fn
+    asymmetric_thread_fence_heavy{};
+
 } // namespace folly

@@ -79,7 +79,7 @@ class ThreadCachedReaders {
       // Set the cached epoch and readers.
       uint64_t epoch_readers = epoch_readers_;
       readers_->orphan_epoch_readers_ = epoch_readers;
-      folly::asymmetricLightBarrier(); // B
+      folly::asymmetric_thread_fence_light(std::memory_order_seq_cst); // B
       detail::futexWake(&readers_->waiting_);
     }
   };
@@ -118,11 +118,11 @@ class ThreadCachedReaders {
     } else {
       tls_cache->epoch_readers_ = create_epoch_reader(epoch, 1);
     }
-    folly::asymmetricLightBarrier(); // A
+    folly::asymmetric_thread_fence_light(std::memory_order_seq_cst); // A
   }
 
   FOLLY_ALWAYS_INLINE void decrement() {
-    folly::asymmetricLightBarrier(); // B
+    folly::asymmetric_thread_fence_light(std::memory_order_seq_cst); // B
 
     auto tls_cache = cs_.get();
     DCHECK(tls_cache != nullptr);
@@ -130,7 +130,7 @@ class ThreadCachedReaders {
     DCHECK(readers_from_epoch_reader(epoch_reader) > 0);
     tls_cache->epoch_readers_ = epoch_reader - 1;
 
-    folly::asymmetricLightBarrier(); // C
+    folly::asymmetric_thread_fence_light(std::memory_order_seq_cst); // C
     if (waiting_.load(std::memory_order_acquire)) {
       waiting_.store(0, std::memory_order_release);
       detail::futexWake(&waiting_);
@@ -157,7 +157,7 @@ class ThreadCachedReaders {
     // epoch.  However, this is ok - they started concurrently *after*
     // any callbacks that will run, and therefore it is safe to run
     // the callbacks.
-    folly::asymmetricHeavyBarrier();
+    folly::asymmetric_thread_fence_heavy(std::memory_order_seq_cst);
     auto access = cs_.accessAllThreads();
     return !std::any_of(access.begin(), access.end(), [&](auto& i) {
       return epochHasReaders(epoch, i.epoch_readers_);
@@ -174,7 +174,7 @@ class ThreadCachedReaders {
       // Matches C.  Ensure either decrement sees waiting_,
       // or we see their decrement and can safely sleep.
       waiting_.store(1, std::memory_order_release);
-      folly::asymmetricHeavyBarrier();
+      folly::asymmetric_thread_fence_heavy(std::memory_order_seq_cst);
       if (epochIsClear(epoch)) {
         break;
       }
