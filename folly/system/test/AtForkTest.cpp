@@ -25,7 +25,204 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-class AtForkTest : public testing::Test {};
+using namespace testing;
+
+class AtForkListTest : public Test {};
+
+TEST_F(AtForkListTest, append_nullptr) {
+  folly::AtForkList list;
+  EXPECT_FALSE(list.contains(nullptr));
+  list.append(nullptr, nullptr, nullptr, nullptr);
+  EXPECT_FALSE(list.contains(nullptr));
+}
+
+TEST_F(AtForkListTest, remove_nullptr) {
+  folly::AtForkList list;
+  EXPECT_FALSE(list.contains(nullptr));
+  list.remove(nullptr);
+  EXPECT_FALSE(list.contains(nullptr));
+}
+
+TEST_F(AtForkListTest, append_key) {
+  folly::AtForkList list;
+  char key;
+  EXPECT_FALSE(list.contains(&key));
+  list.append(&key, nullptr, nullptr, nullptr);
+  EXPECT_TRUE(list.contains(&key));
+}
+
+TEST_F(AtForkListTest, append_key_duplicate) {
+  folly::AtForkList list;
+  char key;
+  EXPECT_FALSE(list.contains(&key));
+  list.append(&key, nullptr, nullptr, nullptr);
+  EXPECT_TRUE(list.contains(&key));
+  EXPECT_THROW(
+      list.append(&key, nullptr, nullptr, nullptr), std::invalid_argument);
+}
+
+TEST_F(AtForkListTest, remove_key) {
+  folly::AtForkList list;
+  char key;
+  EXPECT_FALSE(list.contains(&key));
+  list.append(&key, nullptr, nullptr, nullptr);
+  EXPECT_TRUE(list.contains(&key));
+  list.remove(&key);
+  EXPECT_FALSE(list.contains(&key));
+}
+
+TEST_F(AtForkListTest, remove_key_missing) {
+  folly::AtForkList list;
+  char key;
+  EXPECT_FALSE(list.contains(&key));
+  EXPECT_THROW(list.remove(&key), std::out_of_range);
+}
+
+TEST_F(AtForkListTest, prepare_parent) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  list.append(
+      nullptr,
+      [&] { return ops.push_back(70), true; },
+      [&] { ops.push_back(80); },
+      [&] { ops.push_back(90); });
+  list.prepare();
+  list.parent();
+  EXPECT_THAT(ops, ElementsAre(70, 80));
+}
+
+TEST_F(AtForkListTest, prepare_parent_prepare_empty) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  list.append(
+      nullptr, //
+      nullptr,
+      [&] { ops.push_back(80); },
+      [&] { ops.push_back(90); });
+  list.prepare();
+  list.parent();
+  EXPECT_THAT(ops, ElementsAre(80));
+}
+
+TEST_F(AtForkListTest, prepare_parent_parent_empty) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  list.append(
+      nullptr, //
+      [&] { return ops.push_back(70), true; },
+      nullptr,
+      [&] { ops.push_back(90); });
+  list.prepare();
+  list.parent();
+  EXPECT_THAT(ops, ElementsAre(70));
+}
+
+TEST_F(AtForkListTest, prepare_parent_multi) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  for (size_t i = 0; i != 3; ++i) {
+    list.append(
+        nullptr,
+        [&, i] { return ops.push_back(70 + i), true; },
+        [&, i] { ops.push_back(80 + i); },
+        [&, i] { ops.push_back(90 + i); });
+  }
+  list.prepare();
+  list.parent();
+  EXPECT_THAT(ops, ElementsAre(72, 71, 70, 80, 81, 82));
+}
+
+TEST_F(AtForkListTest, prepare_parent_return_false) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  for (size_t i = 0; i != 4; ++i) {
+    list.append(
+        nullptr,
+        [&, i, q = 0]() mutable {
+          return ops.push_back(70 + i), q++ || i != 1;
+        },
+        [&, i] { ops.push_back(80 + i); },
+        [&, i] { ops.push_back(90 + i); });
+  }
+  list.prepare();
+  list.parent();
+  EXPECT_THAT(
+      ops, ElementsAre(73, 72, 71, 83, 82, 73, 72, 71, 70, 80, 81, 82, 83));
+}
+
+TEST_F(AtForkListTest, prepare_child) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  list.append(
+      nullptr,
+      [&] { return ops.push_back(70), true; },
+      [&] { ops.push_back(80); },
+      [&] { ops.push_back(90); });
+  list.prepare();
+  list.child();
+  EXPECT_THAT(ops, ElementsAre(70, 90));
+}
+
+TEST_F(AtForkListTest, prepare_child_multi) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  for (size_t i = 0; i != 3; ++i) {
+    list.append(
+        nullptr,
+        [&, i] { return ops.push_back(70 + i), true; },
+        [&, i] { ops.push_back(80 + i); },
+        [&, i] { ops.push_back(90 + i); });
+  }
+  list.prepare();
+  list.child();
+  EXPECT_THAT(ops, ElementsAre(72, 71, 70, 90, 91, 92));
+}
+
+TEST_F(AtForkListTest, prepare_child_return_false) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  for (size_t i = 0; i != 4; ++i) {
+    list.append(
+        nullptr,
+        [&, i, q = 0]() mutable {
+          return ops.push_back(70 + i), q++ || i != 1;
+        },
+        [&, i] { ops.push_back(80 + i); },
+        [&, i] { ops.push_back(90 + i); });
+  }
+  list.prepare();
+  list.child();
+  EXPECT_THAT(
+      ops, ElementsAre(73, 72, 71, 83, 82, 73, 72, 71, 70, 90, 91, 92, 93));
+}
+
+TEST_F(AtForkListTest, prepare_child_parent_empty) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  list.append(
+      nullptr, //
+      [&] { return ops.push_back(70), true; },
+      nullptr,
+      [&] { ops.push_back(90); });
+  list.prepare();
+  list.child();
+  EXPECT_THAT(ops, ElementsAre(70, 90));
+}
+
+TEST_F(AtForkListTest, prepare_child_child_empty) {
+  folly::AtForkList list;
+  std::vector<int> ops;
+  list.append(
+      nullptr, //
+      [&] { return ops.push_back(70), true; },
+      [&] { ops.push_back(80); },
+      nullptr);
+  list.prepare();
+  list.child();
+  EXPECT_THAT(ops, ElementsAre(70));
+}
+
+class AtForkTest : public Test {};
 
 TEST_F(AtForkTest, prepare) {
   int foo;
@@ -102,8 +299,8 @@ TEST_F(AtForkTest, ordering) {
     EXPECT_THAT(
         WEXITSTATUS(status),
         folly::kIsSanitizeThread //
-            ? testing::AnyOfArray({0, 66})
-            : testing::AnyOfArray({0}));
+            ? AnyOfArray({0, 66})
+            : AnyOfArray({0}));
     EXPECT_EQ(pid, pid2);
   } else {
     _exit(0);

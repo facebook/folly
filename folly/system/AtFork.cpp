@@ -16,9 +16,6 @@
 
 #include <folly/system/AtFork.h>
 
-#include <list>
-#include <mutex>
-
 #include <folly/ScopeGuard.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/PThread.h>
@@ -26,75 +23,87 @@
 
 namespace folly {
 
-namespace {
-
-struct AtForkTask {
-  void const* handle;
-  Function<bool()> prepare;
-  Function<void()> parent;
-  Function<void()> child;
-};
-
-class AtForkList {
- public:
-  void prepare() noexcept {
-    tasksLock.lock();
-    while (true) {
-      auto task = tasks.rbegin();
-      for (; task != tasks.rend(); ++task) {
-        if (!task->prepare()) {
+void AtForkList::prepare() noexcept {
+  mutex.lock();
+  while (true) {
+    auto task = tasks.rbegin();
+    for (; task != tasks.rend(); ++task) {
+      if (auto& f = task->prepare) {
+        if (!f()) {
           break;
         }
       }
-      if (task == tasks.rend()) {
-        return;
-      }
-      for (auto untask = tasks.rbegin(); untask != task; ++untask) {
-        untask->parent();
-      }
     }
-  }
-
-  void parent() noexcept {
-    for (auto& task : tasks) {
-      task.parent();
-    }
-    tasksLock.unlock();
-  }
-
-  void child() noexcept {
-    for (auto& task : tasks) {
-      task.child();
-    }
-    tasksLock.unlock();
-  }
-
-  void append(
-      void const* handle,
-      Function<bool()> prepare,
-      Function<void()> parent,
-      Function<void()> child) {
-    std::unique_lock<std::mutex> lg{tasksLock};
-    tasks.push_back(
-        {handle, std::move(prepare), std::move(parent), std::move(child)});
-  }
-
-  void remove(void const* handle) {
-    if (!handle) {
+    if (task == tasks.rend()) {
       return;
     }
-    std::unique_lock<std::mutex> lg{tasksLock};
-    for (auto it = tasks.begin(); it != tasks.end(); ++it) {
-      if (it->handle == handle) {
-        tasks.erase(it);
-        return;
+    for (auto untask = tasks.rbegin(); untask != task; ++untask) {
+      if (auto& f = untask->parent) {
+        f();
       }
     }
   }
+}
 
-  std::mutex tasksLock;
-  std::list<AtForkTask> tasks;
-};
+void AtForkList::parent() noexcept {
+  for (auto& task : tasks) {
+    if (auto& f = task.parent) {
+      f();
+    }
+  }
+  mutex.unlock();
+}
+
+void AtForkList::child() noexcept {
+  for (auto& task : tasks) {
+    if (auto& f = task.child) {
+      f();
+    }
+  }
+  mutex.unlock();
+}
+
+void AtForkList::append(
+    void const* handle,
+    Function<bool()> prepare,
+    Function<void()> parent,
+    Function<void()> child) {
+  std::unique_lock<std::mutex> lg{mutex};
+  if (handle && index.count(handle)) {
+    throw_exception<std::invalid_argument>("at-fork: append: duplicate");
+  }
+  auto task =
+      Task{handle, std::move(prepare), std::move(parent), std::move(child)};
+  auto inserted = tasks.insert(tasks.end(), std::move(task));
+  if (handle) {
+    index.emplace(handle, inserted);
+  }
+}
+
+void AtForkList::remove(void const* handle) {
+  if (!handle) {
+    return;
+  }
+  std::unique_lock<std::mutex> lg{mutex};
+  auto i1 = index.find(handle);
+  if (i1 == index.end()) {
+    throw_exception<std::out_of_range>("at-fork: remove: missing");
+  }
+  auto i2 = i1->second;
+  index.erase(i1);
+  tasks.erase(i2);
+}
+
+bool AtForkList::contains( //
+    void const* handle) {
+  if (!handle) {
+    return false;
+  }
+  std::unique_lock<std::mutex> lg{mutex};
+  return index.count(handle) != 0;
+}
+
+namespace {
 
 struct SkipAtForkHandlers {
   static thread_local bool value;
@@ -146,7 +155,6 @@ struct AtForkListSingleton {
       // while handling the child callbacks
       // This might still be an issue if we do not exec right away
       annotate_ignore_thread_sanitizer_guard g(__FILE__, __LINE__);
-
       get().child();
     }
   }
