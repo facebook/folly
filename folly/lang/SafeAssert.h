@@ -24,21 +24,13 @@
 #include <folly/Preprocessor.h>
 #include <folly/lang/CArray.h>
 
-#if __GNUC__ && !__clang__ && FOLLY_SANITIZE_ADDRESS
-//  gcc+asan has a bug that discards sections when using `static` below
-#define FOLLY_DETAIL_SAFE_CHECK_LINKAGE
-#else
-#define FOLLY_DETAIL_SAFE_CHECK_LINKAGE static
-#endif
-
 #define FOLLY_DETAIL_SAFE_CHECK_IMPL(d, p, u, expr, ...)                  \
   do {                                                                    \
     if ((!d || ::folly::kIsDebug || ::folly::kIsSanitize) &&              \
         !static_cast<bool>(expr)) {                                       \
-      FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr auto                      \
-          __folly_detail_safe_assert_fun = __func__;                      \
-      FOLLY_DETAIL_SAFE_CHECK_LINKAGE constexpr ::folly::detail::         \
-          safe_assert_arg __folly_detail_safe_assert_arg{                 \
+      static constexpr auto __folly_detail_safe_assert_fun = __func__;    \
+      static constexpr ::folly::detail::safe_assert_arg                   \
+          __folly_detail_safe_assert_arg{                                 \
               u ? nullptr : #expr,                                        \
               __FILE__,                                                   \
               __LINE__,                                                   \
