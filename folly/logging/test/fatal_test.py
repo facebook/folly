@@ -73,9 +73,9 @@ class FatalTests(unittest.TestCase):
 
     def get_crash_regex(self, msg=b"test program crashing!", glog=True):
         if glog:
-            prefix = br"^F[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
+            prefix = rb"^F[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
         else:
-            prefix = br"^FATAL:.*FatalHelper.cpp:[0-9]+: "
+            prefix = rb"^FATAL:.*FatalHelper.cpp:[0-9]+: "
         regex = prefix + re.escape(msg) + b"$"
         return re.compile(regex, re.MULTILINE)
 
@@ -106,15 +106,15 @@ class FatalTests(unittest.TestCase):
     def test_other_category(self):
         err = self.run_helper("--category=foo.bar", "--logging", ".=FATAL")
         regex = re.compile(
-            br"^F[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
-            br"crashing to category foo\.bar$",
+            rb"^F[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
+            rb"crashing to category foo\.bar$",
             re.MULTILINE,
         )
         self.assertRegex(err, regex)
 
     def test_static_init(self):
         err = self.run_helper(env={"CRASH_DURING_INIT": "1"})
-        regex = self.get_crash_regex(br"crashing during static initialization")
+        regex = self.get_crash_regex(rb"crashing during static initialization")
         self.assertRegex(err, regex)
 
     def test_static_destruction(self):
@@ -124,8 +124,8 @@ class FatalTests(unittest.TestCase):
         # destructor runs before or after the code that uninstalls the log
         # handlers, and it is valid for that to occur in either order.
         regex = re.compile(
-            br"^(FATAL|C[0-9]{4}).*FatalHelper.cpp:.* "
-            br"crashing during static destruction$",
+            rb"^(FATAL|C[0-9]{4}).*FatalHelper.cpp:.* "
+            rb"crashing during static destruction$",
             re.MULTILINE,
         )
         self.assertRegex(err, regex)

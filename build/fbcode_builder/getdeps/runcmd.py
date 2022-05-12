@@ -146,7 +146,6 @@ if hasattr(select, "poll"):
                 data = data.decode("utf-8", errors="surrogateescape")
             log_fn(data)
 
-
 else:
 
     def _pipe_output(p, log_fn):

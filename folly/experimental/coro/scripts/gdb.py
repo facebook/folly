@@ -171,7 +171,7 @@ def get_async_stack_root_addr() -> gdb.Value:
 
     # Check if the tls key is initialized
     tls_key = gdb.parse_and_eval(f"(int){ASYNC_STACK_ROOT_TLS_KEY}")
-    if (int(tls_key) % (2 ** 32)) == ((2 ** 32) - 1):
+    if (int(tls_key) % (2**32)) == ((2**32) - 1):
         return nullptr()
 
     # get the stack root pointer from thread-local storage
