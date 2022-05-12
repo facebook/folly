@@ -953,4 +953,43 @@ using int_bits_t = make_signed_t<uint_bits_t<bits>>;
 template <std::size_t lg_bits>
 using int_bits_lg_t = make_signed_t<uint_bits_lg_t<lg_bits>>;
 
+#if FOLLY_HAS_BUILTIN(__type_pack_element)
+template <std::size_t I, typename... Ts>
+using type_pack_element_t = __type_pack_element<I, Ts...>;
+#else
+namespace traits_detail {
+
+template <std::size_t I, typename T>
+struct indexed_type : std::integral_constant<std::size_t, I> {
+  using type = T;
+};
+
+template <std::size_t I, typename... Ts>
+struct type_pack_element_impl {
+ private:
+  template <typename>
+  struct set;
+
+  template <std::size_t... Is>
+  struct set<std::index_sequence<Is...>> : indexed_type<Is, Ts>... {};
+
+  template <typename T>
+  inline static std::enable_if<true, T> impl(indexed_type<I, T>);
+
+  inline static std::enable_if<false> impl(...);
+
+ public:
+  using type = decltype(impl(set<std::index_sequence_for<Ts...>>{}));
+};
+
+template <std::size_t I, typename... Ts>
+using type_pack_element = typename type_pack_element_impl<I, Ts...>::type;
+
+} // namespace traits_detail
+
+template <std::size_t I, typename... Ts>
+using type_pack_element_t =
+    typename traits_detail::type_pack_element<I, Ts...>::type;
+#endif
+
 } // namespace folly

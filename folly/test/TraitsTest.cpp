@@ -538,3 +538,9 @@ TEST(Traits, int_bits_lg) {
   EXPECT_TRUE((std::is_same_v<int128_t, int_bits_lg_t<7>>));
 #endif // FOLLY_HAVE_INT128_T
 }
+
+TEST(Traits, type_pack_element_t) {
+  EXPECT_TRUE((std::is_same_v<
+               type_pack_element_t<3, int, int, int, double, int, int>,
+               double>));
+}
