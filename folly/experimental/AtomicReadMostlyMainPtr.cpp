@@ -34,12 +34,10 @@ struct FailingExecutor : folly::Executor {
 
 // *All* modifications of *all* AtomicReadMostlyMainPtrs use the same mutex and
 // domain. The first of these just shrinks the size of the individual objects a
-// little, but the second is necessary for correctness; all rcu_domains need
-// their own tag (as an rcu_domain API constraint), but we want to support
+// little, but the second is necessary for correctness; we want to support
 // arbitrarily many AtomicReadMostlyMainPtrs.
 Indestructible<std::mutex> atomicReadMostlyMu;
-Indestructible<folly::rcu_domain<detail::AtomicReadMostlyTag>>
-    atomicReadMostlyDomain(new FailingExecutor);
+Indestructible<folly::rcu_domain> atomicReadMostlyDomain(new FailingExecutor);
 
 } // namespace detail
 } // namespace folly

@@ -28,9 +28,8 @@
 namespace folly {
 
 namespace detail {
-struct AtomicReadMostlyTag;
 extern Indestructible<std::mutex> atomicReadMostlyMu;
-extern Indestructible<rcu_domain<AtomicReadMostlyTag>> atomicReadMostlyDomain;
+extern Indestructible<rcu_domain> atomicReadMostlyDomain;
 } // namespace detail
 
 /*

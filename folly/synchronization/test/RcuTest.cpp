@@ -85,7 +85,7 @@ TEST(RcuTest, CopyGuard) {
 
 static void delete_or_retire_oldint(int* oldint) {
   if (folly::Random::rand32() % 2 == 0) {
-    rcu_retire<int>(oldint, [](int* obj) {
+    rcu_retire(oldint, [](int* obj) {
       *obj = folly::Random::rand32();
       delete obj;
     });
@@ -162,17 +162,16 @@ TEST(RcuTest, Synchronize) {
 }
 
 TEST(RcuTest, NewDomainTest) {
-  struct UniqueTag;
-  rcu_domain<UniqueTag> newdomain(nullptr);
+  rcu_domain newdomain(nullptr);
   rcu_synchronize(newdomain);
 }
 
 TEST(RcuTest, NewDomainGuardTest) {
   struct UniqueTag;
-  rcu_domain<UniqueTag> newdomain(nullptr);
+  rcu_domain newdomain(nullptr);
   bool del = false;
   auto foo = new des(&del);
-  { rcu_reader_domain<UniqueTag> g(newdomain); }
+  { rcu_reader_domain g(newdomain); }
   rcu_retire(foo, {}, newdomain);
   rcu_synchronize(newdomain);
   EXPECT_TRUE(del);
