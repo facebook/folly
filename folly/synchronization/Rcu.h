@@ -131,12 +131,13 @@
 //       // done accessing the pointed-to data. We get a Guard on that
 //       // domain; as long as it exists, no function subsequently passed to
 //       // invokeEventually will execute.
-//       rcu_reader guard;
+//       std::scoped_lock<rcu_domain>(rcu_default_domain());
 //       ConfigData* configData = globalConfigData.load();
 //       // We created a guard before we read globalConfigData; we know that the
 //       // pointer will remain valid until the guard is destroyed.
 //       curManagementServer = configData->managementServerIP;
-//       // Guard is released here; retired objects may be freed.
+//       // RCU domain via the scoped mutex is released here; retired objects
+//       // may be freed.
 //     }
 //     doSomethingWith(curManagementServer);
 //   }
@@ -157,7 +158,7 @@
 // }
 //
 // This gets us close to the speed of the second solution, without
-// leaking memory. A rcu_reader costs about 4 ns, faster than the
+// leaking memory. An std::scoped_lock costs about 5 ns, faster than the
 // lock() / unlock() pair in the more traditional mutex-based approach from our
 // first attempt, and the writer never blocks the readers.
 
@@ -170,13 +171,13 @@
 //   A "universe" of deferred execution. Each rcu_domain has an
 //   executor on which deferred functions may execute. Readers enter
 //   a read region in an rcu_domain by creating an instance of an
-//   rcu_reader_domain object on the domain. The rcu_reader_domain provides
-//   RAII semantics for read region protection.
+//   std::scoped_lock<folly::rcu_domain> object on the domain. The scoped
+//   lock provides RAII semantics for read region protection over the domain.
 //
-//   rcu_domains should in general be completely separated; rcu_reader objects
-//   created on one domain do not prevent functions deferred on other domains
-//   from running. It's intended that most callers should only ever use the
-//   default, global domain.
+//   rcu_domains should in general be completely separated;
+//   std::scoped_lock<folly::rcu_domain> locks created on one domain do not
+//   prevent functions deferred on other domains from running. It's intended
+//   that most callers should only ever use the default, global domain.
 //
 //   You should use a custom rcu_domain if you can't avoid sleeping
 //   during reader critical sections (because you don't want to block
@@ -202,16 +203,17 @@
 // Performance limitations:
 //  - Blocking:
 //    A blocked reader will block invocation of deferred functions until it
-//    becomes unblocked. Sleeping while holding a rcu_reader can have bad
-//    performance consequences.
+//    becomes unblocked. Sleeping while holding an
+//    std::scoped_lock<folly::rcu_domain> lock can have bad performance
+//    consequences.
 //
 // API questions you might have:
 //  - Nested critical sections:
 //    These are fine. The following is explicitly allowed by the standard, up to
 //    a nesting level of 100:
-//        rcu_reader reader1;
+//        std::scoped_lock<rcu_domain> reader1(rcu_default_domain());
 //        doSomeWork();
-//        rcu_reader reader2;
+//        std::scoped_lock<rcu_domain> reader2(rcu_default_domain());
 //        doSomeMoreWork();
 //  - Restrictions on retired()ed functions:
 //    Any operation is safe from within a retired function's
@@ -243,7 +245,7 @@
 // the current implementation may synchronize if the retire queue is full,
 // resulting in tail latencies of ~10ms.
 //
-// rcu_reader creation/destruction is ~4ns.  By comparison,
+// std::scoped_lock<rcu_domain> creation/destruction is ~5ns.  By comparison,
 // folly::SharedMutex::lock_shared + unlock_shared pair is ~26ns
 
 // Hazard pointers vs. RCU:
@@ -267,12 +269,13 @@
 // *the remaining part* of the list as valid, however parts before its current
 // hazptr may be freed.
 //
-// So roughly: RCU is simple, but an all-or-nothing affair.  A single rcu_reader
-// can block all reclamation. Hazptrs will reclaim exactly as much as possible,
-// at the cost of extra work writing traversal code
+// So roughly: RCU is simple, but an all-or-nothing affair.  A single
+// std::scoped_lock<folly::rcu_domain> can block all reclamation. Hazptrs will
+// reclaim exactly as much as possible, at the cost of extra work writing
+// traversal code
 //
 // Reproduced from
-// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0461r1.pdf
+// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/n4895.pdf
 //
 //                              Reference Counting    RCU            Hazptr
 //
@@ -484,69 +487,14 @@ inline rcu_domain& rcu_default_domain() {
   return **rcu_default_domain_;
 }
 
-// Main reader guard class.  Use rcu_reader instead unless you need to
-// specify a custom domain.  Note that the default domain will work
-// in almost all use cases.  Please see rcu_domain for more information on
-// custom domains.
-class rcu_reader_domain {
- public:
-  explicit FOLLY_ALWAYS_INLINE rcu_reader_domain(
-      rcu_domain& domain = rcu_default_domain()) noexcept
-      : domain_(&domain) {
-    lock();
-  }
-  explicit rcu_reader_domain(
-      std::defer_lock_t, rcu_domain& domain = rcu_default_domain()) noexcept
-      : domain_(&domain), locked_(false) {}
-  rcu_reader_domain(const rcu_reader_domain&) = delete;
-  rcu_reader_domain(rcu_reader_domain&& other) noexcept
-      : domain_(std::exchange(other.domain_, nullptr)),
-        locked_(std::exchange(other.locked_, false)) {}
-  rcu_reader_domain& operator=(const rcu_reader_domain&) = delete;
-  rcu_reader_domain& operator=(rcu_reader_domain&& other) noexcept {
-    unlock();
-    domain_ = std::exchange(other.domain_, nullptr);
-    locked_ = std::exchange(other.locked_, false);
-    return *this;
-  }
-
-  FOLLY_ALWAYS_INLINE ~rcu_reader_domain() noexcept { unlock(); }
-
-  void swap(rcu_reader_domain& other) noexcept {
-    DCHECK(domain_ == other.domain_);
-    std::swap(locked_, other.locked_);
-  }
-
-  FOLLY_ALWAYS_INLINE void lock() noexcept {
-    locked_ = true;
-    domain_->lock();
-  }
-
-  FOLLY_ALWAYS_INLINE void unlock() noexcept {
-    if (locked_) {
-      domain_->unlock();
-    }
-  }
-
- private:
-  rcu_domain* domain_;
-  bool locked_;
-};
-
-// Mark an RCU read-side critical section using RAII style, as in
-// folly::rcu_reader rcuGuard.
-//
-// This uses the default RCU domain, which suffices for most use cases.
-// Please see the rcu_domain documentation for more information.
-using rcu_reader = rcu_reader_domain;
-
-inline void swap(rcu_reader_domain& a, rcu_reader_domain& b) noexcept {
-  a.swap(b);
-}
-
 // Waits for all pre-existing RCU readers to complete.
-// RCU readers will normally be marked using the RAII interface rcu_reader,
-// as in folly::rcu_reader rcuGuard.
+// RCU readers will normally be marked using the RAII interface
+// std::scoped_lock<folly::rcu_domain>, as in:
+//
+// std::scoped_lock<folly::rcu_domain> rcuReader(rcu_default_domain());
+//
+// Other locking primitives that provide moveable semantics such as
+// std::unique_lock may be used as well.
 //
 // Note that rcu_synchronize is not obligated to wait for RCU readers that
 // start after rcu_synchronize starts.  Note also that holding a lock across

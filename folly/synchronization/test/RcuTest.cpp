@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/synchronization/Rcu.h>
-
 #include <atomic>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -26,9 +25,11 @@
 #include <folly/Random.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Rcu.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 
 using namespace folly;
+using rcu_domain = folly::rcu_domain;
 
 DEFINE_int64(iters, 100000, "Number of iterations");
 DEFINE_uint64(threads, 32, "Number of threads");
@@ -49,7 +50,7 @@ class des {
 TEST(RcuTest, Guard) {
   bool del = false;
   auto foo = new des(&del);
-  { rcu_reader g; }
+  { std::scoped_lock<rcu_domain> g(rcu_default_domain()); }
   rcu_retire(foo);
   rcu_synchronize();
   EXPECT_TRUE(del);
@@ -58,7 +59,7 @@ TEST(RcuTest, Guard) {
 TEST(RcuTest, SlowReader) {
   std::thread t;
   {
-    rcu_reader g;
+    std::scoped_lock<rcu_domain> lock(rcu_default_domain());
 
     t = std::thread([&]() { rcu_synchronize(); });
     usleep(100); // Wait for synchronize to start
@@ -66,8 +67,8 @@ TEST(RcuTest, SlowReader) {
   t.join();
 }
 
-rcu_reader tryretire(des* obj) {
-  rcu_reader g;
+static std::unique_lock<rcu_domain> try_retire(des* obj) {
+  std::unique_lock<rcu_domain> g(rcu_default_domain());
   rcu_retire(obj);
   return g;
 }
@@ -76,7 +77,7 @@ TEST(RcuTest, CopyGuard) {
   bool del = false;
   auto foo = new des(&del);
   {
-    auto res = tryretire(foo);
+    auto res = try_retire(foo);
     EXPECT_FALSE(del);
   }
   rcu_barrier();
@@ -106,7 +107,7 @@ TEST(RcuTest, Stress) {
   for (unsigned th = 0; th < FLAGS_threads; th++) {
     readers.push_back(std::thread([&]() {
       for (int i = 0; i < FLAGS_iters / 100; i++) {
-        rcu_reader g;
+        std::scoped_lock<rcu_domain> lock(rcu_default_domain());
         int sum = 0;
         int* ptrs[sz];
         for (uint32_t j = 0; j < sz; j++) {
@@ -171,7 +172,7 @@ TEST(RcuTest, NewDomainGuardTest) {
   rcu_domain newdomain(nullptr);
   bool del = false;
   auto foo = new des(&del);
-  { rcu_reader_domain g(newdomain); }
+  { std::scoped_lock<rcu_domain> g(newdomain); }
   rcu_retire(foo, {}, newdomain);
   rcu_synchronize(newdomain);
   EXPECT_TRUE(del);
@@ -179,13 +180,13 @@ TEST(RcuTest, NewDomainGuardTest) {
 
 TEST(RcuTest, MovableReader) {
   {
-    rcu_reader g;
-    rcu_reader f(std::move(g));
+    std::unique_lock<rcu_domain> g(rcu_default_domain());
+    std::unique_lock<rcu_domain> f(std::move(g));
   }
   rcu_synchronize();
   {
-    rcu_reader g(std::defer_lock);
-    rcu_reader f;
+    std::unique_lock<rcu_domain> g(rcu_default_domain(), std::defer_lock);
+    std::unique_lock<rcu_domain> f(rcu_default_domain());
     g = std::move(f);
   }
   rcu_synchronize();
@@ -300,9 +301,10 @@ TEST(RcuTest, DeeplyNestedReaders) {
   int_ptr.store(new int(0), std::memory_order_release);
   for (unsigned th = 0; th < 32; th++) {
     readers.push_back(std::thread([&]() {
-      std::vector<rcu_reader> domain_readers;
+      std::vector<std::unique_lock<rcu_domain>> domain_readers;
       for (unsigned i = 0; i < 8192; i++) {
-        domain_readers.emplace_back();
+        domain_readers.push_back(
+            std::unique_lock<rcu_domain>(rcu_default_domain()));
         EXPECT_EQ(*(int_ptr.load(std::memory_order_acquire)), 0);
       }
     }));

@@ -18,30 +18,31 @@
 #include <folly/synchronization/Rcu.h>
 
 using namespace folly;
+using rcu_domain = folly::rcu_domain;
 
 BENCHMARK(RcuReader, iters) {
   BenchmarkSuspender susp;
 
-  { rcu_reader g; }
+  { std::scoped_lock<rcu_domain> g(rcu_default_domain()); }
   susp.dismiss();
 
   // run the test loop
   while (iters--) {
-    rcu_reader g;
+    std::scoped_lock<rcu_domain> g(rcu_default_domain());
   }
 }
 
 BENCHMARK(RcuReaderNested, iters) {
   BenchmarkSuspender susp;
 
-  { rcu_reader g; }
+  { std::scoped_lock<rcu_domain> g(rcu_default_domain()); }
   susp.dismiss();
 
   // run the test loop
   {
-    rcu_reader outer;
+    std::scoped_lock<rcu_domain> outer(rcu_default_domain());
     while (iters--) {
-      rcu_reader inner;
+      std::scoped_lock<rcu_domain> inner(rcu_default_domain());
     }
   }
 }
