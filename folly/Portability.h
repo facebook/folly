@@ -565,6 +565,9 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CONSTINIT
 #endif
 
+#if defined(FOLLY_CFG_NO_COROUTINES)
+#define FOLLY_HAS_COROUTINES 0
+#else
 #if __cplusplus >= 201703L
 // folly::coro requires C++17 support
 #if defined(__NVCC__)
@@ -597,6 +600,7 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_HAS_COROUTINES 0
 #endif // __cplusplus >= 201703L
+#endif // FOLLY_CFG_NO_COROUTINES
 
 // MSVC 2017.5 && C++17
 #if __cpp_noexcept_function_type >= 201510 || \
