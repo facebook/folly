@@ -2790,13 +2790,26 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
   auto ret =
       ::getsockopt(fd_.toFd(), IPPROTO_TCP, TCP_ZEROCOPY_RECEIVE, &zc, &zc_len);
   if (!ret) {
-    // check for errors
+    // zc.err can be set even if there is still more data buffered in the
+    // kernel that we have not fully read yet.  When zc.err is set, just
+    // remember the error code, and keep reading until we get 0 data back from
+    // the kernel. Only once we have seen 0 bytes returned from the kernel do we
+    // want to return the error to the caller.
     if (zc.err) {
+      zerocopyReadErr_ = zc.err;
+    }
+
+    auto len = zc.length + zc.copybuf_len;
+
+    if (zerocopyReadErr_ && len == 0) {
+      auto err = zerocopyReadErr_;
+      zerocopyReadErr_ = 0;
+
       readErr_ = READ_ERROR;
       AsyncSocketException ex(
           AsyncSocketException::INTERNAL_ERROR,
           withAddr("TCP_ZEROCOPY_RECEIVE failed"),
-          zc.err);
+          err);
       return failRead(__func__, ex);
     }
 
@@ -2808,20 +2821,18 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
       buf = std::move(tmp);
     }
 
-    auto len = zc.length + zc.copybuf_len;
     if (len) {
       readCallback_->readZeroCopyDataAvailable(std::move(buf), zc.copybuf_len);
 
-      // if there is no buffer data, we continue if we filled up the zerocopy
-      // buffer otherwise we're done
-      if (zc.copybuf_len == 0) {
-        return (zc.length == zc_length) ? ReadCode::READ_CONTINUE
-                                        : ReadCode::READ_DONE;
+      // If we completely filled up the zerocopy buffer then we likely have
+      // more data buffered in the kernel, so return READ_CONTINUE to try again.
+      // We also want the caller to retry reading if we have a deferred error
+      // code to give them.
+      if ((zc.copybuf_len == 0 && zc.length == zc_length) ||
+          zc.copybuf_len == zc_copybuf_len || zerocopyReadErr_ != 0) {
+        return ReadCode::READ_CONTINUE;
       }
-
-      // we continue if we filled up the copy buffer
-      return (zc.copybuf_len == zc_copybuf_len) ? ReadCode::READ_CONTINUE
-                                                : ReadCode::READ_DONE;
+      return ReadCode::READ_DONE;
     } else {
       // No more data to read right now.
       return ReadCode::READ_DONE;

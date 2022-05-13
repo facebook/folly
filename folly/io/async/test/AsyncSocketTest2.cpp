@@ -645,7 +645,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
   socket->connect(&ccb, server.getAddress(), 30);
 
   static constexpr size_t kBuffSize = 4096;
-  static constexpr size_t kDataSize = 128 * 1024;
+  static constexpr size_t kDataSize = 32 * 1024;
 
   static constexpr size_t kNumEntries = 1024;
   static constexpr size_t kEntrySize = 128 * 1024;
@@ -669,8 +669,9 @@ TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
   for (size_t i = 0; i < data.size(); ++i) {
     data[i] = static_cast<char>(rng());
   }
-  acceptedSocket->write(
+  auto ret = acceptedSocket->write(
       reinterpret_cast<unsigned char*>(data.data()), data.size());
+  ASSERT_EQ(ret, data.size());
   acceptedSocket->flush();
   acceptedSocket->close();
 

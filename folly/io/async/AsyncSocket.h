@@ -1665,6 +1665,7 @@ class AsyncSocket : public AsyncTransport {
 
   // zerocopy read
   bool zerocopyReadDisabled_{false};
+  int zerocopyReadErr_{0};
 
   // subclasses may cache these on first call to get
   mutable std::unique_ptr<const AsyncTransportCertificate> peerCertData_{
