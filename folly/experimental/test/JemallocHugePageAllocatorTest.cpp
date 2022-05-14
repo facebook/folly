@@ -250,7 +250,7 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   MyVec vec;
   // This should work, just won't get huge pages since
   // init hasn't been called yet
-  vec.reserve(100);
+  vec.resize(100);
   EXPECT_NE(nullptr, vec.data());
 
   // Reserve & initialize, not on huge pages
@@ -264,7 +264,7 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   }
 
   // Reallocate, this time on huge pages
-  vec.reserve(200);
+  vec.resize(200);
   EXPECT_NE(nullptr, vec.data());
 
   MyMap map1;
