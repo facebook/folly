@@ -21,7 +21,7 @@
 #include <limits>
 #include <folly/Function.h>
 #include <folly/ThreadLocal.h>
-#include <folly/synchronization/AsymmetricMemoryBarrier.h>
+#include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/detail/ThreadCachedTag.h>
 

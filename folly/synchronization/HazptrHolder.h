@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Traits.h>
-#include <folly/synchronization/AsymmetricMemoryBarrier.h>
+#include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrDomain.h>
 #include <folly/synchronization/HazptrRec.h>

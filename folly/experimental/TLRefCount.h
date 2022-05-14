@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/ThreadLocal.h>
-#include <folly/synchronization/AsymmetricMemoryBarrier.h>
+#include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/detail/Sleeper.h>
 
 namespace folly {

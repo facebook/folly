@@ -20,7 +20,7 @@
 
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/portability/PThread.h>
-#include <folly/synchronization/AsymmetricMemoryBarrier.h>
+#include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/tracing/StaticTracepoint.h>
 
 namespace folly {

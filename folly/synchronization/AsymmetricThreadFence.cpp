@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/synchronization/AsymmetricMemoryBarrier.h>
+#include <folly/synchronization/AsymmetricThreadFence.h>
 
 #include <mutex>
 
