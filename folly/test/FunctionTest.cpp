@@ -1167,6 +1167,47 @@ TEST(Function, asSharedProxy_explicit_bool_conversion) {
   EXPECT_FALSE(emptySpcopy);
 }
 
+struct BadCopier {
+  explicit BadCopier(int v) : v_(v) {}
+  BadCopier(const BadCopier& o) : v_(o.v_ + 1) {}
+  BadCopier(BadCopier&&) = default;
+  int v_;
+};
+std::array<int, 3> badCopierF(BadCopier a, const BadCopier& b, BadCopier&& c) {
+  std::array<int, 3> ret;
+  ret[0] = a.v_;
+  ret[1] = b.v_;
+  ret[2] = c.v_;
+  a.v_ *= -1;
+  c.v_ *= -1;
+  return ret;
+}
+TEST(Function, asSharedProxy_forwarding) {
+  folly::Function<decltype(badCopierF)> ff(badCopierF);
+  EXPECT_TRUE((std::is_same_v<
+               decltype(ff),
+               folly::Function<std::array<int, 3>(
+                   BadCopier a, const BadCopier& b, BadCopier&& c)>>));
+  auto sp = std::move(ff).asSharedProxy();
+
+  BadCopier bca(100);
+  BadCopier bcb(200);
+  BadCopier bcc(300);
+  auto vals = sp(bca, bcb, std::move(bcc));
+
+  // bca was passed into f by value, so was copied at least once
+  EXPECT_GT(vals[0], 100);
+  EXPECT_EQ(bca.v_, 100);
+
+  // bcb was passed into f by const&, so was never copied
+  EXPECT_EQ(vals[1], 200);
+  EXPECT_EQ(bcb.v_, 200);
+
+  // bcc was passed into f by &&, so was never copied but was mutated in f
+  EXPECT_EQ(vals[2], 300);
+  EXPECT_EQ(bcc.v_, -300);
+}
+
 TEST(Function, NoAllocatedMemoryAfterMove) {
   Functor<int, 100> foo;
 
