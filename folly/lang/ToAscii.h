@@ -413,7 +413,7 @@ size_t to_ascii_upper(char (&out)[N], uint64_t v) {
 //
 //  An alias to to_ascii<10, false>.
 //
-//  async-signals-afe
+//  async-signal-safe
 inline size_t to_ascii_decimal(char* outb, char const* oute, uint64_t v) {
   return to_ascii_lower<10>(outb, oute, v);
 }
