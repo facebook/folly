@@ -19,7 +19,7 @@ import shutil
 import tempfile
 
 from fbcode_builder import FBCodeBuilder
-from shell_quoting import raw_shell, shell_comment, shell_join, ShellQuoted, path_join
+from shell_quoting import path_join, raw_shell, shell_comment, shell_join, ShellQuoted
 from utils import recursively_flatten_list, run_command
 
 

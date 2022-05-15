@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 from .dyndeps import create_dyn_dep_munger
-from .envfuncs import Env, add_path_entry, path_search
+from .envfuncs import add_path_entry, Env, path_search
 from .fetcher import copy_if_different
 from .runcmd import run_cmd
 

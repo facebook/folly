@@ -88,7 +88,7 @@ def persistent_temp_dir(repo_root):
 
 
 if __name__ == "__main__":
-    from utils import read_fbcode_builder_config, build_fbcode_builder_config
+    from utils import build_fbcode_builder_config, read_fbcode_builder_config
 
     repo_root = find_project_root()
     temp = persistent_temp_dir(repo_root)

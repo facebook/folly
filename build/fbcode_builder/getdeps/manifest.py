@@ -11,6 +11,7 @@ from typing import List
 from .builder import (
     AutoconfBuilder,
     Boost,
+    CMakeBootStrapBuilder,
     CMakeBuilder,
     Iproute2Builder,
     MakeBuilder,
@@ -19,7 +20,6 @@ from .builder import (
     OpenNSABuilder,
     OpenSSLBuilder,
     SqliteBuilder,
-    CMakeBootStrapBuilder,
 )
 from .cargo import CargoBuilder
 from .expr import parse_expr

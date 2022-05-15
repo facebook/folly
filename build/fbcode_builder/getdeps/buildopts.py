@@ -10,13 +10,13 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Optional, Mapping
+from typing import Mapping, Optional
 
 from .copytree import containing_repo_type
-from .envfuncs import Env, add_flag, add_path_entry
+from .envfuncs import add_flag, add_path_entry, Env
 from .fetcher import get_fbsource_repo_data, homebrew_package_prefix
 from .manifest import ContextGenerator
-from .platform import HostType, is_windows, get_available_ram
+from .platform import get_available_ram, HostType, is_windows
 
 
 def detect_project(path):

@@ -21,15 +21,15 @@ from getdeps.buildopts import setup_build_options
 from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
 from getdeps.fetcher import (
-    SystemPackageFetcher,
     file_name_is_cmake_file,
     list_files_under_dir_newer_than_timestamp,
+    SystemPackageFetcher,
 )
 from getdeps.load import ManifestLoader
 from getdeps.manifest import ManifestParser
 from getdeps.platform import HostType
 from getdeps.runcmd import run_cmd
-from getdeps.subcmd import SubCmd, add_subcommands, cmd
+from getdeps.subcmd import add_subcommands, cmd, SubCmd
 
 
 try:
