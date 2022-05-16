@@ -92,11 +92,18 @@ class any_badge {
       typename = std::enable_if_t<folly::IsOneOf<Holder, Holders...>::value>>
   /* implicit */ constexpr any_badge(badge<Holder>) noexcept {}
 
+// Fedora 34 and 35 ship a gcc with the following regression:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=104008
+#if __GNUC__ == 11 && __GNUC_MINOR__ <= 2
+  template <typename... OtherHolders>
+  /* implicit */ constexpr any_badge(any_badge<OtherHolders...>) noexcept {}
+#else
   template <
       typename... OtherHolders,
       typename = std::enable_if_t<folly::StrictConjunction<
           folly::IsOneOf<OtherHolders, Holders...>...>::value>>
   /* implicit */ constexpr any_badge(any_badge<OtherHolders...>) noexcept {}
+#endif
 };
 
 } // namespace folly
