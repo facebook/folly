@@ -100,6 +100,7 @@
 #include <folly/lang/Exception.h>
 #include <folly/memory/MemoryResource.h>
 #include <folly/portability/Builtins.h>
+#include <folly/small_vector.h>
 
 namespace folly {
 
@@ -397,7 +398,7 @@ size_type insert(size_type offset, Container& cont) {
   if (size == 1) {
     return 0;
   }
-  auto adjust = 1;
+  size_type adjust = 1;
   if (offset == size - 1) {
     adjust = 0;
     auto last = lastOffset(size);
@@ -1473,7 +1474,7 @@ class heap_vector_map
   using value_compare =
       detail::heap_vector_detail::value_compare_map<Compare, value_type>;
 
- private:
+ protected:
   using heap_vector_container =
       detail::heap_vector_detail::heap_vector_container<
           value_type,
@@ -1561,5 +1562,102 @@ using heap_vector_map = folly::heap_vector_map<
 } // namespace pmr
 
 #endif
+
+// Specialize heap_vector_map to integral key type and std::less comparaison.
+// small_heap_map achieve a very fast find for small map < 200 elements.
+template <
+    typename Key,
+    typename Value,
+    typename SizeType = uint32_t,
+    class Container = folly::small_vector<std::pair<Key, Value>, 0, SizeType>,
+    typename = std::enable_if_t<std::is_integral<Key>::value>>
+class small_heap_vector_map : public folly::heap_vector_map<
+                                  Key,
+                                  Value,
+                                  std::less<Key>,
+                                  typename Container::allocator_type,
+                                  void,
+                                  Container> {
+ public:
+  using key_type = Key;
+  using mapped_type = Value;
+  using value_type = typename Container::value_type;
+  using key_compare = std::less<Key>;
+  using allocator_type = typename Container::allocator_type;
+  using container_type = Container;
+  using pointer = typename Container::pointer;
+  using reference = typename Container::reference;
+  using const_reference = typename Container::const_reference;
+  using difference_type = typename Container::difference_type;
+  using size_type = typename Container::size_type;
+  using value_compare =
+      detail::heap_vector_detail::value_compare_map<std::less<Key>, value_type>;
+
+ private:
+  using heap_vector_map = folly::
+      heap_vector_map<Key, Value, key_compare, allocator_type, void, Container>;
+
+  using heap_vector_map::m_;
+
+ public:
+  using iterator = typename heap_vector_map::iterator;
+  using const_iterator = typename heap_vector_map::const_iterator;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+  using heap_vector_map::begin;
+  using heap_vector_map::heap_vector_map;
+  using heap_vector_map::size;
+  iterator find(const key_type key) {
+    auto offset = find_(*this, key);
+    iterator ret = begin();
+    ret = m_.cont_.begin() + offset;
+    return ret;
+  }
+
+  const_iterator find(const key_type key) const {
+    auto offset = find_(*this, key);
+    const_iterator ret = begin();
+    ret = m_.cont_.begin() + offset;
+    return ret;
+  }
+
+ private:
+  template <typename Self, typename K>
+  static inline size_type find_(Self& self, K const key) {
+    auto size = self.size();
+    if (!size) {
+      return 0;
+    }
+    auto& cont = self.m_.cont_;
+    size_type offset = 1;
+    auto cur_k = self.m_.getKey(cont[0]);
+    for (int i = 0; i < 6; i++) {
+      auto o = offset;
+      offset = 2 * offset;
+      if (cur_k <= key) {
+        ++offset;
+        if (cur_k == key) {
+          return o - 1;
+        }
+      }
+      if (offset > size) {
+        return size;
+      }
+      cur_k = self.m_.getKey(cont[offset - 1]);
+    }
+    while (true) {
+      auto lt = cur_k < key;
+      if (cur_k == key) {
+        return offset - 1;
+      }
+      offset = 2 * offset + lt;
+      if (offset > size)
+        return size;
+      cur_k = self.m_.getKey(cont[offset - 1]);
+    }
+    return size;
+  }
+};
 
 } // namespace folly

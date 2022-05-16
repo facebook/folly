@@ -32,6 +32,7 @@
 
 using folly::heap_vector_map;
 using folly::heap_vector_set;
+using folly::small_heap_vector_map;
 
 namespace {
 
@@ -294,12 +295,22 @@ TEST(HeapVectorTypes, BadHints) {
 TEST(HeapVectorTypes, MapAssignmentInitListTest) {
   using v = std::pair<int, const char*>;
   v p = {3, "a"}, q = {4, "b"}, r = {5, "c"};
-  heap_vector_map<int, const char*> m{p, q, r};
-  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
-  m = {}; // empty ilist assignment
-  EXPECT_THAT(m, testing::IsEmpty());
-  m = {p, q, r}; // non-empty ilist assignment
-  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  {
+    heap_vector_map<int, const char*> m{p, q, r};
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+    m = {}; // empty ilist assignment
+    EXPECT_THAT(m, testing::IsEmpty());
+    m = {p, q, r}; // non-empty ilist assignment
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  }
+  {
+    small_heap_vector_map<int, const char*> m{p, q, r};
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+    m = {}; // empty ilist assignment
+    EXPECT_THAT(m, testing::IsEmpty());
+    m = {p, q, r}; // non-empty ilist assignment
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  }
 }
 
 TEST(HeapVectorTypes, MapBadHints) {
@@ -315,41 +326,92 @@ TEST(HeapVectorTypes, MapBadHints) {
       check_invariant(s);
     }
   }
+
+  for (int toInsert = -1; toInsert <= 7; ++toInsert) {
+    for (int hintPos = 0; hintPos <= 4; ++hintPos) {
+      small_heap_vector_map<int, int> s;
+      for (int i = 0; i <= 3; ++i) {
+        s.emplace(i * 2, i);
+      }
+      s.emplace_hint(s.begin() + hintPos, toInsert, toInsert);
+      size_t expectedSize = (toInsert % 2) == 0 ? 4 : 5;
+      EXPECT_EQ(s.size(), expectedSize);
+      check_invariant(s);
+    }
+  }
 }
 
 TEST(HeapVectorTypes, FromVector) {
-  folly::heap_vector_map<int, float>::container_type vec;
-  vec.push_back(std::make_pair(3, 3.0f));
-  vec.push_back(std::make_pair(1, 1.0f));
-  vec.push_back(std::make_pair(2, 2.0f));
+  {
+    folly::heap_vector_map<int, float>::container_type vec;
+    vec.push_back(std::make_pair(3, 3.0f));
+    vec.push_back(std::make_pair(1, 1.0f));
+    vec.push_back(std::make_pair(2, 2.0f));
 
-  heap_vector_map<int, float> m(std::move(vec));
+    heap_vector_map<int, float> m(std::move(vec));
 
-  EXPECT_EQ(vec.size(), 0);
-  EXPECT_EQ(m.size(), 3);
-  EXPECT_EQ(m[1], 1.0f);
-  EXPECT_EQ(m[2], 2.0f);
-  EXPECT_EQ(m[3], 3.0f);
+    EXPECT_EQ(vec.size(), 0);
+    EXPECT_EQ(m.size(), 3);
+    EXPECT_EQ(m[1], 1.0f);
+    EXPECT_EQ(m[2], 2.0f);
+    EXPECT_EQ(m[3], 3.0f);
+  }
+  {
+    folly::small_heap_vector_map<int, float>::container_type vec;
+    vec.push_back(std::make_pair(3, 3.0f));
+    vec.push_back(std::make_pair(1, 1.0f));
+    vec.push_back(std::make_pair(2, 2.0f));
+
+    small_heap_vector_map<int, float> m(std::move(vec));
+
+    EXPECT_EQ(vec.size(), 0);
+    EXPECT_EQ(m.size(), 3);
+    EXPECT_EQ(m[1], 1.0f);
+    EXPECT_EQ(m[2], 2.0f);
+    EXPECT_EQ(m[3], 3.0f);
+  }
 }
 
 TEST(HeapVectorTypes, IterateOverVectorWithinMap) {
   const int size = 10;
-  folly::heap_vector_map<int, int> m;
-  int heap_order[size] = {6, 3, 8, 1, 5, 7, 9, 0, 2, 4};
+  {
+    folly::heap_vector_map<int, int> m;
+    int heap_order[size] = {6, 3, 8, 1, 5, 7, 9, 0, 2, 4};
 
-  for (int i = 0; i < size; i++) {
-    m[i] = i;
+    for (int i = 0; i < size; i++) {
+      m[i] = i;
+    }
+
+    // Iterate over underlying container. Fastest
+    int i = 0;
+    for (auto& e : m.iterate()) {
+      EXPECT_EQ(e.second, heap_order[i++]);
+    }
+    // Iterate inorder using heap_vector_map iterator
+    i = 0;
+    for (auto& e : m) {
+      EXPECT_EQ(e.first, i++);
+    }
   }
 
-  // Iterate over underlying container. Fastest
-  int i = 0;
-  for (auto& e : m.iterate()) {
-    EXPECT_EQ(e.second, heap_order[i++]);
-  }
-  // Iterate inorder using heap_vector_map iterator
-  i = 0;
-  for (auto& e : m) {
-    EXPECT_EQ(e.first, i++);
+  {
+    folly::small_heap_vector_map<int, int> m;
+    int heap_order[size] = {6, 3, 8, 1, 5, 7, 9, 0, 2, 4};
+
+    for (int i = 0; i < size; i++) {
+      m[i] = i;
+    }
+
+    // Iterate over underlying container. Fastest
+    int i = 0;
+    for (auto& e : m.iterate()) {
+      EXPECT_EQ(e.second, heap_order[i++]);
+    }
+    // Iterate inorder using small_heap_vector_map iterator
+    i = 0;
+    for (auto& e : m) {
+      EXPECT_EQ(e.first, i++);
+    }
   }
 }
 
@@ -435,6 +497,88 @@ TEST(HeapVectorTypes, SimpleMapTest) {
   EXPECT_EQ(m6.at(2), 2.0f);
 }
 
+TEST(HeapVectorTypes, SimpleSmallMapTest) {
+  small_heap_vector_map<int, float> m;
+  for (int i = 0; i < 160; ++i) {
+    m[i] = float(i / 1000.0);
+  }
+  check_invariant(m);
+
+  m[32] = 100.0f;
+  check_invariant(m);
+  EXPECT_TRUE(m.count(32) == 1);
+  EXPECT_DOUBLE_EQ(100.0, m.at(32));
+  EXPECT_FALSE(m.find(32) == m.end());
+  EXPECT_TRUE(m.contains(32));
+  m.erase(32);
+  EXPECT_TRUE(m.find(32) == m.end());
+  EXPECT_FALSE(m.contains(32));
+  check_invariant(m);
+  EXPECT_THROW(m.at(32), std::out_of_range);
+
+  small_heap_vector_map<int, float> m2 = m;
+  EXPECT_TRUE(m2 == m);
+  EXPECT_FALSE(m2 != m);
+  auto it = m2.lower_bound(1 << 20);
+  EXPECT_TRUE(it == m2.end());
+  m2.insert(it, std::make_pair(1 << 20, 10.0f));
+  check_invariant(m2);
+  EXPECT_TRUE(m2.count(1 << 20) == 1);
+  EXPECT_TRUE(m < m2);
+  EXPECT_TRUE(m <= m2);
+
+  const small_heap_vector_map<int, float>& cm = m;
+  auto range = cm.equal_range(42);
+  auto lbound = cm.lower_bound(42);
+  auto ubound = cm.upper_bound(42);
+  EXPECT_TRUE(range.first == lbound);
+  EXPECT_TRUE(range.second == ubound);
+  EXPECT_FALSE(range.first == cm.end());
+  EXPECT_FALSE(range.second == cm.end());
+  m.erase(m.lower_bound(42));
+  check_invariant(m);
+
+  small_heap_vector_map<int, float> m3;
+  m3.insert(m2.begin(), m2.end());
+  check_invariant(m3);
+  EXPECT_TRUE(m3 == m2);
+  EXPECT_FALSE(m3 == m);
+
+  small_heap_vector_map<int, float> m4;
+  m4.emplace(1, 2.0f);
+  m4.emplace(3, 1.0f);
+  m4.emplace(2, 1.5f);
+  check_invariant(m4);
+  EXPECT_TRUE(m4.size() == 3);
+
+  small_heap_vector_map<int, float> m5;
+  for (auto& kv : m2) {
+    m5.emplace(kv);
+  }
+  check_invariant(m5);
+  EXPECT_TRUE(m5 == m2);
+  EXPECT_FALSE(m5 == m);
+
+  EXPECT_TRUE(m != m2);
+  EXPECT_TRUE(m2 == m3);
+  EXPECT_TRUE(m3 != m);
+  m.swap(m3);
+  check_invariant(m);
+  check_invariant(m2);
+  check_invariant(m3);
+  EXPECT_TRUE(m3 != m2);
+  EXPECT_TRUE(m3 != m);
+  EXPECT_TRUE(m == m2);
+
+  // Bad insert hint.
+  m.insert(m.begin() + 3, std::make_pair(1 << 15, 1.0f));
+  check_invariant(m);
+
+  small_heap_vector_map<int, float> m6 = {};
+  m6.insert({{1, 1.0f}, {2, 2.0f}, {1, 2.0f}});
+  EXPECT_EQ(m6.at(2), 2.0f);
+}
+
 TEST(HeapVectorTypes, TransparentMapTest) {
   using namespace folly::string_piece_literals;
   using Compare = folly::transparent<std::less<folly::StringPiece>>;
@@ -490,6 +634,9 @@ TEST(HeapVectorTypes, Sizes) {
   EXPECT_EQ(
       sizeof(heap_vector_map<int, int>),
       sizeof(std::vector<std::pair<int, int>>));
+  EXPECT_EQ(
+      sizeof(small_heap_vector_map<int, int>),
+      sizeof(folly::small_vector<std::pair<int, int>, 0>));
 
   using SetT = heap_vector_set<
       int,
@@ -518,6 +665,13 @@ TEST(HeapVectorTypes, Iterators) {
   EXPECT_EQ(
       (char*)&*m.iterate().end() - (char*)&*m.iterate().begin(),
       2 * sizeof(std::pair<int, int>));
+  small_heap_vector_map<int, int> m2;
+  m2[0] = 0;
+  m2[1] = 1;
+  EXPECT_EQ(m2.size(), 2);
+  EXPECT_EQ(
+      (char*)&*m2.iterate().end() - (char*)&*m2.iterate().begin(),
+      2 * sizeof(std::pair<int, int>));
 
   heap_vector_set<int>::iterator setI = s.begin();
   // verify iterator -> const_iterator works. Reverse produce compiler error.
@@ -525,6 +679,9 @@ TEST(HeapVectorTypes, Iterators) {
 
   heap_vector_map<int, int>::iterator mapI = m.begin();
   heap_vector_map<int, int>::const_iterator cmapI(mapI);
+
+  small_heap_vector_map<int, int>::iterator mapI2 = m2.begin();
+  small_heap_vector_map<int, int>::const_iterator cmapI2(mapI2);
 }
 
 TEST(HeapVectorTypes, InitializerLists) {
@@ -541,20 +698,36 @@ TEST(HeapVectorTypes, InitializerLists) {
   EXPECT_EQ(1, *forward_initialized_set.begin());
   EXPECT_EQ(2, *forward_initialized_set.rbegin());
   EXPECT_TRUE(forward_initialized_set == backward_initialized_set);
+  {
+    heap_vector_map<int, int> empty_initialized_map{};
+    EXPECT_TRUE(empty_initialized_map.empty());
 
-  heap_vector_map<int, int> empty_initialized_map{};
-  EXPECT_TRUE(empty_initialized_map.empty());
+    heap_vector_map<int, int> singleton_initialized_map{{1, 10}};
+    EXPECT_EQ(1, singleton_initialized_map.size());
+    EXPECT_EQ(10, singleton_initialized_map[1]);
 
-  heap_vector_map<int, int> singleton_initialized_map{{1, 10}};
-  EXPECT_EQ(1, singleton_initialized_map.size());
-  EXPECT_EQ(10, singleton_initialized_map[1]);
+    heap_vector_map<int, int> forward_initialized_map{{1, 10}, {2, 20}};
+    heap_vector_map<int, int> backward_initialized_map{{2, 20}, {1, 10}};
+    EXPECT_EQ(2, forward_initialized_map.size());
+    EXPECT_EQ(10, forward_initialized_map[1]);
+    EXPECT_EQ(20, forward_initialized_map[2]);
+    EXPECT_TRUE(forward_initialized_map == backward_initialized_map);
+  }
+  {
+    small_heap_vector_map<int, int> empty_initialized_map{};
+    EXPECT_TRUE(empty_initialized_map.empty());
 
-  heap_vector_map<int, int> forward_initialized_map{{1, 10}, {2, 20}};
-  heap_vector_map<int, int> backward_initialized_map{{2, 20}, {1, 10}};
-  EXPECT_EQ(2, forward_initialized_map.size());
-  EXPECT_EQ(10, forward_initialized_map[1]);
-  EXPECT_EQ(20, forward_initialized_map[2]);
-  EXPECT_TRUE(forward_initialized_map == backward_initialized_map);
+    small_heap_vector_map<int, int> singleton_initialized_map{{1, 10}};
+    EXPECT_EQ(1, singleton_initialized_map.size());
+    EXPECT_EQ(10, singleton_initialized_map[1]);
+
+    small_heap_vector_map<int, int> forward_initialized_map{{1, 10}, {2, 20}};
+    small_heap_vector_map<int, int> backward_initialized_map{{2, 20}, {1, 10}};
+    EXPECT_EQ(2, forward_initialized_map.size());
+    EXPECT_EQ(10, forward_initialized_map[1]);
+    EXPECT_EQ(20, forward_initialized_map[2]);
+    EXPECT_TRUE(forward_initialized_map == backward_initialized_map);
+  }
 }
 
 TEST(HeapVectorTypes, CustomCompare) {
@@ -563,11 +736,20 @@ TEST(HeapVectorTypes, CustomCompare) {
     s.insert(i);
   }
   check_invariant(s);
-  heap_vector_map<int, float, less_invert<int>> m;
-  for (int i = 0; i < 200; ++i) {
-    m[i] = 12.0f;
+  {
+    heap_vector_map<int, float, less_invert<int>> m;
+    for (int i = 0; i < 200; ++i) {
+      m[i] = 12.0f;
+    }
+    check_invariant(m);
   }
-  check_invariant(m);
+  {
+    small_heap_vector_map<int, float, less_invert<int>> m;
+    for (int i = 0; i < 200; ++i) {
+      m[i] = 12.0f;
+    }
+    check_invariant(m);
+  }
 }
 
 TEST(HeapVectorTypes, GrowthPolicy) {
@@ -610,11 +792,18 @@ TEST(HeapVectorTest, EmptyTest) {
   heap_vector_set<int> emptySet;
   EXPECT_TRUE(emptySet.lower_bound(10) == emptySet.end());
   EXPECT_TRUE(emptySet.find(10) == emptySet.end());
-
-  heap_vector_map<int, int> emptyMap;
-  EXPECT_TRUE(emptyMap.lower_bound(10) == emptyMap.end());
-  EXPECT_TRUE(emptyMap.find(10) == emptyMap.end());
-  EXPECT_THROW(emptyMap.at(10), std::out_of_range);
+  {
+    heap_vector_map<int, int> emptyMap;
+    EXPECT_TRUE(emptyMap.lower_bound(10) == emptyMap.end());
+    EXPECT_TRUE(emptyMap.find(10) == emptyMap.end());
+    EXPECT_THROW(emptyMap.at(10), std::out_of_range);
+  }
+  {
+    small_heap_vector_map<int, int> emptyMap;
+    EXPECT_TRUE(emptyMap.lower_bound(10) == emptyMap.end());
+    EXPECT_TRUE(emptyMap.find(10) == emptyMap.end());
+    EXPECT_THROW(emptyMap.at(10), std::out_of_range);
+  }
 }
 
 TEST(HeapVectorTest, MoveTest) {
@@ -626,13 +815,22 @@ TEST(HeapVectorTest, MoveTest) {
   for (const auto& p : s) {
     EXPECT_TRUE(*p == 5 || *p == 10);
   }
+  {
+    heap_vector_map<int, std::unique_ptr<int>> m;
+    m.insert(std::make_pair(5, std::make_unique<int>(5)));
+    m.insert(m.end(), std::make_pair(10, std::make_unique<int>(10)));
 
-  heap_vector_map<int, std::unique_ptr<int>> m;
-  m.insert(std::make_pair(5, std::make_unique<int>(5)));
-  m.insert(m.end(), std::make_pair(10, std::make_unique<int>(10)));
+    EXPECT_EQ(*m[5], 5);
+    EXPECT_EQ(*m[10], 10);
+  }
+  {
+    small_heap_vector_map<int, std::unique_ptr<int>> m;
+    m.insert(std::make_pair(5, std::make_unique<int>(5)));
+    m.insert(m.end(), std::make_pair(10, std::make_unique<int>(10)));
 
-  EXPECT_EQ(*m[5], 5);
-  EXPECT_EQ(*m[10], 10);
+    EXPECT_EQ(*m[5], 5);
+    EXPECT_EQ(*m[10], 10);
+  }
 }
 
 TEST(HeapVectorTest, ShrinkTest) {
@@ -674,11 +872,21 @@ TEST(HeapVectorTypes, EraseTest) {
   EXPECT_EQ(it, s.end());
   EXPECT_EQ(s.size(), 5);
 
-  heap_vector_map<int, int> m;
-  m.insert(std::make_pair(1, 1));
-  heap_vector_map<int, int> m2(m);
-  EXPECT_EQ(0, m.erase(0));
-  EXPECT_EQ(m2, m);
+  {
+    heap_vector_map<int, int> m;
+    m.insert(std::make_pair(1, 1));
+    heap_vector_map<int, int> m2(m);
+    EXPECT_EQ(0, m.erase(0));
+    EXPECT_EQ(m2, m);
+  }
+
+  {
+    small_heap_vector_map<int, int> m;
+    m.insert(std::make_pair(1, 1));
+    small_heap_vector_map<int, int> m2(m);
+    EXPECT_EQ(0, m.erase(0));
+    EXPECT_EQ(m2, m);
+  }
 }
 
 TEST(HeapVectorTypes, EraseTest2) {
@@ -706,29 +914,57 @@ TEST(HeapVectorTypes, EraseTest2) {
   EXPECT_EQ(it, s.end());
   EXPECT_EQ(s.size(), 5);
 
-  heap_vector_map<int, int> m;
-  for (int i = 0; i < 1000; ++i) {
-    m.insert(std::make_pair(i, i));
-  }
-
-  auto it2 = m.lower_bound(32);
-  EXPECT_EQ(it2->first, 32);
-  it2 = m.erase(it2);
-  EXPECT_NE(m.end(), it2);
-  EXPECT_EQ(it2->first, 33);
-  it2 = m.erase(it2, it2 + 5);
-  EXPECT_EQ(it2->first, 38);
-
-  it2 = m.begin();
-  while (it2 != m.end()) {
-    if (it2->first >= 5) {
-      it2 = m.erase(it2);
-    } else {
-      it2++;
+  {
+    heap_vector_map<int, int> m;
+    for (int i = 0; i < 1000; ++i) {
+      m.insert(std::make_pair(i, i));
     }
+
+    auto it2 = m.lower_bound(32);
+    EXPECT_EQ(it2->first, 32);
+    it2 = m.erase(it2);
+    EXPECT_NE(m.end(), it2);
+    EXPECT_EQ(it2->first, 33);
+    it2 = m.erase(it2, it2 + 5);
+    EXPECT_EQ(it2->first, 38);
+
+    it2 = m.begin();
+    while (it2 != m.end()) {
+      if (it2->first >= 5) {
+        it2 = m.erase(it2);
+      } else {
+        it2++;
+      }
+    }
+    EXPECT_EQ(it2, m.end());
+    EXPECT_EQ(m.size(), 5);
   }
-  EXPECT_EQ(it2, m.end());
-  EXPECT_EQ(m.size(), 5);
+
+  {
+    small_heap_vector_map<int, int> m;
+    for (int i = 0; i < 100; ++i) {
+      m.insert(std::make_pair(i, i));
+    }
+
+    auto it2 = m.lower_bound(32);
+    EXPECT_EQ(it2->first, 32);
+    it2 = m.erase(it2);
+    EXPECT_NE(m.end(), it2);
+    EXPECT_EQ(it2->first, 33);
+    it2 = m.erase(it2, it2 + 5);
+    EXPECT_EQ(it2->first, 38);
+
+    it2 = m.begin();
+    while (it2 != m.end()) {
+      if (it2->first >= 5) {
+        it2 = m.erase(it2);
+      } else {
+        it2++;
+      }
+    }
+    EXPECT_EQ(it2, m.end());
+    EXPECT_EQ(m.size(), 5);
+  }
 }
 
 TEST(HeapVectorTypes, TestSetBulkInsertionSortMerge) {
@@ -747,16 +983,30 @@ TEST(HeapVectorTypes, TestSetBulkInsertionSortMerge) {
 }
 
 TEST(HeapVectorTypes, TestBulkInsertionUncopyableTypes) {
-  std::vector<std::pair<int, std::unique_ptr<int>>> s;
-  s.emplace_back(1, std::make_unique<int>(0));
+  {
+    std::vector<std::pair<int, std::unique_ptr<int>>> s;
+    s.emplace_back(1, std::make_unique<int>(0));
 
-  heap_vector_map<int, std::unique_ptr<int>> vmap(
-      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+    heap_vector_map<int, std::unique_ptr<int>> vmap(
+        std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
 
-  s.clear();
-  s.emplace_back(3, std::make_unique<int>(0));
-  vmap.insert(
-      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+    s.clear();
+    s.emplace_back(3, std::make_unique<int>(0));
+    vmap.insert(
+        std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+  }
+  {
+    std::vector<std::pair<int, std::unique_ptr<int>>> s;
+    s.emplace_back(1, std::make_unique<int>(0));
+
+    small_heap_vector_map<int, std::unique_ptr<int>> vmap(
+        std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+
+    s.clear();
+    s.emplace_back(3, std::make_unique<int>(0));
+    vmap.insert(
+        std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+  }
 }
 
 TEST(HeapVectorTypes, TestSetBulkInsertionMiddleValuesEqualDuplication) {
@@ -895,6 +1145,21 @@ TEST(HeapVectorTypes, TestBulkInsertionMovableTypes) {
       std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
 }
 
+TEST(HeapVectorTypes, TestBulkInsertionMovableTypesSmall) {
+  std::vector<std::pair<int, Movable>> s;
+  s.emplace_back(3, Movable(2));
+  s.emplace_back(1, Movable(0));
+
+  small_heap_vector_map<int, Movable> vmap(
+      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+
+  s.clear();
+  s.emplace_back(4, Movable(3));
+  s.emplace_back(2, Movable(1));
+  vmap.insert(
+      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+}
+
 TEST(HeapVectorTypes, TestSetCreationFromVector) {
   std::vector<int> vec = {3, 1, -1, 5, 0};
   heap_vector_set<int> vset(std::move(vec));
@@ -923,6 +1188,24 @@ TEST(HeapVectorTypes, TestMapCreationFromVector) {
     vec2.emplace_back(i, i);
   heap_vector_map<int, int> vmap2(std::move(vec2));
   check_invariant(vmap2);
+}
+
+TEST(HeapVectorTypes, TestMapCreationFromVectorSmall) {
+  // TODO: Add a constructor to steal std::vector. For small_heap_vector_map
+  // it is better to steal from small_vector.
+  folly::small_vector<std::pair<int, int>, 0, uint32_t> vec = {
+      {3, 1}, {1, 5}, {-1, 2}, {5, 3}, {0, 3}};
+  small_heap_vector_map<int, int> vmap(std::move(vec));
+  check_invariant(vmap);
+  auto contents = std::vector<std::pair<int, int>>(vmap.begin(), vmap.end());
+  auto expected_contents = std::vector<std::pair<int, int>>({
+      {-1, 2},
+      {0, 3},
+      {1, 5},
+      {3, 1},
+      {5, 3},
+  });
+  EXPECT_EQ(contents, expected_contents);
 }
 
 TEST(HeapVectorTypes, TestSetCreationFromSmallVector) {
@@ -993,8 +1276,43 @@ TEST(HeapVectorTypes, TestBulkInsertionWithDuplicatesIntoEmptyMap) {
   EXPECT_EQ(m2[1], 1);
 }
 
+TEST(HeapVectorTypes, TestBulkInsertionWithDuplicatesIntoEmptyMapSmall) {
+  std::vector<std::pair<int, int>> const vec = {{0, 0}, {1, 1}, {0, 2}, {1, 3}};
+
+  small_heap_vector_map<int, int> m(vec.begin(), vec.end());
+  EXPECT_EQ(m.size(), 2);
+  EXPECT_EQ(m[0], 0);
+  EXPECT_EQ(m[1], 1);
+
+  small_heap_vector_map<int, int> m2;
+  m2[2] = 2;
+  m2[-1] = -1;
+
+  // merge two heap maps.
+  m2.insert(
+      std::make_move_iterator(m.iterate().begin()),
+      std::make_move_iterator(m.iterate().end()));
+
+  EXPECT_EQ(m2.size(), 4);
+  EXPECT_EQ(m2[0], 0);
+  EXPECT_EQ(m2[1], 1);
+}
+
 TEST(HeapVectorTypes, TestDataPointsToFirstElement) {
   heap_vector_map<int, int> map;
+
+  map[0] = 0;
+  // works if map has a single element. otherwise data points to middle element
+  EXPECT_EQ(&*map.iterate().data(), &*map.begin());
+
+  map[1] = 1;
+  // data() does not point to begin()!
+  // A major difference between heap_vector_map and sorted_vector_map.
+  EXPECT_NE(&*map.iterate().data(), &*map.begin());
+}
+
+TEST(HeapVectorTypes, TestDataPointsToFirstElementSmall) {
+  small_heap_vector_map<int, int> map;
 
   map[0] = 0;
   // works if map has a single element. otherwise data points to middle element
