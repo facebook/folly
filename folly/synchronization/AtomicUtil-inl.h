@@ -222,8 +222,6 @@ inline bool atomic_fetch_reset_native(
 template <typename Atomic>
 inline bool atomic_fetch_flip_native(
     Atomic& atomic, std::size_t bit, std::memory_order mo) {
-  static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
-  static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
   return atomic_fetch_flip_fallback(atomic, bit, mo);
 }
 
