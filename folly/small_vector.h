@@ -1298,7 +1298,9 @@ class small_vector : public detail::small_vector_base<
     size_t allocationExtraBytes() const { return kHeapifyCapacitySize; }
   } FOLLY_SV_PACK_ATTR;
 
-  typedef aligned_storage_for_t<value_type[MaxInline]> InlineStorageDataType;
+  static constexpr size_t kMaxInlineNonZero = MaxInline ? MaxInline : 1u;
+  typedef aligned_storage_for_t<value_type[kMaxInlineNonZero]>
+      InlineStorageDataType;
 
   typedef typename std::conditional<
       sizeof(value_type) * MaxInline != 0,

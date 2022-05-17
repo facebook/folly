@@ -636,7 +636,7 @@ TEST(HeapVectorTypes, Sizes) {
       sizeof(std::vector<std::pair<int, int>>));
   EXPECT_EQ(
       sizeof(small_heap_vector_map<int, int>),
-      sizeof(folly::small_vector<std::pair<int, int>, 0>));
+      sizeof(folly::small_vector<std::pair<int, int>, 0, uint32_t>));
 
   using SetT = heap_vector_set<
       int,
