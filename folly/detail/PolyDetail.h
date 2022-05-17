@@ -568,7 +568,7 @@ template <
 struct VTable;
 
 template <class T, FOLLY_AUTO User, class I>
-inline constexpr ThunkFn<T, User, I> thunk() noexcept {
+inline constexpr ThunkFn<T, User, I> thunk_() noexcept {
   return ThunkFn<T, User, I>{};
 }
 
@@ -721,7 +721,7 @@ struct VTable<I, PolyMembers<Arch...>, TypeList<S...>>
   template <class T, FOLLY_AUTO... User>
   constexpr VTable(Type<T>, PolyMembers<User...>) noexcept
       : BasePtr<S>{vtableFor<S, T>()}...,
-        std::tuple<SignatureOf<Arch, I>...>{thunk<T, User, I>()...},
+        std::tuple<SignatureOf<Arch, I>...>{thunk_<T, User, I>()...},
         state_{inSitu<T>() ? State::eInSitu : State::eOnHeap},
         ops_{getOps<I, T>()} {}
 
