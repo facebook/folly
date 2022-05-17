@@ -130,7 +130,7 @@ FOLLY_INLINE_VARIABLE constexpr safe_assert_msg_types_one_fn
     safe_assert_msg_types_one{}; // a function object to prevent extensions
 
 template <typename... A>
-safe_assert_msg_type_s<decltype(safe_assert_msg_types_one(A{}))::value...>
+safe_assert_msg_type_s<decltype(safe_assert_msg_types_one(std::declval<A>()))::value...>
 safe_assert_msg_types_seq_of(A...); // only used in unevaluated contexts
 
 template <typename>
