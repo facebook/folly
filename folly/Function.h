@@ -750,8 +750,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename =
           std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
       typename = typename Traits::template IfSafeResult<Fun>,
-      bool IsSmall = sizeof(Fun) <=
-          sizeof(Data::tiny) && noexcept(Fun(FOLLY_DECLVAL(Fun)))>
+      bool IsSmall = ( //
+          sizeof(Fun) <= sizeof(Data) && //
+          alignof(Fun) <= alignof(Data) && //
+              noexcept(Fun(FOLLY_DECLVAL(Fun))))>
   /* implicit */ Function(Fun fun) noexcept(IsSmall) {
     using Dispatch = conditional_t<
         IsSmall && is_trivially_copyable_v<Fun>,
