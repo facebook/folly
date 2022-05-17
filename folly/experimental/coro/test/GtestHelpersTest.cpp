@@ -90,4 +90,7 @@ CO_TYPED_TEST(GtestHelpersTypedTest, Test_type_str) {
   }
 }
 
+CO_TEST(GtestHelpersTest, testCoAssertNoThrow) {
+  CO_ASSERT_NO_THROW(co_await co_getInt(0));
+}
 } // namespace
