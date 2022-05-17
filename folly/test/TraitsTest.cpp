@@ -539,8 +539,32 @@ TEST(Traits, int_bits_lg) {
 #endif // FOLLY_HAVE_INT128_T
 }
 
+struct type_pack_element_test {
+  template <size_t I, typename... T>
+  using fallback = traits_detail::type_pack_element_fallback<I, T...>;
+  template <size_t I, typename... T>
+  using native = type_pack_element_t<I, T...>;
+
+  template <typename IC, typename... T>
+  using fallback_ic = fallback<IC::value, T...>;
+  template <typename IC, typename... T>
+  using native_ic = native<IC::value, T...>;
+};
+
 TEST(Traits, type_pack_element_t) {
-  EXPECT_TRUE((std::is_same_v<
-               type_pack_element_t<3, int, int, int, double, int, int>,
-               double>));
+  using test = type_pack_element_test;
+
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          test::fallback<3, int, int, int, double, int, int>,
+          double>));
+  EXPECT_TRUE((is_detected_v<test::fallback_ic, index_constant<0>, int>));
+  EXPECT_FALSE((is_detected_v<test::fallback_ic, index_constant<0>>));
+
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          test::native<3, int, int, int, double, int, int>, //
+          double>));
+  EXPECT_TRUE((is_detected_v<test::native_ic, index_constant<0>, int>));
+  EXPECT_FALSE((is_detected_v<test::native_ic, index_constant<0>>));
 }
