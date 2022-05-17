@@ -752,8 +752,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename = typename Traits::template IfSafeResult<Fun>,
       bool IsSmall = sizeof(Fun) <=
           sizeof(Data::tiny) && noexcept(Fun(FOLLY_DECLVAL(Fun)))>
-  /* implicit */ Function(Fun fun) noexcept(
-      IsSmall&& noexcept(Fun(static_cast<Fun&&>(fun)))) {
+  /* implicit */ Function(Fun fun) noexcept(IsSmall) {
     using Dispatch = conditional_t<
         IsSmall && is_trivially_copyable_v<Fun>,
         detail::function::DispatchSmallTrivial,
