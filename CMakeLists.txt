@@ -287,16 +287,7 @@ if (NOT ${LIBGFLAGS_FOUND})
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(REMOVE_ITEM files
-    ${FOLLY_DIR}/Poly.cpp
     ${FOLLY_DIR}/Subprocess.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/Poly.h
-    ${FOLLY_DIR}/Poly-inl.h
-    ${FOLLY_DIR}/detail/PolyDetail.h
-    ${FOLLY_DIR}/detail/TypeList.h
-    ${FOLLY_DIR}/poly/Nullable.h
-    ${FOLLY_DIR}/poly/Regular.h
   )
 endif()
 
