@@ -1826,3 +1826,9 @@ TEST(IOBuf, FromStringView) {
   EXPECT_EQ(fromStringView, fromString);
   EXPECT_EQ(fromLiteral, fromString);
 }
+
+TEST(IOBuf, bufferTooLarge) {
+  EXPECT_THROW(
+      IOBuf::copyBuffer(StringPiece("Hello"), (size_t)0xFFFF'FFFF'FFFF'FFFE),
+      std::length_error);
+}

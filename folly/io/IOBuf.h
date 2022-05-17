@@ -34,6 +34,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/detail/Iterators.h>
+#include <folly/lang/CheckedMath.h>
 #include <folly/lang/Ordering.h>
 #include <folly/portability/SysUio.h>
 #include <folly/synchronization/MicroSpinLock.h>
@@ -1764,7 +1765,10 @@ inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
     std::size_t size,
     std::size_t headroom,
     std::size_t minTailroom) {
-  std::size_t capacity = headroom + size + minTailroom;
+  std::size_t capacity;
+  if (!folly::checked_add(&capacity, size, headroom, minTailroom)) {
+    throw_exception(std::length_error(""));
+  }
   std::unique_ptr<IOBuf> buf = create(capacity);
   buf->advance(headroom);
   if (size != 0) {
