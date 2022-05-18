@@ -39,6 +39,7 @@
 #include <folly/Traits.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 
@@ -487,8 +488,15 @@ class fbstring_core {
     }
 
     static RefCounted* create(size_t* size) {
-      const size_t allocSize =
-          goodMallocSize(getDataOffset() + (*size + 1) * sizeof(Char));
+      size_t capacityBytes;
+      if (!folly::checked_add(&capacityBytes, *size, size_t(1))) {
+        throw_exception(std::length_error(""));
+      }
+      if (!folly::checked_muladd(
+              &capacityBytes, capacityBytes, sizeof(Char), getDataOffset())) {
+        throw_exception(std::length_error(""));
+      }
+      const size_t allocSize = goodMallocSize(capacityBytes);
       auto result = static_cast<RefCounted*>(checkedMalloc(allocSize));
       result->refCount_.store(1, std::memory_order_release);
       *size = (allocSize - getDataOffset()) / sizeof(Char) - 1;
@@ -510,8 +518,15 @@ class fbstring_core {
         const size_t currentCapacity,
         size_t* newCapacity) {
       assert(*newCapacity > 0 && *newCapacity > currentSize);
-      const size_t allocNewCapacity =
-          goodMallocSize(getDataOffset() + (*newCapacity + 1) * sizeof(Char));
+      size_t capacityBytes;
+      if (!folly::checked_add(&capacityBytes, *newCapacity, size_t(1))) {
+        throw_exception(std::length_error(""));
+      }
+      if (!folly::checked_muladd(
+              &capacityBytes, capacityBytes, sizeof(Char), getDataOffset())) {
+        throw_exception(std::length_error(""));
+      }
+      const size_t allocNewCapacity = goodMallocSize(capacityBytes);
       auto const dis = fromData(data);
       assert(dis->refCount_.load(std::memory_order_acquire) == 1);
       auto result = static_cast<RefCounted*>(smartRealloc(
