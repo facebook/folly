@@ -14,27 +14,101 @@
  * limitations under the License.
  */
 
-// Make sure we include ThreadId.h before anything else.
-// There is no ThreadId.cpp file, so this test is the only thing that verifies
-// that ThreadId.h compiles by itself when included first.
 #include <folly/system/ThreadId.h>
 
 #include <thread>
 
+#include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>
 
-TEST(ThreadId, getCurrentID) {
-  auto thisThreadID = folly::getCurrentThreadID();
+#ifndef _WIN32
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <folly/portability/Unistd.h>
+#endif
+
+namespace folly {
+namespace detail {
+
+uint64_t getOSThreadIDSlow();
+
+} // namespace detail
+} // namespace folly
+
+namespace {
+
+template <class F>
+void testUnique(F&& f) {
+  auto thisThreadID = f();
   uint64_t otherThreadID;
-  std::thread otherThread{[&] { otherThreadID = folly::getCurrentThreadID(); }};
+  std::thread otherThread{[&] { otherThreadID = f(); }};
   otherThread.join();
   EXPECT_NE(thisThreadID, otherThreadID);
+}
+
+} // namespace
+
+TEST(ThreadId, getCurrentID) {
+  testUnique(folly::getCurrentThreadID);
 }
 
 TEST(ThreadId, getOSThreadID) {
-  auto thisThreadID = folly::getOSThreadID();
-  uint64_t otherThreadID;
-  std::thread otherThread{[&] { otherThreadID = folly::getOSThreadID(); }};
-  otherThread.join();
-  EXPECT_NE(thisThreadID, otherThreadID);
+  testUnique(folly::getOSThreadID);
 }
+
+TEST(ThreadId, getOSThreadIDCache) {
+  auto thisThreadID = folly::getOSThreadID();
+  ASSERT_EQ(thisThreadID, folly::detail::getOSThreadIDSlow());
+
+#ifndef _WIN32
+  auto pid = fork();
+  ASSERT_GE(pid, 0);
+  if (pid == 0) { // Child.
+    if (folly::getOSThreadID() != folly::detail::getOSThreadIDSlow()) {
+      _exit(1);
+    }
+    if (folly::getOSThreadID() == thisThreadID) {
+      _exit(2);
+    }
+    _exit(0);
+  } else { // Parent.
+    int status;
+    ASSERT_EQ(pid, waitpid(pid, &status, 0));
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(0, WEXITSTATUS(status));
+  }
+#endif
+}
+
+#define BENCHMARK_FUN(NAME, F)              \
+  BENCHMARK(NAME, iters) {                  \
+    while (iters--) {                       \
+      folly::doNotOptimizeAway(folly::F()); \
+    }                                       \
+  }
+
+BENCHMARK_FUN(getCurrentThreadID, getCurrentThreadID)
+BENCHMARK_FUN(getOSThreadID, getOSThreadID)
+BENCHMARK_FUN(getOSThreadIDSlow, detail::getOSThreadIDSlow)
+
+int main(int argc, char* argv[]) {
+  testing::InitGoogleTest(&argc, argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
+  int ret = RUN_ALL_TESTS();
+  if (ret == 0) {
+    folly::runBenchmarksOnFlag();
+  }
+  return ret;
+}
+
+#if 0
+$ buck2 run @mode/opt folly/system/test:thread_id_test -- --benchmark --bm_min_usec 500000
+============================================================================
+fbcode/folly/system/test/ThreadIdTest.cpp     relative  time/iter   iters/s
+============================================================================
+getCurrentThreadID                                          3.12ns   320.39M
+getOSThreadID                                               2.14ns   466.64M
+getOSThreadIDSlow                                         275.19ns     3.63M
+============================================================================
+#endif

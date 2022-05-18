@@ -44,19 +44,12 @@ uint64_t getCurrentThreadID();
  * This makes it more suitable for logging or displaying in user interfaces
  * than the result of getCurrentThreadID().
  *
- * There are some potential caveats about this API, however:
- *
- * - In theory there is no guarantee that application threads map one-to-one to
- *   kernel threads.  An application threading implementation could potentially
- *   share one OS thread across multiple application threads, and/or it could
- *   potentially move application threads between different OS threads over
- *   time.  However, in practice all of the platforms we currently support have
- *   a one-to-one mapping between userspace threads and operating system
- *   threads.
- *
- * - This API may also be slightly slower than getCurrentThreadID() on some
- *   platforms.  This API may require a system call, where getCurrentThreadID()
- *   may only need to read thread-local memory.
+ * In theory there is no guarantee that application threads map one-to-one to
+ * kernel threads.  An application threading implementation could potentially
+ * share one OS thread across multiple application threads, and/or it could
+ * potentially move application threads between different OS threads over time.
+ * However, in practice all of the platforms we currently support have a
+ * one-to-one mapping between userspace threads and operating system threads.
  *
  * On Linux the returned value is a pid_t, and can be used in contexts
  * requiring a thread pid_t.

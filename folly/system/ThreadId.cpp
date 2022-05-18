@@ -16,10 +16,13 @@
 
 #include <folly/system/ThreadId.h>
 
+#include <folly/Likely.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
+#include <folly/synchronization/RelaxedAtomic.h>
+#include <folly/system/AtFork.h>
 
 namespace folly {
 
@@ -33,7 +36,21 @@ uint64_t getCurrentThreadID() {
 #endif
 }
 
-uint64_t getOSThreadID() {
+namespace detail {
+
+// Used to invalidate all caches in the child process on fork. Start at 1 so
+// that 0 is always invalid.
+folly::relaxed_atomic<uint64_t> gEpoch{1};
+
+void initInvalidation() {
+  FOLLY_MAYBE_UNUSED static bool init = [] {
+    folly::AtFork::registerHandler(
+        &gEpoch, [] { return true; }, [] {}, [] { ++gEpoch; });
+    return true;
+  }();
+}
+
+uint64_t getOSThreadIDSlow() {
 #if __APPLE__
   uint64_t tid;
   pthread_threadid_np(nullptr, &tid);
@@ -50,4 +67,17 @@ uint64_t getOSThreadID() {
   return uint64_t(syscall(FOLLY_SYS_gettid));
 #endif
 }
+
+} // namespace detail
+
+uint64_t getOSThreadID() {
+  thread_local std::pair<uint64_t, uint64_t> cache{0, 0};
+  auto epoch = detail::gEpoch.load();
+  if (FOLLY_UNLIKELY(epoch != cache.first)) {
+    detail::initInvalidation();
+    cache = {epoch, detail::getOSThreadIDSlow()};
+  }
+  return cache.second;
+}
+
 } // namespace folly
