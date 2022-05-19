@@ -388,6 +388,29 @@ class ConcurrentHashMap {
     return std::move(res);
   }
 
+  // Assign to desired if and only if the predicate returns true
+  // for the current value.
+  template <typename Key, typename Value, typename Predicate>
+  folly::Optional<ConstIterator> assign_if(
+      Key&& k, Value&& desired, Predicate&& predicate) {
+    auto segment = pickSegment(k);
+    ConstIterator res(this, segment);
+    auto seg = segments_[segment].load(std::memory_order_acquire);
+    if (!seg) {
+      return none;
+    } else {
+      auto r = seg->assign_if(
+          res.it_,
+          std::forward<Key>(k),
+          std::forward<Value>(desired),
+          std::forward<Predicate>(predicate));
+      if (!r) {
+        return none;
+      }
+    }
+    return std::move(res);
+  }
+
   // Assign to desired if and only if key k is equal to expected
   template <typename Key, typename Value>
   folly::Optional<ConstIterator> assign_if_equal(

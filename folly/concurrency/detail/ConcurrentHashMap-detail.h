@@ -1797,10 +1797,9 @@ class alignas(64) ConcurrentHashMapSegment {
     }
     return res;
   }
-
-  template <typename Key, typename Value>
-  bool assign_if_equal(
-      Iterator& it, Key&& k, const ValueType& expected, Value&& desired) {
+  template <typename Key, typename Value, typename Predicate>
+  bool assign_if(
+      Iterator& it, Key&& k, Value&& desired, Predicate&& predicate) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
     new (node)
         Node(cohort_, std::forward<Key>(k), std::forward<Value>(desired));
@@ -1808,13 +1807,23 @@ class alignas(64) ConcurrentHashMapSegment {
         it,
         node->getItem().first,
         InsertType::MATCH,
-        [&expected](const ValueType& v) { return v == expected; },
+        std::forward<Predicate>(predicate),
         node);
     if (!res) {
       node->~Node();
       Allocator().deallocate((uint8_t*)node, sizeof(Node));
     }
     return res;
+  }
+
+  template <typename Key, typename Value>
+  bool assign_if_equal(
+      Iterator& it, Key&& k, const ValueType& expected, Value&& desired) {
+    return assign_if(
+        it,
+        std::forward<Key>(k),
+        std::forward<Value>(desired),
+        [&expected](const ValueType& v) { return v == expected; });
   }
 
   template <typename MatchFunc, typename K, typename... Args>

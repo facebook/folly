@@ -91,6 +91,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, MapTest) {
   EXPECT_TRUE(foomap.insert_or_assign(2, 0).second);
   EXPECT_EQ(foomap.size(), 2);
   EXPECT_TRUE(foomap.assign_if_equal(2, 0, 3));
+  EXPECT_FALSE(foomap.assign_if(2, 4, [](auto&&) { return false; }));
   EXPECT_TRUE(foomap.insert(3, 0).second);
   EXPECT_FALSE(foomap.erase_if_equal(3, 1));
   EXPECT_TRUE(foomap.erase_if_equal(3, 0));
@@ -270,6 +271,8 @@ TYPED_TEST_P(ConcurrentHashMapTest, MapMovableKeysTest) {
   EXPECT_TRUE(foomap.emplace(Movable(12), Movable(1)).second);
   EXPECT_TRUE(foomap.insert_or_assign(Movable(10), Movable(3)).second);
   EXPECT_TRUE(foomap.assign_if_equal(Movable(10), Movable(3), Movable(4)));
+  EXPECT_TRUE(
+      foomap.assign_if(Movable(10), Movable(5), [](auto&&) { return true; }));
   EXPECT_FALSE(foomap.try_emplace(Movable(10), Movable(3)).second);
   EXPECT_TRUE(foomap.try_emplace(Movable(13), Movable(3)).second);
 }
@@ -395,6 +398,27 @@ TYPED_TEST_P(ConcurrentHashMapTest, EraseInIterateTest) {
   for (auto it = foomap.cbegin(); it != foomap.cend(); ++it) {
     EXPECT_GE(3, it->second);
   }
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, AssignIfTest) {
+  CHM<uint64_t, uint64_t> foomap(3);
+  foomap.insert(1, 0);
+
+  bool canAssignFlag = false;
+  EXPECT_FALSE(
+      foomap.assign_if(1, 1, [canAssignFlag](auto&&) { return canAssignFlag; })
+          .has_value());
+
+  canAssignFlag = true;
+  auto f1 =
+      foomap.assign_if(1, 2, [canAssignFlag](auto&&) { return canAssignFlag; });
+  EXPECT_TRUE(f1.has_value());
+  EXPECT_EQ(2, f1.value()->second);
+
+  // Assign based on the current value.
+  auto f2 = foomap.assign_if(1, 3, [](auto&& val) { return val == 2; });
+  EXPECT_TRUE(f2.has_value());
+  EXPECT_EQ(3, f2.value()->second);
 }
 
 // TODO: hazptrs must support DeterministicSchedule
@@ -989,6 +1013,11 @@ TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousInsert) {
   EXPECT_TRUE(mbIt);
   EXPECT_EQ(mbIt.value()->second, "hello");
   EXPECT_EQ(map[foo], "hello");
+  auto mbIt2 =
+      map.assign_if("foo", "hello2", [](auto&& val) { return val == "hello"; });
+  EXPECT_TRUE(mbIt);
+  EXPECT_EQ(mbIt2.value()->second, "hello2");
+  EXPECT_EQ(map[foo], "hello2");
   auto it = map.find(foo);
   map.erase(it);
   EXPECT_TRUE(map.empty());
@@ -1128,6 +1157,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     EraseIfEqualTest,
     EraseIfTest,
     EraseInIterateTest,
+    AssignIfTest,
     EraseStressTest,
     EraseTest,
     ForEachLoop,
