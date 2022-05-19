@@ -38,18 +38,6 @@ uint64_t getCurrentThreadID() {
 
 namespace detail {
 
-// Used to invalidate all caches in the child process on fork. Start at 1 so
-// that 0 is always invalid.
-folly::relaxed_atomic<uint64_t> gEpoch{1};
-
-void initInvalidation() {
-  FOLLY_MAYBE_UNUSED static bool init = [] {
-    folly::AtFork::registerHandler(
-        &gEpoch, [] { return true; }, [] {}, [] { ++gEpoch; });
-    return true;
-  }();
-}
-
 uint64_t getOSThreadIDSlow() {
 #if __APPLE__
   uint64_t tid;
@@ -70,11 +58,29 @@ uint64_t getOSThreadIDSlow() {
 
 } // namespace detail
 
+namespace {
+
+struct CacheState {
+  CacheState() {
+    AtFork::registerHandler(
+        this, [] { return true; }, [] {}, [] { ++epoch; });
+  }
+
+  // Used to invalidate all caches in the child process on fork. Start at 1 so
+  // that 0 is always invalid.
+  static relaxed_atomic<uint64_t> epoch;
+};
+
+relaxed_atomic<uint64_t> CacheState::epoch{1};
+
+CacheState gCacheState;
+
+} // namespace
+
 uint64_t getOSThreadID() {
   thread_local std::pair<uint64_t, uint64_t> cache{0, 0};
-  auto epoch = detail::gEpoch.load();
+  auto epoch = CacheState::epoch.load();
   if (FOLLY_UNLIKELY(epoch != cache.first)) {
-    detail::initInvalidation();
     cache = {epoch, detail::getOSThreadIDSlow()};
   }
   return cache.second;
