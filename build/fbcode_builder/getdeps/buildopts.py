@@ -83,7 +83,7 @@ class BuildOptions(object):
         # If we are running from an fbsource repository, set self.fbsource_dir
         # to allow the ShipIt-based fetchers to use it.
         if self.repo_project == "fbsource":
-            self.fbsource_dir = self.repo_root
+            self.fbsource_dir: Optional[str] = self.repo_root
         else:
             self.fbsource_dir = None
 

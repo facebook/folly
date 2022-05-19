@@ -12,17 +12,20 @@ import shutil
 import stat
 import subprocess
 import sys
+import typing
 
 from .dyndeps import create_dyn_dep_munger
 from .envfuncs import add_path_entry, Env, path_search
 from .fetcher import copy_if_different
 from .runcmd import run_cmd
 
+if typing.TYPE_CHECKING:
+    from .buildopts import BuildOptions
 
 class BuilderBase(object):
     def __init__(
         self,
-        build_opts,
+        build_opts: "BuildOptions",
         ctx,
         manifest,
         src_dir,
