@@ -13,6 +13,7 @@ import stat
 import subprocess
 import sys
 import typing
+from typing import Optional
 
 from .dyndeps import create_dyn_dep_munger
 from .envfuncs import add_path_entry, Env, path_search
@@ -723,6 +724,11 @@ if __name__ == "__main__":
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
 
+        def require_command(path: Optional[str], name: str) -> str:
+            if path is None:
+                raise RuntimeError("unable to find command `{}`".format(name))
+            return path
+
         # On Windows, we also need to update $PATH to include the directories that
         # contain runtime library dependencies.  This is not needed on other platforms
         # since CMake will emit RPATH properly in the binary so they can find these
@@ -756,7 +762,9 @@ if __name__ == "__main__":
 
         def list_tests():
             output = subprocess.check_output(
-                [ctest, "--show-only=json-v1"], env=env, cwd=self.build_dir
+                [require_command(ctest, "ctest"), "--show-only=json-v1"],
+                env=env,
+                cwd=self.build_dir,
             )
             try:
                 data = json.loads(output.decode("utf-8"))
@@ -780,7 +788,12 @@ if __name__ == "__main__":
                     labels.append("disabled")
                 command = test["command"]
                 if working_dir:
-                    command = [cmake, "-E", "chdir", working_dir] + command
+                    command = [
+                        require_command(cmake, "cmake"),
+                        "-E",
+                        "chdir",
+                        working_dir,
+                    ] + command
 
                 import os
 
@@ -906,7 +919,12 @@ if __name__ == "__main__":
                     use_cmd_prefix=use_cmd_prefix,
                 )
         else:
-            args = [ctest, "--output-on-failure", "-j", str(self.num_jobs)]
+            args = [
+                require_command(ctest, "ctest"),
+                "--output-on-failure",
+                "-j",
+                str(self.num_jobs),
+            ]
             if test_filter:
                 args += ["-R", test_filter]
 
@@ -964,7 +982,7 @@ class OpenSSLBuilder(BuilderBase):
             bindir = os.path.join(d, "bin")
             add_path_entry(env, "PATH", bindir, append=False)
 
-        perl = path_search(env, "perl", "perl")
+        perl = typing.cast(str, path_search(env, "perl", "perl"))
 
         make_j_args = []
         if self.build_opts.is_windows():

@@ -6,6 +6,7 @@
 import os
 import shlex
 import sys
+from typing import Optional
 
 
 class Env(object):
@@ -158,7 +159,7 @@ def tpx_path() -> str:
     return "xplat/testinfra/tpx/ctp.tpx"
 
 
-def path_search(env, exename: str, defval=None):
+def path_search(env, exename: str, defval: Optional[str] = None) -> Optional[str]:
     """Search for exename in the PATH specified in env.
     exename is eg: `ninja` and this function knows to append a .exe
     to the end on windows.
@@ -180,7 +181,7 @@ def path_search(env, exename: str, defval=None):
     return result
 
 
-def _perform_path_search(path, exename: str):
+def _perform_path_search(path, exename: str) -> Optional[str]:
     is_win = sys.platform.startswith("win")
     if is_win:
         exename = "%s.exe" % exename
