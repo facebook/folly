@@ -45,7 +45,7 @@ bool generic_checked_add(T* result, T a, T b) {
 
 template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
 bool generic_checked_small_mul(T* result, T a, T b) {
-  static_assert(sizeof(T) < sizeof(uint64_t), "too large");
+  static_assert(sizeof(T) < sizeof(uint64_t), "Too large");
   uint64_t res = static_cast<uint64_t>(a) * static_cast<uint64_t>(b);
   constexpr uint64_t overflowMask = ~((1ULL << (sizeof(T) * 8)) - 1);
   if (FOLLY_UNLIKELY((res & overflowMask) != 0)) {
