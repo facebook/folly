@@ -22,6 +22,7 @@ from .runcmd import run_cmd
 if typing.TYPE_CHECKING:
     from .buildopts import BuildOptions
 
+
 class BuilderBase(object):
     def __init__(
         self,
