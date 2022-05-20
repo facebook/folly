@@ -865,6 +865,11 @@ TEST(Conv, IntToFloat) {
 #endif
 }
 
+TEST(Conv, BoolToString) {
+  EXPECT_EQ(to<std::string>(true), "1");
+  EXPECT_EQ(to<std::string>(false), "0");
+}
+
 TEST(Conv, BoolToFloat) {
   EXPECT_EQ(to<double>(true), 1.0);
   EXPECT_EQ(to<double>(false), 0.0);
