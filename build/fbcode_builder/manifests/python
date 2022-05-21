@@ -13,12 +13,12 @@ python3-devel
 python3-all-dev
 
 [download]
-url = https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz
-sha256 = 316aa33f3b7707d041e73f246efedb297a70898c4b91f127f66dc8d80c596f1a
+url = https://www.python.org/ftp/python/3.8.13/Python-3.8.13.tgz
+sha256 = 903b92d76354366b1d9c4434d0c81643345cef87c1600adfa36095d7b00eede4
 
 [build]
 builder = autoconf
-subdir = Python-3.8.12
+subdir = Python-3.8.13
 
 [autoconf.args]
 --enable-shared
