@@ -15,7 +15,6 @@
  */
 
 #include <folly/Memory.h>
-#include <folly/fibers/EventBaseLoopController.h>
 
 namespace folly {
 namespace fibers {
