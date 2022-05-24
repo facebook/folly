@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/FileUtil.h>
-#include <folly/io/async/AtomicNotificationQueue.h>
 #include <folly/system/Pid.h>
 
 namespace folly {
