@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/detail/Futex.h>
 #include <folly/synchronization/ParkingLot.h>
 
 namespace folly {
