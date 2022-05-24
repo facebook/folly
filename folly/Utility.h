@@ -465,13 +465,20 @@ using MoveOnly = moveonly_::EnableCopyMove<false, true>;
 struct unsafe_default_initialized_cv {
   template <typename T>
   FOLLY_ERASE constexpr /* implicit */ operator T() const noexcept {
-    T uninit;
-    FOLLY_PUSH_WARNING
-    FOLLY_MSVC_DISABLE_WARNING(4701)
-    FOLLY_MSVC_DISABLE_WARNING(4703)
-    FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
-    return uninit;
-    FOLLY_POP_WARNING
+#if defined(__cpp_lib_is_constant_evaluated)
+#if __cpp_lib_is_constant_evaluated >= 201811L
+    if (!std::is_constant_evaluated()) {
+      T uninit;
+      FOLLY_PUSH_WARNING
+      FOLLY_MSVC_DISABLE_WARNING(4701)
+      FOLLY_MSVC_DISABLE_WARNING(4703)
+      FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
+      return uninit;
+      FOLLY_POP_WARNING
+    }
+#endif
+#endif
+    return T();
   }
 };
 FOLLY_INLINE_VARIABLE constexpr unsafe_default_initialized_cv

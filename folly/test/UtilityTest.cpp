@@ -38,6 +38,11 @@ extern "C" FOLLY_KEEP void check_unsafe_default_initialized_int_pass() {
   folly::detail::keep_sink_nx(a);
 }
 
+extern "C" FOLLY_KEEP int check_unsafe_default_initialized_int_cexpr() {
+  constexpr int a = folly::unsafe_default_initialized;
+  return a;
+}
+
 } // namespace folly
 
 namespace {
