@@ -60,6 +60,9 @@ namespace folly {
  */
 class JemallocHugePageAllocator {
  public:
+  /* initialize with a default number of initial and max pages. */
+  static bool default_init();
+
   static bool init(int initial_nr_pages, int max_nr_pages = 0);
 
   static void* allocate(size_t size) {

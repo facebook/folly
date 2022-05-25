@@ -112,12 +112,6 @@ constexpr size_t kHugePageSize = 2 * 1024 * 1024;
 // Singleton arena instance
 HugePageArena arena;
 
-// TODO: Always reserve a big chunk (16GB) of virtual address space up front?
-// Doesn't allocate anything.
-// const bool _inited = []() {
-//   return folly::JemallocHugePageAllocator::init(0, 8192) != 0;
-// }();
-
 template <typename T, typename U>
 static inline T align_up(T val, U alignment) {
   DCHECK((alignment & (alignment - 1)) == 0);
@@ -371,6 +365,12 @@ void* HugePageArena::reserve(size_t size, size_t alignment) {
 } // namespace
 
 int JemallocHugePageAllocator::flags_{0};
+
+bool JemallocHugePageAllocator::default_init() {
+  // By default, map 1GB, but don't initialize anything. Individual users can
+  // always ask for more pages to be readied.
+  return init(0, 512);
+}
 
 bool JemallocHugePageAllocator::init(int initial_nr_pages, int max_nr_pages) {
   if (!usingJEMalloc()) {
