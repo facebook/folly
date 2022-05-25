@@ -54,7 +54,9 @@ class CompressionContextPool {
       Resetter resetter = Resetter())
       : creator_(std::move(creator)),
         deleter_(std::move(deleter)),
-        resetter_(std::move(resetter)) {}
+        resetter_(std::move(resetter)),
+        stack_(),
+        created_(0) {}
 
   Ref get() {
     auto stack = stack_.wlock();
@@ -63,6 +65,7 @@ class CompressionContextPool {
       if (t == nullptr) {
         throw_exception<std::bad_alloc>();
       }
+      created_++;
       return Ref(t, get_deleter());
     }
     auto ptr = std::move(stack->back());
@@ -73,6 +76,8 @@ class CompressionContextPool {
     }
     return Ref(ptr.release(), get_deleter());
   }
+
+  size_t created_count() const { return created_.load(); }
 
   size_t size() { return stack_.rlock()->size(); }
 
@@ -92,6 +97,8 @@ class CompressionContextPool {
   Resetter resetter_;
 
   folly::Synchronized<std::vector<InternalRef>> stack_;
+
+  std::atomic<size_t> created_;
 };
 } // namespace compression
 } // namespace folly

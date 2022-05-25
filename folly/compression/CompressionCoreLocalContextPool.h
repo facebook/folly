@@ -105,6 +105,8 @@ class CompressionCoreLocalContextPool {
 
   Ref getNull() { return Ref(nullptr, get_deleter()); }
 
+  size_t created_count() const { return pool_.created_count(); }
+
  private:
   ReturnToPoolDeleter get_deleter() { return ReturnToPoolDeleter(this); }
 

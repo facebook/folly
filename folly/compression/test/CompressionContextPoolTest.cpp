@@ -86,6 +86,7 @@ class CompressionContextPoolTest : public testing::Test {
 TEST_F(CompressionContextPoolTest, testGet) {
   auto ptr = pool_->get();
   EXPECT_TRUE(ptr);
+  EXPECT_EQ(pool_->created_count(), 1);
 }
 
 TEST_F(CompressionContextPoolTest, testSame) {
@@ -121,6 +122,7 @@ TEST_F(CompressionContextPoolTest, testDifferent) {
     auto ptr2 = pool_->get();
     EXPECT_NE(ptr1.get(), ptr2.get());
   }
+  EXPECT_EQ(pool_->created_count(), 2);
   EXPECT_EQ(pool_->size(), 2);
 }
 
@@ -156,6 +158,8 @@ TEST_F(CompressionContextPoolTest, testLifo) {
   EXPECT_EQ(ptr2.get(), t1);
   ptr3 = pool_->get();
   EXPECT_EQ(ptr3.get(), t3);
+
+  EXPECT_EQ(pool_->created_count(), numFoos.load());
 }
 
 TEST_F(CompressionContextPoolTest, testExplicitCreatorDeleter) {
@@ -184,6 +188,8 @@ TEST_F(CompressionContextPoolTest, testMultithread) {
 
   EXPECT_LE(numFoos.load(), numThreads);
   EXPECT_LE(numDeleted.load(), 0);
+  EXPECT_EQ(pool_->created_count(), numFoos.load());
+  EXPECT_EQ(pool_->created_count(), pool_->size());
 }
 
 TEST_F(CompressionContextPoolTest, testBadCreate) {

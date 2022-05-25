@@ -87,6 +87,10 @@ ZSTD_CCtx_Pool::Ref getNULL_ZSTD_CCtx();
 
 ZSTD_DCtx_Pool::Ref getNULL_ZSTD_DCtx();
 
+size_t get_zstd_cctx_created_count();
+
+size_t get_zstd_dctx_created_count();
+
 #endif // FOLLY_HAVE_LIBZSTD
 
 } // namespace contexts

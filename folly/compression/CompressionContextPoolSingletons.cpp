@@ -126,6 +126,15 @@ ZSTD_CCtx_Pool::Ref getNULL_ZSTD_CCtx() {
 ZSTD_DCtx_Pool::Ref getNULL_ZSTD_DCtx() {
   return zstd_dctx_pool_singleton.getNull();
 }
+
+size_t get_zstd_cctx_created_count() {
+  return zstd_cctx_pool_singleton.created_count();
+}
+
+size_t get_zstd_dctx_created_count() {
+  return zstd_dctx_pool_singleton.created_count();
+}
+
 #endif // FOLLY_HAVE_LIBZSTD
 
 } // namespace contexts
