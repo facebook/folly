@@ -932,6 +932,36 @@ MATCHER_P(HasCmsgs, cmsgs, "") {
 #endif
 }
 
+MATCHER_P(HasNontrivialCmsgs, cmsgs, "") {
+  struct msghdr* msg = const_cast<struct msghdr*>(arg);
+  if (msg == nullptr) {
+    return false;
+  }
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  folly::SocketNontrivialOptionMap sentCmsgs;
+
+  struct cmsghdr* cmsg;
+  for (cmsg = CMSG_FIRSTHDR(msg); cmsg != nullptr;
+       cmsg = CMSG_NXTHDR(msg, cmsg)) {
+    if (cmsg->cmsg_level == SOL_SOCKET) {
+      if (cmsg->cmsg_type == SO_LINGER) {
+        struct linger sl {
+          .l_onoff = 0, .l_linger = 0,
+        };
+
+        memcpy(
+            &sl, reinterpret_cast<struct linger*>(CMSG_DATA(cmsg)), sizeof(sl));
+        sentCmsgs[{SOL_SOCKET, SO_LINGER}] =
+            std::string(reinterpret_cast<const char*>(&sl), sizeof(sl));
+      }
+    }
+  }
+  return sentCmsgs == cmsgs;
+#else
+  return false;
+#endif
+}
+
 TEST_F(AsyncUDPSocketTest, TestWriteCmsg) {
   folly::SocketAddress addr("127.0.0.1", 10000);
   auto netOpsDispatcher =
@@ -1002,6 +1032,20 @@ MATCHER_P2(AllHaveCmsgs, cmsgs, count, "") {
   for (size_t i = 0; i < count; ++i) {
     auto msg = arg[i].msg_hdr;
     if (!Matches(HasCmsgs(cmsgs))(&msg)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+MATCHER_P3(AllHaveCmsgsAndNontrivialCmsgs, cmsgs, nontrivialCmsgs, count, "") {
+  if (arg == nullptr) {
+    return false;
+  }
+  for (size_t i = 0; i < count; ++i) {
+    auto msg = arg[i].msg_hdr;
+    if (!Matches(HasCmsgs(cmsgs))(&msg) &&
+        !Matches(HasNontrivialCmsgs(nontrivialCmsgs))(&msg)) {
       return false;
     }
   }
@@ -1124,4 +1168,78 @@ TEST_F(AsyncUDPSocketTest, TestApplyNontrivialOptionsPostBind) {
 
   socket.applyNontrivialOptions(
       options, folly::SocketOptionKey::ApplyPos::POST_BIND);
+}
+
+TEST_F(AsyncUDPSocketTest, TestWritemNontrivialCmsgs) {
+  folly::SocketAddress addr("127.0.0.1", 10001);
+  auto netOpsDispatcher =
+      std::make_shared<NiceMock<folly::netops::test::MockDispatcher>>();
+  socket_->setOverrideNetOpsDispatcher(netOpsDispatcher);
+  std::vector<std::unique_ptr<folly::IOBuf>> bufs;
+  bufs.emplace_back(folly::IOBuf::copyBuffer("hey1"));
+  bufs.emplace_back(folly::IOBuf::copyBuffer("hey2"));
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  // empty
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    folly::SocketNontrivialOptionMap expectedNontrivialCmsgs;
+    EXPECT_CALL(
+        *netOpsDispatcher,
+        sendmmsg(
+            _,
+            AllHaveCmsgsAndNontrivialCmsgs(
+                expectedCmsgs, expectedNontrivialCmsgs, bufs.size()),
+            _,
+            _));
+    socket_->writem(folly::range(&addr, &addr + 1), bufs.data(), bufs.size());
+  }
+  // set IP_TOS & SO_MARK
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    folly::SocketNontrivialOptionMap expectedNontrivialCmsgs;
+    struct linger sl {
+      .l_onoff = 1, .l_linger = 123,
+    };
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 456;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedNontrivialCmsgs[{SOL_SOCKET, SO_LINGER}] =
+        std::string(reinterpret_cast<const char*>(&sl), sizeof(sl));
+    socket_->setCmsgs(expectedCmsgs);
+    socket_->setNontrivialCmsgs(expectedNontrivialCmsgs);
+    EXPECT_CALL(
+        *netOpsDispatcher,
+        sendmmsg(
+            _,
+            AllHaveCmsgsAndNontrivialCmsgs(
+                expectedCmsgs, expectedNontrivialCmsgs, bufs.size()),
+            _,
+            _));
+    socket_->writem(folly::range(&addr, &addr + 1), bufs.data(), bufs.size());
+  }
+  // writemGSO
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    folly::SocketNontrivialOptionMap expectedNontrivialCmsgs;
+    struct linger sl {
+      .l_onoff = 1, .l_linger = 123,
+    };
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 456;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
+    expectedNontrivialCmsgs[{SOL_SOCKET, SO_LINGER}] =
+        std::string(reinterpret_cast<const char*>(&sl), sizeof(sl));
+    EXPECT_CALL(
+        *netOpsDispatcher,
+        sendmmsg(
+            _,
+            AllHaveCmsgsAndNontrivialCmsgs(
+                expectedCmsgs, expectedNontrivialCmsgs, bufs.size()),
+            _,
+            _));
+    std::vector<int> gso{1, 1};
+    socket_->writemGSO(
+        folly::range(&addr, &addr + 1), bufs.data(), bufs.size(), gso.data());
+  }
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
+  socket_->close();
 }

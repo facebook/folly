@@ -236,8 +236,12 @@ class AsyncUDPSocket : public EventHandler {
    * Set extra control messages to send
    */
   virtual void setCmsgs(const SocketOptionMap& cmsgs);
+  virtual void setNontrivialCmsgs(
+      const SocketNontrivialOptionMap& nontrivialCmsgs);
 
   virtual void appendCmsgs(const SocketOptionMap& cmsgs);
+  virtual void appendNontrivialCmsgs(
+      const SocketNontrivialOptionMap& nontrivialCmsgs);
 
   /**
    * Send the data in buffer to destination. Returns the return code from
@@ -610,6 +614,8 @@ class AsyncUDPSocket : public EventHandler {
   IOBufFreeFunc ioBufFreeFunc_;
 
   SocketOptionMap cmsgs_;
+
+  SocketNontrivialOptionMap nontrivialCmsgs_;
 
   netops::DispatcherContainer netops_;
 };

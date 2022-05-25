@@ -501,6 +501,7 @@ ssize_t AsyncUDPSocket::writeChain(
     const folly::SocketAddress& address,
     std::unique_ptr<folly::IOBuf>&& buf,
     WriteOptions options) {
+  CHECK(nontrivialCmsgs_.empty()) << "Nontrivial options are not supported";
   int msg_flags = options.zerocopy ? getZeroCopyFlags() : 0;
   iovec vec[16];
   size_t iovec_len = buf->fillIov(vec, sizeof(vec) / sizeof(vec[0])).numIovecs;
@@ -637,7 +638,7 @@ ssize_t AsyncUDPSocket::writev(
   controlBufSize +=
       cmsgs_.size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
 
-  if (controlBufSize <= kSmallSizeMax) {
+  if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
     // suppress "warning: variable length array 'control' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
@@ -650,9 +651,12 @@ ssize_t AsyncUDPSocket::writev(
     FOLLY_POP_WARNING
     return writevImpl(&msg, gso);
   } else {
-    std::unique_ptr<char[]> control(
-        new char[controlBufSize * (CMSG_SPACE(sizeof(uint16_t)))]);
-    memset(control.get(), 0, controlBufSize * (CMSG_SPACE(sizeof(uint16_t))));
+    controlBufSize *= CMSG_SPACE(sizeof(uint16_t));
+    for (const auto& itr : nontrivialCmsgs_) {
+      controlBufSize += CMSG_SPACE(itr.second.size());
+    }
+    std::unique_ptr<char[]> control(new char[controlBufSize]);
+    memset(control.get(), 0, controlBufSize);
     msg.msg_control = control.get();
     return writevImpl(&msg, gso);
   }
@@ -681,6 +685,22 @@ ssize_t AsyncUDPSocket::writevImpl(
       cm->cmsg_type = key.optname;
       cm->cmsg_len = CMSG_LEN(sizeof(val));
       memcpy(CMSG_DATA(cm), &val, sizeof(val));
+    }
+  }
+  for (const auto& itr : nontrivialCmsgs_) {
+    const auto& key = itr.first;
+    const auto& val = itr.second;
+    msg->msg_controllen += CMSG_SPACE(val.size());
+    if (cm) {
+      cm = CMSG_NXTHDR(msg, cm);
+    } else {
+      cm = CMSG_FIRSTHDR(msg);
+    }
+    if (cm) {
+      cm->cmsg_level = key.level;
+      cm->cmsg_type = key.optname;
+      cm->cmsg_len = CMSG_LEN(val.size());
+      memcpy(CMSG_DATA(cm), val.data(), val.size());
     }
   }
 
@@ -736,7 +756,7 @@ int AsyncUDPSocket::writemGSO(
   singleControlBufSize +=
       cmsgs_.size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
   size_t controlBufSize = count * singleControlBufSize;
-  if (controlBufSize <= kSmallSizeMax) {
+  if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
@@ -754,9 +774,12 @@ int AsyncUDPSocket::writemGSO(
   } else {
     std::unique_ptr<mmsghdr[]> vec(new mmsghdr[count]);
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-    std::unique_ptr<char[]> control(
-        new char[controlBufSize * (CMSG_SPACE(sizeof(uint16_t)))]);
-    memset(control.get(), 0, controlBufSize * (CMSG_SPACE(sizeof(uint16_t))));
+    controlBufSize *= (CMSG_SPACE(sizeof(uint16_t)));
+    for (const auto& itr : nontrivialCmsgs_) {
+      controlBufSize += CMSG_SPACE(itr.second.size());
+    }
+    std::unique_ptr<char[]> control(new char[controlBufSize]);
+    memset(control.get(), 0, controlBufSize);
     controlPtr = control.get();
 #endif
     ret = writeImpl(addrs, bufs, count, vec.get(), gso, controlPtr);
@@ -822,6 +845,23 @@ void AsyncUDPSocket::fillMsgVec(
         memcpy(CMSG_DATA(cm), &val, sizeof(val));
       }
     }
+    for (const auto& itr : nontrivialCmsgs_) {
+      const auto& key = itr.first;
+      const auto& val = itr.second;
+      msg.msg_controllen += CMSG_SPACE(val.size());
+      if (cm) {
+        cm = CMSG_NXTHDR(&msg, cm);
+      } else {
+        cm = CMSG_FIRSTHDR(&msg);
+      }
+      if (cm) {
+        cm->cmsg_level = key.level;
+        cm->cmsg_type = key.optname;
+        cm->cmsg_len = CMSG_LEN(val.size());
+        memcpy(CMSG_DATA(cm), val.data(), val.size());
+      }
+    }
+
     // handle GSO
     if (gso && gso[i] > 0) {
       msg.msg_controllen += CMSG_SPACE(sizeof(uint16_t));
@@ -1422,9 +1462,22 @@ void AsyncUDPSocket::setCmsgs(const SocketOptionMap& cmsgs) {
   cmsgs_ = cmsgs;
 }
 
+void AsyncUDPSocket::setNontrivialCmsgs(
+    const SocketNontrivialOptionMap& nontrivialCmsgs) {
+  nontrivialCmsgs_ = nontrivialCmsgs;
+}
+
 void AsyncUDPSocket::appendCmsgs(const SocketOptionMap& cmsgs) {
   for (auto itr = cmsgs.begin(); itr != cmsgs.end(); ++itr) {
     cmsgs_[itr->first] = itr->second;
+  }
+}
+
+void AsyncUDPSocket::appendNontrivialCmsgs(
+    const SocketNontrivialOptionMap& nontrivialCmsgs) {
+  for (auto itr = nontrivialCmsgs.begin(); itr != nontrivialCmsgs.end();
+       ++itr) {
+    nontrivialCmsgs_[itr->first] = itr->second;
   }
 }
 
