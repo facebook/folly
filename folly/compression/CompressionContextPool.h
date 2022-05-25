@@ -85,6 +85,16 @@ class CompressionContextPool {
 
   Resetter& get_resetter() { return resetter_; }
 
+  void flush_deep() {
+    flush_shallow();
+    // no backing stack, so deep == shallow
+  }
+
+  void flush_shallow() {
+    auto stack = stack_.wlock();
+    stack->resize(0);
+  }
+
  private:
   void add(InternalRef ptr) {
     DCHECK(ptr);

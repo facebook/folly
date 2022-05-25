@@ -211,6 +211,13 @@ TEST_F(CompressionContextPoolTest, testReset) {
   }
 }
 
+TEST_F(CompressionContextPoolTest, testFlush) {
+  pool_->get();
+  pool_->flush_deep();
+  pool_->get();
+  EXPECT_EQ(pool_->created_count(), 2);
+}
+
 class CompressionCoreLocalContextPoolTest : public testing::Test {
  protected:
   using Pool = CompressionCoreLocalContextPool<
@@ -268,6 +275,13 @@ TEST_F(CompressionCoreLocalContextPoolTest, testSwap) {
   EXPECT_EQ(ptr1.get(), tmp1);
   ptr2 = pool_->get();
   EXPECT_EQ(ptr2.get(), tmp2);
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testFlush) {
+  pool_->get();
+  pool_->flush_deep();
+  pool_->get();
+  EXPECT_EQ(pool_->created_count(), 2);
 }
 
 TEST_F(CompressionCoreLocalContextPoolTest, testMultithread) {

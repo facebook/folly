@@ -85,13 +85,7 @@ class CompressionCoreLocalContextPool {
       : pool_(std::move(creator), std::move(deleter), std::move(resetter)),
         caches_() {}
 
-  ~CompressionCoreLocalContextPool() {
-    for (auto& cache : caches_) {
-      // Return all cached contexts back to the backing pool.
-      auto ptr = cache.ptr.exchange(nullptr);
-      return_to_backing_pool(ptr);
-    }
-  }
+  ~CompressionCoreLocalContextPool() { flush_shallow(); }
 
   Ref get() {
     auto ptr = local().ptr.exchange(nullptr);
@@ -106,6 +100,19 @@ class CompressionCoreLocalContextPool {
   Ref getNull() { return Ref(nullptr, get_deleter()); }
 
   size_t created_count() const { return pool_.created_count(); }
+
+  void flush_deep() {
+    flush_shallow();
+    pool_.flush_deep();
+  }
+
+  void flush_shallow() {
+    for (auto& cache : caches_) {
+      // Return all cached contexts back to the backing pool.
+      auto ptr = cache.ptr.exchange(nullptr);
+      return_to_backing_pool(ptr);
+    }
+  }
 
  private:
   ReturnToPoolDeleter get_deleter() { return ReturnToPoolDeleter(this); }
