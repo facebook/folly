@@ -77,6 +77,28 @@ size_t ManualExecutor::run() {
   return count;
 }
 
+size_t ManualExecutor::step() {
+  Func func;
+
+  {
+    std::lock_guard<std::mutex> lock(lock_);
+
+    if (funcs_.empty()) {
+      return 0;
+    }
+
+    // Balance the semaphore so it doesn't grow without bound
+    // if nobody is calling wait().
+    // This may fail (with EAGAIN), that's fine.
+    sem_.tryWait();
+
+    func = std::move(funcs_.front());
+    funcs_.pop();
+  }
+  func();
+  return 1;
+}
+
 size_t ManualExecutor::drain() {
   size_t tasksRun = 0;
   size_t tasksForSingleRun = 0;

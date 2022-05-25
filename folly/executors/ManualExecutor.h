@@ -51,6 +51,12 @@ class ManualExecutor : public DrivableExecutor,
   /// moment that this returns.
   size_t run();
 
+  /// Execute only the function at the front of the queue (maybe 0)
+  /// and remove it from the queue.
+  /// Non blocking where it does not wait for work if none exists
+  /// Returns 1 if a function was executed and 0 otherwise
+  size_t step();
+
   // Do work until there is no more work to do.
   // Returns the number of functions that were executed (maybe 0).
   // Unlike run, this method is not stable. It will chase an infinite tail of
