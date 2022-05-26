@@ -19,7 +19,7 @@ find_path(GLOG_INCLUDE_DIR glog/logging.h
 
 select_library_configurations(GLOG)
 
-find_package_handle_standard_args(glog DEFAULT_MSG
+find_package_handle_standard_args(Glog DEFAULT_MSG
   GLOG_LIBRARY
   GLOG_INCLUDE_DIR)
 
