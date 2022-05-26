@@ -401,7 +401,7 @@ class Optional {
     bool hasValue;
 
     constexpr StorageTriviallyDestructible()
-        : emptyState('\0'), hasValue{false} {}
+        : emptyState(unsafe_default_initialized), hasValue{false} {}
     void clear() { hasValue = false; }
   };
 
@@ -412,7 +412,7 @@ class Optional {
     };
     bool hasValue;
 
-    StorageNonTriviallyDestructible() : hasValue{false} {}
+    FOLLY_CXX20_CONSTEXPR StorageNonTriviallyDestructible() : hasValue{false} {}
     ~StorageNonTriviallyDestructible() { clear(); }
 
     void clear() {

@@ -558,6 +558,16 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CXX17_CONSTEXPR
 #endif
 
+//  FOLLY_CXX20_CONSTEXPR
+//
+//  C++20 permits more cases to be marked constexpr, including constructors that
+//  leave members uninitialized and virtual functions.
+#if FOLLY_CPLUSPLUS >= 202002L
+#define FOLLY_CXX20_CONSTEXPR constexpr
+#else
+#define FOLLY_CXX20_CONSTEXPR
+#endif
+
 // C++20 constinit
 #if defined(__cpp_constinit) && __cpp_constinit >= 201907L
 #define FOLLY_CONSTINIT constinit
