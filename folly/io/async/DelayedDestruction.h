@@ -90,7 +90,7 @@ class DelayedDestruction : public DelayedDestructionBase {
    * shared_ptr using a DelayedDestruction::Destructor as the second argument
    * to the shared_ptr constructor.
    */
-  ~DelayedDestruction() override = default;
+  ~DelayedDestruction() override;
 
   DelayedDestruction() : destroyPending_(false) {}
 
