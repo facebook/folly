@@ -116,22 +116,26 @@ struct SkipAtForkHandlers {
 };
 thread_local bool SkipAtForkHandlers::value;
 
-struct AtForkListSingleton {
-  static AtForkList& make() {
-    auto& instance = *new AtForkList();
-    int ret = 0;
+void invoke_pthread_atfork(
+    void (*prepare)(), void (*parent)(), void (*child)()) {
+  int ret = 0;
 #if FOLLY_HAVE_PTHREAD_ATFORK // if no pthread_atfork, probably no fork either
-    ret = pthread_atfork(&prepare, &parent, &child);
+  ret = pthread_atfork(prepare, parent, child);
 #endif
-    if (ret != 0) {
-      throw_exception<std::system_error>(
-          ret, std::generic_category(), "pthread_atfork failed");
-    }
-    return instance;
+  if (ret != 0) {
+    throw_exception<std::system_error>(
+        ret, std::generic_category(), "pthread_atfork failed");
+  }
+}
+
+struct AtForkListSingleton {
+  static void init() {
+    static int reg = (get(), invoke_pthread_atfork(prepare, parent, child), 0);
+    (void)reg;
   }
 
   static AtForkList& get() {
-    static auto& instance = make();
+    static auto& instance = *new AtForkList();
     return instance;
   }
 
@@ -163,7 +167,7 @@ struct AtForkListSingleton {
 } // namespace
 
 void AtFork::init() {
-  AtForkListSingleton::get();
+  AtForkListSingleton::init();
 }
 
 void AtFork::registerHandler(
@@ -171,6 +175,8 @@ void AtFork::registerHandler(
     Function<bool()> prepare,
     Function<void()> parent,
     Function<void()> child) {
+  (void)init_; // force the object not to be thrown out as unused
+  AtFork::init();
   auto& list = AtForkListSingleton::get();
   list.append(handle, std::move(prepare), std::move(parent), std::move(child));
 }
@@ -186,15 +192,11 @@ pid_t AtFork::forkInstrumented(fork_t forkFn) {
   }
   auto& list = AtForkListSingleton::get();
   list.prepare();
-  auto ret = [&] {
-    SkipAtForkHandlers::Guard guard;
-    return forkFn();
-  }();
-  if (ret) {
-    list.parent();
-  } else {
-    list.child();
-  }
+  auto ret = (SkipAtForkHandlers::Guard(), forkFn());
+  ret ? list.parent() : list.child();
   return ret;
 }
+
+bool AtFork::init_ = (AtFork::init(), false);
+
 } // namespace folly
