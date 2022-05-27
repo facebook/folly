@@ -28,10 +28,17 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
 using std::shared_ptr;
 using std::unique_ptr;
+
+extern "C" FOLLY_KEEP void check_copy_construction() {
+  folly::Expected<std::string, int> x;
+  auto y = x;
+  folly::detail::keep_sink_nx(y);
+}
 
 namespace folly {
 

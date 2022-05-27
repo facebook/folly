@@ -306,7 +306,7 @@ struct ExpectedStorage {
   constexpr ExpectedStorage() noexcept(noexcept(E{}))
       : error_{}, which_(Which::eError) {}
   explicit constexpr ExpectedStorage(EmptyTag) noexcept
-      : ch_{}, which_(Which::eEmpty) {}
+      : ch_{unsafe_default_initialized}, which_(Which::eEmpty) {}
   template <class... Vs>
   explicit constexpr ExpectedStorage(ValueTag, Vs&&... vs) noexcept(
       noexcept(Value(static_cast<Vs&&>(vs)...)))
@@ -359,7 +359,7 @@ struct ExpectedUnion {
   union {
     Value value_;
     Error error_;
-    char ch_{};
+    char ch_ = unsafe_default_initialized;
   };
   Which which_ = Which::eEmpty;
 
