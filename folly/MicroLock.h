@@ -108,7 +108,7 @@ class MicroLockCore {
    */
   unsigned waitBit() const noexcept;
 
-  static uint8_t lockSlowPath(
+  FOLLY_DISABLE_SANITIZERS static uint8_t lockSlowPath(
       uint32_t oldWord,
       detail::Futex<>* wordPtr,
       unsigned baseShift,
