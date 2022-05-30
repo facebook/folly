@@ -7,6 +7,7 @@ import platform
 import re
 import shlex
 import sys
+from typing import Optional, Tuple
 
 
 def is_windows() -> bool:
@@ -15,12 +16,12 @@ def is_windows() -> bool:
     return sys.platform.startswith("win")
 
 
-def get_linux_type():
+def get_linux_type() -> Tuple[Optional[str], Optional[str], Optional[str]]:
     try:
         with open("/etc/os-release") as f:
             data = f.read()
     except EnvironmentError:
-        return (None, None)
+        return (None, None, None)
 
     os_vars = {}
     for line in data.splitlines():
