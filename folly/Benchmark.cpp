@@ -448,15 +448,12 @@ class BenchmarkResultsPrinter {
         continue;
       }
       bool useBaseline = false;
+      // '%' indicates a relative benchmark.
       if (s[0] == '%') {
         s.erase(0, 1);
-        if (hasBaseline_) {
-          useBaseline = hasBaseline_;
-          hasBaseline_ = false; // Consume the baseline.
-        }
+        useBaseline = isBaselineSet();
       } else {
         baselineNsPerIter_ = datum.timeInNs;
-        hasBaseline_ = true;
         useBaseline = false;
       }
       s.resize(columns_ - kUnitHeaders.size(), ' ');
@@ -513,10 +510,13 @@ class BenchmarkResultsPrinter {
   }
 
  private:
+  bool isBaselineSet() {
+    return baselineNsPerIter_ != numeric_limits<double>::max();
+  }
+
   std::set<std::string> counterNames_;
   size_t namesLength_{0};
   size_t columns_{0};
-  bool hasBaseline_{false};
   double baselineNsPerIter_{numeric_limits<double>::max()};
   string lastFile_;
 };

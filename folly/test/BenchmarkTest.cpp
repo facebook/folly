@@ -286,6 +286,15 @@ BENCHMARK_RELATIVE_MULTI(multiSimpleRel) {
   return 10;
 }
 
+BENCHMARK_RELATIVE_MULTI(multiSimpleRelThree) {
+  FOR_EACH_RANGE (i, 0, 10) {
+    fun();
+    fun();
+    fun();
+  }
+  return 10;
+}
+
 BENCHMARK_MULTI(multiIterArgs, iter) {
   FOR_EACH_RANGE (i, 0, 10 * iter) { fun(); }
   return 10 * iter;
