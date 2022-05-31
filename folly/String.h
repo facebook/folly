@@ -477,7 +477,7 @@ split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
  * Join list of tokens.
  *
  * Stores a string representation of tokens in the same order with
- * deliminer between each element.
+ * delimiter between each element.
  */
 
 template <class Delim, class Iterator, class String>
