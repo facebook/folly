@@ -812,6 +812,16 @@ SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
 }
 
 template <class T>
+template <class F>
+SemiFuture<T> SemiFuture<T>::deferEnsure(F&& func) && {
+  return std::move(*this).defer(
+      [func = static_cast<F&&>(func)](Try<T>&& t) mutable {
+        static_cast<F&&>(func)();
+        return makeSemiFuture<T>(std::move(t));
+      });
+}
+
+template <class T>
 SemiFuture<Unit> SemiFuture<T>::unit() && {
   return std::move(*this).deferValue([](T&&) {});
 }

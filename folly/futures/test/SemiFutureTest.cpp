@@ -1222,9 +1222,8 @@ TEST(SemiFuture, ensure) {
     EXPECT_FALSE(fCalled);
     EXPECT_FALSE(ensureCalled);
   }
+  struct ExpectedException : public std::exception {};
   {
-    struct ExpectedException {};
-
     bool fCalled{false};
     bool ensureCalled{false};
     auto sf = futures::ensure(
@@ -1235,6 +1234,31 @@ TEST(SemiFuture, ensure) {
         [&] { ensureCalled = true; });
     EXPECT_THROW(std::move(sf).get(), ExpectedException);
     EXPECT_TRUE(fCalled);
+    EXPECT_TRUE(ensureCalled);
+  }
+  {
+    bool ensureCalled{false};
+    auto sf = makeSemiFuture(42).deferEnsure([&] { ensureCalled = true; });
+    EXPECT_FALSE(ensureCalled);
+    EXPECT_EQ(42, std::move(sf).get());
+    EXPECT_TRUE(ensureCalled);
+  }
+  {
+    bool ensureCalled{false};
+    auto sf = makeSemiFuture().defer([](auto) { return 42; }).deferEnsure([&] {
+      ensureCalled = true;
+    });
+    EXPECT_FALSE(ensureCalled);
+    EXPECT_EQ(42, std::move(sf).get());
+    EXPECT_TRUE(ensureCalled);
+  }
+  {
+    bool ensureCalled{false};
+    auto sf = makeSemiFuture()
+                  .defer([](auto) { throw ExpectedException(); })
+                  .deferEnsure([&] { ensureCalled = true; });
+    EXPECT_FALSE(ensureCalled);
+    EXPECT_THROW(std::move(sf).get(), ExpectedException);
     EXPECT_TRUE(ensureCalled);
   }
 }

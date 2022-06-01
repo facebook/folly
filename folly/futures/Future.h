@@ -821,6 +821,27 @@ class SemiFuture : private futures::detail::FutureBase<T> {
     return std::move(*this).deferError(&func);
   }
 
+  /// func is like std::function<void()> and is executed unconditionally
+  /// provided that the Semifuture is waited or given an executor, and
+  /// the value/exception is passed through to the resulting SemiFuture.
+  /// func shouldn't throw, but if it does it will be captured and propagated,
+  /// and discard any value/exception that this Semifuture has obtained.
+  ///
+  /// Caution: if the SemiFuture is detached - i.e., neither waited nor given an
+  /// executor - then func will not be invoked.
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - Calling code should act as if `valid() == false`,
+  ///   i.e., as if `*this` was moved into RESULT.
+  /// - `RESULT.valid() == true`
+  template <class F>
+  SemiFuture<T> deferEnsure(F&& func) &&;
+
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
   ///
