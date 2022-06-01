@@ -117,4 +117,25 @@ class AsyncSignalHandler {
   SignalEventMap signalEvents_;
 };
 
+/**
+ * Derived template class that allows forwarding of a callback to be invoked in
+ * the overridden signalReceived().
+ *
+ * One possible use is passing in a lambda;
+ *   CallbackAsyncSignalHandler handler{evb, [&foo](int) {
+ *     // do something with foo
+ *   }};
+ */
+template <typename Callback>
+class CallbackAsyncSignalHandler : public AsyncSignalHandler {
+ public:
+  CallbackAsyncSignalHandler(folly::EventBase* evb, Callback&& cb)
+      : AsyncSignalHandler{evb}, cb_{std::forward<Callback>(cb)} {}
+
+  void signalReceived(int signum) noexcept override { cb_(signum); }
+
+ private:
+  Callback cb_;
+};
+
 } // namespace folly

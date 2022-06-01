@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+#include <csignal>
 #include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 namespace test {
@@ -37,6 +39,29 @@ TEST(AsyncSignalHandler, destructionOrder) {
   // after the EventBase should work normally and should not crash or access
   // invalid memory.
   evb.reset();
+}
+
+TEST(CallbackAsyncSignalHandler, callback) {
+  EventBase evb;
+  int sig_recv = 0;
+  const int sig_send = SIGUSR1;
+
+  CallbackAsyncSignalHandler handler{
+      &evb, [&sig_recv](int signum) { sig_recv = signum; }};
+  handler.registerSignalHandler(sig_send);
+
+  // send the signal to this pid, effectively queuing the callback
+  const int error = raise(sig_send);
+  ASSERT_EQ(0, error);
+
+  // callback should have not yet fired
+  ASSERT_EQ(0, sig_recv);
+
+  // dispatch the callback waiting in the queue
+  evb.loopOnce(EVLOOP_NONBLOCK);
+
+  // callback should have fired
+  ASSERT_EQ(sig_send, sig_recv);
 }
 
 } // namespace test
