@@ -37,11 +37,19 @@
 namespace folly {
 namespace symbolizer {
 
+namespace {
+// force a getStackTrace to work around a race condition in the
+// libunwind tdep_init
+static uintptr_t sAddr = 0;
+static ssize_t sInit = getStackTrace(&sAddr, 0);
+} // namespace
+
 ssize_t getStackTrace(
     FOLLY_MAYBE_UNUSED uintptr_t* addresses,
     FOLLY_MAYBE_UNUSED size_t maxAddresses) {
   static_assert(
       sizeof(uintptr_t) == sizeof(void*), "uintptr_t / pointer size mismatch");
+  std::ignore = sInit;
   // The libunwind documentation says that unw_backtrace is
   // async-signal-safe but, as of libunwind 1.0.1, it isn't
   // (tdep_trace allocates memory on x86_64)
@@ -140,6 +148,7 @@ ssize_t getStackTraceInPlace(
 ssize_t getStackTraceSafe(
     FOLLY_MAYBE_UNUSED uintptr_t* addresses,
     FOLLY_MAYBE_UNUSED size_t maxAddresses) {
+  std::ignore = sInit;
 #if defined(__APPLE__)
   // While Apple platforms support libunwind, the unw_init_local,
   // unw_step step loop does not cross the boundary from async signal
@@ -161,6 +170,7 @@ ssize_t getStackTraceSafe(
 ssize_t getStackTraceHeap(
     FOLLY_MAYBE_UNUSED uintptr_t* addresses,
     FOLLY_MAYBE_UNUSED size_t maxAddresses) {
+  std::ignore = sInit;
 #if FOLLY_HAVE_LIBUNWIND
   struct Ctx {
     unw_context_t context;
