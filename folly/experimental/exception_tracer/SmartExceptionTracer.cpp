@@ -25,6 +25,7 @@
 #include <folly/experimental/exception_tracer/SmartExceptionTracerSingleton.h>
 #include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/lang/Exception.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
@@ -77,15 +78,10 @@ ExceptionInfo getTraceWithFunc(
 template <typename ExceptionMetaFunc>
 ExceptionInfo getTraceWithFunc(
     const std::exception_ptr& ptr, ExceptionMetaFunc func) {
-  try {
-    // To get a pointer to the actual exception we need to rethrow the
-    // exception_ptr and catch it.
-    std::rethrow_exception(ptr);
-  } catch (std::exception& ex) {
-    return getTraceWithFunc(ex, std::move(func));
-  } catch (...) {
-    return ExceptionInfo();
+  if (auto* ex = folly::exception_ptr_get_object<std::exception>(ptr)) {
+    return getTraceWithFunc(*ex, std::move(func));
   }
+  return ExceptionInfo();
 }
 
 template <typename ExceptionMetaFunc>
