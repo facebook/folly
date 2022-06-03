@@ -584,23 +584,19 @@ typename std::iterator_traits<Iterator>::difference_type distance_if_multipass(
   return std::distance(first, last);
 }
 
-// Assumption fisrt != last
 template <class OurContainer, class Container, class InputIterator>
 void bulk_insert(
     OurContainer& sorted,
     Container& cont,
     InputIterator first,
     InputIterator last) {
-  auto const& cmp(sorted.value_comp());
+  assert(first != last);
 
-  auto const d = distance_if_multipass(first, last);
-  if (d != -1) {
-    cont.reserve(cont.size() + d);
-  }
   auto const prev_size = cont.size();
-
-  std::copy(first, last, std::back_inserter(cont));
+  cont.insert(cont.end(), first, last);
   auto const middle = cont.begin() + prev_size;
+
+  auto const& cmp(sorted.value_comp());
   if (!std::is_sorted(middle, cont.end(), cmp)) {
     std::sort(middle, cont.end(), cmp);
   }

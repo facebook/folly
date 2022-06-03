@@ -118,22 +118,6 @@ struct growth_policy_wrapper<void> {
   }
 };
 
-/*
- * This helper returns the distance between two iterators if it is
- * possible to figure it out without messing up the range
- * (i.e. unless they are InputIterators).  Otherwise this returns
- * -1.
- */
-template <class Iterator>
-typename std::iterator_traits<Iterator>::difference_type distance_if_multipass(
-    Iterator first, Iterator last) {
-  typedef typename std::iterator_traits<Iterator>::iterator_category categ;
-  if (std::is_same<categ, std::input_iterator_tag>::value) {
-    return -1;
-  }
-  return std::distance(first, last);
-}
-
 template <class OurContainer, class Vector, class GrowthPolicy, class Value>
 typename OurContainer::iterator insert_with_hint(
     OurContainer& sorted,
@@ -175,16 +159,11 @@ void bulk_insert(
     return;
   }
 
-  auto const& cmp(sorted.value_comp());
-
-  auto const d = distance_if_multipass(first, last);
-  if (d != -1) {
-    cont.reserve(cont.size() + d);
-  }
   auto const prev_size = cont.size();
-
-  std::copy(first, last, std::back_inserter(cont));
+  cont.insert(cont.end(), first, last);
   auto const middle = cont.begin() + prev_size;
+
+  auto const& cmp(sorted.value_comp());
   if (!std::is_sorted(middle, cont.end(), cmp)) {
     std::sort(middle, cont.end(), cmp);
   }
