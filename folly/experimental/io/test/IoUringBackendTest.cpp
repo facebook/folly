@@ -1255,6 +1255,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     RepeatedRunInLoop,
     RunInLoopNoTimeMeasurement,
     RunInLoopStopLoop,
+    RunPoolLoop,
     messageAvailableException,
     TryRunningAfterTerminate,
     CancelRunInLoop,

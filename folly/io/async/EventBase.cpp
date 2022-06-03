@@ -321,6 +321,24 @@ bool EventBase::loopOnce(int flags) {
 }
 
 bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
+  loopMainSetup();
+  SCOPE_EXIT { loopMainCleanup(); };
+  return loopMain(flags, ignoreKeepAlive);
+}
+
+void EventBase::loopPollSetup() {
+  loopMainSetup();
+}
+
+bool EventBase::loopPoll() {
+  return loopMain(EVLOOP_ONCE | EVLOOP_NONBLOCK, true);
+}
+
+void EventBase::loopPollCleanup() {
+  loopMainCleanup();
+}
+
+void EventBase::loopMainSetup() {
   VLOG(5) << "EventBase(): Starting loop.";
 
   const char* message =
@@ -334,18 +352,6 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   LOG_IF(DFATAL, invokingLoop_) << message;
 
   invokingLoop_ = true;
-  SCOPE_EXIT { invokingLoop_ = false; };
-
-  int res = 0;
-  bool ranLoopCallbacks;
-  bool blocking = !(flags & EVLOOP_NONBLOCK);
-  bool once = (flags & EVLOOP_ONCE);
-
-  // time-measurement variables.
-  std::chrono::steady_clock::time_point prev;
-  std::chrono::steady_clock::time_point idleStart = {};
-  std::chrono::microseconds busy;
-  std::chrono::microseconds idle;
 
   auto const prevLoopThread = loopThread_.exchange(
       std::this_thread::get_id(), std::memory_order_release);
@@ -357,6 +363,19 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   if (!name_.empty()) {
     setThreadName(name_);
   }
+}
+
+bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
+  int res = 0;
+  bool ranLoopCallbacks;
+  bool blocking = !(flags & EVLOOP_NONBLOCK);
+  bool once = (flags & EVLOOP_ONCE);
+
+  // time-measurement variables.
+  std::chrono::steady_clock::time_point prev;
+  std::chrono::steady_clock::time_point idleStart = {};
+  std::chrono::microseconds busy;
+  std::chrono::microseconds idle;
 
   if (enableTimeMeasurement_) {
     prev = std::chrono::steady_clock::now();
@@ -459,8 +478,6 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
       break;
     }
   }
-  // Reset stop_ so loop() can be called again
-  stop_.store(false, std::memory_order_relaxed);
 
   if (res < 0) {
     LOG(ERROR) << "EventBase: -- error in event loop, res = " << res;
@@ -471,11 +488,15 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
     LOG(ERROR) << "EventBase: unknown event loop result = " << res;
     return false;
   }
-
-  loopThread_.store({}, std::memory_order_release);
-
   VLOG(5) << "EventBase(): Done with loop.";
   return true;
+}
+
+void EventBase::loopMainCleanup() {
+  // Reset stop_ so that the main loop sequence can be called again.
+  stop_.store(false, std::memory_order_relaxed);
+  loopThread_.store({}, std::memory_order_release);
+  invokingLoop_ = false;
 }
 
 ssize_t EventBase::loopKeepAliveCount() {
