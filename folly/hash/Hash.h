@@ -383,7 +383,7 @@ struct integral_hasher {
   using folly_is_avalanching =
       bool_constant<(sizeof(Int) >= 8 || sizeof(size_t) == 4)>;
 
-  size_t operator()(Int const& i) const noexcept {
+  constexpr size_t operator()(Int const& i) const noexcept {
     static_assert(sizeof(Int) <= 16, "Input type is too wide");
     /* constexpr */ if (sizeof(Int) <= 4) {
       auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
@@ -425,16 +425,17 @@ struct hasher;
 
 struct Hash {
   template <class T>
-  size_t operator()(const T& v) const noexcept(noexcept(hasher<T>()(v))) {
+  constexpr size_t operator()(const T& v) const
+      noexcept(noexcept(hasher<T>()(v))) {
     return hasher<T>()(v);
   }
 
   template <class T, class... Ts>
-  size_t operator()(const T& t, const Ts&... ts) const {
+  constexpr size_t operator()(const T& t, const Ts&... ts) const {
     return hash::hash_128_to_64((*this)(t), (*this)(ts...));
   }
 
-  size_t operator()() const noexcept { return 0; }
+  constexpr size_t operator()() const noexcept { return 0; }
 };
 
 // IsAvalanchingHasher<H, K> extends std::integral_constant<bool, V>.
@@ -502,7 +503,7 @@ template <>
 struct hasher<bool> {
   using folly_is_avalanching = std::true_type;
 
-  size_t operator()(bool key) const noexcept {
+  constexpr size_t operator()(bool key) const noexcept {
     // Make sure that all the output bits depend on the input.
     return key ? std::numeric_limits<size_t>::max() : 0;
   }
