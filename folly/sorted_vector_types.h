@@ -167,12 +167,20 @@ void bulk_insert(
   if (!std::is_sorted(middle, cont.end(), cmp)) {
     std::sort(middle, cont.end(), cmp);
   }
-  if (middle != cont.begin() && !cmp(*(middle - 1), *middle)) {
+
+  // We do not need to consider elements strictly smaller than the smallest new
+  // element in merge/unique.
+  auto merge_begin = middle;
+  while (merge_begin != cont.begin() && !cmp(*(merge_begin - 1), *middle)) {
+    --merge_begin;
+  }
+
+  if (merge_begin != middle) {
     std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
   }
   cont.erase(
       std::unique(
-          cont.begin(),
+          merge_begin,
           cont.end(),
           [&](typename OurContainer::value_type const& a,
               typename OurContainer::value_type const& b) {
