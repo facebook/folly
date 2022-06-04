@@ -80,6 +80,8 @@ class MergeProcessor : public IChannelCallback {
       for (auto& inputReceiver : inputReceivers) {
         auto [unbufferedInputReceiver, buffer] =
             detail::receiverUnbuffer(std::move(inputReceiver));
+        CHECK(unbufferedInputReceiver != nullptr)
+            << "The bridge in the input receiver is null.";
         CHECK(buffers
                   .insert(std::make_pair(
                       unbufferedInputReceiver.get(), std::move(buffer)))
