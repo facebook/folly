@@ -30,6 +30,7 @@
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/SysResource.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/SanitizeThread.h>
 #include <folly/system/ThreadId.h>
 
@@ -287,12 +288,12 @@ std::unique_lock<std::mutex> annotationGuard(void* ptr);
 
 constexpr uint32_t kMaxDeferredReadersAllocated = 256 * 2;
 
-FOLLY_NOINLINE uint32_t getMaxDeferredReadersSlow(std::atomic<uint32_t>& cache);
+FOLLY_COLD uint32_t getMaxDeferredReadersSlow(relaxed_atomic<uint32_t>& cache);
 
 // kMaxDeferredReaders
 FOLLY_EXPORT FOLLY_ALWAYS_INLINE uint32_t getMaxDeferredReaders() {
-  static std::atomic<uint32_t> cache{0};
-  auto const value = cache.load(std::memory_order_acquire);
+  static relaxed_atomic<uint32_t> cache{0};
+  uint32_t const value = cache;
   return FOLLY_LIKELY(!!value) ? value : getMaxDeferredReadersSlow(cache);
 }
 
@@ -986,18 +987,18 @@ class SharedMutexImpl : std::conditional_t<
   static constexpr uintptr_t kTokenless = 0x1;
 
   // This is the starting location for Token-less unlock_shared().
-  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static std::atomic<uint32_t>&
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static relaxed_atomic<uint32_t>&
   tls_lastTokenlessSlot() {
-    static std::atomic<uint32_t> non_tl{};
-    static thread_local std::atomic<uint32_t> tl{};
+    static relaxed_atomic<uint32_t> non_tl{};
+    static thread_local relaxed_atomic<uint32_t> tl{};
     return kIsMobile ? non_tl : tl;
   }
 
   // Last deferred reader slot used.
-  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static std::atomic<uint32_t>&
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static relaxed_atomic<uint32_t>&
   tls_lastDeferredReaderSlot() {
-    static std::atomic<uint32_t> non_tl{};
-    static thread_local std::atomic<uint32_t> tl{};
+    static relaxed_atomic<uint32_t> non_tl{};
+    static thread_local relaxed_atomic<uint32_t> tl{};
     return kIsMobile ? non_tl : tl;
   }
 
@@ -1630,7 +1631,7 @@ template <
     typename Policy>
 bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::
     tryUnlockTokenlessSharedDeferred() {
-  auto bestSlot = tls_lastTokenlessSlot().load(std::memory_order_relaxed);
+  uint32_t bestSlot = tls_lastTokenlessSlot();
   // use do ... while to avoid calling
   // shared_mutex_detail::getMaxDeferredReaders() unless necessary
   uint32_t i = 0;
@@ -1639,7 +1640,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::
     auto slotValue = slotPtr->load(std::memory_order_relaxed);
     if (slotValue == tokenlessSlotValue() &&
         slotPtr->compare_exchange_strong(slotValue, 0)) {
-      tls_lastTokenlessSlot().store(bestSlot ^ i, std::memory_order_relaxed);
+      tls_lastTokenlessSlot() = bestSlot ^ i;
       return true;
     }
     ++i;
@@ -1664,8 +1665,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
       return false;
     }
 
-    uint32_t slot =
-        tls_lastDeferredReaderSlot().load(std::memory_order_relaxed);
+    uint32_t slot = tls_lastDeferredReaderSlot();
     uintptr_t slotValue = 1; // any non-zero value will do
 
     bool canAlreadyDefer = (state & kMayDefer) != 0;
@@ -1689,7 +1689,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
           slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
           if (slotValue == 0) {
             // found empty slot
-            tls_lastDeferredReaderSlot().store(slot, std::memory_order_relaxed);
+            tls_lastDeferredReaderSlot() = slot;
             break;
           }
         }
@@ -1740,7 +1740,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
     }
 
     if (token == nullptr) {
-      tls_lastTokenlessSlot().store(slot, std::memory_order_relaxed);
+      tls_lastTokenlessSlot() = slot;
     }
 
     if ((state & kMayDefer) != 0) {

@@ -39,14 +39,14 @@ std::unique_lock<std::mutex> annotationGuard(void* ptr) {
   }
 }
 
-uint32_t getMaxDeferredReadersSlow(std::atomic<uint32_t>& cache) {
+uint32_t getMaxDeferredReadersSlow(relaxed_atomic<uint32_t>& cache) {
   uint32_t maxDeferredReaders = std::min(
       static_cast<uint32_t>(
           folly::nextPowTwo(CacheLocality::system().numCpus) << 1),
       shared_mutex_detail::kMaxDeferredReadersAllocated);
   // maxDeferredReaders must be a power of 2
   assert(!(maxDeferredReaders & (maxDeferredReaders - 1)));
-  cache.store(maxDeferredReaders, std::memory_order_release);
+  cache = maxDeferredReaders;
   return maxDeferredReaders;
 }
 } // namespace shared_mutex_detail
