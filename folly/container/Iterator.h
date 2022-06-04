@@ -31,7 +31,8 @@ namespace folly {
 
 namespace detail {
 template <typename Iter>
-using iterator_category_of_t_ = typename Iter::iterator_category;
+using iterator_category_of_t_ =
+    typename std::iterator_traits<Iter>::iterator_category;
 }
 
 //  iterator_has_known_distance_v

@@ -33,6 +33,11 @@
 
 class IteratorTest : public testing::Test {};
 
+TEST_F(IteratorTest, iterator_has_known_distance_v) {
+  EXPECT_FALSE((folly::iterator_has_known_distance_v<int*, int const*>));
+  EXPECT_TRUE((folly::iterator_has_known_distance_v<int*, int*>));
+}
+
 TEST_F(IteratorTest, range_has_known_distance_v) {
   EXPECT_FALSE(folly::range_has_known_distance_v<std::list<int>&>);
   EXPECT_TRUE(folly::range_has_known_distance_v<std::vector<int>&>);
