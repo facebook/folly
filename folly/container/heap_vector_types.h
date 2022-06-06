@@ -97,6 +97,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/container/Iterator.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/MemoryResource.h>
 #include <folly/portability/Builtins.h>
@@ -567,22 +568,6 @@ struct growth_policy_wrapper<void> {
     return it;
   }
 };
-
-/*
- * This helper returns the distance between two iterators if it is
- * possible to figure it out without messing up the range
- * (i.e. unless they are InputIterators). Otherwise this returns
- * -1.
- */
-template <class Iterator>
-typename std::iterator_traits<Iterator>::difference_type distance_if_multipass(
-    Iterator first, Iterator last) {
-  using categ = typename std::iterator_traits<Iterator>::iterator_category;
-  if (std::is_same<categ, std::input_iterator_tag>::value) {
-    return -1;
-  }
-  return std::distance(first, last);
-}
 
 template <class OurContainer, class Container, class InputIterator>
 void bulk_insert(
@@ -1075,8 +1060,8 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
     if (first == last) {
       return;
     }
-    auto const d = heap_vector_detail::distance_if_multipass(first, last);
-    if (d == 1) {
+    if (iterator_has_known_distance_v<InputIterator, InputIterator> &&
+        std::distance(first, last) == 1) {
       insert(*first);
       return;
     }
