@@ -109,7 +109,7 @@ class Sender {
   /**
    * Closes the pipe with an exception.
    */
-  void close(folly::exception_wrapper exception) && {
+  void close(exception_wrapper exception) && {
     if (!bridge_->isSenderClosed()) {
       bridge_->senderClose(std::move(exception));
     }
@@ -236,12 +236,12 @@ class Receiver {
    *    - If the next() call was cancelled, next() will throw an exception of
    *        type folly::OperationCancelled.
    *
-   * If consumed with folly::coro::co_awaitTry, this will return a folly::Try:
+   * If consumed with folly::coro::co_awaitTry, this will return a Try:
    *
-   *    folly::Try<TValue> value = co_await folly::coro::co_awaitTry(
+   *    Try<TValue> value = co_await folly::coro::co_awaitTry(
    *        receiver.next());
    *
-   *    - If a value is sent, the folly::Try will contain the value.
+   *    - If a value is sent, the Try will contain the value.
    *    - If the channel is closed by the sender with no exception, the try will
    *        be empty (with no value or exception).
    *    - If the channel is closed by the sender with an exception, the try will
@@ -273,7 +273,7 @@ class Receiver {
   friend detail::IChannelCallback* detail::cancelReceiverWait<>(
       Receiver<TValue>&);
 
-  friend std::optional<folly::Try<TValue>> detail::receiverGetValue<>(
+  friend std::optional<Try<TValue>> detail::receiverGetValue<>(
       Receiver<TValue>&);
 
   friend std::

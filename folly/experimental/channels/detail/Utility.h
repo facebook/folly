@@ -33,10 +33,10 @@ namespace detail {
 struct CloseResult {
   CloseResult() {}
 
-  explicit CloseResult(folly::exception_wrapper _exception)
+  explicit CloseResult(exception_wrapper _exception)
       : exception(std::move(_exception)) {}
 
-  std::optional<folly::exception_wrapper> exception;
+  std::optional<exception_wrapper> exception;
 };
 
 enum class ChannelState {

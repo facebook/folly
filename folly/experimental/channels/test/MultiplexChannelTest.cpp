@@ -47,7 +47,7 @@ class MultiplexChannelFixture : public Test {
         std::move(receiver),
         &executor_,
         [cbk = std::move(callback)](
-            folly::Try<T> resultTry) mutable -> folly::coro::Task<bool> {
+            Try<T> resultTry) mutable -> folly::coro::Task<bool> {
           (*cbk)(std::move(resultTry));
           co_return true;
         });
@@ -71,7 +71,7 @@ struct TestSubscriptionArg {
   int initialValue;
   bool firstSubscriptionForKey;
   bool throwException{false};
-  folly::SemiFuture<folly::Unit> waitForSubscription{folly::makeSemiFuture()};
+  folly::SemiFuture<Unit> waitForSubscription{folly::makeSemiFuture()};
 };
 
 struct TestMultiplexer {
@@ -101,7 +101,7 @@ struct TestMultiplexer {
   }
 
   folly::coro::Task<void> onInputValue(
-      folly::Try<TestInputValue> inputValue,
+      Try<TestInputValue> inputValue,
       MultiplexedSubscriptions<TestMultiplexer>& subscriptions) {
     for (auto& [key, value] : inputValue.value().values) {
       if (!subscriptions.hasSubscription(key)) {
@@ -345,7 +345,7 @@ TEST_F(MultiplexChannelFixture, Subscribe_WithRateLimiter) {
 
   EXPECT_FALSE(multiplexChannel.anySubscribers());
 
-  auto promise1a = folly::Promise<folly::Unit>();
+  auto promise1a = folly::Promise<Unit>();
   auto [handle1a, callback1a] = processValues(multiplexChannel.subscribe(
       "one"s,
       TestSubscriptionArg{
@@ -356,7 +356,7 @@ TEST_F(MultiplexChannelFixture, Subscribe_WithRateLimiter) {
 
   executor_.drain();
 
-  auto promise1b = folly::Promise<folly::Unit>();
+  auto promise1b = folly::Promise<Unit>();
   auto [handle1b, callback1b] = processValues(multiplexChannel.subscribe(
       "one"s,
       TestSubscriptionArg{
@@ -442,7 +442,7 @@ struct TestMultiplexerStress {
   }
 
   folly::coro::Task<void> onInputValue(
-      folly::Try<int> inputValue,
+      Try<int> inputValue,
       MultiplexedSubscriptions<TestMultiplexerStress>& subscriptions) {
     if (subscriptions.hasSubscription(inputValue.value() % 3)) {
       subscriptions.write(inputValue.value() % 3, inputValue.value());

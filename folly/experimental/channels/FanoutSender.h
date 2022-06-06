@@ -82,7 +82,7 @@ class FanoutSender {
   /**
    * Closes the fanout sender.
    */
-  void close(folly::exception_wrapper ex = folly::exception_wrapper()) &&;
+  void close(exception_wrapper ex = exception_wrapper()) &&;
 
  private:
   bool hasSenderSet();

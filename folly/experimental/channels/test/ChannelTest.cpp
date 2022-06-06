@@ -41,7 +41,7 @@ class ChannelFixture : public Test,
 
   folly::Executor::KeepAlive<> getExecutor() override { return &executor_; }
 
-  void onNext(folly::Try<int> result) override { onNext_(std::move(result)); }
+  void onNext(Try<int> result) override { onNext_(std::move(result)); }
 
   folly::ManualExecutor executor_;
   StrictMock<MockNextCallback<int>> onNext_;

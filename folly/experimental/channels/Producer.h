@@ -119,7 +119,7 @@ class Producer : public detail::IChannelCallback {
   /**
    * Closes the channel.
    */
-  void close(std::optional<folly::exception_wrapper> ex = std::nullopt);
+  void close(std::optional<exception_wrapper> ex = std::nullopt);
 
   /**
    * Returns whether or not this producer is closed or cancelled.

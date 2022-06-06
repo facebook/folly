@@ -31,7 +31,7 @@ class IMergeChannelProcessor;
 struct MergeChannelReceiverAdded {};
 struct MergeChannelReceiverRemoved {};
 struct MergeChannelReceiverClosed {
-  folly::exception_wrapper exception;
+  exception_wrapper exception;
 };
 
 template <typename KeyType, typename ValueType>
@@ -108,7 +108,7 @@ class MergeChannel {
   /**
    * Closes the merge channel.
    */
-  void close(std::optional<folly::exception_wrapper> ex = std::nullopt) &&;
+  void close(std::optional<exception_wrapper> ex = std::nullopt) &&;
 
  private:
   TProcessor* processor_;

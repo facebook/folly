@@ -195,7 +195,7 @@ class TransformProcessorBase : public IChannelCallback {
       values.pop();
       bool inputClosed = !inputResult.hasValue();
       if (!inputResult.hasValue() && !inputResult.hasException()) {
-        inputResult = folly::Try<InputValueType>(OnClosedException());
+        inputResult = Try<InputValueType>(OnClosedException());
       }
       auto outputGen = folly::makeTryWith([&]() {
         return transformer_.transformValue(std::move(inputResult));
@@ -479,7 +479,7 @@ class DefaultTransformer : public RateLimiterHolder<RateLimiterEnabled> {
     return executor_;
   }
 
-  auto transformValue(folly::Try<InputValueType> inputValue) {
+  auto transformValue(Try<InputValueType> inputValue) {
     return transformValue_(std::move(inputValue));
   }
 

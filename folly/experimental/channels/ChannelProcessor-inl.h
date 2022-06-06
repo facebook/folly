@@ -34,15 +34,15 @@ class ChannelProcessorImpl {
       std::vector<folly::Executor::KeepAlive<folly::SequencedExecutor>>
           executors,
       std::shared_ptr<folly::channels::RateLimiter> rateLimiter,
-      MergeChannel<KeyType, folly::Unit> mergeChannel,
-      Receiver<MergeChannelEvent<KeyType, folly::Unit>> mergeChannelReceiver)
+      MergeChannel<KeyType, Unit> mergeChannel,
+      Receiver<MergeChannelEvent<KeyType, Unit>> mergeChannelReceiver)
       : implState_(make_intrusive<ImplState>(
             std::move(executors), std::move(rateLimiter))),
         channels_(std::move(mergeChannel)),
         handle_(consumeChannelWithCallback(
             std::move(mergeChannelReceiver),
             implState_->executors[0],
-            [](folly::Try<MergeChannelEvent<KeyType, folly::Unit>>)
+            [](Try<MergeChannelEvent<KeyType, Unit>>)
                 -> folly::coro::Task<bool> {
               // Do nothing
               co_return true;
@@ -157,8 +157,8 @@ class ChannelProcessorImpl {
       return implState_->rateLimiter;
     }
 
-    folly::coro::AsyncGenerator<folly::Unit&&> transformValue(
-        folly::Try<InputValueType> value) {
+    folly::coro::AsyncGenerator<Unit&&> transformValue(
+        Try<InputValueType> value) {
       auto result = co_await folly::coro::co_awaitTry(catchNonCoroException(
           [&] { return std::get<OnUpdateFunc>(*this)(std::move(value)); }));
       if (result.template hasException<folly::OperationCancelled>() ||
@@ -206,8 +206,7 @@ class ChannelProcessorImpl {
       return implState_->rateLimiter;
     }
 
-    folly::coro::Task<
-        std::pair<std::vector<folly::Unit>, Receiver<InputValueType>>>
+    folly::coro::Task<std::pair<std::vector<Unit>, Receiver<InputValueType>>>
     initializeTransform(InitializeArg initializeArg) {
       auto result = co_await folly::coro::co_awaitTry(
           initialize(std::move(initializeArg)));
@@ -221,12 +220,11 @@ class ChannelProcessorImpl {
             typeid(InputValueType).name(),
             result.exception().what());
       }
-      co_return std::make_pair(
-          std::vector<folly::Unit>(), std::move(result.value()));
+      co_return std::make_pair(std::vector<Unit>(), std::move(result.value()));
     }
 
-    folly::coro::AsyncGenerator<folly::Unit&&> transformValue(
-        folly::Try<InputValueType> value) {
+    folly::coro::AsyncGenerator<Unit&&> transformValue(
+        Try<InputValueType> value) {
       auto result =
           co_await folly::coro::co_awaitTry(onUpdate(std::move(value)));
       if (result
@@ -260,7 +258,7 @@ class ChannelProcessorImpl {
       }
     }
 
-    folly::coro::Task<void> onUpdate(folly::Try<InputValueType> value) {
+    folly::coro::Task<void> onUpdate(Try<InputValueType> value) {
       if constexpr (std::is_same_v<ChannelState, NoChannelState>) {
         co_await catchNonCoroException(
             [&] { return std::get<OnUpdateFunc>(*this)(std::move(value)); });
@@ -276,7 +274,7 @@ class ChannelProcessorImpl {
   };
 
   intrusive_ptr<ImplState> implState_;
-  MergeChannel<KeyType, folly::Unit> channels_;
+  MergeChannel<KeyType, Unit> channels_;
   ChannelCallbackHandle handle_;
 };
 } // namespace detail
@@ -352,7 +350,7 @@ ChannelProcessor<KeyType> createChannelProcessor(
     executors.push_back(folly::SerialExecutor::create(executor));
   }
   auto [mergeChannelReceiver, mergeChannel] =
-      createMergeChannel<KeyType, folly::Unit>(executors[0]);
+      createMergeChannel<KeyType, Unit>(executors[0]);
   return ChannelProcessor<KeyType>(
       std::make_unique<detail::ChannelProcessorImpl<KeyType>>(
           std::move(executors),

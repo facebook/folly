@@ -34,11 +34,10 @@ class IChannelCallback {
   virtual void canceled(ChannelBridgeBase* bridge) = 0;
 };
 
-using SenderQueue = typename folly::channels::detail::Queue<folly::Unit>;
+using SenderQueue = typename folly::channels::detail::Queue<Unit>;
 
 template <typename TValue>
-using ReceiverQueue =
-    typename folly::channels::detail::Queue<folly::Try<TValue>>;
+using ReceiverQueue = typename folly::channels::detail::Queue<Try<TValue>>;
 
 template <typename TValue>
 class ChannelBridge : public ChannelBridgeBase {
@@ -61,7 +60,7 @@ class ChannelBridge : public ChannelBridgeBase {
   template <typename U = TValue>
   void senderPush(U&& value) {
     receiverQueue_.push(
-        folly::Try<TValue>(std::forward<U>(value)),
+        Try<TValue>(std::forward<U>(value)),
         static_cast<ChannelBridgeBase*>(this));
   }
 
@@ -73,17 +72,15 @@ class ChannelBridge : public ChannelBridgeBase {
 
   void senderClose() {
     if (!isSenderClosed()) {
-      receiverQueue_.push(
-          folly::Try<TValue>(), static_cast<ChannelBridgeBase*>(this));
+      receiverQueue_.push(Try<TValue>(), static_cast<ChannelBridgeBase*>(this));
       senderQueue_.close(static_cast<ChannelBridgeBase*>(this));
     }
   }
 
-  void senderClose(folly::exception_wrapper ex) {
+  void senderClose(exception_wrapper ex) {
     if (!isSenderClosed()) {
       receiverQueue_.push(
-          folly::Try<TValue>(std::move(ex)),
-          static_cast<ChannelBridgeBase*>(this));
+          Try<TValue>(std::move(ex)), static_cast<ChannelBridgeBase*>(this));
       senderQueue_.close(static_cast<ChannelBridgeBase*>(this));
     }
   }
@@ -98,7 +95,7 @@ class ChannelBridge : public ChannelBridgeBase {
 
   void receiverCancel() {
     if (!isReceiverCancelled()) {
-      senderQueue_.push(folly::Unit(), static_cast<ChannelBridgeBase*>(this));
+      senderQueue_.push(Unit(), static_cast<ChannelBridgeBase*>(this));
       receiverQueue_.close(static_cast<ChannelBridgeBase*>(this));
     }
   }
@@ -119,10 +116,10 @@ class ChannelBridge : public ChannelBridgeBase {
 
  private:
   using ReceiverAtomicQueue = typename folly::channels::detail::
-      AtomicQueue<IChannelCallback, folly::Try<TValue>>;
+      AtomicQueue<IChannelCallback, Try<TValue>>;
 
-  using SenderAtomicQueue = typename folly::channels::detail::
-      AtomicQueue<IChannelCallback, folly::Unit>;
+  using SenderAtomicQueue =
+      typename folly::channels::detail::AtomicQueue<IChannelCallback, Unit>;
 
   void decref() {
     if (refCount_.fetch_sub(1, std::memory_order_acq_rel) == 1) {

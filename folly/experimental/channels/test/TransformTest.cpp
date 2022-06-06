@@ -40,7 +40,7 @@ class TransformFixture : public Test {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](folly::Try<std::string> resultTry) -> folly::coro::Task<bool> {
+        [=](Try<std::string> resultTry) -> folly::coro::Task<bool> {
           onNext_(std::move(resultTry));
           co_return true;
         });
@@ -57,7 +57,7 @@ TEST_F(SimpleTransformFixture, ReceiveValue_ReturnTransformedValue) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (result.value() % 2 == 0) {
           co_yield folly::to<std::string>(result.value());
         } else {
@@ -89,8 +89,7 @@ TEST_F(SimpleTransformFixture, ReceiveValue_Close) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (close) {
           throw OnClosedException();
         }
@@ -119,8 +118,7 @@ TEST_F(SimpleTransformFixture, ReceiveValue_Throw_InCoroutine) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (throwException) {
           throw std::runtime_error("Error");
         }
@@ -149,8 +147,7 @@ TEST_F(SimpleTransformFixture, ReceiveValue_Throw_InNonCoroutine) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (throwException) {
           throw std::runtime_error("Error");
         }
@@ -181,8 +178,7 @@ TEST_F(SimpleTransformFixture, ReceiveClosed_Close) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (result.hasException()) {
           EXPECT_TRUE(result.hasException<OnClosedException>());
         }
@@ -208,8 +204,7 @@ TEST_F(SimpleTransformFixture, ReceiveClosed_Throw) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (result.hasException()) {
           EXPECT_TRUE(result.hasException<OnClosedException>());
           throw std::runtime_error("Error");
@@ -236,8 +231,7 @@ TEST_F(SimpleTransformFixture, ReceiveException_Close) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (result.hasException()) {
           EXPECT_THROW(result.throwUnlessValue(), std::runtime_error);
           // We will swallow the exception and move on.
@@ -265,8 +259,7 @@ TEST_F(SimpleTransformFixture, ReceiveException_Throw) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (result.hasException()) {
           EXPECT_THROW(result.throwUnlessValue(), std::runtime_error);
         }
@@ -292,8 +285,7 @@ TEST_F(SimpleTransformFixture, Cancelled) {
   auto transformedReceiver = transform(
       std::move(untransformedReceiver),
       &executor_,
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
       });
 
@@ -319,14 +311,14 @@ TEST_F(SimpleTransformFixture, Chained) {
     receiver = transform(
         std::move(receiver),
         &executor_,
-        [](folly::Try<int> result) -> folly::coro::AsyncGenerator<int> {
+        [](Try<int> result) -> folly::coro::AsyncGenerator<int> {
           co_yield result.value() + 1;
         });
   }
   auto callbackHandle = processValues(transform(
       std::move(receiver),
       &executor_,
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
       }));
   executor_.drain();
@@ -349,13 +341,13 @@ TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
   auto rateLimiter = RateLimiter::create(1 /* maxConcurrent */);
 
   auto [untransformedReceiver1, sender1] = Channel<int>::create();
-  auto [controlReceiver1, controlSender1] = Channel<folly::Unit>::create();
+  auto [controlReceiver1, controlSender1] = Channel<Unit>::create();
   int transform1Executions = 0;
   auto transformedReceiver1 = transform(
       std::move(untransformedReceiver1),
       &executor_,
-      [&, &controlReceiver1 = controlReceiver1](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&, &controlReceiver1 = controlReceiver1](
+          Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform1Executions++;
         co_await controlReceiver1.next();
         co_yield folly::to<std::string>(result.value());
@@ -363,13 +355,13 @@ TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
       rateLimiter);
 
   auto [untransformedReceiver2, sender2] = Channel<int>::create();
-  auto [controlReceiver2, controlSender2] = Channel<folly::Unit>::create();
+  auto [controlReceiver2, controlSender2] = Channel<Unit>::create();
   int transform2Executions = 0;
   auto transformedReceiver2 = transform(
       std::move(untransformedReceiver2),
       &executor_,
-      [&, &controlReceiver2 = controlReceiver2](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&, &controlReceiver2 = controlReceiver2](
+          Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform2Executions++;
         co_await controlReceiver2.next();
         co_yield folly::to<std::string>(result.value());
@@ -391,12 +383,12 @@ TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
 
   EXPECT_EQ(transform1Executions, 1);
   EXPECT_EQ(transform2Executions, 0);
-  controlSender1.write(folly::unit);
+  controlSender1.write(unit);
   executor_.drain();
 
   EXPECT_EQ(transform1Executions, 1);
   EXPECT_EQ(transform2Executions, 1);
-  controlSender2.write(folly::unit);
+  controlSender2.write(unit);
   executor_.drain();
 
   sender2.write(2000);
@@ -405,12 +397,12 @@ TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
 
   EXPECT_EQ(transform1Executions, 1);
   EXPECT_EQ(transform2Executions, 2);
-  controlSender2.write(folly::unit);
+  controlSender2.write(unit);
   executor_.drain();
 
   EXPECT_EQ(transform1Executions, 2);
   EXPECT_EQ(transform2Executions, 2);
-  controlSender1.write(folly::unit);
+  controlSender1.write(unit);
   executor_.drain();
 
   std::move(sender1).close();
@@ -446,7 +438,7 @@ TEST_F(TransformFixtureStress, Close) {
   consumer_->startConsuming(transform(
       std::move(receiver),
       folly::SerialExecutor::create(&transformExecutor),
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
         co_yield folly::to<std::string>(std::move(result.value()));
       }));
 
@@ -464,7 +456,7 @@ TEST_F(TransformFixtureStress, Cancel) {
   consumer_->startConsuming(transform(
       std::move(receiver),
       folly::SerialExecutor::create(&transformExecutor),
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
         co_yield folly::to<std::string>(std::move(result.value()));
       }));
 
@@ -482,7 +474,7 @@ TEST_F(TransformFixtureStress, Close_ThenCancelImmediately) {
   consumer_->startConsuming(transform(
       std::move(receiver),
       folly::SerialExecutor::create(&transformExecutor),
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
         co_yield folly::to<std::string>(std::move(result.value()));
       }));
 
@@ -504,7 +496,7 @@ TEST_F(TransformFixtureStress, Cancel_ThenCloseImmediately) {
   consumer_->startConsuming(transform(
       std::move(receiver),
       folly::SerialExecutor::create(&transformExecutor),
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
         co_yield folly::to<std::string>(std::move(result.value()));
       }));
 
@@ -532,7 +524,7 @@ TEST_F(
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
       });
 
@@ -570,7 +562,7 @@ TEST_F(
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
       });
 
@@ -608,7 +600,7 @@ TEST_F(
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
       });
 
@@ -641,7 +633,7 @@ TEST_F(
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [numReinitializations = 0](folly::Try<int> result) mutable
+      [numReinitializations = 0](Try<int> result) mutable
       -> folly::coro::AsyncGenerator<std::string&&> {
         try {
           co_yield folly::to<std::string>(result.value());
@@ -694,7 +686,7 @@ TEST_F(
         alreadyInitialized = true;
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         co_yield folly::to<std::string>(result.value());
       });
 
@@ -725,7 +717,7 @@ TEST_F(
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (result.hasValue()) {
           co_yield folly::to<std::string>(result.value());
         } else {
@@ -773,8 +765,7 @@ TEST_F(ResumableTransformFixture, TransformThrows_NoReinitialization_Rethrows) {
         alreadyInitialized = true;
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [&](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         if (transformThrows) {
           throw std::runtime_error("Error");
         }
@@ -801,7 +792,7 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
   auto rateLimiter = RateLimiter::create(1 /* maxConcurrent */);
 
   auto [untransformedReceiver1, sender1] = Channel<int>::create();
-  auto [controlReceiver1, controlSender1] = Channel<folly::Unit>::create();
+  auto [controlReceiver1, controlSender1] = Channel<Unit>::create();
   int transform1Executions = 0;
   auto transformedReceiver1 = resumableTransform(
       &executor_,
@@ -815,8 +806,8 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
         co_await controlReceiver1.next();
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [&, &controlReceiver1 = controlReceiver1](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&, &controlReceiver1 = controlReceiver1](
+          Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform1Executions++;
         co_await controlReceiver1.next();
         co_yield folly::to<std::string>(result.value());
@@ -824,7 +815,7 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
       rateLimiter);
 
   auto [untransformedReceiver2, sender2] = Channel<int>::create();
-  auto [controlReceiver2, controlSender2] = Channel<folly::Unit>::create();
+  auto [controlReceiver2, controlSender2] = Channel<Unit>::create();
   int transform2Executions = 0;
   auto transformedReceiver2 = resumableTransform(
       &executor_,
@@ -838,8 +829,8 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
         co_await controlReceiver2.next();
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [&, &controlReceiver2 = controlReceiver2](folly::Try<int> result)
-          -> folly::coro::AsyncGenerator<std::string&&> {
+      [&, &controlReceiver2 = controlReceiver2](
+          Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform2Executions++;
         co_await controlReceiver2.next();
         co_yield folly::to<std::string>(result.value());
@@ -860,12 +851,12 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
 
   EXPECT_EQ(transform1Executions, 1);
   EXPECT_EQ(transform2Executions, 0);
-  controlSender1.write(folly::unit);
+  controlSender1.write(unit);
   executor_.drain();
 
   EXPECT_EQ(transform1Executions, 1);
   EXPECT_EQ(transform2Executions, 1);
-  controlSender2.write(folly::unit);
+  controlSender2.write(unit);
   executor_.drain();
 
   sender1.write(1);
@@ -874,12 +865,12 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
 
   EXPECT_EQ(transform1Executions, 2);
   EXPECT_EQ(transform2Executions, 1);
-  controlSender1.write(folly::unit);
+  controlSender1.write(unit);
   executor_.drain();
 
   EXPECT_EQ(transform1Executions, 2);
   EXPECT_EQ(transform2Executions, 2);
-  controlSender2.write(folly::unit);
+  controlSender2.write(unit);
   executor_.drain();
 
   sender2.write(2000);
@@ -888,12 +879,12 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
 
   EXPECT_EQ(transform1Executions, 2);
   EXPECT_EQ(transform2Executions, 3);
-  controlSender2.write(folly::unit);
+  controlSender2.write(unit);
   executor_.drain();
 
   EXPECT_EQ(transform1Executions, 3);
   EXPECT_EQ(transform2Executions, 3);
-  controlSender1.write(folly::unit);
+  controlSender1.write(unit);
   executor_.drain();
 
   std::move(sender1).close();
@@ -958,7 +949,7 @@ TEST_F(ResumableTransformFixtureStress, Close) {
         setProducer(std::move(newProducer));
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [&](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
+      [&](Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
         try {
           co_yield folly::to<std::string>(std::move(result.value()));
         } catch (const OnClosedException&) {
@@ -986,9 +977,9 @@ TEST_F(ResumableTransformFixtureStress, Close) {
 
 TEST_F(ResumableTransformFixtureStress, CancelDuringReinitialization) {
   folly::CPUThreadPoolExecutor transformExecutor(1);
-  auto initializationStarted = folly::SharedPromise<folly::Unit>();
-  auto initializationWait = folly::SharedPromise<folly::Unit>();
-  auto resumableTransformDestroyed = folly::SharedPromise<folly::Unit>();
+  auto initializationStarted = folly::SharedPromise<Unit>();
+  auto initializationWait = folly::SharedPromise<Unit>();
+  auto resumableTransformDestroyed = folly::SharedPromise<Unit>();
   auto guard =
       folly::makeGuard([&]() { resumableTransformDestroyed.setValue(); });
   consumer_->startConsuming(resumableTransform(
@@ -997,10 +988,10 @@ TEST_F(ResumableTransformFixtureStress, CancelDuringReinitialization) {
       [&, g = std::move(guard)](std::vector<std::string> initializeArg)
           -> folly::coro::Task<
               std::pair<std::vector<std::string>, Receiver<int>>> {
-        initializationStarted.setValue(folly::unit);
+        initializationStarted.setValue(unit);
         co_await folly::coro::detachOnCancel(
             initializationWait.getSemiFuture());
-        initializationWait = folly::SharedPromise<folly::Unit>();
+        initializationWait = folly::SharedPromise<Unit>();
         auto [receiver, sender] = Channel<int>::create();
         auto newProducer = makeProducer();
         newProducer->startProducing(
@@ -1008,7 +999,7 @@ TEST_F(ResumableTransformFixtureStress, CancelDuringReinitialization) {
         setProducer(std::move(newProducer));
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [](folly::Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
+      [](Try<int> result) -> folly::coro::AsyncGenerator<std::string> {
         try {
           co_yield folly::to<std::string>(std::move(result.value()));
         } catch (const OnClosedException&) {
@@ -1017,17 +1008,17 @@ TEST_F(ResumableTransformFixtureStress, CancelDuringReinitialization) {
       }));
 
   initializationStarted.getSemiFuture().get();
-  initializationStarted = folly::SharedPromise<folly::Unit>();
-  initializationWait.setValue(folly::unit);
+  initializationStarted = folly::SharedPromise<Unit>();
+  initializationWait.setValue(unit);
   waitForProducer();
   /* sleep override */
   std::this_thread::sleep_for(kTestTimeout / 2);
   getProducer()->stopProducing();
 
   initializationStarted.getSemiFuture().get();
-  initializationStarted = folly::SharedPromise<folly::Unit>();
+  initializationStarted = folly::SharedPromise<Unit>();
   consumer_->cancel();
-  initializationWait.setValue(folly::unit);
+  initializationWait.setValue(unit);
 
   EXPECT_EQ(consumer_->waitForClose().get(), CloseType::Cancelled);
   resumableTransformDestroyed.getSemiFuture().get();

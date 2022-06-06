@@ -114,7 +114,7 @@ void FanoutSender<ValueType>::write(U&& element) {
 }
 
 template <typename ValueType>
-void FanoutSender<ValueType>::close(folly::exception_wrapper ex) && {
+void FanoutSender<ValueType>::close(exception_wrapper ex) && {
   clearSendersWithClosedReceivers();
   if (!anySubscribers()) {
     // There are no output receivers to close.

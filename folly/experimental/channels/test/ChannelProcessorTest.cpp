@@ -42,7 +42,7 @@ TEST_F(ChannelProcessorFixture, SimpleChannel_ReceiveValues) {
   processor_.addChannel(
       "one",
       std::move(receiver),
-      [&](folly::Try<int> value) -> folly::coro::Task<void> {
+      [&](Try<int> value) -> folly::coro::Task<void> {
         callback_.onInputValue("one", *value);
         co_return;
       });
@@ -64,7 +64,7 @@ TEST_F(ChannelProcessorFixture, SimpleChannel_ThrowOnClosedException) {
   processor_.addChannel(
       "one",
       std::move(receiver),
-      [&](folly::Try<int> value) -> folly::coro::Task<void> {
+      [&](Try<int> value) -> folly::coro::Task<void> {
         if (*value == -1) {
           throw folly::channels::OnClosedException();
         }
@@ -92,7 +92,7 @@ TEST_F(
   processor_.addChannel(
       "one",
       std::move(receiver),
-      [&](folly::Try<int> value) -> folly::coro::Task<void> {
+      [&](Try<int> value) -> folly::coro::Task<void> {
         if (*value == -1) {
           throw folly::OperationCancelled();
         }
@@ -119,7 +119,7 @@ TEST_F(ChannelProcessorFixture, SimpleChannel_ThrowOtherException_Death) {
   processor_.addChannel(
       "one",
       std::move(receiver),
-      [&](folly::Try<int> value) -> folly::coro::Task<void> {
+      [&](Try<int> value) -> folly::coro::Task<void> {
         if (*value == -1) {
           throw std::runtime_error("Unhandled exception");
         }
@@ -154,7 +154,7 @@ TEST_F(ChannelProcessorFixture, SimpleChannel_RemoveChannel) {
   processor_.addChannel(
       "one",
       std::move(receiver),
-      [&, &future = future](folly::Try<int> value) -> folly::coro::Task<void> {
+      [&, &future = future](Try<int> value) -> folly::coro::Task<void> {
         if (waitForFuture) {
           try {
             co_await std::move(future);
@@ -212,7 +212,7 @@ TEST_F(
         state.receiverIndex = receiverInfo.index;
         co_return std::move(receivers[receiverInfo.index]);
       },
-      [&](folly::Try<int> value, State& state) -> folly::coro::Task<void> {
+      [&](Try<int> value, State& state) -> folly::coro::Task<void> {
         if (*value == -1) {
           state.receiverIndex++;
           throw ReinitializeException(ReceiverInfo{state.receiverIndex});

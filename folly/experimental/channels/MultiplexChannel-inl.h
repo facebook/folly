@@ -57,7 +57,7 @@ void MultiplexedSubscriptions<MultiplexerType>::write(
 
 template <typename MultiplexerType>
 void MultiplexedSubscriptions<MultiplexerType>::close(
-    const MultiplexedSubscriptions::KeyType& key, folly::exception_wrapper ex) {
+    const MultiplexedSubscriptions::KeyType& key, exception_wrapper ex) {
   ensureKeyExists(key);
   auto& sender =
       std::get<FanoutSender<OutputValueType>>(subscriptions_.at(key));
@@ -104,7 +104,7 @@ MultiplexChannel<MultiplexerType>& MultiplexChannel<MultiplexerType>::operator=(
 template <typename MultiplexerType>
 MultiplexChannel<MultiplexerType>::~MultiplexChannel() {
   if (processor_ != nullptr) {
-    std::move(*this).close(folly::exception_wrapper());
+    std::move(*this).close(exception_wrapper());
   }
 }
 
@@ -134,7 +134,7 @@ bool MultiplexChannel<MultiplexerType>::anySubscribers() const {
 }
 
 template <typename MultiplexerType>
-void MultiplexChannel<MultiplexerType>::close(folly::exception_wrapper ex) && {
+void MultiplexChannel<MultiplexerType>::close(exception_wrapper ex) && {
   processor_->destroyHandle(
       ex ? detail::CloseResult(std::move(ex)) : detail::CloseResult());
   processor_ = nullptr;
@@ -314,7 +314,7 @@ class MultiplexChannelProcessor : public IChannelCallback {
       if (inputClosed && !inputResult.hasException()) {
         // The input channel was closed. We will send an OnClosedException to
         // onInputValue.
-        inputResult = folly::Try<InputValueType>(
+        inputResult = Try<InputValueType>(
             folly::make_exception_wrapper<OnClosedException>());
       }
 
@@ -337,8 +337,8 @@ class MultiplexChannelProcessor : public IChannelCallback {
       if (inputClosed && onInputValueResult.hasValue()) {
         // The input channel was closed, but the onInputValue function did not
         // throw. We need to close all output receivers.
-        onInputValueResult = folly::Try<void>(
-            folly::make_exception_wrapper<OnClosedException>());
+        onInputValueResult =
+            Try<void>(folly::make_exception_wrapper<OnClosedException>());
       }
       if (!onInputValueResult.hasValue()) {
         co_return onInputValueResult.template hasException<OnClosedException>()
@@ -475,7 +475,7 @@ class MultiplexChannelProcessor : public IChannelCallback {
       auto& sender = std::get<FanoutSender<OutputValueType>>(subscription);
       std::move(sender).close(
           closeResult.exception.has_value() ? closeResult.exception.value()
-                                            : folly::exception_wrapper());
+                                            : exception_wrapper());
     }
     totalSubscriptions_.fetch_sub(subscriptions_.size());
     subscriptions_.clear();

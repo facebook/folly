@@ -38,7 +38,7 @@ namespace channels {
  * The callback is run for each received value on the given executor. A try
  * is passed to the callback with the result:
  *
- *    - If a value is sent, the folly::Try will contain the value.
+ *    - If a value is sent, the Try will contain the value.
  *    - If the channel is closed by the sender with no exception, the try will
  *          be empty (with no value or exception).
  *    - If the channel is closed by the sender with an exception, the try will
@@ -57,7 +57,7 @@ template <
     typename TValue = typename TReceiver::ValueType,
     std::enable_if_t<
         std::is_constructible_v<
-            folly::Function<folly::coro::Task<bool>(folly::Try<TValue>)>,
+            folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
             OnNextFunc>,
         int> = 0>
 ChannelCallbackHandle consumeChannelWithCallback(
@@ -86,7 +86,7 @@ template <
     typename TValue = typename TReceiver::ValueType,
     std::enable_if_t<
         std::is_constructible_v<
-            folly::Function<folly::coro::Task<bool>(folly::Try<TValue>)>,
+            folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
             OnNextFunc>,
         int> = 0>
 void consumeChannelWithCallback(

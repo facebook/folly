@@ -41,7 +41,7 @@ class FanoutSenderFixture : public Test {
         std::move(receiver),
         &executor_,
         [cbk = std::move(callback)](
-            folly::Try<int> resultTry) mutable -> folly::coro::Task<bool> {
+            Try<int> resultTry) mutable -> folly::coro::Task<bool> {
           (*cbk)(std::move(resultTry));
           co_return true;
         });

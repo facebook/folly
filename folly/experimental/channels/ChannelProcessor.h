@@ -70,7 +70,7 @@ class ChannelProcessor {
   /**
    * Processes a channel with a given key and callback. For a receiver of type
    * Receiver<InputValueType>, the callback must accept a single parameter of
-   * type folly::Try<InputValueType>, and return a void task. If the callback
+   * type Try<InputValueType>, and return a void task. If the callback
    * throws an exception of type OperationCancelled or OnClosedException, the
    * channel will be removed. Any other exception thrown by the callback will
    * terminate the process.
@@ -94,7 +94,7 @@ class ChannelProcessor {
    *   channelProcessor.addChannel(
    *       "abc",
    *       subscribe("abc"),
-   *       [](folly::Try<int> value) -> folly::coro::Task<void> {
+   *       [](Try<int> value) -> folly::coro::Task<void> {
    *         LOG(INFO) << fmt::format("Received value {}", *value);
    *         co_return;
    *       });
@@ -106,7 +106,7 @@ class ChannelProcessor {
    * Processing a resumable channel involves two callbacks. The initialization
    * callback accepts an initialization argument of a user-defined type, and
    * must return a folly::coro::Task<Receiver<InputValueType>>. The onUpdate
-   * callback accepts a folly::Try<InputValueType>, and returns a void task. The
+   * callback accepts a Try<InputValueType>, and returns a void task. The
    * onUpdate callback can throw a ReinitializeException<InitializeArg> at any
    * time, which will trigger the initialize function to be run again. In
    * addition, if either callback throws an exception of type OperationCancelled
@@ -139,7 +139,7 @@ class ChannelProcessor {
    *       [](InitializeArg initializeArg) -> folly::coro::Task<Receiver<int>> {
    *         co_return subscribe(initializeArg);
    *       },
-   *       [](folly::Try<int> value) -> folly::coro::Task<void> {
+   *       [](Try<int> value) -> folly::coro::Task<void> {
    *         if (*value == -1) {
    *           throw ReinitializeException(InitializeArg({"param"}));
    *         }
@@ -189,7 +189,7 @@ class ChannelProcessor {
    *                        -> folly::coro::Task<Receiver<int>> {
    *         co_return subscribe(initializeArg);
    *       },
-   *       [](folly::Try<int> value, State& state) -> folly::coro::Task<void> {
+   *       [](Try<int> value, State& state) -> folly::coro::Task<void> {
    *         if (*value == -1) {
    *           throw ReinitializeException(InitializeArg({"param"}));
    *         }

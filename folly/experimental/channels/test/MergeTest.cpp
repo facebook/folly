@@ -35,7 +35,7 @@ class MergeFixture : public Test {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](folly::Try<int> resultTry) -> folly::coro::Task<bool> {
+        [=](Try<int> resultTry) -> folly::coro::Task<bool> {
           onNext_(std::move(resultTry));
           co_return true;
         });

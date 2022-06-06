@@ -54,7 +54,7 @@ class MultiplexChannel;
  *   // This function sends any corresponding values to the relevant output
  *   // receivers, using the subscriptions parameter.
  *   folly::coro::Task<void> onInputValue(
- *       folly::Try<InputValueType> inputValue,
+ *       Try<InputValueType> inputValue,
  *       MultiplexedSubscriptions<MultiplexerType>& subscriptions);
  *
  * Example:
@@ -89,7 +89,7 @@ class MultiplexChannel;
  *    }
  *
  *    folly::coro::Task<void> onInputValue(
- *        folly::Try<InputValue> inputValue,
+ *        Try<InputValue> inputValue,
  *        MultiplexedSubscriptions<Multiplexer>& subscriptions) {
  *      if (subscriptions.hasSubscription(inputValue->key)) {
  *        subscriptions.write(inputValue->key, inputValue->value);
@@ -174,7 +174,7 @@ class MultiplexChannel {
   /**
    * Closes the multiplex channel.
    */
-  void close(folly::exception_wrapper ex = folly::exception_wrapper()) &&;
+  void close(exception_wrapper ex = exception_wrapper()) &&;
 
  private:
   template <typename Multiplexer, typename InputValueType>
@@ -221,7 +221,7 @@ class MultiplexedSubscriptions {
   /**
    * Closes all subscribers for the given key.
    */
-  void close(const KeyType& key, folly::exception_wrapper ex);
+  void close(const KeyType& key, exception_wrapper ex);
 
   /**
    * Returns a view containing a list of subscribed keys.

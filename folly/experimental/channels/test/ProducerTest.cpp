@@ -35,7 +35,7 @@ class ProducerFixture : public Test {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](folly::Try<int> resultTry) -> folly::coro::Task<bool> {
+        [=](Try<int> resultTry) -> folly::coro::Task<bool> {
           onNext_(std::move(resultTry));
           co_return true;
         });
@@ -95,7 +95,7 @@ TEST_F(ProducerFixture, KeepAliveExists_DelaysDestruction) {
     TestProducer(
         Sender<int> sender,
         folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-        folly::SemiFuture<folly::Unit> future,
+        folly::SemiFuture<Unit> future,
         bool& destructed)
         : Producer<int>(std::move(sender), std::move(executor)),
           destructed_(destructed) {
@@ -113,7 +113,7 @@ TEST_F(ProducerFixture, KeepAliveExists_DelaysDestruction) {
     bool& destructed_;
   };
 
-  auto promise = folly::Promise<folly::Unit>();
+  auto promise = folly::Promise<Unit>();
   bool destructed = false;
   auto receiver = makeProducer<TestProducer>(
       &executor_, promise.getSemiFuture(), destructed);
@@ -142,8 +142,8 @@ TEST_F(
     TestProducer(
         Sender<int> sender,
         folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
-        folly::Promise<folly::Unit> onCancelledStarted,
-        folly::SemiFuture<folly::Unit> onCancelledCompleted,
+        folly::Promise<Unit> onCancelledStarted,
+        folly::SemiFuture<Unit> onCancelledCompleted,
         bool& destructed)
         : Producer<int>(std::move(sender), std::move(executor)),
           onCancelledStarted_(std::move(onCancelledStarted)),
@@ -157,14 +157,14 @@ TEST_F(
 
     ~TestProducer() override { destructed_ = true; }
 
-    folly::Promise<folly::Unit> onCancelledStarted_;
-    folly::SemiFuture<folly::Unit> onCancelledCompleted_;
+    folly::Promise<Unit> onCancelledStarted_;
+    folly::SemiFuture<Unit> onCancelledCompleted_;
     bool& destructed_;
   };
 
-  auto onCancelledStartedPromise = folly::Promise<folly::Unit>();
+  auto onCancelledStartedPromise = folly::Promise<Unit>();
   auto onCancelledStartedFuture = onCancelledStartedPromise.getSemiFuture();
-  auto onCancelledCompletedPromise = folly::Promise<folly::Unit>();
+  auto onCancelledCompletedPromise = folly::Promise<Unit>();
   auto onCancelledCompletedFuture = onCancelledCompletedPromise.getSemiFuture();
   bool destructed = false;
   auto receiver = makeProducer<TestProducer>(

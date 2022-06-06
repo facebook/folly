@@ -145,7 +145,7 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
     CHECK_EQ(getReceiverState(), ChannelState::CancellationTriggered);
     receiver_ = nullptr;
     if (fromHandleDestruction) {
-      co_await callCallback(folly::Try<TValue>(
+      co_await callCallback(Try<TValue>(
           folly::make_exception_wrapper<folly::OperationCancelled>()));
     }
     maybeDelete();
@@ -178,7 +178,7 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
   /**
    * Calls the user's callback with the given result.
    */
-  folly::coro::Task<bool> callCallback(folly::Try<TValue> result) {
+  folly::coro::Task<bool> callCallback(Try<TValue> result) {
     auto retVal = co_await folly::coro::co_awaitTry(onNext_(std::move(result)));
     if (retVal.template hasException<folly::OperationCancelled>()) {
       co_return false;
@@ -260,7 +260,7 @@ template <
     typename TValue,
     std::enable_if_t<
         std::is_constructible_v<
-            folly::Function<folly::coro::Task<bool>(folly::Try<TValue>)>,
+            folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
             OnNextFunc>,
         int>>
 ChannelCallbackHandle consumeChannelWithCallback(
@@ -282,7 +282,7 @@ template <
     typename TValue,
     std::enable_if_t<
         std::is_constructible_v<
-            folly::Function<folly::coro::Task<bool>(folly::Try<TValue>)>,
+            folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
             OnNextFunc>,
         int>>
 void consumeChannelWithCallback(

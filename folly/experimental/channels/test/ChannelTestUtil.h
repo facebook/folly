@@ -46,7 +46,7 @@ toMap(TPair firstPair, Others... items) {
 template <typename TValue>
 class MockNextCallback {
  public:
-  void operator()(folly::Try<TValue> result) {
+  void operator()(Try<TValue> result) {
     if (result.hasValue()) {
       onValue(result.value());
     } else if (result.template hasException<folly::OperationCancelled>()) {
@@ -87,7 +87,7 @@ class ChannelConsumerBase {
 
   virtual folly::Executor::KeepAlive<> getExecutor() = 0;
 
-  virtual void onNext(folly::Try<TValue> result) = 0;
+  virtual void onNext(Try<TValue> result) = 0;
 
   void startConsuming(Receiver<TValue> receiver) {
     folly::coro::co_withCancellation(
@@ -101,23 +101,23 @@ class ChannelConsumerBase {
     if (mode_ == ConsumptionMode::CoroWithTry ||
         mode_ == ConsumptionMode::CoroWithoutTry) {
       do {
-        folly::Try<TValue> resultTry;
+        Try<TValue> resultTry;
         if (mode_ == ConsumptionMode::CoroWithTry) {
           resultTry = co_await folly::coro::co_awaitTry(receiver.next());
         } else if (mode_ == ConsumptionMode::CoroWithoutTry) {
           try {
             auto result = co_await receiver.next();
             if (result.has_value()) {
-              resultTry = folly::Try<TValue>(result.value());
+              resultTry = Try<TValue>(result.value());
             } else {
-              resultTry = folly::Try<TValue>();
+              resultTry = Try<TValue>();
             }
           } catch (const std::exception& ex) {
-            resultTry = folly::Try<TValue>(
-                folly::exception_wrapper(std::current_exception(), ex));
+            resultTry =
+                Try<TValue>(exception_wrapper(std::current_exception(), ex));
           } catch (...) {
-            resultTry = folly::Try<TValue>(
-                folly::exception_wrapper(std::current_exception()));
+            resultTry =
+                Try<TValue>(exception_wrapper(std::current_exception()));
           }
         } else {
           LOG(FATAL) << "Unknown consumption mode";
@@ -133,7 +133,7 @@ class ChannelConsumerBase {
       auto callbackHandle = consumeChannelWithCallback(
           std::move(receiver),
           getExecutor(),
-          [=](folly::Try<TValue> resultTry) -> folly::coro::Task<bool> {
+          [=](Try<TValue> resultTry) -> folly::coro::Task<bool> {
             onNext(std::move(resultTry));
             co_return co_await folly::coro::detachOnCancel(
                 continueConsuming_.getSemiFuture());
@@ -148,7 +148,7 @@ class ChannelConsumerBase {
       consumeChannelWithCallback(
           std::move(receiver),
           getExecutor(),
-          [=](folly::Try<TValue> resultTry) -> folly::coro::Task<bool> {
+          [=](Try<TValue> resultTry) -> folly::coro::Task<bool> {
             onNext(std::move(resultTry));
             co_return co_await folly::coro::detachOnCancel(
                 continueConsuming_.getSemiFuture());
@@ -199,7 +199,7 @@ class StressTestConsumer : public ChannelConsumerBase<TValue> {
     return executor_.get();
   }
 
-  void onNext(folly::Try<TValue> result) override {
+  void onNext(Try<TValue> result) override {
     if (result.hasValue()) {
       onValue_(std::move(result.value()));
     } else if (result.template hasException<folly::OperationCancelled>()) {
@@ -242,8 +242,7 @@ class StressTestProducer {
   }
 
   void startProducing(
-      Sender<TValue> sender,
-      std::optional<folly::exception_wrapper> closeException) {
+      Sender<TValue> sender, std::optional<exception_wrapper> closeException) {
     auto produceTask = folly::coro::co_invoke(
         [=,
          sender = std::move(sender),

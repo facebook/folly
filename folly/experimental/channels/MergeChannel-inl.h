@@ -77,7 +77,7 @@ folly::F14FastSet<KeyType> MergeChannel<KeyType, ValueType>::getReceiverKeys() {
 
 template <typename KeyType, typename ValueType>
 void MergeChannel<KeyType, ValueType>::close(
-    std::optional<folly::exception_wrapper> ex) && {
+    std::optional<exception_wrapper> ex) && {
   processor_->destroyHandle(
       ex.has_value() ? detail::CloseResult(std::move(ex.value()))
                      : detail::CloseResult());
@@ -379,7 +379,7 @@ class MergeChannelProcessor
             MergeChannelReceiverClosed{
                 closeResult.exception.has_value()
                     ? std::move(closeResult.exception.value())
-                    : folly::exception_wrapper()}});
+                    : exception_wrapper()}});
       }
     }
     state->receivers.erase(receiver);

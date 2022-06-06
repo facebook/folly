@@ -45,7 +45,7 @@ detail::IChannelCallback* cancelReceiverWait(Receiver<TValue>& receiver) {
 }
 
 template <typename TValue>
-std::optional<folly::Try<TValue>> receiverGetValue(Receiver<TValue>& receiver) {
+std::optional<Try<TValue>> receiverGetValue(Receiver<TValue>& receiver) {
   if (receiver.buffer_.empty()) {
     receiver.buffer_ = receiver.bridge_->receiverGetValues();
     if (receiver.buffer_.empty()) {
@@ -104,7 +104,7 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
     return std::move(result.value());
   }
 
-  folly::Try<TValue> await_resume_try() { return getResult(); }
+  Try<TValue> await_resume_try() { return getResult(); }
 
  protected:
   struct State {
@@ -149,15 +149,15 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
     awaitingCoroutine.resume();
   }
 
-  folly::Try<TValue> getResult() {
+  Try<TValue> getResult() {
     cancelCallback_.reset();
     return state_.withWLock([&](State& state) {
       if (state.cancelled) {
-        return folly::Try<TValue>(
+        return Try<TValue>(
             folly::make_exception_wrapper<folly::OperationCancelled>());
       }
       if (!state.receiver) {
-        return folly::Try<TValue>();
+        return Try<TValue>();
       }
       auto result =
           std::move(detail::receiverGetValue(*state.receiver).value());

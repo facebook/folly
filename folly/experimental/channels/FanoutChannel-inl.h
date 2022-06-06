@@ -51,7 +51,7 @@ FanoutChannel<ValueType, ContextType>::operator=(
 template <typename ValueType, typename ContextType>
 FanoutChannel<ValueType, ContextType>::~FanoutChannel() {
   if (processor_ != nullptr) {
-    std::move(*this).close(folly::exception_wrapper());
+    std::move(*this).close(exception_wrapper());
   }
 }
 
@@ -74,14 +74,13 @@ bool FanoutChannel<ValueType, ContextType>::anySubscribers() const {
 
 template <typename ValueType, typename ContextType>
 void FanoutChannel<ValueType, ContextType>::closeSubscribers(
-    folly::exception_wrapper ex) {
+    exception_wrapper ex) {
   processor_->closeSubscribers(
       ex ? detail::CloseResult(std::move(ex)) : detail::CloseResult());
 }
 
 template <typename ValueType, typename ContextType>
-void FanoutChannel<ValueType, ContextType>::close(
-    folly::exception_wrapper ex) && {
+void FanoutChannel<ValueType, ContextType>::close(exception_wrapper ex) && {
   processor_->destroyHandle(
       ex ? detail::CloseResult(std::move(ex)) : detail::CloseResult());
   processor_ = nullptr;
@@ -193,7 +192,7 @@ class FanoutChannelProcessor
     std::move(state->fanoutSender)
         .close(
             closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : folly::exception_wrapper());
+                                              : exception_wrapper());
   }
 
   /**
@@ -303,7 +302,7 @@ class FanoutChannelProcessor
     std::move(state->fanoutSender)
         .close(
             closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : folly::exception_wrapper());
+                                              : exception_wrapper());
     maybeDelete(state);
   }
 
@@ -320,7 +319,7 @@ class FanoutChannelProcessor
     std::move(state->fanoutSender)
         .close(
             closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : folly::exception_wrapper());
+                                              : exception_wrapper());
     maybeDelete(state);
   }
 
