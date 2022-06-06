@@ -12,6 +12,7 @@ snappy
 [build]
 builder = cmake
 subdir = rocksdb-7.0.2
+patchfile = rocksdb_skip_thirdparty_windows.patch
 
 [cmake.defines]
 WITH_SNAPPY=ON
@@ -38,4 +39,5 @@ ROCKSDB_INSTALL_ON_WINDOWS=ON
 # connect the snappy build outputs to rocksdb's custom logic here.
 # Let's just turn it off on windows.
 WITH_SNAPPY=OFF
-WITH_LZ4=OFF
+WITH_LZ4=ON
+ROCKSDB_SKIP_THIRDPARTY=ON
