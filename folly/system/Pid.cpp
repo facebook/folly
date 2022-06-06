@@ -50,8 +50,6 @@ class PidState {
 }; // PidState
 
 class PidCache {
-  static bool init_;
-
   PidState state_;
   pid_t pid_;
 
@@ -65,7 +63,6 @@ class PidCache {
   bool valid() { return state_.load() == State::VALID; }
 
   FOLLY_COLD pid_t init() {
-    (void)init_; // force the object not to be thrown out as unused
     pid_t pid = getpid();
     auto s = state_.load();
     if (s == State::INVALID && state_.cas(s, State::LOCKED)) {
@@ -79,7 +76,6 @@ class PidCache {
 }; // PidCache
 
 static PidCache cache_;
-bool PidCache::init_ = (cache_.init(), 0);
 
 } // namespace
 

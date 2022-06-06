@@ -390,8 +390,6 @@ struct StaticMetaBase {
 // StaticMeta; you can specify multiple Tag types to break that lock.
 template <class Tag, class AccessMode>
 struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
-  static bool init_;
-
   StaticMeta()
       : StaticMetaBase(
             &StaticMeta::getThreadEntrySlow,
@@ -404,7 +402,6 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
   }
 
   static StaticMeta<Tag, AccessMode>& instance() {
-    (void)init_; // force the object not to be thrown out as unused
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
     return detail::createGlobal<StaticMeta<Tag, AccessMode>, void>();
@@ -507,13 +504,5 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     instance().lock_.unlock();
   }
 };
-
-FOLLY_PUSH_WARNING
-FOLLY_CLANG_DISABLE_WARNING("-Wglobal-constructors")
-template <class Tag, class AccessMode>
-bool StaticMeta<Tag, AccessMode>::init_ =
-    (StaticMeta<Tag, AccessMode>::instance(), 0);
-FOLLY_POP_WARNING
-
 } // namespace threadlocal_detail
 } // namespace folly
