@@ -102,8 +102,7 @@ class BuilderBase(object):
         return reconfigure
 
     def _apply_patchfile(self) -> None:
-        # Only implemented patch support for linux
-        if not self.build_opts.is_linux() or self.patchfile is None:
+        if self.patchfile is None:
             return
         patched_sentinel_file = pathlib.Path(self.src_dir + "/.getdeps_patched")
         if patched_sentinel_file.exists():
@@ -111,15 +110,15 @@ class BuilderBase(object):
         old_wd = os.getcwd()
         os.chdir(self.src_dir)
         print(f"Patching {self.manifest.name} with {self.patchfile} in {self.src_dir}")
-        retval = os.system(
-            "patch "
-            + self.patchfile_opts
-            + " < "
-            + self.build_opts.fbcode_builder_dir
-            + "/patches/"
-            + self.patchfile
+        patchfile = os.path.join(
+            self.build_opts.fbcode_builder_dir, "patches", self.patchfile
         )
-        if retval != 0:
+        patchcmd = ["git", "apply"]
+        if self.patchfile_opts:
+            patchcmd.append(self.patchfile_opts)
+        try:
+            subprocess.check_call(patchcmd + [patchfile])
+        except subprocess.CalledProcessError:
             raise ValueError(f"Failed to apply patch to {self.manifest.name}")
         os.chdir(old_wd)
         patched_sentinel_file.touch()
