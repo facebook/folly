@@ -1220,9 +1220,8 @@ class small_vector : public detail::small_vector_base<
         heapifyCapacity ? kHeapifyCapacitySize : 0;
     const size_t goodAllocationSizeBytes =
         goodMallocSize(needBytes + allocationExtraBytes);
-    const size_t goodAllocationNewCapacity =
+    const size_t newCapacity =
         (goodAllocationSizeBytes - allocationExtraBytes) / sizeof(value_type);
-    const size_t newCapacity = std::min(goodAllocationNewCapacity, max_size());
     // Make sure that the allocation request has a size computable from the
     // capacity, instead of using goodAllocationSizeBytes, so that we can do
     // sized deallocation. If goodMallocSize() gives us extra bytes that are not

@@ -1419,15 +1419,3 @@ TEST(small_vector, MoveAndCopyNonTrivial) {
   testMoveAndCopy<NonTrivialInt, 0>();
   testMoveAndCopy<NonTrivialInt, 4>();
 }
-
-TEST(small_vector, PolicyMaxSizeExceeded) {
-  struct Obj {
-    char a[350];
-  };
-
-  small_vector<Obj, 10, uint8_t> v;
-
-  EXPECT_THROW(
-      for (size_t i = 0; i < 0x100; ++i) { v.push_back(Obj()); },
-      std::length_error);
-}
