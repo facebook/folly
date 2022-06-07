@@ -29,12 +29,6 @@
 
 namespace folly {
 
-namespace detail {
-template <typename Iter>
-using iterator_category_of_t_ =
-    typename std::iterator_traits<Iter>::iterator_category;
-}
-
 //  iterator_has_known_distance_v
 //
 //  Whether std::distance over a pair of iterators is reasonably known to give
@@ -45,7 +39,7 @@ template <typename Iter>
 FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v<Iter, Iter> =
     std::is_base_of<
         std::random_access_iterator_tag,
-        detected_or_t<void, detail::iterator_category_of_t_, Iter>>::value;
+        typename std::iterator_traits<Iter>::iterator_category>::value;
 
 //  range_has_known_distance_v
 //
