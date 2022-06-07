@@ -26,8 +26,6 @@ class TLRefCount {
  public:
   using Int = int64_t;
 
-  static void atfork_init() { TLLocalRefCount::atfork_init(); }
-
   TLRefCount()
       : localCount_([&]() { return new LocalRefCount(*this); }),
         collectGuard_(this, [](void*) {}) {}
@@ -218,10 +216,8 @@ class TLRefCount {
     std::shared_ptr<void> collectGuard_;
   };
 
-  using TLLocalRefCount = folly::ThreadLocal<LocalRefCount, TLRefCount>;
-
   std::atomic<State> state_{State::LOCAL};
-  TLLocalRefCount localCount_;
+  folly::ThreadLocal<LocalRefCount, TLRefCount> localCount_;
   std::atomic<int64_t> globalCount_{1};
   std::mutex globalMutex_;
   std::shared_ptr<void> collectGuard_;

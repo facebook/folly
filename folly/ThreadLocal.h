@@ -59,8 +59,6 @@ class ThreadLocalPtr;
 template <class T, class Tag = void, class AccessMode = void>
 class ThreadLocal {
  public:
-  static void atfork_init() { Ptr::atfork_init(); }
-
   constexpr ThreadLocal() : constructor_([]() { return new T(); }) {}
 
   template <typename F, std::enable_if_t<is_invocable_r_v<T*, F>, int> = 0>
@@ -99,9 +97,7 @@ class ThreadLocal {
     return ptr;
   }
 
-  using Ptr = ThreadLocalPtr<T, Tag, AccessMode>;
-
-  mutable Ptr tlp_;
+  mutable ThreadLocalPtr<T, Tag, AccessMode> tlp_;
   std::function<T*()> constructor_;
 };
 
@@ -139,8 +135,6 @@ class ThreadLocalPtr {
   using AccessAllThreadsEnabled = Negation<std::is_same<Tag, void>>;
 
  public:
-  static void atfork_init() { StaticMeta::instance(); }
-
   constexpr ThreadLocalPtr() : id_() {}
 
   ThreadLocalPtr(ThreadLocalPtr&& other) noexcept : id_(std::move(other.id_)) {}

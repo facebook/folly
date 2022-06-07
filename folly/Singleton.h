@@ -388,8 +388,6 @@ struct SingletonHolder : public SingletonHolderBase {
 
 class SingletonVault {
  public:
-  static void atfork_init();
-
   enum class Type {
     Strict, // Singletons can't be created before registrationComplete()
     Relaxed, // Singletons can be created before registrationComplete()

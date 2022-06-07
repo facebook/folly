@@ -434,17 +434,7 @@ class ReadMostlySharedPtr {
  */
 template <typename RefCount = DefaultRefCount>
 class ReadMostlyMainPtrDeleter {
- private:
-  template <typename RC>
-  static void atfork_init(tag_t<RC>, ...) {}
-  template <typename RC>
-  static auto atfork_init(tag_t<RC>, int) -> decltype(RC::atfork_init()) {
-    RC::atfork_init();
-  }
-
  public:
-  static void atfork_init() { atfork_init(tag<RefCount>, 0); }
-
   ~ReadMostlyMainPtrDeleter() noexcept {
     RefCount::useGlobal(refCounts_);
     for (auto& decref : decrefs_) {

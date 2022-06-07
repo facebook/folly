@@ -204,12 +204,7 @@ FatalHelper __attribute__((__init_priority__(101))) fatalHelper;
 
 } // namespace
 
-void SingletonVault::atfork_init() {
-  ReadMostlyMainPtrDeleter<>::atfork_init();
-}
-
 SingletonVault::SingletonVault(Type type) noexcept : type_(type) {
-  atfork_init();
   AtFork::registerHandler(
       this,
       /*prepare*/
