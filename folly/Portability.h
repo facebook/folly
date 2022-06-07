@@ -633,3 +633,10 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_HAS_STRING_VIEW 0
 #endif
+
+// C++20 consteval
+#if FOLLY_CPLUSPLUS >= 202002L
+#define FOLLY_CONSTEVAL consteval
+#else
+#define FOLLY_CONSTEVAL constexpr
+#endif
