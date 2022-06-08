@@ -973,7 +973,6 @@ jobs:
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
             out.write("    steps:\n")
-            out.write("    - uses: actions/checkout@v2\n")
 
             if build_opts.is_windows():
                 # cmake relies on BOOST_ROOT but GH deliberately don't set it in order
@@ -994,6 +993,10 @@ jobs:
                 # that we want it to use them!
                 out.write("    - name: Fix Git config\n")
                 out.write("      run: git config --system core.longpaths true\n")
+                out.write("    - name: Disable autocrlf\n")
+                out.write("      run: git config --system core.autocrlf false\n")
+
+            out.write("    - uses: actions/checkout@v2\n")
 
             allow_sys_arg = ""
             if (

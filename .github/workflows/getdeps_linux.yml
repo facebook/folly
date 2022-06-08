@@ -47,6 +47,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests libtool
     - name: Fetch libsodium
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests libsodium
+    - name: Fetch xz
+      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests xz
     - name: Build boost
       run: python3 build/fbcode_builder/getdeps.py build --no-tests boost
     - name: Build ninja
@@ -79,6 +81,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --no-tests libtool
     - name: Build libsodium
       run: python3 build/fbcode_builder/getdeps.py build --no-tests libsodium
+    - name: Build xz
+      run: python3 build/fbcode_builder/getdeps.py build --no-tests xz
     - name: Build folly
       run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts

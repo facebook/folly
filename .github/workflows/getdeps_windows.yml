@@ -14,12 +14,14 @@ jobs:
   build:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v2
     - name: Export boost environment
       run: "echo BOOST_ROOT=%BOOST_ROOT_1_78_0% >> %GITHUB_ENV%"
       shell: cmd
     - name: Fix Git config
       run: git config --system core.longpaths true
+    - name: Disable autocrlf
+      run: git config --system core.autocrlf false
+    - uses: actions/checkout@v2
     - name: Fetch boost
       run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch libsodium
