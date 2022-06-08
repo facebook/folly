@@ -156,7 +156,8 @@ inline void exception_wrapper::ExceptionPtr::delete_(exception_wrapper* that) {
 }
 inline std::type_info const* exception_wrapper::ExceptionPtr::type_(
     exception_wrapper const* that) {
-  return exception_ptr_get_type(that->eptr_.ptr_);
+  auto type = exception_ptr_get_type(that->eptr_.ptr_);
+  return type ? type : &typeid(unknown_type);
 }
 inline std::exception const* exception_wrapper::ExceptionPtr::get_exception_(
     exception_wrapper const* that) {
