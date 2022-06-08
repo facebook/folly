@@ -126,8 +126,6 @@ namespace folly {
 //! \endcode
 class exception_wrapper final {
  private:
-  struct unknown_type {};
-
   struct FOLLY_EXPORT AnyException : std::exception {
     std::type_info const* typeinfo_;
     template <class T>
