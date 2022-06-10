@@ -109,6 +109,8 @@ struct serialization_opts {
 
   // Options for how to print floating point values.  See Conv.h
   // toAppend implementation for floating point for more info
+  double_conversion::DoubleToStringConverter::Flags double_flags{
+      double_conversion::DoubleToStringConverter::NO_FLAGS};
   double_conversion::DoubleToStringConverter::DtoaMode double_mode{
       double_conversion::DoubleToStringConverter::SHORTEST};
   unsigned int double_num_digits{0}; // ignored when mode is SHORTEST
