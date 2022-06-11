@@ -640,3 +640,9 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_CONSTEVAL constexpr
 #endif
+
+#if FOLLY_CPLUSPLUS >= 202002L
+#define FOLLY_CONSTINIT constinit
+#else
+#define FOLLY_CONSTINIT
+#endif
