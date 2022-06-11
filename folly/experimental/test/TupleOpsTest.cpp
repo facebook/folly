@@ -111,7 +111,7 @@ struct TupleTo2;
 // to repeat the conversion for each individual element, then wrap
 // all results with make_tuple.
 template <std::size_t... Ns>
-struct TupleTo2<TemplateSeq<std::size_t, Ns...>> {
+struct TupleTo2<std::index_sequence<Ns...>> {
   template <class U, class T>
   static U convert(const T& input) {
     return std::make_tuple(folly::to<typename std::tuple_element<Ns, U>::type>(
@@ -122,7 +122,7 @@ struct TupleTo2<TemplateSeq<std::size_t, Ns...>> {
 template <
     class U,
     class T,
-    class Seq = typename TemplateTupleRange<U>::type,
+    class Seq = std::make_index_sequence<std::tuple_size_v<T>>,
     class Enable = typename std::enable_if<
         (std::tuple_size<U>::value == std::tuple_size<T>::value)>::type>
 U tupleTo2(const T& input) {
