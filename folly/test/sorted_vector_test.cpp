@@ -715,31 +715,49 @@ TEST(SortedVectorTypes, TestSetBulkInsertionSortNoMerge) {
 }
 
 TEST(SortedVectorTypes, TestSetBulkInsertionNoSortMerge) {
-  auto s = std::vector<int>({6, 4, 8, 2});
+  auto test = [](bool withSortedUnique) {
+    auto s = std::vector<int>({6, 4, 8, 2});
 
-  sorted_vector_set<int> vset(s.begin(), s.end());
-  check_invariant(vset);
+    sorted_vector_set<int> vset(s.begin(), s.end());
+    check_invariant(vset);
 
-  // Add a sorted range that will have to be merged in.
-  s = std::vector<int>({1, 3, 5, 9});
+    // Add a sorted range that will have to be merged in.
+    s = std::vector<int>({1, 2, 3, 5, 9});
 
-  vset.insert(s.begin(), s.end());
-  check_invariant(vset);
-  EXPECT_THAT(vset, testing::ElementsAreArray({1, 2, 3, 4, 5, 6, 8, 9}));
+    if (withSortedUnique) {
+      vset.insert(s.begin(), s.end());
+    } else {
+      vset.insert(folly::sorted_unique, s.begin(), s.end());
+    }
+    check_invariant(vset);
+    EXPECT_THAT(vset, testing::ElementsAreArray({1, 2, 3, 4, 5, 6, 8, 9}));
+  };
+
+  test(false);
+  test(true);
 }
 
 TEST(SortedVectorTypes, TestSetBulkInsertionNoSortNoMerge) {
-  auto s = std::vector<int>({6, 4, 8, 2});
+  auto test = [](bool withSortedUnique) {
+    auto s = std::vector<int>({6, 4, 8, 2});
 
-  sorted_vector_set<int> vset(s.begin(), s.end());
-  check_invariant(vset);
+    sorted_vector_set<int> vset(s.begin(), s.end());
+    check_invariant(vset);
 
-  // Add a sorted range that will not have to be merged in.
-  s = std::vector<int>({21, 22, 23, 24});
+    // Add a sorted range that will not have to be merged in.
+    s = std::vector<int>({21, 22, 23, 24});
 
-  vset.insert(s.begin(), s.end());
-  check_invariant(vset);
-  EXPECT_THAT(vset, testing::ElementsAreArray({2, 4, 6, 8, 21, 22, 23, 24}));
+    if (withSortedUnique) {
+      vset.insert(s.begin(), s.end());
+    } else {
+      vset.insert(folly::sorted_unique, s.begin(), s.end());
+    }
+    check_invariant(vset);
+    EXPECT_THAT(vset, testing::ElementsAreArray({2, 4, 6, 8, 21, 22, 23, 24}));
+  };
+
+  test(false);
+  test(true);
 }
 
 TEST(SortedVectorTypes, TestSetBulkInsertionEmptyRange) {

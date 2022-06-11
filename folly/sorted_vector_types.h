@@ -148,55 +148,13 @@ typename OurContainer::iterator insert_with_hint(
   return sorted.begin() + std::distance(sorted.cbegin(), hint);
 }
 
-template <class OurContainer, class Vector, class InputIterator>
-void bulk_insert(
-    OurContainer& sorted,
-    Vector& cont,
-    InputIterator first,
-    InputIterator last) {
-  // prevent deref of middle where middle == cont.end()
-  if (first == last) {
-    return;
-  }
-
-  auto const prev_size = cont.size();
-  cont.insert(cont.end(), first, last);
-  auto const middle = cont.begin() + prev_size;
-
-  auto const& cmp(sorted.value_comp());
-  if (!std::is_sorted(middle, cont.end(), cmp)) {
-    std::sort(middle, cont.end(), cmp);
-  }
-
-  // We do not need to consider elements strictly smaller than the smallest new
-  // element in merge/unique.
-  auto merge_begin = middle;
-  while (merge_begin != cont.begin() && !cmp(*(merge_begin - 1), *middle)) {
-    --merge_begin;
-  }
-
-  if (merge_begin != middle) {
-    std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
-  }
-  cont.erase(
-      std::unique(
-          merge_begin,
-          cont.end(),
-          [&](typename OurContainer::value_type const& a,
-              typename OurContainer::value_type const& b) {
-            return !cmp(a, b) && !cmp(b, a);
-          }),
-      cont.end());
-}
-
-template <typename Container, typename Compare>
-bool is_sorted_unique(Container const& container, Compare const& comp) {
-  if (container.empty()) {
+template <typename Iterator, typename Compare>
+bool is_sorted_unique(Iterator begin, Iterator end, Compare const& comp) {
+  if (begin == end) {
     return true;
   }
-  auto const e = container.end();
-  for (auto a = container.begin(), b = std::next(a); b != e; ++a, ++b) {
-    if (!comp(*a, *b)) {
+  for (auto next = std::next(begin); next != end; ++begin, ++next) {
+    if (!comp(*begin, *next)) {
       return false;
     }
   }
@@ -216,6 +174,56 @@ Container&& as_sorted_unique(Container&& container, Compare const& comp) {
       container.end());
   return static_cast<Container&&>(container);
 }
+
+template <class OurContainer, class Vector, class InputIterator>
+void bulk_insert(
+    OurContainer& sorted,
+    Vector& cont,
+    InputIterator first,
+    InputIterator last,
+    bool range_is_sorted_unique = false) {
+  // Prevent deref of middle where middle == cont.end().
+  if (first == last) {
+    return;
+  }
+
+  auto const prev_size = cont.size();
+  cont.insert(cont.end(), first, last);
+  auto const middle = cont.begin() + prev_size;
+
+  auto const& cmp(sorted.value_comp());
+  if (range_is_sorted_unique) {
+    assert(is_sorted_unique(middle, cont.end(), cmp));
+  } else if (!std::is_sorted(middle, cont.end(), cmp)) {
+    std::sort(middle, cont.end(), cmp);
+  }
+
+  // We do not need to consider elements strictly smaller than the smallest new
+  // element in merge/unique.
+  auto merge_begin = middle;
+  while (merge_begin != cont.begin() && !cmp(*(merge_begin - 1), *middle)) {
+    --merge_begin;
+  }
+
+  if (merge_begin != middle) {
+    std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
+  } else if (range_is_sorted_unique) {
+    // Old and new elements are already disjoint and unique. This includes the
+    // case when cont is initially empty.
+    return;
+  }
+
+  cont.erase(
+      std::unique(
+          merge_begin,
+          cont.end(),
+          [&](typename OurContainer::value_type const& a,
+              typename OurContainer::value_type const& b) {
+            return !cmp(a, b);
+          }),
+      cont.end());
+}
+
 } // namespace detail
 
 //////////////////////////////////////////////////////////////////////
@@ -361,7 +369,8 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
                                                         const Compare&,
                                                         Container&&>::value)
       : m_(comp, std::move(container)) {
-    assert(detail::is_sorted_unique(m_.cont_, value_comp()));
+    assert(detail::is_sorted_unique(
+        m_.cont_.begin(), m_.cont_.end(), value_comp()));
   }
 
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
@@ -429,6 +438,16 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   template <class InputIterator>
   void insert(InputIterator first, InputIterator last) {
     detail::bulk_insert(*this, m_.cont_, first, last);
+  }
+
+  // If [first, last) is known to be sorted and unique according to the
+  // comparator (for example if the range comes from a sorted container of the
+  // same type) this version can save unnecessary operations, especially if
+  // *this is empty.
+  template <class InputIterator>
+  void insert(sorted_unique_t, InputIterator first, InputIterator last) {
+    detail::bulk_insert(
+        *this, m_.cont_, first, last, /* range_is_sorted_unique */ true);
   }
 
   void insert(std::initializer_list<value_type> ilist) {
@@ -839,8 +858,8 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
                                                         value_compare,
                                                         Container&&>::value)
       : m_(value_compare(comp), std::move(container)) {
-    assert(std::is_sorted(m_.cont_.begin(), m_.cont_.end(), value_comp()));
-    assert(detail::is_sorted_unique(m_.cont_, value_comp()));
+    assert(detail::is_sorted_unique(
+        m_.cont_.begin(), m_.cont_.end(), value_comp()));
   }
 
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
@@ -910,6 +929,16 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   template <class InputIterator>
   void insert(InputIterator first, InputIterator last) {
     detail::bulk_insert(*this, m_.cont_, first, last);
+  }
+
+  // If [first, last) is known to be sorted and unique according to the
+  // comparator (for example if the range comes from a sorted container of the
+  // same type) this version can save unnecessary operations, especially if
+  // *this is empty.
+  template <class InputIterator>
+  void insert(sorted_unique_t, InputIterator first, InputIterator last) {
+    detail::bulk_insert(
+        *this, m_.cont_, first, last, /* range_is_sorted_unique */ true);
   }
 
   void insert(std::initializer_list<value_type> ilist) {
