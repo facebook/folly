@@ -18,26 +18,19 @@
 
 #include <stdexcept>
 
-#include <folly/CppAttributes.h>
-#include <folly/python/error.h>
 #include <folly/python/fiber_manager_api.h>
+#include <folly/python/import.h>
 
 namespace folly {
 namespace python {
-namespace {
 
-void do_import() {
-  if (0 != import_folly__fiber_manager()) {
-    handlePythonError("import_folly__fiber_manager failed: ");
-  }
-}
-
-} // namespace
+FOLLY_CONSTINIT static import_cache import_folly__fiber_manager_{
+    import_folly__fiber_manager, "import_folly__fiber_manager"};
 
 folly::fibers::FiberManager* getFiberManager(
     const folly::fibers::FiberManager::Options& opts) {
   DCHECK(!folly::fibers::onFiber());
-  FOLLY_MAYBE_UNUSED static bool done = (do_import(), false);
+  import_folly__fiber_manager_();
   return get_fiber_manager(opts);
 }
 

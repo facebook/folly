@@ -19,31 +19,21 @@
 #include <stdexcept>
 
 #include <folly/python/executor_api.h> // @manual
+#include <folly/python/import.h>
 
 namespace folly {
 namespace python {
 
-namespace {
-
-void ensure_imported() {
-  static bool imported = false;
-  if (!imported) {
-    if (0 != import_folly__executor()) {
-      throw std::runtime_error("import_folly__executor failed");
-    }
-    imported = true;
-  }
-}
-
-} // namespace
+FOLLY_CONSTINIT static import_cache import_folly__executor_{
+    import_folly__executor, "import_folly__executor"};
 
 folly::Executor* getExecutor() {
-  ensure_imported();
+  import_folly__executor_();
   return get_running_executor(false); // TODO: fried set this to true
 }
 
 int setExecutorForLoop(PyObject* loop, AsyncioExecutor* executor) {
-  ensure_imported();
+  import_folly__executor_();
   return set_executor_for_loop(loop, executor);
 }
 
