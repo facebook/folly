@@ -74,6 +74,8 @@ class NotificationQueueAsyncioExecutor : public AsyncioExecutor {
  public:
   using Func = folly::Func;
 
+  explicit NotificationQueueAsyncioExecutor(PyObject* loop) : loop_{loop} {}
+
   void add(Func func) override { queue_.putMessage(std::move(func)); }
 
   int fileno() const { return consumer_.getFd(); }
@@ -85,6 +87,19 @@ class NotificationQueueAsyncioExecutor : public AsyncioExecutor {
     });
   }
 
+ protected:
+  bool keepAliveAcquire() noexcept override {
+    Py_INCREF(loop_);
+    return AsyncioExecutor::keepAliveAcquire();
+  }
+
+  void keepAliveRelease() noexcept override {
+    AsyncioExecutor::keepAliveRelease();
+    Py_DECREF(loop_);
+  }
+
+ private:
+  PyObject* loop_;
   folly::NotificationQueue<Func> queue_;
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
 }; // NotificationQueueAsyncioExecutor
