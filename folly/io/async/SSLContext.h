@@ -30,6 +30,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/String.h>
+#include <folly/container/Access.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLLockTypes.h>
@@ -200,8 +201,8 @@ class SSLContext {
 
   template <typename Container>
   void setCipherList(const Container& cipherList) {
-    using namespace std;
-    setCipherList(begin(cipherList), end(cipherList));
+    setCipherList(
+        folly::access::begin(cipherList), folly::access::end(cipherList));
   }
 
   template <typename Value>
@@ -227,8 +228,8 @@ class SSLContext {
 
   template <typename Container>
   void setSignatureAlgorithms(const Container& sigalgs) {
-    using namespace std;
-    setSignatureAlgorithms(begin(sigalgs), end(sigalgs));
+    setSignatureAlgorithms(
+        folly::access::begin(sigalgs), folly::access::end(sigalgs));
   }
 
   template <typename Value>
