@@ -461,6 +461,12 @@ template Expected<float, ConversionCode> str_to_floating<float>(
     StringPiece* src) noexcept;
 template Expected<double, ConversionCode> str_to_floating<double>(
     StringPiece* src) noexcept;
+  
+  template Expected<float, ConversionCode> str_to_floating<float>(
+    StringPiece* src) noexcept;
+template Expected<double, ConversionCode> str_to_floating<double>(
+    StringPiece* src) noexcept;
+
 
 /**
  * This class takes care of additional processing needed for signed values,
