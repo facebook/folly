@@ -16,7 +16,6 @@ import asyncio
 
 from folly.executor cimport cAsyncioExecutor, cNotificationQueueAsyncioExecutor
 from libcpp.memory cimport make_unique, unique_ptr
-from cpython.ref cimport PyObject
 from cython.operator cimport dereference as deref
 from weakref import WeakKeyDictionary
 
@@ -29,8 +28,8 @@ cdef class AsyncioExecutor:
 
 
 cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
-    def __cinit__(self, object loop):
-        self.cQ = make_unique[cNotificationQueueAsyncioExecutor](<PyObject*>loop)
+    def __cinit__(self):
+        self.cQ = make_unique[cNotificationQueueAsyncioExecutor]()
         self._executor = self.cQ.get()
 
     def fileno(NotificationQueueAsyncioExecutor self):
@@ -66,7 +65,7 @@ cdef cAsyncioExecutor* get_running_executor(bint running):
     try:
         executor = <AsyncioExecutor>(loop_to_q[loop])
     except KeyError:
-        executor = NotificationQueueAsyncioExecutor(loop)
+        executor = NotificationQueueAsyncioExecutor()
         loop.add_reader(executor.fileno(), executor.drive)
         loop_to_q[loop] = executor
     return executor._executor
