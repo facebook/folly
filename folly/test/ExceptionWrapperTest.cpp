@@ -196,7 +196,7 @@ TEST(ExceptionWrapper, from_exception_ptr_any) {
 
 TEST(ExceptionWrapper, with_exception_ptr_empty) {
   auto ew = exception_wrapper(std::exception_ptr());
-  EXPECT_EQ(exception_wrapper::none(), ew.type());
+  EXPECT_EQ(nullptr, ew.type());
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
@@ -216,7 +216,7 @@ TEST(ExceptionWrapper, with_exception_ptr_empty) {
 TEST(ExceptionWrapper, with_shared_ptr_test) {
   auto ew = exception_wrapper(std::runtime_error("foo"));
   EXPECT_TRUE(bool(ew));
-  EXPECT_EQ(typeid(std::runtime_error), ew.type());
+  EXPECT_EQ(&typeid(std::runtime_error), ew.type());
   EXPECT_NE(nullptr, ew.get_exception());
   EXPECT_NE(nullptr, ew.get_exception<std::exception>());
   EXPECT_STREQ("foo", ew.get_exception<std::exception>()->what());
@@ -235,7 +235,7 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
 
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
-  EXPECT_EQ(exception_wrapper::none(), ew.type());
+  EXPECT_EQ(nullptr, ew.type());
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
@@ -252,7 +252,7 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
   auto ep = std::make_exception_ptr(std::runtime_error("foo"));
   auto ew = exception_wrapper(ep, from_eptr<std::runtime_error>(ep));
   EXPECT_TRUE(bool(ew));
-  EXPECT_EQ(typeid(std::runtime_error), ew.type());
+  EXPECT_EQ(&typeid(std::runtime_error), ew.type());
   EXPECT_NE(nullptr, ew.get_exception());
   EXPECT_NE(nullptr, ew.get_exception<std::exception>());
   EXPECT_STREQ("foo", ew.get_exception<std::exception>()->what());
@@ -269,7 +269,7 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
 
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
-  EXPECT_EQ(exception_wrapper::none(), ew.type());
+  EXPECT_EQ(nullptr, ew.type());
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
@@ -476,7 +476,7 @@ struct DerivedNonStdException : BaseNonStdException {};
 
 TEST(ExceptionWrapper, base_derived_non_std_exception_test) {
   exception_wrapper ew{std::make_exception_ptr(DerivedNonStdException{})};
-  EXPECT_TRUE(ew.type() == typeid(DerivedNonStdException));
+  EXPECT_EQ(ew.type(), &typeid(DerivedNonStdException));
   EXPECT_TRUE(ew.with_exception([](const DerivedNonStdException&) {}));
 }
 

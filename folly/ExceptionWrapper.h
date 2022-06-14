@@ -326,12 +326,12 @@ class exception_wrapper final {
       std::exception_ptr&& eptr) noexcept;
 
   //! Default-constructs an empty `exception_wrapper`
-  //! \post `type() == none()`
+  //! \post `type() == nullptr`
   exception_wrapper() noexcept {}
 
   //! Move-constructs an `exception_wrapper`
   //! \post `*this` contains the value of `that` prior to the move
-  //! \post `that.type() == none()`
+  //! \post `that.type() == nullptr`
   exception_wrapper(exception_wrapper&& that) noexcept;
 
   //! Copy-constructs an `exception_wrapper`
@@ -342,7 +342,7 @@ class exception_wrapper final {
   //! Move-assigns an `exception_wrapper`
   //! \pre `this != &that`
   //! \post `*this` contains the value of `that` prior to the move
-  //! \post `that.type() == none()`
+  //! \post `that.type() == nullptr`
   exception_wrapper& operator=(exception_wrapper&& that) noexcept;
 
   //! Copy-assigns an `exception_wrapper`
@@ -443,20 +443,16 @@ class exception_wrapper final {
   //! \overload
   std::exception_ptr to_exception_ptr() const noexcept;
 
-  //! \return the `typeid` of an unspecified type used by
-  //!     `exception_wrapper::type()` to denote an empty `exception_wrapper`.
-  static std::type_info const& none() noexcept;
-
   //! Returns the `typeid` of the wrapped exception object. If there is no
-  //!     wrapped exception object, returns `exception_wrapper::none()`.
-  std::type_info const& type() const noexcept;
+  //!     wrapped exception object, returns `nullptr`.
+  std::type_info const* type() const noexcept;
 
   //! \return If `get_exception() != nullptr`, `class_name() + ": " +
   //!     get_exception()->what()`; otherwise, `class_name()`.
   folly::fbstring what() const;
 
-  //! \return If `!*this`, the empty string; otherwise,
-  //!     the result of `type().name()` after demangling.
+  //! \return If `!*this`, the empty string; otherwise, if `!type()`, text that
+  //!     is not a class name; otherwise, the demangling of `type()->name()`.
   folly::fbstring class_name() const;
 
   //! \tparam Ex The expression type to check for compatibility with.
