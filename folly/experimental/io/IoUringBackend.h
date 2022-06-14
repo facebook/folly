@@ -632,9 +632,9 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     FOLLY_ALWAYS_INLINE void prepCancel(
-        struct io_uring_sqe* sqe, void* user_data) {
+        struct io_uring_sqe* sqe, IoSqe* cancel_sqe) {
       CHECK(sqe);
-      ::io_uring_prep_cancel(sqe, user_data, 0);
+      ::io_uring_prep_cancel(sqe, reinterpret_cast<uint64_t>(cancel_sqe), 0);
       ::io_uring_sqe_set_data(sqe, this);
     }
   };
