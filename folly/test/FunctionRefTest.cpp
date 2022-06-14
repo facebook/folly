@@ -28,7 +28,9 @@ int func_int_int_add_25(int x) {
 namespace folly {
 
 TEST(FunctionRef, Traits) {
+#if __cplusplus < 201703L
   static_assert(std::is_literal_type<FunctionRef<int(int)>>::value, "");
+#endif
 // Some earlier versions of libstdc++ lack these traits. Frustrating that
 // the value of __GLIBCXX__ doesn't increase with version, but rather reflects
 // release date, so some larger values of __GLIBCXX__ lack the traits while

@@ -50,7 +50,9 @@ using namespace folly;
 using namespace folly::detail;
 using namespace std;
 
+#if __cplusplus < 201703L
 static_assert(std::is_literal_type<StringPiece>::value, "");
+#endif
 
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
 

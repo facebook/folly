@@ -21,6 +21,9 @@
 # variables defined in headers).  In case this causes problems for downstream
 # libraries that aren't using gnu++1z yet, provide an option to let them still
 # override this with gnu++14 if they need to.
+
+include(CheckCXXCompilerFlag)
+
 set(
   CXX_STD "gnu++1z"
   CACHE STRING
@@ -58,3 +61,28 @@ function(apply_folly_compile_options_to_target THETARGET)
       ${FOLLY_CXX_FLAGS}
   )
 endfunction()
+
+function(set_compile_option_for_coroutines compiler_id compiler_option)
+  check_cxx_compiler_flag(${compiler_option} COMPILER_SUPPORTS_COROUTINES)
+  if (COMPILER_SUPPORTS_COROUTINES)
+    message(
+      STATUS
+      "${compiler_id} has support for C++ coroutines, setting flag for Folly build."
+    )
+    add_compile_options(${compiler_option})
+  else()
+    message(
+      STATUS
+      "${compiler_id} does not have support for C++ coroutines, "
+      "disabling Folly coroutine support."
+    )
+  endif()
+endfunction()
+
+if (NOT CMAKE_CXX_STANDARD LESS 20)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set_compile_option_for_coroutines("GNU" -fcoroutines)
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set_compile_option_for_coroutines("Clang" -fcoroutines-ts)
+  endif()
+endif()

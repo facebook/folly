@@ -27,12 +27,11 @@
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/lang/Exception.h>
 
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
-#if defined(__GLIBCXX__)
-
 namespace folly {
 namespace exception_tracer {
+
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF && defined(__GLIBCXX__)
+
 namespace {
 
 std::atomic_bool loggedMessage{false};
@@ -130,9 +129,34 @@ ExceptionInfo getAsyncTrace(const std::exception& ex) {
   return getTraceWithFunc(ex, getAsyncStackTraceItPair);
 }
 
+#else
+
+ExceptionInfo getTrace(const std::exception_ptr&) {
+  return {};
+}
+
+ExceptionInfo getTrace(const exception_wrapper&) {
+  return {};
+}
+
+ExceptionInfo getTrace(const std::exception&) {
+  return {};
+}
+
+ExceptionInfo getAsyncTrace(const std::exception_ptr&) {
+  return {};
+}
+
+ExceptionInfo getAsyncTrace(const std::exception&) {
+  return {};
+}
+
+ExceptionInfo getAsyncTrace(const exception_wrapper&) {
+  return {};
+}
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF && defined(__GLIBCXX__)
+
+
 } // namespace exception_tracer
 } // namespace folly
-
-#endif // defined(__GLIBCXX__)
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
