@@ -9,12 +9,13 @@ libnghttp2
 libnghttp2-dev
 
 [download]
-url = https://github.com/nghttp2/nghttp2/releases/download/v1.39.2/nghttp2-1.39.2.tar.gz
-sha256 = fc820a305e2f410fade1a3260f09229f15c0494fc089b0100312cd64a33a38c0
+url = https://github.com/nghttp2/nghttp2/releases/download/v1.47.0/nghttp2-1.47.0.tar.gz
+sha256 = 62f50f0e9fc479e48b34e1526df8dd2e94136de4c426b7680048181606832b7c
 
 [build]
 builder = autoconf
-subdir = nghttp2-1.39.2
+subdir = nghttp2-1.47.0
 
 [autoconf.args]
 --enable-lib-only
+--disable-dependency-tracking
