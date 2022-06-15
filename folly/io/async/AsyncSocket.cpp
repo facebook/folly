@@ -2394,6 +2394,10 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
     return;
   }
 
+  const auto startRawBytesReceived = getRawBytesReceived();
+  const auto startAppBytesReceived = getAppBytesReceived();
+  const auto startRawBytesWritten = getRawBytesWritten();
+
   if (relevantEvents == EventHandler::READ) {
     handleRead();
   } else if (relevantEvents == EventHandler::WRITE) {
@@ -2417,6 +2421,34 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
     VLOG(4) << "AsyncSocket::ioRead() called with unexpected events "
             << std::hex << events << "(this=" << this << ")";
     abort();
+  }
+
+  // It is possible that there are messages in the error queue yet
+  // `handleErrMessages()` returns without reading them because no error
+  // message callback is set and byte events are disabled. This could happen
+  // when a write is performed to an AsyncSocket with byte events enabled,
+  // triggers timestamps, and the fd is detached from the AsyncSocket and
+  // attached to a new AsyncSocket before the error messages generated for those
+  // timestamps arrive on the error queue. These `orphan` messages in the error
+  // queue will cause us to spin: `ioReady()` will be repeatedly invoked, but
+  // because we are not reading from the socket error queue, the state will
+  // never be cleared.
+  //
+  // To prevent spinning under such circumstances, we
+  // drain the queue of AF_INET sockets if the read or write handlers did not
+  // read or write anything on an invocation of `ioReady()`. We check both raw
+  // and app bytes received because raw bytes received are 0 for AsyncSSLSockets
+  // with no BIO. Because the read or write handlers can modify the event flags,
+  // we check these flags again before draining the error queue. We restrict
+  // the drain to AF_INET sockets as other socket family do not support
+  // MSG_ERRQUEUE (e.g., AF_UNIX) or their support is not well documented
+  if (startRawBytesReceived == getRawBytesReceived() &&
+      startAppBytesReceived == getAppBytesReceived() &&
+      startRawBytesWritten == getRawBytesWritten() &&
+      eventFlags_ != EventHandler::NONE && eventFlags_ == events &&
+      (localAddr_.getFamily() == AF_INET ||
+       localAddr_.getFamily() == AF_INET6)) {
+    drainErrorQueue();
   }
 }
 
@@ -2521,6 +2553,42 @@ void AsyncSocket::prepareReadBuffers(IOBufIovecBuilder::IoVecVec& iovs) {
   // no matter what, buffers should be prepared for non-ssl socket
   CHECK(readCallback_);
   readCallback_->getReadBuffers(iovs);
+}
+
+void AsyncSocket::drainErrorQueue() noexcept {
+  VLOG(5) << "AsyncSocket::drainErrorQueue() this=" << this << ", fd=" << fd_
+          << ", state=" << state_;
+
+  if (errMessageCallback_ != nullptr ||
+      (byteEventHelper_ && byteEventHelper_->byteEventsEnabled)) {
+    VLOG(7) << "AsyncSocket::drainErrorQueue(): "
+            << "err message callback installed or "
+            << "ByteEvents enabled - exiting.";
+    return;
+  }
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  int ret = 0;
+  while (ret >= 0 && fd_ != NetworkSocket()) {
+    uint8_t ctrl[1024];
+    unsigned char data;
+
+    struct iovec entry;
+    entry.iov_base = &data;
+    entry.iov_len = sizeof(data);
+
+    struct msghdr msg;
+    msg.msg_iov = &entry;
+    msg.msg_iovlen = 1;
+    msg.msg_name = nullptr;
+    msg.msg_namelen = 0;
+    msg.msg_control = ctrl;
+    msg.msg_controllen = sizeof(ctrl);
+    msg.msg_flags = 0;
+
+    ret = netops_->recvmsg(fd_, &msg, MSG_ERRQUEUE);
+  }
+#endif
 }
 
 size_t AsyncSocket::handleErrMessages() noexcept {

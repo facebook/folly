@@ -50,6 +50,12 @@ class MockDispatcher : public Dispatcher {
               return Dispatcher::sendmsg(s, message, flags);
             }));
 
+    ON_CALL(*this, recvmsg(testing::_, testing::_, testing::_))
+        .WillByDefault(testing::Invoke(
+            [this](NetworkSocket s, msghdr* message, int flags) {
+              return Dispatcher::recvmsg(s, message, flags);
+            }));
+
     ON_CALL(
         *this,
         setsockopt(testing::_, testing::_, testing::_, testing::_, testing::_))
@@ -79,6 +85,8 @@ class MockDispatcher : public Dispatcher {
       int,
       sendmmsg,
       (NetworkSocket s, mmsghdr* msgvec, unsigned int vlen, int flags));
+
+  MOCK_METHOD(ssize_t, recvmsg, (NetworkSocket s, msghdr* message, int flags));
 
   MOCK_METHOD(
       int,
