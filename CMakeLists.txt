@@ -217,7 +217,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       STATUS
       "GCC has support for C++ coroutines, setting flag for Folly build."
     )
-    add_compile_options(-fcoroutines)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fcoroutines>)
   else()
     message(
       STATUS
