@@ -2719,7 +2719,10 @@ TEST(FiberManager, addTaskEagerNestedFiberManager) {
 
 TEST(FiberManager, swapWithException) {
   folly::EventBase evb;
-  auto& fm = getFiberManager(evb);
+  FiberManager::Options opts;
+  // ASSERT_DEATH takes a lot of stack space
+  opts.stackSize = 65536;
+  auto& fm = getFiberManager(evb, FiberManager::FrozenOptions{opts});
   bool done = false;
 
   fm.addTask([&] {
