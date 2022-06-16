@@ -990,7 +990,11 @@ class OpenSSLBuilder(BuilderBase):
         elif self.build_opts.is_darwin():
             make = "make"
             make_j_args = ["-j%s" % self.num_jobs]
-            args = ["darwin64-x86_64-cc"]
+            args = (
+                ["darwin64-x86_64-cc"]
+                if not self.build_opts.is_arm()
+                else ["darwin64-arm64-cc"]
+            )
         elif self.build_opts.is_linux():
             make = "make"
             make_j_args = ["-j%s" % self.num_jobs]
