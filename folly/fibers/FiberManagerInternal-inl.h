@@ -633,18 +633,7 @@ FiberManager::FiberManager(
     : loopController_(std::move(loopController__)),
       stackAllocator_(options.guardPagesPerStack),
       options_(preprocessOptions(std::move(options))),
-      exceptionCallback_([](std::exception_ptr eptr, std::string context) {
-        try {
-          std::rethrow_exception(eptr);
-        } catch (const std::exception& e) {
-          LOG(DFATAL) << "Exception " << typeid(e).name() << " with message '"
-                      << e.what() << "' was thrown in "
-                      << "FiberManager with context '" << context << "'";
-        } catch (...) {
-          LOG(DFATAL) << "Unknown exception was thrown in FiberManager with "
-                      << "context '" << context << "'";
-        }
-      }),
+      exceptionCallback_(defaultExceptionCallback),
       fibersPoolResizer_(*this),
       localType_(typeid(LocalT)) {
   loopController_->setFiberManager(this);

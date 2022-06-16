@@ -162,7 +162,7 @@ class FiberManager : public ::folly::Executor {
   };
 
   using ExceptionCallback =
-      folly::Function<void(std::exception_ptr, std::string)>;
+      folly::Function<void(const std::exception_ptr&, StringPiece context)>;
 
   FiberManager(const FiberManager&) = delete;
   FiberManager& operator=(const FiberManager&) = delete;
@@ -460,6 +460,9 @@ class FiberManager : public ::folly::Executor {
     std::shared_ptr<RequestContext> rcontext;
     AtomicIntrusiveLinkedListHook<RemoteTask> nextRemoteTask;
   };
+
+  static void defaultExceptionCallback(
+      const std::exception_ptr& eptr, StringPiece context);
 
   template <typename F>
   Fiber* createTask(F&& func, TaskOptions taskOptions);
