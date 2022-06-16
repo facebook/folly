@@ -58,7 +58,8 @@ int locate_py_main(int argc, wchar_t** argv) {
   add_search_path(L"C:\\tools\\fb-python\\fb-python37\\");
   add_search_path(L"C:\\Python38\\");
   add_search_path(L"C:\\tools\\fb-python\\fb-python38\\");
-  add_search_path(L"C:\\tools\\fb-python\\fb-python39\\");
+  // TODO(T123615656): Re-enable Python 3.9 after the fix
+  // add_search_path(L"C:\\tools\\fb-python\\fb-python39\\");
 
   python_dll =
       LoadLibraryExW(L"python3.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
