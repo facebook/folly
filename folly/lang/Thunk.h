@@ -41,8 +41,8 @@ struct thunk {
   }
 
   template <typename T, typename... A>
-  static void ctor(void* const ptr, A... a) {
-    ::new (ptr) T(static_cast<A>(a)...);
+  static void* ctor(void* const ptr, A... a) {
+    return ::new (ptr) T(static_cast<A>(a)...);
   }
   template <typename T>
   static void dtor(void* const ptr) noexcept {

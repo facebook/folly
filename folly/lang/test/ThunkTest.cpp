@@ -50,14 +50,12 @@ TEST_F(ThunkTest, ctor_dtor) {
   aligned_storage_for_t<std::string> buf;
 
   {
-    void* str = &buf;
-    ctor0(str);
+    auto str = ctor0(&buf);
     EXPECT_EQ("", *(std::string*)str);
     dtor(str);
   }
   {
-    void* str = &buf;
-    ctor1(str, "blargh");
+    auto str = ctor1(&buf, "blargh");
     EXPECT_EQ("blargh", *(std::string*)str);
     dtor(str);
   }
