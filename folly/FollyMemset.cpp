@@ -16,9 +16,9 @@
 
 #include <cstring>
 
-#if !defined(__AVX2__)
+#if !defined(__AVX2__) || defined(__aarch64__)
 
-void* __folly_memset(void* dest, int ch, std::size_t count) {
+extern "C" void* __folly_memset(void* dest, int ch, std::size_t count) {
   return std::memset(dest, ch, count);
 }
 
