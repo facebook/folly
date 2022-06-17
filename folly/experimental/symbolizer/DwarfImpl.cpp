@@ -419,10 +419,13 @@ bool DwarfImpl::isAddrInRangeList(
   if (cu.version <= 4 && !cu.debugSections.debugRanges.empty()) {
     const bool is64BitAddr = addrSize == 8;
     folly::StringPiece sp = cu.debugSections.debugRanges;
+    if (offset > sp.size()) {
+      return false;
+    }
     sp.advance(offset);
     const uint64_t maxAddr = is64BitAddr ? std::numeric_limits<uint64_t>::max()
                                          : std::numeric_limits<uint32_t>::max();
-    while (!sp.empty()) {
+    while (sp.size() >= 2 * addrSize) {
       uint64_t begin = readOffset(sp, is64BitAddr);
       uint64_t end = readOffset(sp, is64BitAddr);
       // The range list entry is a base address selection entry.

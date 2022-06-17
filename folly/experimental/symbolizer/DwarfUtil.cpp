@@ -194,7 +194,7 @@ bool findCompiliationOffset(
   // DWARFv5 not supported yet, see Section 7.3.5.3.
   read<uint32_t>(debugCuIndex);
   auto numColumns = read<uint32_t>(debugCuIndex);
-  auto numUnits = read<uint32_t>(debugCuIndex);
+  read<uint32_t>(debugCuIndex);
   auto numBuckets = read<uint32_t>(debugCuIndex);
 
   // Get index of the CU matches the given dwo id.
@@ -202,7 +202,7 @@ bool findCompiliationOffset(
   folly::StringPiece indexesSection = debugCuIndex;
   indexesSection.advance(numBuckets * sizeof(uint64_t));
   ssize_t idx = -1;
-  for (unsigned i = 0; i < numUnits; i++) {
+  for (unsigned i = 0; i < numBuckets; i++) {
     uint64_t hash = read<uint64_t>(signatureSection);
     uint32_t index = read<uint32_t>(indexesSection);
     if (hash == dwoId) {
