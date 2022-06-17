@@ -264,6 +264,23 @@ void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
   eagerInitSingletons->insert(entry);
 }
 
+void SingletonVault::addEagerInitOnReenableSingleton(
+    detail::SingletonHolderBase* entry) {
+  auto state = state_.rlock();
+  state->check(detail::SingletonVaultState::Type::Running);
+
+  if (UNLIKELY(state->registrationComplete) &&
+      type_.load(std::memory_order_relaxed) == Type::Strict) {
+    LOG(ERROR)
+        << "Registering for eager-load on re-enable after registrationComplete().";
+  }
+
+  CHECK_THROW(singletons_.rlock()->count(entry->type()), std::logic_error);
+
+  auto eagerInitOnReenableSingletons = eagerInitOnReenableSingletons_.wlock();
+  eagerInitOnReenableSingletons->insert(entry);
+}
+
 void SingletonVault::registrationComplete() {
   std::atexit([]() { SingletonVault::singleton()->destroyInstances(); });
 
@@ -385,11 +402,22 @@ void SingletonVault::destroyInstances() {
 }
 
 void SingletonVault::reenableInstances() {
-  auto state = state_.wlock();
+  {
+    auto state = state_.wlock();
 
-  state->check(detail::SingletonVaultState::Type::Quiescing);
+    state->check(detail::SingletonVaultState::Type::Quiescing);
 
-  state->state = detail::SingletonVaultState::Type::Running;
+    state->state = detail::SingletonVaultState::Type::Running;
+  }
+
+  auto eagerInitOnReenableSingletons = eagerInitOnReenableSingletons_.copy();
+  auto instantiatedAtLeastOnce = instantiatedAtLeastOnce_.copy();
+  for (auto* single : eagerInitOnReenableSingletons) {
+    if (!instantiatedAtLeastOnce.count(single->type())) {
+      continue;
+    }
+    single->createInstance();
+  }
 }
 
 void SingletonVault::scheduleDestroyInstances() {

@@ -324,6 +324,7 @@ void SingletonHolder<T>::createInstance() {
   state_.store(SingletonHolderState::Living, std::memory_order_release);
 
   vault_.creationOrder_.wlock()->push_back(type());
+  vault_.instantiatedAtLeastOnce_.wlock()->insert(type());
 }
 
 } // namespace detail

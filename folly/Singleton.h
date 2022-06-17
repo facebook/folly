@@ -437,6 +437,8 @@ class SingletonVault {
    */
   void addEagerInitSingleton(detail::SingletonHolderBase* entry);
 
+  void addEagerInitOnReenableSingleton(detail::SingletonHolderBase* entry);
+
   // Mark registration is complete; no more singletons can be
   // registered at this point.
   void registrationComplete();
@@ -562,8 +564,16 @@ class SingletonVault {
       std::unordered_set<detail::SingletonHolderBase*>,
       SharedMutexSuppressTSAN>
       eagerInitSingletons_;
+  Synchronized<
+      std::unordered_set<detail::SingletonHolderBase*>,
+      SharedMutexSuppressTSAN>
+      eagerInitOnReenableSingletons_;
   Synchronized<std::vector<detail::TypeDescriptor>, SharedMutexSuppressTSAN>
       creationOrder_;
+  Synchronized<
+      std::unordered_set<detail::TypeDescriptor, detail::TypeDescriptorHasher>,
+      SharedMutexSuppressTSAN>
+      instantiatedAtLeastOnce_;
   std::unordered_set<detail::SingletonHolderBase*> liveSingletonsPreFork_;
 
   // Using SharedMutexReadPriority is important here, because we want to make
@@ -665,7 +675,7 @@ class Singleton {
    * are built up-front.
    *
    * Use like:
-   *   Singleton<Foo> gFooInstance = Singleton<Foo>(...).shouldEagerInit();
+   *   auto gFooInstance = Singleton<Foo>(...).shouldEagerInit();
    *
    * Or alternately, define the singleton as usual, and say
    *   gFooInstance.shouldEagerInit();
@@ -676,6 +686,20 @@ class Singleton {
   Singleton& shouldEagerInit() {
     auto vault = SingletonVault::singleton<VaultTag>();
     vault->addEagerInitSingleton(&getEntry());
+    return *this;
+  }
+
+  /**
+   * Should be re-instantiated as soon as reenableInstances() is called.
+   * Note that it will be re-instantiated only if it was instantiated before
+   * destroyInstances() call.
+   *
+   * Use like:
+   *   auto gFooInstance = Singleton<Foo>(...).shouldEagerInitOnReenable();
+   */
+  Singleton& shouldEagerInitOnReenable() {
+    auto vault = SingletonVault::singleton<VaultTag>();
+    vault->addEagerInitOnReenableSingleton(&getEntry());
     return *this;
   }
 

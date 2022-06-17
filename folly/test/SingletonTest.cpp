@@ -1092,3 +1092,66 @@ TEST(Singleton, ForkInChild) {
       [&]() { vault.destroyInstances(); }(),
       "Attempting to destroy singleton .*ForkObject.* in child process");
 }
+
+struct EagerInitOnReenableSingletonsTag {};
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonEagerInitOnReenableSingletons =
+    Singleton<T, Tag, EagerInitOnReenableSingletonsTag>;
+
+TEST(Singleton, EagerInitOnReenableSingletons) {
+  struct CountingSingleton {
+    explicit CountingSingleton(int& counter) { ++counter; }
+  };
+
+  int counter1{0};
+  int counter2{0};
+  struct Tag1 {};
+  struct Tag2 {};
+
+  auto& vault = *SingletonVault::singleton<EagerInitOnReenableSingletonsTag>();
+  auto singleton1 =
+      SingletonEagerInitOnReenableSingletons<CountingSingleton, Tag1>([&] {
+        return new CountingSingleton(counter1);
+      }).shouldEagerInitOnReenable();
+  auto singleton2 =
+      SingletonEagerInitOnReenableSingletons<CountingSingleton, Tag2>([&] {
+        return new CountingSingleton(counter2);
+      }).shouldEagerInitOnReenable();
+  vault.registrationComplete();
+
+  EXPECT_EQ(0, counter1);
+  EXPECT_EQ(0, counter2);
+
+  singleton1.try_get();
+
+  EXPECT_EQ(1, counter1);
+  EXPECT_EQ(0, counter2);
+
+  vault.destroyInstances();
+  vault.reenableInstances();
+
+  EXPECT_EQ(2, counter1);
+  EXPECT_EQ(0, counter2);
+
+  singleton1.try_get();
+
+  EXPECT_EQ(2, counter1);
+  EXPECT_EQ(0, counter2);
+
+  vault.destroyInstances();
+  vault.reenableInstances();
+
+  EXPECT_EQ(3, counter1);
+  EXPECT_EQ(0, counter2);
+
+  singleton2.try_get();
+
+  EXPECT_EQ(3, counter1);
+  EXPECT_EQ(1, counter2);
+
+  vault.destroyInstances();
+  vault.reenableInstances();
+
+  EXPECT_EQ(4, counter1);
+  EXPECT_EQ(2, counter2);
+}
