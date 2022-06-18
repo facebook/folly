@@ -33,6 +33,10 @@ inline std::uint64_t hardware_timestamp() {
   return __rdtsc();
 #elif defined(__GNUC__) && (defined(__i386__) || FOLLY_X64)
   return __builtin_ia32_rdtsc();
+#elif defined(__aarch64__)
+  uint64_t cval;
+  asm volatile("mrs %0, cntvct_el0" : "=r"(cval));
+  return cval;
 #else
   // use steady_clock::now() as an approximation for the timestamp counter on
   // non-x86 systems

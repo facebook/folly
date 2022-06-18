@@ -184,6 +184,7 @@ THOUGHTS:
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/chrono/Hardware.h>
 #include <folly/lang/Pretty.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
@@ -836,19 +837,7 @@ struct special_move_assignable<Data<f, pad>>
 // Timing
 
 uint64_t ReadTSC() {
-#ifdef _MSC_VER
-  return __rdtsc();
-#else
-  unsigned reslo, reshi;
-
-  __asm__ __volatile__("xorl %%eax,%%eax \n cpuid \n" ::
-                           : "%eax", "%ebx", "%ecx", "%edx");
-  __asm__ __volatile__("rdtsc\n" : "=a"(reslo), "=d"(reshi));
-  __asm__ __volatile__("xorl %%eax,%%eax \n cpuid \n" ::
-                           : "%eax", "%ebx", "%ecx", "%edx");
-
-  return ((uint64_t)reshi << 32) | reslo;
-#endif
+  return hardware_timestamp();
 }
 
 //-----------------------------------------------------------------------------
