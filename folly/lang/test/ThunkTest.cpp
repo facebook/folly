@@ -29,6 +29,8 @@ class ThunkTest : public testing::Test {};
 TEST_F(ThunkTest, make_ruin) {
   auto make0 = thunk::make<std::string>;
   auto make1 = thunk::make<std::string, std::string_view>;
+  auto makeC = thunk::make_copy<std::string>;
+  auto makeM = thunk::make_move<std::string>;
   auto ruin = thunk::ruin<std::string>;
 
   {
@@ -41,11 +43,27 @@ TEST_F(ThunkTest, make_ruin) {
     EXPECT_EQ("blargh", *(std::string*)str);
     ruin(str);
   }
+  {
+    std::string const src{"blargh"};
+    auto str = makeC((void const*)&src);
+    EXPECT_EQ("blargh", *(std::string*)str);
+    ruin(str);
+    EXPECT_EQ("blargh", src);
+  }
+  {
+    std::string src{"blargh blargh blargh blargh"};
+    auto str = makeM((void*)&src);
+    EXPECT_EQ("blargh blargh blargh blargh", *(std::string*)str);
+    ruin(str);
+    EXPECT_EQ("", src);
+  }
 }
 
 TEST_F(ThunkTest, ctor_dtor) {
   auto ctor0 = thunk::ctor<std::string>;
   auto ctor1 = thunk::ctor<std::string, std::string_view>;
+  auto ctorC = thunk::ctor_copy<std::string>;
+  auto ctorM = thunk::ctor_move<std::string>;
   auto dtor = thunk::dtor<std::string>;
   aligned_storage_for_t<std::string> buf;
 
@@ -58,6 +76,20 @@ TEST_F(ThunkTest, ctor_dtor) {
     auto str = ctor1(&buf, "blargh");
     EXPECT_EQ("blargh", *(std::string*)str);
     dtor(str);
+  }
+  {
+    std::string const src{"blargh"};
+    auto str = ctorC(&buf, (void const*)&src);
+    EXPECT_EQ("blargh", *(std::string*)str);
+    dtor(str);
+    EXPECT_EQ("blargh", src);
+  }
+  {
+    std::string src{"blargh blargh blargh blargh"};
+    auto str = ctorM(&buf, (void*)&src);
+    EXPECT_EQ("blargh blargh blargh blargh", *(std::string*)str);
+    dtor(str);
+    EXPECT_EQ("", src);
   }
 }
 
