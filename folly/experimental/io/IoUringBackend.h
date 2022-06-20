@@ -309,6 +309,23 @@ class IoUringBackend : public EventBaseBackendBase {
     std::array<int, 2> fds_{{-1, -1}};
   };
 
+  struct UserData {
+    uint64_t value;
+    explicit UserData(uint64_t i) noexcept : value{i} {}
+    template <
+        typename T = int,
+        std::enable_if_t<sizeof(void*) == sizeof(uint64_t), T> = 0>
+    explicit UserData(void* p) noexcept
+        : value{reinterpret_cast<uintptr_t>(p)} {}
+    /* implicit */ operator uint64_t() const noexcept { return value; }
+    template <
+        typename T = int,
+        std::enable_if_t<sizeof(void*) == sizeof(uint64_t), T> = 0>
+    /* implicit */ operator void*() const noexcept {
+      return reinterpret_cast<void*>(value);
+    }
+  };
+
   static uint32_t getPollFlags(short events) {
     uint32_t ret = 0;
     if (events & EV_READ) {
@@ -634,7 +651,7 @@ class IoUringBackend : public EventBaseBackendBase {
     FOLLY_ALWAYS_INLINE void prepCancel(
         struct io_uring_sqe* sqe, IoSqe* cancel_sqe) {
       CHECK(sqe);
-      ::io_uring_prep_cancel(sqe, reinterpret_cast<uint64_t>(cancel_sqe), 0);
+      ::io_uring_prep_cancel(sqe, UserData{cancel_sqe}, 0);
       ::io_uring_sqe_set_data(sqe, this);
     }
   };
