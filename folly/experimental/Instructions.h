@@ -187,6 +187,7 @@ auto dispatch(Type type, F&& f) -> decltype(f(std::declval<Default>())) {
       return f(Default());
   }
 #else
+  (void)type;
   return f(Default());
 #endif
 
