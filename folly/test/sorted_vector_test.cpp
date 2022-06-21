@@ -641,6 +641,19 @@ TEST(SortedVectorTypes, EraseTest2) {
   EXPECT_EQ(m.size(), 5);
 }
 
+TEST(SortedVectorTypes, EraseIfTest) {
+  sorted_vector_set<int> s1{1, 2, 3, 4, 5, 6, 7, 8, 9};
+  EXPECT_EQ(erase_if(s1, [](int i) { return i % 3 == 0; }), 3);
+  EXPECT_EQ(s1, sorted_vector_set<int>({1, 2, 4, 5, 7, 8}));
+
+  sorted_vector_map<int, int> m1{{1, 10}, {2, 20}, {3, 30}, {4, 44}};
+  EXPECT_EQ(
+      erase_if(m1, [](const auto& kv) { return kv.second == 10 * kv.first; }),
+      3);
+  EXPECT_EQ(m1.size(), 1);
+  EXPECT_EQ(*m1.begin(), std::make_pair(4, 44));
+}
+
 TEST(SortedVectorTypes, TestSetBulkInsertionSortMerge) {
   auto s = std::vector<int>({6, 4, 8, 2});
 

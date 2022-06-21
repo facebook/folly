@@ -513,6 +513,14 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return m_.cont_.erase(first, last);
   }
 
+  template <class Predicate>
+  friend size_type erase_if(sorted_vector_set& container, Predicate predicate) {
+    auto& c = container.m_.cont_;
+    const auto preEraseSize = c.size();
+    c.erase(std::remove_if(c.begin(), c.end(), std::ref(predicate)), c.end());
+    return preEraseSize - c.size();
+  }
+
   iterator find(const key_type& key) { return find_(*this, key); }
 
   const_iterator find(const key_type& key) const { return find_(*this, key); }
@@ -1002,6 +1010,14 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 
   iterator erase(const_iterator first, const_iterator last) {
     return m_.cont_.erase(first, last);
+  }
+
+  template <class Predicate>
+  friend size_type erase_if(sorted_vector_map& container, Predicate predicate) {
+    auto& c = container.m_.cont_;
+    const auto preEraseSize = c.size();
+    c.erase(std::remove_if(c.begin(), c.end(), std::ref(predicate)), c.end());
+    return preEraseSize - c.size();
   }
 
   iterator find(const key_type& key) { return find_(*this, key); }
