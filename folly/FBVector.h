@@ -1691,6 +1691,6 @@ void erase(fbvector<T, A>& v, U value) {
 
 template <class T, class A, class Predicate>
 void erase_if(fbvector<T, A>& v, Predicate predicate) {
-  v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
+  v.erase(std::remove_if(v.begin(), v.end(), std::ref(predicate)), v.end());
 }
 } // namespace folly

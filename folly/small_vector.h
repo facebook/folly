@@ -1418,7 +1418,7 @@ template <
     class C,
     class Predicate>
 void erase_if(small_vector<T, MaxInline, A, B, C>& v, Predicate predicate) {
-  v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
+  v.erase(std::remove_if(v.begin(), v.end(), std::ref(predicate)), v.end());
 }
 
 //////////////////////////////////////////////////////////////////////
