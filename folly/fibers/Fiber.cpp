@@ -231,18 +231,12 @@ Fiber::LocalData& Fiber::LocalData::operator=(const LocalData& other) {
     return *this;
   }
 
-  dataSize_ = other.dataSize_;
-  dataType_ = other.dataType_;
-  dataDestructor_ = other.dataDestructor_;
-  dataCopyConstructor_ = other.dataCopyConstructor_;
-
-  if (dataSize_ <= kBufferSize) {
-    data_ = &buffer_;
+  vtable_ = other.vtable_;
+  if (other.data_ == &other.buffer_) {
+    data_ = vtable_.ctor_copy(&buffer_, other.data_);
   } else {
-    data_ = allocateHeapBuffer(dataSize_);
+    data_ = vtable_.make_copy(other.data_);
   }
-
-  dataCopyConstructor_(data_, other.data_);
 
   return *this;
 }
@@ -252,16 +246,14 @@ void Fiber::LocalData::reset() {
     return;
   }
 
-  dataDestructor_(data_);
+  if (data_ == &buffer_) {
+    vtable_.dtor(data_);
+  } else {
+    vtable_.ruin(data_);
+  }
+  vtable_ = {};
   data_ = nullptr;
 }
 
-void* Fiber::LocalData::allocateHeapBuffer(size_t size) {
-  return new char[size];
-}
-
-void Fiber::LocalData::freeHeapBuffer(void* buffer) {
-  delete[] reinterpret_cast<char*>(buffer);
-}
 } // namespace fibers
 } // namespace folly

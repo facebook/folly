@@ -44,36 +44,17 @@ inline void* Fiber::getUserBuffer() {
 
 template <typename T>
 T& Fiber::LocalData::getSlow() {
-  dataSize_ = sizeof(T);
-  dataType_ = &typeid(T);
-  if (sizeof(T) <= kBufferSize) {
-    dataDestructor_ = dataBufferDestructor<T>;
-    data_ = &buffer_;
+  vtable_ = VTable::get<T>();
+  T* data = nullptr;
+  if FOLLY_CXX17_CONSTEXPR (
+      sizeof(T) <= sizeof(Buffer) && alignof(T) <= alignof(Buffer)) {
+    data = new (&buffer_) T();
   } else {
-    dataDestructor_ = dataHeapDestructor<T>;
-    data_ = allocateHeapBuffer(dataSize_);
+    data = new T();
   }
-  dataCopyConstructor_ = dataCopyConstructor<T>;
-
-  new (reinterpret_cast<T*>(data_)) T();
-
-  return *reinterpret_cast<T*>(data_);
+  data_ = data;
+  return *data;
 }
 
-template <typename T>
-void Fiber::LocalData::dataCopyConstructor(void* ptr, const void* other) {
-  new (reinterpret_cast<T*>(ptr)) T(*reinterpret_cast<const T*>(other));
-}
-
-template <typename T>
-void Fiber::LocalData::dataBufferDestructor(void* ptr) {
-  reinterpret_cast<T*>(ptr)->~T();
-}
-
-template <typename T>
-void Fiber::LocalData::dataHeapDestructor(void* ptr) {
-  reinterpret_cast<T*>(ptr)->~T();
-  freeHeapBuffer(ptr);
-}
 } // namespace fibers
 } // namespace folly

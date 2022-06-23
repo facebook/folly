@@ -27,6 +27,7 @@
 #include <folly/Portability.h>
 #include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/io/async/Request.h>
+#include <folly/lang/Thunk.h>
 
 // include after CPortability.h defines this
 #ifdef FOLLY_SANITIZE_THREAD
@@ -162,7 +163,7 @@ class Fiber {
     template <typename T>
     T& get() {
       if (data_) {
-        assert(*dataType_ == typeid(T));
+        assert(*vtable_.type == typeid(T));
         return *reinterpret_cast<T*>(data_);
       }
       return getSlow<T>();
@@ -174,23 +175,31 @@ class Fiber {
     template <typename T>
     FOLLY_NOINLINE T& getSlow();
 
-    static void* allocateHeapBuffer(size_t size);
-    static void freeHeapBuffer(void* buffer);
-
-    template <typename T>
-    static void dataCopyConstructor(void*, const void*);
-    template <typename T>
-    static void dataBufferDestructor(void*);
-    template <typename T>
-    static void dataHeapDestructor(void*);
-
     static constexpr size_t kBufferSize = 128;
-    std::aligned_storage<kBufferSize>::type buffer_;
-    size_t dataSize_;
+    using Buffer = std::aligned_storage<kBufferSize, cacheline_align_v>::type;
+    struct VTable {
+      std::type_info const* type;
+      // on-heap
+      void* (*make_copy)(void const*);
+      void (*ruin)(void*);
+      // in-situ
+      void* (*ctor_copy)(void*, void const*);
+      void (*dtor)(void*);
 
-    const std::type_info* dataType_;
-    void (*dataDestructor_)(void*);
-    void (*dataCopyConstructor_)(void*, const void*);
+      template <typename T>
+      static constexpr VTable get() noexcept {
+        using t = folly::detail::thunk;
+        return {
+            &typeid(T),
+            t::make_copy<T>,
+            t::ruin<T>,
+            t::ctor_copy<T>,
+            t::dtor<T>};
+      }
+    };
+
+    Buffer buffer_;
+    VTable vtable_{};
     void* data_{nullptr};
   };
 
