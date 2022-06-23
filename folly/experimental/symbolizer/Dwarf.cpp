@@ -36,6 +36,7 @@ Dwarf::Dwarf(ElfCacheBase* elfCache, const ElfFile* elf)
     : elfCache_(elfCache),
       defaultDebugSections_{
           .elf = elf,
+          .debugCuIndex = getElfSection(elf, ".debug_cu_index"),
           .debugAbbrev = getElfSection(elf, ".debug_abbrev"),
           .debugAddr = getElfSection(elf, ".debug_addr"),
           .debugAranges = getElfSection(elf, ".debug_aranges"),
