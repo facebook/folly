@@ -36,7 +36,7 @@
 using folly::small_vector;
 using namespace folly::small_vector_policy;
 
-#if FOLLY_X64 || FOLLY_PPC64
+#if FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64
 
 // Fast access. Heap only small vector
 static_assert(
