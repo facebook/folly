@@ -65,9 +65,15 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
       recvmmsg,
       (struct mmsghdr*, unsigned int, unsigned int, struct timespec*));
   MOCK_METHOD(void, setCmsgs, (const SocketOptionMap&));
+  MOCK_METHOD(void, setNontrivialCmsgs, (const SocketNontrivialOptionMap&));
   MOCK_METHOD(void, appendCmsgs, (const SocketOptionMap&));
+  MOCK_METHOD(void, appendNontrivialCmsgs, (const SocketNontrivialOptionMap&));
   MOCK_METHOD(
       void, applyOptions, (const SocketOptionMap&, SocketOptionKey::ApplyPos));
+  MOCK_METHOD(
+      void,
+      applyNontrivialOptions,
+      (const SocketNontrivialOptionMap&, SocketOptionKey::ApplyPos));
 };
 
 } // namespace test
