@@ -16,15 +16,18 @@
 
 #pragma once
 
+#include <atomic>
 #include <exception>
 #include <type_traits>
 #include <utility>
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/lang/SafeAssert.h>
 #include <folly/lang/TypeInfo.h>
 
 namespace folly {
@@ -302,11 +305,76 @@ catch_exception(Try&& t, Catch&& c, CatchA&&... a) noexcept(
 #endif
 }
 
+namespace detail {
+#if FOLLY_APPLE_IOS
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_12_0
+FOLLY_INLINE_VARIABLE constexpr bool exception_ptr_access_ct = false;
+#else
+FOLLY_INLINE_VARIABLE constexpr bool exception_ptr_access_ct = true;
+#endif
+#else
+FOLLY_INLINE_VARIABLE constexpr bool exception_ptr_access_ct = true;
+#endif
+
+// 0 unknown, 1 true, -1 false
+extern std::atomic<int> exception_ptr_access_rt_cache_;
+
+FOLLY_COLD bool exception_ptr_access_rt_v_() noexcept;
+FOLLY_COLD bool exception_ptr_access_rt_() noexcept;
+
+FOLLY_EXPORT inline bool exception_ptr_access_rt() noexcept {
+  auto const& cache = exception_ptr_access_rt_cache_;
+  auto const value = cache.load(std::memory_order_relaxed);
+  return FOLLY_LIKELY(value) ? value > 0 : exception_ptr_access_rt_();
+}
+
+template <typename T, typename Catch>
+auto exception_ptr_catching(std::exception_ptr const& ptr, Catch catch_) {
+  auto const try_ = [&] {
+    return ptr ? (std::rethrow_exception(ptr), nullptr) : nullptr;
+  };
+  return catch_exception(
+      [&] { return catch_exception<T>(try_, catch_); },
+      +[] { return nullptr; });
+}
+
+std::type_info const* exception_ptr_exception_typeid(
+    std::exception const&) noexcept;
+
+std::type_info const* exception_ptr_get_type_(
+    std::exception_ptr const& ptr) noexcept;
+
+void* exception_ptr_get_object_(
+    std::exception_ptr const&, std::type_info const*) noexcept;
+
+} // namespace detail
+
+//  exception_ptr_access
+//
+//  Whether exception_ptr_get_type and template exception_ptr_get_object always
+//  return the type or object or only do so when the stored object is of some
+//  concrete type inheriting std::exception, and whether the non non-template
+//  overloads of exception_ptr_get_object works at all.
+//
+//  Non-authoritative. For some known platforms, inspection of exception-ptr
+//  objects fails. This is likely to do with mismatch between the application
+//  ABI and the system-provided libstdc++/libc++/cxxabi ABI. May falsely return
+//  true on other platforms.
+[[FOLLY_ATTR_PURE]] inline bool exception_ptr_access() noexcept {
+  return detail::exception_ptr_access_ct || detail::exception_ptr_access_rt();
+}
+
 //  exception_ptr_get_type
 //
 //  Returns the true runtime type info of the exception as stored.
-std::type_info const* exception_ptr_get_type(
-    std::exception_ptr const&) noexcept;
+inline std::type_info const* exception_ptr_get_type(
+    std::exception_ptr const& ptr) noexcept {
+  if (!exception_ptr_access()) {
+    return detail::exception_ptr_catching<std::exception&>(
+        ptr, detail::exception_ptr_exception_typeid);
+  }
+  return detail::exception_ptr_get_type_(ptr);
+}
 
 //  exception_ptr_get_object
 //
@@ -318,8 +386,12 @@ std::type_info const* exception_ptr_get_type(
 //  on some platforms caught exceptions may be copied from the stored exception.
 //  The address is only the address of the object as stored, not as thrown and
 //  not as caught.
-void* exception_ptr_get_object(
-    std::exception_ptr const&, std::type_info const*) noexcept;
+inline void* exception_ptr_get_object(
+    std::exception_ptr const& ptr,
+    std::type_info const* const target) noexcept {
+  FOLLY_SAFE_CHECK(exception_ptr_access());
+  return detail::exception_ptr_get_object_(ptr, target);
+}
 
 //  exception_ptr_get_object
 //
@@ -336,6 +408,10 @@ inline void* exception_ptr_get_object( //
 template <typename T>
 T* exception_ptr_get_object(std::exception_ptr const& ptr) noexcept {
   static_assert(!std::is_reference<T>::value, "is a reference");
+  if (!exception_ptr_access()) {
+    return detail::exception_ptr_catching<T&>(
+        ptr, +[](T& ex) { return std::addressof(ex); });
+  }
   auto target = type_info_of<T>();
   auto object = !target ? nullptr : exception_ptr_get_object(ptr, target);
   return static_cast<T*>(object);

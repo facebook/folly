@@ -175,14 +175,35 @@ void* __GetExceptionInfo(_E); // builtin
 
 namespace folly {
 
+namespace detail {
+
+std::atomic<int> exception_ptr_access_rt_cache_{0};
+
+bool exception_ptr_access_rt_() noexcept {
+  auto& cache = exception_ptr_access_rt_cache_;
+  auto const result = exception_ptr_access_rt_v_();
+  cache.store(result ? 1 : -1, std::memory_order_relaxed);
+  return result;
+}
+
+std::type_info const* exception_ptr_exception_typeid(
+    std::exception const& ex) noexcept {
+  return type_info_of(ex);
+}
+
 #if defined(__GLIBCXX__)
 
-std::type_info const* exception_ptr_get_type(
+bool exception_ptr_access_rt_v_() noexcept {
+  static_assert(exception_ptr_access_ct, "mismatch");
+  return true;
+}
+
+std::type_info const* exception_ptr_get_type_(
     std::exception_ptr const& ptr) noexcept {
   return !ptr ? nullptr : ptr.__cxa_exception_type();
 }
 
-void* exception_ptr_get_object(
+void* exception_ptr_get_object_(
     std::exception_ptr const& ptr,
     std::type_info const* const target) noexcept {
   if (!ptr) {
@@ -196,6 +217,18 @@ void* exception_ptr_get_object(
 #endif // defined(__GLIBCXX__)
 
 #if defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
+
+bool exception_ptr_access_rt_v_() noexcept {
+  static_assert(exception_ptr_access_ct || kIsAppleIOS, "mismatch");
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wunsupported-availability-guard")
+  return exception_ptr_access_ct //
+#if __clang__
+      || __builtin_available(iOS 12, *)
+#endif
+      ;
+  FOLLY_POP_WARNING
+}
 
 static void* cxxabi_get_object(std::exception_ptr const& ptr) noexcept {
   return reinterpret_cast<void* const&>(ptr);
@@ -259,7 +292,7 @@ static decltype(auto) cxxabi_with_cxa_exception(void* object, F f) {
   }
 }
 
-std::type_info const* exception_ptr_get_type(
+std::type_info const* exception_ptr_get_type_(
     std::exception_ptr const& ptr) noexcept {
   if (!ptr) {
     return nullptr;
@@ -270,7 +303,7 @@ std::type_info const* exception_ptr_get_type(
   });
 }
 
-void* exception_ptr_get_object(
+void* exception_ptr_get_object_(
     std::exception_ptr const& ptr,
     std::type_info const* const target) noexcept {
   if (!ptr) {
@@ -286,7 +319,12 @@ void* exception_ptr_get_object(
 
 #if defined(__FreeBSD__)
 
-std::type_info const* exception_ptr_get_type(
+bool exception_ptr_access_rt_v_() noexcept {
+  static_assert(exception_ptr_access_ct, "mismatch");
+  return true;
+}
+
+std::type_info const* exception_ptr_get_type_(
     std::exception_ptr const& ptr) noexcept {
   if (!ptr) {
     return nullptr;
@@ -296,7 +334,7 @@ std::type_info const* exception_ptr_get_type(
   return exception->exceptionType;
 }
 
-void* exception_ptr_get_object(
+void* exception_ptr_get_object_(
     std::exception_ptr const& ptr,
     std::type_info const* const target) noexcept {
   if (!ptr) {
@@ -370,7 +408,12 @@ static std::uintptr_t win32_throw_image_base(EHExceptionRecord* rec) {
 #endif
 }
 
-std::type_info const* exception_ptr_get_type(
+bool exception_ptr_access_rt_v_() noexcept {
+  static_assert(exception_ptr_access_ct, "mismatch");
+  return true;
+}
+
+std::type_info const* exception_ptr_get_type_(
     std::exception_ptr const& ptr) noexcept {
   auto rec = win32_get_record(ptr);
   if (!rec) {
@@ -388,7 +431,7 @@ std::type_info const* exception_ptr_get_type(
   return reinterpret_cast<std::type_info*>(td);
 }
 
-void* exception_ptr_get_object(
+void* exception_ptr_get_object_(
     std::exception_ptr const& ptr,
     std::type_info const* const target) noexcept {
   auto rec = win32_get_record(ptr);
@@ -416,6 +459,8 @@ void* exception_ptr_get_object(
 }
 
 #endif // defined(_WIN32)
+
+} // namespace detail
 
 struct exception_shared_string::state {
   // refcount ops use relaxed order since the string is immutable: side-effects
