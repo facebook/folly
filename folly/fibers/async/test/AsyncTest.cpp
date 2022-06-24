@@ -312,7 +312,7 @@ TEST(AsyncTest, collect) {
   };
   async::executeOnFiberAndWait([&]() -> async::Async<void> {
     {
-      std::array<bool, 3> cs{false, false, false};
+      std::array<bool, 3> cs{{false, false, false}};
       std::vector<folly::Function<async::Async<void>()>> tasks;
       tasks.emplace_back(makeVoidTask(cs[0]));
       tasks.emplace_back(makeVoidTask(cs[1]));
@@ -330,7 +330,7 @@ TEST(AsyncTest, collect) {
     }
 
     {
-      std::array<bool, 3> cs{false, false, false};
+      std::array<bool, 3> cs{{false, false, false}};
       async::await(async::collectAll(
           makeVoidTask(cs[0]), makeVoidTask(cs[1]), makeVoidTask(cs[2])));
       EXPECT_THAT(cs, ElementsAre(true, true, true));
