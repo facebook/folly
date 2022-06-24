@@ -7749,7 +7749,7 @@ TEST(AsyncSocket, LifecycleCtorCallback) {
       std::make_shared<NiceMock<MockAsyncSocketLifecycleObserver>>();
   auto lifecycleRawPtr = lifecycleCB.get();
   // verify the first part of the lifecycle was processed
-  ConstructorCallback<AsyncSocket>::addNewConstructorCallback(
+  ConstructorCallbackList<AsyncSocket>::addCallback(
       [lifecycleRawPtr](AsyncSocket* s) {
         s->addLifecycleObserver(lifecycleRawPtr);
       });

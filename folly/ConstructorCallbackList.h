@@ -32,21 +32,21 @@ namespace folly {
 // invoked
 //
 // For example:
-// #include <folly/ConstructorCallback>
+// #include <folly/ConstructorCallbackList.h>
 //
 // class Foo {
 //    ...
 //   private:
 //    ...
 //    // add this member last to minimize partially constructed errors
-//    ConstructorCallback<Foo> constructorCB_{this};
+//    ConstructorCallbackList<Foo> constructorCB_{this};
 // }
 //
 // int main() {
 //   auto cb = [](Foo * f) {
 //    std::cout << "New Foo" << f << std::endl;
 //   };
-//   ConstructorCallback<Foo>::addNewConstructorCallback(cb);
+//   ConstructorCallbackList<Foo>::addCallback(cb);
 //   Foo f{}; // will call callback, print to stdout
 // }
 //
@@ -55,20 +55,20 @@ namespace folly {
 //
 // NOTE: The callback is triggered with a *partially* constructed object.
 // This implies that that callback code can only access members that are
-// constructed *before* the ConstructorCallback object.  Also, at the time
+// constructed *before* the ConstructorCallbackList object.  Also, at the time
 // of the callback, none of the Foo() constructor code will have run.
 // Per the example above,
-// the best practice is to place the constructorCallback declaration last
+// the best practice is to place the ConstructorCallbackList declaration last
 // in the parent class.  This will minimize the amount of uninitialized
 // data in the Foo instance, but will not eliminate it unless it has a trivial
 // constructor.
 //
 // Implementation/Overhead Notes:
 //
-// By design, adding ConstructorCallback() to an object should be very light
-// weight.  From a memory context, this adds 1 byte of memory to the parent
-// class. From a CPU/performance perspective, the constructor does a load of an
-// atomic int and the cost of the actual callbacks themselves.  So if this
+// By design, adding ConstructorCallbackList to an object should be very
+// light weight.  From a memory context, this adds 1 byte of memory to the
+// parent class. From a CPU/performance perspective, the constructor does a load
+// of an atomic int and the cost of the actual callbacks themselves.  So if this
 // is put in place and only used infrequently, e.g., during debugging,
 // this cost should be quite small.
 //
@@ -79,16 +79,15 @@ namespace folly {
 // that can be registered.
 
 template <class T, std::size_t MaxCallbacks = 4>
-class ConstructorCallback {
+class ConstructorCallbackList {
  public:
   static constexpr std::size_t kMaxCallbacks = MaxCallbacks;
 
-  using NewConstructorCallback = folly::Function<void(T*)>;
-  using This = ConstructorCallback<T, MaxCallbacks>;
-  using CallbackArray =
-      std::array<typename This::NewConstructorCallback, MaxCallbacks>;
+  using This = ConstructorCallbackList<T, MaxCallbacks>;
+  using Callback = folly::Function<void(T*)>;
+  using CallbackArray = std::array<typename This::Callback, MaxCallbacks>;
 
-  explicit ConstructorCallback(T* t) {
+  explicit ConstructorCallbackList(T* t) {
     // This code depends on the C++ standard where values that are
     // initialized to zero ("Zero Initiation") are initialized before any more
     // complex static pre-main() dynamic initialization - see
@@ -97,11 +96,10 @@ class ConstructorCallback {
     //
     // This assumption prevents a subtle initialization race condition
     // where something could call this code pre-main() before
-    // nConstructorCallbacks_ was set to zero, and thus prevents issuing
+    // numCallbacks_ was set to zero, and thus prevents issuing
     // callbacks on garbage data.
 
-    auto nCBs =
-        This::global().nConstructorCallbacks_.load(std::memory_order_acquire);
+    auto nCBs = This::global().numCallbacks_.load(std::memory_order_acquire);
 
     // fire callbacks to inform listeners about the new constructor
     /****
@@ -125,27 +123,25 @@ class ConstructorCallback {
    * Implement this with functions rather than an observer pattern classes
    * to avoid race conditions on shutdown
    *
-   * Intentionally don't implement removeConstructorCallback to simplify
+   * Intentionally don't implement removeConstructorCallbackList to simplify
    * implementation (e.g., just the counter is atomic rather than the whole
    * array) and thus reduce computational cost.
    *
    * @throw std::length_error() if this callback would exceed our max
    */
-  static void addNewConstructorCallback(NewConstructorCallback cb) {
+  static void addCallback(Callback cb) {
     // Ensure that a single callback is added at a time
     std::lock_guard<SharedMutex> g(This::global().mutex_);
-    auto idx =
-        This::global().nConstructorCallbacks_.load(std::memory_order_acquire);
+    auto idx = This::global().numCallbacks_.load(std::memory_order_acquire);
 
     if (idx >= (This::global().callbacks_).size()) {
       throw std::length_error(
           folly::sformat("Too many callbacks - max {}", MaxCallbacks));
     }
     (This::global().callbacks_)[idx] = std::move(cb);
-    // Only increment nConstructorCallbacks_ after fully initializing the array
+    // Only increment numCallbacks_ after fully initializing the array
     // entry. This step makes the new array entry visible to other threads.
-    This::global().nConstructorCallbacks_.store(
-        idx + 1, std::memory_order_release);
+    This::global().numCallbacks_.store(idx + 1, std::memory_order_release);
   }
 
  private:
@@ -153,7 +149,7 @@ class ConstructorCallback {
   struct GlobalStorage {
     folly::SharedMutex mutex_;
     This::CallbackArray callbacks_{};
-    std::atomic<size_t> nConstructorCallbacks_{0};
+    std::atomic<size_t> numCallbacks_{0};
   };
   static auto& global() {
     return folly::detail::createGlobal<GlobalStorage, void>();
