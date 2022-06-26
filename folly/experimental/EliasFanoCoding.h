@@ -39,10 +39,6 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/Bits.h>
 
-#if !FOLLY_X64
-#error EliasFanoCoding.h requires x86_64
-#endif
-
 namespace folly {
 namespace compression {
 
