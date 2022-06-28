@@ -473,6 +473,7 @@ struct unsafe_default_initialized_cv {
       FOLLY_MSVC_DISABLE_WARNING(4701)
       FOLLY_MSVC_DISABLE_WARNING(4703)
       FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
+      FOLLY_GNU_DISABLE_WARNING("-Wmaybe-uninitialized")
       return uninit;
       FOLLY_POP_WARNING
     }
