@@ -817,7 +817,8 @@ if __name__ == "__main__":
             retry = 0
 
         testpilot = path_search(env, "testpilot")
-        tpx = path_search(env, "tpx")
+        # TODO(xavierd): once tpx is really available on Windows, remove this.
+        tpx = path_search(env, "tpx") if sys.platform != "win32" else None
         if (tpx or testpilot) and not no_testpilot:
             buck_test_info = list_tests()
             import os
