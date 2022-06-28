@@ -33,7 +33,7 @@
           __folly_detail_safe_assert_arg{                                 \
               u ? nullptr : #expr,                                        \
               __FILE__,                                                   \
-              __LINE__,                                                   \
+              FOLLY_PP_CONSTINIT_LINE_UNSIGNED,                           \
               __folly_detail_safe_assert_fun,                             \
               ::folly::detail::safe_assert_msg_types<                     \
                   decltype(::folly::detail::safe_assert_msg_types_seq_of( \
