@@ -349,7 +349,6 @@ class alignas(64) BucketTable {
       // assuming all the nodes hash to the same bucket.
       auto lastrun = node;
       auto lastidx = idx;
-      auto count = 0;
       auto last = node->next_.load(std::memory_order_relaxed);
       for (; last != nullptr;
            last = last->next_.load(std::memory_order_relaxed)) {
@@ -357,9 +356,7 @@ class alignas(64) BucketTable {
         if (k != lastidx) {
           lastidx = k;
           lastrun = last;
-          count = 0;
         }
-        count++;
       }
       // Set longest last run in new bucket, incrementing the refcount.
       lastrun->acquire_link(); // defined in hazptr_obj_base_linked
