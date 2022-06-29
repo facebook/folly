@@ -54,12 +54,14 @@ ElfFile::ElfFile() noexcept
     : fd_(-1),
       file_(static_cast<char*>(MAP_FAILED)),
       length_(0),
+      fileId_(),
       baseAddress_(0) {}
 
 ElfFile::ElfFile(const char* name, Options const& options)
     : fd_(-1),
       file_(static_cast<char*>(MAP_FAILED)),
       length_(0),
+      fileId_(),
       baseAddress_(0) {
   open(name, options);
 }
@@ -89,6 +91,12 @@ ElfFile::OpenResult ElfFile::openNoThrow(
   if (r == -1) {
     return {kSystemError, "fstat"};
   }
+
+  fileId_ = std::make_tuple(
+      st.st_dev,
+      st.st_ino,
+      st.st_size,
+      st.st_mtim.tv_sec * 1000'000'000LL + st.st_mtim.tv_nsec);
 
   length_ = st.st_size;
   int prot = PROT_READ;

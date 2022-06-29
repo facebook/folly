@@ -52,6 +52,14 @@ using ElfPhdr = FOLLY_ELF_ELFW(Phdr);
 using ElfShdr = FOLLY_ELF_ELFW(Shdr);
 using ElfSym = FOLLY_ELF_ELFW(Sym);
 
+// ElfFileId is supposed to uniquely identify any instance of an ELF binary.
+// It does that by using file's inode, dev ID, size and modification time:
+// <dev, inode, size in bytes, mod time>
+// Just using dev, inode is not unique enough, because the file can
+// be overwritten with new contents, but will keep same dev and inode, so
+// we take into account modification time and file size to minimize risk.
+using ElfFileId = std::tuple<dev_t, ino_t, uint64_t, uint64_t>;
+
 /**
  * ELF file parser.
  *
@@ -264,6 +272,8 @@ class ElfFile {
 
   const char* filepath() const { return filepath_; }
 
+  const ElfFileId& getFileId() const { return fileId_; }
+
   /**
    * Announce an intention to access file data in a specific pattern in the
    * future. https://man7.org/linux/man-pages/man2/posix_fadvise.2.html
@@ -327,6 +337,7 @@ class ElfFile {
   int fd_;
   char* file_; // mmap() location
   size_t length_; // mmap() length
+  ElfFileId fileId_;
 
   uintptr_t baseAddress_;
 };
