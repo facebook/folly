@@ -61,21 +61,6 @@ SpinLock dummyCtxLock;
 // stack, otherwise it is allocated on heap
 const size_t MAX_STACK_BUF_SIZE = 2048;
 
-// This converts "illegal" shutdowns into ZERO_RETURN
-inline bool zero_return(int error, int rc, int errno_copy) {
-  if (error == SSL_ERROR_ZERO_RETURN || (rc == 0 && errno_copy == 0)) {
-    return true;
-  }
-#ifdef _WIN32
-  // on windows underlying TCP socket may error with this code
-  // if the sending/receiving client crashes or is killed
-  if (error == SSL_ERROR_SYSCALL && errno_copy == WSAECONNRESET) {
-    return true;
-  }
-#endif
-  return false;
-}
-
 void setup_SSL_CTX(SSL_CTX* ctx) {
 #ifdef SSL_MODE_RELEASE_BUFFERS
   SSL_CTX_set_mode(
@@ -1567,8 +1552,36 @@ AsyncSocket::ReadResult AsyncSSLSocket::performRead(
           READ_ERROR,
           std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
     } else {
-      if (zero_return(error, bytes, errno)) {
-        return ReadResult(bytes);
+      if (error == SSL_ERROR_ZERO_RETURN) {
+        // Peer has closed the connection for writing by sending the
+        // close_notify alert. The underlying transport might not be closed, but
+        // assume it is and return EOF.
+        VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
+                << "state=" << state_ << ", "
+                << "sslState=" << sslState_ << ", "
+                << "events=" << std::hex << eventFlags_ << "): "
+                << "bytes: " << bytes << ", "
+                << "error: " << error << ", "
+                << "received close_notify alert";
+        // AsyncSSLSocket interprets this as a READ_EOF.
+        return ReadResult(0);
+      }
+      int local_errno = errno;
+#ifdef _WIN32
+      // On windows, the underlying TCP socket may error with this code
+      // if the sending/receiving client crashes or is killed.
+      if (error == SSL_ERROR_SYSCALL && local_errno == WSAECONNRESET) {
+        return ReadResult(0);
+      }
+#endif
+      // NOTE: OpenSSL has a bug where SSL_ERROR_SYSCALL and errno 0 indicates
+      // an unexpected EOF from the peer. This will be changed in OpenSSL 3.0
+      // and reported as SSL_ERROR_SSL with reason
+      // SSL_R_UNEXPECTED_EOF_WHILE_READING. We should then explicitly check for
+      // that. See https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html
+      if (error == SSL_ERROR_SYSCALL && local_errno == 0) {
+        // intentionally returning EOF
+        return ReadResult(0);
       }
       auto errError = ERR_get_error();
       VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
@@ -1577,12 +1590,12 @@ AsyncSocket::ReadResult AsyncSSLSocket::performRead(
               << "events=" << std::hex << eventFlags_ << "): "
               << "bytes: " << bytes << ", "
               << "error: " << error << ", "
-              << "errno: " << errno << ", "
+              << "errno: " << local_errno << ", "
               << "func: " << ERR_func_error_string(errError) << ", "
               << "reason: " << ERR_reason_error_string(errError);
       return ReadResult(
           READ_ERROR,
-          std::make_unique<SSLException>(error, errError, bytes, errno));
+          std::make_unique<SSLException>(error, errError, bytes, local_errno));
     }
   } else {
     appBytesReceived_ += bytes;
