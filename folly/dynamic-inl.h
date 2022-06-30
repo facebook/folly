@@ -1037,7 +1037,6 @@ T dynamic::asImpl() const {
 }
 
 // Return a T* to our type, or null if we're not that type.
-// clang-format off
 template <class T>
 T* dynamic::get_nothrow() & noexcept {
   if (type_ != TypeInfo<T>::type) {
@@ -1045,7 +1044,6 @@ T* dynamic::get_nothrow() & noexcept {
   }
   return getAddress<T>();
 }
-// clang-format on
 
 template <class T>
 T const* dynamic::get_nothrow() const& noexcept {

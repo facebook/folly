@@ -15,16 +15,25 @@
  */
 
 /**
- * This is a runtime dynamically typed value.  It holds types from a
- * specific predetermined set of types (ints, bools, arrays, etc).  In
- * particular, it can be used as a convenient in-memory representation
- * for complete json objects.
+ * dyanmic is a runtime dynamically typed value.  It holds types from a specific
+ * predetermined set of types: int, double, bool, nullptr_t, string, array,
+ * map. In particular, it can be used as a convenient in-memory representation
+ * for complete JSON objects.
  *
- * In general you can try to use these objects as if they were the
- * type they represent (although in some cases with a slightly less
- * complete interface than the raw type), and it'll just throw a
- * TypeError if it is used in an illegal way.
+ * In general, dynamic can be used as if it were the type it represents
+ * (although in some cases with a slightly less complete interface than the raw
+ * type). If there is a runtime type mismatch, then dynamic will throw a
+ * TypeError.
  *
+ * See folly/json.h for serialization and deserialization functions for JSON.
+ *
+ * Additional documentation is in folly/docs/Dynamic.md.
+ *
+ * @author Jordan DeLong <delong.j@fb.com>
+ * @refcode examples/folly/dynamic.cpp
+ * @struct folly::dynamic
+ */
+/*
  * Some examples:
  *
  *   dynamic twelve = 12;
@@ -41,13 +50,6 @@
  *     ("key", "value")
  *     ("key2", dynamic::array("a", "array"))
  *     ;
- *
- * Also see folly/json.h for the serialization and deserialization
- * functions for JSON.
- *
- * Additional documentation is in folly/docs/Dynamic.md.
- *
- * @author Jordan DeLong <delong.j@fb.com>
  */
 
 #pragma once
@@ -157,10 +159,33 @@ struct dynamic {
   struct ObjectMaker;
 
  public:
+  /**
+   * Do not use.
+   *
+   * @methodset Array
+   */
   static void array(EmptyArrayTag);
+
+  /**
+   * @brief Construct a dynamic array.
+   *
+   * Special syntax because `dynamic d = { ... }` dispatches to the copy
+   * constructor.
+   * See D3013423 and
+   * [DR95](http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1467).
+   *
+   * @refcode examples/folly/dynamic/array.cpp
+   * @methodset Array
+   */
   template <class... Args>
   static dynamic array(Args&&... args);
 
+  /**
+   * Construct a dynamic object.
+   *
+   * @refcode examples/folly/dynamic/object.cpp
+   * @methodset Object
+   */
   static ObjectMaker object();
   static ObjectMaker object(dynamic, dynamic);
 
@@ -172,9 +197,13 @@ struct dynamic {
   /*
    * String compatibility constructors.
    */
+  /// Initializes as an empty string.
   /* implicit */ dynamic(std::nullptr_t);
+  /// Initializes with strcpy.
   /* implicit */ dynamic(char const* val);
+  /// Initializes as a string.
   /* implicit */ dynamic(std::string val);
+  /// Initializes as a string.
   template <
       typename Stringish,
       typename = std::enable_if_t<
@@ -185,28 +214,35 @@ struct dynamic {
    * This is part of the plumbing for array() and object(), above.
    * Used to create a new array or object dynamic.
    */
+  /// Plumbing for array() construction.
   /* implicit */ dynamic(void (*)(EmptyArrayTag));
+  /// Plumbing for object() construction.
   /* implicit */ dynamic(ObjectMaker (*)());
+  /// Plumbing for object() construction.
   /* implicit */ dynamic(ObjectMaker const&) = delete;
+  /// Plumbing for object() construction.
   /* implicit */ dynamic(ObjectMaker&&);
 
-  /*
-   * Constructors for integral and float types.
+  /**
+   * Constructor for integral and float types.
    * Other types are SFINAEd out with NumericTypeHelper.
    */
   template <class T, class NumericType = typename NumericTypeHelper<T>::type>
   /* implicit */ dynamic(T t);
 
-  /*
+  /**
+   * Special handling for vector<bool>.
+   *
    * If v is vector<bool>, v[idx] is a proxy object implicitly convertible to
    * bool. Calling a function f(dynamic) with f(v[idx]) would require a double
    * implicit conversion (reference -> bool -> dynamic) which is not allowed,
    * hence we explicitly accept the reference proxy.
    */
   /* implicit */ dynamic(std::vector<bool>::reference val);
+  /// Special handling for vector<bool>::const_reference.
   /* implicit */ dynamic(VectorBoolConstRefCtorType val);
 
-  /*
+  /**
    * Create a dynamic that is an array of the values from the supplied
    * iterator range.
    */
@@ -217,8 +253,8 @@ struct dynamic {
   dynamic(dynamic&&) noexcept;
   ~dynamic() noexcept;
 
-  /*
-   * "Deep" equality comparison.  This will compare all the way down
+  /**
+   * Deep equality comparison.  This will compare all the way down
    * an object or array, and is potentially expensive.
    *
    * NOTE: Implicit conversion will be done between ints and doubles, so numeric
@@ -256,15 +292,25 @@ struct dynamic {
    * These functions may also throw if you use 64-bit integers with
    * doubles when the integers are too big to fit in a double.
    */
+  /// @methodset Op
   dynamic& operator+=(dynamic const&);
+  /// @methodset Op
   dynamic& operator-=(dynamic const&);
+  /// @methodset Op
   dynamic& operator*=(dynamic const&);
+  /// @methodset Op
   dynamic& operator/=(dynamic const&);
+  /// @methodset Op
   dynamic& operator%=(dynamic const&);
+  /// @methodset Op
   dynamic& operator|=(dynamic const&);
+  /// @methodset Op
   dynamic& operator&=(dynamic const&);
+  /// @methodset Op
   dynamic& operator^=(dynamic const&);
+  /// @methodset Op
   dynamic& operator++();
+  /// @methodset Op
   dynamic& operator--();
 
   friend dynamic operator+(dynamic const& a, dynamic const& b) {
@@ -296,19 +342,22 @@ struct dynamic {
     return std::move(a += b);
   }
 
+  /// @methodset Op
   dynamic operator++(int) {
     auto self = *this;
     return ++*this, self;
   }
+  /// @methodset Op
   dynamic operator--(int) {
     auto self = *this;
     return --*this, self;
   }
 
-  /*
-   * Assignment from other dynamics.  Because of the implicit conversion
-   * to dynamic from its potential types, you can use this to change the
-   * type pretty intuitively.
+  /**
+   * Assignment from other dynamics.
+   *
+   * Because of the implicit conversion to dynamic from its potential types, you
+   * can use this to change the type pretty intuitively.
    *
    * Basic guarantee only.
    */
@@ -328,54 +377,84 @@ struct dynamic {
    */
   friend std::ostream& operator<<(std::ostream&, dynamic const&);
 
-  /*
+  /**
+   * @brief Type test.
+   *
    * Returns true if this dynamic is of the specified type.
+   *
+   * @methodset Typing
    */
   bool isString() const;
+  /// @copydoc isString
   bool isObject() const;
+  /// @copydoc isString
   bool isBool() const;
+  /// @copydoc isString
   bool isNull() const;
+  /// @copydoc isString
   bool isArray() const;
+  /// @copydoc isString
   bool isDouble() const;
+  /// @copydoc isString
   bool isInt() const;
 
-  /*
-   * Returns: isInt() || isDouble().
+  /**
+   * @copydoc isString
+   *
+   * @return `isInt() || isDouble()`.
    */
   bool isNumber() const;
 
-  /*
-   * Returns the type of this dynamic.
+  /**
+   * The type of this dynamic.
+   *
+   * @methodset Typing
    */
   Type type() const;
 
-  /*
-   * Returns the type of this dynamic as a printable string.
+  /**
+   * The type of this dynamic as a printable string.
+   *
+   * @methodset Typing
    */
   const char* typeName() const;
 
-  /*
+  /**
+   * Type conversion.
+   *
    * Extract a value while trying to convert to the specified type.
    * Throws exceptions if we cannot convert from the real type to the
    * requested type.
    *
-   * Note you can only use this to access integral types or strings,
+   * Note: you can only use this to access integral types or strings,
    * since arrays and objects are generally best dealt with as a
    * dynamic.
+   *
+   * @methodset Conversion
    */
   std::string asString() const;
+  /// @copydoc asString
   double asDouble() const;
+  /// @copydoc asString
   int64_t asInt() const;
+  /// @copydoc asString
   bool asBool() const;
 
-  /*
+  /**
+   * Type extraction.
+   *
    * Extract the value stored in this dynamic without type conversion.
    *
    * These will throw a TypeError if the dynamic has a different type.
+   *
+   * @methodset Extraction
    */
   const std::string& getString() const&;
+  /// @copydoc getString
   double getDouble() const&;
+  /// @copydoc getString
   int64_t getInt() const&;
+  /// @copydoc getString
   bool getBool() const&;
   std::string& getString() &;
   double& getDouble() &;
@@ -386,34 +465,52 @@ struct dynamic {
   int64_t getInt() &&;
   bool getBool() &&;
 
-  /*
+  /**
+   * Get the c_str pointer.
+   *
    * It is occasionally useful to access a string's internal pointer
    * directly, without the type conversion of `asString()`.
    *
    * These will throw a TypeError if the dynamic is not a string.
+   *
+   * @methodset Extraction
    */
   const char* c_str() const&;
   const char* c_str() && = delete;
+  /// @copydoc c_str
   StringPiece stringPiece() const;
 
-  /*
+  /**
+   * Tests for emptiness.
+   *
    * Returns: true if this dynamic is null, an empty array, an empty
    * object, or an empty string.
+   *
+   * @methodset Container
    */
   bool empty() const;
 
-  /*
+  /**
+   * Get size.
+   *
    * If this is an array or an object, returns the number of elements
    * contained.  If it is a string, returns the length.  Otherwise
    * throws TypeError.
+   *
+   * @methodset Container
    */
   std::size_t size() const;
 
-  /*
+  /**
+   * Array iteration.
+   *
    * You can iterate over the values of the array.  Calling these on
    * non-arrays will throw a TypeError.
+   *
+   * @methodset Iteration
    */
   const_iterator begin() const;
+  /// @copydoc begin
   const_iterator end() const;
   iterator begin();
   iterator end();
@@ -444,48 +541,81 @@ struct dynamic {
    * You can iterate over the keys, values, or items (std::pair of key and
    * value) in an object.  Calling these on non-objects will throw a TypeError.
    */
+  /**
+   * Get the keys of an object.
+   *
+   * Return an iterable interface for the object's keys.
+   *
+   * @methodset Iteration
+   */
   IterableProxy<const_key_iterator> keys() const;
+  /**
+   * Get the values of an object.
+   *
+   * Return an iterable interface for the object's values, without their
+   * associated key.
+   *
+   * @methodset Iteration
+   */
   IterableProxy<const_value_iterator> values() const;
+  /**
+   * Get key-value items of an object.
+   *
+   * Return an iterable interface for the object's key-value pairs.
+   * The type of this iterable is `(const dynamic&, dynamic&)`.
+   *
+   * @methodset Iteration
+   */
   IterableProxy<const_item_iterator> items() const;
   IterableProxy<value_iterator> values();
   IterableProxy<item_iterator> items();
 
-  /*
+  /**
+   * Find by key.
+   *
    * AssociativeContainer-style find interface for objects.  Throws if
    * this is not an object.
    *
-   * Returns: items().end() if the key is not present, or a
+   * @return items().end() if the key is not present, or a
    * const_item_iterator pointing to the item.
+   *
+   * @methodset Object
    */
   template <typename K>
   IfIsNonStringDynamicConvertible<K, const_item_iterator> find(K&&) const;
   template <typename K>
   IfIsNonStringDynamicConvertible<K, item_iterator> find(K&&);
-
   const_item_iterator find(StringPiece) const;
   item_iterator find(StringPiece);
 
-  /*
+  /**
+   * Count by key.
+   *
    * If this is an object, returns whether it contains a field with
    * the given name.  Otherwise throws TypeError.
+   *
+   * @methodset Object
    */
   template <typename K>
   IfIsNonStringDynamicConvertible<K, std::size_t> count(K&&) const;
-
   std::size_t count(StringPiece) const;
 
-  /*
+ private:
+  dynamic const& atImpl(dynamic const&) const&;
+
+ public:
+  /**
+   * Access sub-field or index.
+   *
    * For objects or arrays, provides access to sub-fields by index or
    * field name.
    *
    * Using these with dynamic objects that are not arrays or objects
    * will throw a TypeError.  Using an index that is out of range or
    * object-element that's not present throws std::out_of_range.
+   *
+   * @methodset Element access
    */
- private:
-  dynamic const& atImpl(dynamic const&) const&;
-
- public:
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic const&> at(K&&) const&;
   template <typename K>
@@ -548,6 +678,13 @@ struct dynamic {
       json_pointer_resolved_value<Dynamic>,
       json_pointer_resolution_error<Dynamic>>;
 
+  /**
+   * Get JSON Pointer.
+   *
+   * See [Relative JSON Pointers RFC 6901](https://json-schema.org/draft/2019-09/relative-json-pointer.html)
+   *
+   * @methodset Element access
+   */
   resolved_json_pointer<dynamic const>
   try_get_ptr(json_pointer const&) const&;
   resolved_json_pointer<dynamic>
@@ -558,16 +695,27 @@ struct dynamic {
   try_get_ptr(json_pointer const&) && = delete;
   // clang-format on
 
-  /*
-   * The following versions return nullptr if element could not be located.
-   * Throws if pointer does not match the shape of the document, e.g. uses
-   * string to index in array.
+  /**
+   * Nullable access.
+   *
+   * Like `at` (for objects and arrays) and `try_get_ptr` (for json_pointer
+   * lookup), but returns nullptr if the element cannot be found instead of
+   * throwing a TypeError.
+   *
+   * For the JSON Pointer overloads, throws if pointer does not match the shape
+   * of the document, e.g. uses string to index in array.
+   *
+   * @methodset Element access
    */
   const dynamic* get_ptr(json_pointer const&) const&;
   dynamic* get_ptr(json_pointer const&) &;
   const dynamic* get_ptr(json_pointer const&) const&& = delete;
   dynamic* get_ptr(json_pointer const&) && = delete;
 
+ private:
+  const dynamic* get_ptrImpl(dynamic const&) const&;
+
+ public:
   /*
    * Like 'at', above, except it returns either a pointer to the contained
    * object or nullptr if it wasn't found. This allows a key to be tested for
@@ -579,10 +727,6 @@ struct dynamic {
    * Using these with dynamic objects that are not arrays or objects
    * will throw a TypeError.
    */
- private:
-  const dynamic* get_ptrImpl(dynamic const&) const&;
-
- public:
   template <typename K>
   IfIsNonStringDynamicConvertible<K, const dynamic*> get_ptr(K&&) const&;
   template <typename K>
@@ -594,7 +738,9 @@ struct dynamic {
   dynamic* get_ptr(StringPiece) &;
   dynamic* get_ptr(StringPiece) && = delete;
 
-  /*
+  /**
+   * Element lookup.
+   *
    * This works for access to both objects and arrays.
    *
    * In the case of an array, the index must be an integer, and this
@@ -607,6 +753,8 @@ struct dynamic {
    *
    * These functions do not invalidate iterators except when a null value
    * is inserted into an object as described above.
+   *
+   * @methodset Element access
    */
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic&> operator[](K&&) &;
@@ -619,13 +767,15 @@ struct dynamic {
   dynamic const& operator[](StringPiece) const&;
   dynamic&& operator[](StringPiece) &&;
 
-  /*
-   * Only defined for objects, throws TypeError otherwise.
+  /**
+   * Defaulted lookup.
    *
    * getDefault will return the value associated with the supplied key, the
-   * supplied default otherwise. setDefault will set the key to the supplied
-   * default if it is not yet set, otherwise leaving it. setDefault returns
-   * a reference to the existing value if present, the new value otherwise.
+   * supplied default otherwise.
+   *
+   * Only defined for objects, throws TypeError otherwise.
+   *
+   * @methodset Object
    */
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic> getDefault(
@@ -644,6 +794,17 @@ struct dynamic {
   dynamic getDefault(StringPiece k, const dynamic& v = dynamic::object) &&;
   dynamic getDefault(StringPiece k, dynamic&& v) &&;
 
+  /**
+   * Maybe set.
+   *
+   * setDefault will set the key to the supplied default if it is not yet set,
+   * otherwise leaving it. setDefault returns a reference to the existing value
+   * if present, the new value otherwise.
+   *
+   * Only defined for objects, throws TypeError otherwise.
+   *
+   * @methodset Object
+   */
   template <typename K, typename V>
   IfIsNonStringDynamicConvertible<K, dynamic&> setDefault(K&& k, V&& v);
   template <typename V>
@@ -661,7 +822,9 @@ struct dynamic {
   dynamic& setDefault(StringPiece k, dynamic&& v);
   dynamic& setDefault(StringPiece k, const dynamic& v = dynamic::object);
 
-  /*
+  /**
+   * Change size.
+   *
    * Resizes an array so it has at n elements, using the supplied
    * default to fill new elements.  Throws TypeError if this dynamic
    * is not an array.
@@ -669,30 +832,42 @@ struct dynamic {
    * May invalidate iterators.
    *
    * Post: size() == n
+   *
+   * @methodset Array
    */
   void resize(std::size_t n, dynamic const& = nullptr);
 
-  /*
+  /**
+   * Pre-allocate size.
+   *
    * If this is an array, an object, or a string, reserves the requested
    * capacity in the underlying container.  Otherwise throws TypeError.
    *
    * May invalidate iterators, and does not give any additional guarantees on
    * iterator invalidation on subsequent insertions; the only purpose is for
    * optimization.
+   *
+   * @methodset Container
    */
   void reserve(std::size_t capacity);
 
-  /*
+  /**
+   * @brief Overwriting insertion.
+   *
    * Inserts the supplied key-value pair to an object, or throws if
    * it's not an object. If the key already exists, insert will overwrite the
    * value, i.e., similar to insert_or_assign.
    *
    * Invalidates iterators.
+   *
+   * @methodset Container
    */
   template <class K, class V>
   IfNotIterator<K, void> insert(K&&, V&& val);
 
   /**
+   * Overwriting emplacement.
+   *
    * Inserts an element into an object constructed in-place with the given args
    * if there is no existing element with the key, or throws if it's not an
    * object. Returns a pair consisting of an iterator to the inserted element,
@@ -700,11 +875,15 @@ struct dynamic {
    * denoting whether the insertion took place.
    *
    * Invalidates iterators.
+   *
+   * @methodset Object
    */
   template <class... Args>
   std::pair<item_iterator, bool> emplace(Args&&... args);
 
   /**
+   * Non-overwriting emplacement.
+   *
    * Inserts an element into an object with the given key and value constructed
    * in-place with the given args if there is no existing element with the key,
    * or throws if it's not an object. Returns a pair consisting of an iterator
@@ -712,21 +891,25 @@ struct dynamic {
    * happened, and a bool denoting whether the insertion took place.
    *
    * Invalidates iterators.
+   *
+   * @methodset Object
    */
   template <class K, class... Args>
   std::pair<item_iterator, bool> try_emplace(K&& key, Args&&... args);
 
-  /*
-   * Inserts the supplied value into array, or throw if not array
-   * Shifts existing values in the array to the right
+  /**
+   * Inserts the supplied value into array, or throw if not array.
+   * Shifts existing values in the array to the right.
    *
    * Invalidates iterators.
    */
   template <class T>
   iterator insert(const_iterator pos, T&& value);
 
-  /*
-   * These functions merge two folly dynamic objects.
+  /**
+   * Merge objects.
+   *
+   * Merge two folly dynamic objects.
    * The "update" and "update_missing" functions extend the object by
    *  inserting the key/value pairs of mergeObj into the current object.
    *  For update, if key is duplicated between the two objects, it
@@ -737,35 +920,53 @@ struct dynamic {
    * pairs of both mergeObj1 and mergeObj2
    * If the key is duplicated between the two objects,
    *  it will prefer value in the second object (mergeObj2)
+   *
+   * @methodset Object
    */
   void update(const dynamic& mergeObj);
+  /// @copydoc update
   void update_missing(const dynamic& other);
+  /// @copydoc update
   static dynamic merge(const dynamic& mergeObj1, const dynamic& mergeObj2);
 
-  /*
+  /**
+   * Merge JSON Patch.
+   *
    * Implement recursive version of RFC7386: JSON merge patch. This modifies
    * the current object.
+   *
+   * @methodset Object
    */
   void merge_patch(const dynamic& patch);
 
-  /*
+  /**
+   * Compute patch.
+   *
    * Computes JSON merge patch (RFC7386) needed to mutate from source to target
+   *
+   * @methodset Object
    */
   static dynamic merge_diff(const dynamic& source, const dynamic& target);
 
-  /*
+  /**
+   * @brief Erases elements
+   *
    * Erase an element from a dynamic object, by key.
    *
    * Invalidates iterators to the element being erased.
    *
    * Returns the number of elements erased (i.e. 1 or 0).
+   *
+   * @methodset Container
    */
   template <typename K>
   IfIsNonStringDynamicConvertible<K, std::size_t> erase(K&&);
 
   std::size_t erase(StringPiece);
 
-  /*
+  /**
+   * @brief Erases elements
+   *
    * Erase an element from a dynamic object or array, using an
    * iterator or an iterator range.
    *
@@ -776,6 +977,8 @@ struct dynamic {
    * Returns a new iterator to the first element beyond any elements
    * removed, or end() if there are none.  (The iteration order does
    * not change.)
+   *
+   * @methodset Container
    */
   iterator erase(const_iterator it);
   iterator erase(const_iterator first, const_iterator last);
@@ -788,30 +991,42 @@ struct dynamic {
 
   item_iterator erase(const_item_iterator it);
   item_iterator erase(const_item_iterator first, const_item_iterator last);
-  /*
-   * Append elements to an array.  If this is not an array, throws
-   * TypeError.
+
+  /**
+   * Append elements to an array.
+   *
+   * If this is not an array, throws TypeError.
    *
    * Invalidates iterators.
+   *
+   * @methodset Array
    */
   void push_back(dynamic const&);
   void push_back(dynamic&&);
 
-  /*
-   * Remove an element from the back of an array.  If this is not an array,
-   * throws TypeError.
+  /**
+   * Remove an element from the back of an array.
+   *
+   * If this is not an array, throws TypeError.
    *
    * Does not invalidate iterators.
+   *
+   * @methodset Array
    */
   void pop_back();
 
-  /*
-   * Return reference to the last element in an array. If this is not
-   * an array, throws TypeError.
+  /**
+   * Return reference to the last element in an array.
+   *
+   * If this is not an array, throws TypeError.
+   *
+   * @methodset Array
    */
   const dynamic& back() const;
 
-  /*
+  /**
+   * Hash self.
+   *
    * Get a hash code.  This function is called by a std::hash<>
    * specialization.
    *
@@ -844,16 +1059,13 @@ struct dynamic {
   T const& get() const;
   template <class T>
   T& get();
-  // clang-format off
+
   template <class T>
   T* get_nothrow() & noexcept;
-  // clang-format on
   template <class T>
   T const* get_nothrow() const& noexcept;
-  // clang-format off
   template <class T>
   T* get_nothrow() && noexcept = delete;
-  // clang-format on
   template <class T>
   T* getAddress() noexcept;
   template <class T>

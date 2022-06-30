@@ -183,11 +183,15 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
   using ConstLockedPtr = ConstRLockedPtr;
 
   /**
+   * @brief Acquire an exclusive lock.
+   *
    * Acquire an exclusive lock, and return a LockedPtr that can be used to
    * safely access the datum.
    *
    * LockedPtr offers operator -> and * to provide access to the datum.
    * The lock will be released when the LockedPtr is destroyed.
+   *
+   * @methodset Exclusive lock
    */
   LockedPtr wlock() { return LockedPtr(static_cast<Subclass*>(this)); }
   ConstWLockedPtr wlock() const {
@@ -195,11 +199,15 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
   }
 
   /**
+   * @brief Acquire an exclusive lock, or null.
+   *
    * Attempts to acquire the lock in exclusive mode.  If acquisition is
    * unsuccessful, the returned LockedPtr will be null.
    *
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
+   *
+   * @methodset Exclusive lock
    */
   TryWLockedPtr tryWLock() {
     return TryWLockedPtr{static_cast<Subclass*>(this)};
@@ -209,9 +217,12 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
   }
 
   /**
-   * Acquire a read lock. The returned LockedPtr will have force const
-   * access to the data unless the lock is acquired in non-const
-   * context and asNonConstUnsafe() is used.
+   * @brief Acquire a read lock.
+   *
+   * The returned LockedPtr will force const access to the data unless the lock
+   * is acquired in non-const context and asNonConstUnsafe() is used.
+   *
+   * @methodset Shared lock
    */
   RLockedPtr rlock() { return RLockedPtr(static_cast<Subclass*>(this)); }
   ConstLockedPtr rlock() const {
@@ -219,11 +230,15 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
   }
 
   /**
+   * @brief Acquire a read lock, or null.
+   *
    * Attempts to acquire the lock in shared mode.  If acquisition is
    * unsuccessful, the returned LockedPtr will be null.
    *
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
+   *
+   * @methodset Shared lock
    */
   TryRLockedPtr tryRLock() {
     return TryRLockedPtr{static_cast<Subclass*>(this)};
@@ -238,6 +253,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
    *
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
+   *
+   * @methodset Exclusive lock
    */
   template <class Rep, class Period>
   LockedPtr wlock(const std::chrono::duration<Rep, Period>& timeout) {
@@ -254,6 +271,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
    *
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
+   *
+   * @methodset Shared lock
    */
   template <class Rep, class Period>
   RLockedPtr rlock(const std::chrono::duration<Rep, Period>& timeout) {
@@ -278,6 +297,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
    *     data.doStuff();
    *     return data.getValue();
    *   });
+   *
+   * @methodset Exclusive lock
    */
   template <class Function>
   auto withWLock(Function&& function) {
@@ -296,6 +317,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
    *
    * This allows scopedUnlock() to be called on the LockedPtr argument if
    * desired.
+   *
+   * @methodset Exclusive lock
    */
   template <class Function>
   auto withWLockPtr(Function&& function) {
@@ -311,12 +334,25 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Shared> {
    *
    * A const reference to the datum will be passed into the function as its
    * only argument.
+   *
+   * @methodset Shared lock
    */
   template <class Function>
   auto withRLock(Function&& function) const {
     return function(*rlock());
   }
 
+  /**
+   * Invoke a function while holding the lock in shared mode.
+   *
+   * This is similar to withRLock(), but the function will be passed a
+   * LockedPtr rather than a reference to the data itself.
+   *
+   * This allows scopedUnlock() to be called on the LockedPtr argument if
+   * desired.
+   *
+   * @methodset Shared lock
+   */
   template <class Function>
   auto withRLockPtr(Function&& function) {
     return function(rlock());
@@ -356,9 +392,12 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Upgrade>
       LockedPtr_<const Subclass, LockPolicyTryUpgrade>;
 
   /**
-   * Acquire an upgrade lock. The returned LockedPtr will have force
-   * const access to the data unless the lock is acquired in non-const
-   * context and asNonConstUnsafe() is used.
+   * @brief Acquire an upgrade lock.
+   *
+   * The returned LockedPtr will have force const access to the data unless the
+   * lock is acquired in non-const context and asNonConstUnsafe() is used.
+   *
+   * @methodset Upgrade lock
    */
   UpgradeLockedPtr ulock() {
     return UpgradeLockedPtr(static_cast<Subclass*>(this));
@@ -368,11 +407,15 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Upgrade>
   }
 
   /**
+   * @brief Acquire an upgrade lock, or null.
+   *
    * Attempts to acquire the lock in upgrade mode.  If acquisition is
    * unsuccessful, the returned LockedPtr will be null.
    *
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
+   *
+   * @methodset Upgrade lock
    */
   TryUpgradeLockedPtr tryULock() {
     return TryUpgradeLockedPtr{static_cast<Subclass*>(this)};
@@ -383,6 +426,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Upgrade>
    * access the datum
    *
    * And the const version
+   *
+   * @methodset Upgrade lock
    */
   template <class Rep, class Period>
   UpgradeLockedPtr ulock(const std::chrono::duration<Rep, Period>& timeout) {
@@ -408,6 +453,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Upgrade>
    * the withULockPtr() method should be called instead, since it gives access
    * to the LockedPtr proxy (which can be upgraded via the
    * moveFromUpgradeToWrite() method)
+   *
+   * @methodset Upgrade lock
    */
   template <class Function>
   auto withULock(Function&& function) {
@@ -429,6 +476,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Upgrade>
    *
    * This also allows you to upgrade the LockedPtr proxy to a write state so
    * that changes can be made to the underlying data
+   *
+   * @methodset Upgrade lock
    */
   template <class Function>
   auto withULockPtr(Function&& function) {
@@ -463,25 +512,34 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
   using ConstTryLockedPtr = LockedPtr_<const Subclass, LockPolicyTryExclusive>;
 
   /**
-   * Acquire a lock, and return a LockedPtr that can be used to safely access
-   * the datum.
+   * @brief Acquire the lock.
+   *
+   * Return a LockedPtr that can be used to safely access the datum.
+   *
+   * @methodset Non-shareable lock
    */
   LockedPtr lock() { return LockedPtr(static_cast<Subclass*>(this)); }
 
   /**
    * Acquire a lock, and return a ConstLockedPtr that can be used to safely
    * access the datum.
+   *
+   * @methodset Non-shareable lock
    */
   ConstLockedPtr lock() const {
     return ConstLockedPtr(static_cast<const Subclass*>(this));
   }
 
   /**
+   * @brief Acquire the lock, or null.
+   *
    * Attempts to acquire the lock in exclusive mode.  If acquisition is
    * unsuccessful, the returned LockedPtr will be null.
    *
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
+   *
+   * @methodset Non-shareable lock
    */
   TryLockedPtr tryLock() { return TryLockedPtr{static_cast<Subclass*>(this)}; }
   ConstTryLockedPtr tryLock() const {
@@ -491,6 +549,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
   /**
    * Attempts to acquire the lock, or fails if the timeout elapses first.
    * If acquisition is unsuccessful, the returned LockedPtr will be null.
+   *
+   * @methodset Non-shareable lock
    */
   template <class Rep, class Period>
   LockedPtr lock(const std::chrono::duration<Rep, Period>& timeout) {
@@ -500,6 +560,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
   /**
    * Attempts to acquire the lock, or fails if the timeout elapses first.
    * If acquisition is unsuccessful, the returned LockedPtr will be null.
+   *
+   * @methodset Non-shareable lock
    */
   template <class Rep, class Period>
   ConstLockedPtr lock(const std::chrono::duration<Rep, Period>& timeout) const {
@@ -519,6 +581,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
    *     data.doStuff();
    *     return data.getValue();
    *   });
+   *
+   * @methodset Non-shareable lock
    */
   template <class Function>
   auto withLock(Function&& function) {
@@ -537,6 +601,8 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
    *
    * This allows scopedUnlock() and as_lock() to be called on the
    * LockedPtr argument.
+   *
+   * @methodset Non-shareable lock
    */
   template <class Function>
   auto withLockPtr(Function&& function) {
@@ -549,16 +615,18 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
 };
 
 /**
- * Synchronized<T> encapsulates an object of type T (a "datum") paired
- * with a mutex. The only way to access the datum is while the mutex
- * is locked, and Synchronized makes it virtually impossible to do
- * otherwise. The code that would access the datum in unsafe ways
- * would look odd and convoluted, thus readily alerting the human
- * reviewer. In contrast, the code that uses Synchronized<T> correctly
- * looks simple and intuitive.
+ * `folly::Synchronized` pairs a datum with a mutex. The datum can only be
+ * reached through a `LockedPtr`, typically acquired via `.rlock()` or
+ * `.wlock()`; the mutex is held for the lifetime of the `LockedPtr`.
  *
- * The second parameter must be a mutex type matching the lockable
- * family of concepts in the standard.
+ * It is recommended to explicitly open a new nested scope when aquiring
+ * a `LockedPtr` object, to help visibly delineate the critical section and to
+ * ensure that the `LockedPtr` is destroyed as soon as it is no longer needed.
+ *
+ * @tparam T  The type of datum to be stored.
+ * @tparam Mutex  The mutex type that guards the datum. Must be Lockable.
+ *
+ * @refcode examples/folly/Synchronized.cpp
  */
 template <class T, class Mutex = SharedMutex>
 struct Synchronized : public SynchronizedBase<
@@ -583,16 +651,13 @@ struct Synchronized : public SynchronizedBase<
   using MutexType = Mutex;
 
   /**
-   * Default constructor leaves both members call their own default
-   * constructor.
+   * Default constructor leaves both members call their own default constructor.
    */
   Synchronized() = default;
 
  public:
   /**
-   * Copy constructor; deprecated
-   *
-   * Enabled only when the data type is copy-constructible.
+   * Copy constructor. Enabled only when the data type is copy-constructible.
    *
    * Takes a shared-or-exclusive lock on the source mutex while performing the
    * copy-construction of the destination data from the source data. No lock is
@@ -600,6 +665,8 @@ struct Synchronized : public SynchronizedBase<
    *
    * May throw even when the data type is is nothrow-copy-constructible because
    * acquiring a lock may throw.
+   *
+   * deprecated
    */
   /* implicit */ Synchronized(typename std::conditional<
                               std::is_copy_constructible<T>::value,
@@ -608,13 +675,13 @@ struct Synchronized : public SynchronizedBase<
       : Synchronized(rhs.copy()) {}
 
   /**
-   * Move constructor; deprecated
-   *
    * Move-constructs from the source data without locking either the source or
    * the destination mutex.
    *
    * Semantically, assumes that the source object is a true rvalue and therefore
    * that no synchronization is required for accessing it.
+   *
+   * deprecated
    */
   Synchronized(Synchronized&& rhs) noexcept(nxMoveCtor)
       : Synchronized(std::move(rhs.datum_)) {}
@@ -626,8 +693,8 @@ struct Synchronized : public SynchronizedBase<
   explicit Synchronized(const T& rhs) noexcept(nxCopyCtor) : datum_(rhs) {}
 
   /**
-   * Constructor taking a datum rvalue as argument moves it. Again,
-   * there is no need to lock the constructing object.
+   * Constructor taking a datum rvalue as argument moves it. There is no need
+   * to lock the constructing object.
    */
   explicit Synchronized(T&& rhs) noexcept(nxMoveCtor)
       : datum_(std::move(rhs)) {}
@@ -657,7 +724,7 @@ struct Synchronized : public SynchronizedBase<
             std::make_index_sequence<sizeof...(MutexArgs)>{}} {}
 
   /**
-   * Copy assignment operator; deprecated
+   * Copy assignment operator.
    *
    * Enabled only when the data type is copy-constructible and move-assignable.
    *
@@ -669,6 +736,8 @@ struct Synchronized : public SynchronizedBase<
    *
    * This technique consts an extra temporary but avoids the need to take locks
    * on both mutexes together.
+   *
+   * deprecated
    */
   Synchronized& operator=(typename std::conditional<
                           std::is_copy_constructible<T>::value &&
@@ -679,7 +748,7 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
-   * Move assignment operator; deprecated
+   * Move assignment operator.
    *
    * Takes an exclusive lock on the destination mutex while move-assigning the
    * destination data from the source data. The source mutex is not locked or
@@ -687,6 +756,8 @@ struct Synchronized : public SynchronizedBase<
    *
    * Semantically, assumes that the source object is a true rvalue and therefore
    * that no synchronization is required for accessing it.
+   *
+   * deprecated
    */
   Synchronized& operator=(Synchronized&& rhs) {
     return *this = std::move(rhs.datum_);
@@ -715,7 +786,7 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
-   * Acquire an appropriate lock based on the context.
+   * @brief Acquire some lock.
    *
    * If the mutex is a shared mutex, and the Synchronized instance is const,
    * this acquires a shared lock.  Otherwise this acquires an exclusive lock.
@@ -738,6 +809,8 @@ struct Synchronized : public SynchronizedBase<
     return ConstLockedPtr(this, timeout);
   }
   /**
+   * @brief Acquire a lock for reading.
+   *
    * contextualRLock() acquires a read lock if the mutex type is shared,
    * or a regular exclusive lock for non-shared mutex types.
    *
@@ -752,6 +825,10 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * @brief Access the datum under lock.
+   *
+   * deprecated
+   *
    * This accessor offers a LockedPtr. In turn, LockedPtr offers
    * operator-> returning a pointer to T. The operator-> keeps
    * expanding until it reaches a pointer, so syncobj->foo() will lock
@@ -759,6 +836,8 @@ struct Synchronized : public SynchronizedBase<
    *
    * NOTE: This API is planned to be deprecated in an upcoming diff.
    * Prefer using lock(), wlock(), or rlock() instead.
+   *
+   * @refcode examples/folly/Synchronized/OperatorArrow.cpp
    */
   [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
   operator->() {
@@ -766,6 +845,8 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * deprecated
+   *
    * Obtain a ConstLockedPtr.
    *
    * NOTE: This API is planned to be deprecated in an upcoming diff.
@@ -778,6 +859,8 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * @brief Acquire a LockedPtr with timeout.
+   *
    * Attempts to acquire for a given number of milliseconds. If
    * acquisition is unsuccessful, the returned LockedPtr is nullptr.
    *
@@ -802,6 +885,8 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * @brief Swap datum.
+   *
    * Swaps with another Synchronized. Protected against
    * self-swap. Only data is swapped. Locks are acquired in increasing
    * address order.
@@ -832,6 +917,8 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * @brief Exchange datum.
+   *
    * Assign another datum and return the original value. Recommended
    * because it keeps the mutex held only briefly.
    */
@@ -857,6 +944,8 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * @brief Access datum without locking.
+   *
    * Returns a reference to the datum without acquiring a lock.
    *
    * Provided as a backdoor for call-sites where it is known safe to be used.

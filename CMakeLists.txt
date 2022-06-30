@@ -149,6 +149,7 @@ auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
 REMOVE_MATCHES_FROM_LISTS(files hfiles
   MATCHES
     "^${FOLLY_DIR}/build/"
+    "^${FOLLY_DIR}/docs/examples/"
     "^${FOLLY_DIR}/logging/example/"
     "^${FOLLY_DIR}/(.*/)?test/"
     "^${FOLLY_DIR}/tools/"
