@@ -626,7 +626,7 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
  * @tparam T  The type of datum to be stored.
  * @tparam Mutex  The mutex type that guards the datum. Must be Lockable.
  *
- * @refcode examples/folly/Synchronized.cpp
+ * @refcode docs/examples/folly/Synchronized.cpp
  */
 template <class T, class Mutex = SharedMutex>
 struct Synchronized : public SynchronizedBase<
@@ -837,7 +837,7 @@ struct Synchronized : public SynchronizedBase<
    * NOTE: This API is planned to be deprecated in an upcoming diff.
    * Prefer using lock(), wlock(), or rlock() instead.
    *
-   * @refcode examples/folly/Synchronized/OperatorArrow.cpp
+   * @refcode docs/examples/folly/Synchronized/OperatorArrow.cpp
    */
   [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
   operator->() {
