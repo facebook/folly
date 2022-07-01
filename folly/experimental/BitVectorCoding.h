@@ -31,10 +31,6 @@
 #include <folly/experimental/Select64.h>
 #include <folly/lang/Bits.h>
 
-#if !FOLLY_X64
-#error BitVectorCoding.h requires x86_64
-#endif
-
 namespace folly {
 namespace compression {
 
