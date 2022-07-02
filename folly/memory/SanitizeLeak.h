@@ -36,7 +36,7 @@ void annotate_object_collected_impl(void const* ptr);
  */
 FOLLY_ALWAYS_INLINE static void annotate_object_leaked(void const* ptr) {
   if (kIsSanitizeAddress) {
-    detail::annotate_object_leaked_impl(static_cast<void const*>(ptr));
+    detail::annotate_object_leaked_impl(ptr);
   }
 }
 
@@ -48,7 +48,7 @@ FOLLY_ALWAYS_INLINE static void annotate_object_leaked(void const* ptr) {
  */
 FOLLY_ALWAYS_INLINE static void annotate_object_collected(void const* ptr) {
   if (kIsSanitizeAddress) {
-    detail::annotate_object_collected_impl(static_cast<void const*>(ptr));
+    detail::annotate_object_collected_impl(ptr);
   }
 }
 } // namespace folly
