@@ -22,6 +22,8 @@
 
 #include <folly/portability/GTest.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wmissing-field-initializers")
+
 using folly::dynamic;
 using folly::parseJson;
 using folly::parseJsonWithMetadata;
