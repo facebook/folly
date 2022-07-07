@@ -8,6 +8,9 @@ sha256 = 95004b65e43fefc6100f337a25da27bb99b9ef8d4071a36a33b5e83eb1f82021
 [homebrew]
 double-conversion
 
+[debs]
+libdouble-conversion-dev
+
 [rpms]
 double-conversion
 double-conversion-devel

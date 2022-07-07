@@ -15,3 +15,5 @@ BUILD_STATIC_LIBS = ON
 #BUILD_gflags_nothreads_LIB = OFF
 BUILD_gflags_LIB = ON
 
+[debs]
+libgflags-dev
