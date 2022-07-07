@@ -26,12 +26,12 @@
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
+#include <xxh3.h>
 
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
-#include <folly/hash/SpookyHashV2.h>
 #include <folly/io/Cursor.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/CheckedMath.h>
@@ -1423,21 +1423,25 @@ uint32_t IOBuf::approximateShareCountOne() const {
 }
 
 size_t IOBufHash::operator()(const IOBuf& buf) const noexcept {
-  folly::hash::SpookyHashV2 hasher;
-  hasher.Init(0, 0);
+  XXH3_state_t *hasher = XXH3_createState();
+  assert(state != NULL);
+  XXH3_128bits_reset(hasher);
+
   io::Cursor cursor(&buf);
   for (;;) {
     auto b = cursor.peekBytes();
     if (b.empty()) {
       break;
     }
-    hasher.Update(b.data(), b.size());
+    XXH3_128bits_update(hasher, b.data(), b.size());
     cursor.skip(b.size());
   }
-  uint64_t h1;
-  uint64_t h2;
-  hasher.Final(&h1, &h2);
-  return static_cast<std::size_t>(h1);
+
+  XXH128_hash_t result = XXH3_128bits_digest(hasher);
+  XXH3_freeState(hasher);
+  // TODO(cavalcanti): Do we really need a 128bit hash if only the lower
+  // bits are actually used?
+  return static_cast<std::size_t>(result.low64);
 }
 
 ordering IOBufCompare::impl(const IOBuf& a, const IOBuf& b) const noexcept {
