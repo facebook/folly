@@ -27,32 +27,59 @@
 namespace folly {
 namespace python {
 
-class import_cache {
+/**
+ * Call-once like abstraction for cython-api module imports.
+ *
+ * On failure, returns false and keeps python error indicator set (caller must
+ * handle it).
+ */
+class import_cache_nocapture {
  public:
   using sig = int();
 
-  FOLLY_CONSTEVAL import_cache(sig& fun, char const* const name) noexcept
-      : fun_{fun}, name_{name ? name : "<unknown>"} {}
+  FOLLY_CONSTEVAL import_cache_nocapture(sig& fun) noexcept : fun_{fun} {}
 
-  void operator()() const {
+  bool operator()() const {
     // protecting this with the cxxabi mutex (the mutex that
     // guards static local variables) leads to deadlock with
     // cpython's gil; at-least-once semantics is fine here
     auto const val = fun_.load(std::memory_order_acquire);
-    return FOLLY_LIKELY(!val) ? void() : call_slow();
+    return FOLLY_LIKELY(!val) ? true : call_slow();
   }
 
  private:
-  FOLLY_NOINLINE void call_slow() const {
+  FOLLY_NOINLINE bool call_slow() const {
     auto const val = fun_.load(std::memory_order_acquire);
     if (val && 0 != val()) {
-      handlePythonError(fmt::format("import {} failed: ", name_));
+      return false;
     } else {
       fun_.store(nullptr, std::memory_order_release);
+      return true;
     }
   }
 
+ private:
   mutable std::atomic<sig*> fun_; // if nullptr, already called
+};
+
+/**
+ * On failure, captures python exception (clearing error indicator) and throws a
+ * wrapper C++ exception
+ */
+class import_cache {
+ public:
+  FOLLY_CONSTEVAL import_cache(
+      import_cache_nocapture::sig& fun, char const* const name) noexcept
+      : impl_{fun}, name_{name ? name : "<unknown>"} {}
+
+  void operator()() const {
+    if (!impl_()) {
+      handlePythonError(fmt::format("import {} failed: ", name_));
+    }
+  }
+
+ private:
+  import_cache_nocapture impl_;
   char const* const name_; // for handling import errors
 };
 
