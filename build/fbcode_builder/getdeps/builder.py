@@ -816,10 +816,8 @@ if __name__ == "__main__":
             # better signals for flaky tests.
             retry = 0
 
-        testpilot = path_search(env, "testpilot")
-        # TODO(xavierd): once tpx is really available on Windows, remove this.
-        tpx = path_search(env, "tpx") if sys.platform != "win32" else None
-        if (tpx or testpilot) and not no_testpilot:
+        tpx = path_search(env, "tpx")
+        if tpx and not no_testpilot:
             buck_test_info = list_tests()
             import os
 
@@ -835,41 +833,20 @@ if __name__ == "__main__":
             from sys import platform
 
             with start_run(env["FBSOURCE_HASH"]) as run_id:
-                if platform == "win32":
-                    machine_suffix = self.build_opts.host_type.as_tuple_string()
-                    testpilot_args = [
-                        "parexec-testinfra.exe",
-                        "C:/tools/testpilot/sc_testpilot.par",
-                        # Need to force the repo type otherwise testpilot on windows
-                        # can be confused (presumably sparse profile related)
-                        "--force-repo",
-                        "fbcode",
-                        "--force-repo-root",
-                        self.build_opts.fbsource_dir,
-                        "--buck-test-info",
-                        buck_test_info_name,
-                        "--retry=%d" % retry,
-                        "-j=%s" % str(self.num_jobs),
-                        "--test-config",
-                        "platform=%s" % machine_suffix,
-                        "buildsystem=getdeps",
-                        "--return-nonzero-on-failures",
-                    ]
-                else:
-                    testpilot_args = [
-                        tpx,
-                        "--force-local-execution",
-                        "--buck-test-info",
-                        buck_test_info_name,
-                        "--retry=%d" % retry,
-                        "-j=%s" % str(self.num_jobs),
-                        "--print-long-results",
-                    ]
+                testpilot_args = [
+                    tpx,
+                    "--force-local-execution",
+                    "--buck-test-info",
+                    buck_test_info_name,
+                    "--retry=%d" % retry,
+                    "-j=%s" % str(self.num_jobs),
+                    "--print-long-results",
+                ]
 
                 if owner:
                     testpilot_args += ["--contacts", owner]
 
-                if tpx and env:
+                if env:
                     testpilot_args.append("--env")
                     testpilot_args.extend(f"{key}={val}" for key, val in env.items())
 
