@@ -458,8 +458,8 @@ __folly_memcpy:
 #endif
 
         .ident "GCC: (GNU) 4.8.2"
+
+#endif
 #ifdef __linux__
         .section .note.GNU-stack,"",@progbits
-#endif
-
 #endif
