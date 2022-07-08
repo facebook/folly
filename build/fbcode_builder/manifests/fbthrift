@@ -19,13 +19,14 @@ job_weight_mib = 2048
 
 [dependencies]
 bison
-folly
-wangle
 fizz
 fmt
+folly
 googletest
 libsodium
+openssl
 python-six
+wangle
 zstd
 
 [dependencies.os=linux]
