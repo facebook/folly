@@ -21,9 +21,5 @@ WITH_PKGCONFIG=ON
 HAVE_TR1_UNORDERED_MAP=OFF
 HAVE_TR1_UNORDERED_SET=OFF
 
-# TODO: Building with the system libgoogle-glog-dev package could be
-# made to work, but some changes are required. The Watchman and EdenFS
-# CMake builds need consistent lookup for the CMake package.
-
-#[debs]
-#libgoogle-glog-dev
+[debs]
+libgoogle-glog-dev
