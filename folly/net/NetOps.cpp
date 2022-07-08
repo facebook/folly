@@ -30,7 +30,9 @@
 #endif
 
 #if !FOLLY_HAVE_RECVMMSG
-#if FOLLY_HAVE_WEAK_SYMBOLS
+#if defined(__linux__)
+#include <linux/socket.h>
+#elif FOLLY_HAVE_WEAK_SYMBOLS
 extern "C" FOLLY_ATTR_WEAK int recvmmsg(
     int sockfd,
     struct mmsghdr* msgvec,
