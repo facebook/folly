@@ -58,7 +58,7 @@ using ElfSym = FOLLY_ELF_ELFW(Sym);
 // Just using dev, inode is not unique enough, because the file can
 // be overwritten with new contents, but will keep same dev and inode, so
 // we take into account modification time and file size to minimize risk.
-using ElfFileId = std::tuple<dev_t, ino_t, uint64_t, uint64_t>;
+using ElfFileId = std::tuple<dev_t, ino_t, off_t, uint64_t>;
 
 /**
  * ELF file parser.

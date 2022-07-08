@@ -167,6 +167,7 @@ ElfFile::ElfFile(ElfFile&& other) noexcept
     : fd_(other.fd_),
       file_(other.file_),
       length_(other.length_),
+      fileId_(other.fileId_),
       baseAddress_(other.baseAddress_) {
   // copy other.filepath_, leaving filepath_ zero-terminated, always.
   strlcpy(filepath_, other.filepath_, kFilepathMaxLen - 1);
@@ -174,6 +175,7 @@ ElfFile::ElfFile(ElfFile&& other) noexcept
   other.fd_ = -1;
   other.file_ = static_cast<char*>(MAP_FAILED);
   other.length_ = 0;
+  other.fileId_ = {};
   other.baseAddress_ = 0;
 }
 
@@ -186,12 +188,14 @@ ElfFile& ElfFile::operator=(ElfFile&& other) noexcept {
   fd_ = other.fd_;
   file_ = other.file_;
   length_ = other.length_;
+  fileId_ = other.fileId_;
   baseAddress_ = other.baseAddress_;
 
   other.filepath_[0] = 0;
   other.fd_ = -1;
   other.file_ = static_cast<char*>(MAP_FAILED);
   other.length_ = 0;
+  other.fileId_ = {};
   other.baseAddress_ = 0;
 
   return *this;
@@ -209,6 +213,8 @@ void ElfFile::reset() noexcept {
     close(fd_);
     fd_ = -1;
   }
+
+  fileId_ = {};
 }
 
 ElfFile::OpenResult ElfFile::init() noexcept {
