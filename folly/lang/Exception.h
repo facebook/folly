@@ -328,14 +328,17 @@ FOLLY_EXPORT inline bool exception_ptr_access_rt() noexcept {
   return FOLLY_LIKELY(value) ? value > 0 : exception_ptr_access_rt_();
 }
 
+inline std::nullptr_t exception_ptr_nullptr() {
+  return nullptr;
+}
+
 template <typename T, typename Catch>
 auto exception_ptr_catching(std::exception_ptr const& ptr, Catch catch_) {
   auto const try_ = [&] {
     return ptr ? (std::rethrow_exception(ptr), nullptr) : nullptr;
   };
   return catch_exception(
-      [&] { return catch_exception<T>(try_, catch_); },
-      +[] { return nullptr; });
+      [&] { return catch_exception<T>(try_, catch_); }, exception_ptr_nullptr);
 }
 
 std::type_info const* exception_ptr_exception_typeid(
