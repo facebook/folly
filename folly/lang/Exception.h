@@ -322,7 +322,7 @@ extern std::atomic<int> exception_ptr_access_rt_cache_;
 FOLLY_COLD bool exception_ptr_access_rt_v_() noexcept;
 FOLLY_COLD bool exception_ptr_access_rt_() noexcept;
 
-FOLLY_EXPORT inline bool exception_ptr_access_rt() noexcept {
+inline bool exception_ptr_access_rt() noexcept {
   auto const& cache = exception_ptr_access_rt_cache_;
   auto const value = cache.load(std::memory_order_relaxed);
   return FOLLY_LIKELY(value) ? value > 0 : exception_ptr_access_rt_();
