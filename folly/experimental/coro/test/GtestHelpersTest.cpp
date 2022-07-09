@@ -93,4 +93,13 @@ CO_TYPED_TEST(GtestHelpersTypedTest, Test_type_str) {
 CO_TEST(GtestHelpersTest, testCoAssertNoThrow) {
   CO_ASSERT_NO_THROW(co_await co_getInt(0));
 }
+
+CO_TEST(GtestHelpersTest, testCoAssertThrow) {
+  constexpr auto co_throwInvalidArgument = []() -> folly::coro::Task<> {
+    throw std::invalid_argument{""};
+  };
+  CO_ASSERT_THROW(co_await co_throwInvalidArgument(), std::invalid_argument);
+  CO_ASSERT_ANY_THROW(co_await co_throwInvalidArgument());
+}
+
 } // namespace
