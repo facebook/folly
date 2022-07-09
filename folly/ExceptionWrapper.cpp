@@ -37,16 +37,6 @@ exception_wrapper::VTable const exception_wrapper::ExceptionPtr::ops_{
 exception_wrapper::VTable const exception_wrapper::SharedPtr::ops_{
     copy_, move_, delete_, throw_, type_, get_exception_, get_exception_ptr_};
 
-exception_wrapper exception_wrapper::from_exception_ptr(
-    std::exception_ptr const& ptr) noexcept {
-  return from_exception_ptr(folly::copy(ptr));
-}
-
-exception_wrapper exception_wrapper::from_exception_ptr(
-    std::exception_ptr&& ptr) noexcept {
-  return !ptr ? exception_wrapper() : exception_wrapper(std::move(ptr));
-}
-
 exception_wrapper::exception_wrapper(std::exception_ptr const& ptr) noexcept
     : exception_wrapper{folly::copy(ptr)} {}
 

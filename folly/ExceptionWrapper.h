@@ -320,11 +320,6 @@ class exception_wrapper final {
   static void handle_(This& this_, char const* name, CatchFns&... fns);
 
  public:
-  static exception_wrapper from_exception_ptr(
-      std::exception_ptr const& eptr) noexcept;
-  static exception_wrapper from_exception_ptr(
-      std::exception_ptr&& eptr) noexcept;
-
   //! Default-constructs an empty `exception_wrapper`
   //! \post `type() == nullptr`
   exception_wrapper() noexcept {}
