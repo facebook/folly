@@ -35,14 +35,14 @@ extern "C" FOLLY_ATTR_WEAK int recvmmsg(
     int sockfd,
     struct mmsghdr* msgvec,
     unsigned int vlen,
-    unsigned int flags,
+    int flags,
     struct timespec* timeout);
 #else
 static int (*recvmmsg)(
     int sockfd,
     struct mmsghdr* msgvec,
     unsigned int vlen,
-    unsigned int flags,
+    int flags,
     struct timespec* timeout) = nullptr;
 #endif // FOLLY_HAVE_WEAK_SYMBOLS
 #endif // FOLLY_HAVE_RECVMMSG
