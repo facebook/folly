@@ -321,16 +321,27 @@ unique_ptr<IOBuf> IOBuf::create(std::size_t capacity) {
     return createCombined(capacity);
   }
 
-  // if we have nallocx, we want to allocate the capacity and the overhead in
-  // a single allocation only if we do not cross into the next allocation class
-  // for some buffer sizes, this can use about 25% extra memory
+  // If we have nallocx, we want to opportunistically combine allocations where
+  // doing so doesn't increase the buffer allocation size.
   if (canNallocx()) {
     auto mallocSize = goodMallocSize(capacity);
-    // round capacity to a multiple of 8
-    size_t minSize = ((capacity + 7) & ~7) + sizeof(SharedInfo);
-    if (mallocSize >= minSize) {
+
+    // Best case: all 3 objects fit in the minimum allocation.
+    size_t combinedSize = offsetof(HeapFullStorage, align) + capacity;
+    if (mallocSize >= combinedSize) {
       return createCombined(capacity);
     }
+
+    // Middle case: SharedInfo fits in the buffer allocation but IOBuf doesn't.
+    size_t partiallyCombinedSize = capacity + sizeof(SharedInfo);
+    if (mallocSize >= partiallyCombinedSize) {
+      return createSeparate(capacity);
+    }
+
+    // Worst case: have to allocate buffer separately, but will allocate IOBuf
+    // and SharedInfo together (this is what takeOwnership does).
+    auto* buf = checkedMalloc(mallocSize);
+    return takeOwnership(SIZED_FREE, buf, mallocSize, 0, 0);
   }
 
   return createSeparate(capacity);
