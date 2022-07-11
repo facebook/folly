@@ -240,3 +240,6 @@ LABEL(none_or_one):
 #endif // FOLLY_MEMSET_IS_MEMSET
 
 #endif // __AVX2__
+#ifdef __linux__
+        .section .note.GNU-stack,"",@progbits
+#endif
