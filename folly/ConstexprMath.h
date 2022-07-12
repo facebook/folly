@@ -49,7 +49,9 @@ constexpr T constexpr_min(T a, Ts... ts) {
 template <typename T, typename Less>
 constexpr T const& constexpr_clamp(
     T const& v, T const& lo, T const& hi, Less less) {
-  return less(v, lo) ? lo : less(hi, v) ? hi : v;
+  T const& a = less(v, lo) ? lo : v;
+  T const& b = less(hi, a) ? hi : a;
+  return b;
 }
 template <typename T>
 constexpr T const& constexpr_clamp(T const& v, T const& lo, T const& hi) {
