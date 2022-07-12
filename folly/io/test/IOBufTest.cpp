@@ -1832,3 +1832,15 @@ TEST(IOBuf, bufferTooLarge) {
       IOBuf::copyBuffer(StringPiece("Hello"), (size_t)0xFFFF'FFFF'FFFF'FFFE),
       std::length_error);
 }
+
+TEST(IOBuf, copyConstructBufferTooLarge) {
+  auto buf = StringPiece("Hello");
+  EXPECT_THROW(
+      IOBuf(
+          IOBuf::COPY_BUFFER,
+          buf.data(),
+          buf.size(),
+          57,
+          (size_t)0xFFFF'FFFF'FFFF'FFFE),
+      std::bad_alloc);
+}

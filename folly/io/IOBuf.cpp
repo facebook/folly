@@ -287,7 +287,22 @@ IOBuf::IOBuf(
     std::size_t size,
     std::size_t headroom,
     std::size_t minTailroom)
-    : IOBuf(CREATE, headroom + size + minTailroom) {
+    : next_(this),
+      prev_(this),
+      data_(nullptr),
+      length_(0),
+      flagsAndSharedInfo_(0) {
+  std::size_t capacity = 0;
+  if (!checked_add(&capacity, size, headroom, minTailroom) ||
+      capacity > kMaxIOBufSize) {
+    throw_exception<std::bad_alloc>();
+  }
+
+  SharedInfo* info;
+  allocExtBuffer(capacity, &buf_, &info, &capacity_);
+  setSharedInfo(info);
+  data_ = buf_;
+
   advance(headroom);
   if (size > 0) {
     assert(buf != nullptr);
