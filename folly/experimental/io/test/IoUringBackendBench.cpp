@@ -606,6 +606,7 @@ void runBM(
   evb->loopForever();
   suspender.rehire();
   refillThread.reset();
+  eventsVec.clear();
   evb.reset();
 }
 
