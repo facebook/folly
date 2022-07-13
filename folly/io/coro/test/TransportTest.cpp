@@ -24,6 +24,7 @@
 #include <folly/io/coro/ServerSocket.h>
 #include <folly/io/coro/Transport.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/detail/Sleeper.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -298,6 +299,27 @@ TEST_F(TransportTest, AcceptCancelled) {
           OperationCancelled);
     }());
   });
+}
+
+TEST_F(TransportTest, RequestCancellationInAnotherThread) {
+  auto ass = AsyncServerSocket::newSocket(&evb);
+  std::thread anotherThread([&] {
+    folly::detail::Sleeper sleeper;
+    while (!ass->getAccepting()) {
+      sleeper.wait();
+    }
+    std::this_thread::sleep_for(5ms);
+    cancelSource.requestCancellation();
+  });
+
+  run([&]() -> Task<> {
+    ServerSocket css(ass, std::nullopt, 16);
+    EXPECT_THROW(
+        co_await co_withCancellation(cancelSource.getToken(), css.accept()),
+        OperationCancelled);
+  });
+
+  anotherThread.join();
 }
 
 TEST_F(TransportTest, AsyncClientAndServer) {
