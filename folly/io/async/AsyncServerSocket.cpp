@@ -1102,7 +1102,6 @@ void AsyncServerSocket::dispatchSocket(
 
     // We couldn't add to queue.  Fall through to below
 
-    ++numDroppedConnections_;
     if (acceptRateAdjustSpeed_ > 0) {
       // aggressively decrease accept rate when in trouble
       static const double kAcceptRateDecreaseSpeed = 0.1;
@@ -1119,6 +1118,7 @@ void AsyncServerSocket::dispatchSocket(
       // should use pauseAccepting() to temporarily back off accepting new
       // connections, before they reach the point where their threads can't
       // even accept new messages.
+      ++numDroppedConnections_;
       FB_LOG_EVERY_MS(ERROR, 1000)
           << "failed to dispatch newly accepted socket:"
           << " all accept callback queues are full";
