@@ -23,31 +23,31 @@
 
 #include <folly/Portability.h>
 
-#include <openssl/opensslv.h>
+#include <OpenSSL/opensslv.h>
 
 // The OpenSSL public header that describes build time configuration and
 // availability (or lack of availability) of certain optional ciphers.
-#include <openssl/opensslconf.h>
+#include <OpenSSL/opensslconf.h>
 
-#include <openssl/asn1.h>
-#include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/crypto.h>
-#include <openssl/dh.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/rsa.h>
-#include <openssl/sha.h>
-#include <openssl/ssl.h>
-#include <openssl/tls1.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
+#include <OpenSSL/asn1.h>
+#include <OpenSSL/bio.h>
+#include <OpenSSL/bn.h>
+#include <OpenSSL/crypto.h>
+#include <OpenSSL/dh.h>
+#include <OpenSSL/err.h>
+#include <OpenSSL/evp.h>
+#include <OpenSSL/hmac.h>
+#include <OpenSSL/rand.h>
+#include <OpenSSL/rsa.h>
+#include <OpenSSL/sha.h>
+#include <OpenSSL/ssl.h>
+#include <OpenSSL/tls1.h>
+#include <OpenSSL/x509.h>
+#include <OpenSSL/x509v3.h>
 
 #ifndef OPENSSL_NO_EC
-#include <openssl/ec.h>
-#include <openssl/ecdsa.h>
+#include <OpenSSL/ec.h>
+#include <OpenSSL/ecdsa.h>
 #endif
 
 // BoringSSL doesn't have notion of versioning although it defines

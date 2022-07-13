@@ -31,7 +31,7 @@
 // clang-format off
 #include <folly/portability/Windows.h>
 // @lint-ignore CLANGTIDY
-#include <openssl/crypto.h>
+#include <OpenSSL/crypto.h>
 // clang-format on
 
 #if !defined(OPENSSL_IS_BORINGSSL)
