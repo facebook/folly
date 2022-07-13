@@ -38,7 +38,7 @@ tools/rust/ossconfigs = .
 ^fbcode/eden/scm/lib/third-party/rust/.*/Cargo\.toml$
 ^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
 # strip other scm code  unrelated to mononoke to prevent triggering unnecessary checks
-^fbcode/eden/(?!mononoke|/scm/lib/xdiff.*)/.*$
+^fbcode/eden(?!/mononoke|/scm/(lib|public_autocargo))/.*$
 ^.*/facebook/.*$
 ^.*/fb/.*$
 
