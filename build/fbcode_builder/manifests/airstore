@@ -31,5 +31,6 @@ xz
 
 [shipit.pathmap]
 fbcode/fair_infra/data/airstore = .
+fbcode/deeplearning/projects/fairstore/cpp = deeplearning/projects/fairstore/cpp
 
 [shipit.strip]
