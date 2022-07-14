@@ -16,6 +16,7 @@ builder = nop
 
 [dependencies]
 boost
+libcurl
 fizz
 fmt
 folly
@@ -32,5 +33,6 @@ xz
 [shipit.pathmap]
 fbcode/fair_infra/data/airstore = .
 fbcode/deeplearning/projects/fairstore/cpp = deeplearning/projects/fairstore/cpp
+fbcode/proxygen/lib/utils = proxygen/lib/utils
 
 [shipit.strip]
