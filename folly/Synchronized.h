@@ -836,8 +836,6 @@ struct Synchronized : public SynchronizedBase<
    *
    * NOTE: This API is planned to be deprecated in an upcoming diff.
    * Prefer using lock(), wlock(), or rlock() instead.
-   *
-   * @refcode docs/examples/folly/Synchronized/OperatorArrow.cpp
    */
   [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
   operator->() {
