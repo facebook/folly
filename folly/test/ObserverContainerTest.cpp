@@ -101,21 +101,21 @@ class MockObserver : public ObserverContainerT::Observer {
       destroyedMock,
       void(
           TestSubjectT*,
-          typename TestSubjectT::ObserverContainer::ManagedObserver::
+          typename TestSubjectT::ObserverContainer::ObserverBase::
               DestroyContext*));
   MOCK_METHOD3(
       movedMock,
       void(
           TestSubjectT*,
           TestSubjectT*,
-          typename TestSubjectT::ObserverContainer::ManagedObserver::
+          typename TestSubjectT::ObserverContainer::ObserverBase::
               MoveContext*));
   MOCK_METHOD2(
       invokeInterfaceMethodMock,
       void(
           TestSubjectT*,
           folly::Function<void(
-              typename TestSubjectT::ObserverContainer::Observer*,
+              typename TestSubjectT::ObserverContainer::ObserverBase*,
               TestSubjectT*)>&));
   MOCK_METHOD1(postInvokeInterfaceMethodMock, void(TestSubjectT*));
   MOCK_METHOD1(addedToObserverContainerMock, void(ObserverContainerBase*));
@@ -158,8 +158,8 @@ class MockObserver : public ObserverContainerT::Observer {
   void invokeInterfaceMethod(
       TestSubjectT* obj,
       folly::Function<void(
-          typename TestSubjectT::ObserverContainer::Observer*, TestSubjectT*)>&
-          fn) noexcept override {
+          typename TestSubjectT::ObserverContainer::ObserverBase*,
+          TestSubjectT*)>& fn) noexcept override {
     if (defaultHandlersForInvoke_) {
       TestSubjectT::ObserverContainer::Observer::invokeInterfaceMethod(obj, fn);
     } else {
@@ -231,7 +231,7 @@ class MockManagedObserver : public ObserverContainerT::ManagedObserver {
       void(
           TestSubjectT*,
           folly::Function<void(
-              typename TestSubjectT::ObserverContainer::Observer*,
+              typename TestSubjectT::ObserverContainer::ObserverBase*,
               TestSubjectT*)>&));
   MOCK_METHOD1(postInvokeInterfaceMethodMock, void(TestSubjectT*));
   MOCK_METHOD1(specialMock, void(TestSubjectT*));
@@ -269,8 +269,8 @@ class MockManagedObserver : public ObserverContainerT::ManagedObserver {
   void invokeInterfaceMethod(
       TestSubjectT* obj,
       folly::Function<void(
-          typename TestSubjectT::ObserverContainer::Observer*, TestSubjectT*)>&
-          fn) noexcept override {
+          typename TestSubjectT::ObserverContainer::ObserverBase*,
+          TestSubjectT*)>& fn) noexcept override {
     if (defaultHandlersForInvoke_) {
       TestSubjectT::ObserverContainer::Observer::invokeInterfaceMethod(obj, fn);
     } else {

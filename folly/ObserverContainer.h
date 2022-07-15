@@ -383,24 +383,14 @@ class ObserverContainerBase {
   };
 
   /**
-   * Observer interface.
+   * Observer base interface.
    *
-   * The interface between an observer container and observers in the container.
-   *
-   * This interface includes methods that are called upon relevant changes to
-   * the container (added/removedFromObserverContainer) and changes to the
-   * object being observed (attached/detached/moved/destoyed). It also defines
-   * how observers communicate which events they want to subscribe to, for
-   * containers that support event subscription.
-   *
-   * An observer must not be destroyed while it is in a container. This can be
-   * accomplished by removing the observer from the container on its destruction
-   * or delaying destruction.
-   *
-   * Typical use cases should not attempt to implement this interface and should
-   * instead use a specialization such as ManagedObserver.
+   * This interface includes the events exposed by the subject's observer
+   * interface and the set of events that are provided by the ObserverContainer
+   * (attached/detached/moved/destoyed). It also defines how observers subscribe
+   * to specific events made available by the subject.
    */
-  class Observer : public ObserverInterface, public DestructorCheck {
+  class ObserverBase : public ObserverInterface, public DestructorCheck {
    public:
     using observed_type = Observed;
     using interface_type = ObserverInterface;
@@ -408,17 +398,17 @@ class ObserverContainerBase {
     using EventSet = ObserverEventSet;
     using EventSetBuilder = typename ObserverEventSet::Builder;
 
-    ~Observer() override = default;
+    ~ObserverBase() override = default;
 
     /**
      * Construct a new observer with no event subscriptions.
      */
-    Observer() {}
+    ObserverBase() {}
 
     /**
      * Construct a new observer subscribed to events in the passed EventSet.
      */
-    explicit Observer(EventSet eventSet) : eventSet_(eventSet) {}
+    explicit ObserverBase(EventSet eventSet) : eventSet_(eventSet) {}
 
     /**
      * Base class that can be used to pass context about move operation.
@@ -493,7 +483,7 @@ class ObserverContainerBase {
      */
     virtual void invokeInterfaceMethod(
         Observed* obj,
-        folly::Function<void(Observer*, Observed*)>& fn) noexcept {
+        folly::Function<void(ObserverBase*, Observed*)>& fn) noexcept {
       fn(this, obj);
     }
 
@@ -509,6 +499,53 @@ class ObserverContainerBase {
      * @param obj           Object associated with observer event.
      */
     virtual void postInvokeInterfaceMethod(Observed* /* obj */) noexcept {}
+
+    /**
+     * Returns the EventSet containing the events the observer wants.
+     */
+    const EventSet& getEventSet() const noexcept { return eventSet_; }
+
+   private:
+    const EventSet eventSet_;
+  };
+
+  /**
+   * Observer interface.
+   *
+   * The interface between an observer container and observers in the container.
+   *
+   * This interface includes methods that are called upon relevant changes to
+   * the observer's status in a container (added/removedFromObserverContainer).
+   *
+   * An observer must not be destroyed while it is in a container. This can be
+   * accomplished by removing the observer from the container on its destruction
+   * or delaying destruction.
+   *
+   * Typical use cases should not attempt to implement this interface and should
+   * instead use a specialization such as ManagedObserver.
+   */
+  class Observer : public ObserverBase {
+   public:
+    using observed_type = Observed;
+    using interface_type = ObserverInterface;
+
+    using EventSet = ObserverEventSet;
+    using EventSetBuilder = typename ObserverEventSet::Builder;
+
+    ~Observer() override = default;
+
+    /**
+     * Construct a new observer with no event subscriptions.
+     */
+    Observer() : ObserverBase() {}
+
+    /**
+     * Construct a new observer subscribed to events in the passed EventSet.
+     */
+    explicit Observer(EventSet eventSet) : ObserverBase(eventSet) {}
+
+   protected:
+    friend ObserverContainerBase;
 
     /**
      * Invoked when this observer has been added to an observer container.
@@ -548,14 +585,6 @@ class ObserverContainerBase {
     virtual void movedToObserverContainer(
         ObserverContainerBase* oldCtr,
         ObserverContainerBase* newCtr) noexcept = 0;
-
-    /**
-     * Returns the EventSet containing the events the observer wants.
-     */
-    const EventSet& getEventSet() const noexcept { return eventSet_; }
-
-   private:
-    const EventSet eventSet_;
   };
 
   /**
@@ -832,7 +861,7 @@ class ObserverContainerBase {
 
  private:
   void invokeInterfaceMethodImpl(
-      folly::Function<void(Observer*, Observed*)>&& fn,
+      folly::Function<void(ObserverBase*, Observed*)>&& fn,
       const folly::Optional<EventEnum> maybeEventEnum = folly::none) noexcept {
     using InvokeWhileIteratingPolicy = typename ObserverContainerStoreBase<
         Observer>::InvokeWhileIteratingPolicy;
@@ -845,7 +874,7 @@ class ObserverContainerBase {
         },
         InvokeWhileIteratingPolicy::InvokeAdded);
     getStore().invokeForEachObserver(
-        [this, maybeEventEnum](Observer* observer) {
+        [this, maybeEventEnum](ObserverBase* observer) {
           if (!maybeEventEnum.has_value() ||
               observer->getEventSet().isEnabled(maybeEventEnum.value())) {
             observer->postInvokeInterfaceMethod(getObject());
