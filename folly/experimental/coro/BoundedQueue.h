@@ -30,13 +30,14 @@ namespace coro {
 // dequeue are async awaitable.
 template <typename T, bool SingleProducer = false, bool SingleConsumer = false>
 class BoundedQueue {
+  static constexpr bool kSPSC = SingleProducer && SingleConsumer;
+
  public:
   explicit BoundedQueue(uint32_t capacity)
       : queue_(
-            SingleProducer && SingleConsumer
-                ? capacity + 1 // One more extra space because usable space of
-                               // ProducerConsumerQueue used below is (size-1)
-                : capacity),
+            kSPSC ? capacity + 1 // One more extra space because usable space of
+                                 // ProducerConsumerQueue used below is (size-1)
+                  : capacity),
         enqueueSemaphore_{capacity},
         dequeueSemaphore_{0} {}
 
@@ -64,14 +65,14 @@ class BoundedQueue {
   folly::coro::Task<T> dequeue() {
     co_await dequeueSemaphore_.co_wait();
     T item;
-    queue_.read(item);
+    dequeueReady(item);
     enqueueSemaphore_.signal();
     co_return item;
   }
 
   folly::coro::Task<void> dequeue(T& item) {
     co_await dequeueSemaphore_.co_wait();
-    queue_.read(item);
+    dequeueReady(item);
     enqueueSemaphore_.signal();
   }
 
@@ -88,7 +89,7 @@ class BoundedQueue {
     if (!waitSuccess) {
       return false;
     }
-    queue_.read(item);
+    dequeueReady(item);
     enqueueSemaphore_.signal();
     return true;
   }
@@ -96,7 +97,7 @@ class BoundedQueue {
   bool empty() const { return queue_.isEmpty(); }
 
   size_t size() const {
-    if constexpr (SingleProducer && SingleConsumer) {
+    if constexpr (kSPSC) {
       return queue_.sizeGuess();
     } else {
       return queue_.size();
@@ -104,11 +105,17 @@ class BoundedQueue {
   }
 
  private:
-  std::conditional_t<
-      SingleProducer && SingleConsumer,
-      ProducerConsumerQueue<T>,
-      MPMCQueue<T>>
-      queue_;
+  void dequeueReady(T& item) {
+    if constexpr (kSPSC) {
+      CHECK(queue_.read(item));
+    } else {
+      // Cannot use read() because the thread that acquired the next ticket may
+      // not have completed the write yet.
+      CHECK(queue_.readIfNotEmpty(item));
+    }
+  }
+
+  std::conditional_t<kSPSC, ProducerConsumerQueue<T>, MPMCQueue<T>> queue_;
   folly::fibers::Semaphore enqueueSemaphore_;
   folly::fibers::Semaphore dequeueSemaphore_;
 };

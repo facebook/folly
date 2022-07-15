@@ -903,8 +903,15 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
     dequeueWithTicketBase(ticket, slots_, capacity_, stride_, elem);
   }
 
-  /// If an item can be dequeued with no blocking, does so and returns
-  /// true, otherwise returns false.
+  /// If an item can be dequeued with no blocking, does so and returns true,
+  /// otherwise returns false.
+  ///
+  /// Note that if the matching write is still in progress, this may return
+  /// false even if writes that have been started later have already
+  /// completed. If an external mechanism is used for counting completed writes
+  /// (for example a semaphore) to determine when an element is ready to
+  /// dequeue, readIfNotEmpty() should be used instead, which will wait for the
+  /// write in progress.
   bool read(T& elem) noexcept {
     uint64_t ticket;
     return readAndGetTicket(ticket, elem);
