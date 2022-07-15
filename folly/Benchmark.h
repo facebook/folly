@@ -365,7 +365,7 @@ void printResultComparison(
  * Allow users to record customized counter during benchmarking,
  * there will be one extra column showing in the output result for each counter
  *
- * BENCHMARK_COUNTERS(insertVectorBegin, couters, iters) {
+ * BENCHMARK_COUNTERS(insertVectorBegin, counters, iters) {
  *   vector<int> v;
  *   FOR_EACH_RANGE (i, 0, iters) {
  *     v.insert(v.begin(), 42);
