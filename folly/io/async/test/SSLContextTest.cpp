@@ -22,6 +22,10 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
+#if !defined(FOLLY_CERTS_DIR)
+#define FOLLY_CERTS_DIR "folly/io/async/test/certs"
+#endif
+
 using namespace std;
 
 namespace folly {
@@ -74,9 +78,9 @@ TEST_F(SSLContextTest, TestCipherRemoval) {
 
 TEST_F(SSLContextTest, TestLoadCertKey) {
   std::string certData, keyData, anotherKeyData;
-  const char* certPath = "folly/io/async/test/certs/tests-cert.pem";
-  const char* keyPath = "folly/io/async/test/certs/tests-key.pem";
-  const char* anotherKeyPath = "folly/io/async/test/certs/client_key.pem";
+  const char* certPath = FOLLY_CERTS_DIR "/tests-cert.pem";
+  const char* keyPath = FOLLY_CERTS_DIR "/tests-key.pem";
+  const char* anotherKeyPath = FOLLY_CERTS_DIR "/client_key.pem";
   folly::readFile(certPath, certData);
   folly::readFile(keyPath, keyData);
   folly::readFile(anotherKeyPath, anotherKeyData);
@@ -161,7 +165,7 @@ TEST_F(SSLContextTest, TestLoadCertKey) {
 }
 
 TEST_F(SSLContextTest, TestLoadCertificateChain) {
-  constexpr auto kCertChainPath = "folly/io/async/test/certs/client_chain.pem";
+  constexpr auto kCertChainPath = FOLLY_CERTS_DIR "/client_chain.pem";
   std::unique_ptr<SSLContext> ctx2;
   STACK_OF(X509) * stack;
   SSL_CTX* sctx;
@@ -187,7 +191,7 @@ TEST_F(SSLContextTest, TestLoadCertificateChain) {
 }
 
 TEST_F(SSLContextTest, TestSetSupportedClientCAs) {
-  constexpr auto kCertChainPath = "folly/io/async/test/certs/client_chain.pem";
+  constexpr auto kCertChainPath = FOLLY_CERTS_DIR "/client_chain.pem";
   ctx.setSupportedClientCertificateAuthorityNamesFromFile(kCertChainPath);
 
   STACK_OF(X509_NAME)* names = SSL_CTX_get_client_CA_list(ctx.getSSLCtx());
