@@ -23,8 +23,11 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/experimental/io/IoUringBackend.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/SysMman.h>
+#include <folly/portability/SysSyscall.h>
 #include <folly/synchronization/CallOnce.h>
 
 #if __has_include(<sys/timerfd.h>)
@@ -37,7 +40,10 @@ extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_pre_hook(uint64_t* call_time);
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
     uint64_t call_time, int ret);
 
+namespace folly {
+
 namespace {
+
 struct SignalRegistry {
   struct SigInfo {
     struct sigaction sa_ {};
@@ -290,9 +296,264 @@ std::chrono::time_point<std::chrono::steady_clock> getTimerExpireTime(
   return now + us;
 }
 
-} // namespace
+// there is no builtin macro we can use in liburing to tell if buffer rings are
+// supported. However in the release that added them, there was also added
+// multishot accept - and so we can use it's pressence to suggest that we can
+// safely use provided buffer rings
+#if defined(IORING_ACCEPT_MULTISHOT)
 
-namespace folly {
+class ProvidedBuffersBuffer {
+ public:
+  static constexpr size_t kHugePageMask = (1LLU << 21) - 1; // 2MB
+  static constexpr size_t kPageMask = (1LLU << 12) - 1; // 4095
+  static size_t calcBufferSize(int bufferShift) {
+    if (bufferShift < 5) {
+      bufferShift = 5;
+    }
+    return 1LLU << bufferShift;
+  }
+
+  ProvidedBuffersBuffer(
+      int count, int bufferShift, int ringCountShift, bool huge_pages)
+      : bufferShift_(bufferShift) {
+    // space for the ring
+    int ringCount = 1 << ringCountShift;
+    ringMask_ = ringCount - 1;
+    ringSize_ = sizeof(struct io_uring_buf) * ringCount;
+
+    allSize_ = (ringSize_ + 31) & ~32LLU;
+
+    if (bufferShift_ < 5) {
+      bufferShift_ = 5; // for alignment
+    }
+
+    sizePerBuffer_ = calcBufferSize(bufferShift_);
+    bufferSize_ = sizePerBuffer_ * count;
+    allSize_ += bufferSize_;
+
+    int pages;
+    if (huge_pages) {
+      allSize_ = (allSize_ + kHugePageMask) & (~kHugePageMask);
+      pages = allSize_ / (1 + kHugePageMask);
+    } else {
+      allSize_ = (kPageMask + kPageMask) & ~kPageMask;
+      pages = allSize_ / (1 + kPageMask);
+    }
+
+    buffer_ = mmap(
+        nullptr,
+        allSize_,
+        PROT_READ | PROT_WRITE,
+        MAP_ANONYMOUS | MAP_PRIVATE,
+        -1,
+        0);
+
+    if (buffer_ == MAP_FAILED) {
+      auto errnoCopy = errno;
+      throw std::runtime_error(folly::to<std::string>(
+          "unable to allocate pages of size ",
+          allSize_,
+          " pages=",
+          pages,
+          ": ",
+          folly::errnoStr(errnoCopy)));
+    }
+
+    bufferBuffer_ = ((char*)buffer_) + ringSize_;
+    ringPtr_ = (struct io_uring_buf_ring*)buffer_;
+
+    if (huge_pages) {
+      int ret = madvise(buffer_, allSize_, MADV_HUGEPAGE);
+      PLOG_IF(ERROR, ret) << "cannot enable huge pages";
+    }
+  }
+
+  struct io_uring_buf_ring* ring() const {
+    return ringPtr_;
+  }
+
+  struct io_uring_buf* ringBuf(int idx) const {
+    return &ringPtr_->bufs[idx & ringMask_];
+  }
+
+  uint32_t ringCount() const { return 1 + ringMask_; }
+
+  char* buffer(uint16_t idx) {
+    size_t offset = idx << bufferShift_;
+    return bufferBuffer_ + offset;
+  }
+
+  ~ProvidedBuffersBuffer() { munmap(buffer_, allSize_); }
+
+  size_t sizePerBuffer() const { return sizePerBuffer_; }
+
+ private:
+  void* buffer_;
+  size_t allSize_;
+
+  size_t ringSize_;
+  struct io_uring_buf_ring* ringPtr_;
+  int ringMask_;
+
+  size_t bufferSize_;
+  size_t bufferShift_;
+  size_t sizePerBuffer_;
+  char* bufferBuffer_;
+};
+
+class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
+ public:
+  ProvidedBufferRing(
+      IoUringBackend* backend,
+      uint16_t gid,
+      int count,
+      int bufferShift,
+      int ringSizeShift)
+      : IoUringBackend::ProvidedBufferProviderBase(
+            gid, count, ProvidedBuffersBuffer::calcBufferSize(bufferShift)),
+        backend_(backend),
+        buffer_(count, bufferShift, ringSizeShift, true) {
+    if (count > std::numeric_limits<uint16_t>::max()) {
+      throw std::runtime_error("too many buffers");
+    }
+    if (count <= 0) {
+      throw std::runtime_error("not enough buffers");
+    }
+
+    ioBufCallbacks_.assign((count + (sizeof(void*) - 1)) / sizeof(void*), this);
+
+    initialRegister();
+
+    for (int i = 0; i < count; i++) {
+      returnBuffer(i);
+    }
+  }
+
+  void enobuf() override {
+    {
+      // what we want to do is something like
+      // if (cachedHead_ != localHead_) {
+      //   publish();
+      //   enobuf_ = false;
+      // }
+      // but if we are processing a batch it doesn't really work
+      // because we'll likely get an ENOBUF straight after
+      enobuf_ = true;
+    }
+    VLOG_EVERY_N(1, 500) << "enobuf";
+  }
+
+  void unusedBuf(uint16_t i, size_t /* length */) override { returnBuffer(i); }
+
+  uint32_t count() const override { return buffer_.ringCount(); }
+
+  std::unique_ptr<IOBuf> getIoBuf(uint16_t i, size_t length) override {
+    static constexpr bool kDoMalloc = false;
+
+    std::unique_ptr<IOBuf> ret;
+    DVLOG(1) << "getIoBuf " << i << " - " << length;
+    if (kDoMalloc) {
+      struct R {
+        ProvidedBufferRing* prov;
+        uint16_t idx;
+      };
+      auto r = std::make_unique<R>();
+      r->prov = this;
+      r->idx = i;
+      auto free_fn = [](void*, void* userData) {
+        std::unique_ptr<R> r2((R*)userData);
+        r2->prov->returnBuffer(r2->idx);
+        DVLOG(1) << "return buffer " << r2->idx;
+      };
+      ret = IOBuf::takeOwnership(
+          (void*)getData(i), sizePerBuffer_, length, free_fn, r.release());
+    } else {
+      // use a weird convention: userData = ioBufCallbacks_.data() + i
+      // ioBufCallbacks_ is just a list of the same pointer, to this
+      // so we don't need to malloc anything
+      auto free_fn = [](void*, void* userData) {
+        size_t pprov = (size_t)userData & ~((size_t)(sizeof(void*) - 1));
+        ProvidedBufferRing* prov = *(ProvidedBufferRing**)pprov;
+        uint16_t idx = (size_t)userData - (size_t)prov->ioBufCallbacks_.data();
+        prov->returnBuffer(idx);
+      };
+      ret = IOBuf::takeOwnership(
+          (void*)getData(i),
+          sizePerBuffer_,
+          length,
+          free_fn,
+          (void*)(((size_t)ioBufCallbacks_.data()) + i));
+    }
+    return ret;
+  }
+
+  bool available() const override { return !enobuf_; }
+
+ private:
+  void initialRegister() {
+    struct io_uring_buf_reg reg;
+    memset(&reg, 0, sizeof(reg));
+    reg.ring_addr = (__u64)buffer_.ring();
+    reg.ring_entries = buffer_.ringCount();
+    reg.bgid = gid();
+
+    int ret = ::io_uring_register_buf_ring(backend_->ioRingPtr(), &reg, 0);
+
+    if (ret) {
+      throw IoUringBackend::NotAvailable(folly::to<std::string>(
+          "unable to register provided buffer ring ",
+          -ret,
+          ": ",
+          folly::errnoStr(-ret)));
+    }
+  }
+
+  bool tryPublish(uint16_t expected, uint16_t value) {
+    return reinterpret_cast<std::atomic<uint16_t>*>(&buffer_.ring()->tail)
+        ->compare_exchange_strong(expected, value, std::memory_order_release);
+  }
+
+  void returnBuffer(uint16_t i) {
+    __u64 addr = (__u64)buffer_.buffer(i);
+    uint16_t this_idx = localHead_++;
+    uint16_t next_head = this_idx + 1;
+    auto* r = buffer_.ringBuf(this_idx);
+    r->addr = addr;
+    r->len = buffer_.sizePerBuffer();
+    r->bid = i;
+
+    if (tryPublish(this_idx, next_head)) {
+      enobuf_ = false;
+    }
+    DVLOG(1) << "returnBuffer(" << i << ")@" << this_idx;
+  }
+
+  char const* getData(uint16_t i) { return buffer_.buffer(i); }
+
+  IoUringBackend* backend_;
+  ProvidedBuffersBuffer buffer_;
+  bool enobuf_{false};
+  std::vector<ProvidedBufferRing*> ioBufCallbacks_;
+
+  std::atomic<uint16_t> localHead_{0};
+};
+
+template <class... Args>
+std::unique_ptr<ProvidedBufferRing> makeProvidedBufferRing(Args&&... args) {
+  return std::make_unique<ProvidedBufferRing>(std::forward<Args>(args)...);
+}
+
+#else
+
+template <class T...>
+std::unique_ptr<ProvidedBufferRing> makeProvidedBufferRing() {
+  throw IoUringBackend::NotAvailable(
+      "Provided buffer rings not compiled into this binary");
+}
+
+#endif
+
+} // namespace
 
 IoUringBackend::SocketPair::SocketPair() {
   if (::socketpair(AF_UNIX, SOCK_STREAM, 0, fds_.data())) {
@@ -549,6 +810,27 @@ IoUringBackend::IoUringBackend(Options options)
     fdRegistry_.init();
   }
 
+  if (options.initalProvidedBuffersCount) {
+    auto get_shift = [](int x) -> int {
+      int shift = findLastSet(x) - 1;
+      if (x != (1 << shift)) {
+        shift++;
+      }
+      return shift;
+    };
+
+    int sizeShift =
+        std::max<int>(get_shift(options.initalProvidedBuffersEachSize), 5);
+    int ringShift =
+        std::max<int>(get_shift(options.initalProvidedBuffersCount), 1);
+
+    bufferProvider_ = makeProvidedBufferRing(
+        this,
+        nextBufferProviderGid(),
+        options.initalProvidedBuffersCount,
+        sizeShift,
+        ringShift);
+  }
   // delay adding the timer and signal fds until running the loop first time
 }
 

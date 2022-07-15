@@ -33,6 +33,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Function.h>
 #include <folly/Range.h>
+#include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/portability/Asm.h>
 #include <folly/small_vector.h>
@@ -151,6 +152,12 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setInitialProvidedBuffers(size_t eachSize, size_t count) {
+      initalProvidedBuffersCount = count;
+      initalProvidedBuffersEachSize = eachSize;
+      return *this;
+    }
+
     Options& setRegisterRingFd(bool v) {
       registerRingFd = v;
 
@@ -178,6 +185,8 @@ class IoUringBackend : public EventBaseBackendBase {
     std::set<uint32_t> sqCpus;
     std::string sqGroupName;
     size_t sqGroupNumThreads{1};
+    size_t initalProvidedBuffersCount{0};
+    size_t initalProvidedBuffersEachSize{0};
   };
 
   struct IoSqeBase
@@ -208,8 +217,41 @@ class IoUringBackend : public EventBaseBackendBase {
     bool cancelled_ = false;
   };
 
+  class ProvidedBufferProviderBase {
+   protected:
+    uint16_t const gid_;
+    int const count_;
+    size_t const sizePerBuffer_;
+
+   public:
+    explicit ProvidedBufferProviderBase(
+        uint16_t gid, uint32_t count, size_t sizePerBuffer)
+        : gid_(gid), count_(count), sizePerBuffer_(sizePerBuffer) {}
+    virtual ~ProvidedBufferProviderBase() = default;
+
+    ProvidedBufferProviderBase(ProvidedBufferProviderBase&&) = delete;
+    ProvidedBufferProviderBase(ProvidedBufferProviderBase const&) = delete;
+    ProvidedBufferProviderBase& operator=(ProvidedBufferProviderBase&&) =
+        delete;
+    ProvidedBufferProviderBase& operator=(ProvidedBufferProviderBase const&) =
+        delete;
+
+    size_t sizePerBuffer() const { return sizePerBuffer_; }
+    uint16_t gid() const { return gid_; }
+
+    virtual uint32_t count() const = 0;
+    virtual void unusedBuf(uint16_t i, size_t length) = 0;
+    virtual std::unique_ptr<IOBuf> getIoBuf(uint16_t i, size_t length) = 0;
+    virtual void enobuf() = 0;
+    virtual bool available() const = 0;
+  };
+
   explicit IoUringBackend(Options options);
   ~IoUringBackend() override;
+
+  struct io_uring* ioRingPtr() {
+    return &ioRing_;
+  }
 
   // from EventBaseBackendBase
   event_base* getEventBase() override { return nullptr; }
@@ -314,6 +356,10 @@ class IoUringBackend : public EventBaseBackendBase {
   void submitNow(IoSqeBase& ioSqe);
   void submitNowNoCqe(IoSqeBase& ioSqe, int count = 1);
   void cancel(IoSqeBase* sqe);
+
+  // built in buffer provider
+  ProvidedBufferProviderBase* bufferProvider() { return bufferProvider_.get(); }
+  uint16_t nextBufferProviderGid() { return bufferProviderGidNext_++; }
 
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
@@ -950,6 +996,8 @@ class IoUringBackend : public EventBaseBackendBase {
 
   // submit
   IoSqeBaseList submitList_;
+  uint16_t bufferProviderGidNext_{0};
+  std::unique_ptr<ProvidedBufferProviderBase> bufferProvider_;
 
   // loop related
   bool loopBreak_{false};

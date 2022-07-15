@@ -1154,6 +1154,87 @@ TEST(IoUringBackend, SendmsgRecvmsg) {
   ::close(recvFd);
 }
 
+TEST(IoUringBackend, ProvidedBuffers) {
+  auto evbPtr = getEventBase();
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    /* 2 buffers of size 2 */
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(2, 2));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+  }
+  SKIP_IF(!backend) << "Backend not available";
+
+  auto* bufferProvider = backend->bufferProvider();
+  ASSERT_NE(bufferProvider, nullptr);
+
+  EXPECT_EQ(2, bufferProvider->count());
+
+  struct Reader : folly::IoUringBackend::IoSqeBase {
+    Reader(int fd, uint16_t bgid, std::function<void(int, uint32_t)> oncqe)
+        : fd_(fd), bgid_(bgid), oncqe_(oncqe) {}
+
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      io_uring_prep_read(sqe, fd_, nullptr, 2 /* max read 2 per go */, 0);
+      sqe->flags |= IOSQE_BUFFER_SELECT;
+      sqe->buf_group = bgid_;
+    }
+
+    void callback(int res, uint32_t flags) override { oncqe_(res, flags); }
+
+    void callbackCancelled() override { FAIL(); }
+
+    int fd_;
+    uint16_t bgid_;
+    std::function<void(int, uint32_t)> oncqe_;
+  };
+
+  int fds[2];
+  ASSERT_EQ(0, ::pipe(fds));
+  SCOPE_EXIT {
+    ::close(fds[0]);
+    ::close(fds[1]);
+  };
+
+  std::vector<std::pair<int, uint32_t>> cqes;
+  std::vector<std::unique_ptr<Reader>> readers;
+  auto addReaders = [&](int n) {
+    for (int i = 0; i < n; i++) {
+      readers.push_back(std::make_unique<Reader>(
+          fds[0], bufferProvider->gid(), [&](int r, uint32_t f) {
+            cqes.emplace_back(r, f);
+          }));
+      backend->submit(*readers.back());
+    }
+  };
+
+  auto toString = [](std::unique_ptr<folly::IOBuf> x) -> std::string {
+    std::string ret;
+    x->appendTo(ret);
+    return ret;
+  };
+
+  addReaders(3);
+  ASSERT_EQ(6, ::write(fds[1], "123456", 6));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+  ASSERT_EQ(3, cqes.size()) << "expect 2 completions and 1 nobufs";
+
+  EXPECT_EQ(-ENOBUFS, cqes[2].first);
+  ASSERT_EQ(2, cqes[0].first);
+  ASSERT_EQ(2, cqes[1].first);
+  EXPECT_EQ("12", toString(bufferProvider->getIoBuf(cqes[0].second >> 16, 2)));
+  EXPECT_EQ("34", toString(bufferProvider->getIoBuf(cqes[1].second >> 16, 2)));
+
+  // now the buffers should be back
+  readers.clear();
+  cqes.clear();
+  addReaders(2);
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+  ASSERT_EQ(1, cqes.size());
+  EXPECT_EQ(2, cqes[0].first);
+  EXPECT_EQ("56", toString(bufferProvider->getIoBuf(cqes[0].second >> 16, 2)));
+}
+
 namespace folly {
 namespace test {
 static constexpr size_t kCapacity = 32;
