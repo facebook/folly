@@ -30,10 +30,6 @@
 #include <sys/wait.h>
 #endif
 
-#if FOLLY_HAVE_EXTRANDOM_SFMT19937
-#include <ext/random>
-#endif
-
 using namespace folly;
 
 TEST(Random, StateSize) {
@@ -144,23 +140,6 @@ TEST(Random, sanity) {
         vals.size(),
         std::unordered_set<uint64_t>(vals.begin(), vals.end()).size());
   }
-
-  // Support for common generators.
-  folly::Random::rand32(std::mt19937{});
-  folly::Random::rand32(std::mt19937_64{});
-  folly::Random::rand32(std::minstd_rand{});
-#if FOLLY_HAVE_EXTRANDOM_SFMT19937
-  folly::Random::rand32(__gnu_cxx::sfmt19937{});
-  folly::Random::rand32(__gnu_cxx::sfmt19937_64{});
-#endif
-
-  folly::Random::rand64(std::mt19937{});
-  folly::Random::rand64(std::mt19937_64{});
-  folly::Random::rand64(std::minstd_rand{});
-#if FOLLY_HAVE_EXTRANDOM_SFMT19937
-  folly::Random::rand64(__gnu_cxx::sfmt19937{});
-  folly::Random::rand64(__gnu_cxx::sfmt19937_64{});
-#endif
 }
 
 TEST(Random, oneIn) {

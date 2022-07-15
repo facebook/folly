@@ -176,7 +176,7 @@ void Random::secureRandom(void* data, size_t size) {
 
 ThreadLocalPRNG::result_type ThreadLocalPRNG::operator()() {
   struct Wrapper {
-    Generator object{Random::create()};
+    Random::DefaultGenerator object{Random::create()};
   };
   using Single = SingletonThreadLocal<Wrapper, RandomTag>;
   return Single::get().object();

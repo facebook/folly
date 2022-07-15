@@ -25,7 +25,6 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
-#include <folly/lang/Bits.h>
 
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
@@ -33,31 +32,35 @@
 
 namespace folly {
 
-namespace detail {
-
-#if FOLLY_HAVE_EXTRANDOM_SFMT19937
-using DefaultGenerator = __gnu_cxx::sfmt19937;
-#else
-using DefaultGenerator = std::mt19937;
-#endif
-
-} // namespace detail
-
 /**
  * A PRNG with one instance per thread. This PRNG uses a mersenne twister random
  * number generator and is seeded from /dev/urandom. It should not be used for
  * anything which requires security, only for statistical randomness.
+ *
+ * An instance of this class represents the current threads PRNG. This means
+ * copying an instance of this class across threads will result in corruption
+ *
+ * Most users will use the Random class which implicitly creates this class.
+ * However, if you are worried about performance, you can memoize the TLS
+ * lookups that get the per thread state by manually using this class:
+ *
+ * ThreadLocalPRNG rng;
+ * for (...) {
+ *   Random::rand32(rng);
+ * }
  */
 class ThreadLocalPRNG {
-  using Generator = detail::DefaultGenerator;
-
  public:
-  using result_type = Generator::result_type;
+  using result_type = uint32_t;
 
   result_type operator()();
 
-  static constexpr result_type min() { return Generator::min(); }
-  static constexpr result_type max() { return Generator::max(); }
+  static constexpr result_type min() {
+    return std::numeric_limits<result_type>::min();
+  }
+  static constexpr result_type max() {
+    return std::numeric_limits<result_type>::max();
+  }
 };
 
 class Random {
@@ -84,19 +87,13 @@ class Random {
     }
   };
 
-  // Whether RNG output is surjective and uniform when truncated to ResultType.
-  template <class RNG, class ResultType>
-  static constexpr bool UniformRNG =
-      (std::is_unsigned<ResultType>::value &&
-       std::is_unsigned<typename RNG::result_type>::value &&
-       // RNG range covers ResultType.
-       RNG::min() == 0 &&
-       RNG::max() >= std::numeric_limits<ResultType>::max() &&
-       // Truncating the output maintains uniformness.
-       (RNG::max() + 1 == 0 || isPowTwo(RNG::max() + 1)));
-
  public:
-  using DefaultGenerator = detail::DefaultGenerator;
+  // Default generator type.
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
+  typedef __gnu_cxx::sfmt19937 DefaultGenerator;
+#else
+  typedef std::mt19937 DefaultGenerator;
+#endif
 
   /**
    * Get secure random bytes. (On Linux and OSX, this means /dev/urandom).
@@ -228,12 +225,7 @@ class Random {
    */
   template <class RNG, class /* EnableIf */ = ValidRNG<RNG>>
   static uint32_t rand32(RNG&& rng) {
-    if FOLLY_CXX17_CONSTEXPR (UniformRNG<std::decay_t<RNG>, uint32_t>) {
-      return rng();
-    } else {
-      return std::uniform_int_distribution<uint32_t>(
-          0, std::numeric_limits<uint32_t>::max())(rng);
-    }
+    return rng();
   }
 
   /**
@@ -281,15 +273,7 @@ class Random {
    */
   template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
   static uint64_t rand64(RNG&& rng) {
-    if FOLLY_CXX17_CONSTEXPR (UniformRNG<std::decay_t<RNG>, uint64_t>) {
-      return rng();
-    } else if FOLLY_CXX17_CONSTEXPR (UniformRNG<std::decay_t<RNG>, uint32_t>) {
-      return (static_cast<uint64_t>(rng()) << 32) |
-          static_cast<uint32_t>(rng());
-    } else {
-      return std::uniform_int_distribution<uint64_t>(
-          0, std::numeric_limits<uint64_t>::max())(rng);
-    }
+    return ((uint64_t)rng() << 32) | rng();
   }
 
   /**
