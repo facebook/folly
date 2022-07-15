@@ -88,6 +88,7 @@ class MockObserver : public ObserverContainerT::Observer {
       TestObserverInterface<typename ObserverContainerT::observed_type>,
       typename ObserverContainerT::observed_type,
       TestObserverContainerPolicy>;
+  using EventEnum = typename ObserverContainerT::EventEnum;
   using EventSet = typename TestSubjectT::ObserverContainer::Observer::EventSet;
   using EventSetBuilder =
       typename TestSubjectT::ObserverContainer::Observer::EventSetBuilder;
@@ -110,13 +111,14 @@ class MockObserver : public ObserverContainerT::Observer {
           TestSubjectT*,
           typename TestSubjectT::ObserverContainer::ObserverBase::
               MoveContext*));
-  MOCK_METHOD2(
+  MOCK_METHOD3(
       invokeInterfaceMethodMock,
       void(
           TestSubjectT*,
           folly::Function<void(
               typename TestSubjectT::ObserverContainer::ObserverBase*,
-              TestSubjectT*)>&));
+              TestSubjectT*)>&,
+          folly::Optional<EventEnum> maybeEvent));
   MOCK_METHOD1(postInvokeInterfaceMethodMock, void(TestSubjectT*));
   MOCK_METHOD1(addedToObserverContainerMock, void(ObserverContainerBase*));
   MOCK_METHOD1(removedFromObserverContainerMock, void(ObserverContainerBase*));
@@ -159,11 +161,13 @@ class MockObserver : public ObserverContainerT::Observer {
       TestSubjectT* obj,
       folly::Function<void(
           typename TestSubjectT::ObserverContainer::ObserverBase*,
-          TestSubjectT*)>& fn) noexcept override {
+          TestSubjectT*)>& fn,
+      folly::Optional<EventEnum> maybeEvent) noexcept override {
     if (defaultHandlersForInvoke_) {
-      TestSubjectT::ObserverContainer::Observer::invokeInterfaceMethod(obj, fn);
+      TestSubjectT::ObserverContainer::Observer::invokeInterfaceMethod(
+          obj, fn, maybeEvent);
     } else {
-      invokeInterfaceMethodMock(obj, fn);
+      invokeInterfaceMethodMock(obj, fn, maybeEvent);
     }
   }
   void postInvokeInterfaceMethod(TestSubjectT* obj) noexcept override {
@@ -204,6 +208,7 @@ class MockManagedObserver : public ObserverContainerT::ManagedObserver {
       TestObserverInterface<typename ObserverContainerT::observed_type>,
       typename ObserverContainerT::observed_type,
       TestObserverContainerPolicy>;
+  using EventEnum = typename ObserverContainerT::EventEnum;
   using EventSet = typename TestSubjectT::ObserverContainer::Observer::EventSet;
   using EventSetBuilder =
       typename TestSubjectT::ObserverContainer::Observer::EventSetBuilder;
@@ -226,13 +231,14 @@ class MockManagedObserver : public ObserverContainerT::ManagedObserver {
           TestSubjectT*,
           typename TestSubjectT::ObserverContainer::ManagedObserver::
               MoveContext*));
-  MOCK_METHOD2(
+  MOCK_METHOD3(
       invokeInterfaceMethodMock,
       void(
           TestSubjectT*,
           folly::Function<void(
               typename TestSubjectT::ObserverContainer::ObserverBase*,
-              TestSubjectT*)>&));
+              TestSubjectT*)>&,
+          folly::Optional<EventEnum> maybeEvent));
   MOCK_METHOD1(postInvokeInterfaceMethodMock, void(TestSubjectT*));
   MOCK_METHOD1(specialMock, void(TestSubjectT*));
   MOCK_METHOD1(superSpecialMock, void(TestSubjectT*));
@@ -270,11 +276,13 @@ class MockManagedObserver : public ObserverContainerT::ManagedObserver {
       TestSubjectT* obj,
       folly::Function<void(
           typename TestSubjectT::ObserverContainer::ObserverBase*,
-          TestSubjectT*)>& fn) noexcept override {
+          TestSubjectT*)>& fn,
+      folly::Optional<EventEnum> maybeEvent) noexcept override {
     if (defaultHandlersForInvoke_) {
-      TestSubjectT::ObserverContainer::Observer::invokeInterfaceMethod(obj, fn);
+      TestSubjectT::ObserverContainer::Observer::invokeInterfaceMethod(
+          obj, fn, maybeEvent);
     } else {
-      invokeInterfaceMethodMock(obj, fn);
+      invokeInterfaceMethodMock(obj, fn, maybeEvent);
     }
   }
   void postInvokeInterfaceMethod(TestSubjectT* obj) noexcept override {
@@ -609,12 +617,32 @@ TEST_F(
     //
     // since we're not using the default handlers for invoke and postInvoke,
     // we should see the mocked invoke and postInvoke being called
-    EXPECT_CALL(*observers[0], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[1], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[2], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[3], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[4], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[5], invokeInterfaceMethodMock(obj1.get(), _));
+
+    // broadcast
+    EXPECT_CALL(
+        *observers[0],
+        invokeInterfaceMethodMock(
+            obj1.get(), _, folly::Optional<TestObserverEvents>()));
+    EXPECT_CALL(
+        *observers[1],
+        invokeInterfaceMethodMock(
+            obj1.get(), _, folly::Optional<TestObserverEvents>()));
+    EXPECT_CALL(
+        *observers[2],
+        invokeInterfaceMethodMock(
+            obj1.get(), _, folly::Optional<TestObserverEvents>()));
+    EXPECT_CALL(
+        *observers[3],
+        invokeInterfaceMethodMock(
+            obj1.get(), _, folly::Optional<TestObserverEvents>()));
+    EXPECT_CALL(
+        *observers[4],
+        invokeInterfaceMethodMock(
+            obj1.get(), _, folly::Optional<TestObserverEvents>()));
+    EXPECT_CALL(
+        *observers[5],
+        invokeInterfaceMethodMock(
+            obj1.get(), _, folly::Optional<TestObserverEvents>()));
     EXPECT_CALL(*observers[0], postInvokeInterfaceMethodMock(obj1.get()));
     EXPECT_CALL(*observers[1], postInvokeInterfaceMethodMock(obj1.get()));
     EXPECT_CALL(*observers[2], postInvokeInterfaceMethodMock(obj1.get()));
@@ -623,13 +651,50 @@ TEST_F(
     EXPECT_CALL(*observers[5], postInvokeInterfaceMethodMock(obj1.get()));
     obj1->doBroadcast();
 
-    EXPECT_CALL(*observers[0], invokeInterfaceMethodMock(obj1.get(), _))
+    // special event
+    EXPECT_CALL(
+        *observers[0],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SpecialEvent)))
         .Times(0);
-    EXPECT_CALL(*observers[1], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[2], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[3], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[4], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[5], invokeInterfaceMethodMock(obj1.get(), _))
+    EXPECT_CALL(
+        *observers[1],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SpecialEvent)));
+    EXPECT_CALL(
+        *observers[2],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SpecialEvent)));
+    EXPECT_CALL(
+        *observers[3],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SpecialEvent)));
+    EXPECT_CALL(
+        *observers[4],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SpecialEvent)));
+    EXPECT_CALL(
+        *observers[5],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SpecialEvent)))
         .Times(0);
     EXPECT_CALL(*observers[0], postInvokeInterfaceMethodMock(obj1.get()))
         .Times(0);
@@ -641,14 +706,51 @@ TEST_F(
         .Times(0);
     obj1->doSomethingSpecial();
 
-    EXPECT_CALL(*observers[0], invokeInterfaceMethodMock(obj1.get(), _))
+    // super special event
+    EXPECT_CALL(
+        *observers[0],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SuperSpecialEvent)))
         .Times(0);
-    EXPECT_CALL(*observers[1], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[2], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[3], invokeInterfaceMethodMock(obj1.get(), _));
-    EXPECT_CALL(*observers[4], invokeInterfaceMethodMock(obj1.get(), _))
+    EXPECT_CALL(
+        *observers[1],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SuperSpecialEvent)));
+    EXPECT_CALL(
+        *observers[2],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SuperSpecialEvent)));
+    EXPECT_CALL(
+        *observers[3],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SuperSpecialEvent)));
+    EXPECT_CALL(
+        *observers[4],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SuperSpecialEvent)))
         .Times(0);
-    EXPECT_CALL(*observers[5], invokeInterfaceMethodMock(obj1.get(), _));
+    EXPECT_CALL(
+        *observers[5],
+        invokeInterfaceMethodMock(
+            obj1.get(),
+            _,
+            folly::Optional<TestObserverEvents>(
+                TestObserverEvents::SuperSpecialEvent)));
     EXPECT_CALL(*observers[0], postInvokeInterfaceMethodMock(obj1.get()))
         .Times(0);
     EXPECT_CALL(*observers[1], postInvokeInterfaceMethodMock(obj1.get()));
