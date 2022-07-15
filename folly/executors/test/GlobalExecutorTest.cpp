@@ -18,10 +18,15 @@
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/IOExecutor.h>
+#include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/system/HardwareConcurrency.h>
 
 using namespace folly;
+
+DECLARE_uint32(folly_global_io_executor_threads);
+DECLARE_uint32(folly_global_cpu_executor_threads);
 
 TEST(GlobalExecutorTest, GlobalImmutableCPUExecutor) {
   folly::Baton<> b;
@@ -112,4 +117,22 @@ TEST(GlobalExecutorTest, GlobalIOExecutor) {
   // weak reference to dummy has expired
   getIOExecutor()->add(f);
   FOLLY_POP_WARNING
+}
+
+TEST(GlobalExecutorTest, IOThreadCountFlagUnset) {
+  gflags::FlagSaver flagsaver;
+
+  auto io_threadpool = dynamic_cast<folly::IOThreadPoolExecutor*>(
+      folly::getGlobalIOExecutor().get());
+
+  EXPECT_EQ(io_threadpool->numThreads(), folly::hardware_concurrency());
+}
+
+TEST(GlobalExecutorTest, CPUThreadCountFlagUnset) {
+  gflags::FlagSaver flagsaver;
+
+  auto cpu_threadpool = dynamic_cast<folly::CPUThreadPoolExecutor*>(
+      folly::getGlobalCPUExecutor().get());
+
+  EXPECT_EQ(cpu_threadpool->numThreads(), folly::hardware_concurrency());
 }

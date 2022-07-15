@@ -31,6 +31,16 @@
 
 using namespace folly;
 
+DEFINE_uint32(
+    folly_global_io_executor_threads,
+    0,
+    "Number of threads global IOThreadPoolExecutor will create");
+
+DEFINE_uint32(
+    folly_global_cpu_executor_threads,
+    0,
+    "Number of threads global CPUThreadPoolExecutor will create");
+
 namespace {
 
 class GlobalTag {};
@@ -46,15 +56,18 @@ Singleton<std::shared_ptr<DefaultCPUExecutor>> gDefaultGlobalCPUExecutor([] {
 });
 
 Singleton<std::shared_ptr<Executor>, GlobalTag> gImmutableGlobalCPUExecutor([] {
+  size_t nthreads = FLAGS_folly_global_cpu_executor_threads;
+  nthreads = nthreads ? nthreads : folly::hardware_concurrency();
   return new std::shared_ptr<Executor>(new CPUThreadPoolExecutor(
-      folly::hardware_concurrency(),
-      std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
+      nthreads, std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
 });
 
 Singleton<std::shared_ptr<IOExecutor>, GlobalTag> gImmutableGlobalIOExecutor(
     [] {
+      size_t nthreads = FLAGS_folly_global_io_executor_threads;
+      nthreads = nthreads ? nthreads : folly::hardware_concurrency();
       return new std::shared_ptr<IOExecutor>(new IOThreadPoolExecutor(
-          folly::hardware_concurrency(),
+          nthreads,
           std::make_shared<NamedThreadFactory>("GlobalIOThreadPool")));
     });
 
