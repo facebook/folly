@@ -68,7 +68,6 @@ class IoUringBackend : public EventBaseBackendBase {
 
     Options& setCapacity(size_t v) {
       capacity = v;
-
       return *this;
     }
 
@@ -96,9 +95,8 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
-    Options& setUseRegisteredFds(bool v) {
-      useRegisteredFds = v;
-
+    Options& setUseRegisteredFds(size_t v) {
+      registeredFds = v;
       return *this;
     }
 
@@ -175,7 +173,7 @@ class IoUringBackend : public EventBaseBackendBase {
     size_t maxSubmit{128};
     ssize_t sqeSize{-1};
     size_t maxGet{256};
-    bool useRegisteredFds{false};
+    size_t registeredFds{0};
     bool registerRingFd{false};
     uint32_t flags{0};
     bool taskRunCoop{false};

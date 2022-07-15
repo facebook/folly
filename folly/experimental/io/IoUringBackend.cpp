@@ -718,7 +718,7 @@ void IoUringBackend::processSignalReadIoSqe(
 IoUringBackend::IoUringBackend(Options options)
     : options_(options),
       numEntries_(options.capacity),
-      fdRegistry_(ioRing_, options.useRegisteredFds ? options.capacity : 0) {
+      fdRegistry_(ioRing_, options.registeredFds) {
   // create the timer fd
   timerFd_ = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerFd_ < 0) {
@@ -803,7 +803,7 @@ IoUringBackend::IoUringBackend(Options options)
 
   // we need to call the init before adding the timer fd
   // so we avoid a deadlock - waiting for the queue to be drained
-  if (options.useRegisteredFds) {
+  if (options.registeredFds > 0) {
     // now init the file registry
     // if this fails, we still continue since we
     // can run without registered fds

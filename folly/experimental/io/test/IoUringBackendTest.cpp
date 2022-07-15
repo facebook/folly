@@ -249,7 +249,7 @@ std::unique_ptr<folly::EventBase> getEventBase() {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(false);
+      .setUseRegisteredFds(0);
   return getEventBase(options);
 }
 
@@ -442,7 +442,7 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(useRegisteredFds);
+      .setUseRegisteredFds(useRegisteredFds ? kBackendCapacity : 0);
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -713,10 +713,10 @@ TEST(IoUringBackend, RegisteredFds) {
     options.setCapacity(kBackendCapacity)
         .setMaxSubmit(kBackendMaxSubmit)
         .setMaxGet(kBackendMaxGet)
-        .setUseRegisteredFds(true);
+        .setUseRegisteredFds(kBackendCapacity);
 
     backendReg = std::make_unique<folly::IoUringBackend>(options);
-    options.setUseRegisteredFds(false);
+    options.setUseRegisteredFds(0);
     backendNoReg = std::make_unique<folly::IoUringBackend>(options);
   } catch (const folly::IoUringBackend::NotAvailable&) {
   }
@@ -765,7 +765,7 @@ TEST(IoUringBackend, FileReadWrite) {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(false);
+      .setUseRegisteredFds(0);
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -828,7 +828,7 @@ TEST(IoUringBackend, FileReadvWritev) {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(false);
+      .setUseRegisteredFds(0);
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -921,7 +921,7 @@ TEST(IoUringBackend, FileReadMany) {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(false);
+      .setUseRegisteredFds(0);
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -980,7 +980,7 @@ TEST(IoUringBackend, FileWriteMany) {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(false);
+      .setUseRegisteredFds(0);
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -1062,7 +1062,7 @@ TEST(IoUringBackend, SendmsgRecvmsg) {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(false);
+      .setUseRegisteredFds(0);
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -1248,7 +1248,7 @@ struct IoUringBackendProvider {
       options.setCapacity(kCapacity)
           .setMaxSubmit(kMaxSubmit)
           .setMaxGet(kMaxGet)
-          .setUseRegisteredFds(false);
+          .setUseRegisteredFds(0);
 
       return std::make_unique<folly::IoUringBackend>(options);
     } catch (const IoUringBackend::NotAvailable&) {
@@ -1264,7 +1264,7 @@ struct IoUringRegFdBackendProvider {
       options.setCapacity(kCapacity)
           .setMaxSubmit(kMaxSubmit)
           .setMaxGet(kMaxGet)
-          .setUseRegisteredFds(true);
+          .setUseRegisteredFds(kCapacity);
       return std::make_unique<folly::IoUringBackend>(options);
     } catch (const IoUringBackend::NotAvailable&) {
       return nullptr;
@@ -1280,7 +1280,7 @@ struct IoUringPollCQBackendProvider {
       options.setCapacity(kCapacity)
           .setMaxSubmit(kMaxSubmit)
           .setMaxGet(kMaxGet)
-          .setUseRegisteredFds(false)
+          .setUseRegisteredFds(0)
           .setFlags(folly::PollIoBackend::Options::Flags::POLL_CQ);
       return std::make_unique<folly::IoUringBackend>(options);
     } catch (const IoUringBackend::NotAvailable&) {
@@ -1297,7 +1297,7 @@ struct IoUringPollSQCQBackendProvider {
       options.setCapacity(kCapacity)
           .setMaxSubmit(kMaxSubmit)
           .setMaxGet(kMaxGet)
-          .setUseRegisteredFds(false)
+          .setUseRegisteredFds(0)
           .setFlags(
               folly::PollIoBackend::Options::Flags::POLL_SQ |
               folly::PollIoBackend::Options::Flags::POLL_CQ);
