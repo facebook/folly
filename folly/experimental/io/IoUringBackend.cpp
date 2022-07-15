@@ -280,14 +280,19 @@ class SQGroupInfoRegistry {
 
 static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 
+std::chrono::time_point<std::chrono::steady_clock> getTimerExpireTime(
+    const struct timeval& timeout,
+    std::chrono::steady_clock::time_point now =
+        std::chrono::steady_clock::now()) {
+  using namespace std::chrono;
+  microseconds const us = duration_cast<microseconds>(seconds(timeout.tv_sec)) +
+      microseconds(timeout.tv_usec);
+  return now + us;
+}
+
 } // namespace
 
 namespace folly {
-IoUringBackend::TimerEntry::TimerEntry(
-    Event* event, const struct timeval& timeout)
-    : event_(event) {
-  setExpireTime(timeout, std::chrono::steady_clock::now());
-}
 
 IoUringBackend::SocketPair::SocketPair() {
   if (::socketpair(AF_UNIX, SOCK_STREAM, 0, fds_.data())) {
@@ -566,13 +571,13 @@ void IoUringBackend::scheduleTimeout() {
   // reset
   timerChanged_ = false;
   if (!timers_.empty()) {
-    auto delta = timers_.begin()->second[0].getRemainingTime(
-        std::chrono::steady_clock::now());
-    if (delta.count() < 1000) {
+    auto delta = std::chrono::duration_cast<std::chrono::microseconds>(
+        timers_.begin()->first - std::chrono::steady_clock::now());
+    if (delta < std::chrono::microseconds(1000)) {
       delta = std::chrono::microseconds(1000);
     }
     scheduleTimeout(delta);
-  } else {
+  } else if (timerSet_) {
     scheduleTimeout(std::chrono::microseconds(0)); // disable
   }
 
@@ -583,6 +588,7 @@ void IoUringBackend::scheduleTimeout() {
 
 void IoUringBackend::scheduleTimeout(const std::chrono::microseconds& us) {
   struct itimerspec val;
+  timerSet_ = us.count() != 0;
   val.it_interval = {0, 0};
   val.it_value.tv_sec =
       std::chrono::duration_cast<std::chrono::seconds>(us).count();
@@ -593,64 +599,55 @@ void IoUringBackend::scheduleTimeout(const std::chrono::microseconds& us) {
   CHECK_EQ(::timerfd_settime(timerFd_, 0, &val, nullptr), 0);
 }
 
+namespace {
+
+struct TimerUserData {
+  std::multimap<std::chrono::steady_clock::time_point, IoUringBackend::Event*>::
+      const_iterator iter;
+};
+
+void timerUserDataFreeFunction(void* v) {
+  delete (TimerUserData*)(v);
+}
+
+} // namespace
+
 void IoUringBackend::addTimerEvent(
     Event& event, const struct timeval* timeout) {
-  // first try to remove if already existing
-  auto iter1 = eventToTimers_.find(&event);
-  if (iter1 != eventToTimers_.end()) {
-    // no neeed to remove it from eventToTimers_
-    auto expireTime = iter1->second;
-    auto iter2 = timers_.find(expireTime);
-    for (auto iter = iter2->second.begin(), last = iter2->second.end();
-         iter != last;
-         ++iter) {
-      if (iter->event_ == &event) {
-        iter2->second.erase(iter);
-        break;
-      }
-    }
+  auto expire = getTimerExpireTime(*timeout);
 
-    if (iter2->second.empty()) {
-      timers_.erase(iter2);
+  TimerUserData* td = (TimerUserData*)event.getUserData();
+  DVLOG(6) << "addTimerEvent " << &event << " td=" << td
+           << " changed_=" << timerChanged_ << " u=" << timeout->tv_usec;
+  if (td) {
+    CHECK_EQ(event.getFreeFunction(), timerUserDataFreeFunction);
+    if (td->iter == timers_.end()) {
+      td->iter = timers_.emplace(expire, &event);
+    } else {
+      auto ex = timers_.extract(td->iter);
+      ex.key() = expire;
+      td->iter = timers_.insert(std::move(ex));
     }
+  } else {
+    auto it = timers_.emplace(expire, &event);
+    td = new TimerUserData();
+    td->iter = it;
+    event.setUserData(td, timerUserDataFreeFunction);
   }
-
-  TimerEntry entry(&event, *timeout);
-  if (!timerChanged_) {
-    timerChanged_ =
-        timers_.empty() || (entry.expireTime_ < timers_.begin()->first);
-  }
-  timers_[entry.expireTime_].push_back(entry);
-  eventToTimers_[&event] = entry.expireTime_;
+  timerChanged_ |= td->iter == timers_.begin();
 }
 
 void IoUringBackend::removeTimerEvent(Event& event) {
-  auto iter1 = eventToTimers_.find(&event);
-  CHECK(iter1 != eventToTimers_.end());
-  auto expireTime = iter1->second;
-  eventToTimers_.erase(iter1);
-
-  auto iter2 = timers_.find(expireTime);
-  CHECK(iter2 != timers_.end());
-
-  for (auto iter = iter2->second.begin(), last = iter2->second.end();
-       iter != last;
-       ++iter) {
-    if (iter->event_ == &event) {
-      iter2->second.erase(iter);
-      break;
-    }
-  }
-
-  if (iter2->second.empty()) {
-    if (!timerChanged_) {
-      timerChanged_ = (iter2 == timers_.begin());
-    }
-    timers_.erase(iter2);
-  }
+  TimerUserData* td = (TimerUserData*)event.getUserData();
+  DVLOG(6) << "removeTimerEvent " << &event << " td=" << td;
+  CHECK(td && event.getFreeFunction() == timerUserDataFreeFunction);
+  timerChanged_ |= td->iter == timers_.begin();
+  timers_.erase(td->iter);
+  td->iter = timers_.end();
 }
 
 size_t IoUringBackend::processTimers() {
+  DVLOG(3) << "IoUringBackend::processTimers " << timers_.size();
   size_t ret = 0;
   uint64_t data = 0;
   // this can fail with but it is OK since the fd
@@ -658,22 +655,28 @@ size_t IoUringBackend::processTimers() {
   folly::readNoInt(timerFd_, &data, sizeof(data));
 
   auto now = std::chrono::steady_clock::now();
-  while (!timers_.empty() && (now >= timers_.begin()->first)) {
-    if (!timerChanged_) {
-      timerChanged_ = true;
+  while (true) {
+    auto it = timers_.begin();
+    if (it == timers_.end() || now < it->first) {
+      break;
     }
-    auto vec = std::move(timers_.begin()->second);
-    timers_.erase(timers_.begin());
-    for (auto& entry : vec) {
-      ret++;
-      eventToTimers_.erase(entry.event_);
-      auto* ev = entry.event_->getEvent();
-      ev->ev_res = EV_TIMEOUT;
-      event_ref_flags(ev).get() = EVLIST_INIT;
-      (*event_ref_callback(ev))((int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
-    }
+    timerChanged_ = true;
+    Event* e = it->second;
+    TimerUserData* td = (TimerUserData*)e->getUserData();
+    DVLOG(5) << "processTimer " << e << " td=" << td;
+    CHECK(td && e->getFreeFunction() == timerUserDataFreeFunction);
+    td->iter = timers_.end();
+    timers_.erase(it);
+    auto* ev = e->getEvent();
+    ev->ev_res = EV_TIMEOUT;
+    event_ref_flags(ev).get() = EVLIST_INIT;
+    // might change the lists
+    (*event_ref_callback(ev))((int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+    ++ret;
   }
 
+  DVLOG(3) << "IoUringBackend::processTimers done, changed= " << timerChanged_
+           << " count=" << ret;
   return ret;
 }
 
@@ -844,14 +847,13 @@ int IoUringBackend::eb_event_base_loop(int flags) {
       cleanup();
       throw NotAvailable("io_uring_submit error");
     }
-  }
-
-  // schedule the timers
+  } // schedule the timers
   bool done = false;
   auto waitForEvents = (flags & EVLOOP_NONBLOCK) ? WaitForEventsMode::DONT_WAIT
                                                  : WaitForEventsMode::WAIT;
   while (!done) {
     scheduleTimeout();
+
     // check if we need to break here
     if (loopBreak_) {
       loopBreak_ = false;

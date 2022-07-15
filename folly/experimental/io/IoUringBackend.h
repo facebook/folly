@@ -257,41 +257,6 @@ class IoUringBackend : public EventBaseBackendBase {
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
 
-  struct TimerEntry {
-    explicit TimerEntry(Event* event) : event_(event) {}
-    TimerEntry(Event* event, const struct timeval& timeout);
-    Event* event_{nullptr};
-    std::chrono::time_point<std::chrono::steady_clock> expireTime_;
-
-    bool operator==(const TimerEntry& other) { return event_ == other.event_; }
-
-    std::chrono::microseconds getRemainingTime(
-        std::chrono::steady_clock::time_point now) const {
-      if (expireTime_ > now) {
-        return std::chrono::duration_cast<std::chrono::microseconds>(
-            expireTime_ - now);
-      }
-
-      return std::chrono::microseconds(0);
-    }
-
-    static bool isExpired(
-        const std::chrono::time_point<std::chrono::steady_clock>& timestamp,
-        std::chrono::steady_clock::time_point now) {
-      return (now >= timestamp);
-    }
-
-    void setExpireTime(
-        const struct timeval& timeout,
-        std::chrono::steady_clock::time_point now) {
-      uint64_t us = static_cast<uint64_t>(timeout.tv_sec) *
-              static_cast<uint64_t>(1000000) +
-          static_cast<uint64_t>(timeout.tv_usec);
-
-      expireTime_ = now + std::chrono::microseconds(us);
-    }
-  };
-
   class SocketPair {
    public:
     SocketPair();
@@ -942,9 +907,8 @@ class IoUringBackend : public EventBaseBackendBase {
   // timer related
   int timerFd_{-1};
   bool timerChanged_{false};
-  std::map<std::chrono::steady_clock::time_point, std::vector<TimerEntry>>
-      timers_;
-  std::map<Event*, std::chrono::steady_clock::time_point> eventToTimers_;
+  bool timerSet_{false};
+  std::multimap<std::chrono::steady_clock::time_point, Event*> timers_;
 
   // signal related
   SocketPair signalFds_;

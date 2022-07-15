@@ -114,6 +114,7 @@ class EventBaseEvent {
   int eb_ev_res() const { return event_.ev_res; }
 
   void* getUserData() { return userData_; }
+  FreeFunction getFreeFunction() const { return freeFn_; }
 
   void setUserData(void* userData) { userData_ = userData; }
 
