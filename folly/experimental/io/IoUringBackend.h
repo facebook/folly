@@ -29,6 +29,7 @@
 #include <glog/logging.h>
 
 #include <folly/CPortability.h>
+#include <folly/Conv.h>
 #include <folly/CppAttributes.h>
 #include <folly/Function.h>
 #include <folly/Range.h>
@@ -78,6 +79,12 @@ class IoUringBackend : public EventBaseBackendBase {
 
     Options& setMaxSubmit(size_t v) {
       maxSubmit = v;
+
+      return *this;
+    }
+
+    Options& setSqeSize(size_t v) {
+      sqeSize = v;
 
       return *this;
     }
@@ -147,7 +154,8 @@ class IoUringBackend : public EventBaseBackendBase {
     size_t capacity{0};
     size_t minCapacity{0};
     size_t maxSubmit{128};
-    size_t maxGet{std::numeric_limits<size_t>::max()};
+    ssize_t sqeSize{-1};
+    size_t maxGet{256};
     bool useRegisteredFds{false};
     uint32_t flags{0};
 
@@ -156,6 +164,34 @@ class IoUringBackend : public EventBaseBackendBase {
     std::set<uint32_t> sqCpus;
     std::string sqGroupName;
     size_t sqGroupNumThreads{1};
+  };
+
+  struct IoSqeBase
+      : boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
+    IoSqeBase() = default;
+    // use raw addresses, so disallow copy/move
+    IoSqeBase(IoSqeBase&&) = delete;
+    IoSqeBase(const IoSqeBase&) = delete;
+    IoSqeBase& operator=(IoSqeBase&&) = delete;
+    IoSqeBase& operator=(const IoSqeBase&) = delete;
+
+    virtual ~IoSqeBase() = default;
+    virtual void processSubmit(struct io_uring_sqe* sqe) = 0;
+    virtual void callback(int res, uint32_t flags) = 0;
+    virtual void callbackCancelled() = 0;
+    bool inFlight() const { return inFlight_; }
+    bool cancelled() const { return cancelled_; }
+    void markCancelled() { cancelled_ = true; }
+
+   private:
+    friend class IoUringBackend;
+    void internalSubmit(struct io_uring_sqe* sqe);
+    void internalCallback(int res, uint32_t flags);
+    void internalUnmarkInflight();
+
+    bool inFlight_ = false;
+    bool cancelled_ = false;
   };
 
   explicit IoUringBackend(Options options);
@@ -254,6 +290,16 @@ class IoUringBackend : public EventBaseBackendBase {
   void queueRecvmsg(
       int fd, struct msghdr* msg, unsigned int flags, FileOpCallback&& cb);
 
+  void submit(IoSqeBase& ioSqe) {
+    // todo verify that the sqe is valid!
+    submitImmediateIoSqe(ioSqe);
+  }
+
+  void submitSoon(IoSqeBase& ioSqe);
+  void submitNow(IoSqeBase& ioSqe);
+  void submitNowNoCqe(IoSqeBase& ioSqe, int count = 1);
+  void cancel(IoSqeBase* sqe);
+
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
 
@@ -330,33 +376,25 @@ class IoUringBackend : public EventBaseBackendBase {
   void addTimerEvent(Event& event, const struct timeval* timeout);
   void removeTimerEvent(Event& event);
   size_t processTimers();
-  void setProcessTimers() { processTimers_ = true; }
+  void setProcessTimers();
 
   size_t processActiveEvents();
 
   struct IoSqe;
 
   static void processPollIoSqe(
-      IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
-    backend->processPollIo(ioSqe, res);
-  }
-
+      IoUringBackend* backend, IoSqe* ioSqe, int64_t res);
   static void processTimerIoSqe(
-      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
-    backend->setProcessTimers();
-  }
+      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/);
+  static void processSignalReadIoSqe(
+      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/);
 
   // signal handling
   void addSignalEvent(Event& event);
   void removeSignalEvent(Event& event);
   bool addSignalFds();
   size_t processSignals();
-  FOLLY_ALWAYS_INLINE void setProcessSignals() { processSignals_ = true; }
-
-  static void processSignalReadIoSqe(
-      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
-    backend->setProcessSignals();
-  }
+  void setProcessSignals();
 
   void processPollIo(IoSqe* ioSqe, int64_t res) noexcept;
 
@@ -365,18 +403,9 @@ class IoUringBackend : public EventBaseBackendBase {
   void incNumIoSqeInUse() { numIoSqeInUse_++; }
 
   // submit immediate if POLL_SQ | POLL_SQ_IMMEDIATE_IO flags are set
-  void submitImmediateIoSqe(IoSqe& ioSqe) {
-    if (options_.flags &
-        (Options::Flags::POLL_SQ | Options::Flags::POLL_SQ_IMMEDIATE_IO)) {
-      IoSqeList s;
-      s.push_back(ioSqe);
-      numInsertedEvents_++;
-      submitList(s, WaitForEventsMode::DONT_WAIT);
-    } else {
-      submitList_.push_back(ioSqe);
-      numInsertedEvents_++;
-    }
-  }
+  void submitImmediateIoSqe(IoSqeBase& ioSqe);
+
+  void internalSubmit(IoSqeBase& ioSqe);
 
   int eb_event_modify_inserted(Event& event, IoSqe* ioSqe);
 
@@ -402,13 +431,7 @@ class IoUringBackend : public EventBaseBackendBase {
             free_;
   };
 
-  struct io_uring_sqe* allocSubmissionEntry() {
-    return get_sqe();
-  }
-
-  struct IoSqe
-      : public boost::intrusive::list_base_hook<
-            boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
+  struct IoSqe : public IoSqeBase {
     using BackendCb = void(IoUringBackend*, IoSqe*, int64_t);
     explicit IoSqe(
         IoUringBackend* backend = nullptr,
@@ -416,6 +439,12 @@ class IoUringBackend : public EventBaseBackendBase {
         bool persist = false)
         : backend_(backend), poolAlloc_(poolAlloc), persist_(persist) {}
     virtual ~IoSqe() = default;
+
+    void callback(int res, uint32_t) override {
+      backendCb_(backend_, this, res);
+    }
+    void callbackCancelled() override { release(); }
+    virtual void release();
 
     IoUringBackend* backend_;
     BackendCb* backendCb_{nullptr};
@@ -434,7 +463,7 @@ class IoUringBackend : public EventBaseBackendBase {
       }
     }
 
-    virtual void processSubmit(struct io_uring_sqe* sqe) {
+    void processSubmit(struct io_uring_sqe* sqe) override {
       auto* ev = event_->getEvent();
       if (ev) {
         const auto& cb = event_->getCallback();
@@ -621,6 +650,8 @@ class IoUringBackend : public EventBaseBackendBase {
     }
   };
 
+  using IoSqeBaseList = boost::intrusive::
+      list<IoSqeBase, boost::intrusive::constant_time_size<false>>;
   using IoSqeList = boost::intrusive::
       list<IoSqe, boost::intrusive::constant_time_size<false>>;
 
@@ -857,12 +888,13 @@ class IoUringBackend : public EventBaseBackendBase {
     unsigned int flags_;
   };
 
-  int getActiveEvents(WaitForEventsMode waitForEvents);
-  size_t submitList(IoSqeList& ioSqes, WaitForEventsMode waitForEvents);
+  size_t getActiveEvents(WaitForEventsMode waitForEvents);
+  size_t prepList(IoSqeBaseList& ioSqes);
   int submitOne();
   int cancelOne(IoSqe* ioSqe);
 
   int submitBusyCheck(int num, WaitForEventsMode waitForEvents);
+  int submitEager();
 
   void queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb);
 
@@ -883,20 +915,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void cleanup();
 
-  FOLLY_ALWAYS_INLINE struct io_uring_sqe* get_sqe() {
-    struct io_uring_sqe* ret = ::io_uring_get_sqe(&ioRing_);
-    // if running with SQ poll enabled
-    // we might have to wait for an sq entry to available
-    // before we can submit another one
-    while ((options_.flags & Options::Flags::POLL_SQ) && !ret) {
-      asm_volatile_pause();
-      ret = ::io_uring_get_sqe(&ioRing_);
-    }
-
-    return ret;
-  }
-
-  size_t submit_internal();
+  struct io_uring_sqe* get_sqe();
 
   Options options_;
   size_t numEntries_;
@@ -915,16 +934,18 @@ class IoUringBackend : public EventBaseBackendBase {
   std::map<int, std::set<Event*>> signals_;
 
   // submit
-  IoSqeList submitList_;
+  IoSqeBaseList submitList_;
 
   // loop related
   bool loopBreak_{false};
   bool shuttingDown_{false};
   bool processTimers_{false};
   bool processSignals_{false};
-  size_t numInsertedEvents_{0};
   IoSqeList activeEvents_;
   // number of IoSqe instances in use
+  size_t waitingToSubmit_{0};
+  size_t numInsertedEvents_{0};
+  size_t numInternalEvents_{0};
   size_t numIoSqeInUse_{0};
 
   // io_uring related
@@ -938,6 +959,20 @@ class IoUringBackend : public EventBaseBackendBase {
   CQPollLoopCallback cqPollLoopCallback_;
 
   bool registerDefaultFds_{true};
+
+  // stuff for ensuring we don't re-enter submit/getActiveEvents
+  int isSubmitting_{0};
+  bool gettingEvents_{false};
+  void setSubmitting() { isSubmitting_++; }
+  void doneSubmitting() { isSubmitting_--; }
+  void setGetActiveEvents() {
+    if (kIsDebug && gettingEvents_) {
+      throw std::runtime_error("getting events is not reentrant");
+      gettingEvents_ = true;
+    }
+  }
+  void doneGetActiveEvents() { gettingEvents_ = false; }
+  bool isSubmitting() const { return isSubmitting_; }
 };
 
 using PollIoBackend = IoUringBackend;

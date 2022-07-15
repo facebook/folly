@@ -254,16 +254,18 @@ std::unique_ptr<folly::EventBase> getEventBase() {
 }
 
 void testEventFD(bool overflow, bool persist, bool asyncRead) {
-  static constexpr size_t kBackendCapacity = 16;
+  static constexpr size_t kBackendCapacity = 64;
   static constexpr size_t kBackendMaxSubmit = 8;
   // for overflow == true  we use a greater than kBackendCapacity number of
   // EventFD instances and lower when overflow == false
   size_t kNumEventFds = overflow ? 2048 : 32;
-  static constexpr size_t kEventFdCount = 16;
+  static constexpr size_t kEventFdCount = 2;
   auto total = kNumEventFds * kEventFdCount + kEventFdCount / 2;
 
   folly::PollIoBackend::Options options;
-  options.setCapacity(kBackendCapacity).setMaxSubmit(kBackendMaxSubmit);
+  options.setCapacity(kBackendCapacity)
+      .setMaxSubmit(kBackendMaxSubmit)
+      .setMaxGet(kNumEventFds * 2);
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -281,9 +283,13 @@ void testEventFD(bool overflow, bool persist, bool asyncRead) {
   evbPtr->loop();
 
   for (size_t i = 0; i < kNumEventFds; i++) {
-    CHECK_GE(
+    EXPECT_GE(
         (asyncRead ? eventsVec[i]->getAsyncNum() : eventsVec[i]->getNum()),
-        kEventFdCount);
+        kEventFdCount)
+        << " persist=" << persist << " overflow=" << overflow
+        << " asyncRead=" << asyncRead << " num= "
+        << (asyncRead ? eventsVec[i]->getAsyncNum() : eventsVec[i]->getNum())
+        << " kEventFdCount=" << kEventFdCount << " i=" << i;
   }
 }
 
