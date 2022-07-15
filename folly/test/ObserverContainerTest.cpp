@@ -2341,6 +2341,104 @@ TEST_F(ObserverContainerTest, ManagedObserverAttachedEventsUseBuilder) {
   obj1 = nullptr;
 }
 
+TEST_F(ObserverContainerTest, AddConstructorCallback) {
+  uint64_t numSubjectsCreated = 0;
+  std::vector<TestSubject*> subjectsCreated;
+  auto callbackF = [&](TestSubject* obj) {
+    subjectsCreated.push_back(obj);
+    numSubjectsCreated++;
+  };
+
+  TestSubject::ObserverContainer::addConstructorCallback(callbackF);
+
+  EXPECT_EQ(0, numSubjectsCreated);
+  auto obj1 = std::make_unique<TestSubject>();
+  EXPECT_EQ(1, numSubjectsCreated);
+  auto obj2 = std::make_unique<TestSubject>();
+  EXPECT_EQ(2, numSubjectsCreated);
+  EXPECT_THAT(subjectsCreated, ElementsAre(obj1.get(), obj2.get()));
+
+  obj1 = nullptr;
+  obj2 = nullptr;
+  EXPECT_EQ(2, numSubjectsCreated);
+}
+
+TEST_F(ObserverContainerTest, AddConstructorCallbackMulti) {
+  uint64_t numSubjectsCreated1 = 0;
+  std::vector<TestSubject*> subjectsCreated1;
+  auto callbackF1 = [&](TestSubject* obj) {
+    subjectsCreated1.push_back(obj);
+    numSubjectsCreated1++;
+  };
+
+  uint64_t numSubjectsCreated2 = 0;
+  std::vector<TestSubject*> subjectsCreated2;
+  auto callbackF2 = [&](TestSubject* obj) {
+    subjectsCreated2.push_back(obj);
+    numSubjectsCreated2++;
+  };
+
+  TestSubject::ObserverContainer::addConstructorCallback(callbackF1);
+  TestSubject::ObserverContainer::addConstructorCallback(callbackF2);
+
+  EXPECT_EQ(0, numSubjectsCreated1);
+  EXPECT_EQ(0, numSubjectsCreated2);
+  EXPECT_THAT(subjectsCreated1, IsEmpty());
+  EXPECT_THAT(subjectsCreated2, IsEmpty());
+  auto obj1 = std::make_unique<TestSubject>();
+  EXPECT_EQ(1, numSubjectsCreated1);
+  EXPECT_EQ(1, numSubjectsCreated2);
+  EXPECT_THAT(subjectsCreated1, ElementsAre(obj1.get()));
+  EXPECT_THAT(subjectsCreated2, ElementsAre(obj1.get()));
+  auto obj2 = std::make_unique<TestSubject>();
+  EXPECT_EQ(2, numSubjectsCreated1);
+  EXPECT_EQ(2, numSubjectsCreated2);
+  EXPECT_THAT(subjectsCreated1, ElementsAre(obj1.get(), obj2.get()));
+  EXPECT_THAT(subjectsCreated2, ElementsAre(obj1.get(), obj2.get()));
+
+  obj1 = nullptr;
+  obj2 = nullptr;
+  EXPECT_EQ(2, numSubjectsCreated1);
+  EXPECT_EQ(2, numSubjectsCreated2);
+}
+
+TEST_F(ObserverContainerTest, AddConstructorCallbackAttachObserver) {
+  using MockObserver = MockObserver<TestSubject::ObserverContainer>;
+
+  auto obs = std::make_unique<StrictMock<MockObserver>>(
+      MockObserver::EventSetBuilder().enableAllEvents().build());
+  obs->useDefaultInvokeMockHandler();
+  obs->useDefaultPostInvokeMockHandler();
+
+  uint64_t numSubjectsCreated = 0;
+  auto callbackF = [&](TestSubject* obj) {
+    numSubjectsCreated++;
+    obj->observerCtr.addObserver(obs.get());
+  };
+
+  TestSubject::ObserverContainer::addConstructorCallback(callbackF);
+
+  TestSubject::ObserverContainer::ContainerBase* ctrPtr;
+  TestSubject* objPtr;
+  EXPECT_CALL(*obs, addedToObserverContainerMock(_))
+      .WillOnce(testing::SaveArg<0>(&ctrPtr));
+  EXPECT_CALL(*obs, attachedMock(_)).WillOnce(testing::SaveArg<0>(&objPtr));
+
+  auto obj1 = std::make_unique<TestSubject>();
+  EXPECT_EQ(&obj1->observerCtr, ctrPtr);
+  EXPECT_EQ(obj1.get(), objPtr);
+  EXPECT_EQ(1, numSubjectsCreated);
+
+  EXPECT_CALL(*obs, specialMock(obj1.get()));
+  EXPECT_CALL(*obs, superSpecialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+  obj1->doSomethingSuperSpecial();
+
+  EXPECT_CALL(*obs, destroyedMock(obj1.get(), _));
+  EXPECT_CALL(*obs, removedFromObserverContainerMock(ctrPtr));
+  obj1 = nullptr;
+}
+
 /**
  *
  * Tests for ObserverContainerStore.

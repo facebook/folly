@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <glog/logging.h>
+#include <folly/ConstructorCallbackList.h>
 #include <folly/Function.h>
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
@@ -891,7 +892,8 @@ template <
     typename ObserverInterface,
     typename Observed,
     typename ContainerPolicy,
-    typename StorePolicy = ObserverContainerStorePolicyDefault<>>
+    typename StorePolicy = ObserverContainerStorePolicyDefault<>,
+    std::size_t MaxConstructorCallbacks = 4>
 class ObserverContainer : public ObserverContainerBase<
                               ObserverInterface,
                               Observed,
@@ -902,8 +904,11 @@ class ObserverContainer : public ObserverContainerBase<
   using Observer = typename ContainerBase::Observer;
   using EventEnum = typename ContainerBase::EventEnum;
   using StoreBase = ObserverContainerStoreBase<Observer>;
+  using ContainerConstructorCallbackList =
+      ConstructorCallbackList<Observed, MaxConstructorCallbacks>;
 
-  explicit ObserverContainer(Observed* obj) : obj_(CHECK_NOTNULL(obj)) {}
+  explicit ObserverContainer(Observed* obj)
+      : obj_(CHECK_NOTNULL(obj)), constructorCallbackList_(obj) {}
 
   ~ObserverContainer() override {
     using InvokeWhileIteratingPolicy =
@@ -966,6 +971,19 @@ class ObserverContainer : public ObserverContainerBase<
     return false;
   }
 
+  /**
+   * Add a callback fired each time obj of the observed type is constructed.
+   *
+   * Uses ConstructorCallbackList. Can be used to attach observers to all
+   * objects of a given type.
+   *
+   * @throw std::length_error() if installing callback would exceed max allowed
+   */
+  static void addConstructorCallback(
+      typename ContainerConstructorCallbackList::Callback cb) {
+    ContainerConstructorCallbackList::addCallback(std::move(cb));
+  }
+
   ObserverContainer(const ObserverContainer&) = delete;
   ObserverContainer(ObserverContainer&&) = delete;
   ObserverContainer& operator=(const ObserverContainer&) = delete;
@@ -980,6 +998,16 @@ class ObserverContainer : public ObserverContainerBase<
 
   // Store that contains the observers in the container.
   ObserverContainerStore<Observer, StorePolicy> store_;
+
+  // Enables objects to register constructor callbacks.
+  //
+  // This can be used to enable observers to be attached to all objects of a
+  // given type immediately upon object construction.
+  //
+  // Initialized last and in ObserverContainer instead of ObserverContainerBase
+  // to ensure that the container has completed initialization and is ready to
+  // add observers when any constructor callbacks are called.
+  ContainerConstructorCallbackList constructorCallbackList_{this};
 };
 
 } // namespace folly
