@@ -10,6 +10,9 @@ repo_url = https://github.com/facebookexperimental/eden.git
 [github.actions]
 run_tests = off
 
+[sandcastle]
+run_tests = off
+
 [build]
 builder = cmake
 
