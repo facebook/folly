@@ -151,13 +151,27 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
-    size_t capacity{0};
+    Options& setRegisterRingFd(bool v) {
+      registerRingFd = v;
+
+      return *this;
+    }
+
+    Options& setTaskRunCoop(bool v) {
+      taskRunCoop = v;
+
+      return *this;
+    }
+
+    size_t capacity{256};
     size_t minCapacity{0};
     size_t maxSubmit{128};
     ssize_t sqeSize{-1};
     size_t maxGet{256};
     bool useRegisteredFds{false};
+    bool registerRingFd{false};
     uint32_t flags{0};
+    bool taskRunCoop{false};
 
     std::chrono::milliseconds sqIdle{0};
     std::chrono::milliseconds cqIdle{0};
@@ -211,6 +225,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // returns true if the current Linux kernel version
   // supports the io_uring backend
   static bool isAvailable();
+  bool kernelHasNonBlockWriteFixes() const;
 
   struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
                                     boost::intrusive::cache_last<false>> {

@@ -469,6 +469,9 @@ IoUringBackend::IoUringBackend(Options options)
 
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = options.capacity;
+  if (options_.taskRunCoop) {
+    params_.flags |= IORING_SETUP_COOP_TASKRUN;
+  }
 
   // poll SQ options
   if (options.flags & Options::Flags::POLL_SQ) {
@@ -503,6 +506,12 @@ IoUringBackend::IoUringBackend(Options options)
       } else {
         // success - break
         break;
+      }
+    }
+
+    if (options.registerRingFd) {
+      if (io_uring_register_ring_fd(&ioRing_) < 0) {
+        LOG(ERROR) << "unable to register io_uring ring fd";
       }
     }
 
@@ -1531,6 +1540,12 @@ void IoUringBackend::processFileOp(IoSqe* sqe, int64_t res) noexcept {
   // save the res
   ioSqe->res_ = res;
   activeEvents_.push_back(*ioSqe);
+}
+
+bool IoUringBackend::kernelHasNonBlockWriteFixes() const {
+  // this was fixed in 5.18, which introduced linked file
+  // fixed in "io_uring: only wake when the correct events are set"
+  return params_.features & IORING_FEAT_LINKED_FILE;
 }
 
 } // namespace folly
