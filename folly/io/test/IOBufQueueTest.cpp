@@ -278,12 +278,12 @@ TEST(IOBufQueue, Preallocate) {
   queue.append(SCL("World"));
   checkConsistency(queue);
   EXPECT_EQ(12, queue.front()->computeChainDataLength());
-  // There are not 8192 bytes available, this will alloc a new buf
-  writable = queue.preallocate(8192, 16384);
+  // There are not 2048 bytes available, this will alloc a new buf
+  writable = queue.preallocate(2048, 4096);
   checkConsistency(queue);
-  EXPECT_LE(8192, writable.second);
+  EXPECT_LE(2048, writable.second);
   // IOBuf allocates more than newAllocationSize, and we didn't cap it
-  EXPECT_GE(writable.second, 16384);
+  EXPECT_GE(writable.second, 4096);
   queue.postallocate(writable.second);
   // queue has no empty space, make sure we allocate at least min, even if
   // newAllocationSize < min

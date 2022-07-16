@@ -288,17 +288,6 @@ class IOBuf {
       size_t totalCapacity, std::size_t maxBufCapacity);
 
   /**
-   * Allocate a new IOBuf object with exactly the requested capacity.
-   * Same allocation size as create(), but does not use the extra space.
-   * Probably not what you want outside of very particular test code.
-   */
-  static std::unique_ptr<IOBuf> createExact(std::size_t capacity) {
-    auto ret = create(capacity);
-    ret->capacity_ = capacity;
-    return ret;
-  }
-
-  /**
    * Uses folly::goodMallocSize() to figure out what the largest capacity would
    * be that would trigger the same underlying allocation size as would be
    * triggered by the given capacity.
