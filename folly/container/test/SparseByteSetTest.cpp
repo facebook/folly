@@ -66,3 +66,15 @@ TEST_F(SparseByteSetTest, each_random) {
     EXPECT_TRUE(s.contains(c));
   }
 }
+
+TEST_F(SparseByteSetTest, clear) {
+  for (auto c = lims::min(); c < lims::max(); ++c) {
+    EXPECT_TRUE(s.add(c));
+  }
+  s.clear();
+  for (auto c = lims::min(); c < lims::max(); ++c) {
+    EXPECT_FALSE(s.contains(c));
+    EXPECT_TRUE(s.add(c));
+  }
+}
+
