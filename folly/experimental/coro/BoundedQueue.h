@@ -47,7 +47,7 @@ class BoundedQueue {
   template <typename U = T>
   folly::coro::Task<void> enqueue(U&& item) {
     co_await enqueueSemaphore_.co_wait();
-    queue_.write(std::forward<U>(item));
+    enqueueReady(std::forward<U>(item));
     dequeueSemaphore_.signal();
   }
 
@@ -57,7 +57,7 @@ class BoundedQueue {
     if (!waitSuccess) {
       return false;
     }
-    queue_.write(std::forward<U>(item));
+    enqueueReady(std::forward<U>(item));
     dequeueSemaphore_.signal();
     return true;
   }
@@ -105,6 +105,17 @@ class BoundedQueue {
   }
 
  private:
+  template <typename U = T>
+  void enqueueReady(U&& item) {
+    if constexpr (kSPSC) {
+      CHECK(queue_.write(std::forward<U>(item)));
+    } else {
+      // Cannot use write() because the thread that acquired the next ticket may
+      // not have completed the read yet.
+      CHECK(queue_.writeIfNotFull(std::forward<U>(item)));
+    }
+  }
+
   void dequeueReady(T& item) {
     if constexpr (kSPSC) {
       CHECK(queue_.read(item));
