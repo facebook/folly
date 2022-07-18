@@ -216,9 +216,6 @@ class TestObserver : public folly::ExecutionObserver {
     nestedStart_--;
     numStoppedCalled_++;
   }
-  virtual void runnable(uintptr_t /* id */) noexcept override {
-    // Unused
-  }
 
   int nestedStart_{0};
   int numStartingCalled_{0};

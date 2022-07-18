@@ -242,11 +242,6 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
     CHECK(oldAsyncRoot == nullptr);
 
     yieldedFibers_ = prevYieldedFibers;
-    if (observer_) {
-      for (auto& yielded : yieldedFibers) {
-        observer_->runnable(reinterpret_cast<uintptr_t>(&yielded));
-      }
-    }
     readyFibers_.splice(readyFibers_.end(), yieldedFibers);
     RequestContext::setContext(std::move(curCtx));
     if (!readyFibers_.empty()) {
@@ -294,9 +289,6 @@ inline void FiberManager::loopUntilNoReadyImpl() {
             fiber->rcontext_ = std::move(task->rcontext);
 
             fiber->setFunction(std::move(task->func), TaskOptions());
-            if (observer_) {
-              observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
-            }
             runReadyFiber(fiber);
           });
 
@@ -380,10 +372,6 @@ Fiber* FiberManager::createTask(F&& func, TaskOptions taskOptions) {
     auto funcLoc = new typename Helper::Func(std::forward<F>(func), *this);
 
     fiber->setFunction(std::ref(*funcLoc), std::move(taskOptions));
-  }
-
-  if (observer_) {
-    observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
   }
 
   return fiber;
@@ -524,10 +512,6 @@ Fiber* FiberManager::createTaskFinally(F&& func, G&& finally) {
         new typename Helper::Func(std::forward<F>(func), *finallyLoc);
 
     fiber->setFunctionFinally(std::ref(*funcLoc), std::ref(*finallyLoc));
-  }
-
-  if (observer_) {
-    observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
   }
 
   return fiber;
