@@ -27,6 +27,9 @@ if(POLICY CMP0075)
   cmake_policy(SET CMP0075 NEW)
 endif()
 
+string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
+set(IS_X86_64_ARCH NOT(IS_X86_64_ARCH STREQUAL "-1"))
+
 # includes
 set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/CMake"
@@ -228,9 +231,34 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   endif()
 endif()
 
+# base64 SIMD files compilation
+if (${IS_X86_64_ARCH})
+  message(
+    STATUS
+    "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
+    "skipping building SSE4.2 version of base64"
+  )
+  list(REMOVE_ITEM files ${FOLLY_DIR}/detail/base64_detail/Base64_SSE4_2.cpp)
+else()
+  message(
+    STATUS
+    "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
+    "building SSE4.2 version of base64"
+  )
+  # MSVC does not have a way to enable just sse4.2, only avx.
+  # If we don't pass the flag, everything will still work but no warnings
+  if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set_source_files_properties(
+      ${FOLLY_DIR}/detail/base64_detail/Base64_SSE4_2.cpp
+      PROPERTIES
+      COMPILE_FLAGS
+        -msse4.2
+    )
+  endif()
+endif()
+
 if (${LIBSODIUM_FOUND})
-  string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
-  if (${IS_X86_64_ARCH} STREQUAL "-1")
+  if (${IS_X86_64_ARCH})
     message(
       STATUS
       "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
@@ -590,6 +618,13 @@ if (BUILD_TESTS)
 
     DIRECTORY detail/test/
       TEST static_singleton_manager_test SOURCES StaticSingletonManagerTest.cpp
+
+    DIRECTORY detail/base64_detail/tests/
+      TEST base64_detail_test
+      SOURCES
+        Base64AgainstScalarTest.cpp
+        Base64PlatformTest.cpp
+        Base64SpecialCasesTest.cpp
 
     DIRECTORY executors/test/
       TEST async_helpers_test SOURCES AsyncTest.cpp
