@@ -72,7 +72,7 @@ TEST_F(SparseByteSetTest, clear) {
     EXPECT_TRUE(s.add(c));
   }
   s.clear();
-  for (auto c = lims::min(); c < lims::max(); ++c) {
+  for (auto c = lims::max() - 1; c > lims::min(); --c) {
     EXPECT_FALSE(s.contains(c));
     EXPECT_TRUE(s.add(c));
   }

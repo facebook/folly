@@ -83,7 +83,7 @@ class SparseByteSet {
    *
    *  O(1), non-amortized.
    */
-  inline bool clear() {
+  inline void clear() {
     size_ = 0;
   }
 
