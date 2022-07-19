@@ -20,11 +20,13 @@
 
 class TypeInfoTest : public testing::Test {};
 
+#ifndef FOLLY_GTEST_SUPPORTS_TYPE_INFO
 namespace std {
 static void PrintTo(type_info const& ti, std::ostream* out) {
   *out << ti.name();
 }
 } // namespace std
+#endif
 
 namespace {
 struct Foo {};

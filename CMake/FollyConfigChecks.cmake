@@ -213,3 +213,12 @@ if (FOLLY_HAVE_LIBGFLAGS)
     set(FOLLY_GFLAGS_NAMESPACE google)
   endif()
 endif()
+
+
+if (BUILD_TESTS)
+  find_package(GMock MODULE REQUIRED)
+  find_package(GTest MODULE REQUIRED)
+
+  get_target_property(LIBTEST_VERSION GTest::gtest VERSION)
+  set(FOLLY_GTEST_SUPPORTS_TYPE_INFO $<VERSION_GREATER_EQUAL:${LIBTEST_VERSION},"1.12.0">)
+endif()
