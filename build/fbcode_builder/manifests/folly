@@ -42,7 +42,7 @@ openssl
 openssl
 zlib
 
-# xz depends on autoconf which does not build on 
+# xz depends on autoconf which does not build on
 # Windows
 [dependencies.not(os=windows)]
 xz
@@ -64,6 +64,8 @@ LIBDWARF_FOUND=NO
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
+BUILD_BENCHMARKS=ON
 
 [cmake.defines.test=off]
 BUILD_TESTS=OFF
+BUILD_BENCHMARKS=OFF

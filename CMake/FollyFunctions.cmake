@@ -188,14 +188,18 @@ function(folly_define_tests)
       while (currentArg LESS ${ARGC})
         if ("x${ARGV${currentArg}}" STREQUAL "xDIRECTORY")
           break()
-        elseif ("x${ARGV${currentArg}}" STREQUAL "xTEST")
+        elseif ("x${ARGV${currentArg}}" STREQUAL "xTEST" OR
+                "x${ARGV${currentArg}}" STREQUAL "xBENCHMARK")
+          set(cur_test ${test_count})
+          math(EXPR test_count "${test_count} + 1")
+
+          set(test_${cur_test}_is_benchmark $<STREQUAL:"x${ARGV${currentArg}}","xBENCHMARK">)
+
           math(EXPR currentArg "${currentArg} + 1")
           if (NOT currentArg LESS ${ARGC})
             message(FATAL_ERROR "Expected test name!")
           endif()
 
-          set(cur_test ${test_count})
-          math(EXPR test_count "${test_count} + 1")
           set(test_${cur_test}_name "${ARGV${currentArg}}")
           math(EXPR currentArg "${currentArg} + 1")
           set(test_${cur_test}_directory ${cur_dir})
@@ -217,6 +221,7 @@ function(folly_define_tests)
               endif()
               set(test_${cur_test}_content_dir "${ARGV${currentArg}}")
             elseif ("x${ARGV${currentArg}}" STREQUAL "xTEST" OR
+                    "x${ARGV${currentArg}}" STREQUAL "xBENCHMARK" OR
                     "x${ARGV${currentArg}}" STREQUAL "xDIRECTORY")
               break()
             elseif (argumentState EQUAL 0)
@@ -278,27 +283,31 @@ function(folly_define_tests)
       message("Skipping windows disabled test ${cur_dir_name}${cur_test_name}, enable with WINDOWS_DISABLED")
     elseif ("APPLE_DISABLED" IN_LIST test_${cur_test}_tag AND APPLE)
       message("Skipping apple disabled test ${cur_dir_name}${cur_test_name}, enable with APPLE_DISABLED")
+    elseif (${test_${cur_test}_is_benchmark} AND NOT BUILD_BENCHMARKS)
+      message("Skipping benchmark ${cur_dir_name}${cur_test_name}, enable with BUILD_BENCHMARKS")
     else()
       add_executable(${cur_test_name}
         ${test_${cur_test}_headers}
         ${test_${cur_test}_sources}
       )
-      if (HAVE_CMAKE_GTEST)
-        # If we have CMake's built-in gtest support use it to add each test
-        # function as a separate test.
-        gtest_add_tests(TARGET ${cur_test_name}
-                        WORKING_DIRECTORY "${TOP_DIR}"
-                        TEST_PREFIX "${cur_test_name}."
-                        TEST_LIST test_cases)
-        set_tests_properties(${test_cases} PROPERTIES TIMEOUT 120)
-      else()
-        # Otherwise add each test executable as a single test.
-        add_test(
-          NAME ${cur_test_name}
-          COMMAND ${cur_test_name}
-          WORKING_DIRECTORY "${TOP_DIR}"
-        )
-        set_tests_properties(${cur_test_name} PROPERTIES TIMEOUT 120)
+      if (NOT ${test_${cur_test}_is_benchmark})
+        if (HAVE_CMAKE_GTEST)
+          # If we have CMake's built-in gtest support use it to add each test
+          # function as a separate test.
+          gtest_add_tests(TARGET ${cur_test_name}
+                          WORKING_DIRECTORY "${TOP_DIR}"
+                          TEST_PREFIX "${cur_test_name}."
+                          TEST_LIST test_cases)
+          set_tests_properties(${test_cases} PROPERTIES TIMEOUT 120)
+        else()
+          # Otherwise add each test executable as a single test.
+          add_test(
+            NAME ${cur_test_name}
+            COMMAND ${cur_test_name}
+            WORKING_DIRECTORY "${TOP_DIR}"
+          )
+          set_tests_properties(${cur_test_name} PROPERTIES TIMEOUT 120)
+        endif()
       endif()
       if (NOT "x${test_${cur_test}_content_dir}" STREQUAL "x")
         # Copy the content directory to the output directory tree so that
