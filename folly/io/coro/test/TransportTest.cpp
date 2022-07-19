@@ -300,6 +300,23 @@ TEST_F(TransportTest, AcceptCancelled) {
   });
 }
 
+TEST_F(TransportTest, RequestCancellationInAnotherThread) {
+  auto ass = AsyncServerSocket::newSocket(&evb);
+  std::thread anotherThread([&] {
+    std::this_thread::sleep_for(10ms);
+    cancelSource.requestCancellation();
+  });
+
+  run([&]() -> Task<> {
+    ServerSocket css(ass, std::nullopt, 16);
+    EXPECT_THROW(
+        co_await co_withCancellation(cancelSource.getToken(), css.accept()),
+        OperationCancelled);
+  });
+
+  anotherThread.join();
+}
+
 TEST_F(TransportTest, AsyncClientAndServer) {
   run([&]() -> Task<> {
     constexpr int kSize = 128;
