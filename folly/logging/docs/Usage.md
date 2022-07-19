@@ -98,8 +98,8 @@ object.  The configuration string syntax is documented in
 [Config.md](Config.md).
 
 You can then apply a `LogConfig` object to the main `LoggerDB` singleton by
-using `LoggerDB::get()->updateConfig()` to incrementally update the current
-configuration, or by using `LoggerDB::get()->resetConfig()` to replace all
+using `LoggerDB::get().updateConfig()` to incrementally update the current
+configuration, or by using `LoggerDB::get().resetConfig()` to replace all
 existing settings with the new configuration.
 
 The `folly::initLogging()` function provides a convenient API for initially
