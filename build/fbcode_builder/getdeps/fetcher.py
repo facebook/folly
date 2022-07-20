@@ -195,10 +195,13 @@ class SystemPackageFetcher(object):
         return ChangeStatus(all_changed=False)
 
     def hash(self) -> str:
+        return "0" * 40
+        '''
         if self.packages_are_installed():
-            return hashlib.sha256(self.installed).hexdigest()
+            return hashlib.sha256(self.installed).hexdigest()  # looks like a bug here
         else:
             return "0" * 40
+        '''
 
     def get_src_dir(self) -> None:
         return None
