@@ -58,7 +58,7 @@ std::string callHelper(
 
   Subprocess proc(allArgs, options);
   auto p = proc.communicate();
-  EXPECT_EQ(expectedExitCode, proc.wait().exitStatus());
+  EXPECT_EQ(expectedExitCode, proc.wait().exitStatus()) << p.second;
 
   return p.first;
 }
@@ -88,9 +88,9 @@ TEST(ProgramOptionsTest, Help) {
   callHelper({"help", "bar"});
 
   // wrong command name
-  callHelper({"-h", "qux"}, 1);
-  callHelper({"--help", "qux"}, 1);
-  callHelper({"help", "qux"}, 1);
+  callHelper({"-h", "thunk"}, 1);
+  callHelper({"--help", "thunk"}, 1);
+  callHelper({"help", "thunk"}, 1);
 
   // anything after -- is parsed as arguments
   callHelper({"--", "help", "bar"}, 1);
@@ -159,6 +159,57 @@ TEST(ProgramOptionsTest, Aliases) {
       "foo arg a\n"
       "foo arg b\n",
       callHelper({"--global-foo", "43", "bar", "--local-foo", "44", "a", "b"}));
+}
+
+TEST(ProgramOptionsTest, PositionalArgsSuccess) {
+  EXPECT_EQ(
+      "running qux\n"
+      "qux global-foo 43\n"
+      "qux conflict-global 42\n"
+      "qux optional-arg 41\n"
+      "qux fred 44\n"
+      "qux thud 21\n",
+      callHelper({"--global-foo", "43", "qux", "44", "21"}));
+
+  // Test with the optional arg and reposition the global flag after
+  // positional commands
+  EXPECT_EQ(
+      "running qux\n"
+      "qux global-foo 43\n"
+      "qux conflict-global 42\n"
+      "qux optional-arg 82\n"
+      "qux fred 44\n"
+      "qux thud 21\n",
+      callHelper(
+          {"qux", "44", "21", "--global-foo", "43", "--optional-arg", "82"}));
+
+  // Test specifying positional args via keyword
+  EXPECT_EQ(
+      "running qux\n"
+      "qux global-foo 43\n"
+      "qux conflict-global 42\n"
+      "qux optional-arg 82\n"
+      "qux fred 21\n"
+      "qux thud 11\n",
+      callHelper(
+          {"qux",
+           "--optional-arg",
+           "82",
+           "--thud",
+           "11",
+           "--fred",
+           "21",
+           "--global-foo",
+           "43"}));
+
+  // When a subcommand specifies positional args any extra positional
+  // args should cause an error
+  callHelper(
+      {"qux", "44", "21", "--global-foo", "43", "--optional-arg", "82", "a"},
+      1);
+  callHelper({"--global-foo", "43", "qux", "44", "21", "a"}, 1);
+  callHelper(
+      {"--global-foo", "43", "qux", "--fred", "44", "--thud", "21", "10"}, 1);
 }
 
 TEST(ProgramOptionsTest, BuiltinCommand) {

@@ -42,6 +42,17 @@ void foo(
   }
 }
 
+void qux(
+    const po::variables_map& options, const std::vector<std::string>& args) {
+  printf("qux global-foo %d\n", options["global-foo"].as<int32_t>());
+  printf("qux conflict-global %d\n", options["conflict-global"].as<int32_t>());
+  printf("qux optional-arg %d\n", options["optional-arg"].as<int32_t>());
+  printf("qux fred %d\n", options["fred"].as<int32_t>());
+  printf("qux thud %d\n", options["thud"].as<int32_t>());
+  for (auto& arg : args) {
+    printf("qux arg %s\n", arg.c_str());
+  }
+}
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -57,6 +68,15 @@ int main(int argc, char* argv[]) {
     .add_options()
       ("local-foo", po::value<int32_t>()->default_value(42), "Local foo")
       ("conflict", po::value<int32_t>()->default_value(42), "Local conflict");
+
+  po::positional_options_description positionalArgs;
+  positionalArgs.add("fred", /*max_count=*/1);
+  positionalArgs.add("thud", /*max_count=*/1);
+  app.addCommand("qux", "[args...]", "Do some qux", "Does qux", qux, positionalArgs)
+    .add_options()
+    ("optional-arg", po::value<int32_t>()->default_value(41), "optional argument")
+    ("fred", boost::program_options::value<int32_t>()->required(), "fred positional arg")
+    ("thud", boost::program_options::value<int32_t>()->required(), "thud positional arg");
   // clang-format on
   app.addAlias("bar", "foo");
   app.addAlias("baz", "bar");

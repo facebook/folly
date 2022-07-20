@@ -96,13 +96,15 @@ po::options_description& NestedCommandLineApp::addCommand(
     std::string argStr,
     std::string shortHelp,
     std::string fullHelp,
-    Command command) {
+    Command command,
+    folly::Optional<po::positional_options_description> positionalOptions) {
   CommandInfo info{
       std::move(argStr),
       std::move(shortHelp),
       std::move(fullHelp),
       std::move(command),
-      po::options_description(folly::sformat("Options for `{}'", name))};
+      po::options_description(folly::sformat("Options for `{}'", name)),
+      std::move(positionalOptions)};
 
   auto p = commands_.emplace(std::move(name), std::move(info));
   CHECK(p.second) << "Command already exists";
@@ -321,16 +323,23 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   auto& cmd = p.first;
   auto& info = p.second;
 
-  auto cmdOptions = po::command_line_parser(parsed.rest)
-                        .options(info.options)
-                        .style(optionStyle_)
-                        .run();
+  auto parser = po::command_line_parser(parsed.rest)
+                    .options(info.options)
+                    .style(optionStyle_);
+  if (info.positionalOptions) {
+    parser = parser.positional(*info.positionalOptions);
+  }
+
+  auto cmdOptions = parser.run();
 
   po::store(cmdOptions, vm);
   po::notify(vm);
 
-  auto cmdArgs =
-      po::collect_unrecognized(cmdOptions.options, po::include_positional);
+  // If positional arguments are specified they should get mapped to a named arg
+  // and don't need to be double collected
+  auto cmdArgs = po::collect_unrecognized(
+      cmdOptions.options,
+      info.positionalOptions ? po::exclude_positional : po::include_positional);
 
   cmdArgs.insert(cmdArgs.end(), endArgs.begin(), endArgs.end());
 

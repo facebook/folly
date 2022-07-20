@@ -123,7 +123,9 @@ class NestedCommandLineApp {
       std::string argStr,
       std::string shortHelp,
       std::string fullHelp,
-      Command command);
+      Command command,
+      folly::Optional<boost::program_options::positional_options_description>
+          positionalOptions = folly::none);
 
   /**
    * Add an alias; running the command newName will have the same effect
@@ -165,6 +167,8 @@ class NestedCommandLineApp {
     std::string fullHelp;
     Command command;
     boost::program_options::options_description options;
+    folly::Optional<boost::program_options::positional_options_description>
+        positionalOptions;
   };
 
   const std::pair<const std::string, CommandInfo>& findCommand(
