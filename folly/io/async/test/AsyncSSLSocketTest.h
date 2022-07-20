@@ -479,12 +479,10 @@ class EmptyReadCallback : public ReadCallback {
 class MockCertificateIdentityVerifier : public CertificateIdentityVerifier {
  public:
   MOCK_METHOD(
-      Try<Unit>, verifyLeafImpl, (const AsyncTransportCertificate&), (const));
-  // decorate to add noexcept
-  virtual Try<Unit> verifyLeaf(const AsyncTransportCertificate& leafCertificate)
-      const noexcept override {
-    return verifyLeafImpl(leafCertificate);
-  }
+      std::unique_ptr<AsyncTransportCertificate>,
+      verifyLeaf,
+      (const AsyncTransportCertificate&),
+      (const));
 };
 
 class MockHandshakeCB : public AsyncSSLSocket::HandshakeCB {

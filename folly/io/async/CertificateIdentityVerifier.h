@@ -44,13 +44,13 @@ class CertificateIdentityVerifier {
    * verification, only if certificate verification is required/requested,
    * with the peer's leaf certificate provided as an argument.
    *
-   * Returns an Try with a CertificateIdentityVerifierException set if
-   * verification fails.
+   * Returns a pointer to AsyncTransportCertificate object.
    *
    * @param leafCertificate leaf X509 certificate of the connected peer
    */
-  FOLLY_NODISCARD virtual Try<Unit> verifyLeaf(
-      const AsyncTransportCertificate& leafCertificate) const noexcept = 0;
+  // NOLINTNEXTLINE(modernize-use-nodiscard)
+  virtual std::unique_ptr<AsyncTransportCertificate> verifyLeaf(
+      const AsyncTransportCertificate& leafCertificate) const = 0;
 };
 
 /**

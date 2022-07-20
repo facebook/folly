@@ -35,6 +35,7 @@
 #include <folly/io/async/EventBaseThread.h>
 #include <folly/io/async/SSLOptions.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
+#include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
 #include <folly/io/async/test/MockAsyncTransportObserver.h>
@@ -162,6 +163,19 @@ std::string getFileAsBuf(const char* fileName) {
   std::string buffer;
   folly::readFile(fileName, buffer);
   return buffer;
+}
+
+folly::ssl::X509UniquePtr readCertFromFile(const std::string& filename) {
+  folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_file()));
+  if (!bio) {
+    throw std::runtime_error("Couldn't create BIO");
+  }
+
+  if (BIO_read_filename(bio.get(), filename.c_str()) != 1) {
+    throw std::runtime_error("Couldn't read cert file: " + filename);
+  }
+  return folly::ssl::X509UniquePtr(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
 namespace {
@@ -1472,9 +1486,6 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierReturns) {
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
   TestSSLServer server(&acceptCallback, serverCtx);
 
-  // return success in the Try with folly::unit
-  Try<Unit> verifyResult{unit};
-
   std::shared_ptr<MockCertificateIdentityVerifier> verifier =
       std::make_shared<MockCertificateIdentityVerifier>();
 
@@ -1482,9 +1493,11 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierReturns) {
   // (kTestCert)
   EXPECT_CALL(
       *verifier,
-      verifyLeafImpl(Property(
+      verifyLeaf(Property(
           &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
-      .WillOnce(Return(ByMove(verifyResult)));
+      .WillOnce(
+          Return(ByMove(std::make_unique<folly::ssl::BasicTransportCertificate>(
+              "Asox Company", readCertFromFile(kTestCert)))));
 
   AsyncSSLSocket::Options opts;
   opts.verifier = std::move(verifier);
@@ -1503,13 +1516,6 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierReturns) {
 
   socket->close();
 }
-
-class TestCertificateIdentityVerifierException
-    : public CertificateIdentityVerifierException {
- public:
-  explicit TestCertificateIdentityVerifierException(const char* content)
-      : CertificateIdentityVerifierException(content) {}
-};
 
 /**
  * Verify that the client fails to connect during handshake because
@@ -1537,16 +1543,15 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierFailsToConnect) {
   std::shared_ptr<MockCertificateIdentityVerifier> verifier =
       std::make_shared<MockCertificateIdentityVerifier>();
 
-  // return a failed result Try
-  TestCertificateIdentityVerifierException failed{"a failed test reason"};
-  Try<Unit> result{failed};
+  // Throw an exception on verification failure
+  CertificateIdentityVerifierException failed{"a failed test reason"};
 
   // expecting to only verify once, with the leaf certificate (kTestCert)
   EXPECT_CALL(
       *verifier,
-      verifyLeafImpl(Property(
+      verifyLeaf(Property(
           &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
-      .WillOnce(Return(ByMove(result)));
+      .WillOnce(Throw(failed));
 
   AsyncSSLSocket::Options opts;
   opts.verifier = std::move(verifier);
@@ -1696,16 +1701,20 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierSucceedsOnServer) {
       std::make_shared<MockCertificateIdentityVerifier>();
   EXPECT_CALL(
       *clientVerifier,
-      verifyLeafImpl(Property(
+      verifyLeaf(Property(
           &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
-      .WillOnce(Return(Try<Unit>{unit}));
+      .WillOnce(
+          Return(ByMove(std::make_unique<folly::ssl::BasicTransportCertificate>(
+              "Asox Company", readCertFromFile(kTestCert)))));
   std::shared_ptr<StrictMock<MockCertificateIdentityVerifier>> serverVerifier =
       std::make_shared<StrictMock<MockCertificateIdentityVerifier>>();
   EXPECT_CALL(
       *serverVerifier,
-      verifyLeafImpl(Property(
+      verifyLeaf(Property(
           &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
-      .WillOnce(Return(Try<Unit>{unit}));
+      .WillOnce(
+          Return(ByMove(std::make_unique<folly::ssl::BasicTransportCertificate>(
+              "Asox Company", readCertFromFile(kTestCert)))));
 
   AsyncSSLSocket::Options clientOpts;
   clientOpts.verifier = clientVerifier;
