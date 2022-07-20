@@ -774,7 +774,6 @@ class ConcurrentHashMap {
   mutable Atom<uint64_t> endSeg_{0};
 };
 
-#if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
 template <
     typename KeyType,
     typename ValueType,
@@ -793,7 +792,12 @@ using ConcurrentHashMapSIMD = ConcurrentHashMap<
     ShardBits,
     Atom,
     Mutex,
-    detail::concurrenthashmap::simd::SIMDTable>;
+#if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
+    detail::concurrenthashmap::simd::SIMDTable
+#else
+    // fallback to regular impl
+    detail::concurrenthashmap::bucket::BucketTable
 #endif
+    >;
 
 } // namespace folly
