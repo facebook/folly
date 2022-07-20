@@ -54,4 +54,46 @@ class TcpInfoDispatcher {
   virtual ~TcpInfoDispatcher() = default;
 };
 
+/**
+ * Container for folly::TcpInfoDispatcher.
+ *
+ * Enables overriden Dispatcher to be installed for tests and special cases.
+ * If no override is installed, returns default Dispatcher instance.
+ */
+class TcpInfoDispatcherContainer {
+ public:
+  /**
+   * Return a TcpInfoDispatcher.
+   *
+   * If no override is set, return the default TcpInfoDispatcher instance.
+   */
+  TcpInfoDispatcher* getDispatcher() const {
+    return dispatcher_ ? dispatcher_.get() : TcpInfoDispatcher::getInstance();
+  }
+
+  /**
+   * Return a TcpInfoDispatcher.
+   *
+   * If no override is set, return the default TcpInfoDispatcher instance.
+   */
+  TcpInfoDispatcher* operator->() const { return getDispatcher(); }
+
+  /**
+   * Sets override TcpInfoDispatcher. Pass empty shared_ptr to remove the
+   * override.
+   */
+  void setOverride(std::shared_ptr<TcpInfoDispatcher> dispatcher) {
+    dispatcher_ = std::move(dispatcher);
+  }
+
+  /**
+   * Returns shared_ptr to the override TcpInfoDispatcher if installed, else
+   * returns empty ptr.
+   */
+  std::shared_ptr<TcpInfoDispatcher> getOverride() const { return dispatcher_; }
+
+ private:
+  std::shared_ptr<TcpInfoDispatcher> dispatcher_;
+};
+
 } // namespace folly
