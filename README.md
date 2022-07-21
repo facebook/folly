@@ -55,7 +55,7 @@ an installation root of the library (with possible versioning a la
 including files, e.g. `#include <folly/FBString.h>`.
 
 The directory structure is flat (mimicking the namespace structure),
-i.e. we don't have an elaborate directory hierarchy (it is possible
+i.e. we don't have an elaborate directory hierarchy (it's possible
 this will change in future versions). The subdirectory `experimental`
 contains files that are used inside folly and possibly at Facebook but
 not considered stable enough for client use. Your code should not use
@@ -156,8 +156,8 @@ By default `getdeps.py` will build the tests for folly. To run them:
 
 ### `build.sh`/`build.bat` wrapper
 
-`build.sh` can be used on Linux and MacOS, on Windows use
-the `build.bat` script instead. Its a wrapper around `getdeps.py`
+`build.sh` can be used on Linux and MacOS. On Windows use
+the `build.bat` script instead. It's a wrapper around `getdeps.py`
 
 ## Build with cmake directly
 
