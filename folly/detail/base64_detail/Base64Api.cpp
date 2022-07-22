@@ -18,37 +18,23 @@
 #include <folly/Portability.h>
 #include <folly/detail/base64_detail/Base64Api.h>
 #include <folly/detail/base64_detail/Base64SWAR.h>
-
-#if FOLLY_X64
 #include <folly/detail/base64_detail/Base64_SSE4_2.h>
-#endif
 
 namespace folly::detail::base64_detail {
-
-#if FOLLY_X64
 Base64RuntimeImpl base64EncodeSelectImplementation() {
+#if FOLLY_SSE_PREREQ(4, 2)
   if (folly::CpuId().sse42()) {
     return {
         base64Encode_SSE4_2,
         base64URLEncode_SSE4_2,
         base64Decode_SSE4_2,
         base64URLDecodeSWAR};
-  } else {
-    return {
-        base64EncodeScalar,
-        base64URLEncode,
-        base64DecodeSWAR,
-        base64URLDecodeSWAR};
   }
-}
-#else // FOLLY_X64
-Base64RuntimeImpl base64EncodeSelectImplementation() {
+#endif
   return {
       base64EncodeScalar,
       base64URLEncode,
       base64DecodeSWAR,
       base64URLDecodeSWAR};
 }
-#endif
-
 } // namespace folly::detail::base64_detail

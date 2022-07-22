@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Portability.h>
 #include <folly/detail/base64_detail/Base64Common.h>
 #include <folly/detail/base64_detail/Base64Scalar.h>
 
@@ -48,7 +49,8 @@ inline const auto& base64EncodeRuntime() {
 #endif
 #endif
 
-constexpr char* base64Encode(const char* f, const char* l, char* o) noexcept {
+inline FOLLY_CXX20_CONSTEXPR char* base64Encode(
+    const char* f, const char* l, char* o) noexcept {
   if (BASE64_IS_CONSTANT_EVALUATED) {
     return base64EncodeScalar(f, l, o);
   } else {
@@ -56,7 +58,7 @@ constexpr char* base64Encode(const char* f, const char* l, char* o) noexcept {
   }
 }
 
-constexpr char* base64URLEncode(
+inline FOLLY_CXX20_CONSTEXPR char* base64URLEncode(
     const char* f, const char* l, char* o) noexcept {
   if (BASE64_IS_CONSTANT_EVALUATED) {
     return base64URLEncodeScalar(f, l, o);
@@ -65,8 +67,8 @@ constexpr char* base64URLEncode(
   }
 }
 
-constexpr Base64DecodeResult base64Decode(
-    const char* f, const char* l, char* o) noexcept {
+inline FOLLY_CXX20_CONSTEXPR Base64DecodeResult
+base64Decode(const char* f, const char* l, char* o) noexcept {
   if (BASE64_IS_CONSTANT_EVALUATED) {
     return base64DecodeScalar(f, l, o);
   } else {
@@ -74,8 +76,8 @@ constexpr Base64DecodeResult base64Decode(
   }
 }
 
-constexpr Base64DecodeResult base64URLDecode(
-    const char* f, const char* l, char* o) noexcept {
+inline FOLLY_CXX20_CONSTEXPR Base64DecodeResult
+base64URLDecode(const char* f, const char* l, char* o) noexcept {
   if (BASE64_IS_CONSTANT_EVALUATED) {
     return base64URLDecodeScalar(f, l, o);
   } else {

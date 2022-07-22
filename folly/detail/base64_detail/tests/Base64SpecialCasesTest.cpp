@@ -21,11 +21,8 @@
 #include <type_traits>
 #include <folly/detail/base64_detail/Base64Scalar.h>
 #include <folly/detail/base64_detail/Base64Simd.h>
-#include <folly/portability/GTest.h>
-
-#if defined(__SSE4_2__)
 #include <folly/detail/base64_detail/Base64_SSE4_2.h>
-#endif // defined(__SSE4_2__)
+#include <folly/portability/GTest.h>
 
 namespace folly::detail::base64_detail {
 namespace {
@@ -376,7 +373,7 @@ TEST(Base64, SpecialCases) {
       base64URLEncodeScalar,
       base64DecodeSWAR,
       base64URLDecodeSWAR}));
-#ifdef __SSE4_2__
+#if FOLLY_SSE_PREREQ(4, 2)
   ASSERT_TRUE(runEncodeTests(SimdTester{
       base64Encode_SSE4_2,
       base64URLEncode_SSE4_2,
@@ -514,7 +511,7 @@ TEST(Base64, DecodingErrorDeteciton) {
   ASSERT_TRUE(decodingErrorDectionTest<true>(base64URLDecodeScalar));
   ASSERT_TRUE(decodingErrorDectionTest<false>(base64DecodeSWAR));
   ASSERT_TRUE(decodingErrorDectionTest<true>(base64URLDecodeSWAR));
-#ifdef __SSE4_2__
+#if FOLLY_SSE_PREREQ(4, 2)
   ASSERT_TRUE(decodingErrorDectionTest<false>(base64Decode_SSE4_2));
 #endif
 }

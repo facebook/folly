@@ -22,11 +22,8 @@
 #include <folly/detail/base64_detail/Base64Common.h>
 #include <folly/detail/base64_detail/Base64SWAR.h>
 #include <folly/detail/base64_detail/Base64Scalar.h>
-#include <folly/portability/GTest.h>
-
-#if defined(__SSE4_2__)
 #include <folly/detail/base64_detail/Base64_SSE4_2.h>
-#endif // defined(__SSE4_2__)
+#include <folly/portability/GTest.h>
 
 namespace folly::detail::base64_detail {
 namespace {
@@ -73,14 +70,14 @@ auto callDecode(std::string_view encoded, Decode decode)
 
 constexpr Encode kEncodes[] = {
     base64EncodeScalar,
-#ifdef __SSE4_2__
+#if FOLLY_SSE_PREREQ(4, 2)
     base64Encode_SSE4_2,
 #endif
 };
 
 constexpr Encode kEncodesURL[] = {
     base64URLEncodeScalar,
-#ifdef __SSE4_2__
+#if FOLLY_SSE_PREREQ(4, 2)
     base64URLEncode_SSE4_2,
 #endif
 };
@@ -88,7 +85,7 @@ constexpr Encode kEncodesURL[] = {
 constexpr Decode kDecodes[] = {
     base64DecodeScalar,
     base64DecodeSWAR,
-#ifdef __SSE4_2__
+#if FOLLY_SSE_PREREQ(4, 2)
     base64Decode_SSE4_2,
 #endif
 };

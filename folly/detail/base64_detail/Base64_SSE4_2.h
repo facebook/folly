@@ -17,8 +17,10 @@
 #pragma once
 
 #include <cstdint>
+#include <folly/Portability.h>
 #include <folly/detail/base64_detail/Base64Common.h>
 
+#if FOLLY_SSE_PREREQ(4, 2)
 namespace folly::detail::base64_detail {
 
 char* base64Encode_SSE4_2(const char* f, const char* l, char* o) noexcept;
@@ -28,3 +30,4 @@ Base64DecodeResult base64Decode_SSE4_2(
     const char* f, const char* l, char* o) noexcept;
 
 } // namespace folly::detail::base64_detail
+#endif
