@@ -229,7 +229,7 @@ class Random {
   template <class RNG, class /* EnableIf */ = ValidRNG<RNG>>
   static uint32_t rand32(RNG&& rng) {
     if FOLLY_CXX17_CONSTEXPR (UniformRNG<std::decay_t<RNG>, uint32_t>) {
-      return rng();
+      return static_cast<uint32_t>(rng());
     } else {
       return std::uniform_int_distribution<uint32_t>(
           0, std::numeric_limits<uint32_t>::max())(rng);
