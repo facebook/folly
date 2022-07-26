@@ -39,9 +39,9 @@ struct TestCaseOnStack : TestCase {
       std::initializer_list<char> dataInit, // initializer list makes it easier
                                             // to put non printable characters
                                             // compared to strings
-      std::string_view encodedStd,
-      std::string_view encodedURL)
-      : TestCase{{}, encodedStd, encodedURL}, dataBuf{} {
+      std::string_view encodedStdParam,
+      std::string_view encodedURLParam)
+      : TestCase{{}, encodedStdParam, encodedURLParam}, dataBuf{} {
     // std::copy not constexpr
     auto f = dataInit.begin(), l = dataInit.end();
     auto o = dataBuf.begin();
@@ -178,6 +178,15 @@ constexpr bool runEncodeTests(TestRunner testRunner) {
   return staticTests(testRunner) && manyZeroesTests(testRunner);
 }
 
+// In constexpr we can have a non constexpr expression, as long
+// as it is not evaluated.
+//
+// There was a gcc bug with respect to it. Luckily this just affects how
+// much useful information will be output in case of a test failure.
+#if defined(__GNUC__) && !defined(__clang__)
+#define GCC_CONSTEXPR_BUG_ACTIVE
+#endif
+
 struct ConstexprTester {
   constexpr bool encodeTest(TestCase test) const {
     std::array<char, 1000> buf = {};
@@ -189,9 +198,12 @@ struct ConstexprTester {
       return true;
     }
 
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
     EXPECT_EQ(test.encodedStd, actual)
         << "Regular encoding mismatch. Input data:\n"
         << byteRangeToString(test.data);
+#endif
+
     return false;
   }
 
@@ -208,8 +220,10 @@ struct ConstexprTester {
       return true;
     }
 
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
     EXPECT_TRUE(res.isSuccess) << "encoded: " << test.encodedStd;
     EXPECT_EQ(test.data, decoded) << "encoded: " << test.encodedStd;
+#endif
 
     return false;
   }
@@ -224,8 +238,11 @@ struct ConstexprTester {
       return true;
     }
 
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
     EXPECT_EQ(test.encodedURL, actual) << "URL encoding mismatch. Input data:\n"
                                        << byteRangeToString(test.data);
+#endif
+
     return false;
   }
 
@@ -240,8 +257,10 @@ struct ConstexprTester {
         return true;
       }
 
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
       EXPECT_TRUE(res.isSuccess) << "encoded: " << encoded;
       EXPECT_EQ(test.data, decoded) << "encoded: " << encoded;
+#endif
 
       return false;
     };
@@ -269,11 +288,14 @@ struct ConstexprTester {
       return true;
     }
 
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
     EXPECT_EQ(test.encodedStd.size(), encodedSize) << test.encodedStd;
     EXPECT_EQ(test.encodedURL.size(), encodedURLSize) << test.encodedURL;
     EXPECT_EQ(test.data.size(), decodedSize) << test.encodedStd;
     EXPECT_EQ(test.data.size(), decodedStdWithURlSize) << test.encodedStd;
     EXPECT_EQ(test.data.size(), decodedURLSize) << test.encodedURL;
+#endif
+
     return false;
   }
 
@@ -458,13 +480,17 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
     }
 
     if (r.isSuccess) {
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
       EXPECT_EQ(usedSize, allocatedSize) << in << " isURL: " << isURLDecoder;
+#endif
       return false;
     }
 
     if (allocatedSize > 1000 || // overflow
         usedSize > allocatedSize) {
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
       EXPECT_LE(usedSize, allocatedSize) << in << " isURL: " << isURLDecoder;
+#endif
       return false;
     }
     return true;
@@ -477,7 +503,9 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
     auto r = decoder(
         test.input.data(), test.input.data() + test.input.size(), buf.data());
     if (test.isSuccess != r.isSuccess) {
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
       EXPECT_EQ(test.isSuccess, r.isSuccess) << test.input;
+#endif
       return false;
     }
     if (!sizeTest(test.input, r)) {
@@ -492,7 +520,9 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
     auto r =
         decoder(URLOnly.data(), URLOnly.data() + URLOnly.size(), buf.data());
     if (isURLDecoder != r.isSuccess) {
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
       EXPECT_EQ(isURLDecoder, r.isSuccess) << URLOnly;
+#endif
       return false;
     }
 

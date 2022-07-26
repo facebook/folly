@@ -61,7 +61,7 @@ constexpr auto base64URLDecodeToArray(std::string_view s) {
 }
 
 struct ConstexprTest {
-  static constexpr std::array<char, 2> toEncode = {'a', 'b'};
+  static constexpr std::array<char, 2> toEncode{{'a', 'b'}};
   static constexpr std::array<char, 5> encoded = base64EncodeArray(toEncode);
 
   static constexpr std::string_view expected = "YWI=";
@@ -74,7 +74,7 @@ struct ConstexprTest {
 };
 
 struct ConstexprURLTest {
-  static constexpr std::array<char, 2> toEncode = {'a', 'b'};
+  static constexpr std::array<char, 2> toEncode{{'a', 'b'}};
   static constexpr std::array<char, 4> encoded = base64URLEncodeArray(toEncode);
 
   static constexpr std::string_view expected = "YWI";

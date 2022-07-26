@@ -125,25 +125,25 @@ constexpr std::array<std::uint8_t, 16> expectedSuccessfullDecodeToIndex(
 template <typename Platform>
 struct Base64PlatformTest : ::testing::Test {
   using platform = Platform;
-  using RegBytes = std::array<std::uint8_t, platform::kRegisterSize>;
+  using RegBytesArray = std::array<std::uint8_t, platform::kRegisterSize>;
 
-  static RegBytes actualEncodeToIndexes(RegBytes from) {
-    RegBytes res;
+  static RegBytesArray actualEncodeToIndexes(RegBytesArray from) {
+    RegBytesArray res;
     auto reg = platform::encodeToIndexes(platform::loadu(from.begin()));
     platform::storeu(res.begin(), reg);
     return res;
   }
 
-  static RegBytes actualLookupByIndex(RegBytes from) {
-    RegBytes res;
+  static RegBytesArray actualLookupByIndex(RegBytesArray from) {
+    RegBytesArray res;
     auto reg = platform::lookupByIndex(
         platform::loadu(from.begin()), constants::kEncodeTable.data());
     platform::storeu(res.begin(), reg);
     return res;
   }
 
-  static RegBytes actualSuccesfullDecodeToIndex(RegBytes from) {
-    RegBytes res;
+  static RegBytesArray actualSuccesfullDecodeToIndex(RegBytesArray from) {
+    RegBytesArray res;
     auto err = platform::initError();
     auto reg = platform::decodeToIndex(platform::loadu(from.data()), err);
     EXPECT_FALSE(platform::hasErrors(err));
@@ -151,9 +151,9 @@ struct Base64PlatformTest : ::testing::Test {
     return res;
   }
 
-  static RegBytes actualPackIndexesToBytes(RegBytes from) {
+  static RegBytesArray actualPackIndexesToBytes(RegBytesArray from) {
     auto reg = platform::packIndexesToBytes(platform::loadu(from.data()));
-    RegBytes res;
+    RegBytesArray res;
     platform::storeu(res.begin(), reg);
     return res;
   }
@@ -162,7 +162,7 @@ struct Base64PlatformTest : ::testing::Test {
 TYPED_TEST_SUITE(Base64PlatformTest, ::testing::Types<Base64_SSE4_2_Platform>);
 
 TYPED_TEST(Base64PlatformTest, EncodeToIndexes) {
-  using RegBytes = typename TestFixture::RegBytes;
+  using RegBytes = typename TestFixture::RegBytesArray;
 
   for (std::uint16_t v = 0; v != 256; v += 8) {
     RegBytes in;
@@ -176,7 +176,7 @@ TYPED_TEST(Base64PlatformTest, EncodeToIndexes) {
 }
 
 TYPED_TEST(Base64PlatformTest, IndexLookup) {
-  using RegBytes = typename TestFixture::RegBytes;
+  using RegBytes = typename TestFixture::RegBytesArray;
 
   std::uint8_t max_index =
       std::strlen(kBase64EncodeTable) + 1; // to include '\0'
@@ -191,7 +191,7 @@ TYPED_TEST(Base64PlatformTest, IndexLookup) {
 }
 
 TYPED_TEST(Base64PlatformTest, errorDetection) {
-  using RegBytes = typename TestFixture::RegBytes;
+  using RegBytes = typename TestFixture::RegBytesArray;
 
   auto anyErrors = [](const RegBytes& arr) {
     using pl = typename TestFixture::platform;
@@ -226,7 +226,7 @@ TYPED_TEST(Base64PlatformTest, errorDetection) {
 }
 
 TYPED_TEST(Base64PlatformTest, decodeToIndexSuccess) {
-  using RegBytes = typename TestFixture::RegBytes;
+  using RegBytes = typename TestFixture::RegBytesArray;
 
   // Some cases
   for (std::uint16_t v = 0; v < 256; v += 1) {
@@ -246,7 +246,7 @@ TYPED_TEST(Base64PlatformTest, decodeToIndexSuccess) {
 }
 
 TYPED_TEST(Base64PlatformTest, packIndexesToBytes) {
-  using RegBytes = typename TestFixture::RegBytes;
+  using RegBytes = typename TestFixture::RegBytesArray;
 
   for (std::uint16_t v = 0; v < 256; v += 1) {
     RegBytes in;
