@@ -17,7 +17,7 @@ edencommon
 fb303
 fbthrift
 folly
-pcre
+pcre2
 googletest
 
 [dependencies.fbsource=on]
