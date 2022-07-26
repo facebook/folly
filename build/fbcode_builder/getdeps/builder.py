@@ -850,7 +850,8 @@ if __name__ == "__main__":
                     testpilot_args.append("--env")
                     testpilot_args.extend(f"{key}={val}" for key, val in env.items())
 
-                testpilot_args += ["--run-id", str(run_id)]
+                if run_id is not None:
+                    testpilot_args += ["--run-id", run_id]
 
                 if test_filter:
                     testpilot_args += ["--", test_filter]
