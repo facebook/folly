@@ -70,7 +70,6 @@ enum class ConsumptionMode {
   CoroWithTry,
   CoroWithoutTry,
   CallbackWithHandle,
-  CallbackWithHandleList
 };
 
 template <typename TValue>
@@ -97,7 +96,6 @@ class ChannelConsumerBase {
   }
 
   folly::coro::Task<void> processValuesCoro(Receiver<TValue> receiver) {
-    auto executor = co_await folly::coro::co_current_executor;
     if (mode_ == ConsumptionMode::CoroWithTry ||
         mode_ == ConsumptionMode::CoroWithoutTry) {
       do {
@@ -142,24 +140,6 @@ class ChannelConsumerBase {
           co_await folly::coro::co_current_cancellation_token,
           [=, handle = std::move(callbackHandle)]() mutable {
             handle.reset();
-          });
-    } else if (mode_ == ConsumptionMode::CallbackWithHandleList) {
-      auto callbackHandleList = ChannelCallbackHandleList();
-      consumeChannelWithCallback(
-          std::move(receiver),
-          getExecutor(),
-          [=](Try<TValue> resultTry) -> folly::coro::Task<bool> {
-            onNext(std::move(resultTry));
-            co_return co_await folly::coro::detachOnCancel(
-                continueConsuming_.getSemiFuture());
-          },
-          callbackHandleList);
-      cancelCallback_ = std::make_unique<folly::CancellationCallback>(
-          co_await folly::coro::co_current_cancellation_token,
-          [=, handleList = std::move(callbackHandleList)]() mutable {
-            executor->add([handleList = std::move(handleList)]() mutable {
-              handleList.clear();
-            });
           });
     } else {
       LOG(FATAL) << "Unknown consumption mode";

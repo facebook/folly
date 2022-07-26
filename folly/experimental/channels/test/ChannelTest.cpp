@@ -266,11 +266,6 @@ INSTANTIATE_TEST_SUITE_P(
     ChannelFixture,
     testing::Values(ConsumptionMode::CallbackWithHandle));
 
-INSTANTIATE_TEST_SUITE_P(
-    Channel_Callback_WithHandleList,
-    ChannelFixture,
-    testing::Values(ConsumptionMode::CallbackWithHandleList));
-
 class ChannelFixtureStress : public Test,
                              public WithParamInterface<ConsumptionMode> {
  protected:
@@ -371,10 +366,5 @@ INSTANTIATE_TEST_SUITE_P(
     Channel_Callback_WithHandle,
     ChannelFixtureStress,
     testing::Values(ConsumptionMode::CallbackWithHandle));
-
-INSTANTIATE_TEST_SUITE_P(
-    Channel_Callback_WithHandleList,
-    ChannelFixtureStress,
-    testing::Values(ConsumptionMode::CallbackWithHandleList));
 } // namespace channels
 } // namespace folly

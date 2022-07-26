@@ -48,9 +48,6 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
         .start();
   }
 
- protected:
-  virtual void onFinishedConsumption() {}
-
  private:
   /**
    * Called when the handle is destroyed.
@@ -227,33 +224,6 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
 };
 } // namespace detail
 
-namespace detail {
-template <typename TValue, typename OnNextFunc>
-class ChannelCallbackProcessorImplWithList
-    : public ChannelCallbackProcessorImpl<TValue, OnNextFunc> {
- public:
-  ChannelCallbackProcessorImplWithList(
-      ChannelBridgePtr<TValue> receiver,
-      folly::Executor::KeepAlive<> executor,
-      OnNextFunc onNext,
-      ChannelCallbackHandleList& holders)
-      : ChannelCallbackProcessorImpl<TValue, OnNextFunc>(
-            std::move(receiver), std::move(executor), std::move(onNext)),
-        holder_(ChannelCallbackHandle(this)) {
-    holders.add(holder_);
-  }
-
- private:
-  void onFinishedConsumption() override {
-    // In this subclass, we will remove ourselves from the list of handles
-    // when consumption is complete (triggering cancellation).
-    std::ignore = std::move(holder_);
-  }
-
-  ChannelCallbackHandleHolder holder_;
-};
-} // namespace detail
-
 template <
     typename TReceiver,
     typename OnNextFunc,
@@ -274,31 +244,6 @@ ChannelCallbackHandle consumeChannelWithCallback(
       std::move(unbufferedReceiver), std::move(executor), std::move(onNext));
   processor->start(std::move(buffer));
   return ChannelCallbackHandle(processor);
-}
-
-template <
-    typename TReceiver,
-    typename OnNextFunc,
-    typename TValue,
-    std::enable_if_t<
-        std::is_constructible_v<
-            folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
-            OnNextFunc>,
-        int>>
-void consumeChannelWithCallback(
-    TReceiver receiver,
-    folly::Executor::KeepAlive<> executor,
-    OnNextFunc onNext,
-    ChannelCallbackHandleList& callbackHandles) {
-  auto [unbufferedReceiver, buffer] =
-      detail::receiverUnbuffer(std::move(receiver));
-  auto* processor =
-      new detail::ChannelCallbackProcessorImplWithList<TValue, OnNextFunc>(
-          std::move(unbufferedReceiver),
-          std::move(executor),
-          std::move(onNext),
-          callbackHandles);
-  processor->start(std::move(buffer));
 }
 } // namespace channels
 } // namespace folly
