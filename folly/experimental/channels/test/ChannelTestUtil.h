@@ -15,6 +15,8 @@
  */
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/executors/IOThreadPoolExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/ConsumeChannel.h>
 #include <folly/experimental/coro/DetachOnCancel.h>
 #include <folly/experimental/coro/Sleep.h>
@@ -84,7 +86,8 @@ class ChannelConsumerBase {
 
   virtual ~ChannelConsumerBase() = default;
 
-  virtual folly::Executor::KeepAlive<> getExecutor() = 0;
+  virtual folly::Executor::KeepAlive<folly::SequencedExecutor>
+  getExecutor() = 0;
 
   virtual void onNext(Try<TValue> result) = 0;
 
@@ -161,7 +164,7 @@ class StressTestConsumer : public ChannelConsumerBase<TValue> {
   StressTestConsumer(
       ConsumptionMode mode, folly::Function<void(TValue)> onValue)
       : ChannelConsumerBase<TValue>(mode),
-        executor_(std::make_unique<folly::CPUThreadPoolExecutor>(1)),
+        executor_(std::make_unique<folly::IOThreadPoolExecutor>(1)),
         onValue_(std::move(onValue)) {}
 
   StressTestConsumer(StressTestConsumer&&) = delete;
@@ -175,8 +178,8 @@ class StressTestConsumer : public ChannelConsumerBase<TValue> {
     executor_.reset();
   }
 
-  folly::Executor::KeepAlive<> getExecutor() override {
-    return executor_.get();
+  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor() override {
+    return executor_->getEventBase();
   }
 
   void onNext(Try<TValue> result) override {
@@ -199,7 +202,7 @@ class StressTestConsumer : public ChannelConsumerBase<TValue> {
   }
 
  private:
-  std::unique_ptr<folly::CPUThreadPoolExecutor> executor_;
+  std::unique_ptr<folly::IOThreadPoolExecutor> executor_;
   folly::Function<void(TValue)> onValue_;
   folly::Promise<CloseType> closedType_;
 };

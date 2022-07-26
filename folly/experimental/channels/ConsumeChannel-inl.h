@@ -35,7 +35,7 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
  public:
   ChannelCallbackProcessorImpl(
       ChannelBridgePtr<TValue> receiver,
-      folly::Executor::KeepAlive<> executor,
+      folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
       OnNextFunc onNext)
       : receiver_(std::move(receiver)),
         executor_(std::move(executor)),
@@ -217,7 +217,7 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
   }
 
   ChannelBridgePtr<TValue> receiver_;
-  folly::Executor::KeepAlive<> executor_;
+  folly::Executor::KeepAlive<folly::SequencedExecutor> executor_;
   OnNextFunc onNext_;
   folly::CancellationSource cancelSource_;
   bool handleDestroyed_{false};
@@ -235,7 +235,7 @@ template <
         int>>
 ChannelCallbackHandle consumeChannelWithCallback(
     TReceiver receiver,
-    folly::Executor::KeepAlive<> executor,
+    folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     OnNextFunc onNext) {
   detail::ChannelCallbackProcessorImpl<TValue, OnNextFunc>* processor = nullptr;
   auto [unbufferedReceiver, buffer] =

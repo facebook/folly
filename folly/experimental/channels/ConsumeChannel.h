@@ -18,6 +18,7 @@
 
 #include <folly/Executor.h>
 #include <folly/IntrusiveList.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/Channel.h>
 #include <folly/experimental/channels/ChannelCallbackHandle.h>
 #include <folly/experimental/coro/Task.h>
@@ -62,7 +63,7 @@ template <
         int> = 0>
 ChannelCallbackHandle consumeChannelWithCallback(
     TReceiver receiver,
-    folly::Executor::KeepAlive<> executor,
+    folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
     OnNextFunc onNext);
 } // namespace channels
 } // namespace folly

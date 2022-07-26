@@ -39,7 +39,9 @@ class ChannelFixture : public Test,
     executor_.drain();
   }
 
-  folly::Executor::KeepAlive<> getExecutor() override { return &executor_; }
+  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor() override {
+    return &executor_;
+  }
 
   void onNext(Try<int> result) override { onNext_(std::move(result)); }
 
