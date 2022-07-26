@@ -285,6 +285,11 @@ ChannelProcessor<KeyType>::ChannelProcessor(
     : impl_(std::move(impl)) {}
 
 template <typename KeyType>
+ChannelProcessor<KeyType>::operator bool() const {
+  return impl_ != nullptr;
+}
+
+template <typename KeyType>
 template <typename ReceiverType, typename OnUpdateFunc>
 void ChannelProcessor<KeyType>::addChannel(
     KeyType key, ReceiverType receiver, OnUpdateFunc onUpdate) {
