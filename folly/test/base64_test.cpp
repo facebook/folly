@@ -27,7 +27,7 @@
 namespace {
 
 template <std::size_t N>
-constexpr auto base64EncodeArray(const std::array<char, N>& in) {
+FOLLY_CXX20_CONSTEXPR auto base64EncodeArray(const std::array<char, N>& in) {
   std::array<char, folly::base64EncodedSize(N) + 1> res{};
   folly::base64Encode(in.begin(), in.end(), res.data());
   res.back() = 0;
@@ -35,7 +35,7 @@ constexpr auto base64EncodeArray(const std::array<char, N>& in) {
 }
 
 template <std::size_t N>
-constexpr auto base64URLEncodeArray(const std::array<char, N>& in) {
+FOLLY_CXX20_CONSTEXPR auto base64URLEncodeArray(const std::array<char, N>& in) {
   std::array<char, folly::base64URLEncodedSize(N) + 1> res{};
   folly::base64URLEncode(in.begin(), in.end(), res.data());
   res.back() = 0;
@@ -59,6 +59,9 @@ constexpr auto base64URLDecodeToArray(std::string_view s) {
   }
   return res;
 }
+
+// Matches the definition of FOLLY_CXX20_CONSTEXPR
+#if FOLLY_CPLUSPLUS >= 202002L
 
 struct ConstexprTest {
   static constexpr std::array<char, 2> toEncode{{'a', 'b'}};
@@ -86,6 +89,8 @@ struct ConstexprURLTest {
   static_assert(expected == std::string_view(encoded.data()));
   static_assert(toEncode == decoded);
 };
+
+#endif
 
 TEST(Base64ExperimentalTest, NormalTest) {
   std::vector<std::uint8_t> bytes{'a', 'b'};

@@ -49,7 +49,8 @@ struct TestCaseOnStack : TestCase {
     while (f != l) {
       *o++ = *f++;
     }
-    data = {dataBuf.begin(), o};
+    data = std::string_view{
+        dataBuf.data(), static_cast<size_t>(o - dataBuf.begin())};
   }
 
   std::array<char, 200> dataBuf;
@@ -139,7 +140,7 @@ constexpr bool manyZeroesTests(TestRunner testRunner) {
     // Populate input
     std::array<char, 256> buf = {}; // fill in 0s
     buf[inSize + 1] = 15; // messing with the input
-    test.data = {buf.begin(), buf.begin() + inSize};
+    test.data = {buf.data(), inSize};
 
     // Populate expected
     std::array<char, 256> expectedBuf = {};
@@ -190,9 +191,9 @@ constexpr bool runEncodeTests(TestRunner testRunner) {
 struct ConstexprTester {
   constexpr bool encodeTest(TestCase test) const {
     std::array<char, 1000> buf = {};
-    std::string_view actual(
-        buf.data(),
-        base64EncodeScalar(test.data.begin(), test.data.end(), buf.data()));
+    char* end =
+        base64EncodeScalar(test.data.begin(), test.data.end(), buf.data());
+    std::string_view actual(buf.data(), end - buf.data());
 
     if (test.encodedStd == actual) {
       return true;
@@ -230,9 +231,9 @@ struct ConstexprTester {
 
   constexpr bool encodeURLTest(TestCase test) const {
     std::array<char, 1000> buf = {};
-    std::string_view actual(
-        buf.data(),
-        base64URLEncodeScalar(test.data.begin(), test.data.end(), buf.data()));
+    char* end =
+        base64URLEncodeScalar(test.data.begin(), test.data.end(), buf.data());
+    std::string_view actual(buf.data(), end - buf.data());
 
     if (test.encodedURL == actual) {
       return true;
@@ -497,9 +498,11 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
   };
 
   for (const auto& test : kDecodingErrorDection) {
+#if FOLLY_CPLUSPLUS >= 202002L
     if (!std::is_constant_evaluated()) {
       triggerASANOnBadDecode<isURLDecoder>(test.input, decoder);
     }
+#endif
     auto r = decoder(
         test.input.data(), test.input.data() + test.input.size(), buf.data());
     if (test.isSuccess != r.isSuccess) {
@@ -514,9 +517,11 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
   }
 
   for (std::string_view URLOnly : kDecodingOnlyURLValid) {
+#if FOLLY_CPLUSPLUS >= 202002L
     if (!std::is_constant_evaluated()) {
       triggerASANOnBadDecode<isURLDecoder>(URLOnly, decoder);
     }
+#endif
     auto r =
         decoder(URLOnly.data(), URLOnly.data() + URLOnly.size(), buf.data());
     if (isURLDecoder != r.isSuccess) {
