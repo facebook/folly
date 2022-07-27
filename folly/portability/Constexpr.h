@@ -98,7 +98,11 @@ constexpr int constexpr_strcmp_fallback(
 
 template <typename Char>
 constexpr std::size_t constexpr_strlen(const Char* s) noexcept {
+#if __GNUC_PREREQ(11, 0)
+  return detail::constexpr_strlen_internal(s, 0u);
+#else
   return detail::constexpr_strlen_internal(s, 0);
+#endif
 }
 
 template <typename Char>
