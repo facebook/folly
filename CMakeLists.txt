@@ -156,6 +156,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR}/logging/example/"
     "^${FOLLY_DIR}/(.*/)?test/"
     "^${FOLLY_DIR}/tools/"
+    "^${FOLLY_DIR}/facebook/"
     "Benchmark.cpp$"
     "Test.cpp$"
 )
