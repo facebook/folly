@@ -170,7 +170,7 @@ if (${FOLLY_NO_EXCEPTION_TRACER})
 endif()
 
 list(REMOVE_ITEM files
-  ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
+  ${FOLLY_DIR}/experimental/tool/JSONSchemaTester.cpp
   ${FOLLY_DIR}/experimental/io/tool/HugePageUtil.cpp
   ${FOLLY_DIR}/python/error.cpp
   ${FOLLY_DIR}/python/executor.cpp
