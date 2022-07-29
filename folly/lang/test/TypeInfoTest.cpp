@@ -20,24 +20,35 @@
 
 class TypeInfoTest : public testing::Test {};
 
-namespace std {
-static void PrintTo(type_info const& ti, std::ostream* out) {
-  *out << ti.name();
-}
-} // namespace std
-
 namespace {
 struct Foo {};
 struct Bar : Foo {
   virtual ~Bar() {}
 };
 struct Toc : Bar {};
+
+// gtest-v1.12 adds an explicit overload of PrintTo taking std::type_info const&
+// with which our own overload would be ambiguous, so work around with a wrapper
+//
+// remove once gtest-v1.12 is the minimum elegantly-supported version
+struct ti : private std::reference_wrapper<std::type_info const> {
+  using base = std::reference_wrapper<std::type_info const>;
+  using base::base;
+  friend bool operator==(ti a, ti b) noexcept { return a.get() == b.get(); }
+  friend std::ostream& operator<<(std::ostream& o, ti v) {
+    return o << v.get().name();
+  }
+};
+template <typename A, typename B>
+A const& as(B const& _) {
+  return _;
+}
 } // namespace
 
 TEST_F(TypeInfoTest, exanples) {
-  EXPECT_EQ(typeid(Foo), *folly::type_info_of<Foo>());
-  EXPECT_EQ(typeid(Foo), *folly::type_info_of(Foo()));
-  EXPECT_EQ(typeid(Foo), *folly::type_info_of(static_cast<Foo const&>(Bar())));
-  EXPECT_EQ(typeid(Bar), *folly::type_info_of(static_cast<Bar const&>(Bar())));
-  EXPECT_EQ(typeid(Toc), *folly::type_info_of(static_cast<Bar const&>(Toc())));
+  EXPECT_EQ(ti{typeid(Foo)}, ti{*folly::type_info_of<Foo>()});
+  EXPECT_EQ(ti{typeid(Foo)}, ti{*folly::type_info_of(Foo())});
+  EXPECT_EQ(ti{typeid(Foo)}, ti{*folly::type_info_of(as<Foo>(Bar()))});
+  EXPECT_EQ(ti{typeid(Bar)}, ti{*folly::type_info_of(as<Bar>(Bar()))});
+  EXPECT_EQ(ti{typeid(Toc)}, ti{*folly::type_info_of(as<Bar>(Toc()))});
 }
