@@ -171,7 +171,7 @@ endif()
 
 list(REMOVE_ITEM files
   ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
-  ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
+  ${FOLLY_DIR}/experimental/io/tool/HugePageUtil.cpp
   ${FOLLY_DIR}/python/error.cpp
   ${FOLLY_DIR}/python/executor.cpp
   ${FOLLY_DIR}/python/fibers.cpp
