@@ -155,7 +155,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR}/docs/examples/"
     "^${FOLLY_DIR}/logging/example/"
     "^${FOLLY_DIR}/(.*/)?test/"
-    "^${FOLLY_DIR}/tools/"
+    "^${FOLLY_DIR}/(.*/)?tool/"
     "^${FOLLY_DIR}/facebook/"
     "Benchmark.cpp$"
     "Test.cpp$"
@@ -170,13 +170,10 @@ if (${FOLLY_NO_EXCEPTION_TRACER})
 endif()
 
 list(REMOVE_ITEM files
-  ${FOLLY_DIR}/experimental/tool/JSONSchemaTester.cpp
-  ${FOLLY_DIR}/experimental/io/tool/HugePageUtil.cpp
   ${FOLLY_DIR}/python/error.cpp
   ${FOLLY_DIR}/python/executor.cpp
   ${FOLLY_DIR}/python/fibers.cpp
   ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
-  ${FOLLY_DIR}/experimental/symbolizer/tool/Addr2Line.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/python/fibers.h
