@@ -179,6 +179,8 @@ FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
 }
 #endif
 
+#if !defined(FOLLY_USE_JEMALLOC) && !defined(USE_TCMALLOC) && \
+      (!defined(FOLLY_ASSUME_NO_JEMALLOC) || !defined(FOLLY_ASSUME_NO_TCMALLOC))
 FOLLY_NOINLINE inline bool canSdallocx() noexcept {
   static bool rv = usingJEMalloc() || usingTCMalloc();
   return rv;
@@ -188,6 +190,15 @@ FOLLY_NOINLINE inline bool canNallocx() noexcept {
   static bool rv = usingJEMalloc() || usingTCMalloc();
   return rv;
 }
+#else
+inline bool canSdallocx() noexcept {
+  return usingJEMalloc() || usingTCMalloc();
+}
+
+inline bool canNallocx() noexcept {
+  return usingJEMalloc() || usingTCMalloc();
+}
+#endif
 
 inline size_t goodMallocSize(size_t minSize) noexcept {
   if (minSize == 0) {
