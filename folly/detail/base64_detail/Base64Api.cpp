@@ -33,7 +33,7 @@ Base64RuntimeImpl base64EncodeSelectImplementation() {
 #endif
   return {
       base64EncodeScalar,
-      base64URLEncode,
+      base64URLEncodeScalar,
       base64DecodeSWAR,
       base64URLDecodeSWAR};
 }
