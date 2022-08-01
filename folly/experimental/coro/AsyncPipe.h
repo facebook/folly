@@ -109,7 +109,7 @@ class AsyncPipe {
             [queue,
              guard = std::move(guard)]() -> folly::coro::AsyncGenerator<T&&> {
               while (true) {
-                auto val = co_await queue->dequeue();
+                auto val = co_await co_nothrow(queue->dequeue());
                 if (val.hasValue() || val.hasException()) {
                   co_yield std::move(*val);
                 } else {
