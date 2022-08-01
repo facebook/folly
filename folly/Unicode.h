@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Some utility routines relating to unicode.
+// Some utility routines relating to Unicode.
 
 #pragma once
 
@@ -76,14 +76,15 @@ inline char32_t unicode_code_point_from_utf16_surrogate_pair(
 //////////////////////////////////////////////////////////////////////
 
 /*
- * Encode a single unicode code point into a UTF-8 byte sequence.
+ * Encode a single Unicode code point into a UTF-8 byte sequence.
  *
- * Return value is undefined if `cp' is an invalid code point.
+ * Result is undefined if `cp' is an invalid code point.
  */
 std::string codePointToUtf8(char32_t cp);
+void appendCodePointToUtf8(char32_t cp, std::string& out);
 
 /*
- * Decode a single unicode code point from UTF-8 byte sequence.
+ * Decode a single Unicode code point from UTF-8 byte sequence.
  */
 char32_t utf8ToCodePoint(
     const unsigned char*& p, const unsigned char* const e, bool skipOnError);

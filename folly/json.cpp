@@ -607,7 +607,7 @@ dynamic parseNumber(Input& in) {
   return val;
 }
 
-std::string decodeUnicodeEscape(Input& in) {
+void decodeUnicodeEscape(Input& in, std::string& out) {
   auto hexVal = [&](int c) -> uint16_t {
     // clang-format off
     return uint16_t(
@@ -655,7 +655,7 @@ std::string decodeUnicodeEscape(Input& in) {
     in.error("invalid unicode code point (in range [0xdc00,0xdfff])");
   }
 
-  return codePointToUtf8(codePoint);
+  appendCodePointToUtf8(codePoint, out);
 }
 
 std::string parseString(Input& in) {
@@ -683,7 +683,7 @@ std::string parseString(Input& in) {
         case 'n':     ret.push_back('\n'); ++in; break;
         case 'r':     ret.push_back('\r'); ++in; break;
         case 't':     ret.push_back('\t'); ++in; break;
-        case 'u':     ++in; ret += decodeUnicodeEscape(in); break;
+        case 'u':     ++in; decodeUnicodeEscape(in, ret); break;
         // clang-format on
         default:
           in.error(

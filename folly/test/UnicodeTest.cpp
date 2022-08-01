@@ -22,53 +22,52 @@
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
-using folly::utf8ToCodePoint;
+using namespace folly;
 
 class UnicodeTest : public testing::Test {};
 
 TEST_F(UnicodeTest, utf16_code_unit_is_bmp) {
-  EXPECT_TRUE(folly::utf16_code_unit_is_bmp(0x0000));
-  EXPECT_TRUE(folly::utf16_code_unit_is_bmp(0x0041));
-  EXPECT_TRUE(folly::utf16_code_unit_is_bmp(0xd7ff));
-  EXPECT_FALSE(folly::utf16_code_unit_is_bmp(0xd800));
-  EXPECT_FALSE(folly::utf16_code_unit_is_bmp(0xdbff));
-  EXPECT_FALSE(folly::utf16_code_unit_is_bmp(0xdc00));
-  EXPECT_FALSE(folly::utf16_code_unit_is_bmp(0xdfff));
-  EXPECT_TRUE(folly::utf16_code_unit_is_bmp(0xe000));
-  EXPECT_TRUE(folly::utf16_code_unit_is_bmp(0xffff));
+  EXPECT_TRUE(utf16_code_unit_is_bmp(0x0000));
+  EXPECT_TRUE(utf16_code_unit_is_bmp(0x0041));
+  EXPECT_TRUE(utf16_code_unit_is_bmp(0xd7ff));
+  EXPECT_FALSE(utf16_code_unit_is_bmp(0xd800));
+  EXPECT_FALSE(utf16_code_unit_is_bmp(0xdbff));
+  EXPECT_FALSE(utf16_code_unit_is_bmp(0xdc00));
+  EXPECT_FALSE(utf16_code_unit_is_bmp(0xdfff));
+  EXPECT_TRUE(utf16_code_unit_is_bmp(0xe000));
+  EXPECT_TRUE(utf16_code_unit_is_bmp(0xffff));
 }
 
 TEST_F(UnicodeTest, utf16_code_unit_is_high_surrogate) {
-  EXPECT_FALSE(folly::utf16_code_unit_is_high_surrogate(0x0000));
-  EXPECT_FALSE(folly::utf16_code_unit_is_high_surrogate(0x0041));
-  EXPECT_FALSE(folly::utf16_code_unit_is_high_surrogate(0xd7ff));
-  EXPECT_TRUE(folly::utf16_code_unit_is_high_surrogate(0xd800));
-  EXPECT_TRUE(folly::utf16_code_unit_is_high_surrogate(0xdbff));
-  EXPECT_FALSE(folly::utf16_code_unit_is_high_surrogate(0xdc00));
-  EXPECT_FALSE(folly::utf16_code_unit_is_high_surrogate(0xdfff));
-  EXPECT_FALSE(folly::utf16_code_unit_is_high_surrogate(0xe000));
-  EXPECT_FALSE(folly::utf16_code_unit_is_high_surrogate(0xffff));
+  EXPECT_FALSE(utf16_code_unit_is_high_surrogate(0x0000));
+  EXPECT_FALSE(utf16_code_unit_is_high_surrogate(0x0041));
+  EXPECT_FALSE(utf16_code_unit_is_high_surrogate(0xd7ff));
+  EXPECT_TRUE(utf16_code_unit_is_high_surrogate(0xd800));
+  EXPECT_TRUE(utf16_code_unit_is_high_surrogate(0xdbff));
+  EXPECT_FALSE(utf16_code_unit_is_high_surrogate(0xdc00));
+  EXPECT_FALSE(utf16_code_unit_is_high_surrogate(0xdfff));
+  EXPECT_FALSE(utf16_code_unit_is_high_surrogate(0xe000));
+  EXPECT_FALSE(utf16_code_unit_is_high_surrogate(0xffff));
 }
 
 TEST_F(UnicodeTest, utf16_code_unit_is_low_surrogate) {
-  EXPECT_FALSE(folly::utf16_code_unit_is_low_surrogate(0x0000));
-  EXPECT_FALSE(folly::utf16_code_unit_is_low_surrogate(0x0041));
-  EXPECT_FALSE(folly::utf16_code_unit_is_low_surrogate(0xd7ff));
-  EXPECT_FALSE(folly::utf16_code_unit_is_low_surrogate(0xd800));
-  EXPECT_FALSE(folly::utf16_code_unit_is_low_surrogate(0xdbff));
-  EXPECT_TRUE(folly::utf16_code_unit_is_low_surrogate(0xdc00));
-  EXPECT_TRUE(folly::utf16_code_unit_is_low_surrogate(0xdfff));
-  EXPECT_FALSE(folly::utf16_code_unit_is_low_surrogate(0xe000));
-  EXPECT_FALSE(folly::utf16_code_unit_is_low_surrogate(0xffff));
+  EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0x0000));
+  EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0x0041));
+  EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0xd7ff));
+  EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0xd800));
+  EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0xdbff));
+  EXPECT_TRUE(utf16_code_unit_is_low_surrogate(0xdc00));
+  EXPECT_TRUE(utf16_code_unit_is_low_surrogate(0xdfff));
+  EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0xe000));
+  EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0xffff));
 }
 
 TEST_F(UnicodeTest, codePointCombineUtf16SurrogatePair) {
   EXPECT_THROW(
-      folly::unicode_code_point_from_utf16_surrogate_pair(0x0041, 0x0041),
-      folly::unicode_error);
+      unicode_code_point_from_utf16_surrogate_pair(0x0041, 0x0041),
+      unicode_error);
   EXPECT_EQ(
-      0x1CC33,
-      folly::unicode_code_point_from_utf16_surrogate_pair(0xd833, 0xdc33));
+      0x1CC33, unicode_code_point_from_utf16_surrogate_pair(0xd833, 0xdc33));
 }
 
 void testValid(std::initializer_list<unsigned char> data, char32_t expected) {
@@ -76,15 +75,20 @@ void testValid(std::initializer_list<unsigned char> data, char32_t expected) {
     const unsigned char* p = data.begin();
     const unsigned char* e = data.end();
     EXPECT_EQ(utf8ToCodePoint(p, e, /* skipOnError */ false), expected)
-        << folly::StringPiece(
-               (const char*)data.begin(), (const char*)data.end());
+        << StringPiece((const char*)data.begin(), (const char*)data.end());
   }
   {
     const unsigned char* p = data.begin();
     const unsigned char* e = data.end();
     EXPECT_EQ(utf8ToCodePoint(p, e, /* skipOnError */ true), expected)
-        << folly::StringPiece(
-               (const char*)data.begin(), (const char*)data.end());
+        << StringPiece((const char*)data.begin(), (const char*)data.end());
+  }
+
+  EXPECT_EQ(codePointToUtf8(expected), std::string(data.begin(), data.end()));
+  {
+    std::string out = "prefix";
+    appendCodePointToUtf8(expected, out);
+    EXPECT_EQ(out, "prefix" + std::string(data.begin(), data.end()));
   }
 }
 
@@ -94,15 +98,13 @@ void testInvalid(std::initializer_list<unsigned char> data) {
     const unsigned char* e = data.end();
     EXPECT_THROW(
         utf8ToCodePoint(p, e, /* skipOnError */ false), std::runtime_error)
-        << folly::StringPiece(
-               (const char*)data.begin(), (const char*)data.end());
+        << StringPiece((const char*)data.begin(), (const char*)data.end());
   }
   {
     const unsigned char* p = data.begin();
     const unsigned char* e = data.end();
     EXPECT_EQ(utf8ToCodePoint(p, e, /* skipOnError */ true), 0xfffd)
-        << folly::StringPiece(
-               (const char*)data.begin(), (const char*)data.end());
+        << StringPiece((const char*)data.begin(), (const char*)data.end());
   }
 }
 
