@@ -364,8 +364,14 @@ class Random {
    */
   template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
   static double randDouble01(RNG&& rng) {
-    return std::generate_canonical<double, std::numeric_limits<double>::digits>(
-        rng);
+    // Assuming 64-bit IEEE754 doubles, numbers in the form k/2^53 can be
+    // represented exactly, so we can sample uniformly in [0, 1) by sampling an
+    // integer in [0, 2^53) and scaling accordingly. This is the highest
+    // precision we can obtain if we want a symmetric output distribution.
+    // See https://prng.di.unimi.it/#remarks for more details.
+    static_assert(
+        std::numeric_limits<double>::digits == 53, "Unsupported double type");
+    return (rand64(std::forward<RNG>(rng)) >> 11) * 0x1.0p-53;
   }
 
   /**

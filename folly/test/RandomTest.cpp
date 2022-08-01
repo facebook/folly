@@ -222,6 +222,28 @@ TEST(Random, oneIn64) {
   EXPECT_TRUE(folly::Random::oneIn(kAlmostMax));
 }
 
+TEST(Random, randDouble01) {
+  // Very basic test that we see at least one number < 0.1 and one > 0.9, to
+  // verify that the output is not constant and the mantissa is not misaligned.
+  auto constexpr kSeenHigh{1};
+  auto constexpr kSeenLow{2};
+  auto constexpr kSeenBoth{kSeenHigh | kSeenLow};
+
+  auto seenSoFar{0};
+  for (auto i = 0; i < 1000; ++i) {
+    auto value = folly::Random::randDouble01();
+    ASSERT_GE(value, 0);
+    ASSERT_LT(value, 1);
+    if (value > 0.9) {
+      seenSoFar |= kSeenHigh;
+    } else if (value < 0.1) {
+      seenSoFar |= kSeenLow;
+    }
+  }
+
+  EXPECT_EQ(kSeenBoth, seenSoFar);
+}
+
 #ifndef _WIN32
 TEST(Random, SecureFork) {
   // Random buffer size is 128, must be less than that.
