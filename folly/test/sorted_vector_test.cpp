@@ -231,43 +231,6 @@ TEST(SortedVectorTypes, SimpleSetTest) {
   EXPECT_EQ(s4.count("foo"), 1);
 }
 
-TEST(SortedVectorTypes, Find2) {
-  size_t sizes[] = {0, 1, 2, 31, 32, 33};
-  for (auto size : sizes) {
-    sorted_vector_set<int> s;
-    for (size_t i = 0; i < size; i++) {
-      s.insert(2 * i + 1);
-    }
-    // test find2 with every possible combination of pair of keys
-    for (size_t i = 0; i < 2 * size + 2; i++) {
-      for (size_t j = 0; j < 2 * size + 2; j++) {
-        auto expected0 = s.find(i);
-        auto expected1 = s.find(j);
-        auto [it0, it1] = s.find(i, j);
-        EXPECT_EQ(it0, expected0);
-        EXPECT_EQ(it1, expected1);
-      }
-    }
-  }
-
-  for (auto size : sizes) {
-    sorted_vector_map<int, int> m;
-    for (size_t i = 0; i < size; i++) {
-      m.emplace(2 * i + 1, i);
-    }
-    // test find2 with every possible combination of pair of keys
-    for (size_t i = 0; i < 2 * size + 2; i++) {
-      for (size_t j = 0; j < 2 * size + 2; j++) {
-        auto expected0 = m.find(i);
-        auto expected1 = m.find(j);
-        auto [it0, it1] = m.find(i, j);
-        EXPECT_EQ(it0, expected0);
-        EXPECT_EQ(it1, expected1);
-      }
-    }
-  }
-}
-
 TEST(SortedVectorTypes, TransparentSetTest) {
   using namespace folly::string_piece_literals;
   using Compare = folly::transparent<std::less<folly::StringPiece>>;
@@ -286,16 +249,6 @@ TEST(SortedVectorTypes, TransparentSetTest) {
   EXPECT_TRUE(s.end() == s.find(stake));
   EXPECT_EQ(world, *s.find(world));
   EXPECT_TRUE(s.end() == s.find(zebra));
-
-  // find 2 keys
-  constexpr folly::StringPiece values[] = {buddy, hello, stake, world, zebra};
-  for (auto& v0 : values) {
-    for (auto& v1 : values) {
-      auto [it0, it1] = s.find(v0, v1);
-      EXPECT_TRUE(s.find(v0) == it0);
-      EXPECT_TRUE(s.find(v1) == it1);
-    }
-  }
 
   // count
   EXPECT_EQ(0, s.count(buddy));

@@ -76,7 +76,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
-#include <folly/lang/Access.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/MemoryResource.h>
 
@@ -536,54 +535,6 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return find_(*this, key);
   }
 
-  std::pair<iterator, iterator> find(
-      const key_type& key1, const key_type& key2) {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
-  std::pair<const_iterator, const_iterator> find(
-      const key_type& key1, const key_type& key2) const {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
-  template <typename K>
-  std::pair<if_is_transparent<K, iterator>, if_is_transparent<K, iterator>>
-  find(const K& key1, const K& key2) {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
-  template <typename K>
-  std::pair<
-      if_is_transparent<K, const_iterator>,
-      if_is_transparent<K, const_iterator>>
-  find(const K& key1, const K& key2) const {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
   size_type count(const key_type& key) const {
     return find(key) == end() ? 0 : 1;
   }
@@ -735,62 +686,6 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
       return it;
     }
     return end;
-  }
-
-  template <typename Self, typename K>
-  static std::pair<self_iterator_t<Self>, self_iterator_t<Self>> lower_bound2_(
-      Self& self, K const& key1, K const& key2) {
-    auto len = self.size();
-    auto first = self.begin(), second = self.begin();
-    auto c = self.key_comp();
-    assert(!c(key2, key1));
-    while (true) {
-      if (len == 0) {
-        return std::make_pair(first, first);
-      }
-      auto half = len / 2;
-      auto middle = first + half;
-      if (c(*middle, key1)) {
-        first = middle + 1;
-        half = len - half - 1;
-      } else if (c(*middle, key2)) {
-        second = middle + (len & 1);
-        len = half;
-        break;
-      }
-      len = half;
-    }
-    while (len) {
-      auto half = len / 2;
-      auto middle1 = first + half;
-      auto middle2 = second + half;
-      if (c(*middle1, key1)) {
-        first = middle1 + (len & 1);
-      }
-      if (c(*middle2, key2)) {
-        second = middle2 + (len & 1);
-      }
-      len = half;
-    }
-    return std::make_pair(first, second);
-  }
-
-  template <typename Self, typename K>
-  static std::pair<self_iterator_t<Self>, self_iterator_t<Self>> find2_(
-      Self& self, K const& key1, K const& key2) {
-    auto end = self.end();
-    auto its = lower_bound2_(self, key1, key2);
-    if (its.second != end) {
-      if (self.key_comp()(key1, *its.first)) {
-        its.first = end;
-      }
-      if (self.key_comp()(key2, *its.second)) {
-        its.second = end;
-      }
-    } else if (its.first != end && self.key_comp()(key1, *its.first)) {
-      its.first = end;
-    }
-    return its;
   }
 };
 
@@ -1139,54 +1034,6 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return find_(*this, key);
   }
 
-  std::pair<iterator, iterator> find(
-      const key_type& key1, const key_type& key2) {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
-  std::pair<const_iterator, const_iterator> find(
-      const key_type& key1, const key_type& key2) const {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
-  template <typename K>
-  std::pair<if_is_transparent<K, iterator>, if_is_transparent<K, iterator>>
-  find(const K& key1, const K& key2) {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
-  template <typename K>
-  std::pair<
-      if_is_transparent<K, const_iterator>,
-      if_is_transparent<K, const_iterator>>
-  find(const K& key1, const K& key2) const {
-    if (key_comp()(key2, key1)) {
-      auto iterators = find2_(*this, key2, key1);
-      access::swap(iterators.first, iterators.second);
-      return iterators;
-    } else {
-      return find2_(*this, key1, key2);
-    }
-  }
-
   mapped_type& at(const key_type& key) {
     iterator it = find(key);
     if (it != end()) {
@@ -1373,63 +1220,6 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     // argument types different from the iterator value_type, so we
     // have to do this.
     return {lower_bound(self, key), upper_bound(self, key)};
-  }
-
-  template <typename Self, typename K>
-  static std::pair<self_iterator_t<Self>, self_iterator_t<Self>> lower_bound2_(
-      Self& self, K const& key1, K const& key2) {
-    auto len = self.size();
-    auto first = self.begin(), second = self.begin();
-    auto c = self.key_comp();
-    assert(!c(key2, key1));
-    while (true) {
-      if (len == 0) {
-        return std::make_pair(first, first);
-      }
-      auto half = len / 2;
-      auto middle = first + half;
-      if (c(middle->first, key1)) {
-        first = middle + 1;
-        half = len - half - 1;
-      } else if (c(middle->first, key2)) {
-        second = middle + (len & 1);
-        len = half;
-        break;
-      }
-      len = half;
-    }
-    while (len) {
-      auto half = len / 2;
-      auto middle1 = first + half;
-      auto middle2 = second + half;
-      if (c(middle1->first, key1)) {
-        first = middle1 + (len & 1);
-      }
-      if (c(middle2->first, key2)) {
-        second = middle2 + (len & 1);
-      }
-      len = half;
-    }
-    return std::make_pair(first, second);
-  }
-
-  template <typename Self, typename K>
-  static std::pair<self_iterator_t<Self>, self_iterator_t<Self>> find2_(
-      Self& self, K const& key1, K const& key2) {
-    auto end = self.end();
-    auto its = lower_bound2_(self, key1, key2);
-    if (its.second != end) {
-      if (self.key_comp()(key1, its.first->first)) {
-        its.first = end;
-      }
-      if (self.key_comp()(key2, its.second->first)) {
-        its.second = end;
-      }
-    } else if (its.first != end && self.key_comp()(key1, its.first->first)) {
-      its.first = end;
-    }
-    return its;
-    ;
   }
 };
 
