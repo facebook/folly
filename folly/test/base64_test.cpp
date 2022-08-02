@@ -27,7 +27,7 @@
 namespace {
 
 template <std::size_t N>
-FOLLY_CXX20_CONSTEXPR auto base64EncodeArray(const std::array<char, N>& in) {
+constexpr auto base64EncodeArray(const std::array<char, N>& in) {
   std::array<char, folly::base64EncodedSize(N) + 1> res{};
   folly::base64Encode(in.begin(), in.end(), res.data());
   res.back() = 0;
@@ -35,7 +35,7 @@ FOLLY_CXX20_CONSTEXPR auto base64EncodeArray(const std::array<char, N>& in) {
 }
 
 template <std::size_t N>
-FOLLY_CXX20_CONSTEXPR auto base64URLEncodeArray(const std::array<char, N>& in) {
+constexpr auto base64URLEncodeArray(const std::array<char, N>& in) {
   std::array<char, folly::base64URLEncodedSize(N) + 1> res{};
   folly::base64URLEncode(in.begin(), in.end(), res.data());
   res.back() = 0;
@@ -60,8 +60,23 @@ constexpr auto base64URLDecodeToArray(std::string_view s) {
   return res;
 }
 
-// Matches the definition of FOLLY_CXX20_CONSTEXPR
-#if FOLLY_CPLUSPLUS >= 202002L
+// deal with insufficient library constexpr
+template <typename Rng>
+constexpr bool rng_equal(const Rng& x, const Rng& y) {
+  auto f = x.begin();
+  auto l = x.end();
+  auto f1 = y.begin();
+  if (x.size() != y.size()) {
+    return false;
+  }
+
+  while (f != l) {
+    if (*f++ != *f1++) {
+      return false;
+    }
+  }
+  return true;
+}
 
 struct ConstexprTest {
   static constexpr std::array<char, 2> toEncode{{'a', 'b'}};
@@ -71,9 +86,13 @@ struct ConstexprTest {
   static constexpr std::size_t decodedSize = folly::base64DecodedSize(expected);
   static constexpr auto decoded = base64DecodeToArray<decodedSize>(expected);
 
+  // C++17 constexpr bug
+  static constexpr std::string_view encoded_sv =
+      std::string_view(encoded.data(), encoded.size() - 1);
+
   static_assert(decodedSize == 2);
-  static_assert(expected == std::string_view(encoded.data()));
-  static_assert(toEncode == decoded);
+  static_assert(rng_equal(expected, encoded_sv));
+  static_assert(rng_equal(toEncode, decoded));
 };
 
 struct ConstexprURLTest {
@@ -85,14 +104,16 @@ struct ConstexprURLTest {
       folly::base64URLDecodedSize(expected);
   static constexpr auto decoded = base64URLDecodeToArray<decodedSize>(expected);
 
+  // C++17 constexpr bug
+  static constexpr std::string_view encoded_sv =
+      std::string_view(encoded.data(), encoded.size() - 1);
+
   static_assert(decodedSize == 2);
-  static_assert(expected == std::string_view(encoded.data()));
-  static_assert(toEncode == decoded);
+  static_assert(rng_equal(expected, encoded_sv));
+  static_assert(rng_equal(toEncode, decoded));
 };
 
-#endif
-
-TEST(Base64ExperimentalTest, NormalTest) {
+TEST(Base64Test, NormalTest) {
   std::vector<std::uint8_t> bytes{'a', 'b'};
 
   ASSERT_EQ("YWI=", folly::base64Encode("ab"));

@@ -22,6 +22,7 @@
 #include <folly/detail/base64_detail/Base64Scalar.h>
 #include <folly/detail/base64_detail/Base64Simd.h>
 #include <folly/detail/base64_detail/Base64_SSE4_2.h>
+#include <folly/portability/Constexpr.h>
 #include <folly/portability/GTest.h>
 
 namespace folly::detail::base64_detail {
@@ -498,11 +499,9 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
   };
 
   for (const auto& test : kDecodingErrorDection) {
-#if FOLLY_CPLUSPLUS >= 202002L
-    if (!std::is_constant_evaluated()) {
+    if (!folly::is_constant_evaluated()) {
       triggerASANOnBadDecode<isURLDecoder>(test.input, decoder);
     }
-#endif
     auto r = decoder(
         test.input.data(), test.input.data() + test.input.size(), buf.data());
     if (test.isSuccess != r.isSuccess) {
@@ -517,11 +516,9 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
   }
 
   for (std::string_view URLOnly : kDecodingOnlyURLValid) {
-#if FOLLY_CPLUSPLUS >= 202002L
-    if (!std::is_constant_evaluated()) {
+    if (!folly::is_constant_evaluated()) {
       triggerASANOnBadDecode<isURLDecoder>(URLOnly, decoder);
     }
-#endif
     auto r =
         decoder(URLOnly.data(), URLOnly.data() + URLOnly.size(), buf.data());
     if (isURLDecoder != r.isSuccess) {

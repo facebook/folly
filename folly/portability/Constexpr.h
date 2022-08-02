@@ -20,6 +20,12 @@
 
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
+
+// On MSVC an incorrect <version> header get's picked up
+#if !defined(_MSC_VER) && __has_include(<version>)
+#include <version>
+#endif
 
 namespace folly {
 
@@ -109,4 +115,19 @@ template <typename Char>
 constexpr int constexpr_strcmp(const Char* s1, const Char* s2) noexcept {
   return detail::constexpr_strcmp_internal(s1, s2, 0);
 }
+
+// folly::is_constant_evaluated:
+//   works like c++20 is_constant_evaluated if it can.
+//   if it cannot - returns true.
+constexpr bool is_constant_evaluated() noexcept {
+#if defined(__cpp_lib_is_constant_evaluated)
+  return std::is_constant_evaluated();
+#endif
+
+#if FOLLY_HAS_BUILTIN(__builtin_is_constant_evaluated)
+  return __builtin_is_constant_evaluated();
+#endif
+  return true;
+}
+
 } // namespace folly
