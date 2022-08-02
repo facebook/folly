@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <folly/io/IOBuf.h>
 #include <folly/io/async/EventUtil.h>
 #include <folly/net/NetOps.h>
 #include <folly/portability/Event.h>
@@ -62,12 +63,50 @@ class EventRecvmsgCallback {
   virtual MsgHdr* allocateData() = 0;
 };
 
+class EventRecvmsgMultishotCallback {
+ public:
+  struct Hdr {
+    virtual ~Hdr() = default;
+    using FreeFunc = void (*)(Hdr*);
+    using CallbackFunc = void (*)(Hdr*, int, std::unique_ptr<IOBuf> io_buf);
+    void* arg_{nullptr};
+    struct msghdr data_;
+    FreeFunc freeFunc_{nullptr};
+    CallbackFunc cbFunc_{nullptr};
+  };
+
+  struct ParsedRecvMsgMultishot {
+    folly::ByteRange payload;
+    folly::ByteRange name;
+    folly::ByteRange control;
+    uint32_t flags;
+    size_t realPayloadLength;
+    size_t realNameLength;
+  };
+
+  static bool parseRecvmsgMultishot(
+      ByteRange total,
+      struct msghdr const& msghdr,
+      ParsedRecvMsgMultishot& out);
+
+  EventRecvmsgMultishotCallback() = default;
+  virtual ~EventRecvmsgMultishotCallback() = default;
+
+  virtual Hdr* allocateRecvmsgMultishotData() = 0;
+};
+
 struct EventCallback {
-  enum class Type { TYPE_NONE = 0, TYPE_READ = 1, TYPE_RECVMSG = 2 };
+  enum class Type {
+    TYPE_NONE = 0,
+    TYPE_READ = 1,
+    TYPE_RECVMSG = 2,
+    TYPE_RECVMSG_MULTISHOT = 3
+  };
   Type type_{Type::TYPE_NONE};
   union {
     EventReadCallback* readCb_;
     EventRecvmsgCallback* recvmsgCb_;
+    EventRecvmsgMultishotCallback* recvmsgMultishotCb_;
   };
 
   void set(EventReadCallback* cb) {
@@ -78,6 +117,11 @@ struct EventCallback {
   void set(EventRecvmsgCallback* cb) {
     type_ = Type::TYPE_RECVMSG;
     recvmsgCb_ = cb;
+  }
+
+  void set(EventRecvmsgMultishotCallback* cb) {
+    type_ = Type::TYPE_RECVMSG_MULTISHOT;
+    recvmsgMultishotCb_ = cb;
   }
 
   void reset() { type_ = Type::TYPE_NONE; }
@@ -126,6 +170,8 @@ class EventBaseEvent {
   void setCallback(EventReadCallback* cb) { cb_.set(cb); }
 
   void setCallback(EventRecvmsgCallback* cb) { cb_.set(cb); }
+
+  void setCallback(EventRecvmsgMultishotCallback* cb) { cb_.set(cb); }
 
   void resetCallback() { cb_.reset(); }
 

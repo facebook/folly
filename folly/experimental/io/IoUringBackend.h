@@ -266,6 +266,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // supports the io_uring backend
   static bool isAvailable();
   bool kernelHasNonBlockWriteFixes() const;
+  static bool kernelSupportsRecvmsgMultishot();
 
   struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
                                     boost::intrusive::cache_last<false>> {
@@ -442,11 +443,17 @@ class IoUringBackend : public EventBaseBackendBase {
   struct IoSqe;
 
   static void processPollIoSqe(
-      IoUringBackend* backend, IoSqe* ioSqe, int64_t res);
+      IoUringBackend* backend, IoSqe* ioSqe, int64_t res, uint32_t flags);
   static void processTimerIoSqe(
-      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/);
+      IoUringBackend* backend,
+      IoSqe* /*sqe*/,
+      int64_t /*res*/,
+      uint32_t /* flags */);
   static void processSignalReadIoSqe(
-      IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/);
+      IoUringBackend* backend,
+      IoSqe* /*sqe*/,
+      int64_t /*res*/,
+      uint32_t /* flags */);
 
   // signal handling
   void addSignalEvent(Event& event);
@@ -455,7 +462,7 @@ class IoUringBackend : public EventBaseBackendBase {
   size_t processSignals();
   void setProcessSignals();
 
-  void processPollIo(IoSqe* ioSqe, int64_t res) noexcept;
+  void processPollIo(IoSqe* ioSqe, int64_t res, uint32_t flags) noexcept;
 
   IoSqe* FOLLY_NULLABLE allocIoSqe(const EventCallback& cb);
   void releaseIoSqe(IoSqe* aioIoSqe);
@@ -491,7 +498,7 @@ class IoUringBackend : public EventBaseBackendBase {
   };
 
   struct IoSqe : public IoSqeBase {
-    using BackendCb = void(IoUringBackend*, IoSqe*, int64_t);
+    using BackendCb = void(IoUringBackend*, IoSqe*, int64_t, uint32_t);
     explicit IoSqe(
         IoUringBackend* backend = nullptr,
         bool poolAlloc = false,
@@ -499,8 +506,8 @@ class IoUringBackend : public EventBaseBackendBase {
         : backend_(backend), poolAlloc_(poolAlloc), persist_(persist) {}
     virtual ~IoSqe() = default;
 
-    void callback(int res, uint32_t) override {
-      backendCb_(backend_, this, res);
+    void callback(int res, uint32_t flags) override {
+      backendCb_(backend_, this, res, flags);
     }
     void callbackCancelled() override { release(); }
     virtual void release();
@@ -513,6 +520,7 @@ class IoUringBackend : public EventBaseBackendBase {
     FdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};
     int64_t res_;
+    uint32_t cqeFlags_;
 
     FOLLY_ALWAYS_INLINE void resetEvent() {
       // remove it from the list
@@ -553,6 +561,18 @@ class IoUringBackend : public EventBaseBackendBase {
               return;
             }
             break;
+          case EventCallback::Type::TYPE_RECVMSG_MULTISHOT:
+            if (auto* hdr =
+                    cb.recvmsgMultishotCb_->allocateRecvmsgMultishotData()) {
+              prepRecvmsgMultishot(
+                  sqe,
+                  ev->ev_fd,
+                  &hdr->data_,
+                  (ev->ev_events & EV_PERSIST) != 0);
+              cbData_.set(hdr);
+              return;
+            }
+            break;
         }
 
         prepPollAdd(
@@ -570,6 +590,7 @@ class IoUringBackend : public EventBaseBackendBase {
       union {
         EventReadCallback::IoVec* ioVec_;
         EventRecvmsgCallback::MsgHdr* msgHdr_;
+        EventRecvmsgMultishotCallback::Hdr* hdr_;
       };
 
       void set(EventReadCallback::IoVec* ioVec) {
@@ -582,27 +603,51 @@ class IoUringBackend : public EventBaseBackendBase {
         msgHdr_ = msgHdr;
       }
 
+      void set(EventRecvmsgMultishotCallback::Hdr* hdr) {
+        type_ = EventCallback::Type::TYPE_RECVMSG_MULTISHOT;
+        hdr_ = hdr;
+      }
+
       void reset() { type_ = EventCallback::Type::TYPE_NONE; }
 
-      bool processCb(int res) {
+      bool processCb(IoUringBackend* backend, int res, uint32_t flags) {
         bool ret = false;
+        bool released = false;
         switch (type_) {
           case EventCallback::Type::TYPE_READ: {
-            ret = true;
+            released = ret = true;
             auto cbFunc = ioVec_->cbFunc_;
             cbFunc(ioVec_, res);
             break;
           }
           case EventCallback::Type::TYPE_RECVMSG: {
-            ret = true;
+            released = ret = true;
             auto cbFunc = msgHdr_->cbFunc_;
             cbFunc(msgHdr_, res);
+            break;
+          }
+          case EventCallback::Type::TYPE_RECVMSG_MULTISHOT: {
+            ret = true;
+            std::unique_ptr<IOBuf> buf;
+            if (flags & IORING_CQE_F_BUFFER) {
+              if (ProvidedBufferProviderBase* bp = backend->bufferProvider()) {
+                buf = bp->getIoBuf(flags >> 16, res);
+              }
+            }
+            hdr_->cbFunc_(hdr_, res, std::move(buf));
+            if (!(flags & IORING_CQE_F_MORE)) {
+              hdr_->freeFunc_(hdr_);
+              released = true;
+            }
             break;
           }
           case EventCallback::Type::TYPE_NONE:
             break;
         }
-        type_ = EventCallback::Type::TYPE_NONE;
+
+        if (released) {
+          type_ = EventCallback::Type::TYPE_NONE;
+        }
 
         return ret;
       }
@@ -619,6 +664,9 @@ class IoUringBackend : public EventBaseBackendBase {
             freeFunc(msgHdr_);
             break;
           }
+          case EventCallback::Type::TYPE_RECVMSG_MULTISHOT:
+            hdr_->freeFunc_(hdr_);
+            break;
           case EventCallback::Type::TYPE_NONE:
             break;
         }
@@ -698,6 +746,31 @@ class IoUringBackend : public EventBaseBackendBase {
         sqe->flags |= IOSQE_FIXED_FILE;
       } else {
         ::io_uring_prep_recvmsg(sqe, fd, msg, 0);
+      }
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    void prepRecvmsgMultishot(
+        struct io_uring_sqe* sqe, int fd, struct msghdr* msg, bool registerFd) {
+      CHECK(sqe);
+      if (registerFd && !fdRecord_) {
+        fdRecord_ = backend_->registerFd(fd);
+      }
+
+      if (fdRecord_) {
+        ::io_uring_prep_recvmsg(sqe, fdRecord_->idx_, msg, MSG_TRUNC);
+        sqe->flags |= IOSQE_FIXED_FILE;
+      } else {
+        ::io_uring_prep_recvmsg(sqe, fd, msg, MSG_TRUNC);
+      }
+      // this magic value is set in io_uring_prep_recvmsg_multishot,
+      // however this version of the library isn't available widely yet
+      // so just hardcode it here
+      constexpr uint16_t kMultishotFlag = 1U << 1;
+      sqe->ioprio |= kMultishotFlag;
+      if (ProvidedBufferProviderBase* bp = backend_->bufferProvider()) {
+        sqe->buf_group = bp->gid();
+        sqe->flags |= IOSQE_BUFFER_SELECT;
       }
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -960,7 +1033,7 @@ class IoUringBackend : public EventBaseBackendBase {
   void processFileOp(IoSqe* ioSqe, int64_t res) noexcept;
 
   static void processFileOpCB(
-      IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
+      IoUringBackend* backend, IoSqe* ioSqe, int64_t res, uint32_t) {
     static_cast<IoUringBackend*>(backend)->processFileOp(ioSqe, res);
   }
 

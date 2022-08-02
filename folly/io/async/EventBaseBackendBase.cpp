@@ -116,4 +116,37 @@ bool EventBaseEvent::setEdgeTriggered() {
   return false;
 #endif
 }
+
+bool EventRecvmsgMultishotCallback::parseRecvmsgMultishot(
+    ByteRange total, struct msghdr const& msghdr, ParsedRecvMsgMultishot& out) {
+  struct H {
+    uint32_t name;
+    uint32_t control;
+    uint32_t payload;
+    uint32_t flags;
+  };
+  size_t const header = sizeof(H) + msghdr.msg_namelen + msghdr.msg_controllen;
+  if (total.size() < header) {
+    return false;
+  }
+  H const* h = reinterpret_cast<H const*>(total.data());
+  out.realNameLength = h->name;
+  if (msghdr.msg_namelen >= h->name) {
+    out.name = total.subpiece(sizeof(H), h->name);
+  } else {
+    out.name = total.subpiece(sizeof(H), msghdr.msg_namelen);
+  }
+
+  out.control = total.subpiece(sizeof(H) + msghdr.msg_namelen, h->control);
+  out.payload = total.subpiece(header);
+  out.realPayloadLength = h->payload;
+  out.flags = h->flags;
+
+  if (out.payload.size() != h->payload) {
+    LOG(ERROR) << "odd size " << out.payload.size() << " vs " << h->payload;
+    return false;
+  }
+  return true;
+}
+
 } // namespace folly

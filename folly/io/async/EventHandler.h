@@ -178,6 +178,10 @@ class EventHandler {
 
   void setEventCallback(EventRecvmsgCallback* cb) { event_.setCallback(cb); }
 
+  void setRecvmsgMultishotCallback(EventRecvmsgMultishotCallback* cb) {
+    event_.setCallback(cb);
+  }
+
   void resetEventCallback() { event_.resetCallback(); }
 
   /*

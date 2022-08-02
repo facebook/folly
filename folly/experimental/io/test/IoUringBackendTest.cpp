@@ -18,6 +18,7 @@
 #include <numeric>
 
 #include <folly/FileUtil.h>
+#include <folly/Function.h>
 #include <folly/String.h>
 #include <folly/experimental/io/IoUringBackend.h>
 #include <folly/experimental/io/test/IoTestTempFileUtil.h>
@@ -429,7 +430,94 @@ class EventRecvmsgCallback : public folly::EventRecvmsgCallback {
   std::unique_ptr<MsgHdr> msgHdr_;
 };
 
-void testAsyncUDPRecvmsg(bool useRegisteredFds) {
+class EventRecvmsgMultishotCallback
+    : public folly::EventRecvmsgMultishotCallback {
+ private:
+  struct Hdr : public folly::EventRecvmsgMultishotCallback::Hdr {
+    Hdr() = delete;
+    ~Hdr() override {}
+    explicit Hdr(EventRecvmsgMultishotCallback* cb) {
+      arg_ = cb;
+      freeFunc_ = Hdr::free;
+      cbFunc_ = Hdr::cb;
+
+      ::memset(&data_, 0, sizeof(data_));
+      data_.msg_namelen = sizeof(struct sockaddr_storage);
+    }
+
+    static void free(folly::EventRecvmsgMultishotCallback::Hdr* h) { delete h; }
+
+    static void cb(
+        folly::EventRecvmsgMultishotCallback::Hdr* h,
+        int res,
+        std::unique_ptr<folly::IOBuf> io) {
+      reinterpret_cast<EventRecvmsgMultishotCallback*>(h->arg_)->cb(
+          reinterpret_cast<Hdr*>(h), res, std::move(io));
+    }
+  };
+
+  void cb(Hdr* msgHdr, int res, std::unique_ptr<folly::IOBuf> io) {
+    folly::EventRecvmsgMultishotCallback::ParsedRecvMsgMultishot p;
+    ASSERT_GE(res, 0);
+    EXPECT_EQ(res, io->coalesce().size());
+    ASSERT_TRUE(folly::EventRecvmsgMultishotCallback::parseRecvmsgMultishot(
+        io->coalesce(), msgHdr->data_, p));
+
+    EXPECT_EQ(p.payload.size(), static_cast<int>(numBytes_));
+
+    // check the contents
+    std::string data;
+    data.assign(
+        reinterpret_cast<const char*>(p.payload.data()),
+        static_cast<size_t>(p.payload.size()));
+    EXPECT_EQ(data, data_);
+
+    // check the address
+    folly::SocketAddress addr;
+    addr.setFromSockaddr((sockaddr*)(p.name.data()), p.name.size());
+    EXPECT_EQ(addr, addr_);
+
+    ++asyncNum_;
+    if (total_ > 0) {
+      --total_;
+      if (total_ == 0) {
+        evb_->terminateLoopSoon();
+      }
+    }
+  }
+
+ public:
+  EventRecvmsgMultishotCallback(
+      const std::string& data,
+      const folly::SocketAddress& addr,
+      size_t numBytes,
+      uint64_t& total,
+      folly::EventBase* eventBase)
+      : data_(data),
+        addr_(addr),
+        numBytes_(numBytes),
+        total_(total),
+        evb_(eventBase) {}
+  ~EventRecvmsgMultishotCallback() override = default;
+
+  // from EventRecvmsgCallback
+  folly::EventRecvmsgMultishotCallback::Hdr* allocateRecvmsgMultishotData()
+      override {
+    return new Hdr(this);
+  }
+
+  uint64_t getAsyncNum() const { return asyncNum_; }
+
+ private:
+  const std::string& data_;
+  folly::SocketAddress addr_;
+  size_t numBytes_{0};
+  uint64_t& total_;
+  folly::EventBase* evb_;
+  uint64_t asyncNum_{0};
+};
+
+void testAsyncUDPRecvmsg(bool useRegisteredFds, bool multishot = false) {
   static constexpr size_t kBackendCapacity = 16;
   static constexpr size_t kBackendMaxSubmit = 8;
   static constexpr size_t kBackendMaxGet = 8;
@@ -443,8 +531,14 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
       .setUseRegisteredFds(useRegisteredFds ? kBackendCapacity : 0);
+  if (multishot) {
+    options.setInitialProvidedBuffers(
+        kNumBytes * 2 + 4 + sizeof(struct sockaddr_storage), 1000);
+  }
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
+  SKIP_IF(multishot && !folly::IoUringBackend::kernelSupportsRecvmsgMultishot())
+      << "multishot not available";
 
   // create the server sockets
   std::vector<std::unique_ptr<folly::AsyncUDPServerSocket>> serverSocketVec;
@@ -453,7 +547,7 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
   std::vector<std::unique_ptr<folly::AsyncUDPSocket>> clientSocketVec;
   clientSocketVec.reserve(kNumSockets);
 
-  std::vector<std::unique_ptr<EventRecvmsgCallback>> cbVec;
+  std::vector<folly::Function<uint64_t() const>> cbVec;
   cbVec.reserve(kNumSockets);
 
   std::string data(kNumBytes, 'A');
@@ -462,14 +556,22 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
     auto clientSock = std::make_unique<folly::AsyncUDPSocket>(evbPtr.get());
     clientSock->bind(folly::SocketAddress("::1", 0));
 
-    auto cb = std::make_unique<EventRecvmsgCallback>(
-        data, clientSock->address(), kNumBytes, total, evbPtr.get());
     auto serverSock = std::make_unique<folly::AsyncUDPServerSocket>(
         evbPtr.get(),
         1500,
         folly::AsyncUDPServerSocket::DispatchMechanism::RoundRobin);
     // set the event callback
-    serverSock->setEventCallback(cb.get());
+    if (multishot) {
+      auto cb_m = std::make_unique<EventRecvmsgMultishotCallback>(
+          data, clientSock->address(), kNumBytes, total, evbPtr.get());
+      serverSock->setRecvmsgMultishotCallback(cb_m.get());
+      cbVec.push_back([c = std::move(cb_m)]() { return c->getAsyncNum(); });
+    } else {
+      auto cb = std::make_unique<EventRecvmsgCallback>(
+          data, clientSock->address(), kNumBytes, total, evbPtr.get());
+      serverSock->setEventCallback(cb.get());
+      cbVec.push_back([c = std::move(cb)]() { return c->getAsyncNum(); });
+    }
     // bind
     serverSock->bind(folly::SocketAddress("::1", 0));
     // retrieve the real address
@@ -487,14 +589,12 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
     }
 
     clientSocketVec.emplace_back(std::move(clientSock));
-
-    cbVec.emplace_back(std::move(cb));
   }
 
   evbPtr->loopForever();
 
   for (size_t i = 0; i < kNumSockets; i++) {
-    CHECK_GE(cbVec[i]->getAsyncNum(), kNumPackets);
+    CHECK_GE(cbVec[i](), kNumPackets);
   }
 }
 } // namespace
@@ -663,6 +763,10 @@ TEST(IoUringBackend, AsyncUDPRecvmsgNoRegisterFd) {
 
 TEST(IoUringBackend, AsyncUDPRecvmsgRegisterFd) {
   testAsyncUDPRecvmsg(true);
+}
+
+TEST(IoUringBackend, AsyncUDPRecvmsgMultishotRegisterFd) {
+  testAsyncUDPRecvmsg(true, true);
 }
 
 TEST(IoUringBackend, EventFD_NoOverflowNoPersist) {

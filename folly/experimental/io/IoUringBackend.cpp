@@ -701,17 +701,23 @@ FOLLY_ALWAYS_INLINE void IoUringBackend::setProcessSignals() {
 }
 
 void IoUringBackend::processPollIoSqe(
-    IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
-  backend->processPollIo(ioSqe, res);
+    IoUringBackend* backend, IoSqe* ioSqe, int64_t res, uint32_t flags) {
+  backend->processPollIo(ioSqe, res, flags);
 }
 
 void IoUringBackend::processTimerIoSqe(
-    IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
+    IoUringBackend* backend,
+    IoSqe* /*sqe*/,
+    int64_t /*res*/,
+    uint32_t /* flags */) {
   backend->setProcessTimers();
 }
 
 void IoUringBackend::processSignalReadIoSqe(
-    IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
+    IoUringBackend* backend,
+    IoSqe* /*sqe*/,
+    int64_t /*res*/,
+    uint32_t /* flags */) {
   backend->setProcessSignals();
 }
 
@@ -1142,9 +1148,18 @@ void IoUringBackend::IoSqe::release() {
   backend_->releaseIoSqe(this);
 }
 
-void IoUringBackend::processPollIo(IoSqe* ioSqe, int64_t res) noexcept {
+void IoUringBackend::processPollIo(
+    IoSqe* ioSqe, int64_t res, uint32_t flags) noexcept {
   auto* ev = ioSqe->event_ ? (ioSqe->event_->getEvent()) : nullptr;
   if (ev) {
+    if (flags & IORING_CQE_F_MORE) {
+      ioSqe->useCount_++;
+      SCOPE_EXIT { ioSqe->useCount_--; };
+      if (ioSqe->cbData_.processCb(this, res, flags)) {
+        return;
+      }
+    }
+
     if (~event_ref_flags(ev) & EVLIST_INTERNAL) {
       // if this is not a persistent event
       // remove the EVLIST_INSERTED flags
@@ -1164,6 +1179,7 @@ void IoUringBackend::processPollIo(IoSqe* ioSqe, int64_t res) noexcept {
         std::min<int64_t>(res, std::numeric_limits<short>::max()));
 
     ioSqe->res_ = res;
+    ioSqe->cqeFlags_ = flags;
     activeEvents_.push_back(*ioSqe);
   } else {
     releaseIoSqe(ioSqe);
@@ -1185,10 +1201,9 @@ size_t IoUringBackend::processActiveEvents() {
       // remove it from the active list
       event_ref_flags(ev) &= ~EVLIST_ACTIVE;
       bool inserted = (event_ref_flags(ev) & EVLIST_INSERTED);
-
       // prevent the callback from freeing the aioIoSqe
       ioSqe->useCount_++;
-      if (!ioSqe->cbData_.processCb(ioSqe->res_)) {
+      if (!ioSqe->cbData_.processCb(this, ioSqe->res_, ioSqe->cqeFlags_)) {
         // adjust the ev_res for the poll case
         ev->ev_res = getPollEvents(ioSqe->res_, ev->ev_events);
         // handle spurious poll events that return 0
@@ -1834,6 +1849,67 @@ bool IoUringBackend::kernelHasNonBlockWriteFixes() const {
   // this was fixed in 5.18, which introduced linked file
   // fixed in "io_uring: only wake when the correct events are set"
   return params_.features & IORING_FEAT_LINKED_FILE;
+}
+
+namespace {
+
+static bool doKernelSupportsRecvmsgMultishot() {
+  try {
+    struct S : IoUringBackend::IoSqeBase {
+      explicit S(IoUringBackend::ProvidedBufferProviderBase* bp) : bp_(bp) {
+        fd = open("/dev/null", O_RDONLY);
+        memset(&msg, 0, sizeof(msg));
+      }
+      ~S() override {
+        if (fd >= 0) {
+          close(fd);
+        }
+      }
+      void processSubmit(struct io_uring_sqe* sqe) override {
+        io_uring_prep_recvmsg(sqe, fd, &msg, 0);
+
+        sqe->buf_group = bp_->gid();
+        sqe->flags |= IOSQE_BUFFER_SELECT;
+
+        // see note in prepRecvmsgMultishot
+        constexpr uint16_t kMultishotFlag = 1U << 1;
+        sqe->ioprio |= kMultishotFlag;
+      }
+
+      void callback(int res, uint32_t) override { supported = res != -EINVAL; }
+
+      void callbackCancelled() override { delete this; }
+      IoUringBackend::ProvidedBufferProviderBase* bp_;
+      bool supported = false;
+      struct msghdr msg;
+      int fd = -1;
+    };
+
+    std::unique_ptr<S> s;
+    IoUringBackend io(
+        IoUringBackend::Options().setInitialProvidedBuffers(1024, 1));
+    if (!io.bufferProvider()) {
+      return false;
+    }
+    s = std::make_unique<S>(io.bufferProvider());
+    io.submitNow(*s);
+    io.eb_event_base_loop(EVLOOP_NONBLOCK);
+    bool ret = s->supported;
+    if (s->inFlight()) {
+      LOG(ERROR) << "Unexpectedly sqe still in flight";
+      ret = false;
+    }
+    return ret;
+  } catch (IoUringBackend::NotAvailable const&) {
+    return false;
+  }
+}
+
+} // namespace
+
+bool IoUringBackend::kernelSupportsRecvmsgMultishot() {
+  static bool const ret = doKernelSupportsRecvmsgMultishot();
+  return ret;
 }
 
 } // namespace folly

@@ -246,6 +246,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     applyEventCallback();
   }
 
+  void setRecvmsgMultishotCallback(EventRecvmsgMultishotCallback* cb) {
+    multishotCb_ = cb;
+    applyEventCallback();
+  }
+
   bool setTimestamping(int val) { return socket_->setTimestamping(val); }
 
  private:
@@ -327,6 +332,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     if (socket_) {
       if (eventCb_) {
         socket_->setEventCallback(eventCb_);
+      } else if (multishotCb_) {
+        socket_->setRecvmsgMultishotCallback(multishotCb_);
       } else {
         socket_->resetEventCallback();
       }
@@ -354,6 +361,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
   bool reuseAddr_{false};
 
   EventRecvmsgCallback* eventCb_{nullptr};
+  EventRecvmsgMultishotCallback* multishotCb_{nullptr};
 };
 
 } // namespace folly
