@@ -777,12 +777,6 @@ IoUringBackend::IoUringBackend(Options options)
       }
     }
 
-    if (options.registerRingFd) {
-      if (io_uring_register_ring_fd(&ioRing_) < 0) {
-        LOG(ERROR) << "unable to register io_uring ring fd";
-      }
-    }
-
     return ioRing_.ring_fd;
   };
 
@@ -1240,7 +1234,14 @@ int IoUringBackend::eb_event_base_loop(int flags) {
       cleanup();
       throw NotAvailable("io_uring_submit error");
     }
-  } // schedule the timers
+
+    if (options_.registerRingFd) {
+      if (io_uring_register_ring_fd(&ioRing_) < 0) {
+        LOG(ERROR) << "unable to register io_uring ring fd";
+      }
+    }
+  }
+
   bool done = false;
   auto waitForEvents = (flags & EVLOOP_NONBLOCK) ? WaitForEventsMode::DONT_WAIT
                                                  : WaitForEventsMode::WAIT;
