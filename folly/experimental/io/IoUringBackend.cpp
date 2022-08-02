@@ -745,7 +745,8 @@ IoUringBackend::IoUringBackend(Options options)
       // allocate entries both for poll add and cancel
       size_t sqeSize =
           options_.sqeSize > 0 ? options_.sqeSize : 2 * options_.maxSubmit;
-      if (::io_uring_queue_init_params(sqeSize, &ioRing_, &params)) {
+      int ret = ::io_uring_queue_init_params(sqeSize, &ioRing_, &params);
+      if (ret) {
         options.capacity /= 2;
         if (options.minCapacity && (options.capacity >= options.minCapacity)) {
           LOG(INFO) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
@@ -759,8 +760,8 @@ IoUringBackend::IoUringBackend(Options options)
         } else {
           LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
                      << "," << params.cq_entries << ") "
-                     << "failed errno = " << errno << ":\""
-                     << folly::errnoStr(errno) << "\" " << this;
+                     << "failed ret = " << ret << ":\"" << folly::errnoStr(ret)
+                     << "\" " << this;
 
           throw NotAvailable("io_uring_queue_init error");
         }
@@ -1157,7 +1158,12 @@ void IoUringBackend::processPollIo(IoSqe* ioSqe, int64_t res) noexcept {
 
     // add it to the active list
     event_ref_flags(ev) |= EVLIST_ACTIVE;
-    ev->ev_res = res;
+
+    // only clamp upper bound, as no error codes are smaller than short min
+    ev->ev_res = static_cast<short>(
+        std::min<int64_t>(res, std::numeric_limits<short>::max()));
+
+    ioSqe->res_ = res;
     activeEvents_.push_back(*ioSqe);
   } else {
     releaseIoSqe(ioSqe);
@@ -1182,9 +1188,9 @@ size_t IoUringBackend::processActiveEvents() {
 
       // prevent the callback from freeing the aioIoSqe
       ioSqe->useCount_++;
-      if (!ioSqe->cbData_.processCb(ev->ev_res)) {
+      if (!ioSqe->cbData_.processCb(ioSqe->res_)) {
         // adjust the ev_res for the poll case
-        ev->ev_res = getPollEvents(ev->ev_res, ev->ev_events);
+        ev->ev_res = getPollEvents(ioSqe->res_, ev->ev_events);
         // handle spurious poll events that return 0
         // this can happen during high load on process startup
         if (ev->ev_res) {

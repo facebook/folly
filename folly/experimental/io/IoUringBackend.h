@@ -512,6 +512,7 @@ class IoUringBackend : public EventBaseBackendBase {
     Event* event_{nullptr};
     FdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};
+    int64_t res_;
 
     FOLLY_ALWAYS_INLINE void resetEvent() {
       // remove it from the list
@@ -723,7 +724,6 @@ class IoUringBackend : public EventBaseBackendBase {
     void processActive() override { cb_(res_); }
 
     int fd_{-1};
-    int res_{-1};
 
     FileOpCallback cb_;
   };
