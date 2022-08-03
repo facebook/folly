@@ -21,9 +21,6 @@
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
-#include <folly/system/HardwareConcurrency.h>
-
-using namespace folly;
 
 DECLARE_uint32(folly_global_cpu_executor_threads);
 
