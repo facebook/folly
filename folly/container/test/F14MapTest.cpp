@@ -1772,7 +1772,7 @@ void runHeterogeneousInsertTest() {
 
   const auto t = map.prehash(10);
   resetTracking();
-  map.try_emplace(t, 10, 40);
+  map.try_emplace_token(t, 10, 40);
   EXPECT_TRUE(map.contains(t, 10));
   EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 1}), 0)
       << Tracked<1>::counts();
