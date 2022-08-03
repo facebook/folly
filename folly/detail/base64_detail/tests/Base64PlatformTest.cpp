@@ -28,7 +28,7 @@ namespace folly::detail::base64_detail {
 namespace {
 #if FOLLY_SSE_PREREQ(4, 2)
 
-constexpr std::array<std::uint8_t, 16> expectedEncodeToIndexes(
+std::array<std::uint8_t, 16> expectedEncodeToIndexes(
     std::array<std::uint8_t, 16> in) {
   std::array<std::uint8_t, 16> res{};
 
@@ -57,7 +57,7 @@ constexpr std::array<std::uint8_t, 16> expectedEncodeToIndexes(
   return res;
 }
 
-constexpr std::array<std::uint8_t, 16> expectedPackIndexesToBytes(
+std::array<std::uint8_t, 16> expectedPackIndexesToBytes(
     std::array<std::uint8_t, 16> in) {
   std::array<std::uint8_t, 16> res{};
   res.fill(0);
@@ -90,7 +90,7 @@ constexpr char kBase64EncodeTable[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     "="; // \0 is also at the end.
 
-constexpr std::array<std::uint8_t, 16> expectedLookupByIndex(
+std::array<std::uint8_t, 16> expectedLookupByIndex(
     std::array<std::uint8_t, 16> in, const char* sampleTable) {
   std::array<std::uint8_t, 16> res{};
 
@@ -101,7 +101,7 @@ constexpr std::array<std::uint8_t, 16> expectedLookupByIndex(
   return res;
 }
 
-constexpr std::array<std::uint8_t, 16> expectedSuccessfullDecodeToIndex(
+std::array<std::uint8_t, 16> expectedSuccessfullDecodeToIndex(
     std::array<std::uint8_t, 16> in) {
   std::array<std::uint8_t, 16> r = {};
   for (std::size_t i = 0; i != in.size(); ++i) {
