@@ -36,7 +36,7 @@ def find_eden_root(dirpath):
         repo_type, repo_root = containing_repo_type(dirpath)
         if repo_root is not None:
             if os.path.exists(os.path.join(repo_root, ".eden", "config")):
-                return os.path.realpath(repo_root)
+                return repo_root
         return None
 
     try:
