@@ -39,6 +39,7 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
@@ -735,8 +736,8 @@ TEST(ThreadLocal, Fork2) {
 #endif
 
 TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
-  auto exe = fs::executable_path();
-  auto lib = exe.parent_path() / "thread_local_test_lib.so";
+  auto const lib =
+      folly::test::find_resource("folly/test/thread_local_test_lib.so");
   auto handle = dlopen(lib.string().c_str(), RTLD_LAZY);
   ASSERT_NE(nullptr, handle)
       << "unable to load " << lib.string() << ": " << dlerror();
