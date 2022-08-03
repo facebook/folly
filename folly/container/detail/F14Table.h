@@ -1995,9 +1995,25 @@ class F14Table : public Policy {
   // during the search; all constructor args for an inserted value come
   // from args...  key won't be accessed after args are touched.
   template <typename K, typename... Args>
-  std::pair<ItemIter, bool> tryEmplaceValue(K const& key, Args&&... args) {
+  std::enable_if_t<!std::is_same_v<K, F14HashToken>, std::pair<ItemIter, bool>>
+  tryEmplaceValue(K const& key, Args&&... args) {
     const auto hp = splitHash(this->computeKeyHash(key));
+    return tryEmplaceValueImpl(hp, key, std::forward<Args>(args)...);
+  }
 
+  template <typename K, typename... Args>
+  std::pair<ItemIter, bool> tryEmplaceValue(
+      F14HashToken const& token, K const& key, Args&&... args) {
+    FOLLY_SAFE_DCHECK(
+        splitHash(this->computeKeyHash(key)) == static_cast<HashPair>(token),
+        "");
+    return tryEmplaceValueImpl(
+        static_cast<HashPair>(token), key, std::forward<Args>(args)...);
+  }
+
+  template <typename K, typename... Args>
+  std::pair<ItemIter, bool> tryEmplaceValueImpl(
+      HashPair hp, K const& key, Args&&... args) {
     if (size() > 0) {
       auto existing = findImpl(hp, key, Prefetch::ENABLED);
       if (!existing.atEnd()) {

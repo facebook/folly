@@ -1769,6 +1769,18 @@ void runHeterogeneousInsertTest() {
   EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
       << Tracked<1>::counts();
 #endif
+
+  const auto t = map.prehash(10);
+  resetTracking();
+  map.try_emplace(t, 10, 40);
+  EXPECT_TRUE(map.contains(t, 10));
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 1}), 0)
+      << Tracked<1>::counts();
+  resetTracking();
+  map.erase(map.find(t, 10));
+  EXPECT_EQ(map.size(), 0);
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts();
 }
 
 template <typename M>

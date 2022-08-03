@@ -373,6 +373,26 @@ class F14BasicMap {
   }
 
   template <typename M>
+  std::pair<iterator, bool> insert_or_assign(
+      F14HashToken const& token, key_type const& key, M&& obj) {
+    auto rv = try_emplace(token, key, std::forward<M>(obj));
+    if (!rv.second) {
+      rv.first->second = std::forward<M>(obj);
+    }
+    return rv;
+  }
+
+  template <typename M>
+  std::pair<iterator, bool> insert_or_assign(
+      F14HashToken const& token, key_type&& key, M&& obj) {
+    auto rv = try_emplace(token, std::move(key), std::forward<M>(obj));
+    if (!rv.second) {
+      rv.first->second = std::forward<M>(obj);
+    }
+    return rv;
+  }
+
+  template <typename M>
   iterator insert_or_assign(
       const_iterator /*hint*/, key_type const& key, M&& obj) {
     return insert_or_assign(key, std::forward<M>(obj)).first;
@@ -387,6 +407,16 @@ class F14BasicMap {
   EnableHeterogeneousInsert<K, std::pair<iterator, bool>> insert_or_assign(
       K&& key, M&& obj) {
     auto rv = try_emplace(std::forward<K>(key), std::forward<M>(obj));
+    if (!rv.second) {
+      rv.first->second = std::forward<M>(obj);
+    }
+    return rv;
+  }
+
+  template <typename K, typename M>
+  EnableHeterogeneousInsert<K, std::pair<iterator, bool>> insert_or_assign(
+      F14HashToken const& token, K&& key, M&& obj) {
+    auto rv = try_emplace(token, std::forward<K>(key), std::forward<M>(obj));
     if (!rv.second) {
       rv.first->second = std::forward<M>(obj);
     }
@@ -433,6 +463,30 @@ class F14BasicMap {
   }
 
   template <typename... Args>
+  std::pair<iterator, bool> try_emplace(
+      F14HashToken const& token, key_type const& key, Args&&... args) {
+    auto rv = table_.tryEmplaceValue(
+        token,
+        key,
+        std::piecewise_construct,
+        std::forward_as_tuple(key),
+        std::forward_as_tuple(std::forward<Args>(args)...));
+    return std::make_pair(table_.makeIter(rv.first), rv.second);
+  }
+
+  template <typename... Args>
+  std::pair<iterator, bool> try_emplace(
+      F14HashToken const& token, key_type&& key, Args&&... args) {
+    auto rv = table_.tryEmplaceValue(
+        token,
+        key,
+        std::piecewise_construct,
+        std::forward_as_tuple(std::move(key)),
+        std::forward_as_tuple(std::forward<Args>(args)...));
+    return std::make_pair(table_.makeIter(rv.first), rv.second);
+  }
+
+  template <typename... Args>
   iterator try_emplace(
       const_iterator /*hint*/, key_type const& key, Args&&... args) {
     auto rv = table_.tryEmplaceValue(
@@ -458,6 +512,18 @@ class F14BasicMap {
   EnableHeterogeneousInsert<K, std::pair<iterator, bool>> try_emplace(
       K&& key, Args&&... args) {
     auto rv = table_.tryEmplaceValue(
+        key,
+        std::piecewise_construct,
+        std::forward_as_tuple(std::forward<K>(key)),
+        std::forward_as_tuple(std::forward<Args>(args)...));
+    return std::make_pair(table_.makeIter(rv.first), rv.second);
+  }
+
+  template <typename K, typename... Args>
+  EnableHeterogeneousInsert<K, std::pair<iterator, bool>> try_emplace(
+      F14HashToken const& token, K&& key, Args&&... args) {
+    auto rv = table_.tryEmplaceValue(
+        token,
         key,
         std::piecewise_construct,
         std::forward_as_tuple(std::forward<K>(key)),
