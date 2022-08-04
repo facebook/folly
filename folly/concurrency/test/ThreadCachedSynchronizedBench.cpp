@@ -52,19 +52,19 @@ FOLLY_NOINLINE void bm_read_int(Obj& obj, std::size_t iters) {
 }
 
 BENCHMARK(read_int_atomic, iters) {
-  folly::relaxed_atomic obj{3};
+  folly::relaxed_atomic<int> obj{3};
   bm_read_int(obj, iters);
 }
 
 BENCHMARK(read_int_synchronized, iters) {
   folly::BenchmarkSuspender braces;
-  folly::Synchronized obj{3};
+  folly::Synchronized<int> obj{3};
   braces.dismissing([&] { bm_read_int(obj, iters); });
 }
 
 BENCHMARK(read_int_thread_cached_synchronized, iters) {
   folly::BenchmarkSuspender braces;
-  folly::thread_cached_synchronized obj{3};
+  folly::thread_cached_synchronized<int> obj{3};
   braces.dismissing([&] { bm_read_int(obj, iters); });
 }
 
