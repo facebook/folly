@@ -357,12 +357,18 @@ void AsyncUDPSocket::setDFAndTurnOffPMTU() {
   optname6 = IPV6_MTU_DISCOVER;
   optval6 = IPV6_PMTUDISC_PROBE;
 #endif
+#if defined(_WIN32) && defined(IP_DONTFRAGMENT) && defined(IPV6_DONTFRAG)
+  optname4 = IP_DONTFRAGMENT;
+  optval4 = TRUE;
+  optname6 = IPV6_DONTFRAG;
+  optval6 = TRUE;
+#endif
   if (optname4 && optval4 && address().getFamily() == AF_INET) {
     if (folly::netops::setsockopt(
             fd_, IPPROTO_IP, optname4, &optval4, sizeof(optval4))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
-          "Failed to set PMTUDISC_PROBE with IP_MTU_DISCOVER",
+          "Failed to turn off fragmentation and PMTU discovery (IPv4)",
           errno);
     }
   }
@@ -371,7 +377,7 @@ void AsyncUDPSocket::setDFAndTurnOffPMTU() {
             fd_, IPPROTO_IPV6, optname6, &optval6, sizeof(optval6))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
-          "Failed to set PMTUDISC_PROBE with IPV6_MTU_DISCOVER",
+          "Failed to turn off fragmentation and PMTU discovery (IPv6)",
           errno);
     }
   }
