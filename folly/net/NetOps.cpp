@@ -560,15 +560,6 @@ int setsockopt(
     const void* optval,
     socklen_t optlen) {
 #ifdef _WIN32
-  if (optname == SO_REUSEADDR) {
-    // We don't have an equivelent to the Linux & OSX meaning of this
-    // on Windows, so ignore it.
-    return 0;
-  } else if (optname == SO_REUSEPORT) {
-    // Windows's SO_REUSEADDR option is closer to SO_REUSEPORT than
-    // it is to the Linux & OSX meaning of SO_REUSEADDR.
-    return -1;
-  }
   return wrapSocketFunction<int>(
       ::setsockopt, s, level, optname, (char*)optval, optlen);
 #elif defined(__EMSCRIPTEN__)
