@@ -132,8 +132,12 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
   if (reusePort_) {
     // put the socket in port reuse mode
     int value = 1;
-    if (netops::setsockopt(
-            socket, SOL_SOCKET, SO_REUSEPORT, &value, sizeof(value)) != 0) {
+    auto opt = SO_REUSEPORT;
+#ifdef _WIN32
+    opt = SO_BROADCAST;
+#endif
+    if (netops::setsockopt(socket, SOL_SOCKET, opt, &value, sizeof(value)) !=
+        0) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "failed to put socket in reuse_port mode",
