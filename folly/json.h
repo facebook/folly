@@ -15,27 +15,25 @@
  */
 
 /**
- *
  * Serialize and deserialize folly::dynamic values as JSON.
  *
- * Before you use this you should probably understand the basic
- * concepts in the JSON type system:
+ * Basic JSON type system:
  *
- *    Value  : String | Bool | Null | Object | Array | Number
- *    String : UTF-8 sequence
- *    Object : (String, Value) pairs, with unique String keys
- *    Array  : ordered list of Values
- *    Null   : null
- *    Bool   : true | false
- *    Number : (representation unspecified)
+ *     Value  : String | Bool | Null | Object | Array | Number
+ *     String : UTF-8 sequence
+ *     Object : (String, Value) pairs, with unique String keys
+ *     Array  : ordered list of Values
+ *     Null   : null
+ *     Bool   : true | false
+ *     Number : (representation unspecified)
  *
- * ... That's about it.  For more information see http://json.org or
- * look up RFC 4627.
+ * For more information see http://json.org or look up RFC 4627.
  *
  * If your dynamic has anything illegal with regard to this type
  * system, the serializer will throw.
  *
  * @author Jordan DeLong <delong.j@fb.com>
+ * @file json.h
  */
 
 #pragma once
@@ -134,29 +132,33 @@ struct serialization_opts {
   std::array<uint64_t, 2> extra_ascii_to_escape_bitmap{};
 };
 
-/*
+/**
+ * Create bitmap for serialization_opts.extra_ascii_to_escape_bitmap.
+ *
  * Generates a bitmap with bits set for each of the ASCII characters provided
  * for use in the serialization_opts extra_ascii_to_escape_bitmap option. If any
  * characters are not valid ASCII, they are ignored.
  */
 std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars);
 
-/*
+/**
+ * Serialize dynamic to json-string, with options.
+ *
  * Main JSON serialization routine taking folly::dynamic parameters.
  * For the most common use cases there are simpler functions in the
- * main folly namespace below.
+ * main folly namespace.
  */
 std::string serialize(dynamic const&, serialization_opts const&);
 
-/*
- * Escape a string so that it is legal to print it in JSON text and
- * append the result to out.
+/**
+ * Escape a string so that it is legal to print it in JSON text.
+ *
+ * Append the result to out.
  */
-
 void escapeString(
     StringPiece input, std::string& out, const serialization_opts& opts);
 
-/*
+/**
  * Strip all C99-like comments (i.e. // and / * ... * /)
  */
 std::string stripComments(StringPiece jsonC);
@@ -196,7 +198,7 @@ using metadata_map = std::unordered_map<dynamic const*, parse_metadata>;
 
 //////////////////////////////////////////////////////////////////////
 
-/*
+/**
  * Parse a json blob out of a range and produce a dynamic representing
  * it.
  */
@@ -209,19 +211,19 @@ dynamic parseJsonWithMetadata(
     json::serialization_opts const& opts,
     json::metadata_map* map);
 
-/*
+/**
  * Serialize a dynamic into a json string.
  */
 std::string toJson(dynamic const&);
 
-/*
- * Same as the above, except format the json with some minimal
- * indentation.
+/**
+ * Serialize a dynamic into a json string with indentation.
  */
 std::string toPrettyJson(dynamic const&);
 
-/*
+/**
  * Printer for GTest.
+ *
  * Uppercase name to fill GTest's API, which calls this method through ADL.
  */
 void PrintTo(const dynamic&, std::ostream*);
