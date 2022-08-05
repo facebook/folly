@@ -411,14 +411,11 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
 #endif
 }
 
-ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
+FOLLY_MAYBE_UNUSED static ssize_t fakeSendmsg(
+    FOLLY_MAYBE_UNUSED NetworkSocket socket,
+    FOLLY_MAYBE_UNUSED const msghdr* message) {
 #ifdef _WIN32
-  (void)flags;
   SOCKET h = socket.data;
-
-  // Unfortunately, WSASendMsg requires the socket to have been opened
-  // as either SOCK_DGRAM or SOCK_RAW, but sendmsg has no such requirement,
-  // so we have to implement it based on send instead :(
   ssize_t bytesSent = 0;
   for (size_t i = 0; i < message->msg_iovlen; i++) {
     int r = -1;
@@ -447,6 +444,63 @@ ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
     bytesSent += r;
   }
   return bytesSent;
+#else
+  throw std::logic_error("Not implemented!");
+#endif
+}
+
+FOLLY_MAYBE_UNUSED static ssize_t wsaSendMsg(
+    FOLLY_MAYBE_UNUSED NetworkSocket socket,
+    FOLLY_MAYBE_UNUSED const msghdr* message,
+    FOLLY_MAYBE_UNUSED int flags) {
+#ifdef _WIN32
+  SOCKET h = socket.data;
+
+  // Translate msghdr to WSAMSG.
+  WSAMSG msg;
+  msg.name = (LPSOCKADDR)message->msg_name;
+  msg.namelen = message->msg_namelen;
+  msg.Control.buf = (CHAR*)message->msg_control;
+  msg.Control.len = (ULONG)message->msg_controllen;
+  msg.dwFlags = flags;
+  msg.dwBufferCount = (DWORD)message->msg_iovlen;
+  msg.lpBuffers = new WSABUF[message->msg_iovlen];
+  SCOPE_EXIT { delete[] msg.lpBuffers; };
+  for (size_t i = 0; i < message->msg_iovlen; i++) {
+    msg.lpBuffers[i].buf = (CHAR*)message->msg_iov[i].iov_base;
+    msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;
+  }
+
+  DWORD bytesSent;
+  auto ret = WSASendMsg(h, &msg, 0, &bytesSent, nullptr, nullptr);
+  errno = translate_wsa_error(WSAGetLastError());
+  return ret == 0 ? (ssize_t)bytesSent : -1;
+#else
+  throw std::logic_error("Not implemented!");
+#endif
+}
+
+ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
+#ifdef _WIN32
+
+  // Check socket type to see if WSASendMsg usage is a go.
+  DWORD socketType = 0;
+  auto len = sizeof(socketType);
+  auto ret =
+      getsockopt(socket, SOL_SOCKET, SO_TYPE, &socketType, (socklen_t*)&len);
+  if (ret != 0) {
+    errno = translate_wsa_error(WSAGetLastError());
+    return ret;
+  }
+
+  if (socketType == SOCK_DGRAM || socketType == SOCK_RAW) {
+    return wsaSendMsg(socket, message, flags);
+  } else {
+    // Unfortunately, WSASendMsg requires the socket to have been opened
+    // as either SOCK_DGRAM or SOCK_RAW, but sendmsg has no such requirement,
+    // so we have to implement it based on send instead :(
+    return fakeSendmsg(socket, message);
+  }
 #elif defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
