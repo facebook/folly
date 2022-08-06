@@ -27,7 +27,8 @@
  *
  * See folly/json.h for serialization and deserialization functions for JSON.
  *
- * Additional documentation is in folly/docs/Dynamic.md.
+ * Additional documentation is in
+ * https://github.com/facebook/folly/blob/main/folly/docs/Dynamic.md
  *
  * @author Jordan DeLong <delong.j@fb.com>
  * @refcode docs/examples/folly/dynamic.cpp
