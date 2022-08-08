@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+/**
+ * Convenience functions for working with strings.
+ *
+ * @file String.h
+ */
+
 #pragma once
 #define FOLLY_STRING_H_
 
@@ -34,7 +40,9 @@
 namespace folly {
 
 /**
- * C-Escape a string, making it suitable for representation as a C string
+ * @overloadbrief C-escape a string.
+ *
+ * Make the string suitable for representation as a C string
  * literal.  Appends the result to the output string.
  *
  * Backslashes all occurrences of backslash and double-quote:
@@ -65,7 +73,9 @@ String cEscape(StringPiece str) {
 }
 
 /**
- * C-Unescape a string; the opposite of cEscape above.  Appends the result
+ * @overloadbrief C-Unescape a string.
+ *
+ * The opposite of cEscape above.  Appends the result
  * to the output string.
  *
  * Recognizes the standard C escape sequences:
@@ -94,7 +104,9 @@ String cUnescape(StringPiece str, bool strict = true) {
 }
 
 /**
- * URI-escape a string.  Appends the result to the output string.
+ * @overloadbrief URI-escape a string.
+ *
+ * Appends the result to the output string.
  *
  * Alphanumeric characters and other characters marked as "unreserved" in RFC
  * 3986 ( -_.~ ) are left unchanged.  In PATH mode, the forward slash (/) is
@@ -122,7 +134,9 @@ String uriEscape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
 }
 
 /**
- * URI-unescape a string.  Appends the result to the output string.
+ * @overloadbrief URI-unescape a string.
+ *
+ * Appends the result to the output string.
  *
  * In QUERY mode, '+' are replaced by space.  %XX sequences are decoded if
  * XX is a valid hex sequence, otherwise we throw invalid_argument.
@@ -142,6 +156,8 @@ String uriUnescape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
 }
 
 /**
+ * @overloadbrief printf into a string.
+ *
  * stringPrintf is much like printf but deposits its result into a
  * string. Two signatures are supported: the first simply returns the
  * resulting string, and the second appends the produced characters to
@@ -154,22 +170,31 @@ std::string stringPrintf(FOLLY_PRINTF_FORMAT const char* format, ...)
 void stringPrintf(std::string* out, FOLLY_PRINTF_FORMAT const char* format, ...)
     FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
+/**
+ * Append printf-style output to string.
+ */
 std::string& stringAppendf(
     std::string* output, FOLLY_PRINTF_FORMAT const char* format, ...)
     FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
 /**
- * Similar to stringPrintf, but accepts a va_list argument.
+ * @overloadbrief stringPrintf with va_list argument
  *
  * As with vsnprintf() itself, the value of ap is undefined after the call.
  * These functions do not call va_end() on ap.
  */
 std::string stringVPrintf(const char* format, va_list ap);
 void stringVPrintf(std::string* out, const char* format, va_list ap);
+
+/**
+ * Append va_list printf-style output to string.
+ */
 std::string& stringVAppendf(std::string* out, const char* format, va_list ap);
 
 /**
- * Backslashify a string, that is, replace non-printable characters
+ * Backslashify a string.
+ *
+ * That is, replace non-printable characters
  * with C-style (but NOT C compliant) "\xHH" encoding.  If hex_style
  * is false, then shorthand notations like "\0" will be used instead
  * of "\x00" for the most common backslash cases.
@@ -200,6 +225,7 @@ OutputString backslashify(StringPiece input, bool hex_style = false) {
 
 /**
  * Take a string and "humanify" it -- that is, make it look better.
+ *
  * Since "better" is subjective, caveat emptor.  The basic approach is
  * to count the number of unprintable characters.  If there are none,
  * then the output is the input.  If there are relatively few, or if
@@ -220,6 +246,8 @@ String humanify(const String& input) {
 }
 
 /**
+ * Convert input to hexadecimal representation.
+ *
  * Same functionality as Python's binascii.hexlify.  Returns true
  * on successful conversion.
  *
@@ -246,6 +274,8 @@ OutputString hexlify(StringPiece input) {
 }
 
 /**
+ * Get binary data from hexadecimal representation.
+ *
  * Same functionality as Python's binascii.unhexlify.  Returns true
  * on successful conversion.
  */
@@ -263,28 +293,6 @@ OutputString unhexlify(StringPiece input) {
   return output;
 }
 
-/**
- * A pretty-printer for numbers that appends suffixes of units of the
- * given type.  It prints 4 sig-figs of value with the most
- * appropriate unit.
- *
- * If `addSpace' is true, we put a space between the units suffix and
- * the value.
- *
- * Current types are:
- *   PRETTY_TIME         - s, ms, us, ns, etc.
- *   PRETTY_TIME_HMS     - h, m, s, ms, us, ns, etc.
- *   PRETTY_BYTES_METRIC - kB, MB, GB, etc (goes up by 10^3 = 1000 each time)
- *   PRETTY_BYTES        - kB, MB, GB, etc (goes up by 2^10 = 1024 each time)
- *   PRETTY_BYTES_IEC    - KiB, MiB, GiB, etc
- *   PRETTY_UNITS_METRIC - k, M, G, etc (goes up by 10^3 = 1000 each time)
- *   PRETTY_UNITS_BINARY - k, M, G, etc (goes up by 2^10 = 1024 each time)
- *   PRETTY_UNITS_BINARY_IEC - Ki, Mi, Gi, etc
- *   PRETTY_SI           - full SI metric prefixes from yocto to Yotta
- *                         http://en.wikipedia.org/wiki/Metric_prefix
- *
- * @author Mark Rabkin <mrabkin@fb.com>
- */
 enum PrettyType {
   PRETTY_TIME,
   PRETTY_TIME_HMS,
@@ -303,9 +311,35 @@ enum PrettyType {
   PRETTY_NUM_TYPES,
 };
 
+/**
+ * Pretty printer for numbers with units.
+ *
+ * A pretty-printer for numbers that appends suffixes of units of the
+ * given type.  It prints 4 sig-figs of value with the most
+ * appropriate unit.
+ *
+ * If `addSpace' is true, we put a space between the units suffix and
+ * the value.
+ *
+ * Current types are:
+ *     PRETTY_TIME         - s, ms, us, ns, etc.
+ *     PRETTY_TIME_HMS     - h, m, s, ms, us, ns, etc.
+ *     PRETTY_BYTES_METRIC - kB, MB, GB, etc (goes up by 10^3 = 1000 each time)
+ *     PRETTY_BYTES        - kB, MB, GB, etc (goes up by 2^10 = 1024 each time)
+ *     PRETTY_BYTES_IEC    - KiB, MiB, GiB, etc
+ *     PRETTY_UNITS_METRIC - k, M, G, etc (goes up by 10^3 = 1000 each time)
+ *     PRETTY_UNITS_BINARY - k, M, G, etc (goes up by 2^10 = 1024 each time)
+ *     PRETTY_UNITS_BINARY_IEC - Ki, Mi, Gi, etc
+ *     PRETTY_SI           - full SI metric prefixes from yocto to Yotta
+ *                           http://en.wikipedia.org/wiki/Metric_prefix
+ *
+ * @author Mark Rabkin <mrabkin@fb.com>
+ */
 std::string prettyPrint(double val, PrettyType, bool addSpace = true);
 
 /**
+ * @overloadbrief Reverse prettyPrint.
+ *
  * This utility converts StringPiece in pretty format (look above) to double,
  * with progress information. Alters the  StringPiece parameter
  * to get rid of the already-parsed characters.
@@ -332,7 +366,7 @@ double prettyToDouble(
 double prettyToDouble(folly::StringPiece prettyString, const PrettyType type);
 
 /**
- * Write a hex dump of size bytes starting at ptr to out.
+ * @overloadbrief Write a hex dump of size bytes starting at ptr to out.
  *
  * The hex dump is formatted as follows:
  *
@@ -354,13 +388,15 @@ void hexDump(const void* ptr, size_t size, OutIt out);
 std::string hexDump(const void* ptr, size_t size);
 
 /**
+ * Pretty print an errno.
+ *
  * Return a string containing the description of the given errno value.
  * Takes care not to overwrite the actual system errno, so calling
  * errnoStr(errno) is valid.
  */
 std::string errnoStr(int err);
 
-/*
+/**
  * Split a string into a list of tokens by delimiter.
  *
  * The split interface here supports different output types, selected
@@ -406,6 +442,9 @@ void split(
     folly::fbvector<OutputType, std::allocator<OutputType>>& out,
     const bool ignoreEmpty = false);
 
+/**
+ * split, to an output iterator
+ */
 template <
     class OutputValueType,
     class Delim,
@@ -417,7 +456,22 @@ void splitTo(
     OutputIterator out,
     const bool ignoreEmpty = false);
 
-/*
+namespace detail {
+template <typename Void, typename OutputType>
+struct IsConvertible : std::false_type {};
+
+template <>
+struct IsConvertible<void, decltype(std::ignore)> : std::true_type {};
+
+template <typename OutputType>
+struct IsConvertible<
+    void_t<decltype(parseTo(StringPiece{}, std::declval<OutputType&>()))>,
+    OutputType> : std::true_type {};
+} // namespace detail
+template <typename OutputType>
+struct IsConvertible : detail::IsConvertible<void, OutputType> {};
+
+/**
  * Split a string into a fixed number of string pieces and/or numeric types
  * by delimiter. Conversions are supported for any type which folly:to<> can
  * target, including all overloads of parseTo(). Returns 'true' if the fields
@@ -451,21 +505,6 @@ void splitTo(
  * Note that this will likely not work if the last field's target is of numeric
  * type, in which case folly::to<> will throw an exception.
  */
-namespace detail {
-template <typename Void, typename OutputType>
-struct IsConvertible : std::false_type {};
-
-template <>
-struct IsConvertible<void, decltype(std::ignore)> : std::true_type {};
-
-template <typename OutputType>
-struct IsConvertible<
-    void_t<decltype(parseTo(StringPiece{}, std::declval<OutputType&>()))>,
-    OutputType> : std::true_type {};
-} // namespace detail
-template <typename OutputType>
-struct IsConvertible : detail::IsConvertible<void, OutputType> {};
-
 template <bool exact = true, class Delim, class... OutputTypes>
 typename std::enable_if<
     StrictConjunction<IsConvertible<OutputTypes>...>::value &&
@@ -473,13 +512,12 @@ typename std::enable_if<
     bool>::type
 split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 
-/*
+/**
  * Join list of tokens.
  *
  * Stores a string representation of tokens in the same order with
  * delimiter between each element.
  */
-
 template <class Delim, class Iterator, class String>
 void join(const Delim& delimiter, Iterator begin, Iterator end, String& output);
 
@@ -525,18 +563,24 @@ std::string join(const Delim& delimiter, Iterator begin, Iterator end) {
 }
 
 /**
+ * Remove leading whitespace.
+ *
  * Returns a subpiece with all whitespace removed from the front of @sp.
  * Whitespace means any of [' ', '\n', '\r', '\t'].
  */
 StringPiece ltrimWhitespace(StringPiece sp);
 
 /**
+ * Remove trailing whitespace.
+ *
  * Returns a subpiece with all whitespace removed from the back of @sp.
  * Whitespace means any of [' ', '\n', '\r', '\t'].
  */
 StringPiece rtrimWhitespace(StringPiece sp);
 
 /**
+ * Remove leading and trailing whitespace.
+ *
  * Returns a subpiece with all whitespace removed from the back and front of
  * @sp. Whitespace means any of [' ', '\n', '\r', '\t'].
  */
@@ -545,15 +589,18 @@ inline StringPiece trimWhitespace(StringPiece sp) {
 }
 
 /**
+ * DEPRECATED: Use ltrimWhitespace instead
+ *
  * Returns a subpiece with all whitespace removed from the front of @sp.
  * Whitespace means any of [' ', '\n', '\r', '\t'].
- * DEPRECATED: @see ltrimWhitespace @see rtrimWhitespace
  */
 inline StringPiece skipWhitespace(StringPiece sp) {
   return ltrimWhitespace(sp);
 }
 
 /**
+ * Specify characters to ltrim.
+ *
  * Returns a subpiece with all characters the provided @toTrim returns true
  * for removed from the front of @sp.
  */
@@ -567,6 +614,8 @@ StringPiece ltrim(StringPiece sp, ToTrim toTrim) {
 }
 
 /**
+ * Specify characters to rtrim.
+ *
  * Returns a subpiece with all characters the provided @toTrim returns true
  * for removed from the back of @sp.
  */
@@ -580,6 +629,8 @@ StringPiece rtrim(StringPiece sp, ToTrim toTrim) {
 }
 
 /**
+ * Specify characters to trim.
+ *
  * Returns a subpiece with all characters the provided @toTrim returns true
  * for removed from the back and front of @sp.
  */
@@ -589,18 +640,21 @@ StringPiece trim(StringPiece sp, ToTrim toTrim) {
 }
 
 /**
- *  Strips the leading and the trailing whitespace-only lines. Then looks for
- *  the least indented non-whitespace-only line and removes its amount of
- *  leading whitespace from every line. Assumes leading whitespace is either all
- *  spaces or all tabs.
+ * De-indent a string.
  *
- *  Purpose: including a multiline string literal in source code, indented to
- *  the level expected from context.
+ * Strips the leading and the trailing whitespace-only lines. Then looks for
+ * the least indented non-whitespace-only line and removes its amount of
+ * leading whitespace from every line. Assumes leading whitespace is either all
+ * spaces or all tabs.
+ *
+ * Purpose: including a multiline string literal in source code, indented to
+ * the level expected from context.
  */
 std::string stripLeftMargin(std::string s);
 
 /**
- * Fast, in-place lowercasing of ASCII alphabetic characters in strings.
+ * Convert ascii to lowercase, in-place.
+ *
  * Leaves all other characters unchanged, including those with the 0x80
  * bit set.
  * @param str String to convert
