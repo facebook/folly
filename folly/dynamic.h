@@ -15,7 +15,7 @@
  */
 
 /**
- * dyanmic is a runtime dynamically typed value.  It holds types from a specific
+ * dynamic is a runtime dynamically typed value.  It holds types from a specific
  * predetermined set of types: int, double, bool, nullptr_t, string, array,
  * map. In particular, it can be used as a convenient in-memory representation
  * for complete JSON objects.
