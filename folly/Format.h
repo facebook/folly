@@ -14,6 +14,18 @@
  * limitations under the License.
  */
 
+/**
+ * folly::format has been superseded by
+ * [fmt](https://fmt.dev/latest/index.html). `#include <fmt/core.h>`
+ *
+ * format() performs text-formatting, similar to Python's str.format. The full
+ * specification is on github:
+ * https://github.com/facebook/folly/blob/main/folly/docs/Format.md
+ *
+ * @refcode docs/examples/folly/Format.cpp
+ * @file Format.h
+ */
+
 #pragma once
 #define FOLLY_FORMAT_H_
 
