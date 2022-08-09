@@ -64,7 +64,7 @@ LIBDWARF_FOUND=NO
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
-BUILD_BENCHMARKS=ON
+BUILD_BENCHMARKS=OFF
 
 [cmake.defines.test=off]
 BUILD_TESTS=OFF
