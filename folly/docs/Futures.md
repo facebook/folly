@@ -39,11 +39,13 @@ void foo(int x) {
 
 This would print:
 
+```
 making Promise
 Future chain made
 fulfilling Promise
 foo(42)
 Promise fulfilled
+```
 
 ## Blog Post
 
