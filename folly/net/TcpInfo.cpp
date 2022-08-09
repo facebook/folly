@@ -292,6 +292,30 @@ Optional<uint64_t> TcpInfo::packetsInFlight() const {
 #endif
 }
 
+Optional<uint64_t> TcpInfo::packetsDelivered() const {
+#ifndef FOLLY_HAVE_TCP_INFO
+  return folly::none;
+#elif defined(__linux__)
+  return getFieldAsOptUInt64(&tcp_info::tcpi_delivered);
+#elif defined(__APPLE__)
+  return folly::none;
+#else
+  return folly::none;
+#endif
+}
+
+Optional<uint64_t> TcpInfo::packetsDeliveredWithCEMarks() const {
+#ifndef FOLLY_HAVE_TCP_INFO
+  return folly::none;
+#elif defined(__linux__)
+  return getFieldAsOptUInt64(&tcp_info::tcpi_delivered_ce);
+#elif defined(__APPLE__)
+  return folly::none;
+#else
+  return folly::none;
+#endif
+}
+
 Optional<uint64_t> TcpInfo::cwndInPackets() const {
 #ifndef FOLLY_HAVE_TCP_INFO
   return folly::none;

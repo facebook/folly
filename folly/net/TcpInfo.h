@@ -168,6 +168,8 @@ struct TcpInfo {
   Optional<uint64_t> packetsWithDataReceived() const;
   Optional<uint64_t> packetsRetransmitted() const;
   Optional<uint64_t> packetsInFlight() const;
+  Optional<uint64_t> packetsDelivered() const;
+  Optional<uint64_t> packetsDeliveredWithCEMarks() const;
 
   Optional<uint64_t> cwndInPackets() const;
   Optional<uint64_t> cwndInBytes() const;
