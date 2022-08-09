@@ -50,7 +50,7 @@ If desired, you can specify both function argument style and `ostream` style
 streaming log arguments together:
 
 ```
-XLOG(INFO, "the number is ") <<  2 + 2);
+XLOG(INFO, "the number is ") <<  2 + 2;
 ```
 
 The `FB_LOG()` macro accepts requires a `Logger` object as its first argument,
