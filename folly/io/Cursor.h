@@ -453,6 +453,9 @@ class CursorBase {
   }
 
   size_t pullAtMost(void* buf, size_t len) {
+    if (UNLIKELY(len == 0)) {
+      return 0;
+    }
     dcheckIntegrity();
     // Fast path: it all fits in one buffer.
     if (LIKELY(uintptr_t(crtPos_) + len <= uintptr_t(crtEnd_))) {
@@ -716,25 +719,27 @@ class CursorBase {
   }
 
   FOLLY_NOINLINE size_t pullAtMostSlow(void* buf, size_t len) {
-    // If the length of this buffer is 0 try advancing it.
-    // Otherwise on the first iteration of the following loop memcpy is called
-    // with a null source pointer.
-    if (UNLIKELY(length() == 0 && !tryAdvanceBuffer())) {
-      return 0;
-    }
     uint8_t* p = reinterpret_cast<uint8_t*>(buf);
     size_t copied = 0;
     for (size_t available; (available = length()) < len;) {
-      memcpy(p, data(), available);
-      copied += available;
+      if (available > 0) {
+        // Don't try to copy from 0-length buffers, since they could have
+        // a null data() pointer.
+        memcpy(p, data(), available);
+        copied += available;
+      }
       if (UNLIKELY(!tryAdvanceBuffer())) {
         return copied;
       }
       p += available;
       len -= available;
     }
-    memcpy(p, data(), len);
-    crtPos_ += len;
+    if (len > 0) {
+      // Don't try to copy from 0-length buffers, since they could have
+      // a null data() pointer.
+      memcpy(p, data(), len);
+      crtPos_ += len;
+    }
     advanceBufferIfEmpty();
     return copied + len;
   }
