@@ -17,6 +17,7 @@
 #include <array>
 #include <exception>
 #include <limits>
+#include <optional>
 #include <random>
 #include <string_view>
 #include <folly/detail/base64_detail/Base64Common.h>
