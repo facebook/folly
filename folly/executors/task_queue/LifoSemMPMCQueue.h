@@ -22,11 +22,17 @@
 
 namespace folly {
 
-template <class T, QueueBehaviorIfFull kBehavior = QueueBehaviorIfFull::THROW>
+template <
+    class T,
+    QueueBehaviorIfFull kBehavior = QueueBehaviorIfFull::THROW,
+    class Semaphore = folly::LifoSem>
 class LifoSemMPMCQueue : public BlockingQueue<T> {
  public:
   // Note: The queue pre-allocates all memory for max_capacity
-  explicit LifoSemMPMCQueue(size_t max_capacity) : queue_(max_capacity) {}
+  explicit LifoSemMPMCQueue(
+      size_t max_capacity,
+      const typename Semaphore::Options& semaphoreOptions = {})
+      : sem_(semaphoreOptions), queue_(max_capacity) {}
 
   BlockingQueueAddResult add(T item) override {
     switch (kBehavior) { // static
@@ -65,7 +71,7 @@ class LifoSemMPMCQueue : public BlockingQueue<T> {
   size_t size() override { return queue_.size(); }
 
  private:
-  folly::LifoSem sem_;
+  Semaphore sem_;
   folly::MPMCQueue<T> queue_;
 };
 

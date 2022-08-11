@@ -22,10 +22,12 @@
 
 namespace folly {
 
-template <class T>
+template <class T, class Semaphore = folly::LifoSem>
 class UnboundedBlockingQueue : public BlockingQueue<T> {
  public:
-  virtual ~UnboundedBlockingQueue() {}
+  explicit UnboundedBlockingQueue(
+      const typename Semaphore::Options& semaphoreOptions = {})
+      : sem_(semaphoreOptions) {}
 
   BlockingQueueAddResult add(T item) override {
     queue_.enqueue(std::move(item));
@@ -47,7 +49,7 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
   size_t size() override { return queue_.size(); }
 
  private:
-  LifoSem sem_;
+  Semaphore sem_;
   UMPMCQueue<T, false, 6> queue_;
 };
 
