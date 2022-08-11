@@ -27,6 +27,27 @@
 
 namespace folly {
 
+class EDFThreadPoolSemaphore {
+ public:
+  virtual ~EDFThreadPoolSemaphore() = default;
+  virtual void post(uint32_t value) = 0;
+  virtual void wait() = 0;
+};
+
+template <class Semaphore>
+class EDFThreadPoolSemaphoreImpl : public EDFThreadPoolSemaphore {
+ public:
+  template <class... Args>
+  explicit EDFThreadPoolSemaphoreImpl(Args&&... args)
+      : sem_(std::forward<Args>(args)...) {}
+
+  void post(uint32_t value) override { sem_.post(value); }
+  void wait() override { sem_.wait(); }
+
+ private:
+  Semaphore sem_;
+};
+
 /**
  * `EDFThreadPoolExecutor` is a `SoftRealTimeExecutor` that implements
  * the earliest-deadline-first scheduling policy.
@@ -44,7 +65,9 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   explicit EDFThreadPoolExecutor(
       std::size_t numThreads,
       std::shared_ptr<ThreadFactory> threadFactory =
-          std::make_shared<NamedThreadFactory>("EDFThreadPool"));
+          std::make_shared<NamedThreadFactory>("EDFThreadPool"),
+      std::unique_ptr<EDFThreadPoolSemaphore> semaphore =
+          std::make_unique<EDFThreadPoolSemaphoreImpl<folly::LifoSem>>());
 
   ~EDFThreadPoolExecutor() override;
 
@@ -67,7 +90,7 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   std::shared_ptr<Task> take();
 
   std::unique_ptr<TaskQueue> taskQueue_;
-  LifoSem sem_;
+  std::unique_ptr<EDFThreadPoolSemaphore> sem_;
   std::atomic<int> threadsToStop_{0};
 
   // All operations performed on `numIdleThreads_` explicitly specify memory
