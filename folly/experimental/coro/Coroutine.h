@@ -27,7 +27,17 @@
 
 #if FOLLY_HAS_COROUTINES
 
-#if __has_include(<coroutine>) && !defined(LLVM_COROUTINES)
+// libc++'s <coroutine> header only provides its declarations for C++20 and
+// above, so we need to fall back to <experimental/coroutine> when building with
+// C++17.
+#if __has_include(<coroutine>) && !defined(LLVM_COROUTINES) && \
+    (!defined(_LIBCPP_VERSION) || __cplusplus > 201703L)
+#define FOLLY_USE_STD_COROUTINE 1
+#else
+#define FOLLY_USE_STD_COROUTINE 0
+#endif
+
+#if FOLLY_USE_STD_COROUTINE
 #include <coroutine>
 #else
 #include <experimental/coroutine>
@@ -52,7 +62,7 @@ struct AsyncStackFrame;
 
 namespace folly::coro {
 
-#if __has_include(<coroutine>) && !defined(LLVM_COROUTINES)
+#if FOLLY_USE_STD_COROUTINE
 namespace impl = std;
 #else
 namespace impl = std::experimental;
