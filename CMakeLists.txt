@@ -27,8 +27,19 @@ if(POLICY CMP0075)
   cmake_policy(SET CMP0075 NEW)
 endif()
 
-string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
-set(IS_X86_64_ARCH NOT(IS_X86_64_ARCH STREQUAL "-1"))
+if("${CMAKE_LIBRARY_ARCHITECTURE}" STREQUAL "")
+  # CMAKE_LIBRARY_ARCHITECTURE is not always set, so we have to assume
+  # arch might be x86_64
+  message(WARNING "CMAKE_LIBRARY_ARCHITECTURE not set, assuming x86_64")
+  set(IS_X86_64_ARCH ON)
+else()
+  string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
+  if(IS_X86_64_ARCH STREQUAL "-1")
+    set(IS_X86_64_ARCH OFF)
+  else()
+    set(IS_X86_64_ARCH ON)
+  endif()
+endif()
 
 # includes
 set(CMAKE_MODULE_PATH
@@ -230,7 +241,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 # base64 SIMD files compilation
-if (${IS_X86_64_ARCH})
+if (NOT(${IS_X86_64_ARCH}))
   message(
     STATUS
     "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
@@ -256,7 +267,7 @@ else()
 endif()
 
 if (${LIBSODIUM_FOUND})
-  if (${IS_X86_64_ARCH})
+  if (NOT(${IS_X86_64_ARCH}))
     message(
       STATUS
       "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
