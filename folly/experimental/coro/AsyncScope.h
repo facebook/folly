@@ -242,6 +242,14 @@ class CancellableAsyncScope {
     cancellationSource_.requestCancellation();
   }
 
+  // Query if cancellation was requested on the tasks added to this AsyncScope.
+  // This will return true if either cancellation was requested using
+  // `requestCancellation` method of this scope OR if cancellation is requested
+  // on the token passed into the constructor.
+  bool isScopeCancellationRequested() const noexcept {
+    return cancellationToken_.isCancellationRequested();
+  }
+
   // Request cancellation then asynchronously wait for all started tasks to
   // complete.
   //

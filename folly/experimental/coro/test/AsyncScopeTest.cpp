@@ -172,6 +172,81 @@ CO_TEST_F(CancellableAsyncScopeTest, QueryRemainingCount) {
   CO_ASSERT_EQ(0, scope.remaining());
 }
 
+CO_TEST_F(CancellableAsyncScopeTest, QueryIsCancellationRequested) {
+  using namespace std::chrono_literals;
+
+  auto makeTask = [&]() -> folly::coro::Task<> {
+    while (true) {
+      co_await folly::coro::sleep(500s);
+    }
+  };
+  auto executor = co_await folly::coro::co_current_executor;
+
+  // default constructed scope
+  folly::coro::CancellableAsyncScope scope;
+  CO_ASSERT_EQ(false, scope.isScopeCancellationRequested());
+  for (int i = 0; i < 10; ++i) {
+    scope.add(makeTask().scheduleOn(executor));
+  }
+  CO_ASSERT_EQ(10, scope.remaining());
+
+  co_await scope.cancelAndJoinAsync();
+  CO_ASSERT_EQ(true, scope.isScopeCancellationRequested());
+  CO_ASSERT_EQ(0, scope.remaining());
+
+  // construct scope using external CancellationSource and cancel using the
+  // external cancellationSource
+  folly::CancellationSource source;
+  folly::coro::CancellableAsyncScope scope2(source.getToken());
+
+  CO_ASSERT_EQ(0, scope2.remaining());
+  for (int i = 0; i < 10; ++i) {
+    scope2.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+  }
+  CO_ASSERT_EQ(10, scope2.remaining());
+  CO_ASSERT_EQ(false, scope2.isScopeCancellationRequested());
+
+  source.requestCancellation();
+  CO_ASSERT_EQ(true, scope2.isScopeCancellationRequested());
+  co_await scope2.joinAsync();
+  CO_ASSERT_EQ(0, scope2.remaining());
+
+  source = {};
+  // construct scope using external CancellationSource and cancel using the
+  // class's cancellation source
+  folly::coro::CancellableAsyncScope scope3(source.getToken());
+
+  CO_ASSERT_EQ(0, scope3.remaining());
+  for (int i = 0; i < 10; ++i) {
+    scope3.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+  }
+  CO_ASSERT_EQ(10, scope3.remaining());
+  CO_ASSERT_EQ(false, scope3.isScopeCancellationRequested());
+  co_await scope3.cancelAndJoinAsync();
+  CO_ASSERT_EQ(true, scope3.isScopeCancellationRequested());
+  CO_ASSERT_EQ(0, scope3.remaining());
+
+  source = {};
+  // default scope construction; each task is added with custom cancellation
+  // token
+  folly::coro::CancellableAsyncScope scope4;
+  CO_ASSERT_EQ(0, scope4.remaining());
+  for (int i = 0; i < 10; ++i) {
+    scope4.add(
+        makeTask().scheduleOn(folly::getGlobalCPUExecutor()),
+        source.getToken());
+  }
+  CO_ASSERT_EQ(10, scope4.remaining());
+  source.requestCancellation();
+  CO_ASSERT_EQ(source.isCancellationRequested(), true);
+  CO_ASSERT_EQ(false, scope4.isScopeCancellationRequested());
+  co_await scope4.joinAsync();
+  // this is false since we the token that is used is not part of the AsyncScope
+  // state
+  CO_ASSERT_EQ(false, scope4.isScopeCancellationRequested());
+  CO_ASSERT_EQ(0, scope4.remaining());
+}
+
 CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWork) {
   using namespace std::chrono_literals;
 
