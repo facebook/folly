@@ -294,6 +294,20 @@ ssize_t recvfrom(
         nullptr,
         nullptr);
 
+    // Attempt to disable ICMP behavior which kills the socket.
+    BOOL connReset = false;
+    DWORD bytesReturned = 0;
+    WSAIoctl(
+        h,
+        SIO_UDP_CONNRESET,
+        &connReset,
+        sizeof(connReset),
+        nullptr,
+        0,
+        &bytesReturned,
+        nullptr,
+        nullptr);
+
     DWORD bytesReceived;
     int res = WSARecvMsg(h, &wMsg, &bytesReceived, nullptr, nullptr);
     errno = translate_wsa_error(WSAGetLastError());
@@ -323,13 +337,9 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
   (void)flags;
   SOCKET h = s.data;
 
-  // Don't currently support the name translation.
-  if (message->msg_name != nullptr || message->msg_namelen != 0) {
-    return (ssize_t)-1;
-  }
   WSAMSG msg;
-  msg.name = nullptr;
-  msg.namelen = 0;
+  msg.name = (LPSOCKADDR)message->msg_name;
+  msg.namelen = message->msg_namelen;
   msg.Control.buf = (CHAR*)message->msg_control;
   msg.Control.len = (ULONG)message->msg_controllen;
   msg.dwFlags = 0;
@@ -355,6 +365,20 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
       &WSARecvMsg,
       sizeof(WSARecvMsg),
       &recMsgBytes,
+      nullptr,
+      nullptr);
+
+  // Attempt to disable ICMP behavior which kills the socket.
+  BOOL connReset = false;
+  DWORD bytesReturned = 0;
+  WSAIoctl(
+      h,
+      SIO_UDP_CONNRESET,
+      &connReset,
+      sizeof(connReset),
+      nullptr,
+      0,
+      &bytesReturned,
       nullptr,
       nullptr);
 
