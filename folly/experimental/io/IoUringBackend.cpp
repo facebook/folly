@@ -545,8 +545,9 @@ std::unique_ptr<ProvidedBufferRing> makeProvidedBufferRing(Args&&... args) {
 
 #else
 
-template <class T...>
-std::unique_ptr<ProvidedBufferRing> makeProvidedBufferRing() {
+template <class... Args>
+std::unique_ptr<IoUringBackend::ProvidedBufferProviderBase>
+makeProvidedBufferRing(Args&&...) {
   throw IoUringBackend::NotAvailable(
       "Provided buffer rings not compiled into this binary");
 }
