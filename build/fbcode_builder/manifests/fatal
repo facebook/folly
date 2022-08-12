@@ -13,3 +13,6 @@ fbcode/fatal/public_tld = .
 [build]
 builder = nop
 subdir = .
+
+[install.files]
+. = fatal

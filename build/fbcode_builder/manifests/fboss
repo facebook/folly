@@ -24,6 +24,7 @@ fmt
 libsodium
 googletest
 zstd
+fatal
 fbthrift
 iproute2
 libmnl
