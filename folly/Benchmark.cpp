@@ -276,12 +276,11 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
     return std::make_pair(NAN, UserCounters());
   }
 
-  double geomeanNsec = 1.0;
+  double geomeanNsec = 0.0;
   for (size_t tryId = trialP25; tryId < trialP75; tryId++) {
-    geomeanNsec *= trialResults[tryId].first;
+    geomeanNsec += std::log(trialResults[tryId].first);
   }
-  geomeanNsec =
-      std::pow(geomeanNsec, 1.0 / static_cast<double>(trialP75 - trialP25));
+  geomeanNsec = std::exp(geomeanNsec / (1.0 * (trialP75 - trialP25)));
 
   return std::make_pair(
       geomeanNsec, trialResults[trialP25 + (trialP75 - trialP25) / 2].second);
