@@ -210,14 +210,18 @@ class ThrottledLifoSem {
             std::is_same<Clock, std::chrono::steady_clock>::value
             ? now
             : std::chrono::steady_clock::now();
-        const auto nextWakeup =
-            std::exchange(lastWakeup_, steadyNow) + options_.wakeUpInterval;
+        const auto nextWakeup = lastWakeup_ + options_.wakeUpInterval;
         const auto sleep = std::min(
             nextWakeup - steadyNow,
             std::chrono::duration_cast<std::chrono::nanoseconds>(
                 deadline - now));
         if (sleep.count() > 0) {
           /* sleep override */ std::this_thread::sleep_for(sleep);
+          // Update with the intended wake-up time instead of the current time,
+          // so if sleep_for oversleeps we'll correct in the next sleep.
+          lastWakeup_ = steadyNow + sleep;
+        } else {
+          lastWakeup_ = steadyNow;
         }
       }
 
