@@ -40,6 +40,16 @@ extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_pre_hook(uint64_t* call_time);
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
     uint64_t call_time, int ret);
 
+// there is no builtin macro we can use in liburing to tell what version we are
+// on or if features are supported. We will try and get this into the next
+// release but for now in the latest release there was also added multishot
+// accept - and so we can use it's pressence to suggest that we can safely use
+// newer features
+#if defined(IORING_ACCEPT_MULTISHOT)
+#define FOLLY_IO_URING_UP_TO_DATE 1
+#else
+#define FOLLY_IO_URING_UP_TO_DATE 0
+#endif
 namespace folly {
 
 namespace {
@@ -296,11 +306,7 @@ std::chrono::time_point<std::chrono::steady_clock> getTimerExpireTime(
   return now + us;
 }
 
-// there is no builtin macro we can use in liburing to tell if buffer rings are
-// supported. However in the release that added them, there was also added
-// multishot accept - and so we can use it's pressence to suggest that we can
-// safely use provided buffer rings
-#if defined(IORING_ACCEPT_MULTISHOT)
+#if FOLLY_IO_URING_UP_TO_DATE
 
 class ProvidedBuffersBuffer {
  public:
@@ -738,7 +744,11 @@ IoUringBackend::IoUringBackend(Options options)
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = options.capacity;
   if (options_.taskRunCoop) {
+#if FOLLY_IO_URING_UP_TO_DATE
     params_.flags |= IORING_SETUP_COOP_TASKRUN;
+#else
+    // this has no functional change so just leave it
+#endif
   }
 
   // poll SQ options
@@ -1237,9 +1247,12 @@ int IoUringBackend::eb_event_base_loop(int flags) {
     }
 
     if (options_.registerRingFd) {
+      // registering just has some perf impact, so no need to fall back
+#if FOLLY_IO_URING_UP_TO_DATE
       if (io_uring_register_ring_fd(&ioRing_) < 0) {
         LOG(ERROR) << "unable to register io_uring ring fd";
       }
+#endif
     }
   }
 
@@ -1496,9 +1509,11 @@ void IoUringBackend::cancel(IoSqeBase* ioSqe) {
   auto* sqe = get_sqe();
   io_uring_prep_cancel64(sqe, (uint64_t)ioSqe, 0);
   io_uring_sqe_set_data(sqe, (void*)&ioSqeNop); // just need something unique
+#if FOLLY_IO_URING_UP_TO_DATE
   if (params_.features & IORING_FEAT_CQE_SKIP) {
     sqe->flags |= IOSQE_CQE_SKIP_SUCCESS;
   }
+#endif
 }
 
 int IoUringBackend::cancelOne(IoSqe* ioSqe) {
@@ -1848,9 +1863,15 @@ void IoUringBackend::processFileOp(IoSqe* sqe, int64_t res) noexcept {
 }
 
 bool IoUringBackend::kernelHasNonBlockWriteFixes() const {
+#if FOLLY_IO_URING_UP_TO_DATE
   // this was fixed in 5.18, which introduced linked file
   // fixed in "io_uring: only wake when the correct events are set"
   return params_.features & IORING_FEAT_LINKED_FILE;
+#else
+  // this indicates that sockets have to manually remove O_NONBLOCK
+  // which is a bit slower but shouldnt cause any functional changes
+  return false;
+#endif
 }
 
 namespace {
