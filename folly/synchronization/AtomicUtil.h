@@ -24,6 +24,31 @@
 
 namespace folly {
 
+namespace detail {
+struct atomic_value_type_alias_ {
+  template <typename Atomic>
+  using apply = typename Atomic::value_type;
+};
+struct atomic_value_type_load_ {
+  template <typename Atomic>
+  using apply = decltype(std::declval<Atomic const&>().load());
+};
+} // namespace detail
+
+//  atomic_value_type_t
+//  atomic_value_type
+//
+//  A trait type alias and type giving the effective value-type of a type which
+//  are atomic-like. Either member type alias value_type or the return type of
+//  member function load.
+template <typename Atomic>
+using atomic_value_type_t = typename conditional_t<
+    is_detected_v<detail::atomic_value_type_alias_::apply, Atomic>,
+    detail::atomic_value_type_alias_,
+    detail::atomic_value_type_load_>::template apply<Atomic>;
+template <typename Atomic>
+struct atomic_value_type : type_t<atomic_value_type_t<Atomic>> {};
+
 //  atomic_compare_exchange_weak_explicit
 //
 //  Fix TSAN bug in std::atomic_compare_exchange_weak_explicit.

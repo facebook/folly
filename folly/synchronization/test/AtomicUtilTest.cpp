@@ -32,6 +32,9 @@ static constexpr auto release = std::memory_order_release;
 static constexpr auto acq_rel = std::memory_order_acq_rel;
 static constexpr auto seq_cst = std::memory_order_seq_cst;
 
+static_assert(
+    std::is_same_v<int, folly::atomic_value_type_t<std::atomic<int>>>);
+
 namespace folly {
 
 class AtomicCompareExchangeSuccTest : public testing::Test {};

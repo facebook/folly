@@ -17,9 +17,23 @@
 #include <folly/synchronization/RelaxedAtomic.h>
 
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/AtomicUtil.h>
 
 // gcc7.5 appears to have trouble with these deductions
 #if !__GNUC__ || __GNUC__ >= 8 || __clang__
+
+static_assert( //
+    std::is_same_v< //
+        int,
+        folly::atomic_value_type_t<folly::relaxed_atomic<int>>>);
+static_assert( //
+    std::is_same_v< //
+        bool,
+        folly::atomic_value_type_t<folly::relaxed_atomic<bool>>>);
+static_assert( //
+    std::is_same_v< //
+        void*,
+        folly::atomic_value_type_t<folly::relaxed_atomic<void*>>>);
 
 class RelaxedAtomicTest : public testing::Test {};
 
