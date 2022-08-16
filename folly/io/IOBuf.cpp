@@ -141,14 +141,13 @@ struct IOBuf::HeapStorage {
   folly::IOBuf buf;
 };
 
-struct IOBuf::HeapFullStorage {
+struct alignas(folly::max_align_v) IOBuf::HeapFullStorage {
   // Make sure jemalloc allocates from the 64-byte class.  Putting this here
   // because HeapStorage is private so it can't be at namespace level.
   static_assert(sizeof(HeapStorage) <= 64, "IOBuf may not grow over 56 bytes!");
 
   HeapStorage hs;
   SharedInfo shared;
-  folly::max_align_t align;
 };
 
 IOBuf::SharedInfo::SharedInfo()
@@ -360,7 +359,7 @@ unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
 
   // To save a memory allocation, allocate space for the IOBuf object, the
   // SharedInfo struct, and the data itself all with a single call to malloc().
-  size_t requiredStorage = offsetof(HeapFullStorage, align) + capacity;
+  size_t requiredStorage = sizeof(HeapFullStorage) + capacity;
   size_t mallocSize = goodMallocSize(requiredStorage);
   auto storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
@@ -371,7 +370,7 @@ unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
     io_buf_alloc_cb(storage, mallocSize);
   }
 
-  auto bufAddr = reinterpret_cast<uint8_t*>(&storage->align);
+  auto bufAddr = reinterpret_cast<uint8_t*>(storage) + sizeof(HeapFullStorage);
   uint8_t* storageEnd = reinterpret_cast<uint8_t*>(storage) + mallocSize;
   auto actualCapacity = size_t(storageEnd - bufAddr);
   unique_ptr<IOBuf> ret(new (&storage->hs.buf) IOBuf(
@@ -412,7 +411,7 @@ size_t IOBuf::goodSize(size_t minCapacity, CombinedOption combined) {
   }
   size_t overhead;
   if (combined == CombinedOption::COMBINED) {
-    overhead = offsetof(HeapFullStorage, align);
+    overhead = sizeof(HeapFullStorage);
   } else {
     // Pad minCapacity to a multiple of 8
     minCapacity = (minCapacity + 7) & ~7;

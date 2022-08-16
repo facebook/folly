@@ -78,8 +78,7 @@ void testAllocSize(uint32_t requestedCapacity) {
 }
 
 TEST(IOBuf, AllocSizes) {
-  // cover small evil values exhaustively, including the
-  // kDefaultCombinedBufSize transition.
+  // Cover small evil values exhaustively.
   for (uint32_t i = 0; i < 1234; i++) {
     testAllocSize(i);
   }
@@ -893,7 +892,14 @@ TEST(IOBuf, takeOwnershipUniquePtr) {
 TEST(IOBuf, Alignment) {
   size_t alignment = alignof(std::max_align_t);
 
-  std::vector<size_t> sizes{0, 1, 64, 256, 1024, 1 << 10};
+  std::vector<size_t> sizes;
+  sizes.reserve(259);
+  for (size_t i = 0; i <= 256; i++) {
+    sizes.push_back(i);
+  }
+  sizes.push_back(1024);
+  sizes.push_back(1 << 10);
+
   for (size_t size : sizes) {
     auto buf = IOBuf::create(size);
     uintptr_t p = reinterpret_cast<uintptr_t>(buf->data());
