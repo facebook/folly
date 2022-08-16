@@ -1460,6 +1460,15 @@ class LockedPtr {
     return transition_to_shared_lock(lock_);
   }
 
+  SynchronizedType* parent() const {
+    using simulacrum = typename SynchronizedType::Simulacrum;
+    static_assert(sizeof(simulacrum) == sizeof(SynchronizedType), "mismatch");
+    static_assert(alignof(simulacrum) == alignof(SynchronizedType), "mismatch");
+    constexpr auto off = offsetof(simulacrum, mutex_);
+    const auto raw = reinterpret_cast<char*>(lock_.mutex());
+    return reinterpret_cast<SynchronizedType*>(raw - (raw ? off : 0));
+  }
+
  private:
   /* implicit */ LockedPtr(LockType lock) noexcept : lock_{std::move(lock)} {}
 
@@ -1492,15 +1501,6 @@ class LockedPtr {
     DCHECK(parent);
     DCHECK(!lock_.owns_lock());
     lock_ = doLock(parent->mutex_);
-  }
-
-  SynchronizedType* parent() const {
-    using simulacrum = typename SynchronizedType::Simulacrum;
-    static_assert(sizeof(simulacrum) == sizeof(SynchronizedType), "mismatch");
-    static_assert(alignof(simulacrum) == alignof(SynchronizedType), "mismatch");
-    constexpr auto off = offsetof(simulacrum, mutex_);
-    const auto raw = reinterpret_cast<char*>(lock_.mutex());
-    return reinterpret_cast<SynchronizedType*>(raw - (raw ? off : 0));
   }
 
   LockType lock_;
