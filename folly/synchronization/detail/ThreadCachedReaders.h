@@ -85,6 +85,7 @@ class ThreadCachedReaders {
   };
   folly::ThreadLocalPtr<EpochCount, ThreadCachedTag> cs_;
 
+  // may abort if internal allocations fail
   void init() {
     auto ret = new EpochCount(this);
     cs_.reset(ret);
