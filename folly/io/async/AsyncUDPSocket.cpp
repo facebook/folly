@@ -83,11 +83,10 @@ static constexpr bool msgErrQueueSupported =
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
 AsyncUDPSocket::AsyncUDPSocket(EventBase* evb)
-    : EventHandler(CHECK_NOTNULL(evb)),
-      readCallback_(nullptr),
-      eventBase_(evb),
-      fd_() {
-  evb->dcheckIsInEventBaseThread();
+    : EventHandler(evb), readCallback_(nullptr), eventBase_(evb), fd_() {
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 }
 
 AsyncUDPSocket::~AsyncUDPSocket() {
