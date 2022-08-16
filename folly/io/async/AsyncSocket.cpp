@@ -35,6 +35,7 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/SocketOptionMap.h>
+#include <folly/lang/CheckedMath.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/SysMman.h>
@@ -252,8 +253,15 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     assert(opCount > 0);
     // Since we put a variable size iovec array at the end
     // of each BytesWriteRequest, we have to manually allocate the memory.
-    void* buf =
-        malloc(sizeof(BytesWriteRequest) + (opCount * sizeof(struct iovec)));
+    uint32_t bufSize = 0;
+    if (!checked_muladd<uint32_t>(
+            &bufSize,
+            opCount,
+            sizeof(struct iovec),
+            sizeof(BytesWriteRequest))) {
+      throw std::bad_alloc();
+    }
+    void* buf = malloc(bufSize);
     if (buf == nullptr) {
       throw std::bad_alloc();
     }
