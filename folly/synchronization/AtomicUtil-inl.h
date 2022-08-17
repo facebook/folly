@@ -23,6 +23,7 @@
 #include <type_traits>
 
 #include <folly/ConstexprMath.h>
+#include <folly/Likely.h>
 
 #ifdef _WIN32
 #include <intrin.h>
@@ -468,6 +469,16 @@ bool atomic_fetch_flip_fn::operator()(
     Atomic& atomic, std::size_t bit, std::memory_order mo) const {
   detail::atomic_fetch_bit_op_check_(atomic, bit);
   return detail::atomic_fetch_flip_native(atomic, bit, mo);
+}
+
+template <typename Atomic, typename Op>
+atomic_value_type_t<Atomic> atomic_fetch_modify_fn::operator()(
+    Atomic& atomic, Op op, std::memory_order const mo) const {
+  auto curr = atomic.load(std::memory_order_relaxed);
+  auto const& cref = curr;
+  while (FOLLY_UNLIKELY(!atomic.compare_exchange_weak(curr, op(cref), mo)))
+    ;
+  return curr;
 }
 
 } // namespace folly

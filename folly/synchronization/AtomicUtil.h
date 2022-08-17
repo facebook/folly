@@ -142,6 +142,36 @@ struct atomic_fetch_flip_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr atomic_fetch_flip_fn atomic_fetch_flip{};
 
+//  atomic_fetch_modify
+//
+//  Atomically modifies the value in the atomic by loading the value, passing it
+//  to the operation op, and storing the result, but without risk of race from
+//  interleaving accesses.
+//
+//  Example:
+//
+//    int atomic_fetch_nonnegative(std::atomic<int>& atomic) {
+//      auto const op = [](int value) { return std::max(value, 0); };
+//      return folly::atomic_fetch_modify(x, op);
+//    }
+//
+//  The implementation is just a c/x-loop. It is intended for use when other
+//  specialized and optimized forms of atomic-fetch-modify are inapplicable.
+//
+//  A single call to this function will call op at least one time, but with no
+//  upper bound on the number of times. It is expected that op be free of side-
+//  effect.
+//
+//  Does not attempt to handle ABA scenarios.
+struct atomic_fetch_modify_fn {
+  template <typename Atomic, typename Op>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic,
+      Op op,
+      std::memory_order = std::memory_order_seq_cst) const;
+};
+FOLLY_INLINE_VARIABLE constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
+
 } // namespace folly
 
 #include <folly/synchronization/AtomicUtil-inl.h>

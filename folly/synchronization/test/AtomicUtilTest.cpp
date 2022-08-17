@@ -16,6 +16,7 @@
 
 #include <folly/synchronization/AtomicUtil.h>
 
+#include <thread>
 #include <utility>
 
 #include <folly/Benchmark.h>
@@ -579,5 +580,69 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
 INSTANTIATE_TYPED_TEST_SUITE_P(
     std_atomic_ref, AtomicFetchFlipTest, atomic_ref_of<std::atomic_ref>);
 #endif
+
+struct AtomicFetchModifyTest : testing::Test {};
+
+TEST_F(AtomicFetchModifyTest, example) {
+  constexpr auto prime255 = 1619;
+  constexpr auto op = [](auto _) { return (_ + 3) % prime255; };
+  std::atomic<int> cell{2};
+  auto const prev = folly::atomic_fetch_modify(cell, op, relaxed);
+  EXPECT_EQ(2, prev);
+  EXPECT_EQ(5, cell.load(relaxed));
+}
+
+TEST_F(AtomicFetchModifyTest, contention) {
+  constexpr auto prime255 = 1619;
+  constexpr size_t lg_nthreads = 6;
+  constexpr size_t lg_required_contention = 9;
+  constexpr auto iterate = [](auto v, size_t c, auto f) {
+    while (c--) {
+      v = f(v);
+    }
+    return v;
+  };
+  constexpr auto op_ = [](auto _) { return (_ + 3) % prime255; };
+
+  // run concurrent atomic-fetch-modify ops until enough contention is observed,
+  // where contention observed is ~ number of times an op is repeated
+
+  std::atomic<int> cell{2};
+  std::atomic<size_t> iters{0};
+  std::atomic<size_t> calls{0};
+  auto const op = [&](auto const _) {
+    calls.fetch_add(1, relaxed);
+    return op_(_);
+  };
+  std::vector<std::thread> threads(1ULL << lg_nthreads);
+  std::atomic<bool> stop{false};
+  for (auto& th : threads) {
+    th = std::thread([&] {
+      while (!stop.load(relaxed)) {
+        iters.fetch_add(1, relaxed); // incr first
+        folly::atomic_fetch_modify(cell, op, relaxed);
+      }
+    });
+  }
+
+  constexpr auto required_contention =
+      to_signed(1ULL << lg_required_contention);
+  auto const contention = [&] {
+    auto const c = folly::to_signed(calls.load(relaxed));
+    auto const i = folly::to_signed(iters.load(relaxed));
+    return c < prime255 || i < prime255 ? 0 : c - i;
+  };
+  while (contention() < required_contention)
+    ;
+  stop.store(true, relaxed);
+  for (auto& th : threads) {
+    th.join();
+  }
+  ASSERT_GE(contention(), required_contention);
+
+  // compare the contended result to an expected uncontended result
+
+  EXPECT_EQ(iterate(2, iters.load(relaxed), op_), cell.load(relaxed));
+}
 
 } // namespace folly

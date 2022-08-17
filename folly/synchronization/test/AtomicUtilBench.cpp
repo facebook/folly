@@ -136,6 +136,17 @@ FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(flip, 16, 11)
 #undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX
 #undef FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR
 
+extern "C" FOLLY_KEEP int check_folly_atomic_fetch_modify_int_incr_relaxed(
+    std::atomic<int>& cell) {
+  auto const op = [](auto _) { return _ + 1; };
+  return folly::atomic_fetch_modify(cell, op, std::memory_order_relaxed);
+}
+
+extern "C" FOLLY_KEEP int check_folly_atomic_fetch_modify_int_call_relaxed(
+    std::atomic<int>& cell, int (*op)(int)) {
+  return folly::atomic_fetch_modify(cell, op, std::memory_order_relaxed);
+}
+
 namespace {
 
 enum class what { drop, keep, cond };
