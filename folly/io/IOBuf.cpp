@@ -224,9 +224,12 @@ void IOBuf::operator delete(void* /* ptr */, void* /* placement */) {
 void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept {
   CHECK_EQ(storage->prefix.magic, static_cast<uint16_t>(kHeapMagic));
 
-  // Use relaxed memory order here.  If we are unlucky and happen to get
-  // out-of-date data the compare_exchange_weak() call below will catch
-  // it and load new data with memory_order_acq_rel.
+  // This function is effectively used as a memory barrier.  Logically, we can
+  // use relaxed memory order here.  If we are unlucky and happen to get
+  // out-of-date data the compare_exchange_weak() call below will catch it and
+  // load new data with memory_order_acq_rel.  However, changing this to be
+  // std::memory_order_relaxed will cause tsan to find problems with some
+  // caller code.
   auto flags = storage->prefix.flags.load(std::memory_order_acquire);
   DCHECK_EQ((flags & freeFlags), freeFlags);
 
