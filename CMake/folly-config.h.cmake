@@ -16,6 +16,10 @@
 
 #pragma once
 
+#ifdef __APPLE__
+#include <TargetConditionals.h> // @manual
+#endif
+
 #if !defined(FOLLY_MOBILE)
 #if defined(__ANDROID__) || \
     (defined(__APPLE__) &&  \
