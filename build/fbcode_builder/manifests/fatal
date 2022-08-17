@@ -7,7 +7,7 @@ shipit_project = fatal
 repo_url = https://github.com/facebook/fatal.git
 
 [shipit.pathmap]
-fbcode/fatal = .
+fbcode/fatal = fatal
 fbcode/fatal/public_tld = .
 
 [build]
@@ -15,4 +15,6 @@ builder = nop
 subdir = .
 
 [install.files]
-. = fatal
+fatal/portability.h = fatal/portability.h
+fatal/type = fatal/type
+fatal/container = fatal/container
