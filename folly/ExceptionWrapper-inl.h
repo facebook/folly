@@ -210,68 +210,11 @@ inline exception_wrapper exception_wrapper::InPlace<Ex>::get_exception_ptr_(
   }
 }
 
-template <class Ex>
-[[noreturn]] inline void exception_wrapper::SharedPtr::Impl<Ex>::throw_()
-    const {
-  throw ex_;
-}
-template <class Ex>
-inline std::exception const*
-exception_wrapper::SharedPtr::Impl<Ex>::get_exception_() const noexcept {
-  return as_exception_or_null_(ex_);
-}
-template <class Ex>
-inline exception_wrapper
-exception_wrapper::SharedPtr::Impl<Ex>::get_exception_ptr_() const noexcept {
-  try {
-    throw_();
-  } catch (...) {
-    return exception_wrapper{std::current_exception()};
-  }
-}
-inline void exception_wrapper::SharedPtr::copy_(
-    exception_wrapper const* from, exception_wrapper* to) {
-  ::new (static_cast<void*>(std::addressof(to->sptr_))) SharedPtr(from->sptr_);
-}
-inline void exception_wrapper::SharedPtr::move_(
-    exception_wrapper* from, exception_wrapper* to) {
-  ::new (static_cast<void*>(std::addressof(to->sptr_)))
-      SharedPtr(std::move(from->sptr_));
-  delete_(from);
-}
-inline void exception_wrapper::SharedPtr::delete_(exception_wrapper* that) {
-  that->sptr_.~SharedPtr();
-  that->vptr_ = &uninit_;
-}
-[[noreturn]] inline void exception_wrapper::SharedPtr::throw_(
-    exception_wrapper const* that) {
-  that->sptr_.ptr_->throw_();
-  folly::assume_unreachable();
-}
-inline std::type_info const* exception_wrapper::SharedPtr::type_(
-    exception_wrapper const* that) {
-  return that->sptr_.ptr_->info_;
-}
-inline std::exception const* exception_wrapper::SharedPtr::get_exception_(
-    exception_wrapper const* that) {
-  return that->sptr_.ptr_->get_exception_();
-}
-inline exception_wrapper exception_wrapper::SharedPtr::get_exception_ptr_(
-    exception_wrapper const* that) {
-  return that->sptr_.ptr_->get_exception_ptr_();
-}
-
 template <class Ex, typename... As>
 inline exception_wrapper::exception_wrapper(
     ThrownTag, in_place_type_t<Ex>, As&&... as)
     : eptr_{std::make_exception_ptr(Ex(std::forward<As>(as)...))},
       vptr_(&ExceptionPtr::ops_) {}
-
-template <class Ex, typename... As>
-inline exception_wrapper::exception_wrapper(
-    OnHeapTag, in_place_type_t<Ex>, As&&... as)
-    : sptr_{std::make_shared<SharedPtr::Impl<Ex>>(std::forward<As>(as)...)},
-      vptr_(&SharedPtr::ops_) {}
 
 template <class Ex, typename... As>
 inline exception_wrapper::exception_wrapper(

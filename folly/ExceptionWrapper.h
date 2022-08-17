@@ -140,13 +140,11 @@ class exception_wrapper final {
   struct with_exception_from_fn_;
   struct with_exception_from_ex_;
 
-  // exception_wrapper is implemented as a simple variant over four
+  // exception_wrapper is implemented as a simple variant over three
   // different representations:
   //  0. Empty, no exception.
   //  1. An small object stored in-situ.
-  //  2. A larger object stored on the heap and referenced with a
-  //     std::shared_ptr.
-  //  3. A std::exception_ptr.
+  //  2. A std::exception_ptr.
   // This is accomplished with the help of a union and a pointer to a hand-
   // rolled virtual table. This virtual table contains pointers to functions
   // that know which field of the union is active and do the proper action.
@@ -197,20 +195,16 @@ class exception_wrapper final {
 
   struct ThrownTag {};
   struct InSituTag {};
-  struct OnHeapTag {};
 
   template <class T>
   using PlacementOf = std::conditional_t<
-      !IsStdException<T>::value,
-      ThrownTag,
-      std::conditional_t<
-          sizeof(T) <= sizeof(Buffer::Storage) &&
-              alignof(T) <=
-                  alignof(Buffer::Storage)&& noexcept(
-                      T(std::declval<
-                          T&&>()))&& noexcept(T(std::declval<T const&>())),
-          InSituTag,
-          OnHeapTag>>;
+      IsStdException<T>::value && //
+          sizeof(T) <= sizeof(Buffer::Storage) && //
+          alignof(T) <= alignof(Buffer::Storage)&& //
+              noexcept(T(std::declval<T&&>()))&& //
+              noexcept(T(std::declval<T const&>())),
+      InSituTag,
+      ThrownTag>;
 
   static std::exception const* as_exception_or_null_(std::exception const& ex);
   static std::exception const* as_exception_or_null_(AnyException);
@@ -248,54 +242,14 @@ class exception_wrapper final {
         get_exception_ptr_};
   };
 
-  struct SharedPtr {
-    struct Base {
-      std::type_info const* info_;
-      Base() = delete;
-      explicit Base(std::type_info const& info) : info_(&info) {}
-      virtual ~Base() {}
-      virtual void throw_() const = 0;
-      virtual std::exception const* get_exception_() const noexcept = 0;
-      virtual exception_wrapper get_exception_ptr_() const noexcept = 0;
-    };
-    template <class Ex>
-    struct Impl final : public Base {
-      static_assert(IsStdException<Ex>::value, "only deriving std::exception");
-      Ex ex_;
-      Impl() : Base{typeid(Ex)}, ex_() {}
-      // clang-format off
-      template <typename... As>
-      explicit Impl(As&&... as)
-          : Base{typeid(Ex)}, ex_(std::forward<As>(as)...) {}
-      [[noreturn]] void throw_() const override;
-      // clang-format on
-      std::exception const* get_exception_() const noexcept override;
-      exception_wrapper get_exception_ptr_() const noexcept override;
-    };
-    std::shared_ptr<Base> ptr_;
-
-    static void copy_(exception_wrapper const* from, exception_wrapper* to);
-    static void move_(exception_wrapper* from, exception_wrapper* to);
-    static void delete_(exception_wrapper* that);
-    [[noreturn]] static void throw_(exception_wrapper const* that);
-    static std::type_info const* type_(exception_wrapper const* that);
-    static std::exception const* get_exception_(exception_wrapper const* that);
-    static exception_wrapper get_exception_ptr_(exception_wrapper const* that);
-    static VTable const ops_;
-  };
-
   union {
     Buffer buff_{};
     ExceptionPtr eptr_;
-    SharedPtr sptr_;
   };
   VTable const* vptr_{&uninit_};
 
   template <class Ex, typename... As>
   exception_wrapper(ThrownTag, in_place_type_t<Ex>, As&&... as);
-
-  template <class Ex, typename... As>
-  exception_wrapper(OnHeapTag, in_place_type_t<Ex>, As&&... as);
 
   template <class Ex, typename... As>
   exception_wrapper(InSituTag, in_place_type_t<Ex>, As&&... as);

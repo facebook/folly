@@ -34,9 +34,6 @@ exception_wrapper::VTable const exception_wrapper::uninit_{
 exception_wrapper::VTable const exception_wrapper::ExceptionPtr::ops_{
     copy_, move_, delete_, throw_, type_, get_exception_, get_exception_ptr_};
 
-exception_wrapper::VTable const exception_wrapper::SharedPtr::ops_{
-    copy_, move_, delete_, throw_, type_, get_exception_, get_exception_ptr_};
-
 exception_wrapper::exception_wrapper(std::exception_ptr const& ptr) noexcept
     : exception_wrapper{folly::copy(ptr)} {}
 
