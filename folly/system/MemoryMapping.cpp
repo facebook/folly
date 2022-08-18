@@ -46,7 +46,7 @@ static constexpr ssize_t kDefaultMlockChunkSize = !folly::kMscVer
     // with the same address is a bad idea with the windows implementation.
     : (-1);
 
-FOLLY_GFLAGS_DEFINE_int64(
+DEFINE_int64(
     mlock_chunk_size,
     kDefaultMlockChunkSize,
     "Maximum bytes to mlock/munlock/munmap at once "

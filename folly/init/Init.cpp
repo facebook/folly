@@ -29,7 +29,7 @@
 #endif
 #include <folly/portability/GFlags.h>
 
-FOLLY_GFLAGS_DEFINE_string(logging, "", "Logging configuration");
+DEFINE_string(logging, "", "Logging configuration");
 
 namespace folly {
 const unsigned long kAllFatalSignals =
