@@ -281,13 +281,6 @@ class EvictingCacheMap {
     return findImpl(*this, key);
   }
 
-  const_iterator find(const TKey& key) const { return findImpl(*this, key); }
-
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
-  const_iterator find(const K& key) const {
-    return findImpl(*this, key);
-  }
-
   /**
    * Get the value associated with a specific key.  This function never
    *     promotes a found value to the head of the LRU.
