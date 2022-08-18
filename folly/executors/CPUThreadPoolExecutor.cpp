@@ -26,7 +26,7 @@
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/portability/GFlags.h>
 
-DEFINE_bool(
+FOLLY_GFLAGS_DEFINE_bool(
     dynamic_cputhreadpoolexecutor,
     true,
     "CPUThreadPoolExecutor will dynamically create and destroy threads");

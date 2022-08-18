@@ -43,7 +43,7 @@ void ThreadPoolExecutor::deregisterThreadPoolExecutor(ThreadPoolExecutor* tpe) {
   });
 }
 
-DEFINE_int64(
+FOLLY_GFLAGS_DEFINE_int64(
     threadtimeout_ms,
     60000,
     "Idle time before ThreadPoolExecutor threads are joined");

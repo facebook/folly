@@ -21,7 +21,7 @@
 #include <folly/detail/MemoryIdler.h>
 #include <folly/portability/GFlags.h>
 
-DEFINE_bool(
+FOLLY_GFLAGS_DEFINE_bool(
     dynamic_iothreadpoolexecutor,
     true,
     "IOThreadPoolExecutor will dynamically create threads");
