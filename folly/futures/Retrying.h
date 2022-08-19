@@ -207,7 +207,8 @@ Duration retryingJitteredExponentialBackoffDur(
     return Duration(0);
   }
   auto jitter = jitter_param > 0 ? std::exp(dist{0., jitter_param}(rng)) : 1.;
-  auto backoff_rep = jitter * backoff_min.count() * std::pow(2, n - 1);
+  auto backoff_rep =
+      jitter * static_cast<double>(backoff_min.count()) * std::pow(2, n - 1);
   if (UNLIKELY(backoff_rep >= static_cast<double>(backoff_max.count()))) {
     return std::max(backoff_min, backoff_max);
   }
