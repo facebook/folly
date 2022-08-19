@@ -23,7 +23,9 @@
 #if !defined(FOLLY_MOBILE)
 #if defined(__ANDROID__) || \
     (defined(__APPLE__) &&  \
-     (TARGET_IPHONE_SIMULATOR || TARGET_OS_SIMULATOR || TARGET_OS_IPHONE))
+     ((defined(TARGET_IPHONE_SIMULATOR) && TARGET_IPHONE_SIMULATOR) || \
+      (defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR) || \
+      (defined(TARGET_OS_IPHONE) && TARGET_OS_PHONE)))
 #define FOLLY_MOBILE 1
 #else
 #define FOLLY_MOBILE 0

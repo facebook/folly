@@ -16,6 +16,14 @@
 
 #include <folly/portability/Time.h>
 
+#ifdef clock_gettime
+#undef clock_gettime
+#endif
+
+#ifdef clock_getres
+#undef clock_getres
+#endif
+
 #include <folly/CPortability.h>
 #include <folly/Likely.h>
 #include <folly/Utility.h>
@@ -34,7 +42,6 @@ static void duration_to_ts(
                          .count());
 }
 
-#if !FOLLY_HAVE_CLOCK_GETTIME || FOLLY_FORCE_CLOCK_GETTIME_DEFINITION
 #if __MACH__
 #include <errno.h>
 #include <mach/mach_init.h> // @manual
@@ -99,7 +106,13 @@ static int clock_thread_cputime(struct timespec* ts) {
   return 0;
 }
 
-FOLLY_ATTR_WEAK int clock_gettime(clockid_t clk_id, struct timespec* ts) {
+int folly_clock_gettime(clockid_t clk_id, struct timespec* ts) {
+#if defined(__CLOCK_AVAILABILITY)
+  if (clock_gettime != NULL) {
+    return clock_gettime(clk_id, ts);
+  }
+#endif
+
   switch (folly::to_underlying(clk_id)) {
     case CLOCK_REALTIME: {
       auto now = std::chrono::system_clock::now().time_since_epoch();
@@ -121,7 +134,13 @@ FOLLY_ATTR_WEAK int clock_gettime(clockid_t clk_id, struct timespec* ts) {
   }
 }
 
-int clock_getres(clockid_t clk_id, struct timespec* ts) {
+int folly_clock_getres(clockid_t clk_id, struct timespec* ts) {
+#if defined(__CLOCK_AVAILABILITY)
+  if (clock_getres != NULL) {
+    return clock_getres(clk_id, ts);
+  }
+#endif
+
   if (clk_id != CLOCK_MONOTONIC) {
     return -1;
   }
@@ -168,7 +187,7 @@ static LARGE_INTEGER performanceFrequency() {
   return result;
 }
 
-extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
+extern "C" int folly_clock_getres(clockid_t clock_id, struct timespec* res) {
   if (!res) {
     errno = EFAULT;
     return -1;
@@ -210,7 +229,7 @@ extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
   }
 }
 
-extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
+extern "C" int folly_clock_gettime(clockid_t clock_id, struct timespec* tp) {
   if (!tp) {
     errno = EFAULT;
     return -1;
@@ -274,9 +293,16 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
       return -1;
   }
 }
+#elif FOLLY_HAVE_CLOCK_GETTIME
+int folly_clock_gettime(clockid_t clk_id, struct timespec* ts) {
+  return clock_gettime(clk_id, ts);
+}
+
+int folly_clock_getres(clockid_t clk_id, struct timespec* ts) {
+  return clock_getres(clk_id, ts);
+}
 #else
 #error No clock_gettime(3) compatibility wrapper available for this platform.
-#endif
 #endif
 
 #ifdef _WIN32
