@@ -16,5 +16,9 @@ subdir = .
 
 [install.files]
 fatal/portability.h = fatal/portability.h
-fatal/type = fatal/type
+fatal/preprocessor.h = fatal/preprocessor.h
 fatal/container = fatal/container
+fatal/functional = fatal/functional
+fatal/math = fatal/math
+fatal/string = fatal/string
+fatal/type = fatal/type
