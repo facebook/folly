@@ -23,7 +23,7 @@
 #include <folly/executors/QueueObserver.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
-DECLARE_bool(dynamic_cputhreadpoolexecutor);
+FOLLY_GFLAGS_DECLARE_bool(dynamic_cputhreadpoolexecutor);
 
 namespace folly {
 

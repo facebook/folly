@@ -31,12 +31,12 @@
 
 using namespace folly;
 
-DEFINE_uint32(
+FOLLY_GFLAGS_DEFINE_uint32(
     folly_global_io_executor_threads,
     0,
     "Number of threads global IOThreadPoolExecutor will create");
 
-DEFINE_uint32(
+FOLLY_GFLAGS_DEFINE_uint32(
     folly_global_cpu_executor_threads,
     0,
     "Number of threads global CPUThreadPoolExecutor will create");

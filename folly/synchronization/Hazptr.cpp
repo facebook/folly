@@ -20,7 +20,7 @@
 
 #include <folly/portability/GFlags.h>
 
-DEFINE_bool(
+FOLLY_GFLAGS_DEFINE_bool(
     folly_hazptr_use_executor,
     true,
     "Use an executor for hazptr asynchronous reclamation");

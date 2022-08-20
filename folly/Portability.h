@@ -377,13 +377,6 @@ constexpr auto kHasWeakSymbols = false;
 #endif
 #endif
 
-#if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
-namespace FOLLY_GFLAGS_NAMESPACE {}
-namespace gflags {
-using namespace FOLLY_GFLAGS_NAMESPACE;
-} // namespace gflags
-#endif
-
 // RTTI may not be enabled for this compilation unit.
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))

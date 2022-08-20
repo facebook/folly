@@ -33,7 +33,7 @@ thread_local bool ObserverManager::inManagerThread_{false};
 thread_local ObserverManager::DependencyRecorder::Dependencies*
     ObserverManager::DependencyRecorder::currentDependencies_{nullptr};
 
-DEFINE_int32(
+FOLLY_GFLAGS_DEFINE_int32(
     observer_manager_pool_size,
     4,
     "How many internal threads ObserverManager should use");

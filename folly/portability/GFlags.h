@@ -18,54 +18,105 @@
 
 #include <folly/portability/Config.h>
 
-#if !FOLLY_HAVE_LIBGFLAGS
-// glog/logging.h is dependent on this implementation detail
-// being defined otherwise it undefines all of this -_-....
-//
-// Also, this is deliberately expanded such that places using
-// it directly break loudly. (C will break louder than C++, but oh well)
-#define DECLARE_VARIABLE() \
-  static_assert(false, "You shouldn't be using GFlags internals.");
+#include <cstdint>
+#include <string>
 
-#define FOLLY_DECLARE_FLAG(_type, _shortType, _name) \
-  namespace fL##_shortType {                         \
-    extern _type FLAGS_##_name;                      \
-  }                                                  \
-  using fL##_shortType::FLAGS_##_name
-
-#define DECLARE_bool(_name) FOLLY_DECLARE_FLAG(bool, B, _name)
-#define DECLARE_double(_name) FOLLY_DECLARE_FLAG(double, D, _name)
-#define DECLARE_int32(_name) FOLLY_DECLARE_FLAG(int, I, _name)
-#define DECLARE_int64(_name) FOLLY_DECLARE_FLAG(long long, I64, _name)
-#define DECLARE_uint32(_name) FOLLY_DECLARE_FLAG(unsigned long, U32, _name)
-#define DECLARE_uint64(_name) FOLLY_DECLARE_FLAG(unsigned long long, U64, _name)
-#define DECLARE_string(_name) FOLLY_DECLARE_FLAG(std::string, S, _name)
-
-#define FOLLY_DEFINE_FLAG(_type, _shortType, _name, _default) \
-  namespace fL##_shortType {                                  \
-    _type FLAGS_##_name = _default;                           \
-  }                                                           \
-  using fL##_shortType::FLAGS_##_name
-
-#define DEFINE_bool(_name, _default, _description) \
-  FOLLY_DEFINE_FLAG(bool, B, _name, _default)
-#define DEFINE_double(_name, _default, _description) \
-  FOLLY_DEFINE_FLAG(double, D, _name, _default)
-#define DEFINE_int32(_name, _default, _description) \
-  FOLLY_DEFINE_FLAG(int, I, _name, _default)
-#define DEFINE_int64(_name, _default, _description) \
-  FOLLY_DEFINE_FLAG(long long, I64, _name, _default)
-#define DEFINE_uint32(_name, _default, _description) \
-  FOLLY_DEFINE_FLAG(unsigned long, U32, _name, _default)
-#define DEFINE_uint64(_name, _default, _description) \
-  FOLLY_DEFINE_FLAG(unsigned long long, U64, _name, _default)
-#define DEFINE_string(_name, _default, _description) \
-  FOLLY_DEFINE_FLAG(std::string, S, _name, _default)
-
-namespace google {
-class FlagSaver {};
-} // namespace google
-
-#else
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
 #include <gflags/gflags.h>
 #endif
+
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
+
+#define FOLLY_GFLAGS_DECLARE_bool(_name) DECLARE_bool(_name)
+#define FOLLY_GFLAGS_DECLARE_double(_name) DECLARE_double(_name)
+#define FOLLY_GFLAGS_DECLARE_int32(_name) DECLARE_int32(_name)
+#define FOLLY_GFLAGS_DECLARE_int64(_name) DECLARE_int64(_name)
+#define FOLLY_GFLAGS_DECLARE_uint32(_name) DECLARE_uint32(_name)
+#define FOLLY_GFLAGS_DECLARE_uint64(_name) DECLARE_uint64(_name)
+#define FOLLY_GFLAGS_DECLARE_string(_name) DECLARE_string(_name)
+
+#define FOLLY_GFLAGS_DEFINE_bool(_name, _default, _description) \
+  DEFINE_bool(_name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_double(_name, _default, _description) \
+  DEFINE_double(_name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_int32(_name, _default, _description) \
+  DEFINE_int32(_name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_int64(_name, _default, _description) \
+  DEFINE_int64(_name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_uint32(_name, _default, _description) \
+  DEFINE_uint32(_name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_uint64(_name, _default, _description) \
+  DEFINE_uint64(_name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_string(_name, _default, _description) \
+  DEFINE_string(_name, _default, _description)
+
+#else
+
+#define FOLLY_GFLAGS_DECLARE_IMPL_(_type, _shortType, _name) \
+  namespace fL##_shortType {                                 \
+    extern _type FLAGS_##_name;                              \
+  }                                                          \
+  using fL##_shortType::FLAGS_##_name
+
+#define FOLLY_GFLAGS_DEFINE_IMPL_(                    \
+    _type, _shortType, _name, _default, _description) \
+  namespace fL##_shortType {                          \
+    _type FLAGS_##_name = _default;                   \
+  }                                                   \
+  using fL##_shortType::FLAGS_##_name
+
+#define FOLLY_GFLAGS_DECLARE_bool(_name) \
+  FOLLY_GFLAGS_DECLARE_IMPL_(bool, B, _name)
+#define FOLLY_GFLAGS_DECLARE_double(_name) \
+  FOLLY_GFLAGS_DECLARE_IMPL_(double, D, _name)
+#define FOLLY_GFLAGS_DECLARE_int32(_name) \
+  FOLLY_GFLAGS_DECLARE_IMPL_(::std::int32_t, I, _name)
+#define FOLLY_GFLAGS_DECLARE_int64(_name) \
+  FOLLY_GFLAGS_DECLARE_IMPL_(::std::int64_t, I64, _name)
+#define FOLLY_GFLAGS_DECLARE_uint32(_name) \
+  FOLLY_GFLAGS_DECLARE_IMPL_(::std::uint32_t, U32, _name)
+#define FOLLY_GFLAGS_DECLARE_uint64(_name) \
+  FOLLY_GFLAGS_DECLARE_IMPL_(::std::uint64_t, U64, _name)
+#define FOLLY_GFLAGS_DECLARE_string(_name) \
+  FOLLY_GFLAGS_DECLARE_IMPL_(::std::string, S, _name)
+
+#define FOLLY_GFLAGS_DEFINE_bool(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_IMPL_(bool, B, _name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_double(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_IMPL_(double, D, _name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_int32(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_IMPL_(::std::int32_t, I, _name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_int64(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_IMPL_(::std::int64_t, I64, _name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_uint32(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_IMPL_(::std::uint32_t, U32, _name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_uint64(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_IMPL_(::std::uint64_t, U64, _name, _default, _description)
+#define FOLLY_GFLAGS_DEFINE_string(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_IMPL_(::std::string, S, _name, _default, _description)
+
+#endif
+
+#if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
+namespace FOLLY_GFLAGS_NAMESPACE {}
+namespace gflags {
+using namespace FOLLY_GFLAGS_NAMESPACE;
+} // namespace gflags
+#endif
+
+namespace folly {
+
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
+
+using FlagSaver = gflags::FlagSaver;
+
+#else
+
+namespace detail {
+struct GflagsFlagSaver {};
+} // namespace detail
+using FlagSaver = detail::GflagsFlagSaver;
+
+#endif
+
+} // namespace folly

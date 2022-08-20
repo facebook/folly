@@ -39,51 +39,52 @@
 
 using namespace std;
 
-DEFINE_bool(benchmark, false, "Run benchmarks.");
+FOLLY_GFLAGS_DEFINE_bool(benchmark, false, "Run benchmarks.");
 
-DEFINE_bool(json, false, "Output in JSON format.");
+FOLLY_GFLAGS_DEFINE_bool(json, false, "Output in JSON format.");
 
-DEFINE_bool(bm_estimate_time, false, "Estimate running time");
+FOLLY_GFLAGS_DEFINE_bool(bm_estimate_time, false, "Estimate running time");
 
-DEFINE_bool(
+FOLLY_GFLAGS_DEFINE_bool(
     bm_profile, false, "Run benchmarks with constant number of iterations");
 
-DEFINE_int64(bm_profile_iters, 1000, "Number of iterations for profiling");
+FOLLY_GFLAGS_DEFINE_int64(
+    bm_profile_iters, 1000, "Number of iterations for profiling");
 
-DEFINE_string(
+FOLLY_GFLAGS_DEFINE_string(
     bm_relative_to,
     "",
     "Print benchmark results relative to an earlier dump (via --bm_json_verbose)");
 
-DEFINE_string(
+FOLLY_GFLAGS_DEFINE_string(
     bm_json_verbose,
     "",
     "File to write verbose JSON format (for BenchmarkCompare / --bm_relative_to). "
     "NOTE: this is written independent of the above --json / --bm_relative_to.");
 
-DEFINE_string(
+FOLLY_GFLAGS_DEFINE_string(
     bm_regex, "", "Only benchmarks whose names match this regex will be run.");
 
-DEFINE_int64(
+FOLLY_GFLAGS_DEFINE_int64(
     bm_min_usec,
     100,
     "Minimum # of microseconds we'll accept for each benchmark.");
 
-DEFINE_int32(
+FOLLY_GFLAGS_DEFINE_int32(
     bm_min_iters, 1, "Minimum # of iterations we'll try for each benchmark.");
 
-DEFINE_int64(
+FOLLY_GFLAGS_DEFINE_int64(
     bm_max_iters,
     1 << 30,
     "Maximum # of iterations we'll try for each benchmark.");
 
-DEFINE_int32(
+FOLLY_GFLAGS_DEFINE_int32(
     bm_max_secs, 1, "Maximum # of seconds we'll spend on each benchmark.");
 
-DEFINE_uint32(
+FOLLY_GFLAGS_DEFINE_uint32(
     bm_result_width_chars, 76, "Width of results table in characters");
 
-DEFINE_uint32(
+FOLLY_GFLAGS_DEFINE_uint32(
     bm_max_trials,
     1000,
     "Maximum number of trials (iterations) executed for each benchmark.");

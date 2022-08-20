@@ -32,7 +32,7 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
-DEFINE_bool(
+FOLLY_GFLAGS_DEFINE_bool(
     folly_memory_idler_purge_arenas,
     true,
     "if enabled, folly memory-idler purges jemalloc arenas on thread idle");
