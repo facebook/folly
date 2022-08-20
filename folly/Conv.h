@@ -1243,6 +1243,9 @@ inline typename std::enable_if<
         !std::is_same<Tgt, bool>::value,
     bool>::type
 checkConversion(const Src& value) {
+  if (FOLLY_UNLIKELY(std::isnan(value))) {
+    return false;
+  }
   constexpr Src tgtMaxAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::max());
   constexpr Src tgtMinAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::min());
   if (value >= tgtMaxAsSrc) {

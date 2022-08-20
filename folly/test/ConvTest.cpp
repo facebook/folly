@@ -672,6 +672,14 @@ TEST(Conv, DoubleToInt) {
   }
 }
 
+TEST(Conv, NotFiniteToInt) {
+  for (auto s : {"nan", "inf", "-inf"}) {
+    auto v = to<double>(s);
+    auto rv = folly::tryTo<int64_t>(v);
+    EXPECT_FALSE(rv.hasValue()) << s << " " << rv.value();
+  }
+}
+
 TEST(Conv, EnumToInt) {
   enum A { x = 42, y = 420, z = 65 };
   auto i = to<int>(x);
