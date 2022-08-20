@@ -92,25 +92,31 @@ const char* ElfFile::iterateStrings(const ElfShdr& stringTable, Fn fn) const
   return ptr != end ? ptr : nullptr;
 }
 
-template <class Fn>
-const ElfSym* ElfFile::iterateSymbols(const ElfShdr& section, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
+template <typename E>
+const E* ElfFile::iterateSectionEntries(
+    const ElfShdr& section, std::function<bool(const E&)> fn) const
+    noexcept(is_nothrow_invocable_v<E const&>) {
   FOLLY_SAFE_CHECK(
-      section.sh_entsize == sizeof(ElfSym),
-      "invalid entry size in symbol table");
+      section.sh_entsize == sizeof(E), "invalid entry size in table");
 
-  const ElfSym* sym = &at<ElfSym>(section.sh_offset);
-  const ElfSym* end = sym + (section.sh_size / section.sh_entsize);
+  const E* ent = &at<E>(section.sh_offset);
+  const E* end = ent + (section.sh_size / section.sh_entsize);
 
-  while (sym < end) {
-    if (fn(*sym)) {
-      return sym;
+  while (ent < end) {
+    if (fn(*ent)) {
+      return ent;
     }
 
-    ++sym;
+    ++ent;
   }
 
   return nullptr;
+}
+
+template <class Fn>
+const ElfSym* ElfFile::iterateSymbols(const ElfShdr& section, Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
+  return iterateSectionEntries<ElfSym>(section, fn);
 }
 
 template <class Fn>

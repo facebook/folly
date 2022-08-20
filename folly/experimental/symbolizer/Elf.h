@@ -51,6 +51,8 @@ using ElfOff = FOLLY_ELF_ELFW(Off);
 using ElfPhdr = FOLLY_ELF_ELFW(Phdr);
 using ElfShdr = FOLLY_ELF_ELFW(Shdr);
 using ElfSym = FOLLY_ELF_ELFW(Sym);
+using ElfRel = FOLLY_ELF_ELFW(Rel);
+using ElfRela = FOLLY_ELF_ELFW(Rela);
 
 // ElfFileId is supposed to uniquely identify any instance of an ELF binary.
 // It does that by using file's inode, dev ID, size and modification time:
@@ -194,7 +196,7 @@ class ElfFile {
       noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>);
 
   /**
-   * Iterate over all symbols witin a given section.
+   * Iterate over all symbols within a given section.
    *
    * Returns a pointer to the current ("found") symbol when fn returned true,
    * or nullptr if fn returned false for all symbols.
@@ -211,6 +213,17 @@ class ElfFile {
       const ElfShdr& section,
       std::initializer_list<uint32_t> types,
       Fn fn) const noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>);
+
+  /**
+   * Iterate over entries within a given section.
+   *
+   * Returns a pointer to the current ("found") entry when fn returned
+   * true, or nullptr if fn returned false for all entries.
+   */
+  template <typename E>
+  const E* iterateSectionEntries(
+      const ElfShdr& section, std::function<bool(const E&)> fn) const
+      noexcept(is_nothrow_invocable_v<E const&>);
 
   /**
    * Find symbol definition by address.
