@@ -672,12 +672,24 @@ TEST(Conv, DoubleToInt) {
   }
 }
 
-TEST(Conv, NotFiniteToInt) {
+namespace {
+
+template <class From, class To>
+void testNotFiniteToInt() {
   for (auto s : {"nan", "inf", "-inf"}) {
-    auto v = to<double>(s);
-    auto rv = folly::tryTo<int64_t>(v);
+    auto v = to<From>(s);
+    auto rv = folly::tryTo<To>(v);
     EXPECT_FALSE(rv.hasValue()) << s << " " << rv.value();
   }
+}
+
+} // namespace
+
+TEST(Conv, NotFiniteToInt) {
+  testNotFiniteToInt<float, int64_t>();
+  testNotFiniteToInt<float, uint64_t>();
+  testNotFiniteToInt<double, int64_t>();
+  testNotFiniteToInt<double, uint64_t>();
 }
 
 TEST(Conv, EnumToInt) {
@@ -851,6 +863,7 @@ TEST(Conv, FloatToInt) {
   EXPECT_THROW(
       to<uint64_t>(static_cast<float>(std::numeric_limits<uint64_t>::max())),
       std::range_error);
+  EXPECT_THROW(to<uint64_t>(static_cast<float>(-1)), std::range_error);
 }
 
 TEST(Conv, IntToFloat) {

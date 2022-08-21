@@ -1243,13 +1243,12 @@ inline typename std::enable_if<
         !std::is_same<Tgt, bool>::value,
     bool>::type
 checkConversion(const Src& value) {
-  if (FOLLY_UNLIKELY(std::isnan(value))) {
-    return false;
-  }
   constexpr Src tgtMaxAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::max());
   constexpr Src tgtMinAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::min());
-  if (value >= tgtMaxAsSrc) {
-    if (value > tgtMaxAsSrc) {
+  // NOTE: The following two comparisons also handle the case where value is
+  // NaN, as all comparisons with NaN are false.
+  if (!(value < tgtMaxAsSrc)) {
+    if (!(value <= tgtMaxAsSrc)) {
       return false;
     }
     const Src mmax = folly::nextafter(tgtMaxAsSrc, Src());
@@ -1257,7 +1256,7 @@ checkConversion(const Src& value) {
         std::numeric_limits<Tgt>::max() - static_cast<Tgt>(mmax)) {
       return false;
     }
-  } else if (is_signed_v<Tgt> && value <= tgtMinAsSrc) {
+  } else if (value <= tgtMinAsSrc) {
     if (value < tgtMinAsSrc) {
       return false;
     }
