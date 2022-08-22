@@ -1126,13 +1126,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 
   iterator find(const key_type& key) { return find_(*this, key); }
 
-  mapped_type* get_ptr(const key_type& key) { return find_ptr_(*this, key); }
-
   const_iterator find(const key_type& key) const { return find_(*this, key); }
-
-  const mapped_type* get_ptr(const key_type& key) const {
-    return find_ptr_(*this, key);
-  }
 
   template <typename K>
   if_is_transparent<K, iterator> find(const K& key) {
@@ -1353,21 +1347,6 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
       return it;
     }
     return end;
-  }
-
-  template <typename Self>
-  using self_ptr_t = _t<std::conditional<
-      std::is_const<Self>::value,
-      const mapped_type*,
-      mapped_type*>>;
-  template <typename Self, typename K>
-  static self_ptr_t<Self> find_ptr_(Self& self, K const& key) {
-    auto end = self.end();
-    auto it = self.lower_bound(key);
-    if (it == end || self.key_comp()(key, it->first)) {
-      return nullptr;
-    }
-    return &it->second;
   }
 
   template <typename Self, typename K>
