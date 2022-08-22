@@ -20,19 +20,6 @@
 
 #include <folly/portability/Unistd.h>
 
-#if defined(__APPLE__)
-off64_t lseek64(int fh, off64_t off, int orig) {
-  return lseek(fh, off, orig);
-}
-
-ssize_t pread64(int fd, void* buf, size_t count, off64_t offset) {
-  return pread(fd, buf, count, offset);
-}
-
-static_assert(
-    sizeof(off_t) >= 8, "We expect that Mac OS have at least a 64-bit off_t.");
-#endif
-
 #ifdef _WIN32
 
 #include <cstdio>
@@ -43,35 +30,21 @@ static_assert(
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Windows.h>
 
-template <bool is64Bit, class Offset>
-static Offset seek(int fd, Offset offset, int whence) {
-  Offset res;
-  if (is64Bit) {
-    res = lseek64(fd, offset, whence);
-  } else {
-    res = lseek(fd, offset, whence);
-  }
-  return res;
-}
-
 // Generic wrapper for the p* family of functions.
-template <bool is64Bit, class F, class Offset, class... Args>
-static int wrapPositional(F f, int fd, Offset offset, Args... args) {
-  Offset origLoc = seek<is64Bit>(fd, offset, SEEK_CUR);
-  if (origLoc == Offset(-1)) {
+template <class F, class... Args>
+static int wrapPositional(F f, int fd, off_t offset, Args... args) {
+  off_t origLoc = lseek(fd, 0, SEEK_CUR);
+  if (origLoc == (off_t)-1) {
     return -1;
   }
-
-  Offset moved = seek<is64Bit>(fd, offset, SEEK_SET);
-  if (moved == Offset(-1)) {
+  if (lseek(fd, offset, SEEK_SET) == (off_t)-1) {
     return -1;
   }
 
   int res = (int)f(fd, args...);
 
   int curErrNo = errno;
-  Offset afterOperation = seek<is64Bit>(fd, origLoc, SEEK_SET);
-  if (afterOperation == Offset(-1)) {
+  if (lseek(fd, origLoc, SEEK_SET) == (off_t)-1) {
     if (res == -1) {
       errno = curErrNo;
     }
@@ -175,10 +148,6 @@ off_t lseek(int fh, off_t off, int orig) {
   return _lseek(fh, off, orig);
 }
 
-off64_t lseek64(int fh, off64_t off, int orig) {
-  return _lseeki64(fh, static_cast<int64_t>(off), orig);
-}
-
 int rmdir(const char* path) {
   return _rmdir(path);
 }
@@ -190,18 +159,11 @@ int pipe(int pth[2]) {
 }
 
 ssize_t pread(int fd, void* buf, size_t count, off_t offset) {
-  const bool is64Bit = false;
-  return wrapPositional<is64Bit>(_read, fd, offset, buf, (unsigned int)count);
-}
-
-ssize_t pread64(int fd, void* buf, size_t count, off64_t offset) {
-  const bool is64Bit = true;
-  return wrapPositional<is64Bit>(_read, fd, offset, buf, (unsigned int)count);
+  return wrapPositional(_read, fd, offset, buf, (unsigned int)count);
 }
 
 ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset) {
-  const bool is64Bit = false;
-  return wrapPositional<is64Bit>(_write, fd, offset, buf, (unsigned int)count);
+  return wrapPositional(_write, fd, offset, buf, (unsigned int)count);
 }
 
 ssize_t read(int fh, void* buf, size_t count) {
