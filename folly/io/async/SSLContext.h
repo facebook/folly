@@ -396,6 +396,17 @@ class SSLContext {
    */
   virtual void loadTrustedCertificates(const char* path);
   /**
+   * Load trusted certificates from a vector of file paths
+   *
+   * @param paths container of file paths to trusted certificate files
+   */
+  template <typename StringList>
+  void loadTrustedCertificates(const StringList& paths) {
+    for (const auto& path : paths) {
+      loadTrustedCertificates(path.c_str());
+    }
+  }
+  /**
    * Load trusted certificates from specified X509 certificate store.
    *
    * @param store X509 certificate store.
