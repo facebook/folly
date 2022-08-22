@@ -61,6 +61,8 @@ ssize_t pwriteNoInt(int fd, const void* buf, size_t count, off_t offset);
 ssize_t writevNoInt(int fd, const iovec* iov, int count);
 ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset);
 
+ssize_t pread64NoInt(int fd, void* buf, size_t count, off64_t offset);
+
 /**
  * Wrapper around read() (and pread()) that, in addition to retrying on
  * EINTR, will loop until all data is read.
