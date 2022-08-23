@@ -25,8 +25,7 @@ subdir = zstd-1.4.5/build/cmake
 # the path to the library from the install_name, rendering
 # the library non-resolvable during the build.  The short
 # term solution for this is just to link static on macos.
-[cmake.defines.os=darwin]
-ZSTD_BUILD_SHARED = OFF
-
-[cmake.defines.os=windows]
+#
+# And while we're at it, let's just always link statically.
+[cmake.defines]
 ZSTD_BUILD_SHARED = OFF
