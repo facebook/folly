@@ -357,44 +357,58 @@ TEST(Json, DuplicateKeys) {
 
   // Default behavior keeps *last* value.
   EXPECT_EQ(obj, parseJson("{\"a\": 2, \"a\": 1}"));
+  // XXX(cavalcanti): workaround for really old gcc compiler.
+  folly::json::serialization_opts tmp;
+  tmp.validate_keys = true;
   EXPECT_THROW(
-      parseJson("{\"a\": 2, \"a\": 1}", {.validate_keys = true}), parse_error);
+      parseJson("{\"a\": 2, \"a\": 1}", tmp), parse_error);
 }
 
 TEST(Json, ParseConvertInt) {
   EXPECT_THROW(parseJson("{2: 4}"), parse_error);
   dynamic obj = dynamic::object("2", 4);
-  EXPECT_EQ(obj, parseJson("{2: 4}", {.convert_int_keys = true}));
+  // XXX(cavalcanti): workaround for really old g++ compiler.
+  folly::json::serialization_opts tmp;
+  tmp.convert_int_keys = true;
+  EXPECT_EQ(obj, parseJson("{2: 4}", tmp));
   EXPECT_THROW(
-      parseJson("{2: 4, \"2\": 5}", {.convert_int_keys = true}), parse_error);
+      parseJson("{2: 4, \"2\": 5}", tmp), parse_error);
   EXPECT_THROW(
-      parseJson("{2: 4, 2: 5}", {.convert_int_keys = true}), parse_error);
+      parseJson("{2: 4, 2: 5}", tmp), parse_error);
 }
 
 TEST(Json, PrintConvertInt) {
   dynamic obj = dynamic::object(2, 4);
   EXPECT_THROW(toJson(obj), print_error);
+  // XXX(cavalcanti): workaround for really old g++ compiler.
+  folly::json::serialization_opts tmp;
+  auto resetOpts = [&tmp]() {
+    tmp.allow_non_string_keys = false;
+    tmp.convert_int_keys = false;
+    tmp.allow_non_string_keys = false;
+    tmp.convert_int_keys = false;
+  };
+
+  tmp.allow_non_string_keys = true;
   EXPECT_EQ(
-      "{2:4}", folly::json::serialize(obj, {.allow_non_string_keys = true}));
+      "{2:4}", folly::json::serialize(obj, tmp));
+  resetOpts();
+
+  tmp.convert_int_keys = true;
   EXPECT_EQ(
-      "{\"2\":4}", folly::json::serialize(obj, {.convert_int_keys = true}));
+      "{\"2\":4}", folly::json::serialize(obj, tmp));
+  resetOpts();
+
+  tmp.allow_non_string_keys = true;
+  tmp.convert_int_keys = true;
   EXPECT_EQ(
       "{\"2\":4}",
-      folly::json::serialize(
-          obj,
-          {
-              .allow_non_string_keys = true,
-              .convert_int_keys = true,
-          }));
+      folly::json::serialize(obj, tmp));
 
+  // Simply reuse previous opts object, no need to reset.
   obj["2"] = 5; // Would lead to duplicate keys in output JSON.
   EXPECT_THROW(
-      folly::json::serialize(
-          obj,
-          {
-              .allow_non_string_keys = true,
-              .convert_int_keys = true,
-          }),
+      folly::json::serialize(obj, tmp),
       print_error);
 }
 
