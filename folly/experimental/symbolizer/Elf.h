@@ -342,6 +342,15 @@ class ElfFile {
             (addr + sizeof(T)) <= (section.sh_addr + section.sh_size),
         "Address is not contained within the provided segment");
 
+    // SHT_NOBITS: a section that occupies no space in the file but otherwise
+    // resembles SHT_PROGBITS. Although this section contains no bytes, the
+    // sh_offset member contains the conceptual file offset. Typically used
+    // for zero-initialized data sections like .bss.
+    if (section.sh_type == SHT_NOBITS) {
+      static T t = {};
+      return t;
+    }
+
     return at<T>(section.sh_offset + (addr - section.sh_addr));
   }
 
