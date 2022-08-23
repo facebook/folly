@@ -693,4 +693,23 @@ struct to_underlying_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying{};
 
+// Simulate if constexpr in C++14
+template <bool>
+struct if_constexpr_fn {
+  template <class F, class G>
+  constexpr auto&& operator()(F&& f, G&&) const {
+    return static_cast<F&&>(f);
+  }
+};
+
+template <>
+struct if_constexpr_fn<false> {
+  template <class F, class G>
+  constexpr auto&& operator()(F&&, G&& g) const {
+    return static_cast<G&&>(g);
+  }
+};
+
+template <bool Cond>
+FOLLY_INLINE_VARIABLE constexpr if_constexpr_fn<Cond> if_constexpr{};
 } // namespace folly
