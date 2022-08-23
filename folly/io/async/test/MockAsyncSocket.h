@@ -55,6 +55,7 @@ class MockAsyncSocket : public AsyncSocket {
   MOCK_METHOD(void, closeNow, ());
   MOCK_METHOD(bool, good, (), (const));
   MOCK_METHOD(bool, readable, (), (const));
+  MOCK_METHOD(bool, writable, (), (const));
   MOCK_METHOD(bool, hangup, (), (const));
   MOCK_METHOD(void, getLocalAddress, (SocketAddress*), (const));
   MOCK_METHOD(void, setReadCB, (ReadCallback*));
