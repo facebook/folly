@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * Error enums and exceptions for indicating errors when dealing with IP
+ * Addresses. Used in IPAddress, IPAddressV4, and IPAddressV6.
+ *
+ * @file IPAddressException.h
+ */
+
 #pragma once
 
 #include <exception>
@@ -32,7 +39,7 @@ namespace folly {
 enum class IPAddressFormatError { INVALID_IP, UNSUPPORTED_ADDR_FAMILY };
 
 /**
- * Wraps error from parsing IP/MASK string
+ * Wraps errors from parsing IP/MASK string
  */
 enum class CIDRNetworkError {
   INVALID_DEFAULT_CIDR,
@@ -43,13 +50,18 @@ enum class CIDRNetworkError {
 };
 
 /**
- * Exception for invalid IP addresses.
+ * Exception that is thrown when dealing with invalid IP addresses. A subclass
+ * of `std::runtime_error`
  */
 class FOLLY_EXPORT IPAddressFormatException : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
 };
 
+/**
+ * Exception that is thrown when an IP Address is not of the family expected
+ * (ie, expected a V4 but is a V6). A subclass of IPAddressFormatException.
+ */
 class FOLLY_EXPORT InvalidAddressFamilyException
     : public IPAddressFormatException {
  public:
