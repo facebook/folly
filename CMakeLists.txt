@@ -518,10 +518,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     set(HAVE_CMAKE_GTEST OFF)
   endif()
 
-  # Some benchmarks require an input sample file.
-  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/folly/test/input.json
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
   # The ThreadLocalTest code uses a helper shared library for one of its tests.
   # This can only be built if folly itself was built as a shared library.
   if (BUILD_SHARED_LIBS)
@@ -1011,6 +1007,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       # MSVC Preprocessor stringizing raw string literals bug,
       # assuming that a MSVC user is running on Windows.
       TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
+      CONTENT_DIR jsonsamples/
       BENCHMARK json_benchmark SOURCES JsonBenchmark.cpp
       TEST json_pointer_test SOURCES json_pointer_test.cpp
       TEST json_patch_test SOURCES json_patch_test.cpp

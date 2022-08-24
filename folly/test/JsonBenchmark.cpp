@@ -28,7 +28,7 @@ BENCHMARK(PerfJson2Obj, iters) {
   // but for true benchmarking a bigger JSON file is more interesting, like from
   // https://github.com/simdjson/simdjson/tree/master/jsonexamples or
   // https://github.com/chadaustin/Web-Benchmarks/tree/master/json/testdata
-  std::ifstream fin("input.json");
+  std::ifstream fin("folly/test/jsonsamples/input.json");
   if (!fin.is_open()) {
     // TODO(cavalcanti): is there an equivalent to GTEST_SKIP()?
     return;
@@ -45,7 +45,7 @@ BENCHMARK(PerfJson2Obj, iters) {
 }
 
 BENCHMARK(PerfObj2Json, iters) {
-  std::ifstream fin("input.json");
+  std::ifstream fin("folly/test/jsonsamples/input.json");
   if (!fin.is_open()) {
     // TODO(cavalcanti): ditto.
     return;
