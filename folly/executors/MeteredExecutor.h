@@ -24,6 +24,7 @@
 
 namespace folly {
 
+namespace detail {
 // Attaches a queue to an already existing executor and exposes Executor
 // interface to add tasks to that queue.
 // Consumption from this queue is "metered". Specifically, only a limited number
@@ -41,7 +42,8 @@ namespace folly {
 // auto mipri_ka = getKeepAliveToken(mipri_exec.get());
 // auto lopri_exec = std::make_unique<MeteredExecutor>(mipri_ka);
 // auto lopri_ka = getKeepAliveToken(lopri_exec.get());
-class MeteredExecutor : public DefaultKeepAliveExecutor {
+template <template <typename> class Atom = std::atomic>
+class MeteredExecutorImpl : public DefaultKeepAliveExecutor {
  public:
   struct Options {
     Options() {}
@@ -53,15 +55,28 @@ class MeteredExecutor : public DefaultKeepAliveExecutor {
 
   using KeepAlive = Executor::KeepAlive<>;
   // owning constructor
-  explicit MeteredExecutor(
+  explicit MeteredExecutorImpl(
       std::unique_ptr<Executor> exe, Options options = Options());
   // non-owning constructor
-  explicit MeteredExecutor(KeepAlive keepAlive, Options options = Options());
-  ~MeteredExecutor() override;
+  explicit MeteredExecutorImpl(
+      KeepAlive keepAlive, Options options = Options());
+  ~MeteredExecutorImpl() override;
 
   void add(Func func) override;
 
   size_t pendingTasks() const { return queue_.size(); }
+
+  // Pause executing tasks. Subsequent resume() necessary to
+  // start executing tasks again. Can be invoked from any thread and only
+  // prevents scheduling of future tasks for executions i.e. doesn't impact
+  // tasks already scheduled. The method returns `false` if we invoke `pause`
+  // on an already paused executor.
+  bool pause();
+
+  // Resume executing tasks. no-op if not paused. Can be invoked from any
+  // thread. Returns `false` if `resume` is invoked on an executor that's
+  // not paused.
+  bool resume();
 
  private:
   class Task {
@@ -89,13 +104,17 @@ class MeteredExecutor : public DefaultKeepAliveExecutor {
   void loopCallback();
   void scheduleCallback();
 
+  // Atomically checks if we should scheduled loopCallback and records that
+  // such a callback was skipped so that a subsequent resume can schedule one.
+  bool shouldSkip();
+
   class Consumer {
     std::optional<Task> first_;
     std::shared_ptr<RequestContext> firstRctx_;
-    MeteredExecutor& self_;
+    MeteredExecutorImpl& self_;
 
    public:
-    explicit Consumer(MeteredExecutor& self) : self_(self) {}
+    explicit Consumer(MeteredExecutorImpl& self) : self_(self) {}
     void executeIfNotEmpty();
     void operator()(Task&& task, std::shared_ptr<RequestContext>&& rctx);
     ~Consumer();
@@ -105,6 +124,40 @@ class MeteredExecutor : public DefaultKeepAliveExecutor {
   std::unique_ptr<Executor> ownedExecutor_;
   KeepAlive kaInner_;
   std::unique_ptr<folly::QueueObserver> queueObserver_{setupQueueObserver()};
+
+  // RUNNING - default state where tasks can be enqueue and will be executed on
+  //           wrapped executor
+  // PAUSED - executor is paused so no tasks will be scheduled for executions
+  //          add() can still happen
+  // PAUSED_PENDING - Same as paused but records that we had skipped a
+  //                  loopCallback while paused
+  //
+  //                       resume()
+  //         |-------<--------------------------------------|
+  //         v                                              ^
+  //         |                                              |
+  //  +---------+ pause() +---------+ loopCallback() +--------------+
+  //  | Running |---->----| Paused  |------->--------|PausedPending |
+  //  +---------+         +---------+                +--------------+
+  //       |                   |
+  //       ^                   V
+  //       |---------<---------|
+  //             resume()
+  //
+  enum ExecutorState : uint8_t { RUNNING = 0, PAUSED = 1, PAUSED_PENDING = 2 };
+  struct State {
+    Atom<uint8_t> execState{RUNNING};
+    // We expect only one instance of loopCallback to be scheduled.
+    // callbackScheduled helps assert this invariant.
+    Atom<bool> callbackScheduled{false};
+  };
+  State state_;
 };
 
+} // namespace detail
+
+using MeteredExecutor = detail::MeteredExecutorImpl<>;
+
 } // namespace folly
+
+#include <folly/executors/MeteredExecutor-inl.h>

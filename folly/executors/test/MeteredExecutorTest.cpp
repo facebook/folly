@@ -16,16 +16,21 @@
 
 #include <list>
 
+#include <folly/Synchronized.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/MeteredExecutor.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
+#include <folly/synchronization/LifoSem.h>
+#include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
 
 class MeteredExecutorTest : public testing::Test {
  protected:
+  template <template <typename> class Atom = std::atomic>
   void createAdapter(
       int numLevels,
       std::unique_ptr<Executor> exc =
@@ -33,7 +38,8 @@ class MeteredExecutorTest : public testing::Test {
     executors_.resize(numLevels + 1);
     executors_[0] = exc.get();
     for (int i = 0; i < numLevels; i++) {
-      auto mlsa = std::make_unique<MeteredExecutor>(std::move(exc));
+      auto mlsa =
+          std::make_unique<detail::MeteredExecutorImpl<Atom>>(std::move(exc));
       exc = std::move(mlsa);
       executors_[i + 1] = exc.get();
     }
@@ -363,4 +369,126 @@ TEST_F(MeteredExecutorTest, UnderlyingExecutor) {
   EXPECT_FALSE(coro::blockingWait(co_isOnCPUExc().scheduleOn(getKeepAlive(1))));
   EXPECT_TRUE(coro::blockingWait(
       co_run(getKeepAlive(0), co_isOnCPUExc()).scheduleOn(getKeepAlive(0))));
+}
+
+TEST_F(MeteredExecutorTest, PauseResume) {
+  createAdapter(1, std::make_unique<ManualExecutor>());
+  ManualExecutor* manual = dynamic_cast<ManualExecutor*>(getKeepAlive(0).get());
+  MeteredExecutor* metered =
+      dynamic_cast<MeteredExecutor*>(getKeepAlive(1).get());
+
+  uint8_t executed = 0;
+  add([&] { executed++; }, 1);
+  add([&] { executed++; }, 1);
+  manual->run();
+  ASSERT_EQ(1, executed);
+  ASSERT_EQ(1, metered->pendingTasks());
+
+  ASSERT_TRUE(metered->pause());
+  ASSERT_FALSE(metered->pause()); // pausing a paused executor
+  add([&] { executed++; }, 1);
+  manual->drain();
+  ASSERT_EQ(1, executed);
+  ASSERT_EQ(2, metered->pendingTasks());
+
+  ASSERT_TRUE(metered->resume());
+  manual->drain();
+  ASSERT_EQ(3, executed);
+  ASSERT_EQ(0, metered->pendingTasks());
+}
+
+TEST_F(MeteredExecutorTest, PauseResumeStress) {
+  using DSched = folly::test::DeterministicSchedule;
+  DSched sched(DSched::uniform(0));
+
+  class DeterministicExecutor : public folly::Executor {
+   public:
+    explicit DeterministicExecutor(int threads) {
+      for (int i = 0; i < threads; i++) {
+        threads_.push_back(DSched::thread([this]() { loop(); }));
+      }
+    }
+    void join() {
+      sem_.shutdown();
+      DSched::joinAll(threads_);
+      threads_.clear();
+    }
+    void add(folly::Func f) override {
+      tasks_.lock()->push(std::move(f));
+      sem_.post();
+    }
+
+   private:
+    void loop() {
+      while (true) {
+        try {
+          sem_.wait();
+          auto fn = tasks_.withLock([](auto&& tasks) {
+            if (tasks.empty()) {
+              return folly::Func{};
+            }
+            auto ret = std::move(tasks.front());
+            tasks.pop();
+            return ret;
+          });
+          if (fn) {
+            fn();
+          }
+        } catch (const ShutdownSemError&) {
+          break;
+        } catch (const std::exception& e) {
+          LOG(ERROR) << "Failed: " << e.what();
+        }
+      }
+    }
+
+    LifoSemImpl<test::DeterministicAtomic> sem_;
+    folly::Synchronized<std::queue<folly::Func>, test::DeterministicMutex>
+        tasks_;
+    std::vector<std::thread> threads_;
+  };
+
+  createAdapter<test::DeterministicAtomic>(
+      1, std::make_unique<DeterministicExecutor>(5));
+
+  auto exec = getKeepAlive(1);
+  auto metered =
+      dynamic_cast<detail::MeteredExecutorImpl<test::DeterministicAtomic>*>(
+          exec.get());
+  auto dexec = dynamic_cast<DeterministicExecutor*>(getKeepAlive(0).get());
+
+  const auto numElems = 150;
+  std::atomic<uint64_t> executed{0};
+  std::atomic<uint64_t> active{0};
+  for (int pass = 0; pass < 10; pass++) {
+    executed = 0;
+    active = 0;
+    const auto numProducers = 2;
+    std::vector<std::thread> producers;
+    for (int p = 0; p < numProducers; p++) {
+      producers.push_back(DSched::thread([&]() {
+        for (int i = 0; i < numElems; i++) {
+          exec->add([&]() {
+            executed++;
+            bool paused = false;
+            if (active.fetch_add(1) == 3) {
+              metered->pause();
+              paused = true;
+            }
+            if (paused) {
+              active.fetch_sub(1);
+              metered->resume();
+            }
+          });
+        }
+      }));
+    }
+    DSched::joinAll(producers);
+    folly::Baton<true, test::DeterministicAtomic> b;
+    exec->add([&]() { b.post(); });
+    b.wait();
+    EXPECT_EQ(numElems * numProducers, executed);
+  }
+
+  dexec->join();
 }
