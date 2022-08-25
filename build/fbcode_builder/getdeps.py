@@ -414,7 +414,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
         elif manager == "deb":
             packages = sorted(set(all_packages["deb"]))
             if packages:
-                cmd_args = ["apt", "install", "-y"] + packages
+                cmd_args = ["apt-get", "install", "-y"] + packages
         elif manager == "homebrew":
             packages = sorted(set(all_packages["homebrew"]))
             if packages:
