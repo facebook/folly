@@ -27,50 +27,67 @@
 
 namespace folly {
 
+/**
+ * SimpleAsyncIO is a wrapper around AsyncIO intended to hide all the details.
+ *
+ * Usage: just create an instance of SimpleAsyncIO and then issue IO with
+ * pread and pwrite, no other effort required. e.g.:
+ *
+ *
+ *        auto tmpfile = folly::File::temporary();
+ *        folly::SimpleAsyncIO aio;
+ *        aio.pwrite(
+ *            tmpfile.fd(),
+ *            "hello world",
+ *            11, // size
+ *            0, // offset
+ *            [](int rc) { LOG(INFO) << "Write completed with rc " << rc; });
+ *
+ *
+ * IO is dispatched in the context of the calling thread; it may block briefly
+ * to obtain a lock on shared resources, but will *not* block for IO
+ * completion. If the IO queue is full (see setMaxRequests(size_t) in Config),
+ * IO fails with -EBUSY.
+ *
+ * IO is completed on the executor specified in the config (global CPU
+ * executor by default).
+ *
+ * IO is completed by calling the callback function provided to pread/pwrite.
+ * The single parameter to the callback is either a negative errno or the
+ * number of bytes transferred.
+ *
+ * There is a "hidden" EventBase which polls for IO completion and dispatches
+ * completion events to the executor. You may specify an existing EventBase in
+ * the config (and you are then responsible for making sure the EventBase
+ * instance outlives the SimpleAsyncIO instance). If you do not specify one, a
+ * ScopedEventBaseThread instance will be created.
+ *
+ * Following structure defines the configuration of a SimpleAsyncIO instance,
+ * in case you need to override the (sensible) defaults.
+ *
+ * Typical usage is something like:
+ *
+ *        SimpleAsyncIO io(SimpleAsyncIO::Config()
+ *            .setMaxRequests(100)
+ *            .setMode(SimpleAsyncIO::Mode::IOURING));
+ */
 class SimpleAsyncIO : public EventHandler {
  public:
-  // SimpleAsyncIO is a wrapper around AsyncIO intended to hide all the details.
-  //
-  // Usage: just create an instance of SimpleAsyncIO and then issue IO with
-  // pread and pwrite, no other effort required. e.g.:
-  //
-  //    auto tmpfile = folly::File::temporary();
-  //    folly::SimpleAsyncIO aio;
-  //    aio.pwrite(
-  //        tmpfile.fd(),
-  //        "hello world",
-  //        /*size=*/11,
-  //        /*offset=*/0,
-  //        [](int rc) { LOG(INFO) << "Write completed with result " << rc; });
-  //
-  // IO is dispatched in the context of the calling thread; it may block briefly
-  // to obtain a lock on shared resources, but will *not* block for IO
-  // completion. If the IO queue is full (see maxRequests in Config, below),
-  // IO fails with -EBUSY.
-  //
-  // IO is completed on the executor specified in the config (global CPU
-  // executor by default).
-  //
-  // IO is completed by calling the callback function provided to pread/pwrite.
-  // The single parameter to the callback is either a negative errno or the
-  // number of bytes transferred.
-  //
-  // There is a "hidden" EventBase which polls for IO completion and dispatches
-  // completion events to the executor. You may specify an existing EventBase in
-  // the config (and you are then responsible for making sure the EventBase
-  // instance outlives the SimpleAsyncIO instance). If you do not specify one, a
-  // ScopedEventBaseThread instance will be created.
-  //
-  // Following structure defines the configuration of a SimpleAsyncIO instance,
-  // in case you need to override the (sensible) defaults.
-  //
-  // Typical usage is something like:
-  //
-  //    SimpleAsyncIO io(SimpleAsyncIO::Config()
-  //        .setMaxRequests(100)
-  //        .setMode(SimpleAsyncIO::Mode::IOURING));
-  //
-  enum Mode { AIO, IOURING };
+  /**
+   * The asynchronized backend to be used: libaio or liburing
+   */
+  enum Mode {
+    /// use libaio
+    AIO,
+    /// use liburing
+    IOURING
+  };
+  /**
+   * The Config for SimpleAsyncIO on:
+   * - choosing backend implementation
+   * - executor to use for receiving completion
+   * - max requests are allowed
+   */
   struct Config {
     Config()
         : maxRequests_(1000),
@@ -78,6 +95,8 @@ class SimpleAsyncIO : public EventHandler {
               getKeepAliveToken(getUnsafeMutableGlobalCPUExecutor().get())),
           mode_(AIO),
           evb_(nullptr) {}
+    /// Maximum requests can be queued; -EBUSY returned for requests above
+    /// threshold
     Config& setMaxRequests(size_t maxRequests) {
       maxRequests_ = maxRequests;
       return *this;
@@ -109,13 +128,17 @@ class SimpleAsyncIO : public EventHandler {
 
   using SimpleAsyncIOCompletor = Function<void(int rc)>;
 
-  /* Initiate an asynchronous read request.
+  /**
+   * Initiate an asynchronous read request.
    *
    * Parameters and return value are same as pread(2).
    *
    * Completion is indicated by an asynchronous call to the given completor
    * callback. The sole parameter to the callback is the result of the
    * operation.
+   *
+   * @returns Same as pread(2) and if requests number reaches maxRequests_,
+   * return -EBUSY
    */
   void pread(
       int fd,
@@ -124,13 +147,17 @@ class SimpleAsyncIO : public EventHandler {
       off_t start,
       SimpleAsyncIOCompletor completor);
 
-  /* Initiate an asynchronous write request.
+  /**
+   * Initiate an asynchronous write request.
    *
    * Parameters and return value are same as pwrite(2).
    *
    * Completion is indicated by an asynchronous call to the given completor
    * callback. The sole parameter to the callback is the result of the
    * operation.
+   *
+   * @returns Same as pwrite(2) and if requests number reaches maxRequests_,
+   * return -EBUSY
    */
   void pwrite(
       int fd,
@@ -140,16 +167,24 @@ class SimpleAsyncIO : public EventHandler {
       SimpleAsyncIOCompletor completor);
 
 #if FOLLY_HAS_COROUTINES
-  /* Coroutine version of pread().
+  /**
+   * Coroutine version of pread().
    *
    * Identical to pread() except that result is obtained by co_await instead of
    * callback.
+   *
+   * @returns Same as pread(2) and if requests number reaches maxRequests_,
+   * return -EBUSY
    */
   folly::coro::Task<int> co_pread(int fd, void* buf, size_t size, off_t start);
-  /* Coroutine version of pwrite().
+  /**
+   * Coroutine version of pwrite().
    *
    * Identical to pwrite() except that result is obtained by co_await instead of
    * callback.
+   *
+   * @returns Same as pwrite(2) and if requests number reaches maxRequests_,
+   * return -EBUSY
    */
   folly::coro::Task<int> co_pwrite(
       int fd, const void* buf, size_t size, off_t start);
