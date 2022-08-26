@@ -63,7 +63,7 @@ void compiler_may_unsafely_assume(bool cond);
 //
 //  Ensures that the referred-to value will be computed even when an optimizing
 //  compiler might otherwise remove the computation. Note: this hint takes its
-//  value paramaeter by reference.
+//  value parameter by reference.
 //
 //  Useful for values that are computed during benchmarking but otherwise are
 //  unused. The compiler tends to do a good job at eliminating unused variables,
