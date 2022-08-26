@@ -313,25 +313,27 @@ class ConcurrentHashMap {
 
   template <typename Key, typename Value>
   std::pair<ConstIterator, bool> insert(Key&& k, Value&& v) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
     res.second = ensureSegment(segment)->insert(
-        res.first.it_, std::forward<Key>(k), std::forward<Value>(v));
+        res.first.it_, h, std::forward<Key>(k), std::forward<Value>(v));
     return res;
   }
 
   template <typename Key, typename... Args>
   std::pair<ConstIterator, bool> try_emplace(Key&& k, Args&&... args) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
     res.second = ensureSegment(segment)->try_emplace(
-        res.first.it_, std::forward<Key>(k), std::forward<Args>(args)...);
+        res.first.it_, h, std::forward<Key>(k), std::forward<Args>(args)...);
     return res;
   }
 
@@ -340,13 +342,14 @@ class ConcurrentHashMap {
     using Node = typename SegmentT::Node;
     auto node = (Node*)Allocator().allocate(sizeof(Node));
     new (node) Node(ensureCohort(), std::forward<Args>(args)...);
-    auto segment = pickSegment(node->getItem().first);
+    auto h = HashFn{}(node->getItem().first);
+    auto segment = pickSegment(h);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
     res.second = ensureSegment(segment)->emplace(
-        res.first.it_, node->getItem().first, node);
+        res.first.it_, h, node->getItem().first, node);
     if (!res.second) {
       node->~Node();
       Allocator().deallocate((uint8_t*)node, sizeof(Node));
@@ -361,26 +364,28 @@ class ConcurrentHashMap {
    */
   template <typename Key, typename Value>
   std::pair<ConstIterator, bool> insert_or_assign(Key&& k, Value&& v) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
     res.second = ensureSegment(segment)->insert_or_assign(
-        res.first.it_, std::forward<Key>(k), std::forward<Value>(v));
+        res.first.it_, h, std::forward<Key>(k), std::forward<Value>(v));
     return res;
   }
 
   template <typename Key, typename Value>
   folly::Optional<ConstIterator> assign(Key&& k, Value&& v) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
       return none;
     } else {
       auto r =
-          seg->assign(res.it_, std::forward<Key>(k), std::forward<Value>(v));
+          seg->assign(res.it_, h, std::forward<Key>(k), std::forward<Value>(v));
       if (!r) {
         return none;
       }
@@ -393,7 +398,8 @@ class ConcurrentHashMap {
   template <typename Key, typename Value, typename Predicate>
   folly::Optional<ConstIterator> assign_if(
       Key&& k, Value&& desired, Predicate&& predicate) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
@@ -401,6 +407,7 @@ class ConcurrentHashMap {
     } else {
       auto r = seg->assign_if(
           res.it_,
+          h,
           std::forward<Key>(k),
           std::forward<Value>(desired),
           std::forward<Predicate>(predicate));
@@ -415,7 +422,8 @@ class ConcurrentHashMap {
   template <typename Key, typename Value>
   folly::Optional<ConstIterator> assign_if_equal(
       Key&& k, const ValueType& expected, Value&& desired) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
@@ -423,6 +431,7 @@ class ConcurrentHashMap {
     } else {
       auto r = seg->assign_if_equal(
           res.it_,
+          h,
           std::forward<Key>(k),
           expected,
           std::forward<Value>(desired));
@@ -464,9 +473,10 @@ class ConcurrentHashMap {
 
   // Calls the hash function, and therefore may throw.
   ConstIterator erase(ConstIterator& pos) {
-    auto segment = pickSegment(pos->first);
+    auto h = HashFn{}(pos->first);
+    auto segment = pickSegment(h);
     ConstIterator res(this, segment);
-    ensureSegment(segment)->erase(res.it_, pos.it_);
+    ensureSegment(segment)->erase(res.it_, pos.it_, h);
     res.advanceIfAtSegmentEnd();
     return res;
   }
@@ -641,10 +651,11 @@ class ConcurrentHashMap {
  private:
   template <typename K>
   ConstIterator findImpl(const K& k) const {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
-    if (!seg || !seg->find(res.it_, k)) {
+    if (!seg || !seg->find(res.it_, h, k)) {
       res.segment_ = NumShards;
     }
     return res;
@@ -661,39 +672,41 @@ class ConcurrentHashMap {
 
   template <typename Key>
   std::pair<ConstIterator, bool> insertImpl(std::pair<Key, mapped_type>&& foo) {
-    auto segment = pickSegment(foo.first);
+    auto h = HashFn{}(foo.first);
+    auto segment = pickSegment(h);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
-    res.second = ensureSegment(segment)->insert(res.first.it_, std::move(foo));
+    res.second =
+        ensureSegment(segment)->insert(res.first.it_, h, std::move(foo));
     return res;
   }
 
   template <typename K>
   size_type eraseImpl(const K& k) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
       return 0;
     } else {
-      return seg->erase(k);
+      return seg->erase(h, k);
     }
   }
 
   template <typename K, typename Predicate>
   size_type eraseKeyIfImpl(const K& k, Predicate&& predicate) {
-    auto segment = pickSegment(k);
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
       return 0;
     }
-    return seg->erase_key_if(k, std::forward<Predicate>(predicate));
+    return seg->erase_key_if(h, k, std::forward<Predicate>(predicate));
   }
 
-  template <typename K>
-  uint64_t pickSegment(const K& k) const {
-    auto h = HashFn()(k);
+  uint64_t pickSegment(size_t h) const {
     // Use the lowest bits for our shard bits.
     //
     // This works well even if the hash function is biased towards the
