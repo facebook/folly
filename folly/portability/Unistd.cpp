@@ -57,7 +57,7 @@ static Offset seek(int fd, Offset offset, int whence) {
 // Generic wrapper for the p* family of functions.
 template <bool is64Bit, class F, class Offset, class... Args>
 static int wrapPositional(F f, int fd, Offset offset, Args... args) {
-  Offset origLoc = seek<is64Bit>(fd, offset, SEEK_CUR);
+  Offset origLoc = seek<is64Bit>(fd, 0, SEEK_CUR);
   if (origLoc == Offset(-1)) {
     return -1;
   }
