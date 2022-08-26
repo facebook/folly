@@ -147,10 +147,6 @@ ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset) {
   return wrapNoInt(pwritev, fd, iov, count, offset);
 }
 
-ssize_t pread64NoInt(int fd, void* buf, size_t count, off64_t offset) {
-  return wrapNoInt(pread64, fd, buf, count, offset);
-}
-
 ssize_t readFull(int fd, void* buf, size_t count) {
   return wrapFull(read, fd, buf, count);
 }
