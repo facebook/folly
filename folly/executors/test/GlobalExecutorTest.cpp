@@ -25,9 +25,6 @@
 
 using namespace folly;
 
-DECLARE_uint32(folly_global_io_executor_threads);
-DECLARE_uint32(folly_global_cpu_executor_threads);
-
 TEST(GlobalExecutorTest, GlobalImmutableCPUExecutor) {
   folly::Baton<> b;
 

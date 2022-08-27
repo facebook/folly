@@ -22,8 +22,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
-DECLARE_uint32(folly_global_cpu_executor_threads);
-
 TEST(GlobalCPUExecutorTest, CPUThreadCountFlagSet) {
   gflags::FlagSaver flagsaver;
 

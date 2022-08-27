@@ -25,8 +25,6 @@
 
 using namespace folly;
 
-DECLARE_uint32(folly_global_io_executor_threads);
-
 TEST(GlobalExecutorTest, IOThreadCountFlagSet) {
   gflags::FlagSaver flagsaver;
 

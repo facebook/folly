@@ -20,6 +20,10 @@
 
 #include <folly/Executor.h>
 #include <folly/executors/IOExecutor.h>
+#include <folly/portability/GFlags.h>
+
+FOLLY_GFLAGS_DECLARE_uint32(folly_global_cpu_executor_threads);
+FOLLY_GFLAGS_DECLARE_uint32(folly_global_io_executor_threads);
 
 namespace folly {
 
