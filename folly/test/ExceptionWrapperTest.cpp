@@ -221,9 +221,9 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
   EXPECT_NE(nullptr, ew.get_exception<std::exception>());
   EXPECT_STREQ("foo", ew.get_exception<std::exception>()->what());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
-  EXPECT_FALSE(ew.has_exception_ptr());
+  EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_NE(nullptr, folly::as_const(ew).to_exception_ptr());
-  EXPECT_FALSE(ew.has_exception_ptr());
+  EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(kRuntimeErrorClassName, ew.class_name());

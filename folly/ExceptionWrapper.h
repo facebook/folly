@@ -140,11 +140,10 @@ class exception_wrapper final {
   struct with_exception_from_fn_;
   struct with_exception_from_ex_;
 
-  // exception_wrapper is implemented as a simple variant over three
+  // exception_wrapper is implemented as a simple variant over two
   // different representations:
   //  0. Empty, no exception.
-  //  1. An small object stored in-situ.
-  //  2. A std::exception_ptr.
+  //  1. A std::exception_ptr.
   // This is accomplished with the help of a union and a pointer to a hand-
   // rolled virtual table. This virtual table contains pointers to functions
   // that know which field of the union is active and do the proper action.
@@ -174,40 +173,10 @@ class exception_wrapper final {
   using IsCatchAll =
       std::is_same<arg_type<std::decay_t<CatchFn>>, AnyException>;
 
-  // Sadly, with the gcc-4.9 platform, std::logic_error and std::runtime_error
-  // do not fit here. They also don't have noexcept copy-ctors, so the internal
-  // storage wouldn't be used anyway. For the gcc-5 platform, both logic_error
-  // and runtime_error can be safely stored internally.
-  struct Buffer {
-    using Storage =
-        std::aligned_storage_t<2 * sizeof(void*), alignof(std::exception)>;
-    Storage buff_;
-
-    Buffer() : buff_{} {}
-
-    template <class Ex, typename... As>
-    Buffer(in_place_type_t<Ex>, As&&... as_);
-    template <class Ex>
-    Ex& as() noexcept;
-    template <class Ex>
-    Ex const& as() const noexcept;
-  };
-
   struct ThrownTag {};
-  struct InSituTag {};
 
   template <class T>
-  using PlacementOf = std::conditional_t<
-      IsStdException<T>::value && //
-          sizeof(T) <= sizeof(Buffer::Storage) && //
-          alignof(T) <= alignof(Buffer::Storage)&& //
-              noexcept(T(std::declval<T&&>()))&& //
-              noexcept(T(std::declval<T const&>())),
-      InSituTag,
-      ThrownTag>;
-
-  static std::exception const* as_exception_or_null_(std::exception const& ex);
-  static std::exception const* as_exception_or_null_(AnyException);
+  using PlacementOf = ThrownTag;
 
   struct ExceptionPtr {
     std::exception_ptr ptr_;
@@ -222,37 +191,13 @@ class exception_wrapper final {
     static VTable const ops_;
   };
 
-  template <class Ex>
-  struct InPlace {
-    static_assert(IsStdException<Ex>::value, "only deriving std::exception");
-    static void copy_(exception_wrapper const* from, exception_wrapper* to);
-    static void move_(exception_wrapper* from, exception_wrapper* to);
-    static void delete_(exception_wrapper* that);
-    [[noreturn]] static void throw_(exception_wrapper const* that);
-    static std::type_info const* type_(exception_wrapper const*);
-    static std::exception const* get_exception_(exception_wrapper const* that);
-    static exception_wrapper get_exception_ptr_(exception_wrapper const* that);
-    static constexpr VTable const ops_{
-        copy_,
-        move_,
-        delete_,
-        throw_,
-        type_,
-        get_exception_,
-        get_exception_ptr_};
-  };
-
   union {
-    Buffer buff_{};
     ExceptionPtr eptr_;
   };
   VTable const* vptr_{&uninit_};
 
   template <class Ex, typename... As>
   exception_wrapper(ThrownTag, in_place_type_t<Ex>, As&&... as);
-
-  template <class Ex, typename... As>
-  exception_wrapper(InSituTag, in_place_type_t<Ex>, As&&... as);
 
   template <class T>
   struct IsRegularExceptionType
@@ -496,9 +441,6 @@ class exception_wrapper final {
   template <class... CatchFns>
   void handle(CatchFns... fns) const;
 };
-
-template <class Ex>
-constexpr exception_wrapper::VTable exception_wrapper::InPlace<Ex>::ops_;
 
 /**
  * \return An `exception_wrapper` that wraps an instance of type `Ex`
