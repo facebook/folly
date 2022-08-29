@@ -381,17 +381,10 @@ class IoUringBackend : public EventBaseBackendBase {
   };
 
   struct UserData {
-    uint64_t value;
-    explicit UserData(uint64_t i) noexcept : value{i} {}
-    template <
-        typename T = int,
-        std::enable_if_t<sizeof(void*) == sizeof(uint64_t), T> = 0>
+    uintptr_t value;
     explicit UserData(void* p) noexcept
         : value{reinterpret_cast<uintptr_t>(p)} {}
     /* implicit */ operator uint64_t() const noexcept { return value; }
-    template <
-        typename T = int,
-        std::enable_if_t<sizeof(void*) == sizeof(uint64_t), T> = 0>
     /* implicit */ operator void*() const noexcept {
       return reinterpret_cast<void*>(value);
     }
