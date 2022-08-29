@@ -53,21 +53,22 @@
 namespace folly {
 
 /**
- * A listening socket that asynchronously informs a callback whenever a new
- * connection has been accepted.
+ * AsyncServerSocket is a listening socket that asynchronously informs a
+ * callback whenever a new connection has been accepted.
  *
  * Unlike most async interfaces that always invoke their callback in the same
  * EventBase thread, AsyncServerSocket is unusual in that it can distribute
  * the callbacks across multiple EventBase threads.
- *
+
  * This supports a common use case for network servers to distribute incoming
  * connections across a number of EventBase threads.  (Servers typically run
  * with one EventBase thread per CPU.)
- *
+
  * Despite being able to invoke callbacks in multiple EventBase threads,
  * AsyncServerSocket still has one "primary" EventBase.  Operations that
  * modify the AsyncServerSocket state may only be performed from the primary
  * EventBase thread.
+ *
  */
 class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
  public:
@@ -246,6 +247,8 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    *
    * This passes in the correct destructor object, since AsyncServerSocket's
    * destructor is protected and cannot be invoked directly.
+   *
+   * @param evb  The EventBase to use for driving the asynchronous I/O.
    */
   static std::shared_ptr<AsyncServerSocket> newSocket(
       EventBase* evb = nullptr) {
@@ -280,6 +283,9 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * This may only be called if the AsyncServerSocket is not already attached
    * to a EventBase.  The AsyncServerSocket must be attached to a EventBase
    * before it can begin accepting connections.
+   *
+   * @param eventBase The EventBase to attach to for driving the asynchronous
+   * I/O.
    */
   void attachEventBase(EventBase* eventBase);
 
@@ -313,8 +319,15 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    *
    * On error a AsyncSocketException will be thrown and the caller will retain
    * ownership of the file descriptor.
+   *
+   * @param fd existing socket's file descriptor
    */
   void useExistingSocket(NetworkSocket fd);
+
+  /**
+   * Create a AsyncServerSocket from existing socket file descriptors.
+   * @param fds vector of sockets file descriptors
+   */
   void useExistingSockets(const std::vector<NetworkSocket>& fds);
 
   /**
@@ -329,7 +342,9 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   }
 
   /**
-   * Backwards compatible getSocket, warns if > 1 socket
+   * Backwards compatible getSocket
+   *
+   * warns if there are more than one socket
    */
   NetworkSocket getNetworkSocket() const {
     if (sockets_.size() > 1) {
@@ -343,13 +358,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     }
   }
 
-  /* enable zerocopy support for the server sockets - the s = accept sockets
-   * inherit it
+  /**
+   * enable zerocopy support for the server sockets -
+   * the s = accept sockets inherit it
    */
   bool setZeroCopy(bool enable);
-
   using IPAddressIfNamePair = std::pair<IPAddress, std::string>;
-
   /**
    * Bind to the specified address.
    *
@@ -548,7 +562,9 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
   /**
    * Shutdown the listen socket and notify all callbacks that accept has
-   * stopped, but don't close the socket.  This invokes shutdown(2) with the
+   * stopped
+   *
+   * This call doesn't close the socket. it invokes shutdown(2) with the
    * supplied argument.  Passing -1 will close the socket now.  Otherwise, the
    * close will be delayed until this object is destroyed.
    *
@@ -639,14 +655,19 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * Enable/Disable TOS reflection for the server socket
    */
   void setTosReflect(bool enable);
-
+  /**
+   * Get TOS reflection for server socket
+   */
   bool getTosReflect() { return tosReflect_; }
 
   /**
-   * Set/Get default TOS for listener socket
+   * Set default TOS for listener socket
    */
   void setListenerTos(uint32_t tos);
 
+  /**
+   * Get default TOS for listener socket
+   */
   uint32_t getListenerTos() const { return listenerTos_; }
 
   /**
