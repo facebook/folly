@@ -20,10 +20,11 @@
  */
 
 /**
- * @class Function
+ * @class folly::Function
+ * @refcode docs/examples/folly/Function.cpp
  *
- * @brief A polymorphic function wrapper that is not copyable and does not
- *    require the wrapped function to be copy constructible.
+ * A polymorphic function wrapper that is not copyable and does not
+ * require the wrapped function to be copy constructible.
  *
  * `folly::Function` is a polymorphic function wrapper, similar to
  * `std::function`. The template parameters of the `folly::Function` define
@@ -195,24 +196,6 @@
  * You need to wrap the callable first in a non-const `folly::Function` to
  * select a non-const invoke operator (or the const one if no non-const one is
  * present), and then move it into a const `folly::Function` using
- * `constCastFunction`.
- * The name of `constCastFunction` should warn you that something
- * potentially dangerous is happening. As a matter of fact, using
- * `std::function` always involves this potentially dangerous aspect, which
- * is why it is not considered fully const-safe or even const-correct.
- * However, in most of the cases you will not need the dangerous aspect at all.
- * Either you do not require invocation of the function from a const context,
- * in which case you do not need to use `constCastFunction` and just
- * use the inner `folly::Function` in the example above, i.e. just use a
- * non-const `folly::Function`. Or, you may need invocation from const, but
- * the callable you are wrapping does not mutate its state (e.g. it is a class
- * object and implements `operator() const`, or it is a normal,
- * non-mutable lambda), in which case you can wrap the callable in a const
- * `folly::Function` directly, without using `constCastFunction`.
- * Only if you require invocation from a const context of a callable that
- * may mutate itself when invoked you have to go through the above procedure.
- * However, in that case what you do is potentially dangerous and requires
- * the equivalent of a `const_cast`, hence you need to call
  * `constCastFunction`.
  */
 
@@ -727,11 +710,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   /**
    * Constructs a new `Function` from any callable object that is _not_ a
-   * `folly::Function`. This handles function pointers, pointers to static
-   * member functions, `std::reference_wrapper` objects, `std::function`
-   * objects, and arbitrary objects that implement `operator()` if the parameter
-   * signature matches (i.e. it returns an object convertible to `R` when called
-   * with `Args...`).
+   * `folly::Function`.
    *
    * \note `typename Traits::template IfSafeResult<Fun>` prevents this overload
    * from being selected by overload resolution when `fun` is not a compatible
@@ -744,6 +723,12 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * checked in `IsSmall`, and shouldn't be, because once the `Function` is
    * constructed, the contained object is never copied. This check is for this
    * ctor only, in the case that this ctor does a copy.
+   *
+   * @param fun function pointers, pointers to static
+   *     member functions, `std::reference_wrapper` objects, `std::function`
+   *     objects, and arbitrary objects that implement `operator()` if the
+   * parameter signature matches (i.e. it returns an object convertible to `R`
+   * when called with `Args...`).
    */
   template <
       typename Fun,
@@ -778,6 +763,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   /**
    * For move-constructing from a `folly::Function<X(Ys...) [const?]>`.
+   *
    * For a `Function` with a `const` function type, the object must be
    * callable from a `const`-reference, i.e. implement `operator() const`.
    * For a `Function` with a non-`const` function type, the object will
@@ -903,6 +889,8 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   /**
    * Exchanges the callable objects of `*this` and `that`.
+   *
+   * @param that a folly::Function ref
    */
   void swap(Function& that) noexcept { std::swap(*this, that); }
 
@@ -965,8 +953,27 @@ bool operator!=(std::nullptr_t, const Function<FunctionType>& fn) {
 }
 
 /**
- * NOTE: See detailed note about `constCastFunction` at the top of the file.
- * This is potentially dangerous and requires the equivalent of a `const_cast`.
+ * Casts a `folly::Function` from non-const to a const signature.
+ *
+ * NOTE: The name of `constCastFunction` should warn you that something
+ * potentially dangerous is happening. As a matter of fact, using
+ * `std::function` always involves this potentially dangerous aspect, which
+ * is why it is not considered fully const-safe or even const-correct.
+ * However, in most of the cases you will not need the dangerous aspect at all.
+ * Either you do not require invocation of the function from a const context,
+ * in which case you do not need to use `constCastFunction` and just
+ * use a non-const `folly::Function`. Or, you may need invocation from const,
+ * but the callable you are wrapping does not mutate its state (e.g. it is a
+ * class object and implements `operator() const`, or it is a normal,
+ * non-mutable lambda), in which case you can wrap the callable in a const
+ * `folly::Function` directly, without using `constCastFunction`.
+ * Only if you require invocation from a const context of a callable that
+ * may mutate itself when invoked you have to go through the above procedure.
+ * However, in that case what you do is potentially dangerous and requires
+ * the equivalent of a `const_cast`, hence you need to call
+ * `constCastFunction`.
+ *
+ * @param that a non-const folly::Function.
  */
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const> constCastFunction(
@@ -997,9 +1004,9 @@ Function<ReturnType(Args...) const noexcept> constCastFunction(
 #endif
 
 /**
- * @class FunctionRef
+ * @class folly::FunctionRef
  *
- * @brief A reference wrapper for callable objects
+ * A reference wrapper for callable objects
  *
  * FunctionRef is similar to std::reference_wrapper, but the template parameter
  * is the function signature type rather than the type of the referenced object.
