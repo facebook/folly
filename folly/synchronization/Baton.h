@@ -50,19 +50,23 @@ namespace folly {
 /// critical path, at the cost of disallowing blocking.
 ///
 /// The current posix semaphore sem_t isn't too bad, but this provides
-/// more a bit more speed, inlining, smaller size, a guarantee that
+/// a bit more speed, inlining, smaller size, a guarantee that
 /// the implementation won't change, and compatibility with
-/// DeterministicSchedule.  By having a much more restrictive
-/// lifecycle we can also add a bunch of assertions that can help to
-/// catch race conditions ahead of time.
+/// DeterministicSchedule.  A much more restrictive lifecycle allows for adding
+/// a bunch of assertions that can help to catch race conditions ahead of time.
 ///
 /// Baton post with MayBlock == false is async-signal-safe.
 /// When MayBlock == true, Baton post is async-signal-safe if
 /// Futex wake is so.
-
+///
+/// @refcode docs/examples/folly/synchronization/Baton.cpp
+///
 template <bool MayBlock = true, template <typename> class Atom = std::atomic>
 class Baton {
  public:
+  /// @methodset Settings
+  ///
+  /// Gets default wait options for controlling wait behaviour
   FOLLY_ALWAYS_INLINE static constexpr WaitOptions wait_options() { return {}; }
 
   constexpr Baton() noexcept : state_(INIT) {}
@@ -90,12 +94,19 @@ class Baton {
     assert(state_.load(std::memory_order_relaxed) != WAITING);
   }
 
+  /// @methodset Operations
+  ///
+  /// Equivalent to try_wait. Non blocking check whether a baton has been
+  /// posted.
+  /// @return       True if baton has been posted, false otherwise
   FOLLY_ALWAYS_INLINE bool ready() const noexcept {
     auto s = state_.load(std::memory_order_acquire);
     assert(s == INIT || s == EARLY_DELIVERY);
     return LIKELY(s == EARLY_DELIVERY);
   }
 
+  /// @methodset Operations
+  ///
   /// Equivalent to destroying the Baton and creating a new one.  It is
   /// a bug to call this while there is a waiting thread, so in practice
   /// the waiter will be the one that resets the baton.
@@ -122,6 +133,8 @@ class Baton {
     state_.store(INIT, std::memory_order_relaxed);
   }
 
+  /// @methodset Operations
+  ///
   /// Causes wait() to wake up.  For each lifetime of a Baton (where a
   /// lifetime starts at construction or reset() and ends at
   /// destruction or reset()) there can be at most one call to post(),
@@ -163,6 +176,8 @@ class Baton {
     detail::futexWake(&state_, 1);
   }
 
+  /// @methodset Operations
+  ///
   /// Waits until post() has been called in the current Baton lifetime.
   /// May be called at most once during a Baton lifetime (construction
   /// |reset until destruction|reset).  If post is called before wait in
@@ -170,8 +185,10 @@ class Baton {
   ///
   /// The restriction that there can be at most one wait() per lifetime
   /// could be relaxed somewhat without any perf or size regressions,
-  /// but by making this condition very restrictive we can provide better
-  /// checking in debug builds.
+  /// but making this condition very restrictive can provide better checking in
+  /// debug builds.
+  ///
+  /// @param  opt       Options for controlling wait behaviour
   FOLLY_ALWAYS_INLINE
   void wait(const WaitOptions& opt = wait_options()) noexcept {
     if (try_wait()) {
@@ -182,6 +199,8 @@ class Baton {
     tryWaitSlow(deadline, opt);
   }
 
+  /// @methodset Operations
+  ///
   /// Similar to wait, but doesn't block the thread if it hasn't been posted.
   ///
   /// try_wait has the following semantics:
@@ -192,9 +211,11 @@ class Baton {
   /// - If try_wait indicates that the baton has been posted, it is invalid to
   ///   call wait, try_wait or timed_wait on the same baton without resetting
   ///
-  /// @return       true if baton has been posted, false othewise
+  /// @return       True if baton has been posted, false othewise
   FOLLY_ALWAYS_INLINE bool try_wait() const noexcept { return ready(); }
 
+  /// @methodset Operations
+  ///
   /// Similar to wait, but with a timeout. The thread is unblocked if the
   /// timeout expires.
   /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
@@ -204,8 +225,9 @@ class Baton {
   /// again on the same baton without resetting it.
   ///
   /// @param  timeout       Time until which the thread can block
-  /// @return               true if the baton was posted to before timeout,
-  ///                       false otherwise
+  /// @param  opt           Options for controlling wait behaviour
+  /// @return               True if the baton was posted to before timeout,
+  ///                       False otherwise
   template <typename Rep, typename Period>
   FOLLY_ALWAYS_INLINE bool try_wait_for(
       const std::chrono::duration<Rep, Period>& timeout,
@@ -218,6 +240,8 @@ class Baton {
     return tryWaitSlow(deadline, opt);
   }
 
+  /// @methodset Operations
+  ///
   /// Similar to wait, but with a deadline. The thread is unblocked if the
   /// deadline expires.
   /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
@@ -227,8 +251,9 @@ class Baton {
   /// again on the same baton without resetting it.
   ///
   /// @param  deadline      Time until which the thread can block
-  /// @return               true if the baton was posted to before deadline,
-  ///                       false otherwise
+  /// @param  opt           Options for controlling wait behaviour
+  /// @return               True if the baton was posted to before deadline,
+  ///                       False otherwise
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline,
@@ -240,6 +265,10 @@ class Baton {
     return tryWaitSlow(deadline, opt);
   }
 
+  /// @methodset Deprecated
+  ///
+  /// @overloadbrief Aliases to try_wait_for and try_wait_until
+  ///
   /// Alias to try_wait_for. Deprecated.
   template <typename Rep, typename Period>
   FOLLY_ALWAYS_INLINE bool timed_wait(
@@ -247,6 +276,8 @@ class Baton {
     return try_wait_for(timeout);
   }
 
+  /// @methodset Deprecated
+  ///
   /// Alias to try_wait_until. Deprecated.
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool timed_wait(
