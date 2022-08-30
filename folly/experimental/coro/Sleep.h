@@ -29,13 +29,17 @@ namespace coro {
 ///
 /// Throws folly::OperationCancelled if cancellation is requested
 /// on the awaiting coroutine's associated CancellationToken.
-Task<void> sleep(Duration d, Timekeeper* tk = nullptr);
+///
+/// NOTE: The default tk has Duration resolution, supply
+/// ThreadWheelTimekeeperHighRes for maximum sleep resolution
+Task<void> sleep(HighResDuration d, Timekeeper* tk = nullptr);
 
 /// Return a task that, when awaited, will sleep for the specified duration.
 ///
 /// May complete sooner that the specified duration  if cancellation is
 /// requested on the awaiting coroutine's associated CancellationToken.
-Task<void> sleepReturnEarlyOnCancel(Duration d, Timekeeper* tk = nullptr);
+Task<void> sleepReturnEarlyOnCancel(
+    HighResDuration d, Timekeeper* tk = nullptr);
 
 } // namespace coro
 } // namespace folly

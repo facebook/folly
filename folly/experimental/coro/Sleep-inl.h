@@ -25,7 +25,7 @@
 namespace folly {
 namespace coro {
 
-inline Task<void> sleep(Duration d, Timekeeper* tk) {
+inline Task<void> sleep(HighResDuration d, Timekeeper* tk) {
   bool cancelled{false};
   folly::coro::Baton baton;
   Try<Unit> result;
@@ -50,7 +50,7 @@ inline Task<void> sleep(Duration d, Timekeeper* tk) {
   co_yield co_result(std::move(result));
 }
 
-inline Task<void> sleepReturnEarlyOnCancel(Duration d, Timekeeper* tk) {
+inline Task<void> sleepReturnEarlyOnCancel(HighResDuration d, Timekeeper* tk) {
   auto result = co_await co_awaitTry(sleep(d, tk));
   if (result.hasException<OperationCancelled>()) {
     co_return;
