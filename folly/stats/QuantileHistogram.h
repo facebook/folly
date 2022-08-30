@@ -22,12 +22,22 @@
 #include <folly/GLog.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
+#include <folly/SharedMutex.h>
+#include <folly/lang/Align.h>
+#include <folly/stats/DigestBuilder.h>
 
 namespace folly {
 
 template <class Q>
 class QuantileHistogramBase {
  public:
+  QuantileHistogramBase() = default;
+  explicit QuantileHistogramBase(size_t) : QuantileHistogramBase() {}
+
+  static constexpr std::array<double, Q::kNumQuantiles> quantiles() {
+    return Q::kQuantiles;
+  }
+
   /*
    * Combines the given histograms into a new histogram where the locations for
    * each tracked quantile is the weighted average of the corresponding quantile
@@ -51,10 +61,6 @@ class QuantileHistogramBase {
   double min() const { return locations_.front(); }
 
   double max() const { return locations_.back(); }
-
-  static constexpr std::array<double, Q::kNumQuantiles> quantiles() {
-    return Q::kQuantiles;
-  }
 
   std::string debugString() const;
 
@@ -82,6 +88,42 @@ class DefaultQuantiles {
 };
 
 using QuantileHistogram = QuantileHistogramBase<DefaultQuantiles>;
+
+// The CPUShardedQuantileHistogram class behaves similarly to QuantileHistogram
+// except that it is thread-safe. Adding values is heavily optimized while any
+// kind of inference will incur a heavy cost because all cpu-local shards must
+// be merged.
+template <class Q = DefaultQuantiles>
+class CPUShardedQuantileHistogram {
+ public:
+  CPUShardedQuantileHistogram()
+      : histBuilder_(
+            /*bufferSize=*/hardware_destructive_interference_size /
+                sizeof(double),
+            /*digestSize=*/0) {}
+
+  static constexpr std::array<double, Q::kNumQuantiles> quantiles();
+
+  void addValue(double value);
+
+  double estimateQuantile(double q);
+
+  uint64_t count();
+
+  double min();
+
+  double max();
+
+  std::string debugString();
+
+ private:
+  SharedMutex mtx_;
+  QuantileHistogramBase<Q> mergedHist_;
+  DigestBuilder<QuantileHistogramBase<Q>> histBuilder_;
+
+  // Assumes mtx is held.
+  void flush();
+};
 
 } // namespace folly
 

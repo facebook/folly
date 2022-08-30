@@ -27,6 +27,9 @@ QuantileHistogramBase<Q> QuantileHistogramBase<Q>::merge(
   }
 
   QuantileHistogramBase<Q> merged{qhists[0]};
+  if (qhists.size() == 1) {
+    return merged;
+  }
   merged.count_ = 0;
 
   for (const auto qhist : qhists) {
@@ -210,6 +213,59 @@ void QuantileHistogramBase<Q>::dcheckSane() const {
   for (size_t i = 0; i < locations_.size() - 1; i++) {
     DCHECK_LE(locations_[i], locations_[i + 1]) << debugString();
   }
+}
+
+template <class Q>
+/*static*/ constexpr std::array<double, Q::kNumQuantiles>
+CPUShardedQuantileHistogram<Q>::quantiles() {
+  return Q::kQuantiles;
+}
+
+template <class Q>
+void CPUShardedQuantileHistogram<Q>::addValue(double value) {
+  histBuilder_.append(value);
+}
+
+template <class Q>
+double CPUShardedQuantileHistogram<Q>::estimateQuantile(double q) {
+  SharedMutex::WriteHolder r{&mtx_};
+  flush();
+  return mergedHist_.estimateQuantile(q);
+}
+
+template <class Q>
+uint64_t CPUShardedQuantileHistogram<Q>::count() {
+  SharedMutex::WriteHolder r{&mtx_};
+  flush();
+  return mergedHist_.count();
+}
+
+template <class Q>
+double CPUShardedQuantileHistogram<Q>::min() {
+  SharedMutex::WriteHolder r{&mtx_};
+  flush();
+  return mergedHist_.min();
+}
+
+template <class Q>
+double CPUShardedQuantileHistogram<Q>::max() {
+  SharedMutex::WriteHolder r{&mtx_};
+  flush();
+  return mergedHist_.max();
+}
+
+template <class Q>
+std::string CPUShardedQuantileHistogram<Q>::debugString() {
+  SharedMutex::WriteHolder r{&mtx_};
+  flush();
+  return mergedHist_.debugString();
+}
+
+template <class Q>
+void CPUShardedQuantileHistogram<Q>::flush() {
+  auto built = histBuilder_.build();
+  mergedHist_ = mergedHist_.merge(
+      std::array<QuantileHistogramBase<Q>, 2>{mergedHist_, built});
 }
 
 } // namespace folly
