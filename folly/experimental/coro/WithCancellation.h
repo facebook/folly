@@ -22,14 +22,22 @@
 
 #if FOLLY_HAS_COROUTINES
 
+/**
+ * \file experimental/coro/WithCancellation.h
+ * co_withCancellation allows caller to pass in a cancellation token to a
+ * awaitable
+ *
+ * \refcode docs/examples/folly/experimental/coro/WithCancellation.cpp
+ */
+
 namespace folly {
 namespace coro {
 
 namespace detail {
 namespace adl {
 
-// Default implementation that does not hook the cancellation token.
-// Types must opt-in to hooking cancellation by customising this function.
+/// Default implementation that does not hook the cancellation token.
+/// Types must opt-in to hooking cancellation by customising this function.
 template <typename Awaitable>
 Awaitable&& co_withCancellation(
     const folly::CancellationToken&, Awaitable&& awaitable) noexcept {

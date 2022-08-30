@@ -29,6 +29,22 @@
 
 namespace folly {
 namespace coro {
+/**
+ * detachOnCancel is used to handle operations that are hard to be cancelled. A
+ * typical use case is: The caller starts a task with timeout (in this case, 1
+ * sec timeout). The task itself launches a long running job and the job doesn't
+ * handle cancellation (sleep_for in this example). The caller has timeout and
+ * the cancellation is propagated to the task. The detachOnCancel detects the
+ * cancellation and return immediately. However, the background task still runs
+ * until the thread join.
+ *
+ * \refcode docs/examples/folly/experimental/coro/DetachOnCancel.cpp
+ *
+ * It is important to manage the scope of each variable. If the long running
+ * task references any variable that is created in the scope of detachOnCancel,
+ * then the result may be freed and the long running task may trigger
+ * use-after-free error.
+ */
 template <typename Awaitable>
 Task<semi_await_result_t<Awaitable>> detachOnCancel(Awaitable awaitable) {
   auto posted = std::make_unique<std::atomic<bool>>(false);

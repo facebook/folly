@@ -47,89 +47,91 @@ class AsyncGeneratorPromise;
 
 } // namespace detail
 
-// The AsyncGenerator class represents a sequence of asynchronously produced
-// values where the values are produced by a coroutine.
-//
-// Values are produced by using the 'co_yield' keyword and the coroutine can
-// also consume other asynchronous operations using the 'co_await' keyword.
-// The end of the sequence is indicated by executing 'co_return;' either
-// explicitly or by letting execution run off the end of the coroutine.
-//
-// Reference Type
-// --------------
-// The first template parameter controls the 'reference' type.
-// i.e. the type returned when you dereference the iterator using operator*().
-// This type is typically specified as an actual reference type.
-// eg. 'const T&' (non-mutable), 'T&' (mutable)  or 'T&&' (movable) depending
-// what access you want your consumers to have to the yielded values.
-//
-// It's also possible to specify the 'Reference' template parameter as a value
-// type. In this case the generator takes a copy of the yielded value (either
-// copied or move-constructed) and you get a copy of this value every time
-// you dereference the iterator with '*iter'.
-// This can be expensive for types that are expensive to copy, but can provide
-// a small performance win for types that are cheap to copy (like built-in
-// integer types).
-//
-// Value Type
-// ----------
-// The second template parameter is optional, but if specified can be used as
-// the value-type that should be used to take a copy of the value returned by
-// the Reference type.
-// By default this type is the same as 'Reference' type stripped of qualifiers
-// and references. However, in some cases it can be a different type.
-// For example, if the 'Reference' type was a non-reference proxy type.
-//
-// Example:
-//  AsyncGenerator<std::tuple<const K&, V&>, std::tuple<K, V>> getItems() {
-//    auto firstMap = co_await getFirstMap();
-//    for (auto&& [k, v] : firstMap) {
-//      co_yield {k, v};
-//    }
-//    auto secondMap = co_await getSecondMap();
-//    for (auto&& [k, v] : secondMap) {
-//      co_yield {k, v};
-//    }
-//  }
-//
-// This is mostly useful for generic algorithms that need to take copies of
-// elements of the sequence.
-//
-// Executor Affinity
-// -----------------
-// An AsyncGenerator coroutine has similar executor-affinity to that of the
-// folly::coro::Task coroutine type. Every time a consumer requests a new value
-// from the generator using 'co_await ++it' the generator inherits the caller's
-// current executor. The coroutine will ensure that it always resumes on the
-// associated executor when resuming from `co_await' expression until it hits
-// the next 'co_yield' or 'co_return' statement.
-// Note that the executor can potentially change at a 'co_yield' statement if
-// the next element of the sequence is requested from a consumer coroutine that
-// is associated with a different executor.
-//
-// Example: Writing an async generator.
-//
-//  folly::coro::AsyncGenerator<Record&&> getRecordsAsync() {
-//    auto resultSet = executeQuery(someQuery);
-//    for (;;) {
-//      auto resultSetPage = co_await resultSet.nextPage();
-//      if (resultSetPage.empty()) break;
-//      for (auto& row : resultSetPage) {
-//        co_yield Record{row.get("name"), row.get("email")};
-//      }
-//    }
-//  }
-//
-// Example: Consuming items from an async generator
-//
-//  folly::coro::Task<void> consumer() {
-//    auto records = getRecordsAsync();
-//    while (auto item = co_await records.next()) {
-//      auto&& record = *item;
-//      process(record);
-//    }
-//  }
-//
+/**
+ * The AsyncGenerator class represents a sequence of asynchronously produced
+ * values where the values are produced by a coroutine.
+ *
+ * Values are produced by using the 'co_yield' keyword and the coroutine can
+ * also consume other asynchronous operations using the 'co_await' keyword.
+ * The end of the sequence is indicated by executing 'co_return;' either
+ * explicitly or by letting execution run off the end of the coroutine.
+ *
+ * Reference Type
+ * --------------
+ * The first template parameter controls the 'reference' type.
+ * i.e. the type returned when you dereference the iterator using operator*().
+ * This type is typically specified as an actual reference type.
+ * eg. 'const T&' (non-mutable), 'T&' (mutable)  or 'T&&' (movable) depending
+ * what access you want your consumers to have to the yielded values.
+ *
+ * It's also possible to specify the 'Reference' template parameter as a value
+ * type. In this case the generator takes a copy of the yielded value (either
+ * copied or move-constructed) and you get a copy of this value every time
+ * you dereference the iterator with '*iter'.
+ * This can be expensive for types that are expensive to copy, but can provide
+ * a small performance win for types that are cheap to copy (like built-in
+ * integer types).
+ *
+ * Value Type
+ * ----------
+ * The second template parameter is optional, but if specified can be used as
+ * the value-type that should be used to take a copy of the value returned by
+ * the Reference type.
+ * By default this type is the same as 'Reference' type stripped of qualifiers
+ * and references. However, in some cases it can be a different type.
+ * For example, if the 'Reference' type was a non-reference proxy type.
+ *
+ * Example:
+ *
+ *     AsyncGenerator<std::tuple<const K&, V&>, std::tuple<K, V>> getItems() {
+ *         auto firstMap = co_await getFirstMap();
+ *         for (auto&& [k, v] : firstMap) {
+ *           co_yield {k, v};
+ *         }
+ *         auto secondMap = co_await getSecondMap();
+ *         for (auto&& [k, v] : secondMap) {
+ *           co_yield {k, v};
+ *         }
+ *      }
+ *
+ * This is mostly useful for generic algorithms that need to take copies of
+ * elements of the sequence.
+ *
+ * Executor Affinity
+ * -----------------
+ * An AsyncGenerator coroutine has similar executor-affinity to that of the
+ * folly::coro::Task coroutine type. Every time a consumer requests a new value
+ * from the generator using 'co_await ++it' the generator inherits the caller's
+ * current executor. The coroutine will ensure that it always resumes on the
+ * associated executor when resuming from `co_await' expression until it hits
+ * the next 'co_yield' or 'co_return' statement.
+ * Note that the executor can potentially change at a 'co_yield' statement if
+ * the next element of the sequence is requested from a consumer coroutine that
+ * is associated with a different executor.
+ *
+ * Example: Writing an async generator.
+ *
+ *       folly::coro::AsyncGenerator<Record&&> getRecordsAsync() {
+ *         auto resultSet = executeQuery(someQuery);
+ *         for (;;) {
+ *           auto resultSetPage = co_await resultSet.nextPage();
+ *           if (resultSetPage.empty()) break;
+ *           for (auto& row : resultSetPage) {
+ *             co_yield Record{row.get("name"), row.get("email")};
+ *           }
+ *         }
+ *  }
+ *
+ * Example: Consuming items from an async generator
+ *
+ *       folly::coro::Task<void> consumer() {
+ *         auto records = getRecordsAsync();
+ *         while (auto item = co_await records.next()) {
+ *           auto&& record = *item;
+ *           process(record);
+ *         }
+ *       }
+ */
 template <typename Reference, typename Value = remove_cvref_t<Reference>>
 class FOLLY_NODISCARD AsyncGenerator {
   static_assert(
@@ -435,11 +437,11 @@ class AsyncGeneratorPromise final
     return YieldAwaiter{};
   }
 
-  // In the case where 'Reference' is not actually a reference-type we
-  // allow implicit conversion from the co_yield argument to Reference.
-  // However, we don't want to allow this for cases where 'Reference' _is_
-  // a reference because this could result in the reference binding to a
-  // temporary that results from an implicit conversion.
+  /// In the case where 'Reference' is not actually a reference-type we
+  /// allow implicit conversion from the co_yield argument to Reference.
+  /// However, we don't want to allow this for cases where 'Reference' _is_
+  /// a reference because this could result in the reference binding to a
+  /// temporary that results from an implicit conversion.
   template <
       typename U,
       std::enable_if_t<

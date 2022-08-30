@@ -25,23 +25,26 @@
 
 namespace folly::coro {
 
-// Returns a Task that, when started, starts a timer of duration
-// 'timeoutDuration' and awaits the passed SemiAwaitable.
-//
-// If the timeoutDuration elapses before the 'co_await semiAwaitable'
-// operation completes then requests cancellation of the child operation
-// and completes with an error of type folly::FutureTimeout.
-// Otherwise, if the 'co_await semiAwaitable' operation completes before
-// the timeoutDuration elapses then cancels the timer and completes with
-// the result of the semiAwaitable.
-//
-// IMPORTANT: The operation passed as the first argument must be able
-// to respond to a request for cancellation on the CancellationToken
-// injected to it via co_withCancellation() in a timely manner for the
-// timeout to work as expected.
-//
-// If a timekeeper is provided then uses that timekeeper to start the timer,
-// otherwise uses the process' default TimeKeeper if 'tk' is null.
+/// Returns a Task that, when started, starts a timer of duration
+/// 'timeoutDuration' and awaits the passed SemiAwaitable.
+///
+/// If the timeoutDuration elapses before the 'co_await semiAwaitable'
+/// operation completes then requests cancellation of the child operation
+/// and completes with an error of type folly::FutureTimeout.
+/// Otherwise, if the 'co_await semiAwaitable' operation completes before
+/// the timeoutDuration elapses then cancels the timer and completes with
+/// the result of the semiAwaitable.
+///
+/// IMPORTANT: The operation passed as the first argument must be able
+/// to respond to a request for cancellation on the CancellationToken
+/// injected to it via folly::coro::co_withCancellation in a timely manner for
+/// the timeout to work as expected.
+///
+/// If a timekeeper is provided then uses that timekeeper to start the timer,
+/// otherwise uses the process' default TimeKeeper if 'tk' is null.
+///
+/// \throws folly::FutureTimeout
+/// \refcode docs/examples/folly/experimental/coro/DetachOnCancel.cpp
 template <typename SemiAwaitable, typename Duration>
 Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
     SemiAwaitable semiAwaitable,

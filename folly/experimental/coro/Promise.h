@@ -206,6 +206,17 @@ class Future {
   friend std::pair<Promise<T>, Future<T>> makePromiseContract<T>();
 };
 
+/**
+ * makePromiseContract can help you migrating your non-coroutine code base to
+ * coroutine. If your code already uses Future/SemiFuture, you don't need this
+ * tool. A common use case is with async callback functions. In the example, we
+ * can pass a callback function into the legacy code sleepAndNotify and
+ * sleepAndNotify sets the promise on completion. Consider to use detachOnCancel
+ * with this makePromiseContract to handle long running (longer than your
+ * timeout) tasks that don't handle cancellation properly.
+ *
+ * \refcode docs/examples/folly/experimental/coro/Promise.cpp
+ */
 template <typename T>
 std::pair<Promise<T>, Future<T>> makePromiseContract() {
   auto [cs, data] = CancellationSource::create(
