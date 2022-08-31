@@ -45,6 +45,14 @@ FOLLY_GNU_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 
+namespace detail {
+// Is T a unique_ptr<> to a standard-layout type?
+template <typename T>
+struct IsUniquePtrToSL : std::false_type {};
+template <typename T, typename D>
+struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
+} // namespace detail
+
 /**
  * An IOBuf is a pointer to a buffer of data.
  *
@@ -66,17 +74,17 @@ namespace folly {
  *
  * The data layout looks like this:
  *
- *  +-------+
- *  | IOBuf |
- *  +-------+
- *   /
- *  |
- *  v
- *  +------------+--------------------+-----------+
- *  | headroom   |        data        |  tailroom |
- *  +------------+--------------------+-----------+
- *  ^            ^                    ^           ^
- *  buffer()   data()               tail()      bufferEnd()
+ *      +-------+
+ *      | IOBuf |
+ *      +-------+
+ *       /
+ *      |
+ *      v
+ *      +------------+--------------------+-----------+
+ *      | headroom   |        data        |  tailroom |
+ *      +------------+--------------------+-----------+
+ *      ^            ^                    ^           ^
+ *      buffer()   data()               tail()      bufferEnd()
  *
  *  The length() method returns the length of the valid data; capacity()
  *  returns the entire capacity of the buffer (from buffer() to bufferEnd()).
@@ -99,15 +107,15 @@ namespace folly {
  * same location for all IOBufs sharing the same underlying buffer, unless the
  * tail was trimmed with trimWritableTail().
  *
- *       +-----------+     +---------+
- *       |  IOBuf 1  |     | IOBuf 2 |
- *       +-----------+     +---------+
- *        |         | _____/        |
- *   data |    tail |/    data      | tail
- *        v         v               v
- *  +-------------------------------------+
- *  |     |         |               |     |
- *  +-------------------------------------+
+ *           +-----------+     +---------+
+ *           |  IOBuf 1  |     | IOBuf 2 |
+ *           +-----------+     +---------+
+ *            |         | _____/        |
+ *       data |    tail |/    data      | tail
+ *            v         v               v
+ *      +-------------------------------------+
+ *      |     |         |               |     |
+ *      +-------------------------------------+
  *
  * If you only read data from an IOBuf, you don't need to worry about other
  * IOBuf objects possibly sharing the same underlying buffer.  However, if you
@@ -217,15 +225,9 @@ namespace folly {
  * sharing on their own.  (For example, by using a shared_ptr.  Alternatively,
  * users always have the option of using clone() to create a second IOBuf that
  * points to the same underlying buffer.)
+ *
+ * @refcode docs/examples/folly/io/IOBuf.cpp
  */
-namespace detail {
-// Is T a unique_ptr<> to a standard-layout type?
-template <typename T>
-struct IsUniquePtrToSL : std::false_type {};
-template <typename T, typename D>
-struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
-} // namespace detail
-
 class IOBuf {
  public:
   class Iterator;
