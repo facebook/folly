@@ -85,9 +85,15 @@ struct MemMapDebugTrailer {
   size_t length;
   uint32_t magic;
 };
-} // namespace
 
-void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
+void* mmapWinArgs(
+    void* addr,
+    size_t length,
+    int prot,
+    int flags,
+    int fd,
+    DWORD offHigh,
+    DWORD offLow) {
   // Make sure it's something we support first.
 
   // No Anon shared.
@@ -130,13 +136,7 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
     if (fmh == nullptr) {
       return MAP_FAILED;
     }
-    ret = MapViewOfFileEx(
-        fmh,
-        accessFlags,
-        (DWORD)(0), // off_t is only 32-bit :(
-        (DWORD)(off & 0xFFFFFFFF),
-        0,
-        addr);
+    ret = MapViewOfFileEx(fmh, accessFlags, offHigh, offLow, 0, addr);
     if (ret == nullptr) {
       ret = MAP_FAILED;
     }
@@ -168,6 +168,25 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
   // TODO: Could technically implement MAP_POPULATE via PrefetchVirtualMemory
   //       Should also see about implementing MAP_NORESERVE
   return ret;
+}
+} // namespace
+
+void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
+  // offHigh is zero because off_t is only 32-bit on windows
+  return mmapWinArgs(
+      addr, length, prot, flags, fd, (DWORD)(0), (DWORD)(off & 0xFFFFFFFF));
+}
+
+void* mmap64(
+    void* addr, size_t length, int prot, int flags, int fd, off64_t off) {
+  return mmapWinArgs(
+      addr,
+      length,
+      prot,
+      flags,
+      fd,
+      (DWORD)(off >> 32) & 0xFFFFFFFF,
+      (DWORD)(off & 0xFFFFFFFF));
 }
 
 int mprotect(void* addr, size_t size, int prot) {

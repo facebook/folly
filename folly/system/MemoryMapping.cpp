@@ -27,6 +27,7 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/SysSyscall.h>
+#include <folly/portability/Unistd.h>
 
 #ifdef __linux__
 #include <folly/experimental/io/HugePages.h> // @manual
@@ -71,14 +72,14 @@ MemoryMapping::MemoryMapping(MemoryMapping&& other) noexcept {
 }
 
 MemoryMapping::MemoryMapping(
-    File file, off_t offset, off_t length, Options options)
+    File file, off64_t offset, off64_t length, Options options)
     : file_(std::move(file)), options_(options) {
   CHECK(file_);
   init(offset, length);
 }
 
 MemoryMapping::MemoryMapping(
-    const char* name, off_t offset, off_t length, Options options)
+    const char* name, off64_t offset, off64_t length, Options options)
     : MemoryMapping(
           File(name, options.writable ? O_RDWR : O_RDONLY),
           offset,
@@ -86,10 +87,10 @@ MemoryMapping::MemoryMapping(
           options) {}
 
 MemoryMapping::MemoryMapping(
-    int fd, off_t offset, off_t length, Options options)
+    int fd, off64_t offset, off64_t length, Options options)
     : MemoryMapping(File(fd), offset, length, options) {}
 
-MemoryMapping::MemoryMapping(AnonymousType, off_t length, Options options)
+MemoryMapping::MemoryMapping(AnonymousType, off64_t length, Options options)
     : options_(options) {
   init(0, length);
 }
@@ -97,7 +98,7 @@ MemoryMapping::MemoryMapping(AnonymousType, off_t length, Options options)
 namespace {
 
 #ifdef __linux__
-void getDeviceOptions(dev_t device, off_t& pageSize, bool& autoExtend) {
+void getDeviceOptions(dev_t device, off64_t& pageSize, bool& autoExtend) {
   auto ps = getHugePageSizeForDevice(device);
   if (ps) {
     pageSize = ps->size;
@@ -105,19 +106,24 @@ void getDeviceOptions(dev_t device, off_t& pageSize, bool& autoExtend) {
   }
 }
 #else
-inline void getDeviceOptions(dev_t, off_t&, bool&) {}
+inline void getDeviceOptions(dev_t, off64_t&, bool&) {}
 #endif
 
 } // namespace
 
-void MemoryMapping::init(off_t offset, off_t length) {
+void MemoryMapping::init(off64_t offset, off64_t length) {
   const bool grow = options_.grow;
   const bool anon = !file_;
   CHECK(!(grow && anon));
 
-  off_t& pageSize = options_.pageSize;
+  off64_t& pageSize = options_.pageSize;
 
+#ifdef _WIN32
+  // stat that support files larger then 4Gb
+  struct _stat64 st;
+#else
   struct stat st;
+#endif
 
   // On Linux, hugetlbfs file systems don't require ftruncate() to grow the
   // file, and (on kernels before 2.6.24) don't even allow it. Also, the file
@@ -125,9 +131,12 @@ void MemoryMapping::init(off_t offset, off_t length) {
   bool autoExtend = false;
 
   if (!anon) {
-    // Stat the file
+// Stat the file
+#ifdef _WIN32
+    CHECK_ERR(_fstat64(file_.fd(), &st));
+#else
     CHECK_ERR(fstat(file_.fd(), &st));
-
+#endif
     if (pageSize == 0) {
       getDeviceOptions(st.st_dev, pageSize, autoExtend);
     }
@@ -139,7 +148,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
   }
 
   if (pageSize == 0) {
-    pageSize = off_t(sysconf(_SC_PAGESIZE));
+    pageSize = off64_t(sysconf(_SC_PAGESIZE));
   }
 
   CHECK_GT(pageSize, 0);
@@ -147,7 +156,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
   CHECK_GE(offset, 0);
 
   // Round down the start of the mapped region
-  off_t skipStart = offset % pageSize;
+  off64_t skipStart = offset % pageSize;
   offset -= skipStart;
 
   mapLength_ = length;
@@ -158,7 +167,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
     mapLength_ = (mapLength_ + pageSize - 1) / pageSize * pageSize;
   }
 
-  off_t remaining = anon ? length : st.st_size - offset;
+  off64_t remaining = anon ? length : st.st_size - offset;
 
   if (mapLength_ == -1) {
     length = mapLength_ = remaining;
@@ -203,8 +212,13 @@ void MemoryMapping::init(off_t offset, off_t length) {
            (options_.writable ? PROT_WRITE : 0));
     }
 
+#ifdef _WIN32
+    auto start = static_cast<unsigned char*>(mmap64(
+        options_.address, size_t(mapLength_), prot, flags, file_.fd(), offset));
+#else
     auto start = static_cast<unsigned char*>(mmap(
         options_.address, size_t(mapLength_), prot, flags, file_.fd(), offset));
+#endif
     PCHECK(start != MAP_FAILED)
         << " offset=" << offset << " length=" << mapLength_;
     mapStart_ = start;
@@ -214,14 +228,14 @@ void MemoryMapping::init(off_t offset, off_t length) {
 
 namespace {
 
-off_t memOpChunkSize(off_t length, off_t pageSize) {
-  off_t chunkSize = length;
+off64_t memOpChunkSize(off64_t length, off64_t pageSize) {
+  off64_t chunkSize = length;
   if (FLAGS_mlock_chunk_size <= 0) {
     return chunkSize;
   }
 
-  chunkSize = off_t(FLAGS_mlock_chunk_size);
-  off_t r = chunkSize % pageSize;
+  chunkSize = off64_t(FLAGS_mlock_chunk_size);
+  off64_t r = chunkSize % pageSize;
   if (r) {
     chunkSize += (pageSize - r);
   }
@@ -237,7 +251,11 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
  */
 template <typename Op>
 bool memOpInChunks(
-    Op op, void* mem, size_t bufSize, off_t pageSize, size_t& amountSucceeded) {
+    Op op,
+    void* mem,
+    size_t bufSize,
+    off64_t pageSize,
+    size_t& amountSucceeded) {
   // Linux' unmap/mlock/munlock take a kernel semaphore and block other threads
   // from doing other memory operations. If the size of the buffer is big the
   // semaphore can be down for seconds (for benchmarks see
@@ -245,7 +263,7 @@ bool memOpInChunks(
   // chunks breaks the locking into intervals and lets other threads do memory
   // operations of their own.
 
-  auto chunkSize = size_t(memOpChunkSize(off_t(bufSize), pageSize));
+  auto chunkSize = size_t(memOpChunkSize(off64_t(bufSize), pageSize));
 
   auto addr = static_cast<char*>(mem);
   amountSucceeded = 0;
@@ -443,7 +461,7 @@ void mmapFileCopy(const char* src, const char* dest, mode_t mode) {
   MemoryMapping destMap(
       File(dest, O_RDWR | O_CREAT | O_TRUNC, mode),
       0,
-      off_t(srcMap.range().size()),
+      off64_t(srcMap.range().size()),
       MemoryMapping::writable());
 
   alignedForwardMemcpy(
