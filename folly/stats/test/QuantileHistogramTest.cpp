@@ -24,40 +24,19 @@
 
 using namespace folly;
 
-class MinAndMax {
- public:
-  static constexpr size_t kNumQuantiles = 2;
-  static constexpr std::array<double, kNumQuantiles> kQuantiles{0.0, 1.0};
-};
-
-class Median {
- public:
-  static constexpr size_t kNumQuantiles = 3;
-  static constexpr std::array<double, kNumQuantiles> kQuantiles{0.0, 0.5, 1.0};
-};
-
-class P99 {
- public:
-  static constexpr size_t kNumQuantiles = 3;
-  static constexpr std::array<double, kNumQuantiles> kQuantiles{0.0, 0.99, 1.0};
-};
-
-class MedianAndHigh {
- public:
-  static constexpr size_t kNumQuantiles = 6;
-  static constexpr std::array<double, kNumQuantiles> kQuantiles{
-      0.0, 0.5, 0.9, 0.99, 0.999, 1.0};
-};
-
 template <typename T>
 class QuantileHistogramTypedTest : public ::testing::Test {};
 
 using ValueTypes = ::testing::Types<
-    QuantileHistogram,
-    QuantileHistogramBase<MinAndMax>,
-    QuantileHistogramBase<Median>,
-    QuantileHistogramBase<P99>,
-    QuantileHistogramBase<MedianAndHigh>>;
+    QuantileHistogram<>,
+    QuantileHistogram<PredefinedQuantiles::MinAndMax>,
+    QuantileHistogram<PredefinedQuantiles::Median>,
+    QuantileHistogram<PredefinedQuantiles::P01>,
+    QuantileHistogram<PredefinedQuantiles::P99>,
+    QuantileHistogram<PredefinedQuantiles::MedianAndHigh>,
+    QuantileHistogram<PredefinedQuantiles::Quartiles>,
+    QuantileHistogram<PredefinedQuantiles::Deciles>,
+    QuantileHistogram<PredefinedQuantiles::Ventiles>>;
 
 TYPED_TEST_SUITE(QuantileHistogramTypedTest, ValueTypes);
 

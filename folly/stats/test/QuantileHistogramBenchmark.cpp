@@ -118,7 +118,7 @@ void mergeUnsortedVals(unsigned int iters, size_t bufSize) {
 }
 
 void mergeDigests(unsigned int iters, size_t maxSize, size_t nDigests) {
-  std::vector<QuantileHistogram> digests;
+  std::vector<QuantileHistogram<>> digests;
   BENCHMARK_SUSPEND {
     QuantileHistogram qhist;
     std::default_random_engine generator;
@@ -136,7 +136,7 @@ void mergeDigests(unsigned int iters, size_t maxSize, size_t nDigests) {
   }
 
   for (size_t i = 0; i < iters; ++i) {
-    QuantileHistogram::merge(digests);
+    QuantileHistogram<>::merge(digests);
   }
 }
 
@@ -171,6 +171,8 @@ void estimateQuantile(unsigned int iters, size_t maxSize, double quantile) {
 }
 
 BENCHMARK_NAMED_PARAM(addValue, unsorted)
+
+BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM(addValueMultithreaded, 1, 1)
 BENCHMARK_NAMED_PARAM(addValueMultithreaded, 2, 2)
 BENCHMARK_NAMED_PARAM(addValueMultithreaded, 4, 4)
