@@ -31,6 +31,13 @@
 
 namespace folly {
 
+/**
+ * Provides a unified interface for socket addresses.
+ *
+ * @class folly::SocketAddress
+ *
+ */
+
 class SocketAddress {
  public:
   SocketAddress() = default;
@@ -45,7 +52,7 @@ class SocketAddress {
    *
    * @param host The IP address (or hostname, if allowNameLookup is true)
    * @param port The port (in host byte order)
-   * @pram allowNameLookup  If true, attempt to perform hostname lookup
+   * @param allowNameLookup  If true, attempt to perform hostname lookup
    *        if the hostname does not appear to be a numeric IP address.
    *        This is potentially a very slow operation, so is disabled by
    *        default.
@@ -60,7 +67,10 @@ class SocketAddress {
       setFromIpPort(host, port);
     }
   }
-
+  /**
+   * Similar to the constructor which accepts hostname and port.
+   * This variant accepts host as std::string.
+   */
   SocketAddress(
       const std::string& host, uint16_t port, bool allowNameLookup = false) {
     // Initialize the address family first,
@@ -72,7 +82,14 @@ class SocketAddress {
       setFromIpPort(host.c_str(), port);
     }
   }
-
+  /**
+   * Construct a SocketAddress from a hostname and port.
+   *
+   * Raises std::system_error on error.
+   *
+   * @param ipAddr The IP address
+   * @param port The port (in host byte order)
+   */
   SocketAddress(const IPAddress& ipAddr, uint16_t port) {
     setFromIpAddrPort(ipAddr, port);
   }
@@ -128,6 +145,9 @@ class SocketAddress {
     }
   }
 
+  /**
+   * Return whether this SocketAddress is initialized.
+   */
   bool isInitialized() const { return (getFamily() != AF_UNSPEC); }
 
   /**
@@ -141,15 +161,21 @@ class SocketAddress {
    * The loopback addresses 127/8 and ::1 are also regarded as private networks
    * for the purpose of this function.
    *
-   * Returns true if this is a private network address, and false otherwise.
+   * @return true if this is a private network address, false otherwise
    */
   bool isPrivateAddress() const;
 
   /**
    * Return whether this address is a loopback address.
+   *
+   * @return true if this is a loopback address, false otherwise
    */
   bool isLoopbackAddress() const;
 
+  /**
+   * Reset this SocketAddress by clearing the associated address and
+   * freeing up any external storage being used.
+   */
   void reset() {
     if (external_) {
       storage_.un.free();
@@ -159,7 +185,7 @@ class SocketAddress {
   }
 
   /**
-   * Initialize this SocketAddress from a hostname and port.
+   * @overloadbrief Initialize this SocketAddress from a hostname and port.
    *
    * Note: If the host parameter is not a numeric IP address, hostname
    * resolution will be performed, which can be quite slow.
@@ -173,13 +199,16 @@ class SocketAddress {
    * @param port The port (in host byte order)
    */
   void setFromHostPort(const char* host, uint16_t port);
-
+  /**
+   * Similar to the function setFromHostPort above, but accepts the IP address
+   * as a std::string.
+   */
   void setFromHostPort(const std::string& host, uint16_t port) {
     setFromHostPort(host.c_str(), port);
   }
 
   /**
-   * Initialize this SocketAddress from an IP address and port.
+   * @overloadbrief Initialize this SocketAddress from an IP address and port.
    *
    * This is similar to setFromHostPort(), but only accepts numeric IP
    * addresses.  If the IP string does not look like an IP address, it throws a
@@ -191,7 +220,10 @@ class SocketAddress {
    * @param port The port (in host byte order)
    */
   void setFromIpPort(const char* ip, uint16_t port);
-
+  /**
+   * Similar to the function setFromIpPort above, but accepts the IP address as
+   * a std::string.
+   */
   void setFromIpPort(const std::string& ip, uint16_t port) {
     setFromIpPort(ip.c_str(), port);
   }
@@ -205,7 +237,7 @@ class SocketAddress {
   void setFromIpAddrPort(const IPAddress& ip, uint16_t port);
 
   /**
-   * Initialize this SocketAddress from a local port number.
+   * @overloadbrief Initialize this SocketAddress from a local port number.
    *
    * This is intended to be used by server code to determine the address to
    * listen on.
@@ -214,24 +246,31 @@ class SocketAddress {
    * will be returned (since connections from IPv4 clients can be mapped to the
    * IPv6 address).  If the machine does not have any IPv6 addresses, an IPv4
    * address will be returned.
+   *
+   * @param port The local port number (in host byte order)
    */
   void setFromLocalPort(uint16_t port);
-
   /**
    * Initialize this SocketAddress from a local port number.
    *
    * This version of setFromLocalPort() accepts the port as a string.  A
    * std::invalid_argument will be raised if the string does not refer to a port
    * number.  Non-numeric service port names are not accepted.
+   *
+   * @param port The local port number
    */
   void setFromLocalPort(const char* port);
+  /**
+   * Similar to the function setFromLocalPort above, but accepts the port as
+   * a std::string.
+   */
   void setFromLocalPort(const std::string& port) {
     return setFromLocalPort(port.c_str());
   }
 
   /**
-   * Initialize this SocketAddress from a local port number and optional IP
-   * address.
+   * @overloadbrief Initialize this SocketAddress from a local port number and
+   * optional IP address.
    *
    * The addressAndPort string may be specified either as "<ip>:<port>", or
    * just as "<port>".  If the IP is not specified, the address will be
@@ -240,28 +279,42 @@ class SocketAddress {
    *
    * Both the IP address and port number must be numeric.  DNS host names and
    * non-numeric service port names are not accepted.
+   *
+   * @param addressAndPort Address and the port separated by ':', or the port
    */
   void setFromLocalIpPort(const char* addressAndPort);
+  /**
+   * Similar to the function setFromLocalIpPort above, but accepts the address
+   * and port as a std::string.
+   */
   void setFromLocalIpPort(const std::string& addressAndPort) {
     return setFromLocalIpPort(addressAndPort.c_str());
   }
 
   /**
-   * Initialize this SocketAddress from an IP address and port number.
+   * @overloadbrief Initialize this SocketAddress from an IP address and port
+   * number.
    *
    * The addressAndPort string must be of the form "<ip>:<port>".  E.g.,
    * "10.0.0.1:1234".
    *
    * Both the IP address and port number must be numeric.  DNS host names and
    * non-numeric service port names are not accepted.
+   *
+   * @param addressAndPort Address and the port separated by ':'
    */
   void setFromIpPort(const char* addressAndPort);
+  /**
+   * Similar to the function setFromIpPort above, but accepts the address
+   * and port as a std::string.
+   */
   void setFromIpPort(const std::string& addressAndPort) {
     return setFromIpPort(addressAndPort.c_str());
   }
 
   /**
-   * Initialize this SocketAddress from a host name and port number.
+   * @overloadbrief Initialize this SocketAddress from a host name and port
+   * number.
    *
    * The addressAndPort string must be of the form "<host>:<port>".  E.g.,
    * "www.facebook.com:443".
@@ -269,8 +322,14 @@ class SocketAddress {
    * If the host name is not a numeric IP address, a DNS lookup will be
    * performed.  Beware that the DNS lookup may be very slow.  The port number
    * must be numeric; non-numeric service port names are not accepted.
+   *
+   * @param hostAndPort Host name and the port separated by ':'
    */
   void setFromHostPort(const char* hostAndPort);
+  /**
+   * Similar to the function setFromHostPort above, but accepts the host name
+   * and port as a std::string.
+   */
   void setFromHostPort(const std::string& hostAndPort) {
     return setFromHostPort(hostAndPort.c_str());
   }
@@ -280,7 +339,9 @@ class SocketAddress {
    *
    * Currently only IPv4 and IPv6 are supported.
    *
-   * Returns -1 for unsupported socket families.
+   * @param address The socketaddr structure to get port from
+   *
+   * @return The port number, or -1 for unsupported socket families.
    */
   static int getPortFrom(const struct sockaddr* address);
 
@@ -288,18 +349,29 @@ class SocketAddress {
    * Returns the family name from the given socketaddr structure (e.g.: AF_INET6
    * for IPv6).
    *
-   * Returns `defaultResult` for unsupported socket families.
+   * @param address The socketaddr structure to get family name from
+   * @param defaultResult The default family name to be returned in case of
+   * unsupported socket. If no value is passed, `nullptr` is returned as default
+   * family name.
+   *
+   * @return The family name, or `defaultResult` passed for unsupported socket
+   * families.
    */
   static const char* getFamilyNameFrom(
       const struct sockaddr* address, const char* defaultResult = nullptr);
 
   /**
-   * Initialize this SocketAddress from a local unix path.
+   * @overloadbrief Initialize this SocketAddress from a local unix path.
    *
    * Raises std::invalid_argument on error.
+   *
+   * @param path Local unix path
    */
   void setFromPath(StringPiece path);
-
+  /**
+   * Similar to setFromPath, but accepts local unix path as const char* and
+   * its length.
+   */
   void setFromPath(const char* path, size_t length) {
     setFromPath(StringPiece{path, length});
   }
@@ -321,6 +393,8 @@ class SocketAddress {
    * Initialize this SocketAddress from a socket's peer address.
    *
    * Raises std::system_error on error.
+   *
+   * @param socket Socket whose peer address is used to initialize
    */
   void setFromPeerAddress(NetworkSocket socket);
 
@@ -328,6 +402,8 @@ class SocketAddress {
    * Initialize this SocketAddress from a socket's local address.
    *
    * Raises std::system_error on error.
+   *
+   * @param socket Socket whose local address is used to initialize
    */
   void setFromLocalAddress(NetworkSocket socket);
 
@@ -358,11 +434,15 @@ class SocketAddress {
 
   /**
    * Initialize this SocketAddress from a struct sockaddr_in.
+   *
+   * @param address  A struct sockaddr_in to initialize from
    */
   void setFromSockaddr(const struct sockaddr_in* address);
 
   /**
    * Initialize this SocketAddress from a struct sockaddr_in6.
+   *
+   * @param address  A struct sockaddr_in to initialize from
    */
   void setFromSockaddr(const struct sockaddr_in6* address);
 
@@ -383,7 +463,9 @@ class SocketAddress {
   /**
    * Fill in a given sockaddr_storage with the ip or unix address.
    *
-   * Returns the actual size of the storage used.
+   * @param addr sockaddr_storage out parameter
+   *
+   * @return The actual size of the socket address
    */
   socklen_t getAddress(sockaddr_storage* addr) const {
     if (!external_) {
@@ -394,16 +476,43 @@ class SocketAddress {
     }
   }
 
+  /**
+   * Return the IP address of this SocketAddress.
+   *
+   * @throws folly::InvalidAddressFamilyException if the family is not IPv4 or
+   * IPv6
+   *
+   * @return IP address
+   */
   const folly::IPAddress& getIPAddress() const;
 
-  // Deprecated: getAddress() above returns the same size as getActualSize()
+  /**
+   * DEPRECATED: SocketAddress::getAddress() above returns the same size as
+   * getActualSize()
+   *
+   * Return the size of the underlying socket address
+   *
+   * @return The size of the socket address
+   */
   socklen_t getActualSize() const;
 
+  /**
+   * Return the address family of this SocketAddress
+   *
+   * @return Socket address family
+   */
   sa_family_t getFamily() const {
     assert(external_ || AF_UNIX != storage_.addr.family());
     return external_ ? sa_family_t(AF_UNIX) : storage_.addr.family();
   }
 
+  /**
+   * Return if the SocketAddress is `empty` i.e., the address family is
+   * unspecified.
+   *
+   * @return true, if socket is `empty` i.e., address family is unspecified,
+   * else false
+   */
   bool empty() const { return getFamily() == AF_UNSPEC; }
 
   /**
@@ -411,6 +520,8 @@ class SocketAddress {
    *
    * Raises std::invalid_argument if an error occurs (for example, if
    * the address is not an IPv4 or IPv6 address).
+   *
+   * @return String representation of the IP address
    */
   std::string getAddressStr() const;
 
@@ -419,16 +530,25 @@ class SocketAddress {
    *
    * Raises std::invalid_argument if an error occurs (for example, if
    * the address is not an IPv4 or IPv6 address).
+   *
+   * @param buf Char buffer to write the string representation into
+   * @param buflen Size of the buffer
    */
   void getAddressStr(char* buf, size_t buflen) const;
 
   /**
-   * Return true if it is a valid IPv4 or IPv6 address.
+   * Return whether this address is a valid IPv4 or IPv6 address.
+   *
+   * @return true if address a valid IPv4 or IPv6 address, false otherwise
    */
   bool isFamilyInet() const;
 
   /**
    * For v4 & v6 addresses, return the fully qualified address string
+   *
+   * Raises std::invalid_argument if this is not an IPv4 or IPv6 address.
+   *
+   * @return Fully qualified IP address
    */
   std::string getFullyQualified() const;
 
@@ -437,7 +557,7 @@ class SocketAddress {
    *
    * Raises std::invalid_argument if this is not an IPv4 or IPv6 address.
    *
-   * @return Returns the port, in host byte order.
+   * @return The port, in host byte order
    */
   uint16_t getPort() const;
 
@@ -445,11 +565,16 @@ class SocketAddress {
    * Set the IPv4 or IPv6 port for this address.
    *
    * Raises std::invalid_argument if this is not an IPv4 or IPv6 address.
+   *
+   * @param port The port to set, in host byte order
    */
   void setPort(uint16_t port);
 
   /**
    * Return true if this is an IPv4-mapped IPv6 address.
+   *
+   * @return true if this address is a IPv6 address which is IPv4-mapped,
+   * false otherwise
    */
   bool isIPv4Mapped() const {
     return (getFamily() == AF_INET6 && storage_.addr.isIPv4Mapped());
@@ -459,6 +584,8 @@ class SocketAddress {
    * Convert an IPv4-mapped IPv6 address to an IPv4 address.
    *
    * Raises std::invalid_argument if this is not an IPv4-mapped IPv6 address.
+   *
+   * @note SocketAddress::tryConvertToIPv4 is no-throw variant of this function
    */
   void convertToIPv4();
 
@@ -469,13 +596,17 @@ class SocketAddress {
    * If the address is an IPv4-mapped IPv6 address, it is converted to an IPv4
    * address and true is returned.  Otherwise nothing is done, and false is
    * returned.
+   *
+   * @return true if the address was converted to IPv4-mapped address, false
+   * otherwise
    */
   bool tryConvertToIPv4();
 
   /**
    * Convert an IPv4 address to IPv6 [::ffff:a.b.c.d]
+   *
+   * @return true if the address conversion was done, false otherwise
    */
-
   bool mapToIPv6();
 
   /**
@@ -486,6 +617,8 @@ class SocketAddress {
    * DNS lookup, which may block for many seconds.
    *
    * Raises std::invalid_argument if an error occurs.
+   *
+   * @return Host name (or IP address)
    */
   std::string getHostStr() const;
 
@@ -500,6 +633,8 @@ class SocketAddress {
    * always be a NUL character.
    *
    * Raises std::invalid_argument if called on a non-Unix domain socket.
+   *
+   * @return Path name for a Unix domain socket
    */
   std::string getPath() const;
 
@@ -508,6 +643,8 @@ class SocketAddress {
    *
    * This prints a string representation of the address, for human consumption.
    * For IP addresses, the string is of the form "<IP>:<port>".
+   *
+   * @return Human-readable representation of the address
    */
   std::string describe() const;
 
@@ -519,8 +656,14 @@ class SocketAddress {
   /**
    * Check whether the first N bits of this address match the first N
    * bits of another address.
+   *
    * @note returns false if the addresses are not from the same
    *       address family or if the family is neither IPv4 nor IPv6
+   *
+   * @param other The address to match against
+   * @param prefixLength Length of the prefix to match
+   * @return true if `prefixLength` this address matches with `other`,
+   * false otherwise
    */
   bool prefixMatch(const SocketAddress& other, unsigned prefixLength) const;
 
@@ -531,6 +674,8 @@ class SocketAddress {
 
   /**
    * Compuate a hash of a SocketAddress.
+   *
+   * @return Hash for this SocketAddress
    */
   size_t hash() const;
 
