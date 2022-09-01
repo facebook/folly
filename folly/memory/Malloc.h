@@ -27,6 +27,8 @@
  * Define various MALLOCX_* macros normally provided by jemalloc.  We define
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
+ *
+ * @file memory/Malloc.h
  */
 #if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && \
     !defined(FOLLY_SANITIZE)
@@ -66,7 +68,11 @@ namespace folly {
 #endif
 
 /**
- * Determine if we are using jemalloc or not.
+ * @brief Determine if we are using JEMalloc or not.
+ *
+ * @methodset Malloc checks
+ *
+ * @return bool
  */
 #if defined(FOLLY_ASSUME_NO_JEMALLOC) || defined(FOLLY_SANITIZE)
   inline bool usingJEMalloc() noexcept {
@@ -133,10 +139,25 @@ FOLLY_NOINLINE inline bool usingJEMalloc() noexcept {
 }
 #endif
 
+/**
+ * @brief Gets the named property.
+ *
+ * @param name name of the property.
+ * @param out size is populated by the function.
+ *
+ * @return bool
+ */
 inline bool getTCMallocNumericProperty(const char* name, size_t* out) noexcept {
   return MallocExtension_Internal_GetNumericProperty(name, strlen(name), out);
 }
 
+/**
+ * @brief Determine if we are using TCMalloc or not.
+ *
+ * @methodset Malloc checks
+ *
+ * @return bool
+ */
 #if defined(FOLLY_ASSUME_NO_TCMALLOC) || defined(FOLLY_SANITIZE)
   inline bool usingTCMalloc() noexcept {
     return false;
@@ -168,7 +189,7 @@ FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
 
     size_t after_bytes = 0;
     getTCMallocNumericProperty(kAllocBytes, &after_bytes);
-    
+
     free(ptr);
 
     return (before_bytes != after_bytes);
@@ -181,11 +202,21 @@ FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
 
 #if !defined(FOLLY_USE_JEMALLOC) && !defined(USE_TCMALLOC) && \
       (!defined(FOLLY_ASSUME_NO_JEMALLOC) || !defined(FOLLY_ASSUME_NO_TCMALLOC))
+/**
+ * @brief Determine if we are using either JEMalloc or TCMalloc.
+ *
+ * @return bool
+ */
 FOLLY_NOINLINE inline bool canSdallocx() noexcept {
   static bool rv = usingJEMalloc() || usingTCMalloc();
   return rv;
 }
 
+/**
+ * @brief Determine if we are using either JEMalloc or TCMalloc.
+ *
+ * @return bool
+ */
 FOLLY_NOINLINE inline bool canNallocx() noexcept {
   static bool rv = usingJEMalloc() || usingTCMalloc();
   return rv;
@@ -200,6 +231,18 @@ inline bool canNallocx() noexcept {
 }
 #endif
 
+/**
+ * @brief Simple wrapper around nallocx
+ *
+ * The nallocx function allocates no memory, but it performs the same size
+ * computation as the malloc function, and returns the real size of the
+ * allocation that would result from the equivalent malloc function call.
+ *
+ * https://www.unix.com/man-page/freebsd/3/nallocx/
+ *
+ * @param minSize Requested size for allocation
+ * @return size_t
+ */
 inline size_t goodMallocSize(size_t minSize) noexcept {
   if (minSize == 0) {
     return 0;
@@ -223,8 +266,14 @@ inline size_t goodMallocSize(size_t minSize) noexcept {
 static const size_t jemallocMinInPlaceExpandable = 4096;
 
 /**
- * Trivial wrappers around malloc, calloc, realloc that check for allocation
+ * @brief Trivial wrapper around malloc that check for allocation
  * failure and throw std::bad_alloc in that case.
+ *
+ * @methodset Allocation Wrappers
+ *
+ * @param size size of allocation
+ *
+ * @return void* pointer to allocated buffer
  */
 inline void* checkedMalloc(size_t size) {
   void* p = malloc(size);
@@ -234,6 +283,17 @@ inline void* checkedMalloc(size_t size) {
   return p;
 }
 
+/**
+ * @brief Trivial wrapper around calloc that check for allocation
+ * failure and throw std::bad_alloc in that case.
+ *
+ * @methodset Allocation Wrappers
+ *
+ * @param n Number of elements
+ * @param size Size of each element
+ *
+ * @return void* pointer to allocated buffer
+ */
 inline void* checkedCalloc(size_t n, size_t size) {
   void* p = calloc(n, size);
   if (!p) {
@@ -242,6 +302,17 @@ inline void* checkedCalloc(size_t n, size_t size) {
   return p;
 }
 
+/**
+ * @brief Trivial wrapper around realloc that check for allocation
+ * failure and throw std::bad_alloc in that case.
+ *
+ * @methodset Allocation Wrappers
+ *
+ * @param ptr pointer to start of buffer
+ * @param size size to reallocate starting from ptr
+ *
+ * @return pointer to reallocated buffer
+ */
 inline void* checkedRealloc(void* ptr, size_t size) {
   void* p = realloc(ptr, size);
   if (!p) {
@@ -250,6 +321,17 @@ inline void* checkedRealloc(void* ptr, size_t size) {
   return p;
 }
 
+/**
+ * @brief Frees's memory using sdallocx if possible
+ *
+ * The sdallocx function deallocates memory allocated by malloc or memalign.  It
+ * takes a size parameter to pass the original allocation size.
+ * The default weak implementation calls free(), but TCMalloc overrides it and
+ * uses the size to improve deallocation performance.
+ *
+ * @param ptr Pointer to the buffer to free
+ * @param size Size to free
+ */
 inline void sizedFree(void* ptr, size_t size) {
   if (canSdallocx()) {
     sdallocx(ptr, size, 0);
@@ -259,6 +341,8 @@ inline void sizedFree(void* ptr, size_t size) {
 }
 
 /**
+ * @brief Reallocs if there is less slack in the buffer, else performs malloc-copy-free
+
  * This function tries to reallocate a buffer of which only the first
  * currentSize bytes are used. The problem with using realloc is that
  * if currentSize is relatively small _and_ if realloc decides it
@@ -267,6 +351,13 @@ inline void sizedFree(void* ptr, size_t size) {
  * to hook in to realloc() behavior to avoid copies - at least in
  * jemalloc, realloc() almost always ends up doing a copy, because
  * there is little fragmentation / slack space to take advantage of.
+ *
+ * @param p Pointer to start of buffer
+ * @param currentSize Current used size
+ * @param currentCapacity Capacity of buffer
+ * @param newCapacity New capacity for the buffer
+ *
+ * @return pointer to realloc'ed buffer
  */
 FOLLY_MALLOC_CHECKED_MALLOC FOLLY_NOINLINE inline void* smartRealloc(
     void* p,
