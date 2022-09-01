@@ -34,13 +34,17 @@
 namespace folly {
 namespace coro {
 
-///////////////////////////////
-// The AsyncScope class is used to allow you to start a dynamic, unbounded
-// number of tasks, which can all run concurrently, and then later wait for
-// completion of all of the tasks.
-//
-// Tasks added to an AsyncScope must have a void or folly::Unit result-type
-// and must handle any errors prior to completing.
+/**
+ * The AsyncScope class is used to allow you to start a dynamic, unbounded
+ * number of tasks, which can all run concurrently, and then later wait for
+ * completion of all of the tasks.
+ *
+ * Tasks added to an AsyncScope must have a void or folly::Unit result-type
+ * and must handle any errors prior to completing.
+ *
+ * @refcode docs/examples/folly/experimental/coro/AsyncScope.cpp
+ * @class folly::coro::AsyncScope
+ */
 //
 // Example:
 //    folly::coro::Task<void> process(Event event) {
@@ -68,58 +72,62 @@ class AsyncScope {
   // completes before calling the destructor.
   ~AsyncScope();
 
-  // Query the number of tasks added to the scope that have not yet completed.
+  /**
+   * Query the number of tasks added to the scope that have not yet completed.
+   */
   std::size_t remaining() const noexcept;
 
-  // Start the specified task/awaitable by co_awaiting it.
-  //
-  // Exceptions
-  // ----------
-  // IMPORTANT: Tasks submitted to the AsyncScope by calling .add() must
-  // ensure they do not complete with an exception. Exceptions propagating
-  // from the 'co_await awaitable' expression are logged using DFATAL.
-  //
-  // To avoid this occurring you should make sure to catch and handle any
-  // exceptions within the task being started here.
-  //
-  // Interaction with cleanup/joinAsync
-  // ----------------------------------
-  // It is invalid to call add() once the joinAsync() or cleanup()
-  // operations have completed.
-  //
-  // This generally means that it is unsafe to call .add() once cleanup()
-  // has started as it may be racing with completion of cleanup().
-  //
-  // The exception to this rule is for cases where you know you are running
-  // within a task that has been started with .add() and thus you know that
-  // cleanup() will not yet have completed.
-  //
-  // Passing folly::coro::Task
-  // -------------------------
-  // NOTE: You cannot pass a folly::coro::Task to this method.
-  // You must first call .scheduleOn() to specify which executor the task
-  // should run on.
-  //
+  /**
+   * Start the specified task/awaitable by co_awaiting it.
+   *
+   * Exceptions
+   * ----------
+   * IMPORTANT: Tasks submitted to the AsyncScope by calling .add() must
+   * ensure they do not complete with an exception. Exceptions propagating
+   * from the 'co_await awaitable' expression are logged using DFATAL.
+   *
+   * To avoid this occurring you should make sure to catch and handle any
+   * exceptions within the task being started here.
+   *
+   * Interaction with cleanup/joinAsync
+   * ----------------------------------
+   * It is invalid to call add() once the joinAsync() or cleanup()
+   * operations have completed.
+   *
+   * This generally means that it is unsafe to call .add() once cleanup()
+   * has started as it may be racing with completion of cleanup().
+   *
+   * The exception to this rule is for cases where you know you are running
+   * within a task that has been started with .add() and thus you know that
+   * cleanup() will not yet have completed.
+   *
+   * Passing folly::coro::Task
+   * -------------------------
+   * NOTE: You cannot pass a folly::coro::Task to this method.
+   * You must first call .scheduleOn() to specify which executor the task
+   * should run on.
+   */
   // returnAddress customize entry point to async stack (useful if this is
   // called from async code already). If not set will default to
   // FOLLY_ASYNC_STACK_RETURN_ADDRESS()
   template <typename Awaitable>
   void add(Awaitable&& awaitable, void* returnAddress = nullptr);
 
-  // Asynchronously wait for all started tasks to complete.
-  //
-  // Either call this method _or_ cleanup() to join the work.
-  // It is invalid to call both of them.
+  /**
+   * Asynchronously wait for all started tasks to complete.
+   *
+   * Either call this method _or_ cleanup() to join the work.
+   * It is invalid to call both of them.
+   */
   Task<void> joinAsync() noexcept;
 
-  ////////
-  // Implement the async-cleanup pattern.
-
-  // Implement the async cleanup 'cleanup()' pattern used by PrimaryPtr.
-  //
-  // If you have previuosly called add() then you must call cleanup()
-  // and wait for the retuned future to complete before the AsyncScope
-  // object destructs.
+  /**
+   * Asynchronously cleanup all started tasks.
+   *
+   * If you have previuosly called add() then you must call cleanup()
+   * and wait for the retuned future to complete before the AsyncScope
+   * object destructs.
+   */
   SemiFuture<Unit> cleanup() noexcept;
 
  private:
@@ -180,16 +188,21 @@ inline folly::SemiFuture<folly::Unit> AsyncScope::cleanup() noexcept {
   return joinAsync().semi();
 }
 
-///////////////////////////////
-// A cancellable version of AsyncScope. Work added to this scope will be
-// provided a cancellation token for cancelling during join. See
-// add() and cancelAndJoinAsync() for more information.
-//
-// Note that Task and AsyncGenerator will ignore the internal cancellation
-// signal if they already have a cancellation token (i.e. if someone has already
-// called co_withCancellation on them.)
-// If you need an external cancellation signal as well, pass that token to this
-// constructor or to add() instead of attaching it to the Awaitable.
+/**
+ * A cancellable version of AsyncScope. Work added to this scope will be
+ * provided a cancellation token for cancelling during join.
+ *
+ * See add() and cancelAndJoinAsync() for more information.
+ *
+ * Note: Task and AsyncGenerator will ignore the internal cancellation
+ * signal if they already have a cancellation token (i.e. if someone has already
+ * called co_withCancellation on them.)
+ * If you need an external cancellation signal as well, pass that token to this
+ * constructor or to add() instead of attaching it to the Awaitable.
+ *
+ * @refcode docs/examples/folly/experimental/coro/CancellableAsyncScope.cpp
+ * @class folly::coro::CancellableAsyncScope
+ */
 class CancellableAsyncScope {
  public:
   CancellableAsyncScope() noexcept
@@ -198,19 +211,24 @@ class CancellableAsyncScope {
       : cancellationToken_(CancellationToken::merge(
             cancellationSource_.getToken(), std::move(token))) {}
 
-  // Query the number of tasks added to the scope that have not yet completed.
+  /**
+   * Query the number of tasks added to the scope that have not yet completed.
+   */
   std::size_t remaining() const noexcept { return scope_.remaining(); }
 
-  // Start the specified task/awaitable by co_awaiting it. The awaitable will be
-  // provided a cancellation token to respond to cancelAndJoinAsync() in the
-  // future.
-  // An additional cancellation token may be passed in to apply to the
-  // awaitable; it will be merged with the internal token.
-  //
-  // Note that cancellation is cooperative, your task must handle cancellation
-  // in order to have any effect.
-  //
-  // See the documentation on AsyncScope::add.
+  /**
+   * Start the specified task/awaitable by co_awaiting it. The awaitable will be
+   * provided a cancellation token to respond to cancelAndJoinAsync() in the
+   * future.
+   *
+   * An additional cancellation token may be passed in to apply to the
+   * awaitable; it will be merged with the internal token.
+   *
+   * Note that cancellation is cooperative, your task must handle cancellation
+   * in order to have any effect.
+   *
+   * See the documentation on AsyncScope::add.
+   */
   template <typename Awaitable>
   void add(
       Awaitable&& awaitable,
@@ -224,47 +242,58 @@ class CancellableAsyncScope {
         returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
   }
 
-  // Schedules the given task on the current executor and adds it to the
-  // AsyncScope. The task will be provided a cancellation token to respond to
-  // cancelAndJoinAsync() in the future.
-  //
-  // Note that cancellation is cooperative, your task must handle cancellation
-  // in order to have any effect.
+  /**
+   * Schedules the given task on the current executor and adds it to the
+   * AsyncScope. The task will be provided a cancellation token to respond to
+   * cancelAndJoinAsync() in the future.
+   *
+   * Note that cancellation is cooperative, your task must handle cancellation
+   * in order to have any effect.
+   */
   template <class T>
   folly::coro::Task<void> co_schedule(folly::coro::Task<T>&& task) {
     add(std::move(task).scheduleOn(co_await co_current_executor));
     co_return;
   }
 
-  // Request cancellation for all started tasks that accepted a
-  // CancellationToken in add().
+  /**
+   * Request cancellation for all started tasks that accepted a
+   * CancellationToken in add().
+   */
   void requestCancellation() const noexcept {
     cancellationSource_.requestCancellation();
   }
 
-  // Query if cancellation was requested on the tasks added to this AsyncScope.
-  // This will return true if either cancellation was requested using
-  // `requestCancellation` method of this scope OR if cancellation is requested
-  // on the token passed into the constructor.
+  /**
+   * Query if cancellation was requested on the tasks added to this AsyncScope.
+   *
+   * This will return true if either cancellation was requested using
+   * `requestCancellation()` method of this scope OR if cancellation is
+   * requested on the token passed into the constructor.
+   */
   bool isScopeCancellationRequested() const noexcept {
     return cancellationToken_.isCancellationRequested();
   }
 
-  // Request cancellation then asynchronously wait for all started tasks to
-  // complete.
-  //
-  // Either call this method, _or_ joinAsync() to join the work. It is invalid
-  // to call both of them.
+  /**
+   * Request cancellation and asynchronously wait for all started tasks to
+   * complete.
+   *
+   * Either call this method, _or_ joinAsync() to join the work. It is invalid
+   * to call both of them.
+   */
   Task<void> cancelAndJoinAsync() noexcept {
     requestCancellation();
     co_await joinAsync();
   }
 
-  // Asynchronously wait for all started tasks to complete without requesting
-  // cancellation.
-  //
-  // Either call this method _or_ cancelAndJoinAsync() to join the
-  // work. It is invalid to call both of them.
+  /**
+   * Asynchronously wait for all started tasks to complete without requesting
+   * cancellation.
+   *
+   * Either call this method _or_ cancelAndJoinAsync() to join the
+   * work. It is invalid to call both of them.
+   */
   Task<void> joinAsync() noexcept { co_await scope_.joinAsync(); }
 
  private:
