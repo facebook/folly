@@ -1043,7 +1043,7 @@ class small_vector : public detail::small_vector_base<
 
   void downsize(size_type sz) {
     assert(sz <= size());
-    for (auto it = (begin() + sz); it != end(); ++it) {
+    for (auto it = (begin() + sz), e = end(); it != e; ++it) {
       it->~value_type();
     }
     this->setSize(sz);
