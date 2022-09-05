@@ -1217,9 +1217,13 @@ class IOBuf {
    * Returns ByteRange that points to the data IOBuf stores.
    */
   ByteRange coalesce() {
-    const std::size_t newHeadroom = headroom();
-    const std::size_t newTailroom = prev()->tailroom();
-    return coalesceWithHeadroomTailroom(newHeadroom, newTailroom);
+    if (isChained()) {
+      const std::size_t newHeadroom = headroom();
+      const std::size_t newTailroom = prev()->tailroom();
+      coalesceAndReallocate(
+          newHeadroom, computeChainDataLength(), this, newTailroom);
+    }
+    return ByteRange(data_, length_);
   }
 
   /**
