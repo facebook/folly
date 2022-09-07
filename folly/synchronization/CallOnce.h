@@ -27,39 +27,39 @@
 
 namespace folly {
 
-//  basic_once_flag
-//
-//  The flag template to be used with call_once. Parameterizable by the mutex
-//  type and atomic template. The mutex type is required to mimic std::mutex and
-//  the atomic type is required to mimic std::atomic.
+/**
+ * The flag template to be used with call_once. Parameterizable by the mutex
+ * type and atomic template. The mutex type is required to mimic std::mutex and
+ * the atomic type is required to mimic std::atomic.
+ */
 template <typename Mutex, template <typename> class Atom = std::atomic>
 class basic_once_flag;
 
-//  compact_once_flag
-//
-//  An alternative flag template that can be used with call_once that uses only
-//  1 byte. Internally, compact_once_flag uses folly::MicroLock and its data
-//  storage API.
+/**
+ * An alternative flag template that can be used with call_once that uses only
+ * 1 byte. Internally, compact_once_flag uses folly::MicroLock and its data
+ * storage API.
+ */
 class compact_once_flag;
 
-//  call_once
-//
-//  Drop-in replacement for std::call_once.
-//
-//  The libstdc++ implementation has two flaws:
-//  * it lacks a fast path, and
-//  * it deadlocks (in explicit violation of the standard) when invoked twice
-//    with a given flag, and the callable passed to the first invocation throws.
-//
-//  This implementation corrects both flaws.
-//
-//  The tradeoff is a slightly larger once_flag struct at 8 bytes, vs 4 bytes
-//  with libstdc++ on Linux/x64. However, you may use folly::compact_once_flag
-//  which is 1 byte.
-//
-//  Does not work with std::once_flag.
-//
-//  mimic: std::call_once
+/**
+ * Drop-in replacement for std::call_once.
+ *
+ * The libstdc++ implementation has two flaws:
+ * * it lacks a fast path, and
+ * * it deadlocks (in explicit violation of the standard) when invoked twice
+ *   with a given flag, and the callable passed to the first invocation throws.
+ *
+ * This implementation corrects both flaws.
+ *
+ * The tradeoff is a slightly larger once_flag struct at 8 bytes, vs 4 bytes
+ * with libstdc++ on Linux/x64. However, you may use folly::compact_once_flag
+ * which is 1 byte.
+ *
+ * Does not work with std::once_flag.
+ *
+ * mimic: std::call_once
+ */
 template <typename OnceFlag, typename F, typename... Args>
 FOLLY_ALWAYS_INLINE void call_once(OnceFlag& flag, F&& f, Args&&... args) {
   if (LIKELY(flag.test_once())) {
@@ -68,17 +68,17 @@ FOLLY_ALWAYS_INLINE void call_once(OnceFlag& flag, F&& f, Args&&... args) {
   flag.call_once_slow(std::forward<F>(f), std::forward<Args>(args)...);
 }
 
-//  try_call_once
-//
-//  Like call_once, but using a boolean return type to signal pass/fail rather
-//  than throwing exceptions.
-//
-//  Returns true if any previous call to try_call_once with the same once_flag
-//  has returned true or if any previous call to call_once with the same
-//  once_flag has completed without throwing an exception or if the function
-//  passed as an argument returns true; otherwise returns false.
-//
-//  Note: This has no parallel in the std::once_flag interface.
+/**
+ * Like call_once, but using a boolean return type to signal pass/fail rather
+ * than throwing exceptions.
+ *
+ * Returns true if any previous call to try_call_once with the same once_flag
+ * has returned true or if any previous call to call_once with the same
+ * once_flag has completed without throwing an exception or if the function
+ * passed as an argument returns true; otherwise returns false.
+ *
+ * Note: This has no parallel in the std::once_flag interface.
+ */
 template <typename OnceFlag, typename F, typename... Args>
 FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
     OnceFlag& flag, F&& f, Args&&... args) noexcept {
@@ -90,24 +90,24 @@ FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
       std::forward<F>(f), std::forward<Args>(args)...);
 }
 
-//  test_once
-//
-//  Tests whether any invocation to call_once with the given flag has succeeded.
-//
-//  May help with space usage in certain esoteric scenarios compared with caller
-//  code tracking a separate and possibly-padded bool.
-//
-//  Note: This has no parallel in the std::once_flag interface.
+/**
+ * Tests whether any invocation to call_once with the given flag has succeeded.
+ *
+ * May help with space usage in certain esoteric scenarios compared with caller
+ * code tracking a separate and possibly-padded bool.
+ *
+ * Note: This has no parallel in the std::once_flag interface.
+ */
 template <typename OnceFlag>
 FOLLY_ALWAYS_INLINE bool test_once(OnceFlag const& flag) noexcept {
   return flag.test_once();
 }
 
-//  reset_once
-//
-//  Resets a flag.
-//
-//  Warning: unsafe to call concurrently with any other flag operations.
+/**
+ * Resets a flag.
+ *
+ * Warning: unsafe to call concurrently with any other flag operations.
+ */
 template <typename OnceFlag>
 FOLLY_ALWAYS_INLINE void reset_once(OnceFlag& flag) noexcept {
   return flag.reset_once();
@@ -222,13 +222,13 @@ class compact_once_flag {
 static_assert(
     sizeof(compact_once_flag) == 1, "compact_once_flag should be 1 byte");
 
-//  once_flag
-//
-//  The flag type to be used with call_once. An instance of basic_once_flag.
-//
-//  Does not work with std::call_once.
-//
-//  mimic: std::once_flag
+/**
+ * The flag type to be used with call_once. An instance of basic_once_flag.
+ *
+ * Does not work with std::call_once.
+ *
+ * mimic: std::once_flag
+ */
 using once_flag = basic_once_flag<SharedMutex>;
 
 } // namespace folly
