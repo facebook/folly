@@ -19,6 +19,9 @@
 /*
  * This file contains additional gtest-style check macros to use in unit tests.
  *
+ * @file test/TestUtils.h
+ * @refcode docs/examples/folly/test/TestUtils.cpp
+ *
  * - SKIP(), SKIP_IF(EXPR)
  * - EXPECT_THROW_RE(), ASSERT_THROW_RE()
  * - EXPECT_THROW_ERRNO(), ASSERT_THROW_ERRNO()
@@ -42,40 +45,42 @@
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
-// SKIP() is used to mark a test skipped if we could not successfully execute
-// the test due to runtime issues or behavior that do not necessarily indicate
-// a problem with the code.
-//
-// It used to be that `googletest` did NOT have a built-in mechanism to
-// report tests as skipped a run time.  As of the following commit, it has
-// fairly complete support for the feature -- i.e.  `SKIP` does what you
-// expect both in test fixture `SetUp` and in `Environment::SetUp`, as well
-// as in the test body:
-//
-// https://github.com/google/googletest/commit/67c75ff8baf4228e857c09d3aaacd3f1ddf53a8f
-//
-// Open-source projects depending on folly may still use the latest release
-// googletest-1.8.1, which does not have that feature.  Therefore, for
-// backwards compatibility, our `SKIP` only uses `GTEST_SKIP_` when
-// available.
-//
-// Difference from vanilla `GTEST_SKIP`: The skip message diverges from
-// upstream's "Skipped" in order to conform with the historical message in
-// `folly`.  The intention is not to break tooling that depends on that
-// specific pattern.
-//
-// Differences between the new `GTEST_SKIP_` path and the old
-// `GTEST_MESSAGE_` path:
-//   - New path: `SKIP` in `SetUp` prevents the test from running.  Running
-//     the gtest main directly clearly marks SKIPPED tests.
-//   - Old path: Without `skipIsFailure`, `SKIP` in `SetUp` would
-//     unexpectedly execute the test, potentially causing segfaults or
-//     undefined behavior.  We would either report the test as successful or
-//     failed based on whether the `FOLLY_SKIP_AS_FAILURE` environment
-//     variable is set.  The default is to report the test as successful.
-//     Enabling FOLLY_SKIP_AS_FAILURE was to be used with a test harness
-//     that can identify the "Test skipped by client" in the failure message
-//     and convert this into a skipped test result.
+/**
+ * Used to mark a test skipped if we could not successfully
+ * execute the test due to runtime issues or behavior that do not necessarily
+ * indicate a problem with the code.
+ *
+ * It used to be that `googletest` did NOT have a built-in mechanism to
+ * report tests as skipped a run time.  As of the following commit, it has
+ * fairly complete support for the feature -- i.e.  `SKIP` does what you
+ * expect both in test fixture `SetUp` and in `Environment::SetUp`, as well
+ * as in the test body:
+ *
+ * https://github.com/google/googletest/commit/67c75ff8baf4228e857c09d3aaacd3f1ddf53a8f
+ *
+ * Open-source projects depending on folly may still use the latest release
+ * googletest-1.8.1, which does not have that feature.  Therefore, for
+ * backwards compatibility, our `SKIP` only uses `GTEST_SKIP_` when
+ * available.
+ *
+ * Difference from vanilla `GTEST_SKIP`: The skip message diverges from
+ * upstream's "Skipped" in order to conform with the historical message in
+ * `folly`.  The intention is not to break tooling that depends on that
+ * specific pattern.
+ *
+ * Differences between the new `GTEST_SKIP_` path and the old
+ * `GTEST_MESSAGE_` path:
+ *   - New path: `SKIP` in `SetUp` prevents the test from running.  Running
+ *     the gtest main directly clearly marks SKIPPED tests.
+ *   - Old path: Without `skipIsFailure`, `SKIP` in `SetUp` would
+ *     unexpectedly execute the test, potentially causing segfaults or
+ *     undefined behavior.  We would either report the test as successful or
+ *     failed based on whether the `FOLLY_SKIP_AS_FAILURE` environment
+ *     variable is set.  The default is to report the test as successful.
+ *     Enabling FOLLY_SKIP_AS_FAILURE was to be used with a test harness
+ *     that can identify the "Test skipped by client" in the failure message
+ *     and convert this into a skipped test result.
+ */
 #ifdef GTEST_SKIP_
 #define SKIP(msg) GTEST_SKIP()
 #else
@@ -88,7 +93,9 @@
           : ::testing::TestPartResult::kSuccess)
 #endif
 
-// Encapsulate conditional-skip, since it's nontrivial to get right.
+/**
+ * Encapsulate conditional-skip, since it's nontrivial to get right.
+ */
 #define SKIP_IF(expr)           \
   GTEST_AMBIGUOUS_ELSE_BLOCKER_ \
   if (!(expr)) {                \
@@ -157,6 +164,13 @@
 namespace folly {
 namespace test {
 
+/**
+ * Checks if two timepoints are within a delta
+ *
+ * @param val1 A time value
+ * @param val2 A tiem value
+ * @param acceptableDeltaSecs The acceptable delta between the values
+ */
 template <typename T1, typename T2>
 ::testing::AssertionResult AreWithinSecs(
     T1 val1, T2 val2, std::chrono::seconds acceptableDeltaSecs) {
@@ -296,15 +310,17 @@ CheckResult checkThrowRegex(
 } // namespace detail
 } // namespace test
 
-// Define PrintTo() functions for StringPiece/FixedString/fbstring, so that
-// gtest checks will print them as strings.  Without these gtest identifies them
-// as container types, and therefore tries printing the elements individually,
-// despite the fact that there is an ostream operator<<() defined for each of
-// them.
-//
-// gtest's PrintToString() function is used to quote the string and escape
-// internal quotes and non-printable characters, the same way gtest does for the
-// string types it directly supports.
+/**
+ * Define PrintTo() functions for StringPiece/FixedString/fbstring, so that
+ * gtest checks will print them as strings.  Without these gtest identifies them
+ * as container types, and therefore tries printing the elements individually,
+ * despite the fact that there is an ostream operator<<() defined for each of
+ * them.
+ *
+ * gtest's PrintToString() function is used to quote the string and escape
+ * internal quotes and non-printable characters, the same way gtest does for the
+ * string types it directly supports.
+ */
 inline void PrintTo(StringPiece const& stringPiece, std::ostream* out) {
   *out << ::testing::PrintToString(stringPiece.str());
 }
