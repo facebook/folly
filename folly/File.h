@@ -33,6 +33,8 @@ namespace folly {
 
 /**
  * A File represents an open file.
+ * @class folly::File
+ * @refcode docs/examples/folly/File.cpp
  */
 class File {
  public:
@@ -43,7 +45,9 @@ class File {
 
   /**
    * Create a File object from an existing file descriptor.
-   * Takes ownership of the file descriptor if ownsFd is true.
+   *
+   * @param fd Existing file descriptor
+   * @param ownsFd Takes ownership of the file descriptor if ownsFd is true.
    */
   explicit File(int fd, bool ownsFd = false) noexcept;
 
@@ -130,14 +134,16 @@ class File {
   File(File&&) noexcept;
   File& operator=(File&&);
 
-  // FLOCK (INTERPROCESS) LOCKS
-  //
-  // NOTE THAT THESE LOCKS ARE flock() LOCKS.  That is, they may only be used
-  // for inter-process synchronization -- an attempt to acquire a second lock
-  // on the same file descriptor from the same process may succeed.  Attempting
-  // to acquire a second lock on a different file descriptor for the same file
-  // should fail, but some systems might implement flock() using fcntl() locks,
-  // in which case it will succeed.
+  /**
+   * FLOCK (INTERPROCESS) LOCKS
+   *
+   * NOTE THAT THESE LOCKS ARE flock() LOCKS.  That is, they may only be used
+   * for inter-process synchronization -- an attempt to acquire a second lock
+   * on the same file descriptor from the same process may succeed.  Attempting
+   * to acquire a second lock on a different file descriptor for the same file
+   * should fail, but some systems might implement flock() using fcntl() locks,
+   * in which case it will succeed.
+   */
   void lock();
   bool try_lock();
   void unlock();
@@ -158,6 +164,9 @@ class File {
   bool ownsFd_;
 };
 
+/**
+ * Swaps the file descriptors and ownership
+ */
 void swap(File& a, File& b) noexcept;
 
 } // namespace folly
