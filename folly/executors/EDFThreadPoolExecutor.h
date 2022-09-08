@@ -49,8 +49,9 @@ class EDFThreadPoolSemaphoreImpl : public EDFThreadPoolSemaphore {
 };
 
 /**
- * `EDFThreadPoolExecutor` is a `SoftRealTimeExecutor` that implements
- * the earliest-deadline-first scheduling policy.
+ * `EDFThreadPoolExecutor` is a `SoftRealTimeExecutor` that implements the
+ * earliest-deadline-first scheduling policy. Deadline ties are resolved by
+ * submission order.
  */
 class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
                               public ThreadPoolExecutor {

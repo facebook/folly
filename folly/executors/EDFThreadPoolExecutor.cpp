@@ -41,10 +41,14 @@ class EDFThreadPoolExecutor::Task {
       : fs_(std::move(fs)), total_(fs_.size()), deadline_(deadline) {}
 
   uint64_t getDeadline() const { return deadline_; }
+  uint64_t getEnqueueOrder() const { return enqueueOrder_; }
 
   bool isDone() const {
     return iter_.load(std::memory_order_relaxed) >= total_;
   }
+
+  // Cannot be set in the ctor because known only after acquiring the lock.
+  void setEnqueueOrder(uint64_t enqueueOrder) { enqueueOrder_ = enqueueOrder; }
 
   int next() {
     if (isDone()) {
@@ -74,6 +78,7 @@ class EDFThreadPoolExecutor::Task {
   std::atomic<int> iter_{0};
   int total_;
   uint64_t deadline_;
+  uint64_t enqueueOrder_;
   std::shared_ptr<RequestContext> context_ = RequestContext::saveContext();
   std::chrono::steady_clock::time_point enqueueTime_ =
       std::chrono::steady_clock::now();
@@ -89,12 +94,16 @@ class EDFThreadPoolExecutor::TaskQueue {
 
     struct Compare {
       bool operator()(const TaskPtr& lhs, const TaskPtr& rhs) const {
-        return lhs->getDeadline() > rhs->getDeadline();
+        if (lhs->getDeadline() != rhs->getDeadline()) {
+          return lhs->getDeadline() > rhs->getDeadline();
+        }
+        return lhs->getEnqueueOrder() > rhs->getEnqueueOrder();
       }
     };
 
     std::priority_queue<TaskPtr, std::vector<TaskPtr>, Compare> tasks;
     std::atomic<bool> empty{true};
+    uint64_t enqueued = 0;
   };
 
   static constexpr std::size_t kNumBuckets = 2 << 5;
@@ -107,6 +116,7 @@ class EDFThreadPoolExecutor::TaskQueue {
     auto& bucket = getBucket(deadline);
     {
       SharedMutex::WriteHolder guard(&bucket.mutex);
+      task->setEnqueueOrder(bucket.enqueued++);
       bucket.tasks.push(std::move(task));
       bucket.empty.store(bucket.tasks.empty(), std::memory_order_relaxed);
     }
