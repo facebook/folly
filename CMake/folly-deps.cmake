@@ -118,12 +118,12 @@ if(ZSTD_FOUND)
   list(APPEND FOLLY_LINK_LIBRARIES ${ZSTD_LIBRARY})
 endif()
 
-find_package(Xxhash MODULE)
+# Build will fail early on if xxhash is not available, so it is
+# better to fail during the configure stage.
+find_package(Xxhash MODULE REQUIRED)
 set(FOLLY_HAVE_LIBXXHASH ${XXHASH_FOUND})
-if(XXHASH_FOUND)
-  list(APPEND FOLLY_INCLUDE_DIRECTORIES ${XXHASH_INCLUDE_DIR})
-  list(APPEND FOLLY_LINK_LIBRARIES ${XXHASH_LIBRARY})
-endif()
+list(APPEND FOLLY_INCLUDE_DIRECTORIES ${XXHASH_INCLUDE_DIR})
+list(APPEND FOLLY_LINK_LIBRARIES ${XXHASH_LIBRARY})
 
 find_package(Snappy MODULE)
 set(FOLLY_HAVE_LIBSNAPPY ${SNAPPY_FOUND})
