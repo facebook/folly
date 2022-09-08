@@ -56,7 +56,7 @@ class Executor {
   // Workaround for a linkage problem with explicitly defaulted dtor t22914621
   virtual ~Executor() {}
 
-  /// Enqueue a function to executed by this executor. This and all
+  /// Enqueue a function to be executed by this executor. This and all
   /// variants must be threadsafe.
   virtual void add(Func) = 0;
 
