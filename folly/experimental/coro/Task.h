@@ -329,12 +329,15 @@ class TaskPromise<void> final
 /// This task, when co_awaited, will launch the task on the bound executor
 /// and will resume the awaiting coroutine on the bound executor when it
 /// completes.
+///
+/// More information on how to use this is available at folly::coro::Task.
 template <typename T>
 class FOLLY_NODISCARD TaskWithExecutor {
   using handle_t = coroutine_handle<detail::TaskPromise<T>>;
   using StorageType = typename detail::TaskPromise<T>::StorageType;
 
  public:
+  /// @private
   ~TaskWithExecutor() {
     if (coro_) {
       coro_.destroy();
@@ -348,15 +351,17 @@ class FOLLY_NODISCARD TaskWithExecutor {
     swap(t);
     return *this;
   }
-
+  /// Returns the executor that the task is bound to
   folly::Executor* executor() const noexcept {
     return coro_.promise().executor_.get();
   }
 
   void swap(TaskWithExecutor& t) noexcept { std::swap(coro_, t.coro_); }
 
-  // Start execution of this task eagerly and return a folly::SemiFuture<T>
-  // that will complete with the result.
+  /// Start eager execution of this task.
+  ///
+  /// This starts execution of the Task on the bound executor.
+  /// @returns folly::SemiFuture<T> that will complete with the result.
   FOLLY_NOINLINE SemiFuture<lift_unit_t<StorageType>> start() && {
     folly::Promise<lift_unit_t<StorageType>> p;
 
@@ -372,7 +377,15 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return sf;
   }
 
-  // Start execution of this task eagerly and call the callback when complete.
+  /// Start eager execution of the task and call the passed callback on
+  /// completion
+  ///
+  /// This starts execution of the Task on the bound executor, and call the
+  /// passed callback upon completion. The callback takes a Try<T> which
+  /// represents either th value returned by the Task on success or an
+  /// exeception thrown by the Task
+  /// @param tryCallback a function that takes in a Try<T>
+  /// @param cancelToken a CancelationToken object
   template <typename F>
   FOLLY_NOINLINE void start(
       F&& tryCallback, folly::CancellationToken cancelToken = {}) && {
@@ -382,9 +395,11 @@ class FOLLY_NODISCARD TaskWithExecutor {
         FOLLY_ASYNC_STACK_RETURN_ADDRESS());
   }
 
-  // Start execution of this task eagerly, inline on the current thread.
-  // Assumes that the current thread is already on the associated execution
-  // context.
+  /// Start eager execution of this task on this thread.
+  ///
+  /// Assumes the current thread is already on the executor associated with the
+  /// Task. Refer to TaskWithExecuter::start(F&& tryCallback,
+  /// folly::CancellationToken cancelToken = {}) for more information.
   template <typename F>
   FOLLY_NOINLINE void startInlineUnsafe(
       F&& tryCallback, folly::CancellationToken cancelToken = {}) && {
@@ -394,9 +409,10 @@ class FOLLY_NODISCARD TaskWithExecutor {
         FOLLY_ASYNC_STACK_RETURN_ADDRESS());
   }
 
-  // Start execution of this task eagerly inline on the current thread,
-  // assuming the current thread is already on the associated executor,
-  // and return a folly::SemiFuture<T> that will complete with the result.
+  /// Start eager execution of this task on this thread.
+  ///
+  /// Assumes the current thread is already on the executor associated with the
+  /// Task. Refer to TaskWithExecuter::start() for more information.
   FOLLY_NOINLINE SemiFuture<lift_unit_t<StorageType>> startInlineUnsafe() && {
     folly::Promise<lift_unit_t<StorageType>> p;
 
@@ -619,17 +635,21 @@ class FOLLY_NODISCARD TaskWithExecutor {
 /// schedule the coroutine to start executing on the bound executor when it
 /// is co_awaited.
 ///
-/// Within the body of a Task's coroutine, it will ensure that it always
-/// executes on the bound executor by implicitly transforming every
-/// 'co_await expr' expression into
-/// `co_await co_viaIfAsync(boundExecutor, expr)' to ensure that the coroutine
-/// always resumes on the executor.
+/// Within the body of a Task's coroutine, executor binding to the parent
+/// executor is maintained by implicitly transforming all 'co_await expr'
+/// expressions into `co_await co_viaIfAsync(parentExecutor, expr)' to ensure
+/// that the coroutine always resumes on the parent's executor.
 ///
-/// The Task coroutine is RequestContext-aware and will capture the
-/// current RequestContext at the time the coroutine function is either
-/// awaited or explicitly started and will save/restore the current
-/// RequestContext whenever the coroutine suspends and resumes at a co_await
-/// expression.
+/// The Task coroutine is RequestContext-aware
+/// and will capture the current RequestContext at the time the coroutine
+/// function is either awaited or explicitly started and will save/restore the
+/// current RequestContext whenever the coroutine suspends and resumes at a
+/// co_await expression.
+///
+/// More documentation on how to use coroutines is available at
+/// https://github.com/facebook/folly/blob/main/folly/experimental/coro/README.md
+///
+/// @refcode docs/examples/folly/experimental/coro/Task.cpp
 template <typename T>
 class FOLLY_NODISCARD Task {
  public:
@@ -649,8 +669,10 @@ class FOLLY_NODISCARD Task {
  public:
   Task(const Task& t) = delete;
 
+  /// Create a Task, invalidating the original Task in the process.
   Task(Task&& t) noexcept : coro_(std::exchange(t.coro_, {})) {}
 
+  /// @private
   ~Task() {
     if (coro_) {
       coro_.destroy();
@@ -665,9 +687,10 @@ class FOLLY_NODISCARD Task {
   void swap(Task& t) noexcept { std::swap(coro_, t.coro_); }
 
   /// Specify the executor that this task should execute on.
-  ///
-  /// Returns a new task that when co_awaited will launch execution of this
-  /// task on the specified executor.
+  /// @param executor An Executor::KeepAlive object, which can be implicity
+  /// constructed from Executor
+  /// @returns a new TaskWithExecutor object, which represents the existing Task
+  /// bound to an executor
   FOLLY_NODISCARD
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
     setExecutor(std::move(executor));
@@ -675,6 +698,12 @@ class FOLLY_NODISCARD Task {
     return TaskWithExecutor<T>{std::exchange(coro_, {})};
   }
 
+  /// Converts a Task into a SemiFuture object.
+  ///
+  /// The SemiFuture object is implicitly of type Semifuture<Try<T>>, where the
+  /// Try represents whether the execution of the converted Task succeeded and T
+  /// is the original task's result type.
+  /// @returns a SemiFuture object
   FOLLY_NOINLINE
   SemiFuture<folly::lift_unit_t<StorageType>> semi() && {
     return makeSemiFuture().deferExTry(
@@ -787,28 +816,33 @@ class FOLLY_NODISCARD Task {
   handle_t coro_;
 };
 
-// By analogy to folly::makeSemiFuture
-// Make a completed Task by moving in a value.
+/// Make a task that trivially returns a value.
+/// @param t value to be returned by the Task
 template <class T>
 Task<T> makeTask(T t) {
   co_return t;
 }
 
-// Make a completed void Task.
+/// Make a Task that trivially returns with no return value.
 inline Task<void> makeTask() {
   co_return;
 }
+/// Same as makeTask(). See Unit
 inline Task<void> makeTask(Unit) {
   co_return;
 }
 
-// Make a failed Task from an exception_wrapper.
+/// Make a Task that will trivially yield an Exception.
+/// @param ew an exception_wrapper object
 template <class T>
 Task<T> makeErrorTask(exception_wrapper ew) {
   co_yield co_error(std::move(ew));
 }
 
-// Make a Task out of a Try.
+/// Make a Task out of a Try.
+/// @tparam T the type of the value wrapped by the Try
+/// @param t the Try to convert into a Task
+/// @returns a Task that will yield the Try's value or exeception.
 template <class T>
 Task<drop_unit_t<T>> makeResultTask(Try<T> t) {
   co_yield co_result(std::move(t));
