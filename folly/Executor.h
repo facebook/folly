@@ -66,9 +66,9 @@ class Executor {
 
   virtual uint8_t getNumPriorities() const { return 1; }
 
-  static const int8_t LO_PRI = SCHAR_MIN;
-  static const int8_t MID_PRI = 0;
-  static const int8_t HI_PRI = SCHAR_MAX;
+  static constexpr int8_t LO_PRI = SCHAR_MIN;
+  static constexpr int8_t MID_PRI = 0;
+  static constexpr int8_t HI_PRI = SCHAR_MAX;
 
   /**
    * Executor::KeepAlive is a safe pointer to an Executor.
