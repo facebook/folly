@@ -425,7 +425,10 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
                     &xlog_detail::xlogFileScopeInfo);                      \
               }(),                                                         \
               (level),                                                     \
-              xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0),          \
+              [] {                                                         \
+                constexpr auto* xlog_filename = XLOG_FILENAME;             \
+                return xlog_detail::getXlogCategoryName(xlog_filename, 0); \
+              }(),                                                         \
               xlog_detail::isXlogCategoryOverridden(0),                    \
               XLOG_FILENAME,                                               \
               __LINE__,                                                    \
@@ -460,9 +463,10 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
   ((level >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && [] { \
     static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>     \
         folly_detail_xlog_level;                              \
+    constexpr auto* xlog_filename = XLOG_FILENAME;            \
     return folly_detail_xlog_level.check(                     \
         (level),                                              \
-        xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0),   \
+        xlog_filename,                                        \
         xlog_detail::isXlogCategoryOverridden(0),             \
         &xlog_detail::xlogFileScopeInfo);                     \
   }())
@@ -508,16 +512,16 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
 #define XLOG_SET_CATEGORY_CHECK
 #endif
 
-#define XLOG_SET_CATEGORY_NAME(category)                               \
-  namespace xlog_detail {                                              \
-  namespace {                                                          \
-  XLOG_SET_CATEGORY_CHECK                                              \
-  constexpr inline folly::StringPiece getXlogCategoryName(             \
-      folly::StringPiece, int) {                                       \
-    return category;                                                   \
-  }                                                                    \
-  constexpr inline bool isXlogCategoryOverridden(int) { return true; } \
-  }                                                                    \
+#define XLOG_SET_CATEGORY_NAME(category)                                     \
+  namespace xlog_detail {                                                    \
+  namespace {                                                                \
+  XLOG_SET_CATEGORY_CHECK                                                    \
+  FOLLY_CONSTEVAL inline folly::StringPiece getXlogCategoryName(             \
+      folly::StringPiece, int) {                                             \
+    return category;                                                         \
+  }                                                                          \
+  FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(int) { return true; } \
+  }                                                                          \
   }
 
 /**
@@ -771,18 +775,18 @@ class XlogCategoryInfo<false> {
  */
 folly::StringPiece getXlogCategoryNameForFile(folly::StringPiece filename);
 
-constexpr bool xlogIsDirSeparator(char c) {
+FOLLY_CONSTEVAL bool xlogIsDirSeparator(char c) {
   return c == '/' || (kIsWindows && c == '\\');
 }
 
 namespace detail {
-constexpr const char* xlogStripFilenameRecursive(
+FOLLY_CONSTEVAL const char* xlogStripFilenameRecursive(
     const char* filename,
     const char* prefixes,
     size_t prefixIdx,
     size_t filenameIdx,
     bool match);
-constexpr const char* xlogStripFilenameMatchFound(
+FOLLY_CONSTEVAL const char* xlogStripFilenameMatchFound(
     const char* filename,
     const char* prefixes,
     size_t prefixIdx,
@@ -794,7 +798,7 @@ constexpr const char* xlogStripFilenameMatchFound(
                    filename, prefixes, prefixIdx, filenameIdx + 1)
              : (filename + filenameIdx));
 }
-constexpr const char* xlogStripFilenameRecursive(
+FOLLY_CONSTEVAL const char* xlogStripFilenameRecursive(
     const char* filename,
     const char* prefixes,
     size_t prefixIdx,
@@ -842,7 +846,7 @@ constexpr const char* xlogStripFilenameRecursive(
  * e.g., xlogStripFilename("/my/project/src/foo.cpp", "/tmp:/my/project")
  * would return "src/foo.cpp"
  */
-constexpr const char* xlogStripFilename(
+FOLLY_CONSTEVAL const char* xlogStripFilename(
     const char* filename, const char* prefixes) {
   return detail::xlogStripFilenameRecursive(filename, prefixes, 0, 0, true);
 }
@@ -874,7 +878,7 @@ namespace {
  * over this one.
  */
 template <typename T>
-constexpr inline folly::StringPiece getXlogCategoryName(
+FOLLY_CONSTEVAL inline folly::StringPiece getXlogCategoryName(
     folly::StringPiece filename, T) {
   return filename;
 }
@@ -891,7 +895,7 @@ constexpr inline folly::StringPiece getXlogCategoryName(
  * over this one.
  */
 template <typename T>
-constexpr inline bool isXlogCategoryOverridden(T) {
+FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(T) {
   return false;
 }
 
