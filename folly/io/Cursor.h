@@ -1260,6 +1260,8 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     return RWCursor<access>(*queueCache_.queue());
   }
 
+  void trimEnd(size_t n) { queueCache_.queue()->trimEnd(n); }
+
  private:
   folly::IOBufQueue::WritableRangeCache queueCache_{nullptr};
   size_t growth_{0};

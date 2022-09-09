@@ -684,6 +684,26 @@ TEST(IOBuf, QueueAppenderRWCursor) {
   }
 }
 
+TEST(IOBuf, QueueAppenderTrimEnd) {
+  folly::IOBufQueue queue;
+  QueueAppender app{&queue, 100};
+  const size_t n = 1024 / sizeof(uint32_t);
+  for (size_t i = 0; i < n; i++) {
+    app.writeBE<uint32_t>(0);
+  }
+
+  app.trimEnd(4);
+  EXPECT_EQ(1020, queue.front()->computeChainDataLength());
+
+  app.trimEnd(120);
+  EXPECT_EQ(900, queue.front()->computeChainDataLength());
+
+  app.trimEnd(900);
+  EXPECT_EQ(nullptr, queue.front());
+
+  EXPECT_THROW(app.trimEnd(100), std::underflow_error);
+}
+
 TEST(IOBuf, CursorOperators) {
   // Test operators on a single-item chain
   {
