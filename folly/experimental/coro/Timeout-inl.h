@@ -22,22 +22,36 @@
 
 namespace folly::coro {
 
-template <typename SemiAwaitable, typename Duration>
-Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
-    SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
-  CancellationSource cancelSource;
+namespace detail {
+
+template <bool>
+struct DiscardImpl {
   folly::coro::Baton baton;
   exception_wrapper timeoutResult;
+  bool parentCancelled = false;
+  bool checkedTimeout = false;
+};
+
+template <>
+struct DiscardImpl<false> {};
+
+template <typename SemiAwaitable, typename Duration, bool discard>
+Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeoutImpl(
+    SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
+  CancellationSource cancelSource;
+  DiscardImpl<discard> impl;
   auto sleepFuture =
       folly::futures::sleep(timeoutDuration, tk).toUnsafeFuture();
   sleepFuture.setCallback_(
       [&, cancelSource](Executor::KeepAlive<>&&, Try<Unit>&& result) noexcept {
-        if (result.hasException()) {
-          timeoutResult = std::move(result.exception());
-        } else {
-          timeoutResult = folly::make_exception_wrapper<FutureTimeout>();
+        if constexpr (discard) {
+          if (result.hasException()) {
+            impl.timeoutResult = std::move(result.exception());
+          } else {
+            impl.timeoutResult = folly::make_exception_wrapper<FutureTimeout>();
+          }
+          impl.baton.post();
         }
-        baton.post();
         cancelSource.requestCancellation();
       });
 
@@ -49,15 +63,14 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
     }
   };
 
-  bool parentCancelled = false;
   std::optional<CancellationCallback> cancelCallback{
       std::in_place, co_await co_current_cancellation_token, [&]() {
         cancelSource.requestCancellation();
         tryCancelSleep();
-        parentCancelled = true;
+        if constexpr (discard) {
+          impl.parentCancelled = true;
+        }
       }};
-
-  bool checkedTimeout = false;
 
   exception_wrapper error;
   try {
@@ -67,15 +80,18 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
 
     cancelCallback.reset();
 
-    if (!parentCancelled && baton.ready()) {
-      // Timer already fired
-      co_yield folly::coro::co_error(std::move(timeoutResult));
+    if constexpr (discard) {
+      if (!impl.parentCancelled && impl.baton.ready()) {
+        // Timer already fired
+        co_yield folly::coro::co_error(std::move(impl.timeoutResult));
+      }
+      impl.checkedTimeout = true;
     }
 
-    checkedTimeout = true;
-
     tryCancelSleep();
-    co_await baton;
+    if constexpr (discard) {
+      co_await impl.baton;
+    }
 
     if (resultTry.hasException()) {
       co_yield folly::coro::co_error(std::move(resultTry).exception());
@@ -90,15 +106,36 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
 
   cancelCallback.reset();
 
-  if (!checkedTimeout && !parentCancelled && baton.ready()) {
-    // Timer already fired
-    co_yield folly::coro::co_error(std::move(timeoutResult));
+  if constexpr (discard) {
+    if (!impl.checkedTimeout && !impl.parentCancelled && impl.baton.ready()) {
+      // Timer already fired
+      co_yield folly::coro::co_error(std::move(impl.timeoutResult));
+    }
   }
 
   tryCancelSleep();
-  co_await baton;
+  if constexpr (discard) {
+    co_await impl.baton;
+  }
 
   co_yield folly::coro::co_error(std::move(error));
+}
+
+} // namespace detail
+
+template <typename SemiAwaitable, typename Duration>
+Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
+    SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
+  return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/true>(
+      std::move(semiAwaitable), timeoutDuration, tk);
+}
+
+template <typename SemiAwaitable, typename Duration>
+Task<typename semi_await_try_result_t<SemiAwaitable>::element_type>
+timeoutNoDiscard(
+    SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
+  return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/false>(
+      std::move(semiAwaitable), timeoutDuration, tk);
 }
 
 } // namespace folly::coro

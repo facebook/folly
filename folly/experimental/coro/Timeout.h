@@ -51,6 +51,35 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
     Duration timeoutDuration,
     Timekeeper* tk = nullptr);
 
+/// Returns a Task that, when started, starts a timer of duration
+/// 'timeoutDuration' and awaits the passed SemiAwaitable (operation).
+///
+/// The returned result is *always* that of the operation. In other words the
+/// result is never discarded, in contrast with `timeout`.
+///
+/// If the timeout duration elapses before the operation completes, the result
+/// should and typically will reflect cancellation (e.g. `OperationCancelled`)
+/// but this depends on how the operation responds (as cancellation is
+/// cooperative).
+///
+/// To disambiguate between cancellation and timeout, callers can inspect their
+/// own cancellation token.
+///
+/// IMPORTANT: This function has no effect if the passed operation does not
+/// respond to cancellation. The operation passed as the first argument must be
+/// able to respond to a request for cancellation on the CancellationToken
+/// injected to it via folly::coro::co_withCancellation in a timely manner for
+/// the timeout to work as expected.
+///
+/// If a timekeeper is provided then uses that timekeeper to start the timer,
+/// otherwise uses the process' default TimeKeeper if 'tk' is null.
+template <typename SemiAwaitable, typename Duration>
+Task<typename semi_await_try_result_t<SemiAwaitable>::element_type>
+timeoutNoDiscard(
+    SemiAwaitable semiAwaitable,
+    Duration timeoutDuration,
+    Timekeeper* tk = nullptr);
+
 } // namespace folly::coro
 
 #endif // FOLLY_HAS_COROUTINES

@@ -32,18 +32,42 @@
 using namespace std::chrono_literals;
 using namespace folly;
 
-TEST(Timeout, CompletesSynchronously) {
-  coro::blockingWait([]() -> coro::Task<> {
+struct Timeout {
+  template <typename... Arg>
+  auto operator()(Arg&&... args) {
+    return coro::timeout(std::forward<Arg>(args)...);
+  }
+  using ExType = FutureTimeout;
+};
+
+struct TimeoutNoDiscard {
+  template <typename... Arg>
+  auto operator()(Arg&&... args) {
+    return coro::timeoutNoDiscard(std::forward<Arg>(args)...);
+  }
+  using ExType = OperationCancelled;
+};
+
+template <typename T>
+struct TimeoutFixture : public ::testing::Test {
+  T fn;
+};
+
+using TimeoutTestTypes = ::testing::Types<Timeout, TimeoutNoDiscard>;
+TYPED_TEST_SUITE(TimeoutFixture, TimeoutTestTypes);
+
+TYPED_TEST(TimeoutFixture, CompletesSynchronously) {
+  coro::blockingWait([&fn = this->fn]() -> coro::Task<> {
     // Completing synchronously with void
-    co_await coro::timeout([]() -> coro::Task<void> { co_return; }(), 1s);
+    co_await fn([]() -> coro::Task<void> { co_return; }(), 1s);
 
     // Completing synchronously with a value.
-    auto result =
-        co_await coro::timeout([]() -> coro::Task<int> { co_return 42; }(), 1s);
+
+    auto result = co_await fn([]() -> coro::Task<int> { co_return 42; }(), 1s);
     EXPECT_EQ(42, result);
 
     // Test that it handles failing synchronously
-    auto tryResult = co_await coro::co_awaitTry(coro::timeout(
+    auto tryResult = co_await coro::co_awaitTry(fn(
         [&]() -> coro::Task<int> {
           if (true) {
             throw std::runtime_error{"bad value"};
@@ -51,14 +75,14 @@ TEST(Timeout, CompletesSynchronously) {
           co_return result;
         }(),
         1s));
-    EXPECT_TRUE(tryResult.hasException<std::runtime_error>());
+    EXPECT_TRUE(tryResult.template hasException<std::runtime_error>());
   }());
 }
 
-TEST(Timeout, CompletesWithinTimeout) {
-  coro::blockingWait([]() -> coro::Task<> {
+TYPED_TEST(TimeoutFixture, CompletesWithinTimeout) {
+  coro::blockingWait([&fn = this->fn]() -> coro::Task<> {
     // Completing synchronously with void
-    co_await coro::timeout(
+    co_await fn(
         []() -> coro::Task<void> {
           co_await coro::sleep(1ms);
           co_return;
@@ -66,7 +90,7 @@ TEST(Timeout, CompletesWithinTimeout) {
         1s);
 
     // Completing synchronously with a value.
-    auto result = co_await coro::timeout(
+    auto result = co_await fn(
         []() -> coro::Task<int> {
           co_await coro::sleep(1ms);
           co_return 42;
@@ -75,7 +99,7 @@ TEST(Timeout, CompletesWithinTimeout) {
     EXPECT_EQ(42, result);
 
     // Test that it handles failing synchronously
-    auto tryResult = co_await coro::co_awaitTry(coro::timeout(
+    auto tryResult = co_await coro::co_awaitTry(fn(
         [&]() -> coro::Task<int> {
           co_await coro::sleep(1ms);
           if (true) {
@@ -84,15 +108,50 @@ TEST(Timeout, CompletesWithinTimeout) {
           co_return result;
         }(),
         1s));
-    EXPECT_TRUE(tryResult.hasException<std::runtime_error>());
+    EXPECT_TRUE(tryResult.template hasException<std::runtime_error>());
   }());
 }
 
-TEST(Timeout, TimeoutElapsed) {
+TEST(TimeoutNoDiscard, ResultOnTimeout) {
   coro::blockingWait([]() -> coro::Task<> {
+    co_await coro::timeoutNoDiscard(
+        []() -> coro::Task<void> {
+          co_await coro::sleepReturnEarlyOnCancel(10s);
+          EXPECT_TRUE((co_await coro::co_current_cancellation_token)
+                          .isCancellationRequested());
+          co_return;
+        }(),
+        1ms);
+
+    auto result = co_await coro::timeoutNoDiscard(
+        []() -> coro::Task<int> {
+          co_await coro::sleepReturnEarlyOnCancel(10s);
+          EXPECT_TRUE((co_await coro::co_current_cancellation_token)
+                          .isCancellationRequested());
+          co_return 42;
+        }(),
+        1ms);
+    EXPECT_EQ(42, result);
+
+    struct sentinel : public std::exception {};
+    auto tryResult = co_await coro::co_awaitTry(coro::timeoutNoDiscard(
+        [&]() -> coro::Task<int> {
+          co_await coro::sleepReturnEarlyOnCancel(10s);
+          EXPECT_TRUE((co_await coro::co_current_cancellation_token)
+                          .isCancellationRequested());
+          throw sentinel{};
+        }(),
+        1ms));
+    EXPECT_TRUE(tryResult.template hasException<sentinel>());
+  }());
+}
+
+TYPED_TEST(TimeoutFixture, TimeoutElapsed) {
+  using ExType = typename decltype(this->fn)::ExType;
+  coro::blockingWait([&fn = this->fn]() -> coro::Task<> {
     // Completing synchronously with void
     auto start = std::chrono::steady_clock::now();
-    folly::Try<void> voidResult = co_await coro::co_awaitTry(coro::timeout(
+    folly::Try<void> voidResult = co_await coro::co_awaitTry(fn(
         []() -> coro::Task<void> {
           co_await coro::sleep(1s);
           EXPECT_TRUE((co_await coro::co_current_cancellation_token)
@@ -102,11 +161,11 @@ TEST(Timeout, TimeoutElapsed) {
         5ms));
     auto elapsed = std::chrono::steady_clock::now() - start;
     EXPECT_LT(elapsed, 100ms);
-    EXPECT_TRUE(voidResult.hasException<folly::FutureTimeout>());
+    EXPECT_TRUE(voidResult.hasException<ExType>());
 
     // Completing synchronously with a value.
     start = std::chrono::steady_clock::now();
-    auto result = co_await coro::co_awaitTry(coro::timeout(
+    auto result = co_await coro::co_awaitTry(fn(
         []() -> coro::Task<int> {
           co_await coro::sleep(1s);
           EXPECT_TRUE((co_await coro::co_current_cancellation_token)
@@ -116,11 +175,11 @@ TEST(Timeout, TimeoutElapsed) {
         5ms));
     elapsed = std::chrono::steady_clock::now() - start;
     EXPECT_LT(elapsed, 100ms);
-    EXPECT_TRUE(result.hasException<folly::FutureTimeout>());
+    EXPECT_TRUE(result.template hasException<ExType>());
 
     // Test that it handles failing synchronously
     start = std::chrono::steady_clock::now();
-    auto failResult = co_await coro::co_awaitTry(coro::timeout(
+    auto failResult = co_await coro::co_awaitTry(fn(
         [&]() -> coro::Task<int> {
           co_await coro::sleep(1s);
           EXPECT_TRUE((co_await coro::co_current_cancellation_token)
@@ -133,12 +192,12 @@ TEST(Timeout, TimeoutElapsed) {
         5ms));
     elapsed = std::chrono::steady_clock::now() - start;
     EXPECT_LT(elapsed, 100ms);
-    EXPECT_TRUE(result.hasException<folly::FutureTimeout>());
+    EXPECT_TRUE(result.template hasException<ExType>());
   }());
 }
 
-TEST(Timeout, CancelParent) {
-  coro::blockingWait([]() -> coro::Task<> {
+TYPED_TEST(TimeoutFixture, CancelParent) {
+  coro::blockingWait([&fn = this->fn]() -> coro::Task<> {
     CancellationSource cancelSource;
 
     auto start = std::chrono::steady_clock::now();
@@ -146,10 +205,10 @@ TEST(Timeout, CancelParent) {
     auto [cancelled, _] = co_await coro::collectAll(
         coro::co_withCancellation(
             cancelSource.getToken(),
-            coro::timeout(
+            fn(
                 []() -> coro::Task<bool> {
                   auto result = co_await coro::co_awaitTry(coro::sleep(5s));
-                  co_return result.hasException<OperationCancelled>();
+                  co_return result.template hasException<OperationCancelled>();
                 }(),
                 10s)),
         [&]() -> coro::Task<void> {
@@ -164,24 +223,24 @@ TEST(Timeout, CancelParent) {
   }());
 }
 
-TEST(Timeout, AsyncGenerator) {
-  coro::blockingWait([]() -> coro::Task<> {
+TYPED_TEST(TimeoutFixture, AsyncGenerator) {
+  coro::blockingWait([&fn = this->fn]() -> coro::Task<> {
     // Completing synchronously with a value.
-    auto result = co_await coro::timeout(
+    auto result = co_await fn(
         []() -> coro::AsyncGenerator<int> { co_yield 42; }().next(), 1s);
     EXPECT_EQ(42, *result);
 
     // Test that it handles failing synchronously
-    auto tryResult = co_await coro::co_awaitTry(coro::timeout(
+    auto tryResult = co_await coro::co_awaitTry(fn(
         []() -> coro::AsyncGenerator<int> {
           co_yield coro::co_error(std::runtime_error{"bad value"});
         }()
                     .next(),
         1s));
-    EXPECT_TRUE(tryResult.hasException<std::runtime_error>());
+    EXPECT_TRUE(tryResult.template hasException<std::runtime_error>());
 
     // Generator completing normally.
-    result = co_await coro::timeout(
+    result = co_await fn(
         []() -> coro::AsyncGenerator<int> { co_return; }().next(), 1s);
     EXPECT_FALSE(result);
   }());
