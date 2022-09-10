@@ -31,14 +31,14 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
   auto sleepFuture =
       folly::futures::sleep(timeoutDuration, tk).toUnsafeFuture();
   sleepFuture.setCallback_(
-      [&](Executor::KeepAlive<>&&, Try<Unit>&& result) noexcept {
+      [&, cancelSource](Executor::KeepAlive<>&&, Try<Unit>&& result) noexcept {
         if (result.hasException()) {
           timeoutResult = std::move(result.exception());
         } else {
           timeoutResult = folly::make_exception_wrapper<FutureTimeout>();
         }
-        cancelSource.requestCancellation();
         baton.post();
+        cancelSource.requestCancellation();
       });
 
   bool isSleepCancelled = false;
