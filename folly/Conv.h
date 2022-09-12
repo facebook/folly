@@ -646,9 +646,10 @@ typename std::enable_if<
 toAppend(
     Src value,
     Tgt* result,
-    double_conversion::DoubleToStringConverter::Flags flags,
     double_conversion::DoubleToStringConverter::DtoaMode mode,
-    unsigned int numDigits) {
+    unsigned int numDigits,
+    double_conversion::DoubleToStringConverter::Flags flags =
+        double_conversion::DoubleToStringConverter::NO_FLAGS) {
   using namespace double_conversion;
   DoubleToStringConverter conv(
       flags,
@@ -693,11 +694,7 @@ typename std::enable_if<
     std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt* result) {
   toAppend(
-      value,
-      result,
-      double_conversion::DoubleToStringConverter::NO_FLAGS,
-      double_conversion::DoubleToStringConverter::SHORTEST,
-      0);
+      value, result, double_conversion::DoubleToStringConverter::SHORTEST, 0);
 }
 
 /**
