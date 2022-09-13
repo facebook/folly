@@ -1,4 +1,4 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 
 include(FBCMakeParseArgs)
 
@@ -26,7 +26,7 @@ endif()
 
 if("${GENERATE_CARGO_VENDOR_CONFIG}" STREQUAL "AUTO")
   set(GENERATE_CARGO_VENDOR_CONFIG "${USE_CARGO_VENDOR}")
-endif() 
+endif()
 
 if(GENERATE_CARGO_VENDOR_CONFIG)
   if(NOT EXISTS "${RUST_VENDORED_CRATES_DIR}")
@@ -78,7 +78,7 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # Cargo build static library.
 #
 # ```cmake
-# rust_static_library(<TARGET> [CRATE <CRATE_NAME>])
+# rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [FEATURES <FEATURE_NAME>])
 # ```
 #
 # Parameters:
@@ -88,6 +88,8 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # - CRATE_NAME:
 #   Name of the crate. This parameter is optional. If unspecified, it will
 #   fallback to `${TARGET}`.
+# - FEATURE_NAME:
+#   Name of the Rust feature to enable.
 #
 # This function creates two targets:
 # - "${TARGET}": an interface library target contains the static library built
@@ -99,12 +101,17 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # headers with the interface library.
 #
 function(rust_static_library TARGET)
-  fb_cmake_parse_args(ARG "" "CRATE" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "" "CRATE;FEATURES" "" "${ARGN}")
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
   else()
     set(crate_name "${TARGET}")
+  endif()
+  if(DEFINED ARG_FEATURES)
+    set(features --features ${ARG_FEATURES})
+  else()
+    set(features )
   endif()
 
   set(cargo_target "${TARGET}.cargo")
@@ -117,7 +124,11 @@ function(rust_static_library TARGET)
     set(cargo_cmd cargo.exe)
   endif()
 
-  set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
+  if(DEFINED ARG_FEATURES)
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES})
+  else()
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
+  endif()
   if(USE_CARGO_VENDOR)
     set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
     set(cargo_flags ${cargo_flags})
@@ -156,16 +167,18 @@ function(rust_static_library TARGET)
   )
 endfunction()
 
-# This function instructs cmake to define a target that will use `cargo build`
+# This function instructs CMake to define a target that will use `cargo build`
 # to build a bin crate referenced by the Cargo.toml file in the current source
 # directory.
 # It accepts a single `TARGET` parameter which will be passed as the package
 # name to `cargo build -p TARGET`. If binary has different name as package,
 # use optional flag BINARY_NAME to override it.
-# The cmake target will be registered to build by default as part of the
+# It also accepts a `FEATURES` parameter if you want to enable certain features
+# in your Rust binary.
+# The CMake target will be registered to build by default as part of the
 # ALL target.
 function(rust_executable TARGET)
-  fb_cmake_parse_args(ARG "" "BINARY_NAME" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "" "BINARY_NAME;FEATURES" "" "${ARGN}")
 
   set(crate_name "${TARGET}")
   set(cargo_target "${TARGET}.cargo")
@@ -174,7 +187,12 @@ function(rust_executable TARGET)
   if(DEFINED ARG_BINARY_NAME)
     set(executable_name "${ARG_BINARY_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
   else()
-      set(executable_name "${crate_name}${CMAKE_EXECUTABLE_SUFFIX}")
+    set(executable_name "${crate_name}${CMAKE_EXECUTABLE_SUFFIX}")
+  endif()
+  if(DEFINED ARG_FEATURES)
+    set(features --features ${ARG_FEATURES})
+  else()
+    set(features )
   endif()
 
   set(cargo_cmd cargo)
@@ -182,7 +200,11 @@ function(rust_executable TARGET)
     set(cargo_cmd cargo.exe)
   endif()
 
-  set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
+  if(DEFINED ARG_FEATURES)
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES})
+  else()
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
+  endif()
   if(USE_CARGO_VENDOR)
     set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
     set(cargo_flags ${cargo_flags})
