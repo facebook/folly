@@ -180,6 +180,19 @@ TEST_F(UtilityTest, MoveOnly) {
       "Should have noexcept move constructor");
 }
 
+TEST_F(UtilityTest, NonCopyableNonMovable) {
+  class FooBar : folly::NonCopyableNonMovable {
+    int a;
+  };
+
+  static_assert(
+      !std::is_copy_constructible<FooBar>::value,
+      "Should not be copy constructible");
+  static_assert(
+      !std::is_move_constructible<FooBar>::value,
+      "Should not be move constructible");
+}
+
 TEST_F(UtilityTest, to_signed) {
   {
     constexpr auto actual = folly::to_signed(int32_t(-12));

@@ -430,6 +430,7 @@ class EnableCopyMove<false, false> {
 } // namespace moveonly_
 
 using MoveOnly = moveonly_::EnableCopyMove<false, true>;
+using NonCopyableNonMovable = moveonly_::EnableCopyMove<false, false>;
 
 //  unsafe_default_uninitialized
 //  unsafe_default_uninitialized_cv
