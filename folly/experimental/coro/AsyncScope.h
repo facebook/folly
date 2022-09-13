@@ -161,7 +161,7 @@ inline AsyncScope::~AsyncScope() {
 
 inline std::size_t AsyncScope::remaining() const noexcept {
   const std::size_t count = barrier_.remaining();
-  return count > 1 ? (count - 1) : 0;
+  return joinStarted_ ? count : (count > 1 ? count - 1 : 0);
 }
 
 template <typename Awaitable>

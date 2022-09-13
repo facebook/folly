@@ -101,6 +101,31 @@ CO_TEST_F(AsyncScopeTest, QueryRemainingCount) {
   CO_ASSERT_EQ(0, scope.remaining());
 }
 
+CO_TEST_F(AsyncScopeTest, QueryRemainingCountAfterJoined) {
+  folly::coro::AsyncScope scope;
+  folly::coro::Baton baton;
+
+  auto makeTask = [&]() -> folly::coro::Task<> { co_await baton; };
+  auto executor = co_await folly::coro::co_current_executor;
+  scope.add(makeTask().scheduleOn(executor));
+
+  EXPECT_EQ(scope.remaining(), 1);
+
+  folly::coro::Baton validateBaton;
+  auto validateTask = [&]() -> folly::coro::Task<> {
+    EXPECT_EQ(scope.remaining(), 1);
+    validateBaton.post();
+    // sleep for scope.joinAsync() to get called.
+    co_await folly::coro::sleep(std::chrono::milliseconds(10));
+    EXPECT_EQ(scope.remaining(), 1);
+    baton.post();
+  };
+  auto validateFut = validateTask().scheduleOn(executor).start();
+  co_await validateBaton;
+  co_await scope.joinAsync();
+  co_await std::move(validateFut);
+}
+
 struct CancellableAsyncScopeTest : public testing::Test {};
 
 TEST_F(CancellableAsyncScopeTest, ConstructDestruct) {
