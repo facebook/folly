@@ -16,9 +16,11 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace folly {
 
-enum class ordering : int { lt = -1, eq = 0, gt = 1 };
+enum class ordering : std::int8_t { lt = -1, eq = 0, gt = 1 };
 
 template <typename T>
 constexpr ordering to_ordering(T c) {
