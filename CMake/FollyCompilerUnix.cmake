@@ -32,6 +32,17 @@ set(CMAKE_CXX_FLAGS_COMMON "-g -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${CMAKE_CXX_FLAGS_COMMON}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${CMAKE_CXX_FLAGS_COMMON} -O3")
 
+option(ASAN_BUILD "Enables a build with Adress Sanitizer" OFF)
+
+#passing -DASAN_BUILD=ON when buiding with cmake will enable ASAN output
+if(ASAN_BUILD)
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -static-libsan")
+  elseif(UNIX AND NOT APPLE)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -static-libasan")
+  endif()
+endif()
+
 # Note that CMAKE_REQUIRED_FLAGS must be a string, not a list
 set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -std=${CXX_STD}")
 list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
