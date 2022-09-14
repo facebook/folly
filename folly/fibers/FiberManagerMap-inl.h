@@ -17,12 +17,12 @@
 #pragma once
 
 #include <memory>
-#include <unordered_map>
 
 #include <folly/Function.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
+#include <folly/container/F14Map.h>
 
 namespace folly {
 namespace fibers {
@@ -99,7 +99,7 @@ class GlobalCache {
   }
 
   std::mutex mutex_;
-  std::unordered_map<Key<EventBaseT>, std::unique_ptr<FiberManager>> map_;
+  folly::F14NodeMap<Key<EventBaseT>, std::unique_ptr<FiberManager>> map_;
 };
 
 constexpr size_t kEraseListMaxSize = 64;
@@ -177,7 +177,7 @@ class ThreadLocalCache {
     });
   }
 
-  std::unordered_map<Key<EventBaseT>, FiberManager*> map_;
+  folly::F14NodeMap<Key<EventBaseT>, FiberManager*> map_;
   std::atomic<bool> eraseRequested_{false};
 
   struct EraseInfo {
