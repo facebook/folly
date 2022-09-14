@@ -148,3 +148,17 @@ TEST_F(IndestructibleTest, conversion) {
   I const& cr = std::as_const(map);
   EXPECT_EQ(1, cr.count("foo"));
 }
+
+TEST_F(IndestructibleTest, factory_method) {
+  struct Foo {
+    Foo(int x) : value(x) {}
+    Foo(const Foo&) = delete;
+
+    const int value;
+  };
+
+  auto factory = [] { return Foo(42); };
+
+  folly::Indestructible<Foo> foo(folly::factory_constructor, factory);
+  EXPECT_EQ(42, foo->value);
+}

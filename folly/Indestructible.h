@@ -59,6 +59,12 @@ namespace folly {
  *    }
  */
 
+struct factory_constructor_t {
+  explicit factory_constructor_t() = default;
+};
+
+constexpr factory_constructor_t factory_constructor{};
+
 template <typename T>
 class Indestructible final {
  public:
@@ -115,6 +121,11 @@ class Indestructible final {
           std::declval<std::initializer_list<U>&>(), std::declval<Args>()...)))
       : storage_{in_place, il, std::forward<Args>(args)...} {}
 
+  template <typename Factory>
+  constexpr Indestructible(factory_constructor_t, Factory&& factory) noexcept(
+      noexcept(factory()))
+      : storage_(factory_constructor, std::forward<Factory>(factory)) {}
+
   Indestructible(Indestructible const&) = delete;
   Indestructible& operator=(Indestructible const&) = delete;
 
@@ -138,6 +149,12 @@ class Indestructible final {
     explicit constexpr Storage(in_place_t, Args&&... args) noexcept(
         noexcept(T(std::declval<Args>()...))) {
       ::new (&bytes) T(std::forward<Args>(args)...);
+    }
+
+    template <typename Factory>
+    constexpr Storage(factory_constructor_t, Factory factory) noexcept(
+        noexcept(factory())) {
+      ::new (&bytes) T(factory());
     }
   };
 
