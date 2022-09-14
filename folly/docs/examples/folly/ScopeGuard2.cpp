@@ -20,13 +20,13 @@
 TEST(scope_guard, demo) {
   int x = 0;
   {
-    auto guard = makeGuard([&]() { x += 1; });
+    auto guard = folly::makeGuard([&]() { x += 1; });
     EXPECT_EQ(x, 0);
   }
   EXPECT_EQ(x, 1);
 
   {
-    auto guard = makeGuard([&]() { x += 1; });
+    auto guard = folly::makeGuard([&]() { x += 1; });
     guard.dismiss(); // Turn off the guard's function
     EXPECT_EQ(x, 1);
   }
