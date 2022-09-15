@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+/**
+ * folly::hash provides hashing algorithms, as well as algorithms to combine
+ * multiple hashes/hashable objects together.
+ *
+ * @refcode docs/examples/folly/hash/Hash.cpp
+ * @file hash/Hash.h
+ */
+
 #pragma once
 
 #include <cstdint>
@@ -57,11 +65,12 @@ constexpr bool is_hashable_byte_v<unsigned char> = true;
 
 } // namespace detail
 
-//  hash_128_to_64
-//
-//  The Hash128to64 function from Google's cityhash (under the MIT License).
-//
-//  We use it to reduce multiple 64 bit hashes into a single hash.
+/**
+ * Reduce two 64-bit hashes into one.
+ *
+ * hash_128_to_64 uses the Hash128to64 function from Google's cityhash (under
+ * the MIT License).
+ */
 FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
 constexpr uint64_t hash_128_to_64(
     const uint64_t upper, const uint64_t lower) noexcept {
@@ -75,18 +84,23 @@ constexpr uint64_t hash_128_to_64(
   return b;
 }
 
-// Order-independent way to reduce multiple 64 bit hashes into a single hash.
+/**
+ * Order-independent reduction of two 64-bit hashes into one.
+ *
+ * Commutative accumulator taken from this paper:
+ * https://www.preprints.org/manuscript/201710.0192/v1/download
+ */
 FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
 constexpr uint64_t commutative_hash_128_to_64(
     const uint64_t upper, const uint64_t lower) noexcept {
-  // Commutative accumulator taken from this paper:
-  // https://www.preprints.org/manuscript/201710.0192/v1/download
   return 3860031 + (upper + lower) * 2779 + (upper * lower * 2);
 }
 
-//  twang_mix64
-//
-//  Thomas Wang 64 bit mix hash function.
+/**
+ * Thomas Wang 64 bit mix hash function.
+ *
+ * @methodset twang
+ */
 FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
 constexpr uint64_t twang_mix64(uint64_t key) noexcept {
   key = (~key) + (key << 21); // key *= (1 << 21) - 1; key -= 1;
@@ -99,9 +113,11 @@ constexpr uint64_t twang_mix64(uint64_t key) noexcept {
   return key;
 }
 
-//  twang_unmix64
-//
-//  Inverse of, and slower than, twang_mix64.
+/**
+ * Inverse of twang_mix64.
+ *
+ * @methodset twang
+ */
 constexpr uint64_t twang_unmix64(uint64_t key) noexcept {
   // See the comments in jenkins_rev_unmix32 for an explanation as to how this
   // was generated
@@ -115,9 +131,11 @@ constexpr uint64_t twang_unmix64(uint64_t key) noexcept {
   return key;
 }
 
-//  twang_32from64
-//
-//  Thomas Wang downscaling hash function.
+/**
+ * Thomas Wang downscaling hash function.
+ *
+ * @methodset twang
+ */
 constexpr uint32_t twang_32from64(uint64_t key) noexcept {
   key = (~key) + (key << 18);
   key = key ^ (key >> 31);
@@ -128,9 +146,11 @@ constexpr uint32_t twang_32from64(uint64_t key) noexcept {
   return static_cast<uint32_t>(key);
 }
 
-//  jenkins_rev_mix32
-//
-//  Robert Jenkins' reversible 32 bit mix hash function.
+/**
+ * Robert Jenkins' reversible 32 bit mix hash function.
+ *
+ * @methodset jenkins
+ */
 constexpr uint32_t jenkins_rev_mix32(uint32_t key) noexcept {
   key += (key << 12); // key *= (1 + (1 << 12))
   key ^= (key >> 22);
@@ -144,9 +164,11 @@ constexpr uint32_t jenkins_rev_mix32(uint32_t key) noexcept {
   return key;
 }
 
-//  jenkins_rev_unmix32
-//
-//  Inverse of, and slower than, jenkins_rev_mix32.
+/**
+ * Inverse of jenkins_rev_mix32.
+ *
+ * @methodset jenkins
+ */
 constexpr uint32_t jenkins_rev_unmix32(uint32_t key) noexcept {
   // These are the modular multiplicative inverses (in Z_2^32) of the
   // multiplication factors in jenkins_rev_mix32, in reverse order.  They were
@@ -181,7 +203,12 @@ constexpr uint32_t fnv32_hash_start = 2166136261UL;
 constexpr uint64_t fnv64_hash_start = 14695981039346656037ULL;
 constexpr uint64_t fnva64_hash_start = 14695981039346656037ULL;
 
-//  fnv32_append(
+/**
+ * Append byte to FNV hash.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) {
   hash = hash //
       + (hash << 1) //
@@ -194,7 +221,14 @@ constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) {
   return hash;
 }
 
-//  fnv32_buf
+/**
+ * FNV hash of a byte-range.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
 constexpr uint32_t fnv32_buf(
     const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
@@ -208,7 +242,15 @@ inline uint32_t fnv32_buf(
   return fnv32_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
-//  fnv32
+/**
+ * FNV hash of a c-str.
+ *
+ * Continues hashing until a null byte is reached.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @methodset fnv
+ */
 constexpr uint32_t fnv32(
     const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
   for (; *buf; ++buf) {
@@ -217,13 +259,29 @@ constexpr uint32_t fnv32(
   return hash;
 }
 
-//  fnv32
+/**
+ * @overloadbrief FNV hash of a string.
+ *
+ * FNV is the Fowler / Noll / Vo Hash:
+ * http://www.isthe.com/chongo/tech/comp/fnv/
+ *
+ * Discouraged for poor performance in the smhasher suite.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @methodset fnv
+ */
 inline uint32_t fnv32(
     const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
   return fnv32_buf(str.data(), str.size(), hash);
 }
 
-//  fnv64_append_byte
+/**
+ * Append a byte to FNV hash.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
   hash = hash //
       + (hash << 1) //
@@ -237,7 +295,14 @@ constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
   return hash;
 }
 
-//  fnv64_buf
+/**
+ * FNV hash of a byte-range.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
 constexpr uint64_t fnv64_buf(
     const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
@@ -251,7 +316,16 @@ inline uint64_t fnv64_buf(
   return fnv64_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
-//  fnv64
+/**
+ * FNV hash of a c-str.
+ *
+ * Continues hashing until a null byte is reached.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 constexpr uint64_t fnv64(
     const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
   for (; *buf; ++buf) {
@@ -260,13 +334,30 @@ constexpr uint64_t fnv64(
   return hash;
 }
 
-//  fnv64
+/**
+ * @overloadbrief FNV hash of a string.
+ *
+ * FNV is the Fowler / Noll / Vo Hash:
+ * http://www.isthe.com/chongo/tech/comp/fnv/
+ *
+ * Discouraged for poor performance in the smhasher suite.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 inline uint64_t fnv64(
     const std::string& str, uint64_t hash = fnv64_hash_start) noexcept {
   return fnv64_buf(str.data(), str.size(), hash);
 }
 
-//  fnva64_append_byte
+/**
+ * Append a byte to FNVA hash.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 constexpr uint64_t fnva64_append_byte(uint64_t hash, uint8_t c) {
   hash ^= c;
   hash = hash //
@@ -279,7 +370,14 @@ constexpr uint64_t fnva64_append_byte(uint64_t hash, uint8_t c) {
   return hash;
 }
 
-//  fnva64_buf
+/**
+ * FNVA hash of a byte-range.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
 constexpr uint64_t fnva64_buf(
     const C* buf, size_t n, uint64_t hash = fnva64_hash_start) noexcept {
@@ -293,7 +391,14 @@ inline uint64_t fnva64_buf(
   return fnva64_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
-//  fnva64
+/**
+ * FNVA hash of a string.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
 inline uint64_t fnva64(
     const std::string& str, uint64_t hash = fnva64_hash_start) noexcept {
   return fnva64_buf(str.data(), str.size(), hash);
@@ -305,6 +410,12 @@ inline uint64_t fnva64(
 
 #define get16bits(d) folly::loadUnaligned<uint16_t>(d)
 
+/**
+ * hsieh hash a byte-range.
+ *
+ * @see hsieh_hash32_str
+ * @methodset hsieh
+ */
 inline constexpr uint32_t hsieh_hash32_buf_constexpr(
     const unsigned char* buf, size_t len) noexcept {
   // forcing signed char, since other platforms can use unsigned
@@ -361,15 +472,36 @@ inline constexpr uint32_t hsieh_hash32_buf_constexpr(
 
 #undef get16bits
 
+/**
+ * hsieh hash a void* byte-range.
+ *
+ * @see hsieh_hash32_str
+ * @methodset hsieh
+ */
 inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) noexcept {
   return hsieh_hash32_buf_constexpr(
       reinterpret_cast<const unsigned char*>(buf), len);
 }
 
+/**
+ * hsieh hash a c-str.
+ *
+ * Computes the strlen of the input, then byte-range hashes it.
+ *
+ * @see hsieh_hash32_str
+ * @methodset hsieh
+ */
 inline uint32_t hsieh_hash32(const char* s) noexcept {
   return hsieh_hash32_buf(s, std::strlen(s));
 }
 
+/**
+ * hsieh hash a string.
+ *
+ * Paul Hsieh: http://www.azillionmonkeys.com/qed/hash.html
+ *
+ * @methodset hsieh
+ */
 inline uint32_t hsieh_hash32_str(const std::string& str) noexcept {
   return hsieh_hash32_buf(str.data(), str.size());
 }
@@ -672,6 +804,13 @@ class StdHasher {
 // commutative_hash_combine_* hashes values but combines them in an
 // order-independent way to yield a new hash.
 
+/**
+ * Hash a value, and combine it with a seed. Commutative.
+ *
+ * @param hasher  The function/callable which will hash the value.
+ *
+ * @methodset ranges
+ */
 template <class Hash, class Value>
 uint64_t commutative_hash_combine_value_generic(
     uint64_t seed, Hash const& hasher, Value const& value) {
@@ -680,11 +819,17 @@ uint64_t commutative_hash_combine_value_generic(
   return commutative_hash_128_to_64(seed, y);
 }
 
-// hash_range combines hashes of items in the range [first, last) in an
-// __order-dependent__ fashion. To hash an unordered container (e.g.,
-// folly::dynamic, hash tables like std::unordered_map), use
-// commutative_hash_combine_range instead, which combines hashes of items
-// independent of ordering.
+/**
+ * Combine hashes of items in the range [first, last), order-dependently.
+ *
+ * For order-independent hashing, such as for hashing an unordered container
+ * (e.g. folly::dynamic::object) use commutative_hash_combine_range instead.
+ *
+ * @param hash  The base-case hash to use.
+ * @param hasher  The function/callable which will hash the value.
+ *
+ * @methodset ranges
+ */
 template <
     class Iter,
     class Hash = std::hash<typename std::iterator_traits<Iter>::value_type>>
@@ -696,6 +841,16 @@ uint64_t hash_range(
   return hash;
 }
 
+/**
+ * Create a hash from multiple hashable objects, order-independently.
+ *
+ * For order-dependent hashing use hash_range.
+ *
+ * @param seed  The base-case hash to use.
+ * @param hasher  The function/callable which will hash the value.
+ *
+ * @methodset ranges
+ */
 template <class Hash, class Iter>
 uint64_t commutative_hash_combine_range_generic(
     uint64_t seed, Hash const& hasher, Iter first, Iter last) {
@@ -705,6 +860,11 @@ uint64_t commutative_hash_combine_range_generic(
   return seed;
 }
 
+/**
+ * Create a hash from multiple hashable objects, order-independently.
+ *
+ * @methodset ranges
+ */
 template <class Iter>
 uint64_t commutative_hash_combine_range(Iter first, Iter last) {
   return commutative_hash_combine_range_generic(0, Hash{}, first, last);
@@ -720,6 +880,13 @@ inline size_t hash_combine_generic(const Hasher&) noexcept {
   return 0;
 }
 
+/**
+ * Combine hashes of multiple items, order-dependently.
+ *
+ * @param h  The function/callable which will hash the value.
+ *
+ * @methodset ranges
+ */
 template <class Hasher, typename T, typename... Ts>
 size_t hash_combine_generic(
     const Hasher& h,
@@ -738,6 +905,13 @@ size_t hash_combine_generic(
   }
 }
 
+/**
+ * Combine hashes of multiple items, order-independently.
+ *
+ * @param hasher  The function/callable which will hash the value.
+ *
+ * @methodset ranges
+ */
 template <typename Hash, typename... Value>
 uint64_t commutative_hash_combine_generic(
     uint64_t seed, Hash const& hasher, Value const&... value) {
@@ -748,12 +922,21 @@ uint64_t commutative_hash_combine_generic(
   return seed;
 }
 
+/**
+ * Combine hashes of multiple items, order-dependently.
+ *
+ * @methodset ranges
+ */
 template <typename T, typename... Ts>
 size_t hash_combine(const T& t, const Ts&... ts) noexcept(
     noexcept(hash_combine_generic(StdHasher{}, t, ts...))) {
   return hash_combine_generic(StdHasher{}, t, ts...);
 }
 
+/**
+ * Combine hashes of multiple items, order-independently.
+ *
+ */
 template <typename... Value>
 uint64_t commutative_hash_combine(Value const&... value) {
   return commutative_hash_combine_generic(0, Hash{}, value...);
