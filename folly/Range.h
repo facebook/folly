@@ -14,6 +14,23 @@
  * limitations under the License.
  */
 
+/**
+ * Range abstraction using a pair of iterators. It is not
+ * similar to boost's range abstraction because an API identical
+ * with the former StringPiece class is required, which is used alot
+ * internally. This abstraction does fulfill the needs of boost's
+ * range-oriented algorithms though.
+ *
+ * Note: (Keep memory lifetime in mind when using this class, since it
+ * does not manage the data it refers to - just like an iterator
+ * would not.)
+ *
+ * Additional documentation is in folly/docs/Range.md
+ *
+ * @refcode docs/examples/folly/Range.h
+ * @struct folly::range
+ */
+
 // @author Mark Rabkin (mrabkin@fb.com)
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
@@ -149,17 +166,6 @@ struct IsUnsignedCharPointer<const unsigned char*> {
 
 } // namespace detail
 
-/**
- * Range abstraction keeping a pair of iterators. We couldn't use
- * boost's similar range abstraction because we need an API identical
- * with the former StringPiece class, which is used by a lot of other
- * code. This abstraction does fulfill the needs of boost's
- * range-oriented algorithms though.
- *
- * (Keep memory lifetime in mind when using this class, since it
- * doesn't manage the data it refers to - just like an iterator
- * wouldn't.)
- */
 template <class Iter>
 class Range {
  private:
@@ -175,7 +181,7 @@ class Range {
   using difference_type = typename std::iterator_traits<Iter>::difference_type;
   using reference = typename std::iterator_traits<Iter>::reference;
 
-  /**
+  /*
    * For MutableStringPiece and MutableByteRange we define StringPiece
    * and ByteRange as const_range_type (for everything else its just
    * identity). We do that to enable operations such as find with
@@ -192,17 +198,31 @@ class Range {
 
   static const size_type npos;
 
-  // Works for all iterators
+  /**
+   * Works for all iterator
+   *
+   *
+   * @methodset Range
+   */
   constexpr Range() : b_(), e_() {}
 
   constexpr Range(const Range&) = default;
   constexpr Range(Range&&) = default;
 
  public:
-  // Works for all iterators
+  /**
+   * Works for all iterators
+   *
+   *
+   * @methodset Range
+   */
   constexpr Range(Iter start, Iter end) : b_(start), e_(end) {}
-
-  // Works only for random-access iterators
+  /**
+   *  Works only for random-access iterators
+   *
+   *
+   * @methodset Range
+   */
   constexpr Range(Iter start, size_t size) : b_(start), e_(start + size) {}
 
   /* implicit */ Range(std::nullptr_t) = delete;
@@ -312,11 +332,18 @@ class Range {
     }
   }
 
-  // Allow explicit construction of ByteRange from std::string_view or
-  // std::string.  Given that we allow implicit construction of ByteRange from
-  // StringPiece, it makes sense to allow this explicit construction, and avoids
-  // callers having to say ByteRange{StringPiece{str}} when they want a
-  // ByteRange pointing to data in a std::string.
+  /**
+   * @brief Allow explicit construction of ByteRange from std::string_view or
+   * std::string.
+
+   * Given that we allow implicit construction of ByteRange from
+   * StringPiece, it makes sense to allow this explicit construction, and avoids
+   * callers having to say ByteRange{StringPiece{str}} when they want a
+   * ByteRange pointing to data in a std::string.
+   *
+   *
+   * @methodset Range
+   */
   template <
       class Container,
       class T = Iter,
@@ -331,11 +358,17 @@ class Range {
               std::declval<Container const&>().size()))>
   explicit Range(const Container& str)
       : b_(reinterpret_cast<Iter>(str.data())), e_(b_ + str.size()) {}
+  /**
+   * @brief Allow implicit conversion from Range<const char*> (aka StringPiece)
+   to
+   * Range<const unsigned char*> (aka ByteRange).
 
-  // Allow implicit conversion from Range<const char*> (aka StringPiece) to
-  // Range<const unsigned char*> (aka ByteRange), as they're both frequently
-  // used to represent ranges of bytes.  Allow explicit conversion in the other
-  // direction.
+   * Give both are frequently
+   * used to represent ranges of bytes.  Allow explicit conversion in the other
+   * direction.
+   *
+   * @methodset Range
+   */
   template <
       class OtherIter,
       typename std::enable_if<
@@ -378,8 +411,12 @@ class Range {
       : b_(reinterpret_cast<char*>(other.begin())),
         e_(reinterpret_cast<char*>(other.end())) {}
 
-  // Allow implicit conversion from Range<From> to Range<To> if From is
-  // implicitly convertible to To.
+  /**
+   * Allow implicit conversion from Range<From> to Range<To> if From is
+   * implicitly convertible to To.
+   *
+   * @methodset Range
+   */
   template <
       class OtherIter,
       typename std::enable_if<
@@ -388,9 +425,12 @@ class Range {
           int>::type = 0>
   constexpr /* implicit */ Range(const Range<OtherIter>& other)
       : b_(other.begin()), e_(other.end()) {}
-
-  // Allow explicit conversion from Range<From> to Range<To> if From is
-  // explicitly convertible to To.
+  /**
+   * Allow explicit conversion from Range<From> to Range<To> if From is
+   * explicitly convertible to To.
+   *
+   * @methodset Range
+   */
   template <
       class OtherIter,
       typename std::enable_if<
@@ -407,6 +447,8 @@ class Range {
    *
    * For instance, this allows constructing StringPiece from a
    * std::array<char, N> or a std::array<const char, N>
+   *
+   * @methodset Range
    */
   template <
       class T,
@@ -434,16 +476,25 @@ class Range {
       typename detail::IsCharPointer<T>::const_type = 0>
   Range& operator=(string<Alloc>&& rhs) = delete;
 
+  /**
+   * Clear start and end iterators
+   */
   void clear() {
     b_ = Iter();
     e_ = Iter();
   }
 
+  /**
+   * Assign start and end iterators
+   */
   void assign(Iter start, Iter end) {
     b_ = start;
     e_ = end;
   }
 
+  /**
+   * Reset start and end interator based on size
+   */
   void reset(Iter start, size_type size) {
     b_ = start;
     e_ = start + size;
