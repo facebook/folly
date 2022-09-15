@@ -17,6 +17,8 @@ from libcpp cimport bool as cbool
 cdef extern from "folly/ExceptionWrapper.h" namespace "folly":
     cdef cppclass cFollyExceptionWrapper "folly::exception_wrapper":
         void throw_exception() except +
+        T* get_exception[T]()
+
 
 cdef extern from "folly/Try.h" namespace "folly" nogil:
     cdef cppclass cFollyTry "folly::Try"[T]:
