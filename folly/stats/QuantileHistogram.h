@@ -111,8 +111,6 @@ class QuantileHistogram {
 
   uint64_t count() const { return count_; }
 
-  bool empty() const { return count_ == 0; }
-
   double min() const { return locations_.front(); }
 
   double max() const { return locations_.back(); }

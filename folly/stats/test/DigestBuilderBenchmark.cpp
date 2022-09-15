@@ -32,22 +32,15 @@ using namespace folly;
 
 class FreeDigest {
  public:
-  explicit FreeDigest(size_t = 0) {}
+  explicit FreeDigest(size_t) {}
 
-  FreeDigest merge(Range<const double*> values) const {
+  FreeDigest merge(Range<const double*>) const {
     auto start = std::chrono::steady_clock::now();
     auto finish = start + std::chrono::nanoseconds{FLAGS_digest_merge_time_ns};
     while (std::chrono::steady_clock::now() < finish) {
     }
-    FreeDigest ret;
-    ret.empty_ = empty_ && values.empty();
-    return ret;
+    return FreeDigest(100);
   }
-
-  bool empty() const { return empty_; }
-
- private:
-  bool empty_ = true;
 };
 
 unsigned int append(unsigned int iters, size_t bufSize, size_t nThreads) {

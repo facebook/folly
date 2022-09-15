@@ -300,15 +300,6 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
     return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)];
   }
 
-  /// Forces the next cachedCurrent() call in this thread to re-probe the
-  /// current CPU.
-  static void invalidateCachedCurrent() {
-    if (kIsMobile) {
-      return;
-    }
-    cpuCache().invalidate();
-  }
-
   /// Returns the maximum stripe value that can be returned under any
   /// dynamic configuration, based on the current compile-time platform
   static constexpr size_t maxStripeValue() { return kMaxCpus; }
@@ -327,13 +318,11 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
       return cachedCpu_;
     }
 
-    void invalidate() { cachedCpuUses_ = 0; }
-
    private:
     static constexpr unsigned kMaxCachedCpuUses = 32;
 
-    unsigned cachedCpu_ = 0;
-    unsigned cachedCpuUses_ = 0;
+    unsigned cachedCpu_;
+    unsigned cachedCpuUses_;
   };
 
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static CpuCache& cpuCache() {

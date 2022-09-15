@@ -35,9 +35,7 @@ class SimpleDigest {
     for (size_t i = 0; i < MergeSize; ++i) {
       EXPECT_GE(MergeSize, r[i]);
     }
-    SimpleDigest ret(sz_);
-    ret.empty_ = empty_ && r.empty();
-    return ret;
+    return *this;
   }
 
   static SimpleDigest merge(Range<const SimpleDigest*> r) {
@@ -46,11 +44,9 @@ class SimpleDigest {
   }
 
   int64_t getSize() const { return sz_; }
-  bool empty() const { return empty_; }
 
  private:
   int64_t sz_;
-  bool empty_ = true;
 };
 
 TEST(DigestBuilder, SingleThreadUnfilledBuffer) {
