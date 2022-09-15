@@ -19,7 +19,7 @@
 #include <memory>
 
 #include <folly/Memory.h>
-#include <folly/SharedMutex.h>
+#include <folly/SpinLock.h>
 
 namespace folly {
 
@@ -55,7 +55,7 @@ class DigestBuilder {
  private:
   struct alignas(hardware_destructive_interference_size) CpuLocalBuffer {
    public:
-    mutable SharedMutexSuppressTSAN mutex;
+    mutable SpinLock mutex;
     std::vector<double> buffer;
     std::unique_ptr<DigestT> digest;
 
