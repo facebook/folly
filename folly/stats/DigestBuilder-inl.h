@@ -19,6 +19,7 @@
 #include <algorithm>
 
 #include <folly/concurrency/CacheLocality.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 
@@ -37,10 +38,34 @@ DigestT DigestBuilder<DigestT>::build() {
   digestPtrs.reserve(cpuLocalBuffers_.size());
 
   for (auto& cpuLocalBuffer : cpuLocalBuffers_) {
-    std::unique_lock<SharedMutexSuppressTSAN> g(cpuLocalBuffer.mutex);
-    valuesVec.push_back(std::move(cpuLocalBuffer.buffer));
+    // We want to keep the critical section in update() as small as possible, to
+    // reduce the chance of preemption while holding the lock; in particular, we
+    // should avoid allocations, which can involve syscalls. So, try to return
+    // the cpuLocalBuffer in the same state it was found if it received any
+    // values. The state may have changed by the time we re-acquire the lock,
+    // but this does not affect correctness.
+    std::vector<double> newBuffer;
+    std::unique_ptr<DigestT> newDigest;
+
+    std::unique_lock<SpinLock> g(cpuLocalBuffer.mutex);
+    bool hasDigest =
+        cpuLocalBuffer.digest != nullptr && !cpuLocalBuffer.digest->empty();
+    // If at least one merge happened, bufferSize_ was reached.
+    size_t capacity = hasDigest
+        ? bufferSize_
+        : std::min(nextPowTwo(cpuLocalBuffer.buffer.size()), bufferSize_);
+    if (capacity > 0 || hasDigest) {
+      g.unlock();
+      newBuffer.reserve(capacity);
+      newDigest = hasDigest ? std::make_unique<DigestT>(digestSize_) : nullptr;
+      g.lock();
+    }
+
+    valuesVec.push_back(
+        std::exchange(cpuLocalBuffer.buffer, std::move(newBuffer)));
     if (cpuLocalBuffer.digest) {
-      digestPtrs.push_back(std::move(cpuLocalBuffer.digest));
+      digestPtrs.push_back(
+          std::exchange(cpuLocalBuffer.digest, std::move(newDigest)));
     }
   }
 
@@ -68,9 +93,21 @@ DigestT DigestBuilder<DigestT>::build() {
 
 template <typename DigestT>
 void DigestBuilder<DigestT>::append(double value) {
-  auto cpuLocalBuf = &cpuLocalBuffers_[AccessSpreader<>::cachedCurrent(
-      cpuLocalBuffers_.size())];
-  std::unique_lock<SharedMutexSuppressTSAN> g(cpuLocalBuf->mutex);
+  const auto numBuffers = cpuLocalBuffers_.size();
+  auto cpuLocalBuf =
+      &cpuLocalBuffers_[AccessSpreader<>::cachedCurrent(numBuffers)];
+  std::unique_lock<SpinLock> g(cpuLocalBuf->mutex, std::try_to_lock);
+  if (FOLLY_UNLIKELY(!g.owns_lock())) {
+    // If the mutex is already held by another thread, either build() is
+    // running, or this or that thread have a stale stripe (possibly because the
+    // thread migrated right after the call to cachedCurrent()). So invalidate
+    // the cache and wait on the mutex.
+    AccessSpreader<>::invalidateCachedCurrent();
+    cpuLocalBuf =
+        &cpuLocalBuffers_[AccessSpreader<>::cachedCurrent(numBuffers)];
+    g = std::unique_lock<SpinLock>(cpuLocalBuf->mutex);
+  }
+
   cpuLocalBuf->buffer.push_back(value);
   if (cpuLocalBuf->buffer.size() == bufferSize_) {
     if (!cpuLocalBuf->digest) {
