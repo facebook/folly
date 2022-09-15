@@ -30,6 +30,8 @@
 
 namespace folly {
 
+class ThrottledLifoSemTestHelper;
+
 /**
  * ThrottledLifoSem is a semaphore that can wait up to a configurable
  * wakeUpInterval before waking up a sleeping waiter. This gives an opportunity
@@ -67,7 +69,7 @@ namespace folly {
 class ThrottledLifoSem {
  public:
   struct Options {
-    std::chrono::nanoseconds wakeUpInterval = std::chrono::microseconds(100);
+    std::chrono::nanoseconds wakeUpInterval = {};
   };
 
   // Setting initialValue is equivalent to calling post(initialValue)
@@ -75,63 +77,45 @@ class ThrottledLifoSem {
   explicit ThrottledLifoSem(uint32_t initialValue = 0)
       : ThrottledLifoSem(Options{}, initialValue) {}
   explicit ThrottledLifoSem(const Options& options, uint32_t initialValue = 0)
-      : options_(options), value_(initialValue) {}
+      : options_(options), state_(initialValue) {}
 
   ~ThrottledLifoSem() {
-    DCHECK(!waking_);
+    DCHECK(!(state_.load() & kWakingBit));
+    DCHECK_EQ(state_.load() >> kNumWaitersShift, 0);
     DCHECK_EQ(waiters_.size(), 0);
   }
 
   // Returns true if there are enough waiters to consume the updated value, even
-  // though they may not be awoken immediately.
+  // though they may not be awoken immediately. Note that this not include
+  // waiters that are still in the spinning state, so false may be returned even
+  // though those could pick up the new value.
   // Silently saturates if value is already 2^32-1
   bool post(uint32_t n = 1) {
-    auto oldValue = value_.load(std::memory_order_relaxed);
+    uint32_t newValue;
+    uint64_t oldState = state_.load(std::memory_order_relaxed);
+    uint64_t newState;
     while (true) {
-      auto value = static_cast<uint32_t>(std::min<uint64_t>(
-          static_cast<uint64_t>(oldValue) + n,
-          std::numeric_limits<uint32_t>::max()));
-      if (value_.compare_exchange_weak(
-              oldValue,
-              value,
-              std::memory_order_seq_cst,
-              std::memory_order_relaxed)) {
+      auto oldValue = oldState & kValueMask;
+      newValue = std::min<uint64_t>(
+          oldValue + n, std::numeric_limits<uint32_t>::max());
+      newState = (oldState & ~kValueMask) | newValue;
+      if (casState(oldState, newState)) {
         break;
       }
     }
 
-    auto ret = mutex_.lock_combine([&]() {
-      // Reload, by the time the mutex is acquired the value may be zero.
-      auto value = value_.load(std::memory_order_relaxed);
-      auto enoughWaiters = value <= waiters_.size() + waking_;
-
-      Waiter* w = nullptr;
-      if (!waking_ && !waiters_.empty() && value > 0) {
-        waking_ = true;
-        w = &waiters_.back();
-        waiters_.pop_back();
-      }
-      return std::make_pair(w, enoughWaiters);
-    });
-    if (ret.first) {
-      ret.first->baton.post();
+    // Avoid trying to wake up a waiter if there is nothing to wake up, or if
+    // there is already an active waking chain. The waking thread will never
+    // release the bit unless the value is 0 (or there is nothing to wake up).
+    const auto numWaiters = newState >> kNumWaitersShift;
+    if (numWaiters > 0 && !(newState & kWakingBit)) {
+      maybeStartWakingChain();
     }
-    return ret.second;
+
+    return newValue <= numWaiters;
   }
 
-  bool try_wait() {
-    auto oldValue = value_.load(std::memory_order_relaxed);
-    while (oldValue > 0) {
-      if (value_.compare_exchange_weak(
-              oldValue,
-              oldValue - 1,
-              std::memory_order_seq_cst,
-              std::memory_order_relaxed)) {
-        return true;
-      }
-    }
-    return false;
-  }
+  bool try_wait() { return tryWaitImpl<DecrNumWaiters::Never>(); }
 
   void wait(const WaitOptions& opt = {}) {
     auto const deadline = std::chrono::steady_clock::time_point::max();
@@ -150,8 +134,9 @@ class ThrottledLifoSem {
   bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline,
       const WaitOptions& opt = {}) {
-    switch (detail::spin_pause_until(
-        deadline, opt, [this] { return try_wait(); })) {
+    switch (detail::spin_pause_until(deadline, opt, [this] {
+      return tryWaitImpl<DecrNumWaiters::Never>();
+    })) {
       case detail::spin_result::success:
         return true;
       case detail::spin_result::timeout:
@@ -160,19 +145,60 @@ class ThrottledLifoSem {
         break;
     }
 
-    for (bool first = true;; first = false) {
+    return tryWaitUntilSlow(deadline);
+  }
+
+  uint32_t valueGuess() const {
+    return static_cast<uint32_t>(state_.load() & kValueMask);
+  }
+
+ private:
+  friend class ThrottledLifoSemTestHelper;
+
+  struct Waiter {
+    Baton<> baton;
+    SafeIntrusiveListHook hook;
+  };
+
+  bool casState(uint64_t& oldState, uint64_t newState) {
+    return state_.compare_exchange_weak(
+        oldState,
+        newState,
+        std::memory_order_seq_cst,
+        std::memory_order_relaxed);
+  }
+
+  enum DecrNumWaiters { Never, OnSuccess, Always };
+
+  template <DecrNumWaiters kDecrNumWaiters>
+  bool tryWaitImpl() {
+    auto oldState = state_.load(std::memory_order_relaxed);
+    bool success;
+    while ((success = (oldState & kValueMask) > 0) ||
+           kDecrNumWaiters == DecrNumWaiters::Always) {
+      auto newState = oldState - success;
+      if (kDecrNumWaiters != DecrNumWaiters::Never) {
+        DCHECK_GT(newState >> kNumWaitersShift, 0);
+        newState -= kNumWaitersInc;
+      }
+      if (casState(oldState, newState)) {
+        return success;
+      }
+    }
+    return false;
+  }
+
+  template <typename Clock, typename Duration>
+  FOLLY_NOINLINE bool tryWaitUntilSlow(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    state_.fetch_add(kNumWaitersInc, std::memory_order_seq_cst);
+
+    // After the first iteration we own the waking bit.
+    for (bool ownWaking = false;; ownWaking = true) {
       Optional<Waiter> waiter;
       mutex_.lock_combine([&] {
-        if (!first) {
-          // If this is not the first iteration, we must be the waking
-          // thread and had nothing to consume.
-          DCHECK(waking_);
-          waking_ = false;
-        }
-        if (!waking_ && value_.load(std::memory_order_relaxed) > 0) {
-          // Either there is no waking thread yet, or we are the waking thread
-          // and a post() happened after we failed the try_wait().
-          waking_ = true;
+        if ((ownWaking && !tryReleaseWakingBit()) ||
+            (!ownWaking && tryAcquireWakingBit())) {
           return;
         }
         waiter.emplace();
@@ -186,23 +212,26 @@ class ThrottledLifoSem {
                      // Since the wake-ups are throttled, it is almost never
                      // convenient to spin-wait (the default 2us) for a wake-up.
                      WaitOptions{}.spin_max({}))) {
-        if (mutex_.lock_combine([&] {
-              if (!waiter->hook.is_linked()) {
-                // We lost the race with post(), so we cannot interrupt, we need
-                // to wait for the wakeup which should be arriving imminently.
-                return false;
-              }
-              waiters_.erase(waiters_.iterator_to(*waiter));
-              return true;
-            })) {
-          return false;
-        } else {
+        const auto eraseWaiter = [&] {
+          if (!waiter->hook.is_linked()) {
+            // We lost the race with post(), so we cannot interrupt, we need
+            // to wait for the wakeup which should be arriving imminently.
+            return false;
+          }
+          waiters_.erase(waiters_.iterator_to(*waiter));
+          return true;
+        };
+        if (!mutex_.lock_combine(eraseWaiter)) {
           // Here we do want to spin, use the default WaitOptions.
           waiter->baton.wait();
+        } else {
+          // Timed out, but we may have promised a waiting thread if post()
+          // returned true, so we need to give a last look.
+          return tryWaitImpl<DecrNumWaiters::Always>();
         }
       }
 
-      DCHECK(mutex_.lock_combine([&] { return waking_; }));
+      DCHECK(state_.load() & kWakingBit);
 
       {
         const auto now = Clock::now();
@@ -225,52 +254,95 @@ class ThrottledLifoSem {
         }
       }
 
-      const bool success = try_wait();
-      if (success || Clock::now() >= deadline) {
+      // Same as the other timeout, need to give last look at value.
+      const bool timedout = Clock::now() >= deadline;
+      const bool success = timedout ? tryWaitImpl<DecrNumWaiters::Always>()
+                                    : tryWaitImpl<DecrNumWaiters::OnSuccess>();
+      if (success || timedout) {
         // We are the waking thread, ensure we pass the waking state to another
         // thread if the value is still > 0 before returning control.
-        auto wakeup = mutex_.lock_combine([&]() {
-          Waiter* w = nullptr;
-          if (waiters_.empty() || value_.load(std::memory_order_relaxed) == 0) {
-            waking_ = false;
-          } else {
-            w = &waiters_.back();
-            waiters_.pop_back();
-          }
-          return w;
-        });
-        if (wakeup) {
+        if (auto wakeup = mutex_.lock_combine([&]() {
+              Waiter* w = nullptr;
+              if (waiters_.empty()) {
+                // Nothing we can do.
+                state_.fetch_and(~kWakingBit, std::memory_order_seq_cst);
+              } else if (!tryReleaseWakingBit()) {
+                w = &waiters_.back();
+                waiters_.pop_back();
+              }
+              return w;
+            })) {
           wakeup->baton.post();
         }
 
         return success;
       }
 
-      // Go back to sleep.
+      // Try to back to sleep.
     }
   }
 
-  uint32_t valueGuess() const { return value_.load(); }
+  FOLLY_NOINLINE void maybeStartWakingChain() {
+    if (auto wakeup = mutex_.lock_combine([&]() {
+          Waiter* w = nullptr;
+          if (!waiters_.empty() && tryAcquireWakingBit()) {
+            w = &waiters_.back();
+            waiters_.pop_back();
+          }
+          return w;
+        })) {
+      wakeup->baton.post();
+    }
+  }
+
+  // To avoid unnecessary sleeps, we should acquire the waking bit only if the
+  // value is > 0.
+  bool tryAcquireWakingBit() {
+    auto oldState = state_.load(std::memory_order_relaxed);
+    while (!(oldState & kWakingBit) && (oldState & kValueMask) > 0) {
+      if (casState(oldState, oldState ^ kWakingBit)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // We can release the waking bit only if the value is 0.
+  bool tryReleaseWakingBit() {
+    auto oldState = state_.load(std::memory_order_relaxed);
+    while ((oldState & kValueMask) == 0) {
+      DCHECK(oldState & kWakingBit);
+      if (casState(oldState, oldState ^ kWakingBit)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   // Should only be used for testing.
   size_t numWaiters() const {
-    return mutex_.lock_combine([&]() { return waiters_.size() + waking_; });
+    // Do not use the numWaiters in the state because it includes threads that
+    // haven't gone to sleep yet.
+    return mutex_.lock_combine([&]() {
+      return waiters_.size() + ((state_.load() & kWakingBit) != 0);
+    });
   }
-
- private:
-  struct Waiter {
-    Baton<> baton;
-    SafeIntrusiveListHook hook;
-  };
 
   const Options options_;
 
-  // Protects waking_ and waiters_.
-  alignas(cacheline_align_v) mutable DistributedMutex mutex_;
-  bool waking_ = false;
-  CountedIntrusiveList<Waiter, &Waiter::hook> waiters_;
+  // State: [numWaiters (31 bits) | waking (1 bit) | value (32 bits)]
+  // numWaiters includes the waking thread.
+  static constexpr int kValueBits = 32;
+  static constexpr auto kValueMask = (uint64_t(1) << kValueBits) - 1;
+  static constexpr auto kWakingBit = uint64_t(1) << kValueBits;
+  static constexpr int kNumWaitersShift = kValueBits + 1;
+  static constexpr auto kNumWaitersInc = uint64_t(1) << kNumWaitersShift;
+  alignas(cacheline_align_v) std::atomic<uint64_t> state_;
 
-  std::atomic<uint32_t> value_;
+  // Protects waiters_ and serializes attempts to acquire the waking bit, which
+  // need to know if there are waiters available.
+  mutable DistributedMutex mutex_;
+  CountedIntrusiveList<Waiter, &Waiter::hook> waiters_;
 
   // Only accessed by the waking thread.
   alignas(cacheline_align_v) std::chrono::steady_clock::time_point
