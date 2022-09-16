@@ -36,25 +36,21 @@
 
 #pragma once
 
-#if __GNUC__
-#define FOLLY_DETAIL_BUILTIN_EXPECT(b, t) (__builtin_expect(b, t))
-#else
-#define FOLLY_DETAIL_BUILTIN_EXPECT(b, t) b
-#endif
+#include <folly/lang/Builtin.h>
 
 /**
  * Treat the condition as likely.
  *
  * @def FOLLY_LIKELY
  */
-#define FOLLY_LIKELY(...) FOLLY_DETAIL_BUILTIN_EXPECT((__VA_ARGS__), 1)
+#define FOLLY_LIKELY(...) FOLLY_BUILTIN_EXPECT((__VA_ARGS__), 1)
 
 /**
  * Treat the condition as unlikely.
  *
  * @def FOLLY_UNLIKELY
  */
-#define FOLLY_UNLIKELY(...) FOLLY_DETAIL_BUILTIN_EXPECT((__VA_ARGS__), 0)
+#define FOLLY_UNLIKELY(...) FOLLY_BUILTIN_EXPECT((__VA_ARGS__), 0)
 
 // Un-namespaced annotations
 
