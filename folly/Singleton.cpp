@@ -358,6 +358,8 @@ void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
 }
 
 void SingletonVault::destroyInstances() {
+  cancellationSource_.wlock()->requestCancellation();
+
   auto stateW = state_.wlock();
   if (stateW->state == detail::SingletonVaultState::Type::Quiescing) {
     return;
@@ -409,6 +411,11 @@ void SingletonVault::reenableInstances() {
 
     state->state = detail::SingletonVaultState::Type::Running;
   }
+
+  // reset the cancellation source
+  cancellationSource_.withWLock([&](auto& cancellationSource) {
+    cancellationSource = folly::CancellationSource{};
+  });
 
   auto eagerInitOnReenableSingletons = eagerInitOnReenableSingletons_.copy();
   auto instantiatedAtLeastOnce = instantiatedAtLeastOnce_.copy();

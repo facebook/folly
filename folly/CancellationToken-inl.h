@@ -411,19 +411,34 @@ CancellationStateWithData<Data...>::create(Args&&... data) {
   return {CancellationStateSourcePtr{state}, &state->data_};
 }
 
+inline bool variadicDisjunction() {
+  return false;
+}
+
+inline bool variadicDisjunction(bool first) {
+  return first;
+}
+
+template <typename... Bools>
+bool variadicDisjunction(bool first, Bools... bools) {
+  return first || variadicDisjunction(bools...);
+}
 } // namespace detail
 
 template <typename... Data, typename... Args>
 std::pair<CancellationSource, std::tuple<Data...>*> CancellationSource::create(
     detail::WithDataTag<Data...>, Args&&... data) {
-  auto [state, dataPtr] = detail::CancellationStateWithData<Data...>::create(
-      std::forward<Args>(data)...);
-  return {CancellationSource{std::move(state)}, dataPtr};
+  auto cancellationStateWithData =
+      detail::CancellationStateWithData<Data...>::create(
+          std::forward<Args>(data)...);
+  return {
+      CancellationSource{std::move(cancellationStateWithData.first)},
+      cancellationStateWithData.second};
 }
 
 template <typename... Ts>
 inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
-  bool canBeCancelled = (tokens.canBeCancelled() || ...);
+  bool canBeCancelled = detail::variadicDisjunction(tokens.canBeCancelled()...);
   return canBeCancelled
       ? CancellationToken(
             detail::FixedMergingCancellationState<sizeof...(Ts)>::create(

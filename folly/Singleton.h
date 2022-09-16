@@ -122,6 +122,7 @@
 
 #pragma once
 
+#include <folly/CancellationToken.h>
 #include <folly/Exception.h>
 #include <folly/Executor.h>
 #include <folly/Memory.h>
@@ -513,6 +514,15 @@ class SingletonVault {
     return &detail::createGlobal<SingletonVault, VaultTag>();
   }
 
+  // Get a cancellation token that gets triggered when singleton destruction
+  // starts.
+  //
+  // The underlying cancellation source gets reset when reenableInstances() is
+  // called.
+  folly::CancellationToken getDestructionCancellationToken() {
+    return cancellationSource_.wlock()->getToken();
+  }
+
   void setType(Type type) { type_.store(type, std::memory_order_relaxed); }
 
   void setShutdownTimeout(std::chrono::milliseconds shutdownTimeout) {
@@ -586,6 +596,11 @@ class SingletonVault {
   std::atomic<bool> shutdownTimerStarted_{false};
   std::chrono::milliseconds shutdownTimeout_{std::chrono::minutes{5}};
   Synchronized<std::vector<std::string>> shutdownLog_;
+  // We use a lock around CancellationSource to get the guarantee that all
+  // cancellation callbacks that got triggered on requestCancellation() are done
+  // executing by the time we start destruction.  This prevents silent callbacks
+  // that take long to block destruction.
+  folly::Synchronized<CancellationSource> cancellationSource_;
   bool failOnUseAfterFork_{true};
 };
 

@@ -1155,3 +1155,21 @@ TEST(Singleton, EagerInitOnReenableSingletons) {
   EXPECT_EQ(4, counter1);
   EXPECT_EQ(2, counter2);
 }
+
+namespace {
+class CancelOnDestructionSingleton {
+ public:
+  ~CancelOnDestructionSingleton() {
+    CHECK(SingletonVault::singleton()
+              ->getDestructionCancellationToken()
+              .isCancellationRequested());
+  }
+};
+
+auto cancelOnDestructionSingleton =
+    folly::Singleton<CancelOnDestructionSingleton>{};
+} // namespace
+
+TEST(Singleton, CancelOnDestruction) {
+  cancelOnDestructionSingleton.try_get();
+}
