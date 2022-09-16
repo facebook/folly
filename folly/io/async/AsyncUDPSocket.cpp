@@ -59,18 +59,20 @@ void AsyncUDPSocket::fromMsg(
         grosizeptr = (uint16_t*)CMSG_DATA(cmsg);
         params.gro = *grosizeptr;
       }
-    } else {
-      if (cmsg->cmsg_level == SOL_SOCKET) {
-        if (cmsg->cmsg_type == SO_TIMESTAMPING ||
-            cmsg->cmsg_type == SO_TIMESTAMPNS) {
-          ReadCallback::OnDataAvailableParams::Timestamp ts;
-          memcpy(
-              &ts,
-              reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
-              sizeof(ts));
-          params.ts = ts;
-        }
+    } else if (cmsg->cmsg_level == SOL_SOCKET) {
+      if (cmsg->cmsg_type == SO_TIMESTAMPING ||
+          cmsg->cmsg_type == SO_TIMESTAMPNS) {
+        ReadCallback::OnDataAvailableParams::Timestamp ts;
+        memcpy(
+            &ts,
+            reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
+            sizeof(ts));
+        params.ts = ts;
       }
+    } else if (
+        (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_TOS) ||
+        (cmsg->cmsg_level == SOL_IPV6 && cmsg->cmsg_type == IPV6_TCLASS)) {
+      params.tos = *(uint8_t*)CMSG_DATA(cmsg);
     }
   }
 #endif
@@ -226,6 +228,29 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
           AsyncSocketException::NOT_OPEN,
           "failed to set SO_SNDBUF on the socket",
           errno);
+    }
+  }
+
+  if (recvTos_) {
+    // Set socket option to receive IPv6 Traffic Class/IPv4 Type of Service.
+    int flag = 1;
+    if (family == AF_INET6) {
+      if (netops::setsockopt(
+              socket, IPPROTO_IPV6, IPV6_RECVTCLASS, &flag, sizeof(flag)) !=
+          0) {
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "failed to set IPV6_RECVTCLASS on the socket",
+            errno);
+      }
+    } else if (family == AF_INET) {
+      if (netops::setsockopt(
+              socket, IPPROTO_IP, IP_RECVTOS, &flag, sizeof(flag)) != 0) {
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "failed to set IP_RECVTOS on the socket",
+            errno);
+      }
     }
   }
 
@@ -1182,7 +1207,7 @@ void AsyncUDPSocket::handleRead() noexcept {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
     bool use_gro = gro_.has_value() && (gro_.value() > 0);
     bool use_ts = ts_.has_value() && (ts_.value() > 0);
-    if (use_gro || use_ts) {
+    if (use_gro || use_ts || recvTos_) {
       char control[ReadCallback::OnDataAvailableParams::kCmsgSpace] = {};
 
       struct msghdr msg = {};
@@ -1422,11 +1447,18 @@ bool AsyncUDPSocket::setTxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
 #endif
 }
 
-void AsyncUDPSocket::setTrafficClass(int tclass) {
+void AsyncUDPSocket::setTrafficClass(uint8_t tclass) {
   if (netops::setsockopt(
-          fd_, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(int)) != 0) {
+          fd_, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(tclass)) != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
+  }
+}
+
+void AsyncUDPSocket::setTos(uint8_t tos) {
+  if (netops::setsockopt(fd_, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) != 0) {
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
   }
 }
 

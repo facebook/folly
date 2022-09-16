@@ -86,6 +86,7 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
         writeSocket->setReusePort(true);
         writeSocket->bind(serverAddress_);
       }
+      writeSocket->setTos(1);
       writeSocket->write(lastClient_, folly::IOBuf::copyBuffer(lastMsg_));
     } catch (const std::exception& ex) {
       VLOG(4) << "Failed to send PONG " << ex.what();
@@ -195,6 +196,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     CHECK(evb_->isInEventBaseThread());
     server_ = server;
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
+    socket_->setRecvTos(recvTos_);
 
     try {
       if (bindSocket_ == BindSocket::YES) {
@@ -266,12 +268,16 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
       const folly::SocketAddress& client,
       size_t len,
       bool truncated,
-      OnDataAvailableParams) noexcept override {
+      OnDataAvailableParams params) noexcept override {
     VLOG(4) << "Read " << len << " bytes (trun:" << truncated << ") from "
             << client.describe() << " - " << std::string(buf_, len);
     VLOG(4) << n_ << " left";
+    VLOG(4) << "Type of Service value:" << params.tos;
 
     ++pongRecvd_;
+    if (params.tos != 0) {
+      ++tosMessagesRecvd_;
+    }
 
     sendPing();
   }
@@ -294,6 +300,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
   int pongRecvd() const { return pongRecvd_; }
 
+  int tosMessagesRecvd() const { return tosMessagesRecvd_; }
+
   AsyncUDPSocket& getSocket() { return *socket_; }
 
   void setShouldConnect(
@@ -301,6 +309,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     connectAddr_ = connectAddr;
     bindSocket_ = bindSocket;
   }
+
+  void setRecvTos(bool recvTos) { recvTos_ = recvTos; }
 
   bool error() const { return error_; }
 
@@ -317,6 +327,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
  private:
   int pongRecvd_{0};
+  int tosMessagesRecvd_{0};
+  bool recvTos_{false};
 
   int n_{0};
   char buf_[1024];
@@ -472,6 +484,11 @@ class AsyncSocketIntegrationTest : public Test {
       folly::Optional<folly::SocketAddress> connectedAddress,
       BindSocket bindSocket = BindSocket::YES);
 
+  std::unique_ptr<UDPClient> performPingPongRecvTosTest(
+      folly::SocketAddress writeAddress,
+      folly::Optional<folly::SocketAddress> connectedAddress,
+      BindSocket bindSocket = BindSocket::YES);
+
   std::unique_ptr<std::thread> serverThread;
   std::unique_ptr<UDPServer> server;
   folly::EventBase sevb;
@@ -548,6 +565,32 @@ AsyncSocketIntegrationTest::performPingPongNotifyMmsgTest(
   return client;
 }
 
+std::unique_ptr<UDPClient>
+AsyncSocketIntegrationTest::performPingPongRecvTosTest(
+    folly::SocketAddress writeAddress,
+    folly::Optional<folly::SocketAddress> connectedAddress,
+    BindSocket bindSocket) {
+  auto client = std::make_unique<UDPClient>(&cevb);
+  if (connectedAddress) {
+    client->setShouldConnect(*connectedAddress, bindSocket);
+  }
+  // Start event loop in a separate thread
+  auto clientThread = std::thread([this]() { cevb.loopForever(); });
+
+  // Wait for event loop to start
+  cevb.waitUntilRunning();
+
+  // Enable receiving ToS value
+  client->setRecvTos(true);
+
+  // Send ping
+  cevb.runInEventBaseThread([&]() { client->start(writeAddress, 100); });
+
+  // Wait for client to finish
+  clientThread.join();
+  return client;
+}
+
 TEST_F(AsyncSocketIntegrationTest, PingPong) {
   startServer();
   auto pingClient = performPingPongTest(server->address(), folly::none);
@@ -570,6 +613,22 @@ TEST_F(AsyncSocketIntegrationTest, PingPongNotifyMmsg) {
   // This should succeed.
   ASSERT_EQ(pingClient->pongRecvd(), 10);
   ASSERT_TRUE(pingClient->notifyInvoked);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongRecvTosDisabled) {
+  startServer();
+  auto pingClient = performPingPongTest(server->address(), folly::none);
+  // This should succeed.
+  ASSERT_GT(pingClient->pongRecvd(), 0);
+  ASSERT_EQ(pingClient->tosMessagesRecvd(), 0);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongRecvTos) {
+  startServer();
+  auto pingClient = performPingPongRecvTosTest(server->address(), folly::none);
+  // This should succeed.
+  ASSERT_GT(pingClient->pongRecvd(), 0);
+  ASSERT_GT(pingClient->tosMessagesRecvd(), 0);
 }
 
 class ConnectedAsyncSocketIntegrationTest

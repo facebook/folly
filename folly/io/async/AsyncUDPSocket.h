@@ -51,10 +51,11 @@ class AsyncUDPSocket : public EventHandler {
       // RX timestamp if available
       using Timestamp = std::array<struct timespec, 3>;
       folly::Optional<Timestamp> ts;
+      uint8_t tos = 0;
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-      static constexpr size_t kCmsgSpace =
-          CMSG_SPACE(sizeof(uint16_t)) + CMSG_SPACE(sizeof(Timestamp));
+      static constexpr size_t kCmsgSpace = CMSG_SPACE(sizeof(uint16_t)) +
+          CMSG_SPACE(sizeof(Timestamp)) + CMSG_SPACE(sizeof(uint8_t));
 #endif
     };
 
@@ -353,6 +354,12 @@ class AsyncUDPSocket : public EventHandler {
   virtual void setTransparent(bool transparent) { transparent_ = transparent; }
 
   /**
+   * Set IPV6_RECVTCLASS/IP_RECVTOS to allow receiving of the IPv6 Traffic
+   * Class/IPv4 Type of Service field.
+   */
+  virtual void setRecvTos(bool recvTos) { recvTos_ = recvTos; }
+
+  /**
    * Set reuse port mode to call bind() on the same address multiple times
    */
   virtual void setReusePort(bool reusePort) { reusePort_ = reusePort; }
@@ -466,7 +473,9 @@ class AsyncUDPSocket : public EventHandler {
   // disable/enable TX zero checksum for UDP over IPv6
   bool setTxZeroChksum6(bool bVal);
 
-  void setTrafficClass(int tclass);
+  void setTrafficClass(uint8_t tclass);
+
+  void setTos(uint8_t tos);
 
   virtual void applyOptions(
       const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
@@ -572,6 +581,7 @@ class AsyncUDPSocket : public EventHandler {
   bool reusePort_{false};
   bool freeBind_{false};
   bool transparent_{false};
+  bool recvTos_{false};
   int rcvBuf_{0};
   int sndBuf_{0};
   int busyPollUs_{0};
