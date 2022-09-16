@@ -611,7 +611,7 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
 #endif
 
-#if __cpp_inline_variables >= 201606L
+#if __cpp_inline_variables >= 201606L || FOLLY_CPLUSPLUS >= 201703L
 #define FOLLY_HAS_INLINE_VARIABLES 1
 #define FOLLY_INLINE_VARIABLE inline
 #else
