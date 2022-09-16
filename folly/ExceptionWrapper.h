@@ -126,12 +126,6 @@ namespace folly {
 //! \endcode
 class exception_wrapper final {
  private:
-  struct FOLLY_EXPORT AnyException : std::exception {
-    std::type_info const* typeinfo_;
-    template <class T>
-    /* implicit */ AnyException(T&& t) noexcept : typeinfo_(&typeid(t)) {}
-  };
-
   template <class Fn>
   struct arg_type_;
   template <class Fn>
@@ -170,8 +164,7 @@ class exception_wrapper final {
   template <class Ex>
   using IsStdException = std::is_base_of<std::exception, std::decay_t<Ex>>;
   template <class CatchFn>
-  using IsCatchAll =
-      std::is_same<arg_type<std::decay_t<CatchFn>>, AnyException>;
+  using IsCatchAll = std::is_same<arg_type<std::decay_t<CatchFn>>, void>;
 
   struct ThrownTag {};
 
@@ -207,7 +200,7 @@ class exception_wrapper final {
             Negation<std::is_abstract<T>>> {};
 
   template <class This, class Fn>
-  static bool with_exception_(This& this_, Fn fn_, tag_t<AnyException>);
+  static bool with_exception_(This& this_, Fn fn_, tag_t<void>);
 
   template <class This, class Fn, typename Ex>
   static bool with_exception_(This& this_, Fn fn_, tag_t<Ex>);

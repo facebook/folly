@@ -44,19 +44,19 @@ struct exception_wrapper::arg_type_<Ret (*)(Arg)> {
 };
 template <class Ret, class Class>
 struct exception_wrapper::arg_type_<Ret (Class::*)(...)> {
-  using type = AnyException;
+  using type = void;
 };
 template <class Ret, class Class>
 struct exception_wrapper::arg_type_<Ret (Class::*)(...) const> {
-  using type = AnyException;
+  using type = void;
 };
 template <class Ret>
 struct exception_wrapper::arg_type_<Ret(...)> {
-  using type = AnyException;
+  using type = void;
 };
 template <class Ret>
 struct exception_wrapper::arg_type_<Ret (*)(...)> {
-  using type = AnyException;
+  using type = void;
 };
 
 #ifdef FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
@@ -78,19 +78,19 @@ struct exception_wrapper::arg_type_<Ret (*)(Arg) noexcept> {
 };
 template <class Ret, class Class>
 struct exception_wrapper::arg_type_<Ret (Class::*)(...) noexcept> {
-  using type = AnyException;
+  using type = void;
 };
 template <class Ret, class Class>
 struct exception_wrapper::arg_type_<Ret (Class::*)(...) const noexcept> {
-  using type = AnyException;
+  using type = void;
 };
 template <class Ret>
 struct exception_wrapper::arg_type_<Ret(...) noexcept> {
-  using type = AnyException;
+  using type = void;
 };
 template <class Ret>
 struct exception_wrapper::arg_type_<Ret (*)(...) noexcept> {
-  using type = AnyException;
+  using type = void;
 };
 #endif
 
@@ -344,8 +344,7 @@ template <class Ex>
 }
 
 template <class This, class Fn>
-inline bool exception_wrapper::with_exception_(
-    This&, Fn fn_, tag_t<AnyException>) {
+inline bool exception_wrapper::with_exception_(This&, Fn fn_, tag_t<void>) {
   return void(fn_()), true;
 }
 
