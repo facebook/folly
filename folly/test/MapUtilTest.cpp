@@ -139,6 +139,15 @@ TEST(MapUtil, get_ptr) {
   EXPECT_EQ(4, m.at(1));
 }
 
+TEST(MapUtil, get_ptr_reference_value_type) {
+  std::map<int, const std::string&> testMap;
+  EXPECT_EQ(nullptr, folly::get_ptr(testMap, 3));
+
+  std::string someString = "some";
+  testMap.emplace(3, someString);
+  EXPECT_EQ(&someString, folly::get_ptr(testMap, 3));
+}
+
 TEST(MapUtil, get_ptr_path_simple) {
   using std::map;
   map<int, map<int, map<int, map<int, int>>>> m{{1, {{2, {{3, {{4, 5}}}}}}}};
