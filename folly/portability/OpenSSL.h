@@ -50,6 +50,10 @@
 #include <openssl/ecdsa.h>
 #endif
 
+#ifndef OPENSSL_NO_OCSP
+#include <openssl/ocsp.h>
+#endif
+
 // BoringSSL doesn't have notion of versioning although it defines
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.

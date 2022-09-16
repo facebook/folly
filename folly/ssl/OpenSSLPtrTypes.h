@@ -121,6 +121,14 @@ FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(BNCtx, BN_CTX, BN_CTX_free);
 FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(SSL, SSL, SSL_free);
 FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(SSLSession, SSL_SESSION, SSL_SESSION_free);
 
+// OCSP
+#ifndef OPENSSL_NO_OCSP
+FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(OcspRequest, OCSP_REQUEST, OCSP_REQUEST_free);
+FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(
+    OcspResponse, OCSP_RESPONSE, OCSP_RESPONSE_free);
+FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(OcspCertId, OCSP_CERTID, OCSP_CERTID_free);
+#endif
+
 // OpenSSL STACK_OF(T) can both represent owned or borrowed values.
 //
 // This isn't represented in the OpenSSL "safestack" type (e.g. STACK_OF(Foo)).
