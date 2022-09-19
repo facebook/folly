@@ -357,14 +357,6 @@ inline dynamic::dynamic(ObjectMaker&& maker) : type_(OBJECT) {
       ObjectImpl(std::move(*maker.val_.getAddress<ObjectImpl>()));
 }
 
-inline dynamic::dynamic(dynamic const& o) : type_(NULLT) {
-  *this = o;
-}
-
-inline dynamic::dynamic(dynamic&& o) noexcept : type_(NULLT) {
-  *this = std::move(o);
-}
-
 inline dynamic::~dynamic() noexcept {
   destroy();
 }

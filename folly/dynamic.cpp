@@ -131,6 +131,18 @@ bool operator==(dynamic const& a, dynamic const& b) {
 #undef FB_X
 }
 
+dynamic::dynamic(dynamic const& o) : type_(o.type_) {
+#define FB_X(T) new (getAddress<T>()) T(*o.getAddress<T>())
+  FB_DYNAMIC_APPLY(o.type_, FB_X);
+#undef FB_X
+}
+
+dynamic::dynamic(dynamic&& o) noexcept : type_(o.type_) {
+#define FB_X(T) new (getAddress<T>()) T(std::move(*o.getAddress<T>()))
+  FB_DYNAMIC_APPLY(o.type_, FB_X);
+#undef FB_X
+}
+
 dynamic& dynamic::operator=(dynamic const& o) {
   if (&o != this) {
     if (type_ == o.type_) {
