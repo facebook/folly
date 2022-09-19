@@ -53,8 +53,7 @@ class ExecutorKeepAliveBase {
 /// threadsafe.
 class Executor {
  public:
-  // Workaround for a linkage problem with explicitly defaulted dtor t22914621
-  virtual ~Executor() {}
+  virtual ~Executor() = default;
 
   /// Enqueue a function to be executed by this executor. This and all
   /// variants must be threadsafe.
