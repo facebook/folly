@@ -41,6 +41,10 @@ spin_result spin_pause_until(
     return spin_result::advance;
   }
 
+  if (f()) {
+    return spin_result::success;
+  }
+
   auto tbegin = Clock::now();
   while (true) {
     if (f()) {
