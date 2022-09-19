@@ -118,7 +118,11 @@ struct Printer {
           }
         }
         toAppend(
-            v.asDouble(), &out_, opts_.double_mode, opts_.double_num_digits);
+            v.asDouble(),
+            &out_,
+            opts_.double_mode,
+            opts_.double_num_digits,
+            opts_.double_flags);
         break;
       case dynamic::INT64: {
         auto intval = v.asInt();

@@ -112,6 +112,8 @@ struct serialization_opts {
   double_conversion::DoubleToStringConverter::DtoaMode double_mode{
       double_conversion::DoubleToStringConverter::SHORTEST};
   unsigned int double_num_digits{0}; // ignored when mode is SHORTEST
+  double_conversion::DoubleToStringConverter::Flags double_flags{
+      double_conversion::DoubleToStringConverter::NO_FLAGS};
 
   // Fallback to double when a value that looks like integer is too big to
   // fit in an int64_t. Can result in loss a of precision.

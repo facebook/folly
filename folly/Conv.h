@@ -647,10 +647,12 @@ toAppend(
     Src value,
     Tgt* result,
     double_conversion::DoubleToStringConverter::DtoaMode mode,
-    unsigned int numDigits) {
+    unsigned int numDigits,
+    double_conversion::DoubleToStringConverter::Flags flags =
+        double_conversion::DoubleToStringConverter::NO_FLAGS) {
   using namespace double_conversion;
   DoubleToStringConverter conv(
-      DoubleToStringConverter::NO_FLAGS,
+      flags,
       "Infinity",
       "NaN",
       'E',
