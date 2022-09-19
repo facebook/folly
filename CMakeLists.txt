@@ -1032,8 +1032,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST padded_test SOURCES PaddedTest.cpp
       #TEST poly_test SOURCES PolyTest.cpp
       TEST portability_test SOURCES PortabilityTest.cpp
-      BENCHMARK producer_consumer_queue_benchmark
-        SOURCES ProducerConsumerQueueBenchmark.cpp
+      # Turns out this benchmark uses Linux only API for setting CPU affinity i.e. cpu_set_t.
+      BENCHMARK producer_consumer_queue_benchmark APPLE_DISABLED SOURCES ProducerConsumerQueueBenchmark.cpp
       TEST producer_consumer_queue_test SLOW
         SOURCES ProducerConsumerQueueTest.cpp
       BENCHMARK range_find_benchmark SOURCES RangeFindBenchmark.cpp

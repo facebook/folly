@@ -49,6 +49,9 @@ struct ThroughputTest {
       cpu_set_t cpuset;
       CPU_ZERO(&cpuset);
       CPU_SET(cpu0_, &cpuset);
+      /* TODO(cavalcanti): enable this bench on OSX and use
+       * pthread_set_qos_self_np for handling big.LITTLE macs.
+       */
       pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     }
     for (int i = 0; i < iters_; ++i) {

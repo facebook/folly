@@ -278,6 +278,11 @@ void throwWrappedAndCatchWrappedImpl() {
       });
 }
 
+// Apparently OSX doesn't implement barriers since it is an optional part of
+// POSIX realtime threads extension, therefore we test for its presence.
+// Details:
+// https://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap02.html
+#if defined(_POSIX_BARRIERS) && (_POSIX_BARRIERS > 0)
 // Simulate heavy contention on func
 void contend(void (*func)()) {
   folly::BenchmarkSuspender s;
@@ -302,6 +307,7 @@ void contend(void (*func)()) {
   s.rehire();
   pthread_barrier_destroy(&barrier);
 }
+#endif
 
 BENCHMARK(throwAndCatch) {
   throwAndCatchImpl();
@@ -321,6 +327,7 @@ BENCHMARK_RELATIVE(throwWrappedAndCatchWrapped) {
 
 BENCHMARK_DRAW_LINE();
 
+#if defined(_POSIX_BARRIERS) && (_POSIX_BARRIERS > 0)
 BENCHMARK(throwAndCatchContended) {
   contend(throwAndCatchImpl);
 }
@@ -336,8 +343,8 @@ BENCHMARK_RELATIVE(throwWrappedAndCatchContended) {
 BENCHMARK_RELATIVE(throwWrappedAndCatchWrappedContended) {
   contend(throwWrappedAndCatchWrappedImpl);
 }
-
 BENCHMARK_DRAW_LINE();
+#endif
 
 namespace {
 struct Bulky {
