@@ -353,7 +353,7 @@ void HHWheelTimerBase<Duration>::scheduleNextTimeout(int64_t nextTick) {
 template <class Duration>
 void HHWheelTimerBase<Duration>::scheduleNextTimeout(
     int64_t nextTick, int64_t ticks) {
-  scheduleTimeoutInternal(interval_ * ticks);
+  scheduleTimeoutInternal(interval_.fromWheelTicks(ticks));
   expireTick_ = ticks + nextTick - 1;
 }
 
@@ -378,7 +378,7 @@ int64_t HHWheelTimerBase<Duration>::calcNextTick() {
 template <class Duration>
 int64_t HHWheelTimerBase<Duration>::calcNextTick(
     std::chrono::steady_clock::time_point curTime) {
-  return (curTime - startTime_) / interval_;
+  return interval_.toWheelTicksFromSteadyClock(curTime - startTime_);
 }
 
 // std::chrono::microseconds

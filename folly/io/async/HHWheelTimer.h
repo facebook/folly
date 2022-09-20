@@ -28,12 +28,70 @@
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/HHWheelTimer-fwd.h>
+#include <folly/portability/Config.h>
 
 namespace folly {
 
 namespace detail {
 template <class Duration>
 struct HHWheelTimerDurationConst;
+
+template <class Duration>
+class HHWheelTimerDurationInterval {
+ public:
+  explicit HHWheelTimerDurationInterval(Duration interval)
+      : divInterval_(interval.count()),
+        divIntervalForSteadyClock_(
+            std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                interval)
+                .count()),
+        interval_(interval) {}
+
+  int64_t toWheelTicksFromSteadyClock(
+      std::chrono::steady_clock::duration t) const {
+    return divIntervalForSteadyClock_.divide(t.count());
+  }
+
+  int64_t toWheelTicks(Duration t) const {
+    return divInterval_.divide(t.count());
+  }
+
+  Duration fromWheelTicks(int64_t t) const { return t * interval_; }
+
+  Duration interval() const { return interval_; }
+
+  class Divider {
+   public:
+#if FOLLY_HAVE_INT128_T
+    // Use multiplication by the reciprocal in fixed 64-bit precision, which is
+    // faster than an integer division. The algorithm is always accurate when
+    // both numerator and denominator fit in 32 bits, see
+    // https://gmplib.org/~tege/divcnst-pldi94.pdf, Theorem 4.2 with N = 32 and
+    // l = 32. For larger numerator or denominator it is still frequently
+    // accurate, but it can overestimate the quotient by 1, which is acceptable
+    // here.
+    explicit Divider(uint64_t v) : value(~uint64_t(0) / v + 1) {}
+
+    uint64_t divide(uint64_t num) const {
+      if (value == 0) {
+        return num;
+      }
+      return static_cast<uint64_t>((__uint128_t(num) * value) >> 64);
+    }
+#else
+    explicit Divider(uint64_t v) : value(v) {}
+
+    uint64_t divide(uint64_t num) const { return num / value; }
+#endif
+   private:
+    uint64_t const value;
+  };
+
+ private:
+  Divider const divInterval_;
+  Divider const divIntervalForSteadyClock_;
+  Duration const interval_;
+};
 
 template <>
 struct HHWheelTimerDurationConst<std::chrono::milliseconds> {
@@ -183,7 +241,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
    *
    * Returns the tick interval in milliseconds.
    */
-  Duration getTickInterval() const { return interval_; }
+  Duration getTickInterval() const { return interval_.interval(); }
 
   /**
    * Get the default timeout interval for this HHWheelTimerBase.
@@ -268,7 +326,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
   // Methods inherited from AsyncTimeout
   void timeoutExpired() noexcept override;
 
-  Duration interval_;
+  detail::HHWheelTimerDurationInterval<Duration> interval_;
   Duration defaultTimeout_;
 
   static constexpr int WHEEL_BUCKETS = 4;
@@ -281,7 +339,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
   std::array<std::size_t, (WHEEL_SIZE / sizeof(std::size_t)) / 8> bitmap_;
 
-  int64_t timeToWheelTicks(Duration t) { return t.count() / interval_.count(); }
+  int64_t timeToWheelTicks(Duration t) { return interval_.toWheelTicks(t); }
 
   bool cascadeTimers(
       int bucket, int tick, std::chrono::steady_clock::time_point curTime);

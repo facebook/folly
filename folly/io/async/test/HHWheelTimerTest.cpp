@@ -558,3 +558,57 @@ TEST_F(HHWheelTimerTest, NegativeTimeout) {
   ASSERT_EQ(tt2.timestamps.size(), 1);
   T_CHECK_TIMEOUT(start, end, milliseconds(1));
 }
+
+TEST(HHWheelTimerDetailsTest, Divider) {
+  auto no_overflow_add = [](uint64_t& base, int offset) -> bool {
+    if (offset >= 0 || static_cast<unsigned int>(-offset) < base) {
+      base += offset;
+      return true;
+    }
+    return false;
+  };
+
+  for (uint64_t denShift = 1; denShift <= 60; denShift++) {
+    for (int denOffset = -10; denOffset <= 10; denOffset++) {
+      uint64_t den = uint64_t(1) << denShift;
+
+      if (!no_overflow_add(den, denOffset)) {
+        continue;
+      }
+
+      folly::detail::HHWheelTimerDurationInterval<
+          std::chrono::milliseconds>::Divider divider{den};
+      for (uint64_t numShift = 3; numShift <= 58; numShift++) {
+        for (int numOffset = -10; numOffset <= 10; numOffset++) {
+          uint64_t num = (1LLU << numShift);
+          if (!no_overflow_add(num, numOffset)) {
+            continue;
+          }
+          int allowedError = 0;
+          if (numShift >= 32 || denShift >= 32) {
+            allowedError = 1;
+          }
+          auto expected = num / den;
+          auto calc = divider.divide(num);
+
+          // either it is accurate or the result is overstated by allowedError
+          EXPECT_TRUE(
+              expected == calc ||
+              (calc >= expected && calc <= expected + allowedError))
+              << "expected=" << expected << " calc=" << calc
+              << " allowedError=" << allowedError << ": " << num << "/" << den
+              << " ns=" << numShift << " + " << numOffset << " ds=" << denShift
+              << " + " << denOffset;
+        }
+      }
+    }
+  }
+
+  for (uint64_t den = 1; den <= 10000; den++) {
+    folly::detail::HHWheelTimerDurationInterval<
+        std::chrono::milliseconds>::Divider divider{den};
+    for (uint64_t num = 0; num <= 10000; num++) {
+      EXPECT_EQ(num / den, divider.divide(num)) << num << "/" << den;
+    }
+  }
+}
