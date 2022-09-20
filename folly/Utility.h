@@ -106,15 +106,15 @@ using decay_t = decltype(detail::decay_(FOLLY_DECLVAL(T &&)));
  *
  *  Note: The following text appears in the standard:
  *
- *  > In several places in this Clause the operation //DECAY_COPY(x)// is used.
- *  > All such uses mean call the function `decay_copy(x)` and use the result,
- *  > where `decay_copy` is defined as follows:
- *  >
- *  >   template <class T> decay_t<T> decay_copy(T&& v)
- *  >     { return std::forward<T>(v); }
- *  >
- *  > http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4296.pdf
- *  >   30.2.6 `decay_copy` [thread.decaycopy].
+ *      In several places in this Clause the operation //DECAY_COPY(x)// is
+ *      used. All such uses mean call the function `decay_copy(x)` and use the
+ *      result, where `decay_copy` is defined as follows:
+ *
+ *        template <class T> decay_t<T> decay_copy(T&& v)
+ *          { return std::forward<T>(v); }
+ *
+ *      http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4296.pdf
+ *        30.2.6 `decay_copy` [thread.decaycopy].
  *
  *  We mimic it, with a `noexcept` specifier for good measure.
  */
