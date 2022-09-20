@@ -163,17 +163,19 @@ static inline int64_t getMallocBytes() {
   return mallocBytes;
 }
 
-template <typename T_ALLOC>
-static void expect_heap_alloc(std::vector<int, T_ALLOC> vec, bool expect) {
-  const int64_t c = getMallocBytes();
-  vec.push_back(42);
-  vec.reserve(4);
-  if (expect) {
-    EXPECT_GT(getMallocBytes(), c);
-  } else {
-    EXPECT_EQ(getMallocBytes(), c);
+#define EXPECT_HEAP_ALLOC(vec, expect)  \
+  {                                     \
+    const int64_t c = getMallocBytes(); \
+    vec.push_back(42);                  \
+    vec.reserve(4);                     \
+    if (expect) {                       \
+      EXPECT_GT(getMallocBytes(), c);   \
+    } else {                            \
+      EXPECT_EQ(getMallocBytes(), c);   \
+    }                                   \
   }
-}
+#define EXPECT_ALLOC(x) EXPECT_HEAP_ALLOC(x, true)
+#define EXPECT_NO_ALLOC(x) EXPECT_HEAP_ALLOC(x, false)
 } // namespace
 
 TEST(Arena, FallbackSysArenaDoesFallbackToHeap) {
@@ -199,16 +201,16 @@ TEST(Arena, FallbackSysArenaDoesFallbackToHeap) {
   auto a0_adapted = AdaptedIntAlloc(arena0);
   std::vector<int, AdaptedIntAlloc> vec_arena_cxx_adapted(a0_adapted);
 
-  expect_heap_alloc(vec_arg_empty__fallback, true);
-  expect_heap_alloc(vec_arg_noinit_fallback, true);
-  expect_heap_alloc(vec_arg_doinit_fallback, false);
-  expect_heap_alloc(vec_arena_cxx_adapted, false);
-  expect_heap_alloc(vec_arg_empty__scoped, true);
-  expect_heap_alloc(vec_arg_doinit_scoped, false);
+  EXPECT_ALLOC(vec_arg_empty__fallback);
+  EXPECT_ALLOC(vec_arg_noinit_fallback);
+  EXPECT_NO_ALLOC(vec_arg_doinit_fallback);
+  EXPECT_NO_ALLOC(vec_arena_cxx_adapted);
+  EXPECT_ALLOC(vec_arg_empty__scoped);
+  EXPECT_NO_ALLOC(vec_arg_doinit_scoped);
 
   // Compilation of std::vector<T, FallbackSysArenaAllocator<T>> vec
   // 1. vec(arena0); - Should not Compile! ambigous constructor, use explicit
-  //    casting vec(FallbackSysArenaAllocator<T>arena0) instead
+  //    casting vec(FallbackSysArenaAllocator<T>(arena0)) instead
   // 2. std::vector<T, Arena> vec, std::vector<T, SysArena> vec - both do not
   //     compile, use CxxAdaptor or scoped_alloc wrapper for arena as above.
 }
