@@ -90,11 +90,13 @@ static_assert(
 static_assert(
     constexpr_strcmp_fallback("abc", "a") > 0, "constexpr_strcmp is broken");
 
-TEST(ConstexprTest, is_constant_evaluated) {
-  static_assert(folly::is_constant_evaluated());
+TEST(ConstexprTest, is_constant_evaluated_or) {
+  static_assert(folly::is_constant_evaluated_or(true));
+  EXPECT_FALSE(folly::is_constant_evaluated_or(false));
 
-#if __cpp_lib_is_constant_evaluated
-  ASSERT_FALSE(folly::is_constant_evaluated());
-  return;
+#if !defined(__cpp_lib_is_constant_evaluated) && \
+    !FOLLY_HAS_BUILTIN(__builtin_is_constant_evaluated)
+  static_assert(!folly::is_constant_evaluated_or(false));
+  EXPECT_TRUE(folly::is_constant_evaluated_or(true));
 #endif
 }

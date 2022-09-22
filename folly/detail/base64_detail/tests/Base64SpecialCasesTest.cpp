@@ -499,7 +499,7 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
   };
 
   for (const auto& test : kDecodingErrorDection) {
-    if (!folly::is_constant_evaluated()) {
+    if (!folly::is_constant_evaluated_or(true)) {
       triggerASANOnBadDecode<isURLDecoder>(test.input, decoder);
     }
     auto r = decoder(
@@ -516,7 +516,7 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
   }
 
   for (std::string_view URLOnly : kDecodingOnlyURLValid) {
-    if (!folly::is_constant_evaluated()) {
+    if (!folly::is_constant_evaluated_or(true)) {
       triggerASANOnBadDecode<isURLDecoder>(URLOnly, decoder);
     }
     auto r =

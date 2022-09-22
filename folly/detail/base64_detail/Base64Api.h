@@ -49,7 +49,7 @@ inline char* base64EncodeRuntime(
 
 inline FOLLY_CXX17_CONSTEXPR char* base64Encode(
     const char* f, const char* l, char* o) noexcept {
-  if (folly::is_constant_evaluated()) {
+  if (folly::is_constant_evaluated_or(true)) {
     return base64EncodeScalar(f, l, o);
   } else {
     return base64EncodeRuntime(f, l, o);
@@ -63,7 +63,7 @@ inline char* base64URLEncodeRuntime(
 
 inline FOLLY_CXX17_CONSTEXPR char* base64URLEncode(
     const char* f, const char* l, char* o) noexcept {
-  if (folly::is_constant_evaluated()) {
+  if (folly::is_constant_evaluated_or(true)) {
     return base64URLEncodeScalar(f, l, o);
   } else {
     return base64URLEncodeRuntime(f, l, o);
@@ -77,7 +77,7 @@ inline Base64DecodeResult base64DecodeRuntime(
 
 inline FOLLY_CXX17_CONSTEXPR Base64DecodeResult
 base64Decode(const char* f, const char* l, char* o) noexcept {
-  if (folly::is_constant_evaluated()) {
+  if (folly::is_constant_evaluated_or(true)) {
     return base64DecodeScalar(f, l, o);
   } else {
     return base64DecodeRuntime(f, l, o);
@@ -91,7 +91,7 @@ inline Base64DecodeResult base64URLDecodeRuntime(
 
 inline FOLLY_CXX17_CONSTEXPR Base64DecodeResult
 base64URLDecode(const char* f, const char* l, char* o) noexcept {
-  if (folly::is_constant_evaluated()) {
+  if (folly::is_constant_evaluated_or(true)) {
     return base64URLDecodeScalar(f, l, o);
   } else {
     return base64URLDecodeRuntime(f, l, o);

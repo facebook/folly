@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/CPortability.h>
+#include <folly/Portability.h>
 
 #include <cstdint>
 #include <cstring>
@@ -116,10 +117,25 @@ constexpr int constexpr_strcmp(const Char* s1, const Char* s2) noexcept {
   return detail::constexpr_strcmp_internal(s1, s2, 0);
 }
 
-// folly::is_constant_evaluated:
-//   works like c++20 is_constant_evaluated if it can.
-//   if it cannot - returns true.
-constexpr bool is_constant_evaluated() noexcept {
+namespace detail {
+
+template <typename V>
+struct is_constant_evaluated_or_constinit_ {
+  V value;
+  FOLLY_ERASE FOLLY_CONSTEVAL /* implicit */
+  is_constant_evaluated_or_constinit_(V const v) noexcept(noexcept(V(v)))
+      : value{v} {}
+};
+
+} // namespace detail
+
+//  is_constant_evaluated_or
+//
+//  Similar in spirit to std::is_constant_evaluated (c++20), with differences:
+//  * Takes an argument to be used as the default return value, if the code is
+//    unable to tell whether it is in a constant context.
+constexpr bool is_constant_evaluated_or(
+    detail::is_constant_evaluated_or_constinit_<bool> const def) noexcept {
 #if defined(__cpp_lib_is_constant_evaluated)
   return std::is_constant_evaluated();
 #endif
@@ -127,7 +143,8 @@ constexpr bool is_constant_evaluated() noexcept {
 #if FOLLY_HAS_BUILTIN(__builtin_is_constant_evaluated)
   return __builtin_is_constant_evaluated();
 #endif
-  return true;
+
+  return def.value;
 }
 
 } // namespace folly
