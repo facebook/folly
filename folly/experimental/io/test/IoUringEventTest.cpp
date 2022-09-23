@@ -54,11 +54,13 @@ struct Observer : EventBaseObserver {
 };
 
 struct NopSqe : IoUringBackend::IoSqeBase {
-  void processSubmit(struct io_uring_sqe* sqe) override {
+  void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     io_uring_prep_nop(sqe);
   }
-  void callback(int res, uint32_t) override { prom.setValue(res); }
-  void callbackCancelled() override { prom.setException(FutureCancellation{}); }
+  void callback(int res, uint32_t) noexcept override { prom.setValue(res); }
+  void callbackCancelled() noexcept override {
+    prom.setException(FutureCancellation{});
+  }
 
   Promise<int> prom;
 };

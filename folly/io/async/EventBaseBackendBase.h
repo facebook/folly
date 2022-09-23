@@ -42,7 +42,7 @@ class EventReadCallback {
   EventReadCallback() = default;
   virtual ~EventReadCallback() = default;
 
-  virtual IoVec* allocateData() = 0;
+  virtual IoVec* allocateData() noexcept = 0;
 };
 
 class EventRecvmsgCallback {
@@ -60,7 +60,7 @@ class EventRecvmsgCallback {
   EventRecvmsgCallback() = default;
   virtual ~EventRecvmsgCallback() = default;
 
-  virtual MsgHdr* allocateData() = 0;
+  virtual MsgHdr* allocateData() noexcept = 0;
 };
 
 class EventRecvmsgMultishotCallback {
@@ -92,7 +92,7 @@ class EventRecvmsgMultishotCallback {
   EventRecvmsgMultishotCallback() = default;
   virtual ~EventRecvmsgMultishotCallback() = default;
 
-  virtual Hdr* allocateRecvmsgMultishotData() = 0;
+  virtual Hdr* allocateRecvmsgMultishotData() noexcept = 0;
 };
 
 struct EventCallback {

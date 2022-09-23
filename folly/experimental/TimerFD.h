@@ -46,7 +46,7 @@ class TimerFD : public folly::EventHandler,
   void handlerReady(uint16_t events) noexcept override;
 
   // from folly::EventReadCallback
-  folly::EventReadCallback::IoVec* allocateData() override {
+  folly::EventReadCallback::IoVec* allocateData() noexcept override {
     auto* ret = ioVecPtr_.release();
     return (ret ? ret : new IoVec(this));
   }

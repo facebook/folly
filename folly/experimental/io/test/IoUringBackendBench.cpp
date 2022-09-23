@@ -209,7 +209,7 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
   }
 
   // from folly::EventReadCallback
-  folly::EventReadCallback::IoVec* allocateData() override {
+  folly::EventReadCallback::IoVec* allocateData() noexcept override {
     auto* ret = ioVecPtr_.release();
     return (ret ? ret : new EFDIoVec(this));
   }
@@ -416,7 +416,7 @@ class SocketPair : public EventHandler, public folly::EventReadCallback {
   }
 
   // from folly::EventReadCallback
-  folly::EventReadCallback::IoVec* allocateData() override {
+  folly::EventReadCallback::IoVec* allocateData() noexcept override {
     auto* ret = ioVecPtr_.release();
     return (ret ? ret : new SPIoVec(this));
   }
@@ -531,7 +531,7 @@ class TimerFD : public EventHandler, public folly::EventReadCallback {
   }
 
   // from folly::EventReadCallback
-  folly::EventReadCallback::IoVec* allocateData() override {
+  folly::EventReadCallback::IoVec* allocateData() noexcept override {
     auto* ret = ioVecPtr_.release();
     return (ret ? ret : new TimerFDIoVec(this));
   }

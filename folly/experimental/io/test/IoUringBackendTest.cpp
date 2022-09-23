@@ -147,7 +147,7 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
   uint64_t getNum() const { return num_; }
 
   // from folly::EventReadCallback
-  folly::EventReadCallback::IoVec* allocateData() override {
+  folly::EventReadCallback::IoVec* allocateData() noexcept override {
     auto* ret = ioVecPtr_.release();
     return (ret ? ret : new IoVec(this));
   }
@@ -407,7 +407,7 @@ class EventRecvmsgCallback : public folly::EventRecvmsgCallback {
   ~EventRecvmsgCallback() override = default;
 
   // from EventRecvmsgCallback
-  EventRecvmsgCallback::MsgHdr* allocateData() override {
+  EventRecvmsgCallback::MsgHdr* allocateData() noexcept override {
     auto* ret = msgHdr_.release();
     if (!ret) {
       ret = new MsgHdr(this);
@@ -501,8 +501,8 @@ class EventRecvmsgMultishotCallback
   ~EventRecvmsgMultishotCallback() override = default;
 
   // from EventRecvmsgCallback
-  folly::EventRecvmsgMultishotCallback::Hdr* allocateRecvmsgMultishotData()
-      override {
+  folly::EventRecvmsgMultishotCallback::Hdr*
+  allocateRecvmsgMultishotData() noexcept override {
     return new Hdr(this);
   }
 
@@ -1278,15 +1278,17 @@ TEST(IoUringBackend, ProvidedBuffers) {
     Reader(int fd, uint16_t bgid, std::function<void(int, uint32_t)> oncqe)
         : fd_(fd), bgid_(bgid), oncqe_(oncqe) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) override {
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       io_uring_prep_read(sqe, fd_, nullptr, 2 /* max read 2 per go */, 0);
       sqe->flags |= IOSQE_BUFFER_SELECT;
       sqe->buf_group = bgid_;
     }
 
-    void callback(int res, uint32_t flags) override { oncqe_(res, flags); }
+    void callback(int res, uint32_t flags) noexcept override {
+      oncqe_(res, flags);
+    }
 
-    void callbackCancelled() override { FAIL(); }
+    void callbackCancelled() noexcept override { FAIL(); }
 
     int fd_;
     uint16_t bgid_;
