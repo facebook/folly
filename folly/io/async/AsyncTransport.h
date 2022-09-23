@@ -389,6 +389,7 @@ class AsyncReader {
   virtual void setReadCB(ReadCallback* callback) = 0;
   virtual ReadCallback* getReadCallback() const = 0;
   virtual void setEventCallback(EventRecvmsgCallback* /*cb*/) {}
+  virtual std::unique_ptr<IOBuf> takePreReceivedData() { return {}; }
 
  protected:
   virtual ~AsyncReader() = default;

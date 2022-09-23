@@ -957,6 +957,10 @@ class AsyncSocket : public AsyncTransport {
     }
   }
 
+  std::unique_ptr<IOBuf> takePreReceivedData() override {
+    return std::move(preReceivedData_);
+  }
+
   /**
    * Enables TFO behavior on the AsyncSocket if FOLLY_ALLOW_TFO
    * is set.
