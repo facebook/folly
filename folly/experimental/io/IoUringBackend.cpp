@@ -534,7 +534,7 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
     if (tryPublish(this_idx, next_head)) {
       enobuf_ = false;
     }
-    DVLOG(1) << "returnBuffer(" << i << ")@" << this_idx;
+    DVLOG(9) << "returnBuffer(" << i << ")@" << this_idx;
   }
 
   char const* getData(uint16_t i) { return buffer_.buffer(i); }
@@ -1525,15 +1525,19 @@ IoSqeNop const ioSqeNop;
 } // namespace
 
 void IoUringBackend::cancel(IoSqeBase* ioSqe) {
+  bool skip = false;
   ioSqe->markCancelled();
   auto* sqe = get_sqe();
   io_uring_prep_cancel64(sqe, (uint64_t)ioSqe, 0);
   io_uring_sqe_set_data(sqe, (void*)&ioSqeNop); // just need something unique
 #if FOLLY_IO_URING_UP_TO_DATE
   if (params_.features & IORING_FEAT_CQE_SKIP) {
-    sqe->flags |= IOSQE_CQE_SKIP_SUCCESS;
+    // sqe->flags |= IOSQE_CQE_SKIP_SUCCESS;
+    // skip = true;
   }
 #endif
+  DVLOG(4) << "Cancel " << ioSqe << " with ud= " << &ioSqeNop
+           << " skip=" << skip;
 }
 
 int IoUringBackend::cancelOne(IoSqe* ioSqe) {
