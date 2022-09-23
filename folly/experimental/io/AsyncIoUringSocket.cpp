@@ -16,6 +16,7 @@
 
 #include <folly/Conv.h>
 #include <folly/experimental/io/AsyncIoUringSocket.h>
+#include <folly/experimental/io/IoUringEventBaseLocal.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncSocket.h>
 
@@ -80,11 +81,15 @@ AsyncIoUringSocket::AsyncIoUringSocket(
 AsyncIoUringSocket::AsyncIoUringSocket(EventBase* evb, IoUringBackend* backend)
     : evb_(evb), backend_(backend) {
   if (!backend_) {
+    backend_ = IoUringEventBaseLocal::try_get(evb);
+  }
+  if (!backend_) {
     backend_ = dynamic_cast<IoUringBackend*>(evb_->getBackend());
   }
   if (!backend_) {
     throw std::runtime_error("need to take a IoUringBackend event base");
   }
+
   if (!backend_->bufferProvider()) {
     throw std::runtime_error("require a IoUringBackend with a buffer provider");
   }
@@ -140,6 +145,9 @@ AsyncIoUringSocket::~AsyncIoUringSocket() {
 }
 
 bool AsyncIoUringSocket::supports(EventBase* eb) {
+  if (IoUringEventBaseLocal::try_get(eb)) {
+    return true;
+  }
   IoUringBackend* io = dynamic_cast<IoUringBackend*>(eb->getBackend());
   return !!io;
 }
