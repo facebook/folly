@@ -1238,6 +1238,20 @@ size_t IoUringBackend::processActiveEvents() {
   return ret;
 }
 
+void IoUringBackend::submitOutstanding() {
+  prepList(submitList_);
+  submitEager();
+}
+
+unsigned int IoUringBackend::processCompleted() {
+  return internalProcessCqe(options_.maxGet, false);
+}
+
+size_t IoUringBackend::loopPoll() {
+  prepList(submitList_);
+  return getActiveEvents(WaitForEventsMode::DONT_WAIT);
+}
+
 int IoUringBackend::eb_event_base_loop(int flags) {
   if (registerDefaultFds_) {
     registerDefaultFds_ = false;
@@ -1577,7 +1591,7 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   int ret;
   // we can be called from the submitList() method
   // or with non blocking flags
-  if (FOLLY_LIKELY(waitForEvents == WaitForEventsMode::WAIT)) {
+  if (waitForEvents == WaitForEventsMode::WAIT) {
     // if polling the CQ, busy wait for one entry
     if (options_.flags & Options::Flags::POLL_CQ) {
       if (waitingToSubmit_) {
@@ -1598,9 +1612,10 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     }
   } else {
     if (waitingToSubmit_) {
-      submitBusyCheck(waitingToSubmit_, WaitForEventsMode::DONT_WAIT);
+      ret = submitBusyCheck(waitingToSubmit_, WaitForEventsMode::DONT_WAIT);
+    } else {
+      ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
     }
-    ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
   }
   if (ret == -EBADR) {
     // cannot recover from droped CQE
@@ -1611,6 +1626,13 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     LOG(ERROR) << "wait_cqe error: " << ret;
     return 0;
   }
+
+  return internalProcessCqe(options_.maxGet, true);
+}
+
+unsigned int IoUringBackend::internalProcessCqe(
+    unsigned int maxGet, bool allowMore) noexcept {
+  struct io_uring_cqe* cqe;
 
   unsigned int count_more = 0;
   unsigned int count = 0;
@@ -1632,15 +1654,17 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
       break;
     }
     io_uring_cq_advance(&ioRing_, loop_count);
-    if (count >= options_.maxGet) {
+    if (count >= maxGet) {
       break;
     }
-    ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
-    if (ret == -EBADR) {
-      // cannot recover from droped CQE
-      folly::terminate_with<std::runtime_error>("BADR");
-    } else if (ret) {
-      break;
+    if (allowMore) {
+      int ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
+      if (ret == -EBADR) {
+        // cannot recover from droped CQE
+        folly::terminate_with<std::runtime_error>("BADR");
+      } else if (ret) {
+        break;
+      }
     }
   } while (true);
   numInsertedEvents_ -= (count - count_more);

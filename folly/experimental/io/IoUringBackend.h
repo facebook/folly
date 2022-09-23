@@ -246,7 +246,11 @@ class IoUringBackend : public EventBaseBackendBase {
 
   explicit IoUringBackend(Options options);
   ~IoUringBackend() override;
+  Options const& options() const { return options_; }
 
+  bool isWaitingToSubmit() const {
+    return waitingToSubmit_ || !submitList_.empty();
+  }
   struct io_uring* ioRingPtr() {
     return &ioRing_;
   }
@@ -261,6 +265,10 @@ class IoUringBackend : public EventBaseBackendBase {
   int eb_event_del(Event& event) override;
 
   bool eb_event_active(Event&, int) override { return false; }
+
+  size_t loopPoll();
+  void submitOutstanding();
+  unsigned int processCompleted();
 
   // returns true if the current Linux kernel version
   // supports the io_uring backend
@@ -465,6 +473,7 @@ class IoUringBackend : public EventBaseBackendBase {
   void submitImmediateIoSqe(IoSqeBase& ioSqe);
 
   void internalSubmit(IoSqeBase& ioSqe);
+  unsigned int internalProcessCqe(unsigned int maxGet, bool allowMore) noexcept;
 
   int eb_event_modify_inserted(Event& event, IoSqe* ioSqe);
 
