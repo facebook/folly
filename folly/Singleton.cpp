@@ -23,10 +23,12 @@
 #endif
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <fmt/chrono.h>
 
 #include <folly/Demangle.h>
 #include <folly/ScopeGuard.h>
@@ -438,7 +440,12 @@ void SingletonVault::scheduleDestroyInstances() {
 }
 
 void SingletonVault::addToShutdownLog(std::string message) {
-  shutdownLog_.wlock()->push_back(std::move(message));
+  std::chrono::time_point<std::chrono::system_clock> now =
+      std::chrono::system_clock::now();
+  std::chrono::milliseconds millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          now.time_since_epoch());
+  shutdownLog_.wlock()->push_back(fmt::format("{:%T} {}", millis, message));
 }
 
 #if FOLLY_HAVE_LIBRT
