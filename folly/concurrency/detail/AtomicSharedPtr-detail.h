@@ -147,7 +147,7 @@ inline void shared_ptr_internals::inc_shared_count(
   FOLLY_SAFE_CHECK(
       base->_M_get_use_count() + count < INT_MAX, "atomic_shared_ptr overflow");
   __gnu_cxx::__atomic_add_dispatch(
-      &(base->*fieldPtr(access_use_count{})), count);
+      &(base->*fieldPtr(access_use_count{})), static_cast<int>(count));
 }
 
 template <typename T>
@@ -155,7 +155,8 @@ inline void shared_ptr_internals::release_shared(
     counted_base* base, long count) {
   // If count == 1, this is equivalent to base->_M_release()
   if (__gnu_cxx::__exchange_and_add_dispatch(
-          &(base->*fieldPtr(access_use_count{})), -count) == count) {
+          &(base->*fieldPtr(access_use_count{})), -static_cast<int>(count)) ==
+      count) {
     base->_M_dispose();
 
     if (__gnu_cxx::__exchange_and_add_dispatch(
