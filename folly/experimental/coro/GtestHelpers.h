@@ -24,6 +24,18 @@
 
 #if FOLLY_HAS_COROUTINES
 
+#if defined(__GLIBCXX__)
+
+#define LOG_ASYNC_TEST_EXCEPTION                            \
+  GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: " \
+                    << folly::exception_tracer::getAsyncTrace(ex);
+
+#else
+
+#define LOG_ASYNC_TEST_EXCEPTION GTEST_LOG_(ERROR) << ex.what();
+
+#endif
+
 /**
  * This is based on the GTEST_TEST_ macro from gtest-internal.h. It seems that
  * gtest doesn't yet support coro tests, so this macro adds a way to define a
@@ -74,8 +86,7 @@
     try {                                                                      \
       folly::coro::blockingWait(co_TestBody());                                \
     } catch (const std::exception& ex) {                                       \
-      GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: "                \
-                        << folly::exception_tracer::getAsyncTrace(ex);         \
+      LOG_ASYNC_TEST_EXCEPTION                                                 \
       throw;                                                                   \
     }                                                                          \
   }                                                                            \
