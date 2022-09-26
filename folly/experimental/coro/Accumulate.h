@@ -36,7 +36,7 @@ namespace coro {
 //   AsyncGenerator<int> stream();
 //
 //   Task<void> consumer() {
-//     auto sum = accumulate(stream(), 0, std::plus{});
+//     auto sum = co_await accumulate(stream(), 0, std::plus{});
 //   }
 template <typename Reference, typename Value, typename Output>
 Task<Output> accumulate(
