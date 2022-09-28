@@ -37,6 +37,7 @@ fbcode/tools/lfs = tools/lfs
 
 [shipit.strip]
 ^fbcode/configerator/structs/scm/hg(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/addons/.*$
 ^fbcode/eden/fs/eden-config\.h$
 ^fbcode/eden/fs/py/eden/config\.py$
 ^fbcode/eden/hg-server/.*$
@@ -44,6 +45,7 @@ fbcode/tools/lfs = tools/lfs
 ^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/scm(?!/public_autocargo|/edenscmnative/bindings).*/Cargo\.toml$
 ^fbcode/eden/scm/build/.*$
+^fbcode/eden/website/.*$
 ^fbcode/eden/.*/\.cargo/.*$
 ^.*/facebook/.*$
 ^.*/fb/.*$

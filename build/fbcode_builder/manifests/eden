@@ -77,12 +77,14 @@ fbcode/common/rust/shed/hostcaps/public_cargo = common/rust/shed/hostcaps
 fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
 
 [shipit.strip]
+^fbcode/eden/addons/.*$
 ^fbcode/eden/fs/eden-config\.h$
 ^fbcode/eden/fs/py/eden/config\.py$
 ^fbcode/eden/hg-server/.*$
 ^fbcode/eden/mononoke/(?!lfs_protocol)
 ^fbcode/eden/scm/build/.*$
 ^fbcode/eden/scm/lib/third-party/rust/.*/Cargo.toml$
+^fbcode/eden/website/.*$
 ^fbcode/eden/.*/\.cargo/.*$
 /Cargo\.lock$
 \.pyc$
