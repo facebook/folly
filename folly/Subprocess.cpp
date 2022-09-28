@@ -830,13 +830,17 @@ ProcessReturnCode Subprocess::waitOrTerminateOrKill(
 ProcessReturnCode Subprocess::terminateOrKill(TimeoutDuration sigtermTimeout) {
   returnCode_.enforce(ProcessReturnCode::RUNNING);
   DCHECK_GT(pid_, 0) << "The subprocess has been waited already";
-  // 1. Send SIGTERM to kill the process
-  terminate();
-  // 2. check whether subprocess has terminated using non-blocking waitpid
-  waitTimeout(sigtermTimeout);
-  if (!returnCode_.running()) {
-    return returnCode_;
+
+  if (sigtermTimeout > TimeoutDuration(0)) {
+    // 1. Send SIGTERM to kill the process
+    terminate();
+    // 2. check whether subprocess has terminated using non-blocking waitpid
+    waitTimeout(sigtermTimeout);
+    if (!returnCode_.running()) {
+      return returnCode_;
+    }
   }
+
   // 3. If we are at this point, we have waited enough time after
   // sending SIGTERM, we have to use nuclear option SIGKILL to kill
   // the subprocess.

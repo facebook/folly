@@ -199,7 +199,7 @@ TEST(
 }
 
 // This method verifies terminateOrKill shouldn't affect the exit
-// status if the process has exitted already.
+// status if the process has exited already.
 TEST(SimpleSubprocessTest, TerminateAfterProcessExit) {
   Subprocess proc(
       std::vector<std::string>{"/bin/bash", "-c", "echo hello; exit 1"},
@@ -240,6 +240,18 @@ TEST(SimpleSubprocessTest, TerminateWithoutKill) {
   auto retCode = proc.terminateOrKill(1s);
   EXPECT_TRUE(retCode.killed());
   EXPECT_EQ(SIGTERM, retCode.killSignal());
+}
+
+TEST(SimpleSubprocessTest, TerminateOrKillZeroTimeout) {
+  // Using terminateOrKill() with a 0s timeout should immediately kill the
+  // process with SIGKILL without bothering to attempt SIGTERM.
+  Subprocess proc(
+      std::vector<std::string>{"/bin/bash", "-c", "echo ready; sleep 60"},
+      Subprocess::Options().pipeStdout().pipeStderr());
+  EXPECT_TRUE(waitForAnyOutput(proc));
+  auto retCode = proc.terminateOrKill(0s);
+  EXPECT_TRUE(retCode.killed());
+  EXPECT_EQ(SIGKILL, retCode.killSignal());
 }
 
 // This method tests that if the subprocess ignores SIGTERM, we have

@@ -646,6 +646,9 @@ class Subprocess {
    * several times up to `sigtermTimeout`. If the process hasn't terminated
    * after that, send SIGKILL to kill the process and call `waitpid` blockingly.
    * Return the exit code of process.
+   *
+   * If sigtermTimeout is 0 or negative, this will immediately send SIGKILL
+   * without first sending SIGTERM.
    */
   ProcessReturnCode terminateOrKill(TimeoutDuration sigtermTimeout);
 
