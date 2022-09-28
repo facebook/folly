@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/portability/Config.h>
-
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
 // PackedSyncPtr requires x64, ppc64 or aarch64, skip these tests for
 // other arches
+#include <folly/Portability.h>
+#include <folly/portability/Config.h>
 #if defined(__GLIBCXX__) && (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64)
 
 #include <folly/concurrency/test/AtomicSharedPtrCounted.h>
@@ -126,6 +126,7 @@ TEST(AtomicSharedPtr, ConstTest) {
 
   atomic_shared_ptr<const foo> catom;
 }
+
 TEST(AtomicSharedPtr, AliasingConstructorTest) {
   c_count = 0;
   d_count = 0;
@@ -150,6 +151,21 @@ TEST(AtomicSharedPtr, AliasingConstructorTest) {
   delete b;
   EXPECT_EQ(2, c_count);
   EXPECT_EQ(2, d_count);
+}
+
+TEST(AtomicSharedPtr, AliasingWithNoControlBlockConstructorTest) {
+  long value = 0;
+  atomic_shared_ptr<long> ptr{shared_ptr<long>{shared_ptr<long>{}, &value}};
+  EXPECT_EQ(ptr.load().get(), &value);
+}
+
+TEST(AtomicSharedPtr, AliasingWithNullptrConstructorTest) {
+  atomic_shared_ptr<foo> ptr{shared_ptr<foo>{std::make_shared<foo>(), nullptr}};
+  EXPECT_EQ(ptr.load().get(), nullptr);
+  // Verify that atomic_shared_ptr is holding the underlying object.
+  EXPECT_EQ(d_count, 0);
+  ptr.store({});
+  EXPECT_EQ(d_count, 1);
 }
 
 TEST(AtomicSharedPtr, MaxPtrs) {

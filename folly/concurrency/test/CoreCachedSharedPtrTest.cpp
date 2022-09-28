@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/portability/Config.h>
-
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
 // PackedSyncPtr requires x64, ppc64 or aarch64, skip these tests for
 // other arches
+#include <folly/Portability.h>
+#include <folly/portability/Config.h>
 #if defined(__GLIBCXX__) && (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64)
 
 #include <atomic>
@@ -28,7 +28,6 @@
 #include <vector>
 
 #include <folly/Benchmark.h>
-#include <folly/Portability.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>

@@ -228,13 +228,15 @@ class atomic_shared_ptr {
   // Bit signifying aliased constructor
   static constexpr unsigned ALIASED_PTR{0x4000};
 
-  mutable AtomicStruct<PackedPtr, Atom> ptr_;
+  static unsigned int get_local_count(const PackedPtr& p) {
+    return p.extra() & ~ALIASED_PTR;
+  }
 
-  void add_external(BasePtr* res, int64_t c = 0) const {
+  static void add_external(BasePtr* res, int64_t c = 0) {
     assert(res);
     CountedDetail::inc_shared_count(res, EXTERNAL_OFFSET + c);
   }
-  void release_external(PackedPtr& res, int64_t c = 0) const {
+  static void release_external(PackedPtr& res, int64_t c = 0) {
     if (!res.get()) {
       return;
     }
@@ -243,50 +245,35 @@ class atomic_shared_ptr {
     assert(diff >= 0);
     CountedDetail::template release_shared<T>(res.get(), diff);
   }
-  PackedPtr get_newptr(const SharedPtr& n) const {
-    BasePtr* newval;
-    unsigned count = 0;
-    if (!n) {
-      newval = nullptr;
-    } else {
-      newval = CountedDetail::get_counted_base(n);
-      if (n.get() != CountedDetail::template get_shared_ptr<T>(newval)) {
-        // This is an aliased sharedptr.  Make an un-aliased one
-        // by wrapping in *another* shared_ptr.
-        auto data = CountedDetail::template make_ptr<SharedPtr>(n);
-        newval = CountedDetail::get_counted_base(data);
-        count = ALIASED_PTR;
-        // (add external must happen before data goes out of scope)
-        add_external(newval);
-      } else {
-        add_external(newval);
-      }
-    }
 
-    PackedPtr newptr;
-    newptr.init(newval, count);
-
-    return newptr;
+  static PackedPtr get_newptr(const SharedPtr& n) {
+    return get_newptr_impl<false>(n);
   }
-  PackedPtr get_newptr(SharedPtr&& n) const {
-    BasePtr* newval;
+  static PackedPtr get_newptr(SharedPtr&& n) {
+    return get_newptr_impl<true>(std::move(n));
+  }
+  template <bool kOwn, class S>
+  static PackedPtr get_newptr_impl(S&& n) {
     unsigned count = 0;
-    if (!n) {
-      newval = nullptr;
+    BasePtr* newval = CountedDetail::get_counted_base(n);
+    if (!n && newval == nullptr) {
+      // n is default-constructed, nothing to do.
+    } else if (
+        newval == nullptr ||
+        n.get() != CountedDetail::template get_shared_ptr<T>(newval)) {
+      // This is an aliased sharedptr.  Make an un-aliased one by wrapping in
+      // *another* shared_ptr.
+      auto data =
+          CountedDetail::template make_ptr<SharedPtr>(std::forward<S>(n));
+      newval = CountedDetail::get_counted_base(data);
+      count = ALIASED_PTR;
+      CountedDetail::release_ptr(data);
+      add_external(newval, -1);
     } else {
-      newval = CountedDetail::get_counted_base(n);
-      if (n.get() != CountedDetail::template get_shared_ptr<T>(newval)) {
-        // This is an aliased sharedptr.  Make an un-aliased one
-        // by wrapping in *another* shared_ptr.
-        auto data = CountedDetail::template make_ptr<SharedPtr>(std::move(n));
-        newval = CountedDetail::get_counted_base(data);
-        count = ALIASED_PTR;
-        CountedDetail::release_ptr(data);
-        add_external(newval, -1);
-      } else {
+      if constexpr (kOwn) {
         CountedDetail::release_ptr(n);
-        add_external(newval, -1);
       }
+      add_external(newval, kOwn ? -1 : 0);
     }
 
     PackedPtr newptr;
@@ -294,14 +281,11 @@ class atomic_shared_ptr {
 
     return newptr;
   }
+
   void init() {
     PackedPtr data;
     data.init();
     ptr_.store(data);
-  }
-
-  unsigned int get_local_count(const PackedPtr& p) const {
-    return p.extra() & ~ALIASED_PTR;
   }
 
   // Check pointer equality considering wrapped aliased pointers.
@@ -392,6 +376,8 @@ class atomic_shared_ptr {
 
     CountedDetail::template release_shared<T>(p, count);
   }
+
+  mutable AtomicStruct<PackedPtr, Atom> ptr_;
 };
 
 } // namespace folly
