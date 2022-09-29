@@ -110,7 +110,7 @@ class SymbolizePrinter {
   };
 
   // NOTE: enum values used as indexes in kColorMap.
-  enum Color { DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, WHITE, PURPLE, NUM };
+  enum Color { Default, Red, Green, Yellow, Blue, Cyan, White, Purple, Num };
   void color(Color c);
 
  protected:
@@ -124,7 +124,7 @@ class SymbolizePrinter {
   void printTerse(const SymbolizedFrame& frame);
   virtual void doPrint(StringPiece sp) = 0;
 
-  static constexpr std::array<const char*, Color::NUM> kColorMap = {{
+  static constexpr std::array<const char*, Color::Num> kColorMap = {{
       "\x1B[0m",
       "\x1B[31m",
       "\x1B[32m",

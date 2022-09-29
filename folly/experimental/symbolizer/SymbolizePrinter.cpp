@@ -32,9 +32,9 @@ namespace symbolizer {
 
 namespace {
 constexpr char kHexChars[] = "0123456789abcdef";
-constexpr auto kAddressColor = SymbolizePrinter::Color::BLUE;
-constexpr auto kFunctionColor = SymbolizePrinter::Color::PURPLE;
-constexpr auto kFileColor = SymbolizePrinter::Color::DEFAULT;
+constexpr auto kAddressColor = SymbolizePrinter::Color::Blue;
+constexpr auto kFunctionColor = SymbolizePrinter::Color::Purple;
+constexpr auto kFileColor = SymbolizePrinter::Color::Default;
 
 #ifdef _WIN32
 constexpr size_t kPathMax = 4096;
@@ -44,7 +44,7 @@ constexpr size_t kPathMax = PATH_MAX;
 } // namespace
 
 constexpr char AddressFormatter::bufTemplate[];
-constexpr std::array<const char*, SymbolizePrinter::Color::NUM>
+constexpr std::array<const char*, SymbolizePrinter::Color::Num>
     SymbolizePrinter::kColorMap;
 
 AddressFormatter::AddressFormatter() {
@@ -71,7 +71,7 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
     return;
   }
 
-  SCOPE_EXIT { color(Color::DEFAULT); };
+  SCOPE_EXIT { color(Color::Default); };
 
   if (!(options_ & NO_FRAME_ADDRESS) && !(options_ & TERSE_FILE_AND_LINE)) {
     color(kAddressColor);
