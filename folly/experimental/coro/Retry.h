@@ -32,27 +32,46 @@
 
 #if FOLLY_HAS_COROUTINES
 
+/**
+ * \file experimental/coro/Retry.h
+ *
+ * Coroutine implementation of futures/Retrying.h
+ *
+ * This file provides utility functions (with building blocks) to build retry
+ * logic. There are three function families:
+ * - retryWhen: try to a func (which produces an awaitable); if fail (with an
+ * non folly::OperationCancelled exception), then wait on a delay func (which
+ * produces an awaitable too). This retry logic can run **forever**, so it is
+ * not recommended to use it directly. This the auxiliary function to help build
+ * retryN and retryWithExponentialBackoff.
+ * - retryN: try the func with limited N times
+ * - retryWithExponentialBackoff: the retries will be restarted with
+ * exponiential backoff.
+ *
+ * \refcode docs/examples/folly/experimental/coro/Retry.cpp
+ */
+
 namespace folly::coro {
 
-// Execute a given asynchronous operation returned by func(),
-// retrying it on failure, if desired, after awaiting
-// retryDelay(error).
-//
-// If 'func()' operation succeeds or completes with OperationCancelled
-// then completes immediately with that result.
-//
-// Otherwise, if it fails with an error then the function
-// 'retryDelay()' is invoked with the exception_wrapper for
-// the error and must return another Task<void>.
-//
-// If this task completes successfully or completes with then it will retry
-// the func() operation, otherwise if it completes with an
-// error then the whole operation will complete with that error.
-//
-// This allows you to do some asynchronous work between retries (such as
-// sleeping for a given duration, but could be some reparatory work in
-// response to particular errors) and the retry will be scheduled once
-// the retryDelay() operation completes successfully.
+/// Execute a given asynchronous operation returned by func(),
+/// retrying it on failure, if desired, after awaiting
+/// retryDelay(error).
+///
+/// If 'func()' operation succeeds or completes with OperationCancelled
+/// then completes immediately with that result.
+///
+/// Otherwise, if it fails with an error then the function
+/// 'retryDelay()' is invoked with the exception_wrapper for
+/// the error and must return another Task<void>.
+///
+/// If this task completes successfully or completes with then it will retry
+/// the func() operation, otherwise if it completes with an
+/// error then the whole operation will complete with that error.
+///
+/// This allows you to do some asynchronous work between retries (such as
+/// sleeping for a given duration, but could be some reparatory work in
+/// response to particular errors) and the retry will be scheduled once
+/// the retryDelay() operation completes successfully.
 template <typename Func, typename RetryDelayFunc>
 auto retryWhen(Func func, RetryDelayFunc retryDelay)
     -> Task<semi_await_result_t<invoke_result_t<Func&>>> {
@@ -77,12 +96,12 @@ auto retryWhen(Func func, RetryDelayFunc retryDelay)
     Try<void> retryResult =
         co_await folly::coro::co_awaitTry(retryDelay(std::move(error)));
     if (retryResult.hasException()) {
-      // Failure (or cancellation) of retryDelay() indicates we should stop
-      // retrying.
+      /// Failure (or cancellation) of retryDelay() indicates we should stop
+      /// retrying.
       co_yield folly::coro::co_error(std::move(retryResult.exception()));
     }
 
-    // Otherwise we go around the loop again.
+    /// Otherwise we go around the loop again.
   }
 }
 
@@ -121,8 +140,8 @@ struct AlwaysRetry {
 
 } // namespace detail
 
-// Executes the operation returned by func(), retrying it up to
-// 'maxRetries' times on failure with no delay between retries.
+/// Executes the operation returned by func(), retrying it up to
+/// 'maxRetries' times on failure with no delay between retries.
 template <typename Func, typename Decider>
 auto retryN(uint32_t maxRetries, Func&& func, Decider&& decider) {
   return folly::coro::retryWhen(
@@ -169,7 +188,7 @@ class ExponentialBackoffWithJitter {
 
     ++retryCount_;
 
-    // The jitter will be a value between [e^-stdev]
+    /// The jitter will be a value between [e^-stdev]
     auto jitter = relativeJitterStdDev_ > 0
         ? std::exp(dist{0., relativeJitterStdDev_}(randomGen_))
         : 1.;
@@ -186,7 +205,7 @@ class ExponentialBackoffWithJitter {
 
     co_await folly::coro::sleep(backoff, timeKeeper_);
 
-    // Check to see if we were cancelled during the sleep.
+    /// Check to see if we were cancelled during the sleep.
     const auto& cancelToken = co_await co_current_cancellation_token;
     if (cancelToken.isCancellationRequested()) {
       co_yield folly::coro::co_cancelled;
@@ -206,11 +225,11 @@ class ExponentialBackoffWithJitter {
 
 } // namespace detail
 
-// Executes the operation returned from 'func()', retrying it on failure
-// up to 'maxRetries' times, with an exponential backoff, doubling the backoff
-// on average for each retry, applying some random jitter, up to the specified
-// maximum backoff, passing each error to decider to decide whether to retry or
-// not.
+/// Executes the operation returned from 'func()', retrying it on failure
+/// up to 'maxRetries' times, with an exponential backoff, doubling the backoff
+/// on average for each retry, applying some random jitter, up to the specified
+/// maximum backoff, passing each error to decider to decide whether to retry or
+/// not.
 template <typename Func, typename URNG, typename Decider>
 auto retryWithExponentialBackoff(
     uint32_t maxRetries,
