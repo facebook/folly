@@ -40,6 +40,32 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 using namespace folly;
 using namespace std::chrono_literals;
 
+namespace std::chrono {
+template <typename Rep, typename Period>
+void PrintTo(std::chrono::duration<Rep, Period> duration, std::ostream* out) {
+  const auto ns =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+  const auto ms_float = ns.count() / 1000000.0;
+  *out << ms_float << "ms";
+}
+} // namespace std::chrono
+
+namespace {
+// Wait for the given subprocess to write anything in stdout to ensure
+// it has started.
+bool waitForAnyOutput(Subprocess& proc) {
+  // We couldn't use communicate here because it blocks until the
+  // stdout/stderr is closed.
+  char buffer;
+  ssize_t len;
+  do {
+    len = ::read(proc.stdoutFd(), &buffer, 1);
+  } while (len == -1 and errno == EINTR);
+  LOG(INFO) << "Read " << buffer;
+  return len == 1;
+}
+} // namespace
+
 TEST(SimpleSubprocessTest, ExitsSuccessfully) {
   Subprocess proc(std::vector<std::string>{"/bin/true"});
   EXPECT_EQ(0, proc.wait().exitStatus());
@@ -192,10 +218,70 @@ TEST(SimpleSubprocessTest, waitOrTerminateOrKill_terminates_if_timeout) {
 TEST(
     SimpleSubprocessTest,
     destructor_doesNotFail_ifOkToDestroyWhileProcessRunning) {
-  Subprocess proc(
-      std::vector<std::string>{"/bin/sleep", "10"},
-      Subprocess::Options().allowDestructionWhileProcessRunning(true));
-  proc.~Subprocess();
+  pid_t pid;
+  {
+    Subprocess proc(
+        std::vector<std::string>{"/bin/sleep", "10"},
+        Subprocess::Options().allowDestructionWhileProcessRunning(true));
+    pid = proc.pid();
+  }
+  auto proc2 = Subprocess::fromExistingProcess(pid);
+  proc2.terminateOrKill(10ms);
+}
+
+TEST(SubprocessTest, FatalOnDestroy) {
+  EXPECT_DEATH(
+      []() {
+        Subprocess proc(std::vector<std::string>{"/bin/sleep", "10"});
+      }(),
+      "Subprocess destroyed without reaping child");
+}
+
+TEST(SubprocessTest, KillOnDestroy) {
+  pid_t pid;
+  {
+    Subprocess proc(
+        std::vector<std::string>{"/bin/sleep", "10"},
+        Subprocess::Options().killChildOnDestruction());
+    pid = proc.pid();
+  }
+  // The process should no longer exist
+  EXPECT_EQ(-1, kill(pid, 0));
+  EXPECT_EQ(ESRCH, errno);
+}
+
+TEST(SubprocessTest, TerminateOnDestroy) {
+  pid_t pid;
+  std::chrono::steady_clock::time_point start;
+  const auto terminateTimeout = 500ms;
+  {
+    // Spawn a process that ignores SIGTERM
+    Subprocess proc(
+        std::vector<std::string>{
+            "/bin/bash",
+            "-c",
+            "trap \"sleep 120\" SIGTERM; echo ready; sleep 60"},
+        Subprocess::Options()
+            .pipeStdout()
+            .pipeStderr()
+            .terminateChildOnDestruction(terminateTimeout));
+    pid = proc.pid();
+    // Wait to make sure bash has installed the SIGTERM trap before we proceed;
+    // otherwise the test can fail if we kill the process before it starts
+    // ignoring SIGTERM.
+    EXPECT_TRUE(waitForAnyOutput(proc));
+    start = std::chrono::steady_clock::now();
+  }
+  const auto end = std::chrono::steady_clock::now();
+  // The process should no longer exist.
+  EXPECT_EQ(-1, kill(pid, 0));
+  EXPECT_EQ(ESRCH, errno);
+  // It should have taken us roughly terminateTimeout in the destructor
+  // to wait for the child to exit after SIGTERM before we gave up and sent
+  // SIGKILL.
+  const auto destructorDuration = end - start;
+  EXPECT_GE(destructorDuration, terminateTimeout);
+  EXPECT_LT(destructorDuration, terminateTimeout + 5s);
 }
 
 // This method verifies terminateOrKill shouldn't affect the exit
@@ -210,22 +296,6 @@ TEST(SimpleSubprocessTest, TerminateAfterProcessExit) {
   EXPECT_TRUE(retCode.exited());
   EXPECT_EQ(1, retCode.exitStatus());
 }
-
-namespace {
-// Wait for the given subprocess to write anything in stdout to ensure
-// it has started.
-bool waitForAnyOutput(Subprocess& proc) {
-  // We couldn't use communicate here because it blocks until the
-  // stdout/stderr is closed.
-  char buffer;
-  ssize_t len;
-  do {
-    len = ::read(proc.stdoutFd(), &buffer, 1);
-  } while (len == -1 and errno == EINTR);
-  LOG(INFO) << "Read " << buffer;
-  return len == 1;
-}
-} // namespace
 
 // This method tests that if the subprocess handles SIGTERM faster
 // enough, we don't have to use SIGKILL to kill it.

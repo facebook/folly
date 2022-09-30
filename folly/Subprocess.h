@@ -257,6 +257,8 @@ class FOLLY_EXPORT SubprocessSpawnError : public SubprocessError {
  */
 class Subprocess {
  public:
+  using TimeoutDuration = std::chrono::milliseconds;
+
   // removed CLOSE = -1
   static const int PIPE = -2;
   static const int PIPE_IN = -3;
@@ -408,15 +410,51 @@ class Subprocess {
     }
 
     /**
+     * If the Subprocess object is destroyed while the process is still running,
+     * automatically kill the child with SIGKILL and wait on the pid.
+     */
+    Options& killChildOnDestruction() {
+      destroyBehavior_ = 0;
+      return *this;
+    }
+
+    /**
+     * If the Subprocess object is destroyed while the process is still running,
+     * use terminateOrKill() to stop it and wait for it to exit.
+     *
+     * Beware that this may cause the Subprocess destructor to block while
+     * waiting on the child process to exit.
+     */
+    Options& terminateChildOnDestruction(TimeoutDuration timeout) {
+      destroyBehavior_ = std::max(TimeoutDuration::rep(0), timeout.count());
+      return *this;
+    }
+
+    /**
      * By default, if Subprocess is destroyed while the child process is
      * still RUNNING, the destructor will log a fatal.  You can skip this
      * behavior by setting it to true here.
      *
      * Note that detach()ed processes are never in RUNNING state, so this
      * setting does not impact such processes.
+     *
+     * BEWARE: setting this flag can leave zombie processes behind on the system
+     * after the folly::Subprocess is destroyed.  In general you should avoid
+     * using this setting.  In general, prefer using one of the following
+     * options instead:
+     * - If you do not care about monitoring the child process or waiting for it
+     *   to complete, use detach().
+     * - If you want to automatically clean up the child process when the
+     *   Subprocess is destroyed, use killChildOnDestruction() or
+     *   terminateChildOnDestruction()
+     * - If you want to allow the parent process to exit without waiting on thie
+     *   child, prefer simply leaking the folly::Subprocess object when the
+     *   parent process exits.  You could exit with _exit(), or you could
+     *   explicitly leak the Subprocess using std::unique_ptr::release() or
+     *   similar mechanisms.
      */
     Options& allowDestructionWhileProcessRunning(bool val) {
-      allowDestructionWhileProcessRunning_ = val;
+      destroyBehavior_ = val ? DestroyBehaviorLeak : DestroyBehaviorFatal;
       return *this;
     }
 
@@ -494,7 +532,11 @@ class Subprocess {
     bool usePath_{false};
     bool processGroupLeader_{false};
     bool detach_{false};
-    bool allowDestructionWhileProcessRunning_{false};
+    // The behavior to take if the Subprocess destructor is invoked while the
+    // child process is still running.  This is either
+    // DestroyBehaviorFatal, DestroyBehaviorLeak, or a timeout value to pass to
+    // terminateOrKill() to kill the child process.
+    TimeoutDuration::rep destroyBehavior_{DestroyBehaviorFatal};
     std::string childDir_; // "" keeps the parent's working directory
 #if defined(__linux__)
     int parentDeathSignal_{0};
@@ -614,8 +656,6 @@ class Subprocess {
    * Wait for the process to terminate, throw if unsuccessful.
    */
   void waitChecked();
-
-  using TimeoutDuration = std::chrono::milliseconds;
 
   /**
    * Call `waitpid` non-blockingly up to `timeout`. Throws std::logic_error if
@@ -973,9 +1013,12 @@ class Subprocess {
   // Returns an index into pipes_. Throws std::invalid_argument if not found.
   size_t findByChildFd(const int childFd) const;
 
+  static constexpr TimeoutDuration::rep DestroyBehaviorFatal = -1;
+  static constexpr TimeoutDuration::rep DestroyBehaviorLeak = -2;
+
   pid_t pid_{-1};
   ProcessReturnCode returnCode_;
-  bool destroyOkWhileRunning_{false};
+  TimeoutDuration::rep destroyBehavior_ = DestroyBehaviorFatal;
 
   /**
    * Represents a pipe between this process, and the child process (or its
