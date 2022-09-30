@@ -61,6 +61,19 @@ AsyncLogWriter::~AsyncLogWriter() {
   folly::AtFork::unregisterHandler(this);
 }
 
+FOLLY_CONSTINIT std::atomic<AsyncLogWriter::DiscardCallback>
+    AsyncLogWriter::discardCallback_;
+
+void AsyncLogWriter::setDiscardCallback(DiscardCallback callback) {
+  discardCallback_.store(callback, std::memory_order_relaxed);
+}
+
+void AsyncLogWriter::invokeDiscardCallback(size_t numDiscarded) {
+  if (auto cb = discardCallback_.load(std::memory_order_relaxed)) {
+    (*cb)(numDiscarded);
+  }
+}
+
 void AsyncLogWriter::cleanup() {
   std::vector<std::string>* ioQueue;
   size_t numDiscarded;
@@ -74,6 +87,9 @@ void AsyncLogWriter::cleanup() {
     // remaining messages to write them below.
     ioQueue = data->getCurrentQueue();
     numDiscarded = data->numDiscarded;
+  }
+  if (numDiscarded > 0) {
+    invokeDiscardCallback(numDiscarded);
   }
 
   // If there are still any pending messages, flush them now.
@@ -170,6 +186,10 @@ void AsyncLogWriter::ioThread() {
 
     // Write the log messages now that we have released the lock
     performIO(*ioQueue, numDiscarded);
+
+    if (numDiscarded > 0) {
+      invokeDiscardCallback(numDiscarded);
+    }
 
     // clear() empties the vector, but the allocated capacity remains so we can
     // just reuse it without having to re-allocate in most cases.

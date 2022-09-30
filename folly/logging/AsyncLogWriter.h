@@ -84,6 +84,21 @@ class AsyncLogWriter : public LogWriter {
    */
   size_t getMaxBufferSize() const;
 
+  using DiscardCallback = void (*)(size_t);
+
+  /**
+   * Set a callback to be invoked when log messages have been discarded.
+   *
+   * Each time a batch of log messages is discarded, the callback will be
+   * invoked with the number of discarded messages.
+   *
+   * Note: setDiscardCallback() does not wait for the I/O thread to finish
+   * using the discard callback, and so the old callback may continue to be
+   * invoked in the I/O thread for a brief period of time even after
+   * setDiscardCallback() returns.
+   */
+  static void setDiscardCallback(DiscardCallback callback);
+
  protected:
   /**
    * Drain up the log message queue. Subclasses must call this method in their
@@ -138,6 +153,8 @@ class AsyncLogWriter : public LogWriter {
   virtual void performIO(
       const std::vector<std::string>& logs, size_t numDiscarded) = 0;
 
+  void invokeDiscardCallback(size_t numDiscarded);
+
   void ioThread();
 
   bool preFork();
@@ -167,5 +184,8 @@ class AsyncLogWriter : public LogWriter {
    * to avoid having to store this object as a member variable.
    */
   folly::Synchronized<Data, std::mutex>::LockedPtr lockedData_;
-}; // namespace folly
+
+  static FOLLY_CONSTINIT std::atomic<DiscardCallback> discardCallback_;
+};
+
 } // namespace folly

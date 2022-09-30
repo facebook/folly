@@ -268,6 +268,13 @@ static constexpr StringPiece kMsgSuffix{
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"};
 
+namespace {
+std::atomic<size_t> totalDiscarded;
+void discardCallback(size_t n) {
+  totalDiscarded += n;
+}
+} // namespace
+
 class ReadStats {
  public:
   ReadStats()
@@ -305,7 +312,7 @@ class ReadStats {
     data.flags = flags;
   }
 
-  void check() {
+  void check(size_t nDiscarded) {
     auto writeDataMap = perThreadWriteData_.wlock();
 
     EXPECT_EQ("", trailingData_);
@@ -348,6 +355,7 @@ class ReadStats {
     // Fail the test if we didn't actually trigger any discards before we timed
     // out.
     EXPECT_GT(numDiscarded_, 0);
+    EXPECT_EQ(nDiscarded, numDiscarded_);
 
     XLOG(DBG1) << totalMessagesWritten << " messages written, "
                << totalMessagesRead << " messages read, " << numDiscarded_
@@ -572,12 +580,15 @@ void writeThread(
  * - The number of messages received plus the number reported in discard
  *   notifications matches the number of messages sent.
  */
+
 TEST(AsyncFileWriter, discard) {
   std::array<int, 2> fds;
   auto pipeResult = pipe(fds.data());
   folly::checkUnixError(pipeResult, "pipe failed");
   folly::File readPipe{fds[0], true};
   folly::File writePipe{fds[1], true};
+
+  AsyncFileWriter::setDiscardCallback(discardCallback);
 
   ReadStats readStats;
   std::thread reader(readThread, std::move(readPipe), &readStats);
@@ -606,7 +617,9 @@ TEST(AsyncFileWriter, discard) {
   // Clear the read sleep duration so the reader will finish quickly now
   readStats.clearSleepDuration();
   reader.join();
-  readStats.check();
+  readStats.check(totalDiscarded);
+
+  AsyncFileWriter::setDiscardCallback(nullptr);
 }
 
 #ifndef _WIN32
