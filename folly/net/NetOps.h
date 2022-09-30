@@ -308,6 +308,10 @@ ssize_t sendto(
     const sockaddr* to,
     socklen_t tolen);
 ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags);
+#ifdef _WIN32
+ssize_t wsaSendMsgDirect(NetworkSocket socket, WSAMSG* msg);
+#endif
+
 int sendmmsg(
     NetworkSocket socket, mmsghdr* msgvec, unsigned int vlen, int flags);
 int setsockopt(

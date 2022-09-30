@@ -473,13 +473,25 @@ FOLLY_MAYBE_UNUSED static ssize_t fakeSendmsg(
 #endif
 }
 
+#ifdef _WIN32
+FOLLY_MAYBE_UNUSED ssize_t wsaSendMsgDirect(
+    FOLLY_MAYBE_UNUSED NetworkSocket socket, FOLLY_MAYBE_UNUSED WSAMSG* msg) {
+  if (msg->Control.len == 0) {
+    msg->Control.buf = nullptr;
+  }
+  SOCKET h = socket.data;
+  DWORD bytesSent;
+  auto ret = WSASendMsg(h, msg, 0, &bytesSent, nullptr, nullptr);
+  errno = translate_wsa_error(WSAGetLastError());
+  return ret == 0 ? (ssize_t)bytesSent : -1;
+}
+#endif
+
 FOLLY_MAYBE_UNUSED static ssize_t wsaSendMsg(
     FOLLY_MAYBE_UNUSED NetworkSocket socket,
     FOLLY_MAYBE_UNUSED const msghdr* message,
     FOLLY_MAYBE_UNUSED int flags) {
 #ifdef _WIN32
-  SOCKET h = socket.data;
-
   // Translate msghdr to WSAMSG.
   WSAMSG msg;
   msg.name = (LPSOCKADDR)message->msg_name;
@@ -494,11 +506,7 @@ FOLLY_MAYBE_UNUSED static ssize_t wsaSendMsg(
     msg.lpBuffers[i].buf = (CHAR*)message->msg_iov[i].iov_base;
     msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;
   }
-
-  DWORD bytesSent;
-  auto ret = WSASendMsg(h, &msg, 0, &bytesSent, nullptr, nullptr);
-  errno = translate_wsa_error(WSAGetLastError());
-  return ret == 0 ? (ssize_t)bytesSent : -1;
+  return wsaSendMsgDirect(socket, &msg);
 #else
   throw std::logic_error("Not implemented!");
 #endif
