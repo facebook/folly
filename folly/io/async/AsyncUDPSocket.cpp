@@ -42,6 +42,20 @@
 #define FOLLY_HAVE_VLA_01 0
 #endif
 
+// xplat UDP GSO socket options.
+#ifdef _WIN32
+#ifndef UDP_SEND_MSG_SIZE
+#define UDP_SEND_MSG_SIZE 2
+#endif
+#define UDP_GSO_SOCK_OPT_LEVEL IPPROTO_UDP
+#define UDP_GSO_SOCK_OPT_TYPE UDP_SEND_MSG_SIZE
+#define GSO_OPT_TYPE DWORD
+#else /* !_WIN32 */
+#define UDP_GSO_SOCK_OPT_LEVEL SOL_UDP
+#define UDP_GSO_SOCK_OPT_TYPE UDP_SEGMENT
+#define GSO_OPT_TYPE uint16_t
+#endif /* _WIN32 */
+
 namespace fsp = folly::portability::sockets;
 
 namespace folly {
@@ -645,28 +659,25 @@ ssize_t AsyncUDPSocket::writev(
     size_t iovec_len,
     int gso) {
   CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
+  netops::Msgheader msg;
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
 
-  struct msghdr msg;
   if (!connected_) {
-    msg.msg_name = reinterpret_cast<void*>(&addrStorage);
-    msg.msg_namelen = address.getActualSize();
+    msg.setName(&addrStorage, address.getActualSize());
   } else {
     if (connectedAddress_ != address) {
       errno = ENOTSUP;
       return -1;
     }
-    msg.msg_name = nullptr;
-    msg.msg_namelen = 0;
+    msg.setName(nullptr, 0);
   }
-  msg.msg_iov = const_cast<struct iovec*>(vec);
-  msg.msg_iovlen = iovec_len;
-  msg.msg_control = nullptr;
-  msg.msg_controllen = 0;
-  msg.msg_flags = 0;
+  msg.setIovecs(vec, iovec_len);
+  msg.setCmsgPtr(nullptr);
+  msg.setCmsgLen(0);
+  msg.setFlags(0);
 
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+#if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
   constexpr size_t kSmallSizeMax = 5;
   size_t controlBufSize = gso > 0 ? 1 : 0;
   controlBufSize +=
@@ -681,7 +692,7 @@ ssize_t AsyncUDPSocket::writev(
         [(BOOST_PP_IF(FOLLY_HAVE_VLA_01, controlBufSize, kSmallSizeMax)) *
          (CMSG_SPACE(sizeof(uint16_t)))];
     memset(control, 0, sizeof(control));
-    msg.msg_control = control;
+    msg.setCmsgPtr(control);
     FOLLY_POP_WARNING
     return writevImpl(&msg, gso);
   } else {
@@ -691,70 +702,68 @@ ssize_t AsyncUDPSocket::writev(
     }
     std::unique_ptr<char[]> control(new char[controlBufSize]);
     memset(control.get(), 0, controlBufSize);
-    msg.msg_control = control.get();
+    msg.setCmsgPtr(control.get());
     return writevImpl(&msg, gso);
   }
 #else
   CHECK_LT(gso, 1) << "GSO not supported";
 #endif
 
-  return sendmsg(fd_, &msg, 0);
+#ifdef _WIN32
+  return netops::wsaSendMsgDirect(fd_, msg.getMsg());
+#else
+  return sendmsg(fd_, msg.getMsg(), 0);
+#endif
 }
 
 ssize_t AsyncUDPSocket::writevImpl(
-    struct msghdr* msg, FOLLY_MAYBE_UNUSED int gso) {
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  struct cmsghdr* cm = nullptr;
+    netops::Msgheader* msg, FOLLY_MAYBE_UNUSED int gso) {
+#if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
+  XPLAT_CMSGHDR* cm = nullptr;
+
   for (auto itr = cmsgs_.begin(); itr != cmsgs_.end(); ++itr) {
     const auto key = itr->first;
     const auto val = itr->second;
-    msg->msg_controllen += CMSG_SPACE(sizeof(val));
-    if (cm) {
-      cm = CMSG_NXTHDR(msg, cm);
-    } else {
-      cm = CMSG_FIRSTHDR(msg);
-    }
+    msg->incrCmsgLen(sizeof(val));
+    cm = msg->getFirstOrNextCmsgHeader(cm);
     if (cm) {
       cm->cmsg_level = key.level;
       cm->cmsg_type = key.optname;
-      cm->cmsg_len = CMSG_LEN(sizeof(val));
-      memcpy(CMSG_DATA(cm), &val, sizeof(val));
+      cm->cmsg_len = F_CMSG_LEN(sizeof(val));
+      F_COPY_CMSG_INT_DATA(cm, &val, sizeof(val));
     }
   }
   for (const auto& itr : nontrivialCmsgs_) {
     const auto& key = itr.first;
     const auto& val = itr.second;
-    msg->msg_controllen += CMSG_SPACE(val.size());
-    if (cm) {
-      cm = CMSG_NXTHDR(msg, cm);
-    } else {
-      cm = CMSG_FIRSTHDR(msg);
-    }
+    msg->incrCmsgLen(val.size());
+    cm = msg->getFirstOrNextCmsgHeader(cm);
     if (cm) {
       cm->cmsg_level = key.level;
       cm->cmsg_type = key.optname;
-      cm->cmsg_len = CMSG_LEN(val.size());
-      memcpy(CMSG_DATA(cm), val.data(), val.size());
+      cm->cmsg_len = F_CMSG_LEN(val.size());
+      memcpy(cm, val.data(), val.size());
     }
   }
 
   if (gso > 0) {
-    msg->msg_controllen += CMSG_SPACE(sizeof(uint16_t));
+    msg->incrCmsgLen(sizeof(uint16_t));
+    cm = msg->getFirstOrNextCmsgHeader(cm);
     if (cm) {
-      cm = CMSG_NXTHDR(msg, cm);
-    } else {
-      cm = CMSG_FIRSTHDR(msg);
-    }
-    if (cm) {
-      cm->cmsg_level = SOL_UDP;
-      cm->cmsg_type = UDP_SEGMENT;
-      cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-      auto gso_len = static_cast<uint16_t>(gso);
-      memcpy(CMSG_DATA(cm), &gso_len, sizeof(gso_len));
+      cm->cmsg_level = UDP_GSO_SOCK_OPT_LEVEL;
+      cm->cmsg_type = UDP_GSO_SOCK_OPT_TYPE;
+      cm->cmsg_len = F_CMSG_LEN(sizeof(GSO_OPT_TYPE));
+      auto gso_len = static_cast<GSO_OPT_TYPE>(gso);
+      F_COPY_CMSG_INT_DATA(cm, &gso_len, sizeof(gso_len));
     }
   }
-#endif // FOLLY_HAVE_MSG_ERRQUEUE
-  return sendmsg(fd_, msg, 0);
+#endif // FOLLY_HAVE_MSG_ERRQUEUE || _WIN32
+
+#ifdef _WIN32
+  return netops::wsaSendMsgDirect(fd_, msg->getMsg());
+#else
+  return sendmsg(fd_, msg->getMsg(), 0);
+#endif
 }
 
 ssize_t AsyncUDPSocket::writev(
@@ -1284,8 +1293,9 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
 }
 
 bool AsyncUDPSocket::setGSO(int val) {
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  int ret = netops::setsockopt(fd_, SOL_UDP, UDP_SEGMENT, &val, sizeof(val));
+#if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
+  int ret = netops::setsockopt(
+      fd_, UDP_GSO_SOCK_OPT_LEVEL, UDP_GSO_SOCK_OPT_TYPE, &val, sizeof(val));
 
   gso_ = ret ? -1 : val;
 
@@ -1299,10 +1309,15 @@ bool AsyncUDPSocket::setGSO(int val) {
 int AsyncUDPSocket::getGSO() {
   // check if we can return the cached value
   if (FOLLY_UNLIKELY(!gso_.has_value())) {
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+#if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
     int gso = -1;
     socklen_t optlen = sizeof(gso);
-    if (!netops::getsockopt(fd_, SOL_UDP, UDP_SEGMENT, &gso, &optlen)) {
+    if (!netops::getsockopt(
+            fd_,
+            UDP_GSO_SOCK_OPT_LEVEL,
+            UDP_GSO_SOCK_OPT_TYPE,
+            &gso,
+            &optlen)) {
       gso_ = gso;
     } else {
       gso_ = -1;

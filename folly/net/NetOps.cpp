@@ -476,6 +476,7 @@ FOLLY_MAYBE_UNUSED static ssize_t fakeSendmsg(
 #ifdef _WIN32
 FOLLY_MAYBE_UNUSED ssize_t wsaSendMsgDirect(
     FOLLY_MAYBE_UNUSED NetworkSocket socket, FOLLY_MAYBE_UNUSED WSAMSG* msg) {
+  // WSASendMsg freaks out if this pointer is not set to null but length is 0.
   if (msg->Control.len == 0) {
     msg->Control.buf = nullptr;
   }
@@ -783,6 +784,87 @@ int set_socket_close_on_exec(NetworkSocket s) {
   throw std::logic_error("Not implemented!");
 #else
   return fcntl(s.data, F_SETFD, FD_CLOEXEC);
+#endif
+}
+
+void Msgheader::setName(sockaddr_storage* addrStorage, size_t len) {
+#ifdef _WIN32
+  msg_.name = reinterpret_cast<LPSOCKADDR>(addrStorage);
+  msg_.namelen = len;
+#else
+  msg_.msg_name = reinterpret_cast<void*>(addrStorage);
+  msg_.msg_namelen = len;
+#endif
+}
+
+void Msgheader::setIovecs(const struct iovec* vec, size_t iovec_len) {
+#ifdef _WIN32
+  msg_.dwBufferCount = (DWORD)iovec_len;
+  wsaBufs_.reset(new WSABUF[iovec_len]);
+  msg_.lpBuffers = wsaBufs_.get();
+  for (size_t i = 0; i < iovec_len; i++) {
+    msg_.lpBuffers[i].buf = (CHAR*)vec[i].iov_base;
+    msg_.lpBuffers[i].len = (ULONG)vec[i].iov_len;
+  }
+#else
+  msg_.msg_iov = const_cast<struct iovec*>(vec);
+  msg_.msg_iovlen = iovec_len;
+#endif
+}
+
+void Msgheader::setCmsgPtr(char* ctrlBuf) {
+#ifdef _WIN32
+  msg_.Control.buf = ctrlBuf;
+#else
+  msg_.msg_control = ctrlBuf;
+#endif
+}
+
+void Msgheader::setCmsgLen(size_t len) {
+#ifdef _WIN32
+  msg_.Control.len = len;
+#else
+  msg_.msg_controllen = len;
+#endif
+}
+
+void Msgheader::setFlags(int flags) {
+#ifdef _WIN32
+  msg_.dwFlags = flags;
+#else
+  msg_.msg_flags = flags;
+#endif
+}
+
+void Msgheader::incrCmsgLen(size_t val) {
+#ifdef _WIN32
+  msg_.Control.len += WSA_CMSG_SPACE(val);
+#else
+  msg_.msg_controllen += CMSG_SPACE(val);
+#endif
+}
+
+XPLAT_CMSGHDR* Msgheader::getFirstOrNextCmsgHeader(XPLAT_CMSGHDR* cm) {
+  return cm ? cmsgNextHrd(cm) : cmsgFirstHrd();
+}
+
+XPLAT_MSGHDR* Msgheader::getMsg() {
+  return &msg_;
+}
+
+XPLAT_CMSGHDR* Msgheader::cmsgNextHrd(XPLAT_CMSGHDR* cm) {
+#ifdef _WIN32
+  return WSA_CMSG_NXTHDR(&msg_, cm);
+#else
+  return CMSG_NXTHDR(&msg_, cm);
+#endif
+}
+
+XPLAT_CMSGHDR* Msgheader::cmsgFirstHrd() {
+#ifdef _WIN32
+  return WSA_CMSG_FIRSTHDR(&msg_);
+#else
+  return CMSG_FIRSTHDR(&msg_);
 #endif
 }
 } // namespace netops

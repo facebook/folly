@@ -263,6 +263,19 @@ struct mmsghdr {
 
 #endif
 
+// Various sendmsg structs and ops.
+#ifdef _WIN32
+#define XPLAT_MSGHDR WSAMSG
+#define XPLAT_CMSGHDR WSACMSGHDR
+#define F_CMSG_LEN WSA_CMSG_LEN
+#define F_COPY_CMSG_INT_DATA(cm, val, len) *(PDWORD)WSA_CMSG_DATA(cm) = *(val)
+#else /* !_WIN32 */
+#define XPLAT_MSGHDR struct msghdr
+#define XPLAT_CMSGHDR struct cmsghdr
+#define F_CMSG_LEN CMSG_LEN
+#define F_COPY_CMSG_INT_DATA(cm, val, len) memcpy(CMSG_DATA(cm), val, len)
+#endif /* _WIN32 */
+
 namespace folly {
 namespace netops {
 // Poll descriptor is intended to be byte-for-byte identical to pollfd,
@@ -271,6 +284,30 @@ struct PollDescriptor {
   NetworkSocket fd;
   int16_t events;
   int16_t revents;
+};
+
+/**
+ * A msghdr/WSAMSG struct wrapper for cross-platform use.
+ */
+class Msgheader {
+ public:
+  void setName(sockaddr_storage* addrStorage, size_t len);
+  void setIovecs(const struct iovec* vec, size_t iovec_len);
+  void setCmsgPtr(char* ctrlBuf);
+  void setCmsgLen(size_t len);
+  void setFlags(int flags);
+  void incrCmsgLen(size_t val);
+  XPLAT_CMSGHDR* getFirstOrNextCmsgHeader(XPLAT_CMSGHDR* cm);
+  XPLAT_MSGHDR* getMsg();
+
+ private:
+ XPLAT_MSGHDR msg_;
+#ifdef _WIN32
+  std::unique_ptr<WSABUF[]> wsaBufs_;
+#endif
+
+  XPLAT_CMSGHDR* cmsgNextHrd(XPLAT_CMSGHDR* cm);
+  XPLAT_CMSGHDR* cmsgFirstHrd();
 };
 
 NetworkSocket accept(NetworkSocket s, sockaddr* addr, socklen_t* addrlen);

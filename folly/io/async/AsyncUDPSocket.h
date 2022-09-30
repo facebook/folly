@@ -542,7 +542,8 @@ class AsyncUDPSocket : public EventHandler {
       const int* gso,
       char* control);
 
-  virtual ssize_t writevImpl(struct msghdr* msg, FOLLY_MAYBE_UNUSED int gso);
+  virtual ssize_t writevImpl(
+      netops::Msgheader* msg, FOLLY_MAYBE_UNUSED int gso);
 
   size_t handleErrMessages() noexcept;
 
