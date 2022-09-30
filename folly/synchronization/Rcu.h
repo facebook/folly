@@ -152,7 +152,7 @@
 //     globalConfigData.store(newConfigData);
 //     rcu_retire(oldConfigData);
 //     // alternatively, in a blocking manner:
-//     //   synchronize_rcu();
+//     //   rcu_synchronize();
 //     //   delete oldConfigData;
 //   }
 // }
