@@ -19,6 +19,10 @@
 #include <fcntl.h>
 #include <cerrno>
 
+#ifdef __EMSCRIPTEN__
+#include <cassert>
+#endif
+
 #include <cstddef>
 #include <stdexcept>
 
@@ -791,6 +795,8 @@ void Msgheader::setName(sockaddr_storage* addrStorage, size_t len) {
 #ifdef _WIN32
   msg_.name = reinterpret_cast<LPSOCKADDR>(addrStorage);
   msg_.namelen = len;
+#elif __EMSCRIPTEN__
+  assert(false); // not supported in emcc
 #else
   msg_.msg_name = reinterpret_cast<void*>(addrStorage);
   msg_.msg_namelen = len;
@@ -839,6 +845,8 @@ void Msgheader::setFlags(int flags) {
 void Msgheader::incrCmsgLen(size_t val) {
 #ifdef _WIN32
   msg_.Control.len += WSA_CMSG_SPACE(val);
+#elif __EMSCRIPTEN__
+  assert(false); // not supported in emcc
 #else
   msg_.msg_controllen += CMSG_SPACE(val);
 #endif
@@ -855,6 +863,8 @@ XPLAT_MSGHDR* Msgheader::getMsg() {
 XPLAT_CMSGHDR* Msgheader::cmsgNextHrd(XPLAT_CMSGHDR* cm) {
 #ifdef _WIN32
   return WSA_CMSG_NXTHDR(&msg_, cm);
+#elif __EMSCRIPTEN__
+  assert(false); // not supported in emcc
 #else
   return CMSG_NXTHDR(&msg_, cm);
 #endif
@@ -863,6 +873,8 @@ XPLAT_CMSGHDR* Msgheader::cmsgNextHrd(XPLAT_CMSGHDR* cm) {
 XPLAT_CMSGHDR* Msgheader::cmsgFirstHrd() {
 #ifdef _WIN32
   return WSA_CMSG_FIRSTHDR(&msg_);
+#elif __EMSCRIPTEN__
+  assert(false); // not supported in emcc
 #else
   return CMSG_FIRSTHDR(&msg_);
 #endif

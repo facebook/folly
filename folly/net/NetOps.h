@@ -87,6 +87,7 @@ struct sockaddr_un {
 using nfds_t = int;
 using socklen_t = int;
 struct sockaddr {};
+struct sockaddr_storage {};
 struct in_addr {};
 struct msghdr {
   void* msg_name;
@@ -301,7 +302,7 @@ class Msgheader {
   XPLAT_MSGHDR* getMsg();
 
  private:
- XPLAT_MSGHDR msg_;
+  XPLAT_MSGHDR msg_;
 #ifdef _WIN32
   std::unique_ptr<WSABUF[]> wsaBufs_;
 #endif
