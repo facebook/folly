@@ -205,4 +205,47 @@ TEST(AtomicSharedPtr, DeterministicTest) {
     DSched::join(t);
   }
 }
+
+TEST(AtomicSharedPtr, StressTest) {
+  constexpr size_t kExternalOffset = 0x2000;
+
+  atomic_shared_ptr<bool> ptr;
+  std::atomic<size_t> num_loads = 0;
+  std::atomic<size_t> num_stores = 0;
+
+  // DeterministicSchedule is too slow for the number of iterations required
+  // here, and we need a test that exercises the native atomics.
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
+    threads.emplace_back([&] {
+      shared_ptr<bool> v;
+      for (size_t i = 0; i < 16 * kExternalOffset; ++i) {
+        // Each time we've gone through a few local -> global batches, replace
+        // the pointer to contend with other load()s. This also does the first
+        // initialization, and a few threads may see nullptr for a while.
+        if (num_loads++ % (kExternalOffset * 2) == 0) {
+          auto newv = std::make_shared<bool>();
+          // Alternate between store and CAS.
+          if (num_stores++ % 2 == 0) {
+            ptr.store(std::move(newv), std::memory_order_release);
+          } else {
+            v = ptr.load(std::memory_order_relaxed);
+            ptr.compare_exchange_strong(
+                v,
+                std::move(newv),
+                std::memory_order_acq_rel,
+                std::memory_order_relaxed);
+          }
+        }
+        // Increments the local count and decrements the external one,
+        // eventually forcing a batch transfer.
+        v = ptr.load(std::memory_order_acquire);
+      }
+    });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
 #endif // defined(__GLIBCXX__)
