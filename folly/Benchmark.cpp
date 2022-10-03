@@ -274,7 +274,8 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
   const size_t trialP25 = getPercentile(actualTrials, 0.25);
   const size_t trialP75 = getPercentile(actualTrials, 0.75);
   if (trialP75 - trialP25 == 0) {
-    return std::make_pair(NAN, UserCounters());
+    // Use first trial results if p75 == p25.
+    return std::make_pair(trialResults[0].first, trialResults[0].second);
   }
 
   double geomeanNsec = 0.0;
