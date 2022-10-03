@@ -19,6 +19,8 @@
 #include <cassert>
 #include <cstdint>
 
+#include <folly/CPortability.h>
+
 namespace folly {
 
 /***
@@ -74,7 +76,7 @@ class SparseByteSet {
    *
    *  O(1), non-amortized.
    */
-  inline bool contains(uint8_t i) const {
+  inline bool contains(uint8_t i) const FOLLY_DISABLE_MEMORY_SANITIZER {
     return sparse_[i] < size_ && dense_[sparse_[i]] == i;
   }
 
