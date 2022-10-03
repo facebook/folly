@@ -64,30 +64,21 @@ class ObserverManager {
       return;
     }
 
-    auto updatesManager = getUpdatesManager();
-
-    if (!updatesManager) {
-      return;
-    }
-
     auto& instance = getInstance();
 
     SharedMutexReadPriority::ReadHolder rh(instance.versionMutex_);
 
-    updatesManager->scheduleCurrent(
-        [core = std::move(core), &instance, rh = std::move(rh)]() {
-          core->refresh(instance.version_);
-        });
+    instance.scheduleCurrent([coreWeak = folly::to_weak_ptr(std::move(core)),
+                              &instance,
+                              rh = std::move(rh)]() {
+      if (auto coreShared = coreWeak.lock()) {
+        coreShared->refresh(instance.version_);
+      }
+    });
   }
 
   static void scheduleRefreshNewVersion(Function<Core::Ptr()> coreFunc) {
-    auto updatesManager = getUpdatesManager();
-
-    if (!updatesManager) {
-      return;
-    }
-
-    updatesManager->scheduleNext(std::move(coreFunc));
+    getInstance().scheduleNext(std::move(coreFunc));
   }
 
   static void initCore(Core::Ptr core) {
@@ -195,20 +186,20 @@ class ObserverManager {
  private:
   ObserverManager() {}
 
+  void scheduleCurrent(Function<void()>);
+  void scheduleNext(Function<Core::Ptr()>);
+
   class UpdatesManager {
    public:
     UpdatesManager();
-    ~UpdatesManager();
-    void scheduleCurrent(Function<void()>);
-    void scheduleNext(Function<Core::Ptr()>);
     void waitForAllUpdates();
 
    private:
-    class CurrentQueue;
-    class NextQueue;
+    class CurrentQueueProcessor;
+    class NextQueueProcessor;
 
-    std::unique_ptr<CurrentQueue> currentQueue_;
-    std::unique_ptr<NextQueue> nextQueue_;
+    std::unique_ptr<CurrentQueueProcessor> currentQueueProcessor_;
+    std::unique_ptr<NextQueueProcessor> nextQueueProcessor_;
   };
   struct Singleton;
 

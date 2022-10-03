@@ -41,11 +41,22 @@ FOLLY_GFLAGS_DEFINE_int32(
 namespace {
 constexpr StringPiece kObserverManagerThreadNamePrefix{"ObserverMngr"};
 constexpr size_t kNextBatchSize{1024};
+
+auto& currentQueue() {
+  static folly::Indestructible<UMPMCQueue<Function<void()>, true>> instance;
+  return *instance;
+}
+
+auto& nextQueue() {
+  static folly::Indestructible<UMPSCQueue<Function<Core::Ptr()>, true>>
+      instance;
+  return *instance;
+}
 } // namespace
 
-class ObserverManager::UpdatesManager::CurrentQueue {
+class ObserverManager::UpdatesManager::CurrentQueueProcessor {
  public:
-  CurrentQueue() {
+  CurrentQueueProcessor() {
     if (FLAGS_observer_manager_pool_size < 1) {
       LOG(ERROR) << "--observer_manager_pool_size should be >= 1";
       FLAGS_observer_manager_pool_size = 1;
@@ -75,7 +86,7 @@ class ObserverManager::UpdatesManager::CurrentQueue {
     }
   }
 
-  ~CurrentQueue() {
+  ~CurrentQueueProcessor() {
     for (size_t i = 0; i < threads_.size(); ++i) {
       queue_.enqueue(nullptr);
     }
@@ -83,20 +94,16 @@ class ObserverManager::UpdatesManager::CurrentQueue {
     for (auto& thread : threads_) {
       thread.join();
     }
-
-    CHECK(queue_.empty());
   }
 
-  void add(Function<void()> task) { queue_.enqueue(std::move(task)); }
-
  private:
-  UMPMCQueue<Function<void()>, true> queue_;
+  UMPMCQueue<Function<void()>, true>& queue_{currentQueue()};
   std::vector<std::thread> threads_;
 };
 
-class ObserverManager::UpdatesManager::NextQueue {
+class ObserverManager::UpdatesManager::NextQueueProcessor {
  public:
-  NextQueue() {
+  NextQueueProcessor() {
     thread_ = std::thread([&]() {
       auto& manager = getInstance();
 
@@ -105,20 +112,16 @@ class ObserverManager::UpdatesManager::NextQueue {
 
       Function<Core::Ptr()> queueCoreFunc;
 
-      while (true) {
+      while (!stop_) {
         std::vector<Core::Ptr> cores;
         queue_.dequeue(queueCoreFunc);
         do {
-          if (stop_) {
-            return;
-          }
-
           {
             if (auto queueCore = queueCoreFunc()) {
               cores.emplace_back(std::move(queueCore));
             }
           }
-        } while (cores.size() < kNextBatchSize &&
+        } while (!stop_ && cores.size() < kNextBatchSize &&
                  queue_.try_dequeue(queueCoreFunc));
 
         {
@@ -153,11 +156,7 @@ class ObserverManager::UpdatesManager::NextQueue {
     });
   }
 
-  void add(Function<Core::Ptr()> coreFunc) {
-    queue_.enqueue(std::move(coreFunc));
-  }
-
-  ~NextQueue() {
+  ~NextQueueProcessor() {
     stop_ = true;
     // Write to the queue to notify the thread.
     queue_.enqueue([]() -> Core::Ptr { return nullptr; });
@@ -176,31 +175,25 @@ class ObserverManager::UpdatesManager::NextQueue {
   }
 
  private:
-  UMPSCQueue<Function<Core::Ptr()>, true> queue_;
+  UMPSCQueue<Function<Core::Ptr()>, true>& queue_{nextQueue()};
   std::thread thread_;
   std::atomic<bool> stop_{false};
   folly::Synchronized<std::vector<std::promise<void>>> emptyWaiters_;
 };
 
 ObserverManager::UpdatesManager::UpdatesManager() {
-  currentQueue_ = std::make_unique<CurrentQueue>();
-  nextQueue_ = std::make_unique<NextQueue>();
+  currentQueueProcessor_ = std::make_unique<CurrentQueueProcessor>();
+  nextQueueProcessor_ = std::make_unique<NextQueueProcessor>();
 }
 
-ObserverManager::UpdatesManager::~UpdatesManager() {
-  // Destroy NextQueue, before the rest of this object, since it expects
-  // ObserverManager to be alive.
-  nextQueue_.reset();
-  currentQueue_.reset();
+void ObserverManager::scheduleCurrent(Function<void()> task) {
+  currentQueue().enqueue(std::move(task));
+  getUpdatesManager();
 }
 
-void ObserverManager::UpdatesManager::scheduleCurrent(Function<void()> task) {
-  currentQueue_->add(std::move(task));
-}
-
-void ObserverManager::UpdatesManager::scheduleNext(
-    Function<Core::Ptr()> coreFunc) {
-  nextQueue_->add(std::move(coreFunc));
+void ObserverManager::scheduleNext(Function<Core::Ptr()> coreFunc) {
+  nextQueue().enqueue(std::move(coreFunc));
+  getUpdatesManager();
 }
 
 void ObserverManager::waitForAllUpdates() {
@@ -211,7 +204,7 @@ void ObserverManager::waitForAllUpdates() {
 
 void ObserverManager::UpdatesManager::waitForAllUpdates() {
   auto& instance = ObserverManager::getInstance();
-  nextQueue_->waitForEmpty();
+  nextQueueProcessor_->waitForEmpty();
   // Wait for all readers to release the lock.
   SharedMutexReadPriority::WriteHolder wh(instance.versionMutex_);
 }
@@ -225,7 +218,9 @@ struct ObserverManager::Singleton {
 };
 
 folly::Singleton<ObserverManager::UpdatesManager>
-    ObserverManager::Singleton::instance(createManager);
+    ObserverManager::Singleton::instance =
+        folly::Singleton<ObserverManager::UpdatesManager>(createManager)
+            .shouldEagerInitOnReenable();
 
 std::shared_ptr<ObserverManager::UpdatesManager>
 ObserverManager::getUpdatesManager() {

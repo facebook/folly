@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <chrono>
 #include <stdexcept>
 #include <thread>
 
@@ -1012,4 +1013,29 @@ TEST(Observer, ObservableGetThrow) {
       folly::observer::ObserverCreator<AlwaysThrowingObservable>()
           .getObserver(),
       ExpectedException);
+}
+
+TEST(Observer, ReenableSingletons) {
+  folly::observer::SimpleObservable<size_t> observable(0);
+  constexpr size_t kMaxValue = 10000;
+  std::mutex forkMutex;
+  std::thread publishThread([&] {
+    for (size_t i = 1; i <= kMaxValue; ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds{1});
+      {
+        std::lock_guard<std::mutex> lg(forkMutex);
+        observable.setValue(i);
+      }
+    }
+  });
+  auto observer = observable.getObserver();
+  while (**observer < kMaxValue) {
+    std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    folly::SingletonVault::singleton()->destroyInstances();
+    {
+      std::lock_guard<std::mutex> lg(forkMutex);
+      folly::SingletonVault::singleton()->reenableInstances();
+    }
+  }
+  publishThread.join();
 }
