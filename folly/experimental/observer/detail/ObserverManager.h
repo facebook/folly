@@ -59,6 +59,8 @@ class ObserverManager {
 
   static bool inManagerThread() { return inManagerThread_; }
 
+  static void vivify() { getUpdatesManager(); }
+
   static void scheduleRefresh(Core::Ptr core, size_t minVersion) {
     if (core->getVersion() >= minVersion) {
       return;

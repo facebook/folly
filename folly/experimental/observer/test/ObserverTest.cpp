@@ -1036,6 +1036,7 @@ TEST(Observer, ReenableSingletons) {
       std::lock_guard<std::mutex> lg(forkMutex);
       folly::SingletonVault::singleton()->reenableInstances();
     }
+    folly::observer_detail::ObserverManager::vivify();
   }
   publishThread.join();
 }
