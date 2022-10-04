@@ -1357,17 +1357,16 @@ class small_vector : public detail::small_vector_base<
   }
 
   void freeHeap() {
-    if (!u.pdata_.heap_) {
+    if (!this->isExtern() || !u.pdata_.heap_) {
       return;
     }
-    if (this->isExtern()) {
-      if (hasCapacity()) {
-        auto extraBytes = u.pdata_.allocationExtraBytes();
-        auto vp = detail::unshiftPointer(u.pdata_.heap_, extraBytes);
-        sizedFree(vp, u.getCapacity() * sizeof(value_type) + extraBytes);
-      } else {
-        free(u.pdata_.heap_);
-      }
+
+    if (hasCapacity()) {
+      auto extraBytes = u.pdata_.allocationExtraBytes();
+      auto vp = detail::unshiftPointer(u.pdata_.heap_, extraBytes);
+      sizedFree(vp, u.getCapacity() * sizeof(value_type) + extraBytes);
+    } else {
+      free(u.pdata_.heap_);
     }
   }
 
