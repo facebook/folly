@@ -544,6 +544,20 @@ TEST_F(SynchronizedLockTest, TestPieceWiseConstruct) {
   EXPECT_EQ(NonDefaultConstructibleMutex::value, 1);
 }
 
+TEST_F(SynchronizedLockTest, TestConstConversion) {
+  folly::Synchronized<int, FakeAllPowerfulAssertingMutex> sync{};
+  EXPECT_EQ(0, sync.copy());
+
+  {
+    using ct = decltype(std::as_const(sync).rlock());
+    ct l = sync.rlock(); // const-converting constructor
+    EXPECT_EQ(0, *l);
+    l.unlock();
+    l = sync.rlock(); // const-converting assignment operator
+    EXPECT_EQ(0, *l);
+  }
+}
+
 namespace {
 constexpr auto kLockable = 1;
 constexpr auto kWLockable = 2;
