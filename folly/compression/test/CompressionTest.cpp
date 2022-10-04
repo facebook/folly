@@ -95,6 +95,8 @@ class RandomDataHolder : public DataHolder {
 };
 
 RandomDataHolder::RandomDataHolder(size_t sizeLog2) : DataHolder(sizeLog2) {
+  memset(data_.get(), 0, size_);
+
   static constexpr size_t numThreadsLog2 = 3;
   static constexpr size_t numThreads = size_t(1) << numThreadsLog2;
 
