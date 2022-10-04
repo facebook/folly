@@ -312,7 +312,8 @@ bool setThreadName(pthread_t pid, StringPiece name) {
   std::memcpy(buf, name.data(), name.size());
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
   return 0 == pthread_setname_np(pid, buf);
-#elif FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
+#else
+#if FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
   // Since macOS 10.6 and iOS 3.2 it is possible for a thread
   // to set its own name using pthread, but
   // not that of some other thread.
@@ -325,11 +326,12 @@ bool setThreadName(pthread_t pid, StringPiece name) {
   if (pthread_equal(pthread_self(), pid)) {
     return 0 == prctl(PR_SET_NAME, buf, 0L, 0L, 0L);
   }
-#endif
-
+#else
   (void)pid;
-  return false;
 #endif
+  return false;
+#endif // !FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
+#endif // !_WIN32
 }
 
 bool setThreadName(StringPiece name) {
