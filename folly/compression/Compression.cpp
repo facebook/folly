@@ -853,7 +853,7 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doUncompress(
   }
   data = nullptr;
   // Select decompression options
-  LZ4F_decompressOptions_t options;
+  LZ4F_decompressOptions_t options{};
   options.stableDst = 1;
   // Select blockSize and growthSize for the IOBufQueue
   IOBufQueue queue(IOBufQueue::cacheChainLength());
