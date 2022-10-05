@@ -819,9 +819,11 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   Function& operator=(Function&& that) noexcept {
     exec(Op::NUKE, &data_, nullptr);
-    that.exec(Op::MOVE, &that.data_, &data_);
-    exec_ = that.exec_;
-    call_ = that.call_;
+    if (FOLLY_LIKELY(this != &that)) {
+      that.exec(Op::MOVE, &that.data_, &data_);
+      exec_ = that.exec_;
+      call_ = that.call_;
+    }
     that.exec_ = nullptr;
     that.call_ = &Traits::uninitCall;
     return *this;

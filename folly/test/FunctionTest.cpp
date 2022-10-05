@@ -1276,7 +1276,7 @@ TEST(Function, SelfMove2) {
   Function<int()>& g = f;
   f = std::move(g);
   EXPECT_FALSE(bool(f)) << "self-assign is self-destruct";
-  EXPECT_EQ(0, alive) << "self-asign is self-destruct";
+  EXPECT_EQ(0, alive) << "self-assign is self-destruct";
   f = [] { return 43; };
   EXPECT_EQ(0, alive) << "sanity check against double-destruction";
   EXPECT_TRUE(bool(f));
