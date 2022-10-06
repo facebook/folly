@@ -16,6 +16,7 @@
 
 #include <folly/synchronization/SmallLocks.h>
 
+#include <atomic>
 #include <cassert>
 #include <condition_variable>
 #include <cstdio>
@@ -74,10 +75,10 @@ static_assert(sizeof(ignore2) == 6, "Size check failed");
 FOLLY_PACK_POP
 
 LockedVal v;
-void splock_test() {
-  const int max = 1000;
+void splock_test(std::atomic<bool>* go) {
+  CHECK(go);
   auto rng = folly::ThreadLocalPRNG();
-  for (int i = 0; i < max; i++) {
+  while (go->load(std::memory_order_relaxed)) {
     folly::asm_volatile_pause();
     MSLGuard g(v.lock);
 
@@ -141,11 +142,14 @@ struct TestClobber {
 TEST(SmallLocks, SpinLockCorrectness) {
   EXPECT_EQ(sizeof(MicroSpinLock), 1);
 
+  std::atomic<bool> go = true;
   int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
   std::vector<std::thread> threads;
   for (int i = 0; i < nthrs; ++i) {
-    threads.push_back(std::thread(splock_test));
+    threads.push_back(std::thread(splock_test, &go));
   }
+  /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds(1));
+  go.store(false, std::memory_order_relaxed);
   for (auto& t : threads) {
     t.join();
   }
