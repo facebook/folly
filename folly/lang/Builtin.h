@@ -32,7 +32,7 @@
 //
 //  mimic: __builtin_expect, gcc/clang
 #if FOLLY_HAS_BUILTIN(__builtin_expect)
-#define FOLLY_BUILTIN_EXPECT(exp, c) __builtin_expect(exp, c)
+#define FOLLY_BUILTIN_EXPECT(exp, c) __builtin_expect(static_cast<bool>(exp), c)
 #else
 #define FOLLY_BUILTIN_EXPECT(exp, c) \
   ::folly::builtin::detail::predict_<long>(exp, c)
