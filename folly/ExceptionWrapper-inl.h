@@ -111,12 +111,12 @@ inline exception_wrapper::exception_wrapper(
 
 template <class Ex>
 inline exception_wrapper::exception_wrapper(
-    std::exception_ptr const& ptr, Ex& ex) noexcept
-    : exception_wrapper{folly::copy(ptr), ex} {}
+    from_catch_ref_t, std::exception_ptr const& ptr, Ex& ex) noexcept
+    : exception_wrapper{from_catch_ref_t{}, folly::copy(ptr), ex} {}
 
 template <class Ex>
 inline exception_wrapper::exception_wrapper(
-    std::exception_ptr&& ptr, Ex& ex) noexcept
+    from_catch_ref_t, std::exception_ptr&& ptr, Ex& ex) noexcept
     : ptr_{std::move(ptr)} {
   assert(ptr_);
   (void)ex;

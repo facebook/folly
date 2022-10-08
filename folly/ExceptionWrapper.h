@@ -146,6 +146,12 @@ class exception_wrapper final {
   static std::exception_ptr extract_(std::exception_ptr&&) noexcept;
 
  public:
+  // NO variable of this type - finding refs of the type is easier with current
+  // tooling than is finding refs of a variable of the type
+  struct from_catch_ref_t {
+    explicit from_catch_ref_t() = default;
+  };
+
   //! Default-constructs an empty `exception_wrapper`
   //! \post `type() == nullptr`
   exception_wrapper() noexcept {}
@@ -179,9 +185,17 @@ class exception_wrapper final {
   //! \post `bool(*this)`
   //! \post `type() == typeid(ex)`
   template <class Ex>
-  exception_wrapper(std::exception_ptr const& ptr, Ex& ex) noexcept;
+  exception_wrapper(
+      from_catch_ref_t, std::exception_ptr const& ptr, Ex& ex) noexcept;
   template <class Ex>
-  exception_wrapper(std::exception_ptr&& ptr, Ex& ex) noexcept;
+  exception_wrapper(
+      from_catch_ref_t, std::exception_ptr&& ptr, Ex& ex) noexcept;
+  template <class Ex>
+  exception_wrapper(std::exception_ptr const& ptr, Ex& ex) noexcept
+      : exception_wrapper{from_catch_ref_t{}, ptr, ex} {}
+  template <class Ex>
+  exception_wrapper(std::exception_ptr&& ptr, Ex& ex) noexcept
+      : exception_wrapper{from_catch_ref_t{}, std::move(ptr), ex} {}
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
