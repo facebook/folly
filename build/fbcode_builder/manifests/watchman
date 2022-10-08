@@ -33,6 +33,7 @@ fbcode/eden/fs = eden/fs
 
 [cmake.defines.fb=on]
 ENABLE_EDEN_SUPPORT=ON
+IS_FB_BUILD=ON
 
 # FB macos specific settings
 [cmake.defines.all(fb=on,os=darwin)]
