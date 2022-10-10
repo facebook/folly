@@ -413,28 +413,29 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *   initialized.  On all subsequent calls, disabled log statements can be
  *   skipped with just a single check of the LogLevel.
  */
-#define XLOG_ACTUAL_IMPL(level, cond, always_fatal, type, ...)             \
-  (!XLOG_IS_ON_IMPL(level) || !(cond))                                     \
-      ? ::folly::logDisabledHelper(::folly::bool_constant<always_fatal>{}) \
-      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &     \
-          ::folly::LogStreamProcessor(                                     \
-              [] {                                                         \
-                static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE>   \
-                    folly_detail_xlog_category;                            \
-                return folly_detail_xlog_category.getInfo(                 \
-                    &xlog_detail::xlogFileScopeInfo);                      \
-              }(),                                                         \
-              (level),                                                     \
-              [] {                                                         \
-                constexpr auto* xlog_filename = XLOG_FILENAME;             \
-                return xlog_detail::getXlogCategoryName(xlog_filename, 0); \
-              }(),                                                         \
-              xlog_detail::isXlogCategoryOverridden(0),                    \
-              XLOG_FILENAME,                                               \
-              __LINE__,                                                    \
-              __func__,                                                    \
-              (type),                                                      \
-              ##__VA_ARGS__)                                               \
+#define XLOG_ACTUAL_IMPL(level, cond, always_fatal, type, ...)              \
+  (!XLOG_IS_ON_IMPL(level) || !(cond))                                      \
+      ? ::folly::logDisabledHelper(::folly::bool_constant<always_fatal>{})  \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &      \
+          ::folly::LogStreamProcessor(                                      \
+              [] {                                                          \
+                static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE>    \
+                    folly_detail_xlog_category;                             \
+                return folly_detail_xlog_category.getInfo(                  \
+                    &xlog_detail::xlogFileScopeInfo);                       \
+              }(),                                                          \
+              (level),                                                      \
+              [] {                                                          \
+                constexpr auto* folly_detail_xlog_filename = XLOG_FILENAME; \
+                return xlog_detail::getXlogCategoryName(                    \
+                    folly_detail_xlog_filename, 0);                         \
+              }(),                                                          \
+              xlog_detail::isXlogCategoryOverridden(0),                     \
+              XLOG_FILENAME,                                                \
+              __LINE__,                                                     \
+              __func__,                                                     \
+              (type),                                                       \
+              ##__VA_ARGS__)                                                \
               .stream()
 
 /**
@@ -459,16 +460,16 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *
  * See XlogLevelInfo for the implementation details.
  */
-#define XLOG_IS_ON_IMPL(level)                                \
-  ((level >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && [] { \
-    static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>     \
-        folly_detail_xlog_level;                              \
-    constexpr auto* xlog_filename = XLOG_FILENAME;            \
-    return folly_detail_xlog_level.check(                     \
-        (level),                                              \
-        xlog_filename,                                        \
-        xlog_detail::isXlogCategoryOverridden(0),             \
-        &xlog_detail::xlogFileScopeInfo);                     \
+#define XLOG_IS_ON_IMPL(level)                                  \
+  ((level >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && [] {   \
+    static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>       \
+        folly_detail_xlog_level;                                \
+    constexpr auto* folly_detail_xlog_filename = XLOG_FILENAME; \
+    return folly_detail_xlog_level.check(                       \
+        (level),                                                \
+        folly_detail_xlog_filename,                             \
+        xlog_detail::isXlogCategoryOverridden(0),               \
+        &xlog_detail::xlogFileScopeInfo);                       \
   }())
 
 /**
