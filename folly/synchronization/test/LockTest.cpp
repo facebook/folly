@@ -1142,26 +1142,26 @@ REGISTER_TYPED_TEST_SUITE_P(
     try_transition_until);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    su, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 0, s, u>{}));
+    su1, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 0, s, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    Su, TryTransitionLockTest, decltype(XLockTestParam<0, 1, 0, s, u>{}));
+    Su2, TryTransitionLockTest, decltype(XLockTestParam<0, 1, 0, s, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    sU, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 1, s, u>{}));
+    sU3, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 1, s, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    SU, TryTransitionLockTest, decltype(XLockTestParam<0, 1, 1, s, u>{}));
+    SU4, TryTransitionLockTest, decltype(XLockTestParam<0, 1, 1, s, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    sx, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 0, s, x>{}));
+    sx1, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 0, s, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    Sx, TryTransitionLockTest, decltype(XLockTestParam<0, 1, 0, s, x>{}));
+    Sx2, TryTransitionLockTest, decltype(XLockTestParam<0, 1, 0, s, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    sX, TryTransitionLockTest, decltype(XLockTestParam<1, 0, 0, s, x>{}));
+    sX3, TryTransitionLockTest, decltype(XLockTestParam<1, 0, 0, s, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    SX, TryTransitionLockTest, decltype(XLockTestParam<1, 1, 0, s, x>{}));
+    SX4, TryTransitionLockTest, decltype(XLockTestParam<1, 1, 0, s, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    ux, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 0, u, x>{}));
+    ux1, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 0, u, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    Ux, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 1, u, x>{}));
+    Ux2, TryTransitionLockTest, decltype(XLockTestParam<0, 0, 1, u, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    uX, TryTransitionLockTest, decltype(XLockTestParam<1, 0, 0, u, x>{}));
+    uX3, TryTransitionLockTest, decltype(XLockTestParam<1, 0, 0, u, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    UX, TryTransitionLockTest, decltype(XLockTestParam<1, 0, 1, u, x>{}));
+    UX4, TryTransitionLockTest, decltype(XLockTestParam<1, 0, 1, u, x>{}));
