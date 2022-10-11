@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/logging/ImmediateFileWriter.h>
+
+#include <signal.h>
+
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -22,7 +26,6 @@
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
-#include <folly/logging/ImmediateFileWriter.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

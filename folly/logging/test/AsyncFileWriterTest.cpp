@@ -16,6 +16,10 @@
 
 #include <folly/logging/AsyncFileWriter.h>
 
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
+
 #include <thread>
 
 #include <folly/Conv.h>
