@@ -199,7 +199,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
 }
 
 template <class String>
-void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
+bool tryUriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
   out.reserve(out.size() + str.size());
   auto p = str.begin();
   auto last = p;
@@ -210,14 +210,12 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
     switch (c) {
       case '%': {
         if (UNLIKELY(std::distance(p, str.end()) < 3)) {
-          throw_exception<std::invalid_argument>(
-              "incomplete percent encode sequence");
+          return false;
         }
         auto h1 = detail::hexTable[static_cast<unsigned char>(p[1])];
         auto h2 = detail::hexTable[static_cast<unsigned char>(p[2])];
         if (UNLIKELY(h1 == 16 || h2 == 16)) {
-          throw_exception<std::invalid_argument>(
-              "invalid percent encode sequence");
+          return false;
         }
         out.append(&*last, size_t(p - last));
         out.push_back((h1 << 4) | h2);
@@ -241,6 +239,19 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
     }
   }
   out.append(&*last, size_t(p - last));
+
+  return true;
+}
+
+template <class String>
+void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
+  auto success = tryUriUnescape(str, out, mode);
+
+  if (!success) {
+    // tryUriEscape implementation only fails on invalid argument
+    throw_exception<std::invalid_argument>(
+        "imcomplete percent encode sequence");
+  }
 }
 
 namespace detail {

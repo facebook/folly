@@ -232,6 +232,18 @@ TEST(Escape, uriUnescape) {
       { uriUnescape<std::string>("hello%2g"); }, std::invalid_argument);
 }
 
+TEST(Escape, tryUriUnescape) {
+  EXPECT_EQ(
+      "hello, /world",
+      tryUriUnescape<std::string>("hello, /world").value_or(""));
+  EXPECT_EQ(
+      "hello, /world",
+      tryUriUnescape<std::string>("hello%2c+%2fworld", UriEscapeMode::QUERY)
+          .value_or(""));
+  EXPECT_FALSE(tryUriUnescape<std::string>("hello%").hasValue());
+  EXPECT_FALSE(tryUriUnescape<std::string>("hello%2g").hasValue());
+}
+
 namespace {
 void expectPrintable(StringPiece s) {
   for (char c : s) {

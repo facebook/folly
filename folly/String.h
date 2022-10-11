@@ -32,10 +32,12 @@
 
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>
+#include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
+#include <folly/Unit.h>
 
 namespace folly {
 
@@ -139,7 +141,33 @@ String uriEscape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
  * Appends the result to the output string.
  *
  * In QUERY mode, '+' are replaced by space.  %XX sequences are decoded if
- * XX is a valid hex sequence, otherwise we throw invalid_argument.
+ * XX is a valid hex sequence, otherwise we return an unexpected
+ * std::invalid_argument.
+ */
+template <class String>
+bool tryUriUnescape(
+    StringPiece str, String& out, UriEscapeMode mode = UriEscapeMode::ALL);
+
+/**
+ * Similar to tryUriUnescape above, but returning the unescaped string as a
+ * folly::Expected.
+ */
+template <class String>
+folly::Optional<String> tryUriUnescape(
+    StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
+  String out;
+  auto success = tryUriUnescape(str, out, mode);
+
+  if (!success) {
+    return folly::none;
+  }
+
+  return out;
+}
+
+/**
+ * Similar to tryUriUnescape above, but without folly::Expected wrapping, and
+ * throwing std::invalid_argument on malformed input.
  */
 template <class String>
 void uriUnescape(
