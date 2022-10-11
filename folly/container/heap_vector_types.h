@@ -724,11 +724,11 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   struct heap_iterator {
     using iterator_category = std::random_access_iterator_tag;
     using size_type = typename Container::size_type;
-    using difference_type = typename Container::difference_type;
-    using value_type = typename Container::value_type;
-    using pointer = typename Container::pointer;
-    using reference = typename Container::reference;
-    using const_reference = typename Container::const_reference;
+    using difference_type =
+        typename std::iterator_traits<Iter>::difference_type;
+    using value_type = typename std::iterator_traits<Iter>::value_type;
+    using pointer = typename std::iterator_traits<Iter>::pointer;
+    using reference = typename std::iterator_traits<Iter>::reference;
 
     heap_iterator() = default;
     template <typename C>
@@ -843,10 +843,14 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
       return heap_vector_detail::distance(*cont_, offset1, offset0);
     }
 
-    reference operator*() { return const_cast<reference>(*ptr_); }
-    reference operator*() const { return const_cast<reference>(*ptr_); }
-    pointer operator->() { return &const_cast<reference>(*ptr_); }
-    pointer operator->() const { return &const_cast<reference>(*ptr_); }
+    reference operator*() const { return *ptr_; }
+    pointer operator->() const {
+      if constexpr (std::is_pointer_v<Iter>) {
+        return ptr_;
+      } else {
+        return ptr_.operator->();
+      }
+    }
 
    protected:
     template <typename I2>
