@@ -23,7 +23,6 @@
 
 #include <folly/executors/SoftRealTimeExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
-#include <folly/synchronization/LifoSem.h>
 
 namespace folly {
 
@@ -63,12 +62,17 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   static constexpr uint64_t kLatestDeadline =
       std::numeric_limits<uint64_t>::max();
 
+  // Default semaphore is LifoSem.
+  static std::unique_ptr<EDFThreadPoolSemaphore> makeDefaultSemaphore();
+  static std::unique_ptr<EDFThreadPoolSemaphore> makeThrottledLifoSemSemaphore(
+      std::chrono::nanoseconds wakeUpInterval = {});
+
   explicit EDFThreadPoolExecutor(
       std::size_t numThreads,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("EDFThreadPool"),
       std::unique_ptr<EDFThreadPoolSemaphore> semaphore =
-          std::make_unique<EDFThreadPoolSemaphoreImpl<folly::LifoSem>>());
+          makeDefaultSemaphore());
 
   ~EDFThreadPoolExecutor() override;
 

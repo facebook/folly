@@ -25,6 +25,7 @@
 #include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/portability/GFlags.h>
+#include <folly/synchronization/ThrottledLifoSem.h>
 
 FOLLY_GFLAGS_DEFINE_bool(
     dynamic_cputhreadpoolexecutor,
@@ -33,17 +34,37 @@ FOLLY_GFLAGS_DEFINE_bool(
 
 namespace folly {
 
-namespace {
-//  queue_alloc custom allocator is necessary until C++17
-//    http://open-std.org/JTC1/SC22/WG21/docs/papers/2012/n3396.htm
-//    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65122
-//    https://bugs.llvm.org/show_bug.cgi?id=22634
-using default_queue = UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>;
-using default_queue_alloc =
-    AlignedSysAllocator<default_queue, FixedAlign<alignof(default_queue)>>;
-} // namespace
-
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
+
+/* static */ auto CPUThreadPoolExecutor::makeDefaultQueue()
+    -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  return std::make_unique<UnboundedBlockingQueue<CPUTask>>();
+}
+
+/* static */ auto CPUThreadPoolExecutor::makeDefaultPriorityQueue(
+    int8_t numPriorities) -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  return std::make_unique<PriorityUnboundedBlockingQueue<CPUTask>>(
+      numPriorities);
+}
+
+/* static */ auto CPUThreadPoolExecutor::makeThrottledLifoSemQueue(
+    std::chrono::nanoseconds wakeUpInterval)
+    -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  ThrottledLifoSem::Options opts;
+  opts.wakeUpInterval = wakeUpInterval;
+  return std::make_unique<UnboundedBlockingQueue<CPUTask, ThrottledLifoSem>>(
+      opts);
+}
+
+/* static */ auto CPUThreadPoolExecutor::makeThrottledLifoSemPriorityQueue(
+    int8_t numPriorities, std::chrono::nanoseconds wakeUpInterval)
+    -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  ThrottledLifoSem::Options opts;
+  opts.wakeUpInterval = wakeUpInterval;
+  return std::make_unique<
+      PriorityUnboundedBlockingQueue<CPUTask, ThrottledLifoSem>>(
+      numPriorities, opts);
+}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
@@ -89,7 +110,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     Options opt)
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
-      taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})),
+      taskQueue_(makeDefaultQueue()),
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
@@ -111,8 +132,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     Options opt)
     : CPUThreadPoolExecutor(
           numThreads,
-          std::make_unique<PriorityUnboundedBlockingQueue<CPUTask>>(
-              numPriorities),
+          makeDefaultPriorityQueue(numPriorities),
           std::move(threadFactory),
           std::move(opt)) {}
 

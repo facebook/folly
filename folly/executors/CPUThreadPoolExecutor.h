@@ -84,6 +84,19 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
     Blocking blocking;
   };
 
+  // These function return unbounded blocking queues with the default semaphore
+  // (LifoSem).
+  static std::unique_ptr<BlockingQueue<CPUTask>> makeDefaultQueue();
+  static std::unique_ptr<BlockingQueue<CPUTask>> makeDefaultPriorityQueue(
+      int8_t numPriorities);
+
+  // These function return unbounded blocking queues with ThrottledLifoSem.
+  static std::unique_ptr<BlockingQueue<CPUTask>> makeThrottledLifoSemQueue(
+      std::chrono::nanoseconds wakeUpInterval = {});
+  static std::unique_ptr<BlockingQueue<CPUTask>>
+  makeThrottledLifoSemPriorityQueue(
+      int8_t numPriorities, std::chrono::nanoseconds wakeUpInterval = {});
+
   CPUThreadPoolExecutor(
       size_t numThreads,
       std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
@@ -197,8 +210,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   std::unique_ptr<folly::QueueObserverFactory> createQueueObserverFactory();
   QueueObserver* FOLLY_NULLABLE getQueueObserver(int8_t pri);
 
-  // shared_ptr for type erased dtor to handle extended alignment.
-  std::shared_ptr<BlockingQueue<CPUTask>> taskQueue_;
+  std::unique_ptr<BlockingQueue<CPUTask>> taskQueue_;
   // It is possible to have as many detectors as there are priorities,
   std::array<std::atomic<folly::QueueObserver*>, UCHAR_MAX + 1> queueObservers_;
   std::unique_ptr<folly::QueueObserverFactory> queueObserverFactory_{

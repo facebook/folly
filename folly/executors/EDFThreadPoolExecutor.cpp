@@ -29,6 +29,8 @@
 #include <vector>
 
 #include <folly/ScopeGuard.h>
+#include <folly/synchronization/LifoSem.h>
+#include <folly/synchronization/ThrottledLifoSem.h>
 
 namespace folly {
 
@@ -247,6 +249,19 @@ class EDFThreadPoolExecutor::TaskQueue {
   // threads (workers) wait on `sem_`.
   std::atomic<std::size_t> numItems_;
 };
+
+/* static */ std::unique_ptr<EDFThreadPoolSemaphore>
+EDFThreadPoolExecutor::makeDefaultSemaphore() {
+  return std::make_unique<EDFThreadPoolSemaphoreImpl<LifoSem>>();
+}
+
+/* static */ std::unique_ptr<EDFThreadPoolSemaphore>
+EDFThreadPoolExecutor::makeThrottledLifoSemSemaphore(
+    std::chrono::nanoseconds wakeUpInterval) {
+  ThrottledLifoSem::Options opts;
+  opts.wakeUpInterval = wakeUpInterval;
+  return std::make_unique<EDFThreadPoolSemaphoreImpl<ThrottledLifoSem>>(opts);
+}
 
 EDFThreadPoolExecutor::EDFThreadPoolExecutor(
     std::size_t numThreads,

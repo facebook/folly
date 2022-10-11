@@ -95,9 +95,9 @@ class ThrottledLifoSem {
     uint64_t oldState = state_.load(std::memory_order_relaxed);
     uint64_t newState;
     while (true) {
-      auto oldValue = oldState & kValueMask;
-      newValue = std::min<uint64_t>(
-          oldValue + n, std::numeric_limits<uint32_t>::max());
+      uint64_t oldValue = oldState & kValueMask;
+      newValue = static_cast<uint32_t>(std::min<uint64_t>(
+          oldValue + n, std::numeric_limits<uint32_t>::max()));
       newState = (oldState & ~kValueMask) | newValue;
       if (casState(oldState, newState)) {
         break;
