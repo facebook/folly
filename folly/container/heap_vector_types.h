@@ -104,6 +104,14 @@
 #include <folly/small_vector.h>
 
 namespace folly {
+template <
+    typename Key,
+    typename Value,
+    typename Compare,
+    typename Allocator,
+    typename GrowthPolicy,
+    typename Container>
+class heap_vector_map;
 
 namespace detail {
 
@@ -843,6 +851,26 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
    protected:
     template <typename I2>
     friend struct heap_iterator;
+
+    template <
+        typename T2,
+        typename Compare2,
+        typename Allocator2,
+        typename GrowthPolicy2,
+        typename Container2,
+        typename KeyT2,
+        typename ValueCompare2>
+    friend class heap_vector_container;
+
+    template <
+        typename Key2,
+        typename Value2,
+        typename Compare2,
+        typename Allocator2,
+        typename GrowthPolicy2,
+        typename Container2>
+    friend class ::folly::heap_vector_map;
+
     Iter ptr_;
     Container* cont_;
   };
@@ -1023,7 +1051,7 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   std::pair<iterator, bool> insert(const value_type& value) {
     iterator it = lower_bound(m_.getKey(value));
     if (it == end() || value_comp()(value, *it)) {
-      auto offset = &*it - &*m_.cont_.begin();
+      auto offset = it.ptr_ - m_.cont_.begin();
       get_growth_policy().increase_capacity(*this, it);
       m_.cont_.push_back(value);
       offset = heap_vector_detail::insert(offset, m_.cont_);
@@ -1036,7 +1064,7 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   std::pair<iterator, bool> insert(value_type&& value) {
     iterator it = lower_bound(m_.getKey(value));
     if (it == end() || value_comp()(value, *it)) {
-      auto offset = &*it - &*m_.cont_.begin();
+      auto offset = it.ptr_ - m_.cont_.begin();
       get_growth_policy().increase_capacity(*this, it);
       m_.cont_.push_back(std::move(value));
       offset = heap_vector_detail::insert(offset, m_.cont_);
@@ -1114,13 +1142,13 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
     if (it == end()) {
       return 0;
     }
-    heap_vector_detail::erase(&*it - &*m_.cont_.begin(), m_.cont_);
+    heap_vector_detail::erase(it.ptr_ - m_.cont_.begin(), m_.cont_);
     return 1;
   }
 
   iterator erase(const_iterator it) {
     auto offset =
-        heap_vector_detail::erase(&*it - &*m_.cont_.begin(), m_.cont_);
+        heap_vector_detail::erase(it.ptr_ - m_.cont_.begin(), m_.cont_);
     iterator ret = end();
     ret = m_.cont_.begin() + offset;
     return ret;
@@ -1501,7 +1529,7 @@ class heap_vector_map
   mapped_type& operator[](const key_type& key) {
     iterator it = lower_bound(key);
     if (it == end() || key_comp()(key, it->first)) {
-      auto offset = &*it - &*m_.cont_.begin();
+      auto offset = it.ptr_ - m_.cont_.begin();
       get_growth_policy().increase_capacity(*this, it);
       m_.cont_.emplace_back(key, mapped_type());
       offset = detail::heap_vector_detail::insert(offset, m_.cont_);
