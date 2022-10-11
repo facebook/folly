@@ -998,4 +998,30 @@ TEST(Synchronized, SynchronizedFunctionManyObjects) {
   synchronized([](auto, auto) {}, wlock(one), rlock(two));
 }
 
+namespace {
+class TestStruct {
+ public:
+  constexpr TestStruct() = default;
+  explicit constexpr TestStruct(int a) : a_{a} {}
+  TestStruct(int a, int b) : a_{a}, b_{b} {}
+
+ private:
+  int a_{0};
+  int b_{0};
+};
+} // namespace
+
+TEST(Synchronized, ConstexprConstructor) {
+  // Make sure the folly::Synchronized constructor can be constexpr
+  static FOLLY_CONSTINIT folly::Synchronized<int> i{std::in_place, 5};
+  static FOLLY_CONSTINIT folly::Synchronized<TestStruct> ts1;
+  static FOLLY_CONSTINIT folly::Synchronized<TestStruct> ts2{std::in_place, 1};
+
+  // Not constinit, since the int value will be uninitialized
+  static folly::Synchronized<int> i2;
+
+  // Not constinit, since this TestStruct constructor is not constexpr
+  static folly::Synchronized<TestStruct> ts3{std::in_place, 1, 2};
+}
+
 } // namespace folly
