@@ -75,41 +75,79 @@ class SSLSessionTest : public testing::Test {
   std::string serverName;
 };
 
-TEST_F(SSLSessionTest, BasicTest) {
-  std::shared_ptr<SSLSession> sslSession;
+// TLS 1.2 and TLS 1.3 deliver session tickets in different ways, but we can use
+// SSLContext::SessionLifecycleCallbacks to receive them in a similar manner so
+// tests can work regardless of version.
+class SimpleSessionLifecycleCallback
+    : public SSLContext::SessionLifecycleCallbacks {
+ public:
+  void onNewSession(SSL*, ssl::SSLSessionUniquePtr session) override {
+    // This can be called multiple times. OpenSSL sends two session tickets by
+    // default). Grab the last one.
+    session_ = std::move(session);
+    ASSERT_TRUE(socket_ != nullptr);
+    // At this point we have what we need to resume a session. Detach the
+    // ReadCallback, allowing the socket's EventBase to stop looping.
+    socket_->setReadCB(nullptr);
+  }
 
+  // set when session is available
+  ssl::SSLSessionUniquePtr session_;
+  // set after object construction
+  folly::AsyncSSLSocket* socket_;
+};
+
+class SimpleReadCallback : public AsyncTransport::ReadCallback {
+ public:
+  void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+    *bufReturn = buffer_;
+    *lenReturn = sizeof(buffer_);
+  }
+
+  void readDataAvailable(size_t) noexcept override {
+    // this callback should only be used to read session tickets, which
+    // aren't delivered to callbacks
+    FAIL();
+  }
+
+  void readEOF() noexcept override { FAIL(); }
+
+  void readErr(const AsyncSocketException& ex) noexcept override {
+    FAIL() << ex;
+  }
+
+  char buffer_[1024];
+};
+
+TEST_F(SSLSessionTest, BasicTest) {
+  ssl::SSLSessionUniquePtr sslSession;
   // Full handshake
   {
     NetworkSocket fds[2];
     getfds(fds);
+    auto sessionCb = std::make_unique<SimpleSessionLifecycleCallback>();
+    auto sessionCbPtr = sessionCb.get();
+    clientCtx->setSessionLifecycleCallbacks(std::move(sessionCb));
 
     AsyncSSLSocket::UniquePtr clientSock(
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
     auto clientPtr = clientSock.get();
-    sslSession = clientPtr->getSSLSession();
-    ASSERT_NE(sslSession, nullptr);
-    {
-      auto opensslSession =
-          std::dynamic_pointer_cast<OpenSSLSession>(sslSession);
-      auto sessionPtr = opensslSession->getActiveSession();
-      ASSERT_EQ(sessionPtr.get(), nullptr);
-    }
 
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
     SSLHandshakeClient client(std::move(clientSock), false, false);
     SSLHandshakeServerParseClientHello server(
         std::move(serverSock), false, false);
-
+    sessionCbPtr->socket_ = clientPtr;
+    SimpleReadCallback readCb;
+    // register read callback to read incoming session tickets (for TLS 1.3)
+    clientPtr->setReadCB(&readCb);
+    // should stop when the session ticket is received
     eventBase.loop();
     ASSERT_TRUE(client.handshakeSuccess_);
+    sslSession = std::move(sessionCbPtr->session_);
+    ASSERT_TRUE(sslSession != nullptr);
     ASSERT_FALSE(clientPtr->getSSLSessionReused());
-    {
-      auto opensslSession =
-          std::dynamic_pointer_cast<OpenSSLSession>(sslSession);
-      auto sessionPtr = opensslSession->getActiveSession();
-      ASSERT_NE(sessionPtr.get(), nullptr);
-    }
   }
 
   // Session resumption
@@ -120,7 +158,7 @@ TEST_F(SSLSessionTest, BasicTest) {
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
     auto clientPtr = clientSock.get();
 
-    clientPtr->setSSLSession(sslSession);
+    clientPtr->setRawSSLSession(std::move(sslSession));
 
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
