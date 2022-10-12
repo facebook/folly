@@ -144,3 +144,10 @@ TYPED_TEST(FollyCallOnce, ResetOnce) {
   folly::reset_once(once);
   EXPECT_FALSE(folly::test_once(once));
 }
+
+TYPED_TEST(FollyCallOnce, SetOnce) {
+  typename TestFixture::OnceFlag once;
+  EXPECT_FALSE(folly::test_once(once));
+  folly::set_once(once);
+  EXPECT_TRUE(folly::test_once(once));
+}
