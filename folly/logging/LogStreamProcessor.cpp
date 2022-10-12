@@ -81,7 +81,7 @@ LogCategory* getXlogCategory(
   if (!categoryInfo->isInitialized()) {
     return categoryInfo->init(categoryName, isCategoryNameOverridden);
   }
-  return categoryInfo->getCategory(&xlog_detail::xlogFileScopeInfo);
+  return categoryInfo->getCategory(&detail::custom::xlogFileScopeInfo);
 }
 } // namespace
 

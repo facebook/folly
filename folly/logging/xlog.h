@@ -422,15 +422,15 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
                 static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE>    \
                     folly_detail_xlog_category;                             \
                 return folly_detail_xlog_category.getInfo(                  \
-                    &xlog_detail::xlogFileScopeInfo);                       \
+                    &::folly::detail::custom::xlogFileScopeInfo);           \
               }(),                                                          \
               (level),                                                      \
               [] {                                                          \
                 constexpr auto* folly_detail_xlog_filename = XLOG_FILENAME; \
-                return xlog_detail::getXlogCategoryName(                    \
+                return ::folly::detail::custom::getXlogCategoryName(        \
                     folly_detail_xlog_filename, 0);                         \
               }(),                                                          \
-              xlog_detail::isXlogCategoryOverridden(0),                     \
+              ::folly::detail::custom::isXlogCategoryOverridden(0),         \
               XLOG_FILENAME,                                                \
               __LINE__,                                                     \
               __func__,                                                     \
@@ -468,17 +468,17 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
     return folly_detail_xlog_level.check(                       \
         (level),                                                \
         folly_detail_xlog_filename,                             \
-        xlog_detail::isXlogCategoryOverridden(0),               \
-        &xlog_detail::xlogFileScopeInfo);                       \
+        ::folly::detail::custom::isXlogCategoryOverridden(0),   \
+        &::folly::detail::custom::xlogFileScopeInfo);           \
   }())
 
 /**
  * Get the name of the log category that will be used by XLOG() statements
  * in this file.
  */
-#define XLOG_GET_CATEGORY_NAME()                            \
-  (xlog_detail::isXlogCategoryOverridden(0)                 \
-       ? xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0) \
+#define XLOG_GET_CATEGORY_NAME()                                        \
+  (::folly::detail::custom::isXlogCategoryOverridden(0)                 \
+       ? ::folly::detail::custom::getXlogCategoryName(XLOG_FILENAME, 0) \
        : ::folly::getXlogCategoryNameForFile(XLOG_FILENAME))
 
 /**
@@ -514,14 +514,17 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
 #endif
 
 #define XLOG_SET_CATEGORY_NAME(category)                                     \
-  namespace xlog_detail {                                                    \
+  namespace folly {                                                          \
+  namespace detail {                                                         \
+  namespace custom {                                                         \
   namespace {                                                                \
   XLOG_SET_CATEGORY_CHECK                                                    \
-  FOLLY_CONSTEVAL inline folly::StringPiece getXlogCategoryName(             \
-      folly::StringPiece, int) {                                             \
+  FOLLY_CONSTEVAL inline StringPiece getXlogCategoryName(StringPiece, int) { \
     return category;                                                         \
   }                                                                          \
   FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(int) { return true; } \
+  }                                                                          \
+  }                                                                          \
   }                                                                          \
   }
 
@@ -851,7 +854,8 @@ FOLLY_CONSTEVAL const char* xlogStripFilename(
     const char* filename, const char* prefixes) {
   return detail::xlogStripFilenameRecursive(filename, prefixes, 0, 0, true);
 }
-} // namespace folly
+
+namespace detail {
 
 /*
  * We intentionally use an unnamed namespace inside a header file here.
@@ -859,7 +863,7 @@ FOLLY_CONSTEVAL const char* xlogStripFilename(
  * We want each .cpp file that uses xlog.h to get its own separate
  * implementation of the following functions and variables.
  */
-namespace xlog_detail {
+namespace custom {
 namespace {
 /**
  * The default getXlogCategoryName() function.
@@ -879,8 +883,8 @@ namespace {
  * over this one.
  */
 template <typename T>
-FOLLY_CONSTEVAL inline folly::StringPiece getXlogCategoryName(
-    folly::StringPiece filename, T) {
+FOLLY_CONSTEVAL inline StringPiece getXlogCategoryName(
+    StringPiece filename, T) {
   return filename;
 }
 
@@ -908,6 +912,9 @@ FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(T) {
  * entire .cpp file, rather than needing a separate copy for each XLOG()
  * statement.
  */
-FOLLY_CONSTINIT ::folly::XlogFileScopeInfo xlogFileScopeInfo;
+FOLLY_CONSTINIT XlogFileScopeInfo xlogFileScopeInfo;
 } // namespace
-} // namespace xlog_detail
+} // namespace custom
+
+} // namespace detail
+} // namespace folly
