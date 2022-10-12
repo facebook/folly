@@ -78,6 +78,40 @@ TEST(ThrottledLifoSem, Timeouts) {
   EXPECT_EQ(timeouts.load(), 2);
 }
 
+// Exercise the race between post() and waiters that have just timed out.
+TEST(ThrottledLifoSem, TimeoutsStress) {
+  constexpr size_t kNumWaiters = 64;
+  constexpr size_t kNumPosts = 100000;
+  folly::ThrottledLifoSem sem(
+      {.wakeUpInterval = std::chrono::nanoseconds::zero()});
+
+  std::vector<std::thread> threads;
+  std::atomic<size_t> received = 0;
+  // Go straight to sleep.
+  const auto wo =
+      folly::WaitOptions{}.spin_max(std::chrono::nanoseconds::zero());
+  for (size_t i = 0; i < kNumWaiters; ++i) {
+    threads.emplace_back([&] {
+      while (received.load() != kNumPosts) {
+        if (sem.try_wait_for(std::chrono::microseconds{100}, wo)) {
+          ++received;
+        }
+      }
+    });
+  }
+
+  for (size_t i = 0; i < kNumPosts; ++i) {
+    sem.post();
+    // Wait until the post is consumed.
+    while (sem.valueGuess() > 0) {
+    }
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
 TEST(ThrottledLifoSem, MultipleWaiters) {
   constexpr size_t kNumRounds = 10;
   constexpr size_t kNumWaiters = 64;

@@ -23,8 +23,8 @@
 #include <folly/IntrusiveList.h>
 #include <folly/Optional.h>
 #include <folly/lang/Align.h>
-#include <folly/synchronization/Baton.h>
 #include <folly/synchronization/DistributedMutex.h>
+#include <folly/synchronization/SaturatingSemaphore.h>
 #include <folly/synchronization/WaitOptions.h>
 #include <folly/synchronization/detail/Spin.h>
 
@@ -156,7 +156,7 @@ class ThrottledLifoSem {
   friend class ThrottledLifoSemTestHelper;
 
   struct Waiter {
-    Baton<> baton;
+    SaturatingSemaphore</* MayBlock */ true> wakeup;
     SafeIntrusiveListHook hook;
   };
 
@@ -207,7 +207,7 @@ class ThrottledLifoSem {
 
       if (!waiter) {
         // We won the waking state immediately.
-      } else if (!waiter->baton.try_wait_until(
+      } else if (!waiter->wakeup.try_wait_until(
                      deadline,
                      // Since the wake-ups are throttled, it is almost never
                      // convenient to spin-wait (the default 2us) for a wake-up.
@@ -223,7 +223,7 @@ class ThrottledLifoSem {
         };
         if (!mutex_.lock_combine(eraseWaiter)) {
           // Here we do want to spin, use the default WaitOptions.
-          waiter->baton.wait();
+          waiter->wakeup.wait();
         } else {
           // Timed out, but we may have promised a waiting thread if post()
           // returned true, so we need to give a last look.
@@ -261,7 +261,7 @@ class ThrottledLifoSem {
       if (success || timedout) {
         // We are the waking thread, ensure we pass the waking state to another
         // thread if the value is still > 0 before returning control.
-        if (auto wakeup = mutex_.lock_combine([&]() {
+        if (auto nextWaiter = mutex_.lock_combine([&]() {
               Waiter* w = nullptr;
               if (waiters_.empty()) {
                 // Nothing we can do.
@@ -272,7 +272,7 @@ class ThrottledLifoSem {
               }
               return w;
             })) {
-          wakeup->baton.post();
+          nextWaiter->wakeup.post();
         }
 
         return success;
@@ -283,7 +283,7 @@ class ThrottledLifoSem {
   }
 
   FOLLY_NOINLINE void maybeStartWakingChain() {
-    if (auto wakeup = mutex_.lock_combine([&]() {
+    if (auto waiter = mutex_.lock_combine([&]() {
           Waiter* w = nullptr;
           if (!waiters_.empty() && tryAcquireWakingBit()) {
             w = &waiters_.back();
@@ -291,7 +291,7 @@ class ThrottledLifoSem {
           }
           return w;
         })) {
-      wakeup->baton.post();
+      waiter->wakeup.post();
     }
   }
 
