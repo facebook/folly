@@ -144,6 +144,9 @@ constexpr char* base64DecodeTailScalar(
   errorAccumulator |= aaa | bbb;
 
   if (f[2] == '=' && f[3] == '=') {
+    if (bbb & 0xf) {
+      errorAccumulator = constants::kDecodeErrorMarker;
+    }
     return o;
   }
 
@@ -152,6 +155,9 @@ constexpr char* base64DecodeTailScalar(
   errorAccumulator |= ccc;
 
   if (f[3] == '=') {
+    if (ccc & 0x3) {
+      errorAccumulator = constants::kDecodeErrorMarker;
+    }
     return o;
   }
 

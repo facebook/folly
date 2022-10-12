@@ -38,6 +38,9 @@ char* base64DecodeTailSWAR(
   errorAccumulator |= aaa | bbb;
 
   if (f[2] == '=' && f[3] == '=') {
+    if (bbb & 0x3c) {
+      errorAccumulator = constants::kSwarDecodeErrorMarker;
+    }
     return o;
   }
 
@@ -46,6 +49,9 @@ char* base64DecodeTailSWAR(
   errorAccumulator |= ccc;
 
   if (f[3] == '=') {
+    if (ccc & 0xc) {
+      errorAccumulator = constants::kSwarDecodeErrorMarker;
+    }
     return o;
   }
 
