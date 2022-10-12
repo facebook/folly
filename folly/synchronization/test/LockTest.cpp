@@ -895,17 +895,17 @@ REGISTER_TYPED_TEST_SUITE_P(
     swap_);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    x, LockTest, decltype(LockTestParam<0, 0, 0, x>{}));
+    x1, LockTest, decltype(LockTestParam<0, 0, 0, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    X, LockTest, decltype(LockTestParam<1, 0, 0, x>{}));
+    X2, LockTest, decltype(LockTestParam<1, 0, 0, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    s, LockTest, decltype(LockTestParam<0, 0, 0, s>{}));
+    s1, LockTest, decltype(LockTestParam<0, 0, 0, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    S, LockTest, decltype(LockTestParam<0, 1, 0, s>{}));
+    S2, LockTest, decltype(LockTestParam<0, 1, 0, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    u, LockTest, decltype(LockTestParam<0, 0, 0, u>{}));
+    u1, LockTest, decltype(LockTestParam<0, 0, 0, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    U, LockTest, decltype(LockTestParam<0, 0, 1, u>{}));
+    U2, LockTest, decltype(LockTestParam<0, 0, 1, u>{}));
 
 //  combinatorial test suite for lock guard types
 //
@@ -968,13 +968,13 @@ REGISTER_TYPED_TEST_SUITE_P(
     construct_mutex_adopt);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    x, LockGuardTest, decltype(LockGuardTestParam<0, 0, 0, xg>{}));
+    x1, LockGuardTest, decltype(LockGuardTestParam<0, 0, 0, xg>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    X, LockGuardTest, decltype(LockGuardTestParam<1, 0, 0, xg>{}));
+    X2, LockGuardTest, decltype(LockGuardTestParam<1, 0, 0, xg>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    s, LockGuardTest, decltype(LockGuardTestParam<0, 0, 0, sg>{}));
+    s1, LockGuardTest, decltype(LockGuardTestParam<0, 0, 0, sg>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    S, LockGuardTest, decltype(LockGuardTestParam<0, 1, 0, sg>{}));
+    S2, LockGuardTest, decltype(LockGuardTestParam<0, 1, 0, sg>{}));
 
 //  combinatorial test suite for lock transitions
 //
@@ -1034,37 +1034,37 @@ TYPED_TEST_P(TransitionLockTest, transition) {
 REGISTER_TYPED_TEST_SUITE_P(TransitionLockTest, transition);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    xs, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, x, s>{}));
+    xs1, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, x, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    Xs, TransitionLockTest, decltype(XLockTestParam<1, 0, 0, x, s>{}));
+    Xs2, TransitionLockTest, decltype(XLockTestParam<1, 0, 0, x, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    xS, TransitionLockTest, decltype(XLockTestParam<0, 1, 0, x, s>{}));
+    xS3, TransitionLockTest, decltype(XLockTestParam<0, 1, 0, x, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    XS, TransitionLockTest, decltype(XLockTestParam<1, 1, 0, x, s>{}));
+    XS4, TransitionLockTest, decltype(XLockTestParam<1, 1, 0, x, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    xu, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, x, u>{}));
+    xu1, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, x, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    Xu, TransitionLockTest, decltype(XLockTestParam<1, 0, 0, x, u>{}));
+    Xu2, TransitionLockTest, decltype(XLockTestParam<1, 0, 0, x, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    xU, TransitionLockTest, decltype(XLockTestParam<0, 0, 1, x, u>{}));
+    xU3, TransitionLockTest, decltype(XLockTestParam<0, 0, 1, x, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    XU, TransitionLockTest, decltype(XLockTestParam<1, 0, 1, x, u>{}));
+    XU4, TransitionLockTest, decltype(XLockTestParam<1, 0, 1, x, u>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    us, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, u, s>{}));
+    us1, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, u, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    Us, TransitionLockTest, decltype(XLockTestParam<0, 0, 1, u, s>{}));
+    Us2, TransitionLockTest, decltype(XLockTestParam<0, 0, 1, u, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    uS, TransitionLockTest, decltype(XLockTestParam<0, 1, 0, u, s>{}));
+    uS3, TransitionLockTest, decltype(XLockTestParam<0, 1, 0, u, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    US, TransitionLockTest, decltype(XLockTestParam<0, 1, 1, u, s>{}));
+    US4, TransitionLockTest, decltype(XLockTestParam<0, 1, 1, u, s>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    ux, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, u, x>{}));
+    ux1, TransitionLockTest, decltype(XLockTestParam<0, 0, 0, u, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    Ux, TransitionLockTest, decltype(XLockTestParam<0, 0, 1, u, x>{}));
+    Ux2, TransitionLockTest, decltype(XLockTestParam<0, 0, 1, u, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    uX, TransitionLockTest, decltype(XLockTestParam<1, 0, 0, u, x>{}));
+    uX3, TransitionLockTest, decltype(XLockTestParam<1, 0, 0, u, x>{}));
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    UX, TransitionLockTest, decltype(XLockTestParam<1, 0, 1, u, x>{}));
+    UX4, TransitionLockTest, decltype(XLockTestParam<1, 0, 1, u, x>{}));
 
 //  combinatorial test suite for lock try-transitions
 //
