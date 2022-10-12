@@ -519,6 +519,12 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
   namespace detail {                                                         \
   namespace custom {                                                         \
   namespace {                                                                \
+  struct xlog_correct_usage;                                                 \
+  static_assert(                                                             \
+      ::std::is_same<                                                        \
+          xlog_correct_usage,                                                \
+          ::folly::detail::custom::xlog_correct_usage>::value,               \
+      "XLOG_SET_CATEGORY_NAME() should not be used within namespace scope"); \
   XLOG_SET_CATEGORY_CHECK                                                    \
   FOLLY_CONSTEVAL inline StringPiece getXlogCategoryName(StringPiece, int) { \
     return category;                                                         \
@@ -866,6 +872,8 @@ namespace detail {
  */
 namespace custom {
 namespace {
+struct xlog_correct_usage;
+
 /**
  * The default getXlogCategoryName() function.
  *
