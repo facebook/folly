@@ -358,10 +358,11 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  * though.)
  */
 #ifdef FOLLY_XLOG_STRIP_PREFIXES
-#define XLOG_FILENAME \
-  ::folly::xlogStripFilename(__FILE__, FOLLY_XLOG_STRIP_PREFIXES)
+#define XLOG_FILENAME        \
+  (static_cast<char const*>( \
+      ::folly::xlogStripFilename(__FILE__, FOLLY_XLOG_STRIP_PREFIXES)))
 #else
-#define XLOG_FILENAME __FILE__
+#define XLOG_FILENAME (static_cast<char const*>(__FILE__))
 #endif
 
 #define XLOG_IMPL(level, type, ...) \
@@ -491,7 +492,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  * expand to the correct filename based on where the macro is used.
  */
 #define XLOG_GET_CATEGORY() \
-  ::folly::LoggerDB::get().getCategory(XLOG_GET_CATEGORY_NAME())
+  (::folly::LoggerDB::get().getCategory(XLOG_GET_CATEGORY_NAME()))
 
 /**
  * XLOG_SET_CATEGORY_NAME() can be used to explicitly define the log category
