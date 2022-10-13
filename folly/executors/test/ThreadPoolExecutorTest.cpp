@@ -649,20 +649,18 @@ TEST(ThreadPoolExecutorTest, RequestContext) {
   auto data = RequestContext::get()->getContextData("test");
   EXPECT_EQ(42, dynamic_cast<TestData*>(data)->data_);
 
-  struct VerifyRequestContext {
-    ~VerifyRequestContext() {
-      auto data2 = RequestContext::get()->getContextData("test");
-      EXPECT_TRUE(data2 != nullptr);
-      if (data2 != nullptr) {
-        EXPECT_EQ(42, dynamic_cast<TestData*>(data2)->data_);
-      }
+  static constexpr auto verifyRequestContext = +[] {
+    auto data2 = RequestContext::get()->getContextData("test");
+    EXPECT_TRUE(data2 != nullptr);
+    if (data2 != nullptr) {
+      EXPECT_EQ(42, dynamic_cast<TestData*>(data2)->data_);
     }
   };
 
   {
     CPUThreadPoolExecutor executor(1);
-    executor.add([] { VerifyRequestContext(); });
-    executor.add([x = VerifyRequestContext()] {});
+    executor.add([] { verifyRequestContext(); });
+    executor.add([x = makeGuard(verifyRequestContext)] {});
   }
 }
 
