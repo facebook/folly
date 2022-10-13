@@ -143,7 +143,7 @@ TEST_F(MergeFixture, OneInputThrows_OutputClosedWithException) {
   executor_.drain();
 }
 
-TEST_F(MergeFixture, Cancelled) {
+TEST_F(MergeFixture, CancelledAfterStart) {
   auto [receiver1, sender1] = Channel<int>::create();
   auto [receiver2, sender2] = Channel<int>::create();
   auto [receiver3, sender3] = Channel<int>::create();
@@ -175,6 +175,25 @@ TEST_F(MergeFixture, Cancelled) {
   std::move(sender1).close();
   std::move(sender2).close();
   std::move(sender3).close();
+  executor_.drain();
+}
+
+TEST_F(MergeFixture, CancelledBeforeStart) {
+  auto [receiver1, sender1] = Channel<int>::create();
+  auto [receiver2, sender2] = Channel<int>::create();
+  auto [receiver3, sender3] = Channel<int>::create();
+  auto mergedReceiver = merge(
+      toVector(
+          std::move(receiver1), std::move(receiver2), std::move(receiver3)),
+      &executor_);
+
+  EXPECT_CALL(onNext_, onValue(_)).Times(0);
+
+  { auto toDestroy = std::move(mergedReceiver); }
+
+  sender1.write(1);
+  sender2.write(2);
+  sender3.write(3);
   executor_.drain();
 }
 
