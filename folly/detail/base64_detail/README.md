@@ -136,8 +136,12 @@ swallow invalid values, it can be done faster*.
 
 Decisions:
 `base64Decode` requires `=` padding and accepts only [`+`, `/`] as 62/63 character.
+If there are extra bits on the end, those are not allowed: iZ== is not a valid input
+because no input sequence will produce it.
 `base64URLDecode`: allows everything encoded with plain base64 and base64URL.
-It will succesfully decode some combinations that are not either.
+It will succesfully decode some combinations that are not either. The extra bits on
+the end are currently allowed: iZ== will decode successfully (this decision is not
+motivated by anything).
 
 *NOTE:* details on `baseURLDecode` rules:
 * Padding bytes follow regual base64: if they are present they are allowed to be only in positions that
