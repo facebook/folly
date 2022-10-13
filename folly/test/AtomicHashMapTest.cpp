@@ -530,25 +530,24 @@ TEST(Ahm, collision_test) {
 
 namespace {
 
-const int kInsertPerThread = 100000;
-int raceFinalSizeEstimate;
-
-void raceIterateThread() {
-  int count = 0;
-
-  AHMapT::iterator it = globalAHM->begin();
-  AHMapT::iterator end = globalAHM->end();
-  for (; it != end; ++it) {
-    ++count;
-    if (count > raceFinalSizeEstimate) {
-      EXPECT_FALSE("Infinite loop in iterator.");
-      return;
+void raceIterateThread(std::atomic<bool>* shouldIterate, int maxSize) {
+  while (shouldIterate->load(std::memory_order_relaxed)) {
+    int count = 0;
+    AHMapT::iterator it = globalAHM->begin();
+    AHMapT::iterator end = globalAHM->end();
+    for (; it != end; ++it) {
+      ++count;
+      if (count > maxSize) {
+        EXPECT_FALSE("Infinite loop in iterator.");
+        return;
+      }
     }
   }
 }
 
-void raceInsertRandomThread() {
-  for (int i = 0; i < kInsertPerThread; ++i) {
+void raceInsertRandomThread(std::atomic<bool>* shouldInsert, int maxInserts) {
+  int i = 0;
+  while (shouldInsert->load(std::memory_order_relaxed) && i++ < maxInserts) {
     KeyT key = rand();
     globalAHM->insert(key, genVal(key));
   }
@@ -561,21 +560,26 @@ void raceInsertRandomThread() {
 TEST(Ahm, race_insert_iterate_thread_test) {
   const int kInsertThreads = 20;
   const int kIterateThreads = 20;
-  raceFinalSizeEstimate = kInsertThreads * kInsertPerThread;
+  const int kMaxInsertsPerThread = 100000;
+  int raceFinalSizeUpper = kInsertThreads * kMaxInsertsPerThread;
 
   VLOG(1) << "Testing iteration and insertion with " << kInsertThreads
           << " threads inserting and " << kIterateThreads
           << " threads iterating.";
 
-  globalAHM = std::make_unique<AHMapT>(raceFinalSizeEstimate / 9, config);
+  globalAHM = std::make_unique<AHMapT>(100000, config);
 
+  std::atomic<bool> loop{true};
   vector<std::thread> threads;
   for (auto j = 0u; j < kInsertThreads; ++j) {
-    threads.emplace_back(raceInsertRandomThread);
+    threads.emplace_back(raceInsertRandomThread, &loop, kMaxInsertsPerThread);
   }
   for (auto j = 0u; j < kIterateThreads; ++j) {
-    threads.emplace_back(raceIterateThread);
+    threads.emplace_back(raceIterateThread, &loop, raceFinalSizeUpper);
   }
+  // Before changing this test to be time-limited, it took at least 60 seconds.
+  /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds(30));
+  loop.store(false);
   for (auto& thread : threads) {
     thread.join();
   }
