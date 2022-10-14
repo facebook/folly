@@ -9,6 +9,8 @@ repo_url = https://github.com/facebook/openr.git
 
 [build.os=linux]
 builder = cmake
+# openr files take a lot of RAM to compile.
+job_weight_mib = 3072
 
 [build.not(os=linux)]
 # boost.fiber is required and that is not available on macos.
