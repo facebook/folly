@@ -34,6 +34,12 @@ extern "C" FOLLY_KEEP void check_folly_function_nuke(void* fun) {
   static_cast<Function<void()>*>(fun)->~Function();
 }
 
+extern "C" FOLLY_KEEP void check_folly_function_move_assign(
+    void* src, void* dst) {
+  *static_cast<Function<void()>*>(src) =
+      std::move(*static_cast<Function<void()>*>(dst));
+}
+
 template <bool Triv, bool NxCopy>
 struct check_invocable_base;
 template <bool NxCopy>
