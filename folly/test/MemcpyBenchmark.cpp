@@ -89,22 +89,22 @@ void bench(
   }
 }
 
-#define BENCH_BOTH(MIN, MAX, HOT, HOT_STR) \
-  BENCHMARK_NAMED_PARAM(                   \
-      bench,                               \
-      MIN##_to_##MAX##_##HOT_STR##_glibc,  \
-      /*memcpy_func=*/memcpy,              \
-      /*min=*/MIN,                         \
-      /*max=*/MAX,                         \
-      /*align=*/1,                         \
-      /*hot=*/HOT)                         \
-  BENCHMARK_RELATIVE_NAMED_PARAM(          \
-      bench,                               \
-      MIN##_to_##MAX##_##HOT_STR##_folly,  \
-      /*memcpy_func=*/__folly_memcpy,      \
-      /*min=*/MIN,                         \
-      /*max=*/MAX,                         \
-      /*align=*/1,                         \
+#define BENCH_BOTH(MIN, MAX, HOT, HOT_STR)   \
+  BENCHMARK_NAMED_PARAM(                     \
+      bench,                                 \
+      MIN##_to_##MAX##_##HOT_STR##_glibc,    \
+      /*memcpy_func=*/memcpy,                \
+      /*min=*/MIN,                           \
+      /*max=*/MAX,                           \
+      /*align=*/1,                           \
+      /*hot=*/HOT)                           \
+  BENCHMARK_RELATIVE_NAMED_PARAM(            \
+      bench,                                 \
+      MIN##_to_##MAX##_##HOT_STR##_folly,    \
+      /*memcpy_func=*/folly::__folly_memcpy, \
+      /*min=*/MIN,                           \
+      /*max=*/MAX,                           \
+      /*align=*/1,                           \
       /*hot=*/HOT)
 
 BENCH_BOTH(0, 7, true, HOT)
@@ -150,7 +150,7 @@ BENCHMARK_NAMED_PARAM(
 BENCHMARK_RELATIVE_NAMED_PARAM(
     bench,
     64k_to_1024k_unaligned_cold_folly,
-    /*memcpy_func=*/__folly_memcpy,
+    /*memcpy_func=*/folly::__folly_memcpy,
     /*min=*/65536,
     /*max=*/1048576,
     /*align=*/1,
@@ -167,7 +167,7 @@ BENCHMARK_NAMED_PARAM(
 BENCHMARK_RELATIVE_NAMED_PARAM(
     bench,
     64k_to_1024k_aligned_cold_folly,
-    /*memcpy_func=*/__folly_memcpy,
+    /*memcpy_func=*/folly::__folly_memcpy,
     /*min=*/65536,
     /*max=*/1048576,
     /*align=*/32,

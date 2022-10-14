@@ -17,11 +17,13 @@
 #include <cstring>
 
 #if !defined(__AVX2__)
-extern "C" {
-void* __folly_memcpy(
-    void* __restrict dst, const void* __restrict src, size_t size) {
+namespace folly {
+
+extern "C" void* __folly_memcpy(
+    void* __restrict dst, const void* __restrict src, std::size_t size) {
   return std::memcpy(dst, src, size);
 }
-}
+
+} // namespace folly
 
 #endif

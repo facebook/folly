@@ -50,7 +50,7 @@ FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("nonnull-attribute") {
   // not crash.
   char* srcNull = nullptr;
   char* dstNull = nullptr;
-  __folly_memcpy(dstNull, srcNull, 0);
+  folly::__folly_memcpy(dstNull, srcNull, 0);
 }
 
 // Test copy `len' bytes and verify that exactly `len' bytes are copied.
@@ -59,8 +59,8 @@ void testLen(size_t len, size_t dst_offset = 0, size_t src_offset = 0) {
     return;
   }
   init(len + std::max(dst_offset, src_offset) + 1);
-  void* ret =
-      __folly_memcpy(dst.data() + dst_offset, src.data() + src_offset, len);
+  void* ret = folly::__folly_memcpy(
+      dst.data() + dst_offset, src.data() + src_offset, len);
   ASSERT_EQ(ret, dst.data() + dst_offset);
   for (size_t i = 0; i < len; ++i) {
     ASSERT_EQ(src[i + src_offset], expected_src(i + src_offset))
@@ -128,7 +128,7 @@ TEST(folly_memcpy, overlap) {
       memmove(check_buf.data(), copy_buf.data() + kStartIndex, copy_size);
       // Call __folly_memcpy directly so that asan doesn't complain about the
       // overlapping memcpy.
-      __folly_memcpy(
+      folly::__folly_memcpy(
           copy_buf.data() + kStartIndex + overlap_offset,
           copy_buf.data() + kStartIndex,
           copy_size);
