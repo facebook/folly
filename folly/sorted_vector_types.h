@@ -1351,7 +1351,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 
   template <typename Self, typename K>
   static self_iterator_t<Self> lower_bound(Self& self, K const& key) {
-    auto f = [c = self.key_comp()](value_type const& a, K const& b) {
+    auto f = [c = self.key_comp()](auto const& a, K const& b) {
       return c(a.first, b);
     };
     return std::lower_bound(self.begin(), self.end(), key, f);
@@ -1359,7 +1359,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 
   template <typename Self, typename K>
   static self_iterator_t<Self> upper_bound(Self& self, K const& key) {
-    auto f = [c = self.key_comp()](K const& a, value_type const& b) {
+    auto f = [c = self.key_comp()](K const& a, auto const& b) {
       return c(a, b.first);
     };
     return std::upper_bound(self.begin(), self.end(), key, f);
