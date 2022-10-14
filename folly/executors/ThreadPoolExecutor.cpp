@@ -126,18 +126,11 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
     *thread->taskStatsCallbacks->inCallback = true;
     SCOPE_EXIT { *thread->taskStatsCallbacks->inCallback = false; };
-    try {
+    invokeCatchingExns("ThreadPoolExecutor: task stats callback", [&] {
       for (auto& callback : callbacks) {
         callback(stats);
       }
-    } catch (const std::exception& e) {
-      LOG(ERROR) << "ThreadPoolExecutor: task stats callback threw "
-                    "unhandled "
-                 << typeid(e).name() << " exception: " << e.what();
-    } catch (...) {
-      LOG(ERROR) << "ThreadPoolExecutor: task stats callback threw "
-                    "unhandled non-exception object";
-    }
+    });
   });
 }
 
