@@ -637,19 +637,23 @@ Container&& as_sorted_unique(Container&& container, Compare const& comp) {
 }
 
 // class value_compare_map is used to compare map elements.
-template <class Compare, class value_type>
+template <class Compare>
 struct value_compare_map : Compare {
-  bool operator()(const value_type& a, const value_type& b) const {
+  template <class Pair1, class Pair2>
+  bool operator()(const Pair1& a, const Pair2& b) const {
     return Compare::operator()(a.first, b.first);
   }
 
-  using first_type = typename value_type::first_type;
-  first_type& getKey(const value_type& a) const {
-    return const_cast<value_type&>(a).first;
+  template <class value_type>
+  decltype(auto) getKey(const value_type& a) const {
+    using first_type = typename std::decay_t<decltype(a)>::first_type;
+    return const_cast<first_type&>(a.first);
   }
 
-  first_type& getKey(const value_type& a) {
-    return const_cast<value_type&>(a).first;
+  template <class value_type>
+  decltype(auto) getKey(const value_type& a) {
+    using first_type = typename std::decay_t<decltype(a)>::first_type;
+    return const_cast<first_type&>(a.first);
   }
 
   explicit value_compare_map(const Compare& c) : Compare(c) {}
@@ -1347,10 +1351,8 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   template <typename Self, typename K>
   static self_iterator_t<Self> lower_bound(Self& self, K const& key) {
     auto c = self.key_comp();
-    auto cmp = [&](value_type const& a) { return c(self.m_.getKey(a), key); };
-    auto reverseCmp = [&](value_type const& a) {
-      return c(key, self.m_.getKey(a));
-    };
+    auto cmp = [&](auto const& a) { return c(self.m_.getKey(a), key); };
+    auto reverseCmp = [&](auto const& a) { return c(key, self.m_.getKey(a)); };
     auto offset =
         heap_vector_detail::lower_bound(self.m_.cont_, cmp, reverseCmp);
     self_iterator_t<Self> ret = self.end();
@@ -1361,7 +1363,7 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   template <typename Self, typename K>
   static self_iterator_t<Self> upper_bound(Self& self, K const& key) {
     auto c = self.key_comp();
-    auto cmp = [&](value_type const& a) { return c(key, self.m_.getKey(a)); };
+    auto cmp = [&](auto const& a) { return c(key, self.m_.getKey(a)); };
     auto offset = heap_vector_detail::upper_bound(self.m_.cont_, cmp);
     self_iterator_t<Self> ret = self.end();
     ret = self.m_.cont_.begin() + offset;
@@ -1470,8 +1472,7 @@ class heap_vector_map
           GrowthPolicy,
           Container,
           Key,
-          detail::heap_vector_detail::
-              value_compare_map<Compare, typename Container::value_type>> {
+          detail::heap_vector_detail::value_compare_map<Compare>> {
  public:
   using key_type = Key;
   using mapped_type = Value;
@@ -1484,8 +1485,7 @@ class heap_vector_map
   using const_reference = typename Container::const_reference;
   using difference_type = typename Container::difference_type;
   using size_type = typename Container::size_type;
-  using value_compare =
-      detail::heap_vector_detail::value_compare_map<Compare, value_type>;
+  using value_compare = detail::heap_vector_detail::value_compare_map<Compare>;
 
  protected:
   using heap_vector_container =
@@ -1604,7 +1604,7 @@ class small_heap_vector_map : public folly::heap_vector_map<
   using difference_type = typename Container::difference_type;
   using size_type = typename Container::size_type;
   using value_compare =
-      detail::heap_vector_detail::value_compare_map<std::less<Key>, value_type>;
+      detail::heap_vector_detail::value_compare_map<std::less<Key>>;
 
  private:
   using heap_vector_map = folly::
