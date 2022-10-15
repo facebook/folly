@@ -47,32 +47,20 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
   }
 
  private:
-  void setExceptionResults(const folly::exception_wrapper& exceptionWrapper) {
+  void setExceptionResults(folly::exception_wrapper&& ew_) {
+    auto ew = std::move(ew_);
     for (auto& optEntry : optEntries_) {
       if (optEntry) {
-        optEntry->promise.setException(exceptionWrapper);
+        optEntry->promise.setException(ew);
       }
     }
-  }
-
-  void setExceptionResults(std::exception_ptr eptr) {
-    auto exceptionWrapper = exception_wrapper(eptr);
-    return setExceptionResults(exceptionWrapper);
-  }
-
-  template <typename TException>
-  void setExceptionResults(
-      const TException& ex, std::exception_ptr eptr = std::exception_ptr()) {
-    auto exceptionWrapper =
-        eptr ? exception_wrapper(eptr, ex) : exception_wrapper(ex);
-    return setExceptionResults(exceptionWrapper);
   }
 
   void fulfillPromises() {
     try {
       // If an error message is set, set all promises to exception with message
       if (exceptionWrapper_) {
-        return setExceptionResults(exceptionWrapper_);
+        return setExceptionResults(std::move(exceptionWrapper_));
       }
 
       // Validate entries count same as expectedCount_
@@ -86,8 +74,10 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
         }
       }
       if (!vecTokensNotDispatched.empty()) {
-        return setExceptionResults(ABDTokenNotDispatchedException(
-            detail::createABDTokenNotDispatchedExMsg(vecTokensNotDispatched)));
+        return setExceptionResults(
+            make_exception_wrapper<ABDTokenNotDispatchedException>(
+                detail::createABDTokenNotDispatchedExMsg(
+                    vecTokensNotDispatched)));
       }
 
       // Create the inputs vector
@@ -101,8 +91,8 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       // and make sure that we have the expected number of results returned
       auto results = dispatchFunction_(std::move(inputs));
       if (results.size() != expectedCount_) {
-        return setExceptionResults(
-            ABDUsageException(detail::createUnexpectedNumResultsABDUsageExMsg(
+        return setExceptionResults(make_exception_wrapper<ABDUsageException>(
+            detail::createUnexpectedNumResultsABDUsageExMsg(
                 expectedCount_, results.size())));
       }
 
@@ -110,12 +100,9 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       for (size_t i = 0; i < expectedCount_; ++i) {
         optEntries_[i]->promise.setValue(std::move(results[i]));
       }
-    } catch (const std::exception& ex) {
-      // Set exceptions thrown when executing the user provided dispatch func
-      return setExceptionResults(ex, std::current_exception());
     } catch (...) {
       // Set exceptions thrown when executing the user provided dispatch func
-      return setExceptionResults(std::current_exception());
+      return setExceptionResults(exception_wrapper{std::current_exception()});
     }
   }
 

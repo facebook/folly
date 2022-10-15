@@ -20,6 +20,7 @@
 
 #include <folly/Memory.h>
 #include <folly/Traits.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -583,23 +584,12 @@ TEST(Try, exception) {
   }
 }
 
-template <typename E>
-static E* get_exception(std::exception_ptr eptr) {
-  try {
-    std::rethrow_exception(eptr);
-  } catch (E& e) {
-    return &e;
-  } catch (...) {
-    return nullptr;
-  }
-}
-
 TEST(Try, tryGetExceptionObject) {
   auto epexn = std::make_exception_ptr(std::range_error("oops"));
   auto epnum = std::make_exception_ptr(17);
 
-  auto exn = CHECK_NOTNULL(get_exception<std::range_error>(epexn));
-  auto num = CHECK_NOTNULL(get_exception<int>(epnum));
+  auto exn = CHECK_NOTNULL(exception_ptr_get_object<std::range_error>(epexn));
+  auto num = CHECK_NOTNULL(exception_ptr_get_object<int>(epnum));
 
   {
     auto t = Try<bool>(true);
@@ -609,14 +599,14 @@ TEST(Try, tryGetExceptionObject) {
   }
 
   {
-    auto t = Try<bool>(exception_wrapper(epexn, *exn));
+    auto t = Try<bool>(exception_wrapper(epexn));
     EXPECT_EQ(exn, t.tryGetExceptionObject());
     EXPECT_EQ(exn, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<int>());
   }
 
   {
-    auto t = Try<bool>(exception_wrapper(epnum, *num));
+    auto t = Try<bool>(exception_wrapper(epnum));
     EXPECT_EQ(nullptr, t.tryGetExceptionObject());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(num, t.tryGetExceptionObject<int>());
@@ -630,14 +620,14 @@ TEST(Try, tryGetExceptionObject) {
   }
 
   {
-    auto t = Try<void>(exception_wrapper(epexn, *exn));
+    auto t = Try<void>(exception_wrapper(epexn));
     EXPECT_EQ(exn, t.tryGetExceptionObject());
     EXPECT_EQ(exn, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<int>());
   }
 
   {
-    auto t = Try<void>(exception_wrapper(epnum, *num));
+    auto t = Try<void>(exception_wrapper(epnum));
     EXPECT_EQ(nullptr, t.tryGetExceptionObject());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(num, t.tryGetExceptionObject<int>());
@@ -651,14 +641,14 @@ TEST(Try, tryGetExceptionObject) {
   }
 
   {
-    auto const t = Try<bool>(exception_wrapper(epexn, *exn));
+    auto const t = Try<bool>(exception_wrapper(epexn));
     EXPECT_EQ(exn, t.tryGetExceptionObject());
     EXPECT_EQ(exn, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<int>());
   }
 
   {
-    auto const t = Try<bool>(exception_wrapper(epnum, *num));
+    auto const t = Try<bool>(exception_wrapper(epnum));
     EXPECT_EQ(nullptr, t.tryGetExceptionObject());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(num, t.tryGetExceptionObject<int>());
@@ -672,14 +662,14 @@ TEST(Try, tryGetExceptionObject) {
   }
 
   {
-    auto const t = Try<void>(exception_wrapper(epexn, *exn));
+    auto const t = Try<void>(exception_wrapper(epexn));
     EXPECT_EQ(exn, t.tryGetExceptionObject());
     EXPECT_EQ(exn, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<int>());
   }
 
   {
-    auto const t = Try<void>(exception_wrapper(epnum, *num));
+    auto const t = Try<void>(exception_wrapper(epnum));
     EXPECT_EQ(nullptr, t.tryGetExceptionObject());
     EXPECT_EQ(nullptr, t.tryGetExceptionObject<std::runtime_error>());
     EXPECT_EQ(num, t.tryGetExceptionObject<int>());

@@ -113,9 +113,6 @@ class ChannelConsumerBase {
             } else {
               resultTry = Try<TValue>();
             }
-          } catch (const std::exception& ex) {
-            resultTry =
-                Try<TValue>(exception_wrapper(std::current_exception(), ex));
           } catch (...) {
             resultTry =
                 Try<TValue>(exception_wrapper(std::current_exception()));

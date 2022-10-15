@@ -51,17 +51,6 @@ const static std::string kIntExceptionClassName =
     demangle(typeid(IntException)).toStdString();
 const static std::string kIntClassName = demangle(typeid(int)).toStdString();
 
-template <typename T>
-T& from_eptr(std::exception_ptr& eptr) {
-  try {
-    std::rethrow_exception(eptr);
-  } catch (T& e) {
-    return e;
-  } catch (...) {
-    throw std::logic_error("impossible");
-  }
-}
-
 TEST(ExceptionWrapper, nothrow) {
   EXPECT_TRUE(std::is_nothrow_default_constructible<exception_wrapper>::value);
   EXPECT_TRUE(std::is_nothrow_move_constructible<exception_wrapper>::value);
@@ -250,7 +239,7 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
 
 TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
   auto ep = std::make_exception_ptr(std::runtime_error("foo"));
-  auto ew = exception_wrapper(ep, from_eptr<std::runtime_error>(ep));
+  auto ew = exception_wrapper(ep);
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(&typeid(std::runtime_error), ew.type());
   EXPECT_NE(nullptr, ew.get_exception());
@@ -284,7 +273,7 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
 
 TEST(ExceptionWrapper, with_exception_ptr_any_test) {
   auto ep = std::make_exception_ptr<int>(12);
-  auto ew = exception_wrapper(ep, from_eptr<int>(ep));
+  auto ew = exception_wrapper(ep);
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
@@ -518,7 +507,7 @@ struct BigNonStdError {
 
 TEST(ExceptionWrapper, handle_std_exception) {
   auto ep = std::make_exception_ptr(std::runtime_error{"hello world"});
-  exception_wrapper const ew_eptr(ep, from_eptr<std::runtime_error>(ep));
+  exception_wrapper const ew_eptr(ep);
   exception_wrapper const ew_small(std::runtime_error{"hello world"});
   exception_wrapper const ew_big(BigRuntimeError{"hello world"});
 
@@ -600,7 +589,7 @@ TEST(ExceptionWrapper, handle_std_exception) {
 
 TEST(ExceptionWrapper, handle_std_exception_unhandled) {
   auto ep = std::make_exception_ptr(std::exception{});
-  exception_wrapper const ew_eptr(ep, from_eptr<std::exception>(ep));
+  exception_wrapper const ew_eptr(ep);
   exception_wrapper const ew_small(std::exception{});
 
   bool handled = false;
@@ -620,7 +609,7 @@ TEST(ExceptionWrapper, handle_std_exception_unhandled) {
 
 TEST(ExceptionWrapper, handle_std_exception_propagated) {
   auto ep = std::make_exception_ptr(std::runtime_error{"hello world"});
-  exception_wrapper const ew_eptr(ep, from_eptr<std::runtime_error>(ep));
+  exception_wrapper const ew_eptr(ep);
   exception_wrapper const ew_small(std::runtime_error{"hello world"});
   exception_wrapper const ew_big(BigRuntimeError{"hello world"});
 
@@ -632,7 +621,7 @@ TEST(ExceptionWrapper, handle_std_exception_propagated) {
 TEST(ExceptionWrapper, handle_non_std_exception_small) {
   auto ep = std::make_exception_ptr(42);
   exception_wrapper const ew_eptr1(ep);
-  exception_wrapper const ew_eptr2(ep, from_eptr<int>(ep));
+  exception_wrapper const ew_eptr2(ep);
   exception_wrapper const ew_small(folly::in_place, 42);
   bool handled = false;
 
@@ -687,7 +676,7 @@ TEST(ExceptionWrapper, handle_non_std_exception_small) {
 TEST(ExceptionWrapper, handle_non_std_exception_big) {
   auto ep = std::make_exception_ptr(BigNonStdError{});
   exception_wrapper const ew_eptr1(ep);
-  exception_wrapper const ew_eptr2(ep, from_eptr<BigNonStdError>(ep));
+  exception_wrapper const ew_eptr2(ep);
   exception_wrapper const ew_big(folly::in_place, BigNonStdError{});
   bool handled = false;
 
