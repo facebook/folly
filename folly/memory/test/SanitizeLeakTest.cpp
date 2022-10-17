@@ -23,6 +23,13 @@
 
 namespace folly {
 
+TEST(SanitizeLeak, lsan_ignore_object) {
+  int* ptr = new int(5);
+  EXPECT_EQ(*ptr, 5);
+  lsan_ignore_object(ptr);
+  EXPECT_EQ(*ptr, 5);
+}
+
 TEST(SanitizeLeak, ImplementationAlwaysWorks) {
   int* ptr = new int(5);
   EXPECT_EQ(*ptr, 5);

@@ -14,13 +14,34 @@
  * limitations under the License.
  */
 
+#include <folly/memory/SanitizeLeak.h>
+
 #include <mutex>
 #include <unordered_set>
 
-#include <folly/memory/SanitizeLeak.h>
+#include <folly/lang/Extern.h>
+
+//  Leak Sanitizer interface may be found at:
+//    https://github.com/llvm/llvm-project/blob/main/compiler-rt/include/sanitizer/lsan_interface.h
+extern "C" void __lsan_ignore_object(void const*);
+
+namespace {
+
+FOLLY_CREATE_EXTERN_ACCESSOR( //
+    lsan_ignore_object_access_v,
+    __lsan_ignore_object);
+
+constexpr bool E = folly::kIsLibrarySanitizeAddress;
+
+} // namespace
 
 namespace folly {
+
 namespace detail {
+
+FOLLY_STORAGE_CONSTEXPR lsan_ignore_object_t* const //
+    lsan_ignore_object_v = lsan_ignore_object_access_v<E>;
+
 namespace {
 struct LeakedPtrs {
   std::mutex mutex;
