@@ -49,6 +49,12 @@ FOLLY_NOINLINE invoke_result_t<F> runNoInline(F&& func) {
   return func();
 }
 
+template <class Result, class F>
+FOLLY_NOINLINE void tryEmplaceWithNoInline(
+    folly::Try<Result>& result, F&& func) {
+  folly::tryEmplaceWith(result, std::forward<F>(func));
+}
+
 } // namespace
 
 inline void FiberManager::ensureLoopScheduled() {
@@ -540,7 +546,7 @@ invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
 
   folly::Try<Result> result;
   auto f = [&func, &result]() mutable {
-    folly::tryEmplaceWith(result, std::forward<F>(func));
+    tryEmplaceWithNoInline(result, std::forward<F>(func));
   };
 
   immediateFunc_ = std::ref(f);
