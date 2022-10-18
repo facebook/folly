@@ -800,6 +800,15 @@ inline void swap(
   return a.swap(b);
 }
 
+template <typename T>
+struct is_sorted_vector_set : std::false_type {};
+
+template <typename... T>
+struct is_sorted_vector_set<folly::sorted_vector_set<T...>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_sorted_vector_set_v = is_sorted_vector_set<T>::value;
+
 #if FOLLY_HAS_MEMORY_RESOURCE
 
 namespace pmr {
@@ -1438,6 +1447,15 @@ inline void swap(
     sorted_vector_map<K, V, C, A, G>& a, sorted_vector_map<K, V, C, A, G>& b) {
   return a.swap(b);
 }
+
+template <typename T>
+struct is_sorted_vector_map : std::false_type {};
+
+template <typename... T>
+struct is_sorted_vector_map<folly::sorted_vector_map<T...>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_sorted_vector_map_v = is_sorted_vector_map<T>::value;
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 

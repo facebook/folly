@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
+#include <functional>
 #include <iterator>
 #include <list>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <folly/Range.h>
@@ -32,6 +37,32 @@ using folly::sorted_vector_map;
 using folly::sorted_vector_set;
 
 namespace {
+
+static_assert(
+    folly::is_sorted_vector_map_v<folly::sorted_vector_map<int, double>>);
+static_assert(
+    folly::is_sorted_vector_map_v<folly::sorted_vector_map<
+        int,
+        double,
+        /* Compare */ std::greater<int>,
+        /* Allocator */ std::allocator<std::pair<int, double>>,
+        /* GrowthPolicy */ void,
+        /* Container */ folly::small_vector<std::pair<int, double>, 10>>>);
+static_assert(!folly::is_sorted_vector_map_v<std::map<int, double>>);
+static_assert(!folly::is_sorted_vector_map_v<std::unordered_map<int, double>>);
+static_assert(
+    !folly::is_sorted_vector_map_v<std::vector<std::pair<int, double>>>);
+
+static_assert(folly::is_sorted_vector_set_v<folly::sorted_vector_set<int>>);
+static_assert(folly::is_sorted_vector_set_v<folly::sorted_vector_set<
+                  int,
+                  /* Compare */ std::greater<int>,
+                  /* Allocator */ std::allocator<int>,
+                  /* GrowthPolicy */ void,
+                  /* Container */ folly::small_vector<int, 20>>>);
+static_assert(!folly::is_sorted_vector_set_v<std::set<int>>);
+static_assert(!folly::is_sorted_vector_set_v<std::unordered_set<int>>);
+static_assert(!folly::is_sorted_vector_set_v<std::vector<int>>);
 
 template <class T>
 struct less_invert {
