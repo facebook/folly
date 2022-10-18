@@ -49,8 +49,12 @@ namespace coro {
 //       std::cout << "error " << error.what() << "\n";
 //     }
 //   }
-template <typename TransformFn, typename Reference, typename Value>
-AsyncGenerator<invoke_result_t<TransformFn&, Reference>> transform(
+template <
+    typename TransformFn,
+    typename Reference,
+    typename Value,
+    typename Return = invoke_result_t<TransformFn&, Reference>>
+AsyncGenerator<Return> transform(
     AsyncGenerator<Reference, Value> source, TransformFn transformFn);
 
 } // namespace coro

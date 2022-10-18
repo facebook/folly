@@ -21,11 +21,15 @@
 namespace folly {
 namespace coro {
 
-template <typename TransformFn, typename Reference, typename Value>
-AsyncGenerator<invoke_result_t<TransformFn&, Reference>> transform(
+template <
+    typename TransformFn,
+    typename Reference,
+    typename Value,
+    typename Return>
+AsyncGenerator<Return> transform(
     AsyncGenerator<Reference, Value> source, TransformFn transformFn) {
   while (auto item = co_await source.next()) {
-    co_yield invoke(transformFn, std::move(item).value());
+    co_yield std::move(invoke(transformFn, std::move(item).value()));
   }
 }
 
