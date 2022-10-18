@@ -58,6 +58,8 @@ if(GENERATE_CARGO_VENDOR_CONFIG)
   )
 endif()
 
+find_program(CARGO_COMMAND cargo REQUIRED)
+
 # Cargo is a build system in itself, and thus will try to take advantage of all
 # the cores on the system. Unfortunately, this conflicts with Ninja, since it
 # also tries to utilize all the cores. This can lead to a system that is
@@ -119,11 +121,6 @@ function(rust_static_library TARGET)
   set(staticlib_name "${CMAKE_STATIC_LIBRARY_PREFIX}${crate_name}${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(rust_staticlib "${CMAKE_CURRENT_BINARY_DIR}/${target_dir}/${staticlib_name}")
 
-  set(cargo_cmd cargo)
-  if(WIN32)
-    set(cargo_cmd cargo.exe)
-  endif()
-
   if(DEFINED ARG_FEATURES)
     set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES})
   else()
@@ -142,7 +139,7 @@ function(rust_static_library TARGET)
       "${CMAKE_COMMAND}" -E env
       "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}"
       ${extra_cargo_env}
-      ${cargo_cmd}
+      ${CARGO_COMMAND}
       ${cargo_flags}
     COMMENT "Building Rust crate '${crate_name}'..."
     JOB_POOL rust_job_pool
@@ -195,11 +192,6 @@ function(rust_executable TARGET)
     set(features )
   endif()
 
-  set(cargo_cmd cargo)
-  if(WIN32)
-    set(cargo_cmd cargo.exe)
-  endif()
-
   if(DEFINED ARG_FEATURES)
     set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES})
   else()
@@ -219,7 +211,7 @@ function(rust_executable TARGET)
       "${CMAKE_COMMAND}" -E env
       "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}"
       ${extra_cargo_env}
-      ${cargo_cmd}
+      ${CARGO_COMMAND}
       ${cargo_flags}
     COMMENT "Building Rust executable '${crate_name}'..."
     JOB_POOL rust_job_pool
