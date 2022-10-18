@@ -93,11 +93,13 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/container/Iterator.h>
+#include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/MemoryResource.h>
 #include <folly/portability/Builtins.h>
@@ -639,40 +641,36 @@ Container&& as_sorted_unique(Container&& container, Compare const& comp) {
 // class value_compare_map is used to compare map elements.
 template <class Compare>
 struct value_compare_map : Compare {
-  template <class Pair1, class Pair2>
-  bool operator()(const Pair1& a, const Pair2& b) const {
-    return Compare::operator()(a.first, b.first);
+  template <typename... value_type>
+  auto operator()(const value_type&... a) const
+      noexcept(noexcept(Compare::operator()(a.first...)))
+          -> type_t<bool, decltype(Compare::operator()(a.first...))> {
+    return Compare::operator()(a.first...);
   }
 
-  template <class value_type>
-  decltype(auto) getKey(const value_type& a) const {
-    using first_type = typename std::decay_t<decltype(a)>::first_type;
-    return const_cast<first_type&>(a.first);
+  template <typename value_type>
+  auto& getKey(value_type& a) const noexcept {
+    return a.first;
   }
 
-  template <class value_type>
-  decltype(auto) getKey(const value_type& a) {
-    using first_type = typename std::decay_t<decltype(a)>::first_type;
-    return const_cast<first_type&>(a.first);
-  }
-
-  explicit value_compare_map(const Compare& c) : Compare(c) {}
+  explicit value_compare_map(const Compare& c) noexcept(
+      std::is_nothrow_copy_constructible<Compare>::value)
+      : Compare(c) {}
 };
 
 // wrapper class value_compare_set for set elements.
-template <class Compare, class value_type>
+template <class Compare>
 struct value_compare_set : Compare {
-  bool operator()(const value_type& a, const value_type& b) const {
-    return Compare::operator()(a, b);
+  using Compare::operator();
+
+  template <typename value_type>
+  value_type& getKey(value_type& a) const noexcept {
+    return a;
   }
 
-  value_type& getKey(const value_type& a) const {
-    return const_cast<value_type&>(a);
-  }
-
-  value_type& getKey(const value_type& a) { return const_cast<value_type&>(a); }
-
-  explicit value_compare_set(const Compare& c) : Compare(c) {}
+  explicit value_compare_set(const Compare& c) noexcept(
+      std::is_nothrow_copy_constructible<Compare>::value)
+      : Compare(c) {}
 };
 
 /**
@@ -699,7 +697,7 @@ template <
     class GrowthPolicy = void,
     class Container = std::vector<T, Allocator>,
     class KeyT = T,
-    class ValueCompare = value_compare_set<Compare, T>>
+    class ValueCompare = value_compare_set<Compare>>
 class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
  protected:
   growth_policy_wrapper<GrowthPolicy>& get_growth_policy() { return *this; }
@@ -1398,7 +1396,7 @@ class heap_vector_set
           GrowthPolicy,
           Container,
           T,
-          detail::heap_vector_detail::value_compare_set<Compare, T>> {
+          detail::heap_vector_detail::value_compare_set<Compare>> {
  private:
   using heap_vector_container =
       detail::heap_vector_detail::heap_vector_container<
@@ -1408,7 +1406,7 @@ class heap_vector_set
           GrowthPolicy,
           Container,
           T,
-          detail::heap_vector_detail::value_compare_set<Compare, T>>;
+          detail::heap_vector_detail::value_compare_set<Compare>>;
 
  public:
   using heap_vector_container::heap_vector_container;
