@@ -226,7 +226,7 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * users always have the option of using clone() to create a second IOBuf that
  * points to the same underlying buffer.)
  *
- * @refcode docs/examples/folly/io/IOBuf.cpp
+ * @refcode folly/docs/examples/folly/io/IOBuf.cpp
  */
 class IOBuf {
  public:

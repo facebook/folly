@@ -27,7 +27,7 @@
  *
  * Additional documentation is in folly/docs/Range.md
  *
- * @refcode docs/examples/folly/Range.h
+ * @refcode folly/docs/examples/folly/Range.h
  * @struct folly::range
  */
 

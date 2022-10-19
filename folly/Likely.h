@@ -31,7 +31,7 @@
  *   cases do not require likeliness annotations.
  *
  * @file Likely.h
- * @refcode docs/examples/folly/Likely.cpp
+ * @refcode folly/docs/examples/folly/Likely.cpp
  */
 
 #pragma once

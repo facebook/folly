@@ -48,7 +48,7 @@
  * - retryWithExponentialBackoff: the retries will be restarted with
  * exponiential backoff.
  *
- * \refcode docs/examples/folly/experimental/coro/Retry.cpp
+ * \refcode folly/docs/examples/folly/experimental/coro/Retry.cpp
  */
 
 namespace folly::coro {

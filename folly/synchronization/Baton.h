@@ -59,7 +59,7 @@ namespace folly {
 /// When MayBlock == true, Baton post is async-signal-safe if
 /// Futex wake is so.
 ///
-/// @refcode docs/examples/folly/synchronization/Baton.cpp
+/// @refcode folly/docs/examples/folly/synchronization/Baton.cpp
 ///
 template <bool MayBlock = true, template <typename> class Atom = std::atomic>
 class Baton {

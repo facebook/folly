@@ -22,7 +22,7 @@
  * specification is on github:
  * https://github.com/facebook/folly/blob/main/folly/docs/Format.md
  *
- * @refcode docs/examples/folly/Format.cpp
+ * @refcode folly/docs/examples/folly/Format.cpp
  * @file Format.h
  */
 

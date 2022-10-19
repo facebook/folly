@@ -66,7 +66,7 @@ struct WithDataTag;
  * If your function needs to be able to request cancellation then you
  * should instead take a CancellationSource as a parameter.
  *
- * @refcode docs/examples/folly/CancellationToken.cpp
+ * @refcode folly/docs/examples/folly/CancellationToken.cpp
  * @class folly::CancellationToken
  */
 class CancellationToken {
@@ -149,7 +149,7 @@ bool operator!=(
  * A CancellationSource object provides the ability to request cancellation of
  * operations that an associated CancellationToken was passed to.
  *
- * @refcode docs/examples/folly/CancellationSource.cpp
+ * @refcode folly/docs/examples/folly/CancellationSource.cpp
  * @class folly::CancellationSource
  */
 // Example usage:
@@ -285,7 +285,7 @@ bool operator!=(
  *
  * A CancellationCallback object is neither copyable nor movable.
  *
- * @refcode docs/examples/folly/CancellationCallback.cpp
+ * @refcode folly/docs/examples/folly/CancellationCallback.cpp
  * @class folly::CancellationCallback
  */
 class CancellationCallback {

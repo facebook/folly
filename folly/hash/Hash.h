@@ -18,7 +18,7 @@
  * folly::hash provides hashing algorithms, as well as algorithms to combine
  * multiple hashes/hashable objects together.
  *
- * @refcode docs/examples/folly/hash/Hash.cpp
+ * @refcode folly/docs/examples/folly/hash/Hash.cpp
  * @file hash/Hash.h
  */
 

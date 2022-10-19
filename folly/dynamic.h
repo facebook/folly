@@ -31,7 +31,7 @@
  * https://github.com/facebook/folly/blob/main/folly/docs/Dynamic.md
  *
  * @author Jordan DeLong <delong.j@fb.com>
- * @refcode docs/examples/folly/dynamic.cpp
+ * @refcode folly/docs/examples/folly/dynamic.cpp
  * @struct folly::dynamic
  */
 /*
@@ -175,7 +175,7 @@ struct dynamic {
    * See D3013423 and
    * [DR95](http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1467).
    *
-   * @refcode docs/examples/folly/dynamic/array.cpp
+   * @refcode folly/docs/examples/folly/dynamic/array.cpp
    * @methodset Array
    */
   template <class... Args>
@@ -184,7 +184,7 @@ struct dynamic {
   /**
    * Construct a dynamic object.
    *
-   * @refcode docs/examples/folly/dynamic/object.cpp
+   * @refcode folly/docs/examples/folly/dynamic/object.cpp
    * @methodset Object
    */
   static ObjectMaker object();

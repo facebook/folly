@@ -17,7 +17,7 @@
  * Helper functions to create std::arrays.
  *
  * @file container/Array.h
- * @refcode docs/examples/folly/container/Array.cpp
+ * @refcode folly/docs/examples/folly/container/Array.cpp
  */
 
 #pragma once

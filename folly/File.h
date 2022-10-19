@@ -34,7 +34,7 @@ namespace folly {
 /**
  * A File represents an open file.
  * @class folly::File
- * @refcode docs/examples/folly/File.cpp
+ * @refcode folly/docs/examples/folly/File.cpp
  */
 class File {
  public:

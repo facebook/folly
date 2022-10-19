@@ -17,7 +17,7 @@
 /**
  * Provides a unified interface for IP addresses.
  *
- * @refcode docs/examples/folly/ipaddress.cpp
+ * @refcode folly/docs/examples/folly/ipaddress.cpp
  *
  * @class folly::IPAddress
  * @see IPAddressV6

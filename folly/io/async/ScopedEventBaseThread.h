@@ -40,7 +40,7 @@ typedef Range<const char*> StringPiece;
  * ScopedEventBaseThread is not CopyConstructible nor CopyAssignable nor
  * MoveConstructible nor MoveAssignable.
  *
- * @refcode docs/examples/folly/ScopedEventBaseThread.cpp
+ * @refcode folly/docs/examples/folly/ScopedEventBaseThread.cpp
  * @class folly::ScopedEventBaseThread
  */
 class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
@@ -48,7 +48,7 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
   /**
    * Default constructor, initializes with current EventBaseManager and empty
    * thread name.
-   * @refcode docs/examples/folly/ScopedEventBaseThread2.cpp
+   * @refcode folly/docs/examples/folly/ScopedEventBaseThread2.cpp
    */
   ScopedEventBaseThread();
   /**

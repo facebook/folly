@@ -21,7 +21,7 @@
 
 /**
  * @class folly::Function
- * @refcode docs/examples/folly/Function.cpp
+ * @refcode folly/docs/examples/folly/Function.cpp
  *
  * A polymorphic function wrapper that is not copyable and does not
  * require the wrapped function to be copy constructible.

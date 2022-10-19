@@ -24,7 +24,7 @@
  * representation.
  *
  * @file DynamicConverter.h
- * @refcode docs/examples/folly/DynamicConverter.cpp
+ * @refcode folly/docs/examples/folly/DynamicConverter.cpp
  */
 
 #pragma once
@@ -49,7 +49,7 @@ namespace folly {
  * See docs/DynamicConverter.md for supported types and customization.
  *
  * @tparam T  A type representing the structure of the dynamic argument.
- * @refcode docs/examples/folly/DynamicConverter.cpp
+ * @refcode folly/docs/examples/folly/DynamicConverter.cpp
  */
 template <typename T>
 T convertTo(const dynamic&);

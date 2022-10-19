@@ -649,7 +649,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 /// More documentation on how to use coroutines is available at
 /// https://github.com/facebook/folly/blob/main/folly/experimental/coro/README.md
 ///
-/// @refcode docs/examples/folly/experimental/coro/Task.cpp
+/// @refcode folly/docs/examples/folly/experimental/coro/Task.cpp
 template <typename T>
 class FOLLY_NODISCARD Task {
  public:

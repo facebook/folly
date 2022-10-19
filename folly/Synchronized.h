@@ -626,7 +626,7 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
  * @tparam T  The type of datum to be stored.
  * @tparam Mutex  The mutex type that guards the datum. Must be Lockable.
  *
- * @refcode docs/examples/folly/Synchronized.cpp
+ * @refcode folly/docs/examples/folly/Synchronized.cpp
  */
 template <class T, class Mutex = SharedMutex>
 struct Synchronized : public SynchronizedBase<

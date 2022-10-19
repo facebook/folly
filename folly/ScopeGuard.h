@@ -20,7 +20,7 @@
  * is executed upon leaving the current scope.
  *
  * @file ScopeGuard.h
- * @refcode docs/examples/folly/ScopeGuard.cpp
+ * @refcode folly/docs/examples/folly/ScopeGuard.cpp
  */
 /*
  * The makeGuard() function is used to create a new ScopeGuard object.
@@ -209,7 +209,7 @@ using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type, INE>;
  *     makeScopeGuard(...); // bad
  *
  * @param f  The function to execute upon the guard's destruction.
- * @refcode docs/examples/folly/ScopeGuard2.cpp
+ * @refcode folly/docs/examples/folly/ScopeGuard2.cpp
  */
 template <typename F>
 FOLLY_NODISCARD detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
@@ -223,7 +223,7 @@ FOLLY_NODISCARD detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
  * The guard can be enabled using .rehire().
  *
  * @see makeGuard
- * @refcode docs/examples/folly/ScopeGuard2.cpp
+ * @refcode folly/docs/examples/folly/ScopeGuard2.cpp
  */
 template <typename F>
 FOLLY_NODISCARD detail::ScopeGuardImplDecay<F, true>

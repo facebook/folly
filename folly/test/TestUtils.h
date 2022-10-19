@@ -20,7 +20,7 @@
  * This file contains additional gtest-style check macros to use in unit tests.
  *
  * @file test/TestUtils.h
- * @refcode docs/examples/folly/test/TestUtils.cpp
+ * @refcode folly/docs/examples/folly/test/TestUtils.cpp
  *
  * - SKIP(), SKIP_IF(EXPR)
  * - EXPECT_THROW_RE(), ASSERT_THROW_RE()
