@@ -208,10 +208,6 @@ class AccessSpreaderBase {
     /// is in range.
     std::atomic<Getcpu::Func> getcpu; // nullptr -> not initialized
   };
-  static_assert(
-      is_constexpr_default_constructible_v<GlobalState> &&
-          std::is_trivially_destructible<GlobalState>::value,
-      "unsuitable for global state");
 
   /// Always claims to be on CPU zero, node zero
   static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*);
@@ -261,13 +257,12 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
  private:
   struct GlobalState : detail::AccessSpreaderBase::GlobalState {};
   static_assert(
-      is_constexpr_default_constructible_v<GlobalState> &&
-          std::is_trivially_destructible<GlobalState>::value,
+      std::is_trivially_destructible<GlobalState>::value,
       "unsuitable for global state");
 
  public:
   FOLLY_EXPORT static GlobalState& state() {
-    static GlobalState state; // trivial for zero ctor and zero dtor
+    static FOLLY_CONSTINIT GlobalState state;
     if (FOLLY_UNLIKELY(!state.getcpu.load(std::memory_order_acquire))) {
       initialize(state);
     }
