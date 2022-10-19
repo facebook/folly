@@ -23,6 +23,7 @@
 
 #include <folly/Traits.h>
 #include <folly/portability/GTest.h>
+#include <folly/sorted_vector_types.h>
 
 using namespace folly;
 
@@ -137,6 +138,24 @@ TEST(MapUtil, get_ptr) {
   EXPECT_TRUE(get_ptr(m, 2) == nullptr);
   *get_ptr(m, 1) = 4;
   EXPECT_EQ(4, m.at(1));
+}
+
+TEST(MapUtil, get_ptr2) {
+  folly::sorted_vector_map<int, int> m;
+  m[1] = 7;
+  m[4] = 9;
+  auto r0 = get_ptr2(m, 1, 4);
+  EXPECT_EQ(7, *r0.first);
+  EXPECT_EQ(9, *r0.second);
+  auto r1 = get_ptr2(m, 1, 5);
+  EXPECT_EQ(7, *r1.first);
+  EXPECT_EQ(nullptr, r1.second);
+  auto r2 = get_ptr2(m, 2, 4);
+  EXPECT_EQ(nullptr, r2.first);
+  EXPECT_EQ(9, *r2.second);
+  auto r3 = get_ptr2(m, 2, 5);
+  EXPECT_EQ(nullptr, r3.first);
+  EXPECT_EQ(nullptr, r3.second);
 }
 
 TEST(MapUtil, get_ptr_reference_value_type) {
