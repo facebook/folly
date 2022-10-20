@@ -20,6 +20,11 @@
 #include <type_traits>
 #include <vector>
 
+// On MSVC an incorrect <version> header get's picked up
+#if !defined(_MSC_VER) && __has_include(<version>)
+#include <version>
+#endif
+
 namespace {
 // This struct is different in every translation unit.  We use template
 // instantiations to define inline freestanding methods.  Since the
@@ -286,7 +291,46 @@ namespace detail {
   }                                                                      \
   }
 
-#if defined(_LIBCPP_VECTOR)
+#if defined(_LIBCPP_VECTOR) && _LIBCPP_VERSION >= 15000
+// libc++ newer
+
+template <
+    typename Tag,
+    typename T,
+    typename A,
+    A Ptr__end_,
+    typename B,
+    B Ptr__annotate_contiguous_container_>
+struct MakeUnsafeVectorSetLargerSize {
+  friend void unsafeVectorSetLargerSizeImpl(std::vector<T>& v, std::size_t n) {
+    const auto old_size = v.size();
+    v.*Ptr__end_ += (n - v.size());
+
+    // libc++ contiguous containers use special annotation functions that help
+    // the address sanitizer to detect improper memory accesses. When ASAN is
+    // enabled we need to call the appropriate annotation functions in order to
+    // stop ASAN from reporting false positives. When ASAN is disabled, the
+    // annotation function is a no-op.
+    (v.*Ptr__annotate_contiguous_container_)(
+        v.data(),
+        v.data() + v.capacity(),
+        v.data() + old_size,
+        v.data() + v.size());
+  }
+};
+
+#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)               \
+  template struct folly::detail::MakeUnsafeVectorSetLargerSize<      \
+      FollyMemoryDetailTranslationUnitTag,                           \
+      TYPE,                                                          \
+      TYPE*(std::vector<TYPE, std::allocator<TYPE>>::*),             \
+      &std::vector<TYPE>::__end_,                                    \
+      void (std::vector<TYPE>::*)(                                   \
+          const void*, const void*, const void*, const void*) const, \
+      &std::vector<TYPE>::__annotate_contiguous_container>;          \
+  FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
+
+#elif defined(_LIBCPP_VECTOR)
 // libc++
 
 template <
