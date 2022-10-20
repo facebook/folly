@@ -290,7 +290,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   static size_t cachedCurrent(
       size_t numStripes, const GlobalState& s = state()) {
     if (kIsMobile) {
-      return current(numStripes);
+      return current(numStripes, s);
     }
     return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)];
   }
