@@ -472,6 +472,10 @@ class ConcurrentHashMap {
   }
 
   // Calls the hash function, and therefore may throw.
+  // This function doesn't necessarily delete the item that pos points to.
+  // It simply tries erasing the item associated with the same key.
+  // While this behavior can be confusing, erase(iterator) is often found in
+  // std data structures so we follow a similar pattern here.
   ConstIterator erase(ConstIterator& pos) {
     auto h = HashFn{}(pos->first);
     auto segment = pickSegment(h);
