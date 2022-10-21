@@ -350,7 +350,12 @@ void heapify(Container& cont) {
     if (next == index) {
       continue;
     }
-    auto tmp = std::move(cont[index]);
+    // Subtlety: operator[] returns a Container::reference. Because
+    // Container::reference can be a proxy, using bare `auto` is not
+    // sufficient to remove the "reference nature" of
+    // Container::reference and force a move out of the container;
+    // instead, we need Container::value_type.
+    typename Container::value_type tmp = std::move(cont[index]);
     rotate(next, index);
     cont[next] = std::move(tmp);
   }
