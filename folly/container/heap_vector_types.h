@@ -649,7 +649,7 @@ struct value_compare_map : Compare {
   }
 
   template <typename value_type>
-  auto& getKey(value_type& a) const noexcept {
+  const auto& getKey(const value_type& a) const noexcept {
     return a.first;
   }
 
