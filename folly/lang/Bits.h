@@ -350,8 +350,10 @@ template <class T>
 inline constexpr T loadUnaligned(const void* p) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  if (kHasUnalignedAccess) {
+  if FOLLY_CXX17_CONSTEXPR (kHasUnalignedAccess) {
     return static_cast<const Unaligned<T>*>(p)->value;
+  } else if FOLLY_CXX17_CONSTEXPR (alignof(T) == 1) {
+    return *static_cast<const T*>(p);
   } else {
     T value{};
     memcpy(&value, p, sizeof(T));
@@ -376,7 +378,7 @@ inline T partialLoadUnaligned(const void* p, size_t l) {
 
   auto cp = static_cast<const char*>(p);
   T value = 0;
-  if (!kHasUnalignedAccess || !kIsLittleEndian) {
+  if FOLLY_CXX17_CONSTEXPR (!kHasUnalignedAccess || !kIsLittleEndian) {
     // Unsupported, use memcpy.
     memcpy(&value, cp, l);
     return value;
@@ -404,7 +406,7 @@ template <class T>
 inline void storeUnaligned(void* p, T value) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  if (kHasUnalignedAccess) {
+  if FOLLY_CXX17_CONSTEXPR (kHasUnalignedAccess) {
     // Prior to C++14, the spec says that a placement new like this
     // is required to check that p is not nullptr, and to do nothing
     // if p is a nullptr. By assuming it's not a nullptr, we get a
@@ -412,6 +414,10 @@ inline void storeUnaligned(void* p, T value) {
     // than just silently doing nothing.
     assume(p != nullptr);
     new (p) Unaligned<T>(value);
+  } else if FOLLY_CXX17_CONSTEXPR (alignof(T) == 1) {
+    // See above comment about assuming not a nullptr
+    assume(p != nullptr);
+    new (p) T(value);
   } else {
     memcpy(p, &value, sizeof(T));
   }
