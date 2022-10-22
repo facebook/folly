@@ -324,10 +324,6 @@ naiveGoodMallocSize(size_t minSize) noexcept {
  * @return size_t
  */
 inline size_t goodMallocSize(size_t minSize) noexcept {
-  if (usingJEMalloc()) {
-    return naiveGoodMallocSize(minSize);
-  }
-
   if (minSize == 0) {
     return 0;
   }
