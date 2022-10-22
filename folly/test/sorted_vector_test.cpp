@@ -1166,6 +1166,7 @@ TEST(SortedVectorTypes, TestPmrMoveConstructSameAlloc) {
     auto d = s1.data();
 
     pmr::sorted_vector_set<int> s2(std::move(s1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_EQ(s1.get_allocator(), s2.get_allocator());
     EXPECT_EQ(s2.data(), d);
     EXPECT_EQ(s2.count(42), 1);
@@ -1177,6 +1178,7 @@ TEST(SortedVectorTypes, TestPmrMoveConstructSameAlloc) {
     auto d = m1.data();
 
     pmr::sorted_vector_map<int, int> m2(std::move(m1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_EQ(m1.get_allocator(), m2.get_allocator());
     EXPECT_EQ(m2.data(), d);
     EXPECT_EQ(m2.at(42), 42);
@@ -1198,6 +1200,7 @@ TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
     auto d = s1.data();
 
     pmr::sorted_vector_set<int> s2(std::move(s1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_NE(s1.get_allocator(), s2.get_allocator());
     EXPECT_NE(s2.data(), d);
     EXPECT_EQ(s2.count(42), 1);
@@ -1209,6 +1212,7 @@ TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
     auto d = m1.data();
 
     pmr::sorted_vector_map<int, int> m2(std::move(m1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_NE(m1.get_allocator(), m2.get_allocator());
     EXPECT_NE(m2.data(), d);
     EXPECT_EQ(m2.at(42), 42);

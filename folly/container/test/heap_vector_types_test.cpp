@@ -350,6 +350,7 @@ TEST(HeapVectorTypes, FromVector) {
 
     heap_vector_map<int, float> m(std::move(vec));
 
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_EQ(vec.size(), 0);
     EXPECT_EQ(m.size(), 3);
     EXPECT_EQ(m[1], 1.0f);
@@ -364,6 +365,7 @@ TEST(HeapVectorTypes, FromVector) {
 
     small_heap_vector_map<int, float> m(std::move(vec));
 
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_EQ(vec.size(), 0);
     EXPECT_EQ(m.size(), 3);
     EXPECT_EQ(m[1], 1.0f);
@@ -1482,6 +1484,7 @@ TEST(HeapVectorTypes, TestPmrMoveConstructSameAlloc) {
     auto d = s1.iterate().data();
 
     pmr::heap_vector_set<int> s2(std::move(s1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_EQ(s1.get_allocator(), s2.get_allocator());
     EXPECT_EQ(s2.iterate().data(), d);
     EXPECT_EQ(s2.count(42), 1);
@@ -1492,6 +1495,7 @@ TEST(HeapVectorTypes, TestPmrMoveConstructSameAlloc) {
     auto d = m1.iterate().data();
 
     pmr::heap_vector_map<int, int> m2(std::move(m1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_EQ(m1.get_allocator(), m2.get_allocator());
     EXPECT_EQ(m2.iterate().data(), d);
     EXPECT_EQ(m2.at(42), 42);
@@ -1513,6 +1517,7 @@ TEST(HeapVectorTypes, TestPmrMoveConstructDifferentAlloc) {
     auto d = s1.iterate().data();
 
     pmr::heap_vector_set<int> s2(std::move(s1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_NE(s1.get_allocator(), s2.get_allocator());
     EXPECT_NE(s2.iterate().data(), d);
     EXPECT_EQ(s2.count(42), 1);
@@ -1523,6 +1528,7 @@ TEST(HeapVectorTypes, TestPmrMoveConstructDifferentAlloc) {
     auto d = m1.iterate().data();
 
     pmr::heap_vector_map<int, int> m2(std::move(m1), a2);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_NE(m1.get_allocator(), m2.get_allocator());
     EXPECT_NE(m2.iterate().data(), d);
     EXPECT_EQ(m2.at(42), 42);
