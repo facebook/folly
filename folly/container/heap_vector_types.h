@@ -990,6 +990,8 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
 
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
 
+  const Container& get_container() const noexcept { return m_.cont_; }
+
   heap_vector_container& operator=(const heap_vector_container& other) =
       default;
 

@@ -1694,3 +1694,12 @@ TEST(HeapVectorTypes, TestIterator) {
     EXPECT_EQ(I->first, --i);
   }
 }
+
+TEST(HeapVectorTypes, TestGetContainer) {
+  heap_vector_map<int, int> m;
+  EXPECT_TRUE(m.get_container().empty());
+  small_heap_vector_map<int, int> m2;
+  EXPECT_TRUE(m2.get_container().empty());
+  heap_vector_set<int> s;
+  EXPECT_TRUE(s.get_container().empty());
+}

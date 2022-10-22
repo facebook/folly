@@ -376,6 +376,8 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
 
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
 
+  const Container& get_container() const noexcept { return m_.cont_; }
+
   sorted_vector_set& operator=(const sorted_vector_set& other) = default;
 
   sorted_vector_set& operator=(sorted_vector_set&& other) = default;
@@ -984,6 +986,8 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
+
+  const Container& get_container() const noexcept { return m_.cont_; }
 
   sorted_vector_map& operator=(const sorted_vector_map& other) = default;
 

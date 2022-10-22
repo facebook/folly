@@ -1373,3 +1373,10 @@ TEST(SortedVectorTypes, TestInsertHintCopy) {
   }
   EXPECT_EQ(CountCopyCtor::gCount_, 0);
 }
+
+TEST(SortedVectorTypes, TestGetContainer) {
+  sorted_vector_set<int> set;
+  sorted_vector_map<int, int> map;
+  EXPECT_TRUE(set.get_container().empty());
+  EXPECT_TRUE(map.get_container().empty());
+}
