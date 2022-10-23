@@ -33,9 +33,6 @@ struct NetworkSocket {
 #ifdef _WIN32
   using native_handle_type = SOCKET;
   static constexpr native_handle_type invalid_handle_value = INVALID_SOCKET;
-#elif defined(__EMSCRIPTEN__)
-  using native_handle_type = void*;
-  static constexpr native_handle_type invalid_handle_value = nullptr;
 #else
   using native_handle_type = int;
   static constexpr native_handle_type invalid_handle_value = -1;

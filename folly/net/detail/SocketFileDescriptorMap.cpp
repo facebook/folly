@@ -171,15 +171,11 @@ int SocketFileDescriptorMap::close(int fd) noexcept {
   std::terminate();
 }
 
-int SocketFileDescriptorMap::close(void* sock) noexcept {
+int SocketFileDescriptorMap::fdToSocket(int fd) noexcept {
   std::terminate();
 }
 
-void* SocketFileDescriptorMap::fdToSocket(int fd) noexcept {
-  std::terminate();
-}
-
-int SocketFileDescriptorMap::socketToFd(void* sock) noexcept {
+int SocketFileDescriptorMap::socketToFd(int sock) noexcept {
   std::terminate();
 }
 
