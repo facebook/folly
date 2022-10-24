@@ -18,7 +18,7 @@ import zipfile
 from datetime import datetime
 from typing import Dict, NamedTuple
 from urllib.parse import urlparse
-from urllib.request import urlretrieve
+from urllib.request import Request, urlopen
 
 from .copytree import prefetch_dir_if_eden
 from .envfuncs import Env
@@ -677,10 +677,6 @@ def download_url_to_file_with_progress(url: str, file_name) -> None:
         def progress_pycurl(self, total, amount, _uploadtotal, _uploadamount):
             self.write_update(total, amount)
 
-        def progress_urllib(self, count, block, total):
-            amount = count * block
-            self.write_update(total, amount)
-
     progress = Progress()
     start = time.time()
     try:
@@ -698,9 +694,20 @@ def download_url_to_file_with_progress(url: str, file_name) -> None:
                 c.close()
             headers = None
         else:
-            (_filename, headers) = urlretrieve(
-                url, file_name, reporthook=progress.progress_urllib
-            )
+            req_header = {"Accept": "application/*"}
+            res = urlopen(Request(url, None, req_header))
+            chunk_size = 8192  # urlretrieve uses this value
+            headers = res.headers
+            content_length = res.headers.get("Content-Length")
+            total = int(content_length.strip()) if content_length else -1
+            amount = 0
+            with open(file_name, "wb") as f:
+                chunk = res.read(chunk_size)
+                while chunk:
+                    f.write(chunk)
+                    amount += len(chunk)
+                    progress.write_update(total, amount)
+                    chunk = res.read(chunk_size)
     except (OSError, IOError) as exc:  # noqa: B014
         raise TransientFailure(
             "Failed to download %s to %s: %s" % (url, file_name, str(exc))
