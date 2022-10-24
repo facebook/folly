@@ -27,6 +27,7 @@ libbpf
 libmnl
 zlib
 googletest
+fmt
 
 [debs]
 libssl-dev
