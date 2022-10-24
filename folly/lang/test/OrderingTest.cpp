@@ -101,5 +101,5 @@ TEST_F(OrderingTest, partial_ordering) {
   EXPECT_EQ(ordering::eq, static_cast<ordering>(partial_ordering::equivalent));
   EXPECT_THROW(
       void(static_cast<ordering>(partial_ordering::unordered)),
-      std::out_of_range);
+      std::logic_error);
 }
