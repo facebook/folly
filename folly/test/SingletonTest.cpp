@@ -1004,6 +1004,25 @@ TEST(Singleton, LeakySingletonLSAN) {
   EXPECT_EQ(*ptr1, 1);
 }
 
+TEST(Singleton, LeakySingletonTSAN) {
+  struct PrivateTag {};
+  static folly::LeakySingleton<int, PrivateTag> gPtr;
+  auto* ptr0 = &gPtr.get();
+  EXPECT_EQ(*ptr0, 0);
+  auto func = [&]() {
+    auto val = gPtr.get();
+    EXPECT_TRUE(val == 0 || val == 1);
+  };
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 100; i++) {
+    threads.emplace_back(func);
+  }
+  gPtr.make_mock([] { return new int(1); });
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
 TEST(Singleton, ShutdownTimer) {
   struct VaultTag {};
   struct PrivateTag {};

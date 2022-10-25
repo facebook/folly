@@ -829,7 +829,7 @@ class LeakySingleton {
     auto& entry = entryInstance();
     std::lock_guard<std::mutex> lg(entry.mutex);
     if (entry.ptr) {
-      annotate_object_leaked(std::exchange(entry.ptr, nullptr));
+      annotate_object_leaked(std::atomic_exchange(&entry.ptr, (T*)nullptr));
     }
     entry.createFunc = createFunc;
     entry.state = State::Dead;
@@ -844,7 +844,7 @@ class LeakySingleton {
     Entry& operator=(const Entry&) = delete;
 
     std::atomic<State> state{State::NotRegistered};
-    T* ptr{nullptr};
+    std::atomic<T*> ptr{nullptr};
     CreateFunc createFunc;
     std::mutex mutex;
     detail::TypeDescriptor type_{typeid(T), typeid(Tag)};

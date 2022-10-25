@@ -153,6 +153,22 @@ BENCHMARK(FollySingletonThreadLocal4Threads, n) {
   run4Threads([=]() { follySingletonThreadLocal(n); });
 }
 
+LeakySingleton<BenchmarkSingleton> benchmark_leaky_singleton;
+
+void follyLeakySingleton(size_t n) {
+  for (size_t i = 0; i < n; ++i) {
+    LeakySingleton<BenchmarkSingleton>::get().val++;
+  }
+}
+
+BENCHMARK(FollyLeakySingleton, n) {
+  follyLeakySingleton(n);
+}
+
+BENCHMARK(FollyLeakySingleton4Threads, n) {
+  run4Threads([=]() { follyLeakySingleton(n); });
+}
+
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
