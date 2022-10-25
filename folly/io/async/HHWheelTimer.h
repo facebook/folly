@@ -24,6 +24,7 @@
 #include <boost/intrusive/list.hpp>
 #include <glog/logging.h>
 
+#include <folly/ExceptionString.h>
 #include <folly/Optional.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/DelayedDestruction.h>
@@ -283,12 +284,9 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
       void timeoutExpired() noexcept override {
         try {
           fn_();
-        } catch (std::exception const& e) {
-          LOG(ERROR) << "HHWheelTimerBase timeout callback threw an exception: "
-                     << e.what();
         } catch (...) {
-          LOG(ERROR)
-              << "HHWheelTimerBase timeout callback threw a non-exception.";
+          LOG(ERROR) << "HHWheelTimerBase timeout callback threw unhandled "
+                     << exceptionStr(std::current_exception());
         }
         delete this;
       }
