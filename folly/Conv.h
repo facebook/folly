@@ -348,32 +348,33 @@ constexpr unsigned int digitsEnough() {
   return static_cast<unsigned int>(digits10) + 1;
 }
 
-inline size_t unsafeTelescope128(
-    char* buffer, size_t room, unsigned __int128 x) {
-  typedef unsigned __int128 Usrc;
-  size_t p = room - 1;
+inline size_t unsafeTelescope128(char* outb, char* oute, unsigned __int128 x) {
+  // Decompose the input into at most 3 components using the largest power-of-10
+  // base that fits in a 64-bit unsigned integer, and then convert the
+  // components using the optimized 64-bit functions and concatenate them.
+  constexpr auto kBase = UINT64_C(10'000'000'000'000'000'000);
 
-  while (x >= (Usrc(1) << 64)) { // Using 128-bit division while needed
-    const auto y = x / 10;
-    const auto digit = x % 10;
+  if (x >> 64 > 0) {
+    const auto rem = static_cast<uint64_t>(x % kBase);
+    x /= kBase;
 
-    buffer[p--] = static_cast<char>('0' + digit);
-    x = y;
+    if (x >> 64 > 0) {
+      const auto rem2 = static_cast<uint64_t>(x % kBase);
+      x /= kBase;
+      assert(x >> 64 == 0);
+
+      size_t p = to_ascii_decimal(outb, oute, static_cast<uint64_t>(x));
+      p += to_ascii_decimal(outb + p, oute, rem2);
+      p += to_ascii_decimal(outb + p, oute, rem);
+      return p;
+    }
+
+    size_t p = to_ascii_decimal(outb, oute, static_cast<uint64_t>(x));
+    p += to_ascii_decimal(outb + p, oute, rem);
+    return p;
   }
 
-  uint64_t xx = static_cast<uint64_t>(x); // Rest uses faster 64-bit division
-
-  while (xx >= 10) {
-    const auto y = xx / 10ULL;
-    const auto digit = xx % 10ULL;
-
-    buffer[p--] = static_cast<char>('0' + digit);
-    xx = y;
-  }
-
-  buffer[p] = static_cast<char>('0' + xx);
-
-  return p;
+  return to_ascii_decimal(outb, oute, static_cast<uint64_t>(x));
 }
 
 } // namespace detail
@@ -499,26 +500,24 @@ template <class Tgt>
 void toAppend(__int128 value, Tgt* result) {
   typedef unsigned __int128 Usrc;
   char buffer[detail::digitsEnough<unsigned __int128>() + 1];
+  const auto oute = buffer + sizeof(buffer);
   size_t p;
 
   if (value < 0) {
-    p = detail::unsafeTelescope128(buffer, sizeof(buffer), -Usrc(value));
-    buffer[--p] = '-';
+    buffer[0] = '-';
+    p = 1 + detail::unsafeTelescope128(buffer + 1, oute, -Usrc(value));
   } else {
-    p = detail::unsafeTelescope128(buffer, sizeof(buffer), value);
+    p = detail::unsafeTelescope128(buffer, oute, value);
   }
 
-  result->append(buffer + p, buffer + sizeof(buffer));
+  result->append(buffer, buffer + p);
 }
 
 template <class Tgt>
 void toAppend(unsigned __int128 value, Tgt* result) {
   char buffer[detail::digitsEnough<unsigned __int128>()];
-  size_t p;
-
-  p = detail::unsafeTelescope128(buffer, sizeof(buffer), value);
-
-  result->append(buffer + p, buffer + sizeof(buffer));
+  size_t p = detail::unsafeTelescope128(buffer, buffer + sizeof(buffer), value);
+  result->append(buffer, buffer + p);
 }
 
 template <class T>
