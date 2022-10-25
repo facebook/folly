@@ -106,9 +106,9 @@ TEST(Random, MultiThreaded) {
 TEST(Random, sanity) {
   // edge cases
   EXPECT_EQ(folly::Random::rand32(0), 0);
-  EXPECT_EQ(folly::Random::rand32(12, 12), 0);
+  EXPECT_EQ(folly::Random::rand32(12, 12), 12);
   EXPECT_EQ(folly::Random::rand64(0), 0);
-  EXPECT_EQ(folly::Random::rand64(12, 12), 0);
+  EXPECT_EQ(folly::Random::rand64(12, 12), 12);
 
   // 32-bit repeatability, uniqueness
   constexpr int kTestSize = 1000;
