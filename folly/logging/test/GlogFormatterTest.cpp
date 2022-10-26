@@ -24,6 +24,7 @@
 #include <folly/logging/LoggerDB.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Stdlib.h>
+#include <folly/system/ThreadName.h>
 
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
@@ -47,10 +48,11 @@ std::string formatMsg(
     unsigned int lineNumber,
     StringPiece functionName,
     // Default timestamp: 2017-04-17 13:45:56.123456 UTC
-    uint64_t timestampNS = 1492436756123456789ULL) {
+    uint64_t timestampNS = 1492436756123456789ULL,
+    bool logThreadName = false) {
   LoggerDB db{LoggerDB::TESTING};
   auto* category = db.getCategory("test");
-  GlogStyleFormatter formatter;
+  GlogStyleFormatter formatter(logThreadName);
 
   std::chrono::system_clock::time_point logTimePoint{
       std::chrono::duration_cast<std::chrono::system_clock::duration>(
@@ -78,6 +80,54 @@ TEST(GlogFormatter, log) {
       expected,
       formatMsg(
           LogLevel::WARN, "hello world", "myfile.cpp", 1234, "testFunction"));
+}
+
+TEST(GlogFormatter, logThreadName) {
+  auto tid = getOSThreadID();
+  auto threadName = getCurrentThreadName().value_or("Unknown");
+
+  // Test a very simple single-line log message
+  auto expected = folly::sformat(
+      "W0417 13:45:56.123456 {:5d} [{}] myfile.cpp:1234] hello world\n",
+      tid,
+      threadName);
+  EXPECT_EQ(
+      expected,
+      formatMsg(
+          LogLevel::WARN,
+          "hello world",
+          "myfile.cpp",
+          1234,
+          "testFunction",
+          1492436756123456789ULL /* timestampNS */,
+          true /* logThreadName */));
+}
+
+TEST(GlogFormatter, logThreadNameChanged) {
+  if (folly::canSetCurrentThreadName()) {
+    std::string msg;
+    std::string threadName = "foo";
+    uint64_t otherThreadID;
+    std::thread thread([&] {
+      folly::setThreadName(threadName);
+      otherThreadID = getOSThreadID();
+      msg = formatMsg(
+          LogLevel::WARN,
+          "hello world",
+          "myfile.cpp",
+          1234,
+          "testFunction",
+          1492436756123456789ULL /* timestampNS */,
+          true /* logThreadName */);
+    });
+    thread.join();
+    // Test a very simple single-line log message
+    auto expected = folly::sformat(
+        "W0417 13:45:56.123456 {:5d} [{}] myfile.cpp:1234] hello world\n",
+        otherThreadID,
+        threadName);
+    EXPECT_EQ(expected, msg);
+  }
 }
 
 TEST(GlogFormatter, filename) {

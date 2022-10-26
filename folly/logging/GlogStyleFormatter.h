@@ -53,7 +53,13 @@ namespace folly {
  */
 class GlogStyleFormatter : public LogFormatter {
  public:
+  explicit GlogStyleFormatter(bool log_thread_name = false)
+      : log_thread_name_(log_thread_name) {}
+
   std::string formatMessage(
       const LogMessage& message, const LogCategory* handlerCategory) override;
+
+ private:
+  const bool log_thread_name_{false};
 };
 } // namespace folly

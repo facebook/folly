@@ -20,6 +20,7 @@
 #include <folly/logging/LogLevel.h>
 #include <folly/logging/LogMessage.h>
 #include <folly/portability/Time.h>
+#include <folly/system/ThreadName.h>
 
 namespace {
 using folly::LogLevel;
@@ -59,19 +60,34 @@ std::string GlogStyleFormatter::formatMessage(
   }
 
   auto basename = message.getFileBaseName();
-  auto header = folly::sformat(
-      "{}{:02d}{:02d} {:02d}:{:02d}:{:02d}.{:06d} {:5d} {}:{}{}] ",
-      getGlogLevelName(message.getLevel())[0],
-      ltime.tm_mon + 1,
-      ltime.tm_mday,
-      ltime.tm_hour,
-      ltime.tm_min,
-      ltime.tm_sec,
-      usecs.count(),
-      message.getThreadID(),
-      basename,
-      message.getLineNumber(),
-      message.getContextString());
+  auto header = log_thread_name_
+      ? folly::sformat(
+            "{}{:02d}{:02d} {:02d}:{:02d}:{:02d}.{:06d} {:5d} [{}] {}:{}{}] ",
+            getGlogLevelName(message.getLevel())[0],
+            ltime.tm_mon + 1,
+            ltime.tm_mday,
+            ltime.tm_hour,
+            ltime.tm_min,
+            ltime.tm_sec,
+            usecs.count(),
+            message.getThreadID(),
+            getCurrentThreadName().value_or("Unknown"),
+            basename,
+            message.getLineNumber(),
+            message.getContextString())
+      : folly::sformat(
+            "{}{:02d}{:02d} {:02d}:{:02d}:{:02d}.{:06d} {:5d} {}:{}{}] ",
+            getGlogLevelName(message.getLevel())[0],
+            ltime.tm_mon + 1,
+            ltime.tm_mday,
+            ltime.tm_hour,
+            ltime.tm_min,
+            ltime.tm_sec,
+            usecs.count(),
+            message.getThreadID(),
+            basename,
+            message.getLineNumber(),
+            message.getContextString());
 
   // TODO: Support including thread names and thread context info.
 

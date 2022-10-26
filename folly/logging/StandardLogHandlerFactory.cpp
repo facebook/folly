@@ -16,6 +16,7 @@
 
 #include <folly/logging/StandardLogHandlerFactory.h>
 
+#include <folly/Conv.h>
 #include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/logging/CustomLogFormatter.h>
@@ -32,13 +33,29 @@ namespace {
 class GlogFormatterFactory
     : public StandardLogHandlerFactory::FormatterFactory {
  public:
-  bool processOption(StringPiece /* name */, StringPiece /* value */) override {
+  bool processOption(
+      StringPiece name /* name */, StringPiece value /* value */) override {
+    if (name == "log_thread_name") {
+      auto expectedLogThreadName = folly::tryTo<bool>(value);
+      if (expectedLogThreadName.hasValue()) {
+        log_thread_name_ = expectedLogThreadName.value();
+      } else {
+        throw std::invalid_argument(to<string>(
+            "unknown log_thread_name type \"",
+            value,
+            "\". Needs to be true/false or 1/0"));
+      }
+      return true;
+    }
     return false;
   }
   std::shared_ptr<LogFormatter> createFormatter(
       const std::shared_ptr<LogWriter>& /* logWriter */) override {
-    return std::make_shared<GlogStyleFormatter>();
+    return std::make_shared<GlogStyleFormatter>(log_thread_name_);
   }
+
+ private:
+  bool log_thread_name_{false};
 };
 
 class CustomLogFormatterFactory
