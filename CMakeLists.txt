@@ -1005,7 +1005,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST indexed_mem_pool_test BROKEN
         SOURCES IndexedMemPoolTest.cpp
       # MSVC Preprocessor stringizing raw string literals bug
-      #TEST json_test SOURCES JsonTest.cpp
+      TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
+      BENCHMARK json_benchmark SOURCES JsonBenchmark.cpp
       TEST json_pointer_test SOURCES json_pointer_test.cpp
       TEST json_patch_test SOURCES json_patch_test.cpp
       TEST json_other_test SOURCES JsonOtherTest.cpp
