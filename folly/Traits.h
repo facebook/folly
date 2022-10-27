@@ -935,7 +935,9 @@ using int_bits_lg_t = make_signed_t<uint_bits_lg_t<lg_bits>>;
 namespace traits_detail {
 
 template <std::size_t I, typename T>
-struct type_pack_element_indexed_type {};
+struct type_pack_element_indexed_type {
+  using type = T;
+};
 
 template <typename, typename...>
 struct type_pack_element_set;
@@ -949,12 +951,13 @@ using type_pack_element_set_t =
 template <std::size_t I>
 struct type_pack_element_test {
   template <typename T>
-  static T impl(type_pack_element_indexed_type<I, T>*);
+  static type_pack_element_indexed_type<I, T> impl(
+      type_pack_element_indexed_type<I, T>*);
 };
 
 template <std::size_t I, typename... Ts>
-using type_pack_element_fallback = decltype(type_pack_element_test<I>::impl(
-    static_cast<type_pack_element_set_t<Ts...>*>(nullptr)));
+using type_pack_element_fallback = _t<decltype(type_pack_element_test<I>::impl(
+    static_cast<type_pack_element_set_t<Ts...>*>(nullptr)))>;
 
 } // namespace traits_detail
 

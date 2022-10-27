@@ -541,6 +541,7 @@ TEST(Traits, type_pack_element_t) {
       std::is_same_v<
           test::fallback<3, int, int, int, double, int, int>,
           double>));
+  EXPECT_TRUE((std::is_same_v<test::fallback<0, int[1]>, int[1]>));
   EXPECT_TRUE((is_detected_v<test::fallback_ic, index_constant<0>, int>));
   EXPECT_FALSE((is_detected_v<test::fallback_ic, index_constant<0>>));
 
@@ -548,6 +549,7 @@ TEST(Traits, type_pack_element_t) {
       std::is_same_v<
           test::native<3, int, int, int, double, int, int>, //
           double>));
+  EXPECT_TRUE((std::is_same_v<test::native<0, int[1]>, int[1]>));
   EXPECT_TRUE((is_detected_v<test::native_ic, index_constant<0>, int>));
   EXPECT_FALSE((is_detected_v<test::native_ic, index_constant<0>>));
 }
