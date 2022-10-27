@@ -27,9 +27,10 @@
 #include <stdexcept>
 #include <tuple>
 
-#include <boost/lexical_cast.hpp>
+#include <fmt/format.h>
 #include <glog/logging.h>
 
+#include <folly/Random.h>
 #include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 
@@ -177,6 +178,35 @@ void test128Bit2String() {
   EXPECT_EQ(to<Sint>(to<String>(svalue)), svalue);
   value = numeric_limits<Sint>::max();
   EXPECT_EQ(to<Sint>(to<String>(svalue)), svalue);
+
+  {
+    Uint v = 1;
+    for (size_t zeros = 0; zeros < 39; ++zeros, v *= 10) {
+      EXPECT_EQ(to<String>(v), String("1") + String(zeros, '0'));
+    }
+  }
+
+  // Compare the results with fmt on random values. If they disagree, either
+  // to() or fmt is incorrect.
+  for (size_t b = 0; b <= 64; ++b) {
+    for (size_t i = 0; i < 1000; ++i) {
+      const auto low = folly::Random::rand64();
+      if (b < 64) {
+        const auto high = folly::Random::rand64(uint64_t(1) << b);
+        const auto v =
+            (folly::Random::oneIn(2) ? -1 : 1) * ((Sint(high) << 64) | low);
+        const auto s = to<String>(v);
+        EXPECT_EQ(s, fmt::format("{}", v));
+        EXPECT_EQ(to<Sint>(s), v);
+      } else {
+        const auto high = folly::Random::rand64();
+        const auto v = (Uint(high) << 64) | low;
+        const auto s = to<String>(v);
+        EXPECT_EQ(s, fmt::format("{}", v));
+        EXPECT_EQ(to<Uint>(s), v);
+      }
+    }
+  }
 }
 
 #endif

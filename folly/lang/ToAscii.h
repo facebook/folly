@@ -277,18 +277,19 @@ template <uint64_t Base, typename Alphabet>
 FOLLY_ALWAYS_INLINE void to_ascii_with_table(
     char* out, size_t size, uint64_t v) {
   using table = to_ascii_table<Base, Alphabet>;
-  auto pos = size - 2;
-  while (FOLLY_UNLIKELY(v >= Base * Base)) {
+  auto pos = size;
+  while (FOLLY_UNLIKELY(pos > 2)) {
+    pos -= 2;
     //  keep /, % together so a peephole optimization computes them together
     auto const q = v / (Base * Base);
     auto const r = v % (Base * Base);
     auto const val = table::data.data[size_t(r)];
     std::memcpy(out + pos, &val, 2);
-    pos -= 2;
     v = q;
   }
+
   auto const val = table::data.data[size_t(v)];
-  if (FOLLY_UNLIKELY(size % 2 == 0)) {
+  if (FOLLY_UNLIKELY(pos == 2)) {
     std::memcpy(out, &val, 2);
   } else {
     *out = val >> (kIsLittleEndian ? 8 : 0);
@@ -301,6 +302,15 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_with_table(char* out, uint64_t v) {
   return size;
 }
 
+// Assumes that size >= number of digits in v. If >, the result is left-padded
+// with 0s.
+template <uint64_t Base, typename Alphabet>
+FOLLY_ALWAYS_INLINE void to_ascii_with_route(
+    char* outb, size_t size, uint64_t v) {
+  kIsMobile //
+      ? to_ascii_with_array<Base, Alphabet>(outb, size, v)
+      : to_ascii_with_table<Base, Alphabet>(outb, size, v);
+}
 template <uint64_t Base, typename Alphabet>
 FOLLY_ALWAYS_INLINE size_t
 to_ascii_with_route(char* outb, char const* oute, uint64_t v) {
@@ -308,9 +318,7 @@ to_ascii_with_route(char* outb, char const* oute, uint64_t v) {
   if (FOLLY_UNLIKELY(oute < outb || size_t(oute - outb) < size)) {
     return 0;
   }
-  kIsMobile //
-      ? to_ascii_with_array<Base, Alphabet>(outb, size, v)
-      : to_ascii_with_table<Base, Alphabet>(outb, size, v);
+  to_ascii_with_route<Base, Alphabet>(outb, size, v);
   return size;
 }
 template <uint64_t Base, typename Alphabet, size_t N>
