@@ -369,7 +369,7 @@ class FunctionScheduler {
   // or when the FunctionScheduler is stopped.
   std::condition_variable runningCondvar_;
 
-  std::string threadName_;
+  std::string threadName_{"FuncSched"};
   bool steady_{false};
   bool cancellingCurrentFunction_{false};
 };

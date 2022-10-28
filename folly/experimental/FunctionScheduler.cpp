@@ -430,9 +430,7 @@ bool FunctionScheduler::shutdown() {
 void FunctionScheduler::run() {
   std::unique_lock<std::mutex> lock(mutex_);
 
-  if (!threadName_.empty()) {
-    folly::setThreadName(threadName_);
-  }
+  folly::setThreadName(threadName_);
 
   while (running_) {
     // If we have nothing to run, wait until a function is added or until we
