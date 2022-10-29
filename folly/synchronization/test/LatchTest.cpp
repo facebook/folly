@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <numeric>
 #include <thread>
 
 #include <folly/portability/GTest.h>
@@ -91,98 +92,98 @@ TEST(LatchTest, CountDownN) {
 }
 
 TEST(LatchTest, CountDownThreads) {
-  std::atomic_int completed{0};
   const int N = 32;
+  std::vector<int> done(N);
   folly::Latch latch(N);
   std::vector<std::thread> threads;
   for (int i = 0; i < N; i++) {
-    threads.emplace_back([&] {
-      completed++;
+    threads.emplace_back([&, i] {
+      done[i] = 1;
       latch.count_down();
     });
   }
   EXPECT_TRUE(latch.try_wait_for(std::chrono::seconds(60)));
-  EXPECT_EQ(completed.load(), N);
+  EXPECT_EQ(std::accumulate(done.begin(), done.end(), 0), N);
   for (auto& t : threads) {
     t.join();
   }
 }
 
 TEST(LatchTest, CountDownThreadsTwice1) {
-  std::atomic_int completed{0};
   const int N = 32;
+  std::vector<int> done(N);
   folly::Latch latch(N * 2);
   std::vector<std::thread> threads;
   for (int i = 0; i < N; i++) {
-    threads.emplace_back([&] {
-      completed++;
+    threads.emplace_back([&, i] {
+      done[i] = 1;
       // count_down() multiple times within same thread
       latch.count_down();
       latch.count_down();
     });
   }
   EXPECT_TRUE(latch.try_wait_for(std::chrono::seconds(60)));
-  EXPECT_EQ(completed.load(), N);
+  EXPECT_EQ(std::accumulate(done.begin(), done.end(), 0), N);
   for (auto& t : threads) {
     t.join();
   }
 }
 
 TEST(LatchTest, CountDownThreadsTwice2) {
-  std::atomic_int completed{0};
   const int N = 32;
+  std::vector<int> done(N);
   folly::Latch latch(N * 2);
   std::vector<std::thread> threads;
   for (int i = 0; i < N; i++) {
-    threads.emplace_back([&] {
-      completed++;
+    threads.emplace_back([&, i] {
+      done[i] = 1;
       // count_down() multiple times within same thread
       latch.count_down(2);
     });
   }
   EXPECT_TRUE(latch.try_wait_for(std::chrono::seconds(60)));
-  EXPECT_EQ(completed.load(), N);
+  EXPECT_EQ(std::accumulate(done.begin(), done.end(), 0), N);
   for (auto& t : threads) {
     t.join();
   }
 }
 
 TEST(LatchTest, CountDownThreadsWait) {
-  std::atomic_int completed{0};
   const int N = 32;
+  std::vector<int> done(N);
   folly::Latch latch(N);
   std::vector<std::thread> threads;
   for (int i = 0; i < N; i++) {
-    threads.emplace_back([&] {
-      completed++;
+    threads.emplace_back([&, i] {
+      done[i] = 1;
       // count_down() and wait() within thread
       latch.count_down();
       EXPECT_TRUE(latch.try_wait_for(std::chrono::seconds(60)));
-      EXPECT_EQ(completed.load(), N);
+      EXPECT_EQ(std::accumulate(done.begin(), done.end(), 0), N);
     });
   }
   EXPECT_TRUE(latch.try_wait_for(std::chrono::seconds(60)));
-  EXPECT_EQ(completed.load(), N);
+  EXPECT_EQ(std::accumulate(done.begin(), done.end(), 0), N);
   for (auto& t : threads) {
     t.join();
   }
 }
 
 TEST(LatchTest, CountDownThreadsArriveAndWait) {
-  std::atomic_int completed{0};
   const int N = 32;
+  std::vector<int> done(N);
   folly::Latch latch(N);
   std::vector<std::thread> threads;
   for (int i = 0; i < N; i++) {
-    threads.emplace_back([&] {
-      completed++;
+    threads.emplace_back([&, i] {
+      done[i] = 1;
       // count_down() and wait() within thread
       latch.arrive_and_wait();
-      EXPECT_EQ(completed.load(), N);
+      EXPECT_EQ(std::accumulate(done.begin(), done.end(), 0), N);
     });
   }
   EXPECT_TRUE(latch.try_wait_for(std::chrono::seconds(60)));
-  EXPECT_EQ(completed.load(), N);
+  EXPECT_EQ(std::accumulate(done.begin(), done.end(), 0), N);
   for (auto& t : threads) {
     t.join();
   }
