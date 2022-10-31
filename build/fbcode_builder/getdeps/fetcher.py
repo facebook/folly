@@ -680,7 +680,19 @@ def download_url_to_file_with_progress(url: str, file_name) -> None:
     progress = Progress()
     start = time.time()
     try:
-        if os.environ.get("GETDEPS_USE_LIBCURL") is not None:
+        if os.environ.get("GETDEPS_USE_WGET") is not None:
+            subprocess.run(
+                [
+                    "wget",
+                    "-O",
+                    file_name,
+                    url,
+                ]
+            )
+
+            headers = None
+
+        elif os.environ.get("GETDEPS_USE_LIBCURL") is not None:
             import pycurl
 
             with open(file_name, "wb") as f:
