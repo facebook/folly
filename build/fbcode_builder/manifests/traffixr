@@ -1,0 +1,39 @@
+[manifest]
+name = traffixr
+fbsource_path = fbcode/viola/traffixr
+shipit_project = traffixr
+shipit_fbcode_builder = false
+
+# Ubuntu 18.04 does not meet our Boost package's minimum version.
+[build.distro=ubuntu]
+builder = nop
+
+# Windows doesn't find the Boost package we need
+[build.os=windows]
+builder = nop
+
+[build]
+builder = cmake
+subdir = .
+
+[cmake.defines.test=on]
+BUILD_TESTS = ON
+
+[cmake.defines.all(os=windows, test=on)]
+BUILD_TESTS = OFF
+
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
+
+[dependencies]
+folly
+fizz
+mvfst
+nlohmann-json
+
+[dependencies.all(test=on, not(os=windows))]
+googletest
+glog
+
+[shipit.pathmap]
+fbcode/viola/traffixr = .
