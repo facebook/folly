@@ -340,10 +340,10 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
   Promise<NetworkSocket> fdPromise;
 };
 
-#define MAYBE_SKIP()                      \
-  if (unableToRun) {                      \
-    GTEST_SKIP() << "Unsupported kernel"; \
-    return;                               \
+#define MAYBE_SKIP()                   \
+  if (unableToRun) {                   \
+    LOG(INFO) << "Unsupported kernel"; \
+    return;                            \
   }
 
 TEST_P(AsyncIoUringSocketTest, ConnectTimeout) {
@@ -530,7 +530,8 @@ TEST_P(AsyncIoUringSocketTestAll, Writev) {
 
 TEST_P(AsyncIoUringSocketTestAll, SendTimeout) {
   MAYBE_SKIP();
-  if (!GetParam().ioUringClient) {
+  if (!GetParam().ioUringServer) {
+    // folly::AsyncSocket is not totally reliable with timeouts
     return;
   }
   auto conn = makeConnected(false);

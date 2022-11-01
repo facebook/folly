@@ -537,8 +537,10 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds, bool multishot = false) {
   }
   auto evbPtr = getEventBase(options);
   SKIP_IF(!evbPtr) << "Backend not available";
-  SKIP_IF(multishot && !folly::IoUringBackend::kernelSupportsRecvmsgMultishot())
-      << "multishot not available";
+  if (multishot && !folly::IoUringBackend::kernelSupportsRecvmsgMultishot()) {
+    LOG(INFO) << "multishot not available";
+    return;
+  }
 
   // create the server sockets
   std::vector<std::unique_ptr<folly::AsyncUDPServerSocket>> serverSocketVec;
