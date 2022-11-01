@@ -243,7 +243,9 @@ TEST(AsyncSSLSocketTest2, TestTLS12DefaultClient) {
   EXPECT_TRUE(std::move(f1).within(std::chrono::seconds(3)).get());
 }
 
-TEST(AsyncSSLSocketTest2, TestTLS12BadClient) {
+// Pre-TLS 1.2 client attempting to connect to a TLS 1.2+ server, should not be
+// able to connect.
+TEST(AsyncSSLSocketTest2, TestLegacyClientCannotConnectToTLS12Server) {
   // Start listening on a local port
   NoopReadCallback readCallback;
   HandshakeCallback handshakeCallback(
@@ -253,10 +255,11 @@ TEST(AsyncSSLSocketTest2, TestTLS12BadClient) {
   TestSSLServer server(&acceptCallback, ctx);
   server.loadTestCerts();
 
-  // create a client that doesn't speak TLS 1.2
+  // create a client that doesn't speak TLS 1.2+
   auto c2 = std::make_unique<ConnectClient>();
-  auto clientCtx = std::make_shared<SSLContext>();
+  auto clientCtx = std::make_shared<SSLContext>(SSLContext::TLSv1);
   clientCtx->setOptions(SSL_OP_NO_TLSv1_2);
+  clientCtx->disableTLS13();
   c2->setCtx(clientCtx);
   auto f2 = c2->getFuture();
   c2->connect(server.getAddress());

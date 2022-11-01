@@ -41,17 +41,23 @@ TestSSLServer::~TestSSLServer() {
   }
 }
 
-TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
-    : acb_(acb) {
+/* static */ std::unique_ptr<SSLContext> TestSSLServer::getDefaultSSLContext() {
   // Set up a default SSL context
-  ctx_ = std::make_shared<SSLContext>();
-  ctx_->loadCertificate(kTestCert);
-  ctx_->loadPrivateKey(kTestKey);
-  ctx_->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  std::unique_ptr<SSLContext> sslContext = std::make_unique<SSLContext>();
+  sslContext->loadCertificate(kTestCert);
+  sslContext->loadPrivateKey(kTestKey);
+  sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   // By default, SSLContext disables OpenSSL's internal session cache.
   // Enable it here on the server for testing session reuse.
-  SSL_CTX_set_session_cache_mode(ctx_->getSSLCtx(), SSL_SESS_CACHE_SERVER);
+  SSL_CTX_set_session_cache_mode(
+      sslContext->getSSLCtx(), SSL_SESS_CACHE_SERVER);
 
+  return sslContext;
+}
+
+TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
+    : acb_(acb) {
+  ctx_ = getDefaultSSLContext();
   init(enableTFO);
 }
 

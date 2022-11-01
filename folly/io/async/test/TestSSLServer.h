@@ -108,6 +108,8 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
 
 class TestSSLServer {
  public:
+  static std::unique_ptr<SSLContext> getDefaultSSLContext();
+
   // Create a TestSSLServer.
   // This immediately starts listening on the given port.
   explicit TestSSLServer(

@@ -40,6 +40,7 @@
 #include <folly/io/async/test/BlockingSocket.h>
 #include <folly/io/async/test/MockAsyncTransportObserver.h>
 #include <folly/io/async/test/TFOTest.h>
+#include <folly/io/async/test/TestSSLServer.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
@@ -229,7 +230,6 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
 
 TEST(AsyncSSLSocketTest, ConnectWriteReadvClose) {
   connectWriteReadClose(folly::AsyncReader::ReadCallback::ReadMode::ReadVec);
-  ;
 }
 
 TEST(AsyncSSLSocketTest, ConnectWriteReadCloseReadable) {
@@ -263,7 +263,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadCloseReadable) {
   // The TLS record includes the full 128 bytes.  Even though we only read 1
   // byte out of the socket, the rest of the full record decrypted and buffered
   // in the underlying SSL session.
-  uint32_t bytesRead = socket->read(readbuf, 1);
+  uint32_t bytesRead = socket->readAll(readbuf, 1);
   EXPECT_EQ(bytesRead, 1);
   // The socket has no data pending in the kernel
   EXPECT_FALSE(socket->getSocket()->AsyncSocket::readable());
@@ -304,7 +304,13 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadLargeClose) {
   ReadCallback readCallback(&writeCallback);
   HandshakeCallback handshakeCallback(&readCallback);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
-  TestSSLServer server(&acceptCallback);
+  std::unique_ptr<SSLContext> serverSslContext =
+      TestSSLServer::getDefaultSSLContext();
+  // With TLS 1.3, OpenSSL will send session tickets. These will arrive after
+  // the handshake has completed and can interfere with the BlockingSocket
+  // client's reads. Disable the session tickets so that doesn't happen.
+  SSL_CTX_set_num_tickets(serverSslContext->getSSLCtx(), 0);
+  TestSSLServer server(&acceptCallback, std::move(serverSslContext));
 
   // Set up SSL context.
   std::shared_ptr<SSLContext> sslContext(new SSLContext());
@@ -370,8 +376,13 @@ TEST(AsyncSSLSocketTest, ReadAfterClose) {
 #if !defined(OPENSSL_IS_BORINGSSL)
 TEST(AsyncSSLSocketTest, Renegotiate) {
   EventBase eventBase;
-  auto clientCtx = std::make_shared<SSLContext>();
-  auto dfServerCtx = std::make_shared<SSLContext>();
+  // renegotation in TLS 1.2 only
+  auto clientCtx =
+      std::make_shared<SSLContext>(SSLContext::SSLVersion::TLSv1_2);
+  clientCtx->disableTLS13();
+  auto dfServerCtx =
+      std::make_shared<SSLContext>(SSLContext::SSLVersion::TLSv1_2);
+  dfServerCtx->disableTLS13();
   std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
   getctx(clientCtx, dfServerCtx);
@@ -1078,17 +1089,27 @@ TEST(AsyncSSLSocketTest, EarlyCloseNotify) {
  */
 TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   EventBase eventBase;
-  auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
-  serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
-  serverCtx->ciphers("ECDHE-RSA-AES128-SHA:AES128-SHA:AES256-SHA");
+  serverCtx->enableTLS13();
+  serverCtx->setVerificationOption(SSLContext::VerifyClientCertificate::ALWAYS);
+  serverCtx->setCiphersuitesOrThrow(
+      "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
   serverCtx->loadPrivateKey(kTestKey);
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadTrustedCertificates(kTestCA);
   serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
-  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
-  clientCtx->ciphers("AES256-SHA:AES128-SHA");
+  auto clientCtx = std::make_shared<SSLContext>();
+  clientCtx->enableTLS13();
+  clientCtx->setVerificationOption(
+      SSLContext::VerifyServerCertificate::IF_PRESENTED);
+  clientCtx->setCiphersuitesOrThrow(
+      "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384");
+  // With SSLContext min version set to TLS 1.2, TLS 1.2 ciphers are appended to
+  // the list that's sent to the server, and those would appear in the
+  // clientCiphers_ captured and verified below. Remove all of them by setting
+  // eNULL.
+  clientCtx->setCiphersOrThrow("eNULL");
   clientCtx->loadPrivateKey(kTestKey);
   clientCtx->loadCertificate(kTestCert);
   clientCtx->loadTrustedCertificates(kTestCA);
@@ -1107,11 +1128,15 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   eventBase.loop();
 
 #if defined(OPENSSL_IS_BORINGSSL)
-  EXPECT_EQ(server.clientCiphers_, "AES256-SHA:AES128-SHA");
+  EXPECT_EQ(
+      server.clientCiphers_,
+      "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384");
 #else
-  EXPECT_EQ(server.clientCiphers_, "AES256-SHA:AES128-SHA:00ff");
+  EXPECT_EQ(
+      server.clientCiphers_,
+      "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384:00ff");
 #endif
-  EXPECT_EQ(server.chosenCipher_, "AES256-SHA");
+  EXPECT_EQ(server.chosenCipher_, "TLS_CHACHA20_POLY1305_SHA256");
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_TRUE(!client.handshakeError_);
@@ -2468,6 +2493,10 @@ TEST(AsyncSSLSocketTest, ConnectUnencryptedTest) {
   memset(buf.data(), 'a', buf.size());
   socket->write(nullptr, buf.data(), buf.size());
 
+  // wait until the server has reflected all data written by the client
+  SemiFuture<StateEnum> future = writeCallback.getSemiFuture();
+  StateEnum state = std::move(future).get(std::chrono::seconds(3));
+  EXPECT_EQ(state, STATE_SUCCEEDED);
   socket->close();
 }
 
@@ -2823,6 +2852,11 @@ TEST(AsyncSSLSocketTest, TTLSDisabled) {
   memset(buf.data(), 'a', buf.size());
   socket->write(buf.data(), buf.size());
 
+  // wait until the server has reflected all data written by the client
+  SemiFuture<StateEnum> future = writeCallback.getSemiFuture();
+  StateEnum state = std::move(future).get(std::chrono::seconds(3));
+  EXPECT_EQ(state, STATE_SUCCEEDED);
+
   // close()
   socket->close();
 }
@@ -2874,6 +2908,11 @@ TEST(AsyncSSLSocketTest, TTLSDisabledWithTFO) {
   std::array<uint8_t, 128> buf;
   memset(buf.data(), 'a', buf.size());
   socket->write(buf.data(), buf.size());
+
+  // wait until the server has reflected all data written by the client
+  SemiFuture<StateEnum> future = writeCallback.getSemiFuture();
+  StateEnum state = std::move(future).get(std::chrono::seconds(3));
+  EXPECT_EQ(state, STATE_SUCCEEDED);
 
   // close()
   socket->close();
@@ -3122,7 +3161,11 @@ TEST(AsyncSSLSocketTest, TestPreReceivedData) {
   serverSock->setPreReceivedData(
       IOBuf::wrapBuffer(ByteRange(buf.data(), bytesReceived)));
   SSLHandshakeServer server(std::move(serverSockPtr), true, true);
-  while (!client.handshakeSuccess_ && !client.handshakeError_) {
+  // The order in which the client and server handshake completion callbacks
+  // fire differs between TLS 1.2 and TLS 1.3. Loop until both are complete to
+  // ensure this works regardless of TLS version.
+  while ((!client.handshakeSuccess_ && !client.handshakeError_) ||
+         (!server.handshakeSuccess_ && !server.handshakeError_)) {
     eventBase.loopOnce();
   }
 
@@ -3158,7 +3201,11 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
       new AsyncSSLSocket(dfServerCtx, std::move(serverSockPtr), true));
   auto serverSSLSock = serverSSLSockPtr.get();
   SSLHandshakeServer server(std::move(serverSSLSockPtr), true, true);
-  while (!client.handshakeSuccess_ && !client.handshakeError_) {
+  // The order in which the client and server handshake completion callbacks
+  // fire differs between TLS 1.2 and TLS 1.3. Loop until both are complete to
+  // ensure this works regardless of TLS version.
+  while ((!client.handshakeSuccess_ && !client.handshakeError_) ||
+         (!server.handshakeSuccess_ && !server.handshakeError_)) {
     eventBase.loopOnce();
   }
 
@@ -3171,15 +3218,15 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
 TEST(AsyncSSLSocketTest, TestNullConnectCallbackError) {
   EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
+  clientCtx->enableTLS13();
   auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->enableTLS13();
   std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
   getctx(clientCtx, serverCtx);
   // Mismatched ciphers
-  clientCtx->ciphers(
-      "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256");
-  serverCtx->ciphers(
-      "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384");
+  clientCtx->setCiphersuitesOrThrow("TLS_AES_256_GCM_SHA384");
+  serverCtx->setCiphersuitesOrThrow("TLS_AES_128_GCM_SHA256");
 
   AsyncSSLSocket::UniquePtr clientSockPtr(
       new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
@@ -3781,6 +3828,28 @@ TEST_F(AsyncSSLSocketByteEventTest, MultiByteWritesEnableSecondWrite) {
 
 #endif // __linux__
 
+// TLS 1.2 and TLS 1.3 deliver session tickets in different ways, but we can use
+// SSLContext::SessionLifecycleCallbacks to receive them in a similar manner so
+// tests can work regardless of version.
+class SimpleSessionLifecycleCallback
+    : public SSLContext::SessionLifecycleCallbacks {
+ public:
+  void onNewSession(SSL*, ssl::SSLSessionUniquePtr session) override {
+    // This can be called multiple times. OpenSSL sends two session tickets by
+    // default). Grab the last one.
+    session_ = std::move(session);
+    ASSERT_TRUE(socket_ != nullptr);
+    // At this point we have what we need to resume a session. Detach the
+    // ReadCallback, allowing the socket's EventBase to stop looping.
+    socket_->setReadCB(nullptr);
+  }
+
+  // set when session is available
+  folly::ssl::SSLSessionUniquePtr session_;
+  // set after object construction
+  folly::AsyncSSLSocket* socket_;
+};
+
 TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
   EventBase eventBase;
   auto serverCtx = std::make_shared<SSLContext>();
@@ -3788,9 +3857,12 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
   serverCtx->loadPrivateKey(kTestKey);
   serverCtx->loadCertificate(kTestCert);
 
+  auto sessionCb = std::make_unique<SimpleSessionLifecycleCallback>();
+  auto sessionCbPtr = sessionCb.get();
+  clientCtx->setSessionLifecycleCallbacks(std::move(sessionCb));
   clientCtx->setSessionCacheContext("test context");
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
-  std::shared_ptr<folly::ssl::SSLSession> resumptionSession = nullptr;
+  folly::ssl::SSLSessionUniquePtr resumptionSession = nullptr;
 
   {
     std::array<NetworkSocket, 2> fds;
@@ -3803,11 +3875,20 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
 
     // Client sends SNI that doesn't match anything the server cert advertises
     clientSock->setServerName("Foobar");
-
+    auto clientSockPtr = clientSock.get();
     SSLHandshakeServerParseClientHello server(
         std::move(serverSock), true, true);
+    // capture client socket in session callback, so we can detach event base
+    sessionCbPtr->socket_ = clientSockPtr;
     SSLHandshakeClient client(std::move(clientSock), true, true);
+
+    // should stop when the session ticket is received
+    ReadCallback readCallback;
+    clientSockPtr->setReadCB(&readCallback);
+    readCallback.state = STATE_SUCCEEDED;
+    // loop until we receive session (and unregister read callback)
     eventBase.loop();
+    resumptionSession = std::move(sessionCbPtr->session_);
 
     serverSock = std::move(server).moveSocket();
     auto chi = serverSock->getClientHelloInfo();
@@ -3818,7 +3899,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
     // create another client, resuming with the prior session, but under a
     // different common name.
     clientSock = std::move(client).moveSocket();
-    resumptionSession = clientSock->getSSLSession();
+    ASSERT_TRUE(resumptionSession != nullptr);
   }
 
   {
@@ -3830,7 +3911,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
 
-    clientSock->setSSLSession(resumptionSession);
+    clientSock->setRawSSLSession(std::move(resumptionSession));
     clientSock->setServerName("Baz");
     SSLHandshakeServerParseClientHello server(
         std::move(serverSock), true, true);

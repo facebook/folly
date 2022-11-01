@@ -163,6 +163,8 @@ class WriteCallbackBase : public AsyncTransport::WriteCallback {
 
   ~WriteCallbackBase() override { EXPECT_EQ(STATE_SUCCEEDED, state); }
 
+  SemiFuture<StateEnum> getSemiFuture() { return promise_.getSemiFuture(); }
+
   virtual void setSocket(const std::shared_ptr<AsyncSSLSocket>& socket) {
     socket_ = socket;
     if (mcb_) {
@@ -173,6 +175,9 @@ class WriteCallbackBase : public AsyncTransport::WriteCallback {
   void writeSuccess() noexcept override {
     std::cerr << "writeSuccess" << std::endl;
     state = STATE_SUCCEEDED;
+    if (!promise_.isFulfilled()) {
+      promise_.setValue(state);
+    }
   }
 
   void writeErr(
@@ -181,6 +186,9 @@ class WriteCallbackBase : public AsyncTransport::WriteCallback {
               << ex.what() << std::endl;
 
     state = STATE_FAILED;
+    if (!promise_.isFulfilled()) {
+      promise_.setValue(state);
+    }
     this->bytesWritten = nBytesWritten;
     exception = ex;
     socket_->close();
@@ -191,6 +199,7 @@ class WriteCallbackBase : public AsyncTransport::WriteCallback {
   size_t bytesWritten;
   AsyncSocketException exception;
   SendMsgParamsCallbackBase* mcb_;
+  Promise<StateEnum> promise_;
 };
 
 class ExpectWriteErrorCallback : public WriteCallbackBase {
