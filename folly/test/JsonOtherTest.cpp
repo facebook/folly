@@ -34,7 +34,12 @@ TEST(Json, StripComments) {
   )JSON");
   auto expectedStr = folly::stripLeftMargin(R"JSON(
     {
-        "test": "foo",   "test2": "foo // bar",   
+      
+      "test": "foo", 
+      "test2": "foo // bar", 
+      
+
+
       "test4": "foo /* bar", 
       "te//": "foo",
       "te/*": "bar",

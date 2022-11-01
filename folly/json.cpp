@@ -1006,14 +1006,18 @@ std::string stripComments(StringPiece jsonC) {
         result.push_back(s[0]);
         break;
       case State::InlineComment:
-        if (s.startsWith("*/")) {
+        if (s.startsWith('\n')) {
+          // preserve the line break to preserve the line count
+          result.push_back(s[0]);
+        } else if (s.startsWith("*/")) {
           state = State::None;
           ++i;
         }
         break;
       case State::LineComment:
         if (s[0] == '\n') {
-          // skip the line break. It doesn't matter.
+          // preserve the line break to preserve the line count
+          result.push_back(s[0]);
           state = State::None;
         }
         break;
