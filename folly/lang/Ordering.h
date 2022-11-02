@@ -119,7 +119,7 @@ class partial_ordering : private detail::partial_ordering_<partial_ordering> {
   explicit operator ordering() const noexcept(false) {
     switch (value_) {
       case undef:
-        throw_exception<std::logic_error>("unordered");
+        throw_exception<std::out_of_range>("unordered");
       default:
         return ordering(value_);
     }
