@@ -60,7 +60,17 @@ static_assert(noexcept(FOLLY_DECLVAL(int)));
 // Tests for folly::decay_t:
 
 template <typename T>
-using dec = folly::detail::decay_t<T>;
+using dec = folly::decay_t<T>;
+struct incomplete;
+struct abstract {
+  virtual ~abstract() = 0;
+};
+struct immobile {
+  immobile() = delete;
+  immobile(immobile&&) = delete;
+  void operator=(immobile&&) = delete;
+  ~immobile() = delete;
+};
 static_assert(std::is_same_v<int, dec<int>>);
 static_assert(std::is_same_v<int, dec<int&>>);
 static_assert(std::is_same_v<int, dec<int&&>>);
@@ -79,8 +89,26 @@ static_assert(std::is_same_v<int*, dec<int[7]>>);
 static_assert(std::is_same_v<int*, dec<int*&>>);
 static_assert(std::is_same_v<int*, dec<int (&)[]>>);
 static_assert(std::is_same_v<int*, dec<int (&)[7]>>);
+static_assert(std::is_same_v<int const*, dec<int const*>>);
+static_assert(std::is_same_v<int const*, dec<int const[]>>);
+static_assert(std::is_same_v<int const*, dec<int const[7]>>);
+static_assert(std::is_same_v<int const*, dec<int const*&>>);
+static_assert(std::is_same_v<int const*, dec<int const (&)[]>>);
+static_assert(std::is_same_v<int const*, dec<int const (&)[7]>>);
 static_assert(std::is_same_v<int (*)(), dec<int (*)()>>);
+static_assert(std::is_same_v<int (*)() noexcept, dec<int (*)() noexcept>>);
 static_assert(std::is_same_v<int (*)(), dec<int (&)()>>);
+static_assert(std::is_same_v<int (*)() noexcept, dec<int (&)() noexcept>>);
+static_assert(std::is_same_v<void, dec<void>>);
+static_assert(std::is_same_v<void, dec<void const>>);
+static_assert(std::is_same_v<void, dec<void volatile>>);
+static_assert(std::is_same_v<void, dec<void const volatile>>);
+static_assert(std::is_same_v<incomplete, dec<incomplete>>);
+static_assert(std::is_same_v<incomplete, dec<incomplete const>>);
+static_assert(std::is_same_v<abstract, dec<abstract>>);
+static_assert(std::is_same_v<abstract, dec<abstract const>>);
+static_assert(std::is_same_v<immobile, dec<immobile>>);
+static_assert(std::is_same_v<immobile, dec<immobile const>>);
 
 TEST_F(UtilityTest, copy) {
   struct MyData {};

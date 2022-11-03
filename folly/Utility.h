@@ -62,20 +62,27 @@ T declval() noexcept;
 
 namespace detail {
 template <typename T>
-T decay_(T) noexcept;
+T decay_1_(T const volatile&&);
+template <typename T>
+T decay_1_(T const&);
+template <typename T>
+T* decay_1_(T*);
+
+template <typename T>
+auto decay_0_(int) -> decltype(detail::decay_1_(FOLLY_DECLVAL(T &&)));
+template <typename T>
+auto decay_0_(short) -> void;
+
+template <typename T>
+using decay_t = decltype(detail::decay_0_<T>(0));
+} // namespace detail
 
 //  decay_t
 //
 //  Like std::decay_t but possibly faster to compile.
 //
-//  Marked as detail since this differs from std::decay_t in some respects:
-//  * incomplete decayed types are forbidden
-//  * non-moveable decayed types are forbidden
-//
 //  mimic: std::decay_t, C++14
-template <typename T>
-using decay_t = decltype(detail::decay_(FOLLY_DECLVAL(T &&)));
-} // namespace detail
+using detail::decay_t;
 
 /**
  *  copy
