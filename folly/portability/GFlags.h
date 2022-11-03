@@ -25,15 +25,34 @@
 #include <gflags/gflags.h>
 #endif
 
+#define FOLLY_GFLAGS_DECLARE_FALLBACK_(_type, _shortType, _name) \
+  namespace fL##_shortType {                                     \
+    extern _type FLAGS_##_name;                                  \
+  }                                                              \
+  using fL##_shortType::FLAGS_##_name
+
+#define FOLLY_GFLAGS_DEFINE_FALLBACK_(                \
+    _type, _shortType, _name, _default, _description) \
+  namespace fL##_shortType {                          \
+    _type FLAGS_##_name = _default;                   \
+  }                                                   \
+  using fL##_shortType::FLAGS_##_name
+
 #if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
 
 #define FOLLY_GFLAGS_DECLARE_bool(_name) DECLARE_bool(_name)
 #define FOLLY_GFLAGS_DECLARE_double(_name) DECLARE_double(_name)
 #define FOLLY_GFLAGS_DECLARE_int32(_name) DECLARE_int32(_name)
 #define FOLLY_GFLAGS_DECLARE_int64(_name) DECLARE_int64(_name)
-#define FOLLY_GFLAGS_DECLARE_uint32(_name) DECLARE_uint32(_name)
 #define FOLLY_GFLAGS_DECLARE_uint64(_name) DECLARE_uint64(_name)
 #define FOLLY_GFLAGS_DECLARE_string(_name) DECLARE_string(_name)
+
+#if defined(DECLARE_uint32)
+#define FOLLY_GFLAGS_DECLARE_uint32(_name) DECLARE_uint32(_name)
+#else
+#define FOLLY_GFLAGS_DECLARE_uint32(_name) \
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(::std::uint32_t, U32, _name)
+#endif
 
 #define FOLLY_GFLAGS_DEFINE_bool(_name, _default, _description) \
   DEFINE_bool(_name, _default, _description)
@@ -43,57 +62,55 @@
   DEFINE_int32(_name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_int64(_name, _default, _description) \
   DEFINE_int64(_name, _default, _description)
-#define FOLLY_GFLAGS_DEFINE_uint32(_name, _default, _description) \
-  DEFINE_uint32(_name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_uint64(_name, _default, _description) \
   DEFINE_uint64(_name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_string(_name, _default, _description) \
   DEFINE_string(_name, _default, _description)
 
+#if defined(DEFINE_uint32)
+#define FOLLY_GFLAGS_DEFINE_uint32(_name, _default, _description) \
+  DEFINE_uint32(_name, _default, _description)
+#else
+#define FOLLY_GFLAGS_DEFINE_uint32(_name, _default, _description) \
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(                                  \
+      ::std::uint32_t, U32, _name, _default, _description)
+#endif
+
 #else
 
-#define FOLLY_GFLAGS_DECLARE_IMPL_(_type, _shortType, _name) \
-  namespace fL##_shortType {                                 \
-    extern _type FLAGS_##_name;                              \
-  }                                                          \
-  using fL##_shortType::FLAGS_##_name
-
-#define FOLLY_GFLAGS_DEFINE_IMPL_(                    \
-    _type, _shortType, _name, _default, _description) \
-  namespace fL##_shortType {                          \
-    _type FLAGS_##_name = _default;                   \
-  }                                                   \
-  using fL##_shortType::FLAGS_##_name
-
 #define FOLLY_GFLAGS_DECLARE_bool(_name) \
-  FOLLY_GFLAGS_DECLARE_IMPL_(bool, B, _name)
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(bool, B, _name)
 #define FOLLY_GFLAGS_DECLARE_double(_name) \
-  FOLLY_GFLAGS_DECLARE_IMPL_(double, D, _name)
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(double, D, _name)
 #define FOLLY_GFLAGS_DECLARE_int32(_name) \
-  FOLLY_GFLAGS_DECLARE_IMPL_(::std::int32_t, I, _name)
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(::std::int32_t, I, _name)
 #define FOLLY_GFLAGS_DECLARE_int64(_name) \
-  FOLLY_GFLAGS_DECLARE_IMPL_(::std::int64_t, I64, _name)
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(::std::int64_t, I64, _name)
 #define FOLLY_GFLAGS_DECLARE_uint32(_name) \
-  FOLLY_GFLAGS_DECLARE_IMPL_(::std::uint32_t, U32, _name)
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(::std::uint32_t, U32, _name)
 #define FOLLY_GFLAGS_DECLARE_uint64(_name) \
-  FOLLY_GFLAGS_DECLARE_IMPL_(::std::uint64_t, U64, _name)
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(::std::uint64_t, U64, _name)
 #define FOLLY_GFLAGS_DECLARE_string(_name) \
-  FOLLY_GFLAGS_DECLARE_IMPL_(::std::string, S, _name)
+  FOLLY_GFLAGS_DECLARE_FALLBACK_(::std::string, S, _name)
 
 #define FOLLY_GFLAGS_DEFINE_bool(_name, _default, _description) \
-  FOLLY_GFLAGS_DEFINE_IMPL_(bool, B, _name, _default, _description)
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(bool, B, _name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_double(_name, _default, _description) \
-  FOLLY_GFLAGS_DEFINE_IMPL_(double, D, _name, _default, _description)
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(double, D, _name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_int32(_name, _default, _description) \
-  FOLLY_GFLAGS_DEFINE_IMPL_(::std::int32_t, I, _name, _default, _description)
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(                                 \
+      ::std::int32_t, I, _name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_int64(_name, _default, _description) \
-  FOLLY_GFLAGS_DEFINE_IMPL_(::std::int64_t, I64, _name, _default, _description)
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(                                 \
+      ::std::int64_t, I64, _name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_uint32(_name, _default, _description) \
-  FOLLY_GFLAGS_DEFINE_IMPL_(::std::uint32_t, U32, _name, _default, _description)
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(                                  \
+      ::std::uint32_t, U32, _name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_uint64(_name, _default, _description) \
-  FOLLY_GFLAGS_DEFINE_IMPL_(::std::uint64_t, U64, _name, _default, _description)
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(                                  \
+      ::std::uint64_t, U64, _name, _default, _description)
 #define FOLLY_GFLAGS_DEFINE_string(_name, _default, _description) \
-  FOLLY_GFLAGS_DEFINE_IMPL_(::std::string, S, _name, _default, _description)
+  FOLLY_GFLAGS_DEFINE_FALLBACK_(::std::string, S, _name, _default, _description)
 
 #endif
 
