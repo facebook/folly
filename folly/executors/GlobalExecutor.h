@@ -45,8 +45,8 @@ std::shared_ptr<Executor> tryGetImmutableCPUPtr();
  *
  * Use to run CPU workloads.
  *
- * @return       KeepAlive wrapped global immutable CPU executor. May return an
- * invalid KeepAlive on shutdown.
+ * @return       KeepAlive wrapped global immutable CPU executor. May throw on
+ * shutdown. If no throw, returned KeepAlive is valid.
  */
 folly::Executor::KeepAlive<> getGlobalCPUExecutor();
 
@@ -58,8 +58,8 @@ folly::Executor::KeepAlive<> getGlobalCPUExecutor();
  *
  * Use to run IO workloads that require an event base.
  *
- * @return       KeepAlive wrapped global immutable IO executor. May return an
- * invalid KeepAlive on shutdown.
+ * @return       KeepAlive wrapped global immutable IO executor. May throw
+ * on shutdown. If no throw, returned KeepAlive is valid.
  */
 folly::Executor::KeepAlive<IOExecutor> getGlobalIOExecutor();
 
