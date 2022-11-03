@@ -255,8 +255,9 @@ auto doEmplaceAssign(int, T& t, U&& u)
 template <class T, class U>
 auto doEmplaceAssign(long, T& t, U&& u)
     -> decltype(void(T(static_cast<U&&>(u)))) {
+  auto addr = const_cast<void*>(static_cast<void const*>(std::addressof(t)));
   t.~T();
-  ::new ((void*)std::addressof(t)) T(static_cast<U&&>(u));
+  ::new (addr) T(static_cast<U&&>(u));
 }
 
 template <class T, class... Us>
@@ -268,8 +269,9 @@ auto doEmplaceAssign(int, T& t, Us&&... us)
 template <class T, class... Us>
 auto doEmplaceAssign(long, T& t, Us&&... us)
     -> decltype(void(T(static_cast<Us&&>(us)...))) {
+  auto addr = const_cast<void*>(static_cast<void const*>(std::addressof(t)));
   t.~T();
-  ::new ((void*)std::addressof(t)) T(static_cast<Us&&>(us)...);
+  ::new (addr) T(static_cast<Us&&>(us)...);
 }
 
 struct EmptyTag {};
@@ -515,13 +517,14 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
   }
   template <class... Vs>
   void assignValue(Vs&&... vs) {
+    auto& val = this->value();
     if (this->which_ == Which::eValue) {
-      expected_detail::doEmplaceAssign(
-          0, this->value(), static_cast<Vs&&>(vs)...);
+      expected_detail::doEmplaceAssign(0, val, static_cast<Vs&&>(vs)...);
     } else {
       this->clear();
-      ::new ((void*)std::addressof(this->value()))
-          Value(static_cast<Vs&&>(vs)...);
+      auto addr =
+          const_cast<void*>(static_cast<void const*>(std::addressof(val)));
+      ::new (addr) Value(static_cast<Vs&&>(vs)...);
       this->which_ = Which::eValue;
     }
   }
