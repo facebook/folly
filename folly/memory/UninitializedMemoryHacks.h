@@ -291,7 +291,7 @@ namespace detail {
   }                                                                      \
   }
 
-#if defined(_LIBCPP_VECTOR) && _LIBCPP_VERSION >= 15000
+#if defined(_LIBCPP_VECTOR) && _LIBCPP_VERSION >= 14000
 // libc++ newer
 
 template <
