@@ -648,8 +648,8 @@ template <class Compare>
 struct value_compare_map : Compare {
   template <typename... value_type>
   auto operator()(const value_type&... a) const
-      noexcept(noexcept(Compare::operator()(a.first...)))
-          -> type_t<bool, decltype(Compare::operator()(a.first...))> {
+      noexcept(is_nothrow_invocable_v<const Compare&, decltype((a.first))...>)
+          -> invoke_result_t<const Compare&, decltype((a.first))...> {
     return Compare::operator()(a.first...);
   }
 
