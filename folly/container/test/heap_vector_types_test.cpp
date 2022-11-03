@@ -686,6 +686,49 @@ TEST(HeapVectorTypes, Iterators) {
   small_heap_vector_map<int, int>::const_iterator cmapI2(mapI2);
 }
 
+TEST(HeapVectorTypes, IteratorsCombinatorics) {
+  heap_vector_set<size_t> c;
+  ASSERT_EQ(0, c.size());
+  ASSERT_EQ(c.begin(), c.end());
+  ASSERT_EQ(c.find(0), c.end());
+  for (size_t i = 0; i < 36; ++i) {
+    auto [ii, inserted] = c.insert(i);
+    auto bi = c.begin();
+    auto ei = c.end();
+    ASSERT_EQ(i, *ii);
+    ASSERT_EQ(ii, c.find(i));
+    ASSERT_TRUE(inserted);
+    ASSERT_EQ(i + 1, c.size());
+    ASSERT_NE(bi, ei);
+    EXPECT_EQ(c.size(), std::distance(bi, ei));
+    EXPECT_EQ(ei, bi + i + 1);
+    EXPECT_EQ(1, std::distance(bi + i, ei));
+    EXPECT_NE(ii, ei);
+    EXPECT_EQ(ii, bi + i);
+    EXPECT_EQ(bi, ii - i);
+    EXPECT_EQ(i, std::distance(bi, ii));
+    EXPECT_EQ(ei, ii + 1);
+    EXPECT_EQ(ii, ei - 1);
+    EXPECT_EQ(1, std::distance(ii, ei));
+    for (size_t j = 0; j <= i; ++j) {
+      auto ji = c.find(j);
+      ASSERT_NE(ji, ei);
+      ASSERT_EQ(j, *ji);
+      EXPECT_EQ(bi, ji - j);
+      EXPECT_EQ(ji, bi + j);
+      for (size_t k = 0; k <= i; ++k) {
+        auto ki = c.find(k);
+        ASSERT_NE(ki, ei);
+        EXPECT_EQ(j == k, ji == ki);
+        EXPECT_EQ(ji, ki + (int(j) - int(k)));
+        EXPECT_EQ(ji, ki - (int(k) - int(j)));
+        EXPECT_EQ(int(k) - int(j), ki - ji);
+        EXPECT_EQ(int(k) - int(j), std::distance(ji, ki));
+      }
+    }
+  }
+}
+
 TEST(HeapVectorTypes, InitializerLists) {
   heap_vector_set<int> empty_initialized_set{};
   EXPECT_TRUE(empty_initialized_set.empty());

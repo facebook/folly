@@ -277,7 +277,7 @@ typename Container::difference_type distance(
   auto offset = getStartOffsetToScan(start, end);
   calculateDistance(offset, size_type(0));
   // Handle start == end()
-  if (start >= size) {
+  if (start > size) {
     dist *= -1;
   }
 
