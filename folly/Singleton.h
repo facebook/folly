@@ -829,7 +829,7 @@ class LeakySingleton {
     auto& entry = entryInstance();
     std::lock_guard<std::mutex> lg(entry.mutex);
     if (entry.ptr) {
-      annotate_object_leaked(std::atomic_exchange(&entry.ptr, (T*)nullptr));
+      lsan_ignore_object(std::atomic_exchange(&entry.ptr, (T*)nullptr));
     }
     entry.createFunc = createFunc;
     entry.state = State::Dead;
