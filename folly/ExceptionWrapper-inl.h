@@ -142,11 +142,12 @@ Ex&& dont_slice(Ex&& ex) {
 // operator but having this does no harm.
 inline std::exception_ptr exception_wrapper::extract_(
     std::exception_ptr&& ptr) noexcept {
+  constexpr auto sz = sizeof(std::exception_ptr);
   // assume relocatability on all platforms
   // assume nrvo for performance
   std::exception_ptr ret;
-  std::memcpy(&ret, &ptr, sizeof(std::exception_ptr));
-  std::memset(&ptr, 0, sizeof(std::exception_ptr));
+  std::memcpy(static_cast<void*>(&ret), &ptr, sz);
+  std::memset(static_cast<void*>(&ptr), 0, sz);
   return ret;
 }
 
@@ -193,19 +194,21 @@ inline exception_wrapper::exception_wrapper(in_place_type_t<Ex>, As&&... as)
 inline exception_wrapper& exception_wrapper::operator=(
     exception_wrapper&& that) noexcept {
   // assume relocatability on all platforms
+  constexpr auto sz = sizeof(std::exception_ptr);
   std::exception_ptr tmp;
-  std::memcpy(&tmp, &ptr_, sizeof(std::exception_ptr));
-  std::memcpy(&ptr_, &that.ptr_, sizeof(std::exception_ptr));
-  std::memset(&that.ptr_, 0, sizeof(std::exception_ptr));
+  std::memcpy(static_cast<void*>(&tmp), &ptr_, sz);
+  std::memcpy(static_cast<void*>(&ptr_), &that.ptr_, sz);
+  std::memset(static_cast<void*>(&that.ptr_), 0, sz);
   return *this;
 }
 
 inline void exception_wrapper::swap(exception_wrapper& that) noexcept {
   // assume relocatability on all platforms
+  constexpr auto sz = sizeof(std::exception_ptr);
   aligned_storage_for_t<std::exception_ptr> storage;
-  std::memcpy(&storage, &ptr_, sizeof(std::exception_ptr));
-  std::memcpy(&ptr_, &that.ptr_, sizeof(std::exception_ptr));
-  std::memcpy(&that.ptr_, &storage, sizeof(std::exception_ptr));
+  std::memcpy(&storage, &ptr_, sz);
+  std::memcpy(static_cast<void*>(&ptr_), &that.ptr_, sz);
+  std::memcpy(static_cast<void*>(&that.ptr_), &storage, sz);
 }
 
 inline exception_wrapper::operator bool() const noexcept {
