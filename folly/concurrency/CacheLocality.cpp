@@ -364,6 +364,7 @@ bool AccessSpreaderBase::initialize(
     Getcpu::Func (&pickGetcpuFunc)(),
     const CacheLocality& (&system)()) {
   (void)AccessSpreaderStaticInit::instance; // ODR-use it so it is not dropped
+  constexpr auto relaxed = std::memory_order_relaxed;
   auto& cacheLocality = system();
   auto n = cacheLocality.numCpus;
   for (size_t width = 0; width <= kMaxCpus; ++width) {
@@ -374,19 +375,23 @@ bool AccessSpreaderBase::initialize(
       assert(index < n);
       // as index goes from 0..n, post-transform value goes from
       // 0..numStripes
-      row[cpu] = static_cast<CompactStripe>((index * numStripes) / n);
-      assert(row[cpu] < numStripes);
+      make_atomic_ref(row[cpu]).store(
+          static_cast<CompactStripe>((index * numStripes) / n), relaxed);
+      assert(make_atomic_ref(row[cpu]).load(relaxed) < numStripes);
     }
     size_t filled = n;
     while (filled < kMaxCpus) {
       size_t len = std::min(filled, kMaxCpus - filled);
       for (size_t i = 0; i < len; ++i) {
-        row[filled + i] = row[i].load();
+        make_atomic_ref(row[filled + i])
+            .store(make_atomic_ref(row[i]).load(relaxed), relaxed);
       }
       filled += len;
     }
     for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {
-      assert(row[cpu] == row[cpu - n]);
+      assert(
+          make_atomic_ref(row[cpu]).load(relaxed) ==
+          make_atomic_ref(row[cpu - n]).load(relaxed));
     }
   }
   state.getcpu.exchange(pickGetcpuFunc(), std::memory_order_acq_rel);

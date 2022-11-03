@@ -35,7 +35,7 @@
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
-#include <folly/synchronization/RelaxedAtomic.h>
+#include <folly/synchronization/AtomicRef.h>
 
 namespace folly {
 
@@ -192,8 +192,7 @@ class AccessSpreaderBase {
       kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
       "stripeByCpu element type isn't wide enough");
 
-  using CompactStripeTable =
-      relaxed_atomic<CompactStripe>[kMaxCpus + 1][kMaxCpus];
+  using CompactStripeTable = CompactStripe[kMaxCpus + 1][kMaxCpus];
 
   struct GlobalState {
     /// For each level of splitting up to kMaxCpus, maps the cpu (mod
@@ -201,7 +200,7 @@ class AccessSpreaderBase {
     /// or modulo on the actual number of cpus, we just fill in the entire
     /// array.
     /// Keep as the first field to avoid extra + in the fastest path.
-    CompactStripeTable table;
+    mutable CompactStripeTable table;
 
     /// Points to the getcpu-like function we are using to obtain the
     /// current cpu. It should not be assumed that the returned cpu value
@@ -262,7 +261,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
 
  public:
   FOLLY_EXPORT static GlobalState& state() {
-    static FOLLY_CONSTINIT GlobalState state;
+    static FOLLY_CONSTINIT GlobalState state{};
     if (FOLLY_UNLIKELY(!state.getcpu.load(std::memory_order_acquire))) {
       initialize(state);
     }
@@ -278,7 +277,9 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
 
     unsigned cpu;
     s.getcpu.load(std::memory_order_relaxed)(&cpu, nullptr, nullptr);
-    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpu % kMaxCpus];
+    cpu = cpu % kMaxCpus;
+    auto& ref = s.table[std::min(size_t(kMaxCpus), numStripes)][cpu];
+    return make_atomic_ref(ref).load(std::memory_order_relaxed);
   }
 
   /// Returns the stripe associated with the current CPU.  The returned
@@ -292,7 +293,9 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
     if (kIsMobile) {
       return current(numStripes, s);
     }
-    return s.table[std::min(size_t(kMaxCpus), numStripes)][cpuCache().cpu(s)];
+    unsigned cpu = cpuCache().cpu(s);
+    auto& ref = s.table[std::min(size_t(kMaxCpus), numStripes)][cpu];
+    return make_atomic_ref(ref).load(std::memory_order_relaxed);
   }
 
   /// Forces the next cachedCurrent() call in this thread to re-probe the
