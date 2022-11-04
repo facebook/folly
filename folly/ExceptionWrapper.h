@@ -190,12 +190,6 @@ class exception_wrapper final {
   template <class Ex>
   exception_wrapper(
       from_catch_ref_t, std::exception_ptr&& ptr, Ex& ex) noexcept;
-  template <class Ex>
-  exception_wrapper(std::exception_ptr const& ptr, Ex& ex) noexcept
-      : exception_wrapper{from_catch_ref_t{}, ptr, ex} {}
-  template <class Ex>
-  exception_wrapper(std::exception_ptr&& ptr, Ex& ex) noexcept
-      : exception_wrapper{from_catch_ref_t{}, std::move(ptr), ex} {}
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
