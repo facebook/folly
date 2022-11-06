@@ -151,15 +151,6 @@ struct atomic_fetch_flip_fallback_fn {
 FOLLY_INLINE_VARIABLE constexpr atomic_fetch_flip_fallback_fn
     atomic_fetch_flip_fallback{};
 
-/**
- * A simple trait to determine if the given type is an instantiation of
- * std::atomic
- */
-template <typename T>
-constexpr auto is_atomic = false;
-template <typename Integer>
-constexpr auto is_atomic<std::atomic<Integer>> = true;
-
 #if FOLLY_X64
 
 #if defined(_MSC_VER)
@@ -351,7 +342,7 @@ inline bool atomic_fetch_set_native(
 template <typename Atomic>
 inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(!is_atomic<Atomic>, "");
+  static_assert(!is_instantiation_of_v<std::atomic, Atomic>, "");
   return atomic_fetch_set_fallback(atomic, bit, order);
 }
 
@@ -384,7 +375,7 @@ inline bool atomic_fetch_reset_native(
 template <typename Atomic>
 bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(!is_atomic<Atomic>, "");
+  static_assert(!is_instantiation_of_v<std::atomic, Atomic>, "");
   return atomic_fetch_reset_fallback(atomic, bit, order);
 }
 
@@ -417,7 +408,7 @@ inline bool atomic_fetch_flip_native(
 template <typename Atomic>
 bool atomic_fetch_flip_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(!is_atomic<Atomic>, "");
+  static_assert(!is_instantiation_of_v<std::atomic, Atomic>, "");
   return atomic_fetch_flip_fallback(atomic, bit, order);
 }
 
