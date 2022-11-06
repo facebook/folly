@@ -150,10 +150,10 @@ the lock as soon as possible.
 `Synchronized` is a template with two parameters, the data type and a
 mutex type: `Synchronized<T, Mutex>`.
 
-If not specified, the mutex type defaults to `folly::SharedMutex`.  However, any
-mutex type supported by `folly::LockTraits` can be used instead.
-`folly::LockTraits` can be specialized to support other custom mutex
-types that it does not know about out of the box.
+If not specified, the mutex type defaults to `folly::SharedMutex`. However, any
+mutex type with an interface compatible with the standard mutex types is
+supported. Additionally, any mutex type campatible with the extended protocol
+implemented in `folly/synchronization/Lock.h` is supported.
 
 `Synchronized` provides slightly different APIs when instantiated with a
 shared mutex type or an upgrade mutex type then with a plain exclusive mutex.
@@ -366,9 +366,8 @@ When using `Synchronized` with a shared mutex type, it provides separate
 
 `Synchronized` also supports upgrading and downgrading mutex lock levels as
 long as the mutex type used to instantiate the `Synchronized` type has the
-same interface as the mutex types in the C++ standard library, or if
-`LockTraits` is specialized for the mutex type and the specialization is
-visible. See below for an intro to upgrade mutexes.
+same interface as the mutex types in the C++ standard library. See below for an
+intro to upgrade mutexes.
 
 An upgrade lock can be acquired as usual either with the `ulock()` method or
 the `withULockPtr()` method as so
@@ -554,10 +553,9 @@ attempting to transition atomically from shared to upgrade locks, the threads
 are deadlocked. Likewise if they are both attempting to transition atomically
 from shared to unique locks, or one is attempting to transition atomically from
 shared to upgrade while the other is attempting to transition atomically from
-shared to unique. Therefore, `LockTraits` does not expose either of these
-dangerous atomic state transitions even when the underlying mutex type supports
-them. Likewise, `Synchronized`'s `LockedPtr` proxies do not expose these
-dangerous atomic state transitions either.
+shared to unique. Therefore, `Synchronized`'s `LockedPtr` proxies do not expose
+either of these dangerous atomic state transitions even when the underlying
+mutex type supports them.
 
 #### Timed Locking
 
