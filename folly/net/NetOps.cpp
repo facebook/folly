@@ -65,7 +65,8 @@ static struct WinSockInit {
   ~WinSockInit() { WSACleanup(); }
 } winsockInit;
 
-int translate_wsa_error(int wsaErr) {
+static int wsa_error_translator_base(
+    NetworkSocket, intptr_t, intptr_t, int wsaErr) {
   switch (wsaErr) {
     case WSAEWOULDBLOCK:
       return EAGAIN;
@@ -73,17 +74,43 @@ int translate_wsa_error(int wsaErr) {
       return wsaErr;
   }
 }
+
+wsa_error_translator_ptr wsa_error_translator = wsa_error_translator_base;
+
+#define translate_wsa_error(e, s, f, r) \
+  wsa_error_translator(                 \
+      s, reinterpret_cast<intptr_t>(f), static_cast<intptr_t>(r), e)
+
 #endif
 
 template <class R, class F, class... Args>
 static R wrapSocketFunction(F f, NetworkSocket s, Args... args) {
   R ret = f(s.data, args...);
 #ifdef _WIN32
-  errno = translate_wsa_error(WSAGetLastError());
+  errno = translate_wsa_error(WSAGetLastError(), s, f, ret);
 #endif
   return ret;
 }
 } // namespace
+
+#ifdef _WIN32
+void set_wsa_error_translator(
+    wsa_error_translator_ptr translator,
+    wsa_error_translator_ptr* previousOut) {
+  // Do an atomic swap of the error translator, ensuring we've filled in the
+  // previous one first so they can be safely daisy changed/called, e.g.
+  // translator may want to call the previous one and a call to it may come in
+  // even before we return.
+  PVOID result = nullptr;
+  do {
+    *previousOut = wsa_error_translator;
+    result = InterlockedCompareExchangePointer(
+        reinterpret_cast<PVOID volatile*>(&wsa_error_translator),
+        reinterpret_cast<PVOID>(translator),
+        reinterpret_cast<PVOID>(*previousOut));
+  } while (result != reinterpret_cast<PVOID>(*previousOut));
+}
+#endif
 
 NetworkSocket accept(NetworkSocket s, sockaddr* addr, socklen_t* addrlen) {
 #if defined(__EMSCRIPTEN__)
@@ -237,7 +264,7 @@ ssize_t recv(NetworkSocket s, void* buf, size_t len, int flags) {
 
     u_long pendingRead = 0;
     if (ioctlsocket(s.data, FIONREAD, &pendingRead)) {
-      errno = translate_wsa_error(WSAGetLastError());
+      errno = translate_wsa_error(WSAGetLastError(), s, ::ioctlsocket, -1);
       return -1;
     }
 
@@ -314,7 +341,7 @@ ssize_t recvfrom(
 
     DWORD bytesReceived;
     int res = WSARecvMsg(h, &wMsg, &bytesReceived, nullptr, nullptr);
-    errno = translate_wsa_error(WSAGetLastError());
+    errno = translate_wsa_error(WSAGetLastError(), s, WSARecvMsg, res);
     if (res == 0) {
       return bytesReceived;
     }
@@ -388,7 +415,7 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
 
   DWORD bytesReceived;
   int res = WSARecvMsg(h, &msg, &bytesReceived, nullptr, nullptr);
-  errno = translate_wsa_error(WSAGetLastError());
+  errno = translate_wsa_error(WSAGetLastError(), s, WSARecvMsg, res);
   return res == 0 ? (ssize_t)bytesReceived : -1;
 #elif defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
@@ -463,7 +490,7 @@ FOLLY_MAYBE_UNUSED static ssize_t fakeSendmsg(
           message->msg_flags);
     }
     if (r == -1 || size_t(r) != message->msg_iov[i].iov_len) {
-      errno = translate_wsa_error(WSAGetLastError());
+      errno = translate_wsa_error(WSAGetLastError(), socket, fakeSendmsg, r);
       if (WSAGetLastError() == WSAEWOULDBLOCK && bytesSent > 0) {
         return bytesSent;
       }
@@ -487,7 +514,7 @@ FOLLY_MAYBE_UNUSED ssize_t wsaSendMsgDirect(
   SOCKET h = socket.data;
   DWORD bytesSent;
   auto ret = WSASendMsg(h, msg, 0, &bytesSent, nullptr, nullptr);
-  errno = translate_wsa_error(WSAGetLastError());
+  errno = translate_wsa_error(WSAGetLastError(), socket, WSASendMsg, ret);
   return ret == 0 ? (ssize_t)bytesSent : -1;
 }
 #endif
@@ -526,7 +553,7 @@ ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
   auto ret =
       getsockopt(socket, SOL_SOCKET, SO_TYPE, &socketType, (socklen_t*)&len);
   if (ret != 0) {
-    errno = translate_wsa_error(WSAGetLastError());
+    errno = translate_wsa_error(WSAGetLastError(), socket, getsockopt, ret);
     return ret;
   }
 

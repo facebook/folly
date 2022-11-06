@@ -23,7 +23,25 @@
 
 class NetOpsTest : public testing::Test {};
 
+#ifdef _WIN32
+static folly::netops::wsa_error_translator_ptr wsa_error_translator_base;
+static int wsa_error_translator_test(
+    folly::NetworkSocket socket, intptr_t api, intptr_t ret, int wsa_error) {
+  printf(
+      "INFO: wsa_translator %zx %zx %zx %d\n",
+      static_cast<intptr_t>(socket.data),
+      api,
+      ret,
+      wsa_error);
+  return wsa_error_translator_base(socket, api, ret, wsa_error);
+}
+#endif
+
 TEST_F(NetOpsTest, socketpair) {
+#ifdef _WIN32
+  folly::netops::set_wsa_error_translator(
+      wsa_error_translator_test, &wsa_error_translator_base);
+#endif
   folly::NetworkSocket pair[2];
   PCHECK(0 == folly::netops::socketpair(AF_UNIX, SOCK_STREAM, 0, pair));
   std::string const textw = "hello world";

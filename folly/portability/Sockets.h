@@ -30,7 +30,6 @@ namespace sockets {
 bool is_fh_socket(int fh);
 SOCKET fd_to_socket(int fd);
 int socket_to_fd(SOCKET s);
-int translate_wsa_error(int wsaErr);
 
 // These aren't additional overloads, but rather other functions that
 // are referenced that we need to wrap, or, in the case of inet_aton,

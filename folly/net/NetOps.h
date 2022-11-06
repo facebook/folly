@@ -366,5 +366,14 @@ int socketpair(int domain, int type, int protocol, NetworkSocket sv[2]);
 // our own way.
 int set_socket_non_blocking(NetworkSocket s);
 int set_socket_close_on_exec(NetworkSocket s);
+
+#ifdef _WIN32
+// Allow override for translation of WSA errors with analytics/tracking.
+typedef int (*wsa_error_translator_ptr)(
+    NetworkSocket socket, intptr_t api, intptr_t ret, int wsa_error);
+void set_wsa_error_translator(
+    wsa_error_translator_ptr translator, wsa_error_translator_ptr* previousOut);
+#endif
+
 } // namespace netops
 } // namespace folly
