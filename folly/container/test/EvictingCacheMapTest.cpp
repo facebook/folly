@@ -260,6 +260,18 @@ TEST(EvictingCacheMap, PruneHookTest) {
   }
   EXPECT_EQ((89 * 90) / 2, sum);
   sum = 0;
+
+  // Erase does not call prune hook (NOTE: possible source of usage bugs)
+  map.erase(99);
+
+  EXPECT_EQ(0, sum);
+
+  // Destructor does not call prune hook (NOTE: possibly source of usage bugs)
+  map.~EvictingCacheMap<int, int>();
+  // Re-enter clean state
+  new (&map) EvictingCacheMap<int, int>(0);
+
+  EXPECT_EQ(0, sum);
 }
 
 TEST(EvictingCacheMap, SetMaxSize) {
@@ -694,6 +706,17 @@ TEST(EvictingCacheMap, CustomKeyEqual) {
     EXPECT_TRUE(map.exists(i + nItems));
     EXPECT_EQ(i, map.get(i + nItems));
   }
+}
+
+TEST(EvictingCacheMap, InvalidHashPartlyUsable) {
+  // Some uses of EvictingCacheMap only use constructor+destructor in a header
+  // file where the hasher is invalid. (Only fully defined in cpp file.)
+  struct BadHash {};
+  struct BadEq {};
+  EvictingCacheMap<int, int, BadHash, BadEq> map{42};
+  // Also move ctor and operator
+  EvictingCacheMap<int, int, BadHash, BadEq> map2{std::move(map)};
+  map = std::move(map2);
 }
 
 TEST(EvictingCacheMap, IteratorConversion) {

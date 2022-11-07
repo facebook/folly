@@ -42,6 +42,8 @@ namespace folly {
  *
  * On reaching capacity limit, clearSize_ LRU items are evicted at a time. If
  * a callback is specified with setPruneHook, it is invoked for each eviction.
+ * However, the prune hook cannot manage object lifetimes because it is not
+ * invoked on erase nor cache destruction.
  *
  * This is NOT a thread-safe implementation.
  *
@@ -149,7 +151,7 @@ class EvictingCacheMap {
   using const_reverse_iterator =
       iterator_base<const TPair, typename NodeList::const_reverse_iterator>;
 
-  // the default map typedefs
+  // public type aliases for convenience
   using key_type = TKey;
   using mapped_type = TValue;
   using hasher = THash;
@@ -185,8 +187,8 @@ class EvictingCacheMap {
    * Construct a EvictingCacheMap
    * @param maxSize maximum size of the cache map.  Once the map size exceeds
    *     maxSize, the map will begin to evict.
-   * @param clearSize the number of elements to clear at a time when the
-   *     eviction size is reached.
+   * @param clearSize the number of elements to clear at a time when automatic
+   *     eviction on insert is triggered.
    */
   explicit EvictingCacheMap(
       std::size_t maxSize,
@@ -209,8 +211,9 @@ class EvictingCacheMap {
 
   ~EvictingCacheMap() {
     setPruneHook(nullptr);
-    // ignore any potential exceptions from pruneHook_
-    pruneWithFailSafeOption(size(), nullptr, true);
+    clear();
+    assert(lru_.empty());
+    assert(index_.empty());
   }
 
   /**
@@ -226,7 +229,7 @@ class EvictingCacheMap {
    * reasonable option.
    *
    * @param maxSize new maximum size of the cache map.
-   * @param pruneHook callback to use on eviction.
+   * @param pruneHook eviction callback to use INSTEAD OF the configured one
    */
   void setMaxSize(size_t maxSize, PruneHookCall pruneHook = nullptr) {
     if (maxSize != 0 && maxSize < size()) {
@@ -332,7 +335,8 @@ class EvictingCacheMap {
   }
 
   /**
-   * Erase the key-value pair associated with key if it exists.
+   * Erase the key-value pair associated with key if it exists. Prune hook
+   * is not called.
    * @param key key associated with the value
    * @return true if the key existed and was erased, else false
    */
@@ -344,7 +348,7 @@ class EvictingCacheMap {
   }
 
   /**
-   * Erase the key-value pair associated with pos
+   * Erase the key-value pair associated with pos. Prune hook is not called.
    * @param pos iterator to the element to be erased
    * @return iterator to the following element or end() if pos was the last
    *     element
@@ -363,7 +367,7 @@ class EvictingCacheMap {
    * @param promote boolean flag indicating whether or not to move something
    *     to the front of an LRU.  This only really matters if you're setting
    *     a value that already exists.
-   * @param pruneHook callback to use on eviction (if it occurs).
+   * @param pruneHook eviction callback to use INSTEAD OF the configured one
    */
   void set(
       const TKey& key,
@@ -386,7 +390,7 @@ class EvictingCacheMap {
    * Insert a new key-value pair in the dictionary if no element exists for key
    * @param key key to associate with value
    * @param value value to associate with the key
-   * @param pruneHook callback to use on eviction (if it occurs).
+   * @param pruneHook eviction callback to use INSTEAD OF the configured one
    * @return a pair consisting of an iterator to the inserted element (or to the
    *     element that prevented the insertion) and a bool denoting whether the
    *     insertion took place.
@@ -414,18 +418,19 @@ class EvictingCacheMap {
    */
   bool empty() const { return index_.empty(); }
 
+  /**
+   * Remove all entries (as if all evicted)
+   * @param pruneHook eviction callback to use INSTEAD OF the configured one
+   */
   void clear(PruneHookCall pruneHook = nullptr) { prune(size(), pruneHook); }
 
   /**
    * Set the prune hook, which is the function invoked on the key and value
-   *     on each eviction.  Will throw If the pruneHook throws, unless the
+   *     on each eviction and on any entries left in final destruction.
+   *     An operation will throw if the pruneHook throws, unless the
    *     EvictingCacheMap object is being destroyed in which case it will
    *     be ignored.
-   * @param pruneHook new callback to use on eviction.
-   * @param promote boolean flag indicating whether or not to move something
-   *     to the front of an LRU.
-   * @return the iterator of the object (a std::pair of const TKey, TValue) or
-   *     end() if it does not exist
+   * @param pruneHook eviction callback to set as default, or nullptr to clear
    */
   void setPruneHook(PruneHookCall pruneHook) { pruneHook_ = pruneHook; }
 
@@ -433,11 +438,22 @@ class EvictingCacheMap {
    * Prune the minimum of pruneSize and size() from the back of the LRU.
    * Will throw if pruneHook throws.
    * @param pruneSize minimum number of elements to prune
-   * @param pruneHook a custom pruneHook function
+   * @param pruneHook eviction callback to use INSTEAD OF the configured one
    */
   void prune(std::size_t pruneSize, PruneHookCall pruneHook = nullptr) {
-    // do not swallow exceptions for prunes not triggered from destructor
-    pruneWithFailSafeOption(pruneSize, pruneHook, false);
+    auto& ph = (nullptr == pruneHook) ? pruneHook_ : pruneHook;
+
+    for (std::size_t i = 0; i < pruneSize && !lru_.empty(); i++) {
+      auto* node = &(*lru_.rbegin());
+      std::unique_ptr<Node> node_owner(node);
+
+      lru_.erase(lru_.iterator_to(*node));
+      index_.erase(index_.iterator_to(*node));
+      if (ph) {
+        // NOTE: might throw, so was are in an exception-safe state
+        ph(node->pr.first, std::move(node->pr.second));
+      }
+    }
   }
 
   // Iterators and such
@@ -610,34 +626,6 @@ class EvictingCacheMap {
   template <typename K>
   typename NodeMap::const_iterator findInIndex(const K& key) const {
     return index_.find(key, KeyHasher(keyHash_), KeyValueEqual(keyEqual_));
-  }
-
-  /**
-   * Prune the minimum of pruneSize and size() from the back of the LRU.
-   * @param pruneSize minimum number of elements to prune
-   * @param pruneHook a custom pruneHook function
-   * @param failSafe true if exceptions are to ignored, false by default
-   */
-  void pruneWithFailSafeOption(
-      std::size_t pruneSize, PruneHookCall pruneHook, bool failSafe) {
-    auto& ph = (nullptr == pruneHook) ? pruneHook_ : pruneHook;
-
-    for (std::size_t i = 0; i < pruneSize && !lru_.empty(); i++) {
-      auto* node = &(*lru_.rbegin());
-      std::unique_ptr<Node> nptr(node);
-
-      lru_.erase(lru_.iterator_to(*node));
-      index_.erase(index_.iterator_to(*node));
-      if (ph) {
-        try {
-          ph(node->pr.first, std::move(node->pr.second));
-        } catch (...) {
-          if (!failSafe) {
-            throw;
-          }
-        }
-      }
-    }
   }
 
   static const std::size_t kMinNumIndexBuckets = 100;
