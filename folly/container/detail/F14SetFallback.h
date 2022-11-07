@@ -32,7 +32,7 @@
 #if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace folly {
-
+class F14HashToken final {};
 namespace f14 {
 namespace detail {
 template <typename KeyType, typename Hasher, typename KeyEqual, typename Alloc>
@@ -133,6 +133,11 @@ class F14BasicSet
   template <class... Args>
   iterator emplace_hint(const_iterator /*hint*/, Args&&... args) {
     return emplace(std::forward<Args>(args)...).first;
+  }
+
+  template <class... Args>
+  std::pair<iterator, bool> emplace_token(F14HashToken const&, Args&&... args) {
+    return emplace(std::forward<Args>(args)...);
   }
 
   using Super::erase;
@@ -243,6 +248,15 @@ class F14BasicSet
     return contains(key) ? 1 : 0;
   }
 
+  F14HashToken prehash(key_type const& /*key*/) const { return {}; }
+
+  template <typename K>
+  EnableHeterogeneousFind<K, F14HashToken> prehash(K const& /*key*/) const {
+    return {};
+  }
+
+  void prefetch(F14HashToken const& /*token*/) const {}
+
   using Super::find;
 
   template <typename K>
@@ -255,10 +269,38 @@ class F14BasicSet
     return findImpl<const_iterator>(*this, key);
   }
 
+  iterator find(F14HashToken const&, key_type const& key) { return find(key); }
+
+  const_iterator find(F14HashToken const&, key_type const& key) const {
+    return find(key);
+  }
+
+  template <typename K>
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(
+      F14HashToken const&, K const& key) {
+    return find(key);
+  }
+
+  template <typename K>
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
+      F14HashToken const&, K const& key) const {
+    return find(key);
+  }
+
   bool contains(key_type const& key) const { return find(key) != this->end(); }
 
   template <typename K>
   EnableHeterogeneousFind<K, bool> contains(K const& key) const {
+    return find(key) != this->end();
+  }
+
+  bool contains(F14HashToken const&, key_type const& key) const {
+    return find(key) != this->end();
+  }
+
+  template <typename K>
+  EnableHeterogeneousFind<K, bool> contains(
+      F14HashToken const&, K const& key) const {
     return find(key) != this->end();
   }
 

@@ -372,6 +372,20 @@ class F14BasicSet {
     return std::make_pair(table_.makeIter(rv.first), rv.second);
   }
 
+  // Emplace with prehash token
+  template <class... Args>
+  std::pair<iterator, bool> emplace_token(
+      F14HashToken const& token, Args&&... args) {
+    auto rv = folly::detail::callWithConstructedKey<key_type, UsableAsKey>(
+        table_.alloc(),
+        [&](auto&&... inner) {
+          return table_.tryEmplaceValueWithToken(
+              token, std::forward<decltype(inner)>(inner)...);
+        },
+        std::forward<Args>(args)...);
+    return std::make_pair(table_.makeIter(rv.first), rv.second);
+  }
+
   /// Emplace with hint.
   template <class... Args>
   iterator emplace_hint(const_iterator /*hint*/, Args&&... args) {
