@@ -191,9 +191,9 @@ class EvictingCacheMap {
     maxSize_ = maxSize;
   }
 
-  size_t getMaxSize() const { return maxSize_; }
+  std::size_t getMaxSize() const { return maxSize_; }
 
-  void setClearSize(size_t clearSize) { clearSize_ = clearSize; }
+  void setClearSize(std::size_t clearSize) { clearSize_ = clearSize; }
 
   /**
    * Check for existence of a specific key in the map.  This operation has
@@ -323,19 +323,38 @@ class EvictingCacheMap {
    */
   void set(
       const TKey& key,
-      TValue value,
+      TValue&& value,
       bool promote = true,
       PruneHookCall pruneHook = nullptr) {
-    setImpl(key, std::forward<TValue>(value), promote, pruneHook);
+    setImpl(key, std::move(value), promote, pruneHook);
+  }
+
+  void set(
+      const TKey& key,
+      const TValue& value,
+      bool promote = true,
+      PruneHookCall pruneHook = nullptr) {
+    TValue tmp{value}; // can't yet rely on temporary materialization
+    setImpl(key, std::move(tmp), promote, pruneHook);
   }
 
   template <typename K, EnableHeterogeneousInsert<K, int> = 0>
   void set(
       const K& key,
-      TValue value,
+      TValue&& value,
       bool promote = true,
       PruneHookCall pruneHook = nullptr) {
-    setImpl(key, std::forward<TValue>(value), promote, pruneHook);
+    setImpl(key, std::move(value), promote, pruneHook);
+  }
+
+  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  void set(
+      const K& key,
+      const TValue& value,
+      bool promote = true,
+      PruneHookCall pruneHook = nullptr) {
+    TValue tmp{value}; // can't yet rely on temporary materialization
+    setImpl(key, std::move(tmp), promote, pruneHook);
   }
 
   /**
@@ -348,14 +367,27 @@ class EvictingCacheMap {
    *     insertion took place.
    */
   std::pair<iterator, bool> insert(
-      const TKey& key, TValue value, PruneHookCall pruneHook = nullptr) {
-    return insertImpl(key, std::forward<TValue>(value), pruneHook);
+      const TKey& key, TValue&& value, PruneHookCall pruneHook = nullptr) {
+    return insertImpl(key, std::move(value), pruneHook);
+  }
+
+  std::pair<iterator, bool> insert(
+      const TKey& key, const TValue& value, PruneHookCall pruneHook = nullptr) {
+    TValue tmp{value}; // can't yet rely on temporary materialization
+    return insertImpl(key, std::move(tmp), pruneHook);
   }
 
   template <typename K, EnableHeterogeneousInsert<K, int> = 0>
   std::pair<iterator, bool> insert(
-      const K& key, TValue value, PruneHookCall pruneHook = nullptr) {
-    return insertImpl(key, std::forward<TValue>(value), pruneHook);
+      const K& key, TValue&& value, PruneHookCall pruneHook = nullptr) {
+    return insertImpl(key, std::move(value), pruneHook);
+  }
+
+  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  std::pair<iterator, bool> insert(
+      const K& key, const TValue& value, PruneHookCall pruneHook = nullptr) {
+    TValue tmp{value}; // can't yet rely on temporary materialization
+    return insertImpl(key, std::move(tmp), pruneHook);
   }
 
   /**
@@ -534,7 +566,7 @@ class EvictingCacheMap {
 
   template <typename K>
   void setImpl(
-      const K& key, TValue value, bool promote, PruneHookCall pruneHook) {
+      const K& key, TValue&& value, bool promote, PruneHookCall pruneHook) {
     Node* ptr = findInIndex(key);
     if (ptr) {
       ptr->pr.second = std::move(value);
@@ -554,7 +586,7 @@ class EvictingCacheMap {
   }
 
   template <typename K>
-  auto insertImpl(const K& key, TValue value, PruneHookCall pruneHook) {
+  auto insertImpl(const K& key, TValue&& value, PruneHookCall pruneHook) {
     auto node_owner = std::make_unique<Node>(key, std::move(value));
     Node* node = node_owner.get();
     {
