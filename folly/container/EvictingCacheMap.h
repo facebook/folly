@@ -25,74 +25,37 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/utility.hpp>
 
+#include <folly/container/F14Set.h>
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {
 
 /**
- * A general purpose LRU evicting cache. Designed to support constant time
- * set/get operations. It maintains a doubly linked list of items that are
- * threaded through an index (a hash map). The access ordered is maintained
- * on the list by moving an element to the front of list on a get. New elements
- * are added to the front of the list. The index size is set to half the
- * capacity (setting capacity to 0 is a special case. see notes at the end of
- * this section). So assuming uniform distribution of keys, set/get are both
- * constant time operations.
- *
- * On reaching capacity limit, clearSize_ LRU items are evicted at a time. If
- * a callback is specified with setPruneHook, it is invoked for each eviction.
- * However, the prune hook cannot manage object lifetimes because it is not
- * invoked on erase nor cache destruction.
+ * A general purpose LRU evicting cache designed to support constant time
+ * set/get/insert/erase ops. The only required configuration parameter is the
+ * `maxSize`, which is the maximum number of entries held by the cache, which
+ * is also dynamically changeable. Insertion will evict (and destroy with ~TKey
+ * and ~TValue) existing entries in LRU order as needed to keep number of
+ * entries less than maxSize. When automatic eviction is triggered, the
+ * minimum number of evictions is `clearSize`, which is configurable with a
+ * default of 1. If a callback is specified with setPruneHook, it is invoked
+ * for each eviction. However, the prune hook cannot manage object lifetimes
+ * because it is not invoked on erase nor cache destruction.
  *
  * This is NOT a thread-safe implementation.
  *
- * Configurability: capacity of the cache, number of items to evict, eviction
- * callback and the hasher to hash the keys can all be supplied by the caller.
+ * NOTE: maxSize==0 is a special case that disables automatic evictions.
+ * prune() can be used for manually trimming down the number of entries.
  *
- * If at a given state, N1 - N6 are the nodes in MRU to LRU order and hashing
- * to index keys as {(N1,N5)->H1, (N4,N2,N6)->H2, N3->Hi}, the datastructure
- * layout is as below. N1 .. N6 is a list threaded through the hash.
- * Assuming, each the number of nodes hashed to each index key is bounded, the
- * following operations run in constant time.
- * i) get computes the index key, walks the list of elements hashed to
- * the key and moves it to the front of the list, if found.
- * ii) set inserts a new node into the list and places the same node on to the
- * list of elements hashing to the corresponding index key.
- * ii) prune deletes nodes from the end of the list as well from the index.
+ * Implementaion: Maintains a doubly linked list (`lru_`) of entry nodes in
+ * LRU order, which are also connected to hash table index (`index_`). The
+ * access order is maintained on the list by moving an element to the front
+ * of list on a get, and adding to the front on insert. Assuming quality
+ * hashing, set/get are both constant time operations.
  *
- * +----+     +----+     +----+
- * | H1 | <-> | N1 | <-> | N5 |
- * +----+     +----+     +----+
- *              ^        ^  ^
- *              |    ___/    \
- *              |   /         \
- *              |_ /________   \___
- *                /        |       \
- *               /         |        \
- *              v          v         v
- * +----+     +----+     +----+     +----+
- * | H2 | <-> | N4 | <-> | N2 | <-> | N6 |
- * +----+     +----+     +----+     +----+
- *   .          ^          ^
- *   .          |          |
- *   .          |          |
- *   .          |     _____|
- *   .          |    /
- *              v   v
- * +----+     +----+
- * | Hi | <-> | N3 |
- * +----+     +----+
- *
- * N.B 1 : Changing the capacity with setMaxSize does not change the index size
- * and it could end up in too many elements indexed to the same slot in index.
- * The set/get performance will get worse in this case. So it is best to avoid
- * resizing.
- *
- * N.B 2 : Setting capacity to 0, using setMaxSize or initialization, turns off
- * evictions based on sizeof the cache making it an INFINITE size cache
- * unless evictions of LRU items are triggered by calling prune() by clients
- * (using their own eviction criteria).
+ * NOTE: Previous versions of this structure used a hash table size that was
+ * fixed at creation time, but that limitation is no longer present.
  */
 template <
     class TKey,
@@ -106,10 +69,7 @@ class EvictingCacheMap {
   struct KeyHasher;
   struct KeyValueEqual;
   using LinkMode = boost::intrusive::link_mode<boost::intrusive::safe_link>;
-  using NodeMap = boost::intrusive::unordered_set<
-      Node,
-      boost::intrusive::hash<KeyHasher>,
-      boost::intrusive::equal<KeyValueEqual>>;
+  using NodeMap = F14VectorSet<Node*, KeyHasher, KeyValueEqual>;
   using NodeList = boost::intrusive::list<Node>;
   using TPair = std::pair<const TKey, TValue>;
 
@@ -195,12 +155,9 @@ class EvictingCacheMap {
       std::size_t clearSize = 1,
       const THash& keyHash = THash(),
       const TKeyEqual& keyEqual = TKeyEqual())
-      : nIndexBuckets_(std::max(maxSize / 2, std::size_t(kMinNumIndexBuckets))),
-        indexBuckets_(new typename NodeMap::bucket_type[nIndexBuckets_]),
-        indexTraits_(indexBuckets_.get(), nIndexBuckets_),
-        keyHash_(keyHash),
+      : keyHash_(keyHash),
         keyEqual_(keyEqual),
-        index_(indexTraits_, keyHash_, keyEqual_),
+        index_(maxSize + /*transient*/ 1, keyHash_, keyEqual_),
         maxSize_(maxSize),
         clearSize_(clearSize) {}
 
@@ -210,23 +167,18 @@ class EvictingCacheMap {
   EvictingCacheMap& operator=(EvictingCacheMap&&) = default;
 
   ~EvictingCacheMap() {
-    setPruneHook(nullptr);
-    clear();
-    assert(lru_.empty());
-    assert(index_.empty());
+    assert(lru_.size() == index_.size());
+    // To avoid destructor depending on hash function, clear entries directly.
+    // Only intrusive container needs manual destruction.
+    lru_.clear_and_dispose([](Node* ptr) { delete ptr; });
   }
 
   /**
-   * Adjust the max size of EvictingCacheMap. Note that this does not update
-   * nIndexBuckets_ accordingly. This API can cause performance to get very
-   * bad, e.g., the nIndexBuckets_ is still 100 after maxSize is updated to 1M.
+   * Adjust the max size of EvictingCacheMap, evicting as needed to ensure the
+   * new max is not exceeded.
    *
    * Calling this function with an arugment of 0 removes the limit on the cache
    * size and elements are not evicted unless clients explicitly call prune.
-   *
-   * If you intend to resize dynamically using this, then picking an index size
-   * that works well and initializing with corresponding maxSize is the only
-   * reasonable option.
    *
    * @param maxSize new maximum size of the cache map.
    * @param pruneHook eviction callback to use INSTEAD OF the configured one
@@ -356,7 +308,7 @@ class EvictingCacheMap {
   iterator erase(const_iterator pos) {
     auto* node = const_cast<Node*>(&(*pos.base()));
     std::unique_ptr<Node> nptr(node);
-    index_.erase(index_.iterator_to(*node));
+    index_.erase(node);
     return iterator(lru_.erase(pos.base()));
   }
 
@@ -448,7 +400,7 @@ class EvictingCacheMap {
       std::unique_ptr<Node> node_owner(node);
 
       lru_.erase(lru_.iterator_to(*node));
-      index_.erase(index_.iterator_to(*node));
+      index_.erase(node);
       if (ph) {
         // NOTE: might throw, so was are in an exception-safe state
         ph(node->pr.first, std::move(node->pr.second));
@@ -489,11 +441,16 @@ class EvictingCacheMap {
     Node(const K& key, TValue&& value) : pr(key, std::move(value)) {}
     TPair pr;
   };
+  using NodePtr = Node*;
 
   struct KeyHasher {
+    using is_transparent = void;
+    using folly_is_avalanching = IsAvalanchingHasher<THash, TKey>;
+
+    KeyHasher() : hash() {}
     KeyHasher(const THash& keyHash) : hash(keyHash) {}
-    std::size_t operator()(const Node& node) const {
-      return hash(node.pr.first);
+    std::size_t operator()(const NodePtr& node) const {
+      return hash(node->pr.first);
     }
     template <typename K>
     std::size_t operator()(const K& key) const {
@@ -503,24 +460,27 @@ class EvictingCacheMap {
   };
 
   struct KeyValueEqual {
+    using is_transparent = void;
+
+    KeyValueEqual() : equal() {}
     KeyValueEqual(const TKeyEqual& keyEqual) : equal(keyEqual) {}
     template <typename K>
-    bool operator()(const K& lhs, const Node& rhs) const {
-      return equal(lhs, rhs.pr.first);
+    bool operator()(const K& lhs, const NodePtr& rhs) const {
+      return equal(lhs, rhs->pr.first);
     }
     template <typename K>
-    bool operator()(const Node& lhs, const K& rhs) const {
-      return equal(lhs.pr.first, rhs);
+    bool operator()(const NodePtr& lhs, const K& rhs) const {
+      return equal(lhs->pr.first, rhs);
     }
-    bool operator()(const Node& lhs, const Node& rhs) const {
-      return equal(lhs.pr.first, rhs.pr.first);
+    bool operator()(const NodePtr& lhs, const NodePtr& rhs) const {
+      return equal(lhs->pr.first, rhs->pr.first);
     }
     TKeyEqual equal;
   };
 
   template <typename K>
   bool existsImpl(const K& key) const {
-    return findInIndex(key) != index_.end();
+    return findInIndex(key) != nullptr;
   }
 
   template <typename K>
@@ -538,12 +498,12 @@ class EvictingCacheMap {
 
   template <typename Self, typename K>
   static auto findImpl(Self& self, const K& key) {
-    auto it = self.findInIndex(key);
-    if (it == self.index_.end()) {
+    Node* ptr = self.findInIndex(key);
+    if (!ptr) {
       return self.end();
     }
-    self.lru_.splice(self.lru_.begin(), self.lru_, self.lru_.iterator_to(*it));
-    return self_iterator_t<Self>(self.lru_.iterator_to(*it));
+    self.lru_.splice(self.lru_.begin(), self.lru_, self.lru_.iterator_to(*ptr));
+    return self_iterator_t<Self>(self.lru_.iterator_to(*ptr));
   }
 
   template <typename Self, typename K>
@@ -557,17 +517,16 @@ class EvictingCacheMap {
 
   template <typename Self, typename K>
   static auto findWithoutPromotionImpl(Self& self, const K& key) {
-    auto it = self.findInIndex(key);
-    return (it == self.index_.end())
-        ? self.end()
-        : self_iterator_t<Self>(self.lru_.iterator_to(*it));
+    Node* ptr = self.findInIndex(key);
+    return ptr ? self_iterator_t<Self>(self.lru_.iterator_to(*ptr))
+               : self.end();
   }
 
   template <typename K>
   bool eraseImpl(const K& key) {
-    auto it = findInIndex(key);
-    if (it != index_.end()) {
-      erase(const_iterator(lru_.iterator_to(*it)));
+    Node* ptr = findInIndex(key);
+    if (ptr) {
+      erase(const_iterator(lru_.iterator_to(*ptr)));
       return true;
     }
     return false;
@@ -576,15 +535,15 @@ class EvictingCacheMap {
   template <typename K>
   void setImpl(
       const K& key, TValue value, bool promote, PruneHookCall pruneHook) {
-    auto it = findInIndex(key);
-    if (it != index_.end()) {
-      it->pr.second = std::move(value);
+    Node* ptr = findInIndex(key);
+    if (ptr) {
+      ptr->pr.second = std::move(value);
       if (promote) {
-        lru_.splice(lru_.begin(), lru_, lru_.iterator_to(*it));
+        lru_.splice(lru_.begin(), lru_, lru_.iterator_to(*ptr));
       }
     } else {
       auto node = new Node(key, std::move(value));
-      index_.insert(*node);
+      index_.insert(node);
       lru_.push_front(*node);
 
       // no evictions if maxSize_ is 0 i.e. unlimited capacity
@@ -596,45 +555,43 @@ class EvictingCacheMap {
 
   template <typename K>
   auto insertImpl(const K& key, TValue value, PruneHookCall pruneHook) {
-    auto node = std::make_unique<Node>(key, std::move(value));
-    auto pair = index_.insert(*node);
-    if (pair.second) {
-      lru_.push_front(*node);
-      node.release();
-
-      // no evictions if maxSize_ is 0 i.e. unlimited capacity
-      if (maxSize_ > 0 && size() > maxSize_) {
-        prune(clearSize_, pruneHook);
+    auto node_owner = std::make_unique<Node>(key, std::move(value));
+    Node* node = node_owner.get();
+    {
+      auto pair = index_.insert(node);
+      if (!pair.second) {
+        // No change. Abandon/destroy new node.
+        return std::pair<iterator, bool>(lru_.iterator_to(**pair.first), false);
       }
+
+      // upcoming prune might invalidate iterator
+      assert(*pair.first == node);
     }
-    return std::pair<iterator, bool>(
-        lru_.iterator_to(*pair.first), pair.second);
-  }
 
-  /**
-   * Get the iterator in in the index associated with a specific key. This is
-   * merely a search in the index and does not promote the object.
-   * @param key key to associate with value
-   * @return the NodeMap::iterator to the Node containing the object
-   *    (a std::pair of const TKey, TValue) or index_.end() if it does not exist
-   */
-  template <typename K>
-  typename NodeMap::iterator findInIndex(const K& key) {
-    return index_.find(key, KeyHasher(keyHash_), KeyValueEqual(keyEqual_));
+    // Complete insertion
+    lru_.push_front(*node_owner.release());
+
+    // no evictions if maxSize_ is 0 i.e. unlimited capacity
+    if (maxSize_ > 0 && size() > maxSize_) {
+      prune(clearSize_, pruneHook);
+    }
+
+    return std::pair<iterator, bool>(lru_.iterator_to(*node), true);
   }
 
   template <typename K>
-  typename NodeMap::const_iterator findInIndex(const K& key) const {
-    return index_.find(key, KeyHasher(keyHash_), KeyValueEqual(keyEqual_));
+  Node* findInIndex(const K& key) const {
+    auto it = index_.find(key);
+    if (it != index_.end()) {
+      return *it;
+    } else {
+      return nullptr;
+    }
   }
 
-  static const std::size_t kMinNumIndexBuckets = 100;
   PruneHookCall pruneHook_;
-  std::size_t nIndexBuckets_;
-  std::unique_ptr<typename NodeMap::bucket_type[]> indexBuckets_;
-  typename NodeMap::bucket_traits indexTraits_;
-  THash keyHash_;
-  TKeyEqual keyEqual_;
+  KeyHasher keyHash_;
+  KeyValueEqual keyEqual_;
   NodeMap index_;
   NodeList lru_;
   std::size_t maxSize_;

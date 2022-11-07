@@ -923,7 +923,11 @@ class F14Table : public Policy {
 
   F14Table(F14Table&& rhs, Alloc const& alloc) noexcept(kAllocIsAlwaysEqual)
       : Policy{std::move(rhs), alloc} {
-    if (kAllocIsAlwaysEqual || this->alloc() == rhs.alloc()) {
+    // if-constexpr allows avoiding dependence on usable Hasher etc.
+    if constexpr (kAllocIsAlwaysEqual) {
+      // move storage (common case)
+      swapContents(rhs);
+    } else if (this->alloc() == rhs.alloc()) {
       // move storage (common case)
       swapContents(rhs);
     } else {
@@ -950,8 +954,13 @@ class F14Table : public Policy {
     if (this != &rhs) {
       reset();
       static_cast<Policy&>(*this) = std::move(rhs);
-      if (AllocTraits::propagate_on_container_move_assignment::value ||
-          kAllocIsAlwaysEqual || this->alloc() == rhs.alloc()) {
+      // if-constexpr allows avoiding dependence on usable Hasher etc.
+      if constexpr (
+          AllocTraits::propagate_on_container_move_assignment::value ||
+          kAllocIsAlwaysEqual) {
+        // move storage (common case)
+        swapContents(rhs);
+      } else if (this->alloc() == rhs.alloc()) {
         // move storage (common case)
         swapContents(rhs);
       } else {
