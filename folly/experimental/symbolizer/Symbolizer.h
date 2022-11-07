@@ -25,8 +25,6 @@
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/String.h>
-#include <folly/Synchronized.h>
-#include <folly/container/EvictingCacheMap.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
@@ -34,6 +32,7 @@
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/Config.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 namespace symbolizer {
@@ -109,6 +108,8 @@ class Symbolizer {
       size_t symbolCacheSize = 0,
       std::string exePath = "/proc/self/exe");
 
+  ~Symbolizer();
+
   /**
    *  Symbolize given addresses and return the number of @frames filled:
    *
@@ -153,13 +154,9 @@ class Symbolizer {
   const LocationInfoMode mode_;
   const std::string exePath_;
 
-  // SymbolCache contains mapping between an address and its frames. The first
-  // frame is the normal function call, and the following are stacked inline
-  // function calls if any.
-  using CachedSymbolizedFrames =
-      std::array<SymbolizedFrame, 1 + kMaxInlineLocationInfoPerFrame>;
-  using SymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
-  folly::Optional<Synchronized<SymbolCache>> symbolCache_;
+  // Details in cpp file to minimize header dependencies
+  struct SymbolCache;
+  std::unique_ptr<SymbolCache> symbolCache_;
 };
 
 /**

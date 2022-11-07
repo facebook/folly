@@ -25,6 +25,8 @@
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/Synchronized.h>
+#include <folly/container/EvictingCacheMap.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
@@ -118,7 +120,20 @@ void setSymbolizedFrame(
       .findAddress(address, mode, frame.location, extraInlineFrames);
 }
 
+// SymbolCache contains mapping between an address and its frames. The first
+// frame is the normal function call, and the following are stacked inline
+// function calls if any.
+using CachedSymbolizedFrames =
+    std::array<SymbolizedFrame, 1 + kMaxInlineLocationInfoPerFrame>;
+
+using UnsyncSymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
+
 } // namespace
+
+struct Symbolizer::SymbolCache : public Synchronized<UnsyncSymbolCache> {
+  using Super = Synchronized<UnsyncSymbolCache>;
+  using Super::Super;
+};
 
 bool Symbolizer::isAvailable() {
   return detail::get_r_debug();
@@ -133,9 +148,13 @@ Symbolizer::Symbolizer(
       mode_(mode),
       exePath_(std::move(exePath)) {
   if (symbolCacheSize > 0) {
-    symbolCache_.emplace(folly::in_place, symbolCacheSize);
+    symbolCache_ =
+        std::make_unique<SymbolCache>(UnsyncSymbolCache{symbolCacheSize});
   }
 }
+
+// Needs complete type for SymbolCache
+Symbolizer::~Symbolizer() {}
 
 size_t Symbolizer::symbolize(
     folly::Range<const uintptr_t*> addrs,
