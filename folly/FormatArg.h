@@ -27,8 +27,24 @@
 
 namespace folly {
 
+struct FormatArg;
+
 class FOLLY_EXPORT BadFormatArg : public std::invalid_argument {
+ private:
+  friend struct FormatArg;
+  struct ErrorStrTag {};
+
+  template <typename... A>
+  static std::string str(StringPiece descr, A const&... a) {
+    return to<std::string>(
+        "invalid format argument {"_sp, descr, "}: "_sp, a...);
+  }
+
+ public:
   using invalid_argument::invalid_argument;
+  template <typename... A>
+  explicit BadFormatArg(ErrorStrTag, StringPiece descr, A const&... a)
+      : invalid_argument(str(descr, a...)) {}
 };
 
 /**
@@ -76,12 +92,10 @@ struct FormatArg {
   void enforce(Check const& v, Args&&... args) const {
     static_assert(std::is_constructible<bool, Check>::value, "not castable");
     if (UNLIKELY(!v)) {
-      error(std::forward<Args>(args)...);
+      error(static_cast<Args&&>(args)...);
     }
   }
 
-  template <typename... Args>
-  std::string errorStr(Args&&... args) const;
   template <typename... Args>
   [[noreturn]] void error(Args&&... args) const;
 
@@ -206,17 +220,11 @@ struct FormatArg {
 };
 
 template <typename... Args>
-inline std::string FormatArg::errorStr(Args&&... args) const {
-  return to<std::string>(
-      "invalid format argument {",
-      fullArgString,
-      "}: ",
-      std::forward<Args>(args)...);
-}
-
-template <typename... Args>
 [[noreturn]] inline void FormatArg::error(Args&&... args) const {
-  throw_exception<BadFormatArg>(errorStr(std::forward<Args>(args)...));
+  // take advantage of throw_exception decaying char const (&)[N} to char const*
+  // as a special case of the facility
+  throw_exception<BadFormatArg>(
+      BadFormatArg::ErrorStrTag{}, fullArgString, static_cast<Args&&>(args)...);
 }
 
 template <bool emptyOk>

@@ -61,6 +61,41 @@ class FormatValue;
 // meta-attribute to identify formatters in this sea of template weirdness
 namespace detail {
 class FormatterTag {};
+
+struct BaseFormatterBase {
+  template <class Callback>
+  using DoFormatFn = void(const BaseFormatterBase&, FormatArg&, Callback&);
+
+  StringPiece str_;
+
+  static std::false_type recordUsedArg(const BaseFormatterBase&, size_t) {
+    return {};
+  }
+};
+
+// BaseFormatterTuple suffices and is faster to compile than is std::tuple
+template <size_t I, typename A>
+struct BaseFormatterTupleIndexedValue {
+  A value;
+};
+template <typename, typename...>
+struct BaseFormatterTuple;
+template <size_t... I, typename... A>
+struct BaseFormatterTuple<std::index_sequence<I...>, A...>
+    : BaseFormatterTupleIndexedValue<I, A>... {
+  explicit BaseFormatterTuple(in_place_t, A&&... a)
+      : BaseFormatterTupleIndexedValue<I, A>{static_cast<A&&>(a)}... {}
+};
+
+template <typename Str>
+struct BaseFormatterAppendToString {
+  Str& str;
+  void operator()(StringPiece s) const { str.append(s.data(), s.size()); }
+};
+
+inline void formatCheckIndex(size_t i, const FormatArg& arg, size_t max) {
+  arg.enforce(i < max, "argument index out of range, max=", max);
+}
 } // namespace detail
 
 /**
@@ -77,12 +112,19 @@ class FormatterTag {};
  * You may override the actual formatting of positional parameters in
  * `doFormatArg`. The Formatter class provides the default implementation.
  *
- * You may also override `doFormat` and `getSizeArg`. These override points were
- * added to permit static analysis of format strings, when it is inconvenient
- * or impossible to instantiate a BaseFormatter with the correct storage
+ * You may also override `recordUsedArg`. This override point was added to
+ * permit static analysis of format strings, when it is inconvenient or
+ * impossible to instantiate a BaseFormatter with the correct storage. If
+ * overriding, the return type must be std::true_type.
  */
-template <class Derived, bool containerMode, class... Args>
-class BaseFormatter {
+template <class Derived, bool containerMode, class Indices, class... Args>
+class BaseFormatterImpl;
+template <class Derived, bool containerMode, size_t... I, class... Args>
+class BaseFormatterImpl<
+    Derived,
+    containerMode,
+    std::index_sequence<I...>,
+    Args...> : public detail::BaseFormatterBase {
  public:
   /**
    * Append to output.  out(StringPiece sp) may be called (more than once)
@@ -96,8 +138,8 @@ class BaseFormatter {
   template <class Str>
   typename std::enable_if<IsSomeString<Str>::value>::type appendTo(
       Str& str) const {
-    auto appender = [&str](StringPiece s) { str.append(s.data(), s.size()); };
-    (*this)(appender);
+    detail::BaseFormatterAppendToString<Str> out{str};
+    (*this)(out);
   }
 
   /**
@@ -113,126 +155,88 @@ class BaseFormatter {
    * Metadata to identify generated children of BaseFormatter
    */
   typedef detail::FormatterTag IsFormatter;
-  typedef BaseFormatter BaseType;
 
  private:
-  typedef std::tuple<Args...> ValueTuple;
-  static constexpr size_t valueCount = std::tuple_size<ValueTuple>::value;
-
-  Derived const& asDerived() const {
-    return *static_cast<const Derived*>(this);
-  }
-
-  template <size_t K, class Callback>
-  typename std::enable_if<K == valueCount>::type doFormatFrom(
-      size_t i, FormatArg& arg, Callback& /*cb*/) const {
-    arg.error("argument index out of range, max=", i);
-  }
-
-  template <size_t K, class Callback>
-  typename std::enable_if<(K < valueCount)>::type doFormatFrom(
-      size_t i, FormatArg& arg, Callback& cb) const {
-    if (i == K) {
-      asDerived().template doFormatArg<K>(arg, cb);
-    } else {
-      doFormatFrom<K + 1>(i, arg, cb);
-    }
-  }
+  template <typename T, typename D = typename std::decay<T>::type>
+  using IsSizeable = bool_constant<
+      std::is_integral<D>::value && !std::is_same<D, bool>::value>;
 
   template <class Callback>
-  void doFormat(size_t i, FormatArg& arg, Callback& cb) const {
-    return doFormatFrom<0>(i, arg, cb);
+  static constexpr c_array<DoFormatFn<Callback>*, sizeof...(Args) + 1>
+  getDoFormatFnArray() {
+    return {{Derived::template doFormatArg<I, Callback>..., nullptr}};
   }
 
-  template <size_t K>
-  typename std::enable_if<K == valueCount, int>::type getSizeArgFrom(
-      size_t i, const FormatArg& arg) const {
-    arg.error("argument index out of range, max=", i);
+  template <size_t, typename>
+  constexpr int getSizeArgAt(std::false_type) const {
+    return -1;
   }
-
-  template <class T>
-  typename std::enable_if<
-      std::is_integral<T>::value && !std::is_same<T, bool>::value,
-      int>::type
-  getValue(const FormatValue<T>& format, const FormatArg&) const {
-    return static_cast<int>(format.getValue());
+  template <size_t K, typename T>
+  int getSizeArgAt(std::true_type) const {
+    using V = detail::BaseFormatterTupleIndexedValue<K, T>;
+    return static_cast<int>(static_cast<const V&>(values_).value);
   }
-
-  template <class T>
-  typename std::enable_if<
-      !std::is_integral<T>::value || std::is_same<T, bool>::value,
-      int>::type
-  getValue(const FormatValue<T>&, const FormatArg& arg) const {
-    arg.error("dynamic field width argument must be integral");
+  void getSizeArg(int* out) const {
+    using _ = int[];
+    void(_{(out[I] = getSizeArgAt<I, Args>(IsSizeable<Args>{}))..., 0});
   }
-
-  template <size_t K>
-      typename std::enable_if < K<valueCount, int>::type getSizeArgFrom(
-                                    size_t i, const FormatArg& arg) const {
-    if (i == K) {
-      return getValue(getFormatValue<K>(), arg);
-    }
-    return getSizeArgFrom<K + 1>(i, arg);
-  }
-
-  int getSizeArg(size_t i, const FormatArg& arg) const {
-    return getSizeArgFrom<0>(i, arg);
-  }
-
-  StringPiece str_;
 
  protected:
-  explicit BaseFormatter(StringPiece str, Args&&... args);
+  explicit BaseFormatterImpl(StringPiece str, Args&&... args)
+      : detail::BaseFormatterBase{str},
+        values_(in_place, static_cast<Args&&>(args)...) {}
 
   // Not copyable
-  BaseFormatter(const BaseFormatter&) = delete;
-  BaseFormatter& operator=(const BaseFormatter&) = delete;
+  BaseFormatterImpl(const BaseFormatterImpl&) = delete;
+  BaseFormatterImpl& operator=(const BaseFormatterImpl&) = delete;
 
   // Movable, but the move constructor and assignment operator are private,
   // for the exclusive use of format() (below).  This way, you can't create
   // a Formatter object, but can handle references to it (for streaming,
   // conversion to string, etc) -- which is good, as Formatter objects are
   // dangerous (they may hold references).
-  BaseFormatter(BaseFormatter&&) = default;
-  BaseFormatter& operator=(BaseFormatter&&) = default;
+  BaseFormatterImpl(BaseFormatterImpl&&) = default;
+  BaseFormatterImpl& operator=(BaseFormatterImpl&&) = default;
 
-  template <size_t K>
-  using ArgType = typename std::tuple_element<K, ValueTuple>::type;
-
-  template <size_t K>
-  FormatValue<typename std::decay<ArgType<K>>::type> getFormatValue() const {
-    return FormatValue<typename std::decay<ArgType<K>>::type>(
-        std::get<K>(values_));
+  template <size_t K, typename T = type_pack_element_t<K, Args...>>
+  FormatValue<typename std::decay<T>::type> getFormatValue() const {
+    using V = detail::BaseFormatterTupleIndexedValue<K, T>;
+    auto& v = static_cast<const V&>(values_);
+    return FormatValue<typename std::decay<T>::type>(v.value);
   }
 
-  ValueTuple values_;
+  detail::BaseFormatterTuple<std::index_sequence<I...>, Args...> values_;
 };
+template <class Derived, bool containerMode, class... Args>
+using BaseFormatter = BaseFormatterImpl<
+    Derived,
+    containerMode,
+    std::index_sequence_for<Args...>,
+    Args...>;
 
 template <bool containerMode, class... Args>
 class Formatter : public BaseFormatter<
                       Formatter<containerMode, Args...>,
                       containerMode,
                       Args...> {
+  using self = Formatter<containerMode, Args...>;
+  using base = BaseFormatter<self, containerMode, Args...>;
+
+  static_assert(
+      !containerMode || sizeof...(Args) == 1,
+      "Exactly one argument required in container mode");
+
  private:
-  explicit Formatter(StringPiece& str, Args&&... args)
-      : BaseFormatter<
-            Formatter<containerMode, Args...>,
-            containerMode,
-            Args...>(str, std::forward<Args>(args)...) {
-    static_assert(
-        !containerMode || sizeof...(Args) == 1,
-        "Exactly one argument required in container mode");
-  }
+  using base::base;
 
   template <size_t K, class Callback>
-  void doFormatArg(FormatArg& arg, Callback& cb) const {
-    this->template getFormatValue<K>().format(arg, cb);
+  static void doFormatArg(
+      const detail::BaseFormatterBase& obj, FormatArg& arg, Callback& cb) {
+    auto& d = static_cast<const Formatter&>(obj);
+    d.template getFormatValue<K>().format(arg, cb);
   }
 
-  friend class BaseFormatter<
-      Formatter<containerMode, Args...>,
-      containerMode,
-      Args...>;
+  friend base;
 
   template <class... A>
   friend Formatter<false, A...> format(StringPiece fmt, A&&... arg);
@@ -245,16 +249,25 @@ class Formatter : public BaseFormatter<
   friend Formatter<true, C> vformat(StringPiece fmt, C&& container);
 };
 
+namespace detail {
+template <typename Out>
+struct FormatterOstreamInsertionWriterFn {
+  Out& out;
+  void operator()(StringPiece sp) const {
+    out.write(sp.data(), std::streamsize(sp.size()));
+  }
+};
+} // namespace detail
+
 /**
  * Formatter objects can be written to streams.
  */
-template <class C, bool containerMode, class... Args>
+template <class C, class CT, bool containerMode, class... Args>
 std::ostream& operator<<(
-    std::basic_ostream<C>& out,
+    std::basic_ostream<C, CT>& out,
     const Formatter<containerMode, Args...>& formatter) {
-  auto writer = [&out](StringPiece sp) {
-    out.write(sp.data(), std::streamsize(sp.size()));
-  };
+  using out_t = std::basic_ostream<C, CT>;
+  auto writer = detail::FormatterOstreamInsertionWriterFn<out_t>{out};
   formatter(writer);
   return out;
 }
@@ -272,7 +285,7 @@ template <class... Args>
     "times and compatibility with std::format")]] //
 Formatter<false, Args...>
 format(StringPiece fmt, Args&&... args) {
-  return Formatter<false, Args...>(fmt, std::forward<Args>(args)...);
+  return Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...);
 }
 
 /**
@@ -281,7 +294,7 @@ format(StringPiece fmt, Args&&... args) {
  */
 template <class... Args>
 inline std::string sformat(StringPiece fmt, Args&&... args) {
-  return Formatter<false, Args...>(fmt, std::forward<Args>(args)...).str();
+  return Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...).str();
 }
 
 /**
@@ -303,7 +316,7 @@ template <class Container>
     "times and compatibility with std::format")]] //
 Formatter<true, Container>
 vformat(StringPiece fmt, Container&& container) {
-  return Formatter<true, Container>(fmt, std::forward<Container>(container));
+  return Formatter<true, Container>(fmt, static_cast<Container&&>(container));
 }
 
 /**
@@ -316,7 +329,7 @@ template <class Container>
     "times and compatibility with std::format")]] //
 inline std::string
 svformat(StringPiece fmt, Container&& container) {
-  return vformat(fmt, std::forward<Container>(container)).str();
+  return vformat(fmt, static_cast<Container&&>(container)).str();
 }
 
 /**
@@ -375,7 +388,7 @@ detail::DefaultValueWrapper<Container, Value> defaulted(
 template <class Str, class... Args>
 typename std::enable_if<IsSomeString<Str>::value>::type format(
     Str* out, StringPiece fmt, Args&&... args) {
-  Formatter<false, Args...>(fmt, std::forward<Args>(args)...).appendTo(*out);
+  Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...).appendTo(*out);
 }
 
 /**
@@ -384,7 +397,7 @@ typename std::enable_if<IsSomeString<Str>::value>::type format(
 template <class Str, class Container>
 typename std::enable_if<IsSomeString<Str>::value>::type vformat(
     Str* out, StringPiece fmt, Container&& container) {
-  vformat(fmt, std::forward<Container>(container)).appendTo(*out);
+  vformat(fmt, static_cast<Container&&>(container)).appendTo(*out);
 }
 
 /**
@@ -417,13 +430,9 @@ void formatNumber(
  * formatString(fmt.str(), arg, cb); but avoids creating a temporary
  * string if possible.
  */
-template <
-    class FormatCallback,
-    class Derived,
-    bool containerMode,
-    class... Args>
+template <class FormatCallback, bool containerMode, class... Args>
 void formatFormatter(
-    const BaseFormatter<Derived, containerMode, Args...>& formatter,
+    const Formatter<containerMode, Args...>& formatter,
     FormatArg& arg,
     FormatCallback& cb);
 

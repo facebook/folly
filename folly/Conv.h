@@ -231,7 +231,7 @@ typename std::enable_if<
     std::is_same<Tgt, typename std::decay<Src>::type>::value,
     Expected<Tgt, ConversionCode>>::type
 tryTo(Src&& value) {
-  return std::forward<Src>(value);
+  return static_cast<Src&&>(value);
 }
 
 /**
@@ -242,7 +242,7 @@ typename std::enable_if<
     std::is_same<Tgt, typename std::decay<Src>::type>::value,
     Tgt>::type
 to(Src&& value) {
-  return std::forward<Src>(value);
+  return static_cast<Src&&>(value);
 }
 
 /**
@@ -278,6 +278,9 @@ to(const Src& value) {
 
 namespace detail {
 
+template <class... T>
+using LastElement = type_pack_element_t<sizeof...(T) - 1, T...>;
+
 #ifdef _MSC_VER
 // MSVC can't quite figure out the LastElementImpl::call() stuff
 // in the base implementation, so we have to use tuples instead,
@@ -285,48 +288,30 @@ namespace detail {
 // though the runtime performance is the same.
 
 template <typename... Ts>
-auto getLastElement(Ts&&... ts) -> decltype(std::get<sizeof...(Ts) - 1>(
-    std::forward_as_tuple(std::forward<Ts>(ts)...))) {
-  return std::get<sizeof...(Ts) - 1>(
-      std::forward_as_tuple(std::forward<Ts>(ts)...));
+const LastElement<Ts...>& getLastElement(const Ts&... ts) {
+  return std::get<sizeof...(Ts) - 1>(std::forward_as_tuple(ts...));
 }
 
 inline void getLastElement() {}
-
-template <size_t size, typename... Ts>
-struct LastElementType : std::tuple_element<size - 1, std::tuple<Ts...>> {};
-
-template <>
-struct LastElementType<0> {
-  using type = void;
-};
-
-template <class... Ts>
-struct LastElement
-    : std::decay<typename LastElementType<sizeof...(Ts), Ts...>::type> {};
 #else
-template <typename... Ts>
-struct LastElementImpl {
-  static void call(Ignored<Ts>...) {}
+template <typename...>
+struct LastElementImpl;
+template <>
+struct LastElementImpl<> {
+  static void call() {}
 };
-
-template <typename Head, typename... Ts>
-struct LastElementImpl<Head, Ts...> {
+template <typename Ign, typename... Igns>
+struct LastElementImpl<Ign, Igns...> {
   template <typename Last>
-  static Last call(Ignored<Ts>..., Last&& last) {
-    return std::forward<Last>(last);
+  static const Last& call(Igns..., const Last& last) {
+    return last;
   }
 };
 
 template <typename... Ts>
-auto getLastElement(const Ts&... ts)
-    -> decltype(LastElementImpl<Ts...>::call(ts...)) {
-  return LastElementImpl<Ts...>::call(ts...);
+const LastElement<Ts...>& getLastElement(const Ts&... ts) {
+  return LastElementImpl<Ignored<Ts>...>::call(ts...);
 }
-
-template <class... Ts>
-struct LastElement : std::decay<decltype(LastElementImpl<Ts...>::call(
-                         std::declval<Ts>()...))> {};
 #endif
 
 } // namespace detail
@@ -771,69 +756,120 @@ estimateSpaceNeeded(const Src&) {
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 namespace detail {
 
-template <class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value, size_t>::type
-estimateSpaceToReserve(size_t sofar, Tgt*) {
-  return sofar;
+FOLLY_ERASE constexpr size_t estimateSpaceToReserveOne(std::false_type, void*) {
+  return 0;
+}
+template <typename T>
+FOLLY_ERASE constexpr size_t estimateSpaceToReserveOne(
+    std::true_type, const T& v) {
+  return estimateSpaceNeeded(v);
 }
 
-template <class T, class... Ts>
-size_t estimateSpaceToReserve(size_t sofar, const T& v, const Ts&... vs) {
-  return estimateSpaceToReserve(sofar + estimateSpaceNeeded(v), vs...);
-}
+template <typename>
+struct EstimateSpaceToReserveAll;
+template <size_t... I>
+struct EstimateSpaceToReserveAll<std::index_sequence<I...>> {
+  template <size_t J, size_t N = sizeof...(I)>
+  using tag = bool_constant<J + 1 < N>;
+  template <class... T>
+  static size_t call(const T&... v) {
+    const size_t sizes[] = {estimateSpaceToReserveOne(tag<I>{}, v)...};
+    size_t size = 0;
+    for (const auto s : sizes) {
+      size += s;
+    }
+    return size;
+  }
+};
 
-template <class... Ts>
-void reserveInTarget(const Ts&... vs) {
-  getLastElement(vs...)->reserve(estimateSpaceToReserve(0, vs...));
+template <class O>
+void reserveInTarget(const O& o) {
+  (void)o;
+}
+template <class T, class O>
+void reserveInTarget(const T& v, const O& o) {
+  o->reserve(estimateSpaceNeeded(v));
+}
+template <class T0, class T1, class... Ts>
+void reserveInTarget(const T0& v0, const T1& v1, const Ts&... vs) {
+  using seq = std::index_sequence_for<T0, T1, Ts...>;
+  getLastElement(vs...)->reserve(
+      EstimateSpaceToReserveAll<seq>::call(v0, v1, vs...));
 }
 
 template <class Delimiter, class... Ts>
 void reserveInTargetDelim(const Delimiter& d, const Ts&... vs) {
   static_assert(sizeof...(vs) >= 2, "Needs at least 2 args");
-  size_t fordelim = (sizeof...(vs) - 2) *
-      estimateSpaceToReserve(0, d, static_cast<std::string*>(nullptr));
-  getLastElement(vs...)->reserve(estimateSpaceToReserve(fordelim, vs...));
+  using seq = std::index_sequence_for<Ts...>;
+  size_t fordelim = (sizeof...(vs) - 2) * estimateSpaceNeeded(d);
+  getLastElement(vs...)->reserve(
+      fordelim + EstimateSpaceToReserveAll<seq>::call(vs...));
 }
 
-/**
- * Variadic base case: append one element
- */
+template <class T>
+FOLLY_ERASE constexpr int toAppendStrImplOne(
+    std::false_type, const T& v, void*) {
+  (void)v;
+  return 0;
+}
 template <class T, class Tgt>
-typename std::enable_if<
-    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type
-toAppendStrImpl(const T& v, Tgt result) {
-  toAppend(v, result);
+FOLLY_ERASE int toAppendStrImplOne(std::true_type, const T& v, Tgt result) {
+  return toAppend(v, result), 0;
 }
+template <typename>
+struct ToAppendStrImplAll;
+template <size_t... I>
+struct ToAppendStrImplAll<std::index_sequence<I...>> {
+  template <class... T>
+  static void call(const T&... v) {
+    using _ = int[];
+    auto r = getLastElement(v...);
+    void(_{toAppendStrImplOne(bool_constant<I + 1 < sizeof...(T)>{}, v, r)...});
+  }
+};
 
-template <class T, class... Ts>
-typename std::enable_if<
-    sizeof...(Ts) >= 2 &&
-    IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
-toAppendStrImpl(const T& v, const Ts&... vs) {
-  toAppend(v, getLastElement(vs...));
-  toAppendStrImpl(vs...);
+template <class Delimiter, class T>
+FOLLY_ERASE constexpr int toAppendDelimStrImplOne(
+    index_constant<0>, const Delimiter& d, const T& v, void*) {
+  (void)d;
+  (void)v;
+  return 0;
 }
-
 template <class Delimiter, class T, class Tgt>
-typename std::enable_if<
-    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type
-toAppendDelimStrImpl(const Delimiter& /* delim */, const T& v, Tgt result) {
+FOLLY_ERASE int toAppendDelimStrImplOne(
+    index_constant<1>, const Delimiter& d, const T& v, Tgt result) {
+  (void)d;
   toAppend(v, result);
+  return 0;
 }
-
+template <class Delimiter, class T, class Tgt>
+FOLLY_ERASE int toAppendDelimStrImplOne(
+    index_constant<2>, const Delimiter& d, const T& v, Tgt result) {
+  toAppend(v, result);
+  toAppend(d, result);
+  return 0;
+}
+template <typename>
+struct ToAppendDelimStrImplAll;
+template <size_t... I>
+struct ToAppendDelimStrImplAll<std::index_sequence<I...>> {
+  template <size_t J, size_t N = sizeof...(I), size_t K = N - J - 1>
+  using tag = index_constant<(K < 2 ? K : 2)>;
+  template <class Delimiter, class... T>
+  static void call(const Delimiter& d, const T&... v) {
+    using _ = int[];
+    auto r = detail::getLastElement(v...);
+    void(_{toAppendDelimStrImplOne(tag<I>{}, d, v, r)...});
+  }
+};
 template <class Delimiter, class T, class... Ts>
 typename std::enable_if<
     sizeof...(Ts) >= 2 &&
     IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+        detail::LastElement<Ts...>>::type>::value>::type
 toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
-  // we are really careful here, calling toAppend with just one element does
-  // not try to estimate space needed (as we already did that). If we call
-  // toAppend(v, delim, ....) we would do unnecessary size calculation
-  toAppend(v, detail::getLastElement(vs...));
-  toAppend(delim, detail::getLastElement(vs...));
-  toAppendDelimStrImpl(delim, vs...);
+  using seq = std::index_sequence_for<T, Ts...>;
+  ToAppendDelimStrImplAll<seq>::call(delim, v, vs...);
 }
 } // namespace detail
 #endif
@@ -863,9 +899,10 @@ template <class... Ts>
 typename std::enable_if<
     sizeof...(Ts) >= 3 &&
     IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+        detail::LastElement<Ts...>>::type>::value>::type
 toAppend(const Ts&... vs) {
-  ::folly::detail::toAppendStrImpl(vs...);
+  using seq = std::index_sequence_for<Ts...>;
+  detail::ToAppendStrImplAll<seq>::call(vs...);
 }
 
 #ifdef _MSC_VER
@@ -892,7 +929,7 @@ void toAppend(const pid_t a, Tgt* res) {
  */
 template <class... Ts>
 typename std::enable_if<IsSomeString<typename std::remove_pointer<
-    typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+    detail::LastElement<Ts...>>::type>::value>::type
 toAppendFit(const Ts&... vs) {
   ::folly::detail::reserveInTarget(vs...);
   toAppend(vs...);
@@ -934,7 +971,7 @@ template <class Delimiter, class... Ts>
 typename std::enable_if<
     sizeof...(Ts) >= 3 &&
     IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+        detail::LastElement<Ts...>>::type>::value>::type
 toAppendDelim(const Delimiter& delim, const Ts&... vs) {
   detail::toAppendDelimStrImpl(delim, vs...);
 }
@@ -946,7 +983,7 @@ toAppendDelim(const Delimiter& delim, const Ts&... vs) {
  */
 template <class Delimiter, class... Ts>
 typename std::enable_if<IsSomeString<typename std::remove_pointer<
-    typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+    detail::LastElement<Ts...>>::type>::value>::type
 toAppendDelimFit(const Delimiter& delim, const Ts&... vs) {
   detail::reserveInTargetDelim(delim, vs...);
   toAppendDelim(delim, vs...);
@@ -963,8 +1000,7 @@ template <class Tgt, class... Ts>
 typename std::enable_if<
     IsSomeString<Tgt>::value &&
         (sizeof...(Ts) != 1 ||
-         !std::is_same<Tgt, typename detail::LastElement<const Ts&...>::type>::
-             value),
+         !std::is_same<Tgt, detail::LastElement<void, Ts...>>::value),
     Tgt>::type
 to(const Ts&... vs) {
   Tgt result;
@@ -1004,7 +1040,7 @@ typename std::enable_if<
         std::is_same<Tgt, typename std::decay<Src>::type>::value,
     Tgt>::type
 toDelim(const Delim& /* delim */, Src&& value) {
-  return std::forward<Src>(value);
+  return static_cast<Src&&>(value);
 }
 
 /**
@@ -1015,8 +1051,7 @@ template <class Tgt, class Delim, class... Ts>
 typename std::enable_if<
     IsSomeString<Tgt>::value &&
         (sizeof...(Ts) != 1 ||
-         !std::is_same<Tgt, typename detail::LastElement<const Ts&...>::type>::
-             value),
+         !std::is_same<Tgt, detail::LastElement<void, Ts...>>::value),
     Tgt>::type
 toDelim(const Delim& delim, const Ts&... vs) {
   Tgt result;
@@ -1156,11 +1191,9 @@ typename std::enable_if< //
     is_integral_v<Tgt> && !std::is_same<Tgt, bool>::value,
     Tgt>::type
 to(const char* b, const char* e) {
-  return tryTo<Tgt>(b, e).thenOrThrow(
-      [](Tgt res) { return res; },
-      [=](ConversionCode code) {
-        return makeConversionError(code, StringPiece(b, e));
-      });
+  return tryTo<Tgt>(b, e).thenOrThrow(identity, [=](ConversionCode code) {
+    return makeConversionError(code, StringPiece(b, e));
+  });
 }
 
 /**
@@ -1355,11 +1388,9 @@ tryTo(const Src& value) noexcept {
 template <typename Tgt, typename Src>
 typename std::enable_if<detail::IsArithToArith<Tgt, Src>::value, Tgt>::type to(
     const Src& value) {
-  return tryTo<Tgt>(value).thenOrThrow(
-      [](Tgt res) { return res; },
-      [&](ConversionCode e) {
-        return makeConversionError(e, detail::errorValue<Tgt>(value));
-      });
+  return tryTo<Tgt>(value).thenOrThrow(identity, [&](ConversionCode e) {
+    return makeConversionError(e, detail::errorValue<Tgt>(value));
+  });
 }
 
 /**
