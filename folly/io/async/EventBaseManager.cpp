@@ -50,20 +50,16 @@ void EventBaseManager::setEventBase(EventBase* eventBase, bool takeOwnership) {
 
   info = new EventBaseInfo(eventBase, takeOwnership);
   localStore_.reset(info);
-  this->trackEventBase(eventBase);
 }
 
 void EventBaseManager::clearEventBase() {
   EventBaseInfo* info = localStore_.get();
   if (info != nullptr) {
-    this->untrackEventBase(info->eventBase);
     this->localStore_.reset(nullptr);
   }
 }
 
-// XXX should this really be "const"?
 EventBase* EventBaseManager::getEventBase() const {
-  // have one?
   auto* info = localStore_.get();
   if (!info) {
     auto evb = std::make_unique<EventBase>(
@@ -74,15 +70,6 @@ EventBase* EventBaseManager::getEventBase() const {
     if (observer_) {
       info->eventBase->setObserver(observer_);
     }
-
-    // start tracking the event base
-    // XXX
-    // note: ugly cast because this does something mutable
-    // even though this method is defined as "const".
-    // Simply removing the const causes trouble all over fbcode;
-    // lots of services build a const EventBaseManager and errors
-    // abound when we make this non-const.
-    (const_cast<EventBaseManager*>(this))->trackEventBase(info->eventBase);
   }
 
   return info->eventBase;

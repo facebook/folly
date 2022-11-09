@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <list>
-#include <set>
+#include <memory>
 
 #include <folly/ThreadLocal.h>
 #include <folly/io/async/EventBase.h>
@@ -36,7 +35,7 @@ namespace folly {
 class EventBaseManager {
  public:
   /**
-   * XXX Constructing a EventBaseManager directly is DEPRECATED and not
+   * Constructing a EventBaseManager directly is DEPRECATED and not
    * encouraged. You should instead use the global singleton if possible.
    */
   EventBaseManager() {}
@@ -99,62 +98,26 @@ class EventBaseManager {
    */
   void clearEventBase();
 
-  /**
-   * Gives the caller all references to all assigned EventBase instances at
-   * this moment in time.  Locks a mutex so that these EventBase set cannot
-   * be changed, and also the caller can rely on no instances being destructed.
-   */
-  template <typename FunctionType>
-  void withEventBaseSet(const FunctionType& runnable) {
-    // grab the mutex for the caller
-    std::lock_guard<std::mutex> g(*&eventBaseSetMutex_);
-    // give them only a const set to work with
-    const std::set<EventBase*>& constSet = eventBaseSet_;
-    runnable(constSet);
-  }
-
  private:
   struct EventBaseInfo {
-    EventBaseInfo(EventBase* evb, bool owned) : eventBase(evb), owned_(owned) {}
-    EventBaseInfo() : eventBase(new EventBase), owned_(true) {}
+    EventBaseInfo(EventBase* evb, bool owned)
+        : eventBase(evb), isOwned(owned) {}
 
-    EventBase* eventBase;
-    bool owned_;
     ~EventBaseInfo() {
-      if (owned_) {
+      if (isOwned) {
         delete eventBase;
       }
     }
+
+    EventBase* eventBase;
+    bool isOwned;
   };
 
-  // Forbidden copy constructor and assignment opererator
-  EventBaseManager(EventBaseManager const&);
-  EventBaseManager& operator=(EventBaseManager const&);
-
-  void trackEventBase(EventBase* evb) {
-    std::lock_guard<std::mutex> g(*&eventBaseSetMutex_);
-    eventBaseSet_.insert(evb);
-  }
-
-  void untrackEventBase(EventBase* evb) {
-    std::lock_guard<std::mutex> g(*&eventBaseSetMutex_);
-    eventBaseSet_.erase(evb);
-  }
+  EventBaseManager(EventBaseManager const&) = delete;
+  EventBaseManager& operator=(EventBaseManager const&) = delete;
 
   folly::EventBaseBackendBase::FactoryFunc func_;
-
   mutable folly::ThreadLocalPtr<EventBaseInfo> localStore_;
-
-  /**
-   * Set of "active" EventBase instances
-   * (also see the mutex "eventBaseSetMutex_" below
-   * which governs access to this).
-   */
-  mutable std::set<EventBase*> eventBaseSet_;
-
-  /// A mutex to use as a guard for the above "eventBaseSet_"
-  std::mutex eventBaseSetMutex_;
-
   std::shared_ptr<folly::EventBaseObserver> observer_;
 };
 
