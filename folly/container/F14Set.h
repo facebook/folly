@@ -841,6 +841,7 @@ class F14ValueSet
           KeyEqual,
           Alloc>> {
  protected:
+  friend struct F14ValueSetTester;
   using Policy = f14::detail::SetPolicyWithDefaults<
       f14::detail::ValueContainerPolicy,
       Key,

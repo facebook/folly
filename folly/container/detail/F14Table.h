@@ -856,6 +856,7 @@ class F14Table : public Policy {
   using Policy::prefetchBeforeCopy;
   using Policy::prefetchBeforeDestroy;
   using Policy::prefetchBeforeRehash;
+  using Policy::shouldAssume32BitHash;
 
   using ByteAlloc = typename AllocTraits::template rebind_alloc<uint8_t>;
   using BytePtr = typename std::allocator_traits<ByteAlloc>::pointer;
@@ -1068,8 +1069,21 @@ class F14Table : public Policy {
       hash >>= 22;
 #endif
     } else {
-      // we don't trust the top bit
-      tag = (hash >> 56) | 0x80;
+      // F14 uses the bottom bits of the hash to form the index, so for maps
+      // with less than 16.7 million entries, it's safe to have a 32-bit hash,
+      // and use the bottom 24 bits for the index and leave the top 8 for the
+      // tag.
+      if (shouldAssume32BitHash()) {
+        // we don't trust the top bit
+        tag = ((hash >> 24) | 0x80) & 0xFF;
+        // Explicitly mask off the top 32-bits so that the compiler can
+        // optimize away whatever is populating the top 32-bits, which is likely
+        // just the lower 32-bits duplicated.
+        hash = hash & 0xFFFF'FFFF;
+      } else {
+        // we don't trust the top bit
+        tag = (hash >> 56) | 0x80;
+      }
     }
     return std::make_pair(hash, tag);
   }
