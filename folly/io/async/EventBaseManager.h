@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <folly/Optional.h>
 #include <folly/ThreadLocal.h>
 #include <folly/io/async/EventBase.h>
 
@@ -69,11 +70,10 @@ class EventBaseManager {
    * Returns nullptr if no EventBase has been created for this thread yet.
    */
   EventBase* getExistingEventBase() const {
-    EventBaseInfo* info = localStore_.get();
-    if (info == nullptr) {
-      return nullptr;
+    if (const auto& info = *localStore_.get()) {
+      return info->eventBase;
     }
-    return info->eventBase;
+    return nullptr;
   }
 
   /**
@@ -117,7 +117,7 @@ class EventBaseManager {
   EventBaseManager& operator=(EventBaseManager const&) = delete;
 
   folly::EventBaseBackendBase::FactoryFunc func_;
-  mutable folly::ThreadLocalPtr<EventBaseInfo> localStore_;
+  mutable folly::ThreadLocal<folly::Optional<EventBaseInfo>> localStore_;
   std::shared_ptr<folly::EventBaseObserver> observer_;
 };
 

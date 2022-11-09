@@ -41,31 +41,26 @@ EventBaseManager* EventBaseManager::get() {
  */
 
 void EventBaseManager::setEventBase(EventBase* eventBase, bool takeOwnership) {
-  EventBaseInfo* info = localStore_.get();
-  if (info != nullptr) {
+  auto& info = *localStore_.get();
+  if (info) {
     throw std::runtime_error(
         "EventBaseManager: cannot set a new EventBase "
         "for this thread when one already exists");
   }
 
-  info = new EventBaseInfo(eventBase, takeOwnership);
-  localStore_.reset(info);
+  info.emplace(eventBase, takeOwnership);
 }
 
 void EventBaseManager::clearEventBase() {
-  EventBaseInfo* info = localStore_.get();
-  if (info != nullptr) {
-    this->localStore_.reset(nullptr);
-  }
+  localStore_->reset();
 }
 
 EventBase* EventBaseManager::getEventBase() const {
-  auto* info = localStore_.get();
+  auto& info = *localStore_.get();
   if (!info) {
     auto evb = std::make_unique<EventBase>(
         EventBase::Options().setBackendFactory(func_));
-    info = new EventBaseInfo(evb.release(), true);
-    localStore_.reset(info);
+    info.emplace(evb.release(), true);
 
     if (observer_) {
       info->eventBase->setObserver(observer_);
