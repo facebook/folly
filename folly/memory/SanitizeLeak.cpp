@@ -17,7 +17,7 @@
 #include <folly/memory/SanitizeLeak.h>
 
 #include <mutex>
-#include <unordered_set>
+#include <unordered_map>
 
 #include <folly/lang/Extern.h>
 
@@ -45,7 +45,7 @@ FOLLY_STORAGE_CONSTEXPR lsan_ignore_object_t* const //
 namespace {
 struct LeakedPtrs {
   std::mutex mutex;
-  std::unordered_set<void const*> set;
+  std::unordered_map<void const*, size_t> map;
 
   static LeakedPtrs& instance() {
     static auto* ptrs = new LeakedPtrs();
@@ -60,7 +60,7 @@ void annotate_object_leaked_impl(void const* ptr) {
   }
   auto& ptrs = LeakedPtrs::instance();
   std::lock_guard<std::mutex> lg(ptrs.mutex);
-  ptrs.set.insert(ptr);
+  ++ptrs.map[ptr];
 }
 
 void annotate_object_collected_impl(void const* ptr) {
@@ -69,7 +69,9 @@ void annotate_object_collected_impl(void const* ptr) {
   }
   auto& ptrs = LeakedPtrs::instance();
   std::lock_guard<std::mutex> lg(ptrs.mutex);
-  ptrs.set.erase(ptr);
+  if (!--ptrs.map[ptr]) {
+    ptrs.map.erase(ptr);
+  }
 }
 
 } // namespace detail

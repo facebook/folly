@@ -70,6 +70,27 @@ TEST(SanitizeLeak, NotLeaked) {
   annotate_object_leaked(ptr0);
 }
 
+TEST(SanitizeLeak, MultiLeaked) {
+  int* ptr0 = new int(0);
+  for (size_t i = 0; i < 3; ++i) {
+    annotate_object_leaked(ptr0);
+  }
+  for (size_t i = 0; i < 2; ++i) {
+    annotate_object_collected(ptr0);
+  }
+}
+
+TEST(SanitizeLeak, MultiNotLeaked) {
+  int* ptr0 = new int(0);
+  for (size_t i = 0; i < 3; ++i) {
+    annotate_object_leaked(ptr0);
+  }
+  for (size_t i = 0; i < 3; ++i) {
+    annotate_object_collected(ptr0);
+  }
+  delete ptr0;
+}
+
 TEST(SanitizeLeak, Concurrent) {
   std::vector<std::thread> threads;
   for (size_t t = 0; t < 8; ++t) {
