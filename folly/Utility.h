@@ -701,6 +701,130 @@ struct to_underlying_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying{};
 
+namespace detail {
+template <typename R>
+using invocable_to_detect = decltype(FOLLY_DECLVAL(R)());
+
+template <
+    typename F,
+    //  MSVC 14.16.27023 does not permit these to be in the class body:
+    //    error C2833: 'operator decltype' is not a recognized operator or type
+    //  TODO: return these to the class body and remove the static assertions
+    typename TML = detected_t<invocable_to_detect, F&>,
+    typename TCL = detected_t<invocable_to_detect, F const&>,
+    typename TMR = detected_t<invocable_to_detect, F&&>,
+    typename TCR = detected_t<invocable_to_detect, F const&&>>
+class invocable_to_convertible : private inheritable<F> {
+ private:
+  static_assert(std::is_same<F, decay_t<F>>::value, "mismatch");
+
+  template <typename R>
+  using result_t = detected_t<invocable_to_detect, R>;
+  template <typename R>
+  static constexpr bool detected_v = is_detected_v<invocable_to_detect, R>;
+  template <typename R>
+  using if_invocable_as_v = std::enable_if_t<detected_v<R>, int>;
+  template <typename R>
+  static constexpr bool nx_v = noexcept(FOLLY_DECLVAL(R)());
+  template <typename G>
+  static constexpr bool constructible_v = std::is_constructible<F, G&&>::value;
+
+  using FML = F&;
+  using FCL = F const&;
+  using FMR = F&&;
+  using FCR = F const&&;
+  static_assert(std::is_same<TML, result_t<FML>>::value, "mismatch");
+  static_assert(std::is_same<TCL, result_t<FCL>>::value, "mismatch");
+  static_assert(std::is_same<TMR, result_t<FMR>>::value, "mismatch");
+  static_assert(std::is_same<TCR, result_t<FCR>>::value, "mismatch");
+
+ public:
+  template <typename G, std::enable_if_t<constructible_v<G&&>, int> = 0>
+  FOLLY_ERASE explicit constexpr invocable_to_convertible(G&& g) noexcept(
+      noexcept(F(static_cast<G&&>(g))))
+      : inheritable<F>(static_cast<G&&>(g)) {}
+
+  template <typename..., typename R = FML, if_invocable_as_v<R> = 0>
+  FOLLY_ERASE constexpr operator TML() & noexcept(nx_v<R>) {
+    return static_cast<FML>(*this)();
+  }
+  template <typename..., typename R = FCL, if_invocable_as_v<R> = 0>
+  FOLLY_ERASE constexpr operator TCL() const& noexcept(nx_v<R>) {
+    return static_cast<FCL>(*this)();
+  }
+  template <typename..., typename R = FMR, if_invocable_as_v<R> = 0>
+  FOLLY_ERASE constexpr operator TMR() && noexcept(nx_v<R>) {
+    return static_cast<FMR>(*this)();
+  }
+  template <typename..., typename R = FCR, if_invocable_as_v<R> = 0>
+  FOLLY_ERASE constexpr operator TCR() const&& noexcept(nx_v<R>) {
+    return static_cast<FCR>(*this)();
+  }
+};
+} // namespace detail
+
+//  invocable_to
+//  invocable_to_fn
+//
+//  Given an invocable, returns an object which is implicitly convertible to the
+//  type which the invocable returns when invoked with no arguments. Conversion
+//  invokes the invocables and returns the value.
+//
+//  The return object has unspecified type with the following semantics:
+//  * It stores a decay-copy of the passed invocable.
+//  * It defines four-way conversion operators. Each conversion operator purely
+//    forwards to the invocable as forwarded-like the convertible, and has the
+//    same exception specification and the same participation in overload
+//    resolution as invocation of the invocable.
+//
+//  Example:
+//
+//    Given a setup:
+//
+//      struct stable {
+//        int value = 0;
+//        stable() = default;
+//        stable(stable const&); // expensive!
+//      };
+//      std::list<stable const> list;
+//
+//    The goal is to insert a stable with a value of 7 to the back of the list.
+//
+//    The obvious ways are expensive:
+//
+//      stable obj;
+//      obj.value = 7;
+//      list.push_back(obj); // or variations with emplace_back or std::move
+//
+//    With a lambda and copy elision optimization (NRVO), the expense remains:
+//
+//      list.push_back(std::invoke([] {
+//        stable obj;
+//        obj.value = 7;
+//        return obj;
+//      }));
+//
+//    But conversion, as done with this utility, makes this goal achievable.
+//
+//      list.emplace_back(folly::invoke_to([] {
+//        stable obj;
+//        obj.value = 7;
+//        return obj;
+//      }));
+struct invocable_to_fn {
+  template <
+      typename F,
+      typename...,
+      typename D = detail::decay_t<F>,
+      typename R = detail::invocable_to_convertible<D>,
+      std::enable_if_t<std::is_constructible<D, F&&>::value, int> = 0>
+  FOLLY_ERASE constexpr R operator()(F&& f) const
+      noexcept(noexcept(R(static_cast<F&&>(f)))) {
+    return R(static_cast<F&&>(f));
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr invocable_to_fn invocable_to{};
+
 // Simulate if constexpr in C++14
 template <bool>
 struct if_constexpr_fn {

@@ -268,6 +268,122 @@ TEST_F(UtilityTest, to_floating_point) {
   }
 }
 
+TEST_F(UtilityTest, invocable_to_basic) {
+  struct foo {
+    int value = 0;
+    explicit foo(int value_) noexcept : value{value_} {}
+    foo(foo const&) = delete;
+    void operator=(foo const&) = delete;
+  };
+  foo f = folly::invocable_to([] { return foo(17); });
+  EXPECT_EQ(17, f.value);
+}
+
+namespace folly::detail::invocable_to_test {
+
+template <typename T, bool C, bool R, bool X>
+struct fun;
+template <typename T, bool X>
+struct fun<T, 0, 0, X> {
+  constexpr T operator()() & noexcept(X);
+};
+template <typename T, bool X>
+struct fun<T, 0, 1, X> {
+  constexpr T operator()() && noexcept(X);
+};
+template <typename T, bool X>
+struct fun<T, 1, 0, X> {
+  constexpr T operator()() const& noexcept(X);
+};
+template <typename T, bool X>
+struct fun<T, 1, 1, X> {
+  constexpr T operator()() const&& noexcept(X);
+};
+
+template <typename T, bool C, bool R, bool X>
+using of = std::invoke_result_t<folly::invocable_to_fn, fun<T, C, R, X>>;
+
+template <typename S, typename D>
+static constexpr bool is_conv_v = std::is_convertible_v<S, D>;
+
+template <typename S, typename D>
+static constexpr bool is_nx_conv_v = //
+    is_conv_v<S, D>&& std::is_nothrow_constructible_v<D, S>;
+
+static_assert(is_conv_v<of<int, 0, 0, 0>&, int>);
+static_assert(!is_conv_v<of<int, 0, 0, 0> const&, int>);
+static_assert(!is_conv_v<of<int, 0, 0, 0>&&, int>);
+static_assert(!is_conv_v<of<int, 0, 0, 0> const&&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 0, 0>&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 0, 0> const&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 0, 0>&&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 0, 0> const&&, int>);
+
+static_assert(is_conv_v<of<int, 0, 0, 1>&, int>);
+static_assert(!is_conv_v<of<int, 0, 0, 1> const&, int>);
+static_assert(!is_conv_v<of<int, 0, 0, 1>&&, int>);
+static_assert(!is_conv_v<of<int, 0, 0, 1> const&&, int>);
+static_assert(is_nx_conv_v<of<int, 0, 0, 1>&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 0, 1> const&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 0, 1>&&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 0, 1> const&&, int>);
+
+static_assert(!is_conv_v<of<int, 0, 1, 0>&, int>);
+static_assert(!is_conv_v<of<int, 0, 1, 0> const&, int>);
+static_assert(is_conv_v<of<int, 0, 1, 0>&&, int>);
+static_assert(!is_conv_v<of<int, 0, 1, 0> const&&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 1, 0>&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 1, 0> const&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 1, 0>&&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 1, 0> const&&, int>);
+
+static_assert(!is_conv_v<of<int, 0, 1, 1>&, int>);
+static_assert(!is_conv_v<of<int, 0, 1, 1> const&, int>);
+static_assert(is_conv_v<of<int, 0, 1, 1>&&, int>);
+static_assert(!is_conv_v<of<int, 0, 1, 1> const&&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 1, 1>&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 1, 1> const&, int>);
+static_assert(is_nx_conv_v<of<int, 0, 1, 1>&&, int>);
+static_assert(!is_nx_conv_v<of<int, 0, 1, 1> const&&, int>);
+
+static_assert(is_conv_v<of<int, 1, 0, 0>&, int>);
+static_assert(is_conv_v<of<int, 1, 0, 0> const&, int>);
+static_assert(is_conv_v<of<int, 1, 0, 0>&&, int>);
+static_assert(is_conv_v<of<int, 1, 0, 0> const&&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 0, 0>&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 0, 0> const&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 0, 0>&&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 0, 0> const&&, int>);
+
+static_assert(is_conv_v<of<int, 1, 0, 1>&, int>);
+static_assert(is_conv_v<of<int, 1, 0, 1> const&, int>);
+static_assert(is_conv_v<of<int, 1, 0, 1>&&, int>);
+static_assert(is_conv_v<of<int, 1, 0, 1> const&&, int>);
+static_assert(is_nx_conv_v<of<int, 1, 0, 1>&, int>);
+static_assert(is_nx_conv_v<of<int, 1, 0, 1> const&, int>);
+static_assert(is_nx_conv_v<of<int, 1, 0, 1>&&, int>);
+static_assert(is_nx_conv_v<of<int, 1, 0, 1> const&&, int>);
+
+static_assert(!is_conv_v<of<int, 1, 1, 0>&, int>);
+static_assert(!is_conv_v<of<int, 1, 1, 0> const&, int>);
+static_assert(is_conv_v<of<int, 1, 1, 0>&&, int>);
+static_assert(is_conv_v<of<int, 1, 1, 0> const&&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 1, 0>&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 1, 0> const&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 1, 0>&&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 1, 0> const&&, int>);
+
+static_assert(!is_conv_v<of<int, 1, 1, 1>&, int>);
+static_assert(!is_conv_v<of<int, 1, 1, 1> const&, int>);
+static_assert(is_conv_v<of<int, 1, 1, 1>&&, int>);
+static_assert(is_conv_v<of<int, 1, 1, 1> const&&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 1, 1>&, int>);
+static_assert(!is_nx_conv_v<of<int, 1, 1, 1> const&, int>);
+static_assert(is_nx_conv_v<of<int, 1, 1, 1>&&, int>);
+static_assert(is_nx_conv_v<of<int, 1, 1, 1> const&&, int>);
+
+} // namespace folly::detail::invocable_to_test
+
 template <class T>
 constexpr bool is_vector = folly::detail::is_instantiation_of_v<std::vector, T>;
 
