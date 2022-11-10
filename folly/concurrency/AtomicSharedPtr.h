@@ -21,6 +21,7 @@
 
 #include <folly/PackedSyncPtr.h>
 #include <folly/concurrency/detail/AtomicSharedPtr-detail.h>
+#include <folly/memory/SanitizeLeak.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
 
@@ -235,11 +236,13 @@ class atomic_shared_ptr {
   static void add_external(BasePtr* res, int64_t c = 0) {
     assert(res);
     CountedDetail::inc_shared_count(res, EXTERNAL_OFFSET + c);
+    annotate_object_leaked(res);
   }
   static void release_external(PackedPtr& res, int64_t c = 0) {
     if (!res.get()) {
       return;
     }
+    annotate_object_collected(res.get());
     int64_t count = get_local_count(res) + c;
     int64_t diff = EXTERNAL_OFFSET - count;
     assert(diff >= 0);

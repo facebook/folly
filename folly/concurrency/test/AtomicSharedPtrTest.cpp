@@ -248,4 +248,10 @@ TEST(AtomicSharedPtr, StressTest) {
   }
 }
 
+TEST(AtomicSharedPtr, Leak) {
+  static auto& ptr = *new atomic_shared_ptr<int>();
+  ptr.store(std::make_shared<int>(3), std::memory_order_relaxed);
+  EXPECT_EQ(3, *ptr.load(std::memory_order_relaxed));
+}
+
 #endif // defined(__GLIBCXX__)
