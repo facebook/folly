@@ -169,6 +169,12 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setDeferTaskRun(bool v) {
+      deferTaskRun = v;
+
+      return *this;
+    }
+
     size_t capacity{256};
     size_t minCapacity{0};
     size_t maxSubmit{128};
@@ -178,6 +184,7 @@ class IoUringBackend : public EventBaseBackendBase {
     bool registerRingFd{false};
     uint32_t flags{0};
     bool taskRunCoop{false};
+    bool deferTaskRun{false};
 
     std::chrono::milliseconds sqIdle{0};
     std::chrono::milliseconds cqIdle{0};
@@ -285,6 +292,7 @@ class IoUringBackend : public EventBaseBackendBase {
   static bool isAvailable();
   bool kernelHasNonBlockWriteFixes() const;
   static bool kernelSupportsRecvmsgMultishot();
+  static bool kernelSupportsDeferTaskrun();
 
   struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
                                     boost::intrusive::cache_last<false>> {
@@ -1088,6 +1096,7 @@ class IoUringBackend : public EventBaseBackendBase {
   std::unique_ptr<IoSqe> timerEntry_;
   std::unique_ptr<IoSqe> signalReadEntry_;
   IoSqeList freeList_;
+  bool usingDeferTaskrun_{false};
 
   // timer related
   int timerFd_{-1};

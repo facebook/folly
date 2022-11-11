@@ -43,10 +43,10 @@ extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
 
 // there is no builtin macro we can use in liburing to tell what version we are
 // on or if features are supported. We will try and get this into the next
-// release but for now in the latest release there was also added multishot
-// accept - and so we can use it's pressence to suggest that we can safely use
-// newer features
-#if defined(IORING_ACCEPT_MULTISHOT)
+// release but for now in the latest release there was also added defer_taskrun
+// - and so we can use it's pressence to suggest that we can safely use newer
+// features
+#if defined(IORING_SETUP_DEFER_TASKRUN)
 #define FOLLY_IO_URING_UP_TO_DATE 1
 #else
 #define FOLLY_IO_URING_UP_TO_DATE 0
@@ -786,13 +786,18 @@ IoUringBackend::IoUringBackend(Options options)
 
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = options.capacity;
-  if (options_.taskRunCoop) {
+
 #if FOLLY_IO_URING_UP_TO_DATE
+  if (options_.taskRunCoop) {
     params_.flags |= IORING_SETUP_COOP_TASKRUN;
-#else
-    // this has no functional change so just leave it
-#endif
   }
+  if (options_.deferTaskRun && kernelSupportsDeferTaskrun()) {
+    params_.flags |= IORING_SETUP_SINGLE_ISSUER;
+    params_.flags |= IORING_SETUP_DEFER_TASKRUN;
+    params_.flags |= IORING_SETUP_SUBMIT_ALL;
+    usingDeferTaskrun_ = true;
+  }
+#endif
 
   // poll SQ options
   if (options.flags & Options::Flags::POLL_SQ) {
@@ -1606,11 +1611,9 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     if (waitingToSubmit_) {
       submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
       int ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
-      VLOG(2) << "getActiveEvents::peek " << ret;
       return ret;
     } else {
       int ret = ::io_uring_wait_cqe(&ioRing_, &cqe);
-      VLOG(2) << "getActiveEvents::wait " << ret;
       return ret;
     }
   };
@@ -1633,6 +1636,14 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     } else {
       return inner_do_wait();
     }
+  };
+  auto do_peek = [&]() -> int {
+    if (usingDeferTaskrun_) {
+#if FOLLY_IO_URING_UP_TO_DATE
+      return ::io_uring_get_events(&ioRing_);
+#endif
+    }
+    return ::io_uring_peek_cqe(&ioRing_, &cqe);
   };
 
   int ret;
@@ -1661,7 +1672,7 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     if (waitingToSubmit_) {
       ret = submitBusyCheck(waitingToSubmit_, WaitForEventsMode::DONT_WAIT);
     } else {
-      ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
+      ret = do_peek();
     }
   }
   if (ret == -EBADR) {
@@ -1724,10 +1735,10 @@ int IoUringBackend::submitEager() {
   do {
     res = ::io_uring_submit(&ioRing_);
   } while (res == -EINTR);
+  VLOG(2) << "IoUringBackend::submitEager() " << waitingToSubmit_;
   if (res >= 0) {
     DCHECK((int)waitingToSubmit_ >= res);
     waitingToSubmit_ -= res;
-    VLOG(2) << "submitEager " << res;
   }
   return res;
 }
@@ -1738,6 +1749,8 @@ int IoUringBackend::submitBusyCheck(
   int res;
   DCHECK(!isSubmitting()) << "mid processing a submit, cannot submit";
   while (i < num) {
+    VLOG(2) << "IoUringBackend::submit() " << waitingToSubmit_;
+
     if (waitForEvents == WaitForEventsMode::WAIT) {
       if (options_.flags & Options::Flags::POLL_CQ) {
         res = ::io_uring_submit(&ioRing_);
@@ -1747,11 +1760,17 @@ int IoUringBackend::submitBusyCheck(
           // no more waiting
           waitForEvents = WaitForEventsMode::DONT_WAIT;
         }
-        VLOG(2) << "submitBusyCheck::submit_and_wait " << res;
       }
     } else {
+#if FOLLY_IO_URING_UP_TO_DATE
+      res = ::io_uring_submit_and_get_events(&ioRing_);
+      if (res >= 0) {
+        i = waitingToSubmit_; // this is ok if we are using SUBMIT_ALL
+        break;
+      }
+#else
       res = ::io_uring_submit(&ioRing_);
-      VLOG(2) << "submitBusyCheck::submit " << res;
+#endif
     }
 
     if (res < 0) {
@@ -2003,10 +2022,30 @@ static bool doKernelSupportsRecvmsgMultishot() {
   }
 }
 
+static bool doKernelSupportsDeferTaskrun() {
+#if FOLLY_IO_URING_UP_TO_DATE
+  struct io_uring ring;
+  int ret = io_uring_queue_init(
+      1, &ring, IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN);
+  if (ret == 0) {
+    io_uring_queue_exit(&ring);
+    return true;
+  }
+#endif
+
+  // fallthrough
+  return false;
+}
+
 } // namespace
 
 bool IoUringBackend::kernelSupportsRecvmsgMultishot() {
   static bool const ret = doKernelSupportsRecvmsgMultishot();
+  return ret;
+}
+
+bool IoUringBackend::kernelSupportsDeferTaskrun() {
+  static bool const ret = doKernelSupportsDeferTaskrun();
   return ret;
 }
 
