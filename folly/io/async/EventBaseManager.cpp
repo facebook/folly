@@ -52,7 +52,15 @@ void EventBaseManager::setEventBase(EventBase* eventBase, bool takeOwnership) {
 }
 
 void EventBaseManager::clearEventBase() {
-  localStore_->reset();
+  auto& info = *localStore_.get();
+  if (info && info->isOwned) {
+    // EventBase destructor may invoke user callbacks that rely on
+    // getEventBase() returning the current EventBase, so make sure that the
+    // info is reset only after the EventBase is destroyed.
+    delete info->eventBase;
+    info->eventBase = nullptr;
+  }
+  info.reset();
 }
 
 EventBase* EventBaseManager::getEventBase() const {
