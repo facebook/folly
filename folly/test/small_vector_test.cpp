@@ -23,6 +23,7 @@
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
@@ -1430,4 +1431,13 @@ TEST(small_vector, PolicyMaxSizeExceeded) {
   EXPECT_THROW(
       for (size_t i = 0; i < 0x100; ++i) { v.push_back(Obj()); },
       std::length_error);
+}
+
+TEST(small_vector, Hashable) {
+  small_vector<int> v0{{0, 1}};
+  small_vector<int> v1{{1, 2}};
+  std::unordered_set<small_vector<int>> s;
+  s.insert(v0);
+  EXPECT_NE(s.end(), s.find(v0));
+  EXPECT_EQ(s.end(), s.find(v1));
 }

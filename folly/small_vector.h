@@ -51,6 +51,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
+#include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
@@ -1438,3 +1439,14 @@ FOLLY_POP_WARNING
 #undef FOLLY_SV_PACK_ATTR
 #undef FOLLY_SV_PACK_PUSH
 #undef FOLLY_SV_PACK_POP
+
+namespace std {
+
+template <class T, std::size_t M, class A, class B, class C>
+struct hash<folly::small_vector<T, M, A, B, C>> {
+  size_t operator()(const folly::small_vector<T, M, A, B, C>& v) const {
+    return folly::hash::hash_range(v.begin(), v.end());
+  }
+};
+
+} // namespace std
