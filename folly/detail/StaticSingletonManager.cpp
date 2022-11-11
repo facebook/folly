@@ -32,8 +32,8 @@ class StaticSingletonManagerWithRttiImpl {
   template <typename Arg>
   static void* create(Arg& arg) {
     // This Leaky Meyers Singleton must always live in the .cpp file.
-    static auto& instance = *new StaticSingletonManagerWithRttiImpl();
-    auto const ptr = instance.entry(*arg.key).get(*arg.make);
+    static Indestructible<StaticSingletonManagerWithRttiImpl> instance;
+    auto const ptr = instance->entry(*arg.key).get(*arg.make);
     arg.cache.store(ptr, std::memory_order_release);
     return ptr;
   }
@@ -44,18 +44,17 @@ class StaticSingletonManagerWithRttiImpl {
     std::mutex mutex;
 
     void* get(Make& make) {
-      std::lock_guard<std::mutex> lock(mutex);
+      std::unique_lock<std::mutex> lock(mutex);
       return ptr ? ptr : (ptr = make());
     }
   };
 
   Entry& entry(std::type_info const& key) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto& e = map_[key];
-    return e ? *e : *(e = new Entry());
+    std::unique_lock<std::mutex> lock(mutex_);
+    return map_[key];
   }
 
-  std::unordered_map<std::type_index, Entry*> map_;
+  std::unordered_map<std::type_index, Entry> map_;
   std::mutex mutex_;
 };
 
