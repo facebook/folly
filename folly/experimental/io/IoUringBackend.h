@@ -290,7 +290,7 @@ class IoUringBackend : public EventBaseBackendBase {
                                     boost::intrusive::cache_last<false>> {
     int count_{0};
     int fd_{-1};
-    size_t idx_{0};
+    int idx_{0};
   };
 
   FdRegistrationRecord* registerFd(int fd) noexcept {
@@ -456,16 +456,16 @@ class IoUringBackend : public EventBaseBackendBase {
   struct IoSqe;
 
   static void processPollIoSqe(
-      IoUringBackend* backend, IoSqe* ioSqe, int64_t res, uint32_t flags);
+      IoUringBackend* backend, IoSqe* ioSqe, int res, uint32_t flags);
   static void processTimerIoSqe(
       IoUringBackend* backend,
       IoSqe* /*sqe*/,
-      int64_t /*res*/,
+      int /*res*/,
       uint32_t /* flags */);
   static void processSignalReadIoSqe(
       IoUringBackend* backend,
       IoSqe* /*sqe*/,
-      int64_t /*res*/,
+      int /*res*/,
       uint32_t /* flags */);
 
   // signal handling
@@ -475,7 +475,7 @@ class IoUringBackend : public EventBaseBackendBase {
   size_t processSignals();
   void setProcessSignals();
 
-  void processPollIo(IoSqe* ioSqe, int64_t res, uint32_t flags) noexcept;
+  void processPollIo(IoSqe* ioSqe, int res, uint32_t flags) noexcept;
 
   IoSqe* FOLLY_NULLABLE allocIoSqe(const EventCallback& cb);
   void releaseIoSqe(IoSqe* aioIoSqe) noexcept;
@@ -512,13 +512,13 @@ class IoUringBackend : public EventBaseBackendBase {
   };
 
   struct IoSqe : public IoSqeBase {
-    using BackendCb = void(IoUringBackend*, IoSqe*, int64_t, uint32_t);
+    using BackendCb = void(IoUringBackend*, IoSqe*, int, uint32_t);
     explicit IoSqe(
         IoUringBackend* backend = nullptr,
         bool poolAlloc = false,
         bool persist = false)
         : backend_(backend), poolAlloc_(poolAlloc), persist_(persist) {}
-    virtual ~IoSqe() = default;
+    virtual ~IoSqe() override = default;
 
     void callback(int res, uint32_t flags) noexcept override {
       backendCb_(backend_, this, res, flags);
@@ -533,7 +533,7 @@ class IoUringBackend : public EventBaseBackendBase {
     Event* event_{nullptr};
     FdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};
-    int64_t res_;
+    int res_;
     uint32_t cqeFlags_;
 
     FOLLY_ALWAYS_INLINE void resetEvent() {
@@ -721,10 +721,15 @@ class IoUringBackend : public EventBaseBackendBase {
 
       if (fdRecord_) {
         ::io_uring_prep_read(
-            sqe, fdRecord_->idx_, iov->iov_base, iov->iov_len, offset);
+            sqe,
+            fdRecord_->idx_,
+            iov->iov_base,
+            (unsigned int)iov->iov_len,
+            offset);
         sqe->flags |= IOSQE_FIXED_FILE;
       } else {
-        ::io_uring_prep_read(sqe, fd, iov->iov_base, iov->iov_len, offset);
+        ::io_uring_prep_read(
+            sqe, fd, iov->iov_base, (unsigned int)iov->iov_len, offset);
       }
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -742,10 +747,15 @@ class IoUringBackend : public EventBaseBackendBase {
 
       if (fdRecord_) {
         ::io_uring_prep_write(
-            sqe, fdRecord_->idx_, iov->iov_base, iov->iov_len, offset);
+            sqe,
+            fdRecord_->idx_,
+            iov->iov_base,
+            (unsigned int)iov->iov_len,
+            offset);
         sqe->flags |= IOSQE_FIXED_FILE;
       } else {
-        ::io_uring_prep_write(sqe, fd, iov->iov_base, iov->iov_len, offset);
+        ::io_uring_prep_write(
+            sqe, fd, iov->iov_base, (unsigned int)iov->iov_len, offset);
       }
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -876,7 +886,8 @@ class IoUringBackend : public EventBaseBackendBase {
     ~ReadvIoSqe() override = default;
 
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
-      ::io_uring_prep_readv(sqe, fd_, iov_.data(), iov_.size(), offset_);
+      ::io_uring_prep_readv(
+          sqe, fd_, iov_.data(), (unsigned int)iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
     }
   };
@@ -886,7 +897,8 @@ class IoUringBackend : public EventBaseBackendBase {
     ~WritevIoSqe() override = default;
 
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
-      ::io_uring_prep_writev(sqe, fd_, iov_.data(), iov_.size(), offset_);
+      ::io_uring_prep_writev(
+          sqe, fd_, iov_.data(), (unsigned int)iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
     }
   };
@@ -1052,10 +1064,10 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb);
 
-  void processFileOp(IoSqe* ioSqe, int64_t res) noexcept;
+  void processFileOp(IoSqe* ioSqe, int res) noexcept;
 
   static void processFileOpCB(
-      IoUringBackend* backend, IoSqe* ioSqe, int64_t res, uint32_t) {
+      IoUringBackend* backend, IoSqe* ioSqe, int res, uint32_t) {
     static_cast<IoUringBackend*>(backend)->processFileOp(ioSqe, res);
   }
 

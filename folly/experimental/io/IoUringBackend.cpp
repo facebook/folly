@@ -619,7 +619,11 @@ IoUringBackend::SocketPair::~SocketPair() {
 }
 
 IoUringBackend::FdRegistry::FdRegistry(struct io_uring& ioRing, size_t n)
-    : ioRing_(ioRing), files_(n, -1), inUse_(n), records_(n) {}
+    : ioRing_(ioRing), files_(n, -1), inUse_(n), records_(n) {
+  if (n > std::numeric_limits<int>::max()) {
+    throw std::runtime_error("too many registered files");
+  }
+}
 
 int IoUringBackend::FdRegistry::init() {
   if (inUse_) {
@@ -627,7 +631,7 @@ int IoUringBackend::FdRegistry::init() {
 
     if (!ret) {
       // build and set the free list head if we succeed
-      for (size_t i = 0; i < records_.size(); i++) {
+      for (int i = 0; i < (int)records_.size(); i++) {
         records_[i].idx_ = i;
         free_.push_front(records_[i]);
       }
@@ -747,14 +751,14 @@ FOLLY_ALWAYS_INLINE void IoUringBackend::setProcessSignals() {
 }
 
 void IoUringBackend::processPollIoSqe(
-    IoUringBackend* backend, IoSqe* ioSqe, int64_t res, uint32_t flags) {
+    IoUringBackend* backend, IoSqe* ioSqe, int res, uint32_t flags) {
   backend->processPollIo(ioSqe, res, flags);
 }
 
 void IoUringBackend::processTimerIoSqe(
     IoUringBackend* backend,
     IoSqe* /*sqe*/,
-    int64_t /*res*/,
+    int /*res*/,
     uint32_t /* flags */) {
   backend->setProcessTimers();
 }
@@ -762,7 +766,7 @@ void IoUringBackend::processTimerIoSqe(
 void IoUringBackend::processSignalReadIoSqe(
     IoUringBackend* backend,
     IoSqe* /*sqe*/,
-    int64_t /*res*/,
+    int /*res*/,
     uint32_t /* flags */) {
   backend->setProcessSignals();
 }
@@ -1193,7 +1197,7 @@ void IoUringBackend::IoSqe::release() noexcept {
 }
 
 void IoUringBackend::processPollIo(
-    IoSqe* ioSqe, int64_t res, uint32_t flags) noexcept {
+    IoSqe* ioSqe, int res, uint32_t flags) noexcept {
   auto* ev = ioSqe->event_ ? (ioSqe->event_->getEvent()) : nullptr;
   if (ev) {
     if (flags & IORING_CQE_F_MORE) {
@@ -1923,7 +1927,7 @@ void IoUringBackend::queueRecvmsg(
   submitImmediateIoSqe(*ioSqe);
 }
 
-void IoUringBackend::processFileOp(IoSqe* sqe, int64_t res) noexcept {
+void IoUringBackend::processFileOp(IoSqe* sqe, int res) noexcept {
   auto* ioSqe = reinterpret_cast<FileOpIoSqe*>(sqe);
   // save the res
   ioSqe->res_ = res;
