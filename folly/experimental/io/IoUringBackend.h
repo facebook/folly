@@ -219,13 +219,20 @@ class IoUringBackend : public EventBaseBackendBase {
   class ProvidedBufferProviderBase {
    protected:
     uint16_t const gid_;
-    int const count_;
     size_t const sizePerBuffer_;
 
    public:
-    explicit ProvidedBufferProviderBase(
-        uint16_t gid, uint32_t count, size_t sizePerBuffer)
-        : gid_(gid), count_(count), sizePerBuffer_(sizePerBuffer) {}
+    struct Deleter {
+      void operator()(ProvidedBufferProviderBase* base) {
+        if (base) {
+          base->destroy();
+        }
+      }
+    };
+
+    using UniquePtr = std::unique_ptr<ProvidedBufferProviderBase, Deleter>;
+    explicit ProvidedBufferProviderBase(uint16_t gid, size_t sizePerBuffer)
+        : gid_(gid), sizePerBuffer_(sizePerBuffer) {}
     virtual ~ProvidedBufferProviderBase() = default;
 
     ProvidedBufferProviderBase(ProvidedBufferProviderBase&&) = delete;
@@ -239,11 +246,12 @@ class IoUringBackend : public EventBaseBackendBase {
     uint16_t gid() const { return gid_; }
 
     virtual uint32_t count() const noexcept = 0;
-    virtual void unusedBuf(uint16_t i, size_t length) noexcept = 0;
+    virtual void unusedBuf(uint16_t i) noexcept = 0;
     virtual std::unique_ptr<IOBuf> getIoBuf(
         uint16_t i, size_t length) noexcept = 0;
     virtual void enobuf() noexcept = 0;
     virtual bool available() const noexcept = 0;
+    virtual void destroy() noexcept = 0;
   };
 
   explicit IoUringBackend(Options options);
@@ -1082,7 +1090,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // submit
   IoSqeBaseList submitList_;
   uint16_t bufferProviderGidNext_{0};
-  std::unique_ptr<ProvidedBufferProviderBase> bufferProvider_;
+  ProvidedBufferProviderBase::UniquePtr bufferProvider_;
 
   // loop related
   bool loopBreak_{false};

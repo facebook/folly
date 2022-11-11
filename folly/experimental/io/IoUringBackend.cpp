@@ -322,7 +322,7 @@ class ProvidedBuffersBuffer {
 
   ProvidedBuffersBuffer(
       int count, int bufferShift, int ringCountShift, bool huge_pages)
-      : bufferShift_(bufferShift) {
+      : bufferShift_(bufferShift), bufferCount_(count) {
     // space for the ring
     int ringCount = 1 << ringCountShift;
     ringMask_ = ringCount - 1;
@@ -383,6 +383,7 @@ class ProvidedBuffersBuffer {
     return &ringPtr_->bufs[idx & ringMask_];
   }
 
+  uint32_t bufferCount() const noexcept { return bufferCount_; }
   uint32_t ringCount() const noexcept { return 1 + ringMask_; }
 
   char* buffer(uint16_t idx) {
@@ -406,6 +407,7 @@ class ProvidedBuffersBuffer {
   size_t bufferShift_;
   size_t sizePerBuffer_;
   char* bufferBuffer_;
+  uint32_t bufferCount_;
 };
 
 class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
@@ -417,7 +419,7 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
       int bufferShift,
       int ringSizeShift)
       : IoUringBackend::ProvidedBufferProviderBase(
-            gid, count, ProvidedBuffersBuffer::calcBufferSize(bufferShift)),
+            gid, ProvidedBuffersBuffer::calcBufferSize(bufferShift)),
         backend_(backend),
         buffer_(count, bufferShift, ringSizeShift, true) {
     if (count > std::numeric_limits<uint16_t>::max()) {
@@ -431,6 +433,7 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
 
     initialRegister();
 
+    gottenBuffers_ += count;
     for (int i = 0; i < count; i++) {
       returnBuffer(i);
     }
@@ -439,7 +442,7 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
   void enobuf() noexcept override {
     {
       // what we want to do is something like
-      // if (cachedHead_ != localHead_) {
+      // if (cachedTail_ != localTail_) {
       //   publish();
       //   enobuf_ = false;
       // }
@@ -450,49 +453,58 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
     VLOG_EVERY_N(1, 500) << "enobuf";
   }
 
-  void unusedBuf(uint16_t i, size_t /* length */) noexcept override {
+  void unusedBuf(uint16_t i) noexcept override {
+    gottenBuffers_++;
     returnBuffer(i);
   }
 
-  uint32_t count() const noexcept override { return buffer_.ringCount(); }
+  uint32_t count() const noexcept override { return buffer_.bufferCount(); }
+
+  void destroy() noexcept override {
+    ::io_uring_unregister_buf_ring(backend_->ioRingPtr(), gid());
+    shutdownReferences_ = 1;
+    auto returned = returnedBuffers_.load();
+    {
+      std::lock_guard<std::mutex> guard(shutdownMutex_);
+      wantsShutdown_ = true;
+      // add references for every missing one
+      // we can assume that there will be no more from the kernel side.
+      // there is a race condition here between reading wantsShutdown_ and
+      // a return incrementing the number of returned references, but it is very
+      // unlikely to trigger as everything is shutting down, so there should not
+      // actually be any buffer returns. Worse case this will leak, but since
+      // everything is shutting down anyway it should not be a problem.
+      uint64_t const gotten = gottenBuffers_;
+      DCHECK(gottenBuffers_ >= returned);
+      uint32_t outstanding = (gotten - returned);
+      shutdownReferences_ += outstanding;
+    }
+    if (shutdownReferences_.fetch_sub(1) == 1) {
+      delete this;
+    }
+  }
 
   std::unique_ptr<IOBuf> getIoBuf(uint16_t i, size_t length) noexcept override {
-    static constexpr bool kDoMalloc = false;
-
     std::unique_ptr<IOBuf> ret;
-    DVLOG(1) << "getIoBuf " << i << " - " << length;
-    if (kDoMalloc) {
-      struct R {
-        ProvidedBufferRing* prov;
-        uint16_t idx;
-      };
-      auto r = std::make_unique<R>();
-      r->prov = this;
-      r->idx = i;
-      auto free_fn = [](void*, void* userData) {
-        std::unique_ptr<R> r2((R*)userData);
-        r2->prov->returnBuffer(r2->idx);
-        DVLOG(1) << "return buffer " << r2->idx;
-      };
-      ret = IOBuf::takeOwnership(
-          (void*)getData(i), sizePerBuffer_, length, free_fn, r.release());
-    } else {
-      // use a weird convention: userData = ioBufCallbacks_.data() + i
-      // ioBufCallbacks_ is just a list of the same pointer, to this
-      // so we don't need to malloc anything
-      auto free_fn = [](void*, void* userData) {
-        size_t pprov = (size_t)userData & ~((size_t)(sizeof(void*) - 1));
-        ProvidedBufferRing* prov = *(ProvidedBufferRing**)pprov;
-        uint16_t idx = (size_t)userData - (size_t)prov->ioBufCallbacks_.data();
-        prov->returnBuffer(idx);
-      };
-      ret = IOBuf::takeOwnership(
-          (void*)getData(i),
-          sizePerBuffer_,
-          length,
-          free_fn,
-          (void*)(((size_t)ioBufCallbacks_.data()) + i));
-    }
+    DCHECK(!wantsShutdown_);
+
+    // use a weird convention: userData = ioBufCallbacks_.data() + i
+    // ioBufCallbacks_ is just a list of the same pointer, to this
+    // so we don't need to malloc anything
+    auto free_fn = [](void*, void* userData) {
+      size_t pprov = (size_t)userData & ~((size_t)(sizeof(void*) - 1));
+      ProvidedBufferRing* prov = *(ProvidedBufferRing**)pprov;
+      uint16_t idx = (size_t)userData - (size_t)prov->ioBufCallbacks_.data();
+      prov->returnBuffer(idx);
+    };
+
+    ret = IOBuf::takeOwnership(
+        (void*)getData(i),
+        sizePerBuffer_,
+        length,
+        free_fn,
+        (void*)(((size_t)ioBufCallbacks_.data()) + i));
+    gottenBuffers_++;
     return ret;
   }
 
@@ -517,21 +529,36 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
     }
   }
 
+  std::atomic<uint16_t>* sharedTail() {
+    return reinterpret_cast<std::atomic<uint16_t>*>(&buffer_.ring()->tail);
+  }
+
   bool tryPublish(uint16_t expected, uint16_t value) noexcept {
-    return reinterpret_cast<std::atomic<uint16_t>*>(&buffer_.ring()->tail)
-        ->compare_exchange_strong(expected, value, std::memory_order_release);
+    return sharedTail()->compare_exchange_strong(
+        expected, value, std::memory_order_release);
+  }
+
+  void returnBufferInShutdown() noexcept {
+    { std::lock_guard<std::mutex> guard(shutdownMutex_); }
+    if (shutdownReferences_.fetch_sub(1) == 1) {
+      delete this;
+    }
   }
 
   void returnBuffer(uint16_t i) noexcept {
+    if (FOLLY_UNLIKELY(wantsShutdown_)) {
+      returnBufferInShutdown();
+      return;
+    }
+    uint16_t this_idx = static_cast<uint16_t>(returnedBuffers_++);
     __u64 addr = (__u64)buffer_.buffer(i);
-    uint16_t this_idx = localHead_++;
-    uint16_t next_head = this_idx + 1;
+    uint16_t next_tail = this_idx + 1;
     auto* r = buffer_.ringBuf(this_idx);
     r->addr = addr;
     r->len = buffer_.sizePerBuffer();
     r->bid = i;
 
-    if (tryPublish(this_idx, next_head)) {
+    if (tryPublish(this_idx, next_tail)) {
       enobuf_ = false;
     }
     DVLOG(9) << "returnBuffer(" << i << ")@" << this_idx;
@@ -544,19 +571,25 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
   bool enobuf_{false};
   std::vector<ProvidedBufferRing*> ioBufCallbacks_;
 
-  std::atomic<uint16_t> localHead_{0};
+  uint64_t gottenBuffers_{0};
+  std::atomic<uint64_t> returnedBuffers_{0};
+
+  std::atomic<bool> wantsShutdown_{false};
+  std::atomic<uint32_t> shutdownReferences_;
+  std::mutex shutdownMutex_;
 };
 
 template <class... Args>
-std::unique_ptr<ProvidedBufferRing> makeProvidedBufferRing(Args&&... args) {
-  return std::make_unique<ProvidedBufferRing>(std::forward<Args>(args)...);
+ProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&... args) {
+  return ProvidedBufferRing::UniquePtr(
+      new ProvidedBufferRing(std::forward<Args>(args)...));
 }
 
 #else
 
 template <class... Args>
-std::unique_ptr<IoUringBackend::ProvidedBufferProviderBase>
-makeProvidedBufferRing(Args&&...) {
+IoUringBackend::ProvidedBufferProviderBase::UniquePtr makeProvidedBufferRing(
+    Args&&...) {
   throw IoUringBackend::NotAvailable(
       "Provided buffer rings not compiled into this binary");
 }

@@ -394,7 +394,7 @@ void AsyncIoUringSocket::readCallback(
     if (flags & IORING_CQE_F_BUFFER) {
       DCHECK(bufferProvider);
       if (bufferProvider) {
-        bufferProvider->unusedBuf(flags >> 16, res);
+        bufferProvider->unusedBuf(flags >> 16);
       }
     }
   });

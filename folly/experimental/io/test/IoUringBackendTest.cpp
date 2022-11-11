@@ -1343,6 +1343,32 @@ TEST(IoUringBackend, ProvidedBuffers) {
   EXPECT_EQ("56", toString(bufferProvider->getIoBuf(cqes[0].second >> 16, 2)));
 }
 
+TEST(IoUringBackend, ProvidedBufferRing) {
+  auto evbPtr = getEventBase();
+  int constexpr kBuffs = 3;
+  for (int keep = 0; keep <= kBuffs; keep++) {
+    std::vector<std::unique_ptr<folly::IOBuf>> bufs;
+    std::unique_ptr<folly::IoUringBackend> backend;
+    try {
+      backend = std::make_unique<folly::IoUringBackend>(
+          folly::IoUringBackend::Options{}.setInitialProvidedBuffers(
+              1024, kBuffs));
+    } catch (folly::IoUringBackend::NotAvailable const&) {
+      return;
+    }
+
+    auto* bufferProvider = backend->bufferProvider();
+    ASSERT_NE(bufferProvider, nullptr);
+    for (int i = 0; i < 16; i++) {
+      bufferProvider->getIoBuf(i % kBuffs, 1);
+    }
+    bufferProvider->unusedBuf(0);
+    for (int i = 0; i < keep; i++) {
+      bufs.push_back(bufferProvider->getIoBuf(i % kBuffs, 1));
+    }
+  }
+}
+
 namespace folly {
 namespace test {
 static constexpr size_t kCapacity = 32;
