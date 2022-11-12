@@ -24,12 +24,20 @@
 //  Leak Sanitizer interface may be found at:
 //    https://github.com/llvm/llvm-project/blob/main/compiler-rt/include/sanitizer/lsan_interface.h
 extern "C" void __lsan_ignore_object(void const*);
+extern "C" void __lsan_register_root_region(void const*, std::size_t);
+extern "C" void __lsan_unregister_root_region(void const*, std::size_t);
 
 namespace {
 
 FOLLY_CREATE_EXTERN_ACCESSOR( //
     lsan_ignore_object_access_v,
     __lsan_ignore_object);
+FOLLY_CREATE_EXTERN_ACCESSOR( //
+    lsan_register_root_region_access_v,
+    __lsan_register_root_region);
+FOLLY_CREATE_EXTERN_ACCESSOR( //
+    lsan_unregister_root_region_access_v,
+    __lsan_unregister_root_region);
 
 constexpr bool E = folly::kIsLibrarySanitizeAddress;
 
@@ -41,6 +49,10 @@ namespace detail {
 
 FOLLY_STORAGE_CONSTEXPR lsan_ignore_object_t* const //
     lsan_ignore_object_v = lsan_ignore_object_access_v<E>;
+FOLLY_STORAGE_CONSTEXPR lsan_register_root_region_t* const //
+    lsan_register_root_region_v = lsan_register_root_region_access_v<E>;
+FOLLY_STORAGE_CONSTEXPR lsan_unregister_root_region_t* const //
+    lsan_unregister_root_region_v = lsan_unregister_root_region_access_v<E>;
 
 namespace {
 struct LeakedPtrs {

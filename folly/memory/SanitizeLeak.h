@@ -23,8 +23,12 @@ namespace folly {
 namespace detail {
 
 using lsan_ignore_object_t = void(void const*);
+using lsan_register_root_region_t = void(void const*, std::size_t);
+using lsan_unregister_root_region_t = void(void const*, std::size_t);
 
 extern lsan_ignore_object_t* const lsan_ignore_object_v;
+extern lsan_register_root_region_t* const lsan_register_root_region_v;
+extern lsan_unregister_root_region_t* const lsan_unregister_root_region_v;
 
 void annotate_object_leaked_impl(void const* ptr);
 void annotate_object_collected_impl(void const* ptr);
@@ -38,6 +42,24 @@ void annotate_object_collected_impl(void const* ptr);
 FOLLY_ALWAYS_INLINE static void lsan_ignore_object(void const* const ptr) {
   auto fun = detail::lsan_ignore_object_v;
   return kIsSanitizeAddress && fun ? fun(ptr) : void();
+}
+
+//  lsan_register_root_region
+//
+//  Marks a region as a root for Leak Sanitizer scans.
+FOLLY_ALWAYS_INLINE static void lsan_register_root_region(
+    void const* const ptr, std::size_t const size) {
+  auto fun = detail::lsan_register_root_region_v;
+  return kIsSanitizeAddress && fun ? fun(ptr, size) : void();
+}
+
+//  lsan_unregister_root_region
+//
+//  Marks a region as a root for Leak Sanitizer scans.
+FOLLY_ALWAYS_INLINE static void lsan_unregister_root_region(
+    void const* const ptr, std::size_t const size) {
+  auto fun = detail::lsan_unregister_root_region_v;
+  return kIsSanitizeAddress && fun ? fun(ptr, size) : void();
 }
 
 /**
