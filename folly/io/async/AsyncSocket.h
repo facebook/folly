@@ -31,6 +31,7 @@
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocketException.h>
+#include <folly/io/async/AsyncSocketTransport.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
@@ -77,36 +78,9 @@ namespace folly {
 #define SO_NO_TSOCKS 201
 #endif
 
-class AsyncSocket : public AsyncTransport {
+class AsyncSocket : public AsyncSocketTransport {
  public:
   using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
-
-  class ConnectCallback {
-   public:
-    virtual ~ConnectCallback() = default;
-
-    /**
-     * connectSuccess() will be invoked when the connection has been
-     * successfully established.
-     */
-    virtual void connectSuccess() noexcept = 0;
-
-    /**
-     * connectErr() will be invoked if the connection attempt fails.
-     *
-     * @param ex        An exception describing the error that occurred.
-     */
-    virtual void connectErr(const AsyncSocketException& ex) noexcept = 0;
-
-    /**
-     * preConnect() will be invoked just before the actual connect happens,
-     *              default is no-ops.
-     *
-     * @param fd      An underneath created socket, use for connection.
-     *
-     */
-    virtual void preConnect(NetworkSocket /*fd*/) {}
-  };
 
   class EvbChangeCallback {
    public:
@@ -486,8 +460,6 @@ class AsyncSocket : public AsyncTransport {
    */
   virtual NetworkSocket detachNetworkSocket();
 
-  static const folly::SocketAddress& anyAddress();
-
   /**
    * Initiate a connection.
    *
@@ -504,7 +476,7 @@ class AsyncSocket : public AsyncTransport {
       int timeout = 0,
       const SocketOptionMap& options = emptySocketOptionMap,
       const folly::SocketAddress& bindAddr = anyAddress(),
-      const std::string& ifName = "") noexcept;
+      const std::string& ifName = "") noexcept override;
 
   void connect(
       ConnectCallback* callback,
@@ -822,7 +794,7 @@ class AsyncSocket : public AsyncTransport {
    * @return Returns 0 if the TCP_NODELAY flag was successfully updated,
    *         or a non-zero errno value on error.
    */
-  int setNoDelay(bool noDelay);
+  int setNoDelay(bool noDelay) override;
 
   /**
    * Set the FD_CLOEXEC flag so that the socket will be closed if the program
@@ -913,6 +885,11 @@ class AsyncSocket : public AsyncTransport {
     return netops_->setsockopt(fd_, level, optname, optval, sizeof(T));
   }
 
+  int setSockOpt(
+      int level, int optname, const void* optval, socklen_t optsize) override {
+    return netops_->setsockopt(fd_, level, optname, optval, optsize);
+  }
+
   /**
    * Virtual method for reading a socket option returning integer
    * value, which is the most typical case. Convenient for overriding
@@ -949,7 +926,7 @@ class AsyncSocket : public AsyncTransport {
    * Set pre-received data, to be returned to read callback before any data
    * from the socket.
    */
-  virtual void setPreReceivedData(std::unique_ptr<IOBuf> data) {
+  void setPreReceivedData(std::unique_ptr<IOBuf> data) override {
     if (preReceivedData_) {
       preReceivedData_->prependChain(std::move(data));
     } else {
@@ -998,7 +975,7 @@ class AsyncSocket : public AsyncTransport {
    * cached) so that they are available from getPeerAddress() and
    * getLocalAddress() even after the socket is closed.
    */
-  void cacheAddresses();
+  void cacheAddresses() override;
 
   /**
    * Returns true if there is any zero copy write in progress
@@ -1011,27 +988,6 @@ class AsyncSocket : public AsyncTransport {
    * And returns true if there are no more zero copy writes in progress
    */
   bool processZeroCopyWriteInProgress() noexcept;
-
-  void setPeerCertificate(
-      std::unique_ptr<const AsyncTransportCertificate> cert) {
-    peerCertData_ = std::move(cert);
-  }
-  const AsyncTransportCertificate* getPeerCertificate() const override {
-    return peerCertData_.get();
-  }
-
-  void dropPeerCertificate() noexcept override { peerCertData_.reset(); }
-
-  void setSelfCertificate(
-      std::unique_ptr<const AsyncTransportCertificate> cert) {
-    selfCertData_ = std::move(cert);
-  }
-
-  void dropSelfCertificate() noexcept override { selfCertData_.reset(); }
-
-  const AsyncTransportCertificate* getSelfCertificate() const override {
-    return selfCertData_.get();
-  }
 
   /**
    * Whether socket should be closed on write failure (true by default).
@@ -1672,12 +1628,6 @@ class AsyncSocket : public AsyncTransport {
   // zerocopy read
   bool zerocopyReadDisabled_{false};
   int zerocopyReadErr_{0};
-
-  // subclasses may cache these on first call to get
-  mutable std::unique_ptr<const AsyncTransportCertificate> peerCertData_{
-      nullptr};
-  mutable std::unique_ptr<const AsyncTransportCertificate> selfCertData_{
-      nullptr};
 
   bool closeOnFailedWrite_{true};
 

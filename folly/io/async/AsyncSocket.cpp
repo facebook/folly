@@ -799,12 +799,6 @@ NetworkSocket AsyncSocket::detachNetworkSocket() {
   return fd;
 }
 
-const folly::SocketAddress& AsyncSocket::anyAddress() {
-  static const folly::SocketAddress anyAddress =
-      folly::SocketAddress("0.0.0.0", 0);
-  return anyAddress;
-}
-
 void AsyncSocket::setShutdownSocketSet(
     const std::weak_ptr<ShutdownSocketSet>& wNewSS) {
   const auto newSS = wNewSS.lock();
