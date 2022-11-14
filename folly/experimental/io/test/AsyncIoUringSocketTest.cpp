@@ -17,6 +17,7 @@
 #include <array>
 #include <chrono>
 #include <map>
+#include <random>
 #include <vector>
 
 #include <folly/experimental/io/AsyncIoUringSocket.h>
@@ -34,7 +35,7 @@ namespace folly {
 
 namespace {
 
-static constexpr std::chrono::milliseconds kTimeout{4000};
+static constexpr std::chrono::milliseconds kTimeout{30000};
 static constexpr size_t kBufferSize{1024};
 
 class NullWriteCallback : public AsyncWriter::WriteCallback {
@@ -73,7 +74,7 @@ class ExpectErrorWriteCallback : public AsyncWriter::WriteCallback {
 class EchoTransport : public AsyncReader::ReadCallback,
                       public AsyncWriter::WriteCallback {
  public:
-  explicit EchoTransport(std::shared_ptr<AsyncTransport> s, bool bm)
+  explicit EchoTransport(AsyncTransport::UniquePtr s, bool bm)
       : transport(std::move(s)), bufferMovable(bm) {}
 
   void start() { transport->setReadCB(this); }
@@ -103,7 +104,8 @@ class EchoTransport : public AsyncReader::ReadCallback,
 
   void readDataAvailable(size_t len) noexcept override {
     VLOG(1) << "readDataAvailable " << len;
-    transport->write(this, buff.data(), len);
+    // have to copy as buff will be reused after
+    transport->writeChain(this, IOBuf::copyBuffer(buff.data(), len));
   }
 
   bool isBufferMovable() noexcept override { return bufferMovable; }
@@ -113,7 +115,7 @@ class EchoTransport : public AsyncReader::ReadCallback,
     transport->writeChain(this, std::move(readBuf));
   }
 
-  std::shared_ptr<AsyncTransport> transport;
+  AsyncTransport::UniquePtr transport;
   bool bufferMovable;
   std::array<char, kBufferSize> buff;
 };
@@ -234,6 +236,7 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     } else {
       options.setInitialProvidedBuffers(2000000, 1);
     }
+    options.setDeferTaskRun(true);
     return options;
   }
 
@@ -301,11 +304,11 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     }
   };
   Connected makeConnected(bool server_should_read = true) {
-    std::shared_ptr<AsyncTransport> client;
+    AsyncTransport::UniquePtr client;
     if (GetParam().ioUringClient) {
-      auto c = std::make_shared<AsyncIoUringSocket>(base.get(), backend);
+      auto c = new AsyncIoUringSocket(base.get(), backend);
       c->connect(this, serverAddress);
-      client = c;
+      client = AsyncTransport::UniquePtr(c);
     } else {
       auto c = AsyncSocket::newSocket(base.get());
       c->connect(this, serverAddress);
@@ -370,7 +373,8 @@ TEST_P(AsyncIoUringSocketTest, ConnectTimeout) {
       ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
       : nullptr;
 
-  auto socket = std::make_shared<AsyncIoUringSocket>(base.get(), backend);
+  AsyncIoUringSocket::UniquePtr socket(
+      new AsyncIoUringSocket(base.get(), backend));
   socket->connect(
       &cb, SocketAddress{host, 65535}, std::chrono::milliseconds(1));
 
@@ -502,13 +506,46 @@ TEST_P(AsyncIoUringSocketTestAll, WriteAfterWait) {
           .getVia(base.get()));
 }
 
+namespace {
+std::string randomString(size_t n) {
+  std::random_device r;
+  std::default_random_engine e1(r());
+
+  std::uniform_int_distribution<char> uniform_dist('A', 'Z');
+
+  std::string ret;
+  ret.reserve(n);
+  for (size_t i = 0; i < n; i++) {
+    ret.push_back(uniform_dist(e1));
+  }
+  return ret;
+}
+} // namespace
+
 TEST_P(AsyncIoUringSocketTestAll, WriteBig) {
   MAYBE_SKIP();
   auto [e, s, cb] = makeConnected();
   cb->setHoldData(true);
-  std::string big(4000000, 'X');
+  std::string big = randomString(4000000);
   s->write(&nullWriteCallback, big.c_str(), big.size());
-  EXPECT_EQ(big, cb->waitFor(big.size()).via(base.get()).getVia(base.get()));
+  auto res = cb->waitFor(big.size()).via(base.get()).getVia(base.get());
+  EXPECT_TRUE(big == res) << big.size() << " vs " << res.size();
+}
+
+TEST_P(AsyncIoUringSocketTestAll, WriteBigChunked) {
+  MAYBE_SKIP();
+  auto [e, s, cb] = makeConnected();
+  cb->setHoldData(true);
+  std::string big = randomString(4000000);
+  size_t at = 0;
+  int const kChunkSize = 256;
+  while (at < big.size()) {
+    auto len = std::min<size_t>(big.size() - at, kChunkSize);
+    s->write(&nullWriteCallback, big.c_str() + at, len);
+    at += len;
+  }
+  auto res = cb->waitFor(big.size()).via(base.get()).getVia(base.get());
+  EXPECT_TRUE(big == res) << big.size() << " vs " << res.size();
 }
 
 TEST_P(AsyncIoUringSocketTestAll, WriteBigDrop) {

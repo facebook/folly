@@ -64,18 +64,14 @@ NetworkSocket makeConnectSocket(SocketAddress const& peerAddress) {
 AsyncIoUringSocket::AsyncIoUringSocket(
     folly::AsyncSocket* other, IoUringBackend* backend)
     : AsyncIoUringSocket(other->getEventBase(), backend) {
-  preReceivedData_ = other->takePreReceivedData();
-  DVLOG(5) << "got pre-received " << preReceivedData_.get();
+  setPreReceivedData(other->takePreReceivedData());
   setFd(other->detachNetworkSocket());
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(
     AsyncTransport::UniquePtr other, IoUringBackend* backend)
     : AsyncIoUringSocket(getAsyncSocket(other), backend) {
-  if (!preReceivedData_) {
-    preReceivedData_ = other->takePreReceivedData();
-    DVLOG(5) << "got pre-received " << preReceivedData_.get();
-  }
+  setPreReceivedData(other->takePreReceivedData());
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(EventBase* evb, IoUringBackend* backend)
@@ -93,8 +89,13 @@ AsyncIoUringSocket::AsyncIoUringSocket(EventBase* evb, IoUringBackend* backend)
   if (!backend_->bufferProvider()) {
     throw std::runtime_error("require a IoUringBackend with a buffer provider");
   }
-  readSqe_ = std::make_unique<ReadSqe>(this, backend_->bufferProvider());
-  supportsMultishotRecv_ = backend_->kernelSupportsRecvmsgMultishot();
+  readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this, backend_));
+}
+
+AsyncIoUringSocket::ReadSqe::ReadSqe(
+    AsyncIoUringSocket* parent, IoUringBackend* backend)
+    : bufferProvider_(backend->bufferProvider()), parent_(parent) {
+  supportsMultishotRecv_ = backend->kernelSupportsRecvmsgMultishot();
 }
 
 AsyncIoUringSocket::~AsyncIoUringSocket() {
@@ -104,22 +105,13 @@ AsyncIoUringSocket::~AsyncIoUringSocket() {
   // tracking is coming later and will be easier to handle then
   closeNow();
 
-  if (fdRegistered_ && !backend_->unregisterFd(fdRegistered_)) {
-    LOG(ERROR) << "Bad fd unregister";
-  }
-  fdRegistered_ = nullptr;
-
   // cancel outstanding
   if (readSqe_->inFlight()) {
     DVLOG(3) << "cancel reading " << readSqe_.get();
     backend_->cancel(readSqe_.release());
   }
-  if (preReadSqe_->inFlight()) {
-    DVLOG(3) << "cancel prereading " << preReadSqe_.get();
-    backend_->cancel(preReadSqe_.release());
-  }
-  if (closeSqe_->inFlight()) {
-    DVLOG(3) << "cancel close " << closeSqe_.get();
+  if (closeSqe_ && closeSqe_->inFlight()) {
+    LOG_EVERY_N(WARNING, 100) << " closeSqe_ still in flight";
     closeSqe_
         ->markCancelled(); // still need to actually close it and it has no data
     closeSqe_.release();
@@ -285,53 +277,22 @@ void AsyncIoUringSocket::processConnectTimeout() {
   connectCallback_ = nullptr;
 }
 
-inline bool AsyncIoUringSocket::readCallbackUseIoBufs() const {
+inline bool AsyncIoUringSocket::ReadSqe::readCallbackUseIoBufs() const {
   return readCallback_ && readCallback_->isBufferMovable();
 }
 
-void AsyncIoUringSocket::invalidState(ReadCallback* callback) {
-  DVLOG(4) << "AsyncSocket(this=" << this << ", fd=" << fd_
-           << "): setReadCallback(" << callback << ") called in invalid state ";
+void AsyncIoUringSocket::readEOF() {
+  good_ = false;
+}
 
-  AsyncSocketException ex(
-      AsyncSocketException::NOT_OPEN,
-      "setReadCallback() called  io_uringwith socket in "
-      "invalid state");
-  if (callback) {
-    callback->readErr(ex);
-  }
+void AsyncIoUringSocket::readError() {
+  good_ = false;
+  error_ = true;
 }
 
 void AsyncIoUringSocket::setReadCB(ReadCallback* callback) {
   evb_->dcheckIsInEventBaseThread();
-  DVLOG(5) << "AsyncIoUringSocket::setReadCB() this=" << this
-           << " cb=" << callback << " count=" << setReadCbCount_ << " movable="
-           << (callback && callback->isBufferMovable() ? "YES" : "NO")
-           << " inflight=" << readSqe_->inFlight() << " good_=" << good_;
-  if (callback == readCallback_) {
-    // copied from AsyncSocket
-    DVLOG(9) << "cb the same";
-    return;
-  }
-  setReadCbCount_++;
-  readCallback_ = callback;
-  if (!readCallback_) {
-    return;
-  }
-  if (!good_) {
-    readCallback_ = nullptr;
-    invalidState(callback);
-    return;
-  }
-  if (preReceivedData_) {
-    DVLOG(9) << "submit preread";
-    backend_->submit(*preReadSqe_);
-  } else if (!readSqe_->inFlight()) {
-    submitRead();
-  }
-
-  // else if (readSqe_->inFlight()) implies the the read is queued, and will
-  // complete at some point - it will pick up the new callback
+  readSqe_->setReadCallback(callback);
 }
 
 void AsyncIoUringSocket::submitRead(bool now) {
@@ -344,124 +305,67 @@ void AsyncIoUringSocket::submitRead(bool now) {
   }
 }
 
-void AsyncIoUringSocket::readProcessSubmit(
-    struct io_uring_sqe* sqe,
-    IoUringBackend::ProvidedBufferProviderBase* bufferProvider,
-    size_t* maxSize,
-    bool* usedBufferProvider) noexcept {
-  *usedBufferProvider = false;
-  if (!readCallback_) {
-    VLOG(2) << "readProcessSubmit with no callback?";
-    tmpBuffer_ = IOBuf::create(2000);
-    *maxSize = tmpBuffer_->tailroom();
-    ::io_uring_prep_recv(sqe, usedFd_, tmpBuffer_->writableTail(), *maxSize, 0);
-  } else {
-    if (readCallbackUseIoBufs()) {
-      if (bufferProvider->available()) {
-        *maxSize = bufferProvider->sizePerBuffer();
+void AsyncIoUringSocket::ReadSqe::invalidState(ReadCallback* callback) {
+  DVLOG(4) << "AsyncSocket(this=" << this << "): setReadCallback(" << callback
+           << ") called in invalid state ";
 
-        size_t used_len;
-        unsigned int ioprio_flags;
-        if (supportsMultishotRecv_) {
-          // #define IORING_RECV_MULTISHOT	(1U << 1)
-          ioprio_flags = (1U << 1);
-          used_len = 0;
-        } else {
-          ioprio_flags = 0;
-          used_len = *maxSize;
-        }
-
-        ::io_uring_prep_recv(sqe, usedFd_, nullptr, used_len, 0);
-        sqe->buf_group = bufferProvider->gid();
-        sqe->flags |= IOSQE_BUFFER_SELECT;
-        sqe->ioprio |= ioprio_flags;
-        *usedBufferProvider = true;
-        DVLOG(9)
-            << "AsyncIoUringSocket::readProcessSubmit bufferprovider multishot";
-      } else {
-        tmpBuffer_ = IOBuf::create(16000);
-        *maxSize = tmpBuffer_->tailroom();
-        VLOG(2) << "UseProvidedBuffers slow path starting with " << *maxSize
-                << " bytes ";
-        ::io_uring_prep_recv(
-            sqe, usedFd_, tmpBuffer_->writableTail(), *maxSize, 0);
-      }
-    } else {
-      void* buf;
-      readCallback_->getReadBuffer(&buf, maxSize);
-      tmpBuffer_ = IOBuf::create(*maxSize);
-      ::io_uring_prep_recv(
-          sqe, usedFd_, tmpBuffer_->writableTail(), *maxSize, 0);
-      DVLOG(9)
-          << "AsyncIoUringSocket::readProcessSubmit  tmp buffer using size "
-          << *maxSize;
-    }
-
-    sqe->flags |= mbFixedFileFlags_;
-    DVLOG(5) << "readProcessSubmit " << this << " fd=" << fd_
-             << " reg=" << usedFd_ << " cb=" << readCallback_
-             << " size=" << *maxSize;
+  AsyncSocketException ex(
+      AsyncSocketException::NOT_OPEN,
+      "setReadCallback() called  io_uringwith socket in "
+      "invalid state");
+  if (callback) {
+    callback->readErr(ex);
   }
 }
 
-void AsyncIoUringSocket::appendPreReceive(
-    std::unique_ptr<IOBuf> iobuf) noexcept {
-  if (preReceivedData_) {
-    preReceivedData_->appendToChain(std::move(iobuf));
-  } else {
-    preReceivedData_ = std::move(iobuf);
+void AsyncIoUringSocket::ReadSqe::setReadCallback(ReadCallback* callback) {
+  DVLOG(5) << "AsyncIoUringSocket::setReadCB() this=" << this
+           << " cb=" << callback << " count=" << setReadCbCount_ << " movable="
+           << (callback && callback->isBufferMovable() ? "YES" : "NO")
+           << " inflight=" << inFlight() << " good_=" << parent_->good();
+  if (callback == readCallback_) {
+    // copied from AsyncSocket
+    DVLOG(9) << "cb the same";
+    return;
+  }
+  setReadCbCount_++;
+  readCallback_ = callback;
+  if (!callback) {
+    return;
+  }
+  if (!parent_->good()) {
+    readCallback_ = nullptr;
+    invalidState(callback);
+    return;
+  }
+
+  // callback may change after these so make sure to check
+
+  if (readCallback_ && preReceivedData_) {
+    sendReadBuf(std::move(preReceivedData_), preReceivedData_);
+  }
+
+  if (readCallback_ && queuedReceivedData_) {
+    sendReadBuf(std::move(queuedReceivedData_), queuedReceivedData_);
+  }
+
+  if (readCallback_ && !inFlight()) {
+    parent_->submitRead();
   }
 }
 
-void AsyncIoUringSocket::sendReadBuf(std::unique_ptr<IOBuf> buf) noexcept {
-  while (readCallback_) {
-    if (readCallback_->isBufferMovable()) {
-      readCallback_->readBufferAvailable(std::move(buf));
-      return;
-    }
-
-    auto* rcb_was = readCallback_;
-    size_t sz;
-    void* b;
-    size_t total = 0;
-    io::Cursor cursor(buf.get());
-    do {
-      readCallback_->getReadBuffer(&b, &sz);
-      size_t took = cursor.pullAtMost(b, sz);
-      readCallback_->readDataAvailable(took);
-      if (cursor.isAtEnd()) {
-        return;
-      }
-      total += took;
-    } while (readCallback_ == rcb_was);
-
-    // annoying path, have to update buf
-    while (buf->length() < total) {
-      total -= buf->length();
-      buf = std::move(buf)->unlink();
-    }
-    buf->trimStart(total);
-  }
-  appendPreReceive(std::move(buf));
-}
-
-void AsyncIoUringSocket::readCallback(
-    int res,
-    uint32_t flags,
-    size_t maxSize,
-    IoUringBackend::ProvidedBufferProviderBase* bufferProvider) noexcept {
-  DestructorGuard dg(this);
-  DVLOG(5) << "AsyncIoUringSocket::readCallback() this=" << this
-           << " cb=" << readCallback_ << " sqe=" << readSqe_.get()
-           << " res=" << res << " max=" << maxSize
-           << " inflight=" << readSqe_->inFlight()
+void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
+  DVLOG(5) << "AsyncIoUringSocket::ReadSqe::readCallback() this=" << this
+           << " parent=" << parent_ << " cb=" << readCallback_ << " res=" << res
+           << " max=" << maxSize_ << " inflight=" << inFlight()
            << " has_buffer=" << !!(flags & IORING_CQE_F_BUFFER)
            << " bytes_received=" << bytesReceived_;
+  DestructorGuard dg(this);
   auto buffer_guard = makeGuard([&] {
     if (flags & IORING_CQE_F_BUFFER) {
-      DCHECK(bufferProvider);
-      if (bufferProvider) {
-        bufferProvider->unusedBuf(flags >> 16);
+      DCHECK(lastUsedBufferProvider_);
+      if (lastUsedBufferProvider_) {
+        lastUsedBufferProvider_->unusedBuf(flags >> 16);
       }
     }
   });
@@ -470,27 +374,28 @@ void AsyncIoUringSocket::readCallback(
       // ignore
     } else if (res <= 0) {
       // EOF?
-      good_ = false;
-    } else if (res > 0 && bufferProvider) {
+      parent_->readEOF();
+    } else if (res > 0 && lastUsedBufferProvider_) {
       // must take the buffer
-      appendPreReceive(bufferProvider->getIoBuf(flags >> 16, res));
+      appendReadData(
+          lastUsedBufferProvider_->getIoBuf(flags >> 16, res),
+          queuedReceivedData_);
       buffer_guard.dismiss();
     }
   } else {
     if (res == 0) {
-      good_ = false;
+      parent_->readEOF();
       readCallback_->readEOF();
     } else if (res == -ENOBUFS) {
-      if (bufferProvider) {
+      if (lastUsedBufferProvider_) {
         // urgh, resubmit and let submit logic deal with the fact
         // we have no more buffers
-        bufferProvider->enobuf();
+        lastUsedBufferProvider_->enobuf();
       }
-      submitRead();
+      parent_->submitRead();
     } else if (res < 0) {
       // ERROR?
-      good_ = false;
-      error_ = true;
+      parent_->readError();
       AsyncSocketException::AsyncSocketExceptionType err;
       std::string error;
       switch (res) {
@@ -512,8 +417,10 @@ void AsyncIoUringSocket::readCallback(
     } else {
       uint64_t const cb_was = setReadCbCount_;
       bytesReceived_ += res;
-      if (bufferProvider) {
-        sendReadBuf(bufferProvider->getIoBuf(flags >> 16, res));
+      if (lastUsedBufferProvider_) {
+        sendReadBuf(
+            lastUsedBufferProvider_->getIoBuf(flags >> 16, res),
+            queuedReceivedData_);
         buffer_guard.dismiss();
       } else {
         // slow path as must have run out of buffers
@@ -521,40 +428,136 @@ void AsyncIoUringSocket::readCallback(
         DCHECK(tmpBuffer_);
         tmpBuffer_->append(res);
         DVLOG(2) << "UseProvidedBuffers slow path completed " << res;
-        sendReadBuf(std::move(tmpBuffer_));
+        sendReadBuf(std::move(tmpBuffer_), queuedReceivedData_);
       }
-      // callback may have changed now!
-      if (setReadCbCount_ == cb_was && !readSqe_->inFlight()) {
-        submitRead(maxSize == (size_t)res);
+      // callback may have changed now, or we may not have a parent!
+      if (parent_ && setReadCbCount_ == cb_was && !inFlight()) {
+        parent_->submitRead(maxSize_ == (size_t)res);
       }
     }
   }
 }
 
-void AsyncIoUringSocket::preReadCallback() noexcept {
-  DestructorGuard dg(this);
-  DVLOG(5) << "AsyncIoUringSocket::preReadCallback() " << this
-           << " data=" << preReceivedData_.get();
+void AsyncIoUringSocket::ReadSqe::processSubmit(
+    struct io_uring_sqe* sqe) noexcept {
+  lastUsedBufferProvider_ = nullptr;
+  if (!readCallback_) {
+    VLOG(2) << "readProcessSubmit with no callback?";
+    tmpBuffer_ = IOBuf::create(2000);
+    maxSize_ = tmpBuffer_->tailroom();
+    ::io_uring_prep_recv(sqe, usedFd_, tmpBuffer_->writableTail(), maxSize_, 0);
+  } else {
+    if (readCallbackUseIoBufs()) {
+      if (bufferProvider_->available()) {
+        lastUsedBufferProvider_ = bufferProvider_;
+        maxSize_ = lastUsedBufferProvider_->sizePerBuffer();
 
-  if (!readCallback_ || !preReceivedData_) {
+        size_t used_len;
+        unsigned int ioprio_flags;
+        if (supportsMultishotRecv_) {
+          // #define IORING_RECV_MULTISHOT	(1U << 1)
+          ioprio_flags = (1U << 1);
+          used_len = 0;
+        } else {
+          ioprio_flags = 0;
+          used_len = maxSize_;
+        }
+
+        ::io_uring_prep_recv(sqe, usedFd_, nullptr, used_len, 0);
+        sqe->buf_group = lastUsedBufferProvider_->gid();
+        sqe->flags |= IOSQE_BUFFER_SELECT;
+        sqe->ioprio |= ioprio_flags;
+        DVLOG(9)
+            << "AsyncIoUringSocket::readProcessSubmit bufferprovider multishot";
+      } else {
+        size_t hint = 16000; // todo: get from readCallback
+
+        tmpBuffer_ = IOBuf::create(hint);
+        maxSize_ = tmpBuffer_->tailroom();
+        VLOG(2) << "UseProvidedBuffers slow path starting with " << maxSize_
+                << " bytes ";
+        ::io_uring_prep_recv(
+            sqe, usedFd_, tmpBuffer_->writableTail(), maxSize_, 0);
+      }
+    } else {
+      void* buf;
+      readCallback_->getReadBuffer(&buf, &maxSize_);
+      maxSize_ = std::min<size_t>(maxSize_, 2048);
+      tmpBuffer_ = IOBuf::create(maxSize_);
+      ::io_uring_prep_recv(
+          sqe, usedFd_, tmpBuffer_->writableTail(), maxSize_, 0);
+      DVLOG(9)
+          << "AsyncIoUringSocket::readProcessSubmit  tmp buffer using size "
+          << maxSize_;
+    }
+
+    sqe->flags |= mbFixedFileFlags_;
+    DVLOG(5) << "readProcessSubmit " << this << " reg=" << usedFd_
+             << " cb=" << readCallback_ << " size=" << maxSize_;
+  }
+}
+
+void AsyncIoUringSocket::ReadSqe::sendReadBuf(
+    std::unique_ptr<IOBuf> buf, std::unique_ptr<IOBuf>& overflow) noexcept {
+  while (readCallback_) {
+    if (FOLLY_LIKELY(readCallback_->isBufferMovable())) {
+      readCallback_->readBufferAvailable(std::move(buf));
+      return;
+    }
+    auto* rcb_was = readCallback_;
+    size_t sz;
+    void* b;
+
+    do {
+      readCallback_->getReadBuffer(&b, &sz);
+      size_t took = std::min<size_t>(sz, buf->length());
+      VLOG(1) << "... inner sz=" << sz << "  len=" << buf->length();
+
+      if (FOLLY_LIKELY(took)) {
+        memcpy(b, buf->data(), took);
+
+        readCallback_->readDataAvailable(took);
+        if (buf->length() == took) {
+          buf = buf->pop();
+          if (!buf) {
+            return;
+          }
+        } else {
+          buf->trimStart(took);
+        }
+      } else {
+        VLOG(1) << "Bad!";
+        // either empty buffer or the readcallback is bad.
+        // assume empty buffer for simplicity
+        buf = buf->pop();
+        if (!buf) {
+          return;
+        }
+      }
+    } while (readCallback_ == rcb_was);
+  }
+  appendReadData(std::move(buf), overflow);
+}
+
+std::unique_ptr<IOBuf> AsyncIoUringSocket::ReadSqe::takePreReceivedData() {
+  return std::move(preReceivedData_);
+}
+
+void AsyncIoUringSocket::ReadSqe::appendReadData(
+    std::unique_ptr<IOBuf> data, std::unique_ptr<IOBuf>& overflow) noexcept {
+  if (!data) {
     return;
   }
 
-  sendReadBuf(std::move(preReceivedData_));
-
-  DVLOG(5) << "AsyncIoUringSocket::preReadCallback() done " << this;
-  // only submit if nothing in flight:
-  if (!preReadSqe_->inFlight() && !readSqe_->inFlight()) {
-    submitRead();
+  if (overflow) {
+    overflow->appendToChain(std::move(data));
+  } else {
+    overflow = std::move(data);
   }
 }
 
 void AsyncIoUringSocket::setPreReceivedData(std::unique_ptr<IOBuf> data) {
-  if (preReceivedData_) {
-    preReceivedData_->appendToChain(std::move(data));
-  } else {
-    preReceivedData_ = std::move(data);
-  }
+  readSqe_->appendPreReceive(std::move(data));
 }
 
 AsyncIoUringSocket::WriteSqe::WriteSqe(
@@ -728,11 +731,20 @@ void AsyncIoUringSocket::writeChain(
 }
 
 void AsyncIoUringSocket::closeProcessSubmit(struct io_uring_sqe* sqe) {
-  if (fdRegistered_) {
-    ::io_uring_prep_close_direct(sqe, fdRegistered_->idx_);
-  } else {
+  if (fd_.toFd() >= 0) {
     ::io_uring_prep_close(sqe, fd_.toFd());
+  } else {
+    // already closed -> nop
+    ::io_uring_prep_nop(sqe);
   }
+
+  // the fd can be reused from this point
+  fd_ = {};
+  if (fdRegistered_ && !backend_->unregisterFd(fdRegistered_)) {
+    LOG(ERROR) << "Bad fd unregister";
+  }
+  fdRegistered_ = nullptr;
+  usedFd_ = -1;
 }
 
 void AsyncIoUringSocket::closeWithReset() {
@@ -768,13 +780,22 @@ void AsyncIoUringSocket::closeNow() {
     ::shutdown(fd_.toFd(), SHUT_RDWR);
   }
 
-  if (!closeSqe_->inFlight()) {
-    backend_->submitNow(*closeSqe_);
+  if (closeSqe_) {
+    // todo: we should async close_direct registered fds and then not call
+    // unregister on them
+
+    // we submit and then release for 2 reasons:
+    // 1: we dont want to accidentally clear the closeSqe_ without submitting
+    // 2: we dont want to resubmit, which could close a random fd
+    backend_->submitSoon(*closeSqe_);
+    closeSqe_.release();
   }
-  if (readCallback_) {
-    ReadCallback* callback = readCallback_;
-    readCallback_ = nullptr;
-    callback->readEOF();
+  if (readSqe_) {
+    ReadCallback* callback = readSqe_->readCallback();
+    readSqe_->setReadCallback(nullptr);
+    if (callback) {
+      callback->readEOF();
+    }
   }
 }
 
@@ -828,9 +849,18 @@ void AsyncIoUringSocket::getPeerAddress(SocketAddress* address) const {
 }
 
 void AsyncIoUringSocket::cacheAddresses() {
-  SocketAddress s;
-  getLocalAddress(&s);
-  getPeerAddress(&s);
+  try {
+    SocketAddress s;
+    getLocalAddress(&s);
+    getPeerAddress(&s);
+  } catch (const std::system_error& e) {
+    VLOG(2) << "Error caching addresses: " << e.code().value() << ", "
+            << e.code().message();
+  }
+}
+
+size_t AsyncIoUringSocket::getRawBytesReceived() const {
+  return readSqe_->bytesReceived();
 }
 
 int AsyncIoUringSocket::setNoDelay(bool noDelay) {
@@ -884,7 +914,9 @@ void AsyncIoUringSocket::setFd(NetworkSocket ns) {
       usedFd_ = fd_.toFd();
       VLOG(1) << "unable to register fd: " << fd_.toFd();
     }
-  } catch (...) {
+    readSqe_->setFd(usedFd_, mbFixedFileFlags_);
+  } catch (std::exception const& e) {
+    LOG(ERROR) << "unable to setFd " << ns.toFd() << " : " << e.what();
     ::close(ns.toFd());
     throw;
   }

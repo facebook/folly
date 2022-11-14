@@ -55,7 +55,6 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       AsyncSocket* sock, IoUringBackend* backend = nullptr);
   explicit AsyncIoUringSocket(
       EventBase* evb, IoUringBackend* backend = nullptr);
-  ~AsyncIoUringSocket() override;
   static bool supports(EventBase* backend);
 
   void connect(
@@ -92,7 +91,12 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   // AsyncReader
   void setReadCB(ReadCallback* callback) override;
 
-  ReadCallback* getReadCallback() const override { return readCallback_; }
+  ReadCallback* getReadCallback() const override {
+    return readSqe_->readCallback();
+  }
+  std::unique_ptr<IOBuf> takePreReceivedData() override {
+    return readSqe_->takePreReceivedData();
+  }
 
   // AsyncWriter
   void write(WriteCallback*, const void*, size_t, WriteFlags = WriteFlags::NONE)
@@ -141,9 +145,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   bool isDetachable() const override { return false; }
 
   uint32_t getSendTimeout() const override {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-               writeTimeoutTime_)
-        .count();
+    return static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(writeTimeoutTime_)
+            .count());
   }
 
   void setSendTimeout(uint32_t ms) override;
@@ -171,7 +175,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   size_t getAppBytesWritten() const override { return getRawBytesWritten(); }
   size_t getRawBytesWritten() const override { return bytesWritten_; }
   size_t getAppBytesReceived() const override { return getRawBytesReceived(); }
-  size_t getRawBytesReceived() const override { return bytesReceived_; }
+  size_t getRawBytesReceived() const override;
 
   virtual void addLifecycleObserver(
       LifecycleObserver* /* observer */) override {
@@ -196,23 +200,33 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   int setSockOpt(
       int level, int optname, const void* optval, socklen_t optsize) override;
 
+  std::string getSecurityProtocol() const override { return securityProtocol_; }
+  std::string getApplicationProtocol() const noexcept override {
+    return applicationProtocol_;
+  }
+
+  void setSecurityProtocol(std::string s) { securityProtocol_ = std::move(s); }
+  void setApplicationProtocol(std::string s) {
+    applicationProtocol_ = std::move(s);
+  }
+
  private:
+  ~AsyncIoUringSocket() override;
+
   friend class ReadSqe;
   friend class WriteSqe;
   void setFd(NetworkSocket ns);
-  bool readCallbackUseIoBufs() const;
   void appendPreReceive(std::unique_ptr<IOBuf> iobuf) noexcept;
   void readProcessSubmit(
       struct io_uring_sqe* sqe,
       IoUringBackend::ProvidedBufferProviderBase* bufferProvider,
       size_t* maxSize,
-      bool* usedBufferProvider) noexcept;
+      IoUringBackend::ProvidedBufferProviderBase* usedBufferProvider) noexcept;
   void readCallback(
       int res,
       uint32_t flags,
       size_t maxSize,
       IoUringBackend::ProvidedBufferProviderBase* bufferProvider) noexcept;
-  void preReadCallback() noexcept;
   void writeDone() noexcept;
   void doSubmitWrite() noexcept;
   void doReSubmitWrite() noexcept;
@@ -224,48 +238,67 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void startSendTimeout();
   void sendTimeoutExpired();
   void failWrite(const AsyncSocketException& ex);
-  void sendReadBuf(std::unique_ptr<IOBuf> buf) noexcept;
-  void invalidState(ReadCallback* callback);
+  void readEOF();
+  void readError();
 
-  struct PreReadSqe : IoUringBackend::IoSqeBase {
-    explicit PreReadSqe(AsyncIoUringSocket* parent) : parent_(parent) {}
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
-      ::io_uring_prep_nop(sqe);
-    }
-    void callback(int, uint32_t) noexcept override {
-      parent_->preReadCallback();
-    }
-    void callbackCancelled() noexcept override { delete this; }
-    AsyncIoUringSocket* parent_;
-  };
+  struct ReadSqe : IoUringBackend::IoSqeBase, DelayedDestruction {
+    using UniquePtr = std::unique_ptr<ReadSqe, Destructor>;
+    ReadSqe(AsyncIoUringSocket* parent, IoUringBackend* backend);
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override;
+    void callback(int res, uint32_t flags) noexcept override;
 
-  struct ReadSqe : IoUringBackend::IoSqeBase {
-    ReadSqe(
-        AsyncIoUringSocket* parent,
-        IoUringBackend::ProvidedBufferProviderBase* bufferProvider)
-        : parent_(parent), bufferProvider_(bufferProvider) {}
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
-      parent_->readProcessSubmit(
-          sqe, bufferProvider_, &maxSize_, &lastUsedBufferProvider_);
-    }
-    void callback(int res, uint32_t flags) noexcept override {
-      parent_->readCallback(
-          res,
-          flags,
-          maxSize_,
-          lastUsedBufferProvider_ ? bufferProvider_ : nullptr);
-    }
     void callbackCancelled() noexcept override {
       if (!inFlight()) {
         delete this;
       }
     }
 
+    void setReadCallback(ReadCallback* callback);
+    ReadCallback* readCallback() const { return readCallback_; }
+
+    size_t bytesReceived() const { return bytesReceived_; }
+
+    std::unique_ptr<IOBuf> takePreReceivedData();
+    void appendPreReceive(std::unique_ptr<IOBuf> data) noexcept {
+      appendReadData(std::move(data), preReceivedData_);
+    }
+
+    void setFd(int usedFd, unsigned int mbFixedFileFlags) {
+      usedFd_ = usedFd;
+      mbFixedFileFlags_ = mbFixedFileFlags;
+    }
+
+    void destroy() override {
+      parent_ = nullptr;
+      DelayedDestruction::destroy();
+    }
+
    private:
-    AsyncIoUringSocket* parent_;
+    ~ReadSqe() override = default;
+    void appendReadData(
+        std::unique_ptr<IOBuf> data, std::unique_ptr<IOBuf>& overflow) noexcept;
+    void sendReadBuf(
+        std::unique_ptr<IOBuf> buf, std::unique_ptr<IOBuf>& overflow) noexcept;
+    bool readCallbackUseIoBufs() const;
+    void invalidState(ReadCallback* callback);
+
+    IoUringBackend::ProvidedBufferProviderBase* lastUsedBufferProvider_;
+    ReadCallback* readCallback_ = nullptr;
     IoUringBackend::ProvidedBufferProviderBase* bufferProvider_;
+    AsyncIoUringSocket* parent_;
     size_t maxSize_;
-    bool lastUsedBufferProvider_;
+    uint64_t setReadCbCount_{0};
+    size_t bytesReceived_{0};
+
+    std::unique_ptr<IOBuf> queuedReceivedData_;
+    std::unique_ptr<IOBuf> preReceivedData_;
+    std::unique_ptr<IOBuf> tmpBuffer_;
+    bool supportsMultishotRecv_ =
+        false; // todo: this can be per process instead of per socket
+
+    // duplicate, but probably ok
+    int usedFd_ = -1;
+    unsigned int mbFixedFileFlags_ = 0;
   };
 
   struct CloseSqe : IoUringBackend::IoSqeBase {
@@ -273,7 +306,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->closeProcessSubmit(sqe);
     }
-    void callback(int, uint32_t) noexcept override {}
+    void callback(int, uint32_t) noexcept override { delete this; }
     void callbackCancelled() noexcept override { delete this; }
     AsyncIoUringSocket* parent_;
   };
@@ -299,7 +332,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     WriteCallback* callback_;
     std::unique_ptr<IOBuf> buf_;
     WriteFlags flags_;
-    std::vector<struct iovec> iov_; // todo how many really
+    small_vector<struct iovec, 2> iov_;
     size_t totalLength_;
     struct msghdr msg_;
   };
@@ -351,15 +384,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   std::unique_ptr<CloseSqe> closeSqe_{new CloseSqe(this)};
 
   // read
-  bool supportsMultishotRecv_ =
-      false; // todo: this can be per process instead of per socket
-  std::unique_ptr<PreReadSqe> preReadSqe_{new PreReadSqe(this)};
-  std::unique_ptr<ReadSqe> readSqe_;
-  ReadCallback* readCallback_ = nullptr;
-  uint64_t setReadCbCount_{0};
-  std::unique_ptr<IOBuf> preReceivedData_;
-  std::unique_ptr<IOBuf> tmpBuffer_;
-  size_t bytesReceived_{0};
+  ReadSqe::UniquePtr readSqe_;
 
   // write
   std::chrono::milliseconds writeTimeoutTime_{0};
@@ -374,6 +399,10 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   std::chrono::milliseconds connectTimeout_{0};
   std::chrono::steady_clock::time_point connectStartTime_;
   std::chrono::steady_clock::time_point connectEndTime_;
+
+  // stopTLS helpers:
+  std::string securityProtocol_;
+  std::string applicationProtocol_;
 
   void closeProcessSubmit(struct io_uring_sqe* sqe);
 };
