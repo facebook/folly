@@ -155,7 +155,10 @@ bool AsyncIoUringSocket::supports(EventBase* eb) {
 void AsyncIoUringSocket::connect(
     AsyncSocket::ConnectCallback* callback,
     const folly::SocketAddress& address,
-    std::chrono::milliseconds timeout) noexcept {
+    std::chrono::milliseconds timeout,
+    SocketOptionMap const& options,
+    const folly::SocketAddress& bindAddr,
+    const std::string& ifName) noexcept {
   evb_->dcheckIsInEventBaseThread();
   DestructorGuard dg(this);
   connectTimeout_ = timeout;
@@ -177,6 +180,70 @@ void AsyncIoUringSocket::connect(
   peerAddress_ = address;
 
   setFd(makeConnectSocket(address));
+
+  {
+    auto result =
+        applySocketOptions(fd_, options, SocketOptionKey::ApplyPos::PRE_BIND);
+    if (result != 0) {
+      callback->connectErr(AsyncSocketException(
+          AsyncSocketException::INTERNAL_ERROR,
+          "failed to set socket option",
+          result));
+      return;
+    }
+  }
+
+  // bind the socket to the interface
+  if (!ifName.empty() &&
+      setSockOpt(
+          SOL_SOCKET, SO_BINDTODEVICE, ifName.c_str(), ifName.length())) {
+    auto errnoCopy = errno;
+    callback->connectErr(AsyncSocketException(
+        AsyncSocketException::NOT_OPEN,
+        "failed to bind to device: " + ifName,
+        errnoCopy));
+    return;
+  }
+
+  // bind the socket
+  if (bindAddr != anyAddress()) {
+    sockaddr_storage addrStorage;
+    auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
+
+    int one = 1;
+    if (setSockOpt(SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+      auto errnoCopy = errno;
+      callback->connectErr(AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to setsockopt prior to bind on " + bindAddr.describe(),
+          errnoCopy));
+      return;
+    }
+
+    bindAddr.getAddress(&addrStorage);
+
+    if (::bind(fd_.toFd(), saddr, bindAddr.getActualSize()) != 0) {
+      auto errnoCopy = errno;
+      callback->connectErr(AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to bind to async socket: " + bindAddr.describe(),
+          errnoCopy));
+      return;
+    }
+  }
+
+  {
+    auto result =
+        applySocketOptions(fd_, options, SocketOptionKey::ApplyPos::POST_BIND);
+    if (result != 0) {
+      callback->connectErr(AsyncSocketException(
+          AsyncSocketException::INTERNAL_ERROR,
+          "failed to set socket option",
+          result));
+      return;
+    }
+  }
+
   connectCallback_->preConnect(fd_);
   if (connectTimeout_.count() > 0) {
     if (!connectSqe_->scheduleTimeout(connectTimeout_)) {
@@ -482,6 +549,14 @@ void AsyncIoUringSocket::preReadCallback() noexcept {
   }
 }
 
+void AsyncIoUringSocket::setPreReceivedData(std::unique_ptr<IOBuf> data) {
+  if (preReceivedData_) {
+    preReceivedData_->appendToChain(std::move(data));
+  } else {
+    preReceivedData_ = std::move(data);
+  }
+}
+
 AsyncIoUringSocket::WriteSqe::WriteSqe(
     AsyncIoUringSocket* parent,
     WriteCallback* callback,
@@ -750,6 +825,33 @@ void AsyncIoUringSocket::getPeerAddress(SocketAddress* address) const {
     peerAddress_.setFromPeerAddress(fd_);
   }
   *address = peerAddress_;
+}
+
+void AsyncIoUringSocket::cacheAddresses() {
+  SocketAddress s;
+  getLocalAddress(&s);
+  getPeerAddress(&s);
+}
+
+int AsyncIoUringSocket::setNoDelay(bool noDelay) {
+  if (fd_ == NetworkSocket()) {
+    VLOG(4) << "AsyncSocket::setNoDelay() called on non-open socket " << this;
+    return EINVAL;
+  }
+
+  int value = noDelay ? 1 : 0;
+  if (setSockOpt(IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value)) != 0) {
+    int errnoCopy = errno;
+    VLOG(2) << "failed to update TCP_NODELAY option on AsyncSocket " << this
+            << " (fd=" << fd_ << "): " << errnoStr(errnoCopy);
+    return errnoCopy;
+  }
+  return 0;
+}
+
+int AsyncIoUringSocket::setSockOpt(
+    int level, int optname, const void* optval, socklen_t optsize) {
+  return ::setsockopt(fd_.toFd(), level, optname, optval, optsize);
 }
 
 void AsyncIoUringSocket::setFd(NetworkSocket ns) {

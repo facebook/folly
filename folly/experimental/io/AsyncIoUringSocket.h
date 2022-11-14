@@ -46,7 +46,7 @@ namespace folly {
 
 #if __has_include(<liburing.h>)
 
-class AsyncIoUringSocket : public AsyncTransport {
+class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
   using UniquePtr = std::unique_ptr<AsyncIoUringSocket, Destructor>;
   explicit AsyncIoUringSocket(
@@ -61,8 +61,26 @@ class AsyncIoUringSocket : public AsyncTransport {
   void connect(
       AsyncSocket::ConnectCallback* callback,
       const folly::SocketAddress& address,
-      std::chrono::milliseconds timeout =
-          std::chrono::milliseconds(0)) noexcept;
+      std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+      SocketOptionMap const& options = emptySocketOptionMap,
+      const SocketAddress& bindAddr = anyAddress(),
+      const std::string& ifName = std::string()) noexcept;
+
+  void connect(
+      ConnectCallback* callback,
+      const folly::SocketAddress& address,
+      int timeout,
+      SocketOptionMap const& options,
+      const SocketAddress& bindAddr,
+      const std::string& ifName) noexcept override {
+    connect(
+        callback,
+        address,
+        std::chrono::milliseconds(timeout),
+        options,
+        bindAddr,
+        ifName);
+  }
 
   std::chrono::nanoseconds getConnectTime() const {
     return connectEndTime_ - connectStartTime_;
@@ -134,6 +152,9 @@ class AsyncIoUringSocket : public AsyncTransport {
 
   void getPeerAddress(SocketAddress*) const override;
 
+  void setPreReceivedData(std::unique_ptr<IOBuf> data) override;
+  void cacheAddresses() override;
+
   /**
    * @return True iff end of record tracking is enabled
    */
@@ -169,6 +190,11 @@ class AsyncIoUringSocket : public AsyncTransport {
   }
 
   const AsyncTransport* getWrappedTransport() const override { return nullptr; }
+
+  // AsyncSocketTransport
+  int setNoDelay(bool noDelay) override;
+  int setSockOpt(
+      int level, int optname, const void* optval, socklen_t optsize) override;
 
  private:
   friend class ReadSqe;
