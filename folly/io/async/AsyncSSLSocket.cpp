@@ -1624,7 +1624,11 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadv(
       } else if (ReadResultEnum(res) == READ_ERROR) {
         return readRes;
       } else if (ReadResultEnum(res) == READ_BLOCKING) {
-        return ReadResult(totalRead);
+        if (totalRead > 0) {
+          return ReadResult(totalRead);
+        } else {
+          return readRes;
+        }
       }
     }
   }
