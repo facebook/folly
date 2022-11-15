@@ -103,12 +103,12 @@ class ValueHolder<
 
     void acquireLink() {
       uint32_t count = numlinks_.fetch_add(1, std::memory_order_release);
-      DCHECK_GE(count, 1);
+      DCHECK_GE(count, 1u);
     }
 
     bool releaseLink() {
       uint32_t count = numlinks_.load(std::memory_order_acquire);
-      DCHECK_GE(count, 1);
+      DCHECK_GE(count, 1u);
       if (count > 1) {
         count = numlinks_.fetch_sub(1, std::memory_order_acq_rel);
       }
