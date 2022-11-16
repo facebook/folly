@@ -135,7 +135,6 @@
 #include <folly/lang/Exception.h>
 #include <folly/memory/SanitizeLeak.h>
 #include <folly/synchronization/Baton.h>
-#include <folly/synchronization/RWSpinLock.h>
 
 #include <algorithm>
 #include <atomic>
