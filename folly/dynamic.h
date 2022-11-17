@@ -1076,6 +1076,7 @@ struct dynamic {
   T asImpl() const;
 
   static char const* typeName(Type);
+  // NOTE: like ~dynamic, destroy() leaves type_ and u_ in an invalid state.
   void destroy() noexcept;
   void print(std::ostream&) const;
   void print_as_pseudo_json(std::ostream&) const; // see json.cpp

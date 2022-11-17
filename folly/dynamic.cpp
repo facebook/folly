@@ -368,6 +368,7 @@ char const* dynamic::typeName(Type t) {
 #undef FB_X
 }
 
+// NOTE: like ~dynamic, destroy() leaves type_ and u_ in an invalid state.
 void dynamic::destroy() noexcept {
   // This short-circuit speeds up some microbenchmarks.
   if (type_ == NULLT) {
@@ -377,8 +378,6 @@ void dynamic::destroy() noexcept {
 #define FB_X(T) detail::Destroy::destroy(getAddress<T>())
   FB_DYNAMIC_APPLY(type_, FB_X);
 #undef FB_X
-  type_ = NULLT;
-  u_.nul = nullptr;
 }
 
 dynamic dynamic::merge_diff(const dynamic& source, const dynamic& target) {
