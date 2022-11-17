@@ -742,7 +742,7 @@ ssize_t AsyncUDPSocket::writevImpl(
       cm->cmsg_level = key.level;
       cm->cmsg_type = key.optname;
       cm->cmsg_len = F_CMSG_LEN(val.size());
-      memcpy(cm, val.data(), val.size());
+      F_COPY_CMSG_INT_DATA(cm, val.data(), val.size());
     }
   }
 
