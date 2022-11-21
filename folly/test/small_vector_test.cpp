@@ -45,17 +45,16 @@ static_assert(
     "Object size is not what we expect for small_vector<int, 0>");
 
 static_assert(
-    sizeof(small_vector<int, 0, uint32_t>) ==
-        4 /* size_ */ + 4 /* padding */ + 8,
+    sizeof(small_vector<int, 0, uint32_t>) == 4 /* size_ */ + 8,
     "Object size is not what we expect for small_vector<int, 0, uint32_t>");
 
 static_assert(
-    sizeof(small_vector<double, 0, uint8_t>) == 16,
-    "Object size is not what we expect for small_vector<int, 0, uint32_t>");
+    sizeof(small_vector<double, 0, uint8_t>) == 9,
+    "Object size is not what we expect for small_vector<double, 0, uint32_t>");
 
 static_assert(
-    sizeof(small_vector<std::pair<int64_t, int64_t>, 0, uint32_t>) == 16,
-    "Object size is not what we expect for small_vector<int, 0, uint32_t>");
+    sizeof(small_vector<std::pair<int64_t, int64_t>, 0, uint32_t>) == 12,
+    "Object size is not what we expect for small_vector<pair<int64_t, int64_t>, 0, uint32_t>");
 
 static_assert(
     sizeof(small_vector<int>) == 16,

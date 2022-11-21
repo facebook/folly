@@ -1307,7 +1307,7 @@ class small_vector : public detail::small_vector_base<
   typedef typename std::conditional<
       sizeof(value_type) * MaxInline != 0,
       InlineStorageDataType,
-      value_type*>::type InlineStorageType;
+      char>::type InlineStorageType;
 
   // If the values are trivially copyable and the storage is small enough, copy
   // it entirely. Limit is half of a cache line, to minimize probability of
