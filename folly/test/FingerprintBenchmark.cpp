@@ -21,7 +21,6 @@
 #include <folly/Format.h>
 #include <folly/detail/SlowFingerprint.h>
 
-using namespace std;
 using namespace folly;
 using folly::detail::SlowFingerprint;
 

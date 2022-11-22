@@ -26,9 +26,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/test/ComparisonOperatorTestUtil.h>
 
-using folly::dynamic;
-using folly::StringPiece;
-
 namespace folly {
 namespace test {
 

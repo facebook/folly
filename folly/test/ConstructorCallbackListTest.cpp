@@ -18,8 +18,6 @@
 #include <folly/ConstructorCallbackList.h>
 #include <folly/portability/GTest.h>
 
-using namespace ::testing;
-
 namespace {
 class Foo {
  public:

@@ -47,7 +47,6 @@ CPP_assert(ranges::view_<folly::StringPiece>);
 #endif
 
 using namespace folly;
-using namespace folly::detail;
 using namespace std;
 
 static_assert(std::is_literal_type<StringPiece>::value, "");

@@ -37,9 +37,6 @@ class StringAppender {
   std::string& s_;
 };
 
-typedef GroupVarintEncoder<uint32_t, StringAppender> GroupVarint32Encoder;
-typedef GroupVarintEncoder<uint64_t, StringAppender> GroupVarint64Encoder;
-
 // Expected bytes follow, terminate with -1
 void testGroupVarint32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, ...) {
   va_list ap;
@@ -171,6 +168,7 @@ TEST(GroupVarint, GroupVarint64) {
 }
 
 TEST(GroupVarint, GroupVarintEncoder) {
+  using GroupVarint32Encoder = GroupVarintEncoder<uint32_t, StringAppender>;
   std::string s;
   {
     GroupVarint32Encoder gv(s);

@@ -21,7 +21,6 @@
 #include <folly/test/TestUtils.h>
 
 using namespace folly;
-using namespace std;
 
 const folly::StringPiece kTestUTF8 =
     reinterpret_cast<const char*>(u8"This is \U0001F602 stuff!");

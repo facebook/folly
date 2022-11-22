@@ -45,7 +45,6 @@ using std::vector;
 using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::chrono::steady_clock;
-using std::chrono::time_point;
 
 typedef DeterministicSchedule DSched;
 

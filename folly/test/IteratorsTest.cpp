@@ -22,7 +22,6 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly::detail;
-using namespace folly;
 
 namespace {
 struct IntArrayIterator

@@ -31,8 +31,6 @@ using folly::NetworkSocket;
 using folly::SocketAddress;
 using folly::SocketAddressTestHelper;
 using folly::test::TemporaryDirectory;
-using std::cerr;
-using std::endl;
 using std::string;
 
 namespace netops = folly::netops;

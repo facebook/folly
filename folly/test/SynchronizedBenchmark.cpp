@@ -28,7 +28,6 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
-using namespace folly::detail;
 
 DEFINE_uint64(iterations, 100, "The number of iterations with lock held");
 

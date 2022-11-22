@@ -18,8 +18,6 @@
 
 #include <folly/portability/GTest.h>
 
-using namespace folly;
-
 template <typename C>
 static void test_enable_shared_from_this(std::shared_ptr<C> sp) {
   ASSERT_EQ(1l, sp.use_count());

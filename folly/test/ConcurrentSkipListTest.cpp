@@ -79,7 +79,6 @@ typedef int ValueType;
 typedef detail::SkipListNode<ValueType> SkipListNodeType;
 typedef ConcurrentSkipList<ValueType> SkipListType;
 typedef SkipListType::Accessor SkipListAccessor;
-typedef vector<ValueType> VectorType;
 typedef std::set<ValueType> SetType;
 
 static const int kHeadHeight = 2;
