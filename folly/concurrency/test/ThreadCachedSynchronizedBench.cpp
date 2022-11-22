@@ -45,8 +45,9 @@ template <typename Obj>
 FOLLY_NOINLINE void bm_read_int(Obj& obj, std::size_t iters) {
   std::size_t sum = 0;
   while (iters--) {
-    folly::makeUnpredictable(obj);
-    sum += load(obj);
+    auto loaded = load(obj);
+    folly::makeUnpredictable(loaded);
+    sum += loaded;
   }
   folly::doNotOptimizeAway(sum);
 }
