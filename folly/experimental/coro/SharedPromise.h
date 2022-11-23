@@ -39,6 +39,8 @@ namespace folly::coro {
  */
 template <typename T>
 class SharedPromise {
+  using TryType = Try<lift_unit_t<T>>;
+
  public:
   /**
    * Constructors have behavior identical to folly::SharedPromise.
@@ -68,27 +70,29 @@ class SharedPromise {
   /**
    * Sets an exception in the promise.
    */
-  void setException(folly::exception_wrapper);
+  void setException(folly::exception_wrapper&&);
 
   /**
    * Sets a value in the promise.
    */
   template <typename U = T>
   void setValue(U&&);
+  template <typename U = T, typename = std::enable_if_t<std::is_void_v<U>>>
+  void setValue();
 
   /**
    * Sets a folly::Try object in the promise.
    */
-  void setTry(folly::Try<T>&&);
+  void setTry(TryType&&);
 
  private:
   struct State {
-    folly::Try<T> result;
+    TryType result;
     folly::small_vector<folly::coro::Promise<T>> promises;
   };
 
   static bool isFulfilled(const State&);
-  static void setTry(State&, folly::Try<T>);
+  static void setTry(State&, TryType&&);
 
   folly::Synchronized<State> state_;
 };
@@ -114,9 +118,16 @@ folly::coro::Future<T> SharedPromise<T>::getFuture() {
   return state_.withWLock([&](auto& state) {
     // if the promise already has a value, then we just return a ready future
     if (isFulfilled(state)) {
-      return state.result.hasValue()
-          ? folly::coro::makeFuture<T>(folly::copy(state.result.value()))
-          : folly::coro::makeFuture<T>(folly::copy(state.result.exception()));
+      if constexpr (std::is_void_v<T>) {
+        return state.result.hasValue()
+            ? folly::coro::makeFuture()
+            : folly::coro::makeFuture<void>(
+                  folly::copy(state.result.exception()));
+      } else {
+        return state.result.hasValue()
+            ? folly::coro::makeFuture<T>(folly::copy(state.result.value()))
+            : folly::coro::makeFuture<T>(folly::copy(state.result.exception()));
+      }
     }
 
     auto [promise, future] = folly::coro::makePromiseContract<T>();
@@ -136,21 +147,27 @@ bool SharedPromise<T>::isFulfilled() const {
 }
 
 template <typename T>
-void SharedPromise<T>::setException(folly::exception_wrapper exception) {
+void SharedPromise<T>::setException(folly::exception_wrapper&& exception) {
   state_.withWLock(
-      [&](auto& state) { setTry(state, folly::Try<T>{std::move(exception)}); });
+      [&](auto& state) { setTry(state, TryType{std::move(exception)}); });
 }
 
 template <typename T>
 template <typename U>
 void SharedPromise<T>::setValue(U&& input) {
   state_.withWLock([&](auto& state) {
-    setTry(state, folly::Try<T>{folly::in_place, std::forward<U>(input)});
+    setTry(state, TryType{folly::in_place, std::forward<U>(input)});
   });
 }
 
 template <typename T>
-void SharedPromise<T>::setTry(folly::Try<T>&& result) {
+template <typename U, typename>
+void SharedPromise<T>::setValue() {
+  setTry({});
+}
+
+template <typename T>
+void SharedPromise<T>::setTry(TryType&& result) {
   state_.withWLock([&](auto& state) { setTry(state, std::move(result)); });
 }
 
@@ -161,7 +178,7 @@ bool SharedPromise<T>::isFulfilled(const SharedPromise<T>::State& state) {
 
 template <typename T>
 void SharedPromise<T>::setTry(
-    SharedPromise<T>::State& state, folly::Try<T> result) {
+    SharedPromise<T>::State& state, TryType&& result) {
   if (isFulfilled(state)) {
     throw_exception<PromiseAlreadySatisfied>();
   }

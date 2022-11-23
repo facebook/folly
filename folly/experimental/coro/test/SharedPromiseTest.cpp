@@ -288,4 +288,12 @@ TYPED_TEST(SharedPromiseTest, NoHeapAllocation) {
   // If SharedPromise has heap allocation, it would trigger ASAN failures
 }
 
+TEST(SharedPromiseTest, BasicVoid) {
+  auto promise = SharedPromise<void>{};
+  auto future = promise.getFuture();
+
+  promise.setValue();
+  blocking_wait(std::move(future));
+}
+
 #endif
