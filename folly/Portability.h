@@ -250,9 +250,6 @@ constexpr bool kIsSanitize = false;
 #ifdef _MSC_VER
 #include <folly/portability/SysTypes.h>
 
-// Hide a GCC specific thing that breaks MSVC if left alone.
-#define __extension__
-
 // We have compiler support for the newest of the new, but
 // MSVC doesn't tell us that.
 //
@@ -263,6 +260,9 @@ constexpr bool kIsSanitize = false;
 #if !defined(_M_ARM) && !defined(_M_ARM64)
 #define __SSE4_2__ 1
 #endif // !defined(_M_ARM) && !defined(_M_ARM64)
+
+// Hide a GCC specific thing that breaks MSVC if left alone.
+#define __extension__
 
 // compiler specific to compiler specific
 // nolint
