@@ -33,6 +33,22 @@ struct IsConstReference<const T&> {
   constexpr static bool value = true;
 };
 
+constexpr int basicSum(const std::array<int, 3>& test) {
+  int sum = 0;
+  for (auto it : folly::enumerate(test)) {
+    sum += *it;
+  }
+  return sum;
+}
+
+constexpr int cpp17StructuredBindingSum(const std::array<int, 3>& test) {
+  int sum = 0;
+  for (auto&& [_, integer] : folly::enumerate(test)) {
+    sum += integer;
+  }
+  return sum;
+}
+
 } // namespace
 
 TEST(Enumerate, Basic) {
@@ -253,4 +269,18 @@ TEST(Enumerate, Cpp17StructuredBindingModify) {
   for (const auto& integer : test) {
     EXPECT_EQ(integer, 0);
   }
+}
+
+TEST(Enumerate, BasicConstexpr) {
+  constexpr std::array<int, 3> test = {1, 2, 3};
+  static_assert(basicSum(test) == 6, "Basic enumerating is not constexpr");
+  EXPECT_EQ(basicSum(test), 6);
+}
+
+TEST(Enumerate, Cpp17StructuredBindingConstexpr) {
+  constexpr std::array<int, 3> test = {1, 2, 3};
+  static_assert(
+      cpp17StructuredBindingSum(test) == 6,
+      "C++17 structured binding enumerating is not constexpr");
+  EXPECT_EQ(cpp17StructuredBindingSum(test), 6);
 }
