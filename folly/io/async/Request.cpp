@@ -17,7 +17,6 @@
 #include <folly/io/async/Request.h>
 
 #include <folly/GLog.h>
-#include <folly/Indestructible.h>
 #include <folly/MapUtil.h>
 #include <folly/experimental/SingleWriterFixedHashMap.h>
 #include <folly/synchronization/Hazptr.h>
@@ -655,8 +654,8 @@ RequestContext::setShallowCopyContext() {
 /* static */ RequestContext* RequestContext::get() {
   auto& context = getStaticContext().requestContext;
   if (!context) {
-    static Indestructible<RequestContext> defaultContext{0};
-    return defaultContext.get();
+    static RequestContext defaultContext(0);
+    return std::addressof(defaultContext);
   }
   return context.get();
 }
