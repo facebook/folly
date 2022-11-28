@@ -53,7 +53,7 @@ python
 
 [dependencies.all(fb=off)]
 # Outside Meta hg is not installed, or if it is, its not the one we want to test with
-eden_scm
+sapling
 
 [shipit.pathmap.fb=on]
 # for internal builds that use getdeps

@@ -8,7 +8,7 @@ python@3.8
 python3
 python3-devel
 
-# eden_scm needs dataclasses which arrive in 3.7, and the bionic python is 3.6
+# sapling needs dataclasses which arrive in 3.7, and the bionic python is 3.6
 [debs.all(distro=ubuntu,distro_vers="18.04")]
 python3.8-dev
 
