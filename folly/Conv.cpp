@@ -271,7 +271,7 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
     if (b >= e) {
       return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
-    if (!std::isspace(*b)) {
+    if ((*b < '\t' || *b > '\r') && *b != ' ') {
       break;
     }
   }
@@ -396,8 +396,9 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
   }
 
   auto* e = src->end();
-  auto* b =
-      std::find_if_not(src->begin(), e, [](char c) { return std::isspace(c); });
+  auto* b = std::find_if_not(src->begin(), e, [](char c) {
+    return (c >= '\t' && c <= '\r') || c == ' ';
+  });
   if (b == e) {
     return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
   }
@@ -684,7 +685,7 @@ Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
     if (UNLIKELY(b >= past)) {
       return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
-    if (!std::isspace(*b)) {
+    if ((*b < '\t' || *b > '\r') && *b != ' ') {
       break;
     }
   }
