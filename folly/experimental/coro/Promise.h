@@ -87,6 +87,10 @@ class Promise {
     }
   }
 
+  bool valid() const noexcept { return state_; }
+
+  bool isFulfilled() const noexcept { return state_ && state_->fulfilled; }
+
   template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
   void setValue(U&& value) {
     DCHECK(state_);

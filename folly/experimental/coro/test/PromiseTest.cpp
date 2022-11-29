@@ -40,7 +40,11 @@ static_assert(
 
 CO_TEST(PromiseTest, ImmediateValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.valid());
+  EXPECT_FALSE(promise.isFulfilled());
   promise.setValue(42);
+  EXPECT_TRUE(promise.valid());
+  EXPECT_TRUE(promise.isFulfilled());
   EXPECT_EQ(co_await std::move(future), 42);
 }
 
@@ -149,6 +153,8 @@ CO_TEST(PromiseTest, SuspendCancel) {
 CO_TEST(PromiseTest, ImmediateBreakPromise) {
   auto [promise, future] = coro::makePromiseContract<int>();
   { auto p2 = std::move(promise); }
+  // @lint-ignore CLANGTIDY
+  EXPECT_FALSE(promise.valid());
   auto res = co_await co_awaitTry(std::move(future));
   EXPECT_TRUE(res.hasException<BrokenPromise>());
 }
