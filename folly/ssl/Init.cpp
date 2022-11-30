@@ -18,6 +18,7 @@
 
 #include <mutex>
 
+#include <folly/Indestructible.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/detail/OpenSSLThreading.h>
 
@@ -30,8 +31,8 @@ namespace {
 bool initialized_ = false;
 
 std::mutex& initMutex() {
-  static std::mutex m;
-  return m;
+  static folly::Indestructible<std::mutex> m;
+  return *m;
 }
 
 void initializeOpenSSLLocked() {
