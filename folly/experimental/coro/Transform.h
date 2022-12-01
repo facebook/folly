@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Coroutine.h>
 
@@ -23,6 +25,10 @@
 
 namespace folly {
 namespace coro {
+
+namespace detail {
+struct computed_from_input;
+}
 
 // Transform the Values from an input stream into a stream of the
 // Trandformed Values.
@@ -35,11 +41,12 @@ namespace coro {
 //   AsyncGenerator<int> stream();
 //
 //   Task<void> consumer() {
-//     auto events = transform(stream(), [](int i){ return i * 1.0f; });
+//     auto to_float = [](int i){ return i * 1.0f; };
+//     AsyncGenerator<float&> events = transform(stream(), to_float);
 //     try {
 //       while (auto item = co_await events.next()) {
 //         // Value
-//         float value = *item;
+//         float& value = *item;
 //         std::cout << "value " << value << "\n";
 //       }
 //       // End Of Stream
@@ -49,12 +56,23 @@ namespace coro {
 //       std::cout << "error " << error.what() << "\n";
 //     }
 //   }
+//
+// By default the AsyncGenerator returns a reference to the computed value.
+// Specify the first template argument to override the return type of the
+// generator.
+//
+// Example:
+//   AsyncGenerator<double> events = transform<double>(stream(), to_float);
 template <
+    typename ReturnType = detail::computed_from_input,
     typename TransformFn,
     typename Reference,
     typename Value,
-    typename Return = invoke_result_t<TransformFn&, Reference>>
-AsyncGenerator<Return> transform(
+    typename ReturnReference = std::conditional_t<
+        std::is_same_v<ReturnType, detail::computed_from_input>,
+        invoke_result_t<TransformFn&, Reference&&>&&,
+        ReturnType>>
+AsyncGenerator<ReturnReference> transform(
     AsyncGenerator<Reference, Value> source, TransformFn transformFn);
 
 } // namespace coro

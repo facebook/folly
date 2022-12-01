@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <utility>
 #include <folly/Portability.h>
 
 #include <folly/CancellationToken.h>
@@ -33,6 +34,13 @@ using namespace folly::coro;
 
 class TransformTest : public testing::Test {};
 
+AsyncGenerator<int> ints(int n) {
+  for (int i = 0; i <= n; ++i) {
+    co_await co_reschedule_on_current_executor;
+    co_yield i;
+  }
+}
+
 TEST_F(TransformTest, SimpleStream) {
   struct MyError : std::exception {};
 
@@ -46,13 +54,6 @@ TEST_F(TransformTest, SimpleStream) {
   int totalEventCount = 0;
 
   auto selectStream = [](int index) -> AsyncGenerator<int> {
-    auto ints = [](int n) -> AsyncGenerator<int> {
-      for (int i = 0; i <= n; ++i) {
-        co_await co_reschedule_on_current_executor;
-        co_yield i;
-      }
-    };
-
     auto failing = []() -> AsyncGenerator<int> {
       co_yield 0;
       co_yield 1;
@@ -140,6 +141,89 @@ TEST_F(TransformTest, CancellationTokenPropagatesFromConsumer) {
         }());
     CHECK(done);
   }());
+}
+
+AsyncGenerator<float&> floatRefs(int n) {
+  for (int i = 0; i <= n; ++i) {
+    co_await co_reschedule_on_current_executor;
+    float f = i;
+    co_yield f;
+  }
+}
+
+TEST_F(TransformTest, TransformDeducesTypesCorrectly) {
+  auto makeStream = []() -> AsyncGenerator<int> { return ints(2); };
+  auto useStream = [](auto ag) {
+    blockingWait([](auto ag) -> Task<void> {
+      while (auto item = co_await ag.next()) {
+        // Force the access to the value
+        [[maybe_unused]] auto copy = std::move(item).value();
+      }
+    }(std::move(ag)));
+  };
+
+  {
+    // Function returning value
+    std::function<float(int)> fun = [](int) { return 1.f; };
+
+    // Default deduced as r-value reference
+    AsyncGenerator<float&&> s0 = transform(makeStream(), fun);
+    useStream(std::move(s0));
+    AsyncGenerator<float&&> s1 = transform<float&&>(makeStream(), fun);
+    useStream(std::move(s1));
+    AsyncGenerator<float&> s2 = transform<float&>(makeStream(), fun);
+    useStream(std::move(s2));
+    AsyncGenerator<float> s3 = transform<float>(makeStream(), fun);
+    useStream(std::move(s3));
+  }
+
+  {
+    // Function returning reference
+
+    std::function<float&(float&)> fun = [&](float& f) -> float& { return f; };
+
+    // Default deduced as l-value reference
+    AsyncGenerator<float&> s0 = transform(floatRefs(2), fun);
+    useStream(std::move(s0));
+    AsyncGenerator<float&&> s1 = transform<float&&>(floatRefs(2), fun);
+    useStream(std::move(s1));
+    AsyncGenerator<float&> s2 = transform<float&>(floatRefs(2), fun);
+    useStream(std::move(s2));
+    AsyncGenerator<float> s3 = transform<float>(floatRefs(2), fun);
+    useStream(std::move(s3));
+  }
+
+  // Conversion
+
+  {
+    // Function returning value
+    std::function<float(int)> fun = [](int) { return 1.f; };
+
+    AsyncGenerator<double&&> s1 = transform<double&&>(makeStream(), fun);
+    useStream(std::move(s1));
+    AsyncGenerator<double&> s2 = transform<double&>(makeStream(), fun);
+    useStream(std::move(s2));
+    AsyncGenerator<const double&> s3 =
+        transform<const double&>(makeStream(), fun);
+    useStream(std::move(s3));
+    AsyncGenerator<double> s4 = transform<double>(makeStream(), fun);
+    useStream(std::move(s4));
+  }
+
+  {
+    // Function returning reference
+    std::function<float&(float&)> fun = [&](float& f) -> float& { return f; };
+
+    AsyncGenerator<double&&> s1 = transform<double&&>(floatRefs(2), fun);
+    useStream(std::move(s1));
+    AsyncGenerator<double&> s2 = transform<double&>(floatRefs(2), fun);
+    useStream(std::move(s2));
+    AsyncGenerator<const double&> s3 =
+        transform<const double&>(floatRefs(2), fun);
+    useStream(std::move(s3));
+    AsyncGenerator<double&&> s4 = transform<double&&>(floatRefs(2), fun);
+    useStream(std::move(s4));
+  }
 }
 
 #endif
