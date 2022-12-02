@@ -393,7 +393,7 @@ Future<T> chainExecutor(Executor::KeepAlive<> e, SemiFuture<T>&& f) {
   if (!e) {
     e = folly::getKeepAliveToken(InlineExecutor::instance());
   }
-  return std::move(f).via(e);
+  return std::move(f).via(std::move(e));
 }
 
 // Variant: returns a Future
