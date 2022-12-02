@@ -152,10 +152,27 @@ class PrimaryPtr {
   PrimaryPtr(std::unique_ptr<T2, Deleter> ptr) {
     set(std::move(ptr));
   }
+
+  explicit PrimaryPtr(std::nullptr_t) {}
+
   ~PrimaryPtr() {
     if (*this) {
       LOG(FATAL) << "PrimaryPtr has to be joined explicitly.";
     }
+  }
+
+  PrimaryPtr(PrimaryPtr<T>&&) = default;
+
+  void swap(PrimaryPtr<T>& other) noexcept {
+    PrimaryPtr<T> temp = std::move(other);
+    other = std::move(*this);
+    *this = std::move(temp);
+  }
+
+  PrimaryPtr<T> exchange(PrimaryPtr<T>&& newVal) noexcept {
+    PrimaryPtr<T> oldVal = std::move(*this);
+    *this = std::move(newVal);
+    return oldVal;
   }
 
   explicit operator bool() const { return !!innerPtr_; }
@@ -263,6 +280,10 @@ class PrimaryPtr {
   PrimaryPtrRef<T> ref() const { return PrimaryPtrRef<T>(outerPtrWeak_); }
 
  private:
+  // Making this private for now since non-null PrimaryPtr's must be explicitly
+  // joined before destruction.
+  PrimaryPtr<T>& operator=(PrimaryPtr<T>&& other) = default;
+
   template <class>
   friend class EnablePrimaryFromThis;
   friend class PrimaryPtrRef<T>;
@@ -272,6 +293,16 @@ class PrimaryPtr {
   std::weak_ptr<std::shared_ptr<T>> outerPtrWeak_;
   std::unique_ptr<T, folly::Function<void(T*)>> innerPtr_;
 };
+
+template <typename T>
+void swap(PrimaryPtr<T>& x, PrimaryPtr<T>& y) noexcept {
+  x.swap(y);
+}
+
+template <typename T>
+PrimaryPtr<T> exchange(PrimaryPtr<T>& x, PrimaryPtr<T>&& newVal) noexcept {
+  return x.exchange(std::move(newVal));
+}
 
 /**
  * PrimaryPtrRef is a non-owning reference to the pointer. PrimaryPtr::join()

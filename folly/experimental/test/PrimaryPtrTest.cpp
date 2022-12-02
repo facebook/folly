@@ -267,3 +267,21 @@ TEST(PrimaryPtrTest, EnablePrimaryFromThis) {
 
   EXPECT_TRUE(!primaryPtr);
 }
+
+TEST(PrimaryPtrTest, Moves) {
+  folly::PrimaryPtr<int> a{std::make_unique<int>(42)};
+  folly::PrimaryPtr<int> b{std::make_unique<int>(0)};
+  folly::PrimaryPtr<int> c = exchange(a, std::move(b));
+
+  EXPECT_EQ(*c.lock(), 42);
+  EXPECT_EQ(*a.lock(), 0);
+  EXPECT_FALSE((bool)b);
+
+  swap(c, a);
+  EXPECT_EQ(*c.lock(), 0);
+  EXPECT_EQ(*a.lock(), 42);
+
+  a.join();
+  b.join();
+  c.join();
+}
