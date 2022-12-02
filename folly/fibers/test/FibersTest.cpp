@@ -1859,8 +1859,8 @@ TEST(FiberManager, batchSemaphore) {
         for (size_t i = 0; i < kTasks; ++i) {
           manager.addTask([&, completionCounter]() {
             for (size_t j = 0; j < kIterations; ++j) {
-              int tokens = j % 4 + 1;
-              switch (j % 4) {
+              int tokens = j % 5 + 1;
+              switch (j % 5) {
                 case 0:
                   sem.wait(tokens);
                   break;
@@ -1878,6 +1878,12 @@ TEST(FiberManager, batchSemaphore) {
                 case 3:
                   folly::coro::blockingWait(sem.co_wait(tokens));
                   break;
+                case 4: {
+                  if (!sem.try_wait(tokens)) {
+                    sem.wait(tokens);
+                  }
+                  break;
+                }
               }
               counter += tokens;
               sem.signal(tokens);

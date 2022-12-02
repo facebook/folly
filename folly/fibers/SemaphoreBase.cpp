@@ -121,6 +121,20 @@ bool SemaphoreBase::try_wait_common(Waiter& waiter, int64_t tokens) {
   return true;
 }
 
+bool SemaphoreBase::try_wait_common(int64_t tokens) {
+  auto oldVal = tokens_.load(std::memory_order_acquire);
+  do {
+    if (oldVal < tokens) {
+      return false;
+    }
+  } while (!tokens_.compare_exchange_weak(
+      oldVal,
+      oldVal - tokens,
+      std::memory_order_release,
+      std::memory_order_acquire));
+  return true;
+}
+
 #if FOLLY_HAS_COROUTINES
 
 coro::Task<void> SemaphoreBase::co_wait_common(int64_t tokens) {

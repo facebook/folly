@@ -73,6 +73,12 @@ class SemaphoreBase {
    */
   bool try_wait_common(Waiter& waiter, int64_t tokens);
 
+  /**
+   * If the semaphore has capacity, removes a token and returns true. Otherwise
+   * returns false and leaves the semaphore unchanged.
+   */
+  bool try_wait_common(int64_t tokens);
+
 #if FOLLY_HAS_COROUTINES
 
   /*
