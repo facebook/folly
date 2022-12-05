@@ -473,10 +473,16 @@ class SingletonVault {
 
   // Destroy all singletons; when complete, the vault can't create
   // singletons once again until reenableInstances() is called.
+  // If reenableInstances() will not be called, destroyInstancesFinal()
+  // should be used instead.
   void destroyInstances();
 
   // Enable re-creating singletons after destroyInstances() was called.
   void reenableInstances();
+
+  // Same as destroyInstances() but reenableInstances() should not be called
+  // after it. Starts a shutdown timer.
+  void destroyInstancesFinal();
 
   // For testing; how many registered and living singletons we have.
   size_t registeredSingletonCount() const {
@@ -534,8 +540,6 @@ class SingletonVault {
 
   void addToShutdownLog(std::string message);
 
-  void startShutdownTimer();
-
   [[noreturn]] void fireShutdownTimer();
 
   void setFailOnUseAfterFork(bool failOnUseAfterFork) {
@@ -558,6 +562,8 @@ class SingletonVault {
   // 3. Singletons, not managed by folly::Singleton, which were created before
   //    any of the singletons managed by folly::Singleton was requested.
   static void scheduleDestroyInstances();
+
+  void startShutdownTimer();
 
   typedef std::unordered_map<
       detail::TypeDescriptor,

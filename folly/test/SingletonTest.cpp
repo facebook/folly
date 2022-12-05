@@ -1042,16 +1042,12 @@ TEST(Singleton, ShutdownTimer) {
   vault.setShutdownTimeout(10ms);
   SingletonObject::try_get()->shutdownDuration = 10s;
   EXPECT_DEATH(
-      [&]() {
-        vault.startShutdownTimer();
-        vault.destroyInstances();
-      }(),
+      [&]() { vault.destroyInstancesFinal(); }(),
       "Failed to complete shutdown within 10ms.");
 
   vault.setShutdownTimeout(10s);
   SingletonObject::try_get()->shutdownDuration = 10ms;
-  vault.startShutdownTimer();
-  vault.destroyInstances();
+  vault.destroyInstancesFinal();
 }
 
 TEST(Singleton, ShutdownTimerDisable) {
@@ -1072,8 +1068,7 @@ TEST(Singleton, ShutdownTimerDisable) {
 
   vault.disableShutdownTimeout();
   SingletonObject::try_get()->shutdownDuration = 100ms;
-  vault.startShutdownTimer();
-  vault.destroyInstances();
+  vault.destroyInstancesFinal();
 }
 
 TEST(Singleton, ForkInChild) {

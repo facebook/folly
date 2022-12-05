@@ -284,7 +284,7 @@ void SingletonVault::addEagerInitOnReenableSingleton(
 }
 
 void SingletonVault::registrationComplete() {
-  std::atexit([]() { SingletonVault::singleton()->destroyInstances(); });
+  scheduleDestroyInstances();
 
   auto state = state_.wlock();
   state->check(detail::SingletonVaultState::Type::Running);
@@ -406,6 +406,8 @@ void SingletonVault::destroyInstances() {
 }
 
 void SingletonVault::reenableInstances() {
+  CHECK(!shutdownTimerStarted_.load(std::memory_order_relaxed))
+      << "reenableInstances() called after destroyInstancesFinal()";
   {
     auto state = state_.wlock();
 
@@ -433,10 +435,12 @@ void SingletonVault::scheduleDestroyInstances() {
   // Add a dependency on folly::ThreadLocal to make sure all its static
   // singletons are initalized first.
   threadlocal_detail::StaticMeta<void, void>::instance();
-  std::atexit([] {
-    SingletonVault::singleton()->startShutdownTimer();
-    SingletonVault::singleton()->destroyInstances();
-  });
+  std::atexit([] { SingletonVault::singleton()->destroyInstancesFinal(); });
+}
+
+void SingletonVault::destroyInstancesFinal() {
+  startShutdownTimer();
+  destroyInstances();
 }
 
 void SingletonVault::addToShutdownLog(std::string message) {
