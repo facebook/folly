@@ -97,7 +97,9 @@ class SSLContext {
     SSLv3,
     TLSv1, // support TLS 1.0+
     TLSv1_2, // support for only TLS 1.2+
+#if FOLLY_OPENSSL_HAS_TLS13
     TLSv1_3,
+#endif
   };
 
   /**
