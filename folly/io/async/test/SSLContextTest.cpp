@@ -260,13 +260,9 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
 }
 #endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
 
-#if FOLLY_OPENSSL_HAS_TLS13
-TEST_F(SSLContextTest, TestTLS13MinVersion) {
-  SSLContext sslContext{SSLContext::SSLVersion::TLSv1_3};
-  int minProtoVersion = SSL_CTX_get_min_proto_version(sslContext.getSSLCtx());
-  EXPECT_EQ(minProtoVersion, TLS1_3_VERSION);
+TEST_F(SSLContextTest, TestTLS13MinVersionThrow) {
+  EXPECT_THROW(SSLContext{SSLContext::SSLVersion::TLSv1_3}, std::runtime_error);
 }
-#endif
 
 TEST_F(SSLContextTest, AdvertisedNextProtocols) {
   EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "");

@@ -44,6 +44,13 @@ int getExDataIndex() {
  */
 void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
 #if FOLLY_OPENSSL_PREREQ(1, 1, 0)
+  // Disable TLS 1.3 by default, for now, if this version of OpenSSL
+  // supports it. There are some semantic differences (e.g. assumptions
+  // on getSession() returning a resumable session, SSL_CTX_set_ciphersuites,
+  // etc.)
+  //
+  SSL_CTX_set_max_proto_version(ctx, TLS1_2_VERSION);
+
   /*
    * From the OpenSSL docs https://fburl.com/ii9k29qw:
    * Setting the minimum or maximum version to 0, will enable protocol versions
@@ -63,11 +70,9 @@ void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
     case SSLContext::SSLVersion::TLSv1_2:
       minVersion = TLS1_2_VERSION;
       break;
-#if FOLLY_OPENSSL_HAS_TLS13
+    // TODO: Handle this correctly once the max protocol version
+    // is no longer limited to TLS 1.2.
     case SSLContext::SSLVersion::TLSv1_3:
-      minVersion = TLS1_3_VERSION;
-      break;
-#endif
     case SSLContext::SSLVersion::SSLv2:
     default:
       // do nothing
@@ -124,6 +129,15 @@ static int dispatchTicketCrypto(
 // SSLContext implementation
 SSLContext::SSLContext(SSLVersion version) {
   folly::ssl::init();
+
+  // version represents the desired minimum protocol version. Since TLS 1.2
+  // is currently set as the maximum protocol version, we can't allow a min
+  // version of TLS 1.3.
+  // TODO: Remove this error once the max is no longer limited to TLS 1.2.
+  if (version == SSLContext::SSLVersion::TLSv1_3) {
+    throw std::runtime_error(
+        "A minimum TLS version of TLS 1.3 is currently unsupported.");
+  }
 
   ctx_ = SSL_CTX_new(SSLv23_method());
   if (ctx_ == nullptr) {
