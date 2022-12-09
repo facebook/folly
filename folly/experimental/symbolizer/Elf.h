@@ -236,14 +236,18 @@ class ElfFile {
   Symbol getDefinitionByAddress(uintptr_t address) const noexcept;
 
   /**
-   * Find symbol definition by name.
+   * Find symbol definition by name. Optionally specify the symbol types to
+   * consider.
    *
    * If a symbol with this name cannot be found, a <nullptr, nullptr> Symbol
    * will be returned. This is O(N) in the number of symbols in the file.
    *
    * Returns {nullptr, nullptr} if not found.
    */
-  Symbol getSymbolByName(const char* name) const noexcept;
+  Symbol getSymbolByName(
+      const char* name,
+      std::initializer_list<uint32_t> types = {
+          STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}) const noexcept;
 
   /**
    * Get the value of a symbol.

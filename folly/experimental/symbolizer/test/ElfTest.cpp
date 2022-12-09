@@ -29,6 +29,12 @@ using folly::symbolizer::ElfFile;
 // signatures here to prevent name mangling
 uint64_t kIntegerValue = 1234567890UL;
 const char* kStringValue = "coconuts";
+extern "C" {
+int sum_func(int lhs, int rhs) {
+  return lhs + rhs;
+}
+}
+
 const char* const kDefaultElf = "/proc/self/exe";
 class ElfTest : public ::testing::Test {
  protected:
@@ -62,6 +68,25 @@ TEST_F(ElfTest, PointerValue) {
     const char* str = &elfFile_.getAddressValue<const char>(addr);
     EXPECT_STREQ(kStringValue, str);
   }
+}
+
+TEST_F(ElfTest, SymbolByName) {
+  auto sym = elfFile_.getSymbolByName("sum_func");
+  EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol sum_func";
+
+  sym = elfFile_.getSymbolByName("sum_func", {STT_OBJECT});
+  EXPECT_EQ(nullptr, sym.first) << "Unexpectedly look up of non-object symbol.";
+
+  sym = elfFile_.getSymbolByName("sum_func", {STT_FUNC});
+  EXPECT_NE(nullptr, sym.first)
+      << "Failed to look up symbol sum_func when specifying type";
+
+  sym = elfFile_.getSymbolByName("kIntegerValue", {STT_FUNC});
+  EXPECT_EQ(nullptr, sym.first) << "Unexpected look up of non-func symbol.";
+
+  sym = elfFile_.getSymbolByName("kIntegerValue", {STT_OBJECT});
+  EXPECT_NE(nullptr, sym.first)
+      << "Failed to look up symbol kIntegerValue when specifying type";
 }
 
 TEST_F(ElfTest, iterateProgramHeaders) {

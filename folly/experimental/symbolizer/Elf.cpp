@@ -398,7 +398,8 @@ ElfFile::Symbol ElfFile::getDefinitionByAddress(
   return foundSymbol;
 }
 
-ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const noexcept {
+ElfFile::Symbol ElfFile::getSymbolByName(
+    const char* name, std::initializer_list<uint32_t> types) const noexcept {
   Symbol foundSymbol{nullptr, nullptr};
 
   auto findSection = [&](const ElfShdr& section) -> bool {
@@ -426,8 +427,7 @@ ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const noexcept {
       return false;
     };
 
-    return iterateSymbolsWithTypes(
-        section, {STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}, findSymbols);
+    return iterateSymbolsWithTypes(section, types, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.
