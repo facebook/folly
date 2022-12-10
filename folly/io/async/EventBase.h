@@ -294,11 +294,11 @@ class EventBase : public TimeoutManager,
      * Factory function for creating the backend.
      */
     using BackendFactory =
-        folly::Function<std::unique_ptr<folly::EventBaseBackendBase>()>;
-    BackendFactory::SharedProxy backendFactory{nullptr};
+        std::function<std::unique_ptr<folly::EventBaseBackendBase>()>;
+    BackendFactory backendFactory{nullptr};
 
     Options& setBackendFactory(BackendFactory factoryFn) {
-      backendFactory = std::move(factoryFn).asSharedProxy();
+      backendFactory = std::move(factoryFn);
       return *this;
     }
 

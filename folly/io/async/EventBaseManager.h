@@ -39,12 +39,12 @@ class EventBaseManager {
    * Constructing a EventBaseManager directly is DEPRECATED and not
    * encouraged. You should instead use the global singleton if possible.
    */
-  EventBaseManager() {}
+  EventBaseManager() = default;
 
-  explicit EventBaseManager(folly::EventBaseBackendBase::FactoryFunc func)
-      : func_(func) {}
+  explicit EventBaseManager(folly::EventBase::Options options)
+      : options_(std::move(options)) {}
 
-  ~EventBaseManager() {}
+  ~EventBaseManager() = default;
 
   explicit EventBaseManager(const std::shared_ptr<EventBaseObserver>& observer)
       : observer_(observer) {}
@@ -116,7 +116,7 @@ class EventBaseManager {
   EventBaseManager(EventBaseManager const&) = delete;
   EventBaseManager& operator=(EventBaseManager const&) = delete;
 
-  folly::EventBaseBackendBase::FactoryFunc func_;
+  folly::EventBase::Options options_;
   mutable folly::ThreadLocal<folly::Optional<EventBaseInfo>> localStore_;
   std::shared_ptr<folly::EventBaseObserver> observer_;
 };
