@@ -230,6 +230,33 @@ enum class SyncType {
   WITHOUT_SYNC,
 };
 
+class WriteFileAtomicOptions {
+ public:
+  WriteFileAtomicOptions() = default;
+
+  mode_t permissions{0644};
+  SyncType syncType{SyncType::WITHOUT_SYNC};
+  std::string temporaryDirectory;
+
+  // The mode bits used for the temporary file
+  WriteFileAtomicOptions& setPermissions(mode_t);
+
+  // The default implementation does not sync the data to storage before the
+  // rename.  Therefore, the write is *not* atomic in the event of a power
+  // failure or OS crash.  To guarantee atomicity in these cases, specify
+  // syncType = WITH_SYNC, which will incur a performance cost of waiting for
+  // the data to be persisted to storage.  Note that the return of the function
+  // does not guarantee the directory modifications have been written to disk; a
+  // further sync of the directory after the function returns is required to
+  // ensure the modification is durable.
+  WriteFileAtomicOptions& setSyncType(SyncType);
+
+  // The implementation creates a temporary file as an implementation detail
+  // within this directory.  The temporary filenames themselves are
+  // implementation defined.
+  WriteFileAtomicOptions& setTemporaryDirectory(std::string);
+};
+
 /*
  * writeFileAtomic() does not currently work on Windows.
  * Windows does not provide atomic file renames, which makes implementing this
@@ -255,32 +282,34 @@ enum class SyncType {
  * Note that on platforms that do not provide atomic filesystem rename
  * functionality (e.g., Windows) this behavior may not be truly atomic.
  *
- * The default implementation does not sync the data to storage before
- * the rename.  Therefore, the write is *not* atomic in the event of a
- * power failure or OS crash.  To guarantee atomicity in these cases,
- * specify syncType = WITH_SYNC, which will incur a performance cost
- * of waiting for the data to be persisted to storage.  Note that the
- * return of the function does not guarantee the directory
- * modifications have been written to disk; a further sync of the
- * directory after the function returns is required to ensure the
+ * The default implementation does not sync the data to storage before the
+ * rename.  Therefore, the write is *not* atomic in the event of a power failure
+ * or OS crash.  To guarantee atomicity in these cases, specify syncType =
+ * WITH_SYNC, which will incur a performance cost of waiting for the data to be
+ * persisted to storage.  Note that the return of the function does not
+ * guarantee the directory modifications have been written to disk; a further
+ * sync of the directory after the function returns is required to ensure the
  * modification is durable.
  */
 void writeFileAtomic(
-    StringPiece filename,
+    StringPiece filePath,
     iovec* iov,
     int count,
     mode_t permissions = 0644,
     SyncType syncType = SyncType::WITHOUT_SYNC);
 void writeFileAtomic(
-    StringPiece filename,
+    StringPiece filePath,
     ByteRange data,
     mode_t permissions = 0644,
     SyncType syncType = SyncType::WITHOUT_SYNC);
 void writeFileAtomic(
-    StringPiece filename,
+    StringPiece filePath,
     StringPiece data,
     mode_t permissions = 0644,
     SyncType syncType = SyncType::WITHOUT_SYNC);
+
+void writeFileAtomic(
+    StringPiece filePath, StringPiece data, const WriteFileAtomicOptions&);
 
 /**
  * A version of writeFileAtomic() that returns an errno value instead of
@@ -289,11 +318,14 @@ void writeFileAtomic(
  * Returns 0 on success or an errno value on error.
  */
 int writeFileAtomicNoThrow(
-    StringPiece filename,
+    StringPiece filePath,
     iovec* iov,
     int count,
     mode_t permissions = 0644,
     SyncType syncType = SyncType::WITHOUT_SYNC);
+
+int writeFileAtomicNoThrow(
+    StringPiece filePath, StringPiece data, const WriteFileAtomicOptions&);
 
 #endif // !_WIN32
 

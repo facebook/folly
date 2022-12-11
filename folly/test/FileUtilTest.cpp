@@ -40,7 +40,6 @@ using namespace fileutil_detail;
 using namespace std;
 
 namespace {
-
 class Reader {
  public:
   Reader(off_t offset, StringPiece data, std::deque<ssize_t> spec);
@@ -546,6 +545,31 @@ TEST_F(WriteFileAtomic, multipleFiles) {
 }
 #endif // !_WIN32
 
+TEST_F(WriteFileAtomic, WriteWithCustomTempPath) {
+  auto path = fs::path{tmpDir_.path().string()} / fs::path{"file"};
+
+  writeFileAtomic(path.c_str(), "data_1");
+
+  auto output = std::string{};
+  auto success = readFile(path.c_str(), output);
+  ASSERT_TRUE(success);
+  EXPECT_EQ(output, "data_1");
+
+  auto customPath = fs::path{tmpDir_.path().string()}.string();
+
+  writeFileAtomic(
+      path.string(),
+      "data_2",
+      WriteFileAtomicOptions{}
+          .setPermissions(0644)
+          .setSyncType(SyncType::WITH_SYNC)
+          .setTemporaryDirectory(customPath));
+
+  output = std::string{};
+  success = readFile(path.c_str(), output);
+  ASSERT_TRUE(success);
+  EXPECT_EQ(output, "data_2");
+}
 } // namespace test
 } // namespace folly
 
