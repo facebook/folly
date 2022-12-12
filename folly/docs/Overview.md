@@ -41,7 +41,7 @@ interface.
 
 An implementation of the structure described in [A Provably Correct
 Scalable Concurrent Skip
-List](http://www.cs.tau.ac.il/~shanir/nir-pubs-web/Papers/OPODIS2006-BA.pdf)
+List](http://people.csail.mit.edu/shanir/publications/OPODIS2006-BA.pdf)
 by Herlihy et al.
 
 #### [`Conv.h`](Conv.md)
