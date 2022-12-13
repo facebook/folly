@@ -1034,10 +1034,13 @@ TEST(CacheLocality, BenchmarkSysfs) {
 
 #if defined(FOLLY_HAVE_LINUX_VDSO) && !defined(FOLLY_SANITIZE_MEMORY)
 TEST(Getcpu, VdsoGetcpu) {
-  unsigned cpu;
-  Getcpu::resolveVdsoFunc()(&cpu, nullptr, nullptr);
+  Getcpu::Func func = Getcpu::resolveVdsoFunc();
+  if (func != nullptr) {
+    unsigned cpu;
+    func(&cpu, nullptr, nullptr);
 
-  EXPECT_TRUE(cpu < CPU_SETSIZE);
+    EXPECT_TRUE(cpu < CPU_SETSIZE);
+  }
 }
 #endif
 
