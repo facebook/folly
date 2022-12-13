@@ -20,8 +20,8 @@
 namespace folly {
 
 extern "C" void* __folly_memcpy(
-    void* __restrict dst, const void* __restrict src, std::size_t size) {
-  return std::memcpy(dst, src, size);
+    void* dst, const void* src, std::size_t size) {
+  return std::memmove(dst, src, size);
 }
 
 } // namespace folly
