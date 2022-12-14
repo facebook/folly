@@ -28,7 +28,7 @@ cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view):
     if not view.is_c_contig() and not view.is_f_contig():
         raise ValueError("View must be contiguous")
     return move(
-        iobuf_from_python(
+        iobuf_from_memoryview(
             get_running_executor(True),
             <PyObject*>view,
             view.view.buf,
@@ -43,6 +43,14 @@ cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
     inst._this = inst._ours.get()
     __cache[(<unsigned long>inst._this, id(inst))] = inst
     return inst
+
+
+cdef cIOBuf from_python_iobuf(object obj) except *:
+    if not isinstance(obj, IOBuf):
+        raise TypeError("Expected an IOBuf")
+
+    iobuf = <IOBuf>obj
+    return deref(iobuf.c_clone())
 
 
 cdef class IOBuf:

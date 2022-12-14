@@ -29,3 +29,6 @@ def make_chain(data):
         last._this.insertAfterThisOne(tbuf.c_clone())
         last = last.next
     return head
+
+def to_uppercase_string(iobuf: object) -> str:
+    return to_uppercase_string_cpp(iobuf).decode("utf-8")

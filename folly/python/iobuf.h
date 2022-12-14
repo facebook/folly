@@ -34,7 +34,14 @@ struct PyBufferData {
   PyObject* py_object;
 };
 
-std::unique_ptr<folly::IOBuf> iobuf_from_python(
+// Returns a copy of the C++ IOBuf underlying a Python IOBuf object. In
+// practice, this makes it possible to pass Python IOBuf objects across the
+// Python/C++ boundary in pybind and other non-Cython extension code.
+folly::IOBuf iobuf_from_python_iobuf(PyObject* iobuf);
+
+// Returns a C++ IOBuf that shares ownership of the given Python memoryview
+// object. The C++ IOBuf can then be exposed and used as a Python IOBuf object.
+inline std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
     folly::Executor* executor,
     PyObject* py_object,
     void* buf,
@@ -47,7 +54,7 @@ std::unique_ptr<folly::IOBuf> iobuf_from_python(
   return folly::IOBuf::takeOwnership(
       buf,
       length,
-      [](void* buf, void* userData) {
+      [](void* /* buf */, void* userData) {
         auto* py_data = (PyBufferData*)userData;
         auto* py_object = py_data->py_object;
         if (PyGILState_Check()) {

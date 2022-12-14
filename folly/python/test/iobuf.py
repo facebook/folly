@@ -19,7 +19,7 @@ import unittest
 
 from folly.iobuf import IOBuf
 
-from .iobuf_helper import get_empty_chain, make_chain
+from .iobuf_helper import get_empty_chain, make_chain, to_uppercase_string
 
 
 class IOBufTests(unittest.TestCase):
@@ -115,3 +115,19 @@ class IOBufTests(unittest.TestCase):
     def test_multidimensional(self) -> None:
         x = IOBuf(memoryview(b"abcdef").cast("B", shape=[3, 2]))
         self.assertEqual(x.chain_size(), 6)
+
+    def test_conversion_from_python_to_cpp(self) -> None:
+        iobuf = make_chain(
+            [
+                IOBuf(memoryview(b"abc")),
+                IOBuf(memoryview(b"def")),
+                IOBuf(memoryview(b"ghi")),
+            ]
+        )
+        uppercased: str = to_uppercase_string(iobuf)
+        self.assertEqual(uppercased, "ABCDEFGHI")
+
+    def test_conversion_from_python_to_cpp_with_wrong_type(self) -> None:
+        not_an_iobuf = [1, 2, 3]
+        with self.assertRaises(TypeError):
+            _ = to_uppercase_string(not_an_iobuf)
