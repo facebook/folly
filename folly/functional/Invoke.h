@@ -718,7 +718,7 @@ using is_tag_invocable_r =
 
 template <typename R, typename Tag, typename... Args>
 FOLLY_INLINE_VARIABLE constexpr bool is_tag_invocable_r_v =
-    is_tag_invocable_r<R, decltype(folly::tag_invoke), Tag, Args...>::value;
+    is_tag_invocable_r<R, Tag, Args...>::value;
 
 template <typename R, typename Tag, typename... Args>
 using is_nothrow_tag_invocable_r =
