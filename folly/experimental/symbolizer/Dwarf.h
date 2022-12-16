@@ -73,7 +73,7 @@ class Dwarf {
   bool findAddress(
       uintptr_t address,
       LocationInfoMode mode,
-      LocationInfo& info,
+      SymbolizedFrame& frame,
       folly::Range<SymbolizedFrame*> inlineFrames = {},
       folly::FunctionRef<void(const folly::StringPiece name)>
           eachParameterName = {}) const;

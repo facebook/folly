@@ -213,9 +213,16 @@ void expectFrameEq(
       << " expecting shortName=" << shortName << " or fullName=" << fullName
       << " address: " << frame.addr << " hex(address): " << std::hex
       << frame.addr;
-  EXPECT_EQ(normalizePath(frame.location.file.toString()), normalizePath(file))
+  // Use endsWith in case the build system adds extra paths in front.
+  EXPECT_TRUE(folly::StringPiece(normalizePath(frame.location.file.toString()))
+                  .endsWith(normalizePath(file)))
       << ' ' << fullName << " address: " << frame.addr
-      << " hex(address): " << std::hex << frame.addr;
+      << " hex(address): " << std::hex << frame.addr
+      << " frame.location.file.toString(): " << frame.location.file.toString()
+      << " normalizePath(frame.location.file.toString()): "
+      << normalizePath(frame.location.file.toString()) //
+      << " file: " << file //
+      << " normalizePath(file): " << normalizePath(file);
   EXPECT_EQ(frame.location.line, lineno) << ' ' << fullName;
 }
 
@@ -540,12 +547,12 @@ TEST(Dwarf, FindParameterNames) {
 
   std::vector<folly::StringPiece> names;
   Dwarf dwarf(&elfCache, frame.file.get());
-  LocationInfo info;
+
   folly::Range<SymbolizedFrame*> extraInlineFrames = {};
   dwarf.findAddress(
       frame.addr,
       LocationInfoMode::FAST,
-      info,
+      frame,
       extraInlineFrames,
       [&](const folly::StringPiece name) { names.push_back(name); });
 

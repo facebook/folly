@@ -53,7 +53,7 @@ class DwarfImpl {
    */
   bool findLocation(
       uintptr_t address,
-      LocationInfo& info,
+      SymbolizedFrame& frame,
       folly::Range<SymbolizedFrame*> inlineFrames,
       folly::FunctionRef<void(folly::StringPiece)> eachParameterName,
       bool checkAddress = true) const;
@@ -103,9 +103,6 @@ class DwarfImpl {
       const Die& die,
       folly::FunctionRef<bool(const Die& die)> f) const;
 
-  template <class T>
-  folly::Optional<T> getAttribute(
-      const CompilationUnit& cu, const Die& die, uint64_t attrName) const;
   /**
    * Check if the given address is in the range list at the given offset in
    * .debug_ranges.
@@ -119,7 +116,7 @@ class DwarfImpl {
 
   void fillInlineFrames(
       uintptr_t address,
-      LocationInfo& locationInfo,
+      SymbolizedFrame& frame,
       folly::Range<CallLocation*> inlineLocations,
       folly::Range<SymbolizedFrame*> inlineFrames) const;
 

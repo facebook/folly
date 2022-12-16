@@ -722,6 +722,49 @@ size_t forEachAttribute(
   return values.data() - cu.debugSections.debugInfo.data();
 }
 
+folly::StringPiece getFunctionNameFromDie(
+    const CompilationUnit& srcu, const Die& die) {
+  folly::StringPiece name;
+  forEachAttribute(srcu, die, [&](const Attribute& attr) {
+    switch (attr.spec.name) {
+      case DW_AT_linkage_name:
+        name = boost::get<folly::StringPiece>(attr.attrValue);
+        break;
+      case DW_AT_name:
+        // NOTE: when DW_AT_linkage_name and DW_AT_name match, dwarf
+        // emitters omit DW_AT_linkage_name (to save space). If present
+        // DW_AT_linkage_name should always be preferred (mangled C++ name
+        // vs just the function name).
+        if (name.empty()) {
+          name = boost::get<folly::StringPiece>(attr.attrValue);
+        }
+        break;
+    }
+    return true; // continue forEachAttribute
+  });
+  return name;
+}
+
+folly::StringPiece getFunctionName(
+    const CompilationUnit& srcu, uint64_t dieOffset) {
+  auto declDie = getDieAtOffset(srcu, dieOffset);
+  auto name = getFunctionNameFromDie(srcu, declDie);
+  return name.empty()
+      ? getFunctionNameFromDie(srcu, findDefinitionDie(srcu, declDie))
+      : name;
+}
+
+Die findDefinitionDie(const CompilationUnit& cu, const Die& die) {
+  // Find the real definition instead of declaration.
+  // DW_AT_specification: Incomplete, non-defining, or separate declaration
+  // corresponding to a declaration
+  auto offset = getAttribute<uint64_t>(cu, die, DW_AT_specification);
+  if (!offset) {
+    return die;
+  }
+  return getDieAtOffset(cu, cu.offset + offset.value());
+}
+
 } // namespace symbolizer
 } // namespace folly
 

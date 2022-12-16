@@ -32,28 +32,48 @@ void checkPath(
     std::string rawFile) {
   Path path(rawBaseDir, rawSubDir, rawFile);
 
-  CHECK_EQ(expectedBaseDir, path.baseDir())
+  EXPECT_EQ(expectedBaseDir, path.baseDir())
       << "Path(" << rawBaseDir << ", " << rawSubDir << ", " << rawFile << ")";
-  CHECK_EQ(expectedSubDir, path.subDir())
+  EXPECT_EQ(expectedSubDir, path.subDir())
       << "Path(" << rawBaseDir << ", " << rawSubDir << ", " << rawFile << ")";
-  CHECK_EQ(expectedFile, path.file())
+  EXPECT_EQ(expectedFile, path.file())
       << "Path(" << rawBaseDir << ", " << rawSubDir << ", " << rawFile << ")";
 
-  CHECK_EQ(expectedPath, path.toString());
+  EXPECT_EQ(expectedPath, path.toString());
 
   // Check the `toBuffer` function.
   char buf[1024];
   size_t len;
   len = path.toBuffer(buf, 1024);
-  CHECK_EQ(expectedPath, std::string(buf, len));
+  EXPECT_EQ(expectedPath, std::string(buf, len));
 }
 
 TEST(SymbolizedFrame, Path) {
   checkPath("hello.cpp", "", "", "hello.cpp", "", "", "hello.cpp");
   checkPath("foo/hello.cpp", "foo", "", "hello.cpp", "foo", "", "hello.cpp");
   checkPath("foo/hello.cpp", "foo", "", "hello.cpp", "", "foo", "hello.cpp");
-  checkPath("hello.cpp", "", "", "hello.cpp", "./////", "./////", "hello.cpp");
-  checkPath("/hello.cpp", "/", "", "hello.cpp", "/////", "./////", "hello.cpp");
   checkPath(
-      "/hello.cpp", "/", "", "hello.cpp", "/./././././././", "", "hello.cpp");
+      "./////./////hello.cpp",
+      "./////",
+      "./////",
+      "hello.cpp",
+      "./////",
+      "./////",
+      "hello.cpp");
+  checkPath(
+      "/////./////hello.cpp",
+      "/////",
+      "./////",
+      "hello.cpp",
+      "/////",
+      "./////",
+      "hello.cpp");
+  checkPath(
+      "/./././././././hello.cpp",
+      "/./././././././",
+      "",
+      "hello.cpp",
+      "/./././././././",
+      "",
+      "hello.cpp");
 }

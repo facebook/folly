@@ -35,7 +35,7 @@ namespace symbolizer {
  * More than one location info may exist if current frame is an inline
  * function call.
  */
-const uint32_t kMaxInlineLocationInfoPerFrame = 10;
+const uint32_t kMaxInlineLocationInfoPerFrame = 20;
 
 // Maximum number of DIEAbbreviation to cache in a compilation unit. Used to
 // speed up inline function lookup.
@@ -222,6 +222,28 @@ size_t forEachAttribute(
     const CompilationUnit& cu,
     const Die& die,
     folly::FunctionRef<bool(const Attribute&)> f);
+
+template <class T>
+folly::Optional<T> getAttribute(
+    const CompilationUnit& cu, const Die& die, uint64_t attrName) {
+  folly::Optional<T> result;
+  forEachAttribute(cu, die, [&](const Attribute& attr) {
+    if (attr.spec.name == attrName) {
+      result = boost::get<T>(attr.attrValue);
+      return false;
+    }
+    return true;
+  });
+  return result;
+}
+
+folly::StringPiece getFunctionNameFromDie(
+    const CompilationUnit& srcu, const Die& die);
+
+folly::StringPiece getFunctionName(
+    const CompilationUnit& srcu, uint64_t dieOffset);
+
+Die findDefinitionDie(const CompilationUnit& cu, const Die& die);
 
 } // namespace symbolizer
 } // namespace folly

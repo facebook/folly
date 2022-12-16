@@ -19,58 +19,6 @@
 namespace folly {
 namespace symbolizer {
 
-namespace {
-
-// Simplify a path -- as much as we can while not moving data around...
-void simplifyPath(StringPiece& sp) {
-  // Strip leading slashes and useless patterns (./), leaving one initial
-  // slash.
-  for (;;) {
-    if (sp.empty()) {
-      return;
-    }
-
-    // Strip leading slashes, leaving one.
-    while (sp.startsWith("//")) {
-      sp.advance(1);
-    }
-
-    if (sp.startsWith("/./")) {
-      // Note 2, not 3, to keep it absolute
-      sp.advance(2);
-      continue;
-    }
-
-    if (sp.removePrefix("./")) {
-      // Also remove any subsequent slashes to avoid making this path absolute.
-      while (sp.startsWith('/')) {
-        sp.advance(1);
-      }
-      continue;
-    }
-
-    break;
-  }
-
-  // Strip trailing slashes and useless patterns (/.).
-  for (;;) {
-    if (sp.empty()) {
-      return;
-    }
-
-    // Strip trailing slashes, except when this is the root path.
-    while (sp.size() > 1 && sp.removeSuffix('/')) {
-    }
-
-    if (sp.removeSuffix("/.")) {
-      continue;
-    }
-
-    break;
-  }
-}
-} // namespace
-
 Path::Path(StringPiece baseDir, StringPiece subDir, StringPiece file)
     : baseDir_(baseDir), subDir_(subDir), file_(file) {
   using std::swap;
@@ -91,10 +39,6 @@ Path::Path(StringPiece baseDir, StringPiece subDir, StringPiece file)
   if (!subDir_.empty() && subDir_[0] == '/') {
     baseDir_.clear(); // subDir_ is absolute
   }
-
-  simplifyPath(baseDir_);
-  simplifyPath(subDir_);
-  simplifyPath(file_);
 
   // Make sure it's never the case that baseDir_ is empty, but subDir_ isn't.
   if (baseDir_.empty()) {

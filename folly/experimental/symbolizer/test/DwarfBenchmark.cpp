@@ -55,8 +55,8 @@ void run(LocationInfoMode mode, size_t n) {
   suspender.dismiss();
 
   for (size_t i = 0; i < n; i++) {
-    LocationInfo info;
-    dwarf.findAddress(address, mode, info, folly::range(inlineFrames));
+    folly::symbolizer::SymbolizedFrame frame;
+    dwarf.findAddress(address, mode, frame, folly::range(inlineFrames));
   }
 
   suspender.rehire();

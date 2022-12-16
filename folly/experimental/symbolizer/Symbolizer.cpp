@@ -106,18 +106,12 @@ void setSymbolizedFrame(
     folly::Range<SymbolizedFrame*> extraInlineFrames = {}) {
   frame.clear();
   frame.found = true;
-
-  auto sym = file->getDefinitionByAddress(address);
-  if (!sym.first) {
-    return;
-  }
-
   frame.addr = address;
   frame.file = file;
-  frame.name = file->getSymbolName(sym);
+  frame.name = file->getSymbolName(file->getDefinitionByAddress(address));
 
   Dwarf(elfCache, file.get())
-      .findAddress(address, mode, frame.location, extraInlineFrames);
+      .findAddress(address, mode, frame, extraInlineFrames);
 }
 
 // SymbolCache contains mapping between an address and its frames. The first
