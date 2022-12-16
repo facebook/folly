@@ -57,7 +57,7 @@ namespace coro {
 ///
 ///   folly::coro::Task<> asyncScopedLockExample()
 ///   {
-///     std::unique_lock<folly::coro::Mutex> lock{co_await m.co_scoped_lock()};
+///     std::unique_lock<folly::coro::Mutex> lock = co_await m.co_scoped_lock();
 ///     ...
 ///   }
 ///
