@@ -47,21 +47,20 @@ inline std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
     void* buf,
     uint64_t length) {
   Py_INCREF(py_object);
-  auto* userData = new PyBufferData();
-  userData->executor = executor;
-  userData->py_object = py_object;
+  auto* pyUserData = new PyBufferData();
+  pyUserData->executor = executor;
+  pyUserData->py_object = py_object;
 
   return folly::IOBuf::takeOwnership(
       buf,
       length,
       [](void* /* buf */, void* userData) {
         auto* py_data = (PyBufferData*)userData;
-        auto* py_object = py_data->py_object;
+        auto* pyObject = py_data->py_object;
         if (PyGILState_Check()) {
-          Py_DECREF(py_object);
+          Py_DECREF(pyObject);
         } else if (py_data->executor) {
-          py_data->executor->add(
-              [py_object]() mutable { Py_DECREF(py_object); });
+          py_data->executor->add([pyObject]() mutable { Py_DECREF(pyObject); });
         } else {
           /*
             This is the last ditch effort. We don't have the GIL and we have no
@@ -74,7 +73,7 @@ inline std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
                 Py_DECREF((PyObject*)userData);
                 return 0;
               },
-              (void*)py_object);
+              (void*)pyObject);
           if (ret != 0) {
             LOG(ERROR)
                 << "an IOBuf was created from a non-asyncio thread, and all attempts "
@@ -88,7 +87,7 @@ inline std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
         }
         delete py_data;
       },
-      userData);
+      pyUserData);
 }
 
 bool check_iobuf_equal(const folly::IOBuf* a, const folly::IOBuf* b) {
