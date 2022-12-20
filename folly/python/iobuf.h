@@ -69,8 +69,8 @@ inline std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
             heavy load due to lock contention.
           */
           int ret = Py_AddPendingCall(
-              [](void* userData) {
-                Py_DECREF((PyObject*)userData);
+              [](void* userData1) {
+                Py_DECREF((PyObject*)userData1);
                 return 0;
               },
               (void*)pyObject);
