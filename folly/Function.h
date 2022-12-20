@@ -262,10 +262,6 @@ constexpr bool isEmptyFunction(T const& t) {
 template <typename F, typename... Args>
 using CallableResult = decltype(FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(Args &&)...));
 
-template <typename F, typename... Args>
-constexpr bool CallableNoexcept =
-    noexcept(FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(Args&&)...));
-
 template <
     typename From,
     typename To,
@@ -288,7 +284,7 @@ template <typename T>
 using CallArg = conditional_t<is_register_pass_v<T>, T, T&&>;
 #endif
 
-template <typename F, bool Nx, typename R, typename... A>
+template <typename F, typename R, typename... A>
 class FunctionTraitsSharedProxy {
   std::shared_ptr<Function<F>> sp_;
 
@@ -297,7 +293,7 @@ class FunctionTraitsSharedProxy {
   explicit FunctionTraitsSharedProxy(Function<F>&& func)
       : sp_(func ? std::make_shared<Function<F>>(std::move(func))
                  : std::shared_ptr<Function<F>>()) {}
-  R operator()(A... args) const noexcept(Nx) {
+  R operator()(A... args) const {
     if (!sp_) {
       throw_exception<std::bad_function_call>();
     }
@@ -307,20 +303,24 @@ class FunctionTraitsSharedProxy {
   explicit operator bool() const noexcept { return sp_ != nullptr; }
 
   friend bool operator==(
-      FunctionTraitsSharedProxy const& proxy, std::nullptr_t) noexcept {
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy,
+      std::nullptr_t) noexcept {
     return proxy.sp_ == nullptr;
   }
   friend bool operator!=(
-      FunctionTraitsSharedProxy const& proxy, std::nullptr_t) noexcept {
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy,
+      std::nullptr_t) noexcept {
     return proxy.sp_ != nullptr;
   }
 
   friend bool operator==(
-      std::nullptr_t, FunctionTraitsSharedProxy const& proxy) noexcept {
+      std::nullptr_t,
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy) noexcept {
     return proxy.sp_ == nullptr;
   }
   friend bool operator!=(
-      std::nullptr_t, FunctionTraitsSharedProxy const& proxy) noexcept {
+      std::nullptr_t,
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy) noexcept {
     return proxy.sp_ != nullptr;
   }
 };
@@ -376,7 +376,7 @@ struct FunctionTraits<ReturnType(Args...)> {
   }
 
   using SharedProxy =
-      FunctionTraitsSharedProxy<NonConstSignature, false, ReturnType, Args...>;
+      FunctionTraitsSharedProxy<NonConstSignature, ReturnType, Args...>;
 };
 
 template <typename ReturnType, typename... Args>
@@ -427,7 +427,7 @@ struct FunctionTraits<ReturnType(Args...) const> {
   }
 
   using SharedProxy =
-      FunctionTraitsSharedProxy<ConstSignature, false, ReturnType, Args...>;
+      FunctionTraitsSharedProxy<ConstSignature, ReturnType, Args...>;
 };
 
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
@@ -438,10 +438,7 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = ConstSignature;
 
-  template <
-      typename F,
-      typename R = CallableResult<F&, Args...>,
-      std::enable_if_t<CallableNoexcept<F&, Args...>, int> = 0>
+  template <typename F, typename R = CallableResult<F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
@@ -482,7 +479,7 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   }
 
   using SharedProxy =
-      FunctionTraitsSharedProxy<NonConstSignature, true, ReturnType, Args...>;
+      FunctionTraitsSharedProxy<NonConstSignature, ReturnType, Args...>;
 };
 
 template <typename ReturnType, typename... Args>
@@ -492,10 +489,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = NonConstSignature;
 
-  template <
-      typename F,
-      typename R = CallableResult<const F&, Args...>,
-      std::enable_if_t<CallableNoexcept<const F&, Args...>, int> = 0>
+  template <typename F, typename R = CallableResult<const F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
   template <typename Fun>
@@ -536,7 +530,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   }
 
   using SharedProxy =
-      FunctionTraitsSharedProxy<ConstSignature, true, ReturnType, Args...>;
+      FunctionTraitsSharedProxy<ConstSignature, ReturnType, Args...>;
 };
 #endif
 
