@@ -58,6 +58,23 @@ class SlotsConfig {
 template <size_t kMaxSlots>
 std::atomic<size_t> SlotsConfig<kMaxSlots>::num_{1};
 
+template <size_t kMaxSlots, class T>
+void makeSlots(std::shared_ptr<T> p, folly::Range<std::shared_ptr<T>*> slots) {
+  // Allocate each holder and its control block in a different CoreRawAllocator
+  // stripe to prevent false sharing.
+  for (size_t i = 0; i < slots.size(); ++i) {
+    auto alloc = getCoreAllocator<std::shared_ptr<T>, kMaxSlots>(i);
+    auto holder = std::allocate_shared<std::shared_ptr<T>>(alloc);
+    auto ptr = p.get();
+    if (i != slots.size() - 1) {
+      *holder = p;
+    } else {
+      *holder = std::move(p);
+    }
+    slots[i] = std::shared_ptr<T>(std::move(holder), ptr);
+  }
+}
+
 // Check whether a shared_ptr is equivalent to default-constructed. Because of
 // aliasing constructors, there can be both nullptr with a managed object, and
 // non-nullptr with no managed object, so we need to check both.
@@ -75,8 +92,6 @@ bool isDefault(const std::shared_ptr<T>& p) {
  * It has the same thread-safety guarantees as shared_ptr: it is safe
  * to concurrently call get(), but reset()s must be synchronized with
  * reads and other reset()s.
- *
- * @author Giuseppe Ottaviano <ott@fb.com>
  */
 template <class T, size_t kMaxSlots = kCoreCachedSharedPtrDefaultMaxSlots>
 class CoreCachedSharedPtr {
@@ -84,21 +99,17 @@ class CoreCachedSharedPtr {
 
  public:
   CoreCachedSharedPtr() = default;
-  explicit CoreCachedSharedPtr(const std::shared_ptr<T>& p) { reset(p); }
+  explicit CoreCachedSharedPtr(std::shared_ptr<T> p) { reset(std::move(p)); }
 
-  void reset(const std::shared_ptr<T>& p = nullptr) {
+  void reset(std::shared_ptr<T> p = nullptr) {
     SlotsConfig::initialize();
-    // Allocate each Holder in a different CoreRawAllocator stripe to
-    // prevent false sharing. Their control blocks will be adjacent
-    // thanks to allocate_shared().
-    for (size_t i = 0; i < SlotsConfig::num(); ++i) {
-      // Try freeing the control block before allocating a new one.
-      slots_[i] = {};
-      if (!core_cached_shared_ptr_detail::isDefault(p)) {
-        auto alloc = getCoreAllocator<Holder, kMaxSlots>(i);
-        auto holder = std::allocate_shared<Holder>(alloc, p);
-        slots_[i] = std::shared_ptr<T>(holder, p.get());
-      }
+
+    folly::Range<std::shared_ptr<T>*> slots{slots_.data(), SlotsConfig::num()};
+    for (auto& slot : slots) {
+      slot = {};
+    }
+    if (!core_cached_shared_ptr_detail::isDefault(p)) {
+      core_cached_shared_ptr_detail::makeSlots<kMaxSlots>(std::move(p), slots);
     }
   }
 
@@ -107,8 +118,6 @@ class CoreCachedSharedPtr {
   }
 
  private:
-  using Holder = std::shared_ptr<T>;
-
   template <class, size_t>
   friend class CoreCachedWeakPtr;
 
@@ -169,7 +178,9 @@ class AtomicCoreCachedSharedPtr {
 
  public:
   AtomicCoreCachedSharedPtr() = default;
-  explicit AtomicCoreCachedSharedPtr(const std::shared_ptr<T>& p) { reset(p); }
+  explicit AtomicCoreCachedSharedPtr(std::shared_ptr<T> p) {
+    reset(std::move(p));
+  }
 
   ~AtomicCoreCachedSharedPtr() {
     cohort_.shutdown_and_reclaim();
@@ -178,19 +189,13 @@ class AtomicCoreCachedSharedPtr {
     delete slots_.load(std::memory_order_acquire);
   }
 
-  void reset(const std::shared_ptr<T>& p = nullptr) {
+  void reset(std::shared_ptr<T> p = nullptr) {
     SlotsConfig::initialize();
     std::unique_ptr<Slots> newslots;
     if (!core_cached_shared_ptr_detail::isDefault(p)) {
       newslots = std::make_unique<Slots>();
-      // Allocate each Holder in a different CoreRawAllocator stripe to
-      // prevent false sharing. Their control blocks will be adjacent
-      // thanks to allocate_shared().
-      for (size_t i = 0; i < SlotsConfig::num(); ++i) {
-        auto alloc = getCoreAllocator<Holder, kMaxSlots>(i);
-        auto holder = std::allocate_shared<Holder>(alloc, p);
-        newslots->slots[i] = std::shared_ptr<T>(holder, p.get());
-      }
+      core_cached_shared_ptr_detail::makeSlots<kMaxSlots>(
+          std::move(p), {newslots->slots.data(), SlotsConfig::num()});
     }
 
     if (auto oldslots = slots_.exchange(newslots.release())) {
@@ -209,7 +214,6 @@ class AtomicCoreCachedSharedPtr {
   }
 
  private:
-  using Holder = std::shared_ptr<T>;
   struct Slots : folly::hazptr_obj_base<Slots> {
     std::array<std::shared_ptr<T>, kMaxSlots> slots;
   };
