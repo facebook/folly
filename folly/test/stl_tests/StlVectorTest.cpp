@@ -665,7 +665,7 @@ struct Alloc : AllocTracker, Ticker {
   int id;
   explicit Alloc(int i = 8) : a(), id(i) {}
   Alloc(const Alloc& o) : a(o.a), id(o.id) {}
-  Alloc(Alloc&& o) noexcept : a(move(o.a)), id(o.id) {}
+  Alloc(Alloc&& o) noexcept : a(std::move(o.a)), id(o.id) {}
   Alloc& operator=(const Alloc&) = default;
   Alloc& operator=(Alloc&&) noexcept = default;
   bool operator==(const Alloc& o) const { return a == o.a && id == o.id; }
@@ -1765,7 +1765,7 @@ STL_TEST("23.2.1 Table 96.12", moveConstruction, is_destructible, a) {
   DataState<Vector> dsa(a);
   auto m = a.get_allocator();
 
-  Vector u(move(a));
+  Vector u(std::move(a));
 
   ASSERT_TRUE(m == u.get_allocator());
   ASSERT_EQ(0, Counter::CountTotalOps);
@@ -1773,7 +1773,7 @@ STL_TEST("23.2.1 Table 96.12", moveConstruction, is_destructible, a) {
   ASSERT_TRUE(dsa == u);
 
   if (false) {
-    Vector u2 = move(a);
+    Vector u2 = std::move(a);
   }
 }
 
