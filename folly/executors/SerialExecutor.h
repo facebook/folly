@@ -98,11 +98,6 @@ class SerialExecutor : public SequencedExecutor {
     return parent_->getNumPriorities();
   }
 
- protected:
-  bool keepAliveAcquire() noexcept override;
-
-  void keepAliveRelease() noexcept override;
-
  private:
   struct Task {
     Func func;
@@ -112,15 +107,18 @@ class SerialExecutor : public SequencedExecutor {
   explicit SerialExecutor(KeepAlive<Executor> parent);
   ~SerialExecutor() override;
 
-  void run();
+  bool keepAliveAcquire() noexcept override;
+
+  void keepAliveRelease() noexcept override;
+
+  bool scheduleTask(Func&& func);
+  void worker();
 
   KeepAlive<Executor> parent_;
   std::atomic<std::size_t> scheduled_{0};
-  /**
-   * Unbounded multi producer single consumer queue where consumers don't block
-   * on dequeue.
-   */
-  folly::UnboundedQueue<Task, false, true, false> queue_;
+  // The consumer should only dequeue when the queue is non-empty, so we don't
+  // need blocking.
+  folly::UMPSCQueue<Task, /* MayBlock */ false> queue_;
 
   std::atomic<ssize_t> keepAliveCounter_{1};
 };

@@ -57,33 +57,50 @@ void SerialExecutor::keepAliveRelease() noexcept {
 }
 
 void SerialExecutor::add(Func func) {
-  queue_.enqueue(Task{std::move(func), RequestContext::saveContext()});
-  parent_->add([keepAlive = getKeepAliveToken(this)] { keepAlive->run(); });
+  if (scheduleTask(std::move(func))) {
+    parent_->add(
+        [keepAlive = getKeepAliveToken(this)] { keepAlive->worker(); });
+  }
 }
 
 void SerialExecutor::addWithPriority(Func func, int8_t priority) {
-  queue_.enqueue(Task{std::move(func), RequestContext::saveContext()});
-  parent_->addWithPriority(
-      [keepAlive = getKeepAliveToken(this)] { keepAlive->run(); }, priority);
+  if (scheduleTask(std::move(func))) {
+    parent_->addWithPriority(
+        [keepAlive = getKeepAliveToken(this)] { keepAlive->worker(); },
+        priority);
+  }
 }
 
-void SerialExecutor::run() {
-  // We want scheduled_ to guard side-effects of completed tasks, so we can't
-  // use std::memory_order_relaxed here.
-  if (scheduled_.fetch_add(1, std::memory_order_acquire) > 0) {
-    return;
-  }
+bool SerialExecutor::scheduleTask(Func&& func) {
+  queue_.enqueue(Task{std::move(func), RequestContext::saveContext()});
+  // If this thread is the first to mark the queue as non-empty, schedule the
+  // worker.
+  return scheduled_.fetch_add(1, std::memory_order_acq_rel) == 0;
+}
 
-  do {
+void SerialExecutor::worker() {
+  std::size_t queueSize = scheduled_.load(std::memory_order_acquire);
+  DCHECK_NE(queueSize, 0);
+
+  std::size_t processed = 0;
+  while (true) {
     Task task;
     queue_.dequeue(task);
-
     folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
     invokeCatchingExns("SerialExecutor: func", std::exchange(task.func, {}));
 
-    // We want scheduled_ to guard side-effects of completed tasks, so we can't
-    // use std::memory_order_relaxed here.
-  } while (scheduled_.fetch_sub(1, std::memory_order_release) > 1);
+    if (++processed == queueSize) {
+      // NOTE: scheduled_ must be decremented after the task has been processed,
+      // or add() may concurrently start another worker.
+      queueSize = scheduled_.fetch_sub(queueSize, std::memory_order_acq_rel) -
+          queueSize;
+      if (queueSize == 0) {
+        // Queue is now empty
+        return;
+      }
+      processed = 0;
+    }
+  }
 }
 
 } // namespace folly
