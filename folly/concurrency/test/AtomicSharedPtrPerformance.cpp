@@ -150,12 +150,22 @@ void contended_read_write(
   for (size_t i = 0; i < readers; ++i) {
     unique_lock<mutex> ulock(lock);
     threads.emplace_back(
-        &read_asp<T>, move(ulock), ref(cvar), ref(go), ref(aptr), readOrder);
+        &read_asp<T>,
+        std::move(ulock),
+        ref(cvar),
+        ref(go),
+        ref(aptr),
+        readOrder);
   }
   for (size_t i = 0; i < writers; ++i) {
     unique_lock<mutex> ulock(lock);
     threads.emplace_back(
-        &write_asp<T>, move(ulock), ref(cvar), ref(go), ref(aptr), writeOrder);
+        &write_asp<T>,
+        std::move(ulock),
+        ref(cvar),
+        ref(go),
+        ref(aptr),
+        writeOrder);
   }
   unique_lock<mutex> ulock(lock);
   ulock.unlock();
