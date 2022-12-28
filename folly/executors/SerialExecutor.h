@@ -39,11 +39,11 @@ namespace folly {
  * in the parent executor, however strictly non-concurrently and in the order
  * they were added.
  *
- * SerialExecutor tries to schedule its tasks fairly. Every task submitted to
- * it results in one task submitted to the parent executor. Whenever the parent
- * executor executes one of those, one of the tasks submitted to SerialExecutor
- * is marked for execution, which means it will either be executed at once,
- * or if a task is currently being executed already, after that.
+ * When a task is added to the executor while another one is running on the
+ * parent executor, the new task is piggybacked on the running task to save the
+ * cost of scheduling a task on the parent executor. This implies that the
+ * parent executor may observe a smaller number of tasks than those added in the
+ * SerialExecutor.
  *
  * The SerialExecutor may be deleted at any time. All tasks that have been
  * submitted will still be executed with the same guarantees, as long as the
