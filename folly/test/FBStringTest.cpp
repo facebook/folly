@@ -1043,7 +1043,7 @@ void clause11_21_4_8_1_l(String& test) {
   randomString(&s, maxString);
   String s1;
   randomString(&s1, maxString);
-  test = move(s) + s1.c_str();
+  test = std::move(s) + s1.c_str();
 }
 
 // Numbering here is from C++11

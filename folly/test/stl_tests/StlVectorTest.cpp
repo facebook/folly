@@ -2785,7 +2785,7 @@ STL_TEST("23.2.3 Table 101.8", pushBackRV, is_move_constructible, a, t) {
   auto am = a.get_allocator();
 
   try {
-    a.push_back(move(t));
+    a.push_back(std::move(t));
   } catch (...) {
     ASSERT_TRUE(dsa == a) << "failed strong exception guarantee";
     throw;
