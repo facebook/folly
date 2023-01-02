@@ -107,10 +107,16 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_AARCH64 0
 #endif
 
-#if defined(__powerpc64__)
+#if defined(__powerpc64__) || defined(__ppc64__)
 #define FOLLY_PPC64 1
 #else
 #define FOLLY_PPC64 0
+#endif
+
+#if defined(__ppc__)
+#define FOLLY_PPC 1
+#else
+#define FOLLY_PPC 0
 #endif
 
 #if defined(__s390x__)
@@ -124,6 +130,7 @@ constexpr bool kIsArchArm = FOLLY_ARM == 1;
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
+constexpr bool kIsArchPPC = FOLLY_PPC == 1;
 constexpr bool kIsArchS390X = FOLLY_S390X == 1;
 } // namespace folly
 
@@ -275,6 +282,9 @@ constexpr auto kIsLittleEndian = false;
 #else
 constexpr auto kIsLittleEndian = true;
 #endif
+#elif defined(__APPLE__) && defined(__POWERPC__)
+// Darwin ppc/ppc64
+constexpr auto kIsLittleEndian = false;
 #else
 constexpr auto kIsLittleEndian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
 #endif

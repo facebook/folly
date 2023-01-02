@@ -261,6 +261,16 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 # base64 SIMD files compilation
+
+if (APPLE AND CMAKE_OSX_ARCHITECTURES MATCHES "ppc|ppc64")
+  message(
+    STATUS
+    "PowerPC Big Endian has a limited support, "
+    "skipping building Base64SWAR of base64"
+  )
+  list(REMOVE_ITEM files ${FOLLY_DIR}/detail/base64_detail/Base64SWAR.cpp)
+endif()
+
 if (NOT(${IS_X86_64_ARCH}))
   message(
     STATUS

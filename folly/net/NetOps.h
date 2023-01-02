@@ -261,6 +261,16 @@ struct mmsghdr {
 #define F_COPY_CMSG_INT_DATA(cm, val, len) memcpy(CMSG_DATA(cm), val, len)
 #endif /* _WIN32 */
 
+#ifndef IPV6_TCLASS
+#if defined(__APPLE__)
+#define IPV6_TCLASS 36
+#endif
+#endif
+
+#ifndef AI_NUMERICSERV		
+#define AI_NUMERICSERV 0
+#endif
+
 namespace folly {
 namespace netops {
 // Poll descriptor is intended to be byte-for-byte identical to pollfd,
