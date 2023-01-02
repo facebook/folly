@@ -18,13 +18,14 @@
 
 #include <Python.h>
 
-#include <memory>
-#include <string>
-
+#include <folly/Executor.h>
 #include <folly/io/IOBuf.h>
 
 namespace folly::python {
 
-std::string to_uppercase_string_cpp(PyObject* iobuf);
+// Returns a C++ IOBuf that shares ownership of the given Python memoryview
+// object. The C++ IOBuf can then be exposed and used as a Python IOBuf object.
+std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
+    folly::Executor* executor, PyObject* py_object, void* buf, uint64_t length);
 
 } // namespace folly::python

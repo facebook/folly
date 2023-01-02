@@ -186,10 +186,12 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/python/fibers.cpp
   ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
   ${FOLLY_DIR}/python/iobuf.cpp
+  ${FOLLY_DIR}/python/iobuf_ext.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/python/fibers.h
   ${FOLLY_DIR}/python/GILAwareManualExecutor.h
+  ${FOLLY_DIR}/python/iobuf_ext.h
 )
 
 # Explicitly include utility library code from inside

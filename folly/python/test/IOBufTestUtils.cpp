@@ -21,7 +21,7 @@
 
 #include <folly/python/iobuf.h>
 
-namespace folly {
+namespace folly::python {
 
 std::string to_uppercase_string_cpp(PyObject* o_iobuf) {
   auto iobuf = iobuf_from_python_iobuf(o_iobuf);
@@ -32,4 +32,4 @@ std::string to_uppercase_string_cpp(PyObject* o_iobuf) {
   return s;
 }
 
-} // namespace folly
+} // namespace folly::python
