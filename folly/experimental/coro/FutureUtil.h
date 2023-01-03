@@ -68,7 +68,10 @@ template <typename SemiAwaitable>
 folly::Future<
     lift_unit_t<semi_await_result_t<remove_reference_wrapper_t<SemiAwaitable>>>>
 toFuture(SemiAwaitable&& a, Executor::KeepAlive<> ex) {
-  return toTask(std::forward<SemiAwaitable>(a)).scheduleOn(ex).start().via(ex);
+  return toTask(std::forward<SemiAwaitable>(a))
+      .scheduleOn(ex)
+      .start()
+      .via(std::move(ex));
 }
 
 } // namespace coro
