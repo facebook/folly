@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 import platform
 import re
 import shlex
@@ -186,8 +187,23 @@ def get_available_ram() -> int:
         )
 
 
+def is_current_host_arm() -> bool:
+    if sys.platform.startswith("darwin"):
+        # platform.machine() can be fooled by rosetta for python < 3.9.2
+        return "ARM64" in os.uname().version
+    else:
+        machine = platform.machine().lower()
+        return "arm" in machine or "aarch" in machine
+
+
 class HostType(object):
     def __init__(self, ostype=None, distro=None, distrovers=None) -> None:
+        # Maybe we should allow callers to indicate whether this machine uses
+        # an ARM architecture, but we need to change HostType serialization
+        # and deserialization in that case and hunt down anywhere that is
+        # persisting that serialized data.
+        isarm = False
+
         if ostype is None:
             distro = None
             distrovers = None
@@ -204,21 +220,29 @@ class HostType(object):
             else:
                 ostype = sys.platform
 
+            isarm = is_current_host_arm()
+
         # The operating system type
         self.ostype = ostype
         # The distribution, if applicable
         self.distro = distro
         # The OS/distro version if known
         self.distrovers = distrovers
-        machine = platform.machine().lower()
-        if "arm" in machine or "aarch" in machine:
-            self.isarm = True
-        else:
-            self.isarm = False
+        # Does the CPU use an ARM architecture? ARM includes Apple Silicon
+        # Macs as well as other ARM systems that might be running Linux or
+        # something.
+        self.isarm = isarm
 
     def is_windows(self):
         return self.ostype == "windows"
 
+    # is_arm is kinda half implemented at the moment. This method is only
+    # intended to be used when HostType represents information about the
+    # current machine we are running on.
+    # When HostType is being used to enumerate platform types (represent
+    # information about machine types that we may or may not be running on)
+    # the result could be nonsense (under the current implementation its always
+    # false.)
     def is_arm(self):
         return self.isarm
 
