@@ -1297,6 +1297,30 @@ class AsyncTransport : public DelayedDestruction,
         static_cast<const AsyncTransport*>(this)->getUnderlyingTransport<T>());
   }
 
+  virtual AsyncTransport::UniquePtr tryExchangeWrappedTransport(
+      AsyncTransport::UniquePtr& /* transport */) {
+    return AsyncTransport::UniquePtr{};
+  }
+
+  template <class T>
+  typename T::UniquePtr tryExchangeUnderlyingTransport(
+      AsyncTransport::UniquePtr& p) {
+    AsyncTransport const* current = getWrappedTransport();
+    AsyncTransport const* last = this;
+    while (current) {
+      if (dynamic_cast<T const*>(current)) {
+        AsyncTransport::UniquePtr ret =
+            const_cast<AsyncTransport*>(last)->tryExchangeWrappedTransport(p);
+        ret->setReadCB(nullptr);
+        DCHECK_NOTNULL(dynamic_cast<T*>(ret.get()));
+        return typename T::UniquePtr(static_cast<T*>(ret.release()));
+      }
+      last = current;
+      current = current->getWrappedTransport();
+    }
+    return nullptr;
+  }
+
  protected:
   ~AsyncTransport() override = default;
 };
