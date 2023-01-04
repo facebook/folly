@@ -24,11 +24,10 @@
 #include <boost/intrusive/slist.hpp>
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
-#include <folly/detail/SocketFastOpen.h>
 #include <folly/experimental/io/IoUringBase.h>
+#include <folly/futures/Future.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufIovecBuilder.h>
-#include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncSocketException.h>
@@ -57,8 +56,7 @@ class AsyncDetachFdCallback {
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
   struct Options {
-    Options() : sendzcLimit(0) {}
-    uint32_t sendzcLimit;
+    folly::Optional<AsyncWriter::ZeroCopyEnableFunc> zeroCopyEnable;
   };
 
   using UniquePtr = std::unique_ptr<AsyncIoUringSocket, Destructor>;
@@ -72,6 +70,11 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       Options const& options = Options{});
   explicit AsyncIoUringSocket(
       EventBase* evb,
+      IoUringBackend* backend = nullptr,
+      Options const& options = Options{});
+  explicit AsyncIoUringSocket(
+      EventBase* evb,
+      NetworkSocket ns,
       IoUringBackend* backend = nullptr,
       Options const& options = Options{});
 
@@ -136,35 +139,21 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void close() override;
   void closeNow() override;
   void closeWithReset() override;
-  void shutdownWrite() override {
-    throw std::runtime_error("AsyncIoUringSocket::shutdownWrite not supported");
-  }
+  void shutdownWrite() override;
+  void shutdownWriteNow() override;
 
-  void shutdownWriteNow() override {
-    throw std::runtime_error(
-        "AsyncIoUringSocket::shutdownWriteNow not supported");
-  }
-
-  bool good() const override { return good_; }
-
+  bool good() const override;
   bool readable() const override { return good(); }
+  bool error() const override;
   bool hangup() const override;
 
   bool connecting() const override {
     return connectSqe_ && connectSqe_->inFlight();
   }
 
-  bool error() const override { return error_; }
-
-  void attachEventBase(EventBase*) override {
-    throw std::runtime_error(
-        "AsyncIoUringSocket::attachEventBase not supported");
-  }
-  void detachEventBase() override {
-    throw std::runtime_error(
-        "AsyncIoUringSocket::detachEventBase not supported");
-  }
-  bool isDetachable() const override { return false; }
+  void attachEventBase(EventBase*) override;
+  void detachEventBase() override;
+  bool isDetachable() const override;
 
   uint32_t getSendTimeout() const override {
     return static_cast<uint32_t>(
@@ -236,15 +225,25 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void asyncDetachFd(AsyncDetachFdCallback* callback);
   bool readSqeInFlight() const { return readSqe_->inFlight(); }
   bool getTFOSucceded() const override;
-  void enableTFO() override {}
+  void enableTFO() override {
+    // No-op if folly does not allow tfo
+#if FOLLY_ALLOW_TFO
+    DVLOG(5) << "AsyncIoUringSocket::enableTFO()";
+    enableTFO_ = true;
+#endif
+  }
 
- private:
+  void appendPreReceive(std::unique_ptr<IOBuf> iobuf) noexcept;
+
+ protected:
   ~AsyncIoUringSocket() override;
 
+ private:
   friend class ReadSqe;
   friend class WriteSqe;
   void setFd(NetworkSocket ns);
-  void appendPreReceive(std::unique_ptr<IOBuf> iobuf) noexcept;
+  void registerFd();
+  void unregisterFd();
   void readProcessSubmit(
       struct io_uring_sqe* sqe,
       IoUringBufferProviderBase* bufferProvider,
@@ -255,6 +254,10 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       uint32_t flags,
       size_t maxSize,
       IoUringBufferProviderBase* bufferProvider) noexcept;
+  void allowReads();
+  void previousReadDone();
+  void processWriteQueue() noexcept;
+  void setStateEstablished();
   void writeDone() noexcept;
   void doSubmitWrite() noexcept;
   void doReSubmitWrite() noexcept;
@@ -263,26 +266,37 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       struct io_uring_sqe* sqe, sockaddr_storage& storage);
   void processConnectResult(int i);
   void processConnectTimeout();
+  void processFastOpenResult(int res, uint32_t flags) noexcept;
   void startSendTimeout();
   void sendTimeoutExpired();
   void failWrite(const AsyncSocketException& ex);
   void readEOF();
   void readError();
   NetworkSocket takeFd();
+  bool setZeroCopy(bool enable) override;
+  bool getZeroCopy() const override;
+  void setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc func) override;
+
+  enum class State {
+    None,
+    Connecting,
+    Established,
+    Closed,
+    Error,
+    FastOpen,
+  };
+
+  static std::string toString(State s);
+  std::string stateAsString() const { return toString(state_); }
 
   struct ReadSqe : IoSqeBase, DelayedDestruction {
     using UniquePtr = std::unique_ptr<ReadSqe, Destructor>;
-    ReadSqe(AsyncIoUringSocket* parent, IoUringBackend* backend);
+    explicit ReadSqe(AsyncIoUringSocket* parent);
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
     void callback(int res, uint32_t flags) noexcept override;
+    void callbackCancelled(int, uint32_t) noexcept override;
 
-    void callbackCancelled(int, uint32_t) noexcept override {
-      if (!inFlight()) {
-        delete this;
-      }
-    }
-
-    void setReadCallback(ReadCallback* callback);
+    void setReadCallback(ReadCallback* callback, bool submitNow);
     ReadCallback* readCallback() const { return readCallback_; }
 
     size_t bytesReceived() const { return bytesReceived_; }
@@ -292,12 +306,18 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       appendReadData(std::move(data), preReceivedData_);
     }
 
-    void setFd(int usedFd) { usedFd_ = usedFd; }
-
     void destroy() override {
       parent_ = nullptr;
       DelayedDestruction::destroy();
     }
+
+    bool waitingForOldEventBaseRead() const;
+    void setOldEventBaseRead(folly::SemiFuture<std::unique_ptr<IOBuf>>&& f) {
+      oldEventBaseRead_ = std::move(f);
+    }
+    void attachEventBase();
+    folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
+    detachEventBase();
 
    private:
     ~ReadSqe() override = default;
@@ -307,10 +327,10 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
         std::unique_ptr<IOBuf> buf, std::unique_ptr<IOBuf>& overflow) noexcept;
     bool readCallbackUseIoBufs() const;
     void invalidState(ReadCallback* callback);
+    void processOldEventBaseRead();
 
     IoUringBufferProviderBase* lastUsedBufferProvider_;
     ReadCallback* readCallback_ = nullptr;
-    IoUringBufferProviderBase* bufferProvider_;
     AsyncIoUringSocket* parent_;
     size_t maxSize_;
     uint64_t setReadCbCount_{0};
@@ -322,8 +342,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     bool supportsMultishotRecv_ =
         false; // todo: this can be per process instead of per socket
 
-    // duplicate, but probably ok
-    int usedFd_ = -1;
+    folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
+        oldEventBaseRead_;
+    std::shared_ptr<folly::Unit> alive_;
   };
 
   struct CloseSqe : IoSqeBase {
@@ -352,6 +373,10 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     void callback(int res, uint32_t flags) noexcept override;
     void callbackCancelled(int, uint32_t flags) noexcept override;
     int sendMsgFlags() const;
+    std::pair<
+        folly::SemiFuture<std::vector<std::pair<int, uint32_t>>>,
+        WriteSqe*>
+    detachEventBase();
 
     boost::intrusive::list_member_hook<> member_hook_;
     AsyncIoUringSocket* parent_;
@@ -364,6 +389,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
     bool zerocopy_{false};
     int refs_ = 1;
+    folly::Function<bool(int, uint32_t)> detachedSignal_;
   };
   using WriteSqeList = boost::intrusive::list<
       WriteSqe,
@@ -400,18 +426,36 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     sockaddr_storage addrStorage;
   };
 
+  struct FastOpenSqe : IoSqeBase {
+    explicit FastOpenSqe(
+        AsyncIoUringSocket* parent,
+        SocketAddress const& addr,
+        std::unique_ptr<AsyncIoUringSocket::WriteSqe> initialWrite);
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override;
+    void cleanupMsg() noexcept;
+    void callback(int res, uint32_t flags) noexcept override {
+      cleanupMsg();
+      parent_->processFastOpenResult(res, flags);
+    }
+    void callbackCancelled(int, uint32_t) noexcept override { delete this; }
+    AsyncIoUringSocket* parent_;
+    std::unique_ptr<AsyncIoUringSocket::WriteSqe> initialWrite;
+    size_t addrLen_;
+    sockaddr_storage addrStorage;
+  };
+
   EventBase* evb_ = nullptr;
   NetworkSocket fd_;
   IoUringBackend* backend_ = nullptr;
   Options options_;
   mutable SocketAddress localAddress_;
   mutable SocketAddress peerAddress_;
-  bool good_ = true;
-  bool error_ = false;
   IoUringFdRegistrationRecord* fdRegistered_ = nullptr;
   int usedFd_ = -1;
   unsigned int mbFixedFileFlags_ = 0;
   std::unique_ptr<CloseSqe> closeSqe_{new CloseSqe(this)};
+
+  State state_ = State::None;
 
   // read
   friend struct DetachFdState;
@@ -434,6 +478,19 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   // stopTLS helpers:
   std::string securityProtocol_;
   std::string applicationProtocol_;
+
+  // shutdown:
+  int shutdownFlags_ = 0;
+
+  // TCP fast open
+  std::unique_ptr<FastOpenSqe> fastOpenSqe_;
+  bool enableTFO_ = false;
+
+  // detach event base
+  bool isDetaching_ = false;
+  Optional<SemiFuture<std::vector<std::pair<int, uint32_t>>>>
+      detachedWriteResult_;
+  std::shared_ptr<folly::Unit> alive_;
 
   void closeProcessSubmit(struct io_uring_sqe* sqe);
 };

@@ -15,6 +15,7 @@
  */
 
 #include <folly/Conv.h>
+#include <folly/detail/SocketFastOpen.h>
 #include <folly/experimental/io/AsyncIoUringSocket.h>
 #include <folly/experimental/io/IoUringEventBaseLocal.h>
 #include <folly/io/Cursor.h>
@@ -27,6 +28,11 @@ namespace fsp = folly::portability::sockets;
 namespace folly {
 
 namespace {
+enum ShutdownFlags {
+  ShutFlags_WritePending = 1,
+  ShutFlags_Write = 2,
+  ShutFlags_Read = 4,
+};
 
 AsyncSocket* getAsyncSocket(AsyncTransport::UniquePtr const& o) {
   auto* raw = o->getUnderlyingTransport<folly::AsyncSocket>();
@@ -52,11 +58,26 @@ NetworkSocket makeConnectSocket(SocketAddress const& peerAddress) {
   ensureSocketReturnCode(fcntl(fd, F_SETFD, FD_CLOEXEC), "set cloexec");
 
   // copied from folly::AsyncSocket, default enable TCP_NODELAY
+  // If setNoDelay() fails, we continue anyway; this isn't a fatal error.
+  // setNoDelay() will log an error message if it fails.
   int nodelay = 1;
-  ensureSocketReturnCode(
-      setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)),
-      "set nodelay");
+  int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+  if (ret != 0) {
+    VLOG(1) << "setNoDelay failed " << folly::errnoStr(errno);
+  }
   return NetworkSocket{fd};
+}
+
+IoUringBackend* getBackendFromEventBase(EventBase* evb) {
+  auto* b = IoUringEventBaseLocal::try_get(evb);
+  if (!b) {
+    b = dynamic_cast<IoUringBackend*>(evb->getBackend());
+  }
+  if (!b) {
+    std::terminate();
+    throw std::runtime_error("need to take a IoUringBackend event base");
+  }
+  return b;
 }
 
 } // namespace
@@ -66,6 +87,7 @@ AsyncIoUringSocket::AsyncIoUringSocket(
     : AsyncIoUringSocket(other->getEventBase(), backend, options) {
   setPreReceivedData(other->takePreReceivedData());
   setFd(other->detachNetworkSocket());
+  state_ = State::Established;
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(
@@ -80,25 +102,46 @@ AsyncIoUringSocket::AsyncIoUringSocket(
     EventBase* evb, IoUringBackend* backend, Options const& options)
     : evb_(evb), backend_(backend), options_(options) {
   if (!backend_) {
-    backend_ = IoUringEventBaseLocal::try_get(evb);
-  }
-  if (!backend_) {
-    backend_ = dynamic_cast<IoUringBackend*>(evb_->getBackend());
-  }
-  if (!backend_) {
-    throw std::runtime_error("need to take a IoUringBackend event base");
+    backend_ = getBackendFromEventBase(evb);
   }
 
   if (!backend_->bufferProvider()) {
     throw std::runtime_error("require a IoUringBackend with a buffer provider");
   }
-  readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this, backend_));
+  readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this));
 }
 
-AsyncIoUringSocket::ReadSqe::ReadSqe(
-    AsyncIoUringSocket* parent, IoUringBackend* backend)
-    : bufferProvider_(backend->bufferProvider()), parent_(parent) {
-  supportsMultishotRecv_ = backend->kernelSupportsRecvmsgMultishot();
+AsyncIoUringSocket::AsyncIoUringSocket(
+    EventBase* evb,
+    NetworkSocket ns,
+    IoUringBackend* backend,
+    Options const& options)
+    : AsyncIoUringSocket(evb, backend, options) {
+  setFd(ns);
+  state_ = State::Established;
+}
+
+std::string AsyncIoUringSocket::toString(AsyncIoUringSocket::State s) {
+  switch (s) {
+    case State::None:
+      return "None";
+    case State::Connecting:
+      return "Connecting";
+    case State::Established:
+      return "Established";
+    case State::Closed:
+      return "Closed";
+    case State::Error:
+      return "Error";
+    case State::FastOpen:
+      return "FastOpen";
+  };
+  return to<std::string>("Unknown val=", (int)s);
+}
+
+AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
+    : parent_(parent) {
+  supportsMultishotRecv_ = parent->backend_->kernelSupportsRecvmsgMultishot();
 }
 
 AsyncIoUringSocket::~AsyncIoUringSocket() {
@@ -108,11 +151,17 @@ AsyncIoUringSocket::~AsyncIoUringSocket() {
   // tracking is coming later and will be easier to handle then
   closeNow();
 
+  // evb_/backend_ might be null here, but then none of these will be in flight
+
   // cancel outstanding
   if (readSqe_->inFlight()) {
     DVLOG(3) << "cancel reading " << readSqe_.get();
+    readSqe_->setReadCallback(
+        nullptr, false); // not detaching, actually closing
+    readSqe_->detachEventBase();
     backend_->cancel(readSqe_.release());
   }
+
   if (closeSqe_ && closeSqe_->inFlight()) {
     LOG_EVERY_N(WARNING, 100) << " closeSqe_ still in flight";
     closeSqe_
@@ -121,6 +170,7 @@ AsyncIoUringSocket::~AsyncIoUringSocket() {
   }
   if (connectSqe_ && connectSqe_->inFlight()) {
     DVLOG(3) << "cancel connect " << connectSqe_.get();
+    connectSqe_->cancelTimeout();
     backend_->cancel(connectSqe_.release());
   }
 
@@ -128,7 +178,12 @@ AsyncIoUringSocket::~AsyncIoUringSocket() {
            << writeSqeActive_ << " queue=" << writeSqeQueue_.size();
 
   if (writeSqeActive_) {
-    backend_->cancel(writeSqeActive_);
+    // if we are detaching, then the write will not have been submitted yet
+    if (writeSqeActive_->inFlight()) {
+      backend_->cancel(writeSqeActive_);
+    } else {
+      delete writeSqeActive_;
+    }
   }
 
   while (!writeSqeQueue_.empty()) {
@@ -140,11 +195,11 @@ AsyncIoUringSocket::~AsyncIoUringSocket() {
 }
 
 bool AsyncIoUringSocket::supports(EventBase* eb) {
-  if (IoUringEventBaseLocal::try_get(eb)) {
-    return true;
-  }
   IoUringBackend* io = dynamic_cast<IoUringBackend*>(eb->getBackend());
-  return !!io;
+  if (!io) {
+    io = IoUringEventBaseLocal::try_get(eb);
+  }
+  return io && io->bufferProvider() != nullptr;
 }
 
 void AsyncIoUringSocket::connect(
@@ -154,6 +209,8 @@ void AsyncIoUringSocket::connect(
     SocketOptionMap const& options,
     const folly::SocketAddress& bindAddr,
     const std::string& ifName) noexcept {
+  DVLOG(4) << "AsyncIoUringSocket::connect() this=" << this << " to=" << address
+           << " fastopen=" << enableTFO_;
   evb_->dcheckIsInEventBaseThread();
   DestructorGuard dg(this);
   connectTimeout_ = timeout;
@@ -241,7 +298,8 @@ void AsyncIoUringSocket::connect(
 
   connectCallback_->preConnect(fd_);
   if (connectTimeout_.count() > 0) {
-    if (!connectSqe_->scheduleTimeout(connectTimeout_)) {
+    if (!connectSqe_->scheduleTimeout(
+            connectTimeout_ + std::chrono::milliseconds(3000))) {
       connectCallback_->connectErr(AsyncSocketException(
           AsyncSocketException::INTERNAL_ERROR,
           "failed to schedule connect timeout"));
@@ -250,7 +308,16 @@ void AsyncIoUringSocket::connect(
       return;
     }
   }
-  backend_->submit(*connectSqe_);
+  // if TCP Fast Open is
+  if (enableTFO_) {
+    state_ = State::FastOpen;
+    DVLOG(5) << "Not submitting connect as in fast open";
+    connectCallback_->connectSuccess();
+    connectCallback_ = nullptr;
+  } else {
+    state_ = State::Connecting;
+    backend_->submit(*connectSqe_);
+  }
 }
 
 void AsyncIoUringSocket::processConnectSubmit(
@@ -260,19 +327,58 @@ void AsyncIoUringSocket::processConnectSubmit(
   sqe->flags |= mbFixedFileFlags_;
 }
 
+void AsyncIoUringSocket::setStateEstablished() {
+  state_ = State::Established;
+  allowReads();
+  processWriteQueue();
+}
+
+void AsyncIoUringSocket::appendPreReceive(
+    std::unique_ptr<IOBuf> iobuf) noexcept {
+  readSqe_->appendPreReceive(std::move(iobuf));
+}
+
+void AsyncIoUringSocket::allowReads() {
+  if (readSqe_->readCallback() && !readSqe_->inFlight()) {
+    auto cb = readSqe_->readCallback();
+    setReadCB(nullptr);
+    setReadCB(cb);
+  }
+}
+
+void AsyncIoUringSocket::previousReadDone() {
+  DVLOG(4) << "AsyncIoUringSocket::previousReadDone( " << this
+           << ") cb=" << readSqe_->readCallback()
+           << " in flight=" << readSqe_->inFlight();
+  allowReads();
+}
+
 void AsyncIoUringSocket::processConnectResult(int i) {
+  DVLOG(5) << "AsyncIoUringSocket::processConnectResult(" << this
+           << ") res=" << i;
+  DestructorGuard dg(this);
   connectSqe_.reset();
   connectEndTime_ = std::chrono::steady_clock::now();
   if (i == 0) {
-    connectCallback_->connectSuccess();
+    if (connectCallback_) {
+      connectCallback_->connectSuccess();
+    }
+    setStateEstablished();
   } else {
-    connectCallback_->connectErr(AsyncSocketException(
-        AsyncSocketException::NOT_OPEN, "connect failed", -i));
+    state_ = State::Error;
+    if (connectCallback_) {
+      connectCallback_->connectErr(AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "connect failed", -i));
+    }
   }
   connectCallback_ = nullptr;
 }
 
 void AsyncIoUringSocket::processConnectTimeout() {
+  DVLOG(5) << "AsyncIoUringSocket::processConnectTimeout(this=" << this
+           << ") connectInFlight=" << connectSqe_->inFlight()
+           << " state=" << stateAsString();
+  DestructorGuard dg(this);
   if (connectSqe_->inFlight()) {
     backend_->cancel(connectSqe_.release());
   } else {
@@ -284,27 +390,51 @@ void AsyncIoUringSocket::processConnectTimeout() {
   connectCallback_ = nullptr;
 }
 
+void AsyncIoUringSocket::processFastOpenResult(
+    int res, uint32_t flags) noexcept {
+  DVLOG(4) << "processFastOpenResult() this=" << this << " res=" << res
+           << " flags=" << flags;
+  if (res >= 0) {
+    processConnectResult(0);
+    writeSqeActive_ = fastOpenSqe_->initialWrite.release();
+    writeSqeActive_->callback(res, flags);
+  } else {
+    DVLOG(4) << "TFO falling back, did not connect, res = " << res;
+    DCHECK(connectSqe_);
+    backend_->submit(*connectSqe_);
+    writeSqeQueue_.push_back(*fastOpenSqe_->initialWrite.release());
+  }
+  fastOpenSqe_.reset();
+}
+
 inline bool AsyncIoUringSocket::ReadSqe::readCallbackUseIoBufs() const {
   return readCallback_ && readCallback_->isBufferMovable();
 }
 
 void AsyncIoUringSocket::readEOF() {
-  good_ = false;
+  shutdownFlags_ |= ShutFlags_Read;
 }
 
 void AsyncIoUringSocket::readError() {
-  good_ = false;
-  error_ = true;
+  DVLOG(4) << " AsyncIoUringSocket::readError() this=" << this;
+  state_ = State::Error;
 }
 
 void AsyncIoUringSocket::setReadCB(ReadCallback* callback) {
-  evb_->dcheckIsInEventBaseThread();
-  readSqe_->setReadCallback(callback);
+  bool submitNow =
+      state_ != State::FastOpen && state_ != State::Connecting && !isDetaching_;
+  DVLOG(4) << "setReadCB state=" << stateAsString()
+           << " isDetaching_=" << isDetaching_;
+  readSqe_->setReadCallback(callback, submitNow);
 }
 
 void AsyncIoUringSocket::submitRead(bool now) {
   DVLOG(9) << "AsyncIoUringSocket::submitRead " << now
            << " sqe=" << readSqe_.get();
+  if (readSqe_->waitingForOldEventBaseRead()) {
+    // don't actually submit, wait for old event base
+    return;
+  }
   if (now) {
     backend_->submitNow(*readSqe_);
   } else {
@@ -318,22 +448,65 @@ void AsyncIoUringSocket::ReadSqe::invalidState(ReadCallback* callback) {
 
   AsyncSocketException ex(
       AsyncSocketException::NOT_OPEN,
-      "setReadCallback() called  io_uringwith socket in "
+      "setReadCallback() called  io_uring with socket in "
       "invalid state");
   if (callback) {
     callback->readErr(ex);
   }
 }
 
-bool AsyncIoUringSocket::hangup() const {
+bool AsyncIoUringSocket::error() const {
+  DVLOG(2) << "AsyncIoUringSocket::error(this=" << this
+           << ") state=" << stateAsString();
+  return state_ == State::Error;
+}
+
+bool AsyncIoUringSocket::good() const {
+  DVLOG(2) << "AsyncIoUringSocket::good(this=" << this
+           << ") state=" << stateAsString() << " evb_=" << evb_
+           << " shutdownFlags_=" << shutdownFlags_ << " backend_=" << backend_;
+  if (!evb_ || !backend_) {
+    return false;
+  }
+  if (shutdownFlags_) {
+    return false;
+  }
+  switch (state_) {
+    case State::Connecting:
+    case State::Established:
+    case State::FastOpen:
+      return true;
+    case State::None:
+    case State::Closed:
+    case State::Error:
+      return false;
+  }
   return false;
 }
 
-void AsyncIoUringSocket::ReadSqe::setReadCallback(ReadCallback* callback) {
+bool AsyncIoUringSocket::hangup() const {
+  if (fd_ == NetworkSocket()) {
+    // sanity check, no one should ask for hangup if we are not connected.
+    assert(false);
+    return false;
+  }
+  struct pollfd fds[1];
+  fds[0].fd = fd_.toFd();
+  fds[0].events = POLLRDHUP | POLLHUP;
+  fds[0].revents = 0;
+  ::poll(&fds[0], 1, 0);
+  return (fds[0].revents & (POLLRDHUP | POLLHUP)) != 0;
+}
+
+void AsyncIoUringSocket::ReadSqe::setReadCallback(
+    ReadCallback* callback, bool submitNow) {
   DVLOG(5) << "AsyncIoUringSocket::setReadCB() this=" << this
-           << " cb=" << callback << " count=" << setReadCbCount_ << " movable="
+           << " cb=" << callback << " cbWas=" << readCallback_
+           << " count=" << setReadCbCount_ << " movable="
            << (callback && callback->isBufferMovable() ? "YES" : "NO")
-           << " inflight=" << inFlight() << " good_=" << parent_->good();
+           << " inflight=" << inFlight() << " good_=" << parent_->good()
+           << " submitNow=" << submitNow;
+
   if (callback == readCallback_) {
     // copied from AsyncSocket
     DVLOG(9) << "cb the same";
@@ -344,14 +517,21 @@ void AsyncIoUringSocket::ReadSqe::setReadCallback(ReadCallback* callback) {
   if (!callback) {
     return;
   }
+  if (!submitNow) {
+    // allowable to set a read callback here
+    DVLOG(5) << "AsyncIoUringSocket::setReadCB() this=" << this
+             << " ignoring callback for now ";
+    return;
+  }
   if (!parent_->good()) {
     readCallback_ = nullptr;
     invalidState(callback);
     return;
   }
 
-  // callback may change after these so make sure to check
+  processOldEventBaseRead();
 
+  // callback may change after these so make sure to check
   if (readCallback_ && preReceivedData_) {
     sendReadBuf(std::move(preReceivedData_), preReceivedData_);
   }
@@ -365,6 +545,24 @@ void AsyncIoUringSocket::ReadSqe::setReadCallback(ReadCallback* callback) {
   }
 }
 
+void AsyncIoUringSocket::ReadSqe::processOldEventBaseRead() {
+  if (!oldEventBaseRead_ || !oldEventBaseRead_->isReady()) {
+    return;
+  }
+
+  auto res = std::move(*oldEventBaseRead_).get();
+  oldEventBaseRead_.reset();
+  DVLOG(4) << "using old event base data: " << res.get()
+           << " len=" << (res ? res->length() : 0);
+  if (res && res->length()) {
+    if (queuedReceivedData_) {
+      queuedReceivedData_->appendToChain(std::move(res));
+    } else {
+      queuedReceivedData_ = std::move(res);
+    }
+  }
+}
+
 void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
   DVLOG(5) << "AsyncIoUringSocket::ReadSqe::readCallback() this=" << this
            << " parent=" << parent_ << " cb=" << readCallback_ << " res=" << res
@@ -372,11 +570,11 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
            << " has_buffer=" << !!(flags & IORING_CQE_F_BUFFER)
            << " bytes_received=" << bytesReceived_;
   DestructorGuard dg(this);
-  auto buffer_guard = makeGuard([&] {
+  auto buffer_guard = makeGuard([&, bp = lastUsedBufferProvider_] {
     if (flags & IORING_CQE_F_BUFFER) {
-      DCHECK(lastUsedBufferProvider_);
-      if (lastUsedBufferProvider_) {
-        lastUsedBufferProvider_->unusedBuf(flags >> 16);
+      DCHECK(bp);
+      if (bp) {
+        bp->unusedBuf(flags >> 16);
       }
     }
   });
@@ -385,7 +583,9 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
       // ignore
     } else if (res <= 0) {
       // EOF?
-      parent_->readEOF();
+      if (parent_) {
+        parent_->readEOF();
+      }
     } else if (res > 0 && lastUsedBufferProvider_) {
       // must take the buffer
       appendReadData(
@@ -395,7 +595,9 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
     }
   } else {
     if (res == 0) {
-      parent_->readEOF();
+      if (parent_) {
+        parent_->readEOF();
+      }
       readCallback_->readEOF();
     } else if (res == -ENOBUFS) {
       if (lastUsedBufferProvider_) {
@@ -403,10 +605,15 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
         // we have no more buffers
         lastUsedBufferProvider_->enobuf();
       }
-      parent_->submitRead();
+      if (parent_) {
+        parent_->submitRead();
+      }
     } else if (res < 0) {
-      // ERROR?
-      parent_->readError();
+      // assume ECANCELED is not an unrecoverable error state, but we do still
+      // have to propogate to the callback as they presumably called the cancel.
+      if (parent_ && res != -ECANCELED) {
+        parent_->readError();
+      }
       AsyncSocketException::AsyncSocketExceptionType err;
       std::string error;
       switch (res) {
@@ -449,18 +656,49 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
   }
 }
 
+void AsyncIoUringSocket::ReadSqe::callbackCancelled(
+    int res, uint32_t flags) noexcept {
+  DVLOG(4) << "AsyncIoUringSocket::ReadSqe::callbackCancelled() this=" << this
+           << " parent=" << parent_ << " cb=" << readCallback_ << " res=" << res
+           << " inflight=" << inFlight() << " flags=" << flags
+           << " has_buffer=" << !!(flags & IORING_CQE_F_BUFFER)
+           << " bytes_received=" << bytesReceived_;
+  DestructorGuard dg(this);
+  if (readCallback_) {
+    callback(res, flags);
+  }
+  if (!(flags & IORING_CQE_F_MORE)) {
+    if (readCallback_ && res > 0) {
+      // may have more multishot
+      readCallback_->readEOF();
+      // only cancel from shutdown or event base detaching
+    }
+    destroy();
+  }
+}
+
 void AsyncIoUringSocket::ReadSqe::processSubmit(
     struct io_uring_sqe* sqe) noexcept {
+  DVLOG(4) << "AsyncIoUringSocket::ReadSqe::processSubmit() this=" << this
+           << " parent=" << parent_ << " cb=" << readCallback_;
   lastUsedBufferProvider_ = nullptr;
+  CHECK(!waitingForOldEventBaseRead());
+  processOldEventBaseRead();
+
+  // read does not use registered fd, as it can be long lived and leak socket
+  // files
+  int fd = parent_->fd_.toFd();
+
   if (!readCallback_) {
     VLOG(2) << "readProcessSubmit with no callback?";
     tmpBuffer_ = IOBuf::create(2000);
     maxSize_ = tmpBuffer_->tailroom();
-    ::io_uring_prep_recv(sqe, usedFd_, tmpBuffer_->writableTail(), maxSize_, 0);
+    ::io_uring_prep_recv(sqe, fd, tmpBuffer_->writableTail(), maxSize_, 0);
   } else {
     if (readCallbackUseIoBufs()) {
-      if (bufferProvider_->available()) {
-        lastUsedBufferProvider_ = bufferProvider_;
+      auto* bp = parent_->backend_->bufferProvider();
+      if (bp->available()) {
+        lastUsedBufferProvider_ = bp;
         maxSize_ = lastUsedBufferProvider_->sizePerBuffer();
 
         size_t used_len;
@@ -473,7 +711,7 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
           used_len = maxSize_;
         }
 
-        ::io_uring_prep_recv(sqe, usedFd_, nullptr, used_len, 0);
+        ::io_uring_prep_recv(sqe, fd, nullptr, used_len, 0);
         sqe->buf_group = lastUsedBufferProvider_->gid();
         sqe->flags |= IOSQE_BUFFER_SELECT;
         sqe->ioprio |= ioprio_flags;
@@ -486,28 +724,28 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
         maxSize_ = tmpBuffer_->tailroom();
         VLOG(2) << "UseProvidedBuffers slow path starting with " << maxSize_
                 << " bytes ";
-        ::io_uring_prep_recv(
-            sqe, usedFd_, tmpBuffer_->writableTail(), maxSize_, 0);
+        ::io_uring_prep_recv(sqe, fd, tmpBuffer_->writableTail(), maxSize_, 0);
       }
     } else {
       void* buf;
       readCallback_->getReadBuffer(&buf, &maxSize_);
       maxSize_ = std::min<size_t>(maxSize_, 2048);
       tmpBuffer_ = IOBuf::create(maxSize_);
-      ::io_uring_prep_recv(
-          sqe, usedFd_, tmpBuffer_->writableTail(), maxSize_, 0);
+      ::io_uring_prep_recv(sqe, fd, tmpBuffer_->writableTail(), maxSize_, 0);
       DVLOG(9)
           << "AsyncIoUringSocket::readProcessSubmit  tmp buffer using size "
           << maxSize_;
     }
 
-    DVLOG(5) << "readProcessSubmit " << this << " reg=" << usedFd_
+    DVLOG(5) << "readProcessSubmit " << this << " reg=" << fd
              << " cb=" << readCallback_ << " size=" << maxSize_;
   }
 }
 
 void AsyncIoUringSocket::ReadSqe::sendReadBuf(
     std::unique_ptr<IOBuf> buf, std::unique_ptr<IOBuf>& overflow) noexcept {
+  DVLOG(5) << "AsyncIoUringSocket::ReadSqe::sendReadBuf "
+           << hexlify(buf->coalesce());
   while (readCallback_) {
     if (FOLLY_LIKELY(readCallback_->isBufferMovable())) {
       readCallback_->readBufferAvailable(std::move(buf));
@@ -620,7 +858,8 @@ void AsyncIoUringSocket::WriteSqe::processSubmit(
     struct io_uring_sqe* sqe) noexcept {
   DVLOG(5) << "write sqe submit " << this << " iovs=" << msg_.msg_iovlen
            << " length=" << totalLength_ << " ptr=" << msg_.msg_iov
-           << " zc=" << zerocopy_;
+           << " zc=" << zerocopy_ << " fd = " << parent_->usedFd_
+           << " flags=" << parent_->mbFixedFileFlags_;
   if (zerocopy_) {
     ::io_uring_prep_sendmsg_zc(
         sqe, parent_->usedFd_, &msg_, sendMsgFlags() | MSG_WAITALL);
@@ -678,13 +917,27 @@ struct DetachFdState : AsyncReader::ReadCallback {
 };
 
 struct CancelSqe : IoSqeBase {
-  explicit CancelSqe(IoSqeBase* sqe) : target_(sqe) {}
+  explicit CancelSqe(IoSqeBase* sqe, folly::Function<void()> fn = {})
+      : target_(sqe), fn_(std::move(fn)) {}
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     ::io_uring_prep_cancel(sqe, target_, 0);
   }
-  void callback(int, uint32_t) noexcept override { delete this; }
-  void callbackCancelled(int, uint32_t) noexcept override { delete this; }
+  void callback(int, uint32_t) noexcept override {
+    if (fn_) {
+      fn_();
+    }
+    delete this;
+  }
+
+  void callbackCancelled(int, uint32_t) noexcept override {
+    if (fn_) {
+      fn_();
+    }
+    delete this;
+  }
+
   IoSqeBase* target_;
+  folly::Function<void()> fn_;
 };
 
 } // namespace
@@ -717,6 +970,251 @@ void AsyncIoUringSocket::asyncDetachFd(AsyncDetachFdCallback* callback) {
   // results (eg wrong read data), just a broken socket
 }
 
+void AsyncIoUringSocket::attachEventBase(EventBase* evb) {
+  DVLOG(2) << "AsyncIoUringSocket::attachEventBase(this=" << this
+           << ") state=" << stateAsString() << " isDetaching_=" << isDetaching_
+           << " evb=" << evb;
+  if (!isDetaching_) {
+    throw std::runtime_error("bad state for attachEventBase");
+  }
+  backend_ = getBackendFromEventBase(evb);
+  evb_ = evb;
+  isDetaching_ = false;
+  registerFd();
+  readSqe_->attachEventBase();
+
+  if (writeSqeActive_) {
+    alive_ = std::make_shared<folly::Unit>();
+    std::move(*detachedWriteResult_)
+        .via(evb)
+        .thenValue([w = writeSqeActive_,
+                    a = std::weak_ptr<folly::Unit>(alive_)](auto&& cqes) {
+          DVLOG(5) << "attached write done, " << cqes.size();
+          if (!a.lock()) {
+            return;
+          }
+
+          for (auto const& cqe : cqes) {
+            if (w->cancelled()) {
+              w->callbackCancelled(cqe.first, cqe.second);
+            } else {
+              w->callback(cqe.first, cqe.second);
+            }
+          }
+        });
+  }
+
+  writeTimeout_.attachEventBase(evb);
+  if (state_ == State::Established) {
+    allowReads();
+    processWriteQueue();
+  }
+}
+
+bool AsyncIoUringSocket::isDetachable() const {
+  DVLOG(3) << "AsyncIoUringSocket::isAsyncDetachable(" << this
+           << ") state=" << stateAsString();
+  if (fastOpenSqe_ && fastOpenSqe_->inFlight()) {
+    DVLOG(3) << "not detachable: fastopen";
+    return false;
+  }
+  if (connectSqe_ && connectSqe_->inFlight()) {
+    DVLOG(3) << "not detachable: connect";
+    return false;
+  }
+  if (closeSqe_ && closeSqe_->inFlight()) {
+    DVLOG(3) << "not detachable: closing";
+    return false;
+  }
+  if (state_ == State::FastOpen) {
+    DVLOG(3) << "not detachable: fastopen";
+    return false;
+  }
+  if (state_ == State::Connecting) {
+    return false;
+  }
+  if (writeTimeout_.isScheduled()) {
+    DVLOG(3) << "not detachable: write timeout";
+    return false;
+  }
+  return true;
+}
+
+namespace {
+
+struct DetachReadCallback : AsyncReader::ReadCallback {
+  explicit DetachReadCallback() { buf_ = folly::IOBuf::create(2048); }
+
+  void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+    *bufReturn = buf_->writableTail();
+    *lenReturn = buf_->tailroom();
+  }
+
+  void readDataAvailable(size_t len) noexcept override {
+    buf_->append(len);
+    buf_->reserve(0 /* minHeadroom */, 2048 /* minTailroom */);
+  }
+
+  void readErr(const AsyncSocketException&) noexcept override { done(); }
+  void readEOF() noexcept override { done(); }
+  void done() noexcept {
+    DVLOG(4) << "AsyncIoUringSocket::detachReadcallback() this=" << this
+             << " done";
+    prom.setValue(std::move(buf_));
+    delete this;
+  }
+
+  folly::Promise<std::unique_ptr<folly::IOBuf>> prom;
+  std::unique_ptr<folly::IOBuf> buf_;
+};
+
+} // namespace
+
+void AsyncIoUringSocket::detachEventBase() {
+  DVLOG(4) << "AsyncIoUringSocket::detachEventBase() this=" << this
+           << " readSqeInFlight_=" << readSqe_->inFlight()
+           << " detachable=" << isDetachable();
+  if (!isDetachable()) {
+    throw std::runtime_error("not detachable");
+  }
+  if (isDetaching_) {
+    return;
+  }
+  isDetaching_ = true;
+
+  if (writeSqeActive_) {
+    // it's dangerous to have one sqeBase referred to by two backends, so make a
+    // copy and redirect all the callbacks to the new one.
+    auto det = writeSqeActive_->detachEventBase();
+    writeSqeActive_ = det.second;
+    detachedWriteResult_ = std::move(det.first);
+  }
+  writeTimeout_.detachEventBase();
+
+  DetachReadCallback* drc = nullptr;
+  auto* oldReadCallback = readSqe_->readCallback();
+  folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>> previous;
+  if (readSqe_->inFlight()) {
+    drc = new DetachReadCallback();
+    readSqe_->setReadCallback(drc, false);
+    previous = readSqe_->detachEventBase();
+    backend_->cancel(readSqe_.release());
+  }
+  readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this));
+  readSqe_->setReadCallback(oldReadCallback, false);
+
+  unregisterFd();
+  if (!drc) {
+    if (previous) {
+      DVLOG(4) << "Setting promise from previous";
+      readSqe_->setOldEventBaseRead(std::move(*previous));
+    } else {
+      DVLOG(4) << "Not setting promise";
+    }
+  } else {
+    auto res = drc->prom.getSemiFuture();
+    if (previous) {
+      DVLOG(4) << "Setting promise from previous and this one";
+      readSqe_->setOldEventBaseRead(std::move(*previous).deferValue(
+          [r = std::move(res)](
+              std::unique_ptr<folly::IOBuf>&& prevRes) mutable {
+            return std::move(r).deferValue(
+                [p = std::move(prevRes)](
+                    std::unique_ptr<folly::IOBuf>&& nextRes) mutable {
+                  p->appendToChain(std::move(nextRes));
+                  return std::move(p);
+                });
+          }));
+    } else {
+      DVLOG(4) << "Setting promise from this one";
+      readSqe_->setOldEventBaseRead(std::move(res));
+    }
+  }
+  evb_ = nullptr;
+  backend_ = nullptr;
+}
+
+bool AsyncIoUringSocket::ReadSqe::waitingForOldEventBaseRead() const {
+  return oldEventBaseRead_ && !oldEventBaseRead_->isReady();
+}
+
+folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
+AsyncIoUringSocket::ReadSqe::detachEventBase() {
+  alive_ = nullptr;
+  parent_ = nullptr;
+  return std::move(oldEventBaseRead_);
+}
+
+void AsyncIoUringSocket::ReadSqe::attachEventBase() {
+  DVLOG(5) << "AsyncIoUringSocket::ReadSqe::attachEventBase(this=" << this
+           << ") parent_=" << parent_ << " cb_=" << readCallback_
+           << " oldread=" << !!oldEventBaseRead_ << " inflight=" << inFlight();
+
+  if (!parent_) {
+    return;
+  }
+  if (!oldEventBaseRead_) {
+    return;
+  }
+  auto* evb = parent_->evb_;
+  alive_ = std::make_shared<folly::Unit>();
+  folly::Func deferred = [p = parent_,
+                          a = std::weak_ptr<folly::Unit>(alive_)]() {
+    if (a.lock()) {
+      p->previousReadDone();
+    } else {
+      DVLOG(5) << "unable to lock for " << p;
+    }
+  };
+  oldEventBaseRead_ =
+      std::move(*oldEventBaseRead_)
+          .via(evb)
+          .thenValue([d = std::move(deferred), evb](auto&& x) mutable {
+            evb->add(std::move(d));
+            return std::move(x);
+          });
+}
+
+AsyncIoUringSocket::FastOpenSqe::FastOpenSqe(
+    AsyncIoUringSocket* parent,
+    SocketAddress const& addr,
+    std::unique_ptr<WriteSqe> i)
+    : parent_(parent), initialWrite(std::move(i)) {
+  addrLen_ = addr.getAddress(&addrStorage);
+}
+
+void AsyncIoUringSocket::FastOpenSqe::cleanupMsg() noexcept {
+  initialWrite->msg_.msg_name = nullptr;
+  initialWrite->msg_.msg_namelen = 0;
+}
+
+void AsyncIoUringSocket::FastOpenSqe::processSubmit(
+    struct io_uring_sqe* sqe) noexcept {
+  DVLOG(5) << "fastopen sqe submit " << this
+           << " iovs=" << initialWrite->msg_.msg_iovlen
+           << " length=" << initialWrite->totalLength_
+           << " ptr=" << initialWrite->msg_.msg_iov;
+  initialWrite->processSubmit(sqe);
+  initialWrite->msg_.msg_name = &addrStorage;
+  initialWrite->msg_.msg_namelen = addrLen_;
+  sqe->msg_flags |= MSG_FASTOPEN;
+}
+
+void AsyncIoUringSocket::processWriteQueue() noexcept {
+  if (writeSqeQueue_.empty() && !writeSqeActive_ &&
+      shutdownFlags_ & ShutFlags_WritePending) {
+    shutdownWriteNow();
+    return;
+  }
+  if (writeSqeActive_ || writeSqeQueue_.empty() ||
+      state_ != State::Established) {
+    return;
+  }
+  writeSqeActive_ = &writeSqeQueue_.front();
+  writeSqeQueue_.pop_front();
+  doSubmitWrite();
+}
+
 void AsyncIoUringSocket::writeDone() noexcept {
   DVLOG(5) << "AsyncIoUringSocket::writeDone queue=" << writeSqeQueue_.size()
            << " active=" << writeSqeActive_;
@@ -724,12 +1222,7 @@ void AsyncIoUringSocket::writeDone() noexcept {
   if (writeTimeoutTime_.count() > 0) {
     writeTimeout_.cancelTimeout();
   }
-  if (writeSqeActive_ || writeSqeQueue_.empty()) {
-    return;
-  }
-  writeSqeActive_ = &writeSqeQueue_.front();
-  writeSqeQueue_.pop_front();
-  doSubmitWrite();
+  processWriteQueue();
 }
 
 void AsyncIoUringSocket::doSubmitWrite() noexcept {
@@ -744,6 +1237,40 @@ void AsyncIoUringSocket::doReSubmitWrite() noexcept {
   DCHECK(writeSqeActive_);
   backend_->submitSoon(*writeSqeActive_);
   // do not update the send timeout for partial writes
+}
+
+std::pair<
+    folly::SemiFuture<std::vector<std::pair<int, uint32_t>>>,
+    AsyncIoUringSocket::WriteSqe*>
+AsyncIoUringSocket::WriteSqe::detachEventBase() {
+  auto cont = makePromiseContract<std::vector<std::pair<int, uint32_t>>>();
+  auto newSqe =
+      new WriteSqe(parent_, callback_, std::move(buf_), flags_, zerocopy_);
+
+  // make sure to keep the state of where we are in the write
+  newSqe->totalLength_ = totalLength_;
+  newSqe->iov_ = iov_;
+  newSqe->msg_ = msg_;
+  newSqe->refs_ = refs_;
+
+  parent_ = nullptr;
+  detachedSignal_ = [prom = std::move(cont.first),
+                     ret = std::vector<std::pair<int, uint32_t>>{},
+                     refs = refs_](int res, uint32_t flags) mutable -> bool {
+    ret.emplace_back(res, flags);
+    VLOG(5) << "DetachedSignal, now refs=" << refs;
+    if (flags & IORING_CQE_F_NOTIF) {
+      --refs;
+    } else if (!(flags & IORING_CQE_F_MORE)) {
+      --refs;
+    }
+    if (refs == 0) {
+      prom.setValue(std::move(ret));
+      return true;
+    }
+    return false;
+  };
+  return std::make_pair(std::move(cont.second), newSqe);
 }
 
 void AsyncIoUringSocket::WriteSqe::callbackCancelled(
@@ -764,7 +1291,17 @@ void AsyncIoUringSocket::WriteSqe::callback(int res, uint32_t flags) noexcept {
            << " flags=" << flags << " iovStart=" << iov_.size()
            << " iovRemaining=" << msg_.msg_iovlen << " length=" << totalLength_
            << " refs_=" << refs_ << " more=" << !!(flags & IORING_CQE_F_MORE)
-           << " notif=" << !!(flags & IORING_CQE_F_NOTIF);
+           << " notif=" << !!(flags & IORING_CQE_F_NOTIF)
+           << " parent_=" << parent_;
+
+  if (!parent_) {
+    // parent_ was detached, queue this up and signal.
+    if (detachedSignal_(res, flags)) {
+      DVLOG(5) << "...detachedSignal done";
+      delete this;
+    }
+    return;
+  }
 
   if (flags & IORING_CQE_F_MORE) {
     // still expecting another ref for this
@@ -816,8 +1353,10 @@ void AsyncIoUringSocket::WriteSqe::callback(int res, uint32_t flags) noexcept {
             AsyncSocketException(AsyncSocketException::UNKNOWN, "write error"));
       }
     }
-    parent_->writeSqeActive_ = nullptr;
-    parent_->writeDone();
+    if (parent_) {
+      parent_->writeSqeActive_ = nullptr;
+      parent_->writeDone();
+    }
     if (--refs_ == 0) {
       delete this;
     }
@@ -855,32 +1394,58 @@ void AsyncIoUringSocket::writev(
 }
 
 bool AsyncIoUringSocket::canZC(std::unique_ptr<IOBuf> const& buf) const {
-  if (!options_.sendzcLimit) {
+  if (!options_.zeroCopyEnable) {
     return false;
   }
-  return buf->computeChainDataLength() >= options_.sendzcLimit;
+  return (*options_.zeroCopyEnable)(buf);
 }
+
+namespace {
+struct NullWriteCallback : AsyncWriter::WriteCallback {
+  void writeSuccess() noexcept override {}
+  void writeErr(size_t, const AsyncSocketException&) noexcept override {}
+
+} sNullWriteCallback;
+
+} // namespace
 
 void AsyncIoUringSocket::writeChain(
     WriteCallback* callback, std::unique_ptr<IOBuf>&& buf, WriteFlags flags) {
   auto canzc = canZC(buf);
+  if (!callback) {
+    callback = &sNullWriteCallback;
+  }
   WriteSqe* w = new WriteSqe(this, callback, std::move(buf), flags, canzc);
 
-  if (writeSqeActive_) {
+  DVLOG(5) << "AsyncIoUringSocket::writeChain(" << this
+           << " ) state=" << stateAsString() << " size=" << w->totalLength_
+           << " cb=" << callback << " fd=" << fd_ << " usedFd_ = " << usedFd_;
+  if (state_ == State::FastOpen && !fastOpenSqe_) {
+    fastOpenSqe_ = std::make_unique<FastOpenSqe>(
+        this, peerAddress_, std::unique_ptr<WriteSqe>(w));
+    backend_->submitSoon(*fastOpenSqe_);
+  } else {
     writeSqeQueue_.push_back(*w);
     DVLOG(5) << "enquque " << w << " as have active. queue now "
              << writeSqeQueue_.size();
-  } else {
-    writeSqeActive_ = w;
-    doSubmitWrite();
+    processWriteQueue();
   }
 }
 
-NetworkSocket AsyncIoUringSocket::takeFd() {
-  auto ret = std::exchange(fd_, {});
-  if (fdRegistered_) {
+namespace {
+
+class UnregisterFdSqe : public IoSqeBase {
+ public:
+  UnregisterFdSqe(IoUringBackend* b, IoUringFdRegistrationRecord* f)
+      : backend(b), fd(f) {}
+
+  void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    ::io_uring_prep_nop(sqe);
+  }
+
+  void callback(int, uint32_t) noexcept override {
     auto start = std::chrono::steady_clock::now();
-    if (!backend_->unregisterFd(fdRegistered_)) {
+    if (!backend->unregisterFd(fd)) {
       LOG(ERROR) << "Bad fd unregister";
     }
     auto end = std::chrono::steady_clock::now();
@@ -891,10 +1456,57 @@ NetworkSocket AsyncIoUringSocket::takeFd() {
                        .count()
                 << "us";
     }
+    delete this;
+  }
+
+  void callbackCancelled(int r, uint32_t f) noexcept override {
+    callback(r, f);
+  }
+
+ private:
+  IoUringBackend* backend;
+  IoUringFdRegistrationRecord* fd;
+};
+
+} // namespace
+
+void AsyncIoUringSocket::unregisterFd() {
+  if (fdRegistered_) {
+    // we have to asynchronously run this in case something wants the fd but has
+    // not been submitted yet. So first do a submit and then unregister
+    // we have to use an async SQE here rather than using the EventBase in case
+    // something cleans up the backend before running.
+    backend_->submitNextLoop(*new UnregisterFdSqe(backend_, fdRegistered_));
   }
   fdRegistered_ = nullptr;
+  usedFd_ = fd_.toFd();
+  mbFixedFileFlags_ = 0;
+}
+
+NetworkSocket AsyncIoUringSocket::takeFd() {
+  auto ret = std::exchange(fd_, {});
+  unregisterFd();
   usedFd_ = -1;
   return ret;
+}
+
+bool AsyncIoUringSocket::setZeroCopy(bool enable) {
+  if (!enable) {
+    options_.zeroCopyEnable.reset();
+  } else if (!options_.zeroCopyEnable) {
+    options_.zeroCopyEnable =
+        AsyncWriter::ZeroCopyEnableFunc([](auto&&) { return true; });
+  }
+  return true;
+}
+
+bool AsyncIoUringSocket::getZeroCopy() const {
+  return options_.zeroCopyEnable.hasValue();
+}
+
+void AsyncIoUringSocket::setZeroCopyEnableFunc(
+    AsyncWriter::ZeroCopyEnableFunc func) {
+  options_.zeroCopyEnable = std::move(func);
 }
 
 void AsyncIoUringSocket::closeProcessSubmit(struct io_uring_sqe* sqe) {
@@ -933,13 +1545,21 @@ void AsyncIoUringSocket::close() {
 void AsyncIoUringSocket::closeNow() {
   DestructorGuard dg(this);
   DVLOG(2) << "AsyncIoUringSocket::closeNow() this=" << this << " fd_=" << fd_
-           << " reg=" << fdRegistered_;
-  good_ = false;
+           << " reg=" << fdRegistered_ << " evb_=" << evb_;
   if (fdRegistered_) {
     // we cannot trust that close will actually end the socket, as a
     // registered socket may be held onto for a while. So always do a shutdown
     // in case.
     ::shutdown(fd_.toFd(), SHUT_RDWR);
+  }
+
+  state_ = State::Closed;
+  if (!evb_) {
+    // not attached after detach
+    ::close(fd_.toFd());
+    // the fd can be reused from this point
+    takeFd();
+    return;
   }
 
   if (closeSqe_) {
@@ -954,7 +1574,8 @@ void AsyncIoUringSocket::closeNow() {
   }
   if (readSqe_) {
     ReadCallback* callback = readSqe_->readCallback();
-    readSqe_->setReadCallback(nullptr);
+
+    readSqe_->setReadCallback(nullptr, false);
     if (callback) {
       callback->readEOF();
     }
@@ -962,6 +1583,8 @@ void AsyncIoUringSocket::closeNow() {
 }
 
 void AsyncIoUringSocket::sendTimeoutExpired() {
+  DVLOG(5) << "AsyncIoUringSocket::sendTimeoutExpired(this=" << this
+           << ") connect=" << !!connectSqe_;
   if (connectSqe_) {
     // reused the connect sqe
     return;
@@ -979,6 +1602,8 @@ void AsyncIoUringSocket::startSendTimeout() {
 }
 
 void AsyncIoUringSocket::setSendTimeout(uint32_t ms) {
+  DVLOG(5) << "AsyncIoUringSocket::setSendTimeout(this=" << this
+           << ") ms=" << ms;
   writeTimeoutTime_ = std::chrono::milliseconds{ms};
   if (evb_) {
     evb_->dcheckIsInEventBaseThread();
@@ -1047,7 +1672,27 @@ int AsyncIoUringSocket::setSockOpt(
 }
 
 bool AsyncIoUringSocket::getTFOSucceded() const {
-  return false;
+  return detail::tfo_succeeded(fd_);
+}
+
+void AsyncIoUringSocket::registerFd() {
+  auto start = std::chrono::steady_clock::now();
+  fdRegistered_ = backend_->registerFd(fd_.toFd());
+  auto end = std::chrono::steady_clock::now();
+  if (end - start > std::chrono::milliseconds(1)) {
+    LOG(INFO) << "registering fd took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(
+                     end - start)
+                     .count()
+              << "us";
+  }
+  if (fdRegistered_) {
+    usedFd_ = fdRegistered_->idx_;
+    mbFixedFileFlags_ = IOSQE_FIXED_FILE;
+  } else {
+    usedFd_ = fd_.toFd();
+    VLOG(1) << "unable to register fd: " << fd_.toFd();
+  }
 }
 
 void AsyncIoUringSocket::setFd(NetworkSocket ns) {
@@ -1062,32 +1707,33 @@ void AsyncIoUringSocket::setFd(NetworkSocket ns) {
       flags = flags & ~O_NONBLOCK;
       ensureSocketReturnCode(fcntl(ns.toFd(), F_SETFL, flags), "set flags");
     }
-
-    auto start = std::chrono::steady_clock::now();
-    fdRegistered_ = backend_->registerFd(fd_.toFd());
-    auto end = std::chrono::steady_clock::now();
-    if (end - start > std::chrono::milliseconds(1)) {
-      LOG(INFO) << "registering fd took "
-                << std::chrono::duration_cast<std::chrono::microseconds>(
-                       end - start)
-                       .count()
-                << "us";
-    }
-    if (fdRegistered_) {
-      usedFd_ = fdRegistered_->idx_;
-      mbFixedFileFlags_ = IOSQE_FIXED_FILE;
-    } else {
-      usedFd_ = fd_.toFd();
-      VLOG(1) << "unable to register fd: " << fd_.toFd();
-    }
-
-    // read does not use registered fd, as it can be long lived and leak socket
-    // files
-    readSqe_->setFd(fd_.toFd());
+    registerFd();
   } catch (std::exception const& e) {
     LOG(ERROR) << "unable to setFd " << ns.toFd() << " : " << e.what();
     ::close(ns.toFd());
     throw;
+  }
+}
+
+void AsyncIoUringSocket::shutdownWrite() {
+  if (shutdownFlags_ & ShutFlags_Write) {
+    return;
+  }
+  if (writeSqeActive_ || !writeSqeQueue_.empty()) {
+    shutdownFlags_ |= ShutFlags_WritePending;
+  } else {
+    shutdownWriteNow();
+  }
+}
+
+void AsyncIoUringSocket::shutdownWriteNow() {
+  if (shutdownFlags_ & ShutFlags_Write) {
+    return;
+  }
+  int ret = ::shutdown(fd_.toFd(), SHUT_WR);
+  if (!ret) {
+    shutdownFlags_ |= ShutFlags_Write;
+    shutdownFlags_ = shutdownFlags_ & ~ShutFlags_WritePending;
   }
 }
 
