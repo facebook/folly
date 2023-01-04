@@ -350,14 +350,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     // gcc < 6 doesn't exploit chunk alignment to generate the optimal
     // SSE clear from memset.  This is very hot code, so it is worth
     // handling that case specially.
-#if FOLLY_SSE >= 2 && __GNUC__ <= 5 && !__clang__
-    // this doesn't violate strict aliasing rules because __m128i is
-    // tagged as __may_alias__
-    auto* v = static_cast<__m128i*>(static_cast<void*>(&tags_[0]));
-    _mm_store_si128(v, _mm_setzero_si128());
-#else
     std::memset(&tags_[0], '\0', 16);
-#endif
   }
 
   void copyOverflowInfoFrom(F14Chunk const& rhs) {
