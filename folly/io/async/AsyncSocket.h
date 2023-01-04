@@ -442,7 +442,7 @@ class AsyncSocket : public AsyncSocketTransport {
   /**
    * Get the network socket used by the AsyncSocket.
    */
-  virtual NetworkSocket getNetworkSocket() const { return fd_; }
+  NetworkSocket getNetworkSocket() const override { return fd_; }
 
   /**
    * Extract the file descriptor from the AsyncSocket.
@@ -690,7 +690,7 @@ class AsyncSocket : public AsyncSocketTransport {
   bool readable() const override;
   bool writable() const override;
   bool isPending() const override;
-  virtual bool hangup() const;
+  bool hangup() const override;
   bool good() const override;
   bool error() const override;
   void attachEventBase(EventBase* eventBase) override;
@@ -775,7 +775,7 @@ class AsyncSocket : public AsyncSocketTransport {
    * data is read from the socket when the caller knows that
    * the SYN has been ACKed by the server.
    */
-  bool getTFOSucceded() const;
+  bool getTFOSucceded() const override;
 
   // Methods controlling socket options
 
@@ -942,14 +942,14 @@ class AsyncSocket : public AsyncSocketTransport {
    * Enables TFO behavior on the AsyncSocket if FOLLY_ALLOW_TFO
    * is set.
    */
-  void enableTFO() {
+  void enableTFO() override {
     // No-op if folly does not allow tfo
 #if FOLLY_ALLOW_TFO
     tfoInfo_.enabled = true;
 #endif
   }
 
-  void disableTransparentTls() { noTransparentTls_ = true; }
+  void disableTransparentTls() override { noTransparentTls_ = true; }
 
   void disableTSocks() { noTSocks_ = true; }
 

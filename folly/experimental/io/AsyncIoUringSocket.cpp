@@ -325,6 +325,10 @@ void AsyncIoUringSocket::ReadSqe::invalidState(ReadCallback* callback) {
   }
 }
 
+bool AsyncIoUringSocket::hangup() const {
+  return false;
+}
+
 void AsyncIoUringSocket::ReadSqe::setReadCallback(ReadCallback* callback) {
   DVLOG(5) << "AsyncIoUringSocket::setReadCB() this=" << this
            << " cb=" << callback << " count=" << setReadCbCount_ << " movable="
@@ -1040,6 +1044,10 @@ int AsyncIoUringSocket::setNoDelay(bool noDelay) {
 int AsyncIoUringSocket::setSockOpt(
     int level, int optname, const void* optval, socklen_t optsize) {
   return ::setsockopt(fd_.toFd(), level, optname, optval, optsize);
+}
+
+bool AsyncIoUringSocket::getTFOSucceded() const {
+  return false;
 }
 
 void AsyncIoUringSocket::setFd(NetworkSocket ns) {

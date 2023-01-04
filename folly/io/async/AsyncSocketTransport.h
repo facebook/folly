@@ -72,6 +72,7 @@ class AsyncSocketTransport : public AsyncTransport {
       const folly::SocketAddress& bindAddr = anyAddress(),
       const std::string& ifName = "") noexcept = 0;
 
+  virtual bool hangup() const = 0;
   void setPeerCertificate(
       std::unique_ptr<const AsyncTransportCertificate> cert) {
     peerCertData_ = std::move(cert);
@@ -93,6 +94,11 @@ class AsyncSocketTransport : public AsyncTransport {
   const AsyncTransportCertificate* getSelfCertificate() const override {
     return selfCertData_.get();
   }
+
+  virtual NetworkSocket getNetworkSocket() const = 0;
+  virtual bool getTFOSucceded() const = 0;
+  virtual void enableTFO() = 0;
+  virtual void disableTransparentTls() {}
 
  protected:
   ~AsyncSocketTransport() override = default;

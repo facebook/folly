@@ -148,6 +148,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   bool good() const override { return good_; }
 
   bool readable() const override { return good(); }
+  bool hangup() const override;
 
   bool connecting() const override {
     return connectSqe_ && connectSqe_->inFlight();
@@ -225,6 +226,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   std::string getApplicationProtocol() const noexcept override {
     return applicationProtocol_;
   }
+  NetworkSocket getNetworkSocket() const override { return fd_; }
 
   void setSecurityProtocol(std::string s) { securityProtocol_ = std::move(s); }
   void setApplicationProtocol(std::string s) {
@@ -233,6 +235,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
   void asyncDetachFd(AsyncDetachFdCallback* callback);
   bool readSqeInFlight() const { return readSqe_->inFlight(); }
+  bool getTFOSucceded() const override;
+  void enableTFO() override {}
 
  private:
   ~AsyncIoUringSocket() override;
