@@ -732,10 +732,6 @@ void IoSqeBase::internalCallback(int res, uint32_t flags) noexcept {
   }
 }
 
-void IoSqeBase::internalUnmarkInflight() {
-  inFlight_ = false;
-}
-
 FOLLY_ALWAYS_INLINE void IoUringBackend::setProcessTimers() {
   processTimers_ = true;
   --numInternalEvents_;
@@ -2021,6 +2017,47 @@ static bool doKernelSupportsDeferTaskrun() {
   return false;
 }
 
+static bool doKernelSupportsSendZC() {
+#if FOLLY_IO_URING_UP_TO_DATE
+  struct io_uring ring;
+
+  int ret = io_uring_queue_init(4, &ring, 0);
+  if (ret) {
+    LOG(ERROR)
+        << "doKernelSupportsSendZC: Unexpectedly io_uring_queue_init failed";
+    return false;
+  }
+  SCOPE_EXIT { io_uring_queue_exit(&ring); };
+
+  auto* sqe = ::io_uring_get_sqe(&ring);
+  if (!sqe) {
+    LOG(ERROR) << "doKernelSupportsSendZC: no sqe?";
+    return false;
+  }
+
+  io_uring_prep_sendmsg_zc(sqe, -1, nullptr, 0);
+  ret = ::io_uring_submit(&ring);
+  if (ret != 1) {
+    return false;
+  }
+
+  struct io_uring_cqe* cqe = nullptr;
+  ret = ::io_uring_wait_cqe(&ring, &cqe);
+  if (ret) {
+    return false;
+  }
+
+  if (!(cqe->flags & IORING_CQE_F_MORE)) {
+    return false; // zerocopy sends two notifications
+  }
+
+  return (cqe->flags & IORING_CQE_F_NOTIF) || (cqe->res == -EBADF);
+#endif
+
+  // fallthrough
+  return false;
+}
+
 } // namespace
 
 bool IoUringBackend::kernelSupportsRecvmsgMultishot() {
@@ -2030,6 +2067,11 @@ bool IoUringBackend::kernelSupportsRecvmsgMultishot() {
 
 bool IoUringBackend::kernelSupportsDeferTaskrun() {
   static bool const ret = doKernelSupportsDeferTaskrun();
+  return ret;
+}
+
+bool IoUringBackend::kernelSupportsSendZC() {
+  static bool const ret = doKernelSupportsSendZC();
   return ret;
 }
 

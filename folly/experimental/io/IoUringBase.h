@@ -45,11 +45,17 @@ struct IoSqeBase
   bool cancelled() const { return cancelled_; }
   void markCancelled() { cancelled_ = true; }
 
+ protected:
+  // This is used if you want to prepare this sqe for reuse, but will manage the
+  // lifetime. For example for zerocopy send, you might want to reuse the sqe
+  // but still have a notification inbound.
+  void prepareForReuse() { internalUnmarkInflight(); }
+
  private:
   friend class IoUringBackend;
   void internalSubmit(struct io_uring_sqe* sqe) noexcept;
   void internalCallback(int res, uint32_t flags) noexcept;
-  void internalUnmarkInflight();
+  void internalUnmarkInflight() { inFlight_ = false; }
 
   bool inFlight_ = false;
   bool cancelled_ = false;

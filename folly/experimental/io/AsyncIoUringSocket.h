@@ -56,13 +56,25 @@ class AsyncDetachFdCallback {
 
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
+  struct Options {
+    Options() : sendzcLimit(0) {}
+    uint32_t sendzcLimit;
+  };
+
   using UniquePtr = std::unique_ptr<AsyncIoUringSocket, Destructor>;
   explicit AsyncIoUringSocket(
-      AsyncTransport::UniquePtr other, IoUringBackend* backend = nullptr);
+      AsyncTransport::UniquePtr other,
+      IoUringBackend* backend = nullptr,
+      Options const& options = Options{});
   explicit AsyncIoUringSocket(
-      AsyncSocket* sock, IoUringBackend* backend = nullptr);
+      AsyncSocket* sock,
+      IoUringBackend* backend = nullptr,
+      Options const& options = Options{});
   explicit AsyncIoUringSocket(
-      EventBase* evb, IoUringBackend* backend = nullptr);
+      EventBase* evb,
+      IoUringBackend* backend = nullptr,
+      Options const& options = Options{});
+
   static bool supports(EventBase* backend);
 
   void connect(
@@ -118,6 +130,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       WriteCallback* callback,
       std::unique_ptr<IOBuf>&& buf,
       WriteFlags flags) override;
+  bool canZC(std::unique_ptr<IOBuf> const& buf) const;
 
   // AsyncTransport
   void close() override;
@@ -327,7 +340,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
         AsyncIoUringSocket* parent,
         WriteCallback* callback,
         std::unique_ptr<IOBuf>&& buf,
-        WriteFlags flags);
+        WriteFlags flags,
+        bool zc);
     ~WriteSqe() override { DVLOG(5) << "~WriteSqe() " << this; }
 
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
@@ -343,6 +357,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     small_vector<struct iovec, 2> iov_;
     size_t totalLength_;
     struct msghdr msg_;
+
+    bool zerocopy_{false};
+    int refs_ = 1;
   };
   using WriteSqeList = boost::intrusive::list<
       WriteSqe,
@@ -382,6 +399,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   EventBase* evb_ = nullptr;
   NetworkSocket fd_;
   IoUringBackend* backend_ = nullptr;
+  Options options_;
   mutable SocketAddress localAddress_;
   mutable SocketAddress peerAddress_;
   bool good_ = true;

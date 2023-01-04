@@ -62,20 +62,23 @@ NetworkSocket makeConnectSocket(SocketAddress const& peerAddress) {
 } // namespace
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    folly::AsyncSocket* other, IoUringBackend* backend)
-    : AsyncIoUringSocket(other->getEventBase(), backend) {
+    folly::AsyncSocket* other, IoUringBackend* backend, Options const& options)
+    : AsyncIoUringSocket(other->getEventBase(), backend, options) {
   setPreReceivedData(other->takePreReceivedData());
   setFd(other->detachNetworkSocket());
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    AsyncTransport::UniquePtr other, IoUringBackend* backend)
-    : AsyncIoUringSocket(getAsyncSocket(other), backend) {
+    AsyncTransport::UniquePtr other,
+    IoUringBackend* backend,
+    Options const& options)
+    : AsyncIoUringSocket(getAsyncSocket(other), backend, options) {
   setPreReceivedData(other->takePreReceivedData());
 }
 
-AsyncIoUringSocket::AsyncIoUringSocket(EventBase* evb, IoUringBackend* backend)
-    : evb_(evb), backend_(backend) {
+AsyncIoUringSocket::AsyncIoUringSocket(
+    EventBase* evb, IoUringBackend* backend, Options const& options)
+    : evb_(evb), backend_(backend), options_(options) {
   if (!backend_) {
     backend_ = IoUringEventBaseLocal::try_get(evb);
   }
@@ -566,12 +569,14 @@ AsyncIoUringSocket::WriteSqe::WriteSqe(
     AsyncIoUringSocket* parent,
     WriteCallback* callback,
     std::unique_ptr<IOBuf>&& buf,
-    WriteFlags flags)
+    WriteFlags flags,
+    bool zc)
     : parent_(parent),
       callback_(callback),
       buf_(std::move(buf)),
       flags_(flags),
-      totalLength_(0) {
+      totalLength_(0),
+      zerocopy_(zc) {
   IOBuf const* p = buf_.get();
   do {
     if (auto l = p->length(); l > 0) {
@@ -610,8 +615,14 @@ int AsyncIoUringSocket::WriteSqe::sendMsgFlags() const {
 void AsyncIoUringSocket::WriteSqe::processSubmit(
     struct io_uring_sqe* sqe) noexcept {
   DVLOG(5) << "write sqe submit " << this << " iovs=" << msg_.msg_iovlen
-           << " length=" << totalLength_ << " ptr=" << msg_.msg_iov;
-  ::io_uring_prep_sendmsg(sqe, parent_->usedFd_, &msg_, sendMsgFlags());
+           << " length=" << totalLength_ << " ptr=" << msg_.msg_iov
+           << " zc=" << zerocopy_;
+  if (zerocopy_) {
+    ::io_uring_prep_sendmsg_zc(
+        sqe, parent_->usedFd_, &msg_, sendMsgFlags() | MSG_WAITALL);
+  } else {
+    ::io_uring_prep_sendmsg(sqe, parent_->usedFd_, &msg_, sendMsgFlags());
+  }
   sqe->flags |= parent_->mbFixedFileFlags_;
 }
 
@@ -731,13 +742,38 @@ void AsyncIoUringSocket::doReSubmitWrite() noexcept {
   // do not update the send timeout for partial writes
 }
 
-void AsyncIoUringSocket::WriteSqe::callbackCancelled(int, uint32_t) noexcept {
-  delete this;
+void AsyncIoUringSocket::WriteSqe::callbackCancelled(
+    int, uint32_t flags) noexcept {
+  DVLOG(5) << "write sqe callback cancelled " << this << " flags=" << flags
+           << " refs_=" << refs_ << " more=" << !!(flags & IORING_CQE_F_MORE)
+           << " notif=" << !!(flags & IORING_CQE_F_NOTIF);
+  if (flags & IORING_CQE_F_MORE) {
+    return;
+  }
+  if (--refs_ <= 0) {
+    delete this;
+  }
 }
+
 void AsyncIoUringSocket::WriteSqe::callback(int res, uint32_t flags) noexcept {
   DVLOG(5) << "write sqe callback " << this << " res=" << res
            << " flags=" << flags << " iovStart=" << iov_.size()
-           << " iovRemaining=" << msg_.msg_iovlen << " length=" << totalLength_;
+           << " iovRemaining=" << msg_.msg_iovlen << " length=" << totalLength_
+           << " refs_=" << refs_ << " more=" << !!(flags & IORING_CQE_F_MORE)
+           << " notif=" << !!(flags & IORING_CQE_F_NOTIF);
+
+  if (flags & IORING_CQE_F_MORE) {
+    // still expecting another ref for this
+    ++refs_;
+  }
+
+  if (flags & IORING_CQE_F_NOTIF) {
+    if (--refs_ == 0) {
+      delete this;
+    }
+    return;
+  }
+
   DestructorGuard dg(parent_);
 
   if (res > 0 && (size_t)res < totalLength_) {
@@ -757,10 +793,13 @@ void AsyncIoUringSocket::WriteSqe::callback(int res, uint32_t flags) noexcept {
         --msg_.msg_iovlen;
       }
     }
+
+    // must make inflight false even if MORE is set
+    prepareForReuse();
+
     // partial write
     parent_->doReSubmitWrite();
   } else {
-    buf_.reset();
     if (callback_) {
       if (res >= 0) {
         // todo
@@ -775,7 +814,9 @@ void AsyncIoUringSocket::WriteSqe::callback(int res, uint32_t flags) noexcept {
     }
     parent_->writeSqeActive_ = nullptr;
     parent_->writeDone();
-    delete this;
+    if (--refs_ == 0) {
+      delete this;
+    }
   }
 }
 
@@ -809,9 +850,18 @@ void AsyncIoUringSocket::writev(
   writeChain(callback, std::move(first), wf);
 }
 
+bool AsyncIoUringSocket::canZC(std::unique_ptr<IOBuf> const& buf) const {
+  if (!options_.sendzcLimit) {
+    return false;
+  }
+  return buf->computeChainDataLength() >= options_.sendzcLimit;
+}
+
 void AsyncIoUringSocket::writeChain(
     WriteCallback* callback, std::unique_ptr<IOBuf>&& buf, WriteFlags flags) {
-  WriteSqe* w = new WriteSqe(this, callback, std::move(buf), flags);
+  auto canzc = canZC(buf);
+  WriteSqe* w = new WriteSqe(this, callback, std::move(buf), flags, canzc);
+
   if (writeSqeActive_) {
     writeSqeQueue_.push_back(*w);
     DVLOG(5) << "enquque " << w << " as have active. queue now "

@@ -228,6 +228,7 @@ class IoUringBackend : public EventBaseBackendBase {
   bool kernelHasNonBlockWriteFixes() const;
   static bool kernelSupportsRecvmsgMultishot();
   static bool kernelSupportsDeferTaskrun();
+  static bool kernelSupportsSendZC();
 
   IoUringFdRegistrationRecord* registerFd(int fd) noexcept {
     return fdRegistry_.alloc(fd);

@@ -216,6 +216,8 @@ struct TestParams {
   bool manySmallBuffers = false;
   bool epoll = false;
   bool supportBufferMovable = true;
+  bool sendzc = false;
+  bool registerFd = true;
   std::string testName() const {
     return folly::to<std::string>(
         ioUringServer ? "ioUringServer" : "oldServer",
@@ -223,9 +225,10 @@ struct TestParams {
         ioUringClient ? "ioUringClient" : "oldClient",
         "_",
         manySmallBuffers ? "manySmallBuffers" : "oneBigBuffer",
+        supportBufferMovable ? "" : "_noSupportBufferMovable",
+        sendzc ? "_zerocopy" : "",
         "_",
-        supportBufferMovable ? "" : "noSupportBufferMovable",
-        "_",
+        registerFd ? "" : "_noRegisterFd",
         epoll ? "epoll" : "iouring",
         "Backend");
   }
@@ -236,7 +239,8 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
                                public AsyncSocket::ConnectCallback {
  public:
   static IoUringBackend::Options ioOptions(TestParams const& p) {
-    auto options = IoUringBackend::Options{}.setUseRegisteredFds(64);
+    auto options =
+        IoUringBackend::Options{}.setUseRegisteredFds(p.registerFd ? 64 : 0);
     if (p.manySmallBuffers) {
       options.setInitialProvidedBuffers(1024, 2000);
     } else {
@@ -311,10 +315,18 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
       }
     }
   };
+
+  AsyncIoUringSocket::Options ioUringSocketOptions() const {
+    AsyncIoUringSocket::Options ret;
+    ret.sendzcLimit = GetParam().sendzc ? 1 : 0;
+    return ret;
+  }
+
   Connected makeConnected(bool server_should_read = true) {
     AsyncTransport::UniquePtr client;
     if (GetParam().ioUringClient) {
-      auto c = new AsyncIoUringSocket(base.get(), backendForSocketConstructor);
+      auto c = new AsyncIoUringSocket(
+          base.get(), backendForSocketConstructor, ioUringSocketOptions());
       c->connect(this, serverAddress);
       client = AsyncTransport::UniquePtr(c);
     } else {
@@ -334,7 +346,8 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     AsyncTransport::UniquePtr sock = GetParam().ioUringServer
         ? AsyncTransport::UniquePtr(new AsyncIoUringSocket(
               AsyncSocket::newSocket(base.get(), fd),
-              backendForSocketConstructor))
+              backendForSocketConstructor,
+              ioUringSocketOptions()))
         : AsyncTransport::UniquePtr(AsyncSocket::newSocket(base.get(), fd));
     if (server_should_read) {
       sock->setReadCB(cb.get());
@@ -652,18 +665,41 @@ TEST_P(AsyncIoUringSocketTestAll, SendTimeout) {
 
 auto mkAllTestParams() {
   std::vector<TestParams> t;
+
+  auto addFeatureCases = [&](TestParams const& base) {
+    TestParams all = base;
+
+    // add test cases where each feature is not the default, as well as one
+    // where all the features are not the default
+    auto add_flip_case = [&](auto ptr) {
+      auto tc = base;
+      tc.*ptr = all.*ptr = !(tc.*ptr);
+      t.push_back(tc);
+    };
+
+    add_flip_case(&TestParams::registerFd);
+    if (IoUringBackend::kernelSupportsSendZC()) {
+      add_flip_case(&TestParams::sendzc);
+    }
+    add_flip_case(&TestParams::supportBufferMovable);
+    t.push_back(all);
+  };
+
   for (bool server : {false, true}) {
     for (bool client : {false, true}) {
       for (bool manySmallBuffers : {false, true}) {
         for (bool epoll : {false, true}) {
-          for (bool bm : {false, true}) {
-            TestParams base;
-            base.ioUringServer = server;
-            base.ioUringClient = client;
-            base.manySmallBuffers = manySmallBuffers;
-            base.epoll = epoll;
-            base.supportBufferMovable = bm;
-            t.push_back(base);
+          TestParams base;
+          base.ioUringServer = server;
+          base.ioUringClient = client;
+          base.manySmallBuffers = manySmallBuffers;
+          base.epoll = epoll;
+          t.push_back(base);
+
+          // only expand feature flags in some cases to reduce the massive
+          // explosion of tests
+          if (server && client && !epoll) {
+            addFeatureCases(base);
           }
         }
       }
