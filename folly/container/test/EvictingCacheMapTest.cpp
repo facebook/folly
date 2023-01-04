@@ -174,7 +174,15 @@ TEST(EvictingCacheMap, PruneHookTest) {
     sum += k;
   };
 
+  EXPECT_FALSE(map.getPruneHook());
   map.setPruneHook(pruneCb);
+  EXPECT_TRUE(map.getPruneHook());
+  {
+    int v = 42;
+    map.getPruneHook()(42, std::move(v));
+  }
+  EXPECT_EQ(42, sum);
+  sum = 0;
 
   for (int i = 0; i < 100; i++) {
     map.set(i, i);
@@ -265,6 +273,21 @@ TEST(EvictingCacheMap, PruneHookTest) {
   map.erase(99);
 
   EXPECT_EQ(0, sum);
+
+  // But can provide your own hook
+  map.erase(98, pruneCb);
+
+  EXPECT_EQ(98, sum);
+  sum = 0;
+
+  // And with iterator
+  auto it1 = map.find(96);
+  auto it2 = map.find(97);
+
+  auto it3 = map.erase(it2, pruneCb);
+  EXPECT_EQ(it1, it3);
+  EXPECT_EQ(97, sum);
+  sum = 0;
 
   // Destructor does not call prune hook (NOTE: possibly source of usage bugs)
   map.~EvictingCacheMap<int, int>();

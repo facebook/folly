@@ -45,6 +45,9 @@ namespace folly {
  *
  * This is NOT a thread-safe implementation.
  *
+ * Iterators and references are only invalidated when the referenced entry
+ * might have been removed (pruned or erased), like std::map.
+ *
  * NOTE: maxSize==0 is a special case that disables automatic evictions.
  * prune() can be used for manually trimming down the number of entries.
  *
@@ -296,28 +299,33 @@ class EvictingCacheMap {
 
   /**
    * Erase the key-value pair associated with key if it exists. Prune hook
-   * is not called.
+   * is not called unless one passed in here.
    * @param key key associated with the value
+   * @param eraseHook callback to use with erased entry (similar to a prune
+   * hook)
    * @return true if the key existed and was erased, else false
    */
-  bool erase(const TKey& key) { return eraseImpl(key); }
+  bool erase(const TKey& key, PruneHookCall eraseHook = nullptr) {
+    return eraseKeyImpl(key, eraseHook);
+  }
 
   template <typename K, EnableHeterogeneousErase<K, int> = 0>
-  bool erase(const K& key) {
-    return eraseImpl(key);
+  bool erase(const K& key, PruneHookCall eraseHook = nullptr) {
+    return eraseKeyImpl(key, eraseHook);
   }
 
   /**
-   * Erase the key-value pair associated with pos. Prune hook is not called.
+   * Erase the key-value pair associated with pos. Prune hook is not called
+   * unless one passed in here.
    * @param pos iterator to the element to be erased
+   * @param eraseHook callback to use with erased entry (similar to a prune
+   * hook)
    * @return iterator to the following element or end() if pos was the last
    *     element
    */
-  iterator erase(const_iterator pos) {
-    auto* node = const_cast<Node*>(&(*pos.base()));
-    std::unique_ptr<Node> nptr(node);
-    index_.erase(node);
-    return iterator(lru_.erase(pos.base()));
+  iterator erase(const_iterator pos, PruneHookCall eraseHook = nullptr) {
+    return iterator(
+        eraseImpl(const_cast<Node*>(&(*pos.base())), pos.base(), eraseHook));
   }
 
   /**
@@ -426,6 +434,8 @@ class EvictingCacheMap {
    */
   void setPruneHook(PruneHookCall pruneHook) { pruneHook_ = pruneHook; }
 
+  PruneHookCall getPruneHook() { return pruneHook_; }
+
   /**
    * Prune the minimum of pruneSize and size() from the back of the LRU.
    * Will throw if pruneHook throws.
@@ -442,7 +452,7 @@ class EvictingCacheMap {
       lru_.erase(lru_.iterator_to(*node));
       index_.erase(node);
       if (ph) {
-        // NOTE: might throw, so was are in an exception-safe state
+        // NOTE: might throw, so we are in an exception-safe state
         ph(node->pr.first, std::move(node->pr.second));
       }
     }
@@ -561,11 +571,25 @@ class EvictingCacheMap {
                : self.end();
   }
 
+  typename NodeList::iterator eraseImpl(
+      Node* ptr,
+      typename NodeList::const_iterator base_iter,
+      PruneHookCall eraseHook) {
+    std::unique_ptr<Node> node_owner(ptr);
+    index_.erase(ptr);
+    auto next_base_iter = lru_.erase(base_iter);
+    if (eraseHook) {
+      // NOTE: might throw, so we are in an exception-safe state
+      eraseHook(ptr->pr.first, std::move(ptr->pr.second));
+    }
+    return next_base_iter;
+  }
+
   template <typename K>
-  bool eraseImpl(const K& key) {
+  bool eraseKeyImpl(const K& key, PruneHookCall eraseHook) {
     Node* ptr = findInIndex(key);
     if (ptr) {
-      erase(const_iterator(lru_.iterator_to(*ptr)));
+      eraseImpl(ptr, lru_.iterator_to(*ptr), eraseHook);
       return true;
     }
     return false;
