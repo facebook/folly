@@ -710,6 +710,7 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
       appBytesWritten_(oldAsyncSocket->appBytesWritten_),
       rawBytesWritten_(oldAsyncSocket->rawBytesWritten_),
       preReceivedData_(std::move(oldAsyncSocket->preReceivedData_)),
+      tfoInfo_(std::move(oldAsyncSocket->tfoInfo_)),
       byteEventHelper_(std::move(oldAsyncSocket->byteEventHelper_)) {
   VLOG(5) << "move AsyncSocket(" << oldAsyncSocket << "->" << this
           << ", evb=" << eventBase_ << ", fd=" << fd_
