@@ -835,11 +835,12 @@ TEST(IoUringBackend, RegisteredFds) {
 
   SCOPE_EXIT { ::close(eventFd); };
 
-  // verify for useRegisteredFds = false we get a nullptr FdRegistrationRecord
+  // verify for useRegisteredFds = false we get a nullptr
+  // IoUringFdRegistrationRecord
   auto* record = backendNoReg->registerFd(eventFd);
   CHECK(!record);
 
-  std::vector<folly::IoUringBackend::FdRegistrationRecord*> records;
+  std::vector<folly::IoUringFdRegistrationRecord*> records;
   // we use kBackendCapacity since the timerFd
   // allocates it only on the first loop
   records.reserve(kBackendCapacity);
@@ -1276,7 +1277,7 @@ TEST(IoUringBackend, ProvidedBuffers) {
 
   EXPECT_EQ(2, bufferProvider->count());
 
-  struct Reader : folly::IoUringBackend::IoSqeBase {
+  struct Reader : folly::IoSqeBase {
     Reader(int fd, uint16_t bgid, std::function<void(int, uint32_t)> oncqe)
         : fd_(fd), bgid_(bgid), oncqe_(oncqe) {}
 

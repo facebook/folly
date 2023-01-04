@@ -660,14 +660,14 @@ struct DetachFdState : AsyncReader::ReadCallback {
   bool isBufferMovable() noexcept override { return true; }
 };
 
-struct CancelSqe : IoUringBackend::IoSqeBase {
-  explicit CancelSqe(IoUringBackend::IoSqeBase* sqe) : target_(sqe) {}
+struct CancelSqe : IoSqeBase {
+  explicit CancelSqe(IoSqeBase* sqe) : target_(sqe) {}
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     ::io_uring_prep_cancel(sqe, target_, 0);
   }
   void callback(int, uint32_t) noexcept override { delete this; }
   void callbackCancelled() noexcept override { delete this; }
-  IoUringBackend::IoSqeBase* target_;
+  IoSqeBase* target_;
 };
 
 } // namespace

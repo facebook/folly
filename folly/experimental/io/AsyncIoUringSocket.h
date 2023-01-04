@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <sys/types.h>
-
 #include <chrono>
 #include <map>
 #include <memory>
@@ -27,7 +25,7 @@
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/detail/SocketFastOpen.h>
-#include <folly/experimental/io/IoUringBackend.h>
+#include <folly/experimental/io/IoUringBase.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufIovecBuilder.h>
 #include <folly/io/ShutdownSocketSet.h>
@@ -43,6 +41,8 @@
 #include <folly/small_vector.h>
 
 namespace folly {
+
+class IoUringBackend;
 
 class AsyncDetachFdCallback {
  public:
@@ -230,14 +230,14 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void appendPreReceive(std::unique_ptr<IOBuf> iobuf) noexcept;
   void readProcessSubmit(
       struct io_uring_sqe* sqe,
-      IoUringBackend::ProvidedBufferProviderBase* bufferProvider,
+      IoUringBufferProviderBase* bufferProvider,
       size_t* maxSize,
-      IoUringBackend::ProvidedBufferProviderBase* usedBufferProvider) noexcept;
+      IoUringBufferProviderBase* usedBufferProvider) noexcept;
   void readCallback(
       int res,
       uint32_t flags,
       size_t maxSize,
-      IoUringBackend::ProvidedBufferProviderBase* bufferProvider) noexcept;
+      IoUringBufferProviderBase* bufferProvider) noexcept;
   void writeDone() noexcept;
   void doSubmitWrite() noexcept;
   void doReSubmitWrite() noexcept;
@@ -253,7 +253,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void readError();
   NetworkSocket takeFd();
 
-  struct ReadSqe : IoUringBackend::IoSqeBase, DelayedDestruction {
+  struct ReadSqe : IoSqeBase, DelayedDestruction {
     using UniquePtr = std::unique_ptr<ReadSqe, Destructor>;
     ReadSqe(AsyncIoUringSocket* parent, IoUringBackend* backend);
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
@@ -294,9 +294,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     bool readCallbackUseIoBufs() const;
     void invalidState(ReadCallback* callback);
 
-    IoUringBackend::ProvidedBufferProviderBase* lastUsedBufferProvider_;
+    IoUringBufferProviderBase* lastUsedBufferProvider_;
     ReadCallback* readCallback_ = nullptr;
-    IoUringBackend::ProvidedBufferProviderBase* bufferProvider_;
+    IoUringBufferProviderBase* bufferProvider_;
     AsyncIoUringSocket* parent_;
     size_t maxSize_;
     uint64_t setReadCbCount_{0};
@@ -313,7 +313,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     unsigned int mbFixedFileFlags_ = 0;
   };
 
-  struct CloseSqe : IoUringBackend::IoSqeBase {
+  struct CloseSqe : IoSqeBase {
     explicit CloseSqe(AsyncIoUringSocket* parent) : parent_(parent) {}
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->closeProcessSubmit(sqe);
@@ -326,7 +326,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   struct write_sqe_tag;
   using write_sqe_hook =
       boost::intrusive::list_base_hook<boost::intrusive::tag<write_sqe_tag>>;
-  struct WriteSqe final : IoUringBackend::IoSqeBase, public write_sqe_hook {
+  struct WriteSqe final : IoSqeBase, public write_sqe_hook {
     explicit WriteSqe(
         AsyncIoUringSocket* parent,
         WriteCallback* callback,
@@ -364,7 +364,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     AsyncIoUringSocket* socket_;
   };
 
-  struct ConnectSqe : IoUringBackend::IoSqeBase, AsyncTimeout {
+  struct ConnectSqe : IoSqeBase, AsyncTimeout {
     explicit ConnectSqe(AsyncIoUringSocket* parent)
         : AsyncTimeout(parent->evb_), parent_(parent) {}
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
@@ -390,7 +390,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   mutable SocketAddress peerAddress_;
   bool good_ = true;
   bool error_ = false;
-  IoUringBackend::FdRegistrationRecord* fdRegistered_ = nullptr;
+  IoUringFdRegistrationRecord* fdRegistered_ = nullptr;
   int usedFd_ = -1;
   unsigned int mbFixedFileFlags_ = 0;
   std::unique_ptr<CloseSqe> closeSqe_{new CloseSqe(this)};

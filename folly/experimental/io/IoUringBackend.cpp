@@ -410,7 +410,7 @@ class ProvidedBuffersBuffer {
   uint32_t bufferCount_;
 };
 
-class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
+class ProvidedBufferRing : public IoUringBufferProviderBase {
  public:
   ProvidedBufferRing(
       IoUringBackend* backend,
@@ -418,7 +418,7 @@ class ProvidedBufferRing : public IoUringBackend::ProvidedBufferProviderBase {
       int count,
       int bufferShift,
       int ringSizeShift)
-      : IoUringBackend::ProvidedBufferProviderBase(
+      : IoUringBufferProviderBase(
             gid, ProvidedBuffersBuffer::calcBufferSize(bufferShift)),
         backend_(backend),
         buffer_(count, bufferShift, ringSizeShift, true) {
@@ -588,8 +588,7 @@ ProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&... args) {
 #else
 
 template <class... Args>
-IoUringBackend::ProvidedBufferProviderBase::UniquePtr makeProvidedBufferRing(
-    Args&&...) {
+IoUringBufferProviderBase::UniquePtr makeProvidedBufferRing(Args&&...) {
   throw IoUringBackend::NotAvailable(
       "Provided buffer rings not compiled into this binary");
 }
@@ -647,7 +646,7 @@ int IoUringBackend::FdRegistry::init() {
   return 0;
 }
 
-IoUringBackend::FdRegistrationRecord* IoUringBackend::FdRegistry::alloc(
+IoUringFdRegistrationRecord* IoUringBackend::FdRegistry::alloc(
     int fd) noexcept {
   if (FOLLY_UNLIKELY(err_ || free_.empty())) {
     return nullptr;
@@ -675,8 +674,7 @@ IoUringBackend::FdRegistrationRecord* IoUringBackend::FdRegistry::alloc(
   return &record;
 }
 
-bool IoUringBackend::FdRegistry::free(
-    IoUringBackend::FdRegistrationRecord* record) {
+bool IoUringBackend::FdRegistry::free(IoUringFdRegistrationRecord* record) {
   if (record && (--record->count_ == 0)) {
     record->fd_ = -1;
     int ret = ::io_uring_register_files_update(
@@ -712,8 +710,7 @@ FOLLY_ALWAYS_INLINE struct io_uring_sqe* IoUringBackend::get_sqe() {
   return ret;
 }
 
-void IoUringBackend::IoSqeBase::internalSubmit(
-    struct io_uring_sqe* sqe) noexcept {
+void IoSqeBase::internalSubmit(struct io_uring_sqe* sqe) noexcept {
   if (inFlight_) {
     LOG(ERROR) << "cannot resubmit an IoSqe. type="
                << folly::demangle(typeid(*this));
@@ -724,8 +721,7 @@ void IoUringBackend::IoSqeBase::internalSubmit(
   ::io_uring_sqe_set_data(sqe, this);
 }
 
-void IoUringBackend::IoSqeBase::internalCallback(
-    int res, uint32_t flags) noexcept {
+void IoSqeBase::internalCallback(int res, uint32_t flags) noexcept {
   if (!(flags & IORING_CQE_F_MORE)) {
     inFlight_ = false;
   }
@@ -736,7 +732,7 @@ void IoUringBackend::IoSqeBase::internalCallback(
   }
 }
 
-void IoUringBackend::IoSqeBase::internalUnmarkInflight() {
+void IoSqeBase::internalUnmarkInflight() {
   inFlight_ = false;
 }
 
@@ -1555,7 +1551,7 @@ void IoUringBackend::submitSoon(IoSqeBase& ioSqe) noexcept {
 
 namespace {
 
-struct IoSqeNop final : IoUringBackend::IoSqeBase {
+struct IoSqeNop final : IoSqeBase {
   void processSubmit(struct io_uring_sqe*) noexcept override {
     LOG(FATAL) << "IoSqeNop: cannot submit this!";
   }
@@ -1969,8 +1965,8 @@ namespace {
 
 static bool doKernelSupportsRecvmsgMultishot() {
   try {
-    struct S : IoUringBackend::IoSqeBase {
-      explicit S(IoUringBackend::ProvidedBufferProviderBase* bp) : bp_(bp) {
+    struct S : IoSqeBase {
+      explicit S(IoUringBufferProviderBase* bp) : bp_(bp) {
         fd = open("/dev/null", O_RDONLY);
         memset(&msg, 0, sizeof(msg));
       }
@@ -1996,7 +1992,7 @@ static bool doKernelSupportsRecvmsgMultishot() {
 
       void callbackCancelled() noexcept override { delete this; }
 
-      IoUringBackend::ProvidedBufferProviderBase* bp_;
+      IoUringBufferProviderBase* bp_;
       bool supported = false;
       struct msghdr msg;
       int fd = -1;

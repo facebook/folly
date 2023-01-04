@@ -53,7 +53,7 @@ struct Observer : EventBaseObserver {
   }
 };
 
-struct NopSqe : IoUringBackend::IoSqeBase {
+struct NopSqe : IoSqeBase {
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     io_uring_prep_nop(sqe);
   }
