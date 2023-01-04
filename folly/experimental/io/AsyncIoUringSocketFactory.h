@@ -38,6 +38,21 @@ class AsyncIoUringSocketFactory {
     throw std::runtime_error("AsyncIoUringSocket not supported");
 #endif
   }
+
+  static bool asyncDetachFd(
+      FOLLY_MAYBE_UNUSED AsyncTransport& transport,
+      FOLLY_MAYBE_UNUSED AsyncDetachFdCallback* callback) {
+#if __has_include(<liburing.h>)
+    AsyncIoUringSocket* socket =
+        transport.getUnderlyingTransport<AsyncIoUringSocket>();
+    if (socket) {
+      socket->asyncDetachFd(callback);
+      return true;
+    }
+#endif
+
+    return false;
+  }
 };
 
 } // namespace folly

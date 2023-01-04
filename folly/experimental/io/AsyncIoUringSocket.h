@@ -44,6 +44,14 @@
 
 namespace folly {
 
+class AsyncDetachFdCallback {
+ public:
+  virtual ~AsyncDetachFdCallback() = default;
+  virtual void fdDetached(
+      NetworkSocket ns, std::unique_ptr<IOBuf> unread) noexcept = 0;
+  virtual void fdDetachFail(const AsyncSocketException& ex) noexcept = 0;
+};
+
 #if __has_include(<liburing.h>)
 
 class AsyncIoUringSocket : public AsyncSocketTransport {
@@ -210,6 +218,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     applicationProtocol_ = std::move(s);
   }
 
+  void asyncDetachFd(AsyncDetachFdCallback* callback);
+  bool readSqeInFlight() const { return readSqe_->inFlight(); }
+
  private:
   ~AsyncIoUringSocket() override;
 
@@ -240,6 +251,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void failWrite(const AsyncSocketException& ex);
   void readEOF();
   void readError();
+  NetworkSocket takeFd();
 
   struct ReadSqe : IoUringBackend::IoSqeBase, DelayedDestruction {
     using UniquePtr = std::unique_ptr<ReadSqe, Destructor>;
@@ -384,6 +396,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   std::unique_ptr<CloseSqe> closeSqe_{new CloseSqe(this)};
 
   // read
+  friend struct DetachFdState;
   ReadSqe::UniquePtr readSqe_;
 
   // write

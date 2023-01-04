@@ -613,6 +613,93 @@ void AsyncIoUringSocket::WriteSqe::processSubmit(
   sqe->flags |= parent_->mbFixedFileFlags_;
 }
 
+namespace {
+
+struct DetachFdState : AsyncReader::ReadCallback {
+  DetachFdState(
+      AsyncIoUringSocket* s, AsyncDetachFdCallback* cb, NetworkSocket fd)
+      : socket(s), callback(cb), ns(fd) {}
+  AsyncIoUringSocket* socket;
+  AsyncDetachFdCallback* callback;
+  NetworkSocket ns;
+  std::unique_ptr<IOBuf> unread;
+  std::unique_ptr<IOBuf> buffer;
+
+  void done() {
+    socket->setReadCB(nullptr);
+    callback->fdDetached(ns, std::move(unread));
+    delete this;
+  }
+
+  // ReadCallback:
+  void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+    if (!buffer) {
+      buffer = IOBuf::create(2000);
+    }
+    *bufReturn = buffer->writableTail();
+    *lenReturn = buffer->tailroom();
+  }
+
+  void readErr(const AsyncSocketException&) noexcept override { done(); }
+  void readEOF() noexcept override { done(); }
+  void readBufferAvailable(std::unique_ptr<IOBuf> buf) noexcept override {
+    if (unread) {
+      unread->appendToChain(std::move(buf));
+    } else {
+      unread = std::move(buf);
+    }
+    if (!socket->readSqeInFlight()) {
+      done();
+    }
+  }
+
+  void readDataAvailable(size_t len) noexcept override {
+    buffer->append(len);
+    readBufferAvailable(std::move(buffer));
+  }
+  bool isBufferMovable() noexcept override { return true; }
+};
+
+struct CancelSqe : IoUringBackend::IoSqeBase {
+  explicit CancelSqe(IoUringBackend::IoSqeBase* sqe) : target_(sqe) {}
+  void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    ::io_uring_prep_cancel(sqe, target_, 0);
+  }
+  void callback(int, uint32_t) noexcept override { delete this; }
+  void callbackCancelled() noexcept override { delete this; }
+  IoUringBackend::IoSqeBase* target_;
+};
+
+} // namespace
+
+void AsyncIoUringSocket::asyncDetachFd(AsyncDetachFdCallback* callback) {
+  auto state = new DetachFdState(this, callback, takeFd());
+
+  if (writeSqeActive_) {
+    backend_->cancel(writeSqeActive_);
+    writeSqeActive_->callback_->writeErr(
+        0, AsyncSocketException(AsyncSocketException::UNKNOWN, "fd detached"));
+    writeSqeActive_ = nullptr;
+  }
+  while (!writeSqeQueue_.empty()) {
+    auto& f = writeSqeQueue_.front();
+    f.callback_->writeErr(
+        0, AsyncSocketException(AsyncSocketException::UNKNOWN, "fd detached"));
+    backend_->cancel(&f);
+    writeSqeQueue_.pop_front();
+  }
+
+  setReadCB(state);
+  if (readSqe_->inFlight()) {
+    backend_->submitNow(*new CancelSqe(readSqe_.get()));
+  } else {
+    state->done();
+  }
+
+  // todo - care about connect? probably doesnt matter as we wont have bad
+  // results (eg wrong read data), just a broken socket
+}
+
 void AsyncIoUringSocket::writeDone() noexcept {
   DVLOG(5) << "AsyncIoUringSocket::writeDone queue=" << writeSqeQueue_.size()
            << " active=" << writeSqeActive_;
@@ -730,6 +817,27 @@ void AsyncIoUringSocket::writeChain(
   }
 }
 
+NetworkSocket AsyncIoUringSocket::takeFd() {
+  auto ret = std::exchange(fd_, {});
+  if (fdRegistered_) {
+    auto start = std::chrono::steady_clock::now();
+    if (!backend_->unregisterFd(fdRegistered_)) {
+      LOG(ERROR) << "Bad fd unregister";
+    }
+    auto end = std::chrono::steady_clock::now();
+    if (end - start > std::chrono::milliseconds(1)) {
+      LOG(INFO) << "unregistering fd took "
+                << std::chrono::duration_cast<std::chrono::microseconds>(
+                       end - start)
+                       .count()
+                << "us";
+    }
+  }
+  fdRegistered_ = nullptr;
+  usedFd_ = -1;
+  return ret;
+}
+
 void AsyncIoUringSocket::closeProcessSubmit(struct io_uring_sqe* sqe) {
   if (fd_.toFd() >= 0) {
     ::io_uring_prep_close(sqe, fd_.toFd());
@@ -739,12 +847,7 @@ void AsyncIoUringSocket::closeProcessSubmit(struct io_uring_sqe* sqe) {
   }
 
   // the fd can be reused from this point
-  fd_ = {};
-  if (fdRegistered_ && !backend_->unregisterFd(fdRegistered_)) {
-    LOG(ERROR) << "Bad fd unregister";
-  }
-  fdRegistered_ = nullptr;
-  usedFd_ = -1;
+  takeFd();
 }
 
 void AsyncIoUringSocket::closeWithReset() {

@@ -38,6 +38,14 @@ namespace {
 static constexpr std::chrono::milliseconds kTimeout{30000};
 static constexpr size_t kBufferSize{1024};
 
+std::string toString(std::unique_ptr<IOBuf> const& buf) {
+  if (!buf) {
+    return std::string();
+  }
+  auto coalesced = buf->coalesce();
+  return std::string((char const*)coalesced.data(), coalesced.size());
+}
+
 class NullWriteCallback : public AsyncWriter::WriteCallback {
  public:
   void writeSuccess() noexcept override {}
@@ -168,9 +176,7 @@ class CollectCallback : public AsyncReader::ReadCallback {
       readBuf = std::move(cloned);
     }
 
-    auto coalesced = readBuf->coalesce();
-    VLOG(1) << "CollectCallback::readBufferAvailable " << coalesced.size();
-    data += std::string((char const*)coalesced.data(), coalesced.size());
+    data += toString(readBuf);
     dataAvailable();
   }
 
@@ -272,7 +278,9 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
         unableToRun = true;
         return;
       }
-      backend = &ioUringEvent->backend();
+      backend = backendForSocketConstructor = &ioUringEvent->backend();
+    } else {
+      backend = dynamic_cast<IoUringBackend*>(base->getBackend());
     }
 
     serverSocket = AsyncServerSocket::newSocket(base.get());
@@ -306,7 +314,7 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
   Connected makeConnected(bool server_should_read = true) {
     AsyncTransport::UniquePtr client;
     if (GetParam().ioUringClient) {
-      auto c = new AsyncIoUringSocket(base.get(), backend);
+      auto c = new AsyncIoUringSocket(base.get(), backendForSocketConstructor);
       c->connect(this, serverAddress);
       client = AsyncTransport::UniquePtr(c);
     } else {
@@ -325,7 +333,8 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     auto cb = std::make_unique<CollectCallback>();
     AsyncTransport::UniquePtr sock = GetParam().ioUringServer
         ? AsyncTransport::UniquePtr(new AsyncIoUringSocket(
-              AsyncSocket::newSocket(base.get(), fd), backend))
+              AsyncSocket::newSocket(base.get(), fd),
+              backendForSocketConstructor))
         : AsyncTransport::UniquePtr(AsyncSocket::newSocket(base.get(), fd));
     if (server_should_read) {
       sock->setReadCB(cb.get());
@@ -337,6 +346,7 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
   std::unique_ptr<EventBase> base;
   std::unique_ptr<IoUringEvent> ioUringEvent;
   std::shared_ptr<AsyncServerSocket> serverSocket;
+  IoUringBackend* backendForSocketConstructor = nullptr;
   IoUringBackend* backend = nullptr;
   SocketAddress serverAddress;
 
@@ -445,6 +455,57 @@ TEST_P(AsyncIoUringSocketTest, EoF) {
     auto er = ex.error();
     EXPECT_EQ(AsyncSocketException::NOT_OPEN, er.getType());
     c.server->setReadCB(nullptr);
+  }
+}
+
+struct DetachCB : folly::AsyncDetachFdCallback {
+  void fdDetached(
+      NetworkSocket ns, std::unique_ptr<IOBuf> unread) noexcept override {
+    promise.setValue(std::make_pair(ns, std::move(unread)));
+  }
+
+  void fdDetachFail(const AsyncSocketException& ex) noexcept override {
+    promise.setException(ex);
+  }
+
+  folly::Promise<std::pair<NetworkSocket, std::unique_ptr<IOBuf>>> promise;
+};
+
+TEST_P(AsyncIoUringSocketTest, Detach) {
+  MAYBE_SKIP();
+  auto c = makeConnected();
+  auto* was = c.server->getUnderlyingTransport<folly::AsyncIoUringSocket>();
+  ASSERT_NE(was, nullptr);
+
+  // write something
+  c.client->transport->write(&nullWriteCallback, "hello", 5);
+  // make sure it gets run
+  backend->submitOutstanding();
+
+  // sleep a bit to get the read all the way into the completion queue
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds(5));
+
+  // now detach before the write is completed
+  DetachCB cb;
+  was->asyncDetachFd(&cb);
+  ASSERT_FALSE(cb.promise.isFulfilled()) << "must wait for read to finish";
+
+  auto res = cb.promise.getSemiFuture().via(base.get()).getVia(base.get());
+  EXPECT_GE(res.first.toFd(), 0);
+  if (res.second) {
+    // did not cancel in time
+    EXPECT_EQ("hello", toString(res.second));
+  } else {
+    // did cancel in time
+    char buff[128];
+    memset(buff, 0, sizeof(buff));
+    int ret;
+    do {
+      ret = read(res.first.toFd(), &buff, sizeof(buff));
+    } while (ret == -1 && errno == EINTR);
+    ASSERT_EQ(5, ret);
+    EXPECT_EQ("hello", std::string(buff));
   }
 }
 
