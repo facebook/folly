@@ -913,24 +913,25 @@ void IoUringBackend::cleanup() {
       }
     }
 
+    // wait for the outstanding events to finish
+    do {
+      struct io_uring_cqe* cqe = nullptr;
+      if (numInsertedEvents_ <= numInternalEvents_) {
+        break;
+      }
+      prepList(submitList_);
+      submitEager();
+      ::io_uring_wait_cqe(&ioRing_, &cqe);
+      internalProcessCqe(
+          std::numeric_limits<unsigned int>::max(),
+          InternalProcessCqeMode::CANCEL_ALL);
+    } while (numInsertedEvents_ > numInternalEvents_);
+
     // release the active events
     while (!activeEvents_.empty()) {
       auto* ioSqe = &activeEvents_.front();
       activeEvents_.pop_front();
       releaseIoSqe(ioSqe);
-    }
-
-    // wait for the outstanding events to finish
-    while (numIoSqeInUse()) {
-      struct io_uring_cqe* cqe = nullptr;
-      ::io_uring_wait_cqe(&ioRing_, &cqe);
-      if (cqe) {
-        IoSqeBase* sqe =
-            reinterpret_cast<IoSqeBase*>(io_uring_cqe_get_data(cqe));
-        sqe->markCancelled();
-        sqe->callbackCancelled(-1, 0);
-        ::io_uring_cqe_seen(&ioRing_, cqe);
-      }
     }
 
     // free the entries
@@ -1158,21 +1159,14 @@ IoUringBackend::IoSqe* IoUringBackend::allocIoSqe(const EventCallback& cb) {
   if ((cb.type_ == EventCallback::Type::TYPE_NONE) && (!freeList_.empty())) {
     auto* ret = &freeList_.front();
     freeList_.pop_front();
-    numIoSqeInUse_++;
     return ret;
   }
 
   // alloc a new IoSqe
-  auto* ret = allocNewIoSqe(cb);
-  if (FOLLY_LIKELY(!!ret)) {
-    numIoSqeInUse_++;
-  }
-
-  return ret;
+  return allocNewIoSqe(cb);
 }
 
 void IoUringBackend::releaseIoSqe(IoUringBackend::IoSqe* aioIoSqe) noexcept {
-  CHECK_GT(numIoSqeInUse_, 0);
   aioIoSqe->cbData_.releaseData();
   // unregister the file descriptor record
   if (aioIoSqe->fdRecord_) {
@@ -1181,14 +1175,10 @@ void IoUringBackend::releaseIoSqe(IoUringBackend::IoSqe* aioIoSqe) noexcept {
   }
 
   if (FOLLY_LIKELY(aioIoSqe->poolAlloc_)) {
-    numIoSqeInUse_--;
     aioIoSqe->event_ = nullptr;
     freeList_.push_front(*aioIoSqe);
-  } else {
-    if (!aioIoSqe->persist_) {
-      numIoSqeInUse_--;
-      delete aioIoSqe;
-    }
+  } else if (!aioIoSqe->persist_) {
+    delete aioIoSqe;
   }
 }
 
@@ -1287,7 +1277,8 @@ void IoUringBackend::submitOutstanding() {
 }
 
 unsigned int IoUringBackend::processCompleted() {
-  return internalProcessCqe(options_.maxGet, false);
+  return internalProcessCqe(
+      options_.maxGet, InternalProcessCqeMode::AVAILABLE_ONLY);
 }
 
 size_t IoUringBackend::loopPoll() {
@@ -1680,11 +1671,11 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     return 0;
   }
 
-  return internalProcessCqe(options_.maxGet, true);
+  return internalProcessCqe(options_.maxGet, InternalProcessCqeMode::NORMAL);
 }
 
 unsigned int IoUringBackend::internalProcessCqe(
-    unsigned int maxGet, bool allowMore) noexcept {
+    unsigned int maxGet, InternalProcessCqeMode mode) noexcept {
   struct io_uring_cqe* cqe;
 
   unsigned int count_more = 0;
@@ -1698,7 +1689,13 @@ unsigned int IoUringBackend::internalProcessCqe(
       if (cqe->flags & IORING_CQE_F_MORE) {
         count_more++;
       }
-      ((IoSqeBase*)cqe->user_data)->internalCallback(cqe->res, cqe->flags);
+      IoSqeBase* sqe = reinterpret_cast<IoSqeBase*>(cqe->user_data);
+      if (FOLLY_UNLIKELY(mode == InternalProcessCqeMode::CANCEL_ALL)) {
+        sqe->markCancelled();
+        sqe->callbackCancelled(cqe->res, cqe->flags);
+      } else {
+        sqe->internalCallback(cqe->res, cqe->flags);
+      }
       if (count >= options_.maxGet) {
         break;
       }
@@ -1710,7 +1707,10 @@ unsigned int IoUringBackend::internalProcessCqe(
     if (count >= maxGet) {
       break;
     }
-    if (allowMore) {
+
+    // io_uring_peek_cqe will check for any overflows and copy them to the cq
+    // ring.
+    if (mode != InternalProcessCqeMode::AVAILABLE_ONLY) {
       int ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
       if (ret == -EBADR) {
         // cannot recover from droped CQE
@@ -1827,7 +1827,6 @@ void IoUringBackend::queueRead(
   };
   auto* ioSqe = new ReadIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1843,7 +1842,6 @@ void IoUringBackend::queueWrite(
   };
   auto* ioSqe = new WriteIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1855,7 +1853,6 @@ void IoUringBackend::queueReadv(
     FileOpCallback&& cb) {
   auto* ioSqe = new ReadvIoSqe(this, fd, iovecs, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1867,7 +1864,6 @@ void IoUringBackend::queueWritev(
     FileOpCallback&& cb) {
   auto* ioSqe = new WritevIoSqe(this, fd, iovecs, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1883,7 +1879,6 @@ void IoUringBackend::queueFdatasync(int fd, FileOpCallback&& cb) {
 void IoUringBackend::queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb) {
   auto* ioSqe = new FSyncIoSqe(this, fd, flags, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1892,7 +1887,6 @@ void IoUringBackend::queueOpenat(
     int dfd, const char* path, int flags, mode_t mode, FileOpCallback&& cb) {
   auto* ioSqe = new FOpenAtIoSqe(this, dfd, path, flags, mode, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1901,7 +1895,6 @@ void IoUringBackend::queueOpenat2(
     int dfd, const char* path, struct open_how* how, FileOpCallback&& cb) {
   auto* ioSqe = new FOpenAt2IoSqe(this, dfd, path, how, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1909,7 +1902,6 @@ void IoUringBackend::queueOpenat2(
 void IoUringBackend::queueClose(int fd, FileOpCallback&& cb) {
   auto* ioSqe = new FCloseIoSqe(this, fd, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1918,7 +1910,6 @@ void IoUringBackend::queueFallocate(
     int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb) {
   auto* ioSqe = new FAllocateIoSqe(this, fd, mode, offset, len, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1927,7 +1918,6 @@ void IoUringBackend::queueSendmsg(
     int fd, const struct msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
   auto* ioSqe = new SendmsgIoSqe(this, fd, msg, flags, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }
@@ -1936,7 +1926,6 @@ void IoUringBackend::queueRecvmsg(
     int fd, struct msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
   auto* ioSqe = new RecvmsgIoSqe(this, fd, msg, flags, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
-  incNumIoSqeInUse();
 
   submitImmediateIoSqe(*ioSqe);
 }

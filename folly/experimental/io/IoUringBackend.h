@@ -417,17 +417,21 @@ class IoUringBackend : public EventBaseBackendBase {
 
   IoSqe* FOLLY_NULLABLE allocIoSqe(const EventCallback& cb);
   void releaseIoSqe(IoSqe* aioIoSqe) noexcept;
-  void incNumIoSqeInUse() { numIoSqeInUse_++; }
 
   // submit immediate if POLL_SQ | POLL_SQ_IMMEDIATE_IO flags are set
   void submitImmediateIoSqe(IoSqeBase& ioSqe);
 
   void internalSubmit(IoSqeBase& ioSqe) noexcept;
-  unsigned int internalProcessCqe(unsigned int maxGet, bool allowMore) noexcept;
+
+  enum class InternalProcessCqeMode {
+    NORMAL, // process existing and any available
+    AVAILABLE_ONLY, // process existing but don't get more
+    CANCEL_ALL, // cancel every sqe
+  };
+  unsigned int internalProcessCqe(
+      unsigned int maxGet, InternalProcessCqeMode mode) noexcept;
 
   int eb_event_modify_inserted(Event& event, IoSqe* ioSqe);
-
-  FOLLY_ALWAYS_INLINE size_t numIoSqeInUse() const { return numIoSqeInUse_; }
 
   struct FdRegistry {
     FdRegistry() = delete;
@@ -978,8 +982,9 @@ class IoUringBackend : public EventBaseBackendBase {
   }
 
   IoUringBackend::IoSqe* allocNewIoSqe(const EventCallback& /*cb*/) {
-    // allow pool alloc if numIoSqeInUse_ < numEntries_
-    auto* ret = new IoSqe(this, numIoSqeInUse_ < numEntries_);
+    // allow pool alloc if numPooledIoSqeInUse_ < numEntries_
+    auto* ret = new IoSqe(this, numPooledIoSqeInUse_ < numEntries_);
+    ++numPooledIoSqeInUse_;
     ret->backendCb_ = IoUringBackend::processPollIoSqe;
 
     return ret;
@@ -1017,11 +1022,12 @@ class IoUringBackend : public EventBaseBackendBase {
   bool processTimers_{false};
   bool processSignals_{false};
   IoSqeList activeEvents_;
-  // number of IoSqe instances in use
   size_t waitingToSubmit_{0};
   size_t numInsertedEvents_{0};
   size_t numInternalEvents_{0};
-  size_t numIoSqeInUse_{0};
+
+  // number of pooled IoSqe instances in use
+  size_t numPooledIoSqeInUse_{0};
 
   // io_uring related
   struct io_uring_params params_;

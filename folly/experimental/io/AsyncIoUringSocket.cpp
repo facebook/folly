@@ -270,7 +270,11 @@ void AsyncIoUringSocket::processConnectResult(int i) {
 }
 
 void AsyncIoUringSocket::processConnectTimeout() {
-  connectSqe_.reset();
+  if (connectSqe_->inFlight()) {
+    backend_->cancel(connectSqe_.release());
+  } else {
+    connectSqe_.reset();
+  }
   connectEndTime_ = std::chrono::steady_clock::now();
   connectCallback_->connectErr(
       AsyncSocketException(AsyncSocketException::TIMED_OUT, "timeout"));

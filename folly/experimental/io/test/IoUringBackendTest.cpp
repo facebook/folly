@@ -1337,7 +1337,7 @@ TEST(IoUringBackend, ProvidedBuffers) {
   // now the buffers should be back
   readers.clear();
   cqes.clear();
-  addReaders(2);
+  addReaders(1);
   backend->eb_event_base_loop(EVLOOP_ONCE);
   ASSERT_EQ(1, cqes.size());
   EXPECT_EQ(2, cqes[0].first);
