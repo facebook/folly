@@ -726,7 +726,7 @@ void IoSqeBase::internalCallback(int res, uint32_t flags) noexcept {
     inFlight_ = false;
   }
   if (cancelled_) {
-    callbackCancelled();
+    callbackCancelled(res, flags);
   } else {
     callback(res, flags);
   }
@@ -928,7 +928,7 @@ void IoUringBackend::cleanup() {
         IoSqeBase* sqe =
             reinterpret_cast<IoSqeBase*>(io_uring_cqe_get_data(cqe));
         sqe->markCancelled();
-        sqe->callbackCancelled();
+        sqe->callbackCancelled(-1, 0);
         ::io_uring_cqe_seen(&ioRing_, cqe);
       }
     }
@@ -1555,7 +1555,7 @@ struct IoSqeNop final : IoSqeBase {
     LOG(FATAL) << "IoSqeNop: cannot submit this!";
   }
   void callback(int, uint32_t) noexcept override {}
-  void callbackCancelled() noexcept override {}
+  void callbackCancelled(int, uint32_t) noexcept override {}
 };
 IoSqeNop const ioSqeNop;
 
@@ -1989,7 +1989,7 @@ static bool doKernelSupportsRecvmsgMultishot() {
         supported = res != -EINVAL;
       }
 
-      void callbackCancelled() noexcept override { delete this; }
+      void callbackCancelled(int, uint32_t) noexcept override { delete this; }
 
       IoUringBufferProviderBase* bp_;
       bool supported = false;

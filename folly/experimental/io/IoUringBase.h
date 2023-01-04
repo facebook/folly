@@ -40,7 +40,7 @@ struct IoSqeBase
   virtual ~IoSqeBase() = default;
   virtual void processSubmit(struct io_uring_sqe* sqe) noexcept = 0;
   virtual void callback(int res, uint32_t flags) noexcept = 0;
-  virtual void callbackCancelled() noexcept = 0;
+  virtual void callbackCancelled(int res, uint32_t flags) noexcept = 0;
   bool inFlight() const { return inFlight_; }
   bool cancelled() const { return cancelled_; }
   void markCancelled() { cancelled_ = true; }

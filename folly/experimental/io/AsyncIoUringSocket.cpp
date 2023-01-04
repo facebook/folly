@@ -664,7 +664,7 @@ struct CancelSqe : IoSqeBase {
     ::io_uring_prep_cancel(sqe, target_, 0);
   }
   void callback(int, uint32_t) noexcept override { delete this; }
-  void callbackCancelled() noexcept override { delete this; }
+  void callbackCancelled(int, uint32_t) noexcept override { delete this; }
   IoSqeBase* target_;
 };
 
@@ -727,6 +727,9 @@ void AsyncIoUringSocket::doReSubmitWrite() noexcept {
   // do not update the send timeout for partial writes
 }
 
+void AsyncIoUringSocket::WriteSqe::callbackCancelled(int, uint32_t) noexcept {
+  delete this;
+}
 void AsyncIoUringSocket::WriteSqe::callback(int res, uint32_t flags) noexcept {
   DVLOG(5) << "write sqe callback " << this << " res=" << res
            << " flags=" << flags << " iovStart=" << iov_.size()

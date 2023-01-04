@@ -1291,7 +1291,7 @@ TEST(IoUringBackend, ProvidedBuffers) {
       oncqe_(res, flags);
     }
 
-    void callbackCancelled() noexcept override { FAIL(); }
+    void callbackCancelled(int, uint32_t) noexcept override { FAIL(); }
 
     int fd_;
     uint16_t bgid_;

@@ -259,7 +259,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
     void callback(int res, uint32_t flags) noexcept override;
 
-    void callbackCancelled() noexcept override {
+    void callbackCancelled(int, uint32_t) noexcept override {
       if (!inFlight()) {
         delete this;
       }
@@ -315,7 +315,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       parent_->closeProcessSubmit(sqe);
     }
     void callback(int, uint32_t) noexcept override { delete this; }
-    void callbackCancelled() noexcept override { delete this; }
+    void callbackCancelled(int, uint32_t) noexcept override { delete this; }
     AsyncIoUringSocket* parent_;
   };
 
@@ -332,7 +332,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
     void callback(int res, uint32_t flags) noexcept override;
-    void callbackCancelled() noexcept override { delete this; }
+    void callbackCancelled(int, uint32_t flags) noexcept override;
     int sendMsgFlags() const;
 
     boost::intrusive::list_member_hook<> member_hook_;
@@ -369,7 +369,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     void callback(int res, uint32_t) noexcept override {
       parent_->processConnectResult(res);
     }
-    void callbackCancelled() noexcept override { delete this; }
+    void callbackCancelled(int, uint32_t) noexcept override { delete this; }
     void timeoutExpired() noexcept override {
       if (!cancelled()) {
         parent_->processConnectTimeout();

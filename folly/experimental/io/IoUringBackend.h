@@ -461,7 +461,7 @@ class IoUringBackend : public EventBaseBackendBase {
     void callback(int res, uint32_t flags) noexcept override {
       backendCb_(backend_, this, res, flags);
     }
-    void callbackCancelled() noexcept override { release(); }
+    void callbackCancelled(int, uint32_t) noexcept override { release(); }
     virtual void release() noexcept;
 
     IoUringBackend* backend_;
