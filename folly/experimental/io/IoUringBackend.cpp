@@ -974,15 +974,14 @@ bool IoUringBackend::isAvailable() {
 
 bool IoUringBackend::addTimerFd() {
   auto* entry = get_sqe();
-  timerEntry_->prepPollAdd(entry, timerFd_, POLLIN, true /*registerFd*/);
+  timerEntry_->prepPollAdd(entry, timerFd_, POLLIN);
   ++numInternalEvents_;
   return (1 == submitOne());
 }
 
 bool IoUringBackend::addSignalFds() {
   auto* entry = get_sqe();
-  signalReadEntry_->prepPollAdd(
-      entry, signalFds_.readFd(), POLLIN, false /*registerFd*/);
+  signalReadEntry_->prepPollAdd(entry, signalFds_.readFd(), POLLIN);
   ++numInternalEvents_;
   return (1 == submitOne());
 }

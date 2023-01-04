@@ -455,8 +455,7 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
         size_t used_len;
         unsigned int ioprio_flags;
         if (supportsMultishotRecv_) {
-          // #define IORING_RECV_MULTISHOT	(1U << 1)
-          ioprio_flags = (1U << 1);
+          ioprio_flags = IORING_RECV_MULTISHOT;
           used_len = 0;
         } else {
           ioprio_flags = 0;
@@ -491,7 +490,6 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
           << maxSize_;
     }
 
-    sqe->flags |= mbFixedFileFlags_;
     DVLOG(5) << "readProcessSubmit " << this << " reg=" << usedFd_
              << " cb=" << readCallback_ << " size=" << maxSize_;
   }
@@ -1017,7 +1015,10 @@ void AsyncIoUringSocket::setFd(NetworkSocket ns) {
       usedFd_ = fd_.toFd();
       VLOG(1) << "unable to register fd: " << fd_.toFd();
     }
-    readSqe_->setFd(usedFd_, mbFixedFileFlags_);
+
+    // read does not use registered fd, as it can be long lived and leak socket
+    // files
+    readSqe_->setFd(fd_.toFd());
   } catch (std::exception const& e) {
     LOG(ERROR) << "unable to setFd " << ns.toFd() << " : " << e.what();
     ::close(ns.toFd());

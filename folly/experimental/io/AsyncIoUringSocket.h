@@ -275,10 +275,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       appendReadData(std::move(data), preReceivedData_);
     }
 
-    void setFd(int usedFd, unsigned int mbFixedFileFlags) {
-      usedFd_ = usedFd;
-      mbFixedFileFlags_ = mbFixedFileFlags;
-    }
+    void setFd(int usedFd) { usedFd_ = usedFd; }
 
     void destroy() override {
       parent_ = nullptr;
@@ -310,7 +307,6 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
     // duplicate, but probably ok
     int usedFd_ = -1;
-    unsigned int mbFixedFileFlags_ = 0;
   };
 
   struct CloseSqe : IoSqeBase {

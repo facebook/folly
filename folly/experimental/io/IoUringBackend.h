@@ -516,21 +516,13 @@ class IoUringBackend : public EventBaseBackendBase {
           case EventCallback::Type::TYPE_RECVMSG_MULTISHOT:
             if (auto* hdr =
                     cb.recvmsgMultishotCb_->allocateRecvmsgMultishotData()) {
-              prepRecvmsgMultishot(
-                  sqe,
-                  ev->ev_fd,
-                  &hdr->data_,
-                  (ev->ev_events & EV_PERSIST) != 0);
+              prepRecvmsgMultishot(sqe, ev->ev_fd, &hdr->data_);
               cbData_.set(hdr);
               return;
             }
             break;
         }
-        prepPollAdd(
-            sqe,
-            ev->ev_fd,
-            getPollFlags(ev->ev_events),
-            (ev->ev_events & EV_PERSIST) != 0);
+        prepPollAdd(sqe, ev->ev_fd, getPollFlags(ev->ev_events));
       }
     }
 
@@ -628,21 +620,9 @@ class IoUringBackend : public EventBaseBackendBase {
     EventCallbackData cbData_;
 
     void prepPollAdd(
-        struct io_uring_sqe* sqe,
-        int fd,
-        uint32_t events,
-        bool registerFd) noexcept {
+        struct io_uring_sqe* sqe, int fd, uint32_t events) noexcept {
       CHECK(sqe);
-      if (registerFd && !fdRecord_) {
-        fdRecord_ = backend_->registerFd(fd);
-      }
-
-      if (fdRecord_) {
-        ::io_uring_prep_poll_add(sqe, fdRecord_->idx_, events);
-        sqe->flags |= IOSQE_FIXED_FILE;
-      } else {
-        ::io_uring_prep_poll_add(sqe, fd, events);
-      }
+      ::io_uring_prep_poll_add(sqe, fd, events);
       ::io_uring_sqe_set_data(sqe, this);
     }
 
@@ -718,21 +698,9 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     void prepRecvmsgMultishot(
-        struct io_uring_sqe* sqe,
-        int fd,
-        struct msghdr* msg,
-        bool registerFd) noexcept {
+        struct io_uring_sqe* sqe, int fd, struct msghdr* msg) noexcept {
       CHECK(sqe);
-      if (registerFd && !fdRecord_) {
-        fdRecord_ = backend_->registerFd(fd);
-      }
-
-      if (fdRecord_) {
-        ::io_uring_prep_recvmsg(sqe, fdRecord_->idx_, msg, MSG_TRUNC);
-        sqe->flags |= IOSQE_FIXED_FILE;
-      } else {
-        ::io_uring_prep_recvmsg(sqe, fd, msg, MSG_TRUNC);
-      }
+      ::io_uring_prep_recvmsg(sqe, fd, msg, MSG_TRUNC);
       // this magic value is set in io_uring_prep_recvmsg_multishot,
       // however this version of the library isn't available widely yet
       // so just hardcode it here
