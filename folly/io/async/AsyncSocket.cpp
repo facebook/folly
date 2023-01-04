@@ -973,9 +973,9 @@ void AsyncSocket::connect(
     // Perform the connect()
     address.getAddress(&addrStorage);
 
-    if (tfoEnabled_) {
+    if (tfoInfo_.enabled) {
       state_ = StateEnum::FAST_OPEN;
-      tfoAttempted_ = true;
+      tfoInfo_.attempted = true;
     } else {
       if (socketConnect(saddr, addr_.getActualSize()) < 0) {
         return;
@@ -3606,7 +3606,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     msg->msg_namelen = len;
     totalWritten = tfoSendMsg(fd_, msg, msg_flags);
     if (totalWritten >= 0) {
-      tfoFinished_ = true;
+      tfoInfo_.finished = true;
       state_ = StateEnum::ESTABLISHED;
       // We schedule this asynchrously so that we don't end up
       // invoking initial read or write while a write is in progress.

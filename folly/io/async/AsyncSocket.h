@@ -753,7 +753,7 @@ class AsyncSocket : public AsyncSocketTransport {
     return connectEndTime_;
   }
 
-  bool getTFOAttempted() const { return tfoAttempted_; }
+  bool getTFOAttempted() const { return tfoInfo_.attempted; }
 
   /**
    * Returns whether or not the attempt to use TFO
@@ -761,7 +761,7 @@ class AsyncSocket : public AsyncSocketTransport {
    * mean TFO worked, just that trying to use TFO
    * succeeded.
    */
-  bool getTFOFinished() const { return tfoFinished_; }
+  bool getTFOFinished() const { return tfoInfo_.finished; }
 
   /**
    * Returns whether or not TFO attempt succeded on this
@@ -945,7 +945,7 @@ class AsyncSocket : public AsyncSocketTransport {
   void enableTFO() {
     // No-op if folly does not allow tfo
 #if FOLLY_ALLOW_TFO
-    tfoEnabled_ = true;
+    tfoInfo_.enabled = true;
 #endif
   }
 
@@ -1608,9 +1608,14 @@ class AsyncSocket : public AsyncSocketTransport {
   std::unique_ptr<EvbChangeCallback> evbChangeCb_{nullptr};
 
   BufferCallback* bufferCallback_{nullptr};
-  bool tfoEnabled_{false};
-  bool tfoAttempted_{false};
-  bool tfoFinished_{false};
+
+  struct TCPFastOpenInfo {
+    bool attempted{false};
+    bool enabled{false};
+    bool finished{false};
+  };
+
+  TCPFastOpenInfo tfoInfo_;
   bool noTransparentTls_{false};
   bool noTSocks_{false};
   // Whether to track EOR or not.

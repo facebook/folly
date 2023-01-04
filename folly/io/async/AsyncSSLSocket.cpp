@@ -1453,7 +1453,7 @@ void AsyncSSLSocket::invokeConnectErr(const AsyncSocketException& ex) {
 void AsyncSSLSocket::invokeConnectSuccess() {
   connectionTimeout_.cancelTimeout();
   if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
-    assert(tfoAttempted_);
+    assert(tfoInfo_.attempted);
     // If we failed TFO, we'd fall back to trying to connect the socket,
     // to setup things like timeouts.
     startSSLConnect();
