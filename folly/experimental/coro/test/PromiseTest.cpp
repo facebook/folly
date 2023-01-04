@@ -85,10 +85,10 @@ CO_TEST(PromiseTest, SuspendValue) {
 }
 
 CO_TEST(PromiseTest, SuspendException) {
-  auto [promise, future] = coro::makePromiseContract<int>();
+  auto [promise, this_future] = coro::makePromiseContract<int>();
   auto waiter = [](auto future) -> coro::Task<int> {
     co_return co_await std::move(future);
-  }(std::move(future));
+  }(std::move(this_future));
   auto fulfiller = [](auto promise) -> coro::Task<> {
     promise.setException(std::logic_error(""));
     co_return;
