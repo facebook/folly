@@ -85,14 +85,14 @@ BENCHMARK_COUNTERS(CoroFutureSuspend, counters, iters) {
   resetMallocStats();
 
   for (std::size_t i = 0; i < iters; ++i) {
-    auto [promise, future] = folly::coro::makePromiseContract<int>();
+    auto [this_promise, this_future] = folly::coro::makePromiseContract<int>();
     auto waiter = [](auto future) -> folly::coro::Task<int> {
       co_return co_await std::move(future);
-    }(std::move(future));
+    }(std::move(this_future));
     auto fulfiller = [](auto promise) -> folly::coro::Task<> {
       promise.setValue(42);
       co_return;
-    }(std::move(promise));
+    }(std::move(this_promise));
 
     folly::coro::blockingWait(folly::coro::collectAll(
         co_awaitTry(std::move(waiter)), std::move(fulfiller)));
