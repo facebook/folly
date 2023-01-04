@@ -787,3 +787,16 @@ TEST(EvictingCacheMap, HeterogeneousAccess) {
   }
   EXPECT_TRUE(map.empty());
 }
+
+TEST(EvictingCacheMap, ApproximateEntryMemUsage) {
+  // Entry (without weight) should be
+  // * two pointers for LRU list
+  // * sizeof(key) and sizeof(value)
+  // * roughly 1.5 pointers for F14 index
+  // And sizeof(std::unique_ptr<char[]>) should usually be size of raw pointer
+  EXPECT_EQ(sizeof(std::unique_ptr<char[]>), sizeof(char*));
+  EXPECT_LE(
+      (EvictingCacheMap<uint64_t, std::unique_ptr<char[]>>::
+           kApproximateEntryMemUsage),
+      48U);
+}

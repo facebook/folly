@@ -116,6 +116,14 @@ class EvictingCacheMap {
   using mapped_type = TValue;
   using hasher = THash;
 
+  /*
+   * Approximate size of memory used by each entry added to the cache,
+   * including the shallow bits (sizeof) of TKey and TValue, but not the deep
+   * bits. Using 128 (bytes per chunk) / 10 (avg entries per chunk) as
+   * approximate F14 index entry size.
+   */
+  static constexpr std::size_t kApproximateEntryMemUsage = 13 + sizeof(Node);
+
  private:
   template <typename K, typename T>
   using EnableHeterogeneousFind = std::enable_if_t<
@@ -467,8 +475,7 @@ class EvictingCacheMap {
   }
 
  private:
-  struct Node : public boost::intrusive::unordered_set_base_hook<LinkMode>,
-                public boost::intrusive::list_base_hook<LinkMode> {
+  struct Node : public boost::intrusive::list_base_hook<LinkMode> {
     template <typename K>
     Node(const K& key, TValue&& value) : pr(key, std::move(value)) {}
     TPair pr;
