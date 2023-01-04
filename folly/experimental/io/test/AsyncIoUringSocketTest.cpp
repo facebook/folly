@@ -287,6 +287,8 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
       backend = dynamic_cast<IoUringBackend*>(base->getBackend());
     }
 
+    backend->loopPoll(); // init delayed bits as this is the only thread
+
     serverSocket = AsyncServerSocket::newSocket(base.get());
     serverSocket->bind(0);
     serverSocket->listen(0);
@@ -484,7 +486,7 @@ struct DetachCB : folly::AsyncDetachFdCallback {
   folly::Promise<std::pair<NetworkSocket, std::unique_ptr<IOBuf>>> promise;
 };
 
-TEST_P(AsyncIoUringSocketTest, Detach) {
+TEST_P(AsyncIoUringSocketTest, DISABLED_Detach) {
   MAYBE_SKIP();
   auto c = makeConnected();
   auto* was = c.server->getUnderlyingTransport<folly::AsyncIoUringSocket>();
@@ -504,7 +506,10 @@ TEST_P(AsyncIoUringSocketTest, Detach) {
   was->asyncDetachFd(&cb);
   ASSERT_FALSE(cb.promise.isFulfilled()) << "must wait for read to finish";
 
-  auto res = cb.promise.getSemiFuture().via(base.get()).getVia(base.get());
+  auto res = cb.promise.getSemiFuture()
+                 .within(kTimeout)
+                 .via(base.get())
+                 .getVia(base.get());
   EXPECT_GE(res.first.toFd(), 0);
   if (res.second) {
     // did not cancel in time

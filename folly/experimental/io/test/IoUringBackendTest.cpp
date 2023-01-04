@@ -1370,6 +1370,46 @@ TEST(IoUringBackend, ProvidedBufferRing) {
   }
 }
 
+TEST(IoUringBackend, DeferTaskRun) {
+  if (!folly::IoUringBackend::kernelSupportsDeferTaskrun()) {
+    return;
+  }
+
+  std::atomic<int> doneA{0};
+  std::atomic<int> doneB{0};
+  struct N : folly::IoSqeBase {
+    explicit N(std::atomic<int>& v) : val(v) {}
+    std::atomic<int>& val;
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      ::io_uring_prep_nop(sqe);
+    }
+    void callback(int, uint32_t) noexcept override {
+      ++val;
+      delete this;
+    }
+    void callbackCancelled(int, uint32_t) noexcept override {
+      ++val;
+      delete this;
+    }
+  };
+
+  N* maybeLeaks = nullptr;
+
+  std::unique_ptr<folly::IoUringBackend> backend;
+  std::async(std::launch::async, [&]() {
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options().setDeferTaskRun(true));
+    backend->submitNow(*new N(doneA));
+    backend->loopPoll();
+    maybeLeaks = new N(doneB);
+    backend->submitSoon(*maybeLeaks);
+  }).wait();
+  backend.reset();
+  EXPECT_EQ(1, doneA.load());
+  ASSERT_EQ(0, doneB.load()) << "could not run on other thread";
+  delete maybeLeaks;
+}
+
 namespace folly {
 namespace test {
 static constexpr size_t kCapacity = 32;

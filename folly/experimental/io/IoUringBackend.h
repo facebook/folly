@@ -310,6 +310,7 @@ class IoUringBackend : public EventBaseBackendBase {
     submitImmediateIoSqe(ioSqe);
   }
 
+  void submitNextLoop(IoSqeBase& ioSqe) noexcept;
   void submitSoon(IoSqeBase& ioSqe) noexcept;
   void submitNow(IoSqeBase& ioSqe);
   void submitNowNoCqe(IoSqeBase& ioSqe, int count = 1);
@@ -993,7 +994,16 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void cleanup();
 
-  struct io_uring_sqe* get_sqe();
+  struct io_uring_sqe* getUntrackedSqe();
+  struct io_uring_sqe* getSqe();
+
+  /// some ring calls require being called on a single system thread, so we need
+  /// to delay init of those things until the correct thread is ready
+  void delayedInit();
+
+  /// init things that are linked to the io_uring submitter concept
+  /// so for DeferTaskrun, only do this in delayed init
+  void initSubmissionLinked();
 
   Options options_;
   size_t numEntries_;
@@ -1040,11 +1050,13 @@ class IoUringBackend : public EventBaseBackendBase {
   // every time we poll for a CQE
   CQPollLoopCallback cqPollLoopCallback_;
 
-  bool registerDefaultFds_{true};
+  bool needsDelayedInit_{true};
 
   // stuff for ensuring we don't re-enter submit/getActiveEvents
+  folly::Optional<std::thread::id> submitTid_;
   int isSubmitting_{0};
   bool gettingEvents_{false};
+  void dCheckSubmitTid();
   void setSubmitting() noexcept { isSubmitting_++; }
   void doneSubmitting() noexcept { isSubmitting_--; }
   void setGetActiveEvents() {
