@@ -219,7 +219,7 @@ TEST_F(SSLContextTest, TestGetFromSSLCtx) {
   EXPECT_EQ(contextPtr, &ctx);
 
   // Negative test
-  SSL_CTX* randomCtx = SSL_CTX_new(SSLv23_method());
+  SSL_CTX* randomCtx = SSL_CTX_new(TLS_method());
   EXPECT_EQ(nullptr, SSLContext::getFromSSLCtx(randomCtx));
   SSL_CTX_free(randomCtx);
 }

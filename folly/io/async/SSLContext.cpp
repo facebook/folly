@@ -125,7 +125,7 @@ static int dispatchTicketCrypto(
 SSLContext::SSLContext(SSLVersion version) {
   folly::ssl::init();
 
-  ctx_ = SSL_CTX_new(SSLv23_method());
+  ctx_ = SSL_CTX_new(TLS_method());
   if (ctx_ == nullptr) {
     throw std::runtime_error("SSL_CTX_new: " + getErrors());
   }

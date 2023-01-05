@@ -66,7 +66,7 @@ TEST(SSLSessionManagerTest, SetRawSesionTest) {
 
 TEST(SSLSessionManagerTest, GetFromSSLTest) {
   SSLSessionManager manager;
-  SSL_CTX* ctx = SSL_CTX_new(SSLv23_method());
+  SSL_CTX* ctx = SSL_CTX_new(TLS_method());
 
   SSL* ssl1 = SSL_new(ctx);
   EXPECT_EQ(nullptr, SSLSessionManager::getFromSSL(ssl1));
