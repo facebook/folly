@@ -172,3 +172,15 @@
 #else
 #define FOLLY_ATTR_PURE
 #endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::preserve_most)
+#define FOLLY_ATTR_CLANG_PRESERVE_MOST clang::preserve_most
+#else
+#define FOLLY_ATTR_CLANG_PRESERVE_MOST
+#endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::preserve_all)
+#define FOLLY_ATTR_CLANG_PRESERVE_ALL clang::preserve_all
+#else
+#define FOLLY_ATTR_CLANG_PRESERVE_ALL
+#endif
