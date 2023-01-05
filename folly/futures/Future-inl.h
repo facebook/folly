@@ -1475,7 +1475,7 @@ collect(InputIterator first, InputIterator last) {
   auto future = ctx->p.getSemiFuture();
   if (!executors.empty()) {
     auto work = [](Try<typename decltype(future)::value_type>&& t) {
-      return std::move(t).value();
+      return std::move(t);
     };
     future = std::move(future).defer(work);
     const auto& deferredExecutor = futures::detail::getDeferredExecutor(future);
