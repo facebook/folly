@@ -1358,10 +1358,16 @@ void IoUringBackend::delayedInit() {
   needsDelayedInit_ = false;
 
   if (usingDeferTaskrun_) {
+    // usingDeferTaskrun_ is guarded already on having an up to date liburing
+#if FOLLY_IO_URING_UP_TO_DATE
     int ret = ::io_uring_enable_rings(&ioRing_);
     if (ret) {
       LOG(ERROR) << "io_uring_enable_rings gave " << folly::errnoStr(-ret);
     }
+#else
+    LOG(ERROR)
+        << "Unexpectedly usingDeferTaskrun_=true, but liburing does not support it?";
+#endif
     initSubmissionLinked();
   }
 
