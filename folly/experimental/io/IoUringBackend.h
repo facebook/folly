@@ -206,6 +206,9 @@ class IoUringBackend : public EventBaseBackendBase {
   struct io_uring* ioRingPtr() {
     return &ioRing_;
   }
+  struct io_uring_params const& params() const {
+    return params_;
+  }
 
   // from EventBaseBackendBase
   event_base* getEventBase() override { return nullptr; }
