@@ -100,8 +100,8 @@ TEST_F(ScopeExitTest, ExceptionInExitActionDuringExceptionCausesTermination) {
 TEST_F(ScopeExitTest, StatefulExitAction) {
   folly::coro::blockingWait([this]() -> Task<> {
     auto&& [i] = co_await co_scope_exit(
-        [this](int&& i) -> Task<void> {
-          count += i;
+        [this](int&& ii) -> Task<void> {
+          count += ii;
           co_return;
         },
         3);
