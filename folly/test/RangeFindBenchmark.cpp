@@ -43,6 +43,9 @@ void initStr(int len) {
   str.append(len, 'a');
   str.append(1, 'b');
 
+  vstr.reserve(kVstrSize);
+  vstrp.reserve(kVstrSize);
+
   // create 16 copies of str, each with a different 16byte alignment.
   // Useful because some implementations of find_first_of have different
   // behaviors based on byte alignment.
