@@ -53,10 +53,12 @@ class TransportIf {
   virtual Task<Unit> write(
       ByteRange buf,
       std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+      folly::WriteFlags writeFlags = folly::WriteFlags::NONE,
       WriteInfo* writeInfo = nullptr) = 0;
   virtual Task<Unit> write(
       IOBufQueue& ioBufQueue,
       std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+      folly::WriteFlags writeFlags = folly::WriteFlags::NONE,
       WriteInfo* writeInfo = nullptr) = 0;
 
   virtual SocketAddress getLocalAddress() const noexcept = 0;
@@ -97,10 +99,12 @@ class Transport : public TransportIf {
   Task<Unit> write(
       ByteRange buf,
       std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+      folly::WriteFlags writeFlags = folly::WriteFlags::NONE,
       WriteInfo* writeInfo = nullptr) override;
   Task<folly::Unit> write(
       IOBufQueue& ioBufQueue,
       std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+      folly::WriteFlags writeFlags = folly::WriteFlags::NONE,
       WriteInfo* writeInfo = nullptr) override;
 
   AsyncTransport* getTransport() const override { return transport_.get(); }

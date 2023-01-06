@@ -367,10 +367,11 @@ Task<size_t> Transport::read(
 Task<folly::Unit> Transport::write(
     folly::ByteRange buf,
     std::chrono::milliseconds timeout,
+    folly::WriteFlags writeFlags,
     WriteInfo* writeInfo) {
   transport_->setSendTimeout(timeout.count());
   WriteCallback cb{*transport_};
-  transport_->write(&cb, buf.begin(), buf.size());
+  transport_->write(&cb, buf.begin(), buf.size(), writeFlags);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
   if (waitRet.hasException()) {
@@ -392,11 +393,12 @@ Task<folly::Unit> Transport::write(
 Task<folly::Unit> Transport::write(
     folly::IOBufQueue& ioBufQueue,
     std::chrono::milliseconds timeout,
+    folly::WriteFlags writeFlags,
     WriteInfo* writeInfo) {
   transport_->setSendTimeout(timeout.count());
   WriteCallback cb{*transport_};
   auto iovec = ioBufQueue.front()->getIov();
-  transport_->writev(&cb, iovec.data(), iovec.size());
+  transport_->writev(&cb, iovec.data(), iovec.size(), writeFlags);
   auto waitRet =
       co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
   if (waitRet.hasException()) {
