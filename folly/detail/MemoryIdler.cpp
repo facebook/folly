@@ -47,7 +47,8 @@ void MemoryIdler::flushLocalMallocCaches() {
   if (!usingJEMalloc()) {
     return;
   }
-  if (!mallctl || !mallctlnametomib || !mallctlbymib) {
+  if (&mallctl == nullptr || &mallctlnametomib == nullptr ||
+      &mallctlbymib == nullptr) {
     FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl* weak link failed";
     return;
   }

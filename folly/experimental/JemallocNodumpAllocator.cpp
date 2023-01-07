@@ -106,11 +106,11 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
 }
 
 void* JemallocNodumpAllocator::allocate(size_t size) {
-  return mallocx != nullptr ? mallocx(size, flags_) : malloc(size);
+  return &mallocx != nullptr ? mallocx(size, flags_) : malloc(size);
 }
 
 void* JemallocNodumpAllocator::reallocate(void* p, size_t size) {
-  return rallocx != nullptr ? rallocx(p, size, flags_) : realloc(p, size);
+  return &rallocx != nullptr ? rallocx(p, size, flags_) : realloc(p, size);
 }
 
 #ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_SUPPORTED
@@ -153,12 +153,12 @@ void* JemallocNodumpAllocator::alloc(
 #endif // FOLLY_JEMALLOC_NODUMP_ALLOCATOR_SUPPORTED
 
 void JemallocNodumpAllocator::deallocate(void* p, size_t) {
-  dallocx != nullptr ? dallocx(p, flags_) : free(p);
+  &dallocx != nullptr ? dallocx(p, flags_) : free(p);
 }
 
 void JemallocNodumpAllocator::deallocate(void* p, void* userData) {
   const auto flags = reinterpret_cast<uint64_t>(userData);
-  dallocx != nullptr ? dallocx(p, static_cast<int>(flags)) : free(p);
+  &dallocx != nullptr ? dallocx(p, static_cast<int>(flags)) : free(p);
 }
 
 JemallocNodumpAllocator& globalJemallocNodumpAllocator() {

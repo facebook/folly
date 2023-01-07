@@ -100,10 +100,10 @@ FOLLY_NOINLINE inline bool usingJEMalloc() noexcept {
     // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
     // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
     // (!!). http://goo.gl/xpmctm
-    if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr ||
-        sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr ||
-        nallocx == nullptr || mallctl == nullptr ||
-        mallctlnametomib == nullptr || mallctlbymib == nullptr) {
+    if (&mallocx == nullptr || &rallocx == nullptr || &xallocx == nullptr ||
+        &sallocx == nullptr || &dallocx == nullptr || &sdallocx == nullptr ||
+        &nallocx == nullptr || &mallctl == nullptr ||
+        &mallctlnametomib == nullptr || &mallctlbymib == nullptr) {
       return false;
     }
 
@@ -177,7 +177,7 @@ FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
     // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
     // (!!). http://goo.gl/xpmctm
     if (MallocExtension_Internal_GetNumericProperty == nullptr ||
-        sdallocx == nullptr || nallocx == nullptr) {
+        &sdallocx == nullptr || &nallocx == nullptr) {
       return false;
     }
     static const char kAllocBytes[] = "generic.current_allocated_bytes";
