@@ -183,7 +183,7 @@ class exception_wrapper final {
 
   //! \pre `ptr` holds a reference to `ex`.
   //! \post `bool(*this)`
-  //! \post `type() == typeid(ex)`
+  //! \post `type() == &typeid(ex)`
   template <class Ex>
   exception_wrapper(
       from_catch_ref_t, std::exception_ptr const& ptr, Ex& ex) noexcept;
@@ -193,7 +193,7 @@ class exception_wrapper final {
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
-  //! \post `type() == typeid(ex)`
+  //! \post `type() == &typeid(ex)`
   //! \note Exceptions of types derived from `std::exception` can be implicitly
   //!     converted to an `exception_wrapper`.
   template <
@@ -205,7 +205,7 @@ class exception_wrapper final {
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
-  //! \post `type() == typeid(ex)`
+  //! \post `type() == &typeid(ex)`
   //! \note Exceptions of types not derived from `std::exception` can still be
   //!     used to construct an `exception_wrapper`, but you must specify
   //!     `folly::in_place` as the first parameter.
