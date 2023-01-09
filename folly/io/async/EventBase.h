@@ -39,6 +39,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
+#include <folly/container/F14Set.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ScheduledExecutor.h>
@@ -1011,8 +1012,8 @@ class EventBase : public TimeoutManager,
   friend class detail::EventBaseLocalBase;
   template <typename T>
   friend class EventBaseLocal;
-  std::unordered_map<std::size_t, erased_unique_ptr> localStorage_;
-  folly::Synchronized<std::unordered_set<detail::EventBaseLocalBase*>>
+  folly::F14FastMap<std::size_t, erased_unique_ptr> localStorage_;
+  folly::Synchronized<folly::F14FastSet<detail::EventBaseLocalBase*>>
       localStorageToDtor_;
   bool tryDeregister(detail::EventBaseLocalBase&);
 
