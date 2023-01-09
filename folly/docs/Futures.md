@@ -136,9 +136,15 @@ for (auto& key : keys) {
   futs.push_back(mc.future_get(key));
 }
 auto any = collectAny(futs.begin(), futs.end());
+
+vector<SemiFuture<GetReply>> futs;
+for (auto& key : keys) {
+  futs.push_back(mc.future_get(key));
+}
+auto anyv = collectAnyWithoutException(futs.begin(), futs.end());
 ```
 
-`all` and `any` are Futures (for the exact type and usage see the header files). They will be complete when all/one of futs are complete, respectively. (There is also `collectN()` for when you need some.)
+`all` and `any` are Futures (for the exact type and usage see the header files). They will be complete when all/one of futs are complete, respectively. (There is also `collectN()` for when you need some, and `collectAnyWithoutException` when you need one value if some value would be available.)
 
 Second, we can associate a Future with an executor. An executor specifies where work will run, and we detail this more later. In summary, given an executor we can convert a `SemiFuture` to a `Future` with an executor, or a `Future` on one executor to a `Future` on another executor.
 
