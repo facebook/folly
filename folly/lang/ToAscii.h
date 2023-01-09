@@ -181,7 +181,7 @@ template <uint64_t Base>
 FOLLY_ALWAYS_INLINE size_t to_ascii_size_array(uint64_t v) {
   using powers = to_ascii_powers<Base, uint64_t>;
   for (size_t i = 0u; i < powers::size; ++i) {
-    if (FOLLY_LIKELY(v < powers::data.data[i])) {
+    if (FOLLY_UNLIKELY(v < powers::data.data[i])) {
       return i + size_t(i == 0);
     }
   }
