@@ -27,7 +27,7 @@ struct Foo {
   ~Foo() { runner_.stop(); }
 
   void start() {
-    runner_.add("Foo", [this]() {
+    runner_.add("Foo", [this]() noexcept {
       ++data;
       return std::chrono::seconds(0);
     });
@@ -45,7 +45,7 @@ struct FooLongSleep {
   }
 
   void start() {
-    runner_.add("FooLongSleep", [this]() {
+    runner_.add("FooLongSleep", [this]() noexcept {
       data.store(1);
       return 1000h; // Test would time out if we waited
     });
