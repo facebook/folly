@@ -797,22 +797,177 @@ class F14ItemIter {
 
 ////////////////
 
-template <typename SizeType, typename ItemIter, bool EnablePackedItemIter>
-struct SizeAndPackedBegin {
-  SizeType size_{0};
-
+struct PackedSizeAndChunkShift {
  private:
+  // F14Table's chunk count is a power of 2 that is at least 1 and at
+  // most 1 << 63. In order to encode it efficiently, we store its base 2
+  // logarithm `n`, so that (1UL << n) is the chunkCount. Despite
+  // needing only 6 bits to encode the shift, we reserve 8 bits to
+  // avoid extra masking, leaving 56 bits for the size, which is
+  // plenty.
+
+  // We use the least significant bits of
+  // packedSizeAndChunkShift_ for the shift so that size access
+  // is just a single shift and shift access is a normal 8-bit load.
+  static constexpr uint32_t kSizeShift = 8;
+  static constexpr uint32_t kChunkCountShiftMask = (1 << kSizeShift) - 1;
+  uint64_t packedSizeAndChunkShift_{0};
+
+ public:
+  // subtract 1 because we can't represent 1 << 64, triggering UBSAN.
+  static constexpr uint8_t kMaxSupportedChunkShift =
+      std::numeric_limits<uint64_t>::digits - 1;
+
+  static constexpr std::size_t kMaxSize =
+      (size_t(1) << (std::numeric_limits<std::size_t>::digits - kSizeShift)) -
+      1;
+
+  uint64_t size() const noexcept {
+    return packedSizeAndChunkShift_ >> kSizeShift;
+  }
+
+  uint8_t chunkShift() const noexcept {
+    return packedSizeAndChunkShift_ & kChunkCountShiftMask;
+  }
+
+  std::size_t chunkCount() const noexcept {
+    const auto chunkCountShift = chunkShift();
+    return 1UL << chunkCountShift;
+  }
+
+  void setSize(std::size_t sz) noexcept {
+    packedSizeAndChunkShift_ =
+        chunkShift() | (static_cast<uint64_t>(sz) << kSizeShift);
+  }
+
+  void setChunkCount(std::size_t newCount) {
+    FOLLY_SAFE_DCHECK(
+        folly::isPowTwo(newCount), newCount); // note that this forbids 0!
+    const auto shift = findFirstSet(newCount) - 1; // firstSet is 1-based.
+    packedSizeAndChunkShift_ =
+        (static_cast<uint64_t>(size()) << kSizeShift) | shift;
+    FOLLY_SAFE_DCHECK(
+        chunkCount() == newCount,
+        "shift: ",
+        shift,
+        " chunkCount: ",
+        chunkCount(),
+        " new count: ",
+        newCount);
+  }
+
+  void swap(PackedSizeAndChunkShift& rhs) noexcept {
+    std::swap(packedSizeAndChunkShift_, rhs.packedSizeAndChunkShift_);
+  }
+};
+
+struct UnpackedSizeAndChunkShift {
+ private:
+  // Simple implementation for 32-bit systems: just use two words.
+  std::size_t size_ = 0;
+  uint8_t chunkShift_ = 0;
+
+ public:
+  // subtract 1 because we can't represent 1 << 32, triggering UBSAN.
+  static constexpr uint8_t kMaxSupportedChunkShift =
+      std::numeric_limits<std::size_t>::digits - 1;
+
+  static constexpr std::size_t kMaxSize =
+      std::numeric_limits<std::size_t>::max();
+
+  uint64_t size() const noexcept { return size_; }
+
+  uint8_t chunkShift() const noexcept { return chunkShift_; }
+
+  std::size_t chunkCount() const noexcept {
+    const auto chunkCountShift = chunkShift();
+    return 1UL << chunkCountShift;
+  }
+
+  void setSize(std::size_t sz) noexcept { size_ = sz; }
+
+  void setChunkCount(std::size_t newCount) {
+    FOLLY_SAFE_DCHECK(
+        folly::isPowTwo(newCount), newCount); // note that this forbids 0!
+    const auto shift = findFirstSet(newCount) - 1; // firstSet is 1-based.
+    FOLLY_SAFE_DCHECK(shift <= std::numeric_limits<uint8_t>::max(), "");
+    chunkShift_ = static_cast<uint8_t>(shift);
+    FOLLY_SAFE_DCHECK(
+        chunkCount() == newCount,
+        "shift: ",
+        shift,
+        " chunkCount: ",
+        chunkCount(),
+        " new count: ",
+        newCount);
+  }
+
+  void swap(UnpackedSizeAndChunkShift& rhs) noexcept {
+    std::swap(size_, rhs.size_);
+    std::swap(chunkShift_, rhs.chunkShift_);
+  }
+};
+
+using SizeAndChunkShift = std::conditional_t<
+    sizeof(uint64_t) == sizeof(std::size_t),
+    PackedSizeAndChunkShift,
+    UnpackedSizeAndChunkShift>;
+
+template <typename ItemIter, bool EnablePackedItemIter>
+struct SizeAndChunkShiftAndPackedBegin {
+ private:
+  SizeAndChunkShift sizeAndChunkShift_;
+
   typename ItemIter::Packed packedBegin_{ItemIter{}.pack()};
 
  public:
+  auto size() const { return sizeAndChunkShift_.size(); }
+
+  auto chunkShift() const { return sizeAndChunkShift_.chunkShift(); }
+
+  auto chunkCount() const { return sizeAndChunkShift_.chunkCount(); }
+
+  void setSize(uint64_t sz) { sizeAndChunkShift_.setSize(sz); }
+
+  void incrementSize() { sizeAndChunkShift_.setSize(size() + 1); }
+
+  void decrementSize() { sizeAndChunkShift_.setSize(size() - 1); }
+
+  void setChunkCount(std::size_t count) {
+    sizeAndChunkShift_.setChunkCount(count);
+  }
+
   typename ItemIter::Packed& packedBegin() { return packedBegin_; }
 
   typename ItemIter::Packed const& packedBegin() const { return packedBegin_; }
+
+  void swap(SizeAndChunkShiftAndPackedBegin& rhs) noexcept {
+    sizeAndChunkShift_.swap(rhs.sizeAndChunkShift_);
+    std::swap(packedBegin_, rhs.packedBegin_);
+  }
 };
 
-template <typename SizeType, typename ItemIter>
-struct SizeAndPackedBegin<SizeType, ItemIter, false> {
-  SizeType size_{0};
+template <typename ItemIter>
+struct SizeAndChunkShiftAndPackedBegin<ItemIter, false> {
+ private:
+  SizeAndChunkShift sizeAndChunkShift_;
+
+ public:
+  auto size() const { return sizeAndChunkShift_.size(); }
+
+  auto chunkShift() const { return sizeAndChunkShift_.chunkShift(); }
+
+  auto chunkCount() const { return sizeAndChunkShift_.chunkCount(); }
+
+  void setSize(uint64_t sz) { sizeAndChunkShift_.setSize(sz); }
+
+  void incrementSize() { sizeAndChunkShift_.setSize(size() + 1); }
+
+  void decrementSize() { sizeAndChunkShift_.setSize(size() - 1); }
+
+  void setChunkCount(std::size_t count) {
+    sizeAndChunkShift_.setChunkCount(count);
+  }
 
   [[noreturn]] typename ItemIter::Packed& packedBegin() {
     assume_unreachable();
@@ -835,7 +990,6 @@ class F14Table : public Policy {
   using Alloc = typename Policy::Alloc;
   using AllocTraits = typename Policy::AllocTraits;
   using Hasher = typename Policy::Hasher;
-  using InternalSizeType = typename Policy::InternalSizeType;
   using KeyEqual = typename Policy::KeyEqual;
 
   using Policy::kAllocIsAlwaysEqual;
@@ -867,22 +1021,35 @@ class F14Table : public Policy {
   //////// begin fields
 
   ChunkPtr chunks_{Chunk::emptyInstance()};
-  InternalSizeType chunkMask_{0};
-  SizeAndPackedBegin<InternalSizeType, ItemIter, kEnableItemIteration>
-      sizeAndPackedBegin_;
+  SizeAndChunkShiftAndPackedBegin<ItemIter, kEnableItemIteration>
+      sizeAndChunkShiftAndPackedBegin_;
 
   //////// end fields
+
+  auto chunkShift() const {
+    return sizeAndChunkShiftAndPackedBegin_.chunkShift();
+  }
+
+  auto chunkCount() const {
+    return sizeAndChunkShiftAndPackedBegin_.chunkCount();
+  }
+
+  std::size_t moduloByChunkCount(std::size_t index) const {
+#ifdef __BMI2__
+    // TODO: remove once the compiler selects BZHI on its own.
+    // see codegen for: codeSize_find_F14value, defined in:
+    // folly/container/test/F14SmallOverheads.cpp
+    return _bzhi_u64(index, chunkShift());
+#else
+    return index & ((1UL << chunkShift()) - 1);
+#endif
+  }
 
   void swapContents(F14Table& rhs) noexcept {
     using std::swap;
     swap(chunks_, rhs.chunks_);
-    swap(chunkMask_, rhs.chunkMask_);
-    swap(sizeAndPackedBegin_.size_, rhs.sizeAndPackedBegin_.size_);
-    if (kEnableItemIteration) {
-      swap(
-          sizeAndPackedBegin_.packedBegin(),
-          rhs.sizeAndPackedBegin_.packedBegin());
-    }
+    swap(
+        sizeAndChunkShiftAndPackedBegin_, rhs.sizeAndChunkShiftAndPackedBegin_);
   }
 
  public:
@@ -1182,7 +1349,7 @@ class F14Table : public Policy {
 
   static std::size_t chunkAllocSize(
       std::size_t chunkCount, std::size_t capacityScale) {
-    FOLLY_SAFE_DCHECK(chunkCount > 0, "");
+    FOLLY_SAFE_DCHECK(chunkCount > 0, chunkCount);
     FOLLY_SAFE_DCHECK(!(chunkCount > 1 && capacityScale == 0), "");
     if (chunkCount == 1) {
       static_assert(offsetof(Chunk, rawItems_) == 16, "");
@@ -1204,34 +1371,33 @@ class F14Table : public Policy {
   }
 
   std::size_t itemCount() const noexcept {
-    if (chunkMask_ == 0) {
+    if (chunkShift() == 0) {
       return computeCapacity(1, chunks_->capacityScale());
     } else {
-      return (chunkMask_ + 1) * Chunk::kCapacity;
+      return chunkCount() * Chunk::kCapacity;
     }
   }
 
  public:
   ItemIter begin() const noexcept {
     FOLLY_SAFE_DCHECK(kEnableItemIteration, "");
-    return ItemIter{sizeAndPackedBegin_.packedBegin()};
+    return ItemIter{sizeAndChunkShiftAndPackedBegin_.packedBegin()};
   }
 
   ItemIter end() const noexcept { return ItemIter{}; }
 
   bool empty() const noexcept { return size() == 0; }
 
-  InternalSizeType size() const noexcept { return sizeAndPackedBegin_.size_; }
+  auto size() const noexcept { return sizeAndChunkShiftAndPackedBegin_.size(); }
 
   std::size_t max_size() const noexcept {
     auto& a = this->alloc();
     return std::min<std::size_t>(
-        (std::numeric_limits<InternalSizeType>::max)(),
-        AllocTraits::max_size(a));
+        SizeAndChunkShift::kMaxSize, AllocTraits::max_size(a));
   }
 
   std::size_t bucket_count() const noexcept {
-    return computeCapacity(chunkMask_ + 1, chunks_->capacityScale());
+    return computeCapacity(chunkCount(), chunks_->capacityScale());
   }
 
   std::size_t max_bucket_count() const noexcept { return max_size(); }
@@ -1304,8 +1470,8 @@ class F14Table : public Policy {
   findImpl(HashPair hp, K const& key, Prefetch prefetch) const {
     std::size_t index = hp.first;
     std::size_t step = probeDelta(hp);
-    for (std::size_t tries = 0; tries <= chunkMask_; ++tries) {
-      ChunkPtr chunk = chunks_ + (index & chunkMask_);
+    for (std::size_t tries = 0; tries >> chunkShift() == 0; ++tries) {
+      ChunkPtr chunk = chunks_ + moduloByChunkCount(index);
       if (prefetch == Prefetch::ENABLED && sizeof(Chunk) > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
@@ -1342,7 +1508,7 @@ class F14Table : public Policy {
   F14HashToken prehash(K const& key) const {
     FOLLY_SAFE_DCHECK(chunks_ != nullptr, "");
     auto hp = splitHash(this->computeKeyHash(key));
-    ChunkPtr firstChunk = chunks_ + (hp.first & chunkMask_);
+    ChunkPtr firstChunk = chunks_ + moduloByChunkCount(hp.first);
     prefetchAddr(firstChunk);
     return F14HashToken(std::move(hp));
   }
@@ -1356,7 +1522,7 @@ class F14Table : public Policy {
   // only be called when benchmarks show performance improvements.
   void prefetch(F14HashToken const& token) const {
     auto hp = static_cast<HashPair>(token);
-    ChunkPtr firstChunk = chunks_ + (hp.first & chunkMask_);
+    ChunkPtr firstChunk = chunks_ + moduloByChunkCount(hp.first);
     // The first cache line was already prefetched in prehash().
     // Prefetch the next two cache lines up to the chunk size. We only
     // fetch at most 2 more cache lines to avoid thrashing the local
@@ -1389,8 +1555,8 @@ class F14Table : public Policy {
     auto hp = splitHash(this->computeKeyHash(key));
     std::size_t index = hp.first;
     std::size_t step = probeDelta(hp);
-    for (std::size_t tries = 0; tries <= chunkMask_; ++tries) {
-      ChunkPtr chunk = chunks_ + (index & chunkMask_);
+    for (std::size_t tries = 0; tries >> chunkShift() == 0; ++tries) {
+      ChunkPtr chunk = chunks_ + moduloByChunkCount(index);
       if (sizeof(Chunk) > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
@@ -1415,12 +1581,12 @@ class F14Table : public Policy {
     if (kEnableItemIteration) {
       // packedBegin is the max of all valid ItemIter::pack()
       auto packed = iter.pack();
-      if (sizeAndPackedBegin_.packedBegin() < packed) {
-        sizeAndPackedBegin_.packedBegin() = packed;
+      if (sizeAndChunkShiftAndPackedBegin_.packedBegin() < packed) {
+        sizeAndChunkShiftAndPackedBegin_.packedBegin() = packed;
       }
     }
 
-    ++sizeAndPackedBegin_.size_;
+    sizeAndChunkShiftAndPackedBegin_.incrementSize();
   }
 
   // Ignores hp if pos.chunk()->hostedOverflowCount() == 0
@@ -1433,7 +1599,7 @@ class F14Table : public Policy {
       std::size_t delta = probeDelta(hp);
       uint8_t hostedOp = 0;
       while (true) {
-        ChunkPtr chunk = chunks_ + (index & chunkMask_);
+        ChunkPtr chunk = chunks_ + moduloByChunkCount(index);
         if (chunk == iter.chunk()) {
           chunk->adjustHostedOverflowCount(hostedOp);
           break;
@@ -1446,15 +1612,15 @@ class F14Table : public Policy {
   }
 
   void adjustSizeAndBeginBeforeErase(ItemIter iter) {
-    --sizeAndPackedBegin_.size_;
+    sizeAndChunkShiftAndPackedBegin_.decrementSize();
     if (kEnableItemIteration) {
-      if (iter.pack() == sizeAndPackedBegin_.packedBegin()) {
+      if (iter.pack() == sizeAndChunkShiftAndPackedBegin_.packedBegin()) {
         if (size() == 0) {
           iter = ItemIter{};
         } else {
           iter.precheckedAdvance();
         }
-        sizeAndPackedBegin_.packedBegin() = iter.pack();
+        sizeAndChunkShiftAndPackedBegin_.packedBegin() = iter.pack();
       }
     }
   }
@@ -1477,7 +1643,7 @@ class F14Table : public Policy {
     std::size_t delta = probeDelta(hp);
     uint8_t hostedOp = 0;
     while (true) {
-      index &= chunkMask_;
+      index = moduloByChunkCount(index);
       chunk = chunks_ + index;
       if (LIKELY(fullness[index] < Chunk::kCapacity)) {
         break;
@@ -1498,13 +1664,13 @@ class F14Table : public Policy {
     if (kEnableItemIteration) {
       return begin().chunk();
     } else {
-      return chunks_ + chunkMask_;
+      return chunks_ + chunkCount() - 1;
     }
   }
 
   template <typename T>
   void directBuildFrom(T&& src) {
-    FOLLY_SAFE_DCHECK(src.size() > 0 && chunkMask_ == src.chunkMask_, "");
+    FOLLY_SAFE_DCHECK(src.size() > 0 && chunkShift() == src.chunkShift(), "");
 
     // We use std::forward<T> to allow portions of src to be moved out by
     // either beforeBuild or afterBuild, but we are just relying on good
@@ -1531,17 +1697,17 @@ class F14Table : public Policy {
 
     if (is_trivially_copyable<Item>::value && !this->destroyItemOnClear() &&
         itemCount() == src.itemCount()) {
-      FOLLY_SAFE_DCHECK(chunkMask_ == src.chunkMask_, "");
+      FOLLY_SAFE_DCHECK(chunkShift() == src.chunkShift(), "");
 
       auto scale = chunks_->capacityScale();
 
       // most happy path
-      auto n = chunkAllocSize(chunkMask_ + 1, scale);
+      auto n = chunkAllocSize(chunkCount(), scale);
       std::memcpy(&chunks_[0], &src.chunks_[0], n);
-      sizeAndPackedBegin_.size_ = src.size();
+      sizeAndChunkShiftAndPackedBegin_.setSize(src.size());
       if (kEnableItemIteration) {
         auto srcBegin = src.begin();
-        sizeAndPackedBegin_.packedBegin() =
+        sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{
                 chunks_ + (srcBegin.chunk() - src.chunks_), srcBegin.index()}
                 .pack();
@@ -1555,8 +1721,8 @@ class F14Table : public Policy {
       // and use copy constructor.  Don't try to optimize by using
       // lastOccupiedChunk() because there may be higher unoccupied chunks
       // with the overflow bit set.
-      auto srcChunk = &src.chunks_[chunkMask_];
-      Chunk* dstChunk = &chunks_[chunkMask_];
+      auto srcChunk = &src.chunks_[chunkCount() - 1];
+      Chunk* dstChunk = &chunks_[chunkCount() - 1];
       do {
         dstChunk->copyOverflowInfoFrom(*srcChunk);
 
@@ -1576,7 +1742,7 @@ class F14Table : public Policy {
           this->constructValueAtItem(
               0, dst, std::forward<decltype(srcArg)>(srcArg));
           dstChunk->setTag(dstI, srcChunk->tag(srcI));
-          ++sizeAndPackedBegin_.size_;
+          sizeAndChunkShiftAndPackedBegin_.incrementSize();
         }
 
         --srcChunk;
@@ -1586,7 +1752,7 @@ class F14Table : public Policy {
       // reset doesn't care about packedBegin, so we don't fix it until the end
       if (kEnableItemIteration) {
         std::size_t maxChunkIndex = src.lastOccupiedChunk() - src.chunks_;
-        sizeAndPackedBegin_.packedBegin() =
+        sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{
                 chunks_ + maxChunkIndex,
                 chunks_[maxChunkIndex].lastOccupied().index()}
@@ -1599,12 +1765,12 @@ class F14Table : public Policy {
 
   template <typename T>
   void rehashBuildFrom(T&& src) {
-    FOLLY_SAFE_DCHECK(src.chunkMask_ > chunkMask_, "");
+    FOLLY_SAFE_DCHECK(src.chunkCount() > chunkCount(), "");
 
     // 1 byte per chunk means < 1 bit per value temporary overhead
     std::array<uint8_t, 256> stackBuf;
     uint8_t* fullness;
-    auto cc = chunkMask_ + 1;
+    auto cc = chunkCount();
     if (cc <= stackBuf.size()) {
       fullness = stackBuf.data();
     } else {
@@ -1700,8 +1866,7 @@ class F14Table : public Policy {
 
     // Use the source's capacity, unless it is oversized.
     auto upperLimit = computeChunkCountAndScale(src.size(), false, false);
-    auto ccas = std::make_pair(
-        std::size_t{src.chunkMask_} + 1, src.chunks_->capacityScale());
+    auto ccas = std::make_pair(src.chunkCount(), src.chunks_->capacityScale());
     FOLLY_SAFE_DCHECK(
         ccas.first >= upperLimit.first,
         "rounded chunk count can't be bigger than actual");
@@ -1711,7 +1876,7 @@ class F14Table : public Policy {
     rehashImpl(0, 1, 0, ccas.first, ccas.second);
 
     try {
-      if (chunkMask_ == src.chunkMask_) {
+      if (chunkShift() == src.chunkShift()) {
         directBuildFrom(std::forward<T>(src));
       } else {
         rehashBuildFrom(std::forward<T>(src));
@@ -1730,7 +1895,7 @@ class F14Table : public Policy {
       return;
     }
 
-    auto origChunkCount = chunkMask_ + 1;
+    auto origChunkCount = chunkCount();
     auto origCapacityScale = chunks_->capacityScale();
     auto origCapacity = computeCapacity(origChunkCount, origCapacityScale);
 
@@ -1798,7 +1963,7 @@ class F14Table : public Policy {
 
   void initialReserve(std::size_t desiredCapacity) {
     FOLLY_SAFE_DCHECK(size() == 0, size());
-    FOLLY_SAFE_DCHECK(chunkMask_ == 0, chunkMask_);
+    FOLLY_SAFE_DCHECK(chunkShift() == 0, chunkShift());
     FOLLY_SAFE_DCHECK(chunks_ == Chunk::emptyInstance(), "");
     if (desiredCapacity == 0) {
       return;
@@ -1817,9 +1982,7 @@ class F14Table : public Policy {
 
     chunks_ = initializeChunks(rawAllocation, newChunkCount, newCapacityScale);
 
-    FOLLY_SAFE_DCHECK(
-        newChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
-    chunkMask_ = static_cast<InternalSizeType>(newChunkCount - 1);
+    sizeAndChunkShiftAndPackedBegin_.setChunkCount(newChunkCount);
 
     this->afterRehash(
         std::move(undoState), true, 0, 0, newCapacity, nullptr, 0);
@@ -1842,13 +2005,11 @@ class F14Table : public Policy {
         origSize, origCapacity, newCapacity, newAllocSize, rawAllocation);
     chunks_ = initializeChunks(rawAllocation, newChunkCount, newCapacityScale);
 
-    FOLLY_SAFE_DCHECK(
-        newChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
-    chunkMask_ = static_cast<InternalSizeType>(newChunkCount - 1);
+    sizeAndChunkShiftAndPackedBegin_.setChunkCount(newChunkCount);
 
     bool success = false;
     SCOPE_EXIT {
-      // this SCOPE_EXIT reverts chunks_ and chunkMask_ if necessary
+      // this SCOPE_EXIT reverts chunks_ and chunkShift if necessary
       BytePtr finishedRawAllocation = nullptr;
       std::size_t finishedAllocSize = 0;
       if (LIKELY(success)) {
@@ -1861,9 +2022,7 @@ class F14Table : public Policy {
         finishedRawAllocation = rawAllocation;
         finishedAllocSize = newAllocSize;
         chunks_ = origChunks;
-        FOLLY_SAFE_DCHECK(
-            origChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
-        chunkMask_ = static_cast<InternalSizeType>(origChunkCount - 1);
+        sizeAndChunkShiftAndPackedBegin_.setChunkCount(origChunkCount);
         F14LinkCheck<getF14IntrinsicsMode()>::check();
       }
 
@@ -1895,7 +2054,8 @@ class F14Table : public Policy {
         ++srcI;
       }
       if (kEnableItemIteration) {
-        sizeAndPackedBegin_.packedBegin() = ItemIter{dstChunk, dstI - 1}.pack();
+        sizeAndChunkShiftAndPackedBegin_.packedBegin() =
+            ItemIter{dstChunk, dstI - 1}.pack();
       }
     } else {
       // 1 byte per chunk means < 1 bit per value temporary overhead
@@ -1946,11 +2106,11 @@ class F14Table : public Policy {
 
       if (kEnableItemIteration) {
         // this code replaces size invocations of adjustSizeAndBeginAfterInsert
-        std::size_t i = chunkMask_;
+        std::size_t i = chunkCount() - 1;
         while (fullness[i] == 0) {
           --i;
         }
-        sizeAndPackedBegin_.packedBegin() =
+        sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{chunks_ + i, std::size_t{fullness[i]} - 1}.pack();
       }
     }
@@ -1970,7 +2130,7 @@ class F14Table : public Policy {
   }
 
   void debugModeSpuriousRehash() {
-    auto cc = chunkMask_ + 1;
+    auto cc = chunkCount();
     auto ss = chunks_->capacityScale();
     rehashImpl(size(), cc, ss, cc, ss);
   }
@@ -2003,7 +2163,7 @@ class F14Table : public Policy {
     FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
     constexpr bool perturbSlot = FOLLY_F14_PERTURB_INSERTION_ORDER;
     if (perturbSlot && !tlsPendingSafeInserts()) {
-      std::size_t e = chunkMask_ == 0 ? bucket_count() : Chunk::kCapacity;
+      std::size_t e = chunkShift() == 0 ? bucket_count() : Chunk::kCapacity;
       std::size_t i = itemIndex + tlsMinstdRand(e - itemIndex);
       if (!chunk->occupied(i)) {
         itemIndex = i;
@@ -2031,11 +2191,11 @@ class F14Table : public Policy {
     FOLLY_SAFE_DCHECK(incoming > 0, "");
 
     auto needed = size() + incoming;
-    auto chunkCount = chunkMask_ + 1;
+    auto chunkCount_ = chunkCount();
     auto scale = chunks_->capacityScale();
-    auto existing = computeCapacity(chunkCount, scale);
+    auto existing = computeCapacity(chunkCount_, scale);
     if (needed - 1 >= existing) {
-      reserveForInsertImpl(needed - 1, chunkCount, scale, existing);
+      reserveForInsertImpl(needed - 1, chunkCount_, scale, existing);
     }
   }
 
@@ -2073,7 +2233,7 @@ class F14Table : public Policy {
     reserveForInsert();
 
     std::size_t index = hp.first;
-    ChunkPtr chunk = chunks_ + (index & chunkMask_);
+    ChunkPtr chunk = chunks_ + moduloByChunkCount(index);
     auto firstEmpty = chunk->firstEmpty();
 
     if (!firstEmpty.hasIndex()) {
@@ -2081,7 +2241,7 @@ class F14Table : public Policy {
       do {
         chunk->incrOutboundOverflowCount();
         index += delta;
-        chunk = chunks_ + (index & chunkMask_);
+        chunk = chunks_ + moduloByChunkCount(index);
         firstEmpty = chunk->firstEmpty();
       } while (!firstEmpty.hasIndex());
       chunk->adjustHostedOverflowCount(Chunk::kIncrHostedOverflowCount);
@@ -2111,7 +2271,7 @@ class F14Table : public Policy {
 
     // turn clear into reset if the table is >= 16 chunks so that
     // we don't get too low a load factor
-    bool willReset = Reset || chunkMask_ + 1 >= 16;
+    bool willReset = Reset || chunkCount() >= 16;
 
     auto origSize = size();
     auto origCapacity = bucket_count();
@@ -2123,7 +2283,7 @@ class F14Table : public Policy {
 
     if (!empty()) {
       if (destroyItemOnClear()) {
-        for (std::size_t ci = 0; ci <= chunkMask_; ++ci) {
+        for (std::size_t ci = 0; ci < chunkCount(); ++ci) {
           ChunkPtr chunk = chunks_ + ci;
           auto iter = chunk->occupiedIter();
           if (prefetchBeforeDestroy()) {
@@ -2141,25 +2301,25 @@ class F14Table : public Policy {
         // when the chunk count is small.  That avoids a branch when we
         // are promoting a clear to a reset for a large table.
         auto scale = chunks_[0].capacityScale();
-        for (std::size_t ci = 0; ci <= chunkMask_; ++ci) {
+        for (std::size_t ci = 0; ci < chunkCount(); ++ci) {
           chunks_[ci].clear();
         }
         chunks_[0].markEof(scale);
       }
       if (kEnableItemIteration) {
-        sizeAndPackedBegin_.packedBegin() = ItemIter{}.pack();
+        sizeAndChunkShiftAndPackedBegin_.packedBegin() = ItemIter{}.pack();
       }
-      sizeAndPackedBegin_.size_ = 0;
+      sizeAndChunkShiftAndPackedBegin_.setSize(0);
     }
 
     if (willReset) {
       BytePtr rawAllocation = std::pointer_traits<BytePtr>::pointer_to(
           *static_cast<uint8_t*>(static_cast<void*>(&*chunks_)));
       std::size_t rawSize =
-          chunkAllocSize(chunkMask_ + 1, chunks_->capacityScale());
+          chunkAllocSize(chunkCount(), chunks_->capacityScale());
 
       chunks_ = Chunk::emptyInstance();
-      chunkMask_ = 0;
+      sizeAndChunkShiftAndPackedBegin_.setChunkCount(1);
 
       this->afterReset(origSize, origCapacity, rawAllocation, rawSize);
     } else {
@@ -2243,7 +2403,7 @@ class F14Table : public Policy {
   void visitAllocationClasses(V&& visitor) const {
     auto scale = chunks_->capacityScale();
     this->visitPolicyAllocationClasses(
-        scale == 0 ? 0 : chunkAllocSize(chunkMask_ + 1, scale),
+        scale == 0 ? 0 : chunkAllocSize(chunkCount(), scale),
         size(),
         bucket_count(),
         visitor);
@@ -2320,7 +2480,7 @@ class F14Table : public Policy {
 
     std::size_t n1 = 0;
     std::size_t n2 = 0;
-    auto cc = bucket_count() == 0 ? 0 : chunkMask_ + 1;
+    auto cc = bucket_count() == 0 ? 0 : chunkCount();
     for (std::size_t ci = 0; ci < cc; ++ci) {
       ChunkPtr chunk = chunks_ + ci;
       FOLLY_SAFE_DCHECK(chunk->eof() == (ci == 0), "");
@@ -2350,7 +2510,7 @@ class F14Table : public Policy {
           std::size_t dist = 1;
           std::size_t index = hp.first;
           std::size_t delta = probeDelta(hp);
-          while ((index & chunkMask_) != ci) {
+          while (moduloByChunkCount(index) != ci) {
             index += delta;
             ++dist;
           }
@@ -2367,8 +2527,8 @@ class F14Table : public Policy {
           std::size_t dist = 1;
           std::size_t index = hp.first;
           std::size_t delta = probeDelta(hp);
-          for (std::size_t tries = 0; tries <= chunkMask_ &&
-               chunks_[index & chunkMask_].outboundOverflowCount() != 0;
+          for (std::size_t tries = 0; tries >> chunkShift() == 0 &&
+               chunks_[moduloByChunkCount(index)].outboundOverflowCount() != 0;
                ++tries) {
             index += delta;
             ++dist;

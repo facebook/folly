@@ -703,7 +703,7 @@ TEST(F14Set, ContainerSize) {
   {
     F14ValueSet<int> set;
     set.insert(10);
-    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    EXPECT_EQ(sizeof(set), 3 * sizeof(void*));
     if (alignof(folly::max_align_t) == 16) {
       // chunks will be allocated as 2 max_align_t-s
       EXPECT_EQ(set.getAllocatedMemorySize(), 32);
@@ -715,7 +715,7 @@ TEST(F14Set, ContainerSize) {
   {
     F14NodeSet<int> set;
     set.insert(10);
-    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    EXPECT_EQ(sizeof(set), 3 * sizeof(void*));
     if (alignof(folly::max_align_t) == 16) {
       // chunks will be allocated as 2 max_align_t-s
       EXPECT_EQ(set.getAllocatedMemorySize(), 36);
@@ -1037,8 +1037,10 @@ TEST(F14ValueSet, maxSize) {
   F14ValueSet<int> s;
   EXPECT_EQ(
       s.max_size(),
-      std::allocator_traits<decltype(s)::allocator_type>::max_size(
-          s.get_allocator()));
+      std::min(
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
+          std::allocator_traits<decltype(s)::allocator_type>::max_size(
+              s.get_allocator())));
 }
 
 TEST(F14NodeSet, maxSize) {
@@ -1047,8 +1049,10 @@ TEST(F14NodeSet, maxSize) {
   F14NodeSet<int> s;
   EXPECT_EQ(
       s.max_size(),
-      std::allocator_traits<decltype(s)::allocator_type>::max_size(
-          s.get_allocator()));
+      std::min(
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
+          std::allocator_traits<decltype(s)::allocator_type>::max_size(
+              s.get_allocator())));
 }
 
 TEST(F14VectorSet, maxSize) {
@@ -1058,7 +1062,7 @@ TEST(F14VectorSet, maxSize) {
   EXPECT_EQ(
       s.max_size(),
       std::min(
-          std::size_t{std::numeric_limits<uint32_t>::max()},
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
           std::allocator_traits<decltype(s)::allocator_type>::max_size(
               s.get_allocator())));
 }

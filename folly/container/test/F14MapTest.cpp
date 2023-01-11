@@ -1406,8 +1406,10 @@ TEST(F14ValueMap, maxSize) {
   F14ValueMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
-      std::allocator_traits<decltype(m)::allocator_type>::max_size(
-          m.get_allocator()));
+      std::min(
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
+          std::allocator_traits<decltype(m)::allocator_type>::max_size(
+              m.get_allocator())));
 }
 
 TEST(F14NodeMap, maxSize) {
@@ -1416,8 +1418,10 @@ TEST(F14NodeMap, maxSize) {
   F14NodeMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
-      std::allocator_traits<decltype(m)::allocator_type>::max_size(
-          m.get_allocator()));
+      std::min(
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
+          std::allocator_traits<decltype(m)::allocator_type>::max_size(
+              m.get_allocator())));
 }
 
 TEST(F14VectorMap, vectorMaxSize) {
@@ -1427,7 +1431,7 @@ TEST(F14VectorMap, vectorMaxSize) {
   EXPECT_EQ(
       m.max_size(),
       std::min(
-          std::size_t{std::numeric_limits<uint32_t>::max()},
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
           std::allocator_traits<decltype(m)::allocator_type>::max_size(
               m.get_allocator())));
 }
