@@ -152,7 +152,7 @@ mutex type: `Synchronized<T, Mutex>`.
 
 If not specified, the mutex type defaults to `folly::SharedMutex`. However, any
 mutex type with an interface compatible with the standard mutex types is
-supported. Additionally, any mutex type campatible with the extended protocol
+supported. Additionally, any mutex type compatible with the extended protocol
 implemented in `folly/synchronization/Lock.h` is supported.
 
 `Synchronized` provides slightly different APIs when instantiated with a
