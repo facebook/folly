@@ -614,7 +614,10 @@ IOBuf::IOBuf(
   assert(data >= buf);
   assert(intptr_t(data) + length <= intptr_t(buf) + capacity);
 
-  CHECK(!folly::asan_region_is_poisoned(buf, capacity));
+  if (folly::asan_region_is_poisoned(buf, capacity)) {
+    // If we know it's a poisoned region, access it to trigger ASAN reporting.
+    memset(buf, 0, capacity);
+  }
 }
 
 IOBuf::~IOBuf() {
