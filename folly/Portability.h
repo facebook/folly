@@ -495,7 +495,7 @@ constexpr auto kMscVer = _MSC_VER;
 constexpr auto kMscVer = 0;
 #endif
 
-#if __GNUC__
+#if defined(__GNUC__) && __GNUC__
 constexpr auto kGnuc = __GNUC__;
 #else
 constexpr auto kGnuc = 0;

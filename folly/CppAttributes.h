@@ -125,7 +125,7 @@
  * optimizer both when processing the function body and when analyzing
  * call-sites.
  */
-#if __GNUC__
+#if defined(__GNUC__) && __GNUC__
 #define FOLLY_COLD __attribute__((__cold__))
 #else
 #define FOLLY_COLD
