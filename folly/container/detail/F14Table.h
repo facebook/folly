@@ -846,14 +846,7 @@ struct PackedSizeAndChunkShift {
     const auto shift = findFirstSet(newCount) - 1; // firstSet is 1-based.
     packedSizeAndChunkShift_ =
         (static_cast<uint64_t>(size()) << kSizeShift) | shift;
-    FOLLY_SAFE_DCHECK(
-        chunkCount() == newCount,
-        "shift: ",
-        shift,
-        " chunkCount: ",
-        chunkCount(),
-        " new count: ",
-        newCount);
+    FOLLY_SAFE_DCHECK(chunkCount() == newCount, "");
   }
 
   void swap(PackedSizeAndChunkShift& rhs) noexcept {
@@ -892,14 +885,7 @@ struct UnpackedSizeAndChunkShift {
     const auto shift = findFirstSet(newCount) - 1; // firstSet is 1-based.
     FOLLY_SAFE_DCHECK(shift <= std::numeric_limits<uint8_t>::max(), "");
     chunkShift_ = static_cast<uint8_t>(shift);
-    FOLLY_SAFE_DCHECK(
-        chunkCount() == newCount,
-        "shift: ",
-        shift,
-        " chunkCount: ",
-        chunkCount(),
-        " new count: ",
-        newCount);
+    FOLLY_SAFE_DCHECK(chunkCount() == newCount, "");
   }
 
   void swap(UnpackedSizeAndChunkShift& rhs) noexcept {
@@ -1349,7 +1335,7 @@ class F14Table : public Policy {
 
   static std::size_t chunkAllocSize(
       std::size_t chunkCount, std::size_t capacityScale) {
-    FOLLY_SAFE_DCHECK(chunkCount > 0, chunkCount);
+    FOLLY_SAFE_DCHECK(chunkCount > 0, "");
     FOLLY_SAFE_DCHECK(!(chunkCount > 1 && capacityScale == 0), "");
     if (chunkCount == 1) {
       static_assert(offsetof(Chunk, rawItems_) == 16, "");
@@ -1962,8 +1948,8 @@ class F14Table : public Policy {
   }
 
   void initialReserve(std::size_t desiredCapacity) {
-    FOLLY_SAFE_DCHECK(size() == 0, size());
-    FOLLY_SAFE_DCHECK(chunkShift() == 0, chunkShift());
+    FOLLY_SAFE_DCHECK(size() == 0, "");
+    FOLLY_SAFE_DCHECK(chunkShift() == 0, "");
     FOLLY_SAFE_DCHECK(chunks_ == Chunk::emptyInstance(), "");
     if (desiredCapacity == 0) {
       return;

@@ -200,9 +200,12 @@ class F14HashtableIterator:
         item_type = gdb.lookup_type("{}::{}".format(ht.type.name, "Item"))
         self.item_ptr_type = item_type.pointer()
         self.chunk_ptr = ht["chunks_"]
-        # chunk_count is always power of 2;
-        # For partial chunks, chunkMask_ = 0, so + 1 also works
-        chunk_count = ht["chunkMask_"] + 1
+        pair = ht["sizeAndChunkShiftAndPackedBegin_"]["sizeAndChunkShift_"]
+        size_of_size_t = gdb.lookup_type("size_t").sizeof
+        if size_of_size_t == 4:
+            chunk_count = 1 << pair["chunkShift_"]
+        else:
+            chunk_count = 1 << (pair["packedSizeAndChunkShift_"] & ((1 << 8) - 1))
         self.chunk_end = self.chunk_ptr + chunk_count
         self.current_chunk = self.chunk_iter(self.chunk_ptr)
         self.is_node_container = is_node_container
@@ -286,7 +289,14 @@ class F14Printer:
         return self.val["table_"]
 
     def size(self):
-        return self.hashtable()["sizeAndPackedBegin_"]["size_"]
+        pair = self.hashtable()["sizeAndChunkShiftAndPackedBegin_"][
+            "sizeAndChunkShift_"
+        ]
+        size_of_size_t = gdb.lookup_type("size_t").sizeof
+        if size_of_size_t == 4:
+            return pair["size_"]
+        else:
+            return pair["packedSizeAndChunkShift_"] >> 8
 
     def to_string(self):
         return "%s with %d elements" % (
