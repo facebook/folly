@@ -74,7 +74,6 @@ IoUringBackend* getBackendFromEventBase(EventBase* evb) {
     b = dynamic_cast<IoUringBackend*>(evb->getBackend());
   }
   if (!b) {
-    std::terminate();
     throw std::runtime_error("need to take a IoUringBackend event base");
   }
   return b;

@@ -1851,10 +1851,17 @@ int IoUringBackend::submitBusyCheck(
       }
     } else {
 #if FOLLY_IO_URING_UP_TO_DATE
-      res = ::io_uring_submit_and_get_events(&ioRing_);
-      if (res >= 0) {
-        i = waitingToSubmit_; // this is ok if we are using SUBMIT_ALL
-        break;
+      if (usingDeferTaskrun_) {
+        // usingDeferTaskrun_ implies SUBMIT_ALL, and we definitely
+        // want to do get_events() to process outstanding work
+        res = ::io_uring_submit_and_get_events(&ioRing_);
+        if (res >= 0) {
+          // this is ok since we are using SUBMIT_ALL
+          i = waitingToSubmit_;
+          break;
+        }
+      } else {
+        res = ::io_uring_submit(&ioRing_);
       }
 #else
       res = ::io_uring_submit(&ioRing_);
