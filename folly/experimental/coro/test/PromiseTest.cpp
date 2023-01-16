@@ -69,14 +69,14 @@ CO_TEST(PromiseTest, ImmediateExceptionVoid) {
 }
 
 CO_TEST(PromiseTest, SuspendValue) {
-  auto [promise, future] = coro::makePromiseContract<int>();
+  auto [this_promise, this_future] = coro::makePromiseContract<int>();
   auto waiter = [](auto future) -> coro::Task<int> {
     co_return co_await std::move(future);
-  }(std::move(future));
+  }(std::move(this_future));
   auto fulfiller = [](auto promise) -> coro::Task<> {
     promise.setValue(42);
     co_return;
-  }(std::move(promise));
+  }(std::move(this_promise));
 
   auto [res, _] = co_await coro::collectAll(
       co_awaitTry(std::move(waiter)), std::move(fulfiller));
@@ -85,14 +85,14 @@ CO_TEST(PromiseTest, SuspendValue) {
 }
 
 CO_TEST(PromiseTest, SuspendException) {
-  auto [promise, this_future] = coro::makePromiseContract<int>();
+  auto [this_promise, this_future] = coro::makePromiseContract<int>();
   auto waiter = [](auto future) -> coro::Task<int> {
     co_return co_await std::move(future);
   }(std::move(this_future));
   auto fulfiller = [](auto promise) -> coro::Task<> {
     promise.setException(std::logic_error(""));
     co_return;
-  }(std::move(promise));
+  }(std::move(this_promise));
 
   auto [res, _] = co_await coro::collectAll(
       co_awaitTry(std::move(waiter)), std::move(fulfiller));
@@ -130,14 +130,14 @@ CO_TEST(PromiseTest, CancelFulfilled) {
 }
 
 CO_TEST(PromiseTest, SuspendCancel) {
-  auto [promise, future] = coro::makePromiseContract<int>();
+  auto [promise, this_future] = coro::makePromiseContract<int>();
   CancellationSource cs;
   bool cancelled = false;
   CancellationCallback cb{
       promise.getCancellationToken(), [&] { cancelled = true; }};
   auto waiter = [](auto future) -> coro::Task<int> {
     co_return co_await std::move(future);
-  }(co_withCancellation(cs.getToken(), std::move(future)));
+  }(co_withCancellation(cs.getToken(), std::move(this_future)));
   auto fulfiller = [](auto cs) -> coro::Task<> {
     cs.requestCancellation();
     co_return;
@@ -160,14 +160,14 @@ CO_TEST(PromiseTest, ImmediateBreakPromise) {
 }
 
 CO_TEST(PromiseTest, SuspendBreakPromise) {
-  auto [promise, future] = coro::makePromiseContract<int>();
+  auto [this_promise, this_future] = coro::makePromiseContract<int>();
   auto waiter = [](auto future) -> coro::Task<int> {
     co_return co_await std::move(future);
-  }(std::move(future));
+  }(std::move(this_future));
   auto fulfiller = [](auto promise) -> coro::Task<> {
     (void)promise;
     co_return;
-  }(std::move(promise));
+  }(std::move(this_promise));
 
   auto [res, _] = co_await coro::collectAll(
       co_awaitTry(std::move(waiter)), std::move(fulfiller));
