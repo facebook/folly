@@ -32,16 +32,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <boost/mpl/count.hpp>
-#include <boost/mpl/empty.hpp>
-#include <boost/mpl/eval_if.hpp>
-#include <boost/mpl/filter_view.hpp>
-#include <boost/mpl/front.hpp>
-#include <boost/mpl/identity.hpp>
-#include <boost/mpl/if.hpp>
-#include <boost/mpl/placeholders.hpp>
-#include <boost/mpl/size.hpp>
-#include <boost/mpl/vector.hpp>
 #include <boost/operators.hpp>
 
 #include <folly/ConstexprMath.h>
@@ -74,25 +64,72 @@ FOLLY_GNU_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 
-//////////////////////////////////////////////////////////////////////
-
 namespace small_vector_policy {
 
-//////////////////////////////////////////////////////////////////////
+namespace detail {
 
-/*
- * A flag which makes us refuse to use the heap at all.  If we
- * overflow the in situ capacity we throw an exception.
- */
-struct NoHeap;
+struct item_size_type {
+  template <typename T>
+  using get = typename T::size_type;
+  template <typename T>
+  struct set {
+    using size_type = T;
+  };
+};
 
-//////////////////////////////////////////////////////////////////////
+struct item_in_situ_only {
+  template <typename T>
+  using get = typename T::in_situ_only;
+  template <typename T>
+  struct set {
+    using in_situ_only = T;
+  };
+};
+
+template <template <typename> class F, typename... T>
+constexpr size_t last_matching_() {
+  bool const values[] = {is_detected_v<F, T>..., false};
+  for (size_t i = 0; i < sizeof...(T); ++i) {
+    auto const j = sizeof...(T) - 1 - i;
+    if (values[j]) {
+      return j;
+    }
+  }
+  return sizeof...(T);
+}
+
+template <size_t M, typename I, typename... P>
+struct merge_ //
+    : I::template set<typename I::template get<
+          type_pack_element_t<sizeof...(P) - M, P...>>> {};
+template <typename I, typename... P>
+struct merge_<0, I, P...> {};
+template <typename I, typename... P>
+using merge =
+    merge_<sizeof...(P) - last_matching_<I::template get, P...>(), I, P...>;
+
+} // namespace detail
+
+template <typename... Policy>
+struct merge //
+    : detail::merge<detail::item_size_type, Policy...>,
+      detail::merge<detail::item_in_situ_only, Policy...> {};
+
+template <typename SizeType>
+struct policy_size_type {
+  using size_type = SizeType;
+};
+
+template <bool Value>
+struct policy_in_situ_only {
+  using in_situ_only = bool_constant<Value>;
+};
 
 } // namespace small_vector_policy
 
 //////////////////////////////////////////////////////////////////////
 
-template <class T, std::size_t M, class A, class B, class C>
+template <class T, std::size_t M, class P>
 class small_vector;
 
 //////////////////////////////////////////////////////////////////////
@@ -407,51 +444,20 @@ struct IntegralSizePolicy<SizeType, false, AlwaysUseHeap>
  *
  * Apologies for all the black magic.
  */
-namespace mpl = boost::mpl;
-template <
-    class Value,
-    std::size_t RequestedMaxInline,
-    class InPolicyA,
-    class InPolicyB,
-    class InPolicyC>
+template <class Value, std::size_t RequestedMaxInline, class InPolicy>
 struct small_vector_base {
-  typedef mpl::vector<InPolicyA, InPolicyB, InPolicyC> PolicyList;
-
-  /*
-   * Determine the size type
-   */
-  typedef typename mpl::filter_view<
-      PolicyList,
-      std::is_integral<mpl::placeholders::_1>>::type Integrals;
-  typedef typename mpl::eval_if<
-      mpl::empty<Integrals>,
-      mpl::identity<std::size_t>,
-      mpl::front<Integrals>>::type SizeType;
-
-  static_assert(
-      std::is_unsigned<SizeType>::value,
-      "Size type should be an unsigned integral type");
-  static_assert(
-      mpl::size<Integrals>::value == 0 || mpl::size<Integrals>::value == 1,
-      "Multiple size types specified in small_vector<>");
-
-  /*
-   * Determine whether we should allow spilling to the heap or not.
-   */
-  typedef typename mpl::count<PolicyList, small_vector_policy::NoHeap>::type
-      HasNoHeap;
-
-  static_assert(
-      HasNoHeap::value == 0 || HasNoHeap::value == 1,
-      "Multiple copies of small_vector_policy::NoHeap "
-      "supplied; this is probably a mistake");
+  static_assert(!std::is_integral<InPolicy>::value, "legacy");
+  using Policy = small_vector_policy::merge<
+      small_vector_policy::policy_size_type<size_t>,
+      small_vector_policy::policy_in_situ_only<false>,
+      conditional_t<std::is_void<InPolicy>::value, tag_t<>, InPolicy>>;
 
   /*
    * Make the real policy base classes.
    */
   typedef IntegralSizePolicy<
-      SizeType,
-      !HasNoHeap::value,
+      typename Policy::size_type,
+      !Policy::in_situ_only::value,
       RequestedMaxInline == 0>
       ActualSizePolicy;
 
@@ -461,7 +467,7 @@ struct small_vector_base {
    * types to keep sizeof(small_vector<>) minimal.
    */
   typedef boost::totally_ordered1<
-      small_vector<Value, RequestedMaxInline, InPolicyA, InPolicyB, InPolicyC>,
+      small_vector<Value, RequestedMaxInline, InPolicy>,
       ActualSizePolicy>
       type;
 };
@@ -477,21 +483,12 @@ inline void* shiftPointer(void* p, size_t sizeBytes) {
 
 //////////////////////////////////////////////////////////////////////
 FOLLY_SV_PACK_PUSH
-template <
-    class Value,
-    std::size_t RequestedMaxInline = 1,
-    class PolicyA = void,
-    class PolicyB = void,
-    class PolicyC = void>
-class small_vector : public detail::small_vector_base<
-                         Value,
-                         RequestedMaxInline,
-                         PolicyA,
-                         PolicyB,
-                         PolicyC>::type {
+template <class Value, std::size_t RequestedMaxInline = 1, class Policy = void>
+class small_vector
+    : public detail::small_vector_base<Value, RequestedMaxInline, Policy>::
+          type {
   typedef typename detail::
-      small_vector_base<Value, RequestedMaxInline, PolicyA, PolicyB, PolicyC>::
-          type BaseType;
+      small_vector_base<Value, RequestedMaxInline, Policy>::type BaseType;
   typedef typename BaseType::InternalSizeType InternalSizeType;
 
   /*
@@ -1203,7 +1200,7 @@ class small_vector : public detail::small_vector_base<
     }
     assert(this->kShouldUseHeap);
     // This branch isn't needed for correctness, but allows the optimizer to
-    // skip generating code for the rest of this function in NoHeap
+    // skip generating code for the rest of this function in in-situ-only
     // small_vectors.
     if (!this->kShouldUseHeap) {
       return;
@@ -1398,26 +1395,18 @@ FOLLY_SV_PACK_POP
 
 // Basic guarantee only, or provides the nothrow guarantee iff T has a
 // nothrow move or copy constructor.
-template <class T, std::size_t MaxInline, class A, class B, class C>
-void swap(
-    small_vector<T, MaxInline, A, B, C>& a,
-    small_vector<T, MaxInline, A, B, C>& b) {
+template <class T, std::size_t MaxInline, class P>
+void swap(small_vector<T, MaxInline, P>& a, small_vector<T, MaxInline, P>& b) {
   a.swap(b);
 }
 
-template <class T, std::size_t MaxInline, class A, class B, class C, class U>
-void erase(small_vector<T, MaxInline, A, B, C>& v, U value) {
+template <class T, std::size_t MaxInline, class P, class U>
+void erase(small_vector<T, MaxInline, P>& v, U value) {
   v.erase(std::remove(v.begin(), v.end(), value), v.end());
 }
 
-template <
-    class T,
-    std::size_t MaxInline,
-    class A,
-    class B,
-    class C,
-    class Predicate>
-void erase_if(small_vector<T, MaxInline, A, B, C>& v, Predicate predicate) {
+template <class T, std::size_t MaxInline, class P, class Predicate>
+void erase_if(small_vector<T, MaxInline, P>& v, Predicate predicate) {
   v.erase(std::remove_if(v.begin(), v.end(), std::ref(predicate)), v.end());
 }
 
@@ -1426,9 +1415,9 @@ void erase_if(small_vector<T, MaxInline, A, B, C>& v, Predicate predicate) {
 namespace detail {
 
 // Format support.
-template <class T, size_t M, class A, class B, class C>
-struct IndexableTraits<small_vector<T, M, A, B, C>>
-    : public IndexableTraitsSeq<small_vector<T, M, A, B, C>> {};
+template <class T, size_t M, class P>
+struct IndexableTraits<small_vector<T, M, P>>
+    : public IndexableTraitsSeq<small_vector<T, M, P>> {};
 
 } // namespace detail
 
@@ -1442,9 +1431,9 @@ FOLLY_POP_WARNING
 
 namespace std {
 
-template <class T, std::size_t M, class A, class B, class C>
-struct hash<folly::small_vector<T, M, A, B, C>> {
-  size_t operator()(const folly::small_vector<T, M, A, B, C>& v) const {
+template <class T, std::size_t M, class P>
+struct hash<folly::small_vector<T, M, P>> {
+  size_t operator()(const folly::small_vector<T, M, P>& v) const {
     return folly::hash::hash_range(v.begin(), v.end());
   }
 };

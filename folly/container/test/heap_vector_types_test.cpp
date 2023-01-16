@@ -638,7 +638,11 @@ TEST(HeapVectorTypes, Sizes) {
       sizeof(std::vector<std::pair<int, int>>));
   EXPECT_EQ(
       sizeof(small_heap_vector_map<int, int>),
-      sizeof(folly::small_vector<std::pair<int, int>, 0, uint32_t>));
+      sizeof( //
+          folly::small_vector<
+              std::pair<int, int>,
+              0,
+              folly::small_vector_policy::policy_size_type<uint32_t>>));
 
   using SetT = heap_vector_set<
       int,
@@ -783,13 +787,6 @@ TEST(HeapVectorTypes, CustomCompare) {
   check_invariant(s);
   {
     heap_vector_map<int, float, less_invert<int>> m;
-    for (int i = 0; i < 200; ++i) {
-      m[i] = 12.0f;
-    }
-    check_invariant(m);
-  }
-  {
-    small_heap_vector_map<int, float, less_invert<int>> m;
     for (int i = 0; i < 200; ++i) {
       m[i] = 12.0f;
     }
@@ -1238,8 +1235,11 @@ TEST(HeapVectorTypes, TestMapCreationFromVector) {
 TEST(HeapVectorTypes, TestMapCreationFromVectorSmall) {
   // TODO: Add a constructor to steal std::vector. For small_heap_vector_map
   // it is better to steal from small_vector.
-  folly::small_vector<std::pair<int, int>, 0, uint32_t> vec = {
-      {3, 1}, {1, 5}, {-1, 2}, {5, 3}, {0, 3}};
+  folly::small_vector<
+      std::pair<int, int>,
+      0,
+      folly::small_vector_policy::policy_size_type<uint32_t>>
+      vec = {{3, 1}, {1, 5}, {-1, 2}, {5, 3}, {0, 3}};
   small_heap_vector_map<int, int> vmap(std::move(vec));
   check_invariant(vmap);
   auto contents = std::vector<std::pair<int, int>>(vmap.begin(), vmap.end());
