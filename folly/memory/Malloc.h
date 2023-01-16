@@ -82,7 +82,7 @@ namespace folly {
   inline bool usingJEMalloc() noexcept {
     return false;
   }
-#elif defined(USE_JEMALLOC) && !defined(FOLLY_SANITIZE)
+#elif defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC) && !defined(FOLLY_SANITIZE)
   inline bool usingJEMalloc() noexcept {
     return true;
   }
