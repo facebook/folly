@@ -307,9 +307,24 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
     cpuCache().invalidate();
   }
 
+  /// Returns a canonical index in [0, maxLocalityIndexValue()) for each
+  /// stripe. This can be used to share global data structures accessed with
+  /// different stripings. For optimal spread, it is best for numStripes to be a
+  /// divisor of the number of L1 caches.
+  static size_t localityIndexForStripe(size_t numStripes, size_t stripe) {
+    assert(stripe < numStripes);
+    return stripe *
+        std::min(size_t(kMaxCpus), CacheLocality::system<Atom>().numCpus) /
+        numStripes;
+  }
+
   /// Returns the maximum stripe value that can be returned under any
   /// dynamic configuration, based on the current compile-time platform
   static constexpr size_t maxStripeValue() { return kMaxCpus; }
+
+  /// Returns the maximum locality index value that can be returned under any
+  /// dynamic configuration, based on the current compile-time platform
+  static constexpr size_t maxLocalityIndexValue() { return kMaxCpus; }
 
  private:
   /// Caches the current CPU and refreshes the cache every so often.
