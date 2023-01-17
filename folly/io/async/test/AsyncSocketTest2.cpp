@@ -2552,7 +2552,7 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
  * Test AsyncTransport::BufferCallback
  */
 TEST(AsyncSocketTest, BufferTest) {
-  TestServer server;
+  TestServer server(false, 1024 * 1024);
 
   EventBase evb;
   SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
@@ -2582,7 +2582,7 @@ TEST(AsyncSocketTest, BufferTest) {
 }
 
 TEST(AsyncSocketTest, BufferTestChain) {
-  TestServer server;
+  TestServer server(false, 1024 * 1024);
 
   EventBase evb;
   SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
@@ -2622,7 +2622,8 @@ TEST(AsyncSocketTest, BufferTestChain) {
 }
 
 TEST(AsyncSocketTest, BufferCallbackKill) {
-  TestServer server;
+  TestServer server(false, 1024 * 1024);
+
   EventBase evb;
   SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
