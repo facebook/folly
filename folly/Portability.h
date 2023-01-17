@@ -177,52 +177,6 @@ constexpr bool kIsSanitize = false;
 #define FOLLY_PACK_POP /**/
 #endif
 
-// Generalize warning push/pop.
-#if defined(__GNUC__) || defined(__clang__)
-// Clang & GCC
-#define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
-#define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
-#define FOLLY_GNU_DISABLE_WARNING_INTERNAL2(warningName) #warningName
-#define FOLLY_GNU_DISABLE_WARNING(warningName) \
-  _Pragma(                                     \
-      FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
-#ifdef __clang__
-#define FOLLY_CLANG_DISABLE_WARNING(warningName) \
-  FOLLY_GNU_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)
-#else
-#define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName) \
-  FOLLY_GNU_DISABLE_WARNING(warningName)
-#endif
-#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
-#elif defined(_MSC_VER)
-#define FOLLY_PUSH_WARNING __pragma(warning(push))
-#define FOLLY_POP_WARNING __pragma(warning(pop))
-// Disable the GCC warnings.
-#define FOLLY_GNU_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)
-#define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
-  __pragma(warning(disable : warningNumber))
-#else
-#define FOLLY_PUSH_WARNING
-#define FOLLY_POP_WARNING
-#define FOLLY_GNU_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)
-#define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
-#endif
-
-#ifdef FOLLY_HAVE_SHADOW_LOCAL_WARNINGS
-#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS            \
-  FOLLY_GNU_DISABLE_WARNING("-Wshadow-compatible-local") \
-  FOLLY_GNU_DISABLE_WARNING("-Wshadow-local")            \
-  FOLLY_GNU_DISABLE_WARNING("-Wshadow")
-#else
-#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
-#endif
-
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
