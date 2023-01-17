@@ -1143,8 +1143,10 @@ TEST(AccessSpreader, Wrapping) {
 }
 
 TEST(CoreRawAllocator, Basic) {
-  CoreRawAllocator<32> alloc;
-  auto& a = alloc.get(0);
+  constexpr size_t kNumStripes = 32;
+
+  CoreRawAllocator alloc;
+  auto& a = alloc.get(kNumStripes, 0);
   auto res = a.allocate(8);
   memset(res, 0, 8);
   a.deallocate(res);

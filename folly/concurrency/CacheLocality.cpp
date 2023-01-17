@@ -400,8 +400,7 @@ bool AccessSpreaderBase::initialize(
 
 } // namespace detail
 
-SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
-    : allocSize_{allocSize}, sz_(sz) {}
+SimpleAllocator::SimpleAllocator(Ctor, size_t sz) : sz_(sz) {}
 
 SimpleAllocator::~SimpleAllocator() {
   std::lock_guard<std::mutex> g(m_);
@@ -412,11 +411,11 @@ SimpleAllocator::~SimpleAllocator() {
 
 void* SimpleAllocator::allocateHard() {
   // Allocate a new slab.
-  mem_ = static_cast<uint8_t*>(folly::aligned_malloc(allocSize_, allocSize_));
+  mem_ = static_cast<uint8_t*>(folly::aligned_malloc(kAllocSize, kAllocSize));
   if (!mem_) {
     throw_exception<std::bad_alloc>();
   }
-  end_ = mem_ + allocSize_;
+  end_ = mem_ + kAllocSize;
   blocks_.push_back(mem_);
 
   // Install a pointer to ourselves as the allocator.
@@ -427,7 +426,7 @@ void* SimpleAllocator::allocateHard() {
   // New allocation.
   auto mem = mem_;
   mem_ += sz_;
-  assert(intptr_t(mem) % 128 != 0);
+  assert(intptr_t(mem) % kMallocAlign != 0);
   return mem;
 }
 

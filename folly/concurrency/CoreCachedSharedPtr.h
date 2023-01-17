@@ -63,7 +63,7 @@ void makeSlots(std::shared_ptr<T> p, folly::Range<std::shared_ptr<T>*> slots) {
   // Allocate each holder and its control block in a different CoreRawAllocator
   // stripe to prevent false sharing.
   for (size_t i = 0; i < slots.size(); ++i) {
-    auto alloc = getCoreAllocator<std::shared_ptr<T>, kMaxSlots>(i);
+    auto alloc = getCoreAllocator<std::shared_ptr<T>>(slots.size(), i);
     auto holder = std::allocate_shared<std::shared_ptr<T>>(alloc);
     auto ptr = p.get();
     if (i != slots.size() - 1) {
