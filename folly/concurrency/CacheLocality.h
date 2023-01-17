@@ -22,17 +22,13 @@
 #include <cassert>
 #include <functional>
 #include <limits>
-#include <mutex>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
-#include <folly/Indestructible.h>
 #include <folly/Likely.h>
-#include <folly/Memory.h>
 #include <folly/Portability.h>
-#include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/AtomicRef.h>
@@ -380,84 +376,6 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
 };
 
 /**
- * A simple freelist allocator.  Allocates things of size sz, from slabs of size
- * kAllocSize.  Takes a lock on each allocation/deallocation.
- */
-class SimpleAllocator {
- public:
-  // To support array aggregate initialization without an implicit constructor.
-  struct Ctor {};
-
-  SimpleAllocator(Ctor, size_t sz);
-  ~SimpleAllocator();
-
-  // Inline fast-paths.
-  void* allocate() {
-    std::lock_guard<std::mutex> g(m_);
-    // Freelist allocation.
-    if (freelist_) {
-      auto mem = freelist_;
-      freelist_ = *static_cast<void**>(freelist_);
-      return mem;
-    }
-
-    if (mem_) {
-      // Bump-ptr allocation.
-      if (intptr_t(mem_) % kMallocAlign == 0) {
-        // Avoid allocating pointers that may look like malloc
-        // pointers.
-        mem_ += std::min(sz_, max_align_v);
-      }
-      if (mem_ + sz_ <= end_) {
-        auto mem = mem_;
-        mem_ += sz_;
-
-        assert(intptr_t(mem) % kMallocAlign != 0);
-        return mem;
-      }
-    }
-
-    return allocateHard();
-  }
-
-  static void deallocate(void* ptr) {
-    assert(intptr_t(ptr) % kMallocAlign != 0);
-    // Find the allocator instance.
-    auto addr =
-        reinterpret_cast<void*>(intptr_t(ptr) & ~intptr_t(kAllocSize - 1));
-    auto allocator = *static_cast<SimpleAllocator**>(addr);
-
-    std::lock_guard<std::mutex> g(allocator->m_);
-    *static_cast<void**>(ptr) = allocator->freelist_;
-    if FOLLY_CXX17_CONSTEXPR (kIsSanitizeAddress) {
-      // If running under ASAN, scrub the memory on deallocation, so we don't
-      // leave pointers that could hide leaks at shutdown, since the backing
-      // slabs may not be deallocated if the instance is a leaky singleton.
-      auto* base = static_cast<char*>(ptr);
-      std::fill(base + sizeof(void*), base + allocator->sz_, 0);
-    }
-    allocator->freelist_ = ptr;
-  }
-
-  constexpr static size_t kMallocAlign = 128;
-  static_assert(
-      kMallocAlign % hardware_destructive_interference_size == 0,
-      "Large allocations should be cacheline-aligned");
-
- private:
-  constexpr static size_t kAllocSize = 4096;
-
-  void* allocateHard();
-
-  std::mutex m_;
-  uint8_t* mem_{nullptr};
-  uint8_t* end_{nullptr};
-  void* freelist_{nullptr};
-  size_t sz_;
-  std::vector<void*> blocks_;
-};
-
-/**
  * An allocator that can be used with AccessSpreader to allocate core-local
  * memory.
  *
@@ -469,72 +387,65 @@ class SimpleAllocator {
  * be assured that it won't cause more false sharing than it otherwise would.
  *
  * Note that allocation and deallocation takes a per-size-class lock.
+ *
+ * Memory allocated with coreMalloc() must be freed with coreFree().
  */
-class CoreRawAllocator {
+void* coreMalloc(size_t size, size_t numStripes, size_t stripe);
+void coreFree(void* ptr);
+
+namespace detail {
+void* coreMallocFromGuard(size_t size);
+}
+
+/**
+ * An C++ allocator adapter for coreMalloc/Free. The allocator is stateless, to
+ * avoid increasing the footprint of the container that uses it, so the stripe
+ * needs to be passed out of band: allocate() can only be called while there is
+ * an active CoreAllocatorGuard. deallocate() can instead be called at any
+ * point.
+ *
+ * This makes CoreAllocator unsuitable for containers that can grow, and it is
+ * meant for container where all allocations happen at construction time.
+ */
+template <typename T>
+class CoreAllocator : private std::allocator<T> {
  public:
-  class Allocator {
-    uint8_t sizeClass(size_t size) {
-      if (size <= 8) {
-        return 0;
-      } else if (size <= 16) {
-        return 1;
-      } else if (size <= 32) {
-        return 2;
-      } else if (size <= 64) {
-        return 3;
-      } else { // punt to malloc.
-        return 4;
-      }
-    }
+  using value_type = T;
 
-    std::array<SimpleAllocator, 4> allocators_{{
-        {SimpleAllocator::Ctor{}, 8},
-        {SimpleAllocator::Ctor{}, 16},
-        {SimpleAllocator::Ctor{}, 32},
-        {SimpleAllocator::Ctor{}, 64}}};
+  CoreAllocator() = default;
 
-   public:
-    void* allocate(size_t size) {
-      auto cl = sizeClass(size);
-      if (cl == 4) {
-        size = size + (SimpleAllocator::kMallocAlign - 1);
-        size &= ~size_t(SimpleAllocator::kMallocAlign - 1);
-        void* mem = aligned_malloc(size, SimpleAllocator::kMallocAlign);
-        if (!mem) {
-          throw_exception<std::bad_alloc>();
-        }
-        return mem;
-      }
-      return allocators_[cl].allocate();
-    }
-    void deallocate(void* ptr, size_t = 0) {
-      if (!ptr) {
-        return;
-      }
+  template <class U>
+  /* implicit */ CoreAllocator(const CoreAllocator<U>&) {}
 
-      // See if it came from SimpleAllocator or malloc.
-      if (intptr_t(ptr) % SimpleAllocator::kMallocAlign != 0) {
-        SimpleAllocator::deallocate(ptr);
-      } else {
-        aligned_free(ptr);
-      }
-    }
-  };
-
-  Allocator& get(size_t numStripes, size_t stripe) {
-    auto cpu = AccessSpreader<>::localityIndexForStripe(numStripes, stripe);
-    return allocators_[cpu];
+  T* allocate(std::size_t n) {
+    return reinterpret_cast<T*>(detail::coreMallocFromGuard(n * sizeof(T)));
   }
 
- private:
-  Allocator allocators_[AccessSpreader<>::maxLocalityIndexValue()];
+  void deallocate(T* p, std::size_t) { coreFree(p); }
+
+  friend bool operator==(const CoreAllocator&, const CoreAllocator&) noexcept {
+    return true;
+  }
+  friend bool operator!=(const CoreAllocator&, const CoreAllocator&) noexcept {
+    return false;
+  }
+
+  template <typename U>
+  struct rebind {
+    using other = CoreAllocator<U>;
+  };
 };
 
-template <typename T>
-CxxAllocatorAdaptor<T, CoreRawAllocator::Allocator> getCoreAllocator(
-    size_t numStripes, size_t stripe) {
-  return CxxAllocatorAdaptor<T, CoreRawAllocator::Allocator>(
-      detail::createGlobal<CoreRawAllocator, void>().get(numStripes, stripe));
-}
+class FOLLY_NODISCARD CoreAllocatorGuard {
+ public:
+  CoreAllocatorGuard(size_t numStripes, size_t stripe);
+  ~CoreAllocatorGuard();
+
+ private:
+  friend void* detail::coreMallocFromGuard(size_t size);
+
+  size_t numStripes_;
+  size_t stripe_;
+};
 
 } // namespace folly

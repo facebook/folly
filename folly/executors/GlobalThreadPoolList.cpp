@@ -127,7 +127,7 @@ void GlobalThreadPoolList::unregisterThreadPool(
 void GlobalThreadPoolList::registerThreadPoolThread(
     ThreadPoolListHook* threadPoolId, std::thread::id threadId) {
   DCHECK(!threadHook_);
-  threadHook_.reset(make_unique<ThreadListHook>(threadPoolId, threadId));
+  threadHook_.reset(std::make_unique<ThreadListHook>(threadPoolId, threadId));
 
   globalListImpl_.wlock()->registerThreadPoolThread(threadPoolId, threadId);
 }

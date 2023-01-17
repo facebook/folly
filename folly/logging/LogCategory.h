@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <string>
 
 #include <folly/Range.h>
