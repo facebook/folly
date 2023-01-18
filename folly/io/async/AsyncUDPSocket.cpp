@@ -112,6 +112,11 @@ AsyncUDPSocket::~AsyncUDPSocket() {
 }
 
 void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
+  if (fd_ != NetworkSocket()) {
+    // Already initialized.
+    return;
+  }
+
   NetworkSocket socket =
       netops::socket(family, SOCK_DGRAM, family != AF_UNIX ? IPPROTO_UDP : 0);
   if (socket == NetworkSocket()) {
@@ -288,7 +293,9 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
 
 void AsyncUDPSocket::bind(
     const folly::SocketAddress& address, BindOptions bindOptions) {
-  init(address.getFamily(), bindOptions);
+  if (fd_ == NetworkSocket()) {
+    init(address.getFamily(), bindOptions);
+  }
 
   {
     // bind the socket to the interface
@@ -329,7 +336,7 @@ void AsyncUDPSocket::bind(
 void AsyncUDPSocket::connect(const folly::SocketAddress& address) {
   // not bound yet
   if (fd_ == NetworkSocket()) {
-    init(address.getFamily(), BindOptions());
+    init(address.getFamily());
   }
 
   sockaddr_storage addrStorage;

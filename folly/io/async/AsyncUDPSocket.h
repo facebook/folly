@@ -505,6 +505,12 @@ class AsyncUDPSocket : public EventHandler {
     return netops_.getOverride();
   }
 
+  // Initializes underlying socket fd. This is called in bind() and connect()
+  // internally if fd is not yet set at the time of the call. But if there is a
+  // need to apply socket options pre-bind, one can call this function
+  // explicitly before bind()/connect() and socket opts application.
+  void init(sa_family_t family, BindOptions bindOptions = BindOptions());
+
  protected:
   struct full_sockaddr_storage {
     sockaddr_storage storage;
@@ -557,8 +563,6 @@ class AsyncUDPSocket : public EventHandler {
   ReadCallback* readCallback_;
 
  private:
-  void init(sa_family_t family, BindOptions bindOptions);
-
   // EventHandler
   void handlerReady(uint16_t events) noexcept override;
 
