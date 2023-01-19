@@ -35,9 +35,21 @@
 #include <folly/sorted_vector_types.h>
 
 using folly::small_vector;
-using namespace folly::small_vector_policy;
 
 #if FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64
+
+using folly::small_vector_policy::policy_in_situ_only;
+using folly::small_vector_policy::policy_size_type;
+
+template <typename...>
+struct same_;
+template <typename T>
+struct same_<T, T> {};
+
+auto s0 = same_<
+    folly::small_vector_policy::
+        merge<policy_size_type<uint32_t>, policy_size_type<uint8_t>>::size_type,
+    uint8_t>{};
 
 // Fast access. Heap only small vector
 static_assert(
@@ -45,15 +57,19 @@ static_assert(
     "Object size is not what we expect for small_vector<int, 0>");
 
 static_assert(
-    sizeof(small_vector<int, 0, uint32_t>) == 4 /* size_ */ + 8,
+    sizeof(small_vector<int, 0, policy_size_type<uint32_t>>) ==
+        4 /* size_ */ + 8,
     "Object size is not what we expect for small_vector<int, 0, uint32_t>");
 
 static_assert(
-    sizeof(small_vector<double, 0, uint8_t>) == 9,
+    sizeof(small_vector<double, 0, policy_size_type<uint8_t>>) == 9,
     "Object size is not what we expect for small_vector<double, 0, uint32_t>");
 
 static_assert(
-    sizeof(small_vector<std::pair<int64_t, int64_t>, 0, uint32_t>) == 12,
+    sizeof(small_vector<
+           std::pair<int64_t, int64_t>,
+           0,
+           policy_size_type<uint32_t>>) == 12,
     "Object size is not what we expect for small_vector<pair<int64_t, int64_t>, 0, uint32_t>");
 
 static_assert(
@@ -68,27 +84,27 @@ static_assert(
     "Object size is not what we expect for small_vector<int,10>");
 
 static_assert(
-    sizeof(small_vector<int32_t, 1, uint32_t>) == 8 + 4,
+    sizeof(small_vector<int32_t, 1, policy_size_type<uint32_t>>) == 8 + 4,
     "small_vector<int32_t,1,uint32_t> is wrong size");
 
 // Extra 2 bytes needed for alignment.
 static_assert(
-    sizeof(small_vector<int32_t, 1, uint16_t>) == 8 + 2 + 2,
+    sizeof(small_vector<int32_t, 1, policy_size_type<uint16_t>>) == 8 + 2 + 2,
     "small_vector<int32_t,1,uint16_t> is wrong size");
 static_assert(
-    alignof(small_vector<int32_t, 1, uint16_t>) >= 4,
+    alignof(small_vector<int32_t, 1, policy_size_type<uint16_t>>) >= 4,
     "small_vector not aligned correctly");
 
 // Extra 3 bytes needed for alignment.
 static_assert(
-    sizeof(small_vector<int32_t, 1, uint8_t>) == 8 + 1 + 3,
+    sizeof(small_vector<int32_t, 1, policy_size_type<uint8_t>>) == 8 + 1 + 3,
     "small_vector<int32_t,1,uint8_t> is wrong size");
 static_assert(
-    alignof(small_vector<int32_t, 1, uint8_t>) >= 4,
+    alignof(small_vector<int32_t, 1, policy_size_type<uint8_t>>) >= 4,
     "small_vector not aligned correctly");
 
 static_assert(
-    sizeof(small_vector<int16_t, 4, uint16_t>) == 10,
+    sizeof(small_vector<int16_t, 4, policy_size_type<uint16_t>>) == 10,
     "Sizeof unexpectedly large");
 
 #endif
@@ -119,10 +135,7 @@ using noheap_sorted_vector_map = folly::sorted_vector_map<
     std::less<Key>,
     std::allocator<std::pair<Key, Value>>,
     void,
-    folly::small_vector<
-        std::pair<Key, Value>,
-        N,
-        folly::small_vector_policy::NoHeap>>;
+    folly::small_vector<std::pair<Key, Value>, N, policy_in_situ_only<true>>>;
 
 template <typename T, size_t N>
 using small_sorted_vector_set = folly::sorted_vector_set<
@@ -138,7 +151,7 @@ using noheap_sorted_vector_set = folly::sorted_vector_set<
     std::less<T>,
     std::allocator<T>,
     void,
-    folly::small_vector<T, N, folly::small_vector_policy::NoHeap>>;
+    folly::small_vector<T, N, policy_in_situ_only<true>>>;
 
 struct NontrivialType {
   static int ctored;
@@ -679,11 +692,7 @@ TEST(small_vector, MoveConstructor) {
 }
 
 TEST(small_vector, NoHeap) {
-  typedef folly::small_vector<
-      std::string,
-      10,
-      std::size_t,
-      folly::small_vector_policy::NoHeap>
+  typedef folly::small_vector<std::string, 10, policy_in_situ_only<true>>
       Vector;
 
   Vector v;
@@ -703,7 +712,7 @@ TEST(small_vector, NoHeap) {
   EXPECT_TRUE(caught);
 
   // Check max_size works right with various policy combinations.
-  folly::small_vector<std::string, 32, uint32_t> v4;
+  folly::small_vector<std::string, 32, policy_size_type<uint32_t>> v4;
   EXPECT_EQ(v4.max_size(), (1ul << 30) - 1);
 
   /*
@@ -711,7 +720,7 @@ TEST(small_vector, NoHeap) {
    * inline at least as much as it takes to store the value_type
    * pointer.
    */
-  folly::small_vector<char, 1, NoHeap> notsosmall;
+  folly::small_vector<char, 1, policy_in_situ_only<true>> notsosmall;
   static_assert(
       notsosmall.max_size() == sizeof(char*), "max_size is incorrect");
   caught = false;
@@ -726,9 +735,9 @@ TEST(small_vector, NoHeap) {
 }
 
 TEST(small_vector, MaxSize) {
-  folly::small_vector<int, 2, uint8_t> vec;
+  folly::small_vector<int, 2, policy_size_type<uint8_t>> vec;
   EXPECT_EQ(vec.max_size(), 63);
-  folly::small_vector<int, 2, uint16_t> vec2;
+  folly::small_vector<int, 2, policy_size_type<uint16_t>> vec2;
   EXPECT_EQ(vec2.max_size(), (1 << 14) - 1);
 }
 
@@ -752,7 +761,7 @@ TEST(small_vector, AllHeap) {
 }
 template <int N>
 void testBasic() {
-  typedef folly::small_vector<int, N, uint32_t> Vector;
+  typedef folly::small_vector<int, N, policy_size_type<uint32_t>> Vector;
 
   Vector a;
 
@@ -1425,7 +1434,7 @@ TEST(small_vector, PolicyMaxSizeExceeded) {
     char a[350];
   };
 
-  small_vector<Obj, 10, uint8_t> v;
+  small_vector<Obj, 10, policy_size_type<uint8_t>> v;
 
   EXPECT_THROW(
       for (size_t i = 0; i < 0x100; ++i) { v.push_back(Obj()); },
