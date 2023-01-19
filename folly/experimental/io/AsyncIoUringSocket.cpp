@@ -20,6 +20,7 @@
 #include <folly/experimental/io/IoUringEventBaseLocal.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncSocket.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/SysUio.h>
 
 #if __has_include(<liburing.h>)
@@ -83,24 +84,22 @@ IoUringBackend* getBackendFromEventBase(EventBase* evb) {
 } // namespace
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    folly::AsyncSocket* other, IoUringBackend* backend, Options const& options)
-    : AsyncIoUringSocket(other->getEventBase(), backend, options) {
+    folly::AsyncSocket* other, IoUringBackend* backend, Options&& options)
+    : AsyncIoUringSocket(other->getEventBase(), backend, std::move(options)) {
   setPreReceivedData(other->takePreReceivedData());
   setFd(other->detachNetworkSocket());
   state_ = State::Established;
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    AsyncTransport::UniquePtr other,
-    IoUringBackend* backend,
-    Options const& options)
-    : AsyncIoUringSocket(getAsyncSocket(other), backend, options) {
+    AsyncTransport::UniquePtr other, IoUringBackend* backend, Options&& options)
+    : AsyncIoUringSocket(getAsyncSocket(other), backend, std::move(options)) {
   setPreReceivedData(other->takePreReceivedData());
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    EventBase* evb, IoUringBackend* backend, Options const& options)
-    : evb_(evb), backend_(backend), options_(options) {
+    EventBase* evb, IoUringBackend* backend, Options&& options)
+    : evb_(evb), backend_(backend), options_(std::move(options)) {
   if (!backend_) {
     backend_ = getBackendFromEventBase(evb);
   }
@@ -115,8 +114,8 @@ AsyncIoUringSocket::AsyncIoUringSocket(
     EventBase* evb,
     NetworkSocket ns,
     IoUringBackend* backend,
-    Options const& options)
-    : AsyncIoUringSocket(evb, backend, options) {
+    Options&& options)
+    : AsyncIoUringSocket(evb, backend, std::move(options)) {
   setFd(ns);
   state_ = State::Established;
 }
@@ -139,9 +138,17 @@ std::string AsyncIoUringSocket::toString(AsyncIoUringSocket::State s) {
   return to<std::string>("Unknown val=", (int)s);
 }
 
+std::unique_ptr<IOBuf>
+AsyncIoUringSocket::Options::defaultAllocateNoBufferPoolBuffer() {
+  size_t size = goodMallocSize(16384);
+  VLOG(2) << "UseProvidedBuffers slow path starting with " << size << " bytes ";
+  return IOBuf::create(size);
+}
+
 AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
     : parent_(parent) {
-  supportsMultishotRecv_ = parent->backend_->kernelSupportsRecvmsgMultishot();
+  supportsMultishotRecv_ = parent->options_.multishotRecv &&
+      parent->backend_->kernelSupportsRecvmsgMultishot();
 }
 
 AsyncIoUringSocket::~AsyncIoUringSocket() {
@@ -718,12 +725,13 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
         DVLOG(9)
             << "AsyncIoUringSocket::readProcessSubmit bufferprovider multishot";
       } else {
-        size_t hint = 16000; // todo: get from readCallback
-
-        tmpBuffer_ = IOBuf::create(hint);
+        // todo: it's possible the callback can hint to us how much data to use.
+        // naively you could use getReadBuffer, however it turns out that many
+        // callbacks that support isBufferMovable do not expect the transport to
+        // switch between both types of callbacks. A new API to provide a size
+        // hint might be useful in the future.
+        tmpBuffer_ = parent_->options_.allocateNoBufferPoolBuffer();
         maxSize_ = tmpBuffer_->tailroom();
-        VLOG(2) << "UseProvidedBuffers slow path starting with " << maxSize_
-                << " bytes ";
         ::io_uring_prep_recv(sqe, fd, tmpBuffer_->writableTail(), maxSize_, 0);
       }
     } else {

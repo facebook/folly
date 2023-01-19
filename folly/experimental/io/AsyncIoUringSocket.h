@@ -56,27 +56,34 @@ class AsyncDetachFdCallback {
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
   struct Options {
+    Options()
+        : allocateNoBufferPoolBuffer(defaultAllocateNoBufferPoolBuffer),
+          multishotRecv(true) {}
+
+    static std::unique_ptr<IOBuf> defaultAllocateNoBufferPoolBuffer();
+    folly::Function<std::unique_ptr<IOBuf>()> allocateNoBufferPoolBuffer;
     folly::Optional<AsyncWriter::ZeroCopyEnableFunc> zeroCopyEnable;
+    bool multishotRecv;
   };
 
   using UniquePtr = std::unique_ptr<AsyncIoUringSocket, Destructor>;
   explicit AsyncIoUringSocket(
       AsyncTransport::UniquePtr other,
       IoUringBackend* backend = nullptr,
-      Options const& options = Options{});
+      Options&& options = Options{});
   explicit AsyncIoUringSocket(
       AsyncSocket* sock,
       IoUringBackend* backend = nullptr,
-      Options const& options = Options{});
+      Options&& options = Options{});
   explicit AsyncIoUringSocket(
       EventBase* evb,
       IoUringBackend* backend = nullptr,
-      Options const& options = Options{});
+      Options&& options = Options{});
   explicit AsyncIoUringSocket(
       EventBase* evb,
       NetworkSocket ns,
       IoUringBackend* backend = nullptr,
-      Options const& options = Options{});
+      Options&& options = Options{});
 
   static bool supports(EventBase* backend);
 
