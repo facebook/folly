@@ -832,7 +832,7 @@ struct PackedSizeAndChunkShift {
 
   std::size_t chunkCount() const noexcept {
     const auto chunkCountShift = chunkShift();
-    return 1UL << chunkCountShift;
+    return std::size_t(1) << chunkCountShift;
   }
 
   void setSize(std::size_t sz) noexcept {
@@ -874,7 +874,7 @@ struct UnpackedSizeAndChunkShift {
 
   std::size_t chunkCount() const noexcept {
     const auto chunkCountShift = chunkShift();
-    return 1UL << chunkCountShift;
+    return std::size_t(1) << chunkCountShift;
   }
 
   void setSize(std::size_t sz) noexcept { size_ = sz; }
@@ -1027,7 +1027,7 @@ class F14Table : public Policy {
     // folly/container/test/F14SmallOverheads.cpp
     return _bzhi_u64(index, chunkShift());
 #else
-    return index & ((1UL << chunkShift()) - 1);
+    return index & ((std::size_t(1) << chunkShift()) - 1);
 #endif
   }
 
