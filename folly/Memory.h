@@ -679,6 +679,15 @@ class CxxAllocatorAdaptor : private std::allocator<T> {
       CxxAllocatorAdaptor<U, Inner, FallbackToStdAlloc> const& other)
       : inner_(other.inner_) {}
 
+  CxxAllocatorAdaptor& operator=(CxxAllocatorAdaptor const& other) = default;
+
+  template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
+  CxxAllocatorAdaptor& operator=(
+      CxxAllocatorAdaptor<U, Inner, FallbackToStdAlloc> const& other) noexcept {
+    inner_ = other.inner_;
+    return *this;
+  }
+
   T* allocate(std::size_t n) {
     if (FallbackToStdAlloc && inner_ == nullptr) {
       return std::allocator<T>::allocate(n);
