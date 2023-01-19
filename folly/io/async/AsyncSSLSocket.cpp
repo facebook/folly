@@ -2225,8 +2225,8 @@ void AsyncSSLSocket::getSSLClientCiphers(
     if (!nameFound) {
       folly::hexlify(
           std::array<uint8_t, 2>{
-              {static_cast<uint8_t>((originalCipherCode >> 8) & 0xffL),
-               static_cast<uint8_t>(originalCipherCode & 0x00ffL)}},
+              {static_cast<uint8_t>((originalCipherCode >> 8) & 0xff),
+               static_cast<uint8_t>(originalCipherCode & 0x00ff)}},
           ciphers,
           /* append to ciphers = */ true);
     }

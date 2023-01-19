@@ -246,7 +246,7 @@ FOLLY_ALWAYS_INLINE ThreadEntryNode* ThreadEntryNode::getNext() {
  */
 class PthreadKeyUnregister {
  public:
-  static constexpr size_t kMaxKeys = 1UL << 16;
+  static constexpr size_t kMaxKeys = size_t(1) << 16;
 
   ~PthreadKeyUnregister() {
     // If static constructor priorities are not supported then

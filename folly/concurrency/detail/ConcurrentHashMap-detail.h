@@ -892,7 +892,7 @@ class alignas(64) SIMDTable {
       std::size_t off = index % 8;
       Atom<uint64_t>& old_tags = off == index ? tags_low_ : tags_hi_;
       uint64_t new_tags = old_tags.load(std::memory_order_relaxed);
-      uint64_t mask = 0xffUL << (off * 8);
+      uint64_t mask = 0xffULL << (off * 8);
       new_tags = (new_tags & ~mask) | (tag << (off * 8));
       old_tags.store(new_tags, std::memory_order_release);
     }
@@ -947,9 +947,9 @@ class alignas(64) SIMDTable {
     Atom<Node*>& item(size_t i) { return *launder(itemAddr(i)); }
 
     static constexpr uint64_t kOutboundOverflowIndex = 7 * 8;
-    static constexpr uint64_t kSaturatedOutboundOverflowCount = 0xffUL
+    static constexpr uint64_t kSaturatedOutboundOverflowCount = 0xffULL
         << kOutboundOverflowIndex;
-    static constexpr uint64_t kOutboundOverflowOperand = 0x1UL
+    static constexpr uint64_t kOutboundOverflowOperand = 0x1ULL
         << kOutboundOverflowIndex;
 
     unsigned outboundOverflowCount() const {
@@ -974,7 +974,7 @@ class alignas(64) SIMDTable {
     }
 
     static constexpr uint64_t kHostedOverflowIndex = 6 * 8;
-    static constexpr uint64_t kHostedOverflowOperand = 0x10UL
+    static constexpr uint64_t kHostedOverflowOperand = 0x10ULL
         << kHostedOverflowIndex;
 
     unsigned hostedOverflowCount() const {

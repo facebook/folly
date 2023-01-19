@@ -182,7 +182,7 @@ static std::unordered_map<uint16_t, std::string> getOpenSSLCipherNames() {
     // OpenSSL 1.0.2 and prior does weird things such as stuff the SSL/TLS
     // version into the top 16 bits. Let's ignore those for now. This is
     // BoringSSL compatible (their id can be cast as uint16_t)
-    uint16_t cipherCode = id & 0xffffL;
+    uint16_t cipherCode = id & 0xffffUL;
     ret[cipherCode] = SSL_CIPHER_get_name(c);
   }
   return ret;

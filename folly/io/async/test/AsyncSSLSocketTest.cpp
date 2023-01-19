@@ -331,7 +331,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadLargeClose) {
   // read()
   uint8_t readbuf[128];
   // we will fake the read len but that should be fine
-  size_t readLen = 1L << 33;
+  size_t readLen = 1LL << 33;
   uint32_t bytesRead = socket->read(readbuf, readLen);
   EXPECT_EQ(bytesRead, 128);
   EXPECT_EQ(memcmp(buf, readbuf, bytesRead), 0);

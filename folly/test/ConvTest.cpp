@@ -753,7 +753,7 @@ TEST(Conv, IntToEnum) {
   auto j = to<A>(100);
   EXPECT_EQ(j, 100);
   try {
-    auto i2 = to<A>(5000000000L);
+    auto i2 = to<A>(5000000000LL);
     LOG(ERROR) << "to<A> returned " << static_cast<unsigned int>(i2)
                << " instead of throwing";
     ADD_FAILURE();

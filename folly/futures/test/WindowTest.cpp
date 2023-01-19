@@ -102,7 +102,7 @@ TEST(Window, basic) {
     auto res =
         reduce(
             window(
-                5UL,
+                size_t(5),
                 [](size_t iteration) { return folly::makeFuture(iteration); },
                 2),
             size_t{0},

@@ -38,7 +38,7 @@ TEST(F14SizeAndChunkShift, packed) {
   for (int shift = 0;
        shift <= folly::f14::detail::SizeAndChunkShift::kMaxSupportedChunkShift;
        ++shift) {
-    const auto count = (1UL << shift);
+    const auto count = (1ULL << shift);
     sz.setChunkCount(count);
     EXPECT_EQ(sz.size(), 12345678);
     EXPECT_EQ(sz.chunkCount(), count);

@@ -713,7 +713,7 @@ TEST(small_vector, NoHeap) {
 
   // Check max_size works right with various policy combinations.
   folly::small_vector<std::string, 32, policy_size_type<uint32_t>> v4;
-  EXPECT_EQ(v4.max_size(), (1ul << 30) - 1);
+  EXPECT_EQ(v4.max_size(), (uint32_t(1) << 30) - 1);
 
   /*
    * Test that even when we ask for a small number inlined it'll still

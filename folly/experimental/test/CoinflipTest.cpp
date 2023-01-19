@@ -158,8 +158,8 @@ TEST_BIAS(UINT32_MAX)
 // the algorithm used to compute the approximate step is always greater than
 // or equal to the precise step.
 static constexpr int kScaleBits = 54;
-static constexpr uint64_t kScale = 1ul << kScaleBits;
-static constexpr uint64_t kStepApproxBase = 1ul << (kScaleBits - 31);
+static constexpr uint64_t kScale = 1ull << kScaleBits;
+static constexpr uint64_t kStepApproxBase = 1ull << (kScaleBits - 31);
 
 uint64_t step_approx(uint32_t wait) {
   return kStepApproxBase << __builtin_clz(wait - 1);
@@ -171,7 +171,7 @@ uint64_t step_exact(uint32_t wait) {
 
 TEST(coinflip_test, approx_ge_exact) {
   for (uint32_t power = 2; power < 32; power++) {
-    uint64_t wait = 1ul << power;
+    uint64_t wait = 1ull << power;
     ASSERT_GE(step_approx(wait - 1), step_exact(wait - 1));
     ASSERT_GE(step_approx(wait), step_exact(wait));
     ASSERT_GE(step_approx(wait + 1), step_exact(wait + 1));

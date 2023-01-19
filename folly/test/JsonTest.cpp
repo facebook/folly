@@ -60,7 +60,7 @@ TEST(Json, Parse) {
 
   auto largeNumber = parseJson("4611686018427387904");
   EXPECT_TRUE(largeNumber.isInt());
-  EXPECT_EQ(largeNumber, 4611686018427387904L);
+  EXPECT_EQ(largeNumber, 4611686018427387904LL);
 
   auto negative = parseJson("-123");
   EXPECT_EQ(negative, -123);
@@ -1112,42 +1112,42 @@ TEST(Json, CharsToUnicodeEscape) {
   testPair(folly::json::buildExtraAsciiToEscapeBitmap(""), 0, 0);
 
   // ?=63
-  testPair(folly::json::buildExtraAsciiToEscapeBitmap("?"), (1UL << 63), 0);
+  testPair(folly::json::buildExtraAsciiToEscapeBitmap("?"), (1ULL << 63), 0);
 
   // @=64
   testPair(
-      folly::json::buildExtraAsciiToEscapeBitmap("@"), 0, (1UL << (64 - 64)));
+      folly::json::buildExtraAsciiToEscapeBitmap("@"), 0, (1ULL << (64 - 64)));
 
   testPair(
       folly::json::buildExtraAsciiToEscapeBitmap("?@"),
-      (1UL << 63),
-      (1UL << (64 - 64)));
+      (1ULL << 63),
+      (1ULL << (64 - 64)));
   testPair(
       folly::json::buildExtraAsciiToEscapeBitmap("@?"),
-      (1UL << 63),
-      (1UL << (64 - 64)));
+      (1ULL << 63),
+      (1ULL << (64 - 64)));
 
   // duplicates
   testPair(
       folly::json::buildExtraAsciiToEscapeBitmap("@?@?"),
-      (1UL << 63),
-      (1UL << (64 - 64)));
+      (1ULL << 63),
+      (1ULL << (64 - 64)));
 
   // ?=63, @=64, $=36
   testPair(
       folly::json::buildExtraAsciiToEscapeBitmap("?@$"),
-      (1UL << 63) | (1UL << 36),
-      (1UL << (64 - 64)));
+      (1ULL << 63) | (1ULL << 36),
+      (1ULL << (64 - 64)));
 
   // ?=63, $=36, @=64, !=33
   testPair(
       folly::json::buildExtraAsciiToEscapeBitmap("?@$!"),
-      (1UL << 63) | (1UL << 36) | (1UL << 33),
-      (1UL << (64 - 64)));
+      (1ULL << 63) | (1ULL << 36) | (1ULL << 33),
+      (1ULL << (64 - 64)));
 
   // ?=63, $=36, @=64, !=33, ]=93
   testPair(
       folly::json::buildExtraAsciiToEscapeBitmap("?@$!]"),
-      (1UL << 63) | (1UL << 36) | (1UL << 33),
-      (1UL << (64 - 64)) | (1UL << (93 - 64)));
+      (1ULL << 63) | (1ULL << 36) | (1ULL << 33),
+      (1ULL << (64 - 64)) | (1ULL << (93 - 64)));
 }
