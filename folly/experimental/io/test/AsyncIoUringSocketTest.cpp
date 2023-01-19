@@ -692,7 +692,7 @@ TEST_P(AsyncIoUringSocketTestAll, WriteChainLong) {
   auto [e, s, cb] = makeConnected();
   auto chain = IOBuf::copyBuffer("?");
   std::string res = "?";
-  for (int i = 0; i < 512; i++) {
+  for (int i = 0; i < 4096; i++) {
     std::string x(1, 'a' + i % 26);
     chain->appendToChain(IOBuf::copyBuffer(x));
     res += x;
