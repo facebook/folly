@@ -22,6 +22,7 @@
 #include <glog/logging.h>
 
 #include <folly/Range.h>
+#include <folly/hash/Hash.h>
 #include <folly/json.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/ComparisonOperatorTestUtil.h>
@@ -728,7 +729,7 @@ namespace {
 template <typename TExpectedHashType>
 void verifyHashMatches(double value) {
   EXPECT_EQ(
-      std::hash<TExpectedHashType>()(static_cast<TExpectedHashType>(value)),
+      folly::Hash()(static_cast<TExpectedHashType>(value)),
       std::hash<dynamic>()(value))
       << "value: " << value;
 }

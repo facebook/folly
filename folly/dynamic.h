@@ -1274,4 +1274,15 @@ auto make_dynamic_view(dynamic&&) = delete;
 
 } // namespace folly
 
+namespace std {
+
+template <>
+struct hash<::folly::dynamic> {
+  using folly_is_avalanching = std::true_type;
+
+  size_t operator()(::folly::dynamic const& d) const { return d.hash(); }
+};
+
+} // namespace std
+
 #include <folly/dynamic-inl.h>

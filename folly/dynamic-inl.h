@@ -31,6 +31,7 @@ namespace detail {
 
 struct DynamicHasher {
   using is_transparent = void;
+  using folly_is_avalanching = std::true_type;
 
   size_t operator()(dynamic const& d) const { return d.hash(); }
 
@@ -78,16 +79,6 @@ struct DynamicKeyEqual {
 
 //////////////////////////////////////////////////////////////////////
 
-namespace std {
-
-template <>
-struct hash<::folly::dynamic> {
-  size_t operator()(::folly::dynamic const& d) const { return d.hash(); }
-};
-
-} // namespace std
-
-//////////////////////////////////////////////////////////////////////
 /* clang-format off */
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
