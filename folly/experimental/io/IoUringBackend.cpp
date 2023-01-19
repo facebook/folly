@@ -411,7 +411,7 @@ class ProvidedBuffersBuffer {
   uint32_t ringCount() const noexcept { return 1 + ringMask_; }
 
   char* buffer(uint16_t idx) {
-    size_t offset = idx << bufferShift_;
+    size_t offset = (size_t)idx << bufferShift_;
     return bufferBuffer_ + offset;
   }
 

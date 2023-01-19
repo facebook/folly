@@ -1370,6 +1370,30 @@ TEST(IoUringBackend, ProvidedBufferRing) {
   }
 }
 
+TEST(IoUringBackend, BigProvidedBufferRing) {
+  auto evbPtr = getEventBase();
+  // test that big buffer rings don't have memory corruption
+  int constexpr kBuffs = 32000;
+  int constexpr kSize = 100000;
+
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(
+            kSize, kBuffs));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+    return;
+  }
+
+  auto* bufferProvider = backend->bufferProvider();
+  ASSERT_NE(bufferProvider, nullptr);
+  for (int i = 0; i < kBuffs; i++) {
+    // test that we can obtain all the possible buffers and return them
+    auto buff = bufferProvider->getIoBuf(i, kSize);
+    memset(buff->writableData(), 0, buff->length());
+  }
+}
+
 TEST(IoUringBackend, DeferTaskRun) {
   if (!folly::IoUringBackend::kernelSupportsDeferTaskrun()) {
     return;
