@@ -79,14 +79,17 @@ namespace folly {
  * @return bool
  */
 #if defined(FOLLY_ASSUME_NO_JEMALLOC) || defined(FOLLY_SANITIZE)
-  inline bool usingJEMalloc() noexcept {
-    return false;
-  }
+#define FOLLY_CONSTANT_USING_JE_MALLOC 1
+inline bool usingJEMalloc() noexcept {
+  return false;
+}
 #elif defined(USE_JEMALLOC) && !defined(FOLLY_SANITIZE)
-  inline bool usingJEMalloc() noexcept {
-    return true;
-  }
+#define FOLLY_CONSTANT_USING_JE_MALLOC 1
+inline bool usingJEMalloc() noexcept {
+  return true;
+}
 #else
+#define FOLLY_CONSTANT_USING_JE_MALLOC 0
 FOLLY_NOINLINE inline bool usingJEMalloc() noexcept {
   // Checking for rallocx != nullptr is not sufficient; we may be in a
   // dlopen()ed module that depends on libjemalloc, so rallocx is resolved, but
@@ -163,14 +166,17 @@ inline bool getTCMallocNumericProperty(const char* name, size_t* out) noexcept {
  * @return bool
  */
 #if defined(FOLLY_ASSUME_NO_TCMALLOC) || defined(FOLLY_SANITIZE)
-  inline bool usingTCMalloc() noexcept {
-    return false;
-  }
+#define FOLLY_CONSTANT_USING_TC_MALLOC 1
+inline bool usingTCMalloc() noexcept {
+  return false;
+}
 #elif defined(USE_TCMALLOC) && !defined(FOLLY_SANITIZE)
-  inline bool usingTCMalloc() noexcept {
-    return true;
-  }
+#define FOLLY_CONSTANT_USING_TC_MALLOC 1
+inline bool usingTCMalloc() noexcept {
+  return true;
+}
 #else
+#define FOLLY_CONSTANT_USING_TC_MALLOC 0
 FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
   static const bool result = []() noexcept {
     // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
@@ -204,8 +210,7 @@ FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
 }
 #endif
 
-#if !defined(FOLLY_USE_JEMALLOC) && !defined(USE_TCMALLOC) && \
-      (!defined(FOLLY_ASSUME_NO_JEMALLOC) || !defined(FOLLY_ASSUME_NO_TCMALLOC))
+#if !(FOLLY_CONSTANT_USING_JE_MALLOC && FOLLY_CONSTANT_USING_TC_MALLOC)
 /**
  * @brief Determine if we are using either JEMalloc or TCMalloc.
  *
