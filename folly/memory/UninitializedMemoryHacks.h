@@ -296,7 +296,7 @@ namespace detail {
 // libc++
 
 template <typename T, typename Alloc = std::allocator<T>>
-struct __std_vector_layout {
+struct std_vector_layout {
   static_assert(!std::is_same<T, bool>::value, "bad instance");
   using allocator_type = Alloc;
   using pointer = typename std::allocator_traits<allocator_type>::pointer;
@@ -309,7 +309,7 @@ struct __std_vector_layout {
 template <typename T>
 void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
   using real = std::vector<T>;
-  using fake = __std_vector_layout<T>;
+  using fake = std_vector_layout<T>;
   using pointer = typename fake::pointer;
   static_assert(sizeof(fake) == sizeof(real), "mismatch");
   static_assert(alignof(fake) == alignof(real), "mismatch");
