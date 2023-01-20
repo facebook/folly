@@ -512,6 +512,7 @@ if __name__ == "__main__":
         loader=None,
         final_install_prefix=None,
         extra_cmake_defines=None,
+        cmake_target="install",
     ) -> None:
         super(CMakeBuilder, self).__init__(
             build_opts,
@@ -525,6 +526,7 @@ if __name__ == "__main__":
         self.defines = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
+        self.cmake_target = cmake_target
 
         try:
             from .facebook.vcvarsall import extra_vc_cmake_defines
@@ -707,7 +709,7 @@ if __name__ == "__main__":
                 "--build",
                 self.build_dir,
                 "--target",
-                "install",
+                self.cmake_target,
                 "--config",
                 "Release",
                 "-j",

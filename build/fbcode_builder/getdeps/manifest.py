@@ -203,7 +203,6 @@ class ManifestParser(object):
         # autoconf.args section one per line
         config = configparser.RawConfigParser(allow_no_value=True)
         config.optionxform = str  # make it case sensitive
-
         if fp is None:
             with open(file_name, "r") as fp:
                 config.read_file(fp)
@@ -469,6 +468,7 @@ class ManifestParser(object):
         loader,
         final_install_prefix=None,
         extra_cmake_defines=None,
+        cmake_target=None,
         extra_b2_args=None,
     ):
         builder = self.get_builder_name(ctx)
@@ -548,6 +548,7 @@ class ManifestParser(object):
                 loader,
                 final_install_prefix,
                 extra_cmake_defines,
+                cmake_target,
             )
 
         if builder == "python-wheel":

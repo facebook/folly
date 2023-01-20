@@ -622,6 +622,7 @@ class BuildCmd(ProjectCmdBase):
                         loader,
                         final_install_prefix=loader.get_project_install_prefix(m),
                         extra_cmake_defines=extra_cmake_defines,
+                        cmake_target=args.cmake_target if m == manifest else "install",
                         extra_b2_args=extra_b2_args,
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
@@ -762,6 +763,11 @@ class BuildCmd(ProjectCmdBase):
                 "when compiling the current project and all its deps. "
                 'e.g: \'{"CMAKE_CXX_FLAGS": "--bla"}\''
             ),
+        )
+        parser.add_argument(
+            "--cmake-target",
+            help=("Target for cmake build."),
+            default="install",
         )
         parser.add_argument(
             "--extra-b2-args",
