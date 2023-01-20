@@ -39,7 +39,11 @@ extern "C" FOLLY_ATTR_WEAK int recvmmsg(
     int sockfd,
     struct mmsghdr* msgvec,
     unsigned int vlen,
+#if defined(__EMSCRIPTEN__)
+    unsigned int flags,
+#else
     int flags,
+#endif
     struct timespec* timeout);
 #else
 static int (*recvmmsg)(
