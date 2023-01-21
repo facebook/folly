@@ -337,29 +337,44 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 #elif defined(_GLIBCXX_VECTOR)
 // libstdc++
 
-template <
-    typename Tag,
-    typename T,
-    typename A,
-    A Ptr_M_impl,
-    typename B,
-    B Ptr_M_finish>
-struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
-  friend void unsafeVectorSetLargerSizeImpl(std::vector<T>& v, std::size_t n) {
-    // v._M_impl._M_finish += (n - v.size());
-    (v.*Ptr_M_impl).*Ptr_M_finish += (n - v.size());
-  }
+template <typename T, typename Alloc>
+struct std_vector_layout_impl {
+  static_assert(!std::is_same<T, bool>::value, "bad instance");
+  template <typename A>
+  using alloc_traits_t = typename __gnu_cxx::__alloc_traits<A>;
+  using allocator_type = Alloc;
+  using allocator_traits = alloc_traits_t<allocator_type>;
+  using rebound_allocator_type =
+      typename allocator_traits::template rebind<T>::other;
+  using rebound_allocator_traits = alloc_traits_t<rebound_allocator_type>;
+  using pointer = typename rebound_allocator_traits::pointer;
+
+  struct impl_type : rebound_allocator_type {
+    pointer _M_start;
+    pointer _M_finish;
+    pointer _M_end_of_storage;
+  };
+};
+template <typename T, typename Alloc = std::allocator<T>>
+struct std_vector_layout : std_vector_layout_impl<T, Alloc>::impl_type {
+  using pointer = typename std_vector_layout_impl<T, Alloc>::pointer;
 };
 
-#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)          \
-  template struct folly::detail::MakeUnsafeVectorSetLargerSize< \
-      FollyMemoryDetailTranslationUnitTag,                      \
-      TYPE,                                                     \
-      decltype(&std::vector<TYPE>::_M_impl),                    \
-      &std::vector<TYPE>::_M_impl,                              \
-      decltype(&std::vector<TYPE>::_Vector_impl::_M_finish),    \
-      &std::vector<TYPE>::_Vector_impl::_M_finish>;             \
-  FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
+template <typename T>
+void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
+  using real = std::vector<T>;
+  using fake = std_vector_layout<T>;
+  using pointer = typename fake::pointer;
+  static_assert(sizeof(fake) == sizeof(real), "mismatch");
+  static_assert(alignof(fake) == alignof(real), "mismatch");
+
+  auto const l = reinterpret_cast<unsigned char*>(&v);
+
+  auto& e = *reinterpret_cast<pointer*>(l + offsetof(fake, _M_finish));
+  e += (n - v.size());
+}
+
+#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)
 
 #elif defined(_MSC_VER) && _MSC_VER <= 1916
 // MSVC <= VS2017
