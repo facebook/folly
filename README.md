@@ -9,22 +9,11 @@ Folly: Facebook Open-source Library
 
 <img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
 
-Folly (acronymed loosely after Facebook Open Source Library) is a
-library of C++14 components designed with practicality and efficiency
-in mind. **Folly contains a variety of core library components used extensively
-at Facebook**. In particular, it's often a dependency of Facebook's other
-open source C++ efforts and place where those projects can share code.
+Folly is an efficient and useful collection of C++14 components, loosely modelled after the Facebook Open Source Library. Folly includes a number of fundamental library elements that are heavily utilised at Facebook. It frequently depends on Facebook's other open source C++ projects and serves as a repository for the code that other projects can share.
 
-It complements (as opposed to competing against) offerings
-such as Boost and of course `std`. In fact, we embark on defining our
-own component only when something we need is either not available, or
-does not meet the needed performance profile. We endeavor to remove
-things from folly if or when `std` or Boost obsoletes them.
+It enhances (rather than competes with) services like Boost and, obviously, std. In reality, we only start defining our own components when the necessary item is either unavailable or does not satisfy the required performance standards. When std or Boost render something obsolete, we try to remove it from folly.
 
-Performance concerns permeate much of Folly, sometimes leading to
-designs that are more idiosyncratic than they would otherwise be (see
-e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
-scale is a unifying theme in all of Folly.
+Folly is heavily influenced by performance considerations, which occasionally results in designs that are more eccentric than they would otherwise be (see e.g. PackedSyncPtr.h, SmallLocks.h). Good performance at large scale is a unifying theme in all of Folly.
 
 ## Check it out in the intro video
 [![Explain Like I’m 5: Folly](https://img.youtube.com/vi/Wr_IfOICYSs/0.jpg)](https://www.youtube.com/watch?v=Wr_IfOICYSs)
