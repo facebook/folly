@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <stdexcept>
+#include <system_error>
+
 #include <folly/system/AtFork.h>
 
 #include <folly/ScopeGuard.h>
