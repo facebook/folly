@@ -2567,6 +2567,8 @@ TEST(AsyncSocketTest, BufferTest) {
   socket->setBufferCallback(&bcb);
   socket->write(&wcb, buf, sizeof(buf), WriteFlags::NONE);
 
+  std::thread t1([&]() { server.verifyConnection(buf, sizeof(buf)); });
+
   evb.loop();
   ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
@@ -2575,10 +2577,11 @@ TEST(AsyncSocketTest, BufferTest) {
   ASSERT_TRUE(bcb.hasBufferCleared());
 
   socket->close();
-  server.verifyConnection(buf, sizeof(buf));
 
   ASSERT_TRUE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
+
+  t1.join();
 }
 
 TEST(AsyncSocketTest, BufferTestChain) {
@@ -2605,6 +2608,12 @@ TEST(AsyncSocketTest, BufferTestChain) {
   WriteCallback wcb;
   socket->writeChain(&wcb, buf->clone(), WriteFlags::NONE);
 
+  std::thread t1([&]() {
+    buf->coalesce();
+    server.verifyConnection(
+        reinterpret_cast<const char*>(buf->data()), buf->length());
+  });
+
   evb.loop();
   ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
@@ -2613,12 +2622,10 @@ TEST(AsyncSocketTest, BufferTestChain) {
   ASSERT_TRUE(bcb.hasBufferCleared());
 
   socket->close();
-  buf->coalesce();
-  server.verifyConnection(
-      reinterpret_cast<const char*>(buf->data()), buf->length());
 
   ASSERT_TRUE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
+  t1.join();
 }
 
 TEST(AsyncSocketTest, BufferCallbackKill) {
@@ -2649,8 +2656,12 @@ TEST(AsyncSocketTest, BufferCallbackKill) {
   // And that should crash us, if there is no DestructorGuard on the stack
   socket->write(&wcb, buf, sizeof(buf), WriteFlags::NONE);
 
+  std::thread t1([&]() { server.verifyConnection(buf, sizeof(buf)); });
+
   evb.loop();
   ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  t1.join();
 }
 
 #if FOLLY_ALLOW_TFO
