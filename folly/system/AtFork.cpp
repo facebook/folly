@@ -16,6 +16,9 @@
 
 #include <folly/system/AtFork.h>
 
+#include <stdexcept>
+#include <system_error>
+
 #include <folly/ScopeGuard.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/PThread.h>
