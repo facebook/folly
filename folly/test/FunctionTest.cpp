@@ -251,14 +251,55 @@ static_assert(
     !std::is_constructible<Function<int const&() const>, int (*)()>::value, "");
 
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
-static_assert(
-    !std::is_constructible<Function<int const&() noexcept>, int (*)()>::value,
-    "");
+static_assert( //
+    !std::is_constructible_v< //
+        Function<int() noexcept>,
+        int (*)()>);
 
-static_assert(
-    !std::is_constructible<Function<int const&() const noexcept>, int (*)()>::
-        value,
-    "");
+static_assert( //
+    !std::is_constructible_v< //
+        Function<int() const noexcept>,
+        int (*)()>);
+
+static_assert( //
+    std::is_constructible_v< //
+        Function<int() noexcept>,
+        int (*)() noexcept>);
+
+static_assert( //
+    std::is_constructible_v< //
+        Function<int() const noexcept>,
+        int (*)() noexcept>);
+
+static_assert( //
+    !std::is_constructible_v< //
+        Function<int const&() noexcept>,
+        int (*)()>);
+
+static_assert( //
+    !std::is_constructible_v< //
+        Function<int const&() const noexcept>,
+        int (*)()>);
+
+static_assert( //
+    !std::is_constructible_v< //
+        Function<int() noexcept>,
+        Function<int()>>);
+
+static_assert( //
+    !std::is_constructible_v< //
+        Function<int() const noexcept>,
+        Function<int() const>>);
+
+static_assert( //
+    std::is_constructible_v< //
+        Function<int()>,
+        Function<int() noexcept>>);
+
+static_assert( //
+    std::is_constructible_v< //
+        Function<int() const>,
+        Function<int() const noexcept>>);
 #endif
 
 static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
