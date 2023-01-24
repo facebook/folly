@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <utility>
 
 #include <folly/CancellationToken.h>
@@ -24,6 +23,7 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/futures/Promise.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -51,7 +51,7 @@ struct PromiseState {
 
   Try<T> result;
   // Must be exchanged to true before setting result
-  std::atomic<bool> fulfilled{false};
+  folly::relaxed_atomic<bool> fulfilled{false};
   // Must be posted after setting result
   coro::Baton ready;
 };
@@ -94,7 +94,7 @@ class Promise {
   template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
   void setValue(U&& value) {
     DCHECK(state_);
-    if (!state_->fulfilled.exchange(true, std::memory_order_relaxed)) {
+    if (!state_->fulfilled.exchange(true)) {
       state_->result.emplace(std::forward<U>(value));
       state_->ready.post();
     }
@@ -102,20 +102,20 @@ class Promise {
   template <typename U = T, typename = std::enable_if_t<std::is_void_v<U>>>
   void setValue() {
     DCHECK(state_);
-    if (!state_->fulfilled.exchange(true, std::memory_order_relaxed)) {
+    if (!state_->fulfilled.exchange(true)) {
       state_->ready.post();
     }
   }
   void setException(exception_wrapper&& ex) {
     DCHECK(state_);
-    if (!state_->fulfilled.exchange(true, std::memory_order_relaxed)) {
+    if (!state_->fulfilled.exchange(true)) {
       state_->result.emplaceException(std::move(ex));
       state_->ready.post();
     }
   }
   void setResult(Try<T>&& result) {
     DCHECK(state_);
-    if (!state_->fulfilled.exchange(true, std::memory_order_relaxed)) {
+    if (!state_->fulfilled.exchange(true)) {
       state_->result = std::move(result);
       state_->ready.post();
     }
@@ -194,7 +194,7 @@ class Future {
       : cs_(std::move(cs)), state_(&state) {}
 
   void cancel() {
-    if (!state_->fulfilled.exchange(true, std::memory_order_relaxed)) {
+    if (!state_->fulfilled.exchange(true)) {
       cs_.requestCancellation();
       state_->result.emplaceException(OperationCancelled{});
       state_->ready.post();
