@@ -69,11 +69,10 @@ class EvictingCacheMap {
  private:
   // typedefs for brevity
   struct Node;
+  struct NodeList;
   struct KeyHasher;
   struct KeyValueEqual;
-  using LinkMode = boost::intrusive::link_mode<boost::intrusive::safe_link>;
   using NodeMap = F14VectorSet<Node*, KeyHasher, KeyValueEqual>;
-  using NodeList = boost::intrusive::list<Node>;
   using TPair = std::pair<const TKey, TValue>;
 
  public:
@@ -177,12 +176,7 @@ class EvictingCacheMap {
   EvictingCacheMap(EvictingCacheMap&&) = default;
   EvictingCacheMap& operator=(EvictingCacheMap&&) = default;
 
-  ~EvictingCacheMap() {
-    assert(lru_.size() == index_.size());
-    // To avoid destructor depending on hash function, clear entries directly.
-    // Only intrusive container needs manual destruction.
-    lru_.clear_and_dispose([](Node* ptr) { delete ptr; });
-  }
+  ~EvictingCacheMap() { assert(lru_.size() == index_.size()); }
 
   /**
    * Adjust the max size of EvictingCacheMap, evicting as needed to ensure the
@@ -410,7 +404,10 @@ class EvictingCacheMap {
    * Get the number of elements in the dictionary
    * @return the size of the dictionary
    */
-  std::size_t size() const { return index_.size(); }
+  std::size_t size() const {
+    assert(index_.size() == lru_.size());
+    return index_.size();
+  }
 
   /**
    * Typical empty function
@@ -485,12 +482,40 @@ class EvictingCacheMap {
   }
 
  private:
-  struct Node : public boost::intrusive::list_base_hook<LinkMode> {
+  struct Node : public boost::intrusive::list_base_hook<
+                    boost::intrusive::link_mode<boost::intrusive::safe_link>> {
     template <typename K>
     Node(const K& key, TValue&& value) : pr(key, std::move(value)) {}
     TPair pr;
   };
   using NodePtr = Node*;
+
+  // NOTE: deriving from boost::intrusive::list is likely discouraged. This is
+  // simply an alternative to an ugly explicit move operator for
+  // EvictingCacheMap. Change to that if this derivation proves problematic.
+  struct NodeList : public boost::intrusive::list<Node> {
+    NodeList() {}
+    NodeList& operator=(NodeList&& that) noexcept {
+      // Clear the moved-from rather than swap, for consistency with NodeMap
+      clear_nodes();
+      // Now invoke base class move operator without using static_cast
+      boost::intrusive::list<Node>& this_parent = *this;
+      boost::intrusive::list<Node>&& that_parent = std::move(that);
+      this_parent = std::move(that_parent);
+      return *this;
+    }
+    NodeList(NodeList&& that) noexcept { *this = std::move(that); }
+    ~NodeList() {
+      // Adds leak-free final destruction to the intrusive container
+      clear_nodes();
+    }
+
+   private:
+    void clear_nodes() {
+      boost::intrusive::list<Node>::clear_and_dispose(
+          [](Node* ptr) { delete ptr; });
+    }
+  };
 
   struct KeyHasher {
     using is_transparent = void;

@@ -700,12 +700,21 @@ TEST(EvictingCacheMap, MoveTest) {
     EXPECT_EQ(i, map.get(i));
   }
 
+  // Move to empty
   EvictingCacheMap<int, int> map2 = std::move(map);
   EXPECT_TRUE(map.empty());
   for (int i = 0; i < nItems; i++) {
     EXPECT_TRUE(map2.exists(i));
     EXPECT_EQ(i, map2.get(i));
   }
+
+  // Move to non-empty
+  EvictingCacheMap<int, int> map3(1);
+  map3.set(1, 1);
+  EXPECT_EQ(1, map3.size());
+  map3 = std::move(map2);
+  EXPECT_TRUE(map2.empty());
+  EXPECT_EQ(nItems, map3.size());
 }
 
 TEST(EvictingCacheMap, CustomKeyEqual) {
