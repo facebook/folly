@@ -21,7 +21,7 @@
 
 #include <folly/Optional.h>
 #include <folly/concurrency/UnboundedQueue.h>
-#include <folly/executors/SequencedExecutor.h>
+#include <folly/executors/SerializedExecutor.h>
 
 namespace folly {
 class StrandExecutor;
@@ -119,7 +119,7 @@ class StrandContext : public std::enable_shared_from_this<StrandContext> {
   UMPSCQueue<QueueItem, /*MayBlock=*/false, /*LgSegmentSize=*/6> queue_;
 };
 
-class StrandExecutor final : public SequencedExecutor {
+class StrandExecutor final : public SerializedExecutor {
  public:
   // Creates a new StrandExecutor that is independent of other StrandExcutors.
   //

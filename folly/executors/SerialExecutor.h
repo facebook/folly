@@ -22,7 +22,7 @@
 
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/executors/SequencedExecutor.h>
+#include <folly/executors/SerializedExecutor.h>
 #include <folly/io/async/Request.h>
 
 namespace folly {
@@ -50,7 +50,7 @@ namespace folly {
  * parent executor is executing tasks.
  */
 
-class SerialExecutor : public SequencedExecutor {
+class SerialExecutor : public SerializedExecutor {
  public:
   SerialExecutor(SerialExecutor const&) = delete;
   SerialExecutor& operator=(SerialExecutor const&) = delete;
