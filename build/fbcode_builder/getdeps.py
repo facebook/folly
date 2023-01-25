@@ -627,8 +627,10 @@ class BuildCmd(ProjectCmdBase):
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
-                    with open(built_marker, "w") as f:
-                        f.write(project_hash)
+                    # Update built_marker only if user hasn't built a specific target
+                    if m == manifest and args.cmake_target == "install":
+                        with open(built_marker, "w") as f:
+                            f.write(project_hash)
 
                     # Only populate the cache from continuous build runs
                     if args.schedule_type == "continuous":
