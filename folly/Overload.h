@@ -39,12 +39,206 @@
 namespace folly {
 
 namespace detail {
+
+// MSVC does not implement noexcept deduction https://godbolt.org/z/Mxdjao1q6
+#if defined FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE && !defined _MSC_VER
+#define FOLLY_DETAIL_NOEXCEPT_SPECIFICATION noexcept(Noexcept)
+#define FOLLY_DETAIL_NOEXCEPT_DECLARATION bool Noexcept,
+#else
+#define FOLLY_DETAIL_NOEXCEPT_SPECIFICATION
+#define FOLLY_DETAIL_NOEXCEPT_DECLARATION
+#endif
+
+template <typename T>
+struct FunctionClassType {
+  using type = T;
+};
+
+// You cannot derive from a pointer to function, so wrap it in a class
+
+template <FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return, typename... Args>
+struct FunctionClassType<Return (*)(Args...)
+                             FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+  using Ptr = Return (*)(Args...) FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
+  struct type {
+    /* implicit */ constexpr type(Ptr function) noexcept
+        : function_(function) {}
+    constexpr auto operator()(Args... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return function_(std::forward<Args>(args)...);
+    }
+
+   private:
+    Ptr function_;
+  };
+};
+
+// You cannot derive from a pointer to member function, so wrap it in a class.
+// This cannot be implemented with
+// `std::enable_if_t<std::is_member_pointer_v<T>>` because you don't get
+// preferred overload resolution on the object type to match const / ref
+// qualifiers.
+
+template <
+    FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
+    typename Self,
+    typename... Args>
+struct FunctionClassType<Return (Self::*)(Args...)
+                             FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+  using Ptr = Return (Self::*)(Args...) FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
+  struct type {
+    /* implicit */ constexpr type(Ptr memberPointer) noexcept
+        : memberPointer_(memberPointer) {}
+    constexpr auto operator()(Self& self, Args... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return (self.*memberPointer_)(std::forward<Args>(args)...);
+    }
+    constexpr auto operator()(Self&& self, Args... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return (self.*memberPointer_)(std::forward<Args>(args)...);
+    }
+
+   private:
+    Ptr memberPointer_;
+  };
+};
+
+template <
+    FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
+    typename Self,
+    typename... Args>
+struct FunctionClassType<Return (Self::*)(Args...)
+                             const FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+  using Ptr =
+      Return (Self::*)(Args...) const FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
+  struct type {
+    /* implicit */ constexpr type(Ptr memberPointer) noexcept
+        : memberPointer_(memberPointer) {}
+    constexpr auto operator()(const Self& self, Args... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return (self.*memberPointer_)(std::forward<Args>(args)...);
+    }
+
+   private:
+    Ptr memberPointer_;
+  };
+};
+
+template <
+    FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
+    typename Self,
+    typename... Args>
+struct FunctionClassType<
+    Return (Self::*)(Args...) & FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+  using Ptr = Return (Self::*)(Args...) & FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
+  struct type {
+    /* implicit */ constexpr type(Ptr memberPointer) noexcept
+        : memberPointer_(memberPointer) {}
+    constexpr auto operator()(Self& self, Args&&... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return (self.*memberPointer_)(std::forward<Args>(args)...);
+    }
+
+   private:
+    Ptr memberPointer_;
+  };
+};
+
+template <
+    FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
+    typename Self,
+    typename... Args>
+struct FunctionClassType<
+    Return (Self::*)(Args...) const & FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+  using Ptr =
+      Return (Self::*)(Args...) const& FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
+  struct type {
+    /* implicit */ constexpr type(Ptr memberPointer) noexcept
+        : memberPointer_(memberPointer) {}
+    constexpr auto operator()(const Self& self, Args... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return (self.*memberPointer_)(std::forward<Args>(args)...);
+    }
+
+   private:
+    Ptr memberPointer_;
+  };
+};
+
+template <
+    FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
+    typename Self,
+    typename... Args>
+struct FunctionClassType<
+    Return (Self::*)(Args...) && FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+  using Ptr = Return (Self::*)(Args...) && FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
+  struct type {
+    /* implicit */ constexpr type(Ptr memberPointer) noexcept
+        : memberPointer_(memberPointer) {}
+    constexpr auto operator()(Self&& self, Args... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return (std::move(self).*memberPointer_)(std::forward<Args>(args)...);
+    }
+
+   private:
+    Ptr memberPointer_;
+  };
+};
+
+template <
+    FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
+    typename Self,
+    typename... Args>
+struct FunctionClassType<
+    Return (Self::*)(Args...) const && FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+  using Ptr =
+      Return (Self::*)(Args...) const&& FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
+  struct type {
+    /* implicit */ constexpr type(Ptr memberPointer) noexcept
+        : memberPointer_(memberPointer) {}
+    constexpr auto operator()(const Self&& self, Args... args) const
+        FOLLY_DETAIL_NOEXCEPT_SPECIFICATION -> Return {
+      return (std::move(self).*memberPointer_)(std::forward<Args>(args)...);
+    }
+
+   private:
+    Ptr memberPointer_;
+  };
+};
+
+template <typename T, typename Self>
+struct FunctionClassType<T Self::*> {
+  using Ptr = T Self::*;
+  struct type {
+    /* implicit */ constexpr type(Ptr memberPointer) noexcept
+        : memberPointer_(memberPointer) {}
+    constexpr auto operator()(Self& self) const noexcept -> T& {
+      return self.*memberPointer_;
+    }
+    constexpr auto operator()(const Self& self) const noexcept -> const T& {
+      return self.*memberPointer_;
+    }
+    constexpr auto operator()(Self&& self) const noexcept -> T&& {
+      return std::move(self).*memberPointer_;
+    }
+    constexpr auto operator()(const Self&& self) const noexcept -> const T&& {
+      return std::move(self).*memberPointer_;
+    }
+
+   private:
+    Ptr memberPointer_;
+  };
+};
+
+#undef FOLLY_DETAIL_NOEXCEPT_DECLARATION
+#undef FOLLY_DETAIL_NOEXCEPT_SPECIFICATION
+
 template <typename...>
-struct Overload;
+struct Overload {};
 
 template <typename Case, typename... Cases>
 struct Overload<Case, Cases...> : Overload<Cases...>, Case {
-  Overload(Case c, Cases... cs)
+  explicit constexpr Overload(Case c, Cases... cs)
       : Overload<Cases...>(std::move(cs)...), Case(std::move(c)) {}
 
   using Case::operator();
@@ -53,7 +247,7 @@ struct Overload<Case, Cases...> : Overload<Cases...>, Case {
 
 template <typename Case>
 struct Overload<Case> : Case {
-  explicit Overload(Case c) : Case(std::move(c)) {}
+  explicit constexpr Overload(Case c) : Case(std::move(c)) {}
 
   using Case::operator();
 };
@@ -61,10 +255,18 @@ struct Overload<Case> : Case {
 
 /*
  * Combine multiple `Cases` in one function object
+ *
+ * Each element of `Cases` must be a class type with `operator()`, a pointer to
+ * a function, a pointer to a member function, or a pointer to member data.
+ * `final` types and pointers to `volatile`-qualified member functions are not
+ * supported. If the `Case` type is a pointer to member, the first argument must
+ * be a class type or reference to class type (pointer to class type is not
+ * supported).
  */
 template <typename... Cases>
-decltype(auto) overload(Cases&&... cases) {
-  return detail::Overload<typename std::decay<Cases>::type...>{
+constexpr decltype(auto) overload(Cases&&... cases) {
+  return detail::Overload<typename detail::FunctionClassType<
+      typename std::decay<Cases>::type>::type...>{
       std::forward<Cases>(cases)...};
 }
 
