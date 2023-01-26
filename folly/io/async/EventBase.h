@@ -217,7 +217,9 @@ class EventBase : public TimeoutManager,
   //   - Users may safely cancel() from any thread. Multiple calls to cancel()
   //     may execute concurrently. The only caveat is that it is not safe to
   //     call cancel() within the onEventBaseDestruction() callback.
-  class OnDestructionCallback {
+  class OnDestructionCallback
+      : public boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<boost::intrusive::normal_link>> {
    public:
     OnDestructionCallback() = default;
     OnDestructionCallback(OnDestructionCallback&&) = default;
@@ -233,18 +235,10 @@ class EventBase : public TimeoutManager,
     virtual void onEventBaseDestruction() noexcept = 0;
 
    private:
-    boost::intrusive::list_member_hook<
-        boost::intrusive::link_mode<boost::intrusive::normal_link>>
-        listHook_;
     Function<void(OnDestructionCallback&)> eraser_;
     Synchronized<bool> scheduled_{in_place, false};
 
-    using List = boost::intrusive::list<
-        OnDestructionCallback,
-        boost::intrusive::member_hook<
-            OnDestructionCallback,
-            decltype(listHook_),
-            &OnDestructionCallback::listHook_>>;
+    using List = boost::intrusive::list<OnDestructionCallback>;
 
     void schedule(
         FunctionRef<void(OnDestructionCallback&)> linker,
