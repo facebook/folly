@@ -107,7 +107,7 @@ template <
     typename KeyEqualOrVoid,
     typename AllocOrVoid,
     typename ItemType>
-struct BasePolicy
+struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
     : private ObjectHolder<
           'H',
           Defaulted<HasherOrVoid, DefaultHasher<KeyType>>>,

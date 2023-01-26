@@ -308,3 +308,9 @@
 #else
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
 #endif
+
+#if defined(_MSC_VER)
+#define FOLLY_MSVC_DECLSPEC(...) __declspec(__VA_ARGS__)
+#else
+#define FOLLY_MSVC_DECLSPEC(...)
+#endif
