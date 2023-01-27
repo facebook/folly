@@ -137,6 +137,10 @@ namespace folly {
 ///   a fixed size of 2^LgSegmentSize entries. Each segment is used
 ///   exactly once.
 /// - Each entry is composed of a futex and a single element.
+/// - Each segment's array of entries is strided to avoid false sharing.
+///   I.e., to reduce any cacheline contention that might be induced by
+///   concurrent mutations to the queue that might happen to affect
+///   otherwise-adjacent locations that might happen to share cacheline.
 /// - The queue contains two 64-bit ticket variables. The producer
 ///   ticket counts the number of producer tickets issued so far, and
 ///   the same for the consumer ticket. Each ticket number corresponds
