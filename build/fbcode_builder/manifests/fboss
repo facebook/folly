@@ -45,3 +45,6 @@ nlohmann-json
 fbcode/fboss/github = .
 fbcode/fboss/common = common
 fbcode/fboss = fboss
+
+[sandcastle]
+run_tests = off
