@@ -68,11 +68,14 @@ ThreadPoolExecutor::~ThreadPoolExecutor() {
 ThreadPoolExecutor::Task::Task(
     Func&& func, std::chrono::milliseconds expiration, Func&& expireCallback)
     : func_(std::move(func)),
-      expiration_(expiration),
-      expireCallback_(std::move(expireCallback)),
+      // Assume that the task in enqueued on creation
+      enqueueTime_(std::chrono::steady_clock::now()),
       context_(folly::RequestContext::saveContext()) {
-  // Assume that the task in enqueued on creation
-  enqueueTime_ = std::chrono::steady_clock::now();
+  if (expiration > std::chrono::milliseconds::zero()) {
+    expiration_ = std::make_unique<Expiration>();
+    expiration_->expiration = expiration;
+    expiration_->expireCallback = std::move(expireCallback);
+  }
 }
 
 void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
@@ -87,19 +90,21 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
 
   {
     folly::RequestContextScopeGuard rctx(task.context_);
-    if (task.expiration_ > std::chrono::milliseconds(0) &&
-        stats.waitTime >= task.expiration_) {
+    if (task.expiration_ != nullptr &&
+        stats.waitTime >= task.expiration_->expiration) {
       task.func_ = nullptr;
       stats.expired = true;
-      if (task.expireCallback_ != nullptr) {
+      if (task.expiration_->expireCallback != nullptr) {
         invokeCatchingExns(
             "ThreadPoolExecutor: expireCallback",
-            std::exchange(task.expireCallback_, {}));
+            std::exchange(task.expiration_->expireCallback, {}));
       }
     } else {
       invokeCatchingExns(
           "ThreadPoolExecutor: func", std::exchange(task.func_, {}));
-      task.expireCallback_ = nullptr;
+      if (task.expiration_ != nullptr) {
+        task.expiration_->expireCallback = nullptr;
+      }
     }
   }
   if (!stats.expired) {

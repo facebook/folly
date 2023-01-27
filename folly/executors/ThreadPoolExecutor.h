@@ -214,15 +214,20 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   typedef std::shared_ptr<Thread> ThreadPtr;
 
   struct Task {
-    explicit Task(
+    struct Expiration {
+      std::chrono::milliseconds expiration;
+      Func expireCallback;
+    };
+
+    Task(
         Func&& func,
         std::chrono::milliseconds expiration,
         Func&& expireCallback);
+
     Func func_;
     std::chrono::steady_clock::time_point enqueueTime_;
-    std::chrono::milliseconds expiration_;
-    Func expireCallback_;
     std::shared_ptr<folly::RequestContext> context_;
+    std::unique_ptr<Expiration> expiration_;
   };
 
   void runTask(const ThreadPtr& thread, Task&& task);

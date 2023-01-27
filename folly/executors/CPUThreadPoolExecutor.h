@@ -159,15 +159,12 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   uint8_t getNumPriorities() const override;
 
   struct CPUTask : public ThreadPoolExecutor::Task {
-    // Must be noexcept move constructible so it can be used in MPMCQueue
-
-    explicit CPUTask(
+    CPUTask(
         Func&& f,
         std::chrono::milliseconds expiration,
         Func&& expireCallback,
         int8_t pri)
         : Task(std::move(f), expiration, std::move(expireCallback)),
-          poison(false),
           priority_(pri) {}
     CPUTask()
         : Task(nullptr, std::chrono::milliseconds(0), nullptr),
@@ -178,7 +175,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
 
     intptr_t& queueObserverPayload() { return queueObserverPayload_; }
 
-    bool poison;
+    bool poison = false;
 
    private:
     int8_t priority_;
