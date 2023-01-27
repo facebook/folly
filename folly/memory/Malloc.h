@@ -58,9 +58,40 @@
 #include <atomic>
 #include <new>
 
-// clang-format off
-
 namespace folly {
+
+namespace detail {
+
+// Faster "static bool" using a tri-state atomic. The flag is identified by the
+// Initializer functor argument.
+template <class Initializer>
+class FastStaticBool {
+ public:
+  FOLLY_ALWAYS_INLINE static bool get(std::memory_order mo) noexcept {
+    auto f = flag_.load(mo);
+    if (FOLLY_LIKELY(f != 0)) {
+      return f > 0;
+    }
+    return getSlow(); // Tail call.
+  }
+
+ private:
+  FOLLY_NOINLINE FOLLY_COLD FOLLY_EXPORT static bool getSlow() noexcept {
+    static bool rv = [] {
+      auto v = Initializer{}();
+      flag_.store(v ? 1 : -1, std::memory_order_release);
+      return v;
+    }();
+    return rv;
+  }
+
+  static std::atomic<char> flag_;
+};
+
+template <class Initializer>
+FOLLY_CONSTINIT std::atomic<char> FastStaticBool<Initializer>::flag_{0};
+
+} // namespace detail
 
 #if defined(__GNUC__)
 // This is for checked malloc-like functions (returns non-null pointer
@@ -90,59 +121,60 @@ inline bool usingJEMalloc() noexcept {
 }
 #else
 #define FOLLY_CONSTANT_USING_JE_MALLOC 0
-FOLLY_NOINLINE inline bool usingJEMalloc() noexcept {
-  // Checking for rallocx != nullptr is not sufficient; we may be in a
-  // dlopen()ed module that depends on libjemalloc, so rallocx is resolved, but
-  // the main program might be using a different memory allocator.
-  // How do we determine that we're using jemalloc? In the hackiest
-  // way possible. We allocate memory using malloc() and see if the
-  // per-thread counter of allocated memory increases. This makes me
-  // feel dirty inside. Also note that this requires jemalloc to have
-  // been compiled with --enable-stats.
-  static const bool result = []() noexcept {
-    // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
-    // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
-    // (!!). http://goo.gl/xpmctm
-    if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr ||
-        sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr ||
-        nallocx == nullptr || mallctl == nullptr ||
-        mallctlnametomib == nullptr || mallctlbymib == nullptr) {
-      return false;
+FOLLY_EXPORT inline bool usingJEMalloc() noexcept {
+  struct Init {
+    bool operator()() const {
+      // Checking for rallocx != nullptr is not sufficient; we may be in a
+      // dlopen()ed module that depends on libjemalloc, so rallocx is resolved,
+      // but the main program might be using a different memory allocator. How
+      // do we determine that we're using jemalloc? In the hackiest way
+      // possible. We allocate memory using malloc() and see if the per-thread
+      // counter of allocated memory increases. This makes me feel dirty inside.
+      // Also note that this requires jemalloc to have been compiled with
+      // --enable-stats.
+
+      // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
+      // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
+      // (!!). http://goo.gl/xpmctm
+      if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr ||
+          sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr ||
+          nallocx == nullptr || mallctl == nullptr ||
+          mallctlnametomib == nullptr || mallctlbymib == nullptr) {
+        return false;
+      }
+
+      // "volatile" because gcc optimizes out the reads from *counter, because
+      // it "knows" malloc doesn't modify global state...
+      /* nolint */ volatile uint64_t* counter;
+      size_t counterLen = sizeof(uint64_t*);
+
+      if (mallctl(
+              "thread.allocatedp",
+              static_cast<void*>(&counter),
+              &counterLen,
+              nullptr,
+              0) != 0) {
+        return false;
+      }
+
+      if (counterLen != sizeof(uint64_t*)) {
+        return false;
+      }
+
+      uint64_t origAllocated = *counter;
+
+      static void* volatile ptr = malloc(1);
+      if (!ptr) {
+        // wtf, failing to allocate 1 byte
+        return false;
+      }
+
+      free(ptr);
+
+      return (origAllocated != *counter);
     }
-
-    // "volatile" because gcc optimizes out the reads from *counter, because
-    // it "knows" malloc doesn't modify global state...
-    /* nolint */ volatile uint64_t* counter;
-    size_t counterLen = sizeof(uint64_t*);
-
-    if (mallctl(
-            "thread.allocatedp",
-            static_cast<void*>(&counter),
-            &counterLen,
-            nullptr,
-            0) != 0) {
-      return false;
-    }
-
-    if (counterLen != sizeof(uint64_t*)) {
-      return false;
-    }
-
-    uint64_t origAllocated = *counter;
-
-    static void* volatile ptr = malloc(1);
-    if (!ptr) {
-      // wtf, failing to allocate 1 byte
-      return false;
-    }
-
-    free(ptr);
-
-    return (origAllocated != *counter);
-  }
-  ();
-
-  return result;
+  };
+  return detail::FastStaticBool<Init>::get(std::memory_order_relaxed);
 }
 #endif
 
@@ -177,68 +209,67 @@ inline bool usingTCMalloc() noexcept {
 }
 #else
 #define FOLLY_CONSTANT_USING_TC_MALLOC 0
-FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
-  static const bool result = []() noexcept {
-    // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
-    // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
-    // (!!). http://goo.gl/xpmctm
-    if (MallocExtension_Internal_GetNumericProperty == nullptr ||
-        sdallocx == nullptr || nallocx == nullptr) {
-      return false;
+FOLLY_EXPORT inline bool usingTCMalloc() noexcept {
+  struct Init {
+    bool operator()() const {
+      // See comment in usingJEMalloc().
+      if (MallocExtension_Internal_GetNumericProperty == nullptr ||
+          sdallocx == nullptr || nallocx == nullptr) {
+        return false;
+      }
+      static const char kAllocBytes[] = "generic.current_allocated_bytes";
+
+      size_t before_bytes = 0;
+      getTCMallocNumericProperty(kAllocBytes, &before_bytes);
+
+      static void* volatile ptr = malloc(1);
+      if (!ptr) {
+        // wtf, failing to allocate 1 byte
+        return false;
+      }
+
+      size_t after_bytes = 0;
+      getTCMallocNumericProperty(kAllocBytes, &after_bytes);
+
+      free(ptr);
+
+      return (before_bytes != after_bytes);
     }
-    static const char kAllocBytes[] = "generic.current_allocated_bytes";
-
-    size_t before_bytes = 0;
-    getTCMallocNumericProperty(kAllocBytes, &before_bytes);
-
-    static void* volatile ptr = malloc(1);
-    if (!ptr) {
-      // wtf, failing to allocate 1 byte
-      return false;
-    }
-
-    size_t after_bytes = 0;
-    getTCMallocNumericProperty(kAllocBytes, &after_bytes);
-
-    free(ptr);
-
-    return (before_bytes != after_bytes);
-  }
-  ();
-
-  return result;
+  };
+  return detail::FastStaticBool<Init>::get(std::memory_order_relaxed);
 }
 #endif
 
-#if !(FOLLY_CONSTANT_USING_JE_MALLOC && FOLLY_CONSTANT_USING_TC_MALLOC)
-/**
- * @brief Determine if we are using either JEMalloc or TCMalloc.
- *
- * @return bool
- */
-FOLLY_NOINLINE inline bool canSdallocx() noexcept {
-  static bool rv = usingJEMalloc() || usingTCMalloc();
-  return rv;
-}
-
-/**
- * @brief Determine if we are using either JEMalloc or TCMalloc.
- *
- * @return bool
- */
-FOLLY_NOINLINE inline bool canNallocx() noexcept {
-  static bool rv = usingJEMalloc() || usingTCMalloc();
-  return rv;
-}
+namespace detail {
+FOLLY_EXPORT inline bool usingJEMallocOrTCMalloc() noexcept {
+  struct Init {
+    bool operator()() const { return usingJEMalloc() || usingTCMalloc(); }
+  };
+#if FOLLY_CONSTANT_USING_JE_MALLOC && FOLLY_CONSTANT_USING_TC_MALLOC
+  return Init{}();
 #else
+  return detail::FastStaticBool<Init>::get(std::memory_order_relaxed);
+#endif
+}
+} // namespace detail
+
+/**
+ * @brief Return whether sdallocx() is supported by the current allocator.
+ *
+ * @return bool
+ */
 inline bool canSdallocx() noexcept {
-  return usingJEMalloc() || usingTCMalloc();
+  return detail::usingJEMallocOrTCMalloc();
 }
 
+/**
+ * @brief Return whether nallocx() is supported by the current allocator.
+ *
+ * @return bool
+ */
 inline bool canNallocx() noexcept {
-  return usingJEMalloc() || usingTCMalloc();
+  return detail::usingJEMallocOrTCMalloc();
 }
-#endif
 
 /**
  * @brief Return the same size class values as nallocx from jemalloc.
@@ -248,8 +279,7 @@ inline bool canNallocx() noexcept {
  * @param minSize Requested size for allocation
  * @return size_t
  */
-inline constexpr size_t
-naiveGoodMallocSize(size_t minSize) noexcept {
+inline constexpr size_t naiveGoodMallocSize(size_t minSize) noexcept {
   // The spacing increases by a power-of-two and there are generally four size
   // classes per spacing. The exception is that there is one size class with a
   // spacing of 8 and seven size classes with a spacing of 16.
@@ -426,8 +456,9 @@ inline void sizedFree(void* ptr, size_t size) {
 }
 
 /**
- * @brief Reallocs if there is less slack in the buffer, else performs malloc-copy-free
-
+ * @brief Reallocs if there is less slack in the buffer, else performs
+ * malloc-copy-free.
+ *
  * This function tries to reallocate a buffer of which only the first
  * currentSize bytes are used. The problem with using realloc is that
  * if currentSize is relatively small _and_ if realloc decides it
@@ -450,8 +481,7 @@ FOLLY_MALLOC_CHECKED_MALLOC FOLLY_NOINLINE inline void* smartRealloc(
     const size_t currentCapacity,
     const size_t newCapacity) {
   assert(p);
-  assert(currentSize <= currentCapacity &&
-         currentCapacity < newCapacity);
+  assert(currentSize <= currentCapacity && currentCapacity < newCapacity);
 
   auto const slack = currentCapacity - currentSize;
   if (slack * 2 > currentSize) {
@@ -466,5 +496,3 @@ FOLLY_MALLOC_CHECKED_MALLOC FOLLY_NOINLINE inline void* smartRealloc(
 }
 
 } // namespace folly
-
-// clang-format on
