@@ -259,7 +259,7 @@ void partiallyUninitializedCopy(
 }
 
 template <class SizeType, bool ShouldUseHeap, bool AlwaysUseHeap>
-struct IntegralSizePolicyBase {
+struct FOLLY_SV_PACK_ATTR IntegralSizePolicyBase {
   typedef SizeType InternalSizeType;
 
   IntegralSizePolicyBase() : size_(0) {}
@@ -312,7 +312,11 @@ struct IntegralSizePolicyBase {
   }
   std::size_t getInternalSize() { return size_; }
 
-  void swapSizePolicy(IntegralSizePolicyBase& o) { std::swap(size_, o.size_); }
+  void swapSizePolicy(IntegralSizePolicyBase& o) {
+    SizeType tmp = size_;
+    size_ = o.size_;
+    o.size_ = tmp;
+  }
 
   void resetSizePolicy() { size_ = 0; }
 
@@ -1368,7 +1372,7 @@ class small_vector
     }
   }
 
-  union Data {
+  union FOLLY_SV_PACK_ATTR Data {
     explicit Data() { pdata_.heap_ = nullptr; }
 
     PointerType pdata_;
