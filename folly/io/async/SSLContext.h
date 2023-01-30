@@ -645,13 +645,6 @@ class SSLContext {
   static bool matchName(const char* host, const char* pattern, int size);
 
   /**
-   * Temporary. Will be removed after TLS1.3 is enabled by default.
-   * Function to enable TLS1.3 in OpenSSL versions that support it.
-   * Used to migrate users to TLS1.3 piecemeal.
-   */
-  void enableTLS13();
-
-  /**
    * Disable TLS 1.3 in OpenSSL versions that support it.
    */
   void disableTLS13();
