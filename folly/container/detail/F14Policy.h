@@ -1451,7 +1451,8 @@ class VectorContainerPolicy : public BasePolicy<
   // Iterator stuff
 
   Iter linearBegin(std::size_t size) const {
-    return Iter{(size > 0 ? values_ + size - 1 : nullptr), values_};
+    return size > 0 ? Iter{values_ + size - 1, values_}
+                    : Iter{nullptr, nullptr};
   }
 
   Iter linearEnd() const { return Iter{nullptr, nullptr}; }
