@@ -141,7 +141,7 @@ class F14BasicMap {
       key_equal const& eq = key_equal{},
       allocator_type const& alloc = allocator_type{})
       : table_{initialCapacity, hash, eq, alloc} {
-    initialInsert(first, last, initialCapacity);
+    initialInsert(std::move(first), std::move(last), initialCapacity);
   }
 
   template <typename InputIt>
@@ -151,7 +151,7 @@ class F14BasicMap {
       std::size_t initialCapacity,
       allocator_type const& alloc)
       : table_{initialCapacity, hasher{}, key_equal{}, alloc} {
-    initialInsert(first, last, initialCapacity);
+    initialInsert(std::move(first), std::move(last), initialCapacity);
   }
 
   template <typename InputIt>
@@ -162,7 +162,7 @@ class F14BasicMap {
       hasher const& hash,
       allocator_type const& alloc)
       : table_{initialCapacity, hash, key_equal{}, alloc} {
-    initialInsert(first, last, initialCapacity);
+    initialInsert(std::move(first), std::move(last), initialCapacity);
   }
 
   F14BasicMap(F14BasicMap const& rhs) = default;
@@ -333,7 +333,7 @@ class F14BasicMap {
             std::random_access_iterator_tag,
             typename std::iterator_traits<InputIt>::iterator_category>::value &&
         initialCapacity == 0;
-    bulkInsert(first, last, autoReserve);
+    bulkInsert(std::move(first), std::move(last), autoReserve);
   }
 
  public:
@@ -347,7 +347,7 @@ class F14BasicMap {
             std::random_access_iterator_tag,
             typename std::iterator_traits<InputIt>::iterator_category>::value &&
         bucket_count() == 0;
-    bulkInsert(first, last, autoReserve);
+    bulkInsert(std::move(first), std::move(last), autoReserve);
   }
 
   void insert(std::initializer_list<value_type> ilist) {

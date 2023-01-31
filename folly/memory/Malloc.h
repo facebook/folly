@@ -139,7 +139,7 @@ inline bool usingJEMalloc() noexcept {
 #else
 #define FOLLY_CONSTANT_USING_JE_MALLOC 0
 FOLLY_EXPORT inline bool usingJEMalloc() noexcept {
-  struct Init {
+  struct Initializer {
     bool operator()() const {
       // Checking for rallocx != nullptr is not sufficient; we may be in a
       // dlopen()ed module that depends on libjemalloc, so rallocx is resolved,
@@ -191,7 +191,7 @@ FOLLY_EXPORT inline bool usingJEMalloc() noexcept {
       return (origAllocated != *counter);
     }
   };
-  return detail::FastStaticBool<Init>::get(std::memory_order_relaxed);
+  return detail::FastStaticBool<Initializer>::get(std::memory_order_relaxed);
 }
 #endif
 
@@ -227,7 +227,7 @@ inline bool usingTCMalloc() noexcept {
 #else
 #define FOLLY_CONSTANT_USING_TC_MALLOC 0
 FOLLY_EXPORT inline bool usingTCMalloc() noexcept {
-  struct Init {
+  struct Initializer {
     bool operator()() const {
       // See comment in usingJEMalloc().
       if (MallocExtension_Internal_GetNumericProperty == nullptr ||
@@ -253,19 +253,19 @@ FOLLY_EXPORT inline bool usingTCMalloc() noexcept {
       return (before_bytes != after_bytes);
     }
   };
-  return detail::FastStaticBool<Init>::get(std::memory_order_relaxed);
+  return detail::FastStaticBool<Initializer>::get(std::memory_order_relaxed);
 }
 #endif
 
 namespace detail {
 FOLLY_EXPORT inline bool usingJEMallocOrTCMalloc() noexcept {
-  struct Init {
+  struct Initializer {
     bool operator()() const { return usingJEMalloc() || usingTCMalloc(); }
   };
 #if FOLLY_CONSTANT_USING_JE_MALLOC && FOLLY_CONSTANT_USING_TC_MALLOC
-  return Init{}();
+  return Initializer{}();
 #else
-  return detail::FastStaticBool<Init>::get(std::memory_order_relaxed);
+  return detail::FastStaticBool<Initializer>::get(std::memory_order_relaxed);
 #endif
 }
 } // namespace detail

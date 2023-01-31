@@ -1090,7 +1090,6 @@ TEST(AsyncSSLSocketTest, EarlyCloseNotify) {
 TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   EventBase eventBase;
   auto serverCtx = std::make_shared<SSLContext>();
-  serverCtx->enableTLS13();
   serverCtx->setVerificationOption(SSLContext::VerifyClientCertificate::ALWAYS);
   serverCtx->setCiphersuitesOrThrow(
       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
@@ -1100,7 +1099,6 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
   auto clientCtx = std::make_shared<SSLContext>();
-  clientCtx->enableTLS13();
   clientCtx->setVerificationOption(
       SSLContext::VerifyServerCertificate::IF_PRESENTED);
   clientCtx->setCiphersuitesOrThrow(
@@ -3218,9 +3216,7 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
 TEST(AsyncSSLSocketTest, TestNullConnectCallbackError) {
   EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
-  clientCtx->enableTLS13();
   auto serverCtx = std::make_shared<SSLContext>();
-  serverCtx->enableTLS13();
   std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
   getctx(clientCtx, serverCtx);
