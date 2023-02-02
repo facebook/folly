@@ -311,7 +311,7 @@ class atomic_shared_ptr {
       auto aliasedp =
           CountedDetail::template get_shared_ptr_from_counted_base<SharedPtr>(
               p.get());
-      res = *aliasedp;
+      return *aliasedp;
     }
     return res;
   }
