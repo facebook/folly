@@ -92,11 +92,8 @@ ElfFile::OpenResult ElfFile::openNoThrow(
     return {kSystemError, "fstat"};
   }
 
-  fileId_ = std::make_tuple(
-      st.st_dev,
-      st.st_ino,
-      st.st_size,
-      st.st_mtim.tv_sec * 1000'000'000LL + st.st_mtim.tv_nsec);
+  uint64_t mtime_ns = st.st_mtim.tv_sec * 1000'000'000LL + st.st_mtim.tv_nsec;
+  fileId_ = ElfFileId{st.st_dev, st.st_ino, st.st_size, mtime_ns};
 
   length_ = st.st_size;
   int prot = PROT_READ;

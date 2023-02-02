@@ -55,12 +55,22 @@ using ElfRel = FOLLY_ELF_ELFW(Rel);
 using ElfRela = FOLLY_ELF_ELFW(Rela);
 
 // ElfFileId is supposed to uniquely identify any instance of an ELF binary.
-// It does that by using file's inode, dev ID, size and modification time:
-// <dev, inode, size in bytes, mod time>
-// Just using dev, inode is not unique enough, because the file can
-// be overwritten with new contents, but will keep same dev and inode, so
-// we take into account modification time and file size to minimize risk.
-using ElfFileId = std::tuple<dev_t, ino_t, off_t, uint64_t>;
+// It does that by using the file's inode, dev ID, size and modification time
+// (ns): <dev, inode, size in bytes, mod time> Just using dev, inode is not
+// unique enough, because the file can be overwritten with new contents, but
+// will keep same dev and inode, so we take into account modification time and
+// file size to minimize risk.
+struct ElfFileId {
+  dev_t dev;
+  ino_t inode;
+  off_t size;
+  uint64_t mtime;
+};
+
+inline bool operator==(const ElfFileId& lhs, const ElfFileId& rhs) {
+  return lhs.dev == rhs.dev && lhs.inode == rhs.inode && lhs.size == rhs.size &&
+      lhs.mtime == rhs.mtime;
+}
 
 /**
  * ELF file parser.
@@ -370,6 +380,16 @@ class ElfFile {
 
 } // namespace symbolizer
 } // namespace folly
+
+namespace std {
+template <>
+struct hash<folly::symbolizer::ElfFileId> {
+  size_t operator()(const folly::symbolizer::ElfFileId fileId) const {
+    return folly::hash::hash_combine(
+        fileId.dev, fileId.inode, fileId.size, fileId.mtime);
+  }
+};
+} // namespace std
 
 #include <folly/experimental/symbolizer/Elf-inl.h>
 
