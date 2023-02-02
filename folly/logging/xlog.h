@@ -448,6 +448,25 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
 #define XLOG_IS_ON(level) XLOG_IS_ON_IMPL(::folly::LogLevel::level)
 
 /**
+ * Expects a fully qualified LogLevel enum value.
+ *
+ * This helper macro invokes XLOG_IS_ON_IMPL_HELPER() to perform the real
+ * log level check, with a couple additions:
+ * - If the log level is less than FOLLY_XLOG_MIN_LEVEL it evaluates to false
+ *   to allow the compiler to completely optimize out the check and log message
+ *   if the level is less than this compile-time fixed constant.
+ * - If the log level is fatal, this has an extra check at the end to ensure the
+ *   compiler can detect that it always evaluates to true.  This helps the
+ *   compiler detect that statements like XCHECK(false) never return.  Note that
+ *   XLOG_IS_ON_IMPL_HELPER() must still be invoked first for fatal log levels
+ *   in order to initialize folly::detail::custom::xlogFileScopeInfo.
+ */
+#define XLOG_IS_ON_IMPL(level)                              \
+  ((((level) >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && \
+    XLOG_IS_ON_IMPL_HELPER(level)) ||                       \
+   ((level) >= ::folly::kMinFatalLogLevel))
+
+/**
  * Helper macro to implement of XLOG_IS_ON()
  *
  * This macro is used in the XLOG() implementation, and therefore must be as
@@ -462,8 +481,8 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *
  * See XlogLevelInfo for the implementation details.
  */
-#define XLOG_IS_ON_IMPL(level)                                  \
-  ((level >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && [] {   \
+#define XLOG_IS_ON_IMPL_HELPER(level)                           \
+  ([] {                                                         \
     static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>       \
         folly_detail_xlog_level;                                \
     constexpr auto* folly_detail_xlog_filename = XLOG_FILENAME; \

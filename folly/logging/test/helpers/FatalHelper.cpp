@@ -120,6 +120,12 @@ std::string fbLogFatalCheck() {
   // about a missing return statement here.
 }
 
+std::string xcheckFatalCheck() {
+  XCHECK(false);
+  // This function mostly exists to make sure the compiler does not warn
+  // about a missing return statement here.
+}
+
 struct MyStruct {
   MyStruct(uint32_t a_, uint32_t b_) : a(a_), b(b_) {}
   uint32_t a;
