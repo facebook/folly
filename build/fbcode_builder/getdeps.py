@@ -627,8 +627,12 @@ class BuildCmd(ProjectCmdBase):
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
-                    # Update built_marker only if user hasn't built a specific target
-                    if m == manifest and args.cmake_target == "install":
+                    # If we are building the project (not depdendency) and a specific
+                    # cmake_target (not 'install') has been requested, then we don't
+                    # set the built_marker. This allows subsequent runs of getdeps.py
+                    # for the project to run with different cmake_targets to trigger
+                    # cmake
+                    if not (m == manifest and args.cmake_target != "install"):
                         with open(built_marker, "w") as f:
                             f.write(project_hash)
 
