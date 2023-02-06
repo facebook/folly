@@ -32,10 +32,11 @@ std::array<std::uint8_t, 16> expectedEncodeToIndexes(
     std::array<std::uint8_t, 16> in) {
   std::array<std::uint8_t, 16> res{};
 
-  std::uint8_t const* f = in.cbegin();
-  std::uint8_t* o = res.begin();
+  std::uint8_t const* f = in.data();
+  std::uint8_t* o = res.data();
+  std::uint8_t* const oEnd = res.data() + res.size();
 
-  while (o != res.end()) {
+  while (o != oEnd) {
     std::uint8_t aaab = f[0];
     std::uint8_t bbcc = f[1];
     std::uint8_t cddd = f[2];
@@ -62,10 +63,11 @@ std::array<std::uint8_t, 16> expectedPackIndexesToBytes(
   std::array<std::uint8_t, 16> res{};
   res.fill(0);
 
-  std::uint8_t const* f = in.cbegin();
-  std::uint8_t* o = res.begin();
+  std::uint8_t const* f = in.data();
+  std::uint8_t const* const inEnd = in.data() + in.size();
+  std::uint8_t* o = res.data();
 
-  while (f != in.cend()) {
+  while (f != inEnd) {
     std::uint8_t aaa = f[0];
     std::uint8_t bbb = f[1];
     std::uint8_t ccc = f[2];
@@ -129,16 +131,16 @@ struct Base64PlatformTest : ::testing::Test {
 
   static RegBytesArray actualEncodeToIndexes(RegBytesArray from) {
     RegBytesArray res;
-    auto reg = platform::encodeToIndexes(platform::loadu(from.begin()));
-    platform::storeu(res.begin(), reg);
+    auto reg = platform::encodeToIndexes(platform::loadu(from.data()));
+    platform::storeu(res.data(), reg);
     return res;
   }
 
   static RegBytesArray actualLookupByIndex(RegBytesArray from) {
     RegBytesArray res;
     auto reg = platform::lookupByIndex(
-        platform::loadu(from.begin()), constants::kEncodeTable.data());
-    platform::storeu(res.begin(), reg);
+        platform::loadu(from.data()), constants::kEncodeTable.data());
+    platform::storeu(res.data(), reg);
     return res;
   }
 
@@ -147,14 +149,14 @@ struct Base64PlatformTest : ::testing::Test {
     auto err = platform::initError();
     auto reg = platform::decodeToIndex(platform::loadu(from.data()), err);
     EXPECT_FALSE(platform::hasErrors(err));
-    platform::storeu(res.begin(), reg);
+    platform::storeu(res.data(), reg);
     return res;
   }
 
   static RegBytesArray actualPackIndexesToBytes(RegBytesArray from) {
     auto reg = platform::packIndexesToBytes(platform::loadu(from.data()));
     RegBytesArray res;
-    platform::storeu(res.begin(), reg);
+    platform::storeu(res.data(), reg);
     return res;
   }
 };
@@ -166,7 +168,7 @@ TYPED_TEST(Base64PlatformTest, EncodeToIndexes) {
 
   for (std::uint16_t v = 0; v != 256; v += 8) {
     RegBytes in;
-    std::iota(in.begin(), in.end(), static_cast<std::uint8_t>(v));
+    std::iota(in.data(), in.data() + in.size(), static_cast<std::uint8_t>(v));
 
     RegBytes expected = expectedEncodeToIndexes(in);
     RegBytes actual = TestFixture::actualEncodeToIndexes(in);
@@ -183,7 +185,7 @@ TYPED_TEST(Base64PlatformTest, IndexLookup) {
 
   for (std::uint8_t i = 0; i != max_index + 1 - RegBytes{}.size(); i += 1) {
     RegBytes in;
-    std::iota(in.begin(), in.end(), i);
+    std::iota(in.data(), in.data() + in.size(), i);
     RegBytes expected = expectedLookupByIndex(in, kBase64EncodeTable);
     RegBytes actual = TestFixture::actualLookupByIndex(in);
     ASSERT_EQ(expected, actual);
@@ -231,7 +233,7 @@ TYPED_TEST(Base64PlatformTest, decodeToIndexSuccess) {
   // Some cases
   for (std::uint16_t v = 0; v < 256; v += 1) {
     RegBytes in;
-    std::iota(in.begin(), in.end(), static_cast<std::uint8_t>(v));
+    std::iota(in.data(), in.data() + in.size(), static_cast<std::uint8_t>(v));
 
     for (auto& x : in) {
       x = x % 64;
@@ -252,9 +254,7 @@ TYPED_TEST(Base64PlatformTest, packIndexesToBytes) {
     RegBytes in;
     in.fill(0);
     std::iota(
-        in.begin(),
-        in.begin() + in.size() / 4 * 3,
-        static_cast<std::uint8_t>(v));
+        in.data(), in.data() + in.size() / 4 * 3, static_cast<std::uint8_t>(v));
 
     for (auto& x : in) {
       x = x % 64;
