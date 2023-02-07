@@ -44,13 +44,13 @@ class ElfTest : public ::testing::Test {
 TEST_F(ElfTest, IntegerValue) {
   auto sym = elfFile_.getSymbolByName("kIntegerValue");
   EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kIntegerValue";
-  EXPECT_EQ(kIntegerValue, elfFile_.getSymbolValue<uint64_t>(sym.second));
+  EXPECT_EQ(kIntegerValue, *elfFile_.getSymbolValue<uint64_t>(sym.second));
 }
 
 TEST_F(ElfTest, PointerValue) {
   auto sym = elfFile_.getSymbolByName("kStringValue");
   EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kStringValue";
-  ElfW(Addr) addr = elfFile_.getSymbolValue<ElfW(Addr)>(sym.second);
+  ElfW(Addr) addr = *elfFile_.getSymbolValue<ElfW(Addr)>(sym.second);
   // Let's check the address for the symbol against our own copy of
   // kStringValue.
   // For PIE binaries we need to adjust the address due to relocation.
@@ -65,7 +65,7 @@ TEST_F(ElfTest, PointerValue) {
     // via relocation; the actual offset of the string is encoded in the
     // .rela.dyn section, which isn't parsed in the current implementation of
     // ElfFile.
-    const char* str = &elfFile_.getAddressValue<const char>(addr);
+    const char* str = elfFile_.getAddressValue<const char>(addr);
     EXPECT_STREQ(kStringValue, str);
   }
 }

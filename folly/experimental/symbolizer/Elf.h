@@ -263,9 +263,11 @@ class ElfFile {
    * Get the value of a symbol.
    */
   template <class T>
-  const T& getSymbolValue(const ElfSym* symbol) const noexcept {
+  const T* getSymbolValue(const ElfSym* symbol) const noexcept {
     const ElfShdr* section = getSectionByIndex(symbol->st_shndx);
-    FOLLY_SAFE_CHECK(section, "Symbol's section index is invalid");
+    if (!section) {
+      return nullptr;
+    }
 
     return valueAt<T>(*section, symbol->st_value);
   }
@@ -278,13 +280,15 @@ class ElfFile {
    * a char* symbol, you'd do something like this:
    *
    *  auto sym = getSymbolByName("someGlobalValue");
-   *  auto addr = getSymbolValue<ElfAddr>(sym.second);
-   *  const char* str = &getAddressValue<const char>(addr);
+   *  auto addrPtr = getSymbolValue<ElfAddr>(sym.second);
+   *  const char* str = getAddressValue<const char>(*addrPtr);
    */
   template <class T>
-  const T& getAddressValue(const ElfAddr addr) const noexcept {
+  const T* getAddressValue(const ElfAddr addr) const noexcept {
     const ElfShdr* section = getSectionContainingAddress(addr);
-    FOLLY_SAFE_CHECK(section, "Address does not refer to existing section");
+    if (!section) {
+      return nullptr;
+    }
 
     return valueAt<T>(*section, addr);
   }
@@ -337,7 +341,7 @@ class ElfFile {
   }
 
   template <class T>
-  const T& valueAt(const ElfShdr& section, const ElfAddr addr) const noexcept {
+  const T* valueAt(const ElfShdr& section, const ElfAddr addr) const noexcept {
     // For exectuables and shared objects, st_value holds a virtual address
     // that refers to the memory owned by sections. Since we didn't map the
     // sections into the addresses that they're expecting (sh_addr), but
@@ -347,25 +351,26 @@ class ElfFile {
     // TODO: For other file types, st_value holds a file offset directly. Since
     //       I don't have a use-case for that right now, just assert that
     //       nobody wants this. We can always add it later.
-    FOLLY_SAFE_CHECK(
-        elfHeader().e_type == ET_EXEC || elfHeader().e_type == ET_DYN ||
-            elfHeader().e_type == ET_CORE,
-        "Only exectuables, shared objects and cores are supported");
-    FOLLY_SAFE_CHECK(
-        addr >= section.sh_addr &&
-            (addr + sizeof(T)) <= (section.sh_addr + section.sh_size),
-        "Address is not contained within the provided segment");
+    if (!(elfHeader().e_type == ET_EXEC || elfHeader().e_type == ET_DYN ||
+          elfHeader().e_type == ET_CORE)) {
+      return nullptr;
+    }
+    if (!(addr >= section.sh_addr &&
+          (addr + sizeof(T)) <= (section.sh_addr + section.sh_size))) {
+      return nullptr;
+    }
 
     // SHT_NOBITS: a section that occupies no space in the file but otherwise
     // resembles SHT_PROGBITS. Although this section contains no bytes, the
     // sh_offset member contains the conceptual file offset. Typically used
     // for zero-initialized data sections like .bss.
     if (section.sh_type == SHT_NOBITS) {
-      static T t = {};
-      return t;
+      return nullptr;
     }
 
-    return at<T>(section.sh_offset + (addr - section.sh_addr));
+    ElfOff offset = section.sh_offset + (addr - section.sh_addr);
+
+    return (offset + sizeof(T) <= length_) ? &at<T>(offset) : nullptr;
   }
 
   static constexpr size_t kFilepathMaxLen = 512;
