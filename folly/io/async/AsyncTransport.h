@@ -1239,9 +1239,9 @@ class AsyncTransport : public DelayedDestruction,
    *
    * @param observer     Observer to add (implements LifecycleObserver).
    */
-  virtual void addLifecycleObserver(LifecycleObserver* /* observer */) {
-    folly::terminate_with<std::runtime_error>(
-        "addLifecycleObserver() not supported");
+  virtual void addLifecycleObserver(LifecycleObserver*) {
+    // A LifecycleObserver should not depend on receiving byteEventsUnavailable
+    // in this case.
   }
 
   /**
@@ -1251,8 +1251,7 @@ class AsyncTransport : public DelayedDestruction,
    * @return             Whether observer found and removed from list.
    */
   virtual bool removeLifecycleObserver(LifecycleObserver* /* observer */) {
-    folly::terminate_with<std::runtime_error>(
-        "removeLifecycleObserver() not supported");
+    return false;
   }
 
   /**
@@ -1262,8 +1261,7 @@ class AsyncTransport : public DelayedDestruction,
    */
   FOLLY_NODISCARD virtual std::vector<LifecycleObserver*>
   getLifecycleObservers() const {
-    folly::terminate_with<std::runtime_error>(
-        "getLifecycleObservers() not supported");
+    return std::vector<LifecycleObserver*>();
   }
 
   /**
