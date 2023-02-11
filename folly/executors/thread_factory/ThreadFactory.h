@@ -15,6 +15,8 @@
  */
 
 #pragma once
+
+#include <string>
 #include <thread>
 
 #include <folly/Executor.h>
@@ -27,6 +29,8 @@ class ThreadFactory {
 
   virtual ~ThreadFactory() = default;
   virtual std::thread newThread(Func&& func) = 0;
+
+  virtual const std::string& getNamePrefix() const = 0;
 
  private:
   ThreadFactory(const ThreadFactory&) = delete;
