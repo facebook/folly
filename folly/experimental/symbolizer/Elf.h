@@ -265,7 +265,7 @@ class ElfFile {
   template <class T>
   const T* getSymbolValue(const ElfSym* symbol) const noexcept {
     const ElfShdr* section = getSectionByIndex(symbol->st_shndx);
-    if (!section) {
+    if (section == nullptr) {
       return nullptr;
     }
 
@@ -286,7 +286,7 @@ class ElfFile {
   template <class T>
   const T* getAddressValue(const ElfAddr addr) const noexcept {
     const ElfShdr* section = getSectionContainingAddress(addr);
-    if (!section) {
+    if (section == nullptr) {
       return nullptr;
     }
 
@@ -365,7 +365,8 @@ class ElfFile {
     // sh_offset member contains the conceptual file offset. Typically used
     // for zero-initialized data sections like .bss.
     if (section.sh_type == SHT_NOBITS) {
-      return nullptr;
+      static T t = {};
+      return &t;
     }
 
     ElfOff offset = section.sh_offset + (addr - section.sh_addr);
