@@ -22,6 +22,7 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/dynamic.h>
+#include <folly/small_vector.h>
 #include <folly/support/test/GdbUtil.h>
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -95,6 +96,9 @@ int main() {
   F14FastSetTypedef s_fval_typedef = {45, 46, 47};
 
   const F14FastSet<int>& const_ref = s_fval;
+
+  small_vector<uint32_t, 7> smol_vec_inline = {1, 2, 3};
+  small_vector<std::string, 1> smol_vec_outline = {"four", "five"};
 
   asm_gdb_breakpoint();
 

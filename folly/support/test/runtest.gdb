@@ -110,3 +110,8 @@ p s_fval_typedef
 # CHECK: folly::F14FastSet with 3 elements = {45, 46, 47}
 p const_ref
 # CHECK: folly::F14FastSet with 3 elements = {42, 43, 44}
+
+p smol_vec_inline
+# CHECK: folly::small_vector of length 3, capacity 7 = {1, 2, 3}
+p smol_vec_outline
+# CHECK: folly::small_vector of length 2, capacity 2 = {"four", "five"}
