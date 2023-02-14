@@ -148,9 +148,11 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   assert(fd == handler->event_.eb_ev_fd());
   (void)fd; // prevent unused variable warnings
 
-  auto observer = handler->eventBase_->getExecutionObserver();
-  if (observer) {
-    observer->starting(reinterpret_cast<uintptr_t>(handler));
+  auto& observers = handler->eventBase_->getExecutionObserverList();
+  if (!observers.empty()) {
+    for (auto& observer : observers) {
+      observer.starting(reinterpret_cast<uintptr_t>(handler));
+    }
   }
 
   // this can't possibly fire if handler->eventBase_ is nullptr
@@ -158,8 +160,10 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
 
   handler->handlerReady(uint16_t(events));
 
-  if (observer) {
-    observer->stopped(reinterpret_cast<uintptr_t>(handler));
+  if (!observers.empty()) {
+    for (auto& observer : observers) {
+      observer.stopped(reinterpret_cast<uintptr_t>(handler));
+    }
   }
 }
 

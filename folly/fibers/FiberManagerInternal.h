@@ -412,13 +412,15 @@ class FiberManager : public ::folly::Executor {
    *
    * @param observer  Fiber's execution observer.
    */
-  void setObserver(ExecutionObserver* observer);
+  void addObserver(ExecutionObserver* observer);
+
+  void removeObserver(ExecutionObserver* observer);
 
   /**
    * @return Current observer for this FiberManager. Returns nullptr
    * if no observer has been set.
    */
-  ExecutionObserver* getObserver();
+  ExecutionObserver::List& getObserverList();
 
   /**
    * Setup fibers preempt runner.
@@ -567,7 +569,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * Fiber's execution observer.
    */
-  ExecutionObserver* observer_{nullptr};
+  ExecutionObserver::List observerList_{};
 
   ExceptionCallback exceptionCallback_; /**< task exception callback */
 

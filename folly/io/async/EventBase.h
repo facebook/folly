@@ -822,14 +822,20 @@ class EventBase : public TimeoutManager,
    *
    * @param observer EventHandle's execution observer.
    */
-  void setExecutionObserver(ExecutionObserver* observer) {
-    executionObserver_ = observer;
+  void addExecutionObserver(ExecutionObserver* observer) {
+    executionObserverList_.push_back(*observer);
+  }
+
+  void removeExecutionObserver(ExecutionObserver* observer) {
+    executionObserverList_.erase(executionObserverList_.iterator_to(*observer));
   }
 
   /**
-   * Gets the execution observer associated with this EventBase.
+   * Gets the execution observer list associated with this EventBase.
    */
-  ExecutionObserver* getExecutionObserver() { return executionObserver_; }
+  ExecutionObserver::List& getExecutionObserverList() {
+    return executionObserverList_;
+  }
 
   /**
    * Set the name of the thread that runs this event base.
@@ -996,8 +1002,8 @@ class EventBase : public TimeoutManager,
   std::shared_ptr<EventBaseObserver> observer_;
   uint32_t observerSampleCount_;
 
-  // EventHandler's execution observer.
-  ExecutionObserver* executionObserver_;
+  // EventHandler's execution observer list (in case multiple are registered)
+  ExecutionObserver::List executionObserverList_;
 
   // Name of the thread running this EventBase
   std::string name_;

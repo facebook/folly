@@ -2525,7 +2525,7 @@ TYPED_TEST_P(EventBaseTest1, EventBaseExecutionObserver) {
   bool ranBeforeLoop = false;
   bool ran = false;
   TestObserver observer;
-  base.setExecutionObserver(&observer);
+  base.addExecutionObserver(&observer);
 
   CountedLoopCallback cb(&base, 1, [&]() { ranBeforeLoop = true; });
   base.runBeforeLoop(&cb);

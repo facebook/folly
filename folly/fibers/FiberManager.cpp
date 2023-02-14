@@ -147,12 +147,16 @@ void FiberManager::remoteReadyInsert(Fiber* fiber) {
   }
 }
 
-void FiberManager::setObserver(ExecutionObserver* observer) {
-  observer_ = observer;
+void FiberManager::addObserver(ExecutionObserver* observer) {
+  observerList_.push_back(*observer);
 }
 
-ExecutionObserver* FiberManager::getObserver() {
-  return observer_;
+void FiberManager::removeObserver(ExecutionObserver* observer) {
+  observerList_.erase(observerList_.iterator_to(*observer));
+}
+
+ExecutionObserver::List& FiberManager::getObserverList() {
+  return observerList_;
 }
 
 void FiberManager::setPreemptRunner(InlineFunctionRunner* preemptRunner) {
