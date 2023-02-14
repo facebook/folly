@@ -219,6 +219,15 @@ class Random {
   static RNG create();
 
   /**
+   * Create a new RNG, which can be used for applications that require secure
+   * randomness.
+   *
+   * The resulting RNG will have worse performance than one created with
+   * create(), so use it if you need the security.
+   */
+  static SecureRNG<uint32_t> createSecure() { return SecureRNG<uint32_t>(); }
+
+  /**
    * Returns a random uint32_t
    */
   static uint32_t rand32() { return rand32(ThreadLocalPRNG()); }
