@@ -364,6 +364,19 @@ class Random {
   }
 
   /**
+   * Returns true with the probability of p, false otherwise
+   */
+  static bool randBool(double p) { return randBool(p, ThreadLocalPRNG()); }
+
+  /**
+   * Returns true with the probability of p, false otherwise
+   */
+  template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
+  static bool randBool(double p, RNG&& rng) {
+    return randDouble01(std::forward<RNG>(rng)) < p;
+  }
+
+  /**
    * Returns a double in [0, 1)
    */
   static double randDouble01() { return randDouble01(ThreadLocalPRNG()); }
