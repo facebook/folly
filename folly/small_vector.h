@@ -549,9 +549,8 @@ class small_vector
         this->u.setCapacity(o.u.getCapacity());
       }
     } else {
-      if (kShouldCopyInlineTrivial) {
-        copyInlineTrivial<Value>(o);
-        o.resetSizePolicy();
+      if (kShouldRelocateInlineTrivial) {
+        relocateInlineTrivial(o);
       } else {
         auto n = o.size();
         std::uninitialized_copy(
@@ -1047,6 +1046,14 @@ class small_vector
     this->setSize(sz);
   }
 
+  void relocateInlineTrivial(small_vector& o) {
+    // Copy the entire inline storage, instead of just size() values, to make
+    // the loop fixed-size and unrollable.
+    std::memcpy(u.buffer(), o.u.buffer(), MaxInline * kSizeOfValue);
+    this->setSize(o.size());
+    o.resetSizePolicy();
+  }
+
   template <class T>
   typename std::enable_if<is_trivially_copyable_v<T>>::type copyInlineTrivial(
       small_vector const& o) {
@@ -1311,6 +1318,10 @@ class small_vector
   // introducing a cache miss.
   static constexpr bool kShouldCopyInlineTrivial =
       is_trivially_copyable_v<Value> &&
+      sizeof(InlineStorageType) <= hardware_constructive_interference_size / 2;
+
+  static constexpr bool kShouldRelocateInlineTrivial =
+      IsRelocatable<Value>::value &&
       sizeof(InlineStorageType) <= hardware_constructive_interference_size / 2;
 
   static bool constexpr kHasInlineCapacity = !BaseType::kAlwaysUseHeap &&
