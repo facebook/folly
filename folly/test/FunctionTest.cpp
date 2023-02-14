@@ -21,6 +21,7 @@
 #include <functional>
 
 #include <folly/Memory.h>
+#include <folly/Traits.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
@@ -63,7 +64,7 @@ extern "C" FOLLY_KEEP void check_folly_function_make_in_situ_trivial(
   constexpr auto size = 6 * sizeof(void*);
   constexpr auto align = folly::max_align_v;
   using inv_t = check_invocable<true, true, size, align>;
-  static_assert(std::is_trivially_copyable_v<inv_t>);
+  static_assert(folly::IsRelocatable<inv_t>::value);
   auto& inv = *static_cast<inv_t*>(obj);
   ::new (fun) Function<void()>(inv);
 }
@@ -73,7 +74,7 @@ extern "C" FOLLY_KEEP void check_folly_function_make_in_situ_default(
   constexpr auto size = 6 * sizeof(void*);
   constexpr auto align = folly::max_align_v;
   using inv_t = check_invocable<false, true, size, align>;
-  static_assert(!std::is_trivially_copyable_v<inv_t>);
+  static_assert(!folly::IsRelocatable<inv_t>::value);
   auto& inv = *static_cast<inv_t*>(obj);
   ::new (fun) Function<void()>(inv);
 }
@@ -83,7 +84,7 @@ extern "C" FOLLY_KEEP void check_folly_function_make_on_heap_trivial(
   constexpr auto size = 12 * sizeof(void*);
   constexpr auto align = folly::max_align_v;
   using inv_t = check_invocable<true, true, size, align>;
-  static_assert(std::is_trivially_copyable_v<inv_t>);
+  static_assert(folly::IsRelocatable<inv_t>::value);
   auto& inv = *static_cast<inv_t*>(obj);
   ::new (fun) Function<void()>(inv);
 }
@@ -93,7 +94,7 @@ extern "C" FOLLY_KEEP void check_folly_function_make_on_heap_default(
   constexpr auto size = 12 * sizeof(void*);
   constexpr auto align = folly::max_align_v;
   using inv_t = check_invocable<false, true, size, align>;
-  static_assert(!std::is_trivially_copyable_v<inv_t>);
+  static_assert(!folly::IsRelocatable<inv_t>::value);
   auto& inv = *static_cast<inv_t*>(obj);
   ::new (fun) Function<void()>(inv);
 }
@@ -1387,7 +1388,7 @@ TEST(Function, AllocatedSize) {
 
 TEST(Function, TrivialSmallBig) {
   auto tl = [] { return 7; };
-  static_assert(std::is_trivially_copyable_v<decltype(tl)>);
+  static_assert(folly::IsRelocatable<decltype(tl)>::value);
 
   struct move_nx {
     move_nx() {}
@@ -1396,7 +1397,7 @@ TEST(Function, TrivialSmallBig) {
     void operator=(move_nx&&) = delete;
   };
   auto sl = [o = move_nx{}] { return 7; };
-  static_assert(!std::is_trivially_copyable_v<decltype(sl)>);
+  static_assert(!folly::IsRelocatable<decltype(sl)>::value);
   static_assert(std::is_nothrow_move_constructible_v<decltype(sl)>);
 
   struct move_x {
@@ -1406,7 +1407,7 @@ TEST(Function, TrivialSmallBig) {
     void operator=(move_x&&) = delete;
   };
   auto hl = [o = move_x{}] { return 7; };
-  static_assert(!std::is_trivially_copyable_v<decltype(hl)>);
+  static_assert(!folly::IsRelocatable<decltype(hl)>::value);
   static_assert(!std::is_nothrow_move_constructible_v<decltype(hl)>);
 
   Function<int()> t{std::move(tl)};
@@ -1424,4 +1425,48 @@ TEST(Function, TrivialSmallBig) {
   EXPECT_EQ(7, t2());
   EXPECT_EQ(7, s2());
   EXPECT_EQ(7, h2());
+}
+
+struct TrivialByWarrant {
+  static int moveConstructions;
+  static int destructions;
+  explicit TrivialByWarrant(int *p) : p_(p) {}
+  TrivialByWarrant(TrivialByWarrant&& rhs) :
+    p_(std::exchange(rhs.p_, nullptr)) {
+    moveConstructions += 1;
+  }
+  ~TrivialByWarrant() {
+    destructions += 1;
+  }
+  int operator()() const { return *p_; }
+private:
+  int *p_ = nullptr;
+};
+int TrivialByWarrant::moveConstructions = 0;
+int TrivialByWarrant::destructions = 0;
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE(TrivialByWarrant);
+
+TEST(Function, UseMemcpyForTriviallyRelocatableTypes) {
+  int i = 42;
+  auto t = TrivialByWarrant(&i);
+  static_assert(folly::IsRelocatable<decltype(t)>::value);
+
+  TrivialByWarrant::moveConstructions = 0;
+  TrivialByWarrant::destructions = 0;
+  {
+    Function<int()> f(std::move(t));
+
+    EXPECT_EQ(TrivialByWarrant::moveConstructions, 1); // into f
+    EXPECT_EQ(TrivialByWarrant::destructions, 0);
+    EXPECT_EQ(f(), 42);
+    {
+      Function<int()> g = std::move(f);
+
+      EXPECT_EQ(TrivialByWarrant::moveConstructions, 1);
+      EXPECT_EQ(TrivialByWarrant::destructions, 0);
+      EXPECT_EQ(g(), 42);
+    }
+    EXPECT_EQ(TrivialByWarrant::destructions, 1); // from g
+  }
+  EXPECT_EQ(TrivialByWarrant::destructions, 1);
 }

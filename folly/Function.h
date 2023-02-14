@@ -747,7 +747,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
               noexcept(Fun(FOLLY_DECLVAL(Fun))))>
   /* implicit */ Function(Fun fun) noexcept(IsSmall) {
     using Dispatch = conditional_t<
-        IsSmall && is_trivially_copyable_v<Fun>,
+        IsSmall && folly::IsRelocatable<Fun>::value,
         detail::function::DispatchSmallTrivial,
         conditional_t<
             IsSmall,
