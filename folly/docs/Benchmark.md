@@ -13,21 +13,20 @@ Using `folly/Benchmark.h` is very simple. Here's an example:
 
 ``` Cpp
     #include <folly/Benchmark.h>
-    #include <folly/container/Foreach.h>
     #include <vector>
     using namespace std;
     using namespace folly;
     BENCHMARK(insertFrontVector) {
       // Let's insert 100 elements at the front of a vector
       vector<int> v;
-      FOR_EACH_RANGE (i, 0, 100) {
+      for (unsigned int i = 0; i < 100; ++i) {
         v.insert(v.begin(), i);
       }
     }
     BENCHMARK(insertBackVector) {
       // Let's insert 100 elements at the back of a vector
       vector<int> v;
-      FOR_EACH_RANGE (i, 0, 100) {
+      for (unsigned int i = 0; i < 100; ++i) {
         v.insert(v.end(), i);
       }
     }
@@ -73,13 +72,13 @@ implicitly `unsigned`. Consider a slightly reworked example:
     using namespace folly;
     BENCHMARK(insertFrontVector, n) {
       vector<int> v;
-      FOR_EACH_RANGE (i, 0, n) {
+      for (unsigned int i = 0; i < n; ++i) {
         v.insert(v.begin(), i);
       }
     }
     BENCHMARK(insertBackVector, n) {
       vector<int> v;
-      FOR_EACH_RANGE (i, 0, n) {
+      for (unsigned int i = 0; i < n; ++i) {
         v.insert(v.end(), i);
       }
     }
@@ -129,13 +128,13 @@ compares with it:
     using namespace folly;
     BENCHMARK(insertFrontVector, n) {
       vector<int> v;
-      FOR_EACH_RANGE (i, 0, n) {
+      for (unsigned int i = 0; i < n; ++i) {
         v.insert(v.begin(), i);
       }
     }
     BENCHMARK_RELATIVE(insertBackVector, n) {
       vector<int> v;
-      FOR_EACH_RANGE (i, 0, n) {
+      for (unsigned int i = 0; i < n; ++i) {
         v.insert(v.end(), i);
       }
     }
@@ -202,7 +201,7 @@ pseudo-statement `BENCHMARK_SUSPEND` as follows:
       BENCHMARK_SUSPEND {
         v.reserve(n);
       }
-      FOR_EACH_RANGE (i, 0, n) {
+      for (unsigned int i = 0; i < n; ++i) {
         v.insert(v.end(), i);
       }
     }
@@ -228,7 +227,7 @@ object. The previous example could have been written like this:
       vector<int> v;
       v.reserve(n);
       braces.dismiss();
-      FOR_EACH_RANGE (i, 0, n) {
+      for (unsigned int i = 0; i < n; ++i) {
         v.insert(v.end(), i);
       }
     }

@@ -348,7 +348,7 @@ void printResultComparison(
  *
  * BENCHMARK(insertVectorBegin, iters) {
  *   vector<int> v;
- *   FOR_EACH_RANGE (i, 0, iters) {
+ *   for (unsigned int i = 0; i < iters; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  * }
@@ -367,7 +367,7 @@ void printResultComparison(
  *
  * BENCHMARK_COUNTERS(insertVectorBegin, counters, iters) {
  *   vector<int> v;
- *   FOR_EACH_RANGE (i, 0, iters) {
+ *   for (unsigned int i = 0; i < iters; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  *   BENCHMARK_SUSPEND {
@@ -415,7 +415,7 @@ void printResultComparison(
  *   BENCHMARK_SUSPEND {
  *     v.resize(initialSize);
  *   }
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (uint32_t i = 0; i < n; ++i) {
  *    v.push_back(i);
  *   }
  * }
@@ -448,7 +448,7 @@ void printResultComparison(
  * void addValue(uint32_t n, int64_t bucketSize, int64_t min, int64_t max) {
  *   Histogram<int64_t> hist(bucketSize, min, max);
  *   int64_t num = min;
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (uint32_t i = 0; i < n; ++i) {
  *     hist.addValue(num);
  *     ++num;
  *     if (num > max) { num = min; }
@@ -490,14 +490,14 @@ void printResultComparison(
  * // This is the baseline
  * BENCHMARK(insertVectorBegin, n) {
  *   vector<int> v;
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (unsigned int i = 0; i < n; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  * }
  *
  * BENCHMARK_RELATIVE(insertListBegin, n) {
  *   list<int> s;
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (unsigned int i = 0; i < n; ++i) {
  *     s.insert(s.begin(), 42);
  *   }
  * }
@@ -589,7 +589,7 @@ void printResultComparison(
  *   BENCHMARK_SUSPEND {
  *     v.reserve(n);
  *   }
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (unsigned int i = 0; i < n; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  * }
