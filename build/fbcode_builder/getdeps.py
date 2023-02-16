@@ -688,7 +688,10 @@ class BuildCmd(ProjectCmdBase):
     ):
         reconfigure = False
         sources_changed = False
-        if not cached_project.download():
+        if cached_project.download():
+            if not os.path.exists(built_marker):
+                fetcher.update()
+        else:
             check_fetcher = True
             if os.path.exists(built_marker):
                 check_fetcher = False
