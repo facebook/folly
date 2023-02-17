@@ -575,7 +575,7 @@ inline folly::Optional<std::chrono::nanoseconds>
 FiberManager::getCurrentTaskRunningTime() const {
   if (activeFiber_ && activeFiber_->taskOptions_.logRunningTime &&
       activeFiber_->state_ == Fiber::RUNNING) {
-    return activeFiber_->prevDuration_ + std::chrono::steady_clock::now() -
+    return activeFiber_->prevDuration_ + thread_clock::now() -
         activeFiber_->currStartTime_;
   }
   return folly::none;

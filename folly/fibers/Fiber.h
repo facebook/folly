@@ -28,6 +28,7 @@
 #include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Thunk.h>
+#include <folly/portability/PThread.h>
 
 // include after CPortability.h defines this
 #ifdef FOLLY_SANITIZE_THREAD
