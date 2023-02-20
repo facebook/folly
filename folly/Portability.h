@@ -515,6 +515,18 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CXX20_CONSTEXPR
 #endif
 
+#ifdef __cpp_concepts
+#define FOLLY_HAS_CONCEPTS 1
+#else
+#define FOLLY_HAS_CONCEPTS 0
+#endif
+
+#ifdef __cpp_if_constexpr
+#define FOLLY_HAS_IF_CONSTEXPR 1
+#else
+#define FOLLY_HAS_IF_CONSTEXPR 0
+#endif
+
 // C++20 constinit
 #if defined(__cpp_constinit) && __cpp_constinit >= 201907L
 #define FOLLY_CONSTINIT constinit
