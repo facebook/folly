@@ -291,3 +291,21 @@ TEST(FBVector, erase_if) {
   EXPECT_EQ(3u, v[1]);
   EXPECT_EQ(5u, v[2]);
 }
+
+TEST(FBVector, overflowConstruct) {
+  EXPECT_THROW(
+      folly::fbvector<std::string>(SIZE_MAX / sizeof(std::string) + 1),
+      std::length_error);
+}
+
+TEST(FBVector, overflowResize) {
+  folly::fbvector<std::string> vec;
+  EXPECT_THROW(vec.resize(SIZE_MAX / sizeof(string) + 1), std::length_error);
+}
+
+TEST(FBVector, overflowAssign) {
+  folly::fbvector<std::string> vec;
+  EXPECT_THROW(
+      vec.assign(SIZE_MAX / sizeof(std::string) + 1, "hello"),
+      std::length_error);
+}
