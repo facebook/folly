@@ -31,7 +31,6 @@ from getdeps.platform import HostType
 from getdeps.runcmd import run_cmd
 from getdeps.subcmd import add_subcommands, cmd, SubCmd
 
-
 try:
     import getdeps.facebook  # noqa: F401
 except ImportError:
