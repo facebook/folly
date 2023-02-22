@@ -43,6 +43,7 @@ const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
 
 /* static */ auto CPUThreadPoolExecutor::makeDefaultPriorityQueue(
     int8_t numPriorities) -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  CHECK_GT(numPriorities, 0) << "Number of priorities should be positive";
   return std::make_unique<PriorityUnboundedBlockingQueue<CPUTask>>(
       numPriorities);
 }
