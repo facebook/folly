@@ -44,6 +44,7 @@
 #include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/Malloc.h>
@@ -1161,7 +1162,13 @@ class small_vector
    * Compute the size after growth.
    */
   size_type computeNewSize() const {
-    return std::min((3 * capacity()) / 2 + 1, max_size());
+    size_t c = capacity();
+    if (!checked_mul(&c, c, size_t(3))) {
+      throw_exception<std::length_error>(
+          "Requested new size exceeds size representable by size_type");
+    }
+    c = (c / 2) + 1;
+    return static_cast<size_type>(std::min<size_t>(c, max_size()));
   }
 
   void makeSize(size_type newSize) {
@@ -1208,7 +1215,11 @@ class small_vector
 
     newSize = std::max(newSize, computeNewSize());
 
-    const auto needBytes = newSize * sizeof(value_type);
+    size_t needBytes = newSize;
+    if (!checked_mul(&needBytes, needBytes, sizeof(value_type))) {
+      throw_exception<std::length_error>(
+          "Requested new size exceeds size representable by size_type");
+    }
     // If the capacity isn't explicitly stored inline, but the heap
     // allocation is grown to over some threshold, we should store
     // a capacity at the front of the heap allocation.
@@ -1216,8 +1227,13 @@ class small_vector
         !kHasInlineCapacity && needBytes >= kHeapifyCapacityThreshold;
     const size_t allocationExtraBytes =
         heapifyCapacity ? kHeapifyCapacitySize : 0;
-    const size_t goodAllocationSizeBytes =
-        goodMallocSize(needBytes + allocationExtraBytes);
+    size_t needAllocSizeBytes = needBytes;
+    if (!checked_add(
+            &needAllocSizeBytes, needAllocSizeBytes, allocationExtraBytes)) {
+      throw_exception<std::length_error>(
+          "Requested new size exceeds size representable by size_type");
+    }
+    const size_t goodAllocationSizeBytes = goodMallocSize(needAllocSizeBytes);
     const size_t goodAllocationNewCapacity =
         (goodAllocationSizeBytes - allocationExtraBytes) / sizeof(value_type);
     const size_t newCapacity = std::min(goodAllocationNewCapacity, max_size());
