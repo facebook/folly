@@ -631,12 +631,15 @@ class BuildCmd(ProjectCmdBase):
                     # set the built_marker. This allows subsequent runs of getdeps.py
                     # for the project to run with different cmake_targets to trigger
                     # cmake
+                    has_built_marker = False
                     if not (m == manifest and args.cmake_target != "install"):
                         with open(built_marker, "w") as f:
                             f.write(project_hash)
+                            has_built_marker = True
 
-                    # Only populate the cache from continuous build runs
-                    if args.schedule_type == "continuous":
+                    # Only populate the cache from continuous build runs, and
+                    # only if we have a built_marker.
+                    if args.schedule_type == "continuous" and has_built_marker:
                         cached_project.upload()
                 elif args.verbose:
                     print("found good %s" % built_marker)
