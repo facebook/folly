@@ -47,6 +47,7 @@ using namespace std::chrono;
 
 namespace folly {
 
+#ifdef __linux__
 static int getLinuxVersion(StringPiece release) {
   auto dot1 = release.find('.');
   if (dot1 == StringPiece::npos) {
@@ -66,7 +67,6 @@ static int getLinuxVersion(StringPiece release) {
   return ((v1 * 1000 + v2) * 1000) + v3;
 }
 
-#ifdef __linux__
 /**
  * Determine the time units used in /proc/<pid>/schedstat
  *
