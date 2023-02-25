@@ -861,9 +861,10 @@ class EliasFanoReader {
     const unsigned char* ptr = lower_ + (pos / 8);
     const uint64_t ptrv = loadUnaligned<uint64_t>(ptr);
     // This removes the branch in the fallback implementation of
-    // bzhi. The condition is verified at encoding time.
+    // bextr. The condition is verified at encoding time.
     assume(numLowerBits_ < sizeof(ValueType) * 8);
-    return Instructions::bzhi(ptrv >> (pos % 8), numLowerBits_);
+    assume((pos % 8) + numLowerBits_ < 64);
+    return Instructions::bextr(ptrv, pos % 8, numLowerBits_);
   }
 
   FOLLY_ALWAYS_INLINE ValueType readCurrentValue() {
