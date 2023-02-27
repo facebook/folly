@@ -194,7 +194,7 @@ struct StackFrame {
   void* returnAddress;
 };
 
-size_t walkNormalStack(
+FOLLY_DISABLE_THREAD_SANITIZER size_t walkNormalStack(
     uintptr_t* addresses,
     size_t maxAddresses,
     StackFrame* normalStackFrame,
