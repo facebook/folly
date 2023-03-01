@@ -19,7 +19,6 @@
 
 using folly::CancellationCallback;
 using folly::CancellationSource;
-using folly::CancellationToken;
 
 TEST(CancellationCallback, demo) {
   CancellationSource src;
