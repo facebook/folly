@@ -241,7 +241,7 @@ class EventBase : public TimeoutManager,
     using List = boost::intrusive::list<OnDestructionCallback>;
 
     void schedule(
-        FunctionRef<void(OnDestructionCallback&)> linker,
+        Function<void(OnDestructionCallback&)> linker,
         Function<void(OnDestructionCallback&)> eraser);
 
     friend class EventBase;

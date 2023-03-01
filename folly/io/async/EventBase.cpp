@@ -918,7 +918,7 @@ void EventBase::OnDestructionCallback::runCallback() noexcept {
 }
 
 void EventBase::OnDestructionCallback::schedule(
-    FunctionRef<void(OnDestructionCallback&)> linker,
+    Function<void(OnDestructionCallback&)> linker,
     Function<void(OnDestructionCallback&)> eraser) {
   eraser_ = std::move(eraser);
   scheduled_.withWLock([](bool& scheduled) { scheduled = true; });
