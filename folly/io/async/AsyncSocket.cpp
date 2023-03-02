@@ -1003,7 +1003,6 @@ void AsyncSocket::connect(
   // yet, so we don't have to register for any events at the moment.
   VLOG(8) << "AsyncSocket::connect succeeded immediately; this=" << this;
   assert(errMessageCallback_ == nullptr);
-  assert(readAncillaryDataCallback_ == nullptr);
   assert(readCallback_ == nullptr);
   assert(writeReqHead_ == nullptr);
   if (state_ != StateEnum::FAST_OPEN) {
