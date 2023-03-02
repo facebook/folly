@@ -442,7 +442,7 @@ void AsyncSocket::SendMsgParamsCallback::getAncillaryData(
   // if getAncillaryDataSize() is overridden and returning a size different
   // than what we expect, then this function needs to be overridden too, in
   // order to avoid conflict with how cmsg / msg are written
-  CHECK_EQ(CMSG_LEN(sizeof(uint32_t)), ancillaryDataSize);
+  CHECK_EQ(CMSG_SPACE(sizeof(uint32_t)), ancillaryDataSize);
 
   uint32_t sofFlags = 0;
   if (byteEventsEnabled && isSet(flags, WriteFlags::TIMESTAMP_TX)) {
@@ -475,7 +475,7 @@ uint32_t AsyncSocket::SendMsgParamsCallback::getAncillaryDataSize(
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if (WriteFlags::NONE != (flags & kWriteFlagsForTimestamping) &&
       byteEventsEnabled) {
-    return CMSG_LEN(sizeof(uint32_t));
+    return CMSG_SPACE(sizeof(uint32_t));
   }
 #else
   (void)flags;
