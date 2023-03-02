@@ -321,6 +321,34 @@ TEST(ImplicitlyWeightedEvictingCacheMap, NonCopyableAndIterator) {
   EXPECT_EQ(map.find("z"), map.end());
 }
 
+TEST(ImplicitlyWeightedEvictingCacheMap, PruneHook) {
+  struct ValueAndWeight {
+    size_t value;
+    size_t weight;
+  };
+  struct GetWeight {
+    size_t operator()(const size_t& /*key*/, const ValueAndWeight& value) {
+      return value.weight;
+    }
+  };
+  ImplicitlyWeightedEvictingCacheMap<size_t, ValueAndWeight, GetWeight> map{10};
+  std::vector<std::pair<size_t, ValueAndWeight>> prunedValues;
+  map.setPruneHook([&](const size_t& key, ValueAndWeight&& value) {
+    prunedValues.push_back(std::make_pair(key, std::move(value)));
+  });
+  map.set(1, ValueAndWeight{2, 3});
+  map.set(4, ValueAndWeight{5, 6});
+  // Evicts others
+  map.set(6, ValueAndWeight{7, 8});
+  EXPECT_EQ(prunedValues.size(), 2);
+  EXPECT_EQ(prunedValues[0].first, 1);
+  EXPECT_EQ(prunedValues[0].second.value, 2);
+  EXPECT_EQ(prunedValues[0].second.weight, 3);
+  EXPECT_EQ(prunedValues[1].first, 4);
+  EXPECT_EQ(prunedValues[1].second.value, 5);
+  EXPECT_EQ(prunedValues[1].second.weight, 6);
+}
+
 TEST(WeightedEvictingCacheMap, Misc) {
   WeightedEvictingCacheMap<std::string, std::string> map{42};
   auto end = map.end();
@@ -750,4 +778,23 @@ TEST(WeightedEvictingCacheMap, ApproximateEntryMemUsage) {
   std::unique_ptr<char[]> value(new char[kValueSize]{});
   size_t weight = kValueSize + map.kApproximateEntryMemUsage;
   map.set(42U, std::move(value), weight);
+}
+
+TEST(WeightedEvictingCacheMap, PruneHook) {
+  WeightedEvictingCacheMap<size_t, size_t> map{10};
+  std::vector<std::tuple<size_t, size_t, size_t>> prunedValues;
+  map.setPruneHook([&](const size_t& key, size_t&& value, size_t weight) {
+    prunedValues.push_back(std::make_tuple(key, value, weight));
+  });
+  map.set(1, 2, 3);
+  map.set(4, 5, 6);
+  // Evicts others
+  map.set(6, 7, 8);
+  EXPECT_EQ(prunedValues.size(), 2);
+  EXPECT_EQ(std::get<0>(prunedValues[0]), 1);
+  EXPECT_EQ(std::get<1>(prunedValues[0]), 2);
+  EXPECT_EQ(std::get<2>(prunedValues[0]), 3);
+  EXPECT_EQ(std::get<0>(prunedValues[1]), 4);
+  EXPECT_EQ(std::get<1>(prunedValues[1]), 5);
+  EXPECT_EQ(std::get<2>(prunedValues[1]), 6);
 }

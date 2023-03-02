@@ -65,6 +65,8 @@ class ImplicitlyWeightedEvictingCacheMap {
   using ECM = EvictingCacheMap<TKey, TValue, THash, TKeyEqual>;
 
  public:
+  using PruneHookCall = std::function<void(TKey, TValue&&)>;
+
   explicit ImplicitlyWeightedEvictingCacheMap(
       std::size_t maxTotalWeight,
       const TWeightFn& weightFn = TWeightFn(),
@@ -312,12 +314,24 @@ class ImplicitlyWeightedEvictingCacheMap {
     assert(currentTotalWeight_ == 0);
   }
 
+  /**
+   * Set the prune hook, which is the function invoked on the key and value
+   *     on each eviction. An operation will throw if the pruneHook throws.
+   *     Note that this prune hook is not automatically called on entries
+   *     explicitly erase()ed nor on remaining entries at destruction time.
+   * @param pruneHook eviction callback to set as default, or nullptr to clear
+   */
+  void setPruneHook(PruneHookCall pruneHook) { pruneHook_ = pruneHook; }
+
  private: // fns
   void setupPruneHook() {
     ecm_.setPruneHook([this](const TKey& key, TValue&& value) {
       std::size_t weight = weightFn_(key, value);
       assert(currentTotalWeight_ >= weight);
       currentTotalWeight_ -= weight;
+      if (pruneHook_) {
+        pruneHook_(key, std::move(value));
+      }
     });
   }
 
@@ -342,6 +356,7 @@ class ImplicitlyWeightedEvictingCacheMap {
   friend class WeightedEvictingCacheMap;
 
  private: // data
+  PruneHookCall pruneHook_;
   ECM ecm_;
   TWeightFn weightFn_;
   std::size_t maxTotalWeight_;
@@ -404,6 +419,8 @@ class WeightedEvictingCacheMap {
       TKeyEqual>;
 
  public:
+  using PruneHookCall = std::function<void(TKey, TValue&&, size_t)>;
+
   explicit WeightedEvictingCacheMap(
       std::size_t maxTotalWeight,
       const THash& keyHash = THash(),
@@ -598,6 +615,23 @@ class WeightedEvictingCacheMap {
    */
   void clear() { iwecm_.clear(); }
 
+  /**
+   * Set the prune hook, which is the function invoked on the key and value
+   *     on each eviction. An operation will throw if the pruneHook throws.
+   *     Note that this prune hook is not automatically called on entries
+   *     explicitly erase()ed nor on remaining entries at destruction time.
+   * @param pruneHook eviction callback to set as default, or nullptr to clear
+   */
+  void setPruneHook(PruneHookCall pruneHook) {
+    iwecm_.setPruneHook([pruneHook = std::move(pruneHook)](
+                            const TKey& key, ValueAndWeight&& valueAndWeight) {
+      if (!pruneHook) {
+        return;
+      }
+      pruneHook(key, std::move(valueAndWeight.value), valueAndWeight.weight);
+    });
+  }
+
  private:
   // Like IWECM::replace
   template <typename It>
@@ -610,6 +644,7 @@ class WeightedEvictingCacheMap {
     iwecm_.entryWeightUpdated(old_weight, new_weight, /*protect_one*/ true);
   }
 
+  PruneHookCall pruneHook_;
   IWECM iwecm_;
 };
 
