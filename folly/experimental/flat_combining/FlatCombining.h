@@ -21,6 +21,7 @@
 #include <folly/Portability.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/synchronization/SaturatingSemaphore.h>
+#include <folly/system/ThreadName.h>
 
 #include <atomic>
 #include <cassert>
@@ -203,16 +204,26 @@ class FlatCombining {
   explicit FlatCombining(
       const bool dedicated = true,
       const uint32_t numRecs = 0, // number of combining records
-      const uint32_t maxOps = 0 // hint of max ops per combining session
-      )
+      const uint32_t maxOps = 0, // hint of max ops per combining session
+      std::optional<std::string> dedicatedCombinerThreadName = std::nullopt)
       : numRecs_(numRecs == 0 ? kDefaultNumRecs : numRecs),
         maxOps_(maxOps == 0 ? kDefaultMaxOps : maxOps),
         recs_(NULL_INDEX),
         dedicated_(dedicated),
         recsPool_(numRecs_) {
+    if (dedicatedCombinerThreadName && !dedicated) {
+      throw std::runtime_error(
+          "can't set the name of a dedicated combiner thread if this thread is not created at all");
+    }
+
     if (dedicated_) {
       // dedicated combiner thread
-      combiner_ = std::thread([this] { dedicatedCombining(); });
+      combiner_ = std::thread([this, dedicatedCombinerThreadName] {
+        if (dedicatedCombinerThreadName) {
+          folly::setThreadName(*dedicatedCombinerThreadName);
+        }
+        dedicatedCombining();
+      });
     }
   }
 
