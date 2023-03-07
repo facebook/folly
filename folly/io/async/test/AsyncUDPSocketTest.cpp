@@ -1084,6 +1084,97 @@ TEST_F(AsyncUDPSocketTest, TestWriteCmsg) {
   socket_->close();
 }
 
+TEST_F(AsyncUDPSocketTest, TestWriteDynamicCmsg) {
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  auto netOpsDispatcher =
+      std::make_shared<NiceMock<folly::netops::test::MockDispatcher>>();
+  socket_->setOverrideNetOpsDispatcher(netOpsDispatcher);
+
+  MockFunction<AsyncUDPSocket::AdditionalCmsgsFunc> mockAdditionalCmsgs;
+  int mockCallCount = 1;
+  socket_->setAdditionalCmsgsFunc([&mockCallCount]() {
+    folly::SocketOptionMap additionalCmsgs;
+    additionalCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount++;
+    return additionalCmsgs;
+  });
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  // Dynamic cmsgs only (IP_TTL)
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  }
+  // writeGSO with dynamic cmsgs (IP_TTL)
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->writeGSO(addr, folly::IOBuf::copyBuffer("hey"), 1);
+  }
+  // SO_MARK with dynamic cmsgs (IP_TTL)
+  {
+    folly::SocketOptionMap cmsgs;
+    cmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    socket_->setCmsgs(cmsgs);
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  }
+  // append IP_TOS + IP_TTL + overwrite with dynamic cmsgs (IP_TTL)
+  {
+    folly::SocketOptionMap cmsgs;
+    cmsgs[{IPPROTO_IP, IP_TOS}] = 456;
+    cmsgs[{IPPROTO_IP, IP_TTL}] = 9999;
+    socket_->appendCmsgs(cmsgs);
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 456;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  }
+  // append IP_TOS with a different value + dynamic cmsgs (IP_TTL)
+  {
+    folly::SocketOptionMap cmsgs;
+    cmsgs[{IPPROTO_IP, IP_TOS}] = 789;
+    socket_->appendCmsgs(cmsgs);
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 789;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  }
+  // writeGSO with IP_TOS and SO_MARK + dynamic cmsgs (IP_TTL)
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 789;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->writeGSO(addr, folly::IOBuf::copyBuffer("hey"), 1);
+  }
+  // Empty dynamic cmsgs should revert to default cmsgs
+  socket_->setAdditionalCmsgsFunc([]() { return folly::none; });
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 789;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = 9999; // This won't be overwritten
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  }
+
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
+  socket_->close();
+}
+
 MATCHER_P2(AllHaveCmsgs, cmsgs, count, "") {
   if (arg == nullptr) {
     return false;
@@ -1192,6 +1283,65 @@ TEST_F(AsyncUDPSocketTest, TestWritemCmsg) {
     expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 456;
     expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
     expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
+    EXPECT_CALL(
+        *netOpsDispatcher,
+        sendmmsg(_, AllHaveCmsgs(expectedCmsgs, bufs.size()), _, _));
+    std::vector<int> gso{1, 1};
+    socket_->writemGSO(
+        folly::range(&addr, &addr + 1), bufs.data(), bufs.size(), gso.data());
+  }
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
+  socket_->close();
+}
+
+TEST_F(AsyncUDPSocketTest, TestWritemDynamicCmsg) {
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  auto netOpsDispatcher =
+      std::make_shared<NiceMock<folly::netops::test::MockDispatcher>>();
+  socket_->setOverrideNetOpsDispatcher(netOpsDispatcher);
+  std::vector<std::unique_ptr<folly::IOBuf>> bufs;
+  bufs.emplace_back(folly::IOBuf::copyBuffer("hey1"));
+  bufs.emplace_back(folly::IOBuf::copyBuffer("hey2"));
+
+  MockFunction<AsyncUDPSocket::AdditionalCmsgsFunc> mockAdditionalCmsgs;
+  int mockCallCount = 1;
+  socket_->setAdditionalCmsgsFunc([&mockCallCount]() {
+    folly::SocketOptionMap additionalCmsgs;
+    additionalCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount++;
+    return additionalCmsgs;
+  });
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  // Dynamic cmsgs only (IP_TTL)
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(
+        *netOpsDispatcher,
+        sendmmsg(_, AllHaveCmsgs(expectedCmsgs, bufs.size()), _, _));
+    socket_->writem(folly::range(&addr, &addr + 1), bufs.data(), bufs.size());
+  }
+  // set IP_TOS & SO_MARK & IP_TTL + overwrite from dynamic cmsgs (IP_TTL)
+  {
+    folly::SocketOptionMap cmsgs;
+    cmsgs[{IPPROTO_IP, IP_TOS}] = 456;
+    cmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    cmsgs[{IPPROTO_IP, IP_TTL}] = 9999;
+    socket_->setCmsgs(cmsgs);
+    auto expectedCmsgs = cmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
+    EXPECT_CALL(
+        *netOpsDispatcher,
+        sendmmsg(_, AllHaveCmsgs(expectedCmsgs, bufs.size()), _, _));
+    socket_->writem(folly::range(&addr, &addr + 1), bufs.data(), bufs.size());
+  }
+  // writemGSO + dynamic cmsgs (IP_TTL)
+  {
+    folly::SocketOptionMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 456;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
     EXPECT_CALL(
         *netOpsDispatcher,
         sendmmsg(_, AllHaveCmsgs(expectedCmsgs, bufs.size()), _, _));

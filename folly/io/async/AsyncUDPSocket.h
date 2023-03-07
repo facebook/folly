@@ -143,6 +143,9 @@ class AsyncUDPSocket : public EventHandler {
 
   using IOBufFreeFunc = folly::Function<void(std::unique_ptr<folly::IOBuf>&&)>;
 
+  using AdditionalCmsgsFunc =
+      folly::Function<folly::Optional<SocketOptionMap>()>;
+
   struct WriteOptions {
     WriteOptions() = default;
     WriteOptions(int gsoVal, bool zerocopyVal)
@@ -243,6 +246,11 @@ class AsyncUDPSocket : public EventHandler {
   virtual void appendCmsgs(const SocketOptionMap& cmsgs);
   virtual void appendNontrivialCmsgs(
       const SocketNontrivialOptionMap& nontrivialCmsgs);
+  virtual void setAdditionalCmsgsFunc(
+      AdditionalCmsgsFunc&& additionalCmsgsFunc) {
+    additionalCmsgsFunc_ = std::move(additionalCmsgsFunc);
+    dynamicCmsgs_.clear();
+  }
 
   /**
    * Send the data in buffer to destination. Returns the return code from
@@ -568,6 +576,7 @@ class AsyncUDPSocket : public EventHandler {
 
   void handleRead() noexcept;
   bool updateRegistration() noexcept;
+  void maybeUpdateDynamicCmsgs() noexcept;
 
   EventBase* eventBase_;
   folly::SocketAddress localAddress_;
@@ -628,9 +637,13 @@ class AsyncUDPSocket : public EventHandler {
 
   IOBufFreeFunc ioBufFreeFunc_;
 
-  SocketOptionMap cmsgs_;
+  SocketOptionMap defaultCmsgs_;
+  SocketOptionMap dynamicCmsgs_;
+  SocketOptionMap* cmsgs_{&defaultCmsgs_};
 
   SocketNontrivialOptionMap nontrivialCmsgs_;
+
+  AdditionalCmsgsFunc additionalCmsgsFunc_;
 
   netops::DispatcherContainer netops_;
 };
