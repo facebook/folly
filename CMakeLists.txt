@@ -657,6 +657,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY detail/test/
       TEST static_singleton_manager_test SOURCES StaticSingletonManagerTest.cpp
 
+    DIRECTORY detail/test/
+      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
+
+    DIRECTORY detail/test/
+      TEST split_string_simd_test SOURCES SplitStringSimdTest.cpp
+
     DIRECTORY detail/base64_detail/tests/
       TEST base64_detail_test
       SOURCES
