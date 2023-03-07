@@ -180,7 +180,7 @@ FOLLY_EXPORT inline bool usingJEMalloc() noexcept {
 
       uint64_t origAllocated = *counter;
 
-      static void* volatile ptr = malloc(1);
+      void* volatile ptr = malloc(1);
       if (!ptr) {
         // wtf, failing to allocate 1 byte
         return false;
@@ -239,7 +239,7 @@ FOLLY_EXPORT inline bool usingTCMalloc() noexcept {
       size_t before_bytes = 0;
       getTCMallocNumericProperty(kAllocBytes, &before_bytes);
 
-      static void* volatile ptr = malloc(1);
+      void* volatile ptr = malloc(1);
       if (!ptr) {
         // wtf, failing to allocate 1 byte
         return false;
