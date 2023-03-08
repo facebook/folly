@@ -138,23 +138,33 @@ using StringSplitCurrentPlatform = void;
 
 #endif
 
-template <typename Container>
+template <bool ignoreEmpty, typename Container>
 void splitByCharScalar(char sep, folly::StringPiece what, Container& res) {
   const char* prev = what.data();
   const char* f = prev;
   const char* l = what.data() + what.size();
+
+  auto emplaceBack = [&](const char* sf, const char* sl) mutable {
+    if (ignoreEmpty && sf == sl) {
+      return;
+    }
+    res.emplace_back(sf, sl - sf);
+  };
+
   while (f != l) {
     const char* next = f + 1;
     if (*f == sep) {
-      res.emplace_back(prev, f - prev);
+      if (!ignoreEmpty || (prev != f)) {
+        emplaceBack(prev, f);
+      }
       prev = next;
     }
     f = next;
   }
-  res.emplace_back(prev, f - prev);
+  emplaceBack(prev, f);
 }
 
-template <typename Platform>
+template <typename Platform, bool ignoreEmpty>
 struct PlatformSimdSplitByChar {
   using reg_t = typename Platform::reg_t;
 
@@ -193,6 +203,15 @@ struct PlatformSimdSplitByChar {
     return mmask;
   }
 
+  template <typename Container>
+  FOLLY_ALWAYS_INLINE void emplaceBack(
+      Container& res, const char* f, const char* l) const {
+    if (ignoreEmpty && f == l) {
+      return;
+    }
+    res.emplace_back(f, l - f);
+  }
+
   template <typename Uint, typename Container>
   FOLLY_ALWAYS_INLINE void outputStringsFoMmask(
       Uint mmask,
@@ -207,7 +226,7 @@ struct PlatformSimdSplitByChar {
 
       const char* split = pos + firstSet;
       pos = split + 1;
-      res.emplace_back(prev, split - prev);
+      emplaceBack(res, prev, split);
       prev = pos;
     }
   }
@@ -227,16 +246,16 @@ struct PlatformSimdSplitByChar {
           outputStringsFoMmask(mmask, ptr, prev, res);
           return false;
         });
-    res.emplace_back(prev, what.data() + what.size() - prev);
+    emplaceBack(res, prev, what.data() + what.size());
   }
 };
 
-template <>
-struct PlatformSimdSplitByChar<void> {
+template <bool ignoreEmpty>
+struct PlatformSimdSplitByChar<void, ignoreEmpty> {
   template <typename Container>
   FOLLY_ALWAYS_INLINE void operator()(
       char sep, folly::StringPiece what, Container& res) const {
-    return splitByCharScalar(sep, what, res);
+    return splitByCharScalar<ignoreEmpty>(sep, what, res);
   }
 };
 
