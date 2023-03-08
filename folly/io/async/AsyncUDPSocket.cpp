@@ -693,6 +693,11 @@ ssize_t AsyncUDPSocket::writev(
       cmsgs_->size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
 
   if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
+    // Avoid allocating 0 length array. Doing so leads to exceptions
+    if (controlBufSize == 0) {
+      return writevImpl(&msg, gso);
+    }
+
     // suppress "warning: variable length array 'control' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
