@@ -392,52 +392,52 @@ using inheritable =
 
 } // namespace detail
 
-namespace moveonly_ { // Protection from unintended ADL.
-
-template <bool Copy, bool Move>
-class EnableCopyMove {
- protected:
-  constexpr EnableCopyMove() noexcept = default;
-  ~EnableCopyMove() noexcept = default;
-
-  EnableCopyMove(EnableCopyMove&&) noexcept = default;
-  EnableCopyMove& operator=(EnableCopyMove&&) noexcept = default;
-  EnableCopyMove(const EnableCopyMove&) noexcept = default;
-  EnableCopyMove& operator=(const EnableCopyMove&) noexcept = default;
-};
+// Prevent child classes from finding anything in folly:: by ADL.
+namespace moveonly_ {
 
 /**
  * Disallow copy but not move in derived types. This is essentially
- * boost::noncopyable (the implementation is almost identical) but it
- * doesn't delete move constructor and move assignment.
+ * boost::noncopyable (the implementation is almost identical), except:
+ * 1) It doesn't delete move constructor and move assignment.
+ * 2) It has public methods, enabling aggregate initialization.
  */
-template <>
-class EnableCopyMove<false, true> {
- protected:
-  constexpr EnableCopyMove() noexcept = default;
-  ~EnableCopyMove() noexcept = default;
+struct MoveOnly {
+  constexpr MoveOnly() noexcept = default;
+  ~MoveOnly() noexcept = default;
 
-  EnableCopyMove(EnableCopyMove&&) noexcept = default;
-  EnableCopyMove& operator=(EnableCopyMove&&) noexcept = default;
-  EnableCopyMove(const EnableCopyMove&) = delete;
-  EnableCopyMove& operator=(const EnableCopyMove&) = delete;
+  MoveOnly(MoveOnly&&) noexcept = default;
+  MoveOnly& operator=(MoveOnly&&) noexcept = default;
+  MoveOnly(const MoveOnly&) = delete;
+  MoveOnly& operator=(const MoveOnly&) = delete;
 };
 
-template <>
-class EnableCopyMove<false, false> {
- protected:
-  constexpr EnableCopyMove() noexcept = default;
-  ~EnableCopyMove() noexcept = default;
+/**
+ * Disallow copy and move for derived types. This is essentially
+ * boost::noncopyable (the implementation is almost identical), except it has
+ * public methods, enabling aggregate initialization.
+ */
+struct NonCopyableNonMovable {
+  constexpr NonCopyableNonMovable() noexcept = default;
+  ~NonCopyableNonMovable() noexcept = default;
 
-  EnableCopyMove(EnableCopyMove&&) = delete;
-  EnableCopyMove& operator=(EnableCopyMove&&) = delete;
-  EnableCopyMove(const EnableCopyMove&) = delete;
-  EnableCopyMove& operator=(const EnableCopyMove&) = delete;
+  NonCopyableNonMovable(NonCopyableNonMovable&&) = delete;
+  NonCopyableNonMovable& operator=(NonCopyableNonMovable&&) = delete;
+  NonCopyableNonMovable(const NonCopyableNonMovable&) = delete;
+  NonCopyableNonMovable& operator=(const NonCopyableNonMovable&) = delete;
 };
+
+struct Default {};
+
+template <bool Copy, bool Move>
+using EnableCopyMove = std::conditional_t<
+    Copy,
+    Default,
+    std::conditional_t<Move, MoveOnly, NonCopyableNonMovable>>;
+
 } // namespace moveonly_
 
-using MoveOnly = moveonly_::EnableCopyMove<false, true>;
-using NonCopyableNonMovable = moveonly_::EnableCopyMove<false, false>;
+using moveonly_::MoveOnly;
+using moveonly_::NonCopyableNonMovable;
 
 //  unsafe_default_uninitialized
 //  unsafe_default_uninitialized_cv
@@ -447,7 +447,7 @@ using NonCopyableNonMovable = moveonly_::EnableCopyMove<false, false>;
 //
 //  https://en.cppreference.com/w/cpp/language/default_initialization
 //
-//  For fundamental types, a default-initalized instance may have indeterminate
+//  For fundamental types, a default-initialized instance may have indeterminate
 //  value. Reading an indeterminate value is undefined behavior but may offer a
 //  performance optimization. When using an indeterminate value as a performance
 //  optimization, it is best to be explicit.
