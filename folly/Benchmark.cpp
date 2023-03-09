@@ -476,7 +476,7 @@ class BenchmarkResultsPrinter {
         // Print with baseline
         const auto rel = baselineNsPerIter_ / nsPerIter * 100.0;
         printf(
-            "%*s%7.5g%%  %9.9s  %8.8s",
+            "%*s%#7.5g%%  %9.9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
             rel,
