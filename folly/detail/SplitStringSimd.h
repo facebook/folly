@@ -32,7 +32,8 @@ namespace detail {
 
 template <typename Container>
 struct SimdSplitByCharImpl {
-  static void process(char sep, folly::StringPiece what, Container& res);
+  static void keepEmpty(char sep, folly::StringPiece what, Container& res);
+  static void dropEmpty(char sep, folly::StringPiece what, Container& res);
 };
 
 template <typename T>
@@ -64,23 +65,37 @@ struct SimdSplitByCharIsDefinedFor<folly::small_vector<T, M, void>> {
 };
 
 template <typename Container>
-void simdSplitByChar(char sep, folly::StringPiece what, Container& res) {
+void simdSplitByChar(
+    char sep, folly::StringPiece what, Container& res, bool ignoreEmpty) {
   static_assert(
       SimdSplitByCharIsDefinedFor<Container>::value,
       "simd split by char is supported only for vector/fbvector/small_vector, with small size <= 8."
       " The resulting string type has to string_view or StringPiece."
       " There is also a special case of std::vector<std::string> for ease of migration");
-  SimdSplitByCharImpl<Container>::process(sep, what, res);
+  if (ignoreEmpty) {
+    SimdSplitByCharImpl<Container>::dropEmpty(sep, what, res);
+  } else {
+    SimdSplitByCharImpl<Container>::keepEmpty(sep, what, res);
+  }
 }
 
 // Using vector of strings instead of string views is a bad idea in general.
 // We use this to have a separate name in the stack.
-void simdSplitByCharVecOfStrings(
+void simdSplitByCharVecOfStringsKeepEmpty(
+    char sep, folly::StringPiece what, std::vector<std::string>& res);
+void simdSplitByCharVecOfStringsDropEmpty(
     char sep, folly::StringPiece what, std::vector<std::string>& res);
 
 inline void simdSplitByChar(
-    char sep, folly::StringPiece what, std::vector<std::string>& res) {
-  simdSplitByCharVecOfStrings(sep, what, res);
+    char sep,
+    folly::StringPiece what,
+    std::vector<std::string>& res,
+    bool ignoreEmpty) {
+  if (ignoreEmpty) {
+    simdSplitByCharVecOfStringsDropEmpty(sep, what, res);
+  } else {
+    simdSplitByCharVecOfStringsKeepEmpty(sep, what, res);
+  }
 }
 
 // clang-format off

@@ -24,9 +24,17 @@ namespace folly {
 namespace detail {
 
 template <typename Container>
-void SimdSplitByCharImpl<Container>::process(
+void SimdSplitByCharImpl<Container>::keepEmpty(
     char sep, folly::StringPiece what, Container& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform>{}(sep, what, res);
+  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ false>{}(
+      sep, what, res);
+}
+
+template <typename Container>
+void SimdSplitByCharImpl<Container>::dropEmpty(
+    char sep, folly::StringPiece what, Container& res) {
+  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ true>{}(
+      sep, what, res);
 }
 
 // clang-format off
@@ -51,9 +59,13 @@ FOLLY_DETAIL_DEFINE_ALL_SIMD_SPLIT_OVERLOADS(std::string_view)
 
 #undef FOLLY_DETAIL_DEFINE_ALL_SIMD_SPLIT_OVERLOADS
 
-void simdSplitByCharVecOfStrings(
+void simdSplitByCharVecOfStringsKeepEmpty(
     char sep, folly::StringPiece what, std::vector<std::string>& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform>{}(sep, what, res);
+  PlatformSimdSplitByChar<StringSplitCurrentPlatform, false>{}(sep, what, res);
+}
+void simdSplitByCharVecOfStringsDropEmpty(
+    char sep, folly::StringPiece what, std::vector<std::string>& res) {
+  PlatformSimdSplitByChar<StringSplitCurrentPlatform, true>{}(sep, what, res);
 }
 
 } // namespace detail

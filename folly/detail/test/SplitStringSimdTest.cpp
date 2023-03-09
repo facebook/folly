@@ -28,12 +28,12 @@ namespace folly {
 namespace detail {
 
 // making sure that basic scalar works
-TEST(SplitStringSimdTest, ByCharScalar) {
+TEST(SplitStringSimdTest, ByCharScalarKeepEmpty) {
   using pieces = std::vector<folly::StringPiece>;
 
   auto run = [](folly::StringPiece s) {
     pieces res;
-    splitByCharScalar(',', s, res);
+    splitByCharScalar<false>(',', s, res);
     return res;
   };
 
@@ -41,14 +41,34 @@ TEST(SplitStringSimdTest, ByCharScalar) {
   ASSERT_EQ(run("a"), (pieces{"a"}));
   ASSERT_EQ(run(",a"), (pieces{"", "a"}));
   ASSERT_EQ(run("a,aa"), (pieces{"a", "aa"}));
+  ASSERT_EQ(run("a,,aa"), (pieces{"a", "", "aa"}));
   ASSERT_EQ(run("aaaa,aaa,aa,a"), (pieces{"aaaa", "aaa", "aa", "a"}));
+  ASSERT_EQ(run("aaaa,aaa,aa,a,"), (pieces{"aaaa", "aaa", "aa", "a", ""}));
 }
 
-template <typename Container>
+TEST(SplitStringSimdTest, ByCharScalarIgnoreEmpty) {
+  using pieces = std::vector<folly::StringPiece>;
+
+  auto run = [](folly::StringPiece s) {
+    pieces res;
+    splitByCharScalar<true>(',', s, res);
+    return res;
+  };
+
+  ASSERT_EQ(run(""), (pieces{}));
+  ASSERT_EQ(run("a"), (pieces{"a"}));
+  ASSERT_EQ(run(",a"), (pieces{"a"}));
+  ASSERT_EQ(run("a,aa"), (pieces{"a", "aa"}));
+  ASSERT_EQ(run("a,,aa"), (pieces{"a", "aa"}));
+  ASSERT_EQ(run("aaaa,aaa,aa,a,"), (pieces{"aaaa", "aaa", "aa", "a"}));
+  ASSERT_EQ(run(",,,"), (pieces{}));
+}
+
+template <bool ignoreEmpty, typename Container>
 void testContainerSV(
     folly::StringPiece s, const std::vector<folly::StringPiece>& expected) {
   Container actual;
-  simdSplitByChar(',', s, actual);
+  simdSplitByChar(',', s, actual, ignoreEmpty);
 
   ASSERT_EQ(expected.size(), actual.size());
 
@@ -58,57 +78,63 @@ void testContainerSV(
   }
 }
 
+// shorter name to get 1 line auto format
+template <bool ie>
 void testAllContainersOfSVs(
     folly::StringPiece s, const std::vector<folly::StringPiece>& expected) {
-  testContainerSV<folly::fbvector<folly::StringPiece>>(s, expected);
-  testContainerSV<folly::fbvector<std::string_view>>(s, expected);
+  testContainerSV<ie, folly::fbvector<folly::StringPiece>>(s, expected);
+  testContainerSV<ie, folly::fbvector<std::string_view>>(s, expected);
 
-  testContainerSV<folly::small_vector<folly::StringPiece, 1>>(s, expected);
-  testContainerSV<folly::small_vector<folly::StringPiece, 2>>(s, expected);
-  testContainerSV<folly::small_vector<folly::StringPiece, 3>>(s, expected);
-  testContainerSV<folly::small_vector<folly::StringPiece, 4>>(s, expected);
-  testContainerSV<folly::small_vector<folly::StringPiece, 6>>(s, expected);
-  testContainerSV<folly::small_vector<folly::StringPiece, 7>>(s, expected);
-  testContainerSV<folly::small_vector<folly::StringPiece, 8>>(s, expected);
+  testContainerSV<ie, folly::small_vector<folly::StringPiece, 1>>(s, expected);
+  testContainerSV<ie, folly::small_vector<folly::StringPiece, 2>>(s, expected);
+  testContainerSV<ie, folly::small_vector<folly::StringPiece, 3>>(s, expected);
+  testContainerSV<ie, folly::small_vector<folly::StringPiece, 4>>(s, expected);
+  testContainerSV<ie, folly::small_vector<folly::StringPiece, 6>>(s, expected);
+  testContainerSV<ie, folly::small_vector<folly::StringPiece, 7>>(s, expected);
+  testContainerSV<ie, folly::small_vector<folly::StringPiece, 8>>(s, expected);
   static_assert(
       !SimdSplitByCharIsDefinedFor<
           folly::small_vector<folly::StringPiece, 9>>::value,
       "");
 
-  testContainerSV<folly::small_vector<std::string_view, 1>>(s, expected);
-  testContainerSV<folly::small_vector<std::string_view, 2>>(s, expected);
-  testContainerSV<folly::small_vector<std::string_view, 3>>(s, expected);
-  testContainerSV<folly::small_vector<std::string_view, 4>>(s, expected);
-  testContainerSV<folly::small_vector<std::string_view, 6>>(s, expected);
-  testContainerSV<folly::small_vector<std::string_view, 7>>(s, expected);
-  testContainerSV<folly::small_vector<std::string_view, 8>>(s, expected);
+  testContainerSV<ie, folly::small_vector<std::string_view, 1>>(s, expected);
+  testContainerSV<ie, folly::small_vector<std::string_view, 2>>(s, expected);
+  testContainerSV<ie, folly::small_vector<std::string_view, 3>>(s, expected);
+  testContainerSV<ie, folly::small_vector<std::string_view, 4>>(s, expected);
+  testContainerSV<ie, folly::small_vector<std::string_view, 6>>(s, expected);
+  testContainerSV<ie, folly::small_vector<std::string_view, 7>>(s, expected);
+  testContainerSV<ie, folly::small_vector<std::string_view, 8>>(s, expected);
   static_assert(
       !SimdSplitByCharIsDefinedFor<
           folly::small_vector<std::string_view, 9>>::value,
       "");
 }
 
-void runTestStringSplit(folly::StringPiece s) {
+template <bool ignoreEmpty>
+void runTestStringSplitOneType(folly::StringPiece s) {
   std::vector<folly::StringPiece> expected;
-  splitByCharScalar(',', s, expected);
+  splitByCharScalar<ignoreEmpty>(',', s, expected);
 
   std::vector<std::vector<folly::StringPiece>> actuals;
 
   actuals.emplace_back();
-  simdSplitByChar(',', s, actuals.back());
+  simdSplitByChar(',', s, actuals.back(), ignoreEmpty);
 
 #if FOLLY_X64
   actuals.emplace_back();
-  PlatformSimdSplitByChar<StringSplitSse2Platform>{}(',', s, actuals.back());
+  PlatformSimdSplitByChar<StringSplitSse2Platform, ignoreEmpty>{}(
+      ',', s, actuals.back());
 #if defined(__AVX2__)
   actuals.emplace_back();
-  PlatformSimdSplitByChar<StringSplitAVX2Platform>{}(',', s, actuals.back());
+  PlatformSimdSplitByChar<StringSplitAVX2Platform, ignoreEmpty>{}(
+      ',', s, actuals.back());
 #endif
 #endif
 
 #if FOLLY_AARCH64
   actuals.emplace_back();
-  PlatformSimdSplitChar<StringSplitAarch64Platform>{}(',', s, actuals.back());
+  PlatformSimdSplitChar<StringSplitAarch64Platform, ignoreEmpty>{}(
+      ',', s, actuals.back());
 #endif
 
   for (const auto& actual : actuals) {
@@ -120,11 +146,11 @@ void runTestStringSplit(folly::StringPiece s) {
     }
   }
 
-  testAllContainersOfSVs(s, expected);
+  testAllContainersOfSVs<ignoreEmpty>(s, expected);
 
   {
     std::vector<std::string> actual;
-    simdSplitByChar(',', s, actual);
+    simdSplitByChar(',', s, actual, ignoreEmpty);
 
     ASSERT_EQ(expected.size(), actual.size()) << s;
 
@@ -132,6 +158,11 @@ void runTestStringSplit(folly::StringPiece s) {
       ASSERT_EQ(expected[i], actual[i]) << s << " : " << i;
     }
   }
+}
+
+void runTestStringSplit(folly::StringPiece s) {
+  runTestStringSplitOneType<false>(s);
+  runTestStringSplitOneType<true>(s);
 }
 
 std::string repeat(std::string_view substr, std::size_t n) {
@@ -148,7 +179,9 @@ TEST(SplitStringSimd, ByChar) {
   runTestStringSplit(",");
   runTestStringSplit(",,");
   runTestStringSplit(",,,");
+  runTestStringSplit(",a,,aa");
   runTestStringSplit("aa,aaa,aaaa");
+  runTestStringSplit("aa,aaa,,,aaa,,a");
 
   runTestStringSplit(repeat("a,", 100));
   runTestStringSplit(repeat("aa,", 100));
