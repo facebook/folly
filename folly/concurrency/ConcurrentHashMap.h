@@ -30,7 +30,7 @@ namespace folly {
  * support erase and update.
  *
  * Readers are always wait-free.
- * Writers are shared, but take a lock.
+ * Writers are sharded, but take a lock that only locks part of the map.
  *
  * Multithreaded performance beats anything except the lock-free
  *      atomic maps (AtomicUnorderedMap, AtomicHashMap), BUT only
