@@ -144,6 +144,13 @@ TEST_F(XlogTest, xlogIf) {
   XLOGF_IF(DBG1, true, "number: {:>3d}; string: {}", 12, "foo");
   ASSERT_EQ(1, messages.size());
   messages.clear();
+
+  XLOGF_IF(DBG1, false, "plain format string");
+  ASSERT_EQ(0, messages.size());
+  messages.clear();
+  XLOGF_IF(DBG1, true, "plain format string");
+  ASSERT_EQ(1, messages.size());
+  messages.clear();
 }
 
 TEST_F(XlogTest, xlog) {
@@ -174,6 +181,16 @@ TEST_F(XlogTest, xlog) {
   XLOGF(WARN, "number: {:>3d}; string: {}", 12, "foo");
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("number:  12; string: foo", messages[0].first.getMessage());
+  EXPECT_TRUE(messages[0].first.getFileName().endsWith("XlogTest.cpp"))
+      << "unexpected file name: " << messages[0].first.getFileName();
+  EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
+  EXPECT_EQ(current_xlog_category, messages[0].first.getCategory()->getName());
+  EXPECT_EQ(current_xlog_parent, messages[0].second->getName());
+  messages.clear();
+
+  XLOGF(WARN, "plain format string");
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("plain format string", messages[0].first.getMessage());
   EXPECT_TRUE(messages[0].first.getFileName().endsWith("XlogTest.cpp"))
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
@@ -406,6 +423,9 @@ TEST_F(XlogTest, rateLimiting) {
     XLOGF_EVERY_MS(DBG1, 100, "fmt arg {}", n);
     XLOGF_EVERY_MS(DBG1, 100ms, "fmt ms arg {}", n);
 
+    XLOGF_EVERY_MS(DBG1, 100, "plain fmt str");
+    XLOGF_EVERY_MS(DBG1, 100ms, "plain fmt str ms");
+
     // Use XLOG_N_PER_MS() too
     XLOG_N_PER_MS(DBG1, 2, 100, "2x int arg ", n);
     XLOG_N_PER_MS(DBG1, 1, 100ms, "1x ms arg ", n);
@@ -429,6 +449,8 @@ TEST_F(XlogTest, rateLimiting) {
           "s arg capture 0",
           "fmt arg 0",
           "fmt ms arg 0",
+          "plain fmt str",
+          "plain fmt str ms",
           "2x int arg 0",
           "1x ms arg 0",
           "3x s arg 0",
@@ -440,6 +462,8 @@ TEST_F(XlogTest, rateLimiting) {
           "ms arg 6",
           "fmt arg 6",
           "fmt ms arg 6",
+          "plain fmt str",
+          "plain fmt str ms",
           "2x int arg 6",
           "1x ms arg 6",
           "int arg conditional 6",

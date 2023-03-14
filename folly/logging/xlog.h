@@ -99,12 +99,11 @@ static_assert(
 /**
  * Log a message to this file's default log category, using a format string.
  */
-#define XLOGF(level, fmt, arg1, ...)       \
+#define XLOGF(level, fmt, ...)             \
   XLOG_IMPL(                               \
       ::folly::LogLevel::level,            \
       ::folly::LogStreamProcessor::FORMAT, \
       fmt,                                 \
-      arg1,                                \
       ##__VA_ARGS__)
 
 /**
@@ -112,13 +111,12 @@ static_assert(
  * predicate evaluates to true. Note that the condition is *only* evaluated
  * if the log-level check passes.
  */
-#define XLOGF_IF(level, cond, fmt, arg1, ...) \
-  XLOG_IF_IMPL(                               \
-      ::folly::LogLevel::level,               \
-      cond,                                   \
-      ::folly::LogStreamProcessor::FORMAT,    \
-      fmt,                                    \
-      arg1,                                   \
+#define XLOGF_IF(level, cond, fmt, ...)    \
+  XLOG_IF_IMPL(                            \
+      ::folly::LogLevel::level,            \
+      cond,                                \
+      ::folly::LogStreamProcessor::FORMAT, \
+      fmt,                                 \
       ##__VA_ARGS__)
 
 /**
@@ -162,7 +160,7 @@ static_assert(
  *
  * Note that this is threadsafe.
  */
-#define XLOGF_EVERY_MS(level, ms, fmt, arg1, ...)                        \
+#define XLOGF_EVERY_MS(level, ms, fmt, ...)                              \
   XLOGF_IF(                                                              \
       level,                                                             \
       [__folly_detail_xlog_ms = ms] {                                    \
@@ -172,7 +170,6 @@ static_assert(
         return folly_detail_xlog_limiter.check();                        \
       }(),                                                               \
       fmt,                                                               \
-      arg1,                                                              \
       ##__VA_ARGS__)
 
 namespace folly {
