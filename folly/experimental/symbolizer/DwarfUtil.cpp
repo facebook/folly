@@ -18,7 +18,6 @@
 
 #include <array>
 #include <type_traits>
-#include <glog/logging.h>
 
 #include <folly/Optional.h>
 #include <folly/Range.h>
@@ -188,11 +187,19 @@ bool findCompiliationOffset(
     return false;
   }
 
-  // GCC Debug Fission defines the version as an unsigned 32-bit field
-  // with value of 2, see debugCuIndex "Format of the CU and TU Index Sections"
-  // at https://gcc.gnu.org/wiki/DebugFissionDWP.
-  // DWARFv5 not supported yet, see Section 7.3.5.3.
-  read<uint32_t>(debugCuIndex);
+  // v4: GCC Debug Fission defines version as an unsigned 4B field with value
+  // of 2.
+  // https://gcc.gnu.org/wiki/DebugFissionDWP#Format_of_the_CU_and_TU_Index_Sections
+  //
+  // v5: DWARF5 7.3.5.3 Format of the CU and TU Index Sections
+  // The first 2 header entries are version (2B, value=5) and padding (2B,
+  // value=0)
+  //
+  // Both were read into version (4B) and on little endian will have value=5.
+  auto version = read<uint32_t>(debugCuIndex);
+  if (version != 2 && version != (5 << (kIsLittleEndian ? 0 : 16))) {
+    return false;
+  }
   auto numColumns = read<uint32_t>(debugCuIndex);
   read<uint32_t>(debugCuIndex);
   auto numBuckets = read<uint32_t>(debugCuIndex);
@@ -222,6 +229,7 @@ bool findCompiliationOffset(
   ssize_t infoSectionIndex = -1;
   ssize_t abbrevSectionIndex = -1;
   ssize_t strOffsetsSectionIndex = -1;
+  ssize_t rnglistsSectionIndex = -1;
   for (unsigned i = 0; i != numColumns; ++i) {
     auto index = read<uint32_t>(debugCuIndex);
     if (index == DW_SECT_INFO) {
@@ -230,9 +238,13 @@ bool findCompiliationOffset(
       abbrevSectionIndex = i;
     } else if (index == DW_SECT_STR_OFFSETS) {
       strOffsetsSectionIndex = i;
+    } else if (index == DW_SECT_RNGLISTS) {
+      rnglistsSectionIndex = i;
     }
   }
 
+  // DW_SECT_RNGLISTS/rnglistsSectionIndex only appears in DWARF5 .dwp, not in
+  // DWARF4 .dwp
   if (infoSectionIndex == -1 || abbrevSectionIndex == -1 ||
       strOffsetsSectionIndex == -1) {
     return false;
@@ -250,6 +262,9 @@ bool findCompiliationOffset(
     }
     if (i == strOffsetsSectionIndex) {
       cu.strOffsetsBase = offset;
+    }
+    if (i == rnglistsSectionIndex) {
+      cu.rnglistsBase = offset;
     }
   }
   return true;
@@ -352,6 +367,7 @@ bool parseCompilationUnitMetadata(CompilationUnit& cu, size_t offset) {
         cu.strOffsetsBase = boost::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_GNU_dwo_name:
+      case DW_AT_dwo_name: // dwo id is set above in dwarf5.
         cu.dwoName = boost::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_GNU_dwo_id:
@@ -458,9 +474,9 @@ CompilationUnits getCompilationUnits(
       .debugInfo = getElfSection(elf, ".debug_info.dwo"),
       .debugLine = getElfSection(elf, ".debug_line.dwo"),
       .debugLineStr = cu.mainCompilationUnit.debugSections.debugLineStr,
-      .debugLoclists = cu.mainCompilationUnit.debugSections.debugLoclists,
+      .debugLoclists = getElfSection(elf, ".debug_loclists.dwo"),
       .debugRanges = cu.mainCompilationUnit.debugSections.debugRanges,
-      .debugRnglists = cu.mainCompilationUnit.debugSections.debugRnglists,
+      .debugRnglists = getElfSection(elf, ".debug_rnglists.dwo"),
       .debugStr = getElfSection(elf, ".debug_str.dwo"),
       .debugStrOffsets = getElfSection(elf, ".debug_str_offsets.dwo")};
   if (splitCU.debugSections.debugInfo.empty() ||
@@ -478,10 +494,58 @@ CompilationUnits getCompilationUnits(
         !parseCompilationUnitMetadata(splitCU, splitCU.offset)) {
       return cu;
     }
+    // 3.1.3 Split Full Compilation Unit Entries
+    // The following attributes are not part of a split full compilation unit
+    // entry but instead are inherited (if present) from the corresponding
+    // skeleton compilation unit: DW_AT_low_pc, DW_AT_high_pc, DW_AT_ranges,
+    // DW_AT_stmt_list, DW_AT_comp_dir, DW_AT_str_offsets_base, DW_AT_addr_base
+    // and DW_AT_rnglists_base.
+    if (cu.mainCompilationUnit.version == 5) {
+      // 7.26 String Offsets Table
+      // Each set of entries in the string offsets table contained in the
+      // .debug_str_offsets
+      //  or .debug_str_offsets.dwo section begins with a header containing:
+      //  1. unit_length (initial length)
+      //     A 4-byte or 12-byte length containing the length of the set of
+      //     entries for this compilation unit, not including the length field
+      //     itself.
+      //  2. version (uhalf)
+      //     A 2-byte version identifier containing the value 5.
+      //  3. padding (uhalf)
+      //     Reserved to DWARF (must be zero).
+      splitCU.strOffsetsBase =
+          splitCU.strOffsetsBase.value_or(0) + (splitCU.is64Bit ? 16 : 8);
+      // 7.28 Range List Table
+      // 1. unit_length (initial length)
+      //    A 4-byte or 12-byte length containing the length of the set of
+      //    entries for this compilation unit, not including the length field
+      //    itself.
+      // 2. version (uhalf)
+      //    A 2-byte version identifier containing the value 5.
+      // 3. address_size (ubyte)
+      //    A 1-byte unsigned integer containing the size in bytes of an
+      //    address.
+      // 4. segment_selector_size (ubyte)
+      //    A 1-byte unsigned integer containing the size in bytes of a segment
+      //    selector on the target system.
+      // 5. offset_entry_count (uword)
+      //    A 4-byte count of the number of offsets that follow the header.
+      splitCU.rnglistsBase =
+          splitCU.rnglistsBase.value_or(0) + (splitCU.is64Bit ? 20 : 12);
+    }
   } else {
-    if (!parseCompilationUnitMetadata(splitCU, 0) || !splitCU.dwoId ||
-        *splitCU.dwoId != *cu.mainCompilationUnit.dwoId) {
+    // Skip CUs like DW_TAG_type_unit
+    for (size_t dwoOffset = 0;
+         !parseCompilationUnitMetadata(splitCU, dwoOffset) &&
+         dwoOffset < splitCU.debugSections.debugInfo.size();) {
+      dwoOffset = dwoOffset + splitCU.size;
+    }
+    if (!splitCU.dwoId || *splitCU.dwoId != *cu.mainCompilationUnit.dwoId) {
       return cu;
+    }
+    if (cu.mainCompilationUnit.version == 5) {
+      splitCU.strOffsetsBase = splitCU.is64Bit ? 16 : 8;
+      splitCU.rnglistsBase = splitCU.is64Bit ? 20 : 12;
     }
   }
 
