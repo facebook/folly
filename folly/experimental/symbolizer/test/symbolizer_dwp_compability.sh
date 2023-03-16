@@ -16,14 +16,6 @@
 
 BINARY="$1"
 DWP="$2"
-IS_DEV_MODE="$3"
-
-# Only test in opt mode.
-# In dev mode, the test still depends on the shared libraries except
-# binary + dwp file.
-if [ "$IS_DEV_MODE" == "True" ]; then
-    exit 0
-fi
 
 NEW_BINARY=$(dirname "$DWP")
 # Keep the binary file with the dwp file in the same directory.
