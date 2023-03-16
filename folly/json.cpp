@@ -545,7 +545,7 @@ dynamic parseArray(Input& in, json::metadata_map* map) {
     in.skipWhitespace();
   }
   if (map) {
-    for (size_t i = 0; i < ret.size(); i++) {
+    for (size_t i = 0, e = ret.size(); i < e; i++) {
       map->emplace(&ret[i], json::parse_metadata{{{0}}, {{lineNumbers[i]}}});
     }
   }
@@ -793,7 +793,8 @@ size_t firstEscapableInWord(T s, const serialization_opts& opts) {
     // set for ascii characters 32 - 127, so the inner loop may run up to 96
     // times. However, for the case where 0 or a handful of bits are set,
     // looping will be minimal through use of findFirstSet.
-    for (size_t i = 0; i < opts.extra_ascii_to_escape_bitmap.size(); ++i) {
+    for (size_t i = 0, e = opts.extra_ascii_to_escape_bitmap.size(); i < e;
+         ++i) {
       const auto offset = i * 64;
       // Clear first 32 characters if this is the first index, since those are
       // always escaped.
