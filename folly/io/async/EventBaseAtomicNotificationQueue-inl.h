@@ -221,7 +221,9 @@ void EventBaseAtomicNotificationQueue<Task, Consumer>::drainFd() {
   uint64_t message = 0;
   if (eventfd_ >= 0) {
     auto result = readNoInt(eventfd_, &message, sizeof(message));
-    CHECK(result == sizeof(message) || errno == EAGAIN || errno == EWOULDBLOCK)
+    CHECK(
+        result == (int)sizeof(message) || errno == EAGAIN ||
+        errno == EWOULDBLOCK)
         << "result = " << result << "; errno = " << errno;
     writesObserved_ += message;
   } else {
