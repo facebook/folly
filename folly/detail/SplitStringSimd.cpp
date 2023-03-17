@@ -17,6 +17,7 @@
 #include <folly/detail/SplitStringSimd.h>
 #include <folly/detail/SplitStringSimdImpl.h>
 
+#include <folly/FBString.h>
 #include <folly/FBVector.h>
 #include <folly/small_vector.h>
 
@@ -32,6 +33,20 @@ void SimdSplitByCharImpl<Container>::keepEmpty(
 
 template <typename Container>
 void SimdSplitByCharImpl<Container>::dropEmpty(
+    char sep, folly::StringPiece what, Container& res) {
+  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ true>{}(
+      sep, what, res);
+}
+
+template <typename Container>
+void SimdSplitByCharImplToStrings<Container>::keepEmpty(
+    char sep, folly::StringPiece what, Container& res) {
+  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ false>{}(
+      sep, what, res);
+}
+
+template <typename Container>
+void SimdSplitByCharImplToStrings<Container>::dropEmpty(
     char sep, folly::StringPiece what, Container& res) {
   PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ true>{}(
       sep, what, res);
@@ -59,14 +74,9 @@ FOLLY_DETAIL_DEFINE_ALL_SIMD_SPLIT_OVERLOADS(std::string_view)
 
 #undef FOLLY_DETAIL_DEFINE_ALL_SIMD_SPLIT_OVERLOADS
 
-void simdSplitByCharVecOfStringsKeepEmpty(
-    char sep, folly::StringPiece what, std::vector<std::string>& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform, false>{}(sep, what, res);
-}
-void simdSplitByCharVecOfStringsDropEmpty(
-    char sep, folly::StringPiece what, std::vector<std::string>& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform, true>{}(sep, what, res);
-}
-
+template struct SimdSplitByCharImplToStrings<std::vector<std::string>>;
+template struct SimdSplitByCharImplToStrings<std::vector<fbstring>>;
+template struct SimdSplitByCharImplToStrings<fbvector<std::string>>;
+template struct SimdSplitByCharImplToStrings<fbvector<fbstring>>;
 } // namespace detail
 } // namespace folly

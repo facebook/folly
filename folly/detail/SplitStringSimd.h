@@ -28,10 +28,29 @@ class small_vector;
 template <typename T, typename Allocator>
 class fbvector;
 
+template <class Char>
+class fbstring_core;
+
+template <typename E, typename T, typename A, typename Storage>
+class basic_fbstring;
+
 namespace detail {
+
+using PredeclareFbString = basic_fbstring<
+    char,
+    std::char_traits<char>,
+    std::allocator<char>,
+    fbstring_core<char>>;
 
 template <typename Container>
 struct SimdSplitByCharImpl {
+  static void keepEmpty(char sep, folly::StringPiece what, Container& res);
+  static void dropEmpty(char sep, folly::StringPiece what, Container& res);
+};
+
+// Different name to easier identify in the stack potential performance issues
+template <typename Container>
+struct SimdSplitByCharImplToStrings {
   static void keepEmpty(char sep, folly::StringPiece what, Container& res);
   static void dropEmpty(char sep, folly::StringPiece what, Container& res);
 };
@@ -44,6 +63,11 @@ constexpr bool isSimdSplitSupportedStringViewType =
 #endif
     ;
 
+template <typename T>
+constexpr bool isSimdSplitSupportedStringType =
+    std::is_same<T, PredeclareFbString>::value ||
+    std::is_same<T, std::string>::value;
+
 template <typename>
 struct SimdSplitByCharIsDefinedFor {
   static constexpr bool value = false;
@@ -51,7 +75,8 @@ struct SimdSplitByCharIsDefinedFor {
 
 template <typename T>
 struct SimdSplitByCharIsDefinedFor<std::vector<T>> {
-  static constexpr bool value = isSimdSplitSupportedStringViewType<T>;
+  static constexpr bool value = isSimdSplitSupportedStringViewType<T> ||
+      isSimdSplitSupportedStringType<T>;
 };
 
 template <typename T, typename A>
@@ -65,13 +90,15 @@ struct SimdSplitByCharIsDefinedFor<folly::small_vector<T, M, void>> {
 };
 
 template <typename Container>
-void simdSplitByChar(
+std::enable_if_t<
+    isSimdSplitSupportedStringViewType<typename Container::value_type>>
+simdSplitByChar(
     char sep, folly::StringPiece what, Container& res, bool ignoreEmpty) {
   static_assert(
       SimdSplitByCharIsDefinedFor<Container>::value,
       "simd split by char is supported only for vector/fbvector/small_vector, with small size <= 8."
       " The resulting string type has to string_view or StringPiece."
-      " There is also a special case of std::vector<std::string> for ease of migration");
+      " There is also a special case of (fb)vector<(fb)string> for legacy compatibility");
   if (ignoreEmpty) {
     SimdSplitByCharImpl<Container>::dropEmpty(sep, what, res);
   } else {
@@ -79,22 +106,19 @@ void simdSplitByChar(
   }
 }
 
-// Using vector of strings instead of string views is a bad idea in general.
-// We use this to have a separate name in the stack.
-void simdSplitByCharVecOfStringsKeepEmpty(
-    char sep, folly::StringPiece what, std::vector<std::string>& res);
-void simdSplitByCharVecOfStringsDropEmpty(
-    char sep, folly::StringPiece what, std::vector<std::string>& res);
-
-inline void simdSplitByChar(
-    char sep,
-    folly::StringPiece what,
-    std::vector<std::string>& res,
-    bool ignoreEmpty) {
+template <typename Container>
+std::enable_if_t<isSimdSplitSupportedStringType<typename Container::value_type>>
+simdSplitByChar(
+    char sep, folly::StringPiece what, Container& res, bool ignoreEmpty) {
+  static_assert(
+      SimdSplitByCharIsDefinedFor<Container>::value,
+      "simd split by char is supported only for vector/fbvector/small_vector, with small size <= 8."
+      " The resulting string type has to string_view or StringPiece."
+      " There is also a special case of (fb)vector<(fb)string> for legacy compatibility");
   if (ignoreEmpty) {
-    simdSplitByCharVecOfStringsDropEmpty(sep, what, res);
+    SimdSplitByCharImplToStrings<Container>::dropEmpty(sep, what, res);
   } else {
-    simdSplitByCharVecOfStringsKeepEmpty(sep, what, res);
+    SimdSplitByCharImplToStrings<Container>::keepEmpty(sep, what, res);
   }
 }
 
@@ -117,6 +141,14 @@ FOLLY_DETAIL_DECLARE_ALL_SIMD_SPLIT_OVERLOADS(folly::StringPiece)
 #if FOLLY_HAS_STRING_VIEW
 FOLLY_DETAIL_DECLARE_ALL_SIMD_SPLIT_OVERLOADS(std::string_view)
 #endif
+
+extern template struct SimdSplitByCharImplToStrings<std::vector<std::string>>;
+extern template struct SimdSplitByCharImplToStrings<
+    std::vector<PredeclareFbString>>;
+extern template struct SimdSplitByCharImplToStrings<
+    fbvector<std::string, std::allocator<std::string>>>;
+extern template struct SimdSplitByCharImplToStrings<
+    fbvector<PredeclareFbString, std::allocator<PredeclareFbString>>>;
 
 #undef FOLLY_DETAIL_DECLARE_ALL_SIMD_SPLIT_OVERLOADS
 

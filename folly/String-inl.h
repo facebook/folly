@@ -389,25 +389,16 @@ bool splitFixed(
 //////////////////////////////////////////////////////////////////////
 
 template <class Delim, class String, class OutputType>
-void split(
+std::enable_if_t<
+    (!detail::IsSimdSupportedDelim<Delim>::value ||
+     !detail::HasSimdSplitCompatibleValueType<OutputType>::value) &&
+    detail::IsSplitSupportedContainer<OutputType>::value>
+split(
     const Delim& delimiter,
     const String& input,
-    std::vector<OutputType>& out,
+    OutputType& out,
     bool ignoreEmpty) {
-  detail::internalSplit<OutputType>(
-      detail::prepareDelim(delimiter),
-      StringPiece(input),
-      std::back_inserter(out),
-      ignoreEmpty);
-}
-
-template <class Delim, class String, class OutputType>
-void split(
-    const Delim& delimiter,
-    const String& input,
-    fbvector<OutputType, std::allocator<OutputType>>& out,
-    bool ignoreEmpty) {
-  detail::internalSplit<OutputType>(
+  detail::internalSplit<typename OutputType::value_type>(
       detail::prepareDelim(delimiter),
       StringPiece(input),
       std::back_inserter(out),
