@@ -17,6 +17,7 @@
 #include <folly/detail/SplitStringSimd.h>
 #include <folly/detail/SplitStringSimdImpl.h>
 
+#include <folly/FBString.h>
 #include <folly/FBVector.h>
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
@@ -110,6 +111,29 @@ void testAllContainersOfSVs(
       "");
 }
 
+template <bool ignoreEmpty, typename Container>
+void testContainersOfStrings(
+    folly::StringPiece s, const std::vector<folly::StringPiece>& expected) {
+  Container actual;
+  simdSplitByChar(',', s, actual, ignoreEmpty);
+
+  ASSERT_EQ(expected.size(), actual.size()) << s;
+
+  for (std::size_t i = 0; i != expected.size(); ++i) {
+    ASSERT_EQ(expected[i], actual[i]) << s << " : " << i;
+  }
+}
+
+template <bool ie>
+void testAllContainersOfStrings(
+    folly::StringPiece s, const std::vector<folly::StringPiece>& expected) {
+  testContainersOfStrings<ie, std::vector<std::string>>(s, expected);
+  testContainersOfStrings<ie, folly::fbvector<std::string>>(s, expected);
+
+  testContainersOfStrings<ie, std::vector<folly::fbstring>>(s, expected);
+  testContainersOfStrings<ie, folly::fbvector<folly::fbstring>>(s, expected);
+}
+
 template <bool ignoreEmpty>
 void runTestStringSplitOneType(folly::StringPiece s) {
   std::vector<folly::StringPiece> expected;
@@ -147,17 +171,7 @@ void runTestStringSplitOneType(folly::StringPiece s) {
   }
 
   testAllContainersOfSVs<ignoreEmpty>(s, expected);
-
-  {
-    std::vector<std::string> actual;
-    simdSplitByChar(',', s, actual, ignoreEmpty);
-
-    ASSERT_EQ(expected.size(), actual.size()) << s;
-
-    for (std::size_t i = 0; i != expected.size(); ++i) {
-      ASSERT_EQ(expected[i], actual[i]) << s << " : " << i;
-    }
-  }
+  testAllContainersOfStrings<ignoreEmpty>(s, expected);
 }
 
 void runTestStringSplit(folly::StringPiece s) {
@@ -196,10 +210,11 @@ TEST(SplitStringSimd, ByChar) {
 
   // special case: triggered shift right by 32 on uint32
   {
+    constexpr std::string_view kTestData = "ong_history_by_pagetype_convr:0,";
+    static_assert(kTestData.size() == 32);
+
     alignas(32) std::array<char, 32> buf;
-    buf.fill(0);
-    std::ranges::copy(
-        std::string_view("ong_history_by_pagetype_convr:0,"), buf.data());
+    std::copy(kTestData.begin(), kTestData.end(), buf.begin());
     runTestStringSplit({buf.data(), buf.size()});
   }
 }
