@@ -478,7 +478,11 @@ struct unsafe_default_initialized_cv {
     if (!std::is_constant_evaluated()) {
       T uninit;
       FOLLY_PUSH_WARNING
+      // Uninitialized local variable 'uninit' used
+      FOLLY_MSVC_DISABLE_WARNING(4700)
+      // Potentially uninitialized local variable 'uninit' used
       FOLLY_MSVC_DISABLE_WARNING(4701)
+      // Potentially uninitialized local pointer variable 'uninit' used
       FOLLY_MSVC_DISABLE_WARNING(4703)
       FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
       // Clang doesn't implement -Wmaybe-uninitialized and warns about it
