@@ -93,18 +93,10 @@ fb_activate_static_library_option()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if("${CMAKE_LIBRARY_ARCHITECTURE}" STREQUAL "")
-  # CMAKE_LIBRARY_ARCHITECTURE is not always set, so we have to assume
-  # arch might be x86_64
-  message(WARNING "CMAKE_LIBRARY_ARCHITECTURE not set, assuming x86_64")
-  set(IS_X86_64_ARCH ON)
+if(NOT DEFINED IS_X86_64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
+  set(IS_X86_64_ARCH TRUE)
 else()
-  string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
-  if(IS_X86_64_ARCH STREQUAL "-1")
-    set(IS_X86_64_ARCH OFF)
-  else()
-    set(IS_X86_64_ARCH ON)
-  endif()
+  set(IS_X86_64_ARCH FALSE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
