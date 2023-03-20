@@ -1697,7 +1697,35 @@ class basic_fbstring {
     return r != 0 ? r : n1 > n2 ? 1 : n1 < n2 ? -1 : 0;
   }
 
+#if FOLLY_CPLUSPLUS >= 202002L
+  friend auto operator<=>(
+      const basic_fbstring& lhs, const basic_fbstring& rhs) {
+    return lhs.spaceship(rhs.data(), rhs.size());
+  }
+  friend auto operator<=>(const basic_fbstring& lhs, const char* rhs) {
+    return lhs.spaceship(rhs, traitsLength(rhs));
+  }
+  template <typename A2>
+  friend auto operator<=>(
+      const basic_fbstring& lhs, const std::basic_string<E, T, A2>& rhs) {
+    return lhs.spaceship(rhs.data(), rhs.size());
+  }
+#endif // FOLLY_CPLUSPLUS >= 202002L
+
  private:
+#if FOLLY_CPLUSPLUS >= 202002L
+  auto spaceship(const value_type* rhsData, size_type rhsSize) const {
+    auto c = compare(0, size(), rhsData, rhsSize);
+    if (c == 0) {
+      return std::strong_ordering::equal;
+    } else if (c < 0) {
+      return std::strong_ordering::less;
+    } else {
+      return std::strong_ordering::greater;
+    }
+  }
+#endif // FOLLY_CPLUSPLUS >= 202002L
+
   // Data
   Storage store_;
 };
