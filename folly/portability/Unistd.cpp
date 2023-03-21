@@ -18,6 +18,7 @@
 // otherwise they will conflict with what we're getting from ntstatus.h
 #define UMDF_USING_NTSTATUS
 
+#include <folly/ScopeGuard.h>
 #include <folly/portability/Unistd.h>
 
 #if defined(__APPLE__)
@@ -42,6 +43,8 @@ static_assert(
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Windows.h>
+
+#include <tlhelp32.h> // @manual
 
 template <bool is64Bit, class Offset>
 static Offset seek(int fd, Offset offset, int whence) {
@@ -85,6 +88,120 @@ static int wrapPositional(F f, int fd, Offset offset, Args... args) {
 namespace folly {
 namespace portability {
 namespace unistd {
+
+namespace {
+
+struct UniqueHandleWrapper {
+  UniqueHandleWrapper(HANDLE handle) : handle_(handle) {}
+
+  HANDLE get() const { return handle_; }
+  bool valid() const { return handle_ != INVALID_HANDLE_VALUE; }
+
+  UniqueHandleWrapper(UniqueHandleWrapper&& other) : handle_(other.handle_) {
+    other.handle_ = INVALID_HANDLE_VALUE;
+  }
+  UniqueHandleWrapper& operator=(UniqueHandleWrapper&& other) {
+    handle_ = other.handle_;
+    other.handle_ = INVALID_HANDLE_VALUE;
+    return *this;
+  }
+
+  UniqueHandleWrapper(const UniqueHandleWrapper& other) = delete;
+  UniqueHandleWrapper& operator=(const UniqueHandleWrapper& other) = delete;
+
+  ~UniqueHandleWrapper() {
+    if (valid()) {
+      CloseHandle(handle_);
+    }
+  }
+
+ private:
+  HANDLE handle_;
+};
+
+struct ProcessHandleWrapper {
+  ProcessHandleWrapper(HANDLE handle)
+      : ProcessHandleWrapper(UniqueHandleWrapper(handle)) {}
+  ProcessHandleWrapper(UniqueHandleWrapper handle)
+      : procHandle_(std::move(handle)) {
+    id_ = procHandle_.valid() ? GetProcessId(procHandle_.get()) : 1;
+  }
+  pid_t id() const { return id_; }
+
+ private:
+  UniqueHandleWrapper procHandle_;
+  pid_t id_;
+};
+
+int64_t getProcessStartTime(HANDLE processHandle) {
+  FILETIME createTime;
+  FILETIME exitTime;
+  FILETIME kernelTime;
+  FILETIME userTime;
+
+  if (GetProcessTimes(
+          processHandle, &createTime, &exitTime, &kernelTime, &userTime) == 0) {
+    return -1; // failed to get process times
+  }
+
+  ULARGE_INTEGER ret;
+  ret.LowPart = createTime.dwLowDateTime;
+  ret.HighPart = createTime.dwHighDateTime;
+
+  return ret.QuadPart;
+}
+
+ProcessHandleWrapper getParentProcessHandle() {
+  DWORD ppid = 1;
+  UniqueHandleWrapper currentProcess = GetCurrentProcess();
+  if (!currentProcess.valid()) {
+    return INVALID_HANDLE_VALUE;
+  }
+
+  DWORD pid = GetProcessId(currentProcess.get());
+
+  UniqueHandleWrapper hSnapshot =
+      CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (!hSnapshot.valid()) {
+    return INVALID_HANDLE_VALUE;
+  }
+
+  PROCESSENTRY32 pe32;
+  ZeroMemory(&pe32, sizeof(pe32));
+  pe32.dwSize = sizeof(pe32);
+  if (!Process32First(hSnapshot.get(), &pe32)) {
+    return INVALID_HANDLE_VALUE;
+  }
+  do {
+    if (pe32.th32ProcessID == pid) {
+      ppid = pe32.th32ParentProcessID;
+      break;
+    }
+  } while (Process32Next(hSnapshot.get(), &pe32));
+
+  UniqueHandleWrapper parent = OpenProcess(PROCESS_ALL_ACCESS, false, ppid);
+  if (!parent.valid()) {
+    return INVALID_HANDLE_VALUE;
+  }
+
+  // Checking time of parent and child processes.
+  // This is a sanity check in case we query for parent process id
+  // after the parent of this process stopped already and something else
+  // used it PID.
+  // We need this logic because we can't guarantee that parent id hasn't been
+  // reused before getting process handle to this process.
+
+  int64_t currentProcessStartTime = getProcessStartTime(currentProcess.get());
+  int64_t parentProcessStartTime = getProcessStartTime(parent.get());
+  if (currentProcessStartTime == -1 || parentProcessStartTime == -1 ||
+      currentProcessStartTime < parentProcessStartTime) {
+    // Can't ensure process is still the same process as parent
+    return INVALID_HANDLE_VALUE;
+  }
+  return std::move(parent);
+}
+} // namespace
+
 int access(char const* fn, int am) {
   return _access(fn, am);
 }
@@ -153,10 +270,12 @@ gid_t getgid() {
   return 1;
 }
 
-// No major need to implement this, and getting a non-potentially
-// stale ID on windows is a bit involved.
 pid_t getppid() {
-  return (pid_t)1;
+  // ProcessHandleWrapper stores Parent Process Handle inside
+  // This means the parent PID is not going to be reused even if
+  // parent process is no longer exists.
+  static ProcessHandleWrapper wrapper = getParentProcessHandle();
+  return wrapper.id();
 }
 
 uid_t getuid() {
