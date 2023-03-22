@@ -291,7 +291,7 @@ inline char delimFront(StringPiece s) {
  * algorithm be more performant if the deliminator is a single
  * character instead of a whole string.
  *
- * @param ignoreEmpty iff true, don't copy empty segments to output
+ * @param ignoreEmpty if true, don't copy empty segments to output
  */
 template <class OutStringT, class DelimT, class OutputIterator>
 void internalSplit(
