@@ -62,8 +62,12 @@ class FanoutChannelFixture : public Test {
 TEST_F(FanoutChannelFixture, ReceiveValue_FanoutBroadcastsValues) {
   struct LatestVersion {
     int version{-1};
+    size_t numSubscribers{0};
 
-    void update(const int& newVersion) { version = newVersion; }
+    void update(int& newVersion, size_t newNumSubscribers) {
+      version = newVersion;
+      numSubscribers = newNumSubscribers;
+    }
   };
 
   auto [inputReceiver, sender] = Channel<int>::create();
@@ -92,6 +96,7 @@ TEST_F(FanoutChannelFixture, ReceiveValue_FanoutBroadcastsValues) {
 
   auto [handle3, callback3] = processValues(
       fanoutChannel.subscribe([](const LatestVersion& latestVersion) {
+        EXPECT_EQ(latestVersion.numSubscribers, 2);
         return toVector(latestVersion.version);
       } /* getInitialValues */));
 
