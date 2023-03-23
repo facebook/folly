@@ -284,6 +284,33 @@ inline char delimFront(StringPiece s) {
   return *s.start();
 }
 
+template <class OutStringT, class DelimT, class OutputIterator>
+void internalSplit(
+    DelimT delim, StringPiece sp, OutputIterator out, bool ignoreEmpty);
+
+template <class OutStringT, class Container>
+std::enable_if_t<
+    IsSplitSupportedContainer<Container>::value &&
+    HasSimdSplitCompatibleValueType<Container>::value>
+internalSplitRecurseChar(
+    char delim,
+    folly::StringPiece sp,
+    std::back_insert_iterator<Container> it,
+    bool ignoreEmpty) {
+  using base = std::back_insert_iterator<Container>;
+  struct accessor : base {
+    accessor(base b) : base(b) {}
+    using base::container;
+  };
+  detail::simdSplitByChar(delim, sp, *accessor{it}.container, ignoreEmpty);
+}
+
+template <class OutStringT, class Iterator>
+void internalSplitRecurseChar(
+    char delim, folly::StringPiece sp, Iterator it, bool ignoreEmpty) {
+  internalSplit<OutStringT>(delim, sp, it, ignoreEmpty);
+}
+
 /*
  * Shared implementation for all the split() overloads.
  *
@@ -310,7 +337,8 @@ void internalSplit(
   }
   if (std::is_same<DelimT, StringPiece>::value && dSize == 1) {
     // Call the char version because it is significantly faster.
-    return internalSplit<OutStringT>(delimFront(delim), sp, out, ignoreEmpty);
+    return internalSplitRecurseChar<OutStringT>(
+        delimFront(delim), sp, out, ignoreEmpty);
   }
 
   size_t tokenStartPos = 0;
