@@ -2454,39 +2454,31 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   }
 }
 
-AsyncSocket::ReadResult AsyncSocket::performRead(
-    void** buf, size_t* buflen, size_t* /* offset */) {
-  struct iovec iov;
+AsyncSocket::ReadResult AsyncSocket::performReadMsg(
+    struct ::msghdr& msg,
+    // This is here only to preserve AsyncSSLSocket's legacy semi-broken
+    // behavior (D43648653 for context).
+    AsyncReader::ReadCallback::ReadMode) {
+  VLOG(5) << "AsyncSocket::performReadMsg() this=" << this
+          << ", iovs=" << msg.msg_iov << ", num=" << msg.msg_iovlen;
 
-  // Data buffer pointer and length
-  iov.iov_base = *buf;
-  iov.iov_len = *buflen;
-
-  return performReadInternal(&iov, 1);
-}
-
-AsyncSocket::ReadResult AsyncSocket::performReadv(
-    struct iovec* iovs, size_t num) {
-  return performReadInternal(iovs, num);
-}
-
-AsyncSocket::ReadResult AsyncSocket::performReadInternal(
-    struct iovec* iovs, size_t num) {
-  VLOG(5) << "AsyncSocket::performReadInternal() this=" << this
-          << ", iovs=" << iovs << ", num=" << num;
-
-  if (!num) {
+  if (!msg.msg_iovlen) {
     return ReadResult(READ_ERROR);
   }
 
   if (preReceivedData_ && !preReceivedData_->empty()) {
-    VLOG(5) << "AsyncSocket::performReadInternal() this=" << this
+    VLOG(5) << "AsyncSocket::performReadMsg() this=" << this
             << ", reading pre-received data";
 
     ssize_t len = 0;
-    for (size_t i = 0; (i < num) && (!preReceivedData_->empty()); ++i) {
+    for (size_t i = 0;
+         // MacOS `msg_iovlen` is an `int` :(
+         (i < static_cast<size_t>(msg.msg_iovlen)) &&
+         (!preReceivedData_->empty());
+         ++i) {
       io::Cursor cursor(preReceivedData_.get());
-      auto ret = cursor.pullAtMost(iovs[i].iov_base, iovs[i].iov_len);
+      auto ret =
+          cursor.pullAtMost(msg.msg_iov[i].iov_base, msg.msg_iov[i].iov_len);
       len += ret;
 
       IOBufQueue queue;
@@ -2500,11 +2492,9 @@ AsyncSocket::ReadResult AsyncSocket::performReadInternal(
   }
 
   ssize_t bytes = 0;
-
-  struct msghdr msg;
-
-  if (readAncillaryDataCallback_ == nullptr && num == 1) {
-    bytes = netops_->recv(fd_, iovs[0].iov_base, iovs[0].iov_len, MSG_DONTWAIT);
+  if (readAncillaryDataCallback_ == nullptr && msg.msg_iovlen == 1) {
+    bytes = netops_->recv(
+        fd_, msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len, MSG_DONTWAIT);
   } else {
     if (readAncillaryDataCallback_) {
       // Ancillary data buffer and length
@@ -2517,14 +2507,7 @@ AsyncSocket::ReadResult AsyncSocket::performReadInternal(
       msg.msg_controllen = 0;
     }
 
-    // Dest address info
-    msg.msg_name = nullptr;
-    msg.msg_namelen = 0;
-
-    // Array of data buffers (scatter/gather)
-    msg.msg_iov = iovs;
-    msg.msg_iovlen = num;
-
+    // `msg.msg_iov*` were set by the caller, we're ready.
     bytes = netops::recvmsg(fd_, &msg, 0);
   }
 
@@ -2831,7 +2814,7 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
   }
 
   if (preReceivedData_ && !preReceivedData_->empty()) {
-    VLOG(5) << "AsyncSocket::performReadInternal() this=" << this
+    VLOG(5) << "AsyncSocket::processZeroCopyRead() this=" << this
             << ", reading pre-received data";
 
     readCallback_->readZeroCopyDataAvailable(
@@ -2937,15 +2920,14 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
   auto readMode = readCallback_->getReadMode();
   // Get the buffer(s) to read into.
   void* buf = nullptr;
-  size_t offset = 0, num = 0;
   size_t buflen = 0;
   IOBufIovecBuilder::IoVecVec iovs; // this can be an AsyncSocket member too
 
   try {
     if (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec) {
       prepareReadBuffers(iovs);
-      num = iovs.size();
-      VLOG(5) << "prepareReadBuffers() bufs=" << iovs.data() << ", num=" << num;
+      VLOG(5) << "prepareReadBuffers() bufs=" << iovs.data()
+              << ", num=" << iovs.size();
     } else {
       prepareReadBuffer(&buf, &buflen);
       VLOG(5) << "prepareReadBuffer() buf=" << buf << ", buflen=" << buflen;
@@ -2966,7 +2948,7 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
         "non-exception type");
     return failRead(__func__, ex);
   }
-  if ((num == 0) && (buf == nullptr || buflen == 0)) {
+  if (iovs.empty() && (buf == nullptr || buflen == 0)) {
     AsyncSocketException ex(
         AsyncSocketException::BAD_ARGS,
         "ReadCallback::getReadBuffer() returned "
@@ -2974,10 +2956,22 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
     return failRead(__func__, ex);
   }
 
-  // Perform the read
-  auto readResult = (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec)
-      ? performReadv(iovs.data(), num)
-      : performRead(&buf, &buflen, &offset);
+  // Perform the read; we want `msg` for the `ancillaryData` callback.
+  struct ::msghdr msg;
+  // Dest address info
+  msg.msg_name = nullptr;
+  msg.msg_namelen = 0;
+  struct ::iovec iov; // unused in `ReadMode::ReadVec`
+  if (readMode == AsyncReader::ReadCallback::ReadMode::ReadVec) {
+    msg.msg_iov = iovs.data();
+    msg.msg_iovlen = iovs.size();
+  } else {
+    iov.iov_base = buf;
+    iov.iov_len = buflen;
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+  }
+  auto readResult = performReadMsg(msg, readMode);
 
   auto bytesRead = readResult.readReturn;
   VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got " << bytesRead
