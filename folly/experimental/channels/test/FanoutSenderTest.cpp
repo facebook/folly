@@ -58,27 +58,38 @@ class FanoutSenderFixture : public Test {
 TEST_F(FanoutSenderFixture, WriteValue_FanoutBroadcastsValues) {
   auto fanoutSender = FanoutSender<int>();
 
+  fanoutSender.write(-1);
+
+  EXPECT_FALSE(fanoutSender.anySubscribers());
+
   auto [handle1, callback1] =
       processValues(fanoutSender.subscribe(toVector(100)));
+
+  EXPECT_CALL(*callback1, onValue(100));
+  EXPECT_CALL(*callback1, onValue(0));
+
+  fanoutSender.write(0);
+  executor_.drain();
+
+  EXPECT_TRUE(fanoutSender.anySubscribers());
+
   auto [handle2, callback2] =
       processValues(fanoutSender.subscribe(toVector(200)));
 
-  EXPECT_CALL(*callback1, onValue(100));
   EXPECT_CALL(*callback2, onValue(200));
   EXPECT_CALL(*callback1, onValue(1));
   EXPECT_CALL(*callback2, onValue(1));
   EXPECT_CALL(*callback1, onValue(2));
   EXPECT_CALL(*callback2, onValue(2));
-  EXPECT_CALL(*callback1, onClosed());
-  EXPECT_CALL(*callback2, onClosed());
-
-  executor_.drain();
-
-  EXPECT_TRUE(fanoutSender.anySubscribers());
 
   fanoutSender.write(1);
   fanoutSender.write(2);
   executor_.drain();
+
+  EXPECT_TRUE(fanoutSender.anySubscribers());
+
+  EXPECT_CALL(*callback1, onClosed());
+  EXPECT_CALL(*callback2, onClosed());
 
   std::move(fanoutSender).close();
   executor_.drain();
@@ -104,6 +115,16 @@ TEST_F(FanoutSenderFixture, InputThrows_AllOutputReceiversGetException) {
 
   std::move(fanoutSender).close(std::runtime_error("Error"));
   executor_.drain();
+
+  fanoutSender = FanoutSender<int>();
+
+  std::tie(handle1, callback1) = processValues(fanoutSender.subscribe());
+  executor_.drain();
+
+  EXPECT_CALL(*callback1, onRuntimeError("std::runtime_error: Error"));
+
+  std::move(fanoutSender).close(std::runtime_error("Error"));
+  executor_.drain();
 }
 
 TEST_F(FanoutSenderFixture, ReceiversCancelled) {
@@ -112,35 +133,101 @@ TEST_F(FanoutSenderFixture, ReceiversCancelled) {
   auto [handle1, callback1] = processValues(fanoutSender.subscribe());
   auto [handle2, callback2] = processValues(fanoutSender.subscribe());
 
-  EXPECT_CALL(*callback1, onValue(1));
-  EXPECT_CALL(*callback2, onValue(1));
-  EXPECT_CALL(*callback1, onCancelled());
-  EXPECT_CALL(*callback2, onValue(2));
-  EXPECT_CALL(*callback2, onCancelled());
-
   executor_.drain();
 
   EXPECT_TRUE(fanoutSender.anySubscribers());
+
+  EXPECT_CALL(*callback1, onValue(1));
+  EXPECT_CALL(*callback2, onValue(1));
 
   fanoutSender.write(1);
   executor_.drain();
 
   EXPECT_TRUE(fanoutSender.anySubscribers());
 
+  EXPECT_CALL(*callback1, onCancelled());
+
   handle1.reset();
+  executor_.drain();
+
+  EXPECT_CALL(*callback2, onValue(2));
+
   fanoutSender.write(2);
   executor_.drain();
 
   EXPECT_TRUE(fanoutSender.anySubscribers());
 
+  EXPECT_CALL(*callback2, onCancelled());
+
   handle2.reset();
-  fanoutSender.write(3);
   executor_.drain();
 
   EXPECT_FALSE(fanoutSender.anySubscribers());
 
+  fanoutSender.write(3);
+  executor_.drain();
+
   std::move(fanoutSender).close();
   executor_.drain();
+}
+
+TEST_F(FanoutSenderFixture, ReceiverCancelled_DelayedCancellationCallback) {
+  auto fanoutSender = FanoutSender<int>();
+
+  auto receiver1 = fanoutSender.subscribe();
+  auto [handle2, callback2] = processValues(fanoutSender.subscribe());
+
+  auto [bridge1, _] = detail::receiverUnbuffer(std::move(receiver1));
+
+  // This call prevents the fanout sender from receiving the cancellation
+  // callback from receiver1. We will instead call that callback ourselves
+  // below, to simulate the case where the cancellation has occurred but has not
+  // yet been processed by the fanout sender at the time the fanout sender
+  // attempts to destroy its internal processor.
+  auto callback = bridge1->cancelSenderWait();
+
+  // This call actually cancels receiver1.
+  bridge1->receiverCancel();
+
+  EXPECT_CALL(*callback2, onValue(1));
+
+  fanoutSender.write(1);
+  executor_.drain();
+
+  // This call triggers the cancellation callback that would have occured
+  // before, if we had not cancelled it. This should trigger the destruction of
+  // the FanoutSenderProcessor.
+  callback->consume(bridge1.get());
+
+  EXPECT_CALL(*callback2, onClosed());
+  std::move(fanoutSender).close();
+  executor_.drain();
+}
+
+TEST_F(FanoutSenderFixture, Close_DelayedCancellationCallback) {
+  auto fanoutSender = FanoutSender<int>();
+
+  auto receiver1 = fanoutSender.subscribe();
+  auto receiver2 = fanoutSender.subscribe();
+
+  auto [bridge1, _] = detail::receiverUnbuffer(std::move(receiver1));
+
+  // This call prevents the fanout sender from receiving the cancellation
+  // callback from receiver1. We will instead call that callback ourselves
+  // below, to simulate the case where the cancellation has occurred but has not
+  // yet been processed by the fanout sender at the time the fanout sender was
+  // closed.
+  auto callback = bridge1->cancelSenderWait();
+
+  // This call actually cancels receiver1.
+  bridge1->receiverCancel();
+
+  std::move(fanoutSender).close();
+
+  // This call triggers the cancellation callback that would have occured
+  // before, if we had not cancelled it. This should trigger the destruction of
+  // the FanoutSenderProcessor.
+  callback->consume(bridge1.get());
 }
 
 TEST_F(FanoutSenderFixture, NumSubscribers) {

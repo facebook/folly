@@ -39,6 +39,7 @@
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
+#include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 
@@ -423,7 +424,10 @@ class fbvector {
   static void S_uninitialized_fill_n_a(
       Allocator& a, T* dest, size_type sz, Args&&... args) {
     auto b = dest;
-    auto e = dest + sz;
+    T* e;
+    if (!folly::checked_add(&e, dest, sz)) {
+      throw_exception<std::length_error>("FBVector exceeded max size.");
+    }
     auto rollback = makeGuard([&] { S_destroy_range_a(a, dest, b); });
     for (; b != e; ++b) {
       std::allocator_traits<Allocator>::construct(
@@ -436,11 +440,18 @@ class fbvector {
   static void S_uninitialized_fill_n(T* dest, size_type n) {
     if (folly::IsZeroInitializable<T>::value) {
       if (LIKELY(n != 0)) {
+        T* sz;
+        if (!folly::checked_add(&sz, dest, n)) {
+          throw_exception<std::length_error>("FBVector exceeded max size.");
+        }
         std::memset((void*)dest, 0, sizeof(T) * n);
       }
     } else {
       auto b = dest;
-      auto e = dest + n;
+      T* e;
+      if (!folly::checked_add(&e, dest, n)) {
+        throw_exception<std::length_error>("FBVector exceeded max size.");
+      }
       auto rollback = makeGuard([&] {
         --b;
         for (; b >= dest; --b) {
@@ -456,7 +467,10 @@ class fbvector {
 
   static void S_uninitialized_fill_n(T* dest, size_type n, const T& value) {
     auto b = dest;
-    auto e = dest + n;
+    T* e;
+    if (!folly::checked_add(&e, dest, n)) {
+      throw_exception<std::length_error>("FBVector exceeded max size.");
+    }
     auto rollback = makeGuard([&] { S_destroy_range(dest, b); });
     for (; b != e; ++b) {
       S_construct(b, value);

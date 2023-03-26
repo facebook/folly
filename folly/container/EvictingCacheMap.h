@@ -21,9 +21,7 @@
 #include <functional>
 
 #include <boost/intrusive/list.hpp>
-#include <boost/intrusive/unordered_set.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
-#include <boost/utility.hpp>
 
 #include <folly/container/F14Set.h>
 #include <folly/container/HeterogeneousAccess.h>

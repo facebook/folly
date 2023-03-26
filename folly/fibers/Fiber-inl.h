@@ -20,6 +20,22 @@
 
 namespace folly {
 namespace fibers {
+namespace thread_clock {
+inline std::chrono::steady_clock::time_point now() {
+#ifdef __linux__
+  using std::chrono::nanoseconds;
+  using std::chrono::seconds;
+  timespec tp;
+  clockid_t clockid;
+  if (!pthread_getcpuclockid(pthread_self(), &clockid) &&
+      !clock_gettime(clockid, &tp)) {
+    return std::chrono::steady_clock::time_point(
+        nanoseconds(tp.tv_nsec) + seconds(tp.tv_sec));
+  }
+#endif
+  return std::chrono::steady_clock::now();
+}
+} // namespace thread_clock
 
 template <typename F>
 void Fiber::setFunction(F&& func, TaskOptions taskOptions) {

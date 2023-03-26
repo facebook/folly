@@ -41,8 +41,10 @@ class EventBaseManager {
    */
   EventBaseManager() = default;
 
-  explicit EventBaseManager(folly::EventBase::Options options)
-      : options_(std::move(options)) {}
+  explicit EventBaseManager(
+      folly::EventBase::Options options,
+      std::shared_ptr<EventBaseObserver> observer = nullptr)
+      : options_(std::move(options)), observer_(std::move(observer)) {}
 
   ~EventBaseManager() = default;
 

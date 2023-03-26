@@ -18,14 +18,26 @@
 
 #include <cstdint>
 
+#include <boost/intrusive/list.hpp>
+
 namespace folly {
 
 /**
- * Observes the execution of a task.
+ * Observes the execution of a task. Multiple execution observers can be chained
+ * together. As a caveat, execution observers should not remove themselves from
+ * the list of observers during execution
  */
-class ExecutionObserver {
+class ExecutionObserver
+    : public boost::intrusive::list_base_hook<
+          boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
  public:
-  virtual ~ExecutionObserver() {}
+  // Constant time size = false to support auto_unlink behavior, options are
+  // mutually exclusive
+  typedef boost::intrusive::
+      list<ExecutionObserver, boost::intrusive::constant_time_size<false>>
+          List;
+
+  virtual ~ExecutionObserver() = default;
 
   /**
    * Called when a task is about to start executing.

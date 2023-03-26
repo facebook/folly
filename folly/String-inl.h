@@ -284,6 +284,33 @@ inline char delimFront(StringPiece s) {
   return *s.start();
 }
 
+template <class OutStringT, class DelimT, class OutputIterator>
+void internalSplit(
+    DelimT delim, StringPiece sp, OutputIterator out, bool ignoreEmpty);
+
+template <class OutStringT, class Container>
+std::enable_if_t<
+    IsSplitSupportedContainer<Container>::value &&
+    HasSimdSplitCompatibleValueType<Container>::value>
+internalSplitRecurseChar(
+    char delim,
+    folly::StringPiece sp,
+    std::back_insert_iterator<Container> it,
+    bool ignoreEmpty) {
+  using base = std::back_insert_iterator<Container>;
+  struct accessor : base {
+    accessor(base b) : base(b) {}
+    using base::container;
+  };
+  detail::simdSplitByChar(delim, sp, *accessor{it}.container, ignoreEmpty);
+}
+
+template <class OutStringT, class Iterator>
+void internalSplitRecurseChar(
+    char delim, folly::StringPiece sp, Iterator it, bool ignoreEmpty) {
+  internalSplit<OutStringT>(delim, sp, it, ignoreEmpty);
+}
+
 /*
  * Shared implementation for all the split() overloads.
  *
@@ -291,7 +318,7 @@ inline char delimFront(StringPiece s) {
  * algorithm be more performant if the deliminator is a single
  * character instead of a whole string.
  *
- * @param ignoreEmpty iff true, don't copy empty segments to output
+ * @param ignoreEmpty if true, don't copy empty segments to output
  */
 template <class OutStringT, class DelimT, class OutputIterator>
 void internalSplit(
@@ -310,7 +337,8 @@ void internalSplit(
   }
   if (std::is_same<DelimT, StringPiece>::value && dSize == 1) {
     // Call the char version because it is significantly faster.
-    return internalSplit<OutStringT>(delimFront(delim), sp, out, ignoreEmpty);
+    return internalSplitRecurseChar<OutStringT>(
+        delimFront(delim), sp, out, ignoreEmpty);
   }
 
   size_t tokenStartPos = 0;
@@ -389,25 +417,16 @@ bool splitFixed(
 //////////////////////////////////////////////////////////////////////
 
 template <class Delim, class String, class OutputType>
-void split(
+std::enable_if_t<
+    (!detail::IsSimdSupportedDelim<Delim>::value ||
+     !detail::HasSimdSplitCompatibleValueType<OutputType>::value) &&
+    detail::IsSplitSupportedContainer<OutputType>::value>
+split(
     const Delim& delimiter,
     const String& input,
-    std::vector<OutputType>& out,
+    OutputType& out,
     bool ignoreEmpty) {
-  detail::internalSplit<OutputType>(
-      detail::prepareDelim(delimiter),
-      StringPiece(input),
-      std::back_inserter(out),
-      ignoreEmpty);
-}
-
-template <class Delim, class String, class OutputType>
-void split(
-    const Delim& delimiter,
-    const String& input,
-    fbvector<OutputType, std::allocator<OutputType>>& out,
-    bool ignoreEmpty) {
-  detail::internalSplit<OutputType>(
+  detail::internalSplit<typename OutputType::value_type>(
       detail::prepareDelim(delimiter),
       StringPiece(input),
       std::back_inserter(out),

@@ -31,7 +31,6 @@ from getdeps.platform import HostType
 from getdeps.runcmd import run_cmd
 from getdeps.subcmd import add_subcommands, cmd, SubCmd
 
-
 try:
     import getdeps.facebook  # noqa: F401
 except ImportError:
@@ -627,13 +626,20 @@ class BuildCmd(ProjectCmdBase):
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
-                    # Update built_marker only if user hasn't built a specific target
-                    if m == manifest and args.cmake_target == "install":
+                    # If we are building the project (not depdendency) and a specific
+                    # cmake_target (not 'install') has been requested, then we don't
+                    # set the built_marker. This allows subsequent runs of getdeps.py
+                    # for the project to run with different cmake_targets to trigger
+                    # cmake
+                    has_built_marker = False
+                    if not (m == manifest and args.cmake_target != "install"):
                         with open(built_marker, "w") as f:
                             f.write(project_hash)
+                            has_built_marker = True
 
-                    # Only populate the cache from continuous build runs
-                    if args.schedule_type == "continuous":
+                    # Only populate the cache from continuous build runs, and
+                    # only if we have a built_marker.
+                    if args.schedule_type == "continuous" and has_built_marker:
                         cached_project.upload()
                 elif args.verbose:
                     print("found good %s" % built_marker)
@@ -684,7 +690,10 @@ class BuildCmd(ProjectCmdBase):
     ):
         reconfigure = False
         sources_changed = False
-        if not cached_project.download():
+        if cached_project.download():
+            if not os.path.exists(built_marker):
+                fetcher.update()
+        else:
             check_fetcher = True
             if os.path.exists(built_marker):
                 check_fetcher = False

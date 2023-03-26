@@ -50,6 +50,7 @@ if (gflags_FOUND)
     # If gflags_INCLUDE_DIR does not actually exist, simply default it to
     # /usr/include on these systems.
     set(LIBGFLAGS_INCLUDE_DIR "/usr/include")
+    set(GFLAGS_INCLUDE_DIR "/usr/include")
   endif()
   set(LIBGFLAGS_FOUND ${gflags_FOUND})
   # cmake module compat

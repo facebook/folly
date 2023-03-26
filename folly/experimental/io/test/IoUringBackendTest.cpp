@@ -663,6 +663,105 @@ TEST(IoUringBackend, OpenAt) {
   evbPtr->loopForever();
 }
 
+TEST(IoUringBackend, OpenAtAbsolutePath) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto path = folly::fs::unique_path();
+  auto filePath = dirPath / path;
+
+  SCOPE_EXIT { ::unlink(filePath.string().c_str()); };
+
+  folly::IoUringBackend::FileOpCallback openCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+    CHECK_EQ(0, ::close(res));
+  };
+
+  backendPtr->queueOpenat(
+      -1,
+      filePath.string().c_str(),
+      O_RDWR | O_CREAT | O_EXCL,
+      0666,
+      std::move(openCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, Statx) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto path = folly::fs::unique_path();
+  auto filePath = dirPath / path;
+
+  int dfd = ::open(dirPath.string().c_str(), O_DIRECTORY | O_RDONLY, 0666);
+  CHECK_GE(dfd, 0);
+  int fd = ::open(filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  CHECK_GE(fd, 0);
+
+  SCOPE_EXIT {
+    ::close(dfd);
+    ::close(fd);
+    ::unlink(filePath.string().c_str());
+  };
+
+  folly::IoUringBackend::FileOpCallback statxCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+  };
+
+  struct ::statx s;
+  backendPtr->queueStatx(
+      dfd, path.string().c_str(), 0, STATX_MODE, &s, std::move(statxCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, StatxAbsolute) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto path = folly::fs::unique_path();
+  auto filePath = dirPath / path;
+
+  int fd = ::open(filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  CHECK_GE(fd, 0);
+
+  SCOPE_EXIT {
+    ::close(fd);
+    ::unlink(filePath.string().c_str());
+  };
+
+  folly::IoUringBackend::FileOpCallback statxCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+  };
+
+  struct ::statx s;
+  backendPtr->queueStatx(
+      -1,
+      filePath.string().c_str(),
+      AT_EMPTY_PATH,
+      STATX_MODE,
+      &s,
+      std::move(statxCb));
+
+  evbPtr->loopForever();
+}
+
 TEST(IoUringBackend, OpenAt2) {
   auto evbPtr = getEventBase();
   SKIP_IF(!evbPtr) << "Backend not available";

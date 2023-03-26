@@ -136,8 +136,10 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   (void)folly::exchangeCurrentAsyncStackRoot(
       std::exchange(fiber->asyncRoot_, nullptr));
 
-  if (observer_) {
-    observer_->starting(reinterpret_cast<uintptr_t>(fiber));
+  if (!observerList_.empty()) {
+    for (auto& observer : observerList_) {
+      observer.starting(reinterpret_cast<uintptr_t>(fiber));
+    }
   }
 
   while (fiber->state_ == Fiber::NOT_STARTED ||
@@ -157,8 +159,8 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   if (fiber->state_ == Fiber::AWAITING) {
     awaitFunc_(*fiber);
     awaitFunc_ = nullptr;
-    if (observer_) {
-      observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
+    for (auto& observer : observerList_) {
+      observer.stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
@@ -181,9 +183,10 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       fiber->finallyFunc_ = nullptr;
     }
     // Make sure LocalData is not accessible from its destructor
-    if (observer_) {
-      observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
+    for (auto& observer : observerList_) {
+      observer.stopped(reinterpret_cast<uintptr_t>(fiber));
     }
+
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
     // Async stack roots should have been popped by the time the
@@ -204,8 +207,8 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       --fibersAllocated_;
     }
   } else if (fiber->state_ == Fiber::YIELDED) {
-    if (observer_) {
-      observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
+    for (auto& observer : observerList_) {
+      observer.stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
@@ -572,7 +575,7 @@ inline folly::Optional<std::chrono::nanoseconds>
 FiberManager::getCurrentTaskRunningTime() const {
   if (activeFiber_ && activeFiber_->taskOptions_.logRunningTime &&
       activeFiber_->state_ == Fiber::RUNNING) {
-    return activeFiber_->prevDuration_ + std::chrono::steady_clock::now() -
+    return activeFiber_->prevDuration_ + thread_clock::now() -
         activeFiber_->currStartTime_;
   }
   return folly::none;

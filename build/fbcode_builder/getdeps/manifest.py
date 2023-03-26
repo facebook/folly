@@ -33,7 +33,6 @@ from .fetcher import (
 )
 from .py_wheel_builder import PythonWheelBuilder
 
-
 REQUIRED = "REQUIRED"
 OPTIONAL = "OPTIONAL"
 

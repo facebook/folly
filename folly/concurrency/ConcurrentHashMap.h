@@ -30,7 +30,7 @@ namespace folly {
  * support erase and update.
  *
  * Readers are always wait-free.
- * Writers are sharded, but take a lock.
+ * Writers are sharded, but take a lock that only locks part of the map.
  *
  * Multithreaded performance beats anything except the lock-free
  *      atomic maps (AtomicUnorderedMap, AtomicHashMap), BUT only
@@ -65,7 +65,7 @@ namespace folly {
  * * Allocator must be stateless.
  *
  * 1: ConcurrentHashMap, based on Java's ConcurrentHashMap.
- *    Very similar to std::unodered_map in performance.
+ *    Very similar to std::unordered_map in performance.
  *
  * 2: ConcurrentHashMapSIMD, based on F14ValueMap.  If the map is
  *    larger than the cache size, it has superior performance due to
@@ -89,7 +89,7 @@ namespace folly {
  *       Thread 2:    map.insert(2, 2);  map.erase(2);
  *
  * A: Yes, this is safe.  However, the iterating thread is not
- * garanteed to see (or not see) concurrent insertions and erasures.
+ * guaranteed to see (or not see) concurrent insertions and erasures.
  * Inserts may cause a rehash, but the old table is still valid as
  * long as any iterator pointing to it exists.
  *
@@ -104,7 +104,7 @@ namespace folly {
  * A: Hazard Pointers are used to improve the performance of
  * concurrent access.  They can be thought of as a simple Garbage
  * Collector.  To reduce the GC overhead, a GC pass is only run after
- * reaching a cetain memory bound.  erase() will remove the element
+ * reaching a certain memory bound.  erase() will remove the element
  * from being accessed via the map, but actual destruction may happen
  * later, after iterators that may point to it have been deleted.
  *

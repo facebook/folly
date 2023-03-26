@@ -20,6 +20,7 @@
 #include <array>
 #include <cstdlib>
 
+#include <glog/logging.h>
 #include <folly/Demangle.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
@@ -236,6 +237,16 @@ void expectFramesEq(
   }
 }
 
+template <size_t kNumFrames = 100>
+void printFrames(const FrameArray<kNumFrames>& frames) {
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    auto& frame = frames.frames[i];
+    LOG(INFO) << std::hex << frame.addr << ": " << frame.name << " in "
+              << frame.location.file.toString() << ":" << std::dec
+              << frame.location.line;
+  }
+}
+
 } // namespace
 
 TEST(SymbolizerTest, InlineFunctionBasic) {
@@ -249,6 +260,8 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
+
+  printFrames(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -343,6 +356,8 @@ TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
       "folly::symbolizer::test::lexicalBlock_inlineB_inlineA_lfind()",
       "folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp",
       kLineno_inlineB_inlineA_lfind);
+
+  printFrames(frames);
 }
 
 TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {

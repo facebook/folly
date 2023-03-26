@@ -41,8 +41,8 @@ class CallbackBase {
 
   folly::exception_wrapper& error() noexcept { return error_; }
   void post() noexcept { baton_.post(); }
-  Task<void> wait() { co_await baton_; }
-  Task<folly::Unit> wait(folly::CancellationToken cancelToken) {
+  Task<folly::Unit> wait() {
+    auto cancelToken = co_await co_current_cancellation_token;
     if (cancelToken.isCancellationRequested()) {
       cancel();
       co_yield folly::coro::co_cancelled;
@@ -53,7 +53,7 @@ class CallbackBase {
           VLOG(5) << "Cancellation was called";
         }};
 
-    co_await wait();
+    co_await baton_;
     VLOG(5) << "After baton await";
 
     if (cancelToken.isCancellationRequested()) {
@@ -290,8 +290,7 @@ Task<Transport> Transport::newConnectedSocket(
   socket->setReadCB(nullptr);
   ConnectCallback cb{*socket};
   socket->connect(&cb, destAddr, connectTimeout.count());
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     co_yield co_error(std::move(waitRet.exception()));
   }
@@ -311,8 +310,7 @@ Task<size_t> Transport::read(
 
   ReadCallback cb{eventBase_->timer(), *transport_, buf, timeout};
   transport_->setReadCB(&cb);
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
@@ -347,8 +345,7 @@ Task<size_t> Transport::read(
       newAllocationSize,
       timeout};
   transport_->setReadCB(&cb);
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
@@ -372,8 +369,7 @@ Task<folly::Unit> Transport::write(
   transport_->setSendTimeout(timeout.count());
   WriteCallback cb{*transport_};
   transport_->write(&cb, buf.begin(), buf.size(), writeFlags);
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     if (writeInfo) {
       writeInfo->bytesWritten = cb.bytesWritten;
@@ -399,8 +395,7 @@ Task<folly::Unit> Transport::write(
   WriteCallback cb{*transport_};
   auto iovec = ioBufQueue.front()->getIov();
   transport_->writev(&cb, iovec.data(), iovec.size(), writeFlags);
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     if (writeInfo) {
       writeInfo->bytesWritten = cb.bytesWritten;

@@ -43,7 +43,7 @@ class NamedThreadFactory : public ThreadFactory {
 
   void setNamePrefix(folly::StringPiece prefix) { prefix_ = prefix.str(); }
 
-  const std::string& getNamePrefix() { return prefix_; }
+  const std::string& getNamePrefix() const override { return prefix_; }
 
  protected:
   std::string prefix_;

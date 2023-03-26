@@ -57,7 +57,7 @@ ThreadPoolExecutor::ThreadPoolExecutor(
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads) {
   threadTimeout_ = std::chrono::milliseconds(FLAGS_threadtimeout_ms);
-  namePrefix_ = getNameHelper();
+  namePrefix_ = threadFactory_->getNamePrefix();
 }
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
@@ -316,14 +316,6 @@ size_t ThreadPoolExecutor::getPendingTaskCount() const {
 
 const std::string& ThreadPoolExecutor::getName() const {
   return namePrefix_;
-}
-
-std::string ThreadPoolExecutor::getNameHelper() const {
-  auto ntf = dynamic_cast<NamedThreadFactory*>(threadFactory_.get());
-  if (ntf == nullptr) {
-    return folly::demangle(typeid(*this).name()).toStdString();
-  }
-  return ntf->getNamePrefix();
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);

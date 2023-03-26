@@ -345,6 +345,21 @@ void ChannelProcessor<KeyType>::close() && {
 
 template <typename KeyType>
 ChannelProcessor<KeyType> createChannelProcessor(
+    std::vector<folly::Executor::KeepAlive<folly::SequencedExecutor>> executors,
+    std::shared_ptr<RateLimiter> rateLimiter) {
+  CHECK_GT(executors.size(), 0);
+  auto [mergeChannelReceiver, mergeChannel] =
+      createMergeChannel<KeyType, Unit>(executors[0]);
+  return ChannelProcessor<KeyType>(
+      std::make_unique<detail::ChannelProcessorImpl<KeyType>>(
+          std::move(executors),
+          std::move(rateLimiter),
+          std::move(mergeChannel),
+          std::move(mergeChannelReceiver)));
+}
+
+template <typename KeyType>
+ChannelProcessor<KeyType> createChannelProcessor(
     folly::Executor::KeepAlive<> executor,
     std::shared_ptr<RateLimiter> rateLimiter,
     size_t numSequencedExecutors) {
@@ -354,14 +369,8 @@ ChannelProcessor<KeyType> createChannelProcessor(
   for (size_t i = 0; i < numSequencedExecutors; i++) {
     executors.push_back(folly::SerialExecutor::create(executor));
   }
-  auto [mergeChannelReceiver, mergeChannel] =
-      createMergeChannel<KeyType, Unit>(executors[0]);
-  return ChannelProcessor<KeyType>(
-      std::make_unique<detail::ChannelProcessorImpl<KeyType>>(
-          std::move(executors),
-          std::move(rateLimiter),
-          std::move(mergeChannel),
-          std::move(mergeChannelReceiver)));
+  return createChannelProcessor<KeyType>(
+      std::move(executors), std::move(rateLimiter));
 }
 } // namespace channels
 } // namespace folly

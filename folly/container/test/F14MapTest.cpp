@@ -1534,6 +1534,76 @@ TEST(F14VectorMap, eraseInto) {
 TEST(F14FastMap, eraseInto) {
   runEraseIntoTest<F14FastMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
 }
+
+template <typename M>
+void runEraseIntoEmptyFromEraseTest() {
+  M m;
+  m.emplace(0, 0);
+  m.erase(0);
+
+  EXPECT_GT(m.bucket_count(), 0);
+  EXPECT_TRUE(m.empty());
+
+  m.eraseInto(m.begin(), m.end(), [](auto&&, auto&&) {});
+
+  EXPECT_GT(m.bucket_count(), 0);
+  EXPECT_TRUE(m.empty());
+}
+
+TEST(F14ValueMap, eraseIntoEmptyFromErase) {
+  runEraseIntoEmptyFromEraseTest<
+      F14ValueMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
+TEST(F14NodeMap, eraseIntoEmptyFromErase) {
+  runEraseIntoEmptyFromEraseTest<
+      F14NodeMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
+TEST(F14VectorMap, eraseIntoEmptyFromErase) {
+  runEraseIntoEmptyFromEraseTest<
+      F14VectorMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
+TEST(F14FastMap, eraseIntoEmptyFromErase) {
+  runEraseIntoEmptyFromEraseTest<
+      F14FastMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
+template <typename M>
+void runEraseIntoEmptyFromReserveTest() {
+  M m;
+  m.reserve(1);
+
+  EXPECT_GT(m.bucket_count(), 0);
+  EXPECT_TRUE(m.empty());
+
+  m.eraseInto(m.begin(), m.end(), [](auto&&, auto&&) {});
+
+  EXPECT_GT(m.bucket_count(), 0);
+  EXPECT_TRUE(m.empty());
+}
+
+TEST(F14ValueMap, eraseIntoEmptyFromReserve) {
+  runEraseIntoEmptyFromReserveTest<
+      F14ValueMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
+TEST(F14NodeMap, eraseIntoEmptyFromReserve) {
+  runEraseIntoEmptyFromReserveTest<
+      F14NodeMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
+TEST(F14VectorMap, eraseIntoEmptyFromReserve) {
+  runEraseIntoEmptyFromReserveTest<
+      F14VectorMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
+TEST(F14FastMap, eraseIntoEmptyFromReserve) {
+  runEraseIntoEmptyFromReserveTest<
+      F14FastMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
+}
+
 #endif
 
 template <typename M>

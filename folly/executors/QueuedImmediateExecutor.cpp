@@ -21,7 +21,7 @@
 namespace folly {
 
 QueuedImmediateExecutor& QueuedImmediateExecutor::instance() {
-  static auto instance = Indestructible<QueuedImmediateExecutor>{};
+  static Indestructible<QueuedImmediateExecutor> instance;
   return *instance;
 }
 

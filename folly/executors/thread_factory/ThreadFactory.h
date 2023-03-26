@@ -15,6 +15,8 @@
  */
 
 #pragma once
+
+#include <string>
 #include <thread>
 
 #include <folly/Executor.h>
@@ -23,8 +25,18 @@ namespace folly {
 
 class ThreadFactory {
  public:
+  ThreadFactory() = default;
+
   virtual ~ThreadFactory() = default;
   virtual std::thread newThread(Func&& func) = 0;
+
+  virtual const std::string& getNamePrefix() const = 0;
+
+ private:
+  ThreadFactory(const ThreadFactory&) = delete;
+  ThreadFactory& operator=(const ThreadFactory&) = delete;
+  ThreadFactory(ThreadFactory&&) = delete;
+  ThreadFactory& operator=(ThreadFactory&&) = delete;
 };
 
 } // namespace folly

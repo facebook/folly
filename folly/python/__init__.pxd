@@ -58,3 +58,6 @@ cdef extern from "folly/futures/Promise.h" namespace "folly":
 cdef extern from "folly/Executor.h" namespace "folly":
     cdef cppclass cFollyExecutor "folly::Executor":
         pass
+
+cdef extern from "folly/Portability.h" namespace "folly":
+    cbool cFollyIsDebug "folly::kIsDebug"

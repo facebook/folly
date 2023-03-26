@@ -238,6 +238,14 @@ ChannelProcessor<KeyType> createChannelProcessor(
     folly::Executor::KeepAlive<> executor,
     std::shared_ptr<RateLimiter> rateLimiter = nullptr,
     size_t numSequencedExecutors = 1);
+
+/**
+ * Creates a new channel processor.
+ */
+template <typename KeyType>
+ChannelProcessor<KeyType> createChannelProcessor(
+    std::vector<folly::Executor::KeepAlive<folly::SequencedExecutor>> executors,
+    std::shared_ptr<RateLimiter> rateLimiter = nullptr);
 } // namespace channels
 } // namespace folly
 

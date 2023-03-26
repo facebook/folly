@@ -706,3 +706,76 @@ TYPED_TEST(LtHashTest, addObjectWithKnownValue) {
            << ", checksum=" << toHex(*h.getChecksum());
   }
 }
+
+TYPED_TEST(LtHashTest, setKeyTooShort) {
+  TypeParam h1;
+  std::string shortKey = "0123456789abcde";
+  EXPECT_THROW(h1.setKey(folly::range(shortKey)), std::runtime_error);
+}
+
+TYPED_TEST(LtHashTest, setKeyTooLong) {
+  TypeParam h1;
+  std::string longKey =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0";
+  EXPECT_THROW(h1.setKey(folly::range(longKey)), std::runtime_error);
+}
+
+TYPED_TEST(LtHashTest, subtractWithDifferentKeysFail) {
+  TypeParam h1;
+  h1.addObject(folly::range(this->obj1_));
+
+  TypeParam h2;
+  h2.setKey(folly::range("0123456789abcdef"));
+  h2.addObject(folly::range(this->obj1_));
+
+  EXPECT_THROW(h1 - h2, std::runtime_error);
+}
+
+TYPED_TEST(LtHashTest, addWithDifferentKeysFail) {
+  TypeParam h1;
+  h1.addObject(folly::range(this->obj1_));
+
+  TypeParam h2;
+  h2.setKey(folly::range("0123456789abcdef"));
+  h2.addObject(folly::range(this->obj1_));
+
+  EXPECT_THROW(h1 + h2, std::runtime_error);
+}
+
+TYPED_TEST(LtHashTest, keyedLtHashesEqual) {
+  std::string key = "0123456789abcdef";
+  TypeParam h1;
+  h1.setKey(folly::range(key));
+  h1.addObject(folly::range(this->obj1_));
+  h1.addObject(folly::range(this->obj2_));
+
+  TypeParam h2;
+  h2.setKey(folly::range(key));
+  h2.addObject(folly::range(this->obj1_));
+  h2.addObject(folly::range(this->obj2_));
+
+  EXPECT_EQ(h1, h2);
+}
+
+TYPED_TEST(LtHashTest, keyedLtHashesDifferentKeysNotEqual) {
+  std::string key1 = "0123456789abcdef";
+  TypeParam h1;
+  h1.setKey(folly::range(key1));
+  h1.addObject(folly::range(this->obj1_));
+  h1.addObject(folly::range(this->obj2_));
+
+  std::string key2 = "1123456789abcdef";
+  TypeParam h2;
+  h1.setKey(folly::range(key2));
+  h2.addObject(folly::range(this->obj1_));
+  h2.addObject(folly::range(this->obj2_));
+
+  EXPECT_NE(h1, h2);
+
+  // Compare to unkeyed LtHash
+  TypeParam h3;
+  h3.addObject(folly::range(this->obj1_));
+  h3.addObject(folly::range(this->obj2_));
+
+  EXPECT_NE(h1, h3);
+}

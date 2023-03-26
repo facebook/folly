@@ -40,6 +40,7 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
       size_t max_capacity,
       const typename Semaphore::Options& semaphoreOptions = {})
       : sem_(semaphoreOptions) {
+    CHECK_GT(numPriorities, 0) << "Number of priorities should be positive";
     queues_.reserve(numPriorities);
     for (int8_t i = 0; i < numPriorities; i++) {
       queues_.emplace_back(max_capacity);
@@ -50,6 +51,7 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
       folly::Range<const size_t*> capacities,
       const typename Semaphore::Options& semaphoreOptions = {})
       : sem_(semaphoreOptions) {
+    CHECK_GT(capacities.size(), 0) << "Number of priorities should be positive";
     CHECK_LT(capacities.size(), 256) << "At most 255 priorities supported";
 
     queues_.reserve(capacities.size());

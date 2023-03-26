@@ -886,6 +886,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   };
 
   typedef typename Container::pointer pointer;
+  typedef typename Container::const_pointer const_pointer;
   typedef typename Container::reference reference;
   typedef typename Container::const_reference const_reference;
   typedef typename Container::iterator iterator;

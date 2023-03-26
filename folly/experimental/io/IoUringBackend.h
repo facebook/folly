@@ -295,6 +295,14 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void queueClose(int fd, FileOpCallback&& cb);
 
+  void queueStatx(
+      int dirfd,
+      const char* pathname,
+      int flags,
+      unsigned int mask,
+      struct statx* statxbuf,
+      FileOpCallback&& cb);
+
   void queueFallocate(
       int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb);
 
@@ -902,6 +910,34 @@ class IoUringBackend : public EventBaseBackendBase {
       ::io_uring_prep_close(sqe, fd_);
       ::io_uring_sqe_set_data(sqe, this);
     }
+  };
+
+  struct FStatxIoSqe : public FileOpIoSqe {
+    FStatxIoSqe(
+        IoUringBackend* backend,
+        int dfd,
+        const char* pathname,
+        int flags,
+        unsigned int mask,
+        struct statx* statxbuf,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, dfd, std::move(cb)),
+          path_(pathname),
+          flags_(flags),
+          mask_(mask),
+          statxbuf_(statxbuf) {}
+
+    ~FStatxIoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      ::io_uring_prep_statx(sqe, fd_, path_, flags_, mask_, statxbuf_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    const char* path_;
+    int flags_;
+    unsigned int mask_;
+    struct statx* statxbuf_;
   };
 
   struct FAllocateIoSqe : public FileOpIoSqe {

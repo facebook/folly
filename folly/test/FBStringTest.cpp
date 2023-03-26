@@ -1750,3 +1750,26 @@ TEST(FBString, OverLarge) {
       fbstring_core<char32_t>().reserve((size_t)0x4000'0000'4000'0000),
       std::length_error);
 }
+
+#if FOLLY_CPLUSPLUS >= 202002L
+
+TEST(FBString, SpaceshipOperator) {
+  folly::fbstring a{"a"};
+  EXPECT_TRUE((a <=> a) == std::strong_ordering::equal);
+  EXPECT_TRUE((a <=> std::string{"a"}) == std::strong_ordering::equal);
+  EXPECT_TRUE((std::string{"a"} <=> a) == std::strong_ordering::equal);
+
+  EXPECT_TRUE((a <=> "a") == std::strong_ordering::equal);
+  EXPECT_TRUE(("a" <=> a) == std::strong_ordering::equal);
+
+  EXPECT_TRUE((a <=> "aa") == std::strong_ordering::less);
+  EXPECT_TRUE(("aa" <=> a) == std::strong_ordering::greater);
+
+  EXPECT_TRUE((a <=> "b") == std::strong_ordering::less);
+  EXPECT_TRUE(("b" <=> a) == std::strong_ordering::greater);
+
+  EXPECT_TRUE((a <=> "0") == std::strong_ordering::greater);
+  EXPECT_TRUE(("0" <=> a) == std::strong_ordering::less);
+}
+
+#endif // FOLLY_CPLUSPLUS >= 202002L

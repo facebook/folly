@@ -43,6 +43,10 @@ class InitThreadFactory : public ThreadFactory {
         });
   }
 
+  const std::string& getNamePrefix() const override {
+    return threadFactory_->getNamePrefix();
+  }
+
  private:
   std::shared_ptr<ThreadFactory> threadFactory_;
   struct ThreadInitFini {

@@ -16,6 +16,7 @@
 
 #include <folly/Singleton.h>
 
+#include <cstdlib>
 #include <thread>
 
 #include <boost/thread/barrier.hpp>
@@ -755,10 +756,17 @@ TEST(Singleton, MockTestWithApply) {
 #ifndef _MSC_VER
 // Subprocess isn't currently supported under MSVC.
 TEST(Singleton, DoubleRegistrationLogging) {
-  const auto basename = "singleton_double_registration";
-  const auto sub = fs::executable_path().remove_filename() / basename;
+  std::string helperPath;
+  const auto* envPath = getenv("FOLLY_SINGLETON_DOUBLE_REGISTRATION_HELPER");
+  if (envPath) {
+    helperPath = envPath;
+  } else {
+    const auto basename = "singleton_double_registration";
+    helperPath = (fs::executable_path().remove_filename() / basename).string();
+  }
+  LOG(INFO) << "running: " << helperPath;
   auto p = Subprocess(
-      std::vector<std::string>{sub.string()},
+      std::vector<std::string>{helperPath},
       Subprocess::Options()
           .stdinFd(Subprocess::DEV_NULL)
           .stdoutFd(Subprocess::DEV_NULL)
@@ -766,7 +774,7 @@ TEST(Singleton, DoubleRegistrationLogging) {
           .closeOtherFds());
   auto err = p.communicate("").second;
   auto res = p.wait();
-  EXPECT_EQ(ProcessReturnCode::KILLED, res.state());
+  ASSERT_EQ(ProcessReturnCode::KILLED, res.state());
   EXPECT_EQ(SIGABRT, res.killSignal());
   EXPECT_THAT(err, testing::StartsWith("Double registration of singletons"));
 }

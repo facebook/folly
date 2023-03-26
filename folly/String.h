@@ -38,6 +38,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Unit.h>
+#include <folly/detail/SplitStringSimd.h>
 
 namespace folly {
 
@@ -424,6 +425,41 @@ std::string hexDump(const void* ptr, size_t size);
  */
 std::string errnoStr(int err);
 
+template <typename T, std::size_t M, typename P>
+class small_vector;
+
+template <typename T, typename Allocator>
+class fbvector;
+
+namespace detail {
+
+// We don't use SimdSplitByCharIsDefinedFor because
+// we would like the user to get an error where they could use SIMD
+// implementation but didn't use quite correct parameters.
+template <typename>
+struct IsSplitSupportedContainer : std::false_type {};
+
+template <typename T>
+using HasSimdSplitCompatibleValueType =
+    std::is_convertible<typename T::value_type, folly::StringPiece>;
+
+template <typename T, typename A>
+struct IsSplitSupportedContainer<std::vector<T, A>> : std::true_type {};
+
+template <typename T, typename A>
+struct IsSplitSupportedContainer<fbvector<T, A>> : std::true_type {};
+
+template <typename T, std::size_t M, typename P>
+struct IsSplitSupportedContainer<small_vector<T, M, P>> : std::true_type {};
+
+template <typename>
+struct IsSimdSupportedDelim : std::false_type {};
+
+template <>
+struct IsSimdSupportedDelim<char> : std::true_type {};
+
+} // namespace detail
+
 /**
  * Split a string into a list of tokens by delimiter.
  *
@@ -454,20 +490,27 @@ std::string errnoStr(int err);
  */
 
 template <class Delim, class String, class OutputType>
-void split(
+FOLLY_ALWAYS_INLINE std::enable_if_t<
+    detail::IsSimdSupportedDelim<Delim>::value &&
+    detail::HasSimdSplitCompatibleValueType<OutputType>::value &&
+    detail::IsSplitSupportedContainer<OutputType>::value>
+split(
     const Delim& delimiter,
     const String& input,
-    std::vector<OutputType>& out,
-    const bool ignoreEmpty = false);
-
-template <class T, class Allocator>
-class fbvector;
+    OutputType& out,
+    const bool ignoreEmpty = false) {
+  return detail::simdSplitByChar(delimiter, input, out, ignoreEmpty);
+}
 
 template <class Delim, class String, class OutputType>
-void split(
+std::enable_if_t<
+    (!detail::IsSimdSupportedDelim<Delim>::value ||
+     !detail::HasSimdSplitCompatibleValueType<OutputType>::value) &&
+    detail::IsSplitSupportedContainer<OutputType>::value>
+split(
     const Delim& delimiter,
     const String& input,
-    folly::fbvector<OutputType, std::allocator<OutputType>>& out,
+    OutputType& out,
     const bool ignoreEmpty = false);
 
 /**

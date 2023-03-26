@@ -332,6 +332,61 @@ class F14Printer:
         return "map" if self.is_map else "array"
 
 
+# Iterator for folly::small_vector
+class SmallVectorIterator:
+    def __init__(self, data, size):
+        self.iter = F14HashtableItemIterator(data, size)
+        self.count = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        count = self.count
+        self.count += 1
+        return ("[%d]" % count, self.iter.__next__())
+
+
+class SmallVectorPrinter:
+    """Printer for folly::small_vector"""
+
+    def __init__(self, val):
+        self.val = val
+        size = self.val["size_"]
+        self.is_inline = (size >> (size.type.sizeof * 8 - 1)) == 0
+
+    def children(self):
+        heapPtr = self.val["u"]["pdata_"]["heap_"]
+        inlinePtr = self.val["u"]["storage_"]["__data"].address
+        ptr = inlinePtr if self.is_inline else heapPtr
+
+        value_type = self.val.type.template_argument(0)
+        typedPtr = ptr.reinterpret_cast(value_type.pointer())
+        return SmallVectorIterator(typedPtr, self.size())
+
+    def capacity(self):
+        inlineCap = self.val.type.template_argument(1)
+        outCap = self.val["u"]["pdata_"]["capacity_"]
+        return inlineCap if self.is_inline else outCap
+
+    def size(self):
+        size = self.val["size_"]
+        # Clear off potential high bit flags.
+        if size.type.sizeof == 8:
+            return size & 0x3FFF_FFFF_FFFF_FFFF
+        else:
+            return size & 0x3FFF_FFFF
+
+    def to_string(self):
+        return "folly::small_vector of length %d, capacity %d" % (
+            self.size(),
+            self.capacity(),
+        )
+
+    def display_hint(self):
+        return "array"
+
+
 class ConcurrentHashMapIterator:
     """Iterator for folly's ConcurrentHashMap"""
 
@@ -429,6 +484,8 @@ def build_pretty_printer():
     pp.add_printer(
         "ConcurrentHashMap", "^folly::ConcurrentHashMap<.*$", ConcurrentHashMapPrinter
     )
+
+    pp.add_printer("small_vector", "^folly::small_vector<.*$", SmallVectorPrinter)
     return pp
 
 

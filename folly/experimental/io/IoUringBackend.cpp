@@ -2022,6 +2022,20 @@ void IoUringBackend::queueClose(int fd, FileOpCallback&& cb) {
   submitImmediateIoSqe(*ioSqe);
 }
 
+void IoUringBackend::queueStatx(
+    int dirfd,
+    const char* pathname,
+    int flags,
+    unsigned int mask,
+    struct statx* statxbuf,
+    FileOpCallback&& cb) {
+  auto* ioSqe = new FStatxIoSqe(
+      this, dirfd, pathname, flags, mask, statxbuf, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
 void IoUringBackend::queueFallocate(
     int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb) {
   auto* ioSqe = new FAllocateIoSqe(this, fd, mode, offset, len, std::move(cb));

@@ -5,13 +5,14 @@
 #
 # It also defines the following variables, although using these directly is not
 # necessary if you use the Folly::folly target instead.
-#  FOLLY_INCLUDE_DIRS
+#  FOLLY_INCLUDE_DIR
 #  FOLLY_LIBRARIES
 
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
 
+set_and_check(FOLLY_INCLUDE_DIRS "@PACKAGE_INCLUDE_INSTALL_DIR@")
 set_and_check(FOLLY_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
 set_and_check(FOLLY_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_DIR@")
 

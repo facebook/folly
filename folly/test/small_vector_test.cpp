@@ -1449,3 +1449,22 @@ TEST(small_vector, Hashable) {
   EXPECT_NE(s.end(), s.find(v0));
   EXPECT_EQ(s.end(), s.find(v1));
 }
+
+TEST(small_vector, overflowConstruct) {
+  EXPECT_THROW(
+      folly::small_vector<std::string>(SIZE_MAX / sizeof(std::string) + 1),
+      std::length_error);
+}
+
+TEST(small_vector, overflowResize) {
+  folly::small_vector<std::string> vec;
+  EXPECT_THROW(
+      vec.resize(SIZE_MAX / sizeof(std::string) + 1), std::length_error);
+}
+
+TEST(small_vector, overflowAssign) {
+  folly::small_vector<std::string> vec;
+  EXPECT_THROW(
+      vec.assign(SIZE_MAX / sizeof(std::string) + 1, "hello"),
+      std::length_error);
+}

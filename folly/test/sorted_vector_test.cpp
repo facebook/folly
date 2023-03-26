@@ -65,6 +65,13 @@ static_assert(!folly::is_sorted_vector_set_v<std::set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::unordered_set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::vector<int>>);
 
+static_assert(std::is_same_v<
+              folly::sorted_vector_map<int, double>::pointer,
+              std::pair<int, double>*>);
+static_assert(std::is_same_v<
+              folly::sorted_vector_map<int, double>::const_pointer,
+              const std::pair<int, double>*>);
+
 template <class T>
 struct less_invert {
   bool operator()(const T& a, const T& b) const { return b < a; }

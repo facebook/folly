@@ -222,6 +222,27 @@ TEST(Random, oneIn64) {
   EXPECT_TRUE(folly::Random::oneIn(kAlmostMax));
 }
 
+TEST(Random, randBool) {
+  for (auto i = 0; i < 10; ++i) {
+    EXPECT_FALSE(folly::Random::randBool(0));
+    EXPECT_TRUE(folly::Random::randBool(1));
+  }
+
+  // When using higher sampling rates, we'll just ensure that we see both
+  // outcomes. We won't worry about statistical validity since we defer that to
+  // folly::Random.
+  auto constexpr kSeenTrue{1};
+  auto constexpr kSeenFalse{2};
+  auto constexpr kSeenBoth{kSeenTrue | kSeenFalse};
+
+  auto seenSoFar{0};
+  for (auto i = 0; i < 1000 && seenSoFar != kSeenBoth; ++i) {
+    seenSoFar |= (folly::Random::randBool(0.5) ? kSeenTrue : kSeenFalse);
+  }
+
+  EXPECT_EQ(kSeenBoth, seenSoFar);
+}
+
 TEST(Random, randDouble01) {
   // Very basic test that we see at least one number < 0.1 and one > 0.9, to
   // verify that the output is not constant and the mantissa is not misaligned.

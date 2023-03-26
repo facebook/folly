@@ -1321,26 +1321,6 @@ class AsyncSocket : public AsyncSocketTransport {
   virtual void handleNetworkSocketAttached();
 
   /**
-   * Attempt to read from the socket into a single buffer
-   *
-   * @param buf      The buffer to read data into.
-   * @param buflen   The length of the buffer.
-   *
-   * @return Returns a read result. See read result for details.
-   */
-  virtual ReadResult performRead(void** buf, size_t* buflen, size_t* offset);
-
-  /**
-   * Attempt to read from the socket into an iovec array
-   *
-   * @param iovs     The iovec array to read data into.
-   * @param num      The number of elements in the iovec array
-   *
-   * @return Returns a read result. See read result for details.
-   */
-  virtual ReadResult performReadv(struct iovec* iovs, size_t num);
-
-  /**
    * Populate an iovec array from an IOBuf and attempt to write it.
    *
    * @param callback Write completion/error callback.
@@ -1446,8 +1426,12 @@ class AsyncSocket : public AsyncSocketTransport {
    */
   bool updateEventRegistration(uint16_t enable, uint16_t disable);
 
-  // read methods
-  ReadResult performReadInternal(struct iovec* iovs, size_t num);
+  // Attempt to read into one or more `struct iovec`s.  The caller is
+  // responsible for setting `msg.msg_iov` and `msg.msg_iovlen` to the
+  // buffers that will receive the read, and for initializing
+  // `msg.msg_name*`.
+  virtual ReadResult performReadMsg(
+      struct ::msghdr& msg, AsyncReader::ReadCallback::ReadMode);
 
   // Actually close the file descriptor and set it to -1 so we don't
   // accidentally close it again.

@@ -14,8 +14,183 @@
  * limitations under the License.
  */
 
+#pragma once
+
+#include <folly/container/F14Set.h>
+#include <folly/executors/SequencedExecutor.h>
+#include <folly/experimental/channels/Channel.h>
+#include <folly/experimental/channels/detail/Utility.h>
+
 namespace folly {
 namespace channels {
+
+namespace detail {
+template <typename ValueType>
+class FanoutSenderProcessor : public IChannelCallback {
+ private:
+  struct State {
+    folly::F14FastSet<ChannelBridge<ValueType>*> senders_;
+    bool handleDestroyed_{false};
+  };
+
+  using WLockedStatePtr = typename folly::Synchronized<State>::WLockedPtr;
+
+ public:
+  /**
+   * Subscribes with an already-created sender.
+   */
+  void addSender(detail::ChannelBridgePtr<ValueType> sender) {
+    auto state = state_.wlock();
+    sender->senderWait(this);
+    state->senders_.insert(sender.release());
+  }
+
+  /**
+   * Sends the given value to all corresponding receivers.
+   */
+  template <typename U = ValueType>
+  void write(U&& element) {
+    auto state = state_.wlock();
+    for (auto* sender : state->senders_) {
+      sender->senderPush(element);
+    }
+  }
+
+  /**
+   * This is called when the user's FanoutSender object has been destroyed.
+   */
+  void destroyHandle(CloseResult closeResult) {
+    processHandleDestroyed(state_.wlock(), std::move(closeResult));
+  }
+
+  /**
+   * Returns whether this fanout channel has any output receivers.
+   */
+  size_t numSubscribers() const { return state_.rlock()->senders_.size(); }
+
+  std::pair<bool, ChannelBridgePtr<ValueType>>
+  stealSenderAndDestorySelfIfSingle() {
+    auto state = state_.wlock();
+    if (state->senders_.empty()) {
+      // There are no remaining senders. We will destroy ourselves.
+      state->handleDestroyed_ = true;
+      maybeDelete(std::move(state));
+      return std::make_pair(true, ChannelBridgePtr<ValueType>());
+    } else if (state->senders_.size() == 1) {
+      // There is one remaining sender.
+      auto* sender = *state->senders_.begin();
+      auto* callback = sender->cancelSenderWait();
+      if (callback) {
+        // We successfully cancelled the callback, so we can now destroy
+        // ourselves and return the sender.
+        state->senders_.clear();
+        state->handleDestroyed_ = true;
+        maybeDelete(std::move(state));
+        return std::make_pair(true, ChannelBridgePtr<ValueType>(sender));
+      } else {
+        // We failed to cancel the callback. This means that another thread is
+        // invoking the callback by calling consume(), letting us know that the
+        // corresponding receiver was deleted. The callback will start running
+        // once we release the lock, so we will let the callback delete the
+        // sender (and then destroy ourselves).
+        return std::make_pair(true, ChannelBridgePtr<ValueType>());
+      }
+    } else {
+      // There is more than one sender. Do not destroy ourselves.
+      return std::make_pair(false, ChannelBridgePtr<ValueType>());
+    }
+  }
+
+  static ChannelState getSenderState(ChannelBridge<ValueType>* sender) {
+    return detail::getSenderState(sender);
+  }
+
+ private:
+  /**
+   * Called when receiving a cancellation from an output receiver.
+   */
+  void consume(ChannelBridgeBase* bridge) override {
+    // The consumer of an output receiver has stopped consuming.
+    auto state = state_.wlock();
+    auto* sender = static_cast<ChannelBridge<ValueType>*>(bridge);
+    CHECK_NE(getSenderState(sender), ChannelState::CancellationProcessed);
+    sender->senderClose();
+    processSenderCancelled(std::move(state), sender);
+  }
+
+  void canceled(ChannelBridgeBase*) override {
+    // We cancel the callback before we close the sender explicitly, so this
+    // should never be hit.
+    CHECK(false);
+  }
+
+  /**
+   * Processes the cancellation of a sender (indicating that the consumer of
+   * the corresponding output receiver has stopped consuming).
+   */
+  void processSenderCancelled(
+      WLockedStatePtr state, ChannelBridge<ValueType>* sender) {
+    CHECK_EQ(getSenderState(sender), ChannelState::CancellationTriggered);
+    state->senders_.erase(sender);
+    deleteSender(sender);
+    maybeDelete(std::move(state));
+  }
+
+  /**
+   * Processes the destruction of the user's FanoutChannel object.  We will
+   * cancel the receiver and trigger cancellation for all senders not already
+   * cancelled.
+   */
+  void processHandleDestroyed(WLockedStatePtr state, CloseResult closeResult) {
+    CHECK(!state->handleDestroyed_);
+    state->handleDestroyed_ = true;
+    auto senders = state->senders_;
+    for (auto* sender : senders) {
+      auto* callback = sender->cancelSenderWait();
+      if (closeResult.exception.has_value()) {
+        sender->senderClose(closeResult.exception.value());
+      } else {
+        sender->senderClose();
+      }
+      if (callback) {
+        // We successfully cancelled the callback, so we can now delete the
+        // sender.
+        CHECK_EQ(callback, this);
+        state->senders_.erase(sender);
+        deleteSender(sender);
+      } else {
+        // We failed to cancel the callback. This means that another thread is
+        // invoking the callback by calling consume(), letting us know that the
+        // corresponding receiver was deleted. The callback will start running
+        // once we release the lock, so we will let the callback delete the
+        // sender.
+      }
+    }
+    maybeDelete(std::move(state));
+  }
+
+  /*
+   * Deletes the given sender.
+   */
+  void deleteSender(ChannelBridge<ValueType>* sender) {
+    (ChannelBridgePtr<ValueType>(sender));
+  }
+
+  /**
+   * Deletes this object if we have already processed cancellation for the
+   * receiver and all senders, and if the user's FanoutChannel object was
+   * destroyed.
+   */
+  void maybeDelete(WLockedStatePtr state) {
+    if (state->senders_.empty() && state->handleDestroyed_) {
+      state.unlock();
+      delete this;
+    }
+  }
+
+  folly::Synchronized<State> state_;
+};
+} // namespace detail
 
 template <typename ValueType>
 FanoutSender<ValueType>::FanoutSender()
@@ -55,42 +230,39 @@ Receiver<ValueType> FanoutSender<ValueType>::subscribe(
 template <typename ValueType>
 void FanoutSender<ValueType>::subscribe(Sender<ValueType> newSender) {
   clearSendersWithClosedReceivers();
-  if (!anySubscribers()) {
+  if (!anySubscribersImpl()) {
     // There are currently no output receivers. Store the new output receiver.
     senders_.set(detail::senderGetBridge(newSender).release());
-  } else if (!hasSenderSet()) {
-    // There is currently exactly one output receiver. Convert to a sender set.
-    auto senderSet = std::make_unique<
-        folly::F14FastSet<detail::ChannelBridgePtr<ValueType>>>();
-    senderSet->insert(detail::ChannelBridgePtr<ValueType>(getSingleSender()));
-    senderSet->insert(std::move(detail::senderGetBridge(newSender)));
-    senders_.set(senderSet.release());
+  } else if (!hasProcessor()) {
+    // There is currently exactly one output receiver. Convert to a processor.
+    auto* processor = new detail::FanoutSenderProcessor<ValueType>();
+    processor->addSender(
+        detail::ChannelBridgePtr<ValueType>(getSingleSender()));
+    processor->addSender(std::move(detail::senderGetBridge(newSender)));
+    senders_.set(processor);
   } else {
     // There are currently more than one output receivers. Add the new receiver
-    // to the existing sender set.
-    auto* senderSet = getSenderSet();
-    senderSet->insert(std::move(detail::senderGetBridge(newSender)));
+    // to the existing processor.
+    auto* processor = getProcessor();
+    processor->addSender(std::move(detail::senderGetBridge(newSender)));
   }
 }
 
 template <typename ValueType>
-bool FanoutSender<ValueType>::anySubscribers() {
+bool FanoutSender<ValueType>::anySubscribers() const {
   clearSendersWithClosedReceivers();
-  return hasSenderSet() || getSingleSender() != nullptr;
+  return anySubscribersImpl();
 }
 
 template <typename ValueType>
 std::uint64_t FanoutSender<ValueType>::numSubscribers() const {
-  if (senders_.index() == 0) {
-    auto sender =
-        senders_.get(folly::tag_t<detail::ChannelBridge<ValueType>>{});
-    return sender ? 1 : 0;
-  } else if (senders_.index() == 1) {
-    auto senders = senders_.get(
-        folly::tag_t<folly::F14FastSet<detail::ChannelBridgePtr<ValueType>>>{});
-    return senders ? senders->size() : 0;
-  } else {
+  clearSendersWithClosedReceivers();
+  if (!anySubscribersImpl()) {
     return 0;
+  } else if (!hasProcessor()) {
+    return 1;
+  } else {
+    return getProcessor()->numSubscribers();
   }
 }
 
@@ -98,28 +270,24 @@ template <typename ValueType>
 template <typename U>
 void FanoutSender<ValueType>::write(U&& element) {
   clearSendersWithClosedReceivers();
-  if (!anySubscribers()) {
+  if (!anySubscribersImpl()) {
     // There are currently no output receivers to write to.
     return;
-  } else if (!hasSenderSet()) {
+  } else if (!hasProcessor()) {
     // There is exactly one output receiver. Write the value to that receiver.
     getSingleSender()->senderPush(std::forward<U>(element));
   } else {
-    // There are more than one output receivers. Write the value to all
-    // receivers.
-    for (auto& senderBridge : *getSenderSet()) {
-      senderBridge->senderPush(element);
-    }
+    getProcessor()->write(std::forward<U>(element));
   }
 }
 
 template <typename ValueType>
 void FanoutSender<ValueType>::close(exception_wrapper ex) && {
   clearSendersWithClosedReceivers();
-  if (!anySubscribers()) {
+  if (!anySubscribersImpl()) {
     // There are no output receivers to close.
     return;
-  } else if (!hasSenderSet()) {
+  } else if (!hasProcessor()) {
     // There is exactly one output receiver to close.
     if (ex) {
       getSingleSender()->senderClose(ex);
@@ -130,75 +298,50 @@ void FanoutSender<ValueType>::close(exception_wrapper ex) && {
     (detail::ChannelBridgePtr<ValueType>(getSingleSender()));
     senders_.set(static_cast<detail::ChannelBridge<ValueType>*>(nullptr));
   } else {
-    // There are more than one output receivers to close.
-    auto senderSet =
-        std::unique_ptr<F14FastSet<detail::ChannelBridgePtr<ValueType>>>(
-            getSenderSet());
+    // There is more than one output receiver to close.
+    getProcessor()->destroyHandle(
+        ex ? detail::CloseResult(std::move(ex)) : detail::CloseResult());
     senders_.set(static_cast<detail::ChannelBridge<ValueType>*>(nullptr));
-    for (auto& senderBridge : *senderSet) {
-      if (ex) {
-        senderBridge->senderClose(ex);
-      } else {
-        senderBridge->senderClose();
-      }
-    }
   }
 }
 
 template <typename ValueType>
-bool FanoutSender<ValueType>::hasSenderSet() {
+bool FanoutSender<ValueType>::anySubscribersImpl() const {
+  return hasProcessor() || getSingleSender() != nullptr;
+}
+
+template <typename ValueType>
+bool FanoutSender<ValueType>::hasProcessor() const {
   return senders_.index() == 1;
 }
 
 template <typename ValueType>
-detail::ChannelBridge<ValueType>* FanoutSender<ValueType>::getSingleSender() {
+detail::ChannelBridge<ValueType>* FanoutSender<ValueType>::getSingleSender()
+    const {
   return senders_.get(folly::tag_t<detail::ChannelBridge<ValueType>>{});
 }
 
 template <typename ValueType>
-F14FastSet<detail::ChannelBridgePtr<ValueType>>*
-FanoutSender<ValueType>::getSenderSet() {
-  return senders_.get(
-      folly::tag_t<folly::F14FastSet<detail::ChannelBridgePtr<ValueType>>>{});
+detail::FanoutSenderProcessor<ValueType>*
+FanoutSender<ValueType>::getProcessor() const {
+  return senders_.get(folly::tag_t<detail::FanoutSenderProcessor<ValueType>>{});
 }
 
 template <typename ValueType>
-void FanoutSender<ValueType>::clearSendersWithClosedReceivers() {
-  if (hasSenderSet()) {
-    // There are currently more than one output receivers. Check all of them to
-    // see if any have been cancelled.
-    auto* senderSet = getSenderSet();
-    for (auto it = senderSet->begin(); it != senderSet->end();) {
-      auto values = it->get()->senderGetValues();
-      if (!values.empty()) {
-        it->get()->senderClose();
-        it = senderSet->erase(it);
+void FanoutSender<ValueType>::clearSendersWithClosedReceivers() const {
+  if (hasProcessor()) {
+    auto [processorDestroyed, remainingSender] =
+        getProcessor()->stealSenderAndDestorySelfIfSingle();
+    if (processorDestroyed) {
+      if (remainingSender) {
+        senders_.set(remainingSender.release());
       } else {
-        ++it;
+        senders_.set(static_cast<detail::ChannelBridge<ValueType>*>(nullptr));
       }
-    }
-    if (senderSet->empty()) {
-      // After erasing all cancelled output receivers, there are no remaining
-      // receivers.
-      (std::unique_ptr<F14FastSet<detail::ChannelBridgePtr<ValueType>>>(
-          senderSet));
-      senders_.set(static_cast<detail::ChannelBridge<ValueType>*>(nullptr));
-      senderSet = nullptr;
-    } else if (senderSet->size() == 1) {
-      // After erasing all cancelled output receivers, there is exactly one
-      // remaining receiver. Move it out of the set, and store it as a single
-      // receiver.
-      auto senderSetUniqPtr =
-          std::unique_ptr<F14FastSet<detail::ChannelBridgePtr<ValueType>>>(
-              senderSet);
-      senderSetUniqPtr->eraseInto(senderSet->begin(), [&](auto&& senderBridge) {
-        senders_.set(senderBridge.release());
-      });
-      senderSet = nullptr;
     }
   } else {
     auto* bridge = getSingleSender();
-    if (bridge != nullptr) {
+    if (bridge) {
       // There is currently exactly one output receiver. Check to see if it has
       // been cancelled.
       auto values = bridge->senderGetValues();

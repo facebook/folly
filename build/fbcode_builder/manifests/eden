@@ -17,6 +17,7 @@ run_tests = off
 builder = cmake
 
 [dependencies]
+blake3
 googletest
 folly
 fbthrift

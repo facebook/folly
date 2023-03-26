@@ -928,7 +928,7 @@ uint64_t commutative_hash_combine_generic(
  * @methodset ranges
  */
 template <typename T, typename... Ts>
-size_t hash_combine(const T& t, const Ts&... ts) noexcept(
+FOLLY_NODISCARD size_t hash_combine(const T& t, const Ts&... ts) noexcept(
     noexcept(hash_combine_generic(StdHasher{}, t, ts...))) {
   return hash_combine_generic(StdHasher{}, t, ts...);
 }
