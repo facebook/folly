@@ -25,6 +25,7 @@
 
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
+#include <folly/small_vector.h>
 
 using std::ostream;
 using std::string;
@@ -70,11 +71,13 @@ IPAddressV6 IPAddress::createIPv6(const IPAddress& addr) {
 }
 
 namespace {
-vector<string> splitIpSlashCidr(StringPiece ipSlashCidr) {
-  vector<string> vec;
-  split("/", ipSlashCidr, vec);
+
+auto splitIpSlashCidr(StringPiece ipSlashCidr) {
+  folly::small_vector<folly::StringPiece, 2> vec;
+  folly::split('/', ipSlashCidr, vec);
   return vec;
 }
+
 } // namespace
 
 // public static
