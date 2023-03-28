@@ -127,19 +127,66 @@ class AsyncSocket : public AsyncSocketTransport {
     virtual ~ReadAncillaryDataCallback() = default;
 
     /**
-     * ancillaryData() will be invoked when we read a buffer
-     * from the socket together with the ancillary data.
+     * `ancillaryData()` is invoked immediately before the corresponding
+     * `ReadCallback::readDataAvailable()`, as a pair.
      *
-     * @param msgh      Reference to msghdr structure describing
-     *                  a message read together with the data buffer associated
-     *                  with the socket.
+     * You must check for `msg_flags | MSG_CTRUNC`, indicating that some
+     * ancillary data was discarded due to lack of space.  This is normally
+     * not recoverable, so you can `close` or `failRead` the socket -- see
+     * below.
+     *
+     * ## Allowed socket mutations ###
+     *
+     * This callback is allowed to `close`, `failRead` (for child classes),
+     * or destruct the underlying socket.  It is **NOT** allowed to perform
+     * any other mutations, such as `setReadCallback` or `attachEventBase`.
+     *
+     * If `ancillaryData()` closes or fails the socket, then any data
+     * received in the same read as the ancillary data will NOT be delivered
+     * to the `ReadCallback`.
+     *
+     * # Detailed contract
+     *
+     * This will only be invoked when a `ReadCallback` is installed -- i.e.
+     * the socket is connected, neither closed nor in an error state.
+     *
+     * The supplied buffer will have originated from the most recent call to
+     * `getAncillaryDataCtrlBuffer()`.
+     *
+     * Per POSIX, ancillary data are sent / received with the first byte of
+     * the `sendmsg` data buffer, so we guarantee that the subsequent
+     * `readDataAvailable()` (if it happens) will include that data byte.
+     *
+     * @param  Can be used with macros from `man cmsg` to access ancillary
+     *         data. It is permissible to check `msg_flags & MSG_EOR`.
+     *         There is NO CONTRACT about any other `msghdr` fields -- that
+     *         is, choosing to read `msg_name*` or `msg_iov*` leads to
+     *         undefined behavior.
      */
-    virtual void ancillaryData(struct msghdr& msgh) noexcept = 0;
+    virtual void ancillaryData(struct ::msghdr&) noexcept = 0;
 
     /**
-     * getAncillaryDataCtrlBuffer() will be invoked in order to fill the
-     * ancillary data buffer when it is received.
-     * getAncillaryDataCtrlBuffer will never return nullptr.
+     * Must return a buffer large enough to contain the incoming ancillary
+     * data, see `man cmsg` and `CMSG_SPACE`.
+     *
+     * DANGER: This call must not mutate the socket state.  e.g., you
+     * cannot call setReadCB(), setReadAncillaryDataCB() or close()
+     * from inside this call.
+     *
+     * If the supplied buffer is too small, your `ancillaryData()` will see
+     * `MSG_CTRUNC`, and the kernel will have discarded some ancillary data.
+     *
+     * It is possible that `getAncillaryDataCtrlBuffer()` will be called
+     * without a corresponding `ancillaryData()` call.  It is the callback's
+     * responsibility not to leak the buffers it returns.  Any call to
+     * `ancillaryData()` will use the most recently returned buffer.
+     *
+     * The returned buffer must remain valid until the point where
+     * `ancillaryData()` could be called with it.  That is, previously
+     * returned buffers may be freed if:
+     *  - the socket is closed / fails, or its `ReadCallback` is removed
+     *  - the `ReadAncillaryDataCallback` is uninstalled
+     *  - `ancillaryData()` completes
      */
     virtual folly::MutableByteRange getAncillaryDataCtrlBuffer() = 0;
   };

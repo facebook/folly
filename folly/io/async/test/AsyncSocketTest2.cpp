@@ -8544,6 +8544,122 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
       magicString.begin(), magicString.end(), transferredMagicString.begin()));
 }
 
+namespace {
+
+// Child classes of AsyncSocket (e.g. AsyncFdSocket) want to be able to
+// fail reads from the read ancillary data or regular read callback. Test this.
+struct FailableSocket : public AsyncSocket {
+  FailableSocket(EventBase* evb, NetworkSocket fd) : AsyncSocket(evb, fd) {}
+  void testFailRead() {
+    AsyncSocketException ex(
+        AsyncSocketException::INTERNAL_ERROR, "FailableSocket::testFailRead");
+    AsyncSocket::failRead(__func__, ex);
+  }
+};
+
+class TruncateAncillaryDataAndCallFn
+    : public folly::AsyncSocket::ReadAncillaryDataCallback {
+ public:
+  explicit TruncateAncillaryDataAndCallFn(VoidCallback cob)
+      : callback_(std::move(cob)) {}
+
+  void ancillaryData(struct msghdr& msg) noexcept override {
+    sawCtrunc_ = sawCtrunc_ || (msg.msg_flags & MSG_CTRUNC);
+    callback_();
+  }
+  folly::MutableByteRange getAncillaryDataCtrlBuffer() override {
+    return folly::MutableByteRange(ancillaryDataCtrlBuffer_);
+  }
+
+  bool sawCtrunc_{false};
+
+ private:
+  VoidCallback callback_;
+  // Empty to trigger MSG_CTRUNC
+  std::array<uint8_t, 0> ancillaryDataCtrlBuffer_;
+};
+
+// Returns the error string from the read callback (can be "none")
+std::string testTruncateAncillaryDataAndCall(
+    std::function<void(FailableSocket*)> fn,
+    std::function<void(FailableSocket*)> postConditionCheck) {
+  NetworkSocket fds[2];
+  CHECK_EQ(netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fds), 0);
+
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> sendSock = AsyncSocket::newSocket(&evb, fds[0]);
+  ReadCallback rcb; // outlives socket since ~AsyncSocket calls rcb.readEOF
+  FailableSocket recvSock(&evb, fds[1]);
+
+  TruncateAncillaryDataAndCallFn ancillaryCob{[&]() { fn(&recvSock); }};
+  recvSock.setReadAncillaryDataCB(&ancillaryCob);
+
+  // Send the stderr FD with ancillary data
+  int tmpfd = 2;
+  union { // `man cmsg` suggests this idiom for a "large enough" `cmsghdr`
+    char buf[CMSG_SPACE(sizeof(tmpfd))];
+    struct cmsghdr cmh;
+  } u;
+  u.cmh.cmsg_len = CMSG_LEN(sizeof(tmpfd));
+  u.cmh.cmsg_level = SOL_SOCKET;
+  u.cmh.cmsg_type = SCM_RIGHTS;
+  memcpy(CMSG_DATA(&u.cmh), &tmpfd, sizeof(tmpfd));
+
+  TestSendMsgParamsCallback sendMsgCB(
+      MSG_DONTWAIT | MSG_NOSIGNAL, sizeof(u.buf), u.buf);
+  sendSock->setSendMsgParamCB(&sendMsgCB);
+
+  // Transmit at least 1 byte of real data to send ancillary data
+  int s_data = 12345;
+  WriteCallback wcb;
+  sendSock->write(&wcb, &s_data, sizeof(s_data));
+  CHECK_EQ(wcb.state, STATE_SUCCEEDED);
+
+  // The FD will be discarded (MSG_CTRUNC) since our ancillary data callback
+  // deliberately misconfigures the `recvmsg`.
+  recvSock.setReadCB(&rcb);
+  CHECK(!ancillaryCob.sawCtrunc_);
+  evb.loopOnce();
+
+  // Ensure that `ancillaryData()` actually ran, and saw the error condition.
+  CHECK(ancillaryCob.sawCtrunc_);
+  postConditionCheck(&recvSock);
+
+  return rcb.exception.what();
+}
+
+} // namespace
+
+// These tests do double-duty:
+//  - show that `ReadAncillaryDataCallback` can safely close or fail a socket
+//  - exercise getting & handling `MSG_CTRUNC`
+
+TEST(AsyncSocketTest, ReceiveTruncatedAncillaryDataAndFail) {
+  EXPECT_THAT(
+      testTruncateAncillaryDataAndCall(
+          [](FailableSocket* sock) { sock->testFailRead(); },
+          [](FailableSocket* sock) { ASSERT_TRUE(sock->error()); }),
+      testing::HasSubstr("FailableSocket::testFailRead"));
+}
+
+TEST(AsyncSocketTest, ReceiveTruncatedAncillaryDataAndClose) {
+  EXPECT_THAT(
+      testTruncateAncillaryDataAndCall(
+          [](FailableSocket* sock) { sock->close(); },
+          [](FailableSocket* sock) { ASSERT_TRUE(sock->isClosedBySelf()); }),
+      testing::HasSubstr("AsyncSocketException: none, type =")); // no error
+}
+
+TEST(AsyncSocketTest, ReceiveTruncatedAncillaryDataUnhandled) {
+  // Since this `ancillaryData` fails to check MSG_CTRUNG, the last-ditch
+  // check in `AsyncSocket::processNormalRead` will fire.
+  EXPECT_THAT(
+      testTruncateAncillaryDataAndCall(
+          [](FailableSocket*) {},
+          [](FailableSocket* sock) { ASSERT_TRUE(sock->error()); }),
+      testing::HasSubstr("recvmsg() got MSG_CTRUNC"));
+}
+
 TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
   // In the latest stable kernel 4.14.3 as of 2017-12-04, Unix Domain
   // Socket (UDS) does not support MSG_ERRQUEUE. So
@@ -8986,8 +9102,14 @@ TEST(AsyncSocketTest, QueueTimeout) {
 class TestRXTimestampsCallback
     : public folly::AsyncSocket::ReadAncillaryDataCallback {
  public:
-  TestRXTimestampsCallback() {}
+  explicit TestRXTimestampsCallback(AsyncSocket* sock) : socket_(sock) {}
+
   void ancillaryData(struct msghdr& msgh) noexcept override {
+    if (closeSocket_) {
+      socket_->close();
+      return;
+    }
+
     struct cmsghdr* cmsg;
     for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != nullptr;
          cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
@@ -9006,8 +9128,10 @@ class TestRXTimestampsCallback
 
   uint32_t callCount_{0};
   long actualRxTimestampSec_{0};
+  bool closeSocket_{false};
 
  private:
+  AsyncSocket* socket_;
   std::array<uint8_t, 1024> ancillaryDataCtrlBuffer_;
 };
 
@@ -9041,7 +9165,7 @@ TEST(AsyncSocketTest, readAncillaryData) {
   evb.loop();
   ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
 
-  TestRXTimestampsCallback rxcb;
+  TestRXTimestampsCallback rxcb{socket.get()};
 
   // Set read callback
   ReadCallback rcb(100);
@@ -9072,16 +9196,16 @@ TEST(AsyncSocketTest, readAncillaryData) {
   ASSERT_NE(rcb.buffers.size(), 0);
 
   // Verify that after setting callback, the callback was called
-  ASSERT_NE(rxcb.callCount_, 0);
+  ASSERT_GT(rxcb.callCount_, 0);
   // Compare the received timestamp is within an expected range
   clock_gettime(CLOCK_REALTIME, &currentTime);
   ASSERT_TRUE(rxcb.actualRxTimestampSec_ <= currentTime.tv_sec);
   ASSERT_TRUE(rxcb.actualRxTimestampSec_ >= writeTimestampSec);
 
-  // Close both sockets
-  acceptedSocket->close();
-  socket->close();
-
+  // Check that the callback can close the socket.
+  rxcb.closeSocket_ = true;
+  ASSERT_FALSE(socket->isClosedBySelf());
+  acceptedSocket->write(wbuf.data(), wbuf.size());
+  evb.loopOnce();
   ASSERT_TRUE(socket->isClosedBySelf());
-  ASSERT_FALSE(socket->isClosedByPeer());
 }

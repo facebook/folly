@@ -2497,11 +2497,9 @@ AsyncSocket::ReadResult AsyncSocket::performReadMsg(
         fd_, msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len, MSG_DONTWAIT);
   } else {
     if (readAncillaryDataCallback_) {
-      // Ancillary data buffer and length
-      msg.msg_control =
-          readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().data();
-      msg.msg_controllen =
-          readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().size();
+      auto buf = readAncillaryDataCallback_->getAncillaryDataCtrlBuffer();
+      msg.msg_control = buf.data();
+      msg.msg_controllen = buf.size();
     } else {
       msg.msg_control = nullptr;
       msg.msg_controllen = 0;
@@ -2509,10 +2507,17 @@ AsyncSocket::ReadResult AsyncSocket::performReadMsg(
 
     // `msg.msg_iov*` were set by the caller, we're ready.
     bytes = netops::recvmsg(fd_, &msg, 0);
-  }
 
-  if (readAncillaryDataCallback_ && (bytes > 0)) {
-    readAncillaryDataCallback_->ancillaryData(msg);
+    // KEY INVARIANT: If `bytes > 0`, we must proceed to `ancillaryData` --
+    // no error branches must interrupt this flow.  The reason is that
+    // otherwise, received FDs could be irretrievably leaked, causing
+    // eventual process failure due to `EMFILE`.
+    //
+    // NB: We do not check for MSG_CTRUNC here for the reason above.  We do
+    // not check for it _after_ the callbacks have fired because our
+    // `ReadCallback` could move the socket to a different thread, which
+    // would make a subsequent `failRead` unsafe.  Instead we require
+    // `ReadAncillaryDataCallback` implementations to check this.
   }
 
   if (bytes < 0) {
@@ -2977,6 +2982,38 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
   VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got " << bytesRead
           << " bytes";
   if (bytesRead > 0) {
+    DCHECK(readCallback_);
+    if (readAncillaryDataCallback_) {
+      auto prevReadCallback = readCallback_;
+      readAncillaryDataCallback_->ancillaryData(msg);
+      if (UNLIKELY(readCallback_ != prevReadCallback)) {
+        // The `ancillaryData` callback is allowed to close the socket,
+        // but otherwise is not allowed to change/replace the read callback.
+        CHECK_EQ((shutdownFlags_ & SHUT_READ), SHUT_READ);
+        CHECK(readCallback_ == nullptr);
+        // Return now since the socket has been closed, and discard
+        // the (real, non-ancillary) data that was read.
+        return ReadCode::READ_DONE;
+      }
+      // `ancillaryData()` is expected to check and error on this, since
+      // it's probably incorrect to process truncated ancillary data.  If
+      // some bizarro callback wants to treat this as recoverable, it can
+      // clear `MSG_CTRUNC` on `msg_flags` before returning.
+      //
+      // Don't move this: `performReadMsg` doesn't guarantee that `msg_flags`
+      // is valid without `readAncillaryDataCallback_`.  Also, the
+      // `readCallback_ != prevReadCallback` test means that we can safely
+      // call `failRead()` since a prior error would clear the read CB.
+      if (msg.msg_flags & MSG_CTRUNC) {
+        VLOG(5) << "AsyncSocket::performReadInternal() this=" << this
+                << ", ancillary data was truncated: " << msg.msg_flags;
+        readErr_ = READ_ERROR;
+        AsyncSocketException ex(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("recvmsg() got MSG_CTRUNC"));
+        return failRead(__func__, ex);
+      }
+    }
     readCallback_->readDataAvailable(size_t(bytesRead));
 
     // Continue reading if we filled the available buffer

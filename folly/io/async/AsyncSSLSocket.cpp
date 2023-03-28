@@ -1511,6 +1511,10 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadSingle(
   VLOG(4) << "AsyncSSLSocket::performReadSingle() this=" << this
           << ", buf=" << buf << ", buflen=" << buflen;
 
+  // Integration with ancillary data would have to be implemented in
+  // `bioRead`, and the data then plumbed out via the outer `msghdr`.
+  DCHECK(readAncillaryDataCallback_ == nullptr);
+
   int numToRead = 0;
   if (buflen > std::numeric_limits<int>::max()) {
     numToRead = std::numeric_limits<int>::max();
