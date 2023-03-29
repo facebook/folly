@@ -241,27 +241,27 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
       min = std::min(min, digest.min_);
       max = std::max(max, digest.max_);
       count += curCount;
-      for (const auto& centroid : digest.centroids_) {
-        centroids.push_back(centroid);
-      }
+      centroids.insert(
+          centroids.end(), digest.centroids_.begin(), digest.centroids_.end());
     }
   }
 
-  for (size_t digestsPerBlock = 1; digestsPerBlock < starts.size();
+  size_t startsSize = starts.size();
+  for (size_t digestsPerBlock = 1; digestsPerBlock < startsSize;
        digestsPerBlock *= 2) {
     // Each sorted block is digestPerBlock digests big. For each step, try to
     // merge two blocks together.
-    for (size_t i = 0; i < starts.size(); i += (digestsPerBlock * 2)) {
+    for (size_t i = 0; i < startsSize; i += (digestsPerBlock * 2)) {
       // It is possible that this block is incomplete (less than digestsPerBlock
       // big). In that case, the rest of the block is sorted and leave it alone
-      if (i + digestsPerBlock < starts.size()) {
+      if (i + digestsPerBlock < startsSize) {
         auto first = starts[i];
         auto middle = starts[i + digestsPerBlock];
 
         // It is possible that the next block is incomplete (less than
         // digestsPerBlock big). In that case, merge to end. Otherwise, merge to
         // the end of that block.
-        auto last = (i + (digestsPerBlock * 2) < starts.size())
+        auto last = (i + (digestsPerBlock * 2) < startsSize)
             ? *(starts.begin() + i + 2 * digestsPerBlock)
             : centroids.end();
         std::inplace_merge(first, middle, last);
@@ -284,7 +284,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   double weightSoFar = cur.weight();
   double sumsToMerge = 0;
   double weightsToMerge = 0;
-  for (auto it = centroids.begin() + 1; it != centroids.end(); ++it) {
+  for (auto it = centroids.begin() + 1, e = centroids.end(); it != e; ++it) {
     weightSoFar += it->weight();
     if (weightSoFar <= q_limit_times_count) {
       sumsToMerge += it->mean() * it->weight();
