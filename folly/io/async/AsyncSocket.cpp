@@ -2962,7 +2962,12 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
   }
 
   // Perform the read; we want `msg` for the `ancillaryData` callback.
-  struct ::msghdr msg;
+  //
+  // Zero-initialization is crucial here because not all code paths in
+  // `performReadMsg` go through `recvmsg` (e.g., "pre-received data" and
+  // "recv" are possibilities).  For those that do not, we want at a minimum
+  // `msg_controllen` and `msg_flags` to be zero.
+  struct ::msghdr msg {};
   // Dest address info
   msg.msg_name = nullptr;
   msg.msg_namelen = 0;

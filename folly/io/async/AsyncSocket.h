@@ -1476,7 +1476,10 @@ class AsyncSocket : public AsyncSocketTransport {
   // Attempt to read into one or more `struct iovec`s.  The caller is
   // responsible for setting `msg.msg_iov` and `msg.msg_iovlen` to the
   // buffers that will receive the read, and for initializing
-  // `msg.msg_name*`.
+  // `msg.msg_name*`.  In the case that `readAncillaryCallback_` is set, the
+  // caller may also want to populate `msg_control`, `msg_controllen`, and
+  // `msg_flags` -- if no ancillary data are being read, it's fine to leave
+  // them at their defaults of 0.
   virtual ReadResult performReadMsg(
       struct ::msghdr& msg, AsyncReader::ReadCallback::ReadMode);
 
