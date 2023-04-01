@@ -191,6 +191,56 @@ class AsyncSocket : public AsyncSocketTransport {
     virtual folly::MutableByteRange getAncillaryDataCtrlBuffer() = 0;
   };
 
+  /**
+   * Sometimes `SendMsgParamsCallback` needs to send different ancillary
+   * data for different writes, for example when sending FDs over Unix
+   * sockets.
+   *
+   * This opaque type acts as the key to match `writeChain` calls with
+   * `getAncillaryData()` calls.  It wraps `IOBuf*`, and implements
+   * equality, hashing, and ostream writes for debugging.
+   *
+   * Important usage notes:
+   *   - Even though `WriteRequestTag` never dereferences the pointer, it is
+   *     still INCORRECT to use it after the write is over, whether or not
+   *     the `IOBuf` had been destructed, because the same pointer could now
+   *     refer to new, different data that is being written (see
+   *     `getReleaseIOBufCallback` for the mechanism).
+   *   - Therefore, if you store a `WriteRequestTag`, you must remove it
+   *     whenever a write is complete.  This can be done either in
+   *     `WriteCallback::{writeErr,writeSuccess}`, or by inheriting from
+   *     `AsyncSocket::releaseIOBuf`, or by adding a new method
+   *     `SendMsgParamsCallback::onReleaseIOBuf`.
+   *   - Not all child classes support write tagging.  Notably, we removed
+   *     the `AsyncSSLSocket` implementation since it added complexity and
+   *     was not used.  Breadcrumbs are in `bioWrite`, or rev hash
+   *     95df2ce7c98a.
+   *   - The `EmptyDummy` constructor is for tests, or marking empty tags.
+   *     `SendMsgParamsCallback` methods can also be called with an empty
+   *     tag if the write is not submitted via `writeChain`.
+   */
+  struct WriteRequestTag {
+    struct EmptyDummy {};
+
+    explicit WriteRequestTag(EmptyDummy) : buf_(nullptr) {}
+    explicit WriteRequestTag(folly::IOBuf* buf) : buf_(buf) {}
+
+    bool operator==(const WriteRequestTag& other) const {
+      // Remember to also update std::hash<folly::AsyncSocket::WriteRequestTag>
+      // and ostream operator<<
+      return buf_ == other.buf_;
+    }
+
+    [[nodiscard]] bool empty() const noexcept { return buf_ == nullptr; }
+
+   private:
+    friend struct std::hash<WriteRequestTag>;
+    friend std::ostream& operator<<(std::ostream&, const WriteRequestTag&);
+
+    // The `IOBuf` submitted through `writeChain`
+    const folly::IOBuf* buf_;
+  };
+
   class SendMsgParamsCallback {
    public:
     virtual ~SendMsgParamsCallback() = default;
@@ -227,6 +277,7 @@ class AsyncSocket : public AsyncSocketTransport {
      *
      * @param flags     Write flags requested for the given write operation
      * @param data      Pointer to ancillary data buffer to initialize.
+     * @param writeTag  Documented on `WriteRequestTag`.
      * @param byteEventsEnabled      If byte events are enabled for this socket.
      *                               When enabled, flags relevant to socket
      *                               timestamps (e.g., TIMESTAMP_TX) should be
@@ -235,21 +286,34 @@ class AsyncSocket : public AsyncSocketTransport {
     virtual void getAncillaryData(
         folly::WriteFlags flags,
         void* data,
+        const WriteRequestTag& writeTag,
         const bool byteEventsEnabled = false) noexcept;
 
     /**
      * getAncillaryDataSize() will be invoked to retrieve the size of
      * ancillary data buffer which should be passed to ::sendmsg() system call
+     * The result must not exceed `maxAncillaryDataSize`.
      *
      * @param flags     Write flags requested for the given write operation
+     * @param writeTag  Documented on `WriteRequestTag`.
      * @param byteEventsEnabled      If byte events are enabled for this socket.
      *                               When enabled, flags relevant to socket
      *                               timestamps (e.g., TIMESTAMP_TX) should be
      *                               included in ancillary (msg_control) data.
      */
     virtual uint32_t getAncillaryDataSize(
-        folly::WriteFlags flags, const bool byteEventsEnabled = false) noexcept;
+        folly::WriteFlags flags,
+        const WriteRequestTag& writeTag,
+        const bool byteEventsEnabled = false) noexcept;
 
+    // This is not an OS limitation (see `/proc/sys/net/core/optmem_max` on
+    // Linux) but is done only because today's `AsyncSocket` implementation
+    // uses `alloca` to allocate the ancillary data buffer on the stack in
+    // order to support a cheap default `SendMsgParamsCallback` on every
+    // socket.  If the buffer management could be handed to the socket (e.g.
+    // each socket contains a few bytes of buffer for the default callback),
+    // then we could delete this maximum, and `getAncillaryDataSize`, in
+    // favor of `folly::ByteRange getAncillaryData()`.
     static const size_t maxAncillaryDataSize{0x5000};
 
    private:
@@ -1429,7 +1493,8 @@ class AsyncSocket : public AsyncSocketTransport {
       uint32_t count,
       WriteFlags flags,
       uint32_t* countWritten,
-      uint32_t* partialWritten);
+      uint32_t* partialWritten,
+      WriteRequestTag writeTag);
 
   /**
    * Prepares a msghdr and sends the message over the socket using sendmsg
@@ -1439,7 +1504,10 @@ class AsyncSocket : public AsyncSocketTransport {
    * @param flags           Set of write flags.
    */
   virtual AsyncSocket::WriteResult sendSocketMessage(
-      const iovec* vec, size_t count, WriteFlags flags);
+      const iovec* vec,
+      size_t count,
+      WriteFlags flags,
+      WriteRequestTag writeTag);
 
   /**
    * Sends the message over the socket using sendmsg
@@ -1679,4 +1747,15 @@ class AsyncSocket : public AsyncSocketTransport {
   ConstructorCallbackList<AsyncSocket> constructorCallbackList_{this};
 };
 
+std::ostream& operator<<(
+    std::ostream& os, const folly::AsyncSocket::WriteRequestTag& tag);
+
 } // namespace folly
+
+template <>
+struct std::hash<folly::AsyncSocket::WriteRequestTag> {
+  std::size_t operator()(
+      const folly::AsyncSocket::WriteRequestTag& writeTag) const {
+    return std::hash<const folly::IOBuf*>{}(writeTag.buf_);
+  }
+};

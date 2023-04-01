@@ -292,7 +292,12 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     socket_->adjustZeroCopyFlags(writeFlags);
 
     auto writeResult = socket_->performWrite(
-        getOps(), getOpCount(), writeFlags, &opsWritten_, &partialBytes_);
+        getOps(),
+        getOpCount(),
+        writeFlags,
+        &opsWritten_,
+        &partialBytes_,
+        WriteRequestTag{ioBuf_.get()});
     bytesWritten_ = writeResult.writeReturn > 0 ? writeResult.writeReturn : 0;
     if (bytesWritten_) {
       if (socket_->isZeroCopyRequest(writeFlags)) {
@@ -430,8 +435,10 @@ int AsyncSocket::SendMsgParamsCallback::getDefaultFlags(
 void AsyncSocket::SendMsgParamsCallback::getAncillaryData(
     folly::WriteFlags flags,
     void* data,
+    const WriteRequestTag& writeTag,
     const bool byteEventsEnabled) noexcept {
-  auto ancillaryDataSize = getAncillaryDataSize(flags, byteEventsEnabled);
+  auto ancillaryDataSize =
+      getAncillaryDataSize(flags, writeTag, byteEventsEnabled);
   if (!ancillaryDataSize) {
     return;
   }
@@ -471,7 +478,9 @@ void AsyncSocket::SendMsgParamsCallback::getAncillaryData(
 }
 
 uint32_t AsyncSocket::SendMsgParamsCallback::getAncillaryDataSize(
-    folly::WriteFlags flags, const bool byteEventsEnabled) noexcept {
+    folly::WriteFlags flags,
+    const WriteRequestTag&,
+    const bool byteEventsEnabled) noexcept {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if (WriteFlags::NONE != (flags & kWriteFlagsForTimestamping) &&
       byteEventsEnabled) {
@@ -1669,7 +1678,12 @@ void AsyncSocket::writeImpl(
       assert((eventFlags_ & EventHandler::WRITE) == 0);
 
       auto writeResult = performWrite(
-          vec, uint32_t(count), flags, &countWritten, &partialWritten);
+          vec,
+          uint32_t(count),
+          flags,
+          &countWritten,
+          &partialWritten,
+          WriteRequestTag{ioBuf.get()});
       bytesWritten = writeResult.writeReturn;
       if (bytesWritten < 0) {
         auto errnoCopy = errno;
@@ -3441,7 +3455,10 @@ ssize_t AsyncSocket::tfoSendMsg(
 }
 
 AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
-    const iovec* vec, size_t count, WriteFlags flags) {
+    const iovec* vec,
+    size_t count,
+    WriteFlags flags,
+    WriteRequestTag writeTag) {
   // lambda to gather and merge PrewriteRequests from observers
   auto mergePrewriteRequests = [this,
                                 vec,
@@ -3517,7 +3534,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
 
   // lambda to prepare and send a message, and handle byte events
   // parameters have L at the end to prevent shadowing warning from gcc
-  auto prepSendMsg = [this](
+  auto prepSendMsg = [this, writeTag = std::move(writeTag)](
                          const iovec* vecL,
                          const size_t countL,
                          const WriteFlags flagsL) {
@@ -3532,8 +3549,8 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     msg.msg_iovlen = std::min<size_t>(countL, kIovMax);
     msg.msg_flags = 0; // passed to sendSocketMessage below, it sets them
     msg.msg_control = nullptr;
-    msg.msg_controllen =
-        sendMsgParamCallback_->getAncillaryDataSize(flagsL, byteEventsEnabled);
+    msg.msg_controllen = sendMsgParamCallback_->getAncillaryDataSize(
+        flagsL, writeTag, byteEventsEnabled);
     CHECK_GE(
         AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,
         msg.msg_controllen);
@@ -3541,7 +3558,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     if (msg.msg_controllen != 0) {
       msg.msg_control = reinterpret_cast<char*>(alloca(msg.msg_controllen));
       sendMsgParamCallback_->getAncillaryData(
-          flagsL, msg.msg_control, byteEventsEnabled);
+          flagsL, msg.msg_control, writeTag, byteEventsEnabled);
     }
 
     const auto prewriteRawBytesWritten = getRawBytesWritten();
@@ -3704,8 +3721,9 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     uint32_t count,
     WriteFlags flags,
     uint32_t* countWritten,
-    uint32_t* partialWritten) {
-  auto writeResult = sendSocketMessage(vec, count, flags);
+    uint32_t* partialWritten,
+    WriteRequestTag writeTag) {
+  auto writeResult = sendSocketMessage(vec, count, flags, std::move(writeTag));
   auto totalWritten = writeResult.writeReturn;
   if (totalWritten < 0) {
     bool tryAgain = (errno == EAGAIN);
@@ -4183,6 +4201,12 @@ std::string AsyncSocket::withAddr(folly::StringPiece s) {
 
 void AsyncSocket::setBufferCallback(BufferCallback* cb) {
   bufferCallback_ = cb;
+}
+
+std::ostream& operator<<(
+    std::ostream& os, const folly::AsyncSocket::WriteRequestTag& tag) {
+  os << tag.buf_;
+  return os;
 }
 
 } // namespace folly

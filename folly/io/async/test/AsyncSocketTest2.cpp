@@ -8496,8 +8496,12 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // to send ancillary data
   int s_data = 12345;
   WriteCallback wcb;
-  socket->write(&wcb, &s_data, sizeof(s_data));
+  auto ioBuf = folly::IOBuf::wrapBuffer(&s_data, sizeof(s_data));
+  sendMsgCB.expectedTag_ = folly::AsyncSocket::WriteRequestTag{
+      ioBuf.get()}; // Also test write tagging.
+  socket->writeChain(&wcb, std::move(ioBuf));
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+  ASSERT_TRUE(sendMsgCB.queriedData_); // Did the tag check run?
 
   // Receive the message
   union {

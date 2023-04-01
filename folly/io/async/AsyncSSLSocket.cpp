@@ -1718,10 +1718,11 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
     uint32_t count,
     WriteFlags flags,
     uint32_t* countWritten,
-    uint32_t* partialWritten) {
+    uint32_t* partialWritten,
+    WriteRequestTag writeTag) {
   if (sslState_ == STATE_UNENCRYPTED) {
     return AsyncSocket::performWrite(
-        vec, count, flags, countWritten, partialWritten);
+        vec, count, flags, countWritten, partialWritten, std::move(writeTag));
   }
   if (sslState_ != STATE_ESTABLISHED) {
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
@@ -1945,7 +1946,12 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
   struct iovec vec;
   vec.iov_base = const_cast<char*>(in);
   vec.iov_len = size_t(inl);
-  auto result = sslSock->sendSocketMessage(&vec, 1, flags);
+  // NB: It would be technically possible to plumb through the actual write
+  // tag in here, but we decided it not to be worth the implementation
+  // complexity.  The PoC implementation + tests are D43023628 (V15) +
+  // D44433483.
+  auto result = sslSock->sendSocketMessage(
+      &vec, 1, flags, WriteRequestTag{WriteRequestTag::EmptyDummy()});
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
     if (OpenSSLUtils::getBioShouldRetryWrite(int(result.writeReturn))) {

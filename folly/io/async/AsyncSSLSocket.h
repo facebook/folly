@@ -921,7 +921,8 @@ class AsyncSSLSocket : public AsyncSocket {
       uint32_t count,
       WriteFlags flags,
       uint32_t* countWritten,
-      uint32_t* partialWritten) override;
+      uint32_t* partialWritten,
+      WriteRequestTag writeTag) override;
 
   ssize_t performWriteIovec(
       const iovec* vec,

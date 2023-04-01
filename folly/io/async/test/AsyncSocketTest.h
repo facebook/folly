@@ -473,7 +473,9 @@ class TestSendMsgParamsCallback
   void getAncillaryData(
       folly::WriteFlags flags,
       void* data,
+      const folly::AsyncSocket::WriteRequestTag& tag,
       const bool /* byteEventsEnabled */) noexcept override {
+    CHECK_EQ(tag, expectedTag_);
     queriedData_ = true;
     if (writeFlags_ == folly::WriteFlags::NONE) {
       writeFlags_ = flags;
@@ -486,7 +488,9 @@ class TestSendMsgParamsCallback
 
   uint32_t getAncillaryDataSize(
       folly::WriteFlags flags,
+      const folly::AsyncSocket::WriteRequestTag& tag,
       const bool /* byteEventsEnabled */) noexcept override {
+    CHECK_EQ(tag, expectedTag_);
     if (writeFlags_ == folly::WriteFlags::NONE) {
       writeFlags_ = flags;
     } else {
@@ -501,6 +505,8 @@ class TestSendMsgParamsCallback
   void* data_;
   bool queriedFlags_;
   bool queriedData_;
+  folly::AsyncSocket::WriteRequestTag expectedTag_{
+      folly::AsyncSocket::WriteRequestTag::EmptyDummy()};
 };
 
 class TestServer {
