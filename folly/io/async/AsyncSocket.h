@@ -197,8 +197,9 @@ class AsyncSocket : public AsyncSocketTransport {
    * sockets.
    *
    * This opaque type acts as the key to match `writeChain` calls with
-   * `getAncillaryData()` calls.  It wraps `IOBuf*`, and implements
-   * equality, hashing, and ostream writes for debugging.
+   * `getAncillaryData()` and corresponding `wroteBytes()` calls.  It wraps
+   * `IOBuf*`, and implements equality, hashing, and ostream writes for
+   * debugging.
    *
    * Important usage notes:
    *   - Even though `WriteRequestTag` never dereferences the pointer, it is
@@ -305,6 +306,17 @@ class AsyncSocket : public AsyncSocketTransport {
         folly::WriteFlags flags,
         const WriteRequestTag& writeTag,
         const bool byteEventsEnabled = false) noexcept;
+
+    /**
+     * Called immediately after a `sendmsg` corresponding to the preceding
+     * `getAncillaryData()` successfully sends at least 1 byte.
+     *
+     * This is required to enable "exactly once" transmission of ancillary
+     * data corresponding to `writeTag`.  For example, `AsyncFdSocket` ought
+     * not transmit tag-associated FDs twice.  Per POSIX, ancillary data are
+     * transmitted together with the first data byte.
+     */
+    virtual void wroteBytes(const WriteRequestTag&) noexcept {}
 
     // This is not an OS limitation (see `/proc/sys/net/core/optmem_max` on
     // Linux) but is done only because today's `AsyncSocket` implementation

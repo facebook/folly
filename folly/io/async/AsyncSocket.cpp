@@ -3574,21 +3574,25 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
       writeResult = sendSocketMessage(fd_, &msg, msg_flags);
     }
 
-    if (writeResult.writeReturn > 0 && byteEventsEnabled &&
-        isSet(flagsL, WriteFlags::TIMESTAMP_WRITE)) {
-      CHECK_GT(getRawBytesWritten(), prewriteRawBytesWritten); // sanity check
-      ByteEvent byteEvent = {};
-      byteEvent.type = ByteEvent::Type::WRITE;
-      byteEvent.offset = getRawBytesWritten() - 1;
-      byteEvent.maybeRawBytesWritten = writeResult.writeReturn;
-      byteEvent.maybeRawBytesTriedToWrite = 0;
-      for (size_t i = 0; i < countL; ++i) {
-        byteEvent.maybeRawBytesTriedToWrite.value() += vecL[i].iov_len;
+    if (writeResult.writeReturn > 0) {
+      if (msg.msg_controllen != 0) {
+        sendMsgParamCallback_->wroteBytes(writeTag);
       }
-      byteEvent.maybeWriteFlags = flagsL;
-      for (const auto& observer : lifecycleObservers_) {
-        if (observer->getConfig().byteEvents) {
-          observer->byteEvent(this, byteEvent);
+      if (byteEventsEnabled && isSet(flagsL, WriteFlags::TIMESTAMP_WRITE)) {
+        CHECK_GT(getRawBytesWritten(), prewriteRawBytesWritten); // sanity check
+        ByteEvent byteEvent = {};
+        byteEvent.type = ByteEvent::Type::WRITE;
+        byteEvent.offset = getRawBytesWritten() - 1;
+        byteEvent.maybeRawBytesWritten = writeResult.writeReturn;
+        byteEvent.maybeRawBytesTriedToWrite = 0;
+        for (size_t i = 0; i < countL; ++i) {
+          byteEvent.maybeRawBytesTriedToWrite.value() += vecL[i].iov_len;
+        }
+        byteEvent.maybeWriteFlags = flagsL;
+        for (const auto& observer : lifecycleObservers_) {
+          if (observer->getConfig().byteEvents) {
+            observer->byteEvent(this, byteEvent);
+          }
         }
       }
     }

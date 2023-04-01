@@ -8499,9 +8499,11 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   auto ioBuf = folly::IOBuf::wrapBuffer(&s_data, sizeof(s_data));
   sendMsgCB.expectedTag_ = folly::AsyncSocket::WriteRequestTag{
       ioBuf.get()}; // Also test write tagging.
+  ASSERT_FALSE(sendMsgCB.tagLastWritten_.has_value());
   socket->writeChain(&wcb, std::move(ioBuf));
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
   ASSERT_TRUE(sendMsgCB.queriedData_); // Did the tag check run?
+  ASSERT_EQ(sendMsgCB.expectedTag_, *sendMsgCB.tagLastWritten_);
 
   // Receive the message
   union {

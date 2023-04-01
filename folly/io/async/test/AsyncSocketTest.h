@@ -499,6 +499,12 @@ class TestSendMsgParamsCallback
     return dataSize_;
   }
 
+  void wroteBytes(
+      const folly::AsyncSocket::WriteRequestTag& tag) noexcept override {
+    CHECK_EQ(tag, expectedTag_);
+    tagLastWritten_ = tag;
+  }
+
   int flags_;
   folly::WriteFlags writeFlags_;
   uint32_t dataSize_;
@@ -507,6 +513,7 @@ class TestSendMsgParamsCallback
   bool queriedData_;
   folly::AsyncSocket::WriteRequestTag expectedTag_{
       folly::AsyncSocket::WriteRequestTag::EmptyDummy()};
+  std::optional<folly::AsyncSocket::WriteRequestTag> tagLastWritten_;
 };
 
 class TestServer {
