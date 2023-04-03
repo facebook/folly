@@ -1621,7 +1621,7 @@ class AsyncSocket : public AsyncSocketTransport {
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
 
-  void releaseIOBuf(
+  virtual void releaseIOBuf(
       std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback);
 
   ReadCode processZeroCopyRead();
