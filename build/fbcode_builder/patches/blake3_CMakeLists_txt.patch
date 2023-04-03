@@ -13,7 +13,7 @@ new file mode 100644
 index 0000000..171554b
 --- /dev/null
 +++ b/CMakeLists.txt
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,81 @@
 +cmake_minimum_required(VERSION 3.12)
 +cmake_policy(VERSION ${CMAKE_VERSION})
 +
@@ -40,13 +40,16 @@ index 0000000..171554b
 +	blake3_dispatch.c
 +	blake3_portable.c)
 +
-+if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
++if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64) OR (CMAKE_SYSTEM_PROCESSOR STREQUAL AMD64))
 +	enable_language(ASM)
 +	if(MSVC)
++		enable_language(ASM_MASM)
 +		set(SUFFIX "windows_msvc.asm")
 +	elseif(WIN32)
++		enable_language(ASM)
 +		set(SUFFIX "windows_gnu.S")
 +	else()
++		enable_language(ASM)
 +		set(SUFFIX "unix.S")
 +	endif()
 +	target_sources(blake3 PRIVATE
