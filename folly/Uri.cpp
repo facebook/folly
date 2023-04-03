@@ -32,7 +32,30 @@ std::string submatch(const boost::cmatch& m, int idx) {
 
 } // namespace
 
+// private default contructor
+Uri::Uri() : hasAuthority_(false), port_(0) {}
+
+// public string constructor
 Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
+  auto maybeUri = tryFromString(str);
+  if (maybeUri.hasError()) {
+    switch (maybeUri.error()) {
+      case UriFormatError::INVALID_URI_AUTHORITY:
+        throw std::invalid_argument(
+            to<std::string>("invalid URI authority: ", str));
+      case UriFormatError::INVALID_URI_PORT:
+        throw std::invalid_argument(to<std::string>("invalid URI port: ", str));
+      case UriFormatError::INVALID_URI:
+      default:
+        throw std::invalid_argument(to<std::string>("invalid URI: ", str));
+    }
+  }
+  *this = maybeUri.value();
+}
+
+Expected<Uri, UriFormatError> Uri::tryFromString(StringPiece str) noexcept {
+  Uri result;
+
   static const boost::regex uriRegex(
       "([a-zA-Z][a-zA-Z0-9+.-]*):" // scheme:
       "([^?#]*)" // authority and path
@@ -42,11 +65,15 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
 
   boost::cmatch match;
   if (UNLIKELY(!boost::regex_match(str.begin(), str.end(), match, uriRegex))) {
-    throw std::invalid_argument(to<std::string>("invalid URI ", str));
+    return makeUnexpected(UriFormatError::INVALID_URI);
   }
 
-  scheme_ = submatch(match, 1);
-  std::transform(scheme_.begin(), scheme_.end(), scheme_.begin(), ::tolower);
+  result.scheme_ = submatch(match, 1);
+  std::transform(
+      result.scheme_.begin(),
+      result.scheme_.end(),
+      result.scheme_.begin(),
+      ::tolower);
 
   StringPiece authorityAndPath(match[2].first, match[2].second);
   boost::cmatch authorityAndPathMatch;
@@ -56,8 +83,8 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
           authorityAndPathMatch,
           authorityAndPathRegex)) {
     // Does not start with //, doesn't have authority
-    hasAuthority_ = false;
-    path_ = authorityAndPath.str();
+    result.hasAuthority_ = false;
+    result.path_ = authorityAndPath.str();
   } else {
     static const boost::regex authorityRegex(
         "(?:([^@:]*)(?::([^@]*))?@)?" // username, password
@@ -72,30 +99,29 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
             authority.second,
             authorityMatch,
             authorityRegex)) {
-      throw std::invalid_argument(to<std::string>(
-          "invalid URI authority ",
-          StringPiece(authority.first, authority.second)));
+      return makeUnexpected(UriFormatError::INVALID_URI_AUTHORITY);
     }
 
     StringPiece port(authorityMatch[4].first, authorityMatch[4].second);
     if (!port.empty()) {
       try {
-        port_ = to<uint16_t>(port);
-      } catch (ConversionError const& e) {
-        throw std::invalid_argument(
-            to<std::string>("invalid URI port: ", e.what()));
+        result.port_ = to<uint16_t>(port);
+      } catch (ConversionError const&) {
+        return makeUnexpected(UriFormatError::INVALID_URI_PORT);
       }
     }
 
-    hasAuthority_ = true;
-    username_ = submatch(authorityMatch, 1);
-    password_ = submatch(authorityMatch, 2);
-    host_ = submatch(authorityMatch, 3);
-    path_ = submatch(authorityAndPathMatch, 2);
+    result.hasAuthority_ = true;
+    result.username_ = submatch(authorityMatch, 1);
+    result.password_ = submatch(authorityMatch, 2);
+    result.host_ = submatch(authorityMatch, 3);
+    result.path_ = submatch(authorityAndPathMatch, 2);
   }
 
-  query_ = submatch(match, 3);
-  fragment_ = submatch(match, 4);
+  result.query_ = submatch(match, 3);
+  result.fragment_ = submatch(match, 4);
+
+  return result;
 }
 
 std::string Uri::authority() const {
