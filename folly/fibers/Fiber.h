@@ -83,7 +83,7 @@ class Fiber {
   }
 
  private:
-  enum State {
+  enum State : char {
     INVALID, /**< Does't have task function */
     NOT_STARTED, /**< Has task function, not started */
     READY_TO_RUN, /**< Was started, blocked, then unblocked */
@@ -125,6 +125,9 @@ class Fiber {
    */
   void recordStackPosition();
 
+  TaskOptions taskOptions_;
+  bool recordStackUsed_{false};
+  bool stackFilledWithMagic_{false};
   FiberManager& fiberManager_; /**< Associated FiberManager */
   size_t fiberStackSize_;
   unsigned char* fiberStackLimit_;
@@ -132,8 +135,6 @@ class Fiber {
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
   folly::AsyncStackRoot* asyncRoot_ = nullptr;
   folly::Function<void()> func_; /**< task function */
-  bool recordStackUsed_{false};
-  bool stackFilledWithMagic_{false};
   std::chrono::steady_clock::time_point currStartTime_;
   std::chrono::steady_clock::duration prevDuration_{0};
 #ifdef FOLLY_SANITIZE_THREAD
@@ -152,7 +153,6 @@ class Fiber {
 
   folly::Function<void()> resultFunc_;
   folly::Function<void()> finallyFunc_;
-  TaskOptions taskOptions_;
 
   class LocalData {
    public:
