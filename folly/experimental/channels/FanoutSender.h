@@ -43,9 +43,9 @@ class FanoutSenderProcessor;
  * Example:
  *
  *  FanoutSender<int> fanoutSender;
- *  auto receiver1 = fanoutSender.getNewReceiver();
- *  auto receiver2 = fanoutSender.getNewReceiver();
- *  auto receiver3 = fanoutSender.getNewReceiver({1, 2, 3});
+ *  auto receiver1 = fanoutSender.subscribe();
+ *  auto receiver2 = fanoutSender.subscribe();
+ *  auto receiver3 = fanoutSender.subscribe({1, 2, 3});
  *  std::move(fanoutSender).close();
  */
 template <typename ValueType>
