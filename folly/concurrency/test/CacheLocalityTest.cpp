@@ -1150,11 +1150,13 @@ TEST(CoreAllocator, Basic) {
   coreFree(res);
 
   res = coreMalloc(8, kNumStripes, 0);
-  EXPECT_TRUE((intptr_t)res % 8 == 0); // check alignment
+  EXPECT_EQ(0, (intptr_t)res % 8); // check alignment
   memset(res, 0, 8);
   coreFree(res);
   res = coreMalloc(12, kNumStripes, 0);
-  EXPECT_TRUE((intptr_t)res % 16 == 0); // check alignment
+  if (alignof(std::max_align_t) >= 16) {
+    EXPECT_EQ(0, (intptr_t)res % 16); // check alignment
+  }
   memset(res, 0, 12);
   coreFree(res);
   res = coreMalloc(257, kNumStripes, 0);
