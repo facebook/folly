@@ -155,7 +155,7 @@ size_t demangle(const char* name, char* out, size_t outSize) {
     }
   }
 
-  if (reinterpret_cast<void*>(liberty_demangle)) {
+  if (folly::demangle_build_has_liberty) {
     DemangleBuf dbuf;
     dbuf.dest = out;
     dbuf.remaining = outSize ? outSize - 1 : 0; // leave room for null term
