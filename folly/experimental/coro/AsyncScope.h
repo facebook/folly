@@ -17,17 +17,20 @@
 #pragma once
 
 #include <folly/CancellationToken.h>
+#include <folly/ExceptionWrapper.h>
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/BarrierTask.h>
 #include <folly/futures/Future.h>
+#include <folly/portability/SourceLocation.h>
 
 #include <glog/logging.h>
 
 #include <atomic>
 #include <cassert>
+#include <optional>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -63,7 +66,12 @@ namespace coro {
 //
 class AsyncScope {
  public:
-  AsyncScope() noexcept = default;
+  AsyncScope() noexcept;
+
+  // @param throwOnJoin If true, will throw last unhandled exception (if any)
+  //                    on joinAsync. Default behavior is to ignore the
+  //                    exception in opt builds and FATAL in dev builds
+  explicit AsyncScope(bool throwOnJoin) noexcept;
 
   // Destroy the AsyncScope object.
   //
@@ -113,6 +121,12 @@ class AsyncScope {
   template <typename Awaitable>
   void add(Awaitable&& awaitable, void* returnAddress = nullptr);
 
+  template <typename Awaitable>
+  void addWithSourceLoc(
+      Awaitable&& awaitable,
+      void* returnAddress = nullptr,
+      source_location sourceLocation = source_location::current());
+
   /**
    * Asynchronously wait for all started tasks to complete.
    *
@@ -132,7 +146,12 @@ class AsyncScope {
 
  private:
   template <typename Awaitable>
-  static detail::DetachedBarrierTask addImpl(Awaitable awaitable) {
+  static detail::DetachedBarrierTask addImpl(
+      Awaitable awaitable,
+      bool throwOnJoin,
+      folly::exception_wrapper& maybeException,
+      std::optional<source_location> source,
+      std::atomic<bool>& exceptionRaised) {
     static_assert(
         std::is_void_v<await_result_t<Awaitable>> ||
             std::is_same_v<await_result_t<Awaitable>, folly::Unit>,
@@ -142,9 +161,22 @@ class AsyncScope {
       co_await std::move(awaitable);
     } catch (const OperationCancelled&) {
     } catch (...) {
-      LOG(DFATAL)
-          << "Unhandled exception thrown from task added to AsyncScope: "
-          << folly::exceptionStr(std::current_exception());
+      if (throwOnJoin) {
+        LOG(ERROR)
+            << (source.has_value() ? sourceLocationToString(source.value())
+                                   : "")
+            << "Unhandled exception thrown from task added to AsyncScope: "
+            << folly::exceptionStr(std::current_exception());
+        if (!exceptionRaised.exchange(true)) {
+          maybeException = folly::exception_wrapper(std::current_exception());
+        }
+      } else {
+        LOG(DFATAL)
+            << (source.has_value() ? sourceLocationToString(source.value())
+                                   : "")
+            << "Unhandled exception thrown from task added to AsyncScope: "
+            << folly::exceptionStr(std::current_exception());
+      }
     }
   }
 
@@ -152,7 +184,15 @@ class AsyncScope {
   std::atomic<bool> anyTasksStarted_{false};
   bool joinStarted_{false};
   bool joined_{false};
+  bool throwOnJoin_{false};
+  folly::exception_wrapper maybeException_;
+  std::atomic<bool> exceptionRaised_{false};
 };
+
+inline AsyncScope::AsyncScope() noexcept : throwOnJoin_(false) {}
+
+inline AsyncScope::AsyncScope(bool throwOnJoin) noexcept
+    : throwOnJoin_(throwOnJoin) {}
 
 inline AsyncScope::~AsyncScope() {
   CHECK(!anyTasksStarted_.load(std::memory_order_relaxed) || joined_)
@@ -171,7 +211,32 @@ FOLLY_NOINLINE inline void AsyncScope::add(
       !joined_ &&
       "It is invalid to add() more work after work has been joined");
   anyTasksStarted_.store(true, std::memory_order_relaxed);
-  addImpl(static_cast<Awaitable&&>(awaitable))
+  addImpl(
+      static_cast<Awaitable&&>(awaitable),
+      throwOnJoin_,
+      maybeException_,
+      std::nullopt,
+      exceptionRaised_)
+      .start(
+          &barrier_,
+          returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+}
+
+template <typename Awaitable>
+FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
+    Awaitable&& awaitable,
+    void* returnAddress,
+    source_location sourceLocation) {
+  assert(
+      !joined_ &&
+      "It is invalid to add() more work after work has been joined");
+  anyTasksStarted_.store(true, std::memory_order_relaxed);
+  addImpl(
+      static_cast<Awaitable&&>(awaitable),
+      throwOnJoin_,
+      maybeException_,
+      sourceLocation,
+      exceptionRaised_)
       .start(
           &barrier_,
           returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
@@ -182,6 +247,9 @@ inline Task<void> AsyncScope::joinAsync() noexcept {
   joinStarted_ = true;
   co_await barrier_.arriveAndWait();
   joined_ = true;
+  if (maybeException_.has_exception_ptr()) {
+    maybeException_.throw_exception();
+  }
 }
 
 inline folly::SemiFuture<folly::Unit> AsyncScope::cleanup() noexcept {
@@ -208,9 +276,16 @@ class CancellableAsyncScope {
  public:
   CancellableAsyncScope() noexcept
       : cancellationToken_(cancellationSource_.getToken()) {}
+  explicit CancellableAsyncScope(bool throwOnJoin) noexcept
+      : cancellationToken_(cancellationSource_.getToken()),
+        scope_(throwOnJoin) {}
   explicit CancellableAsyncScope(CancellationToken&& token)
       : cancellationToken_(CancellationToken::merge(
             cancellationSource_.getToken(), std::move(token))) {}
+  CancellableAsyncScope(CancellationToken&& token, bool throwOnJoin)
+      : cancellationToken_(CancellationToken::merge(
+            cancellationSource_.getToken(), std::move(token))),
+        scope_(throwOnJoin) {}
 
   /**
    * Query the number of tasks added to the scope that have not yet completed.
@@ -241,6 +316,32 @@ class CancellableAsyncScope {
                   : cancellationToken_,
             static_cast<Awaitable&&>(awaitable)),
         returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+  }
+
+  template <typename Awaitable>
+  void addWithSourceLoc(
+      Awaitable&& awaitable,
+      std::optional<CancellationToken> token,
+      void* returnAddress = nullptr,
+      source_location sourceLocation = source_location::current()) {
+    scope_.addWithSourceLoc(
+        co_withCancellation(
+            token ? CancellationToken::merge(*token, cancellationToken_)
+                  : cancellationToken_,
+            static_cast<Awaitable&&>(awaitable)),
+        returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS(),
+        sourceLocation);
+  }
+
+  template <typename Awaitable>
+  void addWithSourceLoc(
+      Awaitable&& awaitable,
+      source_location sourceLocation = source_location::current()) {
+    addWithSourceLoc(
+        std::forward<Awaitable>(awaitable),
+        std::nullopt,
+        nullptr,
+        std::move(sourceLocation));
   }
 
   /**
