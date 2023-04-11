@@ -143,6 +143,14 @@ TYPED_TEST(AtomicUnorderedInsertMapTest, basic) {
   a++;
   EXPECT_TRUE(a == iter);
   EXPECT_TRUE(a != b);
+
+  auto rangeIter = m.cbegin();
+  for (const auto& [key, value] : m) {
+    EXPECT_EQ(key, rangeIter->first);
+    EXPECT_EQ(value, rangeIter->second);
+    rangeIter++;
+  }
+  EXPECT_EQ(m.end(), m.cend());
 }
 
 TEST(AtomicUnorderedInsertMap, load_factor) {

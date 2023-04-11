@@ -325,8 +325,10 @@ struct AtomicUnorderedInsertMap {
     }
     return ConstIterator(*this, slot);
   }
+  const_iterator begin() const { return cbegin(); }
 
   const_iterator cend() const { return ConstIterator(*this, 0); }
+  const_iterator end() const { return cend(); }
 
  private:
   enum : IndexType {
