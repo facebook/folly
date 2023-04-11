@@ -124,7 +124,7 @@ struct StringSplitAarch64Platform {
     // based on:
     // https://github.com/jfalcou/eve/blob/5264e20c51aeca17675e67abf236ce1ead781c52/include/eve/detail/function/simd/arm/neon/movemask.hpp#L119
     // pack 4 bits into uint64
-    uint16x8_t u16s = vreinterpretq_u8_u16(test);
+    uint16x8_t u16s = vreinterpretq_u16_u8(test);
     u16s = vshrq_n_u16(u16s, 4);
     return vget_lane_u64(vmovn_u16(u16s), 0);
   }
