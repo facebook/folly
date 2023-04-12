@@ -284,10 +284,10 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   std::vector<std::string> endArgs;
 
   for (auto& na : args) {
-    if (na == "--") {
-      not_clean = true;
-    } else if (not_clean) {
+    if (not_clean) {
       endArgs.push_back(na);
+    } else if (na == "--") {
+      not_clean = true;
     } else {
       cleanArgs.push_back(na);
     }
