@@ -280,6 +280,20 @@ TEST(FunctionScheduler, ResetFunc2) {
   fs.addFunctionOnce([&] { total += 3; }, "add4", testInterval(1));
 }
 
+TEST(FunctionScheduler, ResetFuncWithStartDelay) {
+  atomic<int> total{0};
+  FunctionScheduler fs;
+  fs.addFunction([&] { total += 2; }, testInterval(3), "add2", testInterval(2));
+  fs.start();
+  delay(1);
+  EXPECT_EQ(0, total);
+  fs.resetFunctionTimer("add2");
+  delay(1);
+  EXPECT_EQ(0, total);
+  delay(1);
+  EXPECT_EQ(2, total);
+}
+
 TEST(FunctionScheduler, ResetFuncWhileRunning) {
   struct State {
     boost::barrier barrier_a{2};
