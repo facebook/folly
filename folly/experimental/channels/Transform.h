@@ -153,7 +153,7 @@ Receiver<OutputValueType> transform(
  *  // Function that returns an executor
  *  folly::Executor::KeepAlive<folly::SequencedExecutor> getExecutor();
  *
- *  Receiver<std::string> outputReceiver = transform(
+ *  Receiver<std::string> outputReceiver = resumableTransform(
  *      getExecutor(),
  *      InitializeArg{"param"},
  *      [](InitializeArg initializeArg) -> folly::coro::Task<
