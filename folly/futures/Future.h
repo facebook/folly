@@ -324,7 +324,7 @@ class FutureBase {
   ///
   /// Synchronizes between `raise()` (in the consumer's thread)
   ///   and `Promise::setInterruptHandler()` (in the producer's thread).
-  void raise(exception_wrapper interrupt);
+  void raise(exception_wrapper exception);
 
   /// Raises the specified exception-interrupt.
   /// See `raise(exception_wrapper)` for details.
