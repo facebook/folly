@@ -908,6 +908,15 @@ struct dynamic {
   iterator insert(const_iterator pos, T&& value);
 
   /**
+   * Inserts elements from range [first, last) before pos into an array.
+   * Throws if the type is not an array.
+   *
+   * Invalidates iterators.
+   */
+  template <class InputIt>
+  iterator insert(const_iterator pos, InputIt first, InputIt last);
+
+  /**
    * Merge objects.
    *
    * Merge two folly dynamic objects.

@@ -846,6 +846,13 @@ inline dynamic::iterator dynamic::insert(const_iterator pos, T&& value) {
   return arr.insert(pos, std::forward<T>(value));
 }
 
+template <class InputIt>
+inline dynamic::iterator dynamic::insert(
+    const_iterator pos, InputIt first, InputIt last) {
+  auto& arr = get<Array>();
+  return arr.insert(pos, first, last);
+}
+
 inline void dynamic::update(const dynamic& mergeObj) {
   if (!isObject() || !mergeObj.isObject()) {
     throw_exception<TypeError>("object", type(), mergeObj.type());
