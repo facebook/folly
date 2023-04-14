@@ -61,7 +61,7 @@ class TimekeeperScheduledExecutor : public ScheduledExecutor {
       Function<std::shared_ptr<Timekeeper>()> getTimekeeper)
       : parent_(std::move(parent)), getTimekeeper_(std::move(getTimekeeper)) {}
 
-  ~TimekeeperScheduledExecutor() { DCHECK(!keepAliveCounter_); }
+  ~TimekeeperScheduledExecutor() override { DCHECK(!keepAliveCounter_); }
 
   void run(Func);
 
