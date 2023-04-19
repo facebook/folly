@@ -382,8 +382,9 @@ class rcu_domain {
         syncTime_.compare_exchange_strong(
             syncTime, time, std::memory_order_relaxed)) {
       list_head finished;
-      {
-        std::lock_guard<std::mutex> g(syncMutex_);
+      // synchronize() blocks while holding syncMutex_,
+      // so we must not wait for syncMutex_
+      if (std::unique_lock<std::mutex> g(syncMutex_, std::try_to_lock)) {
         half_sync(false, finished);
       }
       // callbacks are called outside of syncMutex_

@@ -328,3 +328,26 @@ TEST(RcuTest, DeeplyNestedReaders) {
   rcu_synchronize();
   delete int_ptr.exchange(nullptr, std::memory_order_acq_rel);
 }
+
+TEST(RcuTest, RetireUnderLock) {
+  using namespace std::chrono;
+
+  // syncTimePeriod is 3.2s
+  auto deadline = steady_clock::now() + seconds(4);
+
+  std::thread t1([&] {
+    while (steady_clock::now() < deadline) {
+      rcu_synchronize();
+    }
+  });
+
+  std::thread t2([&] {
+    while (steady_clock::now() < deadline) {
+      std::scoped_lock<rcu_domain> g(rcu_default_domain());
+      rcu_default_domain().call([] {});
+    }
+  });
+
+  t1.join();
+  t2.join();
+}
