@@ -1403,7 +1403,7 @@ TEST(ZstdTest, BackwardCompatible) {
     compressed->coalesce();
     EXPECT_EQ(
         data->length(),
-        ZSTD_getDecompressedSize(compressed->data(), compressed->length()));
+        ZSTD_getFrameContentSize(compressed->data(), compressed->length()));
   }
   {
     auto const data =
@@ -1412,7 +1412,7 @@ TEST(ZstdTest, BackwardCompatible) {
     compressed->coalesce();
     EXPECT_EQ(
         data->length(),
-        ZSTD_getDecompressedSize(compressed->data(), compressed->length()));
+        ZSTD_getFrameContentSize(compressed->data(), compressed->length()));
   }
 }
 
