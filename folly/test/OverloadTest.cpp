@@ -158,6 +158,10 @@ TEST(Overload, StdVariant) {
       one, [](const One&) { return true; }, [](const Two&) { return false; }));
   EXPECT_TRUE(variant_match(
       two, [](const One&) { return false; }, [](const Two&) { return true; }));
+  EXPECT_TRUE(variant_match(
+      std::move(one), [](One&&) { return true; }, [](Two&&) { return false; }));
+  EXPECT_TRUE(variant_match(
+      std::move(two), [](One&&) { return false; }, [](Two&&) { return true; }));
 
   auto toString = [](const auto& variant) {
     return variant_match(
@@ -176,6 +180,10 @@ TEST(Overload, BoostVariant) {
       one, [](const One&) { return true; }, [](const Two&) { return false; }));
   EXPECT_TRUE(variant_match(
       two, [](const One&) { return false; }, [](const Two&) { return true; }));
+  EXPECT_TRUE(variant_match(
+      std::move(one), [](One&&) { return true; }, [](Two&&) { return false; }));
+  EXPECT_TRUE(variant_match(
+      std::move(two), [](One&&) { return false; }, [](Two&&) { return true; }));
 
   auto toString = [](const auto& variant) {
     return variant_match(
@@ -315,6 +323,11 @@ TEST(Overload, ReturnType) {
         return 1;
       });
   EXPECT_EQ(1, one_result);
+
+  EXPECT_FALSE(variant_match<R>(
+      std::move(null),
+      [](std::monostate&&) { return std::nullopt; },
+      [](One&&) { return 1; }));
 }
 
 } // namespace
