@@ -65,6 +65,9 @@ static_assert(!folly::is_sorted_vector_set_v<std::set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::unordered_set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::vector<int>>);
 
+static_assert(
+    std::is_same_v<folly::sorted_vector_set<int>::const_pointer, const int*>);
+
 static_assert(std::is_same_v<
               folly::sorted_vector_map<int, double>::pointer,
               std::pair<int, double>*>);

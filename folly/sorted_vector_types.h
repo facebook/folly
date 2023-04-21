@@ -271,6 +271,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef typename Container::pointer pointer;
   typedef typename Container::reference reference;
   typedef typename Container::const_reference const_reference;
+  typedef typename Container::const_pointer const_pointer;
   /*
    * XXX: Our normal iterator ought to also be a constant iterator
    * (cf. Defect Report 103 for std::set), but this is a bit more of a
