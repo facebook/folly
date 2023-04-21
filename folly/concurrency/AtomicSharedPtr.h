@@ -17,6 +17,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <thread>
 
 #include <folly/PackedSyncPtr.h>
@@ -225,11 +226,11 @@ class atomic_shared_ptr {
   // Matches packed_sync_pointer.  Must be > max number of local
   // counts.  This is the max number of threads that can access this
   // atomic_shared_ptr at once before we start blocking.
-  static constexpr unsigned EXTERNAL_OFFSET{0x2000};
+  static constexpr std::uint16_t EXTERNAL_OFFSET{0x2000};
   // Bit signifying aliased constructor
-  static constexpr unsigned ALIASED_PTR{0x4000};
+  static constexpr std::uint16_t ALIASED_PTR{0x4000};
 
-  static unsigned int get_local_count(const PackedPtr& p) {
+  static std::uint16_t get_local_count(const PackedPtr& p) {
     return p.extra() & ~ALIASED_PTR;
   }
 
@@ -257,7 +258,7 @@ class atomic_shared_ptr {
   }
   template <bool kOwn, class S>
   static PackedPtr get_newptr_impl(S&& n) {
-    unsigned count = 0;
+    std::uint16_t count = 0;
     BasePtr* newval = CountedDetail::get_counted_base(n);
     if (!n && newval == nullptr) {
       // n is default-constructed, nothing to do.
@@ -346,7 +347,7 @@ class atomic_shared_ptr {
     }
 
     // Check if we need to push a batch from local -> global
-    auto batchcount = EXTERNAL_OFFSET / 2;
+    std::uint16_t batchcount = EXTERNAL_OFFSET / 2;
     if (get_local_count(newlocal) > batchcount) {
       CountedDetail::inc_shared_count(newlocal.get(), batchcount);
       putOwnedBase(newlocal.get(), batchcount, order);
@@ -356,7 +357,7 @@ class atomic_shared_ptr {
   }
 
   void putOwnedBase(
-      BasePtr* p, unsigned int count, std::memory_order mo) const noexcept {
+      BasePtr* p, std::uint16_t count, std::memory_order mo) const noexcept {
     PackedPtr local = ptr_.load(std::memory_order_acquire);
     while (true) {
       if (local.get() != p) {
