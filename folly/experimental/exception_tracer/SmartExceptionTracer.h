@@ -23,12 +23,13 @@
 
 #if defined(__GLIBCXX__)
 
+#define FOLLY_HAVE_SMART_EXCEPTION_TRACER 1
+
 // These functions report stack traces if available.
 // To enable collecting stack traces your binary must also include the
 // smart_exception_stack_trace_hooks target.
 
-namespace folly {
-namespace exception_tracer {
+namespace folly::exception_tracer {
 
 ExceptionInfo getTrace(const std::exception_ptr& ex);
 
@@ -42,8 +43,7 @@ ExceptionInfo getAsyncTrace(const std::exception& ex);
 
 ExceptionInfo getAsyncTrace(const exception_wrapper& ew);
 
-} // namespace exception_tracer
-} // namespace folly
+} // namespace folly::exception_tracer
 
 #endif // defined(__GLIBCXX__)
 
