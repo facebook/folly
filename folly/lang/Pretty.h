@@ -78,19 +78,19 @@ using pretty_default_tag = std::conditional_t< //
     pretty_tag_msc,
     pretty_tag_gcc>;
 
+#if defined(_MSC_VER) && !defined(__clang__)
 template <typename T>
 static constexpr auto pretty_raw(pretty_tag_msc) {
-#if defined(_MSC_VER)
   return pretty_carray_from(__FUNCSIG__);
-#endif
 }
+#endif
 
+#if defined(__GNUC__) || defined(__clang__)
 template <typename T>
 static constexpr auto pretty_raw(pretty_tag_gcc) {
-#if defined(__GNUC__) || defined(__clang__)
   return pretty_carray_from(__PRETTY_FUNCTION__);
-#endif
 }
+#endif
 
 template <std::size_t S>
 static constexpr pretty_info pretty_parse(
