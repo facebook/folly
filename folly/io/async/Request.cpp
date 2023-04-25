@@ -201,6 +201,30 @@ RequestContext::State::~State() {
   }
 }
 
+class RequestContext::State::LockGuard {
+ public:
+  explicit LockGuard(RequestContext::State& state) : state_(state) {
+    state_.mutex_.lock();
+  }
+
+  ~LockGuard() {
+    // The state is only locked on modifications, so we can invalidate the
+    // thread caches every time the lock is released. In some cases no actual
+    // changes to the state may have been performed, but we conservatively
+    // invalidate anyway, as any modification operations are infrequent compared
+    // to reads.
+    state_.version_.store(processLocalUniqueId(), std::memory_order_release);
+    state_.mutex_.unlock();
+  }
+
+ private:
+  RequestContext::State& state_;
+};
+
+RequestContext::State::LockGuard RequestContext::State::lock() {
+  return LockGuard{*this};
+}
+
 FOLLY_ALWAYS_INLINE
 RequestContext::State::Combined* RequestContext::State::combined() const {
   return combined_.load(std::memory_order_acquire);
@@ -232,7 +256,7 @@ bool RequestContext::State::doSetContextData(
   if (safe) {
     result = doSetContextDataHelper(token, data, behaviour, safe);
   } else {
-    std::lock_guard<std::mutex> g(mutex_);
+    auto g = lock();
     result = doSetContextDataHelper(token, data, behaviour, safe);
   }
   if (result.unexpected) {
@@ -430,7 +454,7 @@ void RequestContext::State::clearContextData(const RequestToken& token) {
   RequestData* data;
   Combined* replaced = nullptr;
   { // Lock mutex_
-    std::lock_guard<std::mutex> g(mutex_);
+    auto g = lock();
     Combined* cur = combined();
     if (!cur) {
       return;
