@@ -2891,6 +2891,12 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
       ptr->len = zc.length;
       auto tmp = getRXZeroCopyIOBuf(std::move(ptr));
       buf = std::move(tmp);
+      // ZC buffers must be marked externally shared
+      // since they are "shared" with the kernel networking stack
+      // and must not be written to
+      // so that Fizz does not attempt to perform
+      // in place decryption and write to these buffers.
+      buf->markExternallyShared();
     }
 
     if (len) {
