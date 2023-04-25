@@ -157,7 +157,7 @@ void runTestStringSplitOneType(folly::StringPiece s) {
 
 #if FOLLY_AARCH64
   actuals.emplace_back();
-  PlatformSimdSplitChar<StringSplitAarch64Platform, ignoreEmpty>{}(
+  PlatformSimdSplitByChar<StringSplitAarch64Platform, ignoreEmpty>{}(
       ',', s, actuals.back());
 #endif
 
