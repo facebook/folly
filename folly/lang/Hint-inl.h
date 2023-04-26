@@ -130,6 +130,17 @@ FOLLY_ALWAYS_INLINE void compiler_must_not_predict_fn::operator()(
   detail::compiler_must_not_predict(t, i{});
 }
 
+FOLLY_ALWAYS_INLINE void compiler_may_assume_separate_storage(
+    const void* a, const void* b) {
+  FOLLY_SAFE_DCHECK(
+      a != b, "compiler-hint separate storage assumption fails at runtime");
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_assume_separate_storage)
+  __builtin_assume_separate_storage(a, b);
+#endif
+#endif
+}
+
 #endif
 
 } // namespace folly

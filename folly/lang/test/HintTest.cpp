@@ -63,3 +63,9 @@ TEST(Hint, CompilerMustNotPredict) {
   NonTriviallyCopyable ntc;
   compiler_must_not_predict(ntc);
 }
+
+TEST(Hint, CompilerMayAssumeSeparateStorage) {
+  int a = 123;
+  int b = 456;
+  compiler_may_assume_separate_storage(&a, &b);
+}
