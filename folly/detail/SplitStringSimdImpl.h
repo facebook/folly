@@ -126,7 +126,8 @@ struct StringSplitAarch64Platform {
     // pack 4 bits into uint64
     uint16x8_t u16s = vreinterpretq_u16_u8(test);
     u16s = vshrq_n_u16(u16s, 4);
-    return vget_lane_u64(vmovn_u16(u16s), 0);
+    uint8x8_t packed = vmovn_u16(u16s);
+    return vget_lane_u64(vreinterpret_u64_u8(packed), 0);
   }
 };
 
