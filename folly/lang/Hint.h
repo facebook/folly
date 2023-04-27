@@ -108,7 +108,6 @@ FOLLY_INLINE_VARIABLE constexpr compiler_must_not_predict_fn
 // next byte of data to be parsed, etc.).
 void compiler_may_assume_separate_storage(const void* a, const void* b);
 
-
 } // namespace folly
 
 #include <folly/lang/Hint-inl.h>
