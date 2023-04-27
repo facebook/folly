@@ -26,8 +26,6 @@
 
 #include <folly/portability/Config.h>
 
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
 namespace folly {
 namespace exception_tracer {
 
@@ -38,6 +36,8 @@ struct ExceptionInfo {
   // linked in or LD_PRELOADed.
   std::vector<uintptr_t> frames; // front() is top of stack
 };
+
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 void printExceptionInfo(
     std::ostream& out, const ExceptionInfo& info, int options);
@@ -54,7 +54,7 @@ std::vector<ExceptionInfo> getCurrentExceptions();
  */
 void installHandlers();
 
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 } // namespace exception_tracer
 } // namespace folly
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
