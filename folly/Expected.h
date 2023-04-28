@@ -1153,7 +1153,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   Value&& value() && {
-    requireValue();
+    requireValueMove();
     return std::move(this->Base::value());
   }
 
@@ -1195,7 +1195,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   Value& operator*() & { return this->value(); }
 
-  Value&& operator*() && { return std::move(this->value()); }
+  Value&& operator*() && { return std::move(std::move(*this).value()); }
 
   const Value* operator->() const { return std::addressof(this->value()); }
 
@@ -1325,6 +1325,15 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     if (UNLIKELY(!hasValue())) {
       if (LIKELY(hasError())) {
         throw_exception<BadExpectedAccess<Error>>(this->error_);
+      }
+      throw_exception<BadExpectedAccess<void>>();
+    }
+  }
+
+  void requireValueMove() {
+    if (UNLIKELY(!hasValue())) {
+      if (LIKELY(hasError())) {
+        throw_exception<BadExpectedAccess<Error>>(std::move(this->error_));
       }
       throw_exception<BadExpectedAccess<void>>();
     }
