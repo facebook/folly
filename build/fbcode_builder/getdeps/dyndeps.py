@@ -15,9 +15,6 @@ import sys
 from struct import unpack
 from typing import List, Optional
 
-from .envfuncs import path_search
-
-
 OBJECT_SUBDIRS = ("bin", "lib", "lib64")
 
 
