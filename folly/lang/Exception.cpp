@@ -166,8 +166,11 @@ typedef const struct _s_ThrowInfo _ThrowInfo;
 
 extern "C" _CRTIMP2 void* __cdecl __AdjustPointer(void*, PMD const&);
 
+// clang for windows built-in is available under std::__GetExceptionInfo
+#if !defined(__clang__)
 template <class _E>
 void* __GetExceptionInfo(_E); // builtin
+#endif
 
 #endif // defined(_WIN32)
 
@@ -376,7 +379,11 @@ static bool win32_eptr_throw_info_ptr_is_encoded() {
   }
   // detection is done by observing actual runtime behavior, using int as the
   // exception object type to save cost
+#if defined(__clang__)
+  auto info = std::__GetExceptionInfo(0);
+#else
   auto info = __GetExceptionInfo(0);
+#endif
   auto ptr = std::make_exception_ptr(0);
   auto rec = win32_get_record(ptr);
   int value = 0;
