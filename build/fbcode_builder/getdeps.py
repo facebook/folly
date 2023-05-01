@@ -409,11 +409,11 @@ class InstallSysDepsCmd(ProjectCmdBase):
         if manager == "rpm":
             packages = sorted(set(all_packages["rpm"]))
             if packages:
-                cmd_args = ["dnf", "install", "-y"] + packages
+                cmd_args = ["sudo", "dnf", "install", "-y"] + packages
         elif manager == "deb":
             packages = sorted(set(all_packages["deb"]))
             if packages:
-                cmd_args = ["apt-get", "install", "-y"] + packages
+                cmd_args = ["sudo", "apt", "install", "-y"] + packages
         elif manager == "homebrew":
             packages = sorted(set(all_packages["homebrew"]))
             if packages:
