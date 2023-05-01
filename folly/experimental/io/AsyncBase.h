@@ -143,7 +143,7 @@ class AsyncBaseOp {
   void cancel();
 
   NotificationCallback cb_;
-  State state_;
+  std::atomic<State> state_;
   ssize_t result_;
   void* userData_{nullptr};
 };
