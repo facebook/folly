@@ -520,8 +520,8 @@ class EventBase : public TimeoutManager,
   void runInLoop(Func c, bool thisIteration = false);
 
   /**
-   * Adds the given callback to a queue of things run before destruction
-   * of current EventBase.
+   * Adds the given callback to a queue of things run on destruction
+   * of current EventBase after the keepalive checks.
    *
    * This allows users of EventBase that run in it, but don't control it, to be
    * notified before EventBase gets destructed.
@@ -536,6 +536,23 @@ class EventBase : public TimeoutManager,
    * run on EventBase destruction.
    */
   void runOnDestruction(Func f);
+
+  /**
+   * Adds the given callback to a queue of things run at the start of the
+   * destruction of the current EventBase, before any loop keep-alive handles
+   * are checked.
+   *
+   * Note: will be called from the thread that invoked EventBase destructor,
+   *       before the final run of loop callbacks.
+   */
+  void runOnDestructionStart(OnDestructionCallback& callback);
+
+  /**
+   * Convenience function that allows users to pass in a Function<void()> to be
+   * run at the start of EventBase destruction, before any loop keep-alive
+   * handles are checked.
+   */
+  void runOnDestructionStart(Func f);
 
   /**
    * Adds a callback that will run immediately *before* the event loop.
@@ -943,6 +960,7 @@ class EventBase : public TimeoutManager,
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;
   Synchronized<OnDestructionCallback::List> onDestructionCallbacks_;
+  Synchronized<OnDestructionCallback::List> preDestructionCallbacks_;
 
   // This will be null most of the time, but point to currentCallbacks
   // if we are in the middle of running loop callbacks, such that

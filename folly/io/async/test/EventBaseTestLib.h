@@ -2192,6 +2192,24 @@ TYPED_TEST_P(EventBaseTest, RunCallbacksOnDestruction) {
   ASSERT_TRUE(ran);
 }
 
+TYPED_TEST_P(EventBaseTest, RunCallbacksPreDestruction) {
+  bool ranPreDestruction = false;
+  bool ranOnDestruction = false;
+  auto evbPtr = getEventBase<TypeParam>();
+  // Prevents the EventBase destruction from completing, but the pre destruction
+  // callbacks should still be called.
+  auto loopKeepAlive = getKeepAliveToken(*evbPtr);
+  evbPtr->runOnDestruction([&] { ranOnDestruction = true; });
+  evbPtr->runOnDestructionStart([&] {
+    ASSERT_FALSE(ranOnDestruction);
+    ranPreDestruction = true;
+    loopKeepAlive.reset();
+  });
+  evbPtr.reset();
+  ASSERT_TRUE(ranPreDestruction);
+  ASSERT_TRUE(ranOnDestruction);
+}
+
 TYPED_TEST_P(EventBaseTest, LoopKeepAlive) {
   auto evbPtr = getEventBase<TypeParam>();
   SKIP_IF(!evbPtr) << "Backend not available";

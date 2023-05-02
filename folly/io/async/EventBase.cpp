@@ -170,6 +170,18 @@ EventBase::EventBase(Options options)
 }
 
 EventBase::~EventBase() {
+  // Call all pre-destruction callbacks, before we start cleaning up our state
+  // or apply any keepalives
+  while (!preDestructionCallbacks_.rlock()->empty()) {
+    OnDestructionCallback::List callbacks;
+    preDestructionCallbacks_.swap(callbacks);
+    while (!callbacks.empty()) {
+      auto& callback = callbacks.front();
+      callbacks.pop_front();
+      callback.runCallback();
+    }
+  }
+
   std::future<void> virtualEventBaseDestroyFuture;
   if (virtualEventBase_) {
     virtualEventBaseDestroyFuture = virtualEventBase_->destroy();
@@ -632,6 +644,20 @@ void EventBase::runOnDestruction(OnDestructionCallback& callback) {
 void EventBase::runOnDestruction(Func f) {
   auto* callback = new FunctionOnDestructionCallback(std::move(f));
   runOnDestruction(*callback);
+}
+
+void EventBase::runOnDestructionStart(OnDestructionCallback& callback) {
+  callback.schedule(
+      [this](auto& cb) { preDestructionCallbacks_.wlock()->push_back(cb); },
+      [this](auto& cb) {
+        preDestructionCallbacks_.withWLock(
+            [&](auto& list) { list.erase(list.iterator_to(cb)); });
+      });
+}
+
+void EventBase::runOnDestructionStart(Func f) {
+  auto* callback = new FunctionOnDestructionCallback(std::move(f));
+  runOnDestructionStart(*callback);
 }
 
 void EventBase::runBeforeLoop(LoopCallback* callback) {

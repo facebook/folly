@@ -71,6 +71,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     RunBeforeLoop,
     RunBeforeLoopWait,
     StopBeforeLoop,
+    RunCallbacksPreDestruction,
     RunCallbacksOnDestruction,
     LoopKeepAlive,
     LoopKeepAliveInLoop,
