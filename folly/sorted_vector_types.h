@@ -176,6 +176,30 @@ Container&& as_sorted_unique(Container&& container, Compare const& comp) {
   return static_cast<Container&&>(container);
 }
 
+template <typename Container, typename Compare>
+class DirectMutationGuard {
+ public:
+  DirectMutationGuard(
+      Container& container, const Compare& comp, bool isSortedUnique)
+      : container_(container), comp_(comp), isSortedUnique_(isSortedUnique) {}
+
+  ~DirectMutationGuard() noexcept(false) {
+    if (isSortedUnique_) {
+      assert(detail::is_sorted_unique(
+          container_.begin(), container_.end(), comp_));
+      return;
+    }
+    as_sorted_unique(container_, comp_);
+  }
+
+  Container& get() { return container_; }
+
+ private:
+  Container& container_;
+  const Compare comp_;
+  const bool isSortedUnique_;
+};
+
 template <class OurContainer, class Vector, class InputIterator>
 void bulk_insert(
     OurContainer& sorted,
@@ -283,6 +307,8 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef typename Container::size_type size_type;
   typedef typename Container::reverse_iterator reverse_iterator;
   typedef typename Container::const_reverse_iterator const_reverse_iterator;
+  typedef detail::DirectMutationGuard<Container, value_compare>
+      direct_mutation_guard;
 
   sorted_vector_set() : m_(Compare(), Allocator()) {}
 
@@ -378,6 +404,38 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
 
   const Container& get_container() const noexcept { return m_.cont_; }
+
+  /**
+   * Directly mutate the container.
+   *
+   * Get a guarded reference to the underlying container for direct mutation.
+   * sorted_unique_t signals that user will make sure that after the
+   * modification the container will have its values as sorted-unique
+   * (conforming to container's value_comp). Violating this assumption will
+   * result in undefined behavior.
+   *
+   * This function is not safe to use concurrently with other functions.
+   */
+  direct_mutation_guard get_container_for_direct_mutation(
+      sorted_unique_t) noexcept {
+    return direct_mutation_guard{
+        m_.cont_, value_comp(), /* range_is_sorted_unique */ true};
+  }
+
+  /**
+   * Directly mutate the container.
+   *
+   * Get a guarded reference to the underlying container for direct mutation.
+   * The container will initially be sorted and unique. You are not required to
+   * maintain the sorted-unique invariant while mutating. When the guard is
+   * released, it will sort and unique-ify the container.
+   *
+   * This function is not safe to use concurrently with other functions.
+   */
+  direct_mutation_guard get_container_for_direct_mutation() noexcept {
+    return direct_mutation_guard{
+        m_.cont_, value_comp(), /* range_is_sorted_unique */ false};
+  }
 
   sorted_vector_set& operator=(const sorted_vector_set& other) = default;
 
@@ -896,6 +954,8 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef typename Container::size_type size_type;
   typedef typename Container::reverse_iterator reverse_iterator;
   typedef typename Container::const_reverse_iterator const_reverse_iterator;
+  typedef detail::DirectMutationGuard<Container, value_compare>
+      direct_mutation_guard;
 
   sorted_vector_map() noexcept(
       std::is_nothrow_constructible<EBO, value_compare, Allocator>::value)
@@ -990,6 +1050,38 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
 
   const Container& get_container() const noexcept { return m_.cont_; }
+
+  /**
+   * Directly mutate the container.
+   *
+   * Get a guarded reference to the underlying container for direct mutation.
+   * sorted_unique_t signals that user will make sure that after the
+   * modification the container will have its values as sorted-unique
+   * (conforming to container's value_comp). Violating this assumption will
+   * result in undefined behavior.
+   *
+   * This function is not safe to use concurrently with other functions.
+   */
+  direct_mutation_guard get_container_for_direct_mutation(
+      sorted_unique_t) noexcept {
+    return direct_mutation_guard{
+        m_.cont_, value_comp(), /* range_is_sorted_unique */ true};
+  }
+
+  /**
+   * Directly mutate the container.
+   *
+   * Get a guarded reference to the underlying container for direct mutation.
+   * The container will initially be sorted and unique. You are not required to
+   * maintain the sorted-unique invariant while mutating. When the guard is
+   * released, it will sort and unique-ify the container.
+   *
+   * This function is not safe to use concurrently with other functions.
+   */
+  direct_mutation_guard get_container_for_direct_mutation() noexcept {
+    return direct_mutation_guard{
+        m_.cont_, value_comp(), /* range_is_sorted_unique */ false};
+  }
 
   sorted_vector_map& operator=(const sorted_vector_map& other) = default;
 

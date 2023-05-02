@@ -184,10 +184,70 @@ TEST(SortedVectorTypes, SetAssignmentInitListTest) {
   EXPECT_THAT(s, testing::ElementsAreArray({7, 8, 9}));
 }
 
+TEST(SortedVectorTypes, SetUnderlyingContainerDirectFillInWithGuardTest) {
+  sorted_vector_set<int> s;
+  {
+    auto guard = s.get_container_for_direct_mutation();
+    guard.get() = {5, 4, 3};
+  }
+  EXPECT_THAT(s, testing::ElementsAreArray({3, 4, 5}));
+  s = {}; // empty ilist assignment
+  EXPECT_THAT(s, testing::IsEmpty());
+  s = {7, 8, 9}; // non-empty ilist assignment
+  EXPECT_THAT(s, testing::ElementsAreArray({7, 8, 9}));
+}
+
+TEST(
+    SortedVectorTypes,
+    SetUnderlyingContainerDirectFillInSortedUniqueWithGuardTest) {
+  sorted_vector_set<int> s;
+  {
+    auto guard = s.get_container_for_direct_mutation(folly::sorted_unique);
+    guard.get() = {3, 4, 5};
+  }
+  EXPECT_THAT(s, testing::ElementsAreArray({3, 4, 5}));
+  s = {}; // empty ilist assignment
+  EXPECT_THAT(s, testing::IsEmpty());
+  s = {7, 8, 9}; // non-empty ilist assignment
+  EXPECT_THAT(s, testing::ElementsAreArray({7, 8, 9}));
+}
+
 TEST(SortedVectorTypes, MapAssignmentInitListTest) {
   using v = std::pair<int, const char*>;
   v p = {3, "a"}, q = {4, "b"}, r = {5, "c"};
   sorted_vector_map<int, const char*> m{p, q, r};
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  m = {}; // empty ilist assignment
+  EXPECT_THAT(m, testing::IsEmpty());
+  m = {p, q, r}; // non-empty ilist assignment
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+}
+
+TEST(SortedVectorTypes, MapUnderlyingContainerDirectFillInWithGuardTest) {
+  using v = std::pair<int, const char*>;
+  v p = {3, "a"}, q = {4, "b"}, r = {5, "c"};
+  sorted_vector_map<int, const char*> m;
+  {
+    auto guard = m.get_container_for_direct_mutation();
+    guard.get() = {r, q, p};
+  }
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  m = {}; // empty ilist assignment
+  EXPECT_THAT(m, testing::IsEmpty());
+  m = {p, q, r}; // non-empty ilist assignment
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+}
+
+TEST(
+    SortedVectorTypes,
+    MapUnderlyingContainerDirectFillInSortedUniqueWithGuardTest) {
+  using v = std::pair<int, const char*>;
+  v p = {3, "a"}, q = {4, "b"}, r = {5, "c"};
+  sorted_vector_map<int, const char*> m;
+  {
+    auto guard = m.get_container_for_direct_mutation(folly::sorted_unique);
+    guard.get() = {p, q, r};
+  }
   EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
   m = {}; // empty ilist assignment
   EXPECT_THAT(m, testing::IsEmpty());
