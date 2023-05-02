@@ -27,6 +27,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/SingletonTestStructs.h>
+#include <folly/test/TestUtils.h>
 
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
@@ -1013,6 +1014,10 @@ TEST(Singleton, LeakySingletonTSAN) {
 }
 
 TEST(Singleton, ShutdownTimer) {
+  // TSAN will SIGSEGV if the shutdown timer activates (it spawns a new thread,
+  // which TSAN doesn't like).
+  SKIP_IF(folly::kIsSanitizeThread);
+
   struct VaultTag {};
   struct PrivateTag {};
   struct Object {
