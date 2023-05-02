@@ -444,7 +444,7 @@ TEST(Timekeeper, executor) {
                .thenValue([&](auto&&) {});
   p.setValue();
   f.wait();
-  EXPECT_EQ(2, tester.count);
+  EXPECT_EQ(3, tester.count);
 }
 
 // TODO(5921764)
