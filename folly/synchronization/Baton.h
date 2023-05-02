@@ -96,13 +96,15 @@ class Baton {
 
   /// @methodset Operations
   ///
-  /// Equivalent to try_wait. Non blocking check whether a baton has been
-  /// posted.
+  /// Non blocking check whether a baton has been posted.
+  //
+  /// Okay to call before or after any call to try_wait, try_wait_for,
+  /// try_wait_until, or wait.
+  ///
   /// @return       True if baton has been posted, false otherwise
   FOLLY_ALWAYS_INLINE bool ready() const noexcept {
     auto s = state_.load(std::memory_order_acquire);
-    assert(s == INIT || s == EARLY_DELIVERY);
-    return LIKELY(s == EARLY_DELIVERY);
+    return LIKELY(s == EARLY_DELIVERY || s == LATE_DELIVERY);
   }
 
   /// @methodset Operations
@@ -212,7 +214,11 @@ class Baton {
   ///   call wait, try_wait or timed_wait on the same baton without resetting
   ///
   /// @return       True if baton has been posted, false othewise
-  FOLLY_ALWAYS_INLINE bool try_wait() const noexcept { return ready(); }
+  FOLLY_ALWAYS_INLINE bool try_wait() noexcept {
+    auto s = state_.load(std::memory_order_acquire);
+    assert(s == INIT || s == EARLY_DELIVERY);
+    return LIKELY(s == EARLY_DELIVERY);
+  }
 
   /// @methodset Operations
   ///
