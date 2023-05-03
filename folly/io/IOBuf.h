@@ -285,6 +285,11 @@ class IOBuf {
   /**
    * Allocate a new IOBuf chain with the requested total capacity, allocating
    * no more than maxBufCapacity to each buffer.
+   *
+   * Note: Some malloc implementations will internally round up an allocation
+   * size to a convenient amount (e.g. jemalloc(31) will actually give you a
+   * slab of size 32). Your buffer size could actually be rounded up to
+   * `goodMallocSize(maxBufCapacity)`.
    */
   static std::unique_ptr<IOBuf> createChain(
       size_t totalCapacity, std::size_t maxBufCapacity);
