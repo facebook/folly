@@ -546,7 +546,11 @@ struct IsZeroInitializable
     : std::conditional<
           is_detected_v<traits_detail::detect_IsZeroInitializable, T>,
           traits_detail::has_true_IsZeroInitializable<T>,
-          bool_constant<!std::is_class<T>::value>>::type {};
+          bool_constant< //
+              !std::is_class<T>::value && //
+              !std::is_union<T>::value && //
+              !std::is_member_object_pointer<T>::value && // itanium
+              true>>::type {};
 
 namespace detail {
 template <bool>
