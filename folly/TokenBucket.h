@@ -69,7 +69,7 @@ class TokenBucketStorage {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 buckets are "full" after construction.
+   *                 buckets are "empty" after construction.
    */
   explicit TokenBucketStorage(double zeroTime = 0) noexcept
       : zeroTime_(zeroTime) {}
@@ -101,7 +101,7 @@ class TokenBucketStorage {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 bucket is reset to "full".
+   *                 bucket is reset to "empty".
    */
   void reset(double zeroTime = 0) noexcept {
     zeroTime_.store(zeroTime, std::memory_order_relaxed);
@@ -269,7 +269,7 @@ class BasicDynamicTokenBucket {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 buckets are "full" after construction.
+   *                 buckets are "empty" after construction.
    */
   explicit BasicDynamicTokenBucket(double zeroTime = 0) noexcept
       : bucket_(zeroTime) {}
@@ -292,7 +292,7 @@ class BasicDynamicTokenBucket {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 bucket is reset to "full".
+   *                 bucket is reset to "empty".
    */
   void reset(double zeroTime = 0) noexcept { bucket_.reset(zeroTime); }
 
@@ -487,7 +487,7 @@ class BasicTokenBucket {
    * @param burstSize Maximum burst size. Must be greater than 0.
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 bucket is "full" after construction.
+   *                 bucket is "empty" after construction.
    */
   BasicTokenBucket(
       double genRate, double burstSize, double zeroTime = 0) noexcept
@@ -592,7 +592,8 @@ class BasicTokenBucket {
   }
 
   /**
-   * Returns extra token back to the bucket.  Could be negative--it's all good.
+   * Returns extra token back to the bucket.  Cannot be negative.
+   * For negative tokens, setCapacity() can be used
    */
   void returnTokens(double tokensToReturn) {
     return tokenBucket_.returnTokens(tokensToReturn, rate_);
