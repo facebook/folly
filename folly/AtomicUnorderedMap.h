@@ -27,6 +27,7 @@
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Random.h>
+#include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/detail/AtomicUnorderedMapUtils.h>
 #include <folly/lang/Bits.h>
@@ -266,8 +267,14 @@ struct AtomicUnorderedInsertMap {
       return std::make_pair(ConstIterator(*this, existing), false);
     }
 
-    auto idx = allocateNear(slot);
-    new (&slots_[idx].keyValue().first) Key(key);
+    // The copying of key and the calling of func can throw exceptions. Nothing
+    // else in this function can throw an exception. In the event of an
+    // exception, deallocate as if the KV was beaten in a concurrent addition.
+    const auto idx = allocateNear(slot);
+    SCOPE_FAIL { slots_[idx].stateUpdate(CONSTRUCTING, EMPTY); };
+    Key* addr = &slots_[idx].keyValue().first;
+    new (addr) Key(key);
+    SCOPE_FAIL { addr->~Key(); };
     func(static_cast<void*>(&slots_[idx].keyValue().second));
 
     while (true) {
