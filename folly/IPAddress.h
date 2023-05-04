@@ -184,6 +184,14 @@ class IPAddress {
       StringPiece str) noexcept;
 
   /**
+   * Tries to create a new IPAddress instance from the provided sockaddr.
+   *
+   * On failure, returns IPAddressFormatError.
+   */
+  static Expected<IPAddress, IPAddressFormatError> tryFromSockAddr(
+      const sockaddr* addr) noexcept;
+
+  /**
    * Create an IPAddress from a `uint32_t`, using network byte order.
    *
    * @throws IPAddressFormatException if `src` does not represent a valid IP

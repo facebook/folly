@@ -549,6 +549,22 @@ TEST(IPAddress, CtorSockaddr) {
   }
 }
 
+TEST_P(IPAddressTest, tryFromSockAddr) {
+  EXPECT_EQ(
+      IPAddress::tryFromSockAddr(nullptr).error(),
+      IPAddressFormatError::NULL_SOCKADDR);
+
+  {
+    // setup
+    sockaddr_in addr;
+    addr.sin_family = AF_UNSPEC;
+
+    EXPECT_EQ(
+        IPAddress::tryFromSockAddr((sockaddr*)&addr).error(),
+        IPAddressFormatError::UNSUPPORTED_ADDR_FAMILY);
+  }
+}
+
 TEST(IPAddress, ToSockaddrStorage) {
   // test v4 address
   {
