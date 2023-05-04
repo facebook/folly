@@ -255,11 +255,12 @@ class ReadvCallback : public folly::AsyncTransport::ReadCallback {
     CHECK_EQ(data, tmp);
   }
 
+  std::unique_ptr<folly::IOBuf> buf_;
+
  private:
   StateEnum state_;
   folly::AsyncSocketException exception_;
   folly::IOBufIovecBuilder queue_;
-  std::unique_ptr<folly::IOBuf> buf_;
   const size_t len_;
 };
 
