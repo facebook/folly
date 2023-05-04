@@ -22,7 +22,8 @@ AsyncFdSocket::AsyncFdSocket(EventBase* evb)
     : AsyncSocket(evb)
 #if !defined(_WIN32)
       ,
-      sendMsgCob_(evb) {
+      sendMsgCob_(evb),
+      readAncillaryDataCob_(this) {
   setUpCallbacks();
 }
 #else
@@ -43,7 +44,8 @@ AsyncFdSocket::AsyncFdSocket(
     : AsyncSocket(evb, fd, /* zeroCopyBufId */ 0, peerAddress)
 #if !defined(_WIN32)
       ,
-      sendMsgCob_(evb) {
+      sendMsgCob_(evb),
+      readAncillaryDataCob_(this) {
   setUpCallbacks();
 }
 #else
@@ -97,6 +99,7 @@ void AsyncFdSocket::writeChainWithFds(
 
 void AsyncFdSocket::setUpCallbacks() noexcept {
   AsyncSocket::setSendMsgParamCB(&sendMsgCob_);
+  AsyncSocket::setReadAncillaryDataCB(&readAncillaryDataCob_);
 }
 
 void AsyncFdSocket::releaseIOBuf(
@@ -199,6 +202,113 @@ void AsyncFdSocket::FdSendMsgParamsCallback::destroyFdsForWriteTag(
           << nh.mapped().size() << " FDs for tag " << writeTag;
 }
 
+namespace {
+
+// Logs and returns `false` on error.
+bool receiveFdsFromCMSG(
+    const struct ::cmsghdr& cmsg, std::vector<folly::File>* fds) noexcept {
+  if (cmsg.cmsg_len < CMSG_LEN(sizeof(int))) {
+    LOG(ERROR) << "Got truncated SCM_RIGHTS message: length=" << cmsg.cmsg_len;
+    return false;
+  }
+  const size_t dataLength = cmsg.cmsg_len - CMSG_LEN(0);
+
+  const size_t numFDs = dataLength / sizeof(int);
+  if ((dataLength % sizeof(int)) != 0) {
+    LOG(ERROR) << "Non-integer number of file descriptors: size=" << dataLength;
+    return false;
+  }
+
+  const auto* data = reinterpret_cast<const int*>(CMSG_DATA(&cmsg));
+  for (size_t n = 0; n < numFDs; ++n) {
+    auto fd = data[n];
+
+// On Linux, `AsyncSocket` sets `MSG_CMSG_CLOEXEC` for us.
+#if !defined(__linux__)
+    int flags = ::fcntl(fd, F_GETFD);
+    // On error, "fail open" by leaving the FD unmodified.
+    if (UNLIKELY(flags == -1)) {
+      PLOG(ERROR) << "FdReadAncillaryDataCallback F_GETFD";
+    } else if (UNLIKELY(-1 == ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC))) {
+      PLOG(ERROR) << "FdReadAncillaryDataCallback F_SETFD";
+    }
+#endif // !Linux
+
+    fds->emplace_back(fd, /*owns_fd*/ true);
+  }
+
+  return true;
+}
+
+// Logs and returns `false` on error.
+bool receiveFds(struct ::msghdr& msg, std::vector<folly::File>* fds) noexcept {
+  struct ::cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+  while (cmsg) {
+    if (cmsg->cmsg_level != SOL_SOCKET) {
+      LOG(ERROR) << "Unexpected cmsg_level=" << cmsg->cmsg_level;
+      return false;
+    } else if (cmsg->cmsg_type != SCM_RIGHTS) {
+      LOG(ERROR) << "Unexpected cmsg_type=" << cmsg->cmsg_type;
+      return false;
+    } else {
+      if (!receiveFdsFromCMSG(*cmsg, fds)) {
+        return false;
+      }
+    }
+    cmsg = CMSG_NXTHDR(&msg, cmsg);
+  }
+  return true;
+}
+
+} // namespace
+
+void AsyncFdSocket::enqueueFdsFromAncillaryData(struct ::msghdr& msg) noexcept {
+  eventBase_->dcheckIsInEventBaseThread();
+
+  if (msg.msg_flags & MSG_CTRUNC) {
+    AsyncSocketException ex(
+        AsyncSocketException::INTERNAL_ERROR,
+        "Got MSG_CTRUNC because the `AsyncFdSocket` buffer was too small");
+    AsyncSocket::failRead(__func__, ex);
+    return;
+  }
+
+  std::vector<folly::File> fds;
+  if (!receiveFds(msg, &fds)) {
+    AsyncSocketException ex(
+        AsyncSocketException::INTERNAL_ERROR,
+        "Failed to read FDs from msghdr.msg_control");
+    AsyncSocket::failRead(__func__, ex);
+    return;
+  }
+
+  // Don't waste queue space with empty FD lists since we match FDs only to
+  // requests that claim to include FDs.
+  if (fds.empty()) {
+    return;
+  }
+
+  VLOG(4) << "this=" << this << ", enqueueFdsFromAncillaryData() got "
+          << fds.size() << " FDs, prev queue size " << fdsQueue_.size();
+  fdsQueue_.emplace(std::move(fds));
+}
+
 #endif // !Windows
+
+std::optional<SocketFds::Received> AsyncFdSocket::popNextReceivedFds() {
+#if defined(_WIN32)
+  return std::nullopt;
+#else
+  eventBase_->dcheckIsInEventBaseThread();
+
+  DCHECK_EQ(&readAncillaryDataCob_, getReadAncillaryDataCallback());
+  if (fdsQueue_.empty()) {
+    return std::nullopt;
+  }
+  auto fds = std::move(fdsQueue_.front());
+  fdsQueue_.pop();
+  return fds;
+#endif // !Windows
+}
 
 } // namespace folly

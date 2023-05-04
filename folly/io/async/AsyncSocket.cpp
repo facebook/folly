@@ -2510,17 +2510,22 @@ AsyncSocket::ReadResult AsyncSocket::performReadMsg(
     bytes = netops_->recv(
         fd_, msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len, MSG_DONTWAIT);
   } else {
+    int recvFlags = 0;
     if (readAncillaryDataCallback_) {
       auto buf = readAncillaryDataCallback_->getAncillaryDataCtrlBuffer();
       msg.msg_control = buf.data();
       msg.msg_controllen = buf.size();
+#if defined(__linux__)
+      // On BSD / MacOS, `AsyncFdSocket` has to do 2 extra `fcntl`s per FD.
+      recvFlags |= MSG_CMSG_CLOEXEC;
+#endif
     } else {
       msg.msg_control = nullptr;
       msg.msg_controllen = 0;
     }
 
     // `msg.msg_iov*` were set by the caller, we're ready.
-    bytes = netops::recvmsg(fd_, &msg, 0);
+    bytes = netops::recvmsg(fd_, &msg, recvFlags);
 
     // KEY INVARIANT: If `bytes > 0`, we must proceed to `ancillaryData` --
     // no error branches must interrupt this flow.  The reason is that

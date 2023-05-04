@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/fdsock/SocketFds.h>
 
@@ -25,9 +27,9 @@ namespace folly {
  * Intended for use with Unix sockets. Unlike regular `AsyncSocket`:
  *  - Can send FDs via `writeChainWithFds` using socket ancillary data (see
  *    `man cmsg`).
- *  - Always attempts to receive FDs included in incoming ancillary data.
- *    Groups of received FDs are enqueued to be retrieved via
- *    `popNextReceivedFds`.
+ *  - Whenever handling regular reads, concurrently attempts to receive FDs
+ *    included in incoming ancillary data.  Groups of received FDs are
+ *    enqueued to be retrieved via `popNextReceivedFds`.
  *  - The "read ancillary data" and "sendmsg params" callbacks are built-in
  *    are NOT customizable.
  *
@@ -93,8 +95,23 @@ class AsyncFdSocket : public AsyncSocket {
       SocketFds::ToSend,
       WriteFlags flags = WriteFlags::NONE);
 
+  /**
+   * This socket will look for file descriptors in the ancillary data (`man
+   * cmsg`) of each incoming read.
+   *   - FDs are kept in an internal queue, to be retrieved via this call.
+   *   - FDs are marked with FD_CLOEXEC upon receipt, although on non-Linux
+   *     platforms there is a short race window before this happens.
+   *   - Empty lists of FDs (0 FDs with this message) are not stored in the
+   *     queue.
+   *   - Returns `std::nullopt` if the queue is empty.
+   */
+  std::optional<SocketFds::Received> popNextReceivedFds();
+
   void setSendMsgParamCB(SendMsgParamsCallback*) override {
     LOG(DFATAL) << "AsyncFdSocket::setSendMsgParamCB is forbidden";
+  }
+  void setReadAncillaryDataCB(ReadAncillaryDataCallback*) override {
+    LOG(DFATAL) << "AsyncFdSocket::setReadAncillaryDataCB is forbidden";
   }
 
 // This uses no ancillary data callbacks on Windows, they wouldn't compile.
@@ -149,9 +166,40 @@ class AsyncFdSocket : public AsyncSocket {
     WriteTagToFds writeTagToFds_;
   };
 
+  class FdReadAncillaryDataCallback : public ReadAncillaryDataCallback {
+   public:
+    explicit FdReadAncillaryDataCallback(AsyncFdSocket* socket)
+        : socket_(socket) {}
+
+    void ancillaryData(struct ::msghdr& msg) noexcept override {
+      socket_->enqueueFdsFromAncillaryData(msg);
+    }
+
+    folly::MutableByteRange getAncillaryDataCtrlBuffer() noexcept override {
+      // Not checking thread because `ancillaryData()` will follow.
+      return folly::MutableByteRange(ancillaryDataCtrlBuffer_);
+    }
+
+   private:
+    // Max number of fds in a single `sendmsg` / `recvmsg` message
+    // Defined as SCM_MAX_FD in linux/include/net/scm.h
+    static constexpr size_t kMaxFdsPerSocketMsg{253};
+
+    AsyncFdSocket* socket_;
+    std::array<uint8_t, CMSG_SPACE(sizeof(int) * kMaxFdsPerSocketMsg)>
+        ancillaryDataCtrlBuffer_;
+  };
+
+  friend class FdReadAncillaryDataCallback;
+
+  void enqueueFdsFromAncillaryData(struct ::msghdr& msg) noexcept;
+
   void setUpCallbacks() noexcept;
 
   FdSendMsgParamsCallback sendMsgCob_;
+  std::queue<SocketFds::Received>
+      fdsQueue_; // must outlive readAncillaryDataCob_
+  FdReadAncillaryDataCallback readAncillaryDataCob_;
 #endif // !Windows
 };
 
