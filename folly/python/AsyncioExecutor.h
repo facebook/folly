@@ -23,36 +23,44 @@
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
 
-#if PY_VERSION_HEX <= 0x03070000
-#define FOLLY_DETAIL_PY_ISFINALIZING() false
-#else
-#define FOLLY_DETAIL_PY_ISFINALIZING() _Py_IsFinalizing()
-#endif
-
 namespace folly {
 namespace python {
 
 class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
  public:
-  virtual ~AsyncioExecutor() override {
-    keepAliveRelease();
-    while (keepAliveCounter_ > 0) {
-      drive();
-    }
-  }
-
-  void drive() noexcept final {
-    if (FOLLY_DETAIL_PY_ISFINALIZING()) {
-      // if Python is finalizing calling scheduled functions MAY segfault.
-      // any code that could have been called is now inconsequential.
-      return;
-    }
-    driveNoDiscard();
-  }
-
-  virtual void driveNoDiscard() noexcept = 0;
+  ~AsyncioExecutor() override { DCHECK_EQ(keepAliveCounter_, 0); }
 
  protected:
+  /**
+   * This function must be called before the parent python loop is closed. It
+   * takes care of draining any pending callbacks and destroying the executor
+   * instance.
+   */
+  void drop() noexcept {
+    keepAliveRelease();
+
+    /**
+     * If python is finalizing, calling scheduled functions MAY segfault.
+     * Any code that could have been called is now inconsequential.
+     */
+    if (!isPyFinalizing()) {
+      while (keepAliveCounter_ > 0) {
+        drive();
+        // Note: We're busy waiting for new callbacks (not ideal at all)
+      }
+    }
+
+    /**
+     * If there are pending keep-alives, it is not safe to delete *this*.
+     * Leak it instead: This is done to ensure that the pending keep-alive
+     * pointers are still valid i.e. we cannot destroy this object if the
+     * ref-count > 0
+     */
+    if (keepAliveCounter_ == 0) {
+      delete this;
+    }
+  }
+
   bool keepAliveAcquire() noexcept override {
     auto keepAliveCounter =
         keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
@@ -67,10 +75,35 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
   }
 
  private:
+  static bool isPyFinalizing() noexcept {
+#if PY_VERSION_HEX <= 0x03070000
+    return false;
+#else
+    return _Py_IsFinalizing();
+#endif
+  }
+
   std::atomic<size_t> keepAliveCounter_{1};
 };
 
-class NotificationQueueAsyncioExecutor : public AsyncioExecutor {
+// Helper to ensure that `drop` is called reliably
+template <typename Derived>
+class DroppableAsyncioExecutor : public AsyncioExecutor {
+ public:
+  struct Deleter {
+    void operator()(Derived* ptr) { ptr->drop(); }
+  };
+
+  using PtrType = std::unique_ptr<Derived, Deleter>;
+
+  template <typename... Args>
+  static PtrType create(Args&&... args) noexcept {
+    return PtrType(new Derived(std::forward<Args>(args)...), Deleter());
+  }
+};
+
+class NotificationQueueAsyncioExecutor
+    : public DroppableAsyncioExecutor<NotificationQueueAsyncioExecutor> {
  public:
   using Func = folly::Func;
 
@@ -78,7 +111,7 @@ class NotificationQueueAsyncioExecutor : public AsyncioExecutor {
 
   int fileno() const { return consumer_.getFd(); }
 
-  void driveNoDiscard() noexcept override {
+  void drive() noexcept override {
     consumer_.consume([&](Func&& func) {
       invokeCatchingExns(
           "NotificationQueueExecutor: task", std::exchange(func, {}));

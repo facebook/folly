@@ -20,16 +20,17 @@ from folly cimport cFollyExecutor
 cdef extern from "folly/python/AsyncioExecutor.h" namespace "folly::python":
     cdef cppclass cAsyncioExecutor "folly::python::AsyncioExecutor"(cFollyExecutor):
         void drive()
-        void driveNoDiscard()
+
+    cdef cppclass cDeleter "folly::python::NotificationQueueAsyncioExecutor::Deleter":
+        pass
 
     cdef cppclass cNotificationQueueAsyncioExecutor "folly::python::NotificationQueueAsyncioExecutor"(cAsyncioExecutor):
         int fileno()
+        @staticmethod
+        unique_ptr[cNotificationQueueAsyncioExecutor, cDeleter] create()
 
 cdef class AsyncioExecutor:
     cdef cAsyncioExecutor* _executor
-
-cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
-    cdef unique_ptr[cNotificationQueueAsyncioExecutor] cQ
 
 cdef api cAsyncioExecutor* get_executor()
 cdef api int set_executor_for_loop(loop, cAsyncioExecutor* executor)

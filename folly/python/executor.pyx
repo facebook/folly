@@ -28,8 +28,10 @@ cdef class AsyncioExecutor:
 
 
 cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
+    cdef unique_ptr[cNotificationQueueAsyncioExecutor, cDeleter] cQ
+
     def __cinit__(self):
-        self.cQ = make_unique[cNotificationQueueAsyncioExecutor]()
+        self.cQ = cNotificationQueueAsyncioExecutor.create()
         self._executor = self.cQ.get()
 
     def fileno(NotificationQueueAsyncioExecutor self):
@@ -39,10 +41,8 @@ cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
         deref(self.cQ).drive()
 
     def __dealloc__(NotificationQueueAsyncioExecutor self):
-        # We drive it one last time
-        deref(self.cQ).drive()
-        # We are Explicitly reset here, otherwise it is possible
-        # that self.cQ dstor runs after python finalize
+        # We explicitly reset here, otherwise it is possible
+        # that self.cQ destructor runs after python finalizes
         # Cython deletes these after __dealloc__ returns.
         self.cQ.reset()
 

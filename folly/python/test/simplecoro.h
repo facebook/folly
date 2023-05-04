@@ -16,11 +16,13 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 
 #include <folly/CancellationToken.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/Task.h>
+#include <folly/futures/Future.h>
 
 namespace folly {
 namespace python {
@@ -41,6 +43,12 @@ folly::coro::Task<uint64_t> coro_returnFiveAfterCancelled() {
   co_await baton;
   co_return 5;
 }
+
+coro::Task<uint64_t> coro_sleepThenEcho(uint32_t sleepMs, uint64_t echoVal) {
+  co_await folly::futures::sleep(std::chrono::milliseconds{sleepMs});
+  co_return echoVal;
+}
+
 } // namespace test
 } // namespace python
 } // namespace folly

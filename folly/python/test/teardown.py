@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import unittest
 
-from . import simplebridge
+from . import simplebridge, simplebridgecoro
 
 
 class Teardown(unittest.TestCase):
@@ -35,3 +36,23 @@ class Teardown(unittest.TestCase):
     def test_fiber_manager_tear_down(self):
         simplebridge.get_value_x5_semifuture(1)
         simplebridge.get_value_x5_fibers(1)
+
+    def test_drive_on_teardown(self):
+        """
+        A test to ensure that any pending keep-alives are respected when an
+        AsyncioExecutor instance is dropped
+        """
+
+        async def test() -> None:
+            # Sanity check
+            self.assertEqual(123, await simplebridgecoro.sleep_then_echo(1, 123))
+
+            # Schedule a sleep for 1s and the immediately exit
+            asyncio.ensure_future(simplebridgecoro.sleep_then_echo(10, 0))
+
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(test())
+        loop.close()
+
+        # Once the loop goes out of scope, AsyncioExecutor's destructor must drive
+        # until all keep-alives are released (otherwise the test should crash with a UB)

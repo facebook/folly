@@ -20,10 +20,13 @@ from folly.executor cimport set_executor_for_loop, get_executor, cAsyncioExecuto
 
 
 cdef extern from "folly/python/test/test_set_executor.h" namespace "folly::python::test":
-    cdef cppclass cTestAsyncioExecutor "folly::python::test::TestAsyncioExecutor"(cAsyncioExecutor):
-        pass
+   cdef cppclass cDeleter "folly::python::test::TestAsyncioExecutor::Deleter":
+      pass
 
-    cdef unique_ptr[cTestAsyncioExecutor] makeTestAsyncioExecutor()
+   cdef cppclass cTestAsyncioExecutor "folly::python::test::TestAsyncioExecutor"(cAsyncioExecutor):
+      pass
+
+   cdef unique_ptr[cTestAsyncioExecutor, cDeleter] makeTestAsyncioExecutor()
 
 
 def test_set_custom_executor(test):
