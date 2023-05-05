@@ -377,7 +377,7 @@ list(APPEND folly_base_files
   ${files} ${hfiles}
 )
 
-if (NOT MSVC)
+if (IS_X86_64_ARCH AND NOT MSVC)
   set_property(
     SOURCE
     ${FOLLY_DIR}/memcpy.S
