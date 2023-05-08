@@ -48,7 +48,11 @@ namespace folly {
 class SocketFds final {
  public:
   using Received = std::vector<folly::File>;
-  using ToSend = std::vector<std::shared_ptr<folly::File>>;
+  // These `shared_ptr`s are commonly be shared across threads -- and there
+  // is no locking -- so `const` ensures thread-safety.  Therefore, if
+  // you're going to put your `File` into a `ToSend`, it's best to first
+  // make your own copy `const`, too.
+  using ToSend = std::vector<std::shared_ptr<const folly::File>>;
 
  private:
   using FdsVariant = std::variant<Received, ToSend>;
