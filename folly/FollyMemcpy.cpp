@@ -19,9 +19,8 @@
 #if !defined(__AVX2__)
 namespace folly {
 
-extern "C" void* __folly_memcpy(
-    void* __restrict dst, const void* __restrict src, std::size_t size) {
-  return std::memcpy(dst, src, size);
+extern "C" void* __folly_memcpy(void* dst, const void* src, std::size_t size) {
+  return std::memmove(dst, src, size);
 }
 
 } // namespace folly
