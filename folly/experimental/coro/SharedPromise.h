@@ -55,7 +55,7 @@ class SharedPromise {
    * Returns a future that is fulfilled when the user sets a value on the
    * promise.  Because this is a coro::Future, it supports cancellation.
    */
-  folly::coro::Future<T> getFuture();
+  folly::coro::Future<T> getFuture() const;
 
   /**
    * Returns the number of futures associated with the SharedPromise.
@@ -94,7 +94,7 @@ class SharedPromise {
   static bool isFulfilled(const State&);
   static void setTry(State&, TryType&&);
 
-  folly::Synchronized<State> state_;
+  mutable folly::Synchronized<State> state_;
 };
 
 template <typename T>
@@ -114,7 +114,7 @@ SharedPromise<T>& SharedPromise<T>::operator=(SharedPromise&& other) noexcept {
 }
 
 template <typename T>
-folly::coro::Future<T> SharedPromise<T>::getFuture() {
+folly::coro::Future<T> SharedPromise<T>::getFuture() const {
   return state_.withWLock([&](auto& state) {
     // if the promise already has a value, then we just return a ready future
     if (isFulfilled(state)) {
