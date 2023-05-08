@@ -20,6 +20,7 @@
 #define FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <cstdio>
 #include <initializer_list>
 #include <stdexcept>
