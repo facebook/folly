@@ -243,7 +243,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
  public:
   static BytesWriteRequest* newRequest(
       AsyncSocket* socket,
-      WriteCallback* callback,
+      WriteCallbackWithState callbackWithState,
       const iovec* ops,
       uint32_t opCount,
       uint32_t partialWritten,
@@ -268,7 +268,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
 
     return new (buf) BytesWriteRequest(
         socket,
-        callback,
+        callbackWithState,
         ops,
         opCount,
         partialWritten,
@@ -358,14 +358,14 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
  private:
   BytesWriteRequest(
       AsyncSocket* socket,
-      WriteCallback* callback,
+      WriteCallbackWithState callbackWithState,
       const struct iovec* ops,
       uint32_t opCount,
       uint32_t partialBytes,
       uint32_t bytesWritten,
       unique_ptr<IOBuf>&& ioBuf,
       WriteFlags flags)
-      : AsyncSocket::WriteRequest(socket, callback),
+      : AsyncSocket::WriteRequest(socket, callbackWithState),
         opCount_(opCount),
         opIndex_(0),
         flags_(flags),
@@ -1642,6 +1642,7 @@ void AsyncSocket::writeImpl(
   DestructorGuard dg(this);
   unique_ptr<IOBuf> ioBuf(std::move(buf));
   eventBase_->dcheckIsInEventBaseThread();
+  WriteCallbackWithState callbackWithState(callback);
 
   auto* releaseIOBufCallback =
       callback ? callback->getReleaseIOBufCallback() : nullptr;
@@ -1676,6 +1677,8 @@ void AsyncSocket::writeImpl(
       // we can attempt to perform the write immediately.
       assert(writeReqTail_ == nullptr);
       assert((eventFlags_ & EventHandler::WRITE) == 0);
+
+      callbackWithState.notifyOnWrite();
 
       auto writeResult = performWrite(
           vec,
@@ -1733,7 +1736,7 @@ void AsyncSocket::writeImpl(
   try {
     req = BytesWriteRequest::newRequest(
         this,
-        callback,
+        callbackWithState,
         vec + countWritten,
         uint32_t(count - countWritten),
         partialWritten,
@@ -3167,6 +3170,8 @@ void AsyncSocket::handleWrite() noexcept {
   // (See the comment in handleRead() explaining how this can happen.)
   EventBase* originalEventBase = eventBase_;
   while (writeReqHead_ != nullptr && eventBase_ == originalEventBase) {
+    writeReqHead_->getCallbackWithState().notifyOnWrite();
+
     auto writeResult = writeReqHead_->performWrite();
     if (writeResult.writeReturn < 0) {
       if (writeResult.exception) {

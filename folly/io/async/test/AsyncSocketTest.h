@@ -85,6 +85,8 @@ class WriteCallback : public folly::AsyncTransport::WriteCallback,
     }
   }
 
+  void writeStarting() noexcept override { writeStartingInvocations++; }
+
   folly::AsyncWriter::ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept
       override {
     return releaseIOBufCallback;
@@ -103,6 +105,7 @@ class WriteCallback : public folly::AsyncTransport::WriteCallback,
   VoidCallback successCallback;
   VoidCallback errorCallback;
   ReleaseIOBufCallback* releaseIOBufCallback;
+  size_t writeStartingInvocations{0};
 };
 
 class ReadCallback : public folly::AsyncTransport::ReadCallback {

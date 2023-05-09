@@ -409,6 +409,19 @@ class AsyncWriter {
     virtual ~WriteCallback() = default;
 
     /**
+     * writeStarting() will be invoked right before bytes are written to the
+     * socket.
+     *
+     * This enables the callback implementation to determine the raw (socket)
+     * byte offset for the first byte in this write's buffer. This may be
+     * different than the number of bytes written at the application layer in
+     * the case of TLS and other transformations.
+     *
+     * Intermediary transport layers should forward this signal.
+     */
+    virtual void writeStarting() noexcept {}
+
+    /**
      * writeSuccess() will be invoked when all of the data has been
      * successfully written.
      *

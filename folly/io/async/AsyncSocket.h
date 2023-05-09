@@ -1155,15 +1155,45 @@ class AsyncSocket : public AsyncSocketTransport {
   };
 
   /**
+   * Wrapper class for WriteCallback that includes a boolean variable to track
+   * whether the write has already started or not
+   */
+  class WriteCallbackWithState {
+   public:
+    explicit WriteCallbackWithState(WriteCallback* callback)
+        : callback_(callback) {}
+    WriteCallback* getCallback() const { return callback_; }
+
+    void notifyOnWrite() noexcept {
+      if (callback_ && !writeInProgress_) {
+        callback_->writeStarting();
+      }
+      writeInProgress_ = true;
+    }
+
+   private:
+    WriteCallback* callback_{nullptr};
+    bool writeInProgress_{false};
+  };
+
+  /**
    * A WriteRequest object tracks information about a pending write operation.
    */
   class WriteRequest {
    public:
     WriteRequest(AsyncSocket* socket, WriteCallback* callback)
         : socket_(socket),
-          callback_(callback),
+          callbackWithState_(WriteCallbackWithState(callback)),
           releaseIOBufCallback_(
               callback ? callback->getReleaseIOBufCallback() : nullptr) {}
+
+    WriteRequest(AsyncSocket* socket, WriteCallbackWithState callbackWithState)
+        : socket_(socket),
+          callbackWithState_(callbackWithState),
+          releaseIOBufCallback_(
+              callbackWithState.getCallback()
+                  ? callbackWithState.getCallback()->getReleaseIOBufCallback()
+                  : nullptr) {}
 
     virtual void start() {}
 
@@ -1177,7 +1207,13 @@ class AsyncSocket : public AsyncSocketTransport {
 
     WriteRequest* getNext() const { return next_; }
 
-    WriteCallback* getCallback() const { return callback_; }
+    WriteCallback* getCallback() const {
+      return callbackWithState_.getCallback();
+    }
+
+    WriteCallbackWithState& getCallbackWithState() {
+      return callbackWithState_;
+    }
 
     uint32_t getTotalBytesWritten() const { return totalBytesWritten_; }
 
@@ -1201,7 +1237,7 @@ class AsyncSocket : public AsyncSocketTransport {
 
     AsyncSocket* socket_; ///< parent socket
     WriteRequest* next_{nullptr}; ///< pointer to next WriteRequest
-    WriteCallback* callback_; ///< completion callback
+    WriteCallbackWithState callbackWithState_; ///< completion callback
     ReleaseIOBufCallback* releaseIOBufCallback_; ///< release IOBuf callback
     uint32_t totalBytesWritten_{0}; ///< total bytes written
   };
