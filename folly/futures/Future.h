@@ -1428,6 +1428,9 @@ class Future : private futures::detail::FutureBase<T> {
       Future<T>>::type
   thenError(tag_t<ExceptionType>, F&& func) &&;
 
+  template <class ExceptionType, class F>
+  Future<T> thenErrorInline(tag_t<ExceptionType>, F&& func) &&;
+
   template <class ExceptionType, class R, class... Args>
   Future<T> thenError(tag_t<ExceptionType> tag, R (&func)(Args...)) && {
     return std::move(*this).thenError(tag, &func);
@@ -1474,6 +1477,9 @@ class Future : private futures::detail::FutureBase<T> {
       !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
       Future<T>>::type
   thenError(F&& func) &&;
+
+  template <class F>
+  Future<T> thenErrorInline(F&& func) &&;
 
   template <class R, class... Args>
   Future<T> thenError(R (&func)(Args...)) && {
@@ -1953,6 +1959,44 @@ class Future : private futures::detail::FutureBase<T> {
   template <class T2>
   friend void futures::detachOn(
       folly::Executor::KeepAlive<> exec, folly::SemiFuture<T2>&& fut);
+
+  template <class ExceptionType, class F>
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      tag_t<ExceptionType>,
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
+
+  template <class ExceptionType, class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      tag_t<ExceptionType>,
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
+
+  template <class F>
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
+
+  template <class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
 };
 
 /// A Timekeeper handles the details of keeping time and fulfilling delay

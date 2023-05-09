@@ -21,6 +21,7 @@
 #include <cassert>
 #include <chrono>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 #include <folly/Optional.h>
@@ -1048,31 +1049,59 @@ typename std::enable_if<
     isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
     Future<T>>::type
 Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
+  return std::move(*this).thenErrorImpl(
+      tag_t<ExceptionType>{}, std::forward<F>(func));
+}
+
+template <class T>
+template <class ExceptionType, class F>
+// typename std::enable_if<
+//     isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+//     Future<T>>::type
+Future<T> Future<T>::thenErrorInline(tag_t<ExceptionType>, F&& func) && {
+  return std::move(*this).thenErrorImpl(
+      tag_t<ExceptionType>{},
+      std::forward<F>(func),
+      futures::detail::InlineContinuation::permit);
+}
+
+template <class T>
+template <class ExceptionType, class F>
+typename std::enable_if<
+    isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+    Future<T>>::type
+Future<T>::thenErrorImpl(
+    tag_t<ExceptionType>,
+    F&& func,
+    futures::detail::InlineContinuation allowInline) && {
   Promise<T> p;
   p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
 
-  this->setCallback_([state = futures::detail::makeCoreCallbackState(
-                          std::move(p), static_cast<F&&>(func))](
-                         Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
-    if (auto ex = t.template tryGetExceptionObject<
-                  std::remove_reference_t<ExceptionType>>()) {
-      auto tf2 = state.tryInvoke(std::move(*ex));
-      if (tf2.hasException()) {
-        state.setException(std::move(ka), std::move(tf2.exception()));
-      } else {
-        tf2->setCallback_(
-            [p = state.stealPromise()](
-                Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
-              p.setTry(std::move(innerKA), std::move(t3));
-            });
-      }
-    } else {
-      state.setTry(std::move(ka), std::move(t));
-    }
-  });
+  this->setCallback_(
+      [state = futures::detail::makeCoreCallbackState(
+           std::move(p), static_cast<F&&>(func)),
+       allowInline](Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
+        if (auto ex = t.template tryGetExceptionObject<
+                      std::remove_reference_t<ExceptionType>>()) {
+          auto tf2 = state.tryInvoke(std::move(*ex));
+          if (tf2.hasException()) {
+            state.setException(std::move(ka), std::move(tf2.exception()));
+          } else {
+            tf2->setCallback_(
+                [p = state.stealPromise()](
+                    Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
+                  p.setTry(std::move(innerKA), std::move(t3));
+                },
+                allowInline);
+          }
+        } else {
+          state.setTry(std::move(ka), std::move(t));
+        }
+      },
+      allowInline);
 
   return std::move(sf).via(std::move(e));
 }
@@ -1083,24 +1112,39 @@ typename std::enable_if<
     !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
     Future<T>>::type
 Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
+  return std::move(*this).thenErrorImpl(
+      tag_t<ExceptionType>{}, std::forward<F>(func));
+}
+
+template <class T>
+template <class ExceptionType, class F>
+typename std::enable_if<
+    !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+    Future<T>>::type
+Future<T>::thenErrorImpl(
+    tag_t<ExceptionType>,
+    F&& func,
+    futures::detail::InlineContinuation allowInline) && {
   Promise<T> p;
   p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
 
-  this->setCallback_([state = futures::detail::makeCoreCallbackState(
-                          std::move(p), static_cast<F&&>(func))](
-                         Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
-    if (auto ex = t.template tryGetExceptionObject<
-                  std::remove_reference_t<ExceptionType>>()) {
-      state.setTry(std::move(ka), makeTryWith([&] {
-                     return state.invoke(std::move(*ex));
-                   }));
-    } else {
-      state.setTry(std::move(ka), std::move(t));
-    }
-  });
+  this->setCallback_(
+      [state = futures::detail::makeCoreCallbackState(
+           std::move(p), static_cast<F&&>(func))](
+          Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
+        if (auto ex = t.template tryGetExceptionObject<
+                      std::remove_reference_t<ExceptionType>>()) {
+          state.setTry(std::move(ka), makeTryWith([&] {
+                         return state.invoke(std::move(*ex));
+                       }));
+        } else {
+          state.setTry(std::move(ka), std::move(t));
+        }
+      },
+      allowInline);
 
   return std::move(sf).via(std::move(e));
 }
@@ -1111,30 +1155,59 @@ typename std::enable_if<
     isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
     Future<T>>::type
 Future<T>::thenError(F&& func) && {
+  return std::move(*this).thenErrorImpl(std::forward<F>(func));
+}
+
+template <class T>
+template <class F>
+typename std::enable_if<
+    !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+    Future<T>>::type
+Future<T>::thenError(F&& func) && {
+  return std::move(*this).thenErrorImpl(std::forward<F>(func));
+}
+
+template <class T>
+template <class F>
+Future<T> Future<T>::thenErrorInline(F&& func) && {
+  return std::move(*this).thenErrorImpl(
+      std::forward<F>(func), futures::detail::InlineContinuation::permit);
+}
+
+template <class T>
+template <class F>
+typename std::enable_if<
+    isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+    Future<T>>::type
+Future<T>::thenErrorImpl(
+    F&& func, futures::detail::InlineContinuation allowInline) && {
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
 
   Promise<T> p;
   p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
-  this->setCallback_([state = futures::detail::makeCoreCallbackState(
-                          std::move(p), static_cast<F&&>(func))](
-                         Executor::KeepAlive<>&& ka, Try<T> t) mutable {
-    if (t.hasException()) {
-      auto tf2 = state.tryInvoke(std::move(t.exception()));
-      if (tf2.hasException()) {
-        state.setException(std::move(ka), std::move(tf2.exception()));
-      } else {
-        tf2->setCallback_(
-            [p = state.stealPromise()](
-                Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
-              p.setTry(std::move(innerKA), std::move(t3));
-            });
-      }
-    } else {
-      state.setTry(std::move(ka), std::move(t));
-    }
-  });
+  this->setCallback_(
+      [state = futures::detail::makeCoreCallbackState(
+           std::move(p), static_cast<F&&>(func)),
+       allowInline](Executor::KeepAlive<>&& ka, Try<T> t) mutable {
+        if (t.hasException()) {
+          auto tf2 = state.tryInvoke(std::move(t.exception()));
+          if (tf2.hasException()) {
+            state.setException(std::move(ka), std::move(tf2.exception()));
+          } else {
+            tf2->setCallback_(
+                [p = state.stealPromise()](
+                    Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
+                  p.setTry(std::move(innerKA), std::move(t3));
+                },
+                allowInline);
+          }
+        } else {
+          state.setTry(std::move(ka), std::move(t));
+        }
+      },
+      allowInline);
 
   return std::move(sf).via(std::move(e));
 }
@@ -1144,24 +1217,27 @@ template <class F>
 typename std::enable_if<
     !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
     Future<T>>::type
-Future<T>::thenError(F&& func) && {
+Future<T>::thenErrorImpl(
+    F&& func, futures::detail::InlineContinuation allowInline) && {
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
 
   Promise<T> p;
   p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
-  this->setCallback_([state = futures::detail::makeCoreCallbackState(
-                          std::move(p), static_cast<F&&>(func))](
-                         Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
-    if (t.hasException()) {
-      state.setTry(std::move(ka), makeTryWith([&] {
-                     return state.invoke(std::move(t.exception()));
-                   }));
-    } else {
-      state.setTry(std::move(ka), std::move(t));
-    }
-  });
+  this->setCallback_(
+      [state = futures::detail::makeCoreCallbackState(
+           std::move(p), static_cast<F&&>(func))](
+          Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
+        if (t.hasException()) {
+          state.setTry(std::move(ka), makeTryWith([&] {
+                         return state.invoke(std::move(t.exception()));
+                       }));
+        } else {
+          state.setTry(std::move(ka), std::move(t));
+        }
+      },
+      allowInline);
 
   return std::move(sf).via(std::move(e));
 }
