@@ -1636,6 +1636,10 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   template <class F>
   Future<T> ensure(F&& func) &&;
+
+  template <class F>
+  Future<T> ensureInline(F&& func) &&;
+
   // clang-format on
 
   /// Like thenError, but for timeouts. example:

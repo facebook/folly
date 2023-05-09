@@ -1259,6 +1259,16 @@ Future<T> Future<T>::ensure(F&& func) && {
 
 template <class T>
 template <class F>
+Future<T> Future<T>::ensureInline(F&& func) && {
+  return std::move(*this).thenTryInline(
+      [funcw = static_cast<F&&>(func)](Try<T>&& t) mutable {
+        static_cast<F&&>(funcw)();
+        return makeFuture(std::move(t));
+      });
+}
+
+template <class T>
+template <class F>
 Future<T> Future<T>::onTimeout(
     HighResDuration dur, F&& func, Timekeeper* tk) && {
   return std::move(*this).within(dur, tk).thenError(
