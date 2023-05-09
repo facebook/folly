@@ -22,6 +22,7 @@
 
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
+#include <folly/test/TestUtils.h>
 
 #include <glog/logging.h>
 
@@ -1034,8 +1035,11 @@ TEST(CacheLocality, BenchmarkSysfs) {
 
 #if defined(FOLLY_HAVE_LINUX_VDSO) && !defined(FOLLY_SANITIZE_MEMORY)
 TEST(Getcpu, VdsoGetcpu) {
+  Getcpu::Func func = Getcpu::resolveVdsoFunc();
+  SKIP_IF(func == nullptr);
+
   unsigned cpu;
-  Getcpu::resolveVdsoFunc()(&cpu, nullptr, nullptr);
+  func(&cpu, nullptr, nullptr);
 
   EXPECT_TRUE(cpu < CPU_SETSIZE);
 }
