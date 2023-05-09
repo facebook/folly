@@ -211,6 +211,8 @@ class IoUringBackend : public EventBaseBackendBase {
   }
 
   // from EventBaseBackendBase
+  int getPollableFd() const override { return ioRing_.ring_fd; }
+
   event_base* getEventBase() override { return nullptr; }
 
   int eb_event_base_loop(int flags) override;
