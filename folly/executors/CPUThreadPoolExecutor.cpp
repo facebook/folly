@@ -87,6 +87,9 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(taskQueue.release()),
+      queueObserverFactory_{
+          !opt.queueObserverFactory ? createQueueObserverFactory()
+                                    : std::move(opt.queueObserverFactory)},
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
@@ -112,6 +115,9 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(makeDefaultQueue()),
+      queueObserverFactory_{
+          opt.queueObserverFactory ? std::move(opt.queueObserverFactory)
+                                   : createQueueObserverFactory()},
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
