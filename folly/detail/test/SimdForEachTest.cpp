@@ -18,6 +18,8 @@
 
 #include <folly/portability/GTest.h>
 
+#include <array>
+
 namespace folly {
 namespace simd_detail {
 
