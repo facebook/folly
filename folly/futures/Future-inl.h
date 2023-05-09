@@ -1879,12 +1879,17 @@ std::vector<Future<Result>> window(
                      return ctx->func(std::move(ctx->input[i]));
                    }).via(ctx->executor.get());
 
-        fut.setCallback_([ctx = std::move(ctx), i](
-                             Executor::KeepAlive<>&&, Try<Result>&& t) mutable {
-          ctx->promises[i].setTry(std::move(t));
-          // Chain another future onto this one
-          spawn(std::move(ctx));
-        });
+        fut.setCallback_(
+            [ctx = std::move(ctx), i](
+                Executor::KeepAlive<>&& ka, Try<Result>&& t) mutable {
+              // Use futures::detail::setTry() with the KeepAlive to correctly
+              // propagate the executor down the chain for callback inlining
+              // purposes.
+              futures::detail::setTry(
+                  ctx->promises[i], std::move(ka), std::move(t));
+              // Chain another future onto this one
+              spawn(std::move(ctx));
+            });
       }
     }
   };
