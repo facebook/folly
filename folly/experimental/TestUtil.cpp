@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/portability/Windows.h>
-
 #include <folly/experimental/TestUtil.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <boost/regex.hpp>
 #include <glog/logging.h>
 
 #include <folly/Exception.h>
@@ -35,6 +32,11 @@
 #ifdef _WIN32
 #include <crtdbg.h> // @manual
 #endif
+
+// This needs to be at the end because some versions end up including
+// Windows.h without defining NOMINMAX, which breaks uses of std::numeric_limits
+// in various headers that we include.
+#include <boost/regex.hpp>
 
 namespace folly {
 namespace test {
