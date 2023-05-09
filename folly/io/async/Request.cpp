@@ -201,7 +201,7 @@ RequestContext::State::~State() {
   }
 }
 
-class RequestContext::State::LockGuard {
+class FOLLY_NODISCARD RequestContext::State::LockGuard {
  public:
   explicit LockGuard(RequestContext::State& state) : state_(state) {
     state_.mutex_.lock();
@@ -218,12 +218,13 @@ class RequestContext::State::LockGuard {
   }
 
  private:
+  LockGuard(const LockGuard&) = delete;
+  LockGuard(LockGuard&&) = delete;
+  LockGuard& operator=(const LockGuard&) = delete;
+  LockGuard& operator=(LockGuard&&) = delete;
+
   RequestContext::State& state_;
 };
-
-RequestContext::State::LockGuard RequestContext::State::lock() {
-  return LockGuard{*this};
-}
 
 FOLLY_ALWAYS_INLINE
 RequestContext::State::Combined* RequestContext::State::combined() const {
@@ -256,7 +257,7 @@ bool RequestContext::State::doSetContextData(
   if (safe) {
     result = doSetContextDataHelper(token, data, behaviour, safe);
   } else {
-    auto g = lock();
+    LockGuard lock{*this};
     result = doSetContextDataHelper(token, data, behaviour, safe);
   }
   if (result.unexpected) {
@@ -454,7 +455,7 @@ void RequestContext::State::clearContextData(const RequestToken& token) {
   RequestData* data;
   Combined* replaced = nullptr;
   { // Lock mutex_
-    auto g = lock();
+    LockGuard lock{*this};
     Combined* cur = combined();
     if (!cur) {
       return;

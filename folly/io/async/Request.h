@@ -419,8 +419,8 @@ class RequestContext {
     // a local counter) so that it is not necessary to compare the request
     // context pointer as well. This saves one word of TLS and one comparison.
     std::atomic<uint64_t> version_{processLocalUniqueId()};
-    // This should never be used directly. Use lock() so that thread caches are
-    // invalidated at the end of the critical section.
+    // This should never be used directly. Use LockGuard so that thread caches
+    // are invalidated at the end of the critical section.
     std::mutex mutex_;
 
     State();
@@ -440,8 +440,6 @@ class RequestContext {
     };
 
     class LockGuard;
-
-    LockGuard lock();
 
     Combined* combined() const;
     Combined* ensureCombined(); // Lazy allocation if needed
