@@ -219,7 +219,8 @@ struct ObserverManager::Singleton {
 
 folly::Singleton<ObserverManager::UpdatesManager>
     ObserverManager::Singleton::instance =
-        folly::Singleton<ObserverManager::UpdatesManager>(createManager);
+        folly::Singleton<ObserverManager::UpdatesManager>(createManager)
+            .shouldEagerInitOnReenable();
 
 std::shared_ptr<ObserverManager::UpdatesManager>
 ObserverManager::getUpdatesManager() {

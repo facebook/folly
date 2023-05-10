@@ -1040,3 +1040,14 @@ TEST(Observer, ReenableSingletons) {
   }
   publishThread.join();
 }
+
+TEST(Observer, ReenableSingletonWithPendingUpdate) {
+  folly::observer::SimpleObservable<size_t> observable(0);
+  auto observer = observable.getObserver();
+  EXPECT_EQ(0, **observer);
+  folly::SingletonVault::singleton()->destroyInstances();
+  observable.setValue(42);
+  folly::SingletonVault::singleton()->reenableInstances();
+  std::this_thread::sleep_for(std::chrono::milliseconds{100});
+  EXPECT_EQ(42, **observer);
+}
