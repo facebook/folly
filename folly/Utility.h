@@ -471,29 +471,30 @@ using moveonly_::NonCopyableNonMovable;
 //      store_value_into_int_ptr(&value); // suppresses possible warning
 //      use_value(value); // suppresses possible warning
 struct unsafe_default_initialized_cv {
+  FOLLY_PUSH_WARNING
+  // MSVC requires warning disables to be outside of function definition
+  // Uninitialized local variable 'uninit' used
+  FOLLY_MSVC_DISABLE_WARNING(4700)
+  // Potentially uninitialized local variable 'uninit' used
+  FOLLY_MSVC_DISABLE_WARNING(4701)
+  // Potentially uninitialized local pointer variable 'uninit' used
+  FOLLY_MSVC_DISABLE_WARNING(4703)
+  FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
+  // Clang doesn't implement -Wmaybe-uninitialized and warns about it
+  FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
   template <typename T>
   FOLLY_ERASE constexpr /* implicit */ operator T() const noexcept {
 #if defined(__cpp_lib_is_constant_evaluated)
 #if __cpp_lib_is_constant_evaluated >= 201811L
     if (!std::is_constant_evaluated()) {
       T uninit;
-      FOLLY_PUSH_WARNING
-      // Uninitialized local variable 'uninit' used
-      FOLLY_MSVC_DISABLE_WARNING(4700)
-      // Potentially uninitialized local variable 'uninit' used
-      FOLLY_MSVC_DISABLE_WARNING(4701)
-      // Potentially uninitialized local pointer variable 'uninit' used
-      FOLLY_MSVC_DISABLE_WARNING(4703)
-      FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
-      // Clang doesn't implement -Wmaybe-uninitialized and warns about it
-      FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
       return uninit;
-      FOLLY_POP_WARNING
     }
 #endif
 #endif
     return T();
   }
+  FOLLY_POP_WARNING
 };
 FOLLY_INLINE_VARIABLE constexpr unsafe_default_initialized_cv
     unsafe_default_initialized{};
