@@ -441,7 +441,7 @@ const ElfShdr* ElfFile::getSectionContainingAddress(
   });
 }
 
-const char* ElfFile::getSymbolName(Symbol symbol) const noexcept {
+const char* ElfFile::getSymbolName(const Symbol& symbol) const noexcept {
   if (!symbol.first || !symbol.second) {
     return nullptr;
   }
