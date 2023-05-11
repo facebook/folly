@@ -61,6 +61,9 @@ uint32_t crc32_hw(
   }
 
   // Remaining unaligned bytes
+  if (nbytes == 0) {
+    return sum;
+  }
   return crc32_sw(data + offset, nbytes, sum);
 }
 
