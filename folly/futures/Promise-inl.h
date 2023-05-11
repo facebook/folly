@@ -22,7 +22,6 @@
 
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/detail/Core.h>
-#include <folly/lang/Pretty.h>
 
 namespace folly {
 
@@ -31,7 +30,7 @@ namespace detail {
 template <typename T>
 void coreDetachPromiseMaybeWithResult(Core<T>& core) {
   if (!core.hasResult()) {
-    core.setResult(Try<T>(exception_wrapper(BrokenPromise(pretty_name<T>()))));
+    core.setResult(Try<T>(exception_wrapper(BrokenPromise(tag<T>))));
   }
   core.detachPromise();
 }

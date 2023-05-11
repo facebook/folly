@@ -1526,7 +1526,7 @@ collect(InputIterator first, InputIterator last) {
           // logic added in setCallback_ will not execute as an executor
           // weakRef() drops all callbacks added silently without executing them
           if (!value.has_value()) {
-            p.setException(BrokenPromise{pretty_name<std::vector<T>>()});
+            p.setException(BrokenPromise{tag<std::vector<T>>});
             return;
           }
 
@@ -1597,7 +1597,7 @@ SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
         });
 
         if (brokenPromise) {
-          p.setException(BrokenPromise{pretty_name<Result>()});
+          p.setException(BrokenPromise{tag<Result>});
         } else {
           p.setValue(unwrapTryTuple(std::move(results)));
         }

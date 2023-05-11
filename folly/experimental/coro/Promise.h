@@ -72,7 +72,7 @@ class Promise {
         state_(std::exchange(other.state_, nullptr)) {}
   Promise& operator=(Promise&& other) noexcept {
     if (this != &other && state_ && !state_->fulfilled) {
-      setException(BrokenPromise{pretty_name<T>()});
+      setException(BrokenPromise{tag<T>});
     }
     ct_ = std::move(other.ct_);
     state_ = std::exchange(other.state_, nullptr);
@@ -83,7 +83,7 @@ class Promise {
 
   ~Promise() {
     if (state_ && !state_->fulfilled) {
-      setException(BrokenPromise{pretty_name<T>()});
+      setException(BrokenPromise{tag<T>});
     }
   }
 
