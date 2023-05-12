@@ -967,8 +967,17 @@ using type_pack_element_fallback = _t<decltype(type_pack_element_test<I>::impl(
 
 #if FOLLY_HAS_BUILTIN(__type_pack_element)
 
+#if __clang__
 template <std::size_t I, typename... Ts>
 using type_pack_element_t = __type_pack_element<I, Ts...>;
+#else
+template <std::size_t I, typename... Ts>
+struct type_pack_element {
+  using type = __type_pack_element<I, Ts...>;
+};
+template <std::size_t I, typename... Ts>
+using type_pack_element_t = typename type_pack_element<I, Ts...>::type;
+#endif
 
 #else
 
