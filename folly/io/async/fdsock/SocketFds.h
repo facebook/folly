@@ -83,12 +83,12 @@ class SocketFds final {
     DCHECK(!ptr_);
     return *this;
   }
-  SocketFds& dcheckReceived() {
-    DCHECK(std::holds_alternative<Received>(*ptr_));
+  SocketFds& dcheckReceivedOrEmpty() {
+    DCHECK(!ptr_ || std::holds_alternative<Received>(*ptr_));
     return *this;
   }
-  SocketFds& dcheckToSend() {
-    DCHECK(std::holds_alternative<ToSend>(*ptr_));
+  SocketFds& dcheckToSendOrEmpty() {
+    DCHECK(!ptr_ || std::holds_alternative<ToSend>(*ptr_));
     return *this;
   }
 
