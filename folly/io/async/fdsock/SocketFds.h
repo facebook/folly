@@ -96,10 +96,15 @@ class SocketFds final {
   // `SocketFds` that are known to be in this state.
   //  - Invariant: `other` must be `ToSend`.
   //  - Cost: Cloning copies a vector into a new heap allocation.
-  void cloneToSendFrom(const SocketFds& other) {
+  void cloneToSendFromOrDfatal(const SocketFds& other) {
     if (!other.empty()) {
-      auto* fds = CHECK_NOTNULL(std::get_if<ToSend>(other.ptr_.get()));
-      ptr_ = std::make_unique<FdsVariant>(*fds);
+      auto* fds = std::get_if<ToSend>(other.ptr_.get());
+      if (UNLIKELY(fds == nullptr)) {
+        LOG(DFATAL) << "SocketFds was in 'received' state, not cloning";
+        ptr_.reset();
+      } else {
+        ptr_ = std::make_unique<FdsVariant>(*fds);
+      }
     }
   }
 
