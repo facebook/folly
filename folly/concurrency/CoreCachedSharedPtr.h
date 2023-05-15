@@ -167,11 +167,6 @@ class CoreCachedWeakPtr {
  * sharded shared_ptrs will always all be set to the same value.
  * get()s will never see a newer pointer on one core, and an older
  * pointer on another after a subsequent thread migration.
- *
- * The shared_ptr replaced by a reset() operation may be released
- * asynchronously in a background thread. On AtomicCoreCachedSharedPtr
- * destruction, all shared_ptrs that have been managed by it are
- * guaranteed to be released.
  */
 template <class T, size_t kMaxSlots = kCoreCachedSharedPtrDefaultMaxSlots>
 class AtomicCoreCachedSharedPtr {
@@ -184,7 +179,6 @@ class AtomicCoreCachedSharedPtr {
   }
 
   ~AtomicCoreCachedSharedPtr() {
-    cohort_.shutdown_and_reclaim();
     // Delete of AtomicCoreCachedSharedPtr must be synchronized, no
     // need for slots->retire().
     delete slots_.load(std::memory_order_acquire);
@@ -200,7 +194,6 @@ class AtomicCoreCachedSharedPtr {
     }
 
     if (auto oldslots = slots_.exchange(newslots.release())) {
-      oldslots->set_cohort_tag(&cohort_);
       oldslots->retire();
     }
   }
@@ -219,7 +212,6 @@ class AtomicCoreCachedSharedPtr {
     std::array<std::shared_ptr<T>, kMaxSlots> slots;
   };
   std::atomic<Slots*> slots_{nullptr};
-  folly::hazptr_obj_cohort<std::atomic> cohort_;
 };
 
 } // namespace folly
