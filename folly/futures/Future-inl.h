@@ -1517,7 +1517,7 @@ collect(InputIterator first, InputIterator last) {
   using T = typename F::value_type;
 
   struct Context {
-    explicit Context(size_t n) : result(n) { finalResult.reserve(n); }
+    explicit Context(size_t n) : result(n), count(n) { finalResult.reserve(n); }
     ~Context() {
       if (!threw.load(std::memory_order_relaxed)) {
         // map Optional<T> -> T
@@ -1533,13 +1533,16 @@ collect(InputIterator first, InputIterator last) {
           finalResult.push_back(std::move(value.value()));
         }
 
-        p.setValue(std::move(finalResult));
+        futures::detail::setTry(
+            p, std::move(ka), Try<std::vector<T>>(std::move(finalResult)));
       }
     }
     Promise<std::vector<T>> p;
+    Executor::KeepAlive<> ka;
     std::vector<Optional<T>> result;
     std::vector<T> finalResult;
     std::atomic<bool> threw{false};
+    std::atomic<size_t> count;
   };
 
   std::vector<futures::detail::DeferredWrapper> executors;
@@ -1547,15 +1550,20 @@ collect(InputIterator first, InputIterator last) {
 
   auto ctx = std::make_shared<Context>(std::distance(first, last));
   for (size_t i = 0; first != last; ++first, ++i) {
-    first->setCallback_([i, ctx](Executor::KeepAlive<>&&, Try<T>&& t) {
-      if (t.hasException()) {
-        if (!ctx->threw.exchange(true, std::memory_order_relaxed)) {
-          ctx->p.setException(std::move(t.exception()));
-        }
-      } else if (!ctx->threw.load(std::memory_order_relaxed)) {
-        ctx->result[i] = std::move(t.value());
-      }
-    });
+    first->setCallback_(
+        [i, ctx](Executor::KeepAlive<>&& ka, Try<T>&& t) {
+          if (t.hasException()) {
+            if (!ctx->threw.exchange(true, std::memory_order_relaxed)) {
+              ctx->p.setException(std::move(t.exception()));
+            }
+          } else if (!ctx->threw.load(std::memory_order_relaxed)) {
+            if (ctx->count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+              ctx->ka = std::move(ka);
+            }
+            ctx->result[i] = std::move(t.value());
+          }
+        },
+        futures::detail::InlineContinuation::permit);
   }
 
   auto future = ctx->p.getSemiFuture();
@@ -1599,13 +1607,17 @@ SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
         if (brokenPromise) {
           p.setException(BrokenPromise{tag<Result>});
         } else {
-          p.setValue(unwrapTryTuple(std::move(results)));
+          auto res = unwrapTryTuple(std::move(results));
+          futures::detail::setTry(
+              p, std::move(ka), Try<decltype(res)>(std::move(res)));
         }
       }
     }
     Promise<Result> p;
     std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...> results;
+    Executor::KeepAlive<> ka;
     std::atomic<bool> threw{false};
+    std::atomic<size_t> count{std::tuple_size<decltype(results)>::value};
   };
 
   std::vector<futures::detail::DeferredWrapper> executors;
@@ -1614,15 +1626,20 @@ SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
   auto ctx = std::make_shared<Context>();
   futures::detail::foreach(
       [&](auto i, auto&& f) {
-        f.setCallback_([i, ctx](Executor::KeepAlive<>&&, auto&& t) {
-          if (t.hasException()) {
-            if (!ctx->threw.exchange(true, std::memory_order_relaxed)) {
-              ctx->p.setException(std::move(t.exception()));
-            }
-          } else if (!ctx->threw.load(std::memory_order_relaxed)) {
-            std::get<i.value>(ctx->results) = std::move(t);
-          }
-        });
+        f.setCallback_(
+            [i, ctx](Executor::KeepAlive<>&& ka, auto&& t) {
+              if (t.hasException()) {
+                if (!ctx->threw.exchange(true, std::memory_order_relaxed)) {
+                  ctx->p.setException(std::move(t.exception()));
+                }
+              } else if (!ctx->threw.load(std::memory_order_relaxed)) {
+                if (ctx->count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                  ctx->ka = std::move(ka);
+                }
+                std::get<i.value>(ctx->results) = std::move(t);
+              }
+            },
+            futures::detail::InlineContinuation::permit);
       },
       static_cast<Fs&&>(fs)...);
 
