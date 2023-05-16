@@ -45,6 +45,11 @@ spin_result spin_pause_until(
     return spin_result::success;
   }
 
+  constexpr auto min = std::chrono::time_point<Clock, Duration>::min();
+  if (deadline == min) {
+    return spin_result::timeout;
+  }
+
   auto tbegin = Clock::now();
   while (true) {
     if (f()) {
@@ -78,7 +83,7 @@ spin_result spin_yield_until(
       return spin_result::success;
     }
 
-    auto const max = std::chrono::time_point<Clock, Duration>::max();
+    const auto max = std::chrono::time_point<Clock, Duration>::max();
     if (deadline != max && Clock::now() >= deadline) {
       return spin_result::timeout;
     }
