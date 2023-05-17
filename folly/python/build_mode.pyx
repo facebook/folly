@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from folly cimport cFollyIsDebug
+from folly cimport cFollyIsDebug, cFollyIsTsan
 
 folly_is_debug_build = bool(cFollyIsDebug)
+folly_is_tsan_build = bool(cFollyIsTsan)

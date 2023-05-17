@@ -61,3 +61,4 @@ cdef extern from "folly/Executor.h" namespace "folly":
 
 cdef extern from "folly/Portability.h" namespace "folly":
     cbool cFollyIsDebug "folly::kIsDebug"
+    cbool cFollyIsTsan "folly::kIsSanitizeThread"
