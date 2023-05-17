@@ -256,7 +256,6 @@ TEST(Collect, collectAllInline) {
   }
 }
 
-
 TEST(Collect, collectInline) {
   // inline future collection on same executor
   {
