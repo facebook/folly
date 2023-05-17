@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 
 #include <folly/Function.h>
 #include <folly/ScopeGuard.h>
@@ -99,7 +100,7 @@ class GlobalCache {
   }
 
   std::mutex mutex_;
-  folly::F14NodeMap<Key<EventBaseT>, std::unique_ptr<FiberManager>> map_;
+  std::unordered_map<Key<EventBaseT>, std::unique_ptr<FiberManager>> map_;
 };
 
 constexpr size_t kEraseListMaxSize = 64;
