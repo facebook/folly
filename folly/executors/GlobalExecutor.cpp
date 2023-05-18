@@ -54,6 +54,8 @@ FOLLY_GFLAGS_DEFINE_uint32(
 
 namespace {
 
+using ImmutableGlobalCPUExecutor = CPUThreadPoolExecutor;
+
 class GlobalTag {};
 
 // aka InlineExecutor
@@ -69,7 +71,7 @@ Singleton<std::shared_ptr<DefaultCPUExecutor>> gDefaultGlobalCPUExecutor([] {
 Singleton<std::shared_ptr<Executor>, GlobalTag> gImmutableGlobalCPUExecutor([] {
   size_t nthreads = FLAGS_folly_global_cpu_executor_threads;
   nthreads = nthreads ? nthreads : folly::hardware_concurrency();
-  return new std::shared_ptr<Executor>(new CPUThreadPoolExecutor(
+  return new std::shared_ptr<Executor>(new ImmutableGlobalCPUExecutor(
       nthreads,
       FLAGS_folly_global_cpu_executor_use_throttled_lifo_sem
           ? CPUThreadPoolExecutor::makeThrottledLifoSemQueue(
@@ -178,6 +180,19 @@ Executor::KeepAlive<> getGlobalCPUExecutor() {
   }
   async_tracing::logGetImmutableCPUExecutor(executorPtrPtr->get());
   return folly::getKeepAliveToken(executorPtrPtr->get());
+}
+
+GlobalCPUExecutorCounters getGlobalCPUExecutorCounters() {
+  auto executorPtrPtr = getImmutablePtrPtr<Executor>();
+  if (!executorPtrPtr) {
+    throw std::runtime_error("Requested global CPU executor during shutdown.");
+  }
+  auto& executor = dynamic_cast<ImmutableGlobalCPUExecutor&>(**executorPtrPtr);
+  GlobalCPUExecutorCounters counters;
+  counters.numThreads = executor.numThreads();
+  counters.numActiveThreads = executor.numActiveThreads();
+  counters.numPendingTasks = executor.getTaskQueueSize();
+  return counters;
 }
 
 Executor::KeepAlive<IOExecutor> getGlobalIOExecutor() {
