@@ -87,6 +87,23 @@ BENCHMARK(FiberManagerBasicFiveAwaitsLogged, iters) {
   runBenchmark(5, iters, true);
 }
 
+BENCHMARK(FiberManagerGet, iters) {
+  constexpr size_t nevbs = 64;
+  folly::BenchmarkSuspender braces;
+  std::vector<folly::EventBase> evbs{nevbs};
+  for (auto& evb : evbs) {
+    auto& fm = folly::fibers::getFiberManager(evb);
+    folly::doNotOptimizeAway(fm);
+  }
+  braces.dismissing([&] {
+    for (size_t i = 0; i < iters; ++i) {
+      auto& evb = evbs[i * 7753 % nevbs];
+      auto& fm = folly::fibers::getFiberManager(evb);
+      folly::doNotOptimizeAway(fm);
+    }
+  });
+}
+
 BENCHMARK(FiberManagerCreateDestroy, iters) {
   for (size_t i = 0; i < iters; ++i) {
     folly::EventBase evb;
