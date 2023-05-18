@@ -52,9 +52,9 @@ BENCHMARK(moveLongString, iters) {
 }
 
 BENCHMARK(copyBool, iters) {
+  dynamic b = true;
+  folly::makeUnpredictable(b);
   for (size_t i = 0; i < iters; ++i) {
-    dynamic b = true;
-    folly::makeUnpredictable(b);
     dynamic other = b;
     folly::doNotOptimizeAway(other);
   }
