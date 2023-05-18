@@ -629,6 +629,24 @@ FOLLY_INLINE_VARIABLE constexpr bool is_transparent_v =
 template <typename T>
 struct is_transparent : bool_constant<is_transparent_v<T>> {};
 
+//  is_allocator_v
+//  is_allocator
+//
+//  A trait variable and type to test whether a type is an allocator according
+//  to the minimum protocol required by std::allocator_traits.
+template <typename T, typename = void>
+FOLLY_INLINE_VARIABLE constexpr bool is_allocator_v = false;
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_allocator_v<
+    T,
+    void_t<
+        typename T::value_type,
+        decltype(std::declval<T&>().allocate(std::size_t{})),
+        decltype(std::declval<T&>().deallocate(
+            std::declval<typename T::value_type*>(), std::size_t{}))>> = true;
+template <typename T>
+struct is_allocator : bool_constant<is_allocator_v<T>> {};
+
 } // namespace folly
 
 /**
