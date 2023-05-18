@@ -60,6 +60,16 @@ BENCHMARK(copyBool, iters) {
   }
 }
 
+BENCHMARK(assignRawBool, iters) {
+  bool b = true;
+  dynamic other = false;
+  folly::makeUnpredictable(b);
+  for (size_t i = 0; i < iters; ++i) {
+    other = b;
+    folly::doNotOptimizeAway(other);
+  }
+}
+
 BENCHMARK(copyShortString, iters) {
   dynamic s = "short";
   folly::makeUnpredictable(s);

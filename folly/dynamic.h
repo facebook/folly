@@ -366,6 +366,15 @@ struct dynamic {
   dynamic& operator=(dynamic&&) noexcept;
 
   /*
+   * Minor performance optimization: allow assignment from cheap
+   * primitive types without creating a temporary dynamic.
+   */
+  template <class T, class NumericType = typename NumericTypeHelper<T>::type>
+  dynamic& operator=(T t);
+
+  dynamic& operator=(std::nullptr_t);
+
+  /*
    * For simple dynamics (not arrays or objects), this prints the
    * value to an std::ostream in the expected way.  Respects the
    * formatting manipulators that have been sent to the stream

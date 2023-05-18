@@ -177,6 +177,17 @@ dynamic& dynamic::operator=(dynamic&& o) noexcept {
   return *this;
 }
 
+dynamic& dynamic::operator=(std::nullptr_t) {
+  if (type_ == NULLT) {
+    // Do nothing -- nul has only one possible value.
+  } else {
+    destroy();
+    u_.nul = nullptr;
+    type_ = NULLT;
+  }
+  return *this;
+}
+
 dynamic const& dynamic::atImpl(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {

@@ -393,6 +393,20 @@ dynamic::dynamic(Iterator first, Iterator last) : type_(ARRAY) {
   new (&u_.array) Array(first, last);
 }
 
+template <
+    class T,
+    class NumericType /* = typename NumericTypeHelper<T>::type */>
+dynamic& dynamic::operator=(T t) {
+  const auto newType = TypeInfo<NumericType>::type;
+  if (type_ == newType) {
+    *getAddress<NumericType>() = t;
+  } else {
+    destroy();
+    new (getAddress<NumericType>()) NumericType(t);
+    type_ = newType;
+  }
+  return *this;
+}
 //////////////////////////////////////////////////////////////////////
 
 inline dynamic::const_iterator dynamic::begin() const {
