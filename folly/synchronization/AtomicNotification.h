@@ -19,6 +19,8 @@
 #include <atomic>
 #include <condition_variable>
 
+#include <folly/Portability.h>
+
 namespace folly {
 
 /**
@@ -56,7 +58,7 @@ struct atomic_wait_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-constexpr inline auto atomic_wait =
+FOLLY_INLINE_VARIABLE constexpr auto atomic_wait =
     detail::atomic_notification::atomic_wait_fn{};
 
 //  mimic: std::atomic_wait_until, p1135r0
@@ -74,7 +76,7 @@ struct atomic_wait_until_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-constexpr inline auto atomic_wait_until =
+FOLLY_INLINE_VARIABLE constexpr auto atomic_wait_until =
     detail::atomic_notification::atomic_wait_until_fn{};
 
 //  mimic: std::atomic_notify_one, p1135r0
@@ -89,7 +91,7 @@ struct atomic_notify_one_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-constexpr inline auto atomic_notify_one =
+FOLLY_INLINE_VARIABLE constexpr auto atomic_notify_one =
     detail::atomic_notification::atomic_notify_one_fn{};
 
 //  mimic: std::atomic_notify_all, p1135r0
@@ -104,7 +106,7 @@ struct atomic_notify_all_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-constexpr inline auto atomic_notify_all =
+FOLLY_INLINE_VARIABLE constexpr auto atomic_notify_all =
     detail::atomic_notification::atomic_notify_all_fn{};
 
 //  mimic: std::atomic_uint_fast_wait_t, p1135r0
