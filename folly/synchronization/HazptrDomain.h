@@ -17,10 +17,10 @@
 #pragma once
 
 #include <atomic>
-#include <unordered_set>
 
 #include <folly/Memory.h>
 #include <folly/Portability.h>
+#include <folly/container/F14Set.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/Hazptr-fwd.h>
@@ -99,7 +99,7 @@ class hazptr_domain {
   using List = hazptr_detail::linked_list<Obj>;
   using ObjList = hazptr_obj_list<Atom>;
   using RetiredList = hazptr_detail::shared_head_only_list<Obj, Atom>;
-  using Set = std::unordered_set<const void*>;
+  using Set = folly::F14FastSet<const void*>;
   using ExecFn = folly::Executor* (*)();
 
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
