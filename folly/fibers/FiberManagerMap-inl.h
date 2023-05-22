@@ -24,6 +24,7 @@
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
 #include <folly/container/F14Map.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 namespace fibers {
@@ -159,7 +160,7 @@ class ThreadLocalCache {
   }
 
   void eraseImpl() {
-    if (!eraseRequested_.load()) {
+    if (!eraseRequested_) {
       return;
     }
 
@@ -179,7 +180,7 @@ class ThreadLocalCache {
   }
 
   folly::F14NodeMap<Key<EventBaseT>, FiberManager*> map_;
-  std::atomic<bool> eraseRequested_{false};
+  relaxed_atomic<bool> eraseRequested_{false};
 
   struct EraseInfo {
     bool eraseAll{false};
