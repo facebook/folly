@@ -205,11 +205,11 @@ class hazptr_domain {
 
   /** cleanup_cohort_tag */
   void cleanup_cohort_tag(const hazptr_obj_cohort<Atom>* cohort) noexcept {
-    auto tag = reinterpret_cast<uintptr_t>(cohort) + kTagBit;
-    auto shard = calc_shard(tag);
+    auto ftag = reinterpret_cast<uintptr_t>(cohort) + kTagBit;
+    auto shard = calc_shard(ftag);
     auto obj = tagged_[shard].pop_all(RetiredList::kAlsoLock);
     ObjList match, nomatch;
-    list_match_tag(tag, obj, match, nomatch);
+    list_match_tag(ftag, obj, match, nomatch);
     List l(nomatch.head(), nomatch.tail());
     tagged_[shard].push_unlock(l);
     add_count(-match.count());
@@ -217,14 +217,15 @@ class hazptr_domain {
     reclaim_list_transitive(obj);
     int count = match.count() + nomatch.count();
     if (count > kListTooLarge) {
-      hazptr_warning_list_too_large(tag, shard, count);
+      hazptr_warning_list_too_large(ftag, shard, count);
     }
   }
 
   void list_match_tag(
-      uintptr_t tag, Obj* obj, ObjList& match, ObjList& nomatch) {
-    list_match_condition(
-        obj, match, nomatch, [tag](Obj* o) { return o->cohort_tag() == tag; });
+      uintptr_t ftag, Obj* obj, ObjList& match, ObjList& nomatch) {
+    list_match_condition(obj, match, nomatch, [ftag](Obj* o) {
+      return o->cohort_tag() == ftag;
+    });
   }
 
  private:
@@ -365,9 +366,9 @@ class hazptr_domain {
   }
 
   /** calc_shard */
-  size_t calc_shard(uintptr_t tag) {
+  size_t calc_shard(uintptr_t ftag) {
     size_t shard =
-        (std::hash<uintptr_t>{}(tag) >> kIgnoredLowBits) & kShardMask;
+        (std::hash<uintptr_t>{}(ftag) >> kIgnoredLowBits) & kShardMask;
     DCHECK(shard < kNumShards);
     return shard;
   }
@@ -751,11 +752,11 @@ class hazptr_domain {
   }
 
   FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_list_too_large(
-      uintptr_t tag, size_t shard, int count) {
+      uintptr_t ftag, size_t shard, int count) {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
       LOG(WARNING) << "Hazptr retired list too large:"
-                   << " tag=" << tag << " shard=" << shard
+                   << " ftag=" << ftag << " shard=" << shard
                    << " count=" << count;
     }
   }
