@@ -173,17 +173,22 @@ class ThrottledLifoSem {
   template <DecrNumWaiters kDecrNumWaiters>
   bool tryWaitImpl() {
     auto oldState = state_.load(std::memory_order_relaxed);
-    bool success;
-    while ((success = (oldState & kValueMask) > 0) ||
-           kDecrNumWaiters == DecrNumWaiters::Always) {
+    bool success = (oldState & kValueMask) > 0;
+
+    while (success || kDecrNumWaiters == DecrNumWaiters::Always) {
+      // bool success used to indicate decrement or not (true = 1)
       auto newState = oldState - success;
       if (kDecrNumWaiters != DecrNumWaiters::Never) {
         DCHECK_GT(newState >> kNumWaitersShift, 0);
         newState -= kNumWaitersInc;
       }
+      // casState mutates oldstate on CAS failure.
       if (casState(oldState, newState)) {
         return success;
       }
+
+      // recalculate success with new oldState
+      success = (oldState & kValueMask) > 0;
     }
     return false;
   }
