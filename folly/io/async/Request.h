@@ -18,11 +18,11 @@
 
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <type_traits>
 #include <utility>
 
+#include <folly/SharedMutex.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/Synchronized.h>
 #include <folly/concurrency/ProcessLocalUniqueId.h>
@@ -421,7 +421,7 @@ class RequestContext {
     std::atomic<uint64_t> version_{processLocalUniqueId()};
     // This should never be used directly. Use LockGuard so that thread caches
     // are invalidated at the end of the critical section.
-    std::mutex mutex_;
+    folly::SharedMutex mutex_; // exclusive mutex, but smaller than std::mutex
 
     State();
     State(const State& o);
@@ -476,6 +476,7 @@ class RequestContext {
   // Shallow copies keep a note of the root context
   intptr_t rootId_;
 };
+static_assert(sizeof(RequestContext) <= 64, "unexpected size");
 
 /**
  * Note: you probably want to use ShallowCopyRequestContextScopeGuard

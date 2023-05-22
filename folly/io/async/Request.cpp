@@ -203,9 +203,8 @@ RequestContext::State::~State() {
 
 class FOLLY_NODISCARD RequestContext::State::LockGuard {
  public:
-  explicit LockGuard(RequestContext::State& state) : state_(state) {
-    state_.mutex_.lock();
-  }
+  explicit LockGuard(RequestContext::State& state)
+      : state_(state), lock_(state.mutex_) {}
 
   ~LockGuard() {
     // The state is only locked on modifications, so we can invalidate the
@@ -214,7 +213,6 @@ class FOLLY_NODISCARD RequestContext::State::LockGuard {
     // invalidate anyway, as any modification operations are infrequent compared
     // to reads.
     state_.version_.store(processLocalUniqueId(), std::memory_order_release);
-    state_.mutex_.unlock();
   }
 
  private:
@@ -224,6 +222,7 @@ class FOLLY_NODISCARD RequestContext::State::LockGuard {
   LockGuard& operator=(LockGuard&&) = delete;
 
   RequestContext::State& state_;
+  std::unique_lock<folly::SharedMutex> lock_;
 };
 
 FOLLY_ALWAYS_INLINE
