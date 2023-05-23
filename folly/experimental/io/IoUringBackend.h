@@ -44,11 +44,11 @@
 #include <poll.h>
 #endif
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 #include <liburing.h>
 #endif
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 
 namespace folly {
 
