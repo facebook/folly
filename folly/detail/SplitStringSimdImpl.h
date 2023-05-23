@@ -233,20 +233,30 @@ struct PlatformSimdSplitByChar {
   }
 
   template <typename Container>
+  struct ForEachDelegate {
+    const PlatformSimdSplitByChar& self;
+    char sep;
+    const char*& prev;
+    Container& res;
+
+    template <typename Ignore, typename UnrollIndex>
+    FOLLY_ALWAYS_INLINE bool step(
+        const char* ptr, Ignore ignore, UnrollIndex) const {
+      reg_t loaded = self.loada(ptr, ignore);
+      auto mmask = Platform::equal(loaded, sep);
+      mmask = self.clear(mmask, ignore);
+      self.outputStringsFoMmask(mmask, ptr, prev, res);
+      return false;
+    }
+  };
+
+  template <typename Container>
   FOLLY_ALWAYS_INLINE void operator()(
       char sep, folly::StringPiece what, Container& res) const {
     const char* prev = what.data();
-    simd_detail::simdForEachAligning(
-        Platform::kCardinal,
-        what.data(),
-        what.data() + what.size(),
-        [&](const char* ptr, auto ignore) mutable {
-          reg_t loaded = loada(ptr, ignore);
-          auto mmask = Platform::equal(loaded, sep);
-          mmask = clear(mmask, ignore);
-          outputStringsFoMmask(mmask, ptr, prev, res);
-          return false;
-        });
+    ForEachDelegate<Container> delegate{*this, sep, prev, res};
+    simd_detail::simdForEachAligning</*unrolling*/ 1>(
+        Platform::kCardinal, what.data(), what.data() + what.size(), delegate);
     emplaceBack(res, prev, what.data() + what.size());
   }
 };
