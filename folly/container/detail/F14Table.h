@@ -253,22 +253,6 @@ FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
 #endif
 }
 
-/// Prefetch the object at ptr, starting at the cacheLineOffset cache line,
-/// and prefetching at most maxCacheLines cache lines.
-template <typename T>
-FOLLY_ALWAYS_INLINE static void prefetchAddr(
-    T const* ptr, size_t cacheLineOffset, size_t maxCacheLines) {
-  size_t constexpr kCacheLineSize = hardware_constructive_interference_size;
-  auto constexpr kObjectCacheLines =
-      (sizeof(T) + kCacheLineSize - 1) / kCacheLineSize;
-  size_t const cacheLines = std::min(kObjectCacheLines, maxCacheLines);
-
-  auto const bytes = static_cast<char const*>(static_cast<void const*>(ptr));
-  for (size_t i = cacheLineOffset; i < cacheLines; ++i) {
-    prefetchAddr(bytes + i * kCacheLineSize);
-  }
-}
-
 #if FOLLY_NEON
 using TagVector = uint8x16_t;
 #else // SSE2
@@ -1497,24 +1481,6 @@ class F14Table : public Policy {
     ChunkPtr firstChunk = chunks_ + moduloByChunkCount(hp.first);
     prefetchAddr(firstChunk);
     return F14HashToken(std::move(hp));
-  }
-
-  // prefetch() fetches the next two cache lines of the chunk, up to the
-  // chunk size. This is not included in prehash() because these loads are
-  // speculative. find() will always need to load the first cache line of
-  // the chunk, but it won't always need to load further cache lines. If
-  // they aren't needed, then prefetching them will hurt application
-  // performance, by polluting the local CPU cache. So prefetch() should
-  // only be called when benchmarks show performance improvements.
-  void prefetch(F14HashToken const& token) const {
-    auto hp = static_cast<HashPair>(token);
-    ChunkPtr firstChunk = chunks_ + moduloByChunkCount(hp.first);
-    // The first cache line was already prefetched in prehash().
-    // Prefetch the next two cache lines up to the chunk size. We only
-    // fetch at most 2 more cache lines to avoid thrashing the local
-    // CPU cache when the chunk size is large. The item we're looking for
-    // is more likely to be near the beginning of the chunk.
-    prefetchAddr(firstChunk, /* offset */ 1, /* maxCacheLines */ 3);
   }
 
   template <typename K>
