@@ -23,7 +23,7 @@
 
 namespace folly {
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 
 class IoUringEvent : public EventHandler, public EventBase::LoopCallback {
  public:
