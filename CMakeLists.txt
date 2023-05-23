@@ -655,6 +655,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY detail/test/
       TEST split_string_simd_test SOURCES SplitStringSimdTest.cpp
 
+    DIRECTORY detail/test/
+      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
+
     DIRECTORY detail/base64_detail/tests/
       TEST base64_detail_test
       SOURCES
