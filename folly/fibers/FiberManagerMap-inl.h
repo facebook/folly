@@ -146,24 +146,29 @@ class ThreadLocalCache {
   template <typename LocalT>
   FiberManager& getImpl(
       uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
-    eraseImpl();
+    if (eraseRequested_) {
+      eraseImpl();
+    }
 
     auto key = make_tuple(&evb, token, std::type_index(typeid(LocalT)));
-    auto& fmPtrRef = map_[key];
-    if (!fmPtrRef) {
-      fmPtrRef = &GlobalCache<EventBaseT>::template get<LocalT>(key, evb, opts);
+    auto it = map_.find(key);
+    if (it != map_.end()) {
+      DCHECK(it->second != nullptr);
+      return *it->second;
     }
 
-    DCHECK(fmPtrRef != nullptr);
-
-    return *fmPtrRef;
+    return getSlowImpl<LocalT>(key, evb, opts);
   }
 
-  void eraseImpl() {
-    if (!eraseRequested_) {
-      return;
-    }
+  template <typename LocalT>
+  FOLLY_NOINLINE FiberManager& getSlowImpl(
+      Key<EventBaseT> key, EventBaseT& evb, const FiberManager::Options& opts) {
+    auto& ref = GlobalCache<EventBaseT>::template get<LocalT>(key, evb, opts);
+    map_.emplace(key, &ref);
+    return ref;
+  }
 
+  FOLLY_NOINLINE void eraseImpl() {
     eraseInfo_.withWLock([&](auto& info) {
       if (info.eraseAll) {
         map_.clear();
@@ -179,7 +184,7 @@ class ThreadLocalCache {
     });
   }
 
-  folly::F14NodeMap<Key<EventBaseT>, FiberManager*> map_;
+  folly::F14FastMap<Key<EventBaseT>, FiberManager*> map_;
   relaxed_atomic<bool> eraseRequested_{false};
 
   struct EraseInfo {
