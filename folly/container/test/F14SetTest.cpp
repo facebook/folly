@@ -1561,6 +1561,8 @@ void testContainsWithPrecomputedHash() {
   const auto otherKey{2};
   const auto hashTokenNotFound = m.prehash(otherKey);
   EXPECT_FALSE(m.contains(hashTokenNotFound, otherKey));
+  m.prefetch(hashToken);
+  m.prefetch(hashTokenNotFound);
 }
 
 TEST(F14Set, containsWithPrecomputedHash) {

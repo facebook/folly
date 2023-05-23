@@ -886,8 +886,10 @@ void runPrehash() {
   auto t1 = h.prehash(s("def"));
   F14HashToken t2;
   t2 = h.prehash(s("abc"));
+  h.prefetch(t2);
   EXPECT_TRUE(h.find(t1, s("def")) == h.end());
   EXPECT_FALSE(h.find(t2, s("abc")) == h.end());
+  h.prefetch(t1);
 }
 TEST(F14ValueMap, prehash) {
   runPrehash<F14ValueMap<std::string, std::string>>();
@@ -2163,6 +2165,9 @@ void testContainsWithPrecomputedHash() {
   const auto otherKey{2};
   const auto hashTokenNotFound = m.prehash(otherKey);
   EXPECT_FALSE(m.contains(hashTokenNotFound, otherKey));
+
+  m.prefetch(hashToken);
+  m.prefetch(hashTokenNotFound);
 }
 
 TEST(F14Map, containsWithPrecomputedHash) {

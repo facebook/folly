@@ -1470,17 +1470,20 @@ class F14Table : public Policy {
   }
 
  public:
-  // Prehashing splits the work of find(key) into two calls, enabling you
-  // to manually implement loop pipelining for hot bulk lookups.  prehash
-  // computes the hash and prefetches the first computed memory location,
-  // and the two-arg find(F14HashToken,K) performs the rest of the search.
+  // prehash()/prefetch() split the work of find(key) into three calls, enabling
+  // you to manually implement loop pipelining for hot bulk lookups. prehash()
+  // computes the hash and prefetch() prefetches the first computed memory
+  // location, and the two-arg find(F14HashToken, K) performs the rest of the
+  // search.
   template <typename K>
   F14HashToken prehash(K const& key) const {
+    return F14HashToken{splitHash(this->computeKeyHash(key))};
+  }
+
+  void prefetch(F14HashToken const& token) const {
     FOLLY_SAFE_DCHECK(chunks_ != nullptr, "");
-    auto hp = splitHash(this->computeKeyHash(key));
-    ChunkPtr firstChunk = chunks_ + moduloByChunkCount(hp.first);
+    ChunkPtr firstChunk = chunks_ + moduloByChunkCount(token.hp_.first);
     prefetchAddr(firstChunk);
-    return F14HashToken(std::move(hp));
   }
 
   template <typename K>

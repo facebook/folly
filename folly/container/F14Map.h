@@ -669,9 +669,7 @@ class F14BasicMap {
 
   // prehash(key) does the work of evaluating hash_function()(key)
   // (including additional bit-mixing for non-avalanching hash functions),
-  // wraps the result of that work in a token for later reuse, and
-  // begins prefetching the first steps of looking for key into the
-  // local CPU cache.
+  // and wraps the result of that work in a token for later reuse.
   //
   // The returned token may be used at any time, may be used more than
   // once, and may be used in other F14 sets and maps.  Tokens are
@@ -681,6 +679,17 @@ class F14BasicMap {
   // Hash tokens are not hints -- it is a bug to call any method on this
   // class with a token t and key k where t isn't the result of a call
   // to prehash(k2) with k2 == k.
+  F14HashToken prehash(key_type const& key) const {
+    return table_.prehash(key);
+  }
+
+  template <typename K>
+  EnableHeterogeneousFind<K, F14HashToken> prehash(K const& key) const {
+    return table_.prehash(key);
+  }
+
+  // prefetch(token) begins prefetching the first steps of looking for key into
+  // the local CPU cache.
   //
   // Example Scenario: Loading 2 values from a cold map.
   // You have a map that is cold, meaning it is out of the local CPU cache,
@@ -694,23 +703,19 @@ class F14BasicMap {
   // key2) may already be in the local CPU cache. In the best case this will
   // half the latency.
   //
-  // It is always okay to call prehash(). It only prefetches cache lines that
-  // are guaranteed to be needed by find().
+  // It is always okay to call prefetch() before a find() or other lookup
+  // operation, as it only prefetches cache lines that are guaranteed to be
+  // needed by the lookup.
   //
   //   std::pair<iterator, iterator> find2(
   //       auto& map, key_type const& key1, key_type const& key2) {
   //     auto const token1 = map.prehash(key1);
+  //     map.prefetch(token1);
   //     auto const token2 = map.prehash(key2);
+  //     map.prefetch(token2);
   //     return std::make_pair(map.find(token1, key1), map.find(token2, key2));
-  //  }
-  F14HashToken prehash(key_type const& key) const {
-    return table_.prehash(key);
-  }
-
-  template <typename K>
-  EnableHeterogeneousFind<K, F14HashToken> prehash(K const& key) const {
-    return table_.prehash(key);
-  }
+  //   }
+  void prefetch(F14HashToken const& token) const { table_.prefetch(token); }
 
   FOLLY_ALWAYS_INLINE iterator find(key_type const& key) {
     return table_.makeIter(table_.find(key));
