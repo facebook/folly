@@ -25,16 +25,23 @@ namespace simd_detail {
 
 constexpr int kCardinal = 4;
 
+template <bool kSameUnrollValue>
 struct TestDelegate {
   char* stopAt = nullptr;
 
-  bool operator()(char* s, ignore_extrema ignore) const {
+  bool step(char* s, ignore_extrema ignore, auto unroll_i) const {
     int middle = kCardinal - ignore.first - ignore.last;
     while (ignore.first--) {
+      EXPECT_EQ(*s, 0);
       *s++ = 'i';
     }
     while (middle--) {
-      *s++ = 'o';
+      EXPECT_EQ(*s, 0);
+      if (kSameUnrollValue) {
+        *s++ = 'a';
+      } else {
+        *s++ = 'a' + unroll_i();
+      }
     }
     while (ignore.last--) {
       *s++ = 'i';
@@ -43,107 +50,222 @@ struct TestDelegate {
     return stopAt != nullptr && s > stopAt;
   }
 
-  bool operator()(char* s, ignore_none) const {
+  bool step(char* s, ignore_none, auto unroll_i) const {
     for (int i = 0; i != kCardinal; ++i) {
-      *s++ = 'o';
+      EXPECT_EQ(*s, 0);
+      if (kSameUnrollValue) {
+        *s++ = 'a';
+      } else {
+        *s++ = 'a' + unroll_i();
+      }
     }
     return stopAt != nullptr && s > stopAt;
   }
+
+  template <std::size_t unroll>
+  bool unrolledStep(std::array<char*, unroll> unrolled) {
+    return detail::UnrollUtils::unrollUntil<static_cast<int>(unroll)>(
+        [&](auto unrollI) {
+          return step(
+              unrolled[unrollI()],
+              ignore_none{},
+              detail::UnrollStep<decltype(unrollI)::value + ('A' - 'a')>{});
+        });
+  }
 };
 
+template <int unroll, bool kSameUnrollValue = false>
 std::string run(int offset, int len, int stopAt) {
   alignas(64) std::array<char, 100u> buf;
   buf.fill(0);
 
-  TestDelegate delegate{stopAt == -1 ? nullptr : buf.data() + stopAt};
-  simdForEachAligning(
+  TestDelegate<kSameUnrollValue> delegate{
+      stopAt == -1 ? nullptr : buf.data() + stopAt};
+  simdForEachAligning<unroll>(
       kCardinal, buf.data() + offset, buf.data() + offset + len, delegate);
   return std::string(buf.data());
 }
 
+std::string runAllUnrolls(int offset, int len, int stopAt) {
+  std::string res = run<1, /*kSameUnrollValue*/ true>(offset, len, stopAt);
+  EXPECT_EQ(res, (run<2, /*kSameUnrollValue*/ true>(offset, len, stopAt)));
+  EXPECT_EQ(res, (run<3, /*kSameUnrollValue*/ true>(offset, len, stopAt)));
+  EXPECT_EQ(res, (run<4, /*kSameUnrollValue*/ true>(offset, len, stopAt)));
+  return res;
+}
+
 TEST(SimdForEachAligningTest, Tails) {
-  ASSERT_EQ("", run(0, 0, -1));
-  ASSERT_EQ("", run(1, 0, -1));
-  ASSERT_EQ("", run(2, 0, -1));
-  ASSERT_EQ("", run(3, 0, -1));
+  ASSERT_EQ("", runAllUnrolls(0, 0, -1));
+  ASSERT_EQ("", runAllUnrolls(1, 0, -1));
+  ASSERT_EQ("", runAllUnrolls(2, 0, -1));
+  ASSERT_EQ("", runAllUnrolls(3, 0, -1));
 
-  ASSERT_EQ("oiii", run(0, 1, -1));
-  ASSERT_EQ("ioii", run(1, 1, -1));
-  ASSERT_EQ("iioi", run(2, 1, -1));
-  ASSERT_EQ("iiio", run(3, 1, -1));
+  ASSERT_EQ("aiii", runAllUnrolls(0, 1, -1));
+  ASSERT_EQ("iaii", runAllUnrolls(1, 1, -1));
+  ASSERT_EQ("iiai", runAllUnrolls(2, 1, -1));
+  ASSERT_EQ("iiia", runAllUnrolls(3, 1, -1));
 
-  ASSERT_EQ("ooii", run(0, 2, -1));
-  ASSERT_EQ("iooi", run(1, 2, -1));
-  ASSERT_EQ("iioo", run(2, 2, -1));
-  ASSERT_EQ("iiiooiii", run(3, 2, -1));
+  ASSERT_EQ("aaii", runAllUnrolls(0, 2, -1));
+  ASSERT_EQ("iaai", runAllUnrolls(1, 2, -1));
+  ASSERT_EQ("iiaa", runAllUnrolls(2, 2, -1));
+  ASSERT_EQ("iiiaaiii", runAllUnrolls(3, 2, -1));
 
-  ASSERT_EQ("oooi", run(0, 3, -1));
-  ASSERT_EQ("iooo", run(1, 3, -1));
-  ASSERT_EQ("iioooiii", run(2, 3, -1));
-  ASSERT_EQ("iiioooii", run(3, 3, -1));
+  ASSERT_EQ("aaai", runAllUnrolls(0, 3, -1));
+  ASSERT_EQ("iaaa", runAllUnrolls(1, 3, -1));
+  ASSERT_EQ("iiaaaiii", runAllUnrolls(2, 3, -1));
+  ASSERT_EQ("iiiaaaii", runAllUnrolls(3, 3, -1));
 
-  ASSERT_EQ("oooo", run(0, 4, -1));
-  ASSERT_EQ("iooooiii", run(1, 4, -1));
-  ASSERT_EQ("iiooooii", run(2, 4, -1));
-  ASSERT_EQ("iiiooooi", run(3, 4, -1));
+  ASSERT_EQ("aaaa", runAllUnrolls(0, 4, -1));
+  ASSERT_EQ("iaaaaiii", runAllUnrolls(1, 4, -1));
+  ASSERT_EQ("iiaaaaii", runAllUnrolls(2, 4, -1));
+  ASSERT_EQ("iiiaaaai", runAllUnrolls(3, 4, -1));
 
-  ASSERT_EQ("oooooiii", run(0, 5, -1));
-  ASSERT_EQ("ioooooii", run(1, 5, -1));
-  ASSERT_EQ("iioooooi", run(2, 5, -1));
-  ASSERT_EQ("iiiooooo", run(3, 5, -1));
+  ASSERT_EQ("aaaaaiii", runAllUnrolls(0, 5, -1));
+  ASSERT_EQ("iaaaaaii", runAllUnrolls(1, 5, -1));
+  ASSERT_EQ("iiaaaaai", runAllUnrolls(2, 5, -1));
+  ASSERT_EQ("iiiaaaaa", runAllUnrolls(3, 5, -1));
 }
 
 TEST(SimdForEachAligningTest, Large) {
   ASSERT_EQ(
-      "oooo"
-      "oooo"
-      "oooo"
-      "oooo"
-      "ooii",
-      run(0, 18, -1));
+      "aaaa"
+      "aaaa"
+      "aaaa"
+      "aaaa"
+      "aaii",
+      runAllUnrolls(0, 18, -1));
   ASSERT_EQ(
-      "iooo"
-      "oooo"
-      "oooo"
-      "oooo"
-      "oooi",
-      run(1, 18, -1));
+      "iaaa"
+      "aaaa"
+      "aaaa"
+      "aaaa"
+      "aaai",
+      runAllUnrolls(1, 18, -1));
   ASSERT_EQ(
-      "iioo"
-      "oooo"
-      "oooo"
-      "oooo"
-      "oooo",
-      run(2, 18, -1));
+      "iiaa"
+      "aaaa"
+      "aaaa"
+      "aaaa"
+      "aaaa",
+      runAllUnrolls(2, 18, -1));
   ASSERT_EQ(
-      "iiio"
-      "oooo"
-      "oooo"
-      "oooo"
-      "oooo"
-      "oiii",
-      run(3, 18, -1));
+      "iiia"
+      "aaaa"
+      "aaaa"
+      "aaaa"
+      "aaaa"
+      "aiii",
+      runAllUnrolls(3, 18, -1));
 }
 
 TEST(SimdForEachAligningTest, Stops) {
   for (int i = 0; i != 4; ++i) {
-    ASSERT_EQ("oooo", run(0, 18, i));
+    ASSERT_EQ("aaaa", runAllUnrolls(0, 18, i));
   }
   for (int i = 0; i != 4; ++i) {
     ASSERT_EQ(
-        "oooo"
-        "oooo",
-        run(0, 18, 4 + i));
+        "aaaa"
+        "aaaa",
+        runAllUnrolls(0, 18, 4 + i));
   }
   for (int i = 0; i != 4; ++i) {
     ASSERT_EQ(
-        "oooo"
-        "oooo"
-        "oooo"
-        "oooo"
-        "ooii",
-        run(0, 18, 16 + i));
+        "aaaa"
+        "aaaa"
+        "aaaa"
+        "aaaa"
+        "aaii",
+        runAllUnrolls(0, 18, 16 + i));
   }
+}
+
+TEST(SimdForEachAligningTest, UnrollIndexes) {
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "aaaa",
+      run<1>(1, 11, -1));
+
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "bbbb",
+      run<2>(1, 11, -1));
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "bbbb"
+      "aaii",
+      run<2>(1, 13, -1));
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "bbbb"
+      "AAAA"
+      "BBBB",
+      run<2>(1, 19, -1));
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "bbbb"
+      "AAAA"
+      "BBBB"
+      "aaaa"
+      "aiii",
+      run<2>(1, 24, -1));
+
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "bbbb",
+      run<3>(1, 11, -1));
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "bbbb"
+      "cccc"
+      "aaaa",
+      run<3>(1, 19, -1));
+  ASSERT_EQ(
+      "aaaa"
+      "aaaa"
+      "bbbb"
+      "cccc"
+      "AAAA"
+      "BBBB"
+      "CCCC",
+      run<3>(0, 28, -1));
+  ASSERT_EQ(
+      "iaaa"
+      "aaaa"
+      "bbbb"
+      "cccc"
+      "AAAA"
+      "BBBB"
+      "CCCC"
+      "aaii",
+      run<3>(1, 29, -1));
+
+  ASSERT_EQ(
+      "aaaa"
+      "aaaa"
+      "bbbb"
+      "cccc"
+      "dddd"
+      "aiii",
+      run<4>(0, 21, -1));
+  ASSERT_EQ(
+      "aaaa"
+      "aaaa"
+      "bbbb"
+      "cccc"
+      "dddd"
+      "AAAA"
+      "BBBB"
+      "CCCC"
+      "DDDD"
+      "aiii",
+      run<4>(0, 37, -1));
 }
 
 } // namespace simd_detail
