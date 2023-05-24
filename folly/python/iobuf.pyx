@@ -39,7 +39,7 @@ cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view):
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
     inst = <IOBuf>IOBuf.__new__(IOBuf)
     inst._ours = move(ciobuf)
-    inst._parent = inst
+    inst._parent = None
     inst._this = inst._ours.get()
     __cache[(<unsigned long>inst._this, id(inst))] = inst
     return inst
@@ -58,7 +58,7 @@ cdef class IOBuf:
         cdef memoryview view = memoryview(buffer, PyBUF_C_CONTIGUOUS)
         self._ours = move(from_python_buffer(view))
         self._this = self._ours.get()
-        self._parent = self
+        self._parent = None
         self._hash = None
         __cache[(<unsigned long>self._this, id(self))] = self
 
@@ -92,7 +92,7 @@ cdef class IOBuf:
         if _next == self._this:
             return None
 
-        return IOBuf.create(_next, self._parent)
+        return IOBuf.create(_next, self if self._parent is None else self._parent)
 
     @property
     def prev(self):
@@ -100,7 +100,7 @@ cdef class IOBuf:
         if _prev == self._this:
             return None
 
-        return IOBuf.create(_prev, self._parent)
+        return IOBuf.create(_prev, self if self._parent is None else self._parent)
 
     @property
     def is_chained(self):
