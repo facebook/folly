@@ -875,6 +875,10 @@ const std::string& EventBase::getName() {
   return name_;
 }
 
+std::thread::id EventBase::getLoopThreadId() {
+  return loopThread_.load(std::memory_order_relaxed);
+}
+
 void EventBase::scheduleAt(Func&& fn, TimePoint const& timeout) {
   auto duration = timeout - now();
   timer().scheduleTimeoutFn(

@@ -864,6 +864,11 @@ class EventBase : public TimeoutManager,
    */
   const std::string& getName();
 
+  /**
+   * Returns the ID of the thread that this event base is running in
+   */
+  std::thread::id getLoopThreadId();
+
   /// Implements the Executor interface
   void add(Cob fn) override { runInEventBaseThread(std::move(fn)); }
 
