@@ -640,7 +640,8 @@ FOLLY_INLINE_VARIABLE constexpr bool is_allocator_<
         typename T::value_type,
         decltype(std::declval<T&>().allocate(std::size_t{})),
         decltype(std::declval<T&>().deallocate(
-            std::declval<typename T::value_type*>(), std::size_t{}))>> = true;
+            static_cast<typename T::value_type*>(nullptr), std::size_t{}))>> =
+    true;
 
 } // namespace detail
 
