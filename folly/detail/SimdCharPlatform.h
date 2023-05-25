@@ -67,6 +67,8 @@ namespace simd_detail {
  *
  * logical ops:
  *   - movemask - take a bitmask
+ *   - any(logical_t, ignore) - return true if any the lanes are true
+ *   - logical_or(logical_t, logical_t) - by lane logical or
  *
  * mmask ops:
  *   - clear(mmask, ignore) - sets ignored bits to 0
@@ -110,6 +112,16 @@ struct SimdCharPlatformCommon : Platform {
   static auto loada(const char* ptr, simd_detail::ignore_extrema) {
     return Platform::unsafeLoadu(ptr, simd_detail::ignore_none{});
   }
+
+  using Platform::any;
+
+  FOLLY_ALWAYS_INLINE
+  static bool any(
+      typename Platform::logical_t log, simd_detail::ignore_extrema ignore) {
+    auto mmask = Platform::movemask(log);
+    mmask = clear(mmask, ignore);
+    return mmask;
+  }
 };
 
 #if FOLLY_X64
@@ -141,7 +153,17 @@ struct SimdCharSse2PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
+  static logical_t logical_or(logical_t x, logical_t y) {
+    return _mm_or_si128(x, y);
+  }
+
+  FOLLY_ALWAYS_INLINE
   static mmask_t movemask(logical_t log) { return _mm_movemask_epi8(log); }
+
+  FOLLY_ALWAYS_INLINE
+  static bool any(logical_t log, simd_detail::ignore_none) {
+    return movemask(log);
+  }
 };
 
 #define FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM 1
@@ -177,7 +199,17 @@ struct SimdCharAvx2PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
+  static logical_t logical_or(logical_t x, logical_t y) {
+    return _mm256_or_si256(x, y);
+  }
+
+  FOLLY_ALWAYS_INLINE
   static mmask_t movemask(logical_t log) { return _mm256_movemask_epi8(log); }
+
+  FOLLY_ALWAYS_INLINE
+  static bool any(logical_t log, simd_detail::ignore_none) {
+    return movemask(log);
+  }
 };
 
 using SimdCharAvx2Platform =
@@ -216,6 +248,11 @@ struct SimdCharAarch64PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
+  static logical_t logical_or(logical_t x, logical_t y) {
+    return vorrq_u8(x, y);
+  }
+
+  FOLLY_ALWAYS_INLINE
   static mmask_t movemask(logical_t log) {
     // note: we tried doing any before movemask and it didn't help
     // if you need movemask - do movemask.
@@ -228,6 +265,11 @@ struct SimdCharAarch64PlatformSpecific {
     uint8x8_t packed = vmovn_u16(u16s);
     return vget_lane_u64(vreinterpret_u64_u8(packed), 0);
   }
+
+  FOLLY_ALWAYS_INLINE
+  static bool any(logical_t log, simd_detail::ignore_none) {
+    return vmaxvq_u8(log);
+  }
 };
 
 #define FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM 1
@@ -236,6 +278,8 @@ using SimdCharAarch64Platform =
     SimdCharPlatformCommon<SimdCharAarch64PlatformSpecific>;
 
 using SimdCharPlatform = SimdCharAarch64Platform;
+
+#define FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM 1
 
 #else
 
