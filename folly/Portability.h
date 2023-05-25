@@ -525,7 +525,7 @@ constexpr auto kCpplibVer = 0;
 #if defined(FOLLY_CFG_NO_COROUTINES)
 #define FOLLY_HAS_COROUTINES 0
 #else
-#if __cplusplus >= 201703L
+#if FOLLY_CPLUSPLUS >= 201703L
 // folly::coro requires C++17 support
 #if defined(__NVCC__)
 // For now, NVCC matches other compilers but does not offer coroutines.
@@ -541,6 +541,10 @@ constexpr auto kCpplibVer = 0;
 // <experimental/coroutine> which will conflict with anyone who wants to load
 // the LLVM implementation of coroutines on Windows.
 #define FOLLY_HAS_COROUTINES 0
+#elif defined(_MSC_VER) && _MSC_VER && defined(_RESUMABLE_FUNCTIONS_SUPPORTED)
+// NOTE: MSVC 2017 does not currently support the full Coroutines TS since it
+// does not yet support symmetric-transfer.
+#define FOLLY_HAS_COROUTINES 0
 #elif (                                                                    \
     (defined(__cpp_coroutines) && __cpp_coroutines >= 201703L) ||          \
     (defined(__cpp_impl_coroutine) && __cpp_impl_coroutine >= 201902L)) && \
@@ -549,16 +553,12 @@ constexpr auto kCpplibVer = 0;
 // This is mainly to workaround bugs triggered by LTO, when stack allocated
 // variables in await_suspend end up on a coroutine frame.
 #define FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES FOLLY_NOINLINE
-#elif defined(_MSC_VER) && _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
-// NOTE: MSVC 2017 does not currently support the full Coroutines TS since it
-// does not yet support symmetric-transfer.
-#define FOLLY_HAS_COROUTINES 0
 #else
 #define FOLLY_HAS_COROUTINES 0
 #endif
 #else
 #define FOLLY_HAS_COROUTINES 0
-#endif // __cplusplus >= 201703L
+#endif // FOLLY_CPLUSPLUS >= 201703L
 #endif // FOLLY_CFG_NO_COROUTINES
 
 // MSVC 2017.5 && C++17
