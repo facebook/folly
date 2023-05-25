@@ -54,15 +54,27 @@ class SocketFds final {
   // make your own copy `const`, too.
   using ToSend = std::vector<std::shared_ptr<const folly::File>>;
 
+  // FD sequence numbers are nonnnegative.  This represents "none was set";
+  // also used for some DFATAL errors.
+  static constexpr int64_t kNoSeqNum = -1;
+
  private:
-  using FdsVariant = std::variant<Received, ToSend>;
+  // `second` is the AsyncFdSocket sequence number, or `kNoSeqNum` if unset
+  using ToSendPair = std::pair<ToSend, int64_t>;
+  using ReceivedPair = std::pair<Received, int64_t>;
+  using FdsVariant = std::variant<ReceivedPair, ToSendPair>;
 
  public:
   SocketFds() = default;
   SocketFds(SocketFds&& other) = default;
   template <class T>
   explicit SocketFds(T fds) {
-    ptr_ = std::make_unique<FdsVariant>(std::move(fds));
+    // Representation invariant: when `SocketFds.empty()`, there's no backing
+    // allocation.
+    if (fds.size() > 0) {
+      ptr_ = std::make_unique<FdsVariant>(
+          std::make_pair(std::move(fds), kNoSeqNum));
+    }
   }
 
   SocketFds& operator=(SocketFds&& other) = default;
@@ -70,10 +82,10 @@ class SocketFds final {
   bool empty() const { return !ptr_; }
 
   size_t size() const {
-    if (empty()) {
+    if (!ptr_) {
       return 0;
     }
-    return std::visit([](auto&& v) { return v.size(); }, *ptr_);
+    return std::visit([](auto&& v) { return v.first.size(); }, *ptr_);
   }
 
   // These methods help ensure the right kind of data is being plumbed or
@@ -84,11 +96,11 @@ class SocketFds final {
     return *this;
   }
   SocketFds& dcheckReceivedOrEmpty() {
-    DCHECK(!ptr_ || std::holds_alternative<Received>(*ptr_));
+    DCHECK(!ptr_ || std::holds_alternative<ReceivedPair>(*ptr_));
     return *this;
   }
   SocketFds& dcheckToSendOrEmpty() {
-    DCHECK(!ptr_ || std::holds_alternative<ToSend>(*ptr_));
+    DCHECK(!ptr_ || std::holds_alternative<ToSendPair>(*ptr_));
     return *this;
   }
 
@@ -96,37 +108,29 @@ class SocketFds final {
   // `SocketFds` that are known to be in this state.
   //  - Invariant: `other` must be `ToSend`.
   //  - Cost: Cloning copies a vector into a new heap allocation.
-  void cloneToSendFromOrDfatal(const SocketFds& other) {
-    if (!other.empty()) {
-      auto* fds = std::get_if<ToSend>(other.ptr_.get());
-      if (UNLIKELY(fds == nullptr)) {
-        LOG(DFATAL) << "SocketFds was in 'received' state, not cloning";
-        ptr_.reset();
-      } else {
-        ptr_ = std::make_unique<FdsVariant>(*fds);
-      }
-    }
-  }
+  void cloneToSendFromOrDfatal(const SocketFds& other);
 
-  Received releaseReceived() {
-    auto fds = std::move(*CHECK_NOTNULL(std::get_if<Received>(ptr_.get())));
-    // NB: In the case of a Thrift server handler method that is receiving
-    // and then sending back FDs using the same `SocketFds` object, this
-    // deallocation (and subsequent allocation) could be avoided, e.g. by:
-    //  - Without changing the API by having an additional `std::monostate`
-    //    representing the variant being empty. This has the downside of
-    //    holding on to allocations unnecessarily in other cases.
-    //  - By adding `std::pair<Received, ToSend&> releaseReceivedAndSend()`.
-    //    This complicates the user experience.
-    ptr_.reset();
-    return fds;
-  }
+  Received releaseReceived();
+  ToSend releaseToSend();
 
-  ToSend releaseToSend() {
-    auto fds = std::move(*CHECK_NOTNULL(std::get_if<ToSend>(ptr_.get())));
-    ptr_.reset();
-    return fds;
-  }
+  // Socket FDs need to be associated with socket data messages. Doing so
+  // correctly through the many layers of Folly & Thrift can be tricky --
+  // certain code bugs could cause the order in which FDs are sent to
+  // deviate from the order in which they are popped off the socket queue
+  // by the receiver.
+  //
+  // Operating on the wrong can lead to data loss or data corruption, so
+  // in order to detect such bugs, we include FD sequence numbers in the
+  // metadata of each message.
+  //
+  // The semantics of these methods are like so:
+  //  - A brand new `SocketFds`, or one that has been `release*`d has
+  //    no sequence number -- i.e. `kNoSeqNum`.
+  //  - A nonnegative sequence number can be attached to a `SocketFds`
+  //    that has none, to be obtained via `AsyncFdSocket`.
+  //  - It is a DFATAL error to replace one sequence number by another.
+  void setFdSocketSeqNumOnce(int64_t seqNum);
+  int64_t getFdSocketSeqNum() const; // Non-negative, or `kNoSeqNum`
 
  private:
   std::unique_ptr<FdsVariant> ptr_;
