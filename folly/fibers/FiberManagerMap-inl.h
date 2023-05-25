@@ -21,8 +21,8 @@
 
 #include <folly/Function.h>
 #include <folly/ScopeGuard.h>
+#include <folly/SingletonThreadLocal.h>
 #include <folly/Synchronized.h>
-#include <folly/ThreadLocal.h>
 #include <folly/container/F14Map.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 
@@ -112,11 +112,11 @@ class ThreadLocalCache {
   template <typename LocalT>
   static FiberManager& get(
       uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
-    return instance()->template getImpl<LocalT>(token, evb, opts);
+    return STL::get().template getImpl<LocalT>(token, evb, opts);
   }
 
   static void erase(const Key<EventBaseT>& key) {
-    for (auto& localInstance : instance().accessAllThreads()) {
+    for (auto& localInstance : STL::accessAllThreads()) {
       localInstance.eraseInfo_.withWLock([&](auto& info) {
         if (info.eraseList.size() >= kEraseListMaxSize) {
           info.eraseAll = true;
@@ -129,19 +129,14 @@ class ThreadLocalCache {
   }
 
  private:
+  struct TLTag {};
+  template <typename Base>
+  struct Derived : Base {
+    using Base::Base;
+  };
+  using STL = SingletonThreadLocal<Derived<ThreadLocalCache>, TLTag>;
+
   ThreadLocalCache() = default;
-
-  struct ThreadLocalCacheTag {};
-  using ThreadThreadLocalCache =
-      ThreadLocal<ThreadLocalCache, ThreadLocalCacheTag>;
-
-  // Leak this intentionally. During shutdown, we may call getFiberManager,
-  // and want access to the fiber managers during that time.
-  static ThreadThreadLocalCache& instance() {
-    static auto ret =
-        new ThreadThreadLocalCache([]() { return new ThreadLocalCache(); });
-    return *ret;
-  }
 
   template <typename LocalT>
   FiberManager& getImpl(
