@@ -19,7 +19,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/experimental/io/AsyncBase.h>
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 
 #include <liburing.h>
 

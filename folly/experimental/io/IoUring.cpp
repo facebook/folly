@@ -30,7 +30,7 @@
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 
 // helpers
 namespace {
