@@ -57,7 +57,6 @@ ThreadPoolExecutor::ThreadPoolExecutor(
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads) {
   threadTimeout_ = std::chrono::milliseconds(FLAGS_threadtimeout_ms);
-  namePrefix_ = threadFactory_->getNamePrefix();
 }
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
@@ -119,7 +118,7 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   FOLLY_SDT(
       folly,
       thread_pool_executor_task_stats,
-      namePrefix_.c_str(),
+      threadFactory_->getNamePrefix().c_str(),
       stats.requestId,
       stats.enqueueTime.time_since_epoch().count(),
       stats.waitTime.count(),
@@ -315,7 +314,7 @@ size_t ThreadPoolExecutor::getPendingTaskCount() const {
 }
 
 const std::string& ThreadPoolExecutor::getName() const {
-  return namePrefix_;
+  return threadFactory_->getNamePrefix();
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);

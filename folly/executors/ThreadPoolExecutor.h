@@ -80,7 +80,6 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   void setThreadFactory(std::shared_ptr<ThreadFactory> threadFactory) {
     CHECK(numThreads() == 0);
     threadFactory_ = std::move(threadFactory);
-    namePrefix_ = threadFactory_->getNamePrefix();
   }
 
   std::shared_ptr<ThreadFactory> getThreadFactory() const {
@@ -312,7 +311,6 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   };
 
   std::shared_ptr<ThreadFactory> threadFactory_;
-  std::string namePrefix_;
 
   ThreadList threadList_;
   SharedMutex threadListLock_;

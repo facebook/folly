@@ -293,9 +293,9 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
   folly::Optional<ExecutorBlockingGuard> guard; // optional until C++17
   if (prohibitBlockingOnThreadPools_ == Options::Blocking::prohibit) {
-    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, this, namePrefix_);
+    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, this, getName());
   } else {
-    guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, namePrefix_);
+    guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, getName());
   }
 
   thread->startupBaton.post();

@@ -358,7 +358,7 @@ folly::Executor::KeepAlive<> EDFThreadPoolExecutor::deadlineExecutor(
 void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
   ExecutorBlockingGuard guard{
-      ExecutorBlockingGuard::TrackTag{}, this, namePrefix_};
+      ExecutorBlockingGuard::TrackTag{}, this, getName()};
 
   thread->startupBaton.post();
   for (;;) {

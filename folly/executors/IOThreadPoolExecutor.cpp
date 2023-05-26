@@ -245,7 +245,7 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
       [thread] { thread->startupBaton.post(); });
   {
     ExecutorBlockingGuard guard{
-        ExecutorBlockingGuard::TrackTag{}, this, namePrefix_};
+        ExecutorBlockingGuard::TrackTag{}, this, getName()};
     while (ioThread->shouldRun) {
       ioThread->eventBase->loopForever();
     }
