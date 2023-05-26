@@ -324,10 +324,18 @@ constexpr auto kHasWeakSymbols = false;
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
 #ifndef FOLLY_NEON
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__CUDACC__)
 #define FOLLY_NEON 1
 #else
 #define FOLLY_NEON 0
+#endif
+#endif
+
+#ifndef FOLLY_ARM_FEATURE_CRC32
+#ifdef __ARM_FEATURE_CRC32
+#define FOLLY_ARM_FEATURE_CRC32 1
+#else
+#define FOLLY_ARM_FEATURE_CRC32 0
 #endif
 #endif
 
