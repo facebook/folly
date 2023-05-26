@@ -90,8 +90,11 @@ set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
 include(FBBuildOptions)
 fb_activate_static_library_option()
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  message(STATUS "setting C++ standard to C++${CMAKE_CXX_STANDARD}")
+endif()
 
 if("${CMAKE_LIBRARY_ARCHITECTURE}" STREQUAL "")
   # CMAKE_LIBRARY_ARCHITECTURE is not always set, so we have to assume
