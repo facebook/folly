@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -82,8 +83,6 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   void add(Func f) override;
   void add(Func f, std::size_t total, uint64_t deadline) override;
   void add(std::vector<Func> fs, uint64_t deadline) override;
-
-  folly::Executor::KeepAlive<> deadlineExecutor(uint64_t deadline);
 
  protected:
   void threadRun(ThreadPtr thread) override;

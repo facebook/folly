@@ -46,6 +46,8 @@ class SoftRealTimeExecutor : public virtual Executor {
 
   virtual void add(Func, std::size_t total, uint64_t deadline) = 0;
   virtual void add(std::vector<Func>, uint64_t deadline) = 0;
+
+  folly::Executor::KeepAlive<> deadlineExecutor(uint64_t deadline);
 };
 
 } // namespace folly

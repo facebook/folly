@@ -28,6 +28,7 @@
 #include <utility>
 #include <vector>
 
+#include <glog/logging.h>
 #include <folly/ScopeGuard.h>
 #include <folly/synchronization/LifoSem.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
@@ -312,47 +313,6 @@ void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
     // are running and will get around to this task in time.
     sem_->post(std::min(total, numIdleThreads));
   }
-}
-
-folly::Executor::KeepAlive<> EDFThreadPoolExecutor::deadlineExecutor(
-    uint64_t deadline) {
-  class DeadlineExecutor : public folly::Executor {
-   public:
-    static KeepAlive<> create(
-        uint64_t deadline, KeepAlive<EDFThreadPoolExecutor> executor) {
-      return makeKeepAlive(new DeadlineExecutor(deadline, std::move(executor)));
-    }
-
-    void add(folly::Func f) override {
-      executor_->add(std::move(f), deadline_);
-    }
-
-    bool keepAliveAcquire() noexcept override {
-      const auto count =
-          keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
-      DCHECK_GT(count, 0);
-      return true;
-    }
-
-    void keepAliveRelease() noexcept override {
-      const auto count =
-          keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
-      DCHECK_GT(count, 0);
-      if (count == 1) {
-        delete this;
-      }
-    }
-
-   private:
-    DeadlineExecutor(
-        uint64_t deadline, KeepAlive<EDFThreadPoolExecutor> executor)
-        : deadline_(deadline), executor_(std::move(executor)) {}
-
-    std::atomic<size_t> keepAliveCount_{1};
-    uint64_t deadline_;
-    KeepAlive<EDFThreadPoolExecutor> executor_;
-  };
-  return DeadlineExecutor::create(deadline, getKeepAliveToken(this));
 }
 
 void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
