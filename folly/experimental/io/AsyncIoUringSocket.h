@@ -390,7 +390,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     WriteCallback* callback_;
     std::unique_ptr<IOBuf> buf_;
     WriteFlags flags_;
-    small_vector<struct iovec, 2> iov_;
+    static constexpr size_t kSmallIoVecSize = 16;
+    small_vector<struct iovec, kSmallIoVecSize> iov_;
     size_t totalLength_;
     struct msghdr msg_;
 
