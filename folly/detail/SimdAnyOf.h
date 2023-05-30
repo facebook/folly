@@ -34,7 +34,7 @@ namespace simd_detail {
  */
 template <typename Platform, typename I, typename P>
 struct AnyOfDelegate {
-  explicit AnyOfDelegate(P p) : p(p) {}
+  explicit AnyOfDelegate(P p0) : p(p0) {}
 
   template <typename Ignore, typename UnrollStep>
   FOLLY_ALWAYS_INLINE bool step(I it, Ignore ignore, UnrollStep) {
