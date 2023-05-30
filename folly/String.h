@@ -38,6 +38,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Unit.h>
+#include <folly/detail/SimpleSimdStringUtils.h>
 #include <folly/detail/SplitStringSimd.h>
 
 namespace folly {
@@ -740,6 +741,13 @@ inline void toLowerAscii(MutableStringPiece str) {
 inline void toLowerAscii(std::string& str) {
   // str[0] is legal also if the string is empty.
   toLowerAscii(&str[0], str.size());
+}
+
+/**
+ * Returns if string contains std::isspace or std::iscntrl characters.
+ **/
+inline bool hasSpaceOrCntrlSymbols(folly::StringPiece s) {
+  return detail::simdHasSpaceOrCntrlSymbols(s);
 }
 
 } // namespace folly

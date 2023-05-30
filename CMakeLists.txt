@@ -653,6 +653,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST simd_for_each_test SOURCES SimdForEachTest.cpp
 
     DIRECTORY detail/test/
+      TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
+
+    DIRECTORY detail/test/
       TEST split_string_simd_test SOURCES SplitStringSimdTest.cpp
 
     DIRECTORY detail/test/

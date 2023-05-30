@@ -20,6 +20,8 @@
 #include <folly/detail/SimdForEach.h>
 #include <folly/lang/Bits.h>
 
+#include <array>
+
 #if FOLLY_X64
 #include <immintrin.h>
 #endif
@@ -52,18 +54,17 @@ namespace simd_detail {
  *  - kCardinal - number of elements in a register
  *  - kMmaskBitsPerElement - number of bits per element in a mmask_t
  *
+ * loads:
+ *  - loadu(const char*, ignore_none)
+ *  - unsafeLoadU(const char*, ignore_none)
+ *  - loada(const char*, ignore)
+ *
+ * a/u stand for aligned/unaligned. Ignored values can be garbage. unsafe
+ * disables sanitizers.
+ *
  * reg ops:
- *
- *  loads:
- *   - loadu(const char*, ignore_none)
- *   - unsafeLoadU(const char*, ignore_none)
- *   - loada(const char*, ignore)
- *
- *  a/u stand for aligned/unaligned. Ignored values can be garbage. unsafe
- *  disables sanitizers.
- *
- *  comparisons:
- *   - equal(reg_t, char) - by lane comparison against a char.
+ *  - equal(reg_t, char) - by lane comparison against a char.
+ *  - le_unsigned(reg_t, char) - by lane less than or equal to char.
  *
  * logical ops:
  *   - movemask - take a bitmask
@@ -122,6 +123,12 @@ struct SimdCharPlatformCommon : Platform {
     mmask = clear(mmask, ignore);
     return mmask;
   }
+
+  static auto toArray(typename Platform::reg_t x) {
+    std::array<std::uint8_t, Platform::kCardinal> buf;
+    std::memcpy(buf.data(), &x, Platform::kCardinal);
+    return buf;
+  }
 };
 
 #if FOLLY_X64
@@ -150,6 +157,14 @@ struct SimdCharSse2PlatformSpecific {
   FOLLY_ALWAYS_INLINE
   static logical_t equal(reg_t reg, char x) {
     return _mm_cmpeq_epi8(reg, _mm_set1_epi8(x));
+  }
+
+  FOLLY_ALWAYS_INLINE
+  static logical_t le_unsigned(reg_t reg, char x) {
+    // No unsigned comparisons on x86
+    // less equal <=> equal (min)
+    reg_t min = _mm_min_epu8(reg, _mm_set1_epi8(x));
+    return _mm_cmpeq_epi8(reg, min);
   }
 
   FOLLY_ALWAYS_INLINE
@@ -199,6 +214,13 @@ struct SimdCharAvx2PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
+  static logical_t le_unsigned(reg_t reg, char x) {
+    // See SSE comment
+    reg_t min = _mm256_min_epu8(reg, _mm256_set1_epi8(x));
+    return _mm256_cmpeq_epi8(reg, min);
+  }
+
+  FOLLY_ALWAYS_INLINE
   static logical_t logical_or(logical_t x, logical_t y) {
     return _mm256_or_si256(x, y);
   }
@@ -245,6 +267,11 @@ struct SimdCharAarch64PlatformSpecific {
   FOLLY_ALWAYS_INLINE
   static logical_t equal(reg_t reg, char x) {
     return vceqq_u8(reg, vdupq_n_u8(static_cast<std::uint8_t>(x)));
+  }
+
+  FOLLY_ALWAYS_INLINE
+  static logical_t le_unsigned(reg_t reg, char x) {
+    return vcleq_u8(reg, vdupq_n_u8(static_cast<std::uint8_t>(x)));
   }
 
   FOLLY_ALWAYS_INLINE
