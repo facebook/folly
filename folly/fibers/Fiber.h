@@ -82,6 +82,8 @@ class Fiber {
     return {fiberStackLimit_, fiberStackSize_};
   }
 
+  size_t stackHighWatermark() const { return fiberStackHighWatermark_; }
+
  private:
   enum State : char {
     INVALID, /**< Does't have task function */
@@ -130,6 +132,7 @@ class Fiber {
   bool stackFilledWithMagic_{false};
   FiberManager& fiberManager_; /**< Associated FiberManager */
   size_t fiberStackSize_;
+  size_t fiberStackHighWatermark_;
   unsigned char* fiberStackLimit_;
   FiberImpl fiberImpl_; /**< underlying fiber implementation */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */

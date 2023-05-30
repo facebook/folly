@@ -68,6 +68,7 @@ void Fiber::resume() {
 Fiber::Fiber(FiberManager& fiberManager)
     : fiberManager_(fiberManager),
       fiberStackSize_(fiberManager_.options_.stackSize),
+      fiberStackHighWatermark_(0),
       fiberStackLimit_(fiberManager_.stackAllocator_.allocate(fiberStackSize_)),
       fiberImpl_([this] { fiberFunc(); }, fiberStackLimit_, fiberStackSize_) {
   fiberManager_.allFibers_.push_back(*this);
@@ -126,6 +127,8 @@ void Fiber::recordStackPosition() {
   auto currentPosition = static_cast<size_t>(
       fiberStackLimit_ + fiberStackSize_ -
       static_cast<unsigned char*>(static_cast<void*>(&stackDummy)));
+  fiberStackHighWatermark_ =
+      std::max(fiberStackHighWatermark_, currentPosition);
   fiberManager_.recordStackPosition(currentPosition);
   VLOG(4) << "Stack usage: " << currentPosition;
 #endif
@@ -163,8 +166,11 @@ void Fiber::recordStackPosition() {
     }
 
     if (UNLIKELY(recordStackUsed_)) {
-      auto newHighWatermark = fiberManager_.recordStackPosition(
-          nonMagicInBytes(fiberStackLimit_, fiberStackSize_));
+      auto currentPosition = nonMagicInBytes(fiberStackLimit_, fiberStackSize_);
+      fiberStackHighWatermark_ =
+          std::max(fiberStackHighWatermark_, currentPosition);
+      auto newHighWatermark =
+          fiberManager_.recordStackPosition(currentPosition);
       VLOG(3) << "Max stack usage: " << newHighWatermark;
       CHECK_LT(newHighWatermark, fiberManager_.options_.stackSize - 64)
           << "Fiber stack overflow";
