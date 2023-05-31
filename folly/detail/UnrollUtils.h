@@ -81,7 +81,14 @@ struct UnrollUtils {
   FOLLY_ALWAYS_INLINE static constexpr auto arrayMapImpl(
       const std::array<T, N>& x, Op op, std::index_sequence<i...>) {
     using U = decltype(op(std::declval<const T&>()));
-    std::array<U, N> res{op(x[i])...};
+
+    FOLLY_PUSH_WARNING
+    // This is a very common gcc issue,
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=97222 apparently discarding
+    // it here is fine and done through out.
+    FOLLY_GCC_DISABLE_WARNING("-Wignored-attributes")
+    std::array<U, N> res{{op(x[i])...}};
+    FOLLY_POP_WARNING
     return res;
   }
 
