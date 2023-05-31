@@ -244,7 +244,7 @@ class IOBuf {
   typedef Iterator iterator;
   typedef Iterator const_iterator;
 
-  typedef void (*FreeFunction)(void* buf, void* userData);
+  using FreeFunction = void (*)(void* buf, void* userData);
 
   /**
    * Allocate a new IOBuf object with the requested capacity.
