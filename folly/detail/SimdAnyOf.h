@@ -34,7 +34,8 @@ namespace simd_detail {
  */
 template <typename Platform, typename I, typename P>
 struct AnyOfDelegate {
-  explicit AnyOfDelegate(P p) : p(p) {}
+  // _p to deal with a shadow warning on an old gcc
+  explicit AnyOfDelegate(P _p) : p(_p) {}
 
   template <typename Ignore, typename UnrollStep>
   FOLLY_ALWAYS_INLINE bool step(I it, Ignore ignore, UnrollStep) {
