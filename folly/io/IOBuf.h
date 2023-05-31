@@ -54,31 +54,33 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
 } // namespace detail
 
 /**
- * An IOBuf is a pointer to a buffer of data.
+ * IOBuf manages raw data on the heap (buffers). TL;DR:
  *
- * IOBuf objects are intended to be used primarily for networking code, and are
- * modelled somewhat after FreeBSD's mbuf data structure, and Linux's sk_buff
- * structure.
- *
- * IOBuf objects facilitate zero-copy network programming, by allowing multiple
- * IOBuf objects to point to the same underlying buffer of data, using a
- * reference count to track when the buffer is no longer needed and can be
- * freed.
+ *  - Only a segment of the heap-allocated buffer is valid.
+ *  - Buffers are refcounted, and can be shared by multiple IOBuf objects.
+ *    - If you ever write to an IOBuf, first use unshare() to get a unique copy.
+ *  - IOBufs can be "chained" in a circularly linked list.
+ *    - Use coalesce() to turn an IOBuf chain into a single IOBuf.
+ *  - IOBufs are not synchronized.
+ *    - Like a shared_ptr, the refcount is atomic.
+ *    - It is safe for multiple threads to call const IOBuf methods.
+ *    - If any thread calls a non-const IOBuf method, the user is responsible
+ *      for doing so under an exclusive lock.
+ *  - IOBufs are typically stored on the heap, so that they can be used in
+ *    chains.
  *
  *
  * Data Layout
  * -----------
  *
- * The IOBuf itself is a small object containing a pointer to the buffer and
- * information about which segment of the buffer contains valid data.
- *
- * The data layout looks like this:
+ * IOBuf objects contains a pointer to the buffer and information about which
+ * segment of the buffer contains valid data.
  *
  *      +-------+
  *      | IOBuf |
  *      +-------+
  *       /
- *      |
+ *      |            |----- length() -----|
  *      v
  *      +------------+--------------------+-----------+
  *      | headroom   |        data        |  tailroom |
@@ -86,16 +88,13 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  *      ^            ^                    ^           ^
  *      buffer()   data()               tail()      bufferEnd()
  *
- *  The length() method returns the length of the valid data; capacity()
- *  returns the entire capacity of the buffer (from buffer() to bufferEnd()).
- *  The headroom() and tailroom() methods return the amount of unused capacity
- *  available before and after the data.
+ *      |----------------- capacity() ----------------|
  *
  *
  * Buffer Sharing
  * --------------
  *
- * The buffer itself is reference counted, and multiple IOBuf objects may point
+ * Each buffer is reference counted, and multiple IOBuf objects may point
  * to the same buffer.  Each IOBuf may point to a different section of valid
  * data within the underlying buffer.  For example, if multiple protocol
  * requests are read from the network into a single buffer, a separate IOBuf
@@ -130,6 +129,18 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * IOBuf objects also contain pointers to next and previous IOBuf objects.
  * This can be used to represent a single logical piece of data that is stored
  * in non-contiguous chunks in separate buffers.
+ *
+ *     +---------------------------------------------------------------+
+ *     |                                                               |
+ *     |    +-----------+        +-----------+        +-----------+    |
+ *     +--> |  IOBuf 1  | -----> |  IOBuf 2  | -----> |  IOBuf 3  | ---+
+ *          +-----------+        +-----------+        +-----------+
+ *            |        | _________/     |           ___/        \__
+ *            |        |/               |          /               \
+ *            v        v                v         v                 v
+ *      +-------------------------------------+   +-----------------+
+ *      |     |        |                |     |   |                 |
+ *      +-------------------------------------+   +-----------------+
  *
  * A single IOBuf object can only belong to one chain at a time.
  *
@@ -187,7 +198,22 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  *
  * IOBuf objects themselves exist separately from the data buffer they point
  * to.  Therefore one must also consider how to allocate and manage the IOBuf
- * objects.
+ * objects. Typically, IOBufs are allocated on the heap.
+ *
+ *      +--------------+
+ *      |  unique_ptr  |
+ *      +--------------+
+ *        |
+ *        v
+ *      +---------+
+ *      |  IOBuf  |
+ *      +---------+
+ *        |
+ *        v
+ *      +----------+
+ *      |  buffer  |
+ *      +----------+
+ *
  *
  * It is more common to allocate IOBuf objects on the heap, using the create(),
  * takeOwnership(), or wrapBuffer() factory functions.  The clone()/cloneOne()
@@ -210,6 +236,7 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * is cloned; the IOBufs will become shared, and the old and new IOBufs will
  * refer to the same underlying memory.
  *
+ *
  * IOBuf Sharing
  * -------------
  *
@@ -225,6 +252,20 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * sharing on their own.  (For example, by using a shared_ptr.  Alternatively,
  * users always have the option of using clone() to create a second IOBuf that
  * points to the same underlying buffer.)
+ *
+ *
+ * Inspiration
+ * -----------
+ *
+ * IOBuf objects are intended to be used primarily for networking code, and are
+ * modelled somewhat after FreeBSD's mbuf data structure, and Linux's sk_buff
+ * structure.
+ *
+ * IOBuf objects facilitate zero-copy network programming, by allowing multiple
+ * IOBuf objects to point to the same underlying buffer of data, using a
+ * reference count to track when the buffer is no longer needed and can be
+ * freed.
+ *
  *
  * @refcode folly/docs/examples/folly/io/IOBuf.cpp
  */
