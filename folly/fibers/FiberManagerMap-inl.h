@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <folly/Function.h>
 #include <folly/ScopeGuard.h>
@@ -33,7 +34,7 @@ namespace detail {
 
 // ssize_t is a hash of FiberManager::Options
 template <typename EventBaseT>
-using Key = std::tuple<EventBaseT*, ssize_t, std::type_index>;
+using Key = std::tuple<EventBaseT*, ssize_t, const std::type_info*>;
 
 template <typename EventBaseT>
 Function<void()> makeOnEventBaseDestructionCallback(const Key<EventBaseT>& key);
@@ -41,6 +42,9 @@ Function<void()> makeOnEventBaseDestructionCallback(const Key<EventBaseT>& key);
 template <typename EventBaseT>
 class GlobalCache {
  public:
+  using TypeMap = std::unordered_map< //
+      std::type_index,
+      std::unordered_set<const std::type_info*>>;
   template <typename LocalT>
   static FiberManager& get(
       const Key<EventBaseT>& key,
@@ -52,6 +56,8 @@ class GlobalCache {
   static std::unique_ptr<FiberManager> erase(const Key<EventBaseT>& key) {
     return instance().eraseImpl(key);
   }
+
+  static TypeMap getTypeMap() { return instance().getTypeMapImpl(); }
 
  private:
   GlobalCache() = default;
@@ -75,9 +81,13 @@ class GlobalCache {
       }
     };
 
+    auto mkey = MapKey(std::get<0>(key), std::get<1>(key), *std::get<2>(key));
+
     std::lock_guard<std::mutex> lg(mutex_);
 
-    auto& fmPtrRef = map_[key];
+    types_[std::get<2>(mkey)].insert(std::get<2>(key));
+
+    auto& fmPtrRef = map_[mkey];
 
     if (!fmPtrRef) {
       constructed = true;
@@ -91,17 +101,28 @@ class GlobalCache {
   }
 
   std::unique_ptr<FiberManager> eraseImpl(const Key<EventBaseT>& key) {
+    auto mkey = MapKey(std::get<0>(key), std::get<1>(key), *std::get<2>(key));
+
     std::lock_guard<std::mutex> lg(mutex_);
 
-    DCHECK_EQ(map_.count(key), 1u);
+    DCHECK_EQ(map_.count(mkey), 1u);
 
-    auto ret = std::move(map_[key]);
-    map_.erase(key);
+    auto ret = std::move(map_[mkey]);
+    map_.erase(mkey);
     return ret;
   }
 
+  TypeMap getTypeMapImpl() {
+    std::lock_guard<std::mutex> lg(mutex_);
+
+    return types_;
+  }
+
+  using MapKey = std::tuple<EventBaseT*, ssize_t, std::type_index>;
+
   std::mutex mutex_;
-  std::unordered_map<Key<EventBaseT>, std::unique_ptr<FiberManager>> map_;
+  std::unordered_map<MapKey, std::unique_ptr<FiberManager>> map_;
+  TypeMap types_; // can have multiple type_info obj's for one type_index
 };
 
 constexpr size_t kEraseListMaxSize = 64;
@@ -145,7 +166,7 @@ class ThreadLocalCache {
       eraseImpl();
     }
 
-    auto key = make_tuple(&evb, token, std::type_index(typeid(LocalT)));
+    auto key = Key<EventBaseT>(&evb, token, &typeid(LocalT));
     auto it = map_.find(key);
     if (it != map_.end()) {
       DCHECK(it->second != nullptr);
@@ -164,12 +185,16 @@ class ThreadLocalCache {
   }
 
   FOLLY_NOINLINE void eraseImpl() {
+    auto types = GlobalCache<EventBaseT>::getTypeMap(); // big copy!!!
     eraseInfo_.withWLock([&](auto& info) {
       if (info.eraseAll) {
         map_.clear();
       } else {
         for (auto& key : info.eraseList) {
-          map_.erase(key);
+          for (auto type : types[*std::get<2>(key)]) {
+            map_.erase( // can have multiple type_info obj's for one type_index
+                std::make_tuple(std::get<0>(key), std::get<1>(key), type));
+          }
         }
       }
 
