@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/portability/GTest.h>
 #include <folly/python/error.h>
 
 #include <string>
@@ -21,7 +22,6 @@
 #include <Python.h>
 
 #include <folly/ScopeGuard.h>
-#include <folly/portability/GTest.h>
 
 namespace folly {
 namespace python {

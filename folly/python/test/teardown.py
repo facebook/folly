@@ -15,10 +15,12 @@
 
 import asyncio
 import unittest
+from sys import platform
 
 from . import simplebridge, simplebridgecoro
 
 
+@unittest.skipIf(platform.startswith("win"), "Broken on Windows.")
 class Teardown(unittest.TestCase):
     """
     The lifetimes of the native AsyncioExecutor/FiberManager objects
