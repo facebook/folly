@@ -1663,7 +1663,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     LoopKeepAliveWithLoopForever,
     LoopKeepAliveShutdown,
     LoopKeepAliveAtomic,
-    LoopKeepAliveCast);
+    LoopKeepAliveCast,
+    EventBaseObserver);
 
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,
