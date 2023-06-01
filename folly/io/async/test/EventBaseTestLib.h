@@ -2577,10 +2577,6 @@ TYPED_TEST_P(EventBaseTest, EventBaseObserver) {
   auto evbPtr = getEventBase<TypeParam>();
   auto observer1 = std::make_shared<TestEventBaseObserver>(2);
   evbPtr->setObserver(observer1);
-  // We need to loop 3 times because the EventBase observerSampleCount_ is
-  // incremented with the postfix increment operator and therefore an observer
-  // with a sampling rate of 2 needs 3 loops before loopSample is called.
-  evbPtr->loopOnce();
   evbPtr->loopOnce();
   evbPtr->loopOnce();
   ASSERT_EQ(1, observer1->getNumTimesCalled());
@@ -2589,7 +2585,6 @@ TYPED_TEST_P(EventBaseTest, EventBaseObserver) {
   evbPtr->loopOnce();
   auto observer2 = std::make_shared<TestEventBaseObserver>(1);
   evbPtr->setObserver(observer2);
-  evbPtr->loopOnce();
   evbPtr->loopOnce();
   ASSERT_EQ(1, observer2->getNumTimesCalled());
 }

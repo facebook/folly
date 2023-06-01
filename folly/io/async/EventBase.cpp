@@ -435,7 +435,7 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       maxLatencyLoopTime_.addSample(loop_time, busy);
 
       if (observer_) {
-        if (observerSampleCount_++ >= observer_->getSampleRate()) {
+        if (++observerSampleCount_ >= observer_->getSampleRate()) {
           observerSampleCount_ = 0;
           observer_->loopSample(busy.count(), idle.count());
         }
