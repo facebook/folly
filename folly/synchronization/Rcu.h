@@ -383,8 +383,12 @@ class rcu_domain {
             syncTime, time, std::memory_order_relaxed)) {
       list_head finished;
       {
-        std::lock_guard<std::mutex> g(syncMutex_);
-        half_sync(false, finished);
+        // synchronize() blocks while holding syncMutex_,
+        // so we must not wait for syncMutex_
+        std::unique_lock<std::mutex> g(syncMutex_, std::try_to_lock);
+        if (g) {
+          half_sync(false, finished);
+        }
       }
       // callbacks are called outside of syncMutex_
       finished.forEach(
