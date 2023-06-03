@@ -72,13 +72,22 @@ constexpr std::memory_order atomic_compare_exchange_succ(
 //
 //    https://github.com/google/sanitizers/issues/970
 //
+//  All GCC sanitizers statically check the memory-orders passed to compare-
+//  exchange operations for correctness and report violations with the warning
+//  invalid-memory-model; but, up to the current version (gcc-13), they use the
+//  C++14 rule, which is broken for cases like success-relaxed/failure-acquire.
+//
+//    https://godbolt.org/z/3hjjdGzMv
+//
 //  Handle all of these cases.
 constexpr std::memory_order atomic_compare_exchange_succ(
     std::memory_order succ, std::memory_order fail) {
   constexpr auto const cond = false //
       || (FOLLY_CPLUSPLUS < 201702L) //
       || (kGlibcxxVer && kGlibcxxVer < 12 && kGlibcxxAssertions) //
-      || (kIsSanitizeThread && kIsClang);
+      || (kIsSanitizeThread && kIsClang) //
+      || (kIsSanitize && !kIsClang && kGnuc) //
+      ;
   return atomic_compare_exchange_succ(cond, succ, fail);
 }
 
