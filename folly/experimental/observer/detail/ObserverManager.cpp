@@ -196,17 +196,19 @@ void ObserverManager::scheduleNext(Function<Core::Ptr()> coreFunc) {
   getUpdatesManager();
 }
 
-void ObserverManager::waitForAllUpdates() {
+bool ObserverManager::tryWaitForAllUpdatesImpl(TryWaitForAllUpdatesImplOp op) {
   if (auto updatesManager = getUpdatesManager()) {
-    return updatesManager->waitForAllUpdates();
+    return updatesManager->tryWaitForAllUpdatesImpl(op);
   }
+  return true;
 }
 
-void ObserverManager::UpdatesManager::waitForAllUpdates() {
+bool ObserverManager::UpdatesManager::tryWaitForAllUpdatesImpl(
+    TryWaitForAllUpdatesImplOp op) {
   auto& instance = ObserverManager::getInstance();
   nextQueueProcessor_->waitForEmpty();
   // Wait for all readers to release the lock.
-  SharedMutexReadPriority::WriteHolder wh(instance.versionMutex_);
+  return op(instance.versionMutex_).owns_lock();
 }
 
 struct ObserverManager::Singleton {
