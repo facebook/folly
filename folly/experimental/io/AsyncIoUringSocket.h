@@ -41,8 +41,6 @@
 
 namespace folly {
 
-class IoUringBackend;
-
 class AsyncDetachFdCallback {
  public:
   virtual ~AsyncDetachFdCallback() = default;
@@ -51,7 +49,8 @@ class AsyncDetachFdCallback {
   virtual void fdDetachFail(const AsyncSocketException& ex) noexcept = 0;
 };
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
+class IoUringBackend;
 
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
