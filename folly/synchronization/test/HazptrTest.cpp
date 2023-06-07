@@ -828,7 +828,7 @@ void cohort_test() {
 }
 
 template <template <typename> class Atom = std::atomic>
-void recursive_destruction_test() {
+void cohort_recursive_destruction_test() {
   struct Foo : public hazptr_obj_base<Foo, Atom> {
     hazptr_obj_cohort<Atom> cohort_;
     Foo* foo_{nullptr};
@@ -1230,12 +1230,12 @@ TEST(HazptrTest, dsched_cohort) {
   cohort_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, recursive_destruction) {
-  recursive_destruction_test();
+TEST(HazptrTest, cohort_recursive_destruction) {
+  cohort_recursive_destruction_test();
 }
 
-TEST(HazptrTest, dsched_recursive_destruction) {
-  recursive_destruction_test<DeterministicAtomic>();
+TEST(HazptrTest, dsched_cohort_recursive_destruction) {
+  cohort_recursive_destruction_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, cohort_safe_list_children) {
