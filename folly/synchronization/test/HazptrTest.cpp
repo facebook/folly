@@ -386,7 +386,7 @@ void destruction_test(hazptr_domain<Atom>& domain) {
     last = new Thing(i, last, &domain);
   }
   last->retire(domain);
-  hazptr_cleanup<Atom>();
+  hazptr_cleanup<Atom>(domain);
 }
 
 template <template <typename> class Atom = std::atomic>
