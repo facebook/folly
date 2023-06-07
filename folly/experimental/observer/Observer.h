@@ -163,7 +163,7 @@ class ReadMostlyTLObserver;
  *
  * See folly/synchronization/Hazptr.h for more details on hazptrs.
  */
-template <typename T>
+template <typename T, template <typename> class Atom = std::atomic>
 class HazptrObserver;
 
 template <typename T>
@@ -399,13 +399,15 @@ class ReadMostlyTLObserver {
   ThreadLocal<LocalSnapshot> localSnapshot_;
 };
 
-template <typename T>
+template <typename T, template <typename> class Atom>
 class HazptrObserver {
   template <typename Holder>
   struct HazptrSnapshot {
     template <typename State>
-    explicit HazptrSnapshot(const std::atomic<State*>& state) : holder_() {
-      make(holder_);
+    explicit HazptrSnapshot(
+        const Atom<State*>& state, hazptr_domain<Atom>& domain)
+        : holder_() {
+      make(holder_, domain);
       ptr_ = get(holder_).protect(state)->snapshot_.get();
     }
 
@@ -414,23 +416,30 @@ class HazptrObserver {
     const T* get() const { return ptr_; }
 
    private:
-    static void make(hazptr_holder<>& holder) {
-      holder = folly::make_hazard_pointer<>();
+    static void make(hazptr_holder<Atom>& holder, hazptr_domain<Atom>& domain) {
+      holder = folly::make_hazard_pointer(domain);
     }
-    static void make(hazptr_local<1>&) {}
-    static hazptr_holder<>& get(hazptr_holder<>& holder) { return holder; }
-    static hazptr_holder<>& get(hazptr_local<1>& holder) { return holder[0]; }
+    static void make(hazptr_local<1, Atom>&, hazptr_domain<Atom>&) {}
+    static hazptr_holder<Atom>& get(hazptr_holder<Atom>& holder) {
+      return holder;
+    }
+    static hazptr_holder<Atom>& get(hazptr_local<1>& holder) {
+      return holder[0];
+    }
 
     Holder holder_;
     const T* ptr_;
   };
 
  public:
-  using DefaultSnapshot = HazptrSnapshot<hazptr_holder<>>;
+  using DefaultSnapshot = HazptrSnapshot<hazptr_holder<Atom>>;
   using LocalSnapshot = HazptrSnapshot<hazptr_local<1>>;
 
-  explicit HazptrObserver(Observer<T> observer)
-      : observer_(
+  explicit HazptrObserver(
+      Observer<T> observer,
+      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>())
+      : domain_{domain},
+        observer_(
             makeObserver([o = std::move(observer), alive = alive_, this]() {
               auto snapshot = o.getSnapshot();
               auto rAlive = alive->rlock();
@@ -439,23 +448,24 @@ class HazptrObserver {
                 auto* oldState =
                     state_.exchange(newState, std::memory_order_acq_rel);
                 if (oldState) {
-                  oldState->retire();
+                  oldState->retire(domain_);
                 }
               }
               return snapshot.getShared();
             })) {}
 
-  HazptrObserver(const HazptrObserver<T>& r) : HazptrObserver(r.observer_) {}
-  HazptrObserver& operator=(const HazptrObserver<T>&) = delete;
+  HazptrObserver(const HazptrObserver& r)
+      : HazptrObserver(r.observer_, r.domain_) {}
+  HazptrObserver& operator=(const HazptrObserver&) = delete;
 
-  HazptrObserver(HazptrObserver<T>&&) = default;
-  HazptrObserver& operator=(HazptrObserver<T>&&) = default;
+  HazptrObserver(HazptrObserver&&) = default;
+  HazptrObserver& operator=(HazptrObserver&&) = default;
 
   ~HazptrObserver() {
     *alive_->wlock() = false;
     auto* state = state_.load(std::memory_order_acquire);
     if (state) {
-      state->retire();
+      state->retire(domain_);
     }
   }
 
@@ -463,15 +473,16 @@ class HazptrObserver {
   LocalSnapshot getLocalSnapshot() const;
 
  private:
-  struct State : public hazptr_obj_base<State> {
+  struct State : public hazptr_obj_base<State, Atom> {
     explicit State(Snapshot<T> snapshot) : snapshot_(std::move(snapshot)) {}
 
     Snapshot<T> snapshot_;
   };
 
-  std::atomic<State*> state_{nullptr};
+  Atom<State*> state_{nullptr};
   std::shared_ptr<Synchronized<bool>> alive_{
       std::make_shared<Synchronized<bool>>(true)};
+  hazptr_domain<Atom>& domain_;
   Observer<T> observer_;
 };
 

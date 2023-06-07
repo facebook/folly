@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <chrono>
 #include <stdexcept>
 #include <thread>
@@ -29,6 +30,13 @@
 #include <folly/synchronization/Baton.h>
 
 using namespace folly::observer;
+
+namespace {
+
+template <typename T>
+struct AltAtomic : std::atomic<T> {};
+
+} // namespace
 
 TEST(Observer, Observable) {
   SimpleObservable<int> observable(42);
@@ -712,6 +720,19 @@ TEST(Observer, HazptrObserver) {
 
 TEST(Observer, HazptrObserverLocalSnapshot) {
   runHazptrObserverTest(/* useLocalSnapshot */ true);
+}
+
+TEST(Observer, HazptrObserverExplicitDomain) {
+  SimpleObservable<int> observable{0};
+
+  folly::hazptr_domain<AltAtomic> domain;
+
+  HazptrObserver obs{observable.getObserver(), domain};
+  EXPECT_EQ(0, *obs.getSnapshot());
+
+  observable.setValue(1);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(1, *obs.getSnapshot());
 }
 
 TEST(Observer, Unwrap) {

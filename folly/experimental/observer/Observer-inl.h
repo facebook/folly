@@ -311,24 +311,24 @@ Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeValueObserver(
       });
 }
 
-template <typename T>
-typename HazptrObserver<T>::DefaultSnapshot HazptrObserver<T>::getSnapshot()
-    const {
+template <typename T, template <typename> class Atom>
+typename HazptrObserver<T, Atom>::DefaultSnapshot
+HazptrObserver<T, Atom>::getSnapshot() const {
   if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
     // Wait for updates
     observer_.getSnapshot();
   }
-  return DefaultSnapshot(state_);
+  return DefaultSnapshot(state_, domain_);
 }
 
-template <typename T>
-typename HazptrObserver<T>::LocalSnapshot HazptrObserver<T>::getLocalSnapshot()
-    const {
+template <typename T, template <typename> class Atom>
+typename HazptrObserver<T, Atom>::LocalSnapshot
+HazptrObserver<T, Atom>::getLocalSnapshot() const {
   if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
     // Wait for updates
     observer_.getSnapshot();
   }
-  return LocalSnapshot(state_);
+  return LocalSnapshot(state_, domain_);
 }
 } // namespace observer
 } // namespace folly
