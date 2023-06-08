@@ -29,6 +29,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
+using namespace std::literals;
 using namespace folly::observer;
 
 namespace {
@@ -733,6 +734,70 @@ TEST(Observer, HazptrObserverExplicitDomain) {
   observable.setValue(1);
   folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(1, *obs.getSnapshot());
+}
+
+TEST(Observer, HazptrObserverRecursiveReclamation) {
+  // in this scenario:
+  // * in scope is a domain instance with no executor
+  // * the hazptr-observer is itself owned by a hazptr-obj
+  // * tha hazptr-obj is retired with deferred reclamation enforced
+  // * the hazptr-obj and the hazptr-observer states are owned by the domain
+  // * many objects are retired, bringing the domain close to the threshold
+  // * one observable update cycle states within the callback
+  // * the state cycle will reach the threshold, forcing immediate reclamation
+  // * we expect forced reclamation within the callback to succeed
+  //
+  // regression test for bug:
+  // * forced reclamation within the callback would deadlock in the observer-
+  //   manager thread
+
+  struct ObserverObj : folly::hazptr_obj_base<ObserverObj> {
+    HazptrObserver<int> inner;
+    std::atomic<bool>& reclaimed_;
+    ObserverObj(
+        Observer<int> observer,
+        folly::hazptr_domain<>& domain,
+        std::atomic<bool>& reclaimed)
+        : inner{observer, domain}, reclaimed_{reclaimed} {}
+    ~ObserverObj() { reclaimed_ = true; }
+  };
+
+  struct EmptyObj : folly::hazptr_obj_base<EmptyObj> {};
+
+  SimpleObservable<int> observable{0};
+
+  std::atomic<bool> reclaimed{false}; // not a baton on purpose!
+  folly::hazptr_domain<> domain;
+
+  {
+    std::atomic<ObserverObj*> cell{};
+    // wire up the hazptr-observer to report its own reclamation to the test
+    cell.store(
+        new ObserverObj{observable.getObserver(), domain, reclaimed},
+        std::memory_order_release);
+
+    // retire the observer while it is protected: this way, retirement cannot be
+    // immediate because the observer is still protected, so retirement must be
+    // deferred; and since one retirement is deferred, continued retirements of
+    // the states objects will also be deferred, until the threshold is reached
+    auto hptr = folly::make_hazard_pointer(domain);
+    hptr.protect(cell);
+    cell.exchange(nullptr, std::memory_order_acquire)->retire(domain);
+  }
+
+  // enqueue maximally many retirements - but without forcing reclamation
+  auto thresh = folly::detail::hazptr_domain_rcount_threshold();
+  auto adjust = 2; // 1 for the retired HazptrObserver, 1 for the next setValue
+  for (int i = 0; i < thresh - adjust; ++i) {
+    (new EmptyObj())->retire(domain);
+  }
+  EXPECT_FALSE(reclaimed);
+
+  observable.setValue(1);
+  CHECK( // should take less than 1ms on an unloaded machine
+      folly::observer_detail::ObserverManager::tryWaitForAllUpdatesFor(1s));
+
+  EXPECT_TRUE(reclaimed); // verify that forced reclamation really did happen
 }
 
 TEST(Observer, Unwrap) {

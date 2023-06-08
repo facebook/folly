@@ -442,14 +442,15 @@ class HazptrObserver {
         observer_(
             makeObserver([o = std::move(observer), alive = alive_, this]() {
               auto snapshot = o.getSnapshot();
-              auto rAlive = alive->rlock();
-              if (*rAlive) {
-                auto* newState = new State(snapshot);
-                auto* oldState =
-                    state_.exchange(newState, std::memory_order_acq_rel);
-                if (oldState) {
-                  oldState->retire(domain_);
+              auto oldState = static_cast<State*>(nullptr);
+              alive->withRLock([&](auto vAlive) {
+                if (vAlive) { // otherwise state_ may be out-of-scope
+                  oldState = state_.exchange(
+                      new State(snapshot), std::memory_order_acq_rel);
                 }
+              });
+              if (oldState) {
+                oldState->retire(domain_);
               }
               return snapshot.getShared();
             })) {}
