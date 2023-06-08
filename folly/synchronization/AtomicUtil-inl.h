@@ -301,6 +301,11 @@ FOLLY_ERASE bool atomic_fetch_bit_op_native_(
   constexpr auto word_size = constexpr_clamp(atomic_size, lo_size, hi_size);
   using word_type = uint_bits_t<word_size * 8>;
   auto adjust = std::size_t(address % lo_size);
+  // when the adjustment is not known at compile-time, the extra calculations
+  // at run time may cost more than would be saved by using the native op
+  if (!__builtin_constant_p(adjust)) {
+    return fb(atomic, bit, order);
+  }
   address -= adjust;
   bit += 8 * adjust;
   return op(reinterpret_cast<word_type*>(address), word_type(bit), order);
