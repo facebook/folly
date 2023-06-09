@@ -82,12 +82,12 @@ TYPED_TEST_P(UncaughtExceptionsTest, catch_rethrow) {
       Validator<TypeParam> validatorInner(1, "catch_rethrow_inner");
       throw std::runtime_error("exception");
     } catch (const std::runtime_error&) {
-      EXPECT_EQ(0, folly::uncaught_exceptions());
+      EXPECT_EQ(0, TypeParam{}());
       Validator<TypeParam> validatorRethrow(1, "catch_rethrow");
       throw;
     }
   } catch (const std::runtime_error&) {
-    EXPECT_EQ(0, folly::uncaught_exceptions());
+    EXPECT_EQ(0, TypeParam{}());
   }
 }
 
