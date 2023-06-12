@@ -139,8 +139,8 @@ inline bool operator!=(
  * }
  */
 template <class Error>
-constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(
-    Error&& err) {
+FOLLY_NODISCARD constexpr Unexpected<typename std::decay<Error>::type>
+makeUnexpected(Error&& err) {
   return Unexpected<typename std::decay<Error>::type>{
       static_cast<Error&&>(err)};
 }
@@ -193,8 +193,8 @@ template <class Value, class Error>
 class Expected;
 
 template <class Error, class Value>
-constexpr Expected<typename std::decay<Value>::type, Error> makeExpected(
-    Value&&);
+FOLLY_NODISCARD constexpr Expected<typename std::decay<Value>::type, Error>
+makeExpected(Value&&);
 
 /**
  * Alias for an Expected type's associated value_type
@@ -1443,8 +1443,8 @@ Value* get_pointer(Expected<Value, Error>& ex) noexcept {
  * }
  */
 template <class Error, class Value>
-constexpr Expected<typename std::decay<Value>::type, Error> makeExpected(
-    Value&& val) {
+FOLLY_NODISCARD constexpr Expected<typename std::decay<Value>::type, Error>
+makeExpected(Value&& val) {
   return Expected<typename std::decay<Value>::type, Error>{
       in_place, static_cast<Value&&>(val)};
 }
