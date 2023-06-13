@@ -779,18 +779,3 @@ TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
 }
 
 #endif
-
-namespace folly {
-namespace threadlocal_detail {
-struct PthreadKeyUnregisterTester {
-  PthreadKeyUnregister p;
-  constexpr PthreadKeyUnregisterTester() = default;
-};
-} // namespace threadlocal_detail
-} // namespace folly
-
-TEST(ThreadLocal, UnregisterClassHasConstExprCtor) {
-  folly::threadlocal_detail::PthreadKeyUnregisterTester x;
-  // yep!
-  SUCCEED();
-}

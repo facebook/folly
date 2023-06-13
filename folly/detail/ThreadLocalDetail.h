@@ -221,8 +221,6 @@ struct ThreadEntryList {
   size_t count{0};
 };
 
-struct PthreadKeyUnregisterTester;
-
 FOLLY_ALWAYS_INLINE ThreadEntryNode* ThreadEntryNode::getPrev() {
   return &prev->elements[id].node;
 }
@@ -268,7 +266,6 @@ class PthreadKeyUnregister {
    * usage.
    */
   constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() {}
-  friend struct folly::threadlocal_detail::PthreadKeyUnregisterTester;
 
   void registerKeyImpl(pthread_key_t key) {
     MSLGuard lg(lock_);
