@@ -288,19 +288,22 @@ class IOBuf {
   using FreeFunction = void (*)(void* buf, void* userData);
 
   /**
-   * Allocate a new IOBuf object with the requested capacity.
+   * Create an IOBuf with the requested capacity.
    *
-   * Returns a new IOBuf object that must be (eventually) deleted by the
-   * caller.  The returned IOBuf may actually have slightly more capacity than
-   * requested.
+   * @param capacity  The size of buffer to allocate
    *
-   * The data pointer will initially point to the start of the newly allocated
-   * buffer, and will have a data length of 0.
+   * @post  data() points to the start of the buffer
+   * @post  length() == 0
+   * @post  capacity() >= capacity (@see goodSize for details on why IOBuf
+   *        sometimes allocates a larger buffer than requested)
    *
-   * Throws std::bad_alloc on error.
+   * @throws std::bad_alloc on malloc failure
    */
-  static std::unique_ptr<IOBuf> create(std::size_t capacity);
   IOBuf(CreateOp, std::size_t capacity);
+
+  /// @copydoc IOBuf(CreateOp, std::size_t)
+  /// @returns  A unique_ptr to a newly-constructed IOBuf
+  static std::unique_ptr<IOBuf> create(std::size_t capacity);
 
   /**
    * Create a new IOBuf, using a single memory allocation to allocate space
