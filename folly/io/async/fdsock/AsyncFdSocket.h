@@ -97,7 +97,7 @@ class AsyncFdSocket : public AsyncSocket {
    *       optional write flag. In Thrift Rocket, this would minimize the
    *       buffering of FDs by the receiver, at the cost of more syscalls.
    */
-  void writeChainWithFds(
+  virtual void writeChainWithFds(
       WriteCallback*,
       std::unique_ptr<folly::IOBuf>,
       SocketFds,
