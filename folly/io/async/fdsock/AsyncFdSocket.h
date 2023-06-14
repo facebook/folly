@@ -16,12 +16,15 @@
 
 #pragma once
 
-#include <optional>
-
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/fdsock/SocketFds.h>
 
 namespace folly {
+
+// Including `gtest/gtest_prod.h` would make gtest/gmock a hard dep
+// of the OSS build, which we do not want.
+#define _FRIEND_TEST_FOR_ASYNC_FD_SOCKET(test_case_name, test_name) \
+  friend class test_case_name##_##test_name##_Test
 
 /**
  * Intended for use with Unix sockets. Unlike regular `AsyncSocket`:
@@ -74,6 +77,11 @@ class AsyncFdSocket : public AsyncSocket {
    * `AsyncSocket::writeChain` analog that passes FDs as ancillary data over
    * the socket (see `man cmsg`).
    *
+   * Before writing the FDs, call `injectSocketSeqNumIntoFdsToSend()` on the
+   * supplied `SocketFds` to commit them to be sent to this socket, in this
+   * order.  That is -- for a given socket, the order of calling "inject" on
+   * FDs must exactly match the socket write order.
+   *
    * Invariants:
    *  - Max FDs per IOBuf: `SCM_MAX_FD` from include/net/scm.h, 253 for
    *    effectively all of Linux history.
@@ -92,7 +100,7 @@ class AsyncFdSocket : public AsyncSocket {
   void writeChainWithFds(
       WriteCallback*,
       std::unique_ptr<folly::IOBuf>,
-      SocketFds::ToSend,
+      SocketFds,
       WriteFlags flags = WriteFlags::NONE);
 
   /**
@@ -103,9 +111,23 @@ class AsyncFdSocket : public AsyncSocket {
    *     platforms there is a short race window before this happens.
    *   - Empty lists of FDs (0 FDs with this message) are not stored in the
    *     queue.
-   *   - Returns `std::nullopt` if the queue is empty.
+   *   - Returns an empty `SocketFds` if the queue is empty.
+   *
+   * IMPORTANT: The returned `SocketFds` will have a populated
+   * `getFdSocketSeqNum` matching the sending `AsyncFdSocket`.  The code
+   * that consumes these FDs should check that the corresponding "data
+   * message" includes the same sequence number, as a safeguard against code
+   * bugs that cause messages to be paired with the wrong FDs.
    */
-  std::optional<SocketFds::Received> popNextReceivedFds();
+  SocketFds popNextReceivedFds();
+
+  /**
+   * Must be called on each `fds` before `writeChainWithFds`.  Embeds the
+   * socket-internal sequence number in fds, and increments the counter.
+   *
+   * Return: Non-negative, but may be `SocketFds::kNoSeqNum` on DFATAL errors.
+   */
+  SocketFds::SeqNum injectSocketSeqNumIntoFdsToSend(SocketFds* fds);
 
   void setSendMsgParamCB(SendMsgParamsCallback*) override {
     LOG(DFATAL) << "AsyncFdSocket::setSendMsgParamCB is forbidden";
@@ -196,10 +218,19 @@ class AsyncFdSocket : public AsyncSocket {
 
   void setUpCallbacks() noexcept;
 
+  // Overflow on signed ints is UB, while this explicitly wraps MAX -> 0.
+  // E.g. addSeqNum(MAX - 1, 3) == 1.
+  static SocketFds::SeqNum addSeqNum(
+      SocketFds::SeqNum, SocketFds::SeqNum) noexcept;
+  _FRIEND_TEST_FOR_ASYNC_FD_SOCKET(AsyncFdSocketTest, TestAddSeqNum);
+
   FdSendMsgParamsCallback sendMsgCob_;
-  std::queue<SocketFds::Received>
-      fdsQueue_; // must outlive readAncillaryDataCob_
+  std::queue<SocketFds> fdsQueue_; // must outlive readAncillaryDataCob_
   FdReadAncillaryDataCallback readAncillaryDataCob_;
+
+  SocketFds::SeqNum allocatedToSendFdsSeqNum_{0};
+  SocketFds::SeqNum sentFdsSeqNum_{0};
+  SocketFds::SeqNum receivedFdsSeqNum_{0};
 #endif // !Windows
 };
 

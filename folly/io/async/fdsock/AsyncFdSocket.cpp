@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <limits>
+#include <fmt/core.h>
+
 #include "AsyncFdSocket.h"
 
 namespace folly {
@@ -56,39 +59,66 @@ AsyncFdSocket::AsyncFdSocket(
 void AsyncFdSocket::writeChainWithFds(
     WriteCallback* callback,
     std::unique_ptr<folly::IOBuf> buf,
-    SocketFds::ToSend fds,
+    SocketFds fds,
     WriteFlags flags) {
 #if defined(_WIN32)
   DCHECK(fds.empty()) << "AsyncFdSocket cannot send FDs on Windows";
 #else
   DCHECK_EQ(&sendMsgCob_, getSendMsgParamsCB());
 
-  if (buf->empty() && !fds.empty()) {
-    DestructorGuard dg(this);
-    AsyncSocketException ex(
-        AsyncSocketException::BAD_ARGS,
-        withAddr("Cannot send FDs without at least 1 data byte"));
-    return failWrite(__func__, callback, 0, ex);
+  // The order of the below `failWrite` logic checks is not important because
+  // all scenarios destroy `fds` and block socket writes.
+  if (!fds.empty()) {
+    if (buf->empty()) {
+      DestructorGuard dg(this);
+      AsyncSocketException ex(
+          AsyncSocketException::BAD_ARGS,
+          withAddr("Cannot send FDs without at least 1 data byte"));
+      return failWrite(__func__, callback, 0, ex);
+    }
+
+    const auto fdsSeqNum = fds.getFdSocketSeqNum();
+
+    if (fdsSeqNum == SocketFds::kNoSeqNum) {
+      DestructorGuard dg(this);
+      AsyncSocketException ex(
+          AsyncSocketException::BAD_ARGS,
+          withAddr("Sequence number must be set to send FDs"));
+      return failWrite(__func__, callback, 0, ex);
+    }
+
+    if (fdsSeqNum != sentFdsSeqNum_) {
+      DestructorGuard dg(this);
+      AsyncSocketException ex(
+          AsyncSocketException::BAD_ARGS,
+          withAddr(fmt::format(
+              "SeqNum of FDs did not match that of socket: {} vs {}",
+              fdsSeqNum,
+              sentFdsSeqNum_)));
+      return failWrite(__func__, callback, 0, ex);
+    }
+    sentFdsSeqNum_ = addSeqNum(sentFdsSeqNum_, fds.size());
+    // No DCHECK_GE(allocatedToSendFdsSeqNum_, sentFdsSeqNum_), since it can
+    // theoretically happen that "allocated" wraps around before "sent".
+
+    if (!sendMsgCob_.registerFdsForWriteTag(
+            WriteRequestTag{buf.get()}, fds.releaseToSend())) {
+      // Careful: this has no unittest coverage because I don't have a good
+      // idea for how to cause this in a meaningful way.  Should this be
+      // a DCHECK? Plans that don't work:
+      //  - Creating two `unique_ptr` from the same raw pointer would be
+      //    bad news bears for the test.
+      //  - IOBuf recycling via getReleaseIOBufCallback() shouldn't be
+      //    possible either, since we unregister the tag in our `releaseIOBuf`
+      //    override below before releasing the IOBuf.
+      DestructorGuard dg(this);
+      AsyncSocketException ex(
+          AsyncSocketException::BAD_ARGS,
+          withAddr("Buffer was already owned by this socket"));
+      return failWrite(__func__, callback, 0, ex);
+    }
   }
 
-  if (!sendMsgCob_.registerFdsForWriteTag(
-          WriteRequestTag{buf.get()},
-          std::move(fds) // discarded on error
-          )) {
-    // Careful: this has no unittest coverage because I don't have a good
-    // idea for how to cause this in a meaningful way.  Should this be
-    // a DCHECK? Plans that don't work:
-    //  - Creating two `unique_ptr` from the same raw pointer would be
-    //    bad news bears for the test.
-    //  - IOBuf recycling via getReleaseIOBufCallback() shouldn't be
-    //    possible either, since we unregister the tag in our `releaseIOBuf`
-    //    override below before releasing the IOBuf.
-    DestructorGuard dg(this);
-    AsyncSocketException ex(
-        AsyncSocketException::BAD_ARGS,
-        withAddr("Buffer was already owned by this socket"));
-    return failWrite(__func__, callback, 0, ex);
-  }
 #endif // !Windows
 
   writeChain(callback, std::move(buf), flags);
@@ -273,8 +303,8 @@ void AsyncFdSocket::enqueueFdsFromAncillaryData(struct ::msghdr& msg) noexcept {
     return;
   }
 
-  std::vector<folly::File> fds;
-  if (!receiveFds(msg, &fds)) {
+  std::vector<folly::File> receivedFds;
+  if (!receiveFds(msg, &receivedFds)) {
     AsyncSocketException ex(
         AsyncSocketException::INTERNAL_ERROR,
         "Failed to read FDs from msghdr.msg_control");
@@ -284,30 +314,67 @@ void AsyncFdSocket::enqueueFdsFromAncillaryData(struct ::msghdr& msg) noexcept {
 
   // Don't waste queue space with empty FD lists since we match FDs only to
   // requests that claim to include FDs.
-  if (fds.empty()) {
+  if (receivedFds.empty()) {
     return;
   }
 
+  const auto seqNum = receivedFdsSeqNum_;
+  receivedFdsSeqNum_ = addSeqNum(receivedFdsSeqNum_, receivedFds.size());
+  SocketFds fds{std::move(receivedFds)};
+  fds.setFdSocketSeqNumOnce(seqNum);
+
   VLOG(4) << "this=" << this << ", enqueueFdsFromAncillaryData() got "
-          << fds.size() << " FDs, prev queue size " << fdsQueue_.size();
+          << fds.size() << " FDs with seq num " << seqNum
+          << ", prev queue size " << fdsQueue_.size();
+
   fdsQueue_.emplace(std::move(fds));
+}
+
+SocketFds::SeqNum AsyncFdSocket::addSeqNum(
+    SocketFds::SeqNum a, SocketFds::SeqNum b) noexcept {
+  if (a < 0 || b < 0) {
+    LOG(DFATAL) << "Inputs must be nonnegative, got " << a << " + " << b;
+    return SocketFds::kNoSeqNum;
+  }
+  const auto gap = std::numeric_limits<SocketFds::SeqNum>::max() - a;
+  if (LIKELY(b <= gap)) {
+    return a + b;
+  }
+  return b - gap - 1; // wrap around through 0, modulo max
 }
 
 #endif // !Windows
 
-std::optional<SocketFds::Received> AsyncFdSocket::popNextReceivedFds() {
+SocketFds AsyncFdSocket::popNextReceivedFds() {
 #if defined(_WIN32)
-  return std::nullopt;
+  return SocketFds{};
 #else
   eventBase_->dcheckIsInEventBaseThread();
 
   DCHECK_EQ(&readAncillaryDataCob_, getReadAncillaryDataCallback());
   if (fdsQueue_.empty()) {
-    return std::nullopt;
+    return SocketFds{};
   }
   auto fds = std::move(fdsQueue_.front());
   fdsQueue_.pop();
   return fds;
+#endif // !Windows
+}
+
+SocketFds::SeqNum AsyncFdSocket::injectSocketSeqNumIntoFdsToSend(
+    SocketFds* fds) {
+#if defined(_WIN32)
+  return SocketFds::kNoSeqNum;
+#else
+  if (UNLIKELY(fds->empty())) {
+    LOG(DFATAL) << "Cannot inject sequence number into empty SocketFDs";
+    return SocketFds::kNoSeqNum;
+  }
+  eventBase_->dcheckIsInEventBaseThread();
+  const auto fdsSeqNum = allocatedToSendFdsSeqNum_;
+  fds->dcheckToSendOrEmpty().setFdSocketSeqNumOnce(fdsSeqNum);
+  allocatedToSendFdsSeqNum_ = addSeqNum(allocatedToSendFdsSeqNum_, fds->size());
+  return fdsSeqNum;
 #endif // !Windows
 }
 

@@ -58,8 +58,8 @@ SocketFds::ToSend SocketFds::releaseToSend() {
   return fds;
 }
 
-void SocketFds::setFdSocketSeqNumOnce(int64_t seqNum) {
-  // The type has to be `int64_t` because Thrift IDL only supports signed.
+void SocketFds::setFdSocketSeqNumOnce(SeqNum seqNum) {
+  // The type is unsigned because Thrift IDL only supports signed.
   DCHECK_GE(seqNum, 0) << "Sequence number must be nonnegative";
   if (LIKELY(ptr_ != nullptr)) {
     std::visit(
@@ -73,7 +73,7 @@ void SocketFds::setFdSocketSeqNumOnce(int64_t seqNum) {
   }
 }
 
-int64_t SocketFds::getFdSocketSeqNum() const {
+SocketFds::SeqNum SocketFds::getFdSocketSeqNum() const {
   if (LIKELY(ptr_ != nullptr)) {
     auto seqNum = std::visit([](auto&& v) { return v.second; }, *ptr_);
     if (seqNum >= 0) {

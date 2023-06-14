@@ -54,14 +54,15 @@ class SocketFds final {
   // make your own copy `const`, too.
   using ToSend = std::vector<std::shared_ptr<const folly::File>>;
 
-  // FD sequence numbers are nonnnegative.  This represents "none was set";
+  // Must be signed because Thrift lacks unsigned ints, for RpcMetadata.thrift
+  using SeqNum = int64_t;
+  // FD sequence numbers are nonnegative.  This represents "none was set";
   // also used for some DFATAL errors.
-  static constexpr int64_t kNoSeqNum = -1;
+  static constexpr SeqNum kNoSeqNum = -1;
 
  private:
-  // `second` is the AsyncFdSocket sequence number, or `kNoSeqNum` if unset
-  using ToSendPair = std::pair<ToSend, int64_t>;
-  using ReceivedPair = std::pair<Received, int64_t>;
+  using ToSendPair = std::pair<ToSend, SeqNum>;
+  using ReceivedPair = std::pair<Received, SeqNum>;
   using FdsVariant = std::variant<ReceivedPair, ToSendPair>;
 
  public:
@@ -119,7 +120,7 @@ class SocketFds final {
   // deviate from the order in which they are popped off the socket queue
   // by the receiver.
   //
-  // Operating on the wrong can lead to data loss or data corruption, so
+  // Operating on the wrong FD can lead to data loss or data corruption, so
   // in order to detect such bugs, we include FD sequence numbers in the
   // metadata of each message.
   //
@@ -129,8 +130,8 @@ class SocketFds final {
   //  - A nonnegative sequence number can be attached to a `SocketFds`
   //    that has none, to be obtained via `AsyncFdSocket`.
   //  - It is a DFATAL error to replace one sequence number by another.
-  void setFdSocketSeqNumOnce(int64_t seqNum);
-  int64_t getFdSocketSeqNum() const; // Non-negative, or `kNoSeqNum`
+  void setFdSocketSeqNumOnce(SeqNum seqNum);
+  SeqNum getFdSocketSeqNum() const; // Non-negative, or `kNoSeqNum`
 
  private:
   std::unique_ptr<FdsVariant> ptr_;

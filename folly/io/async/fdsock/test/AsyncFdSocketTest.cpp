@@ -19,7 +19,7 @@
 #include <folly/portability/GMock.h> // for matchers like HasSubstr
 #include <folly/portability/GTest.h>
 
-using namespace folly;
+namespace folly { // required for FRIEND_TEST to work
 
 // `AsyncFdSocket` is just a stub on Windows because its CMSG macros are busted
 #if !defined(_WIN32)
@@ -36,8 +36,14 @@ std::string getFdProcMagic(int fd) {
 }
 
 void checkFdsMatch(
-    const folly::SocketFds::ToSend& sFds,
-    const folly::SocketFds::Received& rFds) {
+    const SocketFds::ToSend& sFds,
+    SocketFds::SeqNum sendSeqNum,
+    folly::SocketFds received) {
+  EXPECT_EQ(
+      sendSeqNum,
+      received.empty() ? SocketFds::kNoSeqNum : received.getFdSocketSeqNum());
+  auto rFds =
+      received.empty() ? SocketFds::Received{} : received.releaseReceived();
   EXPECT_EQ(sFds.size(), rFds.size());
   for (size_t i = 0; i < rFds.size(); ++i) {
     const auto& sfd = sFds[i]->fd();
@@ -97,15 +103,50 @@ struct AsyncFdSocketTest : public testing::Test {
   AsyncFdSocket recvSock_;
 };
 
+TEST_F(AsyncFdSocketTest, TestAddSeqNum) {
+  EXPECT_EQ(17, AsyncFdSocket::addSeqNum(0, 17));
+  EXPECT_EQ(17, AsyncFdSocket::addSeqNum(17, 0));
+  EXPECT_EQ(17, AsyncFdSocket::addSeqNum(8, 9));
+
+  EXPECT_EQ(
+      9223372036854775807, AsyncFdSocket::addSeqNum(9223372036854775805, 2));
+  EXPECT_EQ(
+      9223372036854775807, AsyncFdSocket::addSeqNum(2, 9223372036854775805));
+  EXPECT_EQ(0, AsyncFdSocket::addSeqNum(9223372036854775805, 3));
+  EXPECT_EQ(0, AsyncFdSocket::addSeqNum(3, 9223372036854775805));
+  EXPECT_EQ(1, AsyncFdSocket::addSeqNum(9223372036854775805, 4));
+  EXPECT_EQ(1, AsyncFdSocket::addSeqNum(4, 9223372036854775805));
+
+  EXPECT_EQ(
+      9223372036854775807, AsyncFdSocket::addSeqNum(9223372036854775806, 1));
+  EXPECT_EQ(
+      9223372036854775807, AsyncFdSocket::addSeqNum(1, 9223372036854775806));
+  EXPECT_EQ(3, AsyncFdSocket::addSeqNum(9223372036854775806, 5));
+  EXPECT_EQ(3, AsyncFdSocket::addSeqNum(5, 9223372036854775806));
+
+  EXPECT_EQ(
+      9223372036854775807, AsyncFdSocket::addSeqNum(9223372036854775807, 0));
+  EXPECT_EQ(
+      9223372036854775807, AsyncFdSocket::addSeqNum(0, 9223372036854775807));
+  EXPECT_EQ(0, AsyncFdSocket::addSeqNum(9223372036854775807, 1));
+  EXPECT_EQ(0, AsyncFdSocket::addSeqNum(1, 9223372036854775807));
+  EXPECT_EQ(3, AsyncFdSocket::addSeqNum(9223372036854775807, 4));
+  EXPECT_EQ(3, AsyncFdSocket::addSeqNum(4, 9223372036854775807));
+}
+
 TEST_F(AsyncFdSocketTest, FailNoData) {
-  sendSock_.writeChainWithFds(&wcb_, IOBuf::create(0), makeFdsToSend(1));
+  SocketFds fds(makeFdsToSend(1));
+  sendSock_.injectSocketSeqNumIntoFdsToSend(&fds);
+  sendSock_.writeChainWithFds(&wcb_, IOBuf::create(0), std::move(fds));
   EXPECT_THAT(wcb_.exception.what(), testing::HasSubstr("least 1 data byte"));
 }
 
 TEST_F(AsyncFdSocketTest, FailTooManyFds) {
   char data = 'a'; // Need >= 1 data byte to send ancillary data.
+  SocketFds fds(makeFdsToSend(254));
+  sendSock_.injectSocketSeqNumIntoFdsToSend(&fds);
   sendSock_.writeChainWithFds(
-      &wcb_, IOBuf::wrapBuffer(&data, sizeof(data)), makeFdsToSend(254));
+      &wcb_, IOBuf::wrapBuffer(&data, sizeof(data)), std::move(fds));
   EXPECT_EQ(EINVAL, wcb_.exception.getErrno());
 }
 
@@ -119,19 +160,18 @@ TEST_P(AsyncFdSocketSimpleRoundtripTest, WithNumFds) {
 
   auto sendFds = makeFdsToSend(numFds);
 
+  SocketFds fds(sendFds);
+  const auto sendSeqNum = fds.empty()
+      ? SocketFds::kNoSeqNum
+      : sendSock_.injectSocketSeqNumIntoFdsToSend(&fds);
   sendSock_.writeChainWithFds(
-      &wcb_, IOBuf::wrapBuffer(&data, sizeof(data)), sendFds);
+      &wcb_, IOBuf::wrapBuffer(&data, sizeof(data)), std::move(fds));
   evb_.loopOnce();
 
   rcb_.verifyData(&data, sizeof(data));
   rcb_.clearData();
 
-  auto recvFds = recvSock_.popNextReceivedFds();
-  if (0 == numFds) {
-    EXPECT_FALSE(recvFds.has_value());
-  } else {
-    checkFdsMatch(sendFds, *recvFds);
-  }
+  checkFdsMatch(sendFds, sendSeqNum, recvSock_.popNextReceivedFds());
 }
 
 // Round-trip & verify various numbers of FDs with 1 byte of data.
@@ -178,12 +218,14 @@ TEST_F(AsyncFdSocketTest, MultiPartSend) {
   // Make the message too big for one `sendmsg`.
   int numSendParts = 3;
   std::string data(numSendParts * sendBufSize, 'x');
+  SocketFds fds(sendFds);
+  const auto sendSeqNum = sendSock.injectSocketSeqNumIntoFdsToSend(&fds);
   sendSock.writeChainWithFds(
-      &wcb_, IOBuf::wrapBuffer(data.data(), data.size()), sendFds);
+      &wcb_, IOBuf::wrapBuffer(data.data(), data.size()), std::move(fds));
 
   // FDs are sent with the first send & received by the first receive
   evb_.loopOnce();
-  checkFdsMatch(sendFds, *recvSock_.popNextReceivedFds());
+  checkFdsMatch(sendFds, sendSeqNum, recvSock_.popNextReceivedFds());
   EXPECT_EQ(1, sendSock.numWrites_);
 
   // Receive the rest of the data.
@@ -197,7 +239,7 @@ TEST_F(AsyncFdSocketTest, MultiPartSend) {
   // There are no more data or FDs
   evb_.loopOnce(EVLOOP_NONBLOCK);
   EXPECT_EQ(0, rcb_.dataRead()) << "Leftover reads";
-  EXPECT_FALSE(recvSock_.popNextReceivedFds().has_value()) << "Extra FDs";
+  EXPECT_TRUE(recvSock_.popNextReceivedFds().empty()) << "Extra FDs";
 }
 
 struct AsyncFdSocketSequenceRoundtripTest
@@ -215,7 +257,9 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
   SCOPE_EXIT { recvSock_.setReadCB(nullptr); };
   recvSock_.setReadCB(&rcb);
 
-  std::queue<std::tuple<int, std::string, folly::SocketFds::ToSend>> sentQueue;
+  std::queue<
+      std::tuple<int, std::string, folly::SocketFds::ToSend, SocketFds::SeqNum>>
+      sentQueue;
 
   // Enqueue several writes before attempting reads
   char msgFirstByte = 0; // The first byte of each data message is different.
@@ -227,10 +271,15 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
 
     auto sendFds = makeFdsToSend(numFds);
 
+    SocketFds fds(sendFds);
+    const auto sendSeqNum = fds.empty()
+        ? SocketFds::kNoSeqNum
+        : sendSock_.injectSocketSeqNumIntoFdsToSend(&fds);
     sendSock_.writeChainWithFds(
-        &wcb_, IOBuf::wrapBuffer(data.data(), data.size()), sendFds);
+        &wcb_, IOBuf::wrapBuffer(data.data(), data.size()), std::move(fds));
 
-    sentQueue.push({msgFirstByte, std::move(data), std::move(sendFds)});
+    sentQueue.push(
+        {msgFirstByte, std::move(data), std::move(sendFds), sendSeqNum});
   }
 
   // Read from the socket, and check that any batches of FDs arrive with the
@@ -251,9 +300,12 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
       ASSERT_EQ(std::get<0>(sentQueue.front()), rcb.buf_->data()[0]);
 
       const auto& sendFds = std::get<2>(sentQueue.front());
+      // We only want to "pop" if the current `sentQueue` element had sent
+      // FDs.  Otherwise, we would inadvertently retrieve the next message's
+      // FDs, which would fail in `checkFdsMatch`.
       if (!sendFds.empty()) {
-        auto recvFds = recvSock_.popNextReceivedFds();
-        checkFdsMatch(sendFds, *recvFds);
+        const auto sendSeqNum = std::get<3>(sentQueue.front());
+        checkFdsMatch(sendFds, sendSeqNum, recvSock_.popNextReceivedFds());
       }
     }
 
@@ -262,7 +314,7 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
       ASSERT_TRUE(checkedFds);
       checkedFds = false;
 
-      auto [firstByte, expectedData, _fds] = sentQueue.front();
+      auto [firstByte, expectedData, _fds, _seqNum] = sentQueue.front();
       auto& buf = rcb.buf_;
 
       // Check that the entire data string is as expected.
@@ -279,7 +331,7 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
   EXPECT_TRUE(sentQueue.empty()) << "Stuck reading?";
   evb_.loopOnce(EVLOOP_NONBLOCK);
   EXPECT_EQ(0, rcb.buf_->computeChainDataLength()) << "Leftover reads";
-  EXPECT_FALSE(recvSock_.popNextReceivedFds().has_value()) << "Extra FDs";
+  EXPECT_TRUE(recvSock_.popNextReceivedFds().empty()) << "Extra FDs";
 }
 
 // Vary the data size to (hopefully) get a variety of chunking behaviors.
@@ -289,3 +341,5 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(1, 12, 123, 1234, 12345, 123456, 1234567));
 
 #endif // !Windows
+
+} // namespace folly
