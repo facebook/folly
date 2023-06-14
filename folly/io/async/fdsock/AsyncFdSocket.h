@@ -145,8 +145,6 @@ class AsyncFdSocket : public AsyncSocket {
  private:
   class FdSendMsgParamsCallback : public SendMsgParamsCallback {
    public:
-    explicit FdSendMsgParamsCallback(folly::EventBase* evb) : eventBase_(evb) {}
-
     void getAncillaryData(
         folly::WriteFlags,
         void* data,
@@ -182,8 +180,6 @@ class AsyncFdSocket : public AsyncSocket {
 
     std::pair<size_t, WriteTagToFds::iterator> getCmsgSizeAndFds(
         const WriteRequestTag& writeTag) noexcept;
-
-    const folly::EventBase* eventBase_; // only for dcheckIsInEventBaseThread
 
     WriteTagToFds writeTagToFds_;
   };

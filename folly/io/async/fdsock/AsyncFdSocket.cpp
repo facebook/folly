@@ -25,7 +25,6 @@ AsyncFdSocket::AsyncFdSocket(EventBase* evb)
     : AsyncSocket(evb)
 #if !defined(_WIN32)
       ,
-      sendMsgCob_(evb),
       readAncillaryDataCob_(this) {
   setUpCallbacks();
 }
@@ -47,7 +46,6 @@ AsyncFdSocket::AsyncFdSocket(
     : AsyncSocket(evb, fd, /* zeroCopyBufId */ 0, peerAddress)
 #if !defined(_WIN32)
       ,
-      sendMsgCob_(evb),
       readAncillaryDataCob_(this) {
   setUpCallbacks();
 }
@@ -155,8 +153,6 @@ void AsyncFdSocket::FdSendMsgParamsCallback::getAncillaryData(
     void* data,
     const WriteRequestTag& writeTag,
     const bool /*byteEventsEnabled*/) noexcept {
-  eventBase_->dcheckIsInEventBaseThread();
-
   auto [cmsgSpace, fdsIt] = getCmsgSizeAndFds(writeTag);
   CHECK_NE(0, cmsgSpace);
   const auto& fds = fdsIt->second;
