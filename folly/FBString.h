@@ -2622,9 +2622,11 @@ operator<<(
   return os;
 }
 
+#if FOLLY_CPLUSPLUS < 201703L
 template <typename E1, class T, class A, class S>
 constexpr typename basic_fbstring<E1, T, A, S>::size_type
     basic_fbstring<E1, T, A, S>::npos;
+#endif
 
 // basic_string compatibility routines
 

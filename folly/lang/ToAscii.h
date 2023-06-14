@@ -141,8 +141,10 @@ struct to_ascii_powers {
   // @lint-ignore CLANGTIDY
   static data_type_ const data;
 };
+#if FOLLY_CPLUSPLUS < 201703L
 template <uint64_t Base, typename Int>
 constexpr size_t const to_ascii_powers<Base, Int>::size;
+#endif
 template <uint64_t Base, typename Int>
 alignas(hardware_constructive_interference_size)
     typename to_ascii_powers<Base, Int>::data_type_ const
