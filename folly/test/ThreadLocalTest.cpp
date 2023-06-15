@@ -58,6 +58,14 @@ extern "C" FOLLY_KEEP int* check_thread_local_get_existing(
   return o.get_existing();
 }
 
+template <typename>
+struct static_meta_of;
+
+template <template <typename...> class X, typename A0, typename... A>
+struct static_meta_of<X<A0, A...>> {
+  using type = folly::threadlocal_detail::StaticMeta<A...>;
+};
+
 struct Widget {
   static int totalVal_;
   static int totalMade_;
@@ -81,7 +89,7 @@ struct MultiWidget {
     // allocating more than elementsCapacity
 
     using TL = ThreadLocal<size_t>;
-    using TLMeta = threadlocal_detail::static_meta_of<TL>::type;
+    using TLMeta = static_meta_of<TL>::type;
     auto const numElements = TLMeta::instance().elementsCapacity() + 1;
     std::vector<ThreadLocal<size_t>> elems(numElements);
     for (auto& t : elems) {

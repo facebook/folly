@@ -442,19 +442,4 @@ class ThreadLocalPtr {
   mutable typename StaticMeta::EntryID id_;
 };
 
-namespace threadlocal_detail {
-template <typename>
-struct static_meta_of;
-
-template <typename T, typename Tag, typename AccessMode>
-struct static_meta_of<ThreadLocalPtr<T, Tag, AccessMode>> {
-  using type = StaticMeta<Tag, AccessMode>;
-};
-
-template <typename T, typename Tag, typename AccessMode>
-struct static_meta_of<ThreadLocal<T, Tag, AccessMode>> {
-  using type = StaticMeta<Tag, AccessMode>;
-};
-
-} // namespace threadlocal_detail
 } // namespace folly
