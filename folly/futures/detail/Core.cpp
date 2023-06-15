@@ -468,8 +468,8 @@ void CoreBase::setCallback_(
     futures::detail::InlineContinuation allowInline) {
   DCHECK(!hasCallback());
 
-  ::new (&callback_) Callback(std::move(callback));
-  ::new (&context_) Context(std::move(context));
+  callback_ = std::move(callback);
+  context_ = std::move(context);
 
   auto state = state_.load(std::memory_order_acquire);
   State nextState = allowInline == futures::detail::InlineContinuation::permit
@@ -656,8 +656,8 @@ void CoreBase::doCallback(
   } else {
     attached_.fetch_add(1, std::memory_order_relaxed);
     SCOPE_EXIT {
-      context_.~Context();
-      callback_.~Callback();
+      context_ = {};
+      callback_ = {};
       detachOne();
     };
     RequestContextScopeGuard rctx(std::move(context_));
@@ -675,8 +675,8 @@ void CoreBase::proxyCallback(State priorState) {
   proxy_->setExecutor(std::move(executor_));
   proxy_->setCallback_(std::move(callback_), std::move(context_), allowInline);
   proxy_->detachFuture();
-  context_.~Context();
-  callback_.~Callback();
+  context_ = {};
+  callback_ = {};
 }
 
 void CoreBase::detachOne() noexcept {
@@ -691,8 +691,8 @@ void CoreBase::derefCallback() noexcept {
   auto c = callbackReferences_.fetch_sub(1, std::memory_order_acq_rel);
   assert(c >= 1);
   if (c == 1) {
-    context_.~Context();
-    callback_.~Callback();
+    context_ = {};
+    callback_ = {};
   }
 }
 
