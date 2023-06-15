@@ -100,7 +100,7 @@ class hazptr_domain {
   using ObjList = hazptr_obj_list<Atom>;
   using RetiredList = hazptr_detail::shared_head_only_list<Obj, Atom>;
   using Set = folly::F14FastSet<const void*>;
-  using ExecFn = folly::Executor* (*)();
+  using ExecFn = folly::Executor::KeepAlive<> (*)();
 
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
@@ -115,7 +115,7 @@ class hazptr_domain {
   static_assert(
       (kNumShards & kShardMask) == 0, "kNumShards must be a power of 2");
 
-  static folly::Executor* get_default_executor() {
+  static folly::Executor::KeepAlive<> get_default_executor() {
     return &folly::QueuedImmediateExecutor::instance();
   }
 
@@ -719,16 +719,16 @@ class hazptr_domain {
       return false;
     }
     auto fn = exec_fn_.load(std::memory_order_acquire);
-    auto ex = fn ? fn() : get_default_executor();
+    folly::Executor::KeepAlive<> ex = fn ? fn() : get_default_executor();
     if (!ex) {
       return false;
     }
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
-    auto recl_fn = [this, rcount] {
+    auto recl_fn = [this, rcount, ka = ex] {
       exec_backlog_.store(0, std::memory_order_relaxed);
       do_reclamation(rcount);
     };
-    if (ex == get_default_executor()) {
+    if (ex.get() == get_default_executor().get()) {
       invoke_reclamation_may_deadlock(ex, recl_fn);
     } else {
       ex->add(recl_fn);
@@ -740,7 +740,8 @@ class hazptr_domain {
   }
 
   template <typename Func>
-  void invoke_reclamation_may_deadlock(folly::Executor* ex, Func recl_fn) {
+  void invoke_reclamation_may_deadlock(
+      folly::Executor::KeepAlive<> ex, Func recl_fn) {
     ex->add(recl_fn);
     // This program is using the default executor, which is an
     // inline executor. This is not necessarily a problem. But if this
