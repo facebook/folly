@@ -22,9 +22,6 @@
 
 FOLLY_CREATE_QUAL_INVOKER(invoke_std, std::uncaught_exceptions);
 FOLLY_CREATE_QUAL_INVOKER(invoke_folly, folly::uncaught_exceptions);
-// @lint-ignore CLANGTIDY
-FOLLY_CREATE_QUAL_INVOKER(
-    invoke_folly_detail_, folly::detail::uncaught_exceptions_);
 
 template <typename Param>
 struct UncaughtExceptionsTest : testing::TestWithParam<Param> {};
@@ -188,5 +185,3 @@ REGISTER_TYPED_TEST_SUITE_P(
 
 INSTANTIATE_TYPED_TEST_SUITE_P(std, UncaughtExceptionsTest, invoke_std);
 INSTANTIATE_TYPED_TEST_SUITE_P(folly, UncaughtExceptionsTest, invoke_folly);
-INSTANTIATE_TYPED_TEST_SUITE_P(
-    folly_fb, UncaughtExceptionsTest, invoke_folly_detail_);

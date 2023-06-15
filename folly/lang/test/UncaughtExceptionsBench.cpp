@@ -16,30 +16,34 @@
 
 #include <folly/lang/UncaughtExceptions.h>
 
-#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+#include <folly/Benchmark.h>
+#include <folly/lang/Hint.h>
+#include <folly/lang/Keep.h>
 
-namespace __cxxabiv1 {
-struct __cxa_eh_globals {
-  void* caught_exceptions_;
-  unsigned int uncaught_exceptions_;
-};
-extern "C" __cxa_eh_globals* __cxa_get_globals();
-} // namespace __cxxabiv1
-
-#endif
-
-namespace folly {
-
-namespace detail {
-
-unsigned int* uncaught_exceptions_ptr() noexcept {
-  assert(kIsGlibcxx || kIsLibcpp);
-#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-  return &__cxxabiv1::__cxa_get_globals()->uncaught_exceptions_;
-#endif
-  return nullptr;
+extern "C" FOLLY_KEEP int check_folly_uncaught_exceptions() {
+  return folly::uncaught_exceptions();
 }
 
-} // namespace detail
+BENCHMARK(std_uncaught_exceptions, iters) {
+  int s = 0;
+  while (iters--) {
+    int u = std::uncaught_exceptions();
+    folly::compiler_must_not_predict(u);
+    s ^= u;
+  }
+  folly::compiler_must_not_elide(s);
+}
 
-} // namespace folly
+BENCHMARK(folly_uncaught_exceptions, iters) {
+  int s = 0;
+  while (iters--) {
+    int u = folly::uncaught_exceptions();
+    folly::compiler_must_not_predict(u);
+    s ^= u;
+  }
+  folly::compiler_must_not_elide(s);
+}
+
+int main() {
+  folly::runBenchmarks();
+}
