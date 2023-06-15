@@ -255,6 +255,17 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
   EXPECT_EQ(1010, Widget::totalVal_);
 }
 
+TEST(ThreadLocal, NotDefaultConstructible) {
+  struct Object {
+    int value;
+    explicit Object(int v) : value{v} {}
+  };
+  std::atomic<int> a{};
+  ThreadLocal<Object> o{[&a] { return new Object(a++); }};
+  EXPECT_EQ(0, o->value);
+  std::thread([&] { EXPECT_EQ(1, o->value); }).join();
+}
+
 TEST(ThreadLocal, GetWithoutCreateUncreated) {
   Widget::totalVal_ = 0;
   Widget::totalMade_ = 0;
