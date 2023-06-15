@@ -70,7 +70,7 @@ SetupStackAndTest(64_frames)                               728.65ns    1.37M
 */
 
 int main(int argc, char* argv[]) {
-  folly::init(&argc, &argv, true);
+  folly::Init init(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

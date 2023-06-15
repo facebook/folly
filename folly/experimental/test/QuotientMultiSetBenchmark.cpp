@@ -392,7 +392,7 @@ BENCHMARK_MULTI(EliasFanoGetRandomSerialized) {
 #endif // FOLLY_QUOTIENT_MULTI_SET_SUPPORTED
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
 
 #if FOLLY_QUOTIENT_MULTI_SET_SUPPORTED
   benchmarkSetup();

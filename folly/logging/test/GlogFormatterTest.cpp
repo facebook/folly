@@ -245,7 +245,7 @@ TEST(GlogFormatter, unprintableChars) {
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
 
   // Some of our tests check timestamps emitted by the formatter.
   // Set the timezone to a consistent value so that the tests are not

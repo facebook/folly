@@ -316,7 +316,7 @@ BENCHMARK_RELATIVE(sformat_long_string_safe, iters) {
 // ============================================================================
 
 int main(int argc, char* argv[]) {
-  init(&argc, &argv, true);
+  folly::Init init(&argc, &argv, true);
   runBenchmarks();
   return 0;
 }

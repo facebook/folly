@@ -140,7 +140,7 @@ BENCHMARK(sizeLongString, iters) {
 }
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   folly::runBenchmarks();
   return 0;
 }

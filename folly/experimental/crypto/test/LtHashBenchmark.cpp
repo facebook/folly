@@ -126,7 +126,7 @@ BENCHMARK_RELATIVE(subtractChecksumFor100KObjects_B32_N1024) {
 }
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
 
   if (sodium_init() < 0) {
     throw std::runtime_error("Failed to initialize libsodium");

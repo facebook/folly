@@ -83,7 +83,7 @@ BENCHMARK(init_uri_complex_with_query_parsing, iters) {
 }
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   folly::runBenchmarks();
   return 0;
 }
