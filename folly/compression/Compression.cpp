@@ -955,6 +955,9 @@ class SnappyCodec final : public Codec {
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data, Optional<uint64_t> uncompressedLength) override;
+  folly::Optional<uint64_t> doGetUncompressedLength(
+      const folly::IOBuf* data,
+      folly::Optional<uint64_t> uncompressedLength) const override;
 };
 
 std::unique_ptr<Codec> SnappyCodec::create(int level, CodecType type) {
@@ -1024,6 +1027,21 @@ std::unique_ptr<IOBuf> SnappyCodec::doUncompress(
 
   out->append(actualUncompressedLength);
   return out;
+}
+
+folly::Optional<uint64_t> SnappyCodec::doGetUncompressedLength(
+    const folly::IOBuf* data,
+    folly::Optional<uint64_t> uncompressedLength) const {
+  uint32_t actualUncompressedLength = 0;
+  IOBufSnappySource source(data);
+  if (!snappy::GetUncompressedLength(&source, &actualUncompressedLength)) {
+    throw std::runtime_error("snappy::GetUncompressedLength failed");
+  }
+  if (uncompressedLength && *uncompressedLength != actualUncompressedLength) {
+    throw std::runtime_error("snappy: invalid uncompressed length");
+  }
+
+  return actualUncompressedLength;
 }
 
 #endif // FOLLY_HAVE_LIBSNAPPY
