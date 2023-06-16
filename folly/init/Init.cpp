@@ -41,11 +41,7 @@ const unsigned long kAllFatalSignals =
 
 InitOptions::InitOptions() noexcept : fatal_signals(kAllFatalSignals) {}
 
-void init(int* argc, char*** argv, bool removeFlags) {
-  InitOptions options;
-  options.removeFlags(removeFlags);
-  init(argc, argv, options);
-}
+namespace {
 
 #if FOLLY_USE_SYMBOLIZER
 // Newer versions of glog require the function passed to InstallFailureFunction
@@ -65,7 +61,7 @@ wrapped_abort() {
 }
 #endif
 
-void init(int* argc, char*** argv, InitOptions options) {
+void initImpl(int* argc, char*** argv, InitOptions options) {
 #if !defined(_WIN32)
   // Install the handler now, to trap errors received during startup.
   // The callbacks, if any, can be installed later
@@ -104,15 +100,26 @@ void init(int* argc, char*** argv, InitOptions options) {
   folly::enable_hazptr_thread_pool_executor();
 }
 
+} // namespace
+
 Init::Init(int* argc, char*** argv, bool removeFlags) {
-  init(argc, argv, removeFlags);
+  initImpl(argc, argv, InitOptions{}.removeFlags(removeFlags));
 }
 
 Init::Init(int* argc, char*** argv, InitOptions options) {
-  init(argc, argv, options);
+  initImpl(argc, argv, options);
 }
 
 Init::~Init() {
   SingletonVault::singleton()->destroyInstancesFinal();
 }
+
+void init(int* argc, char*** argv, bool removeFlags) {
+  initImpl(argc, argv, InitOptions{}.removeFlags(removeFlags));
+}
+
+void init(int* argc, char*** argv, InitOptions options) {
+  initImpl(argc, argv, options);
+}
+
 } // namespace folly
