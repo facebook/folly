@@ -67,6 +67,7 @@
 #include <folly/Traits.h>
 #include <folly/detail/RangeCommon.h>
 #include <folly/detail/RangeSse42.h>
+#include <folly/lang/Byte.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING
@@ -164,6 +165,75 @@ struct IsUnsignedCharPointer<const unsigned char*> {
   using type = int;
 };
 
+void range_is_char_type_f_(char const*);
+void range_is_char_type_f_(wchar_t const*);
+#if (defined(__cpp_char8_t) && __cpp_char8_t >= 201811L) || \
+    FOLLY_CPLUSPLUS >= 202002
+void range_is_char_type_f_(char8_t const*);
+#endif
+void range_is_char_type_f_(char16_t const*);
+void range_is_char_type_f_(char32_t const*);
+template <typename Iter>
+using range_is_char_type_d_ =
+    decltype(folly::detail::range_is_char_type_f_(FOLLY_DECLVAL(Iter)));
+template <typename Iter>
+constexpr bool range_is_char_type_v_ =
+    is_detected_v<range_is_char_type_d_, Iter>;
+
+void range_is_byte_type_f_(unsigned char const*);
+void range_is_byte_type_f_(signed char const*);
+void range_is_byte_type_f_(byte const*);
+template <typename Iter>
+using range_is_byte_type_d_ =
+    decltype(folly::detail::range_is_byte_type_f_(FOLLY_DECLVAL(Iter)));
+template <typename Iter>
+constexpr bool range_is_byte_type_v_ =
+    is_detected_v<range_is_byte_type_d_, Iter>;
+
+struct range_traits_char_ {
+  template <typename Value>
+  using apply = std::char_traits<Value>;
+};
+struct range_traits_byte_ {
+  template <typename Value>
+  struct apply {
+    FOLLY_ERASE static constexpr int compare(
+        Value const* a, Value const* b, std::size_t c) {
+      return !c ? 0 : std::memcmp(a, b, c);
+    }
+  };
+};
+struct range_traits_fbck_ {
+  template <typename Value>
+  struct apply {
+    FOLLY_ERASE static constexpr int compare(
+        Value const* a, Value const* b, std::size_t c) {
+      while (c--) {
+        auto&& ai = *a++;
+        auto&& bi = *b++;
+        if (ai < bi) {
+          return -1;
+        }
+        if (bi < ai) {
+          return +1;
+        }
+      }
+      return 0;
+    }
+  };
+};
+
+template <typename Iter>
+using range_traits_c_ = conditional_t<
+    range_is_char_type_v_<Iter>,
+    range_traits_char_,
+    conditional_t< //
+        range_is_byte_type_v_<Iter>,
+        range_traits_byte_,
+        range_traits_fbck_>>;
+template <typename Iter, typename Value>
+using range_traits_t_ = typename range_traits_c_<Iter>::template apply<Value>;
+
 } // namespace detail
 
 template <class Iter>
@@ -193,8 +263,9 @@ class Range {
       Range<const value_type*>,
       Range<Iter>>::type;
 
-  using traits_type =
-      std::char_traits<typename std::remove_const<value_type>::type>;
+  using traits_type = detail::range_traits_t_< //
+      Iter,
+      typename std::remove_const<value_type>::type>;
 
   static const size_type npos;
 

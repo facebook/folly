@@ -49,6 +49,9 @@ CPP_assert(ranges::view_<folly::StringPiece>);
 using namespace folly;
 using namespace std;
 
+static_assert(folly::detail::range_is_char_type_v_<char*>, "");
+static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>, "");
+
 static_assert(std::is_literal_type<StringPiece>::value, "");
 
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
@@ -1255,6 +1258,41 @@ TEST(CRangeFunc, Collection) {
   EXPECT_TRUE(
       (std::is_same<int const*, decltype(numCollRange)::iterator>::value));
   EXPECT_THAT(numCollRange, testing::ElementsAreArray({17, 1}));
+}
+
+TEST(Range, CompareChar) {
+  EXPECT_EQ(""_sp, ""_sp);
+  EXPECT_LT(""_sp, "world"_sp);
+  EXPECT_GT("world"_sp, ""_sp);
+  EXPECT_EQ("hello"_sp, "hello"_sp);
+  EXPECT_LT("hello"_sp, "world"_sp);
+  EXPECT_LT("hello"_sp, "helloworld"_sp);
+  EXPECT_GT("world"_sp, "hello"_sp);
+  EXPECT_GT("helloworld"_sp, "hello"_sp);
+}
+
+TEST(Range, CompareByte) {
+  auto br = [](auto sp) { return ByteRange(sp); };
+  EXPECT_EQ(br(""_sp), br(""_sp));
+  EXPECT_LT(br(""_sp), br("world"_sp));
+  EXPECT_GT(br("world"_sp), br(""_sp));
+  EXPECT_EQ(br("hello"_sp), br("hello"_sp));
+  EXPECT_LT(br("hello"_sp), br("world"_sp));
+  EXPECT_LT(br("hello"_sp), br("helloworld"_sp));
+  EXPECT_GT(br("world"_sp), br("hello"_sp));
+  EXPECT_GT(br("helloworld"_sp), br("hello"_sp));
+}
+
+TEST(Range, CompareFbck) {
+  auto vr = [](std::vector<int> const& _) { return folly::range(_); };
+  EXPECT_EQ(vr({}), vr({}));
+  EXPECT_LT(vr({}), vr({1}));
+  EXPECT_GT(vr({1}), vr({}));
+  EXPECT_EQ(vr({1}), vr({1}));
+  EXPECT_LT(vr({1}), vr({2}));
+  EXPECT_LT(vr({1}), vr({1, 2}));
+  EXPECT_GT(vr({2}), vr({1}));
+  EXPECT_GT(vr({1, 1}), vr({1}));
 }
 
 std::string get_rand_str(
