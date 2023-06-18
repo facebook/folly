@@ -18,7 +18,7 @@
 
 #include <new>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <folly/lang/Assume.h>
 
 namespace folly {
