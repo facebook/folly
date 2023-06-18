@@ -483,7 +483,7 @@ class fbstring_core {
       size_t oldcnt = dis->refCount_.fetch_sub(1, std::memory_order_acq_rel);
       assert(oldcnt > 0);
       if (oldcnt == 1) {
-        free(dis);
+        ::free(dis);
       }
     }
 
