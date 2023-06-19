@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <deque>
 #include <functional>
+#include <iterator>
 #include <list>
 #include <map>
 #include <set>
@@ -41,6 +42,86 @@ TEST_F(IteratorTest, iterator_has_known_distance_v) {
 TEST_F(IteratorTest, range_has_known_distance_v) {
   EXPECT_FALSE(folly::range_has_known_distance_v<std::list<int>&>);
   EXPECT_TRUE(folly::range_has_known_distance_v<std::vector<int>&>);
+}
+
+TEST_F(IteratorTest, iterator_category_t) {
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          folly::iterator_category_t<
+              std::iterator<std::input_iterator_tag, int>>,
+          std::input_iterator_tag>));
+  EXPECT_FALSE(( //
+      std::is_same_v<
+          folly::iterator_category_t<
+              std::iterator<std::input_iterator_tag, int>>,
+          std::output_iterator_tag>));
+}
+
+TEST_F(IteratorTest, iterator_category_matches_v) {
+  EXPECT_TRUE(( //
+      folly::iterator_category_matches_v<
+          std::iterator<std::input_iterator_tag, int>,
+          std::input_iterator_tag>));
+  EXPECT_FALSE(( //
+      folly::iterator_category_matches_v<
+          std::iterator<std::input_iterator_tag, int>,
+          std::output_iterator_tag>));
+  EXPECT_FALSE(( //
+      folly::iterator_category_matches_v<int, std::input_iterator_tag>));
+}
+
+TEST_F(IteratorTest, iterator_value_type_t) {
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          std::map<int, double>::value_type,
+          folly::iterator_value_type_t<std::map<int, double>::iterator>>));
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          std::map<std::reference_wrapper<int>, double&>::value_type,
+          folly::iterator_value_type_t<
+              std::map<std::reference_wrapper<int>, double&>::iterator>>));
+  EXPECT_FALSE(( //
+      std::is_same_v<
+          std::map<int, float>::value_type,
+          folly::iterator_value_type_t<std::map<int, double>::iterator>>));
+}
+
+TEST_F(IteratorTest, iterator_key_type_t) {
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          std::map<int, double>::key_type,
+          folly::iterator_key_type_t<std::map<int, double>::iterator>>));
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          std::map<std::reference_wrapper<int>, double&>::key_type,
+          folly::iterator_key_type_t<
+              std::map<std::reference_wrapper<int>, double&>::iterator>>));
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          int,
+          folly::iterator_key_type_t<std::iterator<
+              std::input_iterator_tag,
+              std::pair<const int&, double>>>>));
+  EXPECT_FALSE(( //
+      std::is_same_v<
+          std::map<char, double>::key_type,
+          folly::iterator_key_type_t<std::map<int, double>::iterator>>));
+}
+
+TEST_F(IteratorTest, iterator_mapped_type_t) {
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          std::map<int, double>::mapped_type,
+          folly::iterator_mapped_type_t<std::map<int, double>::iterator>>));
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          std::map<std::reference_wrapper<int>, double&>::mapped_type,
+          folly::iterator_mapped_type_t<
+              std::map<std::reference_wrapper<int>, double&>::iterator>>));
+  EXPECT_FALSE(( //
+      std::is_same_v<
+          std::map<int, float>::mapped_type,
+          folly::iterator_mapped_type_t<std::map<int, double>::iterator>>));
 }
 
 namespace {

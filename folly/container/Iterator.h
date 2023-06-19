@@ -23,6 +23,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/container/Access.h>
 #include <folly/lang/RValueReferenceWrapper.h>
@@ -71,6 +72,57 @@ FOLLY_INLINE_VARIABLE constexpr bool range_has_known_distance_v =
     iterator_has_known_distance_v<
         invoke_result_t<access::begin_fn, Range>,
         invoke_result_t<access::end_fn, Range>>;
+
+//  iterator_category_t
+//
+//  Extracts iterator_category from an iterator.
+template <typename Iter>
+using iterator_category_t =
+    typename std::iterator_traits<Iter>::iterator_category;
+
+namespace detail {
+
+template <typename Iter, typename Category, typename = void>
+FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_ = false;
+template <typename Iter, typename Category>
+FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_<
+    Iter,
+    Category,
+    void_t<iterator_category_t<Iter>>> =
+    std::is_convertible<iterator_category_t<Iter>, Category>::value;
+
+} // namespace detail
+
+//  iterator_category_matches_v
+//
+//  Whether an iterator's category matches Category (std::input_iterator_tag,
+//  std::output_iterator_tag, etc). Defined for non-iterator types as well.
+//
+//  Useful for containers deduction guides implementation.
+template <typename Iter, typename Category>
+FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v =
+    detail::iterator_category_matches_v_<Iter, Category>;
+
+//  iterator_value_type_t
+//
+//  Extracts a value type from an iterator.
+template <typename Iter>
+using iterator_value_type_t = typename std::iterator_traits<Iter>::value_type;
+
+//  iterator_key_type_t
+//
+//  Extracts a key type from an iterator, leverages the knowledge that
+//  key/value containers usually use std::pair<const K, V> as a value_type.
+template <typename Iter>
+using iterator_key_type_t =
+    remove_cvref_t<typename iterator_value_type_t<Iter>::first_type>;
+
+//  iterator_mapped_type_t
+//
+//  Extracts a mapped type from an iterator.
+template <typename Iter>
+using iterator_mapped_type_t =
+    typename iterator_value_type_t<Iter>::second_type;
 
 /**
  * Argument tuple for variadic emplace/constructor calls. Stores arguments by
