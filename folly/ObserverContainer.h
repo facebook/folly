@@ -834,6 +834,27 @@ class ObserverContainer : public ObserverContainerBase<
   explicit ObserverContainer(Observed* obj)
       : obj_(CHECK_NOTNULL(obj)), constructorCallbackList_(obj) {}
 
+  ObserverContainer(Observed* obj, ObserverContainer&& observerContainer)
+      : obj_(CHECK_NOTNULL(obj)), constructorCallbackList_(obj) {
+    using InvokeWhileIteratingPolicy =
+        typename StoreBase::InvokeWhileIteratingPolicy;
+    observerContainer.getStore().invokeForEachObserver(
+
+        [this, &observerContainer](Observer* observer) {
+          CHECK_NOTNULL(observer);
+          auto observerPtr =
+              std::shared_ptr<Observer>(std::shared_ptr<void>(), observer);
+          const bool removed = observerContainer.getStore().remove(observerPtr);
+          CHECK(removed);
+          const bool added = getStore().add(observerPtr);
+          CHECK(added);
+          observer->movedToObserverContainer(&observerContainer, this);
+          observer->moved(
+              observerContainer.getObject(), obj_, nullptr /* ctx */);
+        },
+        InvokeWhileIteratingPolicy::CheckNoAdded);
+  }
+
   ~ObserverContainer() override {
     using InvokeWhileIteratingPolicy =
         typename StoreBase::InvokeWhileIteratingPolicy;
