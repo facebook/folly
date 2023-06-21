@@ -20,6 +20,7 @@
 #include <chrono>
 #include <random>
 #include <string>
+#include <type_traits>
 #include <typeinfo>
 #include <unordered_map>
 
@@ -28,6 +29,7 @@
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
 #include <folly/FBString.h>
+#include <folly/Portability.h>
 #include <folly/container/test/F14TestUtil.h>
 #include <folly/container/test/TrackingTypes.h>
 #include <folly/hash/Hash.h>
@@ -2234,3 +2236,125 @@ TEST(F14Map, copyAfterRemovedCollisions) {
   testCopyAfterRemovedCollisions<F14NodeMap>();
   testCopyAfterRemovedCollisions<F14FastMap>();
 }
+
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <template <class...> class TMap>
+void testIterDeductionGuide() {
+  TMap<int, double> source({{1, 2.0}, {3, 4.0}});
+
+  TMap dest1(source.begin(), source.end());
+  static_assert(std::is_same_v<decltype(dest1), decltype(source)>);
+  EXPECT_EQ(dest1, source);
+
+  TMap dest2(source.begin(), source.end(), 2);
+  static_assert(std::is_same_v<decltype(dest2), decltype(source)>);
+  EXPECT_EQ(dest2, source);
+
+  TMap dest3(source.begin(), source.end(), 2, f14::DefaultHasher<int>{});
+  static_assert(std::is_same_v<decltype(dest3), decltype(source)>);
+  EXPECT_EQ(dest3, source);
+
+  TMap dest4(
+      source.begin(),
+      source.end(),
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultKeyEqual<int>{});
+  static_assert(std::is_same_v<decltype(dest4), decltype(source)>);
+  EXPECT_EQ(dest4, source);
+
+  TMap dest5(
+      source.begin(),
+      source.end(),
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultKeyEqual<int>{},
+      f14::DefaultAlloc<std::pair<const int, double>>{});
+  static_assert(std::is_same_v<decltype(dest5), decltype(source)>);
+  EXPECT_EQ(dest5, source);
+
+  TMap dest6(
+      source.begin(),
+      source.end(),
+      2,
+      f14::DefaultAlloc<std::pair<const int, double>>{});
+  static_assert(std::is_same_v<decltype(dest6), decltype(source)>);
+  EXPECT_EQ(dest6, source);
+
+  TMap dest7(
+      source.begin(),
+      source.end(),
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultAlloc<std::pair<const int, double>>{});
+  static_assert(std::is_same_v<decltype(dest7), decltype(source)>);
+  EXPECT_EQ(dest7, source);
+}
+
+TEST(F14Map, iterDeductionGuide) {
+  testIterDeductionGuide<F14ValueMap>();
+  testIterDeductionGuide<F14NodeMap>();
+  testIterDeductionGuide<F14VectorMap>();
+  testIterDeductionGuide<F14FastMap>();
+}
+
+template <template <class...> class TMap>
+void testInitializerListDeductionGuide() {
+  TMap<int, double> source({{1, 2.0}, {3, 4.0}});
+
+  TMap dest1{std::pair{1, 2.0}, {3, 4.0}};
+  static_assert(std::is_same_v<decltype(dest1), decltype(source)>);
+  EXPECT_EQ(dest1, source);
+
+  TMap dest2({std::pair{1, 2.0}, {3, 4.0}});
+  static_assert(std::is_same_v<decltype(dest2), decltype(source)>);
+  EXPECT_EQ(dest2, source);
+
+  TMap dest3({std::pair{1, 2.0}, {3, 4.0}}, 2);
+  static_assert(std::is_same_v<decltype(dest3), decltype(source)>);
+  EXPECT_EQ(dest3, source);
+
+  TMap dest4({std::pair{1, 2.0}, {3, 4.0}}, 2, f14::DefaultHasher<int>{});
+  static_assert(std::is_same_v<decltype(dest4), decltype(source)>);
+  EXPECT_EQ(dest4, source);
+
+  TMap dest5(
+      {std::pair{1, 2.0}, {3, 4.0}},
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultKeyEqual<int>{});
+  static_assert(std::is_same_v<decltype(dest5), decltype(source)>);
+  EXPECT_EQ(dest5, source);
+
+  TMap dest6(
+      {std::pair{1, 2.0}, {3, 4.0}},
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultKeyEqual<int>{},
+      f14::DefaultAlloc<std::pair<const int, double>>{});
+  static_assert(std::is_same_v<decltype(dest6), decltype(source)>);
+  EXPECT_EQ(dest6, source);
+
+  TMap dest7(
+      {std::pair{1, 2.0}, {3, 4.0}},
+      2,
+      f14::DefaultAlloc<std::pair<const int, double>>{});
+  static_assert(std::is_same_v<decltype(dest7), decltype(source)>);
+  EXPECT_EQ(dest7, source);
+
+  TMap dest8(
+      {std::pair{1, 2.0}, {3, 4.0}},
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultAlloc<std::pair<const int, double>>{});
+  static_assert(std::is_same_v<decltype(dest8), decltype(source)>);
+  EXPECT_EQ(dest8, source);
+}
+
+TEST(F14Map, initializerListDeductionGuide) {
+  testInitializerListDeductionGuide<F14ValueMap>();
+  testInitializerListDeductionGuide<F14NodeMap>();
+  testInitializerListDeductionGuide<F14VectorMap>();
+  testInitializerListDeductionGuide<F14FastMap>();
+}
+#endif // FOLLY_HAS_DEDUCTION_GUIDES

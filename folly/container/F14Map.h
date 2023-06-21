@@ -32,6 +32,7 @@
 #include <stdexcept>
 #include <tuple>
 
+#include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
 #include <folly/container/View.h>
@@ -39,6 +40,7 @@
 #include <folly/lang/SafeAssert.h>
 
 #include <folly/container/F14Map-fwd.h>
+#include <folly/container/Iterator.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/container/detail/Util.h>
@@ -946,6 +948,92 @@ class F14ValueMap
   }
 };
 
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    // Next two constraints are necessary to disambiguate from next constructor
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueMap(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14ValueMap<
+        iterator_key_type_t<InputIt>,
+        iterator_mapped_type_t<InputIt>,
+        Hasher,
+        KeyEqual,
+        Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14ValueMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueMap(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14ValueMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<const Key, Mapped>>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueMap(
+    std::initializer_list<std::pair<Key, Mapped>>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueMap(std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Alloc)
+    -> F14ValueMap<
+        Key,
+        Mapped,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueMap(
+    std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
+    -> F14ValueMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
+
 template <
     typename Key,
     typename Mapped,
@@ -998,6 +1086,91 @@ class F14NodeMap
 
   // TODO extract and node_handle insert
 };
+
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeMap(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14NodeMap<
+        iterator_key_type_t<InputIt>,
+        iterator_mapped_type_t<InputIt>,
+        Hasher,
+        KeyEqual,
+        Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14NodeMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeMap(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14NodeMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<const Key, Mapped>>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeMap(
+    std::initializer_list<std::pair<Key, Mapped>>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14NodeMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeMap(std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Alloc)
+    -> F14NodeMap<
+        Key,
+        Mapped,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeMap(
+    std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
+    -> F14NodeMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
 
 namespace f14 {
 namespace detail {
@@ -1277,6 +1450,91 @@ class F14VectorMap : public f14::detail::F14VectorMapImpl<
   }
 };
 
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorMap(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14VectorMap<
+        iterator_key_type_t<InputIt>,
+        iterator_mapped_type_t<InputIt>,
+        Hasher,
+        KeyEqual,
+        Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14VectorMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorMap(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14VectorMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<const Key, Mapped>>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorMap(
+    std::initializer_list<std::pair<Key, Mapped>>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14VectorMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorMap(std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Alloc)
+    -> F14VectorMap<
+        Key,
+        Mapped,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorMap(
+    std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
+    -> F14VectorMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
+
 template <
     typename Key,
     typename Mapped,
@@ -1320,6 +1578,91 @@ class F14FastMap : public std::conditional_t<
     this->table_.swap(rhs.table_);
   }
 };
+
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastMap(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14FastMap<
+        iterator_key_type_t<InputIt>,
+        iterator_mapped_type_t<InputIt>,
+        Hasher,
+        KeyEqual,
+        Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14FastMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    f14::DefaultHasher<iterator_key_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastMap(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14FastMap<
+    iterator_key_type_t<InputIt>,
+    iterator_mapped_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_key_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<const Key, Mapped>>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastMap(
+    std::initializer_list<std::pair<Key, Mapped>>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14FastMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastMap(std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Alloc)
+    -> F14FastMap<
+        Key,
+        Mapped,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
+
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastMap(
+    std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
+    -> F14FastMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
 } // namespace folly
 
 #endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE

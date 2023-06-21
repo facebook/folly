@@ -597,3 +597,10 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_CONSTEVAL constexpr
 #endif
+
+// C++17 deduction guides
+#if defined(__cpp_deduction_guides) && __cpp_deduction_guides >= 201703L
+#define FOLLY_HAS_DEDUCTION_GUIDES 1
+#else
+#define FOLLY_HAS_DEDUCTION_GUIDES 0
+#endif
