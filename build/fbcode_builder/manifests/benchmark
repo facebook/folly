@@ -1,0 +1,13 @@
+[manifest]
+name = benchmark
+
+[download]
+url = https://github.com/google/benchmark/archive/refs/tags/v1.8.0.tar.gz
+sha256 = ea2e94c24ddf6594d15c711c06ccd4486434d9cf3eca954e2af8a20c88f9f172
+
+[build]
+builder = cmake
+subdir = benchmark-1.8.0/
+
+[cmake.defines]
+BENCHMARK_ENABLE_TESTING=OFF
