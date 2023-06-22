@@ -829,13 +829,13 @@ class ObserverContainer : public ObserverContainerBase<
   using EventEnum = typename ContainerBase::EventEnum;
   using StoreBase = ObserverContainerStoreBase<Observer>;
   using ContainerConstructorCallbackList =
-      ConstructorCallbackList<Observed, MaxConstructorCallbacks>;
+      ConstructorCallbackList<ObserverContainer, MaxConstructorCallbacks>;
 
   explicit ObserverContainer(Observed* obj)
-      : obj_(CHECK_NOTNULL(obj)), constructorCallbackList_(obj) {}
+      : obj_(CHECK_NOTNULL(obj)), constructorCallbackList_(this) {}
 
   ObserverContainer(Observed* obj, ObserverContainer&& observerContainer)
-      : obj_(CHECK_NOTNULL(obj)), constructorCallbackList_(obj) {
+      : obj_(CHECK_NOTNULL(obj)), constructorCallbackList_(this) {
     using InvokeWhileIteratingPolicy =
         typename StoreBase::InvokeWhileIteratingPolicy;
     observerContainer.getStore().invokeForEachObserver(

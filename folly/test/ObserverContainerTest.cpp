@@ -2658,8 +2658,8 @@ TEST_F(ObserverContainerTest, ManagedObserverAttachedEventsUseBuilder) {
 TEST_F(ObserverContainerTest, AddConstructorCallback) {
   uint64_t numSubjectsCreated = 0;
   std::vector<TestSubject*> subjectsCreated;
-  auto callbackF = [&](TestSubject* obj) {
-    subjectsCreated.push_back(obj);
+  auto callbackF = [&](TestSubject::ObserverContainer* ctr) {
+    subjectsCreated.push_back(ctr->getObject());
     numSubjectsCreated++;
   };
 
@@ -2680,15 +2680,15 @@ TEST_F(ObserverContainerTest, AddConstructorCallback) {
 TEST_F(ObserverContainerTest, AddConstructorCallbackMulti) {
   uint64_t numSubjectsCreated1 = 0;
   std::vector<TestSubject*> subjectsCreated1;
-  auto callbackF1 = [&](TestSubject* obj) {
-    subjectsCreated1.push_back(obj);
+  auto callbackF1 = [&](TestSubject::ObserverContainer* ctr) {
+    subjectsCreated1.push_back(ctr->getObject());
     numSubjectsCreated1++;
   };
 
   uint64_t numSubjectsCreated2 = 0;
   std::vector<TestSubject*> subjectsCreated2;
-  auto callbackF2 = [&](TestSubject* obj) {
-    subjectsCreated2.push_back(obj);
+  auto callbackF2 = [&](TestSubject::ObserverContainer* ctr) {
+    subjectsCreated2.push_back(ctr->getObject());
     numSubjectsCreated2++;
   };
 
@@ -2726,9 +2726,9 @@ TEST_F(ObserverContainerTest, AddConstructorCallbackAttachObserver) {
   obs->useDefaultPostInvokeMockHandler();
 
   uint64_t numSubjectsCreated = 0;
-  auto callbackF = [&](TestSubject* obj) {
+  auto callbackF = [&](TestSubject::ObserverContainer* ctr) {
     numSubjectsCreated++;
-    obj->observerCtr.addObserver(obs.get());
+    ctr->addObserver(obs.get());
   };
 
   TestSubject::ObserverContainer::addConstructorCallback(callbackF);
