@@ -967,6 +967,4 @@ bool EventBase::OnDestructionCallback::cancel() {
   });
 }
 
-constexpr std::chrono::milliseconds EventBase::SmoothLoopTime::buffer_interval_;
-
 } // namespace folly
