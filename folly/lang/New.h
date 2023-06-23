@@ -37,8 +37,6 @@ namespace folly {
 
 #if defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606
 #define FOLLY_DETAIL_LANG_NEW_HAVE_AN 1
-#elif defined(_CPPLIB_VER)
-#define FOLLY_DETAIL_LANG_NEW_HAVE_AN 1
 #else
 #define FOLLY_DETAIL_LANG_NEW_HAVE_AN 0
 #endif
