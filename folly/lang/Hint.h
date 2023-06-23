@@ -59,6 +59,25 @@ void compiler_may_unsafely_assume(bool cond);
 //  cases, an assertion or exception may be used instead.
 [[noreturn]] void compiler_may_unsafely_assume_unreachable();
 
+//  compiler_may_unsafely_assume_separate_storage
+//
+//  Unsafe. Avoid when not absolutely necessary.
+//
+//  Permits the compiler to assume that the given pointers point into regions
+//  that were allocated separately, and that therefore any pointers at any
+//  offset relative to one is never equal to any pointer at any offset relative
+//  to the other.
+//
+//  Regions being allocated separately means that they are separate global
+//  variables, thread-local variables, stack variables, or heap allocations.
+//
+//  This can be helpful when some library has an ownership model that is opaque
+//  to the compiler. For example, modifying some_vector[0] never modifies the
+//  vector itself; changes to parser state don't need to be stored to memory
+//  before reading the next byte of data to be parsed, etc.
+void compiler_may_unsafely_assume_separate_storage(
+    const void* a, const void* b);
+
 //  compiler_must_not_elide
 //
 //  Ensures that the referred-to value will be computed even when an optimizing
@@ -93,20 +112,6 @@ struct compiler_must_not_predict_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr compiler_must_not_predict_fn
     compiler_must_not_predict{};
-
-// compiler_may_assume_separate_storage
-//
-// Informs the compiler that the given pointers point into regions that were
-// allocated separately (either in different globals, different stack variables,
-// different heap allocations, etc.), and that therefore any pointers at any
-// offset relative to one is never equal to any pointer at any offset relative
-// to the other.
-//
-// This can be helpful when some library has an ownership model that's opaque to
-// the compiler (e.g. modifying some_vector[0] never modifies the vector itself;
-// changes to parser state don't need to be stored to memory before reading the
-// next byte of data to be parsed, etc.).
-void compiler_may_assume_separate_storage(const void* a, const void* b);
 
 } // namespace folly
 

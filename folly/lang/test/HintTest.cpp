@@ -42,6 +42,12 @@ TEST(Hint, CompilerMayUnsafelyAssumeUnreachable) {
   }
 }
 
+TEST(Hint, CompilerMayUnsafelyAssumeSeparateStorage) {
+  int a = 123;
+  int b = 456;
+  compiler_may_unsafely_assume_separate_storage(&a, &b);
+}
+
 struct NonTriviallyCopyable {
   NonTriviallyCopyable() {}
   NonTriviallyCopyable(const NonTriviallyCopyable&) {}
@@ -62,10 +68,4 @@ TEST(Hint, CompilerMustNotPredict) {
   compiler_must_not_predict(x);
   NonTriviallyCopyable ntc;
   compiler_must_not_predict(ntc);
-}
-
-TEST(Hint, CompilerMayAssumeSeparateStorage) {
-  int a = 123;
-  int b = 456;
-  compiler_may_assume_separate_storage(&a, &b);
 }
