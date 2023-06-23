@@ -97,7 +97,8 @@ struct UniqueHandleWrapper {
   HANDLE get() const { return handle_; }
   bool valid() const { return handle_ != INVALID_HANDLE_VALUE; }
 
-  UniqueHandleWrapper(UniqueHandleWrapper&& other) : handle_(other.handle_) {
+  UniqueHandleWrapper(UniqueHandleWrapper&& other) {
+    handle_ = other.handle_;
     other.handle_ = INVALID_HANDLE_VALUE;
   }
   UniqueHandleWrapper& operator=(UniqueHandleWrapper&& other) {
@@ -153,12 +154,7 @@ int64_t getProcessStartTime(HANDLE processHandle) {
 
 ProcessHandleWrapper getParentProcessHandle() {
   DWORD ppid = 1;
-  UniqueHandleWrapper currentProcess = GetCurrentProcess();
-  if (!currentProcess.valid()) {
-    return INVALID_HANDLE_VALUE;
-  }
-
-  DWORD pid = GetProcessId(currentProcess.get());
+  DWORD pid = GetCurrentProcessId();
 
   UniqueHandleWrapper hSnapshot =
       CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -191,7 +187,7 @@ ProcessHandleWrapper getParentProcessHandle() {
   // We need this logic because we can't guarantee that parent id hasn't been
   // reused before getting process handle to this process.
 
-  int64_t currentProcessStartTime = getProcessStartTime(currentProcess.get());
+  int64_t currentProcessStartTime = getProcessStartTime(GetCurrentProcess());
   int64_t parentProcessStartTime = getProcessStartTime(parent.get());
   if (currentProcessStartTime == -1 || parentProcessStartTime == -1 ||
       currentProcessStartTime < parentProcessStartTime) {
