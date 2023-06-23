@@ -21,6 +21,7 @@
 #include <utility>
 
 #include <folly/Chrono.h>
+#include <folly/Utility.h>
 #include <folly/portability/Time.h>
 
 namespace folly {
@@ -80,7 +81,11 @@ using monotonic_clock = std::chrono::steady_clock;
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
 template <typename Clock, typename Duration = typename Clock::duration>
-struct custom_stop_watch {
+struct custom_stop_watch : private detail::inheritable<Clock> {
+ private:
+  using base = detail::inheritable<Clock>;
+
+ public:
   using clock_type = Clock;
   using duration = Duration;
   using time_point = std::chrono::time_point<clock_type, duration>;
@@ -106,7 +111,7 @@ struct custom_stop_watch {
    *
    * @author: Marcelo Juchem <marcelo@fb.com>
    */
-  custom_stop_watch() : checkpoint_(clock_type::now()) {}
+  custom_stop_watch() : checkpoint_(now()) {}
 
   /**
    * Initializes the stop watch with the given time as its checkpoint.
@@ -125,6 +130,21 @@ struct custom_stop_watch {
    */
   explicit custom_stop_watch(typename clock_type::time_point checkpoint)
       : checkpoint_(std::move(checkpoint)) {}
+
+  /**
+   * Accepts a clock object, which can be useful in tests with a fake clock.
+   * Initializes the stop watch with the current time as its checkpoint.
+   */
+  explicit custom_stop_watch(clock_type clock)
+      : base(std::move(clock)), checkpoint_(now()) {}
+
+  /**
+   * Accepts a clock object, which can be useful in tests with a fake clock.
+   * Initializes the stop watch with the given time as its checkpoint.
+   */
+  custom_stop_watch(
+      clock_type clock, typename clock_type::time_point checkpoint)
+      : base(std::move(clock)), checkpoint_(std::move(checkpoint)) {}
 
   /**
    * Updates the stop watch checkpoint to the current time.
@@ -148,7 +168,7 @@ struct custom_stop_watch {
    *
    * @author: Marcelo Juchem <marcelo@fb.com>
    */
-  void reset() { checkpoint_ = clock_type::now(); }
+  void reset() { checkpoint_ = now(); }
 
   /**
    * Tells the elapsed time since the last update.
@@ -164,8 +184,7 @@ struct custom_stop_watch {
    * @author: Marcelo Juchem <marcelo@fb.com>
    */
   duration elapsed() const {
-    return std::chrono::duration_cast<duration>(
-        clock_type::now() - checkpoint_);
+    return std::chrono::duration_cast<duration>(now() - checkpoint_);
   }
 
   /**
@@ -185,7 +204,7 @@ struct custom_stop_watch {
    */
   template <typename UDuration>
   bool elapsed(UDuration&& amount) const {
-    return clock_type::now() - checkpoint_ >= amount;
+    return now() - checkpoint_ >= amount;
   }
 
   /**
@@ -211,7 +230,7 @@ struct custom_stop_watch {
   duration lap() {
     auto lastCheckpoint = checkpoint_;
 
-    checkpoint_ = clock_type::now();
+    checkpoint_ = now();
 
     return std::chrono::duration_cast<duration>(checkpoint_ - lastCheckpoint);
   }
@@ -239,13 +258,13 @@ struct custom_stop_watch {
    */
   template <typename UDuration>
   bool lap(UDuration&& amount) {
-    auto now = clock_type::now();
+    auto current = now();
 
-    if (now - checkpoint_ < amount) {
+    if (current - checkpoint_ < amount) {
       return false;
     }
 
-    checkpoint_ = now;
+    checkpoint_ = current;
     return true;
   }
 
@@ -256,6 +275,11 @@ struct custom_stop_watch {
 
  private:
   typename clock_type::time_point checkpoint_;
+
+  typename clock_type::time_point now() const {
+    // We cannot just do base::now() if clock_type is marked as final.
+    return static_cast<clock_type const&>(*this).now();
+  }
 };
 
 /**
