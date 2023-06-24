@@ -269,7 +269,7 @@ using EmptyTagVectorType = std::aligned_storage_t<
     sizeof(TagVector) + kRequiredVectorAlignment,
     alignof(max_align_t)>;
 
-extern EmptyTagVectorType kEmptyTagVector;
+FOLLY_EXPORT extern EmptyTagVectorType kEmptyTagVector;
 
 template <typename ItemType>
 struct alignas(kRequiredVectorAlignment) F14Chunk {
