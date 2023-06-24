@@ -16,9 +16,13 @@
 
 #include <folly/synchronization/detail/Sleeper.h>
 
+#include <folly/Portability.h>
+
 namespace folly {
 namespace detail {
 
+#if FOLLY_CPLUSPLUS < 201703L
 constexpr std::chrono::nanoseconds Sleeper::kMinYieldingSleep;
-}
+#endif
+} // namespace detail
 } // namespace folly

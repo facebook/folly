@@ -18,13 +18,16 @@
 
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
+#include <folly/Portability.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/system/AtFork.h>
 #include <folly/system/ThreadName.h>
 
 namespace folly {
 
+#if FOLLY_CPLUSPLUS < 201703L
 constexpr size_t AsyncLogWriter::kDefaultMaxBufferSize;
+#endif
 
 AsyncLogWriter::AsyncLogWriter() {
   folly::AtFork::registerHandler(

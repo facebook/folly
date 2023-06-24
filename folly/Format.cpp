@@ -20,6 +20,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/CppAttributes.h>
+#include <folly/Portability.h>
 #include <folly/container/Array.h>
 
 #include <double-conversion/double-conversion.h>
@@ -426,6 +427,8 @@ void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
 FormatKeyNotFoundException::FormatKeyNotFoundException(StringPiece key)
     : std::out_of_range(kMessagePrefix.str() + key.str()) {}
 
+#if FOLLY_CPLUSPLUS < 201703L
 constexpr StringPiece const FormatKeyNotFoundException::kMessagePrefix;
+#endif
 
 } // namespace folly
