@@ -19,6 +19,7 @@
 #include <new>
 
 #include <fmt/core.h>
+#include <folly/Utility.h>
 #include <folly/lang/Assume.h>
 
 namespace folly {
@@ -30,7 +31,7 @@ namespace {
 template <class Enum>
 void terminate_unexpected_state(fmt::string_view context, Enum state) {
   terminate_with<std::logic_error>(
-      fmt::format("{} unexpected state: {}", context, state));
+      fmt::format("{} unexpected state: {}", context, to_underlying(state)));
 }
 
 } // namespace
