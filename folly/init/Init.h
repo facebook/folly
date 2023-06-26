@@ -26,6 +26,9 @@ class InitOptions {
 
   bool remove_flags{true};
   bool use_gflags{true};
+  // Controls whether folly::symbolizer::installFatalSignalCallbacks() is called
+  // during init.
+  bool install_fatal_signal_callbacks{true};
 
   // mask of all fatal (default handler of terminating the process) signals for
   // which `init()` will install handler that print stack traces and invokes
@@ -47,6 +50,11 @@ class InitOptions {
 
   InitOptions& useGFlags(bool useGFlags) {
     use_gflags = useGFlags;
+    return *this;
+  }
+
+  InitOptions& installFatalSignalCallbacks(bool installFatalSignalCallbacks) {
+    install_fatal_signal_callbacks = installFatalSignalCallbacks;
     return *this;
   }
 };

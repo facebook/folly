@@ -92,8 +92,10 @@ void initImpl(int* argc, char*** argv, InitOptions options) {
   // Don't use glog's DumpStackTraceAndExit; rely on our signal handler.
   google::InstallFailureFunction(wrapped_abort);
 
-  // Actually install the callbacks into the handler.
-  folly::symbolizer::installFatalSignalCallbacks();
+  if (options.install_fatal_signal_callbacks) {
+    // Actually install the callbacks into the handler.
+    folly::symbolizer::installFatalSignalCallbacks();
+  }
 #endif
   // Set the default hazard pointer domain to use a thread pool executor
   // for asynchronous reclamation
