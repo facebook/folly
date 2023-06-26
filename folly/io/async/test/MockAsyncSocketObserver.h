@@ -28,11 +28,12 @@ namespace test {
  *
  * Deriving from MockAsyncTransportLifecycleObserver results in diamond
  * inheritance that creates a mess for Stict/Weak mocks; easier to just derive
- * directly from AsyncSocket::LifecycleObserver and clone mocks
+ * directly from AsyncSocket::LegacyLifecycleObserver and clone mocks
  */
-class MockAsyncSocketLifecycleObserver : public AsyncSocket::LifecycleObserver {
+class MockAsyncSocketLifecycleObserver
+    : public AsyncSocket::LegacyLifecycleObserver {
  public:
-  using AsyncSocket::LifecycleObserver::LifecycleObserver;
+  using AsyncSocket::LegacyLifecycleObserver::LegacyLifecycleObserver;
   MOCK_METHOD(void, observerAttachMock, (AsyncTransport*));
   MOCK_METHOD(void, observerDetachMock, (AsyncTransport*));
   MOCK_METHOD(void, destroyMock, (AsyncTransport*));
@@ -51,7 +52,7 @@ class MockAsyncSocketLifecycleObserver : public AsyncSocket::LifecycleObserver {
       byteEventsUnavailableMock,
       (AsyncSocket*, const AsyncSocketException&));
 
-  // additional handlers specific to AsyncSocket::LifecycleObserver
+  // additional handlers specific to AsyncSocket::LegacyLifecycleObserver
   MOCK_METHOD(void, fdDetachMock, (AsyncSocket*));
   MOCK_METHOD(void, fdAttachMock, (AsyncSocket*));
   MOCK_METHOD(void, moveMock, (AsyncSocket*, AsyncSocket*));

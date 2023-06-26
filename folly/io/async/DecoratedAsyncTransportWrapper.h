@@ -169,15 +169,15 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     transport_->setReplaySafetyCallback(callback);
   }
 
-  void addLifecycleObserver(LifecycleObserver* observer) override {
+  void addLifecycleObserver(LegacyLifecycleObserver* observer) override {
     transport_->addLifecycleObserver(observer);
   }
 
-  bool removeLifecycleObserver(LifecycleObserver* observer) override {
+  bool removeLifecycleObserver(LegacyLifecycleObserver* observer) override {
     return transport_->removeLifecycleObserver(observer);
   }
 
-  FOLLY_NODISCARD std::vector<LifecycleObserver*> getLifecycleObservers()
+  FOLLY_NODISCARD std::vector<LegacyLifecycleObserver*> getLifecycleObservers()
       const override {
     return transport_->getLifecycleObservers();
   }

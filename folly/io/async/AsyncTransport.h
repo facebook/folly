@@ -802,7 +802,7 @@ class AsyncTransport : public DelayedDestruction,
   /**
    * Observer of transport events.
    */
-  class LifecycleObserver : public AsyncSocketObserverInterface {
+  class LegacyLifecycleObserver : public AsyncSocketObserverInterface {
    public:
     /**
      * Observer configuration.
@@ -841,17 +841,17 @@ class AsyncTransport : public DelayedDestruction,
     /**
      * Constructor for observer, uses default config (instrumentation disabled).
      */
-    LifecycleObserver() : LifecycleObserver(Config()) {}
+    LegacyLifecycleObserver() : LegacyLifecycleObserver(Config()) {}
 
     /**
      * Constructor for observer.
      *
      * @param config      Config, defaults to auxilary instrumentaton disabled.
      */
-    explicit LifecycleObserver(const Config& observerConfig)
+    explicit LegacyLifecycleObserver(const Config& observerConfig)
         : observerConfig_(observerConfig) {}
 
-    ~LifecycleObserver() override = default;
+    ~LegacyLifecycleObserver() override = default;
 
     /**
      * Returns observer's configuration.
@@ -900,9 +900,9 @@ class AsyncTransport : public DelayedDestruction,
    * This enables instrumentation to be added without changing / interfering
    * with how the application uses the socket.
    *
-   * @param observer     Observer to add (implements LifecycleObserver).
+   * @param observer     Observer to add (implements LegacyLifecycleObserver).
    */
-  virtual void addLifecycleObserver(LifecycleObserver*) {
+  virtual void addLifecycleObserver(LegacyLifecycleObserver* /* observer */) {
     // A LifecycleObserver should not depend on receiving byteEventsUnavailable
     // in this case.
   }
@@ -913,7 +913,8 @@ class AsyncTransport : public DelayedDestruction,
    * @param observer     Observer to remove.
    * @return             Whether observer found and removed from list.
    */
-  virtual bool removeLifecycleObserver(LifecycleObserver* /* observer */) {
+  virtual bool removeLifecycleObserver(
+      LegacyLifecycleObserver* /* observer */) {
     return false;
   }
 
@@ -922,9 +923,9 @@ class AsyncTransport : public DelayedDestruction,
    *
    * @return             Vector with installed observers.
    */
-  FOLLY_NODISCARD virtual std::vector<LifecycleObserver*>
+  FOLLY_NODISCARD virtual std::vector<LegacyLifecycleObserver*>
   getLifecycleObservers() const {
-    return std::vector<LifecycleObserver*>();
+    return std::vector<LegacyLifecycleObserver*>();
   }
 
   /**

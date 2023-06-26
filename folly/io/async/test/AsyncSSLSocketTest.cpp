@@ -3523,7 +3523,7 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
 
   static std::shared_ptr<NiceMock<TestObserver>> attachObserver(
       AsyncSocket* socket, bool enableByteEvents) {
-    AsyncTransport::LifecycleObserver::Config config = {};
+    AsyncTransport::LegacyLifecycleObserver::Config config = {};
     config.byteEvents = enableByteEvents;
     return std::make_shared<NiceMock<TestObserver>>(socket, config);
   }

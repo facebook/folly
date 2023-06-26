@@ -195,17 +195,18 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   size_t getRawBytesReceived() const override;
 
   virtual void addLifecycleObserver(
-      LifecycleObserver* /* observer */) override {
+      LegacyLifecycleObserver* /* observer */) override {
     throw std::runtime_error(
         "AsyncIoUringSocket::addLifecycleObserver not supported");
   }
 
-  bool removeLifecycleObserver(LifecycleObserver* /* observer */) override {
+  bool removeLifecycleObserver(
+      LegacyLifecycleObserver* /* observer */) override {
     throw std::runtime_error(
         "AsyncIoUringSocket::removeLifecycleObserver not supported");
   }
 
-  FOLLY_NODISCARD std::vector<LifecycleObserver*> getLifecycleObservers()
+  FOLLY_NODISCARD std::vector<LegacyLifecycleObserver*> getLifecycleObservers()
       const override {
     return {};
   }

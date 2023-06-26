@@ -25,9 +25,9 @@ namespace folly {
 namespace test {
 
 class MockAsyncTransportLifecycleObserver
-    : public AsyncTransport::LifecycleObserver {
+    : public AsyncTransport::LegacyLifecycleObserver {
  public:
-  using AsyncTransport::LifecycleObserver::LifecycleObserver;
+  using AsyncTransport::LegacyLifecycleObserver::LegacyLifecycleObserver;
   MOCK_METHOD(void, observerAttachMock, (AsyncTransport*));
   MOCK_METHOD(void, observerDetachMock, (AsyncTransport*));
   MOCK_METHOD(void, destroyMock, (AsyncTransport*));

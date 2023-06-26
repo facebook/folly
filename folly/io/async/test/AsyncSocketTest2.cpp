@@ -3828,7 +3828,7 @@ class AsyncSocketByteEventTest : public ::testing::Test {
 
   static std::shared_ptr<NiceMock<TestObserver>> attachObserver(
       AsyncSocket* socket, bool enableByteEvents, bool enablePrewrite = false) {
-    AsyncTransport::LifecycleObserver::Config config = {};
+    AsyncTransport::LegacyLifecycleObserver::Config config = {};
     config.byteEvents = enableByteEvents;
     config.prewrite = enablePrewrite;
     return std::make_shared<NiceMock<TestObserver>>(socket, config);
@@ -6013,8 +6013,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserver) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset == 0) {
               request.maybeOffsetToSplitWrite = 0;
             } else if (state.startOffset <= 50) {
@@ -6080,8 +6081,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverCorkIfSplitMiddle) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset <= 50) {
               request.maybeOffsetToSplitWrite = 50;
             }
@@ -6129,8 +6131,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverNoCorkIfSplitAtEnd) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset <= 99) {
               request.maybeOffsetToSplitWrite = 99;
             }
@@ -6173,9 +6176,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverNoSplitFlagsIfNoSplit) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(
           testing::Invoke([](AsyncTransport*,
-                             const AsyncTransport::LifecycleObserver::
+                             const AsyncTransport::LegacyLifecycleObserver::
                                  PrewriteState& /* state */) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             request.writeFlagsToAddAtOffset = flags;
             return request;
           }));
@@ -6206,8 +6209,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverFlagsOnAll) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset == 0) {
               request.maybeOffsetToSplitWrite = 0;
               request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_WRITE;
@@ -6289,8 +6293,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverFlagsOnWrite) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset == 0) {
               request.maybeOffsetToSplitWrite = 0;
               request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_TX;
@@ -6347,8 +6352,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverInvalidOffset) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             EXPECT_GT(200, state.endOffset);
             request.maybeOffsetToSplitWrite = 200; // invalid
             return request;
@@ -6397,8 +6403,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverTwoIovec) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset == 0) {
               request.maybeOffsetToSplitWrite = 0;
             } else if (state.startOffset <= 49) {
@@ -6472,8 +6479,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverManyIovec) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset == 0) {
               request.maybeOffsetToSplitWrite = 0;
             } else if (state.startOffset <= 1000) {
@@ -6548,8 +6556,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteMultipleObservers) {
   ON_CALL(*observer1, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset <= 25) {
               request.maybeOffsetToSplitWrite = 25;
             } else if (state.startOffset <= 50) {
@@ -6565,8 +6574,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteMultipleObservers) {
   ON_CALL(*observer2, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset <= 35) {
               request.maybeOffsetToSplitWrite = 35;
             } else if (state.startOffset <= 65) {
@@ -6582,9 +6592,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteMultipleObservers) {
   ON_CALL(*observer3, prewriteMock(_, _))
       .WillByDefault(
           testing::Invoke([](AsyncTransport*,
-                             const AsyncTransport::LifecycleObserver::
+                             const AsyncTransport::LegacyLifecycleObserver::
                                  PrewriteState& /* state */) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             request.writeFlagsToAdd =
                 WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED;
             return request;
@@ -6594,9 +6604,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteMultipleObservers) {
   ON_CALL(*observer4, prewriteMock(_, _))
       .WillByDefault(
           testing::Invoke([](AsyncTransport*,
-                             const AsyncTransport::LifecycleObserver::
+                             const AsyncTransport::LegacyLifecycleObserver::
                                  PrewriteState& /* state */) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             return request; // empty
           }));
 
@@ -6683,8 +6693,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteTimestampedByteEvents) {
   ON_CALL(*observer, prewriteMock(_, _))
       .WillByDefault(testing::Invoke(
           [](AsyncTransport*,
-             const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-            AsyncTransport::LifecycleObserver::PrewriteRequest request;
+             const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                 state) {
+            AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
             if (state.startOffset == 0) {
               request.maybeOffsetToSplitWrite = 0;
             } else if (state.startOffset <= 500000) {
@@ -6785,7 +6796,7 @@ TEST_F(AsyncSocketByteEventTest, PrewriteRawBytesWrittenAndTriedToWrite) {
     EXPECT_CALL(*observer, prewriteMock(_, _))
         .Times(expectedSendmsgInvocations.size())
         .WillRepeatedly(testing::InvokeWithoutArgs([]() {
-          AsyncTransport::LifecycleObserver::PrewriteRequest request = {};
+          AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request = {};
           request.writeFlagsToAdd = flags;
           return request;
         }));
@@ -6894,8 +6905,9 @@ TEST_F(AsyncSocketByteEventTest, PrewriteRawBytesWrittenAndTriedToWrite) {
         .Times(expectedSendmsgInvocations.size())
         .WillRepeatedly(testing::Invoke(
             [](AsyncTransport*,
-               const AsyncTransport::LifecycleObserver::PrewriteState& state) {
-              AsyncTransport::LifecycleObserver::PrewriteRequest request;
+               const AsyncTransport::LegacyLifecycleObserver::PrewriteState&
+                   state) {
+              AsyncTransport::LegacyLifecycleObserver::PrewriteRequest request;
               if (state.startOffset <= 149) {
                 request.maybeOffsetToSplitWrite = 149; // start offset = 100
               }
@@ -8224,31 +8236,6 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackcloseDuringDestroy) {
       }));
   EXPECT_CALL(*cb, observerDetachMock(socket.get()));
   socket = nullptr;
-  Mock::VerifyAndClearExpectations(cb.get());
-}
-
-TEST(AsyncSocket, LifecycleObserverBaseClassMoveNoCrash) {
-  // use mock for AsyncTransport::LifecycleObserver, which does not have
-  // move or fdDetach events; verify that static_cast works as expected
-  auto cb = std::make_unique<StrictMock<MockAsyncTransportLifecycleObserver>>();
-  TestServer server;
-
-  EventBase evb;
-  auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
-  EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
-  socket1->addLifecycleObserver(cb.get());
-  EXPECT_THAT(socket1->getLifecycleObservers(), UnorderedElementsAre(cb.get()));
-  Mock::VerifyAndClearExpectations(cb.get());
-
-  EXPECT_CALL(*cb, connectAttemptMock(socket1.get()));
-  EXPECT_CALL(*cb, connectSuccessMock(socket1.get()));
-  socket1->connect(nullptr, server.getAddress(), 30);
-  evb.loop();
-  Mock::VerifyAndClearExpectations(cb.get());
-
-  // we'll see socket1 get destroyed, but nothing else
-  EXPECT_CALL(*cb, destroyMock(socket1.get()));
-  auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(std::move(socket1)));
   Mock::VerifyAndClearExpectations(cb.get());
 }
 

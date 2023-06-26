@@ -732,10 +732,7 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
   // events for the old socket and subscribe to the new socket; we do not move
   // the subscription ourselves
   for (const auto& cb : oldAsyncSocket->lifecycleObservers_) {
-    // only available for observers derived from AsyncSocket::LifecycleObserver
-    if (auto dCb = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
-      dCb->move(oldAsyncSocket, this);
-    }
+    cb->move(oldAsyncSocket, this);
   }
 }
 
@@ -789,10 +786,7 @@ NetworkSocket AsyncSocket::detachNetworkSocket() {
           << ", evb=" << eventBase_ << ", state=" << state_
           << ", events=" << std::hex << eventFlags_ << ")";
   for (const auto& cb : lifecycleObservers_) {
-    // only available for observers derived from AsyncSocket::LifecycleObserver
-    if (auto dCb = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
-      dCb->fdDetach(this);
-    }
+    cb->fdDetach(this);
   }
   // Extract the fd, and set fd_ to -1 first, so closeNow() won't
   // actually close the descriptor.
@@ -2730,7 +2724,7 @@ bool AsyncSocket::processZeroCopyWriteInProgress() noexcept {
 }
 
 void AsyncSocket::addLifecycleObserver(
-    AsyncTransport::LifecycleObserver* observer) {
+    AsyncTransport::LegacyLifecycleObserver* observer) {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
@@ -2756,7 +2750,7 @@ void AsyncSocket::addLifecycleObserver(
 }
 
 bool AsyncSocket::removeLifecycleObserver(
-    AsyncTransport::LifecycleObserver* observer) {
+    AsyncTransport::LegacyLifecycleObserver* observer) {
   auto& observers = lifecycleObservers_;
   auto it = std::find(observers.begin(), observers.end(), observer);
   if (it == observers.end()) {
@@ -2767,12 +2761,12 @@ bool AsyncSocket::removeLifecycleObserver(
   return true;
 }
 
-std::vector<AsyncTransport::LifecycleObserver*>
+std::vector<AsyncTransport::LegacyLifecycleObserver*>
 AsyncSocket::getLifecycleObservers() const {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
-  return std::vector<AsyncTransport::LifecycleObserver*>(
+  return std::vector<AsyncTransport::LegacyLifecycleObserver*>(
       lifecycleObservers_.begin(), lifecycleObservers_.end());
 }
 
@@ -3454,9 +3448,7 @@ void AsyncSocket::handleNetworkSocketAttached() {
           << ", evb=" << eventBase_ << " , state=" << state_
           << ", events=" << std::hex << eventFlags_ << ")";
   for (const auto& cb : lifecycleObservers_) {
-    if (auto dCb = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
-      dCb->fdAttach(this);
-    }
+    cb->fdAttach(this);
   }
 
   if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
@@ -3482,7 +3474,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
                                 flags,
                                 maybeVecTotalBytes =
                                     folly::Optional<size_t>()]() mutable {
-    AsyncTransport::LifecycleObserver::PrewriteRequest mergedRequest = {};
+    AsyncTransport::LegacyLifecycleObserver::PrewriteRequest mergedRequest = {};
     if (lifecycleObservers_.empty()) {
       return mergedRequest;
     }
@@ -3498,14 +3490,15 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
 
     const auto startOffset = getRawBytesWritten();
     const auto endOffset = getRawBytesWritten() + vecTotalBytes - 1;
-    const AsyncTransport::LifecycleObserver::PrewriteState prewriteState = [&] {
-      AsyncTransport::LifecycleObserver::PrewriteState state = {};
-      state.startOffset = startOffset;
-      state.endOffset = endOffset;
-      state.writeFlags = flags;
-      state.ts = std::chrono::steady_clock::now();
-      return state;
-    }();
+    const AsyncTransport::LegacyLifecycleObserver::PrewriteState prewriteState =
+        [&] {
+          AsyncTransport::LegacyLifecycleObserver::PrewriteState state = {};
+          state.startOffset = startOffset;
+          state.endOffset = endOffset;
+          state.writeFlags = flags;
+          state.ts = std::chrono::steady_clock::now();
+          return state;
+        }();
     for (const auto& observer : lifecycleObservers_) {
       if (!observer->getConfig().prewrite) {
         continue;
@@ -4037,10 +4030,8 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
   connectEndTime_ = std::chrono::steady_clock::now();
   if ((state_ == StateEnum::CONNECTING) || (state_ == StateEnum::ERROR)) {
     for (const auto& cb : lifecycleObservers_) {
-      if (auto observer = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
-        // inform any lifecycle observes that the connection failed
-        observer->connectError(this, ex);
-      }
+      // inform any lifecycle observes that the connection failed
+      cb->connectError(this, ex);
     }
   }
   if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {

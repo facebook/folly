@@ -1251,13 +1251,13 @@ class AsyncSocket : public AsyncSocketTransport {
    * This enables instrumentation to be added without changing / interfering
    * with how the application uses the socket.
    *
-   * Observer should implement AsyncTransport::LifecycleObserver to receive
-   * additional lifecycle events specific to AsyncSocket.
+   * Observer should implement AsyncTransport::LegacyLifecycleObserver to
+   * receive additional lifecycle events specific to AsyncSocket.
    *
-   * @param observer     Observer to add (implements LifecycleObserver).
+   * @param observer     Observer to add (implements LegacyLifecycleObserver).
    */
   void addLifecycleObserver(
-      AsyncTransport::LifecycleObserver* observer) override;
+      AsyncTransport::LegacyLifecycleObserver* observer) override;
 
   /**
    * Removes a lifecycle observer.
@@ -1266,14 +1266,14 @@ class AsyncSocket : public AsyncSocketTransport {
    * @return             Whether observer found and removed from list.
    */
   bool removeLifecycleObserver(
-      AsyncTransport::LifecycleObserver* observer) override;
+      AsyncTransport::LegacyLifecycleObserver* observer) override;
 
   /**
    * Returns installed lifecycle observers.
    *
    * @return             Vector with installed observers.
    */
-  FOLLY_NODISCARD std::vector<AsyncTransport::LifecycleObserver*>
+  FOLLY_NODISCARD std::vector<AsyncTransport::LegacyLifecycleObserver*>
   getLifecycleObservers() const override;
 
   /**
@@ -1684,8 +1684,8 @@ class AsyncSocket : public AsyncSocketTransport {
   // mobile, in which case we fallback to std::vector to prioritize code size.
   using LifecycleObserverVecImpl = conditional_t<
       !kIsMobile,
-      folly::small_vector<AsyncTransport::LifecycleObserver*, 2>,
-      std::vector<AsyncTransport::LifecycleObserver*>>;
+      folly::small_vector<AsyncTransport::LegacyLifecycleObserver*, 2>,
+      std::vector<AsyncTransport::LegacyLifecycleObserver*>>;
   LifecycleObserverVecImpl lifecycleObservers_;
 
   // Pre-received data, to be returned to read callback before any data from the
