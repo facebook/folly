@@ -735,6 +735,8 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
   // inform lifecycle observers to give them an opportunity to unsubscribe from
   // events for the old socket and subscribe to the new socket; we do not move
   // the subscription ourselves
+
+  // legacy observer support
   for (const auto& cb : oldAsyncSocket->lifecycleObservers_) {
     cb->move(oldAsyncSocket, this);
   }
@@ -789,9 +791,17 @@ NetworkSocket AsyncSocket::detachNetworkSocket() {
   VLOG(6) << "AsyncSocket::detachFd(this=" << this << ", fd=" << fd_
           << ", evb=" << eventBase_ << ", state=" << state_
           << ", events=" << std::hex << eventFlags_ << ")";
+  // legacy observer support
   for (const auto& cb : lifecycleObservers_) {
     cb->fdDetach(this);
   }
+
+  // folly::ObserverContainer observer support
+  if (auto list = getAsyncSocketObserverContainer()) {
+    list->invokeInterfaceMethodAllObservers(
+        [](auto observer, auto observed) { observer->fdDetach(observed); });
+  }
+
   // Extract the fd, and set fd_ to -1 first, so closeNow() won't
   // actually close the descriptor.
   if (const auto socketSet = wShutdownSocketSet_.lock()) {
@@ -2116,8 +2126,17 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
   if (evbChangeCb_) {
     evbChangeCb_->evbAttached(this);
   }
+
+  // legacy observer support
   for (const auto& cb : lifecycleObservers_) {
     cb->evbAttach(this, eventBase_);
+  }
+
+  // folly::ObserverContainer observer support
+  if (auto list = getAsyncSocketObserverContainer()) {
+    list->invokeInterfaceMethodAllObservers([&](auto observer, auto observed) {
+      observer->evbAttach(observed, eventBase_);
+    });
   }
 }
 
@@ -2141,8 +2160,18 @@ void AsyncSocket::detachEventBase() {
   if (evbChangeCb_) {
     evbChangeCb_->evbDetached(this);
   }
+
+  // legacy observer support
   for (const auto& cb : lifecycleObservers_) {
     cb->evbDetach(this, existingEvb);
+  }
+
+  // folly::ObserverContainer observer support
+  if (auto list = getAsyncSocketObserverContainer()) {
+    list->invokeInterfaceMethodAllObservers(
+        [existingEvb](auto observer, auto observed) {
+          observer->evbDetach(observed, existingEvb);
+        });
   }
 }
 
@@ -3451,8 +3480,16 @@ void AsyncSocket::handleNetworkSocketAttached() {
   VLOG(6) << "AsyncSocket::attachFd(this=" << this << ", fd=" << fd_
           << ", evb=" << eventBase_ << " , state=" << state_
           << ", events=" << std::hex << eventFlags_ << ")";
+
+  // legacy observer support
   for (const auto& cb : lifecycleObservers_) {
     cb->fdAttach(this);
+  }
+
+  // folly::ObserverContainer observer support
+  if (auto list = getAsyncSocketObserverContainer()) {
+    list->invokeInterfaceMethodAllObservers(
+        [](auto observer, auto observed) { observer->fdAttach(observed); });
   }
 
   if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
@@ -4032,9 +4069,18 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
       "connect() called with socket in invalid state");
   connectEndTime_ = std::chrono::steady_clock::now();
   if ((state_ == StateEnum::CONNECTING) || (state_ == StateEnum::ERROR)) {
+    // legacy observer support
     for (const auto& cb : lifecycleObservers_) {
       // inform any lifecycle observes that the connection failed
       cb->connectError(this, ex);
+    }
+
+    // folly::ObserverContainer observer support
+    if (auto list = getAsyncSocketObserverContainer()) {
+      list->invokeInterfaceMethodAllObservers(
+          [ex](auto observer, auto observed) {
+            observer->connectError(observed, ex);
+          });
     }
   }
   if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {
@@ -4085,8 +4131,18 @@ void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
     // ESTABLISHED} (!?) and a bunch of other places that are not what this
     // call back wants. This seems like a bug but work around here while we
     // explore it independently
+
+    // legacy observer support
     for (const auto& cb : lifecycleObservers_) {
       cb->connectError(this, ex);
+    }
+
+    // folly::ObserverContainer observer support
+    if (auto list = getAsyncSocketObserverContainer()) {
+      list->invokeInterfaceMethodAllObservers(
+          [ex](auto observer, auto observed) {
+            observer->connectError(observed, ex);
+          });
     }
   }
   if (connectCallback_) {
@@ -4101,10 +4157,20 @@ void AsyncSocket::invokeConnectSuccess() {
           << "): connect success invoked";
   connectEndTime_ = std::chrono::steady_clock::now();
   bool enableByteEventsForObserver = false;
+
+  // legacy observer support
   for (const auto& cb : lifecycleObservers_) {
     cb->connectSuccess(this);
     enableByteEventsForObserver |= ((cb->getConfig().byteEvents) ? 1 : 0);
   }
+
+  // folly::ObserverContainer observer support
+  if (auto list = getAsyncSocketObserverContainer()) {
+    list->invokeInterfaceMethodAllObservers([](auto observer, auto observed) {
+      observer->connectSuccess(observed);
+    });
+  }
+
   if (enableByteEventsForObserver) {
     enableByteEvents();
   }
@@ -4118,8 +4184,16 @@ void AsyncSocket::invokeConnectSuccess() {
 void AsyncSocket::invokeConnectAttempt() {
   VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
           << "): connect attempt";
+  // legacy observer support
   for (const auto& cb : lifecycleObservers_) {
     cb->connectAttempt(this);
+  }
+
+  // folly::ObserverContainer observer support
+  if (auto list = getAsyncSocketObserverContainer()) {
+    list->invokeInterfaceMethodAllObservers([](auto observer, auto observed) {
+      observer->connectAttempt(observed);
+    });
   }
 }
 
@@ -4166,9 +4240,17 @@ void AsyncSocket::invalidState(WriteCallback* callback) {
 }
 
 void AsyncSocket::doClose() {
+  // legacy observer support
   for (const auto& cb : lifecycleObservers_) {
     cb->close(this);
   }
+
+  // folly::ObserverContainer support
+  if (auto list = getAsyncSocketObserverContainer()) {
+    list->invokeInterfaceMethodAllObservers(
+        [](auto observer, auto observed) { observer->close(observed); });
+  }
+
   if (fd_ == NetworkSocket()) {
     return;
   }

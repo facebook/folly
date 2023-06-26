@@ -27,6 +27,22 @@ class MockAsyncSocketObserver : public AsyncSocket::ManagedObserver {
  public:
   using AsyncSocket::ManagedObserver::ManagedObserver;
   MOCK_METHOD((void), close, (AsyncSocket*), (noexcept));
+  MOCK_METHOD((void), evbAttach, (AsyncSocket*, EventBase*), (noexcept));
+  MOCK_METHOD((void), evbDetach, (AsyncSocket*, EventBase*), (noexcept));
+  MOCK_METHOD((void), connectAttempt, (AsyncSocket*), (noexcept));
+  MOCK_METHOD((void), connectSuccess, (AsyncSocket*), (noexcept));
+  MOCK_METHOD(
+      (void),
+      connectError,
+      (AsyncSocket*, const AsyncSocketException&),
+      (noexcept));
+  MOCK_METHOD((void), fdAttach, (AsyncSocket*), (noexcept));
+  MOCK_METHOD((void), fdDetach, (AsyncSocket*), (noexcept));
+  MOCK_METHOD(
+      (void),
+      moved,
+      (AsyncSocket*, AsyncSocket*, ObserverBase::MoveContext*),
+      (noexcept));
 };
 
 /*
