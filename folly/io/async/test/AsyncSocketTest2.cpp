@@ -4990,9 +4990,9 @@ TEST_F(AsyncSocketByteEventTest, CheckByteEventDetails) {
         byteEvent.ts);
 
     EXPECT_FALSE(byteEvent.maybeWriteFlags.has_value());
-    EXPECT_DEATH(byteEvent.schedTimestampRequestedOnWrite(), ".*");
-    EXPECT_DEATH(byteEvent.txTimestampRequestedOnWrite(), ".*");
-    EXPECT_DEATH(byteEvent.ackTimestampRequestedOnWrite(), ".*");
+    EXPECT_DEATH((void)byteEvent.schedTimestampRequestedOnWrite(), ".*");
+    EXPECT_DEATH((void)byteEvent.txTimestampRequestedOnWrite(), ".*");
+    EXPECT_DEATH((void)byteEvent.ackTimestampRequestedOnWrite(), ".*");
 
     EXPECT_TRUE(byteEvent.maybeSoftwareTs.has_value());
     EXPECT_FALSE(byteEvent.maybeHardwareTs.has_value());

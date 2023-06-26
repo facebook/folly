@@ -1242,64 +1242,6 @@ class AsyncSocket : public AsyncSocketTransport {
     uint32_t totalBytesWritten_{0}; ///< total bytes written
   };
 
-  class LifecycleObserver : virtual public AsyncTransport::LifecycleObserver {
-   public:
-    using AsyncTransport::LifecycleObserver::LifecycleObserver;
-
-    /**
-     * fdDetach() is invoked if the socket file descriptor is detached.
-     *
-     * detachNetworkSocket() will be triggered when a new AsyncSocket is being
-     * constructed from an old one. See the moved() event for details about
-     * this special case.
-     *
-     * @param socket      Socket for which detachNetworkSocket was invoked.
-     */
-    virtual void fdDetach(AsyncSocket* /* socket */) noexcept = 0;
-
-    /**
-     * fdAttach() is invoked when the socket file descriptor is attached.
-     *
-     * @param socket      Socket for which handleNetworkSocketAttached was
-     * invoked.
-     */
-    virtual void fdAttach(AsyncSocket* /* socket */) noexcept {}
-
-    /**
-     * move() will be invoked when a new AsyncSocket is being constructed via
-     * constructor AsyncSocket(AsyncSocket* oldAsyncSocket) from an AsyncSocket
-     * that has an observer attached.
-     *
-     * This type of construction is common during TLS/SSL accept process.
-     * wangle::Acceptor may transform an AsyncSocket to an AsyncFizzServer, and
-     * then transform the AsyncFizzServer to an AsyncSSLSocket on fallback.
-     * AsyncFizzServer and AsyncSSLSocket derive from AsyncSocket and at each
-     * stage the aforementioned constructor will be called.
-     *
-     * Observers may be attached when the initial AsyncSocket is created, before
-     * TLS/SSL accept handling has completed. As a result, AsyncSocket must
-     * notify the observer during each transformation so that:
-     *   (1) The observer can track these transformations for debugging.
-     *   (2) The observer does not become separated from the underlying
-     *        operating system socket and corresponding file descriptor.
-     *
-     * When a new AsyncSocket is being constructed via the aforementioned
-     * constructor, the following observer events will be triggered:
-     *   (1) fdDetach
-     *   (2) move
-     *
-     * When move is triggered, the observer can CHOOSE to detach the old socket
-     * and attach to the new socket. This process will not happen automatically;
-     * the observer must explicitly perform these steps.
-     *
-     * @param oldSocket   Old socket that fd was detached from.
-     * @param newSocket   New socket being constructed with fd attached.
-     */
-    virtual void move(
-        AsyncSocket* /* oldSocket */,
-        AsyncSocket* /* newSocket */) noexcept = 0;
-  };
-
   /**
    * Adds a lifecycle observer.
    *
@@ -1331,7 +1273,7 @@ class AsyncSocket : public AsyncSocketTransport {
    *
    * @return             Vector with installed observers.
    */
-  FOLLY_NODISCARD virtual std::vector<AsyncTransport::LifecycleObserver*>
+  FOLLY_NODISCARD std::vector<AsyncTransport::LifecycleObserver*>
   getLifecycleObservers() const override;
 
   /**

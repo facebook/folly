@@ -26,6 +26,8 @@
 #include <folly/io/async/AsyncTransportCertificate.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/WriteFlags.h>
+#include <folly/io/async/observer/AsyncSocketObserverInterface.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/SysUio.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
@@ -35,119 +37,6 @@ namespace folly {
 class AsyncSocketException;
 class EventBase;
 class SocketAddress;
-
-/*
- * flags given by the application for write* calls
- */
-enum class WriteFlags : uint32_t {
-  NONE = 0x00,
-  /*
-   * Whether to delay the output until a subsequent non-corked write.
-   * (Note: may not be supported in all subclasses or on all platforms.)
-   */
-  CORK = 0x01,
-  /*
-   * Set MSG_EOR flag when writing the last byte of the buffer to the socket.
-   *
-   * EOR tracking may need to be enabled to ensure that the MSG_EOR flag is only
-   * set when the final byte is being written.
-   *
-   *  - If the MSG_EOR flag is set, it is marked in the corresponding
-   *    tcp_skb_cb; this can be useful when debugging.
-   *  - The kernel uses it to decide whether socket buffers can be collapsed
-   *    together (see tcp_skb_can_collapse_to).
-   */
-  EOR = 0x02,
-  /*
-   * this indicates that only the write side of socket should be shutdown
-   */
-  WRITE_SHUTDOWN = 0x04,
-  /*
-   * use msg zerocopy if allowed
-   */
-  WRITE_MSG_ZEROCOPY = 0x08,
-  /*
-   * Request timestamp when entire buffer transmitted by the NIC.
-   *
-   * How timestamping is performed is implementation specific and may rely on
-   * software or hardware timestamps
-   */
-  TIMESTAMP_TX = 0x10,
-  /*
-   * Request timestamp when entire buffer ACKed by remote endpoint.
-   *
-   * How timestamping is performed is implementation specific and may rely on
-   * software or hardware timestamps
-   */
-  TIMESTAMP_ACK = 0x20,
-  /*
-   * Request timestamp when entire buffer has entered packet scheduler.
-   */
-  TIMESTAMP_SCHED = 0x40,
-  /*
-   * Request timestamp when entire buffer has been written to system socket.
-   */
-  TIMESTAMP_WRITE = 0x80,
-};
-
-/*
- * union operator
- */
-constexpr WriteFlags operator|(WriteFlags a, WriteFlags b) {
-  return static_cast<WriteFlags>(
-      static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-}
-
-/*
- * compound assignment union operator
- */
-constexpr WriteFlags& operator|=(WriteFlags& a, WriteFlags b) {
-  a = a | b;
-  return a;
-}
-
-/*
- * intersection operator
- */
-constexpr WriteFlags operator&(WriteFlags a, WriteFlags b) {
-  return static_cast<WriteFlags>(
-      static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
-}
-
-/*
- * compound assignment intersection operator
- */
-constexpr WriteFlags& operator&=(WriteFlags& a, WriteFlags b) {
-  a = a & b;
-  return a;
-}
-
-/*
- * exclusion parameter
- */
-constexpr WriteFlags operator~(WriteFlags a) {
-  return static_cast<WriteFlags>(~static_cast<uint32_t>(a));
-}
-
-/*
- * unset operator
- */
-constexpr WriteFlags unSet(WriteFlags a, WriteFlags b) {
-  return a & ~b;
-}
-
-/*
- * inclusion operator
- */
-constexpr bool isSet(WriteFlags a, WriteFlags b) {
-  return (a & b) == b;
-}
-
-/**
- * Write flags that are related to timestamping.
- */
-constexpr WriteFlags kWriteFlagsForTimestamping = WriteFlags::TIMESTAMP_SCHED |
-    WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
 
 class AsyncReader {
  public:
@@ -907,79 +796,13 @@ class AsyncTransport : public DelayedDestruction,
     }
   }
 
-  /**
-   * Structure used to communicate ByteEvents, such as TX and ACK timestamps.
-   */
-  struct ByteEvent {
-    // types of events; start from 0 to enable indexing in arrays
-    enum Type : uint8_t {
-      WRITE = 0,
-      SCHED = 1,
-      TX = 2,
-      ACK = 3,
-    };
-    // type
-    Type type;
-
-    // offset of corresponding byte in raw byte stream
-    size_t offset{0};
-
-    // transport timestamp, as recorded by AsyncTransport implementation
-    std::chrono::steady_clock::time_point ts = {
-        std::chrono::steady_clock::now()};
-
-    // kernel software timestamp for non-WRITE; for Linux this is CLOCK_REALTIME
-    // see https://www.kernel.org/doc/Documentation/networking/timestamping.txt
-    folly::Optional<std::chrono::nanoseconds> maybeSoftwareTs;
-
-    // hardware timestamp for non-WRITE events; see kernel documentation
-    // see https://www.kernel.org/doc/Documentation/networking/timestamping.txt
-    folly::Optional<std::chrono::nanoseconds> maybeHardwareTs;
-
-    // for WRITE events, the number of raw bytes written to the socket
-    // optional to prevent accidental misuse in other event types
-    folly::Optional<size_t> maybeRawBytesWritten;
-
-    // for WRITE events, the number of raw bytes we tried to write to the socket
-    // optional to prevent accidental misuse in other event types
-    folly::Optional<size_t> maybeRawBytesTriedToWrite;
-
-    // for WRITE ByteEvents, additional WriteFlags passed
-    // optional to prevent accidental misuse in other event types
-    folly::Optional<WriteFlags> maybeWriteFlags;
-
-    /**
-     * For WRITE events, returns if SCHED timestamp requested.
-     */
-    bool schedTimestampRequestedOnWrite() const {
-      CHECK_EQ(Type::WRITE, type);
-      CHECK(maybeWriteFlags.has_value());
-      return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_SCHED);
-    }
-
-    /**
-     * For WRITE events, returns if TX timestamp requested.
-     */
-    bool txTimestampRequestedOnWrite() const {
-      CHECK_EQ(Type::WRITE, type);
-      CHECK(maybeWriteFlags.has_value());
-      return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_TX);
-    }
-
-    /**
-     * For WRITE events, returns if ACK timestamp requested.
-     */
-    bool ackTimestampRequestedOnWrite() const {
-      CHECK_EQ(Type::WRITE, type);
-      CHECK(maybeWriteFlags.has_value());
-      return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_ACK);
-    }
-  };
+  // TODO(lume): move this to AsyncSocket
+  using ByteEvent = AsyncSocketObserverInterface::ByteEvent;
 
   /**
    * Observer of transport events.
    */
-  class LifecycleObserver {
+  class LifecycleObserver : public AsyncSocketObserverInterface {
    public:
     /**
      * Observer configuration.
@@ -1016,44 +839,6 @@ class AsyncTransport : public DelayedDestruction,
     };
 
     /**
-     * Information provided to observer during prewrite event.
-     *
-     * Based on this information, an observer can build a PrewriteRequest.
-     */
-    struct PrewriteState {
-      // raw byte stream offsets
-      size_t startOffset{0};
-      size_t endOffset{0};
-
-      // flags already set
-      WriteFlags writeFlags{WriteFlags::NONE};
-
-      // transport timestamp, as recorded by AsyncTransport implementation
-      //
-      // supports sequencing of PrewriteState events and ByteEvents for debug
-      std::chrono::steady_clock::time_point ts = {
-          std::chrono::steady_clock::now()};
-    };
-
-    /**
-     * Request that can be generated by observer in response to prewrite event.
-     *
-     * An observer can use a PrewriteRequest to request WriteFlags to be added
-     * to a write and/or to request that the write be split up, both of which
-     * can be used for timestamping.
-     */
-    struct PrewriteRequest {
-      // offset to split write at; may be split at earlier offset by another req
-      folly::Optional<size_t> maybeOffsetToSplitWrite;
-
-      // write flags to be added if write split at requested offset
-      WriteFlags writeFlagsToAddAtOffset{WriteFlags::NONE};
-
-      // write flags to be added regardless of where write happens
-      WriteFlags writeFlagsToAdd{WriteFlags::NONE};
-    };
-
-    /**
      * Constructor for observer, uses default config (instrumentation disabled).
      */
     LifecycleObserver() : LifecycleObserver(Config()) {}
@@ -1066,7 +851,7 @@ class AsyncTransport : public DelayedDestruction,
     explicit LifecycleObserver(const Config& observerConfig)
         : observerConfig_(observerConfig) {}
 
-    virtual ~LifecycleObserver() = default;
+    ~LifecycleObserver() override = default;
 
     /**
      * Returns observer's configuration.
@@ -1100,141 +885,6 @@ class AsyncTransport : public DelayedDestruction,
      * @param transport   Transport being destroyed.
      */
     virtual void destroy(AsyncTransport* /* transport */) noexcept = 0;
-
-    /**
-     * close() will be invoked when the transport is being closed.
-     *
-     * Can be called multiple times during shutdown / destruction for the same
-     * transport. Observers may detach after first call or track if event
-     * previously observed.
-     *
-     * @param transport   Transport being closed.
-     */
-    virtual void close(AsyncTransport* /* transport */) noexcept = 0;
-
-    /**
-     * connectAttempt() will be invoked when connect() is called.
-     *
-     * Triggered before any application connection callback.
-     *
-     * @param transport   Transport that attempts to connect.
-     */
-    virtual void connectAttempt(AsyncTransport* /* transport */) noexcept {}
-
-    /**
-     * connectSuccess() will be invoked when connect() returns successfully.
-     *
-     * Triggered before any application connection callback.
-     *
-     * @param transport   Transport that has connected.
-     */
-    virtual void connectSuccess(AsyncTransport* /* transport */) noexcept {}
-
-    /**
-     * connectError() will be invoked when connect() returns an error.
-     *
-     * Triggered before any application connection callback.
-     *
-     * @param transport   Transport that has connected.
-     * @param ex          Exception that describes why.
-     */
-    virtual void connectError(
-        AsyncTransport* /* transport */,
-        const AsyncSocketException& /* ex */) noexcept {}
-
-    /**
-     * Invoked when the transport is being attached to an EventBase.
-     *
-     * Called from within the EventBase thread being attached.
-     *
-     * @param transport   Transport with EventBase change.
-     * @param evb         The EventBase being attached.
-     */
-    virtual void evbAttach(
-        AsyncTransport* /* transport */, EventBase* /* evb */) {}
-
-    /**
-     * Invoked when the transport is being detached from an EventBase.
-     *
-     * Called from within the EventBase thread being detached.
-     *
-     * @param transport   Transport with EventBase change.
-     * @param evb         The EventBase that is being detached.
-     */
-    virtual void evbDetach(
-        AsyncTransport* /* transport */, EventBase* /* evb */) {}
-
-    /**
-     * Invoked each time a ByteEvent is available.
-     *
-     * Multiple ByteEvent may be generated for the same byte offset and event.
-     * For instance, kernel software and hardware TX timestamps for the same
-     * are delivered in separate CMsg, and thus will result in separate
-     * ByteEvent.
-     *
-     * @param transport   Transport that ByteEvent is available for.
-     * @param event       ByteEvent (WRITE, SCHED, TX, ACK).
-     */
-    virtual void byteEvent(
-        AsyncTransport* /* transport */,
-        const ByteEvent& /* event */) noexcept {}
-
-    /**
-     * Invoked if ByteEvents are enabled.
-     *
-     * Only called if the observer's configuration requested ByteEvents. May
-     * be invoked multiple times if ByteEvent configuration changes (i.e., if
-     * ByteEvents are enabled without hardware timestamps, and then enabled
-     * with them).
-     *
-     * @param transport    Transport that ByteEvents are enabled for.
-     */
-    virtual void byteEventsEnabled(AsyncTransport* /* transport */) noexcept {}
-
-    /**
-     * Invoked if ByteEvents could not be enabled, or if an error occurred that
-     * will prevent further delivery of ByteEvents.
-     *
-     * An observer may be waiting to receive a ByteEvent, such as an ACK event
-     * confirming delivery of the last byte of a payload, before closing the
-     * transport. If the transport has become unhealthy then this ByteEvent may
-     * never occur, yet the handler may be unaware that the transport is
-     * unhealthy if reads have been shutdown and no writes are occurring; this
-     * observer signal breaks this 'deadlock'.
-     *
-     * @param transport   Transport that ByteEvents are now unavailable for.
-     * @param ex          Details on why ByteEvents are now unavailable.
-     */
-    virtual void byteEventsUnavailable(
-        AsyncTransport* /* transport */,
-        const AsyncSocketException& /* ex */) noexcept {}
-
-    /**
-     * Invoked before each write to the transport if prewrite support enabled.
-     *
-     * The observer receives information about the pending write in the
-     * PrewriteState and can request ByteEvents / socket timestamps by returning
-     * a PrewriteRequest. The request contains the offset to split the write at
-     * (if any) and WriteFlags to apply.
-     *
-     * PrewriteRequests are aggregated across observers. The write buffer is
-     * split at the lowest offset returned by all observers. Flags are applied
-     * based on configuration within the PrewriteRequest. Requests are not
-     * sticky and expire after each write.
-     *
-     * Fewer bytes may be written than indicated in the PrewriteState or in the
-     * PrewriteRequest split if the underlying transport / socket / kernel
-     * blocks on write.
-     *
-     * @param transport   Transport that ByteEvents are now unavailable for.
-     * @param state       Pending write start and end offsets and flags.
-     * @return            Request containing offset to split write at and flags.
-     */
-    virtual PrewriteRequest prewrite(
-        AsyncTransport* /* transport */, const PrewriteState& /* state */) {
-      folly::terminate_with<std::runtime_error>(
-          "prewrite() called but not defined");
-    }
 
    protected:
     // observer configuration; cannot be changed post instantiation

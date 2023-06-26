@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncSocketException.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/portability/GMock.h>
@@ -30,22 +31,22 @@ class MockAsyncTransportLifecycleObserver
   MOCK_METHOD(void, observerAttachMock, (AsyncTransport*));
   MOCK_METHOD(void, observerDetachMock, (AsyncTransport*));
   MOCK_METHOD(void, destroyMock, (AsyncTransport*));
-  MOCK_METHOD(void, closeMock, (AsyncTransport*));
-  MOCK_METHOD(void, connectAttemptMock, (AsyncTransport*));
-  MOCK_METHOD(void, connectSuccessMock, (AsyncTransport*));
+  MOCK_METHOD(void, closeMock, (AsyncSocket*));
+  MOCK_METHOD(void, connectAttemptMock, (AsyncSocket*));
+  MOCK_METHOD(void, connectSuccessMock, (AsyncSocket*));
   MOCK_METHOD(
-      void, connectErrorMock, (AsyncTransport*, const AsyncSocketException&));
-  MOCK_METHOD(void, evbAttachMock, (AsyncTransport*, EventBase*));
-  MOCK_METHOD(void, evbDetachMock, (AsyncTransport*, EventBase*));
+      void, connectErrorMock, (AsyncSocket*, const AsyncSocketException&));
+  MOCK_METHOD(void, evbAttachMock, (AsyncSocket*, EventBase*));
+  MOCK_METHOD(void, evbDetachMock, (AsyncSocket*, EventBase*));
   MOCK_METHOD(
-      void, byteEventMock, (AsyncTransport*, const AsyncTransport::ByteEvent&));
-  MOCK_METHOD(void, byteEventsEnabledMock, (AsyncTransport*));
+      void, byteEventMock, (AsyncSocket*, const AsyncSocket::ByteEvent&));
+  MOCK_METHOD(void, byteEventsEnabledMock, (AsyncSocket*));
   MOCK_METHOD(
       void,
       byteEventsUnavailableMock,
-      (AsyncTransport*, const AsyncSocketException&));
+      (AsyncSocket*, const AsyncSocketException&));
   MOCK_METHOD(
-      PrewriteRequest, prewriteMock, (AsyncTransport*, const PrewriteState&));
+      PrewriteRequest, prewriteMock, (AsyncSocket*, const PrewriteState&));
 
  private:
   void observerAttach(AsyncTransport* trans) noexcept override {
@@ -55,38 +56,37 @@ class MockAsyncTransportLifecycleObserver
     observerDetachMock(trans);
   }
   void destroy(AsyncTransport* trans) noexcept override { destroyMock(trans); }
-  void close(AsyncTransport* trans) noexcept override { closeMock(trans); }
-  void connectAttempt(AsyncTransport* trans) noexcept override {
-    connectAttemptMock(trans);
+  void close(AsyncSocket* socket) noexcept override { closeMock(socket); }
+  void connectAttempt(AsyncSocket* socket) noexcept override {
+    connectAttemptMock(socket);
   }
-  void connectSuccess(AsyncTransport* trans) noexcept override {
-    connectSuccessMock(trans);
+  void connectSuccess(AsyncSocket* socket) noexcept override {
+    connectSuccessMock(socket);
   }
   void connectError(
-      AsyncTransport* trans, const AsyncSocketException& ex) noexcept override {
-    connectErrorMock(trans, ex);
+      AsyncSocket* socket, const AsyncSocketException& ex) noexcept override {
+    connectErrorMock(socket, ex);
   }
-  void evbAttach(AsyncTransport* trans, EventBase* eb) noexcept override {
-    evbAttachMock(trans, eb);
+  void evbAttach(AsyncSocket* socket, EventBase* eb) noexcept override {
+    evbAttachMock(socket, eb);
   }
-  void evbDetach(AsyncTransport* trans, EventBase* eb) noexcept override {
-    evbDetachMock(trans, eb);
+  void evbDetach(AsyncSocket* socket, EventBase* eb) noexcept override {
+    evbDetachMock(socket, eb);
   }
   void byteEvent(
-      AsyncTransport* trans,
-      const AsyncTransport::ByteEvent& ev) noexcept override {
-    byteEventMock(trans, ev);
+      AsyncSocket* socket, const AsyncSocket::ByteEvent& ev) noexcept override {
+    byteEventMock(socket, ev);
   }
-  void byteEventsEnabled(AsyncTransport* trans) noexcept override {
-    byteEventsEnabledMock(trans);
+  void byteEventsEnabled(AsyncSocket* socket) noexcept override {
+    byteEventsEnabledMock(socket);
   }
   void byteEventsUnavailable(
-      AsyncTransport* trans, const AsyncSocketException& ex) noexcept override {
-    byteEventsUnavailableMock(trans, ex);
+      AsyncSocket* socket, const AsyncSocketException& ex) noexcept override {
+    byteEventsUnavailableMock(socket, ex);
   }
   PrewriteRequest prewrite(
-      AsyncTransport* trans, const PrewriteState& state) noexcept override {
-    return prewriteMock(trans, state);
+      AsyncSocket* socket, const PrewriteState& state) noexcept override {
+    return prewriteMock(socket, state);
   }
 };
 
@@ -97,40 +97,37 @@ class MockAsyncTransportObserverForByteEvents
     : public MockAsyncTransportLifecycleObserver {
  public:
   MockAsyncTransportObserverForByteEvents(
-      AsyncTransport* transport,
+      AsyncSocket* socket,
       const MockAsyncTransportObserverForByteEvents::Config& observerConfig)
-      : MockAsyncTransportLifecycleObserver(observerConfig),
-        transport_(transport) {
+      : MockAsyncTransportLifecycleObserver(observerConfig), socket_(socket) {
     ON_CALL(*this, byteEventMock(testing::_, testing::_))
-        .WillByDefault(
-            testing::Invoke([this](
-                                AsyncTransport* transport,
-                                const AsyncTransport::ByteEvent& event) {
-              CHECK_EQ(this->transport_, transport);
+        .WillByDefault(testing::Invoke(
+            [this](AsyncSocket* socket, const AsyncSocket::ByteEvent& event) {
+              CHECK_EQ(this->socket_, socket);
               byteEvents_.emplace_back(event);
             }));
     ON_CALL(*this, byteEventsEnabledMock(testing::_))
-        .WillByDefault(testing::Invoke([this](AsyncTransport* transport) {
-          CHECK_EQ(this->transport_, transport);
+        .WillByDefault(testing::Invoke([this](AsyncSocket* socket) {
+          CHECK_EQ(this->socket_, socket);
           byteEventsEnabledCalled_++;
         }));
 
     ON_CALL(*this, byteEventsUnavailableMock(testing::_, testing::_))
         .WillByDefault(testing::Invoke(
-            [this](AsyncTransport* transport, const AsyncSocketException& ex) {
-              CHECK_EQ(this->transport_, transport);
+            [this](AsyncSocket* socket, const AsyncSocketException& ex) {
+              CHECK_EQ(this->socket_, socket);
               byteEventsUnavailableCalled_++;
               byteEventsUnavailableCalledEx_.emplace(ex);
             }));
-    transport->addLifecycleObserver(this);
+    socket->addLifecycleObserver(this);
   }
 
-  const std::vector<AsyncTransport::ByteEvent>& getByteEvents() {
+  const std::vector<AsyncSocket::ByteEvent>& getByteEvents() {
     return byteEvents_;
   }
 
-  folly::Optional<AsyncTransport::ByteEvent> getByteEventReceivedWithOffset(
-      const uint64_t offset, const AsyncTransport::ByteEvent::Type type) {
+  folly::Optional<AsyncSocket::ByteEvent> getByteEventReceivedWithOffset(
+      const uint64_t offset, const AsyncSocket::ByteEvent::Type type) {
     for (const auto& byteEvent : byteEvents_) {
       if (type == byteEvent.type && offset == byteEvent.offset) {
         return byteEvent;
@@ -140,7 +137,7 @@ class MockAsyncTransportObserverForByteEvents
   }
 
   folly::Optional<uint64_t> maxOffsetForByteEventReceived(
-      const AsyncTransport::ByteEvent::Type type) {
+      const AsyncSocket::ByteEvent::Type type) {
     folly::Optional<uint64_t> maybeMaxOffset;
     for (const auto& byteEvent : byteEvents_) {
       if (type == byteEvent.type &&
@@ -153,7 +150,7 @@ class MockAsyncTransportObserverForByteEvents
   }
 
   bool checkIfByteEventReceived(
-      const AsyncTransport::ByteEvent::Type type, const uint64_t offset) {
+      const AsyncSocket::ByteEvent::Type type, const uint64_t offset) {
     for (const auto& byteEvent : byteEvents_) {
       if (type == byteEvent.type && offset == byteEvent.offset) {
         return true;
@@ -163,9 +160,9 @@ class MockAsyncTransportObserverForByteEvents
   }
 
   void waitForByteEvent(
-      const AsyncTransport::ByteEvent::Type type, const uint64_t offset) {
+      const AsyncSocket::ByteEvent::Type type, const uint64_t offset) {
     while (!checkIfByteEventReceived(type, offset)) {
-      transport_->getEventBase()->loopOnce();
+      socket_->getEventBase()->loopOnce();
     }
   }
 
@@ -174,16 +171,16 @@ class MockAsyncTransportObserverForByteEvents
   const uint32_t& byteEventsUnavailableCalled{byteEventsUnavailableCalled_};
   const folly::Optional<AsyncSocketException>& byteEventsUnavailableCalledEx{
       byteEventsUnavailableCalledEx_};
-  const std::vector<AsyncTransport::ByteEvent>& byteEvents{byteEvents_};
+  const std::vector<AsyncSocket::ByteEvent>& byteEvents{byteEvents_};
 
  private:
-  const AsyncTransport* transport_;
+  const AsyncSocket* socket_;
 
   // ByteEvents helpers
   uint32_t byteEventsEnabledCalled_{0};
   uint32_t byteEventsUnavailableCalled_{0};
   folly::Optional<AsyncSocketException> byteEventsUnavailableCalledEx_;
-  std::vector<AsyncTransport::ByteEvent> byteEvents_;
+  std::vector<AsyncSocket::ByteEvent> byteEvents_;
 };
 
 } // namespace test
