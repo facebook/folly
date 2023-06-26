@@ -34,8 +34,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
+#include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
 #include <folly/io/async/test/MockAsyncSocketObserver.h>
-#include <folly/io/async/test/MockAsyncTransportObserver.h>
 #include <folly/io/async/test/TFOTest.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
@@ -3521,8 +3521,8 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
 class AsyncSocketByteEventTest : public ::testing::Test {
  protected:
   using MockDispatcher = ::testing::NiceMock<netops::test::MockDispatcher>;
-  using TestObserver = MockAsyncTransportObserverForByteEvents;
-  using ByteEventType = AsyncTransport::ByteEvent::Type;
+  using TestObserver = MockAsyncSocketLegacyLifecycleObserverForByteEvents;
+  using ByteEventType = AsyncSocket::ByteEvent::Type;
 
   /**
    * Components of a client connection to TestServer.
@@ -3828,7 +3828,7 @@ class AsyncSocketByteEventTest : public ::testing::Test {
 
   static std::shared_ptr<NiceMock<TestObserver>> attachObserver(
       AsyncSocket* socket, bool enableByteEvents, bool enablePrewrite = false) {
-    AsyncTransport::LegacyLifecycleObserver::Config config = {};
+    AsyncSocket::LegacyLifecycleObserver::Config config = {};
     config.byteEvents = enableByteEvents;
     config.prewrite = enablePrewrite;
     return std::make_shared<NiceMock<TestObserver>>(socket, config);
@@ -3902,15 +3902,15 @@ class AsyncSocketByteEventTest : public ::testing::Test {
     return bytes;
   }
 
-  std::vector<AsyncTransport::ByteEvent> filterToWriteEvents(
-      const std::vector<AsyncTransport::ByteEvent>& input) {
-    std::vector<AsyncTransport::ByteEvent> result;
+  std::vector<AsyncSocket::ByteEvent> filterToWriteEvents(
+      const std::vector<AsyncSocket::ByteEvent>& input) {
+    std::vector<AsyncSocket::ByteEvent> result;
     std::copy_if(
         input.begin(),
         input.end(),
         std::back_inserter(result),
         [](auto& event) {
-          return event.type == AsyncTransport::ByteEvent::WRITE;
+          return event.type == AsyncSocket::ByteEvent::WRITE;
         });
     return result;
   }
@@ -5970,7 +5970,7 @@ TEST_F(AsyncSocketByteEventTest, SendmsgInvocAncillaryFlagsEq) {
 TEST_F(AsyncSocketByteEventTest, ByteEventMatching) {
   // offset = 0, type = WRITE
   {
-    AsyncTransport::ByteEvent event = {};
+    AsyncSocket::ByteEvent event = {};
     event.type = ByteEventType::WRITE;
     event.offset = 0;
     EXPECT_THAT(event, ByteEventMatching(ByteEventType::WRITE, 0));
@@ -5984,7 +5984,7 @@ TEST_F(AsyncSocketByteEventTest, ByteEventMatching) {
 
   // offset = 10, type = TX
   {
-    AsyncTransport::ByteEvent event = {};
+    AsyncSocket::ByteEvent event = {};
     event.type = ByteEventType::TX;
     event.offset = 10;
     EXPECT_THAT(event, ByteEventMatching(ByteEventType::TX, 10));
@@ -7160,7 +7160,7 @@ TEST_P(AsyncSocketByteEventDetailsTest, CheckByteEventDetails) {
 
 class AsyncSocketByteEventHelperTest : public ::testing::Test {
  protected:
-  using ByteEventType = AsyncTransport::ByteEvent::Type;
+  using ByteEventType = AsyncSocket::ByteEvent::Type;
 
   /**
    * Wrapper around a vector containing cmsg header + data.
@@ -7364,7 +7364,7 @@ TEST_F(AsyncSocketByteEventHelperTest, ErrorExceptionSet) {
 struct AsyncSocketByteEventHelperTimestampTestParams {
   AsyncSocketByteEventHelperTimestampTestParams(
       uint32_t scmType,
-      AsyncTransport::ByteEvent::Type expectedByteEventType,
+      AsyncSocket::ByteEvent::Type expectedByteEventType,
       bool includeSoftwareTs,
       bool includeHardwareTs)
       : scmType(scmType),
@@ -7372,7 +7372,7 @@ struct AsyncSocketByteEventHelperTimestampTestParams {
         includeSoftwareTs(includeSoftwareTs),
         includeHardwareTs(includeHardwareTs) {}
   uint32_t scmType{0};
-  AsyncTransport::ByteEvent::Type expectedByteEventType;
+  AsyncSocket::ByteEvent::Type expectedByteEventType;
   bool includeSoftwareTs{false};
   bool includeHardwareTs{false};
 };
@@ -7448,7 +7448,7 @@ TEST_P(AsyncSocketByteEventHelperTimestampTest, CheckEventTimestamps) {
   AsyncSocket::ByteEventHelper helper = {};
   helper.byteEventsEnabled = true;
   helper.rawBytesWrittenWhenByteEventsEnabled = 0;
-  folly::Optional<AsyncTransport::ByteEvent> maybeByteEvent;
+  folly::Optional<AsyncSocket::ByteEvent> maybeByteEvent;
   maybeByteEvent = helper.processCmsg(serrTs, 1 /* rawBytesWritten */);
   EXPECT_FALSE(maybeByteEvent.has_value());
   maybeByteEvent = helper.processCmsg(scmTs, 1 /* rawBytesWritten */);

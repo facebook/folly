@@ -34,6 +34,8 @@ class AsyncSocket;
  */
 class AsyncSocketObserverInterface {
  public:
+  enum class Events {};
+  AsyncSocketObserverInterface() = default;
   virtual ~AsyncSocketObserverInterface() = default;
 
   /**

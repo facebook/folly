@@ -23,20 +23,22 @@
 namespace folly {
 namespace test {
 
+class MockAsyncSocketObserver : public AsyncSocket::ManagedObserver {
+ public:
+  using AsyncSocket::ManagedObserver::ManagedObserver;
+  MOCK_METHOD((void), close, (AsyncSocket*), (noexcept));
+};
+
 /*
  * Mock class for AsyncSocketLifecycleObserver.
- *
- * Deriving from MockAsyncTransportLifecycleObserver results in diamond
- * inheritance that creates a mess for Stict/Weak mocks; easier to just derive
- * directly from AsyncSocket::LegacyLifecycleObserver and clone mocks
  */
 class MockAsyncSocketLifecycleObserver
     : public AsyncSocket::LegacyLifecycleObserver {
  public:
   using AsyncSocket::LegacyLifecycleObserver::LegacyLifecycleObserver;
-  MOCK_METHOD(void, observerAttachMock, (AsyncTransport*));
-  MOCK_METHOD(void, observerDetachMock, (AsyncTransport*));
-  MOCK_METHOD(void, destroyMock, (AsyncTransport*));
+  MOCK_METHOD(void, observerAttachMock, (AsyncSocket*));
+  MOCK_METHOD(void, observerDetachMock, (AsyncSocket*));
+  MOCK_METHOD(void, destroyMock, (AsyncSocket*));
   MOCK_METHOD(void, closeMock, (AsyncSocket*));
   MOCK_METHOD(void, connectAttemptMock, (AsyncSocket*));
   MOCK_METHOD(void, connectSuccessMock, (AsyncSocket*));
@@ -45,7 +47,7 @@ class MockAsyncSocketLifecycleObserver
   MOCK_METHOD(void, evbAttachMock, (AsyncSocket*, EventBase*));
   MOCK_METHOD(void, evbDetachMock, (AsyncSocket*, EventBase*));
   MOCK_METHOD(
-      void, byteEventMock, (AsyncSocket*, const AsyncTransport::ByteEvent&));
+      void, byteEventMock, (AsyncSocket*, const AsyncSocket::ByteEvent&));
   MOCK_METHOD(void, byteEventsEnabledMock, (AsyncSocket*));
   MOCK_METHOD(
       void,
@@ -58,13 +60,13 @@ class MockAsyncSocketLifecycleObserver
   MOCK_METHOD(void, moveMock, (AsyncSocket*, AsyncSocket*));
 
  private:
-  void observerAttach(AsyncTransport* trans) noexcept override {
-    observerAttachMock(trans);
+  void observerAttach(AsyncSocket* socket) noexcept override {
+    observerAttachMock(socket);
   }
-  void observerDetach(AsyncTransport* trans) noexcept override {
-    observerDetachMock(trans);
+  void observerDetach(AsyncSocket* socket) noexcept override {
+    observerDetachMock(socket);
   }
-  void destroy(AsyncTransport* trans) noexcept override { destroyMock(trans); }
+  void destroy(AsyncSocket* socket) noexcept override { destroyMock(socket); }
   void close(AsyncSocket* socket) noexcept override { closeMock(socket); }
   void connectAttempt(AsyncSocket* socket) noexcept override {
     connectAttemptMock(socket);
@@ -83,8 +85,7 @@ class MockAsyncSocketLifecycleObserver
     evbDetachMock(socket, eb);
   }
   void byteEvent(
-      AsyncSocket* socket,
-      const AsyncTransport::ByteEvent& ev) noexcept override {
+      AsyncSocket* socket, const AsyncSocket::ByteEvent& ev) noexcept override {
     byteEventMock(socket, ev);
   }
   void byteEventsEnabled(AsyncSocket* socket) noexcept override {

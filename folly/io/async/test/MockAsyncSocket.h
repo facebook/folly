@@ -72,13 +72,13 @@ class MockAsyncSocket : public AsyncSocket {
   MOCK_METHOD(
       void,
       addLifecycleObserver,
-      (folly::AsyncTransport::LegacyLifecycleObserver * observer));
+      (folly::AsyncSocket::LegacyLifecycleObserver * observer));
   MOCK_METHOD(
       bool,
       removeLifecycleObserver,
-      (folly::AsyncTransport::LegacyLifecycleObserver * observer));
+      (folly::AsyncSocket::LegacyLifecycleObserver * observer));
   MOCK_METHOD(
-      std::vector<AsyncTransport::LegacyLifecycleObserver*>,
+      std::vector<AsyncSocket::LegacyLifecycleObserver*>,
       getLifecycleObservers,
       (),
       (const));

@@ -72,17 +72,6 @@ class MockAsyncTransport : public AsyncTransport {
   MOCK_METHOD(bool, isReplaySafe, (), (const));
   MOCK_METHOD(
       void, setReplaySafetyCallback, (AsyncTransport::ReplaySafetyCallback*));
-  MOCK_METHOD(
-      void, addLifecycleObserver, (AsyncTransport::LegacyLifecycleObserver*));
-  MOCK_METHOD(
-      bool,
-      removeLifecycleObserver,
-      (AsyncTransport::LegacyLifecycleObserver*));
-  MOCK_METHOD(
-      std::vector<AsyncTransport::LegacyLifecycleObserver*>,
-      getLifecycleObservers,
-      (),
-      (const));
   MOCK_METHOD(std::string, getSecurityProtocol, (), (const));
   MOCK_METHOD(
       const AsyncTransportCertificate*, getPeerCertificate, (), (const));

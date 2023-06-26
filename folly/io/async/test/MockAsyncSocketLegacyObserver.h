@@ -14,23 +14,25 @@
  * limitations under the License.
  */
 
+// TODO(lume): remove this file in future diff once we replace LegacyObserver
+// with AsyncSocket::ManagedObserver
+
 #pragma once
 
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncSocketException.h>
-#include <folly/io/async/AsyncTransport.h>
 #include <folly/portability/GMock.h>
 
 namespace folly {
 namespace test {
 
-class MockAsyncTransportLifecycleObserver
-    : public AsyncTransport::LegacyLifecycleObserver {
+class MockAsyncSocketLegacyLifecycleObserver
+    : public AsyncSocket::LegacyLifecycleObserver {
  public:
-  using AsyncTransport::LegacyLifecycleObserver::LegacyLifecycleObserver;
-  MOCK_METHOD(void, observerAttachMock, (AsyncTransport*));
-  MOCK_METHOD(void, observerDetachMock, (AsyncTransport*));
-  MOCK_METHOD(void, destroyMock, (AsyncTransport*));
+  using AsyncSocket::LegacyLifecycleObserver::LegacyLifecycleObserver;
+  MOCK_METHOD(void, observerAttachMock, (AsyncSocket*));
+  MOCK_METHOD(void, observerDetachMock, (AsyncSocket*));
+  MOCK_METHOD(void, destroyMock, (AsyncSocket*));
   MOCK_METHOD(void, closeMock, (AsyncSocket*));
   MOCK_METHOD(void, connectAttemptMock, (AsyncSocket*));
   MOCK_METHOD(void, connectSuccessMock, (AsyncSocket*));
@@ -49,13 +51,13 @@ class MockAsyncTransportLifecycleObserver
       PrewriteRequest, prewriteMock, (AsyncSocket*, const PrewriteState&));
 
  private:
-  void observerAttach(AsyncTransport* trans) noexcept override {
-    observerAttachMock(trans);
+  void observerAttach(AsyncSocket* socket) noexcept override {
+    observerAttachMock(socket);
   }
-  void observerDetach(AsyncTransport* trans) noexcept override {
-    observerDetachMock(trans);
+  void observerDetach(AsyncSocket* socket) noexcept override {
+    observerDetachMock(socket);
   }
-  void destroy(AsyncTransport* trans) noexcept override { destroyMock(trans); }
+  void destroy(AsyncSocket* socket) noexcept override { destroyMock(socket); }
   void close(AsyncSocket* socket) noexcept override { closeMock(socket); }
   void connectAttempt(AsyncSocket* socket) noexcept override {
     connectAttemptMock(socket);
@@ -93,33 +95,36 @@ class MockAsyncTransportLifecycleObserver
 /**
  * Extends mock class to simplify ByteEvents tests.
  */
-class MockAsyncTransportObserverForByteEvents
-    : public MockAsyncTransportLifecycleObserver {
+class MockAsyncSocketLegacyLifecycleObserverForByteEvents
+    : public MockAsyncSocketLegacyLifecycleObserver {
  public:
-  MockAsyncTransportObserverForByteEvents(
+  MockAsyncSocketLegacyLifecycleObserverForByteEvents(
       AsyncSocket* socket,
-      const MockAsyncTransportObserverForByteEvents::Config& observerConfig)
-      : MockAsyncTransportLifecycleObserver(observerConfig), socket_(socket) {
+      const MockAsyncSocketLegacyLifecycleObserverForByteEvents::Config&
+          observerConfig)
+      : MockAsyncSocketLegacyLifecycleObserver(observerConfig),
+        socket_(socket) {
     ON_CALL(*this, byteEventMock(testing::_, testing::_))
         .WillByDefault(testing::Invoke(
-            [this](AsyncSocket* socket, const AsyncSocket::ByteEvent& event) {
-              CHECK_EQ(this->socket_, socket);
+            [this](
+                AsyncSocket* socketport, const AsyncSocket::ByteEvent& event) {
+              CHECK_EQ(this->socket_, socketport);
               byteEvents_.emplace_back(event);
             }));
     ON_CALL(*this, byteEventsEnabledMock(testing::_))
-        .WillByDefault(testing::Invoke([this](AsyncSocket* socket) {
-          CHECK_EQ(this->socket_, socket);
+        .WillByDefault(testing::Invoke([this](AsyncSocket* socketport) {
+          CHECK_EQ(this->socket_, socketport);
           byteEventsEnabledCalled_++;
         }));
 
     ON_CALL(*this, byteEventsUnavailableMock(testing::_, testing::_))
         .WillByDefault(testing::Invoke(
-            [this](AsyncSocket* socket, const AsyncSocketException& ex) {
-              CHECK_EQ(this->socket_, socket);
+            [this](AsyncSocket* socketport, const AsyncSocketException& ex) {
+              CHECK_EQ(this->socket_, socketport);
               byteEventsUnavailableCalled_++;
               byteEventsUnavailableCalledEx_.emplace(ex);
             }));
-    socket->addLifecycleObserver(this);
+    socket_->addLifecycleObserver(this);
   }
 
   const std::vector<AsyncSocket::ByteEvent>& getByteEvents() {
@@ -174,7 +179,7 @@ class MockAsyncTransportObserverForByteEvents
   const std::vector<AsyncSocket::ByteEvent>& byteEvents{byteEvents_};
 
  private:
-  const AsyncSocket* socket_;
+  AsyncSocket* socket_;
 
   // ByteEvents helpers
   uint32_t byteEventsEnabledCalled_{0};

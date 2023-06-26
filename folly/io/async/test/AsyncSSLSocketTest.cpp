@@ -38,7 +38,7 @@
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
-#include <folly/io/async/test/MockAsyncTransportObserver.h>
+#include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
 #include <folly/io/async/test/TFOTest.h>
 #include <folly/io/async/test/TestSSLServer.h>
 #include <folly/net/NetOps.h>
@@ -3353,8 +3353,9 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
 class AsyncSSLSocketByteEventTest : public ::testing::Test {
  protected:
   using MockDispatcher = ::testing::NiceMock<netops::test::MockDispatcher>;
-  using TestObserver = test::MockAsyncTransportObserverForByteEvents;
-  using ByteEventType = AsyncTransport::ByteEvent::Type;
+  using TestObserver =
+      test::MockAsyncSocketLegacyLifecycleObserverForByteEvents;
+  using ByteEventType = AsyncSocket::ByteEvent::Type;
 
   /**
    * Components of a client connection to TestServer.
@@ -3523,7 +3524,7 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
 
   static std::shared_ptr<NiceMock<TestObserver>> attachObserver(
       AsyncSocket* socket, bool enableByteEvents) {
-    AsyncTransport::LegacyLifecycleObserver::Config config = {};
+    AsyncSocket::LegacyLifecycleObserver::Config config = {};
     config.byteEvents = enableByteEvents;
     return std::make_shared<NiceMock<TestObserver>>(socket, config);
   }

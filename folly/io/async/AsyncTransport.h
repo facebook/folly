@@ -27,7 +27,6 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/WriteFlags.h>
-#include <folly/io/async/observer/AsyncSocketObserverInterface.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/SysUio.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
@@ -796,138 +795,7 @@ class AsyncTransport : public DelayedDestruction,
     }
   }
 
-  // TODO(lume): move this to AsyncSocket
-  using ByteEvent = AsyncSocketObserverInterface::ByteEvent;
-
-  /**
-   * Observer of transport events.
-   */
-  class LegacyLifecycleObserver : public AsyncSocketObserverInterface {
-   public:
-    /**
-     * Observer configuration.
-     *
-     * Specifies events observer wants to receive. Cannot be changed post
-     * initialization because the transport may turn on / off instrumentation
-     * when observers are added / removed, based on the observer configuration.
-     */
-    struct Config {
-      virtual ~Config() = default;
-
-      // receive ByteEvents
-      bool byteEvents{false};
-
-      // observer is notified during prewrite stage and can add WriteFlags
-      bool prewrite{false};
-
-      /**
-       * Enable all events in config.
-       */
-      virtual void enableAllEvents() {
-        byteEvents = true;
-        prewrite = true;
-      }
-
-      /**
-       * Returns a config where all events are enabled.
-       */
-      static Config getConfigAllEventsEnabled() {
-        Config config = {};
-        config.enableAllEvents();
-        return config;
-      }
-    };
-
-    /**
-     * Constructor for observer, uses default config (instrumentation disabled).
-     */
-    LegacyLifecycleObserver() : LegacyLifecycleObserver(Config()) {}
-
-    /**
-     * Constructor for observer.
-     *
-     * @param config      Config, defaults to auxilary instrumentaton disabled.
-     */
-    explicit LegacyLifecycleObserver(const Config& observerConfig)
-        : observerConfig_(observerConfig) {}
-
-    ~LegacyLifecycleObserver() override = default;
-
-    /**
-     * Returns observer's configuration.
-     *
-     * @return            Observer configuration.
-     */
-    const Config& getConfig() { return observerConfig_; }
-
-    /**
-     * observerAttach() will be invoked when an observer is added.
-     *
-     * @param transport   Transport where observer was installed.
-     */
-    virtual void observerAttach(AsyncTransport* /* transport */) noexcept = 0;
-
-    /**
-     * observerDetached() will be invoked if the observer is uninstalled prior
-     * to transport destruction.
-     *
-     * No further events will be invoked after observerDetach().
-     *
-     * @param transport   Transport where observer was uninstalled.
-     */
-    virtual void observerDetach(AsyncTransport* /* transport */) noexcept = 0;
-
-    /**
-     * destroy() will be invoked when the transport's destructor is invoked.
-     *
-     * No further events will be invoked after destroy().
-     *
-     * @param transport   Transport being destroyed.
-     */
-    virtual void destroy(AsyncTransport* /* transport */) noexcept = 0;
-
-   protected:
-    // observer configuration; cannot be changed post instantiation
-    const Config observerConfig_;
-  };
-
-  /**
-   * Adds a lifecycle observer.
-   *
-   * Observers can tie their lifetime to aspects of this socket's lifecycle /
-   * lifetime and perform inspection at various states.
-   *
-   * This enables instrumentation to be added without changing / interfering
-   * with how the application uses the socket.
-   *
-   * @param observer     Observer to add (implements LegacyLifecycleObserver).
-   */
-  virtual void addLifecycleObserver(LegacyLifecycleObserver* /* observer */) {
-    // A LifecycleObserver should not depend on receiving byteEventsUnavailable
-    // in this case.
-  }
-
-  /**
-   * Removes a lifecycle observer.
-   *
-   * @param observer     Observer to remove.
-   * @return             Whether observer found and removed from list.
-   */
-  virtual bool removeLifecycleObserver(
-      LegacyLifecycleObserver* /* observer */) {
-    return false;
-  }
-
-  /**
-   * Returns installed lifecycle observers.
-   *
-   * @return             Vector with installed observers.
-   */
-  FOLLY_NODISCARD virtual std::vector<LegacyLifecycleObserver*>
-  getLifecycleObservers() const {
-    return std::vector<LegacyLifecycleObserver*>();
-  }
-
+ public:
   /**
    * AsyncTransports may wrap other AsyncTransport. This returns the
    * transport that is wrapped. It returns nullptr if there is no wrapped

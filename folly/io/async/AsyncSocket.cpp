@@ -652,7 +652,8 @@ AsyncSocket::AsyncSocket()
     : eventBase_(nullptr),
       writeTimeout_(this, nullptr),
       ioHandler_(this, nullptr),
-      immediateReadHandler_(this) {
+      immediateReadHandler_(this),
+      observerContainer_(this) {
   VLOG(5) << "new AsyncSocket()";
   init();
 }
@@ -661,7 +662,8 @@ AsyncSocket::AsyncSocket(EventBase* evb)
     : eventBase_(evb),
       writeTimeout_(this, evb),
       ioHandler_(this, evb),
-      immediateReadHandler_(this) {
+      immediateReadHandler_(this),
+      observerContainer_(this) {
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ")";
   init();
 }
@@ -699,7 +701,8 @@ AsyncSocket::AsyncSocket(
       eventBase_(evb),
       writeTimeout_(this, evb),
       ioHandler_(this, evb, fd),
-      immediateReadHandler_(this) {
+      immediateReadHandler_(this),
+      observerContainer_(this) {
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd=" << fd
           << ", zeroCopyBufId=" << zeroCopyBufId << ")";
   init();
@@ -720,7 +723,8 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
       rawBytesWritten_(oldAsyncSocket->rawBytesWritten_),
       preReceivedData_(std::move(oldAsyncSocket->preReceivedData_)),
       tfoInfo_(std::move(oldAsyncSocket->tfoInfo_)),
-      byteEventHelper_(std::move(oldAsyncSocket->byteEventHelper_)) {
+      byteEventHelper_(std::move(oldAsyncSocket->byteEventHelper_)),
+      observerContainer_(this, std::move(oldAsyncSocket->observerContainer_)) {
   VLOG(5) << "move AsyncSocket(" << oldAsyncSocket << "->" << this
           << ", evb=" << eventBase_ << ", fd=" << fd_
           << ", zeroCopyBufId=" << zeroCopyBufId_ << ")";
@@ -2724,7 +2728,7 @@ bool AsyncSocket::processZeroCopyWriteInProgress() noexcept {
 }
 
 void AsyncSocket::addLifecycleObserver(
-    AsyncTransport::LegacyLifecycleObserver* observer) {
+    AsyncSocket::LegacyLifecycleObserver* observer) {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
@@ -2750,7 +2754,7 @@ void AsyncSocket::addLifecycleObserver(
 }
 
 bool AsyncSocket::removeLifecycleObserver(
-    AsyncTransport::LegacyLifecycleObserver* observer) {
+    AsyncSocket::LegacyLifecycleObserver* observer) {
   auto& observers = lifecycleObservers_;
   auto it = std::find(observers.begin(), observers.end(), observer);
   if (it == observers.end()) {
@@ -2761,12 +2765,12 @@ bool AsyncSocket::removeLifecycleObserver(
   return true;
 }
 
-std::vector<AsyncTransport::LegacyLifecycleObserver*>
+std::vector<AsyncSocket::LegacyLifecycleObserver*>
 AsyncSocket::getLifecycleObservers() const {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
-  return std::vector<AsyncTransport::LegacyLifecycleObserver*>(
+  return std::vector<AsyncSocket::LegacyLifecycleObserver*>(
       lifecycleObservers_.begin(), lifecycleObservers_.end());
 }
 
