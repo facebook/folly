@@ -3474,7 +3474,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
                                 flags,
                                 maybeVecTotalBytes =
                                     folly::Optional<size_t>()]() mutable {
-    AsyncTransport::LegacyLifecycleObserver::PrewriteRequest mergedRequest = {};
+    AsyncSocketObserverInterface::PrewriteRequest mergedRequest = {};
     if (lifecycleObservers_.empty()) {
       return mergedRequest;
     }
@@ -3490,15 +3490,14 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
 
     const auto startOffset = getRawBytesWritten();
     const auto endOffset = getRawBytesWritten() + vecTotalBytes - 1;
-    const AsyncTransport::LegacyLifecycleObserver::PrewriteState prewriteState =
-        [&] {
-          AsyncTransport::LegacyLifecycleObserver::PrewriteState state = {};
-          state.startOffset = startOffset;
-          state.endOffset = endOffset;
-          state.writeFlags = flags;
-          state.ts = std::chrono::steady_clock::now();
-          return state;
-        }();
+    const AsyncSocketObserverInterface::PrewriteState prewriteState = [&] {
+      AsyncSocketObserverInterface::PrewriteState state = {};
+      state.startOffset = startOffset;
+      state.endOffset = endOffset;
+      state.writeFlags = flags;
+      state.ts = std::chrono::steady_clock::now();
+      return state;
+    }();
     for (const auto& observer : lifecycleObservers_) {
       if (!observer->getConfig().prewrite) {
         continue;
