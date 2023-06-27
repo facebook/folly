@@ -973,7 +973,7 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14ValueMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14ValueMap<
+F14ValueMap(InputIt, InputIt, std::size_t, Alloc) -> F14ValueMap<
     iterator_key_type_t<InputIt>,
     iterator_mapped_type_t<InputIt>,
     f14::DefaultHasher<iterator_key_type_t<InputIt>>,
@@ -1111,7 +1111,7 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14NodeMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14NodeMap<
+F14NodeMap(InputIt, InputIt, std::size_t, Alloc) -> F14NodeMap<
     iterator_key_type_t<InputIt>,
     iterator_mapped_type_t<InputIt>,
     f14::DefaultHasher<iterator_key_type_t<InputIt>>,
@@ -1474,7 +1474,7 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14VectorMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14VectorMap<
+F14VectorMap(InputIt, InputIt, std::size_t, Alloc) -> F14VectorMap<
     iterator_key_type_t<InputIt>,
     iterator_mapped_type_t<InputIt>,
     f14::DefaultHasher<iterator_key_type_t<InputIt>>,
@@ -1603,7 +1603,7 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14FastMap(InputIt first, InputIt last, std::size_t, Alloc) -> F14FastMap<
+F14FastMap(InputIt, InputIt, std::size_t, Alloc) -> F14FastMap<
     iterator_key_type_t<InputIt>,
     iterator_mapped_type_t<InputIt>,
     f14::DefaultHasher<iterator_key_type_t<InputIt>>,
