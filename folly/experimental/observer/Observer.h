@@ -69,7 +69,7 @@ namespace observer {
  * Getting an Observer snapshot involves acquiring a shared_ptr, which can be
  * expensive, especially if several threads do so concurrently. If the cost of
  * getSnapshot() is noticeable, alternative Observer implementations are
- * available, offering different trase-offs:
+ * available, offering different trade-offs:
  *
  * - If T is a type for which std::atomic<T> is lock-free (all word-sized PODs
  *   for example), AtomicObserver and ReadMostlyAtomicObserver offer the best
@@ -87,6 +87,11 @@ namespace observer {
  *   shared_ptr. Scalability and cost are comparable to HazptrObserver, but the
  *   snapshots can be held for arbitrary time. Memory cost is a small constant
  *   for each thread that acquires a snapshot.
+ *
+ * - CoreCachedObserver can be used if a std::shared_ptr<T> is strictly
+ *   required. Read scalability is comparable to the previous options, but cost
+ *   is moderately higher. Memory cost is a small constant for each CPU in the
+ *   system.
  *
  * See ObserverCreator class if you want to wrap any existing subscription API
  * in an Observer object.

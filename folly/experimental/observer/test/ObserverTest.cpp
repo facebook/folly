@@ -21,6 +21,7 @@
 
 #include <utility>
 #include <folly/Singleton.h>
+#include <folly/experimental/observer/CoreCachedObserver.h>
 #include <folly/experimental/observer/HazptrObserver.h>
 #include <folly/experimental/observer/Observer.h>
 #include <folly/experimental/observer/ReadMostlyTLObserver.h>
@@ -800,6 +801,19 @@ TEST(Observer, HazptrObserverRecursiveReclamation) {
       folly::observer_detail::ObserverManager::tryWaitForAllUpdatesFor(1s));
 
   EXPECT_TRUE(reclaimed); // verify that forced reclamation really did happen
+}
+
+TEST(Observer, CoreCachedObserver) {
+  SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+
+  auto coreCachedObserver =
+      makeCoreCachedObserver([observer] { return **observer; });
+
+  EXPECT_EQ(**coreCachedObserver, 42);
+  observable.setValue(41);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(**coreCachedObserver, 41);
 }
 
 TEST(Observer, Unwrap) {

@@ -178,6 +178,13 @@ class AtomicCoreCachedSharedPtr {
     reset(std::move(p));
   }
 
+  AtomicCoreCachedSharedPtr(AtomicCoreCachedSharedPtr&& other) noexcept
+      : slots_(other.slots_.load(std::memory_order_relaxed)) {
+    other.slots_.store(nullptr, std::memory_order_relaxed);
+  }
+  AtomicCoreCachedSharedPtr& operator=(AtomicCoreCachedSharedPtr&& other) =
+      delete;
+
   ~AtomicCoreCachedSharedPtr() {
     // Delete of AtomicCoreCachedSharedPtr must be synchronized, no
     // need for slots->retire().
