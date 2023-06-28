@@ -443,8 +443,8 @@ FOLLY_INLINE_VARIABLE constexpr bool is_trivially_copyable_v =
  * It may be unset in a base class by overriding the typedef to false_type.
  */
 /*
- * IsZeroInitializable describes the property that default construction is the
- * same as memset(dst, 0, sizeof(T)).
+ * IsZeroInitializable describes the property that value-initialization
+ * is the same as memset(dst, 0, sizeof(T)).
  */
 
 namespace traits_detail {

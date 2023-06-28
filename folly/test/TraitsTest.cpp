@@ -86,9 +86,30 @@ TEST(Traits, unset) {
   EXPECT_TRUE(IsRelocatable<F4>::value);
 }
 
-TEST(Traits, bitAndInit) {
+TEST(Traits, zeroInit) {
+  // S1 is both trivially default-constructible and trivially
+  // value-initializable. S2 is neither. S3 is trivially default-constructible
+  // but not trivially value-initializable.
+  struct S1 {
+    int i_;
+  };
+  struct S2 {
+    int i_ = 42;
+  };
+  struct S3 {
+    int S1::*mp_;
+  };
+
   EXPECT_TRUE(IsZeroInitializable<int>::value);
+  EXPECT_TRUE(IsZeroInitializable<int*>::value);
   EXPECT_FALSE(IsZeroInitializable<vector<int>>::value);
+  EXPECT_FALSE(IsZeroInitializable<S2>::value);
+  EXPECT_FALSE(IsZeroInitializable<int S1::*>::value); // Itanium
+  EXPECT_FALSE(IsZeroInitializable<S3>::value); // Itanium
+
+  // TODO: S1 actually can be trivially zero-initialized, but
+  // there's no portable way to distinguish it from S3, which can't.
+  EXPECT_FALSE(IsZeroInitializable<S1>::value);
 }
 
 template <bool V>

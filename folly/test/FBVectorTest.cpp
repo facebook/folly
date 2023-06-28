@@ -309,3 +309,17 @@ TEST(FBVector, overflowAssign) {
       vec.assign(SIZE_MAX / sizeof(std::string) + 1, "hello"),
       std::length_error);
 }
+
+TEST(FBVector, zeroInit) {
+  // This is a higher-level version of TEST(Traits, zeroInit).
+  struct S1 {
+    int i_;
+  };
+  struct S3 {
+    int S1::*mp_;
+  };
+  folly::fbvector<S3> vec(4);
+  vec.resize(10);
+  EXPECT_EQ(vec[0].mp_, nullptr);
+  EXPECT_EQ(vec[8].mp_, nullptr);
+}
