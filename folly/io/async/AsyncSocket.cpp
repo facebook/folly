@@ -603,7 +603,12 @@ AsyncSocket::ByteEventHelper::processCmsg(
         completeState.byteOffsetKernel + rawBytesWrittenWhenByteEventsEnabled;
     if (byteOffset > rawBytesWritten) {
       // kernel's uint32_t var wrapped around; go back one wrap
-      CHECK_GE(byteOffset, bytesPerOffsetWrap);
+      CHECK_GE(byteOffset, bytesPerOffsetWrap)
+          << "rawBytesWritten=" << rawBytesWritten
+          << " completeState.byteOffsetKernel="
+          << completeState.byteOffsetKernel
+          << " rawBytesWrittenWhenByteEventsEnabled="
+          << rawBytesWrittenWhenByteEventsEnabled;
       byteOffset = byteOffset - bytesPerOffsetWrap;
     }
 
