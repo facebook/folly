@@ -838,8 +838,8 @@ bool EventBase::scheduleTimeout(
   dcheckIsInEventBaseThread();
   // Set up the timeval and add the event
   struct timeval tv;
-  tv.tv_sec = long(timeout.count() / 1000LL);
-  tv.tv_usec = long((timeout.count() % 1000LL) * 1000LL);
+  tv.tv_sec = to_narrow(timeout.count() / 1000LL);
+  tv.tv_usec = to_narrow((timeout.count() % 1000LL) * 1000LL);
 
   auto* ev = obj->getEvent();
 
