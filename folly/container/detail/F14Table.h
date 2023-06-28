@@ -29,10 +29,6 @@
 #include <utility>
 #include <vector>
 
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view> // @manual
-#endif
-
 #include <folly/Bits.h>
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
@@ -52,6 +48,10 @@
 #include <folly/container/detail/F14Defaults.h>
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 #include <folly/container/detail/F14Mask.h>
+
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view> // @manual
+#endif
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
