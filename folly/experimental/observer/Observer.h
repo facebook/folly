@@ -21,10 +21,8 @@
 
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
-#include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/experimental/observer/Observer-pre.h>
 #include <folly/experimental/observer/detail/Core.h>
-#include <folly/synchronization/Hazptr.h>
 
 namespace folly {
 namespace observer {
@@ -68,7 +66,27 @@ namespace observer {
  * Notice that a + b will be only called when either a or b is changed. Getting
  * a snapshot from sumObserver won't trigger any re-computation.
  *
- * See AtomicObserver and TLObserver for optimized reads.
+ * Getting an Observer snapshot involves acquiring a shared_ptr, which can be
+ * expensive, especially if several threads do so concurrently. If the cost of
+ * getSnapshot() is noticeable, alternative Observer implementations are
+ * available, offering different trase-offs:
+ *
+ * - If T is a type for which std::atomic<T> is lock-free (all word-sized PODs
+ *   for example), AtomicObserver and ReadMostlyAtomicObserver offer the best
+ *   performance at no additional memory cost.
+ *
+ * - TLObserver stores a copy of the value for each thread that accesses it,
+ *   which avoids any synchronization, but can consume significant amounts of
+ *   memory depending on the size of the values.
+ *
+ * - HazptrObserver uses hazard pointers to protect the snapshot, which offer
+ *   high read scalability and low cost, but the snapshot should be held as
+ *   little as possible and should not cross coroutine suspension points.
+ *
+ * - ReadMostlyTLObserver returns a snapshot that can be used like a regular
+ *   shared_ptr. Scalability and cost are comparable to HazptrObserver, but the
+ *   snapshots can be held for arbitrary time. Memory cost is a small constant
+ *   for each thread that acquires a snapshot.
  *
  * See ObserverCreator class if you want to wrap any existing subscription API
  * in an Observer object.
@@ -138,33 +156,6 @@ class TLObserver;
  */
 template <typename T>
 class ReadMostlyAtomicObserver;
-
-/**
- * A TLObserver that optimizes for getting shared_ptr to data
- */
-template <typename T>
-class ReadMostlyTLObserver;
-
-/**
- * HazptrObserver implements a read-optimized Observer which caches an
- * Observer's snapshot and protects access to it using hazptrs. The cached
- * snapshot is kept up to date using a callback which fires when the original
- * observer changes. This implementation incurs an additional allocation
- * on updates making it less suitable for write-heavy workloads.
- *
- * There are 2 main APIs:
- * 1) getSnapshot: Returns a Snapshot containing a const pointer to T and guards
- *    access to it using folly::hazptr_holder. The pointer is only safe to use
- *    while the returned Snapshot object is alive.
- * 2) getLocalSnapshot: Same as getSnapshot but backed by folly::hazptr_local.
- *    This API is ~3ns faster than getSnapshot but is unsafe for the current
- *    thread to construct any other hazptr holder type objects (hazptr_holder,
- *    hazptr_array and other hazptr_local) while the returned snapshot exists.
- *
- * See folly/synchronization/Hazptr.h for more details on hazptrs.
- */
-template <typename T, template <typename> class Atom = std::atomic>
-class HazptrObserver;
 
 template <typename T>
 class Snapshot {
@@ -369,124 +360,6 @@ class ReadMostlyAtomicObserver {
   CallbackHandle callback_;
 };
 
-template <typename T>
-class ReadMostlyTLObserver {
- public:
-  explicit ReadMostlyTLObserver(Observer<T> observer);
-  ReadMostlyTLObserver(const ReadMostlyTLObserver<T>& other);
-
-  ReadMostlySharedPtr<const T> getShared() const;
-
-  Observer<T> getUnderlyingObserver() const { return observer_; }
-
- private:
-  ReadMostlySharedPtr<const T> refresh() const;
-
-  struct LocalSnapshot {
-    LocalSnapshot() {}
-    LocalSnapshot(const ReadMostlyMainPtr<const T>& data, size_t version)
-        : data_(data), version_(version) {}
-
-    ReadMostlyWeakPtr<const T> data_;
-    size_t version_;
-  };
-
-  Observer<T> observer_;
-
-  mutable Synchronized<ReadMostlyMainPtr<const T>, std::mutex> globalData_;
-  mutable std::atomic<size_t> globalVersion_{0};
-
-  ThreadLocal<LocalSnapshot> localSnapshot_;
-};
-
-template <typename T, template <typename> class Atom>
-class HazptrObserver {
-  template <typename Holder>
-  struct HazptrSnapshot {
-    template <typename State>
-    explicit HazptrSnapshot(
-        const Atom<State*>& state, hazptr_domain<Atom>& domain)
-        : holder_() {
-      make(holder_, domain);
-      ptr_ = get(holder_).protect(state)->snapshot_.get();
-    }
-
-    const T& operator*() const { return *get(); }
-    const T* operator->() const { return get(); }
-    const T* get() const { return ptr_; }
-
-   private:
-    static void make(hazptr_holder<Atom>& holder, hazptr_domain<Atom>& domain) {
-      holder = folly::make_hazard_pointer(domain);
-    }
-    static void make(hazptr_local<1, Atom>&, hazptr_domain<Atom>&) {}
-    static hazptr_holder<Atom>& get(hazptr_holder<Atom>& holder) {
-      return holder;
-    }
-    static hazptr_holder<Atom>& get(hazptr_local<1>& holder) {
-      return holder[0];
-    }
-
-    Holder holder_;
-    const T* ptr_;
-  };
-
- public:
-  using DefaultSnapshot = HazptrSnapshot<hazptr_holder<Atom>>;
-  using LocalSnapshot = HazptrSnapshot<hazptr_local<1>>;
-
-  explicit HazptrObserver(
-      Observer<T> observer,
-      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>())
-      : domain_{domain},
-        observer_(
-            makeObserver([o = std::move(observer), alive = alive_, this]() {
-              auto snapshot = o.getSnapshot();
-              auto oldState = static_cast<State*>(nullptr);
-              alive->withRLock([&](auto vAlive) {
-                if (vAlive) { // otherwise state_ may be out-of-scope
-                  oldState = state_.exchange(
-                      new State(snapshot), std::memory_order_acq_rel);
-                }
-              });
-              if (oldState) {
-                oldState->retire(domain_);
-              }
-              return snapshot.getShared();
-            })) {}
-
-  HazptrObserver(const HazptrObserver& r)
-      : HazptrObserver(r.observer_, r.domain_) {}
-  HazptrObserver& operator=(const HazptrObserver&) = delete;
-
-  HazptrObserver(HazptrObserver&&) = default;
-  HazptrObserver& operator=(HazptrObserver&&) = default;
-
-  ~HazptrObserver() {
-    *alive_->wlock() = false;
-    auto* state = state_.load(std::memory_order_acquire);
-    if (state) {
-      state->retire(domain_);
-    }
-  }
-
-  DefaultSnapshot getSnapshot() const;
-  LocalSnapshot getLocalSnapshot() const;
-
- private:
-  struct State : public hazptr_obj_base<State, Atom> {
-    explicit State(Snapshot<T> snapshot) : snapshot_(std::move(snapshot)) {}
-
-    Snapshot<T> snapshot_;
-  };
-
-  Atom<State*> state_{nullptr};
-  std::shared_ptr<Synchronized<bool>> alive_{
-      std::make_shared<Synchronized<bool>>(true)};
-  hazptr_domain<Atom>& domain_;
-  Observer<T> observer_;
-};
-
 /**
  * Same as makeObserver(...), but creates AtomicObserver.
  */
@@ -524,32 +397,6 @@ ReadMostlyAtomicObserver<T> makeReadMostlyAtomicObserver(Observer<T> observer) {
 template <typename F>
 auto makeReadMostlyAtomicObserver(F&& creator) {
   return makeReadMostlyAtomicObserver(makeObserver(std::forward<F>(creator)));
-}
-
-/**
- * Same as makeObserver(...), but creates ReadMostlyTLObserver.
- */
-template <typename T>
-ReadMostlyTLObserver<T> makeReadMostlyTLObserver(Observer<T> observer) {
-  return ReadMostlyTLObserver<T>(std::move(observer));
-}
-
-template <typename F>
-auto makeReadMostlyTLObserver(F&& creator) {
-  return makeReadMostlyTLObserver(makeObserver(std::forward<F>(creator)));
-}
-
-/**
- * Same as makeObserver(...), but creates HazptrObserver.
- */
-template <typename T>
-HazptrObserver<T> makeHazptrObserver(Observer<T> observer) {
-  return HazptrObserver<T>(std::move(observer));
-}
-
-template <typename F>
-auto makeHazptrObserver(F&& creator) {
-  return makeHazptrObserver(makeObserver(std::forward<F>(creator)));
 }
 
 template <typename T, bool CacheInThreadLocal>

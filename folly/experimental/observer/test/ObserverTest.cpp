@@ -21,7 +21,9 @@
 
 #include <utility>
 #include <folly/Singleton.h>
+#include <folly/experimental/observer/HazptrObserver.h>
 #include <folly/experimental/observer/Observer.h>
+#include <folly/experimental/observer/ReadMostlyTLObserver.h>
 #include <folly/experimental/observer/SimpleObservable.h>
 #include <folly/experimental/observer/WithJitter.h>
 #include <folly/fibers/FiberManager.h>
