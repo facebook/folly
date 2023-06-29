@@ -26,7 +26,7 @@
 namespace folly {
 namespace python {
 
-class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
+class AsyncioExecutor : public DrivableExecutor {
  public:
   ~AsyncioExecutor() override { DCHECK_EQ(keepAliveCounter_, 0); }
 
@@ -103,7 +103,8 @@ class DroppableAsyncioExecutor : public AsyncioExecutor {
 };
 
 class NotificationQueueAsyncioExecutor
-    : public DroppableAsyncioExecutor<NotificationQueueAsyncioExecutor> {
+    : public DroppableAsyncioExecutor<NotificationQueueAsyncioExecutor>,
+      public SequencedExecutor {
  public:
   using Func = folly::Func;
 

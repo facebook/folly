@@ -27,7 +27,6 @@ class Futures(unittest.TestCase):
         res = loop.run_until_complete(simplebridge.get_value_x5(val))
         self.assertEqual(val * 5, res)
 
-    @unittest.skipIf(platform.startswith("win"), "Broken on Windows.")
     def test_bridge_semifuture(self):
         val = 1337
         loop = asyncio.get_event_loop()

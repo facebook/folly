@@ -21,18 +21,13 @@ from cython.operator cimport dereference as deref
 from weakref import WeakKeyDictionary
 from cpython.ref cimport PyObject
 
-if sys.platform == "win32":
-    import _overlapped
-
 # asyncio Loops to AsyncioExecutor
 loop_to_q = WeakKeyDictionary()
 
-_Null = 0
 _RaiseKeyError = object()
 
 cdef class AsyncioExecutor:
-    def drive(AsyncioExecutor self):
-        raise NotImplementedError()
+    pass
 
 
 cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
@@ -54,20 +49,15 @@ cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
         # Cython deletes these after __dealloc__ returns.
         self.cQ.reset()
 
+
 cdef class ProactorExecutor(AsyncioExecutor):
 
-    def __cinit__(self, int iocp):
-        self.cQ = cProactorExecutor.create(<int&&>iocp)
+    def __cinit__(self, uint64_t iocp):
+        self.cQ = cProactorExecutor.create(<uint64_t&&>iocp)
         self._executor = self.cQ.get()
 
-    def pop(ProactorExecutor self, uint64_t address):
-        return deref(self.cQ).pop(address)
-
-    def notify(ProactorExecutor self):
-        deref(self.cQ).notify()
-
-    def drive(ProactorExecutor self):
-        deref(self.cQ).drive()
+    def execute(ProactorExecutor self, uintptr_t  address):
+        return deref(self.cQ).execute(address)
 
     def __dealloc__(ProactorExecutor self):
         # We explicitly reset here, otherwise it is possible
@@ -75,9 +65,10 @@ cdef class ProactorExecutor(AsyncioExecutor):
         # Cython deletes these after __dealloc__ returns.
         self.cQ.reset()
 
+
 cdef class IocpQueue(dict):
     """
-    Extends ProactoEventLoop's queue (a bare dictionary) to invoke AsyncioExecutor::drive()
+    Extends ProactoEventLoop's queue (a bare dictionary) to invoke ProactorExecutor::execute()
     when notified via the proactor's IOCP
     """
     def __init__(IocpQueue self, ProactorExecutor executor):
@@ -93,19 +84,15 @@ cdef class IocpQueue(dict):
         else:
             raise NotImplementedError("IocpQueue can only be used with ProactorExecutor")
 
-
     def pop(self, k, default = _RaiseKeyError):
-        if self._executor.pop(k):
-            self._executor.drive()
-            f= asyncio.Future()
+        if self._executor.execute(k):
+            f = asyncio.Future()
             f.set_result(None)
             return (f, None, None, None)
         if default == _RaiseKeyError:
             return super().pop(k)
         return super().pop(k, default)
 
-    def notify(self) -> None:
-        self._executor.notify()
 
 # TODO: fried this is a stop gap, we really should not bind things to
 # the default eventloop if its not running. As it may never be run.
@@ -151,9 +138,3 @@ cdef int set_executor_for_loop(loop, cAsyncioExecutor* c_executor):
 
 cdef cAsyncioExecutor* get_executor():
     return get_running_executor(False)
-
-cdef uint64_t new_iocp_overlapped():
-    return _overlapped.Overlapped(_Null).address
-
-cdef api void iocp_post_job(int iocp, uint64_t address):
-    _overlapped.PostQueuedCompletionStatus(iocp, 0, 0, address)

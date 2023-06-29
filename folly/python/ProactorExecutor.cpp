@@ -15,46 +15,31 @@
  */
 
 #include <folly/python/ProactorExecutor.h>
-#include <folly/python/executor_api.h> // @manual
-#include <folly/python/import.h>
 
 namespace folly {
 namespace python {
 
-FOLLY_CONSTINIT static import_cache import_folly__executor_{
-    import_folly__executor, "import_folly__executor"};
-
-ProactorExecutor::ProactorExecutor(int iocp)
-    : iocp_(iocp), notification_cache_() {}
+ProactorExecutor::ProactorExecutor(uint64_t iocp) : iocp_(iocp), cache_() {}
 
 void ProactorExecutor::add(Func func) noexcept {
-  {
-    std::lock_guard<std::mutex> _{mutex_};
-    queue_.push(std::move(func));
-  }
-  notify();
+  auto callback =
+      std::make_unique<detail::ProactorExecutorCallback>(std::move(func));
+  auto address = callback->address();
+  cache_.emplace(address, std::move(callback)).first->second->send(iocp_);
 }
 
 void ProactorExecutor::drive() noexcept {
-  std::lock_guard<std::mutex> _{mutex_};
-  if (!queue_.empty()) {
-    invokeCatchingExns(
-        "ProactorExecutor: task", std::exchange(queue_.front(), {}));
-    queue_.pop();
+  while (!cache_.empty()) {
+    auto item = cache_.begin();
+    item->second->invoke();
+    cache_.erase(item->first);
   }
 }
 
-void ProactorExecutor::notify() {
-  import_folly__executor_();
-  uint64_t address = new_iocp_overlapped();
-  notification_cache_.emplace(address);
-  iocp_post_job(iocp_, address);
-}
-
-bool ProactorExecutor::pop(uint64_t address) {
-  if (auto search = notification_cache_.find(address);
-      search != notification_cache_.end()) {
-    notification_cache_.erase(address);
+bool ProactorExecutor::execute(uintptr_t address) {
+  if (auto search = cache_.find(address); search != cache_.end()) {
+    search->second->invoke();
+    cache_.erase(address);
     return true;
   }
   return false;
