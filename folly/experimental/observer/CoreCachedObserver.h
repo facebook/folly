@@ -20,6 +20,7 @@
 
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/experimental/observer/Observer.h>
+#include <folly/experimental/observer/detail/ObserverManager.h>
 
 namespace folly {
 namespace observer {
@@ -52,10 +53,15 @@ class CoreCachedObserver {
   CoreCachedObserver(const CoreCachedObserver<T>& r)
       : CoreCachedObserver(r.observer_) {}
   CoreCachedObserver& operator=(const CoreCachedObserver<T>&) = delete;
-  CoreCachedObserver(CoreCachedObserver<T>&&) = default;
+
+  // Callback captures this, so we cannot move it.
+  CoreCachedObserver(CoreCachedObserver<T>&& r) = delete;
   CoreCachedObserver& operator=(CoreCachedObserver<T>&&) = delete;
 
   CoreCachedSnapshot getSnapshot() const {
+    if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
+      return CoreCachedSnapshot{observer_.getSnapshot().getShared()};
+    }
     return CoreCachedSnapshot{data_.get()};
   }
   CoreCachedSnapshot operator*() const { return getSnapshot(); }
