@@ -206,6 +206,26 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
       ##__VA_ARGS__)
 
 /**
+ * Similar to XLOGF(...) except only log a message every @param n
+ * invocations, approximately.
+ *
+ * The internal counter is process-global and threadsafe but, to
+ * to avoid the performance degradation of atomic-rmw operations,
+ * increments are non-atomic. Some increments may be missed under
+ * contention, leading to possible over-logging or under-logging
+ * effects.
+ */
+#define XLOGF_EVERY_N(level, n, fmt, ...)                                 \
+  XLOGF_IF(                                                               \
+      level,                                                              \
+      [&] {                                                               \
+        struct folly_detail_xlog_tag {};                                  \
+        return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
+      }(),                                                                \
+      fmt,                                                                \
+      ##__VA_ARGS__)
+
+/**
  * Similar to XLOG(...) except only log a message every @param n
  * invocations, approximately, and if the specified condition predicate
  * evaluates to true.
@@ -224,6 +244,28 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
             struct folly_detail_xlog_tag {};                                  \
             return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
           }(),                                                                \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOGF(...) except only log a message every @param n
+ * invocations, approximately, and if the specified condition predicate
+ * evaluates to true.
+ *
+ * The internal counter is process-global and threadsafe but, to
+ * to avoid the performance degradation of atomic-rmw operations,
+ * increments are non-atomic. Some increments may be missed under
+ * contention, leading to possible over-logging or under-logging
+ * effects.
+ */
+#define XLOGF_EVERY_N_IF(level, cond, n, fmt, ...)                            \
+  XLOGF_IF(                                                                   \
+      level,                                                                  \
+      (cond) &&                                                               \
+          [&] {                                                               \
+            struct folly_detail_xlog_tag {};                                  \
+            return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
+          }(),                                                                \
+      fmt,                                                                    \
       ##__VA_ARGS__)
 
 namespace folly {

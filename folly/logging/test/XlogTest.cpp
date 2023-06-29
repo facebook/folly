@@ -327,6 +327,23 @@ TEST_F(XlogTest, rateLimiting) {
           "msg 49"));
   handler->clearMessages();
 
+  // Test XLOGF_EVERY_N
+  for (size_t n = 0; n < 50; ++n) {
+    XLOGF_EVERY_N(DBG1, 7, "msg {}", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0",
+          "msg 7",
+          "msg 14",
+          "msg 21",
+          "msg 28",
+          "msg 35",
+          "msg 42",
+          "msg 49"));
+  handler->clearMessages();
+
   for (size_t n = 0; n < 50; ++n) {
     XLOG_EVERY_N(DBG1, SEVEN + 1, "msg ", n);
   }
@@ -340,6 +357,16 @@ TEST_F(XlogTest, rateLimiting) {
   for (size_t n = 0; n < 50; ++n) {
     bool shouldLog = n % 2 == 0;
     XLOG_EVERY_N_IF(DBG1, shouldLog, 7, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre("msg 0", "msg 14", "msg 28", "msg 42"));
+  handler->clearMessages();
+
+  // Test XLOGF_EVERY_N_IF
+  for (size_t n = 0; n < 50; ++n) {
+    bool shouldLog = n % 2 == 0;
+    XLOGF_EVERY_N_IF(DBG1, shouldLog, 7, "msg {}", n);
   }
   EXPECT_THAT(
       handler->getMessageValues(),
