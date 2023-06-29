@@ -85,7 +85,8 @@ class HazptrObserver {
       Observer<T> observer,
       hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>())
       : domain_{domain},
-        observer_(
+        observer_(observer),
+        updateObserver_(
             makeObserver([o = std::move(observer), alive = alive_, this]() {
               auto snapshot = o.getSnapshot();
               auto oldState = static_cast<State*>(nullptr);
@@ -98,15 +99,20 @@ class HazptrObserver {
               if (oldState) {
                 oldState->retire(domain_);
               }
-              return snapshot.getShared();
+              return folly::unit;
             })) {}
 
+  // updateObserver_ captures this, so we cannot move it, hence only the copy
+  // constructor is defined (moves will fall back to copy).
   HazptrObserver(const HazptrObserver& r)
       : HazptrObserver(r.observer_, r.domain_) {}
-  HazptrObserver& operator=(const HazptrObserver&) = delete;
-
-  HazptrObserver(HazptrObserver&&) = default;
-  HazptrObserver& operator=(HazptrObserver&&) = default;
+  HazptrObserver& operator=(const HazptrObserver& r) {
+    if (&r != this) {
+      this->~HazptrObserver();
+      new (this) HazptrObserver(r);
+    }
+    return *this;
+  }
 
   ~HazptrObserver() {
     *alive_->wlock() = false;
@@ -119,7 +125,7 @@ class HazptrObserver {
   DefaultSnapshot getSnapshot() const {
     if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
       // Wait for updates
-      observer_.getSnapshot();
+      updateObserver_.getSnapshot();
     }
     return DefaultSnapshot(state_, domain_);
   }
@@ -127,7 +133,7 @@ class HazptrObserver {
   LocalSnapshot getLocalSnapshot() const {
     if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
       // Wait for updates
-      observer_.getSnapshot();
+      updateObserver_.getSnapshot();
     }
     return LocalSnapshot(state_, domain_);
   }
@@ -144,6 +150,7 @@ class HazptrObserver {
       std::make_shared<Synchronized<bool>>(true)};
   hazptr_domain<Atom>& domain_;
   Observer<T> observer_;
+  Observer<folly::Unit> updateObserver_;
 };
 
 /**

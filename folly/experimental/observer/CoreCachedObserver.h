@@ -50,13 +50,17 @@ class CoreCachedObserver {
           data_.reset(std::move(snapshot).getShared());
         })) {}
 
-  CoreCachedObserver(const CoreCachedObserver<T>& r)
+  // callback_ captures this, so we cannot move it, hence only the copy
+  // constructor is defined (moves will fall back to copy).
+  CoreCachedObserver(const CoreCachedObserver& r)
       : CoreCachedObserver(r.observer_) {}
-  CoreCachedObserver& operator=(const CoreCachedObserver<T>&) = delete;
-
-  // Callback captures this, so we cannot move it.
-  CoreCachedObserver(CoreCachedObserver<T>&& r) = delete;
-  CoreCachedObserver& operator=(CoreCachedObserver<T>&&) = delete;
+  CoreCachedObserver& operator=(const CoreCachedObserver& r) {
+    if (&r != this) {
+      this->~CoreCachedObserver();
+      new (this) CoreCachedObserver(r);
+    }
+    return *this;
+  }
 
   CoreCachedSnapshot getSnapshot() const {
     if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {

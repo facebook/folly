@@ -690,16 +690,18 @@ void runHazptrObserverTest(bool useLocalSnapshot) {
 
   auto value = [=](const auto& observer) {
     if (useLocalSnapshot) {
-      return observer.getSnapshot()->val_;
+      return observer->getSnapshot()->val_;
     } else {
-      return observer.getLocalSnapshot()->val_;
+      return observer->getLocalSnapshot()->val_;
     }
   };
 
   SimpleObservable<IntHolder> observable{IntHolder{42}};
 
-  HazptrObserver<IntHolder> observer{observable.getObserver()};
-  HazptrObserver<IntHolder> observerCopy{observer};
+  auto observer =
+      std::make_unique<HazptrObserver<IntHolder>>(observable.getObserver());
+  // Verify that copies get updated too.
+  auto observerCopy = std::make_unique<HazptrObserver<IntHolder>>(*observer);
   EXPECT_EQ(value(observer), 42);
   EXPECT_EQ(value(observerCopy), 42);
 
@@ -711,11 +713,20 @@ void runHazptrObserverTest(bool useLocalSnapshot) {
   auto dependentObserver = makeHazptrObserver([o = observable.getObserver()] {
     return IntHolder{o.getSnapshot()->val_ + 1};
   });
-  EXPECT_EQ(value(dependentObserver), 25);
+  EXPECT_EQ(value(&dependentObserver), 25);
 
   observable.setValue(IntHolder{20});
   folly::observer_detail::ObserverManager::waitForAllUpdates();
-  EXPECT_EQ(value(dependentObserver), 21);
+  EXPECT_EQ(value(&dependentObserver), 21);
+
+  // And moves as well even if the originals disappear.
+  auto observerMove =
+      std::make_unique<HazptrObserver<IntHolder>>(std::move(*observer));
+  observer.reset();
+  observerCopy.reset();
+  observable.setValue(IntHolder{26});
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(value(observerMove), 26);
 }
 
 TEST(Observer, HazptrObserver) {
@@ -807,13 +818,29 @@ TEST(Observer, CoreCachedObserver) {
   SimpleObservable<int> observable(42);
   auto observer = observable.getObserver();
 
-  auto coreCachedObserver =
-      makeCoreCachedObserver([observer] { return **observer; });
+  auto ccObserver = std::make_unique<CoreCachedObserver<int>>(
+      makeObserver([observer] { return **observer; }));
 
-  EXPECT_EQ(**coreCachedObserver, 42);
+  EXPECT_EQ(***ccObserver, 42);
   observable.setValue(41);
   folly::observer_detail::ObserverManager::waitForAllUpdates();
-  EXPECT_EQ(**coreCachedObserver, 41);
+  EXPECT_EQ(***ccObserver, 41);
+
+  // Verify that copies get updated too.
+  auto ccObserverCopy = std::make_unique<CoreCachedObserver<int>>(*ccObserver);
+  observable.setValue(40);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(***ccObserver, 40);
+  EXPECT_EQ(***ccObserverCopy, 40);
+
+  // And moves as well even if the originals disappear.
+  auto ccObserverMove =
+      std::make_unique<CoreCachedObserver<int>>(std::move(*ccObserverCopy));
+  ccObserver.reset();
+  ccObserverCopy.reset();
+  observable.setValue(39);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(***ccObserverMove, 39);
 }
 
 TEST(Observer, Unwrap) {
