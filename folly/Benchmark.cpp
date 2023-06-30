@@ -95,18 +95,22 @@ FOLLY_GFLAGS_DEFINE_uint32(
     "Maximum number of trials (iterations) executed for each benchmark.");
 
 namespace folly {
+namespace detail {
 
-std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
-
-typedef function<detail::TimeIterData(unsigned int)> BenchmarkFun;
-
-vector<detail::BenchmarkRegistration>& benchmarks() {
-  static vector<detail::BenchmarkRegistration> _benchmarks;
-  return _benchmarks;
+BenchmarkingState<std::chrono::high_resolution_clock>& globalBenchmarkState() {
+  static detail::BenchmarkingState<std::chrono::high_resolution_clock> state;
+  return state;
 }
+
+} // namespace detail
+
+using BenchmarkFun = std::function<detail::TimeIterData(unsigned int)>;
 
 #define FB_FOLLY_GLOBAL_BENCHMARK_BASELINE fbFollyGlobalBenchmarkBaseline
 #define FB_STRINGIZE_X2(x) FOLLY_PP_STRINGIZE(x)
+
+constexpr const char kGlobalBenchmarkBaseline[] =
+    FB_STRINGIZE_X2(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE);
 
 // Add the global baseline
 BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE) {
@@ -117,25 +121,8 @@ BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE) {
 #endif
 }
 
-size_t getGlobalBenchmarkBaselineIndex() {
-  const char* global = FB_STRINGIZE_X2(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE);
-  auto it = std::find_if(
-      benchmarks().begin(),
-      benchmarks().end(),
-      [global](const detail::BenchmarkRegistration& v) {
-        return v.name == global;
-      });
-  CHECK(it != benchmarks().end());
-  return size_t(std::distance(benchmarks().begin(), it));
-}
-
 #undef FB_STRINGIZE_X2
 #undef FB_FOLLY_GLOBAL_BENCHMARK_BASELINE
-
-void detail::addBenchmarkImpl(
-    const char* file, StringPiece name, BenchmarkFun fun, bool useCounter) {
-  benchmarks().push_back({file, name.str(), std::move(fun), useCounter});
-}
 
 static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
     const BenchmarkFun& fun, const double globalBaseline) {
@@ -652,10 +639,24 @@ void checkRunMode() {
 
 namespace {
 
+std::size_t getBenchmarkBaselineIndex(
+    const std::vector<detail::BenchmarkRegistration>& benchmarks) {
+  auto it = std::find_if(
+      benchmarks.begin(),
+      benchmarks.end(),
+      [&](const detail::BenchmarkRegistration& v) {
+        return v.name == kGlobalBenchmarkBaseline;
+      });
+  CHECK(it != benchmarks.end());
+  return size_t(std::distance(benchmarks.begin(), it));
+}
+
 std::pair<std::set<std::string>, std::vector<detail::BenchmarkResult>>
-runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
+runBenchmarksWithPrinterImpl(
+    BenchmarkResultsPrinter* FOLLY_NULLABLE printer,
+    const std::vector<detail::BenchmarkRegistration>& benchmarks) {
   vector<detail::BenchmarkResult> results;
-  results.reserve(benchmarks().size() - 1);
+  results.reserve(benchmarks.size() - 1);
 
   std::unique_ptr<boost::regex> bmRegex;
   if (!FLAGS_bm_regex.empty()) {
@@ -664,18 +665,18 @@ runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
 
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
-  size_t baselineIndex = getGlobalBenchmarkBaselineIndex();
+  size_t baselineIndex = getBenchmarkBaselineIndex(benchmarks);
 
   auto const globalBaseline =
-      runBenchmarkGetNSPerIteration(benchmarks()[baselineIndex].func, 0);
+      runBenchmarkGetNSPerIteration(benchmarks[baselineIndex].func, 0);
 
   std::set<std::string> counterNames;
-  FOR_EACH_RANGE (i, 0, benchmarks().size()) {
+  FOR_EACH_RANGE (i, 0, benchmarks.size()) {
     if (i == baselineIndex) {
       continue;
     }
     std::pair<double, UserCounters> elapsed;
-    auto& bm = benchmarks()[i];
+    auto& bm = benchmarks[i];
     if (bm.name != "-") { // skip separators
       if (bmRegex && !boost::regex_search(bm.name, *bmRegex)) {
         continue;
@@ -732,15 +733,61 @@ bool writeResultsToFile(
 
 namespace detail {
 
+std::ostream& operator<<(std::ostream& os, const BenchmarkResult& x) {
+  folly::dynamic r;
+  benchmarkResultsToDynamic({x}, r);
+  return os << r[0];
+}
+
+bool operator==(const BenchmarkResult& x, const BenchmarkResult& y) {
+  auto xtime = static_cast<std::uint64_t>(x.timeInNs * 1000);
+  auto ytime = static_cast<std::uint64_t>(y.timeInNs * 1000);
+  return x.name == y.name && x.file == y.file && xtime == ytime &&
+      x.counters == y.counters;
+}
+
+std::chrono::high_resolution_clock::duration BenchmarkSuspenderBase::timeSpent;
+
+void BenchmarkingStateBase::addBenchmarkImpl(
+    const char* file, StringPiece name, BenchmarkFun fun, bool useCounter) {
+  std::lock_guard<std::mutex> guard(mutex_);
+  benchmarks_.push_back({file, name.str(), std::move(fun), useCounter});
+}
+
+bool BenchmarkingStateBase::useCounters() const {
+  std::lock_guard<std::mutex> guard(mutex_);
+  return std::any_of(
+      benchmarks_.begin(), benchmarks_.end(), [](const auto& bm) {
+        return bm.useCounter;
+      });
+}
+
+// static
+folly::StringPiece BenchmarkingStateBase::getGlobalBaselineNameForTests() {
+  return kGlobalBenchmarkBaseline;
+}
+
+template <typename Printer>
+std::pair<std::set<std::string>, std::vector<BenchmarkResult>>
+BenchmarkingStateBase::runBenchmarksWithPrinter(Printer* printer) const {
+  std::lock_guard<std::mutex> guard(mutex_);
+  return runBenchmarksWithPrinterImpl(printer, benchmarks_);
+}
+
+std::vector<BenchmarkResult> BenchmarkingStateBase::runBenchmarksWithResults()
+    const {
+  return runBenchmarksWithPrinter(
+             static_cast<BenchmarkResultsPrinter*>(nullptr))
+      .second;
+}
+
 std::vector<BenchmarkResult> runBenchmarksWithResults() {
-  return runBenchmarksWithPrinter(nullptr).second;
+  return globalBenchmarkState().runBenchmarksWithResults();
 }
 
 } // namespace detail
 
 void runBenchmarks() {
-  CHECK(!benchmarks().empty());
-
   if (FLAGS_bm_profile) {
     printf(
         "WARNING: Running with constant number of iterations. Results might be jittery.\n");
@@ -748,17 +795,17 @@ void runBenchmarks() {
 
   checkRunMode();
 
+  auto& state = detail::globalBenchmarkState();
+
   BenchmarkResultsPrinter printer;
-  bool useCounter =
-      std::any_of(benchmarks().begin(), benchmarks().end(), [](const auto& bm) {
-        return bm.useCounter;
-      });
+  bool useCounter = state.useCounters();
+
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
   const bool shouldPrintInline =
       FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter;
   auto benchmarkResults =
-      runBenchmarksWithPrinter(shouldPrintInline ? &printer : nullptr);
+      state.runBenchmarksWithPrinter(shouldPrintInline ? &printer : nullptr);
 
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
 
