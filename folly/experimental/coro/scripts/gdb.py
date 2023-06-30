@@ -13,13 +13,107 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
+import enum
 import re
 import sys
 import traceback
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple, Type
 
-import gdb
+
+class DebuggerValue(abc.ABC):
+    """
+    Represents a value from the debugger. This could represent the value
+    of a variable, register, or expression.
+    """
+
+    @staticmethod
+    @abc.abstractmethod
+    def nullptr() -> "DebuggerValue":
+        """
+        Returns a nullptr value.
+        """
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def parse_and_eval(expr: str) -> "DebuggerValue":
+        """
+        Executes `expr` in the debugger and returns the value.
+        """
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def execute(expr: str) -> str:
+        """
+        Executes `expr` and returns the debugger output.
+        """
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_current_pthread_addr() -> "DebuggerValue":
+        """
+        Returns a pointer to the current pthread. Returns nullptr if not found
+        """
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_register(register: str) -> "DebuggerValue":
+        """
+        Returns the value in the provided register.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_field(self, n: int) -> "DebuggerValue":
+        """
+        This assumes the value is a pointer to a struct that consists entirely
+        of pointers. Returns the n-th pointer in the struct.
+        """
+        pass
+
+    @abc.abstractmethod
+    def is_nullptr(self) -> bool:
+        """
+        Returns True if the value is nullptr or 0.
+        """
+        pass
+
+    @abc.abstractmethod
+    def int_value(self) -> int:
+        """
+        Returns the int value of the debugger value
+        """
+        pass
+
+    @abc.abstractmethod
+    def to_hex(self) -> str:
+        """
+        Returns the value in hex padded with leading zeroes.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_file_name_and_line(self) -> Optional[Tuple[str, int]]:
+        """
+        Returns the file name and line number of the value.
+        Assumes the value is a pointer to an instruction.
+        Returns None if the name could not be found.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_func_name(self) -> Optional[str]:
+        """
+        Returns the function name of the value. Returns None if the name could
+        not be found
+        """
+        pass
+
 
 """
 These are the memory representations of the types folly uses for tracking
@@ -55,186 +149,145 @@ struct StackFrame {
 ASYNC_STACK_ROOT_TLS_KEY = "folly_async_stack_root_tls_key"
 
 
-def get_field(addr: gdb.Value, n: int) -> gdb.Value:
-    """
-    This assumes addr is a pointer to a struct that consists entirely
-    of pointers. Returns the n-th pointer in the struct.
-    """
-    return gdb.parse_and_eval(f"((uintptr_t*){addr})[{n}]")
-
-
 @dataclass
 class AsyncStackRootHolder:
-    value: gdb.Value
+    value: DebuggerValue
 
     @staticmethod
-    def from_addr(addr: gdb.Value) -> "AsyncStackRootHolder":
+    def from_addr(addr: DebuggerValue) -> "AsyncStackRootHolder":
         return AsyncStackRootHolder(
-            value=get_field(addr, 0),
+            value=addr.get_field(0),
         )
 
 
 @dataclass
 class AsyncStackRoot:
-    top_frame: gdb.Value
-    next_root: gdb.Value
-    stack_frame_ptr: gdb.Value
-    stack_root: gdb.Value
+    top_frame: DebuggerValue
+    next_root: DebuggerValue
+    stack_frame_ptr: DebuggerValue
+    stack_root: DebuggerValue
 
     @staticmethod
-    def from_addr(addr: gdb.Value) -> "AsyncStackRoot":
+    def from_addr(addr: DebuggerValue) -> "AsyncStackRoot":
         return AsyncStackRoot(
-            top_frame=get_field(addr, 0),
-            next_root=get_field(addr, 1),
-            stack_frame_ptr=get_field(addr, 2),
-            stack_root=get_field(addr, 3),
+            top_frame=addr.get_field(0),
+            next_root=addr.get_field(1),
+            stack_frame_ptr=addr.get_field(2),
+            stack_root=addr.get_field(3),
         )
 
 
 @dataclass
 class AsyncStackFrame:
-    parent_frame: gdb.Value
-    instruction_pointer: gdb.Value
-    stack_root: gdb.Value
+    parent_frame: DebuggerValue
+    instruction_pointer: DebuggerValue
+    stack_root: DebuggerValue
 
     @staticmethod
-    def from_addr(addr: gdb.Value) -> "AsyncStackFrame":
+    def from_addr(addr: DebuggerValue) -> "AsyncStackFrame":
         return AsyncStackFrame(
-            parent_frame=get_field(addr, 0),
-            instruction_pointer=get_field(addr, 1),
-            stack_root=get_field(addr, 2),
+            parent_frame=addr.get_field(0),
+            instruction_pointer=addr.get_field(1),
+            stack_root=addr.get_field(2),
         )
 
 
 @dataclass
 class StackFrame:
-    stack_frame: gdb.Value
-    return_address: gdb.Value
+    stack_frame: DebuggerValue
+    return_address: DebuggerValue
 
     @staticmethod
-    def from_addr(addr: gdb.Value) -> "StackFrame":
+    def from_addr(addr: DebuggerValue) -> "StackFrame":
         return StackFrame(
-            stack_frame=get_field(addr, 0),
-            return_address=get_field(addr, 1),
+            stack_frame=addr.get_field(0),
+            return_address=addr.get_field(1),
         )
 
 
-def nullptr() -> gdb.Value:
-    return gdb.parse_and_eval("0x0")
-
-
-def to_hex(v: gdb.Value) -> str:
-    """Returns v in hex padded with leading zeros"""
-    return f"{int(v):#0{18}x}"
-
-
-def get_file_name_and_line(addr: gdb.Value) -> Tuple[str, int]:
-    regex = re.compile(r"Line (\d+) of (.*) starts at.*")
-    output = gdb.execute(
-        f"info line *{to_hex(addr)}",
-        from_tty=False,
-        to_string=True,
-    ).split("\n")[0]
-    groups = regex.match(output)
-    return (groups.group(2).strip('"'), int(groups.group(1))) if groups else ("???", 0)
-
-
-def get_func_name(addr: gdb.Value) -> str:
-    regex = re.compile(r"(.*) \+ \d+ in section.* of .*")
-    output = gdb.execute(
-        f"info symbol {to_hex(addr)}",
-        from_tty=False,
-        to_string=True,
-    ).split("\n")[0]
-    groups = regex.match(output)
-    return groups.group(1) if groups else "???"
-
-
-def get_current_pthread_addr() -> gdb.Value:
-    """
-    Returns a pointer to the current pthread
-    """
-    regex = re.compile(r"\[Current thread is.*\(Thread (.*) \(LWP .*\)\)")
-    output = gdb.execute("thread", from_tty=False, to_string=True).split("\n")[0]
-    groups = regex.match(output)
-    return gdb.parse_and_eval(groups.group(1)) if groups else nullptr()
-
-
-def get_async_stack_root_addr() -> gdb.Value:
+def get_async_stack_root_addr(
+    debugger_value_class: Type[DebuggerValue],
+) -> DebuggerValue:
     """
     Returns a pointer to the top-most async stack root, or a nullptr if none
     exists.
     """
-    pthread_addr = get_current_pthread_addr()
-    if int(pthread_addr) == 0:
-        return nullptr()
+    pthread_addr = debugger_value_class.get_current_pthread_addr()
+    if pthread_addr.is_nullptr():
+        return debugger_value_class.nullptr()
 
     # Check if the tls key is initialized
-    tls_key = gdb.parse_and_eval(f"(int){ASYNC_STACK_ROOT_TLS_KEY}")
-    if (int(tls_key) % (2**32)) == ((2**32) - 1):
-        return nullptr()
+    tls_key = debugger_value_class.parse_and_eval(
+        f"(uint64_t){ASYNC_STACK_ROOT_TLS_KEY}"
+    )
+    if (tls_key.int_value() % (2**32)) == ((2**32) - 1):
+        return debugger_value_class.nullptr()
 
     # get the stack root pointer from thread-local storage
     try:
         # Note: "struct pthread" is the implementation type for "pthread_t".
         # Its symbol information may not be available, depending if pthread
         # debug symbols are available.
-        async_stack_root_holder_addr = gdb.parse_and_eval(
-            f"((struct pthread*){to_hex(pthread_addr)})->specific"
-            f"[(int){to_hex(tls_key)}/32]"
-            f"[(int){to_hex(tls_key)}%32]"
+        async_stack_root_holder_addr = debugger_value_class.parse_and_eval(
+            f"((struct pthread*){pthread_addr.to_hex()})->specific"
+            f"[(int){tls_key.to_hex()}/32]"
+            f"[(int){tls_key.to_hex()}%32]"
             ".data"
         )
-    except gdb.error as e:
-        if "No struct type named pthread" not in str(e):
-            raise e
+        if async_stack_root_holder_addr.is_nullptr():
+            raise Exception("struct pthread info not found")
+    except Exception:
         # If "struct pthread" isn't defined, use the precalculated offset.
         # Note: The offset is specific to linux x86_64.
         specific_offset = 1296
-        pthread_key_data_addr = gdb.parse_and_eval(
-            f"&(((uintptr_t[2]**)({to_hex(pthread_addr)}+{specific_offset}))"
-            f"[(int){to_hex(tls_key)}/32]"
-            f"[(int){to_hex(tls_key)}%32])"
+        specific_addr = debugger_value_class.parse_and_eval(
+            f"{pthread_addr.to_hex()}+{specific_offset}"
+        )
+        specific_second_level_addr = specific_addr.get_field(tls_key.int_value() // 32)
+        # pthread_key_data is equivalent to uintptr_t[2]
+        # We want the N-th pthread_key_data, and the second pointer inside
+        # pthread_key_data. So we want the uintptr_t at the 2 * N + 1 position
+        async_stack_root_holder_addr = specific_second_level_addr.get_field(
+            (2 * (tls_key.int_value() % 32)) + 1
         )
 
-        # Extract the "data" field from pthread_key_data, which has the
-        # following definition:
-        # struct pthread_key_data {
-        #   uintptr_t seq;
-        #   void *data;
-        # }
-        async_stack_root_holder_addr = get_field(pthread_key_data_addr, 1)
-
-    if int(async_stack_root_holder_addr) == 0:
-        return nullptr()
+    if async_stack_root_holder_addr.is_nullptr():
+        return debugger_value_class.nullptr()
     async_stack_root_holder = AsyncStackRootHolder.from_addr(
         async_stack_root_holder_addr
     )
     return async_stack_root_holder.value
 
 
-def print_async_stack_addrs(addrs: List[gdb.Value]) -> None:
+def print_async_stack_addrs(addrs: List[DebuggerValue]) -> None:
     if len(addrs) == 0:
         print("No async operation detected")
         return
     num_digits = len(str(len(addrs)))
     for (i, addr) in enumerate(addrs):
-        func_name = get_func_name(addr)
-        file_name, line = get_file_name_and_line(addr)
+        func_name = addr.get_func_name()
+        if func_name is None:
+            func_name = "???"
+        file_name_line_pair = addr.get_file_name_and_line()
+        if file_name_line_pair is None:
+            file_name = "???"
+            line = 0
+        else:
+            file_name, line = file_name_line_pair
         print(
             f"#{str(i).ljust(num_digits, ' ')}"
-            f" {to_hex(addr)} in {func_name} () at {file_name}:{line}"
+            f" {addr.to_hex()} in {func_name} () at {file_name}:{line}"
         )
 
 
 def get_async_stack_addrs_from_initial_frame(
-    async_stack_frame_addr: gdb.Value,
-) -> List[gdb.Value]:
+    async_stack_frame_addr: DebuggerValue,
+) -> List[DebuggerValue]:
     """
     Gets the list of async stack frames rooted at the current frame
     """
-    addrs: List[gdb.Value] = []
-    while int(async_stack_frame_addr) != 0:
+    addrs: List[DebuggerValue] = []
+    while not async_stack_frame_addr.is_nullptr():
         async_stack_frame = AsyncStackFrame.from_addr(async_stack_frame_addr)
         addrs.append(async_stack_frame.instruction_pointer)
         async_stack_frame_addr = async_stack_frame.parent_frame
@@ -242,18 +295,18 @@ def get_async_stack_addrs_from_initial_frame(
 
 
 def walk_normal_stack(
-    normal_stack_frame_addr: gdb.Value,
-    normal_stack_frame_stop_addr: gdb.Value,
-) -> List[gdb.Value]:
+    normal_stack_frame_addr: DebuggerValue,
+    normal_stack_frame_stop_addr: DebuggerValue,
+) -> List[DebuggerValue]:
     """
     Returns the list of return addresses in the normal stack.
     Does not include stop_addr
     """
-    addrs: List[gdb.Value] = []
-    while int(normal_stack_frame_addr) != 0:
+    addrs: List[DebuggerValue] = []
+    while not normal_stack_frame_addr.is_nullptr():
         normal_stack_frame = StackFrame.from_addr(normal_stack_frame_addr)
         if (
-            int(normal_stack_frame_stop_addr) != 0
+            not normal_stack_frame_stop_addr.is_nullptr()
             and normal_stack_frame.stack_frame == normal_stack_frame_stop_addr
         ):
             # Reached end of normal stack, transition to the async stack
@@ -267,40 +320,43 @@ def walk_normal_stack(
 
 @dataclass
 class WalkAsyncStackResult:
-    addrs: List[gdb.Value]
+    addrs: List[DebuggerValue]
     # Normal stack frame to start the next normal stack walk
-    normal_stack_frame_addr: gdb.Value
-    normal_stack_frame_stop_addr: gdb.Value
+    normal_stack_frame_addr: DebuggerValue
+    normal_stack_frame_stop_addr: DebuggerValue
     # Async stack frame to start the next async stack walk after the next
     # normal stack walk
-    async_stack_frame_addr: gdb.Value
+    async_stack_frame_addr: DebuggerValue
 
 
-def walk_async_stack(async_stack_frame_addr: gdb.Value) -> WalkAsyncStackResult:
+def walk_async_stack(
+    debugger_value_class: Type[DebuggerValue],
+    async_stack_frame_addr: DebuggerValue,
+) -> WalkAsyncStackResult:
     """
     Walks the async stack and returns the next normal stack and async stack
     addresses to walk.
     """
-    addrs: List[gdb.Value] = []
-    normal_stack_frame_addr = nullptr()
-    normal_stack_frame_stop_addr = nullptr()
-    async_stack_frame_next_addr = nullptr()
-    while int(async_stack_frame_addr) != 0:
+    addrs: List[DebuggerValue] = []
+    normal_stack_frame_addr = debugger_value_class.nullptr()
+    normal_stack_frame_stop_addr = debugger_value_class.nullptr()
+    async_stack_frame_next_addr = debugger_value_class.nullptr()
+    while not async_stack_frame_addr.is_nullptr():
         async_stack_frame = AsyncStackFrame.from_addr(async_stack_frame_addr)
         addrs.append(async_stack_frame.instruction_pointer)
 
-        if int(async_stack_frame.parent_frame) == 0:
+        if async_stack_frame.parent_frame.is_nullptr():
             # Reached end of async stack
             # Check if there is an AsyncStackRoot and if so, whether there
             # is an associated stack frame that indicates the normal stack
             # frame we should continue walking at.
             async_stack_root_addr = async_stack_frame.stack_root
-            if int(async_stack_root_addr) == 0:
+            if async_stack_root_addr.is_nullptr():
                 # This is a detached async stack. We are done
                 break
             async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
             normal_stack_frame_addr = async_stack_root.stack_frame_ptr
-            if int(normal_stack_frame_addr) == 0:
+            if normal_stack_frame_addr.is_nullptr():
                 # No associated normal stack frame for this async stack root.
                 # This means we should treat this as a top-level/detached
                 # stack and not try to walk any further.
@@ -318,7 +374,7 @@ def walk_async_stack(async_stack_frame_addr: gdb.Value) -> WalkAsyncStackResult:
             # Also get the async stack frame where the next async stack walk
             # should begin after the next normal stack walk finishes.
             async_stack_root_addr = async_stack_root.next_root
-            if int(async_stack_root_addr) != 0:
+            if not async_stack_root_addr.is_nullptr():
                 async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
                 normal_stack_frame_stop_addr = async_stack_root.stack_frame_ptr
                 async_stack_frame_next_addr = async_stack_root.top_frame
@@ -333,7 +389,9 @@ def walk_async_stack(async_stack_frame_addr: gdb.Value) -> WalkAsyncStackResult:
     )
 
 
-def get_async_stack_addrs() -> List[gdb.Value]:
+def get_async_stack_addrs(
+    debugger_value_class: Type[DebuggerValue],
+) -> List[DebuggerValue]:
     """
     Gets the async stack trace, including normal stack frames with async
     stack frames.
@@ -341,30 +399,35 @@ def get_async_stack_addrs() -> List[gdb.Value]:
     See C++ implementation in `getAsyncStackTraceSafe` in
     folly/experimental/symbolizer/StackTrace.cpp
     """
-    async_stack_root_addr = get_async_stack_root_addr()
+    async_stack_root_addr = get_async_stack_root_addr(debugger_value_class)
 
     # If we have no async stack root, this should return no frames.
     # If we do have a stack root, also include the current return address.
-    if int(async_stack_root_addr) == 0:
+    if async_stack_root_addr.is_nullptr():
         return []
 
     # Start the stack trace from the top
-    gdb.execute("f 0", from_tty=False, to_string=True)
+    debugger_value_class.execute("f 0")
 
     # Start by walking the normal stack until we get to the frame right before
     # the frame that holds the async root.
     async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
-    normal_stack_frame_addr = gdb.parse_and_eval("$rbp")
+    normal_stack_frame_addr = debugger_value_class.get_register("rbp")
     normal_stack_frame_stop_addr = async_stack_root.stack_frame_ptr
-    addrs: List[gdb.Value] = []
-    addrs.append(gdb.parse_and_eval("$pc"))
+    addrs: List[DebuggerValue] = []
+    addrs.append(debugger_value_class.get_register("pc"))
     async_stack_frame_addr = async_stack_root.top_frame
 
-    while int(normal_stack_frame_addr) != 0 or int(async_stack_frame_addr) != 0:
+    while (
+        not normal_stack_frame_addr.is_nullptr()
+        or not async_stack_frame_addr.is_nullptr()
+    ):
         addrs += walk_normal_stack(
             normal_stack_frame_addr, normal_stack_frame_stop_addr
         )
-        walk_async_stack_result = walk_async_stack(async_stack_frame_addr)
+        walk_async_stack_result = walk_async_stack(
+            debugger_value_class, async_stack_frame_addr
+        )
         addrs += walk_async_stack_result.addrs
         normal_stack_frame_addr = walk_async_stack_result.normal_stack_frame_addr
         normal_stack_frame_stop_addr = (
@@ -374,89 +437,221 @@ def get_async_stack_addrs() -> List[gdb.Value]:
     return addrs
 
 
-def print_async_stack_root_addrs(addrs: List[gdb.Value]) -> None:
+def print_async_stack_root_addrs(addrs: List[DebuggerValue]) -> None:
     if len(addrs) == 0:
         print("No async stack roots detected")
         return
     num_digits = len(str(len(addrs)))
     for (i, addr) in enumerate(addrs):
         async_stack_root = AsyncStackRoot.from_addr(addr)
-        if int(async_stack_root.stack_frame_ptr) != 0:
+        if not async_stack_root.stack_frame_ptr.is_nullptr():
             stack_frame = StackFrame.from_addr(async_stack_root.stack_frame_ptr)
-            func_name = get_func_name(stack_frame.return_address)
-            file_name, line = get_file_name_and_line(stack_frame.return_address)
+            func_name = stack_frame.return_address.get_func_name()
+            if func_name is None:
+                func_name = "???"
+            file_name_line_pair = stack_frame.return_address.get_file_name_and_line()
+            if file_name_line_pair is not None:
+                file_name, line = file_name_line_pair
+            else:
+                file_name = "???"
+                line = 0
         else:
             func_name = "???"
             file_name = "???"
             line = 0
         print(
             f"#{str(i).ljust(num_digits, ' ')}"
-            f" async stack root {to_hex(addr)}"
-            f" located in normal stack frame {to_hex(async_stack_root.stack_frame_ptr)}"
+            f" async stack root {addr.to_hex()}"
+            f" located in normal stack frame {async_stack_root.stack_frame_ptr.to_hex()}"
             f" in {func_name} () at {file_name}:{line}"
         )
 
 
-def get_async_stack_root_addrs() -> List[gdb.Value]:
+def get_async_stack_root_addrs(
+    debugger_value_class: Type[DebuggerValue],
+) -> List[DebuggerValue]:
     """
     Gets all the async stack roots that exist for the current thread.
     """
-    addrs: List[gdb.Value] = []
-    async_stack_root_addr = get_async_stack_root_addr()
-    while int(async_stack_root_addr) != 0:
+    addrs: List[DebuggerValue] = []
+    async_stack_root_addr = get_async_stack_root_addr(debugger_value_class)
+    while not async_stack_root_addr.is_nullptr():
         addrs.append(async_stack_root_addr)
         async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
         async_stack_root_addr = async_stack_root.next_root
     return addrs
 
 
-class CoroBacktraceCommand(gdb.Command):
-    def __init__(self):
-        super(CoroBacktraceCommand, self).__init__("co_bt", gdb.COMMAND_USER)
-
-    def invoke(self, arg: str, from_tty: bool):
-        try:
-            addrs: List[gdb.Value] = []
-            if arg:
-                async_stack_root_addr = gdb.parse_and_eval(arg)
-                if int(async_stack_root_addr) != 0:
-                    async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
-                    addrs = get_async_stack_addrs_from_initial_frame(
-                        async_stack_root.top_frame
-                    )
-            else:
-                addrs = get_async_stack_addrs()
-            print_async_stack_addrs(addrs)
-        except Exception:
-            print("Error collecting async stack trace:")
-            traceback.print_exception(*sys.exc_info())
-
-
-class CoroAsyncStackRootsCommand(gdb.Command):
-    def __init__(self):
-        super(CoroAsyncStackRootsCommand, self).__init__(
-            "co_async_stack_roots", gdb.COMMAND_USER
-        )
-
-    def invoke(self, arg: str, from_tty: bool):
-        addrs = get_async_stack_root_addrs()
-        print_async_stack_root_addrs(addrs)
+def backtrace_command(
+    debugger_value_class: Type[DebuggerValue],
+    stack_root: Optional[str],
+) -> None:
+    try:
+        addrs: List[DebuggerValue] = []
+        if stack_root:
+            async_stack_root_addr = debugger_value_class.parse_and_eval(stack_root)
+            if not async_stack_root_addr.is_nullptr():
+                async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
+                addrs = get_async_stack_addrs_from_initial_frame(
+                    async_stack_root.top_frame
+                )
+        else:
+            addrs = get_async_stack_addrs(debugger_value_class)
+        print_async_stack_addrs(addrs)
+    except Exception:
+        print("Error collecting async stack trace:")
+        traceback.print_exception(*sys.exc_info())
 
 
-def info() -> str:
-    return """Pretty printers for folly::coro. Available commands:
+def async_stack_roots_command(debugger_value_class: Type[DebuggerValue]) -> None:
+    addrs = get_async_stack_root_addrs(debugger_value_class)
+    print_async_stack_root_addrs(addrs)
 
-co_bt [async_stack_root_addr]  Prints async stack trace for the current thread.
-                               If an async stack root address is provided,
-                               prints the async stack starting from this root.
-co_async_stack_roots           Prints all async stack roots.
+
+def co_bt_info() -> str:
+    return """Command: co_bt [async_stack_root_addr]
+
+Prints async stack trace for the current thread.
+If an async stack root address is provided,
+prints the async stack starting from this root.
 """
 
 
-def load() -> None:
-    CoroBacktraceCommand()
-    CoroAsyncStackRootsCommand()
-    print(info())
+def co_async_stack_root_info() -> str:
+    return """Command: co_async_stack_roots
+
+Prints all async stack roots.
+"""
+
+
+class DebuggerType(enum.Enum):
+    GDB = 0
+
+
+debugger_type: Optional[DebuggerType] = None
+if debugger_type is None:  # noqa: C901
+    try:
+        import gdb
+
+        class GdbValue(DebuggerValue):
+            """
+            GDB implementation of a debugger value
+            """
+
+            value: gdb.Value
+
+            def __init__(self, value: gdb.Value) -> None:
+                self.value = value
+
+            @staticmethod
+            def nullptr() -> DebuggerValue:
+                return GdbValue.parse_and_eval("0x0")
+
+            @staticmethod
+            def parse_and_eval(expr: str) -> DebuggerValue:
+                return GdbValue(gdb.parse_and_eval(expr))
+
+            @staticmethod
+            def execute(expr: str) -> str:
+                return gdb.execute(expr, from_tty=False, to_string=True)
+
+            @staticmethod
+            def get_current_pthread_addr() -> DebuggerValue:
+                try:
+                    # On Linux x86_64, the pthread struct pointer is stored
+                    # in the fs_base virtual register. Try to read it from
+                    # this register first.
+                    fs_base = GdbValue.get_register("fs_base")
+                    if not fs_base.is_nullptr():
+                        return fs_base
+                except Exception:
+                    pass
+                regex = re.compile(r"\[Current thread is.*\(Thread (.*) \(LWP .*\)\)")
+                output = GdbValue.execute("thread").split("\n")[0]
+                groups = regex.match(output)
+                return (
+                    GdbValue.parse_and_eval(groups.group(1))
+                    if groups
+                    else GdbValue.nullptr()
+                )
+
+            @staticmethod
+            def get_register(register: str) -> DebuggerValue:
+                return GdbValue.parse_and_eval(f"${register}")
+
+            def get_field(self, n: int) -> DebuggerValue:
+                return GdbValue.parse_and_eval(f"((uintptr_t*){self.value})[{n}]")
+
+            def is_nullptr(self) -> bool:
+                return int(self.value) == 0
+
+            def int_value(self) -> int:
+                return int(self.value)
+
+            def to_hex(self) -> str:
+                return f"{int(self.value):#0{18}x}"
+
+            def get_file_name_and_line(self) -> Optional[Tuple[str, int]]:
+                regex = re.compile(r"Line (\d+) of (.*) starts at.*")
+                output = GdbValue.execute(f"info line *{self.to_hex()}",).split(
+                    "\n"
+                )[0]
+                groups = regex.match(output)
+                return (
+                    (groups.group(2).strip('"'), int(groups.group(1)))
+                    if groups
+                    else None
+                )
+
+            def get_func_name(self) -> Optional[str]:
+                regex = re.compile(r"(.*) \+ \d+ in section.* of .*")
+                output = GdbValue.execute(f"info symbol {self.to_hex()}",).split(
+                    "\n"
+                )[0]
+                groups = regex.match(output)
+                return groups.group(1) if groups else None
+
+        class GdbCoroBacktraceCommand(gdb.Command):
+            def __init__(self):
+                print(co_bt_info())
+                super(GdbCoroBacktraceCommand, self).__init__("co_bt", gdb.COMMAND_USER)
+
+            def invoke(self, arg: str, from_tty: bool):
+                backtrace_command(GdbValue, arg)
+
+        class GdbCoroAsyncStackRootsCommand(gdb.Command):
+            def __init__(self):
+                print(co_async_stack_root_info())
+                super(GdbCoroAsyncStackRootsCommand, self).__init__(
+                    "co_async_stack_roots", gdb.COMMAND_USER
+                )
+
+            def invoke(self, arg: str, from_tty: bool):
+                async_stack_roots_command(GdbValue)
+
+        debugger_type = DebuggerType.GDB
+    except Exception:
+        pass
+
+
+def info():
+    return f"""Pretty printers for folly::coro. Available commands:
+{co_bt_info()}
+
+{co_async_stack_root_info()}
+"""
+
+
+def load(debugger=None) -> None:
+    """
+    This debugger script is meant to work with both lldb and gdb. Use
+    conditional imports, as one will not be defined when we use the other.
+    """
+    if debugger_type == DebuggerType.GDB:
+        GdbCoroBacktraceCommand()
+        GdbCoroAsyncStackRootsCommand()
+    else:
+        pass
 
 
 if __name__ == "__main__":
