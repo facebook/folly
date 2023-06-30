@@ -19,7 +19,7 @@ import re
 import sys
 import traceback
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Type
+from typing import ClassVar, List, Optional, Tuple, Type
 
 
 class DebuggerValue(abc.ABC):
@@ -526,6 +526,7 @@ Prints all async stack roots.
 
 class DebuggerType(enum.Enum):
     GDB = 0
+    LLDB = 1
 
 
 debugger_type: Optional[DebuggerType] = None
@@ -633,6 +634,181 @@ if debugger_type is None:  # noqa: C901
     except Exception:
         pass
 
+if debugger_type is None:  # noqa: C901
+    try:
+        import lldb
+
+        class LldbValue(DebuggerValue):
+            """
+            LLDB implementation of a debugger value
+            """
+
+            exe_ctx: ClassVar[Optional[lldb.SBExecutionContext]] = None
+            next_name_num: ClassVar[int] = 0
+            value: lldb.SBValue
+
+            def __init__(self, value: lldb.SBValue) -> None:
+                self.value = value
+
+            @staticmethod
+            def nullptr() -> DebuggerValue:
+                return LldbValue.parse_and_eval("nullptr")
+
+            @staticmethod
+            def parse_and_eval(expr: str) -> DebuggerValue:
+                value = LldbValue(
+                    LldbValue.exe_ctx.GetTarget().CreateValueFromExpression(
+                        f"{LldbValue.next_name_num}", expr
+                    )
+                )
+                LldbValue.next_name_num += 1
+                return value
+
+            @staticmethod
+            def execute(expr: str) -> str:
+                return_obj = lldb.SBCommandReturnObject()
+                LldbValue.exe_ctx.GetTarget().GetDebugger().GetCommandInterpreter().HandleCommand(
+                    expr, LldbValue.exe_ctx, return_obj, False
+                )
+                if return_obj.Succeeded():
+                    return return_obj.GetOutput()
+                return return_obj.GetError()
+
+            @staticmethod
+            def get_current_pthread_addr() -> DebuggerValue:
+                try:
+                    # On Linux x86_64, the pthread struct pointer is stored
+                    # in the fs_base virtual register.
+                    # LLDB upstream currently does not provide support for
+                    # the lldb fs_base virtual register, see:
+                    # https://discourse.llvm.org/t/how-to-get-pthread-pointer-from-lldb/70542
+                    # Internally, we have a patch to add support for fs_base on
+                    # Linux x86_64 that we will upstream soon.
+                    # In this case, try to use the fs_base register if it
+                    # exists, otherwise fall back to other ways:
+                    fs_base = LldbValue.get_register("fs_base")
+                    if not fs_base.is_nullptr():
+                        return fs_base
+                except Exception:
+                    pass
+
+                # If we are a live process, try to call this helper to get
+                # the pthread struct pointer. Note that this may not work
+                # on core dumps or optimized builds.
+                result = LldbValue.exe_ctx.GetFrame().EvaluateExpression(
+                    "(struct pthread*)pthread_self()"
+                )
+                if result.GetError().Success():
+                    return LldbValue(result)
+                return LldbValue.nullptr()
+
+            @staticmethod
+            def get_register(register: str) -> DebuggerValue:
+                return LldbValue(LldbValue.exe_ctx.GetFrame().FindRegister(register))
+
+            def get_field(self, n: int) -> DebuggerValue:
+                # Linux x86_64 size of a pointer
+                ptr_size = 8
+                ptr_type = (
+                    LldbValue.exe_ctx.GetTarget()
+                    .FindFirstType("uintptr_t")
+                    .GetPointerType()
+                )
+                address = lldb.SBAddress(
+                    self.int_value() + ptr_size * n,
+                    LldbValue.exe_ctx.GetTarget(),
+                )
+                value = LldbValue(
+                    LldbValue.exe_ctx.GetTarget().CreateValueFromAddress(
+                        f"{LldbValue.next_name_num}", address, ptr_type
+                    )
+                )
+                LldbValue.next_name_num += 1
+                return value
+
+            def is_nullptr(self) -> bool:
+                return int(self.value.value, 0) == 0
+
+            def int_value(self) -> int:
+                return int(self.value.value, 0)
+
+            def to_hex(self) -> str:
+                return f"{int(self.value.value, 0):#0{18}x}"
+
+            # Type must be in quotes because it breaks parsing
+            # with conditional imports
+            def _get_symbol_context(self) -> "lldb.SBSymbolContext":
+                address = lldb.SBAddress(
+                    self.int_value(), LldbValue.exe_ctx.GetTarget()
+                )
+                return LldbValue.exe_ctx.GetTarget().ResolveSymbolContextForAddress(
+                    address, lldb.eSymbolContextEverything
+                )
+
+            def get_file_name_and_line(self) -> Optional[Tuple[str, int]]:
+                symbol_context = self._get_symbol_context()
+                line_entry = symbol_context.GetLineEntry()
+                path = line_entry.GetFileSpec().fullpath
+                if path:
+                    return (path, line_entry.GetLine())
+                return None
+
+            def get_func_name(self) -> Optional[str]:
+                symbol_context = self._get_symbol_context()
+                if symbol_context.GetFunction().IsValid():
+                    return symbol_context.GetFunction().GetDisplayName()
+                return symbol_context.GetSymbol().GetDisplayName()
+
+        class LldbCoroBacktraceCommand:
+            program: ClassVar[str] = "co_bt"
+
+            def __init__(self, debugger, internal_dict):
+                pass
+
+            @classmethod
+            def register_lldb_command(cls, debugger, module_name):
+                command = (
+                    f"command script add -c {module_name}.{cls.__name__} {cls.program}"
+                )
+                debugger.HandleCommand(command)
+
+            def get_short_help(self):
+                return co_bt_info()
+
+            def get_long_help(self):
+                return co_bt_info()
+
+            def __call__(self, debugger, command, exe_ctx, result):
+                LldbValue.exe_ctx = exe_ctx
+                backtrace_command(LldbValue, command)
+
+        class LldbCoroAsyncStackRootsCommand:
+            program = "co_async_stack_roots"
+
+            def __init__(self, debugger, internal_dict):
+                pass
+
+            @classmethod
+            def register_lldb_command(cls, debugger, module_name):
+                command = (
+                    f"command script add -c {module_name}.{cls.__name__} {cls.program}"
+                )
+                debugger.HandleCommand(command)
+
+            def get_short_help(self):
+                return co_async_stack_root_info()
+
+            def get_long_help(self):
+                return co_async_stack_root_info()
+
+            def __call__(self, debugger, command, exe_ctx, result):
+                LldbValue.exe_ctx = exe_ctx
+                async_stack_roots_command(LldbValue)
+
+        debugger_type = DebuggerType.LLDB
+    except Exception:
+        pass
+
 
 def info():
     return f"""Pretty printers for folly::coro. Available commands:
@@ -650,8 +826,22 @@ def load(debugger=None) -> None:
     if debugger_type == DebuggerType.GDB:
         GdbCoroBacktraceCommand()
         GdbCoroAsyncStackRootsCommand()
+    elif debugger_type == DebuggerType.LLDB:
+        LldbCoroBacktraceCommand.register_lldb_command(debugger, __name__)
+        LldbCoroAsyncStackRootsCommand.register_lldb_command(debugger, __name__)
     else:
         pass
+
+
+def __lldb_init_module(debugger, internal_dict) -> None:
+    """
+    This function will be invoked automatically by lldb when we run:
+
+    command script import <path>
+
+    debugger will be of type lldb.SBDebugger
+    """
+    load(debugger)
 
 
 if __name__ == "__main__":
