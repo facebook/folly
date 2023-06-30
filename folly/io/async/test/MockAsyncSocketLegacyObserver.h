@@ -48,7 +48,9 @@ class MockAsyncSocketLegacyLifecycleObserver
       byteEventsUnavailableMock,
       (AsyncSocket*, const AsyncSocketException&));
   MOCK_METHOD(
-      PrewriteRequest, prewriteMock, (AsyncSocket*, const PrewriteState&));
+      void,
+      prewriteMock,
+      (AsyncSocket*, const PrewriteState&, PrewriteRequestContainer&));
 
  private:
   void observerAttach(AsyncSocket* socket) noexcept override {
@@ -86,9 +88,11 @@ class MockAsyncSocketLegacyLifecycleObserver
       AsyncSocket* socket, const AsyncSocketException& ex) noexcept override {
     byteEventsUnavailableMock(socket, ex);
   }
-  PrewriteRequest prewrite(
-      AsyncSocket* socket, const PrewriteState& state) noexcept override {
-    return prewriteMock(socket, state);
+  void prewrite(
+      AsyncSocket* socket,
+      const PrewriteState& state,
+      PrewriteRequestContainer& container) noexcept override {
+    prewriteMock(socket, state, container);
   }
 };
 

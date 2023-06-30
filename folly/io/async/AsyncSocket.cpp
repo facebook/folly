@@ -3514,77 +3514,50 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     WriteFlags flags,
     WriteRequestTag writeTag) {
   // lambda to gather and merge PrewriteRequests from observers
-  auto mergePrewriteRequests = [this,
-                                vec,
-                                count,
-                                flags,
-                                maybeVecTotalBytes =
-                                    folly::Optional<size_t>()]() mutable {
-    AsyncSocketObserverInterface::PrewriteRequest mergedRequest = {};
-    if (lifecycleObservers_.empty()) {
-      return mergedRequest;
-    }
-
-    // determine total number of bytes in vec, reuse once determined
-    if (!maybeVecTotalBytes.has_value()) {
-      maybeVecTotalBytes = 0;
-      for (size_t i = 0; i < count; ++i) {
-        maybeVecTotalBytes.value() += vec[i].iov_len;
-      }
-    }
-    auto& vecTotalBytes = maybeVecTotalBytes.value();
-
-    const auto startOffset = getRawBytesWritten();
-    const auto endOffset = getRawBytesWritten() + vecTotalBytes - 1;
-    const AsyncSocketObserverInterface::PrewriteState prewriteState = [&] {
-      AsyncSocketObserverInterface::PrewriteState state = {};
-      state.startOffset = startOffset;
-      state.endOffset = endOffset;
-      state.writeFlags = flags;
-      state.ts = std::chrono::steady_clock::now();
-      return state;
-    }();
-    for (const auto& observer : lifecycleObservers_) {
-      if (!observer->getConfig().prewrite) {
-        continue;
-      }
-
-      const auto request = observer->prewrite(this, prewriteState);
-
-      mergedRequest.writeFlagsToAdd |= request.writeFlagsToAdd;
-      if (request.maybeOffsetToSplitWrite.has_value()) {
-        CHECK_GE(endOffset, request.maybeOffsetToSplitWrite.value());
-        if (
-            // case 1: offset not set in merged request
-            !mergedRequest.maybeOffsetToSplitWrite.has_value() ||
-            // case 2: offset in merged request > offset in current request
-            mergedRequest.maybeOffsetToSplitWrite >
-                request.maybeOffsetToSplitWrite) {
-          mergedRequest.maybeOffsetToSplitWrite =
-              request.maybeOffsetToSplitWrite; // update
-          mergedRequest.writeFlagsToAddAtOffset =
-              request.writeFlagsToAddAtOffset; // reset
-        } else if (
-            // case 3: offset in merged request == offset in current request
-            request.maybeOffsetToSplitWrite ==
-            mergedRequest.maybeOffsetToSplitWrite) {
-          mergedRequest.writeFlagsToAddAtOffset |=
-              request.writeFlagsToAddAtOffset; // merge
+  auto gatherAndMergePrewriteRequests =
+      [this,
+       vec,
+       count,
+       flags,
+       maybeVecTotalBytes = folly::Optional<size_t>()]() mutable {
+        AsyncSocketObserverInterface::PrewriteRequest mergedRequest = {};
+        if (lifecycleObservers_.empty()) {
+          return mergedRequest;
         }
-        // case 4: offset in merged request < offset in current request
-        // (do nothing)
-      }
-    }
 
-    // if maybeOffsetToSplitWrite points to end of the vector, remove the
-    // split
-    if (mergedRequest.maybeOffsetToSplitWrite.has_value() && // explicit
-        mergedRequest.maybeOffsetToSplitWrite == endOffset) {
-      mergedRequest.maybeOffsetToSplitWrite.reset(); // no split needed
-    }
+        // determine total number of bytes in vec, reuse once determined
+        if (!maybeVecTotalBytes.has_value()) {
+          maybeVecTotalBytes = 0;
+          for (size_t i = 0; i < count; ++i) {
+            maybeVecTotalBytes.value() += vec[i].iov_len;
+          }
+        }
+        auto& vecTotalBytes = maybeVecTotalBytes.value();
 
-    return mergedRequest;
-  };
+        // build our PrewriteState
+        const auto startOffset = getRawBytesWritten();
+        const auto endOffset = getRawBytesWritten() + vecTotalBytes - 1;
+        const AsyncSocketObserverInterface::PrewriteState prewriteState = [&] {
+          AsyncSocketObserverInterface::PrewriteState state = {};
+          state.startOffset = startOffset;
+          state.endOffset = endOffset;
+          state.writeFlags = flags;
+          state.ts = std::chrono::steady_clock::now();
+          return state;
+        }();
+
+        // enable observers to add PrewriteRequests to container
+        AsyncSocketObserverInterface::PrewriteRequestContainer
+            prewriteRequestContainer(prewriteState);
+        for (const auto& observer : lifecycleObservers_) {
+          if (!observer->getConfig().prewrite) {
+            continue;
+          }
+          observer->prewrite(this, prewriteState, prewriteRequestContainer);
+        }
+
+        return prewriteRequestContainer.getMergedRequest();
+      };
 
   // lambda to prepare and send a message, and handle byte events
   // parameters have L at the end to prevent shadowing warning from gcc
@@ -3655,7 +3628,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
   };
 
   // get PrewriteRequests (if any), merge flags with write flags
-  const auto prewriteRequest = mergePrewriteRequests();
+  const auto prewriteRequest = gatherAndMergePrewriteRequests();
   auto mergedFlags = flags | prewriteRequest.writeFlagsToAdd |
       prewriteRequest.writeFlagsToAddAtOffset;
 
