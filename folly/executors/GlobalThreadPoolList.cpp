@@ -27,7 +27,7 @@
 
 namespace folly {
 
-namespace {
+namespace debugger_detail {
 
 class ThreadListHook {
  public:
@@ -85,7 +85,7 @@ class GlobalThreadPoolListImpl {
 
 class GlobalThreadPoolList {
  public:
-  GlobalThreadPoolList() = default;
+  GlobalThreadPoolList() noexcept { debug = this; }
 
   static GlobalThreadPoolList& instance();
 
@@ -103,11 +103,14 @@ class GlobalThreadPoolList {
   void operator=(GlobalThreadPoolList const&) = delete;
 
  private:
+  // Make instance() available to the debugger
+  static GlobalThreadPoolList* debug;
+
   folly::Synchronized<GlobalThreadPoolListImpl> globalListImpl_;
   folly::ThreadLocalPtr<ThreadListHook> threadHook_;
 };
 
-} // namespace
+GlobalThreadPoolList* GlobalThreadPoolList::debug;
 
 GlobalThreadPoolList& GlobalThreadPoolList::instance() {
   static folly::Indestructible<GlobalThreadPoolList> ret;
@@ -189,16 +192,19 @@ ThreadListHook::~ThreadListHook() {
       poolId_, threadId_);
 }
 
+} // namespace debugger_detail
+
 ThreadPoolListHook::ThreadPoolListHook(std::string name) {
-  GlobalThreadPoolList::instance().registerThreadPool(this, name);
+  debugger_detail::GlobalThreadPoolList::instance().registerThreadPool(
+      this, name);
 }
 
 ThreadPoolListHook::~ThreadPoolListHook() {
-  GlobalThreadPoolList::instance().unregisterThreadPool(this);
+  debugger_detail::GlobalThreadPoolList::instance().unregisterThreadPool(this);
 }
 
 void ThreadPoolListHook::registerThread() {
-  GlobalThreadPoolList::instance().registerThreadPoolThread(
+  debugger_detail::GlobalThreadPoolList::instance().registerThreadPoolThread(
       this, std::this_thread::get_id());
 }
 
