@@ -1043,11 +1043,7 @@ jobs:
                 if m != manifest:
                     if m.name == "rust":
                         out.write("    - name: Install Rust Stable\n")
-                        out.write("      uses: actions-rs/toolchain@v1\n")
-                        out.write("      with:\n")
-                        out.write("        toolchain: stable\n")
-                        out.write("        default: true\n")
-                        out.write("        profile: minimal\n")
+                        out.write("      uses: dtolnay/rust-toolchain@stable\n")
                     else:
                         ctx = loader.ctx_gen.get_context(m.name)
                         if m.get_repo_url(ctx) != main_repo_url:
