@@ -99,7 +99,7 @@ void BufferedDigest<DigestT, ClockT>::onNewDigest(
     TimePoint /*newExpiry*/,
     TimePoint /*oldExpiry*/,
     const std::unique_lock<SharedMutex>& /*g*/) {
-  std::array<DigestT, 2> a{{digest_, std::move(digest)}};
+  std::array<DigestT, 2> a{{std::move(digest_), std::move(digest)}};
   digest_ = DigestT::merge(a);
 }
 

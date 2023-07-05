@@ -259,7 +259,7 @@ template <class Q>
 void CPUShardedQuantileHistogram<Q>::flush() {
   auto built = histBuilder_.build();
   mergedHist_ = mergedHist_.merge(
-      std::array<QuantileHistogram<Q>, 2>{mergedHist_, built});
+      std::array<QuantileHistogram<Q>, 2>{std::move(mergedHist_), built});
 }
 
 } // namespace folly
