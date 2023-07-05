@@ -222,7 +222,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   std::vector<Centroid> centroids;
   centroids.reserve(nCentroids);
 
-  std::vector<std::vector<Centroid>::iterator> starts;
+  std::vector<size_t> starts;
   starts.reserve(digests.size());
 
   double count = 0;
@@ -233,7 +233,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   double max = -std::numeric_limits<double>::infinity();
 
   for (const auto& digest : digests) {
-    starts.push_back(centroids.end());
+    starts.push_back(centroids.size());
     double curCount = digest.count();
     if (curCount > 0) {
       DCHECK(!std::isnan(digest.min_));
@@ -262,9 +262,12 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
         // digestsPerBlock big). In that case, merge to end. Otherwise, merge to
         // the end of that block.
         auto last = (i + (digestsPerBlock * 2) < startsSize)
-            ? *(starts.begin() + i + 2 * digestsPerBlock)
-            : centroids.end();
-        std::inplace_merge(first, middle, last);
+            ? starts[i + 2 * digestsPerBlock]
+            : centroids.size();
+        std::inplace_merge(
+            centroids.begin() + first,
+            centroids.begin() + middle,
+            centroids.begin() + last);
       }
     }
   }
