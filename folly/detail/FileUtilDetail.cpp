@@ -17,6 +17,7 @@
 #include <cassert>
 
 #include <folly/detail/FileUtilDetail.h>
+#include <folly/portability/Config.h>
 
 namespace folly {
 namespace fileutil_detail {
