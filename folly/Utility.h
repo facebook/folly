@@ -439,8 +439,8 @@ using EnableCopyMove = std::conditional_t<
 using moveonly_::MoveOnly;
 using moveonly_::NonCopyableNonMovable;
 
-//  unsafe_default_uninitialized
-//  unsafe_default_uninitialized_cv
+//  unsafe_default_initialized
+//  unsafe_default_initialized_cv
 //
 //  An object which is explicitly convertible to any default-constructible type
 //  and which, upon conversion, yields a default-initialized value of that type.
