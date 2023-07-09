@@ -80,7 +80,7 @@
 /* Define attribute wrapper for function attribute used to disable
  * address sanitizer instrumentation. Unfortunately, this attribute
  * has issues when inlining is used, so disable that as well. */
-#ifdef FOLLY_SANITIZE_ADDRESS
+#if defined(FOLLY_SANITIZE_ADDRESS) && FOLLY_SANITIZE_ADDRESS
 #if defined(__clang__)
 #if __has_attribute(__no_sanitize__)
 #define FOLLY_DISABLE_ADDRESS_SANITIZER \
@@ -109,7 +109,7 @@
 #endif
 #endif
 
-#ifdef FOLLY_SANITIZE_THREAD
+#if defined(FOLLY_SANITIZE_THREAD) && FOLLY_SANITIZE_THREAD
 #define FOLLY_DISABLE_THREAD_SANITIZER \
   __attribute__((no_sanitize_thread, noinline))
 #else
@@ -126,7 +126,7 @@
 #endif
 #endif
 
-#ifdef FOLLY_SANITIZE_MEMORY
+#if defined(FOLLY_SANITIZE_MEMORY) && FOLLY_SANITIZE_MEMORY
 #define FOLLY_DISABLE_MEMORY_SANITIZER \
   __attribute__((no_sanitize_memory, noinline))
 #else
@@ -143,7 +143,7 @@
 #endif
 #endif
 
-#ifdef FOLLY_SANITIZE_DATAFLOW
+#if defined(FOLLY_SANITIZE_DATAFLOW) && FOLLY_SANITIZE_DATAFLOW
 #define FOLLY_DISABLE_DATAFLOW_SANITIZER \
   __attribute__((no_sanitize_dataflow, noinline))
 #else
@@ -161,7 +161,7 @@
 #endif
 #endif
 
-#ifdef FOLLY_SANITIZE
+#if defined(FOLLY_SANITIZE) && FOLLY_SANITIZE
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
   __attribute__((no_sanitize(__VA_ARGS__)))
 #else
