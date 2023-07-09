@@ -236,7 +236,6 @@ namespace function {
 enum class Op { MOVE, NUKE, HEAP };
 
 union Data {
-  Data() {}
   void* big;
   std::aligned_storage<6 * sizeof(void*)>::type tiny;
 };
@@ -649,7 +648,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // invoking undefined behavior. Const-correctness is only violated when
   // `FunctionType` is a const function type (e.g., `int() const`) and `*this`
   // is the result of calling `constCastFunction`.
-  mutable Data data_{};
+  mutable Data data_{unsafe_default_initialized};
   Call call_{&Traits::uninitCall};
   Exec exec_{nullptr};
 
