@@ -151,22 +151,34 @@
 #endif
 
 /**
- * Define a convenience macro to test when ASAN, UBSAN, TSAN or MSAN sanitizer
- * are being used
+ * Define a convenience macro to test when undefined-behavior sanitizer is being
+ * used across the different compilers (e.g. clang, gcc)
  */
-#ifndef FOLLY_SANITIZE
-#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) || \
-    defined(FOLLY_SANITIZE_MEMORY) || defined(FOLLY_SANITIZE_DATAFLOW)
-#define FOLLY_SANITIZE 1
+#ifndef FOLLY_SANITIZE_UNDEFINED_BEHAVIOR
+#if FOLLY_HAS_FEATURE(undefined_behavior_sanitizer) || \
+    defined(__SANITIZER_UNDEFINED__)
+#define FOLLY_SANITIZE_UNDEFINED_BEHAVIOR(...) 1
 #endif
 #endif
 
-#ifdef FOLLY_SANITIZE
+#ifdef FOLLY_SANITIZE_UNDEFINED_BEHAVIOR
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
   __attribute__((no_sanitize(__VA_ARGS__)))
 #else
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
-#endif // FOLLY_SANITIZE
+#endif
+
+/**
+ * Define a convenience macro to test when ASAN, UBSAN, TSAN or MSAN sanitizer
+ * are being used
+ */
+#ifndef FOLLY_SANITIZE
+#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) ||  \
+    defined(FOLLY_SANITIZE_MEMORY) || defined(FOLLY_SANITIZE_DATAFLOW) || \
+    defined(FOLLY_SANITIZE_UNDEFINED_BEHAVIOR)
+#define FOLLY_SANITIZE 1
+#endif
+#endif
 
 #define FOLLY_DISABLE_SANITIZERS  \
   FOLLY_DISABLE_ADDRESS_SANITIZER \
