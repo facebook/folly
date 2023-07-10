@@ -15,9 +15,12 @@
  */
 
 #include <folly/Benchmark.h>
+#include <folly/detail/PerfScoped.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+
+#include <algorithm>
 
 namespace folly {
 namespace detail {
@@ -35,6 +38,23 @@ struct TestClock {
 
 std::chrono::high_resolution_clock::time_point TestClock::value = {};
 
+void doBaseline() {
+  TestClock::advance(std::chrono::nanoseconds(1));
+}
+
+struct BenchmarkingStateForTests : BenchmarkingState<TestClock> {
+#if FOLLY_PERF_IS_SUPPORTED
+  std::function<PerfScoped(const std::vector<std::string>&)> perfSetup;
+  PerfScoped doSetUpPerfScoped(
+      const std::vector<std::string>& args) const override {
+    if (!perfSetup) {
+      return BenchmarkingState<TestClock>::doSetUpPerfScoped(args);
+    }
+    return perfSetup(args);
+  }
+#endif
+};
+
 struct BenchmarkingStateTest : ::testing::Test {
   BenchmarkingStateTest() {
     state.addBenchmark(
@@ -46,9 +66,7 @@ struct BenchmarkingStateTest : ::testing::Test {
         });
   }
 
-  static void doBaseline() { TestClock::advance(std::chrono::nanoseconds(1)); }
-
-  BenchmarkingState<TestClock> state;
+  BenchmarkingStateForTests state;
   gflags::FlagSaver flagSaver;
 };
 
@@ -131,6 +149,104 @@ TEST_F(BenchmarkingStateTest, DiscardOutlier) {
     EXPECT_EQ(expected, state.runBenchmarksWithResults());
   }
 }
+
+TEST_F(BenchmarkingStateTest, DiscardLines) {
+  state.addBenchmark(__FILE__, "1ns", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  // DRAW_LINE adds a "-" benchmark
+  state.addBenchmark(__FILE__, "-", [&] { return 0; });
+
+  const std::vector<BenchmarkResult> expected{
+      {__FILE__, "1ns", 1, {}},
+  };
+
+  EXPECT_EQ(expected, state.runBenchmarksWithResults());
+}
+
+TEST_F(BenchmarkingStateTest, PerfBasic) {
+  int setUpPerfCalled = 0;
+  std::vector<std::string> expectedArgs;
+
+  state.perfSetup = [&](const std::vector<std::string>& args) {
+    ++setUpPerfCalled;
+    EXPECT_EQ(expectedArgs, args);
+    return PerfScoped{};
+  };
+
+  {
+    (void)state.runBenchmarksWithResults();
+    EXPECT_EQ(0, setUpPerfCalled);
+  }
+
+  {
+    gflags::FlagSaver _;
+    gflags::SetCommandLineOption(
+        "bm_perf_args", "stat -e cache-misses,cache-references");
+
+    setUpPerfCalled = 0;
+    expectedArgs = {"stat", "-e", "cache-misses,cache-references"};
+    (void)state.runBenchmarksWithResults();
+  }
+}
+
+TEST_F(BenchmarkingStateTest, PerfSkipsAnIteration) {
+  bool firstTimeSetUpDone = false;
+  bool perfIsCalled = false;
+
+  state.addBenchmark(__FILE__, "a", [&] {
+    doBaseline();
+    firstTimeSetUpDone = true;
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  state.perfSetup = [&](const std::vector<std::string>&) {
+    EXPECT_TRUE(firstTimeSetUpDone);
+    perfIsCalled = true;
+    return PerfScoped{};
+  };
+
+  gflags::FlagSaver _;
+  gflags::SetCommandLineOption("bm_perf_args", "stat");
+  (void)state.runBenchmarksWithResults();
+
+  EXPECT_TRUE(perfIsCalled);
+}
+
+#if FOLLY_PERF_IS_SUPPORTED
+TEST_F(BenchmarkingStateTest, PerfIntegration) {
+  std::vector<int> in(1000, 0);
+
+  state.addBenchmark(__FILE__, "a", [&](unsigned n) {
+    for (unsigned i = n; i; --i) {
+      std::reverse(in.begin(), in.end());
+    }
+    TestClock::advance(std::chrono::microseconds(1));
+    return n;
+  });
+
+  std::string perfOuptut;
+
+  state.perfSetup = [&](const auto& args) {
+    return PerfScoped(args, &perfOuptut);
+  };
+
+  gflags::FlagSaver _;
+  gflags::SetCommandLineOption("bm_perf_args", "stat");
+  gflags::SetCommandLineOption("bm_profile", "true");
+  gflags::SetCommandLineOption("bm_profile_iters", "1000000");
+  (void)state.runBenchmarksWithResults();
+
+  ASSERT_THAT(
+      perfOuptut,
+      ::testing::HasSubstr("Performance counter stats for process id"));
+}
+
+#endif // FOLLY_PERF_IS_SUPPORTED
 
 } // namespace
 } // namespace detail

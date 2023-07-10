@@ -186,6 +186,8 @@ struct BenchmarkSuspender : BenchmarkSuspenderBase {
   TimePoint start;
 };
 
+class PerfScoped;
+
 class BenchmarkingStateBase {
  public:
   template <typename Printer>
@@ -202,7 +204,14 @@ class BenchmarkingStateBase {
       const char* file, StringPiece name, BenchmarkFun, bool useCounter);
 
  protected:
-  ~BenchmarkingStateBase() = default;
+  // There is no need for this virtual but we overcome a check
+  virtual ~BenchmarkingStateBase() = default;
+
+  PerfScoped setUpPerfScoped() const;
+
+  // virtual for purely testing purposes.
+  virtual PerfScoped doSetUpPerfScoped(
+      const std::vector<std::string>& args) const;
 
   mutable std::mutex mutex_;
   std::vector<BenchmarkRegistration> benchmarks_;
