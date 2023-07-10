@@ -32,7 +32,7 @@
 #include <folly/FileUtil.h>
 #include <folly/MapUtil.h>
 #include <folly/String.h>
-#include <folly/container/Foreach.h>
+#include <folly/detail/PerfScoped.h>
 #include <folly/json.h>
 
 // This needs to be at the end because some versions end up including
@@ -49,6 +49,17 @@ FOLLY_GFLAGS_DEFINE_bool(benchmark, false, "Run benchmarks.");
 FOLLY_GFLAGS_DEFINE_bool(json, false, "Output in JSON format.");
 
 FOLLY_GFLAGS_DEFINE_bool(bm_estimate_time, false, "Estimate running time");
+
+#if FOLLY_PERF_IS_SUPPORTED
+FOLLY_GFLAGS_DEFINE_string(
+    bm_perf_args,
+    "",
+    "Run selected benchmarks while attaching `perf` profiling tool."
+    "Advantage over attaching perf externally is that this skips "
+    "initialization. The first iteration of the benchmark is also "
+    "skipped to allow for all statics to be set up. This requires perf "
+    " to be available on the system. Example: --bm_perf_args=\"record -g\"");
+#endif
 
 FOLLY_GFLAGS_DEFINE_bool(
     bm_profile, false, "Run benchmarks with constant number of iterations");
@@ -639,56 +650,72 @@ void checkRunMode() {
 
 namespace {
 
-std::size_t getBenchmarkBaselineIndex(
+struct BenchmarksToRun {
+  const detail::BenchmarkRegistration* baseline = nullptr;
+  std::vector<const detail::BenchmarkRegistration*> benchmarks;
+};
+
+BenchmarksToRun selectBenchmarksToRun(
     const std::vector<detail::BenchmarkRegistration>& benchmarks) {
-  auto it = std::find_if(
-      benchmarks.begin(),
-      benchmarks.end(),
-      [&](const detail::BenchmarkRegistration& v) {
-        return v.name == kGlobalBenchmarkBaseline;
-      });
-  CHECK(it != benchmarks.end());
-  return size_t(std::distance(benchmarks.begin(), it));
+  BenchmarksToRun res;
+
+  folly::Optional<boost::regex> bmRegex;
+
+  res.benchmarks.reserve(benchmarks.size());
+
+  if (!FLAGS_bm_regex.empty()) {
+    bmRegex.emplace(FLAGS_bm_regex);
+  }
+
+  for (auto& bm : benchmarks) {
+    if (bm.name == "-") { // skip separators
+      continue;
+    }
+
+    if (bm.name == kGlobalBenchmarkBaseline) {
+      res.baseline = &bm;
+      continue;
+    }
+
+    if (!bmRegex || boost::regex_match(bm.name, *bmRegex)) {
+      res.benchmarks.push_back(&bm);
+    }
+  }
+
+  CHECK(res.baseline);
+
+  return res;
+}
+
+void runAllBenchmarksOnce(const BenchmarksToRun& toRun) {
+  for (const auto* bm : toRun.benchmarks) {
+    bm->func(1);
+  }
 }
 
 std::pair<std::set<std::string>, std::vector<detail::BenchmarkResult>>
 runBenchmarksWithPrinterImpl(
     BenchmarkResultsPrinter* FOLLY_NULLABLE printer,
-    const std::vector<detail::BenchmarkRegistration>& benchmarks) {
+    const BenchmarksToRun& toRun) {
   vector<detail::BenchmarkResult> results;
-  results.reserve(benchmarks.size() - 1);
-
-  std::unique_ptr<boost::regex> bmRegex;
-  if (!FLAGS_bm_regex.empty()) {
-    bmRegex = std::make_unique<boost::regex>(FLAGS_bm_regex);
-  }
+  results.reserve(toRun.benchmarks.size());
 
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
-  size_t baselineIndex = getBenchmarkBaselineIndex(benchmarks);
-
   auto const globalBaseline =
-      runBenchmarkGetNSPerIteration(benchmarks[baselineIndex].func, 0);
+      runBenchmarkGetNSPerIteration(toRun.baseline->func, 0);
 
   std::set<std::string> counterNames;
-  FOR_EACH_RANGE (i, 0, benchmarks.size()) {
-    if (i == baselineIndex) {
-      continue;
-    }
+  for (const auto bmPtr : toRun.benchmarks) {
     std::pair<double, UserCounters> elapsed;
-    auto& bm = benchmarks[i];
-    if (bm.name != "-") { // skip separators
-      if (bmRegex && !boost::regex_search(bm.name, *bmRegex)) {
-        continue;
-      }
-      if (FLAGS_bm_profile) {
-        elapsed = runProfilingGetNSPerIteration(bm.func, globalBaseline.first);
-      } else {
-        elapsed = FLAGS_bm_estimate_time
-            ? runBenchmarkGetNSPerIterationEstimate(
-                  bm.func, globalBaseline.first)
-            : runBenchmarkGetNSPerIteration(bm.func, globalBaseline.first);
-      }
+    const detail::BenchmarkRegistration& bm = *bmPtr;
+
+    if (FLAGS_bm_profile) {
+      elapsed = runProfilingGetNSPerIteration(bm.func, globalBaseline.first);
+    } else {
+      elapsed = FLAGS_bm_estimate_time
+          ? runBenchmarkGetNSPerIterationEstimate(bm.func, globalBaseline.first)
+          : runBenchmarkGetNSPerIteration(bm.func, globalBaseline.first);
     }
 
     // if customized user counters is used, it cannot print the result in real
@@ -767,11 +794,31 @@ folly::StringPiece BenchmarkingStateBase::getGlobalBaselineNameForTests() {
   return kGlobalBenchmarkBaseline;
 }
 
+PerfScoped BenchmarkingStateBase::doSetUpPerfScoped(
+    const std::vector<std::string>& args) const {
+  return PerfScoped{args};
+}
+
+PerfScoped BenchmarkingStateBase::setUpPerfScoped() const {
+  std::vector<std::string> perfArgs;
+#if FOLLY_PERF_IS_SUPPORTED
+  folly::split(' ', FLAGS_bm_perf_args, perfArgs, true);
+#endif
+  if (perfArgs.empty()) {
+    return PerfScoped{};
+  }
+  return doSetUpPerfScoped(perfArgs);
+}
+
 template <typename Printer>
 std::pair<std::set<std::string>, std::vector<BenchmarkResult>>
 BenchmarkingStateBase::runBenchmarksWithPrinter(Printer* printer) const {
   std::lock_guard<std::mutex> guard(mutex_);
-  return runBenchmarksWithPrinterImpl(printer, benchmarks_);
+  BenchmarksToRun toRun = selectBenchmarksToRun(benchmarks_);
+  runAllBenchmarksOnce(toRun);
+
+  detail::PerfScoped perf = setUpPerfScoped();
+  return runBenchmarksWithPrinterImpl(printer, toRun);
 }
 
 std::vector<BenchmarkResult> BenchmarkingStateBase::runBenchmarksWithResults()
