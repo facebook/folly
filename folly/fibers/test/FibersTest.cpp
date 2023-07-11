@@ -211,6 +211,82 @@ TEST(FiberManager, fiberTimeLogged) {
   manager.loopUntilNoReady();
 }
 
+#ifdef __linux__
+
+namespace {
+void burnCpu(std::chrono::milliseconds duration) {
+  auto expires = folly::fibers::thread_clock::now() + duration;
+  while (folly::fibers::thread_clock::now() < expires) {
+  }
+}
+
+void sleepFor(std::chrono::milliseconds duration) {
+  /* sleep override */ std::this_thread::sleep_for(duration);
+}
+} // namespace
+
+TEST(FiberManager, fiberTimeWhileRunning) {
+  using namespace std::chrono;
+  FiberManager fm(std::make_unique<SimpleLoopController>());
+  TaskOptions tOpt;
+  tOpt.logRunningTime = true;
+  fm.addTask(
+      [&]() {
+        burnCpu(200ms);
+        sleepFor(1s); // (not included in running time)
+        fm.yield();
+        burnCpu(100ms);
+        auto dur = fm.getCurrentTaskRunningTime();
+        ASSERT_TRUE(dur); // ~300ms
+        EXPECT_GE(*dur, 250ms);
+        EXPECT_LE(*dur, 350ms);
+      },
+      tOpt);
+  fm.addTask(
+      [&]() {
+        burnCpu(300ms);
+        sleepFor(1s); // (not included in running time)
+        fm.yield();
+        burnCpu(200ms);
+        auto dur = fm.getCurrentTaskRunningTime();
+        ASSERT_TRUE(dur); // ~500ms
+        EXPECT_GE(*dur, 450ms);
+        EXPECT_LE(*dur, 550ms);
+      },
+      tOpt);
+  while (fm.hasTasks()) {
+    fm.loopUntilNoReady();
+  }
+}
+
+TEST(FiberManager, fiberTimeWhileAwaiting) {
+  using namespace std::chrono;
+  FiberManager fm(std::make_unique<SimpleLoopController>());
+  TaskOptions tOpt;
+  tOpt.logRunningTime = true;
+  fm.addTask(
+      [&]() {
+        burnCpu(200ms);
+        sleepFor(1s); // (not included in running time)
+        fm.yield();
+        burnCpu(100ms);
+        runInMainContext([&] {
+          burnCpu(200ms); // (not included in running time)
+          ASSERT_TRUE(fm.currentFiber());
+          auto dur = fm.getCurrentTaskRunningTime();
+          ASSERT_TRUE(dur); // ~300ms
+          EXPECT_GE(*dur, 250ms);
+          EXPECT_LE(*dur, 350ms);
+        });
+      },
+      tOpt);
+  while (fm.hasTasks()) {
+    fm.loopUntilNoReady();
+  }
+}
+
+#endif // __linux__
+
 TEST(FiberManager, batonTryWait) {
   FiberManager manager(std::make_unique<SimpleLoopController>());
 

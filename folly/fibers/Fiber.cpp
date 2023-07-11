@@ -219,6 +219,17 @@ void Fiber::preempt(State state) {
   }
 }
 
+folly::Optional<std::chrono::nanoseconds> Fiber::getRunningTime() const {
+  if (taskOptions_.logRunningTime) {
+    auto elapsed = prevDuration_;
+    if (state_ == Fiber::RUNNING && threadId_ == localThreadId()) {
+      elapsed += thread_clock::now() - currStartTime_;
+    }
+    return elapsed;
+  }
+  return folly::none;
+}
+
 Fiber::LocalData::~LocalData() {
   reset();
 }
