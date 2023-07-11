@@ -46,7 +46,7 @@ namespace folly {
  * timing out).  Idle threads should be removed from threadList_, and
  * threadsToJoin incremented, and activeThreads_ decremented.
  *
- * On task add(), if an executor can garantee there is an active
+ * On task add(), if an executor can guarantee there is an active
  * thread that will handle the task, then nothing needs to be done.
  * If not, then ensureActiveThreads() should be called to possibly
  * start another pool thread, up to maxThreads_.
