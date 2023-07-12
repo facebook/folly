@@ -71,13 +71,13 @@ struct BenchmarkingStateTest : ::testing::Test {
 };
 
 TEST_F(BenchmarkingStateTest, Basic) {
-  state.addBenchmark(__FILE__, "1ns", [&] {
+  state.addBenchmark(__FILE__, "a1ns", [&] {
     doBaseline();
     TestClock::advance(std::chrono::nanoseconds(1));
     return 1;
   });
 
-  state.addBenchmark(__FILE__, "2ns", [&] {
+  state.addBenchmark(__FILE__, "b2ns", [&] {
     doBaseline();
     TestClock::advance(std::chrono::nanoseconds(2));
     return 1;
@@ -85,20 +85,32 @@ TEST_F(BenchmarkingStateTest, Basic) {
 
   {
     const std::vector<BenchmarkResult> expected{
-        {__FILE__, "1ns", 1, {}},
-        {__FILE__, "2ns", 2, {}},
+        {__FILE__, "a1ns", 1, {}},
+        {__FILE__, "b2ns", 2, {}},
     };
 
     EXPECT_EQ(expected, state.runBenchmarksWithResults());
   }
 
-  // --bm_regex
+  // --bm_regex full match
   {
     gflags::FlagSaver _;
-    gflags::SetCommandLineOption("bm_regex", "1.*");
+    gflags::SetCommandLineOption("bm_regex", "a1.*");
 
     const std::vector<BenchmarkResult> expected{
-        {__FILE__, "1ns", 1, {}},
+        {__FILE__, "a1ns", 1, {}},
+    };
+
+    EXPECT_EQ(expected, state.runBenchmarksWithResults());
+  }
+
+  // --bm_regex part match
+  {
+    gflags::FlagSaver _;
+    gflags::SetCommandLineOption("bm_regex", "1.");
+
+    const std::vector<BenchmarkResult> expected{
+        {__FILE__, "a1ns", 1, {}},
     };
 
     EXPECT_EQ(expected, state.runBenchmarksWithResults());

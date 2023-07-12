@@ -677,7 +677,7 @@ BenchmarksToRun selectBenchmarksToRun(
       continue;
     }
 
-    if (!bmRegex || boost::regex_match(bm.name, *bmRegex)) {
+    if (!bmRegex || boost::regex_search(bm.name, *bmRegex)) {
       res.benchmarks.push_back(&bm);
     }
   }
