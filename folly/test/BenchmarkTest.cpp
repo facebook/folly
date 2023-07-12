@@ -260,6 +260,35 @@ TEST_F(BenchmarkingStateTest, PerfIntegration) {
 
 #endif // FOLLY_PERF_IS_SUPPORTED
 
+TEST_F(BenchmarkingStateTest, SkipWarmUp) {
+  std::vector<unsigned> iterNumPassed;
+  state.addBenchmark(__FILE__, "a", [&](unsigned iters) {
+    iterNumPassed.push_back(iters);
+    TestClock::advance(std::chrono::microseconds(1));
+    return iters;
+  });
+
+  gflags::FlagSaver _;
+  gflags::SetCommandLineOption("bm_profile", "true");
+  gflags::SetCommandLineOption("bm_profile_iters", "1000");
+
+  // Testing that `bm_warm_up_iteration` is false by default
+  // This is Hyrumslaw's at it's finest. A lot of people rely on this.
+  {
+    (void)state.runBenchmarksWithResults();
+    ASSERT_THAT(iterNumPassed, ::testing::ElementsAre(1000));
+  }
+
+  iterNumPassed.clear();
+
+  gflags::SetCommandLineOption("bm_warm_up_iteration", "true");
+
+  {
+    (void)state.runBenchmarksWithResults();
+    ASSERT_THAT(iterNumPassed, ::testing::ElementsAre(1, 1000));
+  }
+}
+
 } // namespace
 } // namespace detail
 } // namespace folly

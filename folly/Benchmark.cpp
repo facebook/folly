@@ -72,6 +72,11 @@ FOLLY_GFLAGS_DEFINE_string(
     "",
     "Print benchmark results relative to an earlier dump (via --bm_json_verbose)");
 
+FOLLY_GFLAGS_DEFINE_bool(
+    bm_warm_up_iteration,
+    false,
+    "Run one iteration of the benchmarks before measuring. Always true if `bm_perf_args` is passed");
+
 FOLLY_GFLAGS_DEFINE_string(
     bm_json_verbose,
     "",
@@ -687,7 +692,17 @@ BenchmarksToRun selectBenchmarksToRun(
   return res;
 }
 
-void runAllBenchmarksOnce(const BenchmarksToRun& toRun) {
+void maybeRunAllBenchmarksOnce(const BenchmarksToRun& toRun) {
+  bool should = FLAGS_bm_warm_up_iteration;
+
+#if FOLLY_PERF_IS_SUPPORTED
+  should = should || !FLAGS_bm_perf_args.empty();
+#endif
+
+  if (!should) {
+    return;
+  }
+
   for (const auto* bm : toRun.benchmarks) {
     bm->func(1);
   }
@@ -815,7 +830,7 @@ std::pair<std::set<std::string>, std::vector<BenchmarkResult>>
 BenchmarkingStateBase::runBenchmarksWithPrinter(Printer* printer) const {
   std::lock_guard<std::mutex> guard(mutex_);
   BenchmarksToRun toRun = selectBenchmarksToRun(benchmarks_);
-  runAllBenchmarksOnce(toRun);
+  maybeRunAllBenchmarksOnce(toRun);
 
   detail::PerfScoped perf = setUpPerfScoped();
   return runBenchmarksWithPrinterImpl(printer, toRun);
