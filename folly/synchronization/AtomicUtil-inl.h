@@ -311,7 +311,7 @@ FOLLY_ERASE bool atomic_fetch_bit_op_native_(
   return op(reinterpret_cast<word_type*>(address), word_type(bit), order);
 }
 
-#if __cpp_lib_atomic_ref >= 201806L
+#if defined(__cpp_lib_atomic_ref) && __cpp_lib_atomic_ref >= 201806L
 template <typename Integer, typename Op, typename Fb>
 FOLLY_ERASE bool atomic_fetch_bit_op_native_(
     std::atomic_ref<Integer>& atomic,
@@ -341,7 +341,7 @@ inline bool atomic_fetch_set_native(
   return atomic_fetch_set_native(atomic.atomic(), bit, order);
 }
 
-#if __cpp_lib_atomic_ref >= 201806L
+#if defined(__cpp_lib_atomic_ref) && __cpp_lib_atomic_ref >= 201806L
 template <typename Integer>
 inline bool atomic_fetch_set_native(
     std::atomic_ref<Integer>& atomic,
@@ -374,7 +374,7 @@ inline bool atomic_fetch_reset_native(
   return atomic_fetch_reset_native(atomic.atomic(), bit, order);
 }
 
-#if __cpp_lib_atomic_ref >= 201806L
+#if defined(__cpp_lib_atomic_ref) && __cpp_lib_atomic_ref >= 201806L
 template <typename Integer>
 inline bool atomic_fetch_reset_native(
     std::atomic_ref<Integer>& atomic,
@@ -407,7 +407,7 @@ inline bool atomic_fetch_flip_native(
   return atomic_fetch_flip_native(atomic.atomic(), bit, order);
 }
 
-#if __cpp_lib_atomic_ref >= 201806L
+#if defined(__cpp_lib_atomic_ref) && __cpp_lib_atomic_ref >= 201806L
 template <typename Integer>
 inline bool atomic_fetch_flip_native(
     std::atomic_ref<Integer>& atomic,
