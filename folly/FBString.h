@@ -403,7 +403,8 @@ class fbstring_core {
       auto maybeSmallSize = size_t(maxSmallSize) -
           size_t(static_cast<UChar>(small_[maxSmallSize]));
       // With this syntax, GCC and Clang generate a CMOV instead of a branch.
-      ret = (static_cast<ssize_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
+      ret =
+          (static_cast<ptrdiff_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
     } else {
       ret = (category() == Category::isSmall) ? smallSize() : ret;
     }
