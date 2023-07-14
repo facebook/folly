@@ -134,10 +134,13 @@ FOLLY_INLINE_VARIABLE constexpr bool
 template <typename Void, typename R, typename F, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool is_invocable_r_v = false;
 
+// clang-format off
 template <typename R, typename F, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool
     is_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
+        std::is_void<R>::value ||
         std::is_convertible<invoke_result_t<F, A...>, R>::value;
+// clang-format on
 
 template <typename Void, typename F, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_v = false;
@@ -150,11 +153,14 @@ FOLLY_INLINE_VARIABLE constexpr bool
 template <typename Void, typename R, typename F, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_r_v = false;
 
+// clang-format off
 template <typename R, typename F, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool
     is_nothrow_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
-        std::is_convertible<invoke_result_t<F, A...>, R>::value&&
-            traits<F>::template nothrow<A...>;
+        traits<F>::template nothrow<A...> && (
+            std::is_void<R>::value ||
+            is_nothrow_convertible_v<invoke_result_t<F, A...>, R>);
+// clang-format on
 
 } // namespace invoke_detail
 

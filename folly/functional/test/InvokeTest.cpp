@@ -28,10 +28,16 @@ struct from_any {
   /* implicit */ from_any(T&&) {}
 };
 
+struct Cv {
+  /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type() const;
+  /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() const noexcept;
+};
+
 struct Fn {
   char operator()(int, int) noexcept { return 'a'; }
   int volatile&& operator()(int, char const*) { return std::move(x_); }
   float operator()(float, float) { return 3.14; }
+  /* implicit */ FOLLY_MAYBE_UNUSED Cv operator()(Cv*) noexcept;
   int volatile x_ = 17;
 };
 
@@ -120,24 +126,32 @@ TEST_F(InvokeTest, is_invocable) {
   EXPECT_TRUE((folly::is_invocable_v<Fn, int, char>));
   EXPECT_TRUE((folly::is_invocable_v<Fn, int, char*>));
   EXPECT_FALSE((folly::is_invocable_v<Fn, int>));
+  EXPECT_TRUE((folly::is_invocable_v<Fn, Cv*>));
 }
 
 TEST_F(InvokeTest, is_invocable_r) {
   EXPECT_TRUE((folly::is_invocable_r_v<int, Fn, int, char>));
   EXPECT_TRUE((folly::is_invocable_r_v<int, Fn, int, char*>));
   EXPECT_FALSE((folly::is_invocable_r_v<int, Fn, int>));
+  EXPECT_TRUE((folly::is_invocable_r_v<std::false_type, Fn, Cv*>));
+  EXPECT_TRUE((folly::is_invocable_r_v<std::true_type, Fn, Cv*>));
+  EXPECT_TRUE((folly::is_invocable_r_v<void, Fn, Cv*>));
 }
 
 TEST_F(InvokeTest, is_nothrow_invocable) {
   EXPECT_TRUE((folly::is_nothrow_invocable_v<Fn, int, char>));
   EXPECT_FALSE((folly::is_nothrow_invocable_v<Fn, int, char*>));
   EXPECT_FALSE((folly::is_nothrow_invocable_v<Fn, int>));
+  EXPECT_TRUE((folly::is_nothrow_invocable_v<Fn, Cv*>));
 }
 
 TEST_F(InvokeTest, is_nothrow_invocable_r) {
   EXPECT_TRUE((folly::is_nothrow_invocable_r_v<int, Fn, int, char>));
   EXPECT_FALSE((folly::is_nothrow_invocable_r_v<int, Fn, int, char*>));
   EXPECT_FALSE((folly::is_nothrow_invocable_r_v<int, Fn, int>));
+  EXPECT_FALSE((folly::is_nothrow_invocable_r_v<std::false_type, Fn, Cv*>));
+  EXPECT_TRUE((folly::is_nothrow_invocable_r_v<std::true_type, Fn, Cv*>));
+  EXPECT_TRUE((folly::is_nothrow_invocable_r_v<void, Fn, Cv*>));
 }
 
 TEST_F(InvokeTest, free_invoke) {
