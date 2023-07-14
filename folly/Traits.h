@@ -405,6 +405,37 @@ template <class T>
 FOLLY_INLINE_VARIABLE constexpr bool is_trivially_copyable_v =
     is_trivially_copyable<T>::value;
 
+//  ----
+
+namespace fallback {
+template <typename From, typename To>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_convertible_v =
+    (std::is_void<From>::value && std::is_void<To>::value) ||
+    ( //
+        std::is_convertible<From, To>::value &&
+        std::is_nothrow_constructible<To, From>::value);
+template <typename From, typename To>
+struct is_nothrow_convertible
+    : bool_constant<is_nothrow_convertible_v<From, To>> {};
+} // namespace fallback
+
+//  is_nothrow_convertible
+//  is_nothrow_convertible_v
+//
+//  Import or backport:
+//  * std::is_nothrow_convertible
+//  * std::is_nothrow_convertible_v
+//
+//  mimic: is_nothrow_convertible, C++20
+#if defined(__cpp_lib_is_nothrow_convertible) && \
+    __cpp_lib_is_nothrow_convertible >= 201806L
+using std::is_nothrow_convertible;
+using std::is_nothrow_convertible_v;
+#else
+using fallback::is_nothrow_convertible;
+using fallback::is_nothrow_convertible_v;
+#endif
+
 /**
  * IsRelocatable<T>::value describes the ability of moving around
  * memory a value of type T by using memcpy (as opposed to the
