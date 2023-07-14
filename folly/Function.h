@@ -685,7 +685,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   /**
    * Default constructor. Constructs an empty Function.
    */
-  Function() = default;
+  constexpr Function() = default;
 
   // not copyable
   Function(const Function&) = delete;
@@ -711,7 +711,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   /**
    * Constructs an empty `Function`.
    */
-  /* implicit */ Function(std::nullptr_t) noexcept {}
+  /* implicit */ constexpr Function(std::nullptr_t) noexcept {}
 
   /**
    * Constructs a new `Function` from any callable object that is _not_ a
@@ -744,7 +744,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
           sizeof(Fun) <= sizeof(Data) && //
           alignof(Fun) <= alignof(Data) && //
               noexcept(Fun(FOLLY_DECLVAL(Fun))))>
-  /* implicit */ Function(Fun fun) noexcept(IsSmall) {
+  /* implicit */ constexpr Function(Fun fun) noexcept(IsSmall) {
     using Dispatch = conditional_t<
         IsSmall && is_trivially_copyable_v<Fun>,
         detail::function::DispatchSmallTrivial,
@@ -758,7 +758,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       }
     }
     if FOLLY_CXX17_CONSTEXPR (IsSmall) {
-      ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
+      if FOLLY_CXX17_CONSTEXPR (
+          !std::is_empty<Fun>::value || !is_trivially_copyable_v<Fun>) {
+        ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
+      }
     } else {
       data_.big = new Fun(static_cast<Fun&&>(fun));
     }
