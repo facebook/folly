@@ -22,6 +22,10 @@
 #include <boost/version.hpp>
 #include <glog/logging.h>
 
+#ifdef __ANDROID__
+#include <gflags/gflags.h>
+#endif
+
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 #include <folly/portability/GFlags.h>
