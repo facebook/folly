@@ -392,8 +392,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
     emplaceFunc(out + pos);
     // move old elements to the left of the new one
     FOLLY_PUSH_WARNING
-    FOLLY_MSVC_DISABLE_WARNING(4702)
-    {
+    FOLLY_MSVC_DISABLE_WARNING(4702) {
       auto rollback = makeGuard([&] { //
         out[pos].~T();
       });
