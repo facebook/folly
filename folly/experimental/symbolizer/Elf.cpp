@@ -45,6 +45,8 @@
 #else
 #define FOLLY_ELF_NATIVE_CLASS 32
 #endif
+#elif defined(__ANDROID__)
+#define FOLLY_ELF_NATIVE_CLASS __WORDSIZE
 #endif // __ELF_NATIVE_CLASS
 
 namespace folly {
