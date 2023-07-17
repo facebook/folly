@@ -1425,3 +1425,47 @@ TEST(Function, TrivialSmallBig) {
   EXPECT_EQ(7, s2());
   EXPECT_EQ(7, h2());
 }
+
+TEST(Function, ConstInitEmpty) {
+  static FOLLY_CONSTINIT Function<int()> func;
+  EXPECT_THROW(func(), std::bad_function_call);
+}
+
+TEST(Function, ConstInitNullptr) {
+  static FOLLY_CONSTINIT Function<int()> func{nullptr};
+  EXPECT_THROW(func(), std::bad_function_call);
+}
+
+TEST(Function, ConstInitStaticLambda) {
+  static FOLLY_CONSTINIT Function<int()> func{[] { return 3; }};
+  EXPECT_EQ(3, func());
+}
+
+namespace {
+template <typename T>
+union consteval_immortal {
+  T value;
+  template <typename... A>
+  explicit FOLLY_CONSTEVAL consteval_immortal(folly::in_place_t, A&&... a)
+      : value{static_cast<A&&>(a)...} {}
+  ~consteval_immortal() {}
+};
+} // namespace
+
+TEST(Function, ConstEvalEmpty) {
+  static FOLLY_CONSTINIT consteval_immortal<Function<int()>> func{
+      folly::in_place};
+  EXPECT_THROW(func.value(), std::bad_function_call);
+}
+
+TEST(Function, ConstEvalNullptr) {
+  static FOLLY_CONSTINIT consteval_immortal<Function<int()>> func{
+      folly::in_place, nullptr};
+  EXPECT_THROW(func.value(), std::bad_function_call);
+}
+
+TEST(Function, ConstEvalStaticLambda) {
+  static FOLLY_CONSTINIT consteval_immortal<Function<int()>> func{
+      folly::in_place, [] { return 3; }};
+  EXPECT_EQ(3, func.value());
+}

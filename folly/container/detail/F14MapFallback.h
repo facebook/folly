@@ -200,30 +200,20 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   template <typename... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
     auto alloc = this->get_allocator();
-    return folly::detail::callWithExtractedKey<
-        key_type,
-        mapped_type,
-        UsableAsKey>(
-        alloc,
-        [&](auto& key, auto&&... inner) {
-          if (!std::is_same<key_type, remove_cvref_t<decltype(key)>>::value) {
-            // this is a heterogeneous lookup
-            auto it = find(key);
-            if (it != this->end()) {
-              return std::make_pair(it, false);
-            }
-            auto rv = Super::emplace(std::forward<decltype(inner)>(inner)...);
-            FOLLY_SAFE_DCHECK(
-                rv.second, "post-find emplace should always insert");
-            return rv;
-          } else {
-            // callWithExtractedKey will use 2 inner args if possible, which
-            // maximizes the changes for the STL emplace to search for an
-            // existing key before constructing a value_type
-            return Super::emplace(std::forward<decltype(inner)>(inner)...);
-          }
-        },
-        std::forward<Args>(args)...);
+    return folly::detail::
+        callWithExtractedKey<key_type, mapped_type, UsableAsKey>(
+            alloc,
+            [&](auto& key, auto&&... inner) {
+              auto it = find(key);
+              if (it != this->end()) {
+                return std::make_pair(it, false);
+              }
+              auto rv = Super::emplace(std::forward<decltype(inner)>(inner)...);
+              FOLLY_SAFE_DCHECK(
+                  rv.second, "post-find emplace should always insert");
+              return rv;
+            },
+            std::forward<Args>(args)...);
   }
 
   template <typename... Args>

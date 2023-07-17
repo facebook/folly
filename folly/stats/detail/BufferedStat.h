@@ -49,17 +49,27 @@ class BufferedStat {
  protected:
   // https://www.mail-archive.com/llvm-bugs@lists.llvm.org/msg18280.html
   // Wrap the time point in something with a noexcept constructor.
-  struct TimePointHolder {
+  class AtomicTimePoint {
+   private:
+    using Duration = typename TimePoint::duration;
+    using TimePointRep = typename TimePoint::rep;
+
+    std::atomic<TimePointRep> rep_;
+
    public:
-    TimePointHolder() noexcept {}
+    explicit AtomicTimePoint(TimePoint value)
+        : rep_{value.time_since_epoch().count()} {}
 
-    TimePointHolder(TimePoint t) : tp(t) {}
-
-    TimePoint tp;
+    TimePoint load(std::memory_order order) const {
+      return TimePoint(Duration(rep_.load(order)));
+    }
+    void store(TimePoint value, std::memory_order order) {
+      rep_.store(value.time_since_epoch().count(), order);
+    }
   };
 
   const typename ClockT::duration bufferDuration_;
-  std::atomic<TimePointHolder> expiry_;
+  AtomicTimePoint expiry_;
   SharedMutex mutex_;
 
   virtual void onNewDigest(

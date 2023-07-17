@@ -2358,3 +2358,43 @@ TEST(F14Map, initializerListDeductionGuide) {
   testInitializerListDeductionGuide<F14FastMap>();
 }
 #endif // FOLLY_HAS_DEDUCTION_GUIDES
+
+namespace {
+
+struct TracedMovable {
+ public:
+  TracedMovable() = default;
+
+  TracedMovable& operator=(TracedMovable&& other) noexcept {
+    if (this != &other) {
+      n = std::exchange(other.n, 0);
+    }
+    return *this;
+  }
+
+  TracedMovable(TracedMovable&& other) noexcept {
+    n = std::exchange(other.n, 0);
+  }
+
+  int32_t n{10};
+};
+
+} // namespace
+
+template <template <class...> class TMap>
+void testInsertOrAssignUnchangedIfNoInsert() {
+  TMap<int32_t, TracedMovable> m;
+
+  m[0] = TracedMovable{};
+  EXPECT_EQ(m[0].n, 10);
+
+  m.insert_or_assign(0, TracedMovable{});
+  EXPECT_EQ(m[0].n, 10);
+}
+
+TEST(F14Map, insertOrAssignUnchangedIfNoInsert) {
+  testInsertOrAssignUnchangedIfNoInsert<F14ValueMap>();
+  testInsertOrAssignUnchangedIfNoInsert<F14NodeMap>();
+  testInsertOrAssignUnchangedIfNoInsert<F14VectorMap>();
+  testInsertOrAssignUnchangedIfNoInsert<F14FastMap>();
+}
