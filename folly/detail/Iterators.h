@@ -20,8 +20,6 @@
 #include <iterator>
 #include <type_traits>
 
-#include <folly/portability/SysTypes.h>
-
 /*
  * This contains stripped-down workalikes of some Boost classes:
  *
@@ -76,7 +74,7 @@ class IteratorFacade {
   using value_type = V;
   using reference = value_type&;
   using pointer = value_type*;
-  using difference_type = ssize_t;
+  using difference_type = std::ptrdiff_t;
   using iterator_category = Tag;
 
   friend bool operator==(D const& lhs, D const& rhs) { return equal(lhs, rhs); }
