@@ -2418,3 +2418,38 @@ TEST(F14Map, shrinkToFit) {
   runSimpleShrinkToFitTest<F14ValueMap<int, int>>(0.5);
   runSimpleShrinkToFitTest<F14VectorMap<int, int>>(0.875);
 }
+
+template <typename M>
+void runInitialReserveTest(float expectedLoadFactor) {
+  auto initBucketsCtor = [](int initBuckets) { return M(initBuckets); };
+  auto defaultCtorAndReserve = [](int initBuckets) {
+    M m;
+    m.reserve(initBuckets);
+    return m;
+  };
+
+  auto fill = [](M& m, int n) {
+    using K = typename M::key_type;
+    auto initBuckets = m.bucket_count();
+    for (K k = 0; k < n; ++k) {
+      m[k];
+      EXPECT_EQ(m.bucket_count(), initBuckets);
+    }
+  };
+
+  using MakeFuncs = std::initializer_list<std::function<M(int)>>;
+  for (const auto& make : MakeFuncs{initBucketsCtor, defaultCtorAndReserve}) {
+    for (int n = 1; n <= 1000; ++n) {
+      auto m = make(n);
+      fill(m, n);
+      EXPECT_GE(m.load_factor(), expectedLoadFactor);
+    }
+  }
+}
+
+TEST(F14Map, initialReserve) {
+  SKIP_IF(kFallback);
+  runInitialReserveTest<F14NodeMap<int, int>>(0.5);
+  runInitialReserveTest<F14ValueMap<int, int>>(0.5);
+  runInitialReserveTest<F14VectorMap<int, int>>(0.875);
+}
