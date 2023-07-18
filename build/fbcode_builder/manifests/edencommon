@@ -11,6 +11,7 @@ repo_url = https://github.com/facebookexperimental/edencommon.git
 builder = cmake
 
 [dependencies]
+fmt
 folly
 gflags
 glog
