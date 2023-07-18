@@ -38,6 +38,8 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/observer/AsyncSocketObserverContainer.h>
 #include <folly/net/NetOpsDispatcher.h>
+#include <folly/net/TcpInfo.h>
+#include <folly/net/TcpInfoDispatcher.h>
 #include <folly/portability/Sockets.h>
 #include <folly/small_vector.h>
 
@@ -77,6 +79,10 @@ namespace folly {
 
 #if defined __linux__ && !defined SO_NO_TSOCKS
 #define SO_NO_TSOCKS 201
+#endif
+
+#if FOLLY_HAVE_SO_TIMESTAMPING
+#define SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS 10
 #endif
 
 class AsyncSocket : public AsyncSocketTransport {
@@ -364,7 +370,7 @@ class AsyncSocket : public AsyncSocketTransport {
    */
   struct ByteEventHelper {
     bool byteEventsEnabled{false};
-    size_t rawBytesWrittenWhenByteEventsEnabled{0};
+    long rawBytesWrittenWhenByteEventsEnabled{0};
     folly::Optional<AsyncSocketException> maybeEx;
 
     /**
@@ -737,6 +743,30 @@ class AsyncSocket : public AsyncSocketTransport {
   virtual std::shared_ptr<netops::Dispatcher> getOverrideNetOpsDispatcher()
       const {
     return netops_.getOverride();
+  }
+
+  /**
+   * Override folly::TcpInfoDispatcher to be used for getting TcpInfo.
+   *
+   * Pass empty shared_ptr to reset to default.
+   * Override can be used by unit tests to intercept and mock
+   * TcpInfo::initFromFd calls.
+   */
+  virtual void setOverrideTcpInfoDispatcher(
+      std::shared_ptr<folly::TcpInfoDispatcher> dispatcher) {
+    tcpInfoDispatcher_.setOverride(std::move(dispatcher));
+  }
+
+  /**
+   * Returns override folly::TcpInfoDispatcher being used for tcpinfo calls.
+   *
+   * Returns empty shared_ptr if no override set.
+   * Override can be used by unit tests to intercept and mock
+   * TcpInfo::initFromFd calls.
+   */
+  virtual std::shared_ptr<folly::TcpInfoDispatcher>
+  getOverrideTcpInfoDispatcher() const {
+    return tcpInfoDispatcher_.getOverride();
   }
 
   // Read and write methods
@@ -1122,6 +1152,12 @@ class AsyncSocket : public AsyncSocketTransport {
   void setCloseOnFailedWrite(bool closeOnFailedWrite) {
     closeOnFailedWrite_ = closeOnFailedWrite;
   }
+
+  /**
+   * Get folly::TcpInfo from socket
+   */
+  folly::Expected<folly::TcpInfo, std::errc> getTcpInfo(
+      TcpInfo::LookupOptions options);
 
   /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
@@ -1888,6 +1924,8 @@ class AsyncSocket : public AsyncSocketTransport {
   bool closeOnFailedWrite_{true};
 
   netops::DispatcherContainer netops_;
+
+  folly::TcpInfoDispatcherContainer tcpInfoDispatcher_;
 
   // Container of observers for the socket / transport.
   //

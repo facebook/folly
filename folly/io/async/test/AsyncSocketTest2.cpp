@@ -39,6 +39,7 @@
 #include <folly/io/async/test/TFOTest.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
+#include <folly/net/test/MockTcpInfoDispatcher.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
@@ -3582,6 +3583,11 @@ class AsyncSocketByteEventTest : public ::testing::Test {
       socket_->setReadCB(&readCb_);
     }
 
+    void setMockTcpInfoDispatcher(
+        std::shared_ptr<MockTcpInfoDispatcher> mockTcpInfoDispatcher) {
+      socket_->setOverrideTcpInfoDispatcher(mockTcpInfoDispatcher);
+    }
+
     std::shared_ptr<NiceMock<TestObserver>> attachObserver(
         bool enableByteEvents, bool enablePrewrite = false) {
       auto observer = AsyncSocketByteEventTest::attachObserver(
@@ -3676,6 +3682,29 @@ class AsyncSocketByteEventTest : public ::testing::Test {
       op.iov_base = const_cast<void*>(static_cast<const void*>(wbuf.data()));
       op.iov_len = wbuf.size();
       writeAtClientReadAtServerReflectReadAtClient(&op, 1, writeFlags);
+    }
+
+    /**
+     * Write directly to the NetworkSocket, bypassing AsyncSocket.
+     */
+    void writeAtClientDirectlyToNetworkSocket(
+        const std::vector<uint8_t>& wbuf) {
+      struct msghdr msg = {};
+      struct iovec iovec = {};
+      iovec.iov_base = (void*)wbuf.data();
+      iovec.iov_len = wbuf.size();
+
+      msg.msg_name = nullptr;
+      msg.msg_namelen = 0;
+      msg.msg_iov = &iovec;
+      msg.msg_iovlen = 1;
+      msg.msg_flags = 0;
+      msg.msg_controllen = 0;
+      msg.msg_control = nullptr;
+
+      auto ret = netops::Dispatcher::getDefaultInstance()->sendmsg(
+          socket_->getNetworkSocket(), &msg, 0);
+      ASSERT_EQ(ret, wbuf.size());
     }
 
     std::shared_ptr<AsyncSocket> getRawSocket() { return socket_; }
@@ -7000,6 +7029,497 @@ TEST_F(AsyncSocketByteEventTest, PrewriteRawBytesWrittenAndTriedToWrite) {
           byteEvent.maybeRawBytesTriedToWrite);
     }
   }
+}
+
+TEST_F(AsyncSocketByteEventTest, GetTcpInfo_SocketStates) {
+  const folly::TcpInfo::LookupOptions options = {};
+
+  auto clientConn = getClientConn();
+
+  // not open
+  auto expectedTcpInfo = clientConn.getRawSocket()->getTcpInfo(options);
+  EXPECT_FALSE(expectedTcpInfo.hasValue());
+
+  // connected
+  clientConn.connect();
+  expectedTcpInfo = clientConn.getRawSocket()->getTcpInfo(options);
+  EXPECT_TRUE(expectedTcpInfo.hasValue());
+
+  // connected then closed
+  clientConn.getRawSocket()->close();
+  expectedTcpInfo = clientConn.getRawSocket()->getTcpInfo(options);
+  EXPECT_FALSE(expectedTcpInfo.hasValue());
+}
+
+/**
+ * Enable byte events and have offset correction immediately succeed.
+ *
+ * bytesSent and sendBufBytes stay the same and thus offset correction completes
+ * on the first attempt.
+ */
+TEST_F(
+    AsyncSocketByteEventTest,
+    EnableByteEvents_OffsetCorrection_ValuesStaySame) {
+  std::shared_ptr<MockTcpInfoDispatcher> mockTcpInfoDispatcher =
+      std::make_shared<MockTcpInfoDispatcher>();
+
+  folly::TcpInfo::tcp_info tInfoBefore = {};
+  folly::TcpInfo::tcp_info tInfoAfter = {};
+  tInfoBefore.tcpi_bytes_sent = 35;
+  tInfoAfter.tcpi_bytes_sent = 35;
+
+  folly::TcpInfo wrappedTcpInfoBefore{tInfoBefore};
+  folly::TcpInfo wrappedTcpInfoAfter{tInfoAfter};
+
+  wrappedTcpInfoBefore.setSendBufInUseBytes(0);
+  wrappedTcpInfoAfter.setSendBufInUseBytes(0);
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
+
+  {
+    InSequence s;
+
+    EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+        .WillOnce(Return(wrappedTcpInfoBefore))
+        .RetiresOnSaturation();
+
+    EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+        .WillOnce(Return(wrappedTcpInfoAfter))
+        .RetiresOnSaturation();
+  }
+
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+}
+
+/**
+ * Enable byte events and have offset correction repeat due to sendBufInUseBytes
+ * changing in between calls to the kernel trying to enable timestamping.
+ *
+ * The operation should be retried SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS times and
+ * then fail.
+ */
+TEST_F(
+    AsyncSocketByteEventTest,
+    EnableByteEvents_OffsetCorrection_sendBufInUseBytesChangingFail) {
+  std::shared_ptr<MockTcpInfoDispatcher> mockTcpInfoDispatcher =
+      std::make_shared<MockTcpInfoDispatcher>();
+
+  folly::TcpInfo::tcp_info tInfoBefore = {};
+  folly::TcpInfo::tcp_info tInfoAfter = {};
+  tInfoBefore.tcpi_bytes_sent = 35;
+  tInfoAfter.tcpi_bytes_sent = 35;
+
+  folly::TcpInfo wrappedTcpInfoBefore{tInfoBefore};
+  folly::TcpInfo wrappedTcpInfoAfter{tInfoAfter};
+
+  wrappedTcpInfoBefore.setSendBufInUseBytes(1);
+  wrappedTcpInfoAfter.setSendBufInUseBytes(0);
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
+
+  auto byteEventsEnabledAttempts = 0;
+
+  {
+    InSequence s;
+
+    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+         byteEventsEnabledAttempts++) {
+      EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+          .WillOnce(Return(wrappedTcpInfoBefore))
+          .RetiresOnSaturation();
+
+      EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+          .WillOnce(Return(wrappedTcpInfoAfter))
+          .RetiresOnSaturation();
+    }
+  }
+
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+
+  EXPECT_EQ(byteEventsEnabledAttempts, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(1, observer->byteEventsUnavailableCalled);
+  EXPECT_TRUE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+}
+
+/**
+ * Enable byte events and have offset correction repeat due to sentBytes
+ * changing in between calls to the kernel trying to enable timestamping.
+ *
+ * The operation should be retried SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS times and
+ * then fail.
+ */
+TEST_F(
+    AsyncSocketByteEventTest,
+    EnableByteEvents_OffsetCorrection_sentBytesChangingFail) {
+  std::shared_ptr<MockTcpInfoDispatcher> mockTcpInfoDispatcher =
+      std::make_shared<MockTcpInfoDispatcher>();
+
+  folly::TcpInfo::tcp_info tInfoBefore = {};
+  folly::TcpInfo::tcp_info tInfoAfter = {};
+  tInfoBefore.tcpi_bytes_sent = 35;
+  tInfoAfter.tcpi_bytes_sent = 36;
+
+  folly::TcpInfo wrappedTcpInfoBefore{tInfoBefore};
+  folly::TcpInfo wrappedTcpInfoAfter{tInfoAfter};
+
+  wrappedTcpInfoBefore.setSendBufInUseBytes(0);
+  wrappedTcpInfoAfter.setSendBufInUseBytes(0);
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
+
+  auto byteEventsEnabledAttempts = 0;
+
+  {
+    InSequence s;
+
+    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+         byteEventsEnabledAttempts++) {
+      EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+          .WillOnce(Return(wrappedTcpInfoBefore))
+          .RetiresOnSaturation();
+
+      EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+          .WillOnce(Return(wrappedTcpInfoAfter))
+          .RetiresOnSaturation();
+    }
+  }
+
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+
+  EXPECT_EQ(byteEventsEnabledAttempts, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(1, observer->byteEventsUnavailableCalled);
+  EXPECT_TRUE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+}
+
+/**
+ * Enable byte events and have offset correction repeat due to sendBufInUseBytes
+ * changing in between calls to the kernel trying to enable timestamping.
+ *
+ * The operation should be retried at most SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS
+ * times and then succeed when sendBufInUseBytes does not change.
+ */
+TEST_F(
+    AsyncSocketByteEventTest,
+    EnableByteEvents_OffsetCorrection_sendBufInUseBytesChangingSuccess) {
+  std::shared_ptr<MockTcpInfoDispatcher> mockTcpInfoDispatcher =
+      std::make_shared<MockTcpInfoDispatcher>();
+
+  folly::TcpInfo::tcp_info tInfoBefore = {};
+  folly::TcpInfo::tcp_info tInfoAfter = {};
+  tInfoBefore.tcpi_bytes_sent = 36;
+  tInfoAfter.tcpi_bytes_sent = 36;
+
+  folly::TcpInfo::tcp_info tInfoBefore2 = {};
+  folly::TcpInfo::tcp_info tInfoAfter2 = {};
+  tInfoBefore2.tcpi_bytes_sent = 36;
+  tInfoAfter2.tcpi_bytes_sent = 36;
+
+  folly::TcpInfo wrappedTcpInfoBefore{tInfoBefore};
+  folly::TcpInfo wrappedTcpInfoAfter{tInfoAfter};
+  folly::TcpInfo wrappedTcpInfoBefore2{tInfoBefore2};
+  folly::TcpInfo wrappedTcpInfoAfter2{tInfoAfter2};
+
+  wrappedTcpInfoBefore.setSendBufInUseBytes(1);
+  wrappedTcpInfoAfter.setSendBufInUseBytes(0);
+  wrappedTcpInfoBefore2.setSendBufInUseBytes(0);
+  wrappedTcpInfoAfter2.setSendBufInUseBytes(0);
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
+
+  auto byteEventsEnabledAttempts = 0;
+  auto constexpr kRetriesUntilByteEventsSuccessful = 5;
+  EXPECT_LE(
+      kRetriesUntilByteEventsSuccessful, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+
+  {
+    InSequence s;
+
+    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+         byteEventsEnabledAttempts++) {
+      if (byteEventsEnabledAttempts == kRetriesUntilByteEventsSuccessful) {
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoBefore2))
+            .RetiresOnSaturation();
+
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoAfter2))
+            .RetiresOnSaturation();
+
+        break;
+      } else {
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoBefore))
+            .RetiresOnSaturation();
+
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoAfter))
+            .RetiresOnSaturation();
+      }
+    }
+  }
+
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+
+  EXPECT_EQ(byteEventsEnabledAttempts, kRetriesUntilByteEventsSuccessful);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+}
+
+/**
+ * Enable byte events and have offset correction repeat due to sentBytes
+ * changing in between calls to the kernel trying to enable timestamping.
+ *
+ * The operation should be retried at most SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS
+ * times and then succeed when sentBytes does not change.
+ */
+TEST_F(
+    AsyncSocketByteEventTest,
+    EnableByteEvents_OffsetCorrection_sentBytesChangingSuccess) {
+  std::shared_ptr<MockTcpInfoDispatcher> mockTcpInfoDispatcher =
+      std::make_shared<MockTcpInfoDispatcher>();
+
+  folly::TcpInfo::tcp_info tInfoBefore = {};
+  folly::TcpInfo::tcp_info tInfoAfter = {};
+  tInfoBefore.tcpi_bytes_sent = 35;
+  tInfoAfter.tcpi_bytes_sent = 36;
+
+  folly::TcpInfo::tcp_info tInfoBefore2 = {};
+  folly::TcpInfo::tcp_info tInfoAfter2 = {};
+  tInfoBefore2.tcpi_bytes_sent = 36;
+  tInfoAfter2.tcpi_bytes_sent = 36;
+
+  folly::TcpInfo wrappedTcpInfoBefore{tInfoBefore};
+  folly::TcpInfo wrappedTcpInfoAfter{tInfoAfter};
+  folly::TcpInfo wrappedTcpInfoBefore2{tInfoBefore2};
+  folly::TcpInfo wrappedTcpInfoAfter2{tInfoAfter2};
+
+  wrappedTcpInfoBefore.setSendBufInUseBytes(0);
+  wrappedTcpInfoAfter.setSendBufInUseBytes(0);
+  wrappedTcpInfoBefore2.setSendBufInUseBytes(0);
+  wrappedTcpInfoAfter2.setSendBufInUseBytes(0);
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
+
+  auto byteEventsEnabledAttempts = 0;
+  auto constexpr kRetriesUntilByteEventsSuccessful = 5;
+  EXPECT_LE(
+      kRetriesUntilByteEventsSuccessful, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+
+  {
+    InSequence s;
+
+    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+         byteEventsEnabledAttempts++) {
+      if (byteEventsEnabledAttempts == kRetriesUntilByteEventsSuccessful) {
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoBefore2))
+            .RetiresOnSaturation();
+
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoAfter2))
+            .RetiresOnSaturation();
+
+        break;
+      } else {
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoBefore))
+            .RetiresOnSaturation();
+
+        EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+            .WillOnce(Return(wrappedTcpInfoAfter))
+            .RetiresOnSaturation();
+      }
+    }
+  }
+
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+
+  EXPECT_EQ(byteEventsEnabledAttempts, kRetriesUntilByteEventsSuccessful);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+}
+
+class AsyncSocketByteEventRawOffsetTest
+    : public AsyncSocketByteEventTest,
+      public testing::WithParamInterface<size_t> {
+ public:
+  // byte offset of the AsyncSocket when ByteEvents are enabled
+  //
+  // for some of the tests, the value returned by sendBufInUseBytes
+  // will be greater than this value to simulate a case in which
+  // bytes are written to the socket prior to the AsyncSocket being
+  // initialized, and those bytes still not yet been acked.
+  static constexpr size_t kRawByteOffsetWhenByteEventsEnabled = 20;
+
+  // values returned by sendBufInUseBytes()
+  static std::vector<size_t> getTestingValues() {
+    std::vector<size_t> vals{/* Values for sendBufInUseBytes */
+                             0,
+                             1,
+                             10,
+                             kRawByteOffsetWhenByteEventsEnabled,
+                             // simulate cases where bytes have already been
+                             // written to the kernel socket prior to the
+                             // AsyncSocket being initialized and are still
+                             // in the sendbuf (either not sent, or not ACKed).
+                             kRawByteOffsetWhenByteEventsEnabled + 1,
+                             kRawByteOffsetWhenByteEventsEnabled + 10};
+    return vals;
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    ByteEventRawOffsets,
+    AsyncSocketByteEventRawOffsetTest,
+    ::testing::ValuesIn(AsyncSocketByteEventRawOffsetTest::getTestingValues()));
+
+/**
+ * Enable byte events with varying values of sendBufInUseBytes.
+ *
+ * This is an end-to-end test verifying proper delivery of timestamps with
+ * different byte offset corrections. sendBufInUseBytes varies between zero
+ * and a value greater than that reported by getRawBytesWritten(), with the
+ * latter providing coverage of a case where bytes were written to the
+ * kernel socket prior to the AsyncSocket being initialized and are still
+ * in the sendbuf.
+ */
+TEST_P(AsyncSocketByteEventRawOffsetTest, EnableByteEvents_CheckRawByteOffset) {
+  const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
+      WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
+
+  const auto bytesInSendBuf = GetParam();
+  const std::vector<uint8_t> wbuf1(kRawByteOffsetWhenByteEventsEnabled, 'a');
+  const std::vector<uint8_t> wbuf2(1, 'a');
+  const std::vector<uint8_t> wbufBytesInSendBufOnEnable(bytesInSendBuf, 'a');
+
+  std::shared_ptr<MockTcpInfoDispatcher> mockTcpInfoDispatcher =
+      std::make_shared<MockTcpInfoDispatcher>();
+
+  folly::TcpInfo::tcp_info tInfoBefore = {};
+  folly::TcpInfo::tcp_info tInfoAfter = {};
+  folly::TcpInfo wrappedTcpInfoBefore{tInfoBefore};
+  folly::TcpInfo wrappedTcpInfoAfter{tInfoAfter};
+  wrappedTcpInfoBefore.setSendBufInUseBytes(bytesInSendBuf);
+  wrappedTcpInfoAfter.setSendBufInUseBytes(bytesInSendBuf);
+
+  auto clientConn = getClientConn();
+  clientConn.netOpsExpectNoTimestampingSetSockOpt();
+  clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
+
+  {
+    InSequence s;
+
+    EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+        .WillOnce(Return(wrappedTcpInfoBefore))
+        .RetiresOnSaturation();
+
+    EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
+        .WillOnce(Return(wrappedTcpInfoAfter))
+        .RetiresOnSaturation();
+  }
+
+  // Write any bytes that we wanted to have sent through the AsyncSocket
+  // prior to timestamps being enabled to adjust the rawByteOffset
+  clientConn.writeAtClientReadAtServer(wbuf1, WriteFlags::NONE);
+
+  // Enable timestamps
+  //
+  // AsyncSocket will record the value returned by TcpInfo::sendBufInUseBytes
+  // when enabling timestamps to determine the correction factor for timestamp
+  // byte offsets. This test controls the value returned by sendBufInUseBytes.
+  clientConn.netOpsExpectTimestampingSetSockOpt();
+  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  EXPECT_EQ(1, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
+  EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // Write wbufBytesInSendBufOnEnable to the socket (bypassing AsyncSocket)
+  //
+  // We can't control the actual number of bytes in the socket sendbuf when
+  // we enable timestamping in the previous step. Instead, we create the
+  // scenario where there are bytes in the sendBuf that we need to correct for
+  // by writing bytes directly to the network socket after enabling
+  // timestamping. The number of bytes written is identical to the number of
+  // bytes that we reported were in the buffer in the previous step, thereby
+  // causing kernel timestamp byte offsets to be offset by this amount.
+  clientConn.writeAtClientDirectlyToNetworkSocket(wbufBytesInSendBufOnEnable);
+
+  clientConn.netOpsExpectSendmsgWithAncillaryTsFlags(dropWriteFromFlags(flags));
+  clientConn.writeAtClientReadAtServerReflectReadAtClient(wbuf2, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(4));
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled,
+      observer->maxOffsetForByteEventReceived(ByteEventType::WRITE).value());
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled,
+      observer->maxOffsetForByteEventReceived(ByteEventType::SCHED).value());
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled,
+      observer->maxOffsetForByteEventReceived(ByteEventType::TX).value());
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled,
+      observer->maxOffsetForByteEventReceived(ByteEventType::ACK).value());
+
+  // write again to check offsets
+  clientConn.netOpsExpectSendmsgWithAncillaryTsFlags(dropWriteFromFlags(flags));
+  clientConn.writeAtClientReadAtServerReflectReadAtClient(wbuf2, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+  EXPECT_THAT(observer->byteEvents, SizeIs(8));
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled + 1,
+      observer->maxOffsetForByteEventReceived(ByteEventType::WRITE));
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled + 1,
+      observer->maxOffsetForByteEventReceived(ByteEventType::SCHED));
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled + 1,
+      observer->maxOffsetForByteEventReceived(ByteEventType::TX));
+  EXPECT_EQ(
+      kRawByteOffsetWhenByteEventsEnabled + 1,
+      observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
 }
 
 struct AsyncSocketByteEventDetailsTestParams {

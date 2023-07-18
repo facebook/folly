@@ -3390,6 +3390,12 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
       setReadCb();
     }
 
+    void waitForHandshake() {
+      while (connCb_.state == ConnCallback::State::WAITING) {
+        socket_->getEventBase()->loopOnce();
+      }
+    }
+
     void setReadCb() {
       // Due to how libevent works, we currently need to be subscribed to
       // EV_READ events in order to get error messages.
@@ -3630,8 +3636,6 @@ TEST_F(AsyncSSLSocketByteEventTest, ObserverAttachedBeforeConnect) {
   }
 }
 
-/*
- * Disabled until fixed
 TEST_F(AsyncSSLSocketByteEventTest, ObserverAttachedAfterConnect) {
   const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |
       WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK;
@@ -3640,6 +3644,38 @@ TEST_F(AsyncSSLSocketByteEventTest, ObserverAttachedAfterConnect) {
   auto clientConn = getClientConn();
   clientConn.netOpsExpectNoTimestampingSetSockOpt();
   clientConn.connect();
+  clientConn.netOpsVerifyAndClearExpectations();
+
+  // We make sure the server writes at least one byte to the client before
+  // enabling byte events. Otherwise, the test is flaky. We believe this happens
+  // when the following sequence occurs:
+  //
+  // (1) The client socket enables byte events successfully;
+  //
+  // (2) The client socket writes data to the server with timestamping set;
+  //
+  // (3) The client socket receives byte events for WRITE, SCHED, and TX and
+  //     processes them using `handleErrMessages` in `ioReady`. Once the error
+  //     queue is empty, `ioReady` calls `handleRead`. During this time, the
+  //     client also begins to read data sent by the server as part of the SSL
+  //     handshake completion;
+  //
+  // (4) The server socket receives the data from the client and reflects it
+  //     back;
+  //
+  // (5) The client socket receives the data reflected by the server. When a
+  //     data packet contains an ACK for previous data, the kernel emits the ACK
+  //     timestamp before handing off the received data to userspace. However,
+  //     in this case, since the client socket is still inside the `handleRead`
+  //     function (step 3), it will process the read, even though the ACK
+  //     timestamp is already enqueued in the error queue. When it finishes
+  //     reading the data, it does not go back to handle messages from the error
+  //     queue until the next call to `ioReady`. This causes several `EXPECT`
+  //     statements below to fail.
+
+  serverHandshakeCb_->waitForHandshake();
+  clientConn.waitForHandshake();
+  clientConn.writeAndReflect(wbuf, flags);
   clientConn.netOpsVerifyAndClearExpectations();
 
   clientConn.netOpsExpectTimestampingSetSockOpt();
@@ -3699,7 +3735,6 @@ TEST_F(AsyncSSLSocketByteEventTest, ObserverAttachedAfterConnect) {
         observer->maxOffsetForByteEventReceived(ByteEventType::ACK));
   }
 }
-*/
 
 TEST_F(AsyncSSLSocketByteEventTest, MultiByteWrites) {
   const auto flags = WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED |

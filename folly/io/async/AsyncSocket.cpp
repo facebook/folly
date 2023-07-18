@@ -598,9 +598,20 @@ AsyncSocket::ByteEventHelper::processCmsg(
     //       has wrapped, we detect it, and go back one position.
     const uint64_t bytesPerOffsetWrap =
         static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+
+    // We adjust the byte stream offset by
+    // `rawBytesWrittenWhenByteEventsEnabled` to align it with the raw byte
+    // offset maintained by AsyncSocket. If the aligned bytes stream offset is
+    // negative, it means that the byte event is for a byte sent before we
+    // enabled byte events and we can discard the event.
+    if (completeState.byteOffsetKernel + rawBytesWrittenWhenByteEventsEnabled <
+        0) {
+      return folly::none;
+    }
     size_t byteOffset = rawBytesWritten -
         (rawBytesWritten % bytesPerOffsetWrap) +
-        completeState.byteOffsetKernel + rawBytesWrittenWhenByteEventsEnabled;
+        completeState.byteOffsetKernel +
+        (size_t)rawBytesWrittenWhenByteEventsEnabled;
     if (byteOffset > rawBytesWritten) {
       // kernel's uint32_t var wrapped around; go back one wrap
       CHECK_GE(byteOffset, bytesPerOffsetWrap)
@@ -1558,26 +1569,118 @@ void AsyncSocket::enableByteEvents() {
          folly::netops::SOF_TIMESTAMPING_RAW_HARDWARE |
          folly::netops::SOF_TIMESTAMPING_OPT_TX_SWHW);
     socklen_t len = sizeof(flags);
-    const auto ret =
-        setSockOptVirtual(SOL_SOCKET, SO_TIMESTAMPING, &flags, len);
+
+    size_t byteEventsEnabledMaxAttempts = 0;
     int setSockOptErrno = errno;
-    if (ret == 0) {
-      byteEventHelper_->byteEventsEnabled = true;
-      byteEventHelper_->rawBytesWrittenWhenByteEventsEnabled =
-          getRawBytesWritten();
-      for (const auto& observer : lifecycleObservers_) {
-        if (observer->getConfig().byteEvents) {
-          observer->byteEventsEnabled(this);
-        }
+
+    // When enabling byte events, the kernel resets the offset it uses for
+    // timestamps to 0 (see discussion in ByteEventHelper::processCmsg). By
+    // keeping track of the AsyncSocket raw byte offset when byte events were
+    // enabled, we can align the kernel and AsyncSocket byte offsets for future
+    // byte events.
+    //
+    // However, the kernel offset tracks the last unacknowledged byte, not the
+    // last written byte. This prevents us from aligning AsyncSocket's raw byte
+    // offset with the kernel offset in two scenarios:
+    //
+    // (1) If the kernel is still sending (packetizing) the bytes written before
+    //     enabling byte events, then the kernel offset is reset before all
+    //     bytes written to the kernel by AsyncSocket are sent.
+    //
+    // (2) If there are unacknowledged bytes in the TCP send buffer, because the
+    //     kernel offset tracks the last unacknowledged byte, not the last
+    //     written byte, the offset will end up being off.
+    //
+    // There is already a fix in the Linux kernel to reset the kernel offset
+    // according to write_seq (written bytes) instead of snd_una (unacknowledged
+    // bytes) [1].
+    //
+    // For kernels without this patch, we adopt the following solution:
+    //
+    // (1) We record the number of sent bytes and unacknowledged bytes before
+    //     and after enabling byte events. If they change, we disable and
+    //     re-enable. We repeat the process for a fixed number of times or until
+    //     the numbers before and after do not change. This fix is meant to
+    //     ensure that we can record the number of unacknowledged bytes at the
+    //     moment when we reset the kernel's timestamp offset.
+    //
+    // (2) We adjust the AsyncSocket byte offset when byte events were enabled
+    //     by the number of unacknowledged bytes at that point. Per (1) above,
+    //     we know that we captured the number of unacknowledged bytes when the
+    //     kernel's timestamp offset was reset, and thus can confidently adjust
+    //     offsets reported by the kernel going forward.
+    //
+    // [1]
+    // https://github.com/torvalds/linux/commit/b534dc46c8ae0165b1b2509be24dbea4fa9c4011
+
+    while (byteEventsEnabledMaxAttempts++ < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS) {
+      folly::TcpInfo::LookupOptions options = {};
+      options.getMemInfo = true;
+      const auto expectTInfoBefore = getTcpInfo(options);
+      const auto ret =
+          setSockOptVirtual(SOL_SOCKET, SO_TIMESTAMPING, &flags, len);
+      const auto expectTInfoAfter = getTcpInfo(options);
+
+      if (ret != 0) {
+        throw AsyncSocketException(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("failed to enable byte events: setsockopt failed"),
+            setSockOptErrno);
       }
-      return;
+
+      if (!expectTInfoBefore.hasValue() || !expectTInfoAfter.hasValue()) {
+        throw AsyncSocketException(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("failed to enable byte events: getTcpInfo failed"),
+            setSockOptErrno);
+      }
+
+      const auto tInfoBefore = expectTInfoBefore.value();
+      const auto tInfoAfter = expectTInfoAfter.value();
+
+      if (tInfoBefore.bytesSent() != tInfoAfter.bytesSent() ||
+          tInfoBefore.sendBufInUseBytes() != tInfoAfter.sendBufInUseBytes() ||
+          !tInfoAfter.sendBufInUseBytes().has_value()) {
+        const uint32_t disableFlag = 0;
+        const auto disableReturnValue = setSockOptVirtual(
+            SOL_SOCKET, SO_TIMESTAMPING, &disableFlag, sizeof(disableFlag));
+        if (disableReturnValue != 0) {
+          throw AsyncSocketException(
+              AsyncSocketException::INTERNAL_ERROR,
+              withAddr(
+                  "error when enabling byte events: "
+                  "failed to disable byte events after byte sent counters not matching"),
+              setSockOptErrno);
+        }
+      } else {
+        const auto rawBytesWritten = getRawBytesWritten();
+        const auto bytesNotAcknowledged =
+            tInfoAfter.sendBufInUseBytes().value();
+
+        byteEventHelper_->byteEventsEnabled = true;
+        // it is possible for rawBytesWrittenWhenByteEventsEnabled to be
+        // negative if bytes were written to the underlying socket before
+        // this AsyncSocket was constructed
+        byteEventHelper_->rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWritten - bytesNotAcknowledged;
+
+        for (const auto& observer : lifecycleObservers_) {
+          if (observer->getConfig().byteEvents) {
+            observer->byteEventsEnabled(this);
+          }
+        }
+        return;
+      }
     }
 
-    // failed
-    throw AsyncSocketException(
-        AsyncSocketException::INTERNAL_ERROR,
-        withAddr("failed to enable byte events: setsockopt failed"),
-        setSockOptErrno);
+    if (byteEventsEnabledMaxAttempts > SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS) {
+      throw AsyncSocketException(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr(
+              "failed to enable byte events: "
+              "could not account for bytes in flight in kernel byte offset"),
+          setSockOptErrno);
+    }
 #endif // FOLLY_HAVE_SO_TIMESTAMPING
     // unsupported by platform
     throw AsyncSocketException(
@@ -2759,6 +2862,14 @@ bool AsyncSocket::processZeroCopyWriteInProgress() noexcept {
   handleErrMessages();
 
   return idZeroCopyBufPtrMap_.empty();
+}
+
+folly::Expected<folly::TcpInfo, std::errc> AsyncSocket::getTcpInfo(
+    TcpInfo::LookupOptions options) {
+  if (NetworkSocket() == fd_) {
+    return folly::makeUnexpected(std::errc::invalid_argument);
+  }
+  return tcpInfoDispatcher_->initFromFd(fd_, options);
 }
 
 void AsyncSocket::addLifecycleObserver(
