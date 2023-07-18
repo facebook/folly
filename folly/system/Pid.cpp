@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/portability/Unistd.h>
 #include <folly/system/AtFork.h>
 
 namespace folly {
