@@ -2398,3 +2398,23 @@ TEST(F14Map, insertOrAssignUnchangedIfNoInsert) {
   testInsertOrAssignUnchangedIfNoInsert<F14VectorMap>();
   testInsertOrAssignUnchangedIfNoInsert<F14FastMap>();
 }
+
+template <typename M>
+void runSimpleShrinkToFitTest(float expectedLoadFactor) {
+  using K = typename M::key_type;
+  for (int n = 1; n <= 1000; ++n) {
+    M m;
+    for (K k = 0; k < n; ++k) {
+      m[k];
+    }
+    m.reserve(0); // reserve(0) works like shrink_to_fit
+    EXPECT_GE(m.load_factor(), expectedLoadFactor);
+  }
+}
+
+TEST(F14Map, shrinkToFit) {
+  SKIP_IF(kFallback);
+  runSimpleShrinkToFitTest<F14NodeMap<int, int>>(0.5);
+  runSimpleShrinkToFitTest<F14ValueMap<int, int>>(0.5);
+  runSimpleShrinkToFitTest<F14VectorMap<int, int>>(0.875);
+}
