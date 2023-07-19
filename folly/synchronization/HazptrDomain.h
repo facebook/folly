@@ -18,10 +18,10 @@
 
 #include <atomic>
 
+#include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/container/F14Set.h>
-#include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrObj.h>
@@ -34,6 +34,8 @@
 
 namespace folly {
 
+class Executor;
+
 namespace detail {
 
 /** Threshold for the number of retired objects to trigger
@@ -41,6 +43,8 @@ namespace detail {
 constexpr int hazptr_domain_rcount_threshold() {
   return 1000;
 }
+
+folly::Executor::KeepAlive<> hazptr_get_default_executor();
 
 } // namespace detail
 
@@ -114,10 +118,6 @@ class hazptr_domain {
   static constexpr int kShardMask = kNumShards - 1;
   static_assert(
       (kNumShards & kShardMask) == 0, "kNumShards must be a power of 2");
-
-  static folly::Executor::KeepAlive<> get_default_executor() {
-    return &folly::QueuedImmediateExecutor::instance();
-  }
 
   Atom<Rec*> hazptrs_{nullptr};
   Atom<uintptr_t> avail_{reinterpret_cast<uintptr_t>(nullptr)};
@@ -719,7 +719,8 @@ class hazptr_domain {
       return false;
     }
     auto fn = exec_fn_.load(std::memory_order_acquire);
-    folly::Executor::KeepAlive<> ex = fn ? fn() : get_default_executor();
+    folly::Executor::KeepAlive<> ex =
+        fn ? fn() : detail::hazptr_get_default_executor();
     if (!ex) {
       return false;
     }
@@ -728,7 +729,7 @@ class hazptr_domain {
       exec_backlog_.store(0, std::memory_order_relaxed);
       do_reclamation(rcount);
     };
-    if (ex.get() == get_default_executor().get()) {
+    if (ex.get() == detail::hazptr_get_default_executor().get()) {
       invoke_reclamation_may_deadlock(ex, recl_fn);
     } else {
       ex->add(recl_fn);
