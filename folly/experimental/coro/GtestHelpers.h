@@ -24,7 +24,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
-#if defined(__GLIBCXX__)
+#ifdef FOLLY_HAVE_SMART_EXCEPTION_TRACER
 
 #define LOG_ASYNC_TEST_EXCEPTION                            \
   GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: " \
@@ -156,8 +156,7 @@
     try {                                                                      \
       folly::coro::blockingWait(co_TestBody());                                \
     } catch (const std::exception& ex) {                                       \
-      GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: "                \
-                        << folly::exception_tracer::getAsyncTrace(ex);         \
+      LOG_ASYNC_TEST_EXCEPTION                                                 \
       throw;                                                                   \
     }                                                                          \
   }                                                                            \
@@ -197,8 +196,7 @@
     try {                                                                     \
       folly::coro::blockingWait(co_TestBody());                               \
     } catch (const std::exception& ex) {                                      \
-      GTEST_LOG_(ERROR) << ex.what() << ", async stack trace: "               \
-                        << folly::exception_tracer::getAsyncTrace(ex);        \
+      LOG_ASYNC_TEST_EXCEPTION                                                \
       throw;                                                                  \
     }                                                                         \
   }                                                                           \
