@@ -2453,3 +2453,30 @@ TEST(F14Map, initialReserve) {
   runInitialReserveTest<F14ValueMap<int, int>>(0.5);
   runInitialReserveTest<F14VectorMap<int, int>>(0.875);
 }
+
+template <typename M>
+void runReserveMoreTest(int n) {
+  constexpr int kIters = 1000;
+  M m;
+  int k = 0;
+  for (int i = 0; i < kIters; ++i) {
+    auto bc = m.bucket_count();
+    m.reserve(m.size() + n);
+    EXPECT_GE(m.bucket_count(), bc); // should never shrink
+    for (int j = 0; j < n; ++j) {
+      bc = m.bucket_count();
+      m[k++];
+      EXPECT_EQ(m.bucket_count(), bc);
+    }
+  }
+}
+
+TEST(F14Map, reserveMoreNeverShrinks) {
+  SKIP_IF(kFallback);
+  runReserveMoreTest<F14NodeMap<int, int>>(1);
+  runReserveMoreTest<F14ValueMap<int, int>>(1);
+  // runReserveMoreTest<F14VectorMap<int, int>>(1);
+  runReserveMoreTest<F14NodeMap<int, int>>(10);
+  runReserveMoreTest<F14ValueMap<int, int>>(10);
+  // runReserveMoreTest<F14VectorMap<int, int>>(10);
+}
