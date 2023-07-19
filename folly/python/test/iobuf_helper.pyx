@@ -32,3 +32,6 @@ def make_chain(data):
 
 def to_uppercase_string(iobuf: object) -> str:
     return to_uppercase_string_cpp(iobuf).decode("utf-8")
+
+def to_uppercase_string_heap(iobuf: object) -> str:
+    return to_uppercase_string_cpp_heap(iobuf).decode("utf-8")

@@ -24,10 +24,18 @@
 
 namespace folly::python {
 
-// Returns a copy of the C++ IOBuf underlying a Python IOBuf object. In
-// practice, this makes it possible to pass Python IOBuf objects across the
-// Python/C++ boundary in pybind and other non-Cython extension code.
+/**
+ * Returns a copy of the C++ IOBuf underlying a Python IOBuf object. In
+ * practice, this makes it possible to pass Python IOBuf objects across the
+ * Python/C++ boundary in pybind and other non-Cython extension code.
+ */
 folly::IOBuf iobuf_from_python_iobuf(PyObject* iobuf);
+/**
+ * Like the above, but more efficient when stack-allocated IOBuf not needed.
+ * On python error, returns nullptr, so result must be checked.
+ * This allows caller to control handling via C++ exception or python error.
+ */
+std::unique_ptr<folly::IOBuf> iobuf_ptr_from_python_iobuf(PyObject* iobuf);
 
 inline bool check_iobuf_equal(const folly::IOBuf* a, const folly::IOBuf* b) {
   return folly::IOBufEqualTo{}(a, b);

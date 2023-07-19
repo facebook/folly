@@ -46,11 +46,10 @@ cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
 
 
 cdef cIOBuf from_python_iobuf(object obj) except *:
-    if not isinstance(obj, IOBuf):
-        raise TypeError("Expected an IOBuf")
+    return deref((<IOBuf?>obj).c_clone())
 
-    iobuf = <IOBuf>obj
-    return deref(iobuf.c_clone())
+cdef cIOBuf* ptr_from_python_iobuf(object obj) except NULL:
+    return (<IOBuf?>obj).c_clone().release()
 
 
 cdef class IOBuf:
