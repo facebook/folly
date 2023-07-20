@@ -2420,6 +2420,29 @@ TEST(F14Map, shrinkToFit) {
 }
 
 template <typename M>
+void runDefactoShrinkToFitTest(float expectedLoadFactor) {
+  for (int n = 1; n <= 1000; n += (n + 9) / 10) {
+    M m1;
+    for (int k = 0; k < n; ++k) {
+      m1[k];
+    }
+    for (int j = 0; j <= n; ++j) {
+      auto m2 = m1;
+      // any argument < size is a "defacto" shrink_to_fit
+      m2.reserve(m2.size() - j);
+      EXPECT_GE(m2.load_factor(), expectedLoadFactor);
+    }
+  }
+}
+
+TEST(F14Map, defactoShrinkToFit) {
+  SKIP_IF(kFallback);
+  runDefactoShrinkToFitTest<F14NodeMap<int, int>>(0.5);
+  runDefactoShrinkToFitTest<F14ValueMap<int, int>>(0.5);
+  runDefactoShrinkToFitTest<F14VectorMap<int, int>>(0.875);
+}
+
+template <typename M>
 void runInitialReserveTest(float expectedLoadFactor) {
   auto initBucketsCtor = [](int initBuckets) { return M(initBuckets); };
   auto defaultCtorAndReserve = [](int initBuckets) {
