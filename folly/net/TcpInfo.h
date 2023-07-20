@@ -219,7 +219,7 @@ struct TcpInfo {
   static const T1* getFieldAsPtr(
       const T2& tgtStruct, const int tgtBytesRead, T1 T2::*field) {
     if (field != nullptr && tgtBytesRead > 0 &&
-        getFieldOffset(field) + sizeof(tgtStruct.*field) <=
+        getTcpInfoFieldOffset(field) + sizeof(tgtStruct.*field) <=
             (unsigned long)tgtBytesRead) {
       return &(tgtStruct.*field);
     }
@@ -236,7 +236,7 @@ struct TcpInfo {
    *    https://gist.github.com/graphitemaster/494f21190bb2c63c5516
    */
   template <typename T1, typename T2>
-  static size_t constexpr getFieldOffset(T1 T2::*field) {
+  static size_t constexpr getTcpInfoFieldOffset(T1 T2::*field) {
     static_assert(
         std::is_standard_layout<T1>() && std::is_trivial<T1>(),
         "Object type is not standard layout or trivial");
@@ -397,7 +397,7 @@ struct TcpInfo {
   folly::Optional<uint64_t> getFieldAsOptUInt64(
       const T2& tgtStruct, T1 T2::*field) const {
     if (field != nullptr && tcpCcInfoBytesRead > 0 &&
-        getFieldOffset(field) + sizeof(tgtStruct.*field) <=
+        getTcpInfoFieldOffset(field) + sizeof(tgtStruct.*field) <=
             (unsigned long)tcpCcInfoBytesRead) {
       return folly::Optional<uint64_t>(tgtStruct.*field);
     }
