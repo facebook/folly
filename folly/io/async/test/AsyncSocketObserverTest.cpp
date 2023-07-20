@@ -73,6 +73,9 @@ TEST(AsyncSocketObserver, AttachObserverThenDetachAndAttachEvb) {
   socket->attachEventBase(&evb);
   EXPECT_EQ(&evb, socket->getEventBase());
   Mock::VerifyAndClearExpectations(observer.get());
+
+  EXPECT_CALL(*observer, destroyed(socket.get(), _));
+  socket = nullptr;
 }
 
 TEST(AsyncSocketObserver, AttachObserverThenConnectAndCloseSocket) {
@@ -97,6 +100,7 @@ TEST(AsyncSocketObserver, AttachObserverThenConnectAndCloseSocket) {
   socket->closeNow();
   Mock::VerifyAndClearExpectations(observer.get());
 
+  EXPECT_CALL(*observer, destroyed(socket.get(), _));
   socket = nullptr;
 }
 
@@ -118,6 +122,7 @@ TEST(AsyncSocketObserver, AttachObserverThenConnectError) {
   // the current state machine calls AsyncSocket::invokeConnectionError() twice
   // for this use-case...
   EXPECT_CALL(*observer, connectError(socket.get(), _)).Times(2);
+  EXPECT_CALL(*observer, destroyed(socket.get(), _));
   socket->connect(nullptr, unreachable, 1);
   evb.loop();
   socket = nullptr;
@@ -157,6 +162,8 @@ TEST(AsyncSocketObserver, AttachMultipleObserversThenConnectAndCloseSocket) {
   Mock::VerifyAndClearExpectations(observer1.get());
   Mock::VerifyAndClearExpectations(observer2.get());
 
+  EXPECT_CALL(*observer1, destroyed(socket.get(), _));
+  EXPECT_CALL(*observer2, destroyed(socket.get(), _));
   socket = nullptr;
 }
 
@@ -177,6 +184,31 @@ TEST(AsyncSocketObserver, AttachThenRemoveObserver) {
   EXPECT_THAT(socket->findObservers(), IsEmpty());
 
   Mock::VerifyAndClearExpectations(observer.get());
+
+  EXPECT_CALL(*observer, destroyed(socket.get(), _)).Times(0);
+  socket = nullptr;
+}
+
+TEST(AsyncSocketObserver, AttachThenRemoveSharedPtrObserver) {
+  auto observer = std::make_shared<StrictMock<MockAsyncSocketObserver>>();
+  EventBase evb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+
+  EXPECT_EQ(socket->numObservers(), 0);
+  EXPECT_THAT(socket->findObservers(), IsEmpty());
+
+  socket->addObserver(observer);
+  EXPECT_EQ(socket->numObservers(), 1);
+  EXPECT_THAT(socket->findObservers(), UnorderedElementsAre(observer.get()));
+
+  EXPECT_TRUE(socket->removeObserver(observer));
+  EXPECT_EQ(socket->numObservers(), 0);
+  EXPECT_THAT(socket->findObservers(), IsEmpty());
+
+  Mock::VerifyAndClearExpectations(observer.get());
+
+  EXPECT_CALL(*observer, destroyed(socket.get(), _)).Times(0);
+  socket = nullptr;
 }
 
 TEST(AsyncSocketObserver, AttachThenRemoveMultipleObservers) {
@@ -202,6 +234,10 @@ TEST(AsyncSocketObserver, AttachThenRemoveMultipleObservers) {
   EXPECT_TRUE(socket->removeObserver(observer2.get()));
   EXPECT_EQ(socket->numObservers(), 0);
   EXPECT_THAT(socket->findObservers(), IsEmpty());
+
+  EXPECT_CALL(*observer1, destroyed(socket.get(), _)).Times(0);
+  EXPECT_CALL(*observer2, destroyed(socket.get(), _)).Times(0);
+  socket = nullptr;
 }
 
 TEST(AsyncSocketObserver, AttachThenRemoveMultipleObserversReverse) {
@@ -227,6 +263,10 @@ TEST(AsyncSocketObserver, AttachThenRemoveMultipleObserversReverse) {
   EXPECT_TRUE(socket->removeObserver(observer1.get()));
   EXPECT_EQ(socket->numObservers(), 0);
   EXPECT_THAT(socket->findObservers(), IsEmpty());
+
+  EXPECT_CALL(*observer1, destroyed(socket.get(), _)).Times(0);
+  EXPECT_CALL(*observer2, destroyed(socket.get(), _)).Times(0);
+  socket = nullptr;
 }
 
 TEST(AsyncSocketObserver, RemoveMissingObserver) {
@@ -234,6 +274,19 @@ TEST(AsyncSocketObserver, RemoveMissingObserver) {
   EventBase evb;
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_FALSE(socket->removeObserver(observer.get()));
+
+  EXPECT_CALL(*observer, destroyed(socket.get(), _)).Times(0);
+  socket = nullptr;
+}
+
+TEST(AsyncSocketObserver, RemoveMissingSharedPtrObserver) {
+  auto observer = std::make_shared<StrictMock<MockAsyncSocketObserver>>();
+  EventBase evb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  EXPECT_FALSE(socket->removeObserver(observer));
+
+  EXPECT_CALL(*observer, destroyed(socket.get(), _)).Times(0);
+  socket = nullptr;
 }
 
 TEST(AsyncSocketObserver, AttachObserverThenRemoveThenConnect) {
@@ -290,6 +343,70 @@ TEST(AsyncSocketObserver, AttachObserverThenConnectThenRemoveObserver) {
   socket = nullptr;
 }
 
+TEST(AsyncSocketObserver, AttachObserverThenDestroySocket) {
+  auto observer = std::make_unique<StrictMock<MockAsyncSocketObserver>>();
+  EventBase evb;
+  TestServer server;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+
+  EXPECT_EQ(socket->numObservers(), 0);
+  EXPECT_THAT(socket->findObservers(), IsEmpty());
+
+  socket->addObserver(observer.get());
+  EXPECT_EQ(socket->numObservers(), 1);
+  EXPECT_THAT(socket->findObservers(), UnorderedElementsAre(observer.get()));
+
+  EXPECT_CALL(*observer, destroyed(socket.get(), _));
+  socket = nullptr;
+}
+
+TEST(AsyncSocketObserver, AttachSharedPtrObserverThenDestroySocket) {
+  auto observer = std::make_shared<StrictMock<MockAsyncSocketObserver>>();
+  EventBase evb;
+  TestServer server;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+
+  EXPECT_EQ(socket->numObservers(), 0);
+  EXPECT_THAT(socket->findObservers(), IsEmpty());
+
+  socket->addObserver(observer);
+  EXPECT_EQ(socket->numObservers(), 1);
+  EXPECT_THAT(socket->findObservers(), UnorderedElementsAre(observer.get()));
+
+  EXPECT_CALL(*observer.get(), destroyed(socket.get(), _));
+  socket = nullptr;
+}
+
+TEST(
+    AsyncSocketObserver,
+    AttachSharedPtrObserverThenDestroySocket_VerifyCtrKeepsSharedPtrAlive) {
+  auto observer = std::make_shared<StrictMock<MockAsyncSocketObserver>>();
+  MockAsyncSocketObserver::Safety dc(*observer.get());
+  ASSERT_FALSE(dc.destroyed());
+
+  EventBase evb;
+  TestServer server;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+
+  EXPECT_EQ(socket->numObservers(), 0);
+  EXPECT_THAT(socket->findObservers(), IsEmpty());
+
+  socket->addObserver(observer);
+  EXPECT_EQ(socket->numObservers(), 1);
+  EXPECT_THAT(socket->findObservers(), UnorderedElementsAre(observer.get()));
+
+  // store raw pointer to observer, so that shared_ptr in container is the
+  // only thing keeping the observer alive
+  EXPECT_EQ(2, observer.use_count());
+  auto observerRaw = observer.get();
+  observer = nullptr;
+  ASSERT_FALSE(dc.destroyed());
+
+  // verify that the observer is informed of the socket destroy
+  EXPECT_CALL(*observerRaw, destroyed(socket.get(), _));
+  socket = nullptr;
+}
+
 TEST(AsyncSocketObserver, AttachObserverThenConnectThenDestroySocket) {
   auto observer = std::make_unique<StrictMock<MockAsyncSocketObserver>>();
   EventBase evb;
@@ -312,6 +429,7 @@ TEST(AsyncSocketObserver, AttachObserverThenConnectThenDestroySocket) {
   Mock::VerifyAndClearExpectations(observer.get());
 
   EXPECT_CALL(*observer, close(socket.get()));
+  EXPECT_CALL(*observer, destroyed(socket.get(), _));
   socket = nullptr;
 }
 
@@ -408,9 +526,13 @@ TEST(AsyncSocketObserver, AttachObserverThenConnectAndDetachFd) {
   auto fd = socket1->detachNetworkSocket();
   Mock::VerifyAndClearExpectations(observer.get());
 
-  // create socket2, then immediately destroy it, should get no callbacks
+  // create socket2 using fd, then immediately destroy it, no events
   auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(&evb, fd));
   socket2 = nullptr;
+
+  // destroy socket1
+  EXPECT_CALL(*observer, destroyed(socket1.get(), _));
+  socket1 = nullptr;
 }
 
 TEST(AsyncSocketObserver, AttachObserverThenConnectAndMoveSocket) {
@@ -441,5 +563,12 @@ TEST(AsyncSocketObserver, AttachObserverThenConnectAndMoveSocket) {
   Mock::VerifyAndClearExpectations(observer.get());
   EXPECT_EQ(socket2->numObservers(), 1);
 
+  // destroy socket1, nothing should happen
+  EXPECT_CALL(*observer, destroyed(socket1.get(), _)).Times(0);
+  socket1 = nullptr;
+
+  // destroy socket2
   EXPECT_CALL(*observer, close(socket2.get()));
+  EXPECT_CALL(*observer, destroyed(socket2.get(), _));
+  socket2 = nullptr;
 }
