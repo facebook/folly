@@ -403,7 +403,7 @@ bool FunctionScheduler::start() {
     f->resetNextRunTime(now);
     VLOG(1) << "   - func: " << (f->name.empty() ? "(anon)" : f->name.c_str())
             << ", period = " << f->intervalDescr
-            << ", delay = " << f->startDelay.count() << "ms";
+            << ", delay = " << f->startDelay.count() << "us";
   }
   std::make_heap(functions_.begin(), functions_.end(), fnCmp_);
 
