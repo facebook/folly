@@ -556,16 +556,12 @@ TEST(AsyncSocketObserver, AttachObserverThenConnectAndMoveSocket) {
   evb.loop();
   Mock::VerifyAndClearExpectations(observer.get());
 
-  EXPECT_CALL(*observer, fdDetach(socket1.get()));
+  // move the socket
   EXPECT_CALL(*observer, moved(socket1.get(), _, _));
-
   auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(std::move(socket1)));
   Mock::VerifyAndClearExpectations(observer.get());
   EXPECT_EQ(socket2->numObservers(), 1);
-
-  // destroy socket1, nothing should happen
-  EXPECT_CALL(*observer, destroyed(socket1.get(), _)).Times(0);
-  socket1 = nullptr;
+  EXPECT_THAT(socket2->findObservers(), UnorderedElementsAre(observer.get()));
 
   // destroy socket2
   EXPECT_CALL(*observer, close(socket2.get()));

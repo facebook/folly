@@ -729,7 +729,7 @@ AsyncSocket::AsyncSocket(
 AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
     : zeroCopyBufId_(oldAsyncSocket->getZeroCopyBufId()),
       state_(oldAsyncSocket->state_),
-      fd_(oldAsyncSocket->detachNetworkSocket()),
+      fd_(oldAsyncSocket->getNetworkSocket()),
       addr_(oldAsyncSocket->addr_),
       eventBase_(oldAsyncSocket->getEventBase()),
       writeTimeout_(this, eventBase_),
@@ -741,6 +741,10 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
       tfoInfo_(std::move(oldAsyncSocket->tfoInfo_)),
       byteEventHelper_(std::move(oldAsyncSocket->byteEventHelper_)),
       observerContainer_(this, std::move(oldAsyncSocket->observerContainer_)) {
+  // delay detaching network socket until observers moved to prevent spurious
+  // detachFd and close notifications
+  oldAsyncSocket->detachNetworkSocket();
+
   VLOG(5) << "move AsyncSocket(" << oldAsyncSocket << "->" << this
           << ", evb=" << eventBase_ << ", fd=" << fd_
           << ", zeroCopyBufId=" << zeroCopyBufId_ << ")";
