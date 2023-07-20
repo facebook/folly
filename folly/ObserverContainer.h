@@ -39,6 +39,20 @@ namespace folly {
 template <typename Observer>
 class ObserverContainerStoreBase {
  public:
+  using observer_type = Observer;
+
+  // ObserverContainerStore stores shared_ptr<Observer> objects.
+  //
+  // To support observer objects that are NOT managed by a shared_ptr, the
+  // encapsulating ObserverContainer wraps unmanaged pointers inside of
+  // shared_ptrs, but sets an empty deleter for the shared_ptr, so that the
+  // pointer remains unmanaged.
+  //
+  // As a result, it is possible for the shared_ptrs maintained by the store to
+  // be "unmanaged". The type alias `MaybeManagedObserverPointer` is used to
+  // ensure that this detail is apparent in other parts of the container code.
+  using MaybeManagedObserverPointer = std::shared_ptr<Observer>;
+
   virtual ~ObserverContainerStoreBase() = default;
 
   /**
@@ -47,7 +61,7 @@ class ObserverContainerStoreBase {
    * @param observer     Observer to add.
    * @return             Whether observer was added (not already present).
    */
-  virtual bool add(std::shared_ptr<Observer> observer) = 0;
+  virtual bool add(MaybeManagedObserverPointer observer) = 0;
 
   /**
    * Remove an observer pointer from the store.
@@ -55,7 +69,7 @@ class ObserverContainerStoreBase {
    * @param observer     Observer to remove.
    * @return             Whether observer found and removed from store.
    */
-  virtual bool remove(std::shared_ptr<Observer> observer) = 0;
+  virtual bool remove(MaybeManagedObserverPointer observer) = 0;
 
   /**
    * Get number of observers in store.
@@ -85,8 +99,24 @@ class ObserverContainerStoreBase {
    * @param policy       InvokeWhileIteratingPolicy policy.
    */
   virtual void invokeForEachObserver(
-      folly::Function<void(Observer*)>&& fn,
+      folly::Function<void(MaybeManagedObserverPointer&)>&& fn,
       const InvokeWhileIteratingPolicy policy) = 0;
+
+  /**
+   * Invoke function for each observer in the store.
+   *
+   * @param fn           Function to call for each observer in store.
+   * @param policy       InvokeWhileIteratingPolicy policy.
+   */
+  virtual void invokeForEachObserver(
+      folly::Function<void(Observer*)>&& fn,
+      const InvokeWhileIteratingPolicy policy) {
+    invokeForEachObserver(
+        [fnL = std::move(fn)](MaybeManagedObserverPointer& observer) mutable {
+          fnL(observer.get());
+        },
+        policy);
+  }
 };
 
 /**
@@ -213,7 +243,7 @@ class ObserverContainerStore : public ObserverContainerStoreBase<Observer> {
    * @param policy       InvokeWhileIteratingPolicy policy.
    */
   void invokeForEachObserver(
-      folly::Function<void(Observer*)>&& fn,
+      folly::Function<void(typename Base::MaybeManagedObserverPointer&)>&& fn,
       const typename Base::InvokeWhileIteratingPolicy policy) noexcept
       override {
     CHECK(!iterating_)
@@ -249,14 +279,16 @@ class ObserverContainerStore : public ObserverContainerStoreBase<Observer> {
          (idx < observers_.size() &&
           policy == InvokeWhileIteratingPolicy::InvokeAdded);
          idx++) {
-      const auto& observer = observers_.at(idx);
+      auto& observer = observers_.at(idx);
       if (!observer) { // empty space in list caused by incomplete removal
         continue;
       }
 
-      fn(observer.get());
+      fn(observer);
     }
   }
+
+  using Base::invokeForEachObserver;
 
  private:
   using container_type =
@@ -839,17 +871,24 @@ class ObserverContainer : public ObserverContainerBase<
     using InvokeWhileIteratingPolicy =
         typename StoreBase::InvokeWhileIteratingPolicy;
     observerContainer.getStore().invokeForEachObserver(
+        [this, &observerContainer](
+            typename StoreBase::MaybeManagedObserverPointer& observer) {
+          // observer may be a managed pointer (e.g., a shared_ptr), and
+          // invokeForEachObserver passes a reference, so we need to copy the
+          // observer object before calling remove so that it will not be
+          // destroyed upon removal from the old ObserverContainer
+          auto observerCopy = observer;
+          CHECK_NOTNULL(observerCopy.get());
 
-        [this, &observerContainer](Observer* observer) {
-          CHECK_NOTNULL(observer);
-          auto observerPtr =
-              std::shared_ptr<Observer>(std::shared_ptr<void>(), observer);
-          const bool removed = observerContainer.getStore().remove(observerPtr);
+          // remove
+          const bool removed = observerContainer.getStore().remove(observer);
           CHECK(removed);
-          const bool added = getStore().add(observerPtr);
+
+          // add to new, operating solely on observerCopy
+          const bool added = getStore().add(observerCopy);
           CHECK(added);
-          observer->movedToObserverContainer(&observerContainer, this);
-          observer->moved(
+          observerCopy->movedToObserverContainer(&observerContainer, this);
+          observerCopy->moved(
               observerContainer.getObject(), obj_, nullptr /* ctx */);
         },
         InvokeWhileIteratingPolicy::CheckNoAdded);
