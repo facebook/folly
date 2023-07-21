@@ -1483,6 +1483,41 @@ TEST(SortedVectorTypes, TestTryEmplace) {
   }
 }
 
+TEST(SortedVectorTypes, TestInsertOrAssign) {
+  // folly::Optional becomes empty after move.
+  sorted_vector_map<folly::Optional<int>, folly::Optional<std::string>> map;
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("1");
+    const auto it = map.insert_or_assign(std::move(k), std::move(v));
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "1");
+    EXPECT_FALSE(k);
+    EXPECT_FALSE(v);
+    EXPECT_EQ(map.size(), 1);
+  }
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("another 1");
+    const auto it = map.insert_or_assign(std::move(k), std::move(v));
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "another 1");
+    EXPECT_EQ(k, 1);
+    EXPECT_FALSE(v);
+    EXPECT_EQ(map.size(), 1);
+  }
+  {
+    auto k = folly::make_optional<int>(2);
+    auto v = folly::make_optional<std::string>("2");
+    const auto it = map.insert_or_assign(k, v);
+    EXPECT_EQ(it->first, 2);
+    EXPECT_EQ(it->second, "2");
+    EXPECT_EQ(k, 2);
+    EXPECT_EQ(v, "2");
+    EXPECT_EQ(map.size(), 2);
+  }
+}
+
 TEST(SortedVectorTypes, TestGetContainer) {
   sorted_vector_set<int> set;
   sorted_vector_map<int, int> map;
