@@ -65,9 +65,11 @@ cdef extern from '<utility>' namespace 'std':
 
 
 cdef extern from "folly/python/iobuf.h" namespace "folly::python":
-    unique_ptr[cIOBuf] iobuf_from_memoryview(cFollyExecutor*, PyObject*, void*, uint64_t)
     bint check_iobuf_equal(cIOBuf*, cIOBuf*)
     bint check_iobuf_less(cIOBuf*, cIOBuf*)
+
+cdef extern from "folly/python/iobuf_ext.h" namespace "folly::python":
+    unique_ptr[cIOBuf] iobuf_from_memoryview(cFollyExecutor*, PyObject*, void*, uint64_t)
 
 cdef extern from "Python.h":
     cdef int PyBUF_C_CONTIGUOUS

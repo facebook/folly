@@ -18,9 +18,7 @@
 
 #include <Python.h>
 
-#include <folly/Executor.h>
 #include <folly/io/IOBuf.h>
-#include <folly/python/iobuf_ext.h>
 
 namespace folly::python {
 
