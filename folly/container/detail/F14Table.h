@@ -1843,30 +1843,10 @@ class F14Table : public Policy {
     }
   }
 
-  void reserveImpl(std::size_t desiredCapacity) {
-    desiredCapacity = std::max<std::size_t>(desiredCapacity, size());
-    if (desiredCapacity == 0) {
-      reset();
-      return;
-    }
-
+  void maybeRehash(std::size_t desiredCapacity, bool attemptExact) {
     auto origChunkCount = chunkCount();
     auto origCapacityScale = chunks_->capacityScale();
     auto origCapacity = computeCapacity(origChunkCount, origCapacityScale);
-
-    // This came from an explicit reserve() or rehash() call, so there's
-    // a good chance the capacity is exactly right.  To avoid O(n^2)
-    // behavior, we don't do rehashes that decrease the size by less
-    // than 1/8, and if we have a requested increase of less than 1/8 we
-    // instead go to the next power of two.
-
-    if (desiredCapacity <= origCapacity &&
-        desiredCapacity >= origCapacity - origCapacity / 8) {
-      return;
-    }
-    bool attemptExact =
-        !(desiredCapacity > origCapacity &&
-          desiredCapacity < origCapacity + origCapacity / 8);
 
     std::size_t newChunkCount;
     std::size_t newCapacityScale;
@@ -1882,6 +1862,33 @@ class F14Table : public Policy {
           newChunkCount,
           newCapacityScale);
     }
+  }
+
+  void reserveImpl(std::size_t requestedCapacity) {
+    const size_t targetCapacity =
+        std::max<std::size_t>(requestedCapacity, size());
+    if (targetCapacity == 0) {
+      reset();
+      return;
+    }
+
+    // Special case reserve(n) for n <= size() (pseudo "shrink_to_fit")
+    if (requestedCapacity <= size()) {
+      maybeRehash(targetCapacity, /*attemptExact*/ true);
+      return;
+    }
+
+    auto origCapacity = bucket_count();
+
+    // Never shrink in order to avoid O(n^2) behavior of repeated reserves
+    if (targetCapacity <= origCapacity) {
+      return;
+    }
+
+    // Large increase? Good chance the capacity is exactly right
+    bool attemptExact =
+        targetCapacity > origCapacity + ((origCapacity + 7) / 8);
+    maybeRehash(targetCapacity, attemptExact);
   }
 
   FOLLY_NOINLINE void reserveForInsertImpl(

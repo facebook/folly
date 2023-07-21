@@ -2498,8 +2498,8 @@ TEST(F14Map, reserveMoreNeverShrinks) {
   SKIP_IF(kFallback);
   runReserveMoreTest<F14NodeMap<int, int>>(1);
   runReserveMoreTest<F14ValueMap<int, int>>(1);
-  // runReserveMoreTest<F14VectorMap<int, int>>(1);
+  runReserveMoreTest<F14VectorMap<int, int>>(1);
   runReserveMoreTest<F14NodeMap<int, int>>(10);
   runReserveMoreTest<F14ValueMap<int, int>>(10);
-  // runReserveMoreTest<F14VectorMap<int, int>>(10);
+  runReserveMoreTest<F14VectorMap<int, int>>(10);
 }
