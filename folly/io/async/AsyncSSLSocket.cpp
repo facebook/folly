@@ -1181,10 +1181,13 @@ bool AsyncSSLSocket::willBlock(
     }
 #endif
 
-    // The timeout (if set) keeps running here
+    // the timeout (if set) keeps running here
     return true;
   } else {
+    // The error queue might contain multiple errors. We only consider the head.
+    // Clear the rest.
     unsigned long lastError = *errErrorOut = ERR_get_error();
+    ERR_clear_error();
     VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
             << "state=" << state_ << ", "
             << "sslState=" << sslState_ << ", "
@@ -1580,10 +1583,16 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadSingle(
       // SSL_R_UNEXPECTED_EOF_WHILE_READING. We should then explicitly check for
       // that. See https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html
       if (error == SSL_ERROR_SYSCALL && local_errno == 0) {
+        // ignore anything else in the error queue
+        ERR_clear_error();
         // intentionally returning EOF
         return ReadResult(0);
       }
+
+      // The error queue might contain multiple errors. We only consider and
+      // return the head. Clear the rest.
       auto errError = ERR_get_error();
+      ERR_clear_error();
       VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
               << "state=" << state_ << ", "
               << "sslState=" << sslState_ << ", "
@@ -1701,7 +1710,10 @@ AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
         WRITE_ERROR,
         std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
   } else {
+    // The error queue might contain multiple errors. We only consider and
+    // return the head. Clear the rest.
     auto errError = ERR_get_error();
+    ERR_clear_error();
     VLOG(3) << "ERROR: AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
             << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
             << "SSL error: " << error << ", errno: " << errno
