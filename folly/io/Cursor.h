@@ -280,26 +280,26 @@ class CursorBase {
    * Two cursors are equal if they are pointing to the same location in the
    * same IOBuf chain.
    */
-  bool operator==(const Derived& other) const {
-    const IOBuf* crtBuf = crtBuf_;
-    auto crtPos = crtPos_;
+  friend bool operator==(const Derived& lhs, const Derived& rhs) {
+    const IOBuf* crtBuf = lhs.crtBuf_;
+    auto crtPos = lhs.crtPos_;
     // We can be pointing to the end of a buffer chunk, find first non-empty.
-    while (crtPos == crtBuf->tail() && crtBuf != buffer_->prev()) {
+    while (crtPos == crtBuf->tail() && crtBuf != lhs.buffer_->prev()) {
       crtBuf = crtBuf->next();
       crtPos = crtBuf->data();
     }
 
-    const IOBuf* crtBufOther = other.crtBuf_;
-    auto crtPosOther = other.crtPos_;
+    const IOBuf* crtBufOther = rhs.crtBuf_;
+    auto crtPosOther = rhs.crtPos_;
     // We can be pointing to the end of a buffer chunk, find first non-empty.
     while (crtPosOther == crtBufOther->tail() &&
-           crtBufOther != other.buffer_->prev()) {
+           crtBufOther != rhs.buffer_->prev()) {
       crtBufOther = crtBufOther->next();
       crtPosOther = crtBufOther->data();
     }
     return (crtPos == crtPosOther) && (crtBuf == crtBufOther);
   }
-  bool operator!=(const Derived& other) const { return !operator==(other); }
+  friend bool operator!=(const Derived& lhs, const Derived& rhs) { return !(lhs==rhs); }
 
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
