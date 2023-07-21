@@ -34,4 +34,9 @@ std::unique_ptr<folly::IOBuf> iobuf_ptr_from_python_iobuf(PyObject* iobuf) {
   return std::unique_ptr<folly::IOBuf>(ptr_from_python_iobuf(iobuf));
 }
 
+PyObject* make_python_iobuf(std::unique_ptr<folly::IOBuf> iobuf) {
+  import_folly__iobuf_();
+  return python_iobuf_from_ptr(std::move(iobuf));
+}
+
 } // namespace folly::python

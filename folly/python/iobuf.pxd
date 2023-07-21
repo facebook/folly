@@ -88,6 +88,7 @@ cdef class IOBuf:
 
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view)
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] iobuf)
+cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf)
 cdef api cIOBuf from_python_iobuf(object iobuf) except *
 # Use to pass heap-allocated folly::IOBuf to cpp.
 # Passed as raw ptr to avoid expensive call to PyErr_Occurred from `except *`

@@ -37,6 +37,13 @@ folly::IOBuf iobuf_from_python_iobuf(PyObject* iobuf);
  */
 std::unique_ptr<folly::IOBuf> iobuf_ptr_from_python_iobuf(PyObject* iobuf);
 
+/**
+ * Constructs a python IOBuf object, callable from C python extension code.
+ * Returns nullptr on python error; caller is responsible for error handling
+ * and for ensuring no further calls to python C api if PyErr set.
+ */
+PyObject* make_python_iobuf(std::unique_ptr<folly::IOBuf> iobuf);
+
 inline bool check_iobuf_equal(const folly::IOBuf* a, const folly::IOBuf* b) {
   return folly::IOBufEqualTo{}(a, b);
 }

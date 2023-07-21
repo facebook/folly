@@ -44,6 +44,8 @@ cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
     __cache[(<unsigned long>inst._this, id(inst))] = inst
     return inst
 
+cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf):
+    return from_unique_ptr(move(iobuf))
 
 cdef cIOBuf from_python_iobuf(object obj) except *:
     return deref((<IOBuf?>obj).c_clone())
