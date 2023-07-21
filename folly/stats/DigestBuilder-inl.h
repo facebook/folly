@@ -109,7 +109,7 @@ void DigestBuilder<DigestT>::append(double value) {
   }
 
   cpuLocalBuf->buffer.push_back(value);
-  if (cpuLocalBuf->buffer.size() == bufferSize_) {
+  if (FOLLY_UNLIKELY(cpuLocalBuf->buffer.size() == bufferSize_)) {
     if (!cpuLocalBuf->digest) {
       cpuLocalBuf->digest = std::make_unique<DigestT>(digestSize_);
     }
