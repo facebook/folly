@@ -280,7 +280,7 @@ class CursorBase {
    * Two cursors are equal if they are pointing to the same location in the
    * same IOBuf chain.
    */
-  bool operator==(const Derived& other) const {
+  bool operator==(const CursorBase& other) const {
     const IOBuf* crtBuf = crtBuf_;
     auto crtPos = crtPos_;
     // We can be pointing to the end of a buffer chunk, find first non-empty.
@@ -299,7 +299,8 @@ class CursorBase {
     }
     return (crtPos == crtPosOther) && (crtBuf == crtBufOther);
   }
-  bool operator!=(const Derived& other) const { return !operator==(other); }
+
+  bool operator!=(const CursorBase& other) const { return !operator==(other); }
 
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
