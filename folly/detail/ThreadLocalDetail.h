@@ -127,40 +127,39 @@ struct ElementWrapper {
 
   template <class Ptr>
   void set(Ptr p) {
-    auto guard = makeGuard([&] { delete p; });
     DCHECK(ptr == nullptr);
     DCHECK(deleter1 == nullptr);
 
-    if (p) {
-      node.initIfZero(true /*locked*/);
-      ptr = p;
-      deleter1 = [](void* pt, TLPDestructionMode) {
-        delete static_cast<Ptr>(pt);
-      };
-      ownsDeleter = false;
-      guard.dismiss();
+    if (!p) {
+      return;
     }
+
+    node.initIfZero(true /*locked*/);
+    deleter1 = [](void* pt, TLPDestructionMode) {
+      delete static_cast<Ptr>(pt);
+    };
+    ownsDeleter = false;
+    ptr = p;
   }
 
   template <class Ptr, class Deleter>
   void set(Ptr p, const Deleter& d) {
-    auto guard = makeGuard([&] {
-      if (p) {
-        d(p, TLPDestructionMode::THIS_THREAD);
-      }
-    });
     DCHECK(ptr == nullptr);
     DCHECK(deleter2 == nullptr);
-    if (p) {
-      node.initIfZero(true /*locked*/);
-      ptr = p;
-      deleter2 = new std::function<DeleterFunType>(
-          [d](void* pt, TLPDestructionMode mode) {
-            d(static_cast<Ptr>(pt), mode);
-          });
-      ownsDeleter = true;
-      guard.dismiss();
+
+    if (!p) {
+      return;
     }
+
+    node.initIfZero(true /*locked*/);
+    auto guard = makeGuard([&] { d(p, TLPDestructionMode::THIS_THREAD); });
+    deleter2 = new std::function<DeleterFunType>(
+        [d](void* pt, TLPDestructionMode mode) {
+          d(static_cast<Ptr>(pt), mode);
+        });
+    guard.dismiss();
+    ownsDeleter = true;
+    ptr = p;
   }
 
   void cleanup() {
@@ -357,8 +356,8 @@ struct StaticMetaBase {
 
   // push back an entry in the doubly linked list
   // that corresponds to idx id
-  void pushBackLocked(ThreadEntry* t, uint32_t id);
-  void pushBackUnlocked(ThreadEntry* t, uint32_t id);
+  void pushBackLocked(ThreadEntry* t, uint32_t id) noexcept;
+  void pushBackUnlocked(ThreadEntry* t, uint32_t id) noexcept;
 
   // static helper method to reallocate the ThreadEntry::elements
   // returns != nullptr if the ThreadEntry::elements was reallocated

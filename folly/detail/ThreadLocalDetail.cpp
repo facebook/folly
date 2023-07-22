@@ -454,7 +454,7 @@ void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
   }
 }
 
-void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) {
+void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) noexcept {
   if (LIKELY(!t->removed_)) {
     std::lock_guard<std::mutex> g(lock_);
     auto* node = &t->elements[id].node;
@@ -462,7 +462,7 @@ void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) {
   }
 }
 
-void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) {
+void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) noexcept {
   if (LIKELY(!t->removed_)) {
     auto* node = &t->elements[id].node;
     node->push_back(&head_);
