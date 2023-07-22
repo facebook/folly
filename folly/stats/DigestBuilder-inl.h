@@ -20,6 +20,7 @@
 
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/lang/Bits.h>
+#include <folly/synchronization/Lock.h>
 
 namespace folly {
 
@@ -47,7 +48,7 @@ DigestT DigestBuilder<DigestT>::build() {
     std::vector<double> newBuffer;
     std::unique_ptr<DigestT> newDigest;
 
-    std::unique_lock<SpinLock> g(cpuLocalBuffer.mutex);
+    auto g = make_unique_lock(cpuLocalBuffer.mutex);
     bool hasDigest =
         cpuLocalBuffer.digest != nullptr && !cpuLocalBuffer.digest->empty();
     // If at least one merge happened, bufferSize_ was reached.
@@ -96,7 +97,7 @@ void DigestBuilder<DigestT>::append(double value) {
   const auto numBuffers = cpuLocalBuffers_.size();
   auto cpuLocalBuf =
       &cpuLocalBuffers_[AccessSpreader<>::cachedCurrent(numBuffers)];
-  std::unique_lock<SpinLock> g(cpuLocalBuf->mutex, std::try_to_lock);
+  auto g = make_unique_lock(cpuLocalBuf->mutex, std::try_to_lock);
   if (FOLLY_UNLIKELY(!g.owns_lock())) {
     // If the mutex is already held by another thread, either build() is
     // running, or this or that thread have a stale stripe (possibly because the
@@ -105,7 +106,7 @@ void DigestBuilder<DigestT>::append(double value) {
     AccessSpreader<>::invalidateCachedCurrent();
     cpuLocalBuf =
         &cpuLocalBuffers_[AccessSpreader<>::cachedCurrent(numBuffers)];
-    g = std::unique_lock<SpinLock>(cpuLocalBuf->mutex);
+    g = make_unique_lock(cpuLocalBuf->mutex);
   }
 
   cpuLocalBuf->buffer.push_back(value);
