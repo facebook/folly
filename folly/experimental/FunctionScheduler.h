@@ -50,11 +50,17 @@ namespace folly {
  *       "run each function periodically in its own thread".
  *
  * start() schedules the functions, while shutdown() terminates further
- * scheduling.
+ * scheduling (after any running function terminates).
  */
 class FunctionScheduler {
  public:
   FunctionScheduler();
+
+  /**
+   * On destruction, ensures that this instance is shutdown prior to deletion.
+   *
+   * See `shutdown()`.
+   */
   ~FunctionScheduler();
 
   /**
@@ -222,8 +228,16 @@ class FunctionScheduler {
   /**
    * Stops the FunctionScheduler.
    *
-   * It may be restarted later by calling start() again.
-   * Returns false if the scheduler was not running.
+   * This method blocks until any running function terminates. It is also called
+   * automatically on FunctionScheduler destruction.
+   *
+   * This FunctionScheduler may be restarted later by calling start() again.
+   *
+   * Returns false if the scheduler was not running (in which case this method
+   * was a no-op and did not block on any function running). Returns true
+   * otherwise.
+   *
+   * Thread-safe.
    */
   bool shutdown();
 
