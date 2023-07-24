@@ -324,7 +324,10 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     }
     auto rv = reinterpret_cast<F14Chunk*>(raw);
     FOLLY_SAFE_DCHECK(
-        (reinterpret_cast<uintptr_t>(rv) % kRequiredVectorAlignment) == 0, "");
+        (reinterpret_cast<uintptr_t>(rv) % kRequiredVectorAlignment) == 0,
+        reinterpret_cast<uintptr_t>(rv),
+        " not aligned to ",
+        kRequiredVectorAlignment);
     return rv;
   }
 
