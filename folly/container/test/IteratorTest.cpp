@@ -24,6 +24,7 @@
 #include <iterator>
 #include <list>
 #include <map>
+#include <numeric>
 #include <set>
 #include <tuple>
 #include <type_traits>
@@ -31,6 +32,10 @@
 #include <vector>
 
 #include <folly/portability/GTest.h>
+
+#if defined(__cpp_lib_concepts)
+#include <concepts>
+#endif
 
 class IteratorTest : public testing::Test {};
 
@@ -617,4 +622,244 @@ TEST(EmplaceIterator, ImplicitUnpack) {
   test(front_emplacer<false>(q), false);
   test(back_emplacer(q), true);
   test(back_emplacer<false>(q), false);
+}
+
+// IndexIterator -------------
+
+namespace index_iterator_type_tests {
+namespace {
+
+struct WeirdContainer {
+  std::vector<bool> body_;
+
+  using value_type = bool;
+  using size_type = std::uint32_t;
+  using difference_type = std::int32_t;
+
+  auto operator[](size_type idx) { return body_[idx]; }
+  auto operator[](size_type idx) const { return body_[idx]; }
+};
+
+// iterator concepts ------------------------
+#if defined(__cpp_lib_concepts)
+
+using vit = folly::index_iterator<std::vector<int>>;
+using cvit = folly::index_iterator<const std::vector<int>>;
+using vit_weird = folly::index_iterator<WeirdContainer>;
+using cvit_weird = folly::index_iterator<const WeirdContainer>;
+
+static_assert(std::random_access_iterator<vit>);
+static_assert(std::random_access_iterator<cvit>);
+static_assert(std::random_access_iterator<vit_weird>);
+static_assert(std::random_access_iterator<cvit_weird>);
+
+#endif
+
+// dependent type computations ------------------------
+struct ref_type {};
+struct cref_type {};
+
+struct just_operator {
+  using value_type = int;
+  ref_type operator[](std::size_t) { return {}; }
+  cref_type operator[](std::size_t) const { return {}; }
+};
+
+struct has_size_type : just_operator {
+  using size_type = std::uint32_t;
+};
+
+struct has_difference_type : just_operator {
+  using difference_type = std::int32_t;
+};
+
+struct has_both_size_and_difference_type : just_operator {
+  using size_type = std::uint32_t;
+  using difference_type = std::int32_t;
+};
+
+template <typename T>
+using all_types = std::tuple<
+    typename std::iterator_traits<folly::index_iterator<T>>::value_type,
+    typename std::iterator_traits<folly::index_iterator<T>>::reference,
+    typename std::iterator_traits<folly::index_iterator<T>>::difference_type,
+    typename folly::index_iterator<T>::size_type>;
+
+// gives better error messages than std::is_same
+template <typename T>
+void is_same_test(T, T) {}
+
+} // namespace
+
+TEST(IndexIterator, Types) {
+  is_same_test(
+      all_types<just_operator>{},
+      std::tuple<int, ref_type, std::ptrdiff_t, std::size_t>{});
+  is_same_test(
+      all_types<const just_operator>{},
+      std::tuple<int, cref_type, std::ptrdiff_t, std::size_t>{});
+  is_same_test(
+      all_types<has_size_type>{},
+      std::tuple<int, ref_type, std::ptrdiff_t, std::uint32_t>{});
+  is_same_test(
+      all_types<const has_size_type>{},
+      std::tuple<int, cref_type, std::ptrdiff_t, std::uint32_t>{});
+  is_same_test(
+      all_types<has_difference_type>{},
+      std::tuple<int, ref_type, std::int32_t, std::size_t>{});
+  is_same_test(
+      all_types<const has_difference_type>{},
+      std::tuple<int, cref_type, std::int32_t, std::size_t>{});
+  is_same_test(
+      all_types<has_both_size_and_difference_type>{},
+      std::tuple<int, ref_type, std::int32_t, std::uint32_t>{});
+  is_same_test(
+      all_types<const has_both_size_and_difference_type>{},
+      std::tuple<int, cref_type, std::int32_t, std::uint32_t>{});
+}
+
+} // namespace index_iterator_type_tests
+
+TEST(IndexIterator, Sort) {
+  std::vector<int> v(100, 0);
+  std::iota(v.rbegin(), v.rend(), 0);
+
+  std::sort(
+      index_iterator<std::vector<int>>{v, 0},
+      index_iterator<std::vector<int>>{v, v.size()});
+
+  std::vector<int> expected(100, 0);
+  std::iota(expected.begin(), expected.end(), 0);
+  ASSERT_EQ(expected, v);
+}
+
+namespace {
+
+constexpr bool accessTest() {
+  std::array<int, 2> a{0, 1};
+  const std::array<int, 2> b{0, 1};
+
+  const index_iterator<std::array<int, 2>> mutI{a, 0};
+  const index_iterator<const std::array<int, 2>> constI{b, 0};
+
+  if (*mutI != 0 || *constI != 0) {
+    return false;
+  }
+
+  if (mutI[1] != 1 || constI[1] != 1) {
+    return false;
+  }
+
+  return true;
+}
+
+static_assert(accessTest());
+
+template <typename I>
+constexpr bool mutationsTest(I i0, I i1) {
+  auto tmp = i0;
+  if (++tmp != i1) {
+    return false;
+  }
+  tmp = i0;
+  if (tmp++ != i0) {
+    return false;
+  }
+  if (tmp != i1) {
+    return false;
+  }
+
+  tmp = i1;
+  if (--tmp != i0) {
+    return false;
+  }
+  tmp = i1;
+  if (tmp-- != i1) {
+    return false;
+  }
+  if (tmp != i0) {
+    return false;
+  }
+
+  return true;
+}
+
+static constexpr std::array<int, 2> kA{0, 1};
+
+static constexpr index_iterator<const std::array<int, 2>> kI0{kA, 0};
+static constexpr index_iterator<const std::array<int, 2>> kI1{kA, 1};
+
+static_assert(kI0 == kI0);
+static_assert(kI0 != kI1);
+static_assert(kI0 < kI1);
+static_assert(kI0 <= kI0);
+static_assert(kI0 <= kI1);
+static_assert(kI1 >= kI1);
+static_assert(kI1 >= kI0);
+static_assert(kI1 > kI0);
+
+static_assert(mutationsTest(kI0, kI1));
+static_assert(kI0 + 1 == kI1);
+static_assert(kI1 - 1 == kI0);
+static_assert(kI1 - kI0 == 1);
+static_assert(kI0 - kI1 == -1);
+
+struct IndexedVector {
+  std::vector<int> v_;
+
+  std::pair<int, int&> operator[](std::size_t i) {
+    return {static_cast<int>(i), v_[i]};
+  }
+
+  std::pair<int, const int&> operator[](std::size_t i) const {
+    return {static_cast<int>(i), v_[i]};
+  }
+
+  using value_type = std::pair<int, int>;
+
+  using iterator = folly::index_iterator<IndexedVector>;
+  using const_iterator = folly::index_iterator<const IndexedVector>;
+
+  iterator begin() { return {*this, 0}; }
+  const_iterator begin() const { return cbegin(); }
+  const_iterator cbegin() const { return {*this, 0}; }
+
+  iterator end() { return {*this, v_.size()}; }
+  const_iterator end() const { return cend(); }
+  const_iterator cend() const { return {*this, v_.size()}; }
+};
+
+} // namespace
+
+TEST(IndexIterator, UseProxyReferences) {
+  IndexedVector iv{{0, 1, 2, 3}};
+  const IndexedVector& civ = iv;
+
+  using it = decltype(iv.begin());
+  using cit = decltype(civ.begin());
+
+  using it_ref_t = typename std::iterator_traits<it>::reference;
+  using it_cref_t = typename std::iterator_traits<cit>::reference;
+
+  static_assert(std::is_same<it_ref_t, std::pair<int, int&>>::value, "");
+  static_assert(std::is_same<it_cref_t, std::pair<int, const int&>>::value, "");
+
+  ASSERT_EQ(4, (std::count_if(civ.begin(), civ.end(), [](auto&& pair) {
+              return pair.first == pair.second;
+            })));
+  ASSERT_EQ(4, (std::count_if(iv.begin(), iv.end(), [](auto&& pair) {
+              return pair.first == pair.second;
+            })));
+  cit conversion = iv.begin() + 1;
+  ASSERT_EQ(&iv, conversion.get_container());
+  ASSERT_EQ(1, conversion.get_index());
+
+  static_assert(!std::is_convertible<cit, it>::value);
+
+  for (auto&& x : iv) {
+    x.second = -1;
+  }
+
+  std::vector<int> expected{-1, -1, -1, -1};
+  ASSERT_EQ(expected, iv.v_);
 }
