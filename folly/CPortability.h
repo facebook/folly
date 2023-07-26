@@ -95,6 +95,8 @@
 #elif defined(__GNUC__)
 #define FOLLY_DISABLE_ADDRESS_SANITIZER \
   __attribute__((__no_address_safety_analysis__, __noinline__))
+#elif defined(_MSC_VER)
+#define FOLLY_DISABLE_ADDRESS_SANITIZER __declspec(no_sanitize_address)
 #endif
 #endif
 #ifndef FOLLY_DISABLE_ADDRESS_SANITIZER
