@@ -194,7 +194,7 @@ directory = "{vendored_dir}"
             my-rename-of-crate = { package = "crate", git = "..." }
 
         they can count themselves lucky because the code will raise an
-        Exception. There might be more cases where the code will silently pass
+        Exception. There migh be more cases where the code will silently pass
         producing bad results.
         """
         workspace_dir = self.workspace_dir()
@@ -362,7 +362,7 @@ path = "{null_file}"
 
         dep_to_crates = {}
 
-        # First populate explicit crate paths from dependencies
+        # First populate explicit crate paths from depedencies
         for name, git_conf in dep_to_git.items():
             crates = git_conf["crate_source_map"].keys()
             if crates:

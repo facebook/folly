@@ -626,7 +626,7 @@ class BuildCmd(ProjectCmdBase):
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
-                    # If we are building the project (not dependency) and a specific
+                    # If we are building the project (not depdendency) and a specific
                     # cmake_target (not 'install') has been requested, then we don't
                     # set the built_marker. This allows subsequent runs of getdeps.py
                     # for the project to run with different cmake_targets to trigger

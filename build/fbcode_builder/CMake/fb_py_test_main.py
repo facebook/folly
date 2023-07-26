@@ -262,7 +262,7 @@ class BuckTestResult(unittest._TextTestResult):
 
         super(BuckTestResult, self).stopTest(test)
 
-        # If a failure occurred during module/class setup, then this "test" may
+        # If a failure occured during module/class setup, then this "test" may
         # actually be a `_ErrorHolder`, which doesn't contain explicit info
         # about the upcoming test.  Since we really only care about the test
         # name field (i.e. `_testMethodName`), we use that to detect an actual
