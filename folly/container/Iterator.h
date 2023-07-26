@@ -582,4 +582,196 @@ template <bool implicit_unpack = true, typename Container>
 back_emplace_iterator<Container, implicit_unpack> back_emplacer(Container& c) {
   return back_emplace_iterator<Container, implicit_unpack>(c);
 }
+
+namespace detail {
+
+template <typename T>
+using size_type_t = typename std::remove_cv_t<T>::size_type;
+
+template <typename T>
+using difference_type_t = typename std::remove_cv_t<T>::difference_type;
+
+} // namespace detail
+
+/**
+ * index_iterator
+ *
+ * An iterator class for random access data structures that provide an
+ * access by index. By default we assume `operator[](std::size_t)`
+ * but this can be overritten.
+ *
+ * Requires a `value_type` defined in a container (we cannot
+ * get the value type from reference).
+ *
+ * Example:
+ *  class Container {
+ *   public:
+ *    using value_type = <*>;  // we need value_type to be defined.
+ *    using iterator = folly::index_iterator<Container>;
+ *    using const_iterator = folly::index_iterator<const Container>;
+ *    using reverse_iterator = std::reverse_iterator<iterator>;
+ *    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+ *
+ *    some_ref_type  operator[](std::size_t index);
+ *    some_cref_type operator[](std::size_t index) const;
+ *   ...
+ *  };
+ *
+ *  Note that `some_ref_type` can be any proxy reference, as long as the
+ *  algorithms support that (for example from range-v3).
+ *
+ * NOTE: there is no way to override `operator[]`, if that's needed
+ *       we recommend to wrap your data in a struct with `operator[]`.
+ **/
+
+template <typename Container>
+class index_iterator {
+ public:
+  // index iterator specific types
+
+  using container_type = Container;
+  using size_type = detected_or_t<std::size_t, detail::size_type_t, Container>;
+
+  // iterator types
+
+  using value_type = typename std::remove_const_t<container_type>::value_type;
+  using iterator_category = std::random_access_iterator_tag;
+  using reference = decltype(FOLLY_DECLVAL(container_type&)[size_type{}]);
+  using difference_type =
+      detected_or_t<std::ptrdiff_t, detail::difference_type_t, Container>;
+  // no pointer type - in C++20 not needed and can be difficult.
+
+  static_assert(
+      std::is_signed<difference_type>::value, "difference_type must be signed");
+
+  // accessors
+
+  // instance of `index_iterator_accessor`
+  container_type* get_container() const { return container_; }
+  difference_type get_index() const { return index_; }
+
+  constexpr index_iterator() = default;
+
+  constexpr index_iterator(container_type& container, size_type index)
+      : container_(&container), index_(index) {}
+
+  // converting constructors --
+
+  template <
+      typename OtherContainer,
+      typename = std::enable_if_t<
+          std::is_same<std::remove_const_t<container_type>, OtherContainer>::
+              value &&
+          std::is_const<container_type>::value>>
+  /* implicit */ constexpr index_iterator(index_iterator<OtherContainer> other)
+      : container_(other.get_container()), index_(other.get_index()) {}
+
+  // access ---
+
+  constexpr reference operator*() const { return (*container_)[index_]; }
+
+  // no operator->. It is doable but not required in C++20 and up
+  // and is quite difficult for proxies. ranges forego operator-> and so do we
+
+  constexpr reference operator[](difference_type n) const {
+    return *(*this + n);
+  }
+
+  // operator++/--
+
+  constexpr index_iterator& operator++() {
+    ++index_;
+    return *this;
+  }
+
+  constexpr index_iterator operator++(int) {
+    auto tmp = *this;
+    ++*this;
+    return tmp;
+  }
+
+  constexpr index_iterator& operator--() {
+    --index_;
+    return *this;
+  }
+
+  constexpr index_iterator operator--(int) {
+    auto tmp = *this;
+    --*this;
+    return tmp;
+  }
+
+  // operator+/-
+
+  constexpr index_iterator& operator+=(difference_type n) {
+    auto signed_index = static_cast<difference_type>(index_) + n;
+    index_ = static_cast<size_type>(signed_index);
+    return *this;
+  }
+
+  constexpr index_iterator& operator-=(difference_type n) {
+    index_ += -n;
+    return *this;
+  }
+
+  constexpr friend index_iterator operator+(
+      index_iterator x, difference_type n) {
+    return x += n;
+  }
+
+  constexpr friend index_iterator operator+(
+      difference_type n, index_iterator x) {
+    return x + n;
+  }
+
+  constexpr friend index_iterator operator-(
+      index_iterator x, difference_type n) {
+    return x -= n;
+  }
+
+  constexpr friend difference_type operator-(
+      index_iterator x, index_iterator y) {
+    assert(x.container_ == y.container_);
+    return static_cast<difference_type>(x.index_) -
+        static_cast<difference_type>(y.index_);
+  }
+
+  // comparisons
+  friend constexpr bool operator==(
+      const index_iterator& x, const index_iterator& y) {
+    assert(x.container_ == y.container_);
+    return x.index_ == y.index_;
+  }
+
+  friend constexpr bool operator!=(
+      const index_iterator& x, const index_iterator& y) {
+    return !(x == y);
+  }
+
+  friend constexpr bool operator<(
+      const index_iterator& x, const index_iterator& y) {
+    assert(x.container_ == y.container_);
+    return x.index_ < y.index_;
+  }
+
+  friend constexpr bool operator<=(
+      const index_iterator& x, const index_iterator& y) {
+    return !(y < x);
+  }
+
+  friend constexpr bool operator>=(
+      const index_iterator& x, const index_iterator& y) {
+    return !(x < y);
+  }
+
+  friend constexpr bool operator>(
+      const index_iterator& x, const index_iterator& y) {
+    return y < x;
+  }
+
+ private:
+  container_type* container_ = nullptr;
+  size_type index_ = 0;
+};
+
 } // namespace folly
