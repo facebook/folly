@@ -583,22 +583,11 @@ back_emplace_iterator<Container, implicit_unpack> back_emplacer(Container& c) {
   return back_emplace_iterator<Container, implicit_unpack>(c);
 }
 
-namespace detail {
-
-template <typename T>
-using size_type_t = typename std::remove_cv_t<T>::size_type;
-
-template <typename T>
-using difference_type_t = typename std::remove_cv_t<T>::difference_type;
-
-} // namespace detail
-
 /**
  * index_iterator
  *
  * An iterator class for random access data structures that provide an
- * access by index. By default we assume `operator[](std::size_t)`
- * but this can be overritten.
+ * access by index via `operator[](size_type)`.
  *
  * Requires a `value_type` defined in a container (we cannot
  * get the value type from reference).
@@ -626,11 +615,17 @@ using difference_type_t = typename std::remove_cv_t<T>::difference_type;
 
 template <typename Container>
 class index_iterator {
+  template <typename T>
+  using get_size_type_t = typename std::remove_cv_t<T>::size_type;
+
+  template <typename T>
+  using get_difference_type_t = typename std::remove_cv_t<T>::difference_type;
+
  public:
   // index iterator specific types
 
   using container_type = Container;
-  using size_type = detected_or_t<std::size_t, detail::size_type_t, Container>;
+  using size_type = detected_or_t<std::size_t, get_size_type_t, Container>;
 
   // iterator types
 
@@ -638,7 +633,7 @@ class index_iterator {
   using iterator_category = std::random_access_iterator_tag;
   using reference = decltype(FOLLY_DECLVAL(container_type&)[size_type{}]);
   using difference_type =
-      detected_or_t<std::ptrdiff_t, detail::difference_type_t, Container>;
+      detected_or_t<std::ptrdiff_t, get_difference_type_t, Container>;
   // no pointer type - in C++20 not needed and can be difficult.
 
   static_assert(
