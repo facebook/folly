@@ -60,7 +60,7 @@ void IOThreadPoolDeadlockDetectorObserver::threadStarted(
     return;
   }
 
-  auto eventBase = folly::IOThreadPoolExecutorBase::getEventBase(h);
+  auto eventBase = folly::IOThreadPoolExecutor::getEventBase(h);
   auto eventBaseShutdownMutex =
       folly::IOThreadPoolExecutor::getEventBaseShutdownMutex(h);
   // This Observer only works with IOThreadPoolExecutor class.

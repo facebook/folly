@@ -30,34 +30,6 @@ FOLLY_PUSH_WARNING
 // keepAliveAcquire/keepAliveRelease via dominance"
 FOLLY_MSVC_DISABLE_WARNING(4250)
 
-class IOThreadPoolExecutorBase : public ThreadPoolExecutor, public IOExecutor {
- public:
-  using ThreadPoolExecutor::ThreadPoolExecutor;
-
-  ~IOThreadPoolExecutorBase() override = default;
-
-  folly::EventBase* getEventBase() override = 0;
-
-  virtual folly::WorkerProvider* getThreadIdCollector() = 0;
-  virtual std::vector<folly::Executor::KeepAlive<folly::EventBase>>
-  getAllEventBases() = 0;
-
-  static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
-
-  static std::mutex* getEventBaseShutdownMutex(
-      ThreadPoolExecutor::ThreadHandle*);
-
- protected:
-  struct alignas(Thread) IOThread : public Thread {
-    explicit IOThread(IOThreadPoolExecutorBase* pool)
-        : Thread(pool), shouldRun(true), pendingTasks(0) {}
-    std::atomic<bool> shouldRun;
-    std::atomic<size_t> pendingTasks;
-    folly::EventBase* eventBase;
-    std::mutex eventBaseShutdownMutex_;
-  };
-};
-
 /**
  * A Thread Pool for IO bound tasks
  *
@@ -83,7 +55,7 @@ class IOThreadPoolExecutorBase : public ThreadPoolExecutor, public IOExecutor {
  * outstanding tasks belong to the event base and will be executed upon its
  * destruction.
  */
-class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
+class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
  public:
   struct Options {
     Options() : waitForAll(false), enableThreadIdCollection(false) {}
@@ -128,24 +100,29 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
   // Ensures that the maximum number of active threads is running and returns
   // the EventBase associated with each thread.
-  std::vector<folly::Executor::KeepAlive<folly::EventBase>> getAllEventBases()
-      override;
+  std::vector<folly::Executor::KeepAlive<folly::EventBase>> getAllEventBases();
 
-  static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle* h) {
-    return IOThreadPoolExecutorBase::getEventBase(h);
-  }
+  static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
   static std::mutex* getEventBaseShutdownMutex(
-      ThreadPoolExecutor::ThreadHandle* h) {
-    return IOThreadPoolExecutorBase::getEventBaseShutdownMutex(h);
-  }
+      ThreadPoolExecutor::ThreadHandle*);
 
   folly::EventBaseManager* getEventBaseManager();
 
   // Returns nullptr unless explicitly enabled through constructor
-  folly::WorkerProvider* getThreadIdCollector() override {
+  folly::WorkerProvider* getThreadIdCollector() {
     return threadIdCollector_.get();
   }
+
+ protected:
+  struct alignas(Thread) IOThread : public Thread {
+    IOThread(IOThreadPoolExecutor* pool)
+        : Thread(pool), shouldRun(true), pendingTasks(0) {}
+    std::atomic<bool> shouldRun;
+    std::atomic<size_t> pendingTasks;
+    folly::EventBase* eventBase;
+    std::mutex eventBaseShutdownMutex_;
+  };
 
  private:
   ThreadPtr makeThread() override;

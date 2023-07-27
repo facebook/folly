@@ -78,36 +78,12 @@ class MemoryIdlerTimeout : public AsyncTimeout, public EventBase::LoopCallback {
   size_t num_{0};
 };
 
-// IOThreadPoolExecutorBase
-EventBase* IOThreadPoolExecutorBase::getEventBase(
-    ThreadPoolExecutor::ThreadHandle* h) {
-  auto thread = dynamic_cast<IOThread*>(h);
-
-  if (thread) {
-    return thread->eventBase;
-  }
-
-  return nullptr;
-}
-
-std::mutex* IOThreadPoolExecutorBase::getEventBaseShutdownMutex(
-    ThreadPoolExecutor::ThreadHandle* h) {
-  auto thread = dynamic_cast<IOThread*>(h);
-
-  if (thread) {
-    return &thread->eventBaseShutdownMutex_;
-  }
-
-  return nullptr;
-}
-
-// IOThreadPoolExecutor
 IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t numThreads,
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
     Options options)
-    : IOThreadPoolExecutorBase(
+    : ThreadPoolExecutor(
           numThreads,
           FLAGS_dynamic_iothreadpoolexecutor ? 0 : numThreads,
           std::move(threadFactory)),
@@ -127,8 +103,7 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
     Options options)
-    : IOThreadPoolExecutorBase(
-          maxThreads, minThreads, std::move(threadFactory)),
+    : ThreadPoolExecutor(maxThreads, minThreads, std::move(threadFactory)),
       isWaitForAll_(options.waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
@@ -214,6 +189,28 @@ IOThreadPoolExecutor::getAllEventBases() {
     evbs.emplace_back(static_cast<IOThread&>(*thr).eventBase);
   }
   return evbs;
+}
+
+EventBase* IOThreadPoolExecutor::getEventBase(
+    ThreadPoolExecutor::ThreadHandle* h) {
+  auto thread = dynamic_cast<IOThread*>(h);
+
+  if (thread) {
+    return thread->eventBase;
+  }
+
+  return nullptr;
+}
+
+std::mutex* IOThreadPoolExecutor::getEventBaseShutdownMutex(
+    ThreadPoolExecutor::ThreadHandle* h) {
+  auto thread = dynamic_cast<IOThread*>(h);
+
+  if (thread) {
+    return &thread->eventBaseShutdownMutex_;
+  }
+
+  return nullptr;
 }
 
 EventBaseManager* IOThreadPoolExecutor::getEventBaseManager() {
