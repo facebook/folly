@@ -18,9 +18,8 @@
 
 #include <functional>
 
-#include <folly/experimental/coro/Baton.h>
-#include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/coro/Transport.h>
+#include <folly/io/coro/TransportCallbackBase.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -29,71 +28,14 @@ using namespace folly::coro;
 namespace {
 
 //
-// Common base for all callbcaks
-//
-
-class CallbackBase {
- public:
-  explicit CallbackBase(folly::AsyncTransport& transport)
-      : transport_{transport} {}
-
-  virtual ~CallbackBase() noexcept = default;
-
-  folly::exception_wrapper& error() noexcept { return error_; }
-  void post() noexcept { baton_.post(); }
-  Task<folly::Unit> wait() {
-    auto cancelToken = co_await co_current_cancellation_token;
-    if (cancelToken.isCancellationRequested()) {
-      cancel();
-      co_yield folly::coro::co_cancelled;
-    }
-    folly::CancellationCallback cancellationCallback{
-        cancelToken, [this] {
-          this->post();
-          VLOG(5) << "Cancellation was called";
-        }};
-
-    co_await baton_;
-    VLOG(5) << "After baton await";
-
-    if (cancelToken.isCancellationRequested()) {
-      cancel();
-      co_yield folly::coro::co_cancelled;
-    }
-    co_return folly::unit;
-  }
-
- protected:
-  // we use this to notify the other side of completion
-  Baton baton_;
-  // needed to modify AsyncTransport state, e.g. cacncel callbacks
-  folly::AsyncTransport& transport_;
-
-  // to wrap AsyncTransport errors
-  folly::exception_wrapper error_;
-
-  void storeException(const folly::AsyncSocketException& ex) {
-    auto sslErr = dynamic_cast<const folly::SSLException*>(&ex);
-    if (sslErr) {
-      error_ = folly::make_exception_wrapper<folly::SSLException>(*sslErr);
-    } else {
-      error_ = folly::make_exception_wrapper<folly::AsyncSocketException>(ex);
-    }
-  }
-
- private:
-  virtual void cancel() noexcept = 0;
-};
-
-//
 // Handle connect for AsyncSocket
 //
 
-class ConnectCallback : public CallbackBase,
+class ConnectCallback : public TransportCallbackBase,
                         public folly::AsyncSocket::ConnectCallback {
  public:
   explicit ConnectCallback(folly::AsyncSocket& socket)
-      : CallbackBase(socket), socket_(socket) {}
+      : TransportCallbackBase(socket), socket_(socket) {}
 
  private:
   void cancel() noexcept override { socket_.cancelConnect(); }
@@ -111,7 +53,7 @@ class ConnectCallback : public CallbackBase,
 // Handle data read for AsyncTransport
 //
 
-class ReadCallback : public CallbackBase,
+class ReadCallback : public TransportCallbackBase,
                      public folly::AsyncTransport::ReadCallback,
                      public folly::HHWheelTimer::Callback {
  public:
@@ -126,7 +68,7 @@ class ReadCallback : public CallbackBase,
       folly::AsyncTransport& transport,
       folly::MutableByteRange buf,
       std::chrono::milliseconds timeout)
-      : CallbackBase(transport), buf_{buf} {
+      : TransportCallbackBase(transport), buf_{buf} {
     if (timeout.count() > 0) {
       timer.scheduleTimeout(this, timeout);
     }
@@ -139,7 +81,7 @@ class ReadCallback : public CallbackBase,
       size_t minReadSize,
       size_t newAllocationSize,
       std::chrono::milliseconds timeout)
-      : CallbackBase(transport),
+      : TransportCallbackBase(transport),
         readBuf_(readBuf),
         minReadSize_(minReadSize),
         newAllocationSize_(newAllocationSize) {
@@ -246,11 +188,11 @@ class ReadCallback : public CallbackBase,
 // Handle data write for AsyncTransport
 //
 
-class WriteCallback : public CallbackBase,
+class WriteCallback : public TransportCallbackBase,
                       public folly::AsyncTransport::WriteCallback {
  public:
   explicit WriteCallback(folly::AsyncTransport& transport)
-      : CallbackBase(transport) {}
+      : TransportCallbackBase(transport) {}
   ~WriteCallback() override = default;
 
   size_t bytesWritten{0};
