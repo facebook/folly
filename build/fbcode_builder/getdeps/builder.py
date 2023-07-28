@@ -1125,26 +1125,6 @@ class NopBuilder(BuilderBase):
                 shutil.copytree(self.src_dir, self.inst_dir)
 
 
-class OpenNSABuilder(NopBuilder):
-    # OpenNSA libraries are stored with git LFS. As a result, fetcher fetches
-    # LFS pointers and not the contents. Use git-lfs to pull the real contents
-    # before copying to install dir using NoopBuilder.
-    # In future, if more builders require git-lfs, we would consider installing
-    # git-lfs as part of the sandcastle infra as against repeating similar
-    # logic for each builder that requires git-lfs.
-    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir) -> None:
-        super(OpenNSABuilder, self).__init__(
-            build_opts, ctx, manifest, src_dir, inst_dir
-        )
-
-    def build(self, install_dirs, reconfigure: bool) -> None:
-        env = self._compute_env(install_dirs)
-        self._run_cmd(["git", "lfs", "install", "--local"], cwd=self.src_dir, env=env)
-        self._run_cmd(["git", "lfs", "pull"], cwd=self.src_dir, env=env)
-
-        super(OpenNSABuilder, self).build(install_dirs, reconfigure)
-
-
 class SqliteBuilder(BuilderBase):
     def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir) -> None:
         super(SqliteBuilder, self).__init__(
