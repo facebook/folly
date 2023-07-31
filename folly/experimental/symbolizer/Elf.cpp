@@ -312,6 +312,10 @@ ElfFile::OpenResult ElfFile::init() noexcept {
 
 const ElfShdr* ElfFile::getSectionByIndex(size_t idx) const noexcept {
   FOLLY_SAFE_CHECK(idx < elfHeader().e_shnum, "invalid section index");
+  if (elfHeader().e_shoff + (idx + 1) * sizeof(ElfShdr) > length_) {
+    // Handle ELFs with invalid internal offsets to program/section headers.
+    return nullptr;
+  }
   return &at<ElfShdr>(elfHeader().e_shoff + idx * sizeof(ElfShdr));
 }
 
