@@ -31,7 +31,7 @@ constexpr char kBase64URLCharset[] =
 
 // Special value that we can or with any valid value and that
 // way keep track if we had encountered an error or not.
-constexpr char kDecodeErrorMarker = 0xff;
+constexpr char kDecodeErrorMarker = char(0xff);
 
 constexpr char base64DecodeRule(char x) {
   if ('A' <= x && x <= 'Z') {
