@@ -379,12 +379,6 @@ inline void toOrIgnore(StringPiece, decltype(std::ignore)&) {}
 
 template <bool exact, class Delim, class OutputType>
 bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
-  static_assert(
-      exact || std::is_same<OutputType, StringPiece>::value ||
-          IsSomeString<OutputType>::value ||
-          std::is_same<OutputType, decltype(std::ignore)>::value,
-      "split<false>() requires that the last argument be a string type "
-      "or std::ignore");
   if (exact && UNLIKELY(std::string::npos != input.find(delimiter))) {
     return false;
   }
