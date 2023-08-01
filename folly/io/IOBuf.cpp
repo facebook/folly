@@ -490,10 +490,6 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     void* userData,
     bool freeOnError,
     TakeOwnershipOption option) {
-  if (capacity > kMaxIOBufSize) {
-    throw_exception<std::bad_alloc>();
-  }
-
   // do not allow only user data without a freeFn
   // since we use that for folly::sizedFree
   DCHECK(
@@ -507,6 +503,10 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     }
     takeOwnershipError(freeOnError, buf, freeFn, userData);
   });
+
+  if (capacity > kMaxIOBufSize) {
+    throw_exception<std::bad_alloc>();
+  }
 
   size_t requiredStorage = sizeof(HeapFullStorage);
   size_t mallocSize = goodMallocSize(requiredStorage);

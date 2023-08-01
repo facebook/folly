@@ -183,6 +183,28 @@ TEST(IOBuf, TakeOwnership) {
   EXPECT_EQ(1, deleteCount);
 }
 
+TEST(IOBuf, TakeOwnershipFreeOnErrorBugfix) {
+  static void* freedBuf = nullptr;
+  static void* freedUserData = nullptr;
+
+  folly::IOBuf::FreeFunction freeFn = [](void* calledBuf,
+                                         void* calledUserData) {
+    freedBuf = calledBuf;
+    freedUserData = calledUserData;
+  };
+
+  int userData = 0;
+  char buf[1024];
+
+  EXPECT_THROW(
+      IOBuf::takeOwnership(
+          buf, std::numeric_limits<size_t>::max(), freeFn, &userData, true),
+      std::bad_alloc);
+
+  EXPECT_EQ(freedBuf, buf);
+  EXPECT_EQ(freedUserData, &userData);
+}
+
 TEST(IOBuf, GetUserData) {
   {
     const uint32_t size = 1234;
