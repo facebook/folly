@@ -346,7 +346,7 @@ class AutoconfBuilder(BuilderBase):
 
 class Iproute2Builder(BuilderBase):
     # ./configure --prefix does not work for iproute2.
-    # Thus, explicitly copy sources from src_dir to build_dir, bulid,
+    # Thus, explicitly copy sources from src_dir to build_dir, build,
     # and then install to inst_dir using DESTDIR
     # lastly, also copy include from build_dir to inst_dir
     def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir) -> None:
