@@ -436,6 +436,10 @@ struct dynamic {
    * Throws exceptions if we cannot convert from the real type to the
    * requested type.
    *
+   * C++ will implicitly convert between bools, ints, and doubles; these
+   * conversion functions also try to convert between arithmetic types and
+   * strings. E.g. dynamic d = "12"; d.asDouble() -> 12.0.
+   *
    * Note: you can only use this to access integral types or strings,
    * since arrays and objects are generally best dealt with as a
    * dynamic.
