@@ -32,7 +32,7 @@ if(NOT TARGET Python3::Interpreter)
   # We find with QUIET here, since otherwise this generates some noisy warnings
   # on versions of CMake before 3.12
   if (WIN32)
-    # On Windows we need both the Intepreter as well as the Development
+    # On Windows we need both the Interpreter as well as the Development
     # libraries.
     find_package(Python3 COMPONENTS Interpreter Development QUIET)
   else()
@@ -487,7 +487,7 @@ function(add_fb_python_library LIB_NAME)
     #   won't complain if one of the dependencies doesn't exist (since it is
     #   intended to allow passing in file names for plain library files rather
     #   than just targets).
-    # - It ensures that sources for our depencencies are built before any
+    # - It ensures that sources for our dependencies are built before any
     #   executable that depends on us.  Note that we depend on "${dep}.py_lib"
     #   rather than "${dep}.py_sources_built" for this purpose because the
     #   ".py_sources_built" target won't be available for imported targets.
