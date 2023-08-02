@@ -93,7 +93,7 @@ class FastStaticBool {
 };
 
 template <class Initializer>
-constinit std::atomic<signed char> FastStaticBool<Initializer>::flag_;
+constinit std::atomic<signed char> FastStaticBool<Initializer>::flag_{};
 #else // FOLLY_CPLUSPLUS >= 202002L
 // Fallback on native static if std::atomic does not have a constexpr
 // constructor.
