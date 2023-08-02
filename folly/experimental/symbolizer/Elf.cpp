@@ -350,8 +350,11 @@ const char* ElfFile::getSectionName(const ElfShdr& section) const noexcept {
     return nullptr; // no section name string table
   }
 
-  const ElfShdr& sectionNames = *getSectionByIndex(elfHeader().e_shstrndx);
-  return getString(sectionNames, section.sh_name);
+  auto stringSection = getSectionByIndex(elfHeader().e_shstrndx);
+  if (!stringSection) {
+    return nullptr;
+  }
+  return getString(*stringSection, section.sh_name);
 }
 
 const ElfShdr* ElfFile::getSectionByName(const char* name) const noexcept {
@@ -359,7 +362,11 @@ const ElfShdr* ElfFile::getSectionByName(const char* name) const noexcept {
     return nullptr; // no section name string table
   }
 
-  const ElfShdr& sectionNames = *getSectionByIndex(elfHeader().e_shstrndx);
+  auto stringSection = getSectionByIndex(elfHeader().e_shstrndx);
+  if (!stringSection) {
+    return nullptr;
+  }
+  const ElfShdr& sectionNames = *stringSection;
   const char* start = file_ + sectionNames.sh_offset;
 
   // Find section with the appropriate sh_name offset
@@ -419,8 +426,11 @@ ElfFile::Symbol ElfFile::getSymbolByName(
       if (sym.st_name == 0) {
         return false; // no name for this symbol
       }
-      const char* sym_name =
-          getString(*getSectionByIndex(section.sh_link), sym.st_name);
+      auto linkSection = getSectionByIndex(section.sh_link);
+      if (!linkSection) {
+        return false;
+      }
+      const char* sym_name = getString(*linkSection, sym.st_name);
       if (strcmp(sym_name, name) == 0) {
         foundSymbol.first = &section;
         foundSymbol.second = &sym;
@@ -460,8 +470,11 @@ const char* ElfFile::getSymbolName(const Symbol& symbol) const noexcept {
     return nullptr; // symbol table has no strings
   }
 
-  return getString(
-      *getSectionByIndex(symbol.first->sh_link), symbol.second->st_name);
+  auto linkSection = getSectionByIndex(symbol.first->sh_link);
+  if (!linkSection) {
+    return nullptr;
+  }
+  return getString(*linkSection, symbol.second->st_name);
 }
 
 std::pair<const int, char const*> ElfFile::posixFadvise(
