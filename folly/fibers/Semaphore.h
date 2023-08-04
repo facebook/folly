@@ -30,6 +30,10 @@ namespace fibers {
 /*
  * Fiber-compatible semaphore. Will safely block fibers that wait when no
  * tokens are available and wake fibers when signalled.
+ *
+ * Fair. Waiters are awoken in FIFO order. (Note: whether the callers see FIFO
+ * order depends on the executors, wrapping async types, and the existence of
+ * happens-before relationships between async wait operations.)
  */
 class Semaphore {
  public:
