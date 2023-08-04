@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include <folly/CppAttributes.h>
+#include <folly/functional/Invoke.h>
 #include <folly/lang/CString.h>
 
 #if __has_include(<cxxabi.h>)
@@ -57,10 +59,75 @@ static constexpr auto cxxabi_demangle = static_cast<char* (*)(...)>(nullptr);
 //  liberty
 //
 //  in contrast with cxxabi, where there are certainly other referenced symbols
+//
+//  for rust_demangle_callback, detect its declaration in the header
 
 #if __has_include(<demangle.h>)
 
-static constexpr auto liberty_demangle = cplus_demangle_v3_callback;
+namespace detail {
+
+struct poison {};
+
+FOLLY_MAYBE_UNUSED FOLLY_ERASE void rust_demangle_callback(poison);
+
+int rust_demangle_callback_fallback(
+    const char*, int, demangle_callbackref, void*) {
+  return 0;
+}
+} // namespace detail
+
+namespace demangle_detail {
+struct invoke_fallback_rust_demangle_callback_fn {
+  template <typename... A>
+  FOLLY_MAYBE_UNUSED FOLLY_ERASE auto operator()(A... a) const noexcept
+      -> decltype(detail::rust_demangle_callback_fallback(a...)) {
+    return detail::rust_demangle_callback_fallback(a...);
+  }
+};
+struct invoke_primary_rust_demangle_callback_fn {
+  template <typename... A>
+  FOLLY_MAYBE_UNUSED FOLLY_ERASE auto operator()(A... a) const noexcept
+      -> decltype(rust_demangle_callback(a...)) {
+    return rust_demangle_callback(a...);
+  }
+};
+
+} // namespace demangle_detail
+
+namespace {
+
+template <typename... A>
+using invoke_rust_demangle_callback_fn = std::conditional_t<
+    folly::is_invocable_v<
+        demangle_detail::invoke_primary_rust_demangle_callback_fn,
+        A...>,
+    demangle_detail::invoke_primary_rust_demangle_callback_fn,
+    demangle_detail::invoke_fallback_rust_demangle_callback_fn>;
+
+template <typename... A>
+constexpr invoke_rust_demangle_callback_fn<A...>
+    invoke_rust_demangle_callback{};
+
+int rust_demangle_callback_caller(
+    const char* mangled,
+    int options,
+    demangle_callbackref callback,
+    void* opaque) {
+  return invoke_rust_demangle_callback<
+      const char*,
+      int,
+      demangle_callbackref,
+      void*>(mangled, options, callback, opaque);
+}
+
+} // namespace
+
+using liberty_demangle_t = int(const char*, int, demangle_callbackref, void*);
+
+static constexpr liberty_demangle_t* liberty_cplus_demangle =
+    cplus_demangle_v3_callback;
+static constexpr liberty_demangle_t* liberty_rust_demangle =
+    rust_demangle_callback_caller;
 
 #if defined(DMGL_NO_RECURSE_LIMIT)
 static constexpr auto liberty_demangle_options_no_recurse_limit =
@@ -75,7 +142,10 @@ static constexpr auto liberty_demangle_options = //
 
 #else // __has_include(<demangle.h>)
 
-static constexpr auto liberty_demangle = static_cast<int (*)(...)>(nullptr);
+using liberty_demangle_t = int(...);
+
+static constexpr liberty_demangle_t* liberty_cplus_demangle = nullptr;
+static constexpr liberty_demangle_t* liberty_rust_demangle = nullptr;
 static constexpr auto liberty_demangle_options = 0;
 
 #endif // __has_include(<demangle.h>)
@@ -84,10 +154,19 @@ static constexpr auto liberty_demangle_options = 0;
 
 namespace folly {
 
-//  reinterpret-cast currently evades -Waddress
 bool const demangle_build_has_cxxabi = cxxabi_demangle;
+//  reinterpret-cast currently evades -Waddress
 bool const demangle_build_has_liberty =
-    reinterpret_cast<void*>(liberty_demangle);
+    reinterpret_cast<void*>(liberty_cplus_demangle) &&
+    reinterpret_cast<void*>(liberty_rust_demangle);
+
+namespace {
+void demangleStringCallback(const char* str, size_t size, void* p) {
+  fbstring* demangle = static_cast<fbstring*>(p);
+
+  demangle->append(str, size);
+}
+} // namespace
 
 fbstring demangle(const char* name) {
   if (!name) {
@@ -103,6 +182,25 @@ fbstring demangle(const char* name) {
     size_t mangledLen = strlen(name);
     if (mangledLen > demangle_max_symbol_size) {
       return fbstring(name, mangledLen);
+    }
+  }
+
+  if (folly::demangle_build_has_liberty) {
+    liberty_demangle_t* funcs[] = {
+        liberty_rust_demangle,
+        liberty_cplus_demangle,
+    };
+
+    for (auto func : funcs) {
+      fbstring demangled;
+
+      // Unlike most library functions, this returns 1 on success and 0 on
+      // failure
+      int success = func(
+          name, liberty_demangle_options, demangleStringCallback, &demangled);
+      if (success && !demangled.empty()) {
+        return demangled;
+      }
     }
   }
 
@@ -131,7 +229,7 @@ struct DemangleBuf {
   size_t total;
 };
 
-void demangleCallback(const char* str, size_t size, void* p) {
+void demangleBufCallback(const char* str, size_t size, void* p) {
   DemangleBuf* buf = static_cast<DemangleBuf*>(p);
   size_t n = std::min(buf->remaining, size);
   memcpy(buf->dest, str, n);
@@ -156,24 +254,32 @@ size_t demangle(const char* name, char* out, size_t outSize) {
   }
 
   if (folly::demangle_build_has_liberty) {
-    DemangleBuf dbuf;
-    dbuf.dest = out;
-    dbuf.remaining = outSize ? outSize - 1 : 0; // leave room for null term
-    dbuf.total = 0;
+    liberty_demangle_t* funcs[] = {
+        liberty_rust_demangle,
+        liberty_cplus_demangle,
+    };
 
-    // Unlike most library functions, this returns 1 on success and 0 on failure
-    int status = liberty_demangle(
-        name, liberty_demangle_options, demangleCallback, &dbuf);
-    if (status == 0) { // failed, return original
-      return folly::strlcpy(out, name, outSize);
+    for (auto func : funcs) {
+      DemangleBuf dbuf;
+      dbuf.dest = out;
+      dbuf.remaining = outSize ? outSize - 1 : 0; // leave room for null term
+      dbuf.total = 0;
+
+      // Unlike most library functions, this returns 1 on success and 0 on
+      // failure
+      int success =
+          func(name, liberty_demangle_options, demangleBufCallback, &dbuf);
+      if (success) {
+        if (outSize != 0) {
+          *dbuf.dest = '\0';
+        }
+        return dbuf.total;
+      }
     }
-    if (outSize != 0) {
-      *dbuf.dest = '\0';
-    }
-    return dbuf.total;
-  } else {
-    return folly::strlcpy(out, name, outSize);
   }
+
+  // fallback - just return original
+  return folly::strlcpy(out, name, outSize);
 }
 
 } // namespace folly
