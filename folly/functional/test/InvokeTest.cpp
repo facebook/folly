@@ -393,6 +393,22 @@ TEST_F(InvokeTest, static_member_no_invoke) {
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int>));
 }
 
+TEST_F(InvokeTest, invoke_first_match) {
+  struct a {
+    FOLLY_MAYBE_UNUSED void operator()(int) const;
+  };
+  struct b {
+    FOLLY_MAYBE_UNUSED void operator()(int) const;
+  };
+  struct c {
+    FOLLY_MAYBE_UNUSED void operator()() const;
+  };
+  using inv = folly::invoke_first_match<a, b, c>;
+  EXPECT_TRUE((folly::is_invocable_v<inv const&, int>));
+  EXPECT_TRUE((folly::is_invocable_v<inv const&>));
+  EXPECT_FALSE((folly::is_invocable_v<inv const&, int, int>));
+}
+
 namespace {
 
 struct TestCustomisationPointFn {

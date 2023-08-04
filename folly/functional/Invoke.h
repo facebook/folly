@@ -298,6 +298,51 @@ struct invoke_traits : detail::invoke_traits_base<I> {
             invoke_detail::is_nothrow_invocable_r_v<void, R, I, A...>> {};
 };
 
+//  invoke_first_match
+//
+//  A composite invoker which delegates to the first invoker parameter matching
+//  the call.
+//
+//  Example:
+//
+//      FOLLY_CREATE_QUAL_INVOKER(invoke_x_fn, x);
+//      FOLLY_CREATE_QUAL_INVOKER(invoke_y_fn, y);
+//
+//      using invoke_x_or_y_fn = invoke_first_match<invoke_x_fn, invoke_y_fn>;
+//      inline constexpr invoke_x_or_y_fn invoke_x_or_y;
+//
+//      void go(int a, int b) { invoke_x_or_y(a, b); }
+//
+//  In this example, go(...) will delegate to x(...) if it exists and is a match
+//  for the arguments, or otherwise will delegate to y(...).
+template <typename... Invoker>
+struct invoke_first_match : private Invoker... {
+ private:
+  using iseq = std::index_sequence_for<Invoker...>;
+  template <size_t Idx>
+  using at = type_pack_element_t<Idx, Invoker...>;
+  template <size_t... Idx, typename... A>
+  static constexpr size_t first_(std::index_sequence<Idx...>, tag_t<A...>) {
+    constexpr bool r[] = {is_invocable_v<at<Idx> const&, A...>..., false};
+    for (size_t i = 0; i < sizeof...(Invoker); ++i) {
+      if (r[i]) {
+        return i;
+      }
+    }
+    return sizeof...(Invoker);
+  }
+  template <typename... A>
+  static constexpr size_t first = first_(iseq{}, tag<A...>);
+
+ public:
+  template <typename... A, typename Inv = at<first<A...>>>
+  FOLLY_ERASE constexpr auto operator()(A&&... a) const
+      noexcept(is_nothrow_invocable_v<Inv const&, A...>)
+          -> invoke_result_t<Inv const&, A...> {
+    return static_cast<Inv const&>(*this)(static_cast<A&&>(a)...);
+  }
+};
+
 } // namespace folly
 
 #define FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING_1(_, funcname, ns) \
