@@ -2302,7 +2302,7 @@ template <template <class...> class TMap>
 void testInitializerListDeductionGuide() {
   TMap<int, double> source({{1, 2.0}, {3, 4.0}});
 
-  TMap dest1{std::pair{1, 2.0}, {3, 4.0}};
+  TMap dest1{{std::pair{1, 2.0}, {3, 4.0}}};
   static_assert(std::is_same_v<decltype(dest1), decltype(source)>);
   EXPECT_EQ(dest1, source);
 
