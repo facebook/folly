@@ -583,6 +583,20 @@ back_emplace_iterator<Container, implicit_unpack> back_emplacer(Container& c) {
   return back_emplace_iterator<Container, implicit_unpack>(c);
 }
 
+namespace detail {
+
+// An accepted way to make operator-> work
+// https://quuxplusone.github.io/blog/2019/02/06/arrow-proxy/
+template <typename Ref>
+struct arrow_proxy {
+  Ref res;
+  Ref* operator->() { return &res; }
+
+  explicit arrow_proxy(Ref* ref) : res(*ref) {}
+};
+
+} // namespace detail
+
 /**
  * index_iterator
  *
@@ -634,7 +648,11 @@ class index_iterator {
   using reference = decltype(FOLLY_DECLVAL(container_type&)[size_type{}]);
   using difference_type =
       detected_or_t<std::ptrdiff_t, get_difference_type_t, Container>;
-  // no pointer type - in C++20 not needed and can be difficult.
+
+  using pointer = std::conditional_t<
+      std::is_reference<reference>::value,
+      std::remove_reference_t<reference>*,
+      detail::arrow_proxy<reference>>;
 
   static_assert(
       std::is_signed<difference_type>::value, "difference_type must be signed");
@@ -665,8 +683,15 @@ class index_iterator {
 
   constexpr reference operator*() const { return (*container_)[index_]; }
 
-  // no operator->. It is doable but not required in C++20 and up
-  // and is quite difficult for proxies. ranges forego operator-> and so do we
+  pointer operator->() const {
+    // It's equivalent to pointer{&**this} but compiler stops
+    // compilation on taking an address of a temporary.
+    // In this case `arrow_proxy` will copy the temporary and there is no
+    // issue.
+    auto&& ref = **this;
+    pointer res{&ref};
+    return res;
+  }
 
   constexpr reference operator[](difference_type n) const {
     return *(*this + n);

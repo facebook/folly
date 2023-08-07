@@ -844,6 +844,12 @@ TEST(IndexIterator, UseProxyReferences) {
   static_assert(std::is_same<it_ref_t, std::pair<int, int&>>::value, "");
   static_assert(std::is_same<it_cref_t, std::pair<int, const int&>>::value, "");
 
+  static_assert(std::is_same<decltype(it {} -> first), int>::value, "");
+  static_assert(std::is_same<decltype(it {} -> second), int&>::value, "");
+  static_assert(std::is_same<decltype(cit {} -> first), int>::value, "");
+  static_assert(
+      std::is_same<decltype(cit {} -> second), const int&>::value, "");
+
   ASSERT_EQ(4, (std::count_if(civ.begin(), civ.end(), [](auto&& pair) {
               return pair.first == pair.second;
             })));
@@ -862,4 +868,32 @@ TEST(IndexIterator, UseProxyReferences) {
 
   std::vector<int> expected{-1, -1, -1, -1};
   ASSERT_EQ(expected, iv.v_);
+
+  // testing pointer proxies
+  for (auto f = iv.begin(); f != iv.end(); ++f) {
+    f->second = 1;
+  }
+
+  expected = {1, 1, 1, 1};
+  ASSERT_EQ(expected, iv.v_);
+}
+
+TEST(IndexIterator, OperatorArrowForNonProxies) {
+  using v_t = std::vector<std::array<int, 2>>;
+  using iterator = folly::index_iterator<v_t>;
+
+  static_assert(std::is_same<iterator::pointer, v_t::pointer>::value, "");
+
+  v_t v;
+  v.resize(3);
+  iterator f{v, 0};
+  iterator l{v, v.size()};
+
+  f->at(0) = 1;
+  (f + 1)->at(0) = 2;
+  (f + 2)->at(0) = 3;
+
+  v_t expected{{1, 0}, {2, 0}, {3, 0}};
+
+  ASSERT_EQ(expected, v);
 }
