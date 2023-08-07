@@ -43,6 +43,7 @@ const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
 
 /* static */ auto CPUThreadPoolExecutor::makeDefaultPriorityQueue(
     int8_t numPriorities) -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  CHECK_GT(numPriorities, 0) << "Number of priorities should be positive";
   return std::make_unique<PriorityUnboundedBlockingQueue<CPUTask>>(
       numPriorities);
 }
@@ -86,6 +87,9 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(taskQueue.release()),
+      queueObserverFactory_{
+          !opt.queueObserverFactory ? createQueueObserverFactory()
+                                    : std::move(opt.queueObserverFactory)},
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
@@ -111,6 +115,9 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(makeDefaultQueue()),
+      queueObserverFactory_{
+          opt.queueObserverFactory ? std::move(opt.queueObserverFactory)
+                                   : createQueueObserverFactory()},
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
@@ -286,9 +293,9 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
   folly::Optional<ExecutorBlockingGuard> guard; // optional until C++17
   if (prohibitBlockingOnThreadPools_ == Options::Blocking::prohibit) {
-    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, this, namePrefix_);
+    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, this, getName());
   } else {
-    guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, namePrefix_);
+    guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, getName());
   }
 
   thread->startupBaton.post();

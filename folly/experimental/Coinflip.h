@@ -139,8 +139,8 @@ class Coinflip {
   static constexpr int kScaleBits =
       64 - folly::constexpr_log2_ceil(DBL_MAX_EXP); // 54 on Skylake.
 
-  static constexpr uint64_t kScale = 1ul << kScaleBits;
-  static constexpr uint64_t kStepApproxBase = 1ul << (kScaleBits - 31);
+  static constexpr uint64_t kScale = 1ull << kScaleBits;
+  static constexpr uint64_t kStepApproxBase = 1ull << (kScaleBits - 31);
 
   // Since counter_ is an exponential random variable, it is memoryless. That
   // means that if we subtract any value from counter_ and either confirm that

@@ -135,7 +135,7 @@ bool findDebugInfoOffset(
 bool Dwarf::findAddress(
     uintptr_t address,
     LocationInfoMode mode,
-    LocationInfo& locationInfo,
+    SymbolizedFrame& frame,
     folly::Range<SymbolizedFrame*> inlineFrames,
     folly::FunctionRef<void(const folly::StringPiece name)> eachParameterName)
     const {
@@ -166,7 +166,7 @@ bool Dwarf::findAddress(
       DwarfImpl impl(elfCache_, unit, mode);
       return impl.findLocation(
           address,
-          locationInfo,
+          frame,
           inlineFrames,
           eachParameterName,
           false /*checkAddress*/);
@@ -202,7 +202,7 @@ bool Dwarf::findAddress(
     DwarfImpl impl(elfCache_, unit, mode);
     if (impl.findLocation(
             address,
-            locationInfo,
+            frame,
             inlineFrames,
             eachParameterName,
             true /*checkAddress*/)) {

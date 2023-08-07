@@ -27,6 +27,7 @@
 #include <folly/Expected.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/portability/Fcntl.h>
 #include <folly/portability/Unistd.h>
 
 namespace folly {

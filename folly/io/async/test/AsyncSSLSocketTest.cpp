@@ -38,7 +38,7 @@
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
-#include <folly/io/async/test/MockAsyncTransportObserver.h>
+#include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
 #include <folly/io/async/test/TFOTest.h>
 #include <folly/io/async/test/TestSSLServer.h>
 #include <folly/net/NetOps.h>
@@ -331,7 +331,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadLargeClose) {
   // read()
   uint8_t readbuf[128];
   // we will fake the read len but that should be fine
-  size_t readLen = 1L << 33;
+  size_t readLen = 1LL << 33;
   uint32_t bytesRead = socket->read(readbuf, readLen);
   EXPECT_EQ(bytesRead, 128);
   EXPECT_EQ(memcmp(buf, readbuf, bytesRead), 0);
@@ -1090,7 +1090,6 @@ TEST(AsyncSSLSocketTest, EarlyCloseNotify) {
 TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   EventBase eventBase;
   auto serverCtx = std::make_shared<SSLContext>();
-  serverCtx->enableTLS13();
   serverCtx->setVerificationOption(SSLContext::VerifyClientCertificate::ALWAYS);
   serverCtx->setCiphersuitesOrThrow(
       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
@@ -1100,7 +1099,6 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
 
   auto clientCtx = std::make_shared<SSLContext>();
-  clientCtx->enableTLS13();
   clientCtx->setVerificationOption(
       SSLContext::VerifyServerCertificate::IF_PRESENTED);
   clientCtx->setCiphersuitesOrThrow(
@@ -3218,9 +3216,7 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
 TEST(AsyncSSLSocketTest, TestNullConnectCallbackError) {
   EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
-  clientCtx->enableTLS13();
   auto serverCtx = std::make_shared<SSLContext>();
-  serverCtx->enableTLS13();
   std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
   getctx(clientCtx, serverCtx);
@@ -3357,8 +3353,9 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
 class AsyncSSLSocketByteEventTest : public ::testing::Test {
  protected:
   using MockDispatcher = ::testing::NiceMock<netops::test::MockDispatcher>;
-  using TestObserver = test::MockAsyncTransportObserverForByteEvents;
-  using ByteEventType = AsyncTransport::ByteEvent::Type;
+  using TestObserver =
+      test::MockAsyncSocketLegacyLifecycleObserverForByteEvents;
+  using ByteEventType = AsyncSocket::ByteEvent::Type;
 
   /**
    * Components of a client connection to TestServer.
@@ -3391,6 +3388,12 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
       socket_->getEventBase()->loop();
       ASSERT_EQ(connCb_.state, ConnCallback::State::SUCCESS);
       setReadCb();
+    }
+
+    void waitForHandshake() {
+      while (connCb_.state == ConnCallback::State::WAITING) {
+        socket_->getEventBase()->loopOnce();
+      }
     }
 
     void setReadCb() {
@@ -3527,7 +3530,7 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
 
   static std::shared_ptr<NiceMock<TestObserver>> attachObserver(
       AsyncSocket* socket, bool enableByteEvents) {
-    AsyncTransport::LifecycleObserver::Config config = {};
+    AsyncSocket::LegacyLifecycleObserver::Config config = {};
     config.byteEvents = enableByteEvents;
     return std::make_shared<NiceMock<TestObserver>>(socket, config);
   }
@@ -3643,8 +3646,40 @@ TEST_F(AsyncSSLSocketByteEventTest, ObserverAttachedAfterConnect) {
   clientConn.connect();
   clientConn.netOpsVerifyAndClearExpectations();
 
+  // We make sure the server writes at least one byte to the client before
+  // enabling byte events. Otherwise, the test is flaky. We believe this happens
+  // when the following sequence occurs:
+  //
+  // (1) The client socket enables byte events successfully;
+  //
+  // (2) The client socket writes data to the server with timestamping set;
+  //
+  // (3) The client socket receives byte events for WRITE, SCHED, and TX and
+  //     processes them using `handleErrMessages` in `ioReady`. Once the error
+  //     queue is empty, `ioReady` calls `handleRead`. During this time, the
+  //     client also begins to read data sent by the server as part of the SSL
+  //     handshake completion;
+  //
+  // (4) The server socket receives the data from the client and reflects it
+  //     back;
+  //
+  // (5) The client socket receives the data reflected by the server. When a
+  //     data packet contains an ACK for previous data, the kernel emits the ACK
+  //     timestamp before handing off the received data to userspace. However,
+  //     in this case, since the client socket is still inside the `handleRead`
+  //     function (step 3), it will process the read, even though the ACK
+  //     timestamp is already enqueued in the error queue. When it finishes
+  //     reading the data, it does not go back to handle messages from the error
+  //     queue until the next call to `ioReady`. This causes several `EXPECT`
+  //     statements below to fail.
+
+  serverHandshakeCb_->waitForHandshake();
+  clientConn.waitForHandshake();
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
   clientConn.netOpsExpectTimestampingSetSockOpt();
-  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  auto observer = clientConn.attachObserver(true);
   EXPECT_EQ(1, observer->byteEventsEnabledCalled);
   EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
   EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());

@@ -28,7 +28,7 @@ folly::Singleton<folly::CPUThreadPoolExecutor, HazptrTPETag> hazptr_tpe_([] {
       std::make_shared<folly::NamedThreadFactory>("hazptr-tpe-"));
 });
 
-folly::Executor* get_hazptr_tpe() {
+folly::Executor::KeepAlive<> get_hazptr_tpe() {
   auto ex = hazptr_tpe_.try_get();
   return ex ? ex.get() : nullptr;
 }

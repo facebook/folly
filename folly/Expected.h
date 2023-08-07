@@ -139,8 +139,8 @@ inline bool operator!=(
  * }
  */
 template <class Error>
-constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(
-    Error&& err) {
+FOLLY_NODISCARD constexpr Unexpected<typename std::decay<Error>::type>
+makeUnexpected(Error&& err) {
   return Unexpected<typename std::decay<Error>::type>{
       static_cast<Error&&>(err)};
 }
@@ -193,8 +193,8 @@ template <class Value, class Error>
 class Expected;
 
 template <class Error, class Value>
-constexpr Expected<typename std::decay<Value>::type, Error> makeExpected(
-    Value&&);
+FOLLY_NODISCARD constexpr Expected<typename std::decay<Value>::type, Error>
+makeExpected(Value&&);
 
 /**
  * Alias for an Expected type's associated value_type
@@ -1153,7 +1153,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   Value&& value() && {
-    requireValue();
+    requireValueMove();
     return std::move(this->Base::value());
   }
 
@@ -1195,7 +1195,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   Value& operator*() & { return this->value(); }
 
-  Value&& operator*() && { return std::move(this->value()); }
+  Value&& operator*() && { return std::move(std::move(*this).value()); }
 
   const Value* operator->() const { return std::addressof(this->value()); }
 
@@ -1330,6 +1330,15 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     }
   }
 
+  void requireValueMove() {
+    if (UNLIKELY(!hasValue())) {
+      if (LIKELY(hasError())) {
+        throw_exception<BadExpectedAccess<Error>>(std::move(this->error_));
+      }
+      throw_exception<BadExpectedAccess<void>>();
+    }
+  }
+
   void requireError() const {
     if (UNLIKELY(!hasError())) {
       throw_exception<BadExpectedAccess<void>>();
@@ -1434,8 +1443,8 @@ Value* get_pointer(Expected<Value, Error>& ex) noexcept {
  * }
  */
 template <class Error, class Value>
-constexpr Expected<typename std::decay<Value>::type, Error> makeExpected(
-    Value&& val) {
+FOLLY_NODISCARD constexpr Expected<typename std::decay<Value>::type, Error>
+makeExpected(Value&& val) {
   return Expected<typename std::decay<Value>::type, Error>{
       in_place, static_cast<Value&&>(val)};
 }

@@ -120,7 +120,7 @@ template <typename Ex, typename... Args>
 /// Terminates as if by forwarding to throw_exception within a noexcept context.
 template <typename Ex, typename... Args>
 [[noreturn]] FOLLY_ERASE void terminate_with(Args&&... args) {
-  detail::terminate_with_<Ex, detail::throw_exception_arg_t<Args>...>(
+  detail::terminate_with_<Ex, detail::throw_exception_arg_t<Args&&>...>(
       static_cast<Args&&>(args)...);
 }
 

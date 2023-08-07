@@ -195,6 +195,11 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     transport_->setZeroCopyEnableFunc(func);
   }
 
+  AsyncTransport::UniquePtr tryExchangeWrappedTransport(
+      AsyncTransport::UniquePtr& transport) override {
+    return std::exchange(transport_, std::move(transport));
+  }
+
  protected:
   ~DecoratedAsyncTransportWrapper() override {}
 

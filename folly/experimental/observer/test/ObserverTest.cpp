@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <chrono>
 #include <stdexcept>
 #include <thread>
 
 #include <utility>
 #include <folly/Singleton.h>
+#include <folly/experimental/observer/CoreCachedObserver.h>
+#include <folly/experimental/observer/HazptrObserver.h>
 #include <folly/experimental/observer/Observer.h>
+#include <folly/experimental/observer/ReadMostlyTLObserver.h>
 #include <folly/experimental/observer/SimpleObservable.h>
 #include <folly/experimental/observer/WithJitter.h>
 #include <folly/fibers/FiberManager.h>
@@ -28,7 +32,15 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
+using namespace std::literals;
 using namespace folly::observer;
+
+namespace {
+
+template <typename T>
+struct AltAtomic : std::atomic<T> {};
+
+} // namespace
 
 TEST(Observer, Observable) {
   SimpleObservable<int> observable(42);
@@ -678,16 +690,18 @@ void runHazptrObserverTest(bool useLocalSnapshot) {
 
   auto value = [=](const auto& observer) {
     if (useLocalSnapshot) {
-      return observer.getSnapshot()->val_;
+      return observer->getSnapshot()->val_;
     } else {
-      return observer.getLocalSnapshot()->val_;
+      return observer->getLocalSnapshot()->val_;
     }
   };
 
   SimpleObservable<IntHolder> observable{IntHolder{42}};
 
-  HazptrObserver<IntHolder> observer{observable.getObserver()};
-  HazptrObserver<IntHolder> observerCopy{observer};
+  auto observer =
+      std::make_unique<HazptrObserver<IntHolder>>(observable.getObserver());
+  // Verify that copies get updated too.
+  auto observerCopy = std::make_unique<HazptrObserver<IntHolder>>(*observer);
   EXPECT_EQ(value(observer), 42);
   EXPECT_EQ(value(observerCopy), 42);
 
@@ -699,11 +713,20 @@ void runHazptrObserverTest(bool useLocalSnapshot) {
   auto dependentObserver = makeHazptrObserver([o = observable.getObserver()] {
     return IntHolder{o.getSnapshot()->val_ + 1};
   });
-  EXPECT_EQ(value(dependentObserver), 25);
+  EXPECT_EQ(value(&dependentObserver), 25);
 
   observable.setValue(IntHolder{20});
   folly::observer_detail::ObserverManager::waitForAllUpdates();
-  EXPECT_EQ(value(dependentObserver), 21);
+  EXPECT_EQ(value(&dependentObserver), 21);
+
+  // And moves as well even if the originals disappear.
+  auto observerMove =
+      std::make_unique<HazptrObserver<IntHolder>>(std::move(*observer));
+  observer.reset();
+  observerCopy.reset();
+  observable.setValue(IntHolder{26});
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(value(observerMove), 26);
 }
 
 TEST(Observer, HazptrObserver) {
@@ -712,6 +735,112 @@ TEST(Observer, HazptrObserver) {
 
 TEST(Observer, HazptrObserverLocalSnapshot) {
   runHazptrObserverTest(/* useLocalSnapshot */ true);
+}
+
+TEST(Observer, HazptrObserverExplicitDomain) {
+  SimpleObservable<int> observable{0};
+
+  folly::hazptr_domain<AltAtomic> domain;
+
+  HazptrObserver obs{observable.getObserver(), domain};
+  EXPECT_EQ(0, *obs.getSnapshot());
+
+  observable.setValue(1);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(1, *obs.getSnapshot());
+}
+
+TEST(Observer, HazptrObserverRecursiveReclamation) {
+  // in this scenario:
+  // * in scope is a domain instance with no executor
+  // * the hazptr-observer is itself owned by a hazptr-obj
+  // * tha hazptr-obj is retired with deferred reclamation enforced
+  // * the hazptr-obj and the hazptr-observer states are owned by the domain
+  // * many objects are retired, bringing the domain close to the threshold
+  // * one observable update cycle states within the callback
+  // * the state cycle will reach the threshold, forcing immediate reclamation
+  // * we expect forced reclamation within the callback to succeed
+  //
+  // regression test for bug:
+  // * forced reclamation within the callback would deadlock in the observer-
+  //   manager thread
+
+  struct ObserverObj : folly::hazptr_obj_base<ObserverObj> {
+    HazptrObserver<int> inner;
+    std::atomic<bool>& reclaimed_;
+    ObserverObj(
+        Observer<int> observer,
+        folly::hazptr_domain<>& domain,
+        std::atomic<bool>& reclaimed)
+        : inner{observer, domain}, reclaimed_{reclaimed} {}
+    ~ObserverObj() { reclaimed_ = true; }
+  };
+
+  struct EmptyObj : folly::hazptr_obj_base<EmptyObj> {};
+
+  SimpleObservable<int> observable{0};
+
+  std::atomic<bool> reclaimed{false}; // not a baton on purpose!
+  folly::hazptr_domain<> domain;
+
+  {
+    std::atomic<ObserverObj*> cell{};
+    // wire up the hazptr-observer to report its own reclamation to the test
+    cell.store(
+        new ObserverObj{observable.getObserver(), domain, reclaimed},
+        std::memory_order_release);
+
+    // retire the observer while it is protected: this way, retirement cannot be
+    // immediate because the observer is still protected, so retirement must be
+    // deferred; and since one retirement is deferred, continued retirements of
+    // the states objects will also be deferred, until the threshold is reached
+    auto hptr = folly::make_hazard_pointer(domain);
+    hptr.protect(cell);
+    cell.exchange(nullptr, std::memory_order_acquire)->retire(domain);
+  }
+
+  // enqueue maximally many retirements - but without forcing reclamation
+  auto thresh = folly::detail::hazptr_domain_rcount_threshold();
+  auto adjust = 2; // 1 for the retired HazptrObserver, 1 for the next setValue
+  for (int i = 0; i < thresh - adjust; ++i) {
+    (new EmptyObj())->retire(domain);
+  }
+  EXPECT_FALSE(reclaimed);
+
+  observable.setValue(1);
+  CHECK( // should take less than 1ms on an unloaded machine
+      folly::observer_detail::ObserverManager::tryWaitForAllUpdatesFor(1s));
+
+  EXPECT_TRUE(reclaimed); // verify that forced reclamation really did happen
+}
+
+TEST(Observer, CoreCachedObserver) {
+  SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+
+  auto ccObserver = std::make_unique<CoreCachedObserver<int>>(
+      makeObserver([observer] { return **observer; }));
+
+  EXPECT_EQ(***ccObserver, 42);
+  observable.setValue(41);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(***ccObserver, 41);
+
+  // Verify that copies get updated too.
+  auto ccObserverCopy = std::make_unique<CoreCachedObserver<int>>(*ccObserver);
+  observable.setValue(40);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(***ccObserver, 40);
+  EXPECT_EQ(***ccObserverCopy, 40);
+
+  // And moves as well even if the originals disappear.
+  auto ccObserverMove =
+      std::make_unique<CoreCachedObserver<int>>(std::move(*ccObserverCopy));
+  ccObserver.reset();
+  ccObserverCopy.reset();
+  observable.setValue(39);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(***ccObserverMove, 39);
 }
 
 TEST(Observer, Unwrap) {
@@ -1039,4 +1168,15 @@ TEST(Observer, ReenableSingletons) {
     folly::observer_detail::ObserverManager::vivify();
   }
   publishThread.join();
+}
+
+TEST(Observer, ReenableSingletonWithPendingUpdate) {
+  folly::observer::SimpleObservable<size_t> observable(0);
+  auto observer = observable.getObserver();
+  EXPECT_EQ(0, **observer);
+  folly::SingletonVault::singleton()->destroyInstances();
+  observable.setValue(42);
+  folly::SingletonVault::singleton()->reenableInstances();
+  std::this_thread::sleep_for(std::chrono::milliseconds{100});
+  EXPECT_EQ(42, **observer);
 }

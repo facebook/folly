@@ -663,6 +663,105 @@ TEST(IoUringBackend, OpenAt) {
   evbPtr->loopForever();
 }
 
+TEST(IoUringBackend, OpenAtAbsolutePath) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto path = folly::fs::unique_path();
+  auto filePath = dirPath / path;
+
+  SCOPE_EXIT { ::unlink(filePath.string().c_str()); };
+
+  folly::IoUringBackend::FileOpCallback openCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+    CHECK_EQ(0, ::close(res));
+  };
+
+  backendPtr->queueOpenat(
+      -1,
+      filePath.string().c_str(),
+      O_RDWR | O_CREAT | O_EXCL,
+      0666,
+      std::move(openCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, Statx) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto path = folly::fs::unique_path();
+  auto filePath = dirPath / path;
+
+  int dfd = ::open(dirPath.string().c_str(), O_DIRECTORY | O_RDONLY, 0666);
+  CHECK_GE(dfd, 0);
+  int fd = ::open(filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  CHECK_GE(fd, 0);
+
+  SCOPE_EXIT {
+    ::close(dfd);
+    ::close(fd);
+    ::unlink(filePath.string().c_str());
+  };
+
+  folly::IoUringBackend::FileOpCallback statxCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+  };
+
+  struct ::statx s;
+  backendPtr->queueStatx(
+      dfd, path.string().c_str(), 0, STATX_MODE, &s, std::move(statxCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, StatxAbsolute) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto path = folly::fs::unique_path();
+  auto filePath = dirPath / path;
+
+  int fd = ::open(filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  CHECK_GE(fd, 0);
+
+  SCOPE_EXIT {
+    ::close(fd);
+    ::unlink(filePath.string().c_str());
+  };
+
+  folly::IoUringBackend::FileOpCallback statxCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+  };
+
+  struct ::statx s;
+  backendPtr->queueStatx(
+      -1,
+      filePath.string().c_str(),
+      AT_EMPTY_PATH,
+      STATX_MODE,
+      &s,
+      std::move(statxCb));
+
+  evbPtr->loopForever();
+}
+
 TEST(IoUringBackend, OpenAt2) {
   auto evbPtr = getEventBase();
   SKIP_IF(!evbPtr) << "Backend not available";
@@ -835,11 +934,12 @@ TEST(IoUringBackend, RegisteredFds) {
 
   SCOPE_EXIT { ::close(eventFd); };
 
-  // verify for useRegisteredFds = false we get a nullptr FdRegistrationRecord
+  // verify for useRegisteredFds = false we get a nullptr
+  // IoUringFdRegistrationRecord
   auto* record = backendNoReg->registerFd(eventFd);
   CHECK(!record);
 
-  std::vector<folly::IoUringBackend::FdRegistrationRecord*> records;
+  std::vector<folly::IoUringFdRegistrationRecord*> records;
   // we use kBackendCapacity since the timerFd
   // allocates it only on the first loop
   records.reserve(kBackendCapacity);
@@ -1276,7 +1376,7 @@ TEST(IoUringBackend, ProvidedBuffers) {
 
   EXPECT_EQ(2, bufferProvider->count());
 
-  struct Reader : folly::IoUringBackend::IoSqeBase {
+  struct Reader : folly::IoSqeBase {
     Reader(int fd, uint16_t bgid, std::function<void(int, uint32_t)> oncqe)
         : fd_(fd), bgid_(bgid), oncqe_(oncqe) {}
 
@@ -1290,7 +1390,7 @@ TEST(IoUringBackend, ProvidedBuffers) {
       oncqe_(res, flags);
     }
 
-    void callbackCancelled() noexcept override { FAIL(); }
+    void callbackCancelled(int, uint32_t) noexcept override { FAIL(); }
 
     int fd_;
     uint16_t bgid_;
@@ -1336,7 +1436,7 @@ TEST(IoUringBackend, ProvidedBuffers) {
   // now the buffers should be back
   readers.clear();
   cqes.clear();
-  addReaders(2);
+  addReaders(1);
   backend->eb_event_base_loop(EVLOOP_ONCE);
   ASSERT_EQ(1, cqes.size());
   EXPECT_EQ(2, cqes[0].first);
@@ -1367,6 +1467,70 @@ TEST(IoUringBackend, ProvidedBufferRing) {
       bufs.push_back(bufferProvider->getIoBuf(i % kBuffs, 1));
     }
   }
+}
+
+TEST(IoUringBackend, BigProvidedBufferRing) {
+  auto evbPtr = getEventBase();
+  // test that big buffer rings don't have memory corruption
+  int constexpr kBuffs = 32000;
+  int constexpr kSize = 100000;
+
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(
+            kSize, kBuffs));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+    return;
+  }
+
+  auto* bufferProvider = backend->bufferProvider();
+  ASSERT_NE(bufferProvider, nullptr);
+  for (int i = 0; i < kBuffs; i++) {
+    // test that we can obtain all the possible buffers and return them
+    auto buff = bufferProvider->getIoBuf(i, kSize);
+    memset(buff->writableData(), 0, buff->length());
+  }
+}
+
+TEST(IoUringBackend, DeferTaskRun) {
+  if (!folly::IoUringBackend::kernelSupportsDeferTaskrun()) {
+    return;
+  }
+
+  std::atomic<int> doneA{0};
+  std::atomic<int> doneB{0};
+  struct N : folly::IoSqeBase {
+    explicit N(std::atomic<int>& v) : val(v) {}
+    std::atomic<int>& val;
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      ::io_uring_prep_nop(sqe);
+    }
+    void callback(int, uint32_t) noexcept override {
+      ++val;
+      delete this;
+    }
+    void callbackCancelled(int, uint32_t) noexcept override {
+      ++val;
+      delete this;
+    }
+  };
+
+  N* maybeLeaks = nullptr;
+
+  std::unique_ptr<folly::IoUringBackend> backend;
+  std::async(std::launch::async, [&]() {
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options().setDeferTaskRun(true));
+    backend->submitNow(*new N(doneA));
+    backend->loopPoll();
+    maybeLeaks = new N(doneB);
+    backend->submitSoon(*maybeLeaks);
+  }).wait();
+  backend.reset();
+  EXPECT_EQ(1, doneA.load());
+  ASSERT_EQ(0, doneB.load()) << "could not run on other thread";
+  delete maybeLeaks;
 }
 
 namespace folly {
@@ -1492,13 +1656,15 @@ REGISTER_TYPED_TEST_SUITE_P(
     RunBeforeLoop,
     RunBeforeLoopWait,
     StopBeforeLoop,
+    RunCallbacksPreDestruction,
     RunCallbacksOnDestruction,
     LoopKeepAlive,
     LoopKeepAliveInLoop,
     LoopKeepAliveWithLoopForever,
     LoopKeepAliveShutdown,
     LoopKeepAliveAtomic,
-    LoopKeepAliveCast);
+    LoopKeepAliveCast,
+    EventBaseObserver);
 
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,

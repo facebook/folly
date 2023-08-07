@@ -41,6 +41,7 @@ namespace folly {
  * USECS: microseconds
  * THREAD: Thread ID
  * FILE: Filename (just the last component)
+ * FIL: Filename (just the last component) without extension
  * FUN: The function that logged the message
  * LINE: Line number
  *
@@ -62,6 +63,7 @@ class CustomLogFormatter : public LogFormatter {
   std::string singleLineLogFormat_;
   std::size_t staticEstimatedWidth_{0};
   std::size_t fileNameCount_{0};
+  std::size_t fileNameNoExtCount_{0};
   std::size_t functionNameCount_{0};
   const bool colored_;
 };

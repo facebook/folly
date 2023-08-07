@@ -20,6 +20,7 @@
 #include <mutex>
 #include <string>
 #include <typeindex>
+#include <unordered_map>
 
 #include <folly/Conv.h>
 #include <folly/Function.h>

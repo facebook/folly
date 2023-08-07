@@ -18,9 +18,8 @@
 
 #include <functional>
 
-#include <folly/experimental/coro/Baton.h>
-#include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/coro/Transport.h>
+#include <folly/io/coro/TransportCallbackBase.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -29,71 +28,14 @@ using namespace folly::coro;
 namespace {
 
 //
-// Common base for all callbcaks
-//
-
-class CallbackBase {
- public:
-  explicit CallbackBase(folly::AsyncTransport& transport)
-      : transport_{transport} {}
-
-  virtual ~CallbackBase() noexcept = default;
-
-  folly::exception_wrapper& error() noexcept { return error_; }
-  void post() noexcept { baton_.post(); }
-  Task<void> wait() { co_await baton_; }
-  Task<folly::Unit> wait(folly::CancellationToken cancelToken) {
-    if (cancelToken.isCancellationRequested()) {
-      cancel();
-      co_yield folly::coro::co_cancelled;
-    }
-    folly::CancellationCallback cancellationCallback{
-        cancelToken, [this] {
-          this->post();
-          VLOG(5) << "Cancellation was called";
-        }};
-
-    co_await wait();
-    VLOG(5) << "After baton await";
-
-    if (cancelToken.isCancellationRequested()) {
-      cancel();
-      co_yield folly::coro::co_cancelled;
-    }
-    co_return folly::unit;
-  }
-
- protected:
-  // we use this to notify the other side of completion
-  Baton baton_;
-  // needed to modify AsyncTransport state, e.g. cacncel callbacks
-  folly::AsyncTransport& transport_;
-
-  // to wrap AsyncTransport errors
-  folly::exception_wrapper error_;
-
-  void storeException(const folly::AsyncSocketException& ex) {
-    auto sslErr = dynamic_cast<const folly::SSLException*>(&ex);
-    if (sslErr) {
-      error_ = folly::make_exception_wrapper<folly::SSLException>(*sslErr);
-    } else {
-      error_ = folly::make_exception_wrapper<folly::AsyncSocketException>(ex);
-    }
-  }
-
- private:
-  virtual void cancel() noexcept = 0;
-};
-
-//
 // Handle connect for AsyncSocket
 //
 
-class ConnectCallback : public CallbackBase,
+class ConnectCallback : public TransportCallbackBase,
                         public folly::AsyncSocket::ConnectCallback {
  public:
   explicit ConnectCallback(folly::AsyncSocket& socket)
-      : CallbackBase(socket), socket_(socket) {}
+      : TransportCallbackBase(socket), socket_(socket) {}
 
  private:
   void cancel() noexcept override { socket_.cancelConnect(); }
@@ -111,7 +53,7 @@ class ConnectCallback : public CallbackBase,
 // Handle data read for AsyncTransport
 //
 
-class ReadCallback : public CallbackBase,
+class ReadCallback : public TransportCallbackBase,
                      public folly::AsyncTransport::ReadCallback,
                      public folly::HHWheelTimer::Callback {
  public:
@@ -126,7 +68,7 @@ class ReadCallback : public CallbackBase,
       folly::AsyncTransport& transport,
       folly::MutableByteRange buf,
       std::chrono::milliseconds timeout)
-      : CallbackBase(transport), buf_{buf} {
+      : TransportCallbackBase(transport), buf_{buf} {
     if (timeout.count() > 0) {
       timer.scheduleTimeout(this, timeout);
     }
@@ -139,7 +81,7 @@ class ReadCallback : public CallbackBase,
       size_t minReadSize,
       size_t newAllocationSize,
       std::chrono::milliseconds timeout)
-      : CallbackBase(transport),
+      : TransportCallbackBase(transport),
         readBuf_(readBuf),
         minReadSize_(minReadSize),
         newAllocationSize_(newAllocationSize) {
@@ -246,11 +188,11 @@ class ReadCallback : public CallbackBase,
 // Handle data write for AsyncTransport
 //
 
-class WriteCallback : public CallbackBase,
+class WriteCallback : public TransportCallbackBase,
                       public folly::AsyncTransport::WriteCallback {
  public:
   explicit WriteCallback(folly::AsyncTransport& transport)
-      : CallbackBase(transport) {}
+      : TransportCallbackBase(transport) {}
   ~WriteCallback() override = default;
 
   size_t bytesWritten{0};
@@ -290,8 +232,7 @@ Task<Transport> Transport::newConnectedSocket(
   socket->setReadCB(nullptr);
   ConnectCallback cb{*socket};
   socket->connect(&cb, destAddr, connectTimeout.count());
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     co_yield co_error(std::move(waitRet.exception()));
   }
@@ -311,8 +252,7 @@ Task<size_t> Transport::read(
 
   ReadCallback cb{eventBase_->timer(), *transport_, buf, timeout};
   transport_->setReadCB(&cb);
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
@@ -347,8 +287,7 @@ Task<size_t> Transport::read(
       newAllocationSize,
       timeout};
   transport_->setReadCB(&cb);
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (cb.error()) {
     co_yield co_error(std::move(cb.error()));
   }
@@ -367,12 +306,12 @@ Task<size_t> Transport::read(
 Task<folly::Unit> Transport::write(
     folly::ByteRange buf,
     std::chrono::milliseconds timeout,
+    folly::WriteFlags writeFlags,
     WriteInfo* writeInfo) {
   transport_->setSendTimeout(timeout.count());
   WriteCallback cb{*transport_};
-  transport_->write(&cb, buf.begin(), buf.size());
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  transport_->write(&cb, buf.begin(), buf.size(), writeFlags);
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     if (writeInfo) {
       writeInfo->bytesWritten = cb.bytesWritten;
@@ -392,13 +331,13 @@ Task<folly::Unit> Transport::write(
 Task<folly::Unit> Transport::write(
     folly::IOBufQueue& ioBufQueue,
     std::chrono::milliseconds timeout,
+    folly::WriteFlags writeFlags,
     WriteInfo* writeInfo) {
   transport_->setSendTimeout(timeout.count());
   WriteCallback cb{*transport_};
   auto iovec = ioBufQueue.front()->getIov();
-  transport_->writev(&cb, iovec.data(), iovec.size());
-  auto waitRet =
-      co_await co_awaitTry(cb.wait(co_await co_current_cancellation_token));
+  transport_->writev(&cb, iovec.data(), iovec.size(), writeFlags);
+  auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     if (writeInfo) {
       writeInfo->bytesWritten = cb.bytesWritten;

@@ -151,16 +151,20 @@ AsyncGenerator<float&> floatRefs(int n) {
   }
 }
 
-TEST_F(TransformTest, TransformDeducesTypesCorrectly) {
+auto useStream(auto ag) {
+  std::vector<typename decltype(ag)::value_type> vals;
+  blockingWait([&](auto ag) -> Task<void> {
+    while (auto item = co_await ag.next()) {
+      vals.emplace_back(std::move(item).value());
+    }
+  }(std::move(ag)));
+  return vals;
+}
+
+TEST_F(TransformTest, TransformDeducesTypesCorrectlySyncFun) {
   auto makeStream = []() -> AsyncGenerator<int> { return ints(2); };
-  auto useStream = [](auto ag) {
-    blockingWait([](auto ag) -> Task<void> {
-      while (auto item = co_await ag.next()) {
-        // Force the access to the value
-        [[maybe_unused]] auto copy = std::move(item).value();
-      }
-    }(std::move(ag)));
-  };
+  using fv = std::vector<float>;
+  using dv = std::vector<double>;
 
   {
     // Function returning value
@@ -168,13 +172,13 @@ TEST_F(TransformTest, TransformDeducesTypesCorrectly) {
 
     // Default deduced as r-value reference
     AsyncGenerator<float&&> s0 = transform(makeStream(), fun);
-    useStream(std::move(s0));
+    EXPECT_EQ(useStream(std::move(s0)), (fv{1.f, 1.f, 1.f}));
     AsyncGenerator<float&&> s1 = transform<float&&>(makeStream(), fun);
-    useStream(std::move(s1));
+    EXPECT_EQ(useStream(std::move(s1)), (fv{1.f, 1.f, 1.f}));
     AsyncGenerator<float&> s2 = transform<float&>(makeStream(), fun);
-    useStream(std::move(s2));
+    EXPECT_EQ(useStream(std::move(s2)), (fv{1.f, 1.f, 1.f}));
     AsyncGenerator<float> s3 = transform<float>(makeStream(), fun);
-    useStream(std::move(s3));
+    EXPECT_EQ(useStream(std::move(s3)), (fv{1.f, 1.f, 1.f}));
   }
 
   {
@@ -184,13 +188,13 @@ TEST_F(TransformTest, TransformDeducesTypesCorrectly) {
 
     // Default deduced as l-value reference
     AsyncGenerator<float&> s0 = transform(floatRefs(2), fun);
-    useStream(std::move(s0));
+    EXPECT_EQ(useStream(std::move(s0)), (fv{0.f, 1.f, 2.f}));
     AsyncGenerator<float&&> s1 = transform<float&&>(floatRefs(2), fun);
-    useStream(std::move(s1));
+    EXPECT_EQ(useStream(std::move(s1)), (fv{0.f, 1.f, 2.f}));
     AsyncGenerator<float&> s2 = transform<float&>(floatRefs(2), fun);
-    useStream(std::move(s2));
+    EXPECT_EQ(useStream(std::move(s2)), (fv{0.f, 1.f, 2.f}));
     AsyncGenerator<float> s3 = transform<float>(floatRefs(2), fun);
-    useStream(std::move(s3));
+    EXPECT_EQ(useStream(std::move(s3)), (fv{0.f, 1.f, 2.f}));
   }
 
   // Conversion
@@ -200,14 +204,14 @@ TEST_F(TransformTest, TransformDeducesTypesCorrectly) {
     std::function<float(int)> fun = [](int) { return 1.f; };
 
     AsyncGenerator<double&&> s1 = transform<double&&>(makeStream(), fun);
-    useStream(std::move(s1));
+    EXPECT_EQ(useStream(std::move(s1)), (dv{1., 1., 1.}));
     AsyncGenerator<double&> s2 = transform<double&>(makeStream(), fun);
-    useStream(std::move(s2));
+    EXPECT_EQ(useStream(std::move(s2)), (dv{1., 1., 1.}));
     AsyncGenerator<const double&> s3 =
         transform<const double&>(makeStream(), fun);
-    useStream(std::move(s3));
+    EXPECT_EQ(useStream(std::move(s3)), (dv{1., 1., 1.}));
     AsyncGenerator<double> s4 = transform<double>(makeStream(), fun);
-    useStream(std::move(s4));
+    EXPECT_EQ(useStream(std::move(s4)), (dv{1., 1., 1.}));
   }
 
   {
@@ -215,14 +219,14 @@ TEST_F(TransformTest, TransformDeducesTypesCorrectly) {
     std::function<float&(float&)> fun = [&](float& f) -> float& { return f; };
 
     AsyncGenerator<double&&> s1 = transform<double&&>(floatRefs(2), fun);
-    useStream(std::move(s1));
+    EXPECT_EQ(useStream(std::move(s1)), (dv{0., 1., 2.}));
     AsyncGenerator<double&> s2 = transform<double&>(floatRefs(2), fun);
-    useStream(std::move(s2));
+    EXPECT_EQ(useStream(std::move(s2)), (dv{0., 1., 2.}));
     AsyncGenerator<const double&> s3 =
         transform<const double&>(floatRefs(2), fun);
-    useStream(std::move(s3));
+    EXPECT_EQ(useStream(std::move(s3)), (dv{0., 1., 2.}));
     AsyncGenerator<double&&> s4 = transform<double&&>(floatRefs(2), fun);
-    useStream(std::move(s4));
+    EXPECT_EQ(useStream(std::move(s4)), (dv{0., 1., 2.}));
   }
 }
 

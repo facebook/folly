@@ -22,7 +22,6 @@
 #include <folly/synchronization/Baton.h>
 
 using folly::Baton;
-using folly::EventBase;
 using folly::ScopedEventBaseThread;
 using std::chrono::seconds;
 

@@ -21,6 +21,7 @@
 #include <folly/experimental/channels/Transform.h>
 #include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
+#include <folly/experimental/coro/DetachOnCancel.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 

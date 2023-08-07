@@ -387,6 +387,14 @@ TEST(Uri, Simple) {
     }
   }
 
+  {
+    fbstring s("2http://www.facebook.com");
+
+    auto u = Uri::tryFromString(s);
+    EXPECT_TRUE(u.hasError());
+    EXPECT_EQ(u.error(), UriFormatError::INVALID_URI);
+  }
+
   // No authority (no "//") is valid
   {
     fbstring s("this:is/a/valid/uri");

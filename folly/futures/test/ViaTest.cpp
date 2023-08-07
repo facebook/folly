@@ -250,6 +250,7 @@ TEST(Via, allowInline) {
         e = true;
         return via(&x2).thenValue([&](auto&&) { f = true; });
       })
+      .thenErrorInline(tag_t<std::exception>{}, [](auto&&) {})
       .thenValueInline([&](auto&&) { g = true; })
       .thenValue([&](auto&&) {
         h = true;

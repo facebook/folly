@@ -34,6 +34,7 @@
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
 #include <folly/Range.h>
+#include <folly/experimental/io/IoUringBase.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/portability/Asm.h>
@@ -43,11 +44,11 @@
 #include <poll.h>
 #endif
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 #include <liburing.h>
 #endif
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 
 namespace folly {
 
@@ -195,72 +196,6 @@ class IoUringBackend : public EventBaseBackendBase {
     size_t initalProvidedBuffersEachSize{0};
   };
 
-  struct IoSqeBase
-      : boost::intrusive::list_base_hook<
-            boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
-    IoSqeBase() = default;
-    // use raw addresses, so disallow copy/move
-    IoSqeBase(IoSqeBase&&) = delete;
-    IoSqeBase(const IoSqeBase&) = delete;
-    IoSqeBase& operator=(IoSqeBase&&) = delete;
-    IoSqeBase& operator=(const IoSqeBase&) = delete;
-
-    virtual ~IoSqeBase() = default;
-    virtual void processSubmit(struct io_uring_sqe* sqe) noexcept = 0;
-    virtual void callback(int res, uint32_t flags) noexcept = 0;
-    virtual void callbackCancelled() noexcept = 0;
-    bool inFlight() const { return inFlight_; }
-    bool cancelled() const { return cancelled_; }
-    void markCancelled() { cancelled_ = true; }
-
-   private:
-    friend class IoUringBackend;
-    void internalSubmit(struct io_uring_sqe* sqe) noexcept;
-    void internalCallback(int res, uint32_t flags) noexcept;
-    void internalUnmarkInflight();
-
-    bool inFlight_ = false;
-    bool cancelled_ = false;
-  };
-
-  class ProvidedBufferProviderBase {
-   protected:
-    uint16_t const gid_;
-    size_t const sizePerBuffer_;
-
-   public:
-    struct Deleter {
-      void operator()(ProvidedBufferProviderBase* base) {
-        if (base) {
-          base->destroy();
-        }
-      }
-    };
-
-    using UniquePtr = std::unique_ptr<ProvidedBufferProviderBase, Deleter>;
-    explicit ProvidedBufferProviderBase(uint16_t gid, size_t sizePerBuffer)
-        : gid_(gid), sizePerBuffer_(sizePerBuffer) {}
-    virtual ~ProvidedBufferProviderBase() = default;
-
-    ProvidedBufferProviderBase(ProvidedBufferProviderBase&&) = delete;
-    ProvidedBufferProviderBase(ProvidedBufferProviderBase const&) = delete;
-    ProvidedBufferProviderBase& operator=(ProvidedBufferProviderBase&&) =
-        delete;
-    ProvidedBufferProviderBase& operator=(ProvidedBufferProviderBase const&) =
-        delete;
-
-    size_t sizePerBuffer() const { return sizePerBuffer_; }
-    uint16_t gid() const { return gid_; }
-
-    virtual uint32_t count() const noexcept = 0;
-    virtual void unusedBuf(uint16_t i) noexcept = 0;
-    virtual std::unique_ptr<IOBuf> getIoBuf(
-        uint16_t i, size_t length) noexcept = 0;
-    virtual void enobuf() noexcept = 0;
-    virtual bool available() const noexcept = 0;
-    virtual void destroy() noexcept = 0;
-  };
-
   explicit IoUringBackend(Options options);
   ~IoUringBackend() override;
   Options const& options() const { return options_; }
@@ -271,8 +206,13 @@ class IoUringBackend : public EventBaseBackendBase {
   struct io_uring* ioRingPtr() {
     return &ioRing_;
   }
+  struct io_uring_params const& params() const {
+    return params_;
+  }
 
   // from EventBaseBackendBase
+  int getPollableFd() const override { return ioRing_.ring_fd; }
+
   event_base* getEventBase() override { return nullptr; }
 
   int eb_event_base_loop(int flags) override;
@@ -293,19 +233,15 @@ class IoUringBackend : public EventBaseBackendBase {
   bool kernelHasNonBlockWriteFixes() const;
   static bool kernelSupportsRecvmsgMultishot();
   static bool kernelSupportsDeferTaskrun();
+  static bool kernelSupportsSendZC();
 
-  struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
-                                    boost::intrusive::cache_last<false>> {
-    int count_{0};
-    int fd_{-1};
-    int idx_{0};
-  };
-
-  FdRegistrationRecord* registerFd(int fd) noexcept {
+  IoUringFdRegistrationRecord* registerFd(int fd) noexcept {
     return fdRegistry_.alloc(fd);
   }
 
-  bool unregisterFd(FdRegistrationRecord* rec) { return fdRegistry_.free(rec); }
+  bool unregisterFd(IoUringFdRegistrationRecord* rec) {
+    return fdRegistry_.free(rec);
+  }
 
   // CQ poll mode loop callback
   using CQPollLoopCallback = folly::Function<void()>;
@@ -361,6 +297,14 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void queueClose(int fd, FileOpCallback&& cb);
 
+  void queueStatx(
+      int dirfd,
+      const char* pathname,
+      int flags,
+      unsigned int mask,
+      struct statx* statxbuf,
+      FileOpCallback&& cb);
+
   void queueFallocate(
       int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb);
 
@@ -379,13 +323,14 @@ class IoUringBackend : public EventBaseBackendBase {
     submitImmediateIoSqe(ioSqe);
   }
 
+  void submitNextLoop(IoSqeBase& ioSqe) noexcept;
   void submitSoon(IoSqeBase& ioSqe) noexcept;
   void submitNow(IoSqeBase& ioSqe);
   void submitNowNoCqe(IoSqeBase& ioSqe, int count = 1);
   void cancel(IoSqeBase* sqe);
 
   // built in buffer provider
-  ProvidedBufferProviderBase* bufferProvider() { return bufferProvider_.get(); }
+  IoUringBufferProviderBase* bufferProvider() { return bufferProvider_.get(); }
   uint16_t nextBufferProviderGid() { return bufferProviderGidNext_++; }
 
  protected:
@@ -487,24 +432,28 @@ class IoUringBackend : public EventBaseBackendBase {
 
   IoSqe* FOLLY_NULLABLE allocIoSqe(const EventCallback& cb);
   void releaseIoSqe(IoSqe* aioIoSqe) noexcept;
-  void incNumIoSqeInUse() { numIoSqeInUse_++; }
 
   // submit immediate if POLL_SQ | POLL_SQ_IMMEDIATE_IO flags are set
   void submitImmediateIoSqe(IoSqeBase& ioSqe);
 
   void internalSubmit(IoSqeBase& ioSqe) noexcept;
-  unsigned int internalProcessCqe(unsigned int maxGet, bool allowMore) noexcept;
+
+  enum class InternalProcessCqeMode {
+    NORMAL, // process existing and any available
+    AVAILABLE_ONLY, // process existing but don't get more
+    CANCEL_ALL, // cancel every sqe
+  };
+  unsigned int internalProcessCqe(
+      unsigned int maxGet, InternalProcessCqeMode mode) noexcept;
 
   int eb_event_modify_inserted(Event& event, IoSqe* ioSqe);
-
-  FOLLY_ALWAYS_INLINE size_t numIoSqeInUse() const { return numIoSqeInUse_; }
 
   struct FdRegistry {
     FdRegistry() = delete;
     FdRegistry(struct io_uring& ioRing, size_t n);
 
-    FdRegistrationRecord* alloc(int fd) noexcept;
-    bool free(FdRegistrationRecord* record);
+    IoUringFdRegistrationRecord* alloc(int fd) noexcept;
+    bool free(IoUringFdRegistrationRecord* record);
 
     int init();
     size_t update();
@@ -513,9 +462,9 @@ class IoUringBackend : public EventBaseBackendBase {
     struct io_uring& ioRing_;
     std::vector<int> files_;
     size_t inUse_;
-    std::vector<FdRegistrationRecord> records_;
+    std::vector<IoUringFdRegistrationRecord> records_;
     boost::intrusive::
-        slist<FdRegistrationRecord, boost::intrusive::cache_last<false>>
+        slist<IoUringFdRegistrationRecord, boost::intrusive::cache_last<false>>
             free_;
   };
 
@@ -531,7 +480,7 @@ class IoUringBackend : public EventBaseBackendBase {
     void callback(int res, uint32_t flags) noexcept override {
       backendCb_(backend_, this, res, flags);
     }
-    void callbackCancelled() noexcept override { release(); }
+    void callbackCancelled(int, uint32_t) noexcept override { release(); }
     virtual void release() noexcept;
 
     IoUringBackend* backend_;
@@ -539,7 +488,7 @@ class IoUringBackend : public EventBaseBackendBase {
     const bool poolAlloc_;
     const bool persist_;
     Event* event_{nullptr};
-    FdRegistrationRecord* fdRecord_{nullptr};
+    IoUringFdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};
     int res_;
     uint32_t cqeFlags_;
@@ -586,21 +535,13 @@ class IoUringBackend : public EventBaseBackendBase {
           case EventCallback::Type::TYPE_RECVMSG_MULTISHOT:
             if (auto* hdr =
                     cb.recvmsgMultishotCb_->allocateRecvmsgMultishotData()) {
-              prepRecvmsgMultishot(
-                  sqe,
-                  ev->ev_fd,
-                  &hdr->data_,
-                  (ev->ev_events & EV_PERSIST) != 0);
+              prepRecvmsgMultishot(sqe, ev->ev_fd, &hdr->data_);
               cbData_.set(hdr);
               return;
             }
             break;
         }
-        prepPollAdd(
-            sqe,
-            ev->ev_fd,
-            getPollFlags(ev->ev_events),
-            (ev->ev_events & EV_PERSIST) != 0);
+        prepPollAdd(sqe, ev->ev_fd, getPollFlags(ev->ev_events));
       }
     }
 
@@ -651,7 +592,7 @@ class IoUringBackend : public EventBaseBackendBase {
             ret = true;
             std::unique_ptr<IOBuf> buf;
             if (flags & IORING_CQE_F_BUFFER) {
-              if (ProvidedBufferProviderBase* bp = backend->bufferProvider()) {
+              if (IoUringBufferProviderBase* bp = backend->bufferProvider()) {
                 buf = bp->getIoBuf(flags >> 16, res);
               }
             }
@@ -698,21 +639,9 @@ class IoUringBackend : public EventBaseBackendBase {
     EventCallbackData cbData_;
 
     void prepPollAdd(
-        struct io_uring_sqe* sqe,
-        int fd,
-        uint32_t events,
-        bool registerFd) noexcept {
+        struct io_uring_sqe* sqe, int fd, uint32_t events) noexcept {
       CHECK(sqe);
-      if (registerFd && !fdRecord_) {
-        fdRecord_ = backend_->registerFd(fd);
-      }
-
-      if (fdRecord_) {
-        ::io_uring_prep_poll_add(sqe, fdRecord_->idx_, events);
-        sqe->flags |= IOSQE_FIXED_FILE;
-      } else {
-        ::io_uring_prep_poll_add(sqe, fd, events);
-      }
+      ::io_uring_prep_poll_add(sqe, fd, events);
       ::io_uring_sqe_set_data(sqe, this);
     }
 
@@ -788,27 +717,15 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     void prepRecvmsgMultishot(
-        struct io_uring_sqe* sqe,
-        int fd,
-        struct msghdr* msg,
-        bool registerFd) noexcept {
+        struct io_uring_sqe* sqe, int fd, struct msghdr* msg) noexcept {
       CHECK(sqe);
-      if (registerFd && !fdRecord_) {
-        fdRecord_ = backend_->registerFd(fd);
-      }
-
-      if (fdRecord_) {
-        ::io_uring_prep_recvmsg(sqe, fdRecord_->idx_, msg, MSG_TRUNC);
-        sqe->flags |= IOSQE_FIXED_FILE;
-      } else {
-        ::io_uring_prep_recvmsg(sqe, fd, msg, MSG_TRUNC);
-      }
+      ::io_uring_prep_recvmsg(sqe, fd, msg, MSG_TRUNC);
       // this magic value is set in io_uring_prep_recvmsg_multishot,
       // however this version of the library isn't available widely yet
       // so just hardcode it here
       constexpr uint16_t kMultishotFlag = 1U << 1;
       sqe->ioprio |= kMultishotFlag;
-      if (ProvidedBufferProviderBase* bp = backend_->bufferProvider()) {
+      if (IoUringBufferProviderBase* bp = backend_->bufferProvider()) {
         sqe->buf_group = bp->gid();
         sqe->flags |= IOSQE_BUFFER_SELECT;
       }
@@ -997,6 +914,34 @@ class IoUringBackend : public EventBaseBackendBase {
     }
   };
 
+  struct FStatxIoSqe : public FileOpIoSqe {
+    FStatxIoSqe(
+        IoUringBackend* backend,
+        int dfd,
+        const char* pathname,
+        int flags,
+        unsigned int mask,
+        struct statx* statxbuf,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, dfd, std::move(cb)),
+          path_(pathname),
+          flags_(flags),
+          mask_(mask),
+          statxbuf_(statxbuf) {}
+
+    ~FStatxIoSqe() override = default;
+
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      ::io_uring_prep_statx(sqe, fd_, path_, flags_, mask_, statxbuf_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    const char* path_;
+    int flags_;
+    unsigned int mask_;
+    struct statx* statxbuf_;
+  };
+
   struct FAllocateIoSqe : public FileOpIoSqe {
     FAllocateIoSqe(
         IoUringBackend* backend,
@@ -1080,8 +1025,9 @@ class IoUringBackend : public EventBaseBackendBase {
   }
 
   IoUringBackend::IoSqe* allocNewIoSqe(const EventCallback& /*cb*/) {
-    // allow pool alloc if numIoSqeInUse_ < numEntries_
-    auto* ret = new IoSqe(this, numIoSqeInUse_ < numEntries_);
+    // allow pool alloc if numPooledIoSqeInUse_ < numEntries_
+    auto* ret = new IoSqe(this, numPooledIoSqeInUse_ < numEntries_);
+    ++numPooledIoSqeInUse_;
     ret->backendCb_ = IoUringBackend::processPollIoSqe;
 
     return ret;
@@ -1089,7 +1035,16 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void cleanup();
 
-  struct io_uring_sqe* get_sqe();
+  struct io_uring_sqe* getUntrackedSqe();
+  struct io_uring_sqe* getSqe();
+
+  /// some ring calls require being called on a single system thread, so we need
+  /// to delay init of those things until the correct thread is ready
+  void delayedInit();
+
+  /// init things that are linked to the io_uring submitter concept
+  /// so for DeferTaskrun, only do this in delayed init
+  void initSubmissionLinked();
 
   Options options_;
   size_t numEntries_;
@@ -1111,7 +1066,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // submit
   IoSqeBaseList submitList_;
   uint16_t bufferProviderGidNext_{0};
-  ProvidedBufferProviderBase::UniquePtr bufferProvider_;
+  IoUringBufferProviderBase::UniquePtr bufferProvider_;
 
   // loop related
   bool loopBreak_{false};
@@ -1119,11 +1074,12 @@ class IoUringBackend : public EventBaseBackendBase {
   bool processTimers_{false};
   bool processSignals_{false};
   IoSqeList activeEvents_;
-  // number of IoSqe instances in use
   size_t waitingToSubmit_{0};
   size_t numInsertedEvents_{0};
   size_t numInternalEvents_{0};
-  size_t numIoSqeInUse_{0};
+
+  // number of pooled IoSqe instances in use
+  size_t numPooledIoSqeInUse_{0};
 
   // io_uring related
   struct io_uring_params params_;
@@ -1135,11 +1091,13 @@ class IoUringBackend : public EventBaseBackendBase {
   // every time we poll for a CQE
   CQPollLoopCallback cqPollLoopCallback_;
 
-  bool registerDefaultFds_{true};
+  bool needsDelayedInit_{true};
 
   // stuff for ensuring we don't re-enter submit/getActiveEvents
+  folly::Optional<std::thread::id> submitTid_;
   int isSubmitting_{0};
   bool gettingEvents_{false};
+  void dCheckSubmitTid();
   void setSubmitting() noexcept { isSubmitting_++; }
   void doneSubmitting() noexcept { isSubmitting_--; }
   void setGetActiveEvents() {

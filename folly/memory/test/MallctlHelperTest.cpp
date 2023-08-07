@@ -164,6 +164,6 @@ TEST_F(MallctlHelperTest, valid_call_via_cache) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   return usingJEMalloc() ? RUN_ALL_TESTS() : 0;
 }

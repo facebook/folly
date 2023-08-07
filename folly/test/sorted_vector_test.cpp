@@ -25,6 +25,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/Utility.h>
 #include <folly/memory/Malloc.h>
@@ -63,6 +64,16 @@ static_assert(folly::is_sorted_vector_set_v<folly::sorted_vector_set<
 static_assert(!folly::is_sorted_vector_set_v<std::set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::unordered_set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::vector<int>>);
+
+static_assert(
+    std::is_same_v<folly::sorted_vector_set<int>::const_pointer, const int*>);
+
+static_assert(std::is_same_v<
+              folly::sorted_vector_map<int, double>::pointer,
+              std::pair<int, double>*>);
+static_assert(std::is_same_v<
+              folly::sorted_vector_map<int, double>::const_pointer,
+              const std::pair<int, double>*>);
 
 template <class T>
 struct less_invert {
@@ -173,10 +184,70 @@ TEST(SortedVectorTypes, SetAssignmentInitListTest) {
   EXPECT_THAT(s, testing::ElementsAreArray({7, 8, 9}));
 }
 
+TEST(SortedVectorTypes, SetUnderlyingContainerDirectFillInWithGuardTest) {
+  sorted_vector_set<int> s;
+  {
+    auto guard = s.get_container_for_direct_mutation();
+    guard.get() = {5, 4, 3};
+  }
+  EXPECT_THAT(s, testing::ElementsAreArray({3, 4, 5}));
+  s = {}; // empty ilist assignment
+  EXPECT_THAT(s, testing::IsEmpty());
+  s = {7, 8, 9}; // non-empty ilist assignment
+  EXPECT_THAT(s, testing::ElementsAreArray({7, 8, 9}));
+}
+
+TEST(
+    SortedVectorTypes,
+    SetUnderlyingContainerDirectFillInSortedUniqueWithGuardTest) {
+  sorted_vector_set<int> s;
+  {
+    auto guard = s.get_container_for_direct_mutation(folly::sorted_unique);
+    guard.get() = {3, 4, 5};
+  }
+  EXPECT_THAT(s, testing::ElementsAreArray({3, 4, 5}));
+  s = {}; // empty ilist assignment
+  EXPECT_THAT(s, testing::IsEmpty());
+  s = {7, 8, 9}; // non-empty ilist assignment
+  EXPECT_THAT(s, testing::ElementsAreArray({7, 8, 9}));
+}
+
 TEST(SortedVectorTypes, MapAssignmentInitListTest) {
   using v = std::pair<int, const char*>;
   v p = {3, "a"}, q = {4, "b"}, r = {5, "c"};
   sorted_vector_map<int, const char*> m{p, q, r};
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  m = {}; // empty ilist assignment
+  EXPECT_THAT(m, testing::IsEmpty());
+  m = {p, q, r}; // non-empty ilist assignment
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+}
+
+TEST(SortedVectorTypes, MapUnderlyingContainerDirectFillInWithGuardTest) {
+  using v = std::pair<int, const char*>;
+  v p = {3, "a"}, q = {4, "b"}, r = {5, "c"};
+  sorted_vector_map<int, const char*> m;
+  {
+    auto guard = m.get_container_for_direct_mutation();
+    guard.get() = {r, q, p};
+  }
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  m = {}; // empty ilist assignment
+  EXPECT_THAT(m, testing::IsEmpty());
+  m = {p, q, r}; // non-empty ilist assignment
+  EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+}
+
+TEST(
+    SortedVectorTypes,
+    MapUnderlyingContainerDirectFillInSortedUniqueWithGuardTest) {
+  using v = std::pair<int, const char*>;
+  v p = {3, "a"}, q = {4, "b"}, r = {5, "c"};
+  sorted_vector_map<int, const char*> m;
+  {
+    auto guard = m.get_container_for_direct_mutation(folly::sorted_unique);
+    guard.get() = {p, q, r};
+  }
   EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
   m = {}; // empty ilist assignment
   EXPECT_THAT(m, testing::IsEmpty());
@@ -1372,6 +1443,79 @@ TEST(SortedVectorTypes, TestInsertHintCopy) {
     map.insert(mit, mkey);
   }
   EXPECT_EQ(CountCopyCtor::gCount_, 0);
+}
+
+TEST(SortedVectorTypes, TestTryEmplace) {
+  // folly::Optional becomes empty after move.
+  sorted_vector_map<folly::Optional<int>, folly::Optional<std::string>> map;
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("1");
+    const auto& [it, inserted] = map.try_emplace(std::move(k), std::move(v));
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "1");
+    EXPECT_FALSE(k);
+    EXPECT_FALSE(v);
+    EXPECT_EQ(map.size(), 1);
+  }
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("another 1");
+    const auto& [it, inserted] = map.try_emplace(std::move(k), std::move(v));
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "1");
+    EXPECT_EQ(k, 1);
+    EXPECT_EQ(v, "another 1");
+    EXPECT_EQ(map.size(), 1);
+  }
+  {
+    auto k = folly::make_optional<int>(2);
+    auto v = folly::make_optional<std::string>("2");
+    const auto& [it, inserted] = map.try_emplace(k, v);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->first, 2);
+    EXPECT_EQ(it->second, "2");
+    EXPECT_EQ(k, 2);
+    EXPECT_EQ(v, "2");
+    EXPECT_EQ(map.size(), 2);
+  }
+}
+
+TEST(SortedVectorTypes, TestInsertOrAssign) {
+  // folly::Optional becomes empty after move.
+  sorted_vector_map<folly::Optional<int>, folly::Optional<std::string>> map;
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("1");
+    const auto it = map.insert_or_assign(std::move(k), std::move(v));
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "1");
+    EXPECT_FALSE(k);
+    EXPECT_FALSE(v);
+    EXPECT_EQ(map.size(), 1);
+  }
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("another 1");
+    const auto it = map.insert_or_assign(std::move(k), std::move(v));
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "another 1");
+    EXPECT_EQ(k, 1);
+    EXPECT_FALSE(v);
+    EXPECT_EQ(map.size(), 1);
+  }
+  {
+    auto k = folly::make_optional<int>(2);
+    auto v = folly::make_optional<std::string>("2");
+    const auto it = map.insert_or_assign(k, v);
+    EXPECT_EQ(it->first, 2);
+    EXPECT_EQ(it->second, "2");
+    EXPECT_EQ(k, 2);
+    EXPECT_EQ(v, "2");
+    EXPECT_EQ(map.size(), 2);
+  }
 }
 
 TEST(SortedVectorTypes, TestGetContainer) {

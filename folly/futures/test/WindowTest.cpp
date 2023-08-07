@@ -102,13 +102,34 @@ TEST(Window, basic) {
     auto res =
         reduce(
             window(
-                5UL,
+                size_t(5),
                 [](size_t iteration) { return folly::makeFuture(iteration); },
                 2),
             size_t{0},
             [](size_t sum, const Try<size_t>& b) { return sum + b.value(); })
             .get();
     EXPECT_EQ(0 + 1 + 2 + 3 + 4, res);
+  }
+}
+
+TEST(Window, inline) {
+  // inline future collection on same executor
+  {
+    ManualExecutor x;
+    auto allf = collectAll(window(
+                               &x,
+                               std::vector<int>{42, 42, 42},
+                               [&](int i) { return makeFuture(i).via(&x); },
+                               2))
+                    .via(&x)
+                    .thenTryInline([](auto&&) {});
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(2, x.run());
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(2, x.run());
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(1, x.run());
+    EXPECT_TRUE(allf.isReady());
   }
 }
 

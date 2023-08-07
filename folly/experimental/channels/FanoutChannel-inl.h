@@ -279,7 +279,8 @@ class FanoutChannelProcessor
       if (inputResult.hasValue()) {
         // We have received a normal value from the input receiver. Write it to
         // all output senders.
-        state->context.update(inputResult.value());
+        state->context.update(
+            inputResult.value(), state->fanoutSender.numSubscribers());
         state->fanoutSender.write(std::move(inputResult.value()));
       } else {
         // The input receiver was closed.

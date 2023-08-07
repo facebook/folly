@@ -82,29 +82,11 @@ struct sockaddr_un {
 // Someone thought it would be a good idea
 // to define a field via a macro...
 #undef s_host
-#elif defined(__EMSCRIPTEN__)
-// Stub this out for now.
-using nfds_t = int;
-using socklen_t = int;
-struct sockaddr {};
-struct sockaddr_storage {};
-struct in_addr {};
-struct msghdr {
-  void* msg_name;
-  socklen_t msg_namelen;
-  struct iovec* msg_iov;
-  size_t msg_iovlen;
-  void* msg_control;
-  size_t msg_controllen;
-  int msg_flags;
-};
-
-struct mmsghdr {
-  struct msghdr msg_hdr;
-  unsigned int msg_len;
-};
-
 #else
+
+#if defined(__EMSCRIPTEN__)
+#include <sys/types.h>
+#endif
 
 #include <netdb.h>
 #include <poll.h>
@@ -116,6 +98,7 @@ struct mmsghdr {
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#if !defined(__EMSCRIPTEN__)
 #ifdef MSG_ERRQUEUE
 #define FOLLY_HAVE_MSG_ERRQUEUE 1
 #ifdef SCM_TIMESTAMPING
@@ -132,6 +115,7 @@ struct mmsghdr {
 #endif
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
+#endif
 #endif
 
 #ifndef SO_EE_ORIGIN_ZEROCOPY

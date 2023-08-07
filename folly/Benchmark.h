@@ -29,7 +29,10 @@
 #include <cassert>
 #include <chrono>
 #include <functional>
+#include <iosfwd>
 #include <limits>
+#include <mutex>
+#include <set>
 #include <type_traits>
 #include <unordered_map>
 
@@ -67,6 +70,13 @@ class UserMetric {
   UserMetric() = default;
   /* implicit */ UserMetric(int64_t val, Type typ = Type::CUSTOM)
       : value(val), type(typ) {}
+
+  friend bool operator==(const UserMetric& x, const UserMetric& y) {
+    return x.value == y.value && x.type == y.type;
+  }
+  friend bool operator!=(const UserMetric& x, const UserMetric& y) {
+    return !(x == y);
+  }
 };
 
 using UserCounters = std::unordered_map<std::string, UserMetric>;
@@ -92,30 +102,26 @@ struct BenchmarkResult {
   std::string name;
   double timeInNs;
   UserCounters counters;
+
+  friend std::ostream& operator<<(std::ostream&, const BenchmarkResult&);
+
+  friend bool operator==(const BenchmarkResult&, const BenchmarkResult&);
+  friend bool operator!=(const BenchmarkResult& x, const BenchmarkResult& y) {
+    return !(x == y);
+  }
 };
 
-/**
- * Adds a benchmark wrapped in a std::function. Only used
- * internally. Pass by value is intentional.
- */
-void addBenchmarkImpl(
-    const char* file, StringPiece name, BenchmarkFun, bool useCounter);
+struct BenchmarkSuspenderBase {
+  /**
+   * Accumulates time spent outside benchmark.
+   */
+  static std::chrono::high_resolution_clock::duration timeSpent;
+};
 
-/**
- * Runs all benchmarks defined in the program, doesn't print by default.
- * Usually used when customized printing of results is desired.
- */
-std::vector<BenchmarkResult> runBenchmarksWithResults();
-
-} // namespace detail
-
-/**
- * Supporting type for BENCHMARK_SUSPEND defined below.
- */
-struct BenchmarkSuspender {
-  using Clock = std::chrono::high_resolution_clock;
-  using TimePoint = Clock::time_point;
-  using Duration = Clock::duration;
+template <typename Clock>
+struct BenchmarkSuspender : BenchmarkSuspenderBase {
+  using TimePoint = std::chrono::high_resolution_clock::time_point;
+  using Duration = std::chrono::high_resolution_clock::duration;
 
   struct DismissedTag {};
   static inline constexpr DismissedTag Dismissed{};
@@ -170,11 +176,6 @@ struct BenchmarkSuspender {
    */
   explicit operator bool() const { return false; }
 
-  /**
-   * Accumulates time spent outside benchmark.
-   */
-  static Duration timeSpent;
-
  private:
   void tally() {
     auto end = Clock::now();
@@ -185,89 +186,156 @@ struct BenchmarkSuspender {
   TimePoint start;
 };
 
+class PerfScoped;
+
+class BenchmarkingStateBase {
+ public:
+  template <typename Printer>
+  std::pair<std::set<std::string>, std::vector<BenchmarkResult>>
+  runBenchmarksWithPrinter(Printer* printer) const;
+
+  std::vector<BenchmarkResult> runBenchmarksWithResults() const;
+
+  static folly::StringPiece getGlobalBaselineNameForTests();
+
+  bool useCounters() const;
+
+  void addBenchmarkImpl(
+      const char* file, StringPiece name, BenchmarkFun, bool useCounter);
+
+ protected:
+  // There is no need for this virtual but we overcome a check
+  virtual ~BenchmarkingStateBase() = default;
+
+  PerfScoped setUpPerfScoped() const;
+
+  // virtual for purely testing purposes.
+  virtual PerfScoped doSetUpPerfScoped(
+      const std::vector<std::string>& args) const;
+
+  mutable std::mutex mutex_;
+  std::vector<BenchmarkRegistration> benchmarks_;
+};
+
+template <typename Clock>
+class BenchmarkingState : public BenchmarkingStateBase {
+ public:
+  template <typename Lambda>
+  typename std::enable_if<folly::is_invocable_v<Lambda, unsigned>>::type
+  addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
+    auto execute = [=](unsigned int times) {
+      BenchmarkSuspender<Clock>::timeSpent = {};
+      unsigned int niter;
+
+      // CORE MEASUREMENT STARTS
+      auto start = Clock::now();
+      niter = lambda(times);
+      auto end = Clock::now();
+      // CORE MEASUREMENT ENDS
+      return detail::TimeIterData{
+          (end - start) - BenchmarkSuspender<Clock>::timeSpent,
+          niter,
+          UserCounters{}};
+    };
+
+    this->addBenchmarkImpl(file, name, detail::BenchmarkFun(execute), false);
+  }
+
+  template <typename Lambda>
+  typename std::enable_if<folly::is_invocable_v<Lambda>>::type addBenchmark(
+      const char* file, StringPiece name, Lambda&& lambda) {
+    addBenchmark(file, name, [=](unsigned int times) {
+      unsigned int niter = 0;
+      while (times-- > 0) {
+        niter += lambda();
+      }
+      return niter;
+    });
+  }
+
+  template <typename Lambda>
+  typename std::enable_if<
+      folly::is_invocable_v<Lambda, UserCounters&, unsigned>>::type
+  addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
+    auto execute = [=](unsigned int times) {
+      BenchmarkSuspender<Clock>::timeSpent = {};
+      unsigned int niter;
+
+      // CORE MEASUREMENT STARTS
+      auto start = std::chrono::high_resolution_clock::now();
+      UserCounters counters;
+      niter = lambda(counters, times);
+      auto end = std::chrono::high_resolution_clock::now();
+      // CORE MEASUREMENT ENDS
+      return detail::TimeIterData{
+          (end - start) - BenchmarkSuspender<Clock>::timeSpent,
+          niter,
+          counters};
+    };
+
+    this->addBenchmarkImpl(
+        file,
+        name,
+        std::function<detail::TimeIterData(unsigned int)>(execute),
+        true);
+  }
+
+  template <typename Lambda>
+  typename std::enable_if<folly::is_invocable_v<Lambda, UserCounters&>>::type
+  addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
+    addBenchmark(file, name, [=](UserCounters& counters, unsigned int times) {
+      unsigned int niter = 0;
+      while (times-- > 0) {
+        niter += lambda(counters);
+      }
+      return niter;
+    });
+  }
+};
+
+BenchmarkingState<std::chrono::high_resolution_clock>& globalBenchmarkState();
+
+/**
+ * Runs all benchmarks defined in the program, doesn't print by default.
+ * Usually used when customized printing of results is desired.
+ */
+std::vector<BenchmarkResult> runBenchmarksWithResults();
+
+/**
+ * Adds a benchmark wrapped in a std::function.
+ * Was designed to only be used internally but, unfortunately,
+ * is not.
+ */
+inline void addBenchmarkImpl(
+    const char* file, StringPiece name, BenchmarkFun f, bool useCounter) {
+  globalBenchmarkState().addBenchmarkImpl(file, name, std::move(f), useCounter);
+}
+
+} // namespace detail
+
+/**
+ * Supporting type for BENCHMARK_SUSPEND defined below.
+ */
+struct BenchmarkSuspender
+    : detail::BenchmarkSuspender<std::chrono::high_resolution_clock> {
+  using Impl = detail::BenchmarkSuspender<std::chrono::high_resolution_clock>;
+  using Impl::Impl;
+};
+
 /**
  * Adds a benchmark. Usually not called directly but instead through
- * the macro BENCHMARK defined below. The lambda function involved
- * must take exactly one parameter of type unsigned, and the benchmark
- * uses it with counter semantics (iteration occurs inside the
- * function).
+ * the macro BENCHMARK defined below.
+ * The lambda function involved can have one of the following forms:
+ *  * take zero parameters, and the benchmark calls it repeatedly
+ *  * take exactly one parameter of type unsigned, and the benchmark
+ *    uses it with counter semantics (iteration occurs inside the
+ *    function).
+ *  * 2 versions of the above cases but also accept UserCounters& as
+ *    as their first parameter.
  */
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable_v<Lambda, unsigned>>::type
-addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
-  auto execute = [=](unsigned int times) {
-    BenchmarkSuspender::timeSpent = {};
-    unsigned int niter;
-
-    // CORE MEASUREMENT STARTS
-    auto start = std::chrono::high_resolution_clock::now();
-    niter = lambda(times);
-    auto end = std::chrono::high_resolution_clock::now();
-    // CORE MEASUREMENT ENDS
-    return detail::TimeIterData{
-        (end - start) - BenchmarkSuspender::timeSpent, niter, UserCounters{}};
-  };
-
-  detail::addBenchmarkImpl(file, name, detail::BenchmarkFun(execute), false);
-}
-
-/**
- * Adds a benchmark. Usually not called directly but instead through
- * the macro BENCHMARK defined below. The lambda function involved
- * must take zero parameters, and the benchmark calls it repeatedly
- * (iteration occurs outside the function).
- */
-template <typename Lambda>
-typename std::enable_if<folly::is_invocable_v<Lambda>>::type addBenchmark(
-    const char* file, StringPiece name, Lambda&& lambda) {
-  addBenchmark(file, name, [=](unsigned int times) {
-    unsigned int niter = 0;
-    while (times-- > 0) {
-      niter += lambda();
-    }
-    return niter;
-  });
-}
-
-/**
- * similar as previous two template specialization, but lambda will also take
- * customized counters in the following two cases
- */
-template <typename Lambda>
-typename std::enable_if<
-    folly::is_invocable_v<Lambda, UserCounters&, unsigned>>::type
-addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
-  auto execute = [=](unsigned int times) {
-    BenchmarkSuspender::timeSpent = {};
-    unsigned int niter;
-
-    // CORE MEASUREMENT STARTS
-    auto start = std::chrono::high_resolution_clock::now();
-    UserCounters counters;
-    niter = lambda(counters, times);
-    auto end = std::chrono::high_resolution_clock::now();
-    // CORE MEASUREMENT ENDS
-    return detail::TimeIterData{
-        (end - start) - BenchmarkSuspender::timeSpent, niter, counters};
-  };
-
-  detail::addBenchmarkImpl(
-      file,
-      name,
-      std::function<detail::TimeIterData(unsigned int)>(execute),
-      true);
-}
-
-template <typename Lambda>
-typename std::enable_if<folly::is_invocable_v<Lambda, UserCounters&>>::type
-addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
-  addBenchmark(file, name, [=](UserCounters& counters, unsigned int times) {
-    unsigned int niter = 0;
-    while (times-- > 0) {
-      niter += lambda(counters);
-    }
-    return niter;
-  });
+void addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
+  detail::globalBenchmarkState().addBenchmark(file, name, lambda);
 }
 
 struct dynamic;
@@ -348,7 +416,7 @@ void printResultComparison(
  *
  * BENCHMARK(insertVectorBegin, iters) {
  *   vector<int> v;
- *   FOR_EACH_RANGE (i, 0, iters) {
+ *   for (unsigned int i = 0; i < iters; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  * }
@@ -367,7 +435,7 @@ void printResultComparison(
  *
  * BENCHMARK_COUNTERS(insertVectorBegin, counters, iters) {
  *   vector<int> v;
- *   FOR_EACH_RANGE (i, 0, iters) {
+ *   for (unsigned int i = 0; i < iters; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  *   BENCHMARK_SUSPEND {
@@ -415,7 +483,7 @@ void printResultComparison(
  *   BENCHMARK_SUSPEND {
  *     v.resize(initialSize);
  *   }
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (uint32_t i = 0; i < n; ++i) {
  *    v.push_back(i);
  *   }
  * }
@@ -448,7 +516,7 @@ void printResultComparison(
  * void addValue(uint32_t n, int64_t bucketSize, int64_t min, int64_t max) {
  *   Histogram<int64_t> hist(bucketSize, min, max);
  *   int64_t num = min;
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (uint32_t i = 0; i < n; ++i) {
  *     hist.addValue(num);
  *     ++num;
  *     if (num > max) { num = min; }
@@ -490,14 +558,14 @@ void printResultComparison(
  * // This is the baseline
  * BENCHMARK(insertVectorBegin, n) {
  *   vector<int> v;
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (unsigned int i = 0; i < n; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  * }
  *
  * BENCHMARK_RELATIVE(insertListBegin, n) {
  *   list<int> s;
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (unsigned int i = 0; i < n; ++i) {
  *     s.insert(s.begin(), 42);
  *   }
  * }
@@ -589,7 +657,7 @@ void printResultComparison(
  *   BENCHMARK_SUSPEND {
  *     v.reserve(n);
  *   }
- *   FOR_EACH_RANGE (i, 0, n) {
+ *   for (unsigned int i = 0; i < n; ++i) {
  *     v.insert(v.begin(), 42);
  *   }
  * }

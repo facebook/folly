@@ -28,6 +28,7 @@
 #include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Thunk.h>
+#include <folly/portability/PThread.h>
 
 // include after CPortability.h defines this
 #ifdef FOLLY_SANITIZE_THREAD
@@ -81,8 +82,12 @@ class Fiber {
     return {fiberStackLimit_, fiberStackSize_};
   }
 
+  size_t stackHighWatermark() const { return fiberStackHighWatermark_; }
+
+  folly::Optional<std::chrono::nanoseconds> getRunningTime() const;
+
  private:
-  enum State {
+  enum State : char {
     INVALID, /**< Does't have task function */
     NOT_STARTED, /**< Has task function, not started */
     READY_TO_RUN, /**< Was started, blocked, then unblocked */
@@ -124,15 +129,17 @@ class Fiber {
    */
   void recordStackPosition();
 
+  TaskOptions taskOptions_;
+  bool recordStackUsed_{false};
+  bool stackFilledWithMagic_{false};
   FiberManager& fiberManager_; /**< Associated FiberManager */
   size_t fiberStackSize_;
+  size_t fiberStackHighWatermark_;
   unsigned char* fiberStackLimit_;
   FiberImpl fiberImpl_; /**< underlying fiber implementation */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
   folly::AsyncStackRoot* asyncRoot_ = nullptr;
   folly::Function<void()> func_; /**< task function */
-  bool recordStackUsed_{false};
-  bool stackFilledWithMagic_{false};
   std::chrono::steady_clock::time_point currStartTime_;
   std::chrono::steady_clock::duration prevDuration_{0};
 #ifdef FOLLY_SANITIZE_THREAD
@@ -151,7 +158,6 @@ class Fiber {
 
   folly::Function<void()> resultFunc_;
   folly::Function<void()> finallyFunc_;
-  TaskOptions taskOptions_;
 
   class LocalData {
    public:

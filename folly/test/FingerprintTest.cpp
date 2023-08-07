@@ -28,8 +28,8 @@ using namespace folly::detail;
 TEST(Fingerprint, BroderOptimization) {
   // Test that the Broder optimization produces the same result as
   // the default (slow) implementation that processes one bit at a time.
-  uint64_t val_a = 0xfaceb00cdeadbeefUL;
-  uint64_t val_b = 0x1234567890abcdefUL;
+  uint64_t val_a = 0xfaceb00cdeadbeefULL;
+  uint64_t val_b = 0x1234567890abcdefULL;
 
   uint64_t slow[2];
   uint64_t fast[2];
@@ -53,8 +53,8 @@ TEST(Fingerprint, MultiByteUpdate) {
   // Test that the multi-byte update functions (update32, update64,
   // update(StringPiece)) produce the same result as calling update8
   // repeatedly.
-  uint64_t val_a = 0xfaceb00cdeadbeefUL;
-  uint64_t val_b = 0x1234567890abcdefUL;
+  uint64_t val_a = 0xfaceb00cdeadbeefULL;
+  uint64_t val_b = 0x1234567890abcdefULL;
   uint8_t bytes[16];
   for (int i = 0; i < 8; i++) {
     bytes[i] = (val_a >> (8 * (7 - i))) & 0xff;

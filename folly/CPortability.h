@@ -95,6 +95,8 @@
 #elif defined(__GNUC__)
 #define FOLLY_DISABLE_ADDRESS_SANITIZER \
   __attribute__((__no_address_safety_analysis__, __noinline__))
+#elif defined(_MSC_VER)
+#define FOLLY_DISABLE_ADDRESS_SANITIZER __declspec(no_sanitize_address)
 #endif
 #endif
 #ifndef FOLLY_DISABLE_ADDRESS_SANITIZER
@@ -151,22 +153,34 @@
 #endif
 
 /**
- * Define a convenience macro to test when ASAN, UBSAN, TSAN or MSAN sanitizer
- * are being used
+ * Define a convenience macro to test when undefined-behavior sanitizer is being
+ * used across the different compilers (e.g. clang, gcc)
  */
-#ifndef FOLLY_SANITIZE
-#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) || \
-    defined(FOLLY_SANITIZE_MEMORY) || defined(FOLLY_SANITIZE_DATAFLOW)
-#define FOLLY_SANITIZE 1
+#ifndef FOLLY_SANITIZE_UNDEFINED_BEHAVIOR
+#if FOLLY_HAS_FEATURE(undefined_behavior_sanitizer) || \
+    defined(__SANITIZER_UNDEFINED__)
+#define FOLLY_SANITIZE_UNDEFINED_BEHAVIOR(...) 1
 #endif
 #endif
 
-#ifdef FOLLY_SANITIZE
+#ifdef FOLLY_SANITIZE_UNDEFINED_BEHAVIOR
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
   __attribute__((no_sanitize(__VA_ARGS__)))
 #else
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
-#endif // FOLLY_SANITIZE
+#endif
+
+/**
+ * Define a convenience macro to test when ASAN, UBSAN, TSAN or MSAN sanitizer
+ * are being used
+ */
+#ifndef FOLLY_SANITIZE
+#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) ||  \
+    defined(FOLLY_SANITIZE_MEMORY) || defined(FOLLY_SANITIZE_DATAFLOW) || \
+    defined(FOLLY_SANITIZE_UNDEFINED_BEHAVIOR)
+#define FOLLY_SANITIZE 1
+#endif
+#endif
 
 #define FOLLY_DISABLE_SANITIZERS  \
   FOLLY_DISABLE_ADDRESS_SANITIZER \
@@ -261,4 +275,56 @@
 #define FOLLY_ERASE_TRYCATCH inline
 #else
 #define FOLLY_ERASE_TRYCATCH FOLLY_ERASE
+#endif
+
+// Generalize warning push/pop.
+#if defined(__GNUC__) || defined(__clang__)
+// Clang & GCC
+#define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
+#define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
+#define FOLLY_GNU_DISABLE_WARNING_INTERNAL2(warningName) #warningName
+#define FOLLY_GNU_DISABLE_WARNING(warningName) \
+  _Pragma(                                     \
+      FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
+#ifdef __clang__
+#define FOLLY_CLANG_DISABLE_WARNING(warningName) \
+  FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)
+#else
+#define FOLLY_CLANG_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName) \
+  FOLLY_GNU_DISABLE_WARNING(warningName)
+#endif
+#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#elif defined(_MSC_VER)
+#define FOLLY_PUSH_WARNING __pragma(warning(push))
+#define FOLLY_POP_WARNING __pragma(warning(pop))
+// Disable the GCC warnings.
+#define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)
+#define FOLLY_CLANG_DISABLE_WARNING(warningName)
+#define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
+  __pragma(warning(disable : warningNumber))
+#else
+#define FOLLY_PUSH_WARNING
+#define FOLLY_POP_WARNING
+#define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)
+#define FOLLY_CLANG_DISABLE_WARNING(warningName)
+#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#endif
+
+#ifdef FOLLY_HAVE_SHADOW_LOCAL_WARNINGS
+#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS            \
+  FOLLY_GNU_DISABLE_WARNING("-Wshadow-compatible-local") \
+  FOLLY_GNU_DISABLE_WARNING("-Wshadow-local")            \
+  FOLLY_GNU_DISABLE_WARNING("-Wshadow")
+#else
+#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
+#endif
+
+#if defined(_MSC_VER)
+#define FOLLY_MSVC_DECLSPEC(...) __declspec(__VA_ARGS__)
+#else
+#define FOLLY_MSVC_DECLSPEC(...)
 #endif

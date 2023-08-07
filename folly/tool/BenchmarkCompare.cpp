@@ -51,7 +51,7 @@ void compareBenchmarkResults(const std::string& base, const std::string& test) {
 } // namespace folly
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   CHECK_GT(argc, 2);
   folly::compareBenchmarkResults(argv[1], argv[2]);
   return 0;

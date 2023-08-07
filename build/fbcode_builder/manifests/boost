@@ -92,7 +92,6 @@ job_weight_mib = 512
 --with-thread
 --with-timer
 --with-type_erasure
---with-wave
 
 [bootstrap.args.os=darwin]
 # Not really gcc, but CI puts a broken clang in the PATH, and saying gcc

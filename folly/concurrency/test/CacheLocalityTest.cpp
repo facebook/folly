@@ -22,6 +22,7 @@
 
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
+#include <folly/test/TestUtils.h>
 
 #include <glog/logging.h>
 
@@ -1034,8 +1035,11 @@ TEST(CacheLocality, BenchmarkSysfs) {
 
 #if defined(FOLLY_HAVE_LINUX_VDSO) && !defined(FOLLY_SANITIZE_MEMORY)
 TEST(Getcpu, VdsoGetcpu) {
+  Getcpu::Func func = Getcpu::resolveVdsoFunc();
+  SKIP_IF(func == nullptr);
+
   unsigned cpu;
-  Getcpu::resolveVdsoFunc()(&cpu, nullptr, nullptr);
+  func(&cpu, nullptr, nullptr);
 
   EXPECT_TRUE(cpu < CPU_SETSIZE);
 }
@@ -1142,30 +1146,35 @@ TEST(AccessSpreader, Wrapping) {
   }
 }
 
-TEST(CoreRawAllocator, Basic) {
-  CoreRawAllocator<32> alloc;
-  auto& a = alloc.get(0);
-  auto res = a.allocate(8);
-  memset(res, 0, 8);
-  a.deallocate(res);
-  res = a.allocate(8);
-  EXPECT_TRUE((intptr_t)res % 8 == 0); // check alignment
-  memset(res, 0, 8);
-  a.deallocate(res);
-  res = a.allocate(12);
-  EXPECT_TRUE((intptr_t)res % 16 == 0); // check alignment
-  memset(res, 0, 12);
-  a.deallocate(res);
-  res = a.allocate(257);
-  memset(res, 0, 257);
-  a.deallocate(res);
+TEST(CoreAllocator, Basic) {
+  constexpr size_t kNumStripes = 32;
 
-  std::vector<void*> mems;
+  auto res = coreMalloc(8, kNumStripes, 0);
+  memset(res, 0, 8);
+  coreFree(res);
+
+  res = coreMalloc(8, kNumStripes, 0);
+  EXPECT_EQ(0, (intptr_t)res % 8); // check alignment
+  memset(res, 0, 8);
+  coreFree(res);
+  res = coreMalloc(12, kNumStripes, 0);
+  if (alignof(std::max_align_t) >= 16) {
+    EXPECT_EQ(0, (intptr_t)res % 16); // check alignment
+  }
+  memset(res, 0, 12);
+  coreFree(res);
+  res = coreMalloc(257, kNumStripes, 0);
+  memset(res, 0, 257);
+  coreFree(res);
+
+  CoreAllocator<int> a;
+  std::vector<int*> mems;
   for (int i = 0; i < 10000; i++) {
+    CoreAllocatorGuard g(kNumStripes, i % kNumStripes);
     mems.push_back(a.allocate(1));
   }
   for (auto& mem : mems) {
-    a.deallocate(mem);
+    a.deallocate(mem, 1);
   }
   mems.clear();
 }

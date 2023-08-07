@@ -98,21 +98,26 @@ EventBaseBackend::~EventBaseBackend() {
 
 class ExecutionObserverScopeGuard {
  public:
-  ExecutionObserverScopeGuard(folly::ExecutionObserver* observer, void* id)
-      : observer_(observer), id_{reinterpret_cast<uintptr_t>(id)} {
-    if (observer_) {
-      observer_->starting(id_);
+  ExecutionObserverScopeGuard(
+      folly::ExecutionObserver::List* observerList, void* id)
+      : observerList_(observerList), id_{reinterpret_cast<uintptr_t>(id)} {
+    if (!observerList_->empty()) {
+      for (auto& observer : *observerList_) {
+        observer.starting(id_);
+      }
     }
   }
 
   ~ExecutionObserverScopeGuard() {
-    if (observer_) {
-      observer_->stopped(id_);
+    if (!observerList_->empty()) {
+      for (auto& observer : *observerList_) {
+        observer.stopped(id_);
+      }
     }
   }
 
  private:
-  folly::ExecutionObserver* observer_;
+  folly::ExecutionObserver::List* observerList_;
   uintptr_t id_;
 };
 } // namespace
@@ -158,14 +163,25 @@ EventBase::EventBase(Options options)
       latestLoopCnt_(nextLoopCnt_),
       startWork_(),
       observer_(nullptr),
-      observerSampleCount_(0),
-      executionObserver_(nullptr) {
+      observerSampleCount_(0) {
   evb_ =
       options.backendFactory ? options.backendFactory() : getDefaultBackend();
   initNotificationQueue();
 }
 
 EventBase::~EventBase() {
+  // Call all pre-destruction callbacks, before we start cleaning up our state
+  // or apply any keepalives
+  while (!preDestructionCallbacks_.rlock()->empty()) {
+    OnDestructionCallback::List callbacks;
+    preDestructionCallbacks_.swap(callbacks);
+    while (!callbacks.empty()) {
+      auto& callback = callbacks.front();
+      callbacks.pop_front();
+      callback.runCallback();
+    }
+  }
+
   std::future<void> virtualEventBaseDestroyFuture;
   if (virtualEventBase_) {
     virtualEventBaseDestroyFuture = virtualEventBase_->destroy();
@@ -220,6 +236,9 @@ EventBase::~EventBase() {
       locked->erase(evbl);
     }
   }
+
+  executionObserverList_.clear();
+
   localStorage_.clear();
 
   evb_.reset();
@@ -416,7 +435,7 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       maxLatencyLoopTime_.addSample(loop_time, busy);
 
       if (observer_) {
-        if (observerSampleCount_++ == observer_->getSampleRate()) {
+        if (++observerSampleCount_ >= observer_->getSampleRate()) {
           observerSampleCount_ = 0;
           observer_->loopSample(busy.count(), idle.count());
         }
@@ -460,7 +479,8 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       // run.  Run them manually if so, and continue looping.
       //
       if (!queue_->empty()) {
-        ExecutionObserverScopeGuard guard(executionObserver_, queue_.get());
+        ExecutionObserverScopeGuard guard(
+            &executionObserverList_, queue_.get());
         queue_->execute();
       } else if (!ranLoopCallbacks) {
         // If there were no more events and we also didn't have any loop
@@ -626,6 +646,20 @@ void EventBase::runOnDestruction(Func f) {
   runOnDestruction(*callback);
 }
 
+void EventBase::runOnDestructionStart(OnDestructionCallback& callback) {
+  callback.schedule(
+      [this](auto& cb) { preDestructionCallbacks_.wlock()->push_back(cb); },
+      [this](auto& cb) {
+        preDestructionCallbacks_.withWLock(
+            [&](auto& list) { list.erase(list.iterator_to(cb)); });
+      });
+}
+
+void EventBase::runOnDestructionStart(Func f) {
+  auto* callback = new FunctionOnDestructionCallback(std::move(f));
+  runOnDestructionStart(*callback);
+}
+
 void EventBase::runBeforeLoop(LoopCallback* callback) {
   dcheckIsInEventBaseThread();
   callback->cancelLoopCallback();
@@ -704,7 +738,7 @@ void EventBase::runLoopCallbacks(LoopCallbackList& currentCallbacks) {
     LoopCallback* callback = &currentCallbacks.front();
     currentCallbacks.pop_front();
     folly::RequestContextScopeGuard rctx(std::move(callback->context_));
-    ExecutionObserverScopeGuard guard(executionObserver_, callback);
+    ExecutionObserverScopeGuard guard(&executionObserverList_, callback);
     callback->runLoopCallback();
   }
 }
@@ -804,8 +838,8 @@ bool EventBase::scheduleTimeout(
   dcheckIsInEventBaseThread();
   // Set up the timeval and add the event
   struct timeval tv;
-  tv.tv_sec = long(timeout.count() / 1000LL);
-  tv.tv_usec = long((timeout.count() % 1000LL) * 1000LL);
+  tv.tv_sec = to_narrow(timeout.count() / 1000LL);
+  tv.tv_usec = to_narrow((timeout.count() % 1000LL) * 1000LL);
 
   auto* ev = obj->getEvent();
 
@@ -839,6 +873,10 @@ void EventBase::setName(const std::string& name) {
 const std::string& EventBase::getName() {
   dcheckIsInEventBaseThread();
   return name_;
+}
+
+std::thread::id EventBase::getLoopThreadId() {
+  return loopThread_.load(std::memory_order_relaxed);
 }
 
 void EventBase::scheduleAt(Func&& fn, TimePoint const& timeout) {
@@ -910,7 +948,7 @@ void EventBase::OnDestructionCallback::runCallback() noexcept {
 }
 
 void EventBase::OnDestructionCallback::schedule(
-    FunctionRef<void(OnDestructionCallback&)> linker,
+    Function<void(OnDestructionCallback&)> linker,
     Function<void(OnDestructionCallback&)> eraser) {
   eraser_ = std::move(eraser);
   scheduled_.withWLock([](bool& scheduled) { scheduled = true; });
@@ -928,7 +966,5 @@ bool EventBase::OnDestructionCallback::cancel() {
     return wasScheduled;
   });
 }
-
-constexpr std::chrono::milliseconds EventBase::SmoothLoopTime::buffer_interval_;
 
 } // namespace folly

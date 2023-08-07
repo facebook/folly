@@ -17,7 +17,6 @@ from .builder import (
     MakeBuilder,
     NinjaBootstrap,
     NopBuilder,
-    OpenNSABuilder,
     OpenSSLBuilder,
     SqliteBuilder,
 )
@@ -32,7 +31,6 @@ from .fetcher import (
     SystemPackageFetcher,
 )
 from .py_wheel_builder import PythonWheelBuilder
-
 
 REQUIRED = "REQUIRED"
 OPTIONAL = "OPTIONAL"
@@ -203,7 +201,6 @@ class ManifestParser(object):
         # autoconf.args section one per line
         config = configparser.RawConfigParser(allow_no_value=True)
         config.optionxform = str  # make it case sensitive
-
         if fp is None:
             with open(file_name, "r") as fp:
                 config.read_file(fp)
@@ -469,6 +466,7 @@ class ManifestParser(object):
         loader,
         final_install_prefix=None,
         extra_cmake_defines=None,
+        cmake_target=None,
         extra_b2_args=None,
     ):
         builder = self.get_builder_name(ctx)
@@ -548,6 +546,7 @@ class ManifestParser(object):
                 loader,
                 final_install_prefix,
                 extra_cmake_defines,
+                cmake_target,
             )
 
         if builder == "python-wheel":
@@ -580,9 +579,6 @@ class ManifestParser(object):
             return self.create_cargo_builder(
                 build_options, ctx, src_dir, build_dir, inst_dir, loader
             )
-
-        if builder == "OpenNSA":
-            return OpenNSABuilder(build_options, ctx, self, src_dir, inst_dir)
 
         raise KeyError("project %s has no known builder" % (self.name))
 

@@ -57,7 +57,6 @@ ThreadPoolExecutor::ThreadPoolExecutor(
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads) {
   threadTimeout_ = std::chrono::milliseconds(FLAGS_threadtimeout_ms);
-  namePrefix_ = getNameHelper();
 }
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
@@ -68,11 +67,14 @@ ThreadPoolExecutor::~ThreadPoolExecutor() {
 ThreadPoolExecutor::Task::Task(
     Func&& func, std::chrono::milliseconds expiration, Func&& expireCallback)
     : func_(std::move(func)),
-      expiration_(expiration),
-      expireCallback_(std::move(expireCallback)),
+      // Assume that the task in enqueued on creation
+      enqueueTime_(std::chrono::steady_clock::now()),
       context_(folly::RequestContext::saveContext()) {
-  // Assume that the task in enqueued on creation
-  enqueueTime_ = std::chrono::steady_clock::now();
+  if (expiration > std::chrono::milliseconds::zero()) {
+    expiration_ = std::make_unique<Expiration>();
+    expiration_->expiration = expiration;
+    expiration_->expireCallback = std::move(expireCallback);
+  }
 }
 
 void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
@@ -87,19 +89,21 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
 
   {
     folly::RequestContextScopeGuard rctx(task.context_);
-    if (task.expiration_ > std::chrono::milliseconds(0) &&
-        stats.waitTime >= task.expiration_) {
+    if (task.expiration_ != nullptr &&
+        stats.waitTime >= task.expiration_->expiration) {
       task.func_ = nullptr;
       stats.expired = true;
-      if (task.expireCallback_ != nullptr) {
+      if (task.expiration_->expireCallback != nullptr) {
         invokeCatchingExns(
             "ThreadPoolExecutor: expireCallback",
-            std::exchange(task.expireCallback_, {}));
+            std::exchange(task.expiration_->expireCallback, {}));
       }
     } else {
       invokeCatchingExns(
           "ThreadPoolExecutor: func", std::exchange(task.func_, {}));
-      task.expireCallback_ = nullptr;
+      if (task.expiration_ != nullptr) {
+        task.expiration_->expireCallback = nullptr;
+      }
     }
   }
   if (!stats.expired) {
@@ -114,7 +118,7 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   FOLLY_SDT(
       folly,
       thread_pool_executor_task_stats,
-      namePrefix_.c_str(),
+      threadFactory_->getNamePrefix().c_str(),
       stats.requestId,
       stats.enqueueTime.time_since_epoch().count(),
       stats.waitTime.count(),
@@ -310,15 +314,7 @@ size_t ThreadPoolExecutor::getPendingTaskCount() const {
 }
 
 const std::string& ThreadPoolExecutor::getName() const {
-  return namePrefix_;
-}
-
-std::string ThreadPoolExecutor::getNameHelper() const {
-  auto ntf = dynamic_cast<NamedThreadFactory*>(threadFactory_.get());
-  if (ntf == nullptr) {
-    return folly::demangle(typeid(*this).name()).toStdString();
-  }
-  return ntf->getNamePrefix();
+  return threadFactory_->getNamePrefix();
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);

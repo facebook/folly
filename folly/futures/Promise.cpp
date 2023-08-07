@@ -16,7 +16,13 @@
 
 #include <folly/futures/Promise.h>
 
+#include <fmt/core.h>
+
 namespace folly {
+
+BrokenPromise::BrokenPromise(PrettyNameCtorTag, char const* const type)
+    : PromiseException(fmt::format("Broken promise for type name `{}`", type)) {
+}
 
 #if FOLLY_USE_EXTERN_FUTURE_UNIT
 template class Promise<Unit>;

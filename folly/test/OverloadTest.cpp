@@ -17,6 +17,7 @@
 #include <folly/Overload.h>
 
 #include <optional>
+#include <type_traits>
 #include <variant>
 
 #include <boost/variant.hpp>
@@ -26,6 +27,120 @@
 
 namespace folly {
 namespace test {
+namespace {
+
+constexpr int functionUnsigned(const unsigned x) {
+  return x + 3;
+}
+struct HasMemberFunctions {
+  constexpr int withConst(const int x) const { return x + 4; }
+  constexpr int withMutable(const int x) { return x + 5; }
+};
+struct HasRefQualifiedMemberFunctions {
+  constexpr int withConstRef(const int x) const& { return x + 6; }
+  constexpr int withMutableRef(const int x) & { return x + 7; }
+  constexpr int withMutableRefRef(const int x) && { return x + 8; }
+  constexpr int withConstRefRef(const int x) const&& { return x + 9; }
+};
+struct HasNullaryMemberFunction {
+  constexpr int nullary() const { return -1; }
+};
+struct HasMemberData {
+  int member = -2;
+};
+struct HasNullaryMemberFunctionAndMemberData {
+  constexpr int nullary() const { return -3; }
+  int member = -4;
+};
+
+constexpr auto overloadSet = overload(
+    []() { return 1; },
+    [](const int x) { return x + 1; },
+    [](const long x) { return x + 2; },
+    functionUnsigned,
+    &HasMemberFunctions::withConst,
+    &HasMemberFunctions::withMutable,
+    &HasRefQualifiedMemberFunctions::withConstRef,
+    &HasRefQualifiedMemberFunctions::withMutableRef,
+    &HasRefQualifiedMemberFunctions::withMutableRefRef,
+    &HasRefQualifiedMemberFunctions::withConstRefRef,
+    &HasNullaryMemberFunction::nullary,
+    &HasMemberData::member);
+
+static_assert(overloadSet() == 1);
+static_assert(overloadSet(1) == 2);
+static_assert(overloadSet(1L) == 3);
+static_assert(overloadSet(1U) == 4);
+
+constexpr auto testConstMember() {
+  HasMemberFunctions const c;
+  return overloadSet(c, 1);
+}
+static_assert(testConstMember() == 5);
+static_assert(
+    overload(&HasMemberFunctions::withConst)(HasMemberFunctions(), 1) == 5);
+
+constexpr auto testMutableMember() {
+  HasMemberFunctions c;
+  return overloadSet(c, 1);
+}
+static_assert(testMutableMember() == 6);
+static_assert(overloadSet(HasMemberFunctions(), 1) == 6);
+
+constexpr auto testConstRefMember() {
+  const HasRefQualifiedMemberFunctions c;
+  return overloadSet(c, 1);
+}
+static_assert(testConstRefMember() == 7);
+
+constexpr auto testMutableRefMember() {
+  HasRefQualifiedMemberFunctions c;
+  return overloadSet(c, 1);
+}
+static_assert(testMutableRefMember() == 8);
+
+static_assert(overloadSet(HasRefQualifiedMemberFunctions(), 1) == 9);
+
+constexpr auto testMutableRefRefMember() {
+  const HasRefQualifiedMemberFunctions c;
+  return overloadSet(std::move(c), 1);
+}
+static_assert(testMutableRefRefMember() == 10);
+
+static_assert(overloadSet(HasNullaryMemberFunction()) == -1);
+static_assert(overloadSet(HasMemberData()) == -2);
+
+void isNoexcept(int) noexcept {}
+void isNotNoexcept(unsigned) {}
+
+constexpr auto noexceptOverload = overload(isNoexcept, isNotNoexcept);
+static_assert(noexcept(noexceptOverload(1)));
+static_assert(!noexcept(noexceptOverload(1U)));
+
+constexpr auto ambiguous = overload([] {}, [] { return 5; });
+static_assert(!std::is_invocable_v<decltype(ambiguous)>);
+
+constexpr auto emptyOverloadSet = overload();
+static_assert(!std::is_invocable_v<decltype(emptyOverloadSet)>);
+
+constexpr auto nullaryMemberAndMemberData = overload(
+    &HasNullaryMemberFunctionAndMemberData::nullary,
+    &HasNullaryMemberFunctionAndMemberData::member);
+static_assert(!std::is_invocable_v<decltype(nullaryMemberAndMemberData)>);
+
+constexpr auto onlyMemberData = overload(&HasMemberData::member);
+static_assert(std::is_same_v<
+              decltype(onlyMemberData(std::declval<HasMemberData&>())),
+              int&>);
+static_assert(std::is_same_v<
+              decltype(onlyMemberData(std::declval<const HasMemberData&>())),
+              const int&>);
+static_assert(std::is_same_v<
+              decltype(onlyMemberData(std::declval<HasMemberData&&>())),
+              int&&>);
+static_assert(std::is_same_v<
+              decltype(onlyMemberData(std::declval<const HasMemberData&&>())),
+              const int&&>);
 
 struct One {
   std::string toString() const { return "One"; }
@@ -43,6 +158,10 @@ TEST(Overload, StdVariant) {
       one, [](const One&) { return true; }, [](const Two&) { return false; }));
   EXPECT_TRUE(variant_match(
       two, [](const One&) { return false; }, [](const Two&) { return true; }));
+  EXPECT_TRUE(variant_match(
+      std::move(one), [](One&&) { return true; }, [](Two&&) { return false; }));
+  EXPECT_TRUE(variant_match(
+      std::move(two), [](One&&) { return false; }, [](Two&&) { return true; }));
 
   auto toString = [](const auto& variant) {
     return variant_match(
@@ -61,6 +180,10 @@ TEST(Overload, BoostVariant) {
       one, [](const One&) { return true; }, [](const Two&) { return false; }));
   EXPECT_TRUE(variant_match(
       two, [](const One&) { return false; }, [](const Two&) { return true; }));
+  EXPECT_TRUE(variant_match(
+      std::move(one), [](One&&) { return true; }, [](Two&&) { return false; }));
+  EXPECT_TRUE(variant_match(
+      std::move(two), [](One&&) { return false; }, [](Two&&) { return true; }));
 
   auto toString = [](const auto& variant) {
     return variant_match(
@@ -200,7 +323,13 @@ TEST(Overload, ReturnType) {
         return 1;
       });
   EXPECT_EQ(1, one_result);
+
+  EXPECT_FALSE(variant_match<R>(
+      std::move(null),
+      [](std::monostate&&) { return std::nullopt; },
+      [](One&&) { return 1; }));
 }
 
+} // namespace
 } // namespace test
 } // namespace folly

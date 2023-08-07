@@ -71,13 +71,15 @@ REGISTER_TYPED_TEST_SUITE_P(
     RunBeforeLoop,
     RunBeforeLoopWait,
     StopBeforeLoop,
+    RunCallbacksPreDestruction,
     RunCallbacksOnDestruction,
     LoopKeepAlive,
     LoopKeepAliveInLoop,
     LoopKeepAliveWithLoopForever,
     LoopKeepAliveShutdown,
     LoopKeepAliveAtomic,
-    LoopKeepAliveCast);
+    LoopKeepAliveCast,
+    EventBaseObserver);
 
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,

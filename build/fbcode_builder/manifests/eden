@@ -17,6 +17,7 @@ run_tests = off
 builder = cmake
 
 [dependencies]
+blake3
 googletest
 folly
 fbthrift
@@ -50,10 +51,6 @@ osxfuse
 libcurl
 # Added so that OSS doesn't see system "python" which is python 2 on darwin and some linux
 python
-
-[dependencies.all(fb=off)]
-# Outside Meta hg is not installed, or if it is, its not the one we want to test with
-sapling
 
 [shipit.pathmap.fb=on]
 # for internal builds that use getdeps

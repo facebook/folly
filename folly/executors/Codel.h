@@ -83,7 +83,12 @@ class Codel {
   ///
   /// As you may guess, we observe the clock so this is time sensitive. Call
   /// it promptly after calculating queueing delay.
-  bool overloaded(std::chrono::nanoseconds delay);
+  bool overloaded(std::chrono::nanoseconds delay) {
+    return overloaded_explicit_now(delay, std::chrono::steady_clock::now());
+  }
+  bool overloaded_explicit_now(
+      std::chrono::nanoseconds delay,
+      std::chrono::steady_clock::time_point now);
 
   /// Get the queue load, as seen by the codel algorithm
   /// Gives a rough guess at how bad the queue delay is.
@@ -115,6 +120,7 @@ class Codel {
   const Options getOptions() const;
 
   std::chrono::nanoseconds getMinDelay();
+  std::chrono::steady_clock::time_point getIntervalTime();
 
   /// Returns the timeout condition for overload given a target delay period.
   std::chrono::milliseconds getSloughTimeout(

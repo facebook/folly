@@ -43,12 +43,42 @@ extern "C" FOLLY_KEEP int check_unsafe_default_initialized_int_cexpr() {
   return a;
 }
 
+// for ADL test below.
+template <class T>
+int square(const T& x) {
+  return x * x;
+}
+
 } // namespace folly
 
-namespace {
-
 class UtilityTest : public testing::Test {};
-} // namespace
+
+namespace my_type {
+
+struct MoveInt : folly::MoveOnly {
+  int x = 0;
+};
+
+struct NoMoveInt : folly::NonCopyableNonMovable {
+  int x = 0;
+};
+
+template <class M>
+int square(const M& m) {
+  return m.x * m.x;
+}
+
+} // namespace my_type
+
+TEST_F(UtilityTest, NonCopyableAggregateInit) {
+  // Ensure classes inheriting from folly::MoveOnly, etc, do not find all of
+  // folly::* by ADL.
+  EXPECT_EQ(16, square(my_type::MoveInt{.x = 4}));
+  EXPECT_EQ(25, square(my_type::NoMoveInt{.x = 5}));
+  using folly::square;
+  EXPECT_EQ(36, square(6));
+  // Ambiguous: EXPECT_EQ(16, square(my_type::MoveInt{.x = 4}));
+}
 
 // Tests for FOLLY_DECLVAL macro:
 
@@ -186,6 +216,21 @@ TEST_F(UtilityTest, inheritable) {
   EXPECT_EQ(47, static_cast<foo const&>(folly::copy(tester{})));
   EXPECT_EQ(89, static_cast<bar const&>(folly::copy(tester{})));
 }
+
+template <bool Copy, bool Move>
+class TestCopyMove {
+  using T = folly::moveonly_::EnableCopyMove<Copy, Move>;
+  static_assert(std::is_copy_constructible_v<T> == Copy);
+
+  // Allowing copy but disallowing move is not effective from a base class;
+  // calls to move the child class will just resolve to copy.
+  static_assert(std::is_move_constructible_v<T> == (Move || Copy));
+};
+
+template class TestCopyMove<false, false>;
+template class TestCopyMove<false, true>;
+template class TestCopyMove<true, false>;
+template class TestCopyMove<true, true>;
 
 TEST_F(UtilityTest, MoveOnly) {
   class FooBar : folly::MoveOnly {

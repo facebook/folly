@@ -19,6 +19,7 @@
 #include <list>
 #include <mutex>
 
+#include <folly/lang/Hint.h>
 #include <folly/synchronization/CallOnce.h>
 
 constexpr auto kSmallGrowthFactor = 1.1;
@@ -453,7 +454,7 @@ void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
   }
 }
 
-void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) {
+void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) noexcept {
   if (LIKELY(!t->removed_)) {
     std::lock_guard<std::mutex> g(lock_);
     auto* node = &t->elements[id].node;
@@ -461,7 +462,7 @@ void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) {
   }
 }
 
-void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) {
+void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) noexcept {
   if (LIKELY(!t->removed_)) {
     auto* node = &t->elements[id].node;
     node->push_back(&head_);
@@ -470,5 +471,23 @@ void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) {
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;
+#if defined(__GLIBC__) && \
+    (__GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 18))
+// Invoking thread_local dtor register early to fix issue
+// https://github.com/facebook/folly/issues/1252
+struct GlibcThreadLocalInit {
+  struct GlibcThreadLocalInitHelper {
+    FOLLY_NOINLINE ~GlibcThreadLocalInitHelper() {
+      compiler_must_not_elide(this);
+    }
+  };
+  GlibcThreadLocalInit() {
+    static thread_local GlibcThreadLocalInitHelper glibcThreadLocalInit;
+    compiler_must_not_elide(glibcThreadLocalInit);
+  }
+};
+__attribute__((__init_priority__(101)))
+GlibcThreadLocalInit glibcThreadLocalInit;
+#endif
 } // namespace threadlocal_detail
 } // namespace folly

@@ -27,11 +27,14 @@ using folly::symbolizer::ElfFile;
 
 // Add some symbols for testing. Note that we have to be careful with type
 // signatures here to prevent name mangling
-uint64_t kIntegerValue = 1234567890UL;
+uint64_t kIntegerValue = 1234567890ULL;
 const char* kStringValue = "coconuts";
 extern "C" {
 int sum_func(int lhs, int rhs) {
   return lhs + rhs;
+}
+int sub_func(int lhs, int rhs) {
+  return lhs - rhs;
 }
 }
 
@@ -44,13 +47,13 @@ class ElfTest : public ::testing::Test {
 TEST_F(ElfTest, IntegerValue) {
   auto sym = elfFile_.getSymbolByName("kIntegerValue");
   EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kIntegerValue";
-  EXPECT_EQ(kIntegerValue, elfFile_.getSymbolValue<uint64_t>(sym.second));
+  EXPECT_EQ(kIntegerValue, *elfFile_.getSymbolValue<uint64_t>(sym.second));
 }
 
 TEST_F(ElfTest, PointerValue) {
   auto sym = elfFile_.getSymbolByName("kStringValue");
   EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kStringValue";
-  ElfW(Addr) addr = elfFile_.getSymbolValue<ElfW(Addr)>(sym.second);
+  ElfW(Addr) addr = *elfFile_.getSymbolValue<ElfW(Addr)>(sym.second);
   // Let's check the address for the symbol against our own copy of
   // kStringValue.
   // For PIE binaries we need to adjust the address due to relocation.
@@ -65,7 +68,7 @@ TEST_F(ElfTest, PointerValue) {
     // via relocation; the actual offset of the string is encoded in the
     // .rela.dyn section, which isn't parsed in the current implementation of
     // ElfFile.
-    const char* str = &elfFile_.getAddressValue<const char>(addr);
+    const char* str = elfFile_.getAddressValue<const char>(addr);
     EXPECT_STREQ(kStringValue, str);
   }
 }
@@ -87,6 +90,37 @@ TEST_F(ElfTest, SymbolByName) {
   sym = elfFile_.getSymbolByName("kIntegerValue", {STT_OBJECT});
   EXPECT_NE(nullptr, sym.first)
       << "Failed to look up symbol kIntegerValue when specifying type";
+}
+
+TEST_F(ElfTest, SymbolsByNameSuccess) {
+  auto names = {"sum_func", "sub_func"};
+  auto result = elfFile_.getSymbolsByName(names, {STT_FUNC});
+
+  EXPECT_EQ(names.size(), result.size());
+  EXPECT_TRUE(result.find("sum_func") != result.end());
+  EXPECT_TRUE(result.find("sub_func") != result.end());
+
+  const auto& sumFuncSymbol = result.at("sum_func");
+  EXPECT_NE(nullptr, sumFuncSymbol.first);
+  EXPECT_NE(nullptr, sumFuncSymbol.second);
+
+  const auto& subFuncSymbol = result.at("sub_func");
+  EXPECT_NE(nullptr, subFuncSymbol.first);
+  EXPECT_NE(nullptr, subFuncSymbol.second);
+}
+
+TEST_F(ElfTest, SymbolsByNamePartial) {
+  auto names = {"sum_func", "sub_func", "foo_func"};
+  auto result = elfFile_.getSymbolsByName(names, {STT_FUNC});
+
+  EXPECT_EQ(names.size(), result.size());
+  EXPECT_TRUE(result.find("sum_func") != result.end());
+  EXPECT_TRUE(result.find("sub_func") != result.end());
+  EXPECT_TRUE(result.find("foo_func") != result.end());
+
+  const auto& fooFuncSymbol = result.at("foo_func");
+  EXPECT_EQ(nullptr, fooFuncSymbol.first);
+  EXPECT_EQ(nullptr, fooFuncSymbol.second);
 }
 
 TEST_F(ElfTest, iterateProgramHeaders) {

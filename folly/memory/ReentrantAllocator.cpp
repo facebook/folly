@@ -33,7 +33,7 @@ void* reentrant_allocate(std::size_t const n) noexcept {
   FOLLY_SAFE_CHECK(n, "zero-sized");
   auto const prot = PROT_READ | PROT_WRITE;
   auto const flags = MAP_ANONYMOUS | MAP_PRIVATE;
-  auto const addr = ::mmap(nullptr, n, prot, flags, 0, 0);
+  auto const addr = ::mmap(nullptr, n, prot, flags, -1, 0);
   FOLLY_SAFE_PCHECK(addr != MAP_FAILED, "mmap failed");
   return addr;
 }

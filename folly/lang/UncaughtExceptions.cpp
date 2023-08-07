@@ -16,8 +16,6 @@
 
 #include <folly/lang/UncaughtExceptions.h>
 
-#include <folly/functional/Invoke.h>
-
 #if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 namespace __cxxabiv1 {
@@ -30,35 +28,16 @@ extern "C" __cxa_eh_globals* __cxa_get_globals();
 
 #endif
 
-namespace {
-FOLLY_CREATE_FREE_INVOKER( // must be outside namespace folly
-    folly_detail_invoke_uncaught_exceptions_,
-    uncaught_exceptions,
-    std);
-}
-
 namespace folly {
 
 namespace detail {
 
-struct fallback_uncaught_exceptions_fn_ {
-  int operator()() const noexcept {
+unsigned int* uncaught_exceptions_ptr() noexcept {
+  assert(kIsGlibcxx || kIsLibcpp);
 #if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-    return __cxxabiv1::__cxa_get_globals()->uncaught_exceptions_;
+  return &__cxxabiv1::__cxa_get_globals()->uncaught_exceptions_;
 #endif
-#if defined(_CPPLIB_VER)
-    return std::uncaught_exceptions();
-#endif
-  }
-};
-
-using uncaught_exceptions_fn_ = conditional_t<
-    is_invocable_v<folly_detail_invoke_uncaught_exceptions_>,
-    folly_detail_invoke_uncaught_exceptions_,
-    fallback_uncaught_exceptions_fn_>;
-
-int uncaught_exceptions_() noexcept {
-  return detail::uncaught_exceptions_fn_{}();
+  return nullptr;
 }
 
 } // namespace detail

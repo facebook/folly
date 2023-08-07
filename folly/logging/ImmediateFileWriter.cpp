@@ -19,12 +19,13 @@
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/logging/LoggerDB.h>
+#include <folly/portability/Fcntl.h>
 #include <folly/portability/Unistd.h>
 
 namespace folly {
 
 ImmediateFileWriter::ImmediateFileWriter(StringPiece path)
-    : file_{path.str(), O_WRONLY | O_APPEND | O_CREAT} {}
+    : file_{path.str(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC} {}
 
 ImmediateFileWriter::ImmediateFileWriter(folly::File&& file)
     : file_{std::move(file)} {}

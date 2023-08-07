@@ -29,7 +29,7 @@ class IFanoutChannelProcessor;
 
 template <typename TValue>
 struct NoContext {
-  void update(const TValue&) {}
+  void update(const TValue&, size_t) {}
 };
 
 /**

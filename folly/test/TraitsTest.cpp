@@ -17,6 +17,7 @@
 #include <folly/Traits.h>
 
 #include <cstring>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -85,9 +86,30 @@ TEST(Traits, unset) {
   EXPECT_TRUE(IsRelocatable<F4>::value);
 }
 
-TEST(Traits, bitAndInit) {
+TEST(Traits, zeroInit) {
+  // S1 is both trivially default-constructible and trivially
+  // value-initializable. S2 is neither. S3 is trivially default-constructible
+  // but not trivially value-initializable.
+  struct S1 {
+    int i_;
+  };
+  struct S2 {
+    int i_ = 42;
+  };
+  struct S3 {
+    int S1::*mp_;
+  };
+
   EXPECT_TRUE(IsZeroInitializable<int>::value);
+  EXPECT_TRUE(IsZeroInitializable<int*>::value);
   EXPECT_FALSE(IsZeroInitializable<vector<int>>::value);
+  EXPECT_FALSE(IsZeroInitializable<S2>::value);
+  EXPECT_FALSE(IsZeroInitializable<int S1::*>::value); // Itanium
+  EXPECT_FALSE(IsZeroInitializable<S3>::value); // Itanium
+
+  // TODO: S1 actually can be trivially zero-initialized, but
+  // there's no portable way to distinguish it from S3, which can't.
+  EXPECT_FALSE(IsZeroInitializable<S1>::value);
 }
 
 template <bool V>
@@ -343,6 +365,30 @@ TEST(Traits, is_detected_v) {
   EXPECT_FALSE((folly::is_detected_v<detector_find, double, char>));
 }
 
+TEST(Traits, fallback_is_nothrow_convertible) {
+  EXPECT_FALSE((folly::fallback::is_nothrow_convertible<int, void>::value));
+  EXPECT_TRUE((folly::fallback::is_nothrow_convertible<void, void>::value));
+  struct foo {
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+  };
+  EXPECT_FALSE(
+      (folly::fallback::is_nothrow_convertible<foo, std::false_type>::value));
+  EXPECT_TRUE(
+      (folly::fallback::is_nothrow_convertible<foo, std::true_type>::value));
+}
+
+TEST(Traits, is_nothrow_convertible) {
+  EXPECT_FALSE((folly::is_nothrow_convertible<int, void>::value));
+  EXPECT_TRUE((folly::is_nothrow_convertible<void, void>::value));
+  struct foo {
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+  };
+  EXPECT_FALSE((folly::is_nothrow_convertible<foo, std::false_type>::value));
+  EXPECT_TRUE((folly::is_nothrow_convertible<foo, std::true_type>::value));
+}
+
 TEST(Traits, aligned_storage_for_t) {
   struct alignas(2) Foo {
     char data[4];
@@ -552,4 +598,18 @@ TEST(Traits, type_pack_element_t) {
   EXPECT_TRUE((std::is_same_v<test::native<0, int[1]>, int[1]>));
   EXPECT_TRUE((is_detected_v<test::native_ic, index_constant<0>, int>));
   EXPECT_FALSE((is_detected_v<test::native_ic, index_constant<0>>));
+}
+
+TEST(Traits, is_allocator) {
+  static_assert(is_allocator_v<std::allocator<int>>, "");
+  static_assert(is_allocator<std::allocator<int>>::value, "");
+
+  static_assert(is_allocator_v<std::allocator<std::string>>, "");
+  static_assert(is_allocator<std::allocator<std::string>>::value, "");
+
+  static_assert(!is_allocator_v<int>, "");
+  static_assert(!is_allocator<int>::value, "");
+
+  static_assert(!is_allocator_v<std::string>, "");
+  static_assert(!is_allocator<std::string>::value, "");
 }

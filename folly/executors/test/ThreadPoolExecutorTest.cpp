@@ -39,6 +39,7 @@
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
+#include <folly/portability/SysResource.h>
 #include <folly/synchronization/detail/Spin.h>
 
 using namespace folly;
@@ -875,8 +876,11 @@ TYPED_TEST(ThreadPoolExecutorTypedTest, RegistersToExecutorList) {
 
 template <typename TPE>
 static void testUsesNameFromNamedThreadFactory() {
-  auto ntf = std::make_shared<NamedThreadFactory>("my_executor");
-  TPE tpe(10, ntf);
+  // Verify that the name is propagated even if the NamedThreadFactory is
+  // wrapped.
+  auto tf = std::make_shared<InitThreadFactory>(
+      std::make_shared<NamedThreadFactory>("my_executor"), [] {});
+  TPE tpe(10, tf);
   EXPECT_EQ("my_executor", tpe.getName());
 }
 

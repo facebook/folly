@@ -58,6 +58,14 @@ extern "C" FOLLY_KEEP int* check_thread_local_get_existing(
   return o.get_existing();
 }
 
+template <typename>
+struct static_meta_of;
+
+template <template <typename...> class X, typename A0, typename... A>
+struct static_meta_of<X<A0, A...>> {
+  using type = folly::threadlocal_detail::StaticMeta<A...>;
+};
+
 struct Widget {
   static int totalVal_;
   static int totalMade_;
@@ -81,7 +89,7 @@ struct MultiWidget {
     // allocating more than elementsCapacity
 
     using TL = ThreadLocal<size_t>;
-    using TLMeta = threadlocal_detail::static_meta_of<TL>::type;
+    using TLMeta = static_meta_of<TL>::type;
     auto const numElements = TLMeta::instance().elementsCapacity() + 1;
     std::vector<ThreadLocal<size_t>> elems(numElements);
     for (auto& t : elems) {
@@ -245,6 +253,17 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
   t.join();
 
   EXPECT_EQ(1010, Widget::totalVal_);
+}
+
+TEST(ThreadLocal, NotDefaultConstructible) {
+  struct Object {
+    int value;
+    explicit Object(int v) : value{v} {}
+  };
+  std::atomic<int> a{};
+  ThreadLocal<Object> o{[&a] { return new Object(a++); }};
+  EXPECT_EQ(0, o->value);
+  std::thread([&] { EXPECT_EQ(1, o->value); }).join();
 }
 
 TEST(ThreadLocal, GetWithoutCreateUncreated) {
@@ -779,18 +798,3 @@ TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
 }
 
 #endif
-
-namespace folly {
-namespace threadlocal_detail {
-struct PthreadKeyUnregisterTester {
-  PthreadKeyUnregister p;
-  constexpr PthreadKeyUnregisterTester() = default;
-};
-} // namespace threadlocal_detail
-} // namespace folly
-
-TEST(ThreadLocal, UnregisterClassHasConstExprCtor) {
-  folly::threadlocal_detail::PthreadKeyUnregisterTester x;
-  // yep!
-  SUCCEED();
-}

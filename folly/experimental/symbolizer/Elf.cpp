@@ -45,6 +45,8 @@
 #else
 #define FOLLY_ELF_NATIVE_CLASS 32
 #endif
+#elif defined(__ANDROID__)
+#define FOLLY_ELF_NATIVE_CLASS __WORDSIZE
 #endif // __ELF_NATIVE_CLASS
 
 namespace folly {
@@ -92,11 +94,8 @@ ElfFile::OpenResult ElfFile::openNoThrow(
     return {kSystemError, "fstat"};
   }
 
-  fileId_ = std::make_tuple(
-      st.st_dev,
-      st.st_ino,
-      st.st_size,
-      st.st_mtim.tv_sec * 1000'000'000LL + st.st_mtim.tv_nsec);
+  uint64_t mtime_ns = st.st_mtim.tv_sec * 1000'000'000LL + st.st_mtim.tv_nsec;
+  fileId_ = ElfFileId{st.st_dev, st.st_ino, st.st_size, mtime_ns};
 
   length_ = st.st_size;
   int prot = PROT_READ;
@@ -313,6 +312,10 @@ ElfFile::OpenResult ElfFile::init() noexcept {
 
 const ElfShdr* ElfFile::getSectionByIndex(size_t idx) const noexcept {
   FOLLY_SAFE_CHECK(idx < elfHeader().e_shnum, "invalid section index");
+  if (elfHeader().e_shoff + (idx + 1) * sizeof(ElfShdr) > length_) {
+    // Handle ELFs with invalid internal offsets to program/section headers.
+    return nullptr;
+  }
   return &at<ElfShdr>(elfHeader().e_shoff + idx * sizeof(ElfShdr));
 }
 
@@ -347,8 +350,11 @@ const char* ElfFile::getSectionName(const ElfShdr& section) const noexcept {
     return nullptr; // no section name string table
   }
 
-  const ElfShdr& sectionNames = *getSectionByIndex(elfHeader().e_shstrndx);
-  return getString(sectionNames, section.sh_name);
+  auto stringSection = getSectionByIndex(elfHeader().e_shstrndx);
+  if (!stringSection) {
+    return nullptr;
+  }
+  return getString(*stringSection, section.sh_name);
 }
 
 const ElfShdr* ElfFile::getSectionByName(const char* name) const noexcept {
@@ -356,7 +362,11 @@ const ElfShdr* ElfFile::getSectionByName(const char* name) const noexcept {
     return nullptr; // no section name string table
   }
 
-  const ElfShdr& sectionNames = *getSectionByIndex(elfHeader().e_shstrndx);
+  auto stringSection = getSectionByIndex(elfHeader().e_shstrndx);
+  if (!stringSection) {
+    return nullptr;
+  }
+  const ElfShdr& sectionNames = *stringSection;
   const char* start = file_ + sectionNames.sh_offset;
 
   // Find section with the appropriate sh_name offset
@@ -416,8 +426,11 @@ ElfFile::Symbol ElfFile::getSymbolByName(
       if (sym.st_name == 0) {
         return false; // no name for this symbol
       }
-      const char* sym_name =
-          getString(*getSectionByIndex(section.sh_link), sym.st_name);
+      auto linkSection = getSectionByIndex(section.sh_link);
+      if (!linkSection) {
+        return false;
+      }
+      const char* sym_name = getString(*linkSection, sym.st_name);
       if (strcmp(sym_name, name) == 0) {
         foundSymbol.first = &section;
         foundSymbol.second = &sym;
@@ -444,7 +457,7 @@ const ElfShdr* ElfFile::getSectionContainingAddress(
   });
 }
 
-const char* ElfFile::getSymbolName(Symbol symbol) const noexcept {
+const char* ElfFile::getSymbolName(const Symbol& symbol) const noexcept {
   if (!symbol.first || !symbol.second) {
     return nullptr;
   }
@@ -457,8 +470,11 @@ const char* ElfFile::getSymbolName(Symbol symbol) const noexcept {
     return nullptr; // symbol table has no strings
   }
 
-  return getString(
-      *getSectionByIndex(symbol.first->sh_link), symbol.second->st_name);
+  auto linkSection = getSectionByIndex(symbol.first->sh_link);
+  if (!linkSection) {
+    return nullptr;
+  }
+  return getString(*linkSection, symbol.second->st_name);
 }
 
 std::pair<const int, char const*> ElfFile::posixFadvise(

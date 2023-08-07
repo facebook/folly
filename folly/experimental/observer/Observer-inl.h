@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Synchronized.h>
 #include <folly/experimental/observer/detail/ObserverManager.h>
 
 namespace folly {
@@ -194,40 +195,6 @@ T ReadMostlyAtomicObserver<T>::get() const {
   return cachedValue_.load(std::memory_order_relaxed);
 }
 
-template <typename T>
-ReadMostlyTLObserver<T>::ReadMostlyTLObserver(Observer<T> observer)
-    : observer_(std::move(observer)) {
-  refresh();
-}
-
-template <typename T>
-ReadMostlyTLObserver<T>::ReadMostlyTLObserver(
-    const ReadMostlyTLObserver<T>& other)
-    : ReadMostlyTLObserver(other.observer_) {}
-
-template <typename T>
-ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::getShared() const {
-  if (!observer_.needRefresh(localSnapshot_->version_) &&
-      !observer_detail::ObserverManager::inManagerThread()) {
-    if (auto data = localSnapshot_->data_.lock()) {
-      return data;
-    }
-  }
-  return refresh();
-}
-
-template <typename T>
-ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::refresh() const {
-  auto snapshot = observer_.getSnapshot();
-  auto globalData = globalData_.lock();
-  if (globalVersion_.load() < snapshot.getVersion()) {
-    globalData->reset(snapshot.getShared());
-    globalVersion_ = snapshot.getVersion();
-  }
-  *localSnapshot_ = LocalSnapshot(*globalData, globalVersion_.load());
-  return globalData->getShared();
-}
-
 struct CallbackHandle::Context {
   Optional<Observer<folly::Unit>> observer;
   Synchronized<bool> canceled{false};
@@ -311,24 +278,5 @@ Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeValueObserver(
       });
 }
 
-template <typename T>
-typename HazptrObserver<T>::DefaultSnapshot HazptrObserver<T>::getSnapshot()
-    const {
-  if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
-    // Wait for updates
-    observer_.getSnapshot();
-  }
-  return DefaultSnapshot(state_);
-}
-
-template <typename T>
-typename HazptrObserver<T>::LocalSnapshot HazptrObserver<T>::getLocalSnapshot()
-    const {
-  if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
-    // Wait for updates
-    observer_.getSnapshot();
-  }
-  return LocalSnapshot(state_);
-}
 } // namespace observer
 } // namespace folly

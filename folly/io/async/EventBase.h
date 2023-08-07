@@ -39,6 +39,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
+#include <folly/container/F14Set.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ScheduledExecutor.h>
@@ -216,7 +217,9 @@ class EventBase : public TimeoutManager,
   //   - Users may safely cancel() from any thread. Multiple calls to cancel()
   //     may execute concurrently. The only caveat is that it is not safe to
   //     call cancel() within the onEventBaseDestruction() callback.
-  class OnDestructionCallback {
+  class OnDestructionCallback
+      : public boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<boost::intrusive::normal_link>> {
    public:
     OnDestructionCallback() = default;
     OnDestructionCallback(OnDestructionCallback&&) = default;
@@ -232,21 +235,13 @@ class EventBase : public TimeoutManager,
     virtual void onEventBaseDestruction() noexcept = 0;
 
    private:
-    boost::intrusive::list_member_hook<
-        boost::intrusive::link_mode<boost::intrusive::normal_link>>
-        listHook_;
     Function<void(OnDestructionCallback&)> eraser_;
     Synchronized<bool> scheduled_{in_place, false};
 
-    using List = boost::intrusive::list<
-        OnDestructionCallback,
-        boost::intrusive::member_hook<
-            OnDestructionCallback,
-            decltype(listHook_),
-            &OnDestructionCallback::listHook_>>;
+    using List = boost::intrusive::list<OnDestructionCallback>;
 
     void schedule(
-        FunctionRef<void(OnDestructionCallback&)> linker,
+        Function<void(OnDestructionCallback&)> linker,
         Function<void(OnDestructionCallback&)> eraser);
 
     friend class EventBase;
@@ -525,8 +520,8 @@ class EventBase : public TimeoutManager,
   void runInLoop(Func c, bool thisIteration = false);
 
   /**
-   * Adds the given callback to a queue of things run before destruction
-   * of current EventBase.
+   * Adds the given callback to a queue of things run on destruction
+   * of current EventBase after the keepalive checks.
    *
    * This allows users of EventBase that run in it, but don't control it, to be
    * notified before EventBase gets destructed.
@@ -541,6 +536,23 @@ class EventBase : public TimeoutManager,
    * run on EventBase destruction.
    */
   void runOnDestruction(Func f);
+
+  /**
+   * Adds the given callback to a queue of things run at the start of the
+   * destruction of the current EventBase, before any loop keep-alive handles
+   * are checked.
+   *
+   * Note: will be called from the thread that invoked EventBase destructor,
+   *       before the final run of loop callbacks.
+   */
+  void runOnDestructionStart(OnDestructionCallback& callback);
+
+  /**
+   * Convenience function that allows users to pass in a Function<void()> to be
+   * run at the start of EventBase destruction, before any loop keep-alive
+   * handles are checked.
+   */
+  void runOnDestructionStart(Func f);
 
   /**
    * Adds a callback that will run immediately *before* the event loop.
@@ -827,14 +839,20 @@ class EventBase : public TimeoutManager,
    *
    * @param observer EventHandle's execution observer.
    */
-  void setExecutionObserver(ExecutionObserver* observer) {
-    executionObserver_ = observer;
+  void addExecutionObserver(ExecutionObserver* observer) {
+    executionObserverList_.push_back(*observer);
+  }
+
+  void removeExecutionObserver(ExecutionObserver* observer) {
+    executionObserverList_.erase(executionObserverList_.iterator_to(*observer));
   }
 
   /**
-   * Gets the execution observer associated with this EventBase.
+   * Gets the execution observer list associated with this EventBase.
    */
-  ExecutionObserver* getExecutionObserver() { return executionObserver_; }
+  ExecutionObserver::List& getExecutionObserverList() {
+    return executionObserverList_;
+  }
 
   /**
    * Set the name of the thread that runs this event base.
@@ -845,6 +863,18 @@ class EventBase : public TimeoutManager,
    * Returns the name of the thread that runs this event base.
    */
   const std::string& getName();
+
+  /**
+   * Returns the ID of the thread that this event base is running in
+   */
+  std::thread::id getLoopThreadId();
+
+  /**
+   * Returns the timepoint at the start of the loop callbacks.
+   */
+  std::chrono::steady_clock::time_point getLoopCallbacksStartTime() {
+    return startWork_;
+  }
 
   /// Implements the Executor interface
   void add(Cob fn) override { runInEventBaseThread(std::move(fn)); }
@@ -942,6 +972,7 @@ class EventBase : public TimeoutManager,
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;
   Synchronized<OnDestructionCallback::List> onDestructionCallbacks_;
+  Synchronized<OnDestructionCallback::List> preDestructionCallbacks_;
 
   // This will be null most of the time, but point to currentCallbacks
   // if we are in the middle of running loop callbacks, such that
@@ -1001,8 +1032,8 @@ class EventBase : public TimeoutManager,
   std::shared_ptr<EventBaseObserver> observer_;
   uint32_t observerSampleCount_;
 
-  // EventHandler's execution observer.
-  ExecutionObserver* executionObserver_;
+  // EventHandler's execution observer list (in case multiple are registered)
+  ExecutionObserver::List executionObserverList_;
 
   // Name of the thread running this EventBase
   std::string name_;
@@ -1011,8 +1042,8 @@ class EventBase : public TimeoutManager,
   friend class detail::EventBaseLocalBase;
   template <typename T>
   friend class EventBaseLocal;
-  std::unordered_map<std::size_t, erased_unique_ptr> localStorage_;
-  folly::Synchronized<std::unordered_set<detail::EventBaseLocalBase*>>
+  folly::F14FastMap<std::size_t, erased_unique_ptr> localStorage_;
+  folly::Synchronized<folly::F14FastSet<detail::EventBaseLocalBase*>>
       localStorageToDtor_;
   bool tryDeregister(detail::EventBaseLocalBase&);
 

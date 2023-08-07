@@ -137,5 +137,11 @@ void appendToString(
   ::folly::logging::appendToString(result, remainder...);
 }
 
+/**
+ * Overload when there are no objects to append.
+ */
+template <typename Arg = void>
+void appendToString(std::string& /*result*/) {}
+
 } // namespace logging
 } // namespace folly

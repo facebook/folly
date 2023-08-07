@@ -35,7 +35,7 @@ uint8_t* temp_buf;
 
 size_t getPow2(size_t v) {
   assert(v != 0);
-  return 1UL << (sizeof(size_t) * 8 - __builtin_clzl(v) - 1);
+  return 1ULL << (sizeof(size_t) * 8 - __builtin_clzl(v) - 1);
 }
 
 template <void* memset_impl(void*, int, size_t)>

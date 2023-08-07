@@ -51,6 +51,8 @@ class BasicTransportCertificate : public folly::OpenSSLTransportCertificate {
     return folly::ssl::X509UniquePtr(x509raw);
   }
 
+  void dropX509() { x509_.reset(); }
+
  private:
   std::string identity_;
   folly::ssl::X509UniquePtr x509_;

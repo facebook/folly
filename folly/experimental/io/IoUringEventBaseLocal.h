@@ -21,7 +21,7 @@
 
 namespace folly {
 
-#if __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing.h>)
 
 class IoUringEventBaseLocal {
  public:

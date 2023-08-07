@@ -183,6 +183,28 @@ TEST(IOBuf, TakeOwnership) {
   EXPECT_EQ(1, deleteCount);
 }
 
+TEST(IOBuf, TakeOwnershipFreeOnErrorBugfix) {
+  static void* freedBuf = nullptr;
+  static void* freedUserData = nullptr;
+
+  folly::IOBuf::FreeFunction freeFn = [](void* calledBuf,
+                                         void* calledUserData) {
+    freedBuf = calledBuf;
+    freedUserData = calledUserData;
+  };
+
+  int userData = 0;
+  char buf[1024];
+
+  EXPECT_THROW(
+      IOBuf::takeOwnership(
+          buf, std::numeric_limits<size_t>::max(), freeFn, &userData, true),
+      std::bad_alloc);
+
+  EXPECT_EQ(freedBuf, buf);
+  EXPECT_EQ(freedUserData, &userData);
+}
+
 TEST(IOBuf, GetUserData) {
   {
     const uint32_t size = 1234;
@@ -262,12 +284,12 @@ TEST(IOBuf, WrapBuffer) {
   if (folly::kIsSanitizeAddress) {
     const uint32_t size5 = 100;
     uint8_t buf5[size5];
-    EXPECT_DEATH(IOBuf::wrapBuffer(buf5, size5 + 1), "asan_region_is_poisoned");
+    EXPECT_DEATH(IOBuf::wrapBuffer(buf5, size5 + 1), "stack-buffer-overflow");
 
     const uint32_t size6 = 100;
     std::vector<uint8_t> buf6(size6);
     EXPECT_DEATH(
-        IOBuf::wrapBuffer(buf6.data(), size6 + 1), "asan_region_is_poisoned");
+        IOBuf::wrapBuffer(buf6.data(), size6 + 1), "heap-buffer-overflow");
   }
 }
 

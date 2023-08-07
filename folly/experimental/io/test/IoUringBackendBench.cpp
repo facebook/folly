@@ -1007,7 +1007,7 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv, true);
+  folly::Init init(&argc, &argv, true);
   if (FLAGS_run_tests) {
     if (FLAGS_socket_pair) {
       runTestsSP();

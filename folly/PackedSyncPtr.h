@@ -77,7 +77,7 @@ class PackedSyncPtr {
   void init(T* initialPtr = nullptr, uint16_t initialExtra = 0) {
     auto intPtr = reinterpret_cast<uintptr_t>(initialPtr);
     CHECK(!(intPtr >> 48));
-    data_.init(intPtr);
+    data_.init(intPtr << 16);
     setExtra(initialExtra);
   }
 
@@ -88,9 +88,8 @@ class PackedSyncPtr {
    */
   void set(T* t) {
     auto intPtr = reinterpret_cast<uintptr_t>(t);
-    auto shiftedExtra = uintptr_t(extra()) << 48;
     CHECK(!(intPtr >> 48));
-    data_.setData(intPtr | shiftedExtra);
+    data_.setData((intPtr << 16) | uintptr_t(extra()));
   }
 
   /*
@@ -100,9 +99,7 @@ class PackedSyncPtr {
    * normal types of behavior you'll get on x64 from reading a pointer
    * without locking.
    */
-  T* get() const {
-    return reinterpret_cast<T*>(data_.getData() & (-1ull >> 16));
-  }
+  T* get() const { return reinterpret_cast<T*>(data_.getData() >> 16); }
   T* operator->() const { return get(); }
   reference operator*() const { return *get(); }
   reference operator[](std::ptrdiff_t i) const { return get()[i]; }
@@ -118,7 +115,7 @@ class PackedSyncPtr {
    *
    * It is ok to call this without holding the lock.
    */
-  uint16_t extra() const { return data_.getData() >> 48; }
+  uint16_t extra() const { return data_.getData() & 0xffff; }
 
   /*
    * Don't try to put anything into this that has the high bit set:
@@ -128,12 +125,12 @@ class PackedSyncPtr {
    */
   void setExtra(uint16_t extra) {
     CHECK(!(extra & 0x8000));
-    auto ptr = data_.getData() & (-1ull >> 16);
-    data_.setData((uintptr_t(extra) << 48) | ptr);
+    auto ptr = data_.getData();
+    data_.setData(uintptr_t(extra) | (ptr & (-1ull << 16)));
   }
 
  private:
-  PicoSpinLock<uintptr_t> data_;
+  PicoSpinLock<uintptr_t, 15> data_;
 } FOLLY_PACK_ATTR;
 
 static_assert(

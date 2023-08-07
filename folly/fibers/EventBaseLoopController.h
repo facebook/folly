@@ -60,13 +60,13 @@ class EventBaseLoopController : public ExecutorBasedLoopController {
 
   folly::CancellationToken eventBaseShutdownToken_;
 
-  bool awaitingScheduling_{false};
   VirtualEventBase* eventBase_{nullptr};
   Executor::KeepAlive<VirtualEventBase> eventBaseKeepAlive_;
   ControllerCallback callback_;
   FiberManager* fm_{nullptr};
-  std::atomic<bool> eventBaseAttached_{false};
   InlineFunctionRunner* loopRunner_{nullptr};
+  std::atomic<bool> eventBaseAttached_{false};
+  bool awaitingScheduling_{false};
 
   /* LoopController interface */
 

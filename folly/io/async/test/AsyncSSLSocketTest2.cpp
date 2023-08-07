@@ -274,7 +274,7 @@ int main(int argc, char* argv[]) {
   signal(SIGPIPE, SIG_IGN);
 #endif
   testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   return RUN_ALL_TESTS();
   OPENSSL_cleanup();
 }

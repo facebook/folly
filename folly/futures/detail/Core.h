@@ -35,7 +35,6 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/AtomicUtil.h>
-#include <folly/synchronization/MicroSpinLock.h>
 
 namespace folly {
 namespace futures {
@@ -63,15 +62,6 @@ constexpr State operator^(State a, State b) {
 constexpr State operator~(State a) {
   return State(~uint8_t(a));
 }
-
-/// SpinLock is and must stay a 1-byte object because of how Core is laid out.
-struct SpinLock : private MicroSpinLock {
-  SpinLock() : MicroSpinLock{0} {}
-
-  using MicroSpinLock::lock;
-  using MicroSpinLock::unlock;
-};
-static_assert(sizeof(SpinLock) == 1, "missized");
 
 class DeferredExecutor;
 
@@ -242,8 +232,7 @@ class InterruptHandlerImpl final : public InterruptHandler {
 ///   State`. All state transitions are atomic; other producer-to-consumer data
 ///   is sometimes modified within those transitions; see below for details.
 /// - The consumer-to-producer interrupt-request flow: this info includes an
-///   interrupt-handler and an interrupt. Concurrency of this info is controlled
-///   by a Spin Lock (`interruptLock_`).
+///   interrupt-handler and an interrupt.
 /// - Lifetime control info: this includes two reference counts, both which are
 ///   internally synchronized (atomic).
 ///
@@ -416,10 +405,7 @@ class CoreBase {
   void raise(exception_wrapper e);
 
   /// Copy the interrupt handler from another core. This should be done only
-  /// when initializing a new core:
-  ///
-  /// - interruptHandler_ must be nullptr
-  /// - interruptLock_ is not acquired.
+  /// when initializing a new core (interruptHandler_ must be nullptr).
   void initCopyInterruptHandlerFrom(const CoreBase& other);
 
   /// Call only from producer thread
@@ -527,16 +513,12 @@ class CoreBase {
 
   void derefCallback() noexcept;
 
-  union {
-    Callback callback_;
-  };
+  Callback callback_;
   std::atomic<State> state_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
   KeepAliveOrDeferred executor_;
-  union {
-    Context context_;
-  };
+  Context context_;
   std::atomic<uintptr_t> interrupt_{}; // see InterruptMask, InterruptState
   CoreBase* proxy_;
 };

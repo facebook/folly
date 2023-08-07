@@ -155,7 +155,7 @@ BENCHMARK_RELATIVE(blake2xb_1000b_in_4096b_out, n) {
 }
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   folly::runBenchmarks();
   return 0;
 }

@@ -22,7 +22,7 @@
 
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/executors/SequencedExecutor.h>
+#include <folly/executors/SerializedExecutor.h>
 #include <folly/io/async/Request.h>
 
 namespace folly {
@@ -39,18 +39,18 @@ namespace folly {
  * in the parent executor, however strictly non-concurrently and in the order
  * they were added.
  *
- * SerialExecutor tries to schedule its tasks fairly. Every task submitted to
- * it results in one task submitted to the parent executor. Whenever the parent
- * executor executes one of those, one of the tasks submitted to SerialExecutor
- * is marked for execution, which means it will either be executed at once,
- * or if a task is currently being executed already, after that.
+ * When a task is added to the executor while another one is running on the
+ * parent executor, the new task is piggybacked on the running task to save the
+ * cost of scheduling a task on the parent executor. This implies that the
+ * parent executor may observe a smaller number of tasks than those added in the
+ * SerialExecutor.
  *
  * The SerialExecutor may be deleted at any time. All tasks that have been
  * submitted will still be executed with the same guarantees, as long as the
  * parent executor is executing tasks.
  */
 
-class SerialExecutor : public SequencedExecutor {
+class SerialExecutor : public SerializedExecutor {
  public:
   SerialExecutor(SerialExecutor const&) = delete;
   SerialExecutor& operator=(SerialExecutor const&) = delete;
@@ -98,11 +98,6 @@ class SerialExecutor : public SequencedExecutor {
     return parent_->getNumPriorities();
   }
 
- protected:
-  bool keepAliveAcquire() noexcept override;
-
-  void keepAliveRelease() noexcept override;
-
  private:
   struct Task {
     Func func;
@@ -112,15 +107,18 @@ class SerialExecutor : public SequencedExecutor {
   explicit SerialExecutor(KeepAlive<Executor> parent);
   ~SerialExecutor() override;
 
-  void run();
+  bool keepAliveAcquire() noexcept override;
+
+  void keepAliveRelease() noexcept override;
+
+  bool scheduleTask(Func&& func);
+  void worker();
 
   KeepAlive<Executor> parent_;
   std::atomic<std::size_t> scheduled_{0};
-  /**
-   * Unbounded multi producer single consumer queue where consumers don't block
-   * on dequeue.
-   */
-  folly::UnboundedQueue<Task, false, true, false> queue_;
+  // The consumer should only dequeue when the queue is non-empty, so we don't
+  // need blocking.
+  folly::UMPSCQueue<Task, /* MayBlock */ false> queue_;
 
   std::atomic<ssize_t> keepAliveCounter_{1};
 };

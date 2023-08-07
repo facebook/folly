@@ -22,6 +22,7 @@
 #include <folly/Try.h>
 #include <folly/futures/detail/Core.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/Pretty.h>
 
 namespace folly {
 
@@ -46,11 +47,14 @@ class FOLLY_EXPORT FutureAlreadyRetrieved : public PromiseException {
 };
 
 class FOLLY_EXPORT BrokenPromise : public PromiseException {
- public:
-  explicit BrokenPromise(const std::string& type)
-      : PromiseException("Broken promise for type name `" + type + '`') {}
+ private:
+  struct PrettyNameCtorTag {};
+  BrokenPromise(PrettyNameCtorTag, char const* type);
 
-  explicit BrokenPromise(const char* type) : BrokenPromise(std::string(type)) {}
+ public:
+  template <typename T>
+  explicit BrokenPromise(tag_t<T>)
+      : BrokenPromise(PrettyNameCtorTag{}, pretty_name<T>()) {}
 };
 
 // forward declaration

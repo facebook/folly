@@ -102,6 +102,9 @@ int open(char const* fn, int of, int pm) {
     // NUL, which achieves the same result.
     fn = "NUL";
   }
+  if ((of & _O_TEXT) != _O_TEXT) {
+    of |= _O_BINARY;
+  }
   errno_t res = _sopen_s(&fh, fn, of, _SH_DENYNO, realMode);
   return res ? -1 : fh;
 }

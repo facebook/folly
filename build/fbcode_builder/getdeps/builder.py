@@ -346,7 +346,7 @@ class AutoconfBuilder(BuilderBase):
 
 class Iproute2Builder(BuilderBase):
     # ./configure --prefix does not work for iproute2.
-    # Thus, explicitly copy sources from src_dir to build_dir, bulid,
+    # Thus, explicitly copy sources from src_dir to build_dir, build,
     # and then install to inst_dir using DESTDIR
     # lastly, also copy include from build_dir to inst_dir
     def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir) -> None:
@@ -512,6 +512,7 @@ if __name__ == "__main__":
         loader=None,
         final_install_prefix=None,
         extra_cmake_defines=None,
+        cmake_target="install",
     ) -> None:
         super(CMakeBuilder, self).__init__(
             build_opts,
@@ -525,6 +526,7 @@ if __name__ == "__main__":
         self.defines = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
+        self.cmake_target = cmake_target
 
         try:
             from .facebook.vcvarsall import extra_vc_cmake_defines
@@ -707,7 +709,7 @@ if __name__ == "__main__":
                 "--build",
                 self.build_dir,
                 "--target",
-                "install",
+                self.cmake_target,
                 "--config",
                 "Release",
                 "-j",
@@ -1121,26 +1123,6 @@ class NopBuilder(BuilderBase):
         else:
             if not os.path.exists(self.inst_dir):
                 shutil.copytree(self.src_dir, self.inst_dir)
-
-
-class OpenNSABuilder(NopBuilder):
-    # OpenNSA libraries are stored with git LFS. As a result, fetcher fetches
-    # LFS pointers and not the contents. Use git-lfs to pull the real contents
-    # before copying to install dir using NoopBuilder.
-    # In future, if more builders require git-lfs, we would consider installing
-    # git-lfs as part of the sandcastle infra as against repeating similar
-    # logic for each builder that requires git-lfs.
-    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir) -> None:
-        super(OpenNSABuilder, self).__init__(
-            build_opts, ctx, manifest, src_dir, inst_dir
-        )
-
-    def build(self, install_dirs, reconfigure: bool) -> None:
-        env = self._compute_env(install_dirs)
-        self._run_cmd(["git", "lfs", "install", "--local"], cwd=self.src_dir, env=env)
-        self._run_cmd(["git", "lfs", "pull"], cwd=self.src_dir, env=env)
-
-        super(OpenNSABuilder, self).build(install_dirs, reconfigure)
 
 
 class SqliteBuilder(BuilderBase):

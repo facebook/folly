@@ -15,6 +15,23 @@
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 # We use the GoogleTest module if it is available (only in CMake 3.9+)
 # It requires CMP0054 and CMP0057 to be enabled.
+
+IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
+  MESSAGE(STATUS "current platform: Linux ")
+ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Windows")
+  MESSAGE(STATUS "current platform: Windows")
+ELSEIF (CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+  MESSAGE(STATUS "current platform: FreeBSD")
+ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+  MESSAGE(STATUS "current platform: MacOS")
+  set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl" )
+  set(OPENSSL_LIBRARIES "/usr/local/opt/openssl/lib" )
+  set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include" )
+ELSE ()
+  MESSAGE(STATUS "other platform: ${CMAKE_SYSTEM_NAME}")
+ENDIF (CMAKE_SYSTEM_NAME MATCHES "Linux")
+
+
 if (POLICY CMP0054)
   cmake_policy(SET CMP0054 NEW)
 endif()
@@ -73,21 +90,16 @@ set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
 include(FBBuildOptions)
 fb_activate_static_library_option()
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  message(STATUS "setting C++ standard to C++${CMAKE_CXX_STANDARD}")
+endif()
 
-if("${CMAKE_LIBRARY_ARCHITECTURE}" STREQUAL "")
-  # CMAKE_LIBRARY_ARCHITECTURE is not always set, so we have to assume
-  # arch might be x86_64
-  message(WARNING "CMAKE_LIBRARY_ARCHITECTURE not set, assuming x86_64")
-  set(IS_X86_64_ARCH ON)
+if(NOT DEFINED IS_X86_64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
+  set(IS_X86_64_ARCH TRUE)
 else()
-  string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
-  if(IS_X86_64_ARCH STREQUAL "-1")
-    set(IS_X86_64_ARCH OFF)
-  else()
-    set(IS_X86_64_ARCH ON)
-  endif()
+  set(IS_X86_64_ARCH FALSE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -186,10 +198,14 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/python/fibers.cpp
   ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
   ${FOLLY_DIR}/python/iobuf.cpp
+  ${FOLLY_DIR}/python/iobuf_ext.cpp
+  ${FOLLY_DIR}/python/ProactorExecutor.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/python/fibers.h
   ${FOLLY_DIR}/python/GILAwareManualExecutor.h
+  ${FOLLY_DIR}/python/iobuf_ext.h
+  ${FOLLY_DIR}/python/ProactorExecutor.h
 )
 
 # Explicitly include utility library code from inside
@@ -637,6 +653,18 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY detail/test/
       TEST static_singleton_manager_test SOURCES StaticSingletonManagerTest.cpp
+
+    DIRECTORY detail/test/
+      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
+
+    DIRECTORY detail/test/
+      TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
+
+    DIRECTORY detail/test/
+      TEST split_string_simd_test SOURCES SplitStringSimdTest.cpp
+
+    DIRECTORY detail/test/
+      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
       TEST base64_detail_test

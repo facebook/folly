@@ -46,7 +46,7 @@ namespace folly {
  * timing out).  Idle threads should be removed from threadList_, and
  * threadsToJoin incremented, and activeThreads_ decremented.
  *
- * On task add(), if an executor can garantee there is an active
+ * On task add(), if an executor can guarantee there is an active
  * thread that will handle the task, then nothing needs to be done.
  * If not, then ensureActiveThreads() should be called to possibly
  * start another pool thread, up to maxThreads_.
@@ -80,7 +80,6 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   void setThreadFactory(std::shared_ptr<ThreadFactory> threadFactory) {
     CHECK(numThreads() == 0);
     threadFactory_ = std::move(threadFactory);
-    namePrefix_ = getNameHelper();
   }
 
   std::shared_ptr<ThreadFactory> getThreadFactory() const {
@@ -214,15 +213,20 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   typedef std::shared_ptr<Thread> ThreadPtr;
 
   struct Task {
-    explicit Task(
+    struct Expiration {
+      std::chrono::milliseconds expiration;
+      Func expireCallback;
+    };
+
+    Task(
         Func&& func,
         std::chrono::milliseconds expiration,
         Func&& expireCallback);
+
     Func func_;
     std::chrono::steady_clock::time_point enqueueTime_;
-    std::chrono::milliseconds expiration_;
-    Func expireCallback_;
     std::shared_ptr<folly::RequestContext> context_;
+    std::unique_ptr<Expiration> expiration_;
   };
 
   void runTask(const ThreadPtr& thread, Task&& task);
@@ -306,10 +310,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     std::queue<ThreadPtr> queue_;
   };
 
-  std::string getNameHelper() const;
-
   std::shared_ptr<ThreadFactory> threadFactory_;
-  std::string namePrefix_;
 
   ThreadList threadList_;
   SharedMutex threadListLock_;

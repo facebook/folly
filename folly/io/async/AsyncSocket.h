@@ -36,7 +36,10 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/observer/AsyncSocketObserverContainer.h>
 #include <folly/net/NetOpsDispatcher.h>
+#include <folly/net/TcpInfo.h>
+#include <folly/net/TcpInfoDispatcher.h>
 #include <folly/portability/Sockets.h>
 #include <folly/small_vector.h>
 
@@ -78,9 +81,16 @@ namespace folly {
 #define SO_NO_TSOCKS 201
 #endif
 
+#if FOLLY_HAVE_SO_TIMESTAMPING
+#define SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS 10
+#endif
+
 class AsyncSocket : public AsyncSocketTransport {
  public:
   using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
+  using ByteEvent = AsyncSocketObserverInterface::ByteEvent;
+  using Observer = AsyncSocketObserverContainer::Observer;
+  using ManagedObserver = AsyncSocketObserverContainer::ManagedObserver;
 
   class EvbChangeCallback {
    public:
@@ -127,21 +137,119 @@ class AsyncSocket : public AsyncSocketTransport {
     virtual ~ReadAncillaryDataCallback() = default;
 
     /**
-     * ancillaryData() will be invoked when we read a buffer
-     * from the socket together with the ancillary data.
+     * `ancillaryData()` is invoked immediately before the corresponding
+     * `ReadCallback::readDataAvailable()`, as a pair.
      *
-     * @param msgh      Reference to msghdr structure describing
-     *                  a message read together with the data buffer associated
-     *                  with the socket.
+     * You must check for `msg_flags | MSG_CTRUNC`, indicating that some
+     * ancillary data was discarded due to lack of space.  This is normally
+     * not recoverable, so you can `close` or `failRead` the socket -- see
+     * below.
+     *
+     * ## Allowed socket mutations ###
+     *
+     * This callback is allowed to `close`, `failRead` (for child classes),
+     * or destruct the underlying socket.  It is **NOT** allowed to perform
+     * any other mutations, such as `setReadCallback` or `attachEventBase`.
+     *
+     * If `ancillaryData()` closes or fails the socket, then any data
+     * received in the same read as the ancillary data will NOT be delivered
+     * to the `ReadCallback`.
+     *
+     * # Detailed contract
+     *
+     * This will only be invoked when a `ReadCallback` is installed -- i.e.
+     * the socket is connected, neither closed nor in an error state.
+     *
+     * The supplied buffer will have originated from the most recent call to
+     * `getAncillaryDataCtrlBuffer()`.
+     *
+     * Per POSIX, ancillary data are sent / received with the first byte of
+     * the `sendmsg` data buffer, so we guarantee that the subsequent
+     * `readDataAvailable()` (if it happens) will include that data byte.
+     *
+     * @param  Can be used with macros from `man cmsg` to access ancillary
+     *         data. It is permissible to check `msg_flags & MSG_EOR`.
+     *         There is NO CONTRACT about any other `msghdr` fields -- that
+     *         is, choosing to read `msg_name*` or `msg_iov*` leads to
+     *         undefined behavior.
      */
-    virtual void ancillaryData(struct msghdr& msgh) noexcept = 0;
+    virtual void ancillaryData(struct ::msghdr&) noexcept = 0;
 
     /**
-     * getAncillaryDataCtrlBuffer() will be invoked in order to fill the
-     * ancillary data buffer when it is received.
-     * getAncillaryDataCtrlBuffer will never return nullptr.
+     * Must return a buffer large enough to contain the incoming ancillary
+     * data, see `man cmsg` and `CMSG_SPACE`.
+     *
+     * DANGER: This call must not mutate the socket state.  e.g., you
+     * cannot call setReadCB(), setReadAncillaryDataCB() or close()
+     * from inside this call.
+     *
+     * If the supplied buffer is too small, your `ancillaryData()` will see
+     * `MSG_CTRUNC`, and the kernel will have discarded some ancillary data.
+     *
+     * It is possible that `getAncillaryDataCtrlBuffer()` will be called
+     * without a corresponding `ancillaryData()` call.  It is the callback's
+     * responsibility not to leak the buffers it returns.  Any call to
+     * `ancillaryData()` will use the most recently returned buffer.
+     *
+     * The returned buffer must remain valid until the point where
+     * `ancillaryData()` could be called with it.  That is, previously
+     * returned buffers may be freed if:
+     *  - the socket is closed / fails, or its `ReadCallback` is removed
+     *  - the `ReadAncillaryDataCallback` is uninstalled
+     *  - `ancillaryData()` completes
      */
     virtual folly::MutableByteRange getAncillaryDataCtrlBuffer() = 0;
+  };
+
+  /**
+   * Sometimes `SendMsgParamsCallback` needs to send different ancillary
+   * data for different writes, for example when sending FDs over Unix
+   * sockets.
+   *
+   * This opaque type acts as the key to match `writeChain` calls with
+   * `getAncillaryData()` and corresponding `wroteBytes()` calls.  It wraps
+   * `IOBuf*`, and implements equality, hashing, and ostream writes for
+   * debugging.
+   *
+   * Important usage notes:
+   *   - Even though `WriteRequestTag` never dereferences the pointer, it is
+   *     still INCORRECT to use it after the write is over, whether or not
+   *     the `IOBuf` had been destructed, because the same pointer could now
+   *     refer to new, different data that is being written (see
+   *     `getReleaseIOBufCallback` for the mechanism).
+   *   - Therefore, if you store a `WriteRequestTag`, you must remove it
+   *     whenever a write is complete.  This can be done either in
+   *     `WriteCallback::{writeErr,writeSuccess}`, or by inheriting from
+   *     `AsyncSocket::releaseIOBuf`, or by adding a new method
+   *     `SendMsgParamsCallback::onReleaseIOBuf`.
+   *   - Not all child classes support write tagging.  Notably, we removed
+   *     the `AsyncSSLSocket` implementation since it added complexity and
+   *     was not used.  Breadcrumbs are in `bioWrite`, or rev hash
+   *     95df2ce7c98a.
+   *   - The `EmptyDummy` constructor is for tests, or marking empty tags.
+   *     `SendMsgParamsCallback` methods can also be called with an empty
+   *     tag if the write is not submitted via `writeChain`.
+   */
+  struct WriteRequestTag {
+    struct EmptyDummy {};
+
+    explicit WriteRequestTag(EmptyDummy) : buf_(nullptr) {}
+    explicit WriteRequestTag(folly::IOBuf* buf) : buf_(buf) {}
+
+    bool operator==(const WriteRequestTag& other) const {
+      // Remember to also update std::hash<folly::AsyncSocket::WriteRequestTag>
+      // and ostream operator<<
+      return buf_ == other.buf_;
+    }
+
+    [[nodiscard]] bool empty() const noexcept { return buf_ == nullptr; }
+
+   private:
+    friend struct std::hash<WriteRequestTag>;
+    friend std::ostream& operator<<(std::ostream&, const WriteRequestTag&);
+
+    // The `IOBuf` submitted through `writeChain`
+    const folly::IOBuf* buf_;
   };
 
   class SendMsgParamsCallback {
@@ -180,6 +288,7 @@ class AsyncSocket : public AsyncSocketTransport {
      *
      * @param flags     Write flags requested for the given write operation
      * @param data      Pointer to ancillary data buffer to initialize.
+     * @param writeTag  Documented on `WriteRequestTag`.
      * @param byteEventsEnabled      If byte events are enabled for this socket.
      *                               When enabled, flags relevant to socket
      *                               timestamps (e.g., TIMESTAMP_TX) should be
@@ -188,21 +297,45 @@ class AsyncSocket : public AsyncSocketTransport {
     virtual void getAncillaryData(
         folly::WriteFlags flags,
         void* data,
+        const WriteRequestTag& writeTag,
         const bool byteEventsEnabled = false) noexcept;
 
     /**
      * getAncillaryDataSize() will be invoked to retrieve the size of
      * ancillary data buffer which should be passed to ::sendmsg() system call
+     * The result must not exceed `maxAncillaryDataSize`.
      *
      * @param flags     Write flags requested for the given write operation
+     * @param writeTag  Documented on `WriteRequestTag`.
      * @param byteEventsEnabled      If byte events are enabled for this socket.
      *                               When enabled, flags relevant to socket
      *                               timestamps (e.g., TIMESTAMP_TX) should be
      *                               included in ancillary (msg_control) data.
      */
     virtual uint32_t getAncillaryDataSize(
-        folly::WriteFlags flags, const bool byteEventsEnabled = false) noexcept;
+        folly::WriteFlags flags,
+        const WriteRequestTag& writeTag,
+        const bool byteEventsEnabled = false) noexcept;
 
+    /**
+     * Called immediately after a `sendmsg` corresponding to the preceding
+     * `getAncillaryData()` successfully sends at least 1 byte.
+     *
+     * This is required to enable "exactly once" transmission of ancillary
+     * data corresponding to `writeTag`.  For example, `AsyncFdSocket` ought
+     * not transmit tag-associated FDs twice.  Per POSIX, ancillary data are
+     * transmitted together with the first data byte.
+     */
+    virtual void wroteBytes(const WriteRequestTag&) noexcept {}
+
+    // This is not an OS limitation (see `/proc/sys/net/core/optmem_max` on
+    // Linux) but is done only because today's `AsyncSocket` implementation
+    // uses `alloca` to allocate the ancillary data buffer on the stack in
+    // order to support a cheap default `SendMsgParamsCallback` on every
+    // socket.  If the buffer management could be handed to the socket (e.g.
+    // each socket contains a few bytes of buffer for the default callback),
+    // then we could delete this maximum, and `getAncillaryDataSize`, in
+    // favor of `folly::ByteRange getAncillaryData()`.
     static const size_t maxAncillaryDataSize{0x5000};
 
    private:
@@ -237,7 +370,7 @@ class AsyncSocket : public AsyncSocketTransport {
    */
   struct ByteEventHelper {
     bool byteEventsEnabled{false};
-    size_t rawBytesWrittenWhenByteEventsEnabled{0};
+    long rawBytesWrittenWhenByteEventsEnabled{0};
     folly::Optional<AsyncSocketException> maybeEx;
 
     /**
@@ -442,7 +575,7 @@ class AsyncSocket : public AsyncSocketTransport {
   /**
    * Get the network socket used by the AsyncSocket.
    */
-  virtual NetworkSocket getNetworkSocket() const { return fd_; }
+  NetworkSocket getNetworkSocket() const override { return fd_; }
 
   /**
    * Extract the file descriptor from the AsyncSocket.
@@ -612,6 +745,30 @@ class AsyncSocket : public AsyncSocketTransport {
     return netops_.getOverride();
   }
 
+  /**
+   * Override folly::TcpInfoDispatcher to be used for getting TcpInfo.
+   *
+   * Pass empty shared_ptr to reset to default.
+   * Override can be used by unit tests to intercept and mock
+   * TcpInfo::initFromFd calls.
+   */
+  virtual void setOverrideTcpInfoDispatcher(
+      std::shared_ptr<folly::TcpInfoDispatcher> dispatcher) {
+    tcpInfoDispatcher_.setOverride(std::move(dispatcher));
+  }
+
+  /**
+   * Returns override folly::TcpInfoDispatcher being used for tcpinfo calls.
+   *
+   * Returns empty shared_ptr if no override set.
+   * Override can be used by unit tests to intercept and mock
+   * TcpInfo::initFromFd calls.
+   */
+  virtual std::shared_ptr<folly::TcpInfoDispatcher>
+  getOverrideTcpInfoDispatcher() const {
+    return tcpInfoDispatcher_.getOverride();
+  }
+
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
@@ -690,7 +847,7 @@ class AsyncSocket : public AsyncSocketTransport {
   bool readable() const override;
   bool writable() const override;
   bool isPending() const override;
-  virtual bool hangup() const;
+  bool hangup() const override;
   bool good() const override;
   bool error() const override;
   void attachEventBase(EventBase* eventBase) override;
@@ -753,7 +910,7 @@ class AsyncSocket : public AsyncSocketTransport {
     return connectEndTime_;
   }
 
-  bool getTFOAttempted() const { return tfoAttempted_; }
+  bool getTFOAttempted() const { return tfoInfo_.attempted; }
 
   /**
    * Returns whether or not the attempt to use TFO
@@ -761,7 +918,7 @@ class AsyncSocket : public AsyncSocketTransport {
    * mean TFO worked, just that trying to use TFO
    * succeeded.
    */
-  bool getTFOFinished() const { return tfoFinished_; }
+  bool getTFOFinished() const { return tfoInfo_.finished; }
 
   /**
    * Returns whether or not TFO attempt succeded on this
@@ -775,7 +932,7 @@ class AsyncSocket : public AsyncSocketTransport {
    * data is read from the socket when the caller knows that
    * the SYN has been ACKed by the server.
    */
-  bool getTFOSucceded() const;
+  bool getTFOSucceded() const override;
 
   // Methods controlling socket options
 
@@ -942,14 +1099,14 @@ class AsyncSocket : public AsyncSocketTransport {
    * Enables TFO behavior on the AsyncSocket if FOLLY_ALLOW_TFO
    * is set.
    */
-  void enableTFO() {
+  void enableTFO() override {
     // No-op if folly does not allow tfo
 #if FOLLY_ALLOW_TFO
-    tfoEnabled_ = true;
+    tfoInfo_.enabled = true;
 #endif
   }
 
-  void disableTransparentTls() { noTransparentTls_ = true; }
+  void disableTransparentTls() override { noTransparentTls_ = true; }
 
   void disableTSocks() { noTSocks_ = true; }
 
@@ -997,6 +1154,12 @@ class AsyncSocket : public AsyncSocketTransport {
   }
 
   /**
+   * Get folly::TcpInfo from socket
+   */
+  folly::Expected<folly::TcpInfo, std::errc> getTcpInfo(
+      TcpInfo::LookupOptions options);
+
+  /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
    * If no data has been written, 0 is returned.
    * exception is a more specific exception that cause a write error.
@@ -1032,15 +1195,45 @@ class AsyncSocket : public AsyncSocketTransport {
   };
 
   /**
+   * Wrapper class for WriteCallback that includes a boolean variable to track
+   * whether the write has already started or not
+   */
+  class WriteCallbackWithState {
+   public:
+    explicit WriteCallbackWithState(WriteCallback* callback)
+        : callback_(callback) {}
+    WriteCallback* getCallback() const { return callback_; }
+
+    void notifyOnWrite() noexcept {
+      if (callback_ && !writeInProgress_) {
+        callback_->writeStarting();
+      }
+      writeInProgress_ = true;
+    }
+
+   private:
+    WriteCallback* callback_{nullptr};
+    bool writeInProgress_{false};
+  };
+
+  /**
    * A WriteRequest object tracks information about a pending write operation.
    */
   class WriteRequest {
    public:
     WriteRequest(AsyncSocket* socket, WriteCallback* callback)
         : socket_(socket),
-          callback_(callback),
+          callbackWithState_(WriteCallbackWithState(callback)),
           releaseIOBufCallback_(
               callback ? callback->getReleaseIOBufCallback() : nullptr) {}
+
+    WriteRequest(AsyncSocket* socket, WriteCallbackWithState callbackWithState)
+        : socket_(socket),
+          callbackWithState_(callbackWithState),
+          releaseIOBufCallback_(
+              callbackWithState.getCallback()
+                  ? callbackWithState.getCallback()->getReleaseIOBufCallback()
+                  : nullptr) {}
 
     virtual void start() {}
 
@@ -1054,7 +1247,13 @@ class AsyncSocket : public AsyncSocketTransport {
 
     WriteRequest* getNext() const { return next_; }
 
-    WriteCallback* getCallback() const { return callback_; }
+    WriteCallback* getCallback() const {
+      return callbackWithState_.getCallback();
+    }
+
+    WriteCallbackWithState& getCallbackWithState() {
+      return callbackWithState_;
+    }
 
     uint32_t getTotalBytesWritten() const { return totalBytesWritten_; }
 
@@ -1078,67 +1277,102 @@ class AsyncSocket : public AsyncSocketTransport {
 
     AsyncSocket* socket_; ///< parent socket
     WriteRequest* next_{nullptr}; ///< pointer to next WriteRequest
-    WriteCallback* callback_; ///< completion callback
+    WriteCallbackWithState callbackWithState_; ///< completion callback
     ReleaseIOBufCallback* releaseIOBufCallback_; ///< release IOBuf callback
     uint32_t totalBytesWritten_{0}; ///< total bytes written
   };
 
-  class LifecycleObserver : virtual public AsyncTransport::LifecycleObserver {
+ public:
+  /**
+   * Observer of socket events.
+   */
+  class LegacyLifecycleObserver : public AsyncSocketObserverInterface {
    public:
-    using AsyncTransport::LifecycleObserver::LifecycleObserver;
+    /**
+     * Observer configuration.
+     *
+     * Specifies events observer wants to receive. Cannot be changed post
+     * initialization because the transport may turn on / off instrumentation
+     * when observers are added / removed, based on the observer configuration.
+     */
+    struct Config {
+      virtual ~Config() = default;
+
+      // receive ByteEvents
+      bool byteEvents{false};
+
+      // observer is notified during prewrite stage and can add WriteFlags
+      bool prewrite{false};
+
+      /**
+       * Enable all events in config.
+       */
+      virtual void enableAllEvents() {
+        byteEvents = true;
+        prewrite = true;
+      }
+
+      /**
+       * Returns a config where all events are enabled.
+       */
+      static Config getConfigAllEventsEnabled() {
+        Config config = {};
+        config.enableAllEvents();
+        return config;
+      }
+    };
 
     /**
-     * fdDetach() is invoked if the socket file descriptor is detached.
-     *
-     * detachNetworkSocket() will be triggered when a new AsyncSocket is being
-     * constructed from an old one. See the moved() event for details about
-     * this special case.
-     *
-     * @param socket      Socket for which detachNetworkSocket was invoked.
+     * Constructor for observer, uses default config (instrumentation disabled).
      */
-    virtual void fdDetach(AsyncSocket* /* socket */) noexcept = 0;
+    LegacyLifecycleObserver() : LegacyLifecycleObserver(Config()) {}
 
     /**
-     * fdAttach() is invoked when the socket file descriptor is attached.
+     * Constructor for observer.
      *
-     * @param socket      Socket for which handleNetworkSocketAttached was
-     * invoked.
+     * @param config      Config, defaults to auxilary instrumentaton disabled.
      */
-    virtual void fdAttach(AsyncSocket* /* socket */) noexcept {}
+    explicit LegacyLifecycleObserver(const Config& observerConfig)
+        : observerConfig_(observerConfig) {}
+
+    ~LegacyLifecycleObserver() override = default;
 
     /**
-     * move() will be invoked when a new AsyncSocket is being constructed via
-     * constructor AsyncSocket(AsyncSocket* oldAsyncSocket) from an AsyncSocket
-     * that has an observer attached.
+     * Returns observer's configuration.
      *
-     * This type of construction is common during TLS/SSL accept process.
-     * wangle::Acceptor may transform an AsyncSocket to an AsyncFizzServer, and
-     * then transform the AsyncFizzServer to an AsyncSSLSocket on fallback.
-     * AsyncFizzServer and AsyncSSLSocket derive from AsyncSocket and at each
-     * stage the aforementioned constructor will be called.
-     *
-     * Observers may be attached when the initial AsyncSocket is created, before
-     * TLS/SSL accept handling has completed. As a result, AsyncSocket must
-     * notify the observer during each transformation so that:
-     *   (1) The observer can track these transformations for debugging.
-     *   (2) The observer does not become separated from the underlying
-     *        operating system socket and corresponding file descriptor.
-     *
-     * When a new AsyncSocket is being constructed via the aforementioned
-     * constructor, the following observer events will be triggered:
-     *   (1) fdDetach
-     *   (2) move
-     *
-     * When move is triggered, the observer can CHOOSE to detach the old socket
-     * and attach to the new socket. This process will not happen automatically;
-     * the observer must explicitly perform these steps.
-     *
-     * @param oldSocket   Old socket that fd was detached from.
-     * @param newSocket   New socket being constructed with fd attached.
+     * @return            Observer configuration.
      */
-    virtual void move(
-        AsyncSocket* /* oldSocket */,
-        AsyncSocket* /* newSocket */) noexcept = 0;
+    const Config& getConfig() { return observerConfig_; }
+
+    /**
+     * observerAttach() will be invoked when an observer is added.
+     *
+     * @param socket   Socket where observer was installed.
+     */
+    virtual void observerAttach(AsyncSocket* /* socket */) noexcept = 0;
+
+    /**
+     * observerDetached() will be invoked if the observer is uninstalled prior
+     * to socket destruction.
+     *
+     * No further events will be invoked after observerDetach().
+     *
+     * @param socket   Socket where observer was uninstalled.
+     */
+    virtual void observerDetach(AsyncSocket* /* socket */) noexcept = 0;
+
+    /**
+     * destroy() will be invoked when the socket's destructor is invoked.
+     *
+     * No further events will be invoked after destroy().
+     *
+     * @param socket   Socket being destroyed.
+     */
+    virtual void destroy(AsyncSocket* /* socket */) noexcept = 0;
+
+   protected:
+    // observer configuration; cannot be changed post instantiation
+    const Config observerConfig_;
   };
 
   /**
@@ -1150,13 +1384,12 @@ class AsyncSocket : public AsyncSocketTransport {
    * This enables instrumentation to be added without changing / interfering
    * with how the application uses the socket.
    *
-   * Observer should implement AsyncTransport::LifecycleObserver to receive
-   * additional lifecycle events specific to AsyncSocket.
+   * Observer should implement AsyncSocket::LegacyLifecycleObserver to
+   * receive additional lifecycle events specific to AsyncSocket.
    *
-   * @param observer     Observer to add (implements LifecycleObserver).
+   * @param observer     Observer to add (implements LegacyLifecycleObserver).
    */
-  void addLifecycleObserver(
-      AsyncTransport::LifecycleObserver* observer) override;
+  virtual void addLifecycleObserver(LegacyLifecycleObserver* observer);
 
   /**
    * Removes a lifecycle observer.
@@ -1164,17 +1397,109 @@ class AsyncSocket : public AsyncSocketTransport {
    * @param observer     Observer to remove.
    * @return             Whether observer found and removed from list.
    */
-  bool removeLifecycleObserver(
-      AsyncTransport::LifecycleObserver* observer) override;
+  virtual bool removeLifecycleObserver(LegacyLifecycleObserver* observer);
 
   /**
    * Returns installed lifecycle observers.
    *
    * @return             Vector with installed observers.
    */
-  FOLLY_NODISCARD virtual std::vector<AsyncTransport::LifecycleObserver*>
-  getLifecycleObservers() const override;
+  FOLLY_NODISCARD virtual std::vector<LegacyLifecycleObserver*>
+  getLifecycleObservers() const;
 
+  /**
+   * Adds an observer.
+   *
+   * If the observer is already added, this is a no-op.
+   *
+   * @param observer     Observer to add.
+   * @return             Whether the observer was added (fails if no list).
+   */
+  virtual bool addObserver(Observer* observer) {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      list->addObserver(observer);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Adds an observer.
+   *
+   * If the observer is already added, this is a no-op.
+   *
+   * @param observer     Observer to add.
+   * @return             Whether the observer was added (fails if no list).
+   */
+  bool addObserver(std::shared_ptr<Observer> observer) {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      list->addObserver(std::move(observer));
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Removes an observer.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether the observer was found and removed.
+   */
+  virtual bool removeObserver(Observer* observer) {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      return list->removeObserver(observer);
+    }
+    return false;
+  }
+
+  /**
+   * Removes an observer.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether the observer was found and removed.
+   */
+  virtual bool removeObserver(std::shared_ptr<Observer> observer) {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      return list->removeObserver(std::move(observer));
+    }
+    return false;
+  }
+
+  /**
+   * Get number of observers.
+   *
+   * @return             Number of observers.
+   */
+  [[nodiscard]] virtual size_t numObservers() {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      return list->numObservers();
+    }
+    return 0;
+  }
+
+  /**
+   * Returns list of attached observers that are of type T.
+   *
+   * @return             Attached observers of type T.
+   */
+  template <typename T = Observer>
+  std::vector<T*> findObservers() {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      return list->findObservers<T>();
+    }
+    return {};
+  }
+
+ private:
+  /**
+   * Returns the AsyncSocketObserverContainer or nullptr if not available.
+   */
+  [[nodiscard]] AsyncSocketObserverContainer*
+  getAsyncSocketObserverContainer() {
+    return &observerContainer_;
+  }
+
+ public:
   /**
    * Split iovec array at given byte offsets; produce a new array with result.
    */
@@ -1321,26 +1646,6 @@ class AsyncSocket : public AsyncSocketTransport {
   virtual void handleNetworkSocketAttached();
 
   /**
-   * Attempt to read from the socket into a single buffer
-   *
-   * @param buf      The buffer to read data into.
-   * @param buflen   The length of the buffer.
-   *
-   * @return Returns a read result. See read result for details.
-   */
-  virtual ReadResult performRead(void** buf, size_t* buflen, size_t* offset);
-
-  /**
-   * Attempt to read from the socket into an iovec array
-   *
-   * @param iovs     The iovec array to read data into.
-   * @param num      The number of elements in the iovec array
-   *
-   * @return Returns a read result. See read result for details.
-   */
-  virtual ReadResult performReadv(struct iovec* iovs, size_t num);
-
-  /**
    * Populate an iovec array from an IOBuf and attempt to write it.
    *
    * @param callback Write completion/error callback.
@@ -1402,7 +1707,8 @@ class AsyncSocket : public AsyncSocketTransport {
       uint32_t count,
       WriteFlags flags,
       uint32_t* countWritten,
-      uint32_t* partialWritten);
+      uint32_t* partialWritten,
+      WriteRequestTag writeTag);
 
   /**
    * Prepares a msghdr and sends the message over the socket using sendmsg
@@ -1412,7 +1718,10 @@ class AsyncSocket : public AsyncSocketTransport {
    * @param flags           Set of write flags.
    */
   virtual AsyncSocket::WriteResult sendSocketMessage(
-      const iovec* vec, size_t count, WriteFlags flags);
+      const iovec* vec,
+      size_t count,
+      WriteFlags flags,
+      WriteRequestTag writeTag);
 
   /**
    * Sends the message over the socket using sendmsg
@@ -1446,8 +1755,15 @@ class AsyncSocket : public AsyncSocketTransport {
    */
   bool updateEventRegistration(uint16_t enable, uint16_t disable);
 
-  // read methods
-  ReadResult performReadInternal(struct iovec* iovs, size_t num);
+  // Attempt to read into one or more `struct iovec`s.  The caller is
+  // responsible for setting `msg.msg_iov` and `msg.msg_iovlen` to the
+  // buffers that will receive the read, and for initializing
+  // `msg.msg_name*`.  In the case that `readAncillaryCallback_` is set, the
+  // caller may also want to populate `msg_control`, `msg_controllen`, and
+  // `msg_flags` -- if no ancillary data are being read, it's fine to leave
+  // them at their defaults of 0.
+  virtual ReadResult performReadMsg(
+      struct ::msghdr& msg, AsyncReader::ReadCallback::ReadMode);
 
   // Actually close the file descriptor and set it to -1 so we don't
   // accidentally close it again.
@@ -1507,7 +1823,7 @@ class AsyncSocket : public AsyncSocketTransport {
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
 
-  void releaseIOBuf(
+  virtual void releaseIOBuf(
       std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback);
 
   ReadCode processZeroCopyRead();
@@ -1592,8 +1908,8 @@ class AsyncSocket : public AsyncSocketTransport {
   // mobile, in which case we fallback to std::vector to prioritize code size.
   using LifecycleObserverVecImpl = conditional_t<
       !kIsMobile,
-      folly::small_vector<AsyncTransport::LifecycleObserver*, 2>,
-      std::vector<AsyncTransport::LifecycleObserver*>>;
+      folly::small_vector<LegacyLifecycleObserver*, 2>,
+      std::vector<LegacyLifecycleObserver*>>;
   LifecycleObserverVecImpl lifecycleObservers_;
 
   // Pre-received data, to be returned to read callback before any data from the
@@ -1608,9 +1924,14 @@ class AsyncSocket : public AsyncSocketTransport {
   std::unique_ptr<EvbChangeCallback> evbChangeCb_{nullptr};
 
   BufferCallback* bufferCallback_{nullptr};
-  bool tfoEnabled_{false};
-  bool tfoAttempted_{false};
-  bool tfoFinished_{false};
+
+  struct TCPFastOpenInfo {
+    bool attempted{false};
+    bool enabled{false};
+    bool finished{false};
+  };
+
+  TCPFastOpenInfo tfoInfo_;
   bool noTransparentTls_{false};
   bool noTSocks_{false};
   // Whether to track EOR or not.
@@ -1633,6 +1954,17 @@ class AsyncSocket : public AsyncSocketTransport {
 
   netops::DispatcherContainer netops_;
 
+  folly::TcpInfoDispatcherContainer tcpInfoDispatcher_;
+
+  // Container of observers for the socket / transport.
+  //
+  // This member MUST be last in the list of members (other than
+  // constructorCallbackList_) to ensure it is destroyed first, before any other
+  // members are destroyed. This ensures that observers can inspect any socket /
+  // transport state available through public methods when destruction of the
+  // transport begins.
+  AsyncSocketObserverContainer observerContainer_;
+
   // allow other functions to register for callbacks when
   // new AsyncSocket()'s are created
   // must be LAST member defined to ensure other members are initialized
@@ -1640,4 +1972,15 @@ class AsyncSocket : public AsyncSocketTransport {
   ConstructorCallbackList<AsyncSocket> constructorCallbackList_{this};
 };
 
+std::ostream& operator<<(
+    std::ostream& os, const folly::AsyncSocket::WriteRequestTag& tag);
+
 } // namespace folly
+
+template <>
+struct std::hash<folly::AsyncSocket::WriteRequestTag> {
+  std::size_t operator()(
+      const folly::AsyncSocket::WriteRequestTag& writeTag) const {
+    return std::hash<const folly::IOBuf*>{}(writeTag.buf_);
+  }
+};

@@ -19,7 +19,7 @@
 #include <folly/python/import.h>
 #include <folly/python/iobuf_api.h> // @manual
 
-namespace folly {
+namespace folly::python {
 
 FOLLY_CONSTINIT static python::import_cache import_folly__iobuf_{
     import_folly__iobuf, "import_folly__iobuf"};
@@ -29,4 +29,14 @@ folly::IOBuf iobuf_from_python_iobuf(PyObject* iobuf) {
   return from_python_iobuf(iobuf);
 }
 
-} // namespace folly
+std::unique_ptr<folly::IOBuf> iobuf_ptr_from_python_iobuf(PyObject* iobuf) {
+  import_folly__iobuf_();
+  return std::unique_ptr<folly::IOBuf>(ptr_from_python_iobuf(iobuf));
+}
+
+PyObject* make_python_iobuf(std::unique_ptr<folly::IOBuf> iobuf) {
+  import_folly__iobuf_();
+  return python_iobuf_from_ptr(std::move(iobuf));
+}
+
+} // namespace folly::python

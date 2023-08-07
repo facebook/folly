@@ -222,6 +222,20 @@ class TestObserver : public folly::ExecutionObserver {
   int numStoppedCalled_{0};
 };
 
+class TestEventBaseObserver : public folly::EventBaseObserver {
+ public:
+  explicit TestEventBaseObserver(uint32_t samplingRatio)
+      : samplingRatio_(samplingRatio) {}
+  uint32_t getSampleRate() const override { return samplingRatio_; }
+
+  void loopSample(int64_t, int64_t) override { numTimesCalled_++; }
+  uint32_t getNumTimesCalled() const { return numTimesCalled_; }
+
+ private:
+  uint32_t samplingRatio_;
+  uint32_t numTimesCalled_{0};
+};
+
 class TestHandler : public folly::EventHandler {
  public:
   TestHandler(folly::EventBase* eventBase, int fd)
@@ -2192,6 +2206,24 @@ TYPED_TEST_P(EventBaseTest, RunCallbacksOnDestruction) {
   ASSERT_TRUE(ran);
 }
 
+TYPED_TEST_P(EventBaseTest, RunCallbacksPreDestruction) {
+  bool ranPreDestruction = false;
+  bool ranOnDestruction = false;
+  auto evbPtr = getEventBase<TypeParam>();
+  // Prevents the EventBase destruction from completing, but the pre destruction
+  // callbacks should still be called.
+  auto loopKeepAlive = getKeepAliveToken(*evbPtr);
+  evbPtr->runOnDestruction([&] { ranOnDestruction = true; });
+  evbPtr->runOnDestructionStart([&] {
+    ASSERT_FALSE(ranOnDestruction);
+    ranPreDestruction = true;
+    loopKeepAlive.reset();
+  });
+  evbPtr.reset();
+  ASSERT_TRUE(ranPreDestruction);
+  ASSERT_TRUE(ranOnDestruction);
+}
+
 TYPED_TEST_P(EventBaseTest, LoopKeepAlive) {
   auto evbPtr = getEventBase<TypeParam>();
   SKIP_IF(!evbPtr) << "Backend not available";
@@ -2525,7 +2557,7 @@ TYPED_TEST_P(EventBaseTest1, EventBaseExecutionObserver) {
   bool ranBeforeLoop = false;
   bool ran = false;
   TestObserver observer;
-  base.setExecutionObserver(&observer);
+  base.addExecutionObserver(&observer);
 
   CountedLoopCallback cb(&base, 1, [&]() { ranBeforeLoop = true; });
   base.runBeforeLoop(&cb);
@@ -2540,5 +2572,22 @@ TYPED_TEST_P(EventBaseTest1, EventBaseExecutionObserver) {
   ASSERT_EQ(4, observer.numStartingCalled_);
   ASSERT_EQ(4, observer.numStoppedCalled_);
 }
+
+TYPED_TEST_P(EventBaseTest, EventBaseObserver) {
+  auto evbPtr = getEventBase<TypeParam>();
+  auto observer1 = std::make_shared<TestEventBaseObserver>(2);
+  evbPtr->setObserver(observer1);
+  evbPtr->loopOnce();
+  evbPtr->loopOnce();
+  ASSERT_EQ(1, observer1->getNumTimesCalled());
+  evbPtr->loopOnce();
+  evbPtr->loopOnce();
+  evbPtr->loopOnce();
+  auto observer2 = std::make_shared<TestEventBaseObserver>(1);
+  evbPtr->setObserver(observer2);
+  evbPtr->loopOnce();
+  ASSERT_EQ(1, observer2->getNumTimesCalled());
+}
+
 } // namespace test
 } // namespace folly

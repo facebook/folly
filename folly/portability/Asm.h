@@ -39,7 +39,9 @@ inline void asm_volatile_pause() {
 #elif defined(__i386__) || FOLLY_X64 || \
     (defined(__mips_isa_rev) && __mips_isa_rev > 1)
   asm volatile("pause");
-#elif FOLLY_AARCH64 || (defined(__arm__) && !(__ARM_ARCH < 7))
+#elif FOLLY_AARCH64
+  asm volatile("isb");
+#elif (defined(__arm__) && !(__ARM_ARCH < 7))
   asm volatile("yield");
 #elif FOLLY_PPC64
   asm volatile("or 27,27,27");

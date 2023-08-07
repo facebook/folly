@@ -101,6 +101,8 @@ enum class LogLevel : uint32_t {
 };
 
 constexpr LogLevel kDefaultLogLevel = LogLevel::INFO;
+constexpr LogLevel kMinFatalLogLevel =
+    folly::kIsDebug ? LogLevel::DFATAL : LogLevel::FATAL;
 
 /*
  * Support adding and subtracting integers from LogLevels, to create slightly

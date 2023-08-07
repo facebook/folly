@@ -416,7 +416,7 @@ class Optional {
   };
   template <typename... Args>
   constexpr Optional(PrivateConstructor, Args&&... args) noexcept(
-      std::is_constructible<Value, Args&&...>::value) {
+      std::is_nothrow_constructible<Value, Args&&...>::value) {
     construct(std::forward<Args>(args)...);
   }
 

@@ -34,6 +34,7 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
       const std::shared_ptr<SSLContext>& ctx, EventBase* evb) {
     auto sock = std::shared_ptr<MockAsyncSSLSocket>(
         new MockAsyncSSLSocket(ctx, evb), Destructor());
+    sock->setSendMsgParamCB(&sock->sendMsgParamCob_);
     sock->ssl_.reset(SSL_new(ctx->getSSLCtx()));
     SSL_set_fd(sock->ssl_.get(), -1);
     sock->setupSSLBio();
@@ -70,13 +71,40 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
       WriteFlags flags,
       uint32_t* countWritten,
       uint32_t* partialWritten) {
-    return performWrite(vec, count, flags, countWritten, partialWritten);
+    const size_t prevNumCalls = sendMsgParamCob_.numCalls_;
+    IOBuf tagBuf;
+    return performWrite(
+        vec,
+        count,
+        flags,
+        countWritten,
+        partialWritten,
+        WriteRequestTag{&tagBuf});
+    CHECK_EQ(sendMsgParamCob_.numCalls_, prevNumCalls + 1);
   }
 
   // public wrapper for protected member
   folly::Optional<size_t> getCurrBytesToFinalByte() const {
     return currBytesToFinalByte_;
   }
+
+  struct MySendMsgParamsCallback : public SendMsgParamsCallback {
+    uint32_t getAncillaryDataSize(
+        folly::WriteFlags flags,
+        const WriteRequestTag& writeTag,
+        const bool byteEventsEnabled) noexcept override {
+      ++numCalls_;
+      // At present, write tags are NOT propagated to the
+      // `SendMsgParamsCallback` from `AsyncSSLSocket` via `bioWrite`.
+      CHECK_EQ(WriteRequestTag{WriteRequestTag::EmptyDummy()}, writeTag);
+      return SendMsgParamsCallback::getAncillaryDataSize(
+          flags, writeTag, byteEventsEnabled);
+    }
+
+    size_t numCalls_{0};
+  };
+
+  MySendMsgParamsCallback sendMsgParamCob_;
 };
 
 class AsyncSSLSocketWriteTest : public testing::Test {

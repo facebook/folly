@@ -45,9 +45,9 @@ Codel::Codel(const Options& options)
       codelResetDelay_(true),
       overloaded_(false) {}
 
-bool Codel::overloaded(nanoseconds delay) {
+bool Codel::overloaded_explicit_now(
+    nanoseconds delay, steady_clock::time_point now) {
   bool ret = false;
-  auto now = steady_clock::now();
 
   // Avoid another thread updating the value at the same time we are using it
   // to calculate the overloaded state
@@ -128,6 +128,10 @@ const Codel::Options Codel::getOptions() const {
 
 nanoseconds Codel::getMinDelay() {
   return nanoseconds(codelMinDelayNs_);
+}
+
+steady_clock::time_point Codel::getIntervalTime() {
+  return steady_clock::time_point(nanoseconds(codelIntervalTimeNs_));
 }
 
 milliseconds Codel::getSloughTimeout(milliseconds delay) const {

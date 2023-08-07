@@ -1,0 +1,11 @@
+[manifest]
+name = blake3
+
+[download]
+url = https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.3.3.tar.gz
+sha256 = 27d2bc4ee5945ba75434859521042c949463ee7514ff17aaef328e23ef83fec0
+
+[build]
+builder = cmake
+subdir = BLAKE3-1.3.3/c
+patchfile = blake3_CMakeLists_txt.patch

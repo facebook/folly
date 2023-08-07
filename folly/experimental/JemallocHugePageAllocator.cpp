@@ -155,6 +155,11 @@ void HugePageArena::map_pages(size_t initial_nr_pages, size_t max_nr_pages) {
   start_ = freePtr_ = protEnd_ = first_page;
   end_ = start_ + max_alloc_size;
 
+#if defined(MADV_DONTDUMP) && defined(MADV_DODUMP)
+  // Exclude (possibly large) unused portion of the mapping from coredumps.
+  madvise((void*)start_, end_ - start_, MADV_DONTDUMP);
+#endif
+
   setup_next_pages(start_ + initial_alloc_size);
 }
 
@@ -191,6 +196,13 @@ bool HugePageArena::setup_next_pages(uintptr_t upto) {
   if (mprotect((void*)curPtr, len, PROT_READ | PROT_WRITE) != 0) {
     return false;
   }
+
+#if defined(MADV_DONTDUMP) && defined(MADV_DODUMP)
+  // Re-include these pages in coredumps now that we're using them.
+  if (auto ret = madvise((void*)curPtr, len, MADV_DODUMP)) {
+    print_error(ret, "Unable to madvise(MADV_DODUMP)");
+  }
+#endif
 
 #if !defined(__FreeBSD__)
   // With THP set to madvise, page faults on these pages will block until a

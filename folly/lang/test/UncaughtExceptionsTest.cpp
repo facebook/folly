@@ -22,9 +22,6 @@
 
 FOLLY_CREATE_QUAL_INVOKER(invoke_std, std::uncaught_exceptions);
 FOLLY_CREATE_QUAL_INVOKER(invoke_folly, folly::uncaught_exceptions);
-// @lint-ignore CLANGTIDY
-FOLLY_CREATE_QUAL_INVOKER(
-    invoke_folly_detail_, folly::detail::uncaught_exceptions_);
 
 template <typename Param>
 struct UncaughtExceptionsTest : testing::TestWithParam<Param> {};
@@ -82,12 +79,12 @@ TYPED_TEST_P(UncaughtExceptionsTest, catch_rethrow) {
       Validator<TypeParam> validatorInner(1, "catch_rethrow_inner");
       throw std::runtime_error("exception");
     } catch (const std::runtime_error&) {
-      EXPECT_EQ(0, folly::uncaught_exceptions());
+      EXPECT_EQ(0, TypeParam{}());
       Validator<TypeParam> validatorRethrow(1, "catch_rethrow");
       throw;
     }
   } catch (const std::runtime_error&) {
-    EXPECT_EQ(0, folly::uncaught_exceptions());
+    EXPECT_EQ(0, TypeParam{}());
   }
 }
 
@@ -188,5 +185,3 @@ REGISTER_TYPED_TEST_SUITE_P(
 
 INSTANTIATE_TYPED_TEST_SUITE_P(std, UncaughtExceptionsTest, invoke_std);
 INSTANTIATE_TYPED_TEST_SUITE_P(folly, UncaughtExceptionsTest, invoke_folly);
-INSTANTIATE_TYPED_TEST_SUITE_P(
-    folly_fb, UncaughtExceptionsTest, invoke_folly_detail_);

@@ -174,7 +174,15 @@ TEST(EvictingCacheMap, PruneHookTest) {
     sum += k;
   };
 
+  EXPECT_FALSE(map.getPruneHook());
   map.setPruneHook(pruneCb);
+  EXPECT_TRUE(map.getPruneHook());
+  {
+    int v = 42;
+    map.getPruneHook()(42, std::move(v));
+  }
+  EXPECT_EQ(42, sum);
+  sum = 0;
 
   for (int i = 0; i < 100; i++) {
     map.set(i, i);
@@ -265,6 +273,21 @@ TEST(EvictingCacheMap, PruneHookTest) {
   map.erase(99);
 
   EXPECT_EQ(0, sum);
+
+  // But can provide your own hook
+  map.erase(98, pruneCb);
+
+  EXPECT_EQ(98, sum);
+  sum = 0;
+
+  // And with iterator
+  auto it1 = map.find(96);
+  auto it2 = map.find(97);
+
+  auto it3 = map.erase(it2, pruneCb);
+  EXPECT_EQ(it1, it3);
+  EXPECT_EQ(97, sum);
+  sum = 0;
 
   // Destructor does not call prune hook (NOTE: possibly source of usage bugs)
   map.~EvictingCacheMap<int, int>();
@@ -677,12 +700,21 @@ TEST(EvictingCacheMap, MoveTest) {
     EXPECT_EQ(i, map.get(i));
   }
 
+  // Move to empty
   EvictingCacheMap<int, int> map2 = std::move(map);
   EXPECT_TRUE(map.empty());
   for (int i = 0; i < nItems; i++) {
     EXPECT_TRUE(map2.exists(i));
     EXPECT_EQ(i, map2.get(i));
   }
+
+  // Move to non-empty
+  EvictingCacheMap<int, int> map3(1);
+  map3.set(1, 1);
+  EXPECT_EQ(1, map3.size());
+  map3 = std::move(map2);
+  EXPECT_TRUE(map2.empty());
+  EXPECT_EQ(nItems, map3.size());
 }
 
 TEST(EvictingCacheMap, CustomKeyEqual) {
@@ -786,4 +818,17 @@ TEST(EvictingCacheMap, HeterogeneousAccess) {
     map.erase(map.findWithoutPromotion(key));
   }
   EXPECT_TRUE(map.empty());
+}
+
+TEST(EvictingCacheMap, ApproximateEntryMemUsage) {
+  // Entry (without weight) should be
+  // * two pointers for LRU list
+  // * sizeof(key) and sizeof(value)
+  // * roughly 1.5 pointers for F14 index
+  // And sizeof(std::unique_ptr<char[]>) should usually be size of raw pointer
+  EXPECT_EQ(sizeof(std::unique_ptr<char[]>), sizeof(char*));
+  EXPECT_LE(
+      (EvictingCacheMap<uint64_t, std::unique_ptr<char[]>>::
+           kApproximateEntryMemUsage),
+      48U);
 }

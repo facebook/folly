@@ -177,6 +177,17 @@ dynamic& dynamic::operator=(dynamic&& o) noexcept {
   return *this;
 }
 
+dynamic& dynamic::operator=(std::nullptr_t) {
+  if (type_ == NULLT) {
+    // Do nothing -- nul has only one possible value.
+  } else {
+    destroy();
+    u_.nul = nullptr;
+    type_ = NULLT;
+  }
+  return *this;
+}
+
 dynamic const& dynamic::atImpl(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {
@@ -340,7 +351,7 @@ std::size_t dynamic::hash() const {
     case ARRAY:
       return static_cast<std::size_t>(folly::hash::hash_range(begin(), end()));
     case INT64:
-      return std::hash<int64_t>()(getInt());
+      return Hash()(getInt());
     case DOUBLE: {
       double valueAsDouble = getDouble();
       int64_t valueAsDoubleAsInt =
@@ -349,12 +360,12 @@ std::size_t dynamic::hash() const {
       // values hash the same to keep behavior consistent, but leave others use
       // double hashing to avoid restricting the hash range unnecessarily.
       if (double(valueAsDoubleAsInt) == valueAsDouble) {
-        return std::hash<int64_t>()(valueAsDoubleAsInt);
+        return Hash()(valueAsDoubleAsInt);
       }
-      return std::hash<double>()(valueAsDouble);
+      return Hash()(valueAsDouble);
     }
     case BOOL:
-      return std::hash<bool>()(getBool());
+      return Hash()(getBool());
     case STRING:
       // keep consistent with detail::DynamicHasher
       return Hash()(getString());

@@ -31,7 +31,6 @@ from getdeps.platform import HostType
 from getdeps.runcmd import run_cmd
 from getdeps.subcmd import add_subcommands, cmd, SubCmd
 
-
 try:
     import getdeps.facebook  # noqa: F401
 except ImportError:
@@ -410,11 +409,11 @@ class InstallSysDepsCmd(ProjectCmdBase):
         if manager == "rpm":
             packages = sorted(set(all_packages["rpm"]))
             if packages:
-                cmd_args = ["dnf", "install", "-y"] + packages
+                cmd_args = ["sudo", "dnf", "install", "-y"] + packages
         elif manager == "deb":
             packages = sorted(set(all_packages["deb"]))
             if packages:
-                cmd_args = ["apt-get", "install", "-y"] + packages
+                cmd_args = ["sudo", "apt", "install", "-y"] + packages
         elif manager == "homebrew":
             packages = sorted(set(all_packages["homebrew"]))
             if packages:
@@ -622,15 +621,25 @@ class BuildCmd(ProjectCmdBase):
                         loader,
                         final_install_prefix=loader.get_project_install_prefix(m),
                         extra_cmake_defines=extra_cmake_defines,
+                        cmake_target=args.cmake_target if m == manifest else "install",
                         extra_b2_args=extra_b2_args,
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
-                    with open(built_marker, "w") as f:
-                        f.write(project_hash)
+                    # If we are building the project (not dependency) and a specific
+                    # cmake_target (not 'install') has been requested, then we don't
+                    # set the built_marker. This allows subsequent runs of getdeps.py
+                    # for the project to run with different cmake_targets to trigger
+                    # cmake
+                    has_built_marker = False
+                    if not (m == manifest and args.cmake_target != "install"):
+                        with open(built_marker, "w") as f:
+                            f.write(project_hash)
+                            has_built_marker = True
 
-                    # Only populate the cache from continuous build runs
-                    if args.schedule_type == "continuous":
+                    # Only populate the cache from continuous build runs, and
+                    # only if we have a built_marker.
+                    if args.schedule_type == "continuous" and has_built_marker:
                         cached_project.upload()
                 elif args.verbose:
                     print("found good %s" % built_marker)
@@ -681,7 +690,10 @@ class BuildCmd(ProjectCmdBase):
     ):
         reconfigure = False
         sources_changed = False
-        if not cached_project.download():
+        if cached_project.download():
+            if not os.path.exists(built_marker):
+                fetcher.update()
+        else:
             check_fetcher = True
             if os.path.exists(built_marker):
                 check_fetcher = False
@@ -762,6 +774,11 @@ class BuildCmd(ProjectCmdBase):
                 "when compiling the current project and all its deps. "
                 'e.g: \'{"CMAKE_CXX_FLAGS": "--bla"}\''
             ),
+        )
+        parser.add_argument(
+            "--cmake-target",
+            help=("Target for cmake build."),
+            default="install",
         )
         parser.add_argument(
             "--extra-b2-args",
@@ -1026,11 +1043,7 @@ jobs:
                 if m != manifest:
                     if m.name == "rust":
                         out.write("    - name: Install Rust Stable\n")
-                        out.write("      uses: actions-rs/toolchain@v1\n")
-                        out.write("      with:\n")
-                        out.write("        toolchain: stable\n")
-                        out.write("        default: true\n")
-                        out.write("        profile: minimal\n")
+                        out.write("      uses: dtolnay/rust-toolchain@stable\n")
                     else:
                         ctx = loader.ctx_gen.get_context(m.name)
                         if m.get_repo_url(ctx) != main_repo_url:

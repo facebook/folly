@@ -97,7 +97,9 @@ class SSLContext {
     SSLv3,
     TLSv1, // support TLS 1.0+
     TLSv1_2, // support for only TLS 1.2+
+#if FOLLY_OPENSSL_HAS_TLS13
     TLSv1_3,
+#endif
   };
 
   /**
@@ -641,13 +643,6 @@ class SSLContext {
    * Helper to match a hostname versus a pattern.
    */
   static bool matchName(const char* host, const char* pattern, int size);
-
-  /**
-   * Temporary. Will be removed after TLS1.3 is enabled by default.
-   * Function to enable TLS1.3 in OpenSSL versions that support it.
-   * Used to migrate users to TLS1.3 piecemeal.
-   */
-  void enableTLS13();
 
   /**
    * Disable TLS 1.3 in OpenSSL versions that support it.

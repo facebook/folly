@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <cstdlib>
 #include <mutex>
 
 #include <boost/thread/locks.hpp>
@@ -44,14 +45,18 @@ TEST(File, Locks) {
   CHECK(r != -1);
   buf[r] = '\0';
 
-  fs::path me(buf);
-  auto helper_basename = "file_test_lock_helper";
   fs::path helper;
-  if (fs::exists(me.parent_path() / helper_basename)) {
-    helper = me.parent_path() / helper_basename;
+  const auto* envPath = getenv("FOLLY_FILE_LOCK_TEST_HELPER");
+  if (envPath) {
+    helper = envPath;
   } else {
+    const fs::path me(buf);
+    const auto helper_basename = "file_test_lock_helper";
+    helper = me.parent_path() / helper_basename;
+  }
+  if (!fs::exists(helper)) {
     throw std::runtime_error(
-        folly::to<std::string>("cannot find helper ", helper_basename));
+        folly::to<std::string>("cannot find helper ", helper.string()));
   }
 
   TemporaryFile tempFile;

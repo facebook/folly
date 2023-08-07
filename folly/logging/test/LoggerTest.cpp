@@ -115,7 +115,7 @@ TEST_F(LoggerTest, formatError) {
   EXPECT_THAT(
       messages[0].first.getMessage(),
       MatchesRegex(R"(error formatting log message: )"
-                   R"(.*invalid type specifier; )"
+                   R"(.*invalid .* specifier; )"
                    R"(format string: "param1: \{:06d\}, param2: \{:6.3f\}", )"
                    R"(arguments: 1234, hello world!)"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));

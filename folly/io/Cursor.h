@@ -280,7 +280,7 @@ class CursorBase {
    * Two cursors are equal if they are pointing to the same location in the
    * same IOBuf chain.
    */
-  bool operator==(const Derived& other) const {
+  bool operator==(const CursorBase& other) const {
     const IOBuf* crtBuf = crtBuf_;
     auto crtPos = crtPos_;
     // We can be pointing to the end of a buffer chunk, find first non-empty.
@@ -299,7 +299,8 @@ class CursorBase {
     }
     return (crtPos == crtPosOther) && (crtBuf == crtBufOther);
   }
-  bool operator!=(const Derived& other) const { return !operator==(other); }
+
+  bool operator!=(const CursorBase& other) const { return !operator==(other); }
 
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
@@ -908,6 +909,23 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
   explicit RWCursor(IOBufQueue& queue)
       : RWCursor((queue.flushCache(), queue.head_.get())) {}
 
+  // Efficient way to advance to position cursor to the end of the queue,
+  // using cached length instead of a walk via advanceToEnd().
+  struct AtEnd {};
+  RWCursor(IOBufQueue& queue, AtEnd) : RWCursor(queue) {
+    if (!queue.options().cacheChainLength) {
+      this->advanceToEnd();
+    } else {
+      this->crtBuf_ = this->buffer_->prev();
+      this->crtBegin_ = this->crtBuf_->data();
+      this->crtEnd_ = this->crtBuf_->tail();
+      this->crtPos_ = this->crtEnd_;
+      this->absolutePos_ =
+          queue.chainLength() - (this->crtPos_ - this->crtBegin_);
+      DCHECK_EQ(this->getCurrentPosition(), queue.chainLength());
+    }
+  }
+
   template <class OtherDerived, class OtherBuf>
   explicit RWCursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
       : detail::CursorBase<RWCursor<access>, IOBuf>(cursor),
@@ -1258,6 +1276,14 @@ class QueueAppender : public detail::Writable<QueueAppender> {
   template <CursorAccess access>
   explicit operator RWCursor<access>() {
     return RWCursor<access>(*queueCache_.queue());
+  }
+
+  template <CursorAccess access>
+  RWCursor<access> tail(size_t n) {
+    RWCursor<access> result(
+        *queueCache_.queue(), typename RWCursor<access>::AtEnd{});
+    result -= n;
+    return result;
   }
 
   void trimEnd(size_t n) { queueCache_.queue()->trimEnd(n); }

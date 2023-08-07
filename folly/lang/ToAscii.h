@@ -141,8 +141,10 @@ struct to_ascii_powers {
   // @lint-ignore CLANGTIDY
   static data_type_ const data;
 };
+#if FOLLY_CPLUSPLUS < 201703L
 template <uint64_t Base, typename Int>
 constexpr size_t const to_ascii_powers<Base, Int>::size;
+#endif
 template <uint64_t Base, typename Int>
 alignas(hardware_constructive_interference_size)
     typename to_ascii_powers<Base, Int>::data_type_ const
@@ -181,7 +183,7 @@ template <uint64_t Base>
 FOLLY_ALWAYS_INLINE size_t to_ascii_size_array(uint64_t v) {
   using powers = to_ascii_powers<Base, uint64_t>;
   for (size_t i = 0u; i < powers::size; ++i) {
-    if (FOLLY_LIKELY(v < powers::data.data[i])) {
+    if (FOLLY_UNLIKELY(v < powers::data.data[i])) {
       return i + size_t(i == 0);
     }
   }

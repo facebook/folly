@@ -293,7 +293,7 @@ const PrettySuffix kPrettyBytesMetricSuffixes[] = {
     {"GB", 1e9L},
     {"MB", 1e6L},
     {"kB", 1e3L},
-    {"B ", 0L},
+    {"B ", 0},
     {nullptr, 0},
 };
 
@@ -304,7 +304,7 @@ const PrettySuffix kPrettyBytesBinarySuffixes[] = {
     {"GB", int64_t(1) << 30},
     {"MB", int64_t(1) << 20},
     {"kB", int64_t(1) << 10},
-    {"B ", 0L},
+    {"B ", 0},
     {nullptr, 0},
 };
 
@@ -315,7 +315,7 @@ const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
     {"GiB", int64_t(1) << 30},
     {"MiB", int64_t(1) << 20},
     {"KiB", int64_t(1) << 10},
-    {"B  ", 0L},
+    {"B  ", 0},
     {nullptr, 0},
 };
 
@@ -584,29 +584,29 @@ void toLowerAscii32(uint32_t& c) {
   // an overflow in the 8-bit value.  So we can pack four 8-bit values
   // into a uint32_t and run each operation on all four values in parallel
   // without having to use any CPU-specific SIMD instructions.
-  uint32_t rotated = c & uint32_t(0x7f7f7f7fL);
-  rotated += uint32_t(0x25252525L);
-  rotated &= uint32_t(0x7f7f7f7fL);
-  rotated += uint32_t(0x1a1a1a1aL);
+  uint32_t rotated = c & uint32_t(0x7f7f7f7fUL);
+  rotated += uint32_t(0x25252525UL);
+  rotated &= uint32_t(0x7f7f7f7fUL);
+  rotated += uint32_t(0x1a1a1a1aUL);
 
   // Step 5 involves a shift, so some bits will spill over from each
   // 8-bit value into the next.  But that's okay, because they're bits
   // that will be cleared by the mask in step 6 anyway.
   rotated &= ~c;
   rotated >>= 2;
-  rotated &= uint32_t(0x20202020L);
+  rotated &= uint32_t(0x20202020UL);
   c += rotated;
 }
 
 void toLowerAscii64(uint64_t& c) {
   // 64-bit version of toLower32
-  uint64_t rotated = c & uint64_t(0x7f7f7f7f7f7f7f7fL);
-  rotated += uint64_t(0x2525252525252525L);
-  rotated &= uint64_t(0x7f7f7f7f7f7f7f7fL);
-  rotated += uint64_t(0x1a1a1a1a1a1a1a1aL);
+  uint64_t rotated = c & uint64_t(0x7f7f7f7f7f7f7f7fULL);
+  rotated += uint64_t(0x2525252525252525ULL);
+  rotated &= uint64_t(0x7f7f7f7f7f7f7f7fULL);
+  rotated += uint64_t(0x1a1a1a1a1a1a1a1aULL);
   rotated &= ~c;
   rotated >>= 2;
-  rotated &= uint64_t(0x2020202020202020L);
+  rotated &= uint64_t(0x2020202020202020ULL);
   c += rotated;
 }
 

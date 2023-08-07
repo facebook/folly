@@ -30,26 +30,27 @@
  *
  * For example:
  *
- * for (const auto& [index, element] : folly::enumerate(vec)) {
- *   // index is a reference to a size_t
- *   // element is a reference to the type contained within vec
+ * for (auto&& [index, element] : folly::enumerate(vec)) {
+ *   // index is a const reference to a size_t containing the iteration count.
+ *   // element is a reference to the type contained within vec, mutable
+ *   // unless vec is const.
+ * }
+ *
+ * If the binding is const, the element reference is too.
+ *
+ * for (const auto&& [index, element] : folly::enumerate(vec)) {
+ *   // element is always a const reference.
  * }
  *
  * It can also be used as follows:
  *
  * for (auto&& it : folly::enumerate(vec)) {
- *   // *it is a reference to the current element. Const if vec is const.
+ *   // *it is a reference to the current element. Mutable unless vec is const.
  *   // it->member can be used as well.
  *   // it.index contains the iteration count.
  * }
  *
- * If the iteration variable is const, the reference is too.
- *
- * for (const auto&& it : folly::enumerate(vec)) {
- *   // *it is always a const reference.
- * }
- *
- * @author Giuseppe Ottaviano <ott@fb.com>
+ * As before, const auto&& it can also be used.
  */
 
 namespace folly {

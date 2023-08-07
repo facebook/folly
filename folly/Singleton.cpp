@@ -26,7 +26,6 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
 #include <string>
 #include <fmt/chrono.h>
 
@@ -35,6 +34,10 @@
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/FmtCompile.h>
+// Before registrationComplete() we cannot assume that glog has been
+// initialized, so we need to use RAW_LOG for any message that may be logged
+// before that.
+#include <glog/raw_logging.h>
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
 #define FOLLY_SINGLETON_HAVE_DLSYM 1
@@ -74,48 +77,48 @@ std::string TypeDescriptor::name() const {
   return ret.toStdString();
 }
 
-// clang-format off
 [[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
     const TypeDescriptor& type) {
-  // Ensure the availability of std::cerr
-  std::ios_base::Init ioInit;
-  std::cerr << "Double registration of singletons of the same "
-               "underlying type; check for multiple definitions "
-               "of type folly::Singleton<"
-            << type.name() << ">\n";
-  std::abort();
+  RAW_LOG( // May happen before registrationComplete().
+      FATAL,
+      "Double registration of singletons of the same "
+      "underlying type; check for multiple definitions "
+      "of type folly::Singleton<%s>",
+      type.name().c_str());
+  folly::assume_unreachable();
 }
 
 [[noreturn]] void singletonWarnLeakyDoubleRegistrationAndAbort(
     const TypeDescriptor& type) {
-  // Ensure the availability of std::cerr
-  std::ios_base::Init ioInit;
-  std::cerr << "Double registration of singletons of the same "
-               "underlying type; check for multiple definitions "
-               "of type folly::LeakySingleton<"
-            << type.name() << ">\n";
-  std::abort();
+  RAW_LOG( // May happen before registrationComplete().
+      FATAL,
+      "Double registration of singletons of the same "
+      "underlying type; check for multiple definitions "
+      "of type folly::LeakySingleton<%s>",
+      type.name().c_str());
+  folly::assume_unreachable();
 }
 
 [[noreturn]] void singletonWarnLeakyInstantiatingNotRegisteredAndAbort(
     const TypeDescriptor& type) {
-  auto trace = symbolizer::getStackTraceStr();
-  LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
-             << "\n"
-             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
+  RAW_LOG( // May happen before registrationComplete().
+      FATAL,
+      "Creating instance for unregistered singleton: %s",
+      type.name().c_str());
   folly::assume_unreachable();
 }
 
 [[noreturn]] void singletonWarnRegisterMockEarlyAndAbort(
     const TypeDescriptor& type) {
-  LOG(FATAL) << "Registering mock before singleton was registered: "
-             << type.name();
+  RAW_LOG( // May happen before registrationComplete().
+      FATAL,
+      "Registering mock before singleton was registered: %s",
+      type.name().c_str());
   folly::assume_unreachable();
 }
 
 void singletonWarnDestroyInstanceLeak(
-    const TypeDescriptor& type,
-    const void* ptr) {
+    const TypeDescriptor& type, const void* ptr) {
   LOG(ERROR) << "Singleton of type " << type.name() << " has a "
              << "living reference at destroyInstances time; beware! Raw "
              << "pointer is " << ptr << ". It is very likely "
@@ -134,34 +137,37 @@ void singletonWarnDestroyInstanceLeak(
 
 [[noreturn]] void singletonWarnCreateUnregisteredAndAbort(
     const TypeDescriptor& type) {
-  auto trace = symbolizer::getStackTraceStr();
-  LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
-             << "\n"
-             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
+  RAW_LOG( // May happen before registrationComplete().
+      FATAL,
+      "Creating instance for unregistered singleton: %s",
+      type.name().c_str());
   folly::assume_unreachable();
 }
 
 [[noreturn]] void singletonWarnCreateBeforeRegistrationCompleteAndAbort(
     const TypeDescriptor& type) {
-  auto trace = symbolizer::getStackTraceStr();
-  LOG(FATAL) << "Singleton " << type.name() << " requested before "
-             << "registrationComplete() call.\n"
-             << "This usually means that either main() never called "
-             << "folly::init, or singleton was requested before main() "
-             << "(which is not allowed).\n"
-             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
+  RAW_LOG( // May happen before registrationComplete().
+      FATAL,
+      "Singleton %s requested before "
+      "registrationComplete() call.\n"
+      "This usually means that either main() never called "
+      "folly::init, or singleton was requested before main() "
+      "(which is not allowed)",
+      type.name().c_str());
   folly::assume_unreachable();
 }
 
 void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
   auto trace = symbolizer::getStackTraceStr();
   LOG(ERROR) << "Singleton " << type.name() << " was released.\n"
-             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
+             << "Stacktrace:\n"
+             << (!trace.empty() ? trace : "(not available)");
 }
 
 [[noreturn]] void singletonThrowNullCreator(const std::type_info& type) {
-  auto const msg = fmt::format(FOLLY_FMT_COMPILE(
-      "nullptr_t should be passed if you want {} to be default constructed"),
+  auto const msg = fmt::format(
+      FOLLY_FMT_COMPILE(
+          "nullptr_t should be passed if you want {} to be default constructed"),
       folly::StringPiece(demangle(type)));
   throw std::logic_error(msg);
 }
@@ -173,7 +179,6 @@ void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
       " Singleton type is: " +
       type.name());
 }
-// clang-format on
 
 } // namespace detail
 

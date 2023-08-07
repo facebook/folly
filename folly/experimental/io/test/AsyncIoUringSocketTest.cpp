@@ -20,6 +20,9 @@
 #include <random>
 #include <vector>
 
+#include <folly/FileUtil.h>
+#include <folly/Subprocess.h>
+#include <folly/executors/GlobalExecutor.h>
 #include <folly/experimental/io/AsyncIoUringSocket.h>
 #include <folly/experimental/io/IoUringBackend.h>
 #include <folly/experimental/io/IoUringEvent.h>
@@ -29,6 +32,7 @@
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
+#include <folly/system/Shell.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
 namespace folly {
@@ -37,6 +41,14 @@ namespace {
 
 static constexpr std::chrono::milliseconds kTimeout{30000};
 static constexpr size_t kBufferSize{1024};
+
+std::string toString(std::unique_ptr<IOBuf> const& buf) {
+  if (!buf) {
+    return std::string();
+  }
+  auto coalesced = buf->coalesce();
+  return std::string((char const*)coalesced.data(), coalesced.size());
+}
 
 class NullWriteCallback : public AsyncWriter::WriteCallback {
  public:
@@ -50,23 +62,21 @@ class NullWriteCallback : public AsyncWriter::WriteCallback {
 
 static NullWriteCallback nullWriteCallback;
 
-class ExpectErrorWriteCallback : public AsyncWriter::WriteCallback {
+class FutureWriteCallback : public AsyncWriter::WriteCallback {
  public:
   void writeSuccess() noexcept override {
-    promiseContract.first.setException<std::runtime_error>(
-        std::runtime_error{"did not expect success"});
+    promiseContract.first.setValue(Unit{});
   }
 
   void writeErr(
       size_t bytesWritten, const AsyncSocketException& ex) noexcept override {
-    promiseContract.first.setValue(std::make_pair(bytesWritten, ex));
+    promiseContract.first.setValue(
+        makeUnexpected(std::make_pair(bytesWritten, ex)));
   }
 
-  std::pair<
-      Promise<std::pair<size_t, AsyncSocketException>>,
-      SemiFuture<std::pair<size_t, AsyncSocketException>>>
-      promiseContract =
-          makePromiseContract<std::pair<size_t, AsyncSocketException>>();
+  using TResult = Expected<Unit, std::pair<size_t, AsyncSocketException>>;
+  std::pair<Promise<TResult>, SemiFuture<TResult>> promiseContract =
+      makePromiseContract<TResult>();
 };
 
 } // namespace
@@ -74,7 +84,7 @@ class ExpectErrorWriteCallback : public AsyncWriter::WriteCallback {
 class EchoTransport : public AsyncReader::ReadCallback,
                       public AsyncWriter::WriteCallback {
  public:
-  explicit EchoTransport(AsyncTransport::UniquePtr s, bool bm)
+  explicit EchoTransport(AsyncSocketTransport::UniquePtr s, bool bm)
       : transport(std::move(s)), bufferMovable(bm) {}
 
   void start() { transport->setReadCB(this); }
@@ -115,7 +125,7 @@ class EchoTransport : public AsyncReader::ReadCallback,
     transport->writeChain(this, std::move(readBuf));
   }
 
-  AsyncTransport::UniquePtr transport;
+  AsyncSocketTransport::UniquePtr transport;
   bool bufferMovable;
   std::array<char, kBufferSize> buff;
 };
@@ -168,9 +178,7 @@ class CollectCallback : public AsyncReader::ReadCallback {
       readBuf = std::move(cloned);
     }
 
-    auto coalesced = readBuf->coalesce();
-    VLOG(1) << "CollectCallback::readBufferAvailable " << coalesced.size();
-    data += std::string((char const*)coalesced.data(), coalesced.size());
+    data += toString(readBuf);
     dataAvailable();
   }
 
@@ -210,6 +218,8 @@ struct TestParams {
   bool manySmallBuffers = false;
   bool epoll = false;
   bool supportBufferMovable = true;
+  bool sendzc = false;
+  bool registerFd = true;
   std::string testName() const {
     return folly::to<std::string>(
         ioUringServer ? "ioUringServer" : "oldServer",
@@ -217,11 +227,29 @@ struct TestParams {
         ioUringClient ? "ioUringClient" : "oldClient",
         "_",
         manySmallBuffers ? "manySmallBuffers" : "oneBigBuffer",
+        supportBufferMovable ? "" : "_noSupportBufferMovable",
+        sendzc ? "_zerocopy" : "",
         "_",
-        supportBufferMovable ? "" : "noSupportBufferMovable",
-        "_",
+        registerFd ? "" : "_noRegisterFd",
         epoll ? "epoll" : "iouring",
         "Backend");
+  }
+};
+
+struct ConnectedOptions {
+  std::string fastOpenInitial;
+  bool serverShouldRead = true;
+
+  ConnectedOptions withNoServerShouldRead() {
+    auto ret = *this;
+    ret.serverShouldRead = false;
+    return ret;
+  }
+
+  ConnectedOptions withFastOpen(std::string i) {
+    auto ret = *this;
+    ret.fastOpenInitial = std::move(i);
+    return ret;
   }
 };
 
@@ -230,7 +258,8 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
                                public AsyncSocket::ConnectCallback {
  public:
   static IoUringBackend::Options ioOptions(TestParams const& p) {
-    auto options = IoUringBackend::Options{}.setUseRegisteredFds(64);
+    auto options =
+        IoUringBackend::Options{}.setUseRegisteredFds(p.registerFd ? 64 : 0);
     if (p.manySmallBuffers) {
       options.setInitialProvidedBuffers(1024, 2000);
     } else {
@@ -240,14 +269,18 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     return options;
   }
 
-  EventBase::Options ebOptions() {
-    if (GetParam().epoll) {
-      return {};
-    }
+  EventBase::Options ioUringEbOptions() {
     return EventBase::Options{}.setBackendFactory(
         [p = GetParam()]() -> std::unique_ptr<EventBaseBackendBase> {
           return std::make_unique<IoUringBackend>(ioOptions(p));
         });
+  }
+
+  EventBase::Options ebOptions() {
+    if (GetParam().epoll) {
+      return {};
+    }
+    return ioUringEbOptions();
   }
 
   void maybeSkip() {
@@ -272,12 +305,17 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
         unableToRun = true;
         return;
       }
-      backend = &ioUringEvent->backend();
+      backend = backendForSocketConstructor = &ioUringEvent->backend();
+    } else {
+      backend = dynamic_cast<IoUringBackend*>(base->getBackend());
     }
 
+    backend->loopPoll(); // init delayed bits as this is the only thread
+
     serverSocket = AsyncServerSocket::newSocket(base.get());
+    serverSocket->setTFOEnabled(true, 1);
     serverSocket->bind(0);
-    serverSocket->listen(0);
+    serverSocket->listen(1024);
     serverSocket->addAcceptCallback(this, nullptr);
     serverSocket->startAccepting();
     serverSocket->getAddress(&serverAddress);
@@ -303,17 +341,34 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
       }
     }
   };
-  Connected makeConnected(bool server_should_read = true) {
-    AsyncTransport::UniquePtr client;
-    if (GetParam().ioUringClient) {
-      auto c = new AsyncIoUringSocket(base.get(), backend);
-      c->connect(this, serverAddress);
-      client = AsyncTransport::UniquePtr(c);
-    } else {
-      auto c = AsyncSocket::newSocket(base.get());
-      c->connect(this, serverAddress);
-      client = std::move(c);
+
+  AsyncIoUringSocket::Options ioUringSocketOptions() const {
+    AsyncIoUringSocket::Options ret;
+    if (GetParam().sendzc) {
+      ret.zeroCopyEnable = [](auto&&) { return true; };
     }
+    return ret;
+  }
+
+  Connected makeConnected(ConnectedOptions options = ConnectedOptions{}) {
+    AsyncSocketTransport::UniquePtr client;
+    if (GetParam().ioUringClient) {
+      client = AsyncSocketTransport::UniquePtr(new AsyncIoUringSocket(
+          base.get(), backendForSocketConstructor, ioUringSocketOptions()));
+    } else {
+      client =
+          AsyncSocketTransport::UniquePtr(AsyncSocket::newSocket(base.get()));
+    }
+
+    if (options.fastOpenInitial.size()) {
+      client->enableTFO();
+    }
+    client->connect(this, serverAddress);
+    if (options.fastOpenInitial.size()) {
+      client->writeChain(
+          &nullWriteCallback, IOBuf::copyBuffer(options.fastOpenInitial));
+    }
+
     auto fd = fdPromise.getFuture()
                   .within(kTimeout)
                   .via(base.get())
@@ -325,9 +380,11 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     auto cb = std::make_unique<CollectCallback>();
     AsyncTransport::UniquePtr sock = GetParam().ioUringServer
         ? AsyncTransport::UniquePtr(new AsyncIoUringSocket(
-              AsyncSocket::newSocket(base.get(), fd), backend))
+              AsyncSocket::newSocket(base.get(), fd),
+              backendForSocketConstructor,
+              ioUringSocketOptions()))
         : AsyncTransport::UniquePtr(AsyncSocket::newSocket(base.get(), fd));
-    if (server_should_read) {
+    if (options.serverShouldRead) {
       sock->setReadCB(cb.get());
     }
     return Connected{std::move(c), std::move(sock), std::move(cb)};
@@ -337,6 +394,7 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
   std::unique_ptr<EventBase> base;
   std::unique_ptr<IoUringEvent> ioUringEvent;
   std::shared_ptr<AsyncServerSocket> serverSocket;
+  IoUringBackend* backendForSocketConstructor = nullptr;
   IoUringBackend* backend = nullptr;
   SocketAddress serverAddress;
 
@@ -420,7 +478,7 @@ TEST_P(AsyncIoUringSocketTest, EoF) {
     char buff;
   };
 
-  auto c = makeConnected(false);
+  auto c = makeConnected(ConnectedOptions{}.withNoServerShouldRead());
   {
     CB cb_eof;
     c.server->setReadCB(&cb_eof);
@@ -445,6 +503,165 @@ TEST_P(AsyncIoUringSocketTest, EoF) {
     auto er = ex.error();
     EXPECT_EQ(AsyncSocketException::NOT_OPEN, er.getType());
     c.server->setReadCB(nullptr);
+  }
+}
+
+struct DetachCB : folly::AsyncDetachFdCallback {
+  void fdDetached(
+      NetworkSocket ns, std::unique_ptr<IOBuf> unread) noexcept override {
+    promise.setValue(std::make_pair(ns, std::move(unread)));
+  }
+
+  void fdDetachFail(const AsyncSocketException& ex) noexcept override {
+    promise.setException(ex);
+  }
+
+  folly::Promise<std::pair<NetworkSocket, std::unique_ptr<IOBuf>>> promise;
+};
+
+TEST_P(AsyncIoUringSocketTest, Detach) {
+  MAYBE_SKIP();
+  auto c = makeConnected();
+  auto* was = c.server->getUnderlyingTransport<folly::AsyncIoUringSocket>();
+  ASSERT_NE(was, nullptr);
+
+  // write something
+  c.client->transport->write(&nullWriteCallback, "hello", 5);
+  // make sure it gets run
+  backend->submitOutstanding();
+
+  // sleep a bit to get the read all the way into the completion queue
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds(5));
+
+  // now detach before the write is completed
+  DetachCB cb;
+  was->asyncDetachFd(&cb);
+  ASSERT_FALSE(cb.promise.isFulfilled()) << "must wait for read to finish";
+
+  auto res = cb.promise.getSemiFuture()
+                 .within(kTimeout)
+                 .via(base.get())
+                 .getVia(base.get());
+  EXPECT_GE(res.first.toFd(), 0);
+  if (res.second) {
+    // did not cancel in time
+    EXPECT_EQ("hello", toString(res.second));
+  } else {
+    // did cancel in time
+    char buff[128];
+    memset(buff, 0, sizeof(buff));
+    int ret;
+    do {
+      ret = read(res.first.toFd(), &buff, sizeof(buff));
+    } while (ret == -1 && errno == EINTR);
+    ASSERT_EQ(5, ret);
+    EXPECT_EQ("hello", std::string(buff));
+  }
+}
+
+TEST_P(AsyncIoUringSocketTest, DetachEventBase) {
+  MAYBE_SKIP();
+  auto c = makeConnected();
+
+  // write something
+  FutureWriteCallback fwc;
+  auto* transport = c.client->transport.get();
+  transport->write(&fwc, "hello", 5);
+
+  // make sure it gets run
+  backend->submitOutstanding();
+  ASSERT_TRUE(transport->isDetachable());
+  transport->detachEventBase();
+
+  EventBase newBase{ioUringEbOptions()};
+  transport->attachEventBase(&newBase);
+
+  auto resFut = c.callback->waitFor(5).via(folly::getGlobalCPUExecutor().get());
+  auto start = std::chrono::steady_clock::now();
+  do {
+    newBase.loopOnce(EVLOOP_NONBLOCK);
+    base->loopOnce(EVLOOP_NONBLOCK);
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds(20));
+    auto res = resFut.poll();
+    if (res) {
+      EXPECT_EQ("hello", res->value());
+      break;
+    }
+    if (std::chrono::steady_clock::now() > start + std::chrono::seconds(1)) {
+      FAIL();
+      break;
+    }
+  } while (true);
+
+  // make sure write arrived, it should be on the new event base
+  ASSERT_TRUE(std::move(fwc.promiseContract.second)
+                  .via(&newBase)
+                  .getVia(&newBase)
+                  .hasValue());
+
+  ASSERT_TRUE(transport->isDetachable());
+  transport->detachEventBase();
+  transport->attachEventBase(base.get());
+}
+
+TEST_P(AsyncIoUringSocketTest, DetachEventBaseClear) {
+  MAYBE_SKIP();
+  auto c = makeConnected();
+
+  // write something
+  c.client->transport->write(&nullWriteCallback, "hello", 5);
+
+  backend->submitOutstanding();
+  ASSERT_TRUE(c.client->transport->isDetachable());
+  c.client->transport->detachEventBase();
+
+  // now free things in the middle
+  base->loopOnce(EVLOOP_NONBLOCK);
+}
+
+TEST_P(AsyncIoUringSocketTest, FastOpen) {
+  MAYBE_SKIP();
+  bool had_fastopen = false;
+  bool can_fastopen = false;
+  std::string fo;
+  if (readFile("/proc/sys/net/ipv4/tcp_fastopen", fo)) {
+    auto fast_open = folly::to<int>(fo);
+    if (fast_open == 3) {
+      can_fastopen = true;
+    }
+  }
+  if (!can_fastopen) {
+    LOG(INFO) << "/proc/sys/net/ipv4/tcp_fastopen must be 3 to do fastopen, "
+                 "but we will test the code flow anyway";
+  }
+  // technically we could run ip tcp_metrics flush here, but messing with the
+  // system in a test is awful
+  folly::Subprocess subProc("/sbin/ip tcp_metrics show ::1"_shellify());
+  int has_cookies_already = subProc.wait().exitStatus();
+  if (has_cookies_already == 0) {
+    LOG(INFO)
+        << "already had cookies, so cannot do fastopen test, but will test code flow anyway. "
+        << " you could do a `/sbin/ip tcp_metrics flush` to test this";
+    had_fastopen = true;
+  }
+  auto opts = ConnectedOptions{}.withFastOpen("hello");
+  {
+    auto conn = makeConnected(opts);
+    EXPECT_EQ(
+        "hello", conn.callback->waitFor(5).via(base.get()).getVia(base.get()));
+    if (!had_fastopen) {
+      EXPECT_FALSE(conn.client->transport->getTFOSucceded());
+    }
+  }
+  {
+    auto conn = makeConnected(opts);
+    EXPECT_EQ(
+        "hello", conn.callback->waitFor(5).via(base.get()).getVia(base.get()));
+    if (can_fastopen) {
+      EXPECT_TRUE(conn.client->transport->getTFOSucceded());
+    }
   }
 }
 
@@ -475,7 +692,7 @@ TEST_P(AsyncIoUringSocketTestAll, WriteChainLong) {
   auto [e, s, cb] = makeConnected();
   auto chain = IOBuf::copyBuffer("?");
   std::string res = "?";
-  for (int i = 0; i < 512; i++) {
+  for (int i = 0; i < 4096; i++) {
     std::string x(1, 'a' + i % 26);
     chain->appendToChain(IOBuf::copyBuffer(x));
     res += x;
@@ -571,8 +788,8 @@ TEST_P(AsyncIoUringSocketTestAll, SendTimeout) {
     // folly::AsyncSocket is not totally reliable with timeouts
     return;
   }
-  auto conn = makeConnected(false);
-  ExpectErrorWriteCallback ecb;
+  auto conn = makeConnected(ConnectedOptions{}.withNoServerShouldRead());
+  FutureWriteCallback ecb;
   std::string big(40000000, 'X');
   std::vector<iovec> iov;
   iov.resize(100);
@@ -586,23 +803,47 @@ TEST_P(AsyncIoUringSocketTestAll, SendTimeout) {
   });
   auto ex =
       std::move(ecb.promiseContract.second).via(base.get()).getVia(base.get());
-  EXPECT_EQ(AsyncSocketException::TIMED_OUT, ex.second.getType());
+  ASSERT_TRUE(ex.hasError());
+  EXPECT_EQ(AsyncSocketException::TIMED_OUT, ex.error().second.getType());
 }
 
 auto mkAllTestParams() {
   std::vector<TestParams> t;
+
+  auto addFeatureCases = [&](TestParams const& base) {
+    TestParams all = base;
+
+    // add test cases where each feature is not the default, as well as one
+    // where all the features are not the default
+    auto add_flip_case = [&](auto ptr) {
+      auto tc = base;
+      tc.*ptr = all.*ptr = !(tc.*ptr);
+      t.push_back(tc);
+    };
+
+    add_flip_case(&TestParams::registerFd);
+    if (IoUringBackend::kernelSupportsSendZC()) {
+      add_flip_case(&TestParams::sendzc);
+    }
+    add_flip_case(&TestParams::supportBufferMovable);
+    t.push_back(all);
+  };
+
   for (bool server : {false, true}) {
     for (bool client : {false, true}) {
       for (bool manySmallBuffers : {false, true}) {
         for (bool epoll : {false, true}) {
-          for (bool bm : {false, true}) {
-            TestParams base;
-            base.ioUringServer = server;
-            base.ioUringClient = client;
-            base.manySmallBuffers = manySmallBuffers;
-            base.epoll = epoll;
-            base.supportBufferMovable = bm;
-            t.push_back(base);
+          TestParams base;
+          base.ioUringServer = server;
+          base.ioUringClient = client;
+          base.manySmallBuffers = manySmallBuffers;
+          base.epoll = epoll;
+          t.push_back(base);
+
+          // only expand feature flags in some cases to reduce the massive
+          // explosion of tests
+          if (server && client && !epoll) {
+            addFeatureCases(base);
           }
         }
       }
@@ -645,7 +886,7 @@ class AsyncSocketWithPreRead : public AsyncSocket {
 
 TEST_P(AsyncIoUringSocketTakeoverTest, PreRead) {
   MAYBE_SKIP();
-  auto conn = makeConnected(false);
+  auto conn = makeConnected(ConnectedOptions{}.withNoServerShouldRead());
   AsyncSocket::UniquePtr sock(
       dynamic_cast<AsyncSocket*>(conn.server.release()));
   ASSERT_NE(sock, nullptr);

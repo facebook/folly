@@ -23,6 +23,11 @@
 namespace folly {
 namespace channels {
 
+namespace detail {
+template <typename ValueType>
+class FanoutSenderProcessor;
+}
+
 /**
  * A FanoutSender allows fanning out updates to multiple output receivers.
  * Values can be written as with a normal Sender. When there is only one output
@@ -38,9 +43,9 @@ namespace channels {
  * Example:
  *
  *  FanoutSender<int> fanoutSender;
- *  auto receiver1 = fanoutSender.getNewReceiver();
- *  auto receiver2 = fanoutSender.getNewReceiver();
- *  auto receiver3 = fanoutSender.getNewReceiver({1, 2, 3});
+ *  auto receiver1 = fanoutSender.subscribe();
+ *  auto receiver2 = fanoutSender.subscribe();
+ *  auto receiver3 = fanoutSender.subscribe({1, 2, 3});
  *  std::move(fanoutSender).close();
  */
 template <typename ValueType>
@@ -66,7 +71,7 @@ class FanoutSender {
   /**
    * Returns whether this fanout sender has any active output receivers.
    */
-  bool anySubscribers();
+  bool anySubscribers() const;
 
   /**
    * Returns the number of output receivers for this fanout sender.
@@ -85,17 +90,19 @@ class FanoutSender {
   void close(exception_wrapper ex = exception_wrapper()) &&;
 
  private:
-  bool hasSenderSet();
+  bool anySubscribersImpl() const;
 
-  detail::ChannelBridge<ValueType>* getSingleSender();
+  bool hasProcessor() const;
 
-  folly::F14FastSet<detail::ChannelBridgePtr<ValueType>>* getSenderSet();
+  detail::ChannelBridge<ValueType>* getSingleSender() const;
 
-  void clearSendersWithClosedReceivers();
+  detail::FanoutSenderProcessor<ValueType>* getProcessor() const;
 
-  detail::PointerVariant<
+  void clearSendersWithClosedReceivers() const;
+
+  mutable detail::PointerVariant<
       detail::ChannelBridge<ValueType>,
-      folly::F14FastSet<detail::ChannelBridgePtr<ValueType>>>
+      detail::FanoutSenderProcessor<ValueType>>
       senders_;
 };
 } // namespace channels

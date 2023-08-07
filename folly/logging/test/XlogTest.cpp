@@ -40,6 +40,19 @@ using namespace std::chrono_literals;
 XLOG_SET_CATEGORY_NAME("xlog_test.main_file")
 
 namespace {
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 9
+// XLOG_SET_CATEGORY_NAME() does not work in gcc < 9.0
+// TODO: remove this when we drop support for gcc 8.x
+constexpr const char* current_xlog_category = "folly.logging.test.XlogTest.cpp";
+constexpr const char* current_xlog_category_original =
+    "folly/logging/test/XlogTest.cpp";
+constexpr const char* current_xlog_parent = "folly.logging.test.XlogTest";
+#else
+constexpr const char* current_xlog_category = "xlog_test.main_file";
+constexpr const char* current_xlog_category_original = "xlog_test.main_file";
+constexpr const char* current_xlog_parent = "xlog_test.main_file";
+#endif
+
 class XlogTest : public testing::Test {
  public:
   XlogTest() {
@@ -57,13 +70,13 @@ class XlogTest : public testing::Test {
 } // namespace
 
 TEST_F(XlogTest, xlogName) {
-  EXPECT_EQ("xlog_test.main_file", XLOG_GET_CATEGORY_NAME());
-  EXPECT_EQ("xlog_test.main_file", XLOG_GET_CATEGORY()->getName());
+  EXPECT_EQ(current_xlog_category_original, XLOG_GET_CATEGORY_NAME());
+  EXPECT_EQ(current_xlog_category, XLOG_GET_CATEGORY()->getName());
 }
 
 TEST_F(XlogTest, xlogIf) {
   auto handler = make_shared<TestLogHandler>();
-  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
+  LoggerDB::get().getCategory(current_xlog_parent)->addHandler(handler);
   auto& messages = handler->getMessages();
 
   // info messages are not enabled initially.
@@ -78,7 +91,7 @@ TEST_F(XlogTest, xlogIf) {
   messages.clear();
 
   // Increase the log level, then log a message.
-  LoggerDB::get().setLevel("xlog_test.main_file", LogLevel::DBG1);
+  LoggerDB::get().setLevel(current_xlog_category, LogLevel::DBG1);
   XLOG_IF(DBG1, false, "testing: ", 1, 2, 3);
   ASSERT_EQ(0, messages.size());
   messages.clear();
@@ -131,11 +144,18 @@ TEST_F(XlogTest, xlogIf) {
   XLOGF_IF(DBG1, true, "number: {:>3d}; string: {}", 12, "foo");
   ASSERT_EQ(1, messages.size());
   messages.clear();
+
+  XLOGF_IF(DBG1, false, "plain format string");
+  ASSERT_EQ(0, messages.size());
+  messages.clear();
+  XLOGF_IF(DBG1, true, "plain format string");
+  ASSERT_EQ(1, messages.size());
+  messages.clear();
 }
 
 TEST_F(XlogTest, xlog) {
   auto handler = make_shared<TestLogHandler>();
-  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
+  LoggerDB::get().getCategory(current_xlog_parent)->addHandler(handler);
   auto& messages = handler->getMessages();
 
   // info messages are not enabled initially.
@@ -146,7 +166,7 @@ TEST_F(XlogTest, xlog) {
   messages.clear();
 
   // Increase the log level, then log a message.
-  LoggerDB::get().setLevel("xlog_test.main_file", LogLevel::DBG1);
+  LoggerDB::get().setLevel(current_xlog_category, LogLevel::DBG1);
 
   XLOG(DBG1, "testing: ", 1, 2, 3);
   ASSERT_EQ(1, messages.size());
@@ -154,8 +174,8 @@ TEST_F(XlogTest, xlog) {
   EXPECT_TRUE(messages[0].first.getFileName().endsWith("XlogTest.cpp"))
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::DBG1, messages[0].first.getLevel());
-  EXPECT_EQ("xlog_test.main_file", messages[0].first.getCategory()->getName());
-  EXPECT_EQ("xlog_test", messages[0].second->getName());
+  EXPECT_EQ(current_xlog_category, messages[0].first.getCategory()->getName());
+  EXPECT_EQ(current_xlog_parent, messages[0].second->getName());
   messages.clear();
 
   XLOGF(WARN, "number: {:>3d}; string: {}", 12, "foo");
@@ -164,8 +184,18 @@ TEST_F(XlogTest, xlog) {
   EXPECT_TRUE(messages[0].first.getFileName().endsWith("XlogTest.cpp"))
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
-  EXPECT_EQ("xlog_test.main_file", messages[0].first.getCategory()->getName());
-  EXPECT_EQ("xlog_test", messages[0].second->getName());
+  EXPECT_EQ(current_xlog_category, messages[0].first.getCategory()->getName());
+  EXPECT_EQ(current_xlog_parent, messages[0].second->getName());
+  messages.clear();
+
+  XLOGF(WARN, "plain format string");
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("plain format string", messages[0].first.getMessage());
+  EXPECT_TRUE(messages[0].first.getFileName().endsWith("XlogTest.cpp"))
+      << "unexpected file name: " << messages[0].first.getFileName();
+  EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
+  EXPECT_EQ(current_xlog_category, messages[0].first.getCategory()->getName());
+  EXPECT_EQ(current_xlog_parent, messages[0].second->getName());
   messages.clear();
 
   XLOG(DBG2, "this log check should not pass");
@@ -179,8 +209,8 @@ TEST_F(XlogTest, xlog) {
   EXPECT_TRUE(messages[0].first.getFileName().endsWith("XlogTest.cpp"))
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::INFO, messages[0].first.getLevel());
-  EXPECT_EQ("xlog_test.main_file", messages[0].first.getCategory()->getName());
-  EXPECT_EQ("xlog_test", messages[0].second->getName());
+  EXPECT_EQ(current_xlog_category, messages[0].first.getCategory()->getName());
+  EXPECT_EQ(current_xlog_parent, messages[0].second->getName());
   messages.clear();
 }
 
@@ -277,12 +307,29 @@ TEST_F(XlogTest, perFileCategoryHandling) {
 TEST_F(XlogTest, rateLimiting) {
   auto SEVEN = 7;
   auto handler = make_shared<TestLogHandler>();
-  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
-  LoggerDB::get().setLevel("xlog_test", LogLevel::DBG1);
+  LoggerDB::get().getCategory(current_xlog_parent)->addHandler(handler);
+  LoggerDB::get().setLevel(current_xlog_parent, LogLevel::DBG1);
 
   // Test XLOG_EVERY_N
   for (size_t n = 0; n < 50; ++n) {
     XLOG_EVERY_N(DBG1, 7, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0",
+          "msg 7",
+          "msg 14",
+          "msg 21",
+          "msg 28",
+          "msg 35",
+          "msg 42",
+          "msg 49"));
+  handler->clearMessages();
+
+  // Test XLOGF_EVERY_N
+  for (size_t n = 0; n < 50; ++n) {
+    XLOGF_EVERY_N(DBG1, 7, "msg {}", n);
   }
   EXPECT_THAT(
       handler->getMessageValues(),
@@ -310,6 +357,16 @@ TEST_F(XlogTest, rateLimiting) {
   for (size_t n = 0; n < 50; ++n) {
     bool shouldLog = n % 2 == 0;
     XLOG_EVERY_N_IF(DBG1, shouldLog, 7, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre("msg 0", "msg 14", "msg 28", "msg 42"));
+  handler->clearMessages();
+
+  // Test XLOGF_EVERY_N_IF
+  for (size_t n = 0; n < 50; ++n) {
+    bool shouldLog = n % 2 == 0;
+    XLOGF_EVERY_N_IF(DBG1, shouldLog, 7, "msg {}", n);
   }
   EXPECT_THAT(
       handler->getMessageValues(),
@@ -393,6 +450,9 @@ TEST_F(XlogTest, rateLimiting) {
     XLOGF_EVERY_MS(DBG1, 100, "fmt arg {}", n);
     XLOGF_EVERY_MS(DBG1, 100ms, "fmt ms arg {}", n);
 
+    XLOGF_EVERY_MS(DBG1, 100, "plain fmt str");
+    XLOGF_EVERY_MS(DBG1, 100ms, "plain fmt str ms");
+
     // Use XLOG_N_PER_MS() too
     XLOG_N_PER_MS(DBG1, 2, 100, "2x int arg ", n);
     XLOG_N_PER_MS(DBG1, 1, 100ms, "1x ms arg ", n);
@@ -410,26 +470,14 @@ TEST_F(XlogTest, rateLimiting) {
   EXPECT_THAT(
       handler->getMessageValues(),
       ElementsAreArray({
-          "int arg 0",
-          "ms arg 0",
-          "s arg 0",
-          "s arg capture 0",
-          "fmt arg 0",
-          "fmt ms arg 0",
-          "2x int arg 0",
-          "1x ms arg 0",
-          "3x s arg 0",
-          "2x int arg 1",
-          "3x s arg 1",
-          "3x s arg 2",
-          "int arg conditional 2",
-          "int arg 6",
-          "ms arg 6",
-          "fmt arg 6",
-          "fmt ms arg 6",
-          "2x int arg 6",
-          "1x ms arg 6",
-          "int arg conditional 6",
+          "int arg 0",       "ms arg 0",         "s arg 0",
+          "s arg capture 0", "fmt arg 0",        "fmt ms arg 0",
+          "plain fmt str",   "plain fmt str ms", "2x int arg 0",
+          "1x ms arg 0",     "3x s arg 0",       "2x int arg 1",
+          "3x s arg 1",      "3x s arg 2",       "int arg conditional 2",
+          "int arg 6",       "ms arg 6",         "fmt arg 6",
+          "fmt ms arg 6",    "plain fmt str",    "plain fmt str ms",
+          "2x int arg 6",    "1x ms arg 6",      "int arg conditional 6",
           "2x int arg 7",
       }));
   handler->clearMessages();
@@ -451,8 +499,8 @@ TEST_F(XlogTest, rateLimiting) {
 
 TEST_F(XlogTest, rateLimitingEndOfThread) {
   auto handler = make_shared<TestLogHandler>();
-  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
-  LoggerDB::get().setLevel("xlog_test", LogLevel::DBG1);
+  LoggerDB::get().getCategory(current_xlog_parent)->addHandler(handler);
+  LoggerDB::get().setLevel(current_xlog_parent, LogLevel::DBG1);
 
   auto th = std::thread([&] {
     auto enqueue = [](int num) {

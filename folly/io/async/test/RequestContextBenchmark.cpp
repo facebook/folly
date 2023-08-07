@@ -76,7 +76,7 @@ uint64_t runBench(int ops, int nthr, const Func& fn) {
     min = std::min(min, dur);
     max = std::max(max, dur);
     // if each rep takes too long run at least 3 reps
-    const uint64_t minute = 60000000000UL;
+    const uint64_t minute = 60000000000ULL;
     if (sum > minute && r >= 2) {
       reps = r + 1;
       break;

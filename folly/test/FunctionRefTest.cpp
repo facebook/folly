@@ -29,12 +29,6 @@ namespace folly {
 
 TEST(FunctionRef, Traits) {
   static_assert(std::is_literal_type<FunctionRef<int(int)>>::value, "");
-// Some earlier versions of libstdc++ lack these traits. Frustrating that
-// the value of __GLIBCXX__ doesn't increase with version, but rather reflects
-// release date, so some larger values of __GLIBCXX__ lack the traits while
-// some smaller values have them. Can't figure out how to reliably test for the
-// presence or absence of the traits. :-(
-#if !defined(__GLIBCXX__) || __GNUC__ >= 5
   static_assert(
       std::is_trivially_copy_constructible<FunctionRef<int(int)>>::value, "");
   static_assert(
@@ -53,7 +47,6 @@ TEST(FunctionRef, Traits) {
           FunctionRef<int(int)>,
           FunctionRef<int(int)>&>::value,
       "");
-#endif
   static_assert(
       std::is_nothrow_copy_constructible<FunctionRef<int(int)>>::value, "");
   static_assert(

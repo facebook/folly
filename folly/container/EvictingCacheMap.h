@@ -21,9 +21,7 @@
 #include <functional>
 
 #include <boost/intrusive/list.hpp>
-#include <boost/intrusive/unordered_set.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
-#include <boost/utility.hpp>
 
 #include <folly/container/F14Set.h>
 #include <folly/container/HeterogeneousAccess.h>
@@ -44,6 +42,9 @@ namespace folly {
  * because it is not invoked on erase nor cache destruction.
  *
  * This is NOT a thread-safe implementation.
+ *
+ * Iterators and references are only invalidated when the referenced entry
+ * might have been removed (pruned or erased), like std::map.
  *
  * NOTE: maxSize==0 is a special case that disables automatic evictions.
  * prune() can be used for manually trimming down the number of entries.
@@ -66,11 +67,10 @@ class EvictingCacheMap {
  private:
   // typedefs for brevity
   struct Node;
+  struct NodeList;
   struct KeyHasher;
   struct KeyValueEqual;
-  using LinkMode = boost::intrusive::link_mode<boost::intrusive::safe_link>;
   using NodeMap = F14VectorSet<Node*, KeyHasher, KeyValueEqual>;
-  using NodeList = boost::intrusive::list<Node>;
   using TPair = std::pair<const TKey, TValue>;
 
  public:
@@ -115,6 +115,14 @@ class EvictingCacheMap {
   using key_type = TKey;
   using mapped_type = TValue;
   using hasher = THash;
+
+  /*
+   * Approximate size of memory used by each entry added to the cache,
+   * including the shallow bits (sizeof) of TKey and TValue, but not the deep
+   * bits. Using 128 (bytes per chunk) / 10 (avg entries per chunk) as
+   * approximate F14 index entry size.
+   */
+  static constexpr std::size_t kApproximateEntryMemUsage = 13 + sizeof(Node);
 
  private:
   template <typename K, typename T>
@@ -166,12 +174,7 @@ class EvictingCacheMap {
   EvictingCacheMap(EvictingCacheMap&&) = default;
   EvictingCacheMap& operator=(EvictingCacheMap&&) = default;
 
-  ~EvictingCacheMap() {
-    assert(lru_.size() == index_.size());
-    // To avoid destructor depending on hash function, clear entries directly.
-    // Only intrusive container needs manual destruction.
-    lru_.clear_and_dispose([](Node* ptr) { delete ptr; });
-  }
+  ~EvictingCacheMap() { assert(lru_.size() == index_.size()); }
 
   /**
    * Adjust the max size of EvictingCacheMap, evicting as needed to ensure the
@@ -288,28 +291,33 @@ class EvictingCacheMap {
 
   /**
    * Erase the key-value pair associated with key if it exists. Prune hook
-   * is not called.
+   * is not called unless one passed in here.
    * @param key key associated with the value
+   * @param eraseHook callback to use with erased entry (similar to a prune
+   * hook)
    * @return true if the key existed and was erased, else false
    */
-  bool erase(const TKey& key) { return eraseImpl(key); }
+  bool erase(const TKey& key, PruneHookCall eraseHook = nullptr) {
+    return eraseKeyImpl(key, eraseHook);
+  }
 
   template <typename K, EnableHeterogeneousErase<K, int> = 0>
-  bool erase(const K& key) {
-    return eraseImpl(key);
+  bool erase(const K& key, PruneHookCall eraseHook = nullptr) {
+    return eraseKeyImpl(key, eraseHook);
   }
 
   /**
-   * Erase the key-value pair associated with pos. Prune hook is not called.
+   * Erase the key-value pair associated with pos. Prune hook is not called
+   * unless one passed in here.
    * @param pos iterator to the element to be erased
+   * @param eraseHook callback to use with erased entry (similar to a prune
+   * hook)
    * @return iterator to the following element or end() if pos was the last
    *     element
    */
-  iterator erase(const_iterator pos) {
-    auto* node = const_cast<Node*>(&(*pos.base()));
-    std::unique_ptr<Node> nptr(node);
-    index_.erase(node);
-    return iterator(lru_.erase(pos.base()));
+  iterator erase(const_iterator pos, PruneHookCall eraseHook = nullptr) {
+    return iterator(
+        eraseImpl(const_cast<Node*>(&(*pos.base())), pos.base(), eraseHook));
   }
 
   /**
@@ -394,7 +402,10 @@ class EvictingCacheMap {
    * Get the number of elements in the dictionary
    * @return the size of the dictionary
    */
-  std::size_t size() const { return index_.size(); }
+  std::size_t size() const {
+    assert(index_.size() == lru_.size());
+    return index_.size();
+  }
 
   /**
    * Typical empty function
@@ -418,6 +429,8 @@ class EvictingCacheMap {
    */
   void setPruneHook(PruneHookCall pruneHook) { pruneHook_ = pruneHook; }
 
+  PruneHookCall getPruneHook() { return pruneHook_; }
+
   /**
    * Prune the minimum of pruneSize and size() from the back of the LRU.
    * Will throw if pruneHook throws.
@@ -434,7 +447,7 @@ class EvictingCacheMap {
       lru_.erase(lru_.iterator_to(*node));
       index_.erase(node);
       if (ph) {
-        // NOTE: might throw, so was are in an exception-safe state
+        // NOTE: might throw, so we are in an exception-safe state
         ph(node->pr.first, std::move(node->pr.second));
       }
     }
@@ -467,13 +480,40 @@ class EvictingCacheMap {
   }
 
  private:
-  struct Node : public boost::intrusive::unordered_set_base_hook<LinkMode>,
-                public boost::intrusive::list_base_hook<LinkMode> {
+  struct Node : public boost::intrusive::list_base_hook<
+                    boost::intrusive::link_mode<boost::intrusive::safe_link>> {
     template <typename K>
     Node(const K& key, TValue&& value) : pr(key, std::move(value)) {}
     TPair pr;
   };
   using NodePtr = Node*;
+
+  // NOTE: deriving from boost::intrusive::list is likely discouraged. This is
+  // simply an alternative to an ugly explicit move operator for
+  // EvictingCacheMap. Change to that if this derivation proves problematic.
+  struct NodeList : public boost::intrusive::list<Node> {
+    NodeList() {}
+    NodeList& operator=(NodeList&& that) noexcept {
+      // Clear the moved-from rather than swap, for consistency with NodeMap
+      clear_nodes();
+      // Now invoke base class move operator without using static_cast
+      boost::intrusive::list<Node>& this_parent = *this;
+      boost::intrusive::list<Node>&& that_parent = std::move(that);
+      this_parent = std::move(that_parent);
+      return *this;
+    }
+    NodeList(NodeList&& that) noexcept { *this = std::move(that); }
+    ~NodeList() {
+      // Adds leak-free final destruction to the intrusive container
+      clear_nodes();
+    }
+
+   private:
+    void clear_nodes() {
+      boost::intrusive::list<Node>::clear_and_dispose(
+          [](Node* ptr) { delete ptr; });
+    }
+  };
 
   struct KeyHasher {
     using is_transparent = void;
@@ -554,11 +594,25 @@ class EvictingCacheMap {
                : self.end();
   }
 
+  typename NodeList::iterator eraseImpl(
+      Node* ptr,
+      typename NodeList::const_iterator base_iter,
+      PruneHookCall eraseHook) {
+    std::unique_ptr<Node> node_owner(ptr);
+    index_.erase(ptr);
+    auto next_base_iter = lru_.erase(base_iter);
+    if (eraseHook) {
+      // NOTE: might throw, so we are in an exception-safe state
+      eraseHook(ptr->pr.first, std::move(ptr->pr.second));
+    }
+    return next_base_iter;
+  }
+
   template <typename K>
-  bool eraseImpl(const K& key) {
+  bool eraseKeyImpl(const K& key, PruneHookCall eraseHook) {
     Node* ptr = findInIndex(key);
     if (ptr) {
-      erase(const_iterator(lru_.iterator_to(*ptr)));
+      eraseImpl(ptr, lru_.iterator_to(*ptr), eraseHook);
       return true;
     }
     return false;

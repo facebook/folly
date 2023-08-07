@@ -21,6 +21,7 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 
+#include <cstdlib>
 #include <glog/logging.h>
 
 namespace folly {
@@ -29,6 +30,11 @@ namespace test {
 namespace {
 
 std::string getHelperPath() {
+  const auto* envPath = getenv("FOLLY_PROGRAM_OPTIONS_TEST_HELPER");
+  if (envPath) {
+    return envPath;
+  }
+
   const auto basename = "program_options_test_helper";
   auto path = fs::executable_path();
   path.remove_filename() /= basename;

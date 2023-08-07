@@ -36,7 +36,11 @@ namespace folly {
 /**
  * Error codes for non-throwing interface of IPAddress family of functions.
  */
-enum class IPAddressFormatError { INVALID_IP, UNSUPPORTED_ADDR_FAMILY };
+enum class IPAddressFormatError {
+  INVALID_IP,
+  UNSUPPORTED_ADDR_FAMILY,
+  NULL_SOCKADDR,
+};
 
 /**
  * Wraps errors from parsing IP/MASK string

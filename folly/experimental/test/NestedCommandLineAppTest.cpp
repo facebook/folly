@@ -20,6 +20,7 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 
+#include <cstdlib>
 #include <glog/logging.h>
 
 namespace folly {
@@ -28,6 +29,11 @@ namespace test {
 namespace {
 
 std::string getHelperPath() {
+  const auto* envPath = getenv("FOLLY_NESTED_CMDLINE_HELPER");
+  if (envPath) {
+    return envPath;
+  }
+
   const auto basename = "nested_command_line_app_test_helper";
   auto path = fs::executable_path();
   path.remove_filename() /= basename;
@@ -103,7 +109,7 @@ TEST(ProgramOptionsTest, DevFull) {
 }
 
 TEST(ProgramOptionsTest, CutArguments) {
-  // anything after -- is parsed as arguments
+  // anything after -- is parsed as arguments, including more --
   EXPECT_EQ(
       "running foo\n"
       "foo global-foo 43\n"
@@ -111,11 +117,20 @@ TEST(ProgramOptionsTest, CutArguments) {
       "foo conflict-global 42\n"
       "foo conflict 42\n"
       "foo arg b\n"
+      "foo arg --\n"
       "foo arg --local-foo\n"
       "foo arg 44\n"
       "foo arg a\n",
       callHelper(
-          {"foo", "--global-foo", "43", "--", "b", "--local-foo", "44", "a"}));
+          {"foo",
+           "--global-foo",
+           "43",
+           "--",
+           "b",
+           "--",
+           "--local-foo",
+           "44",
+           "a"}));
 }
 
 TEST(ProgramOptionsTest, Success) {

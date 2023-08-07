@@ -18,6 +18,7 @@
 
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
+#include <folly/fibers/async/AsyncStack.h>
 #include <folly/fibers/async/Baton.h>
 #include <folly/fibers/async/Collect.h>
 #include <folly/fibers/async/FiberManager.h>
@@ -28,6 +29,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
+#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/fibers/async/Task.h>
 
@@ -382,3 +384,160 @@ TEST(FiberManager, remoteFiberManager) {
   EXPECT_TRUE(test1Finished);
   EXPECT_TRUE(test2Finished);
 }
+
+folly::AsyncStackFrame* FOLLY_NULLABLE currentFrame() {
+  auto* root = folly::tryGetCurrentAsyncStackRoot();
+  return root ? root->getTopFrame() : nullptr;
+}
+
+FOLLY_NOINLINE std::vector<std::uintptr_t> getAsyncStack() {
+  static constexpr size_t maxFrames = 100;
+  std::array<std::uintptr_t, maxFrames> result;
+
+  result[0] =
+      reinterpret_cast<std::uintptr_t>(FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+  auto numFrames = folly::getAsyncStackTraceFromInitialFrame(
+      currentFrame(), result.data() + 1, maxFrames - 1);
+
+  return std::vector<std::uintptr_t>(
+      std::make_move_iterator(result.begin()),
+      std::make_move_iterator(result.begin()) + numFrames + 1);
+}
+
+template <typename F>
+void expectStackSize(size_t size, F&& func) {
+  EXPECT_EQ(size, func().size());
+}
+
+TEST(AsyncStack, fiberEntryPoint) {
+  // Only frame will be getAsyncStack. No connection to callers
+  expectStackSize(1, []() {
+    return async::executeOnFiberAndWait(
+        []() -> async::Async<std::vector<std::uintptr_t>> {
+          // fiber
+          return getAsyncStack();
+        });
+  });
+
+  // [0] - getAsyncStack
+  // [1] - fiber
+  expectStackSize(2, []() {
+    return async::executeOnFiberAndWait([]() {
+      return async::executeWithNewRoot(
+          [&]() -> async::Async<std::vector<std::uintptr_t>> {
+            // fiber
+            return getAsyncStack();
+          },
+          currentFrame());
+    });
+  });
+}
+
+TEST(AsyncStack, fiberToFiber) {
+  // Only frame will be getAsyncStack. No connection to callers
+  expectStackSize(1, []() {
+    return async::executeOnFiberAndWait([]() {
+      // fiber1
+      return async::executeOnNewFiber(
+          []() -> async::Async<std::vector<std::uintptr_t>> {
+            // fiber2
+            return getAsyncStack();
+          });
+    });
+  });
+
+  // [0] - getAsyncStack
+  // [1] - fiber2
+  // [2] - fiber1
+  expectStackSize(3, []() {
+    return async::executeOnFiberAndWait([]() {
+      return async::executeWithNewRoot(
+          [&]() {
+            // fiber1
+            auto* cf = CHECK_NOTNULL(currentFrame());
+            return async::executeOnNewFiber([cf]() {
+              return async::executeWithNewRoot(
+                  []() -> async::Async<std::vector<std::uintptr_t>> {
+                    // fiber2
+                    return getAsyncStack();
+                  },
+                  cf);
+            });
+          },
+          currentFrame());
+    });
+  });
+}
+
+TEST(AsyncStack, fiberToMainContext) {
+  // Only frame will be getAsyncStack. No connection to callers
+  expectStackSize(1, []() {
+    return async::executeOnFiberAndWait(
+        []() -> async::Async<std::vector<std::uintptr_t>> {
+          // fiber
+          return runInMainContext([]() { return getAsyncStack(); });
+        });
+  });
+
+  // [0] - getAsyncStack
+  // [1] - mainContext
+  // [2] - fiber
+  expectStackSize(3, []() {
+    return async::executeOnFiberAndWait([]() {
+      return async::executeWithNewRoot(
+          [&]() -> async::Async<std::vector<std::uintptr_t>> {
+            // fiber
+            return async::runInMainContextWithTracing([]() {
+              // mainContext
+              return getAsyncStack();
+            });
+          },
+          currentFrame());
+    });
+  });
+}
+
+#if FOLLY_HAS_COROUTINES
+TEST(AsyncStack, coroToFiber) {
+  // Only frame will be getAsyncStack. No connection to callers
+  expectStackSize(1, [&]() {
+    folly::EventBase evb;
+    return folly::coro::blockingWait(
+        [&]() -> folly::coro::Task<std::vector<std::uintptr_t>> {
+          // coro
+          co_return co_await async::addFiberFuture(
+              []() -> async::Async<std::vector<std::uintptr_t>> {
+                // fiber
+                return getAsyncStack();
+              },
+              getFiberManager(evb));
+        }(),
+        &evb);
+  });
+
+  // [0] - getAsyncStack
+  // [1] - fiber
+  // [2] - coro
+  // [3] - BlockingWaitTask
+  // [4] - blockingWait
+  expectStackSize(5, [&]() {
+    folly::EventBase evb;
+    return folly::coro::blockingWait(
+        [&]() -> folly::coro::Task<std::vector<std::uintptr_t>> {
+          // coro
+          auto* cf = currentFrame();
+          co_return co_await async::addFiberFuture(
+              [cf]() {
+                return async::executeWithNewRoot(
+                    []() -> async::Async<std::vector<std::uintptr_t>> {
+                      // fiber
+                      return getAsyncStack();
+                    },
+                    cf);
+              },
+              getFiberManager(evb));
+        }(),
+        &evb);
+  });
+}
+#endif

@@ -112,6 +112,11 @@ AsyncUDPSocket::~AsyncUDPSocket() {
 }
 
 void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
+  if (fd_ != NetworkSocket()) {
+    // Already initialized.
+    return;
+  }
+
   NetworkSocket socket =
       netops::socket(family, SOCK_DGRAM, family != AF_UNIX ? IPPROTO_UDP : 0);
   if (socket == NetworkSocket()) {
@@ -288,7 +293,9 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
 
 void AsyncUDPSocket::bind(
     const folly::SocketAddress& address, BindOptions bindOptions) {
-  init(address.getFamily(), bindOptions);
+  if (fd_ == NetworkSocket()) {
+    init(address.getFamily(), bindOptions);
+  }
 
   {
     // bind the socket to the interface
@@ -329,7 +336,7 @@ void AsyncUDPSocket::bind(
 void AsyncUDPSocket::connect(const folly::SocketAddress& address) {
   // not bound yet
   if (fd_ == NetworkSocket()) {
-    init(address.getFamily(), BindOptions());
+    init(address.getFamily());
   }
 
   sockaddr_storage addrStorage;
@@ -678,12 +685,19 @@ ssize_t AsyncUDPSocket::writev(
   msg.setFlags(0);
 
 #if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
+  maybeUpdateDynamicCmsgs();
+
   constexpr size_t kSmallSizeMax = 5;
   size_t controlBufSize = gso > 0 ? 1 : 0;
   controlBufSize +=
-      cmsgs_.size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
+      cmsgs_->size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
 
   if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
+    // Avoid allocating 0 length array. Doing so leads to exceptions
+    if (controlBufSize == 0) {
+      return writevImpl(&msg, gso);
+    }
+
     // suppress "warning: variable length array 'control' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
@@ -721,7 +735,7 @@ ssize_t AsyncUDPSocket::writevImpl(
 #if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
   XPLAT_CMSGHDR* cm = nullptr;
 
-  for (auto itr = cmsgs_.begin(); itr != cmsgs_.end(); ++itr) {
+  for (auto itr = cmsgs_->begin(); itr != cmsgs_->end(); ++itr) {
     const auto key = itr->first;
     const auto val = itr->second;
     msg->incrCmsgLen(sizeof(val));
@@ -795,9 +809,10 @@ int AsyncUDPSocket::writemGSO(
 #ifndef FOLLY_HAVE_MSG_ERRQUEUE
   CHECK(!gso) << "GSO not supported";
 #endif
+  maybeUpdateDynamicCmsgs();
   size_t singleControlBufSize = 1;
   singleControlBufSize +=
-      cmsgs_.size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
+      cmsgs_->size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
   size_t controlBufSize = count * singleControlBufSize;
   if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
@@ -864,7 +879,7 @@ void AsyncUDPSocket::fillMsgVec(
     msg.msg_iovlen = iovec_len;
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
     size_t controlBufSize = 1 +
-        cmsgs_.size() *
+        cmsgs_->size() *
             (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
     // get the offset in the control buf allocated for this msg
     msg.msg_control =
@@ -872,7 +887,7 @@ void AsyncUDPSocket::fillMsgVec(
     msg.msg_controllen = 0;
     struct cmsghdr* cm = nullptr;
     // handle socket options
-    for (auto itr = cmsgs_.begin(); itr != cmsgs_.end(); ++itr) {
+    for (auto itr = cmsgs_->begin(); itr != cmsgs_->end(); ++itr) {
       const auto key = itr->first;
       const auto val = itr->second;
       msg.msg_controllen += CMSG_SPACE(sizeof(val));
@@ -1515,7 +1530,7 @@ void AsyncUDPSocket::attachEventBase(folly::EventBase* evb) {
 }
 
 void AsyncUDPSocket::setCmsgs(const SocketOptionMap& cmsgs) {
-  cmsgs_ = cmsgs;
+  defaultCmsgs_ = cmsgs;
 }
 
 void AsyncUDPSocket::setNontrivialCmsgs(
@@ -1525,7 +1540,21 @@ void AsyncUDPSocket::setNontrivialCmsgs(
 
 void AsyncUDPSocket::appendCmsgs(const SocketOptionMap& cmsgs) {
   for (auto itr = cmsgs.begin(); itr != cmsgs.end(); ++itr) {
-    cmsgs_[itr->first] = itr->second;
+    defaultCmsgs_[itr->first] = itr->second;
+  }
+}
+
+void AsyncUDPSocket::maybeUpdateDynamicCmsgs() noexcept {
+  cmsgs_ = &defaultCmsgs_;
+  if (additionalCmsgsFunc_) {
+    auto additionalCmsgs = additionalCmsgsFunc_();
+    if (additionalCmsgs && !additionalCmsgs.value().empty()) {
+      dynamicCmsgs_ = std::move(additionalCmsgs.value());
+      // Union with defaultCmsgs_ without overwriting values for overlapping
+      // keys
+      dynamicCmsgs_.insert(defaultCmsgs_.begin(), defaultCmsgs_.end());
+      cmsgs_ = &dynamicCmsgs_;
+    }
   }
 }
 

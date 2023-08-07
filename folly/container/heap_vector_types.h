@@ -1587,7 +1587,10 @@ template <
     typename Key,
     typename Value,
     typename SizeType = uint32_t,
-    class Container = folly::small_vector<std::pair<Key, Value>, 0, SizeType>,
+    class Container = folly::small_vector<
+        std::pair<Key, Value>,
+        0,
+        folly::small_vector_policy::policy_size_type<SizeType>>,
     typename = std::enable_if_t<std::is_integral<Key>::value>>
 class small_heap_vector_map : public folly::heap_vector_map<
                                   Key,

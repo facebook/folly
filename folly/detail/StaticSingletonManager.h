@@ -33,15 +33,18 @@ namespace detail {
 // Does not support dynamic loading but works without rtti.
 class StaticSingletonManagerSansRtti {
  private:
+  using Self = StaticSingletonManagerSansRtti;
   using Cache = std::atomic<void*>;
   using Make = void*();
   struct Arg {
     Cache cache{}; // should be first field
     Make* make;
+    void** debug;
 
     template <typename T, typename Tag>
     /* implicit */ constexpr Arg(tag_t<T, Tag>) noexcept
-        : make{thunk::make<T>} {}
+        : make{thunk::make<T>},
+          debug{reinterpret_cast<void**>(&Self::debug<T, Tag>)} {}
   };
 
   template <bool Noexcept>
@@ -49,6 +52,9 @@ class StaticSingletonManagerSansRtti {
 
   template <bool Noexcept>
   using Create = decltype(&create_<Noexcept>);
+
+  template <typename T, typename Tag>
+  static T* debug; // visible to debugger
 
  public:
   template <bool Noexcept>
@@ -89,12 +95,15 @@ class StaticSingletonManagerSansRtti {
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_NOINLINE static void* create_(Arg& arg) noexcept(
       noexcept(T())) {
-    auto& cache = arg.cache;
     static Indestructible<T> instance;
-    cache.store(&*instance, std::memory_order_release);
+    arg.cache.store(&*instance, std::memory_order_release);
+    *arg.debug = &*instance;
     return &*instance;
   }
 };
+
+template <typename T, typename Tag>
+T* StaticSingletonManagerSansRtti::debug;
 
 // This internal-use-only class is used to create all leaked Meyers singletons.
 // It guarantees that only one instance of every such singleton will ever be
@@ -104,6 +113,7 @@ class StaticSingletonManagerSansRtti {
 // Supports dynamic loading but requires rtti.
 class StaticSingletonManagerWithRtti {
  private:
+  using Self = StaticSingletonManagerWithRtti;
   using Key = std::type_info;
   using Make = void*();
   using Cache = std::atomic<void*>;
@@ -113,12 +123,15 @@ class StaticSingletonManagerWithRtti {
     Cache cache{}; // should be first field
     Key const* key;
     Make* make;
+    void** debug;
 
     // gcc and clang behave poorly if typeid is hidden behind a non-constexpr
     // function, but typeid is not constexpr under msvc
     template <typename T, typename Tag>
     /* implicit */ constexpr Arg(tag_t<T, Tag>) noexcept
-        : key{FOLLY_TYPE_INFO_OF(Src<T, Tag>)}, make{thunk::make<T>} {}
+        : key{FOLLY_TYPE_INFO_OF(Src<T, Tag>)},
+          make{thunk::make<T>},
+          debug{reinterpret_cast<void**>(&Self::debug<T, Tag>)} {}
   };
 
   template <bool Noexcept>
@@ -126,6 +139,9 @@ class StaticSingletonManagerWithRtti {
 
   template <bool Noexcept>
   using Create = decltype(&create_<Noexcept>);
+
+  template <typename T, typename Tag>
+  static T* debug; // visible to debugger
 
  public:
   template <bool Noexcept>
@@ -163,6 +179,9 @@ class StaticSingletonManagerWithRtti {
     return *static_cast<T*>(p);
   }
 };
+
+template <typename T, typename Tag>
+T* StaticSingletonManagerWithRtti::debug;
 
 using StaticSingletonManager = std::conditional_t<
     kHasRtti,

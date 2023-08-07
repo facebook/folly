@@ -19,6 +19,7 @@
 #include <exception>
 
 #include <folly/Utility.h>
+#include <folly/lang/New.h>
 
 namespace folly {
 namespace detail {
@@ -71,6 +72,19 @@ struct thunk {
   static void* ctor_move(void* const dst, void* const src) noexcept(
       noexcept(T(FOLLY_DECLVAL(T&&)))) {
     return ::new (dst) T(static_cast<T&&>(*reinterpret_cast<T*>(src)));
+  }
+
+  template <std::size_t Size, std::size_t Align>
+  static void* operator_new() {
+    return folly::operator_new(Size, align_val_t(Align));
+  }
+  template <std::size_t Size, std::size_t Align>
+  static void* operator_new_nx() {
+    return folly::operator_new(Size, align_val_t(Align), std::nothrow);
+  }
+  template <std::size_t Size, std::size_t Align>
+  static void operator_delete(void* const ptr) noexcept {
+    return folly::operator_delete(ptr, Size, align_val_t(Align));
   }
 
   template <typename... A>

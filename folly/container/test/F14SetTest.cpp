@@ -703,7 +703,7 @@ TEST(F14Set, ContainerSize) {
   {
     F14ValueSet<int> set;
     set.insert(10);
-    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    EXPECT_EQ(sizeof(set), 3 * sizeof(void*));
     if (alignof(folly::max_align_t) == 16) {
       // chunks will be allocated as 2 max_align_t-s
       EXPECT_EQ(set.getAllocatedMemorySize(), 32);
@@ -715,7 +715,7 @@ TEST(F14Set, ContainerSize) {
   {
     F14NodeSet<int> set;
     set.insert(10);
-    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    EXPECT_EQ(sizeof(set), 3 * sizeof(void*));
     if (alignof(folly::max_align_t) == 16) {
       // chunks will be allocated as 2 max_align_t-s
       EXPECT_EQ(set.getAllocatedMemorySize(), 36);
@@ -1037,8 +1037,10 @@ TEST(F14ValueSet, maxSize) {
   F14ValueSet<int> s;
   EXPECT_EQ(
       s.max_size(),
-      std::allocator_traits<decltype(s)::allocator_type>::max_size(
-          s.get_allocator()));
+      std::min(
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
+          std::allocator_traits<decltype(s)::allocator_type>::max_size(
+              s.get_allocator())));
 }
 
 TEST(F14NodeSet, maxSize) {
@@ -1047,8 +1049,10 @@ TEST(F14NodeSet, maxSize) {
   F14NodeSet<int> s;
   EXPECT_EQ(
       s.max_size(),
-      std::allocator_traits<decltype(s)::allocator_type>::max_size(
-          s.get_allocator()));
+      std::min(
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
+          std::allocator_traits<decltype(s)::allocator_type>::max_size(
+              s.get_allocator())));
 }
 
 TEST(F14VectorSet, maxSize) {
@@ -1058,7 +1062,7 @@ TEST(F14VectorSet, maxSize) {
   EXPECT_EQ(
       s.max_size(),
       std::min(
-          std::size_t{std::numeric_limits<uint32_t>::max()},
+          folly::f14::detail::SizeAndChunkShift::kMaxSize,
           std::allocator_traits<decltype(s)::allocator_type>::max_size(
               s.get_allocator())));
 }
@@ -1600,3 +1604,102 @@ TEST(F14Set, ExceptionOnInsert) {
   testExceptionOnInsert<F14VectorSet>();
   testExceptionOnInsert<F14FastSet>();
 }
+
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <template <class...> class TSet>
+void testIterDeductionGuide() {
+  TSet<int> source({1, 2});
+
+  TSet dest1(source.begin(), source.end());
+  static_assert(std::is_same_v<decltype(dest1), decltype(source)>);
+  EXPECT_EQ(dest1, source);
+
+  TSet dest2(source.begin(), source.end(), 2);
+  static_assert(std::is_same_v<decltype(dest2), decltype(source)>);
+  EXPECT_EQ(dest2, source);
+
+  TSet dest3(source.begin(), source.end(), 2, f14::DefaultHasher<int>{});
+  static_assert(std::is_same_v<decltype(dest3), decltype(source)>);
+  EXPECT_EQ(dest3, source);
+
+  TSet dest4(
+      source.begin(),
+      source.end(),
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultKeyEqual<int>{});
+  static_assert(std::is_same_v<decltype(dest4), decltype(source)>);
+  EXPECT_EQ(dest4, source);
+
+  TSet dest5(
+      source.begin(),
+      source.end(),
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultKeyEqual<int>{},
+      f14::DefaultAlloc<int>{});
+  static_assert(std::is_same_v<decltype(dest5), decltype(source)>);
+  EXPECT_EQ(dest5, source);
+
+  TSet dest6(source.begin(), source.end(), 2, f14::DefaultAlloc<int>{});
+  static_assert(std::is_same_v<decltype(dest6), decltype(source)>);
+  EXPECT_EQ(dest6, source);
+
+  TSet dest7(
+      source.begin(),
+      source.end(),
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultAlloc<int>{});
+  static_assert(std::is_same_v<decltype(dest7), decltype(source)>);
+  EXPECT_EQ(dest7, source);
+}
+
+TEST(F14Set, iterDeductionGuide) {
+  testIterDeductionGuide<F14ValueSet>();
+  testIterDeductionGuide<F14NodeSet>();
+  testIterDeductionGuide<F14VectorSet>();
+  testIterDeductionGuide<F14FastSet>();
+}
+
+template <template <class...> class TSet>
+void testInitializerListDeductionGuide() {
+  TSet<int> source({1, 2});
+
+  TSet dest1({1, 2}, 2);
+  static_assert(std::is_same_v<decltype(dest1), decltype(source)>);
+  EXPECT_EQ(dest1, source);
+
+  TSet dest2({1, 2}, 2, f14::DefaultHasher<int>{});
+  static_assert(std::is_same_v<decltype(dest2), decltype(source)>);
+  EXPECT_EQ(dest2, source);
+
+  TSet dest3({1, 2}, 2, f14::DefaultHasher<int>{}, f14::DefaultKeyEqual<int>{});
+  static_assert(std::is_same_v<decltype(dest3), decltype(source)>);
+  EXPECT_EQ(dest3, source);
+
+  TSet dest4(
+      {1, 2},
+      2,
+      f14::DefaultHasher<int>{},
+      f14::DefaultKeyEqual<int>{},
+      f14::DefaultAlloc<int>{});
+  static_assert(std::is_same_v<decltype(dest4), decltype(source)>);
+  EXPECT_EQ(dest4, source);
+
+  TSet dest5({1, 2}, 2, f14::DefaultAlloc<int>{});
+  static_assert(std::is_same_v<decltype(dest5), decltype(source)>);
+  EXPECT_EQ(dest5, source);
+
+  TSet dest6({1, 2}, 2, f14::DefaultHasher<int>{}, f14::DefaultAlloc<int>{});
+  static_assert(std::is_same_v<decltype(dest6), decltype(source)>);
+  EXPECT_EQ(dest6, source);
+}
+
+TEST(F14Set, initializerListDeductionGuide) {
+  testInitializerListDeductionGuide<F14ValueSet>();
+  testInitializerListDeductionGuide<F14NodeSet>();
+  testInitializerListDeductionGuide<F14VectorSet>();
+  testInitializerListDeductionGuide<F14FastSet>();
+}
+#endif // FOLLY_HAS_DEDUCTION_GUIDES

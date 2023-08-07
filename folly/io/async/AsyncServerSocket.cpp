@@ -1074,7 +1074,7 @@ void AsyncServerSocket::dispatchSocket(
 
   // Short circuit if the callback is in the primary EventBase thread
 
-  CallbackInfo* info = nextCallback();
+  CallbackInfo* info = nextCallback(socket);
   if (info->eventBase == nullptr || info->eventBase == this->eventBase_) {
     info->callback->connectionAccepted(socket, address, {timeBeforeEnqueue});
     return;
@@ -1131,7 +1131,7 @@ void AsyncServerSocket::dispatchSocket(
       return;
     }
 
-    info = nextCallback();
+    info = nextCallback(socket);
   }
 }
 

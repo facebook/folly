@@ -73,7 +73,7 @@ is to look at the headers in [top level `folly/` directory](https://github.com/f
 check the [`docs` folder](folly/docs) for documentation, starting with the
 [overview](folly/docs/Overview.md).
 
-Folly is published on GitHub at https://github.com/facebook/folly
+Folly is published on GitHub at https://github.com/facebook/folly.
 
 # Build Notes
 
@@ -112,7 +112,7 @@ On other platforms or if on Linux and without system dependencies `getdeps.py` w
 Some of the dependencies `getdeps.py` uses and installs are:
 
   * a version of boost compiled with C++14 support.
-  * googletest is required to build and run folly's tests
+  * googletest is required to build and run folly's tests.
 
 ### Build
 
@@ -121,7 +121,7 @@ and will then invoke cmake etc to build folly.  This will help ensure that you b
 
 `getdeps.py` currently requires python 3.6+ to be on your path.
 
-`getdeps.py` will invoke cmake etc
+`getdeps.py` will invoke cmake etc.
 
     # Clone the repo
     git clone https://github.com/facebook/folly
@@ -134,7 +134,7 @@ It puts output in its scratch area:
   * `installed/folly/lib/libfolly.a`: Library
 
 You can also specify a `--scratch-path` argument to control
-the location of the scratch directory used for the build. You can find the default scratch install location from logs or with `python3 ./build/fbcode_builder/getdeps.py show-inst-dir`
+the location of the scratch directory used for the build. You can find the default scratch install location from logs or with `python3 ./build/fbcode_builder/getdeps.py show-inst-dir`.
 
 There are also
 `--install-dir` and `--install-prefix` arguments to provide some more
@@ -142,10 +142,10 @@ fine-grained control of the installation directories. However, given that
 folly provides no compatibility guarantees between commits we generally
 recommend building and installing the libraries to a temporary location, and
 then pointing your project's build at this temporary location, rather than
-installing folly in the traditional system installation directories.  e.g., if you are building with CMake you can use the `CMAKE_PREFIX_PATH` variable to allow CMake to find folly in this temporary installation directory when
+installing folly in the traditional system installation directories. e.g., if you are building with CMake you can use the `CMAKE_PREFIX_PATH` variable to allow CMake to find folly in this temporary installation directory when
 building your project.
 
-If you want to invoke `cmake` again to iterate, there is a helpful `run_cmake.py` script output in the scratch build directory.  You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`
+If you want to invoke `cmake` again to iterate, there is a helpful `run_cmake.py` script output in the scratch build directory.  You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`.
 
 ### Run tests
 
@@ -157,16 +157,16 @@ By default `getdeps.py` will build the tests for folly. To run them:
 ### `build.sh`/`build.bat` wrapper
 
 `build.sh` can be used on Linux and MacOS, on Windows use
-the `build.bat` script instead. Its a wrapper around `getdeps.py`
+the `build.bat` script instead. Its a wrapper around `getdeps.py`.
 
 ## Build with cmake directly
 
 If you don't want to let getdeps invoke cmake for you then by default, building the tests is disabled as part of the CMake `all` target.
 To build the tests, specify `-DBUILD_TESTS=ON` to CMake at configure time.
 
-NB if you want to invoke `cmake` again to iterate on a `getdeps.py` build, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`
+NB if you want to invoke `cmake` again to iterate on a `getdeps.py` build, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`.
 
-Running tests with ctests also works if you cd to the build dir, e.g. `
+Running tests with ctests also works if you cd to the build dir, e.g.
 `(cd $(python3 ./build/fbcode_builder/getdeps.py show-build-dir) && ctest)`
 
 ### Finding dependencies in non-default locations
@@ -189,17 +189,17 @@ cmake \
 
 Use the `getdeps.py` approach above. We test in CI on Ubuntu LTS, and occasionally on other distros.
 
-If you find the set of system packages is not quite right for your chosen distro,  you can specify distro version specific overrides in the dependency manifests (e.g. https://github.com/facebook/folly/blob/main/build/fbcode_builder/manifests/boost ).   You could probably make it work on most recent Ubuntu/Debian or Fedora/Redhat derived distributions.
+If you find the set of system packages is not quite right for your chosen distro, you can specify distro version specific overrides in the dependency manifests (e.g. https://github.com/facebook/folly/blob/main/build/fbcode_builder/manifests/boost ). You could probably make it work on most recent Ubuntu/Debian or Fedora/Redhat derived distributions.
 
 At time of writing (Dec 2021) there is a build break on GCC 11.x based systems in lang_badge_test.  If you don't need badge functionality you can work around by commenting it out from CMakeLists.txt (unfortunately fbthrift does need it)
 
 ## Windows (Vcpkg)
 
-Note that many tests are disabled for folly Windows builds,  you can see them in the log from the cmake configure step, or by looking for WINDOWS_DISABLED in `CMakeLists.txt`
+Note that many tests are disabled for folly Windows builds, you can see them in the log from the cmake configure step, or by looking for WINDOWS_DISABLED in `CMakeLists.txt`
 
 That said, `getdeps.py` builds work on Windows and are tested in CI.
 
-If you prefer, you can try Vcpkg.  folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg) and releases may be built via `vcpkg install folly:x64-windows`.
+If you prefer, you can try Vcpkg. folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg) and releases may be built via `vcpkg install folly:x64-windows`.
 
 You may also use `vcpkg install folly:x64-windows --head` to build against `main`.
 

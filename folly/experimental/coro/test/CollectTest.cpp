@@ -1069,6 +1069,19 @@ TEST_F(CollectAllRangeTest, GeneratorFromRangeCancelledFromScope) {
   }());
 }
 
+TEST_F(CollectAllRangeTest, GeneratorFromEmptyRange) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::coro::AsyncScope scope;
+    std::vector<folly::coro::Task<void>> tasks;
+    auto results =
+        folly::coro::makeUnorderedAsyncGenerator(scope, std::move(tasks));
+    while (auto next = co_await results.next()) {
+      EXPECT_FALSE(true) << "Unexpected result";
+    }
+    co_await scope.joinAsync();
+  }());
+}
+
 class CollectAllTryRangeTest : public testing::Test {};
 
 TEST_F(CollectAllTryRangeTest, RangeOfVoidSomeFailing) {

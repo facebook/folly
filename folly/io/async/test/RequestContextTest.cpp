@@ -567,6 +567,71 @@ TEST_F(RequestContextTest, AccessAllThreadsDestructionGuard) {
   }
 }
 
+namespace {
+
+struct KeyATraits {
+  static inline const RequestToken kToken{"keyA"};
+};
+
+struct KeyBTraits {
+  static inline const RequestToken kToken{"keyB"};
+};
+
+} // namespace
+
+TEST_F(RequestContextTest, GetThreadCachedContextData) {
+  auto makeData = [](int value) {
+    return std::make_unique<ImmutableRequestData<int>>(value);
+  };
+
+  auto getData = [](auto traits) {
+    auto* data = RequestContext::try_get()
+                     ->getThreadCachedContextData<decltype(traits)>();
+    CHECK(data != nullptr);
+    auto* idata = dynamic_cast<ImmutableRequestData<int>*>(data);
+    CHECK(idata != nullptr);
+    return idata;
+  };
+
+  RequestContextScopeGuard guard;
+
+  RequestContext::try_get()->setContextData(KeyATraits::kToken, makeData(1));
+  RequestContext::try_get()->setContextData(KeyBTraits::kToken, makeData(2));
+
+  EXPECT_EQ(getData(KeyATraits{})->value(), 1);
+  EXPECT_EQ(getData(KeyBTraits{})->value(), 2);
+
+  RequestContext::try_get()->overwriteContextData(
+      KeyATraits::kToken, makeData(3));
+  EXPECT_EQ(getData(KeyATraits{})->value(), 3);
+  EXPECT_EQ(getData(KeyBTraits{})->value(), 2);
+
+  RequestContext::try_get()->clearContextData(KeyATraits::kToken);
+  EXPECT_TRUE(
+      RequestContext::try_get()->getThreadCachedContextData<KeyATraits>() ==
+      nullptr);
+  EXPECT_EQ(getData(KeyBTraits{})->value(), 2);
+
+  // Invalidations are delivered from other threads too.
+  std::thread([&, ctx = RequestContext::saveContext()] {
+    RequestContextScopeGuard guard2(ctx);
+    RequestContext::try_get()->setContextData(KeyATraits::kToken, makeData(4));
+  }).join();
+  EXPECT_EQ(getData(KeyATraits{})->value(), 4);
+  EXPECT_EQ(getData(KeyBTraits{})->value(), 2);
+
+  // Caches are not leaked when switching request context.
+  {
+    RequestContextScopeGuard guard3;
+    EXPECT_TRUE(
+        RequestContext::try_get()->getThreadCachedContextData<KeyATraits>() ==
+        nullptr);
+    EXPECT_TRUE(
+        RequestContext::try_get()->getThreadCachedContextData<KeyBTraits>() ==
+        nullptr);
+  }
+}
+
 TEST(RequestContextTryGetTest, TryGetTest) {
   // try_get() should not create a default RequestContext object if none exists.
   EXPECT_EQ(RequestContext::try_get(), nullptr);

@@ -18,11 +18,23 @@
 
 #include <new>
 
+#include <fmt/core.h>
+#include <folly/Utility.h>
 #include <folly/lang/Assume.h>
 
 namespace folly {
 namespace futures {
 namespace detail {
+
+namespace {
+
+template <class Enum>
+void terminate_unexpected_state(fmt::string_view context, Enum state) {
+  terminate_with<std::logic_error>(
+      fmt::format("{} unexpected state: {}", context, to_underlying(state)));
+}
+
+} // namespace
 
 void UniqueDeleter::operator()(DeferredExecutor* ptr) {
   if (ptr) {
@@ -157,7 +169,9 @@ void DeferredExecutor::addFrom(
     addWithInline(std::move(func));
     return;
   }
-  DCHECK(state == State::EMPTY);
+  if (state != State::EMPTY) {
+    terminate_unexpected_state("DeferredExecutor::addFrom", state);
+  }
   func_ = std::move(func);
   if (folly::atomic_compare_exchange_strong_explicit(
           &state_,
@@ -167,12 +181,14 @@ void DeferredExecutor::addFrom(
           std::memory_order_acquire)) {
     return;
   }
-  DCHECK(state == State::DETACHED || state == State::HAS_EXECUTOR);
+
   if (state == State::DETACHED) {
     std::exchange(func_, nullptr);
-    return;
+  } else if (state == State::HAS_EXECUTOR) {
+    addWithInline(std::exchange(func_, nullptr));
+  } else {
+    terminate_unexpected_state("DeferredExecutor::addFrom", state);
   }
-  addWithInline(std::exchange(func_, nullptr));
 }
 
 Executor* DeferredExecutor::getExecutor() const {
@@ -200,8 +216,15 @@ void DeferredExecutor::setExecutor(folly::Executor::KeepAlive<> executor) {
     return;
   }
 
-  DCHECK(state == State::HAS_FUNCTION);
-  state_.store(State::HAS_EXECUTOR, std::memory_order_release);
+  if (state != State::HAS_FUNCTION ||
+      !folly::atomic_compare_exchange_strong_explicit(
+          &state_,
+          &state,
+          State::HAS_EXECUTOR,
+          std::memory_order_release,
+          std::memory_order_relaxed)) {
+    terminate_unexpected_state("DeferredExecutor::setExecutor", state);
+  }
   executor_.copy().add(std::exchange(func_, nullptr));
 }
 
@@ -231,8 +254,15 @@ void DeferredExecutor::detach() {
     return;
   }
 
-  DCHECK(state == State::HAS_FUNCTION);
-  state_.store(State::DETACHED, std::memory_order_release);
+  if (state != State::HAS_FUNCTION ||
+      !folly::atomic_compare_exchange_strong_explicit(
+          &state_,
+          &state,
+          State::DETACHED,
+          std::memory_order_release,
+          std::memory_order_relaxed)) {
+    terminate_unexpected_state("DeferredExecutor::detach", state);
+  }
   std::exchange(func_, nullptr);
 }
 
@@ -439,8 +469,8 @@ void CoreBase::setCallback_(
     futures::detail::InlineContinuation allowInline) {
   DCHECK(!hasCallback());
 
-  ::new (&callback_) Callback(std::move(callback));
-  ::new (&context_) Context(std::move(context));
+  callback_ = std::move(callback);
+  context_ = std::move(context);
 
   auto state = state_.load(std::memory_order_acquire);
   State nextState = allowInline == futures::detail::InlineContinuation::permit
@@ -456,25 +486,34 @@ void CoreBase::setCallback_(
             std::memory_order_acquire)) {
       return;
     }
-    assume(state == State::OnlyResult || state == State::Proxy);
   }
 
   if (state == State::OnlyResult) {
-    state_.store(State::Done, std::memory_order_relaxed);
+    if (!folly::atomic_compare_exchange_strong_explicit(
+            &state_,
+            &state,
+            State::Done,
+            std::memory_order_relaxed,
+            std::memory_order_relaxed)) {
+      terminate_unexpected_state("setCallback", state);
+    }
     doCallback(Executor::KeepAlive<>{}, state);
-    return;
-  }
-
-  if (state == State::Proxy) {
+  } else if (state == State::Proxy) {
+    if (!folly::atomic_compare_exchange_strong_explicit(
+            &state_,
+            &state,
+            State::Empty,
+            std::memory_order_relaxed,
+            std::memory_order_relaxed)) {
+      terminate_unexpected_state("setCallback", state);
+    }
     return proxyCallback(state);
+  } else {
+    terminate_unexpected_state("setCallback", state);
   }
-
-  terminate_with<std::logic_error>("setCallback unexpected state");
 }
 
 void CoreBase::setResult_(Executor::KeepAlive<>&& completingKA) {
-  DCHECK(!hasResult());
-
   auto state = state_.load(std::memory_order_acquire);
   switch (state) {
     case State::Start:
@@ -486,14 +525,20 @@ void CoreBase::setResult_(Executor::KeepAlive<>&& completingKA) {
               std::memory_order_acquire)) {
         return;
       }
-      assume(
-          state == State::OnlyCallback ||
-          state == State::OnlyCallbackAllowInline);
       FOLLY_FALLTHROUGH;
 
     case State::OnlyCallback:
     case State::OnlyCallbackAllowInline:
-      state_.store(State::Done, std::memory_order_relaxed);
+      if ((state != State::OnlyCallback &&
+           state != State::OnlyCallbackAllowInline) ||
+          !folly::atomic_compare_exchange_strong_explicit(
+              &state_,
+              &state,
+              State::Done,
+              std::memory_order_relaxed,
+              std::memory_order_relaxed)) {
+        terminate_unexpected_state("setResult", state);
+      }
       doCallback(std::move(completingKA), state);
       return;
     case State::OnlyResult:
@@ -501,13 +546,11 @@ void CoreBase::setResult_(Executor::KeepAlive<>&& completingKA) {
     case State::Done:
     case State::Empty:
     default:
-      terminate_with<std::logic_error>("setResult unexpected state");
+      terminate_unexpected_state("setResult", state);
   }
 }
 
 void CoreBase::setProxy_(CoreBase* proxy) {
-  DCHECK(!hasResult());
-
   proxy_ = proxy;
 
   auto state = state_.load(std::memory_order_acquire);
@@ -521,13 +564,20 @@ void CoreBase::setProxy_(CoreBase* proxy) {
               std::memory_order_acquire)) {
         break;
       }
-      assume(
-          state == State::OnlyCallback ||
-          state == State::OnlyCallbackAllowInline);
       FOLLY_FALLTHROUGH;
 
     case State::OnlyCallback:
     case State::OnlyCallbackAllowInline:
+      if ((state != State::OnlyCallback &&
+           state != State::OnlyCallbackAllowInline) ||
+          !folly::atomic_compare_exchange_strong_explicit(
+              &state_,
+              &state,
+              State::Empty,
+              std::memory_order_relaxed,
+              std::memory_order_relaxed)) {
+        terminate_unexpected_state("setCallback", state);
+      }
       proxyCallback(state);
       break;
     case State::OnlyResult:
@@ -535,7 +585,7 @@ void CoreBase::setProxy_(CoreBase* proxy) {
     case State::Done:
     case State::Empty:
     default:
-      terminate_with<std::logic_error>("setCallback unexpected state");
+      terminate_unexpected_state("setCallback", state);
   }
 
   detachOne();
@@ -607,8 +657,8 @@ void CoreBase::doCallback(
   } else {
     attached_.fetch_add(1, std::memory_order_relaxed);
     SCOPE_EXIT {
-      context_.~Context();
-      callback_.~Callback();
+      context_ = {};
+      callback_ = {};
       detachOne();
     };
     RequestContextScopeGuard rctx(std::move(context_));
@@ -623,12 +673,11 @@ void CoreBase::proxyCallback(State priorState) {
       (priorState == State::OnlyCallbackAllowInline
            ? futures::detail::InlineContinuation::permit
            : futures::detail::InlineContinuation::forbid);
-  state_.store(State::Empty, std::memory_order_relaxed);
   proxy_->setExecutor(std::move(executor_));
   proxy_->setCallback_(std::move(callback_), std::move(context_), allowInline);
   proxy_->detachFuture();
-  context_.~Context();
-  callback_.~Callback();
+  context_ = {};
+  callback_ = {};
 }
 
 void CoreBase::detachOne() noexcept {
@@ -643,8 +692,8 @@ void CoreBase::derefCallback() noexcept {
   auto c = callbackReferences_.fetch_sub(1, std::memory_order_acq_rel);
   assert(c >= 1);
   if (c == 1) {
-    context_.~Context();
-    callback_.~Callback();
+    context_ = {};
+    callback_ = {};
   }
 }
 

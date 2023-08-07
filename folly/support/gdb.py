@@ -200,9 +200,12 @@ class F14HashtableIterator:
         item_type = gdb.lookup_type("{}::{}".format(ht.type.name, "Item"))
         self.item_ptr_type = item_type.pointer()
         self.chunk_ptr = ht["chunks_"]
-        # chunk_count is always power of 2;
-        # For partial chunks, chunkMask_ = 0, so + 1 also works
-        chunk_count = ht["chunkMask_"] + 1
+        pair = ht["sizeAndChunkShiftAndPackedBegin_"]["sizeAndChunkShift_"]
+        size_of_size_t = gdb.lookup_type("size_t").sizeof
+        if size_of_size_t == 4:
+            chunk_count = 1 << pair["chunkShift_"]
+        else:
+            chunk_count = 1 << (pair["packedSizeAndChunkShift_"] & ((1 << 8) - 1))
         self.chunk_end = self.chunk_ptr + chunk_count
         self.current_chunk = self.chunk_iter(self.chunk_ptr)
         self.is_node_container = is_node_container
@@ -286,7 +289,14 @@ class F14Printer:
         return self.val["table_"]
 
     def size(self):
-        return self.hashtable()["sizeAndPackedBegin_"]["size_"]
+        pair = self.hashtable()["sizeAndChunkShiftAndPackedBegin_"][
+            "sizeAndChunkShift_"
+        ]
+        size_of_size_t = gdb.lookup_type("size_t").sizeof
+        if size_of_size_t == 4:
+            return pair["size_"]
+        else:
+            return pair["packedSizeAndChunkShift_"] >> 8
 
     def to_string(self):
         return "%s with %d elements" % (
@@ -320,6 +330,61 @@ class F14Printer:
 
     def display_hint(self):
         return "map" if self.is_map else "array"
+
+
+# Iterator for folly::small_vector
+class SmallVectorIterator:
+    def __init__(self, data, size):
+        self.iter = F14HashtableItemIterator(data, size)
+        self.count = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        count = self.count
+        self.count += 1
+        return ("[%d]" % count, self.iter.__next__())
+
+
+class SmallVectorPrinter:
+    """Printer for folly::small_vector"""
+
+    def __init__(self, val):
+        self.val = val
+        size = self.val["size_"]
+        self.is_inline = (size >> (size.type.sizeof * 8 - 1)) == 0
+
+    def children(self):
+        heapPtr = self.val["u"]["pdata_"]["heap_"]
+        inlinePtr = self.val["u"]["storage_"]["__data"].address
+        ptr = inlinePtr if self.is_inline else heapPtr
+
+        value_type = self.val.type.template_argument(0)
+        typedPtr = ptr.reinterpret_cast(value_type.pointer())
+        return SmallVectorIterator(typedPtr, self.size())
+
+    def capacity(self):
+        inlineCap = self.val.type.template_argument(1)
+        outCap = self.val["u"]["pdata_"]["capacity_"]
+        return inlineCap if self.is_inline else outCap
+
+    def size(self):
+        size = self.val["size_"]
+        # Clear off potential high bit flags.
+        if size.type.sizeof == 8:
+            return size & 0x3FFF_FFFF_FFFF_FFFF
+        else:
+            return size & 0x3FFF_FFFF
+
+    def to_string(self):
+        return "folly::small_vector of length %d, capacity %d" % (
+            self.size(),
+            self.capacity(),
+        )
+
+    def display_hint(self):
+        return "array"
 
 
 class ConcurrentHashMapIterator:
@@ -419,6 +484,8 @@ def build_pretty_printer():
     pp.add_printer(
         "ConcurrentHashMap", "^folly::ConcurrentHashMap<.*$", ConcurrentHashMapPrinter
     )
+
+    pp.add_printer("small_vector", "^folly::small_vector<.*$", SmallVectorPrinter)
     return pp
 
 

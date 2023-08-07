@@ -17,11 +17,11 @@
 #pragma once
 
 #include <atomic>
-#include <unordered_set>
 
+#include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
-#include <folly/executors/QueuedImmediateExecutor.h>
+#include <folly/container/F14Set.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrObj.h>
@@ -34,6 +34,8 @@
 
 namespace folly {
 
+class Executor;
+
 namespace detail {
 
 /** Threshold for the number of retired objects to trigger
@@ -41,6 +43,8 @@ namespace detail {
 constexpr int hazptr_domain_rcount_threshold() {
   return 1000;
 }
+
+folly::Executor::KeepAlive<> hazptr_get_default_executor();
 
 } // namespace detail
 
@@ -99,8 +103,8 @@ class hazptr_domain {
   using List = hazptr_detail::linked_list<Obj>;
   using ObjList = hazptr_obj_list<Atom>;
   using RetiredList = hazptr_detail::shared_head_only_list<Obj, Atom>;
-  using Set = std::unordered_set<const void*>;
-  using ExecFn = folly::Executor* (*)();
+  using Set = folly::F14FastSet<const void*>;
+  using ExecFn = folly::Executor::KeepAlive<> (*)();
 
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
@@ -114,10 +118,6 @@ class hazptr_domain {
   static constexpr int kShardMask = kNumShards - 1;
   static_assert(
       (kNumShards & kShardMask) == 0, "kNumShards must be a power of 2");
-
-  static folly::Executor* get_default_executor() {
-    return &folly::QueuedImmediateExecutor::instance();
-  }
 
   Atom<Rec*> hazptrs_{nullptr};
   Atom<uintptr_t> avail_{reinterpret_cast<uintptr_t>(nullptr)};
@@ -205,11 +205,11 @@ class hazptr_domain {
 
   /** cleanup_cohort_tag */
   void cleanup_cohort_tag(const hazptr_obj_cohort<Atom>* cohort) noexcept {
-    auto tag = reinterpret_cast<uintptr_t>(cohort) + kTagBit;
-    auto shard = calc_shard(tag);
+    auto ftag = reinterpret_cast<uintptr_t>(cohort) + kTagBit;
+    auto shard = calc_shard(ftag);
     auto obj = tagged_[shard].pop_all(RetiredList::kAlsoLock);
     ObjList match, nomatch;
-    list_match_tag(tag, obj, match, nomatch);
+    list_match_tag(ftag, obj, match, nomatch);
     List l(nomatch.head(), nomatch.tail());
     tagged_[shard].push_unlock(l);
     add_count(-match.count());
@@ -217,14 +217,15 @@ class hazptr_domain {
     reclaim_list_transitive(obj);
     int count = match.count() + nomatch.count();
     if (count > kListTooLarge) {
-      hazptr_warning_list_too_large(tag, shard, count);
+      hazptr_warning_list_too_large(ftag, shard, count);
     }
   }
 
   void list_match_tag(
-      uintptr_t tag, Obj* obj, ObjList& match, ObjList& nomatch) {
-    list_match_condition(
-        obj, match, nomatch, [tag](Obj* o) { return o->cohort_tag() == tag; });
+      uintptr_t ftag, Obj* obj, ObjList& match, ObjList& nomatch) {
+    list_match_condition(obj, match, nomatch, [ftag](Obj* o) {
+      return o->cohort_tag() == ftag;
+    });
   }
 
  private:
@@ -365,9 +366,9 @@ class hazptr_domain {
   }
 
   /** calc_shard */
-  size_t calc_shard(uintptr_t tag) {
+  size_t calc_shard(uintptr_t ftag) {
     size_t shard =
-        (std::hash<uintptr_t>{}(tag) >> kIgnoredLowBits) & kShardMask;
+        (std::hash<uintptr_t>{}(ftag) >> kIgnoredLowBits) & kShardMask;
     DCHECK(shard < kNumShards);
     return shard;
   }
@@ -718,16 +719,17 @@ class hazptr_domain {
       return false;
     }
     auto fn = exec_fn_.load(std::memory_order_acquire);
-    auto ex = fn ? fn() : get_default_executor();
+    folly::Executor::KeepAlive<> ex =
+        fn ? fn() : detail::hazptr_get_default_executor();
     if (!ex) {
       return false;
     }
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
-    auto recl_fn = [this, rcount] {
+    auto recl_fn = [this, rcount, ka = ex] {
       exec_backlog_.store(0, std::memory_order_relaxed);
       do_reclamation(rcount);
     };
-    if (ex == get_default_executor()) {
+    if (ex.get() == detail::hazptr_get_default_executor().get()) {
       invoke_reclamation_may_deadlock(ex, recl_fn);
     } else {
       ex->add(recl_fn);
@@ -739,7 +741,8 @@ class hazptr_domain {
   }
 
   template <typename Func>
-  void invoke_reclamation_may_deadlock(folly::Executor* ex, Func recl_fn) {
+  void invoke_reclamation_may_deadlock(
+      folly::Executor::KeepAlive<> ex, Func recl_fn) {
     ex->add(recl_fn);
     // This program is using the default executor, which is an
     // inline executor. This is not necessarily a problem. But if this
@@ -751,11 +754,11 @@ class hazptr_domain {
   }
 
   FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_list_too_large(
-      uintptr_t tag, size_t shard, int count) {
+      uintptr_t ftag, size_t shard, int count) {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
       LOG(WARNING) << "Hazptr retired list too large:"
-                   << " tag=" << tag << " shard=" << shard
+                   << " ftag=" << ftag << " shard=" << shard
                    << " count=" << count;
     }
   }

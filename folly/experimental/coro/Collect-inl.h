@@ -268,7 +268,7 @@ auto makeUnorderedAsyncGeneratorImpl(
       RequestContext::setContext(context);
     }
 
-    while (true) {
+    while (expected > 0) {
       CancellationCallback cancelCallback(
           co_await co_current_cancellation_token,
           [&]() noexcept { cancelSource.requestCancellation(); });
@@ -286,7 +286,7 @@ auto makeUnorderedAsyncGeneratorImpl(
         co_yield co_result(std::move(result));
       } else {
         // Prevent AsyncPipe from receiving cancellation so we get the right
-        // number of OperationCancelleds.
+        // number of OperationCancelled.
         auto result = co_await co_withCancellation({}, results.next());
         co_yield std::move(*result);
         if (--expected == 0) {

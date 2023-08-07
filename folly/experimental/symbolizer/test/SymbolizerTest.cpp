@@ -20,6 +20,7 @@
 #include <array>
 #include <cstdlib>
 
+#include <glog/logging.h>
 #include <folly/Demangle.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
@@ -213,9 +214,16 @@ void expectFrameEq(
       << " expecting shortName=" << shortName << " or fullName=" << fullName
       << " address: " << frame.addr << " hex(address): " << std::hex
       << frame.addr;
-  EXPECT_EQ(normalizePath(frame.location.file.toString()), normalizePath(file))
+  // Use endsWith in case the build system adds extra paths in front.
+  EXPECT_TRUE(folly::StringPiece(normalizePath(frame.location.file.toString()))
+                  .endsWith(normalizePath(file)))
       << ' ' << fullName << " address: " << frame.addr
-      << " hex(address): " << std::hex << frame.addr;
+      << " hex(address): " << std::hex << frame.addr
+      << " frame.location.file.toString(): " << frame.location.file.toString()
+      << " normalizePath(frame.location.file.toString()): "
+      << normalizePath(frame.location.file.toString()) //
+      << " file: " << file //
+      << " normalizePath(file): " << normalizePath(file);
   EXPECT_EQ(frame.location.line, lineno) << ' ' << fullName;
 }
 
@@ -226,6 +234,16 @@ void expectFramesEq(
   EXPECT_EQ(frames1.frameCount, frames2.frameCount);
   for (size_t i = 0; i < frames1.frameCount; i++) {
     EXPECT_STREQ(frames1.frames[i].name, frames2.frames[i].name);
+  }
+}
+
+template <size_t kNumFrames = 100>
+void printFrames(const FrameArray<kNumFrames>& frames) {
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    auto& frame = frames.frames[i];
+    LOG(INFO) << std::hex << frame.addr << ": " << frame.name << " in "
+              << frame.location.file.toString() << ":" << std::dec
+              << frame.location.line;
   }
 }
 
@@ -242,6 +260,8 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
+
+  printFrames(frames);
 
   expectFrameEq(
       frames.frames[4],
@@ -336,6 +356,8 @@ TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
       "folly::symbolizer::test::lexicalBlock_inlineB_inlineA_lfind()",
       "folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp",
       kLineno_inlineB_inlineA_lfind);
+
+  printFrames(frames);
 }
 
 TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {
@@ -540,12 +562,12 @@ TEST(Dwarf, FindParameterNames) {
 
   std::vector<folly::StringPiece> names;
   Dwarf dwarf(&elfCache, frame.file.get());
-  LocationInfo info;
+
   folly::Range<SymbolizedFrame*> extraInlineFrames = {};
   dwarf.findAddress(
       frame.addr,
       LocationInfoMode::FAST,
-      info,
+      frame,
       extraInlineFrames,
       [&](const folly::StringPiece name) { names.push_back(name); });
 

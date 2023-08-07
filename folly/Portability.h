@@ -177,52 +177,6 @@ constexpr bool kIsSanitize = false;
 #define FOLLY_PACK_POP /**/
 #endif
 
-// Generalize warning push/pop.
-#if defined(__GNUC__) || defined(__clang__)
-// Clang & GCC
-#define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
-#define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
-#define FOLLY_GNU_DISABLE_WARNING_INTERNAL2(warningName) #warningName
-#define FOLLY_GNU_DISABLE_WARNING(warningName) \
-  _Pragma(                                     \
-      FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
-#ifdef __clang__
-#define FOLLY_CLANG_DISABLE_WARNING(warningName) \
-  FOLLY_GNU_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)
-#else
-#define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName) \
-  FOLLY_GNU_DISABLE_WARNING(warningName)
-#endif
-#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
-#elif defined(_MSC_VER)
-#define FOLLY_PUSH_WARNING __pragma(warning(push))
-#define FOLLY_POP_WARNING __pragma(warning(pop))
-// Disable the GCC warnings.
-#define FOLLY_GNU_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)
-#define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
-  __pragma(warning(disable : warningNumber))
-#else
-#define FOLLY_PUSH_WARNING
-#define FOLLY_POP_WARNING
-#define FOLLY_GNU_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)
-#define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
-#endif
-
-#ifdef FOLLY_HAVE_SHADOW_LOCAL_WARNINGS
-#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS            \
-  FOLLY_GNU_DISABLE_WARNING("-Wshadow-compatible-local") \
-  FOLLY_GNU_DISABLE_WARNING("-Wshadow-local")            \
-  FOLLY_GNU_DISABLE_WARNING("-Wshadow")
-#else
-#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
-#endif
-
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
@@ -370,10 +324,18 @@ constexpr auto kHasWeakSymbols = false;
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
 #ifndef FOLLY_NEON
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__CUDACC__)
 #define FOLLY_NEON 1
 #else
 #define FOLLY_NEON 0
+#endif
+#endif
+
+#ifndef FOLLY_ARM_FEATURE_CRC32
+#ifdef __ARM_FEATURE_CRC32
+#define FOLLY_ARM_FEATURE_CRC32 1
+#else
+#define FOLLY_ARM_FEATURE_CRC32 0
 #endif
 #endif
 
@@ -495,7 +457,7 @@ constexpr auto kMscVer = _MSC_VER;
 constexpr auto kMscVer = 0;
 #endif
 
-#if __GNUC__
+#if defined(__GNUC__) && __GNUC__
 constexpr auto kGnuc = __GNUC__;
 #else
 constexpr auto kGnuc = 0;
@@ -571,7 +533,7 @@ constexpr auto kCpplibVer = 0;
 #if defined(FOLLY_CFG_NO_COROUTINES)
 #define FOLLY_HAS_COROUTINES 0
 #else
-#if __cplusplus >= 201703L
+#if FOLLY_CPLUSPLUS >= 201703L
 // folly::coro requires C++17 support
 #if defined(__NVCC__)
 // For now, NVCC matches other compilers but does not offer coroutines.
@@ -587,22 +549,24 @@ constexpr auto kCpplibVer = 0;
 // <experimental/coroutine> which will conflict with anyone who wants to load
 // the LLVM implementation of coroutines on Windows.
 #define FOLLY_HAS_COROUTINES 0
-#elif (__cpp_coroutines >= 201703L || __cpp_impl_coroutine >= 201902L) && \
+#elif defined(_MSC_VER) && _MSC_VER && defined(_RESUMABLE_FUNCTIONS_SUPPORTED)
+// NOTE: MSVC 2017 does not currently support the full Coroutines TS since it
+// does not yet support symmetric-transfer.
+#define FOLLY_HAS_COROUTINES 0
+#elif (                                                                    \
+    (defined(__cpp_coroutines) && __cpp_coroutines >= 201703L) ||          \
+    (defined(__cpp_impl_coroutine) && __cpp_impl_coroutine >= 201902L)) && \
     (__has_include(<coroutine>) || __has_include(<experimental/coroutine>))
 #define FOLLY_HAS_COROUTINES 1
 // This is mainly to workaround bugs triggered by LTO, when stack allocated
 // variables in await_suspend end up on a coroutine frame.
 #define FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES FOLLY_NOINLINE
-#elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
-// NOTE: MSVC 2017 does not currently support the full Coroutines TS since it
-// does not yet support symmetric-transfer.
-#define FOLLY_HAS_COROUTINES 0
 #else
 #define FOLLY_HAS_COROUTINES 0
 #endif
 #else
 #define FOLLY_HAS_COROUTINES 0
-#endif // __cplusplus >= 201703L
+#endif // FOLLY_CPLUSPLUS >= 201703L
 #endif // FOLLY_CFG_NO_COROUTINES
 
 // MSVC 2017.5 && C++17
@@ -632,4 +596,11 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CONSTEVAL consteval
 #else
 #define FOLLY_CONSTEVAL constexpr
+#endif
+
+// C++17 deduction guides
+#if defined(__cpp_deduction_guides) && __cpp_deduction_guides >= 201703L
+#define FOLLY_HAS_DEDUCTION_GUIDES 1
+#else
+#define FOLLY_HAS_DEDUCTION_GUIDES 0
 #endif

@@ -59,6 +59,8 @@ class TestObserverInterface {
 class TestSubject {
  public:
   TestSubject() : observerCtr(this) {}
+  explicit TestSubject(TestSubject&& old)
+      : observerCtr(this, std::move(old.observerCtr)) {}
   using ObserverContainer = ObserverContainer<
       TestObserverInterface<TestSubject>,
       TestSubject,
@@ -139,16 +141,272 @@ class MockTestSubjectManagedObserverSpecialized
 class ObserverContainerTest : public ::testing::Test {};
 
 /**
+ * Wrapping class for MockObserver managed with various smart pointers.
+ *
+ * Used to enable TYPED_TEST with different observer configurations.
+ */
+class WrappedMockObserver {
+ public:
+  enum class MockType { Strict };
+  using EventSet = TestSubject::ObserverContainer::Observer::EventSet;
+  using ObserverType = TestSubject::ObserverContainer::Observer;
+  using MockObserverType =
+      MockTestSubjectObserver<TestSubject::ObserverContainer>;
+
+  WrappedMockObserver() = default;
+  virtual ~WrappedMockObserver() = default;
+
+  /**
+   * Release shared_ptr or unique_ptr for MockObserver object.
+   *
+   * If no other smart pointer is keeping the observer alive, the observer will
+   * be destroyed.
+   */
+  virtual void release() = 0;
+
+  /**
+   * Get a reference to the mock object for use in EXPECT_CALL operations.
+   */
+  virtual MockObserverType& getMock() = 0;
+
+  /**
+   * Get a pointer to the observer object for use in lookup operations.
+   *
+   * Do not use this for addObserver or removeObserver. Instead, rely on the
+   * implicit operator conversions.
+   */
+  virtual ObserverType* getPtr() = 0;
+};
+
+/*
+ * Wrapping class for MockObserver managed with unique_ptr.
+ */
+class WrappedUniquePtrMockObserver : public WrappedMockObserver {
+ public:
+  WrappedUniquePtrMockObserver(const MockType mockType, const EventSet eventSet)
+      : mockObserver_(makeMock(mockType, eventSet)) {}
+  ~WrappedUniquePtrMockObserver() override = default;
+
+  void release() override { mockObserver_.reset(); }
+
+  MockObserverType& getMock() override { return *mockObserver_.get(); }
+
+  MockObserverType* getPtr() override { return mockObserver_.get(); }
+
+  /*
+   * Conversion operator for use with addObserver() and removeObserver().
+   */
+  operator ObserverType*() { return mockObserver_.get(); }
+
+ private:
+  std::unique_ptr<MockObserverType> makeMock(
+      MockType mockType, const EventSet eventSet) {
+    switch (mockType) {
+      case MockType::Strict:
+        return std::make_unique<StrictMock<MockObserverType>>(eventSet);
+    }
+  }
+
+  std::unique_ptr<MockObserverType> mockObserver_;
+};
+
+/*
+ * Wrapping class for MockObserver managed with shared_ptr.
+ */
+class WrappedSharedPtrMockObserver : public WrappedMockObserver {
+ public:
+  WrappedSharedPtrMockObserver(const MockType mockType, const EventSet eventSet)
+      : mockObserver_(makeMock(mockType, eventSet)) {}
+  ~WrappedSharedPtrMockObserver() override = default;
+
+  void release() override { mockObserver_.reset(); }
+
+  MockObserverType& getMock() override { return *mockObserver_.get(); }
+
+  MockObserverType* getPtr() override { return mockObserver_.get(); }
+
+  /*
+   * Conversion operator for use with addObserver() and removeObserver().
+   */
+  operator std::shared_ptr<ObserverType>() { return mockObserver_; }
+
+ private:
+  std::shared_ptr<MockObserverType> makeMock(
+      MockType mockType, const EventSet eventSet) {
+    switch (mockType) {
+      case MockType::Strict:
+        return std::make_shared<StrictMock<MockObserverType>>(eventSet);
+    }
+  }
+
+  std::shared_ptr<MockObserverType> mockObserver_;
+};
+
+/*
+ * Wrapping class for MockObserver managed with shared_ptr.
+ *
+ * The wrapper transfers ownership of the shared_ptr to the caller the first
+ * time it is accessed, and relies on a weak_ptr to get a copy of the shared_ptr
+ * from then onwards. This enables us to test scenarios where the only handle
+ * keeping the observer alive is the one held by the container.
+ */
+class WrappedSharedPtrSingleHandleMockObserver : public WrappedMockObserver {
+ public:
+  WrappedSharedPtrSingleHandleMockObserver(
+      const MockType mockType, const EventSet eventSet)
+      : mockObserver_(makeMock(mockType, eventSet)),
+        weakMockObserver_(mockObserver_) {}
+  ~WrappedSharedPtrSingleHandleMockObserver() override = default;
+
+  void release() override { mockObserver_.reset(); }
+
+  MockObserverType& getMock() override {
+    std::shared_ptr<MockObserverType> mockObserver(weakMockObserver_); // throws
+    return *mockObserver.get();
+  }
+
+  MockObserverType* getPtr() override {
+    std::shared_ptr<MockObserverType> mockObserver(weakMockObserver_); // throws
+    return mockObserver.get();
+  }
+
+  /*
+   * Conversion operator for use with addObserver() and removeObserver().
+   *
+   * The first call will transfer ownership of the shared_ptr to the caller.
+   * Subsequent calls use the weak_ptr to get a shared_ptr.
+   */
+  operator std::shared_ptr<ObserverType>() {
+    // first call, we transfer out the handle for the mock observer
+    if (mockObserver_) {
+      auto mockObserver = std::move(mockObserver_);
+      mockObserver_.reset();
+      return mockObserver;
+    }
+
+    // subsequent calls use the weak
+    // this should work as long as the observer hasn't been destroyed
+    std::shared_ptr<MockObserverType> mockObserver(weakMockObserver_); // throws
+    return mockObserver;
+  }
+
+ private:
+  std::shared_ptr<MockObserverType> makeMock(
+      MockType mockType, const EventSet eventSet) {
+    switch (mockType) {
+      case MockType::Strict:
+        return std::make_shared<StrictMock<MockObserverType>>(eventSet);
+    }
+  }
+
+  std::shared_ptr<MockObserverType> mockObserver_;
+  std::weak_ptr<MockObserverType> weakMockObserver_;
+};
+
+TEST(WrappedSharedPtrMockObserver, CheckBehavior) {
+  using WrapperType = WrappedSharedPtrMockObserver;
+  WrapperType wrappedObserver(
+      WrapperType::MockType::Strict,
+      WrapperType::ObserverType::EventSetBuilder().enableAllEvents().build());
+
+  // verify that the handle is NOT moved to caller
+  {
+    std::shared_ptr<WrapperType::ObserverType> sptr = wrappedObserver;
+    EXPECT_EQ(2, sptr.use_count()); // two handles
+  }
+
+  // test getMock
+  {
+    auto ptr = &wrappedObserver.getMock();
+    std::shared_ptr<WrapperType::ObserverType> sptr = wrappedObserver;
+    EXPECT_EQ(sptr.get(), ptr);
+  }
+
+  // test getPtr
+  {
+    auto ptr = wrappedObserver.getPtr();
+    std::shared_ptr<WrapperType::ObserverType> sptr = wrappedObserver;
+    EXPECT_EQ(sptr.get(), ptr);
+  }
+
+  // test release
+  {
+    std::shared_ptr<WrapperType::ObserverType> sptr = wrappedObserver;
+    EXPECT_EQ(2, sptr.use_count()); // two handles
+    wrappedObserver.release();
+    EXPECT_EQ(1, sptr.use_count()); // one handle
+  }
+}
+
+TEST(WrappedSharedPtrSingleHandleMockObserver, CheckBehavior) {
+  using WrapperType = WrappedSharedPtrSingleHandleMockObserver;
+  WrapperType wrappedObserver(
+      WrapperType::MockType::Strict,
+      WrapperType::ObserverType::EventSetBuilder().enableAllEvents().build());
+
+  // verify that the handle is moved to caller
+  std::shared_ptr<WrapperType::ObserverType> sptr = wrappedObserver;
+  EXPECT_EQ(1, sptr.use_count()); // one handle
+
+  // verify that wrapper returns shared_ptr via weak_ptr after first time
+  {
+    std::shared_ptr<WrapperType::ObserverType> sptr2 = wrappedObserver;
+    EXPECT_EQ(sptr, sptr2);
+    EXPECT_EQ(2, sptr.use_count()); // two handles
+  }
+  EXPECT_EQ(1, sptr.use_count()); // one handle
+
+  // test getMock
+  {
+    auto ptr = &wrappedObserver.getMock();
+    EXPECT_EQ(sptr.get(), ptr);
+  }
+
+  // test getPtr
+  {
+    auto ptr = wrappedObserver.getPtr();
+    EXPECT_EQ(sptr.get(), ptr);
+  }
+
+  // test release
+  {
+    wrappedObserver.release();
+    EXPECT_EQ(1, sptr.use_count()); // one handle
+
+    // since we hold on to weak ptr, can still shared_ptr
+    std::shared_ptr<WrapperType::ObserverType> sptr2 = wrappedObserver;
+    EXPECT_EQ(sptr, sptr2);
+    EXPECT_EQ(2, sptr.use_count()); // two handles
+  }
+
+  // destroy sptr, verify all functions fail
+  sptr = nullptr;
+  EXPECT_THROW(wrappedObserver.getMock(), std::bad_weak_ptr);
+  EXPECT_THROW(wrappedObserver.getPtr(), std::bad_weak_ptr);
+  EXPECT_THROW(
+      std::shared_ptr<WrapperType::ObserverType> sptr2 = wrappedObserver,
+      std::bad_weak_ptr);
+}
+
+template <class T>
+class ObserverContainerTypedTest : public ObserverContainerTest {};
+using ObserverContainerTypedTestTypes = testing::Types<
+    WrappedUniquePtrMockObserver,
+    WrappedSharedPtrMockObserver,
+    WrappedSharedPtrSingleHandleMockObserver>;
+TYPED_TEST_SUITE(ObserverContainerTypedTest, ObserverContainerTypedTestTypes);
+
+/**
  * Ensure no issue if container is never used.
  */
-TEST_F(ObserverContainerTest, CtrObserverNeverAttached) {
+TYPED_TEST(ObserverContainerTypedTest, CtrObserverNeverAttached) {
   auto obj1 = std::make_unique<TestSubject>();
 }
 
 /**
  * Ensure no issue if container is never used.
  */
-TEST_F(ObserverContainerTest, CtrObserverNeverAttachedWithChecks) {
+TYPED_TEST(ObserverContainerTypedTest, CtrObserverNeverAttachedWithChecks) {
   auto obj1 = std::make_unique<TestSubject>();
   EXPECT_EQ(0, obj1->observerCtr.numObservers());
   EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
@@ -159,9 +417,226 @@ TEST_F(ObserverContainerTest, CtrObserverNeverAttachedWithChecks) {
 }
 
 /**
- * Ensure add / remove works as expected.
+ * Test add / remove.
  */
-TEST_F(ObserverContainerTest, CtrObserverAddRemove) {
+TYPED_TEST(ObserverContainerTypedTest, CtrObserverAddRemove) {
+  using WrappedMockObserverT = TypeParam;
+  using EventSetBuilder =
+      TestSubject::ObserverContainer::Observer::EventSetBuilder;
+  using MockType = typename WrappedMockObserverT::MockType;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      IsEmpty());
+
+  WrappedMockObserverT observer1(
+      MockType::Strict, EventSetBuilder().enableAllEvents().build());
+  EXPECT_CALL(
+      observer1.getMock(), addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(observer1.getMock(), attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1); // implicit cast per type
+
+  EXPECT_EQ(1, obj1->observerCtr.numObservers());
+  EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj1->observerCtr.findObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      UnorderedElementsAre(observer1.getPtr()));
+
+  EXPECT_CALL(observer1.getMock(), detachedMock(obj1.get()));
+  EXPECT_CALL(
+      observer1.getMock(),
+      removedFromObserverContainerMock(&obj1->observerCtr));
+  obj1->observerCtr.removeObserver(observer1); // implicit cast per type
+
+  EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      IsEmpty());
+}
+
+/**
+ * Test moving an ObserverContainer.
+ *
+ * Post move action: Observer removed and destroyed prior to subject destroy.
+ */
+TYPED_TEST(ObserverContainerTypedTest, CtrMoveThenRemoveAndDestroyObserver) {
+  using WrappedMockObserverT = TypeParam;
+  using EventSetBuilder =
+      TestSubject::ObserverContainer::Observer::EventSetBuilder;
+  using MockType = typename WrappedMockObserverT::MockType;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      IsEmpty());
+
+  WrappedMockObserverT observer1(
+      MockType::Strict, EventSetBuilder().enableAllEvents().build());
+  typename WrappedMockObserverT::ObserverType::Safety dc(observer1.getMock());
+  EXPECT_CALL(
+      observer1.getMock(), addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(observer1.getMock(), attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1); // implicit cast per type
+
+  EXPECT_EQ(1, obj1->observerCtr.numObservers());
+  EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj1->observerCtr.findObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      UnorderedElementsAre(observer1.getPtr()));
+
+  EXPECT_CALL(
+      observer1.getMock(), movedToObserverContainerMock(&obj1->observerCtr, _));
+  EXPECT_CALL(observer1.getMock(), movedMock(obj1.get(), _, _));
+
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2->observerCtr.numObservers(), 1);
+  EXPECT_EQ(obj1->observerCtr.numObservers(), 0);
+
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      IsEmpty());
+
+  EXPECT_THAT(
+      obj2->observerCtr.getObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj2->observerCtr.findObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj2->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      UnorderedElementsAre(observer1.getPtr()));
+
+  EXPECT_CALL(observer1.getMock(), detachedMock(obj2.get()));
+  EXPECT_CALL(
+      observer1.getMock(),
+      removedFromObserverContainerMock(&obj2->observerCtr));
+  obj2->observerCtr.removeObserver(observer1); // implicit cast per type
+
+  observer1.release(); // release the observer from wrapper; should destroy
+
+  EXPECT_EQ(obj2->observerCtr.numObservers(), 0);
+  EXPECT_EQ(obj1->observerCtr.numObservers(), 0);
+}
+
+/**
+ * Test moving an ObserverContainer.
+ *
+ * Post move action: Observed object destroyed.
+ */
+TYPED_TEST(ObserverContainerTypedTest, CtrMoveThenDestroyObserved) {
+  using WrappedMockObserverT = TypeParam;
+  using EventSetBuilder =
+      TestSubject::ObserverContainer::Observer::EventSetBuilder;
+  using MockType = typename WrappedMockObserverT::MockType;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      IsEmpty());
+
+  WrappedMockObserverT observer1(
+      MockType::Strict, EventSetBuilder().enableAllEvents().build());
+  typename WrappedMockObserverT::ObserverType::Safety dc(observer1.getMock());
+  EXPECT_CALL(
+      observer1.getMock(), addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(observer1.getMock(), attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1); // implicit cast per type
+
+  EXPECT_EQ(1, obj1->observerCtr.numObservers());
+  EXPECT_THAT(
+      obj1->observerCtr.getObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj1->observerCtr.findObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      UnorderedElementsAre(observer1.getPtr()));
+
+  EXPECT_CALL(
+      observer1.getMock(), movedToObserverContainerMock(&obj1->observerCtr, _));
+  EXPECT_CALL(observer1.getMock(), movedMock(obj1.get(), _, _));
+
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2->observerCtr.numObservers(), 1);
+  EXPECT_EQ(obj1->observerCtr.numObservers(), 0);
+
+  EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
+  EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
+  EXPECT_THAT(
+      obj1->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      IsEmpty());
+
+  EXPECT_THAT(
+      obj2->observerCtr.getObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj2->observerCtr.findObservers(),
+      UnorderedElementsAre(observer1.getPtr()));
+  EXPECT_THAT(
+      obj2->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      UnorderedElementsAre(observer1.getPtr()));
+
+  obj1 = nullptr; // nothing should occur
+
+  EXPECT_CALL(observer1.getMock(), destroyedMock(obj2.get(), _));
+  EXPECT_CALL(
+      observer1.getMock(),
+      removedFromObserverContainerMock(&obj2->observerCtr));
+  obj2 = nullptr;
+}
+
+/**
+ * Test moving a ObserverContainer with single handle shared_ptr observers.
+ *
+ * Verifies that moves work as expected when the shared_ptr within the container
+ * is the only thing keeping the observer alive. `CtrMoveThenDestroyObserved`
+ * typed test with type `WrappedSharedPtrSingleHandleMockObserver` also tests
+ * this functionality; this is an additional explicit test.
+ *
+ * Post move action: Observed object destroyed.
+ */
+TEST_F(ObserverContainerTest, CtrWithSharedPtrMoveThenDestroyObserved) {
   using MockTestSubjectObserver =
       MockTestSubjectObserver<TestSubject::ObserverContainer>;
   InSequence s;
@@ -175,11 +650,12 @@ TEST_F(ObserverContainerTest, CtrObserverAddRemove) {
           .findObservers<TestSubject::ObserverContainer::Observer>(),
       IsEmpty());
 
-  auto observer1 = std::make_unique<StrictMock<MockTestSubjectObserver>>(
+  auto observer1 = std::make_shared<StrictMock<MockTestSubjectObserver>>(
       MockTestSubjectObserver::EventSetBuilder().enableAllEvents().build());
+  typename MockTestSubjectObserver::Safety dc(*observer1);
   EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*observer1, attachedMock(obj1.get()));
-  obj1->observerCtr.addObserver(observer1.get());
+  obj1->observerCtr.addObserver(observer1);
 
   EXPECT_EQ(1, obj1->observerCtr.numObservers());
   EXPECT_THAT(
@@ -191,25 +667,54 @@ TEST_F(ObserverContainerTest, CtrObserverAddRemove) {
           .findObservers<TestSubject::ObserverContainer::Observer>(),
       UnorderedElementsAre(observer1.get()));
 
-  EXPECT_CALL(*observer1, detachedMock(obj1.get()));
-  EXPECT_CALL(*observer1, removedFromObserverContainerMock(&obj1->observerCtr));
-  obj1->observerCtr.removeObserver(observer1.get());
+  // now that observer1 is attached, we release shared_ptr but keep weak & raw
+  // since the container holds shared_ptr too, observer should not be destroyed
+  auto observer1Raw = observer1.get();
+  std::weak_ptr<MockTestSubjectObserver> observer1Weak = observer1;
+  observer1 = nullptr;
+  ASSERT_FALSE(dc.destroyed()); // should still exist
 
-  EXPECT_EQ(0, obj1->observerCtr.numObservers());
+  EXPECT_CALL(
+      *observer1Raw, movedToObserverContainerMock(&obj1->observerCtr, _));
+  EXPECT_CALL(*observer1Raw, movedMock(obj1.get(), _, _));
+
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2->observerCtr.numObservers(), 1);
+  EXPECT_EQ(obj1->observerCtr.numObservers(), 0);
+
   EXPECT_THAT(obj1->observerCtr.getObservers(), IsEmpty());
   EXPECT_THAT(obj1->observerCtr.findObservers(), IsEmpty());
   EXPECT_THAT(
       obj1->observerCtr
           .findObservers<TestSubject::ObserverContainer::Observer>(),
       IsEmpty());
+
+  EXPECT_THAT(
+      obj2->observerCtr.getObservers(), UnorderedElementsAre(observer1Raw));
+  EXPECT_THAT(
+      obj2->observerCtr.findObservers(), UnorderedElementsAre(observer1Raw));
+  EXPECT_THAT(
+      obj2->observerCtr
+          .findObservers<TestSubject::ObserverContainer::Observer>(),
+      UnorderedElementsAre(observer1Raw));
+
+  obj1 = nullptr; // nothing should occur
+
+  EXPECT_CALL(*observer1Raw, destroyedMock(obj2.get(), _));
+  EXPECT_CALL(
+      *observer1Raw, removedFromObserverContainerMock(&obj2->observerCtr));
+  obj2 = nullptr;
 }
 
 /**
  * Ensure correct behavior for invokeInterfaceMethod.
  */
-TEST_F(ObserverContainerTest, CtrInvoke) {
-  using MockTestSubjectObserver =
-      MockTestSubjectObserver<TestSubject::ObserverContainer>;
+TYPED_TEST(ObserverContainerTypedTest, CtrInvoke) {
+  using WrappedMockObserverT = TypeParam;
+  using EventSetBuilder =
+      TestSubject::ObserverContainer::Observer::EventSetBuilder;
+  using MockType = typename WrappedMockObserverT::MockType;
   InSequence s;
 
   // first invoke with no observers
@@ -218,30 +723,91 @@ TEST_F(ObserverContainerTest, CtrInvoke) {
   obj1->doSomethingSuperSpecial();
 
   // now add an observer and hit the events again to ensure it works
-  auto observer1 = std::make_unique<StrictMock<MockTestSubjectObserver>>(
-      MockTestSubjectObserver::EventSetBuilder().enableAllEvents().build());
-  observer1->useDefaultInvokeMockHandler();
-  observer1->useDefaultPostInvokeMockHandler();
-  EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
-  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
-  obj1->observerCtr.addObserver(observer1.get());
+  WrappedMockObserverT observer1(
+      MockType::Strict, EventSetBuilder().enableAllEvents().build());
+  observer1.getMock().useDefaultInvokeMockHandler();
+  observer1.getMock().useDefaultPostInvokeMockHandler();
+  EXPECT_CALL(
+      observer1.getMock(), addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(observer1.getMock(), attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1); // implicit cast per type
 
-  EXPECT_CALL(*observer1, specialMock(obj1.get()));
-  EXPECT_CALL(*observer1, superSpecialMock(obj1.get()));
+  EXPECT_CALL(observer1.getMock(), specialMock(obj1.get()));
+  EXPECT_CALL(observer1.getMock(), superSpecialMock(obj1.get()));
   obj1->doSomethingSpecial();
   obj1->doSomethingSuperSpecial();
 
   // remove and destroy the observer
-  EXPECT_CALL(*observer1, detachedMock(obj1.get()));
-  EXPECT_CALL(*observer1, removedFromObserverContainerMock(&obj1->observerCtr));
-  obj1->observerCtr.removeObserver(observer1.get());
-  observer1 = nullptr;
+  EXPECT_CALL(observer1.getMock(), detachedMock(obj1.get()));
+  EXPECT_CALL(
+      observer1.getMock(),
+      removedFromObserverContainerMock(&obj1->observerCtr));
+  obj1->observerCtr.removeObserver(observer1); // implicit cast per type
+  observer1.release();
 
   // once more, with no observers
   obj1->doSomethingSpecial();
   obj1->doSomethingSuperSpecial();
 
   obj1 = nullptr;
+}
+
+/**
+ * Ensure correct behavior for invokeInterfaceMethod after moving observers.
+ */
+TYPED_TEST(ObserverContainerTypedTest, CtrInvokeAfterMove) {
+  using WrappedMockObserverT = TypeParam;
+  using EventSetBuilder =
+      TestSubject::ObserverContainer::Observer::EventSetBuilder;
+  using MockType = typename WrappedMockObserverT::MockType;
+  InSequence s;
+
+  // first invoke with no observers
+  auto obj1 = std::make_unique<TestSubject>();
+  obj1->doSomethingSpecial();
+  obj1->doSomethingSuperSpecial();
+
+  // now add an observer and hit the events again to ensure it works
+  WrappedMockObserverT observer1(
+      MockType::Strict, EventSetBuilder().enableAllEvents().build());
+  observer1.getMock().useDefaultInvokeMockHandler();
+  observer1.getMock().useDefaultPostInvokeMockHandler();
+  EXPECT_CALL(
+      observer1.getMock(), addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(observer1.getMock(), attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1); // implicit cast per type
+
+  EXPECT_CALL(observer1.getMock(), specialMock(obj1.get()));
+  EXPECT_CALL(observer1.getMock(), superSpecialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+  obj1->doSomethingSuperSpecial();
+
+  // move the observer
+  EXPECT_CALL(
+      observer1.getMock(), movedToObserverContainerMock(&obj1->observerCtr, _));
+  EXPECT_CALL(observer1.getMock(), movedMock(obj1.get(), _, _));
+
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2->observerCtr.numObservers(), 1);
+  EXPECT_EQ(obj1->observerCtr.numObservers(), 0);
+
+  // hit the events again after the move
+  EXPECT_CALL(observer1.getMock(), specialMock(obj2.get()));
+  EXPECT_CALL(observer1.getMock(), superSpecialMock(obj2.get()));
+  obj2->doSomethingSpecial();
+  obj2->doSomethingSuperSpecial();
+
+  // hit the events again on obj1, nothing should happen
+  EXPECT_CALL(observer1.getMock(), specialMock(obj1.get())).Times(0);
+  EXPECT_CALL(observer1.getMock(), superSpecialMock(obj1.get())).Times(0);
+  obj1->doSomethingSpecial();
+  obj1->doSomethingSuperSpecial();
+
+  EXPECT_CALL(observer1.getMock(), destroyedMock(obj2.get(), _));
+  EXPECT_CALL(
+      observer1.getMock(),
+      removedFromObserverContainerMock(&obj2->observerCtr));
 }
 
 /**
@@ -1629,7 +2195,7 @@ TEST_F(ObserverContainerTest, ObserverAttachedThenObjectDestroyed) {
   EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*observer1, attachedMock(obj1.get()));
   obj1->observerCtr.addObserver(observer1.get());
-  EXPECT_FALSE(dc.destroyed());
+  ASSERT_FALSE(dc.destroyed());
 
   EXPECT_CALL(*observer1, specialMock(obj1.get()));
   obj1->doSomethingSpecial();
@@ -1637,7 +2203,7 @@ TEST_F(ObserverContainerTest, ObserverAttachedThenObjectDestroyed) {
   EXPECT_CALL(*observer1, destroyedMock(obj1.get(), _));
   EXPECT_CALL(*observer1, removedFromObserverContainerMock(&obj1->observerCtr));
   obj1 = nullptr;
-  EXPECT_FALSE(dc.destroyed());
+  ASSERT_FALSE(dc.destroyed());
 }
 
 TEST_F(ObserverContainerTest, SharedPtrObserverAttachedThenObjectDestroyed) {
@@ -1668,7 +2234,7 @@ TEST_F(ObserverContainerTest, SharedPtrObserverAttachedThenObjectDestroyed) {
 
 TEST_F(
     ObserverContainerTest,
-    SharedPtrObserverAttachedThenObjectAndObserverDestroyed) {
+    SharedPtrObserverAttachedSingleHandleThenObjectDestroyed) {
   using MockTestSubjectObserver =
       MockTestSubjectObserver<TestSubject::ObserverContainer>;
   InSequence s;
@@ -1689,7 +2255,7 @@ TEST_F(
   // since the container holds shared_ptr too, observer should not be destroyed
   auto observer1Raw = observer1.get();
   observer1 = nullptr;
-  EXPECT_FALSE(dc.destroyed()); // should still exist
+  ASSERT_FALSE(dc.destroyed()); // should still exist
 
   EXPECT_CALL(*observer1Raw, specialMock(obj1.get()));
   obj1->doSomethingSpecial();
@@ -1722,6 +2288,65 @@ TEST_F(ObserverContainerTest, ObserverAttachedThenObserverDetached) {
   EXPECT_CALL(*observer1, detachedMock(obj1.get()));
   EXPECT_CALL(*observer1, removedFromObserverContainerMock(&obj1->observerCtr));
   obj1->observerCtr.removeObserver(observer1.get());
+}
+
+TEST_F(ObserverContainerTest, SharedPtrObserverAttachedThenObserverDetached) {
+  using MockTestSubjectObserver =
+      MockTestSubjectObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_shared<StrictMock<MockTestSubjectObserver>>(
+      MockTestSubjectObserver::EventSetBuilder().enableAllEvents().build());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1);
+
+  EXPECT_CALL(*observer1, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  EXPECT_CALL(*observer1, detachedMock(obj1.get()));
+  EXPECT_CALL(*observer1, removedFromObserverContainerMock(&obj1->observerCtr));
+  obj1->observerCtr.removeObserver(observer1);
+}
+
+TEST_F(
+    ObserverContainerTest,
+    SharedPtrObserverAttachedSingleHandleThenObserverDetached) {
+  using MockTestSubjectObserver =
+      MockTestSubjectObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_shared<StrictMock<MockTestSubjectObserver>>(
+      MockTestSubjectObserver::EventSetBuilder().enableAllEvents().build());
+  MockTestSubjectObserver::Safety dc(*observer1.get());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_CALL(*observer1, addedToObserverContainerMock(&obj1->observerCtr));
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1);
+
+  // now that observer1 is attached, we release shared_ptr but keep weak & raw
+  // since the container holds shared_ptr too, observer should not be destroyed
+  auto observer1Raw = observer1.get();
+  std::weak_ptr<MockTestSubjectObserver> observer1Weak = observer1;
+  observer1 = nullptr;
+  ASSERT_FALSE(dc.destroyed()); // should still exist
+
+  EXPECT_CALL(*observer1Raw, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  EXPECT_CALL(*observer1Raw, detachedMock(obj1.get()));
+  EXPECT_CALL(
+      *observer1Raw, removedFromObserverContainerMock(&obj1->observerCtr));
+  auto observer1Locked = observer1Weak.lock(); // lock again for removal
+  ASSERT_THAT(observer1Locked, Not(IsNull()));
+  EXPECT_TRUE(obj1->observerCtr.removeObserver(observer1Locked));
 }
 
 TEST_F(ObserverContainerTest, ObserverAttachedEvents) {
@@ -2181,7 +2806,7 @@ TEST_F(ObserverContainerTest, ManagedObserverMovesBetweenObjectsDetachViaCtr) {
   EXPECT_FALSE(observer1->isObserving());
 }
 
-TEST_F(ObserverContainerTest, ManagedObserverMovesBetweenObjectsDestroy) {
+TEST_F(ObserverContainerTest, ManagedObserverMovesBetweenObjectsDestroyObject) {
   using MockTestSubjectManagedObserver =
       MockTestSubjectManagedObserver<TestSubject::ObserverContainer>;
   InSequence s;
@@ -2224,7 +2849,8 @@ TEST_F(ObserverContainerTest, ManagedObserverMovesBetweenObjectsDestroy) {
   obj2 = nullptr;
 }
 
-TEST_F(ObserverContainerTest, ManagedObserverMovesBetweenObjectsDestroyViaCtr) {
+TEST_F(
+    ObserverContainerTest, ManagedObserverMovesBetweenObjectsDestroyObserver) {
   using MockTestSubjectManagedObserver =
       MockTestSubjectManagedObserver<TestSubject::ObserverContainer>;
   InSequence s;
@@ -2252,7 +2878,6 @@ TEST_F(ObserverContainerTest, ManagedObserverMovesBetweenObjectsDestroyViaCtr) {
   obj1 = nullptr;
 
   // now bring up obj2
-
   auto obj2 = std::make_unique<TestSubject>();
 
   EXPECT_CALL(*observer1, attachedMock(obj2.get()));
@@ -2263,8 +2888,170 @@ TEST_F(ObserverContainerTest, ManagedObserverMovesBetweenObjectsDestroyViaCtr) {
   EXPECT_CALL(*observer1, specialMock(obj2.get()));
   obj2->doSomethingSpecial();
 
+  EXPECT_EQ(1, obj2->observerCtr.numObservers());
+  observer1 = nullptr;
+  EXPECT_EQ(0, obj2->observerCtr.numObservers());
+}
+
+TEST_F(
+    ObserverContainerTest,
+    ManagedObserverMovesBetweenObjectsViaConstructorThenDetach) {
+  using MockTestSubjectManagedObserver =
+      MockTestSubjectManagedObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_unique<StrictMock<MockTestSubjectManagedObserver>>(
+      MockTestSubjectManagedObserver::EventSetBuilder()
+          .enableAllEvents()
+          .build());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_EQ(nullptr, observer1->getObservedObject());
+  EXPECT_FALSE(observer1->isObserving());
+
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1.get());
+
+  EXPECT_EQ(obj1.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  // now bring up obj2
+  EXPECT_CALL(*observer1, movedMock(obj1.get(), _, _));
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj2.get()));
+  obj2->doSomethingSpecial();
+
+  EXPECT_CALL(*observer1, detachedMock(obj2.get()));
+  observer1->detach();
+  EXPECT_EQ(nullptr, observer1->getObservedObject());
+  EXPECT_FALSE(observer1->isObserving());
+}
+
+TEST_F(
+    ObserverContainerTest,
+    ManagedObserverMovesBetweenObjectsViaConstructorThenDetachViaCtr) {
+  using MockTestSubjectManagedObserver =
+      MockTestSubjectManagedObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_unique<StrictMock<MockTestSubjectManagedObserver>>(
+      MockTestSubjectManagedObserver::EventSetBuilder()
+          .enableAllEvents()
+          .build());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_EQ(nullptr, observer1->getObservedObject());
+  EXPECT_FALSE(observer1->isObserving());
+
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1.get());
+
+  EXPECT_EQ(obj1.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  // now bring up obj2
+  EXPECT_CALL(*observer1, movedMock(obj1.get(), _, _));
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj2.get()));
+  obj2->doSomethingSpecial();
+
+  EXPECT_CALL(*observer1, detachedMock(obj2.get()));
+  obj2->observerCtr.removeObserver(observer1.get());
+  EXPECT_EQ(nullptr, observer1->getObservedObject());
+  EXPECT_FALSE(observer1->isObserving());
+}
+
+TEST_F(
+    ObserverContainerTest,
+    ManagedObserverMovesBetweenObjectsViaConstructorThenDestroyObject) {
+  using MockTestSubjectManagedObserver =
+      MockTestSubjectManagedObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_unique<StrictMock<MockTestSubjectManagedObserver>>(
+      MockTestSubjectManagedObserver::EventSetBuilder()
+          .enableAllEvents()
+          .build());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_EQ(nullptr, observer1->getObservedObject());
+  EXPECT_FALSE(observer1->isObserving());
+
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1.get());
+
+  EXPECT_EQ(obj1.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  // now bring up obj2
+  EXPECT_CALL(*observer1, movedMock(obj1.get(), _, _));
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj2.get()));
+  obj2->doSomethingSpecial();
+
   EXPECT_CALL(*observer1, destroyedMock(obj2.get(), _));
   obj2 = nullptr;
+}
+
+TEST_F(
+    ObserverContainerTest,
+    ManagedObserverMovesBetweenObjectsViaConstructorThenDestroyObserver) {
+  using MockTestSubjectManagedObserver =
+      MockTestSubjectManagedObserver<TestSubject::ObserverContainer>;
+  InSequence s;
+
+  auto obj1 = std::make_unique<TestSubject>();
+  auto observer1 = std::make_unique<StrictMock<MockTestSubjectManagedObserver>>(
+      MockTestSubjectManagedObserver::EventSetBuilder()
+          .enableAllEvents()
+          .build());
+  observer1->useDefaultInvokeMockHandler();
+  observer1->useDefaultPostInvokeMockHandler();
+
+  EXPECT_EQ(nullptr, observer1->getObservedObject());
+  EXPECT_FALSE(observer1->isObserving());
+
+  EXPECT_CALL(*observer1, attachedMock(obj1.get()));
+  obj1->observerCtr.addObserver(observer1.get());
+
+  EXPECT_EQ(obj1.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj1.get()));
+  obj1->doSomethingSpecial();
+
+  // now bring up obj2
+  EXPECT_CALL(*observer1, movedMock(obj1.get(), _, _));
+  auto obj2 = std::make_unique<TestSubject>(std::move(*obj1));
+
+  EXPECT_EQ(obj2.get(), observer1->getObservedObject());
+  EXPECT_TRUE(observer1->isObserving());
+  EXPECT_CALL(*observer1, specialMock(obj2.get()));
+  obj2->doSomethingSpecial();
+
+  EXPECT_EQ(1, obj2->observerCtr.numObservers());
+  observer1 = nullptr;
+  EXPECT_EQ(0, obj2->observerCtr.numObservers());
 }
 
 TEST_F(ObserverContainerTest, ManagedObserverAttachedEventsUseBuilder) {
@@ -2348,8 +3135,8 @@ TEST_F(ObserverContainerTest, ManagedObserverAttachedEventsUseBuilder) {
 TEST_F(ObserverContainerTest, AddConstructorCallback) {
   uint64_t numSubjectsCreated = 0;
   std::vector<TestSubject*> subjectsCreated;
-  auto callbackF = [&](TestSubject* obj) {
-    subjectsCreated.push_back(obj);
+  auto callbackF = [&](TestSubject::ObserverContainer* ctr) {
+    subjectsCreated.push_back(ctr->getObject());
     numSubjectsCreated++;
   };
 
@@ -2370,15 +3157,15 @@ TEST_F(ObserverContainerTest, AddConstructorCallback) {
 TEST_F(ObserverContainerTest, AddConstructorCallbackMulti) {
   uint64_t numSubjectsCreated1 = 0;
   std::vector<TestSubject*> subjectsCreated1;
-  auto callbackF1 = [&](TestSubject* obj) {
-    subjectsCreated1.push_back(obj);
+  auto callbackF1 = [&](TestSubject::ObserverContainer* ctr) {
+    subjectsCreated1.push_back(ctr->getObject());
     numSubjectsCreated1++;
   };
 
   uint64_t numSubjectsCreated2 = 0;
   std::vector<TestSubject*> subjectsCreated2;
-  auto callbackF2 = [&](TestSubject* obj) {
-    subjectsCreated2.push_back(obj);
+  auto callbackF2 = [&](TestSubject::ObserverContainer* ctr) {
+    subjectsCreated2.push_back(ctr->getObject());
     numSubjectsCreated2++;
   };
 
@@ -2416,9 +3203,9 @@ TEST_F(ObserverContainerTest, AddConstructorCallbackAttachObserver) {
   obs->useDefaultPostInvokeMockHandler();
 
   uint64_t numSubjectsCreated = 0;
-  auto callbackF = [&](TestSubject* obj) {
+  auto callbackF = [&](TestSubject::ObserverContainer* ctr) {
     numSubjectsCreated++;
-    obj->observerCtr.addObserver(obs.get());
+    ctr->addObserver(obs.get());
   };
 
   TestSubject::ObserverContainer::addConstructorCallback(callbackF);
@@ -2469,7 +3256,7 @@ TEST_F(ObserverContainerStoreTest, SizeInvokeEmpty) {
   Store store;
   EXPECT_EQ(0, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
 }
 
@@ -2518,14 +3305,14 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
   EXPECT_EQ(1, obs1->getCount());
   EXPECT_EQ(0, obs2->getCount());
 
   EXPECT_TRUE(store.remove(obs1));
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
   EXPECT_EQ(0, store.size());
 
@@ -2534,7 +3321,7 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
   EXPECT_EQ(1, obs1->getCount());
   EXPECT_EQ(1, obs2->getCount());
@@ -2542,7 +3329,7 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(0, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
   EXPECT_EQ(0, store.size());
 
@@ -2550,7 +3337,7 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
   EXPECT_EQ(2, obs1->getCount());
   EXPECT_EQ(1, obs2->getCount());
@@ -2558,7 +3345,7 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
   EXPECT_EQ(3, obs1->getCount());
   EXPECT_EQ(2, obs2->getCount());
@@ -2566,7 +3353,7 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_TRUE(store.remove(obs2));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
   EXPECT_EQ(4, obs1->getCount());
   EXPECT_EQ(2, obs2->getCount());
@@ -2574,7 +3361,7 @@ TEST_F(ObserverContainerStoreTest, AddRemoveInvokeSize) {
   EXPECT_TRUE(store.remove(obs1));
   EXPECT_EQ(0, store.size());
   store.invokeForEachObserver(
-      [](auto observer) { observer->incrementCount(); },
+      [](auto* observer) { observer->incrementCount(); },
       Store::InvokeWhileIteratingPolicy::InvokeAdded);
 }
 
@@ -2617,7 +3404,7 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyInvokeAdded) {
   EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           EXPECT_TRUE(store.add(obs2)); // add observer 2
         }
@@ -2650,7 +3437,7 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyDoNotInvokeAdded) {
   EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           EXPECT_TRUE(store.add(obs2)); // add observer 2
         }
@@ -2679,7 +3466,7 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyCheckNoChange) {
   EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           // adding observers during iteration isn't allowed; expect exit
           EXPECT_EXIT(store.add(obs2), testing::KilledBySignal(SIGABRT), ".*");
@@ -2698,7 +3485,7 @@ TEST_F(ObserverContainerStoreTest, AddWhileIteratingPolicyCheckNoAdded) {
   EXPECT_TRUE(store.add(obs1));
   EXPECT_EQ(1, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           // adding observers during iteration isn't allowed; expect exit
           EXPECT_EXIT(store.add(obs2), testing::KilledBySignal(SIGABRT), ".*");
@@ -2722,7 +3509,7 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyInvokeAdded) {
   EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           EXPECT_TRUE(store.remove(obs2)); // remove observer 2
         }
@@ -2755,7 +3542,7 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyDoNotInvokeAdded) {
   EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           EXPECT_TRUE(store.remove(obs2)); // remove observer 2
         }
@@ -2788,7 +3575,7 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyCheckNoChange) {
   EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           // adding observers during iteration isn't allowed; expect exit
           EXPECT_EXIT(
@@ -2813,7 +3600,7 @@ TEST_F(ObserverContainerStoreTest, RemoveWhileIteratingPolicyCheckNoAdded) {
   EXPECT_TRUE(store.add(obs2));
   EXPECT_EQ(2, store.size());
   store.invokeForEachObserver(
-      [&obs1, &obs2, &store](auto observer) {
+      [&obs1, &obs2, &store](auto* observer) {
         if (observer == obs1.get()) {
           EXPECT_TRUE(store.remove(obs2)); // remove observer 2
         }

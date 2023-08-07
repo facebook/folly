@@ -31,6 +31,8 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/Pid.h>
+#include <folly/system/ThreadId.h>
 
 FOLLY_GFLAGS_DEFINE_bool(
     folly_memory_idler_purge_arenas,
@@ -42,6 +44,24 @@ namespace detail {
 
 AtomicStruct<std::chrono::steady_clock::duration>
     MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
+
+bool MemoryIdler::isUnmapUnusedStackAvailable() noexcept {
+  // Linux uses an automatic stack expansion mechanism to expand the main thread
+  // stack on demand. Before the main thread stack grows to its full extent, the
+  // vma corresponding to the main thread stack is not yet fully allocated. It's
+  // possible for the kernel to allocate the not-yet-allocated main thread stack
+  // vma to ramdon sbrk() or mmap() requests, and for the resulting regions from
+  // these requests to be used by other user code. If this happens, the madvise-
+  // dontneed here is dangerous - it can zero arbitrary heap buffers! So it must
+  // be skipped. In the case where this runs a fork() child in that thread which
+  // returned from fork(), the os-thread-id will coincide with the pid, which is
+  // a harmless false positive where the madvise-dontneed will be skipped.
+  if (kIsLinux && getOSThreadID() == static_cast<uint64_t>(get_cached_pid())) {
+    return false;
+  }
+
+  return true;
+}
 
 void MemoryIdler::flushLocalMallocCaches() {
   if (!usingJEMalloc()) {
@@ -163,6 +183,10 @@ FOLLY_NOINLINE static uintptr_t getStackPtr() {
 }
 
 void MemoryIdler::unmapUnusedStack(size_t retain) {
+  if (!isUnmapUnusedStackAvailable()) {
+    return;
+  }
+
   if (tls_stackSize == 0) {
     fetchStackLimits();
   }

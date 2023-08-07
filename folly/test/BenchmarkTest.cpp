@@ -15,356 +15,282 @@
  */
 
 #include <folly/Benchmark.h>
+#include <folly/detail/PerfScoped.h>
+#include <folly/portability/GFlags.h>
+#include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 
 #include <algorithm>
-#include <iostream>
-#include <numeric>
-#include <random>
-#include <vector>
 
-#include <folly/String.h>
-#include <folly/container/Foreach.h>
-
-using namespace folly;
-using namespace std;
-
-BENCHMARK_COUNTERS(insertVectorBeginWithCounter, counters, n) {
-  vector<int> v;
-  for (size_t i = 0; i < n; i++) {
-    v.insert(v.begin(), 42);
-  }
-  BENCHMARK_SUSPEND {
-    counters["foo"] = v.size();
-    counters["bar"] = v.size() * 2;
-  }
-}
-
-void fun() {
-  static double x = 1;
-  ++x;
-  doNotOptimizeAway(x);
-}
-BENCHMARK(bmFun) {
-  fun();
-}
-BENCHMARK(bmRepeatedFun, n) {
-  FOR_EACH_RANGE (i, 0, n) { fun(); }
-}
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(gun) {
-  static double x = 1;
-  x *= 2000;
-  doNotOptimizeAway(x);
-}
-
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(optimizerCanDiscardTrivial, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    for (long j = 0; j < 10000; ++j) {
-      x += j;
-    }
-  }
-}
-
-BENCHMARK(optimizerCanPowerReduceInner1Trivial, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    for (long j = 0; j < 10000; ++j) {
-      x += i + j;
-    }
-    doNotOptimizeAway(x);
-  }
-}
-
-BENCHMARK(optimizerCanPowerReduceInner2Trivial, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    makeUnpredictable(i);
-    for (long j = 0; j < 10000; ++j) {
-      x += i + j;
-    }
-  }
-  doNotOptimizeAway(x);
-}
-
-BENCHMARK(optimizerDisabled1Trivial, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    for (long j = 0; j < 10000; ++j) {
-      x += i + j;
-      doNotOptimizeAway(x);
-    }
-  }
-}
-
-BENCHMARK(optimizerDisabled2Trivial, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    makeUnpredictable(i);
-    for (long j = 0; j < 10000; ++j) {
-      makeUnpredictable(j);
-      x += i + j;
-    }
-  }
-  doNotOptimizeAway(x);
-}
-
-BENCHMARK(optimizerCanPowerReduceInner1TrivialPtr, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    for (long j = 0; j < 10000; ++j) {
-      x += i + j;
-    }
-    doNotOptimizeAway(&x);
-  }
-}
-
-BENCHMARK(optimizerCanPowerReduceInner2TrivialPtr, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    makeUnpredictable(i);
-    for (long j = 0; j < 10000; ++j) {
-      x += i + j;
-    }
-  }
-  doNotOptimizeAway(&x);
-}
-
-BENCHMARK(optimizerDisabled1TrivialPtr, n) {
-  long x = 0;
-  for (long i = 0; i < n; ++i) {
-    for (long j = 0; j < 10000; ++j) {
-      x += i + j;
-      doNotOptimizeAway(&x);
-    }
-  }
-}
-
+namespace folly {
+namespace detail {
 namespace {
-class NonTrivialLong {
- public:
-  explicit NonTrivialLong(long v) : value_(v) {}
-  virtual ~NonTrivialLong() {}
 
-  void operator++() { ++value_; }
-  void operator+=(long rhs) { value_ += rhs; }
-  void operator+=(const NonTrivialLong& rhs) { value_ += rhs.value_; }
-  bool operator<(long rhs) { return value_ < rhs; }
-  NonTrivialLong operator+(const NonTrivialLong& rhs) {
-    return NonTrivialLong(value_ + rhs.value_);
+struct TestClock {
+  static std::chrono::high_resolution_clock::time_point value;
+  static std::chrono::high_resolution_clock::time_point now() { return value; }
+
+  template <typename Rep, typename Period>
+  static void advance(std::chrono::duration<Rep, Period> diff) {
+    value += diff;
   }
-
- private:
-  long value_;
-  long otherStuff_[3];
 };
+
+std::chrono::high_resolution_clock::time_point TestClock::value = {};
+
+void doBaseline() {
+  TestClock::advance(std::chrono::nanoseconds(1));
+}
+
+struct BenchmarkingStateForTests : BenchmarkingState<TestClock> {
+#if FOLLY_PERF_IS_SUPPORTED
+  std::function<PerfScoped(const std::vector<std::string>&)> perfSetup;
+  PerfScoped doSetUpPerfScoped(
+      const std::vector<std::string>& args) const override {
+    if (!perfSetup) {
+      return BenchmarkingState<TestClock>::doSetUpPerfScoped(args);
+    }
+    return perfSetup(args);
+  }
+#endif
+};
+
+struct BenchmarkingStateTest : ::testing::Test {
+  BenchmarkingStateTest() {
+    state.addBenchmark(
+        __FILE__,
+        BenchmarkingState<TestClock>::getGlobalBaselineNameForTests(),
+        [] {
+          doBaseline();
+          return 1;
+        });
+  }
+
+  BenchmarkingStateForTests state;
+  gflags::FlagSaver flagSaver;
+};
+
+TEST_F(BenchmarkingStateTest, Basic) {
+  state.addBenchmark(__FILE__, "a1ns", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  state.addBenchmark(__FILE__, "b2ns", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(2));
+    return 1;
+  });
+
+  {
+    const std::vector<BenchmarkResult> expected{
+        {__FILE__, "a1ns", 1, {}},
+        {__FILE__, "b2ns", 2, {}},
+    };
+
+    EXPECT_EQ(expected, state.runBenchmarksWithResults());
+  }
+
+  // --bm_regex full match
+  {
+    gflags::FlagSaver _;
+    gflags::SetCommandLineOption("bm_regex", "a1.*");
+
+    const std::vector<BenchmarkResult> expected{
+        {__FILE__, "a1ns", 1, {}},
+    };
+
+    EXPECT_EQ(expected, state.runBenchmarksWithResults());
+  }
+
+  // --bm_regex part match
+  {
+    gflags::FlagSaver _;
+    gflags::SetCommandLineOption("bm_regex", "1.");
+
+    const std::vector<BenchmarkResult> expected{
+        {__FILE__, "a1ns", 1, {}},
+    };
+
+    EXPECT_EQ(expected, state.runBenchmarksWithResults());
+  }
+}
+
+TEST_F(BenchmarkingStateTest, Suspender) {
+  state.addBenchmark(__FILE__, "1ns", [&] {
+    doBaseline();
+    {
+      BenchmarkSuspender<TestClock> suspender;
+      TestClock::advance(std::chrono::microseconds(1));
+    }
+
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  const std::vector<BenchmarkResult> expected{
+      {__FILE__, "1ns", 1, {}},
+  };
+
+  EXPECT_EQ(expected, state.runBenchmarksWithResults());
+}
+
+TEST_F(BenchmarkingStateTest, DiscardOutlier) {
+  int iterationToBeExpensive = 0;
+  int currentIteration = 0;
+
+  state.addBenchmark(__FILE__, "HasOutlier", [&] {
+    doBaseline();
+    if (currentIteration++ == iterationToBeExpensive) {
+      TestClock::advance(std::chrono::microseconds(1));
+    }
+
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  const std::vector<BenchmarkResult> expected{
+      {__FILE__, "HasOutlier", 1, {}},
+  };
+
+  for (int i = 0; i < 10; ++i) {
+    iterationToBeExpensive = i;
+    currentIteration = 0;
+
+    EXPECT_EQ(expected, state.runBenchmarksWithResults());
+  }
+}
+
+TEST_F(BenchmarkingStateTest, DiscardLines) {
+  state.addBenchmark(__FILE__, "1ns", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  // DRAW_LINE adds a "-" benchmark
+  state.addBenchmark(__FILE__, "-", [&] { return 0; });
+
+  const std::vector<BenchmarkResult> expected{
+      {__FILE__, "1ns", 1, {}},
+  };
+
+  EXPECT_EQ(expected, state.runBenchmarksWithResults());
+}
+
+TEST_F(BenchmarkingStateTest, PerfBasic) {
+  int setUpPerfCalled = 0;
+  std::vector<std::string> expectedArgs;
+
+  state.perfSetup = [&](const std::vector<std::string>& args) {
+    ++setUpPerfCalled;
+    EXPECT_EQ(expectedArgs, args);
+    return PerfScoped{};
+  };
+
+  {
+    (void)state.runBenchmarksWithResults();
+    EXPECT_EQ(0, setUpPerfCalled);
+  }
+
+  {
+    gflags::FlagSaver _;
+    gflags::SetCommandLineOption(
+        "bm_perf_args", "stat -e cache-misses,cache-references");
+
+    setUpPerfCalled = 0;
+    expectedArgs = {"stat", "-e", "cache-misses,cache-references"};
+    (void)state.runBenchmarksWithResults();
+  }
+}
+
+TEST_F(BenchmarkingStateTest, PerfSkipsAnIteration) {
+  bool firstTimeSetUpDone = false;
+  bool perfIsCalled = false;
+
+  state.addBenchmark(__FILE__, "a", [&] {
+    doBaseline();
+    firstTimeSetUpDone = true;
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  state.perfSetup = [&](const std::vector<std::string>&) {
+    EXPECT_TRUE(firstTimeSetUpDone);
+    perfIsCalled = true;
+    return PerfScoped{};
+  };
+
+  gflags::FlagSaver _;
+  gflags::SetCommandLineOption("bm_perf_args", "stat");
+  (void)state.runBenchmarksWithResults();
+
+  EXPECT_TRUE(perfIsCalled);
+}
+
+#if FOLLY_PERF_IS_SUPPORTED
+TEST_F(BenchmarkingStateTest, PerfIntegration) {
+  std::vector<int> in(1000, 0);
+
+  state.addBenchmark(__FILE__, "a", [&](unsigned n) {
+    for (unsigned i = n; i; --i) {
+      std::reverse(in.begin(), in.end());
+    }
+    TestClock::advance(std::chrono::microseconds(1));
+    return n;
+  });
+
+  std::string perfOuptut;
+
+  state.perfSetup = [&](const auto& args) {
+    return PerfScoped(args, &perfOuptut);
+  };
+
+  gflags::FlagSaver _;
+  gflags::SetCommandLineOption("bm_perf_args", "stat");
+  gflags::SetCommandLineOption("bm_profile", "true");
+  gflags::SetCommandLineOption("bm_profile_iters", "1000000");
+  (void)state.runBenchmarksWithResults();
+
+  ASSERT_THAT(
+      perfOuptut,
+      ::testing::HasSubstr("Performance counter stats for process id"));
+}
+
+#endif // FOLLY_PERF_IS_SUPPORTED
+
+TEST_F(BenchmarkingStateTest, SkipWarmUp) {
+  std::vector<unsigned> iterNumPassed;
+  state.addBenchmark(__FILE__, "a", [&](unsigned iters) {
+    iterNumPassed.push_back(iters);
+    TestClock::advance(std::chrono::microseconds(1));
+    return iters;
+  });
+
+  gflags::FlagSaver _;
+  gflags::SetCommandLineOption("bm_profile", "true");
+  gflags::SetCommandLineOption("bm_profile_iters", "1000");
+
+  // Testing that warm up iteration is off by default and that
+  // we get exactly the number of iterations passed in once.
+  // A lot of places rely on this behaviour and changing it
+  // will break them.
+  {
+    (void)state.runBenchmarksWithResults();
+    ASSERT_THAT(iterNumPassed, ::testing::ElementsAre(1000));
+  }
+
+  iterNumPassed.clear();
+
+  gflags::SetCommandLineOption("bm_warm_up_iteration", "true");
+
+  {
+    (void)state.runBenchmarksWithResults();
+    ASSERT_THAT(iterNumPassed, ::testing::ElementsAre(1, 1000));
+  }
+}
+
 } // namespace
-
-BENCHMARK(optimizerCanDiscardNonTrivial, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      x += j;
-    }
-  }
-}
-
-BENCHMARK(optimizerCanPowerReduceInner1NonTrivial, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      x += i + j;
-    }
-    doNotOptimizeAway(x);
-  }
-}
-
-BENCHMARK(optimizerCanPowerReduceInner2NonTrivial, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    makeUnpredictable(i);
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      x += i + j;
-    }
-  }
-  doNotOptimizeAway(x);
-}
-
-BENCHMARK(optimizerDisabled1NonTrivial, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      x += i + j;
-      doNotOptimizeAway(x);
-    }
-  }
-}
-
-BENCHMARK(optimizerDisabled2NonTrivial, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    makeUnpredictable(i);
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      makeUnpredictable(j);
-      x += i + j;
-    }
-  }
-  doNotOptimizeAway(x);
-}
-
-BENCHMARK(optimizerCanPowerReduceInner1NonTrivialPtr, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      x += i + j;
-    }
-    doNotOptimizeAway(&x);
-  }
-}
-
-BENCHMARK(optimizerCanPowerReduceInner2NonTrivialPtr, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    makeUnpredictable(i);
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      x += i + j;
-    }
-  }
-  doNotOptimizeAway(&x);
-}
-
-BENCHMARK(optimizerDisabled1NonTrivialPtr, n) {
-  NonTrivialLong x(0);
-  for (NonTrivialLong i(0); i < n; ++i) {
-    for (NonTrivialLong j(0); j < 10000; ++j) {
-      x += i + j;
-      doNotOptimizeAway(&x);
-    }
-  }
-}
-
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(baselinevector) {
-  vector<int> v;
-
-  BENCHMARK_SUSPEND { v.resize(1000); }
-
-  FOR_EACH_RANGE (i, 0, 100) { v.push_back(42); }
-}
-
-BENCHMARK_RELATIVE(bmVector) {
-  vector<int> v;
-  FOR_EACH_RANGE (i, 0, 100) { v.resize(v.size() + 1, 42); }
-}
-
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(superslow) {
-  sleep(1);
-}
-
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(noMulti) {
-  fun();
-}
-
-BENCHMARK_MULTI(multiSimple) {
-  FOR_EACH_RANGE (i, 0, 10) { fun(); }
-  return 10;
-}
-
-BENCHMARK_RELATIVE_MULTI(multiSimpleRel) {
-  FOR_EACH_RANGE (i, 0, 10) {
-    fun();
-    fun();
-  }
-  return 10;
-}
-
-BENCHMARK_RELATIVE_MULTI(multiSimpleRelThree) {
-  FOR_EACH_RANGE (i, 0, 10) {
-    fun();
-    fun();
-    fun();
-  }
-  return 10;
-}
-
-BENCHMARK_MULTI(multiIterArgs, iter) {
-  FOR_EACH_RANGE (i, 0, 10 * iter) { fun(); }
-  return 10 * iter;
-}
-
-BENCHMARK_RELATIVE_MULTI(multiIterArgsRel, iter) {
-  FOR_EACH_RANGE (i, 0, 10 * iter) {
-    fun();
-    fun();
-  }
-  return 10 * iter;
-}
-
-unsigned paramMulti(unsigned iter, unsigned num) {
-  for (unsigned i = 0; i < iter; ++i) {
-    for (unsigned j = 0; j < num; ++j) {
-      fun();
-    }
-  }
-  return num * iter;
-}
-
-unsigned paramMultiRel(unsigned iter, unsigned num) {
-  for (unsigned i = 0; i < iter; ++i) {
-    for (unsigned j = 0; j < num; ++j) {
-      fun();
-      fun();
-    }
-  }
-  return num * iter;
-}
-
-BENCHMARK_PARAM_MULTI(paramMulti, 1)
-BENCHMARK_RELATIVE_PARAM_MULTI(paramMultiRel, 1)
-
-BENCHMARK_PARAM_MULTI(paramMulti, 5)
-BENCHMARK_RELATIVE_PARAM_MULTI(paramMultiRel, 5)
-
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(BenchmarkSuspender_dismissing_void, iter) {
-  BenchmarkSuspender braces;
-  mt19937_64 rng;
-  while (iter--) {
-    vector<size_t> v(1 << 12, 0);
-    iota(v.begin(), v.end(), 0);
-    shuffle(v.begin(), v.end(), rng);
-    braces.dismissing([&] { sort(v.begin(), v.end()); });
-  }
-}
-
-BENCHMARK(BenchmarkSuspender_dismissing_value, iter) {
-  BenchmarkSuspender braces;
-  mt19937_64 rng;
-  while (iter--) {
-    vector<size_t> v(1 << 12, 0);
-    iota(v.begin(), v.end(), 0);
-    shuffle(v.begin(), v.end(), rng);
-    auto s = braces.dismissing([&] {
-      sort(v.begin(), v.end());
-      return accumulate(
-          v.begin(), v.end(), 0, [](size_t a, size_t e) { return a + e; });
-    });
-    doNotOptimizeAway(s);
-  }
-}
-
-int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  folly::addBenchmark("-", std::string("string_name"), [] { return 0; });
-  runBenchmarks();
-  runBenchmarksOnFlag();
-}
+} // namespace detail
+} // namespace folly

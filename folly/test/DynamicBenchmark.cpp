@@ -52,10 +52,20 @@ BENCHMARK(moveLongString, iters) {
 }
 
 BENCHMARK(copyBool, iters) {
+  dynamic b = true;
+  folly::makeUnpredictable(b);
   for (size_t i = 0; i < iters; ++i) {
-    dynamic b = true;
-    folly::makeUnpredictable(b);
     dynamic other = b;
+    folly::doNotOptimizeAway(other);
+  }
+}
+
+BENCHMARK(assignRawBool, iters) {
+  bool b = true;
+  dynamic other = false;
+  folly::makeUnpredictable(b);
+  for (size_t i = 0; i < iters; ++i) {
+    other = b;
     folly::doNotOptimizeAway(other);
   }
 }
@@ -130,7 +140,7 @@ BENCHMARK(sizeLongString, iters) {
 }
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   folly::runBenchmarks();
   return 0;
 }

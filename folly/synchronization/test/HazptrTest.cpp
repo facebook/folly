@@ -386,7 +386,41 @@ void destruction_test(hazptr_domain<Atom>& domain) {
     last = new Thing(i, last, &domain);
   }
   last->retire(domain);
-  hazptr_cleanup<Atom>();
+  hazptr_cleanup<Atom>(domain);
+}
+
+template <template <typename> class Atom = std::atomic>
+void destruction_protected_test(hazptr_domain<Atom>& domain) {
+  struct Rec;
+
+  struct RecState {
+    hazptr_domain<Atom>& domain;
+    Atom<Rec*> cell{};
+  };
+
+  struct Rec : hazptr_obj_base<Rec, Atom> {
+    int rem_;
+    RecState& state_;
+
+    Rec(int rem, RecState& state) : rem_{rem}, state_{state} {}
+    ~Rec() { go(rem_, state_); }
+
+    static void go(int rem, RecState& state) {
+      if (rem) {
+        auto p = new Rec(rem - 1, state);
+        state.cell.store(p, std::memory_order_relaxed);
+        auto h = make_hazard_pointer(state.domain);
+        h.protect(state.cell);
+        state.cell.store(nullptr, std::memory_order_relaxed);
+        p->retire(state.domain);
+      }
+    }
+  };
+
+  RecState state{domain};
+  Rec::go(2000, state);
+
+  hazptr_cleanup<Atom>(domain);
 }
 
 template <template <typename> class Atom = std::atomic>
@@ -828,7 +862,7 @@ void cohort_test() {
 }
 
 template <template <typename> class Atom = std::atomic>
-void recursive_destruction_test() {
+void cohort_recursive_destruction_test() {
   struct Foo : public hazptr_obj_base<Foo, Atom> {
     hazptr_obj_cohort<Atom> cohort_;
     Foo* foo_{nullptr};
@@ -1113,6 +1147,24 @@ TEST_F(HazptrPreInitTest, dsched_destruction) {
       default_hazptr_domain<DeterministicAtomic>());
 }
 
+TEST(HazptrTest, destruction_protected) {
+  {
+    hazptr_domain<> myDomain0;
+    destruction_protected_test(myDomain0);
+  }
+  destruction_protected_test(default_hazptr_domain<std::atomic>());
+}
+
+TEST_F(HazptrPreInitTest, dsched_destruction_protected) {
+  DSched sched(DSched::uniform(0));
+  {
+    hazptr_domain<DeterministicAtomic> myDomain0;
+    destruction_protected_test<DeterministicAtomic>(myDomain0);
+  }
+  destruction_protected_test<DeterministicAtomic>(
+      default_hazptr_domain<DeterministicAtomic>());
+}
+
 TEST(HazptrTest, move) {
   move_test();
 }
@@ -1230,12 +1282,12 @@ TEST(HazptrTest, dsched_cohort) {
   cohort_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, recursive_destruction) {
-  recursive_destruction_test();
+TEST(HazptrTest, cohort_recursive_destruction) {
+  cohort_recursive_destruction_test();
 }
 
-TEST(HazptrTest, dsched_recursive_destruction) {
-  recursive_destruction_test<DeterministicAtomic>();
+TEST(HazptrTest, dsched_cohort_recursive_destruction) {
+  cohort_recursive_destruction_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, cohort_safe_list_children) {

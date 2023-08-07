@@ -21,12 +21,18 @@
 #include <dlfcn.h>
 #endif
 #include <fstream>
+#include <mutex>
 
 #include <fmt/core.h>
 
+#include <glog/logging.h>
 #include <folly/Conv.h>
 #include <folly/Exception.h>
+#include <folly/Indestructible.h>
+#include <folly/Memory.h>
+#include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
+#include <folly/detail/StaticSingletonManager.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
@@ -400,35 +406,200 @@ bool AccessSpreaderBase::initialize(
 
 } // namespace detail
 
-SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
-    : allocSize_{allocSize}, sz_(sz) {}
+namespace {
 
-SimpleAllocator::~SimpleAllocator() {
-  std::lock_guard<std::mutex> g(m_);
-  for (auto& block : blocks_) {
-    folly::aligned_free(block);
+/**
+ * A simple freelist allocator.  Allocates things of size sz, from slabs of size
+ * kAllocSize.  Takes a lock on each allocation/deallocation.
+ */
+class SimpleAllocator {
+ public:
+  // To support array aggregate initialization without an implicit constructor.
+  struct Ctor {};
+
+  SimpleAllocator(Ctor, size_t sz) : sz_(sz) {}
+  ~SimpleAllocator() {
+    std::lock_guard<std::mutex> g(m_);
+    for (auto& block : blocks_) {
+      folly::aligned_free(block);
+    }
   }
+
+  void* allocate() {
+    std::lock_guard<std::mutex> g(m_);
+    // Freelist allocation.
+    if (freelist_) {
+      auto mem = freelist_;
+      freelist_ = *static_cast<void**>(freelist_);
+      return mem;
+    }
+
+    if (mem_) {
+      // Bump-ptr allocation.
+      if (intptr_t(mem_) % kMallocAlign == 0) {
+        // Avoid allocating pointers that may look like malloc
+        // pointers.
+        mem_ += std::min(sz_, max_align_v);
+      }
+      if (mem_ + sz_ <= end_) {
+        auto mem = mem_;
+        mem_ += sz_;
+
+        assert(intptr_t(mem) % kMallocAlign != 0);
+        return mem;
+      }
+    }
+
+    return allocateHard();
+  }
+
+  static void deallocate(void* ptr) {
+    assert(intptr_t(ptr) % kMallocAlign != 0);
+    // Find the allocator instance.
+    auto addr =
+        reinterpret_cast<void*>(intptr_t(ptr) & ~intptr_t(kAllocSize - 1));
+    auto allocator = *static_cast<SimpleAllocator**>(addr);
+
+    std::lock_guard<std::mutex> g(allocator->m_);
+    *static_cast<void**>(ptr) = allocator->freelist_;
+    if FOLLY_CXX17_CONSTEXPR (kIsSanitizeAddress) {
+      // If running under ASAN, scrub the memory on deallocation, so we don't
+      // leave pointers that could hide leaks at shutdown, since the backing
+      // slabs may not be deallocated if the instance is a leaky singleton.
+      auto* base = static_cast<char*>(ptr);
+      std::fill(base + sizeof(void*), base + allocator->sz_, 0);
+    }
+    allocator->freelist_ = ptr;
+  }
+
+  constexpr static size_t kMallocAlign = 128;
+  static_assert(
+      kMallocAlign % hardware_destructive_interference_size == 0,
+      "Large allocations should be cacheline-aligned");
+
+ private:
+  constexpr static size_t kAllocSize = 4096;
+
+  void* allocateHard() {
+    // Allocate a new slab.
+    mem_ = static_cast<uint8_t*>(folly::aligned_malloc(kAllocSize, kAllocSize));
+    if (!mem_) {
+      throw_exception<std::bad_alloc>();
+    }
+    end_ = mem_ + kAllocSize;
+    blocks_.push_back(mem_);
+
+    // Install a pointer to ourselves as the allocator.
+    *reinterpret_cast<SimpleAllocator**>(mem_) = this;
+    static_assert(
+        max_align_v >= sizeof(SimpleAllocator*), "alignment too small");
+    mem_ += std::min(sz_, max_align_v);
+
+    // New allocation.
+    auto mem = mem_;
+    mem_ += sz_;
+    assert(intptr_t(mem) % kMallocAlign != 0);
+    return mem;
+  }
+
+  std::mutex m_;
+  uint8_t* mem_{nullptr};
+  uint8_t* end_{nullptr};
+  void* freelist_{nullptr};
+  size_t sz_;
+  std::vector<void*> blocks_;
+};
+
+class Allocator {
+ public:
+  void* allocate(size_t size) {
+    if (auto cl = sizeClass(size)) {
+      return allocators_[*cl].allocate();
+    }
+
+    // Fall back to malloc, returning a kMallocAlign-aligned allocation so it
+    // can be distinguished from SimpleAllocator allocations.
+    size = size + (SimpleAllocator::kMallocAlign - 1);
+    size &= ~size_t(SimpleAllocator::kMallocAlign - 1);
+    void* mem = aligned_malloc(size, SimpleAllocator::kMallocAlign);
+    if (!mem) {
+      throw_exception<std::bad_alloc>();
+    }
+    return mem;
+  }
+
+  static void deallocate(void* ptr) {
+    if (!ptr) {
+      return;
+    }
+
+    // See if it came from SimpleAllocator or malloc.
+    if (intptr_t(ptr) % SimpleAllocator::kMallocAlign != 0) {
+      SimpleAllocator::deallocate(ptr);
+    } else {
+      aligned_free(ptr);
+    }
+  }
+
+ private:
+  folly::Optional<uint8_t> sizeClass(size_t size) {
+    if (size <= 8) {
+      return 0;
+    } else if (size <= 16) {
+      return 1;
+    } else if (size <= 32) {
+      return 2;
+    } else if (size <= 64) {
+      return 3;
+    } else {
+      return folly::none;
+    }
+  }
+
+  std::array<SimpleAllocator, 4> allocators_{
+      {{SimpleAllocator::Ctor{}, 8},
+       {SimpleAllocator::Ctor{}, 16},
+       {SimpleAllocator::Ctor{}, 32},
+       {SimpleAllocator::Ctor{}, 64}}};
+};
+
+} // namespace
+
+void* coreMalloc(size_t size, size_t numStripes, size_t stripe) {
+  static folly::Indestructible<Allocator>
+      allocators[AccessSpreader<>::maxLocalityIndexValue()];
+  auto index = AccessSpreader<>::localityIndexForStripe(numStripes, stripe);
+  return allocators[index]->allocate(size);
 }
 
-void* SimpleAllocator::allocateHard() {
-  // Allocate a new slab.
-  mem_ = static_cast<uint8_t*>(folly::aligned_malloc(allocSize_, allocSize_));
-  if (!mem_) {
-    throw_exception<std::bad_alloc>();
-  }
-  end_ = mem_ + allocSize_;
-  blocks_.push_back(mem_);
-
-  // Install a pointer to ourselves as the allocator.
-  *reinterpret_cast<SimpleAllocator**>(mem_) = this;
-  static_assert(max_align_v >= sizeof(SimpleAllocator*), "alignment too small");
-  mem_ += std::min(sz_, max_align_v);
-
-  // New allocation.
-  auto mem = mem_;
-  mem_ += sz_;
-  assert(intptr_t(mem) % 128 != 0);
-  return mem;
+void coreFree(void* ptr) {
+  Allocator::deallocate(ptr);
 }
+
+namespace {
+thread_local CoreAllocatorGuard* gCoreAllocatorGuard = nullptr;
+}
+
+CoreAllocatorGuard::CoreAllocatorGuard(size_t numStripes, size_t stripe)
+    : numStripes_(numStripes), stripe_(stripe) {
+  CHECK(gCoreAllocatorGuard == nullptr)
+      << "CoreAllocator::Guard cannot be used recursively";
+  gCoreAllocatorGuard = this;
+}
+
+CoreAllocatorGuard::~CoreAllocatorGuard() {
+  gCoreAllocatorGuard = nullptr;
+}
+
+namespace detail {
+
+void* coreMallocFromGuard(size_t size) {
+  CHECK(gCoreAllocatorGuard != nullptr)
+      << "CoreAllocator::allocator called without an active Guard";
+  return coreMalloc(
+      size, gCoreAllocatorGuard->numStripes_, gCoreAllocatorGuard->stripe_);
+}
+
+} // namespace detail
 
 } // namespace folly

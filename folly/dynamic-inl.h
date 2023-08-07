@@ -31,6 +31,7 @@ namespace detail {
 
 struct DynamicHasher {
   using is_transparent = void;
+  using folly_is_avalanching = std::true_type;
 
   size_t operator()(dynamic const& d) const { return d.hash(); }
 
@@ -78,16 +79,6 @@ struct DynamicKeyEqual {
 
 //////////////////////////////////////////////////////////////////////
 
-namespace std {
-
-template <>
-struct hash<::folly::dynamic> {
-  size_t operator()(::folly::dynamic const& d) const { return d.hash(); }
-};
-
-} // namespace std
-
-//////////////////////////////////////////////////////////////////////
 /* clang-format off */
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
@@ -402,6 +393,20 @@ dynamic::dynamic(Iterator first, Iterator last) : type_(ARRAY) {
   new (&u_.array) Array(first, last);
 }
 
+template <
+    class T,
+    class NumericType /* = typename NumericTypeHelper<T>::type */>
+dynamic& dynamic::operator=(T t) {
+  const auto newType = TypeInfo<NumericType>::type;
+  if (type_ == newType) {
+    *getAddress<NumericType>() = t;
+  } else {
+    destroy();
+    new (getAddress<NumericType>()) NumericType(t);
+    type_ = newType;
+  }
+  return *this;
+}
 //////////////////////////////////////////////////////////////////////
 
 inline dynamic::const_iterator dynamic::begin() const {
@@ -853,6 +858,13 @@ template <class T>
 inline dynamic::iterator dynamic::insert(const_iterator pos, T&& value) {
   auto& arr = get<Array>();
   return arr.insert(pos, std::forward<T>(value));
+}
+
+template <class InputIt>
+inline dynamic::iterator dynamic::insert(
+    const_iterator pos, InputIt first, InputIt last) {
+  auto& arr = get<Array>();
+  return arr.insert(pos, first, last);
 }
 
 inline void dynamic::update(const dynamic& mergeObj) {

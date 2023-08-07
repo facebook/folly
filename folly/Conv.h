@@ -120,6 +120,7 @@
 #include <double-conversion/double-conversion.h> // V8 JavaScript implementation
 
 #include <folly/CPortability.h>
+
 #include <folly/Demangle.h>
 #include <folly/Expected.h>
 #include <folly/FBString.h>
@@ -904,17 +905,6 @@ toAppend(const Ts&... vs) {
   using seq = std::index_sequence_for<Ts...>;
   detail::ToAppendStrImplAll<seq>::call(vs...);
 }
-
-#ifdef _MSC_VER
-// Special case pid_t on MSVC, because it's a void* rather than an
-// integral type. We can't do a global special case because this is already
-// dangerous enough (as most pointers will implicitly convert to a void*)
-// just doing it for MSVC.
-template <class Tgt>
-void toAppend(const pid_t a, Tgt* res) {
-  toAppend(uint64_t(a), res);
-}
-#endif
 
 /**
  * @overloadbrief toAppend, but pre-allocate the exact amount of space required.

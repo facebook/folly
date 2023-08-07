@@ -50,6 +50,28 @@ std::shared_ptr<Executor> tryGetImmutableCPUPtr();
  */
 folly::Executor::KeepAlive<> getGlobalCPUExecutor();
 
+struct GlobalCPUExecutorCounters {
+  // Maximum number of threads that the executor can run concurrently.
+  size_t numThreads;
+  // Number of threads currently active (running but possibly waiting for tasks)
+  size_t numActiveThreads;
+  // Number of tasks pending execution in the executor's queue.
+  size_t numPendingTasks;
+};
+
+/**
+ * @methodset Executors
+ *
+ * Retrieve counters from the global immutable CPU executor.
+ * These counters should only be used to monitor the executor's load, as
+ * retrieving the counters may be expensive.
+ *
+ * @return GlobalCPUExecutorCounters struct. Counters are not guaranteed to be
+ * consistent with each other: each may be retrieved at a different point in
+ * time. May throw on shutdown.
+ */
+GlobalCPUExecutorCounters getGlobalCPUExecutorCounters();
+
 /**
  * @methodset Executors
  *

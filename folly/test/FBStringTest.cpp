@@ -959,7 +959,7 @@ void clause11_21_4_8_1_b(String& test) {
   randomString(&s1, maxString);
   String s2;
   randomString(&s2, maxString);
-  test = move(s1) + s2;
+  test = std::move(s1) + s2;
 }
 
 template <class String>
@@ -968,7 +968,7 @@ void clause11_21_4_8_1_c(String& test) {
   randomString(&s1, maxString);
   String s2;
   randomString(&s2, maxString);
-  test = s1 + move(s2);
+  test = s1 + std::move(s2);
 }
 
 template <class String>
@@ -977,7 +977,7 @@ void clause11_21_4_8_1_d(String& test) {
   randomString(&s1, maxString);
   String s2;
   randomString(&s2, maxString);
-  test = move(s1) + move(s2);
+  test = std::move(s1) + std::move(s2);
 }
 
 template <class String>
@@ -995,7 +995,7 @@ void clause11_21_4_8_1_f(String& test) {
   randomString(&s, maxString);
   String s1;
   randomString(&s1, maxString);
-  test = s.c_str() + move(s1);
+  test = s.c_str() + std::move(s1);
 }
 
 template <class String>
@@ -1009,7 +1009,7 @@ template <class String>
 void clause11_21_4_8_1_h(String& test) {
   String s;
   randomString(&s, maxString);
-  test = typename String::value_type(random('a', 'z')) + move(s);
+  test = typename String::value_type(random('a', 'z')) + std::move(s);
 }
 
 template <class String>
@@ -1027,7 +1027,7 @@ void clause11_21_4_8_1_j(String& test) {
   randomString(&s, maxString);
   String s1;
   randomString(&s1, maxString);
-  test = move(s) + s1.c_str();
+  test = std::move(s) + s1.c_str();
 }
 
 template <class String>
@@ -1043,7 +1043,7 @@ void clause11_21_4_8_1_l(String& test) {
   randomString(&s, maxString);
   String s1;
   randomString(&s1, maxString);
-  test = move(s) + s1.c_str();
+  test = std::move(s) + s1.c_str();
 }
 
 // Numbering here is from C++11
@@ -1750,3 +1750,26 @@ TEST(FBString, OverLarge) {
       fbstring_core<char32_t>().reserve((size_t)0x4000'0000'4000'0000),
       std::length_error);
 }
+
+#if FOLLY_CPLUSPLUS >= 202002L
+
+TEST(FBString, SpaceshipOperator) {
+  folly::fbstring a{"a"};
+  EXPECT_TRUE((a <=> a) == std::strong_ordering::equal);
+  EXPECT_TRUE((a <=> std::string{"a"}) == std::strong_ordering::equal);
+  EXPECT_TRUE((std::string{"a"} <=> a) == std::strong_ordering::equal);
+
+  EXPECT_TRUE((a <=> "a") == std::strong_ordering::equal);
+  EXPECT_TRUE(("a" <=> a) == std::strong_ordering::equal);
+
+  EXPECT_TRUE((a <=> "aa") == std::strong_ordering::less);
+  EXPECT_TRUE(("aa" <=> a) == std::strong_ordering::greater);
+
+  EXPECT_TRUE((a <=> "b") == std::strong_ordering::less);
+  EXPECT_TRUE(("b" <=> a) == std::strong_ordering::greater);
+
+  EXPECT_TRUE((a <=> "0") == std::strong_ordering::greater);
+  EXPECT_TRUE(("0" <=> a) == std::strong_ordering::less);
+}
+
+#endif // FOLLY_CPLUSPLUS >= 202002L

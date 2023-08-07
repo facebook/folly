@@ -23,7 +23,8 @@
 namespace folly {
 
 AsyncFileWriter::AsyncFileWriter(StringPiece path)
-    : AsyncFileWriter{File{path.str(), O_WRONLY | O_APPEND | O_CREAT}} {}
+    : AsyncFileWriter{
+          File{path.str(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC}} {}
 
 AsyncFileWriter::AsyncFileWriter(folly::File&& file) : file_{std::move(file)} {}
 

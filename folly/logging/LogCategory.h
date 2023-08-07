@@ -19,7 +19,9 @@
 #include <atomic>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <folly/Range.h>
 #include <folly/Synchronized.h>

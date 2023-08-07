@@ -99,12 +99,11 @@ static_assert(
 /**
  * Log a message to this file's default log category, using a format string.
  */
-#define XLOGF(level, fmt, arg1, ...)       \
+#define XLOGF(level, fmt, ...)             \
   XLOG_IMPL(                               \
       ::folly::LogLevel::level,            \
       ::folly::LogStreamProcessor::FORMAT, \
       fmt,                                 \
-      arg1,                                \
       ##__VA_ARGS__)
 
 /**
@@ -112,13 +111,12 @@ static_assert(
  * predicate evaluates to true. Note that the condition is *only* evaluated
  * if the log-level check passes.
  */
-#define XLOGF_IF(level, cond, fmt, arg1, ...) \
-  XLOG_IF_IMPL(                               \
-      ::folly::LogLevel::level,               \
-      cond,                                   \
-      ::folly::LogStreamProcessor::FORMAT,    \
-      fmt,                                    \
-      arg1,                                   \
+#define XLOGF_IF(level, cond, fmt, ...)    \
+  XLOG_IF_IMPL(                            \
+      ::folly::LogLevel::level,            \
+      cond,                                \
+      ::folly::LogStreamProcessor::FORMAT, \
+      fmt,                                 \
       ##__VA_ARGS__)
 
 /**
@@ -162,7 +160,7 @@ static_assert(
  *
  * Note that this is threadsafe.
  */
-#define XLOGF_EVERY_MS(level, ms, fmt, arg1, ...)                        \
+#define XLOGF_EVERY_MS(level, ms, fmt, ...)                              \
   XLOGF_IF(                                                              \
       level,                                                             \
       [__folly_detail_xlog_ms = ms] {                                    \
@@ -172,7 +170,6 @@ static_assert(
         return folly_detail_xlog_limiter.check();                        \
       }(),                                                               \
       fmt,                                                               \
-      arg1,                                                              \
       ##__VA_ARGS__)
 
 namespace folly {
@@ -209,6 +206,26 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
       ##__VA_ARGS__)
 
 /**
+ * Similar to XLOGF(...) except only log a message every @param n
+ * invocations, approximately.
+ *
+ * The internal counter is process-global and threadsafe but, to
+ * to avoid the performance degradation of atomic-rmw operations,
+ * increments are non-atomic. Some increments may be missed under
+ * contention, leading to possible over-logging or under-logging
+ * effects.
+ */
+#define XLOGF_EVERY_N(level, n, fmt, ...)                                 \
+  XLOGF_IF(                                                               \
+      level,                                                              \
+      [&] {                                                               \
+        struct folly_detail_xlog_tag {};                                  \
+        return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
+      }(),                                                                \
+      fmt,                                                                \
+      ##__VA_ARGS__)
+
+/**
  * Similar to XLOG(...) except only log a message every @param n
  * invocations, approximately, and if the specified condition predicate
  * evaluates to true.
@@ -227,6 +244,28 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
             struct folly_detail_xlog_tag {};                                  \
             return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
           }(),                                                                \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOGF(...) except only log a message every @param n
+ * invocations, approximately, and if the specified condition predicate
+ * evaluates to true.
+ *
+ * The internal counter is process-global and threadsafe but, to
+ * to avoid the performance degradation of atomic-rmw operations,
+ * increments are non-atomic. Some increments may be missed under
+ * contention, leading to possible over-logging or under-logging
+ * effects.
+ */
+#define XLOGF_EVERY_N_IF(level, cond, n, fmt, ...)                            \
+  XLOGF_IF(                                                                   \
+      level,                                                                  \
+      (cond) &&                                                               \
+          [&] {                                                               \
+            struct folly_detail_xlog_tag {};                                  \
+            return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
+          }(),                                                                \
+      fmt,                                                                    \
       ##__VA_ARGS__)
 
 namespace folly {
@@ -448,6 +487,25 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
 #define XLOG_IS_ON(level) XLOG_IS_ON_IMPL(::folly::LogLevel::level)
 
 /**
+ * Expects a fully qualified LogLevel enum value.
+ *
+ * This helper macro invokes XLOG_IS_ON_IMPL_HELPER() to perform the real
+ * log level check, with a couple additions:
+ * - If the log level is less than FOLLY_XLOG_MIN_LEVEL it evaluates to false
+ *   to allow the compiler to completely optimize out the check and log message
+ *   if the level is less than this compile-time fixed constant.
+ * - If the log level is fatal, this has an extra check at the end to ensure the
+ *   compiler can detect that it always evaluates to true.  This helps the
+ *   compiler detect that statements like XCHECK(false) never return.  Note that
+ *   XLOG_IS_ON_IMPL_HELPER() must still be invoked first for fatal log levels
+ *   in order to initialize folly::detail::custom::xlogFileScopeInfo.
+ */
+#define XLOG_IS_ON_IMPL(level)                              \
+  ((((level) >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && \
+    XLOG_IS_ON_IMPL_HELPER(level)) ||                       \
+   ((level) >= ::folly::kMinFatalLogLevel))
+
+/**
  * Helper macro to implement of XLOG_IS_ON()
  *
  * This macro is used in the XLOG() implementation, and therefore must be as
@@ -462,14 +520,17 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *
  * See XlogLevelInfo for the implementation details.
  */
-#define XLOG_IS_ON_IMPL(level)                                  \
-  ((level >= ::folly::LogLevel::FOLLY_XLOG_MIN_LEVEL) && [] {   \
+#define XLOG_IS_ON_IMPL_HELPER(level)                           \
+  ([] {                                                         \
     static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>       \
         folly_detail_xlog_level;                                \
     constexpr auto* folly_detail_xlog_filename = XLOG_FILENAME; \
+    constexpr folly::StringPiece folly_detail_xlog_category =   \
+        ::folly::detail::custom::getXlogCategoryName(           \
+            folly_detail_xlog_filename, 0);                     \
     return folly_detail_xlog_level.check(                       \
         (level),                                                \
-        folly_detail_xlog_filename,                             \
+        folly_detail_xlog_category,                             \
         ::folly::detail::custom::isXlogCategoryOverridden(0),   \
         &::folly::detail::custom::xlogFileScopeInfo);           \
   }())
@@ -515,6 +576,14 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
 #define XLOG_SET_CATEGORY_CHECK
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 9
+// gcc 8.x crashes with an internal compiler error when trying to evaluate
+// getXlogCategoryName() in a constexpr expression.  Keeping category name
+// constexpr is important for performance, and XLOG_SET_CATEGORY_NAME() is
+// fairly rarely used, so simply let it be a no-op if compiling with older
+// versions of gcc.
+#define XLOG_SET_CATEGORY_NAME(category)
+#else
 #define XLOG_SET_CATEGORY_NAME(category)                                     \
   namespace folly {                                                          \
   namespace detail {                                                         \
@@ -535,6 +604,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
   }                                                                          \
   }                                                                          \
   }
+#endif
 
 /**
  * Assert that a condition is true.

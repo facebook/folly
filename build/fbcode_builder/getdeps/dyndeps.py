@@ -15,9 +15,6 @@ import sys
 from struct import unpack
 from typing import List, Optional
 
-from .envfuncs import path_search
-
-
 OBJECT_SUBDIRS = ("bin", "lib", "lib64")
 
 
@@ -190,6 +187,9 @@ class WinDeps(DepBase):
                 "VC/bin/dumpbin.exe"
             ),
             ("c:/Program Files (x86)/Microsoft Visual Studio */VC/bin/dumpbin.exe"),
+            (
+                "C:/Program Files/Microsoft Visual Studio/*/Professional/VC/Tools/MSVC/*/bin/HostX64/x64/dumpbin.exe"
+            ),
         ]
         for pattern in globs:
             for exe in glob.glob(pattern):

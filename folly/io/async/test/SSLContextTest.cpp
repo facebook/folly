@@ -219,7 +219,7 @@ TEST_F(SSLContextTest, TestGetFromSSLCtx) {
   EXPECT_EQ(contextPtr, &ctx);
 
   // Negative test
-  SSL_CTX* randomCtx = SSL_CTX_new(SSLv23_method());
+  SSL_CTX* randomCtx = SSL_CTX_new(TLS_method());
   EXPECT_EQ(nullptr, SSLContext::getFromSSLCtx(randomCtx));
   SSL_CTX_free(randomCtx);
 }
@@ -260,9 +260,13 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
 }
 #endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
 
-TEST_F(SSLContextTest, TestTLS13MinVersionThrow) {
-  EXPECT_THROW(SSLContext{SSLContext::SSLVersion::TLSv1_3}, std::runtime_error);
+#if FOLLY_OPENSSL_HAS_TLS13
+TEST_F(SSLContextTest, TestTLS13MinVersion) {
+  SSLContext sslContext{SSLContext::SSLVersion::TLSv1_3};
+  int minProtoVersion = SSL_CTX_get_min_proto_version(sslContext.getSSLCtx());
+  EXPECT_EQ(minProtoVersion, TLS1_3_VERSION);
 }
+#endif
 
 TEST_F(SSLContextTest, AdvertisedNextProtocols) {
   EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "");
