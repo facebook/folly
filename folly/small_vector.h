@@ -655,6 +655,11 @@ class small_vector
     return std::lexicographical_compare(begin(), end(), o.begin(), o.end());
   }
 
+  auto operator<=>(small_vector const& o) const {
+    return std::lexicographical_compare_three_way(
+        begin(), end(), o.begin(), o.end());
+  }
+
   static constexpr size_type max_size() {
     return !BaseType::kShouldUseHeap ? static_cast<size_type>(MaxInline)
                                      : BaseType::policyMaxSize();
