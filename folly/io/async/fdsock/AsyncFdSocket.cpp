@@ -54,6 +54,23 @@ AsyncFdSocket::AsyncFdSocket(
 }
 #endif
 
+AsyncFdSocket::AsyncFdSocket(
+    AsyncFdSocket::DoesNotMoveFdSocketState, AsyncSocket* sock)
+    : AsyncSocket(sock)
+#if !defined(_WIN32)
+      ,
+      readAncillaryDataCob_(this) {
+  setUpCallbacks();
+}
+#else
+{
+}
+#endif
+
+AsyncFdSocket::AsyncFdSocket(
+    AsyncFdSocket::DoesNotMoveFdSocketState tag, AsyncSocket::UniquePtr sock)
+    : AsyncFdSocket(tag, sock.get()) {}
+
 void AsyncFdSocket::writeChainWithFds(
     WriteCallback* callback,
     std::unique_ptr<folly::IOBuf> buf,
@@ -128,6 +145,19 @@ void AsyncFdSocket::writeChainWithFds(
 void AsyncFdSocket::setUpCallbacks() noexcept {
   AsyncSocket::setSendMsgParamCB(&sendMsgCob_);
   AsyncSocket::setReadAncillaryDataCB(&readAncillaryDataCob_);
+}
+
+void AsyncFdSocket::swapFdReadStateWith(AsyncFdSocket* other) {
+  // We don't need these write-state assertions to correctly swap read
+  // state, but since the only use-case is `moveToPlaintext`, they help.
+  DCHECK_EQ(0, other->allocatedToSendFdsSeqNum_);
+  DCHECK_EQ(0, other->sentFdsSeqNum_);
+  DCHECK_EQ(0, other->sendMsgCob_.writeTagToFds_.size());
+
+  fdsQueue_.swap(other->fdsQueue_);
+  std::swap(receivedFdsSeqNum_, other->receivedFdsSeqNum_);
+  // Do NOT swap `readAncillaryDataCob_` since its internal members are not
+  // "state", but plumbing that does not change.
 }
 
 void AsyncFdSocket::releaseIOBuf(

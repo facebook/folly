@@ -74,6 +74,24 @@ class AsyncFdSocket : public AsyncSocket {
       const folly::SocketAddress* peerAddress = nullptr);
 
   /**
+   * EXPERIMENTAL / TEMPORARY: These move-like constructors should not be
+   * used to go from one AsyncFdSocket to another because this will not
+   * correctly preserve read & write state.  Full move is not implemented
+   * since its trickier, and was not yet needed -- see `swapFdReadStateWith`.
+   */
+  struct DoesNotMoveFdSocketState {};
+
+ protected:
+  _FRIEND_TEST_FOR_ASYNC_FD_SOCKET(
+      AsyncFdSocketSequenceRoundtripTest, WithDataSize);
+  // Protected since it's easy to accidentally pass an `AsyncFdSocket` here,
+  // a scenario that's extremely easy to use incorrectly.
+  AsyncFdSocket(DoesNotMoveFdSocketState, AsyncSocket*);
+
+ public:
+  AsyncFdSocket(DoesNotMoveFdSocketState, AsyncSocket::UniquePtr);
+
+  /**
    * `AsyncSocket::writeChain` analog that passes FDs as ancillary data over
    * the socket (see `man cmsg`).
    *
@@ -136,8 +154,19 @@ class AsyncFdSocket : public AsyncSocket {
     LOG(DFATAL) << "AsyncFdSocket::setReadAncillaryDataCB is forbidden";
   }
 
-// This uses no ancillary data callbacks on Windows, they wouldn't compile.
+// This class has no ancillary data callbacks on Windows, they wouldn't compile
 #if !defined(_WIN32)
+  /**
+   * EXPERIMENTAL / TEMPORARY: This just does what is required for
+   * `moveToPlaintext` to support StopTLS.  That use-case could later be
+   * covered by full move-construct or move-assign support, but both would
+   * be more complex to support.
+   *
+   * Swaps "read FDs" state (receive queue & sequence numbers) with `other`.
+   * DFATALs if `other` had any "write FDs" state.
+   */
+  void swapFdReadStateWith(AsyncFdSocket* other);
+
  protected:
   void releaseIOBuf(
       std::unique_ptr<folly::IOBuf>, ReleaseIOBufCallback*) override;

@@ -90,8 +90,9 @@ struct AsyncFdSocketTest : public testing::Test {
         }()} {}
 
   explicit AsyncFdSocketTest(std::array<NetworkSocket, 2> fds)
-      : sendSock_{&evb_, fds[0]}, recvSock_{&evb_, fds[1]} {
-    recvSock_.setReadCB(&rcb_);
+      : sendSock_{&evb_, fds[0]},
+        recvSock_(std::make_unique<AsyncFdSocket>(&evb_, fds[1])) {
+    recvSock_->setReadCB(&rcb_);
   }
 
   EventBase evb_;
@@ -100,7 +101,7 @@ struct AsyncFdSocketTest : public testing::Test {
   AsyncFdSocket sendSock_;
 
   ReadCallback rcb_; // NB: `~AsyncSocket` calls `rcb.readEOF`
-  AsyncFdSocket recvSock_;
+  std::unique_ptr<AsyncFdSocket> recvSock_;
 };
 
 TEST_F(AsyncFdSocketTest, TestAddSeqNum) {
@@ -171,7 +172,7 @@ TEST_P(AsyncFdSocketSimpleRoundtripTest, WithNumFds) {
   rcb_.verifyData(&data, sizeof(data));
   rcb_.clearData();
 
-  checkFdsMatch(sendFds, sendSeqNum, recvSock_.popNextReceivedFds());
+  checkFdsMatch(sendFds, sendSeqNum, recvSock_->popNextReceivedFds());
 }
 
 // Round-trip & verify various numbers of FDs with 1 byte of data.
@@ -225,7 +226,7 @@ TEST_F(AsyncFdSocketTest, MultiPartSend) {
 
   // FDs are sent with the first send & received by the first receive
   evb_.loopOnce();
-  checkFdsMatch(sendFds, sendSeqNum, recvSock_.popNextReceivedFds());
+  checkFdsMatch(sendFds, sendSeqNum, recvSock_->popNextReceivedFds());
   EXPECT_EQ(1, sendSock.numWrites_);
 
   // Receive the rest of the data.
@@ -239,23 +240,23 @@ TEST_F(AsyncFdSocketTest, MultiPartSend) {
   // There are no more data or FDs
   evb_.loopOnce(EVLOOP_NONBLOCK);
   EXPECT_EQ(0, rcb_.dataRead()) << "Leftover reads";
-  EXPECT_TRUE(recvSock_.popNextReceivedFds().empty()) << "Extra FDs";
+  EXPECT_TRUE(recvSock_->popNextReceivedFds().empty()) << "Extra FDs";
 }
 
 struct AsyncFdSocketSequenceRoundtripTest
     : public AsyncFdSocketTest,
-      public testing::WithParamInterface<int> {};
+      public testing::WithParamInterface<std::tuple<bool, int>> {};
 
 TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
-  size_t dataSize = GetParam();
+  auto [swapSocket, dataSize] = GetParam();
 
   // The default `ReadCallback` has special-snowflake buffer management
   // that's annoying for this test.  Secondarily, this exercises the
   // "ReadVec" path.
   ReadvCallback rcb(128, 3);
   // Avoid `readEOF` use-after-stack-scope in `~AsyncSocket`.
-  SCOPE_EXIT { recvSock_.setReadCB(nullptr); };
-  recvSock_.setReadCB(&rcb);
+  SCOPE_EXIT { recvSock_->setReadCB(nullptr); };
+  recvSock_->setReadCB(&rcb);
 
   std::queue<
       std::tuple<int, std::string, folly::SocketFds::ToSend, SocketFds::SeqNum>>
@@ -288,6 +289,23 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
   // The max expected steps is ~3k: 1234567 / (3 * 128)
   for (int i = 0; i < 10000 && !sentQueue.empty(); ++i) {
     evb_.loopOnce(EVLOOP_NONBLOCK);
+    // Validate that "move from AsyncSocket" and "swap read state" interrupt
+    // neither the reading of data nor of FDs.
+    if (swapSocket) {
+      AsyncFdSocket prevReadStateSock{nullptr};
+      prevReadStateSock.swapFdReadStateWith(recvSock_.get());
+
+      // Test moving the non-FD parts of the socket, while reading.
+      struct EnableMakeUnique : public AsyncFdSocket {
+        EnableMakeUnique(AsyncSocket* sock)
+            : AsyncFdSocket(AsyncFdSocket::DoesNotMoveFdSocketState{}, sock) {}
+      };
+      recvSock_ = std::make_unique<EnableMakeUnique>(recvSock_.get());
+      recvSock_->setReadCB(&rcb);
+
+      // Test moving the FD read state.
+      recvSock_->swapFdReadStateWith(&prevReadStateSock);
+    }
     size_t dataRead = rcb.buf_->computeChainDataLength();
     if (!dataRead) {
       continue;
@@ -305,7 +323,7 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
       // FDs, which would fail in `checkFdsMatch`.
       if (!sendFds.empty()) {
         const auto sendSeqNum = std::get<3>(sentQueue.front());
-        checkFdsMatch(sendFds, sendSeqNum, recvSock_.popNextReceivedFds());
+        checkFdsMatch(sendFds, sendSeqNum, recvSock_->popNextReceivedFds());
       }
     }
 
@@ -331,14 +349,22 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
   EXPECT_TRUE(sentQueue.empty()) << "Stuck reading?";
   evb_.loopOnce(EVLOOP_NONBLOCK);
   EXPECT_EQ(0, rcb.buf_->computeChainDataLength()) << "Leftover reads";
-  EXPECT_TRUE(recvSock_.popNextReceivedFds().empty()) << "Extra FDs";
+  EXPECT_TRUE(recvSock_->popNextReceivedFds().empty()) << "Extra FDs";
 }
 
 // Vary the data size to (hopefully) get a variety of chunking behaviors.
 INSTANTIATE_TEST_SUITE_P(
     VaryDataSize,
     AsyncFdSocketSequenceRoundtripTest,
-    testing::Values(1, 12, 123, 1234, 12345, 123456, 1234567));
+    testing::Combine(
+        testing::Values(false, true),
+        testing::Values(1, 12, 123, 1234, 12345, 123456, 1234567)),
+    [](const auto& info) {
+      return fmt::format(
+          "{}{}",
+          std::get<0>(info.param) ? "SwapSocket_" : "",
+          std::get<1>(info.param));
+    });
 
 #endif // !Windows
 
