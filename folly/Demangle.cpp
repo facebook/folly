@@ -64,60 +64,29 @@ static constexpr auto cxxabi_demangle = static_cast<char* (*)(...)>(nullptr);
 
 #if __has_include(<demangle.h>)
 
-namespace detail {
-
+namespace {
 struct poison {};
 
 FOLLY_MAYBE_UNUSED FOLLY_ERASE void rust_demangle_callback(poison);
 
-int rust_demangle_callback_fallback(
+FOLLY_MAYBE_UNUSED FOLLY_ERASE int rust_demangle_callback_fallback(
     const char*, int, demangle_callbackref, void*) {
   return 0;
 }
-} // namespace detail
 
-namespace demangle_detail {
-struct invoke_fallback_rust_demangle_callback_fn {
-  template <typename... A>
-  FOLLY_MAYBE_UNUSED FOLLY_ERASE auto operator()(A... a) const noexcept
-      -> decltype(detail::rust_demangle_callback_fallback(a...)) {
-    return detail::rust_demangle_callback_fallback(a...);
-  }
-};
-struct invoke_primary_rust_demangle_callback_fn {
-  template <typename... A>
-  FOLLY_MAYBE_UNUSED FOLLY_ERASE auto operator()(A... a) const noexcept
-      -> decltype(rust_demangle_callback(a...)) {
-    return rust_demangle_callback(a...);
-  }
-};
+FOLLY_CREATE_QUAL_INVOKER(
+    invoke_rust_demangle_primary, ::rust_demangle_callback);
+FOLLY_CREATE_QUAL_INVOKER(
+    invoke_rust_demangle_fallback, rust_demangle_callback_fallback);
 
-} // namespace demangle_detail
+using invoke_rust_demangle_fn = folly::invoke_first_match<
+    invoke_rust_demangle_primary,
+    invoke_rust_demangle_fallback>;
+constexpr invoke_rust_demangle_fn invoke_rust_demangle;
 
-namespace {
-
-template <typename... A>
-using invoke_rust_demangle_callback_fn = std::conditional_t<
-    folly::is_invocable_v<
-        demangle_detail::invoke_primary_rust_demangle_callback_fn,
-        A...>,
-    demangle_detail::invoke_primary_rust_demangle_callback_fn,
-    demangle_detail::invoke_fallback_rust_demangle_callback_fn>;
-
-template <typename... A>
-constexpr invoke_rust_demangle_callback_fn<A...>
-    invoke_rust_demangle_callback{};
-
-int rust_demangle_callback_caller(
-    const char* mangled,
-    int options,
-    demangle_callbackref callback,
-    void* opaque) {
-  return invoke_rust_demangle_callback<
-      const char*,
-      int,
-      demangle_callbackref,
-      void*>(mangled, options, callback, opaque);
+int call_rust_demangle_callback(
+    const char* mangled, int options, demangle_callbackref cb, void* opaque) {
+  return invoke_rust_demangle(mangled, options, cb, opaque);
 }
 
 } // namespace
@@ -127,7 +96,7 @@ using liberty_demangle_t = int(const char*, int, demangle_callbackref, void*);
 static constexpr liberty_demangle_t* liberty_cplus_demangle =
     cplus_demangle_v3_callback;
 static constexpr liberty_demangle_t* liberty_rust_demangle =
-    rust_demangle_callback_caller;
+    call_rust_demangle_callback;
 
 #if defined(DMGL_NO_RECURSE_LIMIT)
 static constexpr auto liberty_demangle_options_no_recurse_limit =
