@@ -252,8 +252,7 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
         detail::SkipPointers<Encoder::skipQuantum>(list.skipPointers),
         bits_(list.bits),
         size_(list.size),
-        upperBound_(
-            (kUnchecked || UNLIKELY(list.size == 0)) ? 0 : list.upperBound) {
+        upperBound_(kUnchecked || list.size == 0 ? 0 : list.upperBound) {
     reset();
   }
 
