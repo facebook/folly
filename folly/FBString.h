@@ -47,6 +47,10 @@
 #include <string_view>
 #endif
 
+#if FOLLY_CPLUSPLUS >= 202002L
+#include <compare>
+#endif
+
 FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_GNU_DISABLE_WARNING("-Wshadow")
