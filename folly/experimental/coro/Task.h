@@ -210,13 +210,13 @@ class TaskPromise final : public TaskPromiseBase,
   template <typename U = T>
   void return_value(U&& value) {
     if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
-      DCHECK(value.hasValue() || value.hasException());
+      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
       result_ = static_cast<U&&>(value);
     } else if constexpr (
         std::is_same_v<remove_cvref_t<U>, Try<void>> &&
         std::is_same_v<remove_cvref_t<T>, Unit>) {
       // special-case to make task -> semifuture -> task preserve void type
-      DCHECK(value.hasValue() || value.hasException());
+      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
       result_ = static_cast<Try<Unit>>(static_cast<U&&>(value));
     } else {
       static_assert(

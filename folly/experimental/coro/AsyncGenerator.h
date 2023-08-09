@@ -478,7 +478,9 @@ class AsyncGeneratorPromise final
   YieldAwaiter yield_value(
       co_result<typename AsyncGenerator<Reference, Value>::NextResult>&&
           res) noexcept {
-    DCHECK(res.result().hasValue() || res.result().hasException());
+    DCHECK(
+        res.result().hasValue() ||
+        (res.result().hasException() && res.result().exception()));
     if (res.result().hasException()) {
       return yield_value(co_error(res.result().exception()));
     } else if (res.result().hasValue()) {
