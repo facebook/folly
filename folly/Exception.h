@@ -26,6 +26,7 @@
 #include <folly/FBString.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/portability/SysTypes.h>
 
 namespace folly {
 

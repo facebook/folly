@@ -202,7 +202,6 @@ constexpr bool kIsSanitize = false;
 // MSVC specific defines
 // mainly for posix compat
 #ifdef _MSC_VER
-#include <folly/portability/SysTypes.h>
 
 // We have compiler support for the newest of the new, but
 // MSVC doesn't tell us that.
