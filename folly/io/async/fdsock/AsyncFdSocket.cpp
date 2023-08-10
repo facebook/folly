@@ -283,9 +283,9 @@ bool receiveFdsFromCMSG(
 #if !defined(__linux__)
     int flags = ::fcntl(fd, F_GETFD);
     // On error, "fail open" by leaving the FD unmodified.
-    if (UNLIKELY(flags == -1)) {
+    if (FOLLY_UNLIKELY(flags == -1)) {
       PLOG(ERROR) << "FdReadAncillaryDataCallback F_GETFD";
-    } else if (UNLIKELY(-1 == ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC))) {
+    } else if (FOLLY_UNLIKELY(-1 == ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC))) {
       PLOG(ERROR) << "FdReadAncillaryDataCallback F_SETFD";
     }
 #endif // !Linux
@@ -363,7 +363,7 @@ SocketFds::SeqNum AsyncFdSocket::addSeqNum(
     return SocketFds::kNoSeqNum;
   }
   const auto gap = std::numeric_limits<SocketFds::SeqNum>::max() - a;
-  if (LIKELY(b <= gap)) {
+  if (FOLLY_LIKELY(b <= gap)) {
     return a + b;
   }
   return b - gap - 1; // wrap around through 0, modulo max
@@ -392,7 +392,7 @@ SocketFds::SeqNum AsyncFdSocket::injectSocketSeqNumIntoFdsToSend(
 #if defined(_WIN32)
   return SocketFds::kNoSeqNum;
 #else
-  if (UNLIKELY(fds->empty())) {
+  if (FOLLY_UNLIKELY(fds->empty())) {
     LOG(DFATAL) << "Cannot inject sequence number into empty SocketFDs";
     return SocketFds::kNoSeqNum;
   }

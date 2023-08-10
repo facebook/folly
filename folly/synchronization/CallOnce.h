@@ -62,7 +62,7 @@ class compact_once_flag;
  */
 template <typename OnceFlag, typename F, typename... Args>
 FOLLY_ALWAYS_INLINE void call_once(OnceFlag& flag, F&& f, Args&&... args) {
-  if (LIKELY(flag.test_once())) {
+  if (FOLLY_LIKELY(flag.test_once())) {
     return;
   }
   flag.call_once_slow(std::forward<F>(f), std::forward<Args>(args)...);
@@ -83,7 +83,7 @@ template <typename OnceFlag, typename F, typename... Args>
 FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
     OnceFlag& flag, F&& f, Args&&... args) noexcept {
   static_assert(is_nothrow_invocable_v<F, Args...>, "must be noexcept");
-  if (LIKELY(flag.test_once())) {
+  if (FOLLY_LIKELY(flag.test_once())) {
     return true;
   }
   return flag.try_call_once_slow(

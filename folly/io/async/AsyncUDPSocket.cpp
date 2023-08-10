@@ -518,7 +518,7 @@ ssize_t AsyncUDPSocket::writeGSO(
   //   for a real use case.
   iovec vec[16];
   size_t iovec_len = buf->fillIov(vec, sizeof(vec) / sizeof(vec[0])).numIovecs;
-  if (UNLIKELY(iovec_len == 0)) {
+  if (FOLLY_UNLIKELY(iovec_len == 0)) {
     buf->coalesce();
     vec[0].iov_base = const_cast<uint8_t*>(buf->data());
     vec[0].iov_len = buf->length();
@@ -560,7 +560,7 @@ ssize_t AsyncUDPSocket::writeChain(
   int msg_flags = options.zerocopy ? getZeroCopyFlags() : 0;
   iovec vec[16];
   size_t iovec_len = buf->fillIov(vec, sizeof(vec) / sizeof(vec[0])).numIovecs;
-  if (UNLIKELY(iovec_len == 0)) {
+  if (FOLLY_UNLIKELY(iovec_len == 0)) {
     buf->coalesce();
     vec[0].iov_base = const_cast<uint8_t*>(buf->data());
     vec[0].iov_len = buf->length();

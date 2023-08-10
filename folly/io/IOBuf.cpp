@@ -1133,7 +1133,7 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
       size_t copySlack = capacity() - length_;
       if (copySlack * 2 <= length_) {
         void* p = realloc(buf_, newAllocatedCapacity);
-        if (UNLIKELY(p == nullptr)) {
+        if (FOLLY_UNLIKELY(p == nullptr)) {
           throw_exception<std::bad_alloc>();
         }
         newBuffer = static_cast<uint8_t*>(p);
@@ -1369,7 +1369,7 @@ unique_ptr<IOBuf> IOBuf::wrapIov(const iovec* vec, size_t count) {
       }
     }
   }
-  if (UNLIKELY(result == nullptr)) {
+  if (FOLLY_UNLIKELY(result == nullptr)) {
     return create(0);
   }
   return result;
@@ -1394,7 +1394,7 @@ std::unique_ptr<IOBuf> IOBuf::takeOwnershipIov(
       }
     }
   }
-  if (UNLIKELY(result == nullptr)) {
+  if (FOLLY_UNLIKELY(result == nullptr)) {
     return create(0);
   }
   return result;
@@ -1421,7 +1421,7 @@ IOBuf::FillIovResult IOBuf::fillIov(struct iovec* iov, size_t len) const {
 }
 
 uint32_t IOBuf::approximateShareCountOne() const {
-  if (UNLIKELY(!sharedInfo())) {
+  if (FOLLY_UNLIKELY(!sharedInfo())) {
     return 1U;
   }
   return sharedInfo()->refcount.load(std::memory_order_acquire);

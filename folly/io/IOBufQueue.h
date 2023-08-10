@@ -209,7 +209,7 @@ class IOBufQueue {
       // This can happen only if somebody is misusing the interface.
       // E.g. calling append after touching IOBufQueue or without checking
       // the length().
-      if (LIKELY(data_.cachedRange.first != nullptr)) {
+      if (FOLLY_LIKELY(data_.cachedRange.first != nullptr)) {
         DCHECK_LE(n, length());
         data_.cachedRange.first += n;
       } else {
@@ -368,7 +368,7 @@ class IOBufQueue {
       std::size_t max = std::numeric_limits<std::size_t>::max()) {
     dcheckCacheIntegrity();
 
-    if (LIKELY(writableTail() != nullptr && tailroom() >= min)) {
+    if (FOLLY_LIKELY(writableTail() != nullptr && tailroom() >= min)) {
       return std::make_pair(
           writableTail(), std::min<std::size_t>(max, tailroom()));
     }
@@ -499,7 +499,7 @@ class IOBufQueue {
    * constructor.
    */
   size_t chainLength() const {
-    if (UNLIKELY(!options_.cacheChainLength)) {
+    if (FOLLY_UNLIKELY(!options_.cacheChainLength)) {
       throw std::invalid_argument("IOBufQueue: chain length not cached");
     }
     dcheckCacheIntegrity();
@@ -660,9 +660,9 @@ class IOBufQueue {
       reusableTail_ = nullptr;
     }
 
-    if (LIKELY(head_ != nullptr)) {
+    if (FOLLY_LIKELY(head_ != nullptr)) {
       IOBuf* buf = head_->prev();
-      if (LIKELY(!buf->isSharedOne())) {
+      if (FOLLY_LIKELY(!buf->isSharedOne())) {
         tailStart_ = buf->writableTail();
         cachePtr_->cachedRange = std::pair<uint8_t*, uint8_t*>(
             tailStart_, tailStart_ + buf->tailroom());

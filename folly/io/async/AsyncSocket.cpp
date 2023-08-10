@@ -3166,7 +3166,7 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
     if (readAncillaryDataCallback_) {
       auto prevReadCallback = readCallback_;
       readAncillaryDataCallback_->ancillaryData(msg);
-      if (UNLIKELY(readCallback_ != prevReadCallback)) {
+      if (FOLLY_UNLIKELY(readCallback_ != prevReadCallback)) {
         // The `ancillaryData` callback is allowed to close the socket,
         // but otherwise is not allowed to change/replace the read callback.
         CHECK_EQ((shutdownFlags_ & SHUT_READ), SHUT_READ);

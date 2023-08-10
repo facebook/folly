@@ -46,7 +46,7 @@ struct AtomicHashArrayLinearProbeFcn {
     idx += 1; // linear probing
 
     // Avoid modulus because it's slow
-    return LIKELY(idx < capacity) ? idx : (idx - capacity);
+    return FOLLY_LIKELY(idx < capacity) ? idx : (idx - capacity);
   }
 };
 
@@ -56,7 +56,7 @@ struct AtomicHashArrayQuadraticProbeFcn {
     idx += numProbes; // quadratic probing
 
     // Avoid modulus because it's slow
-    return LIKELY(idx < capacity) ? idx : (idx - capacity);
+    return FOLLY_LIKELY(idx < capacity) ? idx : (idx - capacity);
   }
 };
 
@@ -423,7 +423,7 @@ class AtomicHashArray {
   inline size_t keyToAnchorIdx(const LookupKeyT k) const {
     const size_t hashVal = LookupHashFcn()(k);
     const size_t probe = hashVal & kAnchorMask_;
-    return LIKELY(probe < capacity_) ? probe : hashVal % capacity_;
+    return FOLLY_LIKELY(probe < capacity_) ? probe : hashVal % capacity_;
   }
 
 }; // AtomicHashArray

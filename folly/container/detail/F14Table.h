@@ -698,7 +698,7 @@ class F14ItemIter {
     while (index_ > 0) {
       --index_;
       --itemPtr_;
-      if (LIKELY(c->occupied(index_))) {
+      if (FOLLY_LIKELY(c->occupied(index_))) {
         return;
       }
     }
@@ -727,7 +727,7 @@ class F14ItemIter {
     for (std::size_t i = 1; !likelyDead || i != 0; ++i) {
       if (checkEof) {
         // exhausted the current chunk
-        if (UNLIKELY(c->eof())) {
+        if (FOLLY_UNLIKELY(c->eof())) {
           FOLLY_SAFE_DCHECK(index_ == 0, "");
           itemPtr_ = nullptr;
           return;
@@ -740,7 +740,7 @@ class F14ItemIter {
       if (checkEof && !likelyDead) {
         prefetchAddr(&*c - 1);
       }
-      if (LIKELY(last.hasIndex())) {
+      if (FOLLY_LIKELY(last.hasIndex())) {
         index_ = last.index();
         itemPtr_ = std::pointer_traits<ItemPtr>::pointer_to(c->item(index_));
         return;
@@ -1451,14 +1451,14 @@ class F14Table : public Policy {
       auto hits = chunk->tagMatchIter(hp.second);
       while (hits.hasNext()) {
         auto i = hits.next();
-        if (LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
+        if (FOLLY_LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
           // Tag match and key match were both successful.  The chance
           // of a false tag match is 1/128 for each key in the chunk
           // (with a proper hash function).
           return ItemIter{chunk, i};
         }
       }
-      if (LIKELY(chunk->outboundOverflowCount() == 0)) {
+      if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         // No keys that wanted to be placed in this chunk were denied
         // entry, so our search is over.  This is the common case.
         break;
@@ -1521,12 +1521,12 @@ class F14Table : public Policy {
       auto hits = chunk->tagMatchIter(hp.second);
       while (hits.hasNext()) {
         auto i = hits.next();
-        if (LIKELY(
+        if (FOLLY_LIKELY(
                 func(this->keyForValue(this->valueAtItem(chunk->item(i)))))) {
           return ItemIter{chunk, i};
         }
       }
-      if (LIKELY(chunk->outboundOverflowCount() == 0)) {
+      if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         break;
       }
       index += step;
@@ -1603,7 +1603,7 @@ class F14Table : public Policy {
     while (true) {
       index = moduloByChunkCount(index);
       chunk = chunks_ + index;
-      if (LIKELY(fullness[index] < Chunk::kCapacity)) {
+      if (FOLLY_LIKELY(fullness[index] < Chunk::kCapacity)) {
         break;
       }
       chunk->incrOutboundOverflowCount();
@@ -1977,7 +1977,7 @@ class F14Table : public Policy {
       // this SCOPE_EXIT reverts chunks_ and chunkShift if necessary
       BytePtr finishedRawAllocation = nullptr;
       std::size_t finishedAllocSize = 0;
-      if (LIKELY(success)) {
+      if (FOLLY_LIKELY(success)) {
         if (origCapacity > 0) {
           finishedRawAllocation = std::pointer_traits<BytePtr>::pointer_to(
               *static_cast<uint8_t*>(static_cast<void*>(&*origChunks)));
@@ -2010,7 +2010,7 @@ class F14Table : public Policy {
       std::size_t srcI = 0;
       std::size_t dstI = 0;
       while (dstI < origSize) {
-        if (LIKELY(srcChunk->occupied(srcI))) {
+        if (FOLLY_LIKELY(srcChunk->occupied(srcI))) {
           dstChunk->setTag(dstI, srcChunk->tag(srcI));
           this->moveItemDuringRehash(
               dstChunk->itemAddr(dstI), srcChunk->item(srcI));
@@ -2314,7 +2314,7 @@ class F14Table : public Policy {
 
   template <typename K, typename BeforeDestroy>
   std::size_t eraseKeyInto(K const& key, BeforeDestroy&& beforeDestroy) {
-    if (UNLIKELY(size() == 0)) {
+    if (FOLLY_UNLIKELY(size() == 0)) {
       return 0;
     }
     auto hp = splitHash(this->computeKeyHash(key));

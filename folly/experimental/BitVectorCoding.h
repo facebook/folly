@@ -265,7 +265,7 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
   }
 
   bool next() {
-    if (!kUnchecked && UNLIKELY(position() + 1 >= size_)) {
+    if (!kUnchecked && FOLLY_UNLIKELY(position() + 1 >= size_)) {
       return setDone();
     }
 
@@ -290,7 +290,7 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
       return setDone();
     }
     // Small skip optimization.
-    if (LIKELY(n < kLinearScanThreshold)) {
+    if (FOLLY_LIKELY(n < kLinearScanThreshold)) {
       for (size_t i = 0; i < n; ++i) {
         next();
       }

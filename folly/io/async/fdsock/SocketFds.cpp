@@ -23,7 +23,7 @@ void SocketFds::cloneToSendFromOrDfatal(const SocketFds& other) {
     ptr_.reset();
   } else {
     auto* fds = std::get_if<ToSendPair>(other.ptr_.get());
-    if (UNLIKELY(fds == nullptr)) {
+    if (FOLLY_UNLIKELY(fds == nullptr)) {
       LOG(DFATAL) << "SocketFds was in 'received' state, not cloning";
       ptr_.reset();
     } else {
@@ -61,7 +61,7 @@ SocketFds::ToSend SocketFds::releaseToSend() {
 void SocketFds::setFdSocketSeqNumOnce(SeqNum seqNum) {
   // The type is unsigned because Thrift IDL only supports signed.
   DCHECK_GE(seqNum, 0) << "Sequence number must be nonnegative";
-  if (LIKELY(ptr_ != nullptr)) {
+  if (FOLLY_LIKELY(ptr_ != nullptr)) {
     std::visit(
         [seqNum](auto&& v) {
           DCHECK_EQ(kNoSeqNum, v.second) << "Can only set sequence number once";
@@ -74,7 +74,7 @@ void SocketFds::setFdSocketSeqNumOnce(SeqNum seqNum) {
 }
 
 SocketFds::SeqNum SocketFds::getFdSocketSeqNum() const {
-  if (LIKELY(ptr_ != nullptr)) {
+  if (FOLLY_LIKELY(ptr_ != nullptr)) {
     auto seqNum = std::visit([](auto&& v) { return v.second; }, *ptr_);
     if (seqNum >= 0) {
       return seqNum;

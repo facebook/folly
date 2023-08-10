@@ -20,7 +20,7 @@
 
 TEST(likely, demo) {
   int x = std::rand() % 1;
-  if (LIKELY(x)) {
+  if (FOLLY_LIKELY(x)) {
     // Compiler optimizes for this branch...
   } else {
     // ...even if this one is actually hotter

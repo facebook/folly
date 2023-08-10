@@ -179,7 +179,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
     char c = *p;
     unsigned char v = static_cast<unsigned char>(c);
     unsigned char discriminator = detail::uriEscapeTable[v];
-    if (LIKELY(discriminator <= minEncode)) {
+    if (FOLLY_LIKELY(discriminator <= minEncode)) {
       ++p;
     } else if (mode == UriEscapeMode::QUERY && discriminator == 3) {
       out.append(&*last, size_t(p - last));
@@ -209,12 +209,12 @@ bool tryUriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
     char c = *p;
     switch (c) {
       case '%': {
-        if (UNLIKELY(std::distance(p, str.end()) < 3)) {
+        if (FOLLY_UNLIKELY(std::distance(p, str.end()) < 3)) {
           return false;
         }
         auto h1 = detail::hexTable[static_cast<unsigned char>(p[1])];
         auto h2 = detail::hexTable[static_cast<unsigned char>(p[2])];
-        if (UNLIKELY(h1 == 16 || h2 == 16)) {
+        if (FOLLY_UNLIKELY(h1 == 16 || h2 == 16)) {
           return false;
         }
         out.append(&*last, size_t(p - last));
@@ -379,7 +379,7 @@ inline void toOrIgnore(StringPiece, decltype(std::ignore)&) {}
 
 template <bool exact, class Delim, class OutputType>
 bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
-  if (exact && UNLIKELY(std::string::npos != input.find(delimiter))) {
+  if (exact && FOLLY_UNLIKELY(std::string::npos != input.find(delimiter))) {
     return false;
   }
   toOrIgnore(input, output);
@@ -393,13 +393,13 @@ bool splitFixed(
     OutputType& outHead,
     OutputTypes&... outTail) {
   size_t cut = input.find(delimiter);
-  if (UNLIKELY(cut == std::string::npos)) {
+  if (FOLLY_UNLIKELY(cut == std::string::npos)) {
     return false;
   }
   StringPiece head(input.begin(), input.begin() + cut);
   StringPiece tail(
       input.begin() + cut + detail::delimSize(delimiter), input.end());
-  if (LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
+  if (FOLLY_LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
     toOrIgnore(head, outHead);
     return true;
   }

@@ -126,7 +126,7 @@ inline void EventBaseLoopController::scheduleThreadSafe() {
 inline HHWheelTimer* EventBaseLoopController::timer() {
   assert(eventBaseAttached_);
 
-  if (UNLIKELY(eventBaseShutdownToken_.isCancellationRequested())) {
+  if (FOLLY_UNLIKELY(eventBaseShutdownToken_.isCancellationRequested())) {
     return nullptr;
   }
 

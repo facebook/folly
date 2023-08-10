@@ -305,7 +305,7 @@ class CursorBase {
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
       T& val) {
-    if (LIKELY(uintptr_t(crtPos_) + sizeof(T) <= uintptr_t(crtEnd_))) {
+    if (FOLLY_LIKELY(uintptr_t(crtPos_) + sizeof(T) <= uintptr_t(crtEnd_))) {
       val = loadUnaligned<T>(data());
       crtPos_ += sizeof(T);
       return true;
@@ -329,7 +329,7 @@ class CursorBase {
 
   template <class T>
   T read() {
-    if (LIKELY(uintptr_t(crtPos_) + sizeof(T) <= uintptr_t(crtEnd_))) {
+    if (FOLLY_LIKELY(uintptr_t(crtPos_) + sizeof(T) <= uintptr_t(crtEnd_))) {
       T val = loadUnaligned<T>(data());
       crtPos_ += sizeof(T);
       return val;
@@ -358,7 +358,7 @@ class CursorBase {
   std::string readFixedString(size_t len) {
     std::string str;
     str.reserve(len);
-    if (LIKELY(length() >= len)) {
+    if (FOLLY_LIKELY(length() >= len)) {
       str.append(reinterpret_cast<const char*>(data()), len);
       crtPos_ += len;
     } else {
@@ -410,7 +410,7 @@ class CursorBase {
 
   size_t skipAtMost(size_t len) {
     dcheckIntegrity();
-    if (LIKELY(uintptr_t(crtPos_) + len < uintptr_t(crtEnd_))) {
+    if (FOLLY_LIKELY(uintptr_t(crtPos_) + len < uintptr_t(crtEnd_))) {
       crtPos_ += len;
       return len;
     }
@@ -419,7 +419,7 @@ class CursorBase {
 
   void skip(size_t len) {
     dcheckIntegrity();
-    if (LIKELY(uintptr_t(crtPos_) + len < uintptr_t(crtEnd_))) {
+    if (FOLLY_LIKELY(uintptr_t(crtPos_) + len < uintptr_t(crtEnd_))) {
       crtPos_ += len;
     } else {
       skipSlow(len);
@@ -454,12 +454,12 @@ class CursorBase {
   }
 
   size_t pullAtMost(void* buf, size_t len) {
-    if (UNLIKELY(len == 0)) {
+    if (FOLLY_UNLIKELY(len == 0)) {
       return 0;
     }
     dcheckIntegrity();
     // Fast path: it all fits in one buffer.
-    if (LIKELY(uintptr_t(crtPos_) + len <= uintptr_t(crtEnd_))) {
+    if (FOLLY_LIKELY(uintptr_t(crtPos_) + len <= uintptr_t(crtEnd_))) {
       memcpy(buf, data(), len);
       crtPos_ += len;
       return len;
@@ -468,11 +468,11 @@ class CursorBase {
   }
 
   void pull(void* buf, size_t len) {
-    if (UNLIKELY(len == 0)) {
+    if (FOLLY_UNLIKELY(len == 0)) {
       return;
     }
     dcheckIntegrity();
-    if (LIKELY(uintptr_t(crtPos_) + len <= uintptr_t(crtEnd_))) {
+    if (FOLLY_LIKELY(uintptr_t(crtPos_) + len <= uintptr_t(crtEnd_))) {
       memcpy(buf, data(), len);
       crtPos_ += len;
     } else {
@@ -488,7 +488,7 @@ class CursorBase {
   ByteRange peekBytes() {
     // Ensure that we're pointing to valid data
     size_t available = length();
-    while (UNLIKELY(available == 0 && tryAdvanceBuffer())) {
+    while (FOLLY_UNLIKELY(available == 0 && tryAdvanceBuffer())) {
       available = length();
     }
     return ByteRange{data(), available};
@@ -506,13 +506,13 @@ class CursorBase {
   }
 
   void clone(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
-    if (UNLIKELY(cloneAtMost(buf, len) != len)) {
+    if (FOLLY_UNLIKELY(cloneAtMost(buf, len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
   }
 
   void clone(folly::IOBuf& buf, size_t len) {
-    if (UNLIKELY(cloneAtMost(buf, len) != len)) {
+    if (FOLLY_UNLIKELY(cloneAtMost(buf, len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
   }
@@ -526,7 +526,7 @@ class CursorBase {
     for (int loopCount = 0; true; ++loopCount) {
       // Fast path: it all fits in one buffer.
       size_t available = length();
-      if (LIKELY(available >= len)) {
+      if (FOLLY_LIKELY(available >= len)) {
         if (loopCount == 0) {
           crtBuf_->cloneOneInto(buf);
           buf.trimStart(crtPos_ - crtBegin_);
@@ -553,7 +553,7 @@ class CursorBase {
       }
 
       copied += available;
-      if (UNLIKELY(!tryAdvanceBuffer())) {
+      if (FOLLY_UNLIKELY(!tryAdvanceBuffer())) {
         return copied;
       }
       len -= available;
@@ -641,7 +641,7 @@ class CursorBase {
 
   bool tryAdvanceBuffer() {
     BufType* nextBuf = crtBuf_->next();
-    if (UNLIKELY(nextBuf == buffer_) || remainingLen_ == 0) {
+    if (FOLLY_UNLIKELY(nextBuf == buffer_) || remainingLen_ == 0) {
       crtPos_ = crtEnd_;
       return false;
     }
@@ -661,7 +661,7 @@ class CursorBase {
   }
 
   bool tryRetreatBuffer() {
-    if (UNLIKELY(crtBuf_ == buffer_)) {
+    if (FOLLY_UNLIKELY(crtBuf_ == buffer_)) {
       crtPos_ = crtBegin_;
       return false;
     }
@@ -709,7 +709,7 @@ class CursorBase {
   FOLLY_NOINLINE void readFixedStringSlow(std::string* str, size_t len) {
     for (size_t available; (available = length()) < len;) {
       str->append(reinterpret_cast<const char*>(data()), available);
-      if (UNLIKELY(!tryAdvanceBuffer())) {
+      if (FOLLY_UNLIKELY(!tryAdvanceBuffer())) {
         throw_exception<std::out_of_range>("string underflow");
       }
       len -= available;
@@ -729,7 +729,7 @@ class CursorBase {
         memcpy(p, data(), available);
         copied += available;
       }
-      if (UNLIKELY(!tryAdvanceBuffer())) {
+      if (FOLLY_UNLIKELY(!tryAdvanceBuffer())) {
         return copied;
       }
       p += available;
@@ -746,7 +746,7 @@ class CursorBase {
   }
 
   FOLLY_NOINLINE void pullSlow(void* buf, size_t len) {
-    if (UNLIKELY(pullAtMostSlow(buf, len) != len)) {
+    if (FOLLY_UNLIKELY(pullAtMostSlow(buf, len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
   }
@@ -755,7 +755,7 @@ class CursorBase {
     size_t skipped = 0;
     for (size_t available; (available = length()) < len;) {
       skipped += available;
-      if (UNLIKELY(!tryAdvanceBuffer())) {
+      if (FOLLY_UNLIKELY(!tryAdvanceBuffer())) {
         return skipped;
       }
       len -= available;
@@ -766,7 +766,7 @@ class CursorBase {
   }
 
   FOLLY_NOINLINE void skipSlow(size_t len) {
-    if (UNLIKELY(skipAtMostSlow(len) != len)) {
+    if (FOLLY_UNLIKELY(skipAtMostSlow(len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
   }
@@ -775,7 +775,7 @@ class CursorBase {
     size_t retreated = 0;
     for (size_t available; (available = crtPos_ - crtBegin_) < len;) {
       retreated += available;
-      if (UNLIKELY(!tryRetreatBuffer())) {
+      if (FOLLY_UNLIKELY(!tryRetreatBuffer())) {
         return retreated;
       }
       len -= available;
@@ -785,7 +785,7 @@ class CursorBase {
   }
 
   FOLLY_NOINLINE void retreatSlow(size_t len) {
-    if (UNLIKELY(retreatAtMostSlow(len) != len)) {
+    if (FOLLY_UNLIKELY(retreatAtMostSlow(len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
   }
@@ -979,7 +979,7 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
     for (;;) {
       // Fast path: the current buffer is big enough.
       size_t available = this->length();
-      if (LIKELY(available >= len)) {
+      if (FOLLY_LIKELY(available >= len)) {
         if (access == CursorAccess::UNSHARE) {
           maybeUnshare();
         }
@@ -993,7 +993,7 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
       }
       memcpy(writableData(), buf, available);
       copied += available;
-      if (UNLIKELY(!this->tryAdvanceBuffer())) {
+      if (FOLLY_UNLIKELY(!this->tryAdvanceBuffer())) {
         return copied;
       }
       buf += available;
@@ -1047,7 +1047,7 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
 
  private:
   void maybeUnshare() {
-    if (UNLIKELY(maybeShared_)) {
+    if (FOLLY_UNLIKELY(maybeShared_)) {
       size_t offset = this->crtPos_ - this->crtBegin_;
       this->crtBuf_->unshareOne();
       this->crtBegin_ = this->crtBuf_->data();
@@ -1093,7 +1093,7 @@ class Appender : public detail::Writable<Appender> {
    * Postcondition: length() >= n.
    */
   void ensure(std::size_t n) {
-    if (LIKELY(length() >= n)) {
+    if (FOLLY_LIKELY(length() >= n)) {
       return;
     }
 
@@ -1121,7 +1121,7 @@ class Appender : public detail::Writable<Appender> {
     // If the length of this buffer is 0 try growing it.
     // Otherwise on the first iteration of the following loop memcpy is called
     // with a null source pointer.
-    if (UNLIKELY(length() == 0 && !tryGrowChain())) {
+    if (FOLLY_UNLIKELY(length() == 0 && !tryGrowChain())) {
       return 0;
     }
 
@@ -1129,7 +1129,7 @@ class Appender : public detail::Writable<Appender> {
     for (;;) {
       // Fast path: it all fits in one buffer.
       size_t available = length();
-      if (LIKELY(available >= len)) {
+      if (FOLLY_LIKELY(available >= len)) {
         memcpy(writableData(), buf, len);
         append(len);
         return copied + len;
@@ -1138,7 +1138,7 @@ class Appender : public detail::Writable<Appender> {
       memcpy(writableData(), buf, available);
       append(available);
       copied += available;
-      if (UNLIKELY(!tryGrowChain())) {
+      if (FOLLY_UNLIKELY(!tryGrowChain())) {
         return copied;
       }
       buf += available;

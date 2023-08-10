@@ -425,7 +425,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
       EntryID* ent, uint32_t& id, ThreadEntry*& threadEntry, size_t& capacity) {
     auto& inst = instance();
     threadEntry = inst.threadEntry_();
-    if (UNLIKELY(threadEntry->getElementsCapacity() <= id)) {
+    if (FOLLY_UNLIKELY(threadEntry->getElementsCapacity() <= id)) {
       inst.reserve(ent);
       id = ent->getOrInvalid();
     }

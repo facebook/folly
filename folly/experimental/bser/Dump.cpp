@@ -100,7 +100,7 @@ static void bserEncodeArray(
     QueueAppender& appender,
     const serialization_opts& opts) {
   auto templ = getTemplate(opts, dyn);
-  if (UNLIKELY(templ != nullptr)) {
+  if (FOLLY_UNLIKELY(templ != nullptr)) {
     appender.write((int8_t)BserType::Template);
 
     // Emit the list of property names

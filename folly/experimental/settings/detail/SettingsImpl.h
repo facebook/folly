@@ -393,7 +393,7 @@ class SettingCore : public SettingCoreBase {
 
   FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
     auto& value = **localValue_;
-    if (LIKELY(value.first == *settingVersion_)) {
+    if (FOLLY_LIKELY(value.first == *settingVersion_)) {
       return value.second;
     }
     return tlValueSlow();

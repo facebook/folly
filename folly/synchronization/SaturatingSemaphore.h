@@ -167,7 +167,7 @@ class SaturatingSemaphore {
   FOLLY_ALWAYS_INLINE bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline,
       const WaitOptions& opt = wait_options()) noexcept {
-    if (LIKELY(try_wait())) {
+    if (FOLLY_LIKELY(try_wait())) {
       return true;
     }
     return tryWaitSlow(deadline, opt);
@@ -178,7 +178,7 @@ class SaturatingSemaphore {
   FOLLY_ALWAYS_INLINE bool try_wait_for(
       const std::chrono::duration<Rep, Period>& duration,
       const WaitOptions& opt = wait_options()) noexcept {
-    if (LIKELY(try_wait())) {
+    if (FOLLY_LIKELY(try_wait())) {
       return true;
     }
     auto deadline = std::chrono::steady_clock::now() + duration;
@@ -188,7 +188,7 @@ class SaturatingSemaphore {
  private:
   FOLLY_ALWAYS_INLINE void postFastWaiterMayBlock() noexcept {
     uint32_t before = NOTREADY;
-    if (LIKELY(state_.compare_exchange_strong(
+    if (FOLLY_LIKELY(state_.compare_exchange_strong(
             before,
             READY,
             std::memory_order_release,

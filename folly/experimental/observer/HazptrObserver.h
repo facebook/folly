@@ -123,7 +123,7 @@ class HazptrObserver {
   }
 
   DefaultSnapshot getSnapshot() const {
-    if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
+    if (FOLLY_UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
       // Wait for updates
       updateObserver_.getSnapshot();
     }
@@ -131,7 +131,7 @@ class HazptrObserver {
   }
 
   LocalSnapshot getLocalSnapshot() const {
-    if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
+    if (FOLLY_UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
       // Wait for updates
       updateObserver_.getSnapshot();
     }

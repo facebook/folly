@@ -29,8 +29,8 @@ namespace folly {
 namespace threadlocal_detail {
 
 void ThreadEntryNode::initIfZero(bool locked) {
-  if (UNLIKELY(isZero)) {
-    if (LIKELY(locked)) {
+  if (FOLLY_UNLIKELY(isZero)) {
+    if (FOLLY_LIKELY(locked)) {
       parent->meta->pushBackLocked(parent, id);
     } else {
       parent->meta->pushBackUnlocked(parent, id);
@@ -54,7 +54,7 @@ void ThreadEntryNode::push_back(ThreadEntry* head) {
 }
 
 void ThreadEntryNode::eraseZero() {
-  if (LIKELY(prev != nullptr)) {
+  if (FOLLY_LIKELY(prev != nullptr)) {
     // get the prev and next nodes
     ThreadEntryNode* nprev = &prev->elements[id].node;
     ThreadEntryNode* nnext = &next->elements[id].node;
@@ -100,7 +100,7 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     ThreadEntryList* threadEntryList =
         static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
 
-    if (UNLIKELY(!threadEntryList)) {
+    if (FOLLY_UNLIKELY(!threadEntryList)) {
       threadEntryList = new ThreadEntryList();
       int ret = pthread_setspecific(instance.get(), threadEntryList);
       checkPosixError(ret, "pthread_setspecific failed");
@@ -455,7 +455,7 @@ void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
 }
 
 void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) noexcept {
-  if (LIKELY(!t->removed_)) {
+  if (FOLLY_LIKELY(!t->removed_)) {
     std::lock_guard<std::mutex> g(lock_);
     auto* node = &t->elements[id].node;
     node->push_back(&head_);
@@ -463,7 +463,7 @@ void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) noexcept {
 }
 
 void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) noexcept {
-  if (LIKELY(!t->removed_)) {
+  if (FOLLY_LIKELY(!t->removed_)) {
     auto* node = &t->elements[id].node;
     node->push_back(&head_);
   }

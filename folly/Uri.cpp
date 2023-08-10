@@ -64,7 +64,8 @@ Expected<Uri, UriFormatError> Uri::tryFromString(StringPiece str) noexcept {
   static const boost::regex authorityAndPathRegex("//([^/]*)(/.*)?");
 
   boost::cmatch match;
-  if (UNLIKELY(!boost::regex_match(str.begin(), str.end(), match, uriRegex))) {
+  if (FOLLY_UNLIKELY(
+          !boost::regex_match(str.begin(), str.end(), match, uriRegex))) {
     return makeUnexpected(UriFormatError::INVALID_URI);
   }
 

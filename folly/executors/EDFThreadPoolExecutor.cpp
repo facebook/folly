@@ -285,7 +285,7 @@ void EDFThreadPoolExecutor::add(Func f) {
 }
 
 void EDFThreadPoolExecutor::add(Func f, std::size_t total, uint64_t deadline) {
-  if (UNLIKELY(isJoin_.load(std::memory_order_relaxed) || total == 0)) {
+  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed) || total == 0)) {
     return;
   }
 
@@ -300,7 +300,7 @@ void EDFThreadPoolExecutor::add(Func f, std::size_t total, uint64_t deadline) {
 }
 
 void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
-  if (UNLIKELY(fs.empty())) {
+  if (FOLLY_UNLIKELY(fs.empty())) {
     return;
   }
 
@@ -325,7 +325,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     auto task = take();
 
     // Handle thread stopping
-    if (UNLIKELY(!task)) {
+    if (FOLLY_UNLIKELY(!task)) {
       // Actually remove the thread from the list.
       SharedMutex::WriteHolder w{&threadListLock_};
       for (auto& o : observers_) {
@@ -337,7 +337,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     }
 
     int iter = task->next();
-    if (UNLIKELY(iter < 0)) {
+    if (FOLLY_UNLIKELY(iter < 0)) {
       // This task is already finished
       continue;
     }
@@ -398,7 +398,7 @@ bool EDFThreadPoolExecutor::shouldStop() {
 }
 
 std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
-  if (UNLIKELY(shouldStop())) {
+  if (FOLLY_UNLIKELY(shouldStop())) {
     return nullptr;
   }
 
@@ -406,7 +406,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
     return task;
   }
 
-  if (UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
+  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
     return nullptr;
   }
 
@@ -416,7 +416,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
   SCOPE_EXIT { numIdleThreads_.fetch_sub(1, std::memory_order_seq_cst); };
 
   for (;;) {
-    if (UNLIKELY(shouldStop())) {
+    if (FOLLY_UNLIKELY(shouldStop())) {
       return nullptr;
     }
 
@@ -426,7 +426,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
       return task;
     }
 
-    if (UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
+    if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
       return nullptr;
     }
 

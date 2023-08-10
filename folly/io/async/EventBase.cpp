@@ -64,7 +64,7 @@ EventBaseBackend::EventBaseBackend() {
 }
 
 EventBaseBackend::EventBaseBackend(event_base* evb) : evb_(evb) {
-  if (UNLIKELY(evb_ == nullptr)) {
+  if (FOLLY_UNLIKELY(evb_ == nullptr)) {
     LOG(ERROR) << "EventBase(): Pass nullptr as event base.";
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
   }

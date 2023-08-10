@@ -91,7 +91,7 @@ struct FormatArg {
   template <typename Check, typename... Args>
   void enforce(Check const& v, Args&&... args) const {
     static_assert(std::is_constructible<bool, Check>::value, "not castable");
-    if (UNLIKELY(!v)) {
+    if (FOLLY_UNLIKELY(!v)) {
       error(static_cast<Args&&>(args)...);
     }
   }

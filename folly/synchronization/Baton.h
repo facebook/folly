@@ -104,7 +104,7 @@ class Baton {
   /// @return       True if baton has been posted, false otherwise
   FOLLY_ALWAYS_INLINE bool ready() const noexcept {
     auto s = state_.load(std::memory_order_acquire);
-    return LIKELY(s == EARLY_DELIVERY || s == LATE_DELIVERY);
+    return FOLLY_LIKELY(s == EARLY_DELIVERY || s == LATE_DELIVERY);
   }
 
   /// @methodset Operations
@@ -217,7 +217,7 @@ class Baton {
   FOLLY_ALWAYS_INLINE bool try_wait() noexcept {
     auto s = state_.load(std::memory_order_acquire);
     assert(s == INIT || s == EARLY_DELIVERY);
-    return LIKELY(s == EARLY_DELIVERY);
+    return FOLLY_LIKELY(s == EARLY_DELIVERY);
   }
 
   /// @methodset Operations

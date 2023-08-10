@@ -863,7 +863,7 @@ class LeakySingleton {
 
   static T& instance() {
     auto& entry = entryInstance();
-    if (UNLIKELY(entry.state != State::Living)) {
+    if (FOLLY_UNLIKELY(entry.state != State::Living)) {
       createInstance();
     }
 

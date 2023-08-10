@@ -389,7 +389,7 @@ class SharedMutexImpl : std::conditional_t<
   // description about why this property needs to be explicitly mentioned.
   ~SharedMutexImpl() {
     auto state = state_.load(std::memory_order_relaxed);
-    if (UNLIKELY((state & kHasS) != 0)) {
+    if (FOLLY_UNLIKELY((state & kHasS) != 0)) {
       cleanupTokenlessSharedDeferred(state);
     }
 
@@ -1021,7 +1021,7 @@ class SharedMutexImpl : std::conditional_t<
   template <class WaitContext>
   bool lockExclusiveImpl(uint32_t preconditionGoalMask, WaitContext& ctx) {
     uint32_t state = state_.load(std::memory_order_acquire);
-    if (LIKELY(
+    if (FOLLY_LIKELY(
             (state & (preconditionGoalMask | kMayDefer | kHasS)) == 0 &&
             state_.compare_exchange_strong(state, (state | kHasE) & ~kHasU))) {
       return true;
@@ -1034,7 +1034,7 @@ class SharedMutexImpl : std::conditional_t<
   bool lockExclusiveImpl(
       uint32_t& state, uint32_t preconditionGoalMask, WaitContext& ctx) {
     while (true) {
-      if (UNLIKELY((state & preconditionGoalMask) != 0) &&
+      if (FOLLY_UNLIKELY((state & preconditionGoalMask) != 0) &&
           !waitForZeroBits(state, preconditionGoalMask, kWaitingE, ctx) &&
           ctx.canTimeOut()) {
         return false;
@@ -1065,12 +1065,12 @@ class SharedMutexImpl : std::conditional_t<
         // Readers are responsible for rechecking state_ after recording
         // a deferred read to avoid atomicity problems between the state_
         // CAS and applyDeferredReader's reads of deferredReaders[].
-        if (UNLIKELY((before & kMayDefer) != 0)) {
+        if (FOLLY_UNLIKELY((before & kMayDefer) != 0)) {
           applyDeferredReaders(state, ctx);
         }
         while (true) {
           assert((state & (kHasE | kBegunE)) != 0 && (state & kHasU) == 0);
-          if (UNLIKELY((state & kHasS) != 0) &&
+          if (FOLLY_UNLIKELY((state & kHasS) != 0) &&
               !waitForZeroBits(state, kHasS, kWaitingNotS, ctx) &&
               ctx.canTimeOut()) {
             // Ugh.  We blocked new readers and other writers for a while,
@@ -1105,7 +1105,7 @@ class SharedMutexImpl : std::conditional_t<
       if ((state & goal) == 0) {
         return true;
       }
-      if (UNLIKELY(spinCount == kMaxSpinCount)) {
+      if (FOLLY_UNLIKELY(spinCount == kMaxSpinCount)) {
         return ctx.canBlock() &&
             yieldWaitForZeroBits(state, goal, waitMask, ctx);
       }
@@ -1187,7 +1187,7 @@ class SharedMutexImpl : std::conditional_t<
   // awaiting bits for anybody that was awoken.  Tries to perform direct
   // single wakeup of an exclusive waiter if appropriate
   void wakeRegisteredWaiters(uint32_t& state, uint32_t wakeMask) {
-    if (UNLIKELY((state & wakeMask) != 0)) {
+    if (FOLLY_UNLIKELY((state & wakeMask) != 0)) {
       wakeRegisteredWaitersImpl(state, wakeMask);
     }
   }
@@ -1258,7 +1258,7 @@ class SharedMutexImpl : std::conditional_t<
         }
       }
       asm_volatile_pause();
-      if (UNLIKELY(++spinCount >= kMaxSpinCount)) {
+      if (FOLLY_UNLIKELY(++spinCount >= kMaxSpinCount)) {
         applyDeferredReaders(state, ctx, slot);
         return;
       }
@@ -1649,7 +1649,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
   const uint32_t maxDeferredReaders =
       shared_mutex_detail::getMaxDeferredReaders();
   while (true) {
-    if (UNLIKELY((state & kHasE) != 0) &&
+    if (FOLLY_UNLIKELY((state & kHasE) != 0) &&
         !waitForZeroBits(state, kHasE, kWaitingS, ctx) && ctx.canTimeOut()) {
       return false;
     }

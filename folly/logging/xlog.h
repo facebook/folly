@@ -613,8 +613,12 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  * false.  Unlike assert() CHECK statements are always enabled, regardless of
  * the setting of NDEBUG.
  */
-#define XCHECK(cond, ...) \
-  XLOG_IF(FATAL, UNLIKELY(!(cond)), "Check failed: " #cond " ", ##__VA_ARGS__)
+#define XCHECK(cond, ...)         \
+  XLOG_IF(                        \
+      FATAL,                      \
+      FOLLY_UNLIKELY(!(cond)),    \
+      "Check failed: " #cond " ", \
+      ##__VA_ARGS__)
 
 namespace folly {
 namespace detail {
@@ -624,7 +628,7 @@ std::unique_ptr<std::string> XCheckOpImpl(
     const Arg1& arg1,
     const Arg2& arg2,
     CmpFn&& cmp_fn) {
-  if (LIKELY(cmp_fn(arg1, arg2))) {
+  if (FOLLY_LIKELY(cmp_fn(arg1, arg2))) {
     return nullptr;
   }
   return std::make_unique<std::string>(folly::to<std::string>(
@@ -745,11 +749,11 @@ class XlogLevelInfo {
       XlogFileScopeInfo*) {
     // Do an initial relaxed check.  If this fails we know the category level
     // is initialized and the log admittance check failed.
-    // Use LIKELY() to optimize for the case of disabled debug statements:
+    // Use FOLLY_LIKELY() to optimize for the case of disabled debug statements:
     // we disabled debug statements to be cheap.  If the log message is
     // enabled then this check will still be minimal perf overhead compared to
     // the overall cost of logging it.
-    if (LIKELY(levelToCheck < level_.load(std::memory_order_relaxed))) {
+    if (FOLLY_LIKELY(levelToCheck < level_.load(std::memory_order_relaxed))) {
       return false;
     }
 
@@ -811,7 +815,7 @@ class XlogLevelInfo<false> {
       XlogFileScopeInfo* fileScopeInfo) {
     // As above in the non-specialized XlogFileScopeInfo code, do a simple
     // relaxed check first.
-    if (LIKELY(
+    if (FOLLY_LIKELY(
             levelToCheck <
             fileScopeInfo->level.load(::std::memory_order_relaxed))) {
       return false;

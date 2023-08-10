@@ -24,12 +24,12 @@ namespace futures {
 
 SemiFuture<Unit> sleep(HighResDuration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;
-  if (LIKELY(!tk)) {
+  if (FOLLY_LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
     tk = tks.get();
   }
 
-  if (UNLIKELY(!tk)) {
+  if (FOLLY_UNLIKELY(!tk)) {
     return makeSemiFuture<Unit>(FutureNoTimekeeper());
   }
 

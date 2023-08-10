@@ -57,7 +57,7 @@ void Fiber::resume() {
   DCHECK_EQ(state_, AWAITING);
   state_ = READY_TO_RUN;
 
-  if (LIKELY(threadId_ == localThreadId())) {
+  if (FOLLY_LIKELY(threadId_ == localThreadId())) {
     fiberManager_.readyFibers_.push_back(*this);
     fiberManager_.ensureLoopScheduled();
   } else {
@@ -83,7 +83,7 @@ void Fiber::init(bool recordStackUsed) {
 // the fiber's stack.
 #ifndef FOLLY_SANITIZE_ADDRESS
   recordStackUsed_ = recordStackUsed;
-  if (UNLIKELY(recordStackUsed_ && !stackFilledWithMagic_)) {
+  if (FOLLY_UNLIKELY(recordStackUsed_ && !stackFilledWithMagic_)) {
     CHECK_EQ(
         reinterpret_cast<intptr_t>(fiberStackLimit_) % sizeof(uint64_t), 0u);
     CHECK_EQ(fiberStackSize_ % sizeof(uint64_t), 0u);
@@ -165,7 +165,7 @@ void Fiber::recordStackPosition() {
           std::current_exception(), "running Fiber func_/resultFunc_");
     }
 
-    if (UNLIKELY(recordStackUsed_)) {
+    if (FOLLY_UNLIKELY(recordStackUsed_)) {
       auto currentPosition = nonMagicInBytes(fiberStackLimit_, fiberStackSize_);
       fiberStackHighWatermark_ =
           std::max(fiberStackHighWatermark_, currentPosition);
