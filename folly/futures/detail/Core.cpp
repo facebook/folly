@@ -42,20 +42,6 @@ void UniqueDeleter::operator()(DeferredExecutor* ptr) {
   }
 }
 
-KeepAliveOrDeferred::KeepAliveOrDeferred() noexcept : state_(State::Deferred) {
-  ::new (&deferred_) DW{};
-}
-
-KeepAliveOrDeferred::KeepAliveOrDeferred(KA ka) noexcept
-    : state_(State::KeepAlive) {
-  ::new (&keepAlive_) KA{std::move(ka)};
-}
-
-KeepAliveOrDeferred::KeepAliveOrDeferred(DW deferred) noexcept
-    : state_(State::Deferred) {
-  ::new (&deferred_) DW{std::move(deferred)};
-}
-
 KeepAliveOrDeferred::KeepAliveOrDeferred(KeepAliveOrDeferred&& other) noexcept
     : state_(other.state_) {
   switch (state_) {
@@ -316,21 +302,6 @@ bool CoreBase::hasResult() const noexcept {
   return State() != (state & allowed);
 }
 
-Executor* CoreBase::getExecutor() const {
-  if (!executor_.isKeepAlive()) {
-    return nullptr;
-  }
-  return executor_.getKeepAliveExecutor();
-}
-
-DeferredExecutor* CoreBase::getDeferredExecutor() const {
-  if (!executor_.isDeferred()) {
-    return {};
-  }
-
-  return executor_.getDeferredExecutor();
-}
-
 DeferredWrapper CoreBase::stealDeferredExecutor() {
   if (executor_.isKeepAlive()) {
     return {};
@@ -435,9 +406,6 @@ class CoreBase::CoreAndCallbackReference {
 
   CoreBase* core_{nullptr};
 };
-
-CoreBase::CoreBase(State state, unsigned char attached)
-    : state_(state), attached_(attached) {}
 
 CoreBase::~CoreBase() {
   auto interrupt = interrupt_.load(std::memory_order_acquire);
