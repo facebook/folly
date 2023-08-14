@@ -572,37 +572,49 @@ explicit hybrid_lock_guard(Mutex&, A const&...) -> hybrid_lock_guard<Mutex>;
 //
 //  Returns a unique_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD unique_lock<Mutex> make_unique_lock(Mutex& mutex, A&&... a) {
-  return unique_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_unique_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD unique_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return unique_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_unique_lock_fn make_unique_lock{};
 
 //  make_shared_lock
 //
 //  Returns a shared_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD shared_lock<Mutex> make_shared_lock(Mutex& mutex, A&&... a) {
-  return shared_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_shared_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD shared_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return shared_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_shared_lock_fn make_shared_lock{};
 
 //  make_upgrade_lock
 //
 //  Returns an upgrade_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD upgrade_lock<Mutex> make_upgrade_lock(Mutex& mutex, A&&... a) {
-  return upgrade_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_upgrade_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD upgrade_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return upgrade_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_upgrade_lock_fn make_upgrade_lock{};
 
 //  make_hybrid_lock
 //
 //  Returns a hybrid_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD hybrid_lock<Mutex> make_hybrid_lock(Mutex& mutex, A&&... a) {
-  return hybrid_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_hybrid_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD hybrid_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return hybrid_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_hybrid_lock_fn make_hybrid_lock{};
 
 namespace detail {
 
