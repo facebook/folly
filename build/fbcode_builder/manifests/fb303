@@ -8,7 +8,7 @@ shipit_fbcode_builder = true
 repo_url = https://github.com/facebook/fb303.git
 
 [cargo]
-cargo_config_file = source/fb303/thrift/.cargo/config
+cargo_config_file = source/fb303/thrift/.cargo/config.toml
 
 [crate.pathmap]
 fb303_core = fb303/thrift

@@ -74,7 +74,7 @@ SCHEMA = {
             "build_doc": OPTIONAL,
             "workspace_dir": OPTIONAL,
             "manifests_to_build": OPTIONAL,
-            # Where to write cargo config (defaults to build_dir/.cargo/config)
+            # Where to write cargo config (defaults to build_dir/.cargo/config.toml)
             "cargo_config_file": OPTIONAL,
         },
     },
