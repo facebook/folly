@@ -51,11 +51,22 @@ SocketFds::Received SocketFds::releaseReceived() {
   return fds;
 }
 
-SocketFds::ToSend SocketFds::releaseToSend() {
-  auto fds =
-      std::move(CHECK_NOTNULL(std::get_if<ToSendPair>(ptr_.get()))->first);
+std::optional<SocketFds::ToSendPair> SocketFds::releaseToSendAndSeqNum() {
+  auto* fdsPtr = std::get_if<ToSendPair>(ptr_.get());
+  if (FOLLY_UNLIKELY(fdsPtr == nullptr)) {
+    // This can "legitimately" happen if a client wrongly sends FDs to a
+    // server method that is not expecting them. Then, `THeader::fds`
+    // in a Thrift request-response handler will retain the received
+    // FDs by the time a response
+    if (ptr_) {
+      LOG(WARNING) << "releaseToSendAndSeqNum discarded received FDs";
+      ptr_.reset();
+    }
+    return std::nullopt;
+  }
+  auto fdsAndSeqNum = std::move(*fdsPtr);
   ptr_.reset();
-  return fds;
+  return fdsAndSeqNum;
 }
 
 void SocketFds::setFdSocketSeqNumOnce(SeqNum seqNum) {

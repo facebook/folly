@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <variant>
 #include <glog/logging.h>
 
@@ -61,8 +62,8 @@ class SocketFds final {
   static constexpr SeqNum kNoSeqNum = -1;
 
  private:
-  using ToSendPair = std::pair<ToSend, SeqNum>;
   using ReceivedPair = std::pair<Received, SeqNum>;
+  using ToSendPair = std::pair<ToSend, SeqNum>;
   using FdsVariant = std::variant<ReceivedPair, ToSendPair>;
 
  public:
@@ -111,8 +112,9 @@ class SocketFds final {
   //  - Cost: Cloning copies a vector into a new heap allocation.
   void cloneToSendFromOrDfatal(const SocketFds& other);
 
-  Received releaseReceived();
-  ToSend releaseToSend();
+  Received releaseReceived(); // Fatals if `this` is not `Received`
+  // Returns `nullopt` if `this` is not `ToSend`
+  std::optional<ToSendPair> releaseToSendAndSeqNum();
 
   // Socket FDs need to be associated with socket data messages. Doing so
   // correctly through the many layers of Folly & Thrift can be tricky --

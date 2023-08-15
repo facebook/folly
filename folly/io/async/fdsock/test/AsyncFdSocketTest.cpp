@@ -142,6 +142,16 @@ TEST_F(AsyncFdSocketTest, FailNoData) {
   EXPECT_THAT(wcb_.exception.what(), testing::HasSubstr("least 1 data byte"));
 }
 
+TEST_F(AsyncFdSocketTest, FailSendReceivedFds) {
+  char data = 'a'; // Need >= 1 data byte to send ancillary data.
+  SocketFds::Received receivedFds;
+  receivedFds.emplace_back(folly::File{0, /*owns*/ false});
+  SocketFds fds{std::move(receivedFds)};
+  sendSock_.writeChainWithFds(
+      &wcb_, IOBuf::wrapBuffer(&data, sizeof(data)), std::move(fds));
+  EXPECT_THAT(wcb_.exception.what(), testing::HasSubstr("in `Received` state"));
+}
+
 TEST_F(AsyncFdSocketTest, FailTooManyFds) {
   char data = 'a'; // Need >= 1 data byte to send ancillary data.
   SocketFds fds(makeFdsToSend(254));

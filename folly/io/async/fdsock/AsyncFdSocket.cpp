@@ -74,16 +74,15 @@ AsyncFdSocket::AsyncFdSocket(
 void AsyncFdSocket::writeChainWithFds(
     WriteCallback* callback,
     std::unique_ptr<folly::IOBuf> buf,
-    SocketFds fds,
+    SocketFds socketFds,
     WriteFlags flags) {
 #if defined(_WIN32)
-  DCHECK(fds.empty()) << "AsyncFdSocket cannot send FDs on Windows";
+  DCHECK(socketFds.empty()) << "AsyncFdSocket cannot send FDs on Windows";
 #else
   DCHECK_EQ(&sendMsgCob_, getSendMsgParamsCB());
 
-  // The order of the below `failWrite` logic checks is not important because
-  // all scenarios destroy `fds` and block socket writes.
-  if (!fds.empty()) {
+  // All these `failWrite` scenarios destroy the FDs and block socket writes.
+  if (!socketFds.empty()) {
     if (buf->empty()) {
       DestructorGuard dg(this);
       AsyncSocketException ex(
@@ -92,7 +91,16 @@ void AsyncFdSocket::writeChainWithFds(
       return failWrite(__func__, callback, 0, ex);
     }
 
-    const auto fdsSeqNum = fds.getFdSocketSeqNum();
+    auto maybeFdsAndSeqNum = socketFds.releaseToSendAndSeqNum();
+    if (!maybeFdsAndSeqNum) {
+      DestructorGuard dg(this);
+      AsyncSocketException ex(
+          AsyncSocketException::BAD_ARGS,
+          withAddr("Cannot send `SocketFds` that is in `Received` state"));
+      return failWrite(__func__, callback, 0, ex);
+    }
+    auto& fds = maybeFdsAndSeqNum->first;
+    const auto fdsSeqNum = maybeFdsAndSeqNum->second;
 
     if (fdsSeqNum == SocketFds::kNoSeqNum) {
       DestructorGuard dg(this);
@@ -117,7 +125,7 @@ void AsyncFdSocket::writeChainWithFds(
     // theoretically happen that "allocated" wraps around before "sent".
 
     if (!sendMsgCob_.registerFdsForWriteTag(
-            WriteRequestTag{buf.get()}, fds.releaseToSend())) {
+            WriteRequestTag{buf.get()}, std::move(fds))) {
       // Careful: this has no unittest coverage because I don't have a good
       // idea for how to cause this in a meaningful way.  Should this be
       // a DCHECK? Plans that don't work:
