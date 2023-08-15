@@ -155,6 +155,24 @@ static_assert(
       ##__VA_ARGS__)
 
 /**
+ * Similar to XLOG(...) except log a message if the specified condition
+ * predicate evaluates to true or every @param ms milliseconds
+ *
+ * Note that this is threadsafe.
+ */
+#define XLOG_EVERY_MS_OR(level, cond, ms, ...)                               \
+  XLOG_IF(                                                                   \
+      level,                                                                 \
+      (cond) ||                                                              \
+          [__folly_detail_xlog_ms = ms] {                                    \
+            static ::folly::logging::IntervalRateLimiter                     \
+                folly_detail_xlog_limiter(                                   \
+                    1, ::std::chrono::milliseconds(__folly_detail_xlog_ms)); \
+            return folly_detail_xlog_limiter.check();                        \
+          }(),                                                               \
+      ##__VA_ARGS__)
+
+/**
  * Similar to XLOGF(...) except only log a message every @param ms
  * milliseconds.
  *
@@ -240,6 +258,26 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
   XLOG_IF(                                                                    \
       level,                                                                  \
       (cond) &&                                                               \
+          [&] {                                                               \
+            struct folly_detail_xlog_tag {};                                  \
+            return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
+          }(),                                                                \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOG(...) except it logs a message if the condition predicate
+ * evalutes to true or approximately every @param n invocations
+ *
+ * The internal counter is process-global and threadsafe but, to
+ * to avoid the performance degradation of atomic-rmw operations,
+ * increments are non-atomic. Some increments may be missed under
+ * contention, leading to possible over-logging or under-logging
+ * effects.
+ */
+#define XLOG_EVERY_N_OR(level, cond, n, ...)                                  \
+  XLOG_IF(                                                                    \
+      level,                                                                  \
+      (cond) ||                                                               \
           [&] {                                                               \
             struct folly_detail_xlog_tag {};                                  \
             return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \

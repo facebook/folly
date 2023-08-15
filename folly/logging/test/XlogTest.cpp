@@ -363,6 +363,24 @@ TEST_F(XlogTest, rateLimiting) {
       ElementsAre("msg 0", "msg 14", "msg 28", "msg 42"));
   handler->clearMessages();
 
+  // Test XLOG_EVERY_N_OR
+  for (size_t n = 0; n < 10; ++n) {
+    bool shouldLog = n % 2 == 0;
+    XLOG_EVERY_N_OR(DBG1, shouldLog, 2, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0",
+          "msg 1",
+          "msg 2",
+          "msg 4",
+          "msg 5",
+          "msg 6",
+          "msg 8",
+          "msg 9"));
+  handler->clearMessages();
+
   // Test XLOGF_EVERY_N_IF
   for (size_t n = 0; n < 50; ++n) {
     bool shouldLog = n % 2 == 0;
@@ -461,6 +479,7 @@ TEST_F(XlogTest, rateLimiting) {
     // Conditional logging
     bool shouldLog = n && (n % 2 == 0);
     XLOG_EVERY_MS_IF(DBG1, shouldLog, 100, "int arg conditional ", n);
+    XLOG_EVERY_MS_OR(DBG1, shouldLog, 100, "int arg conditional or ", n);
 
     // Sleep for 100ms between iterations 5 and 6
     if (n == 5) {
@@ -470,15 +489,37 @@ TEST_F(XlogTest, rateLimiting) {
   EXPECT_THAT(
       handler->getMessageValues(),
       ElementsAreArray({
-          "int arg 0",       "ms arg 0",         "s arg 0",
-          "s arg capture 0", "fmt arg 0",        "fmt ms arg 0",
-          "plain fmt str",   "plain fmt str ms", "2x int arg 0",
-          "1x ms arg 0",     "3x s arg 0",       "2x int arg 1",
-          "3x s arg 1",      "3x s arg 2",       "int arg conditional 2",
-          "int arg 6",       "ms arg 6",         "fmt arg 6",
-          "fmt ms arg 6",    "plain fmt str",    "plain fmt str ms",
-          "2x int arg 6",    "1x ms arg 6",      "int arg conditional 6",
+          "int arg 0",
+          "ms arg 0",
+          "s arg 0",
+          "s arg capture 0",
+          "fmt arg 0",
+          "fmt ms arg 0",
+          "plain fmt str",
+          "plain fmt str ms",
+          "2x int arg 0",
+          "1x ms arg 0",
+          "3x s arg 0",
+          "int arg conditional or 0",
+          "2x int arg 1",
+          "3x s arg 1",
+          "3x s arg 2",
+          "int arg conditional 2",
+          "int arg conditional or 2",
+          "int arg conditional or 4",
+          "int arg 6",
+          "ms arg 6",
+          "fmt arg 6",
+          "fmt ms arg 6",
+          "plain fmt str",
+          "plain fmt str ms",
+          "2x int arg 6",
+          "1x ms arg 6",
+          "int arg conditional 6",
+          "int arg conditional or 6",
           "2x int arg 7",
+          "int arg conditional or 7",
+          "int arg conditional or 8",
       }));
   handler->clearMessages();
 
