@@ -283,7 +283,7 @@ class AsyncUDPSocket : public EventHandler {
   virtual ssize_t writeGSO(
       const folly::SocketAddress& address,
       const std::unique_ptr<folly::IOBuf>& buf,
-      int gso);
+      WriteOptions options);
 
   virtual ssize_t writeChain(
       const folly::SocketAddress& address,
@@ -295,7 +295,7 @@ class AsyncUDPSocket : public EventHandler {
    * ::sendmmsg.
    * bufs is an array of std::unique_ptr<folly::IOBuf>
    * of size num
-   * gso is an array with the generic segmentation offload values or nullptr
+   * options is an array of WriteOptions or nullptr
    *  Before calling writeGSO with a positive value
    *  verify GSO is supported on this platform by calling getGSO
    */
@@ -303,7 +303,7 @@ class AsyncUDPSocket : public EventHandler {
       Range<SocketAddress const*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count,
-      const int* gso);
+      const WriteOptions* options);
 
   /**
    * Send data in iovec to destination. Returns the return code from sendmsg.
@@ -312,7 +312,7 @@ class AsyncUDPSocket : public EventHandler {
       const folly::SocketAddress& address,
       const struct iovec* vec,
       size_t iovec_len,
-      int gso);
+      WriteOptions options);
 
   virtual ssize_t writev(
       const folly::SocketAddress& address,
@@ -545,7 +545,7 @@ class AsyncUDPSocket : public EventHandler {
       struct mmsghdr* msgvec,
       struct iovec* iov,
       size_t iov_count,
-      const int* gso,
+      const WriteOptions* options,
       char* control);
 
   virtual int writeImpl(
@@ -553,11 +553,11 @@ class AsyncUDPSocket : public EventHandler {
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count,
       struct mmsghdr* msgvec,
-      const int* gso,
+      const WriteOptions* options,
       char* control);
 
   virtual ssize_t writevImpl(
-      netops::Msgheader* msg, FOLLY_MAYBE_UNUSED int gso);
+      netops::Msgheader* msg, FOLLY_MAYBE_UNUSED WriteOptions options);
 
   size_t handleErrMessages() noexcept;
 

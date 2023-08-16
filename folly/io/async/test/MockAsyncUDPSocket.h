@@ -43,7 +43,9 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD(
       ssize_t,
       writeGSO,
-      (const folly::SocketAddress&, const std::unique_ptr<folly::IOBuf>&, int));
+      (const folly::SocketAddress&,
+       const std::unique_ptr<folly::IOBuf>&,
+       folly::AsyncUDPSocket::WriteOptions));
   MOCK_METHOD(
       ssize_t, writev, (const SocketAddress&, const struct iovec*, size_t));
   MOCK_METHOD(void, resumeRead, (ReadCallback*));

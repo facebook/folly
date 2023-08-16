@@ -1038,7 +1038,11 @@ TEST_F(AsyncUDPSocketTest, TestWriteCmsg) {
     folly::SocketOptionMap cmsgs;
     cmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
     EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(cmsgs), _));
-    socket_->writeGSO(addr, folly::IOBuf::copyBuffer("hey"), 1);
+    socket_->writeGSO(
+        addr,
+        folly::IOBuf::copyBuffer("hey"),
+        folly::AsyncUDPSocket::WriteOptions(
+            1 /*gsoVal*/, false /* zerocopyVal*/));
   }
   // SO_MARK
   {
@@ -1078,7 +1082,11 @@ TEST_F(AsyncUDPSocketTest, TestWriteCmsg) {
     expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
     expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
     EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
-    socket_->writeGSO(addr, folly::IOBuf::copyBuffer("hey"), 1);
+    socket_->writeGSO(
+        addr,
+        folly::IOBuf::copyBuffer("hey"),
+        folly::AsyncUDPSocket::WriteOptions(
+            1 /*gsoVal*/, false /* zerocopyVal*/));
   }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
   socket_->close();
@@ -1112,7 +1120,11 @@ TEST_F(AsyncUDPSocketTest, TestWriteDynamicCmsg) {
     expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
     expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
     EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
-    socket_->writeGSO(addr, folly::IOBuf::copyBuffer("hey"), 1);
+    socket_->writeGSO(
+        addr,
+        folly::IOBuf::copyBuffer("hey"),
+        folly::AsyncUDPSocket::WriteOptions(
+            1 /*gsoVal*/, false /* zerocopyVal*/));
   }
   // SO_MARK with dynamic cmsgs (IP_TTL)
   {
@@ -1158,7 +1170,11 @@ TEST_F(AsyncUDPSocketTest, TestWriteDynamicCmsg) {
     expectedCmsgs[{SOL_UDP, UDP_SEGMENT}] = 1;
     expectedCmsgs[{IPPROTO_IP, IP_TTL}] = mockCallCount;
     EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
-    socket_->writeGSO(addr, folly::IOBuf::copyBuffer("hey"), 1);
+    socket_->writeGSO(
+        addr,
+        folly::IOBuf::copyBuffer("hey"),
+        folly::AsyncUDPSocket::WriteOptions(
+            1 /*gsoVal*/, false /* zerocopyVal*/));
   }
   // Empty dynamic cmsgs should revert to default cmsgs
   socket_->setAdditionalCmsgsFunc([]() { return folly::none; });
@@ -1286,9 +1302,13 @@ TEST_F(AsyncUDPSocketTest, TestWritemCmsg) {
     EXPECT_CALL(
         *netOpsDispatcher,
         sendmmsg(_, AllHaveCmsgs(expectedCmsgs, bufs.size()), _, _));
-    std::vector<int> gso{1, 1};
+    std::vector<folly::AsyncUDPSocket::WriteOptions> options{
+        {1, false}, {1, false}};
     socket_->writemGSO(
-        folly::range(&addr, &addr + 1), bufs.data(), bufs.size(), gso.data());
+        folly::range(&addr, &addr + 1),
+        bufs.data(),
+        bufs.size(),
+        options.data());
   }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
   socket_->close();
@@ -1345,9 +1365,13 @@ TEST_F(AsyncUDPSocketTest, TestWritemDynamicCmsg) {
     EXPECT_CALL(
         *netOpsDispatcher,
         sendmmsg(_, AllHaveCmsgs(expectedCmsgs, bufs.size()), _, _));
-    std::vector<int> gso{1, 1};
+    std::vector<folly::AsyncUDPSocket::WriteOptions> options{
+        {1, false}, {1, false}};
     socket_->writemGSO(
-        folly::range(&addr, &addr + 1), bufs.data(), bufs.size(), gso.data());
+        folly::range(&addr, &addr + 1),
+        bufs.data(),
+        bufs.size(),
+        options.data());
   }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
   socket_->close();
@@ -1445,9 +1469,13 @@ TEST_F(AsyncUDPSocketTest, TestWritemNontrivialCmsgs) {
                 expectedCmsgs, expectedNontrivialCmsgs, bufs.size()),
             _,
             _));
-    std::vector<int> gso{1, 1};
+    std::vector<folly::AsyncUDPSocket::WriteOptions> options{
+        {1, false}, {1, false}};
     socket_->writemGSO(
-        folly::range(&addr, &addr + 1), bufs.data(), bufs.size(), gso.data());
+        folly::range(&addr, &addr + 1),
+        bufs.data(),
+        bufs.size(),
+        options.data());
   }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
   socket_->close();

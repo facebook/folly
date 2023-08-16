@@ -511,7 +511,7 @@ bool AsyncUDPSocket::setZeroCopy(bool enable) {
 ssize_t AsyncUDPSocket::writeGSO(
     const folly::SocketAddress& address,
     const std::unique_ptr<folly::IOBuf>& buf,
-    int gso) {
+    WriteOptions options) {
   // UDP's typical MTU size is 1500, so high number of buffers
   //   really do not make sense. Optimize for buffer chains with
   //   buffers less than 16, which is the highest I can think of
@@ -525,7 +525,7 @@ ssize_t AsyncUDPSocket::writeGSO(
     iovec_len = 1;
   }
 
-  return writev(address, vec, iovec_len, gso);
+  return writev(address, vec, iovec_len, options);
 }
 
 int AsyncUDPSocket::getZeroCopyFlags() {
@@ -657,14 +657,15 @@ ssize_t AsyncUDPSocket::writeChain(
 ssize_t AsyncUDPSocket::write(
     const folly::SocketAddress& address,
     const std::unique_ptr<folly::IOBuf>& buf) {
-  return writeGSO(address, buf, 0);
+  return writeGSO(
+      address, buf, WriteOptions(0 /*gsoVal*/, false /* zerocopyVal*/));
 }
 
 ssize_t AsyncUDPSocket::writev(
     const folly::SocketAddress& address,
     const struct iovec* vec,
     size_t iovec_len,
-    int gso) {
+    WriteOptions options) {
   CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
   netops::Msgheader msg;
   sockaddr_storage addrStorage;
@@ -688,14 +689,14 @@ ssize_t AsyncUDPSocket::writev(
   maybeUpdateDynamicCmsgs();
 
   constexpr size_t kSmallSizeMax = 5;
-  size_t controlBufSize = gso > 0 ? 1 : 0;
+  size_t controlBufSize = options.gso > 0 ? 1 : 0;
   controlBufSize +=
       cmsgs_->size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
 
   if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
     // Avoid allocating 0 length array. Doing so leads to exceptions
     if (controlBufSize == 0) {
-      return writevImpl(&msg, gso);
+      return writevImpl(&msg, options);
     }
 
     // suppress "warning: variable length array 'control' is used [-Wvla]"
@@ -708,7 +709,7 @@ ssize_t AsyncUDPSocket::writev(
     memset(control, 0, sizeof(control));
     msg.setCmsgPtr(control);
     FOLLY_POP_WARNING
-    return writevImpl(&msg, gso);
+    return writevImpl(&msg, options);
   } else {
     controlBufSize *= CMSG_SPACE(sizeof(uint16_t));
     for (const auto& itr : nontrivialCmsgs_) {
@@ -717,10 +718,10 @@ ssize_t AsyncUDPSocket::writev(
     std::unique_ptr<char[]> control(new char[controlBufSize]);
     memset(control.get(), 0, controlBufSize);
     msg.setCmsgPtr(control.get());
-    return writevImpl(&msg, gso);
+    return writevImpl(&msg, options);
   }
 #else
-  CHECK_LT(gso, 1) << "GSO not supported";
+  CHECK_LT(options.gso, 1) << "GSO not supported";
 #endif
 
 #ifdef _WIN32
@@ -731,7 +732,7 @@ ssize_t AsyncUDPSocket::writev(
 }
 
 ssize_t AsyncUDPSocket::writevImpl(
-    netops::Msgheader* msg, FOLLY_MAYBE_UNUSED int gso) {
+    netops::Msgheader* msg, FOLLY_MAYBE_UNUSED WriteOptions options) {
 #if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
   XPLAT_CMSGHDR* cm = nullptr;
 
@@ -760,17 +761,33 @@ ssize_t AsyncUDPSocket::writevImpl(
     }
   }
 
-  if (gso > 0) {
+  if (options.gso > 0) {
     msg->incrCmsgLen(sizeof(uint16_t));
     cm = msg->getFirstOrNextCmsgHeader(cm);
     if (cm) {
       cm->cmsg_level = UDP_GSO_SOCK_OPT_LEVEL;
       cm->cmsg_type = UDP_GSO_SOCK_OPT_TYPE;
       cm->cmsg_len = F_CMSG_LEN(sizeof(GSO_OPT_TYPE));
-      auto gso_len = static_cast<GSO_OPT_TYPE>(gso);
+      auto gso_len = static_cast<GSO_OPT_TYPE>(options.gso);
       F_COPY_CMSG_INT_DATA(cm, &gso_len, sizeof(gso_len));
     }
   }
+#ifdef SCM_TXTIME
+  if (options.txTime.count() > 0 && txTime_.has_value() &&
+      (txTime_.value().clockid >= 0)) {
+    cm = msg->getFirstOrNextCmsgHeader(cm);
+    if (cm) {
+      cm->cmsg_level = SOL_SOCKET;
+      cm->cmsg_type = SCM_TXTIME;
+      cm->cmsg_len = F_CMSG_LEN(sizeof(uint64_t));
+      struct timespec ts;
+      clock_gettime(txTime_.value().clockid, &ts);
+      uint64_t txtime = ts.tv_sec * 1000000000ULL + ts.tv_nsec +
+          std::chrono::nanoseconds(options.txTime).count();
+      F_COPY_CMSG_INT_DATA(cm, &txtime, sizeof(txtime));
+    }
+  }
+#endif // SCM_TXTIME
 #endif // FOLLY_HAVE_MSG_ERRQUEUE || _WIN32
 
 #ifdef _WIN32
@@ -784,7 +801,11 @@ ssize_t AsyncUDPSocket::writev(
     const folly::SocketAddress& address,
     const struct iovec* vec,
     size_t iovec_len) {
-  return writev(address, vec, iovec_len, 0);
+  return writev(
+      address,
+      vec,
+      iovec_len,
+      WriteOptions(0 /*gsoVal*/, false /* zerocopyVal*/));
 }
 
 /**
@@ -802,12 +823,12 @@ int AsyncUDPSocket::writemGSO(
     Range<SocketAddress const*> addrs,
     const std::unique_ptr<folly::IOBuf>* bufs,
     size_t count,
-    const int* gso) {
+    const WriteOptions* options) {
   int ret;
   constexpr size_t kSmallSizeMax = 40;
   char* controlPtr = nullptr;
 #ifndef FOLLY_HAVE_MSG_ERRQUEUE
-  CHECK(!gso) << "GSO not supported";
+  CHECK(!options) << "GSO not supported";
 #endif
   maybeUpdateDynamicCmsgs();
   size_t singleControlBufSize = 1;
@@ -828,7 +849,7 @@ int AsyncUDPSocket::writemGSO(
     controlPtr = control;
 #endif
     FOLLY_POP_WARNING
-    ret = writeImpl(addrs, bufs, count, vec, gso, controlPtr);
+    ret = writeImpl(addrs, bufs, count, vec, options, controlPtr);
   } else {
     std::unique_ptr<mmsghdr[]> vec(new mmsghdr[count]);
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
@@ -840,7 +861,7 @@ int AsyncUDPSocket::writemGSO(
     memset(control.get(), 0, controlBufSize);
     controlPtr = control.get();
 #endif
-    ret = writeImpl(addrs, bufs, count, vec.get(), gso, controlPtr);
+    ret = writeImpl(addrs, bufs, count, vec.get(), options, controlPtr);
   }
 
   return ret;
@@ -853,7 +874,7 @@ void AsyncUDPSocket::fillMsgVec(
     struct mmsghdr* msgvec,
     struct iovec* iov,
     size_t iov_count,
-    const int* gso,
+    const WriteOptions* options,
     char* control) {
   auto addr_count = addrs.size();
   DCHECK(addr_count);
@@ -921,7 +942,7 @@ void AsyncUDPSocket::fillMsgVec(
     }
 
     // handle GSO
-    if (gso && gso[i] > 0) {
+    if (options && options[i].gso > 0) {
       msg.msg_controllen += CMSG_SPACE(sizeof(uint16_t));
       if (cm) {
         cm = CMSG_NXTHDR(&msg, cm);
@@ -932,7 +953,7 @@ void AsyncUDPSocket::fillMsgVec(
         cm->cmsg_level = SOL_UDP;
         cm->cmsg_type = UDP_SEGMENT;
         cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-        auto gso_len = static_cast<uint16_t>(gso[i]);
+        auto gso_len = static_cast<uint16_t>(options[i].gso);
         memcpy(CMSG_DATA(cm), &gso_len, sizeof(gso_len));
       }
     }
@@ -944,7 +965,7 @@ void AsyncUDPSocket::fillMsgVec(
       msg.msg_controllen = 0;
     }
 #else
-    (void)gso;
+    (void)options;
     (void)control;
     msg.msg_control = nullptr;
     msg.msg_controllen = 0;
@@ -962,7 +983,7 @@ int AsyncUDPSocket::writeImpl(
     const std::unique_ptr<folly::IOBuf>* bufs,
     size_t count,
     struct mmsghdr* msgvec,
-    const int* gso,
+    const WriteOptions* options,
     char* control) {
   // most times we have a single destination addr
   auto addr_count = addrs.size();
@@ -980,7 +1001,7 @@ int AsyncUDPSocket::writeImpl(
   }
 
   int ret;
-  constexpr size_t kSmallSizeMax = 16;
+  constexpr size_t kSmallSizeMax = 8;
   if (iov_count <= kSmallSizeMax) {
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
     FOLLY_PUSH_WARNING
@@ -988,7 +1009,14 @@ int AsyncUDPSocket::writeImpl(
     iovec iov[BOOST_PP_IF(FOLLY_HAVE_VLA_01, iov_count, kSmallSizeMax)];
     FOLLY_POP_WARNING
     fillMsgVec(
-        range(addrStorage), bufs, count, msgvec, iov, iov_count, gso, control);
+        range(addrStorage),
+        bufs,
+        count,
+        msgvec,
+        iov,
+        iov_count,
+        options,
+        control);
     ret = sendmmsg(fd_, msgvec, count, 0);
   } else {
     std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
@@ -999,7 +1027,7 @@ int AsyncUDPSocket::writeImpl(
         msgvec,
         iov.get(),
         iov_count,
-        gso,
+        options,
         control);
     ret = sendmmsg(fd_, msgvec, count, 0);
   }
