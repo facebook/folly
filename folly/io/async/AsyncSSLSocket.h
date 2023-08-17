@@ -288,6 +288,17 @@ class AsyncSSLSocket : public AsyncSocket {
    * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
    */
   static UniquePtr newSocket(
+      std::shared_ptr<folly::SSLContext> ctx,
+      EventBase* evb,
+      Options&& options) {
+    return AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(std::move(ctx), evb, std::move(options)));
+  }
+
+  /**
+   * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
+   */
+  static UniquePtr newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
       NetworkSocket fd,
