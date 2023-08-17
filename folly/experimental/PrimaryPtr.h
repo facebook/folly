@@ -312,6 +312,8 @@ PrimaryPtr<T> exchange(PrimaryPtr<T>& x, PrimaryPtr<T>&& newVal) noexcept {
 template <typename T>
 class PrimaryPtrRef {
  public:
+  PrimaryPtrRef() = default;
+
   // Attempts to lock a pointer. Returns null if pointer is not set or if
   // join() was called or cleanup() work was started (even if the call to join()
   // hasn't returned yet or the cleanup() work has not completed yet).

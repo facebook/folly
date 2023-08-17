@@ -285,3 +285,19 @@ TEST(PrimaryPtrTest, Moves) {
   b.join();
   c.join();
 }
+
+TEST(PrimaryPtrTest, DefaultConstructPtrRef) {
+  auto ptr = std::make_unique<Primed>();
+  auto primaryPtr = folly::PrimaryPtr<Primed>{std::move(ptr)};
+
+  folly::PrimaryPtrRef<Primed> primaryPtrRef;
+  EXPECT_FALSE((bool)primaryPtrRef.lock());
+
+  primaryPtrRef = primaryPtr.ref();
+  EXPECT_TRUE((bool)primaryPtrRef.lock());
+  EXPECT_EQ(primaryPtrRef.lock(), primaryPtr.lock());
+
+  primaryPtr.join();
+  EXPECT_FALSE((bool)primaryPtr);
+  EXPECT_EQ(primaryPtrRef.lock().get(), nullptr);
+}
