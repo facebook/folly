@@ -54,6 +54,7 @@ class IoUringBackend;
 
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
+  using Cert = folly::AsyncTransportCertificate;
   struct Options {
     Options()
         : allocateNoBufferPoolBuffer(defaultAllocateNoBufferPoolBuffer),
@@ -210,6 +211,26 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void setSecurityProtocol(std::string s) { securityProtocol_ = std::move(s); }
   void setApplicationProtocol(std::string s) {
     applicationProtocol_ = std::move(s);
+  }
+
+  const folly::AsyncTransportCertificate* getPeerCertificate() const override {
+    return peerCert_.get();
+  }
+
+  const folly::AsyncTransportCertificate* getSelfCertificate() const override {
+    return selfCert_.get();
+  }
+
+  void dropPeerCertificate() noexcept override { peerCert_.reset(); }
+
+  void dropSelfCertificate() noexcept override { selfCert_.reset(); }
+
+  void setPeerCertificate(const std::shared_ptr<const Cert>& peerCert) {
+    peerCert_ = peerCert;
+  }
+
+  void setSelfCertificate(const std::shared_ptr<const Cert>& selfCert) {
+    selfCert_ = selfCert;
   }
 
   void asyncDetachFd(AsyncDetachFdCallback* callback);
@@ -469,6 +490,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   // stopTLS helpers:
   std::string securityProtocol_;
   std::string applicationProtocol_;
+
+  std::shared_ptr<const Cert> selfCert_;
+  std::shared_ptr<const Cert> peerCert_;
 
   // shutdown:
   int shutdownFlags_ = 0;
