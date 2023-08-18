@@ -2302,9 +2302,12 @@ template <template <class...> class TMap>
 void testInitializerListDeductionGuide() {
   TMap<int, double> source({{1, 2.0}, {3, 4.0}});
 
+#if !defined(__GNUC__) || __GNUC__ > 12 || defined(__clang__)
+  // some versions of gcc, including until at least gcc v12, fail here
   TMap dest1{std::pair{1, 2.0}, {3, 4.0}};
   static_assert(std::is_same_v<decltype(dest1), decltype(source)>);
   EXPECT_EQ(dest1, source);
+#endif
 
   TMap dest2({std::pair{1, 2.0}, {3, 4.0}});
   static_assert(std::is_same_v<decltype(dest2), decltype(source)>);
