@@ -988,6 +988,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK concurrent_skip_list_benchmark
         SOURCES ConcurrentSkipListBenchmark.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
+      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
       TEST conv_test WINDOWS_DISABLED SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
