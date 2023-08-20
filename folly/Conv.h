@@ -430,10 +430,7 @@ typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
     type
     estimateSpaceNeeded(Src value) {
   const char* c = value;
-  if (c) {
-    return folly::StringPiece(value).size();
-  };
-  return 0;
+  return c ? std::strlen(c) : 0;
 }
 
 template <class Src>
