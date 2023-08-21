@@ -1463,8 +1463,7 @@ bool AsyncUDPSocket::setTXTime(TXTime txTime) {
   folly::netops::sock_txtime val;
   val.clockid = txTime.clockid;
   val.flags = txTime.deadline ? folly::netops::SOF_TXTIME_DEADLINE_MODE : 0;
-  int ret =
-      netops::setsockopt(fd_, SOL_SOCKET, SO_TIMESTAMPING, &val, sizeof(val));
+  int ret = netops::setsockopt(fd_, SOL_SOCKET, SO_TXTIME, &val, sizeof(val));
 
   txTime_ = ret ? TXTime() : txTime;
 
