@@ -763,6 +763,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST apply_tuple_test WINDOWS_DISABLED
         SOURCES ApplyTupleTest.cpp
       TEST partial_test SOURCES PartialTest.cpp
+      TEST functional_traits_test SOURCES traits_test.cpp
 
     DIRECTORY futures/test/
       TEST barrier_test SOURCES BarrierTest.cpp
