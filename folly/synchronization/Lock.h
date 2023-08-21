@@ -663,7 +663,7 @@ template <
     typename Result = transition_lock_result_t_<From, Transition, A...>,
     std::enable_if_t<std::is_void<Result>::value, int> = 0>
 auto transition_lock_1_(From& lock, Transition transition, A const&... a) {
-  return transition_lock_2_(lock, transition, a...), true;
+  return detail::transition_lock_2_(lock, transition, a...), true;
 }
 template <
     typename From,
@@ -672,7 +672,7 @@ template <
     typename Result = transition_lock_result_t_<From, Transition, A...>,
     std::enable_if_t<!std::is_void<Result>::value, int> = 0>
 auto transition_lock_1_(From& lock, Transition transition, A const&... a) {
-  return transition_lock_2_(lock, transition, a...);
+  return detail::transition_lock_2_(lock, transition, a...);
 }
 template <
     typename To,
@@ -682,7 +682,7 @@ template <
     typename ToState = lock_state_type_of_t<To>,
     std::enable_if_t<std::is_void<ToState>::value, int> = 0>
 auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
-  auto s = transition_lock_1_(lock, transition, a...);
+  auto s = detail::transition_lock_1_(lock, transition, a...);
   return !s ? To{} : To{*lock.release(), std::adopt_lock};
 }
 template <
@@ -693,7 +693,7 @@ template <
     typename ToState = lock_state_type_of_t<To>,
     std::enable_if_t<!std::is_void<ToState>::value, int> = 0>
 auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
-  auto s = transition_lock_1_(lock, transition, a...);
+  auto s = detail::transition_lock_1_(lock, transition, a...);
   return !s ? To{} : To{*lock.release(), std::adopt_lock, s};
 }
 template <
@@ -709,7 +709,7 @@ auto transition_lock_(From<Mutex>& lock, Transition transition, A const&... a) {
   return
       !lock.mutex() ? To<Mutex>{} :
       !lock.owns_lock() ? To<Mutex>{*lock.release(), std::defer_lock} :
-      transition_lock_0_<To<Mutex>>(lock, transition, a...);
+      detail::transition_lock_0_<To<Mutex>>(lock, transition, a...);
   // clang-format on
 }
 
