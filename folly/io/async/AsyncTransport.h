@@ -851,8 +851,53 @@ class AsyncTransport : public DelayedDestruction,
     return nullptr;
   }
 
+  /**
+   * Returns a const pointer to wrapping or decorating transport of type T.
+   *
+   * If this transport object is not wrapped or decorated by a transport of type
+   * T, returns nullptr. If this transport is wrapped or decorated multiple
+   * times by such a type, returns the first occurrence.
+   */
+  template <class T>
+  const T* getWrappingTransport() const {
+    const AsyncTransport* current = this;
+    while (current) {
+      auto wrapped = dynamic_cast<const T*>(current);
+      if (wrapped) {
+        return wrapped;
+      }
+      current = current->decoratingTransport_;
+    }
+    return nullptr;
+  }
+
+  /**
+   * Returns a pointer to wrapping or decorating transport of type T.
+   *
+   * If this transport object is not wrapped or decorated by a transport of type
+   * T, returns nullptr. If this transport is wrapped or decorated multiple
+   * times by such a type, returns the first occurrence.
+   */
+  template <class T>
+  T* getWrappingTransport() {
+    return const_cast<T*>(
+        static_cast<const AsyncTransport*>(this)->getWrappingTransport<T>());
+  }
+
  protected:
   ~AsyncTransport() override = default;
+
+ private:
+  template <class T>
+  friend class DecoratedAsyncTransportWrapper;
+
+  // Transports can be wrapped through inheritence or through a decorator such
+  // as DecoratedAsyncTransportWrapper, in which case the wrapped transport is
+  // a member field of the decorating transport.
+  //
+  // When wrapped by a decorator, this field holds a pointer to the decorating
+  // transport. When not supported, this field is nullptr.
+  AsyncTransport* decoratingTransport_{nullptr};
 };
 
 using AsyncTransportWrapper = AsyncTransport;
