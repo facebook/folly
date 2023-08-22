@@ -54,6 +54,11 @@ void initialize() {
   }
 }
 
+template <template <int> class T, int Bits>
+constexpr size_t fpBits(tag_t<T<Bits>>) {
+  return Bits;
+}
+
 template <class FP>
 void fingerprintIds(int num_iterations, int num_ids) {
   for (int iter = 0; iter < num_iterations; iter++) {
@@ -63,9 +68,9 @@ void fingerprintIds(int num_iterations, int num_ids) {
     }
     // GOTCHA: if we don't actually call write(), compiler optimizes
     // away the inner loop!
-    uint64_t out;
-    fp.write(&out);
-    VLOG(1) << out;
+    uint64_t out[fpBits(tag<FP>) + 63 / 64]; // ceil(bits / 64.0)
+    fp.write(out);
+    compiler_must_not_elide(out);
   }
 }
 
@@ -78,9 +83,9 @@ void fingerprintTerms(int num_iterations, int num_terms) {
     }
     // GOTCHA: if we don't actually call write(), compiler optimizes
     // away the inner loop!
-    uint64_t out;
-    fp.write(&out);
-    VLOG(1) << out;
+    uint64_t out[fpBits(tag<FP>) + 63 / 64]; // ceil(bits / 64.0)
+    fp.write(out);
+    compiler_must_not_elide(out);
   }
 }
 
