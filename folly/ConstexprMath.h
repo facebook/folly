@@ -62,6 +62,23 @@ FOLLY_INLINE_VARIABLE constexpr double ln2 = ln2_v<double>;
 
 } // namespace numbers
 
+/// floating_point_integral_constant
+///
+/// Like std::integral_constant but for floating-point types holding integral
+/// values representable in an integral type.
+template <typename T, typename S, S Value>
+struct floating_point_integral_constant {
+  using value_type = T;
+  static constexpr value_type value = static_cast<value_type>(Value);
+  constexpr operator value_type() const noexcept { return value; }
+  constexpr value_type operator()() const noexcept { return value; }
+};
+#if FOLLY_CPLUSPLUS < 201703L
+template <typename T, typename S, S Value>
+constexpr typename floating_point_integral_constant<T, S, Value>::value_type
+    floating_point_integral_constant<T, S, Value>::value;
+#endif
+
 // TLDR: Prefer using operator< for ordering. And when
 // a and b are equivalent objects, we return b to make
 // sorting stable.
