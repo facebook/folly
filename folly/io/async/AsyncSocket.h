@@ -482,18 +482,26 @@ class AsyncSocket : public AsyncSocketTransport {
    * this version of the constructor, they need to explicitly call
    * setNoDelay(true) after the constructor returns.
    *
-   * @param evb EventBase that will manage this socket.
-   * @param fd  File descriptor to take over (should be a connected socket).
-   * @param zeroCopyBufId Zerocopy buf id to start with.
-   * @param peerAddress optional peer address (eg: returned from accept).  If
-   *        nullptr, AsyncSocket will lazily attempt to determine it from fd
-   *        via a system call
+   * @param evb            EventBase that will manage this socket.
+   * @param fd             File descriptor to take over (connected socket).
+   * @param zeroCopyBufId  Zerocopy buf id to start with.
+   * @param peerAddress    Optional peer address (eg: returned from accept). If
+   *                       nullptr, AsyncSocket will lazily attempt to determine
+   *                       it from fd via a system call.
+   * @param maybeConnectionEstablishTime  Optional parameter indicating when the
+   *                                      connection was established. Can be
+   *                                      used by acceptors to record when a
+   *                                      connection was established and make
+   *                                      this information available via the
+   *                                      getConnectionEstablishTime() method.
    */
   AsyncSocket(
       EventBase* evb,
       NetworkSocket fd,
       uint32_t zeroCopyBufId = 0,
-      const SocketAddress* peerAddress = nullptr);
+      const SocketAddress* peerAddress = nullptr,
+      folly::Optional<std::chrono::steady_clock::time_point>
+          maybeConnectionEstablishTime = folly::none);
 
   /**
    * Create an AsyncSocket from a different, already connected AsyncSocket.
@@ -902,12 +910,33 @@ class AsyncSocket : public AsyncSocketTransport {
     return connectTimeout_;
   }
 
+  /**
+   * Returns when connect() started.
+   */
   std::chrono::steady_clock::time_point getConnectStartTime() const {
     return connectStartTime_;
   }
 
+  /**
+   * Returns when connect() finished (either successsfully or failed).
+   */
   std::chrono::steady_clock::time_point getConnectEndTime() const {
     return connectEndTime_;
+  }
+
+  /**
+   * Returns when the connection was established.
+   *
+   *  -  If connect() was called and succeeded, this is the same as
+   *     getConnectEndTime().
+   *
+   *  -  If AsyncSocket was initialized with a file descriptor (e.g., by an
+   *     acceptor), returns the connection establishment time passed to the
+   *     constructor. If no time was passed, returns folly::none.
+   */
+  folly::Optional<std::chrono::steady_clock::time_point>
+  getConnectionEstablishTime() const {
+    return maybeConnectionEstablishTime_;
   }
 
   bool getTFOAttempted() const { return tfoInfo_.attempted; }
@@ -1916,8 +1945,22 @@ class AsyncSocket : public AsyncSocketTransport {
   // socket.
   std::unique_ptr<IOBuf> preReceivedData_;
 
+  // When connect() started.
   std::chrono::steady_clock::time_point connectStartTime_;
+
+  // When connect() completed.
   std::chrono::steady_clock::time_point connectEndTime_;
+
+  // When the connection was established.
+  //
+  //  -  If connect() was called and succeeded, this is the same as
+  //     connectEndTime_.
+  //
+  //  -  If AsyncSocket was initialized with a file descriptor (e.g., by an
+  //     acceptor), this is the connection establishment time passed to the
+  //     constructor. If no time was passed, this is folly::none.
+  folly::Optional<std::chrono::steady_clock::time_point>
+      maybeConnectionEstablishTime_;
 
   std::chrono::milliseconds connectTimeout_{0};
 
