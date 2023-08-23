@@ -113,6 +113,30 @@ struct compiler_must_not_predict_fn {
 FOLLY_INLINE_VARIABLE constexpr compiler_must_not_predict_fn
     compiler_must_not_predict{};
 
+// folly_is_unsafe_for_async_usage
+// Brief: marker for static analysis.
+//
+// Some objects, especially those intended for RAII use, require that the
+// current thread is not yielded throughout their lifetime, for example through
+// a coroutine suspension point.
+//
+// Examples:
+//  * Objects that are internally relying global or thread local memory.
+//    (storage in FOLLY_DECLARE_REUSED).
+//  * Advanced concurrency primitives, such as hazard pointers.
+//
+// This can be used to implement a static analysis that detects
+// such misuse for classes marked with this tag.
+//
+// In order to mark a class:
+//  * declare a typedef inside `using folly_is_unsafe_for_async_usage = void`
+//  * or: have a member or a base for which this check is enabled.
+//        For members it is recommended to use FOLLY_ATTR_NO_UNIQUE_ADDRESS to
+//        avoid increasing an object's footprint.
+struct unsafe_for_async_usage {
+  using folly_is_unsafe_for_async_usage = void;
+};
+
 } // namespace folly
 
 #include <folly/lang/Hint-inl.h>
