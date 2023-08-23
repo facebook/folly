@@ -22,7 +22,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
 
-namespace folly {
+using namespace folly;
+using namespace testing;
 
 #ifndef TCP_SAVE_SYN
 #define TCP_SAVE_SYN 27
@@ -174,5 +175,3 @@ TEST(AsyncSocketTest, listenerTosV4) {
   ASSERT_EQ(rc, 0);
   ASSERT_EQ(value, 140);
 }
-
-} // namespace folly

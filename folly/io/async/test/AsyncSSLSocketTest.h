@@ -45,7 +45,7 @@
 #include <folly/portability/String.h>
 #include <folly/portability/Unistd.h>
 
-namespace folly {
+namespace folly::test {
 
 // The destructors of all callback classes assert that the state is
 // STATE_SUCCEEDED, for both possitive and negative tests. The tests
@@ -267,7 +267,6 @@ class ReadCallbackBase : public AsyncTransport::ReadCallback {
 
   void readEOF() noexcept override {
     std::cerr << "readEOF" << std::endl;
-
     socket_->close();
   }
 
@@ -739,17 +738,6 @@ class ConnectTimeoutCallback : public SSLServerAcceptCallbackBase {
     s->getEventBase()->tryRunAfterDelay([=] { s->close(); }, 100);
   }
 };
-
-void getfds(NetworkSocket fds[2]);
-
-void getctx(
-    std::shared_ptr<folly::SSLContext> clientCtx,
-    std::shared_ptr<folly::SSLContext> serverCtx);
-
-void sslsocketpair(
-    EventBase* eventBase,
-    AsyncSSLSocket::UniquePtr* clientSock,
-    AsyncSSLSocket::UniquePtr* serverSock);
 
 class BlockingWriteClient : private AsyncSSLSocket::HandshakeCB,
                             private AsyncTransport::WriteCallback {
@@ -1466,4 +1454,5 @@ class SSLAcceptFiberRunner : public SSLAcceptEvbRunner {
         });
   }
 };
-} // namespace folly
+
+} // namespace folly::test

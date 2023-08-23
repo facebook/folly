@@ -39,7 +39,7 @@
 #include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
 #include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
-#include <folly/io/async/test/TFOTest.h>
+#include <folly/io/async/test/TFOUtil.h>
 #include <folly/io/async/test/TestSSLServer.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
@@ -62,11 +62,13 @@ using std::cerr;
 using std::endl;
 using std::string;
 
+using namespace folly;
+using namespace folly::test;
 using namespace testing;
 
-#if defined __linux__
 namespace {
 
+#if defined __linux__
 // to store libc's original setsockopt()
 typedef int (*setsockopt_ptr)(int, int, int, const void*, socklen_t);
 setsockopt_ptr real_setsockopt_ = nullptr;
@@ -99,9 +101,7 @@ int setsockopt(
 }
 #endif
 
-namespace folly {
-constexpr size_t SSLClient::kMaxReadBufferSz;
-constexpr size_t SSLClient::kMaxReadsPerEvent;
+namespace {
 
 void getfds(NetworkSocket fds[2]) {
   if (netops::socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
@@ -125,41 +125,6 @@ void getctx(
   serverCtx->loadPrivateKey(kTestKey);
 }
 
-void sslsocketpair(
-    EventBase* eventBase,
-    AsyncSSLSocket::UniquePtr* clientSock,
-    AsyncSSLSocket::UniquePtr* serverSock) {
-  auto clientCtx = std::make_shared<folly::SSLContext>();
-  auto serverCtx = std::make_shared<folly::SSLContext>();
-  NetworkSocket fds[2];
-  getfds(fds);
-  getctx(clientCtx, serverCtx);
-  clientSock->reset(new AsyncSSLSocket(clientCtx, eventBase, fds[0], false));
-  serverSock->reset(new AsyncSSLSocket(serverCtx, eventBase, fds[1], true));
-
-  // (*clientSock)->setSendTimeout(100);
-  // (*serverSock)->setSendTimeout(100);
-}
-
-// client protocol filters
-bool clientProtoFilterPickPony(
-    unsigned char** client,
-    unsigned int* client_len,
-    const unsigned char*,
-    unsigned int) {
-  // the protocol string in length prefixed byte string. the
-  // length byte is not included in the length
-  static unsigned char p[7] = {6, 'p', 'o', 'n', 'i', 'e', 's'};
-  *client = p;
-  *client_len = 7;
-  return true;
-}
-
-bool clientProtoFilterPickNone(
-    unsigned char**, unsigned int*, const unsigned char*, unsigned int) {
-  return false;
-}
-
 std::string getFileAsBuf(const char* fileName) {
   std::string buffer;
   folly::readFile(fileName, buffer);
@@ -179,25 +144,24 @@ folly::ssl::X509UniquePtr readCertFromFile(const std::string& filename) {
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
-namespace {
 void connectWriteReadClose(
     folly::AsyncReader::ReadCallback::ReadMode readMode) {
   // Start listening on a local port
-  WriteCallbackBase writeCallback;
-  ReadCallback readCallback(&writeCallback);
-  HandshakeCallback handshakeCallback(&readCallback);
-  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
-  TestSSLServer server(&acceptCallback);
+  folly::test::WriteCallbackBase writeCallback;
+  folly::test::ReadCallback readCallback(&writeCallback);
+  folly::test::HandshakeCallback handshakeCallback(&readCallback);
+  folly::test::SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  folly::test::TestSSLServer server(&acceptCallback);
 
   // Set up SSL context.
-  std::shared_ptr<SSLContext> sslContext(new SSLContext());
+  auto sslContext = std::make_shared<folly::SSLContext>();
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   // sslContext->loadTrustedCertificates("./trusted-ca-certificate.pem");
   // sslContext->authenticate(true, false);
 
   // connect
-  auto socket =
-      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  auto socket = std::make_shared<folly::test::BlockingSocket>(
+      server.getAddress(), sslContext);
   socket->setReadMode(readMode);
   socket->open(std::chrono::milliseconds(10000));
 
@@ -2687,7 +2651,7 @@ static SSL_SESSION* getCloseCb(SSL* ssl, unsigned char*, int, int*) {
 #endif
   AsyncSSLSocket::getFromSSL(ssl)->closeNow();
   return nullptr;
-} // namespace folly
+} // namespace
 
 TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiberCloseSessionCb) {
   EventBase eventBase;
@@ -4023,8 +3987,6 @@ TEST(AsyncSSLSocketTest, BytesWrittenWithMove) {
   EXPECT_EQ(socket1AppBytes, socket3->getAppBytesWritten());
   EXPECT_EQ(socket1RawBytes, socket3->getRawBytesWritten());
 }
-
-} // namespace folly
 
 #ifdef SIGPIPE
 ///////////////////////////////////////////////////////////////////////////

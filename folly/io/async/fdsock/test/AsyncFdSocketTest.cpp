@@ -97,10 +97,10 @@ struct AsyncFdSocketTest : public testing::Test {
 
   EventBase evb_;
 
-  WriteCallback wcb_;
+  test::WriteCallback wcb_;
   AsyncFdSocket sendSock_;
 
-  ReadCallback rcb_; // NB: `~AsyncSocket` calls `rcb.readEOF`
+  test::ReadCallback rcb_; // NB: `~AsyncSocket` calls `rcb.readEOF`
   std::unique_ptr<AsyncFdSocket> recvSock_;
 };
 
@@ -263,7 +263,7 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
   // The default `ReadCallback` has special-snowflake buffer management
   // that's annoying for this test.  Secondarily, this exercises the
   // "ReadVec" path.
-  ReadvCallback rcb(128, 3);
+  test::ReadvCallback rcb(128, 3);
   // Avoid `readEOF` use-after-stack-scope in `~AsyncSocket`.
   SCOPE_EXIT { recvSock_->setReadCB(nullptr); };
   recvSock_->setReadCB(&rcb);

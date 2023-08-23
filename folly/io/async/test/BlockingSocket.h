@@ -22,6 +22,8 @@
 #include <folly/io/async/SSLContext.h>
 #include <folly/net/NetworkSocket.h>
 
+namespace folly::test {
+
 class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
                        public folly::AsyncTransport::ReadCallback,
                        public folly::AsyncTransport::WriteCallback {
@@ -175,3 +177,5 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     return folly::to_narrow(folly::to_signed(len - readLen_));
   }
 };
+
+} // namespace folly::test

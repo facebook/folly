@@ -20,40 +20,13 @@
 
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/test/BlockingSocket.h>
+#include <folly/io/async/test/CallbackStateEnum.h>
+#include <folly/io/async/test/ConnCallback.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
 
-enum StateEnum { STATE_WAITING, STATE_SUCCEEDED, STATE_FAILED };
-
-typedef std::function<void()> VoidCallback;
-
-class ConnCallback : public folly::AsyncSocket::ConnectCallback {
- public:
-  ConnCallback()
-      : state(STATE_WAITING),
-        exception(folly::AsyncSocketException::UNKNOWN, "none") {}
-
-  void connectSuccess() noexcept override {
-    state = STATE_SUCCEEDED;
-    if (successCallback) {
-      successCallback();
-    }
-  }
-
-  void connectErr(const folly::AsyncSocketException& ex) noexcept override {
-    state = STATE_FAILED;
-    exception = ex;
-    if (errorCallback) {
-      errorCallback();
-    }
-  }
-
-  StateEnum state;
-  folly::AsyncSocketException exception;
-  VoidCallback successCallback;
-  VoidCallback errorCallback;
-};
+namespace folly::test {
 
 class WriteCallback : public folly::AsyncTransport::WriteCallback,
                       public folly::AsyncWriter::ReleaseIOBufCallback {
@@ -656,3 +629,5 @@ class TestServer {
   folly::NetworkSocket fd_;
   folly::SocketAddress address_;
 };
+
+} // namespace folly::test

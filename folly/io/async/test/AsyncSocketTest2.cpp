@@ -36,7 +36,7 @@
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
 #include <folly/io/async/test/MockAsyncSocketObserver.h>
-#include <folly/io/async/test/TFOTest.h>
+#include <folly/io/async/test/TFOUtil.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
 #include <folly/net/test/MockTcpInfoDispatcher.h>
