@@ -130,8 +130,13 @@ TEST(AtomicIntrusiveLinkedList, Move) {
   EXPECT_TRUE(list1.empty());
   EXPECT_FALSE(list2.empty());
 
+  TestIntrusiveObject::List list3 = list2.spliceAll();
+
+  EXPECT_TRUE(list2.empty());
+  EXPECT_FALSE(list3.empty());
+
   size_t id = 0;
-  list2.sweep([&](TestIntrusiveObject* obj) mutable {
+  list3.sweep([&](TestIntrusiveObject* obj) mutable {
     ++id;
     EXPECT_EQ(id, obj->id());
   });
