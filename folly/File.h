@@ -42,7 +42,7 @@ class File {
   /**
    * Creates an empty File object, for late initialization.
    */
-  File() noexcept;
+  constexpr File() noexcept : fd_(-1), ownsFd_(false) {}
 
   /**
    * Create a File object from an existing file descriptor.
