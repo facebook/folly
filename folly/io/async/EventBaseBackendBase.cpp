@@ -98,7 +98,7 @@ bool EventBaseEvent::setEdgeTriggered() {
   }
 
   auto epfd = static_cast<epollop*>(base->evbase)->epfd;
-  epoll_event epev = {0, {0}};
+  epoll_event epev = {0, {nullptr}};
   epev.data.fd = eb_ev_fd();
   epev.events = EPOLLET;
   if (eb_ev_events() & EV_READ) {
