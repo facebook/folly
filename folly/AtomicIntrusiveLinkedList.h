@@ -53,12 +53,20 @@ class AtomicIntrusiveLinkedList {
     head_ = tmp;
   }
   AtomicIntrusiveLinkedList& operator=(
-      AtomicIntrusiveLinkedList&& other) noexcept {
-    auto tmp = other.head_.load();
-    other.head_ = head_.load();
-    head_ = tmp;
+      AtomicIntrusiveLinkedList&& other) noexcept = delete;
 
-    return *this;
+  /**
+   * Move-assign the current list to `other`, then reverse-sweep
+   * the old list with the provided callback `func`.
+   *
+   * A safe replacement for the move assignment operator, which is absent
+   * because of the resource leak concerns.
+   */
+  template <typename F>
+  void reverseSweepAndAssign(AtomicIntrusiveLinkedList&& other, F&& func) {
+    auto otherHead = other.head_.exchange(nullptr, std::memory_order_acq_rel);
+    auto head = head_.exchange(otherHead, std::memory_order_acq_rel);
+    unlinkAll(head, std::forward<F>(func));
   }
 
   /**
