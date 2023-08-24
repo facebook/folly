@@ -87,14 +87,20 @@ class AtomicIntrusiveLinkedList {
   ~AtomicIntrusiveLinkedList() { assert(empty()); }
 
   /**
+   * Returns the current head of the list.
+   *
+   * WARNING: The returned pointer might not be valid if the list
+   * is modified concurrently!
+   */
+  T* unsafeHead() const { return head_.load(std::memory_order_acquire); }
+
+  /**
    * Returns true if the list is empty.
    *
    * WARNING: This method's return value is only valid for a snapshot
    * of the state, it might become stale as soon as it's returned.
    */
-  bool empty() const {
-    return head_.load(std::memory_order_acquire) == nullptr;
-  }
+  bool empty() const { return unsafeHead() == nullptr; }
 
   /**
    * Atomically insert t at the head of the list.

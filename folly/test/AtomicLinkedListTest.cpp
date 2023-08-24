@@ -37,7 +37,7 @@ class TestIntrusiveObject {
   TestIntrusiveObject(TestIntrusiveObject&&) = delete;
   TestIntrusiveObject& operator=(TestIntrusiveObject&&) = delete;
 
-  size_t id() { return id_; }
+  size_t id() const { return id_; }
 
  private:
   folly::AtomicIntrusiveLinkedListHook<TestIntrusiveObject> hook_;
@@ -57,20 +57,25 @@ TEST(AtomicIntrusiveLinkedList, Basic) {
   TestIntrusiveObject::List list;
 
   EXPECT_TRUE(list.empty());
+  EXPECT_EQ(nullptr, list.unsafeHead());
 
   {
     EXPECT_TRUE(list.insertHead(&a));
+    EXPECT_EQ(&a, list.unsafeHead());
     EXPECT_FALSE(list.insertHead(&b));
+    EXPECT_EQ(&b, list.unsafeHead());
 
     EXPECT_FALSE(list.empty());
 
     size_t id = 0;
     list.sweep([&](TestIntrusiveObject* obj) mutable {
+      EXPECT_EQ(nullptr, list.unsafeHead());
       ++id;
       EXPECT_EQ(id, obj->id());
     });
 
     EXPECT_TRUE(list.empty());
+    EXPECT_EQ(nullptr, list.unsafeHead());
   }
 
   // Try re-inserting the same item (b) and a new item (c)
@@ -227,7 +232,7 @@ class TestObject : public InstanceCounted<TestObject>, public folly::MoveOnly {
  public:
   explicit TestObject(size_t id) : id_(id) {}
 
-  size_t id() { return id_; }
+  size_t id() const { return id_; }
 
  private:
   size_t id_;
