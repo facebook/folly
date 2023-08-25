@@ -769,6 +769,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY functional/test/
       TEST apply_tuple_test WINDOWS_DISABLED
         SOURCES ApplyTupleTest.cpp
+      TEST functional_invoke_test SOURCES InvokeTest.cpp
       TEST partial_test SOURCES PartialTest.cpp
       TEST functional_traits_test SOURCES traits_test.cpp
 
