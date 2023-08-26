@@ -1523,6 +1523,175 @@ TEST(AsyncSocketTest, WriteTimeout) {
 }
 
 /**
+ * Test getting local and peer addresses with no fd.
+ *
+ * Value returned should be empty; no failure should occur.
+ */
+TEST(AsyncSocketTest, GetAddressesNoFd) {
+  EventBase evb;
+  auto socket = AsyncSocket::newSocket(&evb);
+
+  {
+    folly::SocketAddress address;
+    socket->getLocalAddress(&address);
+    EXPECT_TRUE(address.empty());
+  }
+
+  {
+    folly::SocketAddress address;
+    socket->getPeerAddress(&address);
+    EXPECT_TRUE(address.empty());
+  }
+}
+
+/**
+ * Test getting local and peer addresses after connecting.
+ */
+TEST(AsyncSocketTest, GetAddressesAfterConnect_GetWhileOpenAndOnClose) {
+  EventBase evb;
+  auto socket = AsyncSocket::newSocket(&evb);
+
+  // Start listening on a local port
+  TestServer server;
+
+  // Connect
+  {
+    ConnCallback cb;
+    socket->connect(&cb, server.getAddress(), 30);
+    evb.loop();
+    ASSERT_EQ(cb.state, STATE_SUCCEEDED);
+  }
+
+  // Get local, make sure it's not empty and not equal to server
+  const folly::SocketAddress localAddress = [&socket]() {
+    folly::SocketAddress address;
+    socket->getLocalAddress(&address);
+    return address;
+  }();
+  EXPECT_FALSE(localAddress.empty());
+  EXPECT_NE(server.getAddress(), localAddress);
+
+  const folly::SocketAddress peerAddress = [&socket]() {
+    folly::SocketAddress address;
+    socket->getPeerAddress(&address);
+    return address;
+  }();
+  EXPECT_FALSE(peerAddress.empty());
+  EXPECT_EQ(server.getAddress(), peerAddress);
+
+  // Close
+  socket->closeNow();
+
+  // Addresses should still be available as they're cached
+  const folly::SocketAddress localAddress2 = [&socket]() {
+    folly::SocketAddress address;
+    socket->getLocalAddress(&address);
+    return address;
+  }();
+  EXPECT_EQ(localAddress2, localAddress);
+
+  const folly::SocketAddress peerAddress2 = [&socket]() {
+    folly::SocketAddress address;
+    socket->getPeerAddress(&address);
+    return address;
+  }();
+  EXPECT_EQ(peerAddress2, peerAddress);
+}
+
+/**
+ * Test getting local and peer addresses after closing.
+ *
+ * Only peer address is available under these conditions.
+ */
+TEST(AsyncSocketTest, GetAddressesAfterConnect_GetOnlyAfterClose) {
+  EventBase evb;
+  auto socket = AsyncSocket::newSocket(&evb);
+
+  // Start listening on a local port
+  TestServer server;
+
+  // Connect
+  {
+    ConnCallback cb;
+    socket->connect(&cb, server.getAddress(), 30);
+    evb.loop();
+    ASSERT_EQ(cb.state, STATE_SUCCEEDED);
+  }
+
+  // Close
+  socket->closeNow();
+
+  // Local address unavailable since never fetched
+  {
+    folly::SocketAddress address;
+    socket->getLocalAddress(&address);
+    EXPECT_TRUE(address.empty());
+  }
+
+  // Peer address available since it was passed to connect()
+  {
+    folly::SocketAddress address;
+    socket->getPeerAddress(&address);
+    EXPECT_FALSE(address.empty());
+    EXPECT_EQ(server.getAddress(), address);
+  }
+}
+
+/**
+ * Test getting local and peer addresses after connecting.
+ */
+TEST(AsyncSocketTest, GetAddressesAfterInitFromFd_GetOnInitAndOnClose) {
+  EventBase evb;
+
+  // Start listening on a local port
+  TestServer server;
+
+  // Create a socket, connect, then create another AsyncSocket from just fd
+  auto socket = [&server, &evb]() {
+    auto socket1 = AsyncSocket::newSocket(&evb);
+    ConnCallback cb;
+    socket1->connect(&cb, server.getAddress(), 30);
+    evb.loop();
+    return AsyncSocket::newSocket(&evb, socket1->detachNetworkSocket());
+  }();
+
+  // Get local, make sure it's not empty and not equal to server
+  const folly::SocketAddress localAddress = [&socket]() {
+    folly::SocketAddress address;
+    socket->getLocalAddress(&address);
+    return address;
+  }();
+  EXPECT_FALSE(localAddress.empty());
+  EXPECT_NE(server.getAddress(), localAddress);
+
+  const folly::SocketAddress peerAddress = [&socket]() {
+    folly::SocketAddress address;
+    socket->getPeerAddress(&address);
+    return address;
+  }();
+  EXPECT_FALSE(peerAddress.empty());
+  EXPECT_EQ(server.getAddress(), peerAddress);
+
+  // Close
+  socket->closeNow();
+
+  // Addresses should still be available as they're cached
+  const folly::SocketAddress localAddress2 = [&socket]() {
+    folly::SocketAddress address;
+    socket->getLocalAddress(&address);
+    return address;
+  }();
+  EXPECT_EQ(localAddress2, localAddress);
+
+  const folly::SocketAddress peerAddress2 = [&socket]() {
+    folly::SocketAddress address;
+    socket->getPeerAddress(&address);
+    return address;
+  }();
+  EXPECT_EQ(peerAddress2, peerAddress);
+}
+
+/**
  * Test writing to a socket that the remote endpoint has closed
  */
 TEST(AsyncSocketTest, WritePipeError) {

@@ -2317,13 +2317,13 @@ void AsyncSocket::cacheAddresses() {
 }
 
 void AsyncSocket::cacheLocalAddress() const {
-  if (!localAddr_.isInitialized()) {
+  if (!localAddr_.isInitialized() && fd_ != NetworkSocket()) {
     localAddr_.setFromLocalAddress(fd_);
   }
 }
 
 void AsyncSocket::cachePeerAddress() const {
-  if (!addr_.isInitialized()) {
+  if (!addr_.isInitialized() && fd_ != NetworkSocket()) {
     addr_.setFromPeerAddress(fd_);
   }
 }
