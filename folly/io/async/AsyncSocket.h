@@ -1186,7 +1186,7 @@ class AsyncSocket : public AsyncSocketTransport {
    * Get folly::TcpInfo from socket
    */
   folly::Expected<folly::TcpInfo, std::errc> getTcpInfo(
-      TcpInfo::LookupOptions options);
+      const TcpInfo::LookupOptions& options);
 
   /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.

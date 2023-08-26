@@ -2876,7 +2876,7 @@ bool AsyncSocket::processZeroCopyWriteInProgress() noexcept {
 }
 
 folly::Expected<folly::TcpInfo, std::errc> AsyncSocket::getTcpInfo(
-    TcpInfo::LookupOptions options) {
+    const TcpInfo::LookupOptions& options) {
   if (NetworkSocket() == fd_) {
     return folly::makeUnexpected(std::errc::invalid_argument);
   }
