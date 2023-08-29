@@ -21,11 +21,14 @@
 #include <folly/CPortability.h>
 #include <folly/FileUtil.h>
 #include <folly/Range.h>
+#include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
 #include <glog/logging.h>
+
+#include <memory>
 
 namespace folly {
 namespace symbolizer {
@@ -119,6 +122,40 @@ TEST(SignalHandler, AsyncStackTraceSimple) {
       "Callback2\n"
       ".*");
 }
+
+TEST(SignalHandler, AsyncStackTraceSimple2) {
+  addFatalSignalCallback(callback1);
+  addFatalSignalCallback(callback2);
+  installFatalSignalHandler();
+  installFatalSignalCallbacks();
+  EXPECT_DEATH(
+      [] {
+        auto ex = std::make_unique<IOThreadPoolExecutor>(/* nThreads */ 1);
+        auto fut = co_funcA().scheduleOn(ex.get()).start();
+        fut.wait();
+      }(),
+      "\\*\\*\\* Aborted at [0-9]+ \\(Unix time, try 'date -d @[0-9]+'\\) "
+      "\\*\\*\\*\n"
+      "\\*\\*\\* Signal 6 \\(SIGABRT\\) \\(0x[0-9a-f]+\\) received by PID [0-9]+ "
+      "\\(pthread TID 0x[0-9a-f]+\\) \\(linux TID [0-9]+\\) .*, "
+      "stack trace: \\*\\*\\*\n"
+      "(.*WARNING.*\n)?"
+      ".*\n"
+      ".*    @ [0-9a-f]+.* folly::symbolizer::test::\\(anonymous namespace\\)"
+      "::funcC\\(\\)\n"
+      ".*\n"
+      "\\*\\*\\* Check failure async stack trace: \\*\\*\\*\n"
+      "\\*\\*\\* First async stack root.* \\*\\*\\*\n"
+      "\\*\\*\\* First async stack frame pointer.* \\*\\*\\*\n"
+      ".*\n"
+      ".*    @ [0-9a-f]+.* folly::symbolizer::test::\\(anonymous namespace\\)"
+      "::co_funcA.*\n"
+      ".*\n"
+      "Callback1\n"
+      "Callback2\n"
+      ".*");
+}
+
 } // namespace test
 } // namespace symbolizer
 } // namespace folly
