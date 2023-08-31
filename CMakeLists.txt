@@ -771,6 +771,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES ApplyTupleTest.cpp
       TEST functional_invoke_test SOURCES InvokeTest.cpp
       TEST partial_test SOURCES PartialTest.cpp
+      TEST functional_protocol_test SOURCES protocol_test.cpp
       TEST functional_traits_test SOURCES traits_test.cpp
 
     DIRECTORY futures/test/
