@@ -42,29 +42,104 @@ CO_TEST(PromiseTest, ImmediateValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
   EXPECT_TRUE(promise.valid());
   EXPECT_FALSE(promise.isFulfilled());
-  promise.setValue(42);
+  EXPECT_TRUE(promise.trySetValue(42));
   EXPECT_TRUE(promise.valid());
   EXPECT_TRUE(promise.isFulfilled());
   EXPECT_EQ(co_await std::move(future), 42);
 }
 
-CO_TEST(PromiseTest, ImmediateTry) {
+CO_TEST(PromiseTest, ImmediateWithValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
-  promise.setResult(folly::Try(42));
+  EXPECT_TRUE(promise.trySetWith([]() { return 42; }));
   auto res = co_await co_awaitTry(std::move(future));
   EXPECT_EQ(res.value(), 42);
 }
 
+CO_TEST(PromiseTest, ImmediateWithValueThrows) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(
+      promise.trySetWith([]() -> int { throw std::runtime_error(""); }));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+CO_TEST(PromiseTest, ImmediateWithValueImplicit) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.trySetWith([]() { return '*'; }));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_EQ(res.value(), 42);
+}
+
+CO_TEST(PromiseTest, ImmediateValueMultiple) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.trySetValue(42));
+  EXPECT_FALSE(promise.trySetValue(43));
+  EXPECT_FALSE(promise.trySetValue(44));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_EQ(res.value(), 42);
+}
+
+CO_TEST(PromiseTest, ImmediateTry) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.trySetResult(Try(42)));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_EQ(res.value(), 42);
+}
+
+CO_TEST(PromiseTest, ImmediateWithTry) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.trySetWith([]() { return Try(42); }));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_EQ(res.value(), 42);
+}
+
+CO_TEST(PromiseTest, ImmediateWithTryThrows) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(
+      promise.trySetWith([]() -> Try<int> { throw std::runtime_error(""); }));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
 CO_TEST(PromiseTest, ImmediateException) {
   auto [promise, future] = coro::makePromiseContract<int>();
-  promise.setException(std::runtime_error(""));
+  EXPECT_TRUE(promise.trySetException(std::runtime_error("")));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+CO_TEST(PromiseTest, ImmediateWithException) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.trySetWith(
+      []() { return exception_wrapper(std::runtime_error("")); }));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+CO_TEST(PromiseTest, ImmediateWithExceptionImplicit) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.trySetWith([]() { return std::runtime_error(""); }));
+  auto res = co_await co_awaitTry(std::move(future));
+  EXPECT_TRUE(res.hasException<std::runtime_error>());
+}
+
+CO_TEST(PromiseTest, ImmediateWithExceptionThrows) {
+  auto [promise, future] = coro::makePromiseContract<int>();
+  EXPECT_TRUE(promise.trySetWith(
+      []() -> exception_wrapper { throw std::runtime_error(""); }));
   auto res = co_await co_awaitTry(std::move(future));
   EXPECT_TRUE(res.hasException<std::runtime_error>());
 }
 
 CO_TEST(PromiseTest, ImmediateExceptionVoid) {
   auto [promise, future] = coro::makePromiseContract<void>();
-  promise.setException(std::runtime_error(""));
+  EXPECT_TRUE(promise.trySetException(std::runtime_error("")));
+  EXPECT_THROW(co_await std::move(future), std::runtime_error);
+}
+
+CO_TEST(PromiseTest, ImmediateWithExceptionVoid) {
+  auto [promise, future] = coro::makePromiseContract<void>();
+  EXPECT_TRUE(promise.trySetWith([]() { return std::runtime_error(""); }));
   EXPECT_THROW(co_await std::move(future), std::runtime_error);
 }
 
@@ -74,7 +149,7 @@ CO_TEST(PromiseTest, SuspendValue) {
     co_return co_await std::move(future);
   }(std::move(this_future));
   auto fulfiller = [](auto promise) -> coro::Task<> {
-    promise.setValue(42);
+    EXPECT_TRUE(promise.trySetValue(42));
     co_return;
   }(std::move(this_promise));
 
@@ -90,7 +165,7 @@ CO_TEST(PromiseTest, SuspendException) {
     co_return co_await std::move(future);
   }(std::move(this_future));
   auto fulfiller = [](auto promise) -> coro::Task<> {
-    promise.setException(std::logic_error(""));
+    EXPECT_TRUE(promise.trySetException(std::logic_error("")));
     co_return;
   }(std::move(this_promise));
 
@@ -112,12 +187,12 @@ CO_TEST(PromiseTest, ImmediateCancel) {
       co_withCancellation(cs.getToken(), std::move(future)));
   EXPECT_TRUE(cancelled);
   EXPECT_TRUE(res.hasException<OperationCancelled>());
-  promise.setValue(42);
+  EXPECT_FALSE(promise.trySetValue(42));
 }
 
 CO_TEST(PromiseTest, CancelFulfilled) {
   auto [promise, future] = coro::makePromiseContract<int>();
-  promise.setValue(42);
+  EXPECT_TRUE(promise.trySetValue(42));
   CancellationSource cs;
   cs.requestCancellation();
   bool cancelled = false;
@@ -186,7 +261,7 @@ CO_TEST(PromiseTest, Lifetime) {
   int destroyed = 0;
   {
     auto [promise, future] = coro::makePromiseContract<Guard>();
-    promise.setValue(Guard(destroyed));
+    EXPECT_TRUE(promise.trySetValue(Guard(destroyed)));
     EXPECT_EQ(destroyed, 1); // the temporary
     co_await std::move(future);
     EXPECT_EQ(destroyed, 2); // the return value
@@ -205,7 +280,7 @@ TEST(PromiseTest, DropFuture) {
   int destroyed = 0;
   {
     auto [promise, future] = coro::makePromiseContract<Guard>();
-    promise.setValue(Guard(destroyed));
+    EXPECT_TRUE(promise.trySetValue(Guard(destroyed)));
     EXPECT_EQ(destroyed, 1); // the temporary
   }
   EXPECT_EQ(destroyed, 2); // the slot in shared state
@@ -213,21 +288,21 @@ TEST(PromiseTest, DropFuture) {
 
 CO_TEST(PromiseTest, MoveOnly) {
   auto [promise, future] = coro::makePromiseContract<std::unique_ptr<int>>();
-  promise.setValue(std::make_unique<int>(42));
+  EXPECT_TRUE(promise.trySetValue(std::make_unique<int>(42)));
   auto val = co_await std::move(future);
   EXPECT_EQ(*val, 42);
 }
 
 CO_TEST(PromiseTest, Void) {
   auto [promise, future] = coro::makePromiseContract<void>();
-  promise.setValue();
+  EXPECT_TRUE(promise.trySetValue());
   co_await std::move(future);
 }
 
 TEST(PromiseTest, IsReady) {
   auto [promise, future] = coro::makePromiseContract<int>();
   EXPECT_FALSE(future.isReady());
-  promise.setValue(42);
+  EXPECT_TRUE(promise.trySetValue(42));
   EXPECT_TRUE(future.isReady());
 }
 
@@ -252,7 +327,8 @@ CO_TEST(PromiseTest, MoveAssign) {
   coro::Promise<void> promise;
   coro::Future<void> future;
   std::tie(promise, future) = coro::makePromiseContract<void>();
-  promise.setValue();
+  EXPECT_TRUE(promise.trySetValue());
   co_await std::move(future);
 }
+
 #endif
