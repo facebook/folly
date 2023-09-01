@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -115,6 +116,11 @@ constexpr T const& constexpr_clamp(T const& v, T const& lo, T const& hi) {
   return constexpr_clamp(v, lo, hi, std::less<T>{});
 }
 
+template <typename T>
+constexpr bool constexpr_isnan(T const t) {
+  return t != t; // NOLINT
+}
+
 namespace detail {
 
 template <typename T, typename = void>
@@ -146,6 +152,7 @@ struct constexpr_abs_helper<
     return typename std::make_unsigned<T>::type(t < static_cast<T>(0) ? -t : t);
   }
 };
+
 } // namespace detail
 
 template <typename T>
@@ -155,6 +162,7 @@ constexpr auto constexpr_abs(T t)
 }
 
 namespace detail {
+
 template <typename T>
 constexpr T constexpr_log2_(T a, T e) {
   return e == T(1) ? a : constexpr_log2_(a + T(1), e / T(2));
@@ -165,10 +173,6 @@ constexpr T constexpr_log2_ceil_(T l2, T t) {
   return l2 + T(T(1) << l2 < t ? 1 : 0);
 }
 
-template <typename T>
-constexpr T constexpr_square_(T t) {
-  return t * t;
-}
 } // namespace detail
 
 template <typename T>
@@ -188,12 +192,75 @@ constexpr T constexpr_ceil(T t, T round) {
       : ((t + (t < T(0) ? T(0) : round - T(1))) / round) * round;
 }
 
+/// constexpr_mult
+///
+/// Multiply two values, allowing for constexpr floating-pooint overflow to
+/// infinity.
 template <typename T>
-constexpr T constexpr_pow(T base, std::size_t exp) {
-  return exp == 0 ? T(1)
-      : exp == 1  ? base
-                  : detail::constexpr_square_(constexpr_pow(base, exp / 2)) *
-          (exp % 2 ? base : T(1));
+constexpr T constexpr_mult(T const a, T const b) {
+  using lim = std::numeric_limits<T>;
+  if (constexpr_isnan(a) || constexpr_isnan(b)) {
+    return constexpr_isnan(a) ? a : b;
+  }
+  if (std::is_floating_point<T>::value) {
+    constexpr auto inf = lim::infinity();
+    auto const ax = constexpr_abs(a);
+    auto const bx = constexpr_abs(b);
+    if ((ax == T(0) && bx == inf) || (bx == T(0) && ax == inf)) {
+      return lim::quiet_NaN();
+    }
+    // floating-point multiplication overflow, ie where multiplication of two
+    // finite values overflows to infinity of either sign, is not constexpr per
+    // gcc
+    // floating-point division overflow, ie where division of two finite values
+    // overflows to infinity of either sign, is not constexpr per gcc
+    // floating-point division by zero is not constexpr per any compiler, but we
+    // use it in the checks for the other two conditions
+    if (ax != inf && bx != inf && T(1) < bx && lim::max() / bx < ax) {
+      auto const a_neg = static_cast<bool>(a < T(0));
+      auto const b_neg = static_cast<bool>(b < T(0));
+      auto const sign = a_neg == b_neg ? T(1) : T(-1);
+      return sign * inf;
+    }
+  }
+  return a * b;
+}
+
+/// constexpr_pow
+///
+/// Calculates the value of base raised to the exponent exp.
+///
+/// Supports only integral exponents.
+///
+/// mimic: std::pow (C++26)
+template <
+    typename T,
+    typename E,
+    std::enable_if_t<
+        std::is_integral<E>::value && !std::is_same<E, bool>::value,
+        int> = 0>
+constexpr T constexpr_pow(T const base, E const exp) {
+  if (std::is_floating_point<T>::value) {
+    if (exp < E(0)) {
+      return T(1) / constexpr_pow(base, -exp);
+    }
+    if (exp == E(0)) {
+      return T(1);
+    }
+    if (constexpr_isnan(base)) {
+      return base;
+    }
+  }
+  assert(!(exp < E(0)) && "negative exponent with integral base");
+  if (exp == E(0)) {
+    return T(1);
+  }
+  if (exp == E(1)) {
+    return base;
+  }
+  auto const div = constexpr_pow(base, exp / E(2));
+  auto const rem = exp % E(2) == E(0) ? T(1) : base;
+  return constexpr_mult(constexpr_mult(div, div), rem);
 }
 
 /// constexpr_find_last_set
@@ -391,9 +458,7 @@ constexpr_clamp_cast(Src src) {
   // clang-format off
   return
     // Special case: cast NaN into 0.
-    // Using a trick here to portably check for NaN: f != f only if f is NaN.
-    // see: https://stackoverflow.com/a/570694
-    (src != src) ? Dst(0) :
+    constexpr_isnan(src) ? Dst(0) :
     // using `sizeof(Src) > sizeof(Dst)` as a heuristic that Dst can be
     // represented in Src without loss of accuracy.
     // see: https://en.wikipedia.org/wiki/Floating-point_arithmetic
