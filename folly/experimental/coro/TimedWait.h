@@ -40,12 +40,11 @@ timed_wait(Awaitable awaitable, Duration duration) {
       detail::lift_lvalue_reference_t<semi_await_result_t<Awaitable>>>>>
       result;
 
-  Executor* executor = co_await co_current_executor;
   auto sleepFuture = futures::sleep(duration).toUnsafeFuture();
   auto posted = new std::atomic<bool>(false);
-  sleepFuture.setCallback_(
-      [posted, &baton, executor = Executor::KeepAlive<>{executor}](
-          auto&&, auto&&) {
+  std::move(sleepFuture)
+      .setCallback_([posted, &baton, executor = co_await co_current_executor](
+                        auto&&, auto&&) {
         if (!posted->exchange(true, std::memory_order_acq_rel)) {
           executor->add([&baton] { baton.post(); });
         } else {
@@ -59,10 +58,9 @@ timed_wait(Awaitable awaitable, Duration duration) {
              awaitable)]() mutable -> Task<semi_await_result_t<Awaitable>> {
           co_return co_await std::move(awaitable);
         });
-    std::move(t).scheduleOn(executor).start(
-        [posted, &baton, &result, sleepFuture = std::move(sleepFuture)](
-            auto&& r) mutable {
-          sleepFuture.cancel();
+    std::move(t)
+        .scheduleOn(co_await co_current_executor)
+        .start([posted, &baton, &result](auto&& r) {
           if (!posted->exchange(true, std::memory_order_acq_rel)) {
             result = std::move(r);
             baton.post();
