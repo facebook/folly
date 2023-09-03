@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -79,6 +80,175 @@ template <typename T, typename S, S Value>
 constexpr typename floating_point_integral_constant<T, S, Value>::value_type
     floating_point_integral_constant<T, S, Value>::value;
 #endif
+
+//  ----
+
+namespace detail {
+
+template <typename T>
+constexpr size_t constexpr_iterated_squares_desc_size_(T const base) {
+  using lim = std::numeric_limits<T>;
+  size_t s = 1;
+  auto r = base;
+  while (r <= lim::max() / r) {
+    ++s;
+    r *= r;
+  }
+  return s;
+}
+
+} // namespace detail
+
+/// constexpr_iterated_squares_desc_size_v
+///
+/// Effectively calculates: floor(log(max_exponent)/log(base))
+///
+/// For use with constexpr_iterated_squares_desc below.
+template <typename Base>
+FOLLY_INLINE_VARIABLE constexpr size_t constexpr_iterated_squares_desc_size_v =
+    detail::constexpr_iterated_squares_desc_size_(Base::value);
+
+/// constexpr_iterated_squares_desc
+///
+/// A constexpr scaling array of integer powers-of-powers-of-two, descending,
+/// with the associated powers-of-two.
+///
+/// scaling = [..., {8, b^8}, {4, b^4}, {2, b^2}, {1, b^1}] for b = base
+///
+/// Includes select constexpr scaling algorithms based on the scaling array.
+///
+/// The scaling array and the scaling algorithms are general-purpose, if niche.
+/// They may be used by other constexpr math functions (floating-point) either
+/// to improve runtime performance or to improve numerical approximations.
+///
+/// Some compilers fail to support passing some types as non-type template
+/// params. In particular, long double is not universally supported. Therefore,
+/// this utility takes its base as a type rather than as a value. For floating-
+/// point integral bases, that is, bases of floating-point type but of integral
+/// value, floating_point_integral_constant is the easiest parameterization.
+template <typename T, std::size_t Size>
+struct constexpr_iterated_squares_desc {
+  static_assert(Size > 0, "requires non-zero size");
+
+  using size_type = decltype(Size);
+  using base_type = T;
+
+  struct item_type {
+    size_type power;
+    base_type scale;
+  };
+
+  static constexpr size_type size = Size;
+  base_type base;
+  item_type scaling[size];
+
+ private:
+  using lim = std::numeric_limits<base_type>;
+
+  static_assert(
+      lim::max_exponent < std::numeric_limits<size_type>::max(),
+      "size_type too small for base_type");
+
+ public:
+  explicit constexpr constexpr_iterated_squares_desc(base_type r) noexcept
+      : base{r}, scaling{} {
+    assert(size <= detail::constexpr_iterated_squares_desc_size_(base));
+    size_type i = 0;
+    size_type p = 1;
+    while (true) { // a for-loop might cause multiplication overflow below
+      scaling[size - 1 - i] = {p, r};
+      if (++i == size) {
+        break;
+      }
+      p *= 2;
+      r *= r;
+    }
+  }
+
+  /// shrink
+  ///
+  /// Returns scaling params of the form:
+  ///   item_type{power, scale} with scale = base ^ power
+  /// With power the smallest nonnegative integer such that:
+  ///   abs(num) / scale <= max
+  constexpr item_type shrink(base_type const num, base_type const max) const {
+    assert(max > base_type(0));
+    auto const rmax = max / base;
+    auto const snum = num < base_type(0) ? -num : num;
+    auto power = size_type(0);
+    auto scale = base_type(1);
+    if (!(snum / scale <= max)) {
+      for (auto const& i : scaling) {
+        auto const next = scale * i.scale;
+        auto const div = snum / next;
+        if (div <= rmax) {
+          continue;
+        }
+        power += i.power;
+        scale = next;
+        if (div <= max) {
+          break;
+        }
+      }
+    }
+    assert(snum / scale <= max);
+    return {power, scale};
+  }
+
+  /// growth
+  ///
+  /// Returns scaling params of the form:
+  ///   item_type{power, scale} with scale = base ^ power
+  /// With power the smallest nonnegative integer such that:
+  ///   abs(num) * scale >= min
+  constexpr item_type growth(base_type const num, base_type const min) const {
+    assert(min > base_type(0));
+    auto const rmin = min * base;
+    auto const snum = num < base_type(0) ? -num : num;
+    auto power = size_type(0);
+    auto scale = base_type(1);
+    if (!(snum * scale >= min)) {
+      for (auto const& i : scaling) {
+        auto const next = scale * i.scale;
+        auto const mul = snum * next;
+        if (mul >= rmin) {
+          continue;
+        }
+        power += i.power;
+        scale = next;
+        if (mul >= min) {
+          break;
+        }
+      }
+    }
+    assert(snum * scale >= min);
+    return {power, scale};
+  }
+};
+#if FOLLY_CPLUSPLUS < 201703L
+template <typename T, std::size_t Size>
+constexpr typename constexpr_iterated_squares_desc<T, Size>::size_type
+    constexpr_iterated_squares_desc<T, Size>::size;
+#endif
+
+/// constexpr_iterated_squares_desc_v
+///
+/// An instance of constexpr_iterated_squares_desc of max size with the given
+/// base.
+template <typename Base>
+FOLLY_INLINE_VARIABLE constexpr auto constexpr_iterated_squares_desc_v =
+    constexpr_iterated_squares_desc<
+        typename Base::value_type,
+        constexpr_iterated_squares_desc_size_v<Base>>{Base::value};
+
+/// constexpr_iterated_squares_desc_2_v
+///
+/// An alias for constexpr_iterated_squares_desc_v with base 2, which is the
+/// most common base to use with iterated-squares.
+template <typename T>
+constexpr auto& constexpr_iterated_squares_desc_2_v =
+    constexpr_iterated_squares_desc_v<
+        floating_point_integral_constant<T, int, 2>>;
 
 // TLDR: Prefer using operator< for ordering. And when
 // a and b are equivalent objects, we return b to make

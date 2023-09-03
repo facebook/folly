@@ -21,11 +21,196 @@
 #include <type_traits>
 
 #include <folly/lang/Bits.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 namespace {
 class ConstexprMathTest : public testing::Test {};
 } // namespace
+
+TEST_F(ConstexprMathTest, constexpr_iterated_squares_desc_scaling_array) {
+  using lim = std::numeric_limits<float>;
+  constexpr auto& isq = folly::constexpr_iterated_squares_desc_2_v<float>;
+
+  auto get = [](auto const& arr, auto fun) {
+    constexpr auto size = sizeof(arr) / sizeof(arr[0]);
+    using res_t = decltype(fun(arr[0]));
+    std::array<res_t, size> res{};
+    for (size_t i = 0; i < size; ++i) {
+      res[i] = fun(arr[i]);
+    }
+    return res;
+  };
+
+  EXPECT_EQ(7, isq.size);
+  auto apowers = get(isq.scaling, [](auto _) { return _.power; });
+  constexpr size_t epowers[] = {
+      64, 32, 16, 8, 4, 2, 1, //
+  };
+  EXPECT_THAT(apowers, testing::ElementsAreArray(epowers));
+  auto ascales = get(isq.scaling, [](auto _) { return _.scale; });
+  constexpr float escales[] = {
+      0x1p64, 0x1p32, 0x1p16, 0x1p8, 0x1p4, 0x1p2, 0x1p1, //
+  };
+  EXPECT_THAT(ascales, testing::ElementsAreArray(escales));
+  EXPECT_GT(isq.scaling[0].scale, lim::max() / isq.scaling[0].scale);
+}
+
+TEST_F(ConstexprMathTest, constexpr_iterated_squares_desc_shrink) {
+  using lim = std::numeric_limits<double>;
+  constexpr auto& isq = folly::constexpr_iterated_squares_desc_2_v<double>;
+
+  {
+    constexpr auto n = 1.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(0, a.power);
+    EXPECT_EQ(1., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 2.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(1, a.power);
+    EXPECT_EQ(2., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 4.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(2, a.power);
+    EXPECT_EQ(4., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 7.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 8.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 9.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(4, a.power);
+    EXPECT_EQ(16., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 513.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 1023.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = lim::max();
+    constexpr auto a = isq.shrink(n, 2.);
+    EXPECT_EQ(1023, a.power);
+    EXPECT_EQ(folly::constexpr_pow(2., 1023), a.scale);
+    EXPECT_LE(n / a.scale, 2.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_iterated_squares_desc_growth) {
+  using lim = std::numeric_limits<double>;
+  constexpr auto& isq = folly::constexpr_iterated_squares_desc_2_v<double>;
+
+  {
+    constexpr auto n = 1.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(0, a.power);
+    EXPECT_EQ(1., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 2.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(1, a.power);
+    EXPECT_EQ(2., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 4.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(2, a.power);
+    EXPECT_EQ(4., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 7.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 8.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 9.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(4, a.power);
+    EXPECT_EQ(16., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 513.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 1023.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = lim::min(); // NOLINT
+    constexpr auto a = isq.growth(n, .5);
+    EXPECT_EQ(1021, a.power);
+    EXPECT_EQ(folly::constexpr_pow(2., 1021), a.scale);
+    EXPECT_GE(n * a.scale, .5);
+    EXPECT_LT(n * a.scale, 1.);
+  }
+}
 
 TEST_F(ConstexprMathTest, constexpr_min) {
   constexpr auto x = uint16_t(3);
