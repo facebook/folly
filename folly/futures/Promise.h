@@ -265,8 +265,10 @@ class Promise {
   ///
   /// Please see `setException(exception_wrapper)` for semantics/contract.
   template <class E>
-  typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
-  setException(E const& e);
+  typename std::enable_if<
+      std::is_base_of<std::exception, typename std::decay<E>::type>::value>::
+      type
+      setException(E&& e);
 
   /// Sets a handler for the producer to receive a (logical) interruption
   ///   request (exception) sent from the consumer via `future.raise()`.

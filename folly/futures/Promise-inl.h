@@ -107,9 +107,11 @@ Future<T> Promise<T>::getFuture() {
 
 template <class T>
 template <class E>
-typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
-Promise<T>::setException(E const& e) {
-  setException(make_exception_wrapper<E>(e));
+typename std::enable_if<
+    std::is_base_of<std::exception, typename std::decay<E>::type>::value>::type
+Promise<T>::setException(E&& e) {
+  setException(
+      make_exception_wrapper<typename std::decay<E>::type>(std::forward<E>(e)));
 }
 
 template <class T>
