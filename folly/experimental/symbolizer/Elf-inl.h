@@ -92,9 +92,9 @@ const char* ElfFile::iterateStrings(const ElfShdr& stringTable, Fn fn) const
   return ptr != end ? ptr : nullptr;
 }
 
-template <typename E>
-const E* ElfFile::iterateSectionEntries(
-    const ElfShdr& section, std::function<bool(const E&)> fn) const
+template <typename E, class Fn>
+const E* ElfFile::iterateSectionEntries(const ElfShdr& section, Fn&& fn) const
+
     noexcept(is_nothrow_invocable_v<E const&>) {
   FOLLY_SAFE_CHECK(
       section.sh_entsize == sizeof(E), "invalid entry size in table");

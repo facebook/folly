@@ -383,8 +383,8 @@ ElfFile::Symbol ElfFile::getDefinitionByAddress(
     uintptr_t address) const noexcept {
   Symbol foundSymbol{nullptr, nullptr};
 
-  auto findSection = [&](const ElfShdr& section) {
-    auto findSymbols = [&](const ElfSym& sym) {
+  auto findSection = [&, address](const ElfShdr& section) {
+    auto findSymbols = [&, address](const ElfSym& sym) {
       if (sym.st_shndx == SHN_UNDEF) {
         return false; // not a definition
       }
