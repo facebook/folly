@@ -152,7 +152,8 @@ class Promise {
   }
 
   /**
-   * Fulfills the promise with the result of func if not already fulfilled.
+   * Fulfills the promise with a value/Try returned from calling func if not
+   * already fulfilled.
    *
    * If either the call to func or the result's constructor completes with an
    * exception then the exception is caught and stored as the result.
@@ -166,18 +167,31 @@ class Promise {
       return false;
     }
     try {
-      if constexpr (std::is_constructible_v<T, invoke_result_t<Func>>) {
-        state_->result.emplace(std::forward<Func>(func)());
-      } else if constexpr (std::is_constructible_v<
-                               exception_wrapper,
-                               invoke_result_t<Func>>) {
-        state_->result.emplaceException(std::forward<Func>(func)());
-      } else if constexpr (std::
-                               is_assignable_v<Try<T>, invoke_result_t<Func>>) {
-        state_->result = std::forward<Func>(func)();
-      } else {
-        static_assert(always_false<Func>);
-      }
+      state_->result = Try<T>(std::forward<Func>(func)());
+    } catch (...) {
+      state_->result.emplaceException(std::current_exception());
+    }
+    state_->ready.post();
+    return true;
+  }
+
+  /**
+   * Fulfills the promise with an exception returned from calling func if not
+   * already fulfilled.
+   *
+   * If either the call to func or the result's constructor completes with an
+   * exception then the exception is caught and stored as the result.
+   *
+   * @returns Whether the fulfillment took place.
+   */
+  template <typename Func>
+  bool trySetExceptionWith(Func&& func) {
+    DCHECK(state_);
+    if (state_->fulfilled.exchange(true)) {
+      return false;
+    }
+    try {
+      state_->result.emplaceException(std::forward<Func>(func)());
     } catch (...) {
       state_->result.emplaceException(std::current_exception());
     }

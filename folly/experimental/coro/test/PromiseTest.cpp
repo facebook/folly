@@ -110,7 +110,7 @@ CO_TEST(PromiseTest, ImmediateException) {
 
 CO_TEST(PromiseTest, ImmediateWithException) {
   auto [promise, future] = coro::makePromiseContract<int>();
-  EXPECT_TRUE(promise.trySetWith(
+  EXPECT_TRUE(promise.trySetExceptionWith(
       []() { return exception_wrapper(std::runtime_error("")); }));
   auto res = co_await co_awaitTry(std::move(future));
   EXPECT_TRUE(res.hasException<std::runtime_error>());
@@ -118,14 +118,15 @@ CO_TEST(PromiseTest, ImmediateWithException) {
 
 CO_TEST(PromiseTest, ImmediateWithExceptionImplicit) {
   auto [promise, future] = coro::makePromiseContract<int>();
-  EXPECT_TRUE(promise.trySetWith([]() { return std::runtime_error(""); }));
+  EXPECT_TRUE(
+      promise.trySetExceptionWith([]() { return std::runtime_error(""); }));
   auto res = co_await co_awaitTry(std::move(future));
   EXPECT_TRUE(res.hasException<std::runtime_error>());
 }
 
 CO_TEST(PromiseTest, ImmediateWithExceptionThrows) {
   auto [promise, future] = coro::makePromiseContract<int>();
-  EXPECT_TRUE(promise.trySetWith(
+  EXPECT_TRUE(promise.trySetExceptionWith(
       []() -> exception_wrapper { throw std::runtime_error(""); }));
   auto res = co_await co_awaitTry(std::move(future));
   EXPECT_TRUE(res.hasException<std::runtime_error>());
@@ -139,7 +140,8 @@ CO_TEST(PromiseTest, ImmediateExceptionVoid) {
 
 CO_TEST(PromiseTest, ImmediateWithExceptionVoid) {
   auto [promise, future] = coro::makePromiseContract<void>();
-  EXPECT_TRUE(promise.trySetWith([]() { return std::runtime_error(""); }));
+  EXPECT_TRUE(
+      promise.trySetExceptionWith([]() { return std::runtime_error(""); }));
   EXPECT_THROW(co_await std::move(future), std::runtime_error);
 }
 
