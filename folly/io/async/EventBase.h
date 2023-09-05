@@ -738,6 +738,12 @@ class EventBase : public TimeoutManager,
 
   size_t getNotificationQueueSize() const;
 
+  /**
+   * Returns the number of loop callbacks pending execution. If this is
+   * non-zero, loopOnce() is guaranteed to run the callbacks without blocking.
+   */
+  size_t getNumLoopCallbacks() const;
+
   void setMaxReadAtOnce(uint32_t maxAtOnce);
 
   /**

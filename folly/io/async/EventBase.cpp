@@ -263,6 +263,11 @@ size_t EventBase::getNotificationQueueSize() const {
   return queue_->size();
 }
 
+size_t EventBase::getNumLoopCallbacks() const {
+  dcheckIsInEventBaseThread();
+  return loopCallbacks_.size();
+}
+
 void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
   queue_->setMaxReadAtOnce(maxAtOnce);
 }
@@ -421,6 +426,18 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       res = evb_->eb_event_base_loop(EVLOOP_ONCE | EVLOOP_NONBLOCK);
     }
 
+    // libevent may return 1 early if there are no registered non-internal
+    // events, so even if the queue is not empty it may not be processed, thus
+    // we check that explicitly.
+    //
+    // Note that the queue was either not consumed, or it will be re-armed by a
+    // loop callback scheduled by execute(), so if there is an enqueue after the
+    // empty check here the queue's event will eventually be active.
+    if (res != 0 && !queue_->empty()) {
+      ExecutionObserverScopeGuard guard(&executionObserverList_, queue_.get());
+      queue_->execute();
+    }
+
     ranLoopCallbacks = runLoopCallbacks();
 
     if (enableTimeMeasurement_) {
@@ -471,30 +488,16 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       VLOG(11) << "EventBase " << this << " did not timeout";
     }
 
-    // Event loop indicated that there were no more events (NotificationQueue
-    // was registered as an internal event and there were no other registered
-    // events).
-    if (res != 0) {
-      // Since Notification Queue is marked 'internal' some events may not have
-      // run.  Run them manually if so, and continue looping.
-      //
-      if (!queue_->empty()) {
-        ExecutionObserverScopeGuard guard(
-            &executionObserverList_, queue_.get());
-        queue_->execute();
-      } else if (!ranLoopCallbacks) {
-        // If there were no more events and we also didn't have any loop
-        // callbacks to run, there is nothing left to do.
-        break;
-      }
-    }
-
     if (enableTimeMeasurement_) {
       VLOG(11) << "EventBase " << this
                << " loop time: " << getTimeDelta(&prev).count();
     }
 
-    if (once) {
+    if (once ||
+        // Event loop indicated that there were are no more registered events
+        // (except queue_ which is an internal event) and we didn't have any
+        // loop callbacks to run, so there is nothing left to do.
+        (res != 0 && !ranLoopCallbacks)) {
       break;
     }
   }

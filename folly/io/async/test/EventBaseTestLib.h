@@ -2588,6 +2588,17 @@ TYPED_TEST_P(EventBaseTest, EventBaseObserver) {
   ASSERT_EQ(1, observer2->getNumTimesCalled());
 }
 
+TYPED_TEST_P(EventBaseTest, LoopRearmsNotificationQueue) {
+  auto evbPtr = getEventBase<TypeParam>();
+  std::atomic<size_t> n = 0;
+  evbPtr->runInEventBaseThread([&]() { n = 1; });
+  evbPtr->loopOnce();
+  EXPECT_EQ(n.load(), 1);
+  // The notification queue is rearmed through a loop callback, ensure that the
+  // loop executes it.
+  EXPECT_EQ(evbPtr->getNumLoopCallbacks(), 0);
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest,
     ReadEvent,
@@ -2646,7 +2657,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     LoopKeepAliveShutdown,
     LoopKeepAliveAtomic,
     LoopKeepAliveCast,
-    EventBaseObserver);
+    EventBaseObserver,
+    LoopRearmsNotificationQueue);
 
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,
