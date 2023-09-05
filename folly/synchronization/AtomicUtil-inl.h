@@ -228,59 +228,59 @@ inline bool atomic_fetch_flip_native(
 
 #else
 
-#define FOLLY_DETAIL_ATOMIC_BIT_OP_DEFINE(instr)                          \
-  struct atomic_fetch_bit_op_native_##instr##_fn {                        \
-    template <typename Int>                                               \
-    FOLLY_ERASE bool operator()(                                          \
-        Int* ptr, Int bit, std::memory_order order) const {               \
-      bool out = false;                                                   \
-      if (order == std::memory_order_relaxed) {                           \
-        if (sizeof(Int) == 2) {                                           \
-          asm("lock " #instr "w %2, %1"                                   \
-              : "=@ccc"(out), "+m"(*ptr)                                  \
-              : "ri"(bit));                                               \
-        }                                                                 \
-        if (sizeof(Int) == 4) {                                           \
-          asm("lock " #instr "l %2, %1"                                   \
-              : "=@ccc"(out), "+m"(*ptr)                                  \
-              : "ri"(bit));                                               \
-        }                                                                 \
-        if (sizeof(Int) == 8) {                                           \
-          asm("lock " #instr "q %2, %1"                                   \
-              : "=@ccc"(out), "+m"(*ptr)                                  \
-              : "ri"(bit));                                               \
-        }                                                                 \
-      } else {                                                            \
-        if (sizeof(Int) == 2) {                                           \
-          asm volatile("lock " #instr "w %1, (%2)"                        \
-                       : "=@ccc"(out)                                     \
-                       : "ri"(bit), "r"(ptr)                              \
-                       : "memory");                                       \
-        }                                                                 \
-        if (sizeof(Int) == 4) {                                           \
-          asm volatile("lock " #instr "l %1, (%2)"                        \
-                       : "=@ccc"(out)                                     \
-                       : "ri"(bit), "r"(ptr)                              \
-                       : "memory");                                       \
-        }                                                                 \
-        if (sizeof(Int) == 8) {                                           \
-          asm volatile("lock " #instr "q %1, (%2)"                        \
-                       : "=@ccc"(out)                                     \
-                       : "ri"(bit), "r"(ptr)                              \
-                       : "memory");                                       \
-        }                                                                 \
-      }                                                                   \
-      return out;                                                         \
-    }                                                                     \
-  };                                                                      \
-  FOLLY_INLINE_VARIABLE constexpr atomic_fetch_bit_op_native_##instr##_fn \
-      atomic_fetch_bit_op_native_##instr
+enum class atomic_fetch_bit_op_native_instr_mnem { bts, btr, btc };
+enum class atomic_fetch_bit_op_native_instr_suff { w, l, q };
 
-FOLLY_DETAIL_ATOMIC_BIT_OP_DEFINE(bts);
-FOLLY_DETAIL_ATOMIC_BIT_OP_DEFINE(btr);
-FOLLY_DETAIL_ATOMIC_BIT_OP_DEFINE(btc);
+#define FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(mnem, suff)                            \
+  if FOLLY_CXX17_CONSTEXPR (                                                  \
+      Instr == mnem_t::mnem && sizeof(Int) == 1 << (int(suff_t::suff) + 1)) { \
+    if (order == ::std::memory_order_relaxed) {                               \
+      asm("lock " #mnem #suff " %[bit], %[ptr]"                               \
+          : "=@ccc"(out), [ptr] "+m"(*ptr)                                    \
+          : [bit] "ri"(bit));                                                 \
+    } else {                                                                  \
+      asm volatile("lock " #mnem #suff " %[bit], (%[ptr])"                    \
+                   : "=@ccc"(out)                                             \
+                   : [bit] "ri"(bit), [ptr] "r"(ptr)                          \
+                   : "memory");                                               \
+    }                                                                         \
+  }
 
-#undef FOLLY_DETAIL_ATOMIC_BIT_OP_DEFINE
+template <atomic_fetch_bit_op_native_instr_mnem Instr>
+struct atomic_fetch_bit_op_native_do_instr_fn {
+  template <typename Int>
+  FOLLY_ERASE bool operator()(
+      Int* ptr, Int bit, std::memory_order order) const {
+    using mnem_t = atomic_fetch_bit_op_native_instr_mnem;
+    using suff_t = atomic_fetch_bit_op_native_instr_suff;
+    bool out = false;
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(bts, w)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(bts, l)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(bts, q)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(btr, w)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(btr, l)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(btr, q)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(btc, w)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(btc, l)
+    FOLLY_DETAIL_ATOMIC_BIT_OP_ONE(btc, q)
+    return out;
+  }
+};
+template <atomic_fetch_bit_op_native_instr_mnem Instr>
+FOLLY_INLINE_VARIABLE constexpr atomic_fetch_bit_op_native_do_instr_fn<Instr>
+    atomic_fetch_bit_op_native_do_instr{};
+
+static constexpr auto& atomic_fetch_bit_op_native_bts =
+    atomic_fetch_bit_op_native_do_instr<
+        atomic_fetch_bit_op_native_instr_mnem::bts>;
+static constexpr auto& atomic_fetch_bit_op_native_btr =
+    atomic_fetch_bit_op_native_do_instr<
+        atomic_fetch_bit_op_native_instr_mnem::btr>;
+static constexpr auto& atomic_fetch_bit_op_native_btc =
+    atomic_fetch_bit_op_native_do_instr<
+        atomic_fetch_bit_op_native_instr_mnem::btc>;
+
+#undef FOLLY_DETAIL_ATOMIC_BIT_OP_ONE
 
 template <typename Integer, typename Op, typename Fb>
 FOLLY_ERASE bool atomic_fetch_bit_op_native_(
