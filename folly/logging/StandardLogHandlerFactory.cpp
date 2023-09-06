@@ -87,7 +87,7 @@ class CustomLogFormatterFactory
 
   std::shared_ptr<LogFormatter> createFormatter(
       const std::shared_ptr<LogWriter>& logWriter) override {
-    bool colored;
+    bool colored = false;
     switch (colored_) {
       case ALWAYS:
         colored = true;
