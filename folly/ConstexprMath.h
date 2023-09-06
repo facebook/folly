@@ -355,6 +355,61 @@ constexpr T constexpr_log2_ceil(T t) {
   return detail::constexpr_log2_ceil_(constexpr_log2(t), t);
 }
 
+/// constexpr_trunc
+///
+/// mimic: std::trunc (C++23)
+template <typename T>
+constexpr T constexpr_trunc(T const t) {
+  using lim = std::numeric_limits<T>;
+  using int_type = std::uintmax_t;
+  using int_lim = std::numeric_limits<int_type>;
+  static_assert(lim::radix == 2, "non-binary radix");
+  static_assert(lim::digits <= int_lim::digits, "overwide mantissa");
+  constexpr auto bound = static_cast<T>(std::uintmax_t(1) << (lim::digits - 1));
+  constexpr auto is_fp = std::is_floating_point<T>::value;
+  auto const neg = !constexpr_isnan(t) && t < T(0);
+  auto const s = neg ? -t : t;
+  if (!is_fp || constexpr_isnan(t) || t == T(0) || !(s < bound)) {
+    return t;
+  }
+  if (s < T(1)) {
+    return neg ? -T(0) : T(0);
+  }
+  auto const r = static_cast<T>(static_cast<int_type>(s));
+  return neg ? -r : r;
+}
+
+/// constexpr_round
+///
+/// mimic: std::round (C++23)
+template <typename T>
+constexpr T constexpr_round(T const t) {
+  constexpr auto half = T(1) / T(2);
+  auto const same = constexpr_isnan(t) || t == T(0);
+  return same ? t : constexpr_trunc(t < T(0) ? t - half : t + half);
+}
+
+/// constexpr_floor
+///
+/// mimic: std::floor (C++23)
+template <typename T>
+constexpr T constexpr_floor(T const t) {
+  auto const s = constexpr_trunc(t);
+  return t < s ? s - T(1) : s;
+}
+
+/// constexpr_ceil
+///
+/// mimic: std::ceil (C++23)
+template <typename T>
+constexpr T constexpr_ceil(T const t) {
+  auto const s = constexpr_trunc(t);
+  return s < t ? s + T(1) : s;
+}
+
+/// constexpr_ceil
+///
+/// The least integer at least t that round divides.
 template <typename T>
 constexpr T constexpr_ceil(T t, T round) {
   return round == T(0)
