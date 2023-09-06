@@ -86,8 +86,7 @@ namespace std {
 template <>
 struct hash<folly::Uri> {
   std::size_t operator()(const folly::Uri& k) const {
-    return std::hash<folly::uri_detail::UriTuple>{}(
-        folly::uri_detail::as_tuple(k));
+    return folly::compute_std_tuple_hash(folly::uri_detail::as_tuple(k));
   }
 };
 

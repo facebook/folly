@@ -15,6 +15,7 @@
  */
 
 #include <folly/fibers/FiberManagerInternal.h>
+#include <folly/hash/Hash.h>
 
 #include <csignal>
 
@@ -38,7 +39,7 @@ namespace std {
 template <>
 struct hash<folly::fibers::FiberManager::Options> {
   ssize_t operator()(const folly::fibers::FiberManager::Options& opts) const {
-    return hash<decltype(opts.hash())>()(opts.hash());
+    return folly::compute_std_tuple_hash(opts.hash());
   }
 };
 } // namespace std

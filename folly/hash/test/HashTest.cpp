@@ -768,26 +768,26 @@ static_assert(
 // these come from folly/hash/Hash.h
 static_assert(
     folly::IsAvalanchingHasher<
-        std::hash<std::pair<int, int>>,
+        folly::std_pair_hash<int, int>,
         std::pair<int, int>>::value,
     "");
 static_assert(
-    !folly::IsAvalanchingHasher<std::hash<std::tuple<int>>, std::tuple<int>>::
+    !folly::IsAvalanchingHasher<folly::std_tuple_hash<int>, std::tuple<int>>::
         value,
     "");
 static_assert(
     folly::IsAvalanchingHasher<
-        std::hash<std::tuple<std::string>>,
+        folly::std_tuple_hash<std::string>,
         std::tuple<std::string>>::value,
     "");
 static_assert(
     folly::IsAvalanchingHasher<
-        std::hash<std::tuple<int, int>>,
+        folly::std_tuple_hash<int, int>,
         std::tuple<int, int>>::value,
     "");
 static_assert(
     folly::IsAvalanchingHasher<
-        std::hash<std::tuple<int, int, int>>,
+        folly::std_tuple_hash<int, int, int>,
         std::tuple<int, int, int>>::value,
     "");
 
@@ -957,12 +957,12 @@ void verifyAvalanching(T initialValue, F const& advance) {
 } // namespace
 
 TEST(Traits, stdHashPairAvalances) {
-  verifyAvalanching<std::hash<std::pair<int, int>>>(
+  verifyAvalanching<folly::std_pair_hash<int, int>>(
       std::make_pair(0, 0), [](std::pair<int, int>& v) { v.first++; });
 }
 
 TEST(Traits, stdHashTuple2Avalances) {
-  verifyAvalanching<std::hash<std::tuple<int, int>>>(
+  verifyAvalanching<folly::std_tuple_hash<int, int>>(
       std::make_tuple(0, 0),
       [](std::tuple<int, int>& v) { std::get<0>(v) += 1; });
 }

@@ -15,6 +15,7 @@
  */
 
 #include <folly/fibers/GuardPageAllocator.h>
+#include <folly/hash/Hash.h>
 
 #ifndef _WIN32
 #include <dlfcn.h>
@@ -186,10 +187,11 @@ class StackCache {
   /**
    * For each [b, e) range in this set, the bytes in the range were mprotected.
    */
-  static folly::Synchronized<std::unordered_set<std::pair<intptr_t, intptr_t>>>&
+  static folly::Synchronized<
+      std::unordered_set<std::pair<intptr_t, intptr_t>, folly::std_pair_hash>>&
   protectedRanges() {
     static auto instance = new folly::Synchronized<
-        std::unordered_set<std::pair<intptr_t, intptr_t>>>();
+        std::unordered_set<std::pair<intptr_t, intptr_t>, folly::std_pair_hash>>();
     return *instance;
   }
 };
