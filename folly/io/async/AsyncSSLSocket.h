@@ -205,6 +205,7 @@ class AsyncSSLSocket : public AsyncSocket {
     std::shared_ptr<CertificateIdentityVerifier> verifier;
     bool deferSecurityNegotiation{};
     bool isServer{};
+    std::string serverName;
   };
 
   /**

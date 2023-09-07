@@ -201,7 +201,8 @@ AsyncSSLSocket::AsyncSSLSocket(
       ctx_{std::move(ctx)},
       certificateIdentityVerifier_{std::move(options.verifier)},
       handshakeTimeout_{this, evb},
-      connectionTimeout_{this, evb} {
+      connectionTimeout_{this, evb},
+      tlsextHostname_{std::move(options.serverName)} {
   init();
   if (options.isServer) {
     SSL_CTX_set_info_callback(
@@ -221,7 +222,8 @@ AsyncSSLSocket::AsyncSSLSocket(
       ctx_{std::move(ctx)},
       certificateIdentityVerifier_{std::move(options.verifier)},
       handshakeTimeout_{this, AsyncSocket::getEventBase()},
-      connectionTimeout_{this, AsyncSocket::getEventBase()} {
+      connectionTimeout_{this, AsyncSocket::getEventBase()},
+      tlsextHostname_{std::move(options.serverName)} {
   noTransparentTls_ = true;
   init();
   if (options.isServer) {
