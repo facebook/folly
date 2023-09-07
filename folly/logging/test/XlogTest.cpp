@@ -479,6 +479,7 @@ TEST_F(XlogTest, rateLimiting) {
     // Conditional logging
     bool shouldLog = n && (n % 2 == 0);
     XLOG_EVERY_MS_IF(DBG1, shouldLog, 100, "int arg conditional ", n);
+    XLOGF_EVERY_MS_IF(DBG1, shouldLog, 100, "int fmt arg conditional {}", n);
     XLOG_EVERY_MS_OR(DBG1, shouldLog, 100, "int arg conditional or ", n);
 
     // Sleep for 100ms between iterations 5 and 6
@@ -505,6 +506,7 @@ TEST_F(XlogTest, rateLimiting) {
           "3x s arg 1",
           "3x s arg 2",
           "int arg conditional 2",
+          "int fmt arg conditional 2",
           "int arg conditional or 2",
           "int arg conditional or 4",
           "int arg 6",
@@ -516,6 +518,7 @@ TEST_F(XlogTest, rateLimiting) {
           "2x int arg 6",
           "1x ms arg 6",
           "int arg conditional 6",
+          "int fmt arg conditional 6",
           "int arg conditional or 6",
           "2x int arg 7",
           "int arg conditional or 7",

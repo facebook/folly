@@ -174,21 +174,31 @@ static_assert(
 
 /**
  * Similar to XLOGF(...) except only log a message every @param ms
+ * milliseconds and if the specified condition predicate evaluates to true.
+ *
+ * Note that this is threadsafe.
+ */
+#define XLOGF_EVERY_MS_IF(level, cond, ms, fmt, ...)                         \
+  XLOGF_IF(                                                                  \
+      level,                                                                 \
+      (cond) &&                                                              \
+          [__folly_detail_xlog_ms = ms] {                                    \
+            static ::folly::logging::IntervalRateLimiter                     \
+                folly_detail_xlog_limiter(                                   \
+                    1, ::std::chrono::milliseconds(__folly_detail_xlog_ms)); \
+            return folly_detail_xlog_limiter.check();                        \
+          }(),                                                               \
+      fmt,                                                                   \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOGF(...) except only log a message every @param ms
  * milliseconds.
  *
  * Note that this is threadsafe.
  */
-#define XLOGF_EVERY_MS(level, ms, fmt, ...)                              \
-  XLOGF_IF(                                                              \
-      level,                                                             \
-      [__folly_detail_xlog_ms = ms] {                                    \
-        static ::folly::logging::IntervalRateLimiter                     \
-            folly_detail_xlog_limiter(                                   \
-                1, ::std::chrono::milliseconds(__folly_detail_xlog_ms)); \
-        return folly_detail_xlog_limiter.check();                        \
-      }(),                                                               \
-      fmt,                                                               \
-      ##__VA_ARGS__)
+#define XLOGF_EVERY_MS(level, ms, fmt, ...) \
+  XLOGF_EVERY_MS_IF(level, true, ms, fmt, ##__VA_ARGS__)
 
 namespace folly {
 namespace detail {
