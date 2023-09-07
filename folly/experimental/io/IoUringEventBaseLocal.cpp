@@ -19,7 +19,7 @@
 #include <folly/experimental/io/IoUringEventBaseLocal.h>
 #include <folly/io/async/EventBaseLocal.h>
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 
 namespace folly {
 

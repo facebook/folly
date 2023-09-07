@@ -25,6 +25,7 @@
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/experimental/io/IoUringBase.h>
+#include <folly/experimental/io/Liburing.h>
 #include <folly/futures/Future.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufIovecBuilder.h>
@@ -49,7 +50,7 @@ class AsyncDetachFdCallback {
   virtual void fdDetachFail(const AsyncSocketException& ex) noexcept = 0;
 };
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 class IoUringBackend;
 
 class AsyncIoUringSocket : public AsyncSocketTransport {

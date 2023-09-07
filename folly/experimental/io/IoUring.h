@@ -18,10 +18,11 @@
 
 #include <folly/SharedMutex.h>
 #include <folly/experimental/io/AsyncBase.h>
+#include <folly/experimental/io/Liburing.h>
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 
-#include <liburing.h>
+#include <liburing.h> // @manual
 
 namespace folly {
 
