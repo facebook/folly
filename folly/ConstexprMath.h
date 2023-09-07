@@ -451,23 +451,13 @@ constexpr T constexpr_mult(T const a, T const b) {
   return a * b;
 }
 
-/// constexpr_pow
-///
-/// Calculates the value of base raised to the exponent exp.
-///
-/// Supports only integral exponents.
-///
-/// mimic: std::pow (C++26)
-template <
-    typename T,
-    typename E,
-    std::enable_if_t<
-        std::is_integral<E>::value && !std::is_same<E, bool>::value,
-        int> = 0>
-constexpr T constexpr_pow(T const base, E const exp) {
+namespace detail {
+
+template <typename T, typename E>
+constexpr T constexpr_ipow(T const base, E const exp) {
   if (std::is_floating_point<T>::value) {
     if (exp < E(0)) {
-      return T(1) / constexpr_pow(base, -exp);
+      return T(1) / constexpr_ipow(base, -exp);
     }
     if (exp == E(0)) {
       return T(1);
@@ -483,9 +473,220 @@ constexpr T constexpr_pow(T const base, E const exp) {
   if (exp == E(1)) {
     return base;
   }
-  auto const div = constexpr_pow(base, exp / E(2));
-  auto const rem = exp % E(2) == E(0) ? T(1) : base;
+  auto const hexp = constexpr_trunc(exp / E(2));
+  auto const div = constexpr_ipow(base, hexp);
+  auto const rem = hexp * E(2) == exp ? T(1) : base;
   return constexpr_mult(constexpr_mult(div, div), rem);
+}
+
+} // namespace detail
+
+/// constexpr_exp
+///
+/// Calculates an approximation of the mathematical function exp(num). Usable in
+/// constant evaluations. Like std::exp, which becomes constexpr in C++26.
+///
+/// The integer overload uses iterated squaring and multiplication. The
+/// floating-point overlaod naively evaluates the taylor series of exp(num)
+/// until approximate convergence.
+///
+/// mimic: std::exp (C++23, C++26)
+template <
+    typename T,
+    typename N,
+    std::enable_if_t<
+        std::is_floating_point<T>::value && std::is_integral<N>::value &&
+            !std::is_same<N, bool>::value,
+        int> = 0>
+constexpr T constexpr_exp(N const power) {
+  auto const npower = constexpr_abs(power);
+  auto const result = detail::constexpr_ipow(numbers::e_v<T>, npower);
+  return power < N(0) ? T(1) / result : result;
+}
+template <
+    typename N,
+    std::enable_if_t<
+        std::is_integral<N>::value && !std::is_same<N, bool>::value,
+        int> = 0>
+constexpr double constexpr_exp(N const power) {
+  return constexpr_exp<double>(power);
+}
+template <
+    typename T,
+    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+constexpr T constexpr_exp(T const power) {
+  using lim = std::numeric_limits<T>;
+
+  // edge cases
+  if (constexpr_isnan(power)) {
+    return power;
+  }
+  if (power == -lim::infinity()) {
+    return +T(0);
+  }
+  if (power == +lim::infinity()) {
+    return power;
+  }
+
+  // convergence works better with positive powers since signs do not alternate
+  auto const abspower = constexpr_abs(power);
+  // convergence must short-circuit when terms grow to floating-point infinity
+  auto const bound = T(1) < abspower ? lim::max() / abspower : lim::infinity();
+
+  // term #index = power * coeff
+  auto index = size_t(0);
+  auto term = T(1);
+  // result = sum of terms
+  auto result = T(1);
+  // sum the terms until ~convergence
+  while (!(constexpr_abs(term) < lim::epsilon())) {
+    if (bound < term) {
+      return power < T(0) ? T(0) : lim::infinity();
+    }
+    index += 1;
+    term = term * abspower / index;
+    result += term;
+  }
+  return power < T(0) ? T(1) / result : result;
+}
+
+/// constexpr_log
+///
+/// Calculates an approximation of the natural logarithm ln(num).
+///
+/// The implementation uses a quickly-converging, high-precision iterative
+/// technique as described in:
+///   https://en.wikipedia.org/wiki/Natural_logarithm#High_precision
+///
+/// The technique works best with numbers that are close enough to 1, so the
+/// implementation uses a quick shrink/growth technique as described in:
+///   https://en.wikipedia.org/wiki/Natural_logarithm#Efficient_computation
+template <
+    typename T,
+    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+constexpr T constexpr_log(T const num) {
+  using lim = std::numeric_limits<T>;
+  constexpr auto& isq = constexpr_iterated_squares_desc_2_v<T>;
+
+  // edge cases
+  if (constexpr_isnan(num)) {
+    return num;
+  }
+  if (num < T(0)) {
+    return lim::quiet_NaN();
+  }
+  if (num == T(0)) {
+    return -lim::infinity();
+  }
+  if (num == lim::infinity()) {
+    return num;
+  }
+
+  // compression
+  auto const shrink = isq.shrink(num, isq.base);
+  auto const growth = isq.growth(num, T(1));
+  auto const scaled = num * growth.scale / shrink.scale;
+  assert(scaled <= isq.base);
+  assert(scaled >= T(1));
+
+  auto sum = T(0);
+  auto delta = T(2);
+  while (constexpr_abs(delta) >= lim::epsilon()) {
+    auto expterm = constexpr_exp(sum);
+    delta = T(2) * (scaled - expterm) / (scaled + expterm);
+    sum += delta;
+  }
+  auto const ln2 = numbers::ln2_v<T>;
+  return sum - growth.power * ln2 + shrink.power * ln2;
+}
+
+/// constexpr_pow
+///
+/// Calculates an approximation of the value of base raised to the exponent exp.
+///
+/// The implementation uses iterated squaring and multiplication for the integer
+/// part of the exponent and uses the identity x^y = exp(y * log(x)) for the
+/// fractional part of the exponent.
+///
+/// Notes:
+/// * Forbids base of +0 or -0 with finite non-positive exponent: in part since
+///   the plausible infinite result would be sensitive to the sign of the zero;
+///   and in part since std::pow would be required or permitted to raise error
+///   div-by-zero.
+/// * Forbids finite negative base with finite non-integer exponent: in part
+///   since std::pow would be required to raise error invalid.
+///
+/// mimic: std::pow (C++26)
+template <
+    typename T,
+    typename E,
+    std::enable_if_t<
+        std::is_integral<E>::value && !std::is_same<E, bool>::value,
+        int> = 0>
+constexpr T constexpr_pow(T const base, E const exp) {
+  return detail::constexpr_ipow(base, exp);
+}
+template <
+    typename T,
+    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+constexpr T constexpr_pow(T const base, T const exp) {
+  using lim = std::numeric_limits<T>;
+
+  // edge cases
+  if (exp == T(0)) {
+    return T(1);
+  }
+  if (constexpr_isnan(base)) {
+    return base;
+  }
+  if (exp == lim::infinity() || exp == -lim::infinity()) {
+    auto const abase = constexpr_abs(base);
+    if (abase < T(1)) {
+      return exp == lim::infinity() ? T(0) : lim::infinity();
+    }
+    if (T(1) < abase) {
+      return exp == lim::infinity() ? lim::infinity() : T(0);
+    }
+    return T(1);
+  }
+  if (base == T(1)) {
+    return base;
+  }
+  if (constexpr_isnan(exp)) {
+    return exp;
+  }
+  assert(base != T(0) || exp > T(0)); // error div-by-zero
+  if (base == lim::infinity()) {
+    return exp < T(0) ? T(0) : lim::infinity();
+  }
+  if (base == -lim::infinity()) {
+    auto const oddi = //
+        exp == constexpr_trunc(exp) &&
+        exp != constexpr_trunc(exp / T(2)) * T(2);
+    return (oddi ? -T(1) : T(1)) * (exp < T(0) ? T(0) : lim::infinity());
+  }
+  if (base == T(0)) {
+    auto const oddi = //
+        exp == constexpr_trunc(exp) &&
+        exp != constexpr_trunc(exp / T(2)) * T(2);
+    return oddi ? base : T(0);
+  }
+  if (exp < T(0)) {
+    return T(1) / constexpr_pow(base, -exp);
+  }
+
+  // as an identity: x^y = exp(y * log(x)); but calculation is imprecise ... so,
+  // for better precision, split the calculation into its integral-power and its
+  // fractional-power components
+  // as a cost, the complexity of constexpr_ipow here is logarithmic in y, i.e.,
+  // linear in the logarithm of y, which can be prohibitive
+  auto const exp_trunc = constexpr_trunc(exp);
+  assert(T(0) < base || exp == exp_trunc); // error invalid
+  auto const exp_fract = exp - exp_trunc;
+  auto const anyi = exp_fract == T(0);
+  return constexpr_mult(
+      detail::constexpr_ipow(base, exp_trunc),
+      anyi ? T(1) : constexpr_exp(exp_fract * constexpr_log(base)));
 }
 
 /// constexpr_find_last_set
