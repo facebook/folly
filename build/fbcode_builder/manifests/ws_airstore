@@ -21,7 +21,6 @@ googletest
 libsodium
 libevent
 double-conversion
-proxygen
 wangle
 zstd
 zlib
@@ -29,6 +28,5 @@ xz
 
 [shipit.pathmap]
 fbcode/warm_storage/experimental/ws_airstore = .
-fbcode/proxygen/lib/utils = proxygen/lib/utils
 
 [shipit.strip]
