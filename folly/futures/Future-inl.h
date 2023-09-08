@@ -46,6 +46,8 @@ typedef folly::fibers::Baton FutureBatonType;
 } // namespace futures
 
 namespace detail {
+// For access to the singleton in tests.
+struct TimekeeperSingletonTag {};
 std::shared_ptr<Timekeeper> getTimekeeperSingleton();
 } // namespace detail
 

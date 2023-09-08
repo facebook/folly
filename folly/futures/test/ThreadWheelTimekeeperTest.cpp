@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/ThreadWheelTimekeeperHighRes.h>
+#include <folly/futures/ThreadWheelTimekeeper.h>
 #include <folly/futures/test/TimekeeperTestLib.h>
 
 namespace folly {
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    ThreadWheelTimekeeperHighResTest,
-    TimekeeperTest,
-    ThreadWheelTimekeeperHighRes);
+    ThreadWheelTimekeeperTest, TimekeeperTest, ThreadWheelTimekeeper);
+
+TEST(TimekeeperSingletonTest, ExpectedType) {
+  // This is just to check that the un-mocked default timekeeper singleton
+  // implementation is covered by some instantiation of the test suite. If the
+  // default implementation is changed this test should be moved accordingly.
+  ASSERT_TRUE(
+      dynamic_cast<ThreadWheelTimekeeper*>(
+          detail::getTimekeeperSingleton().get()) != nullptr);
+}
 
 } // namespace folly

@@ -17,6 +17,7 @@
 #include <folly/futures/Future.h>
 
 #include <folly/Likely.h>
+#include <folly/Singleton.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
 
 namespace folly {
@@ -76,6 +77,20 @@ SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton) {
 }
 
 } // namespace futures
+
+namespace detail {
+
+namespace {
+Singleton<Timekeeper, TimekeeperSingletonTag> gTimekeeperSingleton([] {
+  return new ThreadWheelTimekeeper;
+});
+} // namespace
+
+std::shared_ptr<Timekeeper> getTimekeeperSingleton() {
+  return gTimekeeperSingleton.try_get();
+}
+
+} // namespace detail
 
 #if FOLLY_USE_EXTERN_FUTURE_UNIT
 namespace futures {
