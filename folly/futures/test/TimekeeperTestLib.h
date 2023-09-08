@@ -16,9 +16,18 @@
 
 #pragma once
 
+#include <thread>
+#include <vector>
+
+#include <fmt/format.h>
+#include <glog/logging.h>
 #include <folly/DefaultKeepAliveExecutor.h>
+#include <folly/Random.h>
 #include <folly/Singleton.h>
+#include <folly/VirtualExecutor.h>
+#include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/executors/SerialExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 
@@ -423,6 +432,159 @@ TYPED_TEST_P(TimekeeperTest, Destruction) {
   EXPECT_TRUE(f.hasException());
 }
 
+namespace {
+
+template <class Tk>
+void stressTest(
+    std::chrono::microseconds duration, std::chrono::microseconds period) {
+  using usec = std::chrono::microseconds;
+
+  folly::Optional<Tk> tk{in_place};
+  std::vector<std::thread> workers;
+
+  // Run continuations on a serial executor so we don't need synchronization to
+  // modify shared state.
+  folly::Optional<VirtualExecutor> continuationsThread{
+      in_place, SerialExecutor::create(folly::getGlobalCPUExecutor())};
+  size_t numCompletions = 0;
+  usec sumDelay{0};
+  usec maxDelay{0};
+
+  // Wait for any lazy initialization in the timekeeper and executor.
+  tk->after(1ms).via(&*continuationsThread).then([](auto&&) {}).get();
+
+  static const auto jitter = [](usec avg) {
+    // Center around average.
+    return usec(folly::Random::rand64(2 * avg.count()));
+  };
+
+  static const auto jitterSleep = [](steady_clock::time_point& now, usec avg) {
+    now += jitter(avg);
+    if (now - steady_clock::now() < 10us) {
+      // Busy-sleep if yielding the CPU would take too long.
+      while (now > steady_clock::now()) {
+      }
+    } else {
+      /* sleep override */ std::this_thread::sleep_until(now);
+    }
+  };
+
+  for (size_t i = 0; i < 8; ++i) {
+    workers.emplace_back([&] {
+      std::vector<Future<Unit>> futures;
+      for (auto start = steady_clock::now(), now = start;
+           now < start + duration;
+           jitterSleep(now, period)) {
+        // Use the test duration as rough range for the timeouts.
+        auto dur = jitter(duration);
+        auto expected = steady_clock::now() + dur;
+        futures.push_back(
+            tk->after(dur)
+                .toUnsafeFuture()
+                .thenValue([](auto&&) { return steady_clock::now(); })
+                .via(&*continuationsThread)
+                .thenValue([&, expected](auto fired) {
+                  auto delay =
+                      std::chrono::duration_cast<usec>(fired - expected);
+                  // TODO(ott): HHWheelTimer-based timekeepers round down the
+                  // timeout, so they may fire early, for now ignore this.
+                  if (delay < 0us && delay > -1ms) {
+                    delay = 0us;
+                  }
+                  ASSERT_GE(delay.count(), 0);
+                  ++numCompletions;
+                  sumDelay += delay;
+                  maxDelay = std::max(maxDelay, delay);
+                }));
+      }
+
+      for (auto& f : futures) {
+        // While at it, check that canceling the future after it has been
+        // fulfilled has no effect. To do so, we wait non-destructively.
+        while (!f.isReady()) {
+          /* sleep override */ std::this_thread::sleep_for(1ms);
+        }
+        f.cancel();
+        EXPECT_NO_THROW(std::move(f).get());
+      }
+    });
+  }
+
+  // Add a worker that cancels all its futures.
+  size_t numAttemptedCancellations = 0;
+  size_t numCancellations = 0;
+  workers.emplace_back([&] {
+    std::vector<SemiFuture<Unit>> futures;
+    for (auto start = steady_clock::now(), now = start; now < start + duration;
+         jitterSleep(now, 1ms)) {
+      // Pick a wide range of durations to exercise various positions in the
+      // sequence of timeouts.
+      auto dur = 5ms + jitter(5s);
+      futures.push_back(tk->after(dur));
+      // Cancel the future scheduled in the previous iteration.
+      if (futures.size() > 1) {
+        futures[futures.size() - 2].cancel();
+      }
+    }
+
+    futures.back().cancel();
+    numAttemptedCancellations = futures.size();
+
+    for (auto& f : futures) {
+      if (std::move(f).getTry().hasException<FutureCancellation>()) {
+        ++numCancellations;
+      }
+    }
+  });
+
+  // Add a few timeouts that will not survive the timekeeper.
+  std::vector<SemiFuture<Unit>> shutdownFutures;
+  for (size_t i = 0; i < 10; ++i) {
+    shutdownFutures.push_back(tk->after(10min));
+  }
+
+  for (auto& worker : workers) {
+    worker.join();
+  }
+
+  continuationsThread.reset(); // Wait for all continuations.
+  ASSERT_GT(numCompletions, 0);
+
+  // In principle the delay is unbounded (depending on the state of the system),
+  // so we cannot have any upper bound that is both meaningful and reliable, but
+  // we can log it to manually inspect the behavior.
+  LOG(INFO) << fmt::format(
+      "Successful completions: {}, avg delay: {} us, max delay: {} us ",
+      numCompletions,
+      sumDelay.count() / numCompletions,
+      maxDelay.count());
+
+  // Similarly, a cancellation may be processed only after the future has fired,
+  // but in normal conditions this should never happen.
+  LOG(INFO) << fmt::format(
+      "Attempted cancellations: {}, successful: {}",
+      numAttemptedCancellations,
+      numCancellations);
+
+  tk.reset();
+  for (auto& f : shutdownFutures) {
+    EXPECT_TRUE(std::move(f).getTry().hasException<FutureNoTimekeeper>());
+  }
+}
+
+} // namespace
+
+TYPED_TEST_P(TimekeeperTest, Stress) {
+  stressTest<TypeParam>(/* duration */ 1s, /* period */ 10ms);
+}
+
+TYPED_TEST_P(TimekeeperTest, StressHighContention) {
+  // Test that nothing breaks when scheduling a large number of timeouts
+  // concurrently. In this case the timekeeper thread will be overloaded, so the
+  // measured delays are going to be large.
+  stressTest<TypeParam>(/* duration */ 50ms, /* period */ 5us);
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
     TimekeeperTest,
     After,
@@ -456,6 +618,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     Executor,
     AtBeforeNow,
     HowToCastDuration,
-    Destruction);
+    Destruction,
+    Stress,
+    StressHighContention);
 
 } // namespace folly
