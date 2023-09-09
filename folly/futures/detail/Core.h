@@ -182,7 +182,7 @@ class InterruptHandler {
  public:
   virtual ~InterruptHandler();
 
-  virtual void handle(const folly::exception_wrapper& ew) const = 0;
+  virtual void handle(const folly::exception_wrapper& ew) = 0;
 
   void acquire();
   void release();
@@ -199,7 +199,7 @@ class InterruptHandlerImpl final : public InterruptHandler {
       noexcept(F(static_cast<R&&>(f))))
       : f_(static_cast<R&&>(f)) {}
 
-  void handle(const folly::exception_wrapper& ew) const override { f_(ew); }
+  void handle(const folly::exception_wrapper& ew) override { f_(ew); }
 
  private:
   F f_;
