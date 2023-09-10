@@ -22,4 +22,13 @@ namespace folly {
 INSTANTIATE_TYPED_TEST_SUITE_P(
     HeapTimekeeperTest, TimekeeperTest, HeapTimekeeper);
 
+TEST(TimekeeperSingletonTest, ExpectedType) {
+  // This is just to check that the un-mocked default timekeeper singleton
+  // Implementation is covered by some instantiation of the test suite. If the
+  // default implementation is changed this test should be moved accordingly.
+  ASSERT_TRUE(
+      dynamic_cast<HeapTimekeeper*>(detail::getTimekeeperSingleton().get()) !=
+      nullptr);
+}
+
 } // namespace folly

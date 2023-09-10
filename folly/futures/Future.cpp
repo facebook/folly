@@ -18,7 +18,14 @@
 
 #include <folly/Likely.h>
 #include <folly/Singleton.h>
+#include <folly/futures/HeapTimekeeper.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
+#include <folly/portability/GFlags.h>
+
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_futures_use_thread_wheel_timekeeper,
+    false,
+    "Use ThreadWheelTimekeeper for the default Future timekeeper singleton");
 
 namespace folly {
 namespace futures {
@@ -81,9 +88,14 @@ SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton) {
 namespace detail {
 
 namespace {
-Singleton<Timekeeper, TimekeeperSingletonTag> gTimekeeperSingleton([] {
-  return new ThreadWheelTimekeeper;
-});
+Singleton<Timekeeper, TimekeeperSingletonTag> gTimekeeperSingleton(
+    []() -> Timekeeper* {
+      if (FLAGS_folly_futures_use_thread_wheel_timekeeper) {
+        return new ThreadWheelTimekeeper;
+      } else {
+        return new HeapTimekeeper;
+      }
+    });
 } // namespace
 
 std::shared_ptr<Timekeeper> getTimekeeperSingleton() {
