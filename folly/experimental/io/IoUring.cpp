@@ -113,7 +113,8 @@ void toStream(std::ostream& os, const struct io_uring_sqe& sqe) {
 
 namespace folly {
 
-IoUringOp::IoUringOp(NotificationCallback cb) : AsyncBaseOp(std::move(cb)) {}
+IoUringOp::IoUringOp(NotificationCallback cb, Options options)
+    : AsyncBaseOp(std::move(cb)), options_(options) {}
 
 void IoUringOp::reset(NotificationCallback cb) {
   CHECK_NE(state_, State::PENDING);
@@ -128,49 +129,49 @@ void IoUringOp::pread(int fd, void* buf, size_t size, off_t start) {
   init();
   iov_[0].iov_base = buf;
   iov_[0].iov_len = size;
-  io_uring_prep_readv(&sqe_, fd, iov_, 1, start);
-  io_uring_sqe_set_data(&sqe_, this);
+  io_uring_prep_readv(&sqe_.sqe, fd, iov_, 1, start);
+  io_uring_sqe_set_data(&sqe_.sqe, this);
 }
 
 void IoUringOp::preadv(int fd, const iovec* iov, int iovcnt, off_t start) {
   init();
-  io_uring_prep_readv(&sqe_, fd, iov, iovcnt, start);
-  io_uring_sqe_set_data(&sqe_, this);
+  io_uring_prep_readv(&sqe_.sqe, fd, iov, iovcnt, start);
+  io_uring_sqe_set_data(&sqe_.sqe, this);
 }
 
 void IoUringOp::pread(
     int fd, void* buf, size_t size, off_t start, int buf_index) {
   init();
-  io_uring_prep_read_fixed(&sqe_, fd, buf, size, start, buf_index);
-  io_uring_sqe_set_data(&sqe_, this);
+  io_uring_prep_read_fixed(&sqe_.sqe, fd, buf, size, start, buf_index);
+  io_uring_sqe_set_data(&sqe_.sqe, this);
 }
 
 void IoUringOp::pwrite(int fd, const void* buf, size_t size, off_t start) {
   init();
   iov_[0].iov_base = const_cast<void*>(buf);
   iov_[0].iov_len = size;
-  io_uring_prep_writev(&sqe_, fd, iov_, 1, start);
-  io_uring_sqe_set_data(&sqe_, this);
+  io_uring_prep_writev(&sqe_.sqe, fd, iov_, 1, start);
+  io_uring_sqe_set_data(&sqe_.sqe, this);
 }
 
 void IoUringOp::pwritev(int fd, const iovec* iov, int iovcnt, off_t start) {
   init();
-  io_uring_prep_writev(&sqe_, fd, iov, iovcnt, start);
-  io_uring_sqe_set_data(&sqe_, this);
+  io_uring_prep_writev(&sqe_.sqe, fd, iov, iovcnt, start);
+  io_uring_sqe_set_data(&sqe_.sqe, this);
 }
 
 void IoUringOp::pwrite(
     int fd, const void* buf, size_t size, off_t start, int buf_index) {
   init();
-  io_uring_prep_write_fixed(&sqe_, fd, buf, size, start, buf_index);
-  io_uring_sqe_set_data(&sqe_, this);
+  io_uring_prep_write_fixed(&sqe_.sqe, fd, buf, size, start, buf_index);
+  io_uring_sqe_set_data(&sqe_.sqe, this);
 }
 
 void IoUringOp::toStream(std::ostream& os) const {
-  os << "{" << state_ << ", ";
+  os << "{" << state_ << ", [" << getSqeSize() << "], ";
 
   if (state_ != AsyncBaseOp::State::UNINITIALIZED) {
-    ::toStream(os, sqe_);
+    ::toStream(os, sqe_.sqe);
   }
 
   if (state_ == AsyncBaseOp::State::COMPLETED) {
@@ -189,11 +190,24 @@ std::ostream& operator<<(std::ostream& os, const IoUringOp& op) {
   return os;
 }
 
-IoUring::IoUring(size_t capacity, PollMode pollMode, size_t maxSubmit)
+IoUring::IoUring(
+    size_t capacity,
+    PollMode pollMode,
+    size_t maxSubmit,
+    IoUringOp::Options options)
     : AsyncBase(capacity, pollMode),
-      maxSubmit_((maxSubmit <= capacity) ? maxSubmit : capacity) {
+      maxSubmit_((maxSubmit <= capacity) ? maxSubmit : capacity),
+      options_(options) {
   ::memset(&ioRing_, 0, sizeof(ioRing_));
   ::memset(&params_, 0, sizeof(params_));
+
+  if (options_.sqe128) {
+    params_.flags |= IORING_SETUP_SQE128;
+  }
+
+  if (options.cqe32) {
+    params_.flags |= IORING_SETUP_CQE32;
+  }
 
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = roundUpToNextPowerOfTwo(capacity_);
@@ -259,13 +273,18 @@ int IoUring::submitOne(AsyncBase::Op* op) {
     return -1;
   }
 
+  // we require same options for both the IoUringOp and the IoUring instance
+  if (iop->getOptions() != getOptions()) {
+    return -1;
+  }
+
   SharedMutex::WriteHolder lk(submitMutex_);
   auto* sqe = io_uring_get_sqe(&ioRing_);
   if (!sqe) {
     return -1;
   }
 
-  *sqe = iop->getSqe();
+  ::memcpy(sqe, &iop->getSqe(), iop->getSqeSize());
 
   return io_uring_submit(&ioRing_);
 }
@@ -280,12 +299,16 @@ int IoUring::submitRange(Range<AsyncBase::Op**> ops) {
       continue;
     }
 
+    if (iop->getOptions() != getOptions()) {
+      continue;
+    }
+
     auto* sqe = io_uring_get_sqe(&ioRing_);
     if (!sqe) {
       break;
     }
 
-    *sqe = iop->getSqe();
+    ::memcpy(sqe, &iop->getSqe(), iop->getSqeSize());
     ++num;
     if (num % maxSubmit_ == 0 || (i + 1 == ops.size())) {
       auto ret = io_uring_submit(&ioRing_);
@@ -315,6 +338,7 @@ Range<AsyncBase::Op**> IoUring::doWait(
       Op* op = reinterpret_cast<Op*>(io_uring_cqe_get_data(cqe));
       CHECK(op);
       auto res = cqe->res;
+      op->setCqe(cqe);
       io_uring_cqe_seen(&ioRing_, cqe);
       decrementPending();
       switch (type) {
