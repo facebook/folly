@@ -156,7 +156,7 @@ class ThrottledLifoSem {
   friend class ThrottledLifoSemTestHelper;
 
   struct Waiter {
-    SaturatingSemaphore</* MayBlock */ true> wakeup;
+    SaturatingSemaphore<> wakeup;
     SafeIntrusiveListHook hook;
   };
 

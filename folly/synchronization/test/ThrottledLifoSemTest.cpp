@@ -161,7 +161,7 @@ TEST(ThrottledLifoSem, MPMCStress) {
 
   std::vector<std::thread> producers;
   std::vector<std::thread> consumers;
-  folly::SaturatingSemaphore</* MayBlock */ true> done;
+  folly::SaturatingSemaphore<> done;
   std::atomic<size_t> handoffs = 0;
   for (size_t t = 0; t < kNumThreads; ++t) {
     producers.emplace_back([&] {

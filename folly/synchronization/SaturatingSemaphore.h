@@ -98,7 +98,7 @@ namespace folly {
 ///
 /// Usage:
 /// @code
-/// SaturatingSemaphore</* MayBlock = */ true> f;
+/// SaturatingSemaphore<> f;
 /// ASSERT_FALSE(f.try_wait());
 /// ASSERT_FALSE(f.try_wait_until(
 ///     std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
@@ -117,7 +117,7 @@ namespace folly {
 /// ASSERT_FALSE(f.try_wait());
 /// @endcode
 
-template <bool MayBlock, template <typename> class Atom = std::atomic>
+template <bool MayBlock = true, template <typename> class Atom = std::atomic>
 class SaturatingSemaphore {
   detail::Futex<Atom> state_;
 

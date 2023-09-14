@@ -44,7 +44,7 @@ class HeapTimekeeper : public Timekeeper {
 
  private:
   using Clock = std::chrono::steady_clock;
-  using Semaphore = SaturatingSemaphore</* MayBlock */ true>;
+  using Semaphore = SaturatingSemaphore<>;
 
   static constexpr size_t kQueueBatchSize = 256;
   // Queue capacity is kept in this band to make sure that it is reallocated

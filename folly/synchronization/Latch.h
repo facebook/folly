@@ -154,7 +154,7 @@ class Latch {
   }
 
   std::atomic<int32_t> count_;
-  SaturatingSemaphore</* MayBlock = */ true> semaphore_;
+  SaturatingSemaphore<> semaphore_;
 };
 
 } // namespace folly

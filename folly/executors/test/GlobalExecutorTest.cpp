@@ -138,7 +138,7 @@ TEST(GlobalExecutorTest, GetGlobalCPUExecutorCounters) {
   const size_t numThreads = getGlobalCPUExecutorCounters().numThreads;
   const size_t numTasks = 1000 + numThreads;
   // Makes all tasks block until we're done.
-  folly::SaturatingSemaphore</* MayBlock */ true> block;
+  folly::SaturatingSemaphore<> block;
   // Ensures that the semaphore is alive until all tasks have run.
   folly::VirtualExecutor ex(getGlobalCPUExecutor());
   for (size_t i = 0; i < numTasks; ++i) {
