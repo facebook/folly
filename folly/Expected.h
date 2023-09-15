@@ -962,6 +962,27 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     this->assign(std::move(that));
   }
 
+  // Implicit then-chaining conversion: if `Expected<Value, Error>` can be
+  // constructed from `V`, then we can directly convert `Expected<V, E>` to
+  // `Expected<Value, Error>`.
+  //
+  // Specifically, this allows a user-defined conversions of `V` to
+  // `Expected<Value, Error>` to work as desired with range-based iteration
+  // over containers of `Expected<V, E>`.
+  template <
+      class V,
+      class E FOLLY_REQUIRES_TRAILING(
+          !std::is_same<Expected<V, E>, Expected>::value &&
+          !std::is_constructible<Value, V&&>::value &&
+          std::is_constructible<Expected<Value, Error>, V&&>::value &&
+          std::is_constructible<Error, E&&>::value)>
+  /* implicit */ Expected(Expected<V, E> that)
+      : Base{expected_detail::EmptyTag{}} {
+    this->assign(std::move(that).then([](V&& v) -> Expected<Value, Error> {
+      return Expected<Value, Error>{v};
+    }));
+  }
+
   FOLLY_REQUIRES(std::is_copy_constructible<Value>::value)
   constexpr /* implicit */ Expected(const Value& val) noexcept(
       noexcept(Value(val)))

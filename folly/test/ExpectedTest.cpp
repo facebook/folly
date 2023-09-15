@@ -974,4 +974,17 @@ TEST(Expected, TestUnique) {
       }));
 }
 
+struct ConvertibleNum {
+  /*implicit*/ operator Expected<int, E>() const { return num_; }
+  int num_;
+};
+
+TEST(Expected, TestChainedConversion) {
+  auto vs =
+      std::vector<Expected<ConvertibleNum, E>>{ConvertibleNum{.num_ = 137}};
+  for (Expected<int, E> v : vs) {
+    ASSERT_EQ(137, *v);
+  }
+}
+
 } // namespace folly
