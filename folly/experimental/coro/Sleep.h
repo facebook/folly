@@ -27,17 +27,14 @@ namespace coro {
 
 /// Return a task that, when awaited, will sleep for the specified duration.
 ///
-/// Throws folly::OperationCancelled if cancellation is requested
-/// on the awaiting coroutine's associated CancellationToken.
-///
-/// NOTE: The default tk has Duration resolution, supply
-/// ThreadWheelTimekeeperHighRes for maximum sleep resolution
+/// Throws folly::OperationCancelled if cancellation is requested on the
+/// awaiting coroutine's associated CancellationToken.
 Task<void> sleep(HighResDuration d, Timekeeper* tk = nullptr);
 
 /// Return a task that, when awaited, will sleep for the specified duration.
 ///
-/// May complete sooner that the specified duration  if cancellation is
-/// requested on the awaiting coroutine's associated CancellationToken.
+/// May complete sooner that the specified duration if cancellation is requested
+/// on the awaiting coroutine's associated CancellationToken.
 Task<void> sleepReturnEarlyOnCancel(
     HighResDuration d, Timekeeper* tk = nullptr);
 

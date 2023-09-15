@@ -30,7 +30,7 @@
 namespace folly {
 
 /**
- * A Timekeeper with a dedicated thread that uses manages the timeouts using a
+ * A Timekeeper with a dedicated thread that manages the timeouts using a
  * heap. Timeouts can be scheduled with microsecond resolution, though in
  * practice the accuracy depends on the OS scheduler's ability to wake up the
  * worker thread in a timely fashion.
