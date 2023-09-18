@@ -212,9 +212,12 @@ class SingletonThreadLocal {
   }
 };
 
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wglobal-constructors")
 template <typename T, typename Tag, typename Make, typename TLTag>
 detail::UniqueInstance SingletonThreadLocal<T, Tag, Make, TLTag>::unique{
     tag<SingletonThreadLocal>, tag<T, Tag>, tag<Make, TLTag>};
+FOLLY_POP_WARNING
 
 } // namespace folly
 

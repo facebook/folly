@@ -50,31 +50,34 @@ namespace folly {
  * parent executor is executing tasks.
  */
 
-class SerialExecutor : public SerializedExecutor {
+template <int LgQueueSegmentSize = 8>
+class SerialExecutorExt : public SerializedExecutor {
  public:
-  SerialExecutor(SerialExecutor const&) = delete;
-  SerialExecutor& operator=(SerialExecutor const&) = delete;
-  SerialExecutor(SerialExecutor&&) = delete;
-  SerialExecutor& operator=(SerialExecutor&&) = delete;
+  SerialExecutorExt(SerialExecutorExt const&) = delete;
+  SerialExecutorExt& operator=(SerialExecutorExt const&) = delete;
+  SerialExecutorExt(SerialExecutorExt&&) = delete;
+  SerialExecutorExt& operator=(SerialExecutorExt&&) = delete;
 
-  static KeepAlive<SerialExecutor> create(
+  static KeepAlive<SerialExecutorExt> create(
       KeepAlive<Executor> parent = getGlobalCPUExecutor());
 
   class Deleter {
    public:
     Deleter() {}
 
-    void operator()(SerialExecutor* executor) { executor->keepAliveRelease(); }
+    void operator()(SerialExecutorExt* executor) {
+      executor->keepAliveRelease();
+    }
 
    private:
-    friend class SerialExecutor;
+    friend class SerialExecutorExt;
     explicit Deleter(std::shared_ptr<Executor> parent)
         : parent_(std::move(parent)) {}
 
     std::shared_ptr<Executor> parent_;
   };
 
-  using UniquePtr = std::unique_ptr<SerialExecutor, Deleter>;
+  using UniquePtr = std::unique_ptr<SerialExecutorExt, Deleter>;
   [[deprecated("Replaced by create")]] static UniquePtr createUnique(
       std::shared_ptr<Executor> parent);
 
@@ -104,8 +107,8 @@ class SerialExecutor : public SerializedExecutor {
     std::shared_ptr<RequestContext> ctx;
   };
 
-  explicit SerialExecutor(KeepAlive<Executor> parent);
-  ~SerialExecutor() override;
+  explicit SerialExecutorExt(KeepAlive<Executor> parent);
+  ~SerialExecutorExt() override;
 
   bool keepAliveAcquire() noexcept override;
 
@@ -118,9 +121,13 @@ class SerialExecutor : public SerializedExecutor {
   std::atomic<std::size_t> scheduled_{0};
   // The consumer should only dequeue when the queue is non-empty, so we don't
   // need blocking.
-  folly::UMPSCQueue<Task, /* MayBlock */ false> queue_;
+  folly::UMPSCQueue<Task, /* MayBlock */ false, LgQueueSegmentSize> queue_;
 
   std::atomic<ssize_t> keepAliveCounter_{1};
 };
 
+using SerialExecutor = SerialExecutorExt<>;
+
 } // namespace folly
+
+#include <folly/executors/SerialExecutor-inl.h>
