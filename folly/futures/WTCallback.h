@@ -26,8 +26,7 @@
 namespace folly {
 // Our Callback object for HHWheelTimer
 template <class TBase>
-struct WTCallback : public std::enable_shared_from_this<WTCallback<TBase>>,
-                    public TBase::Callback {
+struct WTCallback : public TBase::Callback {
   struct PrivateConstructorTag {};
 
  public:
@@ -40,8 +39,9 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback<TBase>>,
     // Capture shared_ptr of cob in lambda so that Core inside Promise will
     // hold a ref count to it. The ref count will be released when Core goes
     // away which happens when both Promise and Future go away
-    cob->promise_.setInterruptHandler(
-        [cob](exception_wrapper ew) { cob->interruptHandler(std::move(ew)); });
+    cob->promise_.setInterruptHandler([cob](exception_wrapper ew) mutable {
+      interruptHandler(std::move(cob), std::move(ew));
+    });
     return cob;
   }
 
@@ -76,22 +76,18 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback<TBase>>,
     }
   }
 
-  void interruptHandler(exception_wrapper ew) {
-    auto rBase = base_.rlock();
+  static void interruptHandler(
+      std::shared_ptr<WTCallback> self, exception_wrapper ew) {
+    auto rBase = self->base_.rlock();
     if (!*rBase) {
       return;
     }
-    // Capture shared_ptr of self in lambda, if we don't do this, object
-    // may go away before the lambda is executed from event base thread.
-    // This is not racing with timeoutExpired anymore because this is called
-    // through Future, which means Core is still alive and keeping a ref count
-    // on us, so what timeouExpired is doing won't make the object go away
-    using SharedThis = std::enable_shared_from_this<WTCallback<TBase>>;
+
     (*rBase)->runInEventBaseThreadAlwaysEnqueue(
-        [me = SharedThis::shared_from_this(), ew = std::move(ew)]() mutable {
-          me->cancelTimeout();
+        [self = std::move(self), ew = std::move(ew)]() mutable {
+          self->cancelTimeout();
           // Don't need Promise anymore, break the circular reference
-          auto promise = me->stealPromise();
+          auto promise = self->stealPromise();
           if (!promise.isFulfilled()) {
             promise.setException(std::move(ew));
           }
