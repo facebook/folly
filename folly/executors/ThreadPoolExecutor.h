@@ -74,6 +74,14 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   ~ThreadPoolExecutor() override;
 
   void add(Func func) override = 0;
+  /**
+   * If func doesn't get started within expiration time after its enqueued,
+   * expireCallback will be run
+   *
+   * @param func  Main function to be executed
+   * @param expiration Maximum time to wait for func to start execution
+   * @param expireCallback If expiration limit is reached, execute this callback
+   */
   virtual void add(
       Func func, std::chrono::milliseconds expiration, Func expireCallback);
 
