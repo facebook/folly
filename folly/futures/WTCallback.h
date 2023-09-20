@@ -84,7 +84,7 @@ struct WTCallback : public TBase::Callback {
     }
 
     (*rBase)->runInEventBaseThreadAlwaysEnqueue(
-        [self = std::move(self), ew = std::move(ew)]() mutable {
+        [self, ew = std::move(ew)]() mutable {
           self->cancelTimeout();
           // Don't need Promise anymore, break the circular reference
           auto promise = self->stealPromise();
