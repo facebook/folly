@@ -199,6 +199,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 
     if (fibersPoolSize_ < options_.maxFibersPoolSize ||
         options_.fibersPoolResizePeriodMs > 0) {
+      fiber->fiberStackHighWatermark_ = 0;
       fibersPool_.push_front(*fiber);
       ++fibersPoolSize_;
     } else {
