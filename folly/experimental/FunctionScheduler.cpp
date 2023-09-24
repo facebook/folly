@@ -442,25 +442,21 @@ void FunctionScheduler::run() {
 
     auto now = steady_clock::now();
 
-    // Move the next function to run to the end of functions_
-    std::pop_heap(functions_.begin(), functions_.end(), fnCmp_);
-
+    const auto& top = functions_.front();
     // Check to see if the function was cancelled.
     // If so, just remove it and continue around the loop.
-    if (!functions_.back()->isValid()) {
+    if (!top->isValid()) {
+      std::pop_heap(functions_.begin(), functions_.end(), fnCmp_);
       functions_.pop_back();
       continue;
     }
 
-    auto sleepTime = functions_.back()->getNextRunTime() - now;
-    if (sleepTime < microseconds::zero()) {
+    auto sleepTime = top->getNextRunTime() - now;
+    if (sleepTime <= steady_clock::duration::zero()) {
       // We need to run this function now
       runOneFunction(lock, now);
       runningCondvar_.notify_all();
     } else {
-      // Re-add the function to the heap, and wait until we actually
-      // need to run it.
-      std::push_heap(functions_.begin(), functions_.end(), fnCmp_);
       runningCondvar_.wait_for(lock, sleepTime);
     }
   }
@@ -471,11 +467,10 @@ void FunctionScheduler::runOneFunction(
   DCHECK(lock.mutex() == &mutex_);
   DCHECK(lock.owns_lock());
 
-  // The function to run will be at the end of functions_ already.
-  //
-  // Fully remove it from functions_ now.
-  // We need to release mutex_ while we invoke this function, and we need to
-  // maintain the heap property on functions_ while mutex_ is unlocked.
+  // Pop the function from the heap: we need to release mutex_ while we invoke
+  // this function, and we need to maintain the heap property on functions_
+  // while mutex_ is unlocked.
+  std::pop_heap(functions_.begin(), functions_.end(), fnCmp_);
   auto func = std::move(functions_.back());
   functions_.pop_back();
   if (!func->cb) {

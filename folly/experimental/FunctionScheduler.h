@@ -20,11 +20,11 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include <folly/Function.h>
 #include <folly/Range.h>
+#include <folly/container/F14Map.h>
 #include <folly/hash/Hash.h>
 
 namespace folly {
@@ -322,8 +322,8 @@ class FunctionScheduler {
     }
   };
 
-  typedef std::vector<std::unique_ptr<RepeatFunc>> FunctionHeap;
-  typedef std::unordered_map<StringPiece, RepeatFunc*, Hash> FunctionMap;
+  using FunctionHeap = std::vector<std::unique_ptr<RepeatFunc>>;
+  using FunctionMap = folly::F14FastMap<StringPiece, RepeatFunc*, Hash>;
 
   void run();
   void runOneFunction(
