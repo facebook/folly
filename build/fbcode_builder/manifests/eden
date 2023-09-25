@@ -90,7 +90,7 @@ fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/h
 ^fbcode/common/rust/shed(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/configerator/structs/scm/hg(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
-^fbcode/eden/scm(?!/public_autocargo|/edenscmnative).*/Cargo\.toml$
+^fbcode/eden/scm(?!/public_autocargo|/saplingnative).*/Cargo\.toml$
 ^.*/facebook/.*$
 ^.*/fb/.*$
 
