@@ -1489,7 +1489,9 @@ TEST(SortedVectorTypes, TestInsertOrAssign) {
   {
     auto k = folly::make_optional<int>(1);
     auto v = folly::make_optional<std::string>("1");
-    const auto it = map.insert_or_assign(std::move(k), std::move(v));
+    const auto& [it, inserted] =
+        map.insert_or_assign(std::move(k), std::move(v));
+    EXPECT_TRUE(inserted);
     EXPECT_EQ(it->first, 1);
     EXPECT_EQ(it->second, "1");
     EXPECT_FALSE(k);
@@ -1499,7 +1501,9 @@ TEST(SortedVectorTypes, TestInsertOrAssign) {
   {
     auto k = folly::make_optional<int>(1);
     auto v = folly::make_optional<std::string>("another 1");
-    const auto it = map.insert_or_assign(std::move(k), std::move(v));
+    const auto& [it, inserted] =
+        map.insert_or_assign(std::move(k), std::move(v));
+    EXPECT_FALSE(inserted);
     EXPECT_EQ(it->first, 1);
     EXPECT_EQ(it->second, "another 1");
     EXPECT_EQ(k, 1);
@@ -1509,7 +1513,8 @@ TEST(SortedVectorTypes, TestInsertOrAssign) {
   {
     auto k = folly::make_optional<int>(2);
     auto v = folly::make_optional<std::string>("2");
-    const auto it = map.insert_or_assign(k, v);
+    const auto& [it, inserted] = map.insert_or_assign(k, v);
+    EXPECT_TRUE(inserted);
     EXPECT_EQ(it->first, 2);
     EXPECT_EQ(it->second, "2");
     EXPECT_EQ(k, 2);

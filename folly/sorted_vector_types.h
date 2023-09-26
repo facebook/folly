@@ -1219,21 +1219,21 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   template <typename M>
-  iterator insert_or_assign(const key_type& k, M&& obj) {
+  std::pair<iterator, bool> insert_or_assign(const key_type& k, M&& obj) {
     auto itAndInserted = try_emplace(k, std::forward<M>(obj));
     if (!itAndInserted.second) {
       itAndInserted.first->second = std::forward<M>(obj);
     }
-    return itAndInserted.first;
+    return itAndInserted;
   }
 
   template <typename M>
-  iterator insert_or_assign(key_type&& k, M&& obj) {
+  std::pair<iterator, bool> insert_or_assign(key_type&& k, M&& obj) {
     auto itAndInserted = try_emplace(std::move(k), std::forward<M>(obj));
     if (!itAndInserted.second) {
       itAndInserted.first->second = std::forward<M>(obj);
     }
-    return itAndInserted.first;
+    return itAndInserted;
   }
 
   size_type erase(const key_type& key) {
