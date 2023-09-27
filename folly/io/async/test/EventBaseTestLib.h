@@ -276,6 +276,42 @@ class TestHandler : public folly::EventHandler {
   int fd_;
 };
 
+TYPED_TEST_P(EventBaseTest, EventBaseThread) {
+  const auto testInLoop = [](EventBase& evb, bool canRunImmediately) {
+    bool done = false;
+    evb.runInEventBaseThread([&] {
+      evb.checkIsInEventBaseThread();
+      EXPECT_TRUE(evb.isInEventBaseThread());
+      done = true;
+    });
+    evb.loopOnce();
+    ASSERT_TRUE(done);
+
+    done = false;
+    evb.runImmediatelyOrRunInEventBaseThread([&] { done = true; });
+    EXPECT_EQ(done, canRunImmediately);
+    evb.loopOnce();
+    EXPECT_TRUE(done);
+  };
+
+  {
+    auto evbPtr = getEventBase<TypeParam>();
+    EXPECT_TRUE(evbPtr->isInEventBaseThread());
+    testInLoop(*evbPtr, true);
+    evbPtr->checkIsInEventBaseThread();
+  }
+
+  {
+    auto evbPtr =
+        getEventBase<TypeParam>(EventBase::Options().setStrictLoopThread(true));
+    EXPECT_FALSE(evbPtr->isInEventBaseThread());
+    testInLoop(*evbPtr, false);
+    EXPECT_DEATH(
+        evbPtr->checkIsInEventBaseThread(),
+        ".*This logic must be executed in the event base thread.*");
+  }
+}
+
 /**
  * Test a READ event
  */
@@ -2601,6 +2637,7 @@ TYPED_TEST_P(EventBaseTest, LoopRearmsNotificationQueue) {
 
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest,
+    EventBaseThread,
     ReadEvent,
     ReadPersist,
     ReadImmediate,

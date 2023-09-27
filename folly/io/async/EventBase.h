@@ -307,6 +307,17 @@ class EventBase : public TimeoutManager,
       timerTickInterval = interval;
       return *this;
     }
+
+    /**
+     * Controls the behavior of isInEventBaseThread(). See the method
+     * documentation for the semantics of this option.
+     */
+    bool strictLoopThread{false};
+
+    Options& setStrictLoopThread(bool b) {
+      strictLoopThread = b;
+      return *this;
+    }
   };
 
   /**
@@ -654,13 +665,13 @@ class EventBase : public TimeoutManager,
   template <typename T>
   void runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) noexcept;
 
-  /*
+  /**
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
    */
   void runInEventBaseThreadAndWait(Func fn) noexcept;
 
-  /*
+  /**
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
@@ -668,20 +679,20 @@ class EventBase : public TimeoutManager,
   void runImmediatelyOrRunInEventBaseThreadAndWait(
       void (*fn)(T*), T* arg) noexcept;
 
-  /*
+  /**
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
   void runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept;
 
-  /*
+  /**
    * Like runInEventBaseThread, but runs function immediately instead of at the
    * end of the loop when called from the eventbase thread.
    */
   template <typename T>
   void runImmediatelyOrRunInEventBaseThread(void (*fn)(T*), T* arg) noexcept;
 
-  /*
+  /**
    * Like runInEventBaseThread, but runs function immediately instead of at the
    * end of the loop when called from the eventbase thread.
    */
@@ -732,7 +743,7 @@ class EventBase : public TimeoutManager,
   }
 
   /**
-   * wait until the event loop starts (after starting the event loop thread).
+   * Wait until the event loop starts (after starting the event loop thread).
    */
   void waitUntilRunning();
 
@@ -747,12 +758,33 @@ class EventBase : public TimeoutManager,
   void setMaxReadAtOnce(uint32_t maxAtOnce);
 
   /**
-   * Verify that current thread is the EventBase thread, if the EventBase is
-   * running.
+   * Verify that current thread is the EventBase thread.
+   *
+   * The definition of the EventBase thread depends on the strictLoopThread
+   * option.
+   *
+   * When the loop is running, isInEventBaseThread() returns true if and only if
+   * the current thread is the thread that is running the loop.
+   * Otherwise,
+   *
+   * - In default mode (strictLoopThread = false), isInEventBaseThread() always
+   *   returns true. This is to support use cases in which the loop is run
+   *   manually, and other EventBase methods can be interleaved with loop
+   *   runs. In this mode, if the loop is not running continuously it is
+   *   responsibility of the caller to ensure that all methods that may run
+   *   non-thread-safe logic (including, for example,
+   *   runImmediatelyOrRunInEventBaseThread*()) are serialized with loop runs.
+   *
+   * - In strict mode (strictLoopThread = true), isInEventBaseThread() always
+   *   returns false. This is to support use cases in which the loop is run by a
+   *   dedicated executor, possibly not continuously, so it is safe to rely on
+   *   isInEventBaseThread() from any thread with with no risk of races. In this
+   *   mode, the behavior is equivalent to inRunningEventBaseThread().
    */
   bool isInEventBaseThread() const {
     auto tid = loopThread_.load(std::memory_order_relaxed);
-    return tid == std::thread::id() || tid == std::this_thread::get_id();
+    return tid == std::this_thread::get_id() ||
+        (!strictLoopThread_ && tid == std::thread::id());
   }
 
   bool inRunningEventBaseThread() const {
@@ -970,8 +1002,15 @@ class EventBase : public TimeoutManager,
   void initNotificationQueue();
 
   // Tick granularity to wheelTimer_
-  std::chrono::milliseconds intervalDuration_{
+  const std::chrono::milliseconds intervalDuration_{
       HHWheelTimer::DEFAULT_TICK_INTERVAL};
+  const bool enableTimeMeasurement_;
+  const bool strictLoopThread_;
+
+  // The ID of the thread running the main loop.
+  // std::thread::id{} if loop is not running.
+  std::atomic<std::thread::id> loopThread_;
+
   // should only be accessed through public getter
   HHWheelTimer::UniquePtr wheelTimer_;
 
@@ -989,10 +1028,6 @@ class EventBase : public TimeoutManager,
   // stop_ is set by terminateLoopSoon() and is used by the main loop
   // to determine if it should exit
   std::atomic<bool> stop_;
-
-  // The ID of the thread running the main loop.
-  // std::thread::id{} if loop is not running.
-  std::atomic<std::thread::id> loopThread_;
 
   // A notification queue for runInEventBaseThread() to use
   // to send function requests to the EventBase thread.
@@ -1018,11 +1053,6 @@ class EventBase : public TimeoutManager,
 
   // callback called when latency limit is exceeded
   Func maxLatencyCob_;
-
-  // Enables/disables time measurements in loopBody(). if disabled, the
-  // following functionality that relies on time-measurement, will not
-  // be supported: avg loop time, observer and max latency.
-  const bool enableTimeMeasurement_;
 
   // Wrap-around loop counter to detect beginning of each loop
   std::size_t nextLoopCnt_;

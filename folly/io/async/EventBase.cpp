@@ -149,14 +149,15 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
 
 EventBase::EventBase(Options options)
     : intervalDuration_(options.timerTickInterval),
+      enableTimeMeasurement_(!options.skipTimeMeasurement),
+      strictLoopThread_(options.strictLoopThread),
+      loopThread_(),
       runOnceCallbacks_(nullptr),
       stop_(false),
-      loopThread_(),
       queue_(nullptr),
       maxLatency_(0),
       avgLoopTime_(std::chrono::seconds(2)),
       maxLatencyLoopTime_(avgLoopTime_),
-      enableTimeMeasurement_(!options.skipTimeMeasurement),
       nextLoopCnt_(
           std::size_t(-40)) // Early wrap-around so bugs will manifest soon
       ,
@@ -274,7 +275,7 @@ void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
 
 void EventBase::checkIsInEventBaseThread() const {
   auto evbTid = loopThread_.load(std::memory_order_relaxed);
-  if (evbTid == std::thread::id()) {
+  if (!strictLoopThread_ && evbTid == std::thread::id()) {
     return;
   }
 
