@@ -766,6 +766,13 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   }
 
   /**
+   * Set whether or not SO_REUSEADDR should be enabled on the server socket,
+   * allowing multiple sockets binds to the same <address>:<port>
+   * It's enabled by default.
+   */
+  void setEnableReuseAddr(bool enable);
+
+  /**
    * Get whether or not SO_REUSEPORT is enabled on the server socket.
    */
   bool getReusePortEnabled_() const { return reusePortEnabled_; }
@@ -1004,6 +1011,8 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   CallbackAssignFunction callbackAssignFunc_;
   bool keepAliveEnabled_;
   bool reusePortEnabled_{false};
+  // SO_REUSEADDR is enabled by default
+  bool enableReuseAddr_{true};
   bool closeOnExec_;
   bool tfo_{false};
   bool noTransparentTls_{false};
