@@ -310,7 +310,8 @@ class Baton {
               deadline - Clock::now()));
     }
 
-    switch (detail::spin_pause_until(deadline, opt, [=] { return ready(); })) {
+    switch (
+        detail::spin_pause_until(deadline, opt, [this] { return ready(); })) {
       case detail::spin_result::success:
         return true;
       case detail::spin_result::timeout:
@@ -320,7 +321,7 @@ class Baton {
     }
 
     if (!MayBlock) {
-      switch (detail::spin_yield_until(deadline, [=] { return ready(); })) {
+      switch (detail::spin_yield_until(deadline, [this] { return ready(); })) {
         case detail::spin_result::success:
           return true;
         case detail::spin_result::timeout:
