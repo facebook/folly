@@ -272,6 +272,8 @@ class HostType(object):
             return "rpm"
         if self.distro.startswith(("debian", "ubuntu")):
             return "deb"
+        if self.distro in ("amazon"):
+            return "yum"
         return None
 
     @staticmethod
