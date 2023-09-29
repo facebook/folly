@@ -303,9 +303,19 @@ void FutureBase<T>::raise(exception_wrapper exception) {
 template <class T>
 template <class F>
 void FutureBase<T>::setCallback_(
-    F&& func, futures::detail::InlineContinuation allowInline) {
+    F&& func,
+    std::shared_ptr<folly::RequestContext>&& context,
+    futures::detail::InlineContinuation allowInline) {
   throwIfContinued();
   getCore().setCallback(
+      static_cast<F&&>(func), std::move(context), allowInline);
+}
+
+template <class T>
+template <class F>
+void FutureBase<T>::setCallback_(
+    F&& func, futures::detail::InlineContinuation allowInline) {
+  setCallback_(
       static_cast<F&&>(func), RequestContext::saveContext(), allowInline);
 }
 

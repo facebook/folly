@@ -51,7 +51,10 @@ timed_wait(Awaitable awaitable, Duration duration) {
         } else {
           delete posted;
         }
-      });
+      },
+      // No user logic runs in the callback, we can avoid the cost of switching
+      // the context.
+      /* context */ nullptr);
 
   {
     auto t = co_invoke(

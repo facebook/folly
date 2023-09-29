@@ -256,6 +256,11 @@ class FutureBase {
   /// not worth listing all those and their fancy template signatures as
   /// friends. But it's not for public consumption.
   template <class F>
+  void setCallback_(
+      F&& func,
+      std::shared_ptr<folly::RequestContext>&& context,
+      InlineContinuation = InlineContinuation::forbid);
+  template <class F>
   void setCallback_(F&& func, InlineContinuation = InlineContinuation::forbid);
 
   /// Provides a threadsafe back-channel so the consumer's thread can send an
