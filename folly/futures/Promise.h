@@ -26,35 +26,46 @@
 
 namespace folly {
 
-class FOLLY_EXPORT PromiseException : public std::logic_error {
+class FOLLY_EXPORT PromiseException
+    : public static_what_exception<std::logic_error> {
  public:
-  using std::logic_error::logic_error;
+  using static_what_exception<std::logic_error>::static_what_exception;
 };
 
 class FOLLY_EXPORT PromiseInvalid : public PromiseException {
  public:
-  PromiseInvalid() : PromiseException("Promise invalid") {}
+  PromiseInvalid() : PromiseException(static_lifetime{}, "Promise invalid") {}
 };
 
 class FOLLY_EXPORT PromiseAlreadySatisfied : public PromiseException {
  public:
-  PromiseAlreadySatisfied() : PromiseException("Promise already satisfied") {}
+  PromiseAlreadySatisfied()
+      : PromiseException(static_lifetime{}, "Promise already satisfied") {}
 };
 
 class FOLLY_EXPORT FutureAlreadyRetrieved : public PromiseException {
  public:
-  FutureAlreadyRetrieved() : PromiseException("Future already retrieved") {}
+  FutureAlreadyRetrieved()
+      : PromiseException(static_lifetime{}, "Future already retrieved") {}
 };
 
 class FOLLY_EXPORT BrokenPromise : public PromiseException {
  private:
-  struct PrettyNameCtorTag {};
-  BrokenPromise(PrettyNameCtorTag, char const* type);
+  template <class T>
+  FOLLY_EXPORT static const char* error_message() {
+    static const std::string* msg = [] {
+      auto p = new std::string("Broken promise for type name `");
+      *p += pretty_name<T>();
+      *p += "`";
+      return p;
+    }();
+    return msg->c_str();
+  }
 
  public:
   template <typename T>
   explicit BrokenPromise(tag_t<T>)
-      : BrokenPromise(PrettyNameCtorTag{}, pretty_name<T>()) {}
+      : PromiseException(static_lifetime{}, error_message<T>()) {}
 };
 
 // forward declaration

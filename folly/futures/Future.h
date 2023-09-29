@@ -45,14 +45,15 @@
 
 namespace folly {
 
-class FOLLY_EXPORT FutureException : public std::logic_error {
+class FOLLY_EXPORT FutureException
+    : public static_what_exception<std::logic_error> {
  public:
-  using std::logic_error::logic_error;
+  using static_what_exception<std::logic_error>::static_what_exception;
 };
 
 class FOLLY_EXPORT FutureInvalid : public FutureException {
  public:
-  FutureInvalid() : FutureException("Future invalid") {}
+  FutureInvalid() : FutureException(static_lifetime{}, "Future invalid") {}
 };
 
 /// At most one continuation may be attached to any given Future.
@@ -62,38 +63,42 @@ class FOLLY_EXPORT FutureInvalid : public FutureException {
 /// thrown instead.
 class FOLLY_EXPORT FutureAlreadyContinued : public FutureException {
  public:
-  FutureAlreadyContinued() : FutureException("Future already continued") {}
+  FutureAlreadyContinued()
+      : FutureException(static_lifetime{}, "Future already continued") {}
 };
 
 class FOLLY_EXPORT FutureNotReady : public FutureException {
  public:
-  FutureNotReady() : FutureException("Future not ready") {}
+  FutureNotReady() : FutureException(static_lifetime{}, "Future not ready") {}
 };
 
 class FOLLY_EXPORT FutureCancellation : public FutureException {
  public:
-  FutureCancellation() : FutureException("Future was cancelled") {}
+  FutureCancellation()
+      : FutureException(static_lifetime{}, "Future was cancelled") {}
 };
 
 class FOLLY_EXPORT FutureTimeout : public FutureException {
  public:
-  FutureTimeout() : FutureException("Timed out") {}
+  FutureTimeout() : FutureException(static_lifetime{}, "Timed out") {}
 };
 
 class FOLLY_EXPORT FuturePredicateDoesNotObtain : public FutureException {
  public:
   FuturePredicateDoesNotObtain()
-      : FutureException("Predicate does not obtain") {}
+      : FutureException(static_lifetime{}, "Predicate does not obtain") {}
 };
 
 class FOLLY_EXPORT FutureNoTimekeeper : public FutureException {
  public:
-  FutureNoTimekeeper() : FutureException("No timekeeper available") {}
+  FutureNoTimekeeper()
+      : FutureException(static_lifetime{}, "No timekeeper available") {}
 };
 
 class FOLLY_EXPORT FutureNoExecutor : public FutureException {
  public:
-  FutureNoExecutor() : FutureException("No executor provided to via") {}
+  FutureNoExecutor()
+      : FutureException(static_lifetime{}, "No executor provided to via") {}
 };
 
 template <class T>
