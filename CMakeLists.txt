@@ -842,6 +842,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST record_io_test WINDOWS_DISABLED SOURCES RecordIOTest.cpp
       TEST ShutdownSocketSetTest HANGING
         SOURCES ShutdownSocketSetTest.cpp
+      TEST SocketOptionValueTest HANGING
+        SOURCES SocketOptionValueTest.cpp
 
     DIRECTORY io/async/test/
       # A number of tests in the async_test binary are unfortunately flaky.
