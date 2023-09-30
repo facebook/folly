@@ -53,13 +53,18 @@ class FOLLY_EXPORT BrokenPromise : public PromiseException {
  private:
   template <class T>
   FOLLY_EXPORT static const char* error_message() {
-    static const std::string* msg = [] {
-      auto p = new std::string("Broken promise for type name `");
-      *p += pretty_name<T>();
-      *p += "`";
-      return p;
+    static constexpr auto str = [] {
+      constexpr auto prefix =
+          detail::pretty_carray_from("Broken promise for type name `");
+      constexpr auto name = detail::pretty_name_carray<T>();
+      c_array<char, name.size() - 1 + prefix.size() - 1 + 2> ret{};
+      char* dest = ret.data;
+      dest = detail::pretty_carray_copy(dest, prefix.data, prefix.size() - 1);
+      dest = detail::pretty_carray_copy(dest, name.data, name.size() - 1);
+      detail::pretty_carray_copy(dest, "`", 2);
+      return ret;
     }();
-    return msg->c_str();
+    return str.data;
   }
 
  public:

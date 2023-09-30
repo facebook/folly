@@ -380,8 +380,8 @@ TEST(Promise, brokenPromiseHasTypeInfo) {
   pInt.reset();
   pFloat.reset();
 
-  auto whatInt = fInt.result().exception().what();
-  auto whatFloat = fFloat.result().exception().what();
-
-  EXPECT_NE(whatInt, whatFloat);
+  std::string whatInt = fInt.result().exception().get_exception()->what();
+  std::string whatFloat = fFloat.result().exception().get_exception()->what();
+  EXPECT_EQ(whatInt, "Broken promise for type name `int`");
+  EXPECT_EQ(whatFloat, "Broken promise for type name `float`");
 }

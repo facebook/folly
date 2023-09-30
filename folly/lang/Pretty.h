@@ -29,12 +29,18 @@ namespace detail {
 template <std::size_t S>
 using pretty_carray = c_array<char, S>;
 
+static constexpr char* pretty_carray_copy(
+    char* dest, const char* src, std::size_t n) {
+  for (std::size_t i = 0; i < n; ++i) {
+    dest[i] = src[i];
+  }
+  return dest + n;
+}
+
 template <std::size_t S>
 static constexpr pretty_carray<S> pretty_carray_from(char const (&in)[S]) {
   pretty_carray<S> out{};
-  for (std::size_t i = 0; i < S; ++i) {
-    out.data[i] = in[i];
-  }
+  pretty_carray_copy(out.data, in, S);
   return out;
 }
 
@@ -123,9 +129,7 @@ struct pretty_name_zarray {
   static constexpr auto size = info.e - info.b;
   static constexpr auto zarray_() {
     pretty_carray<size + 1> data{};
-    for (std::size_t i = 0; i < size; ++i) {
-      data.data[i] = raw.data[info.b + i];
-    }
+    pretty_carray_copy(data.data, raw.data + info.b, size);
     data.data[size] = 0;
     return data;
   }
@@ -137,6 +141,11 @@ template <typename T, typename Tag>
 constexpr pretty_carray<pretty_name_zarray<T, Tag>::size + 1>
     pretty_name_zarray<T, Tag>::zarray;
 #endif
+
+template <typename T>
+constexpr const auto& pretty_name_carray() {
+  return detail::pretty_name_zarray<T, detail::pretty_default_tag>::zarray;
+}
 
 } // namespace detail
 
@@ -150,7 +159,7 @@ constexpr pretty_carray<pretty_name_zarray<T, Tag>::size + 1>
 //  present in the type name as it would be symbolized.
 template <typename T>
 constexpr char const* pretty_name() {
-  return detail::pretty_name_zarray<T, detail::pretty_default_tag>::zarray.data;
+  return detail::pretty_name_carray<T>().data;
 }
 
 } // namespace folly
