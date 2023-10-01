@@ -44,13 +44,13 @@ std::string getTemporaryFilePathStringWithoutTempDirectory(
 
 std::string getTemporaryFilePathStringWithTemporaryDirectory(
     const std::string& temporaryDirectory) {
-#if defined(__linux__) && !FOLLY_MOBILE
+#if !defined(_WIN32) && !FOLLY_MOBILE
   return (temporaryDirectory.back() == '/')
       ? (temporaryDirectory + std::string{"tempForAtomicWrite.XXXXXX"})
       : (temporaryDirectory + std::string{"/tempForAtomicWrite.XXXXXX"});
 #else
-  // The implementation currently, does not support any platform other than
-  // linux for temporary directory based atomic file writes.
+  // The implementation currently does not support win32 or mobile
+  // for temporary directory based atomic file writes.
   static_cast<void>(temporaryDirectory);
   assert(false);
 
