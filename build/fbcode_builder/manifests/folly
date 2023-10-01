@@ -21,25 +21,17 @@ libsodium
 double-conversion
 fmt
 lz4
+openssl
 snappy
 zstd
-# no openssl or zlib in the linux case, why?
+# no zlib in the linux case, why?
 # these are usually installed on the system
 # and are the easiest system deps to pull in.
-# In the future we want to be able to express
-# that a system dep is sufficient in the manifest
-# for eg: openssl and zlib, but for now we don't
-# have it.
+# In the future we want zlib manifest to handle 
+# this for us like the openssl one already does
 
-# macOS doesn't expose the openssl api so we need
-# to build our own.
-[dependencies.os=darwin]
-openssl
-
-# Windows has neither openssl nor zlib, so we get
-# to provide both
+# Windows no zlib, provide it
 [dependencies.os=windows]
-openssl
 zlib
 
 # xz depends on autoconf which does not build on

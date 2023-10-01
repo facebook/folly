@@ -27,6 +27,8 @@ jobs:
       run: sudo python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive folly
     - name: Fetch boost
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests boost
+    - name: Fetch openssl
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests openssl
     - name: Fetch ninja
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests ninja
     - name: Fetch cmake
@@ -61,6 +63,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xz
     - name: Build boost
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests boost
+    - name: Build openssl
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests openssl
     - name: Build ninja
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests ninja
     - name: Build cmake
