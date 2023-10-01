@@ -143,8 +143,7 @@ class AsyncUDPSocket : public EventHandler {
 
   using IOBufFreeFunc = folly::Function<void(std::unique_ptr<folly::IOBuf>&&)>;
 
-  using AdditionalCmsgsFunc =
-      folly::Function<folly::Optional<SocketOptionMap>()>;
+  using AdditionalCmsgsFunc = folly::Function<folly::Optional<SocketCmsgMap>()>;
 
   struct WriteOptions {
     WriteOptions() = default;
@@ -239,13 +238,13 @@ class AsyncUDPSocket : public EventHandler {
   /**
    * Set extra control messages to send
    */
-  virtual void setCmsgs(const SocketOptionMap& cmsgs);
+  virtual void setCmsgs(const SocketCmsgMap& cmsgs);
   virtual void setNontrivialCmsgs(
-      const SocketNontrivialOptionMap& nontrivialCmsgs);
+      const SocketNontrivialCmsgMap& nontrivialCmsgs);
 
-  virtual void appendCmsgs(const SocketOptionMap& cmsgs);
+  virtual void appendCmsgs(const SocketCmsgMap& cmsgs);
   virtual void appendNontrivialCmsgs(
-      const SocketNontrivialOptionMap& nontrivialCmsgs);
+      const SocketNontrivialCmsgMap& nontrivialCmsgs);
   virtual void setAdditionalCmsgsFunc(
       AdditionalCmsgsFunc&& additionalCmsgsFunc) {
     additionalCmsgsFunc_ = std::move(additionalCmsgsFunc);
@@ -637,11 +636,11 @@ class AsyncUDPSocket : public EventHandler {
 
   IOBufFreeFunc ioBufFreeFunc_;
 
-  SocketOptionMap defaultCmsgs_;
-  SocketOptionMap dynamicCmsgs_;
-  SocketOptionMap* cmsgs_{&defaultCmsgs_};
+  SocketCmsgMap defaultCmsgs_;
+  SocketCmsgMap dynamicCmsgs_;
+  SocketCmsgMap* cmsgs_{&defaultCmsgs_};
 
-  SocketNontrivialOptionMap nontrivialCmsgs_;
+  SocketNontrivialCmsgMap nontrivialCmsgs_;
 
   AdditionalCmsgsFunc additionalCmsgsFunc_;
 

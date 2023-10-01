@@ -70,10 +70,10 @@ struct MockAsyncUDPSocketT : public Base {
       int,
       recvmmsg,
       (struct mmsghdr*, unsigned int, unsigned int, struct timespec*));
-  MOCK_METHOD(void, setCmsgs, (const SocketOptionMap&));
-  MOCK_METHOD(void, setNontrivialCmsgs, (const SocketNontrivialOptionMap&));
-  MOCK_METHOD(void, appendCmsgs, (const SocketOptionMap&));
-  MOCK_METHOD(void, appendNontrivialCmsgs, (const SocketNontrivialOptionMap&));
+  MOCK_METHOD(void, setCmsgs, (const SocketCmsgMap&));
+  MOCK_METHOD(void, setNontrivialCmsgs, (const SocketNontrivialCmsgMap&));
+  MOCK_METHOD(void, appendCmsgs, (const SocketCmsgMap&));
+  MOCK_METHOD(void, appendNontrivialCmsgs, (const SocketNontrivialCmsgMap&));
   MOCK_METHOD(
       void, applyOptions, (const SocketOptionMap&, SocketOptionKey::ApplyPos));
   MOCK_METHOD(

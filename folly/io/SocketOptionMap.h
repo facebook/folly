@@ -60,6 +60,9 @@ using SocketNontrivialOptionMap = std::map<SocketOptionKey, std::string>;
 extern const SocketOptionMap emptySocketOptionMap;
 extern const SocketNontrivialOptionMap emptySocketNontrivialOptionMap;
 
+using SocketCmsgMap = std::map<SocketOptionKey, int>;
+using SocketNontrivialCmsgMap = std::map<SocketOptionKey, std::string>;
+
 int applySocketOptions(
     NetworkSocket fd,
     const SocketOptionMap& options,

@@ -1556,16 +1556,16 @@ void AsyncUDPSocket::attachEventBase(folly::EventBase* evb) {
   updateRegistration();
 }
 
-void AsyncUDPSocket::setCmsgs(const SocketOptionMap& cmsgs) {
+void AsyncUDPSocket::setCmsgs(const SocketCmsgMap& cmsgs) {
   defaultCmsgs_ = cmsgs;
 }
 
 void AsyncUDPSocket::setNontrivialCmsgs(
-    const SocketNontrivialOptionMap& nontrivialCmsgs) {
+    const SocketNontrivialCmsgMap& nontrivialCmsgs) {
   nontrivialCmsgs_ = nontrivialCmsgs;
 }
 
-void AsyncUDPSocket::appendCmsgs(const SocketOptionMap& cmsgs) {
+void AsyncUDPSocket::appendCmsgs(const SocketCmsgMap& cmsgs) {
   for (auto itr = cmsgs.begin(); itr != cmsgs.end(); ++itr) {
     defaultCmsgs_[itr->first] = itr->second;
   }
@@ -1586,7 +1586,7 @@ void AsyncUDPSocket::maybeUpdateDynamicCmsgs() noexcept {
 }
 
 void AsyncUDPSocket::appendNontrivialCmsgs(
-    const SocketNontrivialOptionMap& nontrivialCmsgs) {
+    const SocketNontrivialCmsgMap& nontrivialCmsgs) {
   for (auto itr = nontrivialCmsgs.begin(); itr != nontrivialCmsgs.end();
        ++itr) {
     nontrivialCmsgs_[itr->first] = itr->second;
