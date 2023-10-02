@@ -22,6 +22,7 @@
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Timeout.h>
 #include <folly/futures/Future.h>
+#include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
 
 #include <chrono>
@@ -244,6 +245,27 @@ TYPED_TEST(TimeoutFixture, AsyncGenerator) {
         []() -> coro::AsyncGenerator<int> { co_return; }().next(), 1s);
     EXPECT_FALSE(result);
   }());
+}
+
+TYPED_TEST(TimeoutFixture, RequestContextInCancellationCallback) {
+  RequestContextScopeGuard guard;
+  auto* ctx = folly::RequestContext::try_get();
+  ASSERT_TRUE(ctx);
+
+  bool cancelled = false;
+  coro::blockingWait([&, &fn = this->fn]() -> coro::Task<> {
+    co_await coro::co_awaitTry(fn(
+        [&]() -> coro::Task<void> {
+          CancellationCallback cb{
+              co_await coro::co_current_cancellation_token, [&] {
+                EXPECT_EQ(folly::RequestContext::try_get(), ctx);
+                cancelled = true;
+              }};
+          co_await coro::sleep(1s);
+        }(),
+        5ms));
+  }());
+  ASSERT_TRUE(cancelled);
 }
 
 #endif // FOLLY_HAS_COROUTINES
