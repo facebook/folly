@@ -80,9 +80,9 @@ class HeapTimekeeper : public Timekeeper {
         Clock::time_point exp,
         Promise<Unit> promise);
 
+    std::atomic<uint8_t> refCount_ = 2; // Heap and interrupt handler.
     relaxed_atomic<bool> fulfilled_ = false;
     Promise<Unit> promise_;
-    std::atomic<size_t> refCount_ = 2; // Heap and interrupt handler.
   };
 
   struct Op {
