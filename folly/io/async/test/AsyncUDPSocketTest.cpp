@@ -1377,7 +1377,7 @@ TEST_F(AsyncUDPSocketTest, TestWritemDynamicCmsg) {
   socket_->close();
 }
 
-TEST_F(AsyncUDPSocketTest, TestApplyNontrivialOptionsPostBind) {
+TEST_F(AsyncUDPSocketTest, TestApplyStringOptionsPostBind) {
   EventBase evb;
   AsyncUDPSocket socket(&evb);
   ASSERT_FALSE(socket.isBound());
@@ -1389,8 +1389,7 @@ TEST_F(AsyncUDPSocketTest, TestApplyNontrivialOptionsPostBind) {
   ASSERT_TRUE(localAddr.isInitialized());
   ASSERT_GT(localAddr.getPort(), 0);
 
-  folly::SocketNontrivialOptionMap options =
-      folly::emptySocketNontrivialOptionMap;
+  folly::SocketOptionMap options = folly::emptySocketOptionMap;
   struct linger sl {
     .l_onoff = 1, .l_linger = 123,
   };
@@ -1399,8 +1398,7 @@ TEST_F(AsyncUDPSocketTest, TestApplyNontrivialOptionsPostBind) {
       {folly::SocketOptionKey{SOL_SOCKET, SO_LINGER},
        std::string((char*)&sl, sizeof(sl))});
 
-  socket.applyNontrivialOptions(
-      options, folly::SocketOptionKey::ApplyPos::POST_BIND);
+  socket.applyOptions(options, folly::SocketOptionKey::ApplyPos::POST_BIND);
 }
 
 TEST_F(AsyncUDPSocketTest, TestWritemNontrivialCmsgs) {

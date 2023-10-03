@@ -18,6 +18,7 @@
 
 #include <map>
 
+#include <folly/io/SocketOptionValue.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
 
@@ -45,20 +46,16 @@ class SocketOptionKey {
     return lhs.level == rhs.level && lhs.optname == rhs.optname;
   }
 
-  int apply(NetworkSocket fd, int val) const;
-  int apply(NetworkSocket fd, const void* val, socklen_t len) const;
+  int apply(NetworkSocket fd, const SocketOptionValue& val) const;
 
   int level;
   int optname;
   ApplyPos applyPos_{ApplyPos::POST_BIND};
 };
 
-// Maps from a socket option key to its value
-using SocketOptionMap = std::map<SocketOptionKey, int>;
-using SocketNontrivialOptionMap = std::map<SocketOptionKey, std::string>;
+using SocketOptionMap = std::map<SocketOptionKey, SocketOptionValue>;
 
 extern const SocketOptionMap emptySocketOptionMap;
-extern const SocketNontrivialOptionMap emptySocketNontrivialOptionMap;
 
 using SocketCmsgMap = std::map<SocketOptionKey, int>;
 using SocketNontrivialCmsgMap = std::map<SocketOptionKey, std::string>;
@@ -68,18 +65,8 @@ int applySocketOptions(
     const SocketOptionMap& options,
     SocketOptionKey::ApplyPos pos);
 
-int applySocketOptions(
-    NetworkSocket fd,
-    const SocketNontrivialOptionMap& options,
-    SocketOptionKey::ApplyPos pos);
-
 SocketOptionMap validateSocketOptions(
     const SocketOptionMap& options,
-    sa_family_t family,
-    SocketOptionKey::ApplyPos pos);
-
-SocketNontrivialOptionMap validateSocketOptions(
-    const SocketNontrivialOptionMap& options,
     sa_family_t family,
     SocketOptionKey::ApplyPos pos);
 

@@ -1530,17 +1530,6 @@ void AsyncUDPSocket::applyOptions(
   }
 }
 
-void AsyncUDPSocket::applyNontrivialOptions(
-    const SocketNontrivialOptionMap& options, SocketOptionKey::ApplyPos pos) {
-  auto result = applySocketOptions(fd_, options, pos);
-  if (result) {
-    throw AsyncSocketException(
-        AsyncSocketException::INTERNAL_ERROR,
-        "failed to set nontrivial socket option",
-        result);
-  }
-}
-
 void AsyncUDPSocket::detachEventBase() {
   DCHECK(eventBase_ && eventBase_->isInEventBaseThread());
   registerHandler(uint16_t(NONE));
