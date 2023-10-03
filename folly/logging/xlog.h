@@ -477,7 +477,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *   requirements of being a single expression, but fortunately static
  *   variables inside a lambda work for this purpose.
  *
- *   Inside header files, each XLOG() statement defines to static variables:
+ *   Inside header files, each XLOG() statement defines two static variables:
  *   - the LogLevel for this category
  *   - a pointer to the LogCategory
  *
