@@ -939,7 +939,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         # We do this by looking at the builder type in the manifest file
         # rather than creating a builder and checking its type because we
         # don't know enough to create the full builder instance here.
-        if manifest.get("build", "builder", ctx=manifest_ctx) == "nop":
+        builder_name = manifest.get("build", "builder", ctx=manifest_ctx)
+        if builder_name == "nop":
             return None
 
         # We want to be sure that we're running things with python 3
@@ -1058,18 +1059,30 @@ jobs:
             main_repo_url = manifest.get_repo_url(manifest_ctx)
             has_same_repo_dep = False
 
+            # Add the rust dep which doesn't have a manifest
             for m in projects:
-                if m != manifest:
-                    if m.name == "rust":
-                        out.write("    - name: Install Rust Stable\n")
-                        out.write("      uses: dtolnay/rust-toolchain@stable\n")
-                    else:
-                        ctx = loader.ctx_gen.get_context(m.name)
-                        if m.get_repo_url(ctx) != main_repo_url:
-                            out.write("    - name: Fetch %s\n" % m.name)
-                            out.write(
-                                f"      run: {getdepscmd}{allow_sys_arg} fetch --no-tests {m.name}\n"
-                            )
+                if m == manifest:
+                    continue
+                mbuilder_name = m.get("build", "builder", ctx=manifest_ctx)
+                if (
+                    m.name == "rust"
+                    or builder_name == "cargo"
+                    or mbuilder_name == "cargo"
+                ):
+                    out.write("    - name: Install Rust Stable\n")
+                    out.write("      uses: dtolnay/rust-toolchain@stable\n")
+                    break
+
+            # Normal deps that have manifests
+            for m in projects:
+                if m == manifest or m.name == "rust":
+                    continue
+                ctx = loader.ctx_gen.get_context(m.name)
+                if m.get_repo_url(ctx) != main_repo_url:
+                    out.write("    - name: Fetch %s\n" % m.name)
+                    out.write(
+                        f"      run: {getdepscmd}{allow_sys_arg} fetch --no-tests {m.name}\n"
+                    )
 
             for m in projects:
                 if m != manifest:
@@ -1100,8 +1113,12 @@ jobs:
             if has_same_repo_dep:
                 no_deps_arg = "--no-deps "
 
+            no_tests_arg = ""
+            if not args.enable_tests:
+                no_tests_arg = "--no-tests "
+
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build {no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {no_tests_arg}{no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
             )
 
             out.write("    - name: Copy artifacts\n")
@@ -1125,7 +1142,11 @@ jobs:
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
 
-            if manifest.get("github.actions", "run_tests", ctx=manifest_ctx) != "off":
+            if (
+                args.enable_tests
+                and manifest.get("github.actions", "run_tests", ctx=manifest_ctx)
+                != "off"
+            ):
                 out.write("    - name: Test %s\n" % manifest.name)
                 out.write(
                     f"      run: {getdepscmd}{allow_sys_arg} test --src-dir=. {manifest.name} {project_prefix}\n"
