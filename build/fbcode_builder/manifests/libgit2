@@ -10,8 +10,8 @@ libgit2-devel
 # Ubuntu 18.04 libgit2 has clash with libcurl4-openssl-dev as it depends on
 # libcurl4-gnutls-dev.  Should be ok from 20.04 again
 # There is a description at https://github.com/r-hub/sysreqsdb/issues/77
-# [debs]
-# libgit2-dev
+[debs.not(all(distro=ubuntu,distro_vers="18.04"))]
+libgit2-dev
 
 [download]
 url = https://github.com/libgit2/libgit2/archive/v0.28.1.tar.gz
