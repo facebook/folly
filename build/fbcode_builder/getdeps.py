@@ -795,6 +795,12 @@ class BuildCmd(ProjectCmdBase):
             action="store_true",
             default=False,
         )
+        parser.add_argument(
+            "--free-up-disk",
+            help="Remove unused tools and clean up intermediate files if possible to maximise space for the build",
+            action="store_true",
+            default=False,
+        )
 
 
 @cmd("fixup-dyn-deps", "Adjusts dynamic dependencies for packaging purposes")
@@ -1015,6 +1021,19 @@ jobs:
 
             out.write("    - uses: actions/checkout@v2\n")
 
+            if build_opts.free_up_disk:
+                free_up_disk = "--free-up-disk "
+                if not build_opts.is_windows():
+                    out.write("    - name: Show disk space at start\n")
+                    out.write("      run: df -h\n")
+                    # remove the unused github supplied android dev tools
+                    out.write("    - name: Free up disk space\n")
+                    out.write("      run: sudo rm -rf /usr/local/lib/android\n")
+                    out.write("    - name: Show disk space after freeing up\n")
+                    out.write("      run: df -h\n")
+            else:
+                free_up_disk = ""
+
             allow_sys_arg = ""
             if (
                 build_opts.allow_system_packages
@@ -1065,7 +1084,7 @@ jobs:
                             has_same_repo_dep = True
                         out.write("    - name: Build %s\n" % m.name)
                         out.write(
-                            f"      run: {getdepscmd}{allow_sys_arg} build {src_dir_arg}--no-tests {m.name}\n"
+                            f"      run: {getdepscmd}{allow_sys_arg} build {src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
                         )
 
             out.write("    - name: Build %s\n" % manifest.name)
@@ -1111,6 +1130,9 @@ jobs:
                 out.write(
                     f"      run: {getdepscmd}{allow_sys_arg} test --src-dir=. {manifest.name} {project_prefix}\n"
                 )
+            if build_opts.free_up_disk and not build_opts.is_windows():
+                out.write("    - name: Show disk space at end\n")
+                out.write("      run: df -h\n")
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
@@ -1154,6 +1176,12 @@ jobs:
             type=str,
             help="add a prefix to all job names",
             default=None,
+        )
+        parser.add_argument(
+            "--free-up-disk",
+            help="Remove unused tools and clean up intermediate files if possible to maximise space for the build",
+            action="store_true",
+            default=False,
         )
 
 

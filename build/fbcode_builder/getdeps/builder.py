@@ -136,6 +136,16 @@ class BuilderBase(object):
         self._prepare(install_dirs=install_dirs, reconfigure=reconfigure)
         self._build(install_dirs=install_dirs, reconfigure=reconfigure)
 
+        if self.build_opts.free_up_disk:
+            # don't clean --src-dir=. case as user may want to build again or run tests on the build
+            if self.src_dir.startswith(self.build_opts.scratch_dir) and os.path.isdir(
+                self.build_dir
+            ):
+                if os.path.islink(self.build_dir):
+                    os.remove(self.build_dir)
+                else:
+                    shutil.rmtree(self.build_dir)
+
         # On Windows, emit a wrapper script that can be used to run build artifacts
         # directly from the build directory, without installing them.  On Windows $PATH
         # needs to be updated to include all of the directories containing the runtime
