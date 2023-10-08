@@ -1759,7 +1759,7 @@ TEST(IOBuf, FreeFn) {
 // Compute the chained capacity of a single non-chained IOBuf of capacity zero
 TEST(IOBuf, computeChainCapacityOfZeroSizeIOBuf) {
   size_t size = 0;
-  uint8_t data[size];
+  uint8_t* data = nullptr;
 
   // Create buffer of capacity 0
   unique_ptr<IOBuf> buf(IOBuf::wrapBuffer(data, size));
