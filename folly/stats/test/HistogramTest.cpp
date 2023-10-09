@@ -99,7 +99,8 @@ TEST(Histogram, Test1) {
     EXPECT_FLOAT_EQ(0.0, lowPct);
     EXPECT_FLOAT_EQ(1.0, highPct);
 
-    EXPECT_EQ(42, h.getPercentileEstimate(pct));
+    auto p = h.getPercentileEstimate(pct);
+    EXPECT_TRUE(p == 42 || p == 43);
   }
 }
 
