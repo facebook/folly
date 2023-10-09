@@ -2,17 +2,17 @@
 name = boost
 
 [download.not(os=windows)]
-url = https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
-sha256 = 94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7
+url = https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.gz
+sha256 = c0685b68dd44cc46574cce86c4e17c0f611b15e195be9848dfd0769a0a207628
 
 [download.os=windows]
-url = https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.zip
-sha256 = f22143b5528e081123c3c5ed437e92f648fe69748e95fa6e2bd41484e2986cc3
+url = https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.zip
+sha256 = c86bd9d9eef795b4b0d3802279419fde5221922805b073b9bd822edecb1ca28e
 
 [preinstalled.env]
 # Here we list the acceptable versions that cmake needs a hint to find
 BOOST_ROOT_1_69_0
-BOOST_ROOT_1_78_0
+BOOST_ROOT_1_83_0
 
 [debs]
 libboost-all-dev
