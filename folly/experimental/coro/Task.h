@@ -67,15 +67,21 @@ class TaskPromiseBase {
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES coroutine_handle<>
     await_suspend(coroutine_handle<Promise> coro) noexcept {
       auto& promise = coro.promise();
-      // If the continuation has been exchanged, then we expect that the
-      // exchanger will handle the lifetime of the async stack. See
+      // If ScopeExitTask has been attached, then we expect that the
+      // ScopeExitTask will handle the lifetime of the async stack. See
       // ScopeExitTaskPromise's FinalAwaiter for more details.
       //
       // This is a bit untidy, and hopefully something we can replace with
       // a virtual wrapper over coroutine_handle that handles the pop for us.
-      if (promise.ownsAsyncFrame_) {
-        folly::popAsyncStackFrameCallee(promise.asyncFrame_);
+      if (promise.scopeExit_) {
+        promise.scopeExit_.promise().setContext(
+            promise.continuation_.getHandle(),
+            &promise.asyncFrame_,
+            promise.executor_.get_alias());
+        return promise.scopeExit_;
       }
+
+      folly::popAsyncStackFrameCallee(promise.asyncFrame_);
       if (promise.result_.hasException()) {
         auto [handle, frame] =
             promise.continuation_.getErrorHandle(promise.result_.exception());
@@ -162,14 +168,11 @@ class TaskPromiseBase {
   template <typename T>
   friend class folly::coro::Task;
 
-  friend std::tuple<bool, coroutine_handle<>> tag_invoke(
+  friend coroutine_handle<ScopeExitTaskPromiseBase> tag_invoke(
       cpo_t<co_attachScopeExit>,
       TaskPromiseBase& p,
-      coroutine_handle<> continuation) noexcept {
-    return {
-        std::exchange(p.ownsAsyncFrame_, false),
-        std::exchange(p.continuation_, {continuation}).getHandle(),
-    };
+      coroutine_handle<ScopeExitTaskPromiseBase> scopeExit) noexcept {
+    return std::exchange(p.scopeExit_, scopeExit);
   }
 
   ExtendedCoroutineHandle continuation_;
@@ -177,7 +180,7 @@ class TaskPromiseBase {
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
   bool hasCancelTokenOverride_ = false;
-  bool ownsAsyncFrame_ = true;
+  coroutine_handle<ScopeExitTaskPromiseBase> scopeExit_;
 
  protected:
   enum class BypassExceptionThrowing : uint8_t {
