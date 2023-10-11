@@ -181,6 +181,124 @@ class variant_awaitable : private std::variant<A...> {
 
 #endif // __has_include(<variant>)
 
+//  ----
+
+namespace detail {
+
+struct detect_promise_return_object_eager_conversion_ {
+  struct promise_type {
+    struct return_object {
+      /* implicit */ return_object(promise_type& p) noexcept : promise{&p} {
+        promise->object = this;
+      }
+      ~return_object() {
+        if (promise) {
+          promise->object = nullptr;
+        }
+      }
+
+      promise_type* promise;
+    };
+
+    ~promise_type() {
+      if (object) {
+        object->promise = nullptr;
+      }
+    }
+
+    suspend_never initial_suspend() const noexcept { return {}; }
+    suspend_never final_suspend() const noexcept { return {}; }
+    void unhandled_exception() {}
+
+    return_object get_return_object() noexcept { return {*this}; }
+    void return_void() {}
+
+    return_object* object = nullptr;
+  };
+
+  /* implicit */ detect_promise_return_object_eager_conversion_(
+      promise_type::return_object const& o) noexcept
+      : eager{!!o.promise} {}
+  //  letting the coroutine type be trivially-copyable makes the coroutine crash
+  //  under clang; to work around, provide an empty but not trivial destructor
+  ~detect_promise_return_object_eager_conversion_() {}
+
+  bool eager = false;
+
+// FIXME: when building against Apple SDKs using c++17, we hit this all over
+// the place on complex testing infrastructure for iOS. Since it's not clear
+// how to fix the issue properly right now, force ignore this warnings and help
+// unblock expected/optional coroutines. This should be removed once the build
+// configuration is changed to use -Wno-deprecated-experimental-coroutine.
+#if defined(__clang__) && (__clang_major__ < 17 && __clang_major__ > 13)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-experimental-coroutine"
+  static detect_promise_return_object_eager_conversion_ go() noexcept {
+    co_return;
+  }
+#pragma clang diagnostic pop
+#else
+  static detect_promise_return_object_eager_conversion_ go() noexcept {
+    co_return;
+  }
+#endif
+};
+
+} // namespace detail
+
+//  detect_promise_return_object_eager_conversion
+//
+//  Returns true if the compiler implements coroutine promise return-object
+//  conversion eagerly and returns false if the compiler defers conversion.
+//
+//  It is expected that the caller holds the promise return-object until the
+//  promise is fulfilled, even when it is not the same type as the coroutine.
+//
+//    auto ret = promise.get_return_object();
+//    initial-suspend, etc...
+//    return ret;
+//
+//  But this expected behavior was, mistakenly, never specified.
+//
+//  Some compilers misbehave, where the caller holds precisely the coroutine
+//  type by converting the promise return-object eagerly when it is of some
+//  type different from the coroutine type.
+//
+//    coro-type ret = promise.get_return_object();
+//    initial-suspend, etc...
+//    return ret;
+//
+//  Known behaviors are as follows:
+//  * For msvc, conversion is eager for vs < 2019 update 16.5 (msc ver 1925) and
+//    is deferred for vs >= 2019 update 16.5 (msc ver 1925).
+//    References:
+//      https://developercommunity.visualstudio.com/t/c-coroutine-get-return-object-converted-too-early/222420
+//  * For g++, conversion is deferred.
+//  * For clang++, conversion is eager for 15 <= llvm < 17 and is deferred for
+//    llvm < 15 or llvm >= 17.
+//    References:
+//      https://reviews.llvm.org/D117087
+//      https://github.com/llvm/llvm-project/issues/56532
+//      https://reviews.llvm.org/D145639
+//
+//  Meta sometimes uses llvm patched to have deferred conversion where the
+//  corresponding upstream implements eager conversion. So version numbers do
+//  not tell the whole story.
+//
+//  This function detects which behavior the compiler implements at a mix of
+//  compile time and run time, depending on the compiler. It is only necessary
+//  to do the runtime detection for llvm but, conveniently, llvm is able to do
+//  full heap-allocation elision ("HALO") and optimize the detection down to a
+//  constant.
+//
+//  TODO: Remove this detection once the behavior is specified.
+inline bool detect_promise_return_object_eager_conversion() {
+  using coro = detail::detect_promise_return_object_eager_conversion_;
+  constexpr auto t = kMscVer && kMscVer < 1925;
+  constexpr auto f = (kGnuc && !kIsClang) || (kMscVer >= 1925);
+  return t ? true : f ? false : coro::go().eager;
+}
+
 class ExtendedCoroutineHandle;
 
 // Extended promise interface folly::coro types are expected to implement

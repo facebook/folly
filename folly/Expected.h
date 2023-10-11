@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <initializer_list>
 #include <new>
@@ -1095,12 +1096,6 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     return *this;
   }
 
-#ifndef __clang__
-  // Used only when an Expected is used with coroutines on MSVC/GCC
-  /* implicit */ Expected(expected_detail::PromiseReturn<Value, Error>&& p)
-      : Expected{std::move(*p.storage_)} {}
-#endif
-
   template <class... Ts FOLLY_REQUIRES_TRAILING(
       std::is_constructible<Value, Ts&&...>::value)>
   void emplace(Ts&&... ts) {
@@ -1342,6 +1337,15 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
  private:
+  friend struct expected_detail::PromiseReturn<Value, Error>;
+  using EmptyTag = expected_detail::EmptyTag;
+
+  explicit Expected(EmptyTag tag) noexcept : Base{tag} {}
+  // for when coroutine promise return-object conversion is eager
+  Expected(EmptyTag tag, Expected*& pointer) noexcept : Base{tag} {
+    pointer = this;
+  }
+
   void requireValue() const {
     if (FOLLY_UNLIKELY(!hasValue())) {
       if (FOLLY_LIKELY(hasError())) {
@@ -1513,35 +1517,42 @@ struct Promise;
 
 template <typename Value, typename Error>
 struct PromiseReturn {
-  Optional<Expected<Value, Error>> storage_;
-  Promise<Value, Error>* promise_;
-  /* implicit */ PromiseReturn(Promise<Value, Error>& promise) noexcept
-      : promise_(&promise) {
-    promise_->value_ = &storage_;
+  Expected<Value, Error> storage_{EmptyTag{}};
+  Expected<Value, Error>*& pointer_;
+
+  /* implicit */ PromiseReturn(Promise<Value, Error>& p) noexcept
+      : pointer_{p.value_} {
+    pointer_ = &storage_;
   }
-  PromiseReturn(PromiseReturn&& that) noexcept
-      : PromiseReturn{*that.promise_} {}
+  PromiseReturn(PromiseReturn const&) = delete;
+  // letting dtor be trivial makes the coroutine crash
+  // TODO: fix clang/llvm codegen
   ~PromiseReturn() {}
-  /* implicit */ operator Expected<Value, Error>() & {
-    return std::move(*storage_);
+  /* implicit */ operator Expected<Value, Error>() {
+    // handle both deferred and eager return-object conversion behaviors
+    // see docs for detect_promise_return_object_eager_conversion
+    if (folly::coro::detect_promise_return_object_eager_conversion()) {
+      assert(storage_.which_ == expected_detail::Which::eEmpty);
+      return Expected<Value, Error>{EmptyTag{}, pointer_}; // eager
+    } else {
+      assert(storage_.which_ != expected_detail::Which::eEmpty);
+      return std::move(storage_); // deferred
+    }
   }
 };
 
 template <typename Value, typename Error>
 struct Promise {
-  Optional<Expected<Value, Error>>* value_ = nullptr;
+  Expected<Value, Error>* value_ = nullptr;
+
   Promise() = default;
   Promise(Promise const&) = delete;
-  // This should work regardless of whether the compiler generates:
-  //    folly::Expected<Value, Error> retobj{ p.get_return_object(); } // MSVC
-  // or:
-  //    auto retobj = p.get_return_object(); // clang
   PromiseReturn<Value, Error> get_return_object() noexcept { return *this; }
   coro::suspend_never initial_suspend() const noexcept { return {}; }
   coro::suspend_never final_suspend() const noexcept { return {}; }
   template <typename U = Value>
   void return_value(U&& u) {
-    value_->emplace(static_cast<U&&>(u));
+    *value_ = static_cast<U&&>(u);
   }
   void unhandled_exception() {
     // Technically, throwing from unhandled_exception is underspecified:
