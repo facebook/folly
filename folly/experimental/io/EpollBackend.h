@@ -107,7 +107,6 @@ class EpollBackend : public EventBaseBackendBase {
   // timer related
   Event timerFdEvent_;
   int timerFd_{-1};
-  bool timerChanged_{false};
   bool timerSet_{false};
   std::multimap<std::chrono::steady_clock::time_point, Event*> timers_;
 

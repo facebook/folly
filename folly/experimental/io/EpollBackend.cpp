@@ -195,8 +195,6 @@ int EpollBackend::eb_event_base_loop(int flags) {
   bool done = false;
   bool waitForEvents = ((flags & EVLOOP_NONBLOCK) == 0);
   while (!done) {
-    scheduleTimeout();
-
     if (loopBreak_) {
       loopBreak_ = false;
       break;
@@ -427,27 +425,28 @@ void EpollBackend::addTimerEvent(Event& event, const struct timeval* timeout) {
     td->iter = it;
     event.setUserData(td, timerUserDataFreeFunction);
   }
-  timerChanged_ = timerChanged_ || (td->iter == timers_.begin());
+
+  if (td->iter == timers_.begin()) {
+    scheduleTimeout();
+  }
 }
 
 void EpollBackend::removeTimerEvent(Event& event) {
   TimerUserData* td = (TimerUserData*)event.getUserData();
   CHECK(!!td);
   CHECK_EQ(event.getFreeFunction(), timerUserDataFreeFunction);
-  timerChanged_ |= td->iter == timers_.begin();
+  bool timerChanged = td->iter == timers_.begin();
   timers_.erase(td->iter);
   td->iter = timers_.end();
   event.setUserData(nullptr, nullptr);
   delete td;
+
+  if (timerChanged) {
+    scheduleTimeout();
+  }
 }
 
 void EpollBackend::scheduleTimeout() {
-  if (!timerChanged_) {
-    return;
-  }
-
-  // reset
-  timerChanged_ = false;
   if (!timers_.empty()) {
     auto delta = std::chrono::duration_cast<std::chrono::microseconds>(
         timers_.begin()->first - std::chrono::steady_clock::now());
@@ -470,10 +469,6 @@ void EpollBackend::scheduleTimeout() {
     struct itimerspec val = {};
     CHECK_EQ(::timerfd_settime(timerFd_, 0, &val, nullptr), 0);
   }
-
-  // we do not call addTimerFd() here
-  // since it has to be added only once, after
-  // we process a poll callback
 }
 
 size_t EpollBackend::processTimers() {
@@ -482,6 +477,7 @@ size_t EpollBackend::processTimers() {
   // consume the event
   uint64_t data = 0;
   folly::readNoInt(timerFd_, &data, sizeof(data));
+  bool timerChanged = false;
 
   while (true) {
     auto it = timers_.begin();
@@ -489,7 +485,7 @@ size_t EpollBackend::processTimers() {
     if (it == timers_.end() || now < it->first) {
       break;
     }
-    timerChanged_ = true;
+    timerChanged = true;
     Event* e = it->second;
     TimerUserData* td = (TimerUserData*)e->getUserData();
     CHECK(td && e->getFreeFunction() == timerUserDataFreeFunction);
@@ -503,7 +499,9 @@ size_t EpollBackend::processTimers() {
     ++ret;
   }
 
-  scheduleTimeout();
+  if (timerChanged) {
+    scheduleTimeout();
+  }
   return ret;
 }
 
