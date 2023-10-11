@@ -988,6 +988,9 @@ name: {job_name}
 
 on:{run_on}
 
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
 """
             )
