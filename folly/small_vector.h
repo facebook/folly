@@ -587,12 +587,7 @@ class small_vector
     constructImpl(arg1, arg2, std::is_arithmetic<Arg>());
   }
 
-  ~small_vector() {
-    for (auto& t : *this) {
-      (&t)->~value_type();
-    }
-    freeHeap();
-  }
+  ~small_vector() { destroy(); }
 
   small_vector& operator=(small_vector const& o) {
     if (FOLLY_LIKELY(this != &o)) {
@@ -1111,6 +1106,13 @@ class small_vector
     return insert(pos, n, val);
   }
 
+  void destroy() {
+    for (auto& t : *this) {
+      (&t)->~value_type();
+    }
+    freeHeap();
+  }
+
   // The std::false_type argument came from std::is_arithmetic as part
   // of disambiguating an overload (see the comment in the
   // constructor).
@@ -1120,9 +1122,11 @@ class small_vector
     if (std::is_same<categ, std::input_iterator_tag>::value) {
       // With iterators that only allow a single pass, we can't really
       // do anything sane here.
+      auto rollback = makeGuard([&] { destroy(); });
       while (first != last) {
         emplace_back(*first++);
       }
+      rollback.dismiss();
       return;
     }
     size_type distance = std::distance(first, last);
