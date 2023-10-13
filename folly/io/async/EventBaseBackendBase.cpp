@@ -131,7 +131,7 @@ bool EventRecvmsgMultishotCallback::parseRecvmsgMultishot(
   }
   H const* h = reinterpret_cast<H const*>(total.data());
   out.realNameLength = h->name;
-  if (msghdr.msg_namelen >= h->name) {
+  if (static_cast<uint32_t>(msghdr.msg_namelen) >= h->name) {
     out.name = total.subpiece(sizeof(H), h->name);
   } else {
     out.name = total.subpiece(sizeof(H), msghdr.msg_namelen);
