@@ -358,7 +358,9 @@ constexpr T constexpr_log2_ceil(T t) {
 /// constexpr_trunc
 ///
 /// mimic: std::trunc (C++23)
-template <typename T>
+template <
+    typename T,
+    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
 constexpr T constexpr_trunc(T const t) {
   using lim = std::numeric_limits<T>;
   using int_type = std::uintmax_t;
@@ -366,10 +368,9 @@ constexpr T constexpr_trunc(T const t) {
   static_assert(lim::radix == 2, "non-binary radix");
   static_assert(lim::digits <= int_lim::digits, "overwide mantissa");
   constexpr auto bound = static_cast<T>(std::uintmax_t(1) << (lim::digits - 1));
-  constexpr auto is_fp = std::is_floating_point<T>::value;
   auto const neg = !constexpr_isnan(t) && t < T(0);
   auto const s = neg ? -t : t;
-  if (!is_fp || constexpr_isnan(t) || t == T(0) || !(s < bound)) {
+  if (constexpr_isnan(t) || t == T(0) || !(s < bound)) {
     return t;
   }
   if (s < T(1)) {
@@ -377,6 +378,11 @@ constexpr T constexpr_trunc(T const t) {
   }
   auto const r = static_cast<T>(static_cast<int_type>(s));
   return neg ? -r : r;
+}
+
+template <typename T, std::enable_if_t<std::is_integral<T>::value, int> = 0>
+constexpr T constexpr_trunc(T const t) {
+  return t;
 }
 
 /// constexpr_round

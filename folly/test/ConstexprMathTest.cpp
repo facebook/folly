@@ -458,6 +458,24 @@ TEST_F(ConstexprMathTest, constexpr_trunc_floating) {
   }
 }
 
+TEST_F(ConstexprMathTest, constexpr_trunc_integral) {
+  {
+    constexpr auto n = 0u;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(0u, a);
+  }
+  {
+    constexpr auto n = -1;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(-1, a);
+  }
+  {
+    constexpr auto n = 100;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(100, a);
+  }
+}
+
 TEST_F(ConstexprMathTest, constexpr_round_floating) {
   using lim = std::numeric_limits<double>;
 
