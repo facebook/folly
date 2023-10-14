@@ -322,7 +322,23 @@ struct ExpectedStorage {
     // Although which_ may temporarily be eEmpty during construction, it
     // is always either eValue or eError for a fully-constructed Expected.
     return false;
-  }
+  }https://github.com/facebook/folly/issues/2079
+
+
+Hi. I'm trying to update folly library in my project but I get this warning (in my case error):
+
+/usr/local/include/folly/Expected.h:378:43: error: 'uninit' may be used uninitialized [-Werror=maybe-uninitialized] 378 |   ExpectedUnion(ExpectedUnion&&) noexcept {} |                                           ^
+
+This happens because of ch_ member in union here. I think I understand why move ctor is empty here: MoveConstructible should do the job. But how one is supposed to use this without triggering compiler to do warning here? I use flag that treats warning as errors and that is why I'm pretty upset with this.
+
+char ch_ = 0;
+
+struct ExpectedUnion {
+  union {
+    Value value_;
+    Error error_;
+    char ch_ = 0;
+  };
   template <class... Vs>
   void assignValue(Vs&&... vs) {
     expected_detail::doEmplaceAssign(0, value_, static_cast<Vs&&>(vs)...);
@@ -361,7 +377,7 @@ struct ExpectedUnion {
   union {
     Value value_;
     Error error_;
-    char ch_ = unsafe_default_initialized;
+    char ch_ = 0;
   };
   Which which_ = Which::eEmpty;
 
