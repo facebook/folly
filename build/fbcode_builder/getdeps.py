@@ -1023,7 +1023,7 @@ jobs:
                 out.write("    - name: Disable autocrlf\n")
                 out.write("      run: git config --system core.autocrlf false\n")
 
-            out.write("    - uses: actions/checkout@v2\n")
+            out.write("    - uses: actions/checkout@v4\n")
 
             if build_opts.free_up_disk:
                 free_up_disk = "--free-up-disk "
