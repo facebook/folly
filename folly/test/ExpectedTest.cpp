@@ -987,4 +987,49 @@ TEST(Expected, TestChainedConversion) {
   }
 }
 
+struct ConvertibleError {
+  struct E1 {};
+  struct E2 {};
+
+  /*implicit*/ operator E() const {
+    if (std::holds_alternative<E1>(err_)) {
+      return E::E1;
+    }
+    return E::E2;
+  }
+
+  std::variant<E1, E2> err_;
+};
+
+struct ConvertibleFromE {
+  /*implicit*/ ConvertibleFromE(E e) : is_e1(e == E::E1) {}
+  bool is_e1;
+};
+
+Expected<int, E> implicitConvertFromConvertibleError() {
+  return makeUnexpected(ConvertibleError{ConvertibleError::E1{}});
+}
+
+Expected<int, ConvertibleFromE> implicitConvertFromE() {
+  const auto& unexpected = makeUnexpected(E::E1);
+  // Convert by ref.
+  return unexpected;
+}
+
+TEST(Expected, ImplicitErrorConversion) {
+  static_assert(
+      std::is_convertible_v<Unexpected<ConvertibleError>&&, Expected<int, E>>);
+  static_assert(
+      std::is_convertible_v<Unexpected<E>&&, Expected<int, ConvertibleFromE>>);
+
+  {
+    auto e = implicitConvertFromConvertibleError();
+    EXPECT_EQ(e.error(), E::E1);
+  }
+  {
+    auto e = implicitConvertFromE();
+    EXPECT_EQ(e.error().is_e1, true);
+  }
+}
+
 } // namespace folly

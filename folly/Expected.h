@@ -1043,6 +1043,18 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
       noexcept(Error(std::move(err.error()))))
       : Base{expected_detail::ErrorTag{}, std::move(err.error())} {}
 
+  template <class OtherError FOLLY_REQUIRES_TRAILING(
+      std::is_convertible<const OtherError&, Error>::value)>
+  constexpr /* implicit */ Expected(const Unexpected<OtherError>& err) noexcept(
+      noexcept(Error(err.error())))
+      : Base{expected_detail::ErrorTag{}, Error(err.error())} {}
+
+  template <class OtherError FOLLY_REQUIRES_TRAILING(
+      std::is_convertible<OtherError&&, Error>::value)>
+  constexpr /* implicit  */ Expected(Unexpected<OtherError>&& err) noexcept(
+      noexcept(Error(std::move(err.error()))))
+      : Base{expected_detail::ErrorTag{}, Error(std::move(err.error()))} {}
+
   /*
    * Assignment operators
    */
