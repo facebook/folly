@@ -361,7 +361,7 @@ struct ExpectedUnion {
   union {
     Value value_;
     Error error_;
-    char ch_ = unsafe_default_initialized;
+    char ch_ = 0;
   };
   Which which_ = Which::eEmpty;
 
