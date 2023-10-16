@@ -71,14 +71,14 @@ inline auto base64URLDecode(std::string_view s) -> std::string;
 //
 // Encode returns a pointer past the last the byte written
 // Decode returns a struct with `is_success` flag and the pointer `o`
-// past the last char writtern.
+// past the last char written.
 //
 // NOTE: decode will not stop writing when encountering a failure
 //       and can always write up to size.
 //
-// NOTE: since on C++17 we cannot always adequatly determine if
-//       the funciton is running in compile time or not,
-//       we provide explicitly runime versions too.
+// NOTE: since on C++17 we cannot always adequately determine if
+//       the function is running in compile time or not,
+//       we provide explicit runime versions too.
 
 constexpr std::size_t base64EncodedSize(std::size_t inSize) noexcept;
 constexpr std::size_t base64URLEncodedSize(std::size_t inSize) noexcept;
