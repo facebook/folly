@@ -497,6 +497,12 @@ class ShowInstDirCmd(ProjectCmdBase):
             manifests = [manifest]
 
         for m in manifests:
+            fetcher = loader.create_fetcher(m)
+            if isinstance(fetcher, SystemPackageFetcher):
+                # We are guaranteed that if the fetcher is set to
+                # SystemPackageFetcher then this item is completely
+                # satisfied by the appropriate system packages
+                continue
             inst_dir = loader.get_project_install_dir_respecting_install_prefix(m)
             print(inst_dir)
 
@@ -1056,6 +1062,11 @@ jobs:
                 out.write(
                     f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive {manifest.name}\n"
                 )
+                if build_opts.is_linux() or build_opts.is_freebsd():
+                    out.write("    - name: Install packaging system deps\n")
+                    out.write(
+                        f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf\n"
+                    )
 
             projects = loader.manifests_in_dependency_order()
 
