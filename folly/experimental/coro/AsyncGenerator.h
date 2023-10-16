@@ -24,6 +24,7 @@
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Result.h>
+#include <folly/experimental/coro/ScopeExit.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/WithCancellation.h>
@@ -42,7 +43,7 @@ namespace folly {
 namespace coro {
 namespace detail {
 
-template <typename Reference, typename Value>
+template <typename Reference, typename Value, bool RequiresCleanup>
 class AsyncGeneratorPromise;
 
 } // namespace detail
@@ -131,15 +132,31 @@ class AsyncGeneratorPromise;
  *           process(record);
  *         }
  *       }
+ *
+ * Async Cleanup
+ * -------------
+ * When the template parameter RequiresCleanup is true, the owner of an
+ * AsyncGenerator is responsible for awaiting cleanup() before the generator
+ * object's destructor is called. That allows to use folly::coro::co_scope_exit
+ * awaitables inside AsyncGenerator, which are asynchronously executed when
+ * cleanup() is awaited. Note that the AsyncGenerator coroutine frame is
+ * destroyed before co_scope_exit awaitables are executed.
+ *
+ * There is an alias CleanableAsyncGenerator for AsyncGenerator with
+ * RequiresCleanup set to true.
  */
-template <typename Reference, typename Value = remove_cvref_t<Reference>>
+template <
+    typename Reference,
+    typename Value = remove_cvref_t<Reference>,
+    bool RequiresCleanup = false>
 class FOLLY_NODISCARD AsyncGenerator {
   static_assert(
       std::is_constructible<Value, Reference>::value,
       "AsyncGenerator 'value_type' must be constructible from a 'reference'.");
 
  public:
-  using promise_type = detail::AsyncGeneratorPromise<Reference, Value>;
+  using promise_type =
+      detail::AsyncGeneratorPromise<Reference, Value, RequiresCleanup>;
 
  private:
   using handle_t = coroutine_handle<promise_type>;
@@ -157,13 +174,79 @@ class FOLLY_NODISCARD AsyncGenerator {
 
   ~AsyncGenerator() {
     if (coro_) {
+      CHECK(!RequiresCleanup) << "cleanup() hasn't been called!";
       coro_.destroy();
     }
+  }
+
+  class CleanupSemiAwaitable;
+
+  class FOLLY_NODISCARD CleanupAwaitable {
+   public:
+    bool await_ready() noexcept { return !scopeExit_; }
+
+    template <typename Promise>
+    FOLLY_NOINLINE auto await_suspend(
+        coroutine_handle<Promise> continuation) noexcept {
+      asyncFrame_.setReturnAddress();
+      scopeExit_.promise().setContext(
+          continuation, &asyncFrame_, executor_.get_alias());
+      if constexpr (detail::promiseHasAsyncFrame_v<Promise>) {
+        folly::pushAsyncStackFrameCallerCallee(
+            continuation.promise().getAsyncFrame(), asyncFrame_);
+        return scopeExit_;
+      } else {
+        folly::resumeCoroutineWithNewAsyncStackRoot(scopeExit_);
+      }
+    }
+
+    void await_resume() noexcept {}
+
+   private:
+    friend CleanupSemiAwaitable;
+
+    CleanupAwaitable(
+        coroutine_handle<detail::ScopeExitTaskPromiseBase> scopeExit,
+        folly::Executor::KeepAlive<> executor) noexcept
+        : scopeExit_{scopeExit}, executor_{std::move(executor)} {}
+
+    friend CleanupAwaitable tag_invoke(
+        cpo_t<co_withAsyncStack>, CleanupAwaitable awaitable) noexcept {
+      return std::move(awaitable);
+    }
+
+    coroutine_handle<detail::ScopeExitTaskPromiseBase> scopeExit_;
+    folly::AsyncStackFrame asyncFrame_;
+    folly::Executor::KeepAlive<> executor_;
+  };
+
+  class FOLLY_NODISCARD CleanupSemiAwaitable {
+   public:
+    CleanupAwaitable viaIfAsync(Executor::KeepAlive<> executor) noexcept {
+      return CleanupAwaitable{scopeExit_, std::move(executor)};
+    }
+
+   private:
+    friend AsyncGenerator;
+
+    explicit CleanupSemiAwaitable(
+        coroutine_handle<detail::ScopeExitTaskPromiseBase> scopeExit) noexcept
+        : scopeExit_{scopeExit} {}
+
+    coroutine_handle<detail::ScopeExitTaskPromiseBase> scopeExit_;
+  };
+
+  CleanupSemiAwaitable cleanup() && {
+    static_assert(RequiresCleanup);
+    CHECK(coro_) << "cleanup() has been already called!";
+    SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+    return CleanupSemiAwaitable{coro_.promise().scopeExit_};
   }
 
   AsyncGenerator& operator=(AsyncGenerator&& other) noexcept {
     auto oldCoro = std::exchange(coro_, std::exchange(other.coro_, {}));
     if (oldCoro) {
+      CHECK(!RequiresCleanup) << "cleanup() hasn't been called!";
       oldCoro.destroy();
     }
     return *this;
@@ -351,14 +434,23 @@ class FOLLY_NODISCARD AsyncGenerator {
   template <typename F, typename... A, typename F_, typename... A_>
   friend AsyncGenerator tag_invoke(
       tag_t<co_invoke_fn>, tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
-    auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
-    while (true) {
-      co_yield co_result(co_await co_awaitTry(r.next()));
+    if constexpr (RequiresCleanup) {
+      auto&& [r] = co_await co_scope_exit(
+          [](auto&& gen) { return std::move(gen).cleanup(); },
+          invoke(static_cast<F&&>(f), static_cast<A&&>(a)...));
+      while (true) {
+        co_yield co_result(co_await co_awaitTry(r.next()));
+      }
+    } else {
+      auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
+      while (true) {
+        co_yield co_result(co_await co_awaitTry(r.next()));
+      }
     }
   }
 
  private:
-  friend class detail::AsyncGeneratorPromise<Reference, Value>;
+  friend promise_type;
 
   explicit AsyncGenerator(coroutine_handle<promise_type> coro) noexcept
       : coro_(coro) {}
@@ -366,12 +458,25 @@ class FOLLY_NODISCARD AsyncGenerator {
   coroutine_handle<promise_type> coro_;
 };
 
+template <typename Reference, typename Value = remove_cvref_t<Reference>>
+using CleanableAsyncGenerator =
+    AsyncGenerator<Reference, Value, true /* RequiresCleanup */>;
+
 namespace detail {
 
-template <typename Reference, typename Value>
+template <bool RequiresCleanup>
+struct BaseAsyncGeneratorPromise {};
+
+template <>
+struct BaseAsyncGeneratorPromise<true> {
+  coroutine_handle<ScopeExitTaskPromiseBase> scopeExit_;
+};
+
+template <typename Reference, typename Value, bool RequiresCleanup = false>
 class AsyncGeneratorPromise final
     : public ExtendedCoroutinePromiseImpl<
-          AsyncGeneratorPromise<Reference, Value>> {
+          AsyncGeneratorPromise<Reference, Value, RequiresCleanup>>,
+      BaseAsyncGeneratorPromise<RequiresCleanup> {
   class YieldAwaiter {
    public:
     bool await_ready() noexcept { return false; }
@@ -416,10 +521,10 @@ class AsyncGeneratorPromise final
     ::folly_coro_async_free(ptr, size);
   }
 
-  AsyncGenerator<Reference, Value> get_return_object() noexcept {
-    return AsyncGenerator<Reference, Value>{
-        coroutine_handle<AsyncGeneratorPromise<Reference, Value>>::from_promise(
-            *this)};
+  AsyncGenerator<Reference, Value, RequiresCleanup>
+  get_return_object() noexcept {
+    return AsyncGenerator<Reference, Value, RequiresCleanup>{
+        coroutine_handle<AsyncGeneratorPromise>::from_promise(*this)};
   }
 
   suspend_always initial_suspend() noexcept { return {}; }
@@ -476,8 +581,8 @@ class AsyncGeneratorPromise final
   }
 
   YieldAwaiter yield_value(
-      co_result<typename AsyncGenerator<Reference, Value>::NextResult>&&
-          res) noexcept {
+      co_result<typename AsyncGenerator<Reference, Value, RequiresCleanup>::
+                    NextResult>&& res) noexcept {
     DCHECK(
         res.result().hasValue() ||
         (res.result().hasException() && res.result().exception()));
@@ -605,11 +710,24 @@ class AsyncGeneratorPromise final
   }
 
  private:
+  friend AsyncGenerator<Reference, Value, RequiresCleanup>;
+
   void clearContext() noexcept {
     executor_ = {};
     cancelToken_ = {};
     hasCancelTokenOverride_ = false;
     asyncFrame_ = {};
+  }
+
+  friend coroutine_handle<ScopeExitTaskPromiseBase> tag_invoke(
+      cpo_t<co_attachScopeExit>,
+      AsyncGeneratorPromise& p,
+      coroutine_handle<ScopeExitTaskPromiseBase> scopeExit) noexcept {
+    static_assert(
+        RequiresCleanup,
+        "Only CleanableAsyncGenerator (AsyncGenerator with RequiresCleanup"
+        " template parameter set to true) supports attaching co_scope_exit");
+    return std::exchange(p.scopeExit_, scopeExit);
   }
 
   enum class State : std::uint8_t {
