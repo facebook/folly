@@ -40,7 +40,7 @@ TEST(SSLErrorsTest, TestMessage) {
   std::string expectedMsg =
       "AsyncSocketException: error:0b000069:X.509 certificate routines:"
       "OPENSSL_internal:CERT_ALREADY_IN_HASH_TABLE, type = SSL error";
-#elif FOLLY_OPENSSL_IS_30X
+#elif FOLLY_OPENSSL_IS_3X
   std::string expectedMsg =
       "AsyncSocketException: error:05800065:x509 certificate routines::"
       "cert already in hash table, type = SSL error";

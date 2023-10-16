@@ -122,6 +122,34 @@ TEST(CheckedMath, generic_checked_add_uint64_t_overflow) {
   EXPECT_EQ(a, {});
 }
 
+TEST(CheckedMath, checked_div_safe_divisor) {
+  unsigned int a;
+
+  EXPECT_TRUE(folly::checked_div(&a, 8u, 4u));
+  EXPECT_EQ(a, 2);
+}
+
+TEST(CheckedMath, checked_div_zero_divisor) {
+  unsigned int a;
+
+  EXPECT_FALSE(folly::checked_div(&a, 8u, 0u));
+  EXPECT_EQ(a, {});
+}
+
+TEST(CheckedMath, checked_mod_safe_divisor) {
+  unsigned int a;
+
+  EXPECT_TRUE(folly::checked_mod(&a, 5u, 4u));
+  EXPECT_EQ(a, 1);
+}
+
+TEST(CheckedMath, checked_mod_zero_divisor) {
+  unsigned int a;
+
+  EXPECT_FALSE(folly::checked_div(&a, 5u, 0u));
+  EXPECT_EQ(a, {});
+}
+
 TEST(CheckedMath, checked_mul_no_overflow) {
   unsigned int a;
 

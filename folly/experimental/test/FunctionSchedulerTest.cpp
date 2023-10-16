@@ -27,10 +27,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
-#if defined(__linux__)
-#include <dlfcn.h>
-#endif
-
 using namespace folly;
 using std::atomic;
 using std::chrono::duration_cast;

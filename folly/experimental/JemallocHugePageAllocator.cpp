@@ -21,6 +21,7 @@
 #include <folly/portability/Malloc.h>
 #include <folly/portability/String.h>
 #include <folly/portability/SysMman.h>
+#include <folly/portability/SysTypes.h>
 
 #include <glog/logging.h>
 

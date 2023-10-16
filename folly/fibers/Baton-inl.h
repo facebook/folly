@@ -80,7 +80,7 @@ bool Baton::timedWaitThread(
       std::chrono::duration_cast<std::chrono::milliseconds>(
           deadline - Clock::now()));
 
-  if (LIKELY(
+  if (FOLLY_LIKELY(
           waiter == NO_WAITER &&
           waiter_.compare_exchange_strong(waiter, THREAD_WAITING))) {
     do {
@@ -94,7 +94,7 @@ bool Baton::timedWaitThread(
     } while (waiter == THREAD_WAITING);
   }
 
-  if (LIKELY(waiter == POSTED)) {
+  if (FOLLY_LIKELY(waiter == POSTED)) {
     return true;
   }
 

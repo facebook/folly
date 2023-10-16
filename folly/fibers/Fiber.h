@@ -84,6 +84,8 @@ class Fiber {
 
   size_t stackHighWatermark() const { return fiberStackHighWatermark_; }
 
+  folly::Optional<std::chrono::nanoseconds> getRunningTime() const;
+
  private:
   enum State : char {
     INVALID, /**< Does't have task function */

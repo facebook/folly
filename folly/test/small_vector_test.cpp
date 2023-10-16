@@ -31,6 +31,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Traits.h>
+#include <folly/container/Iterator.h>
 #include <folly/portability/GTest.h>
 #include <folly/sorted_vector_types.h>
 
@@ -1467,4 +1468,61 @@ TEST(small_vector, overflowAssign) {
   EXPECT_THROW(
       vec.assign(SIZE_MAX / sizeof(std::string) + 1, "hello"),
       std::length_error);
+}
+
+namespace {
+struct MaybeThrowOnCopy {
+  std::unique_ptr<bool> throwOnCopy;
+
+  explicit MaybeThrowOnCopy(bool t) : throwOnCopy(std::make_unique<bool>(t)) {}
+  MaybeThrowOnCopy(const MaybeThrowOnCopy& other)
+      : throwOnCopy(std::make_unique<bool>(other.throwOnCopy)) {
+    if (*other.throwOnCopy) {
+      throw std::runtime_error{"test"};
+    }
+  }
+};
+} // namespace
+
+TEST(small_vector, rangeConstructorForwardIteratorThrows) {
+  std::array<MaybeThrowOnCopy, 3> arr = {
+      MaybeThrowOnCopy{false}, MaybeThrowOnCopy{true}, MaybeThrowOnCopy{false}};
+
+  using ForwardIterator =
+      folly::index_iterator<std::array<MaybeThrowOnCopy, 3>>;
+
+  auto first = ForwardIterator{arr, 0};
+  auto last = ForwardIterator{arr, arr.size()};
+
+  using SV1 = small_vector<MaybeThrowOnCopy, 1>;
+  using SV3 = small_vector<MaybeThrowOnCopy, 3>;
+
+  EXPECT_THROW(SV1(first, last), std::runtime_error);
+  EXPECT_THROW(SV3(first, last), std::runtime_error);
+}
+
+TEST(small_vector, rangeConstructorInputIteratorThrows) {
+  std::array<MaybeThrowOnCopy, 3> arr = {
+      MaybeThrowOnCopy{false}, MaybeThrowOnCopy{true}, MaybeThrowOnCopy{false}};
+
+  class InputIterator
+      : public folly::index_iterator<std::array<MaybeThrowOnCopy, 3>> {
+   public:
+    using difference_type = std::ptrdiff_t;
+    using value_type = MaybeThrowOnCopy const;
+    using reference = MaybeThrowOnCopy const&;
+    using pointer = MaybeThrowOnCopy const*;
+    using iterator_category = std::input_iterator_tag;
+
+    using index_iterator<std::array<MaybeThrowOnCopy, 3>>::index_iterator;
+  };
+
+  auto first = InputIterator{arr, 0};
+  auto last = InputIterator{arr, arr.size()};
+
+  using SV1 = small_vector<MaybeThrowOnCopy, 1>;
+  using SV3 = small_vector<MaybeThrowOnCopy, 3>;
+
+  EXPECT_THROW(SV1(first, last), std::runtime_error);
+  EXPECT_THROW(SV3(first, last), std::runtime_error);
 }

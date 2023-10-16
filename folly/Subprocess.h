@@ -195,6 +195,11 @@ class ProcessReturnCode {
   bool coreDumped() const;
 
   /**
+   * Process exited normally with a zero exit status
+   */
+  bool succeeded() const;
+
+  /**
    * String representation; one of
    * "not started"
    * "running"

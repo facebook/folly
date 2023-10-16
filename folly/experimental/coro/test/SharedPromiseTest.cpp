@@ -289,11 +289,19 @@ TYPED_TEST(SharedPromiseTest, NoHeapAllocation) {
 }
 
 TEST(SharedPromiseTest, BasicVoid) {
-  auto promise = SharedPromise<void>{};
-  auto future = promise.getFuture();
+  {
+    auto promise = SharedPromise<void>{};
+    auto future = promise.getFuture();
 
-  promise.setValue();
-  blocking_wait(std::move(future));
+    promise.setValue();
+    blocking_wait(std::move(future));
+  }
+
+  {
+    auto promise = SharedPromise<void>{};
+    promise.setValue();
+    blocking_wait(promise.getFuture());
+  }
 }
 
 #endif

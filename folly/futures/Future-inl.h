@@ -46,6 +46,8 @@ typedef folly::fibers::Baton FutureBatonType;
 } // namespace futures
 
 namespace detail {
+// For access to the singleton in tests.
+struct TimekeeperSingletonTag {};
 std::shared_ptr<Timekeeper> getTimekeeperSingleton();
 } // namespace detail
 
@@ -301,9 +303,19 @@ void FutureBase<T>::raise(exception_wrapper exception) {
 template <class T>
 template <class F>
 void FutureBase<T>::setCallback_(
-    F&& func, futures::detail::InlineContinuation allowInline) {
+    F&& func,
+    std::shared_ptr<folly::RequestContext>&& context,
+    futures::detail::InlineContinuation allowInline) {
   throwIfContinued();
   getCore().setCallback(
+      static_cast<F&&>(func), std::move(context), allowInline);
+}
+
+template <class T>
+template <class F>
+void FutureBase<T>::setCallback_(
+    F&& func, futures::detail::InlineContinuation allowInline) {
+  setCallback_(
       static_cast<F&&>(func), RequestContext::saveContext(), allowInline);
 }
 
@@ -2092,12 +2104,12 @@ SemiFuture<T> SemiFuture<T>::within(
   };
 
   std::shared_ptr<Timekeeper> tks;
-  if (LIKELY(!tk)) {
+  if (FOLLY_LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
     tk = tks.get();
   }
 
-  if (UNLIKELY(!tk)) {
+  if (FOLLY_UNLIKELY(!tk)) {
     return makeSemiFuture<T>(FutureNoTimekeeper());
   }
 

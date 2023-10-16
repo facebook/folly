@@ -17,13 +17,14 @@
 #pragma once
 
 #include <folly/experimental/io/AsyncIoUringSocket.h>
+#include <folly/experimental/io/Liburing.h>
 
 namespace folly {
 
 class AsyncIoUringSocketFactory {
  public:
   static bool supports(FOLLY_MAYBE_UNUSED folly::EventBase* eb) {
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
     return AsyncIoUringSocket::supports(eb);
 #else
     return false;
@@ -32,7 +33,7 @@ class AsyncIoUringSocketFactory {
 
   template <class TWrapper, class... Args>
   static TWrapper create(FOLLY_MAYBE_UNUSED Args&&... args) {
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
     return TWrapper(new AsyncIoUringSocket(std::forward<Args>(args)...));
 #else
     throw std::runtime_error("AsyncIoUringSocket not supported");
@@ -42,7 +43,7 @@ class AsyncIoUringSocketFactory {
   static bool asyncDetachFd(
       FOLLY_MAYBE_UNUSED AsyncTransport& transport,
       FOLLY_MAYBE_UNUSED AsyncDetachFdCallback* callback) {
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
     AsyncIoUringSocket* socket =
         transport.getUnderlyingTransport<AsyncIoUringSocket>();
     if (socket) {

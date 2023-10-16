@@ -98,7 +98,7 @@ bool EventBaseEvent::setEdgeTriggered() {
   }
 
   auto epfd = static_cast<epollop*>(base->evbase)->epfd;
-  epoll_event epev = {0, {0}};
+  epoll_event epev = {0, {nullptr}};
   epev.data.fd = eb_ev_fd();
   epev.events = EPOLLET;
   if (eb_ev_events() & EV_READ) {
@@ -131,7 +131,7 @@ bool EventRecvmsgMultishotCallback::parseRecvmsgMultishot(
   }
   H const* h = reinterpret_cast<H const*>(total.data());
   out.realNameLength = h->name;
-  if (msghdr.msg_namelen >= h->name) {
+  if (static_cast<uint32_t>(msghdr.msg_namelen) >= h->name) {
     out.name = total.subpiece(sizeof(H), h->name);
   } else {
     out.name = total.subpiece(sizeof(H), msghdr.msg_namelen);

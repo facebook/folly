@@ -28,6 +28,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/Traits.h>
+#include <folly/lang/Exception.h>
 #include <folly/stats/detail/Bucket.h>
 
 namespace folly {
@@ -305,7 +306,8 @@ class Histogram {
     // subtract.
     if (getBucketSize() != hist.getBucketSize() || getMin() != hist.getMin() ||
         getMax() != hist.getMax() || getNumBuckets() != hist.getNumBuckets()) {
-      throw std::invalid_argument("Cannot subtract input histogram.");
+      throw_exception<std::invalid_argument>(
+          "Cannot subtract input histogram.");
     }
 
     for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
@@ -319,7 +321,8 @@ class Histogram {
     // a merge.
     if (getBucketSize() != hist.getBucketSize() || getMin() != hist.getMin() ||
         getMax() != hist.getMax() || getNumBuckets() != hist.getNumBuckets()) {
-      throw std::invalid_argument("Cannot merge from input histogram.");
+      throw_exception<std::invalid_argument>(
+          "Cannot merge from input histogram.");
     }
 
     for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
@@ -332,7 +335,8 @@ class Histogram {
     // the two histogram bucket definition must match
     if (getBucketSize() != hist.getBucketSize() || getMin() != hist.getMin() ||
         getMax() != hist.getMax() || getNumBuckets() != hist.getNumBuckets()) {
-      throw std::invalid_argument("Cannot copy from input histogram.");
+      throw_exception<std::invalid_argument>(
+          "Cannot copy from input histogram.");
     }
 
     for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {

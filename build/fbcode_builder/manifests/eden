@@ -5,7 +5,7 @@ shipit_project = eden
 shipit_fbcode_builder = true
 
 [git]
-repo_url = https://github.com/facebookexperimental/eden.git
+repo_url = https://github.com/facebook/sapling.git
 
 [github.actions]
 run_tests = off
@@ -30,6 +30,7 @@ pexpect
 python-toml
 python-filelock
 edencommon
+rust-shed
 
 [dependencies.fbsource=on]
 rust
@@ -51,10 +52,6 @@ osxfuse
 libcurl
 # Added so that OSS doesn't see system "python" which is python 2 on darwin and some linux
 python
-
-[dependencies.all(fb=off)]
-# Outside Meta hg is not installed, or if it is, its not the one we want to test with
-sapling
 
 [shipit.pathmap.fb=on]
 # for internal builds that use getdeps
@@ -94,7 +91,7 @@ fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/h
 ^fbcode/common/rust/shed(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/configerator/structs/scm/hg(?!/public_autocargo).*/Cargo\.toml$
 ^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
-^fbcode/eden/scm(?!/public_autocargo|/edenscmnative).*/Cargo\.toml$
+^fbcode/eden/scm(?!/public_autocargo|/saplingnative).*/Cargo\.toml$
 ^.*/facebook/.*$
 ^.*/fb/.*$
 

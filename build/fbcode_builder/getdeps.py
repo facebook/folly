@@ -626,7 +626,7 @@ class BuildCmd(ProjectCmdBase):
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
-                    # If we are building the project (not depdendency) and a specific
+                    # If we are building the project (not dependency) and a specific
                     # cmake_target (not 'install') has been requested, then we don't
                     # set the built_marker. This allows subsequent runs of getdeps.py
                     # for the project to run with different cmake_targets to trigger
@@ -795,6 +795,12 @@ class BuildCmd(ProjectCmdBase):
             action="store_true",
             default=False,
         )
+        parser.add_argument(
+            "--free-up-disk",
+            help="Remove unused tools and clean up intermediate files if possible to maximise space for the build",
+            action="store_true",
+            default=False,
+        )
 
 
 @cmd("fixup-dyn-deps", "Adjusts dynamic dependencies for packaging purposes")
@@ -933,7 +939,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         # We do this by looking at the builder type in the manifest file
         # rather than creating a builder and checking its type because we
         # don't know enough to create the full builder instance here.
-        if manifest.get("build", "builder", ctx=manifest_ctx) == "nop":
+        builder_name = manifest.get("build", "builder", ctx=manifest_ctx)
+        if builder_name == "nop":
             return None
 
         # We want to be sure that we're running things with python 3
@@ -981,6 +988,9 @@ name: {job_name}
 
 on:{run_on}
 
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
 """
             )
@@ -1002,7 +1012,7 @@ jobs:
                 # https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/
                 out.write("    - name: Export boost environment\n")
                 out.write(
-                    '      run: "echo BOOST_ROOT=%BOOST_ROOT_1_78_0% >> %GITHUB_ENV%"\n'
+                    '      run: "echo BOOST_ROOT=%BOOST_ROOT_1_83_0% >> %GITHUB_ENV%"\n'
                 )
                 out.write("      shell: cmd\n")
 
@@ -1014,6 +1024,19 @@ jobs:
                 out.write("      run: git config --system core.autocrlf false\n")
 
             out.write("    - uses: actions/checkout@v2\n")
+
+            if build_opts.free_up_disk:
+                free_up_disk = "--free-up-disk "
+                if not build_opts.is_windows():
+                    out.write("    - name: Show disk space at start\n")
+                    out.write("      run: df -h\n")
+                    # remove the unused github supplied android dev tools
+                    out.write("    - name: Free up disk space\n")
+                    out.write("      run: sudo rm -rf /usr/local/lib/android\n")
+                    out.write("    - name: Show disk space after freeing up\n")
+                    out.write("      run: df -h\n")
+            else:
+                free_up_disk = ""
 
             allow_sys_arg = ""
             if (
@@ -1039,22 +1062,30 @@ jobs:
             main_repo_url = manifest.get_repo_url(manifest_ctx)
             has_same_repo_dep = False
 
+            # Add the rust dep which doesn't have a manifest
             for m in projects:
-                if m != manifest:
-                    if m.name == "rust":
-                        out.write("    - name: Install Rust Stable\n")
-                        out.write("      uses: actions-rs/toolchain@v1\n")
-                        out.write("      with:\n")
-                        out.write("        toolchain: stable\n")
-                        out.write("        default: true\n")
-                        out.write("        profile: minimal\n")
-                    else:
-                        ctx = loader.ctx_gen.get_context(m.name)
-                        if m.get_repo_url(ctx) != main_repo_url:
-                            out.write("    - name: Fetch %s\n" % m.name)
-                            out.write(
-                                f"      run: {getdepscmd}{allow_sys_arg} fetch --no-tests {m.name}\n"
-                            )
+                if m == manifest:
+                    continue
+                mbuilder_name = m.get("build", "builder", ctx=manifest_ctx)
+                if (
+                    m.name == "rust"
+                    or builder_name == "cargo"
+                    or mbuilder_name == "cargo"
+                ):
+                    out.write("    - name: Install Rust Stable\n")
+                    out.write("      uses: dtolnay/rust-toolchain@stable\n")
+                    break
+
+            # Normal deps that have manifests
+            for m in projects:
+                if m == manifest or m.name == "rust":
+                    continue
+                ctx = loader.ctx_gen.get_context(m.name)
+                if m.get_repo_url(ctx) != main_repo_url:
+                    out.write("    - name: Fetch %s\n" % m.name)
+                    out.write(
+                        f"      run: {getdepscmd}{allow_sys_arg} fetch --no-tests {m.name}\n"
+                    )
 
             for m in projects:
                 if m != manifest:
@@ -1069,7 +1100,7 @@ jobs:
                             has_same_repo_dep = True
                         out.write("    - name: Build %s\n" % m.name)
                         out.write(
-                            f"      run: {getdepscmd}{allow_sys_arg} build {src_dir_arg}--no-tests {m.name}\n"
+                            f"      run: {getdepscmd}{allow_sys_arg} build {src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
                         )
 
             out.write("    - name: Build %s\n" % manifest.name)
@@ -1085,8 +1116,12 @@ jobs:
             if has_same_repo_dep:
                 no_deps_arg = "--no-deps "
 
+            no_tests_arg = ""
+            if not args.enable_tests:
+                no_tests_arg = "--no-tests "
+
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build {no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {no_tests_arg}{no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
             )
 
             out.write("    - name: Copy artifacts\n")
@@ -1110,11 +1145,18 @@ jobs:
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
 
-            if manifest.get("github.actions", "run_tests", ctx=manifest_ctx) != "off":
+            if (
+                args.enable_tests
+                and manifest.get("github.actions", "run_tests", ctx=manifest_ctx)
+                != "off"
+            ):
                 out.write("    - name: Test %s\n" % manifest.name)
                 out.write(
                     f"      run: {getdepscmd}{allow_sys_arg} test --src-dir=. {manifest.name} {project_prefix}\n"
                 )
+            if build_opts.free_up_disk and not build_opts.is_windows():
+                out.write("    - name: Show disk space at end\n")
+                out.write("      run: df -h\n")
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
@@ -1158,6 +1200,12 @@ jobs:
             type=str,
             help="add a prefix to all job names",
             default=None,
+        )
+        parser.add_argument(
+            "--free-up-disk",
+            help="Remove unused tools and clean up intermediate files if possible to maximise space for the build",
+            action="store_true",
+            default=False,
         )
 
 

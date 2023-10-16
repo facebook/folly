@@ -424,7 +424,7 @@ class NotificationQueue {
     {
       std::unique_lock<SpinLock> g(spinlock_);
 
-      if (UNLIKELY(queue_.empty())) {
+      if (FOLLY_UNLIKELY(queue_.empty())) {
         return false;
       }
 
@@ -481,7 +481,7 @@ class NotificationQueue {
   }
 
   inline bool checkDraining(bool throws = true) {
-    if (UNLIKELY(draining_ && throws)) {
+    if (FOLLY_UNLIKELY(draining_ && throws)) {
       throw std::runtime_error("queue is draining, cannot add message");
     }
     return draining_;
@@ -685,7 +685,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
     bool locked = true;
 
     try {
-      if (UNLIKELY(queue_->queue_.empty())) {
+      if (FOLLY_UNLIKELY(queue_->queue_.empty())) {
         // If there is no message, we've reached the end of the queue, return.
         setActive(false);
         queue_->spinlock_.unlock();
@@ -841,7 +841,7 @@ void NotificationQueue<MessageT>::SimpleConsumer::consume(F&& foreach) {
   {
     std::unique_lock<SpinLock> g(queue_.spinlock_);
 
-    if (UNLIKELY(queue_.queue_.empty())) {
+    if (FOLLY_UNLIKELY(queue_.queue_.empty())) {
       return;
     }
 

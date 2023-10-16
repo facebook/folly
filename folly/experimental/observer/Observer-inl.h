@@ -143,12 +143,12 @@ AtomicObserver<T>& AtomicObserver<T>::operator=(Observer<T> observer) {
 template <typename T>
 T AtomicObserver<T>::get() const {
   auto version = cachedVersion_.load(std::memory_order_acquire);
-  if (UNLIKELY(
+  if (FOLLY_UNLIKELY(
           observer_.needRefresh(version) ||
           observer_detail::ObserverManager::inManagerThread())) {
     SharedMutex::WriteHolder guard{refreshLock_};
     version = cachedVersion_.load(std::memory_order_acquire);
-    if (LIKELY(
+    if (FOLLY_LIKELY(
             observer_.needRefresh(version) ||
             observer_detail::ObserverManager::inManagerThread())) {
       auto snapshot = *observer_;
@@ -189,7 +189,7 @@ ReadMostlyAtomicObserver<T>::ReadMostlyAtomicObserver(Observer<T> observer)
 
 template <typename T>
 T ReadMostlyAtomicObserver<T>::get() const {
-  if (UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
+  if (FOLLY_UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
     return **observer_;
   }
   return cachedValue_.load(std::memory_order_relaxed);

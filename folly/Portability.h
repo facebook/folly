@@ -33,6 +33,10 @@ static_assert(FOLLY_CPLUSPLUS >= 201402L, "__cplusplus >= 201402L");
 static_assert(__GNUC__ >= 7, "__GNUC__ >= 7");
 #endif
 
+#if defined(_MSC_VER) || defined(_CPPLIB_VER)
+static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
+#endif
+
 // Unaligned loads and stores
 namespace folly {
 #if defined(FOLLY_HAVE_UNALIGNED_ACCESS) && FOLLY_HAVE_UNALIGNED_ACCESS
@@ -202,7 +206,6 @@ constexpr bool kIsSanitize = false;
 // MSVC specific defines
 // mainly for posix compat
 #ifdef _MSC_VER
-#include <folly/portability/SysTypes.h>
 
 // We have compiler support for the newest of the new, but
 // MSVC doesn't tell us that.

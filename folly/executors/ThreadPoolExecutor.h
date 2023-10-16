@@ -46,7 +46,7 @@ namespace folly {
  * timing out).  Idle threads should be removed from threadList_, and
  * threadsToJoin incremented, and activeThreads_ decremented.
  *
- * On task add(), if an executor can garantee there is an active
+ * On task add(), if an executor can guarantee there is an active
  * thread that will handle the task, then nothing needs to be done.
  * If not, then ensureActiveThreads() should be called to possibly
  * start another pool thread, up to maxThreads_.
@@ -74,6 +74,14 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   ~ThreadPoolExecutor() override;
 
   void add(Func func) override = 0;
+  /**
+   * If func doesn't get started within expiration time after its enqueued,
+   * expireCallback will be run
+   *
+   * @param func  Main function to be executed
+   * @param expiration Maximum time to wait for func to start execution
+   * @param expireCallback If expiration limit is reached, execute this callback
+   */
   virtual void add(
       Func func, std::chrono::milliseconds expiration, Func expireCallback);
 

@@ -43,9 +43,11 @@ constexpr size_t kPathMax = PATH_MAX;
 #endif
 } // namespace
 
+#if FOLLY_CPLUSPLUS < 201703L
 constexpr char AddressFormatter::bufTemplate[];
 constexpr std::array<const char*, SymbolizePrinter::Color::Num>
     SymbolizePrinter::kColorMap;
+#endif
 
 AddressFormatter::AddressFormatter() {
   memcpy(buf_, bufTemplate, sizeof(buf_));

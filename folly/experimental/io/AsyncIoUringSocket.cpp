@@ -23,7 +23,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/SysUio.h>
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 
 namespace fsp = folly::portability::sockets;
 

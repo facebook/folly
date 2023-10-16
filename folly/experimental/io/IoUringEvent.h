@@ -18,12 +18,13 @@
 
 #include <folly/File.h>
 #include <folly/experimental/io/IoUringBackend.h>
+#include <folly/experimental/io/Liburing.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 
 namespace folly {
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 
 class IoUringEvent : public EventHandler, public EventBase::LoopCallback {
  public:

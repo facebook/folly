@@ -232,9 +232,9 @@ class ElfFile {
    * Returns a pointer to the current ("found") entry when fn returned
    * true, or nullptr if fn returned false for all entries.
    */
-  template <typename E>
-  const E* iterateSectionEntries(
-      const ElfShdr& section, std::function<bool(const E&)> fn) const
+  template <typename E, class Fn>
+  const E* iterateSectionEntries(const ElfShdr& section, Fn&& fn) const
+
       noexcept(is_nothrow_invocable_v<E const&>);
 
   /**

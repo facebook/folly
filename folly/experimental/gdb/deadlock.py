@@ -20,7 +20,7 @@ from enum import Enum
 import gdb
 
 
-class DiGraph(object):
+class DiGraph:
     """
     Adapted from networkx: http://networkx.github.io/
     Represents a directed graph. Edges can store (key, value) attributes.

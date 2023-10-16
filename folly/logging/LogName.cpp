@@ -129,7 +129,7 @@ StringPiece LogName::getParent(StringPiece name) {
     return name;
   }
 
-  ssize_t idx = name.size();
+  size_t idx = name.size();
 
   // Skip over any trailing separator characters
   while (idx > 0 && isSeparator(name[idx - 1])) {

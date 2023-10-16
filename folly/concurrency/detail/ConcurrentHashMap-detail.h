@@ -1330,7 +1330,7 @@ class alignas(64) SIMDTable {
       while (hits.hasNext()) {
         size_t tag_idx = hits.next();
         Node* node = hazz.protect(chunk->item(tag_idx));
-        if (LIKELY(node && KeyEqual()(k, node->getItem().first))) {
+        if (FOLLY_LIKELY(node && KeyEqual()(k, node->getItem().first))) {
           chunk_idx = chunk_idx & (ccount - 1);
           res.setNode(node, chunks, ccount, chunk_idx, tag_idx);
           return true;
@@ -1338,7 +1338,7 @@ class alignas(64) SIMDTable {
         hazz.reset_protection();
       }
 
-      if (LIKELY(chunk->outboundOverflowCount() == 0)) {
+      if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         break;
       }
       chunk_idx += step;
@@ -1470,12 +1470,12 @@ class alignas(64) SIMDTable {
       while (hits.hasNext()) {
         tag_idx = hits.next();
         Node* node = chunk->item(tag_idx).load(std::memory_order_acquire);
-        if (LIKELY(node && KeyEqual()(k, node->getItem().first))) {
+        if (FOLLY_LIKELY(node && KeyEqual()(k, node->getItem().first))) {
           chunk_idx = (chunk_idx & (ccount - 1));
           return node;
         }
       }
-      if (LIKELY(chunk->outboundOverflowCount() == 0)) {
+      if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         break;
       }
       chunk_idx += step;

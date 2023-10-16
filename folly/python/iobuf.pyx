@@ -44,13 +44,14 @@ cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
     __cache[(<unsigned long>inst._this, id(inst))] = inst
     return inst
 
+cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf):
+    return from_unique_ptr(move(iobuf))
 
 cdef cIOBuf from_python_iobuf(object obj) except *:
-    if not isinstance(obj, IOBuf):
-        raise TypeError("Expected an IOBuf")
+    return deref((<IOBuf?>obj).c_clone())
 
-    iobuf = <IOBuf>obj
-    return deref(iobuf.c_clone())
+cdef cIOBuf* ptr_from_python_iobuf(object obj) except NULL:
+    return (<IOBuf?>obj).c_clone().release()
 
 
 cdef class IOBuf:

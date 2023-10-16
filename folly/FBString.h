@@ -47,6 +47,10 @@
 #include <string_view>
 #endif
 
+#if FOLLY_CPLUSPLUS >= 202002L
+#include <compare>
+#endif
+
 FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_GNU_DISABLE_WARNING("-Wshadow")
@@ -403,7 +407,8 @@ class fbstring_core {
       auto maybeSmallSize = size_t(maxSmallSize) -
           size_t(static_cast<UChar>(small_[maxSmallSize]));
       // With this syntax, GCC and Clang generate a CMOV instead of a branch.
-      ret = (static_cast<ssize_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
+      ret =
+          (static_cast<ptrdiff_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
     } else {
       ret = (category() == Category::isSmall) ? smallSize() : ret;
     }

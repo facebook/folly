@@ -17,11 +17,12 @@
 #pragma once
 
 #include <folly/experimental/io/IoUringBackend.h>
+#include <folly/experimental/io/Liburing.h>
 #include <folly/io/async/EventBase.h>
 
 namespace folly {
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 
 class IoUringEventBaseLocal {
  public:

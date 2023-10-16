@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <exception>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -448,6 +449,34 @@ class exception_shared_string {
   void operator=(exception_shared_string const&) = delete;
 
   char const* what() const noexcept;
+};
+
+/**
+ * A wrapper around a given exception type T that allows to store a
+ * static-lifetime string as what() return value, avoiding having to copy it
+ * into dedicated allocated storage on construction as most standard exceptions
+ * do even if the message is static.
+ *
+ * The constructor from the base class can still be used, in which case what()
+ * is delegated to the base class as well.
+ */
+template <class T>
+class static_what_exception : public T {
+ protected:
+  struct static_lifetime {};
+
+ public:
+  using T::T;
+
+  static_what_exception(static_lifetime, const char* msg)
+      : T(std::string{}), msg_(msg) {}
+
+  const char* what() const noexcept override {
+    return msg_ != nullptr ? msg_ : T::what();
+  }
+
+ private:
+  const char* msg_ = nullptr;
 };
 
 } // namespace folly

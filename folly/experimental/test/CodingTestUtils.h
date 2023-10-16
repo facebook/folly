@@ -400,7 +400,7 @@ void bmNext(const List& list, const std::vector<uint64_t>& data, size_t iters) {
 
   Reader reader(list);
   for (size_t i = 0; i < iters; ++i) {
-    if (LIKELY(reader.next())) {
+    if (FOLLY_LIKELY(reader.next())) {
       folly::doNotOptimizeAway(reader.value());
     } else {
       reader.reset();
@@ -421,7 +421,7 @@ void bmSkip(
   Reader reader(list);
   for (size_t i = 0; i < iters; ++i) {
     size_t skip = base + (i & mask);
-    if (LIKELY(reader.skip(skip))) {
+    if (FOLLY_LIKELY(reader.skip(skip))) {
       folly::doNotOptimizeAway(reader.value());
     } else {
       reader.reset();

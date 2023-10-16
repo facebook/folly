@@ -46,7 +46,7 @@ class BoundedQueue {
 
   template <typename U = T>
   folly::coro::Task<void> enqueue(U&& item) {
-    co_await enqueueSemaphore_.co_wait();
+    co_await folly::coro::co_nothrow(enqueueSemaphore_.co_wait());
     enqueueReady(std::forward<U>(item));
     dequeueSemaphore_.signal();
   }
@@ -63,7 +63,7 @@ class BoundedQueue {
   }
 
   folly::coro::Task<T> dequeue() {
-    co_await dequeueSemaphore_.co_wait();
+    co_await folly::coro::co_nothrow(dequeueSemaphore_.co_wait());
     T item;
     dequeueReady(item);
     enqueueSemaphore_.signal();
@@ -71,7 +71,7 @@ class BoundedQueue {
   }
 
   folly::coro::Task<void> dequeue(T& item) {
-    co_await dequeueSemaphore_.co_wait();
+    co_await folly::coro::co_nothrow(dequeueSemaphore_.co_wait());
     dequeueReady(item);
     enqueueSemaphore_.signal();
   }

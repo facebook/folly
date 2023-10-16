@@ -54,19 +54,35 @@ AsyncFdSocket::AsyncFdSocket(
 }
 #endif
 
+AsyncFdSocket::AsyncFdSocket(
+    AsyncFdSocket::DoesNotMoveFdSocketState, AsyncSocket* sock)
+    : AsyncSocket(sock)
+#if !defined(_WIN32)
+      ,
+      readAncillaryDataCob_(this) {
+  setUpCallbacks();
+}
+#else
+{
+}
+#endif
+
+AsyncFdSocket::AsyncFdSocket(
+    AsyncFdSocket::DoesNotMoveFdSocketState tag, AsyncSocket::UniquePtr sock)
+    : AsyncFdSocket(tag, sock.get()) {}
+
 void AsyncFdSocket::writeChainWithFds(
     WriteCallback* callback,
     std::unique_ptr<folly::IOBuf> buf,
-    SocketFds fds,
+    SocketFds socketFds,
     WriteFlags flags) {
 #if defined(_WIN32)
-  DCHECK(fds.empty()) << "AsyncFdSocket cannot send FDs on Windows";
+  DCHECK(socketFds.empty()) << "AsyncFdSocket cannot send FDs on Windows";
 #else
   DCHECK_EQ(&sendMsgCob_, getSendMsgParamsCB());
 
-  // The order of the below `failWrite` logic checks is not important because
-  // all scenarios destroy `fds` and block socket writes.
-  if (!fds.empty()) {
+  // All these `failWrite` scenarios destroy the FDs and block socket writes.
+  if (!socketFds.empty()) {
     if (buf->empty()) {
       DestructorGuard dg(this);
       AsyncSocketException ex(
@@ -75,7 +91,16 @@ void AsyncFdSocket::writeChainWithFds(
       return failWrite(__func__, callback, 0, ex);
     }
 
-    const auto fdsSeqNum = fds.getFdSocketSeqNum();
+    auto maybeFdsAndSeqNum = socketFds.releaseToSendAndSeqNum();
+    if (!maybeFdsAndSeqNum) {
+      DestructorGuard dg(this);
+      AsyncSocketException ex(
+          AsyncSocketException::BAD_ARGS,
+          withAddr("Cannot send `SocketFds` that is in `Received` state"));
+      return failWrite(__func__, callback, 0, ex);
+    }
+    auto& fds = maybeFdsAndSeqNum->first;
+    const auto fdsSeqNum = maybeFdsAndSeqNum->second;
 
     if (fdsSeqNum == SocketFds::kNoSeqNum) {
       DestructorGuard dg(this);
@@ -100,7 +125,7 @@ void AsyncFdSocket::writeChainWithFds(
     // theoretically happen that "allocated" wraps around before "sent".
 
     if (!sendMsgCob_.registerFdsForWriteTag(
-            WriteRequestTag{buf.get()}, fds.releaseToSend())) {
+            WriteRequestTag{buf.get()}, std::move(fds))) {
       // Careful: this has no unittest coverage because I don't have a good
       // idea for how to cause this in a meaningful way.  Should this be
       // a DCHECK? Plans that don't work:
@@ -128,6 +153,19 @@ void AsyncFdSocket::writeChainWithFds(
 void AsyncFdSocket::setUpCallbacks() noexcept {
   AsyncSocket::setSendMsgParamCB(&sendMsgCob_);
   AsyncSocket::setReadAncillaryDataCB(&readAncillaryDataCob_);
+}
+
+void AsyncFdSocket::swapFdReadStateWith(AsyncFdSocket* other) {
+  // We don't need these write-state assertions to correctly swap read
+  // state, but since the only use-case is `moveToPlaintext`, they help.
+  DCHECK_EQ(0, other->allocatedToSendFdsSeqNum_);
+  DCHECK_EQ(0, other->sentFdsSeqNum_);
+  DCHECK_EQ(0, other->sendMsgCob_.writeTagToFds_.size());
+
+  fdsQueue_.swap(other->fdsQueue_);
+  std::swap(receivedFdsSeqNum_, other->receivedFdsSeqNum_);
+  // Do NOT swap `readAncillaryDataCob_` since its internal members are not
+  // "state", but plumbing that does not change.
 }
 
 void AsyncFdSocket::releaseIOBuf(
@@ -253,9 +291,9 @@ bool receiveFdsFromCMSG(
 #if !defined(__linux__)
     int flags = ::fcntl(fd, F_GETFD);
     // On error, "fail open" by leaving the FD unmodified.
-    if (UNLIKELY(flags == -1)) {
+    if (FOLLY_UNLIKELY(flags == -1)) {
       PLOG(ERROR) << "FdReadAncillaryDataCallback F_GETFD";
-    } else if (UNLIKELY(-1 == ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC))) {
+    } else if (FOLLY_UNLIKELY(-1 == ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC))) {
       PLOG(ERROR) << "FdReadAncillaryDataCallback F_SETFD";
     }
 #endif // !Linux
@@ -333,7 +371,7 @@ SocketFds::SeqNum AsyncFdSocket::addSeqNum(
     return SocketFds::kNoSeqNum;
   }
   const auto gap = std::numeric_limits<SocketFds::SeqNum>::max() - a;
-  if (LIKELY(b <= gap)) {
+  if (FOLLY_LIKELY(b <= gap)) {
     return a + b;
   }
   return b - gap - 1; // wrap around through 0, modulo max
@@ -362,7 +400,7 @@ SocketFds::SeqNum AsyncFdSocket::injectSocketSeqNumIntoFdsToSend(
 #if defined(_WIN32)
   return SocketFds::kNoSeqNum;
 #else
-  if (UNLIKELY(fds->empty())) {
+  if (FOLLY_UNLIKELY(fds->empty())) {
     LOG(DFATAL) << "Cannot inject sequence number into empty SocketFDs";
     return SocketFds::kNoSeqNum;
   }

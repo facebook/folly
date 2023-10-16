@@ -308,7 +308,8 @@ void BaseFormatterImpl<
   using RecordUsedSizeArgs = decltype(Derived::recordUsedArg(*this, 0));
   constexpr auto used = Derived::recordUsedArg;
   static constexpr auto funs = getDoFormatFnArray<Output>();
-  int widths[nargs + 1];
+  constexpr auto in = unsafe_default_initialized;
+  int widths[nargs + 1] = {conditional_t<!alignof(Args), int, int>{in}..., in};
   getSizeArg(widths);
   detail::baseFormatterCallImpl<containerMode, RecordUsedSizeArgs::value>(
       out, nargs, widths, *used, funs.data, *this);

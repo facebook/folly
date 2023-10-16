@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/AsyncScope.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
@@ -32,6 +33,8 @@ class ScopeExitTest : public testing::Test {
  protected:
   int count = 0;
 };
+
+class AsyncGeneratorScopeExitTest : public ScopeExitTest {};
 } // namespace
 
 TEST_F(ScopeExitTest, OneExitAction) {
@@ -143,6 +146,169 @@ TEST_F(ScopeExitTest, OneExitActionThroughNoThrow) {
       }()),
       std::runtime_error);
   EXPECT_EQ(count, 1);
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, PartiallyConsumed) {
+  auto makeGenerator = [&]() -> folly::coro::CleanableAsyncGenerator<int> {
+    co_await co_scope_exit([&]() -> folly::coro::Task<> {
+      ++count;
+      co_return;
+    });
+    co_yield 1;
+    co_yield 2;
+  };
+
+  auto gen = makeGenerator();
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    auto result = co_await gen.next();
+    EXPECT_TRUE(result);
+    EXPECT_EQ(count, 0);
+    co_await std::move(gen).cleanup();
+  }());
+
+  EXPECT_EQ(count, 1);
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, FullyConsumed) {
+  auto makeGenerator = [&]() -> folly::coro::CleanableAsyncGenerator<int> {
+    co_await co_scope_exit([&]() -> folly::coro::Task<> {
+      ++count;
+      co_return;
+    });
+    co_yield 1;
+  };
+
+  auto gen = makeGenerator();
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    auto result = co_await gen.next();
+    EXPECT_TRUE(result);
+    result = co_await gen.next();
+    EXPECT_FALSE(result);
+    EXPECT_EQ(count, 0);
+    co_await std::move(gen).cleanup();
+  }());
+
+  EXPECT_EQ(count, 1);
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, TwoExitActions) {
+  auto makeGenerator = [&]() -> folly::coro::CleanableAsyncGenerator<int> {
+    co_await co_scope_exit([&]() -> folly::coro::Task<> {
+      EXPECT_EQ(count, 1);
+      ++count;
+      co_return;
+    });
+    co_await co_scope_exit([&]() -> folly::coro::Task<> {
+      EXPECT_EQ(count, 0);
+      ++count;
+      co_return;
+    });
+    co_return;
+  };
+
+  auto gen = makeGenerator();
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    auto result = co_await gen.next();
+    EXPECT_FALSE(result);
+    EXPECT_EQ(count, 0);
+    co_await std::move(gen).cleanup();
+  }());
+
+  EXPECT_EQ(count, 2);
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, StatefulExitAction) {
+  auto makeGenerator = [&]() -> folly::coro::CleanableAsyncGenerator<int> {
+    auto&& [i] = co_await co_scope_exit(
+        [&](int&& ii) -> Task<void> {
+          count += ii;
+          co_return;
+        },
+        3);
+    ++count;
+    i *= i;
+    co_return;
+  };
+
+  auto gen = makeGenerator();
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    EXPECT_EQ(count, 0);
+    auto result = co_await gen.next();
+    EXPECT_FALSE(result);
+    EXPECT_EQ(count, 1);
+    co_await std::move(gen).cleanup();
+  }());
+
+  EXPECT_EQ(count, 10);
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, OneExitActionThroughNoThrow) {
+  struct Error : std::exception {};
+
+  auto makeGenerator = [&]() -> folly::coro::CleanableAsyncGenerator<int> {
+    co_await co_scope_exit([&]() -> folly::coro::Task<> {
+      ++count;
+      co_return;
+    });
+    co_await co_nothrow([]() -> Task<> {
+      throw Error{};
+      co_return;
+    }());
+  };
+
+  auto gen = makeGenerator();
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    EXPECT_THROW(co_await gen.next(), Error);
+    co_await std::move(gen).cleanup();
+  }());
+
+  EXPECT_EQ(count, 1);
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, NextAfterCancel) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSrc;
+    auto gen = folly::coro::co_invoke(
+        [&]() -> folly::coro::CleanableAsyncGenerator<int> {
+          co_await co_scope_exit([&]() -> folly::coro::Task<> {
+            ++count;
+            co_return;
+          });
+          co_yield 1;
+          co_yield 2;
+          co_await folly::coro::co_safe_point;
+          co_await co_scope_exit([&]() -> folly::coro::Task<> {
+            ++count;
+            co_return;
+          });
+          co_yield 3;
+        });
+
+    auto result = co_await folly::coro::co_awaitTry(
+        folly::coro::co_withCancellation(cancelSrc.getToken(), gen.next()));
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(1, *result.value());
+
+    cancelSrc.requestCancellation();
+    result = co_await folly::coro::co_awaitTry(
+        folly::coro::co_withCancellation(cancelSrc.getToken(), gen.next()));
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(2, *result.value());
+
+    result = co_await folly::coro::co_awaitTry(
+        folly::coro::co_withCancellation(cancelSrc.getToken(), gen.next()));
+    EXPECT_TRUE(result.hasException());
+    EXPECT_THROW(result.value(), folly::OperationCancelled);
+
+    EXPECT_EQ(count, 0);
+    co_await std::move(gen).cleanup();
+    EXPECT_EQ(count, 1);
+  }());
 }
 
 #endif // FOLLY_HAS_COROUTINES

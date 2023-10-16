@@ -2302,9 +2302,12 @@ template <template <class...> class TMap>
 void testInitializerListDeductionGuide() {
   TMap<int, double> source({{1, 2.0}, {3, 4.0}});
 
+#if !defined(__GNUC__) || __GNUC__ > 12 || defined(__clang__)
+  // some versions of gcc, including until at least gcc v12, fail here
   TMap dest1{std::pair{1, 2.0}, {3, 4.0}};
   static_assert(std::is_same_v<decltype(dest1), decltype(source)>);
   EXPECT_EQ(dest1, source);
+#endif
 
   TMap dest2({std::pair{1, 2.0}, {3, 4.0}});
   static_assert(std::is_same_v<decltype(dest2), decltype(source)>);
@@ -2358,3 +2361,148 @@ TEST(F14Map, initializerListDeductionGuide) {
   testInitializerListDeductionGuide<F14FastMap>();
 }
 #endif // FOLLY_HAS_DEDUCTION_GUIDES
+
+namespace {
+
+struct TracedMovable {
+ public:
+  TracedMovable() = default;
+
+  TracedMovable& operator=(TracedMovable&& other) noexcept {
+    if (this != &other) {
+      n = std::exchange(other.n, 0);
+    }
+    return *this;
+  }
+
+  TracedMovable(TracedMovable&& other) noexcept {
+    n = std::exchange(other.n, 0);
+  }
+
+  int32_t n{10};
+};
+
+} // namespace
+
+template <template <class...> class TMap>
+void testInsertOrAssignUnchangedIfNoInsert() {
+  TMap<int32_t, TracedMovable> m;
+
+  m[0] = TracedMovable{};
+  EXPECT_EQ(m[0].n, 10);
+
+  m.insert_or_assign(0, TracedMovable{});
+  EXPECT_EQ(m[0].n, 10);
+}
+
+TEST(F14Map, insertOrAssignUnchangedIfNoInsert) {
+  testInsertOrAssignUnchangedIfNoInsert<F14ValueMap>();
+  testInsertOrAssignUnchangedIfNoInsert<F14NodeMap>();
+  testInsertOrAssignUnchangedIfNoInsert<F14VectorMap>();
+  testInsertOrAssignUnchangedIfNoInsert<F14FastMap>();
+}
+
+template <typename M>
+void runSimpleShrinkToFitTest(float expectedLoadFactor) {
+  using K = typename M::key_type;
+  for (int n = 1; n <= 1000; ++n) {
+    M m;
+    for (K k = 0; k < n; ++k) {
+      m[k];
+    }
+    m.reserve(0); // reserve(0) works like shrink_to_fit
+    EXPECT_GE(m.load_factor(), expectedLoadFactor);
+  }
+}
+
+TEST(F14Map, shrinkToFit) {
+  SKIP_IF(kFallback);
+  runSimpleShrinkToFitTest<F14NodeMap<int, int>>(0.5);
+  runSimpleShrinkToFitTest<F14ValueMap<int, int>>(0.5);
+  runSimpleShrinkToFitTest<F14VectorMap<int, int>>(0.875);
+}
+
+template <typename M>
+void runDefactoShrinkToFitTest(float expectedLoadFactor) {
+  for (int n = 1; n <= 1000; n += (n + 9) / 10) {
+    M m1;
+    for (int k = 0; k < n; ++k) {
+      m1[k];
+    }
+    for (int j = 0; j <= n; ++j) {
+      auto m2 = m1;
+      // any argument < size is a "defacto" shrink_to_fit
+      m2.reserve(m2.size() - j);
+      EXPECT_GE(m2.load_factor(), expectedLoadFactor);
+    }
+  }
+}
+
+TEST(F14Map, defactoShrinkToFit) {
+  SKIP_IF(kFallback);
+  runDefactoShrinkToFitTest<F14NodeMap<int, int>>(0.5);
+  runDefactoShrinkToFitTest<F14ValueMap<int, int>>(0.5);
+  runDefactoShrinkToFitTest<F14VectorMap<int, int>>(0.875);
+}
+
+template <typename M>
+void runInitialReserveTest(float expectedLoadFactor) {
+  auto initBucketsCtor = [](int initBuckets) { return M(initBuckets); };
+  auto defaultCtorAndReserve = [](int initBuckets) {
+    M m;
+    m.reserve(initBuckets);
+    return m;
+  };
+
+  auto fill = [](M& m, int n) {
+    using K = typename M::key_type;
+    auto initBuckets = m.bucket_count();
+    for (K k = 0; k < n; ++k) {
+      m[k];
+      EXPECT_EQ(m.bucket_count(), initBuckets);
+    }
+  };
+
+  using MakeFuncs = std::initializer_list<std::function<M(int)>>;
+  for (const auto& make : MakeFuncs{initBucketsCtor, defaultCtorAndReserve}) {
+    for (int n = 1; n <= 1000; ++n) {
+      auto m = make(n);
+      fill(m, n);
+      EXPECT_GE(m.load_factor(), expectedLoadFactor);
+    }
+  }
+}
+
+TEST(F14Map, initialReserve) {
+  SKIP_IF(kFallback);
+  runInitialReserveTest<F14NodeMap<int, int>>(0.5);
+  runInitialReserveTest<F14ValueMap<int, int>>(0.5);
+  runInitialReserveTest<F14VectorMap<int, int>>(0.875);
+}
+
+template <typename M>
+void runReserveMoreTest(int n) {
+  constexpr int kIters = 1000;
+  M m;
+  int k = 0;
+  for (int i = 0; i < kIters; ++i) {
+    auto bc = m.bucket_count();
+    m.reserve(m.size() + n);
+    EXPECT_GE(m.bucket_count(), bc); // should never shrink
+    for (int j = 0; j < n; ++j) {
+      bc = m.bucket_count();
+      m[k++];
+      EXPECT_EQ(m.bucket_count(), bc);
+    }
+  }
+}
+
+TEST(F14Map, reserveMoreNeverShrinks) {
+  SKIP_IF(kFallback);
+  runReserveMoreTest<F14NodeMap<int, int>>(1);
+  runReserveMoreTest<F14ValueMap<int, int>>(1);
+  runReserveMoreTest<F14VectorMap<int, int>>(1);
+  runReserveMoreTest<F14NodeMap<int, int>>(10);
+  runReserveMoreTest<F14ValueMap<int, int>>(10);
+  runReserveMoreTest<F14VectorMap<int, int>>(10);
+}

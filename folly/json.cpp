@@ -582,7 +582,8 @@ dynamic parseNumber(Input& in) {
   auto extremaLen = negative ? minIntLen : maxIntLen;
   auto extremaStr = negative ? minIntStr : maxIntStr;
   if (*in != '.' && !wasE) {
-    if (LIKELY(!in.getOpts().double_fallback || integral.size() < extremaLen) ||
+    if (FOLLY_LIKELY(
+            !in.getOpts().double_fallback || integral.size() < extremaLen) ||
         (integral.size() == extremaLen && integral <= extremaStr)) {
       auto val = to<int64_t>(integral);
       in.skipWhitespace();
@@ -994,7 +995,7 @@ std::string stripComments(StringPiece jsonC) {
         break;
       case State::InString:
         if (s[0] == '\\') {
-          if (UNLIKELY(s.size() == 1)) {
+          if (FOLLY_UNLIKELY(s.size() == 1)) {
             throw std::logic_error("Invalid JSONC: string is not terminated");
           }
           result.push_back(s[0]);

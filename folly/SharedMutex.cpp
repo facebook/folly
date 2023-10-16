@@ -17,6 +17,7 @@
 #include <folly/SharedMutex.h>
 
 #include <folly/Indestructible.h>
+#include <folly/portability/SysResource.h>
 
 namespace folly {
 // Explicitly instantiate SharedMutex here:
@@ -49,5 +50,19 @@ uint32_t getMaxDeferredReadersSlow(relaxed_atomic<uint32_t>& cache) {
   cache = maxDeferredReaders;
   return maxDeferredReaders;
 }
+
+long getCurrentThreadInvoluntaryContextSwitchCount() {
+#ifdef RUSAGE_THREAD
+  struct rusage usage;
+  if (getrusage(RUSAGE_THREAD, &usage)) {
+    return 0;
+  } else {
+    return usage.ru_nivcsw;
+  }
+#else
+  return 0;
+#endif
+}
+
 } // namespace shared_mutex_detail
 } // namespace folly

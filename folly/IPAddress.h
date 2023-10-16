@@ -280,7 +280,7 @@ class IPAddress {
    * a valid V4 instance.
    */
   const IPAddressV4& asV4() const {
-    if (UNLIKELY(!isV4())) {
+    if (FOLLY_UNLIKELY(!isV4())) {
       asV4Throw();
     }
     return addr_.ipV4Addr;
@@ -293,7 +293,7 @@ class IPAddress {
    * a valid V6 instance.
    */
   const IPAddressV6& asV6() const {
-    if (UNLIKELY(!isV6())) {
+    if (FOLLY_UNLIKELY(!isV6())) {
       asV6Throw();
     }
     return addr_.ipV6Addr;

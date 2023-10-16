@@ -391,7 +391,8 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
     // We have to support the strong exception guarantee for emplace_back().
     emplaceFunc(out + pos);
     // move old elements to the left of the new one
-    {
+    FOLLY_PUSH_WARNING
+    FOLLY_MSVC_DISABLE_WARNING(4702) {
       auto rollback = makeGuard([&] { //
         out[pos].~T();
       });
@@ -412,6 +413,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
       }
       rollback.dismiss();
     }
+    FOLLY_POP_WARNING
   }
 };
 
@@ -585,12 +587,7 @@ class small_vector
     constructImpl(arg1, arg2, std::is_arithmetic<Arg>());
   }
 
-  ~small_vector() {
-    for (auto& t : *this) {
-      (&t)->~value_type();
-    }
-    freeHeap();
-  }
+  ~small_vector() { destroy(); }
 
   small_vector& operator=(small_vector const& o) {
     if (FOLLY_LIKELY(this != &o)) {
@@ -700,9 +697,9 @@ class small_vector
       o.u.pdata_.heap_ = tmp;
 
       if (kHasInlineCapacity) {
-        const auto capacity_ = this->u.getCapacity();
+        const auto currentCapacity = this->u.getCapacity();
         this->setCapacity(o.u.getCapacity());
-        o.u.setCapacity(capacity_);
+        o.u.setCapacity(currentCapacity);
       }
 
       return;
@@ -865,22 +862,22 @@ class small_vector
     if (!BaseType::kShouldUseHeap) {
       throw_exception<std::length_error>("max_size exceeded in small_vector");
     }
-    auto size_ = size();
-    auto capacity_ = capacity();
-    if (capacity_ == size_) {
+    auto currentSize = size();
+    auto currentCapacity = capacity();
+    if (currentCapacity == currentSize) {
       // Any of args may be references into the vector.
       // When we are reallocating, we have to be careful to construct the new
       // element before modifying the data in the old buffer.
       makeSize(
-          size_ + 1,
+          currentSize + 1,
           [&](void* p) { new (p) value_type(std::forward<Args>(args)...); },
-          size_);
+          currentSize);
     } else {
       // We know the vector is stored in the heap.
-      new (u.heap() + size_) value_type(std::forward<Args>(args)...);
+      new (u.heap() + currentSize) value_type(std::forward<Args>(args)...);
     }
     this->incrementSize(1);
-    return *(u.heap() + size_);
+    return *(u.heap() + currentSize);
   }
 
   void push_back(value_type&& t) { emplace_back(std::move(t)); }
@@ -903,18 +900,18 @@ class small_vector
     }
 
     auto offset = p - begin();
-    auto size_ = size();
-    if (capacity() == size_) {
+    auto currentSize = size();
+    if (capacity() == currentSize) {
       makeSize(
-          size_ + 1,
+          currentSize + 1,
           [&t](void* ptr) { new (ptr) value_type(std::move(t)); },
           offset);
       this->incrementSize(1);
     } else {
       detail::moveObjectsRightAndCreate(
           data() + offset,
-          data() + size_,
-          data() + size_ + 1,
+          data() + currentSize,
+          data() + currentSize + 1,
           [&]() mutable -> value_type&& { return std::move(t); });
       this->incrementSize(1);
     }
@@ -929,12 +926,12 @@ class small_vector
 
   iterator insert(const_iterator pos, size_type n, value_type const& val) {
     auto offset = pos - begin();
-    auto size_ = size();
-    makeSize(size_ + n);
+    auto currentSize = size();
+    makeSize(currentSize + n);
     detail::moveObjectsRightAndCreate(
         data() + offset,
-        data() + size_,
-        data() + size_ + n,
+        data() + currentSize,
+        data() + currentSize + n,
         [&]() mutable -> value_type const& { return val; });
     this->incrementSize(n);
     return begin() + offset;
@@ -1089,14 +1086,14 @@ class small_vector
 
     auto const distance = std::distance(first, last);
     auto const offset = pos - begin();
-    auto size_ = size();
+    auto currentSize = size();
     assert(distance >= 0);
     assert(offset >= 0);
-    makeSize(size_ + distance);
+    makeSize(currentSize + distance);
     detail::moveObjectsRightAndCreate(
         data() + offset,
-        data() + size_,
-        data() + size_ + distance,
+        data() + currentSize,
+        data() + currentSize + distance,
         [&, in = last]() mutable -> it_ref { return *--in; });
     this->incrementSize(distance);
     return begin() + offset;
@@ -1109,6 +1106,13 @@ class small_vector
     return insert(pos, n, val);
   }
 
+  void destroy() {
+    for (auto& t : *this) {
+      (&t)->~value_type();
+    }
+    freeHeap();
+  }
+
   // The std::false_type argument came from std::is_arithmetic as part
   // of disambiguating an overload (see the comment in the
   // constructor).
@@ -1118,9 +1122,11 @@ class small_vector
     if (std::is_same<categ, std::input_iterator_tag>::value) {
       // With iterators that only allow a single pass, we can't really
       // do anything sane here.
+      auto rollback = makeGuard([&] { destroy(); });
       while (first != last) {
         emplace_back(*first++);
       }
+      rollback.dismiss();
       return;
     }
     size_type distance = std::distance(first, last);

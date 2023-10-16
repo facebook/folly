@@ -32,4 +32,15 @@ std::string to_uppercase_string_cpp(PyObject* o_iobuf) {
   return s;
 }
 
+std::string to_uppercase_string_cpp_heap(PyObject* o_iobuf) {
+  auto iobuf = iobuf_ptr_from_python_iobuf(o_iobuf);
+
+  std::string s;
+  if (iobuf) {
+    iobuf->appendTo(s);
+  }
+  std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+  return s;
+}
+
 } // namespace folly::python

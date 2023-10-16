@@ -64,8 +64,8 @@ namespace folly {
  *    }
  *    return folly::loop_continue;
  *  };
- *  folly_for_each(range_one, func);
- *  folly_for_each(range_two, func);
+ *  folly::for_each(range_one, func);
+ *  folly::for_each(range_two, func);
  *
  * A simple use case would be when using futures, if the user was doing calls to
  * n servers then they would accept the callback with the futures like this:

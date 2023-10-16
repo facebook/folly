@@ -36,7 +36,7 @@
 #include <sys/timerfd.h>
 #endif
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_pre_hook(uint64_t* call_time);
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
@@ -2211,4 +2211,4 @@ bool IoUringBackend::kernelSupportsSendZC() {
 
 } // namespace folly
 
-#endif // __has_include(<liburing.h>)
+#endif

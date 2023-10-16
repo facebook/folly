@@ -15,7 +15,6 @@
  */
 
 #include <atomic>
-#include <future>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -276,6 +275,42 @@ class TestHandler : public folly::EventHandler {
  private:
   int fd_;
 };
+
+TYPED_TEST_P(EventBaseTest, EventBaseThread) {
+  const auto testInLoop = [](EventBase& evb, bool canRunImmediately) {
+    bool done = false;
+    evb.runInEventBaseThread([&] {
+      evb.checkIsInEventBaseThread();
+      EXPECT_TRUE(evb.isInEventBaseThread());
+      done = true;
+    });
+    evb.loopOnce();
+    ASSERT_TRUE(done);
+
+    done = false;
+    evb.runImmediatelyOrRunInEventBaseThread([&] { done = true; });
+    EXPECT_EQ(done, canRunImmediately);
+    evb.loopOnce();
+    EXPECT_TRUE(done);
+  };
+
+  {
+    auto evbPtr = getEventBase<TypeParam>();
+    EXPECT_TRUE(evbPtr->isInEventBaseThread());
+    testInLoop(*evbPtr, true);
+    evbPtr->checkIsInEventBaseThread();
+  }
+
+  {
+    auto evbPtr =
+        getEventBase<TypeParam>(EventBase::Options().setStrictLoopThread(true));
+    EXPECT_FALSE(evbPtr->isInEventBaseThread());
+    testInLoop(*evbPtr, false);
+    EXPECT_DEATH(
+        evbPtr->checkIsInEventBaseThread(),
+        ".*This logic must be executed in the event base thread.*");
+  }
+}
 
 /**
  * Test a READ event
@@ -1638,8 +1673,8 @@ TYPED_TEST_P(EventBaseTest, RunInLoopStopLoop) {
   ASSERT_LE(c1.getCount(), 11);
 }
 
-// Test loopPool() call sequence
-TYPED_TEST_P(EventBaseTest, RunPoolLoop) {
+// Test loopPoll() call sequence
+TYPED_TEST_P(EventBaseTest, RunPollLoop) {
   auto evbPtr = getEventBase<TypeParam>();
   SKIP_IF(!evbPtr) << "Backend not available";
   folly::EventBase& eventBase = *evbPtr;
@@ -1665,8 +1700,8 @@ TYPED_TEST_P(EventBaseTest, RunPoolLoop) {
   }
   eventBase.loopPollCleanup();
 
-  // We expect multiple iterations of the loop to happen, since loopPool has non
-  // blocking semantics, we should call loopPool multiple times
+  // We expect multiple iterations of the loop to happen, since loopPoll has non
+  // blocking semantics, we should call loopPoll multiple times
   ASSERT_GT(calls, 1);
 }
 
@@ -1678,7 +1713,7 @@ TYPED_TEST_P(EventBaseTest1, pidCheck) {
   EXPECT_DEATH(deadManWalking(), "pid");
 }
 
-TYPED_TEST_P(EventBaseTest, messageAvailableException) {
+TYPED_TEST_P(EventBaseTest, MessageAvailableException) {
   auto evbPtr = getEventBase<TypeParam>();
   SKIP_IF(!evbPtr) << "Backend not available";
 
@@ -2465,13 +2500,13 @@ TYPED_TEST_P(EventBaseTest1, TestStarvation) {
   auto evbPtr = getEventBase<TypeParam>();
   SKIP_IF(!evbPtr) << "Backend not available";
 
-  std::promise<void> stopRequested;
-  std::promise<void> stopScheduled;
+  Baton<> stopRequested;
+  Baton<> stopScheduled;
   bool stopping{false};
   std::thread t{[&] {
-    stopRequested.get_future().get();
+    stopRequested.wait();
     evbPtr->add([&]() { stopping = true; });
-    stopScheduled.set_value();
+    stopScheduled.post();
   }};
 
   size_t num{0};
@@ -2482,8 +2517,8 @@ TYPED_TEST_P(EventBaseTest1, TestStarvation) {
     }
 
     if (++num == 1000) {
-      stopRequested.set_value();
-      stopScheduled.get_future().get();
+      stopRequested.post();
+      stopScheduled.wait();
     }
 
     evbPtr->add(fn);
@@ -2588,6 +2623,94 @@ TYPED_TEST_P(EventBaseTest, EventBaseObserver) {
   evbPtr->loopOnce();
   ASSERT_EQ(1, observer2->getNumTimesCalled());
 }
+
+TYPED_TEST_P(EventBaseTest, LoopRearmsNotificationQueue) {
+  auto evbPtr = getEventBase<TypeParam>();
+  std::atomic<size_t> n = 0;
+  evbPtr->runInEventBaseThread([&]() { n = 1; });
+  evbPtr->loopOnce();
+  EXPECT_EQ(n.load(), 1);
+  // The notification queue is rearmed through a loop callback, ensure that the
+  // loop executes it.
+  EXPECT_EQ(evbPtr->getNumLoopCallbacks(), 0);
+}
+
+REGISTER_TYPED_TEST_SUITE_P(
+    EventBaseTest,
+    EventBaseThread,
+    ReadEvent,
+    ReadPersist,
+    ReadImmediate,
+    WriteEvent,
+    WritePersist,
+    WriteImmediate,
+    ReadWrite,
+    WriteRead,
+    ReadWriteSimultaneous,
+    ReadWritePersist,
+    ReadPartial,
+    WritePartial,
+    DestroyingHandler,
+    RunAfterDelay,
+    RunAfterDelayDestruction,
+    BasicTimeouts,
+    ReuseTimeout,
+    RescheduleTimeout,
+    CancelTimeout,
+    DestroyingTimeout,
+    ScheduledFn,
+    ScheduledFnAt,
+    RunInThread,
+    RunInEventBaseThreadAndWait,
+    RunImmediatelyOrRunInEventBaseThreadAndWaitCross,
+    RunImmediatelyOrRunInEventBaseThreadAndWaitWithin,
+    RunImmediatelyOrRunInEventBaseThreadAndWaitNotLooping,
+    RunImmediatelyOrRunInEventBaseThreadCross,
+    RunImmediatelyOrRunInEventBaseThreadNotLooping,
+    RepeatedRunInLoop,
+    RunInLoopNoTimeMeasurement,
+    RunInLoopStopLoop,
+    RunPollLoop,
+    MessageAvailableException,
+    TryRunningAfterTerminate,
+    CancelRunInLoop,
+    LoopTermination,
+    CallbackOrderTest,
+    AlwaysEnqueueCallbackOrderTest,
+    IdleTime,
+    MaxLatencyUndamped,
+    UnsetMaxLatencyUndamped,
+    ThisLoop,
+    EventBaseThreadLoop,
+    EventBaseThreadName,
+    RunBeforeLoop,
+    RunBeforeLoopWait,
+    StopBeforeLoop,
+    RunCallbacksPreDestruction,
+    RunCallbacksOnDestruction,
+    LoopKeepAlive,
+    LoopKeepAliveInLoop,
+    LoopKeepAliveWithLoopForever,
+    LoopKeepAliveShutdown,
+    LoopKeepAliveAtomic,
+    LoopKeepAliveCast,
+    EventBaseObserver,
+    LoopRearmsNotificationQueue);
+
+REGISTER_TYPED_TEST_SUITE_P(
+    EventBaseTest1,
+    DrivableExecutorTest,
+    IOExecutorTest,
+    RequestContextTest,
+    CancelLoopCallbackRequestContextTest,
+    TestStarvation,
+    RunOnDestructionBasic,
+    RunOnDestructionCancelled,
+    RunOnDestructionAfterHandleDestroyed,
+    RunOnDestructionAddCallbackWithinCallback,
+    InternalExternalCallbackOrderTest,
+    pidCheck,
+    EventBaseExecutionObserver);
 
 } // namespace test
 } // namespace folly

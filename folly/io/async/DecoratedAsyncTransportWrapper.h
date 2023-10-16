@@ -28,7 +28,11 @@ template <class T>
 class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
  public:
   explicit DecoratedAsyncTransportWrapper(typename T::UniquePtr transport)
-      : transport_(std::move(transport)) {}
+      : transport_(std::move(transport)) {
+    if (FOLLY_LIKELY(nullptr != transport_)) {
+      transport_->decoratingTransport_ = this;
+    }
+  }
 
   const AsyncTransport* getWrappedTransport() const override {
     return transport_.get();
@@ -197,7 +201,20 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
 
   AsyncTransport::UniquePtr tryExchangeWrappedTransport(
       AsyncTransport::UniquePtr& transport) override {
+    if (transport_) {
+      transport_->decoratingTransport_ = nullptr;
+    }
+    if (transport) {
+      transport->decoratingTransport_ = this;
+    }
     return std::exchange(transport_, std::move(transport));
+  }
+
+  void destroy() override {
+    if (transport_) {
+      transport_->decoratingTransport_ = nullptr;
+    }
+    folly::AsyncTransport::destroy();
   }
 
  protected:

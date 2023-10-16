@@ -27,7 +27,6 @@ zstd
 fatal
 fbthrift
 iproute2
-libmnl
 libusb
 libcurl
 libnl

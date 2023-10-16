@@ -38,6 +38,8 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/observer/AsyncSocketObserverContainer.h>
 #include <folly/net/NetOpsDispatcher.h>
+#include <folly/net/TcpInfo.h>
+#include <folly/net/TcpInfoDispatcher.h>
 #include <folly/portability/Sockets.h>
 #include <folly/small_vector.h>
 
@@ -77,6 +79,10 @@ namespace folly {
 
 #if defined __linux__ && !defined SO_NO_TSOCKS
 #define SO_NO_TSOCKS 201
+#endif
+
+#if FOLLY_HAVE_SO_TIMESTAMPING
+#define SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS 10
 #endif
 
 class AsyncSocket : public AsyncSocketTransport {
@@ -364,7 +370,7 @@ class AsyncSocket : public AsyncSocketTransport {
    */
   struct ByteEventHelper {
     bool byteEventsEnabled{false};
-    size_t rawBytesWrittenWhenByteEventsEnabled{0};
+    long rawBytesWrittenWhenByteEventsEnabled{0};
     folly::Optional<AsyncSocketException> maybeEx;
 
     /**
@@ -476,18 +482,26 @@ class AsyncSocket : public AsyncSocketTransport {
    * this version of the constructor, they need to explicitly call
    * setNoDelay(true) after the constructor returns.
    *
-   * @param evb EventBase that will manage this socket.
-   * @param fd  File descriptor to take over (should be a connected socket).
-   * @param zeroCopyBufId Zerocopy buf id to start with.
-   * @param peerAddress optional peer address (eg: returned from accept).  If
-   *        nullptr, AsyncSocket will lazily attempt to determine it from fd
-   *        via a system call
+   * @param evb            EventBase that will manage this socket.
+   * @param fd             File descriptor to take over (connected socket).
+   * @param zeroCopyBufId  Zerocopy buf id to start with.
+   * @param peerAddress    Optional peer address (eg: returned from accept). If
+   *                       nullptr, AsyncSocket will lazily attempt to determine
+   *                       it from fd via a system call.
+   * @param maybeConnectionEstablishTime  Optional parameter indicating when the
+   *                                      connection was established. Can be
+   *                                      used by acceptors to record when a
+   *                                      connection was established and make
+   *                                      this information available via the
+   *                                      getConnectionEstablishTime() method.
    */
   AsyncSocket(
       EventBase* evb,
       NetworkSocket fd,
       uint32_t zeroCopyBufId = 0,
-      const SocketAddress* peerAddress = nullptr);
+      const SocketAddress* peerAddress = nullptr,
+      folly::Optional<std::chrono::steady_clock::time_point>
+          maybeConnectionEstablishTime = folly::none);
 
   /**
    * Create an AsyncSocket from a different, already connected AsyncSocket.
@@ -739,6 +753,30 @@ class AsyncSocket : public AsyncSocketTransport {
     return netops_.getOverride();
   }
 
+  /**
+   * Override folly::TcpInfoDispatcher to be used for getting TcpInfo.
+   *
+   * Pass empty shared_ptr to reset to default.
+   * Override can be used by unit tests to intercept and mock
+   * TcpInfo::initFromFd calls.
+   */
+  virtual void setOverrideTcpInfoDispatcher(
+      std::shared_ptr<folly::TcpInfoDispatcher> dispatcher) {
+    tcpInfoDispatcher_.setOverride(std::move(dispatcher));
+  }
+
+  /**
+   * Returns override folly::TcpInfoDispatcher being used for tcpinfo calls.
+   *
+   * Returns empty shared_ptr if no override set.
+   * Override can be used by unit tests to intercept and mock
+   * TcpInfo::initFromFd calls.
+   */
+  virtual std::shared_ptr<folly::TcpInfoDispatcher>
+  getOverrideTcpInfoDispatcher() const {
+    return tcpInfoDispatcher_.getOverride();
+  }
+
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
@@ -872,12 +910,33 @@ class AsyncSocket : public AsyncSocketTransport {
     return connectTimeout_;
   }
 
+  /**
+   * Returns when connect() started.
+   */
   std::chrono::steady_clock::time_point getConnectStartTime() const {
     return connectStartTime_;
   }
 
+  /**
+   * Returns when connect() finished (either successsfully or failed).
+   */
   std::chrono::steady_clock::time_point getConnectEndTime() const {
     return connectEndTime_;
+  }
+
+  /**
+   * Returns when the connection was established.
+   *
+   *  -  If connect() was called and succeeded, this is the same as
+   *     getConnectEndTime().
+   *
+   *  -  If AsyncSocket was initialized with a file descriptor (e.g., by an
+   *     acceptor), returns the connection establishment time passed to the
+   *     constructor. If no time was passed, returns folly::none.
+   */
+  folly::Optional<std::chrono::steady_clock::time_point>
+  getConnectionEstablishTime() const {
+    return maybeConnectionEstablishTime_;
   }
 
   bool getTFOAttempted() const { return tfoInfo_.attempted; }
@@ -1122,6 +1181,12 @@ class AsyncSocket : public AsyncSocketTransport {
   void setCloseOnFailedWrite(bool closeOnFailedWrite) {
     closeOnFailedWrite_ = closeOnFailedWrite;
   }
+
+  /**
+   * Get folly::TcpInfo from socket
+   */
+  folly::Expected<folly::TcpInfo, std::errc> getTcpInfo(
+      const TcpInfo::LookupOptions& options);
 
   /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
@@ -1388,6 +1453,22 @@ class AsyncSocket : public AsyncSocketTransport {
   }
 
   /**
+   * Adds an observer.
+   *
+   * If the observer is already added, this is a no-op.
+   *
+   * @param observer     Observer to add.
+   * @return             Whether the observer was added (fails if no list).
+   */
+  bool addObserver(std::shared_ptr<Observer> observer) {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      list->addObserver(std::move(observer));
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Removes an observer.
    *
    * @param observer     Observer to remove.
@@ -1396,6 +1477,19 @@ class AsyncSocket : public AsyncSocketTransport {
   virtual bool removeObserver(Observer* observer) {
     if (auto list = getAsyncSocketObserverContainer()) {
       return list->removeObserver(observer);
+    }
+    return false;
+  }
+
+  /**
+   * Removes an observer.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether the observer was found and removed.
+   */
+  virtual bool removeObserver(std::shared_ptr<Observer> observer) {
+    if (auto list = getAsyncSocketObserverContainer()) {
+      return list->removeObserver(std::move(observer));
     }
     return false;
   }
@@ -1851,8 +1945,22 @@ class AsyncSocket : public AsyncSocketTransport {
   // socket.
   std::unique_ptr<IOBuf> preReceivedData_;
 
+  // When connect() started.
   std::chrono::steady_clock::time_point connectStartTime_;
+
+  // When connect() completed.
   std::chrono::steady_clock::time_point connectEndTime_;
+
+  // When the connection was established.
+  //
+  //  -  If connect() was called and succeeded, this is the same as
+  //     connectEndTime_.
+  //
+  //  -  If AsyncSocket was initialized with a file descriptor (e.g., by an
+  //     acceptor), this is the connection establishment time passed to the
+  //     constructor. If no time was passed, this is folly::none.
+  folly::Optional<std::chrono::steady_clock::time_point>
+      maybeConnectionEstablishTime_;
 
   std::chrono::milliseconds connectTimeout_{0};
 
@@ -1888,6 +1996,8 @@ class AsyncSocket : public AsyncSocketTransport {
   bool closeOnFailedWrite_{true};
 
   netops::DispatcherContainer netops_;
+
+  folly::TcpInfoDispatcherContainer tcpInfoDispatcher_;
 
   // Container of observers for the socket / transport.
   //

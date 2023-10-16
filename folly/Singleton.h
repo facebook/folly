@@ -274,6 +274,8 @@ struct SingletonVaultState {
       throw_exception<std::logic_error>(msg);
     }
   }
+
+  bool isDisabled() const { return state == Type::Quiescing; }
 };
 
 // This interface is used by SingletonVault to interact with SingletonHolders.
@@ -545,6 +547,8 @@ class SingletonVault {
   void setFailOnUseAfterFork(bool failOnUseAfterFork) {
     failOnUseAfterFork_ = failOnUseAfterFork;
   }
+
+  bool isDisabled() const { return state_.rlock()->isDisabled(); }
 
  private:
   template <typename T>
@@ -859,7 +863,7 @@ class LeakySingleton {
 
   static T& instance() {
     auto& entry = entryInstance();
-    if (UNLIKELY(entry.state != State::Living)) {
+    if (FOLLY_UNLIKELY(entry.state != State::Living)) {
       createInstance();
     }
 

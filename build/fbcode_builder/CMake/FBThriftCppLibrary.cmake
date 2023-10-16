@@ -151,6 +151,8 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
       ${ARG_DEPENDS}
       FBThrift::thriftcpp2
       Folly::folly
+      mvfst::mvfst_server_async_tran
+      mvfst::mvfst_server
   )
 
   # Add ${generated_headers} to the PUBLIC_HEADER property for ${LIB_NAME}

@@ -30,6 +30,7 @@
 using namespace std::chrono_literals;
 using namespace folly;
 using namespace folly::coro;
+using namespace folly::test;
 
 class TransportTest : public testing::Test {
  public:

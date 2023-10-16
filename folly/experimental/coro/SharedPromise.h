@@ -163,7 +163,7 @@ void SharedPromise<T>::setValue(U&& input) {
 template <typename T>
 template <typename U, typename>
 void SharedPromise<T>::setValue() {
-  setTry({});
+  setTry(TryType{unit});
 }
 
 template <typename T>

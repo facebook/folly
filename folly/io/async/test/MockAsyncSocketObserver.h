@@ -26,6 +26,9 @@ namespace test {
 class MockAsyncSocketObserver : public AsyncSocket::ManagedObserver {
  public:
   using AsyncSocket::ManagedObserver::ManagedObserver;
+  MOCK_METHOD((void), destroyed, (AsyncSocket*, DestroyContext*), (noexcept));
+  MOCK_METHOD(
+      (void), moved, (AsyncSocket*, AsyncSocket*, MoveContext*), (noexcept));
   MOCK_METHOD((void), close, (AsyncSocket*), (noexcept));
   MOCK_METHOD((void), evbAttach, (AsyncSocket*, EventBase*), (noexcept));
   MOCK_METHOD((void), evbDetach, (AsyncSocket*, EventBase*), (noexcept));
@@ -38,11 +41,6 @@ class MockAsyncSocketObserver : public AsyncSocket::ManagedObserver {
       (noexcept));
   MOCK_METHOD((void), fdAttach, (AsyncSocket*), (noexcept));
   MOCK_METHOD((void), fdDetach, (AsyncSocket*), (noexcept));
-  MOCK_METHOD(
-      (void),
-      moved,
-      (AsyncSocket*, AsyncSocket*, ObserverBase::MoveContext*),
-      (noexcept));
 };
 
 /*

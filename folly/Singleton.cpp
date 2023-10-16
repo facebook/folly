@@ -246,7 +246,7 @@ void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
   state->check(detail::SingletonVaultState::Type::Running);
 
-  if (UNLIKELY(state->registrationComplete) &&
+  if (FOLLY_UNLIKELY(state->registrationComplete) &&
       type_.load(std::memory_order_relaxed) == Type::Strict) {
     LOG(ERROR) << "Registering singleton after registrationComplete().";
   }
@@ -260,7 +260,7 @@ void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
   state->check(detail::SingletonVaultState::Type::Running);
 
-  if (UNLIKELY(state->registrationComplete) &&
+  if (FOLLY_UNLIKELY(state->registrationComplete) &&
       type_.load(std::memory_order_relaxed) == Type::Strict) {
     LOG(ERROR) << "Registering for eager-load after registrationComplete().";
   }
@@ -276,7 +276,7 @@ void SingletonVault::addEagerInitOnReenableSingleton(
   auto state = state_.rlock();
   state->check(detail::SingletonVaultState::Type::Running);
 
-  if (UNLIKELY(state->registrationComplete) &&
+  if (FOLLY_UNLIKELY(state->registrationComplete) &&
       type_.load(std::memory_order_relaxed) == Type::Strict) {
     LOG(ERROR)
         << "Registering for eager-load on re-enable after registrationComplete().";
@@ -316,7 +316,7 @@ void SingletonVault::doEagerInit() {
   {
     auto state = state_.rlock();
     state->check(detail::SingletonVaultState::Type::Running);
-    if (UNLIKELY(!state->registrationComplete)) {
+    if (FOLLY_UNLIKELY(!state->registrationComplete)) {
       throw std::logic_error("registrationComplete() not yet called");
     }
   }
@@ -331,7 +331,7 @@ void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
   {
     auto state = state_.rlock();
     state->check(detail::SingletonVaultState::Type::Running);
-    if (UNLIKELY(!state->registrationComplete)) {
+    if (FOLLY_UNLIKELY(!state->registrationComplete)) {
       throw std::logic_error("registrationComplete() not yet called");
     }
   }

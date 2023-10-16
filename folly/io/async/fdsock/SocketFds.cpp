@@ -23,7 +23,7 @@ void SocketFds::cloneToSendFromOrDfatal(const SocketFds& other) {
     ptr_.reset();
   } else {
     auto* fds = std::get_if<ToSendPair>(other.ptr_.get());
-    if (UNLIKELY(fds == nullptr)) {
+    if (FOLLY_UNLIKELY(fds == nullptr)) {
       LOG(DFATAL) << "SocketFds was in 'received' state, not cloning";
       ptr_.reset();
     } else {
@@ -51,17 +51,28 @@ SocketFds::Received SocketFds::releaseReceived() {
   return fds;
 }
 
-SocketFds::ToSend SocketFds::releaseToSend() {
-  auto fds =
-      std::move(CHECK_NOTNULL(std::get_if<ToSendPair>(ptr_.get()))->first);
+std::optional<SocketFds::ToSendPair> SocketFds::releaseToSendAndSeqNum() {
+  auto* fdsPtr = std::get_if<ToSendPair>(ptr_.get());
+  if (FOLLY_UNLIKELY(fdsPtr == nullptr)) {
+    // This can "legitimately" happen if a client wrongly sends FDs to a
+    // server method that is not expecting them. Then, `THeader::fds`
+    // in a Thrift request-response handler will retain the received
+    // FDs by the time a response
+    if (ptr_) {
+      LOG(WARNING) << "releaseToSendAndSeqNum discarded received FDs";
+      ptr_.reset();
+    }
+    return std::nullopt;
+  }
+  auto fdsAndSeqNum = std::move(*fdsPtr);
   ptr_.reset();
-  return fds;
+  return fdsAndSeqNum;
 }
 
 void SocketFds::setFdSocketSeqNumOnce(SeqNum seqNum) {
   // The type is unsigned because Thrift IDL only supports signed.
   DCHECK_GE(seqNum, 0) << "Sequence number must be nonnegative";
-  if (LIKELY(ptr_ != nullptr)) {
+  if (FOLLY_LIKELY(ptr_ != nullptr)) {
     std::visit(
         [seqNum](auto&& v) {
           DCHECK_EQ(kNoSeqNum, v.second) << "Can only set sequence number once";
@@ -74,7 +85,7 @@ void SocketFds::setFdSocketSeqNumOnce(SeqNum seqNum) {
 }
 
 SocketFds::SeqNum SocketFds::getFdSocketSeqNum() const {
-  if (LIKELY(ptr_ != nullptr)) {
+  if (FOLLY_LIKELY(ptr_ != nullptr)) {
     auto seqNum = std::visit([](auto&& v) { return v.second; }, *ptr_);
     if (seqNum >= 0) {
       return seqNum;

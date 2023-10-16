@@ -19,6 +19,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/FileUtil.h>
+#include <folly/experimental/io/EpollBackend.h>
 #include <folly/experimental/io/IoUringBackend.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/EventBase.h>
@@ -257,6 +258,7 @@ class EventBaseProvider {
   enum Type {
     DEFAULT,
     IO_URING,
+    EPOLL,
   };
 
   static std::unique_ptr<folly::EventBase> getEventBase(
@@ -279,6 +281,16 @@ class EventBaseProvider {
         } catch (const folly::IoUringBackend::NotAvailable&) {
           return nullptr;
         }
+      }
+      case EPOLL: {
+        folly::EpollBackend::Options opts;
+        opts.setNumLoopEvents(256);
+
+        auto factory = [opts] {
+          return std::make_unique<folly::EpollBackend>(opts);
+        };
+        return std::make_unique<folly::EventBase>(
+            folly::EventBase::Options().setBackendFactory(std::move(factory)));
       }
     }
 
@@ -577,6 +589,7 @@ void runBM(
   }
   uint64_t total = numEvents;
   auto evb = EventBaseProvider::getEventBase(type);
+  evb->runAfterDelay([]() {}, 1000 * 1000); // just a long timeout
   std::unique_ptr<ScopedEventBaseThread> refillThread;
   EventFDRefillInfo refillInfo;
   std::vector<std::unique_ptr<EventFD>> eventsVec;
@@ -694,6 +707,24 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
+    epoll_persist_1_refill,
+    EventBaseProvider::Type::EPOLL,
+    true,
+    false,
+    1,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_persist_1_read_4_refill,
+    EventBaseProvider::Type::EPOLL,
+    true,
+    false,
+    1,
+    4,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
     io_uring_persist_1_refill,
     EventBaseProvider::Type::IO_URING,
     true,
@@ -731,6 +762,24 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
+    epoll_persist_16_refill,
+    EventBaseProvider::Type::EPOLL,
+    true,
+    false,
+    16,
+    1,
+    1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_persist_16_read_4_refill,
+    EventBaseProvider::Type::EPOLL,
+    true,
+    false,
+    16,
+    4,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
     io_uring_persist_16_refill,
     EventBaseProvider::Type::IO_URING,
     true,
@@ -754,6 +803,16 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     default_persist_1_read_4,
     EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    1,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM, epoll_persist_1, EventBaseProvider::Type::EPOLL, true, false, 1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_persist_1_read_4,
+    EventBaseProvider::Type::EPOLL,
     true,
     false,
     1,
@@ -789,6 +848,16 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     16,
     4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM, epoll_persist_16, EventBaseProvider::Type::EPOLL, true, false, 16)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_persist_16_read_4,
+    EventBaseProvider::Type::EPOLL,
+    true,
+    false,
+    16,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     io_uring_persist_16,
     EventBaseProvider::Type::IO_URING,
@@ -814,6 +883,16 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     default_persist_64_read_4,
     EventBaseProvider::Type::DEFAULT,
+    true,
+    false,
+    64,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM, epoll_persist_64, EventBaseProvider::Type::EPOLL, true, false, 64)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_persist_64_read_4,
+    EventBaseProvider::Type::EPOLL,
     true,
     false,
     64,
@@ -849,6 +928,16 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     128,
     4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM, epoll_persist_128, EventBaseProvider::Type::EPOLL, true, false, 128)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_persist_128_read_4,
+    EventBaseProvider::Type::EPOLL,
+    true,
+    false,
+    128,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     io_uring_persist_128,
     EventBaseProvider::Type::IO_URING,
@@ -879,6 +968,16 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     256,
     4)
 BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM, epoll_persist_256, EventBaseProvider::Type::EPOLL, true, false, 256)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_persist_256_read_4,
+    EventBaseProvider::Type::EPOLL,
+    true,
+    false,
+    256,
+    4)
+BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     io_uring_persist_256,
     EventBaseProvider::Type::IO_URING,
@@ -903,6 +1002,8 @@ BENCHMARK_NAMED_PARAM(
     false,
     1)
 BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM, epoll_no_persist_1, EventBaseProvider::Type::EPOLL, false, false, 1)
+BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
     io_uring_no_persist_1,
     EventBaseProvider::Type::IO_URING,
@@ -921,6 +1022,13 @@ BENCHMARK_NAMED_PARAM(
     runBM,
     default_no_persist_16,
     EventBaseProvider::Type::DEFAULT,
+    false,
+    false,
+    16)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_no_persist_16,
+    EventBaseProvider::Type::EPOLL,
     false,
     false,
     16)
@@ -948,6 +1056,13 @@ BENCHMARK_NAMED_PARAM(
     64)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
+    epoll_no_persist_64,
+    EventBaseProvider::Type::EPOLL,
+    false,
+    false,
+    64)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
     io_uring_no_persist_64,
     EventBaseProvider::Type::IO_URING,
     false,
@@ -970,6 +1085,13 @@ BENCHMARK_NAMED_PARAM(
     128)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     runBM,
+    epoll_no_persist_128,
+    EventBaseProvider::Type::EPOLL,
+    false,
+    false,
+    128)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
     io_uring_no_persist_128,
     EventBaseProvider::Type::IO_URING,
     false,
@@ -987,6 +1109,13 @@ BENCHMARK_NAMED_PARAM(
     runBM,
     default_no_persist_256,
     EventBaseProvider::Type::DEFAULT,
+    false,
+    false,
+    256)
+BENCHMARK_RELATIVE_NAMED_PARAM(
+    runBM,
+    epoll_no_persist_256,
+    EventBaseProvider::Type::EPOLL,
     false,
     false,
     256)

@@ -453,12 +453,12 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
       for (uint64_t i = tid; i < ops; i += ncons) {
         T v;
         if (Op == 0 || Op == 3) {
-          while (UNLIKELY(!q.try_dequeue(v))) {
+          while (FOLLY_UNLIKELY(!q.try_dequeue(v))) {
             /* keep trying */;
           }
         } else if (Op == 1 || Op == 4) {
           auto duration = std::chrono::microseconds(1000);
-          while (UNLIKELY(!q.try_dequeue_for(v, duration))) {
+          while (FOLLY_UNLIKELY(!q.try_dequeue_for(v, duration))) {
             /* keep trying */;
           }
         } else {

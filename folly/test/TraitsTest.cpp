@@ -365,6 +365,30 @@ TEST(Traits, is_detected_v) {
   EXPECT_FALSE((folly::is_detected_v<detector_find, double, char>));
 }
 
+TEST(Traits, fallback_is_nothrow_convertible) {
+  EXPECT_FALSE((folly::fallback::is_nothrow_convertible<int, void>::value));
+  EXPECT_TRUE((folly::fallback::is_nothrow_convertible<void, void>::value));
+  struct foo {
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+  };
+  EXPECT_FALSE(
+      (folly::fallback::is_nothrow_convertible<foo, std::false_type>::value));
+  EXPECT_TRUE(
+      (folly::fallback::is_nothrow_convertible<foo, std::true_type>::value));
+}
+
+TEST(Traits, is_nothrow_convertible) {
+  EXPECT_FALSE((folly::is_nothrow_convertible<int, void>::value));
+  EXPECT_TRUE((folly::is_nothrow_convertible<void, void>::value));
+  struct foo {
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
+    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+  };
+  EXPECT_FALSE((folly::is_nothrow_convertible<foo, std::false_type>::value));
+  EXPECT_TRUE((folly::is_nothrow_convertible<foo, std::true_type>::value));
+}
+
 TEST(Traits, aligned_storage_for_t) {
   struct alignas(2) Foo {
     char data[4];

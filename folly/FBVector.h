@@ -162,7 +162,7 @@ class fbvector {
     }
 
     void init(size_type n) {
-      if (UNLIKELY(n == 0)) {
+      if (FOLLY_UNLIKELY(n == 0)) {
         b_ = e_ = z_ = nullptr;
       } else {
         size_type sz = folly::goodMallocSize(n * sizeof(T)) / sizeof(T);
@@ -439,7 +439,7 @@ class fbvector {
   // optimized
   static void S_uninitialized_fill_n(T* dest, size_type n) {
     if (folly::IsZeroInitializable<T>::value) {
-      if (LIKELY(n != 0)) {
+      if (FOLLY_LIKELY(n != 0)) {
         T* sz;
         if (!folly::checked_add(&sz, dest, n)) {
           throw_exception<std::length_error>("FBVector exceeded max size.");
@@ -750,7 +750,7 @@ class fbvector {
   ~fbvector() = default; // the cleanup occurs in impl_
 
   fbvector& operator=(const fbvector& other) {
-    if (UNLIKELY(this == &other)) {
+    if (FOLLY_UNLIKELY(this == &other)) {
       return *this;
     }
 
@@ -768,7 +768,7 @@ class fbvector {
   }
 
   fbvector& operator=(fbvector&& other) {
-    if (UNLIKELY(this == &other)) {
+    if (FOLLY_UNLIKELY(this == &other)) {
       return *this;
     }
     moveFrom(std::move(other), moveIsSwap());
@@ -889,7 +889,7 @@ class fbvector {
     return dataIsInternal(t);
   }
   bool dataIsInternal(const T& t) {
-    return UNLIKELY(
+    return FOLLY_UNLIKELY(
         impl_.b_ <= std::addressof(t) && std::addressof(t) < impl_.e_);
   }
 
@@ -1055,7 +1055,7 @@ class fbvector {
     return impl_.b_[n];
   }
   const_reference at(size_type n) const {
-    if (UNLIKELY(n >= size())) {
+    if (FOLLY_UNLIKELY(n >= size())) {
       throw_exception<std::out_of_range>(
           "fbvector: index is greater than size.");
     }

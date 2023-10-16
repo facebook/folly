@@ -108,7 +108,7 @@ typename Promise<T, BatonT>::value_type Promise<T, BatonT>::await_async(
     }
   });
 
-  if (UNLIKELY(funcException != nullptr)) {
+  if (FOLLY_UNLIKELY(funcException != nullptr)) {
     std::rethrow_exception(funcException);
   }
 

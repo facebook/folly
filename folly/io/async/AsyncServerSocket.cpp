@@ -568,6 +568,26 @@ void AsyncServerSocket::bind(uint16_t port) {
   }
 }
 
+void AsyncServerSocket::setEnableReuseAddr(bool enable) {
+  enableReuseAddr_ = enable;
+  for (auto& handler : sockets_) {
+    if (handler.socket_ == NetworkSocket()) {
+      continue;
+    }
+
+    int val = (enable) ? 1 : 0;
+    if (netops::setsockopt(
+            handler.socket_, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) !=
+        0) {
+      auto errnoCopy = errno;
+      LOG(ERROR) << "failed to set SO_REUSEADDR on async server socket "
+                 << errnoCopy;
+      folly::throwSystemErrorExplicit(
+          errnoCopy, "failed to set SO_REUSEADDR on async server socket");
+    }
+  }
+}
+
 void AsyncServerSocket::listen(int backlog) {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
@@ -830,7 +850,7 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
   // Set reuseaddr to avoid 2MSL delay on server restart
   int one = 1;
   // AF_UNIX does not support SO_REUSEADDR, setting this would confuse Windows
-  if (family != AF_UNIX &&
+  if (family != AF_UNIX && enableReuseAddr_ &&
       netops::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) !=
           0) {
     auto errnoCopy = errno;

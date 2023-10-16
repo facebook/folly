@@ -26,35 +26,51 @@
 
 namespace folly {
 
-class FOLLY_EXPORT PromiseException : public std::logic_error {
+class FOLLY_EXPORT PromiseException
+    : public static_what_exception<std::logic_error> {
  public:
-  using std::logic_error::logic_error;
+  using static_what_exception<std::logic_error>::static_what_exception;
 };
 
 class FOLLY_EXPORT PromiseInvalid : public PromiseException {
  public:
-  PromiseInvalid() : PromiseException("Promise invalid") {}
+  PromiseInvalid() : PromiseException(static_lifetime{}, "Promise invalid") {}
 };
 
 class FOLLY_EXPORT PromiseAlreadySatisfied : public PromiseException {
  public:
-  PromiseAlreadySatisfied() : PromiseException("Promise already satisfied") {}
+  PromiseAlreadySatisfied()
+      : PromiseException(static_lifetime{}, "Promise already satisfied") {}
 };
 
 class FOLLY_EXPORT FutureAlreadyRetrieved : public PromiseException {
  public:
-  FutureAlreadyRetrieved() : PromiseException("Future already retrieved") {}
+  FutureAlreadyRetrieved()
+      : PromiseException(static_lifetime{}, "Future already retrieved") {}
 };
 
 class FOLLY_EXPORT BrokenPromise : public PromiseException {
  private:
-  struct PrettyNameCtorTag {};
-  BrokenPromise(PrettyNameCtorTag, char const* type);
+  template <class T>
+  FOLLY_EXPORT static const char* error_message() {
+    static constexpr auto str = [] {
+      constexpr auto prefix =
+          detail::pretty_carray_from("Broken promise for type name `");
+      constexpr auto name = detail::pretty_name_carray<T>();
+      c_array<char, name.size() - 1 + prefix.size() - 1 + 2> ret{};
+      char* dest = ret.data;
+      dest = detail::pretty_carray_copy(dest, prefix.data, prefix.size() - 1);
+      dest = detail::pretty_carray_copy(dest, name.data, name.size() - 1);
+      detail::pretty_carray_copy(dest, "`", 2);
+      return ret;
+    }();
+    return str.data;
+  }
 
  public:
   template <typename T>
   explicit BrokenPromise(tag_t<T>)
-      : BrokenPromise(PrettyNameCtorTag{}, pretty_name<T>()) {}
+      : PromiseException(static_lifetime{}, error_message<T>()) {}
 };
 
 // forward declaration
@@ -265,8 +281,10 @@ class Promise {
   ///
   /// Please see `setException(exception_wrapper)` for semantics/contract.
   template <class E>
-  typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
-  setException(E const& e);
+  typename std::enable_if<
+      std::is_base_of<std::exception, typename std::decay<E>::type>::value>::
+      type
+      setException(E&& e);
 
   /// Sets a handler for the producer to receive a (logical) interruption
   ///   request (exception) sent from the consumer via `future.raise()`.

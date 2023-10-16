@@ -687,6 +687,39 @@ TEST(Singleton, SingletonEagerInitParallel) {
   }
 }
 
+struct StateTestTag {};
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonVaultStateTest = Singleton<T, Tag, StateTestTag>;
+
+TEST(Singleton, SingletonVaultStateTest) {
+  auto& vault = *SingletonVault::singleton<StateTestTag>();
+  // vault must not be disabled after construction
+  EXPECT_FALSE(vault.isDisabled());
+
+  EXPECT_EQ(vault.registeredSingletonCount(), 0);
+  SingletonVaultStateTest<Watchdog> watchdog_singleton;
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+
+  // vault must not be disabled after adding a singleton
+  EXPECT_FALSE(vault.isDisabled());
+
+  vault.registrationComplete();
+
+  // vault must not be disabled after registration is complete
+  EXPECT_FALSE(vault.isDisabled());
+
+  vault.destroyInstances();
+
+  // vault must be disabled after destroying instances
+  EXPECT_TRUE(vault.isDisabled());
+
+  vault.reenableInstances();
+
+  // vault must not be disabled after reenabling instances
+  EXPECT_FALSE(vault.isDisabled());
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+}
+
 struct MockTag {};
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonMock = Singleton<T, Tag, MockTag>;

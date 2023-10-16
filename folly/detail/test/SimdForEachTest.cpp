@@ -29,7 +29,8 @@ template <bool kSameUnrollValue>
 struct TestDelegate {
   char* stopAt = nullptr;
 
-  bool step(char* s, ignore_extrema ignore, auto unroll_i) const {
+  template <typename N>
+  bool step(char* s, ignore_extrema ignore, N unroll_i) const {
     int middle = kCardinal - ignore.first - ignore.last;
     while (ignore.first--) {
       EXPECT_EQ(*s, 0);
@@ -50,7 +51,8 @@ struct TestDelegate {
     return stopAt != nullptr && s > stopAt;
   }
 
-  bool step(char* s, ignore_none, auto unroll_i) const {
+  template <typename N>
+  bool step(char* s, ignore_none, N unroll_i) const {
     for (int i = 0; i != kCardinal; ++i) {
       EXPECT_EQ(*s, 0);
       if (kSameUnrollValue) {

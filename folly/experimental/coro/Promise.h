@@ -91,34 +91,112 @@ class Promise {
 
   bool isFulfilled() const noexcept { return state_ && state_->fulfilled; }
 
-  template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-  void setValue(U&& value) {
-    DCHECK(state_);
-    if (!state_->fulfilled.exchange(true)) {
-      state_->result.emplace(std::forward<U>(value));
-      state_->ready.post();
-    }
+  template <typename... Args>
+  void setValue(Args&&... args) {
+    trySetValue(std::forward<Args>(args)...);
   }
-  template <typename U = T, typename = std::enable_if_t<std::is_void_v<U>>>
-  void setValue() {
-    DCHECK(state_);
-    if (!state_->fulfilled.exchange(true)) {
-      state_->ready.post();
-    }
+
+  template <typename... Args>
+  void setException(Args&&... args) {
+    trySetException(std::forward<Args>(args)...);
   }
-  void setException(exception_wrapper&& ex) {
+
+  void setResult(Try<T>&& result) { trySetResult(std::move(result)); }
+
+  /**
+   * Fulfills the promise with a value if not already fulfilled.
+   * @returns Whether the fulfillment took place.
+   */
+  template <typename... Args>
+  bool trySetValue(Args&&... args) {
     DCHECK(state_);
-    if (!state_->fulfilled.exchange(true)) {
-      state_->result.emplaceException(std::move(ex));
-      state_->ready.post();
+    if (state_->fulfilled.exchange(true)) {
+      return false;
     }
+    if constexpr (std::is_void_v<T>) {
+      static_assert(sizeof...(Args) == 0);
+    } else {
+      state_->result.emplace(std::forward<Args>(args)...);
+    }
+    state_->ready.post();
+    return true;
   }
-  void setResult(Try<T>&& result) {
+
+  /**
+   * Fulfills the promise with an exception if not already fulfilled.
+   * @returns Whether the fulfillment took place.
+   */
+  template <typename... Args>
+  bool trySetException(Args&&... args) {
     DCHECK(state_);
-    if (!state_->fulfilled.exchange(true)) {
-      state_->result = std::move(result);
-      state_->ready.post();
+    if (state_->fulfilled.exchange(true)) {
+      return false;
     }
+    state_->result.emplaceException(std::forward<Args>(args)...);
+    state_->ready.post();
+    return true;
+  }
+
+  /**
+   * Fulfills the promise with a Try if not already fulfilled.
+   * @returns Whether the fulfillment took place.
+   */
+  bool trySetResult(Try<T>&& result) {
+    DCHECK(state_);
+    if (state_->fulfilled.exchange(true)) {
+      return false;
+    }
+    state_->result = std::move(result);
+    state_->ready.post();
+    return true;
+  }
+
+  /**
+   * Fulfills the promise with a value/Try returned from calling func if not
+   * already fulfilled.
+   *
+   * If either the call to func or the result's constructor completes with an
+   * exception then the exception is caught and stored as the result.
+   *
+   * @returns Whether the fulfillment took place.
+   */
+  template <typename Func>
+  bool trySetWith(Func&& func) {
+    DCHECK(state_);
+    if (state_->fulfilled.exchange(true)) {
+      return false;
+    }
+    try {
+      state_->result = Try<T>(std::forward<Func>(func)());
+    } catch (...) {
+      state_->result.emplaceException(std::current_exception());
+    }
+    state_->ready.post();
+    return true;
+  }
+
+  /**
+   * Fulfills the promise with an exception returned from calling func if not
+   * already fulfilled.
+   *
+   * If either the call to func or the result's constructor completes with an
+   * exception then the exception is caught and stored as the result.
+   *
+   * @returns Whether the fulfillment took place.
+   */
+  template <typename Func>
+  bool trySetExceptionWith(Func&& func) {
+    DCHECK(state_);
+    if (state_->fulfilled.exchange(true)) {
+      return false;
+    }
+    try {
+      state_->result.emplaceException(std::forward<Func>(func)());
+    } catch (...) {
+      state_->result.emplaceException(std::current_exception());
+    }
+    state_->ready.post();
+    return true;
   }
 
   const CancellationToken& getCancellationToken() const { return ct_; }

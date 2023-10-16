@@ -839,4 +839,30 @@ TEST(Optional, StdOptionalConversions) {
 }
 #endif
 
+TEST(Optional, MovedFromOptionalIsEmpty) {
+  // moved-from folly::Optional is empty, unlike std::optional!
+  folly::Optional<int> x = 1;
+  EXPECT_TRUE(x);
+  auto y = std::move(x);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_FALSE(x);
+  EXPECT_TRUE(y);
+  folly::Optional<int> z;
+  z = std::move(y);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_FALSE(y);
+  EXPECT_TRUE(z);
+
+  folly::Optional<std::string> str("hello");
+  EXPECT_TRUE(str);
+  auto str2 = std::move(str);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_FALSE(str);
+  EXPECT_TRUE(str2);
+  folly::Optional<std::string> str3;
+  str3 = std::move(str2);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_FALSE(str2);
+  EXPECT_TRUE(str3);
+}
 } // namespace folly

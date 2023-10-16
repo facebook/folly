@@ -13,12 +13,12 @@ libzstd-devel
 libzstd
 
 [download]
-url = https://github.com/facebook/zstd/releases/download/v1.4.5/zstd-1.4.5.tar.gz
-sha256 = 98e91c7c6bf162bf90e4e70fdbc41a8188b9fa8de5ad840c401198014406ce9e
+url = https://github.com/facebook/zstd/releases/download/v1.5.5/zstd-1.5.5.tar.gz
+sha256 = 9c4396cc829cfae319a6e2615202e82aad41372073482fce286fac78646d3ee4
 
 [build]
 builder = cmake
-subdir = zstd-1.4.5/build/cmake
+subdir = zstd-1.5.5/build/cmake
 
 # The zstd cmake build explicitly sets the install name
 # for the shared library in such a way that cmake discards

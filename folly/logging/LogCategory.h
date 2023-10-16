@@ -254,6 +254,8 @@ class LogCategory {
   LogCategory(LogCategory&&) = delete;
   LogCategory& operator=(LogCategory&&) = delete;
 
+  static void processMessageWalker(
+      const LogCategory* category, const LogMessage& message);
   void processMessage(const LogMessage& message) const;
   void updateEffectiveLevel(LogLevel newEffectiveLevel);
   void parentLevelUpdated(LogLevel parentEffectiveLevel);

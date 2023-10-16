@@ -16,7 +16,7 @@
 
 #include <folly/experimental/io/IoUringEvent.h>
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 
 #include <sys/eventfd.h>
 

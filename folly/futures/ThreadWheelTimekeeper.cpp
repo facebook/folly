@@ -19,15 +19,10 @@
 #include <future>
 
 #include <folly/Chrono.h>
-#include <folly/Singleton.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/WTCallback.h>
 
 namespace folly {
-
-namespace {
-Singleton<ThreadWheelTimekeeper> timekeeperSingleton_;
-}
 
 ThreadWheelTimekeeper::ThreadWheelTimekeeper()
     : thread_([this] { eventBase_.loopForever(); }),
@@ -70,13 +65,5 @@ SemiFuture<Unit> ThreadWheelTimekeeper::after(HighResDuration dur) {
   });
   return f;
 }
-
-namespace detail {
-
-std::shared_ptr<Timekeeper> getTimekeeperSingleton() {
-  return timekeeperSingleton_.try_get();
-}
-
-} // namespace detail
 
 } // namespace folly

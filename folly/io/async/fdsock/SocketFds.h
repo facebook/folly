@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <variant>
 #include <glog/logging.h>
 
@@ -61,8 +62,8 @@ class SocketFds final {
   static constexpr SeqNum kNoSeqNum = -1;
 
  private:
-  using ToSendPair = std::pair<ToSend, SeqNum>;
   using ReceivedPair = std::pair<Received, SeqNum>;
+  using ToSendPair = std::pair<ToSend, SeqNum>;
   using FdsVariant = std::variant<ReceivedPair, ToSendPair>;
 
  public:
@@ -111,8 +112,9 @@ class SocketFds final {
   //  - Cost: Cloning copies a vector into a new heap allocation.
   void cloneToSendFromOrDfatal(const SocketFds& other);
 
-  Received releaseReceived();
-  ToSend releaseToSend();
+  Received releaseReceived(); // Fatals if `this` is not `Received`
+  // Returns `nullopt` if `this` is not `ToSend`
+  std::optional<ToSendPair> releaseToSendAndSeqNum();
 
   // Socket FDs need to be associated with socket data messages. Doing so
   // correctly through the many layers of Folly & Thrift can be tricky --
@@ -138,25 +140,3 @@ class SocketFds final {
 };
 
 } // namespace folly
-
-namespace apache {
-namespace thrift {
-
-// DANGER: If you flip this to `false`, you will break any applications that
-// rely on Thrift FD passing.  This flag affects nothing in Folly, it's only
-// here because it avoids dependency bloat.
-//
-// The intended use of this flag is to allow a quick reaction to a perf
-// regression in a prod-critical Thrift service that is attributable to
-// FD-passing branches.  Given the pervasive use of PGO, we don't expect
-// this to ever be used.  This flag will be deleted a few weeks after the
-// code lands.
-//
-// Note that this flag does NOT gate the introduction of new members or
-// arguments for passing FDs.  While those could also theoretically
-// contribute to perf regressions, preemptively gating them with `#if`
-// macros was deemeed to be a poor cost/benefit tradeoff.
-constexpr bool kTempKillswitch__EnableFdPassing = true;
-
-} // namespace thrift
-} // namespace apache

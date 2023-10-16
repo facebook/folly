@@ -96,7 +96,7 @@ TypeError::TypeError(
 
 bool operator<(dynamic const& a, dynamic const& b) {
   constexpr auto obj = dynamic::OBJECT;
-  if (UNLIKELY(a.type_ == obj || b.type_ == obj)) {
+  if (FOLLY_UNLIKELY(a.type_ == obj || b.type_ == obj)) {
     auto type = a.type_ == obj ? b.type_ : b.type_ == obj ? a.type_ : obj;
     throw_exception<TypeError>("object", type);
   }

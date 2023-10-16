@@ -1,0 +1,13 @@
+[manifest]
+name = lld
+
+[debs]
+lld
+
+[rpms]
+lld
+
+# We use the system lld where needed on linux and default linker elsewhere
+[build]
+builder = nop
+

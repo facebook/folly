@@ -43,11 +43,11 @@ void TimekeeperScheduledExecutor::add(Func func) {
 
 void TimekeeperScheduledExecutor::scheduleAt(
     Func&& func, ScheduledExecutor::TimePoint const& t) {
-  auto delay = std::chrono::duration_cast<folly::Duration>(
+  auto delay = std::chrono::duration_cast<folly::HighResDuration>(
       t - std::chrono::steady_clock::now());
   if (delay.count() > 0) {
     auto tk = getTimekeeper_();
-    if (UNLIKELY(!tk)) {
+    if (FOLLY_UNLIKELY(!tk)) {
       throw TimekeeperScheduledExecutorNoTimekeeper();
     }
     tk->after(delay)

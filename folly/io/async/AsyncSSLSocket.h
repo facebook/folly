@@ -205,6 +205,7 @@ class AsyncSSLSocket : public AsyncSocket {
     std::shared_ptr<CertificateIdentityVerifier> verifier;
     bool deferSecurityNegotiation{};
     bool isServer{};
+    std::string serverName;
   };
 
   /**
@@ -283,6 +284,17 @@ class AsyncSSLSocket : public AsyncSocket {
       AsyncSocket::UniquePtr oldAsyncSocket,
       bool server = true,
       bool deferSecurityNegotiation = false);
+
+  /**
+   * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
+   */
+  static UniquePtr newSocket(
+      std::shared_ptr<folly::SSLContext> ctx,
+      EventBase* evb,
+      Options&& options) {
+    return AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(std::move(ctx), evb, std::move(options)));
+  }
 
   /**
    * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.

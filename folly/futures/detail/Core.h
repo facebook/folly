@@ -83,9 +83,18 @@ class KeepAliveOrDeferred {
   using DW = DeferredWrapper;
 
  public:
-  KeepAliveOrDeferred() noexcept;
-  /* implicit */ KeepAliveOrDeferred(KA ka) noexcept;
-  /* implicit */ KeepAliveOrDeferred(DW deferred) noexcept;
+  KeepAliveOrDeferred() noexcept : state_(State::Deferred), deferred_(DW{}) {}
+
+  /* implicit */ KeepAliveOrDeferred(KA ka) noexcept
+      : state_(State::KeepAlive) {
+    ::new (&keepAlive_) KA{std::move(ka)};
+  }
+
+  /* implicit */ KeepAliveOrDeferred(DW deferred) noexcept
+      : state_(State::Deferred) {
+    ::new (&deferred_) DW{std::move(deferred)};
+  }
+
   KeepAliveOrDeferred(KeepAliveOrDeferred&& other) noexcept;
 
   ~KeepAliveOrDeferred();
@@ -173,7 +182,7 @@ class InterruptHandler {
  public:
   virtual ~InterruptHandler();
 
-  virtual void handle(const folly::exception_wrapper& ew) const = 0;
+  virtual void handle(const folly::exception_wrapper& ew) = 0;
 
   void acquire();
   void release();
@@ -190,7 +199,7 @@ class InterruptHandlerImpl final : public InterruptHandler {
       noexcept(F(static_cast<R&&>(f))))
       : f_(static_cast<R&&>(f)) {}
 
-  void handle(const folly::exception_wrapper& ew) const override { f_(ew); }
+  void handle(const folly::exception_wrapper& ew) override { f_(ew); }
 
  private:
   F f_;
@@ -474,7 +483,8 @@ class CoreBase {
   }
 
  protected:
-  CoreBase(State state, unsigned char attached);
+  CoreBase(State state, unsigned char attached) noexcept
+      : state_(state), attached_(attached) {}
 
   virtual ~CoreBase();
 
@@ -700,6 +710,21 @@ class Core final : private ResultHolder<T>, public CoreBase {
     }
   }
 };
+
+inline Executor* CoreBase::getExecutor() const {
+  if (!executor_.isKeepAlive()) {
+    return nullptr;
+  }
+  return executor_.getKeepAliveExecutor();
+}
+
+inline DeferredExecutor* CoreBase::getDeferredExecutor() const {
+  if (!executor_.isDeferred()) {
+    return {};
+  }
+
+  return executor_.getDeferredExecutor();
+}
 
 #if FOLLY_USE_EXTERN_FUTURE_UNIT
 // limited to the instances unconditionally forced by the futures library

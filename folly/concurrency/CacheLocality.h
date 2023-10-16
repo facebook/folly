@@ -326,7 +326,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   class CpuCache {
    public:
     unsigned cpu(GlobalState const& s) {
-      if (UNLIKELY(cachedCpuUses_-- == 0)) {
+      if (FOLLY_UNLIKELY(cachedCpuUses_-- == 0)) {
         unsigned cpu;
         s.getcpu.load(std::memory_order_relaxed)(&cpu, nullptr, nullptr);
         cachedCpu_ = cpu % kMaxCpus;

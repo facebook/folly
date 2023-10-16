@@ -58,7 +58,8 @@ enum class align_val_t : std::size_t {};
 //  operator_new
 struct operator_new_fn {
   FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
-      std::size_t const s) const {
+      std::size_t const s) const //
+      noexcept(noexcept(::operator new(0))) {
     return FOLLY_DETAIL_LANG_NEW_IMPL_N(s);
   }
   FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
@@ -68,7 +69,8 @@ struct operator_new_fn {
   }
   FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s,
-      FOLLY_MAYBE_UNUSED align_val_t const a) const {
+      FOLLY_MAYBE_UNUSED align_val_t const a) const
+      noexcept(noexcept(::operator new(0))) {
 #if FOLLY_DETAIL_LANG_NEW_HAVE_AN
     return FOLLY_DETAIL_LANG_NEW_IMPL_N(s, a);
 #else

@@ -30,11 +30,12 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/SSLErrors.h>
+#include <folly/io/async/test/CallbackStateEnum.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
-namespace folly {
+namespace folly::test {
 
 extern const char* kTestCert;
 extern const char* kTestKey;
@@ -44,8 +45,6 @@ extern const char* kTestCertCN;
 extern const char* kClientTestCert;
 extern const char* kClientTestKey;
 extern const char* kClientTestCA;
-
-enum StateEnum { STATE_WAITING, STATE_SUCCEEDED, STATE_FAILED };
 
 class HandshakeCallback;
 
@@ -139,4 +138,4 @@ class TestSSLServer {
  private:
   void init(bool);
 };
-} // namespace folly
+} // namespace folly::test

@@ -54,6 +54,7 @@
  *  }
  */
 
+#include <cassert>
 #include <cstddef>
 #include <functional>
 #include <new>
@@ -76,6 +77,7 @@ template <class Value>
 class Optional;
 
 namespace detail {
+struct OptionalEmptyTag {};
 template <class Value>
 struct OptionalPromise;
 template <class Value>
@@ -396,6 +398,8 @@ class Optional {
   }
 
  private:
+  friend struct detail::OptionalPromiseReturn<Value>;
+
   template <class T>
   friend constexpr Optional<std::decay_t<T>> make_optional(T&&);
   template <class T, class... Args>
@@ -418,6 +422,10 @@ class Optional {
   constexpr Optional(PrivateConstructor, Args&&... args) noexcept(
       std::is_nothrow_constructible<Value, Args&&...>::value) {
     construct(std::forward<Args>(args)...);
+  }
+  // for when coroutine promise return-object conversion is eager
+  explicit Optional(detail::OptionalEmptyTag, Optional*& pointer) noexcept {
+    pointer = this;
   }
 
   void require_value() const {
@@ -662,15 +670,26 @@ struct OptionalPromise;
 template <typename Value>
 struct OptionalPromiseReturn {
   Optional<Value> storage_;
-  OptionalPromise<Value>* promise_;
-  /* implicit */ OptionalPromiseReturn(OptionalPromise<Value>& promise) noexcept
-      : promise_(&promise) {
-    promise.value_ = &storage_;
+  Optional<Value>*& pointer_;
+
+  /* implicit */ OptionalPromiseReturn(OptionalPromise<Value>& p) noexcept
+      : pointer_{p.value_} {
+    pointer_ = &storage_;
   }
-  OptionalPromiseReturn(OptionalPromiseReturn&& that) noexcept
-      : OptionalPromiseReturn{*that.promise_} {}
+  OptionalPromiseReturn(OptionalPromiseReturn const&) = delete;
+  // letting dtor be trivial makes the coroutine crash
+  // TODO: fix clang/llvm codegen
   ~OptionalPromiseReturn() {}
-  /* implicit */ operator Optional<Value>() & { return std::move(storage_); }
+  /* implicit */ operator Optional<Value>() {
+    // handle both deferred and eager return-object conversion behaviors
+    // see docs for detect_promise_return_object_eager_conversion
+    if (folly::coro::detect_promise_return_object_eager_conversion()) {
+      assert(!storage_.has_value());
+      return Optional{OptionalEmptyTag{}, pointer_}; // eager
+    } else {
+      return std::move(storage_); // deferred
+    }
+  }
 };
 
 template <typename Value>
@@ -678,10 +697,6 @@ struct OptionalPromise {
   Optional<Value>* value_ = nullptr;
   OptionalPromise() = default;
   OptionalPromise(OptionalPromise const&) = delete;
-  // This should work regardless of whether the compiler generates:
-  //    folly::Optional<Value> retobj{ p.get_return_object(); } // MSVC
-  // or:
-  //    auto retobj = p.get_return_object(); // clang
   OptionalPromiseReturn<Value> get_return_object() noexcept { return *this; }
   coro::suspend_never initial_suspend() const noexcept { return {}; }
   coro::suspend_never final_suspend() const noexcept { return {}; }

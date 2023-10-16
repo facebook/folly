@@ -34,6 +34,7 @@
 #include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/lang/ToAscii.h>
+#include <folly/memory/SanitizeAddress.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
@@ -538,7 +539,13 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
   }
 
   auto contextStart = [](UnsafeSelfAllocateStackTracePrinter* that) {
-    that->SafeStackTracePrinter::printSymbolizedStackTrace();
+    void const* fromStack;
+    size_t fromStackSize;
+    sanitizer_finish_switch_fiber(nullptr, &fromStack, &fromStackSize);
+    if (that) {
+      that->SafeStackTracePrinter::printSymbolizedStackTrace();
+    }
+    sanitizer_start_switch_fiber(nullptr, fromStack, fromStackSize);
   };
 
   makecontext(
@@ -547,10 +554,14 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
           UnsafeSelfAllocateStackTracePrinter*))(contextStart),
       /* argc */ 1,
       /* arg */ this);
+  void* currentFakestack;
+  sanitizer_start_switch_fiber(
+      &currentFakestack, alt.uc_stack.ss_sp, alt.uc_stack.ss_size);
   // NOTE: swapcontext is not async-signal-safe
   if (swapcontext(&cur, &alt) != 0) {
-    return;
+    contextStart(nullptr);
   }
+  sanitizer_finish_switch_fiber(currentFakestack, nullptr, nullptr);
 }
 
 FOLLY_POP_WARNING

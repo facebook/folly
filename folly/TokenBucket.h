@@ -155,7 +155,7 @@ class TokenBucketStorage {
       }
 
       zeroTimeNew = nowInSeconds - tokensNew / rate;
-    } while (UNLIKELY(
+    } while (FOLLY_UNLIKELY(
         !compare_exchange_weak_relaxed(zeroTime_, zeroTimeOld, zeroTimeNew)));
 
     return consumed;
@@ -202,7 +202,7 @@ class TokenBucketStorage {
     do {
       zeroTimeNew = zeroTimeOld - tokenCount / rate;
 
-    } while (UNLIKELY(
+    } while (FOLLY_UNLIKELY(
         !compare_exchange_weak_relaxed(zeroTime_, zeroTimeOld, zeroTimeNew)));
     return zeroTimeNew;
   }

@@ -29,7 +29,8 @@
 using std::cerr;
 using std::endl;
 
-namespace folly {
+using namespace folly;
+using namespace folly::test;
 
 struct EvbAndContext {
   EvbAndContext() {
@@ -265,8 +266,6 @@ TEST(AsyncSSLSocketTest2, TestLegacyClientCannotConnectToTLS12Server) {
   c2->connect(server.getAddress());
   EXPECT_FALSE(std::move(f2).within(std::chrono::seconds(3)).get());
 }
-
-} // namespace folly
 
 int main(int argc, char* argv[]) {
   folly::ssl::init();

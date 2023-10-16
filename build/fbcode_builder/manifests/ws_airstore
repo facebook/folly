@@ -1,0 +1,32 @@
+[manifest]
+name = ws_airstore
+fbsource_path = fbcode/warm_storage/experimental/ws_airstore/
+shipit_project = WS_AIRStore
+shipit_fbcode_builder = true
+
+[build.os=linux]
+builder = cmake
+
+[build.not(os=linux)]
+# We only support Linux
+builder = nop
+
+[dependencies]
+boost
+libcurl
+fizz
+fmt
+folly
+googletest
+libsodium
+libevent
+double-conversion
+wangle
+zstd
+zlib
+xz
+
+[shipit.pathmap]
+fbcode/warm_storage/experimental/ws_airstore = .
+
+[shipit.strip]

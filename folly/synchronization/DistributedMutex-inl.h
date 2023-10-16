@@ -639,7 +639,7 @@ void throwIfExceptionOccurred(Request&, Waiter& waiter, bool exception) {
   // avoid leaks.  If we don't destroy the exception_ptr in storage, the
   // refcount for the internal exception will never hit zero, thereby leaking
   // memory
-  if (UNLIKELY(!folly::is_nothrow_invocable_v<const F&> && exception)) {
+  if (FOLLY_UNLIKELY(!folly::is_nothrow_invocable_v<const F&> && exception)) {
     auto storage = &waiter.storage_;
     auto exc = folly::launder(reinterpret_cast<std::exception_ptr*>(storage));
     auto copy = std::move(*exc);
@@ -1015,7 +1015,7 @@ inline void recordTimedWaiterAndClearTimedBit(
   // acquire the mutex
   DCHECK(previous != kTimedWaiter);
 
-  if (UNLIKELY(previous & kTimedWaiter)) {
+  if (FOLLY_UNLIKELY(previous & kTimedWaiter)) {
     // record whether there was a timed waiter in the previous mutex state, and
     // clear the timed bit from the previous state
     timedWaiter = true;
@@ -1025,7 +1025,7 @@ inline void recordTimedWaiterAndClearTimedBit(
 
 template <typename Atomic>
 void wakeTimedWaiters(Atomic* state, bool timedWaiters) {
-  if (UNLIKELY(timedWaiters)) {
+  if (FOLLY_UNLIKELY(timedWaiters)) {
     folly::atomic_notify_one(state); // evade ADL
   }
 }
@@ -1380,7 +1380,8 @@ FOLLY_ALWAYS_INLINE std::uintptr_t tryWake(
     // we need release here because of the write to waker_ and also because we
     // are unlocking the mutex, the thread we do the handoff to here should
     // see the modified data
-    new (&waiter->metadata_) Metadata{waker, bit_cast<uintptr_t>(sleepers)};
+    new (&waiter->metadata_)
+        Metadata{waker, folly::bit_cast<uintptr_t>(sleepers)};
     waiter->futex_.store(kWake, std::memory_order_release);
     return 0;
   }
@@ -1521,7 +1522,7 @@ bool tryUnlockClean(Atomic& state, Proxy& proxy, Sleepers sleepers) {
     // if we failed the compare_exchange_strong() above, we check to see if
     // the failure was because of the presence of a timed waiter.  If that
     // was the case then we try one more time with the kTimedWaiter bit set
-    if (UNLIKELY(expected == (proxy.expected_ | kTimedWaiter))) {
+    if (FOLLY_UNLIKELY(expected == (proxy.expected_ | kTimedWaiter))) {
       proxy.timedWaiters_ = true;
       continue;
     }
