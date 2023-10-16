@@ -358,7 +358,7 @@ struct ExpectedStorage {
 
 template <class Value, class Error>
 struct ExpectedUnion {
-  union {
+  union{
     Value value_;
     Error error_;
     char ch_ = 0;
