@@ -40,7 +40,7 @@
 
 // These aren't generic implementations, so we can only declare them on
 // platforms we support.
-#if !FOLLY_HAVE_CLOCK_GETTIME && (defined(__MACH__) || defined(_WIN32))
+#if !FOLLY_HAVE_CLOCK_GETTIME && (defined(__MACH__) || defined(_WIN32)) && !(defined(TARGET_OS_TV) && TARGET_OS_TV)
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1
 #define CLOCK_PROCESS_CPUTIME_ID 2
