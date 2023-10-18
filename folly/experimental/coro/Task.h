@@ -179,8 +179,8 @@ class TaskPromiseBase {
   folly::AsyncStackFrame asyncFrame_;
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
-  bool hasCancelTokenOverride_ = false;
   coroutine_handle<ScopeExitTaskPromiseBase> scopeExit_;
+  bool hasCancelTokenOverride_ = false;
 
  protected:
   enum class BypassExceptionThrowing : uint8_t {
