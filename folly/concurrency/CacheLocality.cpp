@@ -83,9 +83,9 @@ const CacheLocality& CacheLocality::system<std::atomic>() {
 
 // Each level of cache has sharing sets, which are the set of cpus
 // that share a common cache at that level.  These are available in a
-// hex bitset form (/sys/devices/system/cpu/cpu0/index0/shared_cpu_map,
+// hex bitset form (/sys/devices/system/cpu/cpu0/cache/index0/shared_cpu_map,
 // for example).  They are also available in a human-readable list form,
-// as in /sys/devices/system/cpu/cpu0/index0/shared_cpu_list.  The list
+// as in /sys/devices/system/cpu/cpu0/cache/index0/shared_cpu_list.  The list
 // is a comma-separated list of numbers and ranges, where the ranges are
 // a pair of decimal numbers separated by a '-'.
 //
