@@ -10,11 +10,20 @@ on:
     branches:
     - main
 
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
   build:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+    - name: Show disk space at start
+      run: df -h
+    - name: Free up disk space
+      run: sudo rm -rf /usr/local/lib/android
+    - name: Show disk space after freeing up
+      run: df -h
     - name: Fetch boost
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch ninja
@@ -50,39 +59,39 @@ jobs:
     - name: Fetch xz
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests xz
     - name: Build boost
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests boost
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests boost
     - name: Build ninja
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests ninja
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests ninja
     - name: Build cmake
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests cmake
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests cmake
     - name: Build double-conversion
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests double-conversion
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests double-conversion
     - name: Build fmt
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests fmt
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fmt
     - name: Build gflags
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests gflags
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests gflags
     - name: Build glog
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests glog
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests glog
     - name: Build googletest
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests googletest
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests googletest
     - name: Build libevent
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libevent
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libevent
     - name: Build lz4
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests lz4
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests lz4
     - name: Build snappy
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests snappy
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests snappy
     - name: Build zstd
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests zstd
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests zstd
     - name: Build autoconf
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests autoconf
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests autoconf
     - name: Build automake
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests automake
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests automake
     - name: Build libtool
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libtool
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libtool
     - name: Build libsodium
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libsodium
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libsodium
     - name: Build xz
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests xz
+      run: python3 build/fbcode_builder/getdeps.py build --free-up-disk --no-tests xz
     - name: Build folly
       run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts
@@ -93,3 +102,5 @@ jobs:
         path: _artifacts
     - name: Test folly
       run: python3 build/fbcode_builder/getdeps.py test --src-dir=. folly  --project-install-prefix folly:/usr/local
+    - name: Show disk space at end
+      run: df -h
