@@ -209,6 +209,8 @@ bool IPAddressV4::isLinkLocal() const {
 // public
 bool IPAddressV4::isNonroutable() const {
   auto ip = toLongHBO();
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wtautological-type-limit-compare")
   return isPrivate() ||
       (/* align */ true && ip <= 0x00FFFFFF) || // 0.0.0.0-0.255.255.255
       (ip >= 0xC0000000 && ip <= 0xC00000FF) || // 192.0.0.0-192.0.0.255
@@ -218,6 +220,7 @@ bool IPAddressV4::isNonroutable() const {
       (ip >= 0xCB007100 && ip <= 0xCB0071FF) || // 203.0.113.0-203.0.113.255
       (ip >= 0xE0000000 && ip <= 0xFFFFFFFF) || // 224.0.0.0-255.255.255.255
       false;
+  FOLLY_POP_WARNING
 }
 
 // public
