@@ -17,7 +17,6 @@ builder = nop
 [cargo]
 build_doc = true
 workspace_dir = eden/mononoke
-cargo_config_file = source/eden/mononoke/.cargo/config
 
 [shipit.pathmap]
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
@@ -47,9 +46,6 @@ tools/rust/ossconfigs = .
 fb303
 fbthrift
 rust-shed
-
-[dependencies.os=linux]
-lld
 
 [dependencies.fb=on]
 rust
