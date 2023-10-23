@@ -15,7 +15,6 @@ builder = cmake
 builder = nop
 
 [dependencies]
-boost
 libcurl
 fizz
 fmt
