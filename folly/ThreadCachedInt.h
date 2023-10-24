@@ -46,7 +46,7 @@ class ThreadCachedInt {
 
   void increment(IntT inc) {
     auto cache = cache_.get();
-    if (UNLIKELY(cache == nullptr)) {
+    if (FOLLY_UNLIKELY(cache == nullptr)) {
       cache = new IntCache(*this);
       cache_.reset(cache);
     }
@@ -146,7 +146,7 @@ class ThreadCachedInt {
         : parent_(&parent), val_(0), numUpdates_(0), reset_(false) {}
 
     void increment(IntT inc) {
-      if (LIKELY(!reset_.load(std::memory_order_acquire))) {
+      if (FOLLY_LIKELY(!reset_.load(std::memory_order_acquire))) {
         // This thread is the only writer to val_, so it's fine do do
         // a relaxed load and do the addition non-atomically.
         val_.store(
@@ -157,7 +157,7 @@ class ThreadCachedInt {
         reset_.store(false, std::memory_order_release);
       }
       ++numUpdates_;
-      if (UNLIKELY(
+      if (FOLLY_UNLIKELY(
               numUpdates_ >
               parent_->cacheSize_.load(std::memory_order_acquire))) {
         flush();

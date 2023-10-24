@@ -555,30 +555,30 @@ REGISTER_TYPED_TEST_SUITE_P(
     FetchFlipDefault);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    std_atomic, AtomicFetchSetTest, atomic_ref_of<std::atomic>);
+    StdAtomic, AtomicFetchSetTest, atomic_ref_of<std::atomic>);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    folly_atomic_ref, AtomicFetchSetTest, atomic_ref_of<folly::atomic_ref>);
+    FollyAtomicRef, AtomicFetchSetTest, atomic_ref_of<folly::atomic_ref>);
 #if __cpp_lib_atomic_ref >= 201806L
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    std_atomic_ref, AtomicFetchSetTest, atomic_ref_of<std::atomic_ref>);
+    StdAtomicRef, AtomicFetchSetTest, atomic_ref_of<std::atomic_ref>);
 #endif
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    std_atomic, AtomicFetchResetTest, atomic_ref_of<std::atomic>);
+    StdAtomic, AtomicFetchResetTest, atomic_ref_of<std::atomic>);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    folly_atomic_ref, AtomicFetchResetTest, atomic_ref_of<folly::atomic_ref>);
+    FollyAtomicRef, AtomicFetchResetTest, atomic_ref_of<folly::atomic_ref>);
 #if __cpp_lib_atomic_ref >= 201806L
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    std_atomic_ref, AtomicFetchResetTest, atomic_ref_of<std::atomic_ref>);
+    StdAtomicRef, AtomicFetchResetTest, atomic_ref_of<std::atomic_ref>);
 #endif
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    std_atomic, AtomicFetchFlipTest, atomic_ref_of<std::atomic>);
+    StdAtomic, AtomicFetchFlipTest, atomic_ref_of<std::atomic>);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    folly_atomic_ref, AtomicFetchFlipTest, atomic_ref_of<folly::atomic_ref>);
+    FollyAtomicRef, AtomicFetchFlipTest, atomic_ref_of<folly::atomic_ref>);
 #if __cpp_lib_atomic_ref >= 201806L
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    std_atomic_ref, AtomicFetchFlipTest, atomic_ref_of<std::atomic_ref>);
+    StdAtomicRef, AtomicFetchFlipTest, atomic_ref_of<std::atomic_ref>);
 #endif
 
 struct AtomicFetchModifyTest : testing::Test {};

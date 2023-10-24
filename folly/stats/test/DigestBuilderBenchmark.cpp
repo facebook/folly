@@ -24,6 +24,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Range.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GFlags.h>
 
 DEFINE_int32(digest_merge_time_ns, 5500, "Time to merge into the digest");
@@ -49,6 +50,11 @@ class FreeDigest {
  private:
   bool empty_ = true;
 };
+
+extern "C" FOLLY_KEEP void check_folly_digest_builder_append(
+    DigestBuilder<FreeDigest>& builder, double value) {
+  builder.append(value);
+}
 
 unsigned int append(unsigned int iters, size_t bufSize, size_t nThreads) {
   iters = 1000000;

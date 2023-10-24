@@ -20,10 +20,12 @@
 #define FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <cstdio>
 #include <initializer_list>
 #include <stdexcept>
 #include <system_error>
+#include <unordered_map>
 
 #include <folly/Conv.h>
 #include <folly/Likely.h>
@@ -230,9 +232,9 @@ class ElfFile {
    * Returns a pointer to the current ("found") entry when fn returned
    * true, or nullptr if fn returned false for all entries.
    */
-  template <typename E>
-  const E* iterateSectionEntries(
-      const ElfShdr& section, std::function<bool(const E&)> fn) const
+  template <typename E, class Fn>
+  const E* iterateSectionEntries(const ElfShdr& section, Fn&& fn) const
+
       noexcept(is_nothrow_invocable_v<E const&>);
 
   /**
@@ -258,6 +260,54 @@ class ElfFile {
       const char* name,
       std::initializer_list<uint32_t> types = {
           STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}) const noexcept;
+
+  /**
+   * Find multiple symbol definitions by name. Because searching for a symbol is
+   * O(N) this method enables searching for multiple symbols in a single pass.
+   *
+   * Returns a map containing a key for each unique symbol name in the provided
+   * names container. The corresponding value is either Symbol or <nullptr,
+   * nullptr> if the symbol was not found.
+   */
+  template <typename C, typename T = typename C::value_type>
+  std::unordered_map<std::string, Symbol> getSymbolsByName(
+      const C& names,
+      std::initializer_list<uint32_t> types = {
+          STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}) const noexcept {
+    std::unordered_map<std::string, Symbol> result(names.size());
+    for (const std::string& name : names) {
+      result[name] = {nullptr, nullptr};
+    }
+    size_t seenCount = 0;
+
+    auto findSymbol = [&](const folly::symbolizer::ElfShdr& section,
+                          const folly::symbolizer::ElfSym& sym) -> bool {
+      auto symbol = folly::symbolizer::ElfFile::Symbol(&section, &sym);
+      auto name = getSymbolName(symbol);
+      if (name == nullptr) {
+        return false;
+      }
+      auto itr = result.find(name);
+      if (itr != result.end() && itr->second.first == nullptr &&
+          itr->second.second == nullptr) {
+        itr->second = symbol;
+        ++seenCount;
+      }
+      return seenCount == result.size();
+    };
+
+    auto iterSection = [&](const folly::symbolizer::ElfShdr& section) -> bool {
+      iterateSymbolsWithTypes(section, types, [&](const auto& sym) -> bool {
+        return findSymbol(section, sym);
+      });
+      return false;
+    };
+    // Try the .dynsym section first if it exists, it's smaller.
+    iterateSectionsWithType(SHT_DYNSYM, iterSection) ||
+        iterateSectionsWithType(SHT_SYMTAB, iterSection);
+
+    return result;
+  }
 
   /**
    * Get the value of a symbol.
@@ -296,7 +346,7 @@ class ElfFile {
   /**
    * Retrieve symbol name.
    */
-  const char* getSymbolName(Symbol symbol) const noexcept;
+  const char* getSymbolName(const Symbol& symbol) const noexcept;
 
   /** Find the section containing the given address */
   const ElfShdr* getSectionContainingAddress(ElfAddr addr) const noexcept;

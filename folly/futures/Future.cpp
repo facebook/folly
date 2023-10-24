@@ -17,19 +17,27 @@
 #include <folly/futures/Future.h>
 
 #include <folly/Likely.h>
+#include <folly/Singleton.h>
+#include <folly/futures/HeapTimekeeper.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
+#include <folly/portability/GFlags.h>
+
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_futures_use_thread_wheel_timekeeper,
+    false,
+    "Use ThreadWheelTimekeeper for the default Future timekeeper singleton");
 
 namespace folly {
 namespace futures {
 
 SemiFuture<Unit> sleep(HighResDuration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;
-  if (LIKELY(!tk)) {
+  if (FOLLY_LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
     tk = tks.get();
   }
 
-  if (UNLIKELY(!tk)) {
+  if (FOLLY_UNLIKELY(!tk)) {
     return makeSemiFuture<Unit>(FutureNoTimekeeper());
   }
 
@@ -76,6 +84,25 @@ SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton) {
 }
 
 } // namespace futures
+
+namespace detail {
+
+namespace {
+Singleton<Timekeeper, TimekeeperSingletonTag> gTimekeeperSingleton(
+    []() -> Timekeeper* {
+      if (FLAGS_folly_futures_use_thread_wheel_timekeeper) {
+        return new ThreadWheelTimekeeper;
+      } else {
+        return new HeapTimekeeper;
+      }
+    });
+} // namespace
+
+std::shared_ptr<Timekeeper> getTimekeeperSingleton() {
+  return gTimekeeperSingleton.try_get();
+}
+
+} // namespace detail
 
 #if FOLLY_USE_EXTERN_FUTURE_UNIT
 namespace futures {

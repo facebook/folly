@@ -20,6 +20,7 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/io/AsyncIO.h>
 #include <folly/experimental/io/IoUring.h>
+#include <folly/experimental/io/Liburing.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {
@@ -32,7 +33,7 @@ static constexpr bool has_aio = false;
 using aio_type = void;
 #endif
 
-#if __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
 static constexpr auto has_io_uring_rt = &IoUring::isAvailable;
 using io_uring_type = IoUring;
 #else

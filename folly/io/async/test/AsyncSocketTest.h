@@ -20,40 +20,13 @@
 
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/test/BlockingSocket.h>
+#include <folly/io/async/test/CallbackStateEnum.h>
+#include <folly/io/async/test/ConnCallback.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
 
-enum StateEnum { STATE_WAITING, STATE_SUCCEEDED, STATE_FAILED };
-
-typedef std::function<void()> VoidCallback;
-
-class ConnCallback : public folly::AsyncSocket::ConnectCallback {
- public:
-  ConnCallback()
-      : state(STATE_WAITING),
-        exception(folly::AsyncSocketException::UNKNOWN, "none") {}
-
-  void connectSuccess() noexcept override {
-    state = STATE_SUCCEEDED;
-    if (successCallback) {
-      successCallback();
-    }
-  }
-
-  void connectErr(const folly::AsyncSocketException& ex) noexcept override {
-    state = STATE_FAILED;
-    exception = ex;
-    if (errorCallback) {
-      errorCallback();
-    }
-  }
-
-  StateEnum state;
-  folly::AsyncSocketException exception;
-  VoidCallback successCallback;
-  VoidCallback errorCallback;
-};
+namespace folly::test {
 
 class WriteCallback : public folly::AsyncTransport::WriteCallback,
                       public folly::AsyncWriter::ReleaseIOBufCallback {
@@ -85,6 +58,8 @@ class WriteCallback : public folly::AsyncTransport::WriteCallback,
     }
   }
 
+  void writeStarting() noexcept override { writeStartingInvocations++; }
+
   folly::AsyncWriter::ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept
       override {
     return releaseIOBufCallback;
@@ -103,6 +78,7 @@ class WriteCallback : public folly::AsyncTransport::WriteCallback,
   VoidCallback successCallback;
   VoidCallback errorCallback;
   ReleaseIOBufCallback* releaseIOBufCallback;
+  size_t writeStartingInvocations{0};
 };
 
 class ReadCallback : public folly::AsyncTransport::ReadCallback {
@@ -255,11 +231,12 @@ class ReadvCallback : public folly::AsyncTransport::ReadCallback {
     CHECK_EQ(data, tmp);
   }
 
+  std::unique_ptr<folly::IOBuf> buf_;
+
  private:
   StateEnum state_;
   folly::AsyncSocketException exception_;
   folly::IOBufIovecBuilder queue_;
-  std::unique_ptr<folly::IOBuf> buf_;
   const size_t len_;
 };
 
@@ -473,7 +450,9 @@ class TestSendMsgParamsCallback
   void getAncillaryData(
       folly::WriteFlags flags,
       void* data,
+      const folly::AsyncSocket::WriteRequestTag& tag,
       const bool /* byteEventsEnabled */) noexcept override {
+    CHECK_EQ(tag, expectedTag_);
     queriedData_ = true;
     if (writeFlags_ == folly::WriteFlags::NONE) {
       writeFlags_ = flags;
@@ -486,7 +465,9 @@ class TestSendMsgParamsCallback
 
   uint32_t getAncillaryDataSize(
       folly::WriteFlags flags,
+      const folly::AsyncSocket::WriteRequestTag& tag,
       const bool /* byteEventsEnabled */) noexcept override {
+    CHECK_EQ(tag, expectedTag_);
     if (writeFlags_ == folly::WriteFlags::NONE) {
       writeFlags_ = flags;
     } else {
@@ -495,12 +476,21 @@ class TestSendMsgParamsCallback
     return dataSize_;
   }
 
+  void wroteBytes(
+      const folly::AsyncSocket::WriteRequestTag& tag) noexcept override {
+    CHECK_EQ(tag, expectedTag_);
+    tagLastWritten_ = tag;
+  }
+
   int flags_;
   folly::WriteFlags writeFlags_;
   uint32_t dataSize_;
   void* data_;
   bool queriedFlags_;
   bool queriedData_;
+  folly::AsyncSocket::WriteRequestTag expectedTag_{
+      folly::AsyncSocket::WriteRequestTag::EmptyDummy()};
+  std::optional<folly::AsyncSocket::WriteRequestTag> tagLastWritten_;
 };
 
 class TestServer {
@@ -639,3 +629,5 @@ class TestServer {
   folly::NetworkSocket fd_;
   folly::SocketAddress address_;
 };
+
+} // namespace folly::test

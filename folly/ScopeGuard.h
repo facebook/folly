@@ -102,11 +102,6 @@ class ScopeGuardImplBase {
     return ScopeGuardImplBase{};
   }
 
-  template <typename T>
-  static const T& asConst(const T& t) noexcept {
-    return t;
-  }
-
   bool dismissed_;
 };
 
@@ -116,7 +111,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   explicit ScopeGuardImpl(FunctionType& fn) noexcept(
       std::is_nothrow_copy_constructible<FunctionType>::value)
       : ScopeGuardImpl(
-            asConst(fn),
+            folly::as_const(fn),
             makeFailsafe(
                 std::is_nothrow_copy_constructible<FunctionType>{}, &fn)) {}
 
@@ -204,9 +199,9 @@ using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type, INE>;
  * The return value of this function must be captured. Otherwise, since it is a
  * temporary, it will be destroyed immediately, thus calling the function.
  *
- *     auto guard = makeScopeGuard(...); // good
+ *     auto guard = makeGuard(...); // good
  *
- *     makeScopeGuard(...); // bad
+ *     makeGuard(...); // bad
  *
  * @param f  The function to execute upon the guard's destruction.
  * @refcode folly/docs/examples/folly/ScopeGuard2.cpp

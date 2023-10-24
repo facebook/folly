@@ -629,6 +629,35 @@ TEST(AsyncGenerator, SafePoint) {
   }());
 }
 
+TEST_F(AsyncGeneratorTest, NextAfterCancel) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSrc;
+    auto gen =
+        folly::coro::co_invoke([&]() -> folly::coro::AsyncGenerator<int> {
+          co_yield 1;
+          co_yield 2;
+          co_await folly::coro::co_safe_point;
+          co_yield 3;
+        });
+
+    auto result = co_await folly::coro::co_awaitTry(
+        folly::coro::co_withCancellation(cancelSrc.getToken(), gen.next()));
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(1, *result.value());
+
+    cancelSrc.requestCancellation();
+    result = co_await folly::coro::co_awaitTry(
+        folly::coro::co_withCancellation(cancelSrc.getToken(), gen.next()));
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(2, *result.value());
+
+    result = co_await folly::coro::co_awaitTry(
+        folly::coro::co_withCancellation(cancelSrc.getToken(), gen.next()));
+    EXPECT_TRUE(result.hasException());
+    EXPECT_THROW(result.value(), folly::OperationCancelled);
+  }());
+}
+
 TEST(AsyncGenerator, CoAwaitNothrow) {
   auto res =
       folly::coro::blockingWait(co_awaitTry([]() -> folly::coro::Task<void> {

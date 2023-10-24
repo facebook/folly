@@ -113,6 +113,10 @@ bool ProcessReturnCode::coreDumped() const {
   return WCOREDUMP(rawStatus_);
 }
 
+bool ProcessReturnCode::succeeded() const {
+  return exited() && exitStatus() == 0;
+}
+
 std::string ProcessReturnCode::str() const {
   switch (state()) {
     case NOT_STARTED:

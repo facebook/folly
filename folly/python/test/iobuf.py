@@ -19,7 +19,12 @@ import unittest
 
 from folly.iobuf import IOBuf
 
-from .iobuf_helper import get_empty_chain, make_chain, to_uppercase_string
+from .iobuf_helper import (
+    get_empty_chain,
+    make_chain,
+    to_uppercase_string,
+    to_uppercase_string_heap,
+)
 
 
 class IOBufTests(unittest.TestCase):
@@ -124,10 +129,12 @@ class IOBufTests(unittest.TestCase):
                 IOBuf(memoryview(b"ghi")),
             ]
         )
-        uppercased: str = to_uppercase_string(iobuf)
-        self.assertEqual(uppercased, "ABCDEFGHI")
+        self.assertEqual(to_uppercase_string(iobuf), "ABCDEFGHI")
+        self.assertEqual(to_uppercase_string_heap(iobuf), "ABCDEFGHI")
 
     def test_conversion_from_python_to_cpp_with_wrong_type(self) -> None:
         not_an_iobuf = [1, 2, 3]
         with self.assertRaises(TypeError):
-            _ = to_uppercase_string(not_an_iobuf)
+            to_uppercase_string(not_an_iobuf)
+        with self.assertRaises(TypeError):
+            to_uppercase_string_heap(not_an_iobuf)

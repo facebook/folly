@@ -25,6 +25,7 @@
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/experimental/io/IoUringBase.h>
+#include <folly/experimental/io/Liburing.h>
 #include <folly/futures/Future.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufIovecBuilder.h>
@@ -41,8 +42,6 @@
 
 namespace folly {
 
-class IoUringBackend;
-
 class AsyncDetachFdCallback {
  public:
   virtual ~AsyncDetachFdCallback() = default;
@@ -51,10 +50,12 @@ class AsyncDetachFdCallback {
   virtual void fdDetachFail(const AsyncSocketException& ex) noexcept = 0;
 };
 
-#if __has_include(<liburing.h>)
+#if FOLLY_HAS_LIBURING
+class IoUringBackend;
 
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
+  using Cert = folly::AsyncTransportCertificate;
   struct Options {
     Options()
         : allocateNoBufferPoolBuffer(defaultAllocateNoBufferPoolBuffer),
@@ -195,22 +196,6 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   size_t getAppBytesReceived() const override { return getRawBytesReceived(); }
   size_t getRawBytesReceived() const override;
 
-  virtual void addLifecycleObserver(
-      LifecycleObserver* /* observer */) override {
-    throw std::runtime_error(
-        "AsyncIoUringSocket::addLifecycleObserver not supported");
-  }
-
-  bool removeLifecycleObserver(LifecycleObserver* /* observer */) override {
-    throw std::runtime_error(
-        "AsyncIoUringSocket::removeLifecycleObserver not supported");
-  }
-
-  FOLLY_NODISCARD std::vector<LifecycleObserver*> getLifecycleObservers()
-      const override {
-    return {};
-  }
-
   const AsyncTransport* getWrappedTransport() const override { return nullptr; }
 
   // AsyncSocketTransport
@@ -227,6 +212,26 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void setSecurityProtocol(std::string s) { securityProtocol_ = std::move(s); }
   void setApplicationProtocol(std::string s) {
     applicationProtocol_ = std::move(s);
+  }
+
+  const folly::AsyncTransportCertificate* getPeerCertificate() const override {
+    return peerCert_.get();
+  }
+
+  const folly::AsyncTransportCertificate* getSelfCertificate() const override {
+    return selfCert_.get();
+  }
+
+  void dropPeerCertificate() noexcept override { peerCert_.reset(); }
+
+  void dropSelfCertificate() noexcept override { selfCert_.reset(); }
+
+  void setPeerCertificate(const std::shared_ptr<const Cert>& peerCert) {
+    peerCert_ = peerCert;
+  }
+
+  void setSelfCertificate(const std::shared_ptr<const Cert>& selfCert) {
+    selfCert_ = selfCert;
   }
 
   void asyncDetachFd(AsyncDetachFdCallback* callback);
@@ -390,7 +395,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     WriteCallback* callback_;
     std::unique_ptr<IOBuf> buf_;
     WriteFlags flags_;
-    small_vector<struct iovec, 2> iov_;
+    static constexpr size_t kSmallIoVecSize = 16;
+    small_vector<struct iovec, kSmallIoVecSize> iov_;
     size_t totalLength_;
     struct msghdr msg_;
 
@@ -485,6 +491,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   // stopTLS helpers:
   std::string securityProtocol_;
   std::string applicationProtocol_;
+
+  std::shared_ptr<const Cert> selfCert_;
+  std::shared_ptr<const Cert> peerCert_;
 
   // shutdown:
   int shutdownFlags_ = 0;

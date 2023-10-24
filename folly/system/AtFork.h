@@ -23,6 +23,7 @@
 #include <mutex>
 
 #include <folly/Function.h>
+#include <folly/portability/SysTypes.h>
 
 namespace folly {
 

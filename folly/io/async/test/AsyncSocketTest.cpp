@@ -22,7 +22,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
 
-namespace folly {
+using namespace folly;
+using namespace testing;
 
 #ifndef TCP_SAVE_SYN
 #define TCP_SAVE_SYN 27
@@ -66,6 +67,49 @@ TEST(AsyncSocketTest, REUSEPORT) {
   serverSocket2->bind(port);
   serverSocket2->listen(0);
   serverSocket2->startAccepting();
+}
+
+TEST(AsyncSocketTest, DisableReuseAddr) {
+  EventBase base;
+  auto serverSocket = AsyncServerSocket::newSocket(&base);
+  serverSocket->setEnableReuseAddr(false /* enable */);
+  // idempotent
+  serverSocket->setEnableReuseAddr(false /* enable */);
+  serverSocket->setEnableReuseAddr(false /* enable */);
+  serverSocket->bind(0);
+
+  SocketAddress address;
+  serverSocket->getAddress(&address);
+  int port = address.getPort();
+
+  auto serverSocket2 = AsyncServerSocket::newSocket(&base);
+  serverSocket2->setEnableReuseAddr(false /* enable */);
+  // idempotent
+  serverSocket2->setEnableReuseAddr(false /* enable */);
+  serverSocket2->setEnableReuseAddr(false /* enable */);
+  EXPECT_THROW(serverSocket2->bind(port), std::system_error);
+  // it's ok to bind to a different port
+  serverSocket2->bind(0);
+}
+
+TEST(AsyncSocketTest, EnableThenDisableReuseAddr) {
+  EventBase base;
+  auto serverSocket = AsyncServerSocket::newSocket(&base);
+  serverSocket->bind(0);
+
+  SocketAddress address;
+  serverSocket->getAddress(&address);
+  int port = address.getPort();
+
+  auto serverSocket2 = AsyncServerSocket::newSocket(&base);
+  // defaulty SO_REUSEADDR enabled so can bind to same port
+  serverSocket2->bind(port);
+  serverSocket2->setEnableReuseAddr(false /* enable */);
+  serverSocket->setEnableReuseAddr(false /* enable */);
+
+  EXPECT_THROW(serverSocket2->bind(port), std::system_error);
+  // it's ok to bind to a different port
+  serverSocket2->bind(0);
 }
 
 TEST(AsyncSocketTest, v4v6samePort) {
@@ -174,5 +218,3 @@ TEST(AsyncSocketTest, listenerTosV4) {
   ASSERT_EQ(rc, 0);
   ASSERT_EQ(value, 140);
 }
-
-} // namespace folly

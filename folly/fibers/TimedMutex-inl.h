@@ -33,7 +33,7 @@ TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
     return LockResult::SUCCESS;
   }
 
-  const auto isOnFiber = onFiber();
+  const auto isOnFiber = options_.stealing_ && onFiber();
 
   if (!isOnFiber && notifiedFiber_ != nullptr) {
     // lock() was called on a thread and while some other fiber was already

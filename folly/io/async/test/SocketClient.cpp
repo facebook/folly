@@ -21,6 +21,7 @@
 #include <folly/portability/GFlags.h>
 
 using namespace folly;
+using namespace folly::test;
 
 DEFINE_string(host, "localhost", "Host");
 DEFINE_int32(port, 0, "port");

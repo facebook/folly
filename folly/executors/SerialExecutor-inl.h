@@ -14,40 +14,48 @@
  * limitations under the License.
  */
 
-#include <folly/executors/SerialExecutor.h>
-
 #include <glog/logging.h>
 
 #include <folly/ExceptionString.h>
 
 namespace folly {
 
-SerialExecutor::SerialExecutor(KeepAlive<Executor> parent)
+template <int LgQueueSegmentSize>
+SerialExecutorExt<LgQueueSegmentSize>::SerialExecutorExt(
+    KeepAlive<Executor> parent)
     : parent_(std::move(parent)) {}
 
-SerialExecutor::~SerialExecutor() {
+template <int LgQueueSegmentSize>
+SerialExecutorExt<LgQueueSegmentSize>::~SerialExecutorExt() {
   DCHECK(!keepAliveCounter_);
 }
 
-Executor::KeepAlive<SerialExecutor> SerialExecutor::create(
-    KeepAlive<Executor> parent) {
-  return makeKeepAlive<SerialExecutor>(new SerialExecutor(std::move(parent)));
+template <int LgQueueSegmentSize>
+Executor::KeepAlive<SerialExecutorExt<LgQueueSegmentSize>>
+SerialExecutorExt<LgQueueSegmentSize>::create(KeepAlive<Executor> parent) {
+  return makeKeepAlive<SerialExecutorExt<LgQueueSegmentSize>>(
+      new SerialExecutorExt<LgQueueSegmentSize>(std::move(parent)));
 }
 
-SerialExecutor::UniquePtr SerialExecutor::createUnique(
+template <int LgQueueSegmentSize>
+typename SerialExecutorExt<LgQueueSegmentSize>::UniquePtr
+SerialExecutorExt<LgQueueSegmentSize>::createUnique(
     std::shared_ptr<Executor> parent) {
-  auto executor = new SerialExecutor(getKeepAliveToken(parent.get()));
+  auto executor = new SerialExecutorExt<LgQueueSegmentSize>(
+      getKeepAliveToken(parent.get()));
   return {executor, Deleter{std::move(parent)}};
 }
 
-bool SerialExecutor::keepAliveAcquire() noexcept {
+template <int LgQueueSegmentSize>
+bool SerialExecutorExt<LgQueueSegmentSize>::keepAliveAcquire() noexcept {
   auto keepAliveCounter =
       keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
   DCHECK(keepAliveCounter > 0);
   return true;
 }
 
-void SerialExecutor::keepAliveRelease() noexcept {
+template <int LgQueueSegmentSize>
+void SerialExecutorExt<LgQueueSegmentSize>::keepAliveRelease() noexcept {
   auto keepAliveCounter =
       keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
   DCHECK(keepAliveCounter > 0);
@@ -56,14 +64,17 @@ void SerialExecutor::keepAliveRelease() noexcept {
   }
 }
 
-void SerialExecutor::add(Func func) {
+template <int LgQueueSegmentSize>
+void SerialExecutorExt<LgQueueSegmentSize>::add(Func func) {
   if (scheduleTask(std::move(func))) {
     parent_->add(
         [keepAlive = getKeepAliveToken(this)] { keepAlive->worker(); });
   }
 }
 
-void SerialExecutor::addWithPriority(Func func, int8_t priority) {
+template <int LgQueueSegmentSize>
+void SerialExecutorExt<LgQueueSegmentSize>::addWithPriority(
+    Func func, int8_t priority) {
   if (scheduleTask(std::move(func))) {
     parent_->addWithPriority(
         [keepAlive = getKeepAliveToken(this)] { keepAlive->worker(); },
@@ -71,14 +82,16 @@ void SerialExecutor::addWithPriority(Func func, int8_t priority) {
   }
 }
 
-bool SerialExecutor::scheduleTask(Func&& func) {
+template <int LgQueueSegmentSize>
+bool SerialExecutorExt<LgQueueSegmentSize>::scheduleTask(Func&& func) {
   queue_.enqueue(Task{std::move(func), RequestContext::saveContext()});
   // If this thread is the first to mark the queue as non-empty, schedule the
   // worker.
   return scheduled_.fetch_add(1, std::memory_order_acq_rel) == 0;
 }
 
-void SerialExecutor::worker() {
+template <int LgQueueSegmentSize>
+void SerialExecutorExt<LgQueueSegmentSize>::worker() {
   std::size_t queueSize = scheduled_.load(std::memory_order_acquire);
   DCHECK_NE(queueSize, 0);
 

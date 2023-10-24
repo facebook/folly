@@ -19,6 +19,7 @@
 #include <list>
 #include <mutex>
 
+#include <folly/lang/Hint.h>
 #include <folly/synchronization/CallOnce.h>
 
 constexpr auto kSmallGrowthFactor = 1.1;
@@ -28,8 +29,8 @@ namespace folly {
 namespace threadlocal_detail {
 
 void ThreadEntryNode::initIfZero(bool locked) {
-  if (UNLIKELY(isZero)) {
-    if (LIKELY(locked)) {
+  if (FOLLY_UNLIKELY(isZero)) {
+    if (FOLLY_LIKELY(locked)) {
       parent->meta->pushBackLocked(parent, id);
     } else {
       parent->meta->pushBackUnlocked(parent, id);
@@ -53,7 +54,7 @@ void ThreadEntryNode::push_back(ThreadEntry* head) {
 }
 
 void ThreadEntryNode::eraseZero() {
-  if (LIKELY(prev != nullptr)) {
+  if (FOLLY_LIKELY(prev != nullptr)) {
     // get the prev and next nodes
     ThreadEntryNode* nprev = &prev->elements[id].node;
     ThreadEntryNode* nnext = &next->elements[id].node;
@@ -99,7 +100,7 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     ThreadEntryList* threadEntryList =
         static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
 
-    if (UNLIKELY(!threadEntryList)) {
+    if (FOLLY_UNLIKELY(!threadEntryList)) {
       threadEntryList = new ThreadEntryList();
       int ret = pthread_setspecific(instance.get(), threadEntryList);
       checkPosixError(ret, "pthread_setspecific failed");
@@ -453,16 +454,16 @@ void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
   }
 }
 
-void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) {
-  if (LIKELY(!t->removed_)) {
+void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) noexcept {
+  if (FOLLY_LIKELY(!t->removed_)) {
     std::lock_guard<std::mutex> g(lock_);
     auto* node = &t->elements[id].node;
     node->push_back(&head_);
   }
 }
 
-void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) {
-  if (LIKELY(!t->removed_)) {
+void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) noexcept {
+  if (FOLLY_LIKELY(!t->removed_)) {
     auto* node = &t->elements[id].node;
     node->push_back(&head_);
   }
@@ -470,5 +471,23 @@ void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) {
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;
+#if defined(__GLIBC__) && \
+    (__GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 18))
+// Invoking thread_local dtor register early to fix issue
+// https://github.com/facebook/folly/issues/1252
+struct GlibcThreadLocalInit {
+  struct GlibcThreadLocalInitHelper {
+    FOLLY_NOINLINE ~GlibcThreadLocalInitHelper() {
+      compiler_must_not_elide(this);
+    }
+  };
+  GlibcThreadLocalInit() {
+    static thread_local GlibcThreadLocalInitHelper glibcThreadLocalInit;
+    compiler_must_not_elide(glibcThreadLocalInit);
+  }
+};
+__attribute__((__init_priority__(101)))
+GlibcThreadLocalInit glibcThreadLocalInit;
+#endif
 } // namespace threadlocal_detail
 } // namespace folly

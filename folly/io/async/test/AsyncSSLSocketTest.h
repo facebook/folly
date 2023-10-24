@@ -45,7 +45,7 @@
 #include <folly/portability/String.h>
 #include <folly/portability/Unistd.h>
 
-namespace folly {
+namespace folly::test {
 
 // The destructors of all callback classes assert that the state is
 // STATE_SUCCEEDED, for both possitive and negative tests. The tests
@@ -77,13 +77,17 @@ class SendMsgParamsCallbackBase
   void getAncillaryData(
       folly::WriteFlags flags,
       void* data,
+      const AsyncSocket::WriteRequestTag& writeTag,
       const bool byteEventsEnabled) noexcept override {
-    oldCallback_->getAncillaryData(flags, data, byteEventsEnabled);
+    oldCallback_->getAncillaryData(flags, data, writeTag, byteEventsEnabled);
   }
 
   uint32_t getAncillaryDataSize(
-      folly::WriteFlags flags, const bool byteEventsEnabled) noexcept override {
-    return oldCallback_->getAncillaryDataSize(flags, byteEventsEnabled);
+      folly::WriteFlags flags,
+      const AsyncSocket::WriteRequestTag& writeTag,
+      const bool byteEventsEnabled) noexcept override {
+    return oldCallback_->getAncillaryDataSize(
+        flags, writeTag, byteEventsEnabled);
   }
 
   std::shared_ptr<AsyncSSLSocket> socket_;
@@ -126,6 +130,7 @@ class SendMsgAncillaryDataCallback : public SendMsgParamsCallbackBase {
   void getAncillaryData(
       folly::WriteFlags flags,
       void* data,
+      const AsyncSocket::WriteRequestTag& writeTag,
       const bool byteEventsEnabled) noexcept override {
     // getAncillaryData is called through a long chain of functions after send
     // record the observed write flags so we can compare later
@@ -135,17 +140,20 @@ class SendMsgAncillaryDataCallback : public SendMsgParamsCallbackBase {
       std::cerr << "getAncillaryData: copying data" << std::endl;
       memcpy(data, ancillaryData_.data(), ancillaryData_.size());
     } else {
-      oldCallback_->getAncillaryData(flags, data, byteEventsEnabled);
+      oldCallback_->getAncillaryData(flags, data, writeTag, byteEventsEnabled);
     }
   }
 
   uint32_t getAncillaryDataSize(
-      folly::WriteFlags flags, const bool byteEventsEnabled) noexcept override {
+      folly::WriteFlags flags,
+      const AsyncSocket::WriteRequestTag& writeTag,
+      const bool byteEventsEnabled) noexcept override {
     if (ancillaryData_.size()) {
       std::cerr << "getAncillaryDataSize: returning size" << std::endl;
       return ancillaryData_.size();
     } else {
-      return oldCallback_->getAncillaryDataSize(flags, byteEventsEnabled);
+      return oldCallback_->getAncillaryDataSize(
+          flags, writeTag, byteEventsEnabled);
     }
   }
 
@@ -259,7 +267,6 @@ class ReadCallbackBase : public AsyncTransport::ReadCallback {
 
   void readEOF() noexcept override {
     std::cerr << "readEOF" << std::endl;
-
     socket_->close();
   }
 
@@ -731,17 +738,6 @@ class ConnectTimeoutCallback : public SSLServerAcceptCallbackBase {
     s->getEventBase()->tryRunAfterDelay([=] { s->close(); }, 100);
   }
 };
-
-void getfds(NetworkSocket fds[2]);
-
-void getctx(
-    std::shared_ptr<folly::SSLContext> clientCtx,
-    std::shared_ptr<folly::SSLContext> serverCtx);
-
-void sslsocketpair(
-    EventBase* eventBase,
-    AsyncSSLSocket::UniquePtr* clientSock,
-    AsyncSSLSocket::UniquePtr* serverSock);
 
 class BlockingWriteClient : private AsyncSSLSocket::HandshakeCB,
                             private AsyncTransport::WriteCallback {
@@ -1458,4 +1454,5 @@ class SSLAcceptFiberRunner : public SSLAcceptEvbRunner {
         });
   }
 };
-} // namespace folly
+
+} // namespace folly::test

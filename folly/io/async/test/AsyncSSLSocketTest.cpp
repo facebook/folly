@@ -38,8 +38,8 @@
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 #include <folly/io/async/test/BlockingSocket.h>
-#include <folly/io/async/test/MockAsyncTransportObserver.h>
-#include <folly/io/async/test/TFOTest.h>
+#include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
+#include <folly/io/async/test/TFOUtil.h>
 #include <folly/io/async/test/TestSSLServer.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
@@ -62,11 +62,13 @@ using std::cerr;
 using std::endl;
 using std::string;
 
+using namespace folly;
+using namespace folly::test;
 using namespace testing;
 
-#if defined __linux__
 namespace {
 
+#if defined __linux__
 // to store libc's original setsockopt()
 typedef int (*setsockopt_ptr)(int, int, int, const void*, socklen_t);
 setsockopt_ptr real_setsockopt_ = nullptr;
@@ -99,9 +101,7 @@ int setsockopt(
 }
 #endif
 
-namespace folly {
-constexpr size_t SSLClient::kMaxReadBufferSz;
-constexpr size_t SSLClient::kMaxReadsPerEvent;
+namespace {
 
 void getfds(NetworkSocket fds[2]) {
   if (netops::socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
@@ -125,41 +125,6 @@ void getctx(
   serverCtx->loadPrivateKey(kTestKey);
 }
 
-void sslsocketpair(
-    EventBase* eventBase,
-    AsyncSSLSocket::UniquePtr* clientSock,
-    AsyncSSLSocket::UniquePtr* serverSock) {
-  auto clientCtx = std::make_shared<folly::SSLContext>();
-  auto serverCtx = std::make_shared<folly::SSLContext>();
-  NetworkSocket fds[2];
-  getfds(fds);
-  getctx(clientCtx, serverCtx);
-  clientSock->reset(new AsyncSSLSocket(clientCtx, eventBase, fds[0], false));
-  serverSock->reset(new AsyncSSLSocket(serverCtx, eventBase, fds[1], true));
-
-  // (*clientSock)->setSendTimeout(100);
-  // (*serverSock)->setSendTimeout(100);
-}
-
-// client protocol filters
-bool clientProtoFilterPickPony(
-    unsigned char** client,
-    unsigned int* client_len,
-    const unsigned char*,
-    unsigned int) {
-  // the protocol string in length prefixed byte string. the
-  // length byte is not included in the length
-  static unsigned char p[7] = {6, 'p', 'o', 'n', 'i', 'e', 's'};
-  *client = p;
-  *client_len = 7;
-  return true;
-}
-
-bool clientProtoFilterPickNone(
-    unsigned char**, unsigned int*, const unsigned char*, unsigned int) {
-  return false;
-}
-
 std::string getFileAsBuf(const char* fileName) {
   std::string buffer;
   folly::readFile(fileName, buffer);
@@ -179,25 +144,24 @@ folly::ssl::X509UniquePtr readCertFromFile(const std::string& filename) {
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
-namespace {
 void connectWriteReadClose(
     folly::AsyncReader::ReadCallback::ReadMode readMode) {
   // Start listening on a local port
-  WriteCallbackBase writeCallback;
-  ReadCallback readCallback(&writeCallback);
-  HandshakeCallback handshakeCallback(&readCallback);
-  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
-  TestSSLServer server(&acceptCallback);
+  folly::test::WriteCallbackBase writeCallback;
+  folly::test::ReadCallback readCallback(&writeCallback);
+  folly::test::HandshakeCallback handshakeCallback(&readCallback);
+  folly::test::SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  folly::test::TestSSLServer server(&acceptCallback);
 
   // Set up SSL context.
-  std::shared_ptr<SSLContext> sslContext(new SSLContext());
+  auto sslContext = std::make_shared<folly::SSLContext>();
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   // sslContext->loadTrustedCertificates("./trusted-ca-certificate.pem");
   // sslContext->authenticate(true, false);
 
   // connect
-  auto socket =
-      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  auto socket = std::make_shared<folly::test::BlockingSocket>(
+      server.getAddress(), sslContext);
   socket->setReadMode(readMode);
   socket->open(std::chrono::milliseconds(10000));
 
@@ -2687,7 +2651,7 @@ static SSL_SESSION* getCloseCb(SSL* ssl, unsigned char*, int, int*) {
 #endif
   AsyncSSLSocket::getFromSSL(ssl)->closeNow();
   return nullptr;
-} // namespace folly
+} // namespace
 
 TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiberCloseSessionCb) {
   EventBase eventBase;
@@ -3353,8 +3317,9 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
 class AsyncSSLSocketByteEventTest : public ::testing::Test {
  protected:
   using MockDispatcher = ::testing::NiceMock<netops::test::MockDispatcher>;
-  using TestObserver = test::MockAsyncTransportObserverForByteEvents;
-  using ByteEventType = AsyncTransport::ByteEvent::Type;
+  using TestObserver =
+      test::MockAsyncSocketLegacyLifecycleObserverForByteEvents;
+  using ByteEventType = AsyncSocket::ByteEvent::Type;
 
   /**
    * Components of a client connection to TestServer.
@@ -3387,6 +3352,12 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
       socket_->getEventBase()->loop();
       ASSERT_EQ(connCb_.state, ConnCallback::State::SUCCESS);
       setReadCb();
+    }
+
+    void waitForHandshake() {
+      while (connCb_.state == ConnCallback::State::WAITING) {
+        socket_->getEventBase()->loopOnce();
+      }
     }
 
     void setReadCb() {
@@ -3523,7 +3494,7 @@ class AsyncSSLSocketByteEventTest : public ::testing::Test {
 
   static std::shared_ptr<NiceMock<TestObserver>> attachObserver(
       AsyncSocket* socket, bool enableByteEvents) {
-    AsyncTransport::LifecycleObserver::Config config = {};
+    AsyncSocket::LegacyLifecycleObserver::Config config = {};
     config.byteEvents = enableByteEvents;
     return std::make_shared<NiceMock<TestObserver>>(socket, config);
   }
@@ -3639,8 +3610,40 @@ TEST_F(AsyncSSLSocketByteEventTest, ObserverAttachedAfterConnect) {
   clientConn.connect();
   clientConn.netOpsVerifyAndClearExpectations();
 
+  // We make sure the server writes at least one byte to the client before
+  // enabling byte events. Otherwise, the test is flaky. We believe this happens
+  // when the following sequence occurs:
+  //
+  // (1) The client socket enables byte events successfully;
+  //
+  // (2) The client socket writes data to the server with timestamping set;
+  //
+  // (3) The client socket receives byte events for WRITE, SCHED, and TX and
+  //     processes them using `handleErrMessages` in `ioReady`. Once the error
+  //     queue is empty, `ioReady` calls `handleRead`. During this time, the
+  //     client also begins to read data sent by the server as part of the SSL
+  //     handshake completion;
+  //
+  // (4) The server socket receives the data from the client and reflects it
+  //     back;
+  //
+  // (5) The client socket receives the data reflected by the server. When a
+  //     data packet contains an ACK for previous data, the kernel emits the ACK
+  //     timestamp before handing off the received data to userspace. However,
+  //     in this case, since the client socket is still inside the `handleRead`
+  //     function (step 3), it will process the read, even though the ACK
+  //     timestamp is already enqueued in the error queue. When it finishes
+  //     reading the data, it does not go back to handle messages from the error
+  //     queue until the next call to `ioReady`. This causes several `EXPECT`
+  //     statements below to fail.
+
+  serverHandshakeCb_->waitForHandshake();
+  clientConn.waitForHandshake();
+  clientConn.writeAndReflect(wbuf, flags);
+  clientConn.netOpsVerifyAndClearExpectations();
+
   clientConn.netOpsExpectTimestampingSetSockOpt();
-  auto observer = clientConn.attachObserver(true /* enableByteEvents */);
+  auto observer = clientConn.attachObserver(true);
   EXPECT_EQ(1, observer->byteEventsEnabledCalled);
   EXPECT_EQ(0, observer->byteEventsUnavailableCalled);
   EXPECT_FALSE(observer->byteEventsUnavailableCalledEx.has_value());
@@ -3984,8 +3987,6 @@ TEST(AsyncSSLSocketTest, BytesWrittenWithMove) {
   EXPECT_EQ(socket1AppBytes, socket3->getAppBytesWritten());
   EXPECT_EQ(socket1RawBytes, socket3->getRawBytesWritten());
 }
-
-} // namespace folly
 
 #ifdef SIGPIPE
 ///////////////////////////////////////////////////////////////////////////

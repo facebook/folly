@@ -35,7 +35,7 @@ namespace chrono {
 static int64_t clock_gettime_ns_fallback(clockid_t clock) {
   struct timespec ts;
   int r = clock_gettime(clock, &ts);
-  if (UNLIKELY(r != 0)) {
+  if (FOLLY_UNLIKELY(r != 0)) {
     // Mimic what __clock_gettime_ns does (even though this can be a legit
     // value).
     return -1;

@@ -43,7 +43,7 @@ class FileHandlerFactory::WriterFactory
       throw std::invalid_argument("no path specified for file handler");
     }
     return fileWriterFactory_.createWriter(
-        File{path_, O_WRONLY | O_APPEND | O_CREAT});
+        File{path_, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC});
   }
 
   std::string path_;

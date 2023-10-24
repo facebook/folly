@@ -61,13 +61,17 @@ struct AttachScopeExitFn {
 /// coroutine's scope.
 ///
 /// There are two important steps the parent coroutine must take:
-/// 1. It must exchange the provided coroutine_handle (the ScopeExitTask's
-///    handle) with its current continuation, so that the ScopeExitTask can
-///    execute after the parent's FinalAwaiter and before the parent's original
-///    continuation.
-/// 2. It must *not* pop its AsyncStackFrame in its FinalAwaiter, instead
-///    deferring that responsibility to the ScopeExitTask. This is to allow the
-///    ScopeExitTasks to run in the same stack frame as the parent.
+/// 1. It must store the provided ScopeExitTask coroutine handle and return the
+/// latest previously attached ScopeExitTask handle (or an empty handle if this
+/// one is the first).
+/// 2. On destruction of the parent coroutine, the context of the latest stored
+/// ScopeExitTask coroutine must be set by calling setContext(...) on its
+/// promise object, then the ScopeExitTask coroutine must be executed.
+/// The continuation passed to the setContext(...) call will be resumed after
+/// the executing the last (the first attached) coroutine in the ScopeExitTask
+/// chain. NOTE: The user must not pop the async frame if it is passed to the
+/// setContext(...) call, it will be popped by the last ScopeExitTask coroutine
+/// in the chain instead.
 FOLLY_DEFINE_CPO(AttachScopeExitFn, co_attachScopeExit)
 
 template <typename... Args>
@@ -85,17 +89,35 @@ class ScopeExitTaskPromiseBase {
       SCOPE_EXIT { coro.destroy(); };
 
       ScopeExitTaskPromiseBase& promise = coro.promise();
-      /// If this is true, then this ScopeExitTask is the final one to be
-      /// executed on the parent task, and we can now pop the parent's async
-      /// frame before calling the original parent's continuation.
-      if (promise.ownsParentAsyncFrame_) {
-        folly::popAsyncStackFrameCallee(*promise.parentAsyncFrame_);
+      DCHECK(promise.continuation_);
+      DCHECK(promise.parentAsyncFrame_);
+      DCHECK(promise.executor_);
+      if (promise.next_) {
+        promise.next_.promise().setContext(
+            promise.continuation_,
+            promise.parentAsyncFrame_,
+            promise.executor_.get_alias());
+        return promise.next_;
       }
+
+      /// If we reached this point, then this ScopeExitTask is the final one to
+      /// be executed on the parent task, and we can now pop the parent's async
+      /// frame before calling the original parent's continuation.
+      folly::popAsyncStackFrameCallee(*promise.parentAsyncFrame_);
       return promise.continuation_;
     }
 
     [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
   };
+
+  void setContext(
+      coroutine_handle<> continuation,
+      folly::AsyncStackFrame* asyncFrame,
+      folly::Executor::KeepAlive<> executor) {
+    continuation_ = continuation;
+    parentAsyncFrame_ = asyncFrame;
+    executor_ = std::move(executor);
+  }
 
   suspend_always initial_suspend() noexcept { return {}; }
 
@@ -128,7 +150,7 @@ class ScopeExitTaskPromiseBase {
   coroutine_handle<> continuation_;
   folly::AsyncStackFrame* parentAsyncFrame_;
   folly::Executor::KeepAlive<> executor_;
-  bool ownsParentAsyncFrame_ = false;
+  coroutine_handle<ScopeExitTaskPromiseBase> next_;
 };
 
 template <typename... Args>
@@ -166,11 +188,8 @@ class [[nodiscard]] ScopeExitTask {
   ScopeExitTask(ScopeExitTask&& t) noexcept
       : coro_(std::exchange(t.coro_, {})) {}
 
-  friend auto co_viaIfAsync(
-      Executor::KeepAlive<> executor, ScopeExitTask&& t) noexcept {
+  friend auto co_viaIfAsync(Executor::KeepAlive<>, ScopeExitTask&& t) noexcept {
     DCHECK(t.coro_);
-    /// Child task inherits the awaiting task's executor
-    t.coro_.promise().executor_ = std::move(executor);
     return Awaiter{std::exchange(t.coro_, {})};
   }
 
@@ -220,14 +239,11 @@ class [[nodiscard]] ScopeExitTask {
       /// caller, we must run within the parent's async frame. In order to
       /// guarantee correctness, the parent must defer responsibility of popping
       /// the async stack frame to the final scope exit continuation.
-      auto [ownsAsyncFrame, continuation] =
-          co_attachScopeExit(parentPromise, coro_);
-      promise.ownsParentAsyncFrame_ = ownsAsyncFrame;
-      promise.continuation_ = continuation;
+      promise.next_ = co_attachScopeExit(
+          parentPromise,
+          coroutine_handle<ScopeExitTaskPromiseBase>::from_promise(
+              coro_.promise()));
 
-      /// Currently, we only support attaching in Task<>, so we can assume async
-      /// frame support
-      promise.parentAsyncFrame_ = &parentPromise.getAsyncFrame();
       return false;
     }
 

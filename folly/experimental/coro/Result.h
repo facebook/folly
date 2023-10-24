@@ -52,7 +52,9 @@ class co_result final {
  public:
   explicit co_result(Try<T>&& result) noexcept(
       std::is_nothrow_move_constructible<T>::value)
-      : result_(std::move(result)) {}
+      : result_(std::move(result)) {
+    assert(!result_.hasException() || result_.exception());
+  }
 
   const Try<T>& result() const { return result_; }
 

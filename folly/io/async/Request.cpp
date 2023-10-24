@@ -201,6 +201,30 @@ RequestContext::State::~State() {
   }
 }
 
+class FOLLY_NODISCARD RequestContext::State::LockGuard {
+ public:
+  explicit LockGuard(RequestContext::State& state)
+      : state_(state), lock_(state.mutex_) {}
+
+  ~LockGuard() {
+    // The state is only locked on modifications, so we can invalidate the
+    // thread caches every time the lock is released. In some cases no actual
+    // changes to the state may have been performed, but we conservatively
+    // invalidate anyway, as any modification operations are infrequent compared
+    // to reads.
+    state_.version_.store(processLocalUniqueId(), std::memory_order_release);
+  }
+
+ private:
+  LockGuard(const LockGuard&) = delete;
+  LockGuard(LockGuard&&) = delete;
+  LockGuard& operator=(const LockGuard&) = delete;
+  LockGuard& operator=(LockGuard&&) = delete;
+
+  RequestContext::State& state_;
+  std::unique_lock<folly::SharedMutex> lock_;
+};
+
 FOLLY_ALWAYS_INLINE
 RequestContext::State::Combined* RequestContext::State::combined() const {
   return combined_.load(std::memory_order_acquire);
@@ -232,7 +256,7 @@ bool RequestContext::State::doSetContextData(
   if (safe) {
     result = doSetContextDataHelper(token, data, behaviour, safe);
   } else {
-    std::lock_guard<std::mutex> g(mutex_);
+    LockGuard lock{*this};
     result = doSetContextDataHelper(token, data, behaviour, safe);
   }
   if (result.unexpected) {
@@ -430,7 +454,7 @@ void RequestContext::State::clearContextData(const RequestToken& token) {
   RequestData* data;
   Combined* replaced = nullptr;
   { // Lock mutex_
-    std::lock_guard<std::mutex> g(mutex_);
+    LockGuard lock{*this};
     Combined* cur = combined();
     if (!cur) {
       return;

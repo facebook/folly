@@ -16,9 +16,11 @@
 
 #include <folly/detail/StaticSingletonManager.h>
 
+#include <map>
 #include <mutex>
 #include <typeindex>
-#include <unordered_map>
+
+#include <folly/memory/ReentrantAllocator.h>
 
 namespace folly {
 namespace detail {
@@ -33,7 +35,7 @@ class StaticSingletonManagerWithRttiImpl {
   static void* create(Arg& arg) {
     // This Leaky Meyers Singleton must always live in the .cpp file.
     static Indestructible<StaticSingletonManagerWithRttiImpl> instance;
-    auto const ptr = instance->entry(*arg.key).get(*arg.make);
+    auto const ptr = instance->entry(*arg.key).get(*arg.make, arg.debug);
     arg.cache.store(ptr, std::memory_order_release);
     return ptr;
   }
@@ -43,9 +45,9 @@ class StaticSingletonManagerWithRttiImpl {
     void* ptr{};
     std::mutex mutex;
 
-    void* get(Make& make) {
+    void* get(Make& make, void** debug) {
       std::unique_lock<std::mutex> lock(mutex);
-      return ptr ? ptr : (ptr = make());
+      return ptr ? ptr : (*debug = ptr = make());
     }
   };
 
@@ -54,7 +56,15 @@ class StaticSingletonManagerWithRttiImpl {
     return map_[key];
   }
 
-  std::unordered_map<std::type_index, Entry> map_;
+  // using reentrant_allocator to permit new/delete hooks to use this class
+  // using std::map over std::unordered_map to reduce number of mmap regions
+  // since reentrant_allocator creates creates mmap regions to avoid malloc/free
+  using map_value_t = std::pair<std::type_index const, Entry>;
+  using map_less_t = std::less<std::type_index>;
+  using map_alloc_t = reentrant_allocator<map_value_t>;
+  using map_t = std::map<std::type_index, Entry, map_less_t, map_alloc_t>;
+
+  map_t map_{map_alloc_t{reentrant_allocator_options{}}};
   std::mutex mutex_;
 };
 

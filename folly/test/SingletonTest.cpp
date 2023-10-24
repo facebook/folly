@@ -27,10 +27,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/SingletonTestStructs.h>
-
-#ifndef _MSC_VER
-#include <folly/Subprocess.h>
-#endif
+#include <folly/test/TestUtils.h>
 
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
@@ -222,30 +219,42 @@ using SingletonNaughtyUsage2 = Singleton<T, Tag, NaughtyUsageTag2>;
 TEST(Singleton, NaughtyUsage) {
   auto& vault = *SingletonVault::singleton<NaughtyUsageTag>();
 
+  const char* kBeforeRegistrationCompleteMsg =
+      ".*Singleton .* requested before registrationComplete().*";
+  SingletonNaughtyUsage2<int> s0;
+  EXPECT_DEATH(s0.try_get(), kBeforeRegistrationCompleteMsg);
+
   vault.registrationComplete();
 
-  // Unregistered.
-  EXPECT_DEATH(Singleton<Watchdog>::try_get(), "");
-  EXPECT_DEATH(Singleton<Watchdog>::apply([](auto* v) { return v; }), "");
-  EXPECT_DEATH(SingletonNaughtyUsage<Watchdog>::try_get(), "");
+  const char* kUnregisteredMsg =
+      ".*Creating instance for unregistered singleton.*";
+  EXPECT_DEATH(Singleton<Watchdog>::try_get(), kUnregisteredMsg);
   EXPECT_DEATH(
-      SingletonNaughtyUsage<Watchdog>::apply([](auto* v) { return v; }), "");
+      Singleton<Watchdog>::apply([](auto* v) { return v; }), kUnregisteredMsg);
+  EXPECT_DEATH(SingletonNaughtyUsage<Watchdog>::try_get(), kUnregisteredMsg);
+  EXPECT_DEATH(
+      SingletonNaughtyUsage<Watchdog>::apply([](auto* v) { return v; }),
+      kUnregisteredMsg);
 
   vault.destroyInstances();
 
   auto& vault2 = *SingletonVault::singleton<NaughtyUsageTag2>();
 
-  EXPECT_DEATH(SingletonNaughtyUsage2<Watchdog>::try_get(), "");
+  EXPECT_DEATH(SingletonNaughtyUsage2<Watchdog>::try_get(), kUnregisteredMsg);
   EXPECT_DEATH(
-      SingletonNaughtyUsage2<Watchdog>::apply([](auto* v) { return v; }), "");
+      SingletonNaughtyUsage2<Watchdog>::apply([](auto* v) { return v; }),
+      kUnregisteredMsg);
   SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
 
-  // double registration
-  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> w2; }(), "");
+  const char* kDoubleRegistration =
+      "Double registration of singletons of the same underlying type";
+  EXPECT_DEATH(
+      [] { SingletonNaughtyUsage2<Watchdog> w2; }(), kDoubleRegistration);
   vault2.destroyInstances();
 
-  // double registration after destroy
-  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> w3; }(), "");
+  // Double registration after destroy.
+  EXPECT_DEATH(
+      [] { SingletonNaughtyUsage2<Watchdog> w3; }(), kDoubleRegistration);
 }
 
 struct SharedPtrUsageTag {};
@@ -678,6 +687,39 @@ TEST(Singleton, SingletonEagerInitParallel) {
   }
 }
 
+struct StateTestTag {};
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonVaultStateTest = Singleton<T, Tag, StateTestTag>;
+
+TEST(Singleton, SingletonVaultStateTest) {
+  auto& vault = *SingletonVault::singleton<StateTestTag>();
+  // vault must not be disabled after construction
+  EXPECT_FALSE(vault.isDisabled());
+
+  EXPECT_EQ(vault.registeredSingletonCount(), 0);
+  SingletonVaultStateTest<Watchdog> watchdog_singleton;
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+
+  // vault must not be disabled after adding a singleton
+  EXPECT_FALSE(vault.isDisabled());
+
+  vault.registrationComplete();
+
+  // vault must not be disabled after registration is complete
+  EXPECT_FALSE(vault.isDisabled());
+
+  vault.destroyInstances();
+
+  // vault must be disabled after destroying instances
+  EXPECT_TRUE(vault.isDisabled());
+
+  vault.reenableInstances();
+
+  // vault must not be disabled after reenabling instances
+  EXPECT_FALSE(vault.isDisabled());
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+}
+
 struct MockTag {};
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonMock = Singleton<T, Tag, MockTag>;
@@ -752,33 +794,6 @@ TEST(Singleton, MockTestWithApply) {
 
   vault.destroyInstances();
 }
-
-#ifndef _MSC_VER
-// Subprocess isn't currently supported under MSVC.
-TEST(Singleton, DoubleRegistrationLogging) {
-  std::string helperPath;
-  const auto* envPath = getenv("FOLLY_SINGLETON_DOUBLE_REGISTRATION_HELPER");
-  if (envPath) {
-    helperPath = envPath;
-  } else {
-    const auto basename = "singleton_double_registration";
-    helperPath = (fs::executable_path().remove_filename() / basename).string();
-  }
-  LOG(INFO) << "running: " << helperPath;
-  auto p = Subprocess(
-      std::vector<std::string>{helperPath},
-      Subprocess::Options()
-          .stdinFd(Subprocess::DEV_NULL)
-          .stdoutFd(Subprocess::DEV_NULL)
-          .pipeStderr()
-          .closeOtherFds());
-  auto err = p.communicate("").second;
-  auto res = p.wait();
-  ASSERT_EQ(ProcessReturnCode::KILLED, res.state());
-  EXPECT_EQ(SIGABRT, res.killSignal());
-  EXPECT_THAT(err, testing::StartsWith("Double registration of singletons"));
-}
-#endif
 
 // Singleton using a non default constructor test/example:
 struct X {
@@ -1032,6 +1047,10 @@ TEST(Singleton, LeakySingletonTSAN) {
 }
 
 TEST(Singleton, ShutdownTimer) {
+  // TSAN will SIGSEGV if the shutdown timer activates (it spawns a new thread,
+  // which TSAN doesn't like).
+  SKIP_IF(folly::kIsSanitizeThread);
+
   struct VaultTag {};
   struct PrivateTag {};
   struct Object {

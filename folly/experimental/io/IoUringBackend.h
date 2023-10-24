@@ -35,6 +35,7 @@
 #include <folly/Function.h>
 #include <folly/Range.h>
 #include <folly/experimental/io/IoUringBase.h>
+#include <folly/experimental/io/Liburing.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/portability/Asm.h>
@@ -44,11 +45,9 @@
 #include <poll.h>
 #endif
 
-#if __has_include(<liburing.h>)
-#include <liburing.h>
-#endif
+#if FOLLY_HAS_LIBURING
 
-#if __has_include(<liburing.h>)
+#include <liburing.h> // @manual
 
 namespace folly {
 
@@ -211,6 +210,8 @@ class IoUringBackend : public EventBaseBackendBase {
   }
 
   // from EventBaseBackendBase
+  int getPollableFd() const override { return ioRing_.ring_fd; }
+
   event_base* getEventBase() override { return nullptr; }
 
   int eb_event_base_loop(int flags) override;
@@ -1111,4 +1112,4 @@ class IoUringBackend : public EventBaseBackendBase {
 using PollIoBackend = IoUringBackend;
 } // namespace folly
 
-#endif // __has_include(<liburing.h>)
+#endif

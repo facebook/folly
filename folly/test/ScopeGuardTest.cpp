@@ -23,11 +23,77 @@
 
 #include <glog/logging.h>
 
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
 using folly::makeDismissedGuard;
 using folly::makeGuard;
 using std::vector;
+
+struct in_scope {};
+struct in_guard {};
+
+extern "C" FOLLY_KEEP void check_folly_scope_exit_opaque() {
+  SCOPE_EXIT { folly::detail::keep_sink(in_guard{}); };
+  folly::detail::keep_sink(in_scope{});
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_exit_opaque_noexcept() {
+  SCOPE_EXIT { folly::detail::keep_sink(in_guard{}); };
+  folly::detail::keep_sink_nx(in_scope{});
+}
+
+extern "C" FOLLY_KEEP [[noreturn]] void check_folly_scope_exit_visible_throw() {
+  SCOPE_EXIT { folly::detail::keep_sink(in_guard{}); };
+  throw 0;
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_exit_visible_throw_cond(bool b) {
+  SCOPE_EXIT { folly::detail::keep_sink(in_guard{}); };
+  b ? void(throw 0) : void();
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_success_opaque() {
+  SCOPE_SUCCESS { folly::detail::keep_sink(in_guard{}); };
+  folly::detail::keep_sink(in_scope{});
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_success_opaque_noexcept() {
+  SCOPE_SUCCESS { folly::detail::keep_sink(in_guard{}); };
+  folly::detail::keep_sink_nx(in_scope{});
+}
+
+extern "C" FOLLY_KEEP [[noreturn]] void
+check_folly_scope_success_visible_throw() {
+  SCOPE_SUCCESS { folly::detail::keep_sink(in_guard{}); };
+  throw 0;
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_success_visible_throw_cond(
+    bool b) {
+  SCOPE_SUCCESS { folly::detail::keep_sink(in_guard{}); };
+  b ? void(throw 0) : void();
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_fail_opaque() {
+  SCOPE_FAIL { folly::detail::keep_sink(in_guard{}); };
+  folly::detail::keep_sink(in_scope{});
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_fail_opaque_noexcept() {
+  SCOPE_FAIL { folly::detail::keep_sink(in_guard{}); };
+  folly::detail::keep_sink_nx(in_scope{});
+}
+
+extern "C" FOLLY_KEEP [[noreturn]] void check_folly_scope_fail_visible_throw() {
+  SCOPE_FAIL { folly::detail::keep_sink(in_guard{}); };
+  throw 0;
+}
+
+extern "C" FOLLY_KEEP void check_folly_scope_fail_visible_throw_cond(bool b) {
+  SCOPE_FAIL { folly::detail::keep_sink(in_guard{}); };
+  b ? void(throw 0) : void();
+}
 
 double returnsDouble() {
   return 0.0;

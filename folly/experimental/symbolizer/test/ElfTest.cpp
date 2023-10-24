@@ -33,6 +33,9 @@ extern "C" {
 int sum_func(int lhs, int rhs) {
   return lhs + rhs;
 }
+int sub_func(int lhs, int rhs) {
+  return lhs - rhs;
+}
 }
 
 const char* const kDefaultElf = "/proc/self/exe";
@@ -87,6 +90,37 @@ TEST_F(ElfTest, SymbolByName) {
   sym = elfFile_.getSymbolByName("kIntegerValue", {STT_OBJECT});
   EXPECT_NE(nullptr, sym.first)
       << "Failed to look up symbol kIntegerValue when specifying type";
+}
+
+TEST_F(ElfTest, SymbolsByNameSuccess) {
+  auto names = {"sum_func", "sub_func"};
+  auto result = elfFile_.getSymbolsByName(names, {STT_FUNC});
+
+  EXPECT_EQ(names.size(), result.size());
+  EXPECT_TRUE(result.find("sum_func") != result.end());
+  EXPECT_TRUE(result.find("sub_func") != result.end());
+
+  const auto& sumFuncSymbol = result.at("sum_func");
+  EXPECT_NE(nullptr, sumFuncSymbol.first);
+  EXPECT_NE(nullptr, sumFuncSymbol.second);
+
+  const auto& subFuncSymbol = result.at("sub_func");
+  EXPECT_NE(nullptr, subFuncSymbol.first);
+  EXPECT_NE(nullptr, subFuncSymbol.second);
+}
+
+TEST_F(ElfTest, SymbolsByNamePartial) {
+  auto names = {"sum_func", "sub_func", "foo_func"};
+  auto result = elfFile_.getSymbolsByName(names, {STT_FUNC});
+
+  EXPECT_EQ(names.size(), result.size());
+  EXPECT_TRUE(result.find("sum_func") != result.end());
+  EXPECT_TRUE(result.find("sub_func") != result.end());
+  EXPECT_TRUE(result.find("foo_func") != result.end());
+
+  const auto& fooFuncSymbol = result.at("foo_func");
+  EXPECT_EQ(nullptr, fooFuncSymbol.first);
+  EXPECT_EQ(nullptr, fooFuncSymbol.second);
 }
 
 TEST_F(ElfTest, iterateProgramHeaders) {

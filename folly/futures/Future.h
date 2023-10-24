@@ -45,14 +45,15 @@
 
 namespace folly {
 
-class FOLLY_EXPORT FutureException : public std::logic_error {
+class FOLLY_EXPORT FutureException
+    : public static_what_exception<std::logic_error> {
  public:
-  using std::logic_error::logic_error;
+  using static_what_exception<std::logic_error>::static_what_exception;
 };
 
 class FOLLY_EXPORT FutureInvalid : public FutureException {
  public:
-  FutureInvalid() : FutureException("Future invalid") {}
+  FutureInvalid() : FutureException(static_lifetime{}, "Future invalid") {}
 };
 
 /// At most one continuation may be attached to any given Future.
@@ -62,38 +63,42 @@ class FOLLY_EXPORT FutureInvalid : public FutureException {
 /// thrown instead.
 class FOLLY_EXPORT FutureAlreadyContinued : public FutureException {
  public:
-  FutureAlreadyContinued() : FutureException("Future already continued") {}
+  FutureAlreadyContinued()
+      : FutureException(static_lifetime{}, "Future already continued") {}
 };
 
 class FOLLY_EXPORT FutureNotReady : public FutureException {
  public:
-  FutureNotReady() : FutureException("Future not ready") {}
+  FutureNotReady() : FutureException(static_lifetime{}, "Future not ready") {}
 };
 
 class FOLLY_EXPORT FutureCancellation : public FutureException {
  public:
-  FutureCancellation() : FutureException("Future was cancelled") {}
+  FutureCancellation()
+      : FutureException(static_lifetime{}, "Future was cancelled") {}
 };
 
 class FOLLY_EXPORT FutureTimeout : public FutureException {
  public:
-  FutureTimeout() : FutureException("Timed out") {}
+  FutureTimeout() : FutureException(static_lifetime{}, "Timed out") {}
 };
 
 class FOLLY_EXPORT FuturePredicateDoesNotObtain : public FutureException {
  public:
   FuturePredicateDoesNotObtain()
-      : FutureException("Predicate does not obtain") {}
+      : FutureException(static_lifetime{}, "Predicate does not obtain") {}
 };
 
 class FOLLY_EXPORT FutureNoTimekeeper : public FutureException {
  public:
-  FutureNoTimekeeper() : FutureException("No timekeeper available") {}
+  FutureNoTimekeeper()
+      : FutureException(static_lifetime{}, "No timekeeper available") {}
 };
 
 class FOLLY_EXPORT FutureNoExecutor : public FutureException {
  public:
-  FutureNoExecutor() : FutureException("No executor provided to via") {}
+  FutureNoExecutor()
+      : FutureException(static_lifetime{}, "No executor provided to via") {}
 };
 
 template <class T>
@@ -256,6 +261,11 @@ class FutureBase {
   /// not worth listing all those and their fancy template signatures as
   /// friends. But it's not for public consumption.
   template <class F>
+  void setCallback_(
+      F&& func,
+      std::shared_ptr<folly::RequestContext>&& context,
+      InlineContinuation = InlineContinuation::forbid);
+  template <class F>
   void setCallback_(F&& func, InlineContinuation = InlineContinuation::forbid);
 
   /// Provides a threadsafe back-channel so the consumer's thread can send an
@@ -324,7 +334,7 @@ class FutureBase {
   ///
   /// Synchronizes between `raise()` (in the consumer's thread)
   ///   and `Promise::setInterruptHandler()` (in the producer's thread).
-  void raise(exception_wrapper interrupt);
+  void raise(exception_wrapper exception);
 
   /// Raises the specified exception-interrupt.
   /// See `raise(exception_wrapper)` for details.
@@ -1428,6 +1438,9 @@ class Future : private futures::detail::FutureBase<T> {
       Future<T>>::type
   thenError(tag_t<ExceptionType>, F&& func) &&;
 
+  template <class ExceptionType, class F>
+  Future<T> thenErrorInline(tag_t<ExceptionType>, F&& func) &&;
+
   template <class ExceptionType, class R, class... Args>
   Future<T> thenError(tag_t<ExceptionType> tag, R (&func)(Args...)) && {
     return std::move(*this).thenError(tag, &func);
@@ -1474,6 +1487,9 @@ class Future : private futures::detail::FutureBase<T> {
       !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
       Future<T>>::type
   thenError(F&& func) &&;
+
+  template <class F>
+  Future<T> thenErrorInline(F&& func) &&;
 
   template <class R, class... Args>
   Future<T> thenError(R (&func)(Args...)) && {
@@ -1630,6 +1646,10 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   template <class F>
   Future<T> ensure(F&& func) &&;
+
+  template <class F>
+  Future<T> ensureInline(F&& func) &&;
+
   // clang-format on
 
   /// Like thenError, but for timeouts. example:
@@ -1953,6 +1973,44 @@ class Future : private futures::detail::FutureBase<T> {
   template <class T2>
   friend void futures::detachOn(
       folly::Executor::KeepAlive<> exec, folly::SemiFuture<T2>&& fut);
+
+  template <class ExceptionType, class F>
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      tag_t<ExceptionType>,
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
+
+  template <class ExceptionType, class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      tag_t<ExceptionType>,
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
+
+  template <class F>
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
+
+  template <class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenErrorImpl(
+      F&& func,
+      futures::detail::InlineContinuation allowInline =
+          futures::detail::InlineContinuation::forbid) &&;
 };
 
 /// A Timekeeper handles the details of keeping time and fulfilling delay

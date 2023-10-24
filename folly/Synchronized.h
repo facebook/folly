@@ -1004,6 +1004,28 @@ struct Synchronized : public SynchronizedBase<
   mutable Mutex mutex_;
 };
 
+/**
+ * Deprecated subclass of Synchronized that provides implicit locking
+ * via operator->. This is intended to ease migration while preventing
+ * accidental use of operator-> in new code.
+ */
+template <class T, class Mutex = SharedMutex>
+struct [[deprecated(
+    "use Synchronized and explicit lock(), wlock(), or rlock() instead")]] ImplicitSynchronized
+    : Synchronized<T, Mutex> {
+ private:
+  using Base = Synchronized<T, Mutex>;
+
+ public:
+  using LockedPtr = typename Base::LockedPtr;
+  using ConstLockedPtr = typename Base::ConstLockedPtr;
+  using DataType = typename Base::DataType;
+  using MutexType = typename Base::MutexType;
+
+  using Base::Base;
+  using Base::operator=;
+};
+
 template <class SynchronizedType, class LockPolicy>
 class ScopedUnlocker;
 

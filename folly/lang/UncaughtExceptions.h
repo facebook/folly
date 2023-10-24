@@ -16,27 +16,36 @@
 
 #pragma once
 
+#include <cassert>
 #include <exception>
 
 #include <folly/CppAttributes.h>
+#include <folly/Likely.h>
+#include <folly/Portability.h>
 
 namespace folly {
 
 namespace detail {
-[[FOLLY_ATTR_PURE]] int uncaught_exceptions_() noexcept;
-}
 
-#if __cpp_lib_uncaught_exceptions >= 201411L || defined(_CPPLIB_VER)
+unsigned int* uncaught_exceptions_ptr() noexcept;
 
-/* using override */ using std::uncaught_exceptions;
+} // namespace detail
 
-#else
-
+//  uncaught_exceptions
+//
+//  An accelerated version of std::uncaught_exceptions.
+//
 //  mimic: std::uncaught_exceptions, c++17
-[[FOLLY_ATTR_PURE]] inline int uncaught_exceptions() noexcept {
-  return detail::uncaught_exceptions_();
-}
-
+[[FOLLY_ATTR_PURE]] FOLLY_EXPORT FOLLY_ALWAYS_INLINE int
+uncaught_exceptions() noexcept {
+#if defined(_CPPLIB_VER)
+  return std::uncaught_exceptions();
+#elif defined(__has_feature) && !FOLLY_HAS_FEATURE(cxx_thread_local)
+  return std::uncaught_exceptions();
+#else
+  thread_local unsigned int* ct;
+  return FOLLY_LIKELY(!!ct) ? *ct : *(ct = detail::uncaught_exceptions_ptr());
 #endif
+}
 
 } // namespace folly

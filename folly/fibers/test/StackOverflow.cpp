@@ -32,7 +32,7 @@ void f(int* p) {
 }
 
 int main(int argc, char* argv[]) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
 
   folly::EventBase evb;
   folly::fibers::getFiberManager(evb).addTask([&]() { f(nullptr); });

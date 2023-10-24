@@ -102,7 +102,7 @@ TEST(TimeseriesHistogram, Percentile) {
     EXPECT_EQ(110, h.getPercentileBucketMin(99, IntMTMHTS::ALLTIME));
 
     EXPECT_EQ(-2, h.getPercentileEstimate(0, IntMTMHTS::ALLTIME));
-    EXPECT_EQ(-1, h.getPercentileEstimate(1, IntMTMHTS::ALLTIME));
+    EXPECT_EQ(0, h.getPercentileEstimate(2, IntMTMHTS::ALLTIME));
     EXPECT_EQ(119, h.getPercentileEstimate(99, IntMTMHTS::ALLTIME));
     EXPECT_EQ(120, h.getPercentileEstimate(100, IntMTMHTS::ALLTIME));
   }

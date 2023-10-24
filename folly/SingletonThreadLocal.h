@@ -27,6 +27,7 @@
 #include <folly/detail/Singleton.h>
 #include <folly/detail/UniqueInstance.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/Hint.h>
 
 namespace folly {
 
@@ -211,9 +212,12 @@ class SingletonThreadLocal {
   }
 };
 
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wglobal-constructors")
 template <typename T, typename Tag, typename Make, typename TLTag>
 detail::UniqueInstance SingletonThreadLocal<T, Tag, Make, TLTag>::unique{
     tag<SingletonThreadLocal>, tag<T, Tag>, tag<Make, TLTag>};
+FOLLY_POP_WARNING
 
 } // namespace folly
 
@@ -254,6 +258,8 @@ detail::UniqueInstance SingletonThreadLocal<T, Tag, Make, TLTag>::unique{
   struct __folly_reused_type_##name {                                          \
     __VA_ARGS__ object;                                                        \
   };                                                                           \
+  FOLLY_MAYBE_UNUSED ::folly::unsafe_for_async_usage                           \
+      __folly_reused_g_prevent_async_##name;                                   \
   auto& name =                                                                 \
       ::folly::SingletonThreadLocal<__folly_reused_type_##name>::get().object; \
   auto __folly_reused_g_##name = ::folly::makeGuard([&] { name.clear(); })

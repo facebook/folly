@@ -29,7 +29,6 @@
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
-#include <folly/portability/SysResource.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/SanitizeThread.h>
 #include <folly/system/ThreadId.h>
@@ -290,6 +289,8 @@ constexpr uint32_t kMaxDeferredReadersAllocated = 256 * 2;
 
 FOLLY_COLD uint32_t getMaxDeferredReadersSlow(relaxed_atomic<uint32_t>& cache);
 
+long getCurrentThreadInvoluntaryContextSwitchCount();
+
 // kMaxDeferredReaders
 FOLLY_EXPORT FOLLY_ALWAYS_INLINE uint32_t getMaxDeferredReaders() {
   static relaxed_atomic<uint32_t> cache{0};
@@ -388,7 +389,7 @@ class SharedMutexImpl : std::conditional_t<
   // description about why this property needs to be explicitly mentioned.
   ~SharedMutexImpl() {
     auto state = state_.load(std::memory_order_relaxed);
-    if (UNLIKELY((state & kHasS) != 0)) {
+    if (FOLLY_UNLIKELY((state & kHasS) != 0)) {
       cleanupTokenlessSharedDeferred(state);
     }
 
@@ -1020,7 +1021,7 @@ class SharedMutexImpl : std::conditional_t<
   template <class WaitContext>
   bool lockExclusiveImpl(uint32_t preconditionGoalMask, WaitContext& ctx) {
     uint32_t state = state_.load(std::memory_order_acquire);
-    if (LIKELY(
+    if (FOLLY_LIKELY(
             (state & (preconditionGoalMask | kMayDefer | kHasS)) == 0 &&
             state_.compare_exchange_strong(state, (state | kHasE) & ~kHasU))) {
       return true;
@@ -1033,7 +1034,7 @@ class SharedMutexImpl : std::conditional_t<
   bool lockExclusiveImpl(
       uint32_t& state, uint32_t preconditionGoalMask, WaitContext& ctx) {
     while (true) {
-      if (UNLIKELY((state & preconditionGoalMask) != 0) &&
+      if (FOLLY_UNLIKELY((state & preconditionGoalMask) != 0) &&
           !waitForZeroBits(state, preconditionGoalMask, kWaitingE, ctx) &&
           ctx.canTimeOut()) {
         return false;
@@ -1064,12 +1065,12 @@ class SharedMutexImpl : std::conditional_t<
         // Readers are responsible for rechecking state_ after recording
         // a deferred read to avoid atomicity problems between the state_
         // CAS and applyDeferredReader's reads of deferredReaders[].
-        if (UNLIKELY((before & kMayDefer) != 0)) {
+        if (FOLLY_UNLIKELY((before & kMayDefer) != 0)) {
           applyDeferredReaders(state, ctx);
         }
         while (true) {
           assert((state & (kHasE | kBegunE)) != 0 && (state & kHasU) == 0);
-          if (UNLIKELY((state & kHasS) != 0) &&
+          if (FOLLY_UNLIKELY((state & kHasS) != 0) &&
               !waitForZeroBits(state, kHasS, kWaitingNotS, ctx) &&
               ctx.canTimeOut()) {
             // Ugh.  We blocked new readers and other writers for a while,
@@ -1104,7 +1105,7 @@ class SharedMutexImpl : std::conditional_t<
       if ((state & goal) == 0) {
         return true;
       }
-      if (UNLIKELY(spinCount == kMaxSpinCount)) {
+      if (FOLLY_UNLIKELY(spinCount == kMaxSpinCount)) {
         return ctx.canBlock() &&
             yieldWaitForZeroBits(state, goal, waitMask, ctx);
       }
@@ -1116,20 +1117,16 @@ class SharedMutexImpl : std::conditional_t<
   template <class WaitContext>
   bool yieldWaitForZeroBits(
       uint32_t& state, uint32_t goal, uint32_t waitMask, WaitContext& ctx) {
-#ifdef RUSAGE_THREAD
-    struct rusage usage;
-    std::memset(&usage, 0, sizeof(usage));
+    long thread_nivcsw = 0;
     long before = -1;
-#endif
     for (uint32_t yieldCount = 0; yieldCount < kMaxSoftYieldCount;
          ++yieldCount) {
       for (int softState = 0; softState < 3; ++softState) {
         if (softState < 2) {
           std::this_thread::yield();
         } else {
-#ifdef RUSAGE_THREAD
-          getrusage(RUSAGE_THREAD, &usage);
-#endif
+          thread_nivcsw = shared_mutex_detail::
+              getCurrentThreadInvoluntaryContextSwitchCount();
         }
         if (((state = state_.load(std::memory_order_acquire)) & goal) == 0) {
           return true;
@@ -1138,15 +1135,13 @@ class SharedMutexImpl : std::conditional_t<
           return false;
         }
       }
-#ifdef RUSAGE_THREAD
-      if (before >= 0 && usage.ru_nivcsw >= before + 2) {
+      if (before >= 0 && thread_nivcsw >= before + 2) {
         // One involuntary csw might just be occasional background work,
         // but if we get two in a row then we guess that there is someone
         // else who can profitably use this CPU.  Fall back to futex
         break;
       }
-      before = usage.ru_nivcsw;
-#endif
+      before = thread_nivcsw;
     }
     return futexWaitForZeroBits(state, goal, waitMask, ctx);
   }
@@ -1192,7 +1187,7 @@ class SharedMutexImpl : std::conditional_t<
   // awaiting bits for anybody that was awoken.  Tries to perform direct
   // single wakeup of an exclusive waiter if appropriate
   void wakeRegisteredWaiters(uint32_t& state, uint32_t wakeMask) {
-    if (UNLIKELY((state & wakeMask) != 0)) {
+    if (FOLLY_UNLIKELY((state & wakeMask) != 0)) {
       wakeRegisteredWaitersImpl(state, wakeMask);
     }
   }
@@ -1263,7 +1258,7 @@ class SharedMutexImpl : std::conditional_t<
         }
       }
       asm_volatile_pause();
-      if (UNLIKELY(++spinCount >= kMaxSpinCount)) {
+      if (FOLLY_UNLIKELY(++spinCount >= kMaxSpinCount)) {
         applyDeferredReaders(state, ctx, slot);
         return;
       }
@@ -1272,11 +1267,8 @@ class SharedMutexImpl : std::conditional_t<
 
   template <class WaitContext>
   void applyDeferredReaders(uint32_t& state, WaitContext& ctx, uint32_t slot) {
-#ifdef RUSAGE_THREAD
-    struct rusage usage;
-    std::memset(&usage, 0, sizeof(usage));
+    long thread_nivcsw = 0;
     long before = -1;
-#endif
     const uint32_t maxDeferredReaders =
         shared_mutex_detail::getMaxDeferredReaders();
     for (uint32_t yieldCount = 0; yieldCount < kMaxSoftYieldCount;
@@ -1285,9 +1277,8 @@ class SharedMutexImpl : std::conditional_t<
         if (softState < 2) {
           std::this_thread::yield();
         } else {
-#ifdef RUSAGE_THREAD
-          getrusage(RUSAGE_THREAD, &usage);
-#endif
+          thread_nivcsw = shared_mutex_detail::
+              getCurrentThreadInvoluntaryContextSwitchCount();
         }
         while (!slotValueIsThis(
             deferredReader(slot)->load(std::memory_order_acquire))) {
@@ -1300,13 +1291,11 @@ class SharedMutexImpl : std::conditional_t<
           break;
         }
       }
-#ifdef RUSAGE_THREAD
-      if (before >= 0 && usage.ru_nivcsw >= before + 2) {
+      if (before >= 0 && thread_nivcsw >= before + 2) {
         // heuristic says run queue is not empty
         break;
       }
-      before = usage.ru_nivcsw;
-#endif
+      before = thread_nivcsw;
     }
 
     uint32_t movedSlotCount = 0;
@@ -1660,7 +1649,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
   const uint32_t maxDeferredReaders =
       shared_mutex_detail::getMaxDeferredReaders();
   while (true) {
-    if (UNLIKELY((state & kHasE) != 0) &&
+    if (FOLLY_UNLIKELY((state & kHasE) != 0) &&
         !waitForZeroBits(state, kHasE, kWaitingS, ctx) && ctx.canTimeOut()) {
       return false;
     }

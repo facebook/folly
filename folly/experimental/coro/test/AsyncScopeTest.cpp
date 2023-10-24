@@ -126,6 +126,39 @@ CO_TEST_F(AsyncScopeTest, QueryRemainingCountAfterJoined) {
   co_await std::move(validateFut);
 }
 
+namespace {
+folly::coro::Task<> crash() {
+  folly::coro::AsyncScope scope{false};
+  auto makeTask = [&]() -> folly::coro::Task<> {
+    // sleep to force yielding
+    co_await folly::coro::sleep(std::chrono::milliseconds(100));
+    throw std::runtime_error("Computer says no");
+  };
+  scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+  co_return;
+}
+} // namespace
+
+CO_TEST_F(AsyncScopeTest, DontThrowOnJoin) {
+  EXPECT_EXIT(
+      folly::coro::blockingWait(crash()),
+      ::testing::KilledBySignal(SIGABRT),
+      "");
+  co_return;
+}
+
+CO_TEST_F(AsyncScopeTest, ThrowOnJoin) {
+  folly::coro::AsyncScope scope{true};
+  auto makeTask = [&]() -> folly::coro::Task<> {
+    // sleep to force yielding
+    co_await folly::coro::sleep(std::chrono::milliseconds(100));
+    throw std::runtime_error("Computer says no");
+  };
+  scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+
+  EXPECT_THROW(co_await scope.joinAsync(), std::runtime_error);
+}
+
 struct CancellableAsyncScopeTest : public testing::Test {};
 
 TEST_F(CancellableAsyncScopeTest, ConstructDestruct) {
@@ -141,9 +174,10 @@ CO_TEST_F(CancellableAsyncScopeTest, AddAndJoin) {
   };
 
   folly::coro::CancellableAsyncScope scope;
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 99; ++i) {
     scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
   }
+  scope.addWithSourceLoc(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
 
   co_await scope.joinAsync();
 

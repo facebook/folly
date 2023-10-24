@@ -184,6 +184,14 @@ class IPAddress {
       StringPiece str) noexcept;
 
   /**
+   * Tries to create a new IPAddress instance from the provided sockaddr.
+   *
+   * On failure, returns IPAddressFormatError.
+   */
+  static Expected<IPAddress, IPAddressFormatError> tryFromSockAddr(
+      const sockaddr* addr) noexcept;
+
+  /**
    * Create an IPAddress from a `uint32_t`, using network byte order.
    *
    * @throws IPAddressFormatException if `src` does not represent a valid IP
@@ -272,7 +280,7 @@ class IPAddress {
    * a valid V4 instance.
    */
   const IPAddressV4& asV4() const {
-    if (UNLIKELY(!isV4())) {
+    if (FOLLY_UNLIKELY(!isV4())) {
       asV4Throw();
     }
     return addr_.ipV4Addr;
@@ -285,7 +293,7 @@ class IPAddress {
    * a valid V6 instance.
    */
   const IPAddressV6& asV6() const {
-    if (UNLIKELY(!isV6())) {
+    if (FOLLY_UNLIKELY(!isV6())) {
       asV6Throw();
     }
     return addr_.ipV6Addr;

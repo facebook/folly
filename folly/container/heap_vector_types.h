@@ -1591,7 +1591,8 @@ template <
         std::pair<Key, Value>,
         0,
         folly::small_vector_policy::policy_size_type<SizeType>>,
-    typename = std::enable_if_t<std::is_integral<Key>::value>>
+    typename = std::enable_if_t<
+        std::is_integral<Key>::value || std::is_enum<Key>::value>>
 class small_heap_vector_map : public folly::heap_vector_map<
                                   Key,
                                   Value,

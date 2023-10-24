@@ -952,7 +952,7 @@ class VectorContainerIterator : public BaseIter<ValuePtr, uint32_t> {
   pointer operator->() const { return current_; }
 
   VectorContainerIterator& operator++() {
-    if (UNLIKELY(current_ == lowest_)) {
+    if (FOLLY_UNLIKELY(current_ == lowest_)) {
       current_ = nullptr;
     } else {
       --current_;

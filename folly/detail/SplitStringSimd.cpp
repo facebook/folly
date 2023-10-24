@@ -27,29 +27,33 @@ namespace detail {
 template <typename Container>
 void SimdSplitByCharImpl<Container>::keepEmpty(
     char sep, folly::StringPiece what, Container& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ false>{}(
-      sep, what, res);
+  PlatformSimdSplitByChar<
+      simd_detail::SimdCharPlatform,
+      /*ignoreEmpty*/ false>{}(sep, what, res);
 }
 
 template <typename Container>
 void SimdSplitByCharImpl<Container>::dropEmpty(
     char sep, folly::StringPiece what, Container& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ true>{}(
-      sep, what, res);
+  PlatformSimdSplitByChar<
+      simd_detail::SimdCharPlatform,
+      /*ignoreEmpty*/ true>{}(sep, what, res);
 }
 
 template <typename Container>
 void SimdSplitByCharImplToStrings<Container>::keepEmpty(
     char sep, folly::StringPiece what, Container& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ false>{}(
-      sep, what, res);
+  PlatformSimdSplitByChar<
+      simd_detail::SimdCharPlatform,
+      /*ignoreEmpty*/ false>{}(sep, what, res);
 }
 
 template <typename Container>
 void SimdSplitByCharImplToStrings<Container>::dropEmpty(
     char sep, folly::StringPiece what, Container& res) {
-  PlatformSimdSplitByChar<StringSplitCurrentPlatform, /*ignoreEmpty*/ true>{}(
-      sep, what, res);
+  PlatformSimdSplitByChar<
+      simd_detail::SimdCharPlatform,
+      /*ignoreEmpty*/ true>{}(sep, what, res);
 }
 
 // clang-format off

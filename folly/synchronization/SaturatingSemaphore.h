@@ -98,7 +98,7 @@ namespace folly {
 ///
 /// Usage:
 /// @code
-/// SaturatingSemaphore</* MayBlock = */ true> f;
+/// SaturatingSemaphore<> f;
 /// ASSERT_FALSE(f.try_wait());
 /// ASSERT_FALSE(f.try_wait_until(
 ///     std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
@@ -117,7 +117,7 @@ namespace folly {
 /// ASSERT_FALSE(f.try_wait());
 /// @endcode
 
-template <bool MayBlock, template <typename> class Atom = std::atomic>
+template <bool MayBlock = true, template <typename> class Atom = std::atomic>
 class SaturatingSemaphore {
   detail::Futex<Atom> state_;
 
@@ -167,7 +167,7 @@ class SaturatingSemaphore {
   FOLLY_ALWAYS_INLINE bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline,
       const WaitOptions& opt = wait_options()) noexcept {
-    if (LIKELY(try_wait())) {
+    if (FOLLY_LIKELY(try_wait())) {
       return true;
     }
     return tryWaitSlow(deadline, opt);
@@ -178,7 +178,7 @@ class SaturatingSemaphore {
   FOLLY_ALWAYS_INLINE bool try_wait_for(
       const std::chrono::duration<Rep, Period>& duration,
       const WaitOptions& opt = wait_options()) noexcept {
-    if (LIKELY(try_wait())) {
+    if (FOLLY_LIKELY(try_wait())) {
       return true;
     }
     auto deadline = std::chrono::steady_clock::now() + duration;
@@ -188,7 +188,7 @@ class SaturatingSemaphore {
  private:
   FOLLY_ALWAYS_INLINE void postFastWaiterMayBlock() noexcept {
     uint32_t before = NOTREADY;
-    if (LIKELY(state_.compare_exchange_strong(
+    if (FOLLY_LIKELY(state_.compare_exchange_strong(
             before,
             READY,
             std::memory_order_release,
@@ -275,7 +275,7 @@ template <typename Clock, typename Duration>
 FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
     const std::chrono::time_point<Clock, Duration>& deadline,
     const WaitOptions& opt) noexcept {
-  switch (detail::spin_pause_until(deadline, opt, [=] { return ready(); })) {
+  switch (detail::spin_pause_until(deadline, opt, [this] { return ready(); })) {
     case detail::spin_result::success:
       return true;
     case detail::spin_result::timeout:
@@ -285,7 +285,7 @@ FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
   }
 
   if (!MayBlock) {
-    switch (detail::spin_yield_until(deadline, [=] { return ready(); })) {
+    switch (detail::spin_yield_until(deadline, [this] { return ready(); })) {
       case detail::spin_result::success:
         return true;
       case detail::spin_result::timeout:

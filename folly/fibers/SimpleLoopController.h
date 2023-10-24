@@ -45,7 +45,7 @@ class SimpleLoopController : public LoopController {
     bool waiting = false;
     stopRequested_ = false;
 
-    while (LIKELY(waiting || !stopRequested_)) {
+    while (FOLLY_LIKELY(waiting || !stopRequested_)) {
       func();
       runTimeouts();
       if (scheduled_) {

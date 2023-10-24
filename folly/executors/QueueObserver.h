@@ -19,9 +19,11 @@
 #include <stdint.h>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/Synchronized.h>
 #include <folly/portability/SysTypes.h>
@@ -103,4 +105,9 @@ FOLLY_ATTR_WEAK MakeQueueObserverFactory make_queue_observer_factory;
 constexpr MakeQueueObserverFactory* make_queue_observer_factory = nullptr;
 #endif
 
+struct QueueInfo {
+  std::unordered_map<std::string, std::unordered_set<pid_t>> namesAndTids;
+  std::vector<std::unique_ptr<WorkerProvider::KeepAlive>> keepAlives;
+};
+using LaggingQueueInfoFunc = folly::Function<QueueInfo()>;
 } // namespace folly

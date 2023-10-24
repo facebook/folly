@@ -218,7 +218,7 @@ void rethrow_exception(std::exception_ptr ep) {
           RTLD_NEXT,
           "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"));
   getRethrowExceptionCallbacks().invoke(ep);
-  orig_rethrow_exception(ep);
+  orig_rethrow_exception(std::move(ep));
   __builtin_unreachable(); // orig_rethrow_exception never returns
 }
 

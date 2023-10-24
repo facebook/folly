@@ -2,12 +2,12 @@
 name = fmt
 
 [download]
-url = https://github.com/fmtlib/fmt/archive/refs/tags/8.0.1.tar.gz
-sha256 = b06ca3130158c625848f3fb7418f235155a4d389b2abc3a6245fb01cb0eb1e01
+url = https://github.com/fmtlib/fmt/archive/refs/tags/9.1.0.tar.gz
+sha256 = 5dea48d1fcddc3ec571ce2058e13910a0d4a6bab4cc09a809d8b1dd1c88ae6f2
 
 [build]
 builder = cmake
-subdir = fmt-8.0.1
+subdir = fmt-9.1.0
 
 [cmake.defines]
 FMT_TEST = OFF

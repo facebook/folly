@@ -67,13 +67,13 @@
 #include <folly/lang/Assume.h>
 #include <folly/portability/Builtins.h>
 
-#if __has_include(<bit>) && __cplusplus >= 202002L
+#if __has_include(<bit>) && (__cplusplus >= 202002L || (defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L))
 #include <bit>
 #endif
 
 namespace folly {
 
-#ifdef __cpp_lib_bit_cast
+#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
 
 using std::bit_cast;
 
@@ -148,8 +148,8 @@ inline constexpr unsigned int findLastSet(T const v) {
   // If X is a power of two X - Y = 1 + ((X - 1) ^ Y). Doing this transformation
   // allows GCC to remove its own xor that it adds to implement clz using bsr.
   // clang-format off
-  using size = index_constant<constexpr_max(sizeof(T), sizeof(U0))>;
-  return v ? 1u + static_cast<unsigned int>((8u * size{} - 1u) ^ (
+  constexpr auto size = constexpr_max(sizeof(T), sizeof(U0));
+  return v ? 1u + static_cast<unsigned int>((8u * size - 1u) ^ (
       sizeof(T) <= sizeof(U0) ? __builtin_clz(bits_to_unsigned<U0>(v)) :
       sizeof(T) <= sizeof(U1) ? __builtin_clzl(bits_to_unsigned<U1>(v)) :
       sizeof(T) <= sizeof(U2) ? __builtin_clzll(bits_to_unsigned<U2>(v)) :

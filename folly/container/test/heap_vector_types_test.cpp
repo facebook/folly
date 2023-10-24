@@ -313,6 +313,28 @@ TEST(HeapVectorTypes, MapAssignmentInitListTest) {
   }
 }
 
+TEST(HeapVectorTypes, MapAssignmentInitListTestEnum) {
+  enum class E : int { a = 3, b = 4, c = 5 };
+  using v = std::pair<E, const char*>;
+  v p = {E::a, "a"}, q = {E::b, "b"}, r = {E::c, "c"};
+  {
+    heap_vector_map<E, const char*> m{p, q, r};
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+    m = {}; // empty ilist assignment
+    EXPECT_THAT(m, testing::IsEmpty());
+    m = {p, q, r}; // non-empty ilist assignment
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  }
+  {
+    small_heap_vector_map<E, const char*> m{p, q, r};
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+    m = {}; // empty ilist assignment
+    EXPECT_THAT(m, testing::IsEmpty());
+    m = {p, q, r}; // non-empty ilist assignment
+    EXPECT_THAT(m, testing::ElementsAreArray({p, q, r}));
+  }
+}
+
 TEST(HeapVectorTypes, MapBadHints) {
   for (int toInsert = -1; toInsert <= 7; ++toInsert) {
     for (int hintPos = 0; hintPos <= 4; ++hintPos) {

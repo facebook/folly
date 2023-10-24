@@ -167,11 +167,6 @@ class CoreCachedWeakPtr {
  * sharded shared_ptrs will always all be set to the same value.
  * get()s will never see a newer pointer on one core, and an older
  * pointer on another after a subsequent thread migration.
- *
- * The shared_ptr replaced by a reset() operation may be released
- * asynchronously in a background thread. On AtomicCoreCachedSharedPtr
- * destruction, all shared_ptrs that have been managed by it are
- * guaranteed to be released.
  */
 template <class T, size_t kMaxSlots = kCoreCachedSharedPtrDefaultMaxSlots>
 class AtomicCoreCachedSharedPtr {
@@ -183,8 +178,14 @@ class AtomicCoreCachedSharedPtr {
     reset(std::move(p));
   }
 
+  AtomicCoreCachedSharedPtr(AtomicCoreCachedSharedPtr&& other) noexcept
+      : slots_(other.slots_.load(std::memory_order_relaxed)) {
+    other.slots_.store(nullptr, std::memory_order_relaxed);
+  }
+  AtomicCoreCachedSharedPtr& operator=(AtomicCoreCachedSharedPtr&& other) =
+      delete;
+
   ~AtomicCoreCachedSharedPtr() {
-    cohort_.shutdown_and_reclaim();
     // Delete of AtomicCoreCachedSharedPtr must be synchronized, no
     // need for slots->retire().
     delete slots_.load(std::memory_order_acquire);
@@ -200,18 +201,25 @@ class AtomicCoreCachedSharedPtr {
     }
 
     if (auto oldslots = slots_.exchange(newslots.release())) {
-      oldslots->set_cohort_tag(&cohort_);
       oldslots->retire();
     }
   }
 
   std::shared_ptr<T> get() const {
-    folly::hazptr_local<1> hazptr;
-    if (auto slots = hazptr[0].protect(slots_)) {
-      return slots->slots[AccessSpreader<>::cachedCurrent(SlotsConfig::num())];
-    } else {
+    // Avoid the hazptr cost if empty.
+    auto slots = slots_.load(std::memory_order_relaxed);
+    if (slots == nullptr) {
       return nullptr;
     }
+
+    folly::hazptr_local<1> hazptr;
+    while (!hazptr[0].try_protect(slots, slots_)) {
+      // Lost the update race, retry.
+    }
+    if (slots == nullptr) { // Need to check again, try_protect reloads slots.
+      return nullptr;
+    }
+    return slots->slots[AccessSpreader<>::cachedCurrent(SlotsConfig::num())];
   }
 
  private:
@@ -219,7 +227,6 @@ class AtomicCoreCachedSharedPtr {
     std::array<std::shared_ptr<T>, kMaxSlots> slots;
   };
   std::atomic<Slots*> slots_{nullptr};
-  folly::hazptr_obj_cohort<std::atomic> cohort_;
 };
 
 } // namespace folly

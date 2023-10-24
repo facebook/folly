@@ -242,9 +242,17 @@ TEST(Enumerate, Cpp17Support) {
   }
 }
 
-TEST(Enumerate, Cpp17StructuredBinding) {
+TEST(Enumerate, Cpp17StructuredBindingConstRef) {
   std::vector<std::string> test = {"abc", "a", "ab"};
   for (const auto& [index, str] : folly::enumerate(test)) {
+    ASSERT_LT(index, test.size());
+    EXPECT_EQ(str, test[index]);
+  }
+}
+
+TEST(Enumerate, Cpp17StructuredBindingConstRRef) {
+  std::vector<std::string> test = {"abc", "a", "ab"};
+  for (const auto&& [index, str] : folly::enumerate(test)) {
     ASSERT_LT(index, test.size());
     EXPECT_EQ(str, test[index]);
   }

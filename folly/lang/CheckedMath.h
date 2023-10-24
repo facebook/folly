@@ -157,6 +157,26 @@ bool checked_add(T* result, T a, T b, T c, T d) {
   return true;
 }
 
+template <typename T>
+bool checked_div(T* result, T dividend, T divisor) {
+  if (FOLLY_UNLIKELY(divisor == 0)) {
+    *result = {};
+    return false;
+  }
+  *result = dividend / divisor;
+  return true;
+}
+
+template <typename T>
+bool checked_mod(T* result, T dividend, T divisor) {
+  if (FOLLY_UNLIKELY(divisor == 0)) {
+    *result = {};
+    return false;
+  }
+  *result = dividend % divisor;
+  return true;
+}
+
 template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
 bool checked_mul(T* result, T a, T b) {
   assert(result != nullptr);

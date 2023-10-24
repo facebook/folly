@@ -1449,3 +1449,14 @@ TEST(String, stripLeftMargin_no_post_whitespace) {
   auto expected = "hi there bob!\n  \nso long!  ";
   EXPECT_EQ(expected, stripLeftMargin(input));
 }
+
+TEST(String, hasSpaceOrCntrlSymbols_test) {
+  // tested through implementation tests and fuzzers.
+  ASSERT_TRUE(hasSpaceOrCntrlSymbols("a  3"));
+  ASSERT_FALSE(hasSpaceOrCntrlSymbols("abc3"));
+
+  std::string hasCntrl = "abc";
+  hasCntrl[0] = 1;
+  ASSERT_TRUE(std::iscntrl(1));
+  ASSERT_TRUE(hasSpaceOrCntrlSymbols(hasCntrl));
+}

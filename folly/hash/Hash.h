@@ -749,7 +749,7 @@ struct hasher<T*> {
   using folly_is_avalanching = hasher<std::uintptr_t>::folly_is_avalanching;
 
   size_t operator()(T* key) const {
-    return Hash()(bit_cast<std::uintptr_t>(key));
+    return Hash()(folly::bit_cast<std::uintptr_t>(key));
   }
 };
 

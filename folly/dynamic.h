@@ -366,6 +366,15 @@ struct dynamic {
   dynamic& operator=(dynamic&&) noexcept;
 
   /*
+   * Minor performance optimization: allow assignment from cheap
+   * primitive types without creating a temporary dynamic.
+   */
+  template <class T, class NumericType = typename NumericTypeHelper<T>::type>
+  dynamic& operator=(T t);
+
+  dynamic& operator=(std::nullptr_t);
+
+  /*
    * For simple dynamics (not arrays or objects), this prints the
    * value to an std::ostream in the expected way.  Respects the
    * formatting manipulators that have been sent to the stream
@@ -426,6 +435,10 @@ struct dynamic {
    * Extract a value while trying to convert to the specified type.
    * Throws exceptions if we cannot convert from the real type to the
    * requested type.
+   *
+   * C++ will implicitly convert between bools, ints, and doubles; these
+   * conversion functions also try to convert between arithmetic types and
+   * strings. E.g. dynamic d = "12"; d.asDouble() -> 12.0.
    *
    * Note: you can only use this to access integral types or strings,
    * since arrays and objects are generally best dealt with as a
@@ -906,6 +919,15 @@ struct dynamic {
    */
   template <class T>
   iterator insert(const_iterator pos, T&& value);
+
+  /**
+   * Inserts elements from range [first, last) before pos into an array.
+   * Throws if the type is not an array.
+   *
+   * Invalidates iterators.
+   */
+  template <class InputIt>
+  iterator insert(const_iterator pos, InputIt first, InputIt last);
 
   /**
    * Merge objects.

@@ -231,6 +231,35 @@ TEST(Dynamic, ArrayInsertErase) {
   EXPECT_EQ(4, obj[3].asInt());
 }
 
+TEST(Dynamic, ArrayInsertRange) {
+  {
+    auto arr = dynamic::array(1, 2, 3);
+    auto extend = dynamic::array(4, 5);
+    arr.insert(arr.end(), extend.begin(), extend.end());
+    EXPECT_EQ(5, arr.size());
+    EXPECT_EQ(4, arr[3].asInt());
+    EXPECT_EQ(5, arr[4].asInt());
+  }
+  {
+    auto arr = dynamic::array(1, 4, 5);
+    auto extend = dynamic::array(2, 3);
+    arr.insert(arr.begin() + 1, extend.begin(), extend.end());
+    EXPECT_EQ(5, arr.size());
+    EXPECT_EQ(1, arr[0].asInt());
+    EXPECT_EQ(2, arr[1].asInt());
+    EXPECT_EQ(3, arr[2].asInt());
+    EXPECT_EQ(4, arr[3].asInt());
+  }
+  {
+    auto arr = dynamic::array(1, 2, 3);
+    auto extend = dynamic::array("a", "b");
+    arr.insert(arr.end(), extend.begin(), extend.end());
+    EXPECT_EQ(5, arr.size());
+    EXPECT_EQ("a", arr[3].asString());
+    EXPECT_EQ("b", arr[4].asString());
+  }
+}
+
 namespace {
 
 struct StaticStrings {

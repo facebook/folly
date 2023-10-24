@@ -87,6 +87,9 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(taskQueue.release()),
+      queueObserverFactory_{
+          !opt.queueObserverFactory ? createQueueObserverFactory()
+                                    : std::move(opt.queueObserverFactory)},
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
@@ -112,6 +115,9 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
       taskQueue_(makeDefaultQueue()),
+      queueObserverFactory_{
+          opt.queueObserverFactory ? std::move(opt.queueObserverFactory)
+                                   : createQueueObserverFactory()},
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
@@ -287,9 +293,9 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
   folly::Optional<ExecutorBlockingGuard> guard; // optional until C++17
   if (prohibitBlockingOnThreadPools_ == Options::Blocking::prohibit) {
-    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, this, namePrefix_);
+    guard.emplace(ExecutorBlockingGuard::ProhibitTag{}, this, getName());
   } else {
-    guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, namePrefix_);
+    guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, getName());
   }
 
   thread->startupBaton.post();
@@ -306,7 +312,7 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
 
     // Handle thread stopping, either by task timeout, or
     // by 'poison' task added in join() or stop().
-    if (UNLIKELY(!task || task.value().poison)) {
+    if (FOLLY_UNLIKELY(!task || task.value().poison)) {
       // Actually remove the thread from the list.
       SharedMutex::WriteHolder w{&threadListLock_};
       if (taskShouldStop(task)) {
@@ -326,7 +332,7 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     }
     runTask(thread, std::move(task.value()));
 
-    if (UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
+    if (FOLLY_UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
       SharedMutex::WriteHolder w{&threadListLock_};
       if (tryDecrToStop()) {
         threadList_.remove(thread);

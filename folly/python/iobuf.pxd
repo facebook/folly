@@ -65,9 +65,11 @@ cdef extern from '<utility>' namespace 'std':
 
 
 cdef extern from "folly/python/iobuf.h" namespace "folly::python":
-    unique_ptr[cIOBuf] iobuf_from_memoryview(cFollyExecutor*, PyObject*, void*, uint64_t)
     bint check_iobuf_equal(cIOBuf*, cIOBuf*)
     bint check_iobuf_less(cIOBuf*, cIOBuf*)
+
+cdef extern from "folly/python/iobuf_ext.h" namespace "folly::python":
+    unique_ptr[cIOBuf] iobuf_from_memoryview(cFollyExecutor*, PyObject*, void*, uint64_t)
 
 cdef extern from "Python.h":
     cdef int PyBUF_C_CONTIGUOUS
@@ -88,4 +90,9 @@ cdef class IOBuf:
 
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view)
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] iobuf)
+cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf)
 cdef api cIOBuf from_python_iobuf(object iobuf) except *
+# Use to pass heap-allocated folly::IOBuf to cpp.
+# Passed as raw ptr to avoid expensive call to PyErr_Occurred from `except *`
+# Must be placed directly into std::unique_ptr to avoid leak
+cdef api cIOBuf* ptr_from_python_iobuf(object obj) except NULL

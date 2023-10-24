@@ -25,6 +25,7 @@
 
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
+#include <folly/small_vector.h>
 
 using std::ostream;
 using std::string;
@@ -70,11 +71,13 @@ IPAddressV6 IPAddress::createIPv6(const IPAddress& addr) {
 }
 
 namespace {
-vector<string> splitIpSlashCidr(StringPiece ipSlashCidr) {
-  vector<string> vec;
-  split("/", ipSlashCidr, vec);
+
+auto splitIpSlashCidr(StringPiece ipSlashCidr) {
+  folly::small_vector<folly::StringPiece, 2> vec;
+  folly::split('/', ipSlashCidr, vec);
   return vec;
 }
+
 } // namespace
 
 // public static
@@ -239,23 +242,36 @@ Expected<IPAddress, IPAddressFormatError> IPAddress::tryFromString(
 
 // public sockaddr constructor
 IPAddress::IPAddress(const sockaddr* addr) : addr_(), family_(AF_UNSPEC) {
-  if (addr == nullptr) {
-    throw IPAddressFormatException("sockaddr == nullptr");
+  auto ip = tryFromSockAddr(addr);
+  if (ip.hasError()) {
+    switch (ip.error()) {
+      case IPAddressFormatError::UNSUPPORTED_ADDR_FAMILY:
+        throw InvalidAddressFamilyException(addr->sa_family);
+      case IPAddressFormatError::NULL_SOCKADDR:
+        throw IPAddressFormatException("sockaddr == nullptr");
+      case IPAddressFormatError::INVALID_IP:
+        throw IPAddressFormatException("Invalid IP");
+    }
   }
-  family_ = addr->sa_family;
+  *this = ip.value();
+}
+
+folly::Expected<IPAddress, IPAddressFormatError> IPAddress::tryFromSockAddr(
+    const sockaddr* addr) noexcept {
+  if (addr == nullptr) {
+    return makeUnexpected(IPAddressFormatError::NULL_SOCKADDR);
+  }
   switch (addr->sa_family) {
     case AF_INET: {
       auto v4addr = reinterpret_cast<const sockaddr_in*>(addr);
-      addr_.ipV4Addr = IPAddressV4(v4addr->sin_addr);
-      break;
+      return IPAddressV4(v4addr->sin_addr);
     }
     case AF_INET6: {
       auto v6addr = reinterpret_cast<const sockaddr_in6*>(addr);
-      addr_.ipV6Addr = IPAddressV6(*v6addr);
-      break;
+      return IPAddressV6(*v6addr);
     }
     default:
-      throw InvalidAddressFamilyException(addr->sa_family);
+      return makeUnexpected(IPAddressFormatError::UNSUPPORTED_ADDR_FAMILY);
   }
 }
 

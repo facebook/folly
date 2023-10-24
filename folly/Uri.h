@@ -20,9 +20,18 @@
 #include <string>
 #include <vector>
 
+#include <folly/Expected.h>
 #include <folly/String.h>
 
 namespace folly {
+/**
+ * Error codes for parsing issues. Used by tryFromString()
+ */
+enum class UriFormatError {
+  INVALID_URI,
+  INVALID_URI_AUTHORITY,
+  INVALID_URI_PORT,
+};
 
 /**
  * Class representing a URI.
@@ -43,9 +52,17 @@ namespace folly {
 class Uri {
  public:
   /**
-   * Parse a Uri from a string.  Throws std::invalid_argument on parse error.
+   * Parse a Uri from a string.  Same as tryFromString except it throws
+   * a std::invalid_argument if there's an error.
    */
   explicit Uri(StringPiece str);
+
+  /**
+   * Parse a Uri from a string.
+   *
+   * On failure, returns UriFormatError.
+   */
+  static Expected<Uri, UriFormatError> tryFromString(StringPiece str) noexcept;
 
   const std::string& scheme() const { return scheme_; }
   const std::string& username() const { return username_; }
@@ -106,6 +123,8 @@ class Uri {
   const std::vector<std::pair<std::string, std::string>>& getQueryParams();
 
  private:
+  explicit Uri();
+
   std::string scheme_;
   std::string username_;
   std::string password_;

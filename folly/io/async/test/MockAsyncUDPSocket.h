@@ -22,9 +22,10 @@
 namespace folly {
 namespace test {
 
-struct MockAsyncUDPSocket : public AsyncUDPSocket {
-  explicit MockAsyncUDPSocket(EventBase* evb) : AsyncUDPSocket(evb) {}
-  ~MockAsyncUDPSocket() override {}
+template <typename Base = AsyncUDPSocket>
+struct MockAsyncUDPSocketT : public Base {
+  explicit MockAsyncUDPSocketT(EventBase* evb) : Base(evb) {}
+  ~MockAsyncUDPSocketT() override {}
 
   MOCK_METHOD(const SocketAddress&, address, (), (const));
   MOCK_METHOD(
@@ -43,10 +44,12 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD(
       ssize_t,
       writeGSO,
-      (const folly::SocketAddress&, const std::unique_ptr<folly::IOBuf>&, int));
+      (const folly::SocketAddress&,
+       const std::unique_ptr<folly::IOBuf>&,
+       folly::AsyncUDPSocket::WriteOptions));
   MOCK_METHOD(
       ssize_t, writev, (const SocketAddress&, const struct iovec*, size_t));
-  MOCK_METHOD(void, resumeRead, (ReadCallback*));
+  MOCK_METHOD(void, resumeRead, (folly::AsyncUDPSocket::ReadCallback*));
   MOCK_METHOD(void, pauseRead, ());
   MOCK_METHOD(void, close, ());
   MOCK_METHOD(void, setDFAndTurnOffPMTU, ());
@@ -54,7 +57,10 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD(void, setReusePort, (bool));
   MOCK_METHOD(void, setReuseAddr, (bool));
   MOCK_METHOD(void, dontFragment, (bool));
-  MOCK_METHOD(void, setErrMessageCallback, (ErrMessageCallback*));
+  MOCK_METHOD(
+      void,
+      setErrMessageCallback,
+      (folly::AsyncUDPSocket::ErrMessageCallback*));
   MOCK_METHOD(void, connect, (const SocketAddress&));
   MOCK_METHOD(bool, isBound, (), (const));
   MOCK_METHOD(int, getGSO, ());
@@ -64,17 +70,15 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
       int,
       recvmmsg,
       (struct mmsghdr*, unsigned int, unsigned int, struct timespec*));
-  MOCK_METHOD(void, setCmsgs, (const SocketOptionMap&));
-  MOCK_METHOD(void, setNontrivialCmsgs, (const SocketNontrivialOptionMap&));
-  MOCK_METHOD(void, appendCmsgs, (const SocketOptionMap&));
-  MOCK_METHOD(void, appendNontrivialCmsgs, (const SocketNontrivialOptionMap&));
+  MOCK_METHOD(void, setCmsgs, (const SocketCmsgMap&));
+  MOCK_METHOD(void, setNontrivialCmsgs, (const SocketNontrivialCmsgMap&));
+  MOCK_METHOD(void, appendCmsgs, (const SocketCmsgMap&));
+  MOCK_METHOD(void, appendNontrivialCmsgs, (const SocketNontrivialCmsgMap&));
   MOCK_METHOD(
       void, applyOptions, (const SocketOptionMap&, SocketOptionKey::ApplyPos));
-  MOCK_METHOD(
-      void,
-      applyNontrivialOptions,
-      (const SocketNontrivialOptionMap&, SocketOptionKey::ApplyPos));
 };
+
+using MockAsyncUDPSocket = MockAsyncUDPSocketT<>;
 
 } // namespace test
 } // namespace folly

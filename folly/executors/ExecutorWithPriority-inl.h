@@ -57,7 +57,7 @@ class ExecutorWithPriorityImpl : public virtual Executor {
   ExecutorWithPriorityImpl(
       Executor::KeepAlive<Executor> executor, Callback&& callback)
       : executor_(std::move(executor)), callback_(std::move(callback)) {}
-  std::atomic<ssize_t> keepAliveCounter_{1};
+  std::atomic<int64_t> keepAliveCounter_{1};
   Executor::KeepAlive<Executor> executor_;
   Callback callback_;
 };

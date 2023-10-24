@@ -74,14 +74,22 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       allow,
     };
 
-    constexpr Options() noexcept : blocking{Blocking::allow} {}
+    constexpr Options() noexcept
+        : blocking{Blocking::allow}, queueObserverFactory{nullptr} {}
 
-    Options setBlocking(Blocking b) {
+    Options& setBlocking(Blocking b) {
       blocking = b;
       return *this;
     }
 
+    Options& setQueueObserverFactory(
+        std::unique_ptr<folly::QueueObserverFactory> factory) {
+      queueObserverFactory = std::move(factory);
+      return *this;
+    }
+
     Blocking blocking;
+    std::unique_ptr<folly::QueueObserverFactory> queueObserverFactory{nullptr};
   };
 
   // These function return unbounded blocking queues with the default semaphore
@@ -210,8 +218,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   std::unique_ptr<BlockingQueue<CPUTask>> taskQueue_;
   // It is possible to have as many detectors as there are priorities,
   std::array<std::atomic<folly::QueueObserver*>, UCHAR_MAX + 1> queueObservers_;
-  std::unique_ptr<folly::QueueObserverFactory> queueObserverFactory_{
-      createQueueObserverFactory()};
+  std::unique_ptr<folly::QueueObserverFactory> queueObserverFactory_;
   std::atomic<ssize_t> threadsToStop_{0};
   Options::Blocking prohibitBlockingOnThreadPools_ = Options::Blocking::allow;
 };

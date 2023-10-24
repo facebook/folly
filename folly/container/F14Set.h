@@ -31,10 +31,12 @@
 #include <initializer_list>
 #include <tuple>
 
+#include <folly/Portability.h>
 #include <folly/container/View.h>
 #include <folly/lang/SafeAssert.h>
 
 #include <folly/container/F14Set-fwd.h>
+#include <folly/container/Iterator.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/container/detail/Util.h>
@@ -481,54 +483,21 @@ class F14BasicSet {
   }
 
   /**
-   * @overloadbrief Prehash a key, to load cachelines.
+   * @overloadbrief Prehash a key.
    * @methodset Lookup
    *
    * prehash(key) does the work of evaluating hash_function()(key)
    * (including additional bit-mixing for non-avalanching hash functions),
-   * wraps the result of that work in a token for later reuse, and
-   * begins prefetching the first steps of looking for key into the
-   * local CPU cache.
+   * and wraps the result of that work in a token for later reuse.
    *
    * The returned token may be used at any time, may be used more than
    * once, and may be used in other F14 sets and maps.  Tokens are
    * transferrable between any F14 containers (maps and sets) with the
    * same key_type and equal hash_function()s.
    *
-   * Hash tokens are not hints - it is a bug to call any method on this
+   * Hash tokens are not hints -- it is a bug to call any method on this
    * class with a token t and key k where t isn't the result of a call
    * to prehash(k2) with k2 == k.
-   *
-   * Example Scenario: Loading 2 values from a cold map.
-   * You have a map that is cold, meaning it is out of the local CPU cache,
-   * and you want to load two values from the map. This can be extended to
-   * load N values, but we're loading 2 for simplicity.
-   *
-   * When the map is cold the dominating factor in the latency is loading
-   * the cache line of the entry into the local CPU cache. Using prehash()
-   * and optionally prefetch() will issue these cache line fetches in parallel.
-   * That means that by the time we finish map.find(token1, key1) the cache
-   * lines needed by map.find(token2, key2) may already be in the local CPU
-   * cache. In the best case this will half the latency.
-   *
-   * It is always okay to call prehash(). It only prefetches cache lines that
-   * are guaranteed to be needed by find(). However, prefetch() will
-   * speculatively load cache lines that may be needed by find(), but may be
-   * superfluous. This may help local performance, but hurt overall application
-   * performance, because it may be evicting another cache line that is useful.
-   * So prefetch() should only be used when benchmarks show benefits.
-   *
-   *   std::pair<iterator, iterator> find2(
-   *       auto& map, key_type const& key1, key_type const& key2,
-   *       bool prefetch) {
-   *     auto const token1 = map.prehash(key1);
-   *     auto const token2 = map.prehash(key2);
-   *     if (prefetch) {
-   *       map.prefetch(token1);
-   *       map.prefetch(token2);
-   *     }
-   *     return std::make_pair(map.find(token1, key1), map.find(token2, key2));
-   *  }
    */
   F14HashToken prehash(key_type const& key) const {
     return table_.prehash(key);
@@ -540,39 +509,36 @@ class F14BasicSet {
   }
 
   /**
-   * Speculatively load cachelines for a token.
-   *
-   * prehash() only prefetches cachelines it is guaranteed to need,
-   * so as not to pollute the local CPU cache with speculative loads.
-   * But when the load factor is high, as it is expected to be, one
-   * cache line may not be enough to find the item. prefetch(token)
-   * will more aggresively prefetch the chunk by adding speculative
-   * prefetches.
-   *
-   * Note: This function should only be used when benchmarks show that
-   * it is useful. Since it introduces speculative prefetches, it may
-   * improve local performance while hurting overall application
-   * performance.
-   *
-   * Example scenario: Finding a value in a cold map.
-   * When loading from a cold map the latency of loading the entry's
-   * cache line into the local CPU cache dominates. F14 uses linear
-   * probing, so the entry is likely to be within a few cache lines
-   * of the hash location. prehash() will fetch the first cache line,
-   * but when more than one cache line is needed, it won't be enough,
-   * and more cache line(s) will be needed. Each load introduces
-   * additional latency, which can be significant for cold maps.
-   * prefetch() will speculatively the first few cache lines to ensure
-   * that we are very likely to find the key within a prefetched cache
-   * line.
-   *
-   *    iterator find_cold(auto& map, key_type const& key) {
-   *      auto const token = map.prehash(key);
-   *      map.prefetch(token, key);
-   *      return map.find(key);
-   *    }
-   *
+   * @overloadbrief Prefetch cachelines associated with a key.
    * @methodset Lookup
+   *
+   * prefetch(token) begins prefetching the first steps of looking for key into
+   * the local CPU cache.
+   *
+   * Example Scenario: Loading 2 values from a cold map.
+   * You have a map that is cold, meaning it is out of the local CPU cache,
+   * and you want to load two values from the map. This can be extended to
+   * load N values, but we're loading 2 for simplicity.
+   *
+   * When the map is cold the dominating factor in the latency is loading the
+   * cache line of the entry into the local CPU cache. Using prehash() will
+   * issue these cache line fetches in parallel.  That means that by the time we
+   * finish map.find(token1, key1) the cache lines needed by map.find(token2,
+   * key2) may already be in the local CPU cache. In the best case this will
+   * half the latency.
+   *
+   * It is always okay to call prefetch() before a find() or other lookup
+   * operation, as it only prefetches cache lines that are guaranteed to be
+   * needed by the lookup.
+   *
+   *   std::pair<iterator, iterator> find2(
+   *       auto& set, key_type const& key1, key_type const& key2) {
+   *     auto const token1 = set.prehash(key1);
+   *     set.prefetch(token1);
+   *     auto const token2 = set.prehash(key2);
+   *     set.prefetch(token2);
+   *     return std::make_pair(set.find(token1, key1), set.find(token2, key2));
+   *   }
    */
   void prefetch(F14HashToken const& token) const { table_.prefetch(token); }
 
@@ -874,6 +840,78 @@ class F14ValueSet
   }
 };
 
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueSet(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14ValueSet<iterator_value_type_t<InputIt>, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueSet(InputIt, InputIt, std::size_t, Alloc) -> F14ValueSet<
+    iterator_value_type_t<InputIt>,
+    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14ValueSet<
+    iterator_value_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueSet(
+    std::initializer_list<Key>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14ValueSet<Key, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14ValueSet<
+    Key,
+    f14::DefaultHasher<Key>,
+    f14::DefaultKeyEqual<Key>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14ValueSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
+    -> F14ValueSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
+
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14NodeSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
@@ -917,6 +955,78 @@ class F14NodeSet
     });
   }
 };
+
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeSet(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14NodeSet<iterator_value_type_t<InputIt>, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeSet(InputIt, InputIt, std::size_t, Alloc) -> F14NodeSet<
+    iterator_value_type_t<InputIt>,
+    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14NodeSet<
+    iterator_value_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeSet(
+    std::initializer_list<Key>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14NodeSet<Key, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14NodeSet<
+    Key,
+    f14::DefaultHasher<Key>,
+    f14::DefaultKeyEqual<Key>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14NodeSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
+    -> F14NodeSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
 
 namespace f14 {
 namespace detail {
@@ -1162,6 +1272,78 @@ class F14VectorSet
   }
 };
 
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorSet(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14VectorSet<iterator_value_type_t<InputIt>, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorSet(InputIt, InputIt, std::size_t, Alloc) -> F14VectorSet<
+    iterator_value_type_t<InputIt>,
+    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14VectorSet<
+    iterator_value_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorSet(
+    std::initializer_list<Key>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14VectorSet<Key, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14VectorSet<
+    Key,
+    f14::DefaultHasher<Key>,
+    f14::DefaultKeyEqual<Key>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14VectorSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
+    -> F14VectorSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
+
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14FastSet
     : public std::conditional_t<
@@ -1191,6 +1373,79 @@ class F14FastSet
     this->table_.swap(rhs.table_);
   }
 };
+
+#if FOLLY_HAS_DEDUCTION_GUIDES
+template <
+    typename InputIt,
+    typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    typename KeyEqual = f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    typename Alloc = f14::DefaultAlloc<iterator_value_type_t<InputIt>>,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastSet(
+    InputIt, InputIt, std::size_t = {}, Hasher = {}, KeyEqual = {}, Alloc = {})
+    -> F14FastSet<iterator_value_type_t<InputIt>, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename InputIt,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastSet(InputIt, InputIt, std::size_t, Alloc) -> F14FastSet<
+    iterator_value_type_t<InputIt>,
+    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename InputIt,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireInputIterator<InputIt>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14FastSet<
+    iterator_value_type_t<InputIt>,
+    Hasher,
+    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>,
+    typename = detail::RequireNotAllocator<Hasher>,
+    typename = detail::RequireNotAllocator<KeyEqual>,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastSet(
+    std::initializer_list<Key>,
+    std::size_t = {},
+    Hasher = {},
+    KeyEqual = {},
+    Alloc = {}) -> F14FastSet<Key, Hasher, KeyEqual, Alloc>;
+
+template <
+    typename Key,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14FastSet<
+    Key,
+    f14::DefaultHasher<Key>,
+    f14::DefaultKeyEqual<Key>,
+    Alloc>;
+
+template <
+    typename Key,
+    typename Hasher,
+    typename Alloc,
+    typename = detail::RequireAllocator<Alloc>>
+F14FastSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
+    -> F14FastSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
+#endif
+
 } // namespace folly
 
 #endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE

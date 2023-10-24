@@ -14,11 +14,25 @@
  * limitations under the License.
  */
 
-#include <folly/Singleton.h>
+#pragma once
 
-folly::Singleton<int> foo;
-folly::Singleton<int> bar;
+#include <cstdint>
 
-int main(int, char**) {
-  return 0;
-}
+namespace folly {
+
+/**
+ * Generates a 64-bit id that is unique within the process. The returned ids
+ * should not be persisted or passed to other processes, and there are no
+ * ordering guarantees.
+ *
+ * It is guaranteed that 0 is never returned, hence 0 can be used as a sentinel
+ * value, similarly to nullptr.
+ *
+ * The function is thread-safe.
+ *
+ * The uniqueness guarantee can be broken if enough ids are generated, but even
+ * in the most pessimistic scenario it would take a few hundred years.
+ */
+uint64_t processLocalUniqueId();
+
+} // namespace folly

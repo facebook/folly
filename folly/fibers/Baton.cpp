@@ -30,7 +30,7 @@ using folly::detail::futexWake;
 void Baton::setWaiter(Waiter& waiter) {
   auto curr_waiter = waiter_.load();
   do {
-    if (LIKELY(curr_waiter == NO_WAITER)) {
+    if (FOLLY_LIKELY(curr_waiter == NO_WAITER)) {
       continue;
     } else if (curr_waiter == POSTED || curr_waiter == TIMEOUT) {
       waiter.post();
@@ -63,7 +63,7 @@ void Baton::waitThread() {
 
   auto waitStart = std::chrono::steady_clock::now();
 
-  if (LIKELY(
+  if (FOLLY_LIKELY(
           waiter == NO_WAITER &&
           waiter_.compare_exchange_strong(waiter, THREAD_WAITING))) {
     do {
@@ -77,7 +77,7 @@ void Baton::waitThread() {
       std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - waitStart));
 
-  if (LIKELY(waiter == POSTED)) {
+  if (FOLLY_LIKELY(waiter == POSTED)) {
     return;
   }
 

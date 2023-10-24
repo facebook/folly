@@ -366,7 +366,7 @@ BENCHMARK(CharVecForRangeEnumerate, iters) {
 }
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   runBenchmarks();
   return 0;
 }

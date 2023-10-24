@@ -18,3 +18,4 @@ from libcpp.string cimport string
 
 cdef extern from "folly/python/test/IOBufTestUtils.h" namespace "folly::python":
     cdef string to_uppercase_string_cpp(object iobuf) except *
+    cdef string to_uppercase_string_cpp_heap(object iobuf) except *

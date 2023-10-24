@@ -44,9 +44,8 @@
 #include <mutex>
 #include <type_traits>
 
-#include <glog/logging.h>
-
 #include <folly/Portability.h>
+#include <folly/lang/SafeAssert.h>
 #include <folly/synchronization/AtomicRef.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/SanitizeThread.h>
@@ -91,7 +90,7 @@ struct PicoSpinLock {
    * (This doesn't use a constructor because we want to be a POD.)
    */
   void init(IntType initialValue = 0) {
-    CHECK(!(initialValue & kLockBitMask_));
+    FOLLY_SAFE_CHECK(!(initialValue & kLockBitMask_));
     auto ref = make_atomic_ref(lock_);
     auto val = UIntType(initialValue);
     ref.store(val, std::memory_order_release);
@@ -119,7 +118,7 @@ struct PicoSpinLock {
    * guaranteed that no other threads may be trying to use this.
    */
   void setData(IntType w) {
-    CHECK(!(w & kLockBitMask_));
+    FOLLY_SAFE_CHECK(!(w & kLockBitMask_));
     auto ref = make_atomic_ref(lock_);
     auto val = ref.load(std::memory_order_relaxed);
     val = (val & kLockBitMask_) | w;
@@ -158,7 +157,7 @@ struct PicoSpinLock {
     annotate_rwlock_released(
         this, annotate_rwlock_level::wrlock, __FILE__, __LINE__);
     auto previous = atomic_fetch_reset(ref, Bit, std::memory_order_release);
-    DCHECK(previous);
+    FOLLY_SAFE_DCHECK(previous);
   }
 
  private:

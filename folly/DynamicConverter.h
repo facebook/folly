@@ -87,7 +87,7 @@ using detect_like_optional =
 
 template <typename T>
 struct iterator_class_is_container {
-  typedef std::reverse_iterator<typename T::iterator> some_iterator;
+  typedef typename T::iterator some_iterator;
   enum {
     value = is_detected_v<detect_member_type_value_type, T> &&
         std::is_constructible<T, some_iterator, some_iterator>::value

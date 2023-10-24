@@ -59,6 +59,25 @@ void compiler_may_unsafely_assume(bool cond);
 //  cases, an assertion or exception may be used instead.
 [[noreturn]] void compiler_may_unsafely_assume_unreachable();
 
+//  compiler_may_unsafely_assume_separate_storage
+//
+//  Unsafe. Avoid when not absolutely necessary.
+//
+//  Permits the compiler to assume that the given pointers point into regions
+//  that were allocated separately, and that therefore any pointers at any
+//  offset relative to one is never equal to any pointer at any offset relative
+//  to the other.
+//
+//  Regions being allocated separately means that they are separate global
+//  variables, thread-local variables, stack variables, or heap allocations.
+//
+//  This can be helpful when some library has an ownership model that is opaque
+//  to the compiler. For example, modifying some_vector[0] never modifies the
+//  vector itself; changes to parser state don't need to be stored to memory
+//  before reading the next byte of data to be parsed, etc.
+void compiler_may_unsafely_assume_separate_storage(
+    const void* a, const void* b);
+
 //  compiler_must_not_elide
 //
 //  Ensures that the referred-to value will be computed even when an optimizing
@@ -93,6 +112,96 @@ struct compiler_must_not_predict_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr compiler_must_not_predict_fn
     compiler_must_not_predict{};
+
+//  ----
+
+namespace detail {
+
+template <typename T>
+using detect_folly_is_unsafe_for_async_usage =
+    typename T::folly_is_unsafe_for_async_usage;
+
+//  is_unsafe_for_async_usage_v
+//
+//  Whether a type is directly marked as unsafe for async usage with a member
+//  type alias. See unsafe_for_async_usage below.
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_unsafe_for_async_usage_v =
+    is_detected_v<detail::detect_folly_is_unsafe_for_async_usage, T>;
+
+} // namespace detail
+
+//  unsafe_for_async_usage
+//
+//  Defines member type alias folly_is_unsafe_for_async_usage, which is the tag
+//  marking the class as unsafe for async usage. Serves as a convenience wrapper
+//  around the tag.
+//
+//  The meaning of the tag is that the current thread must not be yielded in any
+//  way during the lifetime of any tagged object.
+//
+//  The most common form of yielding the current thread during the lifetime of
+//  an object is where the lifetime of the object crosses a coroutine suspension
+//  point. Example:
+//
+//    struct unsafe : private unsafe_for_async_usage {};
+//    Task<> sink();
+//    Task<> go() {
+//      unsafe object; // object is tagged as unsafe for async usage
+//      co_await sink(); // but crossing the co_await is async usage
+//    }
+//
+//  Some objects, especially some which are intended for use with the RAII
+//  pattern, may be thread-sensitive and permit access only on one single thread
+//  throughout their lifetimes. Or they may be non-reentrant and may permit only
+//  well-nested accesses or may not permit any reentrant accesses at all. In
+//  either case, they do not permit yielding the current thread during their
+//  lifetimes. Examples:
+//  * Some objects that rely internally on thread-locals.
+//    * In particular, the storage defined by FOLLY_DECLARE_REUSED.
+//  * Some advanced concurrency primitives.
+//    * In particular, hazard-pointers and rcu-guards.
+//
+//  Note that the current thread being yielded refers to any form of cooperative
+//  multitasking, such as coroutines, as compared with the kernel preempting the
+//  current thread and then resuming it later.
+//
+//  In order to mark a class type, either:
+//  * Declare a member type alias folly_is_unsafe_for_async_usage, following the
+//    pattern of member type alias is_transparent.
+//  * Declare either a non-static data member or a base which is marked. As a
+//    convenience, unsafe_for_async_usage is marked and may be used as that non-
+//    static data member or base. If using a non-static data member, it is ideal
+//    to declare it with attribute [[no_unique_address]], possibly as wrapped in
+//    FOLLY_ATTR_NO_UNIQUE_ADDRESS, to avoid increasing the size of the class.
+//
+//  It is recommended to use a non-static data member or a base which is marked,
+//  in preference to using a member type alias, since it is impossible to typo
+//  the spelling of a non-static data member or base while it is easy to typo
+//  the spelling of a member type alias.
+//
+//  Example:
+//
+//    struct thread_counter {
+//      static thread_local int value;
+//    };
+//    struct thread_counter_raii : private unsafe_for_async_usage {
+//      thread_counter_raii() { ++thread_counter::value; }
+//      ~thread_counter_raii() { --thread_counter::value; }
+//    };
+//    coroutine callee();
+//    coroutine caller() {
+//      thread_counter_raii g;
+//      co_await callee(); // static analysis might warn here
+//    }
+//
+//  This marker can be used to implement a static analysis that detects misuses
+//  with objects of classes marked with this tag, namely, where the current
+//  thread may be yielded in any way during the lifetimes of such objects.
+struct unsafe_for_async_usage { // a convenience wrapper for the marker below:
+  using folly_is_unsafe_for_async_usage = void; // the marker member type alias
+};
+static_assert(detail::is_unsafe_for_async_usage_v<unsafe_for_async_usage>, "");
 
 } // namespace folly
 

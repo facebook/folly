@@ -24,14 +24,15 @@ namespace folly {
 namespace python {
 namespace test {
 
-class TestAsyncioExecutor : public AsyncioExecutor {
+class TestAsyncioExecutor
+    : public DroppableAsyncioExecutor<TestAsyncioExecutor> {
  public:
   void add(Func) override {}
-  void driveNoDiscard() noexcept override {}
+  void drive() noexcept override {}
 };
 
-inline std::unique_ptr<TestAsyncioExecutor> makeTestAsyncioExecutor() {
-  return std::make_unique<TestAsyncioExecutor>();
+inline TestAsyncioExecutor::PtrType makeTestAsyncioExecutor() {
+  return TestAsyncioExecutor::create();
 }
 
 } // namespace test

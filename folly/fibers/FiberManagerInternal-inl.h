@@ -199,6 +199,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 
     if (fibersPoolSize_ < options_.maxFibersPoolSize ||
         options_.fibersPoolResizePeriodMs > 0) {
+      fiber->fiberStackHighWatermark_ = 0;
       fibersPool_.push_front(*fiber);
       ++fibersPoolSize_;
     } else {
@@ -224,7 +225,7 @@ inline void FiberManager::loopUntilNoReady() {
 
 template <typename LoopFunc>
 void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
-  if (UNLIKELY(!alternateSignalStackRegistered_)) {
+  if (FOLLY_UNLIKELY(!alternateSignalStackRegistered_)) {
     maybeRegisterAlternateSignalStack();
   }
 
@@ -541,7 +542,7 @@ void FiberManager::addTaskFinallyEager(F&& func, G&& finally) {
 
 template <typename F>
 invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
-  if (UNLIKELY(activeFiber_ == nullptr)) {
+  if (FOLLY_UNLIKELY(activeFiber_ == nullptr)) {
     return runNoInline(std::forward<F>(func));
   }
 
@@ -573,12 +574,7 @@ inline bool FiberManager::hasActiveFiber() const {
 
 inline folly::Optional<std::chrono::nanoseconds>
 FiberManager::getCurrentTaskRunningTime() const {
-  if (activeFiber_ && activeFiber_->taskOptions_.logRunningTime &&
-      activeFiber_->state_ == Fiber::RUNNING) {
-    return activeFiber_->prevDuration_ + thread_clock::now() -
-        activeFiber_->currStartTime_;
-  }
-  return folly::none;
+  return currentFiber_ ? currentFiber_->getRunningTime() : folly::none;
 }
 
 inline void FiberManager::yield() {
@@ -635,7 +631,7 @@ typename FirstArgOf<F>::type::value_type inline await_async(F&& func) {
 template <typename F>
 invoke_result_t<F> inline runInMainContext(F&& func) {
   auto fm = FiberManager::getFiberManagerUnsafe();
-  if (UNLIKELY(fm == nullptr)) {
+  if (FOLLY_UNLIKELY(fm == nullptr)) {
     return runNoInline(std::forward<F>(func));
   }
   return fm->runInMainContext(std::forward<F>(func));

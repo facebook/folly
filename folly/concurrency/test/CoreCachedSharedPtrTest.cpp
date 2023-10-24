@@ -28,7 +28,6 @@
 #include <vector>
 
 #include <folly/Benchmark.h>
-#include <folly/Optional.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
@@ -128,7 +127,7 @@ namespace {
 template <class Holder>
 void testAliasingCornerCases() {
   {
-    folly::Optional<Holder> h(folly::in_place);
+    Holder h;
     auto p1 = std::make_shared<int>(1);
     std::weak_ptr<int> w1 = p1;
     // Aliasing constructor, p2 is nullptr but still manages the object in p1.
@@ -138,14 +137,17 @@ void testAliasingCornerCases() {
     EXPECT_FALSE(w1.expired());
 
     // Pass the ownership to the Holder.
-    h->reset(p2);
+    h.reset(p2);
     p2.reset();
 
     // Object should still be alive.
     EXPECT_FALSE(w1.expired());
 
-    // And destroying the holder will retire it.
+    // And resetting the holder will destroy the managed object.
     h.reset();
+    // Except in the case of AtomicCoreCachedSharedPtr, where the object is only
+    // scheduled for reclamation, so we have to wait for a hazptr scan.
+    folly::hazptr_cleanup();
     EXPECT_TRUE(w1.expired());
   }
 

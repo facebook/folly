@@ -44,7 +44,7 @@ class ThreadCachedArena {
 
   void* allocate(size_t size) {
     SysArena* arena = arena_.get();
-    if (UNLIKELY(!arena)) {
+    if (FOLLY_UNLIKELY(!arena)) {
       arena = allocateThreadLocalArena();
     }
 

@@ -21,6 +21,7 @@
 
 #include <chrono>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <vector>
 #include <boost/variant.hpp>
@@ -73,6 +74,8 @@ namespace folly {
 class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
  public:
   typedef std::unique_ptr<AsyncServerSocket, Destructor> UniquePtr;
+  using CallbackAssignFunction =
+      std::function<int(AsyncServerSocket*, NetworkSocket)>;
   // Disallow copy, move, and default construction.
   AsyncServerSocket(AsyncServerSocket&&) = delete;
 
@@ -356,6 +359,13 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     } else {
       return sockets_[0].socket_;
     }
+  }
+
+  /**
+   * sets the callback assign function
+   */
+  void setCallbackAssignFunction(CallbackAssignFunction&& func) {
+    callbackAssignFunc_ = std::move(func);
   }
 
   /**
@@ -756,6 +766,13 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   }
 
   /**
+   * Set whether or not SO_REUSEADDR should be enabled on the server socket,
+   * allowing multiple sockets binds to the same <address>:<port>
+   * It's enabled by default.
+   */
+  void setEnableReuseAddr(bool enable);
+
+  /**
    * Get whether or not SO_REUSEPORT is enabled on the server socket.
    */
   bool getReusePortEnabled_() const { return reusePortEnabled_; }
@@ -917,7 +934,13 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   void enterBackoff();
   void backoffTimeoutExpired();
 
-  CallbackInfo* nextCallback() {
+  CallbackInfo* nextCallback(NetworkSocket socket = NetworkSocket()) {
+    if (callbackAssignFunc_ && socket != NetworkSocket()) {
+      auto num = callbackAssignFunc_(this, socket);
+      if (num >= 0) {
+        return &callbacks_[num % callbacks_.size()];
+      }
+    }
     CallbackInfo* info = &callbacks_[callbackIndex_];
 
     ++callbackIndex_;
@@ -985,8 +1008,11 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   uint32_t callbackIndex_;
   BackoffTimeout* backoffTimeout_;
   std::vector<CallbackInfo> callbacks_;
+  CallbackAssignFunction callbackAssignFunc_;
   bool keepAliveEnabled_;
   bool reusePortEnabled_{false};
+  // SO_REUSEADDR is enabled by default
+  bool enableReuseAddr_{true};
   bool closeOnExec_;
   bool tfo_{false};
   bool noTransparentTls_{false};

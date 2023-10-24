@@ -161,7 +161,7 @@ class FiberXMethodMatcher(gdb.xmethod.XMethodMatcher):
 #
 
 
-class FrameId(object):
+class FrameId:
     def __init__(self, sp, pc):
         self.sp = sp
         self.pc = pc
@@ -266,7 +266,7 @@ class FiberUnwinder(gdb.unwinder.Unwinder):
         return unwind_info
 
 
-class FiberFrameFilter(object):
+class FiberFrameFilter:
     """Frame filter for fiber stacks
 
     This class is used to "skip" past the innermost frame when parsing backtraces,
@@ -619,7 +619,7 @@ class Shortcut(gdb.Function):
 # This class is responsible for maintaining the name/address:fiberinfo mapping.
 # Creating a FiberInfo object adds it to the cache, and trying to create one
 # for a cached fiber will just return the same cached FiberInfo.
-class FiberInfo(object):
+class FiberInfo:
 
     NAMES = {}
 

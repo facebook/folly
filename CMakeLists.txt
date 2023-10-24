@@ -90,8 +90,11 @@ set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
 include(FBBuildOptions)
 fb_activate_static_library_option()
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  message(STATUS "setting C++ standard to C++${CMAKE_CXX_STANDARD}")
+endif()
 
 if(NOT DEFINED IS_X86_64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
   set(IS_X86_64_ARCH TRUE)
@@ -196,11 +199,13 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
   ${FOLLY_DIR}/python/iobuf.cpp
   ${FOLLY_DIR}/python/iobuf_ext.cpp
+  ${FOLLY_DIR}/python/ProactorExecutor.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/python/fibers.h
   ${FOLLY_DIR}/python/GILAwareManualExecutor.h
   ${FOLLY_DIR}/python/iobuf_ext.h
+  ${FOLLY_DIR}/python/ProactorExecutor.h
 )
 
 # Explicitly include utility library code from inside
@@ -217,6 +222,8 @@ list(APPEND hfiles
   ${FOLLY_DIR}/io/async/test/AsyncSocketTest.h
   ${FOLLY_DIR}/io/async/test/AsyncSocketTest2.h
   ${FOLLY_DIR}/io/async/test/BlockingSocket.h
+  ${FOLLY_DIR}/io/async/test/CallbackStateEnum.h
+  ${FOLLY_DIR}/io/async/test/ConnCallback.h
   ${FOLLY_DIR}/io/async/test/MockAsyncSocket.h
   ${FOLLY_DIR}/io/async/test/MockAsyncServerSocket.h
   ${FOLLY_DIR}/io/async/test/MockAsyncSSLSocket.h
@@ -225,6 +232,7 @@ list(APPEND hfiles
   ${FOLLY_DIR}/io/async/test/MockTimeoutManager.h
   ${FOLLY_DIR}/io/async/test/ScopedBoundPort.h
   ${FOLLY_DIR}/io/async/test/SocketPair.h
+  ${FOLLY_DIR}/io/async/test/TFOUtil.h
   ${FOLLY_DIR}/io/async/test/TestSSLServer.h
   ${FOLLY_DIR}/io/async/test/TimeUtil.h
   ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
@@ -558,6 +566,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     ${FOLLY_DIR}/futures/test/TestExecutor.cpp
     ${FOLLY_DIR}/futures/test/TestExecutor.h
     ${FOLLY_DIR}/io/async/test/BlockingSocket.h
+    ${FOLLY_DIR}/io/async/test/CallbackStateEnum.h
+    ${FOLLY_DIR}/io/async/test/ConnCallback.h
     ${FOLLY_DIR}/io/async/test/MockAsyncServerSocket.h
     ${FOLLY_DIR}/io/async/test/MockAsyncSocket.h
     ${FOLLY_DIR}/io/async/test/MockAsyncSSLSocket.h
@@ -570,6 +580,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     ${FOLLY_DIR}/io/async/test/SocketPair.h
     ${FOLLY_DIR}/io/async/test/SSLUtil.cpp
     ${FOLLY_DIR}/io/async/test/SSLUtil.h
+    ${FOLLY_DIR}/io/async/test/TFOUtil.cpp
+    ${FOLLY_DIR}/io/async/test/TFOUtil.h
     ${FOLLY_DIR}/io/async/test/TestSSLServer.cpp
     ${FOLLY_DIR}/io/async/test/TestSSLServer.h
     ${FOLLY_DIR}/io/async/test/TimeUtil.cpp
@@ -653,7 +665,13 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST simd_for_each_test SOURCES SimdForEachTest.cpp
 
     DIRECTORY detail/test/
+      TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
+
+    DIRECTORY detail/test/
       TEST split_string_simd_test SOURCES SplitStringSimdTest.cpp
+
+    DIRECTORY detail/test/
+      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
       TEST base64_detail_test
@@ -751,7 +769,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY functional/test/
       TEST apply_tuple_test WINDOWS_DISABLED
         SOURCES ApplyTupleTest.cpp
+      TEST functional_invoke_test SOURCES InvokeTest.cpp
       TEST partial_test SOURCES PartialTest.cpp
+      TEST functional_protocol_test SOURCES protocol_test.cpp
+      TEST functional_traits_test SOURCES traits_test.cpp
 
     DIRECTORY futures/test/
       TEST barrier_test SOURCES BarrierTest.cpp
@@ -821,6 +842,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST record_io_test WINDOWS_DISABLED SOURCES RecordIOTest.cpp
       TEST ShutdownSocketSetTest HANGING
         SOURCES ShutdownSocketSetTest.cpp
+      TEST SocketOptionValueTest HANGING
+        SOURCES SocketOptionValueTest.cpp
 
     DIRECTORY io/async/test/
       # A number of tests in the async_test binary are unfortunately flaky.
@@ -977,6 +1000,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK concurrent_skip_list_benchmark
         SOURCES ConcurrentSkipListBenchmark.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
+      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
       TEST conv_test WINDOWS_DISABLED SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp

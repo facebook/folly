@@ -39,6 +39,7 @@
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
+#include <folly/portability/SysResource.h>
 #include <folly/synchronization/detail/Spin.h>
 
 using namespace folly;

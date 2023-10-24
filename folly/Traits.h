@@ -405,6 +405,37 @@ template <class T>
 FOLLY_INLINE_VARIABLE constexpr bool is_trivially_copyable_v =
     is_trivially_copyable<T>::value;
 
+//  ----
+
+namespace fallback {
+template <typename From, typename To>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_convertible_v =
+    (std::is_void<From>::value && std::is_void<To>::value) ||
+    ( //
+        std::is_convertible<From, To>::value &&
+        std::is_nothrow_constructible<To, From>::value);
+template <typename From, typename To>
+struct is_nothrow_convertible
+    : bool_constant<is_nothrow_convertible_v<From, To>> {};
+} // namespace fallback
+
+//  is_nothrow_convertible
+//  is_nothrow_convertible_v
+//
+//  Import or backport:
+//  * std::is_nothrow_convertible
+//  * std::is_nothrow_convertible_v
+//
+//  mimic: is_nothrow_convertible, C++20
+#if defined(__cpp_lib_is_nothrow_convertible) && \
+    __cpp_lib_is_nothrow_convertible >= 201806L
+using std::is_nothrow_convertible;
+using std::is_nothrow_convertible_v;
+#else
+using fallback::is_nothrow_convertible;
+using fallback::is_nothrow_convertible_v;
+#endif
+
 /**
  * IsRelocatable<T>::value describes the ability of moving around
  * memory a value of type T by using memcpy (as opposed to the
@@ -443,8 +474,8 @@ FOLLY_INLINE_VARIABLE constexpr bool is_trivially_copyable_v =
  * It may be unset in a base class by overriding the typedef to false_type.
  */
 /*
- * IsZeroInitializable describes the property that default construction is the
- * same as memset(dst, 0, sizeof(T)).
+ * IsZeroInitializable describes the property that value-initialization
+ * is the same as memset(dst, 0, sizeof(T)).
  */
 
 namespace traits_detail {
@@ -546,7 +577,11 @@ struct IsZeroInitializable
     : std::conditional<
           is_detected_v<traits_detail::detect_IsZeroInitializable, T>,
           traits_detail::has_true_IsZeroInitializable<T>,
-          bool_constant<!std::is_class<T>::value>>::type {};
+          bool_constant< //
+              !std::is_class<T>::value && //
+              !std::is_union<T>::value && //
+              !std::is_member_object_pointer<T>::value && // itanium
+              true>>::type {};
 
 namespace detail {
 template <bool>
@@ -624,6 +659,32 @@ FOLLY_INLINE_VARIABLE constexpr bool is_transparent_v =
     is_detected_v<detail::is_transparent_, T>;
 template <typename T>
 struct is_transparent : bool_constant<is_transparent_v<T>> {};
+
+namespace detail {
+
+template <typename T, typename = void>
+FOLLY_INLINE_VARIABLE constexpr bool is_allocator_ = false;
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_allocator_<
+    T,
+    void_t<
+        typename T::value_type,
+        decltype(std::declval<T&>().allocate(std::size_t{})),
+        decltype(std::declval<T&>().deallocate(
+            static_cast<typename T::value_type*>(nullptr), std::size_t{}))>> =
+    true;
+
+} // namespace detail
+
+//  is_allocator_v
+//  is_allocator
+//
+//  A trait variable and type to test whether a type is an allocator according
+//  to the minimum protocol required by std::allocator_traits.
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_allocator_v = detail::is_allocator_<T>;
+template <typename T>
+struct is_allocator : bool_constant<is_allocator_v<T>> {};
 
 } // namespace folly
 
@@ -963,8 +1024,17 @@ using type_pack_element_fallback = _t<decltype(type_pack_element_test<I>::impl(
 
 #if FOLLY_HAS_BUILTIN(__type_pack_element)
 
+#if __clang__
 template <std::size_t I, typename... Ts>
 using type_pack_element_t = __type_pack_element<I, Ts...>;
+#else
+template <std::size_t I, typename... Ts>
+struct type_pack_element {
+  using type = __type_pack_element<I, Ts...>;
+};
+template <std::size_t I, typename... Ts>
+using type_pack_element_t = typename type_pack_element<I, Ts...>::type;
+#endif
 
 #else
 

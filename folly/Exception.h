@@ -26,6 +26,7 @@
 #include <folly/FBString.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/portability/SysTypes.h>
 
 namespace folly {
 
@@ -88,7 +89,7 @@ template <class... Args>
 // on error.
 template <class... Args>
 void checkPosixError(int err, Args&&... args) {
-  if (UNLIKELY(err != 0)) {
+  if (FOLLY_UNLIKELY(err != 0)) {
     throwSystemErrorExplicit(err, std::forward<Args>(args)...);
   }
 }
@@ -97,7 +98,7 @@ void checkPosixError(int err, Args&&... args) {
 // number on error), throw on error.
 template <class... Args>
 void checkKernelError(ssize_t ret, Args&&... args) {
-  if (UNLIKELY(ret < 0)) {
+  if (FOLLY_UNLIKELY(ret < 0)) {
     throwSystemErrorExplicit(int(-ret), std::forward<Args>(args)...);
   }
 }
@@ -106,14 +107,14 @@ void checkKernelError(ssize_t ret, Args&&... args) {
 // on error.
 template <class... Args>
 void checkUnixError(ssize_t ret, Args&&... args) {
-  if (UNLIKELY(ret == -1)) {
+  if (FOLLY_UNLIKELY(ret == -1)) {
     throwSystemError(std::forward<Args>(args)...);
   }
 }
 
 template <class... Args>
 void checkUnixErrorExplicit(ssize_t ret, int savedErrno, Args&&... args) {
-  if (UNLIKELY(ret == -1)) {
+  if (FOLLY_UNLIKELY(ret == -1)) {
     throwSystemErrorExplicit(savedErrno, std::forward<Args>(args)...);
   }
 }
@@ -123,14 +124,14 @@ void checkUnixErrorExplicit(ssize_t ret, int savedErrno, Args&&... args) {
 // freopen, tmpfile, etc.
 template <class... Args>
 void checkFopenError(FILE* fp, Args&&... args) {
-  if (UNLIKELY(!fp)) {
+  if (FOLLY_UNLIKELY(!fp)) {
     throwSystemError(std::forward<Args>(args)...);
   }
 }
 
 template <class... Args>
 void checkFopenErrorExplicit(FILE* fp, int savedErrno, Args&&... args) {
-  if (UNLIKELY(!fp)) {
+  if (FOLLY_UNLIKELY(!fp)) {
     throwSystemErrorExplicit(savedErrno, std::forward<Args>(args)...);
   }
 }

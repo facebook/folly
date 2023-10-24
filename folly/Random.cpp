@@ -97,7 +97,7 @@ class BufferedRandomDevice {
   explicit BufferedRandomDevice(size_t bufferSize = kDefaultBufferSize);
 
   void get(void* data, size_t size) {
-    if (LIKELY(epoch_ == globalEpoch_ && size <= remaining())) {
+    if (FOLLY_LIKELY(epoch_ == globalEpoch_ && size <= remaining())) {
       memcpy(data, ptr_, size);
       ptr_ += size;
     } else {

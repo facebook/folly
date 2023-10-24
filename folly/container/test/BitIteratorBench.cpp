@@ -106,7 +106,7 @@ runRealFFSTest                             19  2.011 s   105.9 ms  9.447
 */
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   folly::runBenchmarks();
   return 0;
 }

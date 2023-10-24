@@ -109,7 +109,7 @@ TEST(ProgramOptionsTest, DevFull) {
 }
 
 TEST(ProgramOptionsTest, CutArguments) {
-  // anything after -- is parsed as arguments
+  // anything after -- is parsed as arguments, including more --
   EXPECT_EQ(
       "running foo\n"
       "foo global-foo 43\n"
@@ -117,11 +117,20 @@ TEST(ProgramOptionsTest, CutArguments) {
       "foo conflict-global 42\n"
       "foo conflict 42\n"
       "foo arg b\n"
+      "foo arg --\n"
       "foo arg --local-foo\n"
       "foo arg 44\n"
       "foo arg a\n",
       callHelper(
-          {"foo", "--global-foo", "43", "--", "b", "--local-foo", "44", "a"}));
+          {"foo",
+           "--global-foo",
+           "43",
+           "--",
+           "b",
+           "--",
+           "--local-foo",
+           "44",
+           "a"}));
 }
 
 TEST(ProgramOptionsTest, Success) {

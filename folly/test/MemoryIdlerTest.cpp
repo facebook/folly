@@ -26,6 +26,16 @@
 using namespace folly::detail;
 using namespace testing;
 
+TEST(MemoryIdler, isUnmapUnusedStackAvailableInMainThread) {
+  // presume this is the main thread
+  EXPECT_NE(folly::kIsLinux, MemoryIdler::isUnmapUnusedStackAvailable());
+}
+
+TEST(MemoryIdler, isUnmapUnusedStackAvailableInAltThread) {
+  auto fn = [&] { EXPECT_TRUE(MemoryIdler::isUnmapUnusedStackAvailable()); };
+  std::thread(fn).join(); // definitely not the main thread
+}
+
 TEST(MemoryIdler, releaseStack) {
   MemoryIdler::unmapUnusedStack();
 }

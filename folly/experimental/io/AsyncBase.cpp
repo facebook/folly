@@ -197,7 +197,7 @@ Range<AsyncBase::Op**> AsyncBase::pollCompleted() {
   do {
     rc = ::read(pollFd_, &numEvents, 8);
   } while (rc == -1 && errno == EINTR);
-  if (UNLIKELY(rc == -1 && errno == EAGAIN)) {
+  if (FOLLY_UNLIKELY(rc == -1 && errno == EAGAIN)) {
     return Range<Op**>(); // nothing completed
   }
   checkUnixError(rc, "AsyncBase: read from event fd failed");

@@ -272,10 +272,10 @@ void IOBuf::freeInternalBuf(void* /* buf */, void* userData) noexcept {
 }
 
 IOBuf::IOBuf(CreateOp, std::size_t capacity)
-    : next_(this),
-      prev_(this),
+    : length_(0),
       data_(nullptr),
-      length_(0),
+      next_(this),
+      prev_(this),
       flagsAndSharedInfo_(0) {
   SharedInfo* info;
   allocExtBuffer(capacity, &buf_, &info, &capacity_);
@@ -289,10 +289,11 @@ IOBuf::IOBuf(
     std::size_t size,
     std::size_t headroom,
     std::size_t minTailroom)
-    : next_(this),
-      prev_(this),
+    : length_(0),
       data_(nullptr),
-      length_(0),
+      next_(this),
+      prev_(this),
+
       flagsAndSharedInfo_(0) {
   std::size_t capacity = 0;
   if (!checked_add(&capacity, size, headroom, minTailroom) ||
@@ -433,12 +434,12 @@ IOBuf::IOBuf(
     FreeFunction freeFn,
     void* userData,
     bool freeOnError)
-    : next_(this),
-      prev_(this),
+    : length_(length),
       data_(static_cast<uint8_t*>(buf) + offset),
-      buf_(static_cast<uint8_t*>(buf)),
-      length_(length),
       capacity_(capacity),
+      buf_(static_cast<uint8_t*>(buf)),
+      next_(this),
+      prev_(this),
       flagsAndSharedInfo_(
           packFlagsAndSharedInfo(kFlagFreeSharedInfo, nullptr)) {
   // do not allow only user data without a freeFn
@@ -460,12 +461,13 @@ IOBuf::IOBuf(
     std::size_t offset,
     std::size_t length,
     bool freeOnError)
-    : next_(this),
-      prev_(this),
+    : length_(length),
       data_(static_cast<uint8_t*>(buf) + offset),
-      buf_(static_cast<uint8_t*>(buf)),
-      length_(length),
       capacity_(capacity),
+      buf_(static_cast<uint8_t*>(buf)),
+      next_(this),
+      prev_(this),
+
       flagsAndSharedInfo_(
           packFlagsAndSharedInfo(kFlagFreeSharedInfo, nullptr)) {
   auto rollback = makeGuard([&] { //
@@ -488,10 +490,6 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     void* userData,
     bool freeOnError,
     TakeOwnershipOption option) {
-  if (capacity > kMaxIOBufSize) {
-    throw_exception<std::bad_alloc>();
-  }
-
   // do not allow only user data without a freeFn
   // since we use that for folly::sizedFree
   DCHECK(
@@ -505,6 +503,10 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     }
     takeOwnershipError(freeOnError, buf, freeFn, userData);
   });
+
+  if (capacity > kMaxIOBufSize) {
+    throw_exception<std::bad_alloc>();
+  }
 
   size_t requiredStorage = sizeof(HeapFullStorage);
   size_t mallocSize = goodMallocSize(requiredStorage);
@@ -564,10 +566,10 @@ IOBuf IOBuf::wrapBufferAsValue(const void* buf, std::size_t capacity) noexcept {
 IOBuf::IOBuf() noexcept = default;
 
 IOBuf::IOBuf(IOBuf&& other) noexcept
-    : data_(other.data_),
-      buf_(other.buf_),
-      length_(other.length_),
+    : length_(other.length_),
+      data_(other.data_),
       capacity_(other.capacity_),
+      buf_(other.buf_),
       flagsAndSharedInfo_(other.flagsAndSharedInfo_) {
   // Reset other so it is a clean state to be destroyed.
   other.data_ = nullptr;
@@ -604,12 +606,12 @@ IOBuf::IOBuf(
     std::size_t capacity,
     uint8_t* data,
     std::size_t length) noexcept
-    : next_(this),
-      prev_(this),
+    : length_(length),
       data_(data),
-      buf_(buf),
-      length_(length),
       capacity_(capacity),
+      buf_(buf),
+      next_(this),
+      prev_(this),
       flagsAndSharedInfo_(flagsAndSharedInfo) {
   assert(data >= buf);
   assert(intptr_t(data) + length <= intptr_t(buf) + capacity);
@@ -1131,7 +1133,7 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
       size_t copySlack = capacity() - length_;
       if (copySlack * 2 <= length_) {
         void* p = realloc(buf_, newAllocatedCapacity);
-        if (UNLIKELY(p == nullptr)) {
+        if (FOLLY_UNLIKELY(p == nullptr)) {
           throw_exception<std::bad_alloc>();
         }
         newBuffer = static_cast<uint8_t*>(p);
@@ -1367,7 +1369,7 @@ unique_ptr<IOBuf> IOBuf::wrapIov(const iovec* vec, size_t count) {
       }
     }
   }
-  if (UNLIKELY(result == nullptr)) {
+  if (FOLLY_UNLIKELY(result == nullptr)) {
     return create(0);
   }
   return result;
@@ -1392,7 +1394,7 @@ std::unique_ptr<IOBuf> IOBuf::takeOwnershipIov(
       }
     }
   }
-  if (UNLIKELY(result == nullptr)) {
+  if (FOLLY_UNLIKELY(result == nullptr)) {
     return create(0);
   }
   return result;
@@ -1419,7 +1421,7 @@ IOBuf::FillIovResult IOBuf::fillIov(struct iovec* iov, size_t len) const {
 }
 
 uint32_t IOBuf::approximateShareCountOne() const {
-  if (UNLIKELY(!sharedInfo())) {
+  if (FOLLY_UNLIKELY(!sharedInfo())) {
     return 1U;
   }
   return sharedInfo()->refcount.load(std::memory_order_acquire);

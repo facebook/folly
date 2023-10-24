@@ -28,6 +28,7 @@
 #include <utility>
 #include <vector>
 
+#include <glog/logging.h>
 #include <folly/ScopeGuard.h>
 #include <folly/synchronization/LifoSem.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
@@ -284,7 +285,7 @@ void EDFThreadPoolExecutor::add(Func f) {
 }
 
 void EDFThreadPoolExecutor::add(Func f, std::size_t total, uint64_t deadline) {
-  if (UNLIKELY(isJoin_.load(std::memory_order_relaxed) || total == 0)) {
+  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed) || total == 0)) {
     return;
   }
 
@@ -299,7 +300,7 @@ void EDFThreadPoolExecutor::add(Func f, std::size_t total, uint64_t deadline) {
 }
 
 void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
-  if (UNLIKELY(fs.empty())) {
+  if (FOLLY_UNLIKELY(fs.empty())) {
     return;
   }
 
@@ -314,58 +315,17 @@ void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
   }
 }
 
-folly::Executor::KeepAlive<> EDFThreadPoolExecutor::deadlineExecutor(
-    uint64_t deadline) {
-  class DeadlineExecutor : public folly::Executor {
-   public:
-    static KeepAlive<> create(
-        uint64_t deadline, KeepAlive<EDFThreadPoolExecutor> executor) {
-      return makeKeepAlive(new DeadlineExecutor(deadline, std::move(executor)));
-    }
-
-    void add(folly::Func f) override {
-      executor_->add(std::move(f), deadline_);
-    }
-
-    bool keepAliveAcquire() noexcept override {
-      const auto count =
-          keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
-      DCHECK_GT(count, 0);
-      return true;
-    }
-
-    void keepAliveRelease() noexcept override {
-      const auto count =
-          keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
-      DCHECK_GT(count, 0);
-      if (count == 1) {
-        delete this;
-      }
-    }
-
-   private:
-    DeadlineExecutor(
-        uint64_t deadline, KeepAlive<EDFThreadPoolExecutor> executor)
-        : deadline_(deadline), executor_(std::move(executor)) {}
-
-    std::atomic<size_t> keepAliveCount_{1};
-    uint64_t deadline_;
-    KeepAlive<EDFThreadPoolExecutor> executor_;
-  };
-  return DeadlineExecutor::create(deadline, getKeepAliveToken(this));
-}
-
 void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
   ExecutorBlockingGuard guard{
-      ExecutorBlockingGuard::TrackTag{}, this, namePrefix_};
+      ExecutorBlockingGuard::TrackTag{}, this, getName()};
 
   thread->startupBaton.post();
   for (;;) {
     auto task = take();
 
     // Handle thread stopping
-    if (UNLIKELY(!task)) {
+    if (FOLLY_UNLIKELY(!task)) {
       // Actually remove the thread from the list.
       SharedMutex::WriteHolder w{&threadListLock_};
       for (auto& o : observers_) {
@@ -377,7 +337,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     }
 
     int iter = task->next();
-    if (UNLIKELY(iter < 0)) {
+    if (FOLLY_UNLIKELY(iter < 0)) {
       // This task is already finished
       continue;
     }
@@ -438,7 +398,7 @@ bool EDFThreadPoolExecutor::shouldStop() {
 }
 
 std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
-  if (UNLIKELY(shouldStop())) {
+  if (FOLLY_UNLIKELY(shouldStop())) {
     return nullptr;
   }
 
@@ -446,7 +406,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
     return task;
   }
 
-  if (UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
+  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
     return nullptr;
   }
 
@@ -456,7 +416,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
   SCOPE_EXIT { numIdleThreads_.fetch_sub(1, std::memory_order_seq_cst); };
 
   for (;;) {
-    if (UNLIKELY(shouldStop())) {
+    if (FOLLY_UNLIKELY(shouldStop())) {
       return nullptr;
     }
 
@@ -466,7 +426,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
       return task;
     }
 
-    if (UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
+    if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
       return nullptr;
     }
 

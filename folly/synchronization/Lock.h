@@ -572,37 +572,49 @@ explicit hybrid_lock_guard(Mutex&, A const&...) -> hybrid_lock_guard<Mutex>;
 //
 //  Returns a unique_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD unique_lock<Mutex> make_unique_lock(Mutex& mutex, A&&... a) {
-  return unique_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_unique_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD unique_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return unique_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_unique_lock_fn make_unique_lock{};
 
 //  make_shared_lock
 //
 //  Returns a shared_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD shared_lock<Mutex> make_shared_lock(Mutex& mutex, A&&... a) {
-  return shared_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_shared_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD shared_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return shared_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_shared_lock_fn make_shared_lock{};
 
 //  make_upgrade_lock
 //
 //  Returns an upgrade_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD upgrade_lock<Mutex> make_upgrade_lock(Mutex& mutex, A&&... a) {
-  return upgrade_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_upgrade_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD upgrade_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return upgrade_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_upgrade_lock_fn make_upgrade_lock{};
 
 //  make_hybrid_lock
 //
 //  Returns a hybrid_lock constructed with the given arguments. Deduces the
 //  mutex type.
-template <typename Mutex, typename... A>
-FOLLY_NODISCARD hybrid_lock<Mutex> make_hybrid_lock(Mutex& mutex, A&&... a) {
-  return hybrid_lock<Mutex>{mutex, static_cast<A&&>(a)...};
-}
+struct make_hybrid_lock_fn {
+  template <typename Mutex, typename... A>
+  FOLLY_NODISCARD hybrid_lock<Mutex> operator()(Mutex& mutex, A&&... a) const {
+    return hybrid_lock<Mutex>{mutex, static_cast<A&&>(a)...};
+  }
+};
+FOLLY_INLINE_VARIABLE constexpr make_hybrid_lock_fn make_hybrid_lock{};
 
 namespace detail {
 
@@ -651,7 +663,7 @@ template <
     typename Result = transition_lock_result_t_<From, Transition, A...>,
     std::enable_if_t<std::is_void<Result>::value, int> = 0>
 auto transition_lock_1_(From& lock, Transition transition, A const&... a) {
-  return transition_lock_2_(lock, transition, a...), true;
+  return detail::transition_lock_2_(lock, transition, a...), true;
 }
 template <
     typename From,
@@ -660,7 +672,7 @@ template <
     typename Result = transition_lock_result_t_<From, Transition, A...>,
     std::enable_if_t<!std::is_void<Result>::value, int> = 0>
 auto transition_lock_1_(From& lock, Transition transition, A const&... a) {
-  return transition_lock_2_(lock, transition, a...);
+  return detail::transition_lock_2_(lock, transition, a...);
 }
 template <
     typename To,
@@ -670,7 +682,7 @@ template <
     typename ToState = lock_state_type_of_t<To>,
     std::enable_if_t<std::is_void<ToState>::value, int> = 0>
 auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
-  auto s = transition_lock_1_(lock, transition, a...);
+  auto s = detail::transition_lock_1_(lock, transition, a...);
   return !s ? To{} : To{*lock.release(), std::adopt_lock};
 }
 template <
@@ -681,7 +693,7 @@ template <
     typename ToState = lock_state_type_of_t<To>,
     std::enable_if_t<!std::is_void<ToState>::value, int> = 0>
 auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
-  auto s = transition_lock_1_(lock, transition, a...);
+  auto s = detail::transition_lock_1_(lock, transition, a...);
   return !s ? To{} : To{*lock.release(), std::adopt_lock, s};
 }
 template <
@@ -697,7 +709,7 @@ auto transition_lock_(From<Mutex>& lock, Transition transition, A const&... a) {
   return
       !lock.mutex() ? To<Mutex>{} :
       !lock.owns_lock() ? To<Mutex>{*lock.release(), std::defer_lock} :
-      transition_lock_0_<To<Mutex>>(lock, transition, a...);
+      detail::transition_lock_0_<To<Mutex>>(lock, transition, a...);
   // clang-format on
 }
 

@@ -47,6 +47,15 @@ compiler_may_unsafely_assume_unreachable() {
 #endif
 }
 
+FOLLY_ALWAYS_INLINE void compiler_may_unsafely_assume_separate_storage(
+    void const* const a, void const* const b) {
+  FOLLY_SAFE_DCHECK(
+      a != b, "compiler-hint separate storage assumption fails at runtime");
+#if FOLLY_HAS_BUILTIN(__builtin_assume_separate_storage)
+  __builtin_assume_separate_storage(a, b);
+#endif
+}
+
 #if defined(_MSC_VER) && !defined(__clang__)
 
 namespace detail {

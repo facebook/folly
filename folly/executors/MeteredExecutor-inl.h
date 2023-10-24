@@ -97,7 +97,7 @@ bool MeteredExecutorImpl<Atom>::shouldSkip() {
   // we should never have shouldSkip invoked twice once marked as callback
   // pending
   DCHECK(state == RUNNING || state == PAUSED);
-  if (UNLIKELY(state != RUNNING)) {
+  if (FOLLY_UNLIKELY(state != RUNNING)) {
     if (state_.execState.compare_exchange_strong(state, PAUSED_PENDING)) {
       return true;
     }

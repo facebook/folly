@@ -108,7 +108,7 @@ struct EliasFanoEncoder {
   static constexpr size_t forwardQuantum = kForwardQuantum;
 
   static uint8_t defaultNumLowerBits(size_t upperBound, size_t size) {
-    if (UNLIKELY(size == 0 || upperBound < size)) {
+    if (FOLLY_UNLIKELY(size == 0 || upperBound < size)) {
       return 0;
     }
     // Result that should be returned is "floor(log(upperBound / size))".
@@ -401,7 +401,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   FOLLY_ALWAYS_INLINE SizeType size() const { return size_; }
 
   FOLLY_ALWAYS_INLINE bool previous() {
-    if (!kUnchecked && UNLIKELY(position() == 0)) {
+    if (!kUnchecked && FOLLY_UNLIKELY(position() == 0)) {
       return false;
     }
 
@@ -416,12 +416,12 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   }
 
   FOLLY_ALWAYS_INLINE bool next() {
-    if (!kUnchecked && UNLIKELY(addT(position(), 1) >= size())) {
+    if (!kUnchecked && FOLLY_UNLIKELY(addT(position(), 1) >= size())) {
       return setDone();
     }
 
     // Skip to the first non-zero block.
-    while (UNLIKELY(block_ == 0)) {
+    while (FOLLY_UNLIKELY(block_ == 0)) {
       outer_ += sizeof(block_t);
       block_ = loadUnaligned<block_t>(start_ + outer_);
     }
@@ -435,7 +435,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
   FOLLY_ALWAYS_INLINE bool skip(SizeType n) {
     DCHECK_GT(n, 0);
-    if (!kUnchecked && UNLIKELY(addT(position_, n) >= size())) {
+    if (!kUnchecked && FOLLY_UNLIKELY(addT(position_, n) >= size())) {
       return setDone();
     }
 
@@ -443,7 +443,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
     // Use forward pointer.
     if constexpr (Encoder::forwardQuantum > 0) {
-      if (UNLIKELY(n > Encoder::forwardQuantum)) {
+      if (FOLLY_UNLIKELY(n > Encoder::forwardQuantum)) {
         const size_t steps = position_ / Encoder::forwardQuantum;
         const size_t dest = loadUnaligned<SkipValueType>(
             this->forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
@@ -473,7 +473,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   // one (so even if current value equals v, position will be increased by 1).
   FOLLY_ALWAYS_INLINE bool skipToNext(ValueType v) {
     DCHECK_GE(v, value_);
-    if (!kUnchecked && UNLIKELY(v > upperBound_)) {
+    if (!kUnchecked && FOLLY_UNLIKELY(v > upperBound_)) {
       return setDone();
     }
 
@@ -482,13 +482,13 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
       // NOTE: The addition can overflow here, but that means value_ is within
       // skipQuantum_ distance from the maximum representable value, and thus
       // the last value, so the comparison is still correct.
-      if (UNLIKELY(v >= addT(value_, Encoder::skipQuantum))) {
+      if (FOLLY_UNLIKELY(v >= addT(value_, Encoder::skipQuantum))) {
         const size_t steps = v / Encoder::skipQuantum;
         const size_t dest = loadUnaligned<SkipValueType>(
             this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
 
         DCHECK_LE(dest, size());
-        if (!kUnchecked && UNLIKELY(dest == size())) {
+        if (!kUnchecked && FOLLY_UNLIKELY(dest == size())) {
           return setDone();
         }
 
@@ -519,7 +519,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
       block_ = loadUnaligned<block_t>(start_ + outer_);
     }
 
-    if (LIKELY(skip)) {
+    if (FOLLY_LIKELY(skip)) {
       auto inner = select64<Instructions>(~block_, skip - 1);
       position_ += inner - skip + 1;
       block_ &= block_t(-1) << inner;
@@ -540,7 +540,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
    */
   FOLLY_ALWAYS_INLINE std::pair<bool, SizeType> prepareSkipTo(
       ValueType v) const {
-    if (!kUnchecked && UNLIKELY(v > upperBound_)) {
+    if (!kUnchecked && FOLLY_UNLIKELY(v > upperBound_)) {
       return std::make_pair(false, size());
     }
     auto position = position_;
@@ -553,7 +553,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
             this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
 
         DCHECK_LE(dest, size());
-        if (!kUnchecked && UNLIKELY(dest == size())) {
+        if (!kUnchecked && FOLLY_UNLIKELY(dest == size())) {
           return std::make_pair(false, size());
         }
 
@@ -639,7 +639,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     block = loadUnaligned<block_t>(start_ + outer);
     inner = size_t(value_) - 8 * outer_ + position_;
     block &= (block_t(1) << inner) - 1;
-    while (UNLIKELY(block == 0)) {
+    while (FOLLY_UNLIKELY(block == 0)) {
       DCHECK_GT(outer, 0);
       outer -= std::min<OuterType>(sizeof(block_t), outer);
       block = loadUnaligned<block_t>(start_ + outer);
@@ -690,7 +690,7 @@ class EliasFanoReader {
   void reset() { upper_.reset(); }
 
   bool previous() {
-    if (LIKELY(upper_.previous())) {
+    if (FOLLY_LIKELY(upper_.previous())) {
       return setValue(readCurrentValue());
     }
     reset();
@@ -698,7 +698,7 @@ class EliasFanoReader {
   }
 
   bool next() {
-    if (LIKELY(upper_.next())) {
+    if (FOLLY_LIKELY(upper_.next())) {
       return setValue(readCurrentValue());
     }
     return false;
@@ -731,7 +731,7 @@ class EliasFanoReader {
     if (valid()) {
       if constexpr (kCanBeAtValue) {
         DCHECK_GE(value, value_);
-        if (UNLIKELY(value == value_)) {
+        if (FOLLY_UNLIKELY(value == value_)) {
           return true;
         }
       } else {
@@ -741,15 +741,15 @@ class EliasFanoReader {
 
     ValueType upperValue = value >> numLowerBits_;
 
-    if (UNLIKELY(!upper_.skipToNext(upperValue))) {
+    if (FOLLY_UNLIKELY(!upper_.skipToNext(upperValue))) {
       return false;
     }
 
     do {
-      if (auto cur = readCurrentValue(); LIKELY(cur >= value)) {
+      if (auto cur = readCurrentValue(); FOLLY_LIKELY(cur >= value)) {
         return setValue(cur);
       }
-    } while (LIKELY(upper_.next()));
+    } while (FOLLY_LIKELY(upper_.next()));
 
     return false;
   }
@@ -763,7 +763,7 @@ class EliasFanoReader {
     if (valid()) {
       if constexpr (kCanBeAtValue) {
         DCHECK_GE(value, value_);
-        if (UNLIKELY(value == value_)) {
+        if (FOLLY_UNLIKELY(value == value_)) {
           return;
         }
       } else {

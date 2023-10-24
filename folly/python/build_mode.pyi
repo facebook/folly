@@ -13,3 +13,4 @@
 # limitations under the License.
 
 folly_is_debug_build: bool
+folly_is_tsan_build: bool

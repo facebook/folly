@@ -18,7 +18,7 @@
 
 #include <folly/portability/OpenSSL.h>
 
-namespace folly {
+namespace folly::test {
 
 #if !defined(FOLLY_CERTS_DIR)
 #define FOLLY_CERTS_DIR "folly/io/async/test/certs"
@@ -100,4 +100,5 @@ void TestSSLServer::init(bool enableTFO) {
   });
   LOG(INFO) << "Accepting connections on " << address_;
 }
-} // namespace folly
+
+} // namespace folly::test

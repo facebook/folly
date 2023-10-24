@@ -393,6 +393,20 @@ dynamic::dynamic(Iterator first, Iterator last) : type_(ARRAY) {
   new (&u_.array) Array(first, last);
 }
 
+template <
+    class T,
+    class NumericType /* = typename NumericTypeHelper<T>::type */>
+dynamic& dynamic::operator=(T t) {
+  const auto newType = TypeInfo<NumericType>::type;
+  if (type_ == newType) {
+    *getAddress<NumericType>() = t;
+  } else {
+    destroy();
+    new (getAddress<NumericType>()) NumericType(t);
+    type_ = newType;
+  }
+  return *this;
+}
 //////////////////////////////////////////////////////////////////////
 
 inline dynamic::const_iterator dynamic::begin() const {
@@ -844,6 +858,13 @@ template <class T>
 inline dynamic::iterator dynamic::insert(const_iterator pos, T&& value) {
   auto& arr = get<Array>();
   return arr.insert(pos, std::forward<T>(value));
+}
+
+template <class InputIt>
+inline dynamic::iterator dynamic::insert(
+    const_iterator pos, InputIt first, InputIt last) {
+  auto& arr = get<Array>();
+  return arr.insert(pos, first, last);
 }
 
 inline void dynamic::update(const dynamic& mergeObj) {

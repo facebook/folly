@@ -178,7 +178,7 @@ class TLRefCount {
 
    private:
     bool update(Int delta) {
-      if (UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
+      if (FOLLY_UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
         return false;
       }
 
@@ -193,7 +193,7 @@ class TLRefCount {
 
       asymmetric_thread_fence_light(std::memory_order_seq_cst);
 
-      if (UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
+      if (FOLLY_UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
         std::lock_guard<std::mutex> lg(collectMutex_);
 
         if (collectGuard_) {

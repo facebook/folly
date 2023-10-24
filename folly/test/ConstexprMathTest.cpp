@@ -16,15 +16,201 @@
 
 #include <folly/ConstexprMath.h>
 
+#include <cmath>
 #include <limits>
 #include <type_traits>
 
 #include <folly/lang/Bits.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 namespace {
 class ConstexprMathTest : public testing::Test {};
 } // namespace
+
+TEST_F(ConstexprMathTest, constexpr_iterated_squares_desc_scaling_array) {
+  using lim = std::numeric_limits<float>;
+  constexpr auto& isq = folly::constexpr_iterated_squares_desc_2_v<float>;
+
+  auto get = [](auto const& arr, auto fun) {
+    constexpr auto size = sizeof(arr) / sizeof(arr[0]);
+    using res_t = decltype(fun(arr[0]));
+    std::array<res_t, size> res{};
+    for (size_t i = 0; i < size; ++i) {
+      res[i] = fun(arr[i]);
+    }
+    return res;
+  };
+
+  EXPECT_EQ(7, isq.size);
+  auto apowers = get(isq.scaling, [](auto _) { return _.power; });
+  constexpr size_t epowers[] = {
+      64, 32, 16, 8, 4, 2, 1, //
+  };
+  EXPECT_THAT(apowers, testing::ElementsAreArray(epowers));
+  auto ascales = get(isq.scaling, [](auto _) { return _.scale; });
+  constexpr float escales[] = {
+      0x1p64, 0x1p32, 0x1p16, 0x1p8, 0x1p4, 0x1p2, 0x1p1, //
+  };
+  EXPECT_THAT(ascales, testing::ElementsAreArray(escales));
+  EXPECT_GT(isq.scaling[0].scale, lim::max() / isq.scaling[0].scale);
+}
+
+TEST_F(ConstexprMathTest, constexpr_iterated_squares_desc_shrink) {
+  using lim = std::numeric_limits<double>;
+  constexpr auto& isq = folly::constexpr_iterated_squares_desc_2_v<double>;
+
+  {
+    constexpr auto n = 1.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(0, a.power);
+    EXPECT_EQ(1., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 2.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(1, a.power);
+    EXPECT_EQ(2., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 4.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(2, a.power);
+    EXPECT_EQ(4., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 7.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 8.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 9.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(4, a.power);
+    EXPECT_EQ(16., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 513.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = 1023.;
+    constexpr auto a = isq.shrink(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_LE(n / a.scale, 1.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+  {
+    constexpr auto n = lim::max();
+    constexpr auto a = isq.shrink(n, 2.);
+    EXPECT_EQ(1023, a.power);
+    EXPECT_EQ(folly::constexpr_pow(2., 1023), a.scale);
+    EXPECT_LE(n / a.scale, 2.);
+    EXPECT_GT(n / a.scale, .5);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_iterated_squares_desc_growth) {
+  using lim = std::numeric_limits<double>;
+  constexpr auto& isq = folly::constexpr_iterated_squares_desc_2_v<double>;
+
+  {
+    constexpr auto n = 1.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(0, a.power);
+    EXPECT_EQ(1., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 2.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(1, a.power);
+    EXPECT_EQ(2., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 4.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(2, a.power);
+    EXPECT_EQ(4., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 7.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 8.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(3, a.power);
+    EXPECT_EQ(8., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 9.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(4, a.power);
+    EXPECT_EQ(16., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 513.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = 1. / 1023.;
+    constexpr auto a = isq.growth(n, 1.);
+    EXPECT_EQ(10, a.power);
+    EXPECT_EQ(1024., a.scale);
+    EXPECT_GE(n * a.scale, 1.);
+    EXPECT_LT(n * a.scale, 2.);
+  }
+  {
+    constexpr auto n = lim::min(); // NOLINT
+    constexpr auto a = isq.growth(n, .5);
+    EXPECT_EQ(1021, a.power);
+    EXPECT_EQ(folly::constexpr_pow(2., 1021), a.scale);
+    EXPECT_GE(n * a.scale, .5);
+    EXPECT_LT(n * a.scale, 1.);
+  }
+}
 
 TEST_F(ConstexprMathTest, constexpr_min) {
   constexpr auto x = uint16_t(3);
@@ -161,7 +347,402 @@ TEST_F(ConstexprMathTest, constexpr_log2_ceil_64) {
   EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
 }
 
-TEST_F(ConstexprMathTest, constexpr_ceil) {
+TEST_F(ConstexprMathTest, constexpr_trunc_floating) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto n = lim::infinity();
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto n = -lim::infinity();
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto n = lim::quiet_NaN();
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto n = -lim::quiet_NaN();
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto n = lim::max();
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto n = -lim::max();
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_trunc(0.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_trunc(-0.);
+    EXPECT_EQ(-0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_trunc(.5);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_trunc(-.5);
+    EXPECT_EQ(0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_trunc(3.5);
+    EXPECT_EQ(3.0, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_trunc(-3.5);
+    EXPECT_EQ(-3.0, a);
+  }
+  {
+    constexpr auto d = lim::digits - 2;
+    constexpr auto n = folly::constexpr_pow(2., d) - .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.5, n - a);
+  }
+  {
+    constexpr auto d = lim::digits - 2;
+    constexpr auto n = folly::constexpr_pow(2., d) + .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.5, n - a);
+  }
+  {
+    constexpr auto d = lim::digits - 1;
+    constexpr auto n = folly::constexpr_pow(2., d) - .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.5, n - a);
+  }
+  {
+    constexpr auto d = lim::digits - 1;
+    constexpr auto n = folly::constexpr_pow(2., d) + .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.0, n - a);
+  }
+  {
+    constexpr auto d = lim::digits;
+    constexpr auto n = folly::constexpr_pow(2., d) - .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.0, n - a);
+  }
+  {
+    constexpr auto d = lim::digits;
+    constexpr auto n = folly::constexpr_pow(2., d) + .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.0, n - a);
+  }
+  {
+    constexpr auto d = lim::digits + 1;
+    constexpr auto n = folly::constexpr_pow(2., d) - .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.0, n - a);
+  }
+  {
+    constexpr auto d = lim::digits + 1;
+    constexpr auto n = folly::constexpr_pow(2., d) + .5;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(.0, n - a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_trunc_integral) {
+  {
+    constexpr auto n = 0u;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(0u, a);
+  }
+  {
+    constexpr auto n = -1;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(-1, a);
+  }
+  {
+    constexpr auto n = 100;
+    constexpr auto a = folly::constexpr_trunc(n);
+    EXPECT_EQ(100, a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_round_floating) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto n = lim::infinity();
+    constexpr auto a = folly::constexpr_round(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto n = -lim::infinity();
+    constexpr auto a = folly::constexpr_round(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto n = lim::quiet_NaN();
+    constexpr auto a = folly::constexpr_round(n);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto n = -lim::quiet_NaN();
+    constexpr auto a = folly::constexpr_round(n);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto n = lim::max();
+    constexpr auto a = folly::constexpr_round(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto n = -lim::max();
+    constexpr auto a = folly::constexpr_round(n);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(0.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_round(-0.);
+    EXPECT_EQ(-0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_round(0.3);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_round(0.5);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(0.7);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(-0.3);
+    EXPECT_EQ(-0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_round(-0.5);
+    EXPECT_EQ(-1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(-0.7);
+    EXPECT_EQ(-1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(7.3);
+    EXPECT_EQ(7., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(7.5);
+    EXPECT_EQ(8., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(7.7);
+    EXPECT_EQ(8., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(-7.3);
+    EXPECT_EQ(-7., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(-7.5);
+    EXPECT_EQ(-8., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_round(-7.7);
+    EXPECT_EQ(-8., a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_floor) {
+  // floating-point one-argument integer
+  {
+    constexpr auto a = folly::constexpr_floor(size_t(0));
+    EXPECT_EQ(size_t(0), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_floor(~size_t(0));
+    EXPECT_EQ(~size_t(0), a);
+  }
+  // floating-point one-argument floating-point
+  {
+    constexpr auto a = folly::constexpr_floor(0.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_floor(-0.);
+    EXPECT_EQ(-0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_floor(0.5);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_floor(-0.5);
+    EXPECT_EQ(-1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_floor(1.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_floor(-1.);
+    EXPECT_EQ(-1., a);
+  }
+  {
+    constexpr auto n = std::numeric_limits<double>::max();
+    constexpr auto a = folly::constexpr_floor(n);
+    EXPECT_EQ(std::numeric_limits<double>::max(), a);
+    EXPECT_EQ(std::floor(n), a);
+  }
+  {
+    constexpr auto n = std::numeric_limits<double>::infinity();
+    constexpr auto a = folly::constexpr_floor(n);
+    EXPECT_EQ(std::numeric_limits<double>::infinity(), a);
+    EXPECT_EQ(std::floor(n), a);
+  }
+  {
+    constexpr auto n = std::numeric_limits<double>::quiet_NaN();
+    constexpr auto a = folly::constexpr_floor(n);
+    EXPECT_TRUE(std::isnan(a));
+    EXPECT_TRUE(std::isnan(std::floor(n)));
+  }
+  for (size_t i = 0; i < std::numeric_limits<double>::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i);
+    auto a = folly::constexpr_floor(n);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::floor(n), a);
+  }
+  for (size_t i = 0; i < std::numeric_limits<double>::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i) + 1.;
+    auto a = folly::constexpr_floor(n);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::floor(n), a);
+  }
+  for (size_t i = 0; i < std::numeric_limits<double>::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i);
+    auto a = folly::constexpr_floor(n + .5);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::floor(n), a);
+  }
+  for (size_t i = 0; i < std::numeric_limits<double>::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i);
+    auto a = folly::constexpr_floor(n - .5);
+    auto e = i < std::numeric_limits<double>::digits ? n - 1. : n;
+    EXPECT_EQ(e, a);
+    EXPECT_EQ(std::floor(n - .5), e);
+    EXPECT_EQ(std::floor(n - .5), a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_ceil_integral) {
+  {
+    constexpr auto a = folly::constexpr_ceil(size_t(0));
+    EXPECT_EQ(size_t(0), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_ceil(~size_t(0));
+    EXPECT_EQ(~size_t(0), a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_ceil_floating) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto a = folly::constexpr_ceil(0.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_ceil(-0.);
+    EXPECT_EQ(-0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_ceil(0.5);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_ceil(-0.5);
+    EXPECT_EQ(-0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_ceil(1.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_ceil(-1.);
+    EXPECT_EQ(-1., a);
+  }
+  {
+    constexpr auto n = lim::max();
+    constexpr auto a = folly::constexpr_ceil(n);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::ceil(n), a);
+  }
+  {
+    constexpr auto n = lim::infinity();
+    constexpr auto a = folly::constexpr_ceil(n);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::ceil(n), a);
+  }
+  {
+    constexpr auto n = lim::quiet_NaN();
+    constexpr auto a = folly::constexpr_ceil(n);
+    EXPECT_TRUE(std::isnan(a));
+    EXPECT_TRUE(std::isnan(std::ceil(n)));
+  }
+  for (size_t i = 0; i < lim::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i);
+    auto a = folly::constexpr_ceil(n);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::ceil(n), a);
+  }
+  for (size_t i = 0; i < lim::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i) + 1.;
+    auto a = folly::constexpr_ceil(n);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::ceil(n), a);
+  }
+  for (size_t i = 0; i < lim::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i);
+    auto a = folly::constexpr_ceil(n - .5);
+    EXPECT_EQ(n, a);
+    EXPECT_EQ(std::ceil(n), a);
+  }
+  for (size_t i = 0; i < lim::max_exponent; ++i) {
+    auto n = folly::constexpr_pow(2., i);
+    auto a = folly::constexpr_ceil(n + .5);
+    auto e = i < lim::digits - 1 ? n + 1. : n;
+    EXPECT_EQ(e, a) << i;
+    EXPECT_EQ(std::ceil(n + .5), e);
+    EXPECT_EQ(std::ceil(n + .5), a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_ceil_integral_round) {
   {
     constexpr auto roundable = 20ull;
     constexpr auto round = 6ull;
@@ -182,7 +763,306 @@ TEST_F(ConstexprMathTest, constexpr_ceil) {
   }
 }
 
-TEST_F(ConstexprMathTest, constexpr_pow) {
+TEST_F(ConstexprMathTest, constexpr_mult_floating) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto a = folly::constexpr_mult(lim::quiet_NaN(), 1.);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(1., lim::quiet_NaN());
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(0., lim::infinity());
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(0., -lim::infinity());
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(lim::infinity(), 0.);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-lim::infinity(), 0.);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(1., lim::infinity());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(1., -lim::infinity());
+    EXPECT_EQ(-lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-1., lim::infinity());
+    EXPECT_EQ(-lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-1., -lim::infinity());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(lim::max(), lim::max());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-lim::max(), lim::max());
+    EXPECT_EQ(-lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(lim::max(), -lim::max());
+    EXPECT_EQ(-lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-lim::max(), -lim::max());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(lim::min(), 1.); // NOLINT
+    EXPECT_EQ(lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-lim::min(), 1.); // NOLINT
+    EXPECT_EQ(-lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(lim::min(), -1.); // NOLINT
+    EXPECT_EQ(-lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-lim::min(), -1.); // NOLINT
+    EXPECT_EQ(lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(1., lim::min()); // NOLINT
+    EXPECT_EQ(lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-1., lim::min()); // NOLINT
+    EXPECT_EQ(-lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(1., -lim::min()); // NOLINT
+    EXPECT_EQ(-lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(-1., -lim::min()); // NOLINT
+    EXPECT_EQ(lim::min(), a); // NOLINT
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(lim::denorm_min(), .125);
+    EXPECT_EQ(0., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_mult(.125, lim::denorm_min());
+    EXPECT_EQ(0., a);
+  }
+  {
+    constexpr auto n = lim::denorm_min();
+    constexpr auto a = folly::constexpr_mult(n, n);
+    EXPECT_EQ(0., a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_exp_integral) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto n = folly::constexpr_exp(0u); // unsigned
+    EXPECT_DOUBLE_EQ(1., n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(0); // signed
+    EXPECT_DOUBLE_EQ(1., n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(1u); // unsigned
+    EXPECT_DOUBLE_EQ(folly::numbers::e, n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(1); // signed
+    EXPECT_DOUBLE_EQ(folly::numbers::e, n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(13u); // unsigned
+    EXPECT_DOUBLE_EQ(folly::constexpr_pow(folly::numbers::e, 13u), n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(13); // signed positive
+    EXPECT_DOUBLE_EQ(folly::constexpr_pow(folly::numbers::e, 13u), n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(-13); // signed negative
+    EXPECT_DOUBLE_EQ(1. / folly::constexpr_pow(folly::numbers::e, 13u), n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(4097u); // unsigned
+    EXPECT_EQ(lim::infinity(), n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(4097); // signed positive
+    EXPECT_EQ(lim::infinity(), n);
+  }
+  {
+    constexpr auto n = folly::constexpr_exp(-4097); // signed negative
+    EXPECT_EQ(0., n);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_exp_floating) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto n = lim::quiet_NaN();
+    constexpr auto a = folly::constexpr_exp(n);
+    EXPECT_NE(a, a);
+    EXPECT_NE(std::exp(n), std::exp(n));
+  }
+  {
+    constexpr auto n = -lim::infinity();
+    constexpr auto a = folly::constexpr_exp(n);
+    EXPECT_EQ(std::exp(n), a);
+    EXPECT_EQ(+0., a);
+  }
+  {
+    constexpr auto n = +lim::infinity();
+    constexpr auto a = folly::constexpr_exp(n);
+    EXPECT_EQ(std::exp(n), a);
+    EXPECT_EQ(n, a);
+  }
+  {
+    constexpr auto n = lim::lowest();
+    constexpr auto a = folly::constexpr_exp(n);
+    EXPECT_EQ(std::exp(n), a);
+    EXPECT_EQ(+0., a);
+  }
+  {
+    constexpr auto n = lim::max();
+    constexpr auto a = folly::constexpr_exp(n);
+    EXPECT_EQ(std::exp(n), a);
+    EXPECT_EQ(std::numeric_limits<double>::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(+0.);
+    EXPECT_EQ(std::exp(+0.), a);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(-0.);
+    EXPECT_EQ(std::exp(-0.), a);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto n = +lim::min(); // NOLINT
+    constexpr auto a = folly::constexpr_exp(n);
+    EXPECT_EQ(std::exp(n), a);
+    EXPECT_EQ(+1., a);
+  }
+  {
+    constexpr auto n = -lim::min(); // NOLINT
+    constexpr auto a = folly::constexpr_exp(n);
+    EXPECT_EQ(std::exp(n), a);
+    EXPECT_EQ(+1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(1.);
+    EXPECT_DOUBLE_EQ(std::exp(1.), a);
+    EXPECT_DOUBLE_EQ(folly::numbers::e, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(3.3);
+    EXPECT_DOUBLE_EQ(std::exp(3.3), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(471.L);
+    EXPECT_DOUBLE_EQ(std::exp(471.L), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(600.);
+    EXPECT_NE(lim::infinity(), a);
+    EXPECT_LT( // too inexact for expect-double-eq
+        std::exp(600.) / a - 1,
+        16 * lim::epsilon());
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(709.8);
+    EXPECT_EQ(lim::infinity(), a);
+    EXPECT_EQ(std::exp(709.8), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(-4.1);
+    EXPECT_DOUBLE_EQ(std::exp(-4.1), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_exp(-77.1);
+    EXPECT_DOUBLE_EQ(std::exp(-77.1), a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_log) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto a = folly::constexpr_log(1.);
+    EXPECT_DOUBLE_EQ(0., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_log(folly::numbers::e);
+    EXPECT_DOUBLE_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_log(0.);
+    EXPECT_DOUBLE_EQ(-lim::infinity(), a);
+  }
+  {
+    constexpr auto n = 15539.1;
+    constexpr auto a = folly::constexpr_log(n);
+    EXPECT_DOUBLE_EQ(std::log(n), a);
+  }
+  {
+    constexpr auto n = 15539.1;
+    constexpr auto a = folly::constexpr_log(n * n * n);
+    EXPECT_DOUBLE_EQ(std::log(n * n * n), a);
+  }
+  {
+    constexpr auto n = .00033112;
+    constexpr auto a = folly::constexpr_log(n);
+    EXPECT_DOUBLE_EQ(std::log(n), a);
+  }
+  {
+    constexpr auto n = lim::epsilon();
+    constexpr auto a = folly::constexpr_log(n);
+    EXPECT_DOUBLE_EQ(std::log(n), a);
+  }
+  {
+    constexpr auto n = lim::min(); // NOLINT
+    constexpr auto a = folly::constexpr_log(n);
+    EXPECT_DOUBLE_EQ(std::log(n), a);
+  }
+  {
+    constexpr auto n = lim::min(); // NOLINT
+    constexpr auto a = folly::constexpr_log(n);
+    EXPECT_DOUBLE_EQ(std::log(n), a);
+  }
+  {
+    constexpr auto n = lim::max();
+    constexpr auto a = folly::constexpr_log(n);
+    EXPECT_DOUBLE_EQ(std::log(n), a);
+  }
+  {
+    constexpr auto n = lim::max();
+    static_assert(n < lim::infinity());
+    constexpr auto a = folly::constexpr_log(n);
+    EXPECT_DOUBLE_EQ(std::log(n), a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_pow_integral_base_integral_exp) {
   {
     constexpr auto a = folly::constexpr_pow(uint64_t(0), 15);
     EXPECT_EQ(0, a);
@@ -194,6 +1074,310 @@ TEST_F(ConstexprMathTest, constexpr_pow) {
   {
     constexpr auto a = folly::constexpr_pow(uint64_t(2), 6);
     EXPECT_EQ(64, a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_pow_floating_base_integral_exp) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto a = folly::constexpr_pow(2., 0u);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(2., 1u);
+    EXPECT_EQ(2., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(2., 7u);
+    EXPECT_EQ(128., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(2., 12345u);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(+0., 7u);
+    EXPECT_EQ(+0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-0., 7u);
+    EXPECT_EQ(-0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-0., 8u);
+    EXPECT_EQ(+0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), 7u);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), 7u);
+    EXPECT_EQ(-lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), 8u);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), 8u);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::quiet_NaN(), 0u);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::quiet_NaN(), 0u);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::quiet_NaN(), 8u);
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::quiet_NaN(), 8u);
+    EXPECT_TRUE(std::isnan(a));
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_pow_floating_base_floating_exp) {
+  using lim = std::numeric_limits<double>;
+
+  {
+    constexpr auto a = folly::constexpr_pow(1., 1.);
+    EXPECT_DOUBLE_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., 7.);
+    EXPECT_DOUBLE_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(0., 7.);
+    EXPECT_DOUBLE_EQ(0., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(7., 0.);
+    EXPECT_DOUBLE_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(7., 1.);
+    EXPECT_DOUBLE_EQ(7., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(24.331, 6.922);
+    EXPECT_DOUBLE_EQ(std::pow(24.331, 6.922), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(24.331, -6.922);
+    EXPECT_DOUBLE_EQ(std::pow(24.331, -6.922), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(0., 0.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., 0.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-1., 0.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-1., 1.);
+    EXPECT_EQ(-1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-1., 2.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), 0.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), 0.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::quiet_NaN(), 0.);
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), -1.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), -9.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), -1.5);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), -9.5);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), -lim::infinity());
+    EXPECT_EQ(0., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), 1.);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), 9.);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), 1.5);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), lim::infinity());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(lim::infinity(), lim::quiet_NaN());
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), -.5);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), -3.);
+    EXPECT_EQ(0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), -6.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), -lim::infinity());
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), .5);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), 3.);
+    EXPECT_EQ(-lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), 6.);
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), lim::infinity());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-lim::infinity(), lim::quiet_NaN());
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(2., -lim::infinity());
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(2., lim::infinity());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., lim::quiet_NaN());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., -lim::infinity());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., lim::lowest());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., lim::min()); // NOLINT
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., lim::max());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., lim::infinity());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(1., lim::quiet_NaN());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(0., lim::infinity());
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(0., 1.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-0., .5);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-0., 1.);
+    EXPECT_EQ(0., a);
+    EXPECT_TRUE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-0., 2.);
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(0., -lim::infinity());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-1., -lim::infinity());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-1., lim::infinity());
+    EXPECT_EQ(1., a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-1., lim::quiet_NaN());
+    EXPECT_TRUE(std::isnan(a));
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-2., lim::infinity());
+    EXPECT_EQ(lim::infinity(), a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(-2., -lim::infinity());
+    EXPECT_EQ(0., a);
+    EXPECT_FALSE(std::signbit(a));
   }
 }
 

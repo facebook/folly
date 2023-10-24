@@ -31,7 +31,16 @@ namespace fibers {
  **/
 class TimedMutex {
  public:
-  TimedMutex() noexcept {}
+  struct Options {
+    constexpr Options(bool stealing = true) : stealing_(stealing) {}
+    /**
+     * Prefer thread waiter and steal from fiber waiters if possible
+     */
+    bool stealing_ = true;
+  };
+
+  TimedMutex(Options options = Options()) noexcept
+      : options_(std::move(options)) {}
 
   ~TimedMutex() {
     DCHECK(threadWaiters_.empty());
@@ -80,6 +89,7 @@ class TimedMutex {
 
   using MutexWaiterList = folly::IntrusiveList<MutexWaiter, &MutexWaiter::hook>;
 
+  const Options options_;
   folly::SpinLock lock_; //< lock to protect waiter list
   bool locked_ = false; //< is this locked by some thread?
   MutexWaiterList threadWaiters_; //< list of waiters

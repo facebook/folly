@@ -51,6 +51,8 @@ struct MemoryIdler {
     kDefaultStackToRetain = 1024,
   };
 
+  static bool isUnmapUnusedStackAvailable() noexcept;
+
   /// Uses madvise to discard the portion of the thread's stack that
   /// currently doesn't hold any data, trying to ensure that no page
   /// faults will occur during the next retain bytes of stack allocation

@@ -93,4 +93,13 @@ TEST_F(ThunkTest, ctor_dtor) {
   }
 }
 
+TEST_F(ThunkTest, operator_new_delete) {
+  auto ptr = thunk::operator_new<64, 32>();
+  EXPECT_NE(nullptr, ptr);
+  thunk::operator_delete<64, 32>(ptr);
+  ptr = thunk::operator_new_nx<64, 32>();
+  EXPECT_NE(nullptr, ptr);
+  thunk::operator_delete<64, 32>(ptr);
+}
+
 } // namespace folly::detail

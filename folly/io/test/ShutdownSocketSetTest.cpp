@@ -100,8 +100,6 @@ Server::Server() : acceptSocket_(), port_(0), stop_(NO_STOP) {
     }
 
     shutdownSocketSet_.close(acceptSocket_);
-    acceptSocket_ = NetworkSocket();
-    port_ = 0;
   });
 }
 

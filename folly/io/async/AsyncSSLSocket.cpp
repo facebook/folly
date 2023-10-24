@@ -201,7 +201,8 @@ AsyncSSLSocket::AsyncSSLSocket(
       ctx_{std::move(ctx)},
       certificateIdentityVerifier_{std::move(options.verifier)},
       handshakeTimeout_{this, evb},
-      connectionTimeout_{this, evb} {
+      connectionTimeout_{this, evb},
+      tlsextHostname_{std::move(options.serverName)} {
   init();
   if (options.isServer) {
     SSL_CTX_set_info_callback(
@@ -221,7 +222,8 @@ AsyncSSLSocket::AsyncSSLSocket(
       ctx_{std::move(ctx)},
       certificateIdentityVerifier_{std::move(options.verifier)},
       handshakeTimeout_{this, AsyncSocket::getEventBase()},
-      connectionTimeout_{this, AsyncSocket::getEventBase()} {
+      connectionTimeout_{this, AsyncSocket::getEventBase()},
+      tlsextHostname_{std::move(options.serverName)} {
   noTransparentTls_ = true;
   init();
   if (options.isServer) {
@@ -1181,10 +1183,13 @@ bool AsyncSSLSocket::willBlock(
     }
 #endif
 
-    // The timeout (if set) keeps running here
+    // the timeout (if set) keeps running here
     return true;
   } else {
+    // The error queue might contain multiple errors. We only consider the head.
+    // Clear the rest.
     unsigned long lastError = *errErrorOut = ERR_get_error();
+    ERR_clear_error();
     VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
             << "state=" << state_ << ", "
             << "sslState=" << sslState_ << ", "
@@ -1511,6 +1516,10 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadSingle(
   VLOG(4) << "AsyncSSLSocket::performReadSingle() this=" << this
           << ", buf=" << buf << ", buflen=" << buflen;
 
+  // Integration with ancillary data would have to be implemented in
+  // `bioRead`, and the data then plumbed out via the outer `msghdr`.
+  DCHECK(readAncillaryDataCallback_ == nullptr);
+
   int numToRead = 0;
   if (buflen > std::numeric_limits<int>::max()) {
     numToRead = std::numeric_limits<int>::max();
@@ -1576,10 +1585,16 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadSingle(
       // SSL_R_UNEXPECTED_EOF_WHILE_READING. We should then explicitly check for
       // that. See https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html
       if (error == SSL_ERROR_SYSCALL && local_errno == 0) {
+        // ignore anything else in the error queue
+        ERR_clear_error();
         // intentionally returning EOF
         return ReadResult(0);
       }
+
+      // The error queue might contain multiple errors. We only consider and
+      // return the head. Clear the rest.
       auto errError = ERR_get_error();
+      ERR_clear_error();
       VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
               << "state=" << state_ << ", "
               << "sslState=" << sslState_ << ", "
@@ -1697,7 +1712,10 @@ AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
         WRITE_ERROR,
         std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
   } else {
+    // The error queue might contain multiple errors. We only consider and
+    // return the head. Clear the rest.
     auto errError = ERR_get_error();
+    ERR_clear_error();
     VLOG(3) << "ERROR: AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
             << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
             << "SSL error: " << error << ", errno: " << errno
@@ -1714,10 +1732,11 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
     uint32_t count,
     WriteFlags flags,
     uint32_t* countWritten,
-    uint32_t* partialWritten) {
+    uint32_t* partialWritten,
+    WriteRequestTag writeTag) {
   if (sslState_ == STATE_UNENCRYPTED) {
     return AsyncSocket::performWrite(
-        vec, count, flags, countWritten, partialWritten);
+        vec, count, flags, countWritten, partialWritten, std::move(writeTag));
   }
   if (sslState_ != STATE_ESTABLISHED) {
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
@@ -1941,7 +1960,12 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
   struct iovec vec;
   vec.iov_base = const_cast<char*>(in);
   vec.iov_len = size_t(inl);
-  auto result = sslSock->sendSocketMessage(&vec, 1, flags);
+  // NB: It would be technically possible to plumb through the actual write
+  // tag in here, but we decided it not to be worth the implementation
+  // complexity.  The PoC implementation + tests are D43023628 (V15) +
+  // D44433483.
+  auto result = sslSock->sendSocketMessage(
+      &vec, 1, flags, WriteRequestTag{WriteRequestTag::EmptyDummy()});
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
     if (OpenSSLUtils::getBioShouldRetryWrite(int(result.writeReturn))) {

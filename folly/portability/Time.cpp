@@ -59,7 +59,7 @@ static int clock_process_cputime(struct timespec* ts) {
       TASK_THREAD_TIMES_INFO,
       (thread_info_t)&thread_times_info,
       &thread_times_info_count);
-  if (UNLIKELY(kern_result != KERN_SUCCESS)) {
+  if (FOLLY_UNLIKELY(kern_result != KERN_SUCCESS)) {
     return -1;
   }
 
@@ -71,7 +71,7 @@ static int clock_process_cputime(struct timespec* ts) {
       MACH_TASK_BASIC_INFO,
       (thread_info_t)&task_basic_info,
       &task_basic_info_count);
-  if (UNLIKELY(kern_result != KERN_SUCCESS)) {
+  if (FOLLY_UNLIKELY(kern_result != KERN_SUCCESS)) {
     return -1;
   }
 
@@ -90,7 +90,7 @@ static int clock_thread_cputime(struct timespec* ts) {
   kern_return_t kern_result = thread_info(
       thread, THREAD_BASIC_INFO, (thread_info_t)&thread_info_data, &count);
   mach_port_deallocate(mach_task_self(), thread);
-  if (UNLIKELY(kern_result != KERN_SUCCESS)) {
+  if (FOLLY_UNLIKELY(kern_result != KERN_SUCCESS)) {
     return -1;
   }
   auto cputime = time_value_to_ns(thread_info_data.system_time) +

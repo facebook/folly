@@ -29,7 +29,8 @@
 using std::cerr;
 using std::endl;
 
-namespace folly {
+using namespace folly;
+using namespace folly::test;
 
 struct EvbAndContext {
   EvbAndContext() {
@@ -266,15 +267,13 @@ TEST(AsyncSSLSocketTest2, TestLegacyClientCannotConnectToTLS12Server) {
   EXPECT_FALSE(std::move(f2).within(std::chrono::seconds(3)).get());
 }
 
-} // namespace folly
-
 int main(int argc, char* argv[]) {
   folly::ssl::init();
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 #endif
   testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   return RUN_ALL_TESTS();
   OPENSSL_cleanup();
 }

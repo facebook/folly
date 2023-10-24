@@ -17,7 +17,7 @@ gtest_force_shared_crt=ON
 [cmake.defines.os=windows]
 BUILD_SHARED_LIBS=ON
 
-# 18.04 googletest is too old
-[debs.not(all(distro=ubuntu,distro_vers="18.04"))]
+# packaged googletest is too old
+[debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04",distro_vers="22.04")))]
 libgtest-dev
 libgmock-dev

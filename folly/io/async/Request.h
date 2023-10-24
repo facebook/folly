@@ -18,13 +18,14 @@
 
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <type_traits>
 #include <utility>
 
+#include <folly/SharedMutex.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/Synchronized.h>
+#include <folly/concurrency/ProcessLocalUniqueId.h>
 #include <folly/container/F14Map.h>
 #include <folly/detail/Iterators.h>
 #include <folly/synchronization/Hazptr.h>
@@ -241,6 +242,32 @@ class RequestContext {
     return getContextData(RequestToken(val));
   }
 
+  // Same as getContextData(), but caching the RequestData pointer in
+  // thread-local storage to avoid the lookup cost. The thread cache is
+  // invalidated if the current request context changes or it gets modified.
+  //
+  // This can be used for RequestData that are queried very frequently. It
+  // should almost always be faster than getContextData(), but it consumes
+  // thread-local storage space, so it is worth doing only when a high hit rate
+  // is expected.
+  //
+  // The storage for the caches is associated to a type tag passed as template
+  // argument. This tag also contains the RequestToken key as a static member
+  // kToken. This guarantees that a given tag cannot be accidentally used with
+  // multiple tokens.
+  //
+  // For example:
+  //
+  // struct MyRequestDataTraits {
+  //   static inline const RequestToken kToken{"my_request_data"};
+  // };
+  //
+  // ...
+  // auto* data = ctx->getThreadCachedContextData<MyRequestDataTraits>();
+  //
+  template <class Traits>
+  RequestData* getThreadCachedContextData();
+
   void onSet();
   void onUnset();
 
@@ -387,7 +414,14 @@ class RequestContext {
     struct Combined;
     hazptr_obj_cohort<> cohort_; // For destruction order
     std::atomic<Combined*> combined_{nullptr};
-    std::mutex mutex_;
+    // Version used to invalidate getThreadCachedContextData() caches on
+    // modifications. A process-wide unique id is used (instead of, for example,
+    // a local counter) so that it is not necessary to compare the request
+    // context pointer as well. This saves one word of TLS and one comparison.
+    std::atomic<uint64_t> version_{processLocalUniqueId()};
+    // This should never be used directly. Use LockGuard so that thread caches
+    // are invalidated at the end of the critical section.
+    folly::SharedMutex mutex_; // exclusive mutex, but smaller than std::mutex
 
     State();
     State(const State& o);
@@ -404,6 +438,8 @@ class RequestContext {
       bool unexpected; // Update was unexpected
       Combined* replaced; // The combined structure was replaced
     };
+
+    class LockGuard;
 
     Combined* combined() const;
     Combined* ensureCombined(); // Lazy allocation if needed
@@ -440,6 +476,7 @@ class RequestContext {
   // Shallow copies keep a note of the root context
   intptr_t rootId_;
 };
+static_assert(sizeof(RequestContext) <= 64, "unexpected size");
 
 /**
  * Note: you probably want to use ShallowCopyRequestContextScopeGuard
@@ -540,5 +577,24 @@ struct ShallowCopyRequestContextScopeGuard {
 
   std::shared_ptr<RequestContext> prev_;
 };
+
+template <class Traits>
+/* static */ FOLLY_EXPORT RequestData*
+RequestContext::getThreadCachedContextData() {
+  thread_local RequestData* cachedData = nullptr;
+  thread_local uint64_t cachedVersion = 0; // Allowed sentinel value.
+
+  // In case cache is invalid, version snapshot must be taken before performing
+  // the lookup.
+  uint64_t curVersion = state_.version_.load(std::memory_order_acquire);
+
+  if (curVersion == cachedVersion) {
+    return cachedData;
+  }
+
+  cachedData = getContextData(Traits::kToken);
+  cachedVersion = curVersion;
+  return cachedData;
+}
 
 } // namespace folly

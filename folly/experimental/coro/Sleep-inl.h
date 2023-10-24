@@ -34,7 +34,10 @@ inline Task<void> sleep(HighResDuration d, Timekeeper* tk) {
       [&result, &baton](Executor::KeepAlive<>&&, Try<Unit>&& t) {
         result = std::move(t);
         baton.post();
-      });
+      },
+      // No user logic runs in the callback, we can avoid the cost of switching
+      // the context.
+      /* context */ nullptr);
 
   {
     CancellationCallback cancelCallback(

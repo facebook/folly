@@ -38,6 +38,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Unit.h>
+#include <folly/detail/SimpleSimdStringUtils.h>
 #include <folly/detail/SplitStringSimd.h>
 
 namespace folly {
@@ -478,10 +479,13 @@ struct IsSimdSupportedDelim<char> : std::true_type {};
  * Examples:
  *
  *   std::vector<folly::StringPiece> v;
- *   folly::split(":", "asd:bsd", v);
+ *   folly::split(':', "asd:bsd", v);
+ *
+ *   folly::small_vector<folly::StringPiece, 3> v;
+ *   folly::split(':', "asd:bsd:csd", v)
  *
  *   std::set<StringPiece> s;
- *   folly::splitTo<StringPiece>(":", "asd:bsd:asd:csd",
+ *   folly::splitTo<StringPiece>("::", "asd::bsd::asd::csd",
  *    std::inserter(s, s.begin()));
  *
  * Split also takes a flag (ignoreEmpty) that indicates whether adjacent
@@ -740,6 +744,13 @@ inline void toLowerAscii(MutableStringPiece str) {
 inline void toLowerAscii(std::string& str) {
   // str[0] is legal also if the string is empty.
   toLowerAscii(&str[0], str.size());
+}
+
+/**
+ * Returns if string contains std::isspace or std::iscntrl characters.
+ **/
+inline bool hasSpaceOrCntrlSymbols(folly::StringPiece s) {
+  return detail::simdHasSpaceOrCntrlSymbols(s);
 }
 
 } // namespace folly

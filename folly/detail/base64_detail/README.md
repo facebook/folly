@@ -358,7 +358,7 @@ Let's say (one letter still 2 bits):
 
 ```
 0AAA'0BBB'0CCC'0DDD  // input chars
-0aaa'0bbb'0ccc'0ddd  // correspoding bytes
+0aaa'0bbb'0ccc'0ddd  // corresponding bytes
 cddd'bbcc'aaab'____  // after a bunch of bit manipulations
                      // (last byte is w/e)
 ```

@@ -152,6 +152,8 @@ class ConcurrentHashMap {
       Atom,
       Mutex,
       Impl>;
+  using SegmentTAllocator = typename std::allocator_traits<
+      Allocator>::template rebind_alloc<SegmentT>;
   template <typename K, typename T>
   using EnableHeterogeneousFind = std::enable_if_t<
       detail::EligibleForHeterogeneousFind<KeyType, HashFn, KeyEqual, K>::value,
@@ -235,7 +237,7 @@ class ConcurrentHashMap {
       auto seg = segments_[i].load(std::memory_order_relaxed);
       if (seg) {
         seg->~SegmentT();
-        Allocator().deallocate((uint8_t*)seg, sizeof(SegmentT));
+        SegmentTAllocator().deallocate(seg, 1);
       }
       segments_[i].store(
           o.segments_[i].load(std::memory_order_relaxed),
@@ -263,7 +265,7 @@ class ConcurrentHashMap {
       auto seg = segments_[i].load(std::memory_order_relaxed);
       if (seg) {
         seg->~SegmentT();
-        Allocator().deallocate((uint8_t*)seg, sizeof(SegmentT));
+        SegmentTAllocator().deallocate(seg, 1);
       }
     }
     cohort_shutdown_cleanup();
@@ -727,13 +729,13 @@ class ConcurrentHashMap {
     SegmentT* seg = segments_[i].load(std::memory_order_acquire);
     if (!seg) {
       auto b = ensureCohort();
-      SegmentT* newseg = (SegmentT*)Allocator().allocate(sizeof(SegmentT));
+      SegmentT* newseg = SegmentTAllocator().allocate(1);
       newseg = new (newseg)
           SegmentT(size_ >> ShardBits, load_factor_, max_size_ >> ShardBits, b);
       if (!segments_[i].compare_exchange_strong(seg, newseg)) {
         // seg is updated with new value, delete ours.
         newseg->~SegmentT();
-        Allocator().deallocate((uint8_t*)newseg, sizeof(SegmentT));
+        SegmentTAllocator().deallocate(newseg, 1);
       } else {
         seg = newseg;
         updateBeginAndEndSegments(i);

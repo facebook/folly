@@ -1,0 +1,33 @@
+[manifest]
+name = zstrong
+
+[git]
+repo_url = https://github.com/facebookincubator/zstrong.git
+
+[build]
+builder = cmake
+
+[dependencies]
+zstd
+
+[dependencies.test=on]
+benchmark
+fmt
+googletest
+
+[shipit.pathmap]
+fbcode/data_compression/experimental/zstrong = .
+
+[shipit.strip]
+^fbcode/data_compression/experimental/zstrong/zstrong/zs2_config\.h$
+
+[cmake.defines]
+BUILD_SHARED_LIBS=OFF
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+BUILD_BENCHMARKS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
+BUILD_BENCHMARKS=OFF

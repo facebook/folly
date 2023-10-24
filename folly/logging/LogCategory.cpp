@@ -48,7 +48,7 @@ LogCategory::LogCategory(StringPiece name, LogCategory* parent)
 }
 
 void LogCategory::admitMessage(const LogMessage& message) const {
-  processMessage(message);
+  processMessageWalker(this, message);
 
   // If this is a fatal message, flush the handlers to make sure the log
   // message was written out, then crash.
@@ -72,12 +72,28 @@ void LogCategory::admitMessage(const LogMessage& message) const {
   }
 }
 
+/*static*/ void LogCategory::processMessageWalker(
+    const LogCategory* category, const LogMessage& message) {
+  while (true) {
+    category->processMessage(message);
+    if (category->parent_ &&
+        message.getLevel() >= category->propagateLevelMessagesToParent_.load(
+                                  std::memory_order_relaxed)) {
+      category = category->parent_;
+    } else {
+      break;
+    }
+  }
+}
+
 void LogCategory::processMessage(const LogMessage& message) const {
   // Make a copy of any attached LogHandlers, so we can release the handlers_
   // lock before holding them.
   //
   // In the common case there will only be a small number of handlers.  Use a
   // std::array in this case to avoid a heap allocation for the vector.
+  //
+  // TODO could this just be a folly::small_vector?
   const std::shared_ptr<LogHandler>* handlers = nullptr;
   size_t numHandlers = 0;
   constexpr uint32_t kSmallOptimizationSize = 5;
@@ -112,13 +128,6 @@ void LogCategory::processMessage(const LogMessage& message) const {
           "\" threw an error: ",
           folly::exceptionStr(ex));
     }
-  }
-
-  // Propagate the message up to our parent LogCategory.
-  if (parent_ &&
-      message.getLevel() >=
-          propagateLevelMessagesToParent_.load(std::memory_order_relaxed)) {
-    parent_->processMessage(message);
   }
 }
 

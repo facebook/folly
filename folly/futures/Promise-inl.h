@@ -22,7 +22,6 @@
 
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/detail/Core.h>
-#include <folly/lang/Pretty.h>
 
 namespace folly {
 
@@ -31,7 +30,7 @@ namespace detail {
 template <typename T>
 void coreDetachPromiseMaybeWithResult(Core<T>& core) {
   if (!core.hasResult()) {
-    core.setResult(Try<T>(exception_wrapper(BrokenPromise(pretty_name<T>()))));
+    core.setResult(Try<T>(exception_wrapper(BrokenPromise(tag<T>))));
   }
   core.detachPromise();
 }
@@ -108,9 +107,11 @@ Future<T> Promise<T>::getFuture() {
 
 template <class T>
 template <class E>
-typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
-Promise<T>::setException(E const& e) {
-  setException(make_exception_wrapper<E>(e));
+typename std::enable_if<
+    std::is_base_of<std::exception, typename std::decay<E>::type>::value>::type
+Promise<T>::setException(E&& e) {
+  setException(
+      make_exception_wrapper<typename std::decay<E>::type>(std::forward<E>(e)));
 }
 
 template <class T>
