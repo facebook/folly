@@ -21,8 +21,13 @@
 #include <stdint.h>
 
 #include <atomic>
+#include <chrono>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <type_traits>
+#include <utility>
 
 #include <folly/CPortability.h>
 #include <folly/Likely.h>
@@ -243,6 +248,7 @@ namespace folly {
 struct SharedMutexToken {
   enum class Type : uint16_t {
     INVALID = 0,
+    UNKNOWN,
     INLINE_SHARED,
     DEFERRED_SHARED,
   };
@@ -573,6 +579,14 @@ class SharedMutexImpl : std::conditional_t<
   }
 
   void unlock_shared(Token& token) {
+    if (token.type_ == Token::Type::UNKNOWN) {
+      unlock_shared();
+      if (folly::kIsDebug) {
+        token.type_ = Token::Type::INVALID;
+      }
+      return;
+    }
+
     annotateReleased(annotate_rwlock_level::rdlock);
 
     assert(
@@ -1767,4 +1781,145 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
   }
 }
 
+namespace shared_mutex_detail {
+
+[[noreturn]] void throwOperationNotPermitted();
+
+[[noreturn]] void throwDeadlockWouldOccur();
+
+} // namespace shared_mutex_detail
+
 } // namespace folly
+
+// std::shared_lock specialization for folly::SharedMutex to leverage tokenful
+// version of unlock_shared for faster unlocking.
+namespace std {
+
+template <
+    bool ReaderPriority,
+    typename Tag_,
+    template <typename>
+    class Atom,
+    typename Policy>
+class shared_lock<
+    ::folly::SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>> {
+ public:
+  using mutex_type =
+      ::folly::SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>;
+  using token_type = typename mutex_type::Token;
+
+  shared_lock() noexcept = default;
+
+  explicit shared_lock(mutex_type& mutex) : mutex_(std::addressof(mutex)) {
+    lock();
+  }
+
+  shared_lock(mutex_type& mutex, std::defer_lock_t) noexcept
+      : mutex_(std::addressof(mutex)) {}
+
+  shared_lock(mutex_type& mutex, std::try_to_lock_t)
+      : mutex_(std::addressof(mutex)) {
+    try_lock();
+  }
+
+  shared_lock(mutex_type& mutex, std::adopt_lock_t)
+      : mutex_(std::addressof(mutex)) {
+    token_.type_ = token_type::Type::UNKNOWN;
+  }
+
+  template <typename Clock, typename Duration>
+  shared_lock(
+      mutex_type& mutex,
+      const std::chrono::time_point<Clock, Duration>& deadline)
+      : mutex_(std::addressof(mutex)) {
+    try_lock_until(deadline);
+  }
+
+  template <typename Rep, typename Period>
+  shared_lock(
+      mutex_type& mutex, const std::chrono::duration<Rep, Period>& timeout)
+      : mutex_(std::addressof(mutex)) {
+    try_lock_for(timeout);
+  }
+
+  ~shared_lock() {
+    if (owns_lock()) {
+      mutex_->unlock_shared(token_);
+    }
+  }
+
+  shared_lock(const shared_lock&) = delete;
+
+  shared_lock& operator=(const shared_lock&) = delete;
+
+  shared_lock(shared_lock&& other) noexcept : shared_lock() { swap(other); }
+
+  shared_lock& operator=(shared_lock&& other) noexcept {
+    shared_lock(std::move(other)).swap(*this);
+    return *this;
+  }
+
+  void lock() {
+    error_if_not_lockable();
+    mutex_->lock_shared(token_);
+  }
+
+  bool try_lock() {
+    error_if_not_lockable();
+    return mutex_->try_lock_shared(token_);
+  }
+
+  template <typename Rep, typename Period>
+  bool try_lock_for(const std::chrono::duration<Rep, Period>& timeout) {
+    error_if_not_lockable();
+    return mutex_->try_lock_shared_for(timeout, token_);
+  }
+
+  template <typename Clock, typename Duration>
+  bool try_lock_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    error_if_not_lockable();
+    return mutex_->try_lock_shared_until(deadline, token_);
+  }
+
+  void unlock() {
+    if (FOLLY_UNLIKELY(!owns_lock())) {
+      ::folly::shared_mutex_detail::throwDeadlockWouldOccur();
+    }
+    mutex_->unlock_shared(token_);
+    token_ = {};
+  }
+
+  void swap(shared_lock& other) noexcept {
+    std::swap(mutex_, other.mutex_);
+    std::swap(token_, other.token_);
+  }
+
+  mutex_type* release() noexcept {
+    token_ = {};
+    return std::exchange(mutex_, nullptr);
+  }
+
+  FOLLY_NODISCARD bool owns_lock() const noexcept {
+    return static_cast<bool>(token_);
+  }
+
+  explicit operator bool() const noexcept { return owns_lock(); }
+
+  FOLLY_NODISCARD mutex_type* mutex() const noexcept { return mutex_; }
+
+ private:
+  void error_if_not_lockable() const {
+    if (FOLLY_UNLIKELY(mutex_ == nullptr)) {
+      ::folly::shared_mutex_detail::throwOperationNotPermitted();
+    }
+    if (FOLLY_UNLIKELY(owns_lock())) {
+      ::folly::shared_mutex_detail::throwDeadlockWouldOccur();
+    }
+  }
+
+  mutex_type* mutex_ = nullptr;
+  token_type token_;
+};
+
+} // namespace std

@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+#include <system_error>
+
 #include <folly/SharedMutex.h>
 
 #include <folly/Indestructible.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/SysResource.h>
 
 namespace folly {
@@ -62,6 +65,16 @@ long getCurrentThreadInvoluntaryContextSwitchCount() {
 #else
   return 0;
 #endif
+}
+
+[[noreturn]] void throwOperationNotPermitted() {
+  folly::throw_exception<std::system_error>(
+      std::make_error_code(std::errc::operation_not_permitted));
+}
+
+[[noreturn]] void throwDeadlockWouldOccur() {
+  folly::throw_exception<std::system_error>(
+      std::make_error_code(std::errc::resource_deadlock_would_occur));
 }
 
 } // namespace shared_mutex_detail

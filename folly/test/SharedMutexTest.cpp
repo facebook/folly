@@ -18,7 +18,11 @@
 
 #include <stdlib.h>
 
+#include <chrono>
+#include <mutex>
 #include <random>
+#include <shared_mutex> // std::shared_lock
+#include <system_error>
 #include <thread>
 #include <vector>
 
@@ -1424,6 +1428,127 @@ TEST(SharedMutex, ping_pong_read_prio) {
   for (int pass = 0; pass < 1; ++pass) {
     runPingPong<SharedMutexReadPriority, atomic>(50000, 0);
   }
+}
+
+TEST(SharedMutex, shared_lock_basic) {
+  SharedMutex mutex;
+
+  std::shared_lock shared_lock{mutex};
+  EXPECT_TRUE(shared_lock.owns_lock());
+  EXPECT_EQ(&mutex, shared_lock.mutex());
+
+  shared_lock.unlock();
+  EXPECT_FALSE(shared_lock.owns_lock());
+  EXPECT_EQ(&mutex, shared_lock.mutex());
+
+  std::unique_lock unique_lock{mutex};
+  EXPECT_TRUE(unique_lock.owns_lock());
+}
+
+TEST(SharedMutex, shared_lock_default_constructor) {
+  std::shared_lock<SharedMutex> lock;
+  EXPECT_FALSE(lock.owns_lock());
+  EXPECT_EQ(nullptr, lock.mutex());
+}
+
+TEST(SharedMutex, shared_lock_mutex_constructor) {
+  SharedMutex mutex;
+  std::shared_lock lock{mutex};
+
+  EXPECT_TRUE(lock.owns_lock());
+  EXPECT_EQ(&mutex, lock.mutex());
+}
+
+TEST(SharedMutex, shared_lock_defer_constructor) {
+  SharedMutex mutex;
+  std::shared_lock lock{mutex, std::defer_lock};
+
+  EXPECT_FALSE(lock.owns_lock());
+  EXPECT_EQ(&mutex, lock.mutex());
+}
+
+TEST(SharedMutex, shared_lock_try_to_constructor) {
+  SharedMutex mutex;
+
+  {
+    std::shared_lock lock{mutex, std::try_to_lock};
+
+    EXPECT_TRUE(lock.owns_lock());
+    EXPECT_EQ(&mutex, lock.mutex());
+  }
+
+  {
+    std::unique_lock unique{mutex};
+    EXPECT_TRUE(unique.owns_lock());
+
+    std::shared_lock shared{mutex, std::try_to_lock};
+
+    EXPECT_FALSE(shared.owns_lock());
+    EXPECT_EQ(&mutex, shared.mutex());
+  }
+}
+
+TEST(SharedMutex, shared_lock_adopt_constructor) {
+  SharedMutex mutex;
+
+  {
+    mutex.lock_shared();
+    std::shared_lock lock{mutex, std::adopt_lock};
+
+    EXPECT_TRUE(lock.owns_lock());
+    EXPECT_EQ(&mutex, lock.mutex());
+  }
+
+  {
+    SharedMutexToken token;
+    mutex.lock_shared(token);
+    std::shared_lock lock{mutex, std::adopt_lock};
+
+    EXPECT_TRUE(lock.owns_lock());
+    EXPECT_EQ(&mutex, lock.mutex());
+  }
+}
+
+TEST(SharedMutex, shared_lock_deadline_constructor) {
+  using namespace std::chrono_literals;
+  const std::chrono::time_point<std::chrono::system_clock> deadline =
+      std::chrono::system_clock::now() + 1ms;
+  SharedMutex mutex;
+  std::shared_lock lock{mutex, deadline};
+
+  EXPECT_TRUE(lock.owns_lock());
+  EXPECT_EQ(&mutex, lock.mutex());
+}
+
+TEST(SharedMutex, shared_lock_timeout_constructor) {
+  using namespace std::chrono_literals;
+  SharedMutex mutex;
+  std::shared_lock lock{mutex, /* timeout = */ 1ms};
+
+  EXPECT_TRUE(lock.owns_lock());
+  EXPECT_EQ(&mutex, lock.mutex());
+}
+
+TEST(SharedMutex, shared_lock_double_unlock) {
+  SharedMutex mutex;
+  std::shared_lock lock{mutex};
+  lock.unlock();
+
+  EXPECT_THROW(lock.unlock(), std::system_error);
+}
+
+TEST(SharedMutex, shared_lock_lock_no_mutex) {
+  std::shared_lock<SharedMutex> lock;
+
+  EXPECT_THROW(lock.lock(), std::system_error);
+}
+
+TEST(SharedMutex, shared_lock_lock_already_held) {
+  SharedMutex mutex;
+  std::shared_lock lock{mutex};
+
+  EXPECT_TRUE(lock.owns_lock());
+  EXPECT_THROW(lock.lock(), std::system_error);
 }
 
 // This is here so you can tell how much of the runtime reported by the
