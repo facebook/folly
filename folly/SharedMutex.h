@@ -495,7 +495,11 @@ class SharedMutexImpl : std::conditional_t<
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU | kWaitingS);
   }
 
-  // Managing the token yourself makes unlock_shared a bit faster
+  // Managing the token yourself makes unlock_shared a bit faster. If the
+  // tokenful version of lock_shared() is used, then it is required to pair the
+  // lock with the tokenful version of unlock_shared(); alternatively, the token
+  // can be invalidated with release_token(), which allows to use the tokenless
+  // unlock_shared().
 
   void lock_shared() {
     WaitForever ctx;
@@ -597,6 +601,28 @@ class SharedMutexImpl : std::conditional_t<
         !tryUnlockSharedDeferred(token.slot_)) {
       unlockSharedInline();
     }
+    if (folly::kIsDebug) {
+      token.state_ = Token::State::Invalid;
+    }
+  }
+
+  // Invalidates the given token so that the tokenless version of
+  // unlock_shared() can be called for a lock that was obtained from a tokenful
+  // lock_shared(). Note that this does not unlock the mutex at any point.
+  void release_token(Token& token) {
+    assert(token.state_ != Token::State::Invalid);
+    if (token.state_ != Token::State::LockedDeferredShared) {
+      return;
+    }
+
+    auto slot = token.slot_;
+    assert(slot < shared_mutex_detail::getMaxDeferredReaders());
+    auto slotValue = tokenfulSlotValue();
+    // Lock may have been inlined, in which case this will return false. We
+    // don't need to do anything in this case.
+    deferredReader(slot)->compare_exchange_strong(
+        slotValue, tokenlessSlotValue());
+
     if (folly::kIsDebug) {
       token.state_ = Token::State::Invalid;
     }
@@ -1884,7 +1910,7 @@ class shared_lock<
 
   void unlock() {
     if (FOLLY_UNLIKELY(!owns_lock())) {
-      ::folly::shared_mutex_detail::throwDeadlockWouldOccur();
+      ::folly::shared_mutex_detail::throwOperationNotPermitted();
     }
     mutex_->unlock_shared(token_);
     token_ = {};
@@ -1896,7 +1922,10 @@ class shared_lock<
   }
 
   mutex_type* release() noexcept {
-    token_ = {};
+    if (owns_lock()) {
+      mutex_->release_token(token_);
+      token_ = {};
+    }
     return std::exchange(mutex_, nullptr);
   }
 

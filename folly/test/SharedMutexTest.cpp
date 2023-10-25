@@ -1374,6 +1374,17 @@ static void runPingPong(size_t numRounds, size_t burnCount) {
   paddedLocks[(numRounds + 2) % 3].lock_.unlock_shared();
 }
 
+template <class F>
+static void parallelRun(size_t numThreads, F f) {
+  std::vector<thread> threads;
+  for (size_t tid = 0; tid < numThreads; ++tid) {
+    threads.emplace_back([tid, &f] { f(tid); });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
 static void folly_rwspin_ping_pong(size_t n, size_t scale, size_t burnCount) {
   runPingPong<RWSpinLock>(n / scale, burnCount);
 }
@@ -1430,6 +1441,33 @@ TEST(SharedMutex, ping_pong_read_prio) {
   }
 }
 
+TEST(SharedMutex, release_token) {
+  {
+    SharedMutex mutex;
+    // Ensure sufficient contention that we get deferred locks.
+    parallelRun(8, [&](size_t) {
+      for (size_t i = 0; i < 100; ++i) {
+        SharedMutexToken token;
+        mutex.lock_shared(token);
+        /* sleep override */ std::this_thread::sleep_for(1ms);
+        mutex.release_token(token);
+        mutex.unlock_shared();
+      }
+    });
+  }
+  {
+    SharedMutex mutex;
+    parallelRun(8, [&](size_t) {
+      for (size_t i = 0; i < 100; ++i) {
+        std::shared_lock lock{mutex};
+        /* sleep override */ std::this_thread::sleep_for(1ms);
+        lock.release();
+        mutex.unlock_shared();
+      }
+    });
+  }
+}
+
 TEST(SharedMutex, shared_lock_basic) {
   SharedMutex mutex;
 
@@ -1449,6 +1487,7 @@ TEST(SharedMutex, shared_lock_default_constructor) {
   std::shared_lock<SharedMutex> lock;
   EXPECT_FALSE(lock.owns_lock());
   EXPECT_EQ(nullptr, lock.mutex());
+  EXPECT_EQ(lock.release(), nullptr);
 }
 
 TEST(SharedMutex, shared_lock_mutex_constructor) {
@@ -1465,6 +1504,8 @@ TEST(SharedMutex, shared_lock_defer_constructor) {
 
   EXPECT_FALSE(lock.owns_lock());
   EXPECT_EQ(&mutex, lock.mutex());
+
+  EXPECT_EQ(&mutex, lock.release());
 }
 
 TEST(SharedMutex, shared_lock_try_to_constructor) {
