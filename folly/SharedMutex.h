@@ -246,19 +246,19 @@
 namespace folly {
 
 struct SharedMutexToken {
-  enum class Type : uint16_t {
-    INVALID = 0,
-    UNKNOWN,
-    INLINE_SHARED,
-    DEFERRED_SHARED,
+  enum class State : uint16_t {
+    Invalid = 0,
+    LockedShared, // May be inline or deferred.
+    LockedInlineShared,
+    LockedDeferredShared,
   };
 
-  Type type_{};
+  State state_{};
   uint16_t slot_{};
 
   constexpr SharedMutexToken() = default;
 
-  explicit operator bool() const { return type_ != Type::INVALID; }
+  explicit operator bool() const { return state_ != State::Invalid; }
 };
 
 #ifndef FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT
@@ -579,10 +579,10 @@ class SharedMutexImpl : std::conditional_t<
   }
 
   void unlock_shared(Token& token) {
-    if (token.type_ == Token::Type::UNKNOWN) {
+    if (token.state_ == Token::State::LockedShared) {
       unlock_shared();
       if (folly::kIsDebug) {
-        token.type_ = Token::Type::INVALID;
+        token.state_ = Token::State::Invalid;
       }
       return;
     }
@@ -590,15 +590,15 @@ class SharedMutexImpl : std::conditional_t<
     annotateReleased(annotate_rwlock_level::rdlock);
 
     assert(
-        token.type_ == Token::Type::INLINE_SHARED ||
-        token.type_ == Token::Type::DEFERRED_SHARED);
+        token.state_ == Token::State::LockedInlineShared ||
+        token.state_ == Token::State::LockedDeferredShared);
 
-    if (token.type_ != Token::Type::DEFERRED_SHARED ||
+    if (token.state_ != Token::State::LockedDeferredShared ||
         !tryUnlockSharedDeferred(token.slot_)) {
       unlockSharedInline();
     }
     if (folly::kIsDebug) {
-      token.type_ = Token::Type::INVALID;
+      token.state_ = Token::State::Invalid;
     }
   }
 
@@ -625,7 +625,7 @@ class SharedMutexImpl : std::conditional_t<
 
   void unlock_and_lock_shared(Token& token) {
     unlock_and_lock_shared();
-    token.type_ = Token::Type::INLINE_SHARED;
+    token.state_ = Token::State::LockedInlineShared;
   }
 
   void lock_upgrade() {
@@ -691,7 +691,7 @@ class SharedMutexImpl : std::conditional_t<
 
   void unlock_upgrade_and_lock_shared(Token& token) {
     unlock_upgrade_and_lock_shared();
-    token.type_ = Token::Type::INLINE_SHARED;
+    token.state_ = Token::State::LockedInlineShared;
   }
 
   void unlock_and_lock_upgrade() {
@@ -1335,7 +1335,7 @@ class SharedMutexImpl : std::conditional_t<
 
   // It is straightforward to make a token-less lock_shared() and
   // unlock_shared() either by making the token-less version always use
-  // INLINE_SHARED mode or by removing the token version.  Supporting
+  // LockedInlineShared mode or by removing the token version.  Supporting
   // deferred operation for both types is trickier than it appears, because
   // the purpose of the token it so that unlock_shared doesn't have to
   // look in other slots for its deferred lock.  Token-less unlock_shared
@@ -1352,7 +1352,7 @@ class SharedMutexImpl : std::conditional_t<
     if ((state & (kHasS | kMayDefer | kHasE)) == 0 &&
         state_.compare_exchange_strong(state, state + kIncrHasS)) {
       if (token != nullptr) {
-        token->type_ = Token::Type::INLINE_SHARED;
+        token->state_ = Token::State::LockedInlineShared;
       }
       return true;
     }
@@ -1704,7 +1704,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
       if (state_.compare_exchange_strong(state, state + kIncrHasS)) {
         // successfully recorded the read lock inline
         if (token != nullptr) {
-          token->type_ = Token::Type::INLINE_SHARED;
+          token->state_ = Token::State::LockedInlineShared;
         }
         return true;
       }
@@ -1750,7 +1750,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
       assert((state & kHasE) == 0);
       // success
       if (token != nullptr) {
-        token->type_ = Token::Type::DEFERRED_SHARED;
+        token->state_ = Token::State::LockedDeferredShared;
         token->slot_ = (uint16_t)slot;
       }
       return true;
@@ -1824,7 +1824,7 @@ class shared_lock<
 
   shared_lock(mutex_type& mutex, std::adopt_lock_t)
       : mutex_(std::addressof(mutex)) {
-    token_.type_ = token_type::Type::UNKNOWN;
+    token_.state_ = token_type::State::LockedShared;
   }
 
   template <typename Clock, typename Duration>
