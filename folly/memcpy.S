@@ -15,76 +15,33 @@
  */
 
 /*
- * __folly_memcpy: An optimized memcpy implementation that uses prefetch and
- * AVX2 instructions.
+ * __folly_memcpy
  *
  * This implementation of memcpy acts as a memmove: while overlapping copies
  * are undefined in memcpy, in some implementations they're the same function and
  * legacy programs rely on this behavior.
- *
- * This implementation uses prefetch to avoid dtlb misses. This can
- * substantially reduce dtlb store misses in cases where the destination
- * location is absent from L1 cache and where the copy size is small enough
- * that the hardware prefetcher doesn't have a large impact.
- *
- * The number of branches is limited by the use of overlapping loads & stores.
- * This helps with copies where the source and destination cache lines are already
- * present in L1 because there are fewer instructions to execute and fewer
- * branches to potentially mispredict.
- *   e.g. to copy the last 4 <= n <= 7 bytes: copy the first & last 4 bytes (overlapped):
- *      movl        (%rsi), %r8d
- *      movl        -4(%rsi,%rdx), %r9d
- *      movl        %r8d, (%rdi)
- *      movl        %r9d, -4(%rdi,%rdx)
- *
  *
  * For sizes up to 256 all source data is first read into registers and then written:
  * - n <=  16: overlapping movs
  * - n <=  32: overlapping unaligned 16-byte SSE XMM load/stores
  * - n <= 256: overlapping unaligned 32-byte AVX YMM load/stores
  *
- * Large copies (> 256 bytes) use unaligned loads + aligned stores.
- * This is observed to always be faster than rep movsb, so the rep movsb
- * instruction is not used.
- * - The head & tail may be unaligned => they're always written using unaligned stores.
- *
- * If the copy size is humongous (> 32 KiB) and the source and destination are both
- * aligned, this memcpy will use non-temporal operations (AVX2). This can have
- * a substantial speedup for copies where data is absent from L1, but it
- * is significantly slower if the source and destination data were already
- * in L1. The use of non-temporal operations also has the effect that after
- * the copy is complete, the data will be moved out of L1, even if the data was
- * present before the copy started.
- *
- * For n > 256 and overlapping src & dst buffers (memmove):
- * - use unaligned loads + aligned stores, but not non-temporal stores
- * - for dst < src forward copy in 128 byte batches:
- *   - unaligned load the first 32 bytes & last 4 x 32 bytes
- *   - forward copy (unaligned load + aligned stores) 4 x 32 bytes at a time
- *   - unaligned store the first 32 bytes & last 4 x 32 bytes
- * - for dst > src backward copy in 128 byte batches:
+ * For n > 256:
+ * - for src >= dst, forward copy:
+ *   - if n >= REP_MOVSB_THRESHOLD, use rep movsb
+ *   - otherwise, copy in 128 byte batches
+ * - for src < dst && (src + n) <= dst, forward copy:
+ *   - if n >= REP_MOVSB_THRESHOLD, use rep movsb
+ *   - otherwise, copy in 128 byte batches
+ * - for src < dst && (src + n) > dst, backward copy in 128 byte batches:
  *   - unaligned load the first 4 x 32 bytes & last 32 bytes
  *   - backward copy (unaligned load + aligned stores) 4 x 32 bytes at a time
  *   - unaligned store the first 4 x 32 bytes & last 32 bytes
- *
- * @author Logan Evans <lpe@fb.com>
  */
 
 #if defined(__AVX2__)
 
-#if defined(PREFETCH)
-#undef PREFETCH
-#endif
-#if __PRFCHW__ // Broadwell+
-#define PREFETCH prefetchw
-#else
-#define PREFETCH prefetcht0
-#endif
-
-// This threshold is half of L1 cache on a Skylake machine, which means that
-// potentially all of L1 will be populated by this copy once it is executed
-// (dst and src are cached for temporal copies).
-#define NON_TEMPORAL_STORE_THRESHOLD $32768
+#define REP_MOVSB_THRESHOLD $1024
 
         .file       "memcpy.S"
         .section    .text,"ax"
@@ -143,9 +100,6 @@ __folly_memcpy:
         test        %rdx, %rdx
         je          .L_EQ0
 
-        PREFETCH    (%rdi)
-        PREFETCH    -1(%rdi,%rdx)
-
         cmp         $8, %rdx
         jb          .L_GE1_LE7
 
@@ -195,13 +149,15 @@ __folly_memcpy:
 
         .align      2
 .L_GE33:
+        cmp         $256, %rdx
+        ja          .L_GE257
+
+.L_GE33_LE256:
         vmovdqu     (%rsi), %ymm0
         vmovdqu     -32(%rsi,%rdx), %ymm7
 
         cmp         $64, %rdx
         jbe         .L_GE33_LE64
-
-        PREFETCH    64(%rdi)
 
         vmovdqu     32(%rsi), %ymm1
         vmovdqu     -64(%rsi,%rdx), %ymm6
@@ -209,15 +165,11 @@ __folly_memcpy:
         cmp         $128, %rdx
         jbe         .L_GE65_LE128
 
-        PREFETCH    128(%rdi)
-
         vmovdqu     64(%rsi), %ymm2
         vmovdqu     -96(%rsi,%rdx), %ymm5
 
         cmp         $192, %rdx
         jbe         .L_GE129_LE192
-
-        PREFETCH    192(%rdi)
 
         vmovdqu     96(%rsi), %ymm3
         vmovdqu     -128(%rsi,%rdx), %ymm4
@@ -226,185 +178,63 @@ __folly_memcpy:
         jbe         .L_GE193_LE256
 
 .L_GE257:
-        PREFETCH    256(%rdi)
+        cmp         %rdi, %rsi
+        jae         .L_COPY_FORWARD     # if src >= dst, copy forward
 
-        // Check if there is an overlap. If there is an overlap then the caller
-        // has a bug since this is undefined behavior. However, for legacy
-        // reasons this behavior is expected by some callers.
-        //
-        // All copies through 256 bytes will operate as a memmove since for
-        // those sizes all reads are performed before any writes.
-        //
-        // This check uses the idea that there is an overlap if
-        // (%rdi < (%rsi + %rdx)) && (%rsi < (%rdi + %rdx)),
-        // or equivalently, there is no overlap if
-        // ((%rsi + %rdx) <= %rdi) || ((%rdi + %rdx) <= %rsi).
-        //
-        // %r9 will be used after .L_ALIGNED_DST_LOOP to calculate how many
-        // bytes remain to be copied.
+        lea         (%rsi,%rdx), %r10   # r10 = (src + n)
+        cmp         %rdi, %r10          # if src < dst && (src + n) > dst, copy backward
+        ja          .L_OVERLAP_BWD      # otherwise, fall through to copy forward
 
-        // (%rsi + %rdx <= %rdi) => no overlap
-        lea         (%rsi,%rdx), %r9
-        cmp         %rdi, %r9
-        jbe         .L_NO_OVERLAP
+.L_COPY_FORWARD:
+        mov         %rdx, %rcx          # rcx is the copy length n
+        cmp         REP_MOVSB_THRESHOLD, %rdx
+        jb          .L_COPY_FORWARD_WITH_LOOP
 
-        // (%rdi + %rdx <= %rsi) => no overlap
-        lea         (%rdi,%rdx), %r8
-        cmp         %rsi, %r8
-        // If no info is available in branch predictor's cache, Intel CPUs assume
-        // forward jumps are not taken. Use a forward jump as overlapping buffers
-        // are unlikely.
-        ja          .L_OVERLAP
-
-        .align      2
-.L_NO_OVERLAP:
-        vmovdqu     %ymm0, (%rdi)
-        vmovdqu     %ymm1, 32(%rdi)
-        vmovdqu     %ymm2, 64(%rdi)
-        vmovdqu     %ymm3, 96(%rdi)
-
-        // Align %rdi to a 32 byte boundary.
-        // %rcx = 128 - 31 & %rdi
-        mov         $128, %rcx
-        and         $31, %rdi
-        sub         %rdi, %rcx
-
-        lea         (%rsi,%rcx), %rsi
-        lea         (%rax,%rcx), %rdi
-        sub         %rcx, %rdx
-
-        // %r8 is the end condition for the loop.
-        lea         -128(%rsi,%rdx), %r8
-
-        cmp         NON_TEMPORAL_STORE_THRESHOLD, %rdx
-        jae         .L_NON_TEMPORAL_LOOP
-
-        .align      2
-.L_ALIGNED_DST_LOOP:
-        PREFETCH    128(%rdi)
-        PREFETCH    192(%rdi)
-
-        vmovdqu     (%rsi), %ymm0
-        vmovdqu     32(%rsi), %ymm1
-        vmovdqu     64(%rsi), %ymm2
-        vmovdqu     96(%rsi), %ymm3
-        add         $128, %rsi
-
-        vmovdqa     %ymm0, (%rdi)
-        vmovdqa     %ymm1, 32(%rdi)
-        vmovdqa     %ymm2, 64(%rdi)
-        vmovdqa     %ymm3, 96(%rdi)
-        add         $128, %rdi
-
-        cmp         %r8, %rsi
-        jb          .L_ALIGNED_DST_LOOP
-
-.L_ALIGNED_DST_LOOP_END:
-        sub         %rsi, %r9
-        mov         %r9, %rdx
-
-        vmovdqu     %ymm4, -128(%rdi,%rdx)
-        vmovdqu     %ymm5, -96(%rdi,%rdx)
-        vmovdqu     %ymm6, -64(%rdi,%rdx)
-        vmovdqu     %ymm7, -32(%rdi,%rdx)
-
-        vzeroupper
+.L_COPY_FORWARD_WITH_REP_MOVSB:
+        rep movsb
         ret
 
-        .align      2
-.L_NON_TEMPORAL_LOOP:
-        testb       $31, %sil
-        jne         .L_ALIGNED_DST_LOOP
-        // This is prefetching the source data unlike ALIGNED_DST_LOOP which
-        // prefetches the destination data. This choice is again informed by
-        // benchmarks. With a non-temporal store the entirety of the cache line
-        // is being written so the previous data can be discarded without being
-        // fetched.
-        prefetchnta 128(%rsi)
-        prefetchnta 196(%rsi)
+.L_COPY_FORWARD_WITH_LOOP:
+        vmovdqu     -32(%rsi,%rdx), %ymm4
+        xor         %r8, %r8            # r8 is the length that has been copied
+        shr         $7, %rcx            # rcx = n/128
+        shl         $7, %rcx            # rcx is the length that should be copied by the loop
 
-        vmovntdqa   (%rsi), %ymm0
-        vmovntdqa   32(%rsi), %ymm1
-        vmovntdqa   64(%rsi), %ymm2
-        vmovntdqa   96(%rsi), %ymm3
-        add         $128, %rsi
+        .align 16
+.L_COPY_FORWARD_LOOP_BODY:
+        vmovdqu     (%rsi,%r8), %ymm0
+        vmovdqu     32(%rsi,%r8), %ymm1
+        vmovdqu     64(%rsi,%r8), %ymm2
+        vmovdqu     96(%rsi,%r8), %ymm3
+        vmovdqu     %ymm0, (%rdi,%r8)
+        vmovdqu     %ymm1, 32(%rdi,%r8)
+        vmovdqu     %ymm2, 64(%rdi,%r8)
+        vmovdqu     %ymm3, 96(%rdi,%r8)
+        add         $128, %r8
+        cmp         %rcx, %r8
+        jb          .L_COPY_FORWARD_LOOP_BODY
 
-        vmovntdq    %ymm0, (%rdi)
-        vmovntdq    %ymm1, 32(%rdi)
-        vmovntdq    %ymm2, 64(%rdi)
-        vmovntdq    %ymm3, 96(%rdi)
-        add         $128, %rdi
+        mov         %rdx, %rcx          # rcx is the original length n
+        sub         %r8, %rdx           # rdx is the tail length
+        cmp         $32, %rdx
+        jbe         .L_TAIL_LE32
+        add         %r8, %rsi           # rsi is the tail of src
+        add         %r8, %rdi           # rdi is the tail of dst
+        jmp         .L_GE33_LE256
 
-        cmp         %r8, %rsi
-        jb          .L_NON_TEMPORAL_LOOP
-
-        sfence
-        jmp         .L_ALIGNED_DST_LOOP_END
-
-
-.L_OVERLAP:
-        .align      2
-        cmp         %rdi, %rsi
-        jb          .L_OVERLAP_BWD  // %rsi  < %rdi => backward-copy
-        je          .L_RET          // %rsi == %rdi => return, nothing to copy
-
-        // Source & destination buffers overlap. Forward copy.
-
-        vmovdqu     (%rsi), %ymm8
-
-        // Align %rdi to a 32 byte boundary.
-        // %rcx = 32 - 31 & %rdi
-        mov         $32, %rcx
-        and         $31, %rdi
-        sub         %rdi, %rcx
-
-        lea         (%rsi,%rcx), %rsi
-        lea         (%rax,%rcx), %rdi
-        sub         %rcx, %rdx
-
-        // %r8 is the end condition for the loop.
-        lea         -128(%rsi,%rdx), %r8
-
-
-.L_OVERLAP_FWD_ALIGNED_DST_LOOP:
-        PREFETCH    128(%rdi)
-        PREFETCH    192(%rdi)
-
-        vmovdqu       (%rsi), %ymm0
-        vmovdqu     32(%rsi), %ymm1
-        vmovdqu     64(%rsi), %ymm2
-        vmovdqu     96(%rsi), %ymm3
-        add         $128, %rsi
-
-        vmovdqa     %ymm0,   (%rdi)
-        vmovdqa     %ymm1, 32(%rdi)
-        vmovdqa     %ymm2, 64(%rdi)
-        vmovdqa     %ymm3, 96(%rdi)
-        add         $128, %rdi
-
-        cmp         %r8, %rsi
-        jb          .L_OVERLAP_FWD_ALIGNED_DST_LOOP
-
-        sub         %rsi, %r9
-        mov         %r9, %rdx
-
-        vmovdqu     %ymm4, -128(%rdi,%rdx)
-        vmovdqu     %ymm5,  -96(%rdi,%rdx)
-        vmovdqu     %ymm6,  -64(%rdi,%rdx)
-        vmovdqu     %ymm7,  -32(%rdi,%rdx)
-        vmovdqu     %ymm8, (%rax)  // %rax == the original (unaligned) %rdi
-
+.L_TAIL_LE32:
+        vmovdqu     %ymm4, -32(%rdi,%rcx)
         vzeroupper
-
-.L_RET:
         ret
 
 .L_OVERLAP_BWD:
         # Save last 32 bytes.
         vmovdqu     -32(%rsi, %rdx), %ymm8
         lea         -32(%rdi, %rdx), %r9
-
-
+        vmovdqu     (%rsi),   %ymm0     # save the first 128 bytes to ymm0/1/2/3
+        vmovdqu     32(%rsi), %ymm1
+        vmovdqu     64(%rsi), %ymm2
+        vmovdqu     96(%rsi), %ymm3
         // %r8 is the end condition for the loop.
         lea         128(%rsi), %r8
 
@@ -417,11 +247,8 @@ __folly_memcpy:
         add         %rdx, %rsi
         add         %rdx, %rdi
 
-
+        .align 16
 .L_OVERLAP_BWD_ALIGNED_DST_LOOP:
-        PREFETCH    -128(%rdi)
-        PREFETCH    -192(%rdi)
-
         vmovdqu      -32(%rsi), %ymm4
         vmovdqu      -64(%rsi), %ymm5
         vmovdqu      -96(%rsi), %ymm6
