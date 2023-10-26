@@ -53,7 +53,7 @@ class IOThreadPoolExecutorBase : public ThreadPoolExecutor, public IOExecutor {
         : Thread(pool), shouldRun(true), pendingTasks(0) {}
     std::atomic<bool> shouldRun;
     std::atomic<size_t> pendingTasks;
-    folly::EventBase* eventBase;
+    folly::EventBase* eventBase{nullptr};
     std::mutex eventBaseShutdownMutex_;
   };
 };
