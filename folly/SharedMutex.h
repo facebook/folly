@@ -1009,13 +1009,6 @@ class SharedMutexImpl : std::conditional_t<
       !(kDeferredSearchDistance & (kDeferredSearchDistance - 1)),
       "kDeferredSearchDistance must be a power of 2");
 
-  // The number of deferred locks that can be simultaneously acquired
-  // by a thread via the token-less methods without performing any heap
-  // allocations.  Each of these costs 3 pointers (24 bytes, probably)
-  // per thread.  There's not much point in making this larger than
-  // kDeferredSearchDistance.
-  static constexpr uint32_t kTokenStackTLSCapacity = 2;
-
   // We need to make sure that if there is a lock_shared()
   // and lock_shared(token) followed by unlock_shared() and
   // unlock_shared(token), the token-less unlock doesn't null
