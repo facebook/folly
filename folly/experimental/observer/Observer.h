@@ -139,17 +139,15 @@ class TLObserver;
 
 /**
  * A ReadMostlyAtomicObserver guarantees that reading is exactly one relaxed
- * atomic load. Like AtomicObserver, the value is cached using `std::atomic`.
- * However, there is no version check when reading which means that the
- * cached value may be out-of-date with the Observer value. The cached value
- * will be updated asynchronously in a background thread.
+ * atomic load and a read from a thread local bool. Like AtomicObserver, the
+ * value is cached using `std::atomic`.  However, there is no version check when
+ * reading which means that the cached value may be out-of-date with the
+ * Observer value. The cached value will be updated asynchronously in a
+ * background thread.
  *
- * Because there is no version check when reading, ReadMostlyAtomicObserver
- * does not capture observer dependencies when used from makeObserver. It is not
- * possible to create a dependent observer. Therefore, ReadMostlyAtomicObserver
- * models none of CopyConstructible, MoveConstructible, CopyAssignable, or
- * MoveAssignable. Dependent observers should be created using the underlying
- * observer.
+ * When get() is called from makeObserver, the underlying observer is directly
+ * snapshotted to ensure dependent observers have current values and capture
+ * dependencies.
  *
  * ReadMostlyAtomicObserver is ideal for fastest possible reads on a
  * trivially-copyable type when a slightly out-of-date value will suffice. It is
