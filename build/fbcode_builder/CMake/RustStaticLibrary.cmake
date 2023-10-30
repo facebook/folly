@@ -80,7 +80,7 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # Cargo build static library.
 #
 # ```cmake
-# rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [FEATURES <FEATURE_NAME>])
+# rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE])
 # ```
 #
 # Parameters:
@@ -92,6 +92,8 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 #   fallback to `${TARGET}`.
 # - FEATURE_NAME:
 #   Name of the Rust feature to enable.
+# - USE_CXX_INCLUDE:
+#   Include cxx.rs include path in `${TARGET}` INTERFACE.
 #
 # This function creates two targets:
 # - "${TARGET}": an interface library target contains the static library built
@@ -103,7 +105,7 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # headers with the interface library.
 #
 function(rust_static_library TARGET)
-  fb_cmake_parse_args(ARG "" "CRATE;FEATURES" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;FEATURES" "" "${ARGN}")
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
@@ -158,6 +160,14 @@ function(rust_static_library TARGET)
       INTERFACE_INSTALL_LIBNAME
         "${CMAKE_STATIC_LIBRARY_PREFIX}${crate_name}_rs${CMAKE_STATIC_LIBRARY_SUFFIX}"
   )
+
+  if(DEFINED ARG_USE_CXX_INCLUDE)
+    target_include_directories(
+      ${TARGET}
+      INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/cxxbridge/
+    )
+  endif()
+
   target_link_libraries(
     ${TARGET}
     INTERFACE "$<BUILD_INTERFACE:${rust_staticlib}>"
