@@ -19,8 +19,8 @@ uuid=$(cat /proc/sys/kernel/random/uuid)
 for sig in 1 2 3 13 15; do eval "trap 'exit $((sig + 128))' $sig"; done
 trap 'rm -f "$crash.debuginfo.$uuid" "$crash.strip.$uuid"' 0
 
-${OBJCOPY} --only-keep-debug "$crash" "$crash.debuginfo.$uuid"
-${OBJCOPY} --strip-debug --add-gnu-debuglink="$crash.debuginfo.$uuid" "$crash" "$crash.strip.$uuid"
+objcopy --only-keep-debug "$crash" "$crash.debuginfo.$uuid"
+objcopy --strip-debug --add-gnu-debuglink="$crash.debuginfo.$uuid" "$crash" "$crash.strip.$uuid"
 
 echo '{"op":"start","test":"gnu_debuglink_test"}';
 start=$(date +%s)
