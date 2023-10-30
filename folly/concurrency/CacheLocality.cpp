@@ -467,7 +467,8 @@ class SimpleAllocator {
       // leave pointers that could hide leaks at shutdown, since the backing
       // slabs may not be deallocated if the instance is a leaky singleton.
       auto* base = static_cast<char*>(ptr);
-      std::fill(base + sizeof(void*), base + allocator->sz_, 0);
+      std::fill(
+          base + sizeof(void*), base + allocator->sz_, static_cast<char>(0));
     }
     allocator->freelist_ = ptr;
   }

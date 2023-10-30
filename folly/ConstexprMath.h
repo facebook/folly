@@ -459,7 +459,10 @@ constexpr T constexpr_mult(T const a, T const b) {
 
 namespace detail {
 
-template <typename T, typename E>
+template <
+    typename T,
+    typename E,
+    std::enable_if_t<std::is_signed<E>::value, int> = 1>
 constexpr T constexpr_ipow(T const base, E const exp) {
   if (std::is_floating_point<T>::value) {
     if (exp < E(0)) {
@@ -473,6 +476,31 @@ constexpr T constexpr_ipow(T const base, E const exp) {
     }
   }
   assert(!(exp < E(0)) && "negative exponent with integral base");
+  if (exp == E(0)) {
+    return T(1);
+  }
+  if (exp == E(1)) {
+    return base;
+  }
+  auto const hexp = constexpr_trunc(exp / E(2));
+  auto const div = constexpr_ipow(base, hexp);
+  auto const rem = hexp * E(2) == exp ? T(1) : base;
+  return constexpr_mult(constexpr_mult(div, div), rem);
+}
+
+template <
+    typename T,
+    typename E,
+    std::enable_if_t<std::is_unsigned<E>::value, int> = 1>
+constexpr T constexpr_ipow(T const base, E const exp) {
+  if (std::is_floating_point<T>::value) {
+    if (exp == E(0)) {
+      return T(1);
+    }
+    if (constexpr_isnan(base)) {
+      return base;
+    }
+  }
   if (exp == E(0)) {
     return T(1);
   }

@@ -528,7 +528,7 @@ struct integral_hasher {
       auto const u = to_unsigned(i);
       auto const hi = static_cast<uint64_t>(u >> sizeof(Int) * 4);
       auto const lo = static_cast<uint64_t>(u);
-      return hash::hash_128_to_64(hi, lo);
+      return static_cast<size_t>(hash::hash_128_to_64(hi, lo));
     }
   }
 };
