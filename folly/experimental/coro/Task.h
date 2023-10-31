@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_coro_task
+//
+
 #pragma once
 
 #include <exception>

@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_scopeguard
+//
+
 /**
  * ScopeGuard is a general implementation of the "Initialization is
  * Resource Acquisition" idiom.  It guarantees that a function

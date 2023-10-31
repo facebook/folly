@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_string
+//
+
 /**
  * Convenience functions for working with strings.
  *

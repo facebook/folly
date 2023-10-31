@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_synchronized
+//
+
 /**
  * This module implements a Synchronized abstraction useful in
  * mutex-based concurrency.

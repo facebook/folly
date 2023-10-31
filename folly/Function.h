@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_function
+//
+
 /*
  * @author Eric Niebler (eniebler@fb.com), Sven Over (over@fb.com)
  * Acknowledgements: Giuseppe Ottaviano (ott@fb.com)

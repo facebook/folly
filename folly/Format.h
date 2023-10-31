@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_format
+//
+
 /**
  * folly::format has been superseded by
  * [fmt](https://fmt.dev/latest/index.html). `#include <fmt/core.h>`

@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_json
+//
+
 /**
  * Serialize and deserialize folly::dynamic values as JSON.
  *

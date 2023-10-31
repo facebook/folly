@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_dynamic
+// 1-minute video primer: https://www.youtube.com/watch?v=3XubaLCDYOM
+//
+
 /**
  * dynamic is a runtime dynamically typed value.  It holds types from a specific
  * predetermined set of types: int, double, bool, nullptr_t, string, array,

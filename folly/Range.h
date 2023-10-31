@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_range
+//
+
 /**
  * Range abstraction using a pair of iterators. It is not
  * similar to boost's range abstraction because an API identical

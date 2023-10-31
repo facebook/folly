@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_coro_scopeexit
+//
+
 #pragma once
 
 #include <folly/tracing/AsyncStack.h>

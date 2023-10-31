@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_file
+//
+
 #pragma once
 
 #include <fcntl.h>

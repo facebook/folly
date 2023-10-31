@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbvref_random
+//
+
 #pragma once
 #define FOLLY_RANDOM_H_
 

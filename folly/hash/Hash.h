@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_hash
+//
+
 /**
  * folly::hash provides hashing algorithms, as well as algorithms to combine
  * multiple hashes/hashable objects together.
