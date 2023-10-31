@@ -24,6 +24,7 @@
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/WhenN.h>
 #include <folly/fibers/async/Async.h>
+#include <folly/fibers/async/Baton.h>
 #include <folly/fibers/async/FiberManager.h>
 #include <folly/fibers/async/Future.h>
 #include <folly/functional/Invoke.h>
@@ -89,6 +90,16 @@ Async<Try<async_invocable_inner_type_t<F>>> awaitTry(F&& func) {
   return makeTryWithNoUnwrap([&]() { return await(func()); });
 }
 
+template <typename T>
+Async<T> fromTry(folly::Try<T>&& result) {
+  if constexpr (std::is_void_v<T>) {
+    result.throwUnlessValue();
+    return {};
+  } else {
+    return std::move(*result);
+  }
+}
+
 /*
  * Run an async-annotated functor on a new fiber, blocking the current fiber.
  *
@@ -98,8 +109,16 @@ Async<Try<async_invocable_inner_type_t<F>>> awaitTry(F&& func) {
 template <typename F>
 Async<async_invocable_inner_type_t<F>> executeOnNewFiber(F&& func) {
   DCHECK(detail::onFiber());
-  return futureWait(
-      addFiberFuture(std::forward<F>(func), FiberManager::getFiberManager()));
+  folly::Try<async_invocable_inner_type_t<F>> result;
+  Baton baton;
+  addFiber(
+      [&, g = folly::makeGuard([&] { baton.post(); })]() -> Async<void> {
+        result = await(awaitTry(std::forward<F>(func)));
+        return {};
+      },
+      FiberManager::getFiberManager());
+  await(baton_wait(baton));
+  return fromTry(std::move(result));
 }
 
 /*
