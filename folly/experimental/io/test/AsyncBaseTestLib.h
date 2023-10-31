@@ -84,8 +84,9 @@ void testReadsSerially(
   typename TAsync::Op op;
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   for (size_t i = 0; i < specs.size(); i++) {
@@ -122,8 +123,9 @@ void testReadsParallel(
 
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   std::vector<std::thread> threads;
@@ -192,8 +194,9 @@ void testReadsQueued(
 
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
   for (size_t i = 0; i < specs.size(); i++) {
     bufs.push_back(TestUtil::allocateAligned(specs[i].size));
@@ -383,8 +386,9 @@ TYPED_TEST_P(AsyncTest, NonBlockingWait) {
   typename TypeParam::Op op;
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
   size_t size = 2 * test::async_base_test_lib_detail::kODirectAlign;
   auto buf = test::async_base_test_lib_detail::TestUtil::allocateAligned(size);
@@ -414,8 +418,9 @@ TYPED_TEST_P(AsyncTest, Cancel) {
       kNumOpsBatch1 + kNumOpsBatch2, folly::AsyncBase::NOT_POLLABLE);
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   size_t completed = 0;
@@ -479,8 +484,9 @@ TYPED_TEST_P(AsyncBatchTest, BatchRead) {
   TypeParam aioReader;
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   using OpPtr = folly::AsyncBaseOp*;
