@@ -84,6 +84,11 @@ Async<std::tuple<lift_unit_t<async_invocable_inner_type_t<Ts>>...>> collectAll(
   return Async(folly::unwrapTryTuple(std::move(tuple)));
 }
 
+template <typename F>
+Async<Try<async_invocable_inner_type_t<F>>> awaitTry(F&& func) {
+  return makeTryWithNoUnwrap([&]() { return await(func()); });
+}
+
 /*
  * Run an async-annotated functor on a new fiber, blocking the current fiber.
  *
