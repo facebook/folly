@@ -376,7 +376,7 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 
 #define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)
 
-#elif defined(_MSC_VER) && _MSC_VER <= 1916
+#elif defined(_MSC_VER) && _MSC_VER <= 1916 && !defined(__clang__)
 // MSVC <= VS2017
 
 template <typename Tag, typename T>
@@ -392,8 +392,8 @@ struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
       TYPE>;                                                    \
   FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
-#elif defined(_MSC_VER) && _MSC_VER > 1916
-// MSVC >= VS2019
+#elif defined(_MSC_VER) && (_MSC_VER > 1916 || defined(__clang__))
+// MSVC >= VS2019 or Windows clang/clang-cl
 
 template <
     typename Tag,
