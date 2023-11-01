@@ -186,8 +186,9 @@ TEST_F(GeneratorTest, NestedEmptyYield) {
 
 TEST_F(GeneratorTest, ExceptionThrownFromRecursiveCall_CanBeCaughtByCaller) {
   class SomeException : public std::exception {};
+  bool caught = false;
 
-  auto f = [](std::uint32_t depth, auto&& f_) -> Generator<std::uint32_t> {
+  auto f = [&](std::uint32_t depth, auto&& f_) -> Generator<std::uint32_t> {
     if (depth == 1u) {
       throw SomeException{};
     }
@@ -197,6 +198,7 @@ TEST_F(GeneratorTest, ExceptionThrownFromRecursiveCall_CanBeCaughtByCaller) {
     try {
       co_yield f_(1, f_);
     } catch (const SomeException&) {
+      caught = true;
     }
 
     co_yield 2;
@@ -205,7 +207,9 @@ TEST_F(GeneratorTest, ExceptionThrownFromRecursiveCall_CanBeCaughtByCaller) {
   auto gen = f(0, f);
   auto iter = gen.begin();
   EXPECT_EQ(*iter, 1u);
+  EXPECT_FALSE(caught);
   ++iter;
+  EXPECT_TRUE(caught);
   EXPECT_EQ(*iter, 2u);
   ++iter;
   EXPECT_EQ(iter, gen.end());
@@ -220,12 +224,14 @@ TEST_F(GeneratorTest, ExceptionThrownFromNestedCall_CanBeCaughtByCaller) {
     } else if (depth == 3u) {
       co_yield 3;
 
+      bool caught = false;
       try {
         co_yield f_(4, f_);
       } catch (const SomeException&) {
+        caught = true;
       }
 
-      co_yield 33;
+      co_yield caught ? 33 : 1337;
 
       throw SomeException{};
     } else if (depth == 2u) {

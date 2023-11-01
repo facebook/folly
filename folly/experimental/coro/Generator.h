@@ -93,7 +93,11 @@ class Generator {
         generator.m_promise->m_parentOrLeaf = this;
         generator.m_promise->resume();
 
-        if (!generator.m_promise->is_complete()) {
+        // NB: This branch looks like a (premature?) optimization for empty
+        // generators, and until proven otherwise in benchmarks, it may be
+        // advantageous to simply return `awaitable{generator.m_promise}`.
+        if (!generator.m_promise->is_complete() ||
+            generator.m_promise->m_exception != nullptr) {
           return awaitable{generator.m_promise};
         }
 
