@@ -16,6 +16,7 @@
 
 #include <folly/concurrency/CacheLocality.h>
 
+#include <cstdlib>
 #include <memory>
 #include <thread>
 #include <unordered_map>
@@ -977,6 +978,9 @@ TEST(CacheLocality, LinuxActual) {
   if (!kIsLinux) {
     return;
   }
+
+  auto in_re = ::getenv("RE_PLATFORM");
+  SKIP_IF(in_re != nullptr);
 
   auto parsed1 = CacheLocality::readFromProcCpuinfo();
   EXPECT_EQ(parsed1.numCpus, std::thread::hardware_concurrency());
