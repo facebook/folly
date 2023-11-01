@@ -1433,6 +1433,8 @@ class SharedMutexImpl : std::conditional_t<
 
  public:
   class FOLLY_NODISCARD ReadHolder {
+    using folly_is_unsafe_for_async_usage = void;
+
     ReadHolder() : lock_(nullptr) {}
 
    public:
@@ -1493,6 +1495,8 @@ class SharedMutexImpl : std::conditional_t<
   };
 
   class FOLLY_NODISCARD UpgradeHolder {
+    using folly_is_unsafe_for_async_usage = void;
+
     UpgradeHolder() : lock_(nullptr) {}
 
    public:
@@ -1541,6 +1545,8 @@ class SharedMutexImpl : std::conditional_t<
   };
 
   class FOLLY_NODISCARD WriteHolder {
+    using folly_is_unsafe_for_async_usage = void;
+
     WriteHolder() : lock_(nullptr) {}
 
    public:
