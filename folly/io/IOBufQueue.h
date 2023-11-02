@@ -404,11 +404,17 @@ class IOBufQueue {
     return p;
   }
 
+  /**
+   * Get a pointer to the writable tail section.
+   */
   void* writableTail() const {
     dcheckCacheIntegrity();
     return cachePtr_->cachedRange.first;
   }
 
+  /**
+   * Get the amount of free space at the end of the buffer.
+   */
   size_t tailroom() const {
     dcheckCacheIntegrity();
     return cachePtr_->cachedRange.second - cachePtr_->cachedRange.first;
@@ -470,6 +476,7 @@ class IOBufQueue {
     return res;
   }
 
+  /// @copydoc move()
   folly::IOBuf moveAsValue() { return std::move(*move()); }
 
   /**
@@ -515,6 +522,9 @@ class IOBufQueue {
         (head_->empty() && cachePtr_->cachedRange.first == tailStart_);
   }
 
+  /**
+   * Get the options used to configure this IOBufQueue.
+   */
   const Options& options() const { return options_; }
 
   /**
