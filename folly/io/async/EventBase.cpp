@@ -171,6 +171,11 @@ EventBase::EventBase(Options options)
 }
 
 EventBase::~EventBase() {
+  // Relax strict mode to allow callbacks to run in the destructor outside of
+  // the main loop. Note that any methods (including driving the loop) must be
+  // called before the destructor starts, so it is safe to modify the variable.
+  strictLoopThread_ = false;
+
   // Call all pre-destruction callbacks, before we start cleaning up our state
   // or apply any keepalives
   while (!preDestructionCallbacks_.rlock()->empty()) {

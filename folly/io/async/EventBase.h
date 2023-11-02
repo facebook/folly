@@ -1005,7 +1005,7 @@ class EventBase : public TimeoutManager,
   const std::chrono::milliseconds intervalDuration_{
       HHWheelTimer::DEFAULT_TICK_INTERVAL};
   const bool enableTimeMeasurement_;
-  const bool strictLoopThread_;
+  bool strictLoopThread_;
 
   // The ID of the thread running the main loop. std::thread::id{} if loop is
   // not running, otherwise acts as lock to enforce loop mutual exclusion.
