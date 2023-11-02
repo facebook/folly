@@ -366,24 +366,14 @@ void EventBase::loopPollCleanup() {
 void EventBase::loopMainSetup() {
   VLOG(5) << "EventBase(): Starting loop.";
 
-  const char* message =
-      "Your code just tried to loop over an event base from inside another "
-      "event base loop. Since libevent is not reentrant, this leads to "
-      "undefined behavior in opt builds. Please fix immediately. For the "
-      "common case of an inner function that needs to do some synchronous "
-      "computation on an event-base, replace getEventBase() by a new, "
-      "stack-allocated EventBase.";
-
-  LOG_IF(DFATAL, invokingLoop_) << message;
-
-  invokingLoop_ = true;
-
   auto const prevLoopThread = loopThread_.exchange(
       std::this_thread::get_id(), std::memory_order_release);
+  // NOTE: This also fatals on reentrancy, which is not supported by old
+  // versions of libevent.
   CHECK_EQ(std::thread::id(), prevLoopThread)
-      << "Driving an EventBase in one thread (" << std::this_thread::get_id()
-      << ") while it is already being driven in another thread ("
-      << prevLoopThread << ") is forbidden.";
+      << "Driving an EventBase (in thread " << std::this_thread::get_id()
+      << ") while it is already being driven (in thread " << prevLoopThread
+      << ") is forbidden.";
 
   if (!name_.empty()) {
     setThreadName(name_);
@@ -520,7 +510,6 @@ void EventBase::loopMainCleanup() {
   // Reset stop_ so that the main loop sequence can be called again.
   stop_.store(false, std::memory_order_relaxed);
   loopThread_.store({}, std::memory_order_release);
-  invokingLoop_ = false;
 }
 
 ssize_t EventBase::loopKeepAliveCount() {

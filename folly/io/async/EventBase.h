@@ -1007,8 +1007,8 @@ class EventBase : public TimeoutManager,
   const bool enableTimeMeasurement_;
   const bool strictLoopThread_;
 
-  // The ID of the thread running the main loop.
-  // std::thread::id{} if loop is not running.
+  // The ID of the thread running the main loop. std::thread::id{} if loop is
+  // not running, otherwise acts as lock to enforce loop mutual exclusion.
   std::atomic<std::thread::id> loopThread_;
 
   // should only be accessed through public getter
@@ -1058,11 +1058,6 @@ class EventBase : public TimeoutManager,
   std::size_t nextLoopCnt_;
   std::size_t latestLoopCnt_;
   std::chrono::steady_clock::time_point startWork_;
-  // Prevent undefined behavior from invoking event_base_loop() reentrantly.
-  // This is needed since many projects use libevent-1.4, which lacks commit
-  // b557b175c00dc462c1fce25f6e7dd67121d2c001 from
-  // https://github.com/libevent/libevent/.
-  bool invokingLoop_{false};
 
   // Observer to export counters
   std::shared_ptr<EventBaseObserver> observer_;
