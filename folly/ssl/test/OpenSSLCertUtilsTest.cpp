@@ -20,6 +20,7 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/container/Enumerate.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Time.h>
@@ -28,9 +29,10 @@
 
 using namespace testing;
 using namespace folly;
+using folly::test::find_resource;
 
-const char* kTestCertWithoutSan = "folly/io/async/test/certs/tests-cert.pem";
-const char* kTestCa = "folly/io/async/test/certs/ca-cert.pem";
+const char* kTestCertWithoutSan = "folly/ssl/test/tests-cert.pem";
+const char* kTestCa = "folly/ssl/test/ca-cert.pem";
 
 // Test key
 const std::string kTestKey = folly::stripLeftMargin(R"(
@@ -163,12 +165,13 @@ class OpenSSLCertUtilsTest : public TestWithParam<bool> {
 INSTANTIATE_TEST_SUITE_P(OpenSSLCertUtilsTest, OpenSSLCertUtilsTest, Bool());
 
 static folly::ssl::X509UniquePtr readCertFromFile(const std::string& filename) {
+  auto path = find_resource(filename);
   folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_file()));
   if (!bio) {
     throw std::runtime_error("Couldn't create BIO");
   }
 
-  if (BIO_read_filename(bio.get(), filename.c_str()) != 1) {
+  if (BIO_read_filename(bio.get(), path.c_str()) != 1) {
     throw std::runtime_error("Couldn't read cert file: " + filename);
   }
   return folly::ssl::X509UniquePtr(
@@ -363,7 +366,8 @@ TEST_P(OpenSSLCertUtilsTest, TestX509Digest) {
 }
 
 TEST_P(OpenSSLCertUtilsTest, TestX509Store) {
-  auto store = folly::ssl::OpenSSLCertUtils::readStoreFromFile(kTestCa);
+  auto store = folly::ssl::OpenSSLCertUtils::readStoreFromFile(
+      find_resource(kTestCa).string());
   EXPECT_NE(store, nullptr);
 
   auto x509 = readCertFromFile(kTestCertWithoutSan);
