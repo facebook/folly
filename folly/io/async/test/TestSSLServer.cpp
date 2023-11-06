@@ -16,6 +16,7 @@
 
 #include <folly/io/async/test/TestSSLServer.h>
 
+#include <folly/experimental/TestUtil.h>
 #include <folly/portability/OpenSSL.h>
 
 namespace folly::test {
@@ -32,6 +33,7 @@ const char* kTestCertCN = "Asox Company";
 const char* kClientTestCert = FOLLY_CERTS_DIR "/client_cert.pem";
 const char* kClientTestKey = FOLLY_CERTS_DIR "/client_key.pem";
 const char* kClientTestCA = FOLLY_CERTS_DIR "/client_ca_cert.pem";
+const char* kClientTestChain = FOLLY_CERTS_DIR "/client_chain.pem";
 
 TestSSLServer::~TestSSLServer() {
   if (thread_.joinable()) {
@@ -44,8 +46,8 @@ TestSSLServer::~TestSSLServer() {
 /* static */ std::unique_ptr<SSLContext> TestSSLServer::getDefaultSSLContext() {
   // Set up a default SSL context
   std::unique_ptr<SSLContext> sslContext = std::make_unique<SSLContext>();
-  sslContext->loadCertificate(kTestCert);
-  sslContext->loadPrivateKey(kTestKey);
+  sslContext->loadCertificate(find_resource(kTestCert).c_str());
+  sslContext->loadPrivateKey(find_resource(kTestKey).c_str());
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   // By default, SSLContext disables OpenSSL's internal session cache.
   // Enable it here on the server for testing session reuse.
@@ -62,8 +64,8 @@ TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
 }
 
 void TestSSLServer::loadTestCerts() {
-  ctx_->loadCertificate(kTestCert);
-  ctx_->loadPrivateKey(kTestKey);
+  ctx_->loadCertificate(find_resource(kTestCert).c_str());
+  ctx_->loadPrivateKey(find_resource(kTestKey).c_str());
 }
 
 TestSSLServer::TestSSLServer(
