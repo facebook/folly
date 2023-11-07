@@ -402,6 +402,11 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
     idleStart = prev;
   }
 
+  SCOPE_EXIT {
+    // Consume the stop signal so that the loop can resume on the next call.
+    stop_.store(false, std::memory_order_relaxed);
+  };
+
   while (!stop_.load(std::memory_order_relaxed)) {
     if (!ignoreKeepAlive) {
       applyLoopKeepAlive();
@@ -512,8 +517,6 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
 }
 
 void EventBase::loopMainCleanup() {
-  // Reset stop_ so that the main loop sequence can be called again.
-  stop_.store(false, std::memory_order_relaxed);
   loopThread_.store({}, std::memory_order_release);
 }
 
