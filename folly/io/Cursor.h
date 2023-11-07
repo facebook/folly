@@ -34,13 +34,12 @@
 #include <folly/lang/Exception.h>
 
 /**
- * Cursor class for fast iteration over IOBuf chains.
+ * IOBuf Cursors provide fast iteration over IOBuf chains.
  *
- * Cursor - Read-only access
- *
- * RWPrivateCursor - Read-write access, assumes private access to IOBuf chain
- * RWUnshareCursor - Read-write access, calls unshare on write (COW)
- * Appender        - Write access, assumes private access to IOBuf chain
+ * - Cursor          - Read-only access
+ * - RWPrivateCursor - Read-write access, assumes private access to IOBuf chain
+ * - RWUnshareCursor - Read-write access, calls unshare on write (COW)
+ * - Appender        - Write access, assumes private access to IOBuf chain
  *
  * Note that RW cursors write in the preallocated part of buffers (that is,
  * between the buffer's data() and tail()), while Appenders append to the end
@@ -48,7 +47,10 @@
  * automatically adjust the buffer pointers, so you may only use one
  * Appender with a buffer chain; for this reason, Appenders assume private
  * access to the buffer (you need to call unshare() yourself if necessary).
- **/
+ *
+ * @file Cursor.h
+ */
+
 namespace folly {
 namespace io {
 
