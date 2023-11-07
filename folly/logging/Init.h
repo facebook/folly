@@ -45,6 +45,7 @@ namespace folly {
  * gracefully on error rather than having to handle exceptions yourself.
  */
 void initLogging(folly::StringPiece configString = "");
+void initLogging(std::initializer_list<folly::StringPiece> configStrings);
 
 /**
  * Initialize the logging library, and exit the program on error.
@@ -54,6 +55,7 @@ void initLogging(folly::StringPiece configString = "");
  * call exit(1) to terminate the program.
  */
 void initLoggingOrDie(folly::StringPiece configString = "");
+void initLoggingOrDie(std::initializer_list<folly::StringPiece> configStrings);
 
 /**
  * folly::getBaseLoggingConfig() allows individual executables to easily

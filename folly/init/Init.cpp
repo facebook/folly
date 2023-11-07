@@ -16,6 +16,8 @@
 
 #include <folly/init/Init.h>
 
+#include <cstdlib>
+
 #include <glog/logging.h>
 
 #include <folly/Singleton.h>
@@ -84,7 +86,9 @@ void initImpl(int* argc, char*** argv, InitOptions options) {
   }
 #endif
 
-  folly::initLoggingOrDie(FLAGS_logging);
+  auto const follyLoggingEnv = std::getenv(kLoggingEnvVarName);
+  auto const follyLoggingEnvOr = follyLoggingEnv ? follyLoggingEnv : "";
+  folly::initLoggingOrDie({follyLoggingEnvOr, FLAGS_logging});
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
   google::InitGoogleLogging(programName);
 
