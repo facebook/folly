@@ -996,6 +996,14 @@ namespace detail {
 template <class Derived>
 class Writable {
  public:
+  /**
+   * Write a value to the cursor.
+   *
+   * @methodset Writing
+   *
+   * May throw if there isn't enough space and the derived cursor type does not
+   * support extending the IOBuf's writable range.
+   */
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
       T value, size_t n = sizeof(T)) {
@@ -1005,18 +1013,41 @@ class Writable {
     d->push(u8, n);
   }
 
+  /**
+   * Write a value to the cursor in Big-Endian.
+   *
+   * @methodset Writing
+   *
+   * May throw if there isn't enough space and the derived cursor type does not
+   * support extending the IOBuf's writable range.
+   */
   template <class T>
   void writeBE(T value) {
     Derived* d = static_cast<Derived*>(this);
     d->write(Endian::big(value));
   }
 
+  /**
+   * Write a value to the cursor in Little-Endian.
+   *
+   * @methodset Writing
+   *
+   * May throw if there isn't enough space and the derived cursor type does not
+   * support extending the IOBuf's writable range.
+   */
   template <class T>
   void writeLE(T value) {
     Derived* d = static_cast<Derived*>(this);
     d->write(Endian::little(value));
   }
 
+  /**
+   * Write bytes to the cursor.
+   *
+   * @methodset Writing
+   *
+   * @throw out_of_range if there isn't enough space in the cursor.
+   */
   void push(const uint8_t* buf, size_t len) {
     Derived* d = static_cast<Derived*>(this);
     if (d->pushAtMost(buf, len) != len) {
@@ -1030,16 +1061,17 @@ class Writable {
     }
   }
 
+  /**
+   * Write bytes to the cursor; stop writing if the end of the cursor is
+   * reached.
+   *
+   * @methodset Writing
+   */
   size_t pushAtMost(ByteRange buf) {
     Derived* d = static_cast<Derived*>(this);
     return d->pushAtMost(buf.data(), buf.size());
   }
 
-  /**
-   * push len bytes of data from input cursor, data could be in an IOBuf chain.
-   * If input cursor contains less than len bytes, or this cursor has less than
-   * len bytes writable space, an out_of_range exception will be thrown.
-   */
   void push(Cursor cursor, size_t len) {
     if (this->pushAtMost(cursor, len) != len) {
       throw_exception<std::out_of_range>("overflow");
@@ -1091,6 +1123,9 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
   // Efficient way to advance to position cursor to the end of the queue,
   // using cached length instead of a walk via advanceToEnd().
   struct AtEnd {};
+  /**
+   * Create the cursor initially pointing to the end of queue.
+   */
   RWCursor(IOBufQueue& queue, AtEnd) : RWCursor(queue) {
     if (!queue.options().cacheChainLength) {
       this->advanceToEnd();
@@ -1115,6 +1150,10 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
   /**
    * Gather at least n bytes contiguously into the current buffer,
    * by coalescing subsequent buffers from the chain as necessary.
+   *
+   * @methodset Modifiers
+   *
+   * @throw overflow_error if there aren't enough bytes to gather
    */
   void gather(size_t n) {
     // Forbid attempts to gather beyond the end of this IOBuf chain.
@@ -1134,6 +1173,13 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
     this->crtEnd_ = this->crtBuf_->tail();
     this->crtPos_ = this->crtBegin_ + offset;
   }
+
+  /**
+   * Gather at most n bytes contiguously into the current buffer,
+   * by coalescing subsequent buffers from the chain as necessary.
+   *
+   * @methodset Modifiers
+   */
   void gatherAtMost(size_t n) {
     this->dcheckIntegrity();
     size_t size = std::min(n, this->totalLength());
@@ -1180,6 +1226,17 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
     }
   }
 
+  /**
+   * Insert data at the cursor position.
+   *
+   * @methodset Writing
+   *
+   * Data in the IOBuf after the cursor will not be overwritten, though it might
+   * be moved.
+   *
+   * After this operator, the cursor will point to the data just after the
+   * inserted data.
+   */
   void insert(std::unique_ptr<folly::IOBuf> buf) {
     this->dcheckIntegrity();
     this->absolutePos_ += buf->computeChainDataLength();
@@ -1219,6 +1276,11 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
     }
   }
 
+  /**
+   * Get a raw pointer to the writable section controlled by this cursor.
+   *
+   * @methodset Accessors
+   */
   uint8_t* writableData() {
     this->dcheckIntegrity();
     return this->crtBuf_->writableData() + (this->crtPos_ - this->crtBegin_);
@@ -1257,19 +1319,33 @@ class Appender : public detail::Writable<Appender> {
   Appender(IOBuf* buf, std::size_t growth)
       : buffer_(buf), crtBuf_(buf->prev()), growth_(growth) {}
 
+  /**
+   * Get the writable tail of the IOBuf this cursor points to.
+   *
+   * @methodset Accessors
+   */
   uint8_t* writableData() { return crtBuf_->writableTail(); }
 
+  /**
+   * Get the amount of writable tailroom of the IOBuf this cursor points to.
+   *
+   * @methodset Capacity
+   */
   size_t length() const { return crtBuf_->tailroom(); }
 
   /**
    * Mark n bytes (must be <= length()) as appended, as per the
    * IOBuf::append() method.
+   *
+   * @methodset Appending
    */
   void append(size_t n) { crtBuf_->append(n); }
 
   /**
    * Ensure at least n contiguous bytes available to write.
    * Postcondition: length() >= n.
+   *
+   * @methodset Appending
    */
   void ensure(std::size_t n) {
     if (FOLLY_LIKELY(length() >= n)) {
@@ -1329,6 +1405,8 @@ class Appender : public detail::Writable<Appender> {
    * Append to the end of this buffer, using a printf() style
    * format specifier.
    *
+   * @methodset Appending
+   *
    * Note that folly/Format.h provides nicer and more type-safe mechanisms
    * for formatting strings, which should generally be preferred over
    * printf-style formatting.  Appender objects can be used directly as an
@@ -1350,12 +1428,15 @@ class Appender : public detail::Writable<Appender> {
   void printf(FOLLY_PRINTF_FORMAT const char* fmt, ...)
       FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
+  /// @methodset Appending
   void vprintf(const char* fmt, va_list ap);
 
   /**
-   * Calling an Appender object with a StringPiece will append the string
-   * piece.  This allows Appender objects to be used directly with
-   * Formatter.
+   * Append a StringPiece to the buffer.
+   *
+   * @methodset Appending
+   *
+   * This allows Appender objects to be used directly with Formatter.
    */
   void operator()(StringPiece sp) { push(ByteRange(sp)); }
 
@@ -1386,25 +1467,55 @@ class QueueAppender : public detail::Writable<QueueAppender> {
   QueueAppender(IOBufQueue* queue, std::size_t growth)
       : queueCache_(queue), growth_(growth) {}
 
+  /**
+   * Resets this, as if constructed anew.
+   */
   void reset(IOBufQueue* queue, std::size_t growth) {
     queueCache_.reset(queue);
     growth_ = growth;
   }
 
+  /**
+   * Get a pointer to the writable tail.
+   *
+   * @methodset Accessors
+   */
   uint8_t* writableData() { return queueCache_.writableData(); }
 
+  /**
+   * Get the size of the writable tail.
+   *
+   * @methodset Capacity
+   */
   size_t length() { return queueCache_.length(); }
 
+  /**
+   * Append n bytes.
+   *
+   * @methodset Appending
+   */
   void append(size_t n) { queueCache_.append(n); }
 
-  // Ensure at least n contiguous; can go above growth_, throws if
-  // not enough room.
+  /**
+   * Ensure that there are at least n contiguous bytes available for writing.
+   *
+   * @methodset Modifiers
+   *
+   * Can go above growth.
+   *
+   * May throw if there isn't enough room.
+   */
   void ensure(size_t n) {
     if (length() < n) {
       ensureSlow(n);
     }
   }
 
+  /**
+   * Write an object to the cursor.
+   *
+   * @param n The number of bytes of value to write; defaults to sizeof(T)
+   */
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
       T value, size_t n = sizeof(T)) {
@@ -1440,6 +1551,11 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     return len;
   }
 
+  /**
+   * Inserts data at the current cursor position.
+   *
+   * @methodset Writing
+   */
   void insert(std::unique_ptr<folly::IOBuf> buf) {
     if (buf) {
       queueCache_.queue()->append(
@@ -1452,11 +1568,21 @@ class QueueAppender : public detail::Writable<QueueAppender> {
         buf, /* pack */ true, /* allowTailReuse */ true);
   }
 
+  /**
+   * Get a RWCursor for this IOBufQueue.
+   *
+   * @methodset Accessors
+   */
   template <CursorAccess access>
   explicit operator RWCursor<access>() {
     return RWCursor<access>(*queueCache_.queue());
   }
 
+  /**
+   * Get a RWCursor for the last n bytes of this IOBufQueue.
+   *
+   * @methodset Accessors
+   */
   template <CursorAccess access>
   RWCursor<access> tail(size_t n) {
     RWCursor<access> result(
@@ -1465,6 +1591,11 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     return result;
   }
 
+  /**
+   * Remove n bytes from the end of this IOBufQueue.
+   *
+   * @methodset Modifiers
+   */
   void trimEnd(size_t n) { queueCache_.queue()->trimEnd(n); }
 
  private:
