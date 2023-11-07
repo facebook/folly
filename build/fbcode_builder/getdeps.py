@@ -467,6 +467,13 @@ class CleanCmd(SubCmd):
         clean_dirs(opts)
 
 
+@cmd("show-scratch-dir", "show the scratch dir")
+class ShowScratchDirCmd(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+        print(opts.scratch_dir)
+
+
 @cmd("show-build-dir", "print the build dir for a given project")
 class ShowBuildDirCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
