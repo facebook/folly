@@ -30,7 +30,18 @@ class IoUringBackend;
 struct IoSqeBase
     : boost::intrusive::list_base_hook<
           boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
-  IoSqeBase() = default;
+  enum class Type {
+    Unknown,
+    Read,
+    Write,
+    Open,
+    Close,
+    Connect,
+    Cancel,
+  };
+
+  IoSqeBase() : IoSqeBase(Type::Unknown) {}
+  explicit IoSqeBase(Type type) : type_(type) {}
   // use raw addresses, so disallow copy/move
   IoSqeBase(IoSqeBase&&) = delete;
   IoSqeBase(const IoSqeBase&) = delete;
@@ -41,6 +52,7 @@ struct IoSqeBase
   virtual void processSubmit(struct io_uring_sqe* sqe) noexcept = 0;
   virtual void callback(int res, uint32_t flags) noexcept = 0;
   virtual void callbackCancelled(int res, uint32_t flags) noexcept = 0;
+  IoSqeBase::Type type() const { return type_; }
   bool inFlight() const { return inFlight_; }
   bool cancelled() const { return cancelled_; }
   void markCancelled() { cancelled_ = true; }
@@ -59,6 +71,7 @@ struct IoSqeBase
 
   bool inFlight_ = false;
   bool cancelled_ = false;
+  Type type_;
 };
 
 class IoUringBufferProviderBase {

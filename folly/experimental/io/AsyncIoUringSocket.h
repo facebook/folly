@@ -360,7 +360,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   };
 
   struct CloseSqe : IoSqeBase {
-    explicit CloseSqe(AsyncIoUringSocket* parent) : parent_(parent) {}
+    explicit CloseSqe(AsyncIoUringSocket* parent)
+        : IoSqeBase(IoSqeBase::Type::Close), parent_(parent) {}
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->closeProcessSubmit(sqe);
     }
@@ -422,7 +423,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
   struct ConnectSqe : IoSqeBase, AsyncTimeout {
     explicit ConnectSqe(AsyncIoUringSocket* parent)
-        : AsyncTimeout(parent->evb_), parent_(parent) {}
+        : IoSqeBase(IoSqeBase::Type::Connect),
+          AsyncTimeout(parent->evb_),
+          parent_(parent) {}
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->processConnectSubmit(sqe, addrStorage);
     }
@@ -451,6 +454,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       parent_->processFastOpenResult(res, flags);
     }
     void callbackCancelled(int, uint32_t) noexcept override { delete this; }
+
     AsyncIoUringSocket* parent_;
     std::unique_ptr<AsyncIoUringSocket::WriteSqe> initialWrite;
     size_t addrLen_;
