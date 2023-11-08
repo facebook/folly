@@ -25,6 +25,24 @@
 
 using namespace folly;
 
+// is_unsafe_for_async_usage_v -----------------
+
+struct UnsafeForAsyncUsageYes {
+  using folly_is_unsafe_for_async_usage = std::true_type;
+};
+
+struct UnsafeForAsyncUsageNo0 {};
+
+struct UnsafeForAsyncUsageNo1 {
+  using folly_is_unsafe_for_async_usage = std::false_type;
+};
+
+static_assert(detail::is_unsafe_for_async_usage_v<UnsafeForAsyncUsageYes>, "");
+static_assert(!detail::is_unsafe_for_async_usage_v<UnsafeForAsyncUsageNo0>, "");
+static_assert(!detail::is_unsafe_for_async_usage_v<UnsafeForAsyncUsageNo1>, "");
+
+//-----------------
+
 TEST(Hint, CompilerMayUnsafelyAssume) {
   compiler_may_unsafely_assume(true);
   bool falseValue = false;

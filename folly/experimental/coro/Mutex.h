@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <type_traits>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -157,6 +158,8 @@ class Mutex {
   void unlock() noexcept;
 
  private:
+  using folly_coro_aware_mutex = std::true_type;
+
   class LockAwaiter {
    public:
     explicit LockAwaiter(Mutex& mutex) noexcept : mutex_(mutex) {}

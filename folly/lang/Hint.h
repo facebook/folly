@@ -127,7 +127,10 @@ using detect_folly_is_unsafe_for_async_usage =
 //  type alias. See unsafe_for_async_usage below.
 template <typename T>
 FOLLY_INLINE_VARIABLE constexpr bool is_unsafe_for_async_usage_v =
-    is_detected_v<detail::detect_folly_is_unsafe_for_async_usage, T>;
+    detected_or_t<
+        std::false_type,
+        detail::detect_folly_is_unsafe_for_async_usage,
+        T>::value;
 
 } // namespace detail
 
@@ -159,6 +162,7 @@ FOLLY_INLINE_VARIABLE constexpr bool is_unsafe_for_async_usage_v =
 //  lifetimes. Examples:
 //  * Some objects that rely internally on thread-locals.
 //    * In particular, the storage defined by FOLLY_DECLARE_REUSED.
+//  * lock_guards for most mutexes.
 //  * Some advanced concurrency primitives.
 //    * In particular, hazard-pointers and rcu-guards.
 //
@@ -167,13 +171,18 @@ FOLLY_INLINE_VARIABLE constexpr bool is_unsafe_for_async_usage_v =
 //  current thread and then resuming it later.
 //
 //  In order to mark a class type, either:
-//  * Declare a member type alias folly_is_unsafe_for_async_usage, following the
-//    pattern of member type alias is_transparent.
+//  * Declare a member type alias
+//    `using folly_is_unsafe_for_async_usage = std::true_type`.
 //  * Declare either a non-static data member or a base which is marked. As a
 //    convenience, unsafe_for_async_usage is marked and may be used as that non-
 //    static data member or base. If using a non-static data member, it is ideal
 //    to declare it with attribute [[no_unique_address]], possibly as wrapped in
 //    FOLLY_ATTR_NO_UNIQUE_ADDRESS, to avoid increasing the size of the class.
+//  * std::lock_guard/unique_lock/scoped_lock are considered unsafe unless the
+//    underlying mutex has a typedef `folly_coro_aware_mutex`.
+//
+// NOTE: you can explicitly opt out from a check for a type by having
+//       `folly_is_unsafe_for_async_usage` be `std::false_type`.
 //
 //  It is recommended to use a non-static data member or a base which is marked,
 //  in preference to using a member type alias, since it is impossible to typo
@@ -199,7 +208,8 @@ FOLLY_INLINE_VARIABLE constexpr bool is_unsafe_for_async_usage_v =
 //  with objects of classes marked with this tag, namely, where the current
 //  thread may be yielded in any way during the lifetimes of such objects.
 struct unsafe_for_async_usage { // a convenience wrapper for the marker below:
-  using folly_is_unsafe_for_async_usage = void; // the marker member type alias
+  // the marker member type alias
+  using folly_is_unsafe_for_async_usage = std::true_type;
 };
 static_assert(detail::is_unsafe_for_async_usage_v<unsafe_for_async_usage>, "");
 
