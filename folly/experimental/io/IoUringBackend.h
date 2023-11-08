@@ -1076,6 +1076,7 @@ class IoUringBackend : public EventBaseBackendBase {
   size_t waitingToSubmit_{0};
   size_t numInsertedEvents_{0};
   size_t numInternalEvents_{0};
+  size_t numSendEvents_{0};
 
   // number of pooled IoSqe instances in use
   size_t numPooledIoSqeInUse_{0};

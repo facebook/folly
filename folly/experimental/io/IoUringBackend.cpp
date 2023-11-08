@@ -1640,6 +1640,9 @@ void IoUringBackend::internalSubmit(IoSqeBase& ioSqe) noexcept {
   auto* sqe = getSqe();
   setSubmitting();
   ioSqe.internalSubmit(sqe);
+  if (ioSqe.type() == IoSqeBase::Type::Write) {
+    numSendEvents_++;
+  }
   doneSubmitting();
 }
 
@@ -1780,6 +1783,7 @@ unsigned int IoUringBackend::internalProcessCqe(
 
   unsigned int count_more = 0;
   unsigned int count = 0;
+  unsigned int count_send = 0;
 
   checkLogOverflow(&ioRing_);
   do {
@@ -1793,6 +1797,9 @@ unsigned int IoUringBackend::internalProcessCqe(
       IoSqeBase* sqe = reinterpret_cast<IoSqeBase*>(cqe->user_data);
       if (cqe->user_data) {
         count++;
+        if (sqe->type() == IoSqeBase::Type::Write) {
+          count_send++;
+        }
         if (FOLLY_UNLIKELY(mode == InternalProcessCqeMode::CANCEL_ALL)) {
           sqe->markCancelled();
         }
@@ -1825,6 +1832,7 @@ unsigned int IoUringBackend::internalProcessCqe(
     }
   } while (true);
   numInsertedEvents_ -= (count - count_more);
+  numSendEvents_ -= count_send;
   return count;
 }
 
