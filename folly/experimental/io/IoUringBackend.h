@@ -175,6 +175,18 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setTimeout(int v) {
+      timeout = v;
+
+      return *this;
+    }
+
+    Options& setBatchSize(int v) {
+      batchSize = v;
+
+      return *this;
+    }
+
     size_t capacity{256};
     size_t minCapacity{0};
     size_t maxSubmit{128};
@@ -185,6 +197,13 @@ class IoUringBackend : public EventBaseBackendBase {
     uint32_t flags{0};
     bool taskRunCoop{false};
     bool deferTaskRun{false};
+    // Maximum amount of time to wait (in microseconds) per io_uring_enter
+    // Both timeout _and_ batchSize must be set for io_uring_enter wait_nr to be
+    // set!
+    int timeout{0};
+    // Minimum number of requests (defined as sockets with data to read) to wait
+    // for per io_uring_enter
+    int batchSize{0};
 
     std::chrono::milliseconds sqIdle{0};
     std::chrono::milliseconds cqIdle{0};
