@@ -178,7 +178,10 @@ class FOLLY_NODISCARD AsyncGenerator {
 
   ~AsyncGenerator() {
     if (coro_) {
-      CHECK(!RequiresCleanup) << "cleanup() hasn't been called!";
+      if constexpr (RequiresCleanup) {
+        LOG(FATAL) << "cleanup() hasn't been called!";
+      }
+
       coro_.destroy();
     }
   }
