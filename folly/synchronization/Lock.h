@@ -26,6 +26,7 @@
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/Hint.h>
 
 namespace folly {
 
@@ -284,7 +285,8 @@ class lock_base //
 };
 
 template <typename Mutex, typename Policy>
-class lock_guard_base {
+class lock_guard_base
+    : unsafe_for_async_usage_if<!is_coro_aware_mutex_v<Mutex>> {
  private:
   using lock_type_ = lock_base<Mutex, Policy>;
   using lock_state_type_ = typename lock_type_::state_type;
@@ -489,8 +491,6 @@ using std::shared_lock;
 template <typename Mutex>
 class upgrade_lock : public upgrade_lock_base<Mutex> {
  public:
-  using folly_is_unsafe_for_async_usage = std::true_type;
-
   using upgrade_lock_base<Mutex>::upgrade_lock_base;
 };
 
@@ -503,8 +503,6 @@ class upgrade_lock : public upgrade_lock_base<Mutex> {
 template <typename Mutex>
 class hybrid_lock : public hybrid_lock_base<Mutex> {
  public:
-  using folly_is_unsafe_for_async_usage = std::true_type;
-
   using hybrid_lock_base<Mutex>::hybrid_lock_base;
 };
 
@@ -525,8 +523,6 @@ template <typename Mutex>
 class unique_lock_guard_base
     : public detail::lock_guard_base<Mutex, detail::lock_policy_unique> {
  private:
-  using folly_is_unsafe_for_async_usage = std::true_type;
-
   using base = detail::lock_guard_base<Mutex, detail::lock_policy_unique>;
 
  public:
@@ -548,8 +544,6 @@ template <typename Mutex>
 class shared_lock_guard
     : public detail::lock_guard_base<Mutex, detail::lock_policy_shared> {
  private:
-  using folly_is_unsafe_for_async_usage = std::true_type;
-
   using base = detail::lock_guard_base<Mutex, detail::lock_policy_shared>;
 
  public:
@@ -564,8 +558,6 @@ template <typename Mutex>
 class hybrid_lock_guard
     : public detail::lock_guard_base<Mutex, detail::lock_policy_hybrid<Mutex>> {
  private:
-  using folly_is_unsafe_for_async_usage = std::true_type;
-
   using base =
       detail::lock_guard_base<Mutex, detail::lock_policy_hybrid<Mutex>>;
 

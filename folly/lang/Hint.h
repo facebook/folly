@@ -213,6 +213,29 @@ struct unsafe_for_async_usage { // a convenience wrapper for the marker below:
 };
 static_assert(detail::is_unsafe_for_async_usage_v<unsafe_for_async_usage>, "");
 
+namespace detail {
+
+template <typename T>
+using detect_folly_is_coro_aware_mutex = typename T::folly_coro_aware_mutex;
+
+} // namespace detail
+
+// Inheriting or having a member `unsafe_for_async_usage_if` will conditionally
+// tag the type.
+template <bool If>
+struct unsafe_for_async_usage_if {};
+
+template <>
+struct unsafe_for_async_usage_if<true> {
+  using folly_is_unsafe_for_async_usage = std::true_type;
+};
+
+// Detects the presense of folly_coro_aware_mutex nested typedef.
+// This helps custom lock guards have the same behavior as std::lock_guard.
+template <typename T>
+constexpr bool is_coro_aware_mutex_v =
+    is_detected_v<detail::detect_folly_is_coro_aware_mutex, T>;
+
 } // namespace folly
 
 #include <folly/lang/Hint-inl.h>

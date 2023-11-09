@@ -41,6 +41,17 @@ static_assert(detail::is_unsafe_for_async_usage_v<UnsafeForAsyncUsageYes>, "");
 static_assert(!detail::is_unsafe_for_async_usage_v<UnsafeForAsyncUsageNo0>, "");
 static_assert(!detail::is_unsafe_for_async_usage_v<UnsafeForAsyncUsageNo1>, "");
 
+// is_coro_aware_mutex ----------------------------
+
+struct CoroAwareMutexYes {
+  using folly_coro_aware_mutex = std::true_type;
+};
+
+struct CoroAwareMutexNo {};
+
+static_assert(is_coro_aware_mutex_v<CoroAwareMutexYes>, "");
+static_assert(!is_coro_aware_mutex_v<CoroAwareMutexNo>, "");
+
 //-----------------
 
 TEST(Hint, CompilerMayUnsafelyAssume) {
