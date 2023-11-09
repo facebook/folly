@@ -1698,6 +1698,13 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
       submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
       int ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
       return ret;
+    } else if (useReqBatching()) {
+      struct __kernel_timespec timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_nsec = options_.timeout * 1000;
+      int ret = ::io_uring_wait_cqes(
+          &ioRing_, &cqe, options_.batchSize, &timeout, nullptr);
+      return ret;
     } else {
       int ret = ::io_uring_wait_cqe(&ioRing_, &cqe);
       return ret;
@@ -1769,6 +1776,10 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     folly::terminate_with<std::runtime_error>("BADR");
   } else if (ret == -EAGAIN) {
     return 0;
+  } else if (ret == -ETIME) {
+    if (cqe == nullptr) {
+      return 0;
+    }
   } else if (ret < 0) {
     LOG(ERROR) << "wait_cqe error: " << ret;
     return 0;
@@ -1862,7 +1873,20 @@ int IoUringBackend::submitBusyCheck(
       if (options_.flags & Options::Flags::POLL_CQ) {
         res = ::io_uring_submit(&ioRing_);
       } else {
-        res = ::io_uring_submit_and_wait(&ioRing_, 1);
+        if (useReqBatching()) {
+          struct io_uring_cqe* cqe;
+          struct __kernel_timespec timeout;
+          timeout.tv_sec = 0;
+          timeout.tv_nsec = options_.timeout * 1000;
+          res = ::io_uring_submit_and_wait_timeout(
+              &ioRing_,
+              &cqe,
+              options_.batchSize + numSendEvents_,
+              &timeout,
+              nullptr);
+        } else {
+          res = ::io_uring_submit_and_wait(&ioRing_, 1);
+        }
         if (res >= 0) {
           // no more waiting
           waitForEvents = WaitForEventsMode::DONT_WAIT;

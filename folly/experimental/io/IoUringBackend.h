@@ -227,6 +227,9 @@ class IoUringBackend : public EventBaseBackendBase {
   struct io_uring_params const& params() const {
     return params_;
   }
+  bool useReqBatching() const {
+    return options_.timeout > 0 && options_.batchSize > 0;
+  }
 
   // from EventBaseBackendBase
   int getPollableFd() const override { return ioRing_.ring_fd; }
