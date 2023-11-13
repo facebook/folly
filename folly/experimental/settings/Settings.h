@@ -19,6 +19,7 @@
 #include <functional>
 #include <string>
 
+#include <folly/Likely.h>
 #include <folly/Range.h>
 #include <folly/experimental/settings/SettingsMetadata.h>
 #include <folly/experimental/settings/detail/SettingsImpl.h>
@@ -140,13 +141,18 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
       FOLLY_SETTINGS_FUNC__##_project##_##_name();                             \
   FOLLY_ALWAYS_INLINE auto FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(    \
       _overloadType) {                                                         \
-    if (!FOLLY_SETTINGS_CACHE__##_project##_##_name.load()) {                  \
+    auto* folly_detail_settings_value =                                        \
+        FOLLY_SETTINGS_CACHE__##_project##_##_name.load(                       \
+            ::std::memory_order_acquire);                                      \
+    if (FOLLY_UNLIKELY(!folly_detail_settings_value)) {                        \
+      folly_detail_settings_value =                                            \
+          &FOLLY_SETTINGS_FUNC__##_project##_##_name();                        \
       FOLLY_SETTINGS_CACHE__##_project##_##_name.store(                        \
-          &FOLLY_SETTINGS_FUNC__##_project##_##_name());                       \
+          folly_detail_settings_value, ::std::memory_order_release);           \
     }                                                                          \
     return ::folly::settings::detail::                                         \
         SettingWrapper<_Type, &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name>(  \
-            *FOLLY_SETTINGS_CACHE__##_project##_##_name.load());               \
+            *folly_detail_settings_value);                                     \
   }                                                                            \
   /* This is here just to force a semicolon */                                 \
   ::folly::settings::detail::SettingCore<_Type>&                               \
