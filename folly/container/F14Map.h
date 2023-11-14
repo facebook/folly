@@ -1756,6 +1756,11 @@ F14VectorMap(
     -> F14VectorMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 #endif
 
+/**
+ * F14FastMap is, under the hood, either an F14ValueMap or an F14VectorMap.
+ * F14FastMap chooses which of these two representations to use based on the
+ * size of a node.
+ */
 template <
     typename Key,
     typename Mapped,
@@ -1763,7 +1768,7 @@ template <
     typename KeyEqual,
     typename Alloc>
 class F14FastMap : public std::conditional_t<
-                       sizeof(std::pair<Key const, Mapped>) < 24,
+                       (sizeof(std::pair<Key const, Mapped>) < 24),
                        F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
                        f14::detail::F14VectorMapImpl<
                            Key,
