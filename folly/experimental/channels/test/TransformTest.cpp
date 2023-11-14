@@ -18,6 +18,7 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/SerialExecutor.h>
 #include <folly/experimental/channels/ConsumeChannel.h>
+#include <folly/experimental/channels/MaxConcurrentRateLimiter.h>
 #include <folly/experimental/channels/Transform.h>
 #include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
@@ -339,7 +340,7 @@ TEST_F(SimpleTransformFixture, Chained) {
 }
 
 TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
-  auto rateLimiter = RateLimiter::create(1 /* maxConcurrent */);
+  auto rateLimiter = MaxConcurrentRateLimiter::create(1 /* maxConcurrent */);
 
   auto [untransformedReceiver1, sender1] = Channel<int>::create();
   auto [controlReceiver1, controlSender1] = Channel<Unit>::create();
@@ -790,7 +791,7 @@ TEST_F(ResumableTransformFixture, TransformThrows_NoReinitialization_Rethrows) {
 }
 
 TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
-  auto rateLimiter = RateLimiter::create(1 /* maxConcurrent */);
+  auto rateLimiter = MaxConcurrentRateLimiter::create(1 /* maxConcurrent */);
 
   auto [untransformedReceiver1, sender1] = Channel<int>::create();
   auto [controlReceiver1, controlSender1] = Channel<Unit>::create();

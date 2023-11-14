@@ -439,7 +439,7 @@ class MultiplexChannelProcessor : public IChannelCallback {
     if (rateLimiter != nullptr) {
       rateLimiter->executeWhenReady(
           [this, func = std::move(func), executor = multiplexer_.getExecutor()](
-              RateLimiter::Token token) mutable {
+              std::unique_ptr<RateLimiter::Token> token) mutable {
             folly::coro::co_invoke(
                 [this,
                  token = std::move(token),

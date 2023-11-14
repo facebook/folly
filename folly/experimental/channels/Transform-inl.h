@@ -65,16 +65,16 @@ class TransformProcessorBase : public IChannelCallback {
 
   template <typename ReceiverType>
   void startTransform(ReceiverType receiver) {
-    executeWhenReady(
-        [=, receiver = std::move(receiver)](RateLimiter::Token token) mutable {
-          runOperationWithSenderCancellation(
-              transformer_.getExecutor(),
-              this->sender_,
-              false /* alreadyStartedWaiting */,
-              this /* channelCallbackToRestore */,
-              startTransformImpl(std::move(receiver)),
-              std::move(token));
-        });
+    executeWhenReady([=, receiver = std::move(receiver)](
+                         std::unique_ptr<RateLimiter::Token> token) mutable {
+      runOperationWithSenderCancellation(
+          transformer_.getExecutor(),
+          this->sender_,
+          false /* alreadyStartedWaiting */,
+          this /* channelCallbackToRestore */,
+          startTransformImpl(std::move(receiver)),
+          std::move(token));
+    });
   }
 
  protected:
@@ -98,7 +98,7 @@ class TransformProcessorBase : public IChannelCallback {
    * sender).
    */
   void consume(ChannelBridgeBase* bridge) override {
-    executeWhenReady([=](RateLimiter::Token token) {
+    executeWhenReady([=](std::unique_ptr<RateLimiter::Token> token) {
       if (bridge == receiver_.get()) {
         // We have received new values from the input receiver.
         CHECK_NE(getReceiverState(), ChannelState::CancellationProcessed);
@@ -125,7 +125,7 @@ class TransformProcessorBase : public IChannelCallback {
    * listening to.
    */
   void canceled(ChannelBridgeBase* bridge) override {
-    executeWhenReady([=](RateLimiter::Token token) {
+    executeWhenReady([=](std::unique_ptr<RateLimiter::Token> token) {
       if (bridge == receiver_.get()) {
         // We previously cancelled the input receiver (because the consumer of
         // the output receiver stopped consuming). Process the cancellation for
@@ -274,14 +274,15 @@ class TransformProcessorBase : public IChannelCallback {
     return detail::getSenderState(sender_.get());
   }
 
-  void executeWhenReady(folly::Function<void(RateLimiter::Token)> func) {
+  void executeWhenReady(
+      folly::Function<void(std::unique_ptr<RateLimiter::Token>)> func) {
     auto rateLimiter = transformer_.getRateLimiter();
     if (rateLimiter != nullptr) {
       rateLimiter->executeWhenReady(
           std::move(func), transformer_.getExecutor());
     } else {
       transformer_.getExecutor()->add([func = std::move(func)]() mutable {
-        func(RateLimiter::Token(nullptr));
+        func(std::unique_ptr<RateLimiter::Token>(nullptr));
       });
     }
   }
@@ -348,16 +349,17 @@ class ResumableTransformProcessor : public TransformProcessorBase<
   using Base::Base;
 
   void initialize(InitializeArg initializeArg) {
-    this->executeWhenReady([=, initializeArg = std::move(initializeArg)](
-                               RateLimiter::Token token) mutable {
-      runOperationWithSenderCancellation(
-          this->transformer_.getExecutor(),
-          this->sender_,
-          false /* currentlyWaiting */,
-          this /* channelCallbackToRestore */,
-          initializeImpl(std::move(initializeArg)),
-          std::move(token));
-    });
+    this->executeWhenReady(
+        [=, initializeArg = std::move(initializeArg)](
+            std::unique_ptr<RateLimiter::Token> token) mutable {
+          runOperationWithSenderCancellation(
+              this->transformer_.getExecutor(),
+              this->sender_,
+              false /* currentlyWaiting */,
+              this /* channelCallbackToRestore */,
+              initializeImpl(std::move(initializeArg)),
+              std::move(token));
+        });
   }
 
  private:
