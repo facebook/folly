@@ -21,7 +21,7 @@
 namespace folly {
 namespace ssl {
 
-enum class LockType { MUTEX, SPINLOCK, SHAREDMUTEX, NONE };
+enum class LockType { MUTEX, SPINLOCK, NONE };
 
 /**
  * Map between an OpenSSL lock (see constants in crypto/crypto.h) and the

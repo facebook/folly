@@ -22,7 +22,6 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
-#include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 
 // We cannot directly use portability/openssl because it also depends on us.
@@ -76,32 +75,20 @@ struct SSLLock {
   FOLLY_MAYBE_UNUSED explicit SSLLock(LockType inLockType = LockType::MUTEX)
       : lockType(inLockType) {}
 
-  FOLLY_MAYBE_UNUSED void lock(bool read) {
+  FOLLY_MAYBE_UNUSED void lock(bool /* read */) {
     if (lockType == LockType::MUTEX) {
       mutex.lock();
     } else if (lockType == LockType::SPINLOCK) {
       spinLock.lock();
-    } else if (lockType == LockType::SHAREDMUTEX) {
-      if (read) {
-        sharedMutex.lock_shared();
-      } else {
-        sharedMutex.lock();
-      }
     }
     // lockType == LOCK_NONE, no-op
   }
 
-  FOLLY_MAYBE_UNUSED void unlock(bool read) {
+  FOLLY_MAYBE_UNUSED void unlock(bool /* read */) {
     if (lockType == LockType::MUTEX) {
       mutex.unlock();
     } else if (lockType == LockType::SPINLOCK) {
       spinLock.unlock();
-    } else if (lockType == LockType::SHAREDMUTEX) {
-      if (read) {
-        sharedMutex.unlock_shared();
-      } else {
-        sharedMutex.unlock();
-      }
     }
     // lockType == LOCK_NONE, no-op
   }
@@ -109,7 +96,6 @@ struct SSLLock {
   LockType lockType;
   folly::SpinLock spinLock{};
   std::mutex mutex;
-  SharedMutex sharedMutex;
 };
 } // namespace
 
