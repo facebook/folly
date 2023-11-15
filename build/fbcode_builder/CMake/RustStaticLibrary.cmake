@@ -324,3 +324,203 @@ function(install_rust_static_library TARGET)
     DESTINATION ${ARG_INSTALL_DIR}
   )
 endfunction()
+
+# This function creates C++ bindings using the [cxx] crate.
+#
+# Original function found here: https://github.com/corrosion-rs/corrosion/blob/master/cmake/Corrosion.cmake#L1390
+# Simplified for use as part of RustStaticLibrary module. License below.
+#
+# MIT License
+#
+# Copyright (c) 2018 Andrew Gaspar
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# The rules approximately do the following:
+# - Check which version of `cxx` the Rust crate depends on.
+# - Check if the exact same version of `cxxbridge-cmd` is installed
+# - If not, create a rule to build the exact same version of `cxxbridge-cmd`.
+# - Create rules to run `cxxbridge` and generate
+#   - The `rust/cxx.h` header
+#   - A header and source file for the specified CXX_BRIDGE_FILE.
+# - The generated sources (and header include directories) are added to the
+#   `${TARGET}` CMake library target.
+#
+# ```cmake
+# rust_cxx_bridge(<TARGET> <CXX_BRIDGE_FILE> [CRATE <CRATE_NAME>])
+# ```
+#
+# Parameters:
+# - TARGET:
+#   Name of the target name. The target that the bridge will be included with.
+# - CXX_BRIDGE_FILE:
+#   Name of the file that include the cxxbridge (e.g., "src/ffi.rs").
+# - CRATE_NAME:
+#   Name of the crate. This parameter is optional. If unspecified, it will
+#   fallback to `${TARGET}`.
+#
+function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
+  fb_cmake_parse_args(ARG "" "CRATE" "" "${ARGN}")
+
+  if(DEFINED ARG_CRATE)
+    set(crate_name "${ARG_CRATE}")
+  else()
+    set(crate_name "${TARGET}")
+  endif()
+
+  if(USE_CARGO_VENDOR)
+    set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
+  endif()
+
+  execute_process(
+    COMMAND
+      "${CMAKE_COMMAND}" -E env
+      ${extra_cargo_env}
+      "${CARGO_COMMAND}" tree -i cxx --depth=0
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    RESULT_VARIABLE cxx_version_result
+    OUTPUT_VARIABLE cxx_version_output
+  )
+
+  if(NOT "${cxx_version_result}" EQUAL "0")
+    message(FATAL_ERROR "Crate ${crate_name} does not depend on cxx.")
+  endif()
+  if(cxx_version_output MATCHES "cxx v([0-9]+.[0-9]+.[0-9]+)")
+    set(cxx_required_version "${CMAKE_MATCH_1}")
+  else()
+    message(
+      FATAL_ERROR
+      "Failed to parse cxx version from cargo tree output: `cxx_version_output`")
+  endif()
+
+  # First check if a suitable version of cxxbridge is installed
+  find_program(INSTALLED_CXXBRIDGE cxxbridge PATHS "$ENV{HOME}/.cargo/bin/")
+  mark_as_advanced(INSTALLED_CXXBRIDGE)
+  if(INSTALLED_CXXBRIDGE)
+    execute_process(
+      COMMAND "${INSTALLED_CXXBRIDGE}" --version
+      OUTPUT_VARIABLE cxxbridge_version_output
+    )
+    if(cxxbridge_version_output MATCHES "cxxbridge ([0-9]+.[0-9]+.[0-9]+)")
+      set(cxxbridge_version "${CMAKE_MATCH_1}")
+    else()
+      set(cxxbridge_version "")
+    endif()
+  endif()
+
+  set(cxxbridge "")
+  if(cxxbridge_version)
+    if(cxxbridge_version VERSION_EQUAL cxx_required_version)
+      set(cxxbridge "${INSTALLED_CXXBRIDGE}")
+      if(NOT TARGET "cxxbridge_v${cxx_required_version}")
+        # Add an empty target.
+        add_custom_target("cxxbridge_v${cxx_required_version}")
+      endif()
+    endif()
+  endif()
+
+  # No suitable version of cxxbridge was installed,
+  # so use custom target to install correct version.
+  if(NOT cxxbridge)
+    if(NOT TARGET "cxxbridge_v${cxx_required_version}")
+      add_custom_command(
+        OUTPUT
+          "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}/bin/cxxbridge"
+        COMMAND
+          "${CMAKE_COMMAND}" -E make_directory
+          "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}"
+        COMMAND
+          "${CMAKE_COMMAND}" -E remove -f "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock"
+        COMMAND
+          "${CMAKE_COMMAND}" -E env
+          ${extra_cargo_env}
+          "${CARGO_COMMAND}" install cxxbridge-cmd
+          --version "${cxx_required_version}"
+          --root "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}"
+          --quiet
+        COMMAND
+          "${CMAKE_COMMAND}" -E remove -f "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock"
+        COMMENT "Installing cxxbridge (version ${cxx_required_version})"
+      )
+      add_custom_target(
+        "cxxbridge_v${cxx_required_version}"
+        DEPENDS "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}/bin/cxxbridge"
+      )
+    endif()
+    set(
+      cxxbridge
+      "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}/bin/cxxbridge"
+    )
+  endif()
+
+  add_library(${crate_name} STATIC)
+  target_include_directories(
+    ${crate_name}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    $<INSTALL_INTERFACE:include>
+  )
+
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rust")
+  add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+    COMMAND
+      "${cxxbridge}" --header --output "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+    DEPENDS "cxxbridge_v${cxx_required_version}"
+    COMMENT "Generating rust/cxx.h header"
+  )
+
+  get_filename_component(filename_component ${CXX_BRIDGE_FILE} NAME)
+  get_filename_component(directory_component ${CXX_BRIDGE_FILE} DIRECTORY)
+  set(directory "")
+  if(directory_component)
+    set(directory "${directory_component}")
+  endif()
+
+  set(cxx_header ${directory}/${filename_component}.h)
+  set(cxx_source ${directory}/${filename_component}.cc)
+  set(rust_source_path "${CMAKE_CURRENT_SOURCE_DIR}/${CXX_BRIDGE_FILE}")
+
+  file(
+    MAKE_DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/${directory_component}"
+  )
+
+  add_custom_command(
+    OUTPUT
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+    COMMAND
+      ${cxxbridge} ${rust_source_path}
+        --header --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+    COMMAND
+      ${cxxbridge} ${rust_source_path}
+        --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+        --include "${cxx_header}"
+    DEPENDS "cxxbridge_v${cxx_required_version}" "${rust_source_path}"
+    COMMENT "Generating cxx bindings for crate ${crate_name}"
+  )
+
+  target_sources(${crate_name}
+    PRIVATE
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+      "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+  )
+endfunction()
