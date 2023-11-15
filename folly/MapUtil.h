@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/**
+ * MapUtil provides convenience functions to get a value from a map.
+ *
+ * @refcode folly/docs/examples/folly/MapUtil.cpp
+ * @file MapUtil.h
+ */
+
 #pragma once
 
 #include <tuple>
@@ -163,8 +170,8 @@ const typename Map::mapped_type& get_ref_default(
 }
 
 /**
- * Given a map and a key, return a pointer to the value corresponding to the
- * key in the map, or nullptr if the key doesn't exist in the map.
+ * @brief Given a map and a key, return a pointer to the value corresponding to
+ * the key in the map, or nullptr if the key doesn't exist in the map.
  */
 template <class Map, typename Key = typename Map::key_type>
 const auto* get_ptr(const Map& map, const Key& key) {
