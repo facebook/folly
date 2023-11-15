@@ -494,6 +494,11 @@ class upgrade_lock : public upgrade_lock_base<Mutex> {
   using upgrade_lock_base<Mutex>::upgrade_lock_base;
 };
 
+#if FOLLY_HAS_DEDUCTION_GUIDES || defined(_MSC_VER)
+template <typename Mutex, typename... A>
+explicit upgrade_lock(Mutex&, A const&...) -> upgrade_lock<Mutex>;
+#endif
+
 //  hybrid_lock
 //
 //  A lock-holder type which holds shared locks for shared mutex types or
@@ -506,7 +511,7 @@ class hybrid_lock : public hybrid_lock_base<Mutex> {
   using hybrid_lock_base<Mutex>::hybrid_lock_base;
 };
 
-#if __cpp_deduction_guides >= 201611
+#if FOLLY_HAS_DEDUCTION_GUIDES || defined(_MSC_VER)
 template <typename Mutex, typename... A>
 explicit hybrid_lock(Mutex&, A const&...) -> hybrid_lock<Mutex>;
 #endif
