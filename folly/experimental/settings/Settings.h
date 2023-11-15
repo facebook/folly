@@ -109,14 +109,6 @@ class SettingWrapper {
   friend class folly::settings::Snapshot;
 };
 
-/* C++20 has std::type_indentity */
-template <class T>
-struct TypeIdentity {
-  using type = T;
-};
-template <class T>
-using TypeIdentityT = typename TypeIdentity<T>::type;
-
 /**
  * Optimization: fast-path on top of the Meyers singleton. Each
  * translation unit gets this code inlined, while the slow path
@@ -200,7 +192,7 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
         setting(                                                               \
             ::folly::settings::SettingMetadata{                                \
                 #_project, #_name, #_Type, typeid(_Type), #_def, _desc},       \
-            ::folly::settings::detail::TypeIdentityT<_Type>{_def},             \
+            ::folly::type_t<_Type>{_def},                                      \
             FOLLY_SETTINGS_TRIVIAL__##_project##_##_name);                     \
     return *setting;                                                           \
   }                                                                            \
