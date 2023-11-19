@@ -34,6 +34,7 @@
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
+#include <folly/synchronization/Lock.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/SanitizeThread.h>
 #include <folly/system/ThreadId.h>
