@@ -112,7 +112,7 @@ struct lock_storage<Mutex, void> {
   lock_storage(lock_storage&& that) noexcept
       : mutex_{std::exchange(that.mutex_, nullptr)},
         state_{std::exchange(that.state_, false)} {}
-  lock_storage(Mutex& mutex, std::adopt_lock_t)
+  FOLLY_NODISCARD lock_storage(Mutex& mutex, std::adopt_lock_t)
       : mutex_{std::addressof(mutex)}, state_{true} {}
 
   void operator=(lock_storage&&) = delete;
@@ -156,25 +156,25 @@ class lock_base //
   using storage::storage;
   lock_base() = default;
   lock_base(lock_base&&) = default;
-  explicit lock_base(mutex_type& mutex) {
+  FOLLY_NODISCARD explicit lock_base(mutex_type& mutex) {
     storage::mutex_ = std::addressof(mutex);
     lock();
   }
   lock_base(mutex_type& mutex, std::defer_lock_t) noexcept {
     storage::mutex_ = std::addressof(mutex);
   }
-  lock_base(mutex_type& mutex, std::try_to_lock_t) {
+  FOLLY_NODISCARD lock_base(mutex_type& mutex, std::try_to_lock_t) {
     storage::mutex_ = std::addressof(mutex);
     try_lock();
   }
   template <typename Rep, typename Period>
-  lock_base(
+  FOLLY_NODISCARD lock_base(
       mutex_type& mutex, std::chrono::duration<Rep, Period> const& timeout) {
     storage::mutex_ = std::addressof(mutex);
     try_lock_for(timeout);
   }
   template <typename Clock, typename Duration>
-  lock_base(
+  FOLLY_NODISCARD lock_base(
       mutex_type& mutex,
       std::chrono::time_point<Clock, Duration> const& deadline) {
     storage::mutex_ = std::addressof(mutex);

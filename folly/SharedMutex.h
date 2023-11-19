@@ -1835,25 +1835,26 @@ class shared_lock<
 
   shared_lock() noexcept = default;
 
-  explicit shared_lock(mutex_type& mutex) : mutex_(std::addressof(mutex)) {
+  FOLLY_NODISCARD explicit shared_lock(mutex_type& mutex)
+      : mutex_(std::addressof(mutex)) {
     lock();
   }
 
   shared_lock(mutex_type& mutex, std::defer_lock_t) noexcept
       : mutex_(std::addressof(mutex)) {}
 
-  shared_lock(mutex_type& mutex, std::try_to_lock_t)
+  FOLLY_NODISCARD shared_lock(mutex_type& mutex, std::try_to_lock_t)
       : mutex_(std::addressof(mutex)) {
     try_lock();
   }
 
-  shared_lock(mutex_type& mutex, std::adopt_lock_t)
+  FOLLY_NODISCARD shared_lock(mutex_type& mutex, std::adopt_lock_t)
       : mutex_(std::addressof(mutex)) {
     token_.state_ = token_type::State::LockedShared;
   }
 
   template <typename Clock, typename Duration>
-  shared_lock(
+  FOLLY_NODISCARD shared_lock(
       mutex_type& mutex,
       const std::chrono::time_point<Clock, Duration>& deadline)
       : mutex_(std::addressof(mutex)) {
@@ -1861,7 +1862,7 @@ class shared_lock<
   }
 
   template <typename Rep, typename Period>
-  shared_lock(
+  FOLLY_NODISCARD shared_lock(
       mutex_type& mutex, const std::chrono::duration<Rep, Period>& timeout)
       : mutex_(std::addressof(mutex)) {
     try_lock_for(timeout);
