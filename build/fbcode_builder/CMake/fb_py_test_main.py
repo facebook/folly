@@ -194,7 +194,7 @@ class CallbackStream(object):
         return self._fileno
 
 
-class BuckTestResult(unittest._TextTestResult):
+class BuckTestResult(unittest.TextTestResult):
     """
     Our own TestResult class that outputs data in a format that can be easily
     parsed by buck's test runner.
