@@ -730,14 +730,6 @@ estimateSpaceNeeded(Src value) {
       (value < 0 ? 1 : 0)); // +1 for minus sign, if negative
 }
 
-/**
- * This can be specialized, together with adding specialization
- * for estimateSpaceNeed for your type, so that we allocate
- * as much as you need instead of the default
- */
-template <class Src>
-struct HasLengthEstimator : std::false_type {};
-
 template <class Src>
 constexpr typename std::enable_if<
     !std::is_fundamental<Src>::value &&
@@ -749,7 +741,7 @@ constexpr typename std::enable_if<
         !IsSomeString<Src>::value &&
         !std::is_convertible<Src, const char*>::value &&
         !std::is_convertible<Src, StringPiece>::value &&
-        !std::is_enum<Src>::value && !HasLengthEstimator<Src>::value,
+        !std::is_enum<Src>::value,
     size_t>::type
 estimateSpaceNeeded(const Src&) {
   return sizeof(Src) + 1; // dumbest best effort ever?
