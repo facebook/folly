@@ -186,7 +186,7 @@ class AsyncScope {
 
   detail::Barrier barrier_{1};
   std::atomic<bool> anyTasksStarted_{false};
-  bool joinStarted_{false};
+  std::atomic<bool> joinStarted_{false};
   bool joined_{false};
   bool throwOnJoin_{false};
   folly::exception_wrapper maybeException_;
@@ -205,7 +205,9 @@ inline AsyncScope::~AsyncScope() {
 
 inline std::size_t AsyncScope::remaining() const noexcept {
   const std::size_t count = barrier_.remaining();
-  return joinStarted_ ? count : (count > 1 ? count - 1 : 0);
+  return joinStarted_.load(std::memory_order_relaxed)
+      ? count
+      : (count > 1 ? count - 1 : 0);
 }
 
 template <typename Awaitable>
@@ -247,8 +249,10 @@ FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
 }
 
 inline Task<void> AsyncScope::joinAsync() noexcept {
-  assert(!joinStarted_ && "It is invalid to join a scope multiple times");
-  joinStarted_ = true;
+  assert(
+      !joinStarted_.load(std::memory_order_relaxed) &&
+      "It is invalid to join a scope multiple times");
+  joinStarted_.store(true, std::memory_order_relaxed);
   co_await barrier_.arriveAndWait();
   joined_ = true;
   if (maybeException_.has_exception_ptr()) {
