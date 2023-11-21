@@ -24,6 +24,11 @@
 
 using namespace folly;
 
+struct NotNullTest : testing::Test {};
+struct NotNullHelperTest : testing::Test {};
+struct NotNullUniquePtrTest : testing::Test {};
+struct NotNullSharedPtrTest : testing::Test {};
+
 namespace {
 struct Base {
   virtual ~Base() = default;
@@ -55,7 +60,7 @@ struct Wrapper {
   T t;
 };
 
-TEST(nn, is_not_null) {
+TEST_F(NotNullTest, is_not_null) {
   static_assert(detail::is_not_null_v<void> == false, "is_not_null failure");
   static_assert(detail::is_not_null_v<int> == false, "is_not_null failure");
   static_assert(detail::is_not_null_v<int*> == false, "is_not_null failure");
@@ -81,7 +86,7 @@ bool ctor_throws(From&& from) {
   return false;
 }
 
-TEST(nn, ctor_exception) {
+TEST_F(NotNullTest, ctor_exception) {
   Derived* dp = nullptr;
 
   Derived d;
@@ -107,14 +112,14 @@ TEST(nn, ctor_exception) {
 #endif
 }
 
-TEST(nn, ctor_conversion) {
+TEST_F(NotNullTest, ctor_conversion) {
   int* p = new int(7);
   not_null_unique_ptr<int> a(p);
   not_null_shared_ptr<int> b(std::move(a));
   EXPECT_EQ(*b, 7);
 }
 
-TEST(nn, explicit_construction) {
+TEST_F(NotNullTest, explicit_construction) {
   int* i = new int(7);
 
   // Can explicitly construct a unique_ptr from a raw pointer...
@@ -129,7 +134,7 @@ TEST(nn, explicit_construction) {
 #endif
 }
 
-TEST(nn, dereferencing) {
+TEST_F(NotNullTest, dereferencing) {
   not_null_unique_ptr<std::vector<int>> nn =
       std::make_unique<std::vector<int>>();
 
@@ -137,7 +142,7 @@ TEST(nn, dereferencing) {
   EXPECT_EQ((*nn)[0], 2);
 }
 
-TEST(nn, bool_cast) {
+TEST_F(NotNullTest, bool_cast) {
   int i = 7;
   not_null<int*> nn(&i);
   if (nn) {
@@ -149,7 +154,7 @@ TEST(nn, bool_cast) {
   }
 }
 
-TEST(nn, ptr_casting) {
+TEST_F(NotNullTest, ptr_casting) {
   int i = 7;
   not_null<int*> nn(&i);
   auto f = [](int* p) { *p = 8; };
@@ -157,14 +162,14 @@ TEST(nn, ptr_casting) {
   EXPECT_EQ(i, 8);
 }
 
-TEST(nn, conversion_casting) {
+TEST_F(NotNullTest, conversion_casting) {
   Derived d;
   not_null<Derived*> nnd(&d);
   auto f = [&](Base* b) { EXPECT_EQ(&d, b); };
   f(nnd);
 }
 
-TEST(nn, move_casting) {
+TEST_F(NotNullTest, move_casting) {
   not_null<std::unique_ptr<Derived>> nnd = std::make_unique<Derived>();
   auto f = [](std::unique_ptr<Base>) {};
   f(std::move(nnd));
@@ -181,7 +186,7 @@ TEST(nn, move_casting) {
 // yield. If the casting operator did not yield, then Wrapper could either be
 // implicitly constructed from not_null, or not_null could be casted to Wrapper,
 // leading to a compiler error for ambiguity.
-TEST(nn, multi_cast) {
+TEST_F(NotNullTest, multi_cast) {
   int i = 5;
   not_null<int*> nn(&i);
   auto f = [](Wrapper<not_null<int*>> w) { EXPECT_EQ(*w.t, 5); };
@@ -192,7 +197,7 @@ TEST(nn, multi_cast) {
   f(std::move(nn));
 }
 
-TEST(nn, unwrap) {
+TEST_F(NotNullTest, unwrap) {
   not_null_unique_ptr<int> nn = std::make_unique<int>(7);
   auto f = [](const std::unique_ptr<int>& u_i) { return *u_i; };
   auto g = [](std::unique_ptr<int>&& u_i) { return *u_i; };
@@ -207,7 +212,7 @@ TEST(nn, unwrap) {
 /**
  * not_null_unique_ptr API tests
  */
-TEST(nn_up, deleter) {
+TEST_F(NotNullUniquePtrTest, deleter) {
   int counter = 0;
   {
     not_null_unique_ptr<int, my_deleter> a(new int(5), my_deleter(&counter));
@@ -217,7 +222,7 @@ TEST(nn_up, deleter) {
   EXPECT_EQ(counter, 1);
 }
 
-TEST(nn_up, reset) {
+TEST_F(NotNullUniquePtrTest, reset) {
   not_null_unique_ptr<int> a(new int(5));
   int* i = new int(6);
 
@@ -225,7 +230,7 @@ TEST(nn_up, reset) {
   EXPECT_EQ(*a, 6);
 }
 
-TEST(nn_up, swap) {
+TEST_F(NotNullUniquePtrTest, swap) {
   not_null_unique_ptr<int> a(new int(5));
   not_null_unique_ptr<int> b(new int(6));
 
@@ -234,7 +239,7 @@ TEST(nn_up, swap) {
   EXPECT_EQ(*b, 5);
 }
 
-TEST(nn_up, get) {
+TEST_F(NotNullUniquePtrTest, get) {
   int* i = new int(5);
   not_null_unique_ptr<int> a(i);
   int* p = a.get();
@@ -245,7 +250,7 @@ TEST(nn_up, get) {
       detail::is_not_null_v<decltype(g)>, "get() does not return not_null");
 }
 
-TEST(nn_up, assignment) {
+TEST_F(NotNullUniquePtrTest, assignment) {
   not_null_unique_ptr<int> nnup(new int(5));
   auto up = std::make_unique<int>(6);
 
@@ -256,7 +261,7 @@ TEST(nn_up, assignment) {
 /**
  * not_null_shared_ptr API tests
  */
-TEST(nn_sp, deleter) {
+TEST_F(NotNullSharedPtrTest, deleter) {
   int counter = 0;
   {
     not_null_shared_ptr<int> nnsp(new int(5), my_deleter(&counter));
@@ -276,7 +281,7 @@ TEST(nn_sp, deleter) {
   EXPECT_EQ(counter, 2);
 }
 
-TEST(nn_sp, aliasing) {
+TEST_F(NotNullSharedPtrTest, aliasing) {
   auto sp = std::make_shared<int>(5);
   int i = 6;
   not_null_shared_ptr<int> nnsp1(sp, &i);
@@ -298,7 +303,7 @@ TEST(nn_sp, aliasing) {
   EXPECT_EQ(*nnsp4, 7);
 }
 
-TEST(nn_sp, null_aliasing) {
+TEST_F(NotNullSharedPtrTest, null_aliasing) {
   int* i = new int(5);
   int* j = new int(6);
   std::shared_ptr<int> sp1;
@@ -316,7 +321,7 @@ TEST(nn_sp, null_aliasing) {
   delete i;
 }
 
-TEST(nn_sp, assignment) {
+TEST_F(NotNullSharedPtrTest, assignment) {
   not_null_shared_ptr<int> nnsp(new int(5));
   auto& ret = nnsp = std::make_unique<int>(6);
   EXPECT_EQ(*nnsp, 6);
@@ -325,7 +330,7 @@ TEST(nn_sp, assignment) {
       "operator= wrong return type");
 }
 
-TEST(nn_sp, reset) {
+TEST_F(NotNullSharedPtrTest, reset) {
   not_null_shared_ptr<int> nnsp(new int(5));
   not_null<int*> nnp1(new int(6));
 
@@ -344,7 +349,7 @@ TEST(nn_sp, reset) {
   EXPECT_EQ(counter, 1);
 }
 
-TEST(nn_sp, swap) {
+TEST_F(NotNullSharedPtrTest, swap) {
   not_null_shared_ptr<int> a(new int(5));
   not_null_shared_ptr<int> b(new int(6));
 
@@ -353,7 +358,7 @@ TEST(nn_sp, swap) {
   EXPECT_EQ(*b, 5);
 }
 
-TEST(nn_sp, get) {
+TEST_F(NotNullSharedPtrTest, get) {
   not_null_shared_ptr<int> nnsp(new int(5));
   auto p = nnsp.get();
   EXPECT_EQ(*p, 5);
@@ -362,7 +367,7 @@ TEST(nn_sp, get) {
       std::is_same_v<decltype(p), not_null<int*>>, "wrong return type");
 }
 
-TEST(nn_sp, use_count) {
+TEST_F(NotNullSharedPtrTest, use_count) {
   not_null_shared_ptr<int> nnsp1(new int(5));
   EXPECT_EQ(nnsp1.use_count(), 1);
   {
@@ -373,7 +378,7 @@ TEST(nn_sp, use_count) {
   EXPECT_EQ(nnsp1.use_count(), 1);
 }
 
-TEST(nn_sp, owner_before) {
+TEST_F(NotNullSharedPtrTest, owner_before) {
   not_null_shared_ptr<int> nnsp1(new int(5));
   not_null_shared_ptr<int> nnsp2(new int(6));
   auto sp = std::make_shared<int>(7);
@@ -398,7 +403,7 @@ TEST(nn_sp, owner_before) {
 /**
  * Non-member not_null helpers.
  */
-TEST(nn_helper, maker) {
+TEST_F(NotNullHelperTest, maker) {
   auto nnu = make_not_null_unique<int>(7);
   EXPECT_EQ(*nnu, 7);
 
@@ -406,7 +411,7 @@ TEST(nn_helper, maker) {
   EXPECT_EQ(*nns, 8);
 }
 
-TEST(nn, cmp_correctness) {
+TEST_F(NotNullTest, cmp_correctness) {
   int* a = new int(6);
   int* b = new int(7);
 
@@ -434,7 +439,7 @@ TEST(nn, cmp_correctness) {
   delete a;
 }
 
-TEST(nn, cmp_types) {
+TEST_F(NotNullTest, cmp_types) {
   int i = 5;
   int* p = &i;
   int* j = new int(6);
@@ -449,7 +454,7 @@ TEST(nn, cmp_types) {
   delete j;
 }
 
-TEST(nn_helper, output) {
+TEST_F(NotNullHelperTest, output) {
   not_null_shared_ptr<int> nn(new int(5));
 
   std::stringstream ss1, ss2;
@@ -461,7 +466,7 @@ TEST(nn_helper, output) {
   EXPECT_NE(s2, "");
 }
 
-TEST(nn_helper, casting) {
+TEST_F(NotNullHelperTest, casting) {
   not_null_shared_ptr<Derived> nnd(new Derived());
 
   auto s = static_pointer_cast<Base>(nnd);
@@ -490,7 +495,7 @@ TEST(nn_helper, casting) {
       std::is_same_v<decltype(r), not_null_shared_ptr<Base>>, "wrong cast");
 }
 
-TEST(nn, hash) {
+TEST_F(NotNullTest, hash) {
   int* i = new int(5);
   {
     std::unordered_set<not_null<int*>> s;
@@ -499,7 +504,7 @@ TEST(nn, hash) {
   delete i;
 }
 
-TEST(nn, null_deleter) {
+TEST_F(NotNullTest, null_deleter) {
   int* j = new int(6);
   try {
     not_null_unique_ptr<int, void (*)(int*)> nnui(j, nullptr);
@@ -529,7 +534,7 @@ void testAliasedSharedPtrNullOwner() {
   delete p;
 }
 
-TEST(nn_sp, null_aliased_shared_ptr) {
+TEST_F(NotNullSharedPtrTest, null_aliased_shared_ptr) {
   // It is legal to construct an aliased shared_ptr with a null owner.
   // Verify that this is so for regular shared_ptr.
   testAliasedSharedPtrNullOwner<std::shared_ptr<int>>();
@@ -538,7 +543,7 @@ TEST(nn_sp, null_aliased_shared_ptr) {
   testAliasedSharedPtrNullOwner<not_null_shared_ptr<int>>();
 }
 
-TEST(nn_sp, pointer_cast_check) {
+TEST_F(NotNullSharedPtrTest, pointer_cast_check) {
   auto nnd = make_not_null_shared<Derived>();
 
   auto nnb1 = static_pointer_cast<Base>(nnd);
@@ -601,7 +606,7 @@ class MyAllocator : public std::allocator<int> {
  private:
   int* count_;
 };
-TEST(nn_sp, allocate_shared) {
+TEST_F(NotNullSharedPtrTest, allocate_shared) {
   int count = 0;
   auto nnsp = allocate_not_null_shared<int>(MyAllocator(&count), 7);
   EXPECT_EQ(*nnsp, 7);
