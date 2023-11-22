@@ -119,3 +119,8 @@ TEST(RateLimiter, concurrentThreads) {
   // We should have passed the check exactly maxEvents times
   EXPECT_EQ(maxEvents, count.load(std::memory_order_relaxed));
 }
+
+TEST(RateLimiter, LargeInterval) {
+  IntervalRateLimiter limiter{1, std::chrono::years{1}};
+  EXPECT_TRUE(limiter.check());
+}

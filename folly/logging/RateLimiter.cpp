@@ -33,7 +33,7 @@ bool IntervalRateLimiter::checkSlow() {
     return false;
   }
 
-  if (ts == 0) {
+  if (ts == kInitialTimestamp) {
     // If we initialized timestamp_ for the very first time increment count_ by
     // one instead of setting it to 0.  Our original increment made it roll over
     // to 0, so other threads may have already incremented it again and passed
