@@ -86,6 +86,32 @@ using index_constant = std::integral_constant<std::size_t, I>;
 template <typename...>
 FOLLY_INLINE_VARIABLE constexpr bool always_false = false;
 
+//  is_unbounded_array_v
+//  is_unbounded_array
+//
+//  A trait variable and type to check if a given type is an unbounded array.
+//
+//  mimic: std::is_unbounded_array_d, std::is_unbounded_array (C++20)
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_unbounded_array_v = false;
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_unbounded_array_v<T[]> = true;
+template <typename T>
+struct is_unbounded_array : bool_constant<is_unbounded_array_v<T>> {};
+
+//  is_bounded_array_v
+//  is_bounded_array
+//
+//  A trait variable and type to check if a given type is a bounded array.
+//
+//  mimic: std::is_bounded_array_d, std::is_bounded_array (C++20)
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_bounded_array_v = false;
+template <typename T, std::size_t S>
+FOLLY_INLINE_VARIABLE constexpr bool is_bounded_array_v<T[S]> = true;
+template <typename T>
+struct is_bounded_array : bool_constant<is_bounded_array_v<T>> {};
+
 namespace detail {
 
 //  is_instantiation_of_v

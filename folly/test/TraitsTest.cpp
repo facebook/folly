@@ -469,6 +469,20 @@ TEST(Traits, like) {
            value));
 }
 
+TEST(Traits, is_unbounded_array_v) {
+  EXPECT_FALSE((folly::is_unbounded_array_v<void>));
+  EXPECT_FALSE((folly::is_unbounded_array_v<int>));
+  EXPECT_TRUE((folly::is_unbounded_array_v<int[]>));
+  EXPECT_FALSE((folly::is_unbounded_array_v<int[1]>));
+}
+
+TEST(Traits, is_bounded_array_v) {
+  EXPECT_FALSE((folly::is_bounded_array_v<void>));
+  EXPECT_FALSE((folly::is_bounded_array_v<int>));
+  EXPECT_FALSE((folly::is_bounded_array_v<int[]>));
+  EXPECT_TRUE((folly::is_bounded_array_v<int[1]>));
+}
+
 TEST(Traits, is_instantiation_of_v) {
   EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
   EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
