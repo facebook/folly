@@ -80,6 +80,56 @@ namespace folly {
 
 namespace invoke_detail {
 
+//  ok_one_
+//
+//  A quoted-metafunction which, when applied to type T, enforces that T is a
+//  complete type, (possibly cv-qualified) void, or an array of unknown bound.
+//  Substitutes as void if that holds; otherwise fails a static-assert.
+struct ok_one_ {
+  template <typename T>
+  static constexpr bool pass_v = ( //
+      std::is_void<T>::value || //
+      std::is_reference<T>::value || //
+      std::is_function<T>::value || //
+      is_unbounded_array_v<T> || //
+      false);
+
+  // note: void return type with no function body to enforce that, in the
+  // typical case of complete non-function types, to minimize the quantity of
+  // evaluations and instantiations
+  template <typename T, std::size_t = sizeof(T)>
+  static void test(int);
+
+  // note: auto return type with no trailing return type to force the
+  // instantiation of the function and, therefore, to force the
+  // evaluation of she static-assert
+  template <typename T>
+  static auto test(...) {
+    static_assert(pass_v<T>, "must be complete, cv-void, or unbounded-array");
+    return;
+  }
+
+  template <typename T>
+  using apply = decltype(test<T>(0));
+};
+
+//  ok_
+//
+//  Enforce that each A... is a complete type, (possibly cv-qualified) void, or
+//  an array of unknown bound. Substitutes as T if that holds; otherwise fails a
+//  static-assert.
+//
+//  The reason to fail a static-assert and not, say, to fail to substitute is
+//  to force application to incomplete types to fail the compile rather than to
+//  allow the compile to succumb to ODR violation. The failing static-assert is
+//  a diagnosis of undefined behavior.
+//
+//  See:
+//    https://en.cppreference.com/w/cpp/types/is_invocable
+//    https://github.com/gcc-mirror/gcc/blob/releases/gcc-13.2.0/libstdc%2B%2B-v3/include/std/type_traits#L272-L287
+template <typename T, typename... A>
+using ok_ = type_t<T, ok_one_::apply<A>...>;
+
 template <typename F>
 struct traits {
   template <typename... A>
@@ -125,14 +175,15 @@ struct invoke_result<void_t<invoke_result_t<F, A...>>, F, A...> {
 };
 
 template <typename Void, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_invocable_v = false;
+FOLLY_INLINE_VARIABLE constexpr bool is_invocable_v = ok_<bool, F, A...>{false};
 
 template <typename F, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool
     is_invocable_v<void_t<invoke_result_t<F, A...>>, F, A...> = true;
 
 template <typename Void, typename R, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_invocable_r_v = false;
+FOLLY_INLINE_VARIABLE constexpr bool is_invocable_r_v =
+    ok_<bool, R, F, A...>{false};
 
 // clang-format off
 template <typename R, typename F, typename... A>
@@ -143,7 +194,8 @@ FOLLY_INLINE_VARIABLE constexpr bool
 // clang-format on
 
 template <typename Void, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_v = false;
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_v =
+    ok_<bool, F, A...>{false};
 
 template <typename F, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool
@@ -151,7 +203,8 @@ FOLLY_INLINE_VARIABLE constexpr bool
         traits<F>::template nothrow<A...>;
 
 template <typename Void, typename R, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_r_v = false;
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_r_v =
+    ok_<bool, R, F, A...>{false};
 
 // clang-format off
 template <typename R, typename F, typename... A>
