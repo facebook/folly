@@ -363,7 +363,7 @@ endfunction()
 #   `${TARGET}` CMake library target.
 #
 # ```cmake
-# rust_cxx_bridge(<TARGET> <CXX_BRIDGE_FILE> [CRATE <CRATE_NAME>])
+# rust_cxx_bridge(<TARGET> <CXX_BRIDGE_FILE> [CRATE <CRATE_NAME>] [LIBS <LIBNAMES>])
 # ```
 #
 # Parameters:
@@ -374,9 +374,11 @@ endfunction()
 # - CRATE_NAME:
 #   Name of the crate. This parameter is optional. If unspecified, it will
 #   fallback to `${TARGET}`.
+# - LIBS <lib1> [<lib2> ...]:
+#   A list of libraries that this library depends on.
 #
 function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
-  fb_cmake_parse_args(ARG "" "CRATE" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "" "CRATE" "LIBS" "${ARGN}")
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
@@ -476,6 +478,11 @@ function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<INSTALL_INTERFACE:include>
   )
+  target_link_libraries(
+    ${crate_name}
+    PUBLIC
+    ${ARG_LIBS}
+  )
 
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rust")
   add_custom_command(
@@ -517,10 +524,11 @@ function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
     COMMENT "Generating cxx bindings for crate ${crate_name}"
   )
 
-  target_sources(${crate_name}
+  target_sources(
+    ${crate_name}
     PRIVATE
-      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
-      "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
-      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+    "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
   )
 endfunction()
