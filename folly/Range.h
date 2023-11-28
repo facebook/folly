@@ -201,6 +201,8 @@ struct range_traits_char_ {
 struct range_traits_byte_ {
   template <typename Value>
   struct apply {
+    FOLLY_ERASE static constexpr bool eq(Value a, Value b) { return a == b; }
+
     FOLLY_ERASE static constexpr int compare(
         Value const* a, Value const* b, std::size_t c) {
       return !c ? 0 : std::memcmp(a, b, c);
@@ -210,6 +212,8 @@ struct range_traits_byte_ {
 struct range_traits_fbck_ {
   template <typename Value>
   struct apply {
+    FOLLY_ERASE static constexpr bool eq(Value a, Value b) { return a == b; }
+
     FOLLY_ERASE static constexpr int compare(
         Value const* a, Value const* b, std::size_t c) {
       while (c--) {
@@ -1320,7 +1324,15 @@ std::basic_ostream<C>& operator<<(std::basic_ostream<C>& os, Range<C*> piece) {
 
 template <class Iter>
 inline bool operator==(const Range<Iter>& lhs, const Range<Iter>& rhs) {
-  return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (!Range<Iter>::traits_type::eq(lhs[i], rhs[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 template <class Iter>
