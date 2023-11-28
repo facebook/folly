@@ -484,7 +484,11 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
-    #pragma unroll 16
+#if defined(__GNUC__)
+#pragma GCC unroll 16
+#else
+#pragma unroll 16
+#endif
     for (int i = 0; i < kCapacity; i++) {
       mask |= ((tagV[i] == static_cast<uint8_t>(needle)) ? 1 : 0) << i;
     }
@@ -494,7 +498,11 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   MaskType occupiedMask() const {
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
-    #pragma unroll 16
+#if defined(__GNUC__)
+#pragma GCC unroll 16
+#else
+#pragma unroll 16
+#endif
     for (int i = 0; i < kCapacity; i++) {
       mask |= ((tagV[i] & 0x80) ? 1 : 0) << i;
     }

@@ -37,10 +37,10 @@
 
 using folly::small_vector;
 
-#if FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64
-
 using folly::small_vector_policy::policy_in_situ_only;
 using folly::small_vector_policy::policy_size_type;
+
+#if FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64 || FOLLY_RISCV64
 
 template <typename...>
 struct same_;

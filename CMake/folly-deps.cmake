@@ -185,7 +185,7 @@ message(STATUS "Setting FOLLY_HAVE_DWARF: ${FOLLY_HAVE_DWARF}")
 check_cxx_source_compiles("
   #include <atomic>
   int main(int argc, char** argv) {
-    struct Test { int val; };
+    struct Test { bool val; };
     std::atomic<Test> s;
     return static_cast<int>(s.is_lock_free());
   }"
@@ -197,7 +197,7 @@ if(NOT FOLLY_CPP_ATOMIC_BUILTIN)
   check_cxx_source_compiles("
     #include <atomic>
     int main(int argc, char** argv) {
-      struct Test { int val; };
+      struct Test { bool val; };
       std::atomic<Test> s2;
       return static_cast<int>(s2.is_lock_free());
     }"

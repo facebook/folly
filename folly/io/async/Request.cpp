@@ -117,7 +117,7 @@ struct RequestContext::State::Combined : hazptr_obj_base<Combined> {
   // Efficiency of copying the container also matters in setShallowCopyContext
   SingleWriterFixedHashMap<RequestToken, RequestData*> requestData_;
   // This must be optimized for iteration, its hot path is setContext
-  SingleWriterFixedHashMap<RequestData*, bool> callbackData_;
+  SingleWriterFixedHashMap<RequestData*, int> callbackData_;
   // Vector of cleared data. Accessed only sequentially by writers.
   std::vector<std::pair<RequestToken, RequestData*>> cleared_;
 
