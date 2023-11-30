@@ -666,7 +666,7 @@ std::string LoggerDB::ContextCallbackList::getContextString() const {
       folly::toAppend(' ', std::move(ctx), &ret);
     } catch (const std::exception& e) {
       folly::toAppend("[error:", folly::exceptionStr(e), "]", &ret);
-    };
+    }
   });
   return ret;
 }
