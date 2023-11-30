@@ -47,11 +47,7 @@ FOLLY_ALWAYS_INLINE static unsigned findFirstSetNonZero(T mask) {
 using MaskType = uint64_t;
 
 constexpr unsigned kMaskSpacing = 4;
-#elif FOLLY_SSE >= 2
-using MaskType = uint32_t;
-
-constexpr unsigned kMaskSpacing = 1;
-#else
+#else // FOLLY_SSE >= 2 || FOLLY_RISCV64
 using MaskType = uint32_t;
 
 constexpr unsigned kMaskSpacing = 1;

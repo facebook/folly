@@ -257,7 +257,7 @@ FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
 using TagVector = uint8x16_t;
 #elif FOLLY_SSE >= 2
 using TagVector = __m128i;
-#else
+#elif FOLLY_HAVE_INT128_T
 using TagVector = __uint128_t;
 #endif
 
@@ -476,7 +476,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     auto tagV = _mm_load_si128(tagVector());
     return _mm_movemask_epi8(tagV) & kFullMask;
   }
-#else
+#elif FOLLY_HAVE_INT128_T
   ////////
   // Tag filtering using plain C/C++
 
