@@ -1563,7 +1563,6 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
       its.first = end;
     }
     return its;
-    ;
   }
 
   template <typename... Args>
