@@ -68,11 +68,6 @@ TEST_F(NotNullTest, is_not_null) {
       detail::is_not_null_v<const int* const> == false, "is_not_null failure");
   static_assert(
       detail::is_not_null_v<not_null<int*>> == true, "is_not_null failure");
-  static_assert(
-      detail::is_not_null_v<const not_null<int*>&> == true,
-      "is_not_null failure");
-  static_assert(
-      detail::is_not_null_v<not_null<int*>&&> == true, "is_not_null failure");
 }
 
 template <typename To, typename From>

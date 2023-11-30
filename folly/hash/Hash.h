@@ -614,7 +614,7 @@ struct IsAvalanchingHasher;
 
 namespace detail {
 template <typename Hasher, typename Void = void>
-struct IsAvalanchingHasherFromMemberType : std::false_type {};
+struct IsAvalanchingHasherFromMemberType : bool_constant<!sizeof(Hasher)> {};
 
 template <typename Hasher>
 struct IsAvalanchingHasherFromMemberType<

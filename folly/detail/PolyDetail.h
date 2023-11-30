@@ -925,7 +925,7 @@ struct Sig<R(A&, As...)> : SigImpl<R, A&, As...> {
 };
 
 template <class T, class I, class = void>
-struct ModelsInterface2_ : std::false_type {};
+struct ModelsInterface2_ : bool_constant<!sizeof(T) || !sizeof(I)> {};
 
 template <class T, class I>
 struct ModelsInterface2_<
@@ -937,7 +937,7 @@ struct ModelsInterface2_<
         MembersOf<std::decay_t<I>, std::decay_t<T>>>> : std::true_type {};
 
 template <class T, class I, class = void>
-struct ModelsInterface_ : std::false_type {};
+struct ModelsInterface_ : bool_constant<!sizeof(T) || !sizeof(I)> {};
 
 template <class T, class I>
 struct ModelsInterface_<

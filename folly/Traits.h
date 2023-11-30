@@ -160,7 +160,7 @@ struct is_constexpr_default_constructible_ {
   static std::true_type sfinae(T*);
   static std::false_type sfinae(void*);
   template <typename T>
-  static constexpr bool apply =
+  static constexpr bool apply = sizeof(T) &&
       decltype(sfinae(static_cast<T*>(nullptr)))::value;
 };
 
@@ -368,6 +368,8 @@ struct detected_<void_t<T<A...>>, D, T, A...> {
 //  alias value_t as std::false_type and has member type alias type as D.
 //
 //  mimic: std::experimental::detected_or, Library Fundamentals TS v2
+//
+//  Note: not resilient agaist incomplete types; may violate ODR.
 template <typename D, template <typename...> class T, typename... A>
 using detected_or = detail::detected_<void, D, T, A...>;
 
@@ -379,6 +381,8 @@ using detected_or = detail::detected_<void, D, T, A...>;
 //  Equivalent to detected_or<D, T, A...>::type.
 //
 //  mimic: std::experimental::detected_or_t, Library Fundamentals TS v2
+//
+//  Note: not resilient agaist incomplete types; may violate ODR.
 template <typename D, template <typename...> class T, typename... A>
 using detected_or_t = typename detected_or<D, T, A...>::type;
 
@@ -390,6 +394,8 @@ using detected_or_t = typename detected_or<D, T, A...>::type;
 //  Equivalent to detected_or_t<nonesuch, T, A...>.
 //
 //  mimic: std::experimental::detected_t, Library Fundamentals TS v2
+//
+//  Note: not resilient agaist incomplete types; may violate ODR.
 template <template <typename...> class T, typename... A>
 using detected_t = detected_or_t<nonesuch, T, A...>;
 
@@ -406,6 +412,8 @@ using detected_t = detected_or_t<nonesuch, T, A...>;
 //
 //  mimic: std::experimental::is_detected, std::experimental::is_detected_v,
 //    Library Fundamentals TS v2
+//
+//  Note: not resilient agaist incomplete types; may violate ODR.
 //
 //  Note: the trait type is_detected differs here by being deferred.
 template <template <typename...> class T, typename... A>
@@ -591,7 +599,7 @@ struct IsNothrowSwappable
 template <class T>
 struct IsRelocatable
     : std::conditional<
-          is_detected_v<traits_detail::detect_IsRelocatable, T>,
+          sizeof(T) && is_detected_v<traits_detail::detect_IsRelocatable, T>,
           traits_detail::has_true_IsRelocatable<T>,
           // TODO add this line (and some tests for it) when we
           // upgrade to gcc 4.7
@@ -601,7 +609,8 @@ struct IsRelocatable
 template <class T>
 struct IsZeroInitializable
     : std::conditional<
-          is_detected_v<traits_detail::detect_IsZeroInitializable, T>,
+          sizeof(T) &&
+              is_detected_v<traits_detail::detect_IsZeroInitializable, T>,
           traits_detail::has_true_IsZeroInitializable<T>,
           bool_constant< //
               !std::is_class<T>::value && //
@@ -689,7 +698,7 @@ struct is_transparent : bool_constant<is_transparent_v<T>> {};
 namespace detail {
 
 template <typename T, typename = void>
-FOLLY_INLINE_VARIABLE constexpr bool is_allocator_ = false;
+FOLLY_INLINE_VARIABLE constexpr bool is_allocator_ = !sizeof(T);
 template <typename T>
 FOLLY_INLINE_VARIABLE constexpr bool is_allocator_<
     T,

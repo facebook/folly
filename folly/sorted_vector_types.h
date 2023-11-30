@@ -862,13 +862,11 @@ inline void swap(
 }
 
 template <typename T>
-struct is_sorted_vector_set : std::false_type {};
-
-template <typename... T>
-struct is_sorted_vector_set<folly::sorted_vector_set<T...>> : std::true_type {};
+FOLLY_INLINE_VARIABLE constexpr bool is_sorted_vector_set_v =
+    detail::is_instantiation_of_v<sorted_vector_set, T>;
 
 template <typename T>
-constexpr bool is_sorted_vector_set_v = is_sorted_vector_set<T>::value;
+struct is_sorted_vector_set : bool_constant<is_sorted_vector_set_v<T>> {};
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 
@@ -1585,13 +1583,11 @@ inline void swap(
 }
 
 template <typename T>
-struct is_sorted_vector_map : std::false_type {};
-
-template <typename... T>
-struct is_sorted_vector_map<folly::sorted_vector_map<T...>> : std::true_type {};
+FOLLY_INLINE_VARIABLE constexpr bool is_sorted_vector_map_v =
+    detail::is_instantiation_of_v<sorted_vector_map, T>;
 
 template <typename T>
-constexpr bool is_sorted_vector_map_v = is_sorted_vector_map<T>::value;
+struct is_sorted_vector_map : bool_constant<is_sorted_vector_map_v<T>> {};
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 

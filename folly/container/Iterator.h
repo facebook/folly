@@ -35,7 +35,8 @@ namespace folly {
 //  Whether std::distance over a pair of iterators is reasonably known to give
 //  the distance without advancing the iterators or copies of them.
 template <typename Iter, typename SentinelIter>
-FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v = false;
+FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v =
+    !sizeof(Iter) && !sizeof(SentinelIter);
 template <typename Iter>
 FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v<Iter, Iter> =
     std::is_base_of<
@@ -83,7 +84,8 @@ using iterator_category_t =
 namespace detail {
 
 template <typename Iter, typename Category, typename = void>
-FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_ = false;
+FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_ =
+    !sizeof(Iter) && !sizeof(Category);
 template <typename Iter, typename Category>
 FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_<
     Iter,

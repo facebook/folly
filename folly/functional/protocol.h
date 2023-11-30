@@ -57,7 +57,8 @@ struct match_empty_function_protocol_fn {
       decltype(static_cast<bool>(static_cast<T const&>(T(nullptr)) == nullptr));
 
   template <typename T>
-  static constexpr bool cx_matches_v = is_detected_v<detect_from_eq_nullptr, T>;
+  static constexpr bool cx_matches_v =
+      sizeof(T) && is_detected_v<detect_from_eq_nullptr, T>;
 
  public:
   template <typename T, std::enable_if_t<!cx_matches_v<T>, int> = 0>
