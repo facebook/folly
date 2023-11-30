@@ -3283,7 +3283,7 @@ void AsyncSocket::handleRead() noexcept {
         break;
       case ReadCode::READ_DONE:
         return;
-    };
+    }
   }
 
   if (readCallback_ && eventBase_ == originalEventBase) {
