@@ -616,7 +616,7 @@ std::vector<SocketAddress> AsyncServerSocket::getAddresses() const {
   auto tsaIter = tsaVec.begin();
   for (const auto& socket : sockets_) {
     (tsaIter++)->setFromLocalAddress(socket.socket_);
-  };
+  }
   return tsaVec;
 }
 
