@@ -441,7 +441,7 @@ bool DwarfImpl::isAddrInRangeList(
           address < end + *baseAddr) {
         return true;
       }
-    };
+    }
   }
 
   if (cu.version == 5 && !cu.debugSections.debugRnglists.empty() &&
