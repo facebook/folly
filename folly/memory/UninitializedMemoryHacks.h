@@ -248,8 +248,6 @@ template <typename Tag, typename T, typename A, A Ptr_Eos>
 struct MakeUnsafeStringSetLargerSize {
   friend void unsafeStringSetLargerSizeImpl(
       std::basic_string<T>& s, std::size_t n) {
-    // _Eos method is public for _MSC_VER <= 1916, private after
-    // s._Eos(n);
     (s.*Ptr_Eos)(n);
   }
 };
@@ -376,24 +374,12 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 
 #define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)
 
-#elif defined(_MSC_VER) && _MSC_VER <= 1916 && !defined(__clang__)
-// MSVC <= VS2017
+#elif defined(_MSC_VER)
 
-template <typename Tag, typename T>
-struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
-  friend void unsafeVectorSetLargerSizeImpl(std::vector<T>& v, std::size_t n) {
-    v._Mylast() += (n - v.size());
-  }
-};
-
-#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)          \
-  template struct folly::detail::MakeUnsafeVectorSetLargerSize< \
-      FollyMemoryDetailTranslationUnitTag,                      \
-      TYPE>;                                                    \
-  FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
-
-#elif defined(_MSC_VER) && (_MSC_VER > 1916 || defined(__clang__))
-// MSVC >= VS2019 or Windows clang/clang-cl
+// require MSVC >= VS2019 or Windows clang/clang-cl
+#if _MSC_VER <= 1916 && !defined(__clang__)
+#error no implementation
+#endif
 
 template <
     typename Tag,
