@@ -428,26 +428,3 @@ static_assert(is_nx_conv_v<of<int, 1, 1, 1>&&, int>);
 static_assert(is_nx_conv_v<of<int, 1, 1, 1> const&&, int>);
 
 } // namespace folly::detail::invocable_to_test
-
-template <class T>
-constexpr bool is_vector = folly::detail::is_instantiation_of_v<std::vector, T>;
-
-TEST_F(UtilityTest, if_constexpr) {
-  static_assert(folly::if_constexpr<true>(1, 2) == 1);
-  static_assert(folly::if_constexpr<false>(1, 2) == 2);
-  static_assert(
-      folly::if_constexpr<true>([] { return 1; }, [] { return 2; })() == 1);
-  static_assert(
-      folly::if_constexpr<false>([] { return 1; }, [] { return 2; })() == 2);
-
-  std::vector<int> v;
-  std::set<int> e;
-
-  auto pushback = [](auto& c) { return c.push_back(42); };
-  folly::if_constexpr<is_vector<decltype(v)>>(pushback, [](auto&) {})(v);
-  folly::if_constexpr<is_vector<decltype(e)>>(pushback, [](auto&) {})(e);
-
-  ASSERT_EQ(v.size(), 1);
-  EXPECT_EQ(v.at(0), 42);
-  EXPECT_TRUE(e.empty());
-}
