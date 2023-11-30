@@ -63,7 +63,7 @@ namespace folly {
  * active if the server is currently processing one or more outstanding
  * requests for this socket.  For client sockets, the timeout should not be
  * active if there are no requests pending on the socket.  Additionally, if a
- * client has multiple pending requests, it will ususally want a separate
+ * client has multiple pending requests, it will usually want a separate
  * timeout for each request, rather than a single read timeout.
  *
  * The write API is fairly intuitive: a user can request to send a block of
