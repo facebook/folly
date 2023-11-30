@@ -96,13 +96,13 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
   Atom<Count> count_{0};
 
  public:
-  void acquire_link() noexcept { count_inc(kLink); }
+  bool acquire_link() noexcept { return count_inc(kLink, kLinkMask); }
 
-  void acquire_link_safe() noexcept { count_inc_safe(kLink); }
+  bool acquire_link_safe() noexcept { return count_inc_safe(kLink, kLinkMask); }
 
-  void acquire_ref() noexcept { count_inc(kRef); }
+  bool acquire_ref() noexcept { return count_inc(kRef, kRefMask); }
 
-  void acquire_ref_safe() noexcept { count_inc_safe(kRef); }
+  bool acquire_ref_safe() noexcept { return count_inc_safe(kRef, kRefMask); }
 
  private:
   template <typename, template <typename> class, typename>
@@ -116,17 +116,25 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
     count_.store(val, std::memory_order_release);
   }
 
-  void count_inc(Count add) noexcept {
-    auto oldval = count_.fetch_add(add, std::memory_order_acq_rel);
-    DCHECK_LT(oldval & kLinkMask, kLinkMask);
-    DCHECK_LT(oldval & kRefMask, kRefMask);
+  bool count_inc(Count add, Count mask) noexcept {
+    Count oldval = count();
+    while (true) {
+      if ((oldval & mask) == mask) {
+        return false;
+      }
+      if (count_cas(oldval, oldval + add)) {
+        return true;
+      }
+    }
   }
 
-  void count_inc_safe(Count add) noexcept {
+  bool count_inc_safe(Count add, Count mask) noexcept {
     auto oldval = count();
+    if ((oldval & mask) == mask) {
+      return false;
+    }
     count_set(oldval + add);
-    DCHECK_LT(oldval & kLinkMask, kLinkMask);
-    DCHECK_LT(oldval & kRefMask, kRefMask);
+    return true;
   }
 
   bool count_cas(Count& oldval, Count newval) noexcept {

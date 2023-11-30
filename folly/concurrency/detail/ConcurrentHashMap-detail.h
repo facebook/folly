@@ -224,7 +224,7 @@ class NodeT : public hazptr_obj_base_linked<
     this->set_deleter( // defined in hazptr_obj
         concurrenthashmap::HazptrDeleter<Allocator>());
     this->set_cohort_tag(cohort); // defined in hazptr_obj
-    this->acquire_link_safe(); // defined in hazptr_obj_base_linked
+    CHECK(this->acquire_link_safe()); // defined in hazptr_obj_base_linked
   }
 
   ValueHolder<KeyType, ValueType, Allocator, Atom> item_;
@@ -361,7 +361,11 @@ class alignas(64) BucketTable {
         }
       }
       // Set longest last run in new bucket, incrementing the refcount.
-      lastrun->acquire_link(); // defined in hazptr_obj_base_linked
+      while (!lastrun->acquire_link()) {
+        cohort->cleanup();
+        std::this_thread::yield();
+      }
+
       newbuckets->buckets_[lastidx]().store(lastrun, std::memory_order_relaxed);
       // Clone remaining nodes
       for (; node != lastrun;
@@ -407,7 +411,12 @@ class alignas(64) BucketTable {
   }
 
   template <typename K, typename MatchFunc>
-  std::size_t erase(size_t h, const K& key, Iterator* iter, MatchFunc match) {
+  std::size_t erase(
+      size_t h,
+      const K& key,
+      Iterator* iter,
+      MatchFunc match,
+      hazptr_obj_cohort<Atom>* cohort) {
     Node* node{nullptr};
     {
       std::lock_guard<Mutex> g(m_);
@@ -426,7 +435,10 @@ class alignas(64) BucketTable {
           }
           auto next = node->next_.load(std::memory_order_relaxed);
           if (next) {
-            next->acquire_link(); // defined in hazptr_obj_base_linked
+            while (!next->acquire_link()) {
+              cohort->cleanup();
+              std::this_thread::yield();
+            } // defined in hazptr_obj_base_linked
           }
           if (prev) {
             prev->next_.store(next, std::memory_order_release);
@@ -709,7 +721,10 @@ class alignas(64) BucketTable {
           auto next = node->next_.load(std::memory_order_relaxed);
           cur->next_.store(next, std::memory_order_relaxed);
           if (next) {
-            next->acquire_link(); // defined in hazptr_obj_base_linked
+            while (!next->acquire_link()) {
+              cohort->cleanup();
+              std::this_thread::yield();
+            } // defined in hazptr_obj_base_linked
           }
           prev->store(cur, std::memory_order_release);
           it.setNode(cur, buckets, bcount, idx);
@@ -1347,7 +1362,12 @@ class alignas(64) SIMDTable {
   }
 
   template <typename K, typename MatchFunc>
-  std::size_t erase(size_t h, const K& key, Iterator* iter, MatchFunc match) {
+  std::size_t erase(
+      size_t h,
+      const K& key,
+      Iterator* iter,
+      MatchFunc match,
+      hazptr_obj_cohort<Atom>* /* cohort */) {
     const HashPair hp = splitHash(h);
 
     std::unique_lock<Mutex> g(m_);
@@ -1880,7 +1900,7 @@ class alignas(64) ConcurrentHashMapSegment {
   template <typename K, typename MatchFunc>
   size_type erase_internal(
       size_t h, const K& key, Iterator* iter, MatchFunc match) {
-    return impl_.erase(h, key, iter, match);
+    return impl_.erase(h, key, iter, match, cohort_);
   }
 
   // Unfortunately because we are reusing nodes on rehash, we can't

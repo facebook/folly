@@ -303,6 +303,13 @@ class hazptr_obj_cohort {
     DCHECK(l_.empty());
   }
 
+  /** force reclaiming any items that are retired. Executes reclamation */
+  void cleanup() {
+    check_threshold_push();
+    default_hazptr_domain<Atom>().cleanup();
+    reclaim_safe_list();
+  }
+
  private:
   friend class hazptr_domain<Atom>;
   friend class hazptr_obj<Atom>;
