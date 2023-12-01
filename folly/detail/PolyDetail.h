@@ -924,8 +924,24 @@ struct Sig<R(A&, As...)> : SigImpl<R, A&, As...> {
   }
 };
 
+template <bool>
+struct ModelsInterfaceFalse0_;
+template <>
+struct ModelsInterfaceFalse0_<false> {
+  template <typename... T>
+  using apply = bool_constant<(!sizeof(T) || ...)>;
+};
+template <>
+struct ModelsInterfaceFalse0_<true> {
+  template <typename...>
+  using apply = std::false_type;
+};
+template <typename... T>
+using ModelsInterfaceFalse_ = typename ModelsInterfaceFalse0_<(
+    std::is_function_v<remove_cvref_t<T>> || ...)>::template apply<T...>;
+
 template <class T, class I, class = void>
-struct ModelsInterface2_ : bool_constant<!sizeof(T) || !sizeof(I)> {};
+struct ModelsInterface2_ : ModelsInterfaceFalse_<T, I> {};
 
 template <class T, class I>
 struct ModelsInterface2_<
@@ -937,7 +953,7 @@ struct ModelsInterface2_<
         MembersOf<std::decay_t<I>, std::decay_t<T>>>> : std::true_type {};
 
 template <class T, class I, class = void>
-struct ModelsInterface_ : bool_constant<!sizeof(T) || !sizeof(I)> {};
+struct ModelsInterface_ : ModelsInterfaceFalse_<T, I> {};
 
 template <class T, class I>
 struct ModelsInterface_<
