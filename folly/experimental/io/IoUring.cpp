@@ -66,7 +66,7 @@ const char* ioUringOpToString(unsigned char op) {
     X(IORING_OP_SENDMSG);
     X(IORING_OP_RECVMSG);
     X(IORING_OP_TIMEOUT);
-  };
+  }
   return "<INVALID op>";
 }
 
