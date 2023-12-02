@@ -50,7 +50,7 @@ const char* iocbCmdToString(short int cmd_short) {
     X(IO_CMD_NOOP);
     X(IO_CMD_PREADV);
     X(IO_CMD_PWRITEV);
-  };
+  }
   return "<INVALID io_iocb_cmd>";
 }
 
