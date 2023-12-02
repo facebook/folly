@@ -134,7 +134,7 @@ std::string AsyncIoUringSocket::toString(AsyncIoUringSocket::State s) {
       return "Error";
     case State::FastOpen:
       return "FastOpen";
-  };
+  }
   return to<std::string>("Unknown val=", (int)s);
 }
 
