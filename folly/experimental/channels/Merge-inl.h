@@ -53,7 +53,7 @@ namespace detail {
  * object will then be deleted once each remaining input receiver transitions to
  * the CancellationProcessed state (after we receive each cancelled callback).
  */
-template <typename TValue>
+template <typename TValue, bool WaitForAllInputsToClose>
 class MergeProcessor : public IChannelCallback {
  public:
   MergeProcessor(
@@ -214,11 +214,14 @@ class MergeProcessor : public IChannelCallback {
     CHECK_EQ(getReceiverState(receiver), ChannelState::CancellationTriggered);
     receivers_.erase(receiver);
     (ChannelBridgePtr<TValue>(receiver));
-    if (closeResult.exception.has_value()) {
-      // We received an exception. We need to close the sender and all other
-      // receivers.
+    if (closeResult.exception.has_value() || !WaitForAllInputsToClose) {
+      // We need to close the sender and all other receivers.
       if (getSenderState() == ChannelState::Active) {
-        sender_->senderClose(std::move(closeResult.exception.value()));
+        if (closeResult.exception.has_value()) {
+          sender_->senderClose(std::move(closeResult.exception.value()));
+        } else {
+          sender_->senderClose();
+        }
       }
       for (auto* otherReceiver : receivers_) {
         if (getReceiverState(otherReceiver) == ChannelState::Active) {
@@ -278,11 +281,18 @@ class MergeProcessor : public IChannelCallback {
 template <typename TReceiver, typename TValue>
 Receiver<TValue> merge(
     std::vector<TReceiver> inputReceivers,
-    folly::Executor::KeepAlive<folly::SequencedExecutor> executor) {
+    folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+    bool waitForAllInputsToClose) {
   auto [outputReceiver, outputSender] = Channel<TValue>::create();
-  auto* processor = new detail::MergeProcessor<TValue>(
-      std::move(outputSender), std::move(executor));
-  processor->start(std::move(inputReceivers));
+  if (waitForAllInputsToClose) {
+    auto* processor = new detail::MergeProcessor<TValue, true>(
+        std::move(outputSender), std::move(executor));
+    processor->start(std::move(inputReceivers));
+  } else {
+    auto* processor = new detail::MergeProcessor<TValue, false>(
+        std::move(outputSender), std::move(executor));
+    processor->start(std::move(inputReceivers));
+  }
   return std::move(outputReceiver);
 }
 } // namespace channels

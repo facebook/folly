@@ -80,7 +80,7 @@ TEST_F(MergeFixture, ReceiveValues_ReturnMergedValues) {
   executor_.drain();
 }
 
-TEST_F(MergeFixture, OneInputClosed_ContinuesMerging) {
+TEST_F(MergeFixture, OneInputClosed_WaitForAllInputsToClose_ContinuesMerging) {
   auto [receiver1, sender1] = Channel<int>::create();
   auto [receiver2, sender2] = Channel<int>::create();
   auto [receiver3, sender3] = Channel<int>::create();
@@ -105,6 +105,41 @@ TEST_F(MergeFixture, OneInputClosed_ContinuesMerging) {
   executor_.drain();
 
   sender1.write(4);
+  sender2.write(5);
+  executor_.drain();
+
+  std::move(sender1).close();
+  std::move(sender2).close();
+  executor_.drain();
+}
+
+TEST_F(MergeFixture, OneInputClosed_DoNotWaitForAllInputsToClose_StopsMerging) {
+  auto [receiver1, sender1] = Channel<int>::create();
+  auto [receiver2, sender2] = Channel<int>::create();
+  auto [receiver3, sender3] = Channel<int>::create();
+  auto mergedReceiver = merge(
+      toVector(
+          std::move(receiver1), std::move(receiver2), std::move(receiver3)),
+      &executor_,
+      false /* waitForAllInputsToClose */);
+
+  EXPECT_CALL(onNext_, onValue(1));
+  EXPECT_CALL(onNext_, onValue(2));
+  EXPECT_CALL(onNext_, onValue(3));
+  EXPECT_CALL(onNext_, onClosed());
+
+  auto callbackHandle = processValues(std::move(mergedReceiver));
+  executor_.drain();
+
+  sender1.write(1);
+  sender2.write(2);
+  sender3.write(3);
+  std::move(sender3).close();
+  executor_.drain();
+
+  sender1.write(4);
+  executor_.drain();
+
   sender2.write(5);
   executor_.drain();
 
