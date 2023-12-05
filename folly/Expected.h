@@ -40,6 +40,7 @@
 #include <folly/Unit.h>
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/Hint.h>
 
 #define FOLLY_EXPECTED_ID(X) FB_CONCATENATE(FB_CONCATENATE(Folly, X), __LINE__)
 
@@ -627,6 +628,11 @@ inline T&& operator,(T&& t, Unit) noexcept {
 }
 
 struct ExpectedHelper {
+  template <typename V, typename E>
+  FOLLY_ERASE static void assume_empty(Expected<V, E> const& x) {
+    compiler_may_unsafely_assume(x.which_ == Which::eEmpty);
+  }
+
   template <class Error, class T>
   static constexpr Expected<typename std::decay<T>::type, Error> return_(
       T&& t) {
@@ -1564,7 +1570,9 @@ struct Promise {
   coro::suspend_never final_suspend() const noexcept { return {}; }
   template <typename U = Value>
   void return_value(U&& u) {
-    *value_ = static_cast<U&&>(u);
+    auto& v = *value_;
+    ExpectedHelper::assume_empty(v);
+    v = static_cast<U&&>(u);
   }
   void unhandled_exception() {
     // Technically, throwing from unhandled_exception is underspecified:
@@ -1573,29 +1581,59 @@ struct Promise {
   }
 };
 
+template <typename Error>
+struct UnexpectedAwaitable {
+  Unexpected<Error> o_;
+
+  explicit UnexpectedAwaitable(Unexpected<Error> o) : o_(std::move(o)) {}
+
+  constexpr std::false_type await_ready() const noexcept { return {}; }
+  void await_resume() { compiler_may_unsafely_assume_unreachable(); }
+
+  template <typename U>
+  FOLLY_ALWAYS_INLINE void await_suspend(
+      coro::coroutine_handle<Promise<U, Error>> h) {
+    auto& v = *h.promise().value_;
+    ExpectedHelper::assume_empty(v);
+    v = std::move(o_);
+    h.destroy();
+  }
+};
+
 template <typename Value, typename Error>
-struct Awaitable {
+struct ExpectedAwaitable {
   Expected<Value, Error> o_;
 
-  explicit Awaitable(Expected<Value, Error> o) : o_(std::move(o)) {}
+  explicit ExpectedAwaitable(Expected<Value, Error> o) : o_(std::move(o)) {}
 
   bool await_ready() const noexcept { return o_.hasValue(); }
   Value await_resume() { return std::move(o_.value()); }
 
   // Explicitly only allow suspension into a Promise
   template <typename U>
-  void await_suspend(coro::coroutine_handle<Promise<U, Error>> h) {
-    *h.promise().value_ = makeUnexpected(std::move(o_.error()));
+  FOLLY_ALWAYS_INLINE void await_suspend(
+      coro::coroutine_handle<Promise<U, Error>> h) {
+    auto& v = *h.promise().value_;
+    ExpectedHelper::assume_empty(v);
+    v = makeUnexpected(std::move(o_.error()));
     // Abort the rest of the coroutine. resume() is not going to be called
     h.destroy();
   }
 };
+
 } // namespace expected_detail
 
-template <typename Value, typename Error>
-expected_detail::Awaitable<Value, Error>
-/* implicit */ operator co_await(Expected<Value, Error> o) {
-  return expected_detail::Awaitable<Value, Error>{std::move(o)};
+template <typename Error>
+expected_detail::UnexpectedAwaitable<Error>
+/* implicit */ operator co_await(Unexpected<Error> o) {
+  return expected_detail::UnexpectedAwaitable<Error>{std::move(o)};
 }
+
+template <typename Value, typename Error>
+expected_detail::ExpectedAwaitable<Value, Error>
+/* implicit */ operator co_await(Expected<Value, Error> o) {
+  return expected_detail::ExpectedAwaitable<Value, Error>{std::move(o)};
+}
+
 } // namespace folly
 #endif // FOLLY_HAS_COROUTINES
