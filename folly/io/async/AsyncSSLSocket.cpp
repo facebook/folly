@@ -195,7 +195,7 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
 };
 
 AsyncSSLSocket::AsyncSSLSocket(
-    shared_ptr<SSLContext> ctx, EventBase* evb, Options&& options)
+    shared_ptr<const SSLContext> ctx, EventBase* evb, Options&& options)
     : AsyncSocket(evb),
       server_{options.isServer},
       ctx_{std::move(ctx)},
@@ -214,7 +214,7 @@ AsyncSSLSocket::AsyncSSLSocket(
 }
 
 AsyncSSLSocket::AsyncSSLSocket(
-    std::shared_ptr<folly::SSLContext> ctx,
+    std::shared_ptr<const folly::SSLContext> ctx,
     AsyncSocket::UniquePtr oldAsyncSocket,
     Options&& options)
     : AsyncSocket(std::move(oldAsyncSocket)),
@@ -239,7 +239,9 @@ AsyncSSLSocket::AsyncSSLSocket(
  * Create a client AsyncSSLSocket
  */
 AsyncSSLSocket::AsyncSSLSocket(
-    shared_ptr<SSLContext> ctx, EventBase* evb, bool deferSecurityNegotiation)
+    shared_ptr<const SSLContext> ctx,
+    EventBase* evb,
+    bool deferSecurityNegotiation)
     : AsyncSocket(evb),
       ctx_(std::move(ctx)),
       handshakeTimeout_(this, evb),
@@ -254,7 +256,7 @@ AsyncSSLSocket::AsyncSSLSocket(
  * Create a server/client AsyncSSLSocket
  */
 AsyncSSLSocket::AsyncSSLSocket(
-    shared_ptr<SSLContext> ctx,
+    shared_ptr<const SSLContext> ctx,
     EventBase* evb,
     NetworkSocket fd,
     bool server,
@@ -277,7 +279,7 @@ AsyncSSLSocket::AsyncSSLSocket(
 }
 
 AsyncSSLSocket::AsyncSSLSocket(
-    shared_ptr<SSLContext> ctx,
+    shared_ptr<const SSLContext> ctx,
     AsyncSocket* oldAsyncSocket,
     bool server,
     bool deferSecurityNegotiation)
@@ -298,7 +300,7 @@ AsyncSSLSocket::AsyncSSLSocket(
 }
 
 AsyncSSLSocket::AsyncSSLSocket(
-    shared_ptr<SSLContext> ctx,
+    shared_ptr<const SSLContext> ctx,
     AsyncSocket::UniquePtr oldAsyncSocket,
     bool server,
     bool deferSecurityNegotiation)
@@ -311,7 +313,7 @@ AsyncSSLSocket::AsyncSSLSocket(
  * to be sent in Client Hello.
  */
 AsyncSSLSocket::AsyncSSLSocket(
-    const shared_ptr<SSLContext>& ctx,
+    const shared_ptr<const SSLContext>& ctx,
     EventBase* evb,
     const std::string& serverName,
     bool deferSecurityNegotiation)
@@ -324,7 +326,7 @@ AsyncSSLSocket::AsyncSSLSocket(
  * and allow tlsext_hostname to be sent in Client Hello.
  */
 AsyncSSLSocket::AsyncSSLSocket(
-    const shared_ptr<SSLContext>& ctx,
+    const shared_ptr<const SSLContext>& ctx,
     EventBase* evb,
     NetworkSocket fd,
     const std::string& serverName,
@@ -584,7 +586,8 @@ void AsyncSSLSocket::sslAccept(
   checkForImmediateRead();
 }
 
-void AsyncSSLSocket::attachSSLContext(const std::shared_ptr<SSLContext>& ctx) {
+void AsyncSSLSocket::attachSSLContext(
+    const std::shared_ptr<const SSLContext>& ctx) {
   // Check to ensure we are in client mode. Changing a server's ssl
   // context doesn't make sense since clients of that server would likely
   // become confused when the server's context changes.
@@ -655,7 +658,7 @@ void AsyncSSLSocket::detachSSLContext() {
 
 #if FOLLY_OPENSSL_HAS_SNI
 void AsyncSSLSocket::switchServerSSLContext(
-    const std::shared_ptr<SSLContext>& handshakeCtx) {
+    const std::shared_ptr<const SSLContext>& handshakeCtx) {
   CHECK(server_);
   if (sslState_ != STATE_ACCEPTING) {
     // We log it here and allow the switch.

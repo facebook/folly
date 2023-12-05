@@ -283,7 +283,7 @@ class SSLContext {
    * @return true if peer verification is required.
    *
    */
-  virtual bool needsPeerVerification() {
+  virtual bool needsPeerVerification() const {
     /* TODO this is ugly and i can't think of a reason this should exist
      * will think of what i want to do with this later
      */
@@ -310,7 +310,7 @@ class SSLContext {
    *
    * @return mode flags that can be used with SSL_set_verify
    */
-  virtual int getVerificationMode();
+  virtual int getVerificationMode() const;
 
   /**
    * Enable/Disable authentication. Peer name validation can only be done
@@ -540,7 +540,7 @@ class SSLContext {
   void setOptions(long options);
 
 #if FOLLY_OPENSSL_HAS_ALPN
-  std::string getAdvertisedNextProtocols();
+  std::string getAdvertisedNextProtocols() const;
 
   /**
    * Set the list of protocols that this SSL context supports. In client
@@ -609,8 +609,8 @@ class SSLContext {
    */
   static std::string getErrors(int errnoCopy);
 
-  bool checkPeerName() { return checkPeerName_; }
-  std::string peerFixedName() { return peerFixedName_; }
+  bool checkPeerName() const { return checkPeerName_; }
+  std::string peerFixedName() const { return peerFixedName_; }
 
 #if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH)
   /**
@@ -633,11 +633,15 @@ class SSLContext {
     sslAcceptRunner_ = std::move(runner);
   }
 
-  const SSLAcceptRunner* sslAcceptRunner() { return sslAcceptRunner_.get(); }
+  const SSLAcceptRunner* sslAcceptRunner() const {
+    return sslAcceptRunner_.get();
+  }
 
   void setTicketHandler(std::unique_ptr<OpenSSLTicketHandler> handler);
 
-  OpenSSLTicketHandler* getTicketHandler() { return ticketHandler_.get(); }
+  OpenSSLTicketHandler* getTicketHandler() const {
+    return ticketHandler_.get();
+  }
 
   /**
    * Helper to match a hostname versus a pattern.
