@@ -23,6 +23,8 @@
 namespace folly {
 namespace io {
 
+static_assert(kIsWindows || is_register_pass_v<ThinCursor>);
+
 void Appender::printf(const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);

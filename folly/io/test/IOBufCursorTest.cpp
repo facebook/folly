@@ -1572,3 +1572,86 @@ TEST(IOBuf, BoundedCursorPullAndPeek) {
     EXPECT_EQ(15, iobuf1->computeChainDataLength());
   }
 }
+
+TEST(IOBuf, ThinCursorAdvances) {
+  // [0, 1)
+  unique_ptr<IOBuf> iobuf1(IOBuf::create(1));
+  iobuf1->append(1);
+
+  // [1, 3)
+  unique_ptr<IOBuf> iobuf2(IOBuf::create(2));
+  iobuf2->append(2);
+
+  // [3, 6)
+  unique_ptr<IOBuf> iobuf3(IOBuf::create(3));
+  iobuf3->append(3);
+
+  // [7, 11)
+  unique_ptr<IOBuf> iobuf4(IOBuf::create(4));
+  iobuf4->append(4);
+
+  // [11, 16)
+  unique_ptr<IOBuf> iobuf5(IOBuf::create(5));
+  iobuf5->append(5);
+
+  // [16, 20)
+  unique_ptr<IOBuf> iobuf6(IOBuf::create(4));
+  iobuf6->append(4);
+
+  iobuf1->prependChain(std::move(iobuf2));
+  iobuf1->prependChain(std::move(iobuf3));
+  iobuf1->prependChain(std::move(iobuf4));
+  iobuf1->prependChain(std::move(iobuf5));
+  iobuf1->prependChain(std::move(iobuf6));
+
+  RWPrivateCursor wcursor(iobuf1.get());
+  // Store into [0, 2)
+  wcursor.writeLE((uint16_t)0x1122);
+  // Store into [2, 6)
+  wcursor.writeBE((uint32_t)0x33445566);
+  // Store into [6, 8)
+  wcursor.write((uint16_t)0x7788);
+  // Store into [8, 12)
+  wcursor.write((uint32_t)0x99AABBCC);
+  // Store into [12, 16)
+  wcursor.write((uint32_t)0xDDEEFF00);
+
+  Cursor rcursor(iobuf1.get());
+  ThinCursor thinCursor = rcursor.borrow();
+
+  EXPECT_EQ(iobuf1->data(), thinCursor.data());
+  EXPECT_EQ(1, thinCursor.length());
+  EXPECT_TRUE(thinCursor.canAdvance(1));
+  EXPECT_FALSE(thinCursor.canAdvance(2));
+  EXPECT_FALSE(thinCursor.isAtEnd());
+
+  EXPECT_EQ(0x1122, thinCursor.readLE<uint16_t>(rcursor));
+  EXPECT_EQ(1, thinCursor.length());
+
+  EXPECT_EQ(0x33445566, thinCursor.readBE<uint32_t>(rcursor));
+
+  thinCursor.skipNoAdvance(2);
+  EXPECT_EQ(0x99AABBCC, thinCursor.read<uint32_t>(rcursor));
+
+  // Note: advances IOBufs.
+  thinCursor.skip(rcursor, 7);
+  EXPECT_TRUE(thinCursor.isAtEnd());
+}
+
+TEST(IOBuf, ThinCursorBorrowing) {
+  unique_ptr<IOBuf> iobuf(IOBuf::create(4));
+  iobuf->append(4);
+
+  RWPrivateCursor wcursor(iobuf.get());
+  wcursor.writeBE((uint32_t)0x11223344);
+
+  Cursor rcursor(iobuf.get());
+  EXPECT_EQ(0x11, rcursor.read<uint8_t>());
+  ThinCursor thinCursor = rcursor.borrow();
+  EXPECT_EQ(0x22, thinCursor.read<uint8_t>(rcursor));
+  rcursor.unborrow(std::move(thinCursor));
+  EXPECT_EQ(0x33, rcursor.read<uint8_t>());
+  thinCursor = rcursor.borrow();
+  EXPECT_EQ(0x44, thinCursor.read<uint8_t>(rcursor));
+  rcursor.unborrow(std::move(thinCursor));
+}

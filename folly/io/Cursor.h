@@ -54,6 +54,9 @@
 namespace folly {
 namespace io {
 
+class Cursor;
+class ThinCursor;
+
 namespace detail {
 
 template <class Derived, class BufType>
@@ -807,6 +810,7 @@ class CursorBase {
 
  protected:
   void dcheckIntegrity() const {
+    DCHECK(!*borrowed());
     DCHECK(crtBegin_ <= crtPos_ && crtPos_ <= crtEnd_);
     DCHECK(crtBuf_ == nullptr || crtBegin_ == crtBuf_->data());
     DCHECK(
@@ -872,6 +876,15 @@ class CursorBase {
   // in subsequent IOBufs in the chain. For unbounded Cursor, remainingLen_
   // is set to the max of size_t
   size_t remainingLen_{std::numeric_limits<size_t>::max()};
+
+#ifndef NDEBUG
+  bool borrowed_ = false;
+  bool* borrowed() { return &borrowed_; }
+  const bool* borrowed() const { return &borrowed_; }
+#else
+  bool* borrowed() { return nullptr; }
+  const bool* borrowed() const { return nullptr; }
+#endif
 
  private:
   Derived& derived() { return static_cast<Derived&>(*this); }
@@ -972,7 +985,86 @@ class CursorBase {
   void advanceDone() {}
 };
 
+template <typename T>
+ThinCursor thinCursorReadSlow(ThinCursor, T&, Cursor&);
+ThinCursor thinCursorSkipSlow(ThinCursor, Cursor&, size_t);
 } // namespace detail
+
+// A register-pass facade for a Cursor. It strips out state that's only needed
+// down slow paths, so that it can be passed and returned efficiently in
+// registers. This gives up some convenience (users need to maintain that state
+// in a fallback Cursor), to gain performance.
+class ThinCursor {
+ public:
+  ThinCursor() = default;
+  ThinCursor(ThinCursor&&) = default;
+  ThinCursor(const ThinCursor&) = delete;
+  ThinCursor& operator=(ThinCursor&&) = default;
+  ThinCursor& operator=(const ThinCursor&) = delete;
+
+  const uint8_t* data() const {
+    dcheckIntegrity();
+    return crtPos_;
+  }
+
+  size_t length() const {
+    dcheckIntegrity();
+    return crtEnd_ - crtPos_;
+  }
+
+  bool canAdvance(size_t amount) const { return amount <= length(); }
+
+  bool isAtEnd() const { return length() == 0; }
+
+  template <class T>
+  FOLLY_ALWAYS_INLINE T read(Cursor& fallback) {
+    if (FOLLY_LIKELY((uintptr_t)crtEnd_ - (uintptr_t)crtPos_ >= sizeof(T))) {
+      T result = loadUnaligned<T>(data());
+      crtPos_ += sizeof(T);
+      return result;
+    } else {
+      T result;
+      *this = detail::thinCursorReadSlow(std::move(*this), result, fallback);
+      return result;
+    }
+  }
+
+  template <class T>
+  T readBE(Cursor& fallback) {
+    return Endian::big(read<T>(fallback));
+  }
+
+  template <class T>
+  T readLE(Cursor& fallback) {
+    return Endian::little(read<T>(fallback));
+  }
+
+  void skip(Cursor& fallback, size_t len) {
+    dcheckIntegrity();
+    if (FOLLY_LIKELY(uintptr_t(crtPos_) + len < uintptr_t(crtEnd_))) {
+      crtPos_ += len;
+    } else {
+      *this = detail::thinCursorSkipSlow(std::move(*this), fallback, len);
+    }
+  }
+
+  void skipNoAdvance(size_t len) {
+    DCHECK_LE(len, length());
+    crtPos_ += len;
+  }
+
+ private:
+  void dcheckIntegrity() const { DCHECK(crtPos_ <= crtEnd_); }
+
+  friend class Cursor;
+  ThinCursor(const uint8_t* crtPos, const uint8_t* crtEnd)
+      : crtPos_(crtPos), crtEnd_(crtEnd) {}
+  // Note: these are the only fields we can have -- x86-64 calling convention
+  // maxes out at returning 2 pointer-sized fields in registers, and we don't
+  // want to have to use memory for returning these.
+  const uint8_t* crtPos_;
+  const uint8_t* crtEnd_;
+};
 
 class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
  public:
@@ -989,9 +1081,33 @@ class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
   template <class OtherDerived, class OtherBuf>
   Cursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor, size_t len)
       : detail::CursorBase<Cursor, const IOBuf>(cursor, len) {}
+
+  ThinCursor borrow() {
+    DCHECK(!std::exchange(*borrowed(), true));
+    return {crtPos_, crtEnd_};
+  }
+
+  void unborrow(ThinCursor&& cursor) {
+    DCHECK(std::exchange(*borrowed(), false));
+    DCHECK_EQ(cursor.crtEnd_, crtEnd_);
+    crtPos_ = cursor.crtPos_;
+  }
 };
 
 namespace detail {
+template <typename T>
+ThinCursor thinCursorReadSlow(ThinCursor borrowed, T& val, Cursor& fallback) {
+  fallback.unborrow(std::move(borrowed));
+  val = fallback.read<T>();
+  return fallback.borrow();
+}
+
+inline ThinCursor thinCursorSkipSlow(
+    ThinCursor borrowed, Cursor& fallback, size_t len) {
+  fallback.unborrow(std::move(borrowed));
+  fallback.skip(len);
+  return fallback.borrow();
+}
 
 template <class Derived>
 class Writable {
