@@ -377,7 +377,11 @@ exception_wrapper make_exception_wrapper(As&&... as) {
 template <class Ch>
 std::basic_ostream<Ch>& operator<<(
     std::basic_ostream<Ch>& sout, exception_wrapper const& ew) {
-  return sout << ew.what();
+  sout << ew.class_name();
+  if (auto e = ew.get_exception()) {
+    sout << ": " << e->what();
+  }
+  return sout;
 }
 
 /**
