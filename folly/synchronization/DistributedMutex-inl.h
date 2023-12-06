@@ -151,9 +151,9 @@ using CpuTicks = std::int64_t;
 //
 // This is just a magic number from benchmarks
 constexpr auto kScheduledAwaySpinThreshold = CpuTicks{200};
-// The maximum number of spins before a thread starts yielding its processor
+// The maximum time to spin before a thread starts yielding its processor
 // in hopes of getting skipped
-constexpr auto kMaxSpins = 4000;
+constexpr auto kMaxSpinTime = CpuTicks{400000};
 // The maximum number of contention chains we can resolve with flat combining.
 // After this number of contention chains, the mutex falls back to regular
 // two-phased mutual exclusion to ensure that we don't starve the combiner
@@ -834,8 +834,10 @@ DistributedMutex<Atomic, TimePublishing>::DistributedMutex()
 template <typename Waiter>
 std::uint64_t publish(
     std::uint64_t spins,
+    CpuTicks current,
+    CpuTicks previous,
+    CpuTicks deadline,
     bool& shouldPublish,
-    CpuTicks& previous,
     Waiter& waiter,
     std::uint32_t waitMode) {
   // time publishing has some overhead because it executes an atomic exchange on
@@ -852,12 +854,10 @@ std::uint64_t publish(
   // only comes into play when the combiner has exhausted their max combine
   // passes.  So we defer time publishing to the point when the current thread
   // gets preempted
-  auto current = time();
   if (previous != CpuTicks{0} &&
       (current - previous) >= kScheduledAwaySpinThreshold) {
     shouldPublish = true;
   }
-  previous = current;
 
   // if we have requested a combine, and this is the first iteration of the
   // wait-loop, we publish a max timestamp to optimistically convey that we have
@@ -868,8 +868,8 @@ std::uint64_t publish(
   // timestamp to force the waking thread to skip us
   auto now = ((waitMode == kCombineWaiting) && !spins)
       ? std::numeric_limits<CpuTicks>::max()
-      : (spins < kMaxSpins) ? previous
-                            : CpuTicks{0};
+      : (current < deadline) ? current
+                             : CpuTicks{0};
   // the wait mode information is published in the bottom 8 bits of the futex
   // word, the rest contains time information as computed above.  Overflows are
   // not really a correctness concern because time publishing is only a
@@ -889,8 +889,10 @@ bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
   auto waitMode = (mode == kCombineUninitialized) ? kCombineWaiting : kWaiting;
   auto previous = CpuTicks{0};
   auto shouldPublish = false;
-  while (true) {
-    auto signal = publish(spins++, shouldPublish, previous, waiter, waitMode);
+  for (auto current = time(), deadline = current + kMaxSpinTime;;
+       previous = current, current = time()) {
+    auto signal = publish(
+        spins++, current, previous, deadline, shouldPublish, waiter, waitMode);
 
     // if we got skipped, make a note of it and return if we got a skipped
     // signal or a signal to wake up
@@ -905,7 +907,7 @@ bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
 
     // if we are under the spin threshold, pause to allow the other
     // hyperthread to run.  If not, then sleep
-    if (spins < kMaxSpins) {
+    if (current < deadline) {
       asm_volatile_pause();
     } else {
       std::this_thread::sleep_for(folly::detail::Sleeper::kMinYieldingSleep);
