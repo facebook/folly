@@ -30,6 +30,7 @@
 #include <folly/Benchmark.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
+#include <folly/concurrency/ThreadCachedSynchronized.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/portability/GTest.h>
 
@@ -254,6 +255,12 @@ size_t benchmarkReadMostlyWeakPtrLock(size_t numThreads) {
   return benchmarkParallelRun([&] { return w.lock(); }, numThreads);
 }
 
+size_t benchmarkThreadCachedSynchronizedAcquire(size_t numThreads) {
+  folly::thread_cached_synchronized<std::shared_ptr<int>> p{
+      std::make_shared<int>(1)};
+  return benchmarkParallelRun([&] { return *p; }, numThreads);
+}
+
 } // namespace
 
 #define BENCHMARK_THREADS(THREADS)                                       \
@@ -266,7 +273,10 @@ size_t benchmarkReadMostlyWeakPtrLock(size_t numThreads) {
   BENCHMARK_MULTI(AtomicSharedPtrAcquire_##THREADS##Threads) {           \
     return benchmarkAtomicSharedPtrAcquire(THREADS);                     \
   }                                                                      \
-  BENCHMARK_MULTI(CoreCachedSharedPtrAquire_##THREADS##Threads) {        \
+  BENCHMARK_MULTI(ThreadCachedSynchronizedAcquire_##THREADS##Threads) {  \
+    return benchmarkThreadCachedSynchronizedAcquire(THREADS);            \
+  }                                                                      \
+  BENCHMARK_MULTI(CoreCachedSharedPtrAcquire_##THREADS##Threads) {       \
     return benchmarkCoreCachedSharedPtrAcquire(THREADS);                 \
   }                                                                      \
   BENCHMARK_MULTI(CoreCachedWeakPtrLock_##THREADS##Threads) {            \
@@ -324,69 +334,75 @@ int main(int argc, char** argv) {
 #endif // defined(__GLIBCXX__)
 
 #if 0
-// On Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz, 2 sockets, 28 cores, 56 threads.
+// On Intel(R) Xeon(R) Gold 6138 CPU @ 2.00GHz, 2 sockets, 40 cores, 80 threads.
 $ buck-out/gen/folly/concurrency/test/core_cached_shared_ptr_test --benchmark --bm_min_usec 500000
 
 ============================================================================
-folly/concurrency/test/CoreCachedSharedPtrTest.cpprelative  time/iter  iters/s
+[...]ency/test/CoreCachedSharedPtrTest.cpp     relative  time/iter   iters/s
 ============================================================================
-SharedPtrAcquire_1Threads                                   18.31ns   54.62M
-WeakPtrLock_1Threads                                        20.07ns   49.83M
-AtomicSharedPtrAcquire_1Threads                             26.31ns   38.01M
-CoreCachedSharedPtrAquire_1Threads                          20.17ns   49.57M
-CoreCachedWeakPtrLock_1Threads                              22.41ns   44.62M
-AtomicCoreCachedSharedPtrAcquire_1Threads                   23.59ns   42.40M
-ReadMostlySharedPtrAcquire_1Threads                         20.16ns   49.61M
-ReadMostlyWeakPtrLock_1Threads                              20.46ns   48.87M
+SharedPtrAcquire_1Threads                                  19.86ns    50.36M
+WeakPtrLock_1Threads                                       21.23ns    47.10M
+AtomicSharedPtrAcquire_1Threads                            30.92ns    32.34M
+ThreadCachedSynchronizedAcquire_1Threads                   21.61ns    46.27M
+CoreCachedSharedPtrAcquire_1Threads                        21.87ns    45.72M
+CoreCachedWeakPtrLock_1Threads                             22.09ns    45.27M
+AtomicCoreCachedSharedPtrAcquire_1Threads                  24.47ns    40.87M
+ReadMostlySharedPtrAcquire_1Threads                        15.49ns    64.57M
+ReadMostlyWeakPtrLock_1Threads                             15.32ns    65.27M
 ----------------------------------------------------------------------------
-SharedPtrAcquire_4Threads                                  193.62ns    5.16M
-WeakPtrLock_4Threads                                       216.29ns    4.62M
-AtomicSharedPtrAcquire_4Threads                            508.04ns    1.97M
-CoreCachedSharedPtrAquire_4Threads                          21.52ns   46.46M
-CoreCachedWeakPtrLock_4Threads                              23.80ns   42.01M
-AtomicCoreCachedSharedPtrAcquire_4Threads                   24.81ns   40.30M
-ReadMostlySharedPtrAcquire_4Threads                         21.67ns   46.15M
-ReadMostlyWeakPtrLock_4Threads                              21.72ns   46.04M
+SharedPtrAcquire_4Threads                                 255.09ns     3.92M
+WeakPtrLock_4Threads                                      287.98ns     3.47M
+AtomicSharedPtrAcquire_4Threads                           709.64ns     1.41M
+ThreadCachedSynchronizedAcquire_4Threads                  228.03ns     4.39M
+CoreCachedSharedPtrAcquire_4Threads                        22.68ns    44.09M
+CoreCachedWeakPtrLock_4Threads                             23.62ns    42.34M
+AtomicCoreCachedSharedPtrAcquire_4Threads                  24.35ns    41.07M
+ReadMostlySharedPtrAcquire_4Threads                        16.86ns    59.31M
+ReadMostlyWeakPtrLock_4Threads                             16.25ns    61.55M
 ----------------------------------------------------------------------------
-SharedPtrAcquire_8Threads                                  389.71ns    2.57M
-WeakPtrLock_8Threads                                       467.29ns    2.14M
-AtomicSharedPtrAcquire_8Threads                              1.38us  727.03K
-CoreCachedSharedPtrAquire_8Threads                          21.49ns   46.53M
-CoreCachedWeakPtrLock_8Threads                              23.83ns   41.97M
-AtomicCoreCachedSharedPtrAcquire_8Threads                   24.68ns   40.52M
-ReadMostlySharedPtrAcquire_8Threads                         21.68ns   46.12M
-ReadMostlyWeakPtrLock_8Threads                              21.48ns   46.55M
+SharedPtrAcquire_8Threads                                 488.90ns     2.05M
+WeakPtrLock_8Threads                                      577.98ns     1.73M
+AtomicSharedPtrAcquire_8Threads                             1.78us   561.16K
+ThreadCachedSynchronizedAcquire_8Threads                  483.47ns     2.07M
+CoreCachedSharedPtrAcquire_8Threads                        23.45ns    42.64M
+CoreCachedWeakPtrLock_8Threads                             23.81ns    41.99M
+AtomicCoreCachedSharedPtrAcquire_8Threads                  24.49ns    40.83M
+ReadMostlySharedPtrAcquire_8Threads                        17.10ns    58.49M
+ReadMostlyWeakPtrLock_8Threads                             16.73ns    59.76M
 ----------------------------------------------------------------------------
-SharedPtrAcquire_16Threads                                 739.59ns    1.35M
-WeakPtrLock_16Threads                                      896.23ns    1.12M
-AtomicSharedPtrAcquire_16Threads                             2.88us  347.73K
-CoreCachedSharedPtrAquire_16Threads                         21.98ns   45.50M
-CoreCachedWeakPtrLock_16Threads                             25.98ns   38.49M
-AtomicCoreCachedSharedPtrAcquire_16Threads                  26.44ns   37.82M
-ReadMostlySharedPtrAcquire_16Threads                        23.75ns   42.11M
-ReadMostlyWeakPtrLock_16Threads                             22.89ns   43.70M
+SharedPtrAcquire_16Threads                                  1.08us   929.56K
+WeakPtrLock_16Threads                                       1.56us   642.75K
+AtomicSharedPtrAcquire_16Threads                            2.94us   340.19K
+ThreadCachedSynchronizedAcquire_16Threads                   1.02us   981.43K
+CoreCachedSharedPtrAcquire_16Threads                       25.58ns    39.10M
+CoreCachedWeakPtrLock_16Threads                            24.79ns    40.34M
+AtomicCoreCachedSharedPtrAcquire_16Threads                 25.97ns    38.50M
+ReadMostlySharedPtrAcquire_16Threads                       18.11ns    55.20M
+ReadMostlyWeakPtrLock_16Threads                            17.91ns    55.85M
 ----------------------------------------------------------------------------
-SharedPtrAcquire_32Threads                                   1.36us  732.78K
-WeakPtrLock_32Threads                                        1.93us  518.58K
-AtomicSharedPtrAcquire_32Threads                             5.68us  176.04K
-CoreCachedSharedPtrAquire_32Threads                         29.24ns   34.20M
-CoreCachedWeakPtrLock_32Threads                             32.17ns   31.08M
-AtomicCoreCachedSharedPtrAcquire_32Threads                  28.67ns   34.88M
-ReadMostlySharedPtrAcquire_32Threads                        29.36ns   34.06M
-ReadMostlyWeakPtrLock_32Threads                             27.27ns   36.67M
+SharedPtrAcquire_32Threads                                  2.25us   444.85K
+WeakPtrLock_32Threads                                       3.29us   304.08K
+AtomicSharedPtrAcquire_32Threads                            6.86us   145.76K
+ThreadCachedSynchronizedAcquire_32Threads                   2.30us   434.67K
+CoreCachedSharedPtrAcquire_32Threads                       25.35ns    39.45M
+CoreCachedWeakPtrLock_32Threads                            25.37ns    39.41M
+AtomicCoreCachedSharedPtrAcquire_32Threads                 26.69ns    37.46M
+ReadMostlySharedPtrAcquire_32Threads                       19.32ns    51.75M
+ReadMostlyWeakPtrLock_32Threads                            18.37ns    54.43M
 ----------------------------------------------------------------------------
-SharedPtrAcquire_64Threads                                   2.39us  418.35K
-WeakPtrLock_64Threads                                        4.21us  237.61K
-AtomicSharedPtrAcquire_64Threads                             8.63us  115.86K
-CoreCachedSharedPtrAquire_64Threads                         49.70ns   20.12M
-CoreCachedWeakPtrLock_64Threads                             74.74ns   13.38M
-AtomicCoreCachedSharedPtrAcquire_64Threads                  56.09ns   17.83M
-ReadMostlySharedPtrAcquire_64Threads                        49.22ns   20.32M
-ReadMostlyWeakPtrLock_64Threads                             49.16ns   20.34M
+SharedPtrAcquire_64Threads                                  4.92us   203.42K
+WeakPtrLock_64Threads                                      10.90us    91.77K
+AtomicSharedPtrAcquire_64Threads                           14.06us    71.12K
+ThreadCachedSynchronizedAcquire_64Threads                   4.64us   215.59K
+CoreCachedSharedPtrAcquire_64Threads                       33.87ns    29.53M
+CoreCachedWeakPtrLock_64Threads                            48.94ns    20.43M
+AtomicCoreCachedSharedPtrAcquire_64Threads                 35.85ns    27.89M
+ReadMostlySharedPtrAcquire_64Threads                       32.08ns    31.17M
+ReadMostlyWeakPtrLock_64Threads                            29.83ns    33.52M
 ----------------------------------------------------------------------------
-SharedPtrSingleThreadReset                                  10.45ns   95.70M
-AtomicSharedPtrSingleThreadReset                            42.83ns   23.35M
-CoreCachedSharedPtrSingleThreadReset                         2.51us  398.43K
-AtomicCoreCachedSharedPtrSingleThreadReset                   2.36us  423.31K
+SharedPtrSingleThreadReset                                 12.52ns    79.89M
+AtomicSharedPtrSingleThreadReset                           48.73ns    20.52M
+CoreCachedSharedPtrSingleThreadReset                        2.94us   340.29K
+AtomicCoreCachedSharedPtrSingleThreadReset                  5.15us   194.14K
 ============================================================================
 #endif
