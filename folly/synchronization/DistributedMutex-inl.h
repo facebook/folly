@@ -153,7 +153,7 @@ using CpuTicks = std::int64_t;
 constexpr auto kScheduledAwaySpinThreshold = CpuTicks{200};
 // The maximum time to spin before a thread starts yielding its processor
 // in hopes of getting skipped
-constexpr auto kMaxSpinTime = CpuTicks{400000};
+constexpr auto kMaxSpinTime = CpuTicks{40000};
 // The maximum number of contention chains we can resolve with flat combining.
 // After this number of contention chains, the mutex falls back to regular
 // two-phased mutual exclusion to ensure that we don't starve the combiner
