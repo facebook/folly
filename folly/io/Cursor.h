@@ -59,6 +59,17 @@ class ThinCursor;
 
 namespace detail {
 
+// This is very useful in development, but the size perturbation is currently
+// causing some previously undetected bugs in unrelated projects to manifest in
+// CI-breaking ways.
+// TODO(davidgoldblatt): Fix this.
+#define FOLLY_IO_CURSOR_BORROW_CHECKING 0
+#if FOLLY_IO_CURSOR_BORROW_CHECKING
+#define FOLLY_IO_CURSOR_BORROW_DCHECK DCHECK
+#else
+#define FOLLY_IO_CURSOR_BORROW_DCHECK(ignored)
+#endif
+
 template <class Derived, class BufType>
 class CursorBase {
   // Make all the templated classes friends for copy constructor.
@@ -810,7 +821,7 @@ class CursorBase {
 
  protected:
   void dcheckIntegrity() const {
-    DCHECK(!*borrowed());
+    FOLLY_IO_CURSOR_BORROW_DCHECK(!*borrowed());
     DCHECK(crtBegin_ <= crtPos_ && crtPos_ <= crtEnd_);
     DCHECK(crtBuf_ == nullptr || crtBegin_ == crtBuf_->data());
     DCHECK(
@@ -877,7 +888,7 @@ class CursorBase {
   // is set to the max of size_t
   size_t remainingLen_{std::numeric_limits<size_t>::max()};
 
-#ifndef NDEBUG
+#if FOLLY_IO_CURSOR_BORROW_CHECKING
   bool borrowed_ = false;
   bool* borrowed() { return &borrowed_; }
   const bool* borrowed() const { return &borrowed_; }
@@ -1083,12 +1094,12 @@ class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
       : detail::CursorBase<Cursor, const IOBuf>(cursor, len) {}
 
   ThinCursor borrow() {
-    DCHECK(!std::exchange(*borrowed(), true));
+    FOLLY_IO_CURSOR_BORROW_DCHECK(!std::exchange(*borrowed(), true));
     return {crtPos_, crtEnd_};
   }
 
   void unborrow(ThinCursor&& cursor) {
-    DCHECK(std::exchange(*borrowed(), false));
+    FOLLY_IO_CURSOR_BORROW_DCHECK(std::exchange(*borrowed(), false));
     DCHECK_EQ(cursor.crtEnd_, crtEnd_);
     crtPos_ = cursor.crtPos_;
   }
