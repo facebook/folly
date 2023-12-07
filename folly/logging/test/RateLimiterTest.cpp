@@ -121,6 +121,6 @@ TEST(RateLimiter, concurrentThreads) {
 }
 
 TEST(RateLimiter, LargeInterval) {
-  IntervalRateLimiter limiter{1, std::chrono::years{1}};
+  IntervalRateLimiter limiter{1, std::chrono::hours{8765}}; // Just under a year
   EXPECT_TRUE(limiter.check());
 }
