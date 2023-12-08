@@ -113,7 +113,7 @@ class BuilderBase(object):
         patchfile = os.path.join(
             self.build_opts.fbcode_builder_dir, "patches", self.patchfile
         )
-        patchcmd = ["git", "apply"]
+        patchcmd = ["git", "apply", "--ignore-space-change"]
         if self.patchfile_opts:
             patchcmd.append(self.patchfile_opts)
         try:
