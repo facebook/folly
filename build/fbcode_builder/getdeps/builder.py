@@ -364,27 +364,12 @@ class Iproute2Builder(BuilderBase):
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
 
-    def _patch(self) -> None:
-        # FBOSS build currently depends on an old version of iproute2 (commit
-        # 7ca63aef7d1b0c808da0040c6b366ef7a61f38c1). This is missing a commit
-        # (ae717baf15fb4d30749ada3948d9445892bac239) needed to build iproute2
-        # successfully. Apply it viz.: include stdint.h
-        # Reference: https://fburl.com/ilx9g5xm
-        with open(self.build_dir + "/tc/tc_core.c", "r") as f:
-            data = f.read()
-
-        with open(self.build_dir + "/tc/tc_core.c", "w") as f:
-            f.write("#include <stdint.h>\n")
-            f.write(data)
-
     def _build(self, install_dirs, reconfigure) -> None:
         configure_path = os.path.join(self.src_dir, "configure")
-
         env = self.env.copy()
         self._run_cmd([configure_path], env=env)
         shutil.rmtree(self.build_dir)
         shutil.copytree(self.src_dir, self.build_dir)
-        self._patch()
         self._run_cmd(["make", "-j%s" % self.num_jobs], env=env)
         install_cmd = ["make", "install", "DESTDIR=" + self.inst_dir]
 
