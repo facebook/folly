@@ -1,0 +1,36 @@
+diff --git a/bridge/fdb.c b/bridge/fdb.c
+--- a/bridge/fdb.c
++++ b/bridge/fdb.c
+@@ -31,7 +31,7 @@
+
+ static unsigned int filter_index, filter_vlan, filter_state;
+
+-json_writer_t *jw_global;
++static json_writer_t *jw_global;
+
+ static void usage(void)
+ {
+diff --git a/ip/ipmroute.c b/ip/ipmroute.c
+--- a/ip/ipmroute.c
++++ b/ip/ipmroute.c
+@@ -44,7 +44,7 @@
+        exit(-1);
+ }
+
+-struct rtfilter {
++static struct rtfilter {
+        int tb;
+        int af;
+        int iif;
+diff --git a/ip/xfrm_monitor.c b/ip/xfrm_monitor.c
+--- a/ip/xfrm_monitor.c
++++ b/ip/xfrm_monitor.c
+@@ -34,7 +34,7 @@
+ #include "ip_common.h"
+
+ static void usage(void) __attribute__((noreturn));
+-int listen_all_nsid;
++static int listen_all_nsid;
+
+ static void usage(void)
+ {
