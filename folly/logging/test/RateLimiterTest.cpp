@@ -120,7 +120,10 @@ TEST(RateLimiter, concurrentThreads) {
   EXPECT_EQ(maxEvents, count.load(std::memory_order_relaxed));
 }
 
+#if __cplusplus > 201703L
+// std::chrono::years becomes visible in C++20 mode
 TEST(RateLimiter, LargeInterval) {
   IntervalRateLimiter limiter{1, std::chrono::hours{8765}}; // Just under a year
   EXPECT_TRUE(limiter.check());
 }
+#endif

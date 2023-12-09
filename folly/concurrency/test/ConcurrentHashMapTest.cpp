@@ -17,7 +17,10 @@
 #include <folly/concurrency/ConcurrentHashMap.h>
 
 #include <atomic>
+#if __cplusplus > 201703L
+// std::latch becomes visible in C++20 mode
 #include <latch>
+#endif
 #include <limits>
 #include <memory>
 #include <thread>
@@ -1135,6 +1138,8 @@ TYPED_TEST_P(ConcurrentHashMapTest, ConcurrentInsertClear) {
 }
 
 TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
+  // std::latch becomes visible in C++20 mode
+#if __cplusplus > 201703L
   // Create a map where we keep reclaiming a lot of objects that are linked to
   // one node.
 
@@ -1178,6 +1183,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
   for (auto& t : threads) {
     join;
   }
+#endif
 }
 
 REGISTER_TYPED_TEST_SUITE_P(

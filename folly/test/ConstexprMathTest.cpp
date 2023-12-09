@@ -16,6 +16,7 @@
 
 #include <folly/ConstexprMath.h>
 
+#include <array>
 #include <cmath>
 #include <limits>
 #include <type_traits>
