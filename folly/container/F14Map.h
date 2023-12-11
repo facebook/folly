@@ -178,7 +178,7 @@ class F14BasicMap {
       Policy::kAllocIsAlwaysEqual)
       : table_{std::move(rhs.table_), alloc} {}
 
-  F14BasicMap(
+  /* implicit */ F14BasicMap(
       std::initializer_list<value_type> init,
       std::size_t initialCapacity = 0,
       hasher const& hash = hasher{},
