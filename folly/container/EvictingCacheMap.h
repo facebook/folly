@@ -520,7 +520,7 @@ class EvictingCacheMap {
     using folly_is_avalanching = IsAvalanchingHasher<THash, TKey>;
 
     KeyHasher() : hash() {}
-    KeyHasher(const THash& keyHash) : hash(keyHash) {}
+    explicit KeyHasher(const THash& keyHash) : hash(keyHash) {}
     std::size_t operator()(const NodePtr& node) const {
       return hash(node->pr.first);
     }
@@ -535,7 +535,7 @@ class EvictingCacheMap {
     using is_transparent = void;
 
     KeyValueEqual() : equal() {}
-    KeyValueEqual(const TKeyEqual& keyEqual) : equal(keyEqual) {}
+    explicit KeyValueEqual(const TKeyEqual& keyEqual) : equal(keyEqual) {}
     template <typename K>
     bool operator()(const K& lhs, const NodePtr& rhs) const {
       return equal(lhs, rhs->pr.first);
