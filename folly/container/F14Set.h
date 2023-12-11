@@ -175,7 +175,7 @@ class F14BasicSet {
       Policy::kAllocIsAlwaysEqual)
       : table_{std::move(rhs.table_), alloc} {}
 
-  F14BasicSet(
+  /* implicit */ F14BasicSet(
       std::initializer_list<value_type> init,
       std::size_t initialCapacity = 0,
       hasher const& hash = hasher{},
