@@ -21,6 +21,29 @@
 namespace folly {
 
 template <int LgQueueSegmentSize>
+class SerialExecutorExt<LgQueueSegmentSize>::Worker {
+ public:
+  Worker(KeepAlive<SerialExecutorExt> ka) : ka_(std::move(ka)) {}
+
+  ~Worker() {
+    if (ka_) {
+      ka_->drain(); // We own the queue but we did not run.
+    }
+  }
+
+  Worker(Worker&& other) : ka_(std::exchange(other.ka_, {})) {}
+
+  Worker(const Worker&) = delete;
+  Worker& operator=(const Worker&) = delete;
+  Worker& operator=(Worker&&) = delete;
+
+  void operator()() { std::exchange(ka_, {})->worker(); }
+
+ private:
+  KeepAlive<SerialExecutorExt> ka_;
+};
+
+template <int LgQueueSegmentSize>
 SerialExecutorExt<LgQueueSegmentSize>::SerialExecutorExt(
     KeepAlive<Executor> parent)
     : parent_(std::move(parent)) {}
@@ -67,8 +90,7 @@ void SerialExecutorExt<LgQueueSegmentSize>::keepAliveRelease() noexcept {
 template <int LgQueueSegmentSize>
 void SerialExecutorExt<LgQueueSegmentSize>::add(Func func) {
   if (scheduleTask(std::move(func))) {
-    parent_->add(
-        [keepAlive = getKeepAliveToken(this)] { keepAlive->worker(); });
+    parent_->add(Worker{getKeepAliveToken(this)});
   }
 }
 
@@ -76,9 +98,7 @@ template <int LgQueueSegmentSize>
 void SerialExecutorExt<LgQueueSegmentSize>::addWithPriority(
     Func func, int8_t priority) {
   if (scheduleTask(std::move(func))) {
-    parent_->addWithPriority(
-        [keepAlive = getKeepAliveToken(this)] { keepAlive->worker(); },
-        priority);
+    parent_->addWithPriority(Worker{getKeepAliveToken(this)}, priority);
   }
 }
 
@@ -113,6 +133,15 @@ void SerialExecutorExt<LgQueueSegmentSize>::worker() {
       }
       processed = 0;
     }
+  }
+}
+
+template <int LgQueueSegmentSize>
+void SerialExecutorExt<LgQueueSegmentSize>::drain() {
+  auto queueSize = scheduled_.load(std::memory_order_acquire);
+  while (queueSize != 0) {
+    queue_.dequeue();
+    queueSize = scheduled_.fetch_sub(1, std::memory_order_acq_rel) - 1;
   }
 }
 

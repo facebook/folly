@@ -107,6 +107,8 @@ class SerialExecutorExt : public SerializedExecutor {
     std::shared_ptr<RequestContext> ctx;
   };
 
+  class Worker;
+
   explicit SerialExecutorExt(KeepAlive<Executor> parent);
   ~SerialExecutorExt() override;
 
@@ -116,6 +118,7 @@ class SerialExecutorExt : public SerializedExecutor {
 
   bool scheduleTask(Func&& func);
   void worker();
+  void drain();
 
   KeepAlive<Executor> parent_;
   std::atomic<std::size_t> scheduled_{0};

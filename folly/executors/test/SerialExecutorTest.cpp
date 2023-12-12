@@ -185,3 +185,16 @@ TEST(SerialExecutor, ExecutionThrows) {
   // but SerialExecutor should catch that exception
   executor->add(folly::Func{});
 }
+
+TEST(SerialExecutor, ParentExecutorDiscardsFunc) {
+  struct FakeExecutor : folly::Executor {
+    void add(folly::Func) override {}
+  };
+
+  FakeExecutor ex;
+  auto se = folly::SerialExecutor::create(&ex);
+  bool ran = false;
+  se->add([&, ka = folly::getKeepAliveToken(se.get())] { ran = true; });
+  se.reset();
+  ASSERT_FALSE(ran);
+}
