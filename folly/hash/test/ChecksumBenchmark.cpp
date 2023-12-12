@@ -19,11 +19,16 @@
 #include <folly/Benchmark.h>
 #include <folly/hash/Checksum.h>
 
-constexpr size_t kBufSize = 32 * 1024;
+constexpr size_t kBufSize = 512 * 1024;
 uint8_t* buf;
 
 #define BENCH_CRC32(S) \
   BENCHMARK(crc32_##S) { folly::doNotOptimizeAway(folly::crc32(buf, (S), 2)); }
+
+#define BENCH_CRC32C(S)                                   \
+  BENCHMARK(crc32c_##S) {                                 \
+    folly::doNotOptimizeAway(folly::crc32c(buf, (S), 2)); \
+  }
 
 BENCH_CRC32(512)
 BENCH_CRC32(1024)
@@ -32,6 +37,22 @@ BENCH_CRC32(4096)
 BENCH_CRC32(8192)
 BENCH_CRC32(16384)
 BENCH_CRC32(32768)
+BENCH_CRC32(65536)
+BENCH_CRC32(131072)
+BENCH_CRC32(262144)
+BENCH_CRC32(524288)
+
+BENCH_CRC32C(512)
+BENCH_CRC32C(1024)
+BENCH_CRC32C(2048)
+BENCH_CRC32C(4096)
+BENCH_CRC32C(8192)
+BENCH_CRC32C(16384)
+BENCH_CRC32C(32768)
+BENCH_CRC32C(65536)
+BENCH_CRC32C(131072)
+BENCH_CRC32C(262144)
+BENCH_CRC32C(524288)
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
