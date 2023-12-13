@@ -17,18 +17,23 @@
 #include <folly/concurrency/ConcurrentHashMap.h>
 
 #include <atomic>
-#include <latch>
 #include <limits>
 #include <memory>
 #include <thread>
 #include <vector>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/container/test/TrackingTypes.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
+
+#if FOLLY_CPLUSPLUS >= 202002L
+// std::latch becomes visible in C++20 mode
+#include <latch>
+#endif
 
 using namespace folly::test;
 using namespace folly;
@@ -1135,6 +1140,8 @@ TYPED_TEST_P(ConcurrentHashMapTest, ConcurrentInsertClear) {
 }
 
 TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
+// This needs C++20 for std::latch.
+#if FOLLY_CPLUSPLUS >= 202002L
   // Create a map where we keep reclaiming a lot of objects that are linked to
   // one node.
 
@@ -1178,6 +1185,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
   for (auto& t : threads) {
     join;
   }
+#endif
 }
 
 REGISTER_TYPED_TEST_SUITE_P(
