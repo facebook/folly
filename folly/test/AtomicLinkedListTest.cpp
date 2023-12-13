@@ -177,6 +177,20 @@ TEST(AtomicIntrusiveLinkedList, Arm) {
     EXPECT_TRUE(list.empty());
     EXPECT_EQ(nullptr, list.unsafeHead());
   }
+  // arm twice
+  {
+    EXPECT_EQ(nullptr, list.arm());
+    EXPECT_EQ(nullptr, list.arm());
+    EXPECT_TRUE(list.insertHeadArm(&a));
+    EXPECT_EQ(&a, list.unsafeHead());
+    auto* ret = list.arm();
+    // unlink
+    while (ret) {
+      auto* next = ret->next();
+      ret->next() = nullptr;
+      ret = next;
+    }
+  }
 
   // do not arm first
   {

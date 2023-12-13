@@ -123,27 +123,23 @@ class AtomicIntrusiveLinkedList {
    * Atomically replaces the head with kQueueArmedTag if it is nullptr
    * or it replaces the head with nullptr otherwise
    * Calling arm() for a queue where the head is already kQueueArmedTag
-   * will cause the head to become nullptr
+   * will return nullptr without changing the head value
    * @return previous head value
    */
 
   T* arm() {
-    auto oldHead = head_.load(std::memory_order_relaxed);
-    if (!oldHead &&
-        head_.compare_exchange_strong(
-            oldHead,
-            reinterpret_cast<T*>(kQueueArmedTag),
-            std::memory_order_release,
-            std::memory_order_relaxed)) {
-      return nullptr;
-    }
+    auto* kTagPtr = reinterpret_cast<T*>(kQueueArmedTag);
+    T* oldHead = head_.load(std::memory_order_relaxed);
+    T* newHead;
+    do {
+      newHead = (oldHead == nullptr || oldHead == kTagPtr) ? kTagPtr : nullptr;
+    } while (!head_.compare_exchange_strong(
+        oldHead,
+        newHead,
+        std::memory_order_acq_rel,
+        std::memory_order_relaxed));
 
-    oldHead = head_.exchange(nullptr, std::memory_order_acquire);
-    if (oldHead && reinterpret_cast<intptr_t>(oldHead) != kQueueArmedTag) {
-      return oldHead;
-    }
-
-    return nullptr;
+    return (oldHead == nullptr || oldHead == kTagPtr) ? nullptr : oldHead;
   }
 
   /**
