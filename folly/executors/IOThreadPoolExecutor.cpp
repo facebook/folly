@@ -90,6 +90,17 @@ EventBase* IOThreadPoolExecutorBase::getEventBase(
   return nullptr;
 }
 
+std::mutex* IOThreadPoolExecutorBase::getEventBaseShutdownMutex(
+    ThreadPoolExecutor::ThreadHandle* h) {
+  auto thread = dynamic_cast<IOThread*>(h);
+
+  if (thread) {
+    return &thread->eventBaseShutdownMutex_;
+  }
+
+  return nullptr;
+}
+
 // IOThreadPoolExecutor
 IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t numThreads,
@@ -216,13 +227,8 @@ std::shared_ptr<ThreadPoolExecutor::Thread> IOThreadPoolExecutor::makeThread() {
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
 
-  EventBase evb{EventBase::Options{}
-                    // To support IOThreadPoolDeadlockDetectorObserver.
-                    .setEnableThreadIdCollection(true)};
-  eventBaseManager_->setEventBase(&evb, false);
-
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
-  ioThread->eventBase = &evb;
+  ioThread->eventBase = eventBaseManager_->getEventBase();
   thisThread_.reset(new std::shared_ptr<IOThread>(ioThread));
 
   auto tid = folly::getOSThreadID();
@@ -236,28 +242,30 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   };
 
   auto idler = std::make_unique<MemoryIdlerTimeout>(ioThread->eventBase);
-  evb.runBeforeLoop(idler.get());
+  ioThread->eventBase->runBeforeLoop(idler.get());
 
-  evb.runInEventBaseThread([thread] { thread->startupBaton.post(); });
+  ioThread->eventBase->runInEventBaseThread(
+      [thread] { thread->startupBaton.post(); });
   {
     ExecutorBlockingGuard guard{
         ExecutorBlockingGuard::TrackTag{}, this, getName()};
     while (ioThread->shouldRun) {
-      evb.loopForever();
+      ioThread->eventBase->loopForever();
     }
     if (isJoin_) {
       while (ioThread->pendingTasks > 0) {
-        evb.loopOnce();
+        ioThread->eventBase->loopOnce();
       }
     }
     idler.reset();
     if (isWaitForAll_) {
       // some tasks, like thrift asynchronous calls, create additional
       // event base hookups, let's wait till all of them complete.
-      evb.loop();
+      ioThread->eventBase->loop();
     }
   }
 
+  std::lock_guard<std::mutex> guard(ioThread->eventBaseShutdownMutex_);
   ioThread->eventBase = nullptr;
   eventBaseManager_->clearEventBase();
 }
@@ -274,6 +282,7 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
     }
     ioThread->shouldRun = false;
     stoppedThreads.push_back(ioThread);
+    std::lock_guard<std::mutex> guard(ioThread->eventBaseShutdownMutex_);
     if (ioThread->eventBase) {
       ioThread->eventBase->terminateLoopSoon();
     }

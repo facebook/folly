@@ -342,14 +342,13 @@ void MuxIOThreadPoolExecutor::stopThreads(size_t n) {
 }
 
 std::unique_ptr<folly::EventBase> MuxIOThreadPoolExecutor::makeEventBase() {
+  auto factory = [] {
+    folly::EpollBackend::Options options;
+    return std::make_unique<folly::EpollBackend>(options);
+  };
+  folly::EventBase::Options opts;
   return std::make_unique<folly::EventBase>(
-      EventBase::Options{} //
-          .setBackendFactory([] {
-            return std::make_unique<EpollBackend>(EpollBackend::Options{});
-          }) //
-          .setStrictLoopThread(true) //
-          // To support IOThreadPoolDeadlockDetectorObserver.
-          .setEnableThreadIdCollection(true));
+      opts.setBackendFactory(std::move(factory)).setStrictLoopThread(true));
 }
 
 } // namespace folly
