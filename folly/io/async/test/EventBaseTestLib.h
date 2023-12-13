@@ -27,9 +27,11 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/test/SocketPair.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
 
 #define FOLLY_SKIP_IF_NULLPTR_BACKEND_WITH_OPTS(evb, opts)  \
@@ -2635,6 +2637,41 @@ TYPED_TEST_P(EventBaseTest, LoopRearmsNotificationQueue) {
   EXPECT_EQ(evbPtr->getNumLoopCallbacks(), 0);
 }
 
+TYPED_TEST_P(EventBaseTest, GetThreadIdCollector) {
+  auto evbPtr = getEventBase<TypeParam>(
+      EventBase::Options{}.setEnableThreadIdCollection(true));
+  auto* collector = evbPtr->getThreadIdCollector();
+  ASSERT_TRUE(collector != nullptr);
+
+  pid_t tid;
+  Baton<> ready;
+  Baton<> unblock;
+  evbPtr->runInEventBaseThread([&] {
+    tid = getOSThreadID();
+    ready.post();
+    unblock.wait(); // Wait until we acquire the keepalive.
+  });
+
+  EXPECT_THAT(collector->collectThreadIds().threadIds, testing::IsEmpty());
+
+  std::thread t{[&] { evbPtr->loopOnce(); }};
+
+  ready.wait();
+  auto ids = collector->collectThreadIds();
+  EXPECT_THAT(ids.threadIds, testing::ElementsAre(tid));
+  unblock.post();
+
+  // Until we release ids, the loop cannot complete.
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds(100));
+  EXPECT_TRUE(evbPtr->isRunning());
+  // But things should eventually complete when released.
+  ids = {};
+  t.join();
+  EXPECT_FALSE(evbPtr->isRunning());
+  EXPECT_THAT(collector->collectThreadIds().threadIds, testing::IsEmpty());
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest,
     EventBaseThread,
@@ -2695,7 +2732,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     LoopKeepAliveAtomic,
     LoopKeepAliveCast,
     EventBaseObserver,
-    LoopRearmsNotificationQueue);
+    LoopRearmsNotificationQueue,
+    GetThreadIdCollector);
 
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,

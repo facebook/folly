@@ -42,6 +42,7 @@
 #include <folly/container/F14Set.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/IOExecutor.h>
+#include <folly/executors/QueueObserver.h>
 #include <folly/executors/ScheduledExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/ExecutionObserver.h>
@@ -133,7 +134,8 @@ class EventBase : public TimeoutManager,
                   public DrivableExecutor,
                   public IOExecutor,
                   public SequencedExecutor,
-                  public ScheduledExecutor {
+                  public ScheduledExecutor,
+                  public GetThreadIdCollector {
  public:
   friend class ScopedEventBaseThread;
 
@@ -316,6 +318,16 @@ class EventBase : public TimeoutManager,
 
     Options& setStrictLoopThread(bool b) {
       strictLoopThread = b;
+      return *this;
+    }
+
+    /**
+     * Enable getThreadIdCollector(). If not enabled, the method returns nullpr.
+     */
+    bool enableThreadIdCollection{false};
+
+    Options& setEnableThreadIdCollection(bool b) {
+      this->enableThreadIdCollection = b;
       return *this;
     }
   };
@@ -952,6 +964,9 @@ class EventBase : public TimeoutManager,
   /// Implements the IOExecutor interface
   EventBase* getEventBase() override;
 
+  /// Implements the GetThreadIdCollector interface
+  WorkerProvider* getThreadIdCollector() override;
+
   static std::unique_ptr<EventBaseBackendBase> getDefaultBackend();
 
  protected:
@@ -973,6 +988,7 @@ class EventBase : public TimeoutManager,
 
  private:
   class FuncRunner;
+  class ThreadIdCollector;
 
   folly::VirtualEventBase* tryGetVirtualEventBase();
 
@@ -1083,6 +1099,8 @@ class EventBase : public TimeoutManager,
 
   // pointer to underlying backend class doing the heavy lifting
   std::unique_ptr<EventBaseBackendBase> evb_;
+
+  std::unique_ptr<ThreadIdCollector> threadIdCollector_;
 };
 
 template <typename T>

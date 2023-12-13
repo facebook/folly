@@ -30,7 +30,9 @@ FOLLY_PUSH_WARNING
 // keepAliveAcquire/keepAliveRelease via dominance"
 FOLLY_MSVC_DISABLE_WARNING(4250)
 
-class IOThreadPoolExecutorBase : public ThreadPoolExecutor, public IOExecutor {
+class IOThreadPoolExecutorBase : public ThreadPoolExecutor,
+                                 public IOExecutor,
+                                 public GetThreadIdCollector {
  public:
   using ThreadPoolExecutor::ThreadPoolExecutor;
 
@@ -38,7 +40,6 @@ class IOThreadPoolExecutorBase : public ThreadPoolExecutor, public IOExecutor {
 
   folly::EventBase* getEventBase() override = 0;
 
-  virtual folly::WorkerProvider* getThreadIdCollector() = 0;
   virtual std::vector<folly::Executor::KeepAlive<folly::EventBase>>
   getAllEventBases() = 0;
 

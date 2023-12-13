@@ -29,12 +29,14 @@
 #include <folly/ExceptionString.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
+#include <folly/experimental/EventCount.h>
 #include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/EventBaseLocal.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
 
 namespace {
@@ -129,6 +131,47 @@ class EventBase::FuncRunner {
   void operator()(Func func) noexcept { func(); }
 };
 
+class EventBase::ThreadIdCollector : public WorkerProvider {
+ public:
+  IdsWithKeepAlive collectThreadIds() override {
+    keepAlives_.fetch_add(1, std::memory_order_acq_rel);
+    auto guard = std::make_unique<Guard>(*this);
+    auto tid = tid_.load(std::memory_order_acquire);
+    if (tid == 0) {
+      return {};
+    }
+    return {std::move(guard), std::vector<pid_t>{tid}};
+  }
+
+  void setTid() { tid_.store(getOSThreadID(), std::memory_order_release); }
+
+  void unsetTid() {
+    tid_.store(0, std::memory_order_release);
+    // Wait for any outstanding keepalives.
+    wakeUp_.await(
+        [&] { return keepAlives_.load(std::memory_order_acquire) == 0; });
+  }
+
+ private:
+  class Guard : public KeepAlive {
+   public:
+    Guard(ThreadIdCollector& parent) : parent_(parent) {}
+
+    ~Guard() override {
+      if (parent_.keepAlives_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        parent_.wakeUp_.notifyAll();
+      }
+    }
+
+   private:
+    ThreadIdCollector& parent_;
+  };
+
+  std::atomic<pid_t> tid_ = 0;
+  std::atomic<size_t> keepAlives_ = 0;
+  EventCount wakeUp_;
+};
+
 /*
  * EventBase methods
  */
@@ -164,9 +207,14 @@ EventBase::EventBase(Options options)
       latestLoopCnt_(nextLoopCnt_),
       startWork_(),
       observer_(nullptr),
-      observerSampleCount_(0) {
-  evb_ =
-      options.backendFactory ? options.backendFactory() : getDefaultBackend();
+      observerSampleCount_(0),
+      evb_(
+          options.backendFactory ? options.backendFactory()
+                                 : getDefaultBackend()),
+      threadIdCollector_(
+          options.enableThreadIdCollection
+              ? std::make_unique<ThreadIdCollector>()
+              : nullptr) {
   initNotificationQueue();
 }
 
@@ -383,6 +431,10 @@ void EventBase::loopMainSetup() {
   if (!name_.empty()) {
     setThreadName(name_);
   }
+
+  if (threadIdCollector_ != nullptr) {
+    threadIdCollector_->setTid();
+  }
 }
 
 bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
@@ -517,6 +569,9 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
 }
 
 void EventBase::loopMainCleanup() {
+  if (threadIdCollector_ != nullptr) {
+    threadIdCollector_->unsetTid();
+  }
   loopThread_.store({}, std::memory_order_release);
 }
 
@@ -923,6 +978,10 @@ VirtualEventBase* EventBase::tryGetVirtualEventBase() {
 
 EventBase* EventBase::getEventBase() {
   return this;
+}
+
+WorkerProvider* EventBase::getThreadIdCollector() {
+  return threadIdCollector_.get();
 }
 
 EventBase::OnDestructionCallback::~OnDestructionCallback() {
