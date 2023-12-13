@@ -84,7 +84,7 @@ FOLLY_SETTING_DEFINE(
 
 } // namespace some_ns
 
-TEST(Settings, user_defined) {
+TEST(Settings, userDefined) {
   EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 100);
   {
     folly::settings::Snapshot sn;

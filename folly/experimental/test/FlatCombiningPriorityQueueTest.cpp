@@ -246,7 +246,7 @@ TEST(FCPriQueue, timeout) {
   CHECK(pq.empty());
 }
 
-TEST(FCPriQueue, push_pop) {
+TEST(FCPriQueue, pushPop) {
   int ops = 1000;
   int work = 0;
   std::chrono::steady_clock::time_point when =

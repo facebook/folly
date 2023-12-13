@@ -44,7 +44,7 @@ TEST(ThreadName, getCurrentThreadName) {
 }
 
 #if FOLLY_HAVE_PTHREAD
-TEST(ThreadName, setThreadName_other_pthread) {
+TEST(ThreadName, setThreadNameOtherPthread) {
   Baton<> handle_set;
   Baton<> let_thread_end;
   pthread_t handle;
@@ -61,7 +61,7 @@ TEST(ThreadName, setThreadName_other_pthread) {
 }
 #endif
 
-TEST(ThreadName, setThreadName_other_id) {
+TEST(ThreadName, setThreadNameOtherId) {
   Baton<> let_thread_end;
   thread th([&] { let_thread_end.wait(); });
   SCOPE_EXIT { th.join(); };

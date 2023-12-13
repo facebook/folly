@@ -69,13 +69,13 @@ TEST(Try, basic) {
   EXPECT_EQ(5, t_a.value().x());
 }
 
-TEST(Try, in_place) {
+TEST(Try, inPlace) {
   Try<A> t_a(in_place, 5);
 
   EXPECT_EQ(5, t_a.value().x());
 }
 
-TEST(Try, in_place_nested) {
+TEST(Try, inPlaceNested) {
   Try<Try<A>> t_t_a(in_place, in_place, 5);
 
   EXPECT_EQ(5, t_t_a.value().value().x());

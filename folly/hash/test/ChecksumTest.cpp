@@ -105,15 +105,15 @@ void testMatchesBoost32Type() {
 
 } // namespace
 
-TEST(Checksum, crc32c_software) {
+TEST(Checksum, crc32cSoftware) {
   testCRC32C(folly::detail::crc32c_sw);
 }
 
-TEST(Checksum, crc32c_continuation_software) {
+TEST(Checksum, crc32cContinuationSoftware) {
   testCRC32CContinuation(folly::detail::crc32c_sw);
 }
 
-TEST(Checksum, crc32c_hardware) {
+TEST(Checksum, crc32cHardware) {
   if (folly::detail::crc32c_hw_supported()) {
     testCRC32C(folly::detail::crc32c_hw);
   } else {
@@ -122,7 +122,7 @@ TEST(Checksum, crc32c_hardware) {
   }
 }
 
-TEST(Checksum, crc32c_hardware_eq) {
+TEST(Checksum, crc32cHardwareEq) {
   if (folly::detail::crc32c_hw_supported()) {
     for (int i = 0; i < 1000; i++) {
       auto sw = folly::detail::crc32c_sw(buffer, i, 0);
@@ -135,7 +135,7 @@ TEST(Checksum, crc32c_hardware_eq) {
   }
 }
 
-TEST(Checksum, crc32c_continuation_hardware) {
+TEST(Checksum, crc32cContinuationHardware) {
   if (folly::detail::crc32c_hw_supported()) {
     testCRC32CContinuation(folly::detail::crc32c_hw);
   } else {
@@ -144,11 +144,11 @@ TEST(Checksum, crc32c_continuation_hardware) {
   }
 }
 
-TEST(Checksum, crc32c_autodetect) {
+TEST(Checksum, crc32cAutodetect) {
   testCRC32C(folly::crc32c);
 }
 
-TEST(Checksum, crc32c_continuation_autodetect) {
+TEST(Checksum, crc32cContinuationAutodetect) {
   testCRC32CContinuation(folly::crc32c);
 }
 
@@ -168,7 +168,7 @@ TEST(Checksum, crc32) {
   }
 }
 
-TEST(Checksum, crc32_continuation) {
+TEST(Checksum, crc32Continuation) {
   if (folly::detail::crc32c_hw_supported()) {
     // Just check that sw and hw match
     for (auto expected : expectedResults) {
@@ -195,12 +195,12 @@ TEST(Checksum, crc32_continuation) {
   }
 }
 
-TEST(Checksum, crc32_type) {
+TEST(Checksum, crc32Type) {
   // Test that crc32_type matches boost::crc_32_type
   testMatchesBoost32Type();
 }
 
-TEST(Checksum, crc32_combine) {
+TEST(Checksum, crc32Combine) {
   for (size_t totlen = 1024; totlen < BUFFER_SIZE; totlen += BUFFER_SIZE / 8) {
     auto mid = folly::Random::rand64(0, totlen);
     auto crc1 = folly::crc32(&buffer[0], mid, 0);
@@ -211,7 +211,7 @@ TEST(Checksum, crc32_combine) {
   }
 }
 
-TEST(Checksum, crc32c_combine) {
+TEST(Checksum, crc32cCombine) {
   for (size_t totlen = 1024; totlen < BUFFER_SIZE; totlen += BUFFER_SIZE / 8) {
     auto mid = folly::Random::rand64(0, totlen);
     auto crc1 = folly::crc32c(&buffer[0], mid, 0);

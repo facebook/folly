@@ -1547,7 +1547,7 @@ TEST(AsyncSocketTest, GetAddressesNoFd) {
 /**
  * Test getting local and peer addresses after connecting.
  */
-TEST(AsyncSocketTest, GetAddressesAfterConnect_GetWhileOpenAndOnClose) {
+TEST(AsyncSocketTest, GetAddressesAfterConnectGetwhileopenandonclose) {
   EventBase evb;
   auto socket = AsyncSocket::newSocket(&evb);
 
@@ -1603,7 +1603,7 @@ TEST(AsyncSocketTest, GetAddressesAfterConnect_GetWhileOpenAndOnClose) {
  *
  * Only peer address is available under these conditions.
  */
-TEST(AsyncSocketTest, GetAddressesAfterConnect_GetOnlyAfterClose) {
+TEST(AsyncSocketTest, GetAddressesAfterConnectGetonlyafterclose) {
   EventBase evb;
   auto socket = AsyncSocket::newSocket(&evb);
 
@@ -1640,7 +1640,7 @@ TEST(AsyncSocketTest, GetAddressesAfterConnect_GetOnlyAfterClose) {
 /**
  * Test getting local and peer addresses after connecting.
  */
-TEST(AsyncSocketTest, GetAddressesAfterInitFromFd_GetOnInitAndOnClose) {
+TEST(AsyncSocketTest, GetAddressesAfterInitFromFdGetoninitandonclose) {
   EventBase evb;
 
   // Start listening on a local port

@@ -345,7 +345,7 @@ class Integer {
   KeyT v_;
 };
 
-TEST(Ahm, map_exception_safety) {
+TEST(Ahm, mapExceptionSafety) {
   typedef AtomicHashMap<KeyT, Integer> MyMapT;
 
   int numEntries = 10000;
@@ -466,7 +466,7 @@ void runThreads(void* (*mainFunc)(void*)) {
 
 } // namespace
 
-TEST(Ahm, collision_test) {
+TEST(Ahm, collisionTest) {
   const int numInserts = 1000000 / 4;
 
   // Doing the same number on each thread so we collide.
@@ -557,7 +557,7 @@ void raceInsertRandomThread(std::atomic<bool>* shouldInsert, int maxInserts) {
 
 // Test for race conditions when inserting and iterating at the same time and
 // creating multiple submaps.
-TEST(Ahm, race_insert_iterate_thread_test) {
+TEST(Ahm, raceInsertIterateThreadTest) {
   const int kInsertThreads = 20;
   const int kIterateThreads = 20;
   const int kMaxInsertsPerThread = 100000;
@@ -638,7 +638,7 @@ void* testEraseEraseThread(void*) {
 
 // Here we have a single thread inserting some values, and several threads
 // racing to delete the values in the order they were inserted.
-TEST(Ahm, thread_erase_insert_race) {
+TEST(Ahm, threadEraseInsertRace) {
   const int kInsertThreads = 1;
   const int kEraseThreads = 10;
 
@@ -685,7 +685,7 @@ void* atomicHashArrayInsertRaceThread(void* /* j */) {
   }
   return (void*)numInserted;
 }
-TEST(Ahm, atomic_hash_array_insert_race) {
+TEST(Ahm, atomicHashArrayInsertRace) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
   int numIterations = 5000;
   constexpr int numThreads = 4;
@@ -701,7 +701,7 @@ TEST(Ahm, atomic_hash_array_insert_race) {
 }
 
 // Repro for T#5841499. Race between erase() and find() on the same key.
-TEST(Ahm, erase_find_race) {
+TEST(Ahm, eraseFindRace) {
   const uint64_t limit = 10000;
   AtomicHashMap<uint64_t, uint64_t> map(limit + 10);
   std::atomic<uint64_t> key{1};
@@ -739,7 +739,7 @@ TEST(Ahm, erase_find_race) {
 }
 
 // Erase right after insert race bug repro (t9130653)
-TEST(Ahm, erase_after_insert_race) {
+TEST(Ahm, eraseAfterInsertRace) {
   const uint64_t limit = 10000;
   const size_t num_threads = 100;
   const size_t num_iters = 500;
@@ -767,7 +767,7 @@ TEST(Ahm, erase_after_insert_race) {
 }
 
 // Repro for a bug when iterator didn't skip empty submaps.
-TEST(Ahm, iterator_skips_empty_submaps) {
+TEST(Ahm, iteratorSkipsEmptySubmaps) {
   AtomicHashMap<uint64_t, uint64_t>::Config conf;
   conf.growthFactor = 1;
 

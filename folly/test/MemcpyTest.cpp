@@ -44,7 +44,7 @@ void init(size_t size) {
 }
 } // namespace
 
-TEST(folly_memcpy, zero_len)
+TEST(follyMemcpy, zeroLen)
 FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("nonnull-attribute") {
   // If length is 0, we shouldn't touch any memory.  So this should
   // not crash.
@@ -83,13 +83,13 @@ void testLen(size_t len, size_t dst_offset = 0, size_t src_offset = 0) {
   }
 }
 
-TEST(folly_memcpy, small) {
+TEST(follyMemcpy, small) {
   for (size_t len = 1; len < 8; ++len) {
     testLen(len);
   }
 }
 
-TEST(folly_memcpy, offset) {
+TEST(follyMemcpy, offset) {
   for (size_t dst_offset = 0; dst_offset < 32; dst_offset += 7) {
     for (size_t src_offset = 0; src_offset < 32; src_offset += 7) {
       for (size_t len = 8; len < 1000; len += 7) {
@@ -99,7 +99,7 @@ TEST(folly_memcpy, offset) {
   }
 }
 
-TEST(folly_memcpy, offset_huge) {
+TEST(follyMemcpy, offsetHuge) {
   size_t kHuge = 49 * 4096;
   testLen(kHuge, 0, 0);
   testLen(kHuge, 16, 16);
@@ -110,7 +110,7 @@ TEST(folly_memcpy, offset_huge) {
   testLen(kHuge, 7, 0);
 }
 
-TEST(folly_memcpy, overlap) {
+TEST(follyMemcpy, overlap) {
   static constexpr ssize_t kStartIndex = 1000;
 
   std::array<char, 2000> copy_buf;
@@ -154,7 +154,7 @@ TEST(folly_memcpy, overlap) {
   }
 }
 
-TEST(folly_memcpy, main) {
+TEST(follyMemcpy, main) {
   for (size_t len = 8; len <= 128; ++len) {
     testLen(len);
   }

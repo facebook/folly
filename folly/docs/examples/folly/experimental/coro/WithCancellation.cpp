@@ -27,7 +27,7 @@
 
 using namespace std::literals::chrono_literals;
 
-CO_TEST(CodeExamples, demoTimeoutAndWithCancellation_cancel) {
+CO_TEST(CodeExamples, demoTimeoutAndWithCancellationCancel) {
   folly::CancellationSource cs;
   std::thread job([&cs] {
     // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)

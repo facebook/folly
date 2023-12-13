@@ -206,7 +206,7 @@ TEST(F14FastMap, visitContiguousRanges) {
 }
 
 #if FOLLY_HAS_MEMORY_RESOURCE
-TEST(F14Map, pmr_empty) {
+TEST(F14Map, pmrEmpty) {
   pmr::F14ValueMap<int, int> m1;
   pmr::F14NodeMap<int, int> m2;
   pmr::F14VectorMap<int, int> m3;
@@ -769,25 +769,25 @@ TEST(F14FastMap, simple) {
 }
 
 #if FOLLY_HAS_MEMORY_RESOURCE
-TEST(F14ValueMap, pmr_simple) {
+TEST(F14ValueMap, pmrSimple) {
   runSimple<pmr::F14ValueMap<std::string, std::string>>();
 }
 
-TEST(F14NodeMap, pmr_simple) {
+TEST(F14NodeMap, pmrSimple) {
   runSimple<pmr::F14NodeMap<std::string, std::string>>();
 }
 
-TEST(F14VectorMap, pmr_simple) {
+TEST(F14VectorMap, pmrSimple) {
   runSimple<pmr::F14VectorMap<std::string, std::string>>();
 }
 
-TEST(F14FastMap, pmr_simple) {
+TEST(F14FastMap, pmrSimple) {
   runSimple<pmr::F14FastMap<std::string, std::string>>();
 }
 #endif
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-TEST(F14VectorMap, reverse_iterator) {
+TEST(F14VectorMap, reverseIterator) {
   using TMap = F14VectorMap<uint64_t, uint64_t>;
   auto populate = [](TMap& h, uint64_t lo, uint64_t hi) {
     for (auto i = lo; i < hi; ++i) {
@@ -946,7 +946,7 @@ TEST(F14FastMap, random) {
       SwapTrackingAlloc<std::pair<uint64_t const, Tracked<1>>>>>();
 }
 
-TEST(F14ValueMap, grow_stats) {
+TEST(F14ValueMap, growStats) {
   F14ValueMap<uint64_t, uint64_t> h;
   for (unsigned i = 1; i <= 3072; ++i) {
     h[i]++;
@@ -958,7 +958,7 @@ TEST(F14ValueMap, grow_stats) {
   runSanityChecks(h);
 }
 
-TEST(F14ValueMap, steady_state_stats) {
+TEST(F14ValueMap, steadyStateStats) {
   // 10k keys, 14% probability of insert, 90% chance of erase, so the
   // table should converge to 1400 size without triggering the rehash
   // that would occur at 1536.
@@ -986,7 +986,7 @@ TEST(F14ValueMap, steady_state_stats) {
   runSanityChecks(h);
 }
 
-TEST(F14VectorMap, steady_state_stats) {
+TEST(F14VectorMap, steadyStateStats) {
   // 10k keys, 14% probability of insert, 90% chance of erase, so the
   // table should converge to 1400 size without triggering the rehash
   // that would occur at 1536.

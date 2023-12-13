@@ -76,7 +76,7 @@ TEST(FormatOther, fbvector) {
   testFormatSeq<fbvector<int>>();
 }
 
-TEST(FormatOther, small_vector) {
+TEST(FormatOther, smallVector) {
   testFormatSeq<small_vector<int, 2>>();
 }
 

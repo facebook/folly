@@ -309,7 +309,7 @@ TEST(ScopeGuard, TryCatchFinally) {
   testFinally(ErrorBehavior::UNHANDLED_ERROR);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_EXIT) {
+TEST(ScopeGuard, TESTScopeExit) {
   int x = 0;
   {
     SCOPE_EXIT { ++x; };
@@ -336,7 +336,7 @@ class Foo {
   }
 };
 
-TEST(ScopeGuard, TEST_SCOPE_FAILURE2) {
+TEST(ScopeGuard, TESTScopeFailure2) {
   try {
     Foo f;
     throw std::runtime_error("test");
@@ -368,7 +368,7 @@ void testScopeFailAndScopeSuccess(ErrorBehavior error, bool expectFail) {
   EXPECT_EQ(!expectFail, scopeSuccessExecuted);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_FAIL_EXCEPTION_PTR) {
+TEST(ScopeGuard, TESTScopeFailExceptionPtr) {
   bool catchExecuted = false;
   bool failExecuted = false;
 
@@ -390,20 +390,20 @@ TEST(ScopeGuard, TEST_SCOPE_FAIL_EXCEPTION_PTR) {
   EXPECT_TRUE(failExecuted);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_FAIL_AND_SCOPE_SUCCESS) {
+TEST(ScopeGuard, TESTScopeFailAndScopeSuccess) {
   testScopeFailAndScopeSuccess(ErrorBehavior::SUCCESS, false);
   testScopeFailAndScopeSuccess(ErrorBehavior::HANDLED_ERROR, false);
   testScopeFailAndScopeSuccess(ErrorBehavior::UNHANDLED_ERROR, true);
 }
 
-TEST(ScopeGuard, TEST_SCOPE_SUCCESS_THROW) {
+TEST(ScopeGuard, TESTScopeSuccessThrow) {
   auto lambda = []() {
     SCOPE_SUCCESS { throw std::runtime_error("ehm"); };
   };
   EXPECT_THROW(lambda(), std::runtime_error);
 }
 
-TEST(ScopeGuard, TEST_THROWING_CLEANUP_ACTION) {
+TEST(ScopeGuard, TESTThrowingCleanupAction) {
   struct ThrowingCleanupAction {
     // clang-format off
     explicit ThrowingCleanupAction(int& scopeExitExecuted)

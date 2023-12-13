@@ -513,7 +513,7 @@ int main(int argc, char** argv) {
 }
 
 // This MUST be the LAST test.
-TEST(StringKeyed, memory_balance) {
+TEST(StringKeyed, memoryBalance) {
   auto balance = allocated < freed ? freed - allocated : allocated - freed;
 
   LOG(INFO) << "allocated: " << allocated << " freed: " << freed

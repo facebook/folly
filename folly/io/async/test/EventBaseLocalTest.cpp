@@ -60,7 +60,7 @@ TEST(EventBaseLocalTest, Basic) {
   EXPECT_EQ(dtorCnt, 3); // Foo will be destroyed in EventBase loop
 }
 
-TEST(EventBaseLocalTest, try_emplace) {
+TEST(EventBaseLocalTest, tryEmplace) {
   folly::EventBase evb1;
   folly::EventBaseLocal<int> ints;
 

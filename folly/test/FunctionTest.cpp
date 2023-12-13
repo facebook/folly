@@ -354,7 +354,7 @@ TEST(Function, InvokeReference) {
 // TEST =====================================================================
 // Emptiness
 
-TEST(Function, Emptiness_T) {
+TEST(Function, EmptinessT) {
   Function<int(int)> f;
   EXPECT_EQ(f, nullptr);
   EXPECT_EQ(nullptr, f);
@@ -1037,7 +1037,7 @@ TEST(Function, ConvertReturnType) {
 // TEST =====================================================================
 // asStdFunction_*
 
-TEST(Function, asStdFunction_void) {
+TEST(Function, asStdFunctionVoid) {
   int i = 0;
   folly::Function<void()> f = [&] { ++i; };
   auto sf = std::move(f).asStdFunction();
@@ -1048,7 +1048,7 @@ TEST(Function, asStdFunction_void) {
   EXPECT_EQ(1, i);
 }
 
-TEST(Function, asStdFunction_void_const) {
+TEST(Function, asStdFunctionVoidConst) {
   int i = 0;
   folly::Function<void() const> f = [&] { ++i; };
   auto sf = std::move(f).asStdFunction();
@@ -1059,7 +1059,7 @@ TEST(Function, asStdFunction_void_const) {
   EXPECT_EQ(1, i);
 }
 
-TEST(Function, asStdFunction_return) {
+TEST(Function, asStdFunctionReturn) {
   int i = 0;
   folly::Function<int()> f = [&] {
     ++i;
@@ -1073,7 +1073,7 @@ TEST(Function, asStdFunction_return) {
   EXPECT_EQ(1, i);
 }
 
-TEST(Function, asStdFunction_return_const) {
+TEST(Function, asStdFunctionReturnConst) {
   int i = 0;
   folly::Function<int() const> f = [&] {
     ++i;
@@ -1087,7 +1087,7 @@ TEST(Function, asStdFunction_return_const) {
   EXPECT_EQ(1, i);
 }
 
-TEST(Function, asStdFunction_args) {
+TEST(Function, asStdFunctionArgs) {
   int i = 0;
   folly::Function<void(int, int)> f = [&](int x, int y) {
     ++i;
@@ -1101,7 +1101,7 @@ TEST(Function, asStdFunction_args) {
   EXPECT_EQ(1, i);
 }
 
-TEST(Function, asStdFunction_args_const) {
+TEST(Function, asStdFunctionArgsConst) {
   int i = 0;
   folly::Function<void(int, int) const> f = [&](int x, int y) {
     ++i;
@@ -1118,7 +1118,7 @@ TEST(Function, asStdFunction_args_const) {
 // TEST =====================================================================
 // asSharedProxy_*
 
-TEST(Function, asSharedProxy_void) {
+TEST(Function, asSharedProxyVoid) {
   int i = 0;
   folly::Function<void()> f = [&i] { ++i; };
   auto sp = std::move(f).asSharedProxy();
@@ -1129,7 +1129,7 @@ TEST(Function, asSharedProxy_void) {
   EXPECT_EQ(2, i);
 }
 
-TEST(Function, asSharedProxy_void_const) {
+TEST(Function, asSharedProxyVoidConst) {
   int i = 0;
   folly::Function<void() const> f = [&i] { ++i; };
   auto sp = std::move(f).asSharedProxy();
@@ -1140,7 +1140,7 @@ TEST(Function, asSharedProxy_void_const) {
   EXPECT_EQ(2, i);
 }
 
-TEST(Function, asSharedProxy_return) {
+TEST(Function, asSharedProxyReturn) {
   folly::Function<int()> f = [i = 0]() mutable {
     ++i;
     return i;
@@ -1151,7 +1151,7 @@ TEST(Function, asSharedProxy_return) {
   EXPECT_EQ(2, spcopy());
 }
 
-TEST(Function, asSharedProxy_return_const) {
+TEST(Function, asSharedProxyReturnConst) {
   int i = 0;
   folly::Function<int() const> f = [&i] {
     ++i;
@@ -1163,7 +1163,7 @@ TEST(Function, asSharedProxy_return_const) {
   EXPECT_EQ(2, spcopy());
 }
 
-TEST(Function, asSharedProxy_args) {
+TEST(Function, asSharedProxyArgs) {
   int i = 0;
   folly::Function<int(int, int)> f = [&](int x, int y) mutable {
     ++i;
@@ -1177,7 +1177,7 @@ TEST(Function, asSharedProxy_args) {
   EXPECT_EQ(2, i);
 }
 
-TEST(Function, asSharedProxy_args_const) {
+TEST(Function, asSharedProxyArgsConst) {
   int i = 0;
   folly::Function<int(int, int) const> f = [&i](int x, int y) {
     ++i;
@@ -1189,18 +1189,18 @@ TEST(Function, asSharedProxy_args_const) {
   EXPECT_EQ(562, spcopy(5, 6));
 }
 
-TEST(Function, asSharedProxy_nullptr) {
+TEST(Function, asSharedProxyNullptr) {
   auto sp = folly::Function<int(int, int) const>::SharedProxy(nullptr);
   EXPECT_THROW(sp(3, 4), std::bad_function_call);
 }
 
-TEST(Function, asSharedProxy_empty) {
+TEST(Function, asSharedProxyEmpty) {
   auto func = folly::Function<int(int, int) const>();
   auto sp = std::move(func).asSharedProxy();
   EXPECT_THROW(sp(3, 4), std::bad_function_call);
 }
 
-TEST(Function, asSharedProxy_explicit_bool_conversion) {
+TEST(Function, asSharedProxyExplicitBoolConversion) {
   folly::Function<void(void)> f = []() {};
   auto sp = std::move(f).asSharedProxy();
   auto spcopy = sp;
@@ -1229,7 +1229,7 @@ std::array<int, 3> badCopierF(BadCopier a, const BadCopier& b, BadCopier&& c) {
   c.v_ *= -1;
   return ret;
 }
-TEST(Function, asSharedProxy_forwarding) {
+TEST(Function, asSharedProxyForwarding) {
   folly::Function<decltype(badCopierF)> ff(badCopierF);
   EXPECT_TRUE((std::is_same_v<
                decltype(ff),
@@ -1355,7 +1355,7 @@ TEST(Function, CtorWithCopy) {
   EXPECT_FALSE(noexcept(Function<void()>(ly)));
 }
 
-TEST(Function, Bug_T23346238) {
+TEST(Function, BugT23346238) {
   const Function<void()> nullfun;
 }
 

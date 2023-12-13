@@ -214,7 +214,7 @@ void run_steady_clock_test() {
   EXPECT_TRUE(A <= B && B <= C);
 }
 
-TEST(Futex, clock_source) {
+TEST(Futex, clockSource) {
   run_system_clock_test();
 
   /* On some systems steady_clock is just an alias for system_clock. So,
@@ -226,26 +226,26 @@ TEST(Futex, clock_source) {
 
 #endif // __linux__
 
-TEST(Futex, basic_live) {
+TEST(Futex, basicLive) {
   run_basic_tests<std::atomic>();
   run_wait_until_tests<std::atomic>();
 }
 
-TEST(Futex, basic_emulated) {
+TEST(Futex, basicEmulated) {
   run_basic_tests<EmulatedFutexAtomic>();
   run_wait_until_tests<EmulatedFutexAtomic>();
 }
 
-TEST(Futex, basic_deterministic) {
+TEST(Futex, basicDeterministic) {
   DSched sched(DSched::uniform(0));
   run_basic_tests<DeterministicAtomic>();
   run_wait_until_tests<DeterministicAtomic>();
 }
 
-TEST(Futex, wake_blocked_live) {
+TEST(Futex, wakeBlockedLive) {
   run_wake_blocked_test<std::atomic>();
 }
 
-TEST(Futex, wake_blocked_emulated) {
+TEST(Futex, wakeBlockedEmulated) {
   run_wake_blocked_test<EmulatedFutexAtomic>();
 }

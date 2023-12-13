@@ -37,7 +37,7 @@ struct Params {
 
 class FlatCombiningTest : public ::testing::TestWithParam<Params> {};
 
-TEST(FlatCombiningTest, lock_holder) {
+TEST(FlatCombiningTest, lockHolder) {
   folly::FcSimpleExample<> ex(10);
   {
     std::unique_lock<std::mutex> l;

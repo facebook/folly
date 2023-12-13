@@ -58,7 +58,7 @@ bool is_biased(
   return false;
 }
 
-TEST(coinflip_test, ctor) {
+TEST(coinflipTest, ctor) {
   folly::Coinflip coin0;
 }
 
@@ -115,7 +115,7 @@ bool experiment(uint32_t wait, uint32_t num_successes = 1000000) {
 }
 
 #define TEST_BIAS(WAIT)                                                \
-  TEST(coinflip_test, bias_##WAIT) {                                   \
+  TEST(coinflipTest, bias##WAIT) {                                     \
     EXPECT_FALSE(experiment(/*wait=*/WAIT, /*num_successes=*/100000)); \
   }
 
@@ -169,7 +169,7 @@ uint64_t step_exact(uint32_t wait) {
   return folly::to_integral(-log(1 - 1.0 / wait) * kScale);
 }
 
-TEST(coinflip_test, approx_ge_exact) {
+TEST(coinflipTest, approxGeExact) {
   for (uint32_t power = 2; power < 32; power++) {
     uint64_t wait = 1ull << power;
     ASSERT_GE(step_approx(wait - 1), step_exact(wait - 1));

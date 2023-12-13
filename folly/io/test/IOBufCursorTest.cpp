@@ -79,7 +79,7 @@ TEST(IOBuf, reset) {
   EXPECT_EQ(1, wcursor.read<uint8_t>());
 }
 
-TEST(IOBuf, copy_assign_convert) {
+TEST(IOBuf, copyAssignConvert) {
   unique_ptr<IOBuf> iobuf1(IOBuf::create(20));
   iobuf1->append(20);
   RWPrivateCursor wcursor(iobuf1.get());

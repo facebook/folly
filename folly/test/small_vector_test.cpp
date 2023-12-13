@@ -330,7 +330,7 @@ void testBasicGuarantee() {
   });
 }
 
-TEST(small_vector, BasicGuarantee) {
+TEST(smallVector, BasicGuarantee) {
   testBasicGuarantee<3>();
 
   EXPECT_EQ(Thrower::alive, 0);
@@ -349,7 +349,7 @@ TEST(small_vector, BasicGuarantee) {
 // MALLOC_CONF=prof_leak:true
 // LD_PRELOAD=${JEMALLOC_PATH}/lib/libjemalloc.so.2
 // LD_PRELOAD="$LD_PRELOAD:"${UNWIND_PATH}/lib/libunwind.so.7
-TEST(small_vector, leak_test) {
+TEST(smallVector, leakTest) {
   for (int j = 0; j < 1000; ++j) {
     folly::small_vector<int, 10> someVec(300);
     for (int i = 0; i < 10000; ++i) {
@@ -365,7 +365,7 @@ TEST(small_vector, leak_test) {
   }
 }
 
-TEST(small_vector, InsertTrivial) {
+TEST(smallVector, InsertTrivial) {
   folly::small_vector<int> someVec(3, 3);
   someVec.insert(someVec.begin(), 12, 12);
   EXPECT_EQ(someVec.size(), 15);
@@ -387,7 +387,7 @@ TEST(small_vector, InsertTrivial) {
   EXPECT_EQ(someVec[31], 12);
 }
 
-TEST(small_vector, InsertNontrivial) {
+TEST(smallVector, InsertNontrivial) {
   folly::small_vector<std::string> v1(6, "asd"), v2(7, "wat");
   v1.insert(v1.begin() + 1, v2.begin(), v2.end());
   EXPECT_TRUE(v1.size() == 6 + 7);
@@ -411,7 +411,7 @@ TEST(small_vector, InsertNontrivial) {
   EXPECT_EQ(v3[11].s, "asd");
 }
 
-TEST(small_vecctor, InsertFromBidirectionalList) {
+TEST(smallVecctor, InsertFromBidirectionalList) {
   folly::small_vector<std::string> v(6, "asd");
   std::list<std::string> l(6, "wat");
   v.insert(v.end(), l.begin(), l.end());
@@ -466,7 +466,7 @@ void testSwap() {
   }
 }
 
-TEST(small_vector, Swap) {
+TEST(smallVector, Swap) {
   testSwap<10>();
 
   // heap only small_vector
@@ -521,13 +521,13 @@ void testEmplace() {
   EXPECT_EQ(NontrivialType::ctored, 2);
 }
 
-TEST(small_vector, Emplace) {
+TEST(smallVector, Emplace) {
   testEmplace<1>();
   // heap only
   testEmplace<0>();
 }
 
-TEST(small_vector, Erase) {
+TEST(smallVector, Erase) {
   folly::small_vector<int, 4> notherVec = {1, 2, 3, 4, 5};
   EXPECT_EQ(notherVec.front(), 1);
   EXPECT_EQ(notherVec.size(), 5);
@@ -596,13 +596,13 @@ void testGrowShrinkGrow() {
     EXPECT_LT(vec.capacity(), cap); // on heap
 }
 
-TEST(small_vector, GrowShrinkGrow) {
+TEST(smallVector, GrowShrinkGrow) {
   testGrowShrinkGrow<7>();
 
   testGrowShrinkGrow<0>();
 }
 
-TEST(small_vector, Iteration) {
+TEST(smallVector, Iteration) {
   folly::small_vector<std::string, 3> vec = {"foo", "bar"};
   vec.push_back("blah");
   vec.push_back("blah2");
@@ -626,7 +626,7 @@ TEST(small_vector, Iteration) {
   }
 }
 
-TEST(small_vector, NonCopyableType) {
+TEST(smallVector, NonCopyableType) {
   folly::small_vector<NontrivialType, 2> vec;
 
   for (int i = 0; i < 10; ++i) {
@@ -687,12 +687,12 @@ void testMoveConstructor() {
   EXPECT_EQ(v1[1], "bsd");
 }
 
-TEST(small_vector, MoveConstructor) {
+TEST(smallVector, MoveConstructor) {
   testMoveConstructor<10>();
   testMoveConstructor<0>();
 }
 
-TEST(small_vector, NoHeap) {
+TEST(smallVector, NoHeap) {
   typedef folly::small_vector<std::string, 10, policy_in_situ_only<true>>
       Vector;
 
@@ -735,14 +735,14 @@ TEST(small_vector, NoHeap) {
   EXPECT_FALSE(caught);
 }
 
-TEST(small_vector, MaxSize) {
+TEST(smallVector, MaxSize) {
   folly::small_vector<int, 2, policy_size_type<uint8_t>> vec;
   EXPECT_EQ(vec.max_size(), 63);
   folly::small_vector<int, 2, policy_size_type<uint16_t>> vec2;
   EXPECT_EQ(vec2.max_size(), (1 << 14) - 1);
 }
 
-TEST(small_vector, AllHeap) {
+TEST(smallVector, AllHeap) {
   // Use something bigger than the pointer so it can't get inlined.
   struct SomeObj {
     double a, b, c, d, e;
@@ -805,12 +805,12 @@ void testBasic() {
   Vector intCtor(12);
 }
 
-TEST(small_vector, Basic) {
+TEST(smallVector, Basic) {
   testBasic<3>();
   testBasic<0>();
 }
 
-TEST(small_vector, Capacity) {
+TEST(smallVector, Capacity) {
   folly::small_vector<uint64_t, 1> vec;
   EXPECT_EQ(vec.size(), 0);
   EXPECT_EQ(vec.capacity(), 1);
@@ -869,7 +869,7 @@ void testSelfPushBack() {
   }
 }
 
-TEST(small_vector, SelfPushBack) {
+TEST(smallVector, SelfPushBack) {
   testSelfPushBack<1>();
   testSelfPushBack<0>();
 }
@@ -889,7 +889,7 @@ void testSelfEmplaceBack() {
   }
 }
 
-TEST(small_vector, SelfEmplaceBack) {
+TEST(smallVector, SelfEmplaceBack) {
   testSelfEmplaceBack<1>();
   testSelfEmplaceBack<0>();
 }
@@ -942,7 +942,7 @@ void testSelfInsert() {
   }
 }
 
-TEST(small_vector, SelfInsert) {
+TEST(smallVector, SelfInsert) {
   testSelfInsert<1>();
 
   testSelfInsert<0>();
@@ -970,7 +970,7 @@ struct CheckedInt {
   int value;
 };
 
-TEST(small_vector, ForwardingEmplaceInsideVector) {
+TEST(smallVector, ForwardingEmplaceInsideVector) {
   folly::small_vector<CheckedInt> v;
   v.push_back(CheckedInt(1));
   for (int i = 1; i < 20; ++i) {
@@ -979,7 +979,7 @@ TEST(small_vector, ForwardingEmplaceInsideVector) {
   }
 }
 
-TEST(small_vector, LVEmplaceInsideVector) {
+TEST(smallVector, LVEmplaceInsideVector) {
   folly::small_vector<CheckedInt> v;
   v.push_back(CheckedInt(1));
   for (int i = 1; i < 20; ++i) {
@@ -988,7 +988,7 @@ TEST(small_vector, LVEmplaceInsideVector) {
   }
 }
 
-TEST(small_vector, CLVEmplaceInsideVector) {
+TEST(smallVector, CLVEmplaceInsideVector) {
   folly::small_vector<CheckedInt> v;
   const folly::small_vector<CheckedInt>& cv = v;
   v.push_back(CheckedInt(1));
@@ -998,7 +998,7 @@ TEST(small_vector, CLVEmplaceInsideVector) {
   }
 }
 
-TEST(small_vector, RVEmplaceInsideVector) {
+TEST(smallVector, RVEmplaceInsideVector) {
   folly::small_vector<CheckedInt> v;
   v.push_back(CheckedInt(0));
   for (int i = 1; i < 20; ++i) {
@@ -1008,7 +1008,7 @@ TEST(small_vector, RVEmplaceInsideVector) {
   }
 }
 
-TEST(small_vector, LVPushValueInsideVector) {
+TEST(smallVector, LVPushValueInsideVector) {
   folly::small_vector<CheckedInt> v;
   v.push_back(CheckedInt(1));
   for (int i = 1; i < 20; ++i) {
@@ -1017,7 +1017,7 @@ TEST(small_vector, LVPushValueInsideVector) {
   }
 }
 
-TEST(small_vector, RVPushValueInsideVector) {
+TEST(smallVector, RVPushValueInsideVector) {
   folly::small_vector<CheckedInt> v;
   v.push_back(CheckedInt(0));
   for (int i = 1; i < 20; ++i) {
@@ -1027,7 +1027,7 @@ TEST(small_vector, RVPushValueInsideVector) {
   }
 }
 
-TEST(small_vector, EmplaceIterCtor) {
+TEST(smallVector, EmplaceIterCtor) {
   std::vector<int*> v{new int(1), new int(2)};
   std::vector<std::unique_ptr<int>> uv(v.begin(), v.end());
 
@@ -1035,7 +1035,7 @@ TEST(small_vector, EmplaceIterCtor) {
   small_vector<std::unique_ptr<int>> uw(w.begin(), w.end());
 }
 
-TEST(small_vector, InputIterator) {
+TEST(smallVector, InputIterator) {
   std::vector<int> expected{125, 320, 512, 750, 333};
   std::string values = "125 320 512 750 333";
   std::istringstream is1(values);
@@ -1056,7 +1056,7 @@ TEST(small_vector, InputIterator) {
   }
 }
 
-TEST(small_vector, NoCopyCtor) {
+TEST(smallVector, NoCopyCtor) {
   struct Tester {
     Tester() = default;
     Tester(const Tester&) = delete;
@@ -1072,7 +1072,7 @@ TEST(small_vector, NoCopyCtor) {
   }
 }
 
-TEST(small_vector, ZeroInitializable) {
+TEST(smallVector, ZeroInitializable) {
   small_vector<int> test(10);
   ASSERT_EQ(test.size(), 10);
   for (const auto& element : test) {
@@ -1080,7 +1080,7 @@ TEST(small_vector, ZeroInitializable) {
   }
 }
 
-TEST(small_vector, InsertMoreThanGrowth) {
+TEST(smallVector, InsertMoreThanGrowth) {
   small_vector<int, 10> test;
   test.insert(test.end(), 30, 0);
   for (auto element : test) {
@@ -1088,7 +1088,7 @@ TEST(small_vector, InsertMoreThanGrowth) {
   }
 }
 
-TEST(small_vector, EmplaceBackExponentialGrowth) {
+TEST(smallVector, EmplaceBackExponentialGrowth) {
   small_vector<std::pair<int, int>> test;
   std::vector<size_t> capacities;
   capacities.push_back(test.capacity());
@@ -1101,7 +1101,7 @@ TEST(small_vector, EmplaceBackExponentialGrowth) {
   EXPECT_LE(capacities.size(), 25);
 }
 
-TEST(small_vector, InsertExponentialGrowth) {
+TEST(smallVector, InsertExponentialGrowth) {
   small_vector<std::pair<int, int>> test;
   std::vector<size_t> capacities;
   capacities.push_back(test.capacity());
@@ -1114,7 +1114,7 @@ TEST(small_vector, InsertExponentialGrowth) {
   EXPECT_LE(capacities.size(), 25);
 }
 
-TEST(small_vector, InsertNExponentialGrowth) {
+TEST(smallVector, InsertNExponentialGrowth) {
   small_vector<int> test;
   std::vector<size_t> capacities;
   capacities.push_back(test.capacity());
@@ -1157,7 +1157,7 @@ class Counter {
 };
 } // namespace
 
-TEST(small_vector, EmplaceBackEfficiency) {
+TEST(smallVector, EmplaceBackEfficiency) {
   small_vector<Counter, 2> test;
   Counts counts;
   for (size_t i = 1; i <= test.capacity(); ++i) {
@@ -1173,7 +1173,7 @@ TEST(small_vector, EmplaceBackEfficiency) {
   EXPECT_LT(test.size(), test.capacity());
 }
 
-TEST(small_vector, RVPushBackEfficiency) {
+TEST(smallVector, RVPushBackEfficiency) {
   small_vector<Counter, 2> test;
   Counts counts;
   for (size_t i = 1; i <= test.capacity(); ++i) {
@@ -1191,7 +1191,7 @@ TEST(small_vector, RVPushBackEfficiency) {
   EXPECT_LT(test.size(), test.capacity());
 }
 
-TEST(small_vector, CLVPushBackEfficiency) {
+TEST(smallVector, CLVPushBackEfficiency) {
   small_vector<Counter, 2> test;
   Counts counts;
   Counter const counter(counts);
@@ -1210,7 +1210,7 @@ TEST(small_vector, CLVPushBackEfficiency) {
   EXPECT_LT(test.size(), test.capacity());
 }
 
-TEST(small_vector, StorageForSortedVectorMap) {
+TEST(smallVector, StorageForSortedVectorMap) {
   small_sorted_vector_map<int32_t, int32_t, 2> test;
   test.insert(std::make_pair(10, 10));
   EXPECT_EQ(test.size(), 1);
@@ -1222,7 +1222,7 @@ TEST(small_vector, StorageForSortedVectorMap) {
   EXPECT_EQ(test.size(), 3);
 }
 
-TEST(small_vector, NoHeapStorageForSortedVectorMap) {
+TEST(smallVector, NoHeapStorageForSortedVectorMap) {
   noheap_sorted_vector_map<int32_t, int32_t, 2> test;
   test.insert(std::make_pair(10, 10));
   EXPECT_EQ(test.size(), 1);
@@ -1234,7 +1234,7 @@ TEST(small_vector, NoHeapStorageForSortedVectorMap) {
   EXPECT_EQ(test.size(), 2);
 }
 
-TEST(small_vector, StorageForSortedVectorSet) {
+TEST(smallVector, StorageForSortedVectorSet) {
   small_sorted_vector_set<int32_t, 2> test;
   test.insert(10);
   EXPECT_EQ(test.size(), 1);
@@ -1246,7 +1246,7 @@ TEST(small_vector, StorageForSortedVectorSet) {
   EXPECT_EQ(test.size(), 3);
 }
 
-TEST(small_vector, NoHeapStorageForSortedVectorSet) {
+TEST(smallVector, NoHeapStorageForSortedVectorSet) {
   noheap_sorted_vector_set<int32_t, 2> test;
   test.insert(10);
   EXPECT_EQ(test.size(), 1);
@@ -1258,7 +1258,7 @@ TEST(small_vector, NoHeapStorageForSortedVectorSet) {
   EXPECT_EQ(test.size(), 2);
 }
 
-TEST(small_vector, SelfMoveAssignmentForVectorOfPair) {
+TEST(smallVector, SelfMoveAssignmentForVectorOfPair) {
   folly::small_vector<std::pair<int, int>, 2> test;
   test.emplace_back(13, 2);
   EXPECT_EQ(test.size(), 1);
@@ -1268,7 +1268,7 @@ TEST(small_vector, SelfMoveAssignmentForVectorOfPair) {
   EXPECT_EQ(test[0].first, 13);
 }
 
-TEST(small_vector, SelfCopyAssignmentForVectorOfPair) {
+TEST(smallVector, SelfCopyAssignmentForVectorOfPair) {
   folly::small_vector<std::pair<int, int>, 2> test;
   test.emplace_back(13, 2);
   EXPECT_EQ(test.size(), 1);
@@ -1284,7 +1284,7 @@ struct NonAssignableType {
 };
 } // namespace
 
-TEST(small_vector, PopBackNonAssignableType) {
+TEST(smallVector, PopBackNonAssignableType) {
   small_vector<NonAssignableType> v;
   v.emplace_back();
   EXPECT_EQ(1, v.size());
@@ -1292,7 +1292,7 @@ TEST(small_vector, PopBackNonAssignableType) {
   EXPECT_EQ(0, v.size());
 }
 
-TEST(small_vector, erase) {
+TEST(smallVector, erase) {
   small_vector<int> v(3);
   std::iota(v.begin(), v.end(), 1);
   v.push_back(2);
@@ -1302,7 +1302,7 @@ TEST(small_vector, erase) {
   EXPECT_EQ(3u, v[1]);
 }
 
-TEST(small_vector, erase_if) {
+TEST(smallVector, eraseIf) {
   small_vector<int> v(6);
   std::iota(v.begin(), v.end(), 1);
   erase_if(v, [](const auto& x) { return x % 2 == 0; });
@@ -1417,7 +1417,7 @@ void testMoveAndCopy() {
 
 } // namespace
 
-TEST(small_vector, MoveAndCopyTrivial) {
+TEST(smallVector, MoveAndCopyTrivial) {
   testMoveAndCopy<int, 0>();
   // Capacity does not fit inline.
   testMoveAndCopy<int, 2>();
@@ -1425,12 +1425,12 @@ TEST(small_vector, MoveAndCopyTrivial) {
   testMoveAndCopy<int, 4>();
 }
 
-TEST(small_vector, MoveAndCopyNonTrivial) {
+TEST(smallVector, MoveAndCopyNonTrivial) {
   testMoveAndCopy<NonTrivialInt, 0>();
   testMoveAndCopy<NonTrivialInt, 4>();
 }
 
-TEST(small_vector, PolicyMaxSizeExceeded) {
+TEST(smallVector, PolicyMaxSizeExceeded) {
   struct Obj {
     char a[350];
   };
@@ -1442,7 +1442,7 @@ TEST(small_vector, PolicyMaxSizeExceeded) {
       std::length_error);
 }
 
-TEST(small_vector, Hashable) {
+TEST(smallVector, Hashable) {
   small_vector<int> v0{{0, 1}};
   small_vector<int> v1{{1, 2}};
   std::unordered_set<small_vector<int>> s;
@@ -1451,19 +1451,19 @@ TEST(small_vector, Hashable) {
   EXPECT_EQ(s.end(), s.find(v1));
 }
 
-TEST(small_vector, overflowConstruct) {
+TEST(smallVector, overflowConstruct) {
   EXPECT_THROW(
       folly::small_vector<std::string>(SIZE_MAX / sizeof(std::string) + 1),
       std::length_error);
 }
 
-TEST(small_vector, overflowResize) {
+TEST(smallVector, overflowResize) {
   folly::small_vector<std::string> vec;
   EXPECT_THROW(
       vec.resize(SIZE_MAX / sizeof(std::string) + 1), std::length_error);
 }
 
-TEST(small_vector, overflowAssign) {
+TEST(smallVector, overflowAssign) {
   folly::small_vector<std::string> vec;
   EXPECT_THROW(
       vec.assign(SIZE_MAX / sizeof(std::string) + 1, "hello"),
@@ -1484,7 +1484,7 @@ struct MaybeThrowOnCopy {
 };
 } // namespace
 
-TEST(small_vector, rangeConstructorForwardIteratorThrows) {
+TEST(smallVector, rangeConstructorForwardIteratorThrows) {
   std::array<MaybeThrowOnCopy, 3> arr = {
       MaybeThrowOnCopy{false}, MaybeThrowOnCopy{true}, MaybeThrowOnCopy{false}};
 
@@ -1501,7 +1501,7 @@ TEST(small_vector, rangeConstructorForwardIteratorThrows) {
   EXPECT_THROW(SV3(first, last), std::runtime_error);
 }
 
-TEST(small_vector, rangeConstructorInputIteratorThrows) {
+TEST(smallVector, rangeConstructorInputIteratorThrows) {
   std::array<MaybeThrowOnCopy, 3> arr = {
       MaybeThrowOnCopy{false}, MaybeThrowOnCopy{true}, MaybeThrowOnCopy{false}};
 

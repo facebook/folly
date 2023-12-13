@@ -1387,7 +1387,7 @@ TEST(Conv, TryPtrPairToInt) {
   tryTo<StringPiece>();
 }
 
-TEST(Conv, allocate_size) {
+TEST(Conv, allocateSize) {
   std::string str1 = "meh meh meh";
   std::string str2 = "zdech zdech zdech";
 
@@ -1446,7 +1446,7 @@ void toAppend(SmallEnum, String* result) {
 }
 } // namespace my
 
-TEST(Conv, custom_kkproviders) {
+TEST(Conv, customKkproviders) {
   my::Dimensions expected{7, 8};
   EXPECT_EQ(expected, folly::to<my::Dimensions>("7x8"));
   auto str = folly::to<std::string>(expected);
@@ -1459,7 +1459,7 @@ TEST(Conv, custom_kkproviders) {
   EXPECT_EQ("7x8|7x8", str);
 }
 
-TEST(conv, custom_enumclass) {
+TEST(conv, customEnumclass) {
   EXPECT_EQ(my::SmallEnum{}, folly::to<my::SmallEnum>("SmallEnum"));
   EXPECT_EQ(my::SmallEnum{}, folly::tryTo<my::SmallEnum>("SmallEnum").value());
   auto str = to<string>(my::SmallEnum{});

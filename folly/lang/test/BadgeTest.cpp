@@ -59,7 +59,7 @@ class OtherFriendClass {
 
 } // namespace
 
-TEST(BadgeTest, test_single_badge) {
+TEST(BadgeTest, testSingleBadge) {
   // check a badge cannot be constructed outside of the context
   EXPECT_FALSE(std::is_default_constructible_v<SingleBadge>);
 
@@ -67,7 +67,7 @@ TEST(BadgeTest, test_single_badge) {
   FriendClass::single();
 }
 
-TEST(BadgeTest, test_multiple_badges) {
+TEST(BadgeTest, testMultipleBadges) {
   // check a badge cannot be constructed outside of the context
   EXPECT_FALSE(std::is_default_constructible_v<SingleBadge>);
   EXPECT_FALSE(std::is_default_constructible_v<OtherSingleBadge>);
@@ -78,7 +78,7 @@ TEST(BadgeTest, test_multiple_badges) {
   OtherFriendClass::multiple();
 }
 
-TEST(BadgeTest, test_subset_badges) {
+TEST(BadgeTest, testSubsetBadges) {
   // check a badge cannot be constructed outside of the context
   EXPECT_FALSE(std::is_default_constructible_v<SubsetBadges>);
   EXPECT_FALSE(std::is_default_constructible_v<SupersetBadges>);

@@ -74,7 +74,7 @@ static void run(RWSpinLockType* lock) {
   // VLOG(0) << "total reads: " << reads << "; total writes: " << writes;
 }
 
-TYPED_TEST(RWSpinLockTest, Writer_Wait_Readers) {
+TYPED_TEST(RWSpinLockTest, WriterWaitReaders) {
   typedef typename TestFixture::RWSpinLockType LockType;
   LockType l;
 
@@ -91,7 +91,7 @@ TYPED_TEST(RWSpinLockTest, Writer_Wait_Readers) {
   EXPECT_TRUE(l.try_lock());
 }
 
-TYPED_TEST(RWSpinLockTest, Readers_Wait_Writer) {
+TYPED_TEST(RWSpinLockTest, ReadersWaitWriter) {
   typedef typename TestFixture::RWSpinLockType LockType;
   LockType l;
 
@@ -107,7 +107,7 @@ TYPED_TEST(RWSpinLockTest, Readers_Wait_Writer) {
   }
 }
 
-TYPED_TEST(RWSpinLockTest, Writer_Wait_Writer) {
+TYPED_TEST(RWSpinLockTest, WriterWaitWriter) {
   typedef typename TestFixture::RWSpinLockType LockType;
   LockType l;
 
@@ -119,7 +119,7 @@ TYPED_TEST(RWSpinLockTest, Writer_Wait_Writer) {
   EXPECT_FALSE(l.try_lock());
 }
 
-TYPED_TEST(RWSpinLockTest, Read_Holders) {
+TYPED_TEST(RWSpinLockTest, ReadHolders) {
   typedef typename TestFixture::RWSpinLockType LockType;
   LockType l;
 
@@ -136,7 +136,7 @@ TYPED_TEST(RWSpinLockTest, Read_Holders) {
   l.unlock();
 }
 
-TYPED_TEST(RWSpinLockTest, Write_Holders) {
+TYPED_TEST(RWSpinLockTest, WriteHolders) {
   typedef typename TestFixture::RWSpinLockType LockType;
   LockType l;
   {
@@ -171,7 +171,7 @@ TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
 
 // RWSpinLock specific tests
 
-TEST(RWSpinLock, lock_unlock_tests) {
+TEST(RWSpinLock, lockUnlockTests) {
   folly::RWSpinLock lock;
   EXPECT_TRUE(lock.try_lock_upgrade());
   EXPECT_FALSE(lock.try_lock_shared());
@@ -192,7 +192,7 @@ TEST(RWSpinLock, lock_unlock_tests) {
   EXPECT_EQ(0, lock.bits());
 }
 
-TEST(RWSpinLock, concurrent_holder_test) {
+TEST(RWSpinLock, concurrentHolderTest) {
   srand(time(nullptr));
 
   folly::RWSpinLock lock;

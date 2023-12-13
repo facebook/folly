@@ -153,7 +153,7 @@ TYPED_TEST(AtomicUnorderedInsertMapTest, basic) {
   EXPECT_EQ(m.end(), m.cend());
 }
 
-TEST(AtomicUnorderedInsertMap, load_factor) {
+TEST(AtomicUnorderedInsertMap, loadFactor) {
   AtomicUnorderedInsertMap<int, bool> m(5000, 0.5f);
 
   // we should be able to put in much more than 5000 things because of
@@ -163,7 +163,7 @@ TEST(AtomicUnorderedInsertMap, load_factor) {
   }
 }
 
-TEST(AtomicUnorderedInsertMap, capacity_exceeded) {
+TEST(AtomicUnorderedInsertMap, capacityExceeded) {
   AtomicUnorderedInsertMap<int, bool> m(5000, 1.0f);
 
   EXPECT_THROW(
@@ -175,7 +175,7 @@ TEST(AtomicUnorderedInsertMap, capacity_exceeded) {
       std::bad_alloc);
 }
 
-TYPED_TEST(AtomicUnorderedInsertMapTest, value_mutation) {
+TYPED_TEST(AtomicUnorderedInsertMapTest, valueMutation) {
   UIM<int, MutableAtom<int>, TypeParam> m(100);
 
   for (int i = 0; i < 50; ++i) {
@@ -185,7 +185,7 @@ TYPED_TEST(AtomicUnorderedInsertMapTest, value_mutation) {
   m.find(1)->second.data++;
 }
 
-TEST(UnorderedInsertMap, value_mutation) {
+TEST(UnorderedInsertMap, valueMutation) {
   UIM<int, MutableData<int>, uint32_t, non_atomic> m(100);
 
   for (int i = 0; i < 50; ++i) {
@@ -198,7 +198,7 @@ TEST(UnorderedInsertMap, value_mutation) {
 
 // This test is too expensive to run automatically.  On my dev server it
 // takes about 10 minutes for dbg build, 2 for opt.
-TEST(AtomicUnorderedInsertMap, DISABLED_mega_map) {
+TEST(AtomicUnorderedInsertMap, DISABLEDMegaMap) {
   size_t capacity = 2000000000;
   AtomicUnorderedInsertMap64<size_t, size_t> big(capacity);
   for (size_t i = 0; i < capacity * 2; i += 2) {

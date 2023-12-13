@@ -205,7 +205,7 @@ TEST(F14FastSet, visitContiguousRanges) {
 }
 
 #if FOLLY_HAS_MEMORY_RESOURCE
-TEST(F14Set, pmr_empty) {
+TEST(F14Set, pmrEmpty) {
   pmr::F14ValueSet<int> s1;
   pmr::F14NodeSet<int> s2;
   pmr::F14VectorSet<int> s3;
@@ -678,19 +678,19 @@ TEST(F14FastSet, simple) {
 }
 
 #if FOLLY_HAS_MEMORY_RESOURCE
-TEST(F14ValueSet, pmr_simple) {
+TEST(F14ValueSet, pmrSimple) {
   runSimple<pmr::F14ValueSet<std::string>>();
 }
 
-TEST(F14NodeSet, pmr_simple) {
+TEST(F14NodeSet, pmrSimple) {
   runSimple<pmr::F14NodeSet<std::string>>();
 }
 
-TEST(F14VectorSet, pmr_simple) {
+TEST(F14VectorSet, pmrSimple) {
   runSimple<pmr::F14VectorSet<std::string>>();
 }
 
-TEST(F14FastSet, pmr_simple) {
+TEST(F14FastSet, pmrSimple) {
   // F14FastSet internally uses a conditional typedef. Verify it compiles.
   runRandom<pmr::F14FastSet<uint64_t>>();
   runSimple<pmr::F14FastSet<std::string>>();
@@ -733,7 +733,7 @@ TEST(F14Set, ContainerSize) {
 }
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-TEST(F14VectorMap, reverse_iterator) {
+TEST(F14VectorMap, reverseIterator) {
   using TSet = F14VectorSet<uint64_t>;
   auto populate = [](TSet& h, uint64_t lo, uint64_t hi) {
     for (auto i = lo; i < hi; ++i) {
@@ -823,7 +823,7 @@ TEST(F14VectorSet, random) {
   runRandom<F14VectorSet<uint64_t>>();
 }
 
-TEST(F14ValueSet, grow_stats) {
+TEST(F14ValueSet, growStats) {
   SKIP_IF(kFallback);
 
   F14ValueSet<uint64_t> h;
@@ -837,7 +837,7 @@ TEST(F14ValueSet, grow_stats) {
   runSanityChecks(h);
 }
 
-TEST(F14ValueSet, steady_state_stats) {
+TEST(F14ValueSet, steadyStateStats) {
   SKIP_IF(kFallback);
 
   // 10k keys, 14% probability of insert, 90% chance of erase, so the

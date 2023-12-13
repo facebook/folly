@@ -754,7 +754,7 @@ TEST(ThreadLocal, Fork2) {
 #define SHARED_LIBRARY_TEST_NAME SharedLibrary
 #endif
 
-TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
+TEST(ThreadLocal, SHAREDLibraryTestName) {
   auto const lib =
       folly::test::find_resource("folly/test/thread_local_test_lib.so");
   auto handle = dlopen(lib.string().c_str(), RTLD_LAZY);

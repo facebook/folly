@@ -213,7 +213,7 @@ TEST(UnboundedQueue, peek) {
   peek_test<UMPSC, true>();
 }
 
-TEST(UnboundedQueue, cleanup_on_destruction) {
+TEST(UnboundedQueue, cleanupOnDestruction) {
   struct Foo {
     int* p_{nullptr};
     explicit Foo(int* p) : p_(p) {}
@@ -360,7 +360,7 @@ void enq_deq_test(const int nprod, const int ncons) {
   run_once(nprod, ncons, prod, cons, endfn);
 }
 
-TEST(UnboundedQueue, enq_deq) {
+TEST(UnboundedQueue, enqDeq) {
   /* SPSC */
   enq_deq_test<true, true, false>(1, 1);
   enq_deq_test<true, true, true>(1, 1);

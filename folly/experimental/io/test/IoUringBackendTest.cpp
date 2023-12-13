@@ -870,38 +870,38 @@ TEST(IoUringBackend, AsyncUDPRecvmsgMultishotRegisterFd) {
   testAsyncUDPRecvmsg(true, true);
 }
 
-TEST(IoUringBackend, EventFD_NoOverflowNoPersist) {
+TEST(IoUringBackend, EventFDNooverflownopersist) {
   testEventFD(false, false, false);
 }
 
-TEST(IoUringBackend, EventFD_OverflowNoPersist) {
+TEST(IoUringBackend, EventFDOverflownopersist) {
   testEventFD(true, false, false);
 }
 
-TEST(IoUringBackend, EventFD_NoOverflowPersist) {
+TEST(IoUringBackend, EventFDNooverflowpersist) {
   testEventFD(false, true, false);
 }
 
-TEST(IoUringBackend, EventFD_OverflowPersist) {
+TEST(IoUringBackend, EventFDOverflowpersist) {
   testEventFD(true, true, false);
 }
 
-TEST(IoUringBackend, EventFD_Persist_AsyncRead) {
+TEST(IoUringBackend, EventFDPersistAsyncread) {
   testEventFD(false, true, true);
 }
 
 // 9 valid fds followed by an invalid one
-TEST(IoUringBackend, Invalid_fd_9_1) {
+TEST(IoUringBackend, InvalidFd91) {
   testInvalidFd(32, 10, 1);
 }
 
 // only invalid fds
-TEST(IoUringBackend, Invalid_fd_0_10) {
+TEST(IoUringBackend, InvalidFd010) {
   testInvalidFd(32, 0, 10);
 }
 
 // equal distribution
-TEST(IoUringBackend, Invalid_fd_5_5) {
+TEST(IoUringBackend, InvalidFd55) {
   testInvalidFd(32, 10, 10);
 }
 

@@ -650,7 +650,7 @@ TEST(ViaFunc, future) {
   EXPECT_EQ(42, via(&x, [] { return makeFuture(42); }).getVia(&x));
 }
 
-TEST(ViaFunc, semi_future) {
+TEST(ViaFunc, semiFuture) {
   ManualExecutor x;
   EXPECT_EQ(42, via(&x, [] { return makeSemiFuture(42); }).getVia(&x));
 }

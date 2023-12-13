@@ -17,7 +17,7 @@
 #include <folly/dynamic.h>
 #include <folly/portability/GTest.h>
 
-TEST(dynamic, object_ctor) {
+TEST(dynamic, objectCtor) {
   folly::dynamic o1 = folly::dynamic::object;
   folly::dynamic o2 =
       folly::dynamic::object("key", "value")(1, 2)(nullptr, nullptr);

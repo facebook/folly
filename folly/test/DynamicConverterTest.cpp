@@ -88,7 +88,7 @@ TEST(DynamicConverter, dynamics) {
   EXPECT_EQ(2.3, m.at("2").getDouble());
 }
 
-TEST(DynamicConverter, arithmetic_types) {
+TEST(DynamicConverter, arithmeticTypes) {
   dynamic d1 = 12;
   auto i1 = convertTo<int>(d1);
   EXPECT_EQ(i1, 12);
@@ -140,7 +140,7 @@ TEST(DynamicConverter, enums) {
   EXPECT_EQ(i4, enum2::BAR);
 }
 
-TEST(DynamicConverter, simple_builtins) {
+TEST(DynamicConverter, simpleBuiltins) {
   dynamic d1 = "Haskell";
   auto i1 = convertTo<folly::fbstring>(d1);
   EXPECT_EQ(i1, "Haskell");
@@ -177,14 +177,14 @@ TEST(DynamicConverter, pointer) {
   // Cannot convert to pointers.
 }
 
-TEST(DynamicConverter, simple_fbvector) {
+TEST(DynamicConverter, simpleFbvector) {
   dynamic d1 = dynamic::array(1, 2, 3);
   auto i1 = convertTo<folly::fbvector<int>>(d1);
   decltype(i1) i1b = {1, 2, 3};
   EXPECT_EQ(i1, i1b);
 }
 
-TEST(DynamicConverter, simple_container) {
+TEST(DynamicConverter, simpleContainer) {
   dynamic d1 = dynamic::array(1, 2, 3);
   auto i1 = convertTo<std::vector<int>>(d1);
   decltype(i1) i1b = {1, 2, 3};
@@ -196,7 +196,7 @@ TEST(DynamicConverter, simple_container) {
   EXPECT_EQ(i2, i2b);
 }
 
-TEST(DynamicConverter, simple_map) {
+TEST(DynamicConverter, simpleMap) {
   dynamic d1 = dynamic::object(1, "one")(2, "two");
   auto i1 = convertTo<std::map<int, std::string>>(d1);
   decltype(i1) i1b = {{1, "one"}, {2, "two"}};
@@ -209,7 +209,7 @@ TEST(DynamicConverter, simple_map) {
   EXPECT_EQ(i2, i2b);
 }
 
-TEST(DynamicConverter, map_keyed_by_string) {
+TEST(DynamicConverter, mapKeyedByString) {
   dynamic d1 = dynamic::object("1", "one")("2", "two");
   auto i1 = convertTo<std::map<std::string, std::string>>(d1);
   decltype(i1) i1b = {{"1", "one"}, {"2", "two"}};
@@ -222,7 +222,7 @@ TEST(DynamicConverter, map_keyed_by_string) {
   EXPECT_EQ(i2, i2b);
 }
 
-TEST(DynamicConverter, map_to_vector_of_pairs) {
+TEST(DynamicConverter, mapToVectorOfPairs) {
   dynamic d1 = dynamic::object("1", "one")("2", "two");
   auto i1 = convertTo<std::vector<std::pair<std::string, std::string>>>(d1);
   std::sort(i1.begin(), i1.end());
@@ -230,7 +230,7 @@ TEST(DynamicConverter, map_to_vector_of_pairs) {
   EXPECT_EQ(i1, i1b);
 }
 
-TEST(DynamicConverter, nested_containers) {
+TEST(DynamicConverter, nestedContainers) {
   dynamic d1 =
       dynamic::array(dynamic::array(1), dynamic::array(), dynamic::array(2, 3));
   auto i1 = convertTo<folly::fbvector<std::vector<uint8_t>>>(d1);
@@ -258,7 +258,7 @@ struct DynamicConverter<A> {
   static A convert(const dynamic& d) { return {convertTo<int>(d["i"])}; }
 };
 
-TEST(DynamicConverter, custom_class) {
+TEST(DynamicConverter, customClass) {
   dynamic d1 = dynamic::object("i", 17);
   auto i1 = convertTo<A>(d1);
   EXPECT_EQ(i1.i, 17);
@@ -455,7 +455,7 @@ TEST(DynamicConverter, errors) {
   EXPECT_THROW(convertTo<float>(d2), std::range_error);
 }
 
-TEST(DynamicConverter, partial_dynamics) {
+TEST(DynamicConverter, partialDynamics) {
   std::vector<dynamic> c{
       dynamic::array(2, 3, 4),
       dynamic::array(3, 4, 5),
@@ -468,12 +468,12 @@ TEST(DynamicConverter, partial_dynamics) {
   EXPECT_EQ(md, toDynamic(m));
 }
 
-TEST(DynamicConverter, asan_exception_case_umap) {
+TEST(DynamicConverter, asanExceptionCaseUmap) {
   EXPECT_THROW(
       (convertTo<std::unordered_map<int, int>>(dynamic::array(1))), TypeError);
 }
 
-TEST(DynamicConverter, asan_exception_case_uset) {
+TEST(DynamicConverter, asanExceptionCaseUset) {
   EXPECT_THROW(
       (convertTo<std::unordered_set<int>>(
           dynamic::array(1, dynamic::array(), 3))),
@@ -502,7 +502,7 @@ struct DynamicConverter<B> {
   static B convert(const dynamic& d) { return B(convertTo<int>(d)); }
 };
 
-TEST(DynamicConverter, double_destroy) {
+TEST(DynamicConverter, doubleDestroy) {
   dynamic d = dynamic::array(1, 3, 5, 7, 9, 11, 13, 15, 17);
   ticker = 3;
 
@@ -510,7 +510,7 @@ TEST(DynamicConverter, double_destroy) {
   EXPECT_EQ(constructB, destroyB);
 }
 
-TEST(DynamicConverter, simple_vector_bool) {
+TEST(DynamicConverter, simpleVectorBool) {
   std::vector<bool> bools{true, false};
   auto d = toDynamic(bools);
   auto actual = convertTo<decltype(bools)>(d);

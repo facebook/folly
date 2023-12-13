@@ -179,7 +179,7 @@ void testNoncopyableMap() {
   }
 }
 
-TEST(Aha, InsertErase_i32_i32) {
+TEST(Aha, InsertEraseI32I32) {
   testMap<int32_t, int32_t>();
   testMap<int32_t, int32_t, MmapAllocator<char>>();
   testMap<
@@ -205,7 +205,7 @@ TEST(Aha, InsertErase_i32_i32) {
       MmapAllocator<char>,
       AtomicHashArrayQuadraticProbeFcn>();
 }
-TEST(Aha, InsertErase_i64_i32) {
+TEST(Aha, InsertEraseI64I32) {
   testMap<int64_t, int32_t>();
   testMap<int64_t, int32_t, MmapAllocator<char>>();
   testMap<
@@ -231,7 +231,7 @@ TEST(Aha, InsertErase_i64_i32) {
       MmapAllocator<char>,
       AtomicHashArrayQuadraticProbeFcn>();
 }
-TEST(Aha, InsertErase_i64_i64) {
+TEST(Aha, InsertEraseI64I64) {
   testMap<int64_t, int64_t>();
   testMap<int64_t, int64_t, MmapAllocator<char>>();
   testMap<
@@ -257,7 +257,7 @@ TEST(Aha, InsertErase_i64_i64) {
       MmapAllocator<char>,
       AtomicHashArrayQuadraticProbeFcn>();
 }
-TEST(Aha, InsertErase_i32_i64) {
+TEST(Aha, InsertEraseI32I64) {
   testMap<int32_t, int64_t>();
   testMap<int32_t, int64_t, MmapAllocator<char>>();
   testMap<
@@ -283,7 +283,7 @@ TEST(Aha, InsertErase_i32_i64) {
       MmapAllocator<char>,
       AtomicHashArrayQuadraticProbeFcn>();
 }
-TEST(Aha, InsertErase_i32_str) {
+TEST(Aha, InsertEraseI32Str) {
   testMap<int32_t, string>();
   testMap<int32_t, string, MmapAllocator<char>>();
   testMap<
@@ -297,7 +297,7 @@ TEST(Aha, InsertErase_i32_str) {
       MmapAllocator<char>,
       AtomicHashArrayQuadraticProbeFcn>();
 }
-TEST(Aha, InsertErase_i64_str) {
+TEST(Aha, InsertEraseI64Str) {
   testMap<int64_t, string>();
   testMap<int64_t, string, MmapAllocator<char>>();
   testMap<
@@ -312,7 +312,7 @@ TEST(Aha, InsertErase_i64_str) {
       AtomicHashArrayQuadraticProbeFcn>();
 }
 
-TEST(Aha, Create_cstr_i64) {
+TEST(Aha, CreateCstrI64) {
   auto obj = AtomicHashArray<const char*, int64_t>::create(12);
 }
 

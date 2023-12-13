@@ -45,7 +45,7 @@ TEST(makeMoveWrapper, lvalue) {
   makeMoveWrapper(p);
 }
 
-TEST(makeMoveWrapper, lvalue_copyable) {
+TEST(makeMoveWrapper, lvalueCopyable) {
   std::shared_ptr<int> p;
   makeMoveWrapper(p);
 }

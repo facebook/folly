@@ -22,14 +22,14 @@
 
 #include <folly/portability/GTest.h>
 
-TEST(CheckedMath, checked_add_no_overflow) {
+TEST(CheckedMath, checkedAddNoOverflow) {
   unsigned int a;
 
   EXPECT_TRUE(folly::checked_add(&a, 5u, 4u));
   EXPECT_EQ(a, 9);
 }
 
-TEST(CheckedMath, checked_add_overflow) {
+TEST(CheckedMath, checkedAddOverflow) {
   unsigned int a;
 
   EXPECT_FALSE(
@@ -37,7 +37,7 @@ TEST(CheckedMath, checked_add_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_add_uint64_t_overflow) {
+TEST(CheckedMath, checkedAddUint64TOverflow) {
   uint64_t a;
 
   EXPECT_FALSE(folly::checked_add<uint64_t>(
@@ -45,14 +45,14 @@ TEST(CheckedMath, checked_add_uint64_t_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_add_3_no_overflow) {
+TEST(CheckedMath, checkedAdd3NoOverflow) {
   uint64_t a;
 
   EXPECT_TRUE(folly::checked_add<uint64_t>(&a, 5, 7, 9));
   EXPECT_EQ(a, 21);
 }
 
-TEST(CheckedMath, checked_add_3_overflow) {
+TEST(CheckedMath, checkedAdd3Overflow) {
   uint64_t a;
 
   EXPECT_FALSE(folly::checked_add<uint64_t>(
@@ -60,7 +60,7 @@ TEST(CheckedMath, checked_add_3_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_add_3_overflow2) {
+TEST(CheckedMath, checkedAdd3Overflow2) {
   uint64_t a;
 
   EXPECT_FALSE(folly::checked_add<uint64_t>(
@@ -68,14 +68,14 @@ TEST(CheckedMath, checked_add_3_overflow2) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_add_4_no_overflow) {
+TEST(CheckedMath, checkedAdd4NoOverflow) {
   uint64_t a;
 
   EXPECT_TRUE(folly::checked_add<uint64_t>(&a, 5, 7, 9, 11));
   EXPECT_EQ(a, 32);
 }
 
-TEST(CheckedMath, checked_add_4_overflow) {
+TEST(CheckedMath, checkedAdd4Overflow) {
   uint64_t a;
 
   EXPECT_FALSE(folly::checked_add<uint64_t>(
@@ -83,7 +83,7 @@ TEST(CheckedMath, checked_add_4_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_add_4_overflow2) {
+TEST(CheckedMath, checkedAdd4Overflow2) {
   uint64_t a;
 
   EXPECT_FALSE(folly::checked_add<uint64_t>(
@@ -91,7 +91,7 @@ TEST(CheckedMath, checked_add_4_overflow2) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_add_4_overflow3) {
+TEST(CheckedMath, checkedAdd4Overflow3) {
   uint64_t a;
 
   EXPECT_FALSE(folly::checked_add<uint64_t>(
@@ -99,14 +99,14 @@ TEST(CheckedMath, checked_add_4_overflow3) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_add_no_overflow) {
+TEST(CheckedMath, genericCheckedAddNoOverflow) {
   unsigned int a;
 
   EXPECT_TRUE(folly::detail::generic_checked_add(&a, 5u, 4u));
   EXPECT_EQ(a, 9);
 }
 
-TEST(CheckedMath, generic_checked_add_overflow) {
+TEST(CheckedMath, genericCheckedAddOverflow) {
   unsigned int a;
 
   EXPECT_FALSE(folly::detail::generic_checked_add(
@@ -114,7 +114,7 @@ TEST(CheckedMath, generic_checked_add_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_add_uint64_t_overflow) {
+TEST(CheckedMath, genericCheckedAddUint64TOverflow) {
   uint64_t a;
 
   EXPECT_FALSE(folly::detail::generic_checked_add<uint64_t>(
@@ -122,42 +122,42 @@ TEST(CheckedMath, generic_checked_add_uint64_t_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_div_safe_divisor) {
+TEST(CheckedMath, checkedDivSafeDivisor) {
   unsigned int a;
 
   EXPECT_TRUE(folly::checked_div(&a, 8u, 4u));
   EXPECT_EQ(a, 2);
 }
 
-TEST(CheckedMath, checked_div_zero_divisor) {
+TEST(CheckedMath, checkedDivZeroDivisor) {
   unsigned int a;
 
   EXPECT_FALSE(folly::checked_div(&a, 8u, 0u));
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_mod_safe_divisor) {
+TEST(CheckedMath, checkedModSafeDivisor) {
   unsigned int a;
 
   EXPECT_TRUE(folly::checked_mod(&a, 5u, 4u));
   EXPECT_EQ(a, 1);
 }
 
-TEST(CheckedMath, checked_mod_zero_divisor) {
+TEST(CheckedMath, checkedModZeroDivisor) {
   unsigned int a;
 
   EXPECT_FALSE(folly::checked_div(&a, 5u, 0u));
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_mul_no_overflow) {
+TEST(CheckedMath, checkedMulNoOverflow) {
   unsigned int a;
 
   EXPECT_TRUE(folly::checked_mul(&a, 5u, 4u));
   EXPECT_EQ(a, 20);
 }
 
-TEST(CheckedMath, checked_mul_overflow) {
+TEST(CheckedMath, checkedMulOverflow) {
   unsigned int a;
 
   EXPECT_FALSE(
@@ -165,7 +165,7 @@ TEST(CheckedMath, checked_mul_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_mul_uint64_t_overflow) {
+TEST(CheckedMath, checkedMulUint64TOverflow) {
   uint64_t a;
 
   EXPECT_FALSE(folly::checked_mul<uint64_t>(
@@ -173,14 +173,14 @@ TEST(CheckedMath, checked_mul_uint64_t_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_mul_no_overflow) {
+TEST(CheckedMath, genericCheckedMulNoOverflow) {
   unsigned int a;
 
   EXPECT_TRUE(folly::detail::generic_checked_mul(&a, 5u, 4u));
   EXPECT_EQ(a, 20);
 }
 
-TEST(CheckedMath, generic_checked_mul_overflow) {
+TEST(CheckedMath, genericCheckedMulOverflow) {
   unsigned int a;
 
   EXPECT_FALSE(folly::detail::generic_checked_mul(
@@ -188,7 +188,7 @@ TEST(CheckedMath, generic_checked_mul_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_mul_uint64_t_overflow) {
+TEST(CheckedMath, genericCheckedMulUint64TOverflow) {
   uint64_t a;
 
   EXPECT_FALSE(folly::detail::generic_checked_mul<uint64_t>(
@@ -196,7 +196,7 @@ TEST(CheckedMath, generic_checked_mul_uint64_t_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_1) {
+TEST(CheckedMath, genericCheckedMulUint64TOverflow1) {
   uint64_t a;
 
   // lhs_high != 0 && rhs_high != 0
@@ -205,7 +205,7 @@ TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_1) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_2) {
+TEST(CheckedMath, genericCheckedMulUint64TOverflow2) {
   uint64_t a;
 
   // lhs_low * rhs_high overflows
@@ -214,7 +214,7 @@ TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_2) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_3) {
+TEST(CheckedMath, genericCheckedMulUint64TOverflow3) {
   uint64_t a;
 
   // lhs_high * rhs_low overflows
@@ -223,7 +223,7 @@ TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_3) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_4) {
+TEST(CheckedMath, genericCheckedMulUint64TOverflow4) {
   uint64_t a;
 
   // mid_bits1 + mid_bits2 overflows
@@ -232,7 +232,7 @@ TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_4) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_5) {
+TEST(CheckedMath, genericCheckedMulUint64TOverflow5) {
   uint64_t a;
 
   // (lhs_low * rhs_low) + (mid_bits << 32) overflows
@@ -244,7 +244,7 @@ TEST(CheckedMath, generic_checked_mul_uint64_t_overflow_5) {
 // __builtin_mul_overflow has the most straight-forward interface for doing
 // this check, and the generic code will be the same regardless of the compiler.
 #if FOLLY_HAS_BUILTIN(__builtin_mul_overflow)
-TEST(CheckedMath, generic_checked_mul_vs_builtin) {
+TEST(CheckedMath, genericCheckedMulVsBuiltin) {
   std::mt19937_64 mt{std::random_device()()};
 
   constexpr size_t IterationCount = 1'000'000;
@@ -281,14 +281,14 @@ TEST(CheckedMath, generic_checked_mul_vs_builtin) {
 }
 #endif
 
-TEST(CheckedMath, checked_muladd_no_overflow) {
+TEST(CheckedMath, checkedMuladdNoOverflow) {
   unsigned int a;
 
   EXPECT_TRUE(folly::checked_muladd(&a, 5u, 4u, 1u));
   EXPECT_EQ(a, 21);
 }
 
-TEST(CheckedMath, checked_muladd_overflow) {
+TEST(CheckedMath, checkedMuladdOverflow) {
   unsigned int a;
 
   EXPECT_FALSE(folly::checked_muladd(
@@ -296,7 +296,7 @@ TEST(CheckedMath, checked_muladd_overflow) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_muladd_overflow2) {
+TEST(CheckedMath, checkedMuladdOverflow2) {
   unsigned int a;
 
   EXPECT_FALSE(folly::checked_muladd(
@@ -304,7 +304,7 @@ TEST(CheckedMath, checked_muladd_overflow2) {
   EXPECT_EQ(a, {});
 }
 
-TEST(CheckedMath, checked_ptr_add_no_overflow) {
+TEST(CheckedMath, checkedPtrAddNoOverflow) {
   unsigned int buf[4];
   unsigned int* a;
 
@@ -312,7 +312,7 @@ TEST(CheckedMath, checked_ptr_add_no_overflow) {
   EXPECT_EQ(a, &buf[1]);
 }
 
-TEST(CheckedMath, checked_ptr_add_overflow) {
+TEST(CheckedMath, checkedPtrAddOverflow) {
   unsigned int buf[4];
   unsigned int* a{nullptr};
 

@@ -1293,7 +1293,7 @@ TEST(FBString, testConstructionFromLiteralZero) {
   EXPECT_THROW(fbstring s(nullptr), std::logic_error);
 }
 
-TEST(FBString, testFixedBugs_D479397) {
+TEST(FBString, testFixedBugsD479397) {
   fbstring str(1337, 'f');
   fbstring cp = str;
   cp.clear();
@@ -1301,7 +1301,7 @@ TEST(FBString, testFixedBugs_D479397) {
   EXPECT_EQ(str.front(), 'f');
 }
 
-TEST(FBString, testFixedBugs_D481173) {
+TEST(FBString, testFixedBugsD481173) {
   fbstring str(1337, 'f');
   for (int i = 0; i < 2; ++i) {
     fbstring cp = str;
@@ -1311,30 +1311,30 @@ TEST(FBString, testFixedBugs_D481173) {
   }
 }
 
-TEST(FBString, testFixedBugs_D580267_push_back) {
+TEST(FBString, testFixedBugsD580267PushBack) {
   fbstring str(1337, 'f');
   fbstring cp = str;
   cp.push_back('f');
 }
 
-TEST(FBString, testFixedBugs_D580267_operator_add_assign) {
+TEST(FBString, testFixedBugsD580267OperatorAddAssign) {
   fbstring str(1337, 'f');
   fbstring cp = str;
   cp += "bb";
 }
 
-TEST(FBString, testFixedBugs_D661622) {
+TEST(FBString, testFixedBugsD661622) {
   folly::basic_fbstring<wchar_t> s;
   EXPECT_EQ(0, s.size());
 }
 
-TEST(FBString, testFixedBugs_D785057) {
+TEST(FBString, testFixedBugsD785057) {
   fbstring str(1337, 'f');
   std::swap(str, str);
   EXPECT_EQ(1337, str.size());
 }
 
-TEST(FBString, testFixedBugs_D1012196_allocator_malloc) {
+TEST(FBString, testFixedBugsD1012196AllocatorMalloc) {
   fbstring str(128, 'f');
   str.clear(); // Empty medium string.
   fbstring copy(str); // Medium string of 0 capacity.
@@ -1342,7 +1342,7 @@ TEST(FBString, testFixedBugs_D1012196_allocator_malloc) {
   EXPECT_GE(copy.capacity(), 1);
 }
 
-TEST(FBString, testFixedBugs_D2813713) {
+TEST(FBString, testFixedBugsD2813713) {
   fbstring s1("a");
   s1.reserve(8); // Trigger the optimized code path.
   auto test1 = '\0' + std::move(s1);
@@ -1354,11 +1354,11 @@ TEST(FBString, testFixedBugs_D2813713) {
   EXPECT_EQ(2, test2.size());
 }
 
-TEST(FBString, testFixedBugs_D3698862) {
+TEST(FBString, testFixedBugsD3698862) {
   EXPECT_EQ(fbstring().find(fbstring(), 4), fbstring::npos);
 }
 
-TEST(FBString, testFixedBugs_D4355440) {
+TEST(FBString, testFixedBugsD4355440) {
   SKIP_IF(!usingJEMalloc());
 
   fbstring str(1337, 'f');

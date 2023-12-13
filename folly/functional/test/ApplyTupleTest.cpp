@@ -378,7 +378,7 @@ struct S {
 };
 } // namespace
 
-TEST(MakeFromTupleTest, make_from_tuple) {
+TEST(MakeFromTupleTest, makeFromTuple) {
   S expected{42, 1.0, "foobar"};
 
   // const lvalue ref

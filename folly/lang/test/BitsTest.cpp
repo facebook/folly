@@ -235,7 +235,7 @@ TEST(Bits, popcount) {
   EXPECT_EQ(64, popcount(uint64_t(-1)));
 }
 
-TEST(Bits, Endian_swap_uint) {
+TEST(Bits, EndianSwapUint) {
   EXPECT_EQ(uint8_t(0xda), Endian::swap(uint8_t(0xda)));
   EXPECT_EQ(uint16_t(0x4175), Endian::swap(uint16_t(0x7541)));
   EXPECT_EQ(uint32_t(0x42efb918), Endian::swap(uint32_t(0x18b9ef42)));
@@ -243,7 +243,7 @@ TEST(Bits, Endian_swap_uint) {
       uint64_t(0xa244f5e862c71d8a), Endian::swap(uint64_t(0x8a1dc762e8f544a2)));
 }
 
-TEST(Bits, Endian_swap_real) {
+TEST(Bits, EndianSwapReal) {
   std::mt19937_64 rng;
   auto f = std::uniform_real_distribution<float>()(rng);
   EXPECT_NE(f, Endian::swap(f));

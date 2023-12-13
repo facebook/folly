@@ -534,7 +534,7 @@ TEST(StringPiece, erase) {
   EXPECT_EQ(a, "hello");
 }
 
-TEST(StringPiece, split_step_char_delimiter) {
+TEST(StringPiece, splitStepCharDelimiter) {
   //              0         1         2
   //              012345678901234567890123456
   auto const s = "this is just  a test string";
@@ -592,7 +592,7 @@ TEST(StringPiece, split_step_char_delimiter) {
   EXPECT_EQ("", x);
 }
 
-TEST(StringPiece, split_step_range_delimiter) {
+TEST(StringPiece, splitStepRangeDelimiter) {
   //              0         1         2         3
   //              0123456789012345678901234567890123
   auto const s = "this  is  just    a   test  string";
@@ -657,7 +657,7 @@ TEST(StringPiece, split_step_range_delimiter) {
 
 void split_step_with_process_noop(folly::StringPiece) {}
 
-TEST(StringPiece, split_step_with_process_char_delimiter) {
+TEST(StringPiece, splitStepWithProcessCharDelimiter) {
   //              0         1         2
   //              012345678901234567890123456
   auto const s = "this is just  a test string";
@@ -740,7 +740,7 @@ TEST(StringPiece, split_step_with_process_char_delimiter) {
   EXPECT_NO_THROW(p.split_step(' ', split_step_with_process_noop));
 }
 
-TEST(StringPiece, split_step_with_process_range_delimiter) {
+TEST(StringPiece, splitStepWithProcessRangeDelimiter) {
   //              0         1         2         3
   //              0123456789012345678901234567890123
   auto const s = "this  is  just    a   test  string";
@@ -830,7 +830,7 @@ TEST(StringPiece, split_step_with_process_range_delimiter) {
   EXPECT_NO_THROW(p.split_step(' ', split_step_with_process_noop));
 }
 
-TEST(StringPiece, split_step_with_process_char_delimiter_additional_args) {
+TEST(StringPiece, splitStepWithProcessCharDelimiterAdditionalArgs) {
   //              0         1         2
   //              012345678901234567890123456
   auto const s = "this is just  a test string";
@@ -865,7 +865,7 @@ TEST(StringPiece, split_step_with_process_char_delimiter_additional_args) {
   EXPECT_TRUE(p.empty());
 }
 
-TEST(StringPiece, split_step_with_process_range_delimiter_additional_args) {
+TEST(StringPiece, splitStepWithProcessRangeDelimiterAdditionalArgs) {
   //              0         1         2         3
   //              0123456789012345678901234567890123
   auto const s = "this  is  just    a   test  string";
@@ -910,7 +910,7 @@ TEST(StringPiece, NoInvalidImplicitConversions) {
   EXPECT_TRUE(IsString()(s));
 }
 
-TEST(qfind, UInt32_Ranges) {
+TEST(qfind, UInt32Ranges) {
   vector<uint32_t> a({1, 2, 3, 260, 5});
   vector<uint32_t> b({2, 3, 4});
 

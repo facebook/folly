@@ -180,7 +180,7 @@ bool operator==(const MoveTester& o1, const MoveTester& o2) {
 
 } // namespace
 
-TEST(Optional, value_or_rvalue_arg) {
+TEST(Optional, valueOrRvalueArg) {
   Optional<MoveTester> opt;
   MoveTester dflt = "hello";
   EXPECT_EQ("hello", opt.value_or(dflt));
@@ -206,7 +206,7 @@ TEST(Optional, value_or_rvalue_arg) {
   EXPECT_EQ("hello", dflt); // only moved if used
 }
 
-TEST(Optional, value_or_noncopyable) {
+TEST(Optional, valueOrNoncopyable) {
   Optional<std::unique_ptr<int>> opt;
   std::unique_ptr<int> dflt(new int(42));
   EXPECT_EQ(42, *std::move(opt).value_or(std::move(dflt)));
@@ -221,14 +221,14 @@ struct ExpectingDeleter {
   }
 };
 
-TEST(Optional, value_move) {
+TEST(Optional, valueMove) {
   auto ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
                  {new int(42), ExpectingDeleter{1337}})
                  .value();
   *ptr = 1337;
 }
 
-TEST(Optional, dereference_move) {
+TEST(Optional, dereferenceMove) {
   auto ptr = *Optional<std::unique_ptr<int, ExpectingDeleter>>(
       {new int(42), ExpectingDeleter{1337}});
   *ptr = 1337;

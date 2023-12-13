@@ -304,7 +304,7 @@ void enq_deq_test(const int nprod, const int ncons) {
   run_once(nprod, ncons, prod, cons, endfn);
 }
 
-TEST(DynamicBoundedQueue, enq_deq) {
+TEST(DynamicBoundedQueue, enqDeq) {
   /* SPSC */
   enq_deq_test<true, true, false>(1, 1);
   enq_deq_test<true, true, true>(1, 1);

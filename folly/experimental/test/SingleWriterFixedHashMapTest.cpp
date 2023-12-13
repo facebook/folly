@@ -165,7 +165,7 @@ void copy_tombstones_test() {
   delete m;
 }
 
-TEST(SingleWriterFixedHashMap, copy_tombstones) {
+TEST(SingleWriterFixedHashMap, copyTombstones) {
   copy_tombstones_test();
 }
 
