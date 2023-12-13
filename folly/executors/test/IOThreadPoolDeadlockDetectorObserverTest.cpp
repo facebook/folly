@@ -18,6 +18,7 @@
 
 #include <fmt/core.h>
 
+#include <glog/logging.h>
 #include <folly/concurrency/DeadlockDetector.h>
 #include <folly/executors/IOThreadPoolDeadlockDetectorObserver.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
@@ -40,14 +41,15 @@ class DeadlockDetectorMock : public DeadlockDetector {
 class DeadlockDetectorFactoryMock : public DeadlockDetectorFactory {
  public:
   std::unique_ptr<DeadlockDetector> create(
-      folly::Executor* executor,
-      const std::string& name,
-      std::unique_ptr<WorkerProvider> tidCollector) override {
+      folly::Executor* executor, const std::string& name) override {
     EXPECT_TRUE(executor != nullptr);
     auto tid = folly::getOSThreadID();
     std::string expectedName = fmt::format("TestPool:{}", tid);
     EXPECT_EQ(expectedName, name);
     {
+      auto* getter =
+          CHECK_NOTNULL(dynamic_cast<GetThreadIdCollector*>(executor));
+      auto* tidCollector = CHECK_NOTNULL(getter->getThreadIdCollector());
       auto tids = tidCollector->collectThreadIds();
       EXPECT_EQ(1, tids.threadIds.size());
       EXPECT_EQ(tid, tids.threadIds[0]);
