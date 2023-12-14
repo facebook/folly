@@ -90,17 +90,6 @@ EventBase* IOThreadPoolExecutorBase::getEventBase(
   return nullptr;
 }
 
-std::mutex* IOThreadPoolExecutorBase::getEventBaseShutdownMutex(
-    ThreadPoolExecutor::ThreadHandle* h) {
-  auto thread = dynamic_cast<IOThread*>(h);
-
-  if (thread) {
-    return &thread->eventBaseShutdownMutex_;
-  }
-
-  return nullptr;
-}
-
 // IOThreadPoolExecutor
 IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t numThreads,

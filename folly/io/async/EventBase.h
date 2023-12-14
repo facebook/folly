@@ -320,16 +320,6 @@ class EventBase : public TimeoutManager,
       strictLoopThread = b;
       return *this;
     }
-
-    /**
-     * Enable getThreadIdCollector(). If not enabled, the method returns nullpr.
-     */
-    bool enableThreadIdCollection{false};
-
-    Options& setEnableThreadIdCollection(bool b) {
-      this->enableThreadIdCollection = b;
-      return *this;
-    }
   };
 
   /**

@@ -211,10 +211,7 @@ EventBase::EventBase(Options options)
       evb_(
           options.backendFactory ? options.backendFactory()
                                  : getDefaultBackend()),
-      threadIdCollector_(
-          options.enableThreadIdCollection
-              ? std::make_unique<ThreadIdCollector>()
-              : nullptr) {
+      threadIdCollector_(std::make_unique<ThreadIdCollector>()) {
   initNotificationQueue();
 }
 
@@ -432,9 +429,7 @@ void EventBase::loopMainSetup() {
     setThreadName(name_);
   }
 
-  if (threadIdCollector_ != nullptr) {
-    threadIdCollector_->setTid();
-  }
+  threadIdCollector_->setTid();
 }
 
 bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
@@ -569,9 +564,7 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
 }
 
 void EventBase::loopMainCleanup() {
-  if (threadIdCollector_ != nullptr) {
-    threadIdCollector_->unsetTid();
-  }
+  threadIdCollector_->unsetTid();
   loopThread_.store({}, std::memory_order_release);
 }
 

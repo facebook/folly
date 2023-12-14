@@ -2638,8 +2638,7 @@ TYPED_TEST_P(EventBaseTest, LoopRearmsNotificationQueue) {
 }
 
 TYPED_TEST_P(EventBaseTest, GetThreadIdCollector) {
-  auto evbPtr = getEventBase<TypeParam>(
-      EventBase::Options{}.setEnableThreadIdCollection(true));
+  auto evbPtr = getEventBase<TypeParam>();
   auto* collector = evbPtr->getThreadIdCollector();
   ASSERT_TRUE(collector != nullptr);
 

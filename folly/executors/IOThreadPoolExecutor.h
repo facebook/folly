@@ -45,9 +45,6 @@ class IOThreadPoolExecutorBase : public ThreadPoolExecutor,
 
   static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
-  static std::mutex* getEventBaseShutdownMutex(
-      ThreadPoolExecutor::ThreadHandle*);
-
  protected:
   struct alignas(Thread) IOThread : public Thread {
     explicit IOThread(IOThreadPoolExecutorBase* pool)
@@ -134,11 +131,6 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
   static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle* h) {
     return IOThreadPoolExecutorBase::getEventBase(h);
-  }
-
-  static std::mutex* getEventBaseShutdownMutex(
-      ThreadPoolExecutor::ThreadHandle* h) {
-    return IOThreadPoolExecutorBase::getEventBaseShutdownMutex(h);
   }
 
   folly::EventBaseManager* getEventBaseManager();
