@@ -91,9 +91,9 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     void update(int numEvents, std::chrono::microseconds wait);
   };
 
-  MuxIOThreadPoolExecutor(
+  explicit MuxIOThreadPoolExecutor(
       size_t numThreads,
-      Options options,
+      Options options = {},
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("MuxIOThreadPoolExecutor"),
       folly::EventBaseManager* ebm = folly::EventBaseManager::get());
@@ -116,6 +116,9 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   folly::WorkerProvider* getThreadIdCollector() override {
     return threadIdCollector_.get();
   }
+
+  void addObserver(std::shared_ptr<Observer> o) override;
+  void removeObserver(std::shared_ptr<Observer> o) override;
 
  private:
   struct Handler {
@@ -168,6 +171,8 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   void mainThreadFunc();
 
   void handleDequeue();
+
+  void maybeUnregisterEventBases(Observer* o);
 
   ThreadPtr makeThread() override;
   folly::EventBase* pickEVB();

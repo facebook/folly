@@ -28,6 +28,8 @@ FOLLY_GFLAGS_DEFINE_bool(
 
 namespace folly {
 
+namespace {
+
 using folly::detail::MemoryIdler;
 
 /* Class that will free jemalloc caches and madvise the stack away
@@ -78,6 +80,8 @@ class MemoryIdlerTimeout : public AsyncTimeout, public EventBase::LoopCallback {
   size_t num_{0};
 };
 
+} // namespace
+
 // IOThreadPoolExecutorBase
 EventBase* IOThreadPoolExecutorBase::getEventBase(
     ThreadPoolExecutor::ThreadHandle* h) {
@@ -96,19 +100,12 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
     Options options)
-    : IOThreadPoolExecutorBase(
+    : IOThreadPoolExecutor(
           numThreads,
           FLAGS_dynamic_iothreadpoolexecutor ? 0 : numThreads,
-          std::move(threadFactory)),
-      isWaitForAll_(options.waitForAll),
-      nextThread_(0),
-      eventBaseManager_(ebm) {
-  setNumThreads(numThreads);
-  registerThreadPoolExecutor(this);
-  if (options.enableThreadIdCollection) {
-    threadIdCollector_ = std::make_unique<ThreadIdWorkerProvider>();
-  }
-}
+          std::move(threadFactory),
+          ebm,
+          std::move(options)) {}
 
 IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t maxThreads,
@@ -268,6 +265,7 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
         std::static_pointer_cast<IOThread>(threadList_.get()[i]);
     for (auto& o : observers_) {
       o->threadStopped(ioThread.get());
+      handleObserverUnregisterThread(ioThread.get(), *o);
     }
     ioThread->shouldRun = false;
     stoppedThreads.push_back(ioThread);
@@ -294,6 +292,22 @@ size_t IOThreadPoolExecutor::getPendingTaskCountImpl() const {
     count += pendingTasks;
   }
   return count;
+}
+
+void IOThreadPoolExecutor::handleObserverRegisterThread(
+    ThreadHandle* h, Observer& observer) {
+  auto thread = CHECK_NOTNULL(dynamic_cast<IOThread*>(h));
+  if (auto ioObserver = dynamic_cast<IOObserver*>(&observer)) {
+    ioObserver->registerEventBase(*thread->eventBase);
+  }
+}
+
+void IOThreadPoolExecutor::handleObserverUnregisterThread(
+    ThreadHandle* h, Observer& observer) {
+  auto thread = CHECK_NOTNULL(dynamic_cast<IOThread*>(h));
+  if (auto ioObserver = dynamic_cast<IOObserver*>(&observer)) {
+    ioObserver->unregisterEventBase(*thread->eventBase);
+  }
 }
 
 } // namespace folly

@@ -223,6 +223,7 @@ void ThreadPoolExecutor::addThreads(size_t n) {
   for (auto& o : observers_) {
     for (auto& thread : newThreads) {
       o->threadStarted(thread.get());
+      handleObserverRegisterThread(thread.get(), *o);
     }
   }
 }
@@ -390,6 +391,7 @@ void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
     observers_.push_back(o);
     for (auto& thread : threadList_.get()) {
       o->threadPreviouslyStarted(thread.get());
+      handleObserverRegisterThread(thread.get(), *o);
     }
   }
   ensureMaxActiveThreads();
@@ -399,6 +401,7 @@ void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
   SharedMutex::WriteHolder r{&threadListLock_};
   for (auto& thread : threadList_.get()) {
     o->threadNotYetStopped(thread.get());
+    handleObserverUnregisterThread(thread.get(), *o);
   }
 
   for (auto it = observers_.begin(); it != observers_.end(); it++) {

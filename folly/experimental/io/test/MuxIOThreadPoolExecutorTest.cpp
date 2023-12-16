@@ -18,11 +18,13 @@
 
 #if FOLLY_HAS_EPOLL
 
+#include <folly/executors/test/IOThreadPoolExecutorBaseTestLib.h>
 #include <folly/experimental/io/MuxIOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Latch.h>
 
 namespace folly {
+namespace test {
 
 TEST(MuxIOThreadPoolExecutor, SingleEpollLoopCreateDestroy) {
   static constexpr size_t kNumThreads = 16;
@@ -66,5 +68,11 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {
   latch.wait();
 }
 
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    MuxIOThreadPoolExecutorTest,
+    IOThreadPoolExecutorBaseTest,
+    MuxIOThreadPoolExecutor);
+
+} // namespace test
 } // namespace folly
 #endif

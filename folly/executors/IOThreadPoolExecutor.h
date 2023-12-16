@@ -45,6 +45,12 @@ class IOThreadPoolExecutorBase : public ThreadPoolExecutor,
 
   static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
+  class IOObserver : public Observer {
+   public:
+    virtual void registerEventBase(EventBase&) {}
+    virtual void unregisterEventBase(EventBase&) {}
+  };
+
  protected:
   struct alignas(Thread) IOThread : public Thread {
     explicit IOThread(IOThreadPoolExecutorBase* pool)
@@ -146,6 +152,10 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
   size_t getPendingTaskCountImpl() const override final;
+  void handleObserverRegisterThread(
+      ThreadHandle* h, Observer& observer) override;
+  void handleObserverUnregisterThread(
+      ThreadHandle* h, Observer& observer) override;
 
   const bool isWaitForAll_; // whether to wait till event base loop exits
   relaxed_atomic<size_t> nextThread_;

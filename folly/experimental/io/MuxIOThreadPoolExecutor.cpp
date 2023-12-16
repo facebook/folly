@@ -158,6 +158,12 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
 
 MuxIOThreadPoolExecutor::~MuxIOThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
+  {
+    std::shared_lock<folly::SharedMutex> lock{threadListLock_};
+    for (const auto& o : observers_) {
+      maybeUnregisterEventBases(o.get());
+    }
+  }
   stop();
   stop_ = true;
   wakeup(1);
@@ -300,6 +306,29 @@ folly::EventBase* MuxIOThreadPoolExecutor::pickEVB() {
 
 size_t MuxIOThreadPoolExecutor::getPendingTaskCountImpl() const {
   return pendingTasks_.load();
+}
+
+void MuxIOThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
+  if (auto ioObserver = dynamic_cast<IOObserver*>(o.get())) {
+    // All EventBases are created at construction time.
+    for (const auto& evb : evbs_) {
+      ioObserver->registerEventBase(*evb);
+    }
+  }
+  ThreadPoolExecutor::addObserver(std::move(o));
+}
+
+void MuxIOThreadPoolExecutor::maybeUnregisterEventBases(Observer* o) {
+  if (auto ioObserver = dynamic_cast<IOObserver*>(o)) {
+    for (const auto& evb : evbs_) {
+      ioObserver->unregisterEventBase(*evb);
+    }
+  }
+}
+
+void MuxIOThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
+  maybeUnregisterEventBases(o.get());
+  ThreadPoolExecutor::addObserver(std::move(o));
 }
 
 std::vector<folly::Executor::KeepAlive<folly::EventBase>>

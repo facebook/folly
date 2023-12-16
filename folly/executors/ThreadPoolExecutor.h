@@ -172,11 +172,12 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    */
   class Observer {
    public:
-    virtual void threadStarted(ThreadHandle*) = 0;
-    virtual void threadStopped(ThreadHandle*) = 0;
+    virtual ~Observer() = default;
+
+    virtual void threadStarted(ThreadHandle*) {}
+    virtual void threadStopped(ThreadHandle*) {}
     virtual void threadPreviouslyStarted(ThreadHandle* h) { threadStarted(h); }
     virtual void threadNotYetStopped(ThreadHandle* h) { threadStopped(h); }
-    virtual ~Observer() = default;
   };
 
   virtual void addObserver(std::shared_ptr<Observer>);
@@ -262,6 +263,10 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   // Prerequisite: threadListLock_ readlocked or writelocked
   virtual size_t getPendingTaskCountImpl() const = 0;
+
+  // Called with threadListLock_ readlocked or writelocked.
+  virtual void handleObserverRegisterThread(ThreadHandle*, Observer&) {}
+  virtual void handleObserverUnregisterThread(ThreadHandle*, Observer&) {}
 
   class ThreadList {
    public:
