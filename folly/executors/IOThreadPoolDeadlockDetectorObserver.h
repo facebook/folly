@@ -24,13 +24,14 @@
 namespace folly {
 
 class IOThreadPoolDeadlockDetectorObserver
-    : public folly::ThreadPoolExecutor::Observer {
+    : public folly::IOThreadPoolExecutorBase::IOObserver {
  public:
   IOThreadPoolDeadlockDetectorObserver(
       folly::DeadlockDetectorFactory* deadlockDetectorFactory,
       const std::string& name);
-  void threadStarted(folly::ThreadPoolExecutor::ThreadHandle* h) override;
-  void threadStopped(folly::ThreadPoolExecutor::ThreadHandle* h) override;
+
+  void registerEventBase(EventBase& evb) override;
+  void unregisterEventBase(EventBase& evb) override;
 
   static std::unique_ptr<IOThreadPoolDeadlockDetectorObserver> create(
       const std::string& name);
@@ -39,7 +40,7 @@ class IOThreadPoolDeadlockDetectorObserver
   const std::string name_;
   folly::DeadlockDetectorFactory* deadlockDetectorFactory_;
   folly::Synchronized<std::unordered_map<
-      folly::ThreadPoolExecutor::ThreadHandle*,
+      folly::EventBase*,
       std::unique_ptr<folly::DeadlockDetector>>>
       detectors_;
 };

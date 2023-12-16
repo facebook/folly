@@ -24,30 +24,25 @@ IOThreadPoolDeadlockDetectorObserver::IOThreadPoolDeadlockDetectorObserver(
     DeadlockDetectorFactory* deadlockDetectorFactory, const std::string& name)
     : name_(name), deadlockDetectorFactory_(deadlockDetectorFactory) {}
 
-void IOThreadPoolDeadlockDetectorObserver::threadStarted(
-    folly::ThreadPoolExecutor::ThreadHandle* h) {
+void IOThreadPoolDeadlockDetectorObserver::registerEventBase(EventBase& evb) {
   if (!deadlockDetectorFactory_) {
     return;
   }
 
-  auto eventBase = folly::IOThreadPoolExecutorBase::getEventBase(h);
-  // This Observer only works with IOThreadPoolExecutor class.
-  CHECK_NOTNULL(eventBase);
-  eventBase->runInEventBaseThread([=] {
+  evb.runInEventBaseThread([this, &evb] {
     auto tid = folly::getOSThreadID();
     auto name = name_ + ":" + folly::to<std::string>(tid);
-    auto deadlockDetector = deadlockDetectorFactory_->create(eventBase, name);
-    detectors_.wlock()->insert_or_assign(h, std::move(deadlockDetector));
+    auto deadlockDetector = deadlockDetectorFactory_->create(&evb, name);
+    detectors_.wlock()->insert_or_assign(&evb, std::move(deadlockDetector));
   });
 }
 
-void IOThreadPoolDeadlockDetectorObserver::threadStopped(
-    folly::ThreadPoolExecutor::ThreadHandle* h) {
+void IOThreadPoolDeadlockDetectorObserver::unregisterEventBase(EventBase& evb) {
   if (!deadlockDetectorFactory_) {
     return;
   }
 
-  detectors_.wlock()->erase(h);
+  detectors_.wlock()->erase(&evb);
 }
 
 /* static */ std::unique_ptr<IOThreadPoolDeadlockDetectorObserver>
