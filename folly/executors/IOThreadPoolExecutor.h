@@ -146,17 +146,18 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     return threadIdCollector_.get();
   }
 
+ protected:
+  void handleObserverRegisterThread(
+      ThreadHandle* h, Observer& observer) override;
+  void handleObserverUnregisterThread(
+      ThreadHandle* h, Observer& observer) override;
+
  private:
   ThreadPtr makeThread() override;
   std::shared_ptr<IOThread> pickThread();
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
   size_t getPendingTaskCountImpl() const override final;
-  void handleObserverRegisterThread(
-      ThreadHandle* h, Observer& observer) override;
-  void handleObserverUnregisterThread(
-      ThreadHandle* h, Observer& observer) override;
-
   const bool isWaitForAll_; // whether to wait till event base loop exits
   relaxed_atomic<size_t> nextThread_;
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
