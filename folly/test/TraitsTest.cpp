@@ -507,6 +507,24 @@ TEST(Traits, isSimilarInstantiation) {
   EXPECT_FALSE((detail::is_similar_instantiation<B, B>::value));
 }
 
+TEST(Traits, member_pointer_traits_data) {
+  struct o {};
+  using d = float;
+  using mp_do = float o::*;
+  using mp_traits_do = folly::member_pointer_traits<mp_do>;
+  EXPECT_TRUE((std::is_same<d, mp_traits_do::member_type>::value));
+  EXPECT_TRUE((std::is_same<o, mp_traits_do::object_type>::value));
+}
+
+TEST(Traits, member_pointer_traits_function) {
+  struct o {};
+  using f = float(char*) const;
+  using mp_fo = float (o::*)(char*) const;
+  using mp_traits_fo = folly::member_pointer_traits<mp_fo>;
+  EXPECT_TRUE((std::is_same<f, mp_traits_fo::member_type>::value));
+  EXPECT_TRUE((std::is_same<o, mp_traits_fo::object_type>::value));
+}
+
 TEST(Traits, isConstexprDefaultConstructible) {
   EXPECT_TRUE(is_constexpr_default_constructible_v<int>);
   EXPECT_TRUE(is_constexpr_default_constructible<int>{});

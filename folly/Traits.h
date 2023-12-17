@@ -141,6 +141,19 @@ struct is_similar_instantiation
 
 } // namespace detail
 
+//  member_pointer_traits
+//
+//  For a member-pointer, reveals its constituent member-type and object-type.
+//
+//  Works for both member-object-pointer and member-function-pointer.
+template <typename>
+struct member_pointer_traits;
+template <typename M, typename O>
+struct member_pointer_traits<M O::*> {
+  using member_type = M;
+  using object_type = O;
+};
+
 namespace detail {
 
 struct is_constexpr_default_constructible_ {
