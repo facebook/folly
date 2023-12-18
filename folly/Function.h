@@ -1017,6 +1017,36 @@ Function<ReturnType(Args...) const noexcept> constCastFunction(
 }
 #endif
 
+namespace detail {
+
+template <typename Void, typename>
+struct function_ctor_deduce_;
+
+template <typename P>
+struct function_ctor_deduce_<
+    std::enable_if_t<std::is_function<std::remove_pointer_t<P>>::value>,
+    P> {
+  using type = std::remove_pointer_t<P>;
+};
+
+template <typename F>
+struct function_ctor_deduce_<void_t<decltype(&F::operator())>, F> {
+  using type =
+      typename member_pointer_traits<decltype(&F::operator())>::member_type;
+};
+
+template <typename F>
+using function_ctor_deduce_t = typename function_ctor_deduce_<void, F>::type;
+
+} // namespace detail
+
+#if FOLLY_HAS_DEDUCTION_GUIDES
+
+template <typename F>
+Function(F) -> Function<detail::function_ctor_deduce_t<F>>;
+
+#endif
+
 /**
  * @class folly::FunctionRef
  *

@@ -304,6 +304,63 @@ static_assert( //
 
 static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
 
+#if FOLLY_HAS_DEDUCTION_GUIDES
+
+struct ctor_guide {
+  static void fn();
+  static void fn_nx() noexcept;
+
+  struct call {
+    void operator()();
+  };
+  struct call_c {
+    void operator()() const;
+  };
+  struct call_nx {
+    void operator()() noexcept;
+  };
+  struct call_c_nx {
+    void operator()() const noexcept;
+  };
+};
+
+static_assert( //
+    std::is_same_v< //
+        Function<void()>,
+        decltype(Function{ctor_guide::fn})>);
+static_assert( //
+    std::is_same_v< //
+        Function<void()>,
+        decltype(Function{&ctor_guide::fn})>);
+static_assert( //
+    std::is_same_v< //
+        Function<void()>,
+        decltype(Function{ctor_guide::call{}})>);
+static_assert( //
+    std::is_same_v< //
+        Function<void() const>,
+        decltype(Function{ctor_guide::call_c{}})>);
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+static_assert( //
+    std::is_same_v< //
+        Function<void() noexcept>,
+        decltype(Function{ctor_guide::fn_nx})>);
+static_assert( //
+    std::is_same_v< //
+        Function<void() noexcept>,
+        decltype(Function{&ctor_guide::fn_nx})>);
+static_assert( //
+    std::is_same_v< //
+        Function<void() noexcept>,
+        decltype(Function{ctor_guide::call_nx{}})>);
+static_assert( //
+    std::is_same_v< //
+        Function<void() const noexcept>,
+        decltype(Function{ctor_guide::call_c_nx{}})>);
+#endif
+
+#endif
+
 struct RecStd {
   using type = std::function<RecStd()>;
   /* implicit */ RecStd(type f) : func(f) {}
