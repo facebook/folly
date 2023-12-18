@@ -16,6 +16,9 @@
 
 #include <folly/test/TokenBucketTest.h>
 
+#include <glog/logging.h>
+
+#include <folly/String.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -137,4 +140,163 @@ TEST(TokenBucket, consumeOrBorrowTest) {
 
   // No allocation will succeed until nowInSeconds goes higher than 11s.
   EXPECT_FALSE(tokenBucket.consume(1, 10, 10, 11));
+}
+
+template <typename>
+struct Wrapper;
+template <>
+struct Wrapper<TokenBucket> {
+  explicit Wrapper(double genRate, double burstSize)
+      : tb_(genRate, burstSize) {}
+  double available(double /*rate*/, double /*burstSize*/, double nowInSeconds) {
+    return tb_.available(nowInSeconds);
+  }
+  double balance(double /*rate*/, double /*burstSize*/, double nowInSeconds) {
+    return tb_.balance(nowInSeconds);
+  }
+  Optional<double> consumeWithBorrowNonBlocking(
+      double toConsume,
+      double /*rate*/,
+      double /*burstSize*/,
+      double nowInSeconds) {
+    return tb_.consumeWithBorrowNonBlocking(toConsume, nowInSeconds);
+  }
+  static double defaultClockNow() { return TokenBucket::defaultClockNow(); }
+
+ private:
+  TokenBucket tb_;
+};
+template <>
+struct Wrapper<DynamicTokenBucket> {
+  explicit Wrapper(double, double) {}
+
+  double available(double rate, double burstSize, double nowInSeconds) {
+    return dtb_.available(rate, burstSize, nowInSeconds);
+  }
+  double balance(double rate, double burstSize, double nowInSeconds) {
+    return dtb_.balance(rate, burstSize, nowInSeconds);
+  }
+  Optional<double> consumeWithBorrowNonBlocking(
+      double toConsume, double rate, double burstSize, double nowInSeconds) {
+    return dtb_.consumeWithBorrowNonBlocking(
+        toConsume, rate, burstSize, nowInSeconds);
+  }
+  static double defaultClockNow() {
+    return DynamicTokenBucket::defaultClockNow();
+  }
+
+ private:
+  DynamicTokenBucket dtb_;
+};
+
+class TokenBucketTypedTestConfig {
+ public:
+  using Types =
+      ::testing::Types<Wrapper<TokenBucket>, Wrapper<DynamicTokenBucket>>;
+  class TestNames {
+   public:
+    template <typename TypeParam>
+    static std::string GetName(int) {
+      StringPiece name = pretty_name<TypeParam>();
+      name.removePrefix("folly::");
+      return std::string(name);
+    }
+  };
+};
+
+/**
+ * Helper class to enable typed tests.
+ *
+ * Enables a single test to test common functionality across the different
+ * TokenBucket implementations (BasicTokenBucket, DynamicTokenBucket).
+ */
+template <typename TypeParam>
+class TokenBucketTypedTest : public ::testing::Test {
+ public:
+  TokenBucketTypedTest() = default;
+
+  /**
+   * Initialize a TokenBucket for the test.
+   *
+   * - For a basic TokenBucket, we pass the rate and burst size.
+   * - For a DynamicTokenBucket, those are not specified during construction,
+   *   so they are instead kept around for calls to consume() operations.
+   */
+  void initTokenBucket(double genRate, double burstSize) {
+    genRate_ = genRate;
+    burstSize_ = burstSize;
+    tb_ = std::make_unique<TypeParam>(genRate, burstSize);
+  }
+
+  /**
+   * Invoke tb->available().
+   */
+  double available(double nowInSeconds) const noexcept {
+    return CHECK_NOTNULL(tb_.get())->available(
+        genRate_, burstSize_, nowInSeconds);
+  }
+
+  /**
+   * Invoke tb->balance.
+   */
+  double balance(double nowInSeconds) const noexcept {
+    return CHECK_NOTNULL(tb_.get())->balance(
+        genRate_, burstSize_, nowInSeconds);
+  }
+
+  /**
+   * Invoke tb->consumeWithBorrowNonBlocking.
+   */
+  Optional<double> consumeWithBorrowNonBlocking(
+      double toConsume, double nowInSeconds) {
+    return CHECK_NOTNULL(tb_.get())->consumeWithBorrowNonBlocking(
+        toConsume, genRate_, burstSize_, nowInSeconds);
+  }
+
+  /**
+   * Return current token bucket; initTokenBucket() must have been called.
+   */
+  TypeParam& getTokenBucket() { return *CHECK_NOTNULL(tb_.get()); }
+
+ private:
+  double genRate_{0};
+  double burstSize_{0};
+  std::unique_ptr<TypeParam> tb_;
+};
+
+TYPED_TEST_SUITE(
+    TokenBucketTypedTest,
+    TokenBucketTypedTestConfig::Types,
+    TokenBucketTypedTestConfig::TestNames);
+
+/**
+ * Test behavior of available() and balance().
+ *
+ *  - available() should only return a value greater than or equal to zero; if
+ *    the TokenBucket is in debt it should return zero.
+ *  - balance() should return the actual number of tokens, which is negative
+ *    if the TokenBucket is in debt.
+ */
+TYPED_TEST(TokenBucketTypedTest, AvailableAndBalance) {
+  auto now = TypeParam::defaultClockNow();
+
+  // initialize the TokenBucket
+  TestFixture::initTokenBucket(100 /* genRate */, 100 /* burstSize */);
+
+  // bucket should have 100 tokens
+  EXPECT_EQ(100, TestFixture::available(now));
+  EXPECT_EQ(100, TestFixture::balance(now));
+
+  // deplete tokens to a negative balance over three intervals
+  TestFixture::consumeWithBorrowNonBlocking(50 /* toConsume */, now);
+  EXPECT_EQ(50, TestFixture::available(now));
+  EXPECT_EQ(50, TestFixture::balance(now));
+
+  TestFixture::consumeWithBorrowNonBlocking(50 /* toConsume */, now);
+  EXPECT_EQ(0, TestFixture::available(now));
+  EXPECT_EQ(0, TestFixture::balance(now));
+
+  TestFixture::consumeWithBorrowNonBlocking(50 /* toConsume */, now);
+  EXPECT_EQ(0, TestFixture::available(now));
+  EXPECT_EQ(-50, TestFixture::balance(now));
 }
