@@ -148,21 +148,29 @@ incremental = false
     def _build(self, install_dirs, reconfigure) -> None:
         # _prepare has been run already. Actually do the build
         build_source_dir = self.build_source_dir()
+
+        build_args = [
+            "--out-dir",
+            os.path.join(self.inst_dir, "bin"),
+            "-Zunstable-options",
+        ]
+
+        if self.build_opts.build_type != "Debug":
+            build_args.append("--release")
+
         if self.manifests_to_build is None:
             self.run_cargo(
                 install_dirs,
                 "build",
-                ["--out-dir", os.path.join(self.inst_dir, "bin"), "-Zunstable-options"],
+                build_args,
             )
         else:
             for manifest in self.manifests_to_build:
                 self.run_cargo(
                     install_dirs,
                     "build",
-                    [
-                        "--out-dir",
-                        os.path.join(self.inst_dir, "bin"),
-                        "-Zunstable-options",
+                    build_args
+                    + [
                         "--manifest-path",
                         self.manifest_dir(manifest),
                     ],

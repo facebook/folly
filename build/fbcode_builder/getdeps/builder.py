@@ -473,7 +473,7 @@ def main():
                 "--target",
                 target,
                 "--config",
-                "Release",
+                "{build_type}",
                 get_jobs_argument(args.num_jobs),
         ] + args.cmake_args
     elif args.mode == "test":
@@ -595,8 +595,9 @@ if __name__ == "__main__":
             # unspecified.  Some of the deps fail to compile in release mode
             # due to warning->error promotion.  RelWithDebInfo is the happy
             # medium.
-            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+            "CMAKE_BUILD_TYPE": self.build_opts.build_type,
         }
+
         if "SANDCASTLE" not in os.environ:
             # We sometimes see intermittent ccache related breakages on some
             # of the FB internal CI hosts, so we prefer to disable ccache
@@ -693,6 +694,7 @@ if __name__ == "__main__":
                 build_dir=self.build_dir,
                 install_dir=self.inst_dir,
                 sys=sys,
+                build_type=self.build_opts.build_type,
             )
 
             self._invalidate_cache()
@@ -706,7 +708,7 @@ if __name__ == "__main__":
                 "--target",
                 self.cmake_target,
                 "--config",
-                "Release",
+                self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
             ],
@@ -1179,7 +1181,7 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
                 "--target",
                 "install",
                 "--config",
-                "Release",
+                self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
             ],
