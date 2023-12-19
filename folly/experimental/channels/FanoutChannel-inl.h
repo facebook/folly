@@ -216,7 +216,7 @@ class FanoutChannelProcessor
    * a value from the input receiver or a cancellation from an output receiver).
    */
   void consume(ChannelBridgeBase*) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       // One or more values are now available from the input receiver.
       auto state = state_.wlock();
       CHECK_NE(state->getReceiverState(), ChannelState::CancellationProcessed);
@@ -225,7 +225,7 @@ class FanoutChannelProcessor
   }
 
   void canceled(ChannelBridgeBase*) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       // We previously cancelled this input receiver, due to the destruction of
       // the handle. Process the cancellation for this input receiver.
       auto state = state_.wlock();
