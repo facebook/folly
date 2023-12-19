@@ -43,22 +43,10 @@ class IOThreadPoolExecutorBase : public ThreadPoolExecutor,
   virtual std::vector<folly::Executor::KeepAlive<folly::EventBase>>
   getAllEventBases() = 0;
 
-  static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
-
   class IOObserver : public Observer {
    public:
     virtual void registerEventBase(EventBase&) {}
     virtual void unregisterEventBase(EventBase&) {}
-  };
-
- protected:
-  struct alignas(Thread) IOThread : public Thread {
-    explicit IOThread(IOThreadPoolExecutorBase* pool)
-        : Thread(pool), shouldRun(true), pendingTasks(0) {}
-    std::atomic<bool> shouldRun;
-    std::atomic<size_t> pendingTasks;
-    folly::EventBase* eventBase{nullptr};
-    std::mutex eventBaseShutdownMutex_;
   };
 };
 
@@ -135,9 +123,7 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   std::vector<folly::Executor::KeepAlive<folly::EventBase>> getAllEventBases()
       override;
 
-  static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle* h) {
-    return IOThreadPoolExecutorBase::getEventBase(h);
-  }
+  static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle* h);
 
   folly::EventBaseManager* getEventBaseManager();
 
@@ -147,6 +133,15 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   }
 
  protected:
+  struct alignas(Thread) IOThread : public Thread {
+    explicit IOThread(IOThreadPoolExecutor* pool) : Thread(pool) {}
+
+    std::atomic<bool> shouldRun{true};
+    std::atomic<size_t> pendingTasks{0};
+    folly::EventBase* eventBase{nullptr};
+    std::mutex eventBaseShutdownMutex_;
+  };
+
   void handleObserverRegisterThread(
       ThreadHandle* h, Observer& observer) override;
   void handleObserverUnregisterThread(

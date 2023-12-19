@@ -261,13 +261,6 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
 
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
-  {
-    // we need to pick an EVB here for the IOThreadPoolDeadlockDetectorObserver
-    // TODO - fix the IOThreadPoolDeadlockDetectorObserver to support
-    // the MuxIOThreadPoolExecutor too
-    auto* evb = pickEVB();
-    ioThread->eventBase = evb;
-  }
   thisThread_.reset(new std::shared_ptr<IOThread>(ioThread));
 
   eventBaseManager_->clearEventBase();
@@ -294,7 +287,6 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     enqueueHandler(handler);
   };
 
-  ioThread->eventBase = nullptr;
   eventBaseManager_->clearEventBase();
 }
 

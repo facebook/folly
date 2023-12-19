@@ -121,6 +121,12 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   void removeObserver(std::shared_ptr<Observer> o) override;
 
  private:
+  struct alignas(Thread) IOThread : public Thread {
+    explicit IOThread(MuxIOThreadPoolExecutor* pool) : Thread(pool) {}
+
+    std::atomic<bool> shouldRun{true};
+  };
+
   struct Handler {
     folly::AtomicIntrusiveLinkedListHook<Handler> hook_;
     int fd{-1};

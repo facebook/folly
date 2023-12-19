@@ -83,7 +83,7 @@ class MemoryIdlerTimeout : public AsyncTimeout, public EventBase::LoopCallback {
 } // namespace
 
 // IOThreadPoolExecutorBase
-EventBase* IOThreadPoolExecutorBase::getEventBase(
+EventBase* IOThreadPoolExecutor::getEventBase(
     ThreadPoolExecutor::ThreadHandle* h) {
   auto thread = dynamic_cast<IOThread*>(h);
 
