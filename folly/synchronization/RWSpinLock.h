@@ -161,6 +161,7 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #include <thread>
 
 #include <folly/Likely.h>
+#include <folly/synchronization/Lock.h>
 
 namespace folly {
 
