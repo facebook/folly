@@ -131,7 +131,7 @@ class ChannelConsumerBase {
       auto callbackHandle = consumeChannelWithCallback(
           std::move(receiver),
           getExecutor(),
-          [=](Try<TValue> resultTry) -> folly::coro::Task<bool> {
+          [=, this](Try<TValue> resultTry) -> folly::coro::Task<bool> {
             onNext(std::move(resultTry));
             co_return co_await folly::coro::detachOnCancel(
                 continueConsuming_.getSemiFuture());
@@ -225,6 +225,7 @@ class StressTestProducer {
       Sender<TValue> sender, std::optional<exception_wrapper> closeException) {
     auto produceTask = folly::coro::co_invoke(
         [=,
+         this,
          sender = std::move(sender),
          ex = std::move(closeException)]() mutable -> folly::coro::Task<void> {
           for (int i = 1; !stopped_.load(std::memory_order_relaxed); i++) {
