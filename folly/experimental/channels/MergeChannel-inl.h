@@ -255,7 +255,7 @@ class MergeChannelProcessor
    * a value from an input receiver or a cancellation from the output receiver).
    */
   void consume(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       auto state = state_.wlock();
       if (bridge == state->sender.get()) {
         // The consumer of the output receiver has stopped consuming.
@@ -277,7 +277,7 @@ class MergeChannelProcessor
    * the sender or an input receiver).
    */
   void canceled(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       auto state = state_.wlock();
       if (bridge == state->sender.get()) {
         // We previously cancelled the sender due to an input receiver closure
