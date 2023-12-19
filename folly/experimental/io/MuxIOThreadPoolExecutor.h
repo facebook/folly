@@ -130,30 +130,29 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   struct alignas(Thread) IOThread : public Thread {
     explicit IOThread(MuxIOThreadPoolExecutor* pool) : Thread(pool) {}
 
-    std::atomic<bool> shouldRun{true};
     EventBase* curEventBase; // Only accessed inside the worker thread.
   };
 
   struct Handler {
-    Handler* next{nullptr};
-    int fd{-1};
-    const bool bHandleInline;
-
-    explicit Handler(bool handleInline) : bHandleInline(handleInline) {}
-
-    bool handleInline() const { return bHandleInline; }
-
     virtual ~Handler() = default;
     virtual void handle(MuxIOThreadPoolExecutor* parent) = 0;
-    virtual folly::EventBase* getEventBase() { return nullptr; }
+    virtual bool isEvbHandler() const { return false; }
+
+    int fd{-1};
   };
 
   struct EvbHandler : public Handler {
+    EvbHandler() = default;
     explicit EvbHandler(folly::EventBase* e);
     void handle(MuxIOThreadPoolExecutor* parent) override;
 
     folly::EventBase* evb{nullptr};
-    folly::EventBase* getEventBase() override { return evb; }
+
+    bool isEvbHandler() const override { return true; }
+
+    bool isPoison() const { return evb == nullptr; }
+
+    EvbHandler* next{nullptr};
   };
 
   struct EventFdHandler : public Handler {
@@ -181,9 +180,7 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   enum class AddHandlerType { kPersist, kOneShot, kOneShotRearm };
 
   void addHandler(Handler* handler, AddHandlerType type);
-  void returnHandler(Handler* handler);
-  void wakeup(size_t num);
-
+  void returnHandler(EvbHandler* handler);
   void mainThreadFunc();
 
   void handleDequeue();
@@ -206,14 +203,15 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_;
   std::vector<std::unique_ptr<folly::EventBase>> evbs_;
+  std::vector<Executor::KeepAlive<EventBase>> keepAlives_;
   std::vector<std::unique_ptr<EvbHandler>> handlers_;
   std::unique_ptr<std::thread> mainThread_;
   std::atomic<bool> stop_{false};
   std::atomic<size_t> pendingTasks_{0};
-  folly::UnboundedBlockingQueue<Handler*, folly::ThrottledLifoSem> queue_;
+  folly::UnboundedBlockingQueue<EvbHandler*, folly::ThrottledLifoSem> queue_;
   Stats stats_;
 
-  Queue<Handler> returnQueue_;
+  Queue<EvbHandler> returnQueue_;
   EventFdHandler returnEvfd_;
 };
 

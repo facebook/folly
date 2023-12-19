@@ -18,6 +18,8 @@
 
 #if FOLLY_HAS_EPOLL
 
+#include <thread>
+
 #include <folly/executors/test/IOThreadPoolExecutorBaseTestLib.h>
 #include <folly/experimental/io/MuxIOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
@@ -36,15 +38,21 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopCreateDestroy) {
 
 TEST(MuxIOThreadPoolExecutor, SingleEpollLoopRun) {
   static constexpr size_t kNumThreads = 16;
+  static constexpr size_t kNumEventBases = 64;
   static constexpr size_t kLoops = 10;
   static constexpr size_t kMaxEvents = 64;
   folly::MuxIOThreadPoolExecutor::Options options;
   options.setMaxEvents(kMaxEvents);
+  options.setNumEventBases(kNumEventBases);
   folly::MuxIOThreadPoolExecutor ex(kNumThreads, options);
-  folly::Latch latch(kNumThreads * kLoops);
+
+  // Ensure that we get to the epoll_wait().
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds{100});
+
+  folly::Latch latch(kNumEventBases * kLoops);
   for (size_t k = 0; k < kLoops; ++k) {
-    for (size_t i = 0; i < kNumThreads; ++i) {
-      auto* evb = ex.getEventBase();
+    for (auto evb : ex.getAllEventBases()) {
       evb->runInEventBaseThread([&]() { latch.count_down(); });
     }
   }
@@ -58,9 +66,13 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {
   folly::MuxIOThreadPoolExecutor::Options options;
   options.setMaxEvents(kMaxEvents);
   folly::MuxIOThreadPoolExecutor ex(kNumThreads, options);
+
+  // Ensure that we get to the epoll_wait().
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds{100});
+
   folly::Latch latch(kNumThreads);
-  for (size_t i = 0; i < kNumThreads; ++i) {
-    auto* evb = ex.getEventBase();
+  for (auto evb : ex.getAllEventBases()) {
     evb->runInEventBaseThread([evb, &latch]() {
       evb->runAfterDelay([&latch]() { latch.count_down(); }, kMilliseconds);
     });

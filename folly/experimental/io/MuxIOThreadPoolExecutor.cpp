@@ -21,6 +21,7 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
+#include <boost/polymorphic_cast.hpp>
 #include <folly/String.h>
 #include <folly/experimental/io/EpollBackend.h>
 #include <folly/experimental/io/MuxIOThreadPoolExecutor.h>
@@ -41,8 +42,7 @@ void MuxIOThreadPoolExecutor::Stats::update(
   maxWait = std::max(maxWait, wait);
 }
 
-MuxIOThreadPoolExecutor::EvbHandler::EvbHandler(folly::EventBase* e)
-    : Handler(false /*handleInline*/), evb(e) {
+MuxIOThreadPoolExecutor::EvbHandler::EvbHandler(folly::EventBase* e) : evb(e) {
   fd = evb->getBackend()->getPollableFd();
 }
 
@@ -55,8 +55,7 @@ void MuxIOThreadPoolExecutor::EvbHandler::handle(
   evb->loopPollCleanup();
 }
 
-MuxIOThreadPoolExecutor::EventFdHandler::EventFdHandler()
-    : Handler(true /*handleInline*/) {
+MuxIOThreadPoolExecutor::EventFdHandler::EventFdHandler() {
   fd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if (fd < 0) {
     throw std::runtime_error(folly::errnoStr(errno));
@@ -146,9 +145,13 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
   evbs_.reserve(numEventBases);
   for (size_t i = 0; i < numEventBases; ++i) {
     auto& evb = evbs_.emplace_back(makeEventBase());
+    // To simulate EventBase::loopForever(), acquire a keepalive for the whole
+    // lifetime of the executor. This will make The EventBase's notification
+    // queue a non-internal event, so we can poll it even when there are no
+    // other events.
+    keepAlives_.emplace_back(evb.get());
     auto& handler =
         handlers_.emplace_back(std::make_unique<EvbHandler>(evb.get()));
-    evb->runInEventBaseThread([]() {});
     // Run the first iteration to set up internal handlers.
     handler->handle(this);
     addHandler(handler.get(), AddHandlerType::kOneShot);
@@ -165,16 +168,21 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
 
 MuxIOThreadPoolExecutor::~MuxIOThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
+
   {
     std::shared_lock<folly::SharedMutex> lock{threadListLock_};
     for (const auto& o : observers_) {
       maybeUnregisterEventBases(o.get());
     }
   }
-  stop();
+
+  keepAlives_.clear();
+
   stop_ = true;
-  wakeup(1);
+  returnEvfd_.notifyFd();
   mainThread_->join();
+
+  stop();
   ::close(epFd_);
 }
 
@@ -196,10 +204,10 @@ void MuxIOThreadPoolExecutor::mainThreadFunc() {
       CHECK(events[i].data.ptr != nullptr);
       auto* handler = static_cast<Handler*>(events[i].data.ptr);
 
-      if (handler->handleInline()) {
-        handler->handle(this);
+      if (handler->isEvbHandler()) {
+        queue_.add(boost::polymorphic_downcast<EvbHandler*>(handler));
       } else {
-        queue_.add(handler);
+        handler->handle(this);
       }
     }
   }
@@ -227,7 +235,7 @@ void MuxIOThreadPoolExecutor::addHandler(
   CHECK_EQ(ret, 0);
 }
 
-void MuxIOThreadPoolExecutor::returnHandler(Handler* handler) {
+void MuxIOThreadPoolExecutor::returnHandler(EvbHandler* handler) {
   if (returnQueue_.insert(handler)) {
     returnEvfd_.notifyFd();
   }
@@ -285,10 +293,13 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   };
   thread->startupBaton.post();
 
-  while (ioThread->shouldRun) {
+  while (true) {
     auto* handler = queue_.take();
-    auto* evb = handler->getEventBase();
-    CHECK(evb != nullptr);
+    if (handler->isPoison()) {
+      delete handler;
+      break;
+    }
+    auto* evb = CHECK_NOTNULL(handler->evb);
 
     ioThread->curEventBase = evb;
     eventBaseManager_->setEventBase(evb, false);
@@ -297,6 +308,13 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     ioThread->curEventBase = nullptr;
     returnHandler(handler);
   };
+
+  SharedMutex::WriteHolder w{&threadListLock_};
+  for (auto& o : observers_) {
+    o->threadStopped(thread.get());
+  }
+  threadList_.remove(thread);
+  stoppedThreads_.add(thread);
 }
 
 folly::EventBase* MuxIOThreadPoolExecutor::pickEvb() {
@@ -336,11 +354,7 @@ void MuxIOThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
 
 std::vector<folly::Executor::KeepAlive<folly::EventBase>>
 MuxIOThreadPoolExecutor::getAllEventBases() {
-  std::vector<Executor::KeepAlive<EventBase>> evbs;
-  for (auto& evb : evbs_) {
-    evbs.emplace_back(evb.get());
-  }
-  return evbs;
+  return keepAlives_;
 }
 
 folly::EventBaseManager* MuxIOThreadPoolExecutor::getEventBaseManager() {
@@ -351,29 +365,9 @@ EventBase* MuxIOThreadPoolExecutor::getEventBase() {
   return pickEvb();
 }
 
-void MuxIOThreadPoolExecutor::wakeup(size_t num) {
-  for (size_t i = 0; i < num; ++i) {
-    auto& evb = evbs_[i % evbs_.size()];
-    evb->runInEventBaseThread([]() {});
-  }
-}
-
 void MuxIOThreadPoolExecutor::stopThreads(size_t n) {
-  std::vector<ThreadPtr> stoppedThreads;
-  stoppedThreads.reserve(n);
   for (size_t i = 0; i < n; i++) {
-    const auto ioThread =
-        std::static_pointer_cast<IOThread>(threadList_.get()[i]);
-    for (auto& o : observers_) {
-      o->threadStopped(ioThread.get());
-    }
-    ioThread->shouldRun = false;
-    stoppedThreads.push_back(ioThread);
-  }
-  wakeup(n);
-  for (const auto& thread : stoppedThreads) {
-    stoppedThreads_.add(thread);
-    threadList_.remove(thread);
+    queue_.add(new EvbHandler); // Poison.
   }
 }
 
