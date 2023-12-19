@@ -21,6 +21,7 @@
 #if FOLLY_HAS_EPOLL
 
 #include <chrono>
+#include <limits>
 
 #include <folly/Portability.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
@@ -31,19 +32,23 @@
 
 namespace folly {
 /**
- * A pool of EventBases scheduled over a pool of threads
+ * NOTE: This is highly experimental. Do not use.
  *
- * Similar to the folly::IOThreadPoolExecutor with the following differences
- * The number of event bases can be larger than the number of threads
- * Event base loops will be scheduled on an available thread based on the
- * wakeup interval specified in the options - the logic to wake up threads is
- * described in the ThrottledLifoSem documentation
- * This allows us to reduce the number of wakeups and also to allow for better
- * load balancing across handlers - for example, we can create a large number of
- * event bases processed by a smaller number of threads and distribute the
- * handlersA pool of EventBases scheduled over a pool of threads.
- * We currently do not support dynamically changing the number of threads at
- * runtime
+ * A pool of EventBases scheduled over a pool of threads.
+ *
+ * Intended as a drop-in replacement for folly::IOThreadPoolExecutor, but with a
+ * substantially different design: EventBases are not pinned to threads, so it
+ * is possible to have more EventBases than threads. EventBases that have ready
+ * events can be scheduled on any of the threads in the pool, with the
+ * scheduling governed by ThrottledLifoSem.
+ *
+ * This allows to batch the loops of multiple EventBases on a single thread as
+ * long as each runs for a short enough time, reducing the number of wake-ups
+ * and allowing for better load balancing across handlers. For example, we can
+ * create a large number of EventBases processed by a smaller number of threads
+ * and distribute the handlers.
+ *
+ * TODO(ott): Fully support setNumThreads().
  */
 class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
  public:
@@ -55,8 +60,8 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       return *this;
     }
 
-    Options& setNumEVBs(size_t num) {
-      numEvbs = num;
+    Options& setNumEventBases(size_t num) {
+      numEventBases = num;
       return *this;
     }
 
@@ -71,21 +76,21 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     }
 
     bool enableThreadIdCollection{false};
-    size_t numEvbs{0}; // 0 means number of threads
+    // If 0, the number of EventBases is set to the number of threads.
+    size_t numEventBases{0};
     std::chrono::nanoseconds wakeUpInterval{std::chrono::microseconds(100)};
     size_t maxEvents{64};
   };
 
   struct Stats {
-    // events - number of events returned
-    // from the epoll_wait
-    int minNumEvents{-1};
-    int maxNumEvents{-1};
+    // Track number of epoll wake-ups and number of events returned.
+    int minNumEvents{std::numeric_limits<int>::max()};
+    int maxNumEvents{std::numeric_limits<int>::min()};
     size_t totalNumEvents{0};
     size_t totalWakeups{0};
-    std::chrono::microseconds totalWait{};
-    std::chrono::microseconds minWait{0};
-    std::chrono::microseconds maxWait{0};
+    std::chrono::microseconds totalWait{0};
+    std::chrono::microseconds minWait{std::chrono::microseconds::max()};
+    std::chrono::microseconds maxWait{std::chrono::microseconds::min()};
 
     void update(int numEvents, std::chrono::microseconds wait);
   };
@@ -94,7 +99,7 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       size_t numThreads,
       Options options = {},
       std::shared_ptr<ThreadFactory> threadFactory =
-          std::make_shared<NamedThreadFactory>("MuxIOThreadPoolExecutor"),
+          std::make_shared<NamedThreadFactory>("MuxIOTPEx"),
       folly::EventBaseManager* ebm = folly::EventBaseManager::get());
 
   ~MuxIOThreadPoolExecutor() override;
@@ -111,6 +116,8 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   std::vector<folly::Executor::KeepAlive<folly::EventBase>> getAllEventBases()
       override;
 
+  folly::EventBaseManager* getEventBaseManager() override;
+
   // Returns nullptr unless explicitly enabled through constructor
   folly::WorkerProvider* getThreadIdCollector() override {
     return threadIdCollector_.get();
@@ -124,6 +131,7 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     explicit IOThread(MuxIOThreadPoolExecutor* pool) : Thread(pool) {}
 
     std::atomic<bool> shouldRun{true};
+    EventBase* curEventBase; // Only accessed inside the worker thread.
   };
 
   struct Handler {
@@ -135,14 +143,13 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
     bool handleInline() const { return bHandleInline; }
 
-    virtual ~Handler();
+    virtual ~Handler() = default;
     virtual void handle(MuxIOThreadPoolExecutor* parent) = 0;
     virtual folly::EventBase* getEventBase() { return nullptr; }
   };
 
   struct EvbHandler : public Handler {
     explicit EvbHandler(folly::EventBase* e);
-    ~EvbHandler() override;
     void handle(MuxIOThreadPoolExecutor* parent) override;
 
     folly::EventBase* evb{nullptr};
@@ -159,11 +166,6 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     void handle(MuxIOThreadPoolExecutor* parent) override;
   };
 
-  struct HandlerTask {
-    explicit HandlerTask(Handler* h) : handler(h) {}
-    Handler* handler{nullptr};
-  };
-
   template <class T>
   class Queue {
    public:
@@ -176,12 +178,11 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     std::atomic<T*> head_{nullptr};
   };
 
-  void addHandler(Handler* handler, bool first, bool persist);
-  void enqueueHandler(Handler* handler);
-  void wakeup(size_t num);
+  enum class AddHandlerType { kPersist, kOneShot, kOneShotRearm };
 
-  void notifyFd() { returnEvfd_.notifyFd(); }
-  void drainFd() { returnEvfd_.drainFd(); }
+  void addHandler(Handler* handler, AddHandlerType type);
+  void returnHandler(Handler* handler);
+  void wakeup(size_t num);
 
   void mainThreadFunc();
 
@@ -190,28 +191,26 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   void maybeUnregisterEventBases(Observer* o);
 
   ThreadPtr makeThread() override;
-  folly::EventBase* pickEVB();
+  folly::EventBase* pickEvb();
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
   size_t getPendingTaskCountImpl() const override final;
 
   std::unique_ptr<folly::EventBase> makeEventBase();
 
-  Options options_;
-  relaxed_atomic<size_t> nextEVB_;
-  folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
+  const Options options_;
   folly::EventBaseManager* eventBaseManager_;
-  std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_;
 
   int epFd_{-1};
+  relaxed_atomic<size_t> nextEvb_{0};
+  folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
+  std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_;
   std::vector<std::unique_ptr<folly::EventBase>> evbs_;
   std::vector<std::unique_ptr<EvbHandler>> handlers_;
   std::unique_ptr<std::thread> mainThread_;
   std::atomic<bool> stop_{false};
   std::atomic<size_t> pendingTasks_{0};
-  std::unique_ptr<
-      folly::UnboundedBlockingQueue<HandlerTask, folly::ThrottledLifoSem>>
-      queue_;
+  folly::UnboundedBlockingQueue<Handler*, folly::ThrottledLifoSem> queue_;
   Stats stats_;
 
   Queue<Handler> returnQueue_;

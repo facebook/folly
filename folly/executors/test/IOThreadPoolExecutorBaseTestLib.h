@@ -17,6 +17,7 @@
 #include <atomic>
 #include <memory>
 #include <optional>
+#include <random>
 
 #include <folly/container/F14Set.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
@@ -58,7 +59,29 @@ TYPED_TEST_P(IOThreadPoolExecutorBaseTest, IOObserver) {
   EXPECT_EQ(observer2->evbs.size(), 0);
 }
 
-REGISTER_TYPED_TEST_SUITE_P(IOThreadPoolExecutorBaseTest, IOObserver);
+TYPED_TEST_P(IOThreadPoolExecutorBaseTest, GetEventBaseFromEvb) {
+  static constexpr size_t kNumThreads = 16;
+  TypeParam ex{kNumThreads};
+  auto evbs = ex.getAllEventBases();
+  std::shuffle(evbs.begin(), evbs.end(), std::default_random_engine{});
+
+  for (auto ka : evbs) {
+    auto* evb = ka.get();
+    // If called from the EventBase thread, getEventBase() and add() stick to
+    // the current EventBase.
+    evb->runInEventBaseThreadAndWait([&] {
+      EXPECT_EQ(evb, EventBaseManager::get()->getExistingEventBase());
+      EXPECT_EQ(evb, ex.getEventBase());
+      ex.add([&ex, evb] {
+        EXPECT_EQ(evb, ex.getEventBase());
+        EXPECT_EQ(evb, EventBaseManager::get()->getExistingEventBase());
+      });
+    });
+  }
+}
+
+REGISTER_TYPED_TEST_SUITE_P(
+    IOThreadPoolExecutorBaseTest, IOObserver, GetEventBaseFromEvb);
 
 } // namespace test
 } // namespace folly

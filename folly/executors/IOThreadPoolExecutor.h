@@ -43,6 +43,8 @@ class IOThreadPoolExecutorBase : public ThreadPoolExecutor,
   virtual std::vector<folly::Executor::KeepAlive<folly::EventBase>>
   getAllEventBases() = 0;
 
+  virtual folly::EventBaseManager* getEventBaseManager() = 0;
+
   class IOObserver : public Observer {
    public:
     virtual void registerEventBase(EventBase&) {}
@@ -125,7 +127,7 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
   static folly::EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle* h);
 
-  folly::EventBaseManager* getEventBaseManager();
+  folly::EventBaseManager* getEventBaseManager() override;
 
   // Returns nullptr unless explicitly enabled through constructor
   folly::WorkerProvider* getThreadIdCollector() override {
