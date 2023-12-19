@@ -27,6 +27,11 @@
 #define FOLLY_CPLUSPLUS __cplusplus
 #endif
 
+// On MSVC an incorrect <version> header get's picked up
+#if !defined(_MSC_VER) && __has_include(<version>)
+#include <version>
+#endif
+
 static_assert(FOLLY_CPLUSPLUS >= 201402L, "__cplusplus >= 201402L");
 
 #if defined(__GNUC__) && !defined(__clang__)
@@ -606,4 +611,10 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_HAS_DEDUCTION_GUIDES 1
 #else
 #define FOLLY_HAS_DEDUCTION_GUIDES 0
+#endif
+// C++20 ranges
+#if defined(__cpp_lib_ranges)
+#define FOLLY_HAS_RANGES 1
+#else
+#define FOLLY_HAS_RANGES 0
 #endif
