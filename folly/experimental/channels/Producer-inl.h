@@ -102,7 +102,7 @@ typename Producer<TValue>::KeepAlive Producer<TValue>::getKeepAlive() {
 
 template <typename TValue>
 void Producer<TValue>::consume(detail::ChannelBridgeBase*) {
-  onClosed().scheduleOn(getExecutor()).start([=](auto) {
+  onClosed().scheduleOn(getExecutor()).start([=, this](auto) {
     // Decrement ref count
     KeepAlive(this);
   });
