@@ -155,7 +155,7 @@ class ProxyChannelProcessor : public IChannelCallback {
    * a value from an input receiver or a cancellation from the output receiver).
    */
   void consume(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       auto state = state_.wlock();
       if (bridge == state->sender.get()) {
         // The consumer of the output receiver has stopped consuming.
