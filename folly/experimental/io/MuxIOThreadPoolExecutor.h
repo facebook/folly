@@ -22,7 +22,6 @@
 
 #include <chrono>
 
-#include <folly/AtomicLinkedList.h>
 #include <folly/Portability.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/QueueObserver.h>
@@ -128,15 +127,13 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   };
 
   struct Handler {
-    folly::AtomicIntrusiveLinkedListHook<Handler> hook_;
+    Handler* next{nullptr};
     int fd{-1};
     const bool bHandleInline;
 
     explicit Handler(bool handleInline) : bHandleInline(handleInline) {}
 
     bool handleInline() const { return bHandleInline; }
-
-    Handler*& next() { return hook_.next; }
 
     virtual ~Handler();
     virtual void handle(MuxIOThreadPoolExecutor* parent) = 0;
@@ -165,6 +162,18 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   struct HandlerTask {
     explicit HandlerTask(Handler* h) : handler(h) {}
     Handler* handler{nullptr};
+  };
+
+  template <class T>
+  class Queue {
+   public:
+    bool insert(T* t);
+    T* arm();
+
+   private:
+    static T* kQueueArmedTag() { return reinterpret_cast<T*>(1); }
+
+    std::atomic<T*> head_{nullptr};
   };
 
   void addHandler(Handler* handler, bool first, bool persist);
@@ -205,9 +214,7 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       queue_;
   Stats stats_;
 
-  // queueing back
-  using AtomicList = folly::AtomicIntrusiveLinkedList<Handler, &Handler::hook_>;
-  AtomicList returnList_;
+  Queue<Handler> returnQueue_;
   EventFdHandler returnEvfd_;
 };
 

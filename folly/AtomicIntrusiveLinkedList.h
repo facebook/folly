@@ -92,10 +92,7 @@ class AtomicIntrusiveLinkedList {
    * WARNING: The returned pointer might not be valid if the list
    * is modified concurrently!
    */
-  T* unsafeHead() const {
-    auto* ret = head_.load(std::memory_order_acquire);
-    return reinterpret_cast<intptr_t>(ret) == kQueueArmedTag ? nullptr : ret;
-  }
+  T* unsafeHead() const { return head_.load(std::memory_order_acquire); }
 
   /**
    * Returns true if the list is empty.
@@ -108,38 +105,24 @@ class AtomicIntrusiveLinkedList {
   /**
    * Atomically insert t at the head of the list.
    * @return True if the inserted element is the only one in the list
-   *         after the call and the prev head of the list was nullptr.
+   *         after the call.
    */
-  bool insertHead(T* t) { return insertHeadInternal(t, true); }
+  bool insertHead(T* t) {
+    assert(next(t) == nullptr);
 
-  /**
-   * Atomically insert t at the head of the list.
-   * @return True if the inserted element is the only one in the list
-   *         after the call and the prev head of the list was kQueueArmedTag.
-   */
-  bool insertHeadArm(T* t) { return insertHeadInternal(t, false); }
-
-  /**
-   * Atomically replaces the head with kQueueArmedTag if it is nullptr
-   * or it replaces the head with nullptr otherwise
-   * Calling arm() for a queue where the head is already kQueueArmedTag
-   * will return nullptr without changing the head value
-   * @return previous head value
-   */
-
-  T* arm() {
-    auto* kTagPtr = reinterpret_cast<T*>(kQueueArmedTag);
-    T* oldHead = head_.load(std::memory_order_relaxed);
-    T* newHead;
+    auto oldHead = head_.load(std::memory_order_relaxed);
     do {
-      newHead = (oldHead == nullptr || oldHead == kTagPtr) ? kTagPtr : nullptr;
-    } while (!head_.compare_exchange_strong(
-        oldHead,
-        newHead,
-        std::memory_order_acq_rel,
-        std::memory_order_relaxed));
+      next(t) = oldHead;
+      /* oldHead is updated by the call below.
 
-    return (oldHead == nullptr || oldHead == kTagPtr) ? nullptr : oldHead;
+         NOTE: we don't use next(t) instead of oldHead directly due to
+         compiler bugs (GCC prior to 4.8.3 (bug 60272), clang (bug 18899),
+         MSVC (bug 819819); source:
+         http://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange */
+    } while (!head_.compare_exchange_weak(
+        oldHead, t, std::memory_order_release, std::memory_order_relaxed));
+
+    return oldHead == nullptr;
   }
 
   /**
@@ -191,28 +174,6 @@ class AtomicIntrusiveLinkedList {
 
  private:
   std::atomic<T*> head_{nullptr};
-  static constexpr intptr_t kQueueArmedTag = 1;
-
-  bool insertHeadInternal(T* t, bool checkForNull) {
-    assert(next(t) == nullptr);
-
-    auto oldHead = head_.load(std::memory_order_relaxed);
-    do {
-      next(t) = reinterpret_cast<intptr_t>(oldHead) == kQueueArmedTag ? nullptr
-                                                                      : oldHead;
-      /* oldHead is updated by the call below.
-
-         NOTE: we don't use next(t) instead of oldHead directly due to
-         compiler bugs (GCC prior to 4.8.3 (bug 60272), clang (bug 18899),
-         MSVC (bug 819819); source:
-         http://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange */
-    } while (!head_.compare_exchange_weak(
-        oldHead, t, std::memory_order_release, std::memory_order_relaxed));
-
-    return checkForNull
-        ? (oldHead == nullptr)
-        : (reinterpret_cast<intptr_t>(oldHead) == kQueueArmedTag);
-  }
 
   static T*& next(T* t) { return (t->*HookMember).next; }
 

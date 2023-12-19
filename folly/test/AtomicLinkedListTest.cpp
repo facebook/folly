@@ -39,8 +39,6 @@ class TestIntrusiveObject {
 
   size_t id() const { return id_; }
 
-  TestIntrusiveObject*& next() { return hook_.next; }
-
  private:
   folly::AtomicIntrusiveLinkedListHook<TestIntrusiveObject> hook_;
   size_t id_;
@@ -147,89 +145,6 @@ TEST(AtomicIntrusiveLinkedList, Move) {
     ++id;
     EXPECT_EQ(id, obj->id());
   });
-}
-
-TEST(AtomicIntrusiveLinkedList, Arm) {
-  TestIntrusiveObject a(1), b(2), c(3);
-
-  TestIntrusiveObject::List list;
-
-  EXPECT_TRUE(list.empty());
-  EXPECT_EQ(nullptr, list.unsafeHead());
-
-  // arm first
-  {
-    EXPECT_EQ(nullptr, list.arm());
-    EXPECT_TRUE(list.insertHeadArm(&a));
-    EXPECT_EQ(&a, list.unsafeHead());
-    EXPECT_FALSE(list.insertHeadArm(&b));
-    EXPECT_EQ(&b, list.unsafeHead());
-
-    EXPECT_FALSE(list.empty());
-
-    size_t id = 0;
-    list.sweep([&](TestIntrusiveObject* obj) mutable {
-      EXPECT_EQ(nullptr, list.unsafeHead());
-      ++id;
-      EXPECT_EQ(id, obj->id());
-    });
-
-    EXPECT_TRUE(list.empty());
-    EXPECT_EQ(nullptr, list.unsafeHead());
-  }
-  // arm twice
-  {
-    EXPECT_EQ(nullptr, list.arm());
-    EXPECT_EQ(nullptr, list.arm());
-    EXPECT_TRUE(list.insertHeadArm(&a));
-    EXPECT_EQ(&a, list.unsafeHead());
-    auto* ret = list.arm();
-    // unlink
-    while (ret) {
-      auto* next = ret->next();
-      ret->next() = nullptr;
-      ret = next;
-    }
-  }
-
-  // do not arm first
-  {
-    EXPECT_FALSE(list.insertHeadArm(&a));
-    EXPECT_EQ(&a, list.unsafeHead());
-    EXPECT_FALSE(list.insertHeadArm(&b));
-    EXPECT_EQ(&b, list.unsafeHead());
-
-    EXPECT_FALSE(list.empty());
-    auto* ret = list.arm();
-    EXPECT_EQ(&b, ret);
-    EXPECT_TRUE(list.empty());
-    EXPECT_EQ(nullptr, list.unsafeHead());
-
-    // unlink
-    while (ret) {
-      auto* next = ret->next();
-      ret->next() = nullptr;
-      ret = next;
-    }
-  }
-
-  // Try re-inserting the same item (b) and a new item (c)
-  {
-    EXPECT_FALSE(list.insertHeadArm(&b));
-    EXPECT_FALSE(list.insertHeadArm(&c));
-
-    EXPECT_FALSE(list.empty());
-
-    size_t id = 1;
-    list.sweep([&](TestIntrusiveObject* obj) mutable {
-      ++id;
-      EXPECT_EQ(id, obj->id());
-    });
-
-    EXPECT_TRUE(list.empty());
-  }
-
-  TestIntrusiveObject::List movedList = std::move(list);
 }
 
 TEST(AtomicIntrusiveLinkedList, Stress) {

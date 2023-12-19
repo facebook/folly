@@ -104,6 +104,38 @@ void MuxIOThreadPoolExecutor::EventFdHandler::handle(
   parent->handleDequeue();
 }
 
+template <class T>
+bool MuxIOThreadPoolExecutor::Queue<T>::insert(T* t) {
+  DCHECK(t->next == nullptr);
+
+  auto oldHead = head_.load(std::memory_order_relaxed);
+  bool ret;
+  do {
+    t->next = (ret = (oldHead == kQueueArmedTag())) ? nullptr : oldHead;
+  } while (!head_.compare_exchange_weak(
+      oldHead, t, std::memory_order_release, std::memory_order_relaxed));
+  return ret;
+}
+
+template <class T>
+T* MuxIOThreadPoolExecutor::Queue<T>::arm() {
+  T* oldHead = head_.load(std::memory_order_relaxed);
+  T* newHead;
+  T* ret;
+  do {
+    if (oldHead == nullptr || oldHead == kQueueArmedTag()) {
+      newHead = kQueueArmedTag();
+      ret = nullptr;
+    } else {
+      newHead = nullptr;
+      ret = oldHead;
+    }
+  } while (!head_.compare_exchange_weak(
+      oldHead, newHead, std::memory_order_acq_rel, std::memory_order_relaxed));
+
+  return ret;
+}
+
 MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
     size_t numThreads,
     Options options,
@@ -114,13 +146,13 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
       options_(options),
       nextEVB_(0),
       eventBaseManager_(ebm) {
-  returnList_.arm();
   epFd_ = ::epoll_create1(EPOLL_CLOEXEC);
 
   if (epFd_ < 0) {
     throw std::runtime_error(folly::errnoStr(errno));
   }
 
+  returnQueue_.arm();
   addHandler(&returnEvfd_, true /*first*/, true /*persist*/);
 
   if (options_.numEvbs == 0) {
@@ -214,7 +246,7 @@ void MuxIOThreadPoolExecutor::addHandler(
 }
 
 void MuxIOThreadPoolExecutor::enqueueHandler(Handler* handler) {
-  if (returnList_.insertHeadArm(handler)) {
+  if (returnQueue_.insert(handler)) {
     notifyFd();
   }
 }
@@ -222,10 +254,9 @@ void MuxIOThreadPoolExecutor::enqueueHandler(Handler* handler) {
 void MuxIOThreadPoolExecutor::handleDequeue() {
   drainFd();
 
-  while (auto* handler = returnList_.arm()) {
+  while (auto* handler = returnQueue_.arm()) {
     while (handler) {
-      auto* next = handler->next();
-      handler->next() = nullptr;
+      auto* next = std::exchange(handler->next, nullptr);
       addHandler(handler, false /*first*/, false /*persist*/);
       handler = next;
     }
