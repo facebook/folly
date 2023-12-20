@@ -16,6 +16,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <vector>
 
@@ -2965,4 +2966,20 @@ TEST(FiberManager, fibersPreserveAsyncStackRoots) {
 
     EXPECT_EQ(originalRoot, folly::tryGetCurrentAsyncStackRoot());
   }
+}
+
+TEST(FiberManager, EventBaseMigratingThreads) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  folly::fibers::Baton baton;
+  auto f = fm.addTaskFuture([&baton] { baton.wait(); });
+  evb.drive();
+
+  std::thread anotherThread([&] { evb.drive(); });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds{100});
+  baton.post();
+  anotherThread.join();
+
+  EXPECT_TRUE(f.isReady());
 }

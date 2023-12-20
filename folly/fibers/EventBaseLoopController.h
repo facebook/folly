@@ -46,6 +46,10 @@ class EventBaseLoopController : public ExecutorBasedLoopController {
 
   folly::Executor* executor() const override { return eventBase_; }
 
+  bool isInLoopThread() override {
+    return eventBase_->getEventBase().inRunningEventBaseThread();
+  }
+
  private:
   class ControllerCallback : public folly::EventBase::LoopCallback {
    public:

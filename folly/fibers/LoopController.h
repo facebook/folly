@@ -68,6 +68,14 @@ class LoopController {
    * Executor backing the timer is already destroyed).
    */
   virtual HHWheelTimer* timer() = 0;
+
+  /**
+   * Should return true only if is the same thread that is (if called from
+   * within runLoop()) or will be calling runLoop() or a thread that is
+   * syncronized with the thread that will be calling runLoop() (i.e. the
+   * currently executing "task" has to be completed before runLoop() is called).
+   */
+  virtual bool isInLoopThread() = 0;
 };
 } // namespace fibers
 } // namespace folly

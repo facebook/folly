@@ -15,10 +15,17 @@
  */
 
 #pragma once
+#include <thread>
 #include <folly/futures/Future.h>
 
 namespace folly {
 namespace fibers {
+
+inline void ExecutorLoopController::assumeCalledFromLoopThread() {
+  DCHECK(
+      loopThread_ == std::thread::id{} ||
+      loopThread_ == std::this_thread::get_id());
+}
 
 inline ExecutorLoopController::ExecutorLoopController(folly::Executor* executor)
     : executor_(executor),
@@ -32,6 +39,7 @@ inline void ExecutorLoopController::setFiberManager(fibers::FiberManager* fm) {
 }
 
 inline void ExecutorLoopController::schedule() {
+  assumeCalledFromLoopThread();
   // add() is thread-safe, so this isn't properly optimized for addTask()
   if (!executorKeepAlive_) {
     executorKeepAlive_ = getKeepAliveToken(executor_);
@@ -49,6 +57,9 @@ inline void ExecutorLoopController::schedule() {
 }
 
 inline void ExecutorLoopController::runLoop() {
+  assumeCalledFromLoopThread();
+  // We are assuming that Executor will be always pinned to a thread.
+  loopThread_ = std::this_thread::get_id();
   if (!executorKeepAlive_) {
     if (!fm_->hasTasks()) {
       return;
@@ -62,6 +73,9 @@ inline void ExecutorLoopController::runLoop() {
 }
 
 inline void ExecutorLoopController::runEagerFiber(Fiber* fiber) {
+  assumeCalledFromLoopThread();
+  // We are assuming that Executor will be always pinned to a thread.
+  loopThread_ = std::this_thread::get_id();
   if (!executorKeepAlive_) {
     executorKeepAlive_ = getKeepAliveToken(executor_);
   }

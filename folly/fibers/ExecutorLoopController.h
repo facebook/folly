@@ -85,6 +85,7 @@ class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
   fibers::FiberManager* fm_{nullptr};
   ExecutorTimeoutManager timeoutManager_;
   HHWheelTimer::UniquePtr timer_;
+  std::atomic<std::thread::id> loopThread_;
 
   class LocalCallbackControlBlock {
    public:
@@ -137,6 +138,11 @@ class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
   void runEagerFiber(Fiber*) override;
   void scheduleThreadSafe() override;
   HHWheelTimer* timer() override;
+  bool isInLoopThread() override {
+    return loopThread_ == std::this_thread::get_id();
+  }
+
+  void assumeCalledFromLoopThread();
 
   friend class fibers::FiberManager;
 };
