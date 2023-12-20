@@ -133,6 +133,23 @@ struct Die {
   uint8_t attrOffset = 0;
   // Offset within debug info.
   uint32_t offset = 0;
+
+  // If nonzero, nextOffset is the offset within .debug_info
+  // corresponding to the beginning of this DIE's first child or next
+  // sibling (depending on whether abbr.hasChildren). This is what
+  // forEachAttribute() would return. So nextOffset - offset is the
+  // length of this DIE. If this points to a zero byte then there
+  // are no children or no further siblings. If the offset itself
+  // is zero, we don't know yet what it should be.
+  mutable uint32_t nextOffset = 0;
+
+  // If nonzero, nextSiblingOffset is the offset within .debug_info
+  // corresponding to the beginning of this DIE's next sibling.
+  // This is what forEachChild() would return. If this points to
+  // a zero byte then there are no further siblings. If the offset
+  // itself is zero, we don't know yet what it should be.
+  mutable uint32_t nextSiblingOffset = 0;
+
   uint64_t code = 0;
   DIEAbbreviation abbr;
 };

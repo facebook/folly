@@ -782,8 +782,13 @@ size_t forEachAttribute(
     if (!f(attr)) {
       return static_cast<size_t>(-1);
     }
+    if (spec.name == DW_AT_sibling && !die.nextSiblingOffset &&
+        spec.form != DW_FORM_ref_addr) {
+      die.nextSiblingOffset = cu.offset + boost::get<uint64_t>(attr.attrValue);
+    }
   }
-  return values.data() - cu.debugSections.debugInfo.data();
+  die.nextOffset = values.data() - cu.debugSections.debugInfo.data();
+  return die.nextOffset;
 }
 
 folly::StringPiece getFunctionNameFromDie(
