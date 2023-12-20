@@ -238,7 +238,7 @@ bool DwarfImpl::findLocation(
     // - e.g. coroutines may add .resume/.destroy/.cleanup suffixes
     //   to the symbol name, but not to DW_AT_linkage_name.
     // - If names share a common prefix, prefer the more specific name.
-    if (!folly::StringPiece(frame.name).startsWith(name)) {
+    if (!frame.name || !folly::StringPiece(frame.name).startsWith(name)) {
       frame.name = name.data();
     }
   }
