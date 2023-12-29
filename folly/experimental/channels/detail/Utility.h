@@ -171,7 +171,7 @@ class SenderCancellationCallback : public IChannelCallback {
    */
   void consume(ChannelBridgeBase*) override {
     cancelSource_.requestCancellation();
-    executor_->add([=, this]() {
+    executor_->add([this]() {
       CHECK(!callbackToFire_.second.isReady());
       callbackToFire_.first.setValue(CallbackToFire::Consume);
     });
@@ -183,7 +183,7 @@ class SenderCancellationCallback : public IChannelCallback {
    */
   void canceled(ChannelBridgeBase*) override {
     cancelSource_.requestCancellation();
-    executor_->add([=, this]() {
+    executor_->add([this]() {
       CHECK(!callbackToFire_.second.isReady());
       callbackToFire_.first.setValue(CallbackToFire::Canceled);
     });
