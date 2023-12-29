@@ -54,7 +54,13 @@ int64_t TimeoutQueue::runInternal(int64_t now, bool onceOnly) {
     std::vector<Event> expired;
     std::move(byExpiration.begin(), end, std::back_inserter(expired));
     byExpiration.erase(byExpiration.begin(), end);
+
+    // Call callbacks
     for (const auto& event : expired) {
+      event.callback(event.id, now);
+    }
+    
+    for (auto&& event : expired) {
       // Reinsert if repeating, do this before executing callbacks
       // so the callbacks have a chance to call erase
       if (event.repeatInterval >= 0) {
@@ -64,11 +70,6 @@ int64_t TimeoutQueue::runInternal(int64_t now, bool onceOnly) {
              event.repeatInterval,
              std::move(event.callback)});
       }
-    }
-
-    // Call callbacks
-    for (const auto& event : expired) {
-      event.callback(event.id, now);
     }
     nextExp = nextExpiration();
   } while (!onceOnly && nextExp <= now);
