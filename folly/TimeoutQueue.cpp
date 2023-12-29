@@ -62,7 +62,7 @@ int64_t TimeoutQueue::runInternal(int64_t now, bool onceOnly) {
             {event.id,
              now + event.repeatInterval,
              event.repeatInterval,
-             event.callback});
+             std::move(event.callback)});
       }
     }
 
