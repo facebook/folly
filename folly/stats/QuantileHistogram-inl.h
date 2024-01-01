@@ -32,7 +32,7 @@ QuantileHistogram<Q> QuantileHistogram<Q>::merge(
   }
   merged.count_ = 0;
 
-  for (const auto qhist : qhists) {
+  for (const auto& qhist : qhists) {
     merged.count_ += qhist.count();
     if (qhist.min() < merged.min()) {
       merged.locations_[0] = qhist.min();
@@ -48,7 +48,7 @@ QuantileHistogram<Q> QuantileHistogram<Q>::merge(
 
   for (size_t i = 0; i < quantiles().size(); i++) {
     double weighted = 0.0;
-    for (const auto qhist : qhists) {
+    for (const auto& qhist : qhists) {
       weighted += qhist.locations_[i] * qhist.count();
     }
     merged.locations_[i] = weighted / merged.count();
