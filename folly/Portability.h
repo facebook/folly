@@ -73,17 +73,17 @@ constexpr bool kHasUnalignedAccess = false;
 // warn unused result
 #if defined(__has_cpp_attribute)
 #if __has_cpp_attribute(nodiscard)
+#if defined(__clang__) || defined(__GNUC__)
+#if __clang_major__ >= 10 || __GNUC__ >= 10
+// early clang and gcc both warn on [[nodiscard]] when applied to class ctors
+// easiest option is just to avoid emitting [[nodiscard]] under early clang/gcc
 #define FOLLY_NODISCARD [[nodiscard]]
 #endif
 #endif
-#if !defined FOLLY_NODISCARD
-#if defined(_MSC_VER) && (_MSC_VER >= 1700)
-#define FOLLY_NODISCARD _Check_return_
-#elif defined(__GNUC__)
-#define FOLLY_NODISCARD __attribute__((__warn_unused_result__))
-#else
-#define FOLLY_NODISCARD
 #endif
+#endif
+#ifndef FOLLY_NODISCARD
+#define FOLLY_NODISCARD
 #endif
 
 // target
