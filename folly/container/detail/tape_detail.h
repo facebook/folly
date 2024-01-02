@@ -41,19 +41,19 @@
 namespace folly {
 namespace detail {
 
-template <template <typename...> class templ, typename T>
+template <template <typename...> class Templ, typename T>
 struct instance_of : std::false_type {};
 
-template <template <typename...> class templ, typename... Args>
-struct instance_of<templ, templ<Args...>> : std::true_type {};
+template <template <typename...> class Templ, typename... Args>
+struct instance_of<Templ, Templ<Args...>> : std::true_type {};
 
-template <template <typename...> class templ, typename T>
-constexpr bool instance_of_v = instance_of<templ, T>::value;
+template <template <typename...> class Templ, typename T>
+constexpr bool instance_of_v = instance_of<Templ, T>::value;
 
-#if FOLLLY_HAS_RANGES
+#if FOLLY_HAS_RANGES
 template <typename R>
 constexpr bool guaranteed_contigious_range_cpp20_v =
-    std::ranges::contigious_iterator<I>;
+    std::ranges::contiguous_range<R>;
 #endif
 
 template <typename R>
@@ -84,7 +84,9 @@ struct tape_reference_traits {
   using iterator = typename Container::const_iterator;
   using reference = Range<iterator>;
 
-  static reference make(iterator f, iterator l) { return reference{f, l}; }
+  static constexpr reference make(iterator f, iterator l) {
+    return reference{f, l};
+  }
 };
 
 template <typename Container>
@@ -93,7 +95,7 @@ struct tape_reference_traits<Container, true> {
   using value_type = typename std::iterator_traits<iterator>::value_type;
   using reference = Range<const value_type*>;
 
-  static auto* get_address(iterator it) {
+  static constexpr auto* get_address(iterator it) {
     // std::to_address is only available since C++20
     if constexpr (std::is_pointer_v<iterator>) {
       return it;
@@ -102,7 +104,7 @@ struct tape_reference_traits<Container, true> {
     }
   }
 
-  static reference make(iterator f, iterator l) {
+  static constexpr reference make(iterator f, iterator l) {
     return reference{get_address(f), get_address(l)};
   }
 };
@@ -124,13 +126,16 @@ using maybe_range_value_t =
 // This is a big function to inline but it's used insie a big function too
 template <typename I, typename S>
 auto compute_total_tape_len_if_possible(I f, S l) {
-  using successs = std::pair<std::size_t, std::size_t>;
+  using success = std::pair<std::size_t, std::size_t>;
   using failure = fake_type;
   if constexpr (!iterator_category_matches_v<I, std::forward_iterator_tag>) {
     return failure{};
-  } else if constexpr (std::is_convertible_v<
-                           iterator_value_type_t<I>,
-                           folly::StringPiece>) {
+  }
+  // We have to special case StringPiece to special case `const char*` and
+  // `char[]`
+  else if constexpr (std::is_convertible_v<
+                         iterator_value_type_t<I>,
+                         folly::StringPiece>) {
     std::size_t records_size = 0U;
     std::size_t flat_size = 0U;
 
@@ -138,7 +143,7 @@ auto compute_total_tape_len_if_possible(I f, S l) {
       ++records_size;
       flat_size += folly::StringPiece(*i).size();
     }
-    return successs{records_size, flat_size};
+    return success{records_size, flat_size};
   } else if constexpr (!range_has_known_distance_v<iterator_value_type_t<I>>) {
     return failure{};
   } else {
@@ -150,7 +155,7 @@ auto compute_total_tape_len_if_possible(I f, S l) {
       flat_size +=
           static_cast<std::size_t>(std::distance(std::begin(*i), std::end(*i)));
     }
-    return successs{records_size, flat_size};
+    return success{records_size, flat_size};
   }
 }
 

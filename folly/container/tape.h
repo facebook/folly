@@ -51,7 +51,7 @@ namespace folly {
  * Instead of having a container of containers it's more efficient to have
  * a single container and store where the separators are.
  *
- * [string second string thrid string]
+ * [string second string third string]
  *  ^      ^             ^
  *
  * One subrange of internal elements we call a `record`.
@@ -89,6 +89,12 @@ namespace folly {
  *   data (in special cases).
  * * when converting indexes to pointers, compiler has to shift.
  *   For contigious containers we can store offsets in bytes.
+ *
+ * ## Exception safety
+ * We provide only basic exception safety: the object is destructible or
+ * assignable.
+ * `std::bad_alloc` is assumed to never happen (a function that uses malloc can
+ * be marked noexcept).
  *
  * ## NAME TAPE
  *
@@ -143,9 +149,15 @@ class tape {
   static constexpr bool range_of_records =
       iterator_of_records<detail::maybe_range_const_iterator_t<I>>;
 
-  // constructors -----
+  // rule of 5
+  tape(const tape&) = default;
+  tape& operator=(const tape&) = default;
+  ~tape() = default;
+  tape(tape&&) noexcept;
+  tape& operator=(tape&&) noexcept;
 
-  tape() = default;
+  // constructors -----
+  tape() noexcept = default;
 
   template <
       typename I,
@@ -166,31 +178,45 @@ class tape {
 
   // access ------
 
-  [[nodiscard]] const_reference operator[](size_type i) const {
+  [[nodiscard]] const_reference operator[](size_type i) const noexcept {
     return ref_traits::make(
         data_.begin() + markers_[i], data_.begin() + markers_[i + 1]);
   }
 
-  [[nodiscard]] bool empty() const { return size() == 0; }
-  [[nodiscard]] size_type size() const { return markers_.size() - 1; }
-  [[nodiscard]] size_type size_flat() const { return data_.size(); }
+  [[nodiscard]] const_reference at(size_type i) const {
+    if (FOLLY_UNLIKELY(i >= size())) {
+      // libc++ doesn't provide index. This helps optimizations.
+      throw std::out_of_range("tape");
+    }
+    return operator[](i);
+  }
 
-  [[nodiscard]] const_reference front() const { return operator[](0); }
-  [[nodiscard]] const_reference back() const { return operator[](size() - 1); }
+  [[nodiscard]] bool empty() const noexcept { return size() == 0; }
+  [[nodiscard]] size_type size() const noexcept { return markers_.size() - 1; }
+  [[nodiscard]] size_type size_flat() const noexcept { return data_.size(); }
+
+  [[nodiscard]] const_reference front() const noexcept { return operator[](0); }
+  [[nodiscard]] const_reference back() const noexcept {
+    return operator[](size() - 1);
+  }
 
   // iterators ----
 
-  [[nodiscard]] const_iterator begin() const { return {*this, 0}; }
-  [[nodiscard]] const_iterator cbegin() const { return begin(); }
+  [[nodiscard]] const_iterator begin() const noexcept { return {*this, 0}; }
+  [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
 
-  [[nodiscard]] const_iterator end() const { return {*this, size()}; }
-  [[nodiscard]] const_iterator cend() const { return end(); }
+  [[nodiscard]] const_iterator end() const noexcept { return {*this, size()}; }
+  [[nodiscard]] const_iterator cend() const noexcept { return end(); }
 
-  [[nodiscard]] auto rbegin() const { return const_reverse_iterator{end()}; }
-  [[nodiscard]] auto crbegin() const { return rbegin(); }
+  [[nodiscard]] auto rbegin() const noexcept {
+    return const_reverse_iterator{end()};
+  }
+  [[nodiscard]] auto crbegin() const noexcept { return rbegin(); }
 
-  [[nodiscard]] auto rend() const { return const_reverse_iterator{begin()}; }
-  [[nodiscard]] auto crend() const { return rend(); }
+  [[nodiscard]] auto rend() const noexcept {
+    return const_reverse_iterator{begin()};
+  }
+  [[nodiscard]] auto crend() const noexcept { return rend(); }
 
   // push / emplace_back --------
 
@@ -218,7 +244,7 @@ class tape {
 
   template <typename... Args>
   void emplace_back(Args&&... args) {
-    push_back(std::forward<decltype(args)>(args)...);
+    push_back(std::forward<Args>(args)...);
   }
 
   // push_back_unsafe --------
@@ -228,6 +254,7 @@ class tape {
   // requires to have enough capacity
   template <typename I, typename S>
   auto push_back_unsafe(I f, S l) -> std::enable_if_t<iterator_of_scalars<I>> {
+    // basic exception guarantee is preserved here.
     detail::append_range_unsafe(data_, f, l);
     markers_.push_back(static_cast<difference_type>(data_.size()));
   }
@@ -290,14 +317,14 @@ class tape {
   template <typename... Args>
   void resize(size_type new_size, const Args&... args);
 
-  void clear() {
+  void clear() noexcept {
     markers_.resize(1);
     data_.clear();
   }
 
   // erase -------
 
-  void pop_back() {
+  void pop_back() noexcept {
     data_.resize(data_.size() - back().size());
     markers_.pop_back();
   }
@@ -337,8 +364,8 @@ class tape {
   container_type data_;
 };
 
-// Allows you an easy to construct a last record in a similar way
-// you would an std::vector.
+// Provides a way to construct a last record similar
+// to how you would `std::vector`.
 template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
 class tape<Container>::scoped_record_builder {
  public:
@@ -358,38 +385,56 @@ class tape<Container>::scoped_record_builder {
 
   // iterators -----
 
-  [[nodiscard]] iterator begin() {
+  [[nodiscard]] iterator begin() noexcept {
     return self_->data_.begin() + self_->markers_.back();
   }
-  [[nodiscard]] const_iterator begin() const {
+  [[nodiscard]] const_iterator begin() const noexcept {
     return self_->data_.cbegin() + self_->markers_.back();
   }
-  [[nodiscard]] const_iterator cbegin() const { return begin(); }
+  [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
 
-  [[nodiscard]] iterator end() { return self_->data_.end(); }
-  [[nodiscard]] const_iterator end() const { return self_->data_.cend(); }
-  [[nodiscard]] const_iterator cend() const { return end(); }
+  [[nodiscard]] iterator end() noexcept { return self_->data_.end(); }
+  [[nodiscard]] const_iterator end() const noexcept {
+    return self_->data_.cend();
+  }
+  [[nodiscard]] const_iterator cend() const noexcept { return end(); }
 
   // sometimes functions (like fmt) optimize for vector back inserter.
   // so better expose that.
-  [[nodiscard]] auto back_inserter() {
+  [[nodiscard]] auto back_inserter() noexcept {
     return std::back_inserter(self_->data_);
   }
 
   // access ---
 
-  [[nodiscard]] bool empty() const { return begin() == end(); }
+  [[nodiscard]] bool empty() const noexcept { return begin() == end(); }
 
-  [[nodiscard]] size_type size() const {
+  [[nodiscard]] size_type size() const noexcept {
     return static_cast<size_type>(end() - begin());
   }
 
-  [[nodiscard]] reference operator[](size_type i) {
+  [[nodiscard]] reference operator[](size_type i) noexcept {
     return begin()[static_cast<difference_type>(i)];
   }
 
-  [[nodiscard]] const_reference operator[](size_type i) const {
+  [[nodiscard]] const_reference operator[](size_type i) const noexcept {
     return begin()[static_cast<difference_type>(i)];
+  }
+
+  [[nodiscard]] reference at(size_type i) {
+    if (FOLLY_UNLIKELY(i >= size())) {
+      // libc++ doesn't provide index. This helps optimizations.
+      throw std::out_of_range("tape::scoped_record_builder");
+    }
+    return operator[](i);
+  }
+
+  [[nodiscard]] const_reference at(size_type i) const {
+    if (FOLLY_UNLIKELY(i >= size())) {
+      // libc++ doesn't provide index. This helps optimizations.
+      throw std::out_of_range("tape::scoped_record_builder");
+    }
+    return operator[](i);
   }
 
   [[nodiscard]] reference back() { return self_->data_.back(); }
@@ -400,11 +445,16 @@ class tape<Container>::scoped_record_builder {
   void push_back(scalar_value_type x) { self_->data_.push_back(std::move(x)); }
 
   template <typename... Args>
-  void emplace_back(Args&&... args) {
+  reference emplace_back(Args&&... args) {
     self_->data_.emplace_back(std::forward<Args>(args)...);
+    // cannot rely on the container doing the right thing here.
+    return self_->data_.back();
   }
 
-  ~scoped_record_builder() { self_->markers_.push_back(self_->data_.size()); }
+  ~scoped_record_builder() noexcept {
+    // we assume that allocations never fail
+    self_->markers_.push_back(self_->data_.size());
+  }
 
  private:
   friend class tape;
@@ -417,6 +467,22 @@ class tape<Container>::scoped_record_builder {
 template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
 auto tape<Container>::record_builder() -> scoped_record_builder {
   return scoped_record_builder{*this};
+}
+
+// tape methods -----
+
+template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+tape<Container>::tape(tape&& x) noexcept
+    : markers_(std::move(x.markers_)), data_(std::move(x.data_)) {
+  // we assume that allocations never fail
+  x.markers_ = {0};
+}
+
+template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+tape<Container>& tape<Container>::operator=(tape&& x) noexcept {
+  std::swap(markers_, x.markers_);
+  std::swap(data_, x.data_);
+  return *this;
 }
 
 template <FOLLY_TAPE_CONTAINER_REQUIRES Container>

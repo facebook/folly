@@ -140,6 +140,41 @@ TEST(Tape, Count) {
   ASSERT_EQ(2U, (std::count(st.crbegin(), st.crend(), "abc")));
 }
 
+TEST(Tape, At) {
+  folly::string_tape st{"ab", "cde", "f"};
+  ASSERT_EQ("ab", st.at(0));
+  ASSERT_EQ("cde", st.at(1));
+  ASSERT_EQ("f", st.at(2));
+  ASSERT_THROW((void)st.at(3), std::out_of_range);
+}
+
+TEST(Tape, Move) {
+  folly::string_tape st0{"ab", "cde", "f"};
+  folly::string_tape st1{st0};
+
+  folly::string_tape move_constuctor{std::move(st0)};
+  folly::string_tape move_assign;
+  move_assign = std::move(st1);
+
+  ASSERT_EQ(move_constuctor, move_assign);
+  ASSERT_THAT(move_constuctor, testing::ElementsAre("ab", "cde", "f"));
+
+  // moved out should be valid but unspecified.
+  // we had a bug where 0s marker was missing.
+  // The test is over specified.
+  ASSERT_EQ(0U, st0.size());
+  ASSERT_EQ(0U, st1.size());
+
+  ASSERT_TRUE(st0.begin() == st0.end());
+  ASSERT_TRUE(st1.begin() == st1.end());
+
+  st0.push_back("ab");
+  st1.push_back("ab");
+
+  ASSERT_THAT(st0, testing::ElementsAre("ab"));
+  ASSERT_THAT(st1, testing::ElementsAre("ab"));
+}
+
 TEST(Tape, TwoItersConstructor) {
   auto tst = [&](auto tag) {
     {
@@ -221,13 +256,15 @@ TEST(Tape, RecordBuilder) {
   }
   {
     auto builder = st.record_builder();
-    builder.emplace_back('d');
+    ASSERT_EQ(builder.emplace_back('d'), 'd');
     builder[0] = 'e';
     ASSERT_EQ(std::as_const(builder)[0], 'e');
   }
   {
     auto builder = st.record_builder();
     builder.emplace_back(); // test emplace with default constructor
+    builder.at(0) = 'b';
+    ASSERT_EQ(std::as_const(builder).at(0), 'b');
     builder[0] = 'a';
     ASSERT_EQ(std::as_const(builder)[0], 'a');
   }
