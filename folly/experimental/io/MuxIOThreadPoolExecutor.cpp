@@ -159,7 +159,7 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
 
   setNumThreads(numThreads);
   registerThreadPoolExecutor(this);
-  if (options.enableThreadIdCollection) {
+  if (options_.enableThreadIdCollection) {
     threadIdCollector_ = std::make_unique<ThreadIdWorkerProvider>();
   }
 
