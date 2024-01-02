@@ -20,6 +20,10 @@
 #include <string_view> // @manual
 #endif
 
+#if FOLLY_HAS_RANGES
+#include <ranges>
+#endif
+
 #include <memory>
 
 #include <folly/portability/GTest.h>
@@ -50,3 +54,7 @@ TEST(Portability, Final) {
   EXPECT_EQ(3, fooBase(p.get()));
   EXPECT_EQ(3, fooDerived(p.get()));
 }
+
+#if FOLLY_HAS_RANGES
+static_assert(std::ranges::random_access_range<std::vector<int>>);
+#endif
