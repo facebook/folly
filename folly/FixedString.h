@@ -166,12 +166,17 @@ constexpr Char char_at_(
     std::size_t right_pos,
     std::size_t right_count,
     std::size_t i) noexcept {
+  FOLLY_PUSH_WARNING
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 13
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
   return i < left_pos
       ? left[i]
       : (i < right_count + left_pos ? right[i - left_pos + right_pos]
                                     : (i < left_size - left_count + right_count
                                            ? left[i - right_count + left_count]
                                            : Char(0)));
+  FOLLY_POP_WARNING
 }
 
 template <class Left, class Right>

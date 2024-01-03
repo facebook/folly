@@ -283,8 +283,8 @@ void clause11_21_4_5(String& test) {
     test = test[i];
   }
 
-  EXPECT_THROW(test.at(test.size()), std::out_of_range);
-  EXPECT_THROW(as_const(test).at(test.size()), std::out_of_range);
+  EXPECT_THROW(void(test.at(test.size())), std::out_of_range);
+  EXPECT_THROW(void(as_const(test).at(test.size())), std::out_of_range);
 }
 
 template <class String>

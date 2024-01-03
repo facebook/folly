@@ -1668,9 +1668,7 @@ void lock(LockableOne& one, LockableTwo& two, Lockables&... lockables) {
         lockable,
         [](auto& l) { return std::unique_lock<Lockable>{l}; },
         [](auto& l) {
-          auto lock = std::unique_lock<Lockable>{l, std::defer_lock};
-          lock.try_lock();
-          return lock;
+          return std::unique_lock<Lockable>{l, std::try_to_lock};
         });
   };
   auto locks = lock(locker(one), locker(two), locker(lockables)...);

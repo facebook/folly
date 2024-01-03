@@ -55,7 +55,8 @@ TEST(operatorNewDelete, sizedZero) {
 TEST(alignedMalloc, examples) {
   auto trial = [](size_t align) {
     auto const ptr = aligned_malloc(1, align);
-    return (aligned_free(ptr), uintptr_t(ptr));
+    auto const addr = reinterpret_cast<uintptr_t>(ptr);
+    return (aligned_free(ptr), addr);
   };
 
   if (!kIsSanitize) { // asan allocator raises SIGABRT instead

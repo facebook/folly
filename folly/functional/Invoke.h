@@ -679,15 +679,16 @@ struct invoke_first_match : private Invoker... {
  *    traits::is_nothrow_invocable_v<int, Car&&> // true
  *    traits::is_nothrow_invocable_v<char*, Car&&> // false
  */
-#define FOLLY_CREATE_STATIC_MEMBER_INVOKER(classname, membername)             \
-  template <typename T>                                                       \
-  struct classname {                                                          \
-    template <typename... Args, typename U = T>                               \
-    FOLLY_MAYBE_UNUSED FOLLY_ERASE constexpr auto operator()(Args&&... args)  \
-        const noexcept(noexcept(U::membername(static_cast<Args&&>(args)...))) \
-            -> decltype(U::membername(static_cast<Args&&>(args)...)) {        \
-      return U::membername(static_cast<Args&&>(args)...);                     \
-    }                                                                         \
+#define FOLLY_CREATE_STATIC_MEMBER_INVOKER(classname, membername)       \
+  template <typename T>                                                 \
+  struct classname {                                                    \
+    template <typename... Args, typename U = T>                         \
+    FOLLY_MAYBE_UNUSED FOLLY_ERASE_HACK_GCC constexpr auto operator()(  \
+        Args&&... args) const                                           \
+        noexcept(noexcept(U::membername(static_cast<Args&&>(args)...))) \
+            -> decltype(U::membername(static_cast<Args&&>(args)...)) {  \
+      return U::membername(static_cast<Args&&>(args)...);               \
+    }                                                                   \
   }
 
 /***
