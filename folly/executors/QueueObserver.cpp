@@ -26,12 +26,12 @@ make_queue_observer_factory_fallback(
 
 class WorkerKeepAlive : public folly::WorkerProvider::KeepAlive {
  public:
-  explicit WorkerKeepAlive(folly::SharedMutex::ReadHolder idsLock)
+  explicit WorkerKeepAlive(std::shared_lock<folly::SharedMutex> idsLock)
       : threadsExitLock_(std::move(idsLock)) {}
   ~WorkerKeepAlive() override {}
 
  private:
-  folly::SharedMutex::ReadHolder threadsExitLock_;
+  std::shared_lock<folly::SharedMutex> threadsExitLock_;
 };
 
 } // namespace
@@ -40,8 +40,8 @@ namespace folly {
 
 ThreadIdWorkerProvider::IdsWithKeepAlive
 ThreadIdWorkerProvider::collectThreadIds() {
-  auto keepAlive = std::make_unique<WorkerKeepAlive>(
-      SharedMutex::ReadHolder{&threadsExitMutex_});
+  auto keepAlive =
+      std::make_unique<WorkerKeepAlive>(std::shared_lock{threadsExitMutex_});
   auto locked = osThreadIds_.rlock();
   return {std::move(keepAlive), {locked->begin(), locked->end()}};
 }
@@ -53,7 +53,7 @@ void ThreadIdWorkerProvider::addTid(pid_t tid) {
 void ThreadIdWorkerProvider::removeTid(pid_t tid) {
   osThreadIds_.wlock()->erase(tid);
   // block until all WorkerKeepAlives have been destroyed
-  SharedMutex::WriteHolder w{threadsExitMutex_};
+  std::unique_lock w{threadsExitMutex_};
 }
 
 WorkerProvider::KeepAlive::~KeepAlive() {}

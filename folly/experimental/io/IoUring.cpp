@@ -237,7 +237,7 @@ int IoUring::register_buffers(
     const struct iovec* iovecs, unsigned int nr_iovecs) {
   initializeContext();
 
-  SharedMutex::WriteHolder lk(submitMutex_);
+  std::unique_lock lk(submitMutex_);
 
   return io_uring_register_buffers(&ioRing_, iovecs, nr_iovecs);
 }
@@ -245,7 +245,7 @@ int IoUring::register_buffers(
 int IoUring::unregister_buffers() {
   initializeContext();
 
-  SharedMutex::WriteHolder lk(submitMutex_);
+  std::unique_lock lk(submitMutex_);
   return io_uring_unregister_buffers(&ioRing_);
 }
 
@@ -278,7 +278,7 @@ int IoUring::submitOne(AsyncBase::Op* op) {
     return -1;
   }
 
-  SharedMutex::WriteHolder lk(submitMutex_);
+  std::unique_lock lk(submitMutex_);
   auto* sqe = io_uring_get_sqe(&ioRing_);
   if (!sqe) {
     return -1;
@@ -292,7 +292,7 @@ int IoUring::submitOne(AsyncBase::Op* op) {
 int IoUring::submitRange(Range<AsyncBase::Op**> ops) {
   size_t num = 0;
   int total = 0;
-  SharedMutex::WriteHolder lk(submitMutex_);
+  std::unique_lock lk(submitMutex_);
   for (size_t i = 0; i < ops.size(); i++) {
     IoUringOp* iop = ops[i]->getIoUringOp();
     if (!iop) {

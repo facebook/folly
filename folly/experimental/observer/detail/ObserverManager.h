@@ -68,7 +68,7 @@ class ObserverManager {
 
     auto& instance = getInstance();
 
-    SharedMutexReadPriority::ReadHolder rh(instance.versionMutex_);
+    std::shared_lock rh(instance.versionMutex_);
 
     instance.scheduleCurrent([coreWeak = folly::to_weak_ptr(std::move(core)),
                               &instance,
@@ -92,7 +92,7 @@ class ObserverManager {
       auto inManagerThread = std::exchange(inManagerThread_, true);
       SCOPE_EXIT { inManagerThread_ = inManagerThread; };
 
-      SharedMutexReadPriority::ReadHolder rh(instance.versionMutex_);
+      std::shared_lock rh(instance.versionMutex_);
 
       core->refresh(instance.version_);
     });

@@ -59,15 +59,15 @@ typedef testing::Types<
 TYPED_TEST_SUITE(RWSpinLockTest, Implementations);
 
 template <typename RWSpinLockType>
-static void run(RWSpinLockType* lock) {
+static void run(RWSpinLockType& lock) {
   int64_t reads = 0;
   int64_t writes = 0;
   while (!stopThread.load(std::memory_order_acquire)) {
     if (rand() % 10 == 0) { // write
-      typename RWSpinLockType::WriteHolder guard(lock);
+      auto guard = make_unique_lock(lock);
       ++writes;
     } else { // read
-      typename RWSpinLockType::ReadHolder guard(lock);
+      auto guard = make_shared_lock(lock);
       ++reads;
     }
   }
@@ -124,7 +124,7 @@ TYPED_TEST(RWSpinLockTest, ReadHolders) {
   LockType l;
 
   {
-    typename LockType::ReadHolder guard(&l);
+    std::shared_lock guard(l);
     EXPECT_FALSE(l.try_lock());
     EXPECT_TRUE(l.try_lock_shared());
     l.unlock_shared();
@@ -140,7 +140,7 @@ TYPED_TEST(RWSpinLockTest, WriteHolders) {
   typedef typename TestFixture::RWSpinLockType LockType;
   LockType l;
   {
-    typename LockType::WriteHolder guard(&l);
+    std::unique_lock guard(l);
     EXPECT_FALSE(l.try_lock());
     EXPECT_FALSE(l.try_lock_shared());
   }
@@ -158,7 +158,7 @@ TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
 
   std::vector<std::thread> threads;
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(std::thread(&run<LockType>, &l));
+    threads.push_back(std::thread(&run<LockType>, std::ref(l)));
   }
 
   sleep(1);
@@ -205,19 +205,20 @@ TEST(RWSpinLock, concurrentHolderTest) {
     while (!stop.load(std::memory_order_acquire)) {
       auto r = (uint32_t)(rand()) % 10;
       if (r < 3) { // starts from write lock
-        RWSpinLock::ReadHolder rg{
-            RWSpinLock::UpgradedHolder{RWSpinLock::WriteHolder{&lock}}};
+        auto wg = make_unique_lock(lock);
+        auto ug = folly::transition_lock<folly::upgrade_lock>(wg);
+        auto rg = folly::transition_lock<std::shared_lock>(ug);
         writes.fetch_add(1, std::memory_order_acq_rel);
       } else if (r < 6) { // starts from upgrade lock
-        RWSpinLock::UpgradedHolder ug(&lock);
+        auto ug = make_upgrade_lock(lock);
         if (r < 4) {
-          RWSpinLock::WriteHolder wg(std::move(ug));
+          auto wg = folly::transition_lock<std::unique_lock>(ug);
         } else {
-          RWSpinLock::ReadHolder rg(std::move(ug));
+          auto rg = folly::transition_lock<std::shared_lock>(ug);
         }
         upgrades.fetch_add(1, std::memory_order_acq_rel);
       } else {
-        RWSpinLock::ReadHolder rg{&lock};
+        auto rg = make_shared_lock(lock);
         reads.fetch_add(1, std::memory_order_acq_rel);
       }
     }

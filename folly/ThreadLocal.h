@@ -433,10 +433,10 @@ class ThreadLocalPtr {
   ThreadLocalPtr& operator=(const ThreadLocalPtr&) = delete;
 
   static auto getAccessAllThreadsLockReadHolderIfEnabled() {
-    return SharedMutex::ReadHolder(
-        AccessAllThreadsEnabled::value
-            ? &StaticMeta::instance().accessAllThreadsLock_
-            : nullptr);
+    auto& mutex = StaticMeta::instance().accessAllThreadsLock_;
+    return AccessAllThreadsEnabled::value
+        ? std::shared_lock{mutex}
+        : std::shared_lock{mutex, std::defer_lock};
   }
 
   mutable typename StaticMeta::EntryID id_;

@@ -119,7 +119,7 @@ class GlobalExecutor {
       : getDefault_(std::move(constructDefault)) {}
 
   std::shared_ptr<ExecutorBase> get() {
-    SharedMutex::ReadHolder guard(mutex_);
+    std::shared_lock guard(mutex_);
     if (auto executor = executor_.lock()) {
       return executor; // Fast path.
     }
@@ -128,14 +128,14 @@ class GlobalExecutor {
   }
 
   void set(std::weak_ptr<ExecutorBase> executor) {
-    SharedMutex::WriteHolder guard(mutex_);
+    std::unique_lock guard(mutex_);
     executor_.swap(executor);
   }
 
   // Replace the constructDefault function to use the immutable singleton
   // rather than the default singleton
   void setFromImmutable() {
-    SharedMutex::WriteHolder guard(mutex_);
+    std::unique_lock guard(mutex_);
 
     getDefault_ = [] { return getImmutable<ExecutorBase>(); };
     executor_ = std::weak_ptr<ExecutorBase>{};

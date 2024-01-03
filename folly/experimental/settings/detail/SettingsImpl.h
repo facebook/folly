@@ -306,7 +306,7 @@ class SettingCore : public SettingCoreBase {
     }
 
     {
-      SharedMutex::WriteHolder lg(globalLock_);
+      std::unique_lock lg(globalLock_);
 
       if (globalValue_) {
         saveValueForOutstandingSnapshots(
@@ -333,7 +333,7 @@ class SettingCore : public SettingCoreBase {
         : callback_(std::move(callback)), setting_(setting) {}
     ~CallbackHandle() {
       if (callback_) {
-        SharedMutex::WriteHolder lg(setting_.globalLock_);
+        std::unique_lock lg(setting_.globalLock_);
         setting_.callbacks_.erase(callback_);
       }
     }
@@ -351,7 +351,7 @@ class SettingCore : public SettingCoreBase {
 
     auto copiedPtr = callbackPtr;
     {
-      SharedMutex::WriteHolder lg(globalLock_);
+      std::unique_lock lg(globalLock_);
       callbacks_.emplace(std::move(copiedPtr));
     }
     return CallbackHandle(std::move(callbackPtr), *this);
@@ -377,7 +377,7 @@ class SettingCore : public SettingCoreBase {
   SettingMetadata meta_;
   const T defaultValue_;
 
-  SharedMutex globalLock_;
+  mutable SharedMutex globalLock_;
   std::shared_ptr<Contents> globalValue_;
 
   std::atomic<uint64_t>& trivialStorage_;
@@ -403,7 +403,7 @@ class SettingCore : public SettingCoreBase {
     while (value.first < *settingVersion_) {
       /* If this destroys the old value, do it without holding the lock */
       value.second.reset();
-      SharedMutex::ReadHolder lg(globalLock_);
+      std::shared_lock lg(globalLock_);
       value.first = *settingVersion_;
       value.second = globalValue_;
     }
@@ -412,7 +412,7 @@ class SettingCore : public SettingCoreBase {
 
   void invokeCallbacks(const Contents& contents) {
     auto callbacksSnapshot = invoke([&] {
-      SharedMutex::ReadHolder lg(globalLock_);
+      std::shared_lock lg(globalLock_);
       // invoking arbitrary user code under the lock is dangerous
       return std::vector<std::shared_ptr<UpdateCallback>>(
           callbacks_.begin(), callbacks_.end());

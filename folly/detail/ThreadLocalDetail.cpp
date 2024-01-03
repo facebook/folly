@@ -128,9 +128,9 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     // Make sure this ThreadEntry is available if ThreadLocal A is accessed in
     // ThreadLocal B destructor.
     pthread_setspecific(meta.pthreadKey_, threadEntry);
-    SharedMutex::ReadHolder rlock(nullptr);
+    std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
     if (meta.strict_) {
-      rlock = SharedMutex::ReadHolder(meta.accessAllThreadsLock_);
+      rlock.lock();
     }
     {
       std::lock_guard<std::mutex> g(meta.lock_);
@@ -176,9 +176,9 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     while (tmp) {
       auto& meta = *tmp->meta;
       pthread_setspecific(meta.pthreadKey_, tmp);
-      SharedMutex::ReadHolder rlock(nullptr);
+      std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
       if (meta.strict_) {
-        rlock = SharedMutex::ReadHolder(meta.accessAllThreadsLock_);
+        rlock.lock();
       }
       for (bool shouldRunInner = true; shouldRunInner;) {
         shouldRunInner = false;
@@ -257,7 +257,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
     std::vector<ElementWrapper> elements;
 
     {
-      SharedMutex::WriteHolder wlock(nullptr);
+      std::unique_lock wlock(meta.accessAllThreadsLock_, std::defer_lock);
       if (meta.strict_) {
         /*
          * In strict mode, the logic guarantees per-thread instances are
@@ -266,7 +266,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
          * onThreadExit() calls (that might acquire ownership over per-thread
          * instances in order to destroy them) are finished.
          */
-        wlock = SharedMutex::WriteHolder(meta.accessAllThreadsLock_);
+        wlock.lock();
       }
 
       {

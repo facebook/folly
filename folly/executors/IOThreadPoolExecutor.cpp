@@ -137,7 +137,7 @@ void IOThreadPoolExecutor::add(Func func) {
 void IOThreadPoolExecutor::add(
     Func func, std::chrono::milliseconds expiration, Func expireCallback) {
   ensureActiveThreads();
-  SharedMutex::ReadHolder r{&threadListLock_};
+  std::shared_lock r{threadListLock_};
   if (threadList_.get().empty()) {
     throw std::runtime_error("No threads available");
   }
@@ -182,7 +182,7 @@ IOThreadPoolExecutor::pickThread() {
 
 EventBase* IOThreadPoolExecutor::getEventBase() {
   ensureActiveThreads();
-  SharedMutex::ReadHolder r{&threadListLock_};
+  std::shared_lock r{threadListLock_};
   if (threadList_.get().empty()) {
     throw std::runtime_error("No threads available");
   }
@@ -193,7 +193,7 @@ std::vector<Executor::KeepAlive<EventBase>>
 IOThreadPoolExecutor::getAllEventBases() {
   ensureMaxActiveThreads();
   std::vector<Executor::KeepAlive<EventBase>> evbs;
-  SharedMutex::ReadHolder r{&threadListLock_};
+  std::shared_lock r{threadListLock_};
   const auto& threads = threadList_.get();
   evbs.reserve(threads.size());
   for (const auto& thr : threads) {

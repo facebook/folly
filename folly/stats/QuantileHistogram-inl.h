@@ -222,35 +222,35 @@ void CPUShardedQuantileHistogram<Q>::addValue(double value) {
 
 template <class Q>
 double CPUShardedQuantileHistogram<Q>::estimateQuantile(double q) {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.estimateQuantile(q);
 }
 
 template <class Q>
 uint64_t CPUShardedQuantileHistogram<Q>::count() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.count();
 }
 
 template <class Q>
 double CPUShardedQuantileHistogram<Q>::min() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.min();
 }
 
 template <class Q>
 double CPUShardedQuantileHistogram<Q>::max() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.max();
 }
 
 template <class Q>
 std::string CPUShardedQuantileHistogram<Q>::debugString() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.debugString();
 }

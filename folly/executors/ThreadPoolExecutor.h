@@ -139,7 +139,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    * expensive.
    */
   std::chrono::nanoseconds getUsedCpuTime() const {
-    SharedMutex::ReadHolder r{&threadListLock_};
+    std::shared_lock r{threadListLock_};
     return threadList_.getUsedCpuTime();
   }
 
@@ -326,7 +326,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::shared_ptr<ThreadFactory> threadFactory_;
 
   ThreadList threadList_;
-  SharedMutex threadListLock_;
+  mutable SharedMutex threadListLock_;
   StoppedThreadQueue stoppedThreads_;
   std::atomic<bool> isJoin_{false}; // whether the current downsizing is a join
 

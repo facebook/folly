@@ -146,7 +146,7 @@ T AtomicObserver<T>::get() const {
   if (FOLLY_UNLIKELY(
           observer_.needRefresh(version) ||
           observer_detail::ObserverManager::inManagerThread())) {
-    SharedMutex::WriteHolder guard{refreshLock_};
+    std::unique_lock guard{refreshLock_};
     version = cachedVersion_.load(std::memory_order_acquire);
     if (FOLLY_LIKELY(
             observer_.needRefresh(version) ||

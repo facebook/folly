@@ -309,7 +309,7 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     returnHandler(handler);
   };
 
-  SharedMutex::WriteHolder w{&threadListLock_};
+  std::unique_lock w{threadListLock_};
   for (auto& o : observers_) {
     o->threadStopped(thread.get());
   }

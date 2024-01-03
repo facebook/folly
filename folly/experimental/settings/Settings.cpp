@@ -129,7 +129,7 @@ void saveValueForOutstandingSnapshots(
     SettingCoreBase::Key settingKey,
     SettingCoreBase::Version version,
     const BoxedValue& value) {
-  SharedMutex::WriteHolder lg(getSavedValuesMutex());
+  std::unique_lock lg(getSavedValuesMutex());
   for (auto& it : getSavedValues()) {
     if (version <= it.first) {
       it.second.second[settingKey] = value;
@@ -139,7 +139,7 @@ void saveValueForOutstandingSnapshots(
 
 const BoxedValue* FOLLY_NULLABLE
 getSavedValue(SettingCoreBase::Key settingKey, SettingCoreBase::Version at) {
-  SharedMutex::ReadHolder lg(getSavedValuesMutex());
+  std::shared_lock lg(getSavedValuesMutex());
   auto it = getSavedValues().find(at);
   if (it != getSavedValues().end()) {
     auto jt = it->second.second.find(settingKey);
@@ -151,7 +151,7 @@ getSavedValue(SettingCoreBase::Key settingKey, SettingCoreBase::Version at) {
 }
 
 SnapshotBase::SnapshotBase() {
-  SharedMutex::WriteHolder lg(detail::getSavedValuesMutex());
+  std::unique_lock lg(detail::getSavedValuesMutex());
   at_ = detail::gGlobalVersion_.load();
   auto it = detail::getSavedValues().emplace(
       std::piecewise_construct,
@@ -161,7 +161,7 @@ SnapshotBase::SnapshotBase() {
 }
 
 SnapshotBase::~SnapshotBase() {
-  SharedMutex::WriteHolder lg(detail::getSavedValuesMutex());
+  std::unique_lock lg(detail::getSavedValuesMutex());
   auto it = detail::getSavedValues().find(at_);
   assert(it != detail::getSavedValues().end());
   --it->second.first;

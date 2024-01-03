@@ -172,7 +172,7 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
 
   size_t numThreadsToJoin = 0;
   {
-    SharedMutex::WriteHolder w{&threadListLock_};
+    std::unique_lock w{threadListLock_};
     auto pending = getPendingTaskCountImpl();
     maxThreads_.store(numThreads, std::memory_order_relaxed);
     auto active = activeThreads_.load(std::memory_order_relaxed);
@@ -245,7 +245,7 @@ void ThreadPoolExecutor::stop() {
   joinKeepAliveOnce();
   size_t n = 0;
   {
-    SharedMutex::WriteHolder w{&threadListLock_};
+    std::unique_lock w{threadListLock_};
     maxThreads_.store(0, std::memory_order_release);
     activeThreads_.store(0, std::memory_order_release);
     n = threadList_.get().size();
@@ -262,7 +262,7 @@ void ThreadPoolExecutor::join() {
   joinKeepAliveOnce();
   size_t n = 0;
   {
-    SharedMutex::WriteHolder w{&threadListLock_};
+    std::unique_lock w{threadListLock_};
     maxThreads_.store(0, std::memory_order_release);
     activeThreads_.store(0, std::memory_order_release);
     n = threadList_.get().size();
@@ -285,7 +285,7 @@ void ThreadPoolExecutor::withAll(FunctionRef<void(ThreadPoolExecutor&)> f) {
 
 ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
   const auto now = std::chrono::steady_clock::now();
-  SharedMutex::ReadHolder r{&threadListLock_};
+  std::shared_lock r{threadListLock_};
   ThreadPoolExecutor::PoolStats stats;
   size_t activeTasks = 0;
   size_t idleAlive = 0;
@@ -310,7 +310,7 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
 }
 
 size_t ThreadPoolExecutor::getPendingTaskCount() const {
-  SharedMutex::ReadHolder r{&threadListLock_};
+  std::shared_lock r{threadListLock_};
   return getPendingTaskCountImpl();
 }
 
@@ -387,7 +387,7 @@ size_t ThreadPoolExecutor::StoppedThreadQueue::size() {
 
 void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
   {
-    SharedMutex::WriteHolder r{&threadListLock_};
+    std::unique_lock r{threadListLock_};
     observers_.push_back(o);
     for (auto& thread : threadList_.get()) {
       o->threadPreviouslyStarted(thread.get());
@@ -398,7 +398,7 @@ void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
 }
 
 void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
-  SharedMutex::WriteHolder r{&threadListLock_};
+  std::unique_lock r{threadListLock_};
   for (auto& thread : threadList_.get()) {
     o->threadNotYetStopped(thread.get());
     handleObserverUnregisterThread(thread.get(), *o);
@@ -419,7 +419,7 @@ void ThreadPoolExecutor::ensureJoined() {
   auto tojoin = threadsToJoin_.load(std::memory_order_relaxed);
   if (tojoin) {
     {
-      SharedMutex::WriteHolder w{&threadListLock_};
+      std::unique_lock w{threadListLock_};
       tojoin = threadsToJoin_.load(std::memory_order_relaxed);
       threadsToJoin_.store(0, std::memory_order_relaxed);
     }
@@ -484,7 +484,7 @@ void ThreadPoolExecutor::ensureActiveThreads() {
     return;
   }
 
-  SharedMutex::WriteHolder w{&threadListLock_};
+  std::unique_lock w{threadListLock_};
   // Double check behind lock.
   active = activeThreads_.load(std::memory_order_relaxed);
   total = maxThreads_.load(std::memory_order_relaxed);

@@ -109,21 +109,21 @@ void runBasicHoldersTest() {
 
   {
     // create an exclusive write lock via holder
-    typename Lock::WriteHolder holder(lock);
+    std::unique_lock holder(lock);
     EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
     EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // move ownership to another write holder via move constructor
-    typename Lock::WriteHolder holder2(std::move(holder));
+    std::unique_lock holder2(std::move(holder));
     EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
     EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // move ownership to another write holder via assign operator
-    typename Lock::WriteHolder holder3(nullptr);
+    std::unique_lock holder3(lock, std::defer_lock);
     holder3 = std::move(holder2);
     EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
@@ -131,7 +131,8 @@ void runBasicHoldersTest() {
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // downgrade from exclusive to upgrade lock via move constructor
-    typename Lock::UpgradeHolder holder4(std::move(holder3));
+    folly::upgrade_lock holder4(
+        folly::transition_lock<folly::upgrade_lock>(holder3));
 
     // ensure we can lock from a shared source
     EXPECT_FALSE(lock.eligible_for_lock_elision());
@@ -141,14 +142,14 @@ void runBasicHoldersTest() {
     lock.unlock_shared(token);
 
     // promote from upgrade to exclusive lock via move constructor
-    typename Lock::WriteHolder holder5(std::move(holder4));
+    std::unique_lock holder5(folly::transition_lock<std::unique_lock>(holder4));
     EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
     EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // downgrade exclusive to shared lock via move constructor
-    typename Lock::ReadHolder holder6(std::move(holder5));
+    std::shared_lock holder6(folly::transition_lock<std::shared_lock>(holder5));
 
     // ensure we can lock from another shared source
     EXPECT_FALSE(lock.eligible_for_lock_elision());
@@ -159,21 +160,21 @@ void runBasicHoldersTest() {
   }
 
   {
-    typename Lock::WriteHolder holder(lock);
+    std::unique_lock holder(lock);
     EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
   }
 
   {
-    typename Lock::ReadHolder holder(lock);
-    typename Lock::ReadHolder holder2(lock);
-    typename Lock::UpgradeHolder holder3(lock);
+    std::shared_lock holder(lock);
+    std::shared_lock holder2(lock);
+    folly::upgrade_lock holder3(lock);
   }
 
   {
-    typename Lock::UpgradeHolder holder(lock);
-    typename Lock::ReadHolder holder2(lock);
-    typename Lock::ReadHolder holder3(std::move(holder));
+    folly::upgrade_lock holder(lock);
+    std::shared_lock holder2(lock);
+    std::shared_lock holder3(folly::transition_lock<std::shared_lock>(holder));
   }
 }
 
@@ -343,9 +344,9 @@ void runFailingTryTimeoutTest() {
   lock.unlock();
 
   for (int p = 0; p < 8; ++p) {
-    typename Lock::ReadHolder holder1(lock);
-    typename Lock::ReadHolder holder2(lock);
-    typename Lock::ReadHolder holder3(lock);
+    typename std::shared_lock holder1(lock);
+    typename std::shared_lock holder2(lock);
+    typename std::shared_lock holder3(lock);
     EXPECT_FALSE(lock.try_lock_for(nanoseconds(1 << p)));
   }
 }

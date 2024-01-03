@@ -38,88 +38,88 @@ class TestConnectionEventCallback
   void onConnectionAccepted(
       const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     connectionAccepted_++;
   }
 
   void onConnectionAcceptError(const int /* err */) noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     connectionAcceptedError_++;
   }
 
   void onConnectionDropped(
       const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     connectionDropped_++;
   }
 
   void onConnectionEnqueuedForAcceptorCallback(
       const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     connectionEnqueuedForAcceptCallback_++;
   }
 
   void onConnectionDequeuedByAcceptorCallback(
       const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     connectionDequeuedByAcceptCallback_++;
   }
 
   void onBackoffStarted() noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     backoffStarted_++;
   }
 
   void onBackoffEnded() noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     backoffEnded_++;
   }
 
   void onBackoffError() noexcept override {
-    folly::RWSpinLock::WriteHolder holder(spinLock_);
+    std::unique_lock holder(spinLock_);
     backoffError_++;
   }
 
   unsigned int getConnectionAccepted() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return connectionAccepted_;
   }
 
   unsigned int getConnectionAcceptedError() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return connectionAcceptedError_;
   }
 
   unsigned int getConnectionDropped() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return connectionDropped_;
   }
 
   unsigned int getConnectionEnqueuedForAcceptCallback() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return connectionEnqueuedForAcceptCallback_;
   }
 
   unsigned int getConnectionDequeuedByAcceptCallback() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return connectionDequeuedByAcceptCallback_;
   }
 
   unsigned int getBackoffStarted() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return backoffStarted_;
   }
 
   unsigned int getBackoffEnded() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return backoffEnded_;
   }
 
   unsigned int getBackoffError() const {
-    folly::RWSpinLock::ReadHolder holder(spinLock_);
+    std::shared_lock holder(spinLock_);
     return backoffError_;
   }
 

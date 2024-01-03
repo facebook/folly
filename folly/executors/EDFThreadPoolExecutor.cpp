@@ -118,7 +118,7 @@ class EDFThreadPoolExecutor::TaskQueue {
     auto deadline = task->getDeadline();
     auto& bucket = getBucket(deadline);
     {
-      SharedMutex::WriteHolder guard(&bucket.mutex);
+      std::unique_lock guard(bucket.mutex);
       task->setEnqueueOrder(bucket.enqueued++);
       bucket.tasks.push(std::move(task));
       bucket.empty.store(bucket.tasks.empty(), std::memory_order_relaxed);
@@ -160,7 +160,7 @@ class EDFThreadPoolExecutor::TaskQueue {
 
       {
         // Fast path. Take bucket reader lock.
-        SharedMutex::ReadHolder guard(&bucket.mutex);
+        std::shared_lock guard(bucket.mutex);
         if (bucket.tasks.empty()) {
           continue;
         }
@@ -173,7 +173,7 @@ class EDFThreadPoolExecutor::TaskQueue {
 
       {
         // Take the writer lock to clean up the finished task.
-        SharedMutex::WriteHolder guard(&bucket.mutex);
+        std::unique_lock guard(bucket.mutex);
         if (bucket.tasks.empty()) {
           continue;
         }
@@ -211,7 +211,7 @@ class EDFThreadPoolExecutor::TaskQueue {
         continue;
       }
 
-      SharedMutex::ReadHolder guard(&bucket.mutex);
+      std::shared_lock guard(bucket.mutex);
       auto curDeadline = curDeadline_.load(std::memory_order_relaxed);
       if (prevDeadline != curDeadline) {
         // Bail out early if something already happened
@@ -327,7 +327,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     // Handle thread stopping
     if (FOLLY_UNLIKELY(!task)) {
       // Actually remove the thread from the list.
-      SharedMutex::WriteHolder w{&threadListLock_};
+      std::unique_lock w{threadListLock_};
       for (auto& o : observers_) {
         o->threadStopped(thread.get());
       }
