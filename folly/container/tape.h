@@ -66,8 +66,11 @@ namespace folly {
  * Existing `records` can be accessed by index.
  * Existing `records` cannot be mutated.
  *
- * NOTE: in theory there is nothing to prevent `tape<tape>` (and it could be
- * useful) but that doesn't work at the moment.
+ * ## tape<tape>
+ *
+ * tape<tape> is supported, though not all of the APIs.
+ * More apis can be implemented if/when needed.
+ * Use `record_builder`.
  *
  * ## PERFORMANCE CHARACTERISTICS (folly/container/test/tape_bench):
  *

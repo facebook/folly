@@ -502,3 +502,24 @@ TEST(Tape, Iteration) {
   folly::string_tape st2(st.rbegin(), st.rend());
   ASSERT_THAT(st2, testing::ElementsAre("1000", "100", "10", "0"));
 }
+
+TEST(Tape, TapeOfTapes) {
+  folly::tape<folly::string_tape> strings;
+
+  {
+    auto builder = strings.record_builder();
+    builder.push_back("ab");
+    builder.push_back("abc");
+  }
+
+  {
+    auto builder = strings.record_builder();
+    builder.push_back("bc");
+    builder.push_back("bcd");
+    builder.push_back("bcde");
+  }
+
+  ASSERT_EQ(strings.size(), 2);
+  ASSERT_THAT(strings[0], testing::ElementsAre("ab", "abc"));
+  ASSERT_THAT(strings[1], testing::ElementsAre("bc", "bcd", "bcde"));
+}
