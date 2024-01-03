@@ -57,12 +57,19 @@ int64_t TimeoutQueue::runInternal(int64_t now, bool onceOnly) {
     for (const auto& event : expired) {
       // Reinsert if repeating, do this before executing callbacks
       // so the callbacks have a chance to call erase
-      if (event.repeatInterval >= 0) {
+      if (event.repeatInterval > 0) {
+        auto next_expiration = event.expiration;
+        while(next_expiration <= now){
+            next_expiration += event.repeatInterval;
+        }
+
         timeouts_.insert(
             {event.id,
-             now + event.repeatInterval,
+             next_expiration,
              event.repeatInterval,
              event.callback});
+      }else{
+          timeouts_.insert({event.id, now, event.repeatInterval, event.callback});
       }
     }
 
