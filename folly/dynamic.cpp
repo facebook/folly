@@ -533,7 +533,6 @@ const dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) const& {
     default:
       return nullptr;
   }
-  assume_unreachable();
 }
 
 void dynamic::reserve(std::size_t capacity) {
