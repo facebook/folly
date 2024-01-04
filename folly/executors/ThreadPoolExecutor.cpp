@@ -241,15 +241,14 @@ void ThreadPoolExecutor::joinStoppedThreads(size_t n) {
   }
 }
 
-void ThreadPoolExecutor::stop() {
-  joinKeepAliveOnce();
+void ThreadPoolExecutor::stopAndJoinAllThreads(bool isJoin) {
   size_t n = 0;
   {
     std::unique_lock w{threadListLock_};
     maxThreads_.store(0, std::memory_order_release);
     activeThreads_.store(0, std::memory_order_release);
     n = threadList_.get().size();
-    removeThreads(n, false);
+    removeThreads(n, isJoin);
     n += threadsToJoin_.load(std::memory_order_relaxed);
     threadsToJoin_.store(0, std::memory_order_relaxed);
   }
@@ -258,21 +257,14 @@ void ThreadPoolExecutor::stop() {
   CHECK_EQ(0, stoppedThreads_.size());
 }
 
+void ThreadPoolExecutor::stop() {
+  joinKeepAliveOnce();
+  stopAndJoinAllThreads(/* isJoin */ false);
+}
+
 void ThreadPoolExecutor::join() {
   joinKeepAliveOnce();
-  size_t n = 0;
-  {
-    std::unique_lock w{threadListLock_};
-    maxThreads_.store(0, std::memory_order_release);
-    activeThreads_.store(0, std::memory_order_release);
-    n = threadList_.get().size();
-    removeThreads(n, true);
-    n += threadsToJoin_.load(std::memory_order_relaxed);
-    threadsToJoin_.store(0, std::memory_order_relaxed);
-  }
-  joinStoppedThreads(n);
-  CHECK_EQ(0, threadList_.get().size());
-  CHECK_EQ(0, stoppedThreads_.size());
+  stopAndJoinAllThreads(/* isJoin */ true);
 }
 
 void ThreadPoolExecutor::withAll(FunctionRef<void(ThreadPoolExecutor&)> f) {

@@ -106,8 +106,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    * be executed before it returns. Specifically, IOThreadPoolExecutor's stop()
    * behaves like join().
    */
-  void stop();
-  void join();
+  virtual void stop();
+  virtual void join();
 
   /**
    * Execute f against all ThreadPoolExecutors, primarily for retrieving and
@@ -255,6 +255,9 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   // require a lock on ThreadPoolExecutor.
   void joinStoppedThreads(size_t n);
 
+  // To implement shutdown.
+  void stopAndJoinAllThreads(bool isJoin);
+
   // Create a suitable Thread struct
   virtual ThreadPtr makeThread() { return std::make_shared<Thread>(this); }
 
@@ -354,10 +357,12 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::atomic<size_t> threadsToJoin_{0};
   std::atomic<std::chrono::milliseconds> threadTimeout_;
 
-  void joinKeepAliveOnce() {
+  bool joinKeepAliveOnce() {
     if (!std::exchange(keepAliveJoined_, true)) {
       joinKeepAlive();
+      return true;
     }
+    return false;
   }
 
   bool keepAliveJoined_{false};

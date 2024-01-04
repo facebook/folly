@@ -126,6 +126,9 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   void addObserver(std::shared_ptr<Observer> o) override;
   void removeObserver(std::shared_ptr<Observer> o) override;
 
+  void stop() override;
+  void join() override;
+
  private:
   struct alignas(Thread) IOThread : public Thread {
     explicit IOThread(MuxIOThreadPoolExecutor* pool) : Thread(pool) {}

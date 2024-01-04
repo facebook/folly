@@ -168,22 +168,7 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
 
 MuxIOThreadPoolExecutor::~MuxIOThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
-
-  {
-    std::shared_lock<folly::SharedMutex> lock{threadListLock_};
-    for (const auto& o : observers_) {
-      maybeUnregisterEventBases(o.get());
-    }
-  }
-
-  keepAlives_.clear();
-
-  stop_ = true;
-  returnEvfd_.notifyFd();
-  mainThread_->join();
-
   stop();
-  ::close(epFd_);
 }
 
 void MuxIOThreadPoolExecutor::mainThreadFunc() {
@@ -369,6 +354,32 @@ void MuxIOThreadPoolExecutor::stopThreads(size_t n) {
   for (size_t i = 0; i < n; i++) {
     queue_.add(new EvbHandler); // Poison.
   }
+}
+
+void MuxIOThreadPoolExecutor::stop() {
+  join();
+}
+
+void MuxIOThreadPoolExecutor::join() {
+  if (!joinKeepAliveOnce()) {
+    return; // Already called.
+  }
+
+  {
+    std::shared_lock<folly::SharedMutex> lock{threadListLock_};
+    for (const auto& o : observers_) {
+      maybeUnregisterEventBases(o.get());
+    }
+  }
+
+  keepAlives_.clear();
+
+  stop_ = true;
+  returnEvfd_.notifyFd();
+  mainThread_->join();
+
+  stopAndJoinAllThreads(/* isJoin */ true);
+  ::close(epFd_);
 }
 
 std::unique_ptr<folly::EventBase> MuxIOThreadPoolExecutor::makeEventBase() {

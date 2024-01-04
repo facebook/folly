@@ -36,25 +36,32 @@ TYPED_TEST_SUITE_P(IOThreadPoolExecutorBaseTest);
 
 TYPED_TEST_P(IOThreadPoolExecutorBaseTest, IOObserver) {
   struct EventBaseAccumulator : IOThreadPoolExecutorBase::IOObserver {
-    void registerEventBase(EventBase& evb) override { evbs.insert(&evb); }
-    void unregisterEventBase(EventBase& evb) override { evbs.erase(&evb); }
+    void registerEventBase(EventBase& evb) override {
+      // Observers should be called while the evbs are running, so this
+      // operation should complete.
+      evb.runInEventBaseThreadAndWait([&] { evbs.insert(&evb); });
+    }
+    void unregisterEventBase(EventBase& evb) override {
+      // Same as registerEventBase().
+      evb.runInEventBaseThreadAndWait([&] { evbs.erase(&evb); });
+    }
 
     F14FastSet<EventBase*> evbs;
   };
 
   static constexpr size_t kNumThreads = 16;
 
-  std::optional<TypeParam> ex{std::in_place, kNumThreads};
+  TypeParam ex{kNumThreads};
   auto observer1 = std::make_shared<EventBaseAccumulator>();
   auto observer2 = std::make_shared<EventBaseAccumulator>();
-  ex->addObserver(observer1);
-  ex->addObserver(observer2);
+  ex.addObserver(observer1);
+  ex.addObserver(observer2);
   EXPECT_EQ(observer1->evbs.size(), kNumThreads);
   EXPECT_EQ(observer2->evbs.size(), kNumThreads);
-  ex->removeObserver(observer1);
+  ex.removeObserver(observer1);
   EXPECT_EQ(observer1->evbs.size(), 0);
   EXPECT_EQ(observer2->evbs.size(), kNumThreads);
-  ex.reset();
+  ex.join();
   EXPECT_EQ(observer1->evbs.size(), 0);
   EXPECT_EQ(observer2->evbs.size(), 0);
 }
