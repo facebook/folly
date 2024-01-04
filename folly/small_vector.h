@@ -49,7 +49,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/Malloc.h>
 
-#if (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64)
+#if (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64 || FOLLY_RISCV64)
 #define FOLLY_SV_PACK_ATTR FOLLY_PACK_ATTR
 #define FOLLY_SV_PACK_PUSH FOLLY_PACK_PUSH
 #define FOLLY_SV_PACK_POP FOLLY_PACK_POP

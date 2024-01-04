@@ -69,7 +69,7 @@
 
 #if FOLLY_NEON
 #include <arm_neon.h> // uint8x16t intrinsics
-#else // SSE2
+#elif FOLLY_SSE >= 2 // SSE2
 #include <emmintrin.h> // _mm_set1_epi8
 #include <immintrin.h> // __m128i intrinsics
 #include <xmmintrin.h> // _mm_prefetch
@@ -247,7 +247,7 @@ FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
   __builtin_prefetch(static_cast<void const*>(ptr));
 #elif FOLLY_NEON
   __prefetch(static_cast<void const*>(ptr));
-#else
+#elif FOLLY_SSE >= 2
   _mm_prefetch(
       static_cast<char const*>(static_cast<void const*>(ptr)), _MM_HINT_T0);
 #endif
@@ -255,8 +255,10 @@ FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
 
 #if FOLLY_NEON
 using TagVector = uint8x16_t;
-#else // SSE2
+#elif FOLLY_SSE >= 2
 using TagVector = __m128i;
+#elif FOLLY_HAVE_INT128_T
+using TagVector = __uint128_t;
 #endif
 
 // We could use unaligned loads to relax this requirement, but that
@@ -436,7 +438,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(occupiedV), 4);
     return vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
   }
-#else
+#elif FOLLY_SSE >= 2
   ////////
   // Tag filtering using SSE2 intrinsics
 
@@ -473,6 +475,38 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   MaskType occupiedMask() const {
     auto tagV = _mm_load_si128(tagVector());
     return _mm_movemask_epi8(tagV) & kFullMask;
+  }
+#elif FOLLY_HAVE_INT128_T
+  ////////
+  // Tag filtering using plain C/C++
+
+  SparseMaskIter tagMatchIter(std::size_t needle) const {
+    FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
+    auto tagV = static_cast<uint8_t const*>(&tags_[0]);
+    MaskType mask = 0;
+#if defined(__GNUC__)
+#pragma GCC unroll 16
+#else
+#pragma unroll 16
+#endif
+    for (int i = 0; i < kCapacity; i++) {
+      mask |= ((tagV[i] == static_cast<uint8_t>(needle)) ? 1 : 0) << i;
+    }
+    return SparseMaskIter{mask & kFullMask};
+  }
+
+  MaskType occupiedMask() const {
+    auto tagV = static_cast<uint8_t const*>(&tags_[0]);
+    MaskType mask = 0;
+#if defined(__GNUC__)
+#pragma GCC unroll 16
+#else
+#pragma unroll 16
+#endif
+    for (int i = 0; i < kCapacity; i++) {
+      mask |= ((tagV[i] & 0x80) ? 1 : 0) << i;
+    }
+    return mask & kFullMask;
   }
 #endif
 
@@ -1156,7 +1190,7 @@ class F14Table : public Policy {
   // For hash functions we don't trust to avalanche, we repair things by
   // applying a bit mixer to the user-supplied hash.
 
-#if FOLLY_X64 || FOLLY_AARCH64
+#if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_RISCV64
   // 64-bit
   static HashPair splitHash(std::size_t hash) {
     static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");

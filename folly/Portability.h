@@ -124,12 +124,19 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_S390X 0
 #endif
 
+#if defined(__riscv)
+#define FOLLY_RISCV64 1
+#else
+#define FOLLY_RISCV64 0
+#endif
+
 namespace folly {
 constexpr bool kIsArchArm = FOLLY_ARM == 1;
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 constexpr bool kIsArchS390X = FOLLY_S390X == 1;
+constexpr bool kIsArchRISCV64 = FOLLY_RISCV64 == 1;
 } // namespace folly
 
 namespace folly {

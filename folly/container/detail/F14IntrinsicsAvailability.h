@@ -32,7 +32,8 @@
 // If FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE differs across compilation
 // units the program will fail to link due to a missing definition of
 // folly::container::detail::F14LinkCheck<X>::check() for some X.
-#if (FOLLY_SSE >= 2 || (FOLLY_NEON && FOLLY_AARCH64)) && !FOLLY_MOBILE
+#if (FOLLY_SSE >= 2 || (FOLLY_NEON && FOLLY_AARCH64) || FOLLY_RISCV64) && \
+    !FOLLY_MOBILE
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
 #else
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
