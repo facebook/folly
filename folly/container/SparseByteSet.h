@@ -31,6 +31,7 @@ namespace folly {
  *
  *  Operations:
  *  - add(byte)
+ *  - remove(byte)
  *  - contains(byte)
  *  - clear()
  *
@@ -72,6 +73,25 @@ class SparseByteSet {
   }
 
   /***
+   *  remove(byte)
+   *
+   *  O(1), non-amortized.
+   */
+  inline bool remove(uint8_t i) {
+    assert(size_ > 0);
+    bool r = contains(i);
+    if (r) {
+      if (dense_[size_ - 1] != i) {
+        int last_element_pos = dense_[size_ - 1];
+        swap(dense_[size_ - 1], dense_[sparse_[i]]);
+        swap(sparse_[i], sparse_[last_element_pos]);
+      }
+      --size_;      
+    }
+    return r;
+  }
+
+  /***
    *  contains(byte)
    *
    *  O(1), non-amortized.
@@ -92,6 +112,12 @@ class SparseByteSet {
                   // possible values were inserted.
   uint8_t sparse_[kCapacity];
   uint8_t dense_[kCapacity];
+
+  void swap(uint8_t& lhs, uint8_t& rhs) {
+    uint8_t tmp = lhs;
+    lhs = rhs;
+    rhs = tmp;
+  }
 };
 
 } // namespace folly
