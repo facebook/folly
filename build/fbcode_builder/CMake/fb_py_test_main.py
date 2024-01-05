@@ -120,7 +120,8 @@ class DebugWipeFinder(PathFinder):
                     code_impl.ob_size = 0
                 return code
 
-        spec.loader = DebugWipeLoader(fullname, spec.origin)
+        if isinstance(spec.loader, SourceFileLoader):
+            spec.loader = DebugWipeLoader(fullname, spec.origin)
         return spec
 
 
