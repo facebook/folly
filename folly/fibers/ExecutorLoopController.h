@@ -142,8 +142,6 @@ class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
     return loopThread_ == std::this_thread::get_id();
   }
 
-  void assumeCalledFromLoopThread();
-
   friend class fibers::FiberManager;
 };
 
