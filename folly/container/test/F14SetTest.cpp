@@ -409,9 +409,13 @@ void runSimple() {
 
   h8.clear();
   h8.emplace(s("abc"));
-  EXPECT_GT(h8.bucket_count(), 1);
+  if (!kFallback) {
+    EXPECT_GT(h8.bucket_count(), 1);
+  }
   h8 = {};
-  EXPECT_GT(h8.bucket_count(), 1);
+  if (!kFallback) {
+    EXPECT_GT(h8.bucket_count(), 1);
+  }
   h9 = {s("abc"), s("def")};
   EXPECT_TRUE(h8.empty());
   EXPECT_EQ(h9.size(), 2);
@@ -1031,9 +1035,8 @@ TEST(F14VectorSet, destructuring) {
   runInsertAndEmplace<F14VectorSet<Tracked<0>>>();
 }
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 TEST(F14ValueSet, maxSize) {
-  SKIP_IF(kFallback);
-
   F14ValueSet<int> s;
   EXPECT_EQ(
       s.max_size(),
@@ -1044,8 +1047,6 @@ TEST(F14ValueSet, maxSize) {
 }
 
 TEST(F14NodeSet, maxSize) {
-  SKIP_IF(kFallback);
-
   F14NodeSet<int> s;
   EXPECT_EQ(
       s.max_size(),
@@ -1056,8 +1057,6 @@ TEST(F14NodeSet, maxSize) {
 }
 
 TEST(F14VectorSet, maxSize) {
-  SKIP_IF(kFallback);
-
   F14VectorSet<int> s;
   EXPECT_EQ(
       s.max_size(),
@@ -1066,6 +1065,7 @@ TEST(F14VectorSet, maxSize) {
           std::allocator_traits<decltype(s)::allocator_type>::max_size(
               s.get_allocator())));
 }
+#endif
 
 template <typename S>
 void runMoveOnlyTest() {
@@ -1183,24 +1183,20 @@ TEST(F14ValueSet, heterogeneous) {
     EXPECT_TRUE(ref.end() == ref.find(buddy));
     EXPECT_EQ(hello, *ref.find(hello));
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     const auto buddyHashToken = ref.prehash(buddy);
     const auto helloHashToken = ref.prehash(hello);
 
     // prehash + find
     EXPECT_TRUE(ref.end() == ref.find(buddyHashToken, buddy));
     EXPECT_EQ(hello, *ref.find(helloHashToken, hello));
-#endif
 
     // contains
     EXPECT_FALSE(ref.contains(buddy));
     EXPECT_TRUE(ref.contains(hello));
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     // contains with prehash
     EXPECT_FALSE(ref.contains(buddyHashToken, buddy));
     EXPECT_TRUE(ref.contains(helloHashToken, hello));
-#endif
 
     // equal_range
     EXPECT_TRUE(std::make_pair(ref.end(), ref.end()) == ref.equal_range(buddy));
@@ -1550,7 +1546,6 @@ TEST(F14Set, randomInsertOrder) {
   });
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <template <class...> class TSet>
 void testContainsWithPrecomputedHash() {
   TSet<int> m{};
@@ -1571,7 +1566,6 @@ TEST(F14Set, containsWithPrecomputedHash) {
   testContainsWithPrecomputedHash<F14VectorSet>();
   testContainsWithPrecomputedHash<F14FastSet>();
 }
-#endif
 
 template <template <class...> class TSet>
 void testEraseIf() {
@@ -1605,7 +1599,9 @@ TEST(F14Set, ExceptionOnInsert) {
   testExceptionOnInsert<F14FastSet>();
 }
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
+#if FOLLY_HAS_DEDUCTION_GUIDES && /* TODO: Implement deduction guides in \
+                                     fallback implementation. */         \
+    FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <template <class...> class TSet>
 void testIterDeductionGuide() {
   TSet<int> source({1, 2});

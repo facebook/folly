@@ -225,7 +225,11 @@ class F14HashToken final {
   template <typename Policy>
   friend class f14::detail::F14Table;
 };
+#else
+class F14HashToken final {};
+#endif
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {
 namespace detail {
 

@@ -874,7 +874,6 @@ TEST(F14FastMap, rehash) {
   runRehash<F14VectorMap<std::string, std::string>>();
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <typename T>
 void runPrehash() {
   T h;
@@ -908,7 +907,6 @@ TEST(F14VectorMap, prehash) {
 TEST(F14FastMap, prehash) {
   runPrehash<F14FastMap<std::string, std::string>>();
 }
-#endif
 
 TEST(F14ValueMap, random) {
   runRandom<F14ValueMap<
@@ -1402,9 +1400,8 @@ TEST(F14VectorMap, destructuringErase) {
       0);
 }
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 TEST(F14ValueMap, maxSize) {
-  SKIP_IF(kFallback);
-
   F14ValueMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
@@ -1415,8 +1412,6 @@ TEST(F14ValueMap, maxSize) {
 }
 
 TEST(F14NodeMap, maxSize) {
-  SKIP_IF(kFallback);
-
   F14NodeMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
@@ -1427,8 +1422,6 @@ TEST(F14NodeMap, maxSize) {
 }
 
 TEST(F14VectorMap, vectorMaxSize) {
-  SKIP_IF(kFallback);
-
   F14VectorMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
@@ -1437,6 +1430,7 @@ TEST(F14VectorMap, vectorMaxSize) {
           std::allocator_traits<decltype(m)::allocator_type>::max_size(
               m.get_allocator())));
 }
+#endif
 
 template <typename M>
 void runMoveOnlyTest() {
@@ -1675,24 +1669,20 @@ TEST(F14ValueMap, heterogeneousLookup) {
     EXPECT_TRUE(ref.end() == ref.find(buddy));
     EXPECT_EQ(hello, ref.find(hello)->first);
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     const auto buddyHashToken = ref.prehash(buddy);
     const auto helloHashToken = ref.prehash(hello);
 
     // prehash + find
     EXPECT_TRUE(ref.end() == ref.find(buddyHashToken, buddy));
     EXPECT_EQ(hello, ref.find(helloHashToken, hello)->first);
-#endif
 
     // contains
     EXPECT_FALSE(ref.contains(buddy));
     EXPECT_TRUE(ref.contains(hello));
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     // contains with prehash
     EXPECT_FALSE(ref.contains(buddyHashToken, buddy));
     EXPECT_TRUE(ref.contains(helloHashToken, hello));
-#endif
 
     // equal_range
     EXPECT_TRUE(std::make_pair(ref.end(), ref.end()) == ref.equal_range(buddy));
@@ -2156,7 +2146,6 @@ TEST(F14Map, continuousCapacityF12) {
   runContinuousCapacityTest<F14VectorMap<uint16_t, uint16_t>>(0xfff0, 0xfffe);
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <template <class...> class TMap>
 void testContainsWithPrecomputedHash() {
   TMap<int, int> m{};
@@ -2178,7 +2167,6 @@ TEST(F14Map, containsWithPrecomputedHash) {
   testContainsWithPrecomputedHash<F14NodeMap>();
   testContainsWithPrecomputedHash<F14FastMap>();
 }
-#endif
 
 template <template <class...> class TMap>
 void testEraseIf() {
@@ -2237,7 +2225,9 @@ TEST(F14Map, copyAfterRemovedCollisions) {
   testCopyAfterRemovedCollisions<F14FastMap>();
 }
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
+#if FOLLY_HAS_DEDUCTION_GUIDES && /* TODO: Implement deduction guides in \
+                                     fallback implementation. */         \
+    FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <template <class...> class TMap>
 void testIterDeductionGuide() {
   TMap<int, double> source({{1, 2.0}, {3, 4.0}});
