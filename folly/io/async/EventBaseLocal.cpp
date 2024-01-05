@@ -46,8 +46,11 @@ EventBaseLocalBase::~EventBaseLocalBase() {
 void* EventBaseLocalBase::getVoid(EventBase& evb) {
   evb.dcheckIsInEventBaseThread();
 
-  auto ptr = folly::get_ptr(evb.localStorage_, key_);
-  return ptr ? ptr->get() : nullptr;
+  if (auto it = evb.localStorage_.find(keyToken_, key_);
+      it != evb.localStorage_.end()) {
+    return it->second.get();
+  }
+  return nullptr;
 }
 
 void EventBaseLocalBase::erase(EventBase& evb) {
@@ -77,11 +80,10 @@ void EventBaseLocalBase::setVoid(
 
   evb.dcheckIsInEventBaseThread();
 
-  auto alreadyExists = evb.localStorage_.find(key_) != evb.localStorage_.end();
-
-  evb.localStorage_.emplace(key_, std::move(erased));
-
-  if (!alreadyExists) {
+  bool inserted =
+      evb.localStorage_.try_emplace_token(keyToken_, key_, std::move(erased))
+          .second;
+  if (inserted) {
     eventBases_.wlock()->insert(&evb);
     evb.localStorageToDtor_.wlock()->insert(this);
   }

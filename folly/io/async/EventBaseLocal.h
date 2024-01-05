@@ -21,11 +21,11 @@
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <unordered_set>
 #include <utility>
 
 #include <folly/Likely.h>
 #include <folly/Synchronized.h>
+#include <folly/container/F14Set.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/lang/Thunk.h>
 
@@ -42,16 +42,19 @@ class EventBaseLocalBase {
   ~EventBaseLocalBase();
   void erase(EventBase& evb);
 
- private:
-  bool tryDeregister(EventBase& evb);
-
  protected:
   void setVoid(EventBase& evb, void* ptr, void (*dtor)(void*));
   void* getVoid(EventBase& evb);
 
-  folly::Synchronized<std::unordered_set<EventBase*>> eventBases_;
+ private:
+  bool tryDeregister(EventBase& evb);
+
   static std::atomic<std::size_t> keyCounter_;
-  std::size_t key_{keyCounter_++};
+
+  const std::size_t key_{keyCounter_++};
+  const folly::F14HashToken keyToken_{
+      folly::EventBase::LocalStorageMap{}.prehash(key_)};
+  folly::Synchronized<folly::F14FastSet<EventBase*>> eventBases_;
 };
 
 } // namespace detail
