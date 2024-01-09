@@ -52,10 +52,8 @@ inline void ExecutorLoopController::schedule() {
 
 inline void ExecutorLoopController::runLoop() {
   auto oldLoopThread = loopThread_.exchange(std::this_thread::get_id());
-  DCHECK(
-      oldLoopThread == std::thread::id{} ||
-      oldLoopThread == std::this_thread::get_id());
-  SCOPE_EXIT { loopThread_ = oldLoopThread; };
+  DCHECK(oldLoopThread == std::thread::id{});
+  SCOPE_EXIT { loopThread_ = std::thread::id{}; };
 
   if (!executorKeepAlive_) {
     if (!fm_->hasTasks()) {
