@@ -86,7 +86,7 @@ using pretty_default_tag = std::conditional_t< //
 
 template <typename T>
 static constexpr auto pretty_raw(pretty_tag_msc) {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
   return pretty_carray_from(__FUNCSIG__);
 #endif
 }
