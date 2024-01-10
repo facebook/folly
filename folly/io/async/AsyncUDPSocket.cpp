@@ -353,9 +353,7 @@ void AsyncUDPSocket::connect(const folly::SocketAddress& address) {
   connected_ = true;
   connectedAddress_ = address;
 
-  if (!localAddress_.isInitialized()) {
-    localAddress_.setFromLocalAddress(fd_);
-  }
+  localAddress_.setFromLocalAddress(fd_);
 }
 
 void AsyncUDPSocket::dontFragment(bool df) {
