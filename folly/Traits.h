@@ -1091,4 +1091,10 @@ using type_pack_element_t = traits_detail::type_pack_element_fallback<I, Ts...>;
 
 #endif
 
+template <typename... Ts>
+FOLLY_INLINE_VARIABLE constexpr std::size_t type_pack_size_v = sizeof...(Ts);
+
+template <typename... Ts>
+using type_pack_size_t = index_constant<sizeof...(Ts)>;
+
 } // namespace folly

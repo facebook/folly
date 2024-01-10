@@ -645,3 +645,13 @@ TEST(Traits, isAllocator) {
   static_assert(!is_allocator_v<std::string>, "");
   static_assert(!is_allocator<std::string>::value, "");
 }
+
+TEST(Traits, type_pack_size) {
+  EXPECT_EQ(0, (type_pack_size_v<>));
+  EXPECT_EQ(1, (type_pack_size_v<int>));
+  EXPECT_EQ(5, (type_pack_size_v<long long, long, int, short, char>));
+
+  EXPECT_EQ(0, (type_pack_size_t<>::value));
+  EXPECT_EQ(1, (type_pack_size_t<int>::value));
+  EXPECT_EQ(5, (type_pack_size_t<long long, long, int, short, char>::value));
+}

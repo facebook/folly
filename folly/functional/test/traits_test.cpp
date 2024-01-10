@@ -42,12 +42,9 @@ struct TraitsTest : testing::Test {
   static constexpr bool is_argument_type_v =
       std::is_same<R, argument_type_t<I, S>>::value;
 
-  template <typename... A>
-  using size = folly::index_constant<sizeof...(A)>;
-
   template <typename S>
   static constexpr size_t arguments_size_v =
-      traits<S>::template arguments<size>::value;
+      traits<S>::template arguments<folly::type_pack_size_t>::value;
 
   template <typename T, typename S>
   using cvref_t = typename traits<S>::template value_like<T>;
