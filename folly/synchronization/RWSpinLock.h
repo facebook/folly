@@ -309,7 +309,7 @@ class RWSpinLock {
   class FOLLY_NODISCARD UpgradedHolder;
   class FOLLY_NODISCARD WriteHolder;
 
-  class FOLLY_NODISCARD ReadHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::shared_lock") ReadHolder {
    public:
     explicit ReadHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) {
@@ -376,7 +376,8 @@ class RWSpinLock {
     RWSpinLock* lock_;
   };
 
-  class FOLLY_NODISCARD UpgradedHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use folly::upgrade_lock")
+      UpgradedHolder {
    public:
     explicit UpgradedHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) {
@@ -439,7 +440,7 @@ class RWSpinLock {
     RWSpinLock* lock_;
   };
 
-  class FOLLY_NODISCARD WriteHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::unique_lock") WriteHolder {
    public:
     explicit WriteHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) {

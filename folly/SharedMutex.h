@@ -101,13 +101,6 @@
 //    is held.  See https://github.com/boostorg/thread/blob/master/
 //      include/boost/thread/pthread/shared_mutex.hpp
 //
-//  * RWSpinLock::UpgradedHolder maps to SharedMutex::UpgradeHolder
-//    (UpgradeableHolder would be even more pedantically correct).
-//    SharedMutex's holders have fewer methods (no reset) and are less
-//    tolerant (promotion and downgrade crash if the donor doesn't own
-//    the lock, and you must use the default constructor rather than
-//    passing a nullptr to the pointer constructor).
-//
 // Both SharedMutex and RWSpinLock provide "exclusive", "upgrade",
 // and "shared" modes.  At all times num_threads_holding_exclusive +
 // num_threads_holding_upgrade <= 1, and num_threads_holding_exclusive ==
@@ -193,7 +186,7 @@
 // recorded the lock, which might be in the lock itself or in any of
 // the shared slots.  If you can conveniently pass state from lock
 // acquisition to release then the fastest mechanism is to std::move
-// the SharedMutex::ReadHolder instance or an SharedMutex::Token (using
+// the std::shared_lock instance or an SharedMutex::Token (using
 // lock_shared(Token&) and unlock_shared(Token&)).  The guard or token
 // will tell unlock_shared where in deferredReaders[] to look for the
 // deferred lock.  The Token-less version of unlock_shared() works in all
@@ -1433,7 +1426,7 @@ class SharedMutexImpl : std::conditional_t<
   }
 
  public:
-  class FOLLY_NODISCARD ReadHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::shared_lock") ReadHolder {
     using folly_is_unsafe_for_async_usage = std::true_type;
 
     ReadHolder() : lock_(nullptr) {}
@@ -1495,7 +1488,8 @@ class SharedMutexImpl : std::conditional_t<
     SharedMutexToken token_;
   };
 
-  class FOLLY_NODISCARD UpgradeHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use folly::upgrade_lock")
+      UpgradeHolder {
     using folly_is_unsafe_for_async_usage = std::true_type;
 
     UpgradeHolder() : lock_(nullptr) {}
@@ -1545,7 +1539,7 @@ class SharedMutexImpl : std::conditional_t<
     SharedMutexImpl* lock_;
   };
 
-  class FOLLY_NODISCARD WriteHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::unique_lock") WriteHolder {
     using folly_is_unsafe_for_async_usage = std::true_type;
 
     WriteHolder() : lock_(nullptr) {}

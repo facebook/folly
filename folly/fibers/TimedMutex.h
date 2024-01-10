@@ -178,7 +178,7 @@ class TimedRWMutexImpl {
   // are any.
   void unlock_and_lock_shared();
 
-  class FOLLY_NODISCARD ReadHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::shared_lock") ReadHolder {
    public:
     explicit ReadHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
       lock_->lock_shared();
@@ -199,7 +199,7 @@ class TimedRWMutexImpl {
     TimedRWMutexImpl* lock_;
   };
 
-  class FOLLY_NODISCARD WriteHolder {
+  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::unique_lock") WriteHolder {
    public:
     explicit WriteHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
       lock_->lock();

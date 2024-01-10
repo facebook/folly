@@ -86,6 +86,9 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_NODISCARD
 #endif
 
+// older clang-format gets confused by [[deprecated(...)]] on class decls
+#define FOLLY_DEPRECATED(...) [[deprecated(__VA_ARGS__)]]
+
 // target
 #ifdef _MSC_VER
 #define FOLLY_TARGET_ATTRIBUTE(target)
