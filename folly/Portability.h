@@ -32,7 +32,7 @@
 #include <version>
 #endif
 
-static_assert(FOLLY_CPLUSPLUS >= 201402L, "__cplusplus >= 201402L");
+static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 
 #if defined(__GNUC__) && !defined(__clang__)
 static_assert(__GNUC__ >= 7, "__GNUC__ >= 7");
