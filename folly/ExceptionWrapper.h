@@ -38,6 +38,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/functional/traits.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 
@@ -102,11 +103,6 @@ namespace folly {
 //! \endcode
 class exception_wrapper final {
  private:
-  template <class Fn>
-  struct arg_type_;
-  template <class Fn>
-  using arg_type = _t<arg_type_<Fn>>;
-
   struct with_exception_from_fn_;
   struct with_exception_from_ex_;
 
@@ -114,8 +110,6 @@ class exception_wrapper final {
 
   template <class Ex>
   using IsStdException = std::is_base_of<std::exception, std::decay_t<Ex>>;
-  template <class CatchFn>
-  using IsCatchAll = std::is_same<arg_type<std::decay_t<CatchFn>>, void>;
 
   struct PrivateCtor {};
 
