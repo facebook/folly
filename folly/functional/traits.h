@@ -45,6 +45,15 @@ template <bool Nx>
 constexpr bool function_traits_nx_<Nx>::is_nothrow;
 #endif
 
+template <bool Var>
+struct function_traits_var_ {
+  static constexpr bool is_variadic = Var;
+};
+#if FOLLY_CPLUSPLUS < 201703L
+template <bool Var>
+constexpr bool function_traits_var_<Var>::is_variadic;
+#endif
+
 template <typename T>
 struct function_traits_cvref_ {
   template <typename D>
@@ -114,72 +123,168 @@ template <typename R, typename... A>
 struct function_traits<R(A...)> //
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) volatile>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const volatile>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const volatile> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...)&> //
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const&>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) volatile&>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const volatile&>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const volatile&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) &&> //
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int&&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const&&>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const&&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) volatile&&>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile&&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const volatile&&>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
+      detail::function_traits_var_<false>,
+      detail::function_traits_cvref_<int const volatile&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...)> //
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) volatile>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int volatile> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const volatile>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const volatile> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...)&> //
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const&>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) volatile&>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int volatile&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const volatile&>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const volatile&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) &&> //
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const&&>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) volatile&&>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int volatile&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const volatile&&>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<false>,
+      detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int const volatile&&> {};
 
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
@@ -188,72 +293,168 @@ template <typename R, typename... A>
 struct function_traits<R(A...) noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) volatile noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const volatile noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const volatile> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...)& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) volatile& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const volatile& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const volatile&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...)&& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int&&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const&& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const&&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) volatile&& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile&&> {};
 
 template <typename R, typename... A>
 struct function_traits<R(A...) const volatile&& noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
+      detail::function_traits_var_<false>,
+      detail::function_traits_cvref_<int const volatile&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) volatile noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int volatile> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const volatile noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const volatile> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...)& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) volatile& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int volatile&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const volatile& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const volatile&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...)&& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const&& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int const&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) volatile&& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
+      detail::function_traits_cvref_<int volatile&&> {};
+
+template <typename R, typename... A>
+struct function_traits<R(A..., ...) const volatile&& noexcept>
+    : detail::function_traits_base_<R(A...)>,
+      detail::function_traits_nx_<true>,
+      detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int const volatile&&> {};
 
 #endif
@@ -262,25 +463,37 @@ struct function_traits<R(A...) const volatile&& noexcept>
 
 namespace detail {
 
-template <bool Nx, typename R>
+template <bool Nx, bool Var, typename R>
 struct function_remove_cvref_;
 template <typename R>
-struct function_remove_cvref_<false, R> {
+struct function_remove_cvref_<false, false, R> {
   template <typename... A>
   using apply = R(A...);
 };
+template <typename R>
+struct function_remove_cvref_<false, true, R> {
+  template <typename... A>
+  using apply = R(A..., ...);
+};
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename R>
-struct function_remove_cvref_<true, R> {
+struct function_remove_cvref_<true, false, R> {
   template <typename... A>
   using apply = R(A...) noexcept;
+};
+template <typename R>
+struct function_remove_cvref_<true, true, R> {
+  template <typename... A>
+  using apply = R(A..., ...) noexcept;
 };
 #endif
 
 template <typename F, typename T = function_traits<F>>
-using function_remove_cvref_t_ = typename T::template arguments<
-    function_remove_cvref_<T::is_nothrow, typename T::result_type>::
-        template apply>;
+using function_remove_cvref_t_ =
+    typename T::template arguments<function_remove_cvref_<
+        T::is_nothrow,
+        T::is_variadic,
+        typename T::result_type>::template apply>;
 
 } // namespace detail
 
@@ -310,65 +523,130 @@ namespace detail {
 #define FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(...)
 #endif
 
+template <typename Src, bool Var>
+struct function_like_src_;
 template <typename Src>
-struct function_like_src_ {
+struct function_like_src_<Src, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src const> {
+struct function_like_src_<Src const, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) const FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src volatile> {
+struct function_like_src_<Src volatile, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src const volatile> {
+struct function_like_src_<Src const volatile, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) const volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src&> {
+struct function_like_src_<Src&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) & FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src const&> {
+struct function_like_src_<Src const&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) const& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src volatile&> {
+struct function_like_src_<Src volatile&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src const volatile&> {
+struct function_like_src_<Src const volatile&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) const volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src&&> {
+struct function_like_src_<Src&&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) && FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src const&&> {
+struct function_like_src_<Src const&&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) const&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src volatile&&> {
+struct function_like_src_<Src volatile&&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 template <typename Src>
-struct function_like_src_<Src const volatile&&> {
+struct function_like_src_<Src const volatile&&, 0> {
   template <bool Nx, typename R, typename... A>
   using apply = R(A...) const volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src const, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) const FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src volatile, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src const volatile, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) const
+      volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) & FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src const&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) const& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src volatile&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src const volatile&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) const
+      volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src&&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) && FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src const&&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) const&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src volatile&&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+};
+template <typename Src>
+struct function_like_src_<Src const volatile&&, 1> {
+  template <bool Nx, typename R, typename... A>
+  using apply = R(A..., ...) const
+      volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
 };
 
 #undef FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX
@@ -378,13 +656,23 @@ struct function_like_dst_ : function_like_dst_<function_remove_cvref_t<Dst>> {};
 template <typename R, typename... A>
 struct function_like_dst_<R(A...)> {
   template <typename Src>
-  using apply = typename function_like_src_<Src>::template apply<0, R, A...>;
+  using apply = typename function_like_src_<Src, 0>::template apply<0, R, A...>;
+};
+template <typename R, typename... A>
+struct function_like_dst_<R(A..., ...)> {
+  template <typename Src>
+  using apply = typename function_like_src_<Src, 1>::template apply<0, R, A...>;
 };
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename R, typename... A>
 struct function_like_dst_<R(A...) noexcept> {
   template <typename Src>
-  using apply = typename function_like_src_<Src>::template apply<1, R, A...>;
+  using apply = typename function_like_src_<Src, 0>::template apply<1, R, A...>;
+};
+template <typename R, typename... A>
+struct function_like_dst_<R(A..., ...) noexcept> {
+  template <typename Src>
+  using apply = typename function_like_src_<Src, 1>::template apply<1, R, A...>;
 };
 #endif
 
