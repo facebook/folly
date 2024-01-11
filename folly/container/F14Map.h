@@ -1115,7 +1115,6 @@ class F14ValueMap
   }
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
@@ -1199,7 +1198,6 @@ template <
 F14ValueMap(
     std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
     -> F14ValueMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
 
 template <
     typename Key,
@@ -1264,7 +1262,6 @@ class F14NodeMap
   // TODO extract and node_handle insert
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
@@ -1347,7 +1344,6 @@ template <
 F14NodeMap(
     std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
     -> F14NodeMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
 
 namespace f14 {
 namespace detail {
@@ -1671,7 +1667,6 @@ class F14VectorMap : public f14::detail::F14VectorMapImpl<
   }
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
@@ -1754,7 +1749,6 @@ template <
 F14VectorMap(
     std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
     -> F14VectorMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
 
 /**
  * F14FastMap is, under the hood, either an F14ValueMap or an F14VectorMap.
@@ -1806,7 +1800,6 @@ class F14FastMap : public std::conditional_t<
   }
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_key_type_t<InputIt>>,
@@ -1889,7 +1882,7 @@ template <
 F14FastMap(
     std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
     -> F14FastMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
+
 } // namespace folly
 
 #endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE

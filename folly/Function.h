@@ -1040,12 +1040,8 @@ using function_ctor_deduce_t = typename function_ctor_deduce_<void, F>::type;
 
 } // namespace detail
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
-
 template <typename F>
 Function(F) -> Function<detail::function_ctor_deduce_t<F>>;
-
-#endif
 
 /**
  * @class folly::FunctionRef

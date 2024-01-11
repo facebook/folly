@@ -304,8 +304,6 @@ static_assert( //
 
 static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
-
 struct ctor_guide {
   static void fn();
   static void fn_nx() noexcept;
@@ -357,8 +355,6 @@ static_assert( //
     std::is_same_v< //
         Function<void() const noexcept>,
         decltype(Function{ctor_guide::call_c_nx{}})>);
-#endif
-
 #endif
 
 struct RecStd {

@@ -844,7 +844,6 @@ class F14ValueSet
   }
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
@@ -914,7 +913,6 @@ template <
     typename = detail::RequireAllocator<Alloc>>
 F14ValueSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14ValueSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
 
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14NodeSet
@@ -960,7 +958,6 @@ class F14NodeSet
   }
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
@@ -1030,7 +1027,6 @@ template <
     typename = detail::RequireAllocator<Alloc>>
 F14NodeSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14NodeSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
 
 namespace f14 {
 namespace detail {
@@ -1276,7 +1272,6 @@ class F14VectorSet
   }
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
@@ -1346,7 +1341,6 @@ template <
     typename = detail::RequireAllocator<Alloc>>
 F14VectorSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14VectorSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
 
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14FastSet
@@ -1378,7 +1372,6 @@ class F14FastSet
   }
 };
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <
     typename InputIt,
     typename Hasher = f14::DefaultHasher<iterator_value_type_t<InputIt>>,
@@ -1448,7 +1441,6 @@ template <
     typename = detail::RequireAllocator<Alloc>>
 F14FastSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14FastSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
-#endif
 
 } // namespace folly
 
