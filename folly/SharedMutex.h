@@ -1426,6 +1426,10 @@ class SharedMutexImpl : std::conditional_t<
   }
 
  public:
+  FOLLY_PUSH_WARNING
+
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
   class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::shared_lock") ReadHolder {
     using folly_is_unsafe_for_async_usage = std::true_type;
 
@@ -1606,6 +1610,8 @@ class SharedMutexImpl : std::conditional_t<
         lock_ = nullptr;
       }
     }
+
+    FOLLY_POP_WARNING
 
    private:
     friend class ReadHolder;
