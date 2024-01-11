@@ -19,9 +19,21 @@
 #include <folly/experimental/settings/Settings.h>
 
 namespace a_ns {
-FOLLY_SETTING_DEFINE(follytest, public_flag_to_a, int, 456, "Public flag to a");
+FOLLY_SETTING_DEFINE(
+    follytest,
+    public_flag_to_a,
+    int,
+    456,
+    folly::settings::Mutability::Mutable,
+    "Public flag to a");
 namespace {
-FOLLY_SETTING_DEFINE(follytest, internal_flag_to_a, int, 789, "Desc of int");
+FOLLY_SETTING_DEFINE(
+    follytest,
+    internal_flag_to_a,
+    int,
+    789,
+    folly::settings::Mutability::Mutable,
+    "Desc of int");
 }
 
 int a_func() {

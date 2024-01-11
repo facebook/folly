@@ -21,11 +21,21 @@
 namespace b_ns {
 
 FOLLY_SETTING_DEFINE(
-    follytest, public_flag_to_b, std::string, "basdf", "Public flag to b");
+    follytest,
+    public_flag_to_b,
+    std::string,
+    "basdf",
+    folly::settings::Mutability::Mutable,
+    "Public flag to b");
 
 namespace {
 FOLLY_SETTING_DEFINE(
-    follytest, internal_flag_to_b, std::string, "test", "Desc of str");
+    follytest,
+    internal_flag_to_b,
+    std::string,
+    "test",
+    folly::settings::Mutability::Mutable,
+    "Desc of str");
 }
 
 std::string b_func() {

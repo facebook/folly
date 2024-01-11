@@ -71,14 +71,14 @@ struct SettingMetadata {
   StringPiece defaultStr;
 
   /**
-   * Setting description field.
-   */
-  StringPiece description;
-
-  /**
    * Determines if the setting can change after initialization.
    */
   Mutability mutability;
+
+  /**
+   * Setting description field.
+   */
+  StringPiece description;
 };
 
 } // namespace settings

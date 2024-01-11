@@ -26,18 +26,25 @@
 
 namespace some_ns {
 FOLLY_SETTING_DEFINE(
-    follytest, some_flag, std::string, "default", "Description");
+    follytest,
+    some_flag,
+    std::string,
+    "default",
+    folly::settings::Mutability::Mutable,
+    "Description");
 FOLLY_SETTING_DEFINE(
     follytest,
     unused,
     std::string,
     "unused_default",
+    folly::settings::Mutability::Mutable,
     "Not used, but should still be in the list");
 FOLLY_SETTING_DEFINE(
     follytest,
     multi_token_type,
     unsigned int,
     123,
+    folly::settings::Mutability::Mutable,
     "Test that multi-token type names can be used");
 // Enable to test runtime collision checking logic
 #if 0
@@ -82,16 +89,23 @@ FOLLY_SETTING_DEFINE(
     user_defined,
     UserDefinedType,
     "b",
+    folly::settings::Mutability::Mutable,
     "User defined type constructed from string");
 
-FOLLY_SETTING_DEFINE_IMMUTABLE(
+FOLLY_SETTING_DEFINE(
     follytest,
     immutable_setting,
     UserDefinedType,
     "b",
+    folly::settings::Mutability::Immutable,
     "User defined type constructed from string");
-FOLLY_SETTING_DEFINE_IMMUTABLE(
-    otherproj, some_flag, std::string, "default", "Description");
+FOLLY_SETTING_DEFINE(
+    otherproj,
+    some_flag,
+    std::string,
+    "default",
+    folly::settings::Mutability::Mutable,
+    "Description");
 
 } // namespace some_ns
 namespace {

@@ -153,7 +153,34 @@ class SettingWrapper {
   ::folly::settings::detail::SettingCore<_Type>&                               \
       FOLLY_SETTINGS_FUNC__##_project##_##_name()
 
-#define FOLLY_DETAIL_SETTING_DEFINE(_mut, _project, _name, _Type, _def, _desc) \
+} // namespace detail
+
+/**
+ * Defines a setting.
+ *
+ * Settings are either mutable or immutable where mutable setting values can
+ * change at runtime whereas immutable setting values can not be changed after
+ * the setting project is frozen (see Immutables.h).
+ *
+ * FOLLY_SETTING_DEFINE() can only be placed in a single translation unit
+ * and will be checked against accidental collisions.
+ *
+ * The setting API can be accessed via FOLLY_SETTING(project, name).<api_func>()
+ * and is documented in the Setting class.
+ *
+ * All settings for a common namespace; (project, name) must be unique
+ * for the whole program.  Collisions are verified at runtime on
+ * program startup.
+ *
+ * @param _project  Project identifier, can only contain [a-zA-Z0-9]
+ * @param _name  setting name within the project, can only contain [_a-zA-Z0-9].
+ *   The string "<project>_<name>" must be unique for the whole program.
+ * @param _Type  setting value type
+ * @param _def   default value for the setting
+ * @param _mut   mutability of the setting
+ * @param _desc  setting documentation
+ */
+#define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _mut, _desc)        \
   /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__.   \
      Aggregate all off these together in a single section for better TLB       \
      and cache locality. */                                                    \
@@ -172,7 +199,7 @@ class SettingWrapper {
         ::folly::settings::detail::SettingCore<_Type>>                         \
         setting(                                                               \
             ::folly::settings::SettingMetadata{                                \
-                #_project, #_name, #_Type, typeid(_Type), #_def, _desc, _mut}, \
+                #_project, #_name, #_Type, typeid(_Type), #_def, _mut, _desc}, \
             ::folly::type_t<_Type>{_def},                                      \
             FOLLY_SETTINGS_TRIVIAL__##_project##_##_name);                     \
     return *setting;                                                           \
@@ -181,40 +208,6 @@ class SettingWrapper {
   auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                            \
       FOLLY_SETTINGS_FUNC__##_project##_##_name();                             \
   FOLLY_DETAIL_SETTINGS_DEFINE_LOCAL_FUNC__(_project, _name, _Type, char)
-
-} // namespace detail
-
-/**
- * Defines a mutable setting. Mutable settings can be updated at runtime after
- * folly::settings::freezeImmutables(_project) is called.
- *
- * FOLLY_SETTING_DEFINE() can only be placed in a single translation unit
- * and will be checked against accidental collisions.
- *
- * The setting API can be accessed via FOLLY_SETTING(project, name).<api_func>()
- * and is documented in the Setting class.
- *
- * All settings for a common namespace; (project, name) must be unique
- * for the whole program.  Collisions are verified at runtime on
- * program startup.
- *
- * @param _project  Project identifier, can only contain [a-zA-Z0-9]
- * @param _name  setting name within the project, can only contain [_a-zA-Z0-9].
- *   The string "<project>_<name>" must be unique for the whole program.
- * @param _Type  setting value type
- * @param _def   default value for the setting
- * @param _desc  setting documentation
- */
-#define FOLLY_SETTING_DEFINE(...) \
-  FOLLY_DETAIL_SETTING_DEFINE(folly::settings::Mutability::Mutable, __VA_ARGS__)
-
-/**
- * Same as above except the setting is immutable. Its value cannot be updated at
- * runtime after folly::settings::freezeImmutables(_project) is called.
- */
-#define FOLLY_SETTING_DEFINE_IMMUTABLE(...) \
-  FOLLY_DETAIL_SETTING_DEFINE(              \
-      folly::settings::Mutability::Immutable, __VA_ARGS__)
 
 /**
  * Declares a setting that's defined elsewhere.
