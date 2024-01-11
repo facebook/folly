@@ -28,11 +28,17 @@ namespace settings {
 enum class SetErrorCode {
   NotFound,
   Rejected,
+  FrozenImmutable,
 };
 
 using SetResult = Expected<Unit, SetErrorCode>;
 
 std::string_view toString(SetErrorCode code);
+
+enum class Mutability {
+  Mutable,
+  Immutable,
+};
 
 /**
  * Static information about the setting definition
@@ -68,6 +74,11 @@ struct SettingMetadata {
    * Setting description field.
    */
   StringPiece description;
+
+  /**
+   * Determines if the setting can change after initialization.
+   */
+  Mutability mutability;
 };
 
 } // namespace settings

@@ -17,6 +17,7 @@
 #include <folly/experimental/settings/Settings.h>
 
 #include <folly/Format.h>
+#include <folly/String.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -82,6 +83,15 @@ FOLLY_SETTING_DEFINE(
     UserDefinedType,
     "b",
     "User defined type constructed from string");
+
+FOLLY_SETTING_DEFINE_IMMUTABLE(
+    follytest,
+    immutable_setting,
+    UserDefinedType,
+    "b",
+    "User defined type constructed from string");
+FOLLY_SETTING_DEFINE_IMMUTABLE(
+    otherproj, some_flag, std::string, "default", "Description");
 
 } // namespace some_ns
 namespace {
@@ -272,16 +282,19 @@ TEST(Settings, basic) {
           value,
           reason);
     });
-    EXPECT_EQ(
-        allFlags,
-        "follytest/internal_flag_to_a/int/789/Desc of int/789/default\n"
-        "follytest/internal_flag_to_b/std::string/\"test\"/Desc of str/test/default\n"
-        "follytest/multi_token_type/unsigned int/123/Test that multi-token type names can be used/123/default\n"
-        "follytest/public_flag_to_a/int/456/Public flag to a/300/from_string\n"
-        "follytest/public_flag_to_b/std::string/\"basdf\"/Public flag to b/basdf/default\n"
-        "follytest/some_flag/std::string/\"default\"/Description/default/default\n"
-        "follytest/unused/std::string/\"unused_default\"/Not used, but should still be in the list/unused_default/default\n"
-        "follytest/user_defined/UserDefinedType/\"b\"/User defined type constructed from string/b_out/default\n");
+    auto allFlagsString = folly::stripLeftMargin(R"MESSAGE(
+      follytest/immutable_setting/UserDefinedType/"b"/User defined type constructed from string/b_out/default
+      follytest/internal_flag_to_a/int/789/Desc of int/789/default
+      follytest/internal_flag_to_b/std::string/"test"/Desc of str/test/default
+      follytest/multi_token_type/unsigned int/123/Test that multi-token type names can be used/123/default
+      follytest/public_flag_to_a/int/456/Public flag to a/300/from_string
+      follytest/public_flag_to_b/std::string/"basdf"/Public flag to b/basdf/default
+      follytest/some_flag/std::string/"default"/Description/default/default
+      follytest/unused/std::string/"unused_default"/Not used, but should still be in the list/unused_default/default
+      follytest/user_defined/UserDefinedType/"b"/User defined type constructed from string/b_out/default
+      otherproj/some_flag/std::string/"default"/Description/default/default
+  )MESSAGE");
+    EXPECT_EQ(allFlags, allFlagsString);
   }
   {
     folly::settings::Snapshot sn;
@@ -519,4 +532,74 @@ TEST(SettingsTest, callback) {
   some_ns::FOLLY_SETTING(follytest, some_flag).set("e");
   EXPECT_EQ(callbackInvocations, 4);
   EXPECT_EQ(lastCallbackValue, "d");
+}
+
+TEST(Settings, immutables) {
+  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, immutable_setting)->value_, 100);
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(otherproj, some_flag), "default");
+
+  // Check these can be changed before immutables are frozen
+  folly::settings::Snapshot sn;
+  EXPECT_THAT(
+      sn.setFromString("follytest_immutable_setting", "a", "test"), IsOk());
+  EXPECT_THAT(
+      sn.setFromString("otherproj_some_flag", "value_1", "test"), IsOk());
+  sn.publish();
+  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, immutable_setting)->value_, 0);
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(otherproj, some_flag), "value_1");
+
+  // Create a snapshot before freezing immutables
+  folly::settings::Snapshot beforeFreezeSn;
+  EXPECT_THAT(
+      beforeFreezeSn.resetToDefault("follytest_immutable_setting"), IsOk());
+  EXPECT_THAT(
+      beforeFreezeSn.setFromString("follytest_immutable_setting", "b", "test"),
+      IsOk());
+  EXPECT_THAT(
+      beforeFreezeSn.setFromString("otherproj_some_flag", "value_2", "test"),
+      IsOk());
+
+  ASSERT_FALSE(folly::settings::immutablesFrozen("follytest"));
+  ASSERT_FALSE(folly::settings::frozenSettingProjects().contains("follytest"));
+
+  // Freeze "follytest" immutable settings
+  folly::settings::freezeImmutables({"follytest"});
+
+  ASSERT_TRUE(folly::settings::immutablesFrozen("follytest"));
+  ASSERT_TRUE(folly::settings::frozenSettingProjects().contains("follytest"));
+  ASSERT_FALSE(folly::settings::immutablesFrozen("otherproj"));
+  ASSERT_FALSE(folly::settings::frozenSettingProjects().contains("otherproj"));
+
+  // Check that even though 'immutable_setting' was successfully set before
+  // settings were frozen, it still can't publish the new value now that
+  // immutables are frozen. However, it still can change otherproj_some_flag
+  // since that project has not been frozen yet.
+  beforeFreezeSn.publish();
+  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, immutable_setting)->value_, 0);
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(otherproj, some_flag), "value_2");
+
+  // Check newly created snapshots fail mutation attempts.
+  folly::settings::Snapshot afterFreezeSn;
+  EXPECT_THAT(
+      afterFreezeSn.setFromString("follytest_immutable_setting", "b", "test"),
+      HasErrorCode(folly::settings::SetErrorCode::FrozenImmutable));
+  EXPECT_THAT(
+      afterFreezeSn.resetToDefault("follytest_immutable_setting"),
+      HasErrorCode(folly::settings::SetErrorCode::FrozenImmutable));
+  EXPECT_THAT(
+      some_ns::FOLLY_SETTING(follytest, immutable_setting)
+          .set(some_ns::UserDefinedType("b")),
+      HasErrorCode(folly::settings::SetErrorCode::FrozenImmutable));
+
+  // Check we don't attempt to contruct immutable settings from strings if
+  // immutables have already been frozen. If we did, the below code would throw
+  // an exception.
+  some_ns::UserDefinedType bad("a");
+  bad.value_ = 50;
+  EXPECT_THAT(
+      some_ns::FOLLY_SETTING(follytest, immutable_setting).set(bad),
+      HasErrorCode(folly::settings::SetErrorCode::FrozenImmutable));
+  EXPECT_THAT(
+      afterFreezeSn.setFromString("follytest_immutable_setting", "c", "test"),
+      HasErrorCode(folly::settings::SetErrorCode::FrozenImmutable));
 }

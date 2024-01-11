@@ -67,8 +67,7 @@ SetResult Snapshot::setFromString(
   if (it == mapPtr->end()) {
     return makeUnexpected(SetErrorCode::NotFound);
   }
-  it->second->setFromString(newValue, reason, this);
-  return unit;
+  return it->second->setFromString(newValue, reason, this);
 }
 
 Optional<Snapshot::SettingsInfo> Snapshot::getAsString(
@@ -87,8 +86,7 @@ SetResult Snapshot::resetToDefault(StringPiece settingName) {
   if (it == mapPtr->end()) {
     return makeUnexpected(SetErrorCode::NotFound);
   }
-  it->second->resetToDefault(this);
-  return unit;
+  return it->second->resetToDefault(this);
 }
 
 void Snapshot::forEachSetting(
@@ -173,8 +171,11 @@ SnapshotBase::~SnapshotBase() {
 } // namespace detail
 
 void Snapshot::publish() {
+  // Double check frozen immutables since they could have been frozen after the
+  // values were set.
+  auto frozenProjects = frozenSettingProjects();
   for (auto& it : snapshotValues_) {
-    it.second.publish();
+    it.second.publish(frozenProjects);
   }
 }
 

@@ -29,6 +29,7 @@
 #include <folly/ThreadLocal.h>
 #include <folly/Utility.h>
 #include <folly/container/F14Set.h>
+#include <folly/experimental/settings/Immutables.h>
 #include <folly/experimental/settings/Types.h>
 #include <folly/lang/Aligned.h>
 
@@ -62,11 +63,11 @@ class SettingCoreBase {
   using Key = intptr_t;
   using Version = uint64_t;
 
-  virtual void setFromString(
+  virtual SetResult setFromString(
       StringPiece newValue, StringPiece reason, SnapshotBase* snapshot) = 0;
   virtual std::pair<std::string, std::string> getAsString(
       const SnapshotBase* snapshot) const = 0;
-  virtual void resetToDefault(SnapshotBase* snapshot) = 0;
+  virtual SetResult resetToDefault(SnapshotBase* snapshot) = 0;
   virtual const SettingMetadata& meta() const = 0;
   virtual ~SettingCoreBase() {}
 
@@ -107,9 +108,15 @@ class BoxedValue {
   template <class T>
   BoxedValue(const T& value, StringPiece reason, SettingCore<T>& core)
       : value_(std::make_shared<SettingContents<T>>(reason.str(), value)),
-        publish_([value = value_, &core]() {
+        publish_([value = value_,
+                  &core](const FrozenSettingProjects& frozenProjects) {
+          if (core.meta().mutability == Mutability::Immutable &&
+              frozenProjects.contains(core.meta().project)) {
+            return;
+          }
           auto& contents = BoxedValue::unboxImpl<T>(value.get());
-          core.set(contents.value, contents.updateReason);
+          core.setImpl(
+              contents.value, contents.updateReason, /* snapshot */ nullptr);
         }) {}
 
   /**
@@ -123,15 +130,15 @@ class BoxedValue {
   /**
    * Applies the stored value globally
    */
-  void publish() {
+  void publish(const FrozenSettingProjects& frozenProjects) {
     if (publish_) {
-      publish_();
+      publish_(frozenProjects);
     }
   }
 
  private:
   std::shared_ptr<void> value_;
-  std::function<void()> publish_;
+  std::function<void(const FrozenSettingProjects&)> publish_;
 
   template <class T>
   static const SettingContents<T>& unboxImpl(void* value) {
@@ -246,11 +253,16 @@ class SettingCore : public SettingCoreBase {
  public:
   using Contents = SettingContents<T>;
 
-  void setFromString(
+  SetResult setFromString(
       StringPiece newValue,
       StringPiece reason,
       SnapshotBase* snapshot) override {
-    set(convertOrConstruct<T>(newValue), reason, snapshot);
+    if (isFrozenImmutable()) {
+      // Return the error before calling convertOrConstruct in case it throws.
+      return makeUnexpected(SetErrorCode::FrozenImmutable);
+    }
+    setImpl(convertOrConstruct<T>(newValue), reason, snapshot);
+    return unit;
   }
 
   std::pair<std::string, std::string> getAsString(
@@ -260,8 +272,8 @@ class SettingCore : public SettingCoreBase {
         to<std::string>(contents.value), contents.updateReason);
   }
 
-  void resetToDefault(SnapshotBase* snapshot) override {
-    set(defaultValue_, "default", snapshot);
+  SetResult resetToDefault(SnapshotBase* snapshot) override {
+    return set(defaultValue_, "default", snapshot);
   }
 
   const SettingMetadata& meta() const override { return meta_; }
@@ -295,36 +307,18 @@ class SettingCore : public SettingCoreBase {
     return const_cast<SettingCore*>(this)->tlValue()->value;
   }
 
-  void set(const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
-    /* Check that we can still display it (will throw otherwise) */
-    to<std::string>(t);
-
-    if (snapshot) {
-      snapshot->set(*this, t, reason);
-      return;
+  SetResult set(
+      const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
+    if (isFrozenImmutable()) {
+      return makeUnexpected(SetErrorCode::FrozenImmutable);
     }
-
-    {
-      std::unique_lock lg(globalLock_);
-
-      if (globalValue_) {
-        saveValueForOutstandingSnapshots(
-            getKey(), *settingVersion_, BoxedValue(*globalValue_));
-      }
-      globalValue_ = std::make_shared<Contents>(reason.str(), t);
-      if (IsSmallPOD<T>::value) {
-        uint64_t v = 0;
-        std::memcpy(&v, &t, sizeof(T));
-        trivialStorage_.store(v);
-      }
-      *settingVersion_ = nextGlobalVersion();
-    }
-    invokeCallbacks(Contents(reason.str(), t));
+    setImpl(t, reason, snapshot);
+    return unit;
   }
 
   const T& defaultValue() const { return defaultValue_; }
 
-  using UpdateCallback = folly::Function<void(const Contents&)>;
+  using UpdateCallback = Function<void(const Contents&)>;
   class CallbackHandle {
    public:
     CallbackHandle(
@@ -368,11 +362,13 @@ class SettingCore : public SettingCoreBase {
               std::pair<Version, std::shared_ptr<Contents>>>(
               in_place, 0, nullptr);
         }) {
-    set(defaultValue_, "default");
+    setImpl(defaultValue_, "default", /* snapshot */ nullptr);
     registerSetting(*this);
   }
 
  private:
+  friend class detail::BoxedValue;
+
   SettingMetadata meta_;
   const T defaultValue_;
 
@@ -381,7 +377,7 @@ class SettingCore : public SettingCoreBase {
 
   std::atomic<uint64_t>& trivialStorage_;
 
-  folly::F14FastSet<std::shared_ptr<UpdateCallback>> callbacks_;
+  F14FastSet<std::shared_ptr<UpdateCallback>> callbacks_;
 
   /* Thread local versions start at 0, this will force a read on first access.
    */
@@ -409,6 +405,33 @@ class SettingCore : public SettingCoreBase {
     return value.second;
   }
 
+  void setImpl(const T& t, StringPiece reason, SnapshotBase* snapshot) {
+    /* Check that we can still display it (will throw otherwise) */
+    to<std::string>(t);
+
+    if (snapshot) {
+      snapshot->set(*this, t, reason);
+      return;
+    }
+
+    {
+      std::unique_lock lg(globalLock_);
+
+      if (globalValue_) {
+        saveValueForOutstandingSnapshots(
+            getKey(), *settingVersion_, BoxedValue(*globalValue_));
+      }
+      globalValue_ = std::make_shared<Contents>(reason.str(), t);
+      if (IsSmallPOD<T>::value) {
+        uint64_t v = 0;
+        std::memcpy(&v, &t, sizeof(T));
+        trivialStorage_.store(v);
+      }
+      *settingVersion_ = nextGlobalVersion();
+    }
+    invokeCallbacks(Contents(reason.str(), t));
+  }
+
   void invokeCallbacks(const Contents& contents) {
     auto callbacksSnapshot = invoke([&] {
       std::shared_lock lg(globalLock_);
@@ -420,6 +443,15 @@ class SettingCore : public SettingCoreBase {
     for (auto& callbackPtr : callbacksSnapshot) {
       auto& callback = *callbackPtr;
       callback(contents);
+    }
+  }
+
+  bool isFrozenImmutable() const {
+    switch (meta_.mutability) {
+      case Mutability::Mutable:
+        return false;
+      case Mutability::Immutable:
+        return immutablesFrozen(meta_.project);
     }
   }
 };

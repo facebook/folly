@@ -25,6 +25,8 @@ std::string_view toString(SetErrorCode code) {
       return "not found";
     case SetErrorCode::Rejected:
       return "rejected";
+    case SetErrorCode::FrozenImmutable:
+      return "frozen immutable";
   }
 }
 
