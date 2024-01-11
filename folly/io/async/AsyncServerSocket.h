@@ -107,7 +107,9 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
      * probably because of some error encountered.
      */
     virtual void onConnectionDropped(
-        const NetworkSocket socket, const SocketAddress& addr) noexcept = 0;
+        const NetworkSocket socket,
+        const SocketAddress& addr,
+        const std::string& errorMsg = "") noexcept = 0;
 
     /**
      * onConnectionEnqueuedForAcceptorCallback() is called when the

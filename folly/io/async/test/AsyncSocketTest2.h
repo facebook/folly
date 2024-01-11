@@ -49,7 +49,8 @@ class TestConnectionEventCallback
 
   void onConnectionDropped(
       const NetworkSocket /* socket */,
-      const SocketAddress& /* addr */) noexcept override {
+      const SocketAddress& /* addr */,
+      const std::string& /* errorMsg */) noexcept override {
     std::unique_lock holder(spinLock_);
     connectionDropped_++;
   }

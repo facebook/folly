@@ -83,7 +83,14 @@ AtomicNotificationQueueTaskStatus AsyncServerSocket::NewConnMessage::operator()(
   if (isExpired()) {
     closeNoInt(fd);
     if (acceptor.connectionEventCallback_) {
-      acceptor.connectionEventCallback_->onConnectionDropped(fd, clientAddr);
+      auto queueTimeout = std::chrono::duration_cast<std::chrono::milliseconds>(
+          deadline - timeBeforeEnqueue);
+      acceptor.connectionEventCallback_->onConnectionDropped(
+          fd,
+          clientAddr,
+          fmt::format(
+              "Exceeded deadline for accepting connection socket ({} ms)",
+              queueTimeout.count()));
     }
     return AtomicNotificationQueueTaskStatus::DISCARD;
   }
@@ -1032,7 +1039,11 @@ void AsyncServerSocket::handlerReady(
           closeNoInt(clientSocket);
           if (connectionEventCallback_) {
             connectionEventCallback_->onConnectionDropped(
-                clientSocket, address);
+                clientSocket,
+                address,
+                fmt::format(
+                    "Server is rate limiting new connections. Current accept rate is {}",
+                    acceptRate_));
           }
         }
         continue;
@@ -1067,10 +1078,14 @@ void AsyncServerSocket::handlerReady(
     // Explicitly set the new connection to non-blocking mode
     if (netops::set_socket_non_blocking(clientSocket) != 0) {
       closeNoInt(clientSocket);
-      dispatchError(
-          "failed to set accepted socket to non-blocking mode", errno);
+      std::string errorMsg =
+          "Failed to set accepted socket to non-blocking mode.";
+      dispatchError(errorMsg.c_str(), errno);
       if (connectionEventCallback_) {
-        connectionEventCallback_->onConnectionDropped(clientSocket, address);
+        connectionEventCallback_->onConnectionDropped(
+            clientSocket,
+            address,
+            fmt::format("{} errno ({})", std::move(errorMsg), errno));
       }
       return;
     }
@@ -1141,12 +1156,12 @@ void AsyncServerSocket::dispatchSocket(
       // connections, before they reach the point where their threads can't
       // even accept new messages.
       ++numDroppedConnections_;
-      FB_LOG_EVERY_MS(ERROR, 1000)
-          << "failed to dispatch newly accepted socket:"
-          << " all accept callback queues are full";
+      std::string errorMsg =
+          "Failed to dispatch newly accepted socket: all accept callback queues are full";
+      FB_LOG_EVERY_MS(ERROR, 1000) << errorMsg;
       closeNoInt(socket);
       if (connectionEventCallback_) {
-        connectionEventCallback_->onConnectionDropped(socket, addr);
+        connectionEventCallback_->onConnectionDropped(socket, addr, errorMsg);
       }
       return;
     }
