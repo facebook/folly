@@ -21,7 +21,7 @@
 
 #include <folly/Likely.h>
 #include <folly/Range.h>
-#include <folly/experimental/settings/SettingsMetadata.h>
+#include <folly/experimental/settings/Types.h>
 #include <folly/experimental/settings/detail/SettingsImpl.h>
 
 namespace folly {
@@ -317,11 +317,10 @@ class Snapshot final : public detail::SnapshotBase {
    * Look up a setting by name, and update the value from a string
    * representation.
    *
-   * @returns True if the setting was successfully updated, false if no setting
-   *   with that name was found.
+   * @returns The SetResult indicating if the setting was successfully updated.
    * @throws std::runtime_error  If there's a conversion error.
    */
-  bool setFromString(
+  SetResult setFromString(
       StringPiece settingName,
       StringPiece newValue,
       StringPiece reason) override;
@@ -336,9 +335,9 @@ class Snapshot final : public detail::SnapshotBase {
    * Reset the value of the setting identified by name to its default value.
    * The reason will be set to "default".
    *
-   * @return  True if the setting was reset, false if the setting is not found.
+   * @returns The SetResult indicating if the setting was successfully reset.
    */
-  bool resetToDefault(StringPiece settingName) override;
+  SetResult resetToDefault(StringPiece settingName) override;
 
   /**
    * Iterates over all known settings and calls

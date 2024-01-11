@@ -29,7 +29,7 @@
 #include <folly/ThreadLocal.h>
 #include <folly/Utility.h>
 #include <folly/container/F14Set.h>
-#include <folly/experimental/settings/SettingsMetadata.h>
+#include <folly/experimental/settings/Types.h>
 #include <folly/lang/Aligned.h>
 
 namespace folly {
@@ -171,11 +171,10 @@ class SnapshotBase {
    * Look up a setting by name, and update the value from a string
    * representation.
    *
-   * @returns True if the setting was successfully updated, false if no setting
-   *   with that name was found.
+   * @returns The SetResult indicating if the setting was successfully updated.
    * @throws std::runtime_error  If there's a conversion error.
    */
-  virtual bool setFromString(
+  virtual SetResult setFromString(
       StringPiece settingName, StringPiece newValue, StringPiece reason) = 0;
 
   /**
@@ -188,9 +187,9 @@ class SnapshotBase {
    * Reset the value of the setting identified by name to its default value.
    * The reason will be set to "default".
    *
-   * @return  True if the setting was reset, false if the setting is not found.
+   * @returns The SetResult indicating if the setting was successfully reset.
    */
-  virtual bool resetToDefault(StringPiece settingName) = 0;
+  virtual SetResult resetToDefault(StringPiece settingName) = 0;
 
   /**
    * Iterates over all known settings and calls
@@ -251,7 +250,7 @@ class SettingCore : public SettingCoreBase {
       StringPiece newValue,
       StringPiece reason,
       SnapshotBase* snapshot) override {
-    set(convertOrConstruct<T>(newValue), reason.str(), snapshot);
+    set(convertOrConstruct<T>(newValue), reason, snapshot);
   }
 
   std::pair<std::string, std::string> getAsString(

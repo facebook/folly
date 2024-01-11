@@ -17,6 +17,7 @@
 #include <folly/experimental/settings/Settings.h>
 
 #include <folly/Format.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 #include <folly/experimental/settings/test/a.h>
@@ -83,12 +84,37 @@ FOLLY_SETTING_DEFINE(
     "User defined type constructed from string");
 
 } // namespace some_ns
+namespace {
+MATCHER(IsOk, "success but got error") {
+  if (arg.hasError()) {
+    *result_listener << "which is: '"
+                     << ::folly::settings::toString(arg.error()) << "'";
+    return false;
+  }
+  return true;
+}
+MATCHER_P(
+    HasErrorCode,
+    error_code,
+    "error '" + std::string(::folly::settings::toString(error_code)) + "'") {
+  if (!arg.hasError()) {
+    *result_listener << "which is not an error";
+    return false;
+  }
+  if (arg.error() != error_code) {
+    *result_listener << "which is: '"
+                     << ::folly::settings::toString(arg.error()) << "'";
+  }
+  return true;
+}
+} // namespace
 
 TEST(Settings, userDefined) {
   EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 100);
   {
     folly::settings::Snapshot sn;
-    EXPECT_TRUE(sn.setFromString("follytest_user_defined", "a", "test"));
+    EXPECT_THAT(
+        sn.setFromString("follytest_user_defined", "a", "test"), IsOk());
     sn.publish();
     EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 0);
   }
@@ -116,7 +142,7 @@ TEST(Settings, userDefined) {
   }
   {
     folly::settings::Snapshot sn;
-    EXPECT_TRUE(sn.resetToDefault("follytest_user_defined"));
+    EXPECT_THAT(sn.resetToDefault("follytest_user_defined"), IsOk());
     sn.publish();
     EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 100);
   }
@@ -187,8 +213,9 @@ TEST(Settings, basic) {
   }
   {
     folly::settings::Snapshot sn;
-    EXPECT_TRUE(
-        sn.setFromString("follytest_public_flag_to_a", "300", "from_string"));
+    EXPECT_THAT(
+        sn.setFromString("follytest_public_flag_to_a", "300", "from_string"),
+        IsOk());
     sn.publish();
     EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 300);
   }
@@ -202,8 +229,9 @@ TEST(Settings, basic) {
   }
   {
     folly::settings::Snapshot sn;
-    EXPECT_FALSE(
-        sn.setFromString("follytest_nonexisting", "300", "from_string"));
+    EXPECT_THAT(
+        sn.setFromString("follytest_nonexisting", "300", "from_string"),
+        HasErrorCode(folly::settings::SetErrorCode::NotFound));
   }
   EXPECT_EQ(
       some_ns::FOLLY_SETTING(follytest, multi_token_type).defaultValue(), 123);
@@ -257,14 +285,16 @@ TEST(Settings, basic) {
   }
   {
     folly::settings::Snapshot sn;
-    EXPECT_TRUE(sn.resetToDefault("follytest_public_flag_to_a"));
+    EXPECT_THAT(sn.resetToDefault("follytest_public_flag_to_a"), IsOk());
     sn.publish();
     EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 456);
     EXPECT_EQ(a_ns::getRemote(), 456);
   }
   {
     folly::settings::Snapshot sn;
-    EXPECT_FALSE(sn.resetToDefault("follytest_nonexisting"));
+    EXPECT_THAT(
+        sn.resetToDefault("follytest_nonexisting"),
+        HasErrorCode(folly::settings::SetErrorCode::NotFound));
   }
 }
 

@@ -60,15 +60,15 @@ Optional<SettingMetadata> getSettingsMeta(StringPiece settingName) {
   return it->second->meta();
 }
 
-bool Snapshot::setFromString(
+SetResult Snapshot::setFromString(
     StringPiece settingName, StringPiece newValue, StringPiece reason) {
   auto mapPtr = detail::settingsMap().rlock();
   auto it = mapPtr->find(settingName.str());
   if (it == mapPtr->end()) {
-    return false;
+    return makeUnexpected(SetErrorCode::NotFound);
   }
   it->second->setFromString(newValue, reason, this);
-  return true;
+  return unit;
 }
 
 Optional<Snapshot::SettingsInfo> Snapshot::getAsString(
@@ -81,14 +81,14 @@ Optional<Snapshot::SettingsInfo> Snapshot::getAsString(
   return it->second->getAsString(this);
 }
 
-bool Snapshot::resetToDefault(StringPiece settingName) {
+SetResult Snapshot::resetToDefault(StringPiece settingName) {
   auto mapPtr = detail::settingsMap().rlock();
   auto it = mapPtr->find(settingName.str());
   if (it == mapPtr->end()) {
-    return false;
+    return makeUnexpected(SetErrorCode::NotFound);
   }
   it->second->resetToDefault(this);
-  return true;
+  return unit;
 }
 
 void Snapshot::forEachSetting(

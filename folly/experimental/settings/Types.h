@@ -16,10 +16,23 @@
 
 #pragma once
 
+#include <string_view>
+
+#include <folly/Expected.h>
 #include <folly/Range.h>
+#include <folly/Unit.h>
 
 namespace folly {
 namespace settings {
+
+enum class SetErrorCode {
+  NotFound,
+  Rejected,
+};
+
+using SetResult = Expected<Unit, SetErrorCode>;
+
+std::string_view toString(SetErrorCode code);
 
 /**
  * Static information about the setting definition
@@ -28,17 +41,17 @@ struct SettingMetadata {
   /**
    * Project string.
    */
-  folly::StringPiece project;
+  StringPiece project;
 
   /**
    * Setting name within the project.
    */
-  folly::StringPiece name;
+  StringPiece name;
 
   /**
    * String representation of the type.
    */
-  folly::StringPiece typeStr;
+  StringPiece typeStr;
 
   /**
    * typeid() of the type.
@@ -49,12 +62,12 @@ struct SettingMetadata {
    * String representation of the default value.
    * (note: string literal default values will be stringified with quotes)
    */
-  folly::StringPiece defaultStr;
+  StringPiece defaultStr;
 
   /**
    * Setting description field.
    */
-  folly::StringPiece description;
+  StringPiece description;
 };
 
 } // namespace settings
