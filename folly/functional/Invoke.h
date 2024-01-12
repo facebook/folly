@@ -536,10 +536,9 @@ struct invoke_first_match : private Invoker... {
  *  An invoker expression resulting in an invocable which, when invoked, invokes
  *  the free-invocable qualified name with the given arguments.
  */
-#define FOLLY_INVOKE_QUAL(funcpath)                    \
-  [](auto&&... __folly_param_a)                        \
-      FOLLY_CXX17_CONSTEXPR FOLLY_DETAIL_FORWARD_BODY( \
-          funcpath(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
+#define FOLLY_INVOKE_QUAL(funcpath)                                  \
+  [](auto&&... __folly_param_a) constexpr FOLLY_DETAIL_FORWARD_BODY( \
+      funcpath(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
 
 /***
  *  FOLLY_CREATE_MEMBER_INVOKER
@@ -632,11 +631,10 @@ struct invoke_first_match : private Invoker... {
  *  * Since C++20 only, lambda definitions may appear in an unevaluated context,
  *    namely, in an operand to decltype, noexcept, sizeof, or typeid.
  */
-#define FOLLY_INVOKE_MEMBER(membername)                 \
-  [](auto&& __folly_param_o, auto&&... __folly_param_a) \
-      FOLLY_CXX17_CONSTEXPR FOLLY_DETAIL_FORWARD_BODY(  \
-          FOLLY_DETAIL_FORWARD_REF(__folly_param_o)     \
-              .membername(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
+#define FOLLY_INVOKE_MEMBER(membername)                                                      \
+  [](auto&& __folly_param_o, auto&&... __folly_param_a) constexpr FOLLY_DETAIL_FORWARD_BODY( \
+      FOLLY_DETAIL_FORWARD_REF(__folly_param_o)                                              \
+          .membername(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
 
 /***
  *  FOLLY_CREATE_STATIC_MEMBER_INVOKER

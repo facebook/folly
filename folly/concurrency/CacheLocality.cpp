@@ -462,7 +462,7 @@ class SimpleAllocator {
 
     std::lock_guard<std::mutex> g(allocator->m_);
     *static_cast<void**>(ptr) = allocator->freelist_;
-    if FOLLY_CXX17_CONSTEXPR (kIsSanitizeAddress) {
+    if constexpr (kIsSanitizeAddress) {
       // If running under ASAN, scrub the memory on deallocation, so we don't
       // leave pointers that could hide leaks at shutdown, since the backing
       // slabs may not be deallocated if the instance is a leaky singleton.

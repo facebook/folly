@@ -756,13 +756,13 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
             IsSmall,
             detail::function::DispatchSmall,
             detail::function::DispatchBig>>;
-    if FOLLY_CXX17_CONSTEXPR (detail::function::IsNullptrCompatible<Fun>) {
+    if constexpr (detail::function::IsNullptrCompatible<Fun>) {
       if (detail::function::isEmptyFunction(fun)) {
         return;
       }
     }
-    if FOLLY_CXX17_CONSTEXPR (IsSmall) {
-      if FOLLY_CXX17_CONSTEXPR (
+    if constexpr (IsSmall) {
+      if constexpr (
           !std::is_empty<Fun>::value || !is_trivially_copyable_v<Fun>) {
         ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
       }
@@ -1130,7 +1130,7 @@ class FunctionRef<ReturnType(Args...)> final {
     // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
     // is a const type) inside `FunctionRef::call`
     auto& ref = fun; // work around forwarding lint advice
-    if FOLLY_CXX17_CONSTEXPR ( //
+    if constexpr ( //
         detail::function::IsNullptrCompatible<std::decay_t<Fun>>) {
       if (detail::function::isEmptyFunction(fun)) {
         return;

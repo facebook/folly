@@ -241,7 +241,7 @@ class Random {
    */
   template <class RNG, class /* EnableIf */ = ValidRNG<RNG>>
   static uint32_t rand32(RNG&& rng) {
-    if FOLLY_CXX17_CONSTEXPR (UniformRNG<std::decay_t<RNG>, uint32_t>) {
+    if constexpr (UniformRNG<std::decay_t<RNG>, uint32_t>) {
       return static_cast<uint32_t>(rng());
     } else {
       return std::uniform_int_distribution<uint32_t>(
@@ -294,9 +294,9 @@ class Random {
    */
   template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
   static uint64_t rand64(RNG&& rng) {
-    if FOLLY_CXX17_CONSTEXPR (UniformRNG<std::decay_t<RNG>, uint64_t>) {
+    if constexpr (UniformRNG<std::decay_t<RNG>, uint64_t>) {
       return rng();
-    } else if FOLLY_CXX17_CONSTEXPR (UniformRNG<std::decay_t<RNG>, uint32_t>) {
+    } else if constexpr (UniformRNG<std::decay_t<RNG>, uint32_t>) {
       return (static_cast<uint64_t>(rng()) << 32) |
           static_cast<uint32_t>(rng());
     } else {

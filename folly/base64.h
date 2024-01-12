@@ -83,9 +83,9 @@ inline auto base64URLDecode(std::string_view s) -> std::string;
 constexpr std::size_t base64EncodedSize(std::size_t inSize) noexcept;
 constexpr std::size_t base64URLEncodedSize(std::size_t inSize) noexcept;
 
-inline FOLLY_CXX17_CONSTEXPR char* base64Encode(
+inline constexpr char* base64Encode(
     const char* f, const char* l, char* o) noexcept;
-inline FOLLY_CXX17_CONSTEXPR char* base64URLEncode(
+inline constexpr char* base64URLEncode(
     const char* f, const char* l, char* o) noexcept;
 
 inline char* base64EncodeRuntime(
@@ -105,15 +105,15 @@ struct base64_decode_result {
   char* o;
 };
 
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64Decode(const char* f, const char* l, char* o) noexcept;
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64Decode(std::string_view s, char* o) noexcept;
+inline constexpr base64_decode_result base64Decode(
+    const char* f, const char* l, char* o) noexcept;
+inline constexpr base64_decode_result base64Decode(
+    std::string_view s, char* o) noexcept;
 
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64URLDecode(const char* f, const char* l, char* o) noexcept;
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64URLDecode(std::string_view s, char* o) noexcept;
+inline constexpr base64_decode_result base64URLDecode(
+    const char* f, const char* l, char* o) noexcept;
+inline constexpr base64_decode_result base64URLDecode(
+    std::string_view s, char* o) noexcept;
 
 inline base64_decode_result base64DecodeRuntime(
     const char* f, const char* l, char* o) noexcept;
@@ -140,12 +140,12 @@ constexpr std::size_t base64URLEncodedSize(std::size_t inSize) noexcept {
   return detail::base64_detail::base64URLEncodedSize(inSize);
 }
 
-inline FOLLY_CXX17_CONSTEXPR char* base64Encode(
+inline constexpr char* base64Encode(
     const char* f, const char* l, char* o) noexcept {
   return detail::base64_detail::base64Encode(f, l, o);
 }
 
-inline FOLLY_CXX17_CONSTEXPR char* base64URLEncode(
+inline constexpr char* base64URLEncode(
     const char* f, const char* l, char* o) noexcept {
   return detail::base64_detail::base64URLEncode(f, l, o);
 }
@@ -193,25 +193,25 @@ constexpr std::size_t base64URLDecodedSize(std::string_view s) noexcept {
   return folly::base64URLDecodedSize(s.data(), s.data() + s.size());
 }
 
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64Decode(const char* f, const char* l, char* o) noexcept {
+inline constexpr base64_decode_result base64Decode(
+    const char* f, const char* l, char* o) noexcept {
   auto detailResult = detail::base64_detail::base64Decode(f, l, o);
   return {detailResult.isSuccess, detailResult.o};
 }
 
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64Decode(std::string_view s, char* o) noexcept {
+inline constexpr base64_decode_result base64Decode(
+    std::string_view s, char* o) noexcept {
   return folly::base64Decode(s.data(), s.data() + s.size(), o);
 }
 
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64URLDecode(const char* f, const char* l, char* o) noexcept {
+inline constexpr base64_decode_result base64URLDecode(
+    const char* f, const char* l, char* o) noexcept {
   auto detailResult = detail::base64_detail::base64URLDecode(f, l, o);
   return {detailResult.isSuccess, detailResult.o};
 }
 
-inline FOLLY_CXX17_CONSTEXPR base64_decode_result
-base64URLDecode(std::string_view s, char* o) noexcept {
+inline constexpr base64_decode_result base64URLDecode(
+    std::string_view s, char* o) noexcept {
   return folly::base64URLDecode(s.data(), s.data() + s.size(), o);
 }
 

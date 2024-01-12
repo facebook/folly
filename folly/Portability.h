@@ -521,16 +521,6 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR constexpr
 #endif
 
-//  FOLLY_CXX17_CONSTEXPR
-//
-//  C++17 permits more cases to be marked constexpr, including lambda bodies and
-//  the `if` keyword.
-#if FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_CXX17_CONSTEXPR constexpr
-#else
-#define FOLLY_CXX17_CONSTEXPR
-#endif
-
 //  FOLLY_CXX20_CONSTEXPR
 //
 //  C++20 permits more cases to be marked constexpr, including constructors that
