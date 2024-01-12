@@ -2225,8 +2225,6 @@ TEST(F14Map, copyAfterRemovedCollisions) {
   testCopyAfterRemovedCollisions<F14FastMap>();
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-// TODO: Implement deduction guides in fallback implementation.
 template <template <class...> class TMap>
 void testIterDeductionGuide() {
   TMap<int, double> source({{1, 2.0}, {3, 4.0}});
@@ -2349,7 +2347,6 @@ TEST(F14Map, initializerListDeductionGuide) {
   testInitializerListDeductionGuide<F14VectorMap>();
   testInitializerListDeductionGuide<F14FastMap>();
 }
-#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace {
 

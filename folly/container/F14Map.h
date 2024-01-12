@@ -41,15 +41,17 @@
 
 #include <folly/container/F14Map-fwd.h>
 #include <folly/container/Iterator.h>
+#include <folly/container/detail/F14MapFallback.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/container/detail/Util.h>
+
+namespace folly {
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 //////// Common case for supported platforms
 
-namespace folly {
 namespace f14 {
 namespace detail {
 
@@ -1114,6 +1116,7 @@ class F14ValueMap
     this->table_.visitContiguousItemRanges(visitor);
   }
 };
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -1199,6 +1202,7 @@ F14ValueMap(
     std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
     -> F14ValueMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <
     typename Key,
     typename Mapped,
@@ -1261,6 +1265,7 @@ class F14NodeMap
 
   // TODO extract and node_handle insert
 };
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -1345,6 +1350,7 @@ F14NodeMap(
     std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
     -> F14NodeMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {
 namespace detail {
 template <
@@ -1666,6 +1672,7 @@ class F14VectorMap : public f14::detail::F14VectorMapImpl<
     return {c.rbegin(), c.rend()};
   }
 };
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -1750,6 +1757,7 @@ F14VectorMap(
     std::initializer_list<std::pair<Key, Mapped>>, std::size_t, Hasher, Alloc)
     -> F14VectorMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 /**
  * F14FastMap is, under the hood, either an F14ValueMap or an F14VectorMap.
  * F14FastMap chooses which of these two representations to use based on the
@@ -1799,6 +1807,7 @@ class F14FastMap : public std::conditional_t<
     this->table_.swap(rhs.table_);
   }
 };
+#endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -1884,11 +1893,6 @@ F14FastMap(
     -> F14FastMap<Key, Mapped, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
 } // namespace folly
-
-#endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-
-//////// Compatibility for unsupported platforms (not x86_64 and not aarch64)
-#include <folly/container/detail/F14MapFallback.h>
 
 namespace folly {
 namespace f14 {

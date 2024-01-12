@@ -42,14 +42,16 @@
 #include <folly/container/F14Set-fwd.h>
 #include <folly/container/Iterator.h>
 #include <folly/container/detail/F14Policy.h>
+#include <folly/container/detail/F14SetFallback.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/container/detail/Util.h>
+
+namespace folly {
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 //////// Common case for supported platforms
 
-namespace folly {
 namespace f14 {
 namespace detail {
 
@@ -843,6 +845,7 @@ class F14ValueSet
     this->table_.visitContiguousItemRanges(std::forward<V>(visitor));
   }
 };
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -914,6 +917,7 @@ template <
 F14ValueSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14ValueSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14NodeSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
@@ -957,6 +961,7 @@ class F14NodeSet
     });
   }
 };
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -1028,6 +1033,7 @@ template <
 F14NodeSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14NodeSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {
 namespace detail {
 template <
@@ -1271,6 +1277,7 @@ class F14VectorSet
     return {c.rbegin(), c.rend()};
   }
 };
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -1342,6 +1349,7 @@ template <
 F14VectorSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14VectorSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14FastSet
     : public std::conditional_t<
@@ -1371,6 +1379,7 @@ class F14FastSet
     this->table_.swap(rhs.table_);
   }
 };
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 template <
     typename InputIt,
@@ -1443,11 +1452,6 @@ F14FastSet(std::initializer_list<Key>, std::size_t, Hasher, Alloc)
     -> F14FastSet<Key, Hasher, f14::DefaultKeyEqual<Key>, Alloc>;
 
 } // namespace folly
-
-#endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-
-//////// Compatibility for unsupported platforms (not x86_64 and not aarch64)
-#include <folly/container/detail/F14SetFallback.h>
 
 namespace folly {
 namespace f14 {

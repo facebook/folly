@@ -1599,8 +1599,6 @@ TEST(F14Set, ExceptionOnInsert) {
   testExceptionOnInsert<F14FastSet>();
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-// TODO: Implement deduction guides in fallback implementation.
 template <template <class...> class TSet>
 void testIterDeductionGuide() {
   TSet<int> source({1, 2});
@@ -1697,4 +1695,3 @@ TEST(F14Set, initializerListDeductionGuide) {
   testInitializerListDeductionGuide<F14VectorSet>();
   testInitializerListDeductionGuide<F14FastSet>();
 }
-#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
