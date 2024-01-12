@@ -41,15 +41,6 @@
 namespace folly {
 namespace detail {
 
-template <template <typename...> class Templ, typename T>
-struct instance_of : std::false_type {};
-
-template <template <typename...> class Templ, typename... Args>
-struct instance_of<Templ, Templ<Args...>> : std::true_type {};
-
-template <template <typename...> class Templ, typename T>
-constexpr bool instance_of_v = instance_of<Templ, T>::value;
-
 #if __has_include(<ranges>)
 template <typename R>
 constexpr bool guaranteed_contigious_range_cpp20_v =
@@ -58,10 +49,11 @@ constexpr bool guaranteed_contigious_range_cpp20_v =
 
 template <typename R>
 constexpr bool guaranteed_contigious_range_cpp14_v =
-    instance_of_v<std::vector, R> || instance_of_v<std::basic_string, R> ||
+    is_instantiation_of_v<std::vector, R> ||
+    is_instantiation_of_v<std::basic_string, R> ||
     std::is_pointer_v<typename R::iterator>
 #if FOLLY_HAS_STRING_VIEW
-    || instance_of_v<std::basic_string_view, R>
+    || is_instantiation_of_v<std::basic_string_view, R>
 #endif
     ;
 
@@ -164,8 +156,8 @@ void append_range_unsafe(Container& c, I f, S l) {
   if constexpr (
       !iterator_category_matches_v<I, std::random_access_iterator_tag> ||
       !std::is_trivially_copy_constructible_v<iterator_value_type_t<I>> ||
-      !(instance_of_v<std::vector, Container> ||
-        instance_of_v<std::basic_string, Container>)) {
+      !(is_instantiation_of_v<std::vector, Container> ||
+        is_instantiation_of_v<std::basic_string, Container>)) {
     c.insert(c.end(), f, l);
   } else {
     folly::compiler_may_unsafely_assume(l >= f);
