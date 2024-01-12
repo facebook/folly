@@ -48,9 +48,13 @@ FOLLY_SETTING_DEFINE(
     "Test that multi-token type names can be used");
 // Enable to test runtime collision checking logic
 #if 0
-FOLLY_SETTING_DEFINE(follytest, internal_flag_to_a, std::string,
-                     "collision_with_a",
-                     "Collision_with_a");
+FOLLY_SETTING_DEFINE(
+    follytest,
+    internal_flag_to_a,
+    std::string,
+    "collision_with_a",
+    folly::settings::Mutability::Mutable,
+    "Collision_with_a");
 #endif
 
 /* Test user defined type support */
@@ -616,4 +620,56 @@ TEST(Settings, immutables) {
   EXPECT_THAT(
       afterFreezeSn.setFromString("follytest_immutable_setting", "c", "test"),
       HasErrorCode(folly::settings::SetErrorCode::FrozenImmutable));
+
+  // Check forceSetFromString does construct immutable settings even if
+  // immutables have already been frozen.
+  try {
+    afterFreezeSn.forceSetFromString("follytest_immutable_setting", "c", "ds");
+    FAIL();
+  } catch (const std::runtime_error& ex) {
+    EXPECT_STREQ(ex.what(), "Invalid value passed to UserDefinedType ctor");
+  }
+
+  {
+    // Check forceSetFromString does construct immutable settings even if
+    // immutables have already been frozen.
+    folly::settings::Snapshot newSnapshot;
+    try {
+      newSnapshot.forceSetFromString("follytest_immutable_setting", "c", "dsc");
+      FAIL();
+    } catch (const std::runtime_error& ex) {
+      EXPECT_STREQ(ex.what(), "Invalid value passed to UserDefinedType ctor");
+    }
+
+    // Check forceSetFromString can set immutable settings in the snapshot but
+    // will still not publish them
+    EXPECT_THAT(
+        newSnapshot.forceSetFromString(
+            "follytest_immutable_setting", "b", "new desc"),
+        IsOk());
+    auto found = newSnapshot.getAsString("follytest_immutable_setting");
+    ASSERT_TRUE(found.hasValue());
+    EXPECT_EQ(found->first, "b_out");
+    EXPECT_EQ(found->second, "new desc");
+    newSnapshot.publish();
+    EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, immutable_setting)->value_, 0);
+  }
+
+  {
+    // Check forceResetToDefault can reset immutable settings in the snapshot
+    // but will still not publish them
+    folly::settings::Snapshot newSnapshot;
+    auto found = newSnapshot.getAsString("follytest_immutable_setting");
+    ASSERT_TRUE(found.hasValue());
+    EXPECT_EQ(found->first, "a_out");
+    EXPECT_EQ(found->second, "test");
+    EXPECT_THAT(
+        newSnapshot.forceResetToDefault("follytest_immutable_setting"), IsOk());
+    found = newSnapshot.getAsString("follytest_immutable_setting");
+    ASSERT_TRUE(found.hasValue());
+    EXPECT_EQ(found->first, "b_out");
+    EXPECT_EQ(found->second, "default");
+    newSnapshot.publish();
+    EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, immutable_setting)->value_, 0);
+  }
 }

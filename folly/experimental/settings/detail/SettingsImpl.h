@@ -65,9 +65,12 @@ class SettingCoreBase {
 
   virtual SetResult setFromString(
       StringPiece newValue, StringPiece reason, SnapshotBase* snapshot) = 0;
+  virtual void forceSetFromString(
+      StringPiece newValue, StringPiece reason, SnapshotBase* snapshot) = 0;
   virtual std::pair<std::string, std::string> getAsString(
       const SnapshotBase* snapshot) const = 0;
   virtual SetResult resetToDefault(SnapshotBase* snapshot) = 0;
+  virtual void forceResetToDefault(SnapshotBase* snapshot) = 0;
   virtual const SettingMetadata& meta() const = 0;
   virtual ~SettingCoreBase() {}
 
@@ -185,6 +188,14 @@ class SnapshotBase {
       StringPiece settingName, StringPiece newValue, StringPiece reason) = 0;
 
   /**
+   * Same as setFromString but will set frozen immutables in this snapshot.
+   * However, it will still not publish them. This is mainly useful for setting
+   * change dry-runs.
+   */
+  virtual SetResult forceSetFromString(
+      StringPiece settingName, StringPiece newValue, StringPiece reason) = 0;
+
+  /**
    * @return If the setting exists, the current setting information.
    *         Empty Optional otherwise.
    */
@@ -197,6 +208,13 @@ class SnapshotBase {
    * @returns The SetResult indicating if the setting was successfully reset.
    */
   virtual SetResult resetToDefault(StringPiece settingName) = 0;
+
+  /**
+   * Same as resetToDefault but will reset frozen immutables in this snapshot.
+   * However, it will still not publish them. This is mainly useful for setting
+   * change dry-runs.
+   */
+  virtual SetResult forceResetToDefault(StringPiece settingName) = 0;
 
   /**
    * Iterates over all known settings and calls
@@ -261,8 +279,15 @@ class SettingCore : public SettingCoreBase {
       // Return the error before calling convertOrConstruct in case it throws.
       return makeUnexpected(SetErrorCode::FrozenImmutable);
     }
-    setImpl(convertOrConstruct<T>(newValue), reason, snapshot);
+    forceSetFromString(newValue, reason, snapshot);
     return unit;
+  }
+
+  void forceSetFromString(
+      StringPiece newValue,
+      StringPiece reason,
+      SnapshotBase* snapshot) override {
+    setImpl(convertOrConstruct<T>(newValue), reason, snapshot);
   }
 
   std::pair<std::string, std::string> getAsString(
@@ -273,7 +298,16 @@ class SettingCore : public SettingCoreBase {
   }
 
   SetResult resetToDefault(SnapshotBase* snapshot) override {
-    return set(defaultValue_, "default", snapshot);
+    if (isFrozenImmutable()) {
+      // Return the error before calling convertOrConstruct in case it throws.
+      return makeUnexpected(SetErrorCode::FrozenImmutable);
+    }
+    forceResetToDefault(snapshot);
+    return folly::unit;
+  }
+
+  void forceResetToDefault(SnapshotBase* snapshot) override {
+    setImpl(defaultValue_, "default", snapshot);
   }
 
   const SettingMetadata& meta() const override { return meta_; }
@@ -362,7 +396,7 @@ class SettingCore : public SettingCoreBase {
               std::pair<Version, std::shared_ptr<Contents>>>(
               in_place, 0, nullptr);
         }) {
-    setImpl(defaultValue_, "default", /* snapshot */ nullptr);
+    forceResetToDefault(/* snapshot */ nullptr);
     registerSetting(*this);
   }
 

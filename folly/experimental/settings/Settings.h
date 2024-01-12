@@ -335,6 +335,16 @@ class Snapshot final : public detail::SnapshotBase {
       StringPiece reason) override;
 
   /**
+   * Same as setFromString but will set frozen immutables in this snapshot.
+   * However, it will still not publish them. This is mainly useful for setting
+   * change dry-runs.
+   */
+  SetResult forceSetFromString(
+      StringPiece settingName,
+      StringPiece newValue,
+      StringPiece reason) override;
+
+  /**
    * @return If the setting exists, the current setting information.
    *         Empty Optional otherwise.
    */
@@ -347,6 +357,13 @@ class Snapshot final : public detail::SnapshotBase {
    * @returns The SetResult indicating if the setting was successfully reset.
    */
   SetResult resetToDefault(StringPiece settingName) override;
+
+  /**
+   * Same as resetToDefault but will reset frozen immutables in this snapshot.
+   * However, it will still not publish them. This is mainly useful for setting
+   * change dry-runs.
+   */
+  SetResult forceResetToDefault(StringPiece settingName) override;
 
   /**
    * Iterates over all known settings and calls

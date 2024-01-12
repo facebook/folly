@@ -70,6 +70,17 @@ SetResult Snapshot::setFromString(
   return it->second->setFromString(newValue, reason, this);
 }
 
+SetResult Snapshot::forceSetFromString(
+    StringPiece settingName, StringPiece newValue, StringPiece reason) {
+  auto mapPtr = detail::settingsMap().rlock();
+  auto it = mapPtr->find(settingName.str());
+  if (it == mapPtr->end()) {
+    return makeUnexpected(SetErrorCode::NotFound);
+  }
+  it->second->forceSetFromString(newValue, reason, this);
+  return folly::unit;
+}
+
 Optional<Snapshot::SettingsInfo> Snapshot::getAsString(
     StringPiece settingName) const {
   auto mapPtr = detail::settingsMap().rlock();
@@ -87,6 +98,16 @@ SetResult Snapshot::resetToDefault(StringPiece settingName) {
     return makeUnexpected(SetErrorCode::NotFound);
   }
   return it->second->resetToDefault(this);
+}
+
+SetResult Snapshot::forceResetToDefault(StringPiece settingName) {
+  auto mapPtr = detail::settingsMap().rlock();
+  auto it = mapPtr->find(settingName.str());
+  if (it == mapPtr->end()) {
+    return makeUnexpected(SetErrorCode::NotFound);
+  }
+  it->second->forceResetToDefault(this);
+  return folly::unit;
 }
 
 void Snapshot::forEachSetting(
