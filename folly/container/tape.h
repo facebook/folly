@@ -31,13 +31,13 @@
 #include <type_traits>
 #include <vector>
 
-#if FOLLY_HAS_RANGES
+#if __has_include(<ranges>)
 #include <ranges>
 #endif
 
 namespace folly {
 
-#if FOLLY_HAS_RANGES
+#if __has_include(<ranges>)
 #define FOLLY_TAPE_CONTAINER_REQUIRES std::ranges::random_access_range
 #else
 #define FOLLY_TAPE_CONTAINER_REQUIRES typename

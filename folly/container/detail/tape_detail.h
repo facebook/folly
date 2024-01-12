@@ -34,7 +34,7 @@
 #include <string_view>
 #endif
 
-#if FOLLY_HAS_RANGES
+#if __has_include(<ranges>)
 #include <ranges>
 #endif
 
@@ -50,7 +50,7 @@ struct instance_of<Templ, Templ<Args...>> : std::true_type {};
 template <template <typename...> class Templ, typename T>
 constexpr bool instance_of_v = instance_of<Templ, T>::value;
 
-#if FOLLY_HAS_RANGES
+#if __has_include(<ranges>)
 template <typename R>
 constexpr bool guaranteed_contigious_range_cpp20_v =
     std::ranges::contiguous_range<R>;
@@ -65,7 +65,7 @@ constexpr bool guaranteed_contigious_range_cpp14_v =
 #endif
     ;
 
-#if FOLLLY_HAS_RANGES
+#if __has_include(<ranges>)
 
 template <typename R>
 constexpr bool guaranteed_contigious_range =

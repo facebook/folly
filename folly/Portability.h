@@ -615,10 +615,3 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_CONSTEVAL constexpr
 #endif
-
-// C++20 ranges
-#if defined(__cpp_lib_ranges)
-#define FOLLY_HAS_RANGES 1
-#else
-#define FOLLY_HAS_RANGES 0
-#endif
