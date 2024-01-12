@@ -420,7 +420,7 @@ template <typename T>
 constexpr T constexpr_ceil(T t, T round) {
   return round == T(0)
       ? t
-      : ((t + (t < T(0) ? T(0) : round - T(1))) / round) * round;
+      : ((t + (t <= T(0) ? T(0) : round - T(1))) / round) * round;
 }
 
 /// constexpr_mult
