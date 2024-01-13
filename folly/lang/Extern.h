@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <type_traits>
-
 //  FOLLY_CREATE_EXTERN_ACCESSOR
 //
 //  Defines a variable template which holds the address of an object or null
@@ -42,23 +40,17 @@
 //
 //  This can be done more simply using weak symbols. But weak symbols are non-
 //  portable and the rules around the use of weak symbols are complex.
-//
-//  This can be done more simply using if-constexpr. But if-constexpr requires
-//  C++17 and there remain specific narrow cases to be supported on prior
-//  versions of C++.
-//
-//  TODO: Remove after C++17.
-#define FOLLY_CREATE_EXTERN_ACCESSOR(varname, name)                \
-  struct __folly_extern_accessor_##varname {                       \
-    template <bool E, typename N, ::std::enable_if_t<E, int> = 0>  \
-    static constexpr N* get() noexcept {                           \
-      return &name;                                                \
-    }                                                              \
-    template <bool E, typename N, ::std::enable_if_t<!E, int> = 0> \
-    static constexpr N* get() noexcept {                           \
-      return nullptr;                                              \
-    }                                                              \
-  };                                                               \
-  template <bool E, typename N = decltype(name)>                   \
-  FOLLY_INLINE_VARIABLE constexpr N* varname =                     \
+#define FOLLY_CREATE_EXTERN_ACCESSOR(varname, name) \
+  struct __folly_extern_accessor_##varname {        \
+    template <bool E, typename N>                   \
+    static constexpr N* get() noexcept {            \
+      if constexpr (E) {                            \
+        return &name;                               \
+      } else {                                      \
+        return nullptr;                             \
+      }                                             \
+    }                                               \
+  };                                                \
+  template <bool E, typename N = decltype(name)>    \
+  FOLLY_INLINE_VARIABLE constexpr N* varname =      \
       __folly_extern_accessor_##varname::get<E, N>()
