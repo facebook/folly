@@ -344,29 +344,21 @@ struct FunctionTraits<ReturnType(Args...)> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) {
@@ -395,29 +387,21 @@ struct FunctionTraits<ReturnType(Args...) const> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<const Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<const Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) {
@@ -450,29 +434,21 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
@@ -504,29 +480,21 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<const Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<const Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {

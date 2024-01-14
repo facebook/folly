@@ -306,17 +306,12 @@ decltype(auto) variant_match(Variant&& variant, Cases&&... cases) {
 template <typename R, typename Variant, typename... Cases>
 R variant_match(Variant&& variant, Cases&&... cases) {
   auto f = [&](auto&& v) -> R {
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<R>::value) {
       overload(std::forward<Cases>(cases)...)(std::forward<decltype(v)>(v));
     } else {
       return overload(std::forward<Cases>(cases)...)(
           std::forward<decltype(v)>(v));
     }
-#else
-    return static_cast<R>(
-        overload(std::forward<Cases>(cases)...)(std::forward<decltype(v)>(v)));
-#endif
   };
   using invoker = std::conditional_t<
       folly::Conjunction<
