@@ -258,7 +258,7 @@ class F14BasicSet {
   /**
    * Remove all elements.
    *
-   * Does not free heap-allocated memory; capacity is unchanged.
+   * Frees heap-allocated memory; bucket_count is returned to 0.
    *
    * @methodset Modifiers
    */

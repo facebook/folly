@@ -263,7 +263,7 @@ class F14BasicMap {
    * Remove all elements.
    * @methodset Modifiers
    *
-   * Does not free heap-allocated memory; capacity is unchanged.
+   * Frees heap-allocated memory; bucket_count is returned to 0.
    */
   void clear() noexcept { table_.clear(); }
 
