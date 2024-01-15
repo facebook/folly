@@ -577,12 +577,6 @@ constexpr auto kCpplibVer = 0;
 #endif // FOLLY_CPLUSPLUS >= 201703L
 #endif // FOLLY_CFG_NO_COROUTINES
 
-// MSVC 2017.5 && C++17
-#if __cpp_noexcept_function_type >= 201510 || \
-    (_MSC_FULL_VER >= 191225816 && _MSVC_LANG > 201402)
-#define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
-#endif
-
 #if __cpp_inline_variables >= 201606L || FOLLY_CPLUSPLUS >= 201703L
 #define FOLLY_HAS_INLINE_VARIABLES 1
 #define FOLLY_INLINE_VARIABLE inline

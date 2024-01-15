@@ -287,8 +287,6 @@ struct function_traits<R(A..., ...) const volatile&&>
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int const volatile&&> {};
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
-
 template <typename R, typename... A>
 struct function_traits<R(A...) noexcept>
     : detail::function_traits_base_<R(A...)>,
@@ -457,8 +455,6 @@ struct function_traits<R(A..., ...) const volatile&& noexcept>
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int const volatile&&> {};
 
-#endif
-
 //  ----
 
 namespace detail {
@@ -475,7 +471,6 @@ struct function_remove_cvref_<false, true, R> {
   template <typename... A>
   using apply = R(A..., ...);
 };
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename R>
 struct function_remove_cvref_<true, false, R> {
   template <typename... A>
@@ -486,7 +481,6 @@ struct function_remove_cvref_<true, true, R> {
   template <typename... A>
   using apply = R(A..., ...) noexcept;
 };
-#endif
 
 template <typename F, typename T = function_traits<F>>
 using function_remove_cvref_t_ =
@@ -517,139 +511,128 @@ struct function_remove_cvref {
 
 namespace detail {
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
-#define FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(...) noexcept(__VA_ARGS__)
-#else
-#define FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(...)
-#endif
-
 template <typename Src, bool Var>
 struct function_like_src_;
 template <typename Src>
 struct function_like_src_<Src, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) const FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) const noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src volatile, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) volatile noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const volatile, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) const volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) const volatile noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) & FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) & noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) const& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) const& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src volatile&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) volatile& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const volatile&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) const volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) const volatile& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src&&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) && FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) && noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const&&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) const&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) const&& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src volatile&&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) volatile&& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const volatile&&, 0> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A...) const volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A...) const volatile&& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) const FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) const noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src volatile, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) volatile noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const volatile, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) const
-      volatile FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) const volatile noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) & FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) & noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) const& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) const& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src volatile&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) volatile& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const volatile&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) const
-      volatile& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) const volatile& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src&&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) && FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) && noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const&&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) const&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) const&& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src volatile&&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) volatile&& noexcept(Nx);
 };
 template <typename Src>
 struct function_like_src_<Src const volatile&&, 1> {
   template <bool Nx, typename R, typename... A>
-  using apply = R(A..., ...) const
-      volatile&& FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX(Nx);
+  using apply = R(A..., ...) const volatile&& noexcept(Nx);
 };
-
-#undef FOLLY_DETAIL_FUNCTIONAL_TRAITS_NX
 
 template <typename Dst>
 struct function_like_dst_ : function_like_dst_<function_remove_cvref_t<Dst>> {};
@@ -663,7 +646,6 @@ struct function_like_dst_<R(A..., ...)> {
   template <typename Src>
   using apply = typename function_like_src_<Src, 1>::template apply<0, R, A...>;
 };
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename R, typename... A>
 struct function_like_dst_<R(A...) noexcept> {
   template <typename Src>
@@ -674,7 +656,6 @@ struct function_like_dst_<R(A..., ...) noexcept> {
   template <typename Src>
   using apply = typename function_like_src_<Src, 1>::template apply<1, R, A...>;
 };
-#endif
 
 } // namespace detail
 

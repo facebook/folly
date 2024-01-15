@@ -143,7 +143,6 @@ TEST_F(TraitsTest, function_traits) {
   EXPECT_FALSE((is_nothrow_v<void(...) const&&>));
   EXPECT_FALSE((is_nothrow_v<void(...) volatile&&>));
   EXPECT_FALSE((is_nothrow_v<void(...) const volatile&&>));
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
   EXPECT_TRUE((is_nothrow_v<void() noexcept>));
   EXPECT_TRUE((is_nothrow_v<void() const noexcept>));
   EXPECT_TRUE((is_nothrow_v<void() volatile noexcept>));
@@ -168,7 +167,6 @@ TEST_F(TraitsTest, function_traits) {
   EXPECT_TRUE((is_nothrow_v<void(...) const&& noexcept>));
   EXPECT_TRUE((is_nothrow_v<void(...) volatile&& noexcept>));
   EXPECT_TRUE((is_nothrow_v<void(...) const volatile&& noexcept>));
-#endif
 
   //  variadic
 
@@ -196,7 +194,6 @@ TEST_F(TraitsTest, function_traits) {
   EXPECT_TRUE((is_variadic_v<void(...) const&&>));
   EXPECT_TRUE((is_variadic_v<void(...) volatile&&>));
   EXPECT_TRUE((is_variadic_v<void(...) const volatile&&>));
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
   EXPECT_FALSE((is_variadic_v<void() noexcept>));
   EXPECT_FALSE((is_variadic_v<void() const noexcept>));
   EXPECT_FALSE((is_variadic_v<void() volatile noexcept>));
@@ -221,7 +218,6 @@ TEST_F(TraitsTest, function_traits) {
   EXPECT_TRUE((is_variadic_v<void(...) const&& noexcept>));
   EXPECT_TRUE((is_variadic_v<void(...) volatile&& noexcept>));
   EXPECT_TRUE((is_variadic_v<void(...) const volatile&& noexcept>));
-#endif
 
   //  argument
 

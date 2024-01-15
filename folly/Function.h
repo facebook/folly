@@ -228,11 +228,9 @@ template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const> constCastFunction(
     Function<ReturnType(Args...)>&&) noexcept;
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const noexcept> constCastFunction(
     Function<ReturnType(Args...) noexcept>&&) noexcept;
-#endif
 
 namespace detail {
 namespace function {
@@ -417,7 +415,6 @@ struct FunctionTraits<ReturnType(Args...) const> {
       FunctionTraitsSharedProxy<ConstSignature, false, ReturnType, Args...>;
 };
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) noexcept> {
   using Call = ReturnType (*)(CallArg<Args>..., Data&) noexcept;
@@ -509,7 +506,6 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   using SharedProxy =
       FunctionTraitsSharedProxy<ConstSignature, true, ReturnType, Args...>;
 };
-#endif
 
 // These are control functions. They type-erase the operations of move-
 // construction, destruction, and conversion to bool.
@@ -517,17 +513,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 // The interface operations are noexcept, so the implementations are as well.
 // Having the implementations be noexcept in the type permits callers to omit
 // exception-handling machinery.
-
-// Portably aliasing the type pointer-to-noexcept-function is tricky. Compilers
-// sometimes reject the straightforward approach with an error. Even with this
-// technique, some compilers accept the program while discarding the exception
-// specification. This is best-effort.
-std::size_t exec_(Op, Data*, Data*) noexcept;
-using Exec = decltype(&exec_);
-#if __cpp_noexcept_function_type >= 201510L || FOLLY_CPLUSPLUS >= 201702
-static_assert(noexcept(Exec(nullptr)(Op{}, nullptr, nullptr)), "");
-#endif
-
+//
 // This is intentionally instantiated per size rather than per function in order
 // to minimize the number of instantiations. It would be safe to minimize
 // instantiations even more by simply having a single non-template function that
@@ -614,7 +600,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   using Traits = detail::function::FunctionTraits<FunctionType>;
   using Call = typename Traits::Call;
-  using Exec = detail::function::Exec;
+  using Exec = std::size_t (*)(Op, Data*, Data*) noexcept;
 
   // The `data_` member is mutable to allow `constCastFunction` to work without
   // invoking undefined behavior. Const-correctness is only violated when
@@ -970,7 +956,6 @@ Function<ReturnType(Args...) const> constCastFunction(
   return std::move(that);
 }
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const noexcept> constCastFunction(
     Function<ReturnType(Args...) noexcept>&& that) noexcept {
@@ -983,7 +968,6 @@ Function<ReturnType(Args...) const noexcept> constCastFunction(
     Function<ReturnType(Args...) const noexcept>&& that) noexcept {
   return std::move(that);
 }
-#endif
 
 namespace detail {
 

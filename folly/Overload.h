@@ -41,7 +41,7 @@ namespace folly {
 namespace detail {
 
 // MSVC does not implement noexcept deduction https://godbolt.org/z/Mxdjao1q6
-#if defined FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE && !defined _MSC_VER
+#if !defined(_MSC_VER)
 #define FOLLY_DETAIL_NOEXCEPT_SPECIFICATION noexcept(Noexcept)
 #define FOLLY_DETAIL_NOEXCEPT_DECLARATION bool Noexcept,
 #else

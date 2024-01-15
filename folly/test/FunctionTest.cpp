@@ -250,7 +250,6 @@ static_assert(
 static_assert(
     !std::is_constructible<Function<int const&() const>, int (*)()>::value, "");
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 static_assert( //
     !std::is_constructible_v< //
         Function<int() noexcept>,
@@ -300,7 +299,6 @@ static_assert( //
     std::is_constructible_v< //
         Function<int() const>,
         Function<int() const noexcept>>);
-#endif
 
 static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
 
@@ -338,7 +336,6 @@ static_assert( //
     std::is_same_v< //
         Function<void() const>,
         decltype(Function{ctor_guide::call_c{}})>);
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 static_assert( //
     std::is_same_v< //
         Function<void() noexcept>,
@@ -355,7 +352,6 @@ static_assert( //
     std::is_same_v< //
         Function<void() const noexcept>,
         decltype(Function{ctor_guide::call_c_nx{}})>);
-#endif
 
 struct RecStd {
   using type = std::function<RecStd()>;
