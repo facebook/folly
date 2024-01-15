@@ -612,6 +612,9 @@ if debugger_type is None:  # noqa: C901
                 groups = regex.match(output)
                 return groups.group(1) if groups else None
 
+            def __eq__(self, other) -> bool:
+                return self.int_value() == other.int_value()
+
         class GdbCoroBacktraceCommand(gdb.Command):
             def __init__(self):
                 print(co_bt_info())
@@ -758,6 +761,9 @@ if debugger_type is None:  # noqa: C901
                 if symbol_context.GetFunction().IsValid():
                     return symbol_context.GetFunction().GetDisplayName()
                 return symbol_context.GetSymbol().GetDisplayName()
+
+            def __eq__(self, other) -> bool:
+                return self.int_value() == other.int_value()
 
         class LldbCoroBacktraceCommand:
             program: ClassVar[str] = "co_bt"
