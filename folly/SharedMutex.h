@@ -31,6 +31,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/Likely.h>
+#include <folly/chrono/Hardware.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
@@ -255,19 +256,9 @@ struct SharedMutexToken {
   explicit operator bool() const { return state_ != State::Invalid; }
 };
 
-#ifndef FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT
-#define FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT 2
-#endif
-
-#ifndef FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT
-#define FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT 1
-#endif
-
 struct SharedMutexPolicyDefault {
-  static constexpr uint32_t max_spin_count =
-      FOLLY_SHARED_MUTEX_MAX_SPIN_DEFAULT;
-  static constexpr uint32_t max_soft_yield_count =
-      FOLLY_SHARED_MUTEX_MAX_YIELD_DEFAULT;
+  static constexpr uint64_t max_spin_cycles = 4000;
+  static constexpr uint32_t max_soft_yield_count = 1;
   static constexpr bool track_thread_id = false;
   static constexpr bool skip_annotate_rwlock = false;
 };
@@ -957,9 +948,8 @@ class SharedMutexImpl : std::conditional_t<
   // each time a lock is held in exclusive mode.
   static constexpr uint32_t kNumSharedToStartDeferring = 2;
 
-  // The typical number of spins that a thread will wait for a state
-  // transition.
-  static constexpr uint32_t kMaxSpinCount = Policy::max_spin_count;
+  // Maximum time in cycles a thread will spin waiting for a state transition.
+  static constexpr uint64_t kMaxSpinCycles = Policy::max_spin_cycles;
 
   // The maximum number of soft yields before falling back to futex.
   // If the preemption heuristic is activated we will fall back before
@@ -1126,18 +1116,19 @@ class SharedMutexImpl : std::conditional_t<
   template <class WaitContext>
   bool waitForZeroBits(
       uint32_t& state, uint32_t goal, uint32_t waitMask, WaitContext& ctx) {
-    uint32_t spinCount = 0;
-    while (true) {
+    for (uint64_t start = hardware_timestamp();;) {
       state = state_.load(std::memory_order_acquire);
       if ((state & goal) == 0) {
         return true;
       }
-      if (FOLLY_UNLIKELY(spinCount == kMaxSpinCount)) {
+      const uint64_t elapsed = hardware_timestamp() - start;
+      // NOTE: This is also true if hardware_timestamp() goes back in time, as
+      // elapsed underflows.
+      if (FOLLY_UNLIKELY(elapsed >= kMaxSpinCycles)) {
         return ctx.canBlock() &&
             yieldWaitForZeroBits(state, goal, waitMask, ctx);
       }
       asm_volatile_pause();
-      ++spinCount;
     }
   }
 
@@ -1274,21 +1265,23 @@ class SharedMutexImpl : std::conditional_t<
   void applyDeferredReaders(uint32_t& state, WaitContext& ctx) {
     uint32_t slot = 0;
 
-    uint32_t spinCount = 0;
     const uint32_t maxDeferredReaders =
         shared_mutex_detail::getMaxDeferredReaders();
-    while (true) {
+    for (uint64_t start = hardware_timestamp();;) {
       while (!slotValueIsThis(
           deferredReader(slot)->load(std::memory_order_acquire))) {
         if (++slot == maxDeferredReaders) {
           return;
         }
       }
-      asm_volatile_pause();
-      if (FOLLY_UNLIKELY(++spinCount >= kMaxSpinCount)) {
+      const uint64_t elapsed = hardware_timestamp() - start;
+      // NOTE: This is also true if hardware_timestamp() goes back in time, as
+      // elapsed underflows.
+      if (FOLLY_UNLIKELY(elapsed >= kMaxSpinCycles)) {
         applyDeferredReaders(state, ctx, slot);
         return;
       }
+      asm_volatile_pause();
     }
   }
 
