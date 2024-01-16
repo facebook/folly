@@ -201,9 +201,9 @@ class MultiplexChannelProcessor : public IChannelCallback {
         [this,
          key = std::move(key),
          subscriptionArg = std::move(subscriptionArg),
-         sender = std::move(sender)]() mutable -> folly::coro::Task<void> {
+         sender_2 = std::move(sender)]() mutable -> folly::coro::Task<void> {
           co_await processNewSubscription(
-              std::move(key), std::move(subscriptionArg), std::move(sender));
+              std::move(key), std::move(subscriptionArg), std::move(sender_2));
         });
     return std::move(receiver);
   }
@@ -214,8 +214,8 @@ class MultiplexChannelProcessor : public IChannelCallback {
         std::vector<std::pair<KeyType, KeyContextType>>>();
     executeWithMutexWhenReady(
         [this,
-         promise = std::move(promise)]() mutable -> folly::coro::Task<void> {
-          co_await processClearUnusedSubscriptions(std::move(promise));
+         promise_2 = std::move(promise)]() mutable -> folly::coro::Task<void> {
+          co_await processClearUnusedSubscriptions(std::move(promise_2));
         });
     return folly::coro::toTask(std::move(future));
   }
