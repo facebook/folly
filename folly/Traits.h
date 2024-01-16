@@ -93,7 +93,7 @@ struct require_sizeof_ {
   static_assert(always_false<T>, "application of sizeof fails substitution");
 };
 template <typename T>
-struct require_sizeof_<decltype((sizeof(T), void())), T> {
+struct require_sizeof_<decltype(void(sizeof(T))), T> {
   template <typename V>
   using apply_t = V;
 
