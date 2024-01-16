@@ -86,6 +86,29 @@ using index_constant = std::integral_constant<std::size_t, I>;
 template <typename...>
 FOLLY_INLINE_VARIABLE constexpr bool always_false = false;
 
+namespace detail {
+
+template <typename Void, typename T>
+struct require_sizeof_ {
+  static_assert(always_false<T>, "application of sizeof fails substitution");
+};
+template <typename T>
+struct require_sizeof_<decltype((sizeof(T), void())), T> {
+  template <typename V>
+  using apply_t = V;
+
+  static constexpr std::size_t size = sizeof(T);
+};
+
+} // namespace detail
+
+//  require_sizeof
+//
+//  Equivalent to sizeof, but with a static_assert enforcing that application of
+//  sizeof would not fail substitution.
+template <typename T>
+constexpr std::size_t require_sizeof = detail::require_sizeof_<void, T>::size;
+
 //  is_unbounded_array_v
 //  is_unbounded_array
 //
