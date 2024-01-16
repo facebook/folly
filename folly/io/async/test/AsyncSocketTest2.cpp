@@ -10008,7 +10008,7 @@ TEST(AsyncSocketTest, QueueTimeout) {
         // Allow plenty of time for the AsyncSocketServer's event loop to run.
         // This should leave no doubt that the acceptor thread has enough time
         // to dequeue. If the dequeue succeeds, then our expiry code is broken.
-        constexpr auto kEventLoopTime = kConnectionTimeout * 5;
+        static constexpr auto kEventLoopTime = kConnectionTimeout * 5;
         eventBase.runInEventBaseThread([&]() {
           eventBase.tryRunAfterDelay(
               [&]() { serverSocket->removeAcceptCallback(&acceptCb, nullptr); },
