@@ -220,11 +220,11 @@ class BoundedAsyncPipe {
         });
 
     auto signalingGenerator = co_invoke(
-        [generator = std::move(generator),
+        [generator_2 = std::move(generator),
          guard = std::move(guard),
          semaphore]() mutable -> folly::coro::AsyncGenerator<T&&> {
           while (true) {
-            auto itemTry = co_await co_awaitTry(generator.next());
+            auto itemTry = co_await co_awaitTry(generator_2.next());
             semaphore->signal();
             co_yield co_result(std::move(itemTry));
           }
