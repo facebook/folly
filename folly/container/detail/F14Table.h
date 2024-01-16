@@ -154,7 +154,7 @@ struct StdNodeReplica {
 #else
 
 template <typename H>
-struct StdIsFastHash : bool_constant<!!sizeof(H)> {};
+struct StdIsFastHash : std::true_type {};
 template <>
 struct StdIsFastHash<std::hash<long double>> : std::false_type {};
 template <typename... Args>

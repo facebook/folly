@@ -157,7 +157,7 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
   // Detection for folly_assume_32bit_hash
 
   template <typename Hasher, typename Void = void>
-  struct ShouldAssume32BitHash : bool_constant<!sizeof(Hasher)> {};
+  struct ShouldAssume32BitHash : bool_constant<!require_sizeof<Hasher>> {};
 
   template <typename Hasher>
   struct ShouldAssume32BitHash<

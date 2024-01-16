@@ -58,7 +58,7 @@ struct match_empty_function_protocol_fn {
 
   template <typename T>
   static constexpr bool cx_matches_v =
-      sizeof(T) && is_detected_v<detect_from_eq_nullptr, T>;
+      require_sizeof<T>&& is_detected_v<detect_from_eq_nullptr, T>;
 
  public:
   template <typename T, std::enable_if_t<!cx_matches_v<T>, int> = 0>

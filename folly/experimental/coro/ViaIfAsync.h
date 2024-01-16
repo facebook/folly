@@ -438,7 +438,7 @@ class ViaIfAsyncAwaitable {
 namespace detail {
 
 template <typename SemiAwaitable, typename = void>
-struct HasViaIfAsyncMethod : bool_constant<!sizeof(SemiAwaitable)> {};
+struct HasViaIfAsyncMethod : bool_constant<!require_sizeof<SemiAwaitable>> {};
 
 template <typename SemiAwaitable>
 struct HasViaIfAsyncMethod<
@@ -501,7 +501,7 @@ struct ViaIfAsyncFunction {
 FOLLY_DEFINE_CPO(detail::adl::ViaIfAsyncFunction, co_viaIfAsync)
 
 template <typename T, typename = void>
-struct is_semi_awaitable : bool_constant<!sizeof(T)> {};
+struct is_semi_awaitable : bool_constant<!require_sizeof<T>> {};
 
 template <typename T>
 struct is_semi_awaitable<T, std::enable_if_t<std::is_void_v<T>>>

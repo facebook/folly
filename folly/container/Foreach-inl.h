@@ -57,7 +57,7 @@ template <typename T>
 using EnableIfMemberGetFound =
     void_t<decltype(std::declval<T>().template get<0>())>;
 template <typename, typename T>
-struct IsMemberGetFound : bool_constant<!sizeof(T)> {};
+struct IsMemberGetFound : bool_constant<!require_sizeof<T>> {};
 template <typename T>
 struct IsMemberGetFound<EnableIfMemberGetFound<T>, T> : std::true_type {};
 
@@ -91,7 +91,7 @@ using EnableIfTuple = void_t<
     decltype(get_impl<0>(std::declval<T>())),
     decltype(std::tuple_size<T>::value)>;
 template <typename, typename T>
-struct IsTuple : bool_constant<!sizeof(T)> {};
+struct IsTuple : bool_constant<!require_sizeof<T>> {};
 template <typename T>
 struct IsTuple<EnableIfTuple<T>, T> : std::true_type {};
 
@@ -103,7 +103,7 @@ using EnableIfRange = void_t<
     decltype(access::begin(std::declval<T&>())),
     decltype(access::end(std::declval<T&>()))>;
 template <typename, typename T>
-struct IsRange : bool_constant<!sizeof(T)> {};
+struct IsRange : bool_constant<!require_sizeof<T>> {};
 template <typename T>
 struct IsRange<EnableIfRange<T>, T> : std::true_type {};
 
