@@ -578,10 +578,8 @@ constexpr auto kCpplibVer = 0;
 #endif // FOLLY_CFG_NO_COROUTINES
 
 #if __cpp_inline_variables >= 201606L || FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_HAS_INLINE_VARIABLES 1
 #define FOLLY_INLINE_VARIABLE inline
 #else
-#define FOLLY_HAS_INLINE_VARIABLES 0
 #define FOLLY_INLINE_VARIABLE
 #endif
 
