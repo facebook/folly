@@ -19,6 +19,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/container/Iterator.h>
+#include <folly/container/range_traits.h>
 #include <folly/lang/Hint.h>
 #include <folly/memory/UninitializedMemoryHacks.h>
 
@@ -34,44 +35,10 @@
 #include <string_view>
 #endif
 
-#if __has_include(<ranges>)
-#include <ranges>
-#endif
-
 namespace folly {
 namespace detail {
 
-#if __has_include(<ranges>)
-template <typename R>
-constexpr bool guaranteed_contigious_range_cpp20_v =
-    std::ranges::contiguous_range<R>;
-#endif
-
-template <typename R>
-constexpr bool guaranteed_contigious_range_cpp14_v =
-    is_instantiation_of_v<std::vector, R> ||
-    is_instantiation_of_v<std::basic_string, R> ||
-    std::is_pointer_v<typename R::iterator>
-#if FOLLY_HAS_STRING_VIEW
-    || is_instantiation_of_v<std::basic_string_view, R>
-#endif
-    ;
-
-#if __has_include(<ranges>)
-
-template <typename R>
-constexpr bool guaranteed_contigious_range =
-    guaranteed_contigious_range_cpp20_v<R>;
-
-#else
-
-template <typename R>
-constexpr bool guaranteed_contigious_range =
-    guaranteed_contigious_range_cpp14_v<R>;
-
-#endif
-
-template <typename Container, bool = guaranteed_contigious_range<Container>>
+template <typename Container, bool = is_contiguous_range_v<Container>>
 struct tape_reference_traits {
   using iterator = typename Container::const_iterator;
   using reference = Range<iterator>;
