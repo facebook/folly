@@ -173,6 +173,15 @@ TEST(Tape, Move) {
 
   ASSERT_THAT(st0, testing::ElementsAre("ab"));
   ASSERT_THAT(st1, testing::ElementsAre("ab"));
+
+  // self-move should be valid but unspecified.
+  // not many generic choices, though: either no-op or clear or reset
+  // std::vector<int> self-move is:
+  //   reset under libstdc++ and libc++
+  //   no-op under microsoft-stl
+  // the current implementation is reset
+  move_assign = static_cast<folly::string_tape&&>(move_assign);
+  ASSERT_EQ(0U, move_assign.size());
 }
 
 TEST(Tape, TwoItersConstructor) {

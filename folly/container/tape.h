@@ -479,12 +479,18 @@ tape<Container>::tape(tape&& x) noexcept
     : markers_(std::move(x.markers_)), data_(std::move(x.data_)) {
   // we assume that allocations never fail
   x.markers_ = {0};
+  x.data_.clear();
 }
 
 template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
 tape<Container>& tape<Container>::operator=(tape&& x) noexcept {
-  std::swap(markers_, x.markers_);
-  std::swap(data_, x.data_);
+  if (this != &x) {
+    markers_ = std::move(x.markers_);
+    data_ = std::move(x.data_);
+  }
+  // we assume that allocations never fail
+  x.markers_ = {0};
+  x.data_.clear();
   return *this;
 }
 
