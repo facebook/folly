@@ -2091,13 +2091,14 @@ std::pair<Promise<T>, Future<T>> makePromiseContract(Executor::KeepAlive<> e) {
 
 template <class F>
 auto makeAsyncTask(folly::Executor::KeepAlive<> ka, F&& func) {
-  return [func = static_cast<F&&>(func),
-          ka = std::move(ka)](auto&& param) mutable {
+  return [func_2 = static_cast<F&&>(func),
+          ka_2 = std::move(ka)](auto&& param) mutable {
     return via(
-        ka,
-        [func = std::move(func),
-         param = static_cast<decltype(param)>(param)]() mutable {
-          return static_cast<F&&>(func)(static_cast<decltype(param)&&>(param));
+        ka_2,
+        [func_3 = std::move(func_2),
+         param_2 = static_cast<decltype(param)>(param)]() mutable {
+          return static_cast<F&&>(func_3)(
+              static_cast<decltype(param_2)&&>(param_2));
         });
   };
 }
