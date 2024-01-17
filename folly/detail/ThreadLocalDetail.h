@@ -38,6 +38,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 #include <folly/synchronization/MicroSpinLock.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/system/AtFork.h>
 #include <folly/system/ThreadId.h>
 
@@ -374,6 +375,11 @@ struct StaticMetaBase {
   ThreadEntry head_;
   ThreadEntry* (*threadEntry_)();
   bool strict_;
+  // Total size of ElementWrapper arrays across all threads. This is meant
+  // to surface the overhead of thread local tracking machinery since the array
+  // can be sparse when there are lots of thread local variables under the same
+  // tag.
+  relaxed_atomic_int64_t totalElementWrappers_{0};
 };
 
 // Held in a singleton to track our global instances.

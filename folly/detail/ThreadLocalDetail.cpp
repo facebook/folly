@@ -140,6 +140,8 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       for (size_t i = 0u; i < elementsCapacity; ++i) {
         threadEntry->elements[i].node.eraseZero();
       }
+      auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
+      DCHECK_GE(beforeCount, elementsCapacity);
       // No need to hold the lock any longer; the ThreadEntry is private to this
       // thread now that it's been removed from meta.
     }
@@ -379,7 +381,6 @@ ElementWrapper* StaticMetaBase::reallocate(
       throw_exception<std::bad_alloc>();
     }
   }
-
   return reallocated;
 }
 
@@ -428,6 +429,7 @@ void StaticMetaBase::reserve(EntryID* id) {
     threadEntry->setElementsCapacity(newCapacity);
   }
 
+  meta.totalElementWrappers_ += (newCapacity - prevCapacity);
   free(reallocated);
 }
 
@@ -450,6 +452,7 @@ void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
     }
 
     head_.setElementsCapacity(newCapacity);
+    totalElementWrappers_ += (newCapacity - prevCapacity);
     free(reallocated);
   }
 }
