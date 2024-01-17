@@ -241,7 +241,7 @@ TEST(StackTraceTest, TerseFileAndLineStackTracePrinterOutput) {
 }
 
 namespace {
-void verifyAsyncStackTraces() {
+FOLLY_ALWAYS_INLINE void verifyAsyncStackTraces() {
   constexpr size_t kMaxAddresses = 100;
   FrameArray<kMaxAddresses> fa;
   CHECK(getAsyncStackTraceSafe(fa));
