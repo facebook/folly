@@ -753,10 +753,10 @@ SemiFuture<T>::deferExTry(F&& func) && {
   }();
 
   auto sf = Future<T>(this->core_)
-                .thenExTryInline([func = static_cast<F&&>(func)](
+                .thenExTryInline([func_2 = static_cast<F&&>(func)](
                                      folly::Executor::KeepAlive<>&& keepAlive,
                                      folly::Try<T>&& val) mutable {
-                  return static_cast<F&&>(func)(
+                  return static_cast<F&&>(func_2)(
                       std::move(keepAlive), static_cast<decltype(val)>(val));
                 })
                 .semi();
@@ -799,10 +799,10 @@ template <class T>
 template <class ExceptionType, class F>
 SemiFuture<T> SemiFuture<T>::deferError(tag_t<ExceptionType>, F&& func) && {
   return std::move(*this).defer(
-      [func = static_cast<F&&>(func)](Try<T>&& t) mutable {
+      [func_2 = static_cast<F&&>(func)](Try<T>&& t) mutable {
         if (auto e = t.template tryGetExceptionObject<ExceptionType>()) {
           return makeSemiFutureWith(
-              [&]() mutable { return static_cast<F&&>(func)(*e); });
+              [&]() mutable { return static_cast<F&&>(func_2)(*e); });
         } else {
           return makeSemiFuture<T>(std::move(t));
         }
@@ -813,10 +813,10 @@ template <class T>
 template <class F>
 SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
   return std::move(*this).defer(
-      [func = static_cast<F&&>(func)](Try<T> t) mutable {
+      [func_2 = static_cast<F&&>(func)](Try<T> t) mutable {
         if (t.hasException()) {
           return makeSemiFutureWith([&]() mutable {
-            return static_cast<F&&>(func)(std::move(t.exception()));
+            return static_cast<F&&>(func_2)(std::move(t.exception()));
           });
         } else {
           return makeSemiFuture<T>(std::move(t));
@@ -828,8 +828,8 @@ template <class T>
 template <class F>
 SemiFuture<T> SemiFuture<T>::deferEnsure(F&& func) && {
   return std::move(*this).defer(
-      [func = static_cast<F&&>(func)](Try<T>&& t) mutable {
-        static_cast<F&&>(func)();
+      [func_2 = static_cast<F&&>(func)](Try<T>&& t) mutable {
+        static_cast<F&&>(func_2)();
         return makeSemiFuture<T>(std::move(t));
       });
 }
@@ -900,8 +900,9 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor) & {
   this->throwIfInvalid();
   Promise<T> p;
   auto sf = p.getSemiFuture();
-  auto func = [p = std::move(p)](Executor::KeepAlive<>&&, Try<T>&& t) mutable {
-    p.setTry(std::move(t));
+  auto func = [p_2 = std::move(p)](
+                  Executor::KeepAlive<>&&, Try<T>&& t) mutable {
+    p_2.setTry(std::move(t));
   };
   using R = futures::detail::tryExecutorCallableResult<T, decltype(func)>;
   this->thenImplementation(
@@ -1103,9 +1104,9 @@ Future<T>::thenErrorImpl(
             state.setException(std::move(ka), std::move(tf2.exception()));
           } else {
             tf2->setCallback_(
-                [p = state.stealPromise()](
+                [p_2 = state.stealPromise()](
                     Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
-                  p.setTry(std::move(innerKA), std::move(t3));
+                  p_2.setTry(std::move(innerKA), std::move(t3));
                 },
                 allowInline);
           }
@@ -1209,9 +1210,9 @@ Future<T>::thenErrorImpl(
             state.setException(std::move(ka), std::move(tf2.exception()));
           } else {
             tf2->setCallback_(
-                [p = state.stealPromise()](
+                [p_2 = state.stealPromise()](
                     Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
-                  p.setTry(std::move(innerKA), std::move(t3));
+                  p_2.setTry(std::move(innerKA), std::move(t3));
                 },
                 allowInline);
           }
@@ -1851,9 +1852,9 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
   auto sfunc = std::make_shared<std::decay_t<F>>(static_cast<F&&>(func));
 
   auto f = std::move(*first).thenTry(
-      [initial = static_cast<T&&>(initial), sfunc](Try<ItT>&& head) mutable {
+      [initial_2 = static_cast<T&&>(initial), sfunc](Try<ItT>&& head) mutable {
         return (*sfunc)(
-            std::move(initial), head.template get<IsTry::value, Arg&&>());
+            std::move(initial_2), head.template get<IsTry::value, Arg&&>());
       });
 
   for (++first; first != last; ++first) {
@@ -1909,15 +1910,15 @@ std::vector<Future<Result>> window(
                    }).via(ctx->executor.get());
 
         fut.setCallback_(
-            [ctx = std::move(ctx), i](
+            [ctx_2 = std::move(ctx), i](
                 Executor::KeepAlive<>&& ka, Try<Result>&& t) mutable {
               // Use futures::detail::setTry() with the KeepAlive to correctly
               // propagate the executor down the chain for callback inlining
               // purposes.
               futures::detail::setTry(
-                  ctx->promises[i], std::move(ka), std::move(t));
+                  ctx_2->promises[i], std::move(ka), std::move(t));
               // Chain another future onto this one
-              spawn(std::move(ctx));
+              spawn(std::move(ctx_2));
             });
       }
     }
@@ -1993,8 +1994,8 @@ SemiFuture<T> unorderedReduceSemiFuture(It first, It last, T initial, F func) {
     void operator()(Promise<T>&& p, T&& v) const { p.setValue(std::move(v)); }
     void operator()(Promise<T>&& p, Future<T>&& f) const {
       f.setCallback_(
-          [p = std::move(p)](Executor::KeepAlive<>&&, Try<T>&& t) mutable {
-            p.setTry(std::move(t));
+          [p_2 = std::move(p)](Executor::KeepAlive<>&&, Try<T>&& t) mutable {
+            p_2.setTry(std::move(t));
           });
     }
   };
@@ -2202,9 +2203,9 @@ void waitImpl(FutureType& f) {
   Promise<T> promise;
   auto ret = convertFuture(promise.getSemiFuture(), f);
   FutureBatonType baton;
-  f.setCallback_([&baton, promise = std::move(promise)](
+  f.setCallback_([&baton, promise_2 = std::move(promise)](
                      Executor::KeepAlive<>&&, Try<T>&& t) mutable {
-    promise.setTry(std::move(t));
+    promise_2.setTry(std::move(t));
     baton.post();
   });
   f = std::move(ret);
