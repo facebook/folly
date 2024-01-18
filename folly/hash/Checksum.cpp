@@ -22,6 +22,8 @@
 #include <boost/crc.hpp>
 
 #include <folly/CpuId.h>
+#include <folly/external/fast-crc32/avx512_crc32c_v8s3x4.h>
+#include <folly/external/fast-crc32/sse_crc32c_v8s3x3.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 
 #if FOLLY_SSE_PREREQ(4, 2)
@@ -72,6 +74,11 @@ bool crc32c_hw_supported() {
   return id.sse42();
 }
 
+bool crc32c_hw_supported_avx512() {
+  static folly::CpuId id;
+  return id.avx512vl();
+}
+
 bool crc32_hw_supported() {
   static folly::CpuId id;
   return id.sse42();
@@ -87,6 +94,10 @@ uint32_t crc32_hw(
 }
 
 bool crc32c_hw_supported() {
+  return false;
+}
+
+bool crc32c_hw_supported_avx512() {
   return false;
 }
 
@@ -132,8 +143,16 @@ uint32_t crc32_sw(
 } // namespace detail
 
 uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
-  if (detail::crc32c_hw_supported()) {
-    return detail::crc32c_hw(data, nbytes, startingChecksum);
+  if (detail::crc32c_hw_supported_avx512()) {
+    if (nbytes <= 4096) {
+      return detail::crc32c_hw(data, nbytes, startingChecksum);
+    }
+    return detail::avx512_crc32c_v8s3x4(data, nbytes, startingChecksum);
+  } else if (detail::crc32c_hw_supported()) {
+    if (nbytes <= 4096) {
+      return detail::crc32c_hw(data, nbytes, startingChecksum);
+    }
+    return detail::sse_crc32c_v8s3x3(data, nbytes, startingChecksum);
   } else {
     return detail::crc32c_sw(data, nbytes, startingChecksum);
   }
