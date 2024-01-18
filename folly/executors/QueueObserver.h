@@ -84,7 +84,7 @@ class ThreadIdWorkerProvider : public WorkerProvider {
 
  private:
   Synchronized<std::unordered_set<pid_t>> osThreadIds_;
-  SharedMutex threadsExitMutex_;
+  mutable SharedMutex threadsExitMutex_;
 };
 
 class QueueObserver {

@@ -421,7 +421,7 @@ class RequestContext {
     std::atomic<uint64_t> version_{processLocalUniqueId()};
     // This should never be used directly. Use LockGuard so that thread caches
     // are invalidated at the end of the critical section.
-    folly::SharedMutex mutex_; // exclusive mutex, but smaller than std::mutex
+    mutable folly::SharedMutex mutex_; // small exclusive mutex
 
     State();
     State(const State& o);
