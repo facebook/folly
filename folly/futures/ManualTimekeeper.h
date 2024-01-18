@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <map>
+#include <memory>
 
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
@@ -51,10 +52,20 @@ class ManualTimekeeper : public folly::Timekeeper {
   std::size_t numScheduled() const;
 
  private:
-  Executor::KeepAlive<Executor> executor_;
+  struct MapKey {
+    std::chrono::steady_clock::time_point timePoint_;
+    uint64_t id_;
+
+    static MapKey get(std::chrono::steady_clock::time_point time);
+
+    bool operator<(const MapKey& other) const {
+      return timePoint_ != other.timePoint_ ? timePoint_ < other.timePoint_
+                                            : id_ < other.id_;
+    }
+  };
+
   std::chrono::steady_clock::time_point now_;
-  folly::Synchronized<
-      std::multimap<std::chrono::steady_clock::time_point, Promise<Unit>>>
+  std::shared_ptr<folly::Synchronized<std::map<MapKey, Promise<Unit>>>>
       schedule_;
 };
 
