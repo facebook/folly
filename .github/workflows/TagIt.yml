@@ -19,14 +19,14 @@ jobs:
           FILE_NAME=${GITHUB_REPOSITORY#*/}-${GITHUB_REF##*/}
           git archive ${{ github.ref }} -o ${FILE_NAME}.zip
           git archive ${{ github.ref }} -o ${FILE_NAME}.tar.gz
-          echo "::set-output name=file_name::${FILE_NAME}"
+          echo "file_name=${FILE_NAME}" >> $GITHUB_OUTPUT
       - name: Compute digests
         id: compute_digests
         run: |
-          echo "::set-output name=tgz_256::$(openssl dgst -sha256 ${{ steps.archive_project.outputs.file_name }}.tar.gz)"
-          echo "::set-output name=tgz_512::$(openssl dgst -sha512 ${{ steps.archive_project.outputs.file_name }}.tar.gz)"
-          echo "::set-output name=zip_256::$(openssl dgst -sha256 ${{ steps.archive_project.outputs.file_name }}.zip)"
-          echo "::set-output name=zip_512::$(openssl dgst -sha512 ${{ steps.archive_project.outputs.file_name }}.zip)"
+          echo "tgz_256=$(openssl dgst -sha256 ${{ steps.archive_project.outputs.file_name }}.tar.gz)" >> $GITHUB_OUTPUT
+          echo "tgz_512=$(openssl dgst -sha512 ${{ steps.archive_project.outputs.file_name }}.tar.gz)" >> $GITHUB_OUTPUT
+          echo "zip_256=$(openssl dgst -sha256 ${{ steps.archive_project.outputs.file_name }}.zip)" >> $GITHUB_OUTPUT
+          echo "zip_512=$(openssl dgst -sha512 ${{ steps.archive_project.outputs.file_name }}.zip)" >> $GITHUB_OUTPUT
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
