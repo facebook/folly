@@ -81,7 +81,7 @@ FOLLY_GFLAGS_DEFINE_string(
     bm_json_verbose,
     "",
     "File to write verbose JSON format (for BenchmarkCompare / --bm_relative_to). "
-    "NOTE: this is written independent of the above --json / --bm_relative_to.");
+    "NOTE: this file is written regardless of options --json and --bm_relative_to.");
 
 FOLLY_GFLAGS_DEFINE_string(
     bm_regex, "", "Only benchmarks whose names match this regex will be run.");
