@@ -421,10 +421,9 @@ class EvictingCacheMap {
 
   /**
    * Set the prune hook, which is the function invoked on the key and value
-   *     on each eviction and on any entries left in final destruction.
-   *     An operation will throw if the pruneHook throws, unless the
-   *     EvictingCacheMap object is being destroyed in which case it will
-   *     be ignored.
+   *     on each eviction. An operation will throw if the pruneHook throws.
+   *     Note that this prune hook is not automatically called on entries
+   *     explicitly erase()ed nor on remaining entries at destruction time.
    * @param pruneHook eviction callback to set as default, or nullptr to clear
    */
   void setPruneHook(PruneHookCall pruneHook) { pruneHook_ = pruneHook; }
