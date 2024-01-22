@@ -52,20 +52,26 @@ class ManualTimekeeper : public folly::Timekeeper {
   std::size_t numScheduled() const;
 
  private:
-  struct MapKey {
-    std::chrono::steady_clock::time_point timePoint_;
-    uint64_t id_;
+  class TimeoutHandler {
+   public:
+    explicit TimeoutHandler(Promise<Unit>&& promise);
 
-    static MapKey get(std::chrono::steady_clock::time_point time);
+    static std::shared_ptr<TimeoutHandler> create(Promise<Unit>&& promise);
 
-    bool operator<(const MapKey& other) const {
-      return timePoint_ != other.timePoint_ ? timePoint_ < other.timePoint_
-                                            : id_ < other.id_;
-    }
+    void trySetTimeout();
+    void trySetException(exception_wrapper&& ex);
+
+   private:
+    std::atomic_bool fulfilled_{false};
+    Promise<Unit> promise_;
+
+    bool canSet();
   };
 
   std::chrono::steady_clock::time_point now_;
-  std::shared_ptr<folly::Synchronized<std::map<MapKey, Promise<Unit>>>>
+  folly::Synchronized<std::multimap<
+      std::chrono::steady_clock::time_point,
+      std::shared_ptr<TimeoutHandler>>>
       schedule_;
 };
 

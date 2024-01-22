@@ -18,29 +18,16 @@
 
 namespace folly {
 
-ManualTimekeeper::ManualTimekeeper()
-    : now_{std::chrono::steady_clock::now()},
-      schedule_{std::make_shared<decltype(schedule_)::element_type>()} {}
+ManualTimekeeper::ManualTimekeeper() : now_{std::chrono::steady_clock::now()} {}
 
 SemiFuture<Unit> ManualTimekeeper::after(HighResDuration dur) {
   auto contract = folly::makePromiseContract<Unit>();
   if (dur.count() == 0) {
     contract.first.setValue(folly::unit);
   } else {
-    auto key = MapKey::get(now_ + dur);
-    contract.first.setInterruptHandler(
-        [weakSchedule = std::weak_ptr(schedule_), key](exception_wrapper ew) {
-          if (auto lockedSchedule = weakSchedule.lock()) {
-            auto schedule = lockedSchedule->wlock();
-            auto it = schedule->find(key);
-            if (it != schedule->end()) {
-              it->second.setException(std::move(ew));
-              schedule->erase(it);
-            }
-          }
-        });
-    schedule_->withWLock([&contract, &key](auto& schedule) {
-      schedule.try_emplace(key, std::move(contract.first));
+    auto handler = TimeoutHandler::create(std::move(contract.first));
+    schedule_.withWLock([&handler, key = now_ + dur](auto& schedule) {
+      schedule.emplace(key, std::move(handler));
     });
   }
   return std::move(contract.second);
@@ -48,12 +35,11 @@ SemiFuture<Unit> ManualTimekeeper::after(HighResDuration dur) {
 
 void ManualTimekeeper::advance(Duration dur) {
   now_ += dur;
-  auto mapKey = MapKey::get(now_);
-  schedule_->withWLock([&mapKey](auto& schedule) {
+  schedule_.withWLock([this](auto& schedule) {
     auto start = schedule.begin();
-    auto end = schedule.upper_bound(mapKey);
+    auto end = schedule.upper_bound(now_);
     for (auto iter = start; iter != end; iter++) {
-      iter->second.setValue(folly::unit);
+      iter->second->trySetTimeout();
     }
     schedule.erase(start, end);
   });
@@ -64,13 +50,38 @@ std::chrono::steady_clock::time_point ManualTimekeeper::now() const {
 }
 
 std::size_t ManualTimekeeper::numScheduled() const {
-  return schedule_->withRLock([](const auto& sched) { return sched.size(); });
+  return schedule_.withRLock([](const auto& sched) { return sched.size(); });
 }
 
-/* static */ ManualTimekeeper::MapKey ManualTimekeeper::MapKey::get(
-    std::chrono::steady_clock::time_point time) {
-  static std::atomic_uint64_t nextId{0};
-  return MapKey{time, nextId++};
+/* static */ std::shared_ptr<ManualTimekeeper::TimeoutHandler>
+ManualTimekeeper::TimeoutHandler::create(Promise<Unit>&& promise) {
+  auto handler = std::make_shared<TimeoutHandler>(std::move(promise));
+  handler->promise_.setInterruptHandler(
+      [handler = std::weak_ptr(handler)](exception_wrapper ew) {
+        if (auto localTimeout = handler.lock()) {
+          localTimeout->trySetException(std::move(ew));
+        }
+      });
+  return handler;
+}
+
+ManualTimekeeper::TimeoutHandler::TimeoutHandler(Promise<Unit>&& promise)
+    : promise_(std::move(promise)) {}
+
+void ManualTimekeeper::TimeoutHandler::trySetTimeout() {
+  if (canSet()) {
+    promise_.setValue(unit);
+  }
+}
+void ManualTimekeeper::TimeoutHandler::trySetException(exception_wrapper&& ex) {
+  if (canSet()) {
+    promise_.setException(std::move(ex));
+  }
+}
+
+bool ManualTimekeeper::TimeoutHandler::canSet() {
+  bool expected = false;
+  return fulfilled_.compare_exchange_strong(expected, /* desired */ true);
 }
 
 } // namespace folly
