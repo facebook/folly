@@ -37,11 +37,16 @@
 
 DEFINE_string(e, "", "Path to ELF object file (.so, binary)");
 DEFINE_bool(demangle, false, "Degmangle symbols");
+DEFINE_bool(C, false, "Degmangle symbols");
 DEFINE_bool(a, false, "Show addresses");
 DEFINE_bool(i, false, "Unwind inlined functions");
 DEFINE_bool(f, false, "Show function names");
 
 using namespace folly::symbolizer;
+
+bool shouldDemangle() {
+  return FLAGS_demangle || FLAGS_C;
+}
 
 void addr2line(std::shared_ptr<ElfFile> elfFile, uintptr_t address) {
   if (elfFile->getSectionContainingAddress(address) == nullptr) {
@@ -90,8 +95,9 @@ void addr2line(std::shared_ptr<ElfFile> elfFile, uintptr_t address) {
   for (size_t i = 0; i < n; i++) {
     const auto& f = frames[i];
     if (FLAGS_f) {
-      std::cout << (f.name ? (FLAGS_demangle ? folly::demangle(f.name) : f.name)
-                           : "??")
+      std::cout << (f.name
+                        ? (shouldDemangle() ? folly::demangle(f.name) : f.name)
+                        : "??")
                 << '\n';
     }
     auto path = f.location.file.toString();
