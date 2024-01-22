@@ -17,6 +17,9 @@
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/init/Init.h>
 
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Winfinite-recursion")
+
 void f(int* p) {
   LOG(INFO) << "f()";
   // Make sure recursion is not optimized out
@@ -30,6 +33,8 @@ void f(int* p) {
   }
   f(a);
 }
+
+FOLLY_POP_WARNING
 
 int main(int argc, char* argv[]) {
   folly::Init init(&argc, &argv);
