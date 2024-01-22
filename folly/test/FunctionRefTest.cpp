@@ -28,7 +28,10 @@ int func_int_int_add_25(int x) {
 namespace folly {
 
 TEST(FunctionRef, Traits) {
+#if __cplusplus < 201703L
   static_assert(std::is_literal_type<FunctionRef<int(int)>>::value, "");
+#endif
+
   static_assert(
       std::is_trivially_copy_constructible<FunctionRef<int(int)>>::value, "");
   static_assert(
