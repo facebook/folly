@@ -821,7 +821,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST combine_test SOURCES CombineTest.cpp
       BENCHMARK parallel_map_benchmark SOURCES ParallelMapBenchmark.cpp
       TEST parallel_map_test SOURCES ParallelMapTest.cpp
-      BENCHMARK parallel_benchmark SOURCES ParallelBenchmark.cpp
+      BENCHMARK parallel_benchmark HEADERS Bench.h SOURCES ParallelBenchmark.cpp
       TEST parallel_test SOURCES ParallelTest.cpp
 
     DIRECTORY hash/test/
@@ -891,6 +891,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES ScopedEventBaseThreadTest.cpp
       TEST ssl_session_test
         CONTENT_DIR certs/
+        HEADERS AsyncSSLSocketTest.h
         SOURCES SSLSessionTest.cpp
       TEST writechain_test SOURCES WriteChainAsyncTransportWrapperTest.cpp
 
@@ -959,8 +960,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST timeseries_test SOURCES TimeSeriesTest.cpp
 
     DIRECTORY synchronization/test/
-      BENCHMARK baton_benchmark SOURCES BatonBenchmark.cpp
-      TEST baton_test SOURCES BatonTest.cpp
+      BENCHMARK baton_benchmark HEADERS BatonTestHelpers.h SOURCES BatonBenchmark.cpp
+      TEST baton_test HEADERS BatonTestHelpers.h SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
       TEST lifo_sem_test WINDOWS_DISABLED SOURCES LifoSemTests.cpp
       TEST relaxed_atomic_test WINDOWS_DISABLED SOURCES RelaxedAtomicTest.cpp
@@ -1006,7 +1007,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST demangle_test SOURCES DemangleTest.cpp
       TEST deterministic_schedule_test SOURCES DeterministicScheduleTest.cpp
       TEST discriminated_ptr_test SOURCES DiscriminatedPtrTest.cpp
-      TEST dynamic_test SOURCES DynamicTest.cpp
+      TEST dynamic_test HEADERS ComparisonOperatorTestUtil.h SOURCES DynamicTest.cpp
       TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
       TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
       TEST endian_test SOURCES EndianTest.cpp
@@ -1023,7 +1024,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK fbvector_benchmark
         SOURCES FBVectorBenchmark.cpp
         HEADERS FBVectorBenchmarks.cpp.h
-      TEST fbvector_test SOURCES FBVectorTest.cpp
+      TEST fbvector_test HEADERS FBVectorTests.cpp.h SOURCES FBVectorTest.cpp
       TEST file_test SOURCES FileTest.cpp
       # Open-source linux build can't handle running this.
       #TEST file_lock_test SOURCES FileLockTest.cpp
@@ -1097,12 +1098,15 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK synchronized_benchmark WINDOWS_DISABLED
         SOURCES SynchronizedBenchmark.cpp
       TEST synchronized_test WINDOWS_DISABLED
+        HEADERS SynchronizedTestLib.h SynchronizedTestLib-inl.h
         SOURCES SynchronizedTest.cpp
       TEST thread_cached_int_test WINDOWS_DISABLED
         SOURCES ThreadCachedIntTest.cpp
       TEST thread_local_test WINDOWS_DISABLED SOURCES ThreadLocalTest.cpp
       TEST timeout_queue_test SOURCES TimeoutQueueTest.cpp
-      TEST token_bucket_test SOURCES TokenBucketTest.cpp
+      TEST token_bucket_test
+        HEADERS TokenBucketTest.h
+        SOURCES TokenBucketTest.cpp
       TEST traits_test SOURCES TraitsTest.cpp
       TEST try_test WINDOWS_DISABLED SOURCES TryTest.cpp
       TEST unit_test SOURCES UnitTest.cpp
