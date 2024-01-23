@@ -22,6 +22,7 @@
 #include <boost/crc.hpp>
 
 #include <folly/CpuId.h>
+#include <folly/external/fast-crc32/sse_crc32c_v8s3x3.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 
 #if FOLLY_SSE_PREREQ(4, 2)
@@ -133,7 +134,10 @@ uint32_t crc32_sw(
 
 uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   if (detail::crc32c_hw_supported()) {
-    return detail::crc32c_hw(data, nbytes, startingChecksum);
+    if (nbytes <= 4096) {
+      return detail::crc32c_hw(data, nbytes, startingChecksum);
+    }
+    return detail::sse_crc32c_v8s3x3(data, nbytes, startingChecksum);
   } else {
     return detail::crc32c_sw(data, nbytes, startingChecksum);
   }
