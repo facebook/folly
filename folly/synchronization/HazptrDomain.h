@@ -467,10 +467,15 @@ class hazptr_domain {
     int count = 0;
     for (int s = 0; s < kNumShards; ++s) {
       if (tagged[s]) {
-        ObjList match, nomatch;
-        list_match_condition(tagged[s], match, nomatch, [&](Obj* o) {
-          return hs.count(o->raw_ptr()) > 0;
-        });
+        ObjList nomatch;
+        {
+          ObjList match;
+          list_match_condition(tagged[s], match, nomatch, [&](Obj* o) {
+            return hs.count(o->raw_ptr()) > 0;
+          });
+          List l(match.head(), match.tail());
+          tagged_[s].push_unlock(l);
+        }
         count += nomatch.count();
         auto obj = nomatch.head();
         while (obj) {
@@ -480,8 +485,6 @@ class hazptr_domain {
           cohort->push_safe_obj(obj);
           obj = next;
         }
-        List l(match.head(), match.tail());
-        tagged_[s].push_unlock(l);
       }
     }
     return count;
