@@ -19,6 +19,7 @@
 #include <thread>
 
 #include <folly/Random.h>
+#include <folly/Utility.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -34,10 +35,12 @@ struct LockedVal {
 };
 
 template <typename LOCK>
-void spinlockTestThread(LockedVal<LOCK>* v) {
-  const int max = 1000;
+void spinlockTestThread(size_t nthrs, LockedVal<LOCK>* v) {
+  const size_t max = (1u << 16) //
+      / folly::nextPowTwo(nthrs) //
+      / (folly::kIsSanitizeThread ? 2 : 1);
   auto rng = folly::ThreadLocalPRNG();
-  for (int i = 0; i < max; i++) {
+  for (size_t i = 0; i < max; i++) {
     folly::asm_volatile_pause();
     std::unique_lock g(v->lock);
 
@@ -95,11 +98,11 @@ void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
 
 template <typename LOCK>
 void correctnessTest() {
-  int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
+  size_t nthrs = folly::to_unsigned(sysconf(_SC_NPROCESSORS_ONLN) * 2);
   std::vector<std::thread> threads;
   LockedVal<LOCK> v;
-  for (int i = 0; i < nthrs; ++i) {
-    threads.push_back(std::thread(spinlockTestThread<LOCK>, &v));
+  for (size_t i = 0; i < nthrs; ++i) {
+    threads.push_back(std::thread(spinlockTestThread<LOCK>, nthrs, &v));
   }
   for (auto& t : threads) {
     t.join();

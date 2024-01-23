@@ -88,7 +88,7 @@ class ObserverCreatorContext {
   }
 
  private:
-  SharedMutex updateLock_;
+  mutable SharedMutex updateLock_;
   struct State {
     bool updateValue(std::shared_ptr<const T> newValue) {
       auto newValuePtr = newValue.get();

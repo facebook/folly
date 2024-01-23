@@ -111,7 +111,7 @@ class Core : public std::enable_shared_from_this<Core> {
 
   folly::Function<std::shared_ptr<const void>()> creator_;
 
-  SharedMutex refreshMutex_;
+  mutable SharedMutex refreshMutex_;
 
   bool forceRefresh_{false};
 };

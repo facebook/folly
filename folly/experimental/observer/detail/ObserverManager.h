@@ -241,7 +241,7 @@ class ObserverManager {
    * happen if CurrentQueue is empty (notice that we use read-priority shared
    * mutex).
    */
-  SharedMutexReadPriority versionMutex_;
+  mutable SharedMutexReadPriority versionMutex_;
   std::atomic<size_t> version_{1};
 
   using CycleDetector = GraphCycleDetector<const Core*>;

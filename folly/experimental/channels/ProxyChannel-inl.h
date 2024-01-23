@@ -174,7 +174,7 @@ class ProxyChannelProcessor : public IChannelCallback {
    * the sender or an input receiver).
    */
   void canceled(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       auto state = state_.wlock();
       if (bridge == state->sender.get()) {
         // We previously cancelled the sender due to an input receiver closure.

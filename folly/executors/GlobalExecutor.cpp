@@ -142,7 +142,7 @@ class GlobalExecutor {
   }
 
  private:
-  SharedMutex mutex_;
+  mutable SharedMutex mutex_;
   std::weak_ptr<ExecutorBase> executor_;
   Function<std::shared_ptr<ExecutorBase>()> getDefault_;
 };

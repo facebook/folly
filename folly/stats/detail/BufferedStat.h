@@ -70,7 +70,7 @@ class BufferedStat {
 
   const typename ClockT::duration bufferDuration_;
   AtomicTimePoint expiry_;
-  SharedMutex mutex_;
+  mutable SharedMutex mutex_;
 
   virtual void onNewDigest(
       DigestT digest,
