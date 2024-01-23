@@ -16,6 +16,7 @@
 
 #include <folly/functional/ApplyTuple.h>
 
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <memory>
