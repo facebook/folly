@@ -93,7 +93,7 @@ class EDFThreadPoolExecutor::TaskQueue {
 
   // This is not a `Synchronized` because we perform a few "peek" operations.
   struct Bucket {
-    SharedMutex mutex;
+    mutable SharedMutex mutex;
 
     struct Compare {
       bool operator()(const TaskPtr& lhs, const TaskPtr& rhs) const {
