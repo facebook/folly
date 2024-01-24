@@ -179,6 +179,18 @@ constexpr bool kIsSanitize = true;
 #else
 constexpr bool kIsSanitize = false;
 #endif
+
+#if defined(__OPTIMIZE__)
+constexpr bool kIsOptimize = true;
+#else
+constexpr bool kIsOptimize = false;
+#endif
+
+#if defined(__OPTIMIZE_SIZE__)
+constexpr bool kIsOptimizeSize = true;
+#else
+constexpr bool kIsOptimizeSize = false;
+#endif
 } // namespace folly
 
 // packing is very ugly in msvc
