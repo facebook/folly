@@ -1097,12 +1097,15 @@ using type_pack_element_fallback = _t<decltype(type_pack_element_test<I>::impl(
 template <std::size_t I, typename... Ts>
 using type_pack_element_t = __type_pack_element<I, Ts...>;
 #else
+namespace traits_detail {
 template <std::size_t I, typename... Ts>
-struct type_pack_element {
+struct type_pack_element_ {
   using type = __type_pack_element<I, Ts...>;
 };
+} // namespace traits_detail
 template <std::size_t I, typename... Ts>
-using type_pack_element_t = typename type_pack_element<I, Ts...>::type;
+using type_pack_element_t =
+    typename traits_detail::type_pack_element_<I, Ts...>::type;
 #endif
 
 #else
