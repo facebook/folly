@@ -68,7 +68,9 @@ class MergeProcessor : public IChannelCallback {
    * @param inputReceivers: The collection of input receivers to merge.
    */
   void start(std::vector<Receiver<TValue>> inputReceivers) {
-    executor_->add([=, inputReceivers = std::move(inputReceivers)]() mutable {
+    executor_->add([=,
+                    this,
+                    inputReceivers = std::move(inputReceivers)]() mutable {
       if (!sender_->senderWait(this)) {
         sender_->senderClose();
         processSenderCancelled();
@@ -104,7 +106,7 @@ class MergeProcessor : public IChannelCallback {
    * a value from an input receiver or a cancellation from the output receiver).
    */
   void consume(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       if (bridge == sender_.get()) {
         // The consumer of the output receiver has stopped consuming.
         CHECK_NE(getSenderState(), ChannelState::CancellationProcessed);
@@ -125,7 +127,7 @@ class MergeProcessor : public IChannelCallback {
    * the sender or an input receiver).
    */
   void canceled(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       if (bridge == sender_.get()) {
         // We previously cancelled the sender due to an input receiver closure
         // with an exception (or the closure of all input receivers without an
