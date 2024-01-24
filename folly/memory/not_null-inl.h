@@ -504,4 +504,19 @@ not_null_shared_ptr<T> reinterpret_pointer_cast(not_null_shared_ptr<U>&& r) {
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
 
+static_assert(
+    std::is_same_v<decltype(not_null(std::declval<int*>())), not_null<int*>>);
+
+static_assert(std::is_same_v<
+              decltype(not_null(std::declval<std::unique_ptr<int>>())),
+              not_null_unique_ptr<int>>);
+
+static_assert(std::is_same_v<
+              decltype(not_null(std::declval<std::unique_ptr<int>&&>())),
+              not_null_unique_ptr<int>>);
+
+static_assert(std::is_same_v<
+              decltype(not_null(std::declval<const std::shared_ptr<int>&>())),
+              not_null_shared_ptr<int>>);
+
 } // namespace folly
