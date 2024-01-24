@@ -186,7 +186,10 @@ void copy_and_move_test(Container<int>& q, Iterator it) {
   assert(q.empty());
   const auto it2(it); // copy construct
   it = it2; // copy assign from const
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wself-assign-overloaded")
   it = it; // self assign
+  FOLLY_POP_WARNING
   auto it3(std::move(it)); // move construct
   it = std::move(it3); // move assign
   // Make sure iterator still works.
