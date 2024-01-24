@@ -637,7 +637,7 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
               res,
               ")");
           break;
-      };
+      }
       readCallback_->readErr(AsyncSocketException(err, std::move(error)));
     } else {
       uint64_t const cb_was = setReadCbCount_;
