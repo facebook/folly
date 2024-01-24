@@ -52,8 +52,6 @@ using namespace std;
 static_assert(folly::detail::range_is_char_type_v_<char*>, "");
 static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>, "");
 
-static_assert(std::is_literal_type<StringPiece>::value, "");
-
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
 
 TEST(StringPiece, All) {
