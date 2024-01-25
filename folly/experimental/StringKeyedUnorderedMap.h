@@ -26,29 +26,7 @@ template <
     class Hash = f14::DefaultHasher<std::string>,
     class Eq = f14::DefaultKeyEqual<std::string>,
     class Alloc = f14::DefaultAlloc<std::pair<std::string const, Mapped>>>
-struct StringKeyedUnorderedMap
-    : public F14NodeMap<std::string, Mapped, Hash, Eq, Alloc> {
-  using Super = F14NodeMap<std::string, Mapped, Hash, Eq, Alloc>;
-
-  static_assert(is_transparent_v<Hash>, "not transparent");
-  static_assert(is_transparent_v<Eq>, "not transparent");
-
- public:
-  using Super::Super;
-  StringKeyedUnorderedMap() : Super() {}
-
-  // TODO(T31574848): Work around libstdc++ versions (e.g., GCC < 6) with no
-  // implementation of N4387 ("perfect initialization" for pairs and tuples) to
-  // support existing callsites that list-initialize:
-  //   m.insert({sp, x});
-  std::pair<typename Super::iterator, bool> insert(
-      std::pair<StringPiece, Mapped> const& p) {
-    return this->emplace(p.first, p.second);
-  }
-  std::pair<typename Super::iterator, bool> insert(
-      std::pair<StringPiece, Mapped>&& p) {
-    return this->emplace(std::move(p));
-  }
-};
+using StringKeyedUnorderedMap =
+    F14NodeMap<std::string, Mapped, Hash, Eq, Alloc>;
 
 } // namespace folly
