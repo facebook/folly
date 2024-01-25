@@ -31,6 +31,7 @@ namespace folly {
  *
  *  Operations:
  *  - add(byte)
+ *  - remove(byte)
  *  - contains(byte)
  *  - clear()
  *
@@ -67,6 +68,24 @@ class SparseByteSet {
       dense_[size_] = i;
       sparse_[i] = uint8_t(size_);
       size_++;
+    }
+    return r;
+  }
+
+  /***
+   *  remove(byte)
+   *
+   *  O(1), non-amortized.
+   */
+  inline bool remove(uint8_t i) {
+    bool r = contains(i);
+    if (r) {
+      if (dense_[size_ - 1] != i) {
+        int last_element = dense_[size_ - 1];
+        dense_[sparse_[i]] = last_element;
+        sparse_[last_element] = sparse_[i];
+      }
+      --size_;
     }
     return r;
   }
