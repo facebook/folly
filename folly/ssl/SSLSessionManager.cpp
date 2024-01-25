@@ -16,6 +16,7 @@
 
 #include <folly/ssl/SSLSessionManager.h>
 
+#include <folly/Overload.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/ssl/detail/OpenSSLSession.h>
@@ -25,59 +26,6 @@ using folly::ssl::detail::OpenSSLSession;
 using std::shared_ptr;
 
 namespace {
-
-/**
- * Variant visitors. Will be removed once session_ is converted
- * to a non-variant type.
- */
-class RawSessionRetrievalVisitor {
- public:
-  SSLSessionUniquePtr operator()(const SSLSessionUniquePtr& sessionPtr) const {
-    SSL_SESSION* session = sessionPtr.get();
-    if (session) {
-      SSL_SESSION_up_ref(session);
-    }
-    return SSLSessionUniquePtr(session);
-  }
-
-  SSLSessionUniquePtr operator()(
-      const shared_ptr<OpenSSLSession>& session) const {
-    if (!session) {
-      return SSLSessionUniquePtr();
-    }
-
-    return session->getActiveSession();
-  }
-};
-
-class SSLSessionRetrievalVisitor {
- public:
-  shared_ptr<OpenSSLSession> operator()(const SSLSessionUniquePtr&) const {
-    return nullptr;
-  }
-
-  shared_ptr<OpenSSLSession> operator()(
-      const shared_ptr<OpenSSLSession>& session) const {
-    return session;
-  }
-};
-
-class SessionForwarderVisitor {
- public:
-  explicit SessionForwarderVisitor(SSLSessionUniquePtr sessionArg)
-      : sessionArg_{std::move(sessionArg)} {}
-
-  void operator()(const SSLSessionUniquePtr&) {}
-
-  void operator()(const std::shared_ptr<OpenSSLSession>& session) {
-    if (session) {
-      session->setActiveSession(std::move(sessionArg_));
-    }
-  }
-
- private:
-  SSLSessionUniquePtr sessionArg_{nullptr};
-};
 
 int getSSLExDataIndex() {
   static auto index =
@@ -111,13 +59,33 @@ void SSLSessionManager::setRawSession(SSLSessionUniquePtr session) {
 }
 
 SSLSessionUniquePtr SSLSessionManager::getRawSession() const {
-  auto visitor = RawSessionRetrievalVisitor();
-  return std::visit(visitor, session_);
+  return std::visit(
+      overload(
+          [](const SSLSessionUniquePtr& sessionPtr) {
+            SSL_SESSION* session = sessionPtr.get();
+            if (session) {
+              SSL_SESSION_up_ref(session);
+            }
+            return SSLSessionUniquePtr(session);
+          },
+          [](const shared_ptr<OpenSSLSession>& session) {
+            if (!session) {
+              return SSLSessionUniquePtr();
+            }
+
+            return session->getActiveSession();
+          }),
+      session_);
 }
 
 shared_ptr<SSLSession> SSLSessionManager::getSession() const {
-  auto visitor = SSLSessionRetrievalVisitor();
-  return std::visit(visitor, session_);
+  return std::visit(
+      overload(
+          [](const SSLSessionUniquePtr&) {
+            return shared_ptr<OpenSSLSession>(nullptr);
+          },
+          [](const shared_ptr<OpenSSLSession>& session) { return session; }),
+      session_);
 }
 
 void SSLSessionManager::attachToSSL(SSL* ssl) {
@@ -130,8 +98,15 @@ SSLSessionManager* SSLSessionManager::getFromSSL(const SSL* ssl) {
 }
 
 void SSLSessionManager::onNewSession(SSLSessionUniquePtr session) {
-  auto visitor = SessionForwarderVisitor(std::move(session));
-  std::visit(visitor, session_);
+  std::visit(
+      overload(
+          [](const SSLSessionUniquePtr&) {},
+          [&session](const shared_ptr<OpenSSLSession>& sessionArg) {
+            if (sessionArg) {
+              sessionArg->setActiveSession(std::move(session));
+            }
+          }),
+      session_);
 }
 
 } // namespace ssl
