@@ -485,7 +485,6 @@ inline void* shiftPointer(void* p, size_t sizeBytes) {
 } // namespace detail
 
 //////////////////////////////////////////////////////////////////////
-FOLLY_SV_PACK_PUSH
 template <class Value, std::size_t RequestedMaxInline = 1, class Policy = void>
 class small_vector
     : public detail::small_vector_base<Value, RequestedMaxInline, Policy>::
@@ -1294,6 +1293,11 @@ class small_vector
   }
 
  private:
+  // These internal classes are packed to minimize total memory usage,
+  // however, it is important that we don't pack the class as a whole
+  // otherwise the inline storage may not have the correct alignment
+  // for the value type.
+  FOLLY_SV_PACK_PUSH
   struct HeapPtrWithCapacity {
     value_type* heap_;
     InternalSizeType capacity_;
@@ -1302,7 +1306,9 @@ class small_vector
     void setCapacity(InternalSizeType c) { capacity_ = c; }
     size_t allocationExtraBytes() const { return 0; }
   } FOLLY_SV_PACK_ATTR;
+  FOLLY_SV_PACK_POP
 
+  FOLLY_SV_PACK_PUSH
   struct HeapPtr {
     // heap[-kHeapifyCapacitySize] contains capacity
     value_type* heap_;
@@ -1318,6 +1324,7 @@ class small_vector
     }
     size_t allocationExtraBytes() const { return kHeapifyCapacitySize; }
   } FOLLY_SV_PACK_ATTR;
+  FOLLY_SV_PACK_POP
 
   static constexpr size_t kMaxInlineNonZero = MaxInline ? MaxInline : 1u;
   typedef aligned_storage_for_t<value_type[kMaxInlineNonZero]>
@@ -1411,7 +1418,6 @@ class small_vector
 
   } u;
 };
-FOLLY_SV_PACK_POP
 
 //////////////////////////////////////////////////////////////////////
 
