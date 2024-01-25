@@ -20,13 +20,12 @@
 #include <initializer_list>
 #include <iomanip>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-
-#include <boost/optional.hpp>
 
 #include <folly/Portability.h>
 #include <folly/portability/GMock.h>
@@ -59,10 +58,10 @@ struct NoDefault {
 static_assert(sizeof(Optional<char>) == 2, "");
 static_assert(sizeof(Optional<int>) == 8, "");
 static_assert(sizeof(Optional<NoDefault>) == 4, "");
-static_assert(sizeof(Optional<char>) == sizeof(boost::optional<char>), "");
-static_assert(sizeof(Optional<short>) == sizeof(boost::optional<short>), "");
-static_assert(sizeof(Optional<int>) == sizeof(boost::optional<int>), "");
-static_assert(sizeof(Optional<double>) == sizeof(boost::optional<double>), "");
+static_assert(sizeof(Optional<char>) == sizeof(std::optional<char>), "");
+static_assert(sizeof(Optional<short>) == sizeof(std::optional<short>), "");
+static_assert(sizeof(Optional<int>) == sizeof(std::optional<int>), "");
+static_assert(sizeof(Optional<double>) == sizeof(std::optional<double>), "");
 
 TEST(Optional, ConstexprConstructible) {
   // Use FOLLY_STORAGE_CONSTEXPR to work around MSVC not taking this.
@@ -418,9 +417,9 @@ TEST(Optional, Comparisons) {
   EXPECT_FALSE(o1 > 2);
   */
 
-  // boost::optional does support comparison with contained value, which can
+  // std::optional does support comparison with contained value, which can
   // lead to confusion when a bool is contained
-  boost::optional<int> boi(3);
+  std::optional<int> boi(3);
   EXPECT_TRUE(boi < 5);
   EXPECT_TRUE(boi <= 4);
   EXPECT_TRUE(boi == 3);
@@ -434,7 +433,7 @@ TEST(Optional, Comparisons) {
   EXPECT_TRUE(5 >= boi);
   EXPECT_TRUE(6 > boi);
 
-  boost::optional<bool> bob(false);
+  std::optional<bool> bob(false);
   EXPECT_TRUE((bool)bob);
   EXPECT_TRUE(bob == false); // well that was confusing
   EXPECT_FALSE(bob != false);

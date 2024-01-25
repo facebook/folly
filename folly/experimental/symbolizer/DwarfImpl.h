@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
+#include <variant>
 
 #include <folly/Function.h>
 #include <folly/Range.h>
@@ -59,7 +59,7 @@ class DwarfImpl {
       bool checkAddress = true) const;
 
  private:
-  using AttributeValue = boost::variant<uint64_t, folly::StringPiece>;
+  using AttributeValue = std::variant<uint64_t, folly::StringPiece>;
 
   /**
    * Finds a subprogram debugging info entry that contains a given address among

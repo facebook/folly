@@ -23,8 +23,8 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <variant>
 #include <vector>
-#include <boost/variant.hpp>
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
@@ -857,7 +857,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
         RemoteAcceptor& acceptor) noexcept;
   };
 
-  using QueueMessage = boost::variant<NewConnMessage, ErrorMessage>;
+  using QueueMessage = std::variant<NewConnMessage, ErrorMessage>;
 
   /**
    * A class to receive notifications to invoke AcceptCallback objects
@@ -872,7 +872,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     struct Consumer {
       AtomicNotificationQueueTaskStatus operator()(
           QueueMessage&& msg) noexcept {
-        return boost::apply_visitor(
+        return std::visit(
             [this](auto&& visitMsg) { return visitMsg(acceptor_); }, msg);
       }
 

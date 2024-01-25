@@ -30,7 +30,7 @@ namespace {
  * Variant visitors. Will be removed once session_ is converted
  * to a non-variant type.
  */
-class RawSessionRetrievalVisitor : boost::static_visitor<SSLSessionUniquePtr> {
+class RawSessionRetrievalVisitor {
  public:
   SSLSessionUniquePtr operator()(const SSLSessionUniquePtr& sessionPtr) const {
     SSL_SESSION* session = sessionPtr.get();
@@ -50,8 +50,7 @@ class RawSessionRetrievalVisitor : boost::static_visitor<SSLSessionUniquePtr> {
   }
 };
 
-class SSLSessionRetrievalVisitor
-    : boost::static_visitor<shared_ptr<OpenSSLSession>> {
+class SSLSessionRetrievalVisitor {
  public:
   shared_ptr<OpenSSLSession> operator()(const SSLSessionUniquePtr&) const {
     return nullptr;
@@ -63,7 +62,7 @@ class SSLSessionRetrievalVisitor
   }
 };
 
-class SessionForwarderVisitor : boost::static_visitor<> {
+class SessionForwarderVisitor {
  public:
   explicit SessionForwarderVisitor(SSLSessionUniquePtr sessionArg)
       : sessionArg_{std::move(sessionArg)} {}
@@ -113,12 +112,12 @@ void SSLSessionManager::setRawSession(SSLSessionUniquePtr session) {
 
 SSLSessionUniquePtr SSLSessionManager::getRawSession() const {
   auto visitor = RawSessionRetrievalVisitor();
-  return boost::apply_visitor(visitor, session_);
+  return std::visit(visitor, session_);
 }
 
 shared_ptr<SSLSession> SSLSessionManager::getSession() const {
   auto visitor = SSLSessionRetrievalVisitor();
-  return boost::apply_visitor(visitor, session_);
+  return std::visit(visitor, session_);
 }
 
 void SSLSessionManager::attachToSSL(SSL* ssl) {
@@ -132,7 +131,7 @@ SSLSessionManager* SSLSessionManager::getFromSSL(const SSL* ssl) {
 
 void SSLSessionManager::onNewSession(SSLSessionUniquePtr session) {
   auto visitor = SessionForwarderVisitor(std::move(session));
-  boost::apply_visitor(visitor, session_);
+  std::visit(visitor, session_);
 }
 
 } // namespace ssl

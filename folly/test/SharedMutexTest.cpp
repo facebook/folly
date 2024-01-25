@@ -20,13 +20,13 @@
 
 #include <chrono>
 #include <mutex>
+#include <optional>
 #include <random>
 #include <shared_mutex> // std::shared_lock
 #include <system_error>
 #include <thread>
 #include <vector>
 
-#include <boost/optional.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
 #include <folly/Benchmark.h>
@@ -1198,8 +1198,7 @@ TEST(SharedMutex, allOpsWritePrio) {
   }
 }
 
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE(
-    boost::optional<boost::optional<SharedMutexToken>>)
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE(std::optional<std::optional<SharedMutexToken>>)
 
 // Setup is a set of threads that either grab a shared lock, or exclusive
 // and then downgrade it, or upgrade then upgrade and downgrade, then
@@ -1213,7 +1212,7 @@ static void runRemoteUnlock(
     size_t numSendingThreads,
     size_t numReceivingThreads) {
   Lock globalLock;
-  MPMCQueue<boost::optional<boost::optional<SharedMutexToken>>, Atom> queue(10);
+  MPMCQueue<std::optional<std::optional<SharedMutexToken>>, Atom> queue(10);
   auto queuePtr = &queue; // workaround for clang crash
 
   Atom<bool> go(false);
@@ -1261,7 +1260,7 @@ static void runRemoteUnlock(
           bool useToken = randVal >= 0.5;
           randVal = (randVal - (useToken ? 0.5 : 0.0)) * 2;
 
-          boost::optional<SharedMutexToken> maybeToken;
+          std::optional<SharedMutexToken> maybeToken;
 
           if (useToken) {
             SharedMutexToken token;
@@ -1300,7 +1299,7 @@ static void runRemoteUnlock(
           queuePtr->blockingWrite(maybeToken);
         }
         if (--*pendingSendersPtr == 0) {
-          queuePtr->blockingWrite(boost::none);
+          queuePtr->blockingWrite(std::nullopt);
         }
       });
     }

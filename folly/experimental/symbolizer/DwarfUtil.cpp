@@ -348,30 +348,30 @@ bool parseCompilationUnitMetadata(CompilationUnit& cu, size_t offset) {
   forEachAttribute(cu, die, [&](const Attribute& attr) {
     switch (attr.spec.name) {
       case DW_AT_comp_dir:
-        cu.compDir = boost::get<folly::StringPiece>(attr.attrValue);
+        cu.compDir = std::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_addr_base:
       case DW_AT_GNU_addr_base:
-        cu.addrBase = boost::get<uint64_t>(attr.attrValue);
+        cu.addrBase = std::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_GNU_ranges_base:
-        cu.rangesBase = boost::get<uint64_t>(attr.attrValue);
+        cu.rangesBase = std::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_loclists_base:
-        cu.loclistsBase = boost::get<uint64_t>(attr.attrValue);
+        cu.loclistsBase = std::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_rnglists_base:
-        cu.rnglistsBase = boost::get<uint64_t>(attr.attrValue);
+        cu.rnglistsBase = std::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_str_offsets_base:
-        cu.strOffsetsBase = boost::get<uint64_t>(attr.attrValue);
+        cu.strOffsetsBase = std::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_GNU_dwo_name:
       case DW_AT_dwo_name: // dwo id is set above in dwarf5.
-        cu.dwoName = boost::get<folly::StringPiece>(attr.attrValue);
+        cu.dwoName = std::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_GNU_dwo_id:
-        cu.dwoId = boost::get<uint64_t>(attr.attrValue);
+        cu.dwoId = std::get<uint64_t>(attr.attrValue);
         break;
     }
     return true; // continue forEachAttribute
@@ -654,7 +654,7 @@ Attribute readAttribute(
     case DW_FORM_ref_sig8:
       return {spec, die, read<uint64_t>(info)};
     case DW_FORM_sdata:
-      return {spec, die, readSLEB(info)};
+      return {spec, die, to_unsigned(readSLEB(info))};
     case DW_FORM_udata:
       FOLLY_FALLTHROUGH;
     case DW_FORM_ref_udata:
@@ -662,7 +662,7 @@ Attribute readAttribute(
     case DW_FORM_flag:
       return {spec, die, read<uint8_t>(info)};
     case DW_FORM_flag_present:
-      return {spec, die, 1};
+      return {spec, die, 1u};
     case DW_FORM_sec_offset:
       FOLLY_FALLTHROUGH;
     case DW_FORM_ref_addr:
@@ -686,7 +686,7 @@ Attribute readAttribute(
       // contains a third part, which is a signed LEB128 number. The value
       // of this number is used as the value of the attribute, and no
       // value is stored in the .debug_info section.
-      return {spec, die, spec.implicitConst};
+      return {spec, die, to_unsigned(spec.implicitConst)};
 
     case DW_FORM_addrx:
     case DW_FORM_GNU_addr_index:
@@ -724,7 +724,7 @@ Attribute readAttribute(
     case DW_FORM_rnglistx: {
       auto index = readULEB(info);
       if (!cu.rnglistsBase.has_value()) {
-        return {spec, die, 0};
+        return {spec, die, 0u};
       }
       const uint64_t offsetSize =
           cu.is64Bit ? sizeof(uint64_t) : sizeof(uint32_t);
@@ -737,7 +737,7 @@ Attribute readAttribute(
     case DW_FORM_loclistx: {
       auto index = readULEB(info);
       if (!cu.loclistsBase.has_value()) {
-        return {spec, die, 0};
+        return {spec, die, 0u};
       }
       const uint64_t offsetSize =
           cu.is64Bit ? sizeof(uint64_t) : sizeof(uint32_t);
@@ -755,13 +755,13 @@ Attribute readAttribute(
     case DW_FORM_strp_sup:
       FOLLY_SAFE_DFATAL(
           "Unexpected DWARF5 supplimentary object files: ", spec.form);
-      return {spec, die, 0};
+      return {spec, die, 0u};
 
     default:
       FOLLY_SAFE_DFATAL("invalid attribute form: ", spec.form);
-      return {spec, die, 0};
+      return {spec, die, 0u};
   }
-  return {spec, die, 0};
+  return {spec, die, 0u};
 }
 
 /*
@@ -792,7 +792,7 @@ folly::StringPiece getFunctionNameFromDie(
   forEachAttribute(srcu, die, [&](const Attribute& attr) {
     switch (attr.spec.name) {
       case DW_AT_linkage_name:
-        name = boost::get<folly::StringPiece>(attr.attrValue);
+        name = std::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_name:
         // NOTE: when DW_AT_linkage_name and DW_AT_name match, dwarf
@@ -800,7 +800,7 @@ folly::StringPiece getFunctionNameFromDie(
         // DW_AT_linkage_name should always be preferred (mangled C++ name
         // vs just the function name).
         if (name.empty()) {
-          name = boost::get<folly::StringPiece>(attr.attrValue);
+          name = std::get<folly::StringPiece>(attr.attrValue);
         }
         break;
     }

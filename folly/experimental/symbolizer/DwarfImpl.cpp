@@ -101,21 +101,21 @@ bool DwarfImpl::findLocation(
         expectedAttributes &= ~kStmtList;
         // Offset in .debug_line for the line number VM program for this
         // compilation unit
-        lineOffset = boost::get<uint64_t>(attr.attrValue);
+        lineOffset = std::get<uint64_t>(attr.attrValue);
         break;
       case DW_AT_comp_dir:
         expectedAttributes &= ~kCompDir;
         // Compilation directory
-        compilationDirectory = boost::get<folly::StringPiece>(attr.attrValue);
+        compilationDirectory = std::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_name:
         expectedAttributes &= ~kName;
         // File name of main file being compiled
-        mainFileName = boost::get<folly::StringPiece>(attr.attrValue);
+        mainFileName = std::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_low_pc:
         expectedAttributes &= ~kLowPC;
-        baseAddrCU = boost::get<uint64_t>(attr.attrValue);
+        baseAddrCU = std::get<uint64_t>(attr.attrValue);
         if (!foundAddress) {
           if (address < *baseAddrCU) {
             return false;
@@ -139,7 +139,7 @@ bool DwarfImpl::findLocation(
       case DW_AT_high_pc:
         expectedAttributes &= ~kHighPCOrRanges;
         if (!foundAddress) {
-          if (address >= boost::get<uint64_t>(attr.attrValue)) {
+          if (address >= std::get<uint64_t>(attr.attrValue)) {
             return false;
           }
           seenHighPC = true;
@@ -153,7 +153,7 @@ bool DwarfImpl::findLocation(
         // - DW_AT_ranges and optional DW_AT_low_pc
         expectedAttributes &= ~kHighPCOrRanges;
         if (!foundAddress) {
-          rangesOffset = boost::get<uint64_t>(attr.attrValue);
+          rangesOffset = std::get<uint64_t>(attr.attrValue);
           if (seenLowPC) {
             if (!isAddrInRangeList(
                     mainCu,
@@ -542,11 +542,11 @@ bool DwarfImpl::findSubProgramDieForAddress(
       forEachAttribute(cu, childDie, [&](const Attribute& attr) {
         switch (attr.spec.name) {
           case DW_AT_ranges:
-            rangeOffset = boost::get<uint64_t>(attr.attrValue) +
-                cu.rangesBase.value_or(0);
+            rangeOffset =
+                std::get<uint64_t>(attr.attrValue) + cu.rangesBase.value_or(0);
             break;
           case DW_AT_low_pc:
-            lowPc = boost::get<uint64_t>(attr.attrValue);
+            lowPc = std::get<uint64_t>(attr.attrValue);
             break;
           case DW_AT_high_pc:
             // The value of the DW_AT_high_pc attribute can be
@@ -557,7 +557,7 @@ bool DwarfImpl::findSubProgramDieForAddress(
                 attr.spec.form == DW_FORM_addrx2 || //
                 attr.spec.form == DW_FORM_addrx3 || //
                 attr.spec.form == DW_FORM_addrx4;
-            highPc = boost::get<uint64_t>(attr.attrValue);
+            highPc = std::get<uint64_t>(attr.attrValue);
             break;
         }
         return true; // continue forEachAttribute
@@ -643,10 +643,10 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
       switch (attr.spec.name) {
         case DW_AT_ranges:
           rangeOffset =
-              boost::get<uint64_t>(attr.attrValue) + cu.rangesBase.value_or(0);
+              std::get<uint64_t>(attr.attrValue) + cu.rangesBase.value_or(0);
           break;
         case DW_AT_low_pc:
-          lowPc = boost::get<uint64_t>(attr.attrValue);
+          lowPc = std::get<uint64_t>(attr.attrValue);
           break;
         case DW_AT_high_pc:
           // The value of the DW_AT_high_pc attribute can be
@@ -657,17 +657,17 @@ void DwarfImpl::findInlinedSubroutineDieForAddress(
               attr.spec.form == DW_FORM_addrx2 || //
               attr.spec.form == DW_FORM_addrx3 || //
               attr.spec.form == DW_FORM_addrx4;
-          highPc = boost::get<uint64_t>(attr.attrValue);
+          highPc = std::get<uint64_t>(attr.attrValue);
           break;
         case DW_AT_abstract_origin:
           abstractOriginRefType = attr.spec.form;
-          abstractOrigin = boost::get<uint64_t>(attr.attrValue);
+          abstractOrigin = std::get<uint64_t>(attr.attrValue);
           break;
         case DW_AT_call_line:
-          callLine = boost::get<uint64_t>(attr.attrValue);
+          callLine = std::get<uint64_t>(attr.attrValue);
           break;
         case DW_AT_call_file:
-          callFile = boost::get<uint64_t>(attr.attrValue);
+          callFile = std::get<uint64_t>(attr.attrValue);
           break;
       }
       return true; // continue forEachAttribute

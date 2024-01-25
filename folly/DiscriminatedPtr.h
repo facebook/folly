@@ -17,7 +17,7 @@
 /**
  * Discriminated pointer: Type-safe pointer to one of several types.
  *
- * Similar to boost::variant, but has no space overhead over a raw pointer, as
+ * Similar to std::variant, but has no space overhead over a raw pointer, as
  * it relies on the fact that (on x86_64) there are 16 unused bits in a
  * pointer.
  *

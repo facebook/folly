@@ -55,7 +55,7 @@ Pretty-printing C++ types.
 
 #### `DiscriminatedPtr.h`
 
-Similar to `boost::variant`, but restricted to pointers only. Uses the
+Similar to `std::variant`, but restricted to pointers only. Uses the
 highest-order unused 16 bits in a pointer as discriminator. So
 `sizeof(DiscriminatedPtr<int, string, Widget>) == sizeof(void*)`.
 

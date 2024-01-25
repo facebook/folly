@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
+#include <variant>
 
 #include <folly/Function.h>
 #include <folly/Range.h>
@@ -148,7 +148,7 @@ struct AttributeSpec {
 struct Attribute {
   AttributeSpec spec;
   const Die& die;
-  boost::variant<uint64_t, folly::StringPiece> attrValue;
+  std::variant<uint64_t, folly::StringPiece> attrValue;
 };
 
 // Get an ELF section by name.
@@ -229,7 +229,7 @@ folly::Optional<T> getAttribute(
   folly::Optional<T> result;
   forEachAttribute(cu, die, [&](const Attribute& attr) {
     if (attr.spec.name == attrName) {
-      result = boost::get<T>(attr.attrValue);
+      result = std::get<T>(attr.attrValue);
       return false;
     }
     return true;
