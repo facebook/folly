@@ -1091,22 +1091,21 @@ using type_pack_element_fallback = _t<decltype(type_pack_element_test<I>::impl(
 
 } // namespace traits_detail
 
+//  type_pack_element_t
+//
+//  In the type pack Ts..., the Ith element.
+//
+//  Wraps the builtin __type_pack_element where the builtin is available; where
+//  not, implemented directly.
+//
+//  Under gcc, the builtin is available but does not mangle. Therefore, this
+//  trait must not be used anywhere it might be subject to mangling, such as in
+//  a return-type expression.
+
 #if FOLLY_HAS_BUILTIN(__type_pack_element)
 
-#if __clang__
 template <std::size_t I, typename... Ts>
 using type_pack_element_t = __type_pack_element<I, Ts...>;
-#else
-namespace traits_detail {
-template <std::size_t I, typename... Ts>
-struct type_pack_element_ {
-  using type = __type_pack_element<I, Ts...>;
-};
-} // namespace traits_detail
-template <std::size_t I, typename... Ts>
-using type_pack_element_t =
-    typename traits_detail::type_pack_element_<I, Ts...>::type;
-#endif
 
 #else
 
@@ -1115,9 +1114,19 @@ using type_pack_element_t = traits_detail::type_pack_element_fallback<I, Ts...>;
 
 #endif
 
+//  type_pack_size_v
+//
+//  The size of a type pack.
+//
+//  A metafunction around sizeof...(Ts).
 template <typename... Ts>
 FOLLY_INLINE_VARIABLE constexpr std::size_t type_pack_size_v = sizeof...(Ts);
 
+//  type_pack_size_t
+//
+//  The size of a type pack.
+//
+//  A metafunction around index_constant<sizeof...(Ts)>.
 template <typename... Ts>
 using type_pack_size_t = index_constant<sizeof...(Ts)>;
 
