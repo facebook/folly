@@ -370,6 +370,12 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
  public:
   using ValueType = typename Encoder::ValueType;
+
+  static_assert(
+      std::is_integral_v<SizeType> && std::is_unsigned_v<SizeType>,
+      "SizeType should be unsigned integral");
+  // Functions like `jump()` and `next()` rely on this being the predecessor
+  // of 0.  `valid()` also needs it to be the largest possible `SizeType`.
   static constexpr SizeType kBeforeFirstPos = -1;
 
   explicit UpperBitsReader(const typename Encoder::CompressedList& list)
@@ -394,7 +400,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   FOLLY_ALWAYS_INLINE ValueType value() const { return value_; }
 
   FOLLY_ALWAYS_INLINE bool valid() const {
-    // Also checks that position() != kBeforeFirstPos.
+    // SizeType is unsigned, so this also ensures position() != kBeforeFirstPos
     return position() < size();
   }
 
@@ -788,7 +794,7 @@ class EliasFanoReader {
    * false if n >= size().
    */
   bool jump(SizeType n) {
-    // Also works if position() == -1.
+    // Also works if position() == -1, since `kBeforeFirstPos + 1 == 0`.
     if (detail::addT(n, 1) < detail::addT(position(), 1)) {
       reset();
       n += 1; // Initial position is -1.
