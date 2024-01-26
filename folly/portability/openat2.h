@@ -20,6 +20,12 @@
 
 #pragma once
 
+#include <folly/folly-config.h>
+
+#if !FOLLY_HAVE_OPENAT2
+#error "FOLLY_HAVE_OPENAT2 is disabled"
+#endif
+
 #include <linux/openat2.h>
 
 #ifdef __cplusplus

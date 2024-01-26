@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/folly-config.h>
+
+#if FOLLY_HAVE_OPENAT2
+
 #include <folly/portability/openat2.h>
 
 #include <sys/syscall.h>
@@ -22,3 +26,5 @@
 int openat2(int dirfd, const char* pathname, const struct open_how* how) {
   return syscall(SYS_openat2, dirfd, pathname, how, sizeof(struct open_how));
 }
+
+#endif
