@@ -47,8 +47,6 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(len(chain), len(control[0]))
         self.assertEqual(chain.chain_size(), sum(len(x) for x in control))
         self.assertEqual(chain.chain_count(), len(control))
-        # pyre-fixme[6]: Expected `Union[bytearray, bytes, memoryview]` for 1st
-        #  param but got `Optional[IOBuf]`.
         self.assertEqual(memoryview(chain.next), control[1])
         self.assertEqual(b"".join(chain), b"".join(control))
 
@@ -61,8 +59,6 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(len(chain), len(control[0]))
         self.assertEqual(chain.chain_size(), sum(len(x) for x in control))
         self.assertEqual(chain.chain_count(), len(control))
-        # pyre-fixme[6]: Expected `Union[bytearray, bytes, memoryview]` for 1st
-        #  param but got `Optional[IOBuf]`.
         self.assertEqual(memoryview(chain.next), control[1])
         self.assertEqual(b"".join(chain), b"".join(control))
 
@@ -78,8 +74,6 @@ class IOBufTests(unittest.TestCase):
     def test_empty(self) -> None:
         x = b""
         xb = IOBuf(x)
-        # pyre-fixme[6]: Expected `Union[bytearray, bytes, memoryview]` for 1st
-        #  param but got `IOBuf`.
         self.assertEqual(memoryview(xb), x)
         self.assertEqual(bytes(xb), x)
         self.assertFalse(xb)
