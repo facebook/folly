@@ -110,9 +110,16 @@ int main(int argc, char* argv[]) {
   folly::Init init(&argc, &argv);
   auto elfFile = std::make_shared<ElfFile>(FLAGS_e.c_str());
 
-  for (int i = 1; i < argc; i++) {
-    addr2line(elfFile, strtoll(argv[i], nullptr, 0));
+  if (argc == 1) {
+    for (std::string line; std::getline(std::cin, line);) {
+      addr2line(elfFile, strtoll(line.c_str(), nullptr, 0));
+    }
+  } else {
+    for (int i = 1; i < argc; i++) {
+      addr2line(elfFile, strtoll(argv[i], nullptr, 0));
+    }
   }
+
   return 0;
 }
 
