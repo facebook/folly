@@ -226,12 +226,16 @@ namespace coro {
 Task<Transport> Transport::newConnectedSocket(
     folly::EventBase* evb,
     const folly::SocketAddress& destAddr,
-    std::chrono::milliseconds connectTimeout) {
+    std::chrono::milliseconds connectTimeout,
+    const SocketOptionMap& options,
+    const SocketAddress& bindAddr,
+    const std::string& ifName) {
   auto socket = AsyncSocket::newSocket(evb);
 
   socket->setReadCB(nullptr);
   ConnectCallback cb{*socket};
-  socket->connect(&cb, destAddr, connectTimeout.count());
+  socket->connect(
+      &cb, destAddr, connectTimeout.count(), options, bindAddr, ifName);
   auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     co_yield co_error(std::move(waitRet.exception()));

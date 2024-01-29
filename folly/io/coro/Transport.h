@@ -85,7 +85,10 @@ class Transport : public TransportIf {
   static Task<Transport> newConnectedSocket(
       EventBase* evb,
       const SocketAddress& destAddr,
-      std::chrono::milliseconds connectTimeout);
+      std::chrono::milliseconds connectTimeout,
+      const SocketOptionMap& options = emptySocketOptionMap,
+      const SocketAddress& bindAddr = AsyncSocketTransport::anyAddress(),
+      const std::string& ifName = "");
   virtual EventBase* getEventBase() noexcept override { return eventBase_; }
 
   Task<size_t> read(
