@@ -2168,6 +2168,27 @@ TEST(F14Map, containsWithPrecomputedHash) {
   testContainsWithPrecomputedHash<F14FastMap>();
 }
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+template <template <class...> class TMap>
+void testContainsWithPrecomputedHashKeyWrapper() {
+  TMap<int, int> m{};
+  const auto key{1};
+  m.insert({key, 1});
+  const F14HashedKey<int> hashedKey{key};
+  EXPECT_TRUE(m.contains(hashedKey));
+  const auto otherKey{2};
+  const F14HashedKey<int> hashedKeyNotFound{otherKey};
+  EXPECT_FALSE(m.contains(hashedKeyNotFound));
+}
+
+TEST(F14Map, containsWithPrecomputedHashKeyWrapper) {
+  testContainsWithPrecomputedHashKeyWrapper<F14ValueMap>();
+  testContainsWithPrecomputedHashKeyWrapper<F14VectorMap>();
+  testContainsWithPrecomputedHashKeyWrapper<F14NodeMap>();
+  testContainsWithPrecomputedHashKeyWrapper<F14FastMap>();
+}
+#endif
+
 template <template <class...> class TMap>
 void testEraseIf() {
   TMap<int, int> m{{1, 1}, {2, 2}, {3, 3}, {4, 4}};

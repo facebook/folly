@@ -224,7 +224,11 @@ class F14HashToken final {
 
   template <typename Policy>
   friend class f14::detail::F14Table;
+
+  template <typename Key, typename Hasher>
+  friend class F14HashedKey;
 };
+
 #else
 class F14HashToken final {};
 #endif
@@ -378,6 +382,27 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
 #endif
 } // namespace detail
 } // namespace f14
+
+template <typename TKeyType, typename Hasher = f14::DefaultHasher<TKeyType>>
+class F14HashedKey final {
+ public:
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+  explicit F14HashedKey(TKeyType key)
+      : hash_(f14::detail::splitHashImpl<Hasher, TKeyType>(Hasher{}(key))),
+        key_(std::move(key)) {}
+#else
+  F14HashedKey() = delete;
+#endif
+
+  const TKeyType& getKey() const { return key_; }
+  const F14HashToken& getHashToken() const { return hash_; }
+  explicit operator const TKeyType&() const { return key_; }
+  explicit operator const F14HashToken&() const { return hash_; }
+
+ private:
+  F14HashToken hash_;
+  TKeyType key_;
+};
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {
