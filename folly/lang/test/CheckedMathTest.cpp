@@ -99,6 +99,29 @@ TEST(CheckedMath, checkedAdd4Overflow3) {
   EXPECT_EQ(a, {});
 }
 
+TEST(CheckedMath, genericCheckedAddSignedNoOverflow) {
+  int a;
+
+  EXPECT_TRUE(folly::detail::generic_checked_add(&a, 5, 4));
+  EXPECT_EQ(a, 9);
+}
+
+TEST(CheckedMath, genericCheckedAddSignedOverflow) {
+  int a;
+
+  EXPECT_FALSE(folly::detail::generic_checked_add(
+      &a, std::numeric_limits<int>::max(), 4));
+  EXPECT_EQ(a, {});
+}
+
+TEST(CheckedMath, genericCheckedAddSignedUnderflow) {
+  int a;
+
+  EXPECT_FALSE(folly::detail::generic_checked_add(
+      &a, std::numeric_limits<int>::min(), -3));
+  EXPECT_EQ(a, {});
+}
+
 TEST(CheckedMath, genericCheckedAddNoOverflow) {
   unsigned int a;
 

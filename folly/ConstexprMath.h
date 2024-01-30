@@ -24,6 +24,8 @@
 #include <type_traits>
 
 #include <folly/Portability.h>
+#include <folly/lang/CheckedMath.h>
+#include <folly/portability/Constexpr.h>
 
 namespace folly {
 
@@ -763,6 +765,22 @@ constexpr T constexpr_add_overflow_clamped(T a, T b) {
   static_assert(
       !std::is_integral<T>::value || sizeof(T) <= sizeof(M),
       "Integral type too large!");
+  if (!folly::is_constant_evaluated_or(true)) {
+    if constexpr (std::is_integral_v<T>) {
+      T ret{};
+      if (FOLLY_UNLIKELY(!checked_add(&ret, a, b))) {
+        if constexpr (std::is_signed_v<T>) {
+          // Could be either overflow or underflow for signed types.
+          // Can only be underflow if both inputs are negative.
+          if (a < 0 && b < 0) {
+            return L::min();
+          }
+        }
+        return L::max();
+      }
+      return ret;
+    }
+  }
   // clang-format off
   return
     // don't do anything special for non-integral types.
@@ -778,7 +796,7 @@ constexpr T constexpr_add_overflow_clamped(T a, T b) {
     // a < 0 && b >= 0, `a + b` will always be in valid range of type T.
     !(b < 0) ? a + b :
     // a < 0 && b < 0, keep the result >= MIN.
-               a + constexpr_max(b, T(L::min() - a));
+              a + constexpr_max(b, T(L::min() - a));
   // clang-format on
 }
 
