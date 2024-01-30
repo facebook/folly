@@ -138,7 +138,7 @@
  *  class Empty {};
  *
  *  class NonEmpty1 {
- *    FOLLY_NO_UNIQUE_ADDRESS Empty e;
+ *    FOLLY_ATTR_NO_UNIQUE_ADDRESS Empty e;
  *    int f;
  *  };
  *
