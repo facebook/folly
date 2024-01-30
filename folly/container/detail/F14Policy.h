@@ -154,17 +154,6 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
   struct AllocIsAlwaysEqual<A, typename A::is_always_equal>
       : A::is_always_equal {};
 
-  // Detection for folly_assume_32bit_hash
-
-  template <typename Hasher, typename Void = void>
-  struct ShouldAssume32BitHash : bool_constant<!require_sizeof<Hasher>> {};
-
-  template <typename Hasher>
-  struct ShouldAssume32BitHash<
-      Hasher,
-      void_t<typename Hasher::folly_assume_32bit_hash>>
-      : bool_constant<Hasher::folly_assume_32bit_hash::value> {};
-
  public:
   static constexpr bool kAllocIsAlwaysEqual = AllocIsAlwaysEqual<Alloc>::value;
 

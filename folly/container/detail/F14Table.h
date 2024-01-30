@@ -229,6 +229,156 @@ class F14HashToken final {
 class F14HashToken final {};
 #endif
 
+namespace f14 {
+namespace detail {
+
+// Detection for folly_assume_32bit_hash
+
+template <typename Hasher, typename Void = void>
+struct ShouldAssume32BitHash : bool_constant<!require_sizeof<Hasher>> {};
+
+template <typename Hasher>
+struct ShouldAssume32BitHash<
+    Hasher,
+    void_t<typename Hasher::folly_assume_32bit_hash>>
+    : bool_constant<Hasher::folly_assume_32bit_hash::value> {};
+
+//////// hash helpers
+
+// Hash values are used to compute the desired position, which is the
+// chunk index at which we would like to place a value (if there is no
+// overflow), and the tag, which is an additional 7 bits of entropy.
+//
+// The standard's definition of hash function quality only refers to
+// the probability of collisions of the entire hash value, not to the
+// probability of collisions of the results of shifting or masking the
+// hash value.  Some hash functions, however, provide this stronger
+// guarantee (not quite the same as the definition of avalanching,
+// but similar).
+//
+// If the user-supplied hasher is an avalanching one (each bit of the
+// hash value has a 50% chance of being the same for differing hash
+// inputs), then we can just take 7 bits of the hash value for the tag
+// and the rest for the desired position.  Avalanching hashers also
+// let us map hash value to array index position with just a bitmask
+// without risking clumping.  (Many hash tables just accept the risk
+// and do it regardless.)
+//
+// std::hash<std::string> avalanches in all implementations we've
+// examined: libstdc++-v3 uses MurmurHash2, and libc++ uses CityHash
+// or MurmurHash2.  The other std::hash specializations, however, do not
+// have this property.  std::hash for integral and pointer values is the
+// identity function on libstdc++-v3 and libc++, in particular.  In our
+// experience it is also fairly common for user-defined specializations
+// of std::hash to combine fields in an ad-hoc way that does not evenly
+// distribute entropy among the bits of the result (a + 37 * b, for
+// example, where a and b are integer fields).
+//
+// For hash functions we don't trust to avalanche, we repair things by
+// applying a bit mixer to the user-supplied hash.
+
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+#if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_RISCV64
+// 64-bit
+template <typename Hasher, typename Key>
+std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
+  static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");
+  std::size_t tag;
+  if (!IsAvalanchingHasher<Hasher, Key>::value) {
+#if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
+#if FOLLY_SSE_PREREQ(4, 2)
+    // SSE4.2 CRC
+    std::size_t c = _mm_crc32_u64(0, hash);
+    tag = (c >> 24) | 0x80;
+    hash += c;
+#else
+    // CRC is optional on armv8 (-march=armv8-a+crc), standard on armv8.1
+    std::size_t c = __crc32cd(0, hash);
+    tag = (c >> 24) | 0x80;
+    hash += c;
+#endif
+#else
+    // The mixer below is not fully avalanching for all 64 bits of
+    // output, but looks quite good for bits 18..63 and puts plenty
+    // of entropy even lower when considering multiple bits together
+    // (like the tag).  Importantly, when under register pressure it
+    // uses fewer registers, instructions, and immediate constants
+    // than the alternatives, resulting in compact code that is more
+    // easily inlinable.  In one instantiation a modified Murmur mixer
+    // was 48 bytes of assembly (even after using the same multiplicand
+    // for both steps) and this one was 27 bytes, for example.
+    auto const kMul = 0xc4ceb9fe1a85ec53ULL;
+#ifdef _WIN32
+    __int64 signedHi;
+    __int64 signedLo = _mul128(
+        static_cast<__int64>(hash), static_cast<__int64>(kMul), &signedHi);
+    auto hi = static_cast<uint64_t>(signedHi);
+    auto lo = static_cast<uint64_t>(signedLo);
+#else
+    auto hi = static_cast<uint64_t>(
+        (static_cast<unsigned __int128>(hash) * kMul) >> 64);
+    auto lo = hash * kMul;
+#endif
+    hash = hi ^ lo;
+    hash *= kMul;
+    tag = ((hash >> 15) & 0x7f) | 0x80;
+    hash >>= 22;
+#endif
+  } else {
+    // F14 uses the bottom bits of the hash to form the index, so for maps
+    // with less than 16.7 million entries, it's safe to have a 32-bit hash,
+    // and use the bottom 24 bits for the index and leave the top 8 for the
+    // tag.
+    if (ShouldAssume32BitHash<Hasher>::value) {
+      // we don't trust the top bit
+      tag = ((hash >> 24) | 0x80) & 0xFF;
+      // Explicitly mask off the top 32-bits so that the compiler can
+      // optimize away whatever is populating the top 32-bits, which is likely
+      // just the lower 32-bits duplicated.
+      hash = hash & 0xFFFF'FFFF;
+    } else {
+      // we don't trust the top bit
+      tag = (hash >> 56) | 0x80;
+    }
+  }
+  return std::make_pair(hash, tag);
+}
+#else
+// 32-bit
+template <typename Hasher, typename Key>
+std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
+  static_assert(sizeof(std::size_t) == sizeof(uint32_t), "");
+  uint8_t tag;
+  if (!IsAvalanchingHasher<Hasher, Key>::value) {
+#if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
+#if FOLLY_SSE_PREREQ(4, 2)
+    // SSE4.2 CRC
+    auto c = _mm_crc32_u32(0, hash);
+    tag = static_cast<uint8_t>(~(c >> 25));
+    hash += c;
+#else
+    auto c = __crc32cw(0, hash);
+    tag = static_cast<uint8_t>(~(c >> 25));
+    hash += c;
+#endif
+#else
+    // finalizer for 32-bit murmur2
+    hash ^= hash >> 13;
+    hash *= 0x5bd1e995;
+    hash ^= hash >> 15;
+    tag = static_cast<uint8_t>(~(hash >> 25));
+#endif
+  } else {
+    // we don't trust the top bit
+    tag = (hash >> 24) | 0x80;
+  }
+  return std::make_pair(hash, tag);
+}
+#endif
+#endif
+} // namespace detail
+} // namespace f14
+
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {
 namespace detail {
@@ -1160,136 +1310,9 @@ class F14Table : public Policy {
   }
 
  private:
-  //////// hash helpers
-
-  // Hash values are used to compute the desired position, which is the
-  // chunk index at which we would like to place a value (if there is no
-  // overflow), and the tag, which is an additional 7 bits of entropy.
-  //
-  // The standard's definition of hash function quality only refers to
-  // the probability of collisions of the entire hash value, not to the
-  // probability of collisions of the results of shifting or masking the
-  // hash value.  Some hash functions, however, provide this stronger
-  // guarantee (not quite the same as the definition of avalanching,
-  // but similar).
-  //
-  // If the user-supplied hasher is an avalanching one (each bit of the
-  // hash value has a 50% chance of being the same for differing hash
-  // inputs), then we can just take 7 bits of the hash value for the tag
-  // and the rest for the desired position.  Avalanching hashers also
-  // let us map hash value to array index position with just a bitmask
-  // without risking clumping.  (Many hash tables just accept the risk
-  // and do it regardless.)
-  //
-  // std::hash<std::string> avalanches in all implementations we've
-  // examined: libstdc++-v3 uses MurmurHash2, and libc++ uses CityHash
-  // or MurmurHash2.  The other std::hash specializations, however, do not
-  // have this property.  std::hash for integral and pointer values is the
-  // identity function on libstdc++-v3 and libc++, in particular.  In our
-  // experience it is also fairly common for user-defined specializations
-  // of std::hash to combine fields in an ad-hoc way that does not evenly
-  // distribute entropy among the bits of the result (a + 37 * b, for
-  // example, where a and b are integer fields).
-  //
-  // For hash functions we don't trust to avalanche, we repair things by
-  // applying a bit mixer to the user-supplied hash.
-
-#if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_RISCV64
-  // 64-bit
   static HashPair splitHash(std::size_t hash) {
-    static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");
-    std::size_t tag;
-    if (!isAvalanchingHasher()) {
-#if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
-#if FOLLY_SSE_PREREQ(4, 2)
-      // SSE4.2 CRC
-      std::size_t c = _mm_crc32_u64(0, hash);
-      tag = (c >> 24) | 0x80;
-      hash += c;
-#else
-      // CRC is optional on armv8 (-march=armv8-a+crc), standard on armv8.1
-      std::size_t c = __crc32cd(0, hash);
-      tag = (c >> 24) | 0x80;
-      hash += c;
-#endif
-#else
-      // The mixer below is not fully avalanching for all 64 bits of
-      // output, but looks quite good for bits 18..63 and puts plenty
-      // of entropy even lower when considering multiple bits together
-      // (like the tag).  Importantly, when under register pressure it
-      // uses fewer registers, instructions, and immediate constants
-      // than the alternatives, resulting in compact code that is more
-      // easily inlinable.  In one instantiation a modified Murmur mixer
-      // was 48 bytes of assembly (even after using the same multiplicand
-      // for both steps) and this one was 27 bytes, for example.
-      auto const kMul = 0xc4ceb9fe1a85ec53ULL;
-#ifdef _WIN32
-      __int64 signedHi;
-      __int64 signedLo = _mul128(
-          static_cast<__int64>(hash), static_cast<__int64>(kMul), &signedHi);
-      auto hi = static_cast<uint64_t>(signedHi);
-      auto lo = static_cast<uint64_t>(signedLo);
-#else
-      auto hi = static_cast<uint64_t>(
-          (static_cast<unsigned __int128>(hash) * kMul) >> 64);
-      auto lo = hash * kMul;
-#endif
-      hash = hi ^ lo;
-      hash *= kMul;
-      tag = ((hash >> 15) & 0x7f) | 0x80;
-      hash >>= 22;
-#endif
-    } else {
-      // F14 uses the bottom bits of the hash to form the index, so for maps
-      // with less than 16.7 million entries, it's safe to have a 32-bit hash,
-      // and use the bottom 24 bits for the index and leave the top 8 for the
-      // tag.
-      if (shouldAssume32BitHash()) {
-        // we don't trust the top bit
-        tag = ((hash >> 24) | 0x80) & 0xFF;
-        // Explicitly mask off the top 32-bits so that the compiler can
-        // optimize away whatever is populating the top 32-bits, which is likely
-        // just the lower 32-bits duplicated.
-        hash = hash & 0xFFFF'FFFF;
-      } else {
-        // we don't trust the top bit
-        tag = (hash >> 56) | 0x80;
-      }
-    }
-    return std::make_pair(hash, tag);
+    return f14::detail::splitHashImpl<Hasher, value_type>(hash);
   }
-#else
-  // 32-bit
-  static HashPair splitHash(std::size_t hash) {
-    static_assert(sizeof(std::size_t) == sizeof(uint32_t), "");
-    uint8_t tag;
-    if (!isAvalanchingHasher()) {
-#if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
-#if FOLLY_SSE_PREREQ(4, 2)
-      // SSE4.2 CRC
-      auto c = _mm_crc32_u32(0, hash);
-      tag = static_cast<uint8_t>(~(c >> 25));
-      hash += c;
-#else
-      auto c = __crc32cw(0, hash);
-      tag = static_cast<uint8_t>(~(c >> 25));
-      hash += c;
-#endif
-#else
-      // finalizer for 32-bit murmur2
-      hash ^= hash >> 13;
-      hash *= 0x5bd1e995;
-      hash ^= hash >> 15;
-      tag = static_cast<uint8_t>(~(hash >> 25));
-#endif
-    } else {
-      // we don't trust the top bit
-      tag = (hash >> 24) | 0x80;
-    }
-    return std::make_pair(hash, tag);
-  }
-#endif
-
   //////// memory management helpers
 
   static std::size_t computeCapacity(
