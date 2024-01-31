@@ -39,6 +39,25 @@
 #include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
 
+#if defined(__linux__) && !FOLLY_MOBILE
+#define FOLLY_USE_EPOLLET
+
+#include <sys/epoll.h>
+
+struct event_base {
+  void* evsel;
+  void* evbase;
+};
+
+struct epollop {
+  void* fds;
+  int nfds;
+  void* events;
+  int nevents;
+  int epfd;
+};
+#endif
+
 namespace {
 
 class EventBaseBackend : public folly::EventBaseBackendBase {
@@ -56,6 +75,8 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
   int eb_event_del(EventBaseBackendBase::Event& event) override;
 
   bool eb_event_active(Event& event, int res) override;
+
+  bool setEdgeTriggered(Event& event) override;
 
  private:
   event_base* evb_;
@@ -92,6 +113,40 @@ int EventBaseBackend::eb_event_del(EventBaseBackendBase::Event& event) {
 bool EventBaseBackend::eb_event_active(Event& event, int res) {
   event_active(event.getEvent(), res, 1);
   return true;
+}
+
+bool EventBaseBackend::setEdgeTriggered(Event& event) {
+#ifdef FOLLY_USE_EPOLLET
+  // Until v2 libevent doesn't expose API to set edge-triggered flag for events.
+  // If epoll backend is used by libevent, we can enable it though epoll_ctl
+  // directly.
+  // Note that this code depends on internal event_base and epollop layout, so
+  // we have to validate libevent version.
+  static const bool supportedVersion =
+      !strcmp(event_get_version(), "1.4.14b-stable");
+  if (!supportedVersion || strcmp(event_base_get_method(evb_), "epoll")) {
+    return false;
+  }
+
+  auto epfd = static_cast<epollop*>(evb_->evbase)->epfd;
+  epoll_event epev = {0, {nullptr}};
+  epev.data.fd = event.eb_ev_fd();
+  epev.events = EPOLLET;
+  if (event.eb_ev_events() & EV_READ) {
+    epev.events |= EPOLLIN;
+  }
+  if (event.eb_ev_events() & EV_WRITE) {
+    epev.events |= EPOLLOUT;
+  }
+  if (::epoll_ctl(epfd, EPOLL_CTL_MOD, event.eb_ev_fd(), &epev) == -1) {
+    LOG(DFATAL) << "epoll_ctl failed: " << errno;
+    return false;
+  }
+  return true;
+#else
+  (void)event;
+  return false;
+#endif
 }
 
 EventBaseBackend::~EventBaseBackend() {

@@ -57,6 +57,8 @@ class EpollBackend : public EventBaseBackendBase {
 
   bool eb_event_active(Event&, int) override { return false; }
 
+  bool setEdgeTriggered(Event& event) override;
+
  private:
   class SocketPair {
    public:

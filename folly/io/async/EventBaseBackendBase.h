@@ -25,7 +25,9 @@
 #include <folly/portability/IOVec.h>
 
 namespace folly {
+
 class EventBase;
+class EventBaseBackendBase;
 
 class EventReadCallback {
  public:
@@ -209,6 +211,9 @@ class EventBaseEvent {
 
  protected:
   struct event event_;
+
+  EventBaseBackendBase* getBackend() const;
+
   EventBase* evb_{nullptr};
   void* userData_{nullptr};
   FreeFunction freeFn_{nullptr};
@@ -237,6 +242,8 @@ class EventBaseBackendBase {
   virtual int eb_event_del(Event& event) = 0;
 
   virtual bool eb_event_active(Event& event, int res) = 0;
+
+  virtual bool setEdgeTriggered(Event& /* event */) { return false; }
 };
 
 } // namespace folly

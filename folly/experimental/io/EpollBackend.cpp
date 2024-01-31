@@ -260,10 +260,7 @@ int EpollBackend::eb_event_base_loop(int flags) {
             numEvents_--;
           }
 
-          struct epoll_event epev = {};
-          epev.events = getPollFlags(event->ev_events & (EV_READ | EV_WRITE));
-
-          int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, event->ev_fd, &epev);
+          int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, event->ev_fd, nullptr);
 
           CHECK_EQ(ret, 0);
         }
@@ -384,8 +381,7 @@ int EpollBackend::eb_event_add(Event& event, const struct timeval* timeout) {
   epev.data.ptr = info;
 
   int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_ADD, ev->ev_fd, &epev);
-
-  return (0 == ret);
+  return ret == 0;
 }
 
 int EpollBackend::eb_event_del(Event& event) {
@@ -435,14 +431,27 @@ int EpollBackend::eb_event_del(Event& event) {
       numEvents_--;
     }
 
-    struct epoll_event epev = {};
-    epev.events = getPollFlags(ev->ev_events & (EV_READ | EV_WRITE));
-
-    int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, ev->ev_fd, &epev);
-
-    return (0 == ret);
+    int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, ev->ev_fd, nullptr);
+    return ret == 0;
   }
   return -1;
+}
+
+bool EpollBackend::setEdgeTriggered(Event& event) {
+  auto* ev = event.getEvent();
+  CHECK(ev);
+
+  EventInfo* info = static_cast<EventInfo*>(event.getUserData());
+  if (info == nullptr) {
+    return false;
+  }
+
+  struct epoll_event epev = {};
+  epev.events = getPollFlags(ev->ev_events & (EV_READ | EV_WRITE)) | EPOLLET;
+  epev.data.ptr = info;
+
+  int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_MOD, ev->ev_fd, &epev);
+  return ret == 0;
 }
 
 void EpollBackend::addTimerEvent(Event& event, const struct timeval* timeout) {
