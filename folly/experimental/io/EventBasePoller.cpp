@@ -23,25 +23,38 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <folly/FileUtil.h>
+#include <folly/String.h>
 #include <folly/experimental/io/Epoll.h>
+#include <folly/experimental/io/Liburing.h>
+#include <folly/lang/Align.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/system/ThreadName.h>
 
 #if FOLLY_HAS_EPOLL
+#include <poll.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#endif
+
+#if FOLLY_HAS_LIBURING
+#include <liburing.h> // @manual
 #endif
 
 FOLLY_GFLAGS_DEFINE_string(
     folly_event_base_poller_backend,
     "epoll",
-    "Available EventBasePoller backends: \"epoll\"");
+    "Available EventBasePoller backends: \"epoll\", \"io_uring\"");
 FOLLY_GFLAGS_DEFINE_uint64(
     folly_event_base_poller_epoll_max_events,
     64,
     "Maximum number of events to process in one iteration when "
     "using the epoll EventBasePoller backend");
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_event_base_poller_io_uring_sq_entries,
+    128,
+    "Minimum number of entries to allocate for the submission queue when "
+    "using the io_uring EventBasePoller backend");
 
 namespace folly::detail {
 
@@ -382,7 +395,99 @@ class EventBasePollerEpoll final : public EventBasePollerImpl {
   std::vector<struct epoll_event> epollEvents_{kMaxEvents};
 };
 
-#endif
+#if FOLLY_HAS_LIBURING
+
+class EventBasePollerIoUring final : public EventBasePollerImpl {
+ public:
+  EventBasePollerIoUring() {
+    ::memset(&ring_, 0, sizeof(ring_));
+    struct io_uring_params params;
+    ::memset(&params, 0, sizeof(params));
+
+    // TODO(ott): Consider following flags once widely available:
+    // IORING_SETUP_COOP_TASKRUN
+    // IORING_SETUP_TASKRUN_FLAG
+    // IORING_SETUP_SINGLE_ISSUER
+    // IORING_SETUP_DEFER_TASKRUN
+    int ret = ::io_uring_queue_init_params(
+        FLAGS_folly_event_base_poller_io_uring_sq_entries, &ring_, &params);
+    CHECK(ret == 0) << "Error creating io_uring: " << folly::errnoStr(-ret);
+
+    startLoop();
+  }
+
+  ~EventBasePollerIoUring() override {
+    stopLoop();
+    ::io_uring_queue_exit(&ring_);
+  }
+
+  void addEvent(Event* event) override {
+    auto* sqe = ::io_uring_get_sqe(&ring_);
+    if (sqe == nullptr) {
+      submitPendingSqes();
+      sqe = ::io_uring_get_sqe(&ring_);
+      // Single issuer, so if we can't get a sqe after a submit we have a
+      // problem.
+      CHECK(sqe != nullptr);
+    }
+    ++numPendingSqes_;
+
+    ::io_uring_sqe_set_data(sqe, event);
+    if (event->isNotificationFd()) {
+      ::io_uring_prep_read(
+          sqe, event->fd, &eventFdBuf_, sizeof(eventFdBuf_), 0);
+    } else {
+      ::io_uring_prep_poll_add(sqe, event->fd, POLLIN);
+    }
+  }
+
+  void delEvent(Event* /* event */) override {
+    // Nothing to do, no events are persistent.
+  }
+
+  bool waitForEvents() override {
+    if (numPendingSqes_ > 0) {
+      submitPendingSqes();
+    }
+
+    struct io_uring_cqe* cqe = nullptr;
+    auto ret = ::io_uring_wait_cqe(&ring_, &cqe);
+    if (ret < 0 || cqe == nullptr) {
+      return false;
+    }
+
+    DCHECK_EQ(readyEvents_.size(), 0);
+    unsigned head;
+    io_uring_for_each_cqe(&ring_, head, cqe) {
+      auto* event =
+          CHECK_NOTNULL(static_cast<Event*>(io_uring_cqe_get_data(cqe)));
+      if (event->isNotificationFd()) {
+        CHECK_EQ(cqe->res, sizeof(eventFdBuf_)) << errnoStr(-cqe->res);
+      } else {
+        CHECK_GE(cqe->res, 0) << errnoStr(-cqe->res);
+      }
+      readyEvents_.push_back(event);
+    }
+    ::io_uring_cq_advance(&ring_, readyEvents_.size());
+
+    return true;
+  }
+
+ private:
+  void submitPendingSqes() {
+    auto ret = ::io_uring_submit(&ring_);
+    CHECK_EQ(ret, numPendingSqes_);
+    numPendingSqes_ = 0;
+  }
+
+  struct io_uring ring_;
+  size_t numPendingSqes_ = 0;
+  alignas(cacheline_align_v) uint64_t eventFdBuf_;
+};
+
+#endif // FOLLY_HAS_LIBURING
+
+#endif // FOLLY_HAS_EPOLL
 
 } // namespace
 
@@ -413,6 +518,11 @@ EventBasePoller::~EventBasePoller() = default;
 #if FOLLY_HAS_EPOLL
     if (FLAGS_folly_event_base_poller_backend == "epoll") {
       return std::make_unique<EventBasePollerEpoll>();
+    }
+#endif
+#if FOLLY_HAS_EPOLL && FOLLY_HAS_LIBURING
+    if (FLAGS_folly_event_base_poller_backend == "io_uring") {
+      return std::make_unique<EventBasePollerIoUring>();
     }
 #endif
     throw std::invalid_argument(fmt::format(
