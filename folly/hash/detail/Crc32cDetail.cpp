@@ -49,15 +49,16 @@ namespace crc32_detail {
   crc##0 = _mm_crc32_u64(crc##0, *(buf##0 + offset)); \
   crc##1 = _mm_crc32_u64(crc##1, *(buf##1 + offset)); \
   crc##2 = _mm_crc32_u64(crc##2, *(buf##2 + offset)); \
-  FOLLY_FALLTHROUGH;
+  FOLLY_FALLTHROUGH
 
 #define CRCduplet(crc, buf, offset)                   \
   crc##0 = _mm_crc32_u64(crc##0, *(buf##0 + offset)); \
-  crc##1 = _mm_crc32_u64(crc##1, *(buf##1 + offset));
+  crc##1 = _mm_crc32_u64(crc##1, *(buf##1 + offset)); \
+  static_assert(true, "Semicolon required")
 
 #define CRCsinglet(crc, buf, offset)                    \
   crc = _mm_crc32_u64(crc, *(uint64_t*)(buf + offset)); \
-  FOLLY_FALLTHROUGH;
+  FOLLY_FALLTHROUGH
 
 #define CASEREPEAT_TRIPLET(unused, count, total)    \
   case BOOST_PP_ADD(1, BOOST_PP_SUB(total, count)): \
