@@ -406,7 +406,7 @@ void EventBase::loopPollSetup() {
 }
 
 bool EventBase::loopPoll() {
-  return loopMain(EVLOOP_ONCE | EVLOOP_NONBLOCK, true);
+  return loopMain(EVLOOP_ONCE | EVLOOP_NONBLOCK, false);
 }
 
 void EventBase::loopPollCleanup() {
