@@ -119,7 +119,7 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
           numThreads, numThreads, std::move(threadFactory)),
       options_(std::move(options)),
       eventBaseManager_(ebm),
-      queue_(
+      readyQueueSem_(
           ThrottledLifoSem::Options{.wakeUpInterval = options.wakeUpInterval}) {
   epFd_ = ::epoll_create1(EPOLL_CLOEXEC);
 
@@ -176,15 +176,20 @@ void MuxIOThreadPoolExecutor::mainThreadFunc() {
     auto delta =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     stats_.update(ret, delta);
+    size_t enqueued = 0;
     for (int i = 0; i < ret; ++i) {
       CHECK(events[i].data.ptr != nullptr);
       auto* handler = static_cast<Handler*>(events[i].data.ptr);
 
       if (handler->isEvbHandler()) {
-        queue_.add(boost::polymorphic_downcast<EvbHandler*>(handler));
+        readyQueue_.enqueue(boost::polymorphic_downcast<EvbHandler*>(handler));
+        ++enqueued;
       } else {
         handler->handle(this);
       }
+    }
+    if (enqueued > 0) {
+      readyQueueSem_.post(enqueued);
     }
   }
 }
@@ -276,7 +281,8 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   thread->startupBaton.post();
 
   while (true) {
-    auto* handler = queue_.take();
+    readyQueueSem_.wait();
+    auto handler = readyQueue_.dequeue();
     if (handler->isPoison()) {
       delete handler;
       break;
@@ -349,8 +355,9 @@ EventBase* MuxIOThreadPoolExecutor::getEventBase() {
 
 void MuxIOThreadPoolExecutor::stopThreads(size_t n) {
   for (size_t i = 0; i < n; i++) {
-    queue_.add(new EvbHandler); // Poison.
+    readyQueue_.enqueue(new EvbHandler); // Poison.
   }
+  readyQueueSem_.post(n);
 }
 
 void MuxIOThreadPoolExecutor::stop() {

@@ -24,9 +24,9 @@
 #include <limits>
 
 #include <folly/Portability.h>
+#include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/QueueObserver.h>
-#include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
 
@@ -213,7 +213,10 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   std::unique_ptr<std::thread> mainThread_;
   std::atomic<bool> stop_{false};
   std::atomic<size_t> pendingTasks_{0};
-  folly::UnboundedBlockingQueue<EvbHandler*, folly::ThrottledLifoSem> queue_;
+
+  USPMCQueue<EvbHandler*, /* MayBlock */ false> readyQueue_;
+  folly::ThrottledLifoSem readyQueueSem_;
+
   Stats stats_;
 
   Queue<EvbHandler> returnQueue_;
