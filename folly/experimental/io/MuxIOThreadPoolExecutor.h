@@ -163,8 +163,6 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     ~EventFdHandler() override;
 
     void notifyFd();
-    void drainFd();
-
     void handle(MuxIOThreadPoolExecutor* parent) override;
   };
 
@@ -181,8 +179,12 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   };
 
   enum class AddHandlerType { kPersist, kOneShot, kOneShotRearm };
+  enum class Triggering { kLevel, kEdge };
 
-  void addHandler(Handler* handler, AddHandlerType type);
+  void addHandler(
+      Handler* handler,
+      AddHandlerType type,
+      Triggering triggering = Triggering::kLevel);
   void returnHandler(EvbHandler* handler);
   void mainThreadFunc();
 

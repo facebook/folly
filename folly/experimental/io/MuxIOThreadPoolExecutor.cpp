@@ -69,21 +69,12 @@ MuxIOThreadPoolExecutor::EventFdHandler::~EventFdHandler() {
 void MuxIOThreadPoolExecutor::EventFdHandler::notifyFd() {
   uint64_t val = 1;
   auto ret = ::write(fd, &val, sizeof(val));
-  if (ret != sizeof(val)) {
-    throw std::runtime_error(folly::errnoStr(errno));
-  }
-}
-
-void MuxIOThreadPoolExecutor::EventFdHandler::drainFd() {
-  uint64_t data = 0;
-  int ret;
-  do {
-    ret = ::read(fd, &data, sizeof(data));
-  } while (ret < 0 && errno == EINTR);
+  CHECK_EQ(ret, sizeof(val));
 }
 
 void MuxIOThreadPoolExecutor::EventFdHandler::handle(
     MuxIOThreadPoolExecutor* parent) {
+  // No need to drain the epFd_, it is edge-triggered.
   parent->handleDequeue();
 }
 
@@ -137,7 +128,7 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
   }
 
   returnQueue_.arm();
-  addHandler(&returnEvfd_, AddHandlerType::kPersist);
+  addHandler(&returnEvfd_, AddHandlerType::kPersist, Triggering::kEdge);
 
   auto numEventBases =
       options_.numEventBases == 0 ? numThreads : options_.numEventBases;
@@ -199,7 +190,7 @@ void MuxIOThreadPoolExecutor::mainThreadFunc() {
 }
 
 void MuxIOThreadPoolExecutor::addHandler(
-    Handler* handler, AddHandlerType type) {
+    Handler* handler, AddHandlerType type, Triggering triggering) {
   epoll_event event = {};
   event.data.ptr = handler;
   event.events = EPOLLIN;
@@ -216,6 +207,14 @@ void MuxIOThreadPoolExecutor::addHandler(
       break;
   }
 
+  switch (triggering) {
+    case Triggering::kLevel:
+      break;
+    case Triggering::kEdge:
+      event.events |= EPOLLET;
+      break;
+  }
+
   auto ret = ::epoll_ctl(epFd_, op, handler->fd, &event);
   CHECK_EQ(ret, 0);
 }
@@ -227,8 +226,6 @@ void MuxIOThreadPoolExecutor::returnHandler(EvbHandler* handler) {
 }
 
 void MuxIOThreadPoolExecutor::handleDequeue() {
-  returnEvfd_.drainFd();
-
   while (auto* handler = returnQueue_.arm()) {
     while (handler) {
       auto* next = std::exchange(handler->next, nullptr);
