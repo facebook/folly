@@ -16,10 +16,6 @@
 
 #pragma once
 
-#include <folly/experimental/io/Epoll.h>
-
-#if FOLLY_HAS_EPOLL
-
 #include <chrono>
 #include <limits>
 
@@ -27,10 +23,14 @@
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/QueueObserver.h>
+#include <folly/experimental/io/EventBasePoller.h>
 #include <folly/io/async/EventBaseManager.h>
+#include <folly/synchronization/Baton.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
 
 namespace folly {
+
 /**
  * NOTE: This is highly experimental. Do not use.
  *
@@ -70,29 +70,10 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       return *this;
     }
 
-    Options& setMaxEvents(size_t v) {
-      maxEvents = v;
-      return *this;
-    }
-
     bool enableThreadIdCollection{false};
     // If 0, the number of EventBases is set to the number of threads.
     size_t numEventBases{0};
     std::chrono::nanoseconds wakeUpInterval{std::chrono::microseconds(100)};
-    size_t maxEvents{64};
-  };
-
-  struct Stats {
-    // Track number of epoll wake-ups and number of events returned.
-    int minNumEvents{std::numeric_limits<int>::max()};
-    int maxNumEvents{std::numeric_limits<int>::min()};
-    size_t totalNumEvents{0};
-    size_t totalWakeups{0};
-    std::chrono::microseconds totalWait{0};
-    std::chrono::microseconds minWait{std::chrono::microseconds::max()};
-    std::chrono::microseconds maxWait{std::chrono::microseconds::min()};
-
-    void update(int numEvents, std::chrono::microseconds wait);
   };
 
   explicit MuxIOThreadPoolExecutor(
@@ -130,65 +111,15 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   void join() override;
 
  private:
+  using EventBasePoller = folly::detail::EventBasePoller;
+
+  struct EvbState;
+
   struct alignas(Thread) IOThread : public Thread {
     explicit IOThread(MuxIOThreadPoolExecutor* pool) : Thread(pool) {}
 
     EventBase* curEventBase; // Only accessed inside the worker thread.
   };
-
-  struct Handler {
-    virtual ~Handler() = default;
-    virtual void handle(MuxIOThreadPoolExecutor* parent) = 0;
-    virtual bool isEvbHandler() const { return false; }
-
-    int fd{-1};
-  };
-
-  struct EvbHandler : public Handler {
-    EvbHandler() = default;
-    explicit EvbHandler(folly::EventBase* e);
-    void handle(MuxIOThreadPoolExecutor* parent) override;
-
-    folly::EventBase* evb{nullptr};
-
-    bool isEvbHandler() const override { return true; }
-
-    bool isPoison() const { return evb == nullptr; }
-
-    EvbHandler* next{nullptr};
-  };
-
-  struct EventFdHandler : public Handler {
-    EventFdHandler();
-    ~EventFdHandler() override;
-
-    void notifyFd();
-    void handle(MuxIOThreadPoolExecutor* parent) override;
-  };
-
-  template <class T>
-  class Queue {
-   public:
-    bool insert(T* t);
-    T* arm();
-
-   private:
-    static T* kQueueArmedTag() { return reinterpret_cast<T*>(1); }
-
-    std::atomic<T*> head_{nullptr};
-  };
-
-  enum class AddHandlerType { kPersist, kOneShot, kOneShotRearm };
-  enum class Triggering { kLevel, kEdge };
-
-  void addHandler(
-      Handler* handler,
-      AddHandlerType type,
-      Triggering triggering = Triggering::kLevel);
-  void returnHandler(EvbHandler* handler);
-  void mainThreadFunc();
-
-  void handleDequeue();
 
   void maybeUnregisterEventBases(Observer* o);
 
@@ -198,30 +129,20 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   void stopThreads(size_t n) override;
   size_t getPendingTaskCountImpl() const override final;
 
-  std::unique_ptr<folly::EventBase> makeEventBase();
-
   const Options options_;
   folly::EventBaseManager* eventBaseManager_;
 
-  int epFd_{-1};
+  std::unique_ptr<EventBasePoller::FdGroup> fdGroup_;
+  std::vector<std::unique_ptr<EvbState>> evbStates_;
+  std::vector<Executor::KeepAlive<EventBase>> keepAlives_;
+
   relaxed_atomic<size_t> nextEvb_{0};
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_;
-  std::vector<std::unique_ptr<folly::EventBase>> evbs_;
-  std::vector<Executor::KeepAlive<EventBase>> keepAlives_;
-  std::vector<std::unique_ptr<EvbHandler>> handlers_;
-  std::unique_ptr<std::thread> mainThread_;
-  std::atomic<bool> stop_{false};
   std::atomic<size_t> pendingTasks_{0};
 
-  USPMCQueue<EvbHandler*, /* MayBlock */ false> readyQueue_;
+  USPMCQueue<EventBasePoller::Handle*, /* MayBlock */ false> readyQueue_;
   folly::ThrottledLifoSem readyQueueSem_;
-
-  Stats stats_;
-
-  Queue<EvbHandler> returnQueue_;
-  EventFdHandler returnEvfd_;
 };
 
 } // namespace folly
-#endif

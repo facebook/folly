@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/Epoll.h> // @manual
+#include <folly/experimental/io/Epoll.h>
 
 #if FOLLY_HAS_EPOLL
 
@@ -30,19 +30,14 @@ namespace test {
 
 TEST(MuxIOThreadPoolExecutor, SingleEpollLoopCreateDestroy) {
   static constexpr size_t kNumThreads = 16;
-  static constexpr size_t kMaxEvents = 64;
-  folly::MuxIOThreadPoolExecutor::Options options;
-  options.setMaxEvents(kMaxEvents);
-  folly::MuxIOThreadPoolExecutor ex(kNumThreads, options);
+  folly::MuxIOThreadPoolExecutor ex(kNumThreads);
 }
 
 TEST(MuxIOThreadPoolExecutor, SingleEpollLoopRun) {
   static constexpr size_t kNumThreads = 16;
   static constexpr size_t kNumEventBases = 64;
   static constexpr size_t kLoops = 10;
-  static constexpr size_t kMaxEvents = 64;
   folly::MuxIOThreadPoolExecutor::Options options;
-  options.setMaxEvents(kMaxEvents);
   options.setNumEventBases(kNumEventBases);
   folly::MuxIOThreadPoolExecutor ex(kNumThreads, options);
 
@@ -62,10 +57,7 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopRun) {
 TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {
   static constexpr size_t kNumThreads = 16;
   static constexpr uint32_t kMilliseconds = 500;
-  static constexpr size_t kMaxEvents = 64;
-  folly::MuxIOThreadPoolExecutor::Options options;
-  options.setMaxEvents(kMaxEvents);
-  folly::MuxIOThreadPoolExecutor ex(kNumThreads, options);
+  folly::MuxIOThreadPoolExecutor ex(kNumThreads);
 
   // Ensure that we get to the epoll_wait().
   /* sleep override */ std::this_thread::sleep_for(
