@@ -925,14 +925,16 @@ class small_vector
 
   iterator insert(const_iterator pos, size_type n, value_type const& val) {
     auto offset = pos - begin();
-    auto currentSize = size();
-    makeSize(currentSize + n);
-    detail::moveObjectsRightAndCreate(
-        data() + offset,
-        data() + currentSize,
-        data() + currentSize + n,
-        [&]() mutable -> value_type const& { return val; });
-    this->incrementSize(n);
+    if (n != 0) {
+      auto currentSize = size();
+      makeSize(currentSize + n);
+      detail::moveObjectsRightAndCreate(
+          data() + offset,
+          data() + currentSize,
+          data() + currentSize + n,
+          [&]() mutable -> value_type const& { return val; });
+      this->incrementSize(n);
+    }
     return begin() + offset;
   }
 

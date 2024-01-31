@@ -411,7 +411,7 @@ TEST(smallVector, InsertNontrivial) {
   EXPECT_EQ(v3[11].s, "asd");
 }
 
-TEST(smallVecctor, InsertFromBidirectionalList) {
+TEST(smallVector, InsertFromBidirectionalList) {
   folly::small_vector<std::string> v(6, "asd");
   std::list<std::string> l(6, "wat");
   v.insert(v.end(), l.begin(), l.end());
@@ -1468,6 +1468,12 @@ TEST(smallVector, overflowAssign) {
   EXPECT_THROW(
       vec.assign(SIZE_MAX / sizeof(std::string) + 1, "hello"),
       std::length_error);
+}
+
+TEST(smallVector, assignZeroElementsNoInline) {
+  folly::small_vector<int, 0> v;
+  v.assign(0, 42);
+  EXPECT_TRUE(v.empty());
 }
 
 namespace {
