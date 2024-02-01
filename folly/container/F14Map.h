@@ -878,10 +878,10 @@ class F14BasicMap {
     return table_.makeConstIter(table_.find(token, key));
   }
 
-  FOLLY_ALWAYS_INLINE iterator
-  find(F14HashedKey<key_type, hasher>&& hashedKey) {
+  FOLLY_ALWAYS_INLINE const_iterator
+  find(F14HashedKey<key_type, hasher> const& hashedKey) const {
     return table_.makeIter(
-        table_.find(hashedKey.getHashToken(), std::move(hashedKey.getKey())));
+        table_.find(hashedKey.getHashToken(), hashedKey.getKey()));
   }
 
   template <typename K>
@@ -936,12 +936,6 @@ class F14BasicMap {
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, bool> contains(
       F14HashToken const& token, K const& key) const {
     return !table_.find(token, key).atEnd();
-  }
-
-  FOLLY_ALWAYS_INLINE bool contains(
-      F14HashedKey<key_type, hasher>&& hashedKey) const {
-    return !table_.find(hashedKey.getHashToken(), std::move(hashedKey.getKey()))
-                .atEnd();
   }
 
   /// @overloadbrief Returns the range of elements matching a specific key.
