@@ -76,15 +76,15 @@ struct thunk {
 
   template <std::size_t Size, std::size_t Align>
   static void* operator_new() {
-    return folly::operator_new(Size, align_val_t(Align));
+    return folly::operator_new(Size, std::align_val_t(Align));
   }
   template <std::size_t Size, std::size_t Align>
   static void* operator_new_nx() {
-    return folly::operator_new(Size, align_val_t(Align), std::nothrow);
+    return folly::operator_new(Size, std::align_val_t(Align), std::nothrow);
   }
   template <std::size_t Size, std::size_t Align>
   static void operator_delete(void* const ptr) noexcept {
-    return folly::operator_delete(ptr, Size, align_val_t(Align));
+    return folly::operator_delete(ptr, Size, std::align_val_t(Align));
   }
 
   template <typename... A>

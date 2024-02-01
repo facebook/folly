@@ -44,7 +44,8 @@ Barrier::~Barrier() {
 
 auto Barrier::allocateControlBlock() -> ControlBlock* {
   auto storage = operator_new(
-      controlBlockSize(size_), align_val_t(alignof(ControlBlockAndPromise)));
+      controlBlockSize(size_),
+      std::align_val_t(alignof(ControlBlockAndPromise)));
   auto block = ::new (storage) ControlBlock();
 
   auto p = promises(block);
@@ -70,7 +71,7 @@ void Barrier::freeControlBlock(ControlBlock* block) {
   operator_delete(
       block,
       controlBlockSize(size_),
-      align_val_t(alignof(ControlBlockAndPromise)));
+      std::align_val_t(alignof(ControlBlockAndPromise)));
 }
 
 folly::Future<bool> Barrier::wait() {
