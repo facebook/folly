@@ -149,7 +149,7 @@ void FormatValue<double>::formatHelper(
   switch (arg.presentation) {
     case '%':
       val *= 100;
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case 'f':
     case 'F': {
       if (arg.precision > DoubleToStringConverter::kMaxFixedDigitsAfterPoint) {

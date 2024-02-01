@@ -49,7 +49,7 @@ namespace crc32_detail {
   crc##0 = _mm_crc32_u64(crc##0, *(buf##0 + offset)); \
   crc##1 = _mm_crc32_u64(crc##1, *(buf##1 + offset)); \
   crc##2 = _mm_crc32_u64(crc##2, *(buf##2 + offset)); \
-  FOLLY_FALLTHROUGH
+  [[fallthrough]]
 
 #define CRCduplet(crc, buf, offset)                   \
   crc##0 = _mm_crc32_u64(crc##0, *(buf##0 + offset)); \
@@ -58,7 +58,7 @@ namespace crc32_detail {
 
 #define CRCsinglet(crc, buf, offset)                    \
   crc = _mm_crc32_u64(crc, *(uint64_t*)(buf + offset)); \
-  FOLLY_FALLTHROUGH
+  [[fallthrough]]
 
 #define CASEREPEAT_TRIPLET(unused, count, total)    \
   case BOOST_PP_ADD(1, BOOST_PP_SUB(total, count)): \
@@ -227,7 +227,7 @@ void triplet_loop(
             next1 = next0 + 128; // from here on all blocks are 128 long
             next2 = next1 + 128;
           }
-          FOLLY_FALLTHROUGH;
+          [[fallthrough]];
         case 0:;
       } while (n > 0);
   }

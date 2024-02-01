@@ -554,7 +554,7 @@ struct DispatchSmall {
       case Op::MOVE:
         ::new (static_cast<void*>(&dst->tiny)) Fun(static_cast<Fun&&>(
             *static_cast<Fun*>(static_cast<void*>(&src->tiny))));
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
       case Op::NUKE:
         static_cast<Fun*>(static_cast<void*>(&src->tiny))->~Fun();
         break;

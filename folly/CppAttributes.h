@@ -43,29 +43,6 @@
 #endif
 
 /**
- * Fallthrough to indicate that `break` was left out on purpose in a switch
- * statement, e.g.
- *
- * switch (n) {
- *   case 22:
- *   case 33:  // no warning: no statements between case labels
- *     f();
- *   case 44:  // warning: unannotated fall-through
- *     g();
- *     FOLLY_FALLTHROUGH; // no warning: annotated fall-through
- * }
- */
-#if FOLLY_HAS_CPP_ATTRIBUTE(fallthrough)
-#define FOLLY_FALLTHROUGH [[fallthrough]]
-#elif FOLLY_HAS_CPP_ATTRIBUTE(clang::fallthrough)
-#define FOLLY_FALLTHROUGH [[clang::fallthrough]]
-#elif FOLLY_HAS_CPP_ATTRIBUTE(gnu::fallthrough)
-#define FOLLY_FALLTHROUGH [[gnu::fallthrough]]
-#else
-#define FOLLY_FALLTHROUGH
-#endif
-
-/**
  *  Maybe_unused indicates that a function, variable or parameter might or
  *  might not be used, e.g.
  *

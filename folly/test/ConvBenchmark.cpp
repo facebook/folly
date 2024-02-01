@@ -278,10 +278,10 @@ static int64_t handwrittenAtoi(const char* start, const char* end) {
   switch (*start) {
     case '-':
       positive = false;
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case '+':
       ++start;
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     default:
       break;
   }

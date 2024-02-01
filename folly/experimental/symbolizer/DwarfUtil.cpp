@@ -632,31 +632,31 @@ Attribute readAttribute(
     case DW_FORM_block4:
       return {spec, die, readBytes(info, read<uint32_t>(info))};
     case DW_FORM_block:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_exprloc:
       return {spec, die, readBytes(info, readULEB(info))};
     case DW_FORM_data1:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_ref1:
       return {spec, die, read<uint8_t>(info)};
     case DW_FORM_data2:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_ref2:
       return {spec, die, read<uint16_t>(info)};
     case DW_FORM_data4:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_ref4:
       return {spec, die, read<uint32_t>(info)};
     case DW_FORM_data8:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_ref8:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_ref_sig8:
       return {spec, die, read<uint64_t>(info)};
     case DW_FORM_sdata:
       return {spec, die, to_unsigned(readSLEB(info))};
     case DW_FORM_udata:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_ref_udata:
       return {spec, die, readULEB(info)};
     case DW_FORM_flag:
@@ -664,7 +664,7 @@ Attribute readAttribute(
     case DW_FORM_flag_present:
       return {spec, die, 1u};
     case DW_FORM_sec_offset:
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case DW_FORM_ref_addr:
       return {spec, die, readOffset(info, die.is64Bit)};
     case DW_FORM_string:

@@ -335,7 +335,7 @@ void CoreBase::raise(exception_wrapper e) {
         return;
       }
       assert(interrupt & InterruptHasHandler);
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     }
     case InterruptHasHandler: { // invoke the stored handler
       auto pointer = interrupt & ~InterruptMask;
@@ -493,7 +493,7 @@ void CoreBase::setResult_(Executor::KeepAlive<>&& completingKA) {
               std::memory_order_acquire)) {
         return;
       }
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
 
     case State::OnlyCallback:
     case State::OnlyCallbackAllowInline:
@@ -532,7 +532,7 @@ void CoreBase::setProxy_(CoreBase* proxy) {
               std::memory_order_acquire)) {
         break;
       }
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
 
     case State::OnlyCallback:
     case State::OnlyCallbackAllowInline:
