@@ -399,6 +399,11 @@ class F14HashedKey final {
   explicit operator const TKeyType&() const { return key_; }
   explicit operator const F14HashToken&() const { return hash_; }
 
+  bool operator==(const F14HashedKey& other) const {
+    return key_ == other.key_;
+  }
+  bool operator==(const TKeyType& other) const { return key_ == other; }
+
  private:
   F14HashToken hash_;
   TKeyType key_;
