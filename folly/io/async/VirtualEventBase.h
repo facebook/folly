@@ -31,7 +31,7 @@ namespace folly {
  * VirtualEventBase implements a light-weight view onto existing EventBase.
  *
  * Multiple VirtualEventBases can be backed by a single EventBase. Similarly
- * to EventBase, VirtualEventBase implements loopKeepAlive() functionality,
+ * to EventBase, VirtualEventBase implements KeepAlive functionality,
  * which allows callbacks holding KeepAlive token to keep EventBase looping
  * until they are complete.
  *

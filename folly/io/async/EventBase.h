@@ -922,8 +922,8 @@ class EventBase : public TimeoutManager,
 
   /// Implements the DrivableExecutor interface
   void drive() override {
-    ++loopKeepAliveCount_;
-    SCOPE_EXIT { --loopKeepAliveCount_; };
+    loopKeepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    SCOPE_EXIT { loopKeepAliveCount_.fetch_sub(1, std::memory_order_relaxed); };
     loopOnce();
   }
 
@@ -962,19 +962,17 @@ class EventBase : public TimeoutManager,
 
  protected:
   bool keepAliveAcquire() noexcept override {
-    if (inRunningEventBaseThread()) {
-      loopKeepAliveCount_++;
-    } else {
-      loopKeepAliveCountAtomic_.fetch_add(1, std::memory_order_relaxed);
-    }
+    loopKeepAliveCount_.fetch_add(1, std::memory_order_relaxed);
     return true;
   }
 
   void keepAliveRelease() noexcept override {
-    if (!inRunningEventBaseThread()) {
-      return add([this] { loopKeepAliveCount_--; });
+    auto oldCount = loopKeepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
+    DCHECK_GT(oldCount, 0);
+    if (oldCount == 1 && !inRunningEventBaseThread()) {
+      // Unblock the loop so it can exit.
+      runInEventBaseThreadAlwaysEnqueue([] {});
     }
-    loopKeepAliveCount_--;
   }
 
  private:
@@ -983,9 +981,8 @@ class EventBase : public TimeoutManager,
 
   folly::VirtualEventBase* tryGetVirtualEventBase();
 
+  size_t loopKeepAliveCount();
   void applyLoopKeepAlive();
-
-  ssize_t loopKeepAliveCount();
 
   /*
    * Helper function that tells us whether we have already handled
@@ -1039,8 +1036,7 @@ class EventBase : public TimeoutManager,
   // A notification queue for runInEventBaseThread() to use
   // to send function requests to the EventBase thread.
   std::unique_ptr<EventBaseAtomicNotificationQueue<Func, FuncRunner>> queue_;
-  ssize_t loopKeepAliveCount_{0};
-  std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
+  std::atomic<size_t> loopKeepAliveCount_{0};
   bool loopKeepAliveActive_{false};
 
   // limit for latency in microseconds (0 disables)
