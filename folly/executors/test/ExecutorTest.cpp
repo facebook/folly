@@ -21,9 +21,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
-// TODO(jsedgwick) move this test to executors/test/ once the tested executors
-// have all moved
-
 using namespace folly;
 
 TEST(ManualExecutor, runIsStable) {
