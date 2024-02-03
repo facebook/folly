@@ -200,9 +200,9 @@ const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s) {
   return s->tlsext_hostname;
 }
 
-unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x) {
-  return ASN1_STRING_data((ASN1_STRING*)x);
-}
+// unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x) {
+//   return ASN1_STRING_data((ASN1_STRING*)x);
+// }
 
 int SSL_SESSION_has_ticket(const SSL_SESSION* s) {
   return (s->tlsext_ticklen > 0) ? 1 : 0;

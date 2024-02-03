@@ -213,7 +213,7 @@ const SSL_METHOD* TLS_server_method(void);
 const SSL_METHOD* TLS_client_method(void);
 
 const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
-unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x);
+// unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x);
 
 // EVP_MD_CTX* EVP_MD_CTX_new();
 // void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
