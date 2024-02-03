@@ -23,6 +23,7 @@
 
 #include <folly/Portability.h>
 #include <folly/SpinLock.h>
+#include <folly/system/ThreadId.h>
 
 // We cannot directly use portability/openssl because it also depends on us.
 // Therefore we directly use openssl includes. Order of includes is important
