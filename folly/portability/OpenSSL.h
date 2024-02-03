@@ -238,6 +238,7 @@ void DSA_get0_key(
 
 STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store);
 
+/*
 X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx);
@@ -250,6 +251,7 @@ void RSA_get0_crt_params(
     const BIGNUM** iqmp);
 int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s);
 void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps);
+*/
 
 using OPENSSL_INIT_SETTINGS = void;
 // int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);
