@@ -87,6 +87,10 @@
   (((major << 28) | ((minor << 20) | (fix << 12))))
 #define FOLLY_OPENSSL_PREREQ(major, minor, fix) \
   (OPENSSL_VERSION_NUMBER >= FOLLY_OPENSSL_CALCULATE_VERSION(major, minor, fix))
+  
+#else
+  #define FOLLY_OPENSSL_PREREQ(major, minor, fix) \
+  0
 #endif
 
 #if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_100 && \
