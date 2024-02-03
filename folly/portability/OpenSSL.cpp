@@ -493,16 +493,16 @@ uint32_t X509_get_extended_key_usage(X509* x) {
   return x->ex_xkusage;
 }
 
-int X509_OBJECT_get_type(const X509_OBJECT* obj) {
-  return obj->type;
-}
+// int X509_OBJECT_get_type(const X509_OBJECT* obj) {
+//  return obj->type;
+// }
 
-X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj) {
-  if (obj == nullptr || obj->type != X509_LU_X509) {
-    return nullptr;
-  }
-  return obj->data.x509;
-}
+// X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj) {
+//  if (obj == nullptr || obj->type != X509_LU_X509) {
+//    return nullptr;
+//  }
+//  return obj->data.x509;
+// }
 
 // const ASN1_TIME* X509_CRL_get0_lastUpdate(const X509_CRL* crl) {
 //   return X509_CRL_get_lastUpdate(crl);
