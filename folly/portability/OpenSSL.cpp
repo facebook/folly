@@ -458,6 +458,7 @@ int OPENSSL_init_ssl(uint64_t, const OPENSSL_INIT_SETTINGS*) {
   return 1;
 }
 
+/*
 void OPENSSL_cleanup() {
   folly::ssl::detail::cleanupThreadingLocks();
   CRYPTO_cleanup_all_ex_data();
@@ -473,6 +474,7 @@ const ASN1_INTEGER* X509_REVOKED_get0_serialNumber(const X509_REVOKED* r) {
 const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r) {
   return r->revocationDate;
 }
+*/
 
 /*
 uint32_t X509_get_extension_flags(X509* x) {
