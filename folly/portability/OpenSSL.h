@@ -194,8 +194,8 @@ EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey);
 #endif
 
 #if !FOLLY_OPENSSL_IS_110
-BIO_METHOD* BIO_meth_new(int type, const char* name);
-void BIO_meth_free(BIO_METHOD* biom);
+// BIO_METHOD* BIO_meth_new(int type, const char* name);
+// void BIO_meth_free(BIO_METHOD* biom);
 int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
 int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
 int BIO_meth_set_puts(BIO_METHOD* biom, int (*bputs)(BIO*, const char*));

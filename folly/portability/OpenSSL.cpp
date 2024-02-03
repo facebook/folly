@@ -122,7 +122,7 @@ EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey) {
 #endif
 
 #if !FOLLY_OPENSSL_IS_110
-BIO_METHOD* BIO_meth_new(int type, const char* name) {
+/* BIO_METHOD* BIO_meth_new(int type, const char* name) {
   BIO_METHOD* method = (BIO_METHOD*)OPENSSL_malloc(sizeof(BIO_METHOD));
   if (method == nullptr) {
     return nullptr;
@@ -135,7 +135,7 @@ BIO_METHOD* BIO_meth_new(int type, const char* name) {
 
 void BIO_meth_free(BIO_METHOD* biom) {
   OPENSSL_free((void*)biom);
-}
+} */
 
 int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int)) {
   biom->bread = read;
