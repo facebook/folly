@@ -474,6 +474,7 @@ const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r) {
   return r->revocationDate;
 }
 
+/*
 uint32_t X509_get_extension_flags(X509* x) {
   // Tells OpenSSL to load flags
   X509_check_purpose(x, -1, -1);
@@ -492,6 +493,7 @@ uint32_t X509_get_key_usage(X509* x) {
 uint32_t X509_get_extended_key_usage(X509* x) {
   return x->ex_xkusage;
 }
+*/
 
 // int X509_OBJECT_get_type(const X509_OBJECT* obj) {
 //  return obj->type;
