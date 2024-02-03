@@ -325,7 +325,7 @@ STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx) {
   return ctx->untrusted;
 }
 
-EVP_MD_CTX* EVP_MD_CTX_new() {
+/* EVP_MD_CTX* EVP_MD_CTX_new() {
   EVP_MD_CTX* ctx = (EVP_MD_CTX*)OPENSSL_malloc(sizeof(EVP_MD_CTX));
   if (!ctx) {
     throw std::runtime_error("Cannot allocate EVP_MD_CTX");
@@ -339,7 +339,7 @@ void EVP_MD_CTX_free(EVP_MD_CTX* ctx) {
     EVP_MD_CTX_cleanup(ctx);
     OPENSSL_free(ctx);
   }
-}
+} */
 
 HMAC_CTX* HMAC_CTX_new() {
   HMAC_CTX* ctx = (HMAC_CTX*)OPENSSL_malloc(sizeof(HMAC_CTX));
