@@ -257,8 +257,8 @@ using OPENSSL_INIT_SETTINGS = void;
 // int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);
 // void OPENSSL_cleanup();
 
-const ASN1_INTEGER* X509_REVOKED_get0_serialNumber(const X509_REVOKED* r);
-const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r);
+// const ASN1_INTEGER* X509_REVOKED_get0_serialNumber(const X509_REVOKED* r);
+// const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r);
 
 // uint32_t X509_get_extension_flags(X509* x);
 // uint32_t X509_get_key_usage(X509* x);
