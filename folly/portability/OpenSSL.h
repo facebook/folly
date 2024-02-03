@@ -251,8 +251,8 @@ int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s);
 void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps);
 
 using OPENSSL_INIT_SETTINGS = void;
-int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);
-void OPENSSL_cleanup();
+// int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);
+// void OPENSSL_cleanup();
 
 const ASN1_INTEGER* X509_REVOKED_get0_serialNumber(const X509_REVOKED* r);
 const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r);
