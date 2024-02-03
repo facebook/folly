@@ -339,7 +339,7 @@ void EVP_MD_CTX_free(EVP_MD_CTX* ctx) {
     EVP_MD_CTX_cleanup(ctx);
     OPENSSL_free(ctx);
   }
-} */
+}
 
 HMAC_CTX* HMAC_CTX_new() {
   HMAC_CTX* ctx = (HMAC_CTX*)OPENSSL_malloc(sizeof(HMAC_CTX));
@@ -356,6 +356,7 @@ void HMAC_CTX_free(HMAC_CTX* ctx) {
     OPENSSL_free(ctx);
   }
 }
+*/
 
 bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d) {
   // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes

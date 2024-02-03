@@ -218,8 +218,8 @@ unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x);
 // EVP_MD_CTX* EVP_MD_CTX_new();
 // void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
 
-HMAC_CTX* HMAC_CTX_new();
-void HMAC_CTX_free(HMAC_CTX* ctx);
+// HMAC_CTX* HMAC_CTX_new();
+// void HMAC_CTX_free(HMAC_CTX* ctx);
 
 unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
 int SSL_SESSION_has_ticket(const SSL_SESSION* s);
