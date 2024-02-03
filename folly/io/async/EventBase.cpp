@@ -623,8 +623,14 @@ void EventBase::loopMainCleanup() {
   loopThread_.store({}, std::memory_order_release);
 }
 
-size_t EventBase::loopKeepAliveCount() {
-  return loopKeepAliveCount_.load(std::memory_order_relaxed);
+ssize_t EventBase::loopKeepAliveCount() {
+  if (loopKeepAliveCountAtomic_.load(std::memory_order_relaxed)) {
+    loopKeepAliveCount_ +=
+        loopKeepAliveCountAtomic_.exchange(0, std::memory_order_relaxed);
+  }
+  DCHECK_GE(loopKeepAliveCount_, 0);
+
+  return loopKeepAliveCount_;
 }
 
 void EventBase::applyLoopKeepAlive() {
@@ -698,7 +704,11 @@ void EventBase::terminateLoopSoon() {
   // In this case, it won't wake up and notice that stop_ is set until it
   // receives another event.  Send an empty frame to the notification queue
   // so that the event loop will wake up even if there are no other events.
-  queue_->putMessage([] {});
+  try {
+    queue_->putMessage([] {});
+  } catch (...) {
+    // putMessage() can only fail when the queue is draining in ~EventBase.
+  }
 }
 
 void EventBase::runInLoop(
