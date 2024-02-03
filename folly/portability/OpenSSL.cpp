@@ -504,13 +504,13 @@ X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj) {
   return obj->data.x509;
 }
 
-const ASN1_TIME* X509_CRL_get0_lastUpdate(const X509_CRL* crl) {
-  return X509_CRL_get_lastUpdate(crl);
-}
+// const ASN1_TIME* X509_CRL_get0_lastUpdate(const X509_CRL* crl) {
+//   return X509_CRL_get_lastUpdate(crl);
+// }
 
-const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl) {
-  return X509_CRL_get_nextUpdate(crl);
-}
+// const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl) {
+//   return X509_CRL_get_nextUpdate(crl);
+// }
 
 // const X509_ALGOR* X509_get0_tbs_sigalg(const X509* x) {
 //   return x->cert_info->signature;
