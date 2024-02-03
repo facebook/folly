@@ -24,9 +24,9 @@ namespace portability {
 namespace ssl {
 
 #ifdef OPENSSL_IS_BORINGSSL
-int SSL_CTX_set1_sigalgs_list(SSL_CTX*, const char*) {
-  return 1; // 0 implies error
-}
+// int SSL_CTX_set1_sigalgs_list(SSL_CTX*, const char*) {
+//   return 1; // 0 implies error
+// }
 
 int TLS1_get_client_version(SSL* s) {
   // Note that this isn't the client version, and the API to

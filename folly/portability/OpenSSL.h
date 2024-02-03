@@ -164,7 +164,7 @@ namespace portability {
 namespace ssl {
 
 #ifdef OPENSSL_IS_BORINGSSL
-int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
+// int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 int TLS1_get_client_version(SSL* s);
 #endif
 
