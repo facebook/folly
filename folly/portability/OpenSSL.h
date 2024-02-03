@@ -223,7 +223,7 @@ const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
 
 unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
 int SSL_SESSION_has_ticket(const SSL_SESSION* s);
-int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
+// int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
 void DH_get0_pqg(
     const DH* dh, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g);
 void DH_get0_key(const DH* dh, const BIGNUM** pub_key, const BIGNUM** priv_key);

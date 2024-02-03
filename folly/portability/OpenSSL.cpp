@@ -212,11 +212,10 @@ unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s) {
   return s->tlsext_tick_lifetime_hint;
 }
 
+/*
 // This is taken from OpenSSL 1.1.0
 int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g) {
-  /* If the fields p and g in d are nullptr, the corresponding input
-   * parameters MUST not be nullptr.  q may remain nullptr.
-   */
+
   if (dh == nullptr || (dh->p == nullptr && p == nullptr) ||
       (dh->g == nullptr && g == nullptr)) {
     return 0;
@@ -245,6 +244,7 @@ int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g) {
 
   return 1;
 }
+*/
 
 void DH_get0_pqg(
     const DH* dh, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g) {
