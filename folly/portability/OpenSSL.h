@@ -164,9 +164,8 @@ namespace portability {
 namespace ssl {
 
 #ifdef OPENSSL_IS_BORINGSSL
-// int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 #define PKCS5_SALT_LEN 8
-#define ub_common_name          64
+#define ub_common_name 64
 #endif
 
 #if FOLLY_OPENSSL_IS_100
@@ -195,10 +194,7 @@ EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey);
 #endif
 
 #if !FOLLY_OPENSSL_IS_110
-// BIO_METHOD* BIO_meth_new(int type, const char* name);
-// void BIO_meth_free(BIO_METHOD* biom);
-// int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
-// int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
+
 int BIO_meth_set_puts(BIO_METHOD* biom, int (*bputs)(BIO*, const char*));
 int BIO_meth_set_gets(BIO_METHOD* biom, int (*bgets)(BIO*, char*, int));
 int BIO_meth_set_ctrl(BIO_METHOD* biom, long (*ctrl)(BIO*, int, long, void*));
@@ -211,36 +207,10 @@ void BIO_set_init(BIO* bio, int init);
 void BIO_set_shutdown(BIO* bio, int shutdown);
 
 const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
-// unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x);
-
-// EVP_MD_CTX* EVP_MD_CTX_new();
-// void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
-
-// HMAC_CTX* HMAC_CTX_new();
-// void HMAC_CTX_free(HMAC_CTX* ctx);
-
-// int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
 
 STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store);
 
 using OPENSSL_INIT_SETTINGS = void;
-// int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);
-// void OPENSSL_cleanup();
-
-// const ASN1_INTEGER* X509_REVOKED_get0_serialNumber(const X509_REVOKED* r);
-// const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r);
-
-// uint32_t X509_get_extension_flags(X509* x);
-// uint32_t X509_get_key_usage(X509* x);
-// uint32_t X509_get_extended_key_usage(X509* x);
-
-// int X509_OBJECT_get_type(const X509_OBJECT* obj);
-// X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj);
-
-// const ASN1_TIME* X509_CRL_get0_lastUpdate(const X509_CRL* crl);
-// const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl);
-
-// const X509_ALGOR* X509_get0_tbs_sigalg(const X509* x);
 
 #endif
 
