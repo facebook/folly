@@ -165,8 +165,8 @@ namespace ssl {
 
 #ifdef OPENSSL_IS_BORINGSSL
 // int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
-int TLS1_get_client_version(SSL* s);
 #define PKCS5_SALT_LEN 8
+#define ub_common_name          64
 #endif
 
 #if FOLLY_OPENSSL_IS_100
@@ -197,7 +197,7 @@ EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey);
 #if !FOLLY_OPENSSL_IS_110
 // BIO_METHOD* BIO_meth_new(int type, const char* name);
 // void BIO_meth_free(BIO_METHOD* biom);
-int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
+// int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
 // int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
 int BIO_meth_set_puts(BIO_METHOD* biom, int (*bputs)(BIO*, const char*));
 int BIO_meth_set_gets(BIO_METHOD* biom, int (*bgets)(BIO*, char*, int));
@@ -210,9 +210,6 @@ void* BIO_get_data(BIO* bio);
 void BIO_set_init(BIO* bio, int init);
 void BIO_set_shutdown(BIO* bio, int shutdown);
 
-const SSL_METHOD* TLS_server_method(void);
-const SSL_METHOD* TLS_client_method(void);
-
 const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
 // unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x);
 
@@ -222,36 +219,9 @@ const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
 // HMAC_CTX* HMAC_CTX_new();
 // void HMAC_CTX_free(HMAC_CTX* ctx);
 
-unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
-int SSL_SESSION_has_ticket(const SSL_SESSION* s);
 // int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
-void DH_get0_pqg(
-    const DH* dh, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g);
-void DH_get0_key(const DH* dh, const BIGNUM** pub_key, const BIGNUM** priv_key);
-long DH_get_length(const DH* dh);
-int DH_set_length(DH* dh, long length);
-
-void DSA_get0_pqg(
-    const DSA* dsa, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g);
-void DSA_get0_key(
-    const DSA* dsa, const BIGNUM** pub_key, const BIGNUM** priv_key);
 
 STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store);
-
-/*
-X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx);
-STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx);
-STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx);
-bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d);
-void RSA_get0_factors(const RSA* r, const BIGNUM** p, const BIGNUM** q);
-void RSA_get0_crt_params(
-    const RSA* r,
-    const BIGNUM** dmp1,
-    const BIGNUM** dmq1,
-    const BIGNUM** iqmp);
-int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s);
-void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps);
-*/
 
 using OPENSSL_INIT_SETTINGS = void;
 // int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);

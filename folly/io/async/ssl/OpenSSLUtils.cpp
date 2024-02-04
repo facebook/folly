@@ -27,6 +27,8 @@
 #include <folly/ssl/Init.h>
 #include <folly/ssl/detail/OpenSSLSession.h>
 
+#include <openssl/bio.h>
+
 namespace {
 #ifdef OPENSSL_IS_BORINGSSL
 // BoringSSL doesn't (as of May 2016) export the equivalent
@@ -275,19 +277,11 @@ int OpenSSLUtils::getBioShouldRetryWrite(int r) {
 }
 
 void OpenSSLUtils::setBioAppData(BIO* b, void* ptr) {
-#ifdef OPENSSL_IS_BORINGSSL
-  BIO_set_callback_arg(b, static_cast<char*>(ptr));
-#else
   BIO_set_app_data(b, ptr);
-#endif
 }
 
 void* OpenSSLUtils::getBioAppData(BIO* b) {
-#ifdef OPENSSL_IS_BORINGSSL
-  return BIO_get_callback_arg(b);
-#else
   return BIO_get_app_data(b);
-#endif
 }
 
 NetworkSocket OpenSSLUtils::getBioFd(BIO* b) {

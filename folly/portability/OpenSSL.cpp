@@ -28,12 +28,7 @@ namespace ssl {
 //   return 1; // 0 implies error
 // }
 
-int TLS1_get_client_version(SSL* s) {
-  // Note that this isn't the client version, and the API to
-  // get this has been hidden. It may be found by parsing the
-  // ClientHello (there is a callback via the SSL_HANDSHAKE struct)
-  return s->version;
-}
+
 #endif
 
 #if FOLLY_OPENSSL_IS_100
@@ -137,9 +132,8 @@ void BIO_meth_free(BIO_METHOD* biom) {
   OPENSSL_free((void*)biom);
 } */
 
-int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int)) {
-  biom->bread = read;
-  return 1;
+const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s) {
+  return nullptr;
 }
 
 int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int)) {
@@ -188,29 +182,12 @@ void BIO_set_shutdown(BIO* bio, int shutdown) {
   bio->shutdown = shutdown;
 }
 
-const SSL_METHOD* TLS_server_method(void) {
-  return TLSv1_2_server_method();
-}
-
-const SSL_METHOD* TLS_client_method(void) {
-  return TLSv1_2_client_method();
-}
-
-const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s) {
-  return s->tlsext_hostname;
-}
 
 // unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x) {
 //   return ASN1_STRING_data((ASN1_STRING*)x);
 // }
 
-int SSL_SESSION_has_ticket(const SSL_SESSION* s) {
-  return (s->tlsext_ticklen > 0) ? 1 : 0;
-}
 
-unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s) {
-  return s->tlsext_tick_lifetime_hint;
-}
 
 /*
 // This is taken from OpenSSL 1.1.0
@@ -246,85 +223,6 @@ int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g) {
 }
 */
 
-void DH_get0_pqg(
-    const DH* dh, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g) {
-  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
-  if (p != nullptr) {
-    *p = dh->p;
-  }
-  if (q != nullptr) {
-    *q = dh->q;
-  }
-  if (g != nullptr) {
-    *g = dh->g;
-  }
-}
-
-void DH_get0_key(
-    const DH* dh, const BIGNUM** pub_key, const BIGNUM** priv_key) {
-  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
-  if (pub_key != nullptr) {
-    *pub_key = dh->pub_key;
-  }
-  if (priv_key != nullptr) {
-    *priv_key = dh->priv_key;
-  }
-}
-
-long DH_get_length(const DH* dh) {
-  return dh->length;
-}
-
-int DH_set_length(DH* dh, long length) {
-  if (dh != nullptr) {
-    dh->length = length;
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-void DSA_get0_pqg(
-    const DSA* dsa, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g) {
-  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
-  if (p != nullptr) {
-    *p = dsa->p;
-  }
-  if (q != nullptr) {
-    *q = dsa->q;
-  }
-  if (g != nullptr) {
-    *g = dsa->g;
-  }
-}
-
-void DSA_get0_key(
-    const DSA* dsa, const BIGNUM** pub_key, const BIGNUM** priv_key) {
-  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
-  if (pub_key != nullptr) {
-    *pub_key = dsa->pub_key;
-  }
-  if (priv_key != nullptr) {
-    *priv_key = dsa->priv_key;
-  }
-}
-
-STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store) {
-  return store->objs;
-}
-
-X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx) {
-  return ctx->cert;
-}
-
-STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx) {
-  return X509_STORE_CTX_get_chain(ctx);
-}
-
-STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx) {
-  return ctx->untrusted;
-}
-
 /* EVP_MD_CTX* EVP_MD_CTX_new() {
   EVP_MD_CTX* ctx = (EVP_MD_CTX*)OPENSSL_malloc(sizeof(EVP_MD_CTX));
   if (!ctx) {
@@ -357,58 +255,6 @@ void HMAC_CTX_free(HMAC_CTX* ctx) {
   }
 }
 */
-
-bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d) {
-  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
-  /**
-   * If the fields n and e in r are nullptr, the corresponding input parameters
-   * MUST be non-nullptr for n and e. d may be left NULL (in case only the
-   * public key is used).
-   */
-  if ((r->n == nullptr && n == nullptr) || (r->e == nullptr && e == nullptr)) {
-    return false;
-  }
-  if (n != nullptr) {
-    BN_free(r->n);
-    r->n = n;
-  }
-  if (e != nullptr) {
-    BN_free(r->e);
-    r->e = e;
-  }
-  if (d != nullptr) {
-    BN_free(r->d);
-    r->d = d;
-  }
-  return true;
-}
-
-void RSA_get0_factors(const RSA* r, const BIGNUM** p, const BIGNUM** q) {
-  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
-  if (p != nullptr) {
-    *p = r->p;
-  }
-  if (q != nullptr) {
-    *q = r->q;
-  }
-}
-
-void RSA_get0_crt_params(
-    const RSA* r,
-    const BIGNUM** dmp1,
-    const BIGNUM** dmq1,
-    const BIGNUM** iqmp) {
-  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
-  if (dmp1 != nullptr) {
-    *dmp1 = r->dmp1;
-  }
-  if (dmq1 != nullptr) {
-    *dmq1 = r->dmq1;
-  }
-  if (iqmp != nullptr) {
-    *iqmp = r->iqmp;
-  }
-}
 
 int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s) {
   // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
