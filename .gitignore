@@ -7,6 +7,8 @@ Makefile.in
 .libs
 .deps
 stamp-h1
+# This is bazel oriented so we are actually checking in an appropriate
+# folly-config file.
 # folly-config.h
 _configs.sed
 aclocal.m4

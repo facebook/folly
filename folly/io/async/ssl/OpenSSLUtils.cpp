@@ -27,8 +27,6 @@
 #include <folly/ssl/Init.h>
 #include <folly/ssl/detail/OpenSSLSession.h>
 
-#include <openssl/bio.h>
-
 namespace {
 #ifdef OPENSSL_IS_BORINGSSL
 // BoringSSL doesn't (as of May 2016) export the equivalent
@@ -277,6 +275,7 @@ int OpenSSLUtils::getBioShouldRetryWrite(int r) {
 }
 
 void OpenSSLUtils::setBioAppData(BIO* b, void* ptr) {
+  // Note(BRAISER) This method and the one below have been added to BORINGSSL very recently.
   BIO_set_app_data(b, ptr);
 }
 
