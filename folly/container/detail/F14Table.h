@@ -387,9 +387,10 @@ template <typename TKeyType, typename Hasher = f14::DefaultHasher<TKeyType>>
 class F14HashedKey final {
  public:
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-  explicit F14HashedKey(TKeyType key)
-      : hash_(f14::detail::splitHashImpl<Hasher, TKeyType>(Hasher{}(key))),
-        key_(std::move(key)) {}
+  template <typename... Args>
+  explicit F14HashedKey(Args&&... args)
+      : key_(std::forward<Args>(args)...),
+        hash_(f14::detail::splitHashImpl<Hasher, TKeyType>(Hasher{}(key_))) {}
 #else
   F14HashedKey() = delete;
 #endif
@@ -405,8 +406,8 @@ class F14HashedKey final {
   bool operator==(const TKeyType& other) const { return key_ == other; }
 
  private:
-  F14HashToken hash_;
   TKeyType key_;
+  F14HashToken hash_;
 };
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
