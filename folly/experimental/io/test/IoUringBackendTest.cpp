@@ -1543,7 +1543,11 @@ static constexpr size_t kCapacity = 32;
 static constexpr size_t kMaxSubmit = 4;
 static constexpr size_t kMaxGet = static_cast<size_t>(-1);
 
-struct IoUringBackendProvider {
+struct IoUringBackendProviderBase : BackendProviderBase {
+  static bool isIoUringBackend() { return true; }
+};
+
+struct IoUringBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;
@@ -1559,7 +1563,7 @@ struct IoUringBackendProvider {
   }
 };
 
-struct IoUringRegFdBackendProvider {
+struct IoUringRegFdBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;
@@ -1575,7 +1579,7 @@ struct IoUringRegFdBackendProvider {
 };
 
 // CQ polling
-struct IoUringPollCQBackendProvider {
+struct IoUringPollCQBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;
@@ -1592,7 +1596,7 @@ struct IoUringPollCQBackendProvider {
 };
 
 // SQ/CQ polling
-struct IoUringPollSQCQBackendProvider {
+struct IoUringPollSQCQBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;

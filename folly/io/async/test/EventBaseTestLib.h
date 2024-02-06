@@ -1028,6 +1028,99 @@ TYPED_TEST_P(EventBaseTest, DestroyingHandler) {
   ASSERT_GT(bytesRemaining, 0);
 }
 
+/**
+ * Handlers may delete other handlers that fire in the same loop iteration. The
+ * order in which callbacks are invoked is unspecified, so we use the first
+ * callback that runs to delete other handlers.
+ */
+TYPED_TEST_P(EventBaseTest, HandlerSideEffects) {
+  struct SharedState {
+    folly::EventBase* evb;
+    std::vector<std::unique_ptr<AsyncTimeout>> timeouts;
+    std::vector<std::unique_ptr<EventHandler>> io;
+    std::atomic<size_t> timeoutsFired{0};
+    std::atomic<size_t> ioFired{0};
+  };
+
+  struct Timeout : AsyncTimeout {
+    explicit Timeout(SharedState& s) : AsyncTimeout(s.evb), state(s) {}
+
+    void timeoutExpired() noexcept override {
+      ++state.timeoutsFired;
+      // First to fire kills the others.
+      for (auto& timeout : state.timeouts) {
+        if (timeout.get() != this) {
+          timeout.reset();
+        }
+      }
+      // Kill a couple of io events too.
+      state.io.front().reset();
+      state.io.back().reset();
+    }
+
+    SharedState& state;
+  };
+
+  struct ReadyIO : EventHandler {
+    explicit ReadyIO(SharedState& s) : state(s) {
+      initHandler(s.evb, folly::NetworkSocket::fromFd(sp[0]));
+      registerHandler(EventHandler::READ);
+      // Event is ready as soon as the loop starts.
+      writeUntilFull(sp[1]);
+    }
+
+    void handlerReady(uint16_t events) noexcept override {
+      EXPECT_EQ(events, READ);
+      ++state.ioFired;
+      // First to fire kills the others.
+      for (auto& io : state.io) {
+        if (io.get() != this) {
+          io.reset();
+        }
+      }
+
+      // Kill a couple of timeouts too.
+      state.timeouts.front().reset();
+      state.timeouts.back().reset();
+    }
+
+    SocketPair sp;
+    SharedState& state;
+  };
+
+  auto evbPtr = getEventBase<TypeParam>();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  SharedState state;
+  state.evb = evbPtr.get();
+
+  for (size_t i = 0; i < 10; ++i) {
+    auto& timeout =
+        state.timeouts.emplace_back(std::make_unique<Timeout>(state));
+    timeout->scheduleTimeout(0); // Fire as soon as the loop starts.
+    state.io.emplace_back(std::make_unique<ReadyIO>(state));
+  }
+
+  // Sleep a bit to side-step any rounding in the internal timer implementation.
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  // All events should fire in the same iteration.
+  EXPECT_EQ(state.timeoutsFired.load(), 0);
+  EXPECT_EQ(state.ioFired.load(), 0);
+  state.evb->loopOnce();
+  if (TypeParam::isIoUringBackend()) {
+    // IoUringBackend needs two iterations.
+    // TODO(dmm): Figure out why.
+    state.evb->loopOnce();
+  }
+  EXPECT_EQ(state.timeoutsFired.load(), 1);
+  EXPECT_EQ(state.ioFired.load(), 1);
+  state.evb->loop();
+  EXPECT_EQ(state.timeoutsFired.load(), 1);
+  EXPECT_EQ(state.ioFired.load(), 1);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Tests for timeout events
 ///////////////////////////////////////////////////////////////////////////
@@ -2736,6 +2829,10 @@ TYPED_TEST_P(EventBaseTest, Suspension) {
   EXPECT_FALSE(evbPtr->inRunningEventBaseThread());
 }
 
+struct BackendProviderBase {
+  static bool isIoUringBackend() { return false; }
+};
+
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest,
     EventBaseThread,
@@ -2752,6 +2849,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     ReadPartial,
     WritePartial,
     DestroyingHandler,
+    HandlerSideEffects,
     RunAfterDelay,
     RunAfterDelayDestruction,
     BasicTimeouts,

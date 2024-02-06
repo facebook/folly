@@ -513,8 +513,7 @@ void EventBase::loopMainSetup() {
 
   auto tid = getOSThreadID();
   // Lock the loop.
-  auto const prevLoopTid =
-      loopTid_.exchange(getOSThreadID(), std::memory_order_release);
+  auto const prevLoopTid = loopTid_.exchange(tid, std::memory_order_release);
   loopThread_.store(std::this_thread::get_id(), std::memory_order_release);
 
   // NOTE: This also fatals on reentrancy, which is not supported by old

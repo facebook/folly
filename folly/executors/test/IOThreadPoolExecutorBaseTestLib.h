@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <atomic>
 #include <memory>
 #include <optional>
 #include <random>
 
+#include <fmt/format.h>
+#include <glog/logging.h>
+#include <folly/Random.h>
 #include <folly/container/F14Set.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
+#include <folly/io/async/AsyncTimeout.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 namespace test {
@@ -87,8 +93,97 @@ TYPED_TEST_P(IOThreadPoolExecutorBaseTest, GetEventBaseFromEvb) {
   }
 }
 
+TYPED_TEST_P(IOThreadPoolExecutorBaseTest, StressTimeouts) {
+  // Exercise multiplexed executors.
+  static constexpr size_t kNumExecutors = 2;
+  static constexpr size_t kNumThreads = 16;
+  static constexpr size_t kNumTimersPerEvb = 100;
+  static constexpr size_t kNumItersPerTimer = 16;
+  static constexpr uint32_t kMaxTimeoutMs = 100;
+
+  struct Timer : AsyncTimeout {
+    using AsyncTimeout::AsyncTimeout;
+    using Clock = std::chrono::steady_clock;
+
+    void schedule() {
+      timeout =
+          std::chrono::milliseconds(folly::Random::rand32(1, kMaxTimeoutMs));
+      start = Clock::now();
+      scheduleTimeout(timeout);
+    }
+
+    void timeoutExpired() noexcept override {
+      auto delay = std::chrono::duration_cast<std::chrono::milliseconds>(
+          Clock::now() - (start + timeout));
+      EXPECT_GE(delay.count(), 0);
+      sumDelay += delay;
+      maxDelay = std::max(maxDelay, delay);
+
+      if (++count < kNumItersPerTimer) {
+        schedule();
+      } else {
+        done.post();
+      }
+    }
+
+    std::chrono::milliseconds timeout;
+    Clock::time_point start;
+
+    size_t count = 0;
+    std::chrono::milliseconds sumDelay{0};
+    std::chrono::milliseconds maxDelay{0};
+    Baton<> done;
+  };
+
+  std::vector<std::unique_ptr<TypeParam>> executors;
+  std::vector<folly::Executor::KeepAlive<folly::EventBase>> evbs;
+  for (size_t i = 0; i < kNumExecutors; ++i) {
+    auto& ex = executors.emplace_back(std::make_unique<TypeParam>(kNumThreads));
+    auto exEvbs = ex->getAllEventBases();
+    evbs.insert(evbs.end(), exEvbs.begin(), exEvbs.end());
+  }
+
+  using TimerList = std::array<Timer, kNumTimersPerEvb>;
+  std::vector<std::unique_ptr<TimerList>> timerLists;
+  timerLists.reserve(evbs.size());
+  for (const auto& evb : evbs) {
+    auto& timerList = timerLists.emplace_back();
+    timerList = std::make_unique<TimerList>();
+
+    evb->runInEventBaseThread([&timerList, &evb] {
+      for (auto& timer : *timerList) {
+        timer.attachEventBase(evb.get());
+        timer.schedule();
+      }
+    });
+  }
+
+  size_t count = 0;
+  std::chrono::milliseconds sumDelay{0};
+  std::chrono::milliseconds maxDelay{0};
+  for (auto& timerList : timerLists) {
+    for (auto& timer : *timerList) {
+      timer.done.wait();
+      count += timer.count;
+      sumDelay += timer.sumDelay;
+      maxDelay = std::max(maxDelay, timer.maxDelay);
+    }
+  }
+
+  EXPECT_EQ(
+      count,
+      kNumExecutors * kNumThreads * kNumTimersPerEvb * kNumItersPerTimer);
+  LOG(INFO) << fmt::format(
+      "Avg delay: {:.3f}ms, max delay: {}ms",
+      static_cast<double>(sumDelay.count()) / count,
+      maxDelay.count());
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
-    IOThreadPoolExecutorBaseTest, IOObserver, GetEventBaseFromEvb);
+    IOThreadPoolExecutorBaseTest,
+    IOObserver,
+    GetEventBaseFromEvb,
+    StressTimeouts);
 
 } // namespace test
 } // namespace folly

@@ -21,7 +21,7 @@
 namespace folly {
 namespace test {
 
-struct DefaultBackendProvider {
+struct DefaultBackendProvider : BackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     return folly::EventBase::getDefaultBackend();
   }

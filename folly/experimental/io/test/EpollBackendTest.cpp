@@ -22,7 +22,7 @@
 namespace folly {
 namespace test {
 
-struct EpollBackendProvider {
+struct EpollBackendProvider : BackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     folly::EpollBackend::Options options;
     return std::make_unique<folly::EpollBackend>(options);
