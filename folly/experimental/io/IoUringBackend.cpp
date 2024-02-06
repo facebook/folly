@@ -1411,18 +1411,18 @@ void IoUringBackend::delayedInit() {
 int IoUringBackend::eb_event_base_loop(int flags) {
   delayedInit();
 
-  bool done = false;
-  auto waitForEvents = (flags & EVLOOP_NONBLOCK) ? WaitForEventsMode::DONT_WAIT
-                                                 : WaitForEventsMode::WAIT;
-  bool hadEvents;
+  const auto waitForEvents = (flags & EVLOOP_NONBLOCK)
+      ? WaitForEventsMode::DONT_WAIT
+      : WaitForEventsMode::WAIT;
 
-  while (!done) {
+  bool hadEvents = true;
+  for (bool done = false; !done;) {
     scheduleTimeout();
 
     // check if we need to break here
     if (loopBreak_) {
       loopBreak_ = false;
-      break;
+      return 0;
     }
 
     prepList(submitList_);
