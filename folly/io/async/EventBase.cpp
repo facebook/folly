@@ -246,7 +246,6 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
 EventBase::EventBase(Options options)
     : intervalDuration_(options.timerTickInterval),
       enableTimeMeasurement_(!options.skipTimeMeasurement),
-      strictLoopThread_(options.strictLoopThread),
       runOnceCallbacks_(nullptr),
       stop_(false),
       queue_(nullptr),
@@ -347,6 +346,11 @@ EventBase::~EventBase() {
   evb_.reset();
 
   VLOG(5) << "EventBase(): Destroyed.";
+}
+
+void EventBase::setStrictLoopThread() {
+  CHECK(!isRunning());
+  strictLoopThread_ = true;
 }
 
 bool EventBase::tryDeregister(detail::EventBaseLocalBase& evbl) {
@@ -744,6 +748,9 @@ void EventBase::bumpHandlingTime() {
 }
 
 void EventBase::terminateLoopSoon() {
+  CHECK(!strictLoopThread_)
+      << "terminateLoopSoon() not allowed in strict loop thread mode";
+
   VLOG(5) << "EventBase(): Received terminateLoopSoon() command.";
 
   auto keepAlive = getKeepAliveToken(this);

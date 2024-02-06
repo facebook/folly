@@ -304,13 +304,17 @@ TYPED_TEST_P(EventBaseTest, EventBaseThread) {
   }
 
   {
-    auto evbPtr =
-        getEventBase<TypeParam>(EventBase::Options().setStrictLoopThread(true));
+    auto evbPtr = getEventBase<TypeParam>();
+    EXPECT_TRUE(evbPtr->isInEventBaseThread());
+    evbPtr->setStrictLoopThread();
     EXPECT_FALSE(evbPtr->isInEventBaseThread());
     testInLoop(*evbPtr, false);
     EXPECT_DEATH(
         evbPtr->checkIsInEventBaseThread(),
         ".*This logic must be executed in the event base thread.*");
+    EXPECT_DEATH(
+        evbPtr->terminateLoopSoon(),
+        ".*terminateLoopSoon\\(\\) not allowed in strict loop thread mode.*");
   }
 }
 

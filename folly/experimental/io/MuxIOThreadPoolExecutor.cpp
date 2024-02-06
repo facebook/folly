@@ -32,12 +32,8 @@ struct MuxIOThreadPoolExecutor::EvbState {
  private:
   static const EventBase::Options& evbOptions() {
 #if FOLLY_HAS_EPOLL
-    static const auto options =
-        EventBase::Options{}
-            .setBackendFactory([] {
-              return std::make_unique<EpollBackend>(EpollBackend::Options{});
-            })
-            .setStrictLoopThread(true);
+    static const auto options = EventBase::Options{}.setBackendFactory(
+        [] { return std::make_unique<EpollBackend>(EpollBackend::Options{}); });
     return options;
 #else
     throw std::invalid_argument("EpollBackend not supported");
@@ -72,6 +68,7 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
   evbStates_.reserve(numEventBases);
   for (size_t i = 0; i < numEventBases; ++i) {
     auto& evbState = evbStates_.emplace_back(std::make_unique<EvbState>());
+    evbState->evb.setStrictLoopThread();
     // To simulate EventBase::loopForever(), acquire a keepalive for the whole
     // lifetime of the executor. This will make The EventBase's notification
     // queue a non-internal event, so we can poll it even when there are no

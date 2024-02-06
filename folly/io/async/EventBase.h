@@ -311,17 +311,6 @@ class EventBase : public TimeoutManager,
       timerTickInterval = interval;
       return *this;
     }
-
-    /**
-     * Controls the behavior of isInEventBaseThread(). See the method
-     * documentation for the semantics of this option.
-     */
-    bool strictLoopThread{false};
-
-    Options& setStrictLoopThread(bool b) {
-      strictLoopThread = b;
-      return *this;
-    }
   };
 
   /**
@@ -474,6 +463,20 @@ class EventBase : public TimeoutManager,
    * Throws a std::system_error if an error occurs.
    */
   void loopForever();
+
+  /**
+   * Enable strict loop thread mode. This is intended for executors that take
+   * ownership of the EventBase and run it continuously until joined. Once set,
+   * it is not possible to unset it.
+   *
+   * In this mode:
+   *
+   * - isInEventBaseThread() returns false if the loop is not running.
+   *
+   * - Calling terminateLoopSoon() is not allowed, as the executor is in control
+   *   of the loop lifetime.
+   */
+  void setStrictLoopThread();
 
   /**
    * Causes the event loop to exit soon.
@@ -1035,7 +1038,7 @@ class EventBase : public TimeoutManager,
   const std::chrono::milliseconds intervalDuration_{
       HHWheelTimer::DEFAULT_TICK_INTERVAL};
   const bool enableTimeMeasurement_;
-  bool strictLoopThread_;
+  bool strictLoopThread_ = false;
 
   // Loop state that needs to survive suspension.
   struct LoopState {
