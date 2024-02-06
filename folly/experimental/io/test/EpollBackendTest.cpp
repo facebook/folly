@@ -18,7 +18,9 @@
 
 #if FOLLY_HAS_EPOLL
 
+#include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 #include <folly/io/async/test/EventBaseTestLib.h>
+
 namespace folly {
 namespace test {
 
@@ -32,6 +34,9 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
     EventBaseTest, EventBaseTest, EpollBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
     EventBaseTest1, EventBaseTest1, EpollBackendProvider);
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    AsyncSignalHandlerTest, AsyncSignalHandlerTest, EpollBackendProvider);
+
 } // namespace test
 } // namespace folly
 

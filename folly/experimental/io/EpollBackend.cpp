@@ -23,6 +23,7 @@
 #include <sys/timerfd.h>
 
 #include <folly/IntrusiveList.h>
+#include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/experimental/io/EpollBackend.h>
 
@@ -195,6 +196,14 @@ EpollBackend::EpollBackend(Options options) : options_(options) {
     PCHECK(::epoll_ctl(epollFd_, EPOLL_CTL_ADD, timerFd_, &epev) == 0);
   }
 
+  {
+    struct epoll_event epev = {};
+    epev.events = EPOLLIN;
+    epev.data.ptr = &signalFds_;
+    PCHECK(
+        ::epoll_ctl(epollFd_, EPOLL_CTL_ADD, signalFds_.readFd(), &epev) == 0);
+  }
+
   events_.resize(options_.numLoopEvents);
 }
 
@@ -239,12 +248,16 @@ int EpollBackend::eb_event_base_loop(int flags) {
     }
 
     bool shouldProcessTimers = false;
+    bool shouldProcessSignals = false;
     // Callbacks may delete other active events, so we accumulate active events
     // first into an intrusive list that is updated if events in it are deleted.
     EventInfoList infoList;
     for (int i = 0; i < numEvents; ++i) {
       if (events_[i].data.ptr == &timerFd_) {
         shouldProcessTimers = true;
+        continue;
+      } else if (events_[i].data.ptr == &signalFds_) {
+        shouldProcessSignals = true;
         continue;
       }
 
@@ -273,9 +286,12 @@ int EpollBackend::eb_event_base_loop(int flags) {
       infoList.push_back(*info);
     }
 
-    // process timers first
+    // Process timers and signals first.
     if (shouldProcessTimers) {
       processTimers();
+    }
+    if (shouldProcessSignals) {
+      processSignals();
     }
 
     while (!infoList.empty()) {
@@ -389,8 +405,7 @@ int EpollBackend::eb_event_del(Event& event) {
 
   if (ev->ev_events & EV_SIGNAL) {
     event_ref_flags(ev) &= ~(EVLIST_INSERTED | EVLIST_ACTIVE);
-    removeSignalEvent(event);
-    return 0;
+    return removeSignalEvent(event);
   }
 
   auto* info = static_cast<EventInfo*>(event.getUserData());
@@ -523,25 +538,26 @@ void EpollBackend::processTimers() {
   updateTimerFd();
 }
 
-// signal related
 void EpollBackend::addSignalEvent(Event& event) {
   auto* ev = event.getEvent();
-  signals_[ev->ev_fd].insert(&event);
+  signals_[ev->ev_fd].insert(event.getEvent());
 
   // we pass the write fd for notifications
   getSignalRegistry().setNotifyFd(ev->ev_fd, signalFds_.writeFd());
 }
 
-void EpollBackend::removeSignalEvent(Event& event) {
+int EpollBackend::removeSignalEvent(Event& event) {
   auto* ev = event.getEvent();
-  auto iter = signals_.find(ev->ev_fd);
-  if (iter != signals_.end()) {
-    getSignalRegistry().setNotifyFd(ev->ev_fd, -1);
+  auto* set = get_ptr(signals_, ev->ev_fd);
+  if (set == nullptr || set->erase(ev) == 0) {
+    errno = EINVAL;
+    return -1;
   }
+  getSignalRegistry().setNotifyFd(ev->ev_fd, -1);
+  return 0;
 }
 
-size_t EpollBackend::processSignals() {
-  size_t ret = 0;
+void EpollBackend::processSignals() {
   static constexpr auto kNumEntries = NSIG * 2;
   static_assert(
       NSIG < std::numeric_limits<uint8_t>::max(),
@@ -553,24 +569,21 @@ size_t EpollBackend::processSignals() {
       folly::readNoInt(signalFds_.readFd(), signals.data(), signals.size());
   for (ssize_t i = 0; i < num; i++) {
     int signum = static_cast<int>(signals[i]);
-    if ((signum >= 0) && (signum < static_cast<int>(processed.size())) &&
-        !processed[signum]) {
-      processed[signum] = true;
-      auto iter = signals_.find(signum);
-      if (iter != signals_.end()) {
-        auto& set = iter->second;
-        for (auto& event : set) {
-          auto* ev = event->getEvent();
-          ev->ev_res = 0;
-          event_ref_flags(ev) |= EVLIST_ACTIVE;
-          (*event_ref_callback(ev))(
-              (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
-          event_ref_flags(ev) &= ~EVLIST_ACTIVE;
-        }
-      }
+    if (signum < 0 || signum >= NSIG || processed[signum]) {
+      continue;
+    }
+    processed[signum] = true;
+    auto* events = get_ptr(signals_, signum);
+    if (events == nullptr) {
+      continue;
+    }
+    for (auto* ev : *events) {
+      ev->ev_res = 0;
+      event_ref_flags(ev) |= EVLIST_ACTIVE;
+      (*event_ref_callback(ev))((int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+      event_ref_flags(ev) &= ~EVLIST_ACTIVE;
     }
   }
-  return ret;
 }
 
 } // namespace folly

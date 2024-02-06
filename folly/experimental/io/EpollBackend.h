@@ -90,9 +90,8 @@ class EpollBackend : public EventBaseBackendBase {
   void setProcessTimers();
 
   void addSignalEvent(Event& event);
-  void removeSignalEvent(Event& event);
-  bool addSignalFds();
-  size_t processSignals();
+  int removeSignalEvent(Event& event);
+  void processSignals();
 
   const Options options_;
 
@@ -109,7 +108,7 @@ class EpollBackend : public EventBaseBackendBase {
   IntrusiveHeap<TimerInfo> timers_;
 
   SocketPair signalFds_;
-  std::map<int, std::set<Event*>> signals_;
+  std::map<int, std::set<struct event*>> signals_;
 };
 } // namespace folly
 #endif

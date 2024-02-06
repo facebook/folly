@@ -34,29 +34,6 @@
 #include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
 
-#define FOLLY_SKIP_IF_NULLPTR_BACKEND_WITH_OPTS(evb, opts)  \
-  std::unique_ptr<EventBase> evb##Ptr;                      \
-  try {                                                     \
-    auto factory = [] {                                     \
-      auto backend = TypeParam::getBackend();               \
-      if (!backend) {                                       \
-        throw std::runtime_error("backend not available");  \
-      }                                                     \
-      return backend;                                       \
-    };                                                      \
-    auto evbOpts = opts;                                    \
-    evb##Ptr = std::make_unique<EventBase>(                 \
-        opts.setBackendFactory(std::move(factory)));        \
-  } catch (const std::runtime_error& e) {                   \
-    if (std::string("backend not available") == e.what()) { \
-      SKIP() << "Backend not available";                    \
-    }                                                       \
-  }                                                         \
-  EventBase& evb = *evb##Ptr.get()
-
-#define FOLLY_SKIP_IF_NULLPTR_BACKEND(evb) \
-  FOLLY_SKIP_IF_NULLPTR_BACKEND_WITH_OPTS(evb, EventBase::Options())
-
 ///////////////////////////////////////////////////////////////////////////
 // Tests for read and write events
 ///////////////////////////////////////////////////////////////////////////
