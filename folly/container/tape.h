@@ -64,7 +64,8 @@ namespace folly {
  * `record_builder` interface.
  *
  * Existing `records` can be accessed by index.
- * Existing `records` cannot be mutated.
+ * Existing `records` cannot be mutated, except for the last record (see record
+ * builder).
  *
  * ## tape<tape>
  *
@@ -276,8 +277,13 @@ class tape {
 
   // record builder (constructing last record) -------
 
-  class scoped_record_builder;
-  [[nodiscard]] scoped_record_builder record_builder();
+  class record_builder;
+
+  // get a record builder.
+  // new_record_builder starts a builder for a new record.
+  // last_record_builder allows you to append/mutate the last record.
+  [[nodiscard]] record_builder new_record_builder();
+  [[nodiscard]] record_builder last_record_builder();
 
   // insert one record ----------
 
@@ -328,6 +334,7 @@ class tape {
   // erase -------
 
   void pop_back() noexcept {
+    assert(!empty());
     data_.resize(data_.size() - back().size());
     markers_.pop_back();
   }
@@ -369,13 +376,15 @@ class tape {
 
 // Provides a way to construct a last record similar
 // to how you would `std::vector`.
+// Typical workflow is you `push_back` a bunch of individual elements and then
+// `commit()`.
 template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
-class tape<Container>::scoped_record_builder {
+class tape<Container>::record_builder {
  public:
-  scoped_record_builder(const scoped_record_builder&) = delete;
-  scoped_record_builder(scoped_record_builder&&) = delete;
-  scoped_record_builder& operator=(const scoped_record_builder&) = delete;
-  scoped_record_builder& operator=(scoped_record_builder&&) = delete;
+  record_builder(const record_builder&) = delete;
+  record_builder(record_builder&&) = delete;
+  record_builder& operator=(const record_builder&) = delete;
+  record_builder& operator=(record_builder&&) = delete;
 
   using iterator = typename container_type::iterator;
   using const_iterator = typename container_type::const_iterator;
@@ -385,6 +394,23 @@ class tape<Container>::scoped_record_builder {
   using size_type = typename container_type::size_type;
   using difference_type =
       typename std::iterator_traits<iterator>::difference_type;
+
+  // mutators ---
+
+  void push_back(scalar_value_type x) { self_->data_.push_back(std::move(x)); }
+
+  template <typename... Args>
+  reference emplace_back(Args&&... args) {
+    self_->data_.emplace_back(std::forward<Args>(args)...);
+    // cannot rely on the container doing the right thing here.
+    return self_->data_.back();
+  }
+
+  // constructed record is added to the tape.
+  void commit() { self_->markers_.push_back(self_->data_.size()); }
+
+  // discards elements of the constructed record. (automatic on destruction)
+  void abort() { self_->data_.resize(self_->markers_.back()); }
 
   // iterators -----
 
@@ -443,33 +469,26 @@ class tape<Container>::scoped_record_builder {
   [[nodiscard]] reference back() { return self_->data_.back(); }
   [[nodiscard]] const_reference back() const { return self_->data_.back(); }
 
-  // mutators ---
-
-  void push_back(scalar_value_type x) { self_->data_.push_back(std::move(x)); }
-
-  template <typename... Args>
-  reference emplace_back(Args&&... args) {
-    self_->data_.emplace_back(std::forward<Args>(args)...);
-    // cannot rely on the container doing the right thing here.
-    return self_->data_.back();
-  }
-
-  ~scoped_record_builder() noexcept {
-    // we assume that allocations never fail
-    self_->markers_.push_back(self_->data_.size());
-  }
+  ~record_builder() noexcept { abort(); }
 
  private:
   friend class tape;
 
-  explicit scoped_record_builder(tape& self) : self_(&self) {}
+  explicit record_builder(tape& self) : self_(&self) {}
 
   tape* self_;
 };
 
 template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
-auto tape<Container>::record_builder() -> scoped_record_builder {
-  return scoped_record_builder{*this};
+auto tape<Container>::new_record_builder() -> record_builder {
+  return record_builder{*this};
+}
+
+template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+auto tape<Container>::last_record_builder() -> record_builder {
+  assert(!empty());
+  markers_.pop_back();
+  return new_record_builder();
 }
 
 // tape methods -----

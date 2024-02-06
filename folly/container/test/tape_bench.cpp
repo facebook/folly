@@ -109,11 +109,12 @@ void pushBackByOne(
 template <typename T>
 void pushBackByOne(
     folly::tape<std::vector<T>>& cont, const std::vector<std::vector<T>>& in) {
+  auto builder = cont.new_record_builder();
   for (const auto& v : in) {
-    auto builder = cont.record_builder();
     for (const auto& x : v) {
       builder.push_back(x);
     }
+    builder.commit();
   }
 }
 
