@@ -208,8 +208,6 @@ void BIO_set_shutdown(BIO* bio, int shutdown);
 
 const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
 
-STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store);
-
 using OPENSSL_INIT_SETTINGS = void;
 
 #endif
