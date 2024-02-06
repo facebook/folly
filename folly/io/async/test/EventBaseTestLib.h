@@ -2671,6 +2671,57 @@ TYPED_TEST_P(EventBaseTest, GetThreadIdCollector) {
   EXPECT_THAT(collector->collectThreadIds().threadIds, testing::IsEmpty());
 }
 
+TYPED_TEST_P(EventBaseTest, Suspension) {
+  using LoopStatus = EventBase::LoopStatus;
+
+  auto evbPtr = getEventBase<TypeParam>();
+  SKIP_IF(evbPtr->getBackend()->getPollableFd() == -1);
+
+  struct RepeatingBeforeLoopCallback : public EventBase::LoopCallback {
+    explicit RepeatingBeforeLoopCallback(EventBase& e) : evb(e) {}
+
+    void runLoopCallback() noexcept override {
+      ++count;
+      evb.runBeforeLoop(this);
+    }
+
+    EventBase& evb;
+    size_t count = 0;
+  };
+
+  RepeatingBeforeLoopCallback cb(*evbPtr);
+  evbPtr->runBeforeLoop(&cb);
+
+  auto loopAndExpectStatus = [&](LoopStatus expected) {
+    auto status = evbPtr->loopWithSuspension();
+    EXPECT_TRUE(status == expected)
+        << static_cast<int>(status) << " != " << static_cast<int>(expected);
+  };
+
+  folly::Executor::KeepAlive<> ka{evbPtr.get()};
+  // KeepAlive prevents loop to complete.
+  loopAndExpectStatus(LoopStatus::kSuspended);
+  // Fine to call again, run-before callbacks not invoked.
+  auto loops = cb.count;
+  loopAndExpectStatus(LoopStatus::kSuspended);
+  EXPECT_EQ(cb.count, loops);
+
+  bool called = false;
+  evbPtr->runInEventBaseThread([&] { called = true; });
+  loopAndExpectStatus(LoopStatus::kSuspended);
+  EXPECT_TRUE(called);
+
+  // We can make the loop complete (once) with terminateLoopSoon().
+  evbPtr->terminateLoopSoon();
+  loopAndExpectStatus(LoopStatus::kDone);
+  loopAndExpectStatus(LoopStatus::kSuspended);
+
+  // Once the keepalive is released the loop can complete every time.
+  ka.reset();
+  loopAndExpectStatus(LoopStatus::kDone);
+  loopAndExpectStatus(LoopStatus::kDone);
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest,
     EventBaseThread,
@@ -2732,7 +2783,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     LoopKeepAliveCast,
     EventBaseObserver,
     LoopRearmsNotificationQueue,
-    GetThreadIdCollector);
+    GetThreadIdCollector,
+    Suspension);
 
 REGISTER_TYPED_TEST_SUITE_P(
     EventBaseTest1,

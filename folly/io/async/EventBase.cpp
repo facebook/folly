@@ -432,7 +432,7 @@ void EventBase::waitUntilRunning() {
 bool EventBase::loop() {
   // Enforce blocking tracking and if we have a name override any previous one
   ExecutorBlockingGuard guard{ExecutorBlockingGuard::TrackTag{}, this, name_};
-  return loopBody();
+  return loopBody(0, {});
 }
 
 bool EventBase::loopIgnoreKeepAlive() {
@@ -443,17 +443,34 @@ bool EventBase::loopIgnoreKeepAlive() {
     queue_->startConsumingInternal(this);
     loopKeepAliveActive_ = false;
   }
-  return loopBody(0, true);
+  LoopOptions options;
+  options.ignoreKeepAlive = true;
+  return loopBody(0, options);
 }
 
 bool EventBase::loopOnce(int flags) {
-  return loopBody(flags | EVLOOP_ONCE);
+  return loopBody(flags | EVLOOP_ONCE, {});
 }
 
-bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
+bool EventBase::isSuccess(LoopStatus status) {
+  switch (status) {
+    case LoopStatus::kDone:
+      return true;
+    case LoopStatus::kError:
+      return false;
+    case LoopStatus::kSuspended:
+      DCHECK(false) << "Reached suspension when not allowed";
+      return false;
+  }
+}
+
+bool EventBase::loopBody(int flags, LoopOptions options) {
   loopMainSetup();
-  SCOPE_EXIT { loopMainCleanup(); };
-  return loopMain(flags, ignoreKeepAlive);
+  SCOPE_EXIT {
+    DCHECK(!loopState_); // Cannot be suspended.
+    loopMainCleanup();
+  };
+  return isSuccess(loopMain(flags, options));
 }
 
 void EventBase::loopPollSetup() {
@@ -461,11 +478,21 @@ void EventBase::loopPollSetup() {
 }
 
 bool EventBase::loopPoll() {
-  return loopMain(EVLOOP_ONCE | EVLOOP_NONBLOCK, false);
+  return isSuccess(loopMain(EVLOOP_NONBLOCK | EVLOOP_ONCE, {}));
 }
 
 void EventBase::loopPollCleanup() {
   loopMainCleanup();
+}
+
+EventBase::LoopStatus EventBase::loopWithSuspension() {
+  DCHECK_NE(evb_->getPollableFd(), -1)
+      << "loopWithSuspension() is only supported for backends with pollable fd";
+  loopMainSetup();
+  SCOPE_EXIT { loopMainCleanup(); };
+  LoopOptions options;
+  options.allowSuspension = true;
+  return loopMain(EVLOOP_NONBLOCK, options);
 }
 
 void EventBase::loopMainSetup() {
@@ -487,21 +514,20 @@ void EventBase::loopMainSetup() {
   threadIdCollector_->setTid();
 }
 
-bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
+EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
   int res = 0;
-  bool ranLoopCallbacks;
   bool blocking = !(flags & EVLOOP_NONBLOCK);
   bool once = (flags & EVLOOP_ONCE);
 
-  // time-measurement variables.
-  std::chrono::steady_clock::time_point prev;
-  std::chrono::steady_clock::time_point idleStart = {};
-  std::chrono::microseconds busy;
-  std::chrono::microseconds idle;
-
-  if (enableTimeMeasurement_) {
-    prev = std::chrono::steady_clock::now();
-    idleStart = prev;
+  bool resumed = false;
+  if (!loopState_) {
+    loopState_.emplace(LoopState{});
+    if (enableTimeMeasurement_) {
+      loopState_->prev = std::chrono::steady_clock::now();
+      loopState_->idleStart = loopState_->prev;
+    }
+  } else {
+    resumed = true;
   }
 
   SCOPE_EXIT {
@@ -510,16 +536,17 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
   };
 
   while (!stop_.load(std::memory_order_relaxed)) {
-    if (!ignoreKeepAlive) {
-      applyLoopKeepAlive();
+    // Skip the setup if we're resuming.
+    if (!std::exchange(resumed, false)) {
+      if (!options.ignoreKeepAlive) {
+        applyLoopKeepAlive();
+      }
+      ++nextLoopCnt_;
+      // Run the before loop callbacks
+      LoopCallbackList callbacks;
+      callbacks.swap(runBeforeLoopCallbacks_);
+      runLoopCallbacks(callbacks);
     }
-    ++nextLoopCnt_;
-
-    // Run the before loop callbacks
-    LoopCallbackList callbacks;
-    callbacks.swap(runBeforeLoopCallbacks_);
-
-    runLoopCallbacks(callbacks);
 
     // nobody can add loop callbacks from within this thread if
     // we don't have to handle anything to start with...
@@ -527,6 +554,15 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       res = evb_->eb_event_base_loop(EVLOOP_ONCE);
     } else {
       res = evb_->eb_event_base_loop(EVLOOP_ONCE | EVLOOP_NONBLOCK);
+    }
+    if (res == 2) {
+      // Only backends with pollable fd support return value 2.
+      DCHECK_NE(evb_->getPollableFd(), -1);
+      if (options.allowSuspension && loopCallbacks_.empty()) {
+        return LoopStatus::kSuspended;
+      } else {
+        res = 0; // Return value 2 implies success.
+      }
     }
 
     // libevent may return 1 early if there are no registered non-internal
@@ -541,14 +577,14 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       queue_->execute();
     }
 
-    ranLoopCallbacks = runLoopCallbacks();
+    bool ranLoopCallbacks = runLoopCallbacks();
 
     if (enableTimeMeasurement_) {
       auto now = std::chrono::steady_clock::now();
-      busy = std::chrono::duration_cast<std::chrono::microseconds>(
+      auto busy = std::chrono::duration_cast<std::chrono::microseconds>(
           now - startWork_);
-      idle = std::chrono::duration_cast<std::chrono::microseconds>(
-          startWork_ - idleStart);
+      auto idle = std::chrono::duration_cast<std::chrono::microseconds>(
+          startWork_ - loopState_->idleStart);
       auto loop_time = busy + idle;
 
       avgLoopTime_.addSample(loop_time, busy);
@@ -586,14 +622,14 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
       }
 
       // Our loop run did real work; reset the idle timer
-      idleStart = now;
+      loopState_->idleStart = now;
     } else {
       VLOG(11) << "EventBase " << this << " did not timeout";
     }
 
     if (enableTimeMeasurement_) {
       VLOG(11) << "EventBase " << this
-               << " loop time: " << getTimeDelta(&prev).count();
+               << " loop time: " << getTimeDelta(&loopState_->prev).count();
     }
 
     if (once ||
@@ -605,17 +641,18 @@ bool EventBase::loopMain(int flags, bool ignoreKeepAlive) {
     }
   }
 
+  loopState_.reset();
   if (res < 0) {
     LOG(ERROR) << "EventBase: -- error in event loop, res = " << res;
-    return false;
+    return LoopStatus::kError;
   } else if (res == 1) {
     VLOG(5) << "EventBase: ran out of events (exiting loop)!";
   } else if (res > 1) {
     LOG(ERROR) << "EventBase: unknown event loop result = " << res;
-    return false;
+    return LoopStatus::kError;
   }
   VLOG(5) << "EventBase(): Done with loop.";
-  return true;
+  return LoopStatus::kDone;
 }
 
 void EventBase::loopMainCleanup() {

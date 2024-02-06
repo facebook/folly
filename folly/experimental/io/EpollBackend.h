@@ -49,6 +49,8 @@ class EpollBackend : public EventBaseBackendBase {
 
   event_base* getEventBase() override { return nullptr; }
 
+  // Returns a non-standard value 2 when called with EVLOOP_NONBLOCK and the
+  // loop would block if called in a blocking fashion.
   int eb_event_base_loop(int flags) override;
   int eb_event_base_loopbreak() override;
 

@@ -212,12 +212,11 @@ EpollBackend::~EpollBackend() {
 }
 
 int EpollBackend::eb_event_base_loop(int flags) {
-  bool done = false;
-  bool waitForEvents = ((flags & EVLOOP_NONBLOCK) == 0);
-  while (!done) {
+  const bool waitForEvents = (flags & EVLOOP_NONBLOCK) == 0;
+  while (true) {
     if (loopBreak_) {
       loopBreak_ = false;
-      break;
+      return 0;
     }
 
     if (numInternalEvents_ == numInsertedEvents_ && timers_.empty() &&
@@ -230,12 +229,21 @@ int EpollBackend::eb_event_base_loop(int flags) {
       eb_poll_loop_pre_hook(&call_time);
     }
 
-    // do not wait for events if EVLOOP_NONBLOCK is set
-    int numEvents = ::epoll_wait(
-        epollFd_, events_.data(), events_.size(), waitForEvents ? -1 : 0);
+    int numEvents;
+    do {
+      numEvents = ::epoll_wait(
+          epollFd_, events_.data(), events_.size(), waitForEvents ? -1 : 0);
+    } while (numEvents == -1 && errno == EINTR);
 
     if (eb_poll_loop_post_hook) {
       eb_poll_loop_post_hook(call_time, numEvents);
+    }
+
+    if (numEvents < 0) {
+      return -1;
+    } else if (numEvents == 0) {
+      CHECK(!waitForEvents);
+      return 2;
     }
 
     bool shouldProcessTimers = false;
@@ -261,7 +269,6 @@ int EpollBackend::eb_event_base_loop(int flags) {
           }
 
           int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, event->ev_fd, nullptr);
-
           CHECK_EQ(ret, 0);
         }
       }
@@ -322,25 +329,14 @@ int EpollBackend::eb_event_base_loop(int flags) {
       }
     }
 
-    if (numEvents > 0 && !loopBreak_) {
-      if (flags & EVLOOP_ONCE) {
-        done = true;
-      }
-    } else if (flags & EVLOOP_NONBLOCK) {
-      done = true;
-    }
-
-    if (!done && (numEvents > 0) && (flags & EVLOOP_ONCE)) {
-      done = true;
+    if (flags & EVLOOP_ONCE) {
+      return 0;
     }
   }
-
-  return 0;
 }
 
 int EpollBackend::eb_event_base_loopbreak() {
   loopBreak_ = true;
-
   return 0;
 }
 

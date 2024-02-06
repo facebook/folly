@@ -1414,6 +1414,8 @@ int IoUringBackend::eb_event_base_loop(int flags) {
   bool done = false;
   auto waitForEvents = (flags & EVLOOP_NONBLOCK) ? WaitForEventsMode::DONT_WAIT
                                                  : WaitForEventsMode::WAIT;
+  bool hadEvents;
+
   while (!done) {
     scheduleTimeout();
 
@@ -1472,9 +1474,8 @@ int IoUringBackend::eb_event_base_loop(int flags) {
       }
     }
 
-    if (!done &&
-        (numProcessedTimers || numProcessedSignals || processedEvents) &&
-        (flags & EVLOOP_ONCE)) {
+    hadEvents = numProcessedTimers || numProcessedSignals || processedEvents;
+    if (hadEvents && (flags & EVLOOP_ONCE)) {
       done = true;
     }
 
@@ -1487,7 +1488,7 @@ int IoUringBackend::eb_event_base_loop(int flags) {
     }
   }
 
-  return 0;
+  return hadEvents ? 0 : 2;
 }
 
 int IoUringBackend::eb_event_base_loopbreak() {

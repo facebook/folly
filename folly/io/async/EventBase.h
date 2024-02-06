@@ -23,6 +23,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <set>
 #include <stack>
@@ -440,6 +441,21 @@ class EventBase : public TimeoutManager,
    * Must be matched with a corresponding call to loopPoolSetup.
    */
   void loopPollCleanup();
+
+  /**
+   * Same semantics as loop(), but, instead of blocking, it returns in a
+   * "suspended" state. The caller must continue calling loopWithSuspension()
+   * until a non-suspended state is reached.
+   *
+   * This is only supported with backends that support pollable fd, and intended
+   * to enable external waiting for ready events through the fd: when the fd is
+   * ready, the loop can be resumed and make progress.
+   *
+   * It is not allowed to call other loop methods, or to destroy the EventBase,
+   * while in a suspended state.
+   */
+  enum class LoopStatus { kDone, kError, kSuspended };
+  LoopStatus loopWithSuspension();
 
   /**
    * Runs the event loop.
@@ -995,10 +1011,17 @@ class EventBase : public TimeoutManager,
 
   typedef LoopCallback::List LoopCallbackList;
 
-  bool loopBody(int flags = 0, bool ignoreKeepAlive = false);
+  bool isSuccess(LoopStatus status);
+
+  struct LoopOptions {
+    bool ignoreKeepAlive = false;
+    bool allowSuspension = false;
+  };
+
+  bool loopBody(int flags, LoopOptions options);
 
   void loopMainSetup();
-  bool loopMain(int flags, bool ignoreKeepAlive);
+  LoopStatus loopMain(int flags, LoopOptions options);
   void loopMainCleanup();
 
   void runLoopCallbacks(LoopCallbackList& currentCallbacks);
@@ -1013,6 +1036,14 @@ class EventBase : public TimeoutManager,
       HHWheelTimer::DEFAULT_TICK_INTERVAL};
   const bool enableTimeMeasurement_;
   bool strictLoopThread_;
+
+  // Loop state that needs to survive suspension.
+  struct LoopState {
+    std::chrono::steady_clock::time_point prev = {};
+    std::chrono::steady_clock::time_point idleStart = {};
+  };
+  // Only set while the loop is running or suspended.
+  std::optional<LoopState> loopState_;
 
   // The ID of the thread running the main loop. std::thread::id{} if loop is
   // not running, otherwise acts as lock to enforce loop mutual exclusion.
