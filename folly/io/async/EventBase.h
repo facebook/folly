@@ -758,7 +758,7 @@ class EventBase : public TimeoutManager,
    * make any decisions; for that, consider waitUntilRunning().
    */
   bool isRunning() const {
-    return loopThread_.load(std::memory_order_relaxed) != std::thread::id();
+    return loopTid_.load(std::memory_order_relaxed) != kNotRunningTid;
   }
 
   /**
@@ -787,9 +787,10 @@ class EventBase : public TimeoutManager,
    * Otherwise,
    *
    * - In default mode (strictLoopThread = false), isInEventBaseThread() always
-   *   returns true. This is to support use cases in which the loop is run
-   *   manually, and other EventBase methods can be interleaved with loop
-   *   runs. In this mode, if the loop is not running continuously it is
+   *   returns true. this is to support use cases in which driving the loop is
+   *   interleaved with calling other EventBase methods in the same thread.
+   *
+   *   In this mode, if the loop is not running continuously it is
    *   responsibility of the caller to ensure that all methods that may run
    *   non-thread-safe logic (including, for example,
    *   runImmediatelyOrRunInEventBaseThread*()) are serialized with loop runs.
@@ -800,16 +801,12 @@ class EventBase : public TimeoutManager,
    *   isInEventBaseThread() from any thread with with no risk of races. In this
    *   mode, the behavior is equivalent to inRunningEventBaseThread().
    */
-  bool isInEventBaseThread() const {
-    auto tid = loopThread_.load(std::memory_order_relaxed);
-    return tid == std::this_thread::get_id() ||
-        (!strictLoopThread_ && tid == std::thread::id());
-  }
+  bool isInEventBaseThread() const;
 
-  bool inRunningEventBaseThread() const {
-    return loopThread_.load(std::memory_order_relaxed) ==
-        std::this_thread::get_id();
-  }
+  /**
+   * Returns true if and only if the loop is running in the current thread.
+   */
+  bool inRunningEventBaseThread() const;
 
   /**
    * Equivalent to CHECK(isInEventBaseThread()) (and assert/DCHECK for
@@ -997,6 +994,9 @@ class EventBase : public TimeoutManager,
   class FuncRunner;
   class ThreadIdCollector;
 
+  static constexpr pid_t kNotRunningTid = -1;
+  static constexpr pid_t kSuspendedTid = -2;
+
   folly::VirtualEventBase* tryGetVirtualEventBase();
 
   void applyLoopKeepAlive();
@@ -1045,9 +1045,12 @@ class EventBase : public TimeoutManager,
   // Only set while the loop is running or suspended.
   std::optional<LoopState> loopState_;
 
-  // The ID of the thread running the main loop. std::thread::id{} if loop is
-  // not running, otherwise acts as lock to enforce loop mutual exclusion.
-  std::atomic<std::thread::id> loopThread_;
+  // ID of the thread running the loop (kNotRunningTid/kSuspendedTid if loop is
+  // not running/suspended). Acts as lock to enforce loop mutual exclusion.
+  std::atomic<pid_t> loopTid_{kNotRunningTid};
+  // Store the std::thread::id as well, used to get/set thread names, and for
+  // getLoopThreadId().
+  std::atomic<std::thread::id> loopThread_{std::thread::id{}};
 
   // should only be accessed through public getter
   HHWheelTimer::UniquePtr wheelTimer_;

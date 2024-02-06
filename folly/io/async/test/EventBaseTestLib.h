@@ -2706,6 +2706,12 @@ TYPED_TEST_P(EventBaseTest, Suspension) {
   loopAndExpectStatus(LoopStatus::kSuspended);
   EXPECT_EQ(cb.count, loops);
 
+  // While suspended, the loop appears as running, but not in the current
+  // thread.
+  EXPECT_TRUE(evbPtr->isRunning());
+  EXPECT_FALSE(evbPtr->isInEventBaseThread());
+  EXPECT_FALSE(evbPtr->inRunningEventBaseThread());
+
   bool called = false;
   evbPtr->runInEventBaseThread([&] { called = true; });
   loopAndExpectStatus(LoopStatus::kSuspended);
@@ -2720,6 +2726,10 @@ TYPED_TEST_P(EventBaseTest, Suspension) {
   ka.reset();
   loopAndExpectStatus(LoopStatus::kDone);
   loopAndExpectStatus(LoopStatus::kDone);
+
+  EXPECT_FALSE(evbPtr->isRunning());
+  EXPECT_TRUE(evbPtr->isInEventBaseThread());
+  EXPECT_FALSE(evbPtr->inRunningEventBaseThread());
 }
 
 REGISTER_TYPED_TEST_SUITE_P(

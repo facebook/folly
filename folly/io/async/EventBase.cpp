@@ -188,21 +188,19 @@ class EventBase::FuncRunner {
 
 class EventBase::ThreadIdCollector : public WorkerProvider {
  public:
+  explicit ThreadIdCollector(EventBase& parent) : parent_(parent) {}
+
   IdsWithKeepAlive collectThreadIds() override {
     keepAlives_.fetch_add(1, std::memory_order_acq_rel);
     auto guard = std::make_unique<Guard>(*this);
-    auto tid = tid_.load(std::memory_order_acquire);
-    if (tid == 0) {
+    auto tid = parent_.loopTid_.load(std::memory_order_acquire);
+    if (tid < 0) {
       return {};
     }
     return {std::move(guard), std::vector<pid_t>{tid}};
   }
 
-  void setTid() { tid_.store(getOSThreadID(), std::memory_order_release); }
-
-  void unsetTid() {
-    tid_.store(0, std::memory_order_release);
-    // Wait for any outstanding keepalives.
+  void awaitOutstandingKeepAlives() {
     wakeUp_.await(
         [&] { return keepAlives_.load(std::memory_order_acquire) == 0; });
   }
@@ -222,7 +220,7 @@ class EventBase::ThreadIdCollector : public WorkerProvider {
     ThreadIdCollector& parent_;
   };
 
-  std::atomic<pid_t> tid_ = 0;
+  EventBase& parent_;
   std::atomic<size_t> keepAlives_ = 0;
   EventCount wakeUp_;
 };
@@ -249,7 +247,6 @@ EventBase::EventBase(Options options)
     : intervalDuration_(options.timerTickInterval),
       enableTimeMeasurement_(!options.skipTimeMeasurement),
       strictLoopThread_(options.strictLoopThread),
-      loopThread_(),
       runOnceCallbacks_(nullptr),
       stop_(false),
       queue_(nullptr),
@@ -266,7 +263,7 @@ EventBase::EventBase(Options options)
       evb_(
           options.backendFactory ? options.backendFactory()
                                  : getDefaultBackend()),
-      threadIdCollector_(std::make_unique<ThreadIdCollector>()) {
+      threadIdCollector_(std::make_unique<ThreadIdCollector>(*this)) {
   initNotificationQueue();
 }
 
@@ -378,21 +375,33 @@ void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
   queue_->setMaxReadAtOnce(maxAtOnce);
 }
 
+bool EventBase::isInEventBaseThread() const {
+  auto tid = loopTid_.load(std::memory_order_relaxed);
+  return tid == static_cast<pid_t>(getOSThreadID()) ||
+      (!strictLoopThread_ && tid == kNotRunningTid);
+}
+
+bool EventBase::inRunningEventBaseThread() const {
+  return loopTid_.load(std::memory_order_relaxed) ==
+      static_cast<pid_t>(getOSThreadID());
+}
+
 void EventBase::checkIsInEventBaseThread() const {
-  auto evbTid = loopThread_.load(std::memory_order_relaxed);
-  if (!strictLoopThread_ && evbTid == std::thread::id()) {
+  auto evbTid = loopTid_.load(std::memory_order_relaxed);
+  if (!strictLoopThread_ && evbTid == kNotRunningTid) {
     return;
   }
 
-  // Using getThreadName(evbTid) instead of name_ will work also if
-  // the thread name is set outside of EventBase (and name_ is empty).
-  auto curTid = std::this_thread::get_id();
+  // As opposed to name_, using getThreadName(loopThread_) will also work if the
+  // thread name is set outside of EventBase (and name_ is empty).
+  auto curTid = getOSThreadID();
   CHECK_EQ(evbTid, curTid)
       << "This logic must be executed in the event base thread. "
       << "Event base thread name: \""
-      << folly::getThreadName(evbTid).value_or("")
+      << folly::getThreadName(loopThread_.load(std::memory_order_acquire))
+             .value_or("")
       << "\", current thread name: \""
-      << folly::getThreadName(curTid).value_or("") << "\"";
+      << folly::getCurrentThreadName().value_or("") << "\"";
 }
 
 // Set smoothing coefficient for loop load average; input is # of milliseconds
@@ -423,7 +432,7 @@ static std::chrono::milliseconds getTimeDelta(
 }
 
 void EventBase::waitUntilRunning() {
-  while (loopThread_.load(std::memory_order_acquire) == std::thread::id()) {
+  while (loopTid_.load(std::memory_order_acquire) == kNotRunningTid) {
     std::this_thread::yield();
   }
 }
@@ -498,20 +507,23 @@ EventBase::LoopStatus EventBase::loopWithSuspension() {
 void EventBase::loopMainSetup() {
   VLOG(5) << "EventBase(): Starting loop.";
 
-  auto const prevLoopThread = loopThread_.exchange(
-      std::this_thread::get_id(), std::memory_order_release);
+  auto tid = getOSThreadID();
+  // Lock the loop.
+  auto const prevLoopTid =
+      loopTid_.exchange(getOSThreadID(), std::memory_order_release);
+  loopThread_.store(std::this_thread::get_id(), std::memory_order_release);
+
   // NOTE: This also fatals on reentrancy, which is not supported by old
   // versions of libevent.
-  CHECK_EQ(std::thread::id(), prevLoopThread)
-      << "Driving an EventBase (in thread " << std::this_thread::get_id()
-      << ") while it is already being driven (in thread " << prevLoopThread
+  pid_t expected = loopState_ ? kSuspendedTid : kNotRunningTid;
+  CHECK_EQ(expected, prevLoopTid)
+      << "Driving an EventBase (in thread " << tid
+      << ") while it is already being driven (in thread " << prevLoopTid
       << ") is forbidden.";
 
   if (!name_.empty()) {
     setThreadName(name_);
   }
-
-  threadIdCollector_->setTid();
 }
 
 EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
@@ -656,8 +668,11 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
 }
 
 void EventBase::loopMainCleanup() {
-  threadIdCollector_->unsetTid();
+  threadIdCollector_->awaitOutstandingKeepAlives();
   loopThread_.store({}, std::memory_order_release);
+  // Must be last, unlocks the loop.
+  loopTid_.store(
+      loopState_ ? kSuspendedTid : kNotRunningTid, std::memory_order_release);
 }
 
 ssize_t EventBase::loopKeepAliveCount() {
