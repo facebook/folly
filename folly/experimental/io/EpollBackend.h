@@ -22,9 +22,11 @@
 
 #include <chrono>
 #include <map>
+#include <optional>
 #include <set>
 #include <vector>
 
+#include <folly/container/IntrusiveHeap.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 
 namespace folly {
@@ -62,6 +64,8 @@ class EpollBackend : public EventBaseBackendBase {
   bool setEdgeTriggered(Event& event) override;
 
  private:
+  struct TimerInfo;
+
   class SocketPair {
    public:
     SocketPair();
@@ -79,42 +83,31 @@ class EpollBackend : public EventBaseBackendBase {
     std::array<int, 2> fds_{{-1, -1}};
   };
 
-  // timer processing
-  bool addTimerFd();
-  void scheduleTimeout();
+  void updateTimerFd();
   void addTimerEvent(Event& event, const struct timeval* timeout);
-  void removeTimerEvent(Event& event);
-  size_t processTimers();
+  int removeTimerEvent(Event& event);
+  void processTimers();
   void setProcessTimers();
 
-  // signal handling
   void addSignalEvent(Event& event);
   void removeSignalEvent(Event& event);
   bool addSignalFds();
   size_t processSignals();
 
-  Options options_;
+  const Options options_;
 
   int epollFd_{-1};
 
   size_t numInsertedEvents_{0};
-  size_t numEvents_{0};
   size_t numInternalEvents_{0};
 
-  // loop related
   bool loopBreak_{false};
-  bool shuttingDown_{false};
-  bool processTimers_{false};
-  bool processSignals_{false};
-  std::vector<struct epoll_event> events_;
+  std::vector<struct epoll_event> events_; // Cache allocation.
 
-  // timer related
-  Event timerFdEvent_;
   int timerFd_{-1};
-  bool timerSet_{false};
-  std::multimap<std::chrono::steady_clock::time_point, Event*> timers_;
+  std::optional<std::chrono::steady_clock::time_point> timerFdExpiration_;
+  IntrusiveHeap<TimerInfo> timers_;
 
-  // signal related
   SocketPair signalFds_;
   std::map<int, std::set<Event*>> signals_;
 };
