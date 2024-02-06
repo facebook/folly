@@ -248,7 +248,7 @@ TEST(Tape, RecordBuilder) {
   folly::string_tape st;
 
   {
-    auto builder = st.record_builder();
+    auto builder = st.new_record_builder();
     ASSERT_TRUE(builder.empty());
     ASSERT_EQ(0U, builder.size());
     builder.push_back('a');
@@ -262,27 +262,86 @@ TEST(Tape, RecordBuilder) {
     ASSERT_EQ(std::string_view(builder.begin(), builder.end()), "ab");
     ASSERT_EQ(std::string_view(builder.cbegin(), builder.cend()), "ab");
     *builder.begin() = 'c';
+    builder.commit();
   }
   {
-    auto builder = st.record_builder();
+    auto builder = st.new_record_builder();
     ASSERT_EQ(builder.emplace_back('d'), 'd');
     builder[0] = 'e';
     ASSERT_EQ(std::as_const(builder)[0], 'e');
+    builder.commit();
   }
   {
-    auto builder = st.record_builder();
+    auto builder = st.new_record_builder();
     builder.emplace_back(); // test emplace with default constructor
     builder.at(0) = 'b';
     ASSERT_EQ(std::as_const(builder).at(0), 'b');
     builder[0] = 'a';
     ASSERT_EQ(std::as_const(builder)[0], 'a');
+    builder.commit();
   }
   {
-    auto builder = st.record_builder();
+    auto builder = st.new_record_builder();
     constexpr std::string_view s = "abc";
     std::copy(s.begin(), s.end(), builder.back_inserter());
+    builder.commit();
+  }
+  {
+    auto builder = st.new_record_builder();
+    builder.push_back('0');
+    builder.push_back('1');
+    // Default abort - not committed
+  }
+  {
+    // calling abort
+    auto builder = st.new_record_builder();
+    ASSERT_EQ(0U, builder.size());
+    builder.push_back('a');
+    builder.push_back('b');
+    ASSERT_EQ(2U, builder.size());
+    builder.abort();
+    ASSERT_EQ(0U, builder.size());
+    builder.push_back('a');
+    builder.push_back('b');
+    builder.commit();
+  }
+  {
+    // amending record
+    ASSERT_EQ(st.back(), "ab");
+    auto builder = st.last_record_builder();
+    builder.push_back('c');
+    builder[0] = '0';
+    builder.commit();
+    ASSERT_EQ(st.back(), "0bc");
+  }
+  {
+    // not committing last record
+    ASSERT_EQ(st.size(), 5);
+
+    {
+      auto builder = st.new_record_builder();
+      builder.push_back('a');
+      builder.push_back('b');
+      builder.commit();
+    }
+
+    ASSERT_EQ(st.size(), 6);
+    (void)st.last_record_builder(); // destructor will auto abort.
+
+    ASSERT_EQ(st.size(), 5);
   }
 
+  ASSERT_EQ("cb", st[0]);
+  ASSERT_EQ("e", st[1]);
+  ASSERT_EQ("a", st[2]);
+  ASSERT_EQ("abc", st[3]);
+  ASSERT_EQ("0bc", st[4]);
+  ASSERT_EQ(10U, st.size_flat());
+  ASSERT_EQ(5U, st.size());
+
+  // checking that pop back is still ok.
+
+  st.pop_back();
   ASSERT_EQ("cb", st[0]);
   ASSERT_EQ("e", st[1]);
   ASSERT_EQ("a", st[2]);
@@ -515,18 +574,15 @@ TEST(Tape, Iteration) {
 TEST(Tape, TapeOfTapes) {
   folly::tape<folly::string_tape> strings;
 
-  {
-    auto builder = strings.record_builder();
-    builder.push_back("ab");
-    builder.push_back("abc");
-  }
+  auto builder = strings.new_record_builder();
+  builder.push_back("ab");
+  builder.push_back("abc");
+  builder.commit();
 
-  {
-    auto builder = strings.record_builder();
-    builder.push_back("bc");
-    builder.push_back("bcd");
-    builder.push_back("bcde");
-  }
+  builder.push_back("bc");
+  builder.push_back("bcd");
+  builder.push_back("bcde");
+  builder.commit();
 
   ASSERT_EQ(strings.size(), 2);
   ASSERT_THAT(strings[0], testing::ElementsAre("ab", "abc"));
