@@ -79,9 +79,11 @@ class TaskPromiseBase {
       // a virtual wrapper over coroutine_handle that handles the pop for us.
       if (promise.scopeExit_) {
         promise.scopeExit_.promise().setContext(
-            promise.continuation_.getHandle(),
+            promise.continuation_,
             &promise.asyncFrame_,
-            promise.executor_.get_alias());
+            promise.executor_.get_alias(),
+            promise.result_.hasException() ? promise.result_.exception()
+                                           : exception_wrapper{});
         return promise.scopeExit_;
       }
 

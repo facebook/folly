@@ -22,6 +22,7 @@
 
 #include <folly/tracing/AsyncStack.h>
 
+#include <folly/ExceptionWrapper.h>
 #include <folly/Executor.h>
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/coro/Coroutine.h>
@@ -100,7 +101,8 @@ class ScopeExitTaskPromiseBase {
         promise.next_.promise().setContext(
             promise.continuation_,
             promise.parentAsyncFrame_,
-            promise.executor_.get_alias());
+            promise.executor_.get_alias(),
+            std::move(promise.error_));
         return promise.next_;
       }
 
@@ -108,19 +110,26 @@ class ScopeExitTaskPromiseBase {
       /// be executed on the parent task, and we can now pop the parent's async
       /// frame before calling the original parent's continuation.
       folly::popAsyncStackFrameCallee(*promise.parentAsyncFrame_);
-      return promise.continuation_;
+      if (promise.error_) {
+        auto [handle, frame] =
+            promise.continuation_.getErrorHandle(promise.error_);
+        return handle.getHandle();
+      }
+      return promise.continuation_.getHandle();
     }
 
     [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
   };
 
   void setContext(
-      coroutine_handle<> continuation,
+      ExtendedCoroutineHandle continuation,
       folly::AsyncStackFrame* asyncFrame,
-      folly::Executor::KeepAlive<> executor) {
+      folly::Executor::KeepAlive<> executor,
+      folly::exception_wrapper error = {}) {
     continuation_ = continuation;
     parentAsyncFrame_ = asyncFrame;
     executor_ = std::move(executor);
+    error_ = std::move(error);
   }
 
   suspend_always initial_suspend() noexcept { return {}; }
@@ -151,9 +160,10 @@ class ScopeExitTaskPromiseBase {
   template <typename... Args>
   friend class ScopeExitTask;
 
-  coroutine_handle<> continuation_;
+  ExtendedCoroutineHandle continuation_;
   folly::AsyncStackFrame* parentAsyncFrame_;
   folly::Executor::KeepAlive<> executor_;
+  folly::exception_wrapper error_;
   coroutine_handle<ScopeExitTaskPromiseBase> next_;
 };
 

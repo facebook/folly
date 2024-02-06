@@ -148,6 +148,26 @@ TEST_F(ScopeExitTest, OneExitActionThroughNoThrow) {
   EXPECT_EQ(count, 1);
 }
 
+TEST_F(ScopeExitTest, ExitActionInsideNoThrow) {
+  EXPECT_THROW(
+      folly::coro::blockingWait([this]() -> Task<> {
+        try {
+          co_await co_nothrow([this]() -> Task<> {
+            co_await co_scope_exit([this]() -> Task<> {
+              ++count;
+              co_return;
+            });
+            throw std::runtime_error("Something bad happened!");
+            co_return;
+          }());
+        } catch (...) {
+          ADD_FAILURE();
+        }
+      }()),
+      std::runtime_error);
+  EXPECT_EQ(count, 1);
+}
+
 TEST_F(AsyncGeneratorScopeExitTest, PartiallyConsumed) {
   auto makeGenerator = [&]() -> folly::coro::CleanableAsyncGenerator<int> {
     co_await co_scope_exit([&]() -> folly::coro::Task<> {
