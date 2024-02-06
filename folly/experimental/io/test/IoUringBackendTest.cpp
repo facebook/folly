@@ -26,6 +26,7 @@
 #include <folly/io/async/AsyncUDPServerSocket.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 #include <folly/io/async/test/EventBaseTestLib.h>
 #include <folly/portability/GTest.h>
 
@@ -1616,24 +1617,25 @@ struct IoUringPollSQCQBackendProvider : IoUringBackendProviderBase {
 
 // Instantiate the non registered fd tests
 INSTANTIATE_TYPED_TEST_SUITE_P(IoUring, EventBaseTest, IoUringBackendProvider);
-INSTANTIATE_TYPED_TEST_SUITE_P(IoUring, EventBaseTest1, IoUringBackendProvider);
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    IoUring, AsyncSignalHandlerTest, IoUringBackendProvider);
 
 // Instantiate the registered fd tests
 INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringRegFd, EventBaseTest, IoUringRegFdBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    IoUringRegFd, EventBaseTest1, IoUringRegFdBackendProvider);
+    IoUringRegFd, AsyncSignalHandlerTest, IoUringRegFdBackendProvider);
 
 // Instantiate the poll CQ tests
 INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollCQ, EventBaseTest, IoUringPollCQBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    IoUringPollCQ, EventBaseTest1, IoUringPollCQBackendProvider);
+    IoUringPollCQ, AsyncSignalHandlerTest, IoUringPollCQBackendProvider);
 
 // Instantiate the poll SQ/CQ tests
 INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollSQCQ, EventBaseTest, IoUringPollCQBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    IoUringPollSQCQ, EventBaseTest1, IoUringPollCQBackendProvider);
+    IoUringPollSQCQ, AsyncSignalHandlerTest, IoUringPollCQBackendProvider);
 } // namespace test
 } // namespace folly

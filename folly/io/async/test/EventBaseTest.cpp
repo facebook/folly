@@ -15,6 +15,7 @@
  */
 
 #include <folly/init/Init.h>
+#include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 #include <folly/io/async/test/EventBaseTestLib.h>
 #include <folly/portability/GTest.h>
 
@@ -26,9 +27,11 @@ struct DefaultBackendProvider : BackendProviderBase {
     return folly::EventBase::getDefaultBackend();
   }
 };
+
 INSTANTIATE_TYPED_TEST_SUITE_P(
     EventBaseTest, EventBaseTest, DefaultBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    EventBaseTest1, EventBaseTest1, DefaultBackendProvider);
+    AsyncSignalHandlerTest, AsyncSignalHandlerTest, DefaultBackendProvider);
+
 } // namespace test
 } // namespace folly
