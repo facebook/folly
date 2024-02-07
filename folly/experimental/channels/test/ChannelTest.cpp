@@ -234,9 +234,9 @@ TEST(Channel, CancelNextWithoutClose) {
       folly::coro::co_withCancellation(
           cancelSource.getToken(),
           folly::coro::co_invoke(
-              [&receiver =
+              [&receiver_2 =
                    receiver]() -> folly::coro::Task<std::optional<int>> {
-                co_return co_await receiver.next(false /* closeOnCancel */);
+                co_return co_await receiver_2.next(false /* closeOnCancel */);
               }))
           .scheduleOn(&executor)
           .start();
