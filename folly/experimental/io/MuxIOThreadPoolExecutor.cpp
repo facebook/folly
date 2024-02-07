@@ -22,6 +22,17 @@
 
 namespace folly {
 
+namespace {
+
+ThrottledLifoSem::Options throttledLifoSemOptions(
+    std::chrono::nanoseconds wakeUpInterval) {
+  ThrottledLifoSem::Options opts;
+  opts.wakeUpInterval = wakeUpInterval;
+  return opts;
+}
+
+} // namespace
+
 struct MuxIOThreadPoolExecutor::EvbState {
   EvbState() : evb(evbOptions()) {}
 
@@ -50,8 +61,7 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
           numThreads, numThreads, std::move(threadFactory)),
       options_(std::move(options)),
       eventBaseManager_(ebm),
-      readyQueueSem_(
-          ThrottledLifoSem::Options{.wakeUpInterval = options.wakeUpInterval}) {
+      readyQueueSem_(throttledLifoSemOptions(options.wakeUpInterval)) {
   auto numEventBases =
       options_.numEventBases == 0 ? numThreads : options_.numEventBases;
 
