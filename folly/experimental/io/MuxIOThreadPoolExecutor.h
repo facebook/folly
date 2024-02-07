@@ -118,13 +118,13 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   struct alignas(Thread) IOThread : public Thread {
     explicit IOThread(MuxIOThreadPoolExecutor* pool) : Thread(pool) {}
 
-    EventBase* curEventBase; // Only accessed inside the worker thread.
+    EvbState* curEvbState; // Only accessed inside the worker thread.
   };
 
   void maybeUnregisterEventBases(Observer* o);
 
   ThreadPtr makeThread() override;
-  folly::EventBase* pickEvb();
+  EvbState& pickEvbState();
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
   size_t getPendingTaskCountImpl() const override final;

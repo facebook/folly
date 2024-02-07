@@ -18,7 +18,10 @@
 
 #include <stdexcept>
 
+#include <folly/container/Enumerate.h>
 #include <folly/experimental/io/EpollBackend.h>
+#include <folly/lang/Align.h>
+#include <folly/synchronization/Latch.h>
 
 namespace folly {
 
@@ -37,8 +40,9 @@ struct MuxIOThreadPoolExecutor::EvbState {
   EvbState() : evb(evbOptions()) {}
 
   EventBase evb;
-  std::atomic<bool> done{false};
   std::unique_ptr<EventBasePoller::Handle> handle;
+
+  alignas(cacheline_align_v) std::atomic<size_t> pendingTasks = 0;
 
  private:
   static const EventBase::Options& evbOptions() {
@@ -76,18 +80,18 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
       });
 
   evbStates_.reserve(numEventBases);
+  Latch allEvbsRunning(numEventBases);
   for (size_t i = 0; i < numEventBases; ++i) {
     auto& evbState = evbStates_.emplace_back(std::make_unique<EvbState>());
     evbState->evb.setStrictLoopThread();
-    // To simulate EventBase::loopForever(), acquire a keepalive for the whole
-    // lifetime of the executor. This will make The EventBase's notification
-    // queue a non-internal event, so we can poll it even when there are no
-    // other events.
+    evbState->evb.runInEventBaseThread([&] { allEvbsRunning.count_down(); });
+    // Keep the loop running until shutdown.
     keepAlives_.emplace_back(&evbState->evb);
     auto fd = evbState->evb.getBackend()->getPollableFd();
     CHECK_GE(fd, 0);
     evbState->handle = fdGroup_->add(fd, evbState.get());
   }
+  allEvbsRunning.wait();
 
   registerThreadPoolExecutor(this);
   if (options_.enableThreadIdCollection) {
@@ -106,16 +110,16 @@ void MuxIOThreadPoolExecutor::add(Func func) {
 
 void MuxIOThreadPoolExecutor::add(
     Func func, std::chrono::milliseconds expiration, Func expireCallback) {
-  auto evb = pickEvb();
+  auto& evbState = pickEvbState();
   auto task = Task(std::move(func), expiration, std::move(expireCallback));
-  auto wrappedFunc = [this, task = std::move(task)]() mutable {
+  auto wrappedFunc = [this, &evbState, task = std::move(task)]() mutable {
     const auto& ioThread = *thisThread_;
     runTask(ioThread, std::move(task));
-    pendingTasks_--;
+    evbState.pendingTasks--;
   };
 
-  pendingTasks_++;
-  evb->runInEventBaseThread(std::move(wrappedFunc));
+  evbState.pendingTasks++;
+  evbState.evb.runInEventBaseThread(std::move(wrappedFunc));
 }
 
 std::shared_ptr<ThreadPoolExecutor::Thread>
@@ -140,6 +144,9 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   };
   thread->startupBaton.post();
 
+  ExecutorBlockingGuard guard{
+      ExecutorBlockingGuard::TrackTag{}, this, getName()};
+
   while (true) {
     readyQueueSem_.wait();
     auto handle = readyQueue_.dequeue();
@@ -149,19 +156,16 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     auto* evbState = handle->getUserData<EvbState>();
     auto* evb = &evbState->evb;
 
-    ioThread->curEventBase = evb;
+    ioThread->curEvbState = evbState;
     eventBaseManager_->setEventBase(evb, false);
 
-    evb->loopPollSetup();
-    do {
-      evb->loopPoll();
-    } while (evb->getNumLoopCallbacks() > 0);
-    evb->loopPollCleanup();
+    auto status = evb->loopWithSuspension();
+    CHECK(status != EventBase::LoopStatus::kError);
 
     eventBaseManager_->clearEventBase();
-    ioThread->curEventBase = nullptr;
+    ioThread->curEvbState = nullptr;
 
-    handle->handoff(evbState->done.load());
+    handle->handoff(status == EventBase::LoopStatus::kDone);
   };
 
   std::unique_lock w{threadListLock_};
@@ -172,16 +176,20 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   stoppedThreads_.add(thread);
 }
 
-folly::EventBase* MuxIOThreadPoolExecutor::pickEvb() {
+MuxIOThreadPoolExecutor::EvbState& MuxIOThreadPoolExecutor::pickEvbState() {
   if (auto ioThread = thisThread_.get_existing()) {
-    return (*ioThread)->curEventBase;
+    return *(*ioThread)->curEvbState;
   }
 
-  return &evbStates_[nextEvb_++ % evbStates_.size()]->evb;
+  return *evbStates_[nextEvb_++ % evbStates_.size()];
 }
 
 size_t MuxIOThreadPoolExecutor::getPendingTaskCountImpl() const {
-  return pendingTasks_.load();
+  size_t ret = 0;
+  for (const auto& evbState : evbStates_) {
+    ret += evbState->pendingTasks.load();
+  }
+  return ret;
 }
 
 void MuxIOThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
@@ -217,7 +225,7 @@ folly::EventBaseManager* MuxIOThreadPoolExecutor::getEventBaseManager() {
 }
 
 EventBase* MuxIOThreadPoolExecutor::getEventBase() {
-  return pickEvb();
+  return &pickEvbState().evb;
 }
 
 void MuxIOThreadPoolExecutor::stopThreads(size_t n) {
@@ -243,14 +251,13 @@ void MuxIOThreadPoolExecutor::join() {
     }
   }
 
-  for (auto& evbState : evbStates_) {
-    evbState->done = true;
-    // Unblock the evb so it can be handed off.
-    evbState->evb.runInEventBaseThread([] {});
+  for (auto&& [i, evbState] : folly::enumerate(evbStates_)) {
+    // Release the keepalive so the loop can complete and the handle be
+    // reclaimed.
+    keepAlives_[i].reset();
     fdGroup_->reclaim(std::move(evbState->handle));
   }
   fdGroup_.reset();
-  keepAlives_.clear();
   evbStates_.clear();
 
   stopAndJoinAllThreads(/* isJoin */ true);
