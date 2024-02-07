@@ -18,7 +18,6 @@
 
 namespace folly {
 namespace io {
-namespace detail {
 
 /*
  * Helper classes for use with CursorBase::readWhile()
@@ -101,6 +100,6 @@ void CursorBase<Derived, BufType>::skipWhile(const Predicate& predicate) {
   CursorNoopAppender appender;
   readWhile(predicate, appender);
 }
-} // namespace detail
+
 } // namespace io
 } // namespace folly

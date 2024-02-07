@@ -57,8 +57,6 @@ namespace io {
 class Cursor;
 class ThinCursor;
 
-namespace detail {
-
 // This is very useful in development, but the size perturbation is currently
 // causing some previously undetected bugs in unrelated projects to manifest in
 // CI-breaking ways.
@@ -76,7 +74,7 @@ class CursorBase {
   template <class D, typename B>
   friend class CursorBase;
 
- public:
+ protected:
   /**
    * Construct a cursor wrapping an IOBuf.
    */
@@ -137,6 +135,7 @@ class CursorBase {
     remainingLen_ = len - (crtEnd_ - crtPos_);
   }
 
+ public:
   /**
    * Reset cursor to point to a new buffer.
    *
@@ -996,6 +995,7 @@ class CursorBase {
   void advanceDone() {}
 };
 
+namespace detail {
 template <typename T>
 ThinCursor thinCursorReadSlow(ThinCursor, T&, Cursor&);
 ThinCursor thinCursorSkipSlow(ThinCursor, Cursor&, size_t);
@@ -1077,21 +1077,20 @@ class ThinCursor {
   const uint8_t* crtEnd_;
 };
 
-class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
+class Cursor : public CursorBase<Cursor, const IOBuf> {
  public:
-  explicit Cursor(const IOBuf* buf)
-      : detail::CursorBase<Cursor, const IOBuf>(buf) {}
+  explicit Cursor(const IOBuf* buf) : CursorBase<Cursor, const IOBuf>(buf) {}
 
   explicit Cursor(const IOBuf* buf, size_t len)
-      : detail::CursorBase<Cursor, const IOBuf>(buf, len) {}
+      : CursorBase<Cursor, const IOBuf>(buf, len) {}
 
   template <class OtherDerived, class OtherBuf>
-  explicit Cursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
-      : detail::CursorBase<Cursor, const IOBuf>(cursor) {}
+  explicit Cursor(const CursorBase<OtherDerived, OtherBuf>& cursor)
+      : CursorBase<Cursor, const IOBuf>(cursor) {}
 
   template <class OtherDerived, class OtherBuf>
-  Cursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor, size_t len)
-      : detail::CursorBase<Cursor, const IOBuf>(cursor, len) {}
+  Cursor(const CursorBase<OtherDerived, OtherBuf>& cursor, size_t len)
+      : CursorBase<Cursor, const IOBuf>(cursor, len) {}
 
   ThinCursor borrow() {
     FOLLY_IO_CURSOR_BORROW_DCHECK(!std::exchange(*borrowed(), true));
@@ -1119,6 +1118,7 @@ inline ThinCursor thinCursorSkipSlow(
   fallback.skip(len);
   return fallback.borrow();
 }
+} // namespace detail
 
 template <class Derived>
 class Writable {
@@ -1231,18 +1231,16 @@ class Writable {
   }
 };
 
-} // namespace detail
-
 enum class CursorAccess { PRIVATE, UNSHARE };
 
 template <CursorAccess access>
-class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
-                 public detail::Writable<RWCursor<access>> {
-  friend class detail::CursorBase<RWCursor<access>, IOBuf>;
+class RWCursor : public CursorBase<RWCursor<access>, IOBuf>,
+                 public Writable<RWCursor<access>> {
+  friend class CursorBase<RWCursor<access>, IOBuf>;
 
  public:
   explicit RWCursor(IOBuf* buf)
-      : detail::CursorBase<RWCursor<access>, IOBuf>(buf), maybeShared_(true) {}
+      : CursorBase<RWCursor<access>, IOBuf>(buf), maybeShared_(true) {}
 
   explicit RWCursor(IOBufQueue& queue)
       : RWCursor((queue.flushCache(), queue.head_.get())) {}
@@ -1268,9 +1266,8 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
   }
 
   template <class OtherDerived, class OtherBuf>
-  explicit RWCursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
-      : detail::CursorBase<RWCursor<access>, IOBuf>(cursor),
-        maybeShared_(true) {
+  explicit RWCursor(const CursorBase<OtherDerived, OtherBuf>& cursor)
+      : CursorBase<RWCursor<access>, IOBuf>(cursor), maybeShared_(true) {
     CHECK(!cursor.isBounded())
         << "Creating RWCursor from bounded Cursor is not allowed";
   }
@@ -1317,7 +1314,7 @@ class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
     this->crtPos_ = this->crtBegin_ + offset;
   }
 
-  using detail::Writable<RWCursor<access>>::pushAtMost;
+  using Writable<RWCursor<access>>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
     // We have to explicitly check for an input length of 0.
     // We support buf being nullptr in this case, but we need to avoid calling
@@ -1441,7 +1438,7 @@ typedef RWCursor<CursorAccess::UNSHARE> RWUnshareCursor;
  * TODO(tudorb): add a flavor of Appender that reallocates one IOBuf instead
  * of chaining.
  */
-class Appender : public detail::Writable<Appender> {
+class Appender : public Writable<Appender> {
  public:
   Appender(IOBuf* buf, std::size_t growth)
       : buffer_(buf), crtBuf_(buf->prev()), growth_(growth) {}
@@ -1490,7 +1487,7 @@ class Appender : public detail::Writable<Appender> {
     crtBuf_ = buffer_->prev();
   }
 
-  using detail::Writable<Appender>::pushAtMost;
+  using Writable<Appender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
     // We have to explicitly check for an input length of 0.
     // We support buf being nullptr in this case, but we need to avoid calling
@@ -1584,7 +1581,7 @@ class Appender : public detail::Writable<Appender> {
   std::size_t growth_;
 };
 
-class QueueAppender : public detail::Writable<QueueAppender> {
+class QueueAppender : public Writable<QueueAppender> {
  public:
   /**
    * Create an Appender that writes to a IOBufQueue.  When we allocate
@@ -1656,7 +1653,7 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     }
   }
 
-  using detail::Writable<QueueAppender>::pushAtMost;
+  using Writable<QueueAppender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
     // Fill the current buffer
     const size_t copyLength = std::min(len, length());
