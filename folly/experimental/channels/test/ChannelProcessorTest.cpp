@@ -154,10 +154,10 @@ TEST_F(ChannelProcessorFixture, SimpleChannel_RemoveChannel) {
   processor_.addChannel(
       "one",
       std::move(receiver),
-      [&, &future = future](Try<int> value) -> folly::coro::Task<void> {
+      [&, &future_2 = future](Try<int> value) -> folly::coro::Task<void> {
         if (waitForFuture) {
           try {
-            co_await std::move(future);
+            co_await std::move(future_2);
           } catch (const folly::OperationCancelled&) {
             cancelled = true;
             throw;
@@ -292,10 +292,10 @@ TEST_F(
   processor_.addResumableChannelWithState(
       "one",
       InitializeArg{},
-      [&, &receiver = receiver](
+      [&, &receiver_2 = receiver](
           auto, auto&) -> folly::coro::Task<Receiver<int>> {
         numInitializeCalls++;
-        co_return std::move(receiver);
+        co_return std::move(receiver_2);
       },
       [&](auto, auto&) -> folly::coro::Task<void> {
         numTransformCalls++;
@@ -327,10 +327,10 @@ TEST_F(
   processor_.addResumableChannelWithState(
       "one",
       InitializeArg{},
-      [&, &receiver = receiver](
+      [&, &receiver_2 = receiver](
           auto, auto&) -> folly::coro::Task<Receiver<int>> {
         numInitializeCalls++;
-        co_return std::move(receiver);
+        co_return std::move(receiver_2);
       },
       [&](auto, auto&) -> folly::coro::Task<void> {
         numTransformCalls++;
