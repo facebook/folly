@@ -178,48 +178,6 @@ class TimedRWMutexImpl {
   // are any.
   void unlock_and_lock_shared();
 
-  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::shared_lock") ReadHolder {
-   public:
-    explicit ReadHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
-      lock_->lock_shared();
-    }
-
-    ~ReadHolder() {
-      if (lock_) {
-        lock_->unlock_shared();
-      }
-    }
-
-    ReadHolder(const ReadHolder& rhs) = delete;
-    ReadHolder& operator=(const ReadHolder& rhs) = delete;
-    ReadHolder(ReadHolder&& rhs) = delete;
-    ReadHolder& operator=(ReadHolder&& rhs) = delete;
-
-   private:
-    TimedRWMutexImpl* lock_;
-  };
-
-  class FOLLY_NODISCARD FOLLY_DEPRECATED("use std::unique_lock") WriteHolder {
-   public:
-    explicit WriteHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
-      lock_->lock();
-    }
-
-    ~WriteHolder() {
-      if (lock_) {
-        lock_->unlock();
-      }
-    }
-
-    WriteHolder(const WriteHolder& rhs) = delete;
-    WriteHolder& operator=(const WriteHolder& rhs) = delete;
-    WriteHolder(WriteHolder&& rhs) = delete;
-    WriteHolder& operator=(WriteHolder&& rhs) = delete;
-
-   private:
-    TimedRWMutexImpl* lock_;
-  };
-
  private:
   // invariants that must hold when the lock is not held by anyone
   void verify_unlocked_properties() {
