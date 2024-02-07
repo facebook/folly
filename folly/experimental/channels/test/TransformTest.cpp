@@ -349,10 +349,10 @@ TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
   auto transformedReceiver1 = transform(
       std::move(untransformedReceiver1),
       &executor_,
-      [&, &controlReceiver1 = controlReceiver1](
+      [&, &controlReceiver1_2 = controlReceiver1](
           Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform1Executions++;
-        co_await controlReceiver1.next();
+        co_await controlReceiver1_2.next();
         co_yield folly::to<std::string>(result.value());
       },
       rateLimiter);
@@ -363,10 +363,10 @@ TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
   auto transformedReceiver2 = transform(
       std::move(untransformedReceiver2),
       &executor_,
-      [&, &controlReceiver2 = controlReceiver2](
+      [&, &controlReceiver2_2 = controlReceiver2](
           Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform2Executions++;
-        co_await controlReceiver2.next();
+        co_await controlReceiver2_2.next();
         co_yield folly::to<std::string>(result.value());
       },
       rateLimiter);
@@ -802,17 +802,17 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
       toVector("init1"s),
       [&,
        receiver = std::move(untransformedReceiver1),
-       &controlReceiver1 =
+       &controlReceiver1_2 =
            controlReceiver1](std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         transform1Executions++;
-        co_await controlReceiver1.next();
+        co_await controlReceiver1_2.next();
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [&, &controlReceiver1 = controlReceiver1](
+      [&, &controlReceiver1_2 = controlReceiver1](
           Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform1Executions++;
-        co_await controlReceiver1.next();
+        co_await controlReceiver1_2.next();
         co_yield folly::to<std::string>(result.value());
       },
       rateLimiter);
@@ -825,17 +825,17 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
       toVector("init2"s),
       [&,
        receiver = std::move(untransformedReceiver2),
-       &controlReceiver2 =
+       &controlReceiver2_2 =
            controlReceiver2](std::vector<std::string> initializeArg) mutable
       -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
         transform2Executions++;
-        co_await controlReceiver2.next();
+        co_await controlReceiver2_2.next();
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
-      [&, &controlReceiver2 = controlReceiver2](
+      [&, &controlReceiver2_2 = controlReceiver2](
           Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
         transform2Executions++;
-        co_await controlReceiver2.next();
+        co_await controlReceiver2_2.next();
         co_yield folly::to<std::string>(result.value());
       },
       rateLimiter);
