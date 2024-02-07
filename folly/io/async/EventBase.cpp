@@ -34,6 +34,7 @@
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/EventBaseLocal.h>
 #include <folly/io/async/VirtualEventBase.h>
+#include <folly/lang/Assume.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/system/ThreadId.h>
@@ -475,6 +476,7 @@ bool EventBase::isSuccess(LoopStatus status) {
       DCHECK(false) << "Reached suspension when not allowed";
       return false;
   }
+  assume_unreachable();
 }
 
 bool EventBase::loopBody(int flags, LoopOptions options) {
