@@ -493,6 +493,8 @@ void EventBase::loopPollSetup() {
 }
 
 bool EventBase::loopPoll() {
+  DCHECK(isRunning());
+  dcheckIsInEventBaseThread();
   return isSuccess(loopMain(EVLOOP_NONBLOCK | EVLOOP_ONCE, {}));
 }
 
