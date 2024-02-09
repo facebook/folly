@@ -34,10 +34,8 @@ namespace folly {
 namespace detail {
 
 struct SingletonThreadLocalState {
-  struct Wrapper;
-
   struct LocalCache {
-    Wrapper* cache;
+    void* cache; // type-erased pointer to the object field of wrapper, below
   };
   static_assert( // pod avoids tls-init guard var and tls-fini ub use-after-dtor
       std::is_standard_layout<LocalCache>::value &&
@@ -61,7 +59,7 @@ struct SingletonThreadLocalState {
 
   struct LocalLifetime {
     void destroy(Wrapper& wrapper) noexcept;
-    void track(LocalCache& cache, Wrapper& wrapper) noexcept;
+    void track(LocalCache& cache, Wrapper& wrapper, void* object) noexcept;
   };
 };
 
@@ -112,10 +110,10 @@ class SingletonThreadLocal {
   using State = detail::SingletonThreadLocalState;
   using LocalCache = State::LocalCache;
 
-  struct ObjectWrapper {
-    using Object = invoke_result_t<Make>;
-    static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
+  using Object = invoke_result_t<Make>;
+  static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
 
+  struct ObjectWrapper {
     // keep as first field in first base, to save 1 instr in the fast path
     Object object{Make{}()};
   };
@@ -144,7 +142,7 @@ class SingletonThreadLocal {
       return wrapper;
     }
     static thread_local LocalLifetime lifetime;
-    lifetime.track(cache, wrapper); // idempotent
+    lifetime.track(cache, wrapper, &wrapper.object); // idempotent
     return wrapper;
   }
 
@@ -154,8 +152,8 @@ class SingletonThreadLocal {
       return getWrapper();
     }
     static thread_local LocalCache cache;
-    auto* wrapper = static_cast<Wrapper*>(cache.cache);
-    return FOLLY_LIKELY(!!wrapper) ? *wrapper : getSlow(cache);
+    auto* object = static_cast<Object*>(cache.cache);
+    return FOLLY_LIKELY(!!object) ? *object : getSlow(cache).object;
   }
 
   static T* try_get() {

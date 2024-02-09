@@ -42,8 +42,8 @@ FOLLY_NOINLINE void SingletonThreadLocalState::LocalLifetime::destroy(
 }
 
 FOLLY_NOINLINE void SingletonThreadLocalState::LocalLifetime::track(
-    LocalCache& cache, Wrapper& wrapper) noexcept {
-  cache.cache = &wrapper;
+    LocalCache& cache, Wrapper& wrapper, void* object) noexcept {
+  cache.cache = object;
   auto const inserted = wrapper.lifetimes[this].insert(&cache);
   wrapper.caches[&cache] += inserted.second;
 }
