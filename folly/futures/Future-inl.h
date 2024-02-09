@@ -700,6 +700,25 @@ Future<T> SemiFuture<T>::via(Executor::KeepAlive<> executor) && {
 }
 
 template <class T>
+Future<T> SemiFuture<T>::viaInlineUnsafe(Executor::KeepAlive<> executor) && {
+  folly::async_tracing::logSemiFutureVia(this->getExecutor(), executor.get());
+
+  if (!executor) {
+    throw_exception<FutureNoExecutor>();
+  }
+
+  if (auto deferredExecutor = this->getDeferredExecutor()) {
+    deferredExecutor->setExecutor(executor.copy(), /* inlineUnsafe = */ true);
+  }
+
+  auto newFuture = Future<T>(this->core_);
+  this->core_ = nullptr;
+  newFuture.setExecutor(std::move(executor));
+
+  return newFuture;
+}
+
+template <class T>
 Future<T> SemiFuture<T>::via(
     Executor::KeepAlive<> executor, int8_t priority) && {
   return std::move(*this).via(

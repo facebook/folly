@@ -743,4 +743,47 @@ TEST_F(CoroTest, DetachOnCancel) {
         }());
   }());
 }
+
+struct CountingManualExecutor : public folly::ManualExecutor {
+  void add(Func func) override {
+    ++addCount_;
+    ManualExecutor::add(std::move(func));
+  }
+
+  ssize_t getAddCount() const { return addCount_.load(); }
+
+ private:
+  std::atomic<ssize_t> addCount_{0};
+};
+
+ssize_t runAndCountExecutorAdd(folly::coro::Task<void> task) {
+  CountingManualExecutor executor;
+  auto future = std::move(task).scheduleOn(&executor).start();
+
+  executor.drain();
+
+  EXPECT_TRUE(future.isReady());
+  return executor.getAddCount();
+}
+
+TEST_F(CoroTest, SemiNoReschedule) {
+  auto task42 = []() -> coro::Task<int> { co_return 42; };
+  auto semiFuture42 = []() {
+    return makeSemiFuture().deferValue([](auto) { return 42; });
+  };
+  EXPECT_EQ(
+      2, // One extra for keepAlive release logic of ManualExecutor
+      runAndCountExecutorAdd(folly::coro::co_invoke(
+          [&]() -> coro::Task<void> { EXPECT_EQ(42, co_await task42()); })));
+  EXPECT_EQ(
+      2, // One extra for keepAlive release logic of ManualExecutor
+      runAndCountExecutorAdd(folly::coro::co_invoke([&]() -> coro::Task<void> {
+        EXPECT_EQ(42, co_await task42().semi());
+      })));
+  EXPECT_EQ(
+      2, // One extra for keepAlive release logic of ManualExecutor
+      runAndCountExecutorAdd(folly::coro::co_invoke([&]() -> coro::Task<void> {
+        EXPECT_EQ(42, co_await semiFuture42());
+      })));
+}
 #endif

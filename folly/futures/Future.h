@@ -667,6 +667,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   /// Returns a Future which will call back on the other side of executor.
   Future<T> via(Executor::KeepAlive<> executor) &&;
+  /// Same as via() but:
+  /// - executor MUST be identical to the executor running the task from which
+  ///   viaInlineUnsafe is called.
+  /// - MAY run some deferred callbacks inline
+  Future<T> viaInlineUnsafe(Executor::KeepAlive<> executor) &&;
   Future<T> via(Executor::KeepAlive<> executor, int8_t priority) &&;
 
   /// Defer work to run on the consumer of the future.
@@ -939,7 +944,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   // directly awaited within a folly::coro::Task coroutine.
   friend Future<T> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor, SemiFuture<T>&& future) noexcept {
-    return std::move(future).via(std::move(executor));
+    return std::move(future).viaInlineUnsafe(std::move(executor));
   }
 
 #endif

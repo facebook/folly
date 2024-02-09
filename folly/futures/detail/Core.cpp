@@ -182,7 +182,8 @@ Executor* DeferredExecutor::getExecutor() const {
   return executor_.get();
 }
 
-void DeferredExecutor::setExecutor(folly::Executor::KeepAlive<> executor) {
+void DeferredExecutor::setExecutor(
+    folly::Executor::KeepAlive<> executor, bool inlineUnsafe) {
   if (nestedExecutors_) {
     auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
     for (auto& nestedExecutor : *nestedExecutors) {
@@ -211,7 +212,11 @@ void DeferredExecutor::setExecutor(folly::Executor::KeepAlive<> executor) {
           std::memory_order_relaxed)) {
     terminate_unexpected_state("DeferredExecutor::setExecutor", state);
   }
-  executor_.copy().add(std::exchange(func_, nullptr));
+  if (inlineUnsafe) {
+    std::exchange(func_, nullptr)(executor_.copy());
+  } else {
+    executor_.copy().add(std::exchange(func_, nullptr));
+  }
 }
 
 void DeferredExecutor::setNestedExecutors(

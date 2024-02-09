@@ -151,7 +151,8 @@ class DeferredExecutor final {
 
   Executor* getExecutor() const;
 
-  void setExecutor(folly::Executor::KeepAlive<> executor);
+  void setExecutor(
+      folly::Executor::KeepAlive<> executor, bool inlineUnsafe = false);
 
   void setNestedExecutors(std::vector<DeferredWrapper> executors);
 
