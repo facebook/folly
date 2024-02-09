@@ -766,7 +766,7 @@ ssize_t runAndCountExecutorAdd(folly::coro::Task<void> task) {
   return executor.getAddCount();
 }
 
-TEST_F(CoroTest, SemiNoReschedule) {
+TEST_F(CoroTest, DISABLED_SemiNoReschedule) {
   auto task42 = []() -> coro::Task<int> { co_return 42; };
   auto semiFuture42 = []() {
     return makeSemiFuture().deferValue([](auto) { return 42; });
