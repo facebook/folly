@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/JSONSchema.h>
+#include <folly/json/JSONSchema.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/regex.hpp>

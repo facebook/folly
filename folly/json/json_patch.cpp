@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/json_patch.h>
+#include <folly/json/json_patch.h>
 
 #include <glog/logging.h>
 

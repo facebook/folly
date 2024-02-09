@@ -239,7 +239,6 @@ list(APPEND hfiles
   ${FOLLY_DIR}/io/async/test/Util.h
   ${FOLLY_DIR}/synchronization/test/Semaphore.h
   ${FOLLY_DIR}/test/DeterministicSchedule.h
-  ${FOLLY_DIR}/test/JsonTestUtil.h
   ${FOLLY_DIR}/test/TestUtils.h
 )
 
@@ -444,7 +443,7 @@ target_link_libraries(folly PUBLIC folly_deps)
 # Test utilities exported for use by downstream projects
 add_library(folly_test_util
   ${FOLLY_DIR}/test/DeterministicSchedule.cpp
-  ${FOLLY_DIR}/test/JsonTestUtil.cpp
+  ${FOLLY_DIR}/json/JsonTestUtil.cpp
 )
 set_property(TARGET folly_test_util PROPERTY VERSION ${PACKAGE_VERSION})
 target_link_libraries(folly_test_util

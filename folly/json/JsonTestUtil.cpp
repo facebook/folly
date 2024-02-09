@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/test/JsonTestUtil.h>
+#include <folly/json/JsonTestUtil.h>
 
 #include <algorithm>
 #include <cmath>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/json_pointer.h>
+#include <folly/json/json_pointer.h>
 
 #include <folly/String.h>
 
