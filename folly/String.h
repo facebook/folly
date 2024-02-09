@@ -53,9 +53,15 @@ namespace folly {
  * Make the string suitable for representation as a C string
  * literal.  Appends the result to the output string.
  *
- * Backslashes all occurrences of backslash and double-quote:
+ * Backslashes all occurrences of backslash, double-quote, and question mark:
  *   "  ->  \"
  *   \  ->  \\
+ *   ?  ->  \?
+ *
+ * (Question marks are escaped in order to prevent creating trigraphs in
+ * the output -- "??x" where x is one of "=/'()!<>-")
+ *
+ * Also backslashes certain whitespace characters: \n, \r, \t
  *
  * Replaces all non-printable ASCII characters with backslash-octal
  * representation:
