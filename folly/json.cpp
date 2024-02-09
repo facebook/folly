@@ -828,7 +828,7 @@ template <bool EnableExtraAsciiEscapes>
 void escapeStringImpl(
     StringPiece input, std::string& out, const serialization_opts& opts) {
   auto hexDigit = [](uint8_t c) -> char {
-    return c < 10 ? c + '0' : c - 10 + 'a';
+    return c < 10 ? c + '0' : c - 10 + 'A';
   };
 
   out.push_back('\"');
