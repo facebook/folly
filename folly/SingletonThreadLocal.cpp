@@ -20,32 +20,32 @@ namespace folly {
 
 namespace detail {
 
-FOLLY_NOINLINE SingletonThreadLocalState::Wrapper::Wrapper() noexcept {}
+FOLLY_NOINLINE SingletonThreadLocalState::Tracking::Tracking() noexcept {}
 
-FOLLY_NOINLINE SingletonThreadLocalState::Wrapper::~Wrapper() {
+FOLLY_NOINLINE SingletonThreadLocalState::Tracking::~Tracking() {
   for (auto& kvp : caches) {
-    kvp.first->cache = nullptr;
+    kvp.first->object = nullptr;
   }
 }
 
 FOLLY_NOINLINE void SingletonThreadLocalState::LocalLifetime::destroy(
-    Wrapper& wrapper) noexcept {
-  auto& lifetimes = wrapper.lifetimes[this];
+    Tracking& tracking) noexcept {
+  auto& lifetimes = tracking.lifetimes[this];
   for (auto cache : lifetimes) {
-    auto const it = wrapper.caches.find(cache);
+    auto const it = tracking.caches.find(cache);
     if (!--it->second) {
-      wrapper.caches.erase(it);
-      cache->cache = nullptr;
+      tracking.caches.erase(it);
+      cache->object = nullptr;
     }
   }
-  wrapper.lifetimes.erase(this);
+  tracking.lifetimes.erase(this);
 }
 
 FOLLY_NOINLINE void SingletonThreadLocalState::LocalLifetime::track(
-    LocalCache& cache, Wrapper& wrapper, void* object) noexcept {
-  cache.cache = object;
-  auto const inserted = wrapper.lifetimes[this].insert(&cache);
-  wrapper.caches[&cache] += inserted.second;
+    LocalCache& cache, Tracking& tracking, void* object) noexcept {
+  cache.object = object;
+  auto const inserted = tracking.lifetimes[this].insert(&cache);
+  tracking.caches[&cache] += inserted.second;
 }
 
 } // namespace detail

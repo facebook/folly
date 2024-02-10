@@ -35,7 +35,7 @@ namespace detail {
 
 struct SingletonThreadLocalState {
   struct LocalCache {
-    void* cache; // type-erased pointer to the object field of wrapper, below
+    void* object; // type-erased pointer to the object field of wrapper, below
   };
   static_assert( // pod avoids tls-init guard var and tls-fini ub use-after-dtor
       std::is_standard_layout<LocalCache>::value &&
@@ -44,7 +44,7 @@ struct SingletonThreadLocalState {
 
   struct LocalLifetime;
 
-  struct Wrapper {
+  struct Tracking {
     using LocalCacheSet = std::unordered_set<LocalCache*>;
 
     // per-cache refcounts, the number of lifetimes tracking that cache
@@ -53,13 +53,13 @@ struct SingletonThreadLocalState {
     // per-lifetime cache tracking; 1-M lifetimes may track 1-N caches
     std::unordered_map<LocalLifetime*, LocalCacheSet> lifetimes;
 
-    Wrapper() noexcept;
-    ~Wrapper();
+    Tracking() noexcept;
+    ~Tracking();
   };
 
   struct LocalLifetime {
-    void destroy(Wrapper& wrapper) noexcept;
-    void track(LocalCache& cache, Wrapper& wrapper, void* object) noexcept;
+    void destroy(Tracking& tracking) noexcept;
+    void track(LocalCache& cache, Tracking& tracking, void* object) noexcept;
   };
 };
 
@@ -117,7 +117,7 @@ class SingletonThreadLocal {
     // keep as first field in first base, to save 1 instr in the fast path
     Object object{Make{}()};
   };
-  struct Wrapper : ObjectWrapper, State::Wrapper {
+  struct Wrapper : ObjectWrapper, State::Tracking {
     /* implicit */ operator T&() { return ObjectWrapper::object; }
   };
 
@@ -152,7 +152,7 @@ class SingletonThreadLocal {
       return getWrapper();
     }
     static thread_local LocalCache cache;
-    auto* object = static_cast<Object*>(cache.cache);
+    auto* object = static_cast<Object*>(cache.object);
     return FOLLY_LIKELY(!!object) ? *object : getSlow(cache).object;
   }
 
