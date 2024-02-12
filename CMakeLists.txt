@@ -706,14 +706,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp
       TEST bitvector_test SOURCES BitVectorCodingTest.cpp
-      TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
       TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
       TEST event_count_test SOURCES EventCountTest.cpp
       # FunctionSchedulerTest has a lot of timing-dependent checks,
       # and tends to fail on heavily loaded systems.
       TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
       TEST future_dag_test SOURCES FutureDAGTest.cpp
-      TEST json_schema_test SOURCES JSONSchemaTest.cpp
       TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
@@ -1005,9 +1003,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST demangle_test SOURCES DemangleTest.cpp
       TEST deterministic_schedule_test SOURCES DeterministicScheduleTest.cpp
       TEST discriminated_ptr_test SOURCES DiscriminatedPtrTest.cpp
-      TEST dynamic_test SOURCES DynamicTest.cpp
-      TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
-      TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
       TEST endian_test SOURCES EndianTest.cpp
       TEST exception_test SOURCES ExceptionTest.cpp
       BENCHMARK exception_wrapper_benchmark WINDOWS_DISABLED
@@ -1045,12 +1040,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST indestructible_test SOURCES IndestructibleTest.cpp
       TEST indexed_mem_pool_test BROKEN
         SOURCES IndexedMemPoolTest.cpp
-      # MSVC Preprocessor stringizing raw string literals bug
-      TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
-      BENCHMARK json_benchmark SOURCES JsonBenchmark.cpp
-      TEST json_pointer_test SOURCES json_pointer_test.cpp
-      TEST json_patch_test SOURCES json_patch_test.cpp
-      TEST json_other_test SOURCES JsonOtherTest.cpp
       TEST lazy_test SOURCES LazyTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
@@ -1108,6 +1097,19 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
+
+    DIRECTORY json/test/
+      TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
+      TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
+      TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
+      TEST dynamic_test SOURCES DynamicTest.cpp
+      # MSVC Preprocessor stringizing raw string literals bug
+      TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
+      BENCHMARK json_benchmark SOURCES JsonBenchmark.cpp
+      TEST json_other_test SOURCES JsonOtherTest.cpp
+      TEST json_patch_test SOURCES json_patch_test.cpp
+      TEST json_pointer_test SOURCES json_pointer_test.cpp
+      TEST json_schema_test SOURCES JSONSchemaTest.cpp
   )
 
   if (${LIBSODIUM_FOUND})
