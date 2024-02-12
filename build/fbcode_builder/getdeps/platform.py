@@ -270,7 +270,7 @@ class HostType(object):
             return "homebrew"
         if self.distro in ("fedora", "centos", "centos_stream"):
             return "rpm"
-        if self.distro.startswith(("debian", "ubuntu")):
+        if self.distro.startswith(("debian", "ubuntu", "pop!_os")):
             return "deb"
         return None
 
