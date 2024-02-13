@@ -944,7 +944,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   // directly awaited within a folly::coro::Task coroutine.
   friend Future<T> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor, SemiFuture<T>&& future) noexcept {
-    return std::move(future).via(std::move(executor));
+    return std::move(future).viaInlineUnsafe(std::move(executor));
   }
 
 #endif
