@@ -19,6 +19,7 @@
 #include <cassert>
 #include <cerrno>
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <exception>
 #include <limits>
