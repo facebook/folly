@@ -31,7 +31,7 @@ namespace folly {
  * VirtualEventBase implements a light-weight view onto existing EventBase.
  *
  * Multiple VirtualEventBases can be backed by a single EventBase. Similarly
- * to EventBase, VirtualEventBase implements loopKeepAlive() functionality,
+ * to EventBase, VirtualEventBase implements KeepAlive functionality,
  * which allows callbacks holding KeepAlive token to keep EventBase looping
  * until they are complete.
  *
@@ -114,43 +114,28 @@ class VirtualEventBase : public folly::TimeoutManager,
 
  protected:
   bool keepAliveAcquire() noexcept override {
-    if (evb_->inRunningEventBaseThread()) {
-      DCHECK(loopKeepAliveCount_ + loopKeepAliveCountAtomic_.load() > 0);
-
-      ++loopKeepAliveCount_;
-    } else {
-      ++loopKeepAliveCountAtomic_;
-    }
+    keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
     return true;
   }
 
-  void keepAliveReleaseEvb() noexcept {
-    if (loopKeepAliveCountAtomic_.load()) {
-      loopKeepAliveCount_ += loopKeepAliveCountAtomic_.exchange(0);
-    }
-    DCHECK(loopKeepAliveCount_ > 0);
-    if (--loopKeepAliveCount_ == 0) {
-      destroyImpl();
-    }
-  }
-
   void keepAliveRelease() noexcept override {
-    if (!evb_->inRunningEventBaseThread()) {
-      evb_->add([this] { keepAliveReleaseEvb(); });
+    auto oldCount = keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
+    if (oldCount != 1) {
+      DCHECK_NE(oldCount, 0);
       return;
     }
-
-    keepAliveReleaseEvb();
+    if (!evb_->inRunningEventBaseThread()) {
+      evb_->runInEventBaseThreadAlwaysEnqueue([this] { destroyImpl(); });
+    } else {
+      destroyImpl();
+    }
   }
 
  private:
   friend class EventBase;
 
-  ssize_t keepAliveCount() {
-    if (loopKeepAliveCountAtomic_.load()) {
-      loopKeepAliveCount_ += loopKeepAliveCountAtomic_.exchange(0);
-    }
-    return loopKeepAliveCount_;
+  size_t keepAliveCount() {
+    return keepAliveCount_.load(std::memory_order_acquire);
   }
 
   std::future<void> destroy();
@@ -160,8 +145,7 @@ class VirtualEventBase : public folly::TimeoutManager,
 
   KeepAlive<EventBase> evb_;
 
-  ssize_t loopKeepAliveCount_{1};
-  std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
+  std::atomic<size_t> keepAliveCount_{1};
   std::promise<void> destroyPromise_;
   std::future<void> destroyFuture_{destroyPromise_.get_future()};
   KeepAlive<VirtualEventBase> loopKeepAlive_{

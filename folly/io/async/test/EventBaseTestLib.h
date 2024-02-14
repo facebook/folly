@@ -2404,6 +2404,22 @@ TYPED_TEST_P(EventBaseTest, LoopKeepAliveCast) {
   Executor::KeepAlive<> keepAlive = getKeepAliveToken(*evbPtr);
 }
 
+TYPED_TEST_P(EventBaseTest, LastLoopKeepAliveTriggeringDestruction) {
+  auto evbPtr = this->makeEventBase();
+  auto& evb = *evbPtr;
+  auto ka = getKeepAliveToken(evb);
+
+  // Busy wait to increase the chance of a race.
+  Baton</* MayBlock */ false> ready;
+  evb.runInEventBaseThread([&] { ready.post(); });
+
+  std::thread t([evbPtr = std::move(evbPtr)]() mutable { evbPtr->loop(); });
+
+  ready.wait();
+  ka.reset();
+  t.join();
+}
+
 TYPED_TEST_P(EventBaseTest, DrivableExecutorTest) {
   folly::Promise<bool> p;
   auto f = p.getFuture();
@@ -2782,6 +2798,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     LoopKeepAliveShutdown,
     LoopKeepAliveAtomic,
     LoopKeepAliveCast,
+    LastLoopKeepAliveTriggeringDestruction,
     EventBaseObserver,
     LoopRearmsNotificationQueue,
     GetThreadIdCollector,

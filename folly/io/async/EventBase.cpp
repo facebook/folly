@@ -682,14 +682,31 @@ void EventBase::loopMainCleanup() {
       loopState_ ? kSuspendedTid : kNotRunningTid, std::memory_order_release);
 }
 
-ssize_t EventBase::loopKeepAliveCount() {
-  if (loopKeepAliveCountAtomic_.load(std::memory_order_relaxed)) {
-    loopKeepAliveCount_ +=
-        loopKeepAliveCountAtomic_.exchange(0, std::memory_order_relaxed);
-  }
-  DCHECK_GE(loopKeepAliveCount_, 0);
+bool EventBase::keepAliveAcquire() noexcept {
+  loopKeepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+  return true;
+}
 
-  return loopKeepAliveCount_;
+void EventBase::keepAliveRelease() noexcept {
+  size_t count = loopKeepAliveCount_.load(std::memory_order_relaxed);
+  do {
+    DCHECK_GE(count, 1);
+    // Ensure that the transition to 0 only happens in the loop, so that the
+    // loop can observe it and complete.
+    if (count == 1 && !inRunningEventBaseThread()) {
+      queue_->putMessage([this] {
+        auto oldCount =
+            loopKeepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
+        DCHECK_GE(oldCount, 1);
+      });
+      return;
+    }
+  } while (!loopKeepAliveCount_.compare_exchange_weak(
+      count, count - 1, std::memory_order_acq_rel, std::memory_order_relaxed));
+}
+
+size_t EventBase::loopKeepAliveCount() {
+  return loopKeepAliveCount_.load(std::memory_order_acquire);
 }
 
 void EventBase::applyLoopKeepAlive() {
@@ -719,12 +736,12 @@ void EventBase::applyLoopKeepAlive() {
 void EventBase::loopForever() {
   bool ret;
   {
-    SCOPE_EXIT { applyLoopKeepAlive(); };
     // Make sure notification queue events are treated as normal events.
-    // We can't use loopKeepAlive() here since LoopKeepAlive token can only be
-    // released inside a loop.
-    ++loopKeepAliveCount_;
-    SCOPE_EXIT { --loopKeepAliveCount_; };
+    loopKeepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    SCOPE_EXIT {
+      loopKeepAliveCount_.fetch_sub(1, std::memory_order_relaxed);
+      applyLoopKeepAlive();
+    };
     ret = loop();
   }
 
@@ -766,11 +783,7 @@ void EventBase::terminateLoopSoon() {
   // In this case, it won't wake up and notice that stop_ is set until it
   // receives another event.  Send an empty frame to the notification queue
   // so that the event loop will wake up even if there are no other events.
-  try {
-    queue_->putMessage([] {});
-  } catch (...) {
-    // putMessage() can only fail when the queue is draining in ~EventBase.
-  }
+  queue_->putMessage([] {});
 }
 
 void EventBase::runInLoop(
