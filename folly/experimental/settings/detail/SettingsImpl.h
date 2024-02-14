@@ -256,17 +256,6 @@ class SnapshotBase {
 };
 
 template <class T>
-std::enable_if_t<std::is_constructible<T, StringPiece>::value, T>
-convertOrConstruct(StringPiece newValue) {
-  return T(newValue);
-}
-template <class T>
-std::enable_if_t<!std::is_constructible<T, StringPiece>::value, T>
-convertOrConstruct(StringPiece newValue) {
-  return to<T>(newValue);
-}
-
-template <class T>
 class SettingCore : public SettingCoreBase {
  public:
   using Contents = SettingContents<T>;
@@ -287,14 +276,14 @@ class SettingCore : public SettingCoreBase {
       StringPiece newValue,
       StringPiece reason,
       SnapshotBase* snapshot) override {
-    setImpl(convertOrConstruct<T>(newValue), reason, snapshot);
+    setImpl(convertOrConstruct(newValue), reason, snapshot);
   }
 
   std::pair<std::string, std::string> getAsString(
       const SnapshotBase* snapshot) const override {
     auto& contents = snapshot ? snapshot->get(*this) : getSlow();
     return std::make_pair(
-        to<std::string>(contents.value), contents.updateReason);
+        folly::to<std::string>(contents.value), contents.updateReason);
   }
 
   SetResult resetToDefault(SnapshotBase* snapshot) override {
@@ -441,7 +430,7 @@ class SettingCore : public SettingCoreBase {
 
   void setImpl(const T& t, StringPiece reason, SnapshotBase* snapshot) {
     /* Check that we can still display it (will throw otherwise) */
-    to<std::string>(t);
+    folly::to<std::string>(t);
 
     if (snapshot) {
       snapshot->set(*this, t, reason);
@@ -486,6 +475,15 @@ class SettingCore : public SettingCoreBase {
         return false;
       case Mutability::Immutable:
         return immutablesFrozen(meta_.project);
+    }
+  }
+
+  T convertOrConstruct(StringPiece newValue) {
+    if constexpr (std::is_constructible_v<T, StringPiece>) {
+      return T(newValue);
+    } else {
+      SettingValueAndMetadata from(newValue, meta_);
+      return to<T>(from);
     }
   }
 };

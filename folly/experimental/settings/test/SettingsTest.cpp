@@ -88,6 +88,31 @@ void toAppend(const UserDefinedType& t, String* out) {
   }
 }
 
+struct UserDefinedWithMeta {
+  std::string value_;
+};
+enum class UserErrorCode {
+  Error,
+};
+std::invalid_argument makeConversionError(
+    const UserErrorCode& error, folly::StringPiece) {
+  return std::invalid_argument(folly::to<std::string>("UserErrorCode ", error));
+}
+folly::Expected<folly::Unit, UserErrorCode> convertTo(
+    const folly::settings::SettingValueAndMetadata& src,
+    UserDefinedWithMeta& out) {
+  if (src.value == "error") {
+    return folly::makeUnexpected(UserErrorCode::Error);
+  }
+  out.value_ =
+      folly::sformat("{}_{}->{}", src.meta.project, src.meta.name, src.value);
+  return folly::unit;
+}
+template <class String>
+void toAppend(const UserDefinedWithMeta& t, String* out) {
+  out->append(t.value_);
+}
+
 FOLLY_SETTING_DEFINE(
     follytest,
     user_defined,
@@ -95,7 +120,13 @@ FOLLY_SETTING_DEFINE(
     "b",
     folly::settings::Mutability::Mutable,
     "User defined type constructed from string");
-
+FOLLY_SETTING_DEFINE(
+    follytest,
+    user_defined_with_meta,
+    UserDefinedWithMeta,
+    {"default"},
+    folly::settings::Mutability::Mutable,
+    "User defined type constructed from string and metadata");
 FOLLY_SETTING_DEFINE(
     follytest,
     immutable_setting,
@@ -287,8 +318,10 @@ TEST(Settings, basic) {
         EXPECT_EQ(meta.typeStr, "unsigned int");
       } else if (meta.typeId == typeid(some_ns::UserDefinedType)) {
         EXPECT_EQ(meta.typeStr, "UserDefinedType");
+      } else if (meta.typeId == typeid(some_ns::UserDefinedWithMeta)) {
+        EXPECT_EQ(meta.typeStr, "UserDefinedWithMeta");
       } else {
-        ASSERT_FALSE(true);
+        FAIL() << "Unexpected type: " << meta.typeStr;
       }
       allFlags += folly::sformat(
           "{}/{}/{}/{}/{}/{}/{}\n",
@@ -310,6 +343,7 @@ TEST(Settings, basic) {
       follytest/some_flag/std::string/"default"/Description/default/default
       follytest/unused/std::string/"unused_default"/Not used, but should still be in the list/unused_default/default
       follytest/user_defined/UserDefinedType/"b"/User defined type constructed from string/b_out/default
+      follytest/user_defined_with_meta/UserDefinedWithMeta/{"default"}/User defined type constructed from string and metadata/default/default
       otherproj/some_flag/std::string/"default"/Description/default/default
   )MESSAGE");
     EXPECT_EQ(allFlags, allFlagsString);
@@ -672,4 +706,24 @@ TEST(Settings, immutables) {
     newSnapshot.publish();
     EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, immutable_setting)->value_, 0);
   }
+}
+
+TEST(Settings, userDefinedConversionWithMetadata) {
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, user_defined_with_meta)->value_,
+      "default");
+  folly::settings::Snapshot sn;
+  EXPECT_THAT(
+      sn.setFromString("follytest_user_defined_with_meta", "new", "test"),
+      IsOk());
+  try {
+    sn.setFromString("follytest_user_defined_with_meta", "error", "test");
+    FAIL();
+  } catch (const std::invalid_argument& ex) {
+    EXPECT_STREQ(ex.what(), "UserErrorCode 0");
+  }
+  sn.publish();
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, user_defined_with_meta)->value_,
+      "follytest_user_defined_with_meta->new");
 }
