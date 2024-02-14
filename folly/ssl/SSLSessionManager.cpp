@@ -59,33 +59,31 @@ void SSLSessionManager::setRawSession(SSLSessionUniquePtr session) {
 }
 
 SSLSessionUniquePtr SSLSessionManager::getRawSession() const {
-  return std::visit(
-      overload(
-          [](const SSLSessionUniquePtr& sessionPtr) {
-            SSL_SESSION* session = sessionPtr.get();
-            if (session) {
-              SSL_SESSION_up_ref(session);
-            }
-            return SSLSessionUniquePtr(session);
-          },
-          [](const shared_ptr<OpenSSLSession>& session) {
-            if (!session) {
-              return SSLSessionUniquePtr();
-            }
+  return folly::variant_match(
+      session_,
+      [](const SSLSessionUniquePtr& sessionPtr) {
+        SSL_SESSION* session = sessionPtr.get();
+        if (session) {
+          SSL_SESSION_up_ref(session);
+        }
+        return SSLSessionUniquePtr(session);
+      },
+      [](const shared_ptr<OpenSSLSession>& session) {
+        if (!session) {
+          return SSLSessionUniquePtr();
+        }
 
-            return session->getActiveSession();
-          }),
-      session_);
+        return session->getActiveSession();
+      });
 }
 
 shared_ptr<SSLSession> SSLSessionManager::getSession() const {
-  return std::visit(
-      overload(
-          [](const SSLSessionUniquePtr&) {
-            return shared_ptr<OpenSSLSession>(nullptr);
-          },
-          [](const shared_ptr<OpenSSLSession>& session) { return session; }),
-      session_);
+  return folly::variant_match(
+      session_,
+      [](const SSLSessionUniquePtr&) {
+        return shared_ptr<OpenSSLSession>(nullptr);
+      },
+      [](const shared_ptr<OpenSSLSession>& session) { return session; });
 }
 
 void SSLSessionManager::attachToSSL(SSL* ssl) {
@@ -98,15 +96,14 @@ SSLSessionManager* SSLSessionManager::getFromSSL(const SSL* ssl) {
 }
 
 void SSLSessionManager::onNewSession(SSLSessionUniquePtr session) {
-  std::visit(
-      overload(
-          [](const SSLSessionUniquePtr&) {},
-          [&session](const shared_ptr<OpenSSLSession>& sessionArg) {
-            if (sessionArg) {
-              sessionArg->setActiveSession(std::move(session));
-            }
-          }),
-      session_);
+  folly::variant_match(
+      session_,
+      [](const SSLSessionUniquePtr&) {},
+      [&session](const shared_ptr<OpenSSLSession>& sessionArg) {
+        if (sessionArg) {
+          sessionArg->setActiveSession(std::move(session));
+        }
+      });
 }
 
 } // namespace ssl
