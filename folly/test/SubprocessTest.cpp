@@ -60,7 +60,7 @@ bool waitForAnyOutput(Subprocess& proc) {
   ssize_t len;
   do {
     len = ::read(proc.stdoutFd(), &buffer, 1);
-  } while (len == -1 and errno == EINTR);
+  } while (len == -1 && errno == EINTR);
   LOG(INFO) << "Read " << buffer;
   return len == 1;
 }

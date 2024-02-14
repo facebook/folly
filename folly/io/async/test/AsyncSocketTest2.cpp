@@ -4229,7 +4229,7 @@ class AsyncSocketByteEventTest : public ::testing::Test {
         msghdr* /* message */,
         int flags,
         int returnValue) {
-      if (flags == MSG_ERRQUEUE and returnValue >= 0) {
+      if (flags == MSG_ERRQUEUE && returnValue >= 0) {
         errorQueueReads_ += 1;
       }
     }
