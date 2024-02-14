@@ -551,8 +551,11 @@ class small_vector
         this->u.setCapacity(o.u.getCapacity());
       }
     } else {
-      if (kShouldCopyInlineTrivial) {
-        copyInlineTrivial<Value>(o);
+      if constexpr (IsRelocatable<Value>::value) {
+        // Copy the entire inline storage, instead of just size() values, to
+        // make the loop fixed-size and unrollable.
+        std::memcpy(u.buffer(), o.u.buffer(), MaxInline * kSizeOfValue);
+        this->setSize(o.size());
         o.resetSizePolicy();
       } else {
         auto n = o.size();
