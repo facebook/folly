@@ -21,7 +21,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 
-#if __has_include(<ranges>)
+#if defined(__cpp_lib_ranges)
 #include <ranges>
 #endif
 
