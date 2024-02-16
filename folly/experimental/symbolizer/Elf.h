@@ -275,6 +275,10 @@ class ElfFile {
       std::initializer_list<uint32_t> types = {
           STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}) const noexcept {
     std::unordered_map<std::string, Symbol> result(names.size());
+    if (names.empty()) {
+      return result;
+    }
+
     for (const std::string& name : names) {
       result[name] = {nullptr, nullptr};
     }
