@@ -157,6 +157,13 @@ class NestedCommandLineApp {
    */
   bool isBuiltinCommand(const std::string& name) const;
 
+  /**
+   * Add a callback to be invoked after command-line arguments are parsed
+   */
+  void addCallback(InitFunction callback) {
+    callbackFunctions_.emplace_back(std::move(callback));
+  }
+
  private:
   void doRun(const std::vector<std::string>& args);
   const std::string& resolveAlias(const std::string& name) const;
@@ -184,7 +191,7 @@ class NestedCommandLineApp {
   std::string programHeading_;
   std::string programHelpFooter_;
   std::string version_;
-  InitFunction initFunction_;
+  std::vector<InitFunction> callbackFunctions_;
   boost::program_options::options_description globalOptions_;
   boost::program_options::command_line_style::style_t optionStyle_;
   std::map<std::string, CommandInfo> commands_;

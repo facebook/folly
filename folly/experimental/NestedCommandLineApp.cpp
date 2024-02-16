@@ -60,7 +60,6 @@ NestedCommandLineApp::NestedCommandLineApp(
       programHeading_(std::move(programHeading)),
       programHelpFooter_(std::move(programHelpFooter)),
       version_(std::move(version)),
-      initFunction_(std::move(initFunction)),
       globalOptions_("Global options"),
       optionStyle_(po::command_line_style::default_style) {
   addCommand(
@@ -89,6 +88,10 @@ NestedCommandLineApp::NestedCommandLineApp(
       (kHelpCommand.str() + "," + kShortHelpCommand.str()).c_str(),
       "Display help (globally or for a given command)")(
       kVersionCommand.str().c_str(), "Display version information");
+
+  if (initFunction) {
+    callbackFunctions_.emplace_back(std::move(initFunction));
+  }
 }
 
 po::options_description& NestedCommandLineApp::addCommand(
@@ -343,8 +346,8 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
 
   cmdArgs.insert(cmdArgs.end(), endArgs.begin(), endArgs.end());
 
-  if (initFunction_) {
-    initFunction_(cmd, vm, cmdArgs);
+  for (const auto& callback : callbackFunctions_) {
+    callback(cmd, vm, cmdArgs);
   }
 
   info.command(vm, cmdArgs);
