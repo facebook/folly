@@ -93,7 +93,7 @@ TEST_F(ElfTest, SymbolByName) {
 }
 
 TEST_F(ElfTest, SymbolsByNameSuccess) {
-  auto names = {"sum_func", "sub_func"};
+  std::vector<std::string> names = {"sum_func", "sub_func"};
   auto result = elfFile_.getSymbolsByName(names, {STT_FUNC});
 
   EXPECT_EQ(names.size(), result.size());
@@ -110,7 +110,7 @@ TEST_F(ElfTest, SymbolsByNameSuccess) {
 }
 
 TEST_F(ElfTest, SymbolsByNamePartial) {
-  auto names = {"sum_func", "sub_func", "foo_func"};
+  std::vector<std::string> names = {"sum_func", "sub_func", "foo_func"};
   auto result = elfFile_.getSymbolsByName(names, {STT_FUNC});
 
   EXPECT_EQ(names.size(), result.size());
@@ -121,6 +121,14 @@ TEST_F(ElfTest, SymbolsByNamePartial) {
   const auto& fooFuncSymbol = result.at("foo_func");
   EXPECT_EQ(nullptr, fooFuncSymbol.first);
   EXPECT_EQ(nullptr, fooFuncSymbol.second);
+}
+
+TEST_F(ElfTest, SymbolsByNameEmpty) {
+  std::vector<std::string> names;
+  auto result = elfFile_.getSymbolsByName(names, {STT_FUNC});
+
+  EXPECT_EQ(0, result.size());
+  EXPECT_EQ(names.size(), result.size());
 }
 
 TEST_F(ElfTest, iterateProgramHeaders) {
