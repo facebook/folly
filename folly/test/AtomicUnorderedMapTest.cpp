@@ -198,7 +198,7 @@ TEST(UnorderedInsertMap, valueMutation) {
 
 // This test is too expensive to run automatically.  On my dev server it
 // takes about 10 minutes for dbg build, 2 for opt.
-TEST(AtomicUnorderedInsertMap, DISABLEDMegaMap) {
+TEST(AtomicUnorderedInsertMap, DISABLED_MegaMap) {
   size_t capacity = 2000000000;
   AtomicUnorderedInsertMap64<size_t, size_t> big(capacity);
   for (size_t i = 0; i < capacity * 2; i += 2) {
