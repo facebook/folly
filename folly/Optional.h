@@ -651,12 +651,10 @@ constexpr bool operator>=(None, const Optional<V>& a) noexcept {
 // Allow usage of Optional<T> in std::unordered_map and std::unordered_set
 FOLLY_NAMESPACE_STD_BEGIN
 template <class T>
-struct hash<folly::Optional<T>> {
+struct hash<
+    folly::enable_std_hash_helper<folly::Optional<T>, remove_const_t<T>>> {
   size_t operator()(folly::Optional<T> const& obj) const {
-    if (!obj.hasValue()) {
-      return 0;
-    }
-    return hash<typename remove_const<T>::type>()(*obj);
+    return static_cast<bool>(obj) ? hash<remove_const_t<T>>()(*obj) : 0;
   }
 };
 FOLLY_NAMESPACE_STD_END

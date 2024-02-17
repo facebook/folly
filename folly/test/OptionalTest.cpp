@@ -27,12 +27,31 @@
 #include <unordered_map>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using std::shared_ptr;
 using std::unique_ptr;
+
+namespace {
+
+struct HashableStruct {};
+struct UnhashableStruct {};
+
+} // namespace
+
+namespace std {
+
+template <>
+struct hash<HashableStruct> {
+  FOLLY_MAYBE_UNUSED size_t operator()(const HashableStruct&) const noexcept {
+    return 0;
+  }
+};
+
+} // namespace std
 
 namespace folly {
 
@@ -62,6 +81,9 @@ static_assert(sizeof(Optional<char>) == sizeof(std::optional<char>), "");
 static_assert(sizeof(Optional<short>) == sizeof(std::optional<short>), "");
 static_assert(sizeof(Optional<int>) == sizeof(std::optional<int>), "");
 static_assert(sizeof(Optional<double>) == sizeof(std::optional<double>), "");
+
+static_assert(is_hashable_v<folly::Optional<HashableStruct>>);
+static_assert(!is_hashable_v<folly::Optional<UnhashableStruct>>);
 
 TEST(Optional, ConstexprConstructible) {
   // Use FOLLY_STORAGE_CONSTEXPR to work around MSVC not taking this.
