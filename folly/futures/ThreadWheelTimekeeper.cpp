@@ -44,9 +44,8 @@ ThreadWheelTimekeeper::~ThreadWheelTimekeeper() {
 }
 
 SemiFuture<Unit> ThreadWheelTimekeeper::after(HighResDuration dur) {
-  auto cob = WTCallback<HHWheelTimer>::create(&eventBase_);
-  auto f = cob->getSemiFuture();
-  //
+  auto [cob, sf] = WTCallback<HHWheelTimer>::create(&eventBase_);
+
   // Even shared_ptr of cob is captured in lambda this is still somewhat *racy*
   // because it will be released once timeout is scheduled. So technically there
   // is no gurantee that EventBase thread can safely call timeout callback.
@@ -59,11 +58,10 @@ SemiFuture<Unit> ThreadWheelTimekeeper::after(HighResDuration dur) {
   // canceling timeout is executed in EventBase thread, the actual timeout
   // callback has either been executed, or will never be executed. So we are
   // fine here.
-  //
-  eventBase_.runInEventBaseThread([this, cob, dur] {
+  eventBase_.runInEventBaseThread([this, cob = std::move(cob), dur] {
     wheelTimer_->scheduleTimeout(cob.get(), folly::chrono::ceil<Duration>(dur));
   });
-  return f;
+  return std::move(sf);
 }
 
 } // namespace folly
