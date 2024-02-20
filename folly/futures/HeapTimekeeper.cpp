@@ -17,12 +17,93 @@
 #include <folly/futures/HeapTimekeeper.h>
 
 #include <optional>
+#include <utility>
+#include <vector>
 
+#include <folly/container/IntrusiveHeap.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/synchronization/DistributedMutex.h>
+#include <folly/synchronization/RelaxedAtomic.h>
+#include <folly/synchronization/SaturatingSemaphore.h>
 #include <folly/synchronization/WaitOptions.h>
 #include <folly/system/ThreadName.h>
 
 namespace folly {
+
+class HeapTimekeeper::Timeout : public IntrusiveHeapNode<> {
+ public:
+  struct DecRef {
+    void operator()(Timeout* timeout) const { timeout->decRef(); }
+  };
+  using Ref = std::unique_ptr<Timeout, DecRef>;
+
+  static std::pair<Ref, SemiFuture<Unit>> create(
+      HeapTimekeeper& parent, Clock::time_point expiration);
+
+  void decRef();
+  bool tryFulfill(Try<Unit> t);
+
+  bool operator<(const Timeout& other) const {
+    return expiration > other.expiration;
+  }
+
+  const Clock::time_point expiration;
+
+ private:
+  static void interruptHandler(
+      Ref self, std::shared_ptr<State> state, exception_wrapper ew);
+
+  Timeout(HeapTimekeeper& parent, Clock::time_point exp, Promise<Unit> promise);
+
+  std::atomic<uint8_t> refCount_ = 2; // Heap and interrupt handler.
+  relaxed_atomic<bool> fulfilled_ = false;
+  Promise<Unit> promise_;
+};
+
+class HeapTimekeeper::State {
+ public:
+  struct Op {
+    enum class Type { kSchedule, kCancel };
+
+    Type type;
+    Timeout::Ref timeout;
+  };
+
+  State() { clearAndAdjustCapacity(queue_); }
+  ~State() {
+    // State is shared with future, but it should only be destroyed once the
+    // worker thread has drained it completely.
+    CHECK_EQ(queue_.size(), 0);
+    CHECK(heap_.empty());
+  }
+
+  static void clearAndAdjustCapacity(std::vector<Op>& queue);
+
+  void enqueue(Op::Type type, Timeout::Ref&& timeout);
+  void shutdown();
+
+  void worker();
+
+ private:
+  using Semaphore = SaturatingSemaphore<>;
+
+  static constexpr size_t kQueueBatchSize = 256;
+  // Queue capacity is kept in this band to make sure that it is reallocated
+  // under the lock as infrequently as possible.
+  static constexpr size_t kDefaultQueueCapacity = 2 * kQueueBatchSize;
+  static constexpr size_t kMaxQueueCapacity = 2 * kDefaultQueueCapacity;
+
+  DistributedMutex mutex_;
+  // These variables are synchronized using mutex_. nextWakeUp_ is only modified
+  // by the worker thread, so it can be read back in that thread without a lock.
+  bool stop_ = false;
+  std::vector<Op> queue_;
+  Clock::time_point nextWakeUp_ = Clock::time_point::max();
+  Semaphore* wakeUp_ = nullptr;
+
+  // Only accessed by the worker thread.
+  IntrusiveHeap<Timeout> heap_;
+};
 
 /* static */ std::pair<HeapTimekeeper::Timeout::Ref, SemiFuture<Unit>>
 HeapTimekeeper::Timeout::create(
@@ -37,18 +118,18 @@ HeapTimekeeper::Timeout::Timeout(
     HeapTimekeeper& parent, Clock::time_point exp, Promise<Unit> promise)
     : expiration(exp), promise_(std::move(promise)) {
   promise_.setInterruptHandler(
-      [self = Ref{this}, &parent](exception_wrapper ew) mutable {
-        interruptHandler(std::move(self), parent, std::move(ew));
+      [self = Ref{this}, state = parent.state_](exception_wrapper ew) mutable {
+        interruptHandler(std::move(self), std::move(state), std::move(ew));
       });
 }
 
 /* static */ void HeapTimekeeper::Timeout::interruptHandler(
-    Ref self, HeapTimekeeper& parent, exception_wrapper ew) {
+    Ref self, std::shared_ptr<State> state, exception_wrapper ew) {
   if (!self->tryFulfill(Try<Unit>{std::move(ew)})) {
     return; // Timeout has already expired, nothing to do.
   }
 
-  parent.enqueue(Op::Type::kCancel, std::move(self));
+  state->enqueue(State::Op::Type::kCancel, std::move(self));
 }
 
 bool HeapTimekeeper::Timeout::tryFulfill(Try<Unit> t) {
@@ -69,7 +150,7 @@ void HeapTimekeeper::Timeout::decRef() {
   }
 }
 
-/* static */ void HeapTimekeeper::clearAndAdjustCapacity(
+/* static */ void HeapTimekeeper::State::clearAndAdjustCapacity(
     std::vector<Op>& queue) {
   queue.clear();
   if (queue.capacity() > kMaxQueueCapacity) {
@@ -80,13 +161,21 @@ void HeapTimekeeper::Timeout::decRef() {
   }
 }
 
-void HeapTimekeeper::enqueue(Op::Type type, Timeout::Ref&& timeout) {
+void HeapTimekeeper::State::enqueue(Op::Type type, Timeout::Ref&& timeout) {
   const auto* timeoutPtr = timeout.get();
   Op op;
   op.type = type;
   op.timeout = std::move(timeout);
 
   auto wakeUp = mutex_.lock_combine([&]() -> Semaphore* {
+    if (stop_) {
+      CHECK(type == Op::Type::kCancel)
+          << "after() called on a destroying HeapTimekeeper";
+      // If the timekeeper is shut down it won't process the queue anymore, so
+      // just decRef the timeout inline, there is nothing to cancel.
+      return nullptr;
+    }
+
     queue_.push_back(std::move(op));
     if (wakeUp_ == nullptr) {
       // No semaphore set, so the worker thread won't go to sleep before
@@ -111,7 +200,7 @@ void HeapTimekeeper::enqueue(Op::Type type, Timeout::Ref&& timeout) {
   }
 }
 
-void HeapTimekeeper::shutdown() {
+void HeapTimekeeper::State::shutdown() {
   auto wakeUp = mutex_.lock_combine([&] {
     stop_ = true;
     return std::exchange(wakeUp_, nullptr);
@@ -121,7 +210,7 @@ void HeapTimekeeper::shutdown() {
   }
 }
 
-void HeapTimekeeper::worker() {
+void HeapTimekeeper::State::worker() {
   setThreadName("FutureTimekeepr");
   std::vector<Op> queue;
   while (true) {
@@ -201,20 +290,18 @@ void HeapTimekeeper::worker() {
   }
 }
 
-HeapTimekeeper::HeapTimekeeper() {
-  clearAndAdjustCapacity(queue_);
-  thread_ = std::thread{[this] { worker(); }};
+HeapTimekeeper::HeapTimekeeper() : state_(std::make_shared<State>()) {
+  thread_ = std::thread{[this] { state_->worker(); }};
 }
 
 HeapTimekeeper::~HeapTimekeeper() {
-  shutdown();
+  state_->shutdown();
   thread_.join();
 }
 
 SemiFuture<Unit> HeapTimekeeper::after(HighResDuration dur) {
-  // TODO(ott): Add keepalive relationship on the timekeeper.
   auto [timeout, sf] = Timeout::create(*this, Clock::now() + dur);
-  enqueue(Op::Type::kSchedule, std::move(timeout));
+  state_->enqueue(State::Op::Type::kSchedule, std::move(timeout));
   return std::move(sf);
 }
 

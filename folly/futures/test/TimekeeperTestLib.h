@@ -432,6 +432,17 @@ TYPED_TEST_P(TimekeeperTest, Destruction) {
   EXPECT_TRUE(f.hasException());
 }
 
+TYPED_TEST_P(TimekeeperTest, ConcurrentDestructionAndCancellation) {
+  folly::Optional<TypeParam> tk{in_place};
+  auto f = tk->after(std::chrono::seconds(10));
+  EXPECT_FALSE(f.isReady());
+  std::thread t{[&] { f.cancel(); }};
+  tk.reset();
+  t.join();
+  EXPECT_TRUE(f.isReady());
+  EXPECT_TRUE(f.hasException());
+}
+
 namespace {
 
 template <class Tk>
@@ -619,6 +630,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     AtBeforeNow,
     HowToCastDuration,
     Destruction,
+    ConcurrentDestructionAndCancellation,
     Stress,
     StressHighContention);
 
