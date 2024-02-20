@@ -152,8 +152,8 @@ template <
             folly::Negation<detail::_has_member_operator_co_await<Awaitable>>>::
             value,
         int> = 0>
-Awaitable& get_awaiter(Awaitable&& awaitable) {
-  return awaitable;
+Awaitable&& get_awaiter(Awaitable&& awaitable) {
+  return std::forward<Awaitable>(awaitable);
 }
 
 template <

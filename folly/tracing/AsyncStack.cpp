@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cassert>
 #include <mutex>
+#include <exception>
 
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
