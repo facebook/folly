@@ -24,35 +24,70 @@
 
 namespace folly {
 
-HeapTimekeeper::HeapTimekeeper() {
-  clearAndAdjustCapacity(queue_);
-  thread_ = std::thread{[this] { worker(); }};
+/* static */ std::pair<HeapTimekeeper::Timeout::Ref, SemiFuture<Unit>>
+HeapTimekeeper::Timeout::create(
+    HeapTimekeeper& parent, Clock::time_point expiration) {
+  auto [promise, sf] = makePromiseContract<Unit>();
+  auto timeout =
+      Timeout::Ref{new Timeout{parent, expiration, std::move(promise)}};
+  return {std::move(timeout), std::move(sf)};
 }
 
-HeapTimekeeper::~HeapTimekeeper() {
-  auto wakeUp = mutex_.lock_combine([&] {
-    stop_ = true;
-    return std::exchange(wakeUp_, nullptr);
-  });
-  if (wakeUp) {
-    wakeUp->post();
+HeapTimekeeper::Timeout::Timeout(
+    HeapTimekeeper& parent, Clock::time_point exp, Promise<Unit> promise)
+    : expiration(exp), promise_(std::move(promise)) {
+  promise_.setInterruptHandler(
+      [self = Ref{this}, &parent](exception_wrapper ew) mutable {
+        interruptHandler(std::move(self), parent, std::move(ew));
+      });
+}
+
+/* static */ void HeapTimekeeper::Timeout::interruptHandler(
+    Ref self, HeapTimekeeper& parent, exception_wrapper ew) {
+  if (!self->tryFulfill(Try<Unit>{std::move(ew)})) {
+    return; // Timeout has already expired, nothing to do.
   }
-  thread_.join();
+
+  parent.enqueue(Op::Type::kCancel, std::move(self));
 }
 
-SemiFuture<Unit> HeapTimekeeper::after(HighResDuration dur) {
-  // TODO(ott): Add keepalive relationship on the timekeeper.
-  auto [timeout, sf] = Timeout::create(*this, Clock::now() + dur);
+bool HeapTimekeeper::Timeout::tryFulfill(Try<Unit> t) {
+  if (fulfilled_.exchange(true)) {
+    return false;
+  }
+  // Break the refcount cycle between promise and interrupt handler.
+  auto promise = std::move(promise_);
+  promise.setTry(std::move(t));
+  return true;
+}
+
+void HeapTimekeeper::Timeout::decRef() {
+  auto before = refCount_.fetch_sub(1, std::memory_order_acq_rel);
+  FOLLY_SAFE_DCHECK(before > 0);
+  if (before == 1) {
+    delete this;
+  }
+}
+
+/* static */ void HeapTimekeeper::clearAndAdjustCapacity(
+    std::vector<Op>& queue) {
+  queue.clear();
+  if (queue.capacity() > kMaxQueueCapacity) {
+    std::vector<Op>{}.swap(queue);
+  }
+  if (queue.capacity() < kDefaultQueueCapacity) {
+    queue.reserve(kDefaultQueueCapacity);
+  }
+}
+
+void HeapTimekeeper::enqueue(Op::Type type, Timeout::Ref&& timeout) {
+  const auto* timeoutPtr = timeout.get();
   Op op;
-  op.type = Op::Type::kSchedule;
-  op.timeout = timeout;
-  enqueue(op);
-  return std::move(sf);
-}
+  op.type = type;
+  op.timeout = std::move(timeout);
 
-void HeapTimekeeper::enqueue(Op op) {
   auto wakeUp = mutex_.lock_combine([&]() -> Semaphore* {
-    queue_.push_back(op);
+    queue_.push_back(std::move(op));
     if (wakeUp_ == nullptr) {
       // No semaphore set, so the worker thread won't go to sleep before
       // processing this op.
@@ -63,13 +98,23 @@ void HeapTimekeeper::enqueue(Op op) {
     // processed in a timely fashion, as the promise is already fulfilled, so we
     // can avoid an unnecessary wake-up.
     if (queue_.size() == kQueueBatchSize ||
-        (op.type == Op::Type::kSchedule &&
-         nextWakeUp_ > op.timeout->expiration)) {
+        (type == Op::Type::kSchedule && nextWakeUp_ > timeoutPtr->expiration)) {
       // Signal that we are waking up the worker and others don't have to.
       return std::exchange(wakeUp_, nullptr);
     }
 
     return nullptr;
+  });
+
+  if (wakeUp) {
+    wakeUp->post();
+  }
+}
+
+void HeapTimekeeper::shutdown() {
+  auto wakeUp = mutex_.lock_combine([&] {
+    stop_ = true;
+    return std::exchange(wakeUp_, nullptr);
   });
   if (wakeUp) {
     wakeUp->post();
@@ -127,17 +172,16 @@ void HeapTimekeeper::worker() {
       }
     }
 
-    for (const auto& op : queue) {
+    for (auto& op : queue) {
       switch (op.type) {
         case Op::Type::kSchedule:
-          heap_.push(op.timeout);
+          heap_.push(op.timeout.release()); // Heap takes ownership.
           break;
         case Op::Type::kCancel:
           if (op.timeout->isLinked()) {
-            heap_.erase(op.timeout);
-            op.timeout->release();
+            heap_.erase(op.timeout.get());
+            op.timeout->decRef();
           }
-          op.timeout->release();
           break;
       }
     }
@@ -145,7 +189,7 @@ void HeapTimekeeper::worker() {
     while (!heap_.empty() && heap_.top()->expiration <= Clock::now()) {
       auto* timeout = heap_.pop();
       timeout->tryFulfill(Try<Unit>{unit});
-      timeout->release();
+      timeout->decRef();
     }
   }
 
@@ -153,66 +197,25 @@ void HeapTimekeeper::worker() {
   while (!heap_.empty()) {
     auto* timeout = heap_.pop();
     timeout->tryFulfill(Try<Unit>{exception_wrapper{FutureNoTimekeeper{}}});
-    timeout->release();
+    timeout->decRef();
   }
 }
 
-/* static */ void HeapTimekeeper::clearAndAdjustCapacity(
-    std::vector<Op>& queue) {
-  queue.clear();
-  if (queue.capacity() > kMaxQueueCapacity) {
-    std::vector<Op>{}.swap(queue);
-  }
-  if (queue.capacity() < kDefaultQueueCapacity) {
-    queue.reserve(kDefaultQueueCapacity);
-  }
+HeapTimekeeper::HeapTimekeeper() {
+  clearAndAdjustCapacity(queue_);
+  thread_ = std::thread{[this] { worker(); }};
 }
 
-/* static */ std::pair<HeapTimekeeper::Timeout*, SemiFuture<Unit>>
-HeapTimekeeper::Timeout::create(
-    HeapTimekeeper& timekeeper, Clock::time_point expiration) {
-  auto [promise, sf] = makePromiseContract<Unit>();
-  auto* timeout = new Timeout{timekeeper, expiration, std::move(promise)};
-  return {timeout, std::move(sf)};
+HeapTimekeeper::~HeapTimekeeper() {
+  shutdown();
+  thread_.join();
 }
 
-HeapTimekeeper::Timeout::Timeout(
-    HeapTimekeeper& timekeeper, Clock::time_point exp, Promise<Unit> promise)
-    : expiration(exp), promise_(std::move(promise)) {
-  promise_.setInterruptHandler(
-      [self = Ref{this}, &timekeeper](exception_wrapper ew) mutable {
-        interruptHandler(std::move(self), timekeeper, std::move(ew));
-      });
-}
-
-/* static */ void HeapTimekeeper::Timeout::interruptHandler(
-    Ref self, HeapTimekeeper& timekeeper, exception_wrapper ew) {
-  if (!self->tryFulfill(Try<Unit>{std::move(ew)})) {
-    return; // Timeout has already expired, nothing to do.
-  }
-
-  Op op;
-  op.type = Op::Type::kCancel;
-  op.timeout = self.release(); // Pass ownership to the worker thread.
-  timekeeper.enqueue(op);
-}
-
-bool HeapTimekeeper::Timeout::tryFulfill(Try<Unit> t) {
-  if (fulfilled_.exchange(true)) {
-    return false;
-  }
-  // Break the refcount cycle between promise and interrupt handler.
-  auto promise = std::move(promise_);
-  promise.setTry(std::move(t));
-  return true;
-}
-
-void HeapTimekeeper::Timeout::release() {
-  auto before = refCount_.fetch_sub(1, std::memory_order_acq_rel);
-  FOLLY_SAFE_DCHECK(before > 0);
-  if (before == 1) {
-    delete this;
-  }
+SemiFuture<Unit> HeapTimekeeper::after(HighResDuration dur) {
+  // TODO(ott): Add keepalive relationship on the timekeeper.
+  auto [timeout, sf] = Timeout::create(*this, Clock::now() + dur);
+  enqueue(Op::Type::kSchedule, std::move(timeout));
+  return std::move(sf);
 }
 
 } // namespace folly

@@ -54,15 +54,15 @@ class HeapTimekeeper : public Timekeeper {
 
   class Timeout : public IntrusiveHeapNode<> {
    public:
-    struct Releaser {
-      void operator()(Timeout* timeout) const { timeout->release(); }
+    struct DecRef {
+      void operator()(Timeout* timeout) const { timeout->decRef(); }
     };
-    using Ref = std::unique_ptr<Timeout, Releaser>;
+    using Ref = std::unique_ptr<Timeout, DecRef>;
 
-    static std::pair<Timeout*, SemiFuture<Unit>> create(
-        HeapTimekeeper& timekeeper, Clock::time_point expiration);
+    static std::pair<Ref, SemiFuture<Unit>> create(
+        HeapTimekeeper& parent, Clock::time_point expiration);
 
-    void release();
+    void decRef();
     bool tryFulfill(Try<Unit> t);
 
     bool operator<(const Timeout& other) const {
@@ -73,7 +73,7 @@ class HeapTimekeeper : public Timekeeper {
 
    private:
     static void interruptHandler(
-        Ref self, HeapTimekeeper& timekeeper, exception_wrapper ew);
+        Ref self, HeapTimekeeper& parent, exception_wrapper ew);
 
     Timeout(
         HeapTimekeeper& timekeeper,
@@ -89,12 +89,13 @@ class HeapTimekeeper : public Timekeeper {
     enum class Type { kSchedule, kCancel };
 
     Type type;
-    Timeout* timeout;
+    Timeout::Ref timeout;
   };
 
   static void clearAndAdjustCapacity(std::vector<Op>& queue);
 
-  void enqueue(Op op);
+  void enqueue(Op::Type type, Timeout::Ref&& timeout);
+  void shutdown();
   void worker();
 
   DistributedMutex mutex_;
