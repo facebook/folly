@@ -16,7 +16,7 @@
 
 // @author Nicholas Ormrod <njormrod@fb.com>
 
-#include <folly/DynamicConverter.h>
+#include <folly/json/DynamicConverter.h>
 
 #include <algorithm>
 #include <map>

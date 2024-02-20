@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 
 #include <folly/Benchmark.h>
 #include <folly/init/Init.h>

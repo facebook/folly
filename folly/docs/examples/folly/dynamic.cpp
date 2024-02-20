@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 #include <folly/portability/GTest.h>
 
 using folly::dynamic;

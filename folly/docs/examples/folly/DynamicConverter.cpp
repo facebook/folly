@@ -15,7 +15,7 @@
  */
 
 #include <vector>
-#include <folly/DynamicConverter.h>
+#include <folly/json/DynamicConverter.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

@@ -33,7 +33,7 @@
 #include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/detail/PerfScoped.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 
 // This needs to be at the end because some versions end up including
 // Windows.h without defining NOMINMAX, which breaks uses

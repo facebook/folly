@@ -19,7 +19,7 @@
 #include <string>
 
 #include <folly/experimental/JSONSchema.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 
 /**
  * A binary that supports testing against the official tests from:

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 
 #include <cmath>
 #include <iterator>
@@ -23,7 +23,7 @@
 
 #include <folly/Range.h>
 #include <folly/hash/Hash.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/ComparisonOperatorTestUtil.h>
 

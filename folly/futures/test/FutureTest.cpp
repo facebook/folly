@@ -28,8 +28,8 @@
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Unit.h>
-#include <folly/dynamic.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/json/dynamic.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 

@@ -18,8 +18,8 @@
 
 #include <folly/Conv.h>
 #include <folly/String.h>
-#include <folly/dynamic.h>
-#include <folly/json.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/logging/LogName.h>
 

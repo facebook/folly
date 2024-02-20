@@ -18,7 +18,7 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/Range.h>
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 
 /**
  * Validation according to the draft v4 standard: http://json-schema.org/

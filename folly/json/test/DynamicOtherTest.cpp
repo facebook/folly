@@ -16,9 +16,9 @@
 
 #include <iostream>
 
-#include <folly/dynamic.h>
 #include <folly/gen/Base.h>
-#include <folly/json.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 

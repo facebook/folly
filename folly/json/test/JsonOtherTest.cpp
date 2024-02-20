@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/json.h>
+#include <folly/json/json.h>
 #include <folly/portability/GTest.h>
 
 TEST(Json, StripComments) {

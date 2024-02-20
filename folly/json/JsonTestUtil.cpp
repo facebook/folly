@@ -20,7 +20,7 @@
 #include <cmath>
 
 #include <folly/Conv.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 #include <folly/lang/Assume.h>
 
 namespace folly {

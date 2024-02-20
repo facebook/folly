@@ -15,7 +15,7 @@
  */
 
 #include <folly/experimental/JSONSchema.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 #include <folly/portability/GTest.h>
 
 using folly::dynamic;

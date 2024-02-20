@@ -18,7 +18,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/ScopeGuard.h>
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 
 namespace folly {
 

@@ -28,8 +28,8 @@
 #include <folly/MapUtil.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-#include <folly/dynamic.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/json/dynamic.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 

@@ -20,7 +20,7 @@
 
 #include <folly/Expected.h>
 #include <folly/Optional.h>
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 #include <folly/json_pointer.h>
 
 namespace folly {
