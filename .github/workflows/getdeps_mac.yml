@@ -10,90 +10,103 @@ on:
     branches:
     - main
 
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
   build:
     runs-on: macOS-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+    - name: Show disk space at start
+      run: df -h
+    - name: Free up disk space
+      run: sudo rm -rf /usr/local/lib/android
+    - name: Show disk space after freeing up
+      run: df -h
+    - name: Install system deps
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive folly
     - name: Fetch boost
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests boost
     - name: Fetch openssl
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests openssl
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests openssl
     - name: Fetch ninja
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests ninja
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests ninja
     - name: Fetch cmake
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests cmake
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests cmake
     - name: Fetch double-conversion
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests double-conversion
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests double-conversion
     - name: Fetch fmt
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests fmt
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests fmt
     - name: Fetch gflags
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests gflags
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests gflags
     - name: Fetch glog
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests glog
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests glog
     - name: Fetch googletest
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests googletest
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests googletest
     - name: Fetch libevent
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests libevent
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libevent
     - name: Fetch lz4
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests lz4
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests lz4
     - name: Fetch snappy
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests snappy
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests snappy
     - name: Fetch zstd
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests zstd
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests zstd
     - name: Fetch autoconf
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests autoconf
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests autoconf
     - name: Fetch automake
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests automake
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests automake
     - name: Fetch libtool
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests libtool
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libtool
     - name: Fetch libsodium
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests libsodium
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libsodium
     - name: Fetch xz
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests xz
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xz
     - name: Build boost
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests boost
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests boost
     - name: Build openssl
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests openssl
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests openssl
     - name: Build ninja
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests ninja
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests ninja
     - name: Build cmake
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests cmake
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests cmake
     - name: Build double-conversion
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests double-conversion
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests double-conversion
     - name: Build fmt
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests fmt
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests fmt
     - name: Build gflags
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests gflags
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests gflags
     - name: Build glog
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests glog
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests glog
     - name: Build googletest
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests googletest
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests googletest
     - name: Build libevent
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libevent
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libevent
     - name: Build lz4
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests lz4
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests lz4
     - name: Build snappy
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests snappy
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests snappy
     - name: Build zstd
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests zstd
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests zstd
     - name: Build autoconf
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests autoconf
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests autoconf
     - name: Build automake
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests automake
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests automake
     - name: Build libtool
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libtool
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libtool
     - name: Build libsodium
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libsodium
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libsodium
     - name: Build xz
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests xz
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests xz
     - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. folly _artifacts/mac  --project-install-prefix folly:/usr/local --final-install-prefix /usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. folly _artifacts/mac  --project-install-prefix folly:/usr/local --final-install-prefix /usr/local
     - uses: actions/upload-artifact@v2
       with:
         name: folly
         path: _artifacts
     - name: Test folly
-      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. folly  --project-install-prefix folly:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. folly  --project-install-prefix folly:/usr/local
+    - name: Show disk space at end
+      run: df -h
