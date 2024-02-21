@@ -98,7 +98,7 @@ struct relaxed_atomic_base : protected std::atomic<T> {
 };
 
 template <typename T>
-struct relaxed_atomic_integral_base : private relaxed_atomic_base<T> {
+struct relaxed_atomic_integral_base : protected relaxed_atomic_base<T> {
  private:
   using atomic = std::atomic<T>;
   using base = relaxed_atomic_base<T>;
@@ -108,7 +108,9 @@ struct relaxed_atomic_integral_base : private relaxed_atomic_base<T> {
 
   using base::relaxed_atomic_base;
   using base::operator=;
+#ifndef __CUDACC__
   using base::operator T;
+#endif
   using base::compare_exchange_strong;
   using base::compare_exchange_weak;
   using base::exchange;
@@ -206,7 +208,9 @@ struct relaxed_atomic : detail::relaxed_atomic_base<T> {
 
   using base::relaxed_atomic_base;
   using base::operator=;
+#ifndef __CUDACC__
   using base::operator T;
+#endif
 };
 
 template <typename T>
@@ -220,7 +224,9 @@ struct relaxed_atomic<T*> : detail::relaxed_atomic_base<T*> {
 
   using detail::relaxed_atomic_base<T*>::relaxed_atomic_base;
   using base::operator=;
+#ifndef __CUDACC__
   using base::operator T*;
+#endif
 
   T* fetch_add(std::ptrdiff_t arg) noexcept {
     return atomic::fetch_add(arg, std::memory_order_relaxed);
