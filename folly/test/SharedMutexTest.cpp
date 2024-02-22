@@ -98,7 +98,6 @@ void runBasicTest() {
 TEST(SharedMutex, basic) {
   runBasicTest<SharedMutexReadPriority>();
   runBasicTest<SharedMutexWritePriority>();
-  runBasicTest<SharedMutexNoSpin>();
   runBasicTest<SharedMutexSuppressTSAN>();
   runBasicTest<SharedMutexTracked>();
 }
@@ -182,7 +181,6 @@ void runBasicHoldersTest() {
 TEST(SharedMutex, basicHolders) {
   runBasicHoldersTest<SharedMutexReadPriority>();
   runBasicHoldersTest<SharedMutexWritePriority>();
-  runBasicHoldersTest<SharedMutexNoSpin>();
   runBasicHoldersTest<SharedMutexSuppressTSAN>();
   runBasicHoldersTest<SharedMutexTracked>();
 }
@@ -211,7 +209,6 @@ TEST(SharedMutex, manyReadLocksWithTokens) {
   SKIP_IF(folly::kIsSanitizeThread);
   runManyReadLocksTestWithTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithTokens<SharedMutexWritePriority>();
-  runManyReadLocksTestWithTokens<SharedMutexNoSpin>();
   runManyReadLocksTestWithTokens<SharedMutexSuppressTSAN>();
   runManyReadLocksTestWithTokens<SharedMutexTracked>();
 }
@@ -238,7 +235,6 @@ TEST(SharedMutex, manyReadLocksWithoutTokens) {
   SKIP_IF(folly::kIsSanitizeThread);
   runManyReadLocksTestWithoutTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithoutTokens<SharedMutexWritePriority>();
-  runManyReadLocksTestWithoutTokens<SharedMutexNoSpin>();
   runManyReadLocksTestWithoutTokens<SharedMutexSuppressTSAN>();
   runManyReadLocksTestWithoutTokens<SharedMutexTracked>();
 }
@@ -270,7 +266,6 @@ void runTimeoutInPastTest() {
 TEST(SharedMutex, timeoutInPast) {
   runTimeoutInPastTest<SharedMutexReadPriority>();
   runTimeoutInPastTest<SharedMutexWritePriority>();
-  runTimeoutInPastTest<SharedMutexNoSpin>();
   runTimeoutInPastTest<SharedMutexSuppressTSAN>();
   runTimeoutInPastTest<SharedMutexTracked>();
 }
@@ -359,7 +354,6 @@ void runFailingTryTimeoutTest() {
 TEST(SharedMutex, failingTryTimeout) {
   runFailingTryTimeoutTest<SharedMutexReadPriority>();
   runFailingTryTimeoutTest<SharedMutexWritePriority>();
-  runFailingTryTimeoutTest<SharedMutexNoSpin>();
   runFailingTryTimeoutTest<SharedMutexSuppressTSAN>();
   runFailingTryTimeoutTest<SharedMutexTracked>();
 }
@@ -405,7 +399,6 @@ void runBasicUpgradeTest() {
 TEST(SharedMutex, basicUpgradeTests) {
   runBasicUpgradeTest<SharedMutexReadPriority>();
   runBasicUpgradeTest<SharedMutexWritePriority>();
-  runBasicUpgradeTest<SharedMutexNoSpin>();
   runBasicUpgradeTest<SharedMutexSuppressTSAN>();
   runBasicUpgradeTest<SharedMutexTracked>();
 }

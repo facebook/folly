@@ -265,9 +265,6 @@ struct SharedMutexPolicyDefault {
 
 namespace shared_mutex_detail {
 
-struct PolicyNoSpin : SharedMutexPolicyDefault {
-  static constexpr uint64_t max_spin_cycles = 0;
-};
 struct PolicyTracked : SharedMutexPolicyDefault {
   static constexpr bool track_thread_id = true;
 };
@@ -1421,11 +1418,6 @@ class SharedMutexImpl : std::conditional_t<
 using SharedMutexReadPriority = SharedMutexImpl<true>;
 using SharedMutexWritePriority = SharedMutexImpl<false>;
 using SharedMutex = SharedMutexWritePriority;
-using SharedMutexNoSpin = SharedMutexImpl<
-    false,
-    void,
-    std::atomic,
-    shared_mutex_detail::PolicyNoSpin>;
 using SharedMutexTracked = SharedMutexImpl<
     false,
     void,
