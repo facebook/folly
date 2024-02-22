@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
+#include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -526,9 +527,11 @@ class small_vector
   small_vector(const std::allocator<Value>&) {}
 
   small_vector(small_vector const& o) {
-    if (kShouldCopyInlineTrivial && !o.isExtern()) {
-      copyInlineTrivial<Value>(o);
-      return;
+    if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+      if (!o.isExtern()) {
+        copyWholeInlineStorageTrivial(o);
+        return;
+      }
     }
 
     auto n = o.size();
@@ -551,12 +554,11 @@ class small_vector
         this->u.setCapacity(o.u.getCapacity());
       }
     } else {
-      if constexpr (IsRelocatable<Value>::value) {
-        // Copy the entire inline storage, instead of just size() values, to
-        // make the loop fixed-size and unrollable.
-        std::memcpy(u.buffer(), o.u.buffer(), MaxInline * kSizeOfValue);
-        this->setSize(o.size());
+      if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+        copyWholeInlineStorageTrivial(o);
         o.resetSizePolicy();
+      } else if constexpr (IsRelocatable<Value>::value) {
+        moveInlineStorageRelocatable(std::move(o));
       } else {
         auto n = o.size();
         std::uninitialized_copy(
@@ -593,9 +595,13 @@ class small_vector
 
   small_vector& operator=(small_vector const& o) {
     if (FOLLY_LIKELY(this != &o)) {
-      if (kShouldCopyInlineTrivial && !this->isExtern() && !o.isExtern()) {
-        copyInlineTrivial<Value>(o);
-      } else if (o.size() < capacity()) {
+      if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+        if (!this->isExtern() && !o.isExtern()) {
+          copyWholeInlineStorageTrivial(o);
+          return *this;
+        }
+      }
+      if (o.size() < capacity()) {
         const size_t oSize = o.size();
         detail::partiallyUninitializedCopy(o.begin(), oSize, begin(), size());
         this->setSize(oSize);
@@ -616,9 +622,12 @@ class small_vector
       }
 
       if (!o.isExtern()) {
-        if (kShouldCopyInlineTrivial) {
-          copyInlineTrivial<Value>(o);
+        if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+          copyWholeInlineStorageTrivial(o);
           o.resetSizePolicy();
+        } else if constexpr (IsRelocatable<Value>::value) {
+          std::destroy_n(u.buffer(), size());
+          moveInlineStorageRelocatable(std::move(o));
         } else {
           const size_t oSize = o.size();
           detail::partiallyUninitializedCopy(
@@ -1049,19 +1058,22 @@ class small_vector
     this->setSize(sz);
   }
 
-  template <class T>
-  typename std::enable_if<is_trivially_copyable_v<T>>::type copyInlineTrivial(
-      small_vector const& o) {
-    // Copy the entire inline storage, instead of just size() values, to make
-    // the loop fixed-size and unrollable.
+  void copyWholeInlineStorageTrivial(small_vector const& o) {
+    static_assert(is_trivially_copyable_v<Value>);
     std::copy(o.u.buffer(), o.u.buffer() + MaxInline, u.buffer());
     this->setSize(o.size());
   }
 
-  template <class T>
-  typename std::enable_if<!is_trivially_copyable_v<T>>::type copyInlineTrivial(
-      small_vector const&) {
-    assume_unreachable();
+  void moveInlineStorageRelocatable(small_vector&& o) {
+    static_assert(IsRelocatable<Value>::value);
+    const auto n = o.size();
+    if constexpr (kMayCopyWholeInlineStorage) {
+      std::memcpy(u.buffer(), o.u.buffer(), MaxInline * kSizeOfValue);
+    } else {
+      std::memcpy(u.buffer(), o.u.buffer(), n * kSizeOfValue);
+    }
+    this->setSize(n);
+    o.resetSizePolicy();
   }
 
   void reset() {
@@ -1340,12 +1352,15 @@ class small_vector
       InlineStorageDataType,
       char>::type InlineStorageType;
 
-  // If the values are trivially copyable and the storage is small enough, copy
-  // it entirely. Limit is half of a cache line, to minimize probability of
-  // introducing a cache miss.
-  static constexpr bool kShouldCopyInlineTrivial =
-      is_trivially_copyable_v<Value> &&
+  // If the storage is small enough, it is usually faster to copy it entirely,
+  // instead of just size() values, to make the loop fixed-size and
+  // unrollable. Limit is half of a cache line, to minimize probability of
+  // crossing a cache line and thus introducing an unnecessary cache miss.
+  static constexpr bool kMayCopyWholeInlineStorage =
       sizeof(InlineStorageType) <= hardware_constructive_interference_size / 2;
+
+  static constexpr bool kShouldCopyWholeInlineStorageTrivial =
+      is_trivially_copyable_v<Value> && kMayCopyWholeInlineStorage;
 
   static bool constexpr kHasInlineCapacity = !BaseType::kAlwaysUseHeap &&
       sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
