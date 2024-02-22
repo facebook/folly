@@ -147,6 +147,7 @@ template <
     typename Awaitable,
     std::enable_if_t<
         folly::Conjunction<
+            !std::is_rvalue_reference<Awaitable&&>::value,
             is_awaiter<Awaitable>,
             folly::Negation<detail::_has_free_operator_co_await<Awaitable>>,
             folly::Negation<detail::_has_member_operator_co_await<Awaitable>>>::
