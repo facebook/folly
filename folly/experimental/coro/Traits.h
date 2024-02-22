@@ -153,7 +153,7 @@ template <
             value,
         int> = 0>
 Awaitable& get_awaiter(Awaitable&& awaitable) {
-  return awaitable;
+  return static_cast<Awaitable&>(awaitable);
 }
 
 template <

@@ -271,6 +271,24 @@ void installSignalHandler() {
 
 #endif
 
+/*
+ * RAII Wrapper around a StackCache that calls
+ * CacheManager::giveBack() on destruction.
+ */
+class StackCacheEntry {
+ public:
+  explicit StackCacheEntry(size_t stackSize, size_t guardPagesPerStack)
+      : stackCache_(
+            std::make_unique<StackCache>(stackSize, guardPagesPerStack)) {}
+
+  StackCache& cache() const noexcept { return *stackCache_; }
+
+  ~StackCacheEntry();
+
+ private:
+  std::unique_ptr<StackCache> stackCache_;
+};
+
 class CacheManager {
  public:
   static CacheManager& instance() {
@@ -309,25 +327,9 @@ class CacheManager {
   }
 };
 
-/*
- * RAII Wrapper around a StackCache that calls
- * CacheManager::giveBack() on destruction.
- */
-class StackCacheEntry {
- public:
-  explicit StackCacheEntry(size_t stackSize, size_t guardPagesPerStack)
-      : stackCache_(
-            std::make_unique<StackCache>(stackSize, guardPagesPerStack)) {}
-
-  StackCache& cache() const noexcept { return *stackCache_; }
-
-  ~StackCacheEntry() {
-    CacheManager::instance().giveBack(std::move(stackCache_));
-  }
-
- private:
-  std::unique_ptr<StackCache> stackCache_;
-};
+StackCacheEntry::~StackCacheEntry() {
+  CacheManager::instance().giveBack(std::move(stackCache_));
+}
 
 GuardPageAllocator::GuardPageAllocator(size_t guardPagesPerStack)
     : guardPagesPerStack_(guardPagesPerStack) {
