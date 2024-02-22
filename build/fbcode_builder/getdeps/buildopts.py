@@ -368,6 +368,11 @@ class BuildOptions(object):
             elif "/bz2-" in d:
                 add_flag(env, "CPPFLAGS", f"-I{includedir}", append=append)
 
+            # The thrift compiler's built-in includes are installed directly to the include dir
+            includethriftdir = os.path.join(d, "include", "thrift")
+            if os.path.exists(includethriftdir):
+                add_path_entry(env, "THRIFT_INCLUDE_PATH", includedir, append=append)
+
         # Map from FB python manifests to PYTHONPATH
         pydir = os.path.join(d, "lib", "fb-py-libs")
         if os.path.exists(pydir):
