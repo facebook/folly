@@ -21,6 +21,15 @@
 
 namespace folly {
 
+TEST(AsyncTimeout, destroy) {
+  std::optional<EventBase> manager{std::in_place};
+  auto observer = AsyncTimeout::make(manager.value(), []() noexcept {});
+  observer->scheduleTimeout(std::chrono::milliseconds(100));
+  EXPECT_EQ(observer->isScheduled(), true);
+  manager.reset();
+  EXPECT_EQ(observer->isScheduled(), false);
+}
+
 TEST(AsyncTimeout, make) {
   int value = 0;
   int expected = 10;
