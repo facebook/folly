@@ -18,9 +18,9 @@ cdef extern from "folly/Optional.h" namespace "folly" nogil:
         cOptional(T val)
         bint has_value()
         T value()
-        T value_or(T&& altValue)
+        T value_or(T altValue)
         T* get_pointer()
         void reset()
-        void assign(T&& newValue)
+        void assign(T newValue)
 
     cOptional[T] make_optional[T](...) except +
