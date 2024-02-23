@@ -438,7 +438,10 @@ void SingletonVault::scheduleDestroyInstances() {
   // Add a dependency on folly::ThreadLocal to make sure all its static
   // singletons are initalized first.
   threadlocal_detail::StaticMeta<void, void>::instance();
+#if !defined(FOLLY_SINGLETON_SKIP_SCHEDULE_ATEXIT) || \
+    !FOLLY_SINGLETON_SKIP_SCHEDULE_ATEXIT
   std::atexit([] { SingletonVault::singleton()->destroyInstancesFinal(); });
+#endif
 }
 
 void SingletonVault::destroyInstancesFinal() {
