@@ -58,8 +58,9 @@ SemiFuture<Unit> ThreadWheelTimekeeper::after(HighResDuration dur) {
   // canceling timeout is executed in EventBase thread, the actual timeout
   // callback has either been executed, or will never be executed. So we are
   // fine here.
-  eventBase_.runInEventBaseThread([this, cob = std::move(cob), dur] {
-    wheelTimer_->scheduleTimeout(cob.get(), folly::chrono::ceil<Duration>(dur));
+  eventBase_.runInEventBaseThread([this, cob2 = std::move(cob), dur] {
+    wheelTimer_->scheduleTimeout(
+        cob2.get(), folly::chrono::ceil<Duration>(dur));
   });
   return std::move(sf);
 }
