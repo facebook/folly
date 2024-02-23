@@ -57,6 +57,16 @@ constexpr conditional_t<C, op_new_builtin_fn_, op_new_library_fn_> op_new_;
 template <bool Usual, bool C = (Usual && op_del_builtin_)>
 constexpr conditional_t<C, op_del_builtin_fn_, op_del_library_fn_> op_del_;
 
+template <bool Usual, typename... A>
+FOLLY_ERASE void do_op_del_sized_(
+    void* const p, std::size_t const s, A const... a) {
+  if constexpr (detail::cpp_sized_deallocation_) {
+    return op_del_<Usual>(p, s, a...);
+  } else {
+    return op_del_<Usual>(p, a...);
+  }
+}
+
 } // namespace detail
 
 //  operator_new
@@ -95,11 +105,7 @@ struct operator_delete_fn {
   FOLLY_ERASE void operator()( //
       void* const p,
       std::size_t const s) const noexcept {
-    if constexpr (detail::cpp_sized_deallocation_) {
-      return detail::op_del_<true>(p, s);
-    } else {
-      return detail::op_del_<true>(p);
-    }
+    return detail::do_op_del_sized_<true>(p, s);
   }
   FOLLY_ERASE void operator()( //
       void* const p,
@@ -110,11 +116,7 @@ struct operator_delete_fn {
       void* const p,
       std::size_t const s,
       std::align_val_t const a) const noexcept {
-    if constexpr (detail::cpp_sized_deallocation_) {
-      return detail::op_del_<detail::cpp_aligned_new_>(p, s, a);
-    } else {
-      return detail::op_del_<detail::cpp_aligned_new_>(p, a);
-    }
+    return detail::do_op_del_sized_<detail::cpp_aligned_new_>(p, s, a);
   }
 };
 FOLLY_INLINE_VARIABLE constexpr operator_delete_fn operator_delete{};
