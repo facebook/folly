@@ -169,9 +169,7 @@ moveObjectsRightAndCreate(
       if (out < lastConstructed) {
         out = lastConstructed - 1;
       }
-      for (auto it = out + 1; it != realLast; ++it) {
-        it->~T();
-      }
+      std::destroy(out + 1, realLast);
     });
     // Decrement the pointers only when it is known that the resulting pointer
     // is within the boundaries of the object. Decrementing past the beginning
@@ -227,11 +225,7 @@ template <class T, class Function>
 void populateMemForward(T* mem, std::size_t n, Function const& op) {
   std::size_t idx = 0;
   {
-    auto rollback = makeGuard([&] {
-      for (std::size_t i = 0; i < idx; ++i) {
-        mem[i].~T();
-      }
-    });
+    auto rollback = makeGuard([&] { std::destroy_n(mem, idx); });
     for (size_t i = 0; i < n; ++i) {
       op(&mem[idx]);
       ++idx;
@@ -253,10 +247,7 @@ void partiallyUninitializedCopy(
   if (fromSize > toSize) {
     std::uninitialized_copy(from + minSize, from + fromSize, to + minSize);
   } else {
-    for (auto it = to + minSize; it != to + toSize; ++it) {
-      using Value = typename std::decay<decltype(*it)>::type;
-      it->~Value();
-    }
+    std::destroy(to + minSize, to + toSize);
   }
 }
 
@@ -358,9 +349,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
         // move things back and that it was a copy constructor that
         // threw: if someone throws from a move constructor the effects
         // are unspecified.
-        for (std::size_t i = 0; i < idx; ++i) {
-          out[i].~T();
-        }
+        std::destroy_n(out, idx);
       });
       for (; first != last; ++first, ++idx) {
         new (&out[idx]) T(std::move(*first));
@@ -395,7 +384,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
     FOLLY_PUSH_WARNING
     FOLLY_MSVC_DISABLE_WARNING(4702) {
       auto rollback = makeGuard([&] { //
-        out[pos].~T();
+        std::destroy_at(out + pos);
       });
       if (begin) {
         this->moveToUninitialized(begin, begin + pos, out);
@@ -404,11 +393,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
     }
     // move old elements to the right of the new one
     {
-      auto rollback = makeGuard([&] {
-        for (SizeType i = 0; i <= pos; ++i) {
-          out[i].~T();
-        }
-      });
+      auto rollback = makeGuard([&] { std::destroy_n(out, pos + 1); });
       if (begin + pos < end) {
         this->moveToUninitialized(begin + pos, end, out + pos + 1);
       }
@@ -703,6 +688,7 @@ class small_vector
     if (this->isExtern() && o.isExtern()) {
       this->swapSizePolicy(o);
 
+      // Cannot use std::swap() because pdata_ is packed.
       auto* tmp = u.pdata_.heap_;
       u.pdata_.heap_ = o.u.pdata_.heap_;
       o.u.pdata_.heap_ = tmp;
@@ -729,15 +715,13 @@ class small_vector
       {
         auto rollback = makeGuard([&] {
           oldSmall.setSize(i);
-          for (; i < oldLarge.size(); ++i) {
-            oldLarge[i].~value_type();
-          }
+          std::destroy(oldLarge.begin() + i, oldLarge.end());
           oldLarge.setSize(ci);
         });
         for (; i < oldLarge.size(); ++i) {
           auto addr = oldSmall.begin() + i;
           new (addr) value_type(std::move(oldLarge[i]));
-          oldLarge[i].~value_type();
+          std::destroy_at(oldLarge.data() + i);
         }
         rollback.dismiss();
       }
@@ -757,19 +741,15 @@ class small_vector
     size_type i = 0;
     {
       auto rollback = makeGuard([&] {
-        for (size_type kill = 0; kill < i; ++kill) {
-          buff[kill].~value_type();
-        }
-        for (; i < oldIntern.size(); ++i) {
-          oldIntern[i].~value_type();
-        }
+        std::destroy_n(buff, i);
+        std::destroy(oldIntern.begin() + i, oldIntern.end());
         oldIntern.resetSizePolicy();
         oldExtern.u.pdata_.heap_ = oldExternHeap;
         oldExtern.setCapacity(oldExternCapacity);
       });
       for (; i < oldIntern.size(); ++i) {
         new (&buff[i]) value_type(std::move(oldIntern[i]));
-        oldIntern[i].~value_type();
+        std::destroy_at(oldIntern.data() + i);
       }
       rollback.dismiss();
     }
@@ -1052,9 +1032,7 @@ class small_vector
 
   void downsize(size_type sz) {
     assert(sz <= size());
-    for (auto it = (begin() + sz), e = end(); it != e; ++it) {
-      it->~value_type();
-    }
+    std::destroy(begin() + sz, end());
     this->setSize(sz);
   }
 
@@ -1123,9 +1101,7 @@ class small_vector
   }
 
   void destroy() {
-    for (auto& t : *this) {
-      (&t)->~value_type();
-    }
+    std::destroy(begin(), end());
     freeHeap();
   }
 
@@ -1286,9 +1262,7 @@ class small_vector
       }
       rollback.dismiss();
     }
-    for (auto& val : *this) {
-      val.~value_type();
-    }
+    std::destroy(begin(), end());
     freeHeap();
     // Store shifted pointer if capacity is heapified
     u.pdata_.heap_ = newp;
