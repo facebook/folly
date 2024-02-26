@@ -1101,10 +1101,9 @@ TEST(MinuteHourTimeSeries, QueryByInterval) {
   }
 }
 
-TEST(MultiLevelTimeSeries, Basic) {
-  // using constructor with initializer_list parameter
-  folly::MultiLevelTimeSeries<int> mhts(
-      60, {seconds(60), seconds(3600), seconds(0)});
+namespace {
+
+void runBasicTest(folly::MultiLevelTimeSeries<int>& mhts) {
   EXPECT_EQ(mhts.numLevels(), 3);
 
   EXPECT_EQ(mhts.sum(seconds(60)), 0);
@@ -1215,6 +1214,29 @@ TEST(MultiLevelTimeSeries, Basic) {
 
   mhts.clear();
   EXPECT_EQ(mhts.sum(seconds(0)), 0);
+}
+
+} // namespace
+
+TEST(MultiLevelTimeSeries, BasicInitializerArray) {
+  std::chrono::seconds levelDurations[] = {
+      seconds(60), seconds(3600), seconds(0)};
+  folly::MultiLevelTimeSeries<int> mhts(60, 3, levelDurations);
+  runBasicTest(mhts);
+}
+
+TEST(MultiLevelTimeSeries, BasicInitializerList) {
+  folly::MultiLevelTimeSeries<int> mhts(
+      60, {seconds(60), seconds(3600), seconds(0)});
+  runBasicTest(mhts);
+}
+
+TEST(MultiLevelTimeSeries, BasicVector) {
+  folly::MultiLevelTimeSeries<int> mhts(
+      60,
+      std::vector<std::chrono::seconds>{
+          seconds(60), seconds(3600), seconds(0)});
+  runBasicTest(mhts);
 }
 
 TEST(MultiLevelTimeSeries, QueryByInterval) {
