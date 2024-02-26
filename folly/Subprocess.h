@@ -237,7 +237,7 @@ class FOLLY_EXPORT SubprocessError : public std::runtime_error {
 class FOLLY_EXPORT CalledProcessError : public SubprocessError {
  public:
   explicit CalledProcessError(ProcessReturnCode rc);
-  ~CalledProcessError() throw() override = default;
+  ~CalledProcessError() noexcept override = default;
   ProcessReturnCode returnCode() const { return returnCode_; }
 
  private:
@@ -250,7 +250,7 @@ class FOLLY_EXPORT CalledProcessError : public SubprocessError {
 class FOLLY_EXPORT SubprocessSpawnError : public SubprocessError {
  public:
   SubprocessSpawnError(const char* executable, int errCode, int errnoValue);
-  ~SubprocessSpawnError() throw() override = default;
+  ~SubprocessSpawnError() noexcept override = default;
   int errnoValue() const { return errnoValue_; }
 
  private:
