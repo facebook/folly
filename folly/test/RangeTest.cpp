@@ -1631,6 +1631,22 @@ TEST(Range, MutableStringPieceExplicitConversionOperator) {
   EXPECT_EQ("hello", piecec.to<fake_string_view>(fake_tag{}));
 }
 
+TEST(Range, InitializerList) {
+  auto check = [](Range<int const*> r) {
+    ASSERT_EQ(r.size(), 3);
+    EXPECT_EQ(*r.begin(), 1);
+    EXPECT_EQ(*(r.begin() + 1), 2);
+    EXPECT_EQ(*(r.begin() + 2), 3);
+  };
+
+  check(range({1, 2, 3}));
+  check(crange({1, 2, 3}));
+
+  static constexpr auto ilist = {1, 2, 3};
+  check(range(ilist));
+  check(crange(ilist));
+}
+
 #if FOLLY_HAS_STRING_VIEW
 namespace {
 std::size_t stringViewSize(std::string_view s) {

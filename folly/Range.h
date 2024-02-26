@@ -1298,6 +1298,16 @@ constexpr Range<T const*> crange(std::array<T, n> const& array) {
   return Range<T const*>{array};
 }
 
+template <class T>
+constexpr Range<T const*> range(std::initializer_list<T> ilist) {
+  return Range<T const*>(ilist.begin(), ilist.end());
+}
+
+template <class T>
+constexpr Range<T const*> crange(std::initializer_list<T> ilist) {
+  return Range<T const*>(ilist.begin(), ilist.end());
+}
+
 using StringPiece = Range<const char*>;
 using MutableStringPiece = Range<char*>;
 using ByteRange = Range<const unsigned char*>;
