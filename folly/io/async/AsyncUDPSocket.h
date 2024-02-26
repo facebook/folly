@@ -480,9 +480,9 @@ class AsyncUDPSocket : public EventHandler {
   // disable/enable TX zero checksum for UDP over IPv6
   bool setTxZeroChksum6(bool bVal);
 
-  void setTrafficClass(uint8_t tclass);
-
-  void setTos(uint8_t tos);
+  // Set ToS or Traffic Class in the underlying socket
+  // depending on the address family.
+  void setTosOrTrafficClass(uint8_t tosOrTclass);
 
   virtual void applyOptions(
       const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);

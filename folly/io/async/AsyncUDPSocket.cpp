@@ -1502,18 +1502,24 @@ bool AsyncUDPSocket::setTxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
 #endif
 }
 
-void AsyncUDPSocket::setTrafficClass(uint8_t tclass) {
-  if (netops::setsockopt(
-          fd_, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(tclass)) != 0) {
-    throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
-  }
-}
-
-void AsyncUDPSocket::setTos(uint8_t tos) {
-  if (netops::setsockopt(fd_, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) != 0) {
-    throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
+void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
+  int valInt = tosOrTclass;
+  if (address().getFamily() == AF_INET6) {
+    if (netops::setsockopt(
+            fd_,
+            IPPROTO_IPV6,
+            IPV6_TCLASS,
+            &valInt,
+            socklen_t(sizeof(valInt))) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
+    }
+  } else {
+    if (netops::setsockopt(
+            fd_, IPPROTO_IP, IP_TOS, &valInt, socklen_t(sizeof(valInt))) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
+    }
   }
 }
 

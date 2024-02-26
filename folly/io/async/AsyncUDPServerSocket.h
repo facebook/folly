@@ -145,14 +145,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
 
   void setRecvTos(bool recvTos) { recvTos_ = recvTos; }
 
-  void setTrafficClass(uint8_t tclass) {
+  void setTosOrTrafficClass(uint8_t tosOrTclass) {
     CHECK(socket_);
-    socket_->setTrafficClass(tclass);
-  }
-
-  void setTos(uint8_t tos) {
-    CHECK(socket_);
-    socket_->setTos(tos);
+    socket_->setTosOrTrafficClass(tosOrTclass);
   }
 
   folly::SocketAddress address() const {
