@@ -29,7 +29,7 @@ namespace {
 template <std::size_t N>
 constexpr auto base64EncodeArray(const std::array<char, N>& in) {
   std::array<char, folly::base64EncodedSize(N) + 1> res{};
-  folly::base64Encode(in.begin(), in.end(), res.data());
+  folly::base64Encode(in.data(), in.data() + in.size(), res.data());
   res.back() = 0;
   return res;
 }
@@ -37,7 +37,7 @@ constexpr auto base64EncodeArray(const std::array<char, N>& in) {
 template <std::size_t N>
 constexpr auto base64URLEncodeArray(const std::array<char, N>& in) {
   std::array<char, folly::base64URLEncodedSize(N) + 1> res{};
-  folly::base64URLEncode(in.begin(), in.end(), res.data());
+  folly::base64URLEncode(in.data(), in.data() + in.size(), res.data());
   res.back() = 0;
   return res;
 }

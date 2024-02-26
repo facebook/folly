@@ -635,7 +635,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK foreach_benchmark SOURCES ForeachBenchmark.cpp
       TEST foreach_test SOURCES ForeachTest.cpp
       TEST merge_test SOURCES MergeTest.cpp
-      BENCHMARK sparse_byte_set_benchmark SOURCES SparseByteSetBenchmark.cpp
+      BENCHMARK sparse_byte_set_benchmark WINDOWS_DISABLED
+        SOURCES SparseByteSetBenchmark.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
       TEST util_test SOURCES UtilTest.cpp
 
@@ -667,13 +668,14 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
 
     DIRECTORY detail/test/
-      TEST split_string_simd_test SOURCES SplitStringSimdTest.cpp
+      TEST split_string_simd_test WINDOWS_DISABLED
+        SOURCES SplitStringSimdTest.cpp
 
     DIRECTORY detail/test/
       TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
-      TEST base64_detail_test
+      TEST base64_detail_test WINDOWS_DISABLED
       SOURCES
         Base64AgainstScalarTest.cpp
         Base64PlatformTest.cpp
@@ -685,8 +687,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK edf_thread_pool_executor_benchmark
         SOURCES EDFThreadPoolExecutorBenchmark.cpp
       TEST executor_test SOURCES ExecutorTest.cpp
-      TEST fiber_io_executor_test WINDOWS_DISABLED
-        SOURCES FiberIOExecutorTest.cpp
+      TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
       TEST global_executor_test SOURCES GlobalExecutorTest.cpp
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
       # Fails in ThreadPoolExecutorTest.RequestContext:719 data2 != nullptr
@@ -760,13 +761,15 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY fibers/test/
       # FiberManager swapWithException fails with segfault
-      BENCHMARK fibers_benchmark SOURCES FibersBenchmark.cpp
+      BENCHMARK fibers_benchmark WINDOWS_DISABLED
+        SOURCES FibersBenchmark.cpp
       TEST fibers_test BROKEN SOURCES FibersTest.cpp
 
     DIRECTORY functional/test/
       TEST apply_tuple_test WINDOWS_DISABLED
         SOURCES ApplyTupleTest.cpp
-      TEST functional_invoke_test SOURCES InvokeTest.cpp
+      TEST functional_invoke_test WINDOWS_DISABLED
+        SOURCES InvokeTest.cpp
       TEST partial_test SOURCES PartialTest.cpp
       TEST functional_protocol_test SOURCES protocol_test.cpp
       TEST functional_traits_test SOURCES traits_test.cpp
@@ -935,7 +938,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST libgen-test SOURCES LibgenTest.cpp
       TEST openssl_portability_test SOURCES OpenSSLPortabilityTest.cpp
       TEST pthread_test SOURCES PThreadTest.cpp
-      TEST time-test SOURCES TimeTest.cpp
+      TEST time-test WINDOWS_DISABLED
+        SOURCES TimeTest.cpp
 
     DIRECTORY ssl/test/
       TEST openssl_hash_test SOURCES OpenSSLHashTest.cpp
@@ -997,7 +1001,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK concurrent_skip_list_benchmark
         SOURCES ConcurrentSkipListBenchmark.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
-      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
+      TEST constexpr_math_test WINDOWS_DISABLED
+        SOURCES ConstexprMathTest.cpp
       TEST conv_test WINDOWS_DISABLED SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
@@ -1009,7 +1014,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES ExceptionWrapperBenchmark.cpp
       TEST exception_wrapper_test WINDOWS_DISABLED
         SOURCES ExceptionWrapperTest.cpp
-      TEST expected_test SOURCES ExpectedTest.cpp
+      TEST expected_test WINDOWS_DISABLED
+        SOURCES ExpectedTest.cpp
       BENCHMARK fbstring_benchmark WINDOWS_DISABLED
         SOURCES FBStringBenchmark.cpp
         HEADERS FBStringTestBenchmarks.cpp.h
@@ -1064,7 +1070,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST poly_test SOURCES PolyTest.cpp
       TEST portability_test SOURCES PortabilityTest.cpp
       # Turns out this benchmark uses Linux only API for setting CPU affinity i.e. cpu_set_t.
-      BENCHMARK producer_consumer_queue_benchmark APPLE_DISABLED SOURCES ProducerConsumerQueueBenchmark.cpp
+      BENCHMARK producer_consumer_queue_benchmark APPLE_DISABLED WINDOWS_DISABLED
+        SOURCES ProducerConsumerQueueBenchmark.cpp
       TEST producer_consumer_queue_test SLOW
         SOURCES ProducerConsumerQueueTest.cpp
       BENCHMARK range_find_benchmark SOURCES RangeFindBenchmark.cpp

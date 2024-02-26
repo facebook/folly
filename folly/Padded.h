@@ -28,6 +28,7 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 
 #include <folly/Portability.h>
+#include <folly/portability/SysTypes.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
 

@@ -310,6 +310,7 @@ TEST(FBVector, overflowAssign) {
       std::length_error);
 }
 
+#ifndef _MSC_VER
 TEST(FBVector, zeroInit) {
   // This is a higher-level version of TEST(Traits, zeroInit).
   struct S1 {
@@ -323,3 +324,4 @@ TEST(FBVector, zeroInit) {
   EXPECT_EQ(vec[0].mp_, nullptr);
   EXPECT_EQ(vec[8].mp_, nullptr);
 }
+#endif

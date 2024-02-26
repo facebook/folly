@@ -705,7 +705,7 @@ class HandshakeTimeoutCallback : public SSLServerAcceptCallbackBase {
 
     hcb_->setSocket(sock);
     sock->getEventBase()->tryRunAfterDelay(
-        [=, this] {
+        [=] {
           std::cerr << "Delayed SSL accept, client will have close by now"
                     << std::endl;
           // SSL accept will fail

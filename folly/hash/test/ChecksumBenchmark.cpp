@@ -58,7 +58,12 @@ int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
+#ifdef _MSC_VER
+  // MSC doesn't have aligned_alloc
+  buf = static_cast<uint8_t*>(std::malloc(kBufSize));
+#else
   buf = static_cast<uint8_t*>(std::aligned_alloc(4096, kBufSize + 64));
+#endif
 
   std::default_random_engine rng(1729); // Deterministic seed.
   std::uniform_int_distribution<uint16_t> dist(0, 255);
