@@ -18,6 +18,7 @@
 
 #include <atomic>
 
+#include <folly/Function.h>
 #include <folly/experimental/TLRefCount.h>
 
 namespace folly {

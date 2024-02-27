@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/Conv.h>
 #include <folly/Portability.h>
 
 #include <folly/executors/InlineExecutor.h>

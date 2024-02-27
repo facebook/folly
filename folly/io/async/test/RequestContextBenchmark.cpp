@@ -21,6 +21,7 @@
 #include <thread>
 #include <vector>
 
+#include <folly/Conv.h>
 #include <folly/container/Array.h>
 #include <folly/io/async/test/RequestContextHelper.h>
 #include <folly/portability/GFlags.h>
