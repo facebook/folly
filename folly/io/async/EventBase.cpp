@@ -184,16 +184,7 @@ namespace folly {
 
 class EventBase::FuncRunner {
  public:
-  explicit FuncRunner(EventBase& eventBase) : eventBase_(eventBase) {}
-  void operator()(Func&& func) noexcept {
-    ExecutionObserverScopeGuard guard(
-        &eventBase_.getExecutionObserverList(), &func);
-
-    func();
-  }
-
- private:
-  EventBase& eventBase_;
+  void operator()(Func func) noexcept { func(); }
 };
 
 class EventBase::ThreadIdCollector : public WorkerProvider {
@@ -601,6 +592,7 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
     // loop callback scheduled by execute(), so if there is an enqueue after the
     // empty check here the queue's event will eventually be active.
     if (res != 0 && !queue_->empty()) {
+      ExecutionObserverScopeGuard guard(&executionObserverList_, queue_.get());
       queue_->execute();
     }
 
@@ -955,8 +947,8 @@ bool EventBase::runLoopCallbacks() {
 
 void EventBase::initNotificationQueue() {
   // Infinite size queue
-  queue_ = std::make_unique<EventBaseAtomicNotificationQueue<Func, FuncRunner>>(
-      FuncRunner{*this});
+  queue_ =
+      std::make_unique<EventBaseAtomicNotificationQueue<Func, FuncRunner>>();
 
   // Mark this as an internal event, so event_base_loop() will return if
   // there are no other events besides this one installed.
