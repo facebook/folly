@@ -136,7 +136,6 @@ class EventBasePollerImpl : public EventBasePoller {
 
  protected:
   void startLoop() {
-    addEvent(&notificationEv_);
     loopThread_ = std::make_unique<std::thread>([this]() { loop(); });
   }
 
@@ -177,6 +176,8 @@ class EventBasePollerImpl : public EventBasePoller {
   };
 
  private:
+  virtual void setup() = 0;
+  virtual void teardown() = 0;
   virtual void addEvent(Event* event) = 0;
   virtual void delEvent(Event* event) = 0;
   virtual bool waitForEvents(
@@ -325,6 +326,9 @@ void EventBasePollerImpl::handleReadyEvents() {
 void EventBasePollerImpl::loop() {
   setThreadName("EventBasePoller");
 
+  setup();
+  addEvent(&notificationEv_);
+
   auto lastLoopTs = std::chrono::steady_clock::now();
   while (!stop_.load()) {
     if (!waitForEvents(lastLoopTs)) {
@@ -341,16 +345,16 @@ void EventBasePollerImpl::loop() {
 
 class EventBasePollerEpoll final : public EventBasePollerImpl {
  public:
-  EventBasePollerEpoll() {
+  EventBasePollerEpoll() { startLoop(); }
+
+  ~EventBasePollerEpoll() override { stopLoop(); }
+
+  void setup() override {
     epFd_ = ::epoll_create1(EPOLL_CLOEXEC);
     PCHECK(epFd_ > 0);
-    startLoop();
   }
 
-  ~EventBasePollerEpoll() override {
-    stopLoop();
-    ::close(epFd_);
-  }
+  void teardown() override { ::close(epFd_); }
 
   void addEvent(Event* event) override {
     if (event->isNotificationFd() && event->registered) {
@@ -425,29 +429,52 @@ class EventBasePollerEpoll final : public EventBasePollerImpl {
 
 #if FOLLY_HAS_LIBURING
 
+namespace {
+
+void enableFlagsIfSupported(
+    struct io_uring_params& params, uint32_t desiredFlags, const char* msg) {
+  struct io_uring_params tmpParams;
+  ::memset(&params, 0, sizeof(tmpParams));
+  tmpParams.flags = desiredFlags;
+  int fd = ::io_uring_setup(1, &tmpParams);
+  if (fd >= 0) {
+    ::close(fd);
+    VLOG(1) << "io_uring flags " << msg << " supported";
+    params.flags |= desiredFlags;
+  } else if (fd == -EINVAL) {
+    VLOG(1) << "io_uring flags " << msg << " NOT supported";
+  } else {
+    LOG(ERROR) << "Unexpected error " << folly::errnoStr(-fd)
+               << " while probing supported io_uring flags";
+  }
+}
+
+#define ENABLE_FLAGS_IF_SUPPORTED(params, desiredFlags) \
+  enableFlagsIfSupported(params, desiredFlags, #desiredFlags)
+
+} // namespace
+
 class EventBasePollerIoUring final : public EventBasePollerImpl {
  public:
-  EventBasePollerIoUring() {
+  EventBasePollerIoUring() { startLoop(); }
+
+  ~EventBasePollerIoUring() override { stopLoop(); }
+
+  void setup() override {
     ::memset(&ring_, 0, sizeof(ring_));
     struct io_uring_params params;
     ::memset(&params, 0, sizeof(params));
 
-    // TODO(ott): Consider following flags once widely available:
-    // IORING_SETUP_COOP_TASKRUN
-    // IORING_SETUP_TASKRUN_FLAG
-    // IORING_SETUP_SINGLE_ISSUER
-    // IORING_SETUP_DEFER_TASKRUN
+    ENABLE_FLAGS_IF_SUPPORTED(
+        params, IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN);
+    ENABLE_FLAGS_IF_SUPPORTED(
+        params, IORING_SETUP_COOP_TASKRUN | IORING_SETUP_TASKRUN_FLAG);
     int ret = ::io_uring_queue_init_params(
         FLAGS_folly_event_base_poller_io_uring_sq_entries, &ring_, &params);
     CHECK(ret == 0) << "Error creating io_uring: " << folly::errnoStr(-ret);
-
-    startLoop();
   }
 
-  ~EventBasePollerIoUring() override {
-    stopLoop();
-    ::io_uring_queue_exit(&ring_);
-  }
+  void teardown() override { ::io_uring_queue_exit(&ring_); }
 
   void addEvent(Event* event) override {
     auto* sqe = ::io_uring_get_sqe(&ring_);
