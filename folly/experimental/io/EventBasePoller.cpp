@@ -43,13 +43,25 @@
 
 FOLLY_GFLAGS_DEFINE_string(
     folly_event_base_poller_backend,
-    "epoll",
+    "io_uring",
     "Available EventBasePoller backends: \"epoll\", \"io_uring\"");
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_event_base_poller_spin_us,
+    10,
+    "Spin-wait for events up to this amount before blocking wait");
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_event_base_poller_sleep_us,
+    0,
+    "Sleep for this amount before doing a blocking wait for events");
+
+// Epoll backend.
 FOLLY_GFLAGS_DEFINE_uint64(
     folly_event_base_poller_epoll_max_events,
     64,
     "Maximum number of events to process in one iteration when "
     "using the epoll EventBasePoller backend");
+
+// io_uring backend.
 FOLLY_GFLAGS_DEFINE_uint64(
     folly_event_base_poller_io_uring_sq_entries,
     128,
@@ -99,7 +111,7 @@ class Queue {
  private:
   static T* kQueueArmedTag() { return reinterpret_cast<T*>(1); }
 
-  std::atomic<T*> head_{nullptr};
+  std::atomic<T*> head_{kQueueArmedTag()};
 };
 
 #if FOLLY_HAS_EPOLL
@@ -124,7 +136,6 @@ class EventBasePollerImpl : public EventBasePoller {
 
  protected:
   void startLoop() {
-    returnQueue_.arm();
     addEvent(&notificationEv_);
     loopThread_ = std::make_unique<std::thread>([this]() { loop(); });
   }
@@ -168,7 +179,8 @@ class EventBasePollerImpl : public EventBasePoller {
  private:
   virtual void addEvent(Event* event) = 0;
   virtual void delEvent(Event* event) = 0;
-  virtual bool waitForEvents() = 0;
+  virtual bool waitForEvents(
+      std::chrono::steady_clock::time_point loopStart) = 0;
 
   void notifyEvfd();
   void returnEvent(Event* event);
@@ -315,7 +327,7 @@ void EventBasePollerImpl::loop() {
 
   auto lastLoopTs = std::chrono::steady_clock::now();
   while (!stop_.load()) {
-    if (!waitForEvents()) {
+    if (!waitForEvents(lastLoopTs)) {
       continue;
     }
     auto waitEndTs = std::chrono::steady_clock::now();
@@ -377,11 +389,27 @@ class EventBasePollerEpoll final : public EventBasePollerImpl {
     PCHECK(ret == 0);
   }
 
-  bool waitForEvents() override {
-    auto ret = ::epoll_wait(epFd_, epollEvents_.data(), kMaxEvents, -1);
+  bool waitForEvents(std::chrono::steady_clock::time_point loopStart) override {
+    int ret;
+
+    auto spinUntil = loopStart +
+        std::chrono::microseconds{FLAGS_folly_event_base_poller_spin_us};
+    do {
+      ret = ::epoll_wait(epFd_, epollEvents_.data(), kMaxEvents, 0);
+    } while (ret <= 0 && std::chrono::steady_clock::now() < spinUntil);
+
+    if (ret <= 0) {
+      if (auto sleepUs = FLAGS_folly_event_base_poller_sleep_us) {
+        /* sleep override */
+        std::this_thread::sleep_for(std::chrono::microseconds{sleepUs});
+      }
+      ret = ::epoll_wait(epFd_, epollEvents_.data(), kMaxEvents, -1);
+    }
+
     if (ret <= 0) {
       return false;
     }
+
     for (int i = 0; i < ret; ++i) {
       readyEvents_.push_back(
           CHECK_NOTNULL(reinterpret_cast<Event*>(epollEvents_[i].data.ptr)));
@@ -445,14 +473,40 @@ class EventBasePollerIoUring final : public EventBasePollerImpl {
     // Nothing to do, no events are persistent.
   }
 
-  bool waitForEvents() override {
+  bool waitForEvents(std::chrono::steady_clock::time_point loopStart) override {
     if (numPendingSqes_ > 0) {
       submitPendingSqes();
     }
 
+    int ret;
     struct io_uring_cqe* cqe = nullptr;
-    auto ret = ::io_uring_wait_cqe(&ring_, &cqe);
-    if (ret < 0 || cqe == nullptr) {
+
+    auto spinUntil = loopStart +
+        std::chrono::microseconds{FLAGS_folly_event_base_poller_spin_us};
+    do {
+      ret = ::io_uring_peek_cqe(&ring_, &cqe);
+    } while (ret != 0 && std::chrono::steady_clock::now() < spinUntil);
+
+    if (auto sleepUs = FLAGS_folly_event_base_poller_sleep_us;
+        ret != 0 && sleepUs > 0) {
+      // Simulate a sleep + peek by waiting for infinite events with a timeout.
+      struct __kernel_timespec timeout;
+      timeout.tv_sec = sleepUs / 1'000'000;
+      timeout.tv_nsec = (sleepUs % 1'000'000) * 1'000;
+      ret = ::io_uring_wait_cqes(
+          &ring_,
+          &cqe,
+          std::numeric_limits<unsigned>::max(),
+          &timeout,
+          nullptr);
+    }
+
+    if (ret != 0 || cqe == nullptr) {
+      // No luck, do an unbounded wait.
+      ret = ::io_uring_wait_cqe(&ring_, &cqe);
+    }
+
+    if (ret != 0 || cqe == nullptr) {
       return false;
     }
 

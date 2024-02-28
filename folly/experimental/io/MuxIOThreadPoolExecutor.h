@@ -28,6 +28,7 @@
 #include <folly/synchronization/Baton.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
+#include <folly/synchronization/WaitOptions.h>
 
 namespace folly {
 
@@ -70,10 +71,17 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       return *this;
     }
 
+    Options& setIdleSpinMax(std::chrono::nanoseconds s) {
+      idleSpinMax = s;
+      return *this;
+    }
+
     bool enableThreadIdCollection{false};
     // If 0, the number of EventBases is set to the number of threads.
     size_t numEventBases{0};
-    std::chrono::nanoseconds wakeUpInterval{std::chrono::microseconds(100)};
+    std::chrono::nanoseconds wakeUpInterval{std::chrono::microseconds{100}};
+    // Max spin for an idle thread waiting for work before going to sleep.
+    std::chrono::nanoseconds idleSpinMax = std::chrono::microseconds{10};
   };
 
   explicit MuxIOThreadPoolExecutor(

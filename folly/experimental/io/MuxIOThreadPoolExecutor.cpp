@@ -148,7 +148,7 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
       ExecutorBlockingGuard::TrackTag{}, this, getName()};
 
   while (true) {
-    readyQueueSem_.wait();
+    readyQueueSem_.wait(WaitOptions{}.spin_max(options_.idleSpinMax));
     auto handle = readyQueue_.dequeue();
     if (handle == nullptr) {
       break;
