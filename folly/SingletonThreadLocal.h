@@ -256,7 +256,7 @@ FOLLY_POP_WARNING
   struct __folly_reused_type_##name {                                          \
     __VA_ARGS__ object;                                                        \
   };                                                                           \
-  FOLLY_MAYBE_UNUSED ::folly::unsafe_for_async_usage                           \
+  [[maybe_unused]] ::folly::unsafe_for_async_usage                             \
       __folly_reused_g_prevent_async_##name;                                   \
   auto& name =                                                                 \
       ::folly::SingletonThreadLocal<__folly_reused_type_##name>::get().object; \

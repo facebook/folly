@@ -58,9 +58,9 @@ TcpInfo::IoctlDispatcher* TcpInfo::IoctlDispatcher::getDefaultInstance() {
 }
 
 int TcpInfo::IoctlDispatcher::ioctl(
-    FOLLY_MAYBE_UNUSED int fd,
-    FOLLY_MAYBE_UNUSED unsigned long request,
-    FOLLY_MAYBE_UNUSED void* argp) {
+    [[maybe_unused]] int fd,
+    [[maybe_unused]] unsigned long request,
+    [[maybe_unused]] void* argp) {
 #if defined(__linux__)
   return ::ioctl(fd, request, argp);
 #else
@@ -509,9 +509,9 @@ Optional<size_t> TcpInfo::recvBufInUseBytes() const {
 }
 
 void TcpInfo::initCcInfoFromFd(
-    FOLLY_MAYBE_UNUSED const NetworkSocket& fd,
-    FOLLY_MAYBE_UNUSED TcpInfo& wrappedInfo,
-    FOLLY_MAYBE_UNUSED netops::Dispatcher& netopsDispatcher) {
+    [[maybe_unused]] const NetworkSocket& fd,
+    [[maybe_unused]] TcpInfo& wrappedInfo,
+    [[maybe_unused]] netops::Dispatcher& netopsDispatcher) {
 #ifndef FOLLY_HAVE_TCP_CC_INFO
   return; // platform not supported
 #elif defined(__linux__)
@@ -595,9 +595,9 @@ void TcpInfo::initCcInfoFromFd(
 }
 
 void TcpInfo::initMemInfoFromFd(
-    FOLLY_MAYBE_UNUSED const NetworkSocket& fd,
-    FOLLY_MAYBE_UNUSED TcpInfo& wrappedInfo,
-    FOLLY_MAYBE_UNUSED IoctlDispatcher& ioctlDispatcher) {
+    [[maybe_unused]] const NetworkSocket& fd,
+    [[maybe_unused]] TcpInfo& wrappedInfo,
+    [[maybe_unused]] IoctlDispatcher& ioctlDispatcher) {
 #if defined(__linux__)
   if (NetworkSocket() == fd) {
     return;

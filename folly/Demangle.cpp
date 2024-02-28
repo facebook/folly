@@ -67,9 +67,9 @@ static constexpr auto cxxabi_demangle = static_cast<char* (*)(...)>(nullptr);
 namespace {
 struct poison {};
 
-FOLLY_MAYBE_UNUSED FOLLY_ERASE void rust_demangle_callback(poison);
+[[maybe_unused]] FOLLY_ERASE void rust_demangle_callback(poison);
 
-FOLLY_MAYBE_UNUSED FOLLY_ERASE int rust_demangle_callback_fallback(
+[[maybe_unused]] FOLLY_ERASE int rust_demangle_callback_fallback(
     const char*, int, demangle_callbackref, void*) {
   return 0;
 }

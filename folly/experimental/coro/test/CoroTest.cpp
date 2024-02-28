@@ -378,7 +378,7 @@ struct AwaitableWithMemberOperator {
   AwaitableInt<42> operator co_await() { return {}; }
 };
 
-FOLLY_MAYBE_UNUSED AwaitableInt<24> operator co_await(
+[[maybe_unused]] AwaitableInt<24> operator co_await(
     const AwaitableWithMemberOperator&) {
   return {};
 }

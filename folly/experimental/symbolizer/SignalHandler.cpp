@@ -132,7 +132,7 @@ struct {
     {0, nullptr, {}},
 };
 
-FOLLY_MAYBE_UNUSED void callPreviousSignalHandler(int signum) {
+[[maybe_unused]] void callPreviousSignalHandler(int signum) {
   // Restore disposition to old disposition, then kill ourselves with the same
   // signal. The signal will be blocked until we return from our handler,
   // then it will invoke the default handler and abort.
@@ -481,7 +481,7 @@ void signalHandler(int signum, siginfo_t* info, void* uctx) {
 // symbolization of trivial async stacks (e.g [] { CHECK(false); co_return; }).
 constexpr size_t kSmallSigAltStackSize = 51392;
 
-FOLLY_MAYBE_UNUSED bool isSmallSigAltStackEnabled() {
+[[maybe_unused]] bool isSmallSigAltStackEnabled() {
   stack_t ss;
   if (sigaltstack(nullptr, &ss) != 0) {
     return false;

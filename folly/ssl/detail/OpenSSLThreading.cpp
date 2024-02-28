@@ -72,10 +72,10 @@ bool isSSLLockDisabled(int lockId) {
 
 namespace {
 struct SSLLock {
-  FOLLY_MAYBE_UNUSED explicit SSLLock(LockType inLockType = LockType::MUTEX)
+  [[maybe_unused]] explicit SSLLock(LockType inLockType = LockType::MUTEX)
       : lockType(inLockType) {}
 
-  FOLLY_MAYBE_UNUSED void lock(bool /* read */) {
+  [[maybe_unused]] void lock(bool /* read */) {
     if (lockType == LockType::MUTEX) {
       mutex.lock();
     } else if (lockType == LockType::SPINLOCK) {
@@ -84,7 +84,7 @@ struct SSLLock {
     // lockType == LOCK_NONE, no-op
   }
 
-  FOLLY_MAYBE_UNUSED void unlock(bool /* read */) {
+  [[maybe_unused]] void unlock(bool /* read */) {
     if (lockType == LockType::MUTEX) {
       mutex.unlock();
     } else if (lockType == LockType::SPINLOCK) {

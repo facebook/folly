@@ -57,7 +57,7 @@ namespace folly {
 namespace {
 
 #if FOLLY_IO_URING_UP_TO_DATE
-int ioUringEnableRings(FOLLY_MAYBE_UNUSED struct io_uring* ring) {
+int ioUringEnableRings([[maybe_unused]] struct io_uring* ring) {
   // Ideally this would call ::io_uring_enable_rings directly which just runs
   // the below however this was missing from a stable version of liburing, which
   // means that some distributions were not able to compile it. see
@@ -148,7 +148,7 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
   }
 }
 
-void checkLogOverflow(FOLLY_MAYBE_UNUSED struct io_uring* ring) {
+void checkLogOverflow([[maybe_unused]] struct io_uring* ring) {
 #if FOLLY_IO_URING_UP_TO_DATE
   if (::io_uring_cq_has_overflow(ring)) {
     FB_LOG_EVERY_MS(ERROR, 10000)

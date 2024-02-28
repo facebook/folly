@@ -461,8 +461,7 @@ std::string hexDump(const void* ptr, size_t size) {
 // `strerror_r` to `invoke_strerror_r` function, and C++ compiler
 // selects proper function.
 
-FOLLY_MAYBE_UNUSED
-static std::string invoke_strerror_r(
+[[maybe_unused]] static std::string invoke_strerror_r(
     int (*strerror_r)(int, char*, size_t), int err, char* buf, size_t buflen) {
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, buflen);
@@ -476,8 +475,7 @@ static std::string invoke_strerror_r(
   }
 }
 
-FOLLY_MAYBE_UNUSED
-static std::string invoke_strerror_r(
+[[maybe_unused]] static std::string invoke_strerror_r(
     char* (*strerror_r)(int, char*, size_t),
     int err,
     char* buf,

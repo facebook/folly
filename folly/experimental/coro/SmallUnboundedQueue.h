@@ -60,7 +60,7 @@ class SmallUnboundedQueue : detail::SmallUnboundedQueueBase<!SingleConsumer> {
   }
 
   folly::coro::Task<T> dequeue() {
-    FOLLY_MAYBE_UNUSED auto maybeLock = co_await this->co_scoped_lock();
+    [[maybe_unused]] auto maybeLock = co_await this->co_scoped_lock();
     if (buffer_.empty()) {
       Consumer c;
       if (queue_.wait(&c)) {

@@ -46,7 +46,7 @@ namespace std {
 
 template <>
 struct hash<HashableStruct> {
-  FOLLY_MAYBE_UNUSED size_t operator()(const HashableStruct&) const noexcept {
+  [[maybe_unused]] size_t operator()(const HashableStruct&) const noexcept {
     return 0;
   }
 };

@@ -253,7 +253,7 @@ TEST(FunctionRef, Emptiness) {
   // models std::function
   struct NullptrTestableInSitu {
     int res;
-    FOLLY_MAYBE_UNUSED explicit NullptrTestableInSitu(std::nullptr_t);
+    [[maybe_unused]] explicit NullptrTestableInSitu(std::nullptr_t);
     explicit NullptrTestableInSitu(int i) : res(i) {}
     CastableToBool operator==(std::nullptr_t) const { return res % 3 != 1; }
     int operator()(int in) const { return res * in; }

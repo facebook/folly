@@ -470,22 +470,21 @@ struct invoke_first_match : private Invoker... {
  *    HasData a, b;
  *    traits::invoke(a, b); // throw 7
  */
-#define FOLLY_CREATE_FREE_INVOKER(classname, funcname, ...)                \
-  namespace classname##__folly_detail_invoke_ns {                          \
-    FOLLY_MAYBE_UNUSED void funcname(                                      \
-        ::folly::detail::invoke_private_overload&);                        \
-    FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING(_, funcname, __VA_ARGS__) \
-    struct __folly_detail_invoke_obj {                                     \
-      template <typename... Args>                                          \
-      FOLLY_MAYBE_UNUSED FOLLY_ERASE_HACK_GCC constexpr auto operator()(   \
-          Args&&... args) const                                            \
-          noexcept(noexcept(funcname(static_cast<Args&&>(args)...)))       \
-              -> decltype(funcname(static_cast<Args&&>(args)...)) {        \
-        return funcname(static_cast<Args&&>(args)...);                     \
-      }                                                                    \
-    };                                                                     \
-  }                                                                        \
-  struct classname                                                         \
+#define FOLLY_CREATE_FREE_INVOKER(classname, funcname, ...)                    \
+  namespace classname##__folly_detail_invoke_ns {                              \
+    [[maybe_unused]] void funcname(::folly::detail::invoke_private_overload&); \
+    FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING(_, funcname, __VA_ARGS__)     \
+    struct __folly_detail_invoke_obj {                                         \
+      template <typename... Args>                                              \
+      [[maybe_unused]] FOLLY_ERASE_HACK_GCC constexpr auto operator()(         \
+          Args&&... args) const                                                \
+          noexcept(noexcept(funcname(static_cast<Args&&>(args)...)))           \
+              -> decltype(funcname(static_cast<Args&&>(args)...)) {            \
+        return funcname(static_cast<Args&&>(args)...);                         \
+      }                                                                        \
+    };                                                                         \
+  }                                                                            \
+  struct classname                                                             \
       : classname##__folly_detail_invoke_ns::__folly_detail_invoke_obj {}
 
 /***
@@ -499,7 +498,7 @@ struct invoke_first_match : private Invoker... {
  */
 #define FOLLY_CREATE_FREE_INVOKER_SUITE(funcname, ...)             \
   FOLLY_CREATE_FREE_INVOKER(funcname##_fn, funcname, __VA_ARGS__); \
-  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr funcname##_fn funcname {}
+  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr funcname##_fn funcname {}
 
 /***
  *  FOLLY_CREATE_QUAL_INVOKER
@@ -510,12 +509,11 @@ struct invoke_first_match : private Invoker... {
  *  it is required that the name be in scope and that it is not possible to
  *  provide a list of namespaces in which to look up the name..
  */
-#define FOLLY_CREATE_QUAL_INVOKER(classname, funcpath)                 \
-  struct classname {                                                   \
-    template <typename... A>                                           \
-    FOLLY_MAYBE_UNUSED FOLLY_ERASE_HACK_GCC constexpr auto operator()( \
-        A&&... a) const                                                \
-        FOLLY_DETAIL_FORWARD_BODY(funcpath(static_cast<A&&>(a)...))    \
+#define FOLLY_CREATE_QUAL_INVOKER(classname, funcpath)                        \
+  struct classname {                                                          \
+    template <typename... A>                                                  \
+    [[maybe_unused]] FOLLY_ERASE_HACK_GCC constexpr auto operator()(A&&... a) \
+        const FOLLY_DETAIL_FORWARD_BODY(funcpath(static_cast<A&&>(a)...))     \
   }
 
 /***
@@ -528,7 +526,7 @@ struct invoke_first_match : private Invoker... {
  */
 #define FOLLY_CREATE_QUAL_INVOKER_SUITE(name, funcpath) \
   FOLLY_CREATE_QUAL_INVOKER(name##_fn, funcpath);       \
-  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr name##_fn name {}
+  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr name##_fn name {}
 
 /***
  *  FOLLY_INVOKE_QUAL
@@ -583,7 +581,7 @@ struct invoke_first_match : private Invoker... {
 #define FOLLY_CREATE_MEMBER_INVOKER(classname, membername)                 \
   struct classname {                                                       \
     template <typename O, typename... Args>                                \
-    FOLLY_MAYBE_UNUSED FOLLY_ERASE_HACK_GCC constexpr auto operator()(     \
+    [[maybe_unused]] FOLLY_ERASE_HACK_GCC constexpr auto operator()(       \
         O&& o, Args&&... args) const                                       \
         noexcept(noexcept(                                                 \
             static_cast<O&&>(o).membername(static_cast<Args&&>(args)...))) \
@@ -602,10 +600,9 @@ struct invoke_first_match : private Invoker... {
  *
  *  See FOLLY_CREATE_MEMBER_INVOKER.
  */
-#define FOLLY_CREATE_MEMBER_INVOKER_SUITE(membername)                \
-  FOLLY_CREATE_MEMBER_INVOKER(membername##_fn, membername);          \
-  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr membername##_fn \
-      membername {}
+#define FOLLY_CREATE_MEMBER_INVOKER_SUITE(membername)       \
+  FOLLY_CREATE_MEMBER_INVOKER(membername##_fn, membername); \
+  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr membername##_fn membername {}
 
 /***
  *  FOLLY_INVOKE_MEMBER
@@ -681,7 +678,7 @@ struct invoke_first_match : private Invoker... {
   template <typename T>                                                 \
   struct classname {                                                    \
     template <typename... Args, typename U = T>                         \
-    FOLLY_MAYBE_UNUSED FOLLY_ERASE_HACK_GCC constexpr auto operator()(  \
+    [[maybe_unused]] FOLLY_ERASE_HACK_GCC constexpr auto operator()(    \
         Args&&... args) const                                           \
         noexcept(noexcept(U::membername(static_cast<Args&&>(args)...))) \
             -> decltype(U::membername(static_cast<Args&&>(args)...)) {  \
@@ -699,10 +696,10 @@ struct invoke_first_match : private Invoker... {
  *
  *  See FOLLY_CREATE_STATIC_MEMBER_INVOKER.
  */
-#define FOLLY_CREATE_STATIC_MEMBER_INVOKER_SUITE(membername)            \
-  FOLLY_CREATE_STATIC_MEMBER_INVOKER(membername##_fn, membername);      \
-  template <typename T>                                                 \
-  FOLLY_MAYBE_UNUSED FOLLY_INLINE_VARIABLE constexpr membername##_fn<T> \
+#define FOLLY_CREATE_STATIC_MEMBER_INVOKER_SUITE(membername)          \
+  FOLLY_CREATE_STATIC_MEMBER_INVOKER(membername##_fn, membername);    \
+  template <typename T>                                               \
+  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr membername##_fn<T> \
       membername {}
 
 namespace folly {

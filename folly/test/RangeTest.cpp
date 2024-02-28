@@ -1718,7 +1718,7 @@ class NonPOD {
  public:
   NonPOD() {}
 };
-FOLLY_MAYBE_UNUSED void test_func(Range<const NonPOD*>) {}
+[[maybe_unused]] void test_func(Range<const NonPOD*>) {}
 
 } // anonymous namespace
 

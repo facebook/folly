@@ -138,8 +138,8 @@ class AsyncUDPSocket : public EventHandler {
   };
 
   static void fromMsg(
-      FOLLY_MAYBE_UNUSED ReadCallback::OnDataAvailableParams& params,
-      FOLLY_MAYBE_UNUSED struct msghdr& msg);
+      [[maybe_unused]] ReadCallback::OnDataAvailableParams& params,
+      [[maybe_unused]] struct msghdr& msg);
 
   using IOBufFreeFunc = folly::Function<void(std::unique_ptr<folly::IOBuf>&&)>;
 
@@ -553,7 +553,7 @@ class AsyncUDPSocket : public EventHandler {
       char* control);
 
   virtual ssize_t writevImpl(
-      netops::Msgheader* msg, FOLLY_MAYBE_UNUSED WriteOptions options);
+      netops::Msgheader* msg, [[maybe_unused]] WriteOptions options);
 
   size_t handleErrMessages() noexcept;
 
@@ -622,8 +622,8 @@ class AsyncUDPSocket : public EventHandler {
   uint32_t zeroCopyBufId_{0};
 
   int getZeroCopyFlags();
-  static bool isZeroCopyMsg(FOLLY_MAYBE_UNUSED const cmsghdr& cmsg);
-  void processZeroCopyMsg(FOLLY_MAYBE_UNUSED const cmsghdr& cmsg);
+  static bool isZeroCopyMsg([[maybe_unused]] const cmsghdr& cmsg);
+  void processZeroCopyMsg([[maybe_unused]] const cmsghdr& cmsg);
   void addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
   void releaseZeroCopyBuf(uint32_t id);
 

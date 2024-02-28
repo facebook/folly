@@ -368,7 +368,7 @@ TEST_F(TaskTest, FutureRoundtrip) {
 namespace {
 
 // We just want to make sure this compiles without errors or warnings.
-FOLLY_MAYBE_UNUSED folly::coro::Task<void>
+[[maybe_unused]] folly::coro::Task<void>
 checkAwaitingFutureOfUnitDoesntWarnAboutDiscardedResult() {
   co_await folly::makeSemiFuture();
 

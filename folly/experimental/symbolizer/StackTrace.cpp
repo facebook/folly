@@ -45,8 +45,8 @@ static ssize_t sInit = getStackTrace(&sAddr, 0);
 } // namespace
 
 ssize_t getStackTrace(
-    FOLLY_MAYBE_UNUSED uintptr_t* addresses,
-    FOLLY_MAYBE_UNUSED size_t maxAddresses) {
+    [[maybe_unused]] uintptr_t* addresses,
+    [[maybe_unused]] size_t maxAddresses) {
   static_assert(
       sizeof(uintptr_t) == sizeof(void*), "uintptr_t / pointer size mismatch");
   std::ignore = sInit;
@@ -146,8 +146,8 @@ ssize_t getStackTraceInPlace(
 } // namespace
 
 ssize_t getStackTraceSafe(
-    FOLLY_MAYBE_UNUSED uintptr_t* addresses,
-    FOLLY_MAYBE_UNUSED size_t maxAddresses) {
+    [[maybe_unused]] uintptr_t* addresses,
+    [[maybe_unused]] size_t maxAddresses) {
   std::ignore = sInit;
 #if defined(__APPLE__)
   // While Apple platforms support libunwind, the unw_init_local,
@@ -168,8 +168,8 @@ ssize_t getStackTraceSafe(
 }
 
 ssize_t getStackTraceHeap(
-    FOLLY_MAYBE_UNUSED uintptr_t* addresses,
-    FOLLY_MAYBE_UNUSED size_t maxAddresses) {
+    [[maybe_unused]] uintptr_t* addresses,
+    [[maybe_unused]] size_t maxAddresses) {
   std::ignore = sInit;
 #if FOLLY_HAVE_LIBUNWIND
   struct Ctx {

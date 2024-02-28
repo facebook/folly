@@ -314,7 +314,7 @@ class CacheManager {
   friend class StackCacheEntry;
 
   void giveBack(std::unique_ptr<StackCache> /* stackCache_ */) {
-    FOLLY_MAYBE_UNUSED auto wasUsed =
+    [[maybe_unused]] auto wasUsed =
         inUse_.fetch_sub(1, std::memory_order_release);
     assert(wasUsed > 0);
     /* Note: we can add a free list for each size bucket

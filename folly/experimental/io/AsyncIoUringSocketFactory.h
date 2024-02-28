@@ -23,7 +23,7 @@ namespace folly {
 
 class AsyncIoUringSocketFactory {
  public:
-  static bool supports(FOLLY_MAYBE_UNUSED folly::EventBase* eb) {
+  static bool supports([[maybe_unused]] folly::EventBase* eb) {
 #if FOLLY_HAS_LIBURING
     return AsyncIoUringSocket::supports(eb);
 #else
@@ -32,7 +32,7 @@ class AsyncIoUringSocketFactory {
   }
 
   template <class TWrapper, class... Args>
-  static TWrapper create(FOLLY_MAYBE_UNUSED Args&&... args) {
+  static TWrapper create([[maybe_unused]] Args&&... args) {
 #if FOLLY_HAS_LIBURING
     return TWrapper(new AsyncIoUringSocket(std::forward<Args>(args)...));
 #else
@@ -41,8 +41,8 @@ class AsyncIoUringSocketFactory {
   }
 
   static bool asyncDetachFd(
-      FOLLY_MAYBE_UNUSED AsyncTransport& transport,
-      FOLLY_MAYBE_UNUSED AsyncDetachFdCallback* callback) {
+      [[maybe_unused]] AsyncTransport& transport,
+      [[maybe_unused]] AsyncDetachFdCallback* callback) {
 #if FOLLY_HAS_LIBURING
     AsyncIoUringSocket* socket =
         transport.getUnderlyingTransport<AsyncIoUringSocket>();

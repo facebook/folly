@@ -68,22 +68,22 @@ namespace std {
 
 template <>
 struct hash<HashableStruct1> {
-  FOLLY_MAYBE_UNUSED size_t operator()(const HashableStruct1&) const noexcept {
+  [[maybe_unused]] size_t operator()(const HashableStruct1&) const noexcept {
     return 0;
   }
 };
 
 template <>
 struct hash<HashableStruct2> {
-  FOLLY_MAYBE_UNUSED size_t operator()(const HashableStruct2&) const noexcept {
+  [[maybe_unused]] size_t operator()(const HashableStruct2&) const noexcept {
     return 0;
   }
 };
 
 template <typename X, typename Y>
 struct hash<enable_std_hash_helper<CompositeStruct<X, Y>, X, Y>> {
-  FOLLY_MAYBE_UNUSED size_t
-  operator()(const CompositeStruct<X, Y>& value) const noexcept {
+  [[maybe_unused]] size_t operator()(
+      const CompositeStruct<X, Y>& value) const noexcept {
     return std::hash<X>{}(value.x) + std::hash<Y>{}(value.y);
   }
 };
@@ -418,8 +418,8 @@ TEST(Traits, fallbackIsNothrowConvertible) {
   EXPECT_FALSE((folly::fallback::is_nothrow_convertible<int, void>::value));
   EXPECT_TRUE((folly::fallback::is_nothrow_convertible<void, void>::value));
   struct foo {
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+    /* implicit */ [[maybe_unused]] operator std::false_type();
+    /* implicit */ [[maybe_unused]] operator std::true_type() noexcept;
   };
   EXPECT_FALSE(
       (folly::fallback::is_nothrow_convertible<foo, std::false_type>::value));
@@ -431,8 +431,8 @@ TEST(Traits, isNothrowConvertible) {
   EXPECT_FALSE((folly::is_nothrow_convertible<int, void>::value));
   EXPECT_TRUE((folly::is_nothrow_convertible<void, void>::value));
   struct foo {
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+    /* implicit */ [[maybe_unused]] operator std::false_type();
+    /* implicit */ [[maybe_unused]] operator std::true_type() noexcept;
   };
   EXPECT_FALSE((folly::is_nothrow_convertible<foo, std::false_type>::value));
   EXPECT_TRUE((folly::is_nothrow_convertible<foo, std::true_type>::value));
@@ -583,7 +583,7 @@ TEST(Traits, isConstexprDefaultConstructible) {
   EXPECT_TRUE(is_constexpr_default_constructible<Empty>{});
 
   struct NonTrivialDtor {
-    FOLLY_MAYBE_UNUSED ~NonTrivialDtor() {}
+    [[maybe_unused]] ~NonTrivialDtor() {}
   };
   EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
   EXPECT_FALSE(is_constexpr_default_constructible<NonTrivialDtor>{});

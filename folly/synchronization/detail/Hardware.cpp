@@ -121,7 +121,7 @@ FOLLY_RTM_DISABLED_NORETURN static bool rtmTestFunc() {
 }
 
 [[noreturn]] FOLLY_DISABLE_SANITIZERS static void rtmAbortFunc(
-    FOLLY_MAYBE_UNUSED uint8_t status) {
+    [[maybe_unused]] uint8_t status) {
 #if FOLLY_RTM_SUPPORT
   switch (status) {
 #define FOLLY_RTM_ABORT_ONE(z, n, text) \
