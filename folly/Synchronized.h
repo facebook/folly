@@ -1512,7 +1512,7 @@ class LockedPtr {
     using simulacrum = typename SynchronizedType::Simulacrum;
     static_assert(sizeof(simulacrum) == sizeof(SynchronizedType), "mismatch");
     static_assert(alignof(simulacrum) == alignof(SynchronizedType), "mismatch");
-    constexpr auto off = offsetof(simulacrum, mutex_);
+    auto off = offsetof(simulacrum, mutex_);
     const auto raw = reinterpret_cast<char*>(lock_.mutex());
     return reinterpret_cast<SynchronizedType*>(raw - (raw ? off : 0));
   }
