@@ -62,7 +62,18 @@ class BuilderBase(object):
                 # the cmd quoting rules to assemble a command that calls the script
                 # to prep the environment and then triggers the actual command that
                 # we wanted to run.
-                return [vcvarsall, "amd64", "&&"]
+
+                # Due to changes in vscrsall.bat, it now reports an ERRORLEVEL of 1
+                # even when succeeding. This occurs when an extension is not present.
+                # To continue, we must ignore the ERRORLEVEL returned. We do this by
+                # wrapping the call in a batch file that always succeeds.
+                wrapper = os.path.join(self.build_dir, "succeed.bat")
+                with open(wrapper, "w") as f:
+                    f.write("@echo off\n")
+                    f.write(f"call {vcvarsall} amd64\n")
+                    f.write("set ERRORLEVEL=0\n")
+                    f.write("exit /b 0\n")
+                return [wrapper, "&&"]
         return []
 
     def _run_cmd(
