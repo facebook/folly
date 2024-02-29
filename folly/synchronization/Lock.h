@@ -196,16 +196,14 @@ class lock_base //
     return *this;
   }
 
-  template <bool C = has_state_, if_<!C> = 0>
   void lock() {
     check<false>();
-    typename Policy::lock_fn{}(*storage::mutex_);
-    storage::state_ = true;
-  }
-  template <bool C = has_state_, if_<C> = 0>
-  void lock() {
-    check<false>();
-    storage::state_ = typename Policy::lock_fn{}(*storage::mutex_);
+    if constexpr (has_state_) {
+      storage::state_ = typename Policy::lock_fn{}(*storage::mutex_);
+    } else {
+      typename Policy::lock_fn{}(*storage::mutex_);
+      storage::state_ = true;
+    }
   }
 
   bool try_lock() {
@@ -231,17 +229,14 @@ class lock_base //
     return !!storage::state_;
   }
 
-  template <bool C = has_state_, if_<!C> = 0>
   void unlock() {
     check<true>();
-    typename Policy::unlock_fn{}(*storage::mutex_);
-    storage::state_ = decltype(storage::state_){};
-  }
-  template <bool C = has_state_, if_<C> = 0>
-  void unlock() {
-    check<true>();
-    auto const& state = storage::state_; // prevent unlock from mutating state_
-    typename Policy::unlock_fn{}(*storage::mutex_, state);
+    if constexpr (has_state_) {
+      auto const& state = storage::state_; // prohibit unlock to mutate state_
+      typename Policy::unlock_fn{}(*storage::mutex_, state);
+    } else {
+      typename Policy::unlock_fn{}(*storage::mutex_);
+    }
     storage::state_ = decltype(storage::state_){};
   }
 
