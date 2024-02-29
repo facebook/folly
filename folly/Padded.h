@@ -30,6 +30,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
+#include <folly/portability/SysTypes.h>
 
 /**
  * Code that aids in storing data aligned on block (possibly cache-line)

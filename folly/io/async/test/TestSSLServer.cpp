@@ -46,8 +46,8 @@ TestSSLServer::~TestSSLServer() {
 /* static */ std::unique_ptr<SSLContext> TestSSLServer::getDefaultSSLContext() {
   // Set up a default SSL context
   std::unique_ptr<SSLContext> sslContext = std::make_unique<SSLContext>();
-  sslContext->loadCertificate(find_resource(kTestCert).c_str());
-  sslContext->loadPrivateKey(find_resource(kTestKey).c_str());
+  sslContext->loadCertificate(find_resource(kTestCert).string().c_str());
+  sslContext->loadPrivateKey(find_resource(kTestKey).string().c_str());
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   // By default, SSLContext disables OpenSSL's internal session cache.
   // Enable it here on the server for testing session reuse.
@@ -64,8 +64,8 @@ TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
 }
 
 void TestSSLServer::loadTestCerts() {
-  ctx_->loadCertificate(find_resource(kTestCert).c_str());
-  ctx_->loadPrivateKey(find_resource(kTestKey).c_str());
+  ctx_->loadCertificate(find_resource(kTestCert).string().c_str());
+  ctx_->loadPrivateKey(find_resource(kTestKey).string().c_str());
 }
 
 TestSSLServer::TestSSLServer(

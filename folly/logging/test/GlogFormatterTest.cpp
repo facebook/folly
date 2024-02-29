@@ -103,6 +103,7 @@ TEST(GlogFormatter, logThreadName) {
           true /* logThreadName */));
 }
 
+#ifndef _WIN32
 TEST(GlogFormatter, logThreadNameChanged) {
   if (folly::canSetCurrentThreadName()) {
     std::string msg;
@@ -129,6 +130,7 @@ TEST(GlogFormatter, logThreadNameChanged) {
     EXPECT_EQ(expected, msg);
   }
 }
+#endif
 
 TEST(GlogFormatter, filename) {
   auto tid = getOSThreadID();

@@ -543,7 +543,6 @@ TEST_F(WriteFileAtomic, multipleFiles) {
   EXPECT_EQ(0440, getPerms(tmpPath("foo_txt")));
   EXPECT_EQ(0444, getPerms(tmpPath("foo.txt2")));
 }
-#endif // !_WIN32
 
 TEST_F(WriteFileAtomic, WriteWithCustomTempPath) {
   auto path = fs::path{tmpDir_.path().string()} / fs::path{"file"};
@@ -570,6 +569,8 @@ TEST_F(WriteFileAtomic, WriteWithCustomTempPath) {
   ASSERT_TRUE(success);
   EXPECT_EQ(output, "data_2");
 }
+#endif // !_WIN32
+
 } // namespace test
 } // namespace folly
 

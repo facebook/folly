@@ -17,6 +17,7 @@
 #include <random>
 #include <glog/logging.h>
 #include <folly/Benchmark.h>
+#include <folly/Memory.h>
 #include <folly/hash/Checksum.h>
 
 constexpr size_t kBufSize = 512 * 1024;
@@ -58,7 +59,7 @@ int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  buf = static_cast<uint8_t*>(std::aligned_alloc(4096, kBufSize + 64));
+  buf = static_cast<uint8_t*>(folly::aligned_malloc(kBufSize + 64, 4096));
 
   std::default_random_engine rng(1729); // Deterministic seed.
   std::uniform_int_distribution<uint16_t> dist(0, 255);
@@ -66,7 +67,7 @@ int main(int argc, char** argv) {
 
   folly::runBenchmarks();
 
-  std::free(buf);
+  folly::aligned_free(buf);
 
   return 0;
 }
