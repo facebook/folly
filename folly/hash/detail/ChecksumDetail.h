@@ -43,7 +43,7 @@ uint32_t crc32c_hw(
     const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
 /**
- * Check whether a hardware-accelerated CRC-32C implementation is
+ * Check whether a SSE4.2 hardware-accelerated CRC-32C implementation is
  * supported on the current CPU.
  */
 bool crc32c_hw_supported();

@@ -349,6 +349,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 set(PCLMUL_FILES
+  ${FOLLY_DIR}/external/fast-crc32/sse_crc32c_v8s3x3.cpp
   ${FOLLY_DIR}/hash/detail/ChecksumDetail.cpp
   ${FOLLY_DIR}/hash/detail/Crc32CombineDetail.cpp
   ${FOLLY_DIR}/hash/detail/Crc32cDetail.cpp
