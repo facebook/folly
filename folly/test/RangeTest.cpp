@@ -349,13 +349,13 @@ TEST(StringPiece, Constexpr) {
 
 TEST(StringPiece, Prefix) {
   StringPiece a("hello");
-  EXPECT_TRUE(a.startsWith(""));
-  EXPECT_TRUE(a.startsWith("h"));
-  EXPECT_TRUE(a.startsWith('h'));
-  EXPECT_TRUE(a.startsWith("hello"));
-  EXPECT_FALSE(a.startsWith("hellox"));
-  EXPECT_FALSE(a.startsWith('x'));
-  EXPECT_FALSE(a.startsWith("x"));
+  EXPECT_TRUE(a.starts_with(""));
+  EXPECT_TRUE(a.starts_with("h"));
+  EXPECT_TRUE(a.starts_with('h'));
+  EXPECT_TRUE(a.starts_with("hello"));
+  EXPECT_FALSE(a.starts_with("hellox"));
+  EXPECT_FALSE(a.starts_with('x'));
+  EXPECT_FALSE(a.starts_with("x"));
 
   EXPECT_TRUE(a.startsWith("", folly::AsciiCaseInsensitive()));
   EXPECT_TRUE(a.startsWith("hello", folly::AsciiCaseInsensitive()));
@@ -405,13 +405,13 @@ TEST(StringPiece, Prefix) {
 
 TEST(StringPiece, Suffix) {
   StringPiece a("hello");
-  EXPECT_TRUE(a.endsWith(""));
-  EXPECT_TRUE(a.endsWith("o"));
-  EXPECT_TRUE(a.endsWith('o'));
-  EXPECT_TRUE(a.endsWith("hello"));
-  EXPECT_FALSE(a.endsWith("xhello"));
-  EXPECT_FALSE(a.endsWith("x"));
-  EXPECT_FALSE(a.endsWith('x'));
+  EXPECT_TRUE(a.ends_with(""));
+  EXPECT_TRUE(a.ends_with("o"));
+  EXPECT_TRUE(a.ends_with('o'));
+  EXPECT_TRUE(a.ends_with("hello"));
+  EXPECT_FALSE(a.ends_with("xhello"));
+  EXPECT_FALSE(a.ends_with("x"));
+  EXPECT_FALSE(a.ends_with('x'));
 
   EXPECT_TRUE(a.endsWith("", folly::AsciiCaseInsensitive()));
   EXPECT_TRUE(a.endsWith("o", folly::AsciiCaseInsensitive()));

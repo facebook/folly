@@ -974,6 +974,18 @@ class Range {
         trunc.begin(), trunc.end(), other.begin(), std::forward<Comp>(eq));
   }
 
+  bool starts_with(const_range_type other) const noexcept {
+    return startsWith(other);
+  }
+  bool starts_with(value_type c) const noexcept { return startsWith(c); }
+  template <
+      typename...,
+      typename T = Iter,
+      std::enable_if_t<detail::range_is_char_type_v_<T>, int> = 0>
+  bool starts_with(const value_type* other) const {
+    return startsWith(other);
+  }
+
   /**
    * Does this Range end with another range?
    */
@@ -997,6 +1009,18 @@ class Range {
   bool equals(const const_range_type& other, Comp&& eq) const {
     return size() == other.size() &&
         std::equal(begin(), end(), other.begin(), std::forward<Comp>(eq));
+  }
+
+  bool ends_with(const_range_type other) const noexcept {
+    return endsWith(other);
+  }
+  bool ends_with(value_type c) const noexcept { return endsWith(c); }
+  template <
+      typename...,
+      typename T = Iter,
+      std::enable_if_t<detail::range_is_char_type_v_<T>, int> = 0>
+  bool ends_with(const value_type* other) const {
+    return endsWith(other);
   }
 
   /**
