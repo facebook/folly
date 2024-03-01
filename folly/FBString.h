@@ -1013,6 +1013,8 @@ class basic_fbstring {
   typedef std::true_type IsRelocatable;
 
  private:
+  using string_view_type = std::basic_string_view<value_type, traits_type>;
+
   static void procrustes(size_type& n, size_type nmax) {
     if (n > nmax) {
       n = nmax;
@@ -1020,6 +1022,11 @@ class basic_fbstring {
   }
 
   static size_type traitsLength(const value_type* s);
+
+  struct string_view_ctor {};
+  FOLLY_NOINLINE basic_fbstring(
+      string_view_type view, const A&, string_view_ctor)
+      : store_(view.data(), view.size()) {}
 
  public:
   // C++11 21.4.2 construct/copy/destroy
@@ -1100,6 +1107,26 @@ class basic_fbstring {
     assign(il.begin(), il.end());
   }
 
+  template <
+      typename StringViewLike,
+      std::enable_if_t<
+          std::is_convertible_v<const StringViewLike&, string_view_type> &&
+              !std::is_convertible_v<const StringViewLike&, const value_type*>,
+          int> = 0>
+  explicit basic_fbstring(const StringViewLike& view, const A& a = A())
+      : basic_fbstring(string_view_type(view), a, string_view_ctor{}) {}
+
+  template <
+      typename StringViewLike,
+      std::enable_if_t<
+          std::is_convertible_v<const StringViewLike&, string_view_type> &&
+              !std::is_convertible_v<const StringViewLike&, const value_type*>,
+          int> = 0>
+  basic_fbstring(
+      const StringViewLike& view, size_type pos, size_type n, const A& a = A())
+      : basic_fbstring(
+            string_view_type(view).substr(pos, n), a, string_view_ctor{}) {}
+
   ~basic_fbstring() noexcept {}
 
   basic_fbstring& operator=(const basic_fbstring& lhs);
@@ -1145,9 +1172,7 @@ class basic_fbstring {
     return assign(il.begin(), il.end());
   }
 
-  operator std::basic_string_view<value_type, traits_type>() const noexcept {
-    return {data(), size()};
-  }
+  operator string_view_type() const noexcept { return {data(), size()}; }
 
   // C++11 21.4.3 iterators:
   iterator begin() { return store_.mutableData(); }

@@ -1728,6 +1728,35 @@ TEST(WFBString, compareToStdWStringLong) {
 
 struct custom_traits : public std::char_traits<char> {};
 
+TEST(FBString, convertFromStringView) {
+  {
+    folly::fbstring test{std::string_view("foo")};
+    std::string control{std::string_view("foo")};
+    EXPECT_EQ(test, "foo");
+    EXPECT_EQ(test, control);
+  }
+  {
+    folly::fbstring test{std::string_view("abcfooabc"), 3, 3};
+    std::string control{std::string_view("abcfooabc"), 3, 3};
+    EXPECT_EQ(test, "foo");
+    EXPECT_EQ(test, control);
+  }
+  {
+    using sv_type = std::basic_string_view<char, custom_traits>;
+    folly::basic_fbstring<char, custom_traits> test{sv_type("foo")};
+    std::basic_string<char, custom_traits> control{sv_type("foo")};
+    EXPECT_EQ(test, "foo");
+    EXPECT_EQ(test, control);
+  }
+  {
+    using sv_type = std::basic_string_view<char, custom_traits>;
+    folly::basic_fbstring<char, custom_traits> test{sv_type("abcfooabc"), 3, 3};
+    std::basic_string<char, custom_traits> control{sv_type("abcfooabc"), 3, 3};
+    EXPECT_EQ(test, "foo");
+    EXPECT_EQ(test, control);
+  }
+}
+
 TEST(FBString, convertToStringView) {
   folly::fbstring s("foo");
   std::string_view sv = s;
