@@ -56,11 +56,8 @@
 #include <iterator>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
-
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view> // @manual
-#endif
 
 #if __has_include(<fmt/format.h>)
 #include <fmt/format.h>
@@ -635,7 +632,6 @@ class Range {
   //
   // At the moment the set of implicit target types consists of just
   // std::string_view (when it is available).
-#if FOLLY_HAS_STRING_VIEW
   struct NotStringView {};
   template <typename ValueType>
   struct StringViewType
@@ -652,10 +648,6 @@ class Range {
                 Iter const&,
                 size_type>,
             std::is_constructible<Target, _t<StringViewType<value_type>>>> {};
-#else
-  template <typename Target>
-  using IsConstructibleViaStringView = std::false_type;
-#endif
 
  public:
   /// explicit operator conversion to any compatible type
@@ -687,7 +679,6 @@ class Range {
     return Tgt(b_, e_);
   }
 
-#if FOLLY_HAS_STRING_VIEW
   /// implicit operator conversion to std::string_view
   template <
       typename Tgt,
@@ -704,7 +695,6 @@ class Range {
       std::is_nothrow_constructible<Tgt, Iter const&, size_type>::value) {
     return Tgt(b_, walk_size());
   }
-#endif
 
   /// explicit non-operator conversion to any compatible type
   ///

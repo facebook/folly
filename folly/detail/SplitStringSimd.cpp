@@ -72,9 +72,7 @@ void SimdSplitByCharImplToStrings<Container>::dropEmpty(
 
 FOLLY_DETAIL_DEFINE_ALL_SIMD_SPLIT_OVERLOADS(folly::StringPiece)
 
-#if FOLLY_HAS_STRING_VIEW
 FOLLY_DETAIL_DEFINE_ALL_SIMD_SPLIT_OVERLOADS(std::string_view)
-#endif
 
 #undef FOLLY_DETAIL_DEFINE_ALL_SIMD_SPLIT_OVERLOADS
 

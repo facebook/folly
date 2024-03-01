@@ -1726,7 +1726,6 @@ TEST(WFBString, compareToStdWStringLong) {
 }
 #endif
 
-#if FOLLY_HAS_STRING_VIEW
 struct custom_traits : public std::char_traits<char> {};
 
 TEST(FBString, convertToStringView) {
@@ -1737,7 +1736,6 @@ TEST(FBString, convertToStringView) {
   std::basic_string_view<char, custom_traits> sv2 = s2;
   EXPECT_EQ(sv2, "bar");
 }
-#endif
 
 TEST(FBString, Format) {
   EXPECT_EQ("  foo", fmt::format("{:>5}", folly::fbstring("foo")));

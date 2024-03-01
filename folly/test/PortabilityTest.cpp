@@ -16,15 +16,12 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view> // @manual
-#endif
+#include <memory>
+#include <string_view>
 
 #if __has_include(<range>)
 #include <ranges>
 #endif
-
-#include <memory>
 
 #include <folly/portability/GTest.h>
 

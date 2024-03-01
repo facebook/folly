@@ -1445,14 +1445,12 @@ inline Expected<StringPiece, ConversionCode> parseTo(
   return detail::parseToStr(in, out);
 }
 
-#if FOLLY_HAS_STRING_VIEW
 FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in, std::string_view& out) {
   out = std::string_view(in.data(), in.size());
   return StringPiece{in.end(), in.end()};
 }
-#endif
 
 FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(

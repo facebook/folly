@@ -28,6 +28,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -42,10 +43,6 @@
 #include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
-
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view>
-#endif
 
 #if FOLLY_CPLUSPLUS >= 202002L
 #include <compare>
@@ -1148,11 +1145,9 @@ class basic_fbstring {
     return assign(il.begin(), il.end());
   }
 
-#if FOLLY_HAS_STRING_VIEW
   operator std::basic_string_view<value_type, traits_type>() const noexcept {
     return {data(), size()};
   }
-#endif
 
   // C++11 21.4.3 iterators:
   iterator begin() { return store_.mutableData(); }

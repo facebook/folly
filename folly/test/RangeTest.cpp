@@ -310,13 +310,11 @@ TEST(ByteRange, FromString) {
       static_cast<const void*>(s.data()), static_cast<const void*>(b.begin()));
   EXPECT_EQ(s.size(), b.size());
 
-#if FOLLY_HAS_STRING_VIEW
   std::string_view sv(s);
   ByteRange b2(sv);
   EXPECT_EQ(
       static_cast<const void*>(s.data()), static_cast<const void*>(b2.begin()));
   EXPECT_EQ(s.size(), b2.size());
-#endif
 }
 
 TEST(StringPiece, InvalidRange) {
@@ -1647,7 +1645,6 @@ TEST(Range, InitializerList) {
   check(crange(ilist));
 }
 
-#if FOLLY_HAS_STRING_VIEW
 namespace {
 std::size_t stringViewSize(std::string_view s) {
   return s.size();
@@ -1721,8 +1718,6 @@ class NonPOD {
 [[maybe_unused]] void test_func(Range<const NonPOD*>) {}
 
 } // anonymous namespace
-
-#endif
 
 namespace {
 // Nested class should not cause compile errors due to incomplete parent

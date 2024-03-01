@@ -595,14 +595,6 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_INLINE_VARIABLE
 #endif
 
-// feature test __cpp_lib_string_view is defined in <string>, which is
-// too heavy to include here.
-#if __has_include(<string_view>) && FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_HAS_STRING_VIEW 1
-#else
-#define FOLLY_HAS_STRING_VIEW 0
-#endif
-
 // C++20 consteval
 #if FOLLY_CPLUSPLUS >= 202002L
 #define FOLLY_CONSTEVAL consteval
