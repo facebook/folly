@@ -43,7 +43,7 @@
 
 FOLLY_GFLAGS_DEFINE_string(
     folly_event_base_poller_backend,
-    "io_uring",
+    "epoll",
     "Available EventBasePoller backends: \"epoll\", \"io_uring\"");
 FOLLY_GFLAGS_DEFINE_uint64(
     folly_event_base_poller_spin_us,
@@ -60,6 +60,11 @@ FOLLY_GFLAGS_DEFINE_uint64(
     64,
     "Maximum number of events to process in one iteration when "
     "using the epoll EventBasePoller backend");
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_event_base_poller_epoll_rearm_inline,
+    true,
+    "When using epoll backend, re-arm events inline in handoff() instead of "
+    "returning them to the poller thread");
 
 // io_uring backend.
 FOLLY_GFLAGS_DEFINE_uint64(
@@ -120,8 +125,9 @@ class EventBasePollerImpl : public EventBasePoller {
   class FdGroupImpl;
 
  public:
-  EventBasePollerImpl()
-      : notificationEv_(
+  explicit EventBasePollerImpl(bool rearmInline)
+      : rearmInline_(rearmInline),
+        notificationEv_(
             Event::NotificationFd{}, ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) {
     PCHECK(notificationEv_.fd >= 0);
   }
@@ -136,7 +142,10 @@ class EventBasePollerImpl : public EventBasePoller {
 
  protected:
   void startLoop() {
-    loopThread_ = std::make_unique<std::thread>([this]() { loop(); });
+    Baton<> started;
+    loopThread_ =
+        std::make_unique<std::thread>([this, &started]() { loop(started); });
+    started.wait();
   }
 
   void stopLoop() {
@@ -188,9 +197,10 @@ class EventBasePollerImpl : public EventBasePoller {
 
   void handleNotification();
   void handleReadyEvents();
-  void loop();
+  void loop(folly::Baton<>& started);
 
  protected:
+  const bool rearmInline_;
   std::vector<Event*> readyEvents_;
 
  private:
@@ -241,7 +251,11 @@ void EventBasePollerImpl::Event::handoff(bool done) {
   DCHECK(!isNotificationFd());
   CHECK(!joining_);
   joining_ = done;
-  group->parent.returnEvent(this);
+  if (group->parent.rearmInline_) {
+    handleHandoff();
+  } else {
+    group->parent.returnEvent(this);
+  }
 }
 
 void EventBasePollerImpl::Event::handleHandoff() {
@@ -323,11 +337,12 @@ void EventBasePollerImpl::handleReadyEvents() {
   readyEvents_.clear();
 }
 
-void EventBasePollerImpl::loop() {
+void EventBasePollerImpl::loop(folly::Baton<>& started) {
   setThreadName("EventBasePoller");
 
   setup();
   addEvent(&notificationEv_);
+  started.post();
 
   auto lastLoopTs = std::chrono::steady_clock::now();
   while (!stop_.load()) {
@@ -345,7 +360,10 @@ void EventBasePollerImpl::loop() {
 
 class EventBasePollerEpoll final : public EventBasePollerImpl {
  public:
-  EventBasePollerEpoll() { startLoop(); }
+  EventBasePollerEpoll()
+      : EventBasePollerImpl(FLAGS_folly_event_base_poller_epoll_rearm_inline) {
+    startLoop();
+  }
 
   ~EventBasePollerEpoll() override { stopLoop(); }
 
@@ -456,7 +474,11 @@ void enableFlagsIfSupported(
 
 class EventBasePollerIoUring final : public EventBasePollerImpl {
  public:
-  EventBasePollerIoUring() { startLoop(); }
+  EventBasePollerIoUring()
+      // io_uring does not support concurrent submissions.
+      : EventBasePollerImpl(/* rearmInline */ false) {
+    startLoop();
+  }
 
   ~EventBasePollerIoUring() override { stopLoop(); }
 
