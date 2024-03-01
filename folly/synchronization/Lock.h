@@ -636,70 +636,39 @@ using transition_lock_result_t_ =
     typename transition_lock_result_<lock_state_type_of_t<From>>::
         template apply<Transition, typename From::mutex_type&, A...>;
 
-template <
-    typename From,
-    typename Transition,
-    typename... A,
-    typename FromState = lock_state_type_of_t<From>,
-    std::enable_if_t<std::is_void<FromState>::value, int> = 0>
+template <typename From, typename Transition, typename... A>
 auto transition_lock_2_(From& lock, Transition transition, A const&... a) {
-  // release() may check or mutate mutex state to support the dissociation, call
-  // it before performing the transition.
-  return transition(*lock.release(), a...);
+  using FromState = lock_state_type_of_t<From>;
+  if constexpr (std::is_void_v<FromState>) {
+    // release() may check or mutate mutex state to support the dissociation;
+    // call it before performing the transition.
+    return transition(*lock.release(), a...);
+  } else {
+    auto state = lock.state();
+    // release() may check or mutate mutex state to support the dissociation;
+    // call it before performing the transition.
+    return transition(*lock.release(), std::move(state), a...);
+  }
 }
-template <
-    typename From,
-    typename Transition,
-    typename... A,
-    typename FromState = lock_state_type_of_t<From>,
-    std::enable_if_t<!std::is_void<FromState>::value, int> = 0>
-auto transition_lock_2_(From& lock, Transition transition, A const&... a) {
-  auto state = lock.state();
-  // release() may check or mutate mutex state to support the dissociation, call
-  // it before performing the transition.
-  return transition(*lock.release(), std::move(state), a...);
-}
-template <
-    typename From,
-    typename Transition,
-    typename... A,
-    typename Result = transition_lock_result_t_<From, Transition, A...>,
-    std::enable_if_t<std::is_void<Result>::value, int> = 0>
+template <typename From, typename Transition, typename... A>
 auto transition_lock_1_(From& lock, Transition transition, A const&... a) {
-  return detail::transition_lock_2_(lock, transition, a...), true;
+  using Result = transition_lock_result_t_<From, Transition, A...>;
+  if constexpr (std::is_void_v<Result>) {
+    return detail::transition_lock_2_(lock, transition, a...), true;
+  } else {
+    return detail::transition_lock_2_(lock, transition, a...);
+  }
 }
-template <
-    typename From,
-    typename Transition,
-    typename... A,
-    typename Result = transition_lock_result_t_<From, Transition, A...>,
-    std::enable_if_t<!std::is_void<Result>::value, int> = 0>
-auto transition_lock_1_(From& lock, Transition transition, A const&... a) {
-  return detail::transition_lock_2_(lock, transition, a...);
-}
-template <
-    typename To,
-    typename From,
-    typename Transition,
-    typename... A,
-    typename ToState = lock_state_type_of_t<To>,
-    std::enable_if_t<std::is_void<ToState>::value, int> = 0>
+template <typename To, typename From, typename Transition, typename... A>
 auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
+  using ToState = lock_state_type_of_t<To>;
   auto& mutex = *lock.mutex();
   auto s = detail::transition_lock_1_(lock, transition, a...);
-  return !s ? To{} : To{mutex, std::adopt_lock};
-}
-template <
-    typename To,
-    typename From,
-    typename Transition,
-    typename... A,
-    typename ToState = lock_state_type_of_t<To>,
-    std::enable_if_t<!std::is_void<ToState>::value, int> = 0>
-auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
-  auto& mutex = *lock.mutex();
-  auto s = detail::transition_lock_1_(lock, transition, a...);
-  return !s ? To{} : To{mutex, std::adopt_lock, s};
+  if constexpr (std::is_void_v<ToState>) {
+    return !s ? To{} : To{mutex, std::adopt_lock};
+  } else {
+    return !s ? To{} : To{mutex, std::adopt_lock, s};
+  }
 }
 template <
     template <typename>
