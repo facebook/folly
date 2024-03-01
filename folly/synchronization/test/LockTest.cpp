@@ -386,7 +386,87 @@ struct LockTestParam {
 };
 
 template <typename Param>
-struct LockTest : testing::TestWithParam<Param> {};
+struct LockTest : testing::TestWithParam<Param> {
+#if __cpp_deduction_guides >= 201611
+
+  template <typename... A>
+  using deduction_unique = decltype(std::unique_lock{FOLLY_DECLVAL(A)...});
+  template <typename... A>
+  using deduction_shared = decltype(std::shared_lock{FOLLY_DECLVAL(A)...});
+  template <typename... A>
+  using deduction_upgrade = decltype(folly::upgrade_lock{FOLLY_DECLVAL(A)...});
+
+  template <typename Expected, typename Actual>
+  static constexpr void static_assert_same() {
+    static_assert(std::is_same_v<Expected, Actual>);
+  }
+
+  static constexpr void check_deductions() {
+    using mutex_type = param_mutex_t<Param>;
+    using unique_lock_state = typename Param::unique_lock_state;
+    using shared_lock_state = typename Param::shared_lock_state;
+    using upgrade_lock_state = typename Param::upgrade_lock_state;
+
+    static_assert_same<
+        std::unique_lock<mutex_type>,
+        deduction_unique<mutex_type&>>();
+    static_assert_same<
+        std::shared_lock<mutex_type>,
+        deduction_shared<mutex_type&>>();
+    static_assert_same<
+        folly::upgrade_lock<mutex_type>,
+        deduction_upgrade<mutex_type&>>();
+
+    if constexpr (std::is_void_v<unique_lock_state>) {
+      static_assert_same<
+          std::unique_lock<mutex_type>,
+          deduction_unique<mutex_type&, std::adopt_lock_t>>();
+    } else {
+      static_assert_same<
+          std::unique_lock<mutex_type>,
+          deduction_unique<
+              mutex_type&,
+              std::adopt_lock_t,
+              unique_lock_state>>();
+    }
+
+    if constexpr (std::is_void_v<shared_lock_state>) {
+      static_assert_same<
+          std::shared_lock<mutex_type>,
+          deduction_shared<mutex_type&, std::adopt_lock_t>>();
+    } else {
+      static_assert_same<
+          std::shared_lock<mutex_type>,
+          deduction_shared<
+              mutex_type&,
+              std::adopt_lock_t,
+              shared_lock_state>>();
+    }
+
+    if constexpr (std::is_void_v<upgrade_lock_state>) {
+      static_assert_same<
+          folly::upgrade_lock<mutex_type>,
+          deduction_upgrade<mutex_type&, std::adopt_lock_t>>();
+    } else {
+      static_assert_same<
+          folly::upgrade_lock<mutex_type>,
+          deduction_upgrade<
+              mutex_type&,
+              std::adopt_lock_t,
+              upgrade_lock_state>>();
+    }
+  }
+
+#else
+
+  static constexpr void check_deductions();
+
+#endif
+
+  LockTest() { //
+    check_deductions();
+  }
+};
 TYPED_TEST_SUITE_P(LockTest);
 
 TYPED_TEST_P(LockTest, ctor) {

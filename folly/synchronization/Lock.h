@@ -614,6 +614,30 @@ struct make_hybrid_lock_fn {
 };
 FOLLY_INLINE_VARIABLE constexpr make_hybrid_lock_fn make_hybrid_lock{};
 
+} // namespace folly
+
+FOLLY_NAMESPACE_STD_BEGIN
+
+#if __cpp_deduction_guides >= 201611
+
+template <typename Mutex, typename LockFn = ::folly::access::lock_fn>
+unique_lock(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
+    -> unique_lock<Mutex>;
+
+template <typename Mutex, typename LockFn = ::folly::access::lock_shared_fn>
+shared_lock(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
+    -> shared_lock<Mutex>;
+
+template <typename Mutex, typename LockFn = ::folly::access::lock_upgrade_fn>
+lock_guard(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
+    -> lock_guard<Mutex>;
+
+#endif
+
+FOLLY_NAMESPACE_STD_END
+
+namespace folly {
+
 namespace detail {
 
 template <typename L>
