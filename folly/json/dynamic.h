@@ -206,9 +206,9 @@ struct dynamic {
   /// Initializes as an empty string.
   /* implicit */ dynamic(std::nullptr_t);
   /// Initializes with strcpy.
-  /* implicit */ dynamic(char const* val);
+  /* implicit */ dynamic(char const* s);
   /// Initializes as a string.
-  /* implicit */ dynamic(std::string val);
+  /* implicit */ dynamic(std::string s);
   /// Initializes as a string.
   template <
       typename Stringish,
@@ -244,9 +244,9 @@ struct dynamic {
    * implicit conversion (reference -> bool -> dynamic) which is not allowed,
    * hence we explicitly accept the reference proxy.
    */
-  /* implicit */ dynamic(std::vector<bool>::reference val);
+  /* implicit */ dynamic(std::vector<bool>::reference b);
   /// Special handling for vector<bool>::const_reference.
-  /* implicit */ dynamic(VectorBoolConstRefCtorType val);
+  /* implicit */ dynamic(VectorBoolConstRefCtorType b);
 
   /**
    * Create a dynamic that is an array of the values from the supplied
@@ -854,7 +854,7 @@ struct dynamic {
    *
    * @methodset Array
    */
-  void resize(std::size_t n, dynamic const& = nullptr);
+  void resize(std::size_t sz, dynamic const& = nullptr);
 
   /**
    * Pre-allocate size.
@@ -953,7 +953,7 @@ struct dynamic {
    */
   void update(const dynamic& mergeObj);
   /// @copydoc update
-  void update_missing(const dynamic& other);
+  void update_missing(const dynamic& mergeObj1);
   /// @copydoc update
   static dynamic merge(const dynamic& mergeObj1, const dynamic& mergeObj2);
 
@@ -1081,7 +1081,7 @@ struct dynamic {
   template <class T>
   struct PrintImpl;
 
-  explicit dynamic(Array&& array);
+  explicit dynamic(Array&& r);
 
   template <class T>
   T const& get() const;
