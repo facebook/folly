@@ -612,6 +612,24 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return Awaiter{std::exchange(coro_, {})};
   }
 
+  std::pair<Task<T>, Executor::KeepAlive<>> unwrap() && {
+    auto executor = std::move(coro_.promise().executor_);
+    Task<T> task{std::exchange(coro_, {})};
+    return {std::move(task), std::move(executor)};
+  }
+
+  friend ViaIfAsyncAwaitable<TaskWithExecutor> co_viaIfAsync(
+      Executor::KeepAlive<> executor,
+      TaskWithExecutor&& taskWithExecutor) noexcept {
+    auto [task, taskExecutor] = std::move(taskWithExecutor).unwrap();
+    return ViaIfAsyncAwaitable<TaskWithExecutor>(
+        std::move(executor),
+        [](Task<T> t) -> Task<T> {
+          co_yield co_result(co_await co_awaitTry(std::move(t)));
+        }(std::move(task))
+                             .scheduleOn(std::move(taskExecutor)));
+  }
+
   friend TaskWithExecutor co_withCancellation(
       folly::CancellationToken cancelToken, TaskWithExecutor&& task) noexcept {
     DCHECK(task.coro_);
@@ -759,6 +777,7 @@ class FOLLY_NODISCARD Task {
  private:
   friend class detail::TaskPromiseBase;
   friend class detail::TaskPromise<T>;
+  friend class TaskWithExecutor<T>;
 
   class Awaiter {
    public:

@@ -30,6 +30,7 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
+#include <stdexcept>
 #include <type_traits>
 
 #if FOLLY_HAS_COROUTINES
@@ -737,5 +738,27 @@ TEST_F(TaskTest, CoAwaitNothrowDestructorOrdering) {
     }());
   }()));
   EXPECT_EQ(i, 9);
+}
+
+struct ExpectedException : public std::runtime_error {
+  ExpectedException() : std::runtime_error("expected") {}
+};
+
+TEST_F(TaskTest, CoYieldCoErrorSameExecutor) {
+  folly::ScopedEventBaseThread ebThread;
+
+  auto scopeAndThrow = [&]() -> folly::coro::Task<void> {
+    auto eb = dynamic_cast<folly::EventBase*>(
+        co_await folly::coro::co_current_executor);
+    CHECK(eb);
+    SCOPE_EXIT { CHECK(eb->inRunningEventBaseThread()); };
+    co_yield folly::coro::co_error(ExpectedException());
+  };
+  auto scopeAndThrowWrapper = [&]() -> folly::coro::Task<void> {
+    co_await scopeAndThrow().scheduleOn(ebThread.getEventBase());
+  };
+
+  EXPECT_THROW(
+      folly::coro::blockingWait(scopeAndThrowWrapper()), ExpectedException);
 }
 #endif
