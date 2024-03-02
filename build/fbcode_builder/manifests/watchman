@@ -19,6 +19,7 @@ fbthrift
 folly
 pcre2
 googletest
+python-setuptools
 
 [dependencies.fbsource=on]
 rust
