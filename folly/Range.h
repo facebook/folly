@@ -830,6 +830,14 @@ class Range {
     return Range(b_ + first, std::min(length, size() - first));
   }
 
+  template <
+      typename...,
+      typename T = Iter,
+      std::enable_if_t<detail::range_is_char_type_v_<T>, int> = 0>
+  Range substr(size_type first, size_type length = npos) const {
+    return subpiece(first, length);
+  }
+
   // unchecked versions
   void uncheckedAdvance(size_type n) {
     assert(n <= size());

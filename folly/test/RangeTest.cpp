@@ -1421,6 +1421,8 @@ TEST(Range, Constructors) {
   EXPECT_EQ(subpiece1.size(), 2);
   EXPECT_EQ(subpiece1.begin(), subpiece2.begin());
   EXPECT_EQ(subpiece1.end(), subpiece2.end());
+
+  EXPECT_EQ(StringPiece("hello world").substr(5, 1), " ");
 }
 
 TEST(Range, ArrayConstructors) {
