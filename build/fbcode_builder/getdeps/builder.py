@@ -334,7 +334,7 @@ class AutoconfBuilder(BuilderBase):
         env = self._compute_env(install_dirs)
 
         # Some configure scripts need additional env values passed derived from cmds
-        for (k, cmd_args) in self.conf_env_args.items():
+        for k, cmd_args in self.conf_env_args.items():
             out = (
                 subprocess.check_output(cmd_args, env=dict(env.items()))
                 .decode("utf-8")

@@ -19,7 +19,7 @@ class Loader(object):
 
     def _list_manifests(self, build_opts):
         """Returns a generator that iterates all the available manifests"""
-        for (path, _, files) in os.walk(build_opts.manifests_dir):
+        for path, _, files in os.walk(build_opts.manifests_dir):
             for name in files:
                 # skip hidden files
                 if name.startswith("."):
