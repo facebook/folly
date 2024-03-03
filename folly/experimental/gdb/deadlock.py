@@ -319,7 +319,7 @@ class MutexType(Enum):
 
 def print_cycle(graph, lwp_to_thread_id, cycle):
     """Prints the threads and mutexes involved in the deadlock."""
-    for (m, n) in cycle:
+    for m, n in cycle:
         print(
             "Thread %d (LWP %d) is waiting on %s (0x%016x) held by "
             "Thread %d (LWP %d)"

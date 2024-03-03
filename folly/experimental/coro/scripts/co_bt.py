@@ -264,7 +264,7 @@ def print_async_stack_addrs(addrs: List[DebuggerValue]) -> None:
         print("No async operation detected")
         return
     num_digits = len(str(len(addrs)))
-    for (i, addr) in enumerate(addrs):
+    for i, addr in enumerate(addrs):
         func_name = addr.get_func_name()
         if func_name is None:
             func_name = "???"
@@ -442,7 +442,7 @@ def print_async_stack_root_addrs(addrs: List[DebuggerValue]) -> None:
         print("No async stack roots detected")
         return
     num_digits = len(str(len(addrs)))
-    for (i, addr) in enumerate(addrs):
+    for i, addr in enumerate(addrs):
         async_stack_root = AsyncStackRoot.from_addr(addr)
         if not async_stack_root.stack_frame_ptr.is_nullptr():
             stack_frame = StackFrame.from_addr(async_stack_root.stack_frame_ptr)
@@ -594,7 +594,9 @@ if debugger_type is None:  # noqa: C901
 
             def get_file_name_and_line(self) -> Optional[Tuple[str, int]]:
                 regex = re.compile(r"Line (\d+) of (.*) starts at.*")
-                output = GdbValue.execute(f"info line *{self.to_hex()}",).split(
+                output = GdbValue.execute(
+                    f"info line *{self.to_hex()}",
+                ).split(
                     "\n"
                 )[0]
                 groups = regex.match(output)
@@ -606,7 +608,9 @@ if debugger_type is None:  # noqa: C901
 
             def get_func_name(self) -> Optional[str]:
                 regex = re.compile(r"(.*) \+ \d+ in section.* of .*")
-                output = GdbValue.execute(f"info symbol {self.to_hex()}",).split(
+                output = GdbValue.execute(
+                    f"info symbol {self.to_hex()}",
+                ).split(
                     "\n"
                 )[0]
                 groups = regex.match(output)

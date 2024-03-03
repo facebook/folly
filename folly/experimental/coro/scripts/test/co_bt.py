@@ -16,6 +16,7 @@
 import sys
 import unittest
 
+
 # mock lldb module
 class Lldb:
     class Command:

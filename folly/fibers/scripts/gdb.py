@@ -736,7 +736,7 @@ def get_fiber_info(only=None, managers=False):
 
         # first check if pre-cached
         if mid in get_fiber_info.cache:
-            for (fid, info) in get_fiber_info.cache[mid].items():
+            for fid, info in get_fiber_info.cache[mid].items():
                 fiber_id = "{}.{}".format(mid, fid)
                 if not only or str(mid) in only or fiber_id in only:
                     yield ((mid, fid), info)
@@ -773,7 +773,7 @@ def get_fiber_managers(only=None):
     """
     # first check if pre-cached
     if get_fiber_managers.cache:
-        for (mid, manager) in get_fiber_managers.cache.items():
+        for mid, manager in get_fiber_managers.cache.items():
             # output only if matching filter
             if not only or str(mid) in only:
                 yield (mid, manager)
