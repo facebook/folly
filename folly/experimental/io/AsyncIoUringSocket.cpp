@@ -348,7 +348,6 @@ void AsyncIoUringSocket::appendPreReceive(
 void AsyncIoUringSocket::allowReads() {
   if (readSqe_->readCallback() && !readSqe_->inFlight()) {
     auto cb = readSqe_->readCallback();
-    setReadCB(nullptr);
     setReadCB(cb);
   }
 }
