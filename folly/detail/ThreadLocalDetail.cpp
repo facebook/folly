@@ -77,37 +77,43 @@ StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
 }
 
 ThreadEntryList* StaticMetaBase::getThreadEntryList() {
-  if (kUseThreadLocal) {
-    static thread_local ThreadEntryList threadEntryListSingleton;
-    return &threadEntryListSingleton;
-  } else {
-    class PthreadKey {
-     public:
-      PthreadKey() {
-        int ret = pthread_key_create(&pthreadKey_, nullptr);
-        checkPosixError(ret, "pthread_key_create failed");
-        PthreadKeyUnregister::registerKey(pthreadKey_);
-      }
-
-      FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }
-
-     private:
-      pthread_key_t pthreadKey_;
-    };
-
-    auto& instance = detail::createGlobal<PthreadKey, void>();
-
-    ThreadEntryList* threadEntryList =
-        static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
-
-    if (FOLLY_UNLIKELY(!threadEntryList)) {
-      threadEntryList = new ThreadEntryList();
-      int ret = pthread_setspecific(instance.get(), threadEntryList);
-      checkPosixError(ret, "pthread_setspecific failed");
+  class PthreadKey {
+   public:
+    static void onThreadExit(void* ptr) {
+      ThreadEntryList* list = static_cast<ThreadEntryList*>(ptr);
+      StaticMetaBase::cleanupThreadEntriesAndList(list);
     }
 
-    return threadEntryList;
+    PthreadKey() {
+      int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
+      checkPosixError(ret, "pthread_key_create failed");
+      PthreadKeyUnregister::registerKey(pthreadKey_);
+    }
+
+    FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }
+
+   private:
+    pthread_key_t pthreadKey_;
+  };
+
+  static thread_local ThreadEntryList* threadEntryListTL{};
+  if (threadEntryListTL) {
+    return threadEntryListTL;
   }
+  auto& instance = detail::createGlobal<PthreadKey, void>();
+
+  ThreadEntryList* threadEntryList =
+      static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
+
+  if (FOLLY_UNLIKELY(!threadEntryList)) {
+    threadEntryList = new ThreadEntryList();
+    int ret = pthread_setspecific(instance.get(), threadEntryList);
+    checkPosixError(ret, "pthread_setspecific failed");
+    threadEntryList->count = 1; // Pin once for own onThreadExit callback.
+  }
+
+  threadEntryListTL = threadEntryList;
+  return threadEntryList;
 }
 
 bool StaticMetaBase::dying() {
@@ -165,8 +171,13 @@ void StaticMetaBase::onThreadExit(void* ptr) {
   auto threadEntryList = threadEntry->list;
   DCHECK_GT(threadEntryList->count, 0u);
 
-  --threadEntryList->count;
+  cleanupThreadEntriesAndList(threadEntryList);
+}
 
+/* static */
+void StaticMetaBase::cleanupThreadEntriesAndList(
+    ThreadEntryList* threadEntryList) {
+  --threadEntryList->count;
   if (threadEntryList->count) {
     return;
   }
@@ -209,15 +220,10 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       tmp->elements = nullptr;
       tmp->setElementsCapacity(0);
     }
-
-    if (!kUseThreadLocal) {
-      delete tmp;
-    }
+    delete tmp;
   }
 
-  if (!kUseThreadLocal) {
-    delete threadEntryList;
-  }
+  delete threadEntryList;
 }
 
 uint32_t StaticMetaBase::elementsCapacity() const {

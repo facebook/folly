@@ -202,6 +202,11 @@ struct ThreadEntry {
   uint64_t tid_os{};
   aligned_storage_for_t<std::thread::id> tid_data{};
 
+  // StaticMetaBase::onThreadExit is called to clean up
+  // ElementWrapper state. That will also set removed_ to true.
+  // Ensure we do not release ThreadEntry before the cleanup is done.
+  ~ThreadEntry() { CHECK(removed_); }
+
   size_t getElementsCapacity() const noexcept {
     return elementsCapacity.load(std::memory_order_relaxed);
   }
@@ -335,6 +340,10 @@ struct StaticMetaBase {
 
   static void onThreadExit(void* ptr);
 
+  // Helper to do final free and delete of ThreadEntry and ThreadEntryList
+  // structures.
+  static void cleanupThreadEntriesAndList(ThreadEntryList* list);
+
   // returns the elementsCapacity for the
   // current thread ThreadEntry struct
   uint32_t elementsCapacity() const;
@@ -446,12 +455,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
         static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
       ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
-      if (kUseThreadLocal) {
-        static thread_local ThreadEntry threadEntrySingleton;
-        threadEntry = &threadEntrySingleton;
-      } else {
-        threadEntry = new ThreadEntry();
-      }
+      threadEntry = new ThreadEntry();
       // if the ThreadEntry already exists
       // but pthread_getspecific returns NULL
       // do not add the same entry twice to the list
