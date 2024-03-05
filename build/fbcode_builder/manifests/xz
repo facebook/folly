@@ -11,12 +11,12 @@ xz
 xz-devel
 
 [download]
-url = https://tukaani.org/xz/xz-5.2.5.tar.gz
-sha256 = f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10
+url = https://github.com/tukaani-project/xz/releases/download/v5.6.0/xz-5.6.0.tar.gz
+sha256 = 0f5c81f14171b74fcc9777d302304d964e63ffc2d7b634ef023a7249d9b5d875
 
 [build]
 builder = autoconf
-subdir = xz-5.2.5
+subdir = xz-5.6.0
 
 [autoconf.args]
 --disable-shared
