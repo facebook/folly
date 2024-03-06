@@ -722,8 +722,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST read_mostly_shared_ptr_test SOURCES ReadMostlySharedPtrTest.cpp
       #TEST ref_count_test SOURCES RefCountTest.cpp
       TEST select64_test SOURCES Select64Test.cpp
-      BENCHMARK string_keyed_benchmark SOURCES StringKeyedBenchmark.cpp
-      TEST stringkeyed_test SOURCES StringKeyedTest.cpp
       TEST test_util_test SOURCES TestUtilTest.cpp
       TEST tuple_ops_test SOURCES TupleOpsTest.cpp
 
