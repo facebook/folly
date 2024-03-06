@@ -150,6 +150,16 @@ class StringKeyedMap : private std::map<StringPiece, Value, Compare, Alloc> {
   using Base::upper_bound;
 
   template <class... Args>
+  std::pair<iterator, bool> try_emplace(StringPiece key, Args&&... args) {
+    auto it = find(key);
+    if (it != end()) {
+      return {it, false};
+    }
+    return Base::try_emplace(
+        stringPieceDup(key, get_allocator()), std::forward<Args>(args)...);
+  }
+
+  template <class... Args>
   std::pair<iterator, bool> emplace(StringPiece key, Args&&... args) {
     auto it = find(key);
     if (it != end()) {

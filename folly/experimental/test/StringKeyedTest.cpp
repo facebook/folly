@@ -27,7 +27,10 @@
 #include <folly/Range.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+
+using namespace std::literals;
 
 using folly::BasicStringKeyedUnorderedSet;
 using folly::StringKeyedMap;
@@ -431,9 +434,11 @@ TEST(StringKeyedMapTest, sanity) {
     map.insert({s, 1});
     EXPECT_FALSE(map.emplace(s, 2).second);
     EXPECT_TRUE(map.emplace(piece, 3).second);
+    EXPECT_FALSE(map.try_emplace(s).second);
+    EXPECT_TRUE(map.try_emplace("world").second);
   }
 
-  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map.size(), 3);
 
   map = static_cast<decltype(map)&>(map); // suppress self-assign warning
 
@@ -443,15 +448,18 @@ TEST(StringKeyedMapTest, sanity) {
   auto it = map.begin();
   EXPECT_EQ(it->first, "hello");
   EXPECT_EQ((++it)->first, "lo");
+  EXPECT_EQ((++it)->first, "world");
   EXPECT_EQ(++it, map.end());
 
   map.erase(map.find("hello"));
 
-  EXPECT_EQ(map.size(), 1);
+  EXPECT_EQ(map.size(), 2);
 
-  for (auto& entry : map) {
-    EXPECT_EQ(entry.first, "lo");
+  std::vector<std::string> keys;
+  for (auto [key, mapped] : map) {
+    keys.emplace_back(key);
   }
+  EXPECT_THAT(keys, testing::UnorderedElementsAre("lo", "world"));
 }
 
 TEST(StringKeyedMapTest, constructors) {
