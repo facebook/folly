@@ -370,4 +370,55 @@ TEST_F(MergeTest, SourcesAreDestroyedBeforeEof) {
   std::move(future).get();
 }
 
+TEST_F(MergeTest, DontLeakRequestContext) {
+  class TestData : public folly::RequestData {
+   public:
+    explicit TestData() noexcept {}
+    bool hasCallback() override { return false; }
+
+    static void set() {
+      folly::RequestContext::get()->setContextData(
+          "test", std::make_unique<TestData>());
+    }
+    static auto get() {
+      return folly::RequestContext::get()->getContextData("test");
+    }
+  };
+  blockingWait([]() -> Task<void> {
+    folly::RequestContextScopeGuard requestScope;
+
+    TestData::set();
+    auto initialContextData = TestData::get();
+    CHECK(initialContextData != nullptr);
+
+    auto generator = merge(
+        co_await co_current_executor,
+        co_invoke([&]() -> AsyncGenerator<AsyncGenerator<int>> {
+          auto makeGenerator = [&]() -> AsyncGenerator<int> {
+            for (int i = 0; i < 10; ++i) {
+              CHECK(TestData::get() == initialContextData);
+              folly::RequestContextScopeGuard childScope;
+              CHECK(TestData::get() == nullptr);
+              co_await co_reschedule_on_current_executor;
+              CHECK(TestData::get() == nullptr);
+              TestData::set();
+              auto newContextData = TestData::get();
+              CHECK(newContextData != nullptr);
+              CHECK(newContextData != initialContextData);
+              co_await co_reschedule_on_current_executor;
+              CHECK(TestData::get() == newContextData);
+            }
+          };
+          for (int i = 0; i < 5; ++i) {
+            co_yield makeGenerator();
+          }
+        }));
+
+    while (auto val = co_await generator.next()) {
+    }
+
+    CHECK(TestData::get() == initialContextData);
+  }());
+}
+
 #endif
