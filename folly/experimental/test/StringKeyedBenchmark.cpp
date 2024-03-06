@@ -108,7 +108,9 @@ BENCHMARK_RELATIVE(std_map_benchmark_erase_emplace_cross) {
 }
 
 BENCHMARK_RELATIVE(sk_map_benchmark_erase_emplace_native) {
-  skm.erase(lookupPiece);
+  auto it = skm.find(lookupPiece);
+  assert(it != skm.end());
+  skm.erase(it);
   skm.emplace(lookupPiece, 123);
 }
 
@@ -186,7 +188,9 @@ BENCHMARK_RELATIVE(std_set_benchmark_erase_emplace_cross) {
 }
 
 BENCHMARK_RELATIVE(sk_set_benchmark_erase_emplace_native) {
-  sks.erase(lookupPiece);
+  auto it = sks.find(lookupPiece);
+  assert(it != sks.end());
+  sks.erase(it);
   sks.emplace(lookupPiece);
 }
 

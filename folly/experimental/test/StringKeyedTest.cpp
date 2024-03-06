@@ -32,9 +32,9 @@
 
 using namespace std::literals;
 
+using folly::BasicStringKeyedSet;
 using folly::BasicStringKeyedUnorderedSet;
 using folly::StringKeyedMap;
-using folly::StringKeyedSetBase;
 using folly::StringKeyedUnorderedMap;
 using folly::StringPiece;
 using std::string;
@@ -119,11 +119,15 @@ using LeakCheckedUnorderedMap = StringKeyedUnorderedMap<
     MemoryLeakCheckerAllocator<
         std::allocator<std::pair<const std::string, int>>>>;
 
-typedef StringKeyedSetBase<std::less<StringPiece>, ValueLeakChecker>
-    LeakCheckedSet;
+using LeakCheckedSet = BasicStringKeyedSet<
+    std::less<void>,
+    MemoryLeakCheckerAllocator<std::allocator<std::string>>>;
 
-typedef StringKeyedMap<int, std::less<StringPiece>, KeyValuePairLeakChecker>
-    LeakCheckedMap;
+using LeakCheckedMap = StringKeyedMap<
+    int,
+    std::less<void>,
+    MemoryLeakCheckerAllocator<
+        std::allocator<std::pair<const std::string, int>>>>;
 
 using LeakCheckedUnorderedSet = BasicStringKeyedUnorderedSet<
     folly::transparent<folly::hasher<StringPiece>>,
@@ -456,7 +460,7 @@ TEST(StringKeyedMapTest, sanity) {
   EXPECT_EQ(map.size(), 2);
 
   std::vector<std::string> keys;
-  for (auto [key, mapped] : map) {
+  for (auto const& [key, mapped] : map) {
     keys.emplace_back(key);
   }
   EXPECT_THAT(keys, testing::UnorderedElementsAre("lo", "world"));
