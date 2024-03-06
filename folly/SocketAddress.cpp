@@ -33,7 +33,6 @@
 
 #include <fmt/core.h>
 
-#include <folly/CppAttributes.h>
 #include <folly/Exception.h>
 #include <folly/hash/Hash.h>
 #include <folly/net/NetOps.h>
