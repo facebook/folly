@@ -32,10 +32,12 @@ cdef class AsyncioExecutor:
 
 cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
     cdef unique_ptr[cNotificationQueueAsyncioExecutor, cDeleter] cQ
+    cdef bool driveBeforeDealloc
 
-    def __cinit__(self):
+    def __cinit__(self, driveBeforeDealloc = False):
         self.cQ = cNotificationQueueAsyncioExecutor.create()
         self._executor = self.cQ.get()
+        self.driveBeforeDealloc = driveBeforeDealloc
 
     def fileno(NotificationQueueAsyncioExecutor self):
         return deref(self.cQ).fileno()
@@ -44,6 +46,8 @@ cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
         deref(self.cQ).drive()
 
     def __dealloc__(NotificationQueueAsyncioExecutor self):
+        if self.driveBeforeDealloc:
+            self.drive()
         # We explicitly reset here, otherwise it is possible
         # that self.cQ destructor runs after python finalizes
         # Cython deletes these after __dealloc__ returns.
@@ -102,6 +106,10 @@ cdef class IocpQueue(dict):
 # diff. But ultimately we will want to remove this function and
 # go back to just get_executor() that only binds to a running loop.
 cdef cAsyncioExecutor* get_running_executor(bint running):
+    return get_running_executor_drive(running, False)
+
+cdef cAsyncioExecutor* get_running_executor_drive(
+    bint running, bint driveBeforeDealloc):
     try:
         if running:
             loop = asyncio.get_running_loop()
@@ -117,7 +125,7 @@ cdef cAsyncioExecutor* get_running_executor(bint running):
             queue = IocpQueue(executor)
             queue.swap(loop)
         else:
-            executor = NotificationQueueAsyncioExecutor()
+            executor = NotificationQueueAsyncioExecutor(driveBeforeDealloc)
             loop.add_reader(executor.fileno(), executor.drive)
         loop_to_q[loop] = executor
     return executor._executor

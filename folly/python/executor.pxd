@@ -55,3 +55,5 @@ cdef class IocpQueue(dict):
 cdef api cAsyncioExecutor* get_executor()
 cdef api int set_executor_for_loop(loop, cAsyncioExecutor* executor)
 cdef api cAsyncioExecutor* get_running_executor(bint running)
+cdef api cAsyncioExecutor* get_running_executor_drive(
+    bint running, bint driveBeforeDealloc)
