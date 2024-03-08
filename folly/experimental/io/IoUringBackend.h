@@ -672,24 +672,14 @@ class IoUringBackend : public EventBaseBackendBase {
         const struct iovec* iov,
         off_t offset,
         bool registerFd) noexcept {
-      CHECK(sqe);
-      if (registerFd && !fdRecord_) {
-        fdRecord_ = backend_->registerFd(fd);
-      }
-
-      if (fdRecord_) {
-        ::io_uring_prep_read(
-            sqe,
-            fdRecord_->idx_,
-            iov->iov_base,
-            (unsigned int)iov->iov_len,
-            offset);
-        sqe->flags |= IOSQE_FIXED_FILE;
-      } else {
-        ::io_uring_prep_read(
-            sqe, fd, iov->iov_base, (unsigned int)iov->iov_len, offset);
-      }
-      ::io_uring_sqe_set_data(sqe, this);
+      prepUtilFunc(
+          ::io_uring_prep_read,
+          sqe,
+          registerFd,
+          fd,
+          iov->iov_base,
+          (unsigned int)iov->iov_len,
+          offset);
     }
 
     void prepWrite(
@@ -698,24 +688,14 @@ class IoUringBackend : public EventBaseBackendBase {
         const struct iovec* iov,
         off_t offset,
         bool registerFd) noexcept {
-      CHECK(sqe);
-      if (registerFd && !fdRecord_) {
-        fdRecord_ = backend_->registerFd(fd);
-      }
-
-      if (fdRecord_) {
-        ::io_uring_prep_write(
-            sqe,
-            fdRecord_->idx_,
-            iov->iov_base,
-            (unsigned int)iov->iov_len,
-            offset);
-        sqe->flags |= IOSQE_FIXED_FILE;
-      } else {
-        ::io_uring_prep_write(
-            sqe, fd, iov->iov_base, (unsigned int)iov->iov_len, offset);
-      }
-      ::io_uring_sqe_set_data(sqe, this);
+      prepUtilFunc(
+          ::io_uring_prep_write,
+          sqe,
+          registerFd,
+          fd,
+          iov->iov_base,
+          (unsigned int)iov->iov_len,
+          offset);
     }
 
     void prepRecvmsg(
@@ -723,17 +703,29 @@ class IoUringBackend : public EventBaseBackendBase {
         int fd,
         struct msghdr* msg,
         bool registerFd) noexcept {
+      prepUtilFunc(
+          ::io_uring_prep_recvmsg, sqe, registerFd, fd, msg, MSG_TRUNC);
+    }
+
+    template <typename Fn, typename... Args>
+    void prepUtilFunc(
+        Fn fn,
+        struct io_uring_sqe* sqe,
+        bool registerFd,
+        int fd,
+        Args... args) {
       CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
       }
 
       if (fdRecord_) {
-        ::io_uring_prep_recvmsg(sqe, fdRecord_->idx_, msg, MSG_TRUNC);
+        fn(sqe, fdRecord_->idx_, std::forward<Args>(args)...);
         sqe->flags |= IOSQE_FIXED_FILE;
       } else {
-        ::io_uring_prep_recvmsg(sqe, fd, msg, 0);
+        fn(sqe, fd, std::forward<Args>(args)...);
       }
+
       ::io_uring_sqe_set_data(sqe, this);
     }
 
