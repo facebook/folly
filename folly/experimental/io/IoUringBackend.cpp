@@ -1348,7 +1348,7 @@ void IoUringBackend::initSubmissionLinked() {
     fdRegistry_.init();
   }
 
-  if (options_.initalProvidedBuffersCount) {
+  if (options_.initialProvidedBuffersCount) {
     auto get_shift = [](int x) -> int {
       int shift = findLastSet(x) - 1;
       if (x != (1 << shift)) {
@@ -1358,14 +1358,14 @@ void IoUringBackend::initSubmissionLinked() {
     };
 
     int sizeShift =
-        std::max<int>(get_shift(options_.initalProvidedBuffersEachSize), 5);
+        std::max<int>(get_shift(options_.initialProvidedBuffersEachSize), 5);
     int ringShift =
-        std::max<int>(get_shift(options_.initalProvidedBuffersCount), 1);
+        std::max<int>(get_shift(options_.initialProvidedBuffersCount), 1);
 
     bufferProvider_ = makeProvidedBufferRing(
         this,
         nextBufferProviderGid(),
-        options_.initalProvidedBuffersCount,
+        options_.initialProvidedBuffersCount,
         sizeShift,
         ringShift);
   }
@@ -1702,7 +1702,7 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     } else if (useReqBatching()) {
       struct __kernel_timespec timeout;
       timeout.tv_sec = 0;
-      timeout.tv_nsec = options_.timeout * 1000;
+      timeout.tv_nsec = options_.timeout.count() * 1000;
       int ret = ::io_uring_wait_cqes(
           &ioRing_, &cqe, options_.batchSize, &timeout, nullptr);
       return ret;
@@ -1878,7 +1878,7 @@ int IoUringBackend::submitBusyCheck(
           struct io_uring_cqe* cqe;
           struct __kernel_timespec timeout;
           timeout.tv_sec = 0;
-          timeout.tv_nsec = options_.timeout * 1000;
+          timeout.tv_nsec = options_.timeout.count() * 1000;
           res = ::io_uring_submit_and_wait_timeout(
               &ioRing_,
               &cqe,
