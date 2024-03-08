@@ -334,6 +334,7 @@ size_t HHWheelTimerBase<Duration>::cancelAll() {
     count += cancelTimeoutsFromList(timeoutsToRunNow);
   }
 
+  count_ = 0;
   return count;
 }
 
