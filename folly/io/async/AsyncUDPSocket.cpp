@@ -61,8 +61,8 @@ namespace fsp = folly::portability::sockets;
 namespace folly {
 
 void AsyncUDPSocket::fromMsg(
-    FOLLY_MAYBE_UNUSED ReadCallback::OnDataAvailableParams& params,
-    FOLLY_MAYBE_UNUSED struct msghdr& msg) {
+    [[maybe_unused]] ReadCallback::OnDataAvailableParams& params,
+    [[maybe_unused]] struct msghdr& msg) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   struct cmsghdr* cmsg;
   uint16_t* grosizeptr;
@@ -353,9 +353,7 @@ void AsyncUDPSocket::connect(const folly::SocketAddress& address) {
   connected_ = true;
   connectedAddress_ = address;
 
-  if (!localAddress_.isInitialized()) {
-    localAddress_.setFromLocalAddress(fd_);
-  }
+  localAddress_.setFromLocalAddress(fd_);
 }
 
 void AsyncUDPSocket::dontFragment(bool df) {
@@ -732,7 +730,7 @@ ssize_t AsyncUDPSocket::writev(
 }
 
 ssize_t AsyncUDPSocket::writevImpl(
-    netops::Msgheader* msg, FOLLY_MAYBE_UNUSED WriteOptions options) {
+    netops::Msgheader* msg, [[maybe_unused]] WriteOptions options) {
 #if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
   XPLAT_CMSGHDR* cm = nullptr;
 
@@ -1111,7 +1109,7 @@ void AsyncUDPSocket::releaseZeroCopyBuf(uint32_t id) {
   idZeroCopyBufMap_.erase(iter);
 }
 
-bool AsyncUDPSocket::isZeroCopyMsg(FOLLY_MAYBE_UNUSED const cmsghdr& cmsg) {
+bool AsyncUDPSocket::isZeroCopyMsg([[maybe_unused]] const cmsghdr& cmsg) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
       (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
@@ -1124,8 +1122,7 @@ bool AsyncUDPSocket::isZeroCopyMsg(FOLLY_MAYBE_UNUSED const cmsghdr& cmsg) {
   return false;
 }
 
-void AsyncUDPSocket::processZeroCopyMsg(
-    FOLLY_MAYBE_UNUSED const cmsghdr& cmsg) {
+void AsyncUDPSocket::processZeroCopyMsg([[maybe_unused]] const cmsghdr& cmsg) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   auto serr =
       reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
@@ -1474,7 +1471,7 @@ bool AsyncUDPSocket::setTXTime(TXTime txTime) {
 #endif
 }
 
-bool AsyncUDPSocket::setRxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
+bool AsyncUDPSocket::setRxZeroChksum6([[maybe_unused]] bool bVal) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if (address().getFamily() != AF_INET6) {
     return false;
@@ -1489,7 +1486,7 @@ bool AsyncUDPSocket::setRxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
 #endif
 }
 
-bool AsyncUDPSocket::setTxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
+bool AsyncUDPSocket::setTxZeroChksum6([[maybe_unused]] bool bVal) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if (address().getFamily() != AF_INET6) {
     return false;
@@ -1504,18 +1501,24 @@ bool AsyncUDPSocket::setTxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
 #endif
 }
 
-void AsyncUDPSocket::setTrafficClass(uint8_t tclass) {
-  if (netops::setsockopt(
-          fd_, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(tclass)) != 0) {
-    throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
-  }
-}
-
-void AsyncUDPSocket::setTos(uint8_t tos) {
-  if (netops::setsockopt(fd_, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) != 0) {
-    throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
+void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
+  int valInt = tosOrTclass;
+  if (address().getFamily() == AF_INET6) {
+    if (netops::setsockopt(
+            fd_,
+            IPPROTO_IPV6,
+            IPV6_TCLASS,
+            &valInt,
+            socklen_t(sizeof(valInt))) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
+    }
+  } else {
+    if (netops::setsockopt(
+            fd_, IPPROTO_IP, IP_TOS, &valInt, socklen_t(sizeof(valInt))) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
+    }
   }
 }
 

@@ -26,6 +26,7 @@
 #include <folly/io/async/AsyncUDPServerSocket.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 #include <folly/io/async/test/EventBaseTestLib.h>
 #include <folly/portability/GTest.h>
 
@@ -870,38 +871,38 @@ TEST(IoUringBackend, AsyncUDPRecvmsgMultishotRegisterFd) {
   testAsyncUDPRecvmsg(true, true);
 }
 
-TEST(IoUringBackend, EventFD_NoOverflowNoPersist) {
+TEST(IoUringBackend, EventFDNooverflownopersist) {
   testEventFD(false, false, false);
 }
 
-TEST(IoUringBackend, EventFD_OverflowNoPersist) {
+TEST(IoUringBackend, EventFDOverflownopersist) {
   testEventFD(true, false, false);
 }
 
-TEST(IoUringBackend, EventFD_NoOverflowPersist) {
+TEST(IoUringBackend, EventFDNooverflowpersist) {
   testEventFD(false, true, false);
 }
 
-TEST(IoUringBackend, EventFD_OverflowPersist) {
+TEST(IoUringBackend, EventFDOverflowpersist) {
   testEventFD(true, true, false);
 }
 
-TEST(IoUringBackend, EventFD_Persist_AsyncRead) {
+TEST(IoUringBackend, EventFDPersistAsyncread) {
   testEventFD(false, true, true);
 }
 
 // 9 valid fds followed by an invalid one
-TEST(IoUringBackend, Invalid_fd_9_1) {
+TEST(IoUringBackend, InvalidFd91) {
   testInvalidFd(32, 10, 1);
 }
 
 // only invalid fds
-TEST(IoUringBackend, Invalid_fd_0_10) {
+TEST(IoUringBackend, InvalidFd010) {
   testInvalidFd(32, 0, 10);
 }
 
 // equal distribution
-TEST(IoUringBackend, Invalid_fd_5_5) {
+TEST(IoUringBackend, InvalidFd55) {
   testInvalidFd(32, 10, 10);
 }
 
@@ -981,8 +982,9 @@ TEST(IoUringBackend, FileReadWrite) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDWR);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
@@ -1046,8 +1048,9 @@ TEST(IoUringBackend, FileReadvWritev) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDWR);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
@@ -1139,8 +1142,9 @@ TEST(IoUringBackend, FileReadMany) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDWR);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
@@ -1198,8 +1202,9 @@ TEST(IoUringBackend, FileWriteMany) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
-                    << folly::errnoStr(errno);
+  if (fd == -1)
+    fd = ::open(tempFile.path().c_str(), O_RDWR);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
@@ -1539,7 +1544,11 @@ static constexpr size_t kCapacity = 32;
 static constexpr size_t kMaxSubmit = 4;
 static constexpr size_t kMaxGet = static_cast<size_t>(-1);
 
-struct IoUringBackendProvider {
+struct IoUringBackendProviderBase : BackendProviderBase {
+  static bool isIoUringBackend() { return true; }
+};
+
+struct IoUringBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;
@@ -1555,7 +1564,7 @@ struct IoUringBackendProvider {
   }
 };
 
-struct IoUringRegFdBackendProvider {
+struct IoUringRegFdBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;
@@ -1571,7 +1580,7 @@ struct IoUringRegFdBackendProvider {
 };
 
 // CQ polling
-struct IoUringPollCQBackendProvider {
+struct IoUringPollCQBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;
@@ -1588,7 +1597,7 @@ struct IoUringPollCQBackendProvider {
 };
 
 // SQ/CQ polling
-struct IoUringPollSQCQBackendProvider {
+struct IoUringPollSQCQBackendProvider : IoUringBackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
       folly::PollIoBackend::Options options;
@@ -1608,24 +1617,25 @@ struct IoUringPollSQCQBackendProvider {
 
 // Instantiate the non registered fd tests
 INSTANTIATE_TYPED_TEST_SUITE_P(IoUring, EventBaseTest, IoUringBackendProvider);
-INSTANTIATE_TYPED_TEST_SUITE_P(IoUring, EventBaseTest1, IoUringBackendProvider);
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    IoUring, AsyncSignalHandlerTest, IoUringBackendProvider);
 
 // Instantiate the registered fd tests
 INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringRegFd, EventBaseTest, IoUringRegFdBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    IoUringRegFd, EventBaseTest1, IoUringRegFdBackendProvider);
+    IoUringRegFd, AsyncSignalHandlerTest, IoUringRegFdBackendProvider);
 
 // Instantiate the poll CQ tests
 INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollCQ, EventBaseTest, IoUringPollCQBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    IoUringPollCQ, EventBaseTest1, IoUringPollCQBackendProvider);
+    IoUringPollCQ, AsyncSignalHandlerTest, IoUringPollCQBackendProvider);
 
 // Instantiate the poll SQ/CQ tests
 INSTANTIATE_TYPED_TEST_SUITE_P(
     IoUringPollSQCQ, EventBaseTest, IoUringPollCQBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    IoUringPollSQCQ, EventBaseTest1, IoUringPollCQBackendProvider);
+    IoUringPollSQCQ, AsyncSignalHandlerTest, IoUringPollCQBackendProvider);
 } // namespace test
 } // namespace folly

@@ -38,6 +38,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 #include <folly/synchronization/MicroSpinLock.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/system/AtFork.h>
 #include <folly/system/ThreadId.h>
 
@@ -201,6 +202,11 @@ struct ThreadEntry {
   uint64_t tid_os{};
   aligned_storage_for_t<std::thread::id> tid_data{};
 
+  // StaticMetaBase::onThreadExit is called to clean up
+  // ElementWrapper state. That will also set removed_ to true.
+  // Ensure we do not release ThreadEntry before the cleanup is done.
+  ~ThreadEntry() { CHECK(removed_); }
+
   size_t getElementsCapacity() const noexcept {
     return elementsCapacity.load(std::memory_order_relaxed);
   }
@@ -334,6 +340,10 @@ struct StaticMetaBase {
 
   static void onThreadExit(void* ptr);
 
+  // Helper to do final free and delete of ThreadEntry and ThreadEntryList
+  // structures.
+  static void cleanupThreadEntriesAndList(ThreadEntryList* list);
+
   // returns the elementsCapacity for the
   // current thread ThreadEntry struct
   uint32_t elementsCapacity() const;
@@ -369,11 +379,16 @@ struct StaticMetaBase {
   uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
   std::mutex lock_;
-  SharedMutex accessAllThreadsLock_;
+  mutable SharedMutex accessAllThreadsLock_;
   pthread_key_t pthreadKey_;
   ThreadEntry head_;
   ThreadEntry* (*threadEntry_)();
   bool strict_;
+  // Total size of ElementWrapper arrays across all threads. This is meant
+  // to surface the overhead of thread local tracking machinery since the array
+  // can be sparse when there are lots of thread local variables under the same
+  // tag.
+  relaxed_atomic_int64_t totalElementWrappers_{0};
 };
 
 // Held in a singleton to track our global instances.
@@ -440,12 +455,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
         static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
       ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
-      if (kUseThreadLocal) {
-        static thread_local ThreadEntry threadEntrySingleton;
-        threadEntry = &threadEntrySingleton;
-      } else {
-        threadEntry = new ThreadEntry();
-      }
+      threadEntry = new ThreadEntry();
       // if the ThreadEntry already exists
       // but pthread_getspecific returns NULL
       // do not add the same entry twice to the list

@@ -90,7 +90,7 @@ void unique_ptr_test(Allocator& allocator) {
   EXPECT_EQ(counter.count(), 0);
 }
 
-TEST(ArenaSmartPtr, unique_ptr_SysArena) {
+TEST(ArenaSmartPtr, uniquePtrSysarena) {
   SysArena arena;
   SysArenaAllocator<Foo> alloc(arena);
   unique_ptr_test(alloc);
@@ -151,7 +151,7 @@ void shared_ptr_test(Allocator& allocator) {
   EXPECT_EQ(foo.use_count(), 0);
 }
 
-TEST(ArenaSmartPtr, shared_ptr_SysArena) {
+TEST(ArenaSmartPtr, sharedPtrSysarena) {
   SysArena arena;
   SysArenaAllocator<Foo> alloc(arena);
   shared_ptr_test(alloc);

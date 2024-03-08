@@ -239,7 +239,6 @@ list(APPEND hfiles
   ${FOLLY_DIR}/io/async/test/Util.h
   ${FOLLY_DIR}/synchronization/test/Semaphore.h
   ${FOLLY_DIR}/test/DeterministicSchedule.h
-  ${FOLLY_DIR}/test/JsonTestUtil.h
   ${FOLLY_DIR}/test/TestUtils.h
 )
 
@@ -350,6 +349,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 set(PCLMUL_FILES
+  ${FOLLY_DIR}/external/fast-crc32/sse_crc32c_v8s3x3.cpp
   ${FOLLY_DIR}/hash/detail/ChecksumDetail.cpp
   ${FOLLY_DIR}/hash/detail/Crc32CombineDetail.cpp
   ${FOLLY_DIR}/hash/detail/Crc32cDetail.cpp
@@ -377,7 +377,7 @@ list(APPEND folly_base_files
   ${files} ${hfiles}
 )
 
-if (NOT MSVC)
+if (IS_X86_64_ARCH AND NOT MSVC)
   set_property(
     SOURCE
     ${FOLLY_DIR}/memcpy.S
@@ -444,7 +444,7 @@ target_link_libraries(folly PUBLIC folly_deps)
 # Test utilities exported for use by downstream projects
 add_library(folly_test_util
   ${FOLLY_DIR}/test/DeterministicSchedule.cpp
-  ${FOLLY_DIR}/test/JsonTestUtil.cpp
+  ${FOLLY_DIR}/json/JsonTestUtil.cpp
 )
 set_property(TARGET folly_test_util PROPERTY VERSION ${PACKAGE_VERSION})
 target_link_libraries(folly_test_util
@@ -636,7 +636,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK foreach_benchmark SOURCES ForeachBenchmark.cpp
       TEST foreach_test SOURCES ForeachTest.cpp
       TEST merge_test SOURCES MergeTest.cpp
-      BENCHMARK sparse_byte_set_benchmark SOURCES SparseByteSetBenchmark.cpp
+      BENCHMARK sparse_byte_set_benchmark WINDOWS_DISABLED
+        SOURCES SparseByteSetBenchmark.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
       TEST util_test SOURCES UtilTest.cpp
 
@@ -668,13 +669,14 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
 
     DIRECTORY detail/test/
-      TEST split_string_simd_test SOURCES SplitStringSimdTest.cpp
+      TEST split_string_simd_test WINDOWS_DISABLED
+        SOURCES SplitStringSimdTest.cpp
 
     DIRECTORY detail/test/
       TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
-      TEST base64_detail_test
+      TEST base64_detail_test WINDOWS_DISABLED
       SOURCES
         Base64AgainstScalarTest.cpp
         Base64PlatformTest.cpp
@@ -686,8 +688,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK edf_thread_pool_executor_benchmark
         SOURCES EDFThreadPoolExecutorBenchmark.cpp
       TEST executor_test SOURCES ExecutorTest.cpp
-      TEST fiber_io_executor_test WINDOWS_DISABLED
-        SOURCES FiberIOExecutorTest.cpp
+      TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
       TEST global_executor_test SOURCES GlobalExecutorTest.cpp
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
       # Fails in ThreadPoolExecutorTest.RequestContext:719 data2 != nullptr
@@ -707,14 +708,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp
       TEST bitvector_test SOURCES BitVectorCodingTest.cpp
-      TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
       TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
       TEST event_count_test SOURCES EventCountTest.cpp
       # FunctionSchedulerTest has a lot of timing-dependent checks,
       # and tends to fail on heavily loaded systems.
       TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
       TEST future_dag_test SOURCES FutureDAGTest.cpp
-      TEST json_schema_test SOURCES JSONSchemaTest.cpp
       TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
@@ -723,8 +722,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST read_mostly_shared_ptr_test SOURCES ReadMostlySharedPtrTest.cpp
       #TEST ref_count_test SOURCES RefCountTest.cpp
       TEST select64_test SOURCES Select64Test.cpp
-      BENCHMARK string_keyed_benchmark SOURCES StringKeyedBenchmark.cpp
-      TEST stringkeyed_test SOURCES StringKeyedTest.cpp
       TEST test_util_test SOURCES TestUtilTest.cpp
       TEST tuple_ops_test SOURCES TupleOpsTest.cpp
 
@@ -763,13 +760,15 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY fibers/test/
       # FiberManager swapWithException fails with segfault
-      BENCHMARK fibers_benchmark SOURCES FibersBenchmark.cpp
+      BENCHMARK fibers_benchmark WINDOWS_DISABLED
+        SOURCES FibersBenchmark.cpp
       TEST fibers_test BROKEN SOURCES FibersTest.cpp
 
     DIRECTORY functional/test/
       TEST apply_tuple_test WINDOWS_DISABLED
         SOURCES ApplyTupleTest.cpp
-      TEST functional_invoke_test SOURCES InvokeTest.cpp
+      TEST functional_invoke_test WINDOWS_DISABLED
+        SOURCES InvokeTest.cpp
       TEST partial_test SOURCES PartialTest.cpp
       TEST functional_protocol_test SOURCES protocol_test.cpp
       TEST functional_traits_test SOURCES traits_test.cpp
@@ -938,7 +937,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST libgen-test SOURCES LibgenTest.cpp
       TEST openssl_portability_test SOURCES OpenSSLPortabilityTest.cpp
       TEST pthread_test SOURCES PThreadTest.cpp
-      TEST time-test SOURCES TimeTest.cpp
+      TEST time-test WINDOWS_DISABLED
+        SOURCES TimeTest.cpp
 
     DIRECTORY ssl/test/
       TEST openssl_hash_test SOURCES OpenSSLHashTest.cpp
@@ -1000,22 +1000,21 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK concurrent_skip_list_benchmark
         SOURCES ConcurrentSkipListBenchmark.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
-      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
+      TEST constexpr_math_test WINDOWS_DISABLED
+        SOURCES ConstexprMathTest.cpp
       TEST conv_test WINDOWS_DISABLED SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
       TEST deterministic_schedule_test SOURCES DeterministicScheduleTest.cpp
       TEST discriminated_ptr_test SOURCES DiscriminatedPtrTest.cpp
-      TEST dynamic_test SOURCES DynamicTest.cpp
-      TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
-      TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
       TEST endian_test SOURCES EndianTest.cpp
       TEST exception_test SOURCES ExceptionTest.cpp
       BENCHMARK exception_wrapper_benchmark WINDOWS_DISABLED
         SOURCES ExceptionWrapperBenchmark.cpp
       TEST exception_wrapper_test WINDOWS_DISABLED
         SOURCES ExceptionWrapperTest.cpp
-      TEST expected_test SOURCES ExpectedTest.cpp
+      TEST expected_test WINDOWS_DISABLED
+        SOURCES ExpectedTest.cpp
       BENCHMARK fbstring_benchmark WINDOWS_DISABLED
         SOURCES FBStringBenchmark.cpp
         HEADERS FBStringTestBenchmarks.cpp.h
@@ -1046,12 +1045,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST indestructible_test SOURCES IndestructibleTest.cpp
       TEST indexed_mem_pool_test BROKEN
         SOURCES IndexedMemPoolTest.cpp
-      # MSVC Preprocessor stringizing raw string literals bug
-      TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
-      BENCHMARK json_benchmark SOURCES JsonBenchmark.cpp
-      TEST json_pointer_test SOURCES json_pointer_test.cpp
-      TEST json_patch_test SOURCES json_patch_test.cpp
-      TEST json_other_test SOURCES JsonOtherTest.cpp
       TEST lazy_test SOURCES LazyTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
@@ -1076,7 +1069,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST poly_test SOURCES PolyTest.cpp
       TEST portability_test SOURCES PortabilityTest.cpp
       # Turns out this benchmark uses Linux only API for setting CPU affinity i.e. cpu_set_t.
-      BENCHMARK producer_consumer_queue_benchmark APPLE_DISABLED SOURCES ProducerConsumerQueueBenchmark.cpp
+      BENCHMARK producer_consumer_queue_benchmark APPLE_DISABLED WINDOWS_DISABLED
+        SOURCES ProducerConsumerQueueBenchmark.cpp
       TEST producer_consumer_queue_test SLOW
         SOURCES ProducerConsumerQueueTest.cpp
       BENCHMARK range_find_benchmark SOURCES RangeFindBenchmark.cpp
@@ -1109,6 +1103,19 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
+
+    DIRECTORY json/test/
+      TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
+      TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
+      TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
+      TEST dynamic_test SOURCES DynamicTest.cpp
+      # MSVC Preprocessor stringizing raw string literals bug
+      TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
+      BENCHMARK json_benchmark SOURCES JsonBenchmark.cpp
+      TEST json_other_test SOURCES JsonOtherTest.cpp
+      TEST json_patch_test SOURCES json_patch_test.cpp
+      TEST json_pointer_test SOURCES json_pointer_test.cpp
+      TEST json_schema_test SOURCES JSONSchemaTest.cpp
   )
 
   if (${LIBSODIUM_FOUND})

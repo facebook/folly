@@ -20,6 +20,9 @@
 #include <folly/Portability.h>
 
 namespace folly {
+
+constexpr char const* kLoggingEnvVarName = "FOLLY_LOGGING";
+
 class InitOptions {
  public:
   InitOptions() noexcept;

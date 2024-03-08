@@ -139,7 +139,7 @@ class hazptr_holder {
   FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src, Func f) noexcept {
     T* ptr = src.load(std::memory_order_relaxed);
     while (!try_protect(ptr, src, f)) {
-      /* Keep trying */;
+      /* Keep trying */
     }
     return ptr;
   }

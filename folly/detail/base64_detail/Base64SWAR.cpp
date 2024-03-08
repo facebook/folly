@@ -103,9 +103,6 @@ constexpr auto kBase64SwarDecodeTable =
 template <bool isURL>
 std::uint32_t base64DecodeSWARMainLoop(
     const char*& f, const char* l, char*& o) noexcept {
-  static_assert(
-      folly::kIsLittleEndian, "Big endian requires a redesigned table");
-
   std::uint32_t errorAccumulator = 0;
 
   while (l - f > 4) {

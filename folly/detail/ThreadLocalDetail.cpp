@@ -77,37 +77,43 @@ StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
 }
 
 ThreadEntryList* StaticMetaBase::getThreadEntryList() {
-  if (kUseThreadLocal) {
-    static thread_local ThreadEntryList threadEntryListSingleton;
-    return &threadEntryListSingleton;
-  } else {
-    class PthreadKey {
-     public:
-      PthreadKey() {
-        int ret = pthread_key_create(&pthreadKey_, nullptr);
-        checkPosixError(ret, "pthread_key_create failed");
-        PthreadKeyUnregister::registerKey(pthreadKey_);
-      }
-
-      FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }
-
-     private:
-      pthread_key_t pthreadKey_;
-    };
-
-    auto& instance = detail::createGlobal<PthreadKey, void>();
-
-    ThreadEntryList* threadEntryList =
-        static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
-
-    if (FOLLY_UNLIKELY(!threadEntryList)) {
-      threadEntryList = new ThreadEntryList();
-      int ret = pthread_setspecific(instance.get(), threadEntryList);
-      checkPosixError(ret, "pthread_setspecific failed");
+  class PthreadKey {
+   public:
+    static void onThreadExit(void* ptr) {
+      ThreadEntryList* list = static_cast<ThreadEntryList*>(ptr);
+      StaticMetaBase::cleanupThreadEntriesAndList(list);
     }
 
-    return threadEntryList;
+    PthreadKey() {
+      int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
+      checkPosixError(ret, "pthread_key_create failed");
+      PthreadKeyUnregister::registerKey(pthreadKey_);
+    }
+
+    FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }
+
+   private:
+    pthread_key_t pthreadKey_;
+  };
+
+  static thread_local ThreadEntryList* threadEntryListTL{};
+  if (threadEntryListTL) {
+    return threadEntryListTL;
   }
+  auto& instance = detail::createGlobal<PthreadKey, void>();
+
+  ThreadEntryList* threadEntryList =
+      static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
+
+  if (FOLLY_UNLIKELY(!threadEntryList)) {
+    threadEntryList = new ThreadEntryList();
+    int ret = pthread_setspecific(instance.get(), threadEntryList);
+    checkPosixError(ret, "pthread_setspecific failed");
+    threadEntryList->count = 1; // Pin once for own onThreadExit callback.
+  }
+
+  threadEntryListTL = threadEntryList;
+  return threadEntryList;
 }
 
 bool StaticMetaBase::dying() {
@@ -128,9 +134,9 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     // Make sure this ThreadEntry is available if ThreadLocal A is accessed in
     // ThreadLocal B destructor.
     pthread_setspecific(meta.pthreadKey_, threadEntry);
-    SharedMutex::ReadHolder rlock(nullptr);
+    std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
     if (meta.strict_) {
-      rlock = SharedMutex::ReadHolder(meta.accessAllThreadsLock_);
+      rlock.lock();
     }
     {
       std::lock_guard<std::mutex> g(meta.lock_);
@@ -140,6 +146,8 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       for (size_t i = 0u; i < elementsCapacity; ++i) {
         threadEntry->elements[i].node.eraseZero();
       }
+      auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
+      DCHECK_GE(beforeCount, elementsCapacity);
       // No need to hold the lock any longer; the ThreadEntry is private to this
       // thread now that it's been removed from meta.
     }
@@ -163,8 +171,13 @@ void StaticMetaBase::onThreadExit(void* ptr) {
   auto threadEntryList = threadEntry->list;
   DCHECK_GT(threadEntryList->count, 0u);
 
-  --threadEntryList->count;
+  cleanupThreadEntriesAndList(threadEntryList);
+}
 
+/* static */
+void StaticMetaBase::cleanupThreadEntriesAndList(
+    ThreadEntryList* threadEntryList) {
+  --threadEntryList->count;
   if (threadEntryList->count) {
     return;
   }
@@ -176,9 +189,9 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     while (tmp) {
       auto& meta = *tmp->meta;
       pthread_setspecific(meta.pthreadKey_, tmp);
-      SharedMutex::ReadHolder rlock(nullptr);
+      std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
       if (meta.strict_) {
-        rlock = SharedMutex::ReadHolder(meta.accessAllThreadsLock_);
+        rlock.lock();
       }
       for (bool shouldRunInner = true; shouldRunInner;) {
         shouldRunInner = false;
@@ -207,15 +220,10 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       tmp->elements = nullptr;
       tmp->setElementsCapacity(0);
     }
-
-    if (!kUseThreadLocal) {
-      delete tmp;
-    }
+    delete tmp;
   }
 
-  if (!kUseThreadLocal) {
-    delete threadEntryList;
-  }
+  delete threadEntryList;
 }
 
 uint32_t StaticMetaBase::elementsCapacity() const {
@@ -257,7 +265,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
     std::vector<ElementWrapper> elements;
 
     {
-      SharedMutex::WriteHolder wlock(nullptr);
+      std::unique_lock wlock(meta.accessAllThreadsLock_, std::defer_lock);
       if (meta.strict_) {
         /*
          * In strict mode, the logic guarantees per-thread instances are
@@ -266,7 +274,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
          * onThreadExit() calls (that might acquire ownership over per-thread
          * instances in order to destroy them) are finished.
          */
-        wlock = SharedMutex::WriteHolder(meta.accessAllThreadsLock_);
+        wlock.lock();
       }
 
       {
@@ -379,7 +387,6 @@ ElementWrapper* StaticMetaBase::reallocate(
       throw_exception<std::bad_alloc>();
     }
   }
-
   return reallocated;
 }
 
@@ -428,6 +435,7 @@ void StaticMetaBase::reserve(EntryID* id) {
     threadEntry->setElementsCapacity(newCapacity);
   }
 
+  meta.totalElementWrappers_ += (newCapacity - prevCapacity);
   free(reallocated);
 }
 
@@ -450,6 +458,7 @@ void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
     }
 
     head_.setElementsCapacity(newCapacity);
+    totalElementWrappers_ += (newCapacity - prevCapacity);
     free(reallocated);
   }
 }

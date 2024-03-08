@@ -1114,6 +1114,7 @@ class SingleThreadedCPUThreadPoolExecutor : public CPUThreadPoolExecutor,
  public:
   explicit SingleThreadedCPUThreadPoolExecutor(size_t)
       : CPUThreadPoolExecutor(1) {}
+  ~SingleThreadedCPUThreadPoolExecutor() override { stop(); }
 };
 
 TYPED_TEST(ThreadPoolExecutorTypedTest, WeakRef) {

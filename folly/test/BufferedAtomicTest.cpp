@@ -76,7 +76,7 @@ TEST(BufferedAtomic, basic) {
   buf.assertOldestAllowed(11, std::memory_order_relaxed, tts);
 }
 
-TEST(BufferedAtomic, seq_cst) {
+TEST(BufferedAtomic, seqCst) {
   RecordBufferTest<int> buf;
   DSchedThreadId tid(0);
   ThreadInfo threadInfo(tid);
@@ -91,7 +91,7 @@ TEST(BufferedAtomic, seq_cst) {
   buf.assertOldestAllowed(1, std::memory_order_seq_cst, tts);
 }
 
-TEST(BufferedAtomic, transitive_sync) {
+TEST(BufferedAtomic, transitiveSync) {
   RecordBufferTest<int> buf;
   DSchedThreadId tid0(0);
   DSchedThreadId tid1(1);
@@ -113,7 +113,7 @@ TEST(BufferedAtomic, transitive_sync) {
       1, std::memory_order_relaxed, threadInfo2.acqRelOrder_);
 }
 
-TEST(BufferedAtomic, acq_rel) {
+TEST(BufferedAtomic, acqRel) {
   RecordBufferTest<int> buf;
   DSchedThreadId tid0(0);
   DSchedThreadId tid1(1);
@@ -133,7 +133,7 @@ TEST(BufferedAtomic, acq_rel) {
       threadInfo1.acqRelOrder_.atLeastAsRecentAs(tid0, DSchedTimestampTest(1)));
 }
 
-TEST(BufferedAtomic, atomic_buffer_thread_create_join_sync) {
+TEST(BufferedAtomic, atomicBufferThreadCreateJoinSync) {
   for (int i = 0; i < 32; i++) {
     DSched sched(DSched::uniform(i));
 
@@ -158,7 +158,7 @@ TEST(BufferedAtomic, atomic_buffer_thread_create_join_sync) {
   }
 }
 
-TEST(BufferedAtomic, atomic_buffer_fence) {
+TEST(BufferedAtomic, atomicBufferFence) {
   for (int i = 0; i < 1024; i++) {
     FOLLY_TEST_DSCHED_VLOG("seed: " << i);
     DSched sched(DSched::uniform(i));
@@ -196,7 +196,7 @@ TEST(BufferedAtomic, atomic_buffer_fence) {
   }
 }
 
-TEST(BufferedAtomic, single_thread_unguarded_access) {
+TEST(BufferedAtomic, singleThreadUnguardedAccess) {
   DSched* sched = new DSched(DSched::uniform(0));
   DeterministicAtomicImpl<int, DeterministicSchedule, BufferedAtomic> x(0);
   delete sched;

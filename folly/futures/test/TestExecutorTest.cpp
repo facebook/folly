@@ -22,7 +22,7 @@ using namespace std;
 using namespace std::chrono;
 using namespace folly;
 
-TEST(TestExecutor, parallel_run) {
+TEST(TestExecutor, parallelRun) {
   mutex m;
   set<thread::id> ids;
   auto executor = std::make_unique<TestExecutor>(4);

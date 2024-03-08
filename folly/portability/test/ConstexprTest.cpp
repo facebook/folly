@@ -28,7 +28,7 @@ struct static_assert_same;
 template <typename T>
 struct static_assert_same<T, T> {};
 
-TEST(ConstexprTest, constexpr_strlen_cstr) {
+TEST(ConstexprTest, constexprStrlenCstr) {
   constexpr auto v = "hello";
   {
     constexpr auto a = constexpr_strlen(v);
@@ -42,7 +42,7 @@ TEST(ConstexprTest, constexpr_strlen_cstr) {
   }
 }
 
-TEST(ConstexprTest, constexpr_strlen_ints) {
+TEST(ConstexprTest, constexprStrlenInts) {
   constexpr int v[] = {5, 3, 4, 0, 7};
   {
     constexpr auto a = constexpr_strlen(v);
@@ -56,7 +56,7 @@ TEST(ConstexprTest, constexpr_strlen_ints) {
   }
 }
 
-TEST(ConstexprTest, constexpr_strcmp_ints) {
+TEST(ConstexprTest, constexprStrcmpInts) {
   constexpr int v[] = {5, 3, 4, 0, 7};
   constexpr int v1[] = {6, 4};
   static_assert(constexpr_strcmp(v1, v) > 0, "constexpr_strcmp is broken");
@@ -90,7 +90,7 @@ static_assert(
 static_assert(
     constexpr_strcmp_fallback("abc", "a") > 0, "constexpr_strcmp is broken");
 
-TEST(ConstexprTest, is_constant_evaluated_or) {
+TEST(ConstexprTest, isConstantEvaluatedOr) {
   static_assert(folly::is_constant_evaluated_or(true));
   EXPECT_FALSE(folly::is_constant_evaluated_or(false));
 

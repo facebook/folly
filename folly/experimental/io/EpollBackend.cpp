@@ -22,6 +22,8 @@
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
 
+#include <folly/IntrusiveList.h>
+#include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/experimental/io/EpollBackend.h>
 
@@ -33,6 +35,21 @@ extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
 
 namespace folly {
 namespace {
+
+struct EventInfo {
+  static void freeFunction(void* v) { delete static_cast<EventInfo*>(v); }
+
+  void resetEvent() {
+    listHook.unlink(); // Remove from the info list.
+    ev = nullptr;
+  }
+
+  folly::IntrusiveListHook listHook;
+  struct event* ev{nullptr};
+  int what_{0};
+};
+
+using EventInfoList = folly::IntrusiveList<EventInfo, &EventInfo::listHook>;
 
 struct SignalRegistry {
   struct SigInfo {
@@ -107,36 +124,34 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
   }
 }
 
-std::chrono::time_point<std::chrono::steady_clock> getTimerExpireTime(
-    const struct timeval& timeout,
-    std::chrono::steady_clock::time_point now =
-        std::chrono::steady_clock::now()) {
-  return now + std::chrono::seconds{timeout.tv_sec} +
-      std::chrono::microseconds{timeout.tv_usec};
-}
-
-struct TimerUserData {
-  std::multimap<std::chrono::steady_clock::time_point, EpollBackend::Event*>::
-      const_iterator iter;
-};
-
-void timerUserDataFreeFunction(void* v) {
-  delete (TimerUserData*)(v);
-}
-
 uint32_t getPollFlags(short events) {
   uint32_t ret = 0;
   if (events & EV_READ) {
-    ret |= POLLIN;
+    ret |= EPOLLIN;
   }
 
   if (events & EV_WRITE) {
-    ret |= POLLOUT;
+    ret |= EPOLLOUT;
   }
 
   return ret;
 }
+
 } // namespace
+
+struct EpollBackend::TimerInfo : public IntrusiveHeapNode<> {
+  bool operator<(const TimerInfo& other) const {
+    // IntrusiveHeap is a max-heap.
+    return expiration > other.expiration;
+  }
+
+  static void freeFunction(void* v) { delete static_cast<TimerInfo*>(v); }
+
+  ~TimerInfo() { DCHECK(!isLinked()); }
+
+  std::chrono::steady_clock::time_point expiration;
+  struct event* ev;
+};
 
 EpollBackend::SocketPair::SocketPair() {
   if (::socketpair(AF_UNIX, SOCK_STREAM, 0, fds_.data())) {
@@ -165,23 +180,29 @@ EpollBackend::EpollBackend(Options options) : options_(options) {
     throw std::runtime_error(folly::errnoStr(errno));
   }
 
-  timerFd_ = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-  if (timerFd_ == -1) {
-    auto errnoCopy = errno;
-    ::close(epollFd_);
-    throw std::runtime_error(folly::errnoStr(errnoCopy));
+  {
+    timerFd_ = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    if (timerFd_ == -1) {
+      auto errnoCopy = errno;
+      ::close(epollFd_);
+      throw std::runtime_error(folly::errnoStr(errnoCopy));
+    }
+    struct epoll_event epev = {};
+    epev.events = EPOLLIN;
+    // epoll_data is a union, so we need to use pointers for all events. We can
+    // use any unique pointer to distinguish the timerfd event, use the address
+    // of the fd variable.
+    epev.data.ptr = &timerFd_;
+    PCHECK(::epoll_ctl(epollFd_, EPOLL_CTL_ADD, timerFd_, &epev) == 0);
   }
 
-  auto callback = [](libevent_fd_t fd, short events, void* arg) {
-    std::ignore = fd;
-    std::ignore = events;
-    reinterpret_cast<EpollBackend*>(arg)->processTimers();
-  };
-
-  timerFdEvent_.eb_event_set(timerFd_, EV_READ | EV_PERSIST, callback, this);
-  event_ref_flags(timerFdEvent_.getEvent()) |= EVLIST_INTERNAL;
-
-  eb_event_add(timerFdEvent_, nullptr);
+  {
+    struct epoll_event epev = {};
+    epev.events = EPOLLIN;
+    epev.data.ptr = &signalFds_;
+    PCHECK(
+        ::epoll_ctl(epollFd_, EPOLL_CTL_ADD, signalFds_.readFd(), &epev) == 0);
+  }
 
   events_.resize(options_.numLoopEvents);
 }
@@ -192,12 +213,11 @@ EpollBackend::~EpollBackend() {
 }
 
 int EpollBackend::eb_event_base_loop(int flags) {
-  bool done = false;
-  bool waitForEvents = ((flags & EVLOOP_NONBLOCK) == 0);
-  while (!done) {
+  const bool waitForEvents = (flags & EVLOOP_NONBLOCK) == 0;
+  while (true) {
     if (loopBreak_) {
       loopBreak_ = false;
-      break;
+      return 0;
     }
 
     if (numInternalEvents_ == numInsertedEvents_ && timers_.empty() &&
@@ -210,18 +230,40 @@ int EpollBackend::eb_event_base_loop(int flags) {
       eb_poll_loop_pre_hook(&call_time);
     }
 
-    // do not wait for events if EVLOOP_NONBLOCK is set
-    int numEvents = ::epoll_wait(
-        epollFd_, events_.data(), events_.size(), waitForEvents ? -1 : 0);
+    int numEvents;
+    do {
+      numEvents = ::epoll_wait(
+          epollFd_, events_.data(), events_.size(), waitForEvents ? -1 : 0);
+    } while (numEvents == -1 && errno == EINTR);
 
     if (eb_poll_loop_post_hook) {
       eb_poll_loop_post_hook(call_time, numEvents);
     }
 
+    if (numEvents < 0) {
+      return -1;
+    } else if (numEvents == 0) {
+      CHECK(!waitForEvents);
+      return 2;
+    }
+
     bool shouldProcessTimers = false;
+    bool shouldProcessSignals = false;
+    // Callbacks may delete other active events, so we accumulate active events
+    // first into an intrusive list that is updated if events in it are deleted.
+    EventInfoList infoList;
     for (int i = 0; i < numEvents; ++i) {
-      struct event* event =
-          reinterpret_cast<struct event*>(events_[i].data.ptr);
+      if (events_[i].data.ptr == &timerFd_) {
+        shouldProcessTimers = true;
+        continue;
+      } else if (events_[i].data.ptr == &signalFds_) {
+        shouldProcessSignals = true;
+        continue;
+      }
+
+      auto* info = static_cast<EventInfo*>(events_[i].data.ptr);
+      auto* event = info->ev;
+      info->what_ = events_[i].events;
       // if not persistent we need to remove it
       if (~event->ev_events & EV_PERSIST) {
         if (event_ref_flags(event) & EVLIST_INSERTED) {
@@ -233,53 +275,56 @@ int EpollBackend::eb_event_base_loop(int flags) {
           if (event_ref_flags(event) & EVLIST_INTERNAL) {
             DCHECK_GT(numInternalEvents_, 0);
             numInternalEvents_--;
-          } else {
-            DCHECK_GT(numEvents_, 0);
-            numEvents_--;
           }
 
-          struct epoll_event epev = {};
-          epev.events = getPollFlags(event->ev_events & (EV_READ | EV_WRITE));
-          epev.data.ptr = event;
-
-          int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, event->ev_fd, &epev);
-
-          CHECK_EQ(ret, 0);
+          PCHECK(
+              ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, event->ev_fd, nullptr) == 0);
         }
       }
 
-      if (event->ev_fd == timerFd_) {
-        shouldProcessTimers = true;
-      } else {
-        event_ref_flags(event) |= EVLIST_ACTIVE;
-      }
+      event_ref_flags(event) |= EVLIST_ACTIVE;
+      infoList.push_back(*info);
     }
 
-    // process timers first
+    // Process timers and signals first.
     if (shouldProcessTimers) {
       processTimers();
     }
+    if (shouldProcessSignals) {
+      processSignals();
+    }
 
-    for (int i = 0; i < numEvents; ++i) {
-      struct event* event =
-          reinterpret_cast<struct event*>(events_[i].data.ptr);
+    while (!infoList.empty()) {
+      auto* info = &infoList.front();
+      infoList.pop_front();
 
-      if (event->ev_fd == timerFd_) {
-        continue;
-      }
+      struct event* event = info->ev;
 
-      int what = events_[i].events;
+      int what = info->what_;
       short ev = 0;
 
+      bool evRead = (event->ev_events & EV_READ) != 0;
+      bool evWrite = (event->ev_events & EV_WRITE) != 0;
+
       if (what & EPOLLERR) {
-        ev = EV_READ | EV_WRITE;
-      } else if ((what & EPOLLHUP) && !(what & EPOLLRDHUP)) {
-        ev = EV_READ | EV_WRITE;
-      } else {
-        if (what & EPOLLIN) {
+        if (evRead) {
           ev |= EV_READ;
         }
-        if (what & EPOLLOUT) {
+        if (evWrite) {
+          ev |= EV_WRITE;
+        }
+      } else if ((what & EPOLLHUP) && !(what & EPOLLRDHUP)) {
+        if (evRead) {
+          ev |= EV_READ;
+        }
+        if (evWrite) {
+          ev |= EV_WRITE;
+        }
+      } else {
+        if (evRead && (what & EPOLLIN)) {
+          ev |= EV_READ;
+        }
+        if (evWrite && (what & EPOLLOUT)) {
           ev |= EV_WRITE;
         }
       }
@@ -292,31 +337,20 @@ int EpollBackend::eb_event_base_loop(int flags) {
       }
     }
 
-    if (numEvents > 0 && !loopBreak_) {
-      if (flags & EVLOOP_ONCE) {
-        done = true;
-      }
-    } else if (flags & EVLOOP_NONBLOCK) {
-      done = true;
-    }
-
-    if (!done && (numEvents > 0) && (flags & EVLOOP_ONCE)) {
-      done = true;
+    if (flags & EVLOOP_ONCE) {
+      return 0;
     }
   }
-
-  return 0;
 }
 
 int EpollBackend::eb_event_base_loopbreak() {
   loopBreak_ = true;
-
   return 0;
 }
 
 int EpollBackend::eb_event_add(Event& event, const struct timeval* timeout) {
   auto* ev = event.getEvent();
-  CHECK(ev);
+  CHECK(ev != nullptr);
   CHECK(!(event_ref_flags(ev) & ~EVLIST_ALL));
   // we do not support read/write timeouts
   if (timeout) {
@@ -331,48 +365,52 @@ int EpollBackend::eb_event_add(Event& event, const struct timeval* timeout) {
     return 0;
   }
 
-  if ((ev->ev_events & (EV_READ | EV_WRITE)) &&
-      !(event_ref_flags(ev) & (EVLIST_INSERTED | EVLIST_ACTIVE))) {
-    event_ref_flags(ev) |= EVLIST_INSERTED;
-    numInsertedEvents_++;
-  }
-
   if (event_ref_flags(ev) & EVLIST_INTERNAL) {
     numInternalEvents_++;
-  } else {
-    numEvents_++;
   }
+
   event_ref_flags(ev) |= EVLIST_INSERTED;
+  numInsertedEvents_++;
+
+  EventInfo* info = static_cast<EventInfo*>(event.getUserData());
+  if (!info) {
+    info = new EventInfo();
+    event.setUserData(info, EventInfo::freeFunction);
+  }
+  info->ev = ev;
 
   struct epoll_event epev = {};
   epev.events = getPollFlags(ev->ev_events & (EV_READ | EV_WRITE));
-  epev.data.ptr = ev;
+  epev.data.ptr = info;
 
-  int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_ADD, ev->ev_fd, &epev);
-
-  return (0 == ret);
+  return ::epoll_ctl(epollFd_, EPOLL_CTL_ADD, ev->ev_fd, &epev);
 }
 
 int EpollBackend::eb_event_del(Event& event) {
   if (!event.eb_ev_base()) {
+    errno = EINVAL;
     return -1;
   }
 
   auto* ev = event.getEvent();
   if (event_ref_flags(ev) & EVLIST_TIMEOUT) {
     event_ref_flags(ev) &= ~EVLIST_TIMEOUT;
-    removeTimerEvent(event);
-    return 1;
+    return removeTimerEvent(event);
   }
 
   if (!(event_ref_flags(ev) & (EVLIST_ACTIVE | EVLIST_INSERTED))) {
+    errno = EINVAL;
     return -1;
   }
 
   if (ev->ev_events & EV_SIGNAL) {
     event_ref_flags(ev) &= ~(EVLIST_INSERTED | EVLIST_ACTIVE);
-    removeSignalEvent(event);
-    return 0;
+    return removeSignalEvent(event);
+  }
+
+  auto* info = static_cast<EventInfo*>(event.getUserData());
+  if (info) {
+    info->resetEvent();
   }
 
   // if the event is on the active list, we just clear the flags
@@ -390,71 +428,85 @@ int EpollBackend::eb_event_del(Event& event) {
     if (event_ref_flags(ev) & EVLIST_INTERNAL) {
       DCHECK_GT(numInternalEvents_, 0);
       numInternalEvents_--;
-    } else {
-      DCHECK_GT(numEvents_, 0);
-      numEvents_--;
     }
 
-    struct epoll_event epev = {};
-    epev.events = getPollFlags(ev->ev_events & (EV_READ | EV_WRITE));
-    epev.data.ptr = ev;
-
-    int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, ev->ev_fd, &epev);
-
-    return (0 == ret);
+    return ::epoll_ctl(epollFd_, EPOLL_CTL_DEL, ev->ev_fd, nullptr);
   }
+
+  errno = EINVAL;
   return -1;
 }
 
+bool EpollBackend::setEdgeTriggered(Event& event) {
+  auto* ev = event.getEvent();
+  CHECK(ev);
+
+  EventInfo* info = static_cast<EventInfo*>(event.getUserData());
+  if (info == nullptr) {
+    return false;
+  }
+
+  struct epoll_event epev = {};
+  epev.events = getPollFlags(ev->ev_events & (EV_READ | EV_WRITE)) | EPOLLET;
+  epev.data.ptr = info;
+
+  int ret = ::epoll_ctl(epollFd_, EPOLL_CTL_MOD, ev->ev_fd, &epev);
+  return ret == 0;
+}
+
 void EpollBackend::addTimerEvent(Event& event, const struct timeval* timeout) {
-  auto expire = getTimerExpireTime(*timeout);
+  TimerInfo* info = static_cast<TimerInfo*>(event.getUserData());
+  if (info == nullptr) {
+    info = new TimerInfo;
+    info->ev = event.getEvent();
+    event.setUserData(info, TimerInfo::freeFunction);
+  }
 
-  TimerUserData* td = (TimerUserData*)event.getUserData();
-  if (td) {
-    CHECK_EQ(event.getFreeFunction(), timerUserDataFreeFunction);
-    if (td->iter == timers_.end()) {
-      td->iter = timers_.emplace(expire, &event);
-    } else {
-      auto ex = timers_.extract(td->iter);
-      ex.key() = expire;
-      td->iter = timers_.insert(std::move(ex));
-    }
+  info->expiration = std::chrono::steady_clock::now() +
+      std::chrono::seconds{timeout->tv_sec} +
+      std::chrono::microseconds{timeout->tv_usec};
+  if (info->isLinked()) {
+    timers_.update(info);
   } else {
-    auto it = timers_.emplace(expire, &event);
-    td = new TimerUserData();
-    td->iter = it;
-    event.setUserData(td, timerUserDataFreeFunction);
+    timers_.push(info);
   }
 
-  if (td->iter == timers_.begin()) {
-    scheduleTimeout();
-  }
+  updateTimerFd();
 }
 
-void EpollBackend::removeTimerEvent(Event& event) {
-  TimerUserData* td = (TimerUserData*)event.getUserData();
-  CHECK(!!td);
-  CHECK_EQ(event.getFreeFunction(), timerUserDataFreeFunction);
-  bool timerChanged = td->iter == timers_.begin();
-  timers_.erase(td->iter);
-  td->iter = timers_.end();
-  event.setUserData(nullptr, nullptr);
-  delete td;
-
-  if (timerChanged) {
-    scheduleTimeout();
+int EpollBackend::removeTimerEvent(Event& event) {
+  auto* info = static_cast<TimerInfo*>(event.getUserData());
+  if (info == nullptr || !info->isLinked()) {
+    errno = EINVAL;
+    return -1;
   }
+
+  DCHECK_EQ(event.getFreeFunction(), TimerInfo::freeFunction);
+  timers_.erase(info);
+  updateTimerFd();
+  return 0;
 }
 
-void EpollBackend::scheduleTimeout() {
-  if (!timers_.empty()) {
+void EpollBackend::updateTimerFd() {
+  std::optional<std::chrono::steady_clock::time_point> expiration;
+  if (auto* earliest = timers_.top()) {
+    expiration = earliest->expiration;
+  }
+  if (expiration == timerFdExpiration_) {
+    return; // Nothing to do.
+  }
+
+  if (!expiration) {
+    struct itimerspec val = {}; // Disable.
+    PCHECK(::timerfd_settime(timerFd_, 0, &val, nullptr) == 0);
+  } else {
     auto delta = std::chrono::duration_cast<std::chrono::microseconds>(
-        timers_.begin()->first - std::chrono::steady_clock::now());
+        *expiration - std::chrono::steady_clock::now());
     if (delta < std::chrono::microseconds(1000)) {
       delta = std::chrono::microseconds(1000);
     }
+
     struct itimerspec val;
-    timerSet_ = true;
     val.it_interval = {0, 0};
     val.it_value.tv_sec =
         std::chrono::duration_cast<std::chrono::seconds>(delta).count();
@@ -462,68 +514,50 @@ void EpollBackend::scheduleTimeout() {
         std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() %
         1'000'000'000LL;
 
-    CHECK_EQ(::timerfd_settime(timerFd_, 0, &val, nullptr), 0);
-  } else if (timerSet_) {
-    timerSet_ = false;
-    // disable
-    struct itimerspec val = {};
-    CHECK_EQ(::timerfd_settime(timerFd_, 0, &val, nullptr), 0);
+    PCHECK(::timerfd_settime(timerFd_, 0, &val, nullptr) == 0);
   }
+
+  timerFdExpiration_ = expiration;
 }
 
-size_t EpollBackend::processTimers() {
-  size_t ret = 0;
-
-  // consume the event
+void EpollBackend::processTimers() {
+  // Consume the event.
   uint64_t data = 0;
-  folly::readNoInt(timerFd_, &data, sizeof(data));
-  bool timerChanged = false;
+  PCHECK(folly::readNoInt(timerFd_, &data, sizeof(data)) == sizeof(data));
 
-  while (true) {
-    auto it = timers_.begin();
-    auto now = std::chrono::steady_clock::now();
-    if (it == timers_.end() || now < it->first) {
-      break;
-    }
-    timerChanged = true;
-    Event* e = it->second;
-    TimerUserData* td = (TimerUserData*)e->getUserData();
-    CHECK(td && e->getFreeFunction() == timerUserDataFreeFunction);
-    td->iter = timers_.end();
-    timers_.erase(it);
-    auto* ev = e->getEvent();
+  while (!timers_.empty() &&
+         timers_.top()->expiration <= std::chrono::steady_clock::now()) {
+    auto* info = timers_.pop();
+    auto* ev = info->ev;
     ev->ev_res = EV_TIMEOUT;
     event_ref_flags(ev).get() = EVLIST_INIT;
-    // might change the lists
+    // NOTE: The callback might change the set of registered timers.
     (*event_ref_callback(ev))((int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
-    ++ret;
   }
 
-  if (timerChanged) {
-    scheduleTimeout();
-  }
-  return ret;
+  updateTimerFd();
 }
 
-// signal related
 void EpollBackend::addSignalEvent(Event& event) {
   auto* ev = event.getEvent();
-  signals_[ev->ev_fd].insert(&event);
+  signals_[ev->ev_fd].insert(event.getEvent());
 
   // we pass the write fd for notifications
   getSignalRegistry().setNotifyFd(ev->ev_fd, signalFds_.writeFd());
 }
 
-void EpollBackend::removeSignalEvent(Event& event) {
+int EpollBackend::removeSignalEvent(Event& event) {
   auto* ev = event.getEvent();
-  auto iter = signals_.find(ev->ev_fd);
-  if (iter != signals_.end()) {
-    getSignalRegistry().setNotifyFd(ev->ev_fd, -1);
+  auto* set = get_ptr(signals_, ev->ev_fd);
+  if (set == nullptr || set->erase(ev) == 0) {
+    errno = EINVAL;
+    return -1;
   }
+  getSignalRegistry().setNotifyFd(ev->ev_fd, -1);
+  return 0;
 }
 
-size_t EpollBackend::processSignals() {
-  size_t ret = 0;
+void EpollBackend::processSignals() {
   static constexpr auto kNumEntries = NSIG * 2;
   static_assert(
       NSIG < std::numeric_limits<uint8_t>::max(),
@@ -535,24 +569,22 @@ size_t EpollBackend::processSignals() {
       folly::readNoInt(signalFds_.readFd(), signals.data(), signals.size());
   for (ssize_t i = 0; i < num; i++) {
     int signum = static_cast<int>(signals[i]);
-    if ((signum >= 0) && (signum < static_cast<int>(processed.size())) &&
-        !processed[signum]) {
-      processed[signum] = true;
-      auto iter = signals_.find(signum);
-      if (iter != signals_.end()) {
-        auto& set = iter->second;
-        for (auto& event : set) {
-          auto* ev = event->getEvent();
-          ev->ev_res = 0;
-          event_ref_flags(ev) |= EVLIST_ACTIVE;
-          (*event_ref_callback(ev))(
-              (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
-          event_ref_flags(ev) &= ~EVLIST_ACTIVE;
-        }
-      }
+    if (signum < 0 || signum >= NSIG || processed[signum]) {
+      continue;
+    }
+    processed[signum] = true;
+    auto* events = get_ptr(signals_, signum);
+    if (events == nullptr) {
+      continue;
+    }
+    for (auto* ev : *events) {
+      ev->ev_res = 0;
+      event_ref_flags(ev) |= EVLIST_ACTIVE;
+      (*event_ref_callback(ev))((int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+      event_ref_flags(ev) &= ~EVLIST_ACTIVE;
     }
   }
-  return ret;
 }
+
 } // namespace folly
 #endif

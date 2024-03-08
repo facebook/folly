@@ -214,7 +214,6 @@ class Fiber {
   folly::IntrusiveListHook listHook_; /**< list hook for different FiberManager
                                            queues */
   folly::IntrusiveListHook globalListHook_; /**< list hook for global list */
-  std::thread::id threadId_{};
 
 #ifdef FOLLY_SANITIZE_ADDRESS
   void* asanFakeStack_{nullptr};

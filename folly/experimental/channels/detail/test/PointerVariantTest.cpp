@@ -45,7 +45,7 @@ TEST(PointerVariantTest, Basic) {
   EXPECT_EQ(*var.get(folly::tag_t<std::string>{}), "200"s);
 }
 
-TEST(PointerVariantTest, Get_IncorrectType) {
+TEST(PointerVariantTest, GetIncorrecttype) {
   int64_t intVal = 100;
   std::string strVal = "100"s;
   PointerVariant<int64_t, std::string> var(&intVal);

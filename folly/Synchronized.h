@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_synchronized
+//
+
 /**
  * This module implements a Synchronized abstraction useful in
  * mutex-based concurrency.
@@ -1508,7 +1512,7 @@ class LockedPtr {
     using simulacrum = typename SynchronizedType::Simulacrum;
     static_assert(sizeof(simulacrum) == sizeof(SynchronizedType), "mismatch");
     static_assert(alignof(simulacrum) == alignof(SynchronizedType), "mismatch");
-    constexpr auto off = offsetof(simulacrum, mutex_);
+    auto off = offsetof(simulacrum, mutex_);
     const auto raw = reinterpret_cast<char*>(lock_.mutex());
     return reinterpret_cast<SynchronizedType*>(raw - (raw ? off : 0));
   }
@@ -1664,9 +1668,7 @@ void lock(LockableOne& one, LockableTwo& two, Lockables&... lockables) {
         lockable,
         [](auto& l) { return std::unique_lock<Lockable>{l}; },
         [](auto& l) {
-          auto lock = std::unique_lock<Lockable>{l, std::defer_lock};
-          lock.try_lock();
-          return lock;
+          return std::unique_lock<Lockable>{l, std::try_to_lock};
         });
   };
   auto locks = lock(locker(one), locker(two), locker(lockables)...);

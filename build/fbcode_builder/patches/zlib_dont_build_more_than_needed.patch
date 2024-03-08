@@ -1,28 +1,30 @@
-diff -Naur ../zlib-1.2.13/CMakeLists.txt ./CMakeLists.txt
---- ../zlib-1.2.13/CMakeLists.txt	2022-10-12 22:06:55.000000000 -0700
-+++ ./CMakeLists.txt	2022-10-14 14:50:28.000000000 -0700
-@@ -147,8 +147,7 @@
+diff -Naur ../zlib-1.3.1/CMakeLists.txt ./CMakeLists.txt
+--- ../zlib-1.3.1/CMakeLists.txt	2024-01-22 10:32:37.000000000 -0800
++++ ./CMakeLists.txt	2024-01-23 13:14:09.870289968 -0800
+@@ -149,10 +149,8 @@
      set(ZLIB_DLL_SRCS ${CMAKE_CURRENT_BINARY_DIR}/zlib1rc.obj)
  endif(MINGW)
- 
+
 -add_library(zlib SHARED ${ZLIB_SRCS} ${ZLIB_DLL_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
--add_library(zlibstatic STATIC ${ZLIB_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
 +add_library(zlib ${ZLIB_SRCS} ${ZLIB_DLL_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
+ target_include_directories(zlib PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+-add_library(zlibstatic STATIC ${ZLIB_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
+-target_include_directories(zlibstatic PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
  set_target_properties(zlib PROPERTIES DEFINE_SYMBOL ZLIB_DLL)
  set_target_properties(zlib PROPERTIES SOVERSION 1)
- 
-@@ -165,7 +164,7 @@
- 
+
+@@ -169,7 +167,7 @@
+
  if(UNIX)
      # On unix-like platforms the library is almost always called libz
 -   set_target_properties(zlib zlibstatic PROPERTIES OUTPUT_NAME z)
 +   set_target_properties(zlib PROPERTIES OUTPUT_NAME z)
-    if(NOT APPLE)
+    if(NOT APPLE AND NOT(CMAKE_SYSTEM_NAME STREQUAL AIX))
       set_target_properties(zlib PROPERTIES LINK_FLAGS "-Wl,--version-script,\"${CMAKE_CURRENT_SOURCE_DIR}/zlib.map\"")
     endif()
-@@ -175,7 +174,7 @@
+@@ -179,7 +177,7 @@
  endif()
- 
+
  if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL )
 -    install(TARGETS zlib zlibstatic
 +    install(TARGETS zlib

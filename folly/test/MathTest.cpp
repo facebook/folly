@@ -433,7 +433,6 @@ TEST(MidpointTest, MidpointTest) {
   EXPECT_FALSE((is_invocable_v<midpoint_invoke, void>));
   EXPECT_FALSE((is_invocable_v<midpoint_invoke, int()>));
   EXPECT_FALSE((is_invocable_v<midpoint_invoke, int&>));
-  EXPECT_FALSE((is_invocable_v<midpoint_invoke, struct Incomplete>));
 
   constexpr std::array<int, 3> ca = {0, 1, 2};
   EXPECT_EQ(midpoint(ca.data(), ca.data() + 3), ca.data() + 1);

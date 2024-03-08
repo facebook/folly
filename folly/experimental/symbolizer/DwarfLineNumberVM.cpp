@@ -59,7 +59,7 @@ namespace {
 struct LineNumberAttribute {
   uint64_t contentTypeCode;
   uint64_t formCode;
-  boost::variant<uint64_t, folly::StringPiece> attrValue;
+  std::variant<uint64_t, folly::StringPiece> attrValue;
 };
 
 folly::Optional<LineNumberAttribute> readLineNumberAttribute(
@@ -70,7 +70,7 @@ folly::Optional<LineNumberAttribute> readLineNumberAttribute(
     folly::StringPiece debugLineStr) {
   uint64_t contentTypeCode = readULEB(format);
   uint64_t formCode = readULEB(format);
-  boost::variant<uint64_t, folly::StringPiece> attrValue;
+  std::variant<uint64_t, folly::StringPiece> attrValue;
 
   switch (contentTypeCode) {
     case DW_LNCT_path: {
@@ -382,10 +382,10 @@ DwarfLineNumberVM::FileName DwarfLineNumberVM::getFileName(
         if (i == index) {
           switch (attr->contentTypeCode) {
             case DW_LNCT_path:
-              fn.relativeName = boost::get<folly::StringPiece>(attr->attrValue);
+              fn.relativeName = std::get<folly::StringPiece>(attr->attrValue);
               break;
             case DW_LNCT_directory_index:
-              fn.directoryIndex = boost::get<uint64_t>(attr->attrValue);
+              fn.directoryIndex = std::get<uint64_t>(attr->attrValue);
               break;
           }
         }
@@ -450,7 +450,7 @@ folly::StringPiece DwarfLineNumberVM::getIncludeDirectory(
           return {};
         }
         if (i == index && attr->contentTypeCode == DW_LNCT_path) {
-          return boost::get<folly::StringPiece>(attr->attrValue);
+          return std::get<folly::StringPiece>(attr->attrValue);
         }
       }
     }

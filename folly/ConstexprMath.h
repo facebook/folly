@@ -24,6 +24,8 @@
 #include <type_traits>
 
 #include <folly/Portability.h>
+#include <folly/lang/CheckedMath.h>
+#include <folly/portability/Constexpr.h>
 
 namespace folly {
 
@@ -420,7 +422,7 @@ template <typename T>
 constexpr T constexpr_ceil(T t, T round) {
   return round == T(0)
       ? t
-      : ((t + (t < T(0) ? T(0) : round - T(1))) / round) * round;
+      : ((t + (t <= T(0) ? T(0) : round - T(1))) / round) * round;
 }
 
 /// constexpr_mult
@@ -459,7 +461,10 @@ constexpr T constexpr_mult(T const a, T const b) {
 
 namespace detail {
 
-template <typename T, typename E>
+template <
+    typename T,
+    typename E,
+    std::enable_if_t<std::is_signed<E>::value, int> = 1>
 constexpr T constexpr_ipow(T const base, E const exp) {
   if (std::is_floating_point<T>::value) {
     if (exp < E(0)) {
@@ -473,6 +478,31 @@ constexpr T constexpr_ipow(T const base, E const exp) {
     }
   }
   assert(!(exp < E(0)) && "negative exponent with integral base");
+  if (exp == E(0)) {
+    return T(1);
+  }
+  if (exp == E(1)) {
+    return base;
+  }
+  auto const hexp = constexpr_trunc(exp / E(2));
+  auto const div = constexpr_ipow(base, hexp);
+  auto const rem = hexp * E(2) == exp ? T(1) : base;
+  return constexpr_mult(constexpr_mult(div, div), rem);
+}
+
+template <
+    typename T,
+    typename E,
+    std::enable_if_t<std::is_unsigned<E>::value, int> = 1>
+constexpr T constexpr_ipow(T const base, E const exp) {
+  if (std::is_floating_point<T>::value) {
+    if (exp == E(0)) {
+      return T(1);
+    }
+    if (constexpr_isnan(base)) {
+      return base;
+    }
+  }
   if (exp == E(0)) {
     return T(1);
   }
@@ -735,6 +765,22 @@ constexpr T constexpr_add_overflow_clamped(T a, T b) {
   static_assert(
       !std::is_integral<T>::value || sizeof(T) <= sizeof(M),
       "Integral type too large!");
+  if (!folly::is_constant_evaluated_or(true)) {
+    if constexpr (std::is_integral_v<T>) {
+      T ret{};
+      if (FOLLY_UNLIKELY(!checked_add(&ret, a, b))) {
+        if constexpr (std::is_signed_v<T>) {
+          // Could be either overflow or underflow for signed types.
+          // Can only be underflow if both inputs are negative.
+          if (a < 0 && b < 0) {
+            return L::min();
+          }
+        }
+        return L::max();
+      }
+      return ret;
+    }
+  }
   // clang-format off
   return
     // don't do anything special for non-integral types.
@@ -750,7 +796,7 @@ constexpr T constexpr_add_overflow_clamped(T a, T b) {
     // a < 0 && b >= 0, `a + b` will always be in valid range of type T.
     !(b < 0) ? a + b :
     // a < 0 && b < 0, keep the result >= MIN.
-               a + constexpr_max(b, T(L::min() - a));
+              a + constexpr_max(b, T(L::min() - a));
   // clang-format on
 }
 

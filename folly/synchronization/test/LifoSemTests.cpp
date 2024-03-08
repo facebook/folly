@@ -217,7 +217,7 @@ TEST_F(LifoSemTest, shutdown_multi) {
   }
 }
 
-TEST(LifoSem, multi_try_wait_simple) {
+TEST(LifoSem, multiTryWaitSimple) {
   LifoSem sem;
   sem.post(5);
   auto n = sem.tryWait(10); // this used to trigger an assert

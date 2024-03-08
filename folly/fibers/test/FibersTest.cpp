@@ -16,6 +16,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <vector>
 
@@ -2372,7 +2373,7 @@ void validateResults(
   results.reserve(COUNT);                                       \
   DispatchFunctionT dispatchFunc
 
-TEST(FiberManager, ABD_Test) {
+TEST(FiberManager, ABDTest) {
   SET_UP_TEST_FUNC;
 
   //
@@ -2388,7 +2389,7 @@ TEST(FiberManager, ABD_Test) {
   validateResults(results, COUNT);
 }
 
-TEST(FiberManager, ABD_DispatcherDestroyedBeforeCallingCommit) {
+TEST(FiberManager, ABDDispatcherdestroyedbeforecallingcommit) {
   SET_UP_TEST_FUNC;
 
   //
@@ -2413,7 +2414,7 @@ TEST(FiberManager, ABD_DispatcherDestroyedBeforeCallingCommit) {
   validateResults<ABDCommitNotCalledException>(results, COUNT);
 }
 
-TEST(FiberManager, ABD_PreprocessingFailureTest) {
+TEST(FiberManager, ABDPreprocessingfailuretest) {
   SET_UP_TEST_FUNC;
 
   //
@@ -2429,7 +2430,7 @@ TEST(FiberManager, ABD_PreprocessingFailureTest) {
   validateResults<ABDTokenNotDispatchedException>(results, COUNT - 1);
 }
 
-TEST(FiberManager, ABD_MultipleDispatchOnSameTokenErrorTest) {
+TEST(FiberManager, ABDMultipledispatchonsametokenerrortest) {
   SET_UP_TEST_FUNC;
 
   //
@@ -2444,7 +2445,7 @@ TEST(FiberManager, ABD_MultipleDispatchOnSameTokenErrorTest) {
   evb.loop();
 }
 
-TEST(FiberManager, ABD_GetTokenCalledAfterCommitTest) {
+TEST(FiberManager, ABDGettokencalledaftercommittest) {
   SET_UP_TEST_FUNC;
 
   //
@@ -2463,7 +2464,7 @@ TEST(FiberManager, ABD_GetTokenCalledAfterCommitTest) {
   EXPECT_THROW(atomicBatchDispatcher.getToken(), ABDUsageException);
 }
 
-TEST(FiberManager, ABD_UserProvidedBatchDispatchThrowsTest) {
+TEST(FiberManager, ABDUserprovidedbatchdispatchthrowstest) {
   SET_UP_TEST_FUNC;
 
   //
@@ -2965,4 +2966,20 @@ TEST(FiberManager, fibersPreserveAsyncStackRoots) {
 
     EXPECT_EQ(originalRoot, folly::tryGetCurrentAsyncStackRoot());
   }
+}
+
+TEST(FiberManager, EventBaseMigratingThreads) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  folly::fibers::Baton baton;
+  auto f = fm.addTaskFuture([&baton] { baton.wait(); });
+  evb.drive();
+
+  std::thread anotherThread([&] { evb.drive(); });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds{100});
+  baton.post();
+  anotherThread.join();
+
+  EXPECT_TRUE(f.isReady());
 }

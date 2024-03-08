@@ -37,7 +37,7 @@ TEST(NonCopyableLambda, basic) {
   EXPECT_EQ(std::move(future).get(), 123);
 }
 
-TEST(NonCopyableLambda, unique_ptr) {
+TEST(NonCopyableLambda, uniquePtr) {
   Promise<Unit> promise;
   auto int_ptr = std::make_unique<int>(1);
 

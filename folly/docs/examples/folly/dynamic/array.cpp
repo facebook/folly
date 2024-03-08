@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 #include <folly/portability/GTest.h>
 
-TEST(dynamic, array_ctor) {
+TEST(dynamic, arrayCtor) {
   auto a = folly::dynamic::array(123, "hello", nullptr);
 
   ASSERT_TRUE(a.isArray());

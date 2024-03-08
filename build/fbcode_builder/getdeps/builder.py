@@ -4,6 +4,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+# pyre-unsafe
+
 import glob
 import json
 import os
@@ -62,7 +64,18 @@ class BuilderBase(object):
                 # the cmd quoting rules to assemble a command that calls the script
                 # to prep the environment and then triggers the actual command that
                 # we wanted to run.
-                return [vcvarsall, "amd64", "&&"]
+
+                # Due to changes in vscrsall.bat, it now reports an ERRORLEVEL of 1
+                # even when succeeding. This occurs when an extension is not present.
+                # To continue, we must ignore the ERRORLEVEL returned. We do this by
+                # wrapping the call in a batch file that always succeeds.
+                wrapper = os.path.join(self.build_dir, "succeed.bat")
+                with open(wrapper, "w") as f:
+                    f.write("@echo off\n")
+                    f.write(f'call "{vcvarsall}" amd64\n')
+                    f.write("set ERRORLEVEL=0\n")
+                    f.write("exit /b 0\n")
+                return [wrapper, "&&"]
         return []
 
     def _run_cmd(
@@ -113,7 +126,7 @@ class BuilderBase(object):
         patchfile = os.path.join(
             self.build_opts.fbcode_builder_dir, "patches", self.patchfile
         )
-        patchcmd = ["git", "apply"]
+        patchcmd = ["git", "apply", "--ignore-space-change"]
         if self.patchfile_opts:
             patchcmd.append(self.patchfile_opts)
         try:
@@ -323,7 +336,7 @@ class AutoconfBuilder(BuilderBase):
         env = self._compute_env(install_dirs)
 
         # Some configure scripts need additional env values passed derived from cmds
-        for (k, cmd_args) in self.conf_env_args.items():
+        for k, cmd_args in self.conf_env_args.items():
             out = (
                 subprocess.check_output(cmd_args, env=dict(env.items()))
                 .decode("utf-8")
@@ -364,27 +377,12 @@ class Iproute2Builder(BuilderBase):
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
 
-    def _patch(self) -> None:
-        # FBOSS build currently depends on an old version of iproute2 (commit
-        # 7ca63aef7d1b0c808da0040c6b366ef7a61f38c1). This is missing a commit
-        # (ae717baf15fb4d30749ada3948d9445892bac239) needed to build iproute2
-        # successfully. Apply it viz.: include stdint.h
-        # Reference: https://fburl.com/ilx9g5xm
-        with open(self.build_dir + "/tc/tc_core.c", "r") as f:
-            data = f.read()
-
-        with open(self.build_dir + "/tc/tc_core.c", "w") as f:
-            f.write("#include <stdint.h>\n")
-            f.write(data)
-
     def _build(self, install_dirs, reconfigure) -> None:
         configure_path = os.path.join(self.src_dir, "configure")
-
         env = self.env.copy()
         self._run_cmd([configure_path], env=env)
         shutil.rmtree(self.build_dir)
         shutil.copytree(self.src_dir, self.build_dir)
-        self._patch()
         self._run_cmd(["make", "-j%s" % self.num_jobs], env=env)
         install_cmd = ["make", "install", "DESTDIR=" + self.inst_dir]
 
@@ -488,7 +486,7 @@ def main():
                 "--target",
                 target,
                 "--config",
-                "Release",
+                "{build_type}",
                 get_jobs_argument(args.num_jobs),
         ] + args.cmake_args
     elif args.mode == "test":
@@ -610,8 +608,9 @@ if __name__ == "__main__":
             # unspecified.  Some of the deps fail to compile in release mode
             # due to warning->error promotion.  RelWithDebInfo is the happy
             # medium.
-            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+            "CMAKE_BUILD_TYPE": self.build_opts.build_type,
         }
+
         if "SANDCASTLE" not in os.environ:
             # We sometimes see intermittent ccache related breakages on some
             # of the FB internal CI hosts, so we prefer to disable ccache
@@ -708,6 +707,7 @@ if __name__ == "__main__":
                 build_dir=self.build_dir,
                 install_dir=self.inst_dir,
                 sys=sys,
+                build_type=self.build_opts.build_type,
             )
 
             self._invalidate_cache()
@@ -721,7 +721,7 @@ if __name__ == "__main__":
                 "--target",
                 self.cmake_target,
                 "--config",
-                "Release",
+                self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
             ],
@@ -1194,7 +1194,7 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
                 "--target",
                 "install",
                 "--config",
-                "Release",
+                self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
             ],

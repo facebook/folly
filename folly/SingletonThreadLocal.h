@@ -34,10 +34,8 @@ namespace folly {
 namespace detail {
 
 struct SingletonThreadLocalState {
-  struct Wrapper;
-
   struct LocalCache {
-    Wrapper* cache;
+    void* object; // type-erased pointer to the object field of wrapper, below
   };
   static_assert( // pod avoids tls-init guard var and tls-fini ub use-after-dtor
       std::is_standard_layout<LocalCache>::value &&
@@ -46,7 +44,7 @@ struct SingletonThreadLocalState {
 
   struct LocalLifetime;
 
-  struct Wrapper {
+  struct Tracking {
     using LocalCacheSet = std::unordered_set<LocalCache*>;
 
     // per-cache refcounts, the number of lifetimes tracking that cache
@@ -55,13 +53,13 @@ struct SingletonThreadLocalState {
     // per-lifetime cache tracking; 1-M lifetimes may track 1-N caches
     std::unordered_map<LocalLifetime*, LocalCacheSet> lifetimes;
 
-    Wrapper() noexcept;
-    ~Wrapper();
+    Tracking() noexcept;
+    ~Tracking();
   };
 
   struct LocalLifetime {
-    void destroy(Wrapper& wrapper) noexcept;
-    void track(LocalCache& cache, Wrapper& wrapper) noexcept;
+    void destroy(Tracking& tracking) noexcept;
+    void track(LocalCache& cache, Tracking& tracking, void* object) noexcept;
   };
 };
 
@@ -112,14 +110,14 @@ class SingletonThreadLocal {
   using State = detail::SingletonThreadLocalState;
   using LocalCache = State::LocalCache;
 
-  struct ObjectWrapper {
-    using Object = invoke_result_t<Make>;
-    static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
+  using Object = invoke_result_t<Make>;
+  static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
 
+  struct ObjectWrapper {
     // keep as first field in first base, to save 1 instr in the fast path
     Object object{Make{}()};
   };
-  struct Wrapper : ObjectWrapper, State::Wrapper {
+  struct Wrapper : ObjectWrapper, State::Tracking {
     /* implicit */ operator T&() { return ObjectWrapper::object; }
   };
 
@@ -144,7 +142,7 @@ class SingletonThreadLocal {
       return wrapper;
     }
     static thread_local LocalLifetime lifetime;
-    lifetime.track(cache, wrapper); // idempotent
+    lifetime.track(cache, wrapper, &wrapper.object); // idempotent
     return wrapper;
   }
 
@@ -154,8 +152,8 @@ class SingletonThreadLocal {
       return getWrapper();
     }
     static thread_local LocalCache cache;
-    auto* wrapper = static_cast<Wrapper*>(cache.cache);
-    return FOLLY_LIKELY(!!wrapper) ? *wrapper : getSlow(cache);
+    auto* object = static_cast<Object*>(cache.object);
+    return FOLLY_LIKELY(!!object) ? *object : getSlow(cache).object;
   }
 
   static T* try_get() {
@@ -258,7 +256,7 @@ FOLLY_POP_WARNING
   struct __folly_reused_type_##name {                                          \
     __VA_ARGS__ object;                                                        \
   };                                                                           \
-  FOLLY_MAYBE_UNUSED ::folly::unsafe_for_async_usage                           \
+  [[maybe_unused]] ::folly::unsafe_for_async_usage                             \
       __folly_reused_g_prevent_async_##name;                                   \
   auto& name =                                                                 \
       ::folly::SingletonThreadLocal<__folly_reused_type_##name>::get().object; \

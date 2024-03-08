@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
+#include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -49,7 +50,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/Malloc.h>
 
-#if (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64)
+#if (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64 || FOLLY_RISCV64)
 #define FOLLY_SV_PACK_ATTR FOLLY_PACK_ATTR
 #define FOLLY_SV_PACK_PUSH FOLLY_PACK_PUSH
 #define FOLLY_SV_PACK_POP FOLLY_PACK_POP
@@ -168,9 +169,7 @@ moveObjectsRightAndCreate(
       if (out < lastConstructed) {
         out = lastConstructed - 1;
       }
-      for (auto it = out + 1; it != realLast; ++it) {
-        it->~T();
-      }
+      std::destroy(out + 1, realLast);
     });
     // Decrement the pointers only when it is known that the resulting pointer
     // is within the boundaries of the object. Decrementing past the beginning
@@ -226,11 +225,7 @@ template <class T, class Function>
 void populateMemForward(T* mem, std::size_t n, Function const& op) {
   std::size_t idx = 0;
   {
-    auto rollback = makeGuard([&] {
-      for (std::size_t i = 0; i < idx; ++i) {
-        mem[i].~T();
-      }
-    });
+    auto rollback = makeGuard([&] { std::destroy_n(mem, idx); });
     for (size_t i = 0; i < n; ++i) {
       op(&mem[idx]);
       ++idx;
@@ -252,10 +247,7 @@ void partiallyUninitializedCopy(
   if (fromSize > toSize) {
     std::uninitialized_copy(from + minSize, from + fromSize, to + minSize);
   } else {
-    for (auto it = to + minSize; it != to + toSize; ++it) {
-      using Value = typename std::decay<decltype(*it)>::type;
-      it->~Value();
-    }
+    std::destroy(to + minSize, to + toSize);
   }
 }
 
@@ -361,9 +353,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
         // move things back and that it was a copy constructor that
         // threw: if someone throws from a move constructor the effects
         // are unspecified.
-        for (std::size_t i = 0; i < idx; ++i) {
-          out[i].~T();
-        }
+        std::destroy_n(out, idx);
       });
       for (; first != last; ++first, ++idx) {
         new (&out[idx]) T(std::move(*first));
@@ -398,7 +388,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
     FOLLY_PUSH_WARNING
     FOLLY_MSVC_DISABLE_WARNING(4702) {
       auto rollback = makeGuard([&] { //
-        out[pos].~T();
+        std::destroy_at(out + pos);
       });
       if (begin) {
         this->moveToUninitialized(begin, begin + pos, out);
@@ -407,11 +397,7 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
     }
     // move old elements to the right of the new one
     {
-      auto rollback = makeGuard([&] {
-        for (SizeType i = 0; i <= pos; ++i) {
-          out[i].~T();
-        }
-      });
+      auto rollback = makeGuard([&] { std::destroy_n(out, pos + 1); });
       if (begin + pos < end) {
         this->moveToUninitialized(begin + pos, end, out + pos + 1);
       }
@@ -489,7 +475,6 @@ inline void* shiftPointer(void* p, size_t sizeBytes) {
 } // namespace detail
 
 //////////////////////////////////////////////////////////////////////
-FOLLY_SV_PACK_PUSH
 template <class Value, std::size_t RequestedMaxInline = 1, class Policy = void>
 class small_vector
     : public detail::small_vector_base<Value, RequestedMaxInline, Policy>::
@@ -531,9 +516,11 @@ class small_vector
   small_vector(const std::allocator<Value>&) {}
 
   small_vector(small_vector const& o) {
-    if (kShouldCopyInlineTrivial && !o.isExtern()) {
-      copyInlineTrivial<Value>(o);
-      return;
+    if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+      if (!o.isExtern()) {
+        copyWholeInlineStorageTrivial(o);
+        return;
+      }
     }
 
     auto n = o.size();
@@ -556,9 +543,11 @@ class small_vector
         this->u.setCapacity(o.u.getCapacity());
       }
     } else {
-      if (kShouldCopyInlineTrivial) {
-        copyInlineTrivial<Value>(o);
+      if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+        copyWholeInlineStorageTrivial(o);
         o.resetSizePolicy();
+      } else if constexpr (IsRelocatable<Value>::value) {
+        moveInlineStorageRelocatable(std::move(o));
       } else {
         auto n = o.size();
         std::uninitialized_copy(
@@ -595,9 +584,13 @@ class small_vector
 
   small_vector& operator=(small_vector const& o) {
     if (FOLLY_LIKELY(this != &o)) {
-      if (kShouldCopyInlineTrivial && !this->isExtern() && !o.isExtern()) {
-        copyInlineTrivial<Value>(o);
-      } else if (o.size() < capacity()) {
+      if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+        if (!this->isExtern() && !o.isExtern()) {
+          copyWholeInlineStorageTrivial(o);
+          return *this;
+        }
+      }
+      if (o.size() < capacity()) {
         const size_t oSize = o.size();
         detail::partiallyUninitializedCopy(o.begin(), oSize, begin(), size());
         this->setSize(oSize);
@@ -618,9 +611,12 @@ class small_vector
       }
 
       if (!o.isExtern()) {
-        if (kShouldCopyInlineTrivial) {
-          copyInlineTrivial<Value>(o);
+        if constexpr (kShouldCopyWholeInlineStorageTrivial) {
+          copyWholeInlineStorageTrivial(o);
           o.resetSizePolicy();
+        } else if constexpr (IsRelocatable<Value>::value) {
+          std::destroy_n(u.buffer(), size());
+          moveInlineStorageRelocatable(std::move(o));
         } else {
           const size_t oSize = o.size();
           detail::partiallyUninitializedCopy(
@@ -701,6 +697,7 @@ class small_vector
     if (this->isExtern() && o.isExtern()) {
       this->swapSizePolicy(o);
 
+      // Cannot use std::swap() because pdata_ is packed.
       auto* tmp = u.pdata_.heap_;
       u.pdata_.heap_ = o.u.pdata_.heap_;
       o.u.pdata_.heap_ = tmp;
@@ -727,15 +724,13 @@ class small_vector
       {
         auto rollback = makeGuard([&] {
           oldSmall.setSize(i);
-          for (; i < oldLarge.size(); ++i) {
-            oldLarge[i].~value_type();
-          }
+          std::destroy(oldLarge.begin() + i, oldLarge.end());
           oldLarge.setSize(ci);
         });
         for (; i < oldLarge.size(); ++i) {
           auto addr = oldSmall.begin() + i;
           new (addr) value_type(std::move(oldLarge[i]));
-          oldLarge[i].~value_type();
+          std::destroy_at(oldLarge.data() + i);
         }
         rollback.dismiss();
       }
@@ -755,19 +750,15 @@ class small_vector
     size_type i = 0;
     {
       auto rollback = makeGuard([&] {
-        for (size_type kill = 0; kill < i; ++kill) {
-          buff[kill].~value_type();
-        }
-        for (; i < oldIntern.size(); ++i) {
-          oldIntern[i].~value_type();
-        }
+        std::destroy_n(buff, i);
+        std::destroy(oldIntern.begin() + i, oldIntern.end());
         oldIntern.resetSizePolicy();
         oldExtern.u.pdata_.heap_ = oldExternHeap;
         oldExtern.setCapacity(oldExternCapacity);
       });
       for (; i < oldIntern.size(); ++i) {
         new (&buff[i]) value_type(std::move(oldIntern[i]));
-        oldIntern[i].~value_type();
+        std::destroy_at(oldIntern.data() + i);
       }
       rollback.dismiss();
     }
@@ -935,14 +926,16 @@ class small_vector
 
   iterator insert(const_iterator pos, size_type n, value_type const& val) {
     auto offset = pos - begin();
-    auto currentSize = size();
-    makeSize(currentSize + n);
-    detail::moveObjectsRightAndCreate(
-        data() + offset,
-        data() + currentSize,
-        data() + currentSize + n,
-        [&]() mutable -> value_type const& { return val; });
-    this->incrementSize(n);
+    if (n != 0) {
+      auto currentSize = size();
+      makeSize(currentSize + n);
+      detail::moveObjectsRightAndCreate(
+          data() + offset,
+          data() + currentSize,
+          data() + currentSize + n,
+          [&]() mutable -> value_type const& { return val; });
+      this->incrementSize(n);
+    }
     return begin() + offset;
   }
 
@@ -1048,25 +1041,26 @@ class small_vector
 
   void downsize(size_type sz) {
     assert(sz <= size());
-    for (auto it = (begin() + sz), e = end(); it != e; ++it) {
-      it->~value_type();
-    }
+    std::destroy(begin() + sz, end());
     this->setSize(sz);
   }
 
-  template <class T>
-  typename std::enable_if<is_trivially_copyable_v<T>>::type copyInlineTrivial(
-      small_vector const& o) {
-    // Copy the entire inline storage, instead of just size() values, to make
-    // the loop fixed-size and unrollable.
+  void copyWholeInlineStorageTrivial(small_vector const& o) {
+    static_assert(is_trivially_copyable_v<Value>);
     std::copy(o.u.buffer(), o.u.buffer() + MaxInline, u.buffer());
     this->setSize(o.size());
   }
 
-  template <class T>
-  typename std::enable_if<!is_trivially_copyable_v<T>>::type copyInlineTrivial(
-      small_vector const&) {
-    assume_unreachable();
+  void moveInlineStorageRelocatable(small_vector&& o) {
+    static_assert(IsRelocatable<Value>::value);
+    const auto n = o.size();
+    if constexpr (kMayCopyWholeInlineStorage) {
+      std::memcpy(u.buffer(), o.u.buffer(), MaxInline * kSizeOfValue);
+    } else {
+      std::memcpy(u.buffer(), o.u.buffer(), n * kSizeOfValue);
+    }
+    this->setSize(n);
+    o.resetSizePolicy();
   }
 
   void reset() {
@@ -1116,9 +1110,7 @@ class small_vector
   }
 
   void destroy() {
-    for (auto& t : *this) {
-      (&t)->~value_type();
-    }
+    std::destroy(begin(), end());
     freeHeap();
   }
 
@@ -1279,9 +1271,7 @@ class small_vector
       }
       rollback.dismiss();
     }
-    for (auto& val : *this) {
-      val.~value_type();
-    }
+    std::destroy(begin(), end());
     freeHeap();
     // Store shifted pointer if capacity is heapified
     u.pdata_.heap_ = newp;
@@ -1303,6 +1293,11 @@ class small_vector
   }
 
  private:
+  // These internal classes are packed to minimize total memory usage,
+  // however, it is important that we don't pack the class as a whole
+  // otherwise the inline storage may not have the correct alignment
+  // for the value type.
+  FOLLY_SV_PACK_PUSH
   struct HeapPtrWithCapacity {
     value_type* heap_;
     InternalSizeType capacity_;
@@ -1311,7 +1306,9 @@ class small_vector
     void setCapacity(InternalSizeType c) { capacity_ = c; }
     size_t allocationExtraBytes() const { return 0; }
   } FOLLY_SV_PACK_ATTR;
+  FOLLY_SV_PACK_POP
 
+  FOLLY_SV_PACK_PUSH
   struct HeapPtr {
     // heap[-kHeapifyCapacitySize] contains capacity
     value_type* heap_;
@@ -1327,6 +1324,7 @@ class small_vector
     }
     size_t allocationExtraBytes() const { return kHeapifyCapacitySize; }
   } FOLLY_SV_PACK_ATTR;
+  FOLLY_SV_PACK_POP
 
   static constexpr size_t kMaxInlineNonZero = MaxInline ? MaxInline : 1u;
   typedef aligned_storage_for_t<value_type[kMaxInlineNonZero]>
@@ -1337,12 +1335,15 @@ class small_vector
       InlineStorageDataType,
       char>::type InlineStorageType;
 
-  // If the values are trivially copyable and the storage is small enough, copy
-  // it entirely. Limit is half of a cache line, to minimize probability of
-  // introducing a cache miss.
-  static constexpr bool kShouldCopyInlineTrivial =
-      is_trivially_copyable_v<Value> &&
+  // If the storage is small enough, it is usually faster to copy it entirely,
+  // instead of just size() values, to make the loop fixed-size and
+  // unrollable. Limit is half of a cache line, to minimize probability of
+  // crossing a cache line and thus introducing an unnecessary cache miss.
+  static constexpr bool kMayCopyWholeInlineStorage =
       sizeof(InlineStorageType) <= hardware_constructive_interference_size / 2;
+
+  static constexpr bool kShouldCopyWholeInlineStorageTrivial =
+      is_trivially_copyable_v<Value> && kMayCopyWholeInlineStorage;
 
   static bool constexpr kHasInlineCapacity = !BaseType::kAlwaysUseHeap &&
       sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
@@ -1420,7 +1421,6 @@ class small_vector
 
   } u;
 };
-FOLLY_SV_PACK_POP
 
 //////////////////////////////////////////////////////////////////////
 

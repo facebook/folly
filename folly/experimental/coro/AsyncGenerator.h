@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_asyncgenerator
+//
+
 #pragma once
 
 #include <folly/CancellationToken.h>
@@ -174,7 +178,10 @@ class FOLLY_NODISCARD AsyncGenerator {
 
   ~AsyncGenerator() {
     if (coro_) {
-      CHECK(!RequiresCleanup) << "cleanup() hasn't been called!";
+      if constexpr (RequiresCleanup) {
+        LOG(FATAL) << "cleanup() hasn't been called!";
+      }
+
       coro_.destroy();
     }
   }

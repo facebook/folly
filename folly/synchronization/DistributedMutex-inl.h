@@ -143,14 +143,17 @@ constexpr auto kCombineWaiting = std::uint32_t{0b1001};
 // without any additional branching to handle exceptions
 constexpr auto kExceptionOccurred = std::uint32_t{0b1010};
 
+// Alias for processor's time-stamp counter value to help distinguish it from
+// other integers
+using CpuTicks = std::uint64_t;
 // The number of spins that we are allowed to do before we resort to marking a
 // thread as having slept
 //
 // This is just a magic number from benchmarks
-constexpr auto kScheduledAwaySpinThreshold = std::chrono::nanoseconds{200};
-// The maximum number of spins before a thread starts yielding its processor
+constexpr auto kScheduledAwaySpinThreshold = CpuTicks{200};
+// The maximum time to spin before a thread starts yielding its processor
 // in hopes of getting skipped
-constexpr auto kMaxSpins = 4000;
+constexpr auto kMaxSpinTime = CpuTicks{40000};
 // The maximum number of contention chains we can resolve with flat combining.
 // After this number of contention chains, the mutex falls back to regular
 // two-phased mutual exclusion to ensure that we don't starve the combiner
@@ -701,7 +704,7 @@ void detach(
 }
 
 /**
- * Get the time since epoch in nanoseconds
+ * Get the time since epoch in CPU cycles
  *
  * This is faster than std::chrono::steady_clock because it avoids a VDSO
  * access to get the timestamp counter
@@ -710,8 +713,8 @@ void detach(
  * guaranteed to be monotonically increasing -
  * https://c9x.me/x86/html/file_module_x86_id_278.html
  */
-inline std::chrono::nanoseconds time() {
-  return std::chrono::nanoseconds{hardware_timestamp()};
+inline CpuTicks time() {
+  return static_cast<CpuTicks>(hardware_timestamp());
 }
 
 /**
@@ -730,13 +733,12 @@ Type* extractPtr(std::uintptr_t from) {
 }
 
 /**
- * Strips the given nanoseconds into only the least significant 56 bits by
+ * Strips the given CPU timestamp into only the least significant 56 bits by
  * moving the least significant 56 bits over by 8 zeroing out the bottom 8
  * bits to be used as a medium of information transfer for the thread wait
  * nodes
  */
-inline std::uint64_t strip(std::chrono::nanoseconds t) {
-  auto time = t.count();
+inline std::uint64_t strip(CpuTicks time) {
   return static_cast<std::uint64_t>(time) << 8;
 }
 
@@ -832,8 +834,10 @@ DistributedMutex<Atomic, TimePublishing>::DistributedMutex()
 template <typename Waiter>
 std::uint64_t publish(
     std::uint64_t spins,
+    CpuTicks current,
+    CpuTicks previous,
+    CpuTicks elapsed,
     bool& shouldPublish,
-    std::chrono::nanoseconds& previous,
     Waiter& waiter,
     std::uint32_t waitMode) {
   // time publishing has some overhead because it executes an atomic exchange on
@@ -850,12 +854,10 @@ std::uint64_t publish(
   // only comes into play when the combiner has exhausted their max combine
   // passes.  So we defer time publishing to the point when the current thread
   // gets preempted
-  auto current = time();
-  if (previous != decltype(time())::zero() &&
+  if (previous != CpuTicks{0} &&
       (current - previous) >= kScheduledAwaySpinThreshold) {
     shouldPublish = true;
   }
-  previous = current;
 
   // if we have requested a combine, and this is the first iteration of the
   // wait-loop, we publish a max timestamp to optimistically convey that we have
@@ -864,10 +866,10 @@ std::uint64_t publish(
   // then if we are under the maximum number of spins allowed before sleeping,
   // we publish the exact timestamp, otherwise we publish the minimum possible
   // timestamp to force the waking thread to skip us
-  auto now = ((waitMode == kCombineWaiting) && !spins) ? decltype(time())::max()
-      : (spins < kMaxSpins)                            ? previous
-                            : decltype(time())::zero();
-
+  auto now = ((waitMode == kCombineWaiting) && !spins)
+      ? std::numeric_limits<CpuTicks>::max()
+      : (elapsed < kMaxSpinTime) ? current
+                                 : CpuTicks{0};
   // the wait mode information is published in the bottom 8 bits of the futex
   // word, the rest contains time information as computed above.  Overflows are
   // not really a correctness concern because time publishing is only a
@@ -885,10 +887,13 @@ template <typename Waiter>
 bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
   auto spins = std::uint64_t{0};
   auto waitMode = (mode == kCombineUninitialized) ? kCombineWaiting : kWaiting;
-  auto previous = decltype(time())::zero();
+  auto previous = CpuTicks{0};
   auto shouldPublish = false;
-  while (true) {
-    auto signal = publish(spins++, shouldPublish, previous, waiter, waitMode);
+  // elapsed is unsigned and will intentionally underflows if time goes back
+  for (CpuTicks start = time(), current = start, elapsed = 0;;
+       previous = current, current = time(), elapsed = current - start) {
+    auto signal = publish(
+        spins++, current, previous, elapsed, shouldPublish, waiter, waitMode);
 
     // if we got skipped, make a note of it and return if we got a skipped
     // signal or a signal to wake up
@@ -903,7 +908,7 @@ bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
 
     // if we are under the spin threshold, pause to allow the other
     // hyperthread to run.  If not, then sleep
-    if (spins < kMaxSpins) {
+    if (elapsed < kMaxSpinTime) {
       asm_volatile_pause();
     } else {
       std::this_thread::sleep_for(folly::detail::Sleeper::kMinYieldingSleep);
@@ -1260,12 +1265,11 @@ lockImplementation(
   }
 }
 
-inline bool preempted(std::uint64_t value, std::chrono::nanoseconds now) {
+inline bool preempted(std::uint64_t value, CpuTicks now) {
   auto currentTime = recover(strip(now));
   auto nodeTime = recover(value);
-  auto preempted =
-      (currentTime > nodeTime + kScheduledAwaySpinThreshold.count()) &&
-      (nodeTime != recover(strip(std::chrono::nanoseconds::max())));
+  auto preempted = (currentTime > nodeTime + kScheduledAwaySpinThreshold) &&
+      (nodeTime != recover(strip(std::numeric_limits<CpuTicks>::max())));
 
   // we say that the thread has been preempted if its timestamp says so, and
   // also if it is neither uninitialized nor skipped
@@ -1316,7 +1320,7 @@ FOLLY_ALWAYS_INLINE std::uintptr_t tryCombine(
     std::uintptr_t value,
     std::uintptr_t next,
     std::uint64_t iteration,
-    std::chrono::nanoseconds now,
+    CpuTicks now,
     CombineFunction task) {
   // if the waiter has asked for a combine operation, we should combine its
   // critical section and move on to the next waiter

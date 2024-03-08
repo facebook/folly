@@ -34,14 +34,14 @@ extern "C" {
 void __real___cxa_throw(
     void* thrownException, std::type_info* type, void (*destructor)(void*))
     __attribute__((__noreturn__));
-void* __real___cxa_begin_catch(void* excObj) throw();
+void* __real___cxa_begin_catch(void* excObj) noexcept;
 void __real___cxa_rethrow(void) __attribute__((__noreturn__));
 void __real___cxa_end_catch(void);
 #else
 void __cxa_throw(
     void* thrownException, std::type_info* type, void (*destructor)(void*))
     __attribute__((__noreturn__));
-void* __cxa_begin_catch(void* excObj) throw();
+void* __cxa_begin_catch(void* excObj) noexcept;
 void __cxa_rethrow(void) __attribute__((__noreturn__));
 void __cxa_end_catch(void);
 #endif
@@ -137,7 +137,7 @@ __attribute__((__noreturn__)) void __wrap___cxa_rethrow() {
   __builtin_unreachable(); // orig_cxa_rethrow never returns
 }
 
-void* __wrap___cxa_begin_catch(void* excObj) throw() {
+void* __wrap___cxa_begin_catch(void* excObj) noexcept {
   // excObj is a pointer to the unwindHeader in __cxa_exception
   getCxaBeginCatchCallbacks().invoke(excObj);
   return __real___cxa_begin_catch(excObj);
@@ -173,7 +173,7 @@ void __cxa_rethrow() {
   __builtin_unreachable(); // orig_cxa_rethrow never returns
 }
 
-void* __cxa_begin_catch(void* excObj) throw() {
+void* __cxa_begin_catch(void* excObj) noexcept {
   // excObj is a pointer to the unwindHeader in __cxa_exception
   static auto orig_cxa_begin_catch =
       reinterpret_cast<decltype(&__cxa_begin_catch)>(

@@ -463,6 +463,8 @@ template Expected<float, ConversionCode> str_to_floating<float>(
 template Expected<double, ConversionCode> str_to_floating<double>(
     StringPiece* src) noexcept;
 
+namespace {
+
 /**
  * This class takes care of additional processing needed for signed values,
  * like leading sign character and overflow checks.
@@ -529,6 +531,8 @@ class SignedValueHandler<T, false> {
 
   Expected<T, ConversionCode> finalize(T value) { return value; }
 };
+
+} // namespace
 
 /**
  * String represented as a pair of pointers to char to signed/unsigned

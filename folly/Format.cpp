@@ -139,7 +139,7 @@ void FormatValue<double>::formatHelper(
     default:
       plusSign = '\0';
       break;
-  };
+  }
 
   auto flags = DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |
       (arg.trailingDot ? DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT
@@ -149,7 +149,7 @@ void FormatValue<double>::formatHelper(
   switch (arg.presentation) {
     case '%':
       val *= 100;
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case 'f':
     case 'F': {
       if (arg.precision > DoubleToStringConverter::kMaxFixedDigitsAfterPoint) {

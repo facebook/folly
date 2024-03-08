@@ -156,7 +156,7 @@ class CoReturnImpl {
 
   template <typename Result, typename ArgumentTuple>
   Result Perform(const ArgumentTuple& /* unused */) const {
-    return [](T value) -> Result { co_return value; }(value_);
+    return [](T value) -> Result { co_return value; }(T(value_));
   }
 
  private:

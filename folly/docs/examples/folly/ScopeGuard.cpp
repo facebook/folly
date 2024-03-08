@@ -17,7 +17,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 
-TEST(scope_guard, demo) {
+TEST(scopeGuard, demo) {
   int x = 0;
   {
     auto guard = folly::makeGuard([&]() { x += 1; });
@@ -26,7 +26,7 @@ TEST(scope_guard, demo) {
   EXPECT_EQ(x, 1);
 }
 
-TEST(scope_exit, demo) {
+TEST(scopeExit, demo) {
   int y = 0;
   {
     SCOPE_EXIT { y = 1234; };

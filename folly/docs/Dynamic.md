@@ -5,7 +5,7 @@
 C++, similar to the way languages with runtime type systems work
 (e.g. Python). It can hold types from a predetermined set of types
 (ints, bools, arrays of other dynamics, etc), similar to something like
-`boost::variant`, but the syntax is intended to be a little more like
+`std::variant`, but the syntax is intended to be a little more like
 using the native type directly.
 
 ### Overview

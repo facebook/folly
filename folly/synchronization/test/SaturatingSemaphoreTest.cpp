@@ -135,30 +135,30 @@ void run_multi_poster_multi_waiter_test(int np, int nw) {
 
 /// Tests
 
-TEST(SaturatingSemaphore, basic_spin_only) {
+TEST(SaturatingSemaphore, basicSpinOnly) {
   run_basic_test<false>();
 }
 
-TEST(SaturatingSemaphore, basic_may_block) {
+TEST(SaturatingSemaphore, basicMayBlock) {
   run_basic_test<true>();
 }
 
-TEST(SaturatingSemaphore, pingpong_spin_only) {
+TEST(SaturatingSemaphore, pingpongSpinOnly) {
   run_pingpong_test<false>(1000);
 }
 
-TEST(SaturatingSemaphore, pingpong_may_block) {
+TEST(SaturatingSemaphore, pingpongMayBlock) {
   run_pingpong_test<true>(1000);
 }
 
-TEST(SaturatingSemaphore, multi_poster_multi_waiter_spin_only) {
+TEST(SaturatingSemaphore, multiPosterMultiWaiterSpinOnly) {
   run_multi_poster_multi_waiter_test<false>(1, 1);
   run_multi_poster_multi_waiter_test<false>(1, 10);
   run_multi_poster_multi_waiter_test<false>(10, 1);
   run_multi_poster_multi_waiter_test<false>(10, 10);
 }
 
-TEST(SaturatingSemaphore, multi_poster_multi_waiter_may_block) {
+TEST(SaturatingSemaphore, multiPosterMultiWaiterMayBlock) {
   run_multi_poster_multi_waiter_test<true>(1, 1);
   run_multi_poster_multi_waiter_test<true>(1, 10);
   run_multi_poster_multi_waiter_test<true>(10, 1);

@@ -208,7 +208,7 @@ TEST(IOBuf, TakeOwnershipFreeOnErrorBugfix) {
 TEST(IOBuf, GetUserData) {
   {
     const uint32_t size = 1234;
-    uint8_t data[size];
+    uint8_t data[size] = {};
     unique_ptr<IOBuf> buf1(IOBuf::wrapBuffer(data, size));
     EXPECT_EQ(buf1->getUserData(), nullptr);
   }
@@ -235,6 +235,7 @@ TEST(IOBuf, GetUserData) {
 TEST(IOBuf, GetFreeFn) {
   const uint32_t size = 4576;
   uint8_t* data = static_cast<uint8_t*>(malloc(size));
+  std::memset(data, 0, size);
   folly::IOBuf::FreeFunction someFreeFn = [](void* buf, void* userData) {
     EXPECT_EQ(buf, userData);
     free(userData);
@@ -250,7 +251,7 @@ TEST(IOBuf, GetFreeFn) {
 
 TEST(IOBuf, WrapBuffer) {
   const uint32_t size1 = 1234;
-  uint8_t buf1[size1];
+  uint8_t buf1[size1] = {};
   unique_ptr<IOBuf> iobuf1(IOBuf::wrapBuffer(buf1, size1));
   EXPECT_EQ(buf1, iobuf1->data());
   EXPECT_EQ(size1, iobuf1->length());
@@ -1770,8 +1771,8 @@ TEST(IOBuf, computeChainCapacityOfZeroSizeIOBuf) {
 // Compute the chained capacity of a single non-chained IOBuf of capacity
 // non-zero
 TEST(IOBuf, computeChainCapacityOfNonZeroSizeIOBuf) {
-  size_t size = 20;
-  uint8_t data[size];
+  const size_t size = 20;
+  uint8_t data[size] = {};
 
   // Create buffer of capacity 20
   unique_ptr<IOBuf> buf(IOBuf::wrapBuffer(data, size));
@@ -1783,12 +1784,12 @@ TEST(IOBuf, computeChainCapacityOfNonZeroSizeIOBuf) {
 // of zero and non-zero capacities.
 TEST(IOBuf, computeChainCapacityOfMixedCapacityChainedIOBuf) {
   // Total capacity is 100
-  uint8_t data1[20];
-  uint8_t data2[0];
-  uint8_t data3[60];
-  uint8_t data4[15];
-  uint8_t data5[0];
-  uint8_t data6[5];
+  uint8_t data1[20] = {};
+  uint8_t data2[0] = {};
+  uint8_t data3[60] = {};
+  uint8_t data4[15] = {};
+  uint8_t data5[0] = {};
+  uint8_t data6[5] = {};
 
   // Create IOBuf at head of chain
   unique_ptr<IOBuf> buf(IOBuf::wrapBuffer(data1, sizeof(data1)));

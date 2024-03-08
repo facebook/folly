@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_singleton
+//
+
 // SingletonVault - a library to manage the creation and destruction
 // of interdependent singletons.
 //

@@ -28,24 +28,11 @@
 //  The customization-point object must be placed in a nested namespace to avoid
 //  potential conflicts with customizations defined as friend-functions of types
 //  defined in the same namespace as the CPO.
-//
-//  In C++17 and later the object may be defined using 'inline constexpr' to
-//  avoid ODR issues. However, prior to that a helper template is required to
-//  ensure that there is only a single instance of the CPO created and then a
-//  named reference in an anonymous namespace is required to avoid duplicate
-//  symbol definitions.
-#if FOLLY_HAS_INLINE_VARIABLES
 #define FOLLY_DEFINE_CPO(Type, Name) \
   namespace folly_cpo__ {            \
   inline constexpr Type Name{};      \
   }                                  \
   using namespace folly_cpo__;
-#else
-#define FOLLY_DEFINE_CPO(Type, Name)                        \
-  namespace {                                               \
-  constexpr auto& Name = ::folly::StaticConst<Type>::value; \
-  }
-#endif
 
 namespace folly {
 

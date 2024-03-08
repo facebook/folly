@@ -134,7 +134,7 @@ std::string AsyncIoUringSocket::toString(AsyncIoUringSocket::State s) {
       return "Error";
     case State::FastOpen:
       return "FastOpen";
-  };
+  }
   return to<std::string>("Unknown val=", (int)s);
 }
 
@@ -146,7 +146,7 @@ AsyncIoUringSocket::Options::defaultAllocateNoBufferPoolBuffer() {
 }
 
 AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
-    : parent_(parent) {
+    : IoSqeBase(IoSqeBase::Type::Read), parent_(parent) {
   supportsMultishotRecv_ = parent->options_.multishotRecv &&
       parent->backend_->kernelSupportsRecvmsgMultishot();
 }
@@ -348,7 +348,6 @@ void AsyncIoUringSocket::appendPreReceive(
 void AsyncIoUringSocket::allowReads() {
   if (readSqe_->readCallback() && !readSqe_->inFlight()) {
     auto cb = readSqe_->readCallback();
-    setReadCB(nullptr);
     setReadCB(cb);
   }
 }
@@ -637,7 +636,7 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
               res,
               ")");
           break;
-      };
+      }
       readCallback_->readErr(AsyncSocketException(err, std::move(error)));
     } else {
       uint64_t const cb_was = setReadCbCount_;
@@ -821,7 +820,8 @@ AsyncIoUringSocket::WriteSqe::WriteSqe(
     std::unique_ptr<IOBuf>&& buf,
     WriteFlags flags,
     bool zc)
-    : parent_(parent),
+    : IoSqeBase(IoSqeBase::Type::Write),
+      parent_(parent),
       callback_(callback),
       buf_(std::move(buf)),
       flags_(flags),
@@ -926,7 +926,7 @@ struct DetachFdState : AsyncReader::ReadCallback {
 
 struct CancelSqe : IoSqeBase {
   explicit CancelSqe(IoSqeBase* sqe, folly::Function<void()> fn = {})
-      : target_(sqe), fn_(std::move(fn)) {}
+      : IoSqeBase(IoSqeBase::Type::Cancel), target_(sqe), fn_(std::move(fn)) {}
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     ::io_uring_prep_cancel(sqe, target_, 0);
   }
@@ -1187,7 +1187,9 @@ AsyncIoUringSocket::FastOpenSqe::FastOpenSqe(
     AsyncIoUringSocket* parent,
     SocketAddress const& addr,
     std::unique_ptr<WriteSqe> i)
-    : parent_(parent), initialWrite(std::move(i)) {
+    : IoSqeBase(IoSqeBase::Type::Open),
+      parent_(parent),
+      initialWrite(std::move(i)) {
   addrLen_ = addr.getAddress(&addrStorage);
 }
 

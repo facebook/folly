@@ -667,6 +667,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   /// Returns a Future which will call back on the other side of executor.
   Future<T> via(Executor::KeepAlive<> executor) &&;
+  /// Same as via() but:
+  /// - executor MUST be identical to the executor running the task from which
+  ///   viaInlineUnsafe is called.
+  /// - MAY run some deferred callbacks inline
+  Future<T> viaInlineUnsafe(Executor::KeepAlive<> executor) &&;
   Future<T> via(Executor::KeepAlive<> executor, int8_t priority) &&;
 
   /// Defer work to run on the consumer of the future.
@@ -939,7 +944,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   // directly awaited within a folly::coro::Task coroutine.
   friend Future<T> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor, SemiFuture<T>&& future) noexcept {
-    return std::move(future).via(std::move(executor));
+    return std::move(future).viaInlineUnsafe(std::move(executor));
   }
 
 #endif
@@ -2091,13 +2096,14 @@ std::pair<Promise<T>, Future<T>> makePromiseContract(Executor::KeepAlive<> e) {
 
 template <class F>
 auto makeAsyncTask(folly::Executor::KeepAlive<> ka, F&& func) {
-  return [func = static_cast<F&&>(func),
-          ka = std::move(ka)](auto&& param) mutable {
+  return [func_2 = static_cast<F&&>(func),
+          ka_2 = std::move(ka)](auto&& param) mutable {
     return via(
-        ka,
-        [func = std::move(func),
-         param = static_cast<decltype(param)>(param)]() mutable {
-          return static_cast<F&&>(func)(static_cast<decltype(param)&&>(param));
+        ka_2,
+        [func_3 = std::move(func_2),
+         param_2 = static_cast<decltype(param)>(param)]() mutable {
+          return static_cast<F&&>(func_3)(
+              static_cast<decltype(param_2)&&>(param_2));
         });
   };
 }

@@ -38,6 +38,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/functional/traits.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 
@@ -102,11 +103,6 @@ namespace folly {
 //! \endcode
 class exception_wrapper final {
  private:
-  template <class Fn>
-  struct arg_type_;
-  template <class Fn>
-  using arg_type = _t<arg_type_<Fn>>;
-
   struct with_exception_from_fn_;
   struct with_exception_from_ex_;
 
@@ -114,8 +110,6 @@ class exception_wrapper final {
 
   template <class Ex>
   using IsStdException = std::is_base_of<std::exception, std::decay_t<Ex>>;
-  template <class CatchFn>
-  using IsCatchAll = std::is_same<arg_type<std::decay_t<CatchFn>>, void>;
 
   struct PrivateCtor {};
 
@@ -146,12 +140,6 @@ class exception_wrapper final {
   static std::exception_ptr extract_(std::exception_ptr&&) noexcept;
 
  public:
-  // NO variable of this type - finding refs of the type is easier with current
-  // tooling than is finding refs of a variable of the type
-  struct from_catch_ref_t {
-    explicit from_catch_ref_t() = default;
-  };
-
   //! Default-constructs an empty `exception_wrapper`
   //! \post `type() == nullptr`
   exception_wrapper() noexcept {}
@@ -180,16 +168,6 @@ class exception_wrapper final {
   //! \post `!ptr || bool(*this)`
   explicit exception_wrapper(std::exception_ptr const& ptr) noexcept;
   explicit exception_wrapper(std::exception_ptr&& ptr) noexcept;
-
-  //! \pre `ptr` holds a reference to `ex`.
-  //! \post `bool(*this)`
-  //! \post `type() == &typeid(ex)`
-  template <class Ex>
-  exception_wrapper(
-      from_catch_ref_t, std::exception_ptr const& ptr, Ex& ex) noexcept;
-  template <class Ex>
-  exception_wrapper(
-      from_catch_ref_t, std::exception_ptr&& ptr, Ex& ex) noexcept;
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
@@ -377,7 +355,11 @@ exception_wrapper make_exception_wrapper(As&&... as) {
 template <class Ch>
 std::basic_ostream<Ch>& operator<<(
     std::basic_ostream<Ch>& sout, exception_wrapper const& ew) {
-  return sout << ew.what();
+  sout << ew.class_name();
+  if (auto e = ew.get_exception()) {
+    sout << ": " << e->what();
+  }
+  return sout;
 }
 
 /**

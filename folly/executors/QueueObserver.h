@@ -65,6 +65,15 @@ class WorkerProvider {
   virtual IdsWithKeepAlive collectThreadIds() = 0;
 };
 
+/**
+ * Interface for executors that provide a WorkerProvider to collect thread ids.
+ */
+class GetThreadIdCollector {
+ public:
+  virtual ~GetThreadIdCollector() = default;
+  virtual folly::WorkerProvider* getThreadIdCollector() = 0;
+};
+
 class ThreadIdWorkerProvider : public WorkerProvider {
  public:
   IdsWithKeepAlive collectThreadIds() override final;
@@ -75,7 +84,7 @@ class ThreadIdWorkerProvider : public WorkerProvider {
 
  private:
   Synchronized<std::unordered_set<pid_t>> osThreadIds_;
-  SharedMutex threadsExitMutex_;
+  mutable SharedMutex threadsExitMutex_;
 };
 
 class QueueObserver {

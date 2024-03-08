@@ -206,7 +206,7 @@ TEST(F14FastMap, visitContiguousRanges) {
 }
 
 #if FOLLY_HAS_MEMORY_RESOURCE
-TEST(F14Map, pmr_empty) {
+TEST(F14Map, pmrEmpty) {
   pmr::F14ValueMap<int, int> m1;
   pmr::F14NodeMap<int, int> m2;
   pmr::F14VectorMap<int, int> m3;
@@ -769,25 +769,25 @@ TEST(F14FastMap, simple) {
 }
 
 #if FOLLY_HAS_MEMORY_RESOURCE
-TEST(F14ValueMap, pmr_simple) {
+TEST(F14ValueMap, pmrSimple) {
   runSimple<pmr::F14ValueMap<std::string, std::string>>();
 }
 
-TEST(F14NodeMap, pmr_simple) {
+TEST(F14NodeMap, pmrSimple) {
   runSimple<pmr::F14NodeMap<std::string, std::string>>();
 }
 
-TEST(F14VectorMap, pmr_simple) {
+TEST(F14VectorMap, pmrSimple) {
   runSimple<pmr::F14VectorMap<std::string, std::string>>();
 }
 
-TEST(F14FastMap, pmr_simple) {
+TEST(F14FastMap, pmrSimple) {
   runSimple<pmr::F14FastMap<std::string, std::string>>();
 }
 #endif
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-TEST(F14VectorMap, reverse_iterator) {
+TEST(F14VectorMap, reverseIterator) {
   using TMap = F14VectorMap<uint64_t, uint64_t>;
   auto populate = [](TMap& h, uint64_t lo, uint64_t hi) {
     for (auto i = lo; i < hi; ++i) {
@@ -874,7 +874,6 @@ TEST(F14FastMap, rehash) {
   runRehash<F14VectorMap<std::string, std::string>>();
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <typename T>
 void runPrehash() {
   T h;
@@ -908,7 +907,6 @@ TEST(F14VectorMap, prehash) {
 TEST(F14FastMap, prehash) {
   runPrehash<F14FastMap<std::string, std::string>>();
 }
-#endif
 
 TEST(F14ValueMap, random) {
   runRandom<F14ValueMap<
@@ -946,7 +944,7 @@ TEST(F14FastMap, random) {
       SwapTrackingAlloc<std::pair<uint64_t const, Tracked<1>>>>>();
 }
 
-TEST(F14ValueMap, grow_stats) {
+TEST(F14ValueMap, growStats) {
   F14ValueMap<uint64_t, uint64_t> h;
   for (unsigned i = 1; i <= 3072; ++i) {
     h[i]++;
@@ -958,7 +956,7 @@ TEST(F14ValueMap, grow_stats) {
   runSanityChecks(h);
 }
 
-TEST(F14ValueMap, steady_state_stats) {
+TEST(F14ValueMap, steadyStateStats) {
   // 10k keys, 14% probability of insert, 90% chance of erase, so the
   // table should converge to 1400 size without triggering the rehash
   // that would occur at 1536.
@@ -986,7 +984,7 @@ TEST(F14ValueMap, steady_state_stats) {
   runSanityChecks(h);
 }
 
-TEST(F14VectorMap, steady_state_stats) {
+TEST(F14VectorMap, steadyStateStats) {
   // 10k keys, 14% probability of insert, 90% chance of erase, so the
   // table should converge to 1400 size without triggering the rehash
   // that would occur at 1536.
@@ -1402,9 +1400,8 @@ TEST(F14VectorMap, destructuringErase) {
       0);
 }
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 TEST(F14ValueMap, maxSize) {
-  SKIP_IF(kFallback);
-
   F14ValueMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
@@ -1415,8 +1412,6 @@ TEST(F14ValueMap, maxSize) {
 }
 
 TEST(F14NodeMap, maxSize) {
-  SKIP_IF(kFallback);
-
   F14NodeMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
@@ -1427,8 +1422,6 @@ TEST(F14NodeMap, maxSize) {
 }
 
 TEST(F14VectorMap, vectorMaxSize) {
-  SKIP_IF(kFallback);
-
   F14VectorMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
@@ -1437,6 +1430,7 @@ TEST(F14VectorMap, vectorMaxSize) {
           std::allocator_traits<decltype(m)::allocator_type>::max_size(
               m.get_allocator())));
 }
+#endif
 
 template <typename M>
 void runMoveOnlyTest() {
@@ -1675,24 +1669,20 @@ TEST(F14ValueMap, heterogeneousLookup) {
     EXPECT_TRUE(ref.end() == ref.find(buddy));
     EXPECT_EQ(hello, ref.find(hello)->first);
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     const auto buddyHashToken = ref.prehash(buddy);
     const auto helloHashToken = ref.prehash(hello);
 
     // prehash + find
     EXPECT_TRUE(ref.end() == ref.find(buddyHashToken, buddy));
     EXPECT_EQ(hello, ref.find(helloHashToken, hello)->first);
-#endif
 
     // contains
     EXPECT_FALSE(ref.contains(buddy));
     EXPECT_TRUE(ref.contains(hello));
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     // contains with prehash
     EXPECT_FALSE(ref.contains(buddyHashToken, buddy));
     EXPECT_TRUE(ref.contains(helloHashToken, hello));
-#endif
 
     // equal_range
     EXPECT_TRUE(std::make_pair(ref.end(), ref.end()) == ref.equal_range(buddy));
@@ -2156,7 +2146,6 @@ TEST(F14Map, continuousCapacityF12) {
   runContinuousCapacityTest<F14VectorMap<uint16_t, uint16_t>>(0xfff0, 0xfffe);
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 template <template <class...> class TMap>
 void testContainsWithPrecomputedHash() {
   TMap<int, int> m{};
@@ -2177,6 +2166,26 @@ TEST(F14Map, containsWithPrecomputedHash) {
   testContainsWithPrecomputedHash<F14VectorMap>();
   testContainsWithPrecomputedHash<F14NodeMap>();
   testContainsWithPrecomputedHash<F14FastMap>();
+}
+
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+template <template <class...> class TMap>
+void testContainsWithPrecomputedHashKeyWrapper() {
+  TMap<int, int> m{};
+  const auto key{1};
+  m.insert({key, 1});
+  const F14HashedKey<int> hashedKey{key};
+  EXPECT_TRUE(m.contains(hashedKey));
+  const auto otherKey{2};
+  const F14HashedKey<int> hashedKeyNotFound{otherKey};
+  EXPECT_FALSE(m.contains(hashedKeyNotFound));
+}
+
+TEST(F14Map, containsWithPrecomputedHashKeyWrapper) {
+  testContainsWithPrecomputedHashKeyWrapper<F14ValueMap>();
+  testContainsWithPrecomputedHashKeyWrapper<F14VectorMap>();
+  testContainsWithPrecomputedHashKeyWrapper<F14NodeMap>();
+  testContainsWithPrecomputedHashKeyWrapper<F14FastMap>();
 }
 #endif
 
@@ -2237,7 +2246,6 @@ TEST(F14Map, copyAfterRemovedCollisions) {
   testCopyAfterRemovedCollisions<F14FastMap>();
 }
 
-#if FOLLY_HAS_DEDUCTION_GUIDES
 template <template <class...> class TMap>
 void testIterDeductionGuide() {
   TMap<int, double> source({{1, 2.0}, {3, 4.0}});
@@ -2360,7 +2368,6 @@ TEST(F14Map, initializerListDeductionGuide) {
   testInitializerListDeductionGuide<F14VectorMap>();
   testInitializerListDeductionGuide<F14FastMap>();
 }
-#endif // FOLLY_HAS_DEDUCTION_GUIDES
 
 namespace {
 

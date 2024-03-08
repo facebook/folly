@@ -37,7 +37,7 @@ writing. For example:
     void RequestHandler::processRequest(const Request& request) {
       stop_watch<> watch;
       checkRequestValidity(request);
-      SharedMutex::WriteHolder lock(requestQueueMutex_);
+      std::unique_lock lock(requestQueueMutex_);
       requestQueue_.push_back(request);
       stats_->addStatValue("requestEnqueueLatency", watch.elapsed());
       LOG(INFO) << "enqueued request ID " << request.getID();

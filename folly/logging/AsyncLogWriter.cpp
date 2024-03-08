@@ -65,7 +65,7 @@ AsyncLogWriter::~AsyncLogWriter() {
 }
 
 FOLLY_CONSTINIT std::atomic<AsyncLogWriter::DiscardCallback>
-    AsyncLogWriter::discardCallback_;
+    AsyncLogWriter::discardCallback_{};
 
 void AsyncLogWriter::setDiscardCallback(DiscardCallback callback) {
   discardCallback_.store(callback, std::memory_order_relaxed);

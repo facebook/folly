@@ -19,6 +19,7 @@
 
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Generator.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 
@@ -100,6 +101,45 @@ BENCHMARK(asyncGeneratorYieldErrorAwaitTry, iters) {
       }
     }
   }());
+}
+
+/*
+Comparing just the "hot paths" of the two generator coroutines:
+
+11/08/23 16:25$ buck2 run @mode/opt \
+  //folly/experimental/coro/test:async_generator_bench -- \
+    -bm_regex '.*YieldValue.*'
+============================================================================
+[...]coro/test/AsyncGeneratorBenchmark.cpp     relative  time/iter   iters/s
+============================================================================
+asyncGeneratorYieldValues                                  12.00ns    83.32M
+compareToSynchronousGeneratorYieldValues                    4.43ns   225.72M
+*/
+
+BENCHMARK(asyncGeneratorYieldValues, iters) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    auto gen = [](size_t iters) -> folly::coro::AsyncGenerator<size_t> {
+      for (size_t iter = 0; iter < iters; ++iter) {
+        co_yield iter;
+      }
+    }(iters);
+    size_t i = 0;
+    while (auto it = co_await gen.next()) {
+      CHECK_EQ(i++, *it);
+    }
+  }());
+}
+
+BENCHMARK(compareToSynchronousGeneratorYieldValues, iters) {
+  auto gen = [](size_t iters) -> folly::coro::Generator<size_t> {
+    for (size_t iter = 0; iter < iters; ++iter) {
+      co_yield iter;
+    }
+  }(iters);
+  size_t i = 0;
+  for (size_t iter : gen) {
+    CHECK_EQ(i++, iter);
+  }
 }
 
 #endif

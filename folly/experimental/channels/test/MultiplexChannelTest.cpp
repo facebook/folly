@@ -17,6 +17,7 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/SerialExecutor.h>
 #include <folly/experimental/channels/ConsumeChannel.h>
+#include <folly/experimental/channels/MaxConcurrentRateLimiter.h>
 #include <folly/experimental/channels/MultiplexChannel.h>
 #include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/experimental/coro/BlockingWait.h>
@@ -337,7 +338,7 @@ TEST_F(MultiplexChannelFixture, HandleDestroyed) {
 }
 
 TEST_F(MultiplexChannelFixture, Subscribe_WithRateLimiter) {
-  auto rateLimiter = RateLimiter::create(1 /* maxConcurrent */);
+  auto rateLimiter = MaxConcurrentRateLimiter::create(1 /* maxConcurrent */);
   auto [inputReceiver, inputSender] = Channel<TestInputValue>::create();
   auto multiplexChannel = createMultiplexChannel(
       TestMultiplexer(&executor_, std::move(rateLimiter)),

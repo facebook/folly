@@ -114,12 +114,12 @@ namespace {
 struct ArmAbiTag {};
 struct AnyAbiTag {};
 
-FOLLY_MAYBE_UNUSED bool isAbiCppException(ArmAbiTag, const char (&klazz)[8]) {
+[[maybe_unused]] bool isAbiCppException(ArmAbiTag, const char (&klazz)[8]) {
   return klazz[4] == 'C' && klazz[5] == '+' && klazz[6] == '+' &&
       klazz[7] == '\0';
 }
 
-FOLLY_MAYBE_UNUSED bool isAbiCppException(AnyAbiTag, const uint64_t& klazz) {
+[[maybe_unused]] bool isAbiCppException(AnyAbiTag, const uint64_t& klazz) {
   // The least significant four bytes must be "C++\0"
   static const uint64_t cppClass =
       ((uint64_t)'C' << 24) | ((uint64_t)'+' << 16) | ((uint64_t)'+' << 8);

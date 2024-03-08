@@ -62,8 +62,7 @@ template <typename T>
 T& Fiber::LocalData::getSlow() {
   vtable_ = VTable::get<T>();
   T* data = nullptr;
-  if FOLLY_CXX17_CONSTEXPR (
-      sizeof(T) <= sizeof(Buffer) && alignof(T) <= alignof(Buffer)) {
+  if constexpr (sizeof(T) <= sizeof(Buffer) && alignof(T) <= alignof(Buffer)) {
     data = new (&buffer_) T();
   } else {
     data = new T();

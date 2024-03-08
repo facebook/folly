@@ -17,8 +17,10 @@
 #pragma once
 
 #include <chrono>
+#include <initializer_list>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <glog/logging.h>
@@ -70,11 +72,18 @@ class MultiLevelTimeSeries {
    * be provided with a duration of '0' -- this will be an "all-time" level. If
    * an all-time level is provided, it MUST be the last level present.
    */
-  MultiLevelTimeSeries(
-      size_t numBuckets, size_t numLevels, const Duration levelDurations[]);
+  explicit MultiLevelTimeSeries(
+      size_t numBuckets, size_t numLevels, const Duration levelDurations[])
+      : MultiLevelTimeSeries(
+            numBuckets,
+            folly::Range<const Duration*>(levelDurations, numLevels)) {}
 
-  MultiLevelTimeSeries(
-      size_t numBuckets, std::initializer_list<Duration> durations);
+  explicit MultiLevelTimeSeries(
+      size_t numBuckets, std::initializer_list<Duration> durations)
+      : MultiLevelTimeSeries(numBuckets, folly::range(durations)) {}
+
+  explicit MultiLevelTimeSeries(
+      size_t numBuckets, folly::Range<const Duration*> durations);
 
   /*
    * Return the number of buckets used to track time series at each level.

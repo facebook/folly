@@ -148,7 +148,16 @@ class DetachedBarrierTask {
           assert(h.promise().barrier_ != nullptr);
           auto continuation =
               h.promise().barrier_->arrive(h.promise().getAsyncFrame());
+
+          // Due to a bug in MSVC versions up to and including 19.35, we observe
+          // an extra call to the destructor of the task with an explicit call
+          // to coroutine_handle::destroy. Furthermore, with versions
+          // above 19.30, this causes a crash when named return value
+          // optimization is enabled.
+#if !(!defined(__clang__) && defined(_MSC_VER) && _MSC_VER <= 1935)
           h.destroy();
+#endif
+
           return continuation;
         }
         void await_resume() noexcept {}

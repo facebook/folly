@@ -28,7 +28,6 @@ int func_int_int_add_25(int x) {
 namespace folly {
 
 TEST(FunctionRef, Traits) {
-  static_assert(std::is_literal_type<FunctionRef<int(int)>>::value, "");
   static_assert(
       std::is_trivially_copy_constructible<FunctionRef<int(int)>>::value, "");
   static_assert(
@@ -254,7 +253,7 @@ TEST(FunctionRef, Emptiness) {
   // models std::function
   struct NullptrTestableInSitu {
     int res;
-    FOLLY_MAYBE_UNUSED explicit NullptrTestableInSitu(std::nullptr_t);
+    [[maybe_unused]] explicit NullptrTestableInSitu(std::nullptr_t);
     explicit NullptrTestableInSitu(int i) : res(i) {}
     CastableToBool operator==(std::nullptr_t) const { return res % 3 != 1; }
     int operator()(int in) const { return res * in; }

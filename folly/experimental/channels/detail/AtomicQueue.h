@@ -98,7 +98,7 @@ class AtomicQueue {
       case Type::CONSUMER:
       default:
         folly::assume_unreachable();
-    };
+    }
   }
   AtomicQueue(const AtomicQueue&) = delete;
   AtomicQueue& operator=(const AtomicQueue&) = delete;
@@ -198,7 +198,7 @@ class AtomicQueue {
       case Type::CLOSED:
       default:
         folly::assume_unreachable();
-    };
+    }
   }
 
   bool isClosed() {
@@ -227,7 +227,7 @@ class AtomicQueue {
       case Type::CONSUMER:
       default:
         folly::assume_unreachable();
-    };
+    }
   }
 
   Consumer* cancelCallback() {

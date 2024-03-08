@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <future>
+#include <optional>
 
 #include <folly/Chrono.h>
 #include <folly/futures/Future.h>
@@ -24,73 +24,67 @@
 #include <folly/io/async/HHWheelTimer.h>
 
 namespace folly {
-// Our Callback object for HHWheelTimer
+
+// Callback object for HHWheelTimer
 template <class TBase>
 struct WTCallback : public TBase::Callback {
   struct PrivateConstructorTag {};
 
  public:
-  WTCallback(PrivateConstructorTag, EventBase* base) : base_(base) {}
+  explicit WTCallback(PrivateConstructorTag) {}
 
   // Only allow creation by this factory, to ensure heap allocation.
-  static std::shared_ptr<WTCallback> create(EventBase* base) {
+  static std::pair<std::shared_ptr<WTCallback>, SemiFuture<Unit>> create(
+      EventBase* base) {
     // optimization opportunity: memory pool
-    auto cob = std::make_shared<WTCallback>(PrivateConstructorTag{}, base);
+    auto cob = std::make_shared<WTCallback>(PrivateConstructorTag{});
+    auto& state = cob->state_.unsafeGetUnlocked().emplace(State{base, {}});
     // Capture shared_ptr of cob in lambda so that Core inside Promise will
     // hold a ref count to it. The ref count will be released when Core goes
     // away which happens when both Promise and Future go away
-    cob->promise_.setInterruptHandler([cob](exception_wrapper ew) mutable {
+    state.promise.setInterruptHandler([cob](exception_wrapper ew) mutable {
       interruptHandler(std::move(cob), std::move(ew));
     });
-    return cob;
-  }
-
-  SemiFuture<Unit> getSemiFuture() { return promise_.getSemiFuture(); }
-
-  FOLLY_NODISCARD Promise<Unit> stealPromise() {
-    // Don't need promise anymore. Break the circular reference as promise_
-    // is holding a ref count to us via Core. Core won't go away until both
-    // Promise and Future go away.
-    return std::move(promise_);
+    return {std::move(cob), state.promise.getSemiFuture()};
   }
 
  protected:
-  folly::Synchronized<EventBase*> base_;
-  Promise<Unit> promise_;
+  struct State {
+    EventBase* base;
+    Promise<Unit> promise;
+  };
+
+  // First thread that can fulfill the promise unsets the state, breaking the
+  // circular reference WTCallback -> promise -> core -> WTCallback.
+  folly::Synchronized<std::optional<State>> state_;
 
   void timeoutExpired() noexcept override {
-    base_ = nullptr;
-    // Don't need Promise anymore, break the circular reference
-    auto promise = stealPromise();
-    if (!promise.isFulfilled()) {
-      promise.setValue();
+    if (auto state = state_.exchange({})) {
+      state->promise.setValue();
     }
   }
 
   void callbackCanceled() noexcept override {
-    base_ = nullptr;
-    // Don't need Promise anymore, break the circular reference
-    auto promise = stealPromise();
-    if (!promise.isFulfilled()) {
-      promise.setException(FutureNoTimekeeper{});
+    if (auto state = state_.exchange({})) {
+      state->promise.setException(FutureNoTimekeeper{});
     }
   }
 
   static void interruptHandler(
       std::shared_ptr<WTCallback> self, exception_wrapper ew) {
-    auto rBase = self->base_.rlock();
-    if (!*rBase) {
+    // Hold the lock while scheduling the callback, so that callbackCanceled()
+    // blocks the timekeeper destructor keeping the base pointer valid.
+    auto wState = self->state_.wlock();
+    if (!*wState) {
       return;
     }
 
-    (*rBase)->runInEventBaseThreadAlwaysEnqueue(
-        [self, ew = std::move(ew)]() mutable {
+    auto state = std::exchange(*wState, {});
+    auto* base = state->base;
+    base->runInEventBaseThreadAlwaysEnqueue(
+        [self, state = std::move(state), ew = std::move(ew)]() mutable {
           self->cancelTimeout();
-          // Don't need Promise anymore, break the circular reference
-          auto promise = self->stealPromise();
-          if (!promise.isFulfilled()) {
-            promise.setException(std::move(ew));
-          }
+          state->promise.setException(std::move(ew));
         });
   }
 };

@@ -29,15 +29,15 @@ struct from_any {
 };
 
 struct Cv {
-  /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type() const;
-  /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() const noexcept;
+  /* implicit */ [[maybe_unused]] operator std::false_type() const;
+  /* implicit */ [[maybe_unused]] operator std::true_type() const noexcept;
 };
 
 struct Fn {
   char operator()(int, int) noexcept { return 'a'; }
   int volatile&& operator()(int, char const*) { return std::move(x_); }
   float operator()(float, float) { return 3.14; }
-  /* implicit */ FOLLY_MAYBE_UNUSED Cv operator()(Cv*) noexcept;
+  /* implicit */ [[maybe_unused]] Cv operator()(Cv*) noexcept;
   int volatile x_ = 17;
 };
 
@@ -71,7 +71,7 @@ char go(Obj const&, char const*) {
 namespace z {
 struct Obj {};
 } // namespace z
-FOLLY_MAYBE_UNUSED float go(z::Obj const&, int) {
+[[maybe_unused]] float go(z::Obj const&, int) {
   return 9;
 }
 
@@ -85,7 +85,7 @@ void swap(Obj&, Obj&) noexcept {} // no-op
 struct AltSwappable {};
 struct AltSwappableRet {};
 namespace unswappable {
-FOLLY_MAYBE_UNUSED AltSwappableRet swap(AltSwappable&, AltSwappable&);
+[[maybe_unused]] AltSwappableRet swap(AltSwappable&, AltSwappable&);
 } // namespace unswappable
 
 namespace invoker {
@@ -395,13 +395,13 @@ TEST_F(InvokeTest, static_member_no_invoke) {
 
 TEST_F(InvokeTest, invoke_first_match) {
   struct a {
-    FOLLY_MAYBE_UNUSED void operator()(int) const;
+    [[maybe_unused]] void operator()(int) const;
   };
   struct b {
-    FOLLY_MAYBE_UNUSED void operator()(int) const;
+    [[maybe_unused]] void operator()(int) const;
   };
   struct c {
-    FOLLY_MAYBE_UNUSED void operator()() const;
+    [[maybe_unused]] void operator()() const;
   };
   using inv = folly::invoke_first_match<a, b, c>;
   EXPECT_TRUE((folly::is_invocable_v<inv const&, int>));

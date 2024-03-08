@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_malloc
+//
+
 // Functions to provide smarter use of jemalloc, if jemalloc is being used.
 // http://www.canonware.com/download/jemalloc/jemalloc-latest/doc/jemalloc.html
 

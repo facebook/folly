@@ -34,10 +34,6 @@ namespace fibers {
 namespace {
 const uint64_t kMagic8Bytes = 0xfaceb00cfaceb00c;
 
-std::thread::id localThreadId() {
-  return std::this_thread::get_id();
-}
-
 /* Size of the region from p + nBytes down to the last non-magic value */
 size_t nonMagicInBytes(unsigned char* stackLimit, size_t stackSize) {
   CHECK_EQ(reinterpret_cast<intptr_t>(stackLimit) % sizeof(uint64_t), 0u);
@@ -57,7 +53,7 @@ void Fiber::resume() {
   DCHECK_EQ(state_, AWAITING);
   state_ = READY_TO_RUN;
 
-  if (FOLLY_LIKELY(threadId_ == localThreadId())) {
+  if (LIKELY(fiberManager_.loopController_->isInLoopThread())) {
     fiberManager_.readyFibers_.push_back(*this);
     fiberManager_.ensureLoopScheduled();
   } else {
@@ -143,7 +139,6 @@ void Fiber::recordStackPosition() {
   while (true) {
     DCHECK_EQ(state_, NOT_STARTED);
 
-    threadId_ = localThreadId();
     if (taskOptions_.logRunningTime) {
       prevDuration_ = std::chrono::microseconds(0);
       currStartTime_ = thread_clock::now();
@@ -222,7 +217,8 @@ void Fiber::preempt(State state) {
 folly::Optional<std::chrono::nanoseconds> Fiber::getRunningTime() const {
   if (taskOptions_.logRunningTime) {
     auto elapsed = prevDuration_;
-    if (state_ == Fiber::RUNNING && threadId_ == localThreadId()) {
+    if (state_ == Fiber::RUNNING &&
+        fiberManager_.loopController_->isInLoopThread()) {
       elapsed += thread_clock::now() - currStartTime_;
     }
     return elapsed;

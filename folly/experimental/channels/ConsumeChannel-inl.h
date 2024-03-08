@@ -53,7 +53,7 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
    * Called when the handle is destroyed.
    */
   void onHandleDestroyed() override {
-    executor_->add([=]() { processHandleDestroyed(); });
+    executor_->add([=, this]() { processHandleDestroyed(); });
   }
 
   /**

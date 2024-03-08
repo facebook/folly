@@ -18,11 +18,13 @@
 
 #if FOLLY_HAS_EPOLL
 
+#include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 #include <folly/io/async/test/EventBaseTestLib.h>
+
 namespace folly {
 namespace test {
 
-struct EpollBackendProvider {
+struct EpollBackendProvider : BackendProviderBase {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     folly::EpollBackend::Options options;
     return std::make_unique<folly::EpollBackend>(options);
@@ -31,7 +33,8 @@ struct EpollBackendProvider {
 INSTANTIATE_TYPED_TEST_SUITE_P(
     EventBaseTest, EventBaseTest, EpollBackendProvider);
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    EventBaseTest1, EventBaseTest1, EpollBackendProvider);
+    AsyncSignalHandlerTest, AsyncSignalHandlerTest, EpollBackendProvider);
+
 } // namespace test
 } // namespace folly
 

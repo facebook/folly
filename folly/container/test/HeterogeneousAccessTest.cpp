@@ -17,6 +17,7 @@
 #include <folly/container/HeterogeneousAccess.h>
 
 #include <set>
+#include <string_view>
 #include <vector>
 
 #include <folly/FBString.h>
@@ -25,10 +26,6 @@
 #include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
-
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view> // @manual
-#endif
 
 using namespace folly;
 
@@ -70,12 +67,10 @@ TEST(HeterogeneousAccess, transparentIsSelected) {
   checkTransparent<std::u16string>();
   checkTransparent<std::u32string>();
 
-#if FOLLY_HAS_STRING_VIEW
   checkTransparent<std::string_view>();
   checkTransparent<std::wstring_view>();
   checkTransparent<std::u16string_view>();
   checkTransparent<std::u32string_view>();
-#endif
 
   checkTransparent<fbstring>();
 
@@ -163,11 +158,7 @@ template <typename S>
 void runTestMatches(S const& src) {
   using SP = Range<typename S::value_type const*>;
   using MSP = Range<typename S::value_type*>;
-#if FOLLY_HAS_STRING_VIEW
   using SV = std::basic_string_view<typename S::value_type>;
-#else
-  using SV = SP;
-#endif
   using V = std::vector<typename S::value_type>;
 
   runTestMatches2<S, S>(src);

@@ -59,7 +59,7 @@ class LogHandlerFactory {
    * place, or will point to a new LogHandler if a new one was created.
    */
   virtual std::shared_ptr<LogHandler> updateHandler(
-      FOLLY_MAYBE_UNUSED const std::shared_ptr<LogHandler>& existingHandler,
+      [[maybe_unused]] const std::shared_ptr<LogHandler>& existingHandler,
       const Options& options) {
     // Subclasses may override this with functionality to update an existing
     // handler in-place.  However, provide a default implementation that simply

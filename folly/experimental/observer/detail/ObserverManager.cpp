@@ -125,7 +125,7 @@ class ObserverManager::UpdatesManager::NextQueueProcessor {
                  queue_.try_dequeue(queueCoreFunc));
 
         {
-          SharedMutexReadPriority::WriteHolder wh(manager.versionMutex_);
+          std::unique_lock wh(manager.versionMutex_);
 
           // We can't pick more tasks from the queue after we bumped the
           // version, so we have to do this while holding the lock.

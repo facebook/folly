@@ -306,6 +306,9 @@ std::type_info const* exception_ptr_get_type_(
   });
 }
 
+#if defined(__clang__)
+__attribute__((no_sanitize("undefined")))
+#endif // defined(__clang__)
 void* exception_ptr_get_object_(
     std::exception_ptr const& ptr,
     std::type_info const* const target) noexcept {
@@ -479,8 +482,9 @@ struct exception_shared_string::state {
     return sizeof(state) + len + 1u;
   }
   static state* make(char const* const str, std::size_t const len) {
+    constexpr auto align = std::align_val_t{alignof(state)};
     assert(len == std::strlen(str));
-    auto addr = operator_new(object_size(len), align_val_t{alignof(state)});
+    auto addr = operator_new(object_size(len), align);
     return new (addr) state(str, len);
   }
   state(char const* const str, std::size_t const len) noexcept : size{len} {
@@ -491,8 +495,9 @@ struct exception_shared_string::state {
   }
   void copy() noexcept { refs.fetch_add(1u, relaxed); }
   void ruin() noexcept {
+    constexpr auto align = std::align_val_t{alignof(state)};
     if (!refs.load(relaxed) || !refs.fetch_sub(1u, relaxed)) {
-      operator_delete(this, object_size(size), align_val_t{alignof(state)});
+      operator_delete(this, object_size(size), align);
     }
   }
 };

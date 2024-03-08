@@ -31,7 +31,8 @@
 #error GroupVarint.h requires GCC or MSVC
 #endif
 
-#if FOLLY_X64 || defined(__i386__) || FOLLY_PPC64 || FOLLY_AARCH64
+#if FOLLY_X64 || defined(__i386__) || FOLLY_PPC64 || FOLLY_AARCH64 || \
+    FOLLY_RISCV64
 #define FOLLY_HAVE_GROUP_VARINT 1
 #else
 #define FOLLY_HAVE_GROUP_VARINT 0

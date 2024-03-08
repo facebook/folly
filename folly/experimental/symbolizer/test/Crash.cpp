@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <cstdlib>
 #include <folly/experimental/symbolizer/SignalHandler.h>
 
 int main() {
   folly::symbolizer::installFatalSignalHandler();
-  __builtin_trap();
+  std::abort();
 }

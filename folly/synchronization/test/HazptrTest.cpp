@@ -1084,7 +1084,7 @@ class HazptrPreInitTest : public testing::Test {
 
 // Tests
 
-TEST(HazptrTest, basic_objects) {
+TEST(HazptrTest, basicObjects) {
   basic_objects_test();
 }
 
@@ -1093,7 +1093,7 @@ TEST_F(HazptrPreInitTest, dsched_basic_objects) {
   basic_objects_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, copy_and_move) {
+TEST(HazptrTest, copyAndMove) {
   copy_and_move_test();
 }
 
@@ -1102,7 +1102,7 @@ TEST_F(HazptrPreInitTest, dsched_copy_and_move) {
   copy_and_move_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, basic_holders) {
+TEST(HazptrTest, basicHolders) {
   basic_holders_test();
 }
 
@@ -1111,7 +1111,7 @@ TEST_F(HazptrPreInitTest, dsched_basic_holders) {
   basic_holders_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, basic_protection) {
+TEST(HazptrTest, basicProtection) {
   basic_protection_test();
 }
 
@@ -1147,7 +1147,7 @@ TEST_F(HazptrPreInitTest, dsched_destruction) {
       default_hazptr_domain<DeterministicAtomic>());
 }
 
-TEST(HazptrTest, destruction_protected) {
+TEST(HazptrTest, destructionProtected) {
   {
     hazptr_domain<> myDomain0;
     destruction_protected_test(myDomain0);
@@ -1183,7 +1183,7 @@ TEST_F(HazptrPreInitTest, dsched_array) {
   array_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, array_dtor_full_tc) {
+TEST(HazptrTest, arrayDtorFullTc) {
   array_dtor_full_tc_test();
 }
 
@@ -1201,7 +1201,7 @@ TEST_F(HazptrPreInitTest, dsched_local) {
   local_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, linked_mutable) {
+TEST(HazptrTest, linkedMutable) {
   linked_test<true>();
 }
 
@@ -1210,7 +1210,7 @@ TEST_F(HazptrPreInitTest, dsched_linked_mutable) {
   linked_test<true, DeterministicAtomic>();
 }
 
-TEST(HazptrTest, linked_immutable) {
+TEST(HazptrTest, linkedImmutable) {
   linked_test<false>();
 }
 
@@ -1219,7 +1219,7 @@ TEST_F(HazptrPreInitTest, dsched_linked_immutable) {
   linked_test<false, DeterministicAtomic>();
 }
 
-TEST(HazptrTest, mt_linked_mutable) {
+TEST(HazptrTest, mtLinkedMutable) {
   mt_linked_test<true>();
 }
 
@@ -1228,7 +1228,7 @@ TEST_F(HazptrPreInitTest, dsched_mt_linked_mutable) {
   mt_linked_test<true, DeterministicAtomic>();
 }
 
-TEST(HazptrTest, mt_linked_immutable) {
+TEST(HazptrTest, mtLinkedImmutable) {
   mt_linked_test<false>();
 }
 
@@ -1237,7 +1237,7 @@ TEST_F(HazptrPreInitTest, dsched_mt_linked_immutable) {
   mt_linked_test<false, DeterministicAtomic>();
 }
 
-TEST(HazptrTest, auto_retire) {
+TEST(HazptrTest, autoRetire) {
   auto_retire_test();
 }
 
@@ -1246,7 +1246,7 @@ TEST_F(HazptrPreInitTest, dsched_auto_retire) {
   auto_retire_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, free_function_retire) {
+TEST(HazptrTest, freeFunctionRetire) {
   free_function_retire_test();
 }
 
@@ -1264,7 +1264,7 @@ TEST_F(HazptrPreInitTest, dsched_cleanup) {
   cleanup_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, priv_dtor) {
+TEST(HazptrTest, privDtor) {
   priv_dtor_test();
 }
 
@@ -1277,20 +1277,20 @@ TEST(HazptrTest, cohort) {
   cohort_test();
 }
 
-TEST(HazptrTest, dsched_cohort) {
+TEST(HazptrTest, dschedCohort) {
   DSched sched(DSched::uniform(0));
   cohort_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, cohort_recursive_destruction) {
+TEST(HazptrTest, cohortRecursiveDestruction) {
   cohort_recursive_destruction_test();
 }
 
-TEST(HazptrTest, dsched_cohort_recursive_destruction) {
+TEST(HazptrTest, dschedCohortRecursiveDestruction) {
   cohort_recursive_destruction_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, cohort_safe_list_children) {
+TEST(HazptrTest, cohortSafeListChildren) {
   cohort_safe_list_children_test();
 }
 
@@ -1316,7 +1316,7 @@ TEST_F(HazptrPreInitTest, dsched_swmr) {
   swmr_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, wide_cas) {
+TEST(HazptrTest, wideCas) {
   wide_cas_test();
 }
 
@@ -1325,7 +1325,7 @@ TEST_F(HazptrPreInitTest, dsched_wide_cas) {
   wide_cas_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, reclamation_without_calling_cleanup) {
+TEST(HazptrTest, reclamationWithoutCallingCleanup) {
   c_.clear();
   int nthr = 5;
   int objs = folly::detail::hazptr_domain_rcount_threshold();
@@ -1346,7 +1346,7 @@ TEST(HazptrTest, reclamation_without_calling_cleanup) {
   ASSERT_GT(c_.dtors(), 0);
 }
 
-TEST(HazptrTest, standard_names) {
+TEST(HazptrTest, standardNames) {
   struct Foo : hazard_pointer_obj_base<Foo> {};
   DCHECK_EQ(&hazard_pointer_default_domain<>(), &default_hazptr_domain<>());
   hazard_pointer<> h = make_hazard_pointer();

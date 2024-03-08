@@ -87,7 +87,7 @@ TEST_F(ProtocolTest, match_safely_invocable_as_protocol) {
   // non-const non-noexcept invocation
   {
     struct fun {
-      FOLLY_MAYBE_UNUSED void operator()();
+      [[maybe_unused]] void operator()();
     };
     EXPECT_TRUE((safely_invocable_v<fun, void()>));
     EXPECT_FALSE((safely_invocable_v<fun, void() const>));
@@ -97,7 +97,7 @@ TEST_F(ProtocolTest, match_safely_invocable_as_protocol) {
   // non-const noexcept-invocation
   {
     struct fun {
-      FOLLY_MAYBE_UNUSED void operator()() noexcept;
+      [[maybe_unused]] void operator()() noexcept;
     };
     EXPECT_TRUE((safely_invocable_v<fun, void()>));
     EXPECT_FALSE((safely_invocable_v<fun, void() const>));
@@ -107,7 +107,7 @@ TEST_F(ProtocolTest, match_safely_invocable_as_protocol) {
   // const non-noexcept invocation
   {
     struct fun {
-      FOLLY_MAYBE_UNUSED void operator()() const;
+      [[maybe_unused]] void operator()() const;
     };
     EXPECT_TRUE((safely_invocable_v<fun, void()>));
     EXPECT_TRUE((safely_invocable_v<fun, void() const>));
@@ -119,13 +119,13 @@ TEST_F(ProtocolTest, match_safely_invocable_as_protocol) {
     struct foo {};
     struct bar : foo {};
     struct wiz_x {
-      /* implicit */ FOLLY_MAYBE_UNUSED wiz_x(bar);
+      /* implicit */ [[maybe_unused]] wiz_x(bar);
     };
     struct wiz_nx {
-      /* implicit */ FOLLY_MAYBE_UNUSED wiz_nx(bar) noexcept;
+      /* implicit */ [[maybe_unused]] wiz_nx(bar) noexcept;
     };
     struct fun {
-      FOLLY_MAYBE_UNUSED bar operator()() noexcept;
+      [[maybe_unused]] bar operator()() noexcept;
     };
     EXPECT_TRUE((safely_invocable_v<fun, bar()>));
     EXPECT_FALSE((safely_invocable_v<fun, foo()>)); // slicing
@@ -143,7 +143,7 @@ TEST_F(ProtocolTest, match_safely_invocable_as_protocol) {
     struct foo {};
     struct bar : foo {};
     struct fun {
-      FOLLY_MAYBE_UNUSED bar&& operator()() noexcept;
+      [[maybe_unused]] bar&& operator()() noexcept;
     };
     using bar_rr = bar&&; // workaround for clang-format fail case
     using foo_rr = foo&&; // workaround for clang-format fail case
@@ -159,7 +159,7 @@ TEST_F(ProtocolTest, match_safely_invocable_as_protocol) {
   // cvref compatibility
   {
     struct fun {
-      FOLLY_MAYBE_UNUSED void operator()() const&&;
+      [[maybe_unused]] void operator()() const&&;
     };
     EXPECT_FALSE((safely_invocable_v<fun, void()>));
     EXPECT_FALSE((safely_invocable_v<fun, void() const>));

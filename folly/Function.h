@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_function
+//
+
 /*
  * @author Eric Niebler (eniebler@fb.com), Sven Over (over@fb.com)
  * Acknowledgements: Giuseppe Ottaviano (ott@fb.com)
@@ -224,11 +228,9 @@ template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const> constCastFunction(
     Function<ReturnType(Args...)>&&) noexcept;
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const noexcept> constCastFunction(
     Function<ReturnType(Args...) noexcept>&&) noexcept;
-#endif
 
 namespace detail {
 namespace function {
@@ -340,29 +342,21 @@ struct FunctionTraits<ReturnType(Args...)> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) {
@@ -391,29 +385,21 @@ struct FunctionTraits<ReturnType(Args...) const> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<const Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) {
     auto& fn = *static_cast<const Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) {
@@ -429,7 +415,6 @@ struct FunctionTraits<ReturnType(Args...) const> {
       FunctionTraitsSharedProxy<ConstSignature, false, ReturnType, Args...>;
 };
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) noexcept> {
   using Call = ReturnType (*)(CallArg<Args>..., Data&) noexcept;
@@ -446,29 +431,21 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
@@ -500,29 +477,21 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   template <typename Fun>
   static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<const Fun*>(static_cast<void*>(&p.tiny));
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   template <typename Fun>
   static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
     auto& fn = *static_cast<const Fun*>(p.big);
-#if __cpp_if_constexpr >= 201606L
     if constexpr (std::is_void<ReturnType>::value) {
       fn(static_cast<Args&&>(args)...);
     } else {
       return fn(static_cast<Args&&>(args)...);
     }
-#else
-    return static_cast<ReturnType>(fn(static_cast<Args&&>(args)...));
-#endif
   }
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
@@ -537,7 +506,6 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   using SharedProxy =
       FunctionTraitsSharedProxy<ConstSignature, true, ReturnType, Args...>;
 };
-#endif
 
 // These are control functions. They type-erase the operations of move-
 // construction, destruction, and conversion to bool.
@@ -545,17 +513,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 // The interface operations are noexcept, so the implementations are as well.
 // Having the implementations be noexcept in the type permits callers to omit
 // exception-handling machinery.
-
-// Portably aliasing the type pointer-to-noexcept-function is tricky. Compilers
-// sometimes reject the straightforward approach with an error. Even with this
-// technique, some compilers accept the program while discarding the exception
-// specification. This is best-effort.
-std::size_t exec_(Op, Data*, Data*) noexcept;
-using Exec = decltype(&exec_);
-#if __cpp_noexcept_function_type >= 201510L || FOLLY_CPLUSPLUS >= 201702
-static_assert(noexcept(Exec(nullptr)(Op{}, nullptr, nullptr)), "");
-#endif
-
+//
 // This is intentionally instantiated per size rather than per function in order
 // to minimize the number of instantiations. It would be safe to minimize
 // instantiations even more by simply having a single non-template function that
@@ -596,7 +554,7 @@ struct DispatchSmall {
       case Op::MOVE:
         ::new (static_cast<void*>(&dst->tiny)) Fun(static_cast<Fun&&>(
             *static_cast<Fun*>(static_cast<void*>(&src->tiny))));
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
       case Op::NUKE:
         static_cast<Fun*>(static_cast<void*>(&src->tiny))->~Fun();
         break;
@@ -642,7 +600,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   using Traits = detail::function::FunctionTraits<FunctionType>;
   using Call = typename Traits::Call;
-  using Exec = detail::function::Exec;
+  using Exec = std::size_t (*)(Op, Data*, Data*) noexcept;
 
   // The `data_` member is mutable to allow `constCastFunction` to work without
   // invoking undefined behavior. Const-correctness is only violated when
@@ -752,13 +710,13 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
             IsSmall,
             detail::function::DispatchSmall,
             detail::function::DispatchBig>>;
-    if FOLLY_CXX17_CONSTEXPR (detail::function::IsNullptrCompatible<Fun>) {
+    if constexpr (detail::function::IsNullptrCompatible<Fun>) {
       if (detail::function::isEmptyFunction(fun)) {
         return;
       }
     }
-    if FOLLY_CXX17_CONSTEXPR (IsSmall) {
-      if FOLLY_CXX17_CONSTEXPR (
+    if constexpr (IsSmall) {
+      if constexpr (
           !std::is_empty<Fun>::value || !is_trivially_copyable_v<Fun>) {
         ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
       }
@@ -998,7 +956,6 @@ Function<ReturnType(Args...) const> constCastFunction(
   return std::move(that);
 }
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const noexcept> constCastFunction(
     Function<ReturnType(Args...) noexcept>&& that) noexcept {
@@ -1011,7 +968,32 @@ Function<ReturnType(Args...) const noexcept> constCastFunction(
     Function<ReturnType(Args...) const noexcept>&& that) noexcept {
   return std::move(that);
 }
-#endif
+
+namespace detail {
+
+template <typename Void, typename>
+struct function_ctor_deduce_;
+
+template <typename P>
+struct function_ctor_deduce_<
+    std::enable_if_t<std::is_function<std::remove_pointer_t<P>>::value>,
+    P> {
+  using type = std::remove_pointer_t<P>;
+};
+
+template <typename F>
+struct function_ctor_deduce_<void_t<decltype(&F::operator())>, F> {
+  using type =
+      typename member_pointer_traits<decltype(&F::operator())>::member_type;
+};
+
+template <typename F>
+using function_ctor_deduce_t = typename function_ctor_deduce_<void, F>::type;
+
+} // namespace detail
+
+template <typename F>
+Function(F) -> Function<detail::function_ctor_deduce_t<F>>;
 
 /**
  * @class folly::FunctionRef
@@ -1100,7 +1082,7 @@ class FunctionRef<ReturnType(Args...)> final {
     // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
     // is a const type) inside `FunctionRef::call`
     auto& ref = fun; // work around forwarding lint advice
-    if FOLLY_CXX17_CONSTEXPR ( //
+    if constexpr ( //
         detail::function::IsNullptrCompatible<std::decay_t<Fun>>) {
       if (detail::function::isEmptyFunction(fun)) {
         return;

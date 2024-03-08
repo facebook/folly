@@ -671,7 +671,7 @@ TEST(ImmutableRequestTest, simple) {
   EXPECT_EQ(ird.value(), 4);
 }
 
-TEST(ImmutableRequestTest, type_traits) {
+TEST(ImmutableRequestTest, typeTraits) {
   using IRDI = ImmutableRequestData<int>;
 
   auto c1 = std::is_constructible<IRDI, int>::value;

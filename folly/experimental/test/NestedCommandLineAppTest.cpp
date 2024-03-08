@@ -236,6 +236,26 @@ TEST(ProgramOptionsTest, BuiltinCommand) {
       NestedCommandLineApp::kHelpCommand.str() + "nonsense"));
 }
 
+TEST(ProgramOptionsTest, ParseCallbacks) {
+  NestedCommandLineApp app;
+
+  std::vector<std::string> callbacks;
+  app.addCallback([&](auto&, auto&, auto&) { callbacks.emplace_back("1"); });
+  app.addCallback([&](auto&, auto&, auto&) { callbacks.emplace_back("2"); });
+
+  bool invoked = false;
+  app.addCommand("test", "", "", "", [&](auto&, auto&) {
+    ASSERT_EQ((std::vector<std::string>{"1", "2"}), callbacks);
+    invoked = true;
+  });
+
+  std::vector<std::string> args{"test"};
+  app.run(args);
+
+  ASSERT_TRUE(invoked);
+  ASSERT_EQ((std::vector<std::string>{"1", "2"}), callbacks);
+}
+
 TEST(ProgramOptionsTest, ConflictingFlags) {
   EXPECT_EQ(
       "running foo\n"

@@ -41,6 +41,7 @@
 #include <folly/Traits.h>
 #include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/Hint.h>
 #include <folly/memory/Malloc.h>
 
 //=============================================================================
@@ -424,7 +425,7 @@ class fbvector {
   static void S_uninitialized_fill_n_a(
       Allocator& a, T* dest, size_type sz, Args&&... args) {
     auto b = dest;
-    T* e;
+    T* e = nullptr;
     if (!folly::checked_add(&e, dest, sz)) {
       throw_exception<std::length_error>("FBVector exceeded max size.");
     }
@@ -440,7 +441,7 @@ class fbvector {
   static void S_uninitialized_fill_n(T* dest, size_type n) {
     if (folly::IsZeroInitializable<T>::value) {
       if (FOLLY_LIKELY(n != 0)) {
-        T* sz;
+        T* sz = nullptr;
         if (!folly::checked_add(&sz, dest, n)) {
           throw_exception<std::length_error>("FBVector exceeded max size.");
         }
@@ -448,7 +449,7 @@ class fbvector {
       }
     } else {
       auto b = dest;
-      T* e;
+      T* e = nullptr;
       if (!folly::checked_add(&e, dest, n)) {
         throw_exception<std::length_error>("FBVector exceeded max size.");
       }
@@ -467,7 +468,7 @@ class fbvector {
 
   static void S_uninitialized_fill_n(T* dest, size_type n, const T& value) {
     auto b = dest;
-    T* e;
+    T* e = nullptr;
     if (!folly::checked_add(&e, dest, n)) {
       throw_exception<std::length_error>("FBVector exceeded max size.");
     }
@@ -1349,6 +1350,7 @@ class fbvector {
       impl_.e_ += n;
     } else {
       if (folly::IsRelocatable<T>::value && usingStdAllocator) {
+        compiler_may_unsafely_assume(position != nullptr);
         std::memmove((void*)(position + n), (void*)position, tail * sizeof(T));
         impl_.e_ += n;
       } else {

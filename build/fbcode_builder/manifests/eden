@@ -52,11 +52,12 @@ osxfuse
 libcurl
 # Added so that OSS doesn't see system "python" which is python 2 on darwin and some linux
 python
+# TODO: teach getdeps to compile lmdb on Windows.
+lmdb
 
 [shipit.pathmap.fb=on]
 # for internal builds that use getdeps
 fbcode/fb303 = fb303
-fbcode/common/rust/fbwhoami = common/rust/fbwhoami
 fbcode/common/rust/shed = common/rust/shed
 fbcode/thrift/lib/rust = thrift/lib/rust
 

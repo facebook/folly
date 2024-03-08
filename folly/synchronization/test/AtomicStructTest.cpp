@@ -25,7 +25,7 @@ struct TwoBy32 {
   uint32_t right;
 };
 
-TEST(AtomicStruct, two_by_32) {
+TEST(AtomicStruct, twoBy32) {
   AtomicStruct<TwoBy32> a(TwoBy32{10, 20});
   TwoBy32 av = a;
   EXPECT_EQ(av.left, 10);
@@ -53,7 +53,7 @@ struct S {
   char x[I];
 };
 
-TEST(AtomicStruct, size_selection) {
+TEST(AtomicStruct, sizeSelection) {
   EXPECT_EQ(sizeof(AtomicStruct<S<1>>), 1);
   EXPECT_EQ(sizeof(AtomicStruct<S<2>>), 2);
   EXPECT_EQ(sizeof(AtomicStruct<S<3>>), 4);

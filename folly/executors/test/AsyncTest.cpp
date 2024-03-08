@@ -23,7 +23,7 @@
 
 using namespace folly;
 
-TEST(AsyncFunc, manual_executor) {
+TEST(AsyncFunc, manualExecutor) {
   FOLLY_PUSH_WARNING
   FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   auto x = std::make_shared<ManualExecutor>();
@@ -37,20 +37,20 @@ TEST(AsyncFunc, manual_executor) {
   FOLLY_POP_WARNING
 }
 
-TEST(AsyncFunc, value_lambda) {
+TEST(AsyncFunc, valueLambda) {
   auto lambda = [] { return 42; };
   auto future = async(lambda);
   EXPECT_EQ(42, std::move(future).get());
 }
 
-TEST(AsyncFunc, void_lambda) {
+TEST(AsyncFunc, voidLambda) {
   auto lambda = [] { /*do something*/ return; };
   auto future = async(lambda);
   // Futures with a void returning function, return Unit type
   EXPECT_TRUE((std::is_same<Unit, decltype(std::move(future).get())>::value));
 }
 
-TEST(AsyncFunc, moveonly_lambda) {
+TEST(AsyncFunc, moveonlyLambda) {
   auto lambda = [] { return std::make_unique<int>(42); };
   auto future = async(lambda);
   EXPECT_EQ(42, *std::move(future).get());

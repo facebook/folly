@@ -20,8 +20,8 @@
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
-#include <folly/dynamic.h>
-#include <folly/json.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
@@ -76,7 +76,7 @@ TEST(FormatOther, fbvector) {
   testFormatSeq<fbvector<int>>();
 }
 
-TEST(FormatOther, small_vector) {
+TEST(FormatOther, smallVector) {
   testFormatSeq<small_vector<int, 2>>();
 }
 

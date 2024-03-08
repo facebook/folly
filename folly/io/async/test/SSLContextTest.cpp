@@ -17,16 +17,18 @@
 #include <folly/io/async/SSLContext.h>
 
 #include <folly/FileUtil.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/test/SSLUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 #if !defined(FOLLY_CERTS_DIR)
-#define FOLLY_CERTS_DIR "folly/io/async/test/certs"
+#define FOLLY_CERTS_DIR "folly/io/async/test"
 #endif
 
 using namespace std;
+using folly::test::find_resource;
 
 namespace folly {
 
@@ -81,9 +83,9 @@ TEST_F(SSLContextTest, TestLoadCertKey) {
   const char* certPath = FOLLY_CERTS_DIR "/tests-cert.pem";
   const char* keyPath = FOLLY_CERTS_DIR "/tests-key.pem";
   const char* anotherKeyPath = FOLLY_CERTS_DIR "/client_key.pem";
-  folly::readFile(certPath, certData);
-  folly::readFile(keyPath, keyData);
-  folly::readFile(anotherKeyPath, anotherKeyData);
+  folly::readFile(find_resource(certPath).c_str(), certData);
+  folly::readFile(find_resource(keyPath).c_str(), keyData);
+  folly::readFile(find_resource(anotherKeyPath).c_str(), anotherKeyData);
 
   {
     SCOPED_TRACE("Valid cert/key pair from buffer");
@@ -96,23 +98,25 @@ TEST_F(SSLContextTest, TestLoadCertKey) {
   {
     SCOPED_TRACE("Valid cert/key pair from files");
     SSLContext tmpCtx;
-    tmpCtx.loadCertificate(certPath);
-    tmpCtx.loadPrivateKey(keyPath);
+    tmpCtx.loadCertificate(find_resource(certPath).c_str());
+    tmpCtx.loadPrivateKey(find_resource(keyPath).c_str());
     EXPECT_TRUE(tmpCtx.isCertKeyPairValid());
   }
 
   {
     SCOPED_TRACE("Invalid cert/key pair from file. Load cert first");
     SSLContext tmpCtx;
-    tmpCtx.loadCertificate(certPath);
-    EXPECT_THROW(tmpCtx.loadPrivateKey(anotherKeyPath), std::runtime_error);
+    tmpCtx.loadCertificate(find_resource(certPath).c_str());
+    EXPECT_THROW(
+        tmpCtx.loadPrivateKey(find_resource(anotherKeyPath).c_str()),
+        std::runtime_error);
   }
 
   {
     SCOPED_TRACE("Invalid cert/key pair from file. Load key first");
     SSLContext tmpCtx;
-    tmpCtx.loadPrivateKey(anotherKeyPath);
-    tmpCtx.loadCertificate(certPath);
+    tmpCtx.loadPrivateKey(find_resource(anotherKeyPath).c_str());
+    tmpCtx.loadCertificate(find_resource(certPath).c_str());
     EXPECT_FALSE(tmpCtx.isCertKeyPairValid());
   }
 
@@ -153,28 +157,32 @@ TEST_F(SSLContextTest, TestLoadCertKey) {
         "loadCertKeyPairFromFiles() must throw when cert/key mismatch");
     SSLContext tmpCtx;
     EXPECT_THROW(
-        tmpCtx.loadCertKeyPairFromFiles(certPath, anotherKeyPath),
+        tmpCtx.loadCertKeyPairFromFiles(
+            find_resource(certPath).c_str(),
+            find_resource(anotherKeyPath).c_str()),
         std::runtime_error);
   }
 
   {
     SCOPED_TRACE("loadCertKeyPairFromFiles() must succeed when cert/key match");
     SSLContext tmpCtx;
-    tmpCtx.loadCertKeyPairFromFiles(certPath, keyPath);
+    tmpCtx.loadCertKeyPairFromFiles(
+        find_resource(certPath).c_str(), find_resource(keyPath).c_str());
   }
 }
 
 TEST_F(SSLContextTest, TestLoadCertificateChain) {
   constexpr auto kCertChainPath = FOLLY_CERTS_DIR "/client_chain.pem";
+  auto path = find_resource(kCertChainPath);
   std::unique_ptr<SSLContext> ctx2;
   STACK_OF(X509) * stack;
   SSL_CTX* sctx;
 
   std::string contents;
-  EXPECT_TRUE(folly::readFile(kCertChainPath, contents));
+  EXPECT_TRUE(folly::readFile(path.c_str(), contents));
 
   ctx2 = std::make_unique<SSLContext>();
-  ctx2->loadCertificate(kCertChainPath, "PEM");
+  ctx2->loadCertificate(path.c_str(), "PEM");
   stack = nullptr;
   sctx = ctx2->getSSLCtx();
   SSL_CTX_get0_chain_certs(sctx, &stack);
@@ -192,7 +200,8 @@ TEST_F(SSLContextTest, TestLoadCertificateChain) {
 
 TEST_F(SSLContextTest, TestSetSupportedClientCAs) {
   constexpr auto kCertChainPath = FOLLY_CERTS_DIR "/client_chain.pem";
-  ctx.setSupportedClientCertificateAuthorityNamesFromFile(kCertChainPath);
+  ctx.setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kCertChainPath).c_str());
 
   STACK_OF(X509_NAME)* names = SSL_CTX_get_client_CA_list(ctx.getSSLCtx());
   EXPECT_EQ(2, sk_X509_NAME_num(names));

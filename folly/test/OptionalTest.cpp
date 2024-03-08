@@ -20,20 +20,38 @@
 #include <initializer_list>
 #include <iomanip>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
-#include <boost/optional.hpp>
-
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using std::shared_ptr;
 using std::unique_ptr;
+
+namespace {
+
+struct HashableStruct {};
+struct UnhashableStruct {};
+
+} // namespace
+
+namespace std {
+
+template <>
+struct hash<HashableStruct> {
+  [[maybe_unused]] size_t operator()(const HashableStruct&) const noexcept {
+    return 0;
+  }
+};
+
+} // namespace std
 
 namespace folly {
 
@@ -59,10 +77,13 @@ struct NoDefault {
 static_assert(sizeof(Optional<char>) == 2, "");
 static_assert(sizeof(Optional<int>) == 8, "");
 static_assert(sizeof(Optional<NoDefault>) == 4, "");
-static_assert(sizeof(Optional<char>) == sizeof(boost::optional<char>), "");
-static_assert(sizeof(Optional<short>) == sizeof(boost::optional<short>), "");
-static_assert(sizeof(Optional<int>) == sizeof(boost::optional<int>), "");
-static_assert(sizeof(Optional<double>) == sizeof(boost::optional<double>), "");
+static_assert(sizeof(Optional<char>) == sizeof(std::optional<char>), "");
+static_assert(sizeof(Optional<short>) == sizeof(std::optional<short>), "");
+static_assert(sizeof(Optional<int>) == sizeof(std::optional<int>), "");
+static_assert(sizeof(Optional<double>) == sizeof(std::optional<double>), "");
+
+static_assert(is_hashable_v<folly::Optional<HashableStruct>>);
+static_assert(!is_hashable_v<folly::Optional<UnhashableStruct>>);
 
 TEST(Optional, ConstexprConstructible) {
   // Use FOLLY_STORAGE_CONSTEXPR to work around MSVC not taking this.
@@ -180,7 +201,7 @@ bool operator==(const MoveTester& o1, const MoveTester& o2) {
 
 } // namespace
 
-TEST(Optional, value_or_rvalue_arg) {
+TEST(Optional, valueOrRvalueArg) {
   Optional<MoveTester> opt;
   MoveTester dflt = "hello";
   EXPECT_EQ("hello", opt.value_or(dflt));
@@ -206,7 +227,7 @@ TEST(Optional, value_or_rvalue_arg) {
   EXPECT_EQ("hello", dflt); // only moved if used
 }
 
-TEST(Optional, value_or_noncopyable) {
+TEST(Optional, valueOrNoncopyable) {
   Optional<std::unique_ptr<int>> opt;
   std::unique_ptr<int> dflt(new int(42));
   EXPECT_EQ(42, *std::move(opt).value_or(std::move(dflt)));
@@ -221,14 +242,14 @@ struct ExpectingDeleter {
   }
 };
 
-TEST(Optional, value_move) {
+TEST(Optional, valueMove) {
   auto ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
                  {new int(42), ExpectingDeleter{1337}})
                  .value();
   *ptr = 1337;
 }
 
-TEST(Optional, dereference_move) {
+TEST(Optional, dereferenceMove) {
   auto ptr = *Optional<std::unique_ptr<int, ExpectingDeleter>>(
       {new int(42), ExpectingDeleter{1337}});
   *ptr = 1337;
@@ -418,9 +439,9 @@ TEST(Optional, Comparisons) {
   EXPECT_FALSE(o1 > 2);
   */
 
-  // boost::optional does support comparison with contained value, which can
+  // std::optional does support comparison with contained value, which can
   // lead to confusion when a bool is contained
-  boost::optional<int> boi(3);
+  std::optional<int> boi(3);
   EXPECT_TRUE(boi < 5);
   EXPECT_TRUE(boi <= 4);
   EXPECT_TRUE(boi == 3);
@@ -434,7 +455,7 @@ TEST(Optional, Comparisons) {
   EXPECT_TRUE(5 >= boi);
   EXPECT_TRUE(6 > boi);
 
-  boost::optional<bool> bob(false);
+  std::optional<bool> bob(false);
   EXPECT_TRUE((bool)bob);
   EXPECT_TRUE(bob == false); // well that was confusing
   EXPECT_FALSE(bob != false);

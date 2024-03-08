@@ -314,7 +314,7 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     // by 'poison' task added in join() or stop().
     if (FOLLY_UNLIKELY(!task || task.value().poison)) {
       // Actually remove the thread from the list.
-      SharedMutex::WriteHolder w{&threadListLock_};
+      std::unique_lock w{threadListLock_};
       if (taskShouldStop(task)) {
         for (auto& o : observers_) {
           o->threadStopped(thread.get());
@@ -333,7 +333,7 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     runTask(thread, std::move(task.value()));
 
     if (FOLLY_UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
-      SharedMutex::WriteHolder w{&threadListLock_};
+      std::unique_lock w{threadListLock_};
       if (tryDecrToStop()) {
         threadList_.remove(thread);
         stoppedThreads_.add(thread);

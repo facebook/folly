@@ -32,7 +32,7 @@ QuantileHistogram<Q> QuantileHistogram<Q>::merge(
   }
   merged.count_ = 0;
 
-  for (const auto qhist : qhists) {
+  for (const auto& qhist : qhists) {
     merged.count_ += qhist.count();
     if (qhist.min() < merged.min()) {
       merged.locations_[0] = qhist.min();
@@ -48,7 +48,7 @@ QuantileHistogram<Q> QuantileHistogram<Q>::merge(
 
   for (size_t i = 0; i < quantiles().size(); i++) {
     double weighted = 0.0;
-    for (const auto qhist : qhists) {
+    for (const auto& qhist : qhists) {
       weighted += qhist.locations_[i] * qhist.count();
     }
     merged.locations_[i] = weighted / merged.count();
@@ -222,35 +222,35 @@ void CPUShardedQuantileHistogram<Q>::addValue(double value) {
 
 template <class Q>
 double CPUShardedQuantileHistogram<Q>::estimateQuantile(double q) {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.estimateQuantile(q);
 }
 
 template <class Q>
 uint64_t CPUShardedQuantileHistogram<Q>::count() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.count();
 }
 
 template <class Q>
 double CPUShardedQuantileHistogram<Q>::min() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.min();
 }
 
 template <class Q>
 double CPUShardedQuantileHistogram<Q>::max() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.max();
 }
 
 template <class Q>
 std::string CPUShardedQuantileHistogram<Q>::debugString() {
-  SharedMutex::WriteHolder r{&mtx_};
+  std::unique_lock r{mtx_};
   flush();
   return mergedHist_.debugString();
 }

@@ -30,18 +30,16 @@ template <typename T, typename... Others>
 std::vector<T> toVector(T firstItem, Others... items) {
   std::vector<T> itemsVector;
   itemsVector.push_back(std::move(firstItem));
-  [[maybe_unused]] int dummy[] = {
-      (itemsVector.push_back(std::move(items)), 0)...};
+  (void(itemsVector.push_back(std::move(items))), ...);
   return itemsVector;
 }
 
-template <typename TPair, typename... Others>
-folly::F14FastMap<typename TPair::first_type, typename TPair::second_type>
-toMap(TPair firstPair, Others... items) {
-  folly::F14FastMap<typename TPair::first_type, typename TPair::second_type>
-      itemsMap;
+template <typename Key, typename Mapped, typename... Others>
+folly::F14FastMap<std::remove_const_t<Key>, Mapped> toMap(
+    std::pair<Key, Mapped> firstPair, Others... items) {
+  folly::F14FastMap<std::remove_const_t<Key>, Mapped> itemsMap;
   itemsMap.insert(std::move(firstPair));
-  [[maybe_unused]] int dummy[] = {(itemsMap.insert(std::move(items)), 0)...};
+  (void(itemsMap.insert(std::move(items))), ...);
   return itemsMap;
 }
 
@@ -131,7 +129,7 @@ class ChannelConsumerBase {
       auto callbackHandle = consumeChannelWithCallback(
           std::move(receiver),
           getExecutor(),
-          [=](Try<TValue> resultTry) -> folly::coro::Task<bool> {
+          [=, this](Try<TValue> resultTry) -> folly::coro::Task<bool> {
             onNext(std::move(resultTry));
             co_return co_await folly::coro::detachOnCancel(
                 continueConsuming_.getSemiFuture());
@@ -225,6 +223,7 @@ class StressTestProducer {
       Sender<TValue> sender, std::optional<exception_wrapper> closeException) {
     auto produceTask = folly::coro::co_invoke(
         [=,
+         this,
          sender = std::move(sender),
          ex = std::move(closeException)]() mutable -> folly::coro::Task<void> {
           for (int i = 1; !stopped_.load(std::memory_order_relaxed); i++) {

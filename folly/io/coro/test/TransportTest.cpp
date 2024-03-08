@@ -94,6 +94,22 @@ TEST_F(ServerTransportTest, ConnectCancelled) {
   });
 }
 
+TEST_F(TransportTest, ConnectWithOptsAndBindAddr) {
+  run([&]() -> Task<> {
+    TestServer srv1;
+    TestServer srv2;
+    SocketOptionMap opts{
+        {{SOL_SOCKET, SO_REUSEADDR}, 1},
+    };
+    auto c1 = co_await Transport::newConnectedSocket(
+        &evb, srv1.getAddress(), 0ms, opts);
+    // Connect with same local port, this would fail without SO_REUSEADDR.
+    auto c2 = co_await Transport::newConnectedSocket(
+        &evb, srv2.getAddress(), 0ms, opts, c1.getLocalAddress());
+    EXPECT_EQ(c1.getLocalAddress(), c2.getLocalAddress());
+  });
+}
+
 TEST_F(ServerTransportTest, SimpleRead) {
   run([&]() -> Task<> {
     constexpr auto kBufSize = 65536;

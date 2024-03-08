@@ -229,7 +229,7 @@ void baseFormatterCallImpl(
 
     int argIndex = 0;
     auto piece = arg.splitKey<true>(); // empty key component is okay
-    if FOLLY_CXX17_CONSTEXPR (containerMode) {
+    if constexpr (containerMode) {
       arg.enforce(
           arg.width != FormatArg::kDynamicWidth,
           "dynamic field width not supported in vformat()");
@@ -474,7 +474,7 @@ class FormatValue<
     typedef typename std::make_unsigned<T>::type UT;
     UT uval;
     char sign;
-    if FOLLY_CXX17_CONSTEXPR (std::is_signed<T>::value) {
+    if constexpr (std::is_signed<T>::value) {
       if (folly::is_negative(val_)) {
         // avoid unary negation of unsigned types, which may be warned against
         // avoid ub signed integer overflow, which ubsan checks against

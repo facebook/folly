@@ -240,7 +240,12 @@ void HHWheelTimerBase<Duration>::timeoutExpired() noexcept {
   // cause inconsistencies in the state of this object. As such, we need
   // to treat these calls slightly differently.
   CHECK(!processingCallbacksGuard_);
+  FOLLY_PUSH_WARNING
+#if __GNUC__ >= 12
+  FOLLY_GCC_DISABLE_WARNING("-Wdangling-pointer")
+#endif
   processingCallbacksGuard_ = &isDestroyed;
+  FOLLY_POP_WARNING
   auto reEntryGuard = folly::makeGuard([&] {
     if (!isDestroyed) {
       processingCallbacksGuard_ = nullptr;

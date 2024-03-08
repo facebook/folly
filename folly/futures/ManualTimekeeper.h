@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <map>
+#include <memory>
 
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
@@ -51,10 +52,26 @@ class ManualTimekeeper : public folly::Timekeeper {
   std::size_t numScheduled() const;
 
  private:
-  Executor::KeepAlive<Executor> executor_;
+  class TimeoutHandler {
+   public:
+    explicit TimeoutHandler(Promise<Unit>&& promise);
+
+    static std::shared_ptr<TimeoutHandler> create(Promise<Unit>&& promise);
+
+    void trySetTimeout();
+    void trySetException(exception_wrapper&& ex);
+
+   private:
+    std::atomic_bool fulfilled_{false};
+    Promise<Unit> promise_;
+
+    bool canSet();
+  };
+
   std::chrono::steady_clock::time_point now_;
-  folly::Synchronized<
-      std::multimap<std::chrono::steady_clock::time_point, Promise<Unit>>>
+  folly::Synchronized<std::multimap<
+      std::chrono::steady_clock::time_point,
+      std::shared_ptr<TimeoutHandler>>>
       schedule_;
 };
 

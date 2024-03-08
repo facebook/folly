@@ -32,14 +32,28 @@
 namespace folly {
 namespace detail {
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
+template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
 bool generic_checked_add(T* result, T a, T b) {
-  if (FOLLY_LIKELY(a < std::numeric_limits<T>::max() - b)) {
+  if constexpr (std::is_signed_v<T>) {
+    if (a >= 0) {
+      if (FOLLY_UNLIKELY(std::numeric_limits<T>::max() - a < b)) {
+        *result = {};
+        return false;
+      }
+    } else if (FOLLY_UNLIKELY(b < std::numeric_limits<T>::min() - a)) {
+      *result = {};
+      return false;
+    }
     *result = a + b;
     return true;
   } else {
-    *result = {};
-    return false;
+    if (FOLLY_LIKELY(a < std::numeric_limits<T>::max() - b)) {
+      *result = a + b;
+      return true;
+    } else {
+      *result = {};
+      return false;
+    }
   }
 }
 
@@ -110,7 +124,7 @@ std::enable_if_t<sizeof(T) == sizeof(uint64_t), bool> generic_checked_mul(
 }
 } // namespace detail
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
+template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
 bool checked_add(T* result, T a, T b) {
 #if FOLLY_HAS_BUILTIN(__builtin_add_overflow)
   if (FOLLY_LIKELY(!__builtin_add_overflow(a, b, result))) {

@@ -95,14 +95,14 @@ TEST(TestUtilsRangeTest, Wide) {
 // and friends would be liable to break when gtest further changes their
 // printer. Disable the test; no other folly tests are broken on account of this
 // PrintTo discrepancy.
-TEST(TestUtilsRangeTest, DISABLED_Utf16) {
+TEST(TestUtilsRangeTest, DISABLEDUtf16) {
   constexpr auto kHelloStringPiece = u"hello"_sp;
   const auto kHelloString = u"hello"s;
   EXPECT_EQ(PrintToString(kHelloString), PrintToString(kHelloStringPiece));
 }
 
 // Also broken on platform010, as with TestUtilsRangeTest.Utf16
-TEST(TestUtilsRangeTest, DISABLED_Utf32) {
+TEST(TestUtilsRangeTest, DISABLEDUtf32) {
   constexpr auto kHelloStringPiece = U"hello"_sp;
   const auto kHelloString = U"hello"s;
   EXPECT_EQ(PrintToString(kHelloString), PrintToString(kHelloStringPiece));

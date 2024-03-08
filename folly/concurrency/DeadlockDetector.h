@@ -29,9 +29,7 @@ class DeadlockDetectorFactory {
  public:
   virtual ~DeadlockDetectorFactory() {}
   virtual std::unique_ptr<DeadlockDetector> create(
-      Executor* executor,
-      const std::string& name,
-      std::unique_ptr<WorkerProvider> threadIdCollector) = 0;
+      Executor* executor, const std::string& name) = 0;
   static DeadlockDetectorFactory* instance();
 };
 

@@ -62,3 +62,8 @@ else
 fi
 
 $DIFF <("$FOLLY_ADDR2LINE" -e "$BINARY_TO_SYMBOLIZE" -i -f -a "${ADDRS[@]}") <("$LLVM_ADDR2LINE" -e "$BINARY_TO_SYMBOLIZE" -i -f -a "${ADDRS[@]}" | sed -E 's| \(discriminator [0-9]+\)||g') | "$COLORDIFF"
+
+# Test that reading from stdin and args yields the same result.
+$DIFF \
+    <("$FOLLY_ADDR2LINE" -e "$BINARY_TO_SYMBOLIZE" -i -f -a "${ADDRS[@]}") \
+    <(printf '%s\n' "${ADDRS[@]}" | "$FOLLY_ADDR2LINE" -e "$BINARY_TO_SYMBOLIZE" -i -f -a)

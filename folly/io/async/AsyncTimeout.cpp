@@ -26,31 +26,6 @@
 
 namespace folly {
 
-AsyncTimeout::AsyncTimeout(TimeoutManager* timeoutManager)
-    : timeoutManager_(timeoutManager) {
-  event_.eb_event_set(
-      NetworkSocket::invalid_handle_value,
-      EV_TIMEOUT,
-      &AsyncTimeout::libeventCallback,
-      this);
-  event_.eb_ev_base(nullptr);
-  timeoutManager_->attachTimeoutManager(
-      this, TimeoutManager::InternalEnum::NORMAL);
-}
-
-AsyncTimeout::AsyncTimeout(EventBase* eventBase) : timeoutManager_(eventBase) {
-  event_.eb_event_set(
-      NetworkSocket::invalid_handle_value,
-      EV_TIMEOUT,
-      &AsyncTimeout::libeventCallback,
-      this);
-  event_.eb_ev_base(nullptr);
-  if (eventBase) {
-    timeoutManager_->attachTimeoutManager(
-        this, TimeoutManager::InternalEnum::NORMAL);
-  }
-}
-
 AsyncTimeout::AsyncTimeout(
     TimeoutManager* timeoutManager, InternalEnum internal)
     : timeoutManager_(timeoutManager) {
@@ -60,28 +35,22 @@ AsyncTimeout::AsyncTimeout(
       &AsyncTimeout::libeventCallback,
       this);
   event_.eb_ev_base(nullptr);
-  timeoutManager_->attachTimeoutManager(this, internal);
+  if (timeoutManager) {
+    timeoutManager_->attachTimeoutManager(this, internal);
+  }
 }
+
+AsyncTimeout::AsyncTimeout(TimeoutManager* timeoutManager)
+    : AsyncTimeout(timeoutManager, TimeoutManager::InternalEnum::NORMAL) {}
+
+AsyncTimeout::AsyncTimeout(EventBase* eventBase)
+    : AsyncTimeout(eventBase, TimeoutManager::InternalEnum::NORMAL) {}
 
 AsyncTimeout::AsyncTimeout(EventBase* eventBase, InternalEnum internal)
-    : timeoutManager_(eventBase) {
-  event_.eb_event_set(
-      NetworkSocket::invalid_handle_value,
-      EV_TIMEOUT,
-      &AsyncTimeout::libeventCallback,
-      this);
-  event_.eb_ev_base(nullptr);
-  timeoutManager_->attachTimeoutManager(this, internal);
-}
+    : AsyncTimeout(static_cast<TimeoutManager*>(eventBase), internal) {}
 
-AsyncTimeout::AsyncTimeout() : timeoutManager_(nullptr) {
-  event_.eb_event_set(
-      NetworkSocket::invalid_handle_value,
-      EV_TIMEOUT,
-      &AsyncTimeout::libeventCallback,
-      this);
-  event_.eb_ev_base(nullptr);
-}
+AsyncTimeout::AsyncTimeout()
+    : AsyncTimeout(static_cast<TimeoutManager*>(nullptr)) {}
 
 AsyncTimeout::~AsyncTimeout() {
   cancelTimeout();

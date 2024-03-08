@@ -182,7 +182,8 @@ Executor* DeferredExecutor::getExecutor() const {
   return executor_.get();
 }
 
-void DeferredExecutor::setExecutor(folly::Executor::KeepAlive<> executor) {
+void DeferredExecutor::setExecutor(
+    folly::Executor::KeepAlive<> executor, bool inlineUnsafe) {
   if (nestedExecutors_) {
     auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
     for (auto& nestedExecutor : *nestedExecutors) {
@@ -211,7 +212,11 @@ void DeferredExecutor::setExecutor(folly::Executor::KeepAlive<> executor) {
           std::memory_order_relaxed)) {
     terminate_unexpected_state("DeferredExecutor::setExecutor", state);
   }
-  executor_.copy().add(std::exchange(func_, nullptr));
+  if (inlineUnsafe) {
+    std::exchange(func_, nullptr)(executor_.copy());
+  } else {
+    executor_.copy().add(std::exchange(func_, nullptr));
+  }
 }
 
 void DeferredExecutor::setNestedExecutors(
@@ -335,7 +340,7 @@ void CoreBase::raise(exception_wrapper e) {
         return;
       }
       assert(interrupt & InterruptHasHandler);
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     }
     case InterruptHasHandler: { // invoke the stored handler
       auto pointer = interrupt & ~InterruptMask;
@@ -493,7 +498,7 @@ void CoreBase::setResult_(Executor::KeepAlive<>&& completingKA) {
               std::memory_order_acquire)) {
         return;
       }
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
 
     case State::OnlyCallback:
     case State::OnlyCallbackAllowInline:
@@ -532,7 +537,7 @@ void CoreBase::setProxy_(CoreBase* proxy) {
               std::memory_order_acquire)) {
         break;
       }
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
 
     case State::OnlyCallback:
     case State::OnlyCallbackAllowInline:

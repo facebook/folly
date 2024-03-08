@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+//
+// Docs: https://fburl.com/fbcref_hash
+//
+
 /**
  * folly::hash provides hashing algorithms, as well as algorithms to combine
  * multiple hashes/hashable objects together.
@@ -29,6 +33,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -40,10 +45,6 @@
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/lang/Bits.h>
-
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view>
-#endif
 
 namespace folly {
 namespace hash {
@@ -528,7 +529,7 @@ struct integral_hasher {
       auto const u = to_unsigned(i);
       auto const hi = static_cast<uint64_t>(u >> sizeof(Int) * 4);
       auto const lo = static_cast<uint64_t>(u);
-      return hash::hash_128_to_64(hi, lo);
+      return static_cast<size_t>(hash::hash_128_to_64(hi, lo));
     }
   }
 };
@@ -610,7 +611,8 @@ struct IsAvalanchingHasher;
 
 namespace detail {
 template <typename Hasher, typename Void = void>
-struct IsAvalanchingHasherFromMemberType : std::false_type {};
+struct IsAvalanchingHasherFromMemberType
+    : bool_constant<!require_sizeof<Hasher>> {};
 
 template <typename Hasher>
 struct IsAvalanchingHasherFromMemberType<
@@ -704,7 +706,6 @@ struct hasher<std::string> {
 template <typename K>
 struct IsAvalanchingHasher<hasher<std::string>, K> : std::true_type {};
 
-#if FOLLY_HAS_STRING_VIEW
 template <>
 struct hasher<std::string_view> {
   using folly_is_avalanching = std::true_type;
@@ -716,7 +717,6 @@ struct hasher<std::string_view> {
 };
 template <typename K>
 struct IsAvalanchingHasher<hasher<std::string_view>, K> : std::true_type {};
-#endif
 
 template <typename T>
 struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {

@@ -162,7 +162,7 @@ class CPUShardedQuantileHistogram {
   std::string debugString();
 
  private:
-  SharedMutex mtx_;
+  mutable SharedMutex mtx_;
   QuantileHistogram<Q> mergedHist_;
   DigestBuilder<QuantileHistogram<Q>> histBuilder_;
 

@@ -2,8 +2,8 @@
 name = rocksdb
 
 [download]
-url = https://github.com/facebook/rocksdb/archive/refs/tags/v7.7.3.tar.gz
-sha256 = b8ac9784a342b2e314c821f6d701148912215666ac5e9bdbccd93cf3767cb611
+url = https://github.com/facebook/rocksdb/archive/refs/tags/v8.7.3.zip
+sha256 = 36c06b61dc167f2455990d60dd88d734b73aa8c4dfc095243efd0243834c6cd3
 
 [dependencies]
 lz4
@@ -11,7 +11,7 @@ snappy
 
 [build]
 builder = cmake
-subdir = rocksdb-7.7.3
+subdir = rocksdb-8.7.3
 
 [cmake.defines]
 WITH_SNAPPY=ON
@@ -22,10 +22,6 @@ WITH_BENCHMARK_TOOLS=OFF
 # and there's no clear way to make it pick the shared gflags
 # so just turn it off.
 WITH_GFLAGS=OFF
-# mac pro machines don't have some of the newer features that
-# rocksdb enables by default; ask it to disable their use even
-# when building on new hardware
-PORTABLE = ON
 # Disable the use of -Werror
 FAIL_ON_WARNINGS = OFF
 

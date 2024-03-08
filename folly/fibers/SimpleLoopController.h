@@ -66,6 +66,7 @@ class SimpleLoopController : public LoopController {
   int remoteScheduleCalled() const { return remoteScheduleCalled_; }
 
   void runLoop() override {
+    runLoopThread_.store(std::this_thread::get_id(), std::memory_order_release);
     do {
       if (remoteLoopRun_ < remoteScheduleCalled_) {
         for (; remoteLoopRun_ < remoteScheduleCalled_; ++remoteLoopRun_) {
@@ -77,6 +78,7 @@ class SimpleLoopController : public LoopController {
         fm_->loopUntilNoReadyImpl();
       }
     } while (remoteLoopRun_ < remoteScheduleCalled_);
+    runLoopThread_.store({}, std::memory_order_release);
   }
 
   void runEagerFiber(Fiber* fiber) override { fm_->runEagerFiberImpl(fiber); }
@@ -85,9 +87,13 @@ class SimpleLoopController : public LoopController {
 
   HHWheelTimer* timer() override { return timer_.get(); }
 
-  bool isInLoopThread() const {
-    auto tid = loopThread_.load(std::memory_order_relaxed);
-    return tid == std::thread::id() || tid == std::this_thread::get_id();
+  bool isInLoopThread() override {
+    // One of the two will be set depending on how FiberManager is being looped
+    // in tests.
+    auto loopThread = loopThread_.load(std::memory_order_relaxed);
+    auto runInLoopThread = runLoopThread_.load(std::memory_order_relaxed);
+    auto thisThread = std::this_thread::get_id();
+    return loopThread == thisThread || runInLoopThread == thisThread;
   }
 
  private:
@@ -97,6 +103,7 @@ class SimpleLoopController : public LoopController {
   std::atomic<int> remoteScheduleCalled_{0};
   int remoteLoopRun_{0};
   std::atomic<std::thread::id> loopThread_;
+  std::atomic<std::thread::id> runLoopThread_;
 
   class SimpleTimeoutManager;
   std::unique_ptr<SimpleTimeoutManager> timeoutManager_;

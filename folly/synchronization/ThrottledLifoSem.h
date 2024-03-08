@@ -86,10 +86,8 @@ class ThrottledLifoSem {
   }
 
   // Returns true if there are enough waiters to consume the updated value, even
-  // though they may not be awoken immediately. Note that this not include
-  // waiters that are still in the spinning state, so false may be returned even
-  // though those could pick up the new value.
-  // Silently saturates if value is already 2^32-1
+  // though they may not be awoken immediately. Silently saturates if value is
+  // already 2^32-1.
   bool post(uint32_t n = 1) {
     uint32_t newValue;
     uint64_t oldState = state_.load(std::memory_order_relaxed);
@@ -134,13 +132,20 @@ class ThrottledLifoSem {
   bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline,
       const WaitOptions& opt = {}) {
+    // Fast path, avoid incrementing num waiters if value is positive.
+    if (try_wait()) {
+      return true;
+    }
+
+    state_.fetch_add(kNumWaitersInc, std::memory_order_seq_cst);
+
     switch (detail::spin_pause_until(deadline, opt, [this] {
-      return tryWaitImpl<DecrNumWaiters::Never>();
+      return tryWaitImpl<DecrNumWaiters::OnSuccess>();
     })) {
       case detail::spin_result::success:
         return true;
       case detail::spin_result::timeout:
-        return false;
+        return tryWaitOnTimeout();
       case detail::spin_result::advance:
         break;
     }
@@ -193,11 +198,13 @@ class ThrottledLifoSem {
     return false;
   }
 
+  // If timed out after incrementing the number of waiters, we may have promised
+  // a waiting thread if post() returned true, so we need to give a last look.
+  bool tryWaitOnTimeout() { return tryWaitImpl<DecrNumWaiters::Always>(); }
+
   template <typename Clock, typename Duration>
   FOLLY_NOINLINE bool tryWaitUntilSlow(
       const std::chrono::time_point<Clock, Duration>& deadline) {
-    state_.fetch_add(kNumWaitersInc, std::memory_order_seq_cst);
-
     // After the first iteration we own the waking bit.
     for (bool ownWaking = false;; ownWaking = true) {
       Optional<Waiter> waiter;
@@ -230,9 +237,7 @@ class ThrottledLifoSem {
           // Here we do want to spin, use the default WaitOptions.
           waiter->wakeup.wait();
         } else {
-          // Timed out, but we may have promised a waiting thread if post()
-          // returned true, so we need to give a last look.
-          return tryWaitImpl<DecrNumWaiters::Always>();
+          return tryWaitOnTimeout();
         }
       }
 
@@ -261,7 +266,7 @@ class ThrottledLifoSem {
 
       // Same as the other timeout, need to give last look at value.
       const bool timedout = Clock::now() >= deadline;
-      const bool success = timedout ? tryWaitImpl<DecrNumWaiters::Always>()
+      const bool success = timedout ? tryWaitOnTimeout()
                                     : tryWaitImpl<DecrNumWaiters::OnSuccess>();
       if (success || timedout) {
         // We are the waking thread, ensure we pass the waking state to another

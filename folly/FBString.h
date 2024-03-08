@@ -28,6 +28,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -42,10 +43,6 @@
 #include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
-
-#if FOLLY_HAS_STRING_VIEW
-#include <string_view>
-#endif
 
 #if FOLLY_CPLUSPLUS >= 202002L
 #include <compare>
@@ -699,13 +696,13 @@ inline void fbstring_core<Char>::initSmall(
     switch ((byteSize + wordWidth - 1) / wordWidth) { // Number of words.
       case 3:
         ml_.capacity_ = reinterpret_cast<const size_t*>(data)[2];
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
       case 2:
         ml_.size_ = reinterpret_cast<const size_t*>(data)[1];
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
       case 1:
         ml_.data_ = *reinterpret_cast<Char**>(const_cast<Char*>(data));
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
       case 0:
         break;
     }
@@ -1016,6 +1013,8 @@ class basic_fbstring {
   typedef std::true_type IsRelocatable;
 
  private:
+  using string_view_type = std::basic_string_view<value_type, traits_type>;
+
   static void procrustes(size_type& n, size_type nmax) {
     if (n > nmax) {
       n = nmax;
@@ -1023,6 +1022,11 @@ class basic_fbstring {
   }
 
   static size_type traitsLength(const value_type* s);
+
+  struct string_view_ctor {};
+  FOLLY_NOINLINE basic_fbstring(
+      string_view_type view, const A&, string_view_ctor)
+      : store_(view.data(), view.size()) {}
 
  public:
   // C++11 21.4.2 construct/copy/destroy
@@ -1103,6 +1107,26 @@ class basic_fbstring {
     assign(il.begin(), il.end());
   }
 
+  template <
+      typename StringViewLike,
+      std::enable_if_t<
+          std::is_convertible_v<const StringViewLike&, string_view_type> &&
+              !std::is_convertible_v<const StringViewLike&, const value_type*>,
+          int> = 0>
+  explicit basic_fbstring(const StringViewLike& view, const A& a = A())
+      : basic_fbstring(string_view_type(view), a, string_view_ctor{}) {}
+
+  template <
+      typename StringViewLike,
+      std::enable_if_t<
+          std::is_convertible_v<const StringViewLike&, string_view_type> &&
+              !std::is_convertible_v<const StringViewLike&, const value_type*>,
+          int> = 0>
+  basic_fbstring(
+      const StringViewLike& view, size_type pos, size_type n, const A& a = A())
+      : basic_fbstring(
+            string_view_type(view).substr(pos, n), a, string_view_ctor{}) {}
+
   ~basic_fbstring() noexcept {}
 
   basic_fbstring& operator=(const basic_fbstring& lhs);
@@ -1148,11 +1172,7 @@ class basic_fbstring {
     return assign(il.begin(), il.end());
   }
 
-#if FOLLY_HAS_STRING_VIEW
-  operator std::basic_string_view<value_type, traits_type>() const noexcept {
-    return {data(), size()};
-  }
-#endif
+  operator string_view_type() const noexcept { return {data(), size()}; }
 
   // C++11 21.4.3 iterators:
   iterator begin() { return store_.mutableData(); }

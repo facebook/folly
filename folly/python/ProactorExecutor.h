@@ -35,7 +35,7 @@ class ProactorExecutorCallback {
     return reinterpret_cast<uintptr_t>(&overlapped_);
   }
 
-  void send(FOLLY_MAYBE_UNUSED uint64_t iocp) const {
+  void send([[maybe_unused]] uint64_t iocp) const {
 #ifdef WIN32
     auto handle = reinterpret_cast<HANDLE>(iocp);
     auto success =

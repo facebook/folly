@@ -25,8 +25,9 @@ SemiFuture<Unit> ManualTimekeeper::after(HighResDuration dur) {
   if (dur.count() == 0) {
     contract.first.setValue(folly::unit);
   } else {
-    schedule_.withWLock([&contract, this, &dur](auto& schedule) {
-      schedule.insert(std::make_pair(now_ + dur, std::move(contract.first)));
+    auto handler = TimeoutHandler::create(std::move(contract.first));
+    schedule_.withWLock([&handler, key = now_ + dur](auto& schedule) {
+      schedule.emplace(key, std::move(handler));
     });
   }
   return std::move(contract.second);
@@ -38,7 +39,7 @@ void ManualTimekeeper::advance(Duration dur) {
     auto start = schedule.begin();
     auto end = schedule.upper_bound(now_);
     for (auto iter = start; iter != end; iter++) {
-      iter->second.setValue(folly::unit);
+      iter->second->trySetTimeout();
     }
     schedule.erase(start, end);
   });
@@ -50,6 +51,37 @@ std::chrono::steady_clock::time_point ManualTimekeeper::now() const {
 
 std::size_t ManualTimekeeper::numScheduled() const {
   return schedule_.withRLock([](const auto& sched) { return sched.size(); });
+}
+
+/* static */ std::shared_ptr<ManualTimekeeper::TimeoutHandler>
+ManualTimekeeper::TimeoutHandler::create(Promise<Unit>&& promise) {
+  auto handler = std::make_shared<TimeoutHandler>(std::move(promise));
+  handler->promise_.setInterruptHandler(
+      [handler = std::weak_ptr(handler)](exception_wrapper ew) {
+        if (auto localTimeout = handler.lock()) {
+          localTimeout->trySetException(std::move(ew));
+        }
+      });
+  return handler;
+}
+
+ManualTimekeeper::TimeoutHandler::TimeoutHandler(Promise<Unit>&& promise)
+    : promise_(std::move(promise)) {}
+
+void ManualTimekeeper::TimeoutHandler::trySetTimeout() {
+  if (canSet()) {
+    promise_.setValue(unit);
+  }
+}
+void ManualTimekeeper::TimeoutHandler::trySetException(exception_wrapper&& ex) {
+  if (canSet()) {
+    promise_.setException(std::move(ex));
+  }
+}
+
+bool ManualTimekeeper::TimeoutHandler::canSet() {
+  bool expected = false;
+  return fulfilled_.compare_exchange_strong(expected, /* desired */ true);
 }
 
 } // namespace folly

@@ -106,8 +106,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    * be executed before it returns. Specifically, IOThreadPoolExecutor's stop()
    * behaves like join().
    */
-  void stop();
-  void join();
+  virtual void stop();
+  virtual void join();
 
   /**
    * Execute f against all ThreadPoolExecutors, primarily for retrieving and
@@ -139,7 +139,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    * expensive.
    */
   std::chrono::nanoseconds getUsedCpuTime() const {
-    SharedMutex::ReadHolder r{&threadListLock_};
+    std::shared_lock r{threadListLock_};
     return threadList_.getUsedCpuTime();
   }
 
@@ -172,11 +172,12 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    */
   class Observer {
    public:
-    virtual void threadStarted(ThreadHandle*) = 0;
-    virtual void threadStopped(ThreadHandle*) = 0;
+    virtual ~Observer() = default;
+
+    virtual void threadStarted(ThreadHandle*) {}
+    virtual void threadStopped(ThreadHandle*) {}
     virtual void threadPreviouslyStarted(ThreadHandle* h) { threadStarted(h); }
     virtual void threadNotYetStopped(ThreadHandle* h) { threadStopped(h); }
-    virtual ~Observer() = default;
   };
 
   virtual void addObserver(std::shared_ptr<Observer>);
@@ -254,6 +255,9 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   // require a lock on ThreadPoolExecutor.
   void joinStoppedThreads(size_t n);
 
+  // To implement shutdown.
+  void stopAndJoinAllThreads(bool isJoin);
+
   // Create a suitable Thread struct
   virtual ThreadPtr makeThread() { return std::make_shared<Thread>(this); }
 
@@ -262,6 +266,10 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   // Prerequisite: threadListLock_ readlocked or writelocked
   virtual size_t getPendingTaskCountImpl() const = 0;
+
+  // Called with threadListLock_ readlocked or writelocked.
+  virtual void handleObserverRegisterThread(ThreadHandle*, Observer&) {}
+  virtual void handleObserverUnregisterThread(ThreadHandle*, Observer&) {}
 
   class ThreadList {
    public:
@@ -321,7 +329,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::shared_ptr<ThreadFactory> threadFactory_;
 
   ThreadList threadList_;
-  SharedMutex threadListLock_;
+  mutable SharedMutex threadListLock_;
   StoppedThreadQueue stoppedThreads_;
   std::atomic<bool> isJoin_{false}; // whether the current downsizing is a join
 
@@ -349,10 +357,12 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::atomic<size_t> threadsToJoin_{0};
   std::atomic<std::chrono::milliseconds> threadTimeout_;
 
-  void joinKeepAliveOnce() {
+  bool joinKeepAliveOnce() {
     if (!std::exchange(keepAliveJoined_, true)) {
       joinKeepAlive();
+      return true;
     }
+    return false;
   }
 
   bool keepAliveJoined_{false};

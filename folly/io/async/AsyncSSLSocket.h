@@ -214,7 +214,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * @param options optional arguments for this AsyncSSLSocket instance
    */
   AsyncSSLSocket(
-      std::shared_ptr<folly::SSLContext> ctx,
+      std::shared_ptr<const folly::SSLContext> ctx,
       EventBase* evb,
       Options&& options);
 
@@ -225,7 +225,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * @param options optional arguments for this AsyncSSLSocket instance
    */
   AsyncSSLSocket(
-      std::shared_ptr<folly::SSLContext> ctx,
+      std::shared_ptr<const folly::SSLContext> ctx,
       AsyncSocket::UniquePtr oldAsyncSocket,
       Options&& options);
 
@@ -233,7 +233,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * Create a client AsyncSSLSocket
    */
   AsyncSSLSocket(
-      std::shared_ptr<folly::SSLContext> ctx,
+      std::shared_ptr<const folly::SSLContext> ctx,
       EventBase* evb,
       bool deferSecurityNegotiation = false);
 
@@ -258,7 +258,7 @@ class AsyncSSLSocket : public AsyncSocket {
    *          via a system call
    */
   AsyncSSLSocket(
-      std::shared_ptr<folly::SSLContext> ctx,
+      std::shared_ptr<const folly::SSLContext> ctx,
       EventBase* evb,
       NetworkSocket fd,
       bool server = true,
@@ -270,7 +270,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * AsyncSocket.
    */
   AsyncSSLSocket(
-      std::shared_ptr<folly::SSLContext> ctx,
+      std::shared_ptr<const folly::SSLContext> ctx,
       AsyncSocket* oldAsyncSocket,
       bool server = true,
       bool deferSecurityNegotiation = false);
@@ -280,7 +280,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * AsyncSocket.
    */
   AsyncSSLSocket(
-      std::shared_ptr<folly::SSLContext> ctx,
+      std::shared_ptr<const folly::SSLContext> ctx,
       AsyncSocket::UniquePtr oldAsyncSocket,
       bool server = true,
       bool deferSecurityNegotiation = false);
@@ -289,7 +289,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
    */
   static UniquePtr newSocket(
-      std::shared_ptr<folly::SSLContext> ctx,
+      std::shared_ptr<const folly::SSLContext> ctx,
       EventBase* evb,
       Options&& options) {
     return AsyncSSLSocket::UniquePtr(
@@ -300,7 +300,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
    */
   static UniquePtr newSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      const std::shared_ptr<const folly::SSLContext>& ctx,
       EventBase* evb,
       NetworkSocket fd,
       bool server = true,
@@ -314,7 +314,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * Helper function to create a client shared_ptr<AsyncSSLSocket>.
    */
   static UniquePtr newSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      const std::shared_ptr<const folly::SSLContext>& ctx,
       EventBase* evb,
       bool deferSecurityNegotiation = false) {
     return AsyncSSLSocket::UniquePtr(
@@ -327,7 +327,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * the Client Hello message.
    */
   AsyncSSLSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      const std::shared_ptr<const folly::SSLContext>& ctx,
       EventBase* evb,
       const std::string& serverName,
       bool deferSecurityNegotiation = false);
@@ -353,7 +353,7 @@ class AsyncSSLSocket : public AsyncSocket {
    *          via a system call
    */
   AsyncSSLSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      const std::shared_ptr<const folly::SSLContext>& ctx,
       EventBase* evb,
       NetworkSocket fd,
       const std::string& serverName,
@@ -361,7 +361,7 @@ class AsyncSSLSocket : public AsyncSocket {
       const SocketAddress* peerAddr = nullptr);
 
   static UniquePtr newSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      const std::shared_ptr<const folly::SSLContext>& ctx,
       EventBase* evb,
       const std::string& serverName,
       bool deferSecurityNegotiation = false) {
@@ -693,7 +693,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * argument. This should only be used on client SSL Sockets that have
    * already called detachSSLContext();
    */
-  void attachSSLContext(const std::shared_ptr<folly::SSLContext>& ctx);
+  void attachSSLContext(const std::shared_ptr<const folly::SSLContext>& ctx);
 
   /**
    * Detaches the SSL context for this socket.
@@ -709,7 +709,7 @@ class AsyncSSLSocket : public AsyncSocket {
    *
    * switchServerSSLContext() does not affect this return value.
    */
-  const std::shared_ptr<folly::SSLContext>& getSSLContext() const {
+  const std::shared_ptr<const folly::SSLContext>& getSSLContext() const {
     return ctx_;
   }
 
@@ -719,7 +719,7 @@ class AsyncSSLSocket : public AsyncSocket {
    * It can only be used in server mode.
    */
   void switchServerSSLContext(
-      const std::shared_ptr<folly::SSLContext>& handshakeCtx);
+      const std::shared_ptr<const folly::SSLContext>& handshakeCtx);
 
   /**
    * Did server recognize/support the tlsext_hostname in Client Hello?
@@ -995,7 +995,7 @@ class AsyncSSLSocket : public AsyncSocket {
   bool handshakeComplete_{false};
   bool renegotiateAttempted_{false};
   SSLStateEnum sslState_{STATE_UNINIT};
-  std::shared_ptr<folly::SSLContext> ctx_;
+  std::shared_ptr<const folly::SSLContext> ctx_;
   // Callback for SSL_accept() or SSL_connect()
   HandshakeCB* handshakeCallback_{nullptr};
   std::shared_ptr<CertificateIdentityVerifier> certificateIdentityVerifier_;
@@ -1015,7 +1015,7 @@ class AsyncSSLSocket : public AsyncSocket {
   size_t minWriteSize_{1500};
 
 #if FOLLY_OPENSSL_HAS_SNI
-  std::shared_ptr<folly::SSLContext> handshakeCtx_;
+  std::shared_ptr<const folly::SSLContext> handshakeCtx_;
   std::string tlsextHostname_;
 #endif
 

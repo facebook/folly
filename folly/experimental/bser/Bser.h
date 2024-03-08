@@ -20,9 +20,9 @@
 
 #include <folly/CPortability.h>
 #include <folly/Optional.h>
-#include <folly/dynamic.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
+#include <folly/json/dynamic.h>
 
 /* This is an implementation of the BSER binary serialization scheme.
  * BSER was created as a binary, local-system-only representation of

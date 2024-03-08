@@ -16,51 +16,45 @@
 
 #pragma once
 
-#include <folly/Synchronized.h>
-#include <folly/concurrency/UnboundedQueue.h>
+#include <folly/Function.h>
 #include <folly/executors/SequencedExecutor.h>
 
 namespace folly {
 namespace channels {
 
+/**
+ * A rate-limiter used by the channels framework to limit the number of
+ * in-flight requests.
+ *
+ * A default implementation is provided in MaxConcurrentRateLimiter.h but users
+ * can provide custom rate-limiters.
+ */
 class RateLimiter : public std::enable_shared_from_this<RateLimiter> {
  public:
-  static std::shared_ptr<RateLimiter> create(size_t maxConcurrent);
+  class Token;
+  virtual ~RateLimiter() = default;
 
-  class Token {
-   public:
-    explicit Token(std::shared_ptr<RateLimiter> rateLimiter);
-    ~Token();
-
-    Token(const Token&) = delete;
-    Token& operator=(const Token&) = delete;
-    Token(Token&&) = default;
-    Token& operator=(Token&&) = default;
-
-   private:
-    std::shared_ptr<RateLimiter> rateLimiter_;
-  };
-
-  using QueuedFunc = folly::Function<void(Token)>;
-
-  void executeWhenReady(
-      QueuedFunc func, Executor::KeepAlive<SequencedExecutor> executor);
-
- private:
-  explicit RateLimiter(size_t maxConcurrent);
-
-  struct QueueItem {
-    QueuedFunc func;
-    Executor::KeepAlive<SequencedExecutor> executor;
-  };
-
-  struct State {
-    USPSCQueue<QueueItem, false /* MayBlock */, 6 /* LgSegmentSize */> queue;
-    size_t running{0};
-  };
-
-  const size_t maxConcurrent_;
-  folly::Synchronized<State> state_;
+  /**
+   * Executes the given function when there is capacity available in the
+   * rate-limiter.
+   *
+   * The function is considered finished when the token is destroyed.
+   */
+  virtual void executeWhenReady(
+      folly::Function<void(std::unique_ptr<Token>)> function,
+      Executor::KeepAlive<SequencedExecutor> executor) = 0;
 };
+
+/**
+ * A token on destruction signals termination of the user provided function. So
+ * it's expected that a derived class override the destructor to provide the
+ * desired functionality.  Or piggyback on destruction of the compiler generated
+ * overridden destructor.
+ */
+class RateLimiter::Token {
+ public:
+  virtual ~Token() = default;
+};
+
 } // namespace channels
 } // namespace folly

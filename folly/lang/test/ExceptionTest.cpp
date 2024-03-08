@@ -68,7 +68,7 @@ template <typename Ex>
 static std::string message_for_terminate_with(std::string const& what) {
   auto const name = folly::pretty_name<Ex>();
   std::string const p0 = "terminate called after throwing an instance of";
-  std::string const p1 = "terminating with uncaught exception of type";
+  std::string const p1 = "terminating (due to|with) uncaught exception of type";
   // clang-format off
   return
       folly::kIsGlibcxx ? p0 + " '" + name + "'\\s+what\\(\\):\\s+" + what :

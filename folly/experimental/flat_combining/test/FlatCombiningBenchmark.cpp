@@ -344,7 +344,7 @@ void benchmarkSetup() {
             << " logical cores" << std::endl;
 }
 
-TEST(FlatCombining, folly_benchmark) {
+TEST(FlatCombining, follyBenchmark) {
   if (FLAGS_benchmark) {
     benchmarkSetup();
     for (bool b : {true, false}) {
@@ -405,7 +405,7 @@ static uint64_t test(
   return res;
 }
 
-TEST(FlatCombining, direct_measurement) {
+TEST(FlatCombining, directMeasurement) {
   if (!FLAGS_direct) {
     return;
   }

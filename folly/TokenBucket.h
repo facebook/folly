@@ -108,17 +108,14 @@ class TokenBucketStorage {
   }
 
   /**
-   * Returns the number of tokens currently available.  This could be negative
-   * (if in debt); will be a most burstSize.
+   * Returns the token balance at specified time (negative if bucket in debt).
    *
-   *
-   * Thread-safe (but returned values may immediately be outdated).
+   * Thread-safe (but returned value may immediately be outdated).
    */
-  double available(
+  double balance(
       double rate, double burstSize, double nowInSeconds) const noexcept {
     assert(rate > 0);
     assert(burstSize > 0);
-
     double zt = this->zeroTime_.load(std::memory_order_relaxed);
     return std::min((nowInSeconds - zt) * rate, burstSize);
   }
@@ -328,7 +325,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    if (bucket_.available(rate, burstSize, nowInSeconds) < 0.0) {
+    if (bucket_.balance(rate, burstSize, nowInSeconds) < 0.0) {
       return 0;
     }
 
@@ -364,7 +361,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    if (bucket_.available(rate, burstSize, nowInSeconds) <= 0.0) {
+    if (bucket_.balance(rate, burstSize, nowInSeconds) <= 0.0) {
       return 0;
     }
 
@@ -453,7 +450,9 @@ class BasicDynamicTokenBucket {
   }
 
   /**
-   * Returns the number of tokens currently available.
+   * Returns the tokens available at specified time (zero if in debt).
+   *
+   * Use balance() to get the balance of tokens.
    *
    * Thread-safe (but returned value may immediately be outdated).
    */
@@ -461,9 +460,19 @@ class BasicDynamicTokenBucket {
       double rate,
       double burstSize,
       double nowInSeconds = defaultClockNow()) const noexcept {
-    assert(rate > 0);
-    assert(burstSize > 0);
-    return std::max(0.0, bucket_.available(rate, burstSize, nowInSeconds));
+    return std::max(0.0, balance(rate, burstSize, nowInSeconds));
+  }
+
+  /**
+   * Returns the token balance at specified time (negative if bucket in debt).
+   *
+   * Thread-safe (but returned value may immediately be outdated).
+   */
+  double balance(
+      double rate,
+      double burstSize,
+      double nowInSeconds = defaultClockNow()) const noexcept {
+    return bucket_.balance(rate, burstSize, nowInSeconds);
   }
 
  private:
@@ -619,12 +628,23 @@ class BasicTokenBucket {
   }
 
   /**
-   * Returns the number of tokens currently available.
+   * Returns the tokens available at specified time (zero if in debt).
+   *
+   * Use balance() to get the balance of tokens.
    *
    * Thread-safe (but returned value may immediately be outdated).
    */
-  double available(double nowInSeconds = defaultClockNow()) const {
-    return tokenBucket_.available(rate_, burstSize_, nowInSeconds);
+  double available(double nowInSeconds = defaultClockNow()) const noexcept {
+    return std::max(0.0, balance(nowInSeconds));
+  }
+
+  /**
+   * Returns the token balance at specified time (negative if bucket in debt).
+   *
+   * Thread-safe (but returned value may immediately be outdated).
+   */
+  double balance(double nowInSeconds = defaultClockNow()) const noexcept {
+    return tokenBucket_.balance(rate_, burstSize_, nowInSeconds);
   }
 
   /**

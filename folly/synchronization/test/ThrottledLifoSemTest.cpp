@@ -41,6 +41,9 @@ class ThrottledLifoSemTestHelper {
 
 } // namespace folly
 
+const auto kNoSpin =
+    folly::WaitOptions{}.spin_max(std::chrono::nanoseconds::zero());
+
 TEST(ThrottledLifoSem, Basic) {
   folly::ThrottledLifoSem sem;
   EXPECT_TRUE(sem.post(0));
@@ -51,7 +54,7 @@ TEST(ThrottledLifoSem, Basic) {
 }
 
 TEST(ThrottledLifoSem, Timeouts) {
-  constexpr auto kWakeUpInterval = std::chrono::milliseconds(100);
+  constexpr auto kWakeUpInterval = std::chrono::milliseconds(200);
 
   folly::ThrottledLifoSem sem({.wakeUpInterval = kWakeUpInterval});
   std::atomic<size_t> timeouts = 0;
@@ -62,12 +65,14 @@ TEST(ThrottledLifoSem, Timeouts) {
       // one while sleeping though the wakeup interval. The purpose of this test
       // is to ensure that the invariants (checked at destruction) are restored
       // in both timeout cases.
-      if (!sem.try_wait_for(kWakeUpInterval / 2)) {
+      if (!sem.try_wait_for(kWakeUpInterval / 2, kNoSpin)) {
         ++timeouts;
       }
     });
   }
 
+  // May hang forever if any waiters time out before we get here, but the large
+  // timeout should make this unlikely unless the system is heavily loaded.
   folly::ThrottledLifoSemTestHelper::spinUntilWaiters(
       sem, 3, /* assertExact */ true);
 
@@ -87,13 +92,10 @@ TEST(ThrottledLifoSem, TimeoutsStress) {
 
   std::vector<std::thread> threads;
   std::atomic<size_t> received = 0;
-  // Go straight to sleep.
-  const auto wo =
-      folly::WaitOptions{}.spin_max(std::chrono::nanoseconds::zero());
   for (size_t i = 0; i < kNumWaiters; ++i) {
     threads.emplace_back([&] {
       while (received.load() != kNumPosts) {
-        if (sem.try_wait_for(std::chrono::microseconds{100}, wo)) {
+        if (sem.try_wait_for(std::chrono::microseconds{100}, kNoSpin)) {
           ++received;
         }
       }

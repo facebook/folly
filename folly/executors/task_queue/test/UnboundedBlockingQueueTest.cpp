@@ -23,7 +23,7 @@
 
 using namespace folly;
 
-TEST(UnboundedQueuee, push_pop) {
+TEST(UnboundedQueuee, pushPop) {
   UnboundedBlockingQueue<int> q;
   q.add(42);
   EXPECT_EQ(42, q.take());
@@ -37,7 +37,7 @@ TEST(UnboundedBlockingQueue, size) {
   EXPECT_EQ(0, q.size());
 }
 
-TEST(UnboundedBlockingQueue, concurrent_push_pop) {
+TEST(UnboundedBlockingQueue, concurrentPushPop) {
   UnboundedBlockingQueue<int> q;
   Baton<> b1, b2;
   std::thread t([&] {

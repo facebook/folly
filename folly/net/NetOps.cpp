@@ -470,9 +470,9 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
 #endif
 }
 
-FOLLY_MAYBE_UNUSED static ssize_t fakeSendmsg(
-    FOLLY_MAYBE_UNUSED NetworkSocket socket,
-    FOLLY_MAYBE_UNUSED const msghdr* message) {
+[[maybe_unused]] static ssize_t fakeSendmsg(
+    [[maybe_unused]] NetworkSocket socket,
+    [[maybe_unused]] const msghdr* message) {
 #ifdef _WIN32
   SOCKET h = socket.data;
   ssize_t bytesSent = 0;
@@ -509,8 +509,8 @@ FOLLY_MAYBE_UNUSED static ssize_t fakeSendmsg(
 }
 
 #ifdef _WIN32
-FOLLY_MAYBE_UNUSED ssize_t wsaSendMsgDirect(
-    FOLLY_MAYBE_UNUSED NetworkSocket socket, FOLLY_MAYBE_UNUSED WSAMSG* msg) {
+[[maybe_unused]] ssize_t wsaSendMsgDirect(
+    [[maybe_unused]] NetworkSocket socket, [[maybe_unused]] WSAMSG* msg) {
   // WSASendMsg freaks out if this pointer is not set to null but length is 0.
   if (msg->Control.len == 0) {
     msg->Control.buf = nullptr;
@@ -523,10 +523,10 @@ FOLLY_MAYBE_UNUSED ssize_t wsaSendMsgDirect(
 }
 #endif
 
-FOLLY_MAYBE_UNUSED static ssize_t wsaSendMsg(
-    FOLLY_MAYBE_UNUSED NetworkSocket socket,
-    FOLLY_MAYBE_UNUSED const msghdr* message,
-    FOLLY_MAYBE_UNUSED int flags) {
+[[maybe_unused]] static ssize_t wsaSendMsg(
+    [[maybe_unused]] NetworkSocket socket,
+    [[maybe_unused]] const msghdr* message,
+    [[maybe_unused]] int flags) {
 #ifdef _WIN32
   // Translate msghdr to WSAMSG.
   WSAMSG msg;

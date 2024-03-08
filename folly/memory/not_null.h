@@ -432,6 +432,9 @@ not_null_shared_ptr<T> reinterpret_pointer_cast(
 template <typename T, typename U>
 not_null_shared_ptr<T> reinterpret_pointer_cast(not_null_shared_ptr<U>&& r);
 
+template <typename PtrT>
+not_null(PtrT&&) -> not_null<std::remove_cv_t<std::remove_reference_t<PtrT>>>;
+
 } // namespace folly
 
 namespace std {

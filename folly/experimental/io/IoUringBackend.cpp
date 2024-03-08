@@ -57,7 +57,7 @@ namespace folly {
 namespace {
 
 #if FOLLY_IO_URING_UP_TO_DATE
-int ioUringEnableRings(FOLLY_MAYBE_UNUSED struct io_uring* ring) {
+int ioUringEnableRings([[maybe_unused]] struct io_uring* ring) {
   // Ideally this would call ::io_uring_enable_rings directly which just runs
   // the below however this was missing from a stable version of liburing, which
   // means that some distributions were not able to compile it. see
@@ -148,7 +148,7 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
   }
 }
 
-void checkLogOverflow(FOLLY_MAYBE_UNUSED struct io_uring* ring) {
+void checkLogOverflow([[maybe_unused]] struct io_uring* ring) {
 #if FOLLY_IO_URING_UP_TO_DATE
   if (::io_uring_cq_has_overflow(ring)) {
     FB_LOG_EVERY_MS(ERROR, 10000)
@@ -1348,7 +1348,7 @@ void IoUringBackend::initSubmissionLinked() {
     fdRegistry_.init();
   }
 
-  if (options_.initalProvidedBuffersCount) {
+  if (options_.initialProvidedBuffersCount) {
     auto get_shift = [](int x) -> int {
       int shift = findLastSet(x) - 1;
       if (x != (1 << shift)) {
@@ -1358,14 +1358,14 @@ void IoUringBackend::initSubmissionLinked() {
     };
 
     int sizeShift =
-        std::max<int>(get_shift(options_.initalProvidedBuffersEachSize), 5);
+        std::max<int>(get_shift(options_.initialProvidedBuffersEachSize), 5);
     int ringShift =
-        std::max<int>(get_shift(options_.initalProvidedBuffersCount), 1);
+        std::max<int>(get_shift(options_.initialProvidedBuffersCount), 1);
 
     bufferProvider_ = makeProvidedBufferRing(
         this,
         nextBufferProviderGid(),
-        options_.initalProvidedBuffersCount,
+        options_.initialProvidedBuffersCount,
         sizeShift,
         ringShift);
   }
@@ -1411,16 +1411,18 @@ void IoUringBackend::delayedInit() {
 int IoUringBackend::eb_event_base_loop(int flags) {
   delayedInit();
 
-  bool done = false;
-  auto waitForEvents = (flags & EVLOOP_NONBLOCK) ? WaitForEventsMode::DONT_WAIT
-                                                 : WaitForEventsMode::WAIT;
-  while (!done) {
+  const auto waitForEvents = (flags & EVLOOP_NONBLOCK)
+      ? WaitForEventsMode::DONT_WAIT
+      : WaitForEventsMode::WAIT;
+
+  bool hadEvents = true;
+  for (bool done = false; !done;) {
     scheduleTimeout();
 
     // check if we need to break here
     if (loopBreak_) {
       loopBreak_ = false;
-      break;
+      return 0;
     }
 
     prepList(submitList_);
@@ -1472,9 +1474,8 @@ int IoUringBackend::eb_event_base_loop(int flags) {
       }
     }
 
-    if (!done &&
-        (numProcessedTimers || numProcessedSignals || processedEvents) &&
-        (flags & EVLOOP_ONCE)) {
+    hadEvents = numProcessedTimers || numProcessedSignals || processedEvents;
+    if (hadEvents && (flags & EVLOOP_ONCE)) {
       done = true;
     }
 
@@ -1487,7 +1488,7 @@ int IoUringBackend::eb_event_base_loop(int flags) {
     }
   }
 
-  return 0;
+  return hadEvents ? 0 : 2;
 }
 
 int IoUringBackend::eb_event_base_loopbreak() {
@@ -1640,6 +1641,9 @@ void IoUringBackend::internalSubmit(IoSqeBase& ioSqe) noexcept {
   auto* sqe = getSqe();
   setSubmitting();
   ioSqe.internalSubmit(sqe);
+  if (ioSqe.type() == IoSqeBase::Type::Write) {
+    numSendEvents_++;
+  }
   doneSubmitting();
 }
 
@@ -1694,6 +1698,13 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     if (waitingToSubmit_) {
       submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
       int ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
+      return ret;
+    } else if (useReqBatching()) {
+      struct __kernel_timespec timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_nsec = options_.timeout.count() * 1000;
+      int ret = ::io_uring_wait_cqes(
+          &ioRing_, &cqe, options_.batchSize, &timeout, nullptr);
       return ret;
     } else {
       int ret = ::io_uring_wait_cqe(&ioRing_, &cqe);
@@ -1766,6 +1777,10 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
     folly::terminate_with<std::runtime_error>("BADR");
   } else if (ret == -EAGAIN) {
     return 0;
+  } else if (ret == -ETIME) {
+    if (cqe == nullptr) {
+      return 0;
+    }
   } else if (ret < 0) {
     LOG(ERROR) << "wait_cqe error: " << ret;
     return 0;
@@ -1780,6 +1795,7 @@ unsigned int IoUringBackend::internalProcessCqe(
 
   unsigned int count_more = 0;
   unsigned int count = 0;
+  unsigned int count_send = 0;
 
   checkLogOverflow(&ioRing_);
   do {
@@ -1793,6 +1809,9 @@ unsigned int IoUringBackend::internalProcessCqe(
       IoSqeBase* sqe = reinterpret_cast<IoSqeBase*>(cqe->user_data);
       if (cqe->user_data) {
         count++;
+        if (sqe->type() == IoSqeBase::Type::Write) {
+          count_send++;
+        }
         if (FOLLY_UNLIKELY(mode == InternalProcessCqeMode::CANCEL_ALL)) {
           sqe->markCancelled();
         }
@@ -1825,6 +1844,7 @@ unsigned int IoUringBackend::internalProcessCqe(
     }
   } while (true);
   numInsertedEvents_ -= (count - count_more);
+  numSendEvents_ -= count_send;
   return count;
 }
 
@@ -1854,7 +1874,20 @@ int IoUringBackend::submitBusyCheck(
       if (options_.flags & Options::Flags::POLL_CQ) {
         res = ::io_uring_submit(&ioRing_);
       } else {
-        res = ::io_uring_submit_and_wait(&ioRing_, 1);
+        if (useReqBatching()) {
+          struct io_uring_cqe* cqe;
+          struct __kernel_timespec timeout;
+          timeout.tv_sec = 0;
+          timeout.tv_nsec = options_.timeout.count() * 1000;
+          res = ::io_uring_submit_and_wait_timeout(
+              &ioRing_,
+              &cqe,
+              options_.batchSize + numSendEvents_,
+              &timeout,
+              nullptr);
+        } else {
+          res = ::io_uring_submit_and_wait(&ioRing_, 1);
+        }
         if (res >= 0) {
           // no more waiting
           waitForEvents = WaitForEventsMode::DONT_WAIT;

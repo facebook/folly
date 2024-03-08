@@ -2,11 +2,11 @@
 name = boost
 
 [download.not(os=windows)]
-url = https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.gz
+url = https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.gz
 sha256 = c0685b68dd44cc46574cce86c4e17c0f611b15e195be9848dfd0769a0a207628
 
 [download.os=windows]
-url = https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.zip
+url = https://archives.boost.io/release/1.83.0/source/boost_1_83_0.zip
 sha256 = c86bd9d9eef795b4b0d3802279419fde5221922805b073b9bd822edecb1ca28e
 
 [preinstalled.env]

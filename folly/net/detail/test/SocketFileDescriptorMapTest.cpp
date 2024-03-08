@@ -28,7 +28,7 @@ namespace netops {
 using folly::netops::detail::SocketFileDescriptorMap;
 namespace fsp = folly::portability::sockets;
 
-TEST(SocketFileDescriptorMap, fd_to_socket_consistent) {
+TEST(SocketFileDescriptorMap, fdToSocketConsistent) {
   auto fd = fsp::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   auto sockA = SocketFileDescriptorMap::fdToSocket(fd);
   auto sockB = SocketFileDescriptorMap::fdToSocket(fd);
@@ -40,7 +40,7 @@ TEST(SocketFileDescriptorMap, fd_to_socket_consistent) {
   SocketFileDescriptorMap::close(fd);
 }
 
-TEST(SocketFileDescriptorMap, no_socket_reuse) {
+TEST(SocketFileDescriptorMap, noSocketReuse) {
   auto sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   int fdA = SocketFileDescriptorMap::socketToFd(sock);
   int fdB = SocketFileDescriptorMap::socketToFd(sock);
@@ -74,7 +74,7 @@ TEST(SocketFileDescriptorMap, no_socket_reuse) {
   }
 }
 
-TEST(SocketFileDescriptorMap, close_non_mapped_native_socket) {
+TEST(SocketFileDescriptorMap, closeNonMappedNativeSocket) {
   auto sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   SocketFileDescriptorMap::close(sock);
 }

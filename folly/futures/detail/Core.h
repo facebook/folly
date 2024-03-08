@@ -151,7 +151,8 @@ class DeferredExecutor final {
 
   Executor* getExecutor() const;
 
-  void setExecutor(folly::Executor::KeepAlive<> executor);
+  void setExecutor(
+      folly::Executor::KeepAlive<> executor, bool inlineUnsafe = false);
 
   void setNestedExecutors(std::vector<DeferredWrapper> executors);
 
@@ -454,7 +455,7 @@ class CoreBase {
           terminate_with<std::logic_error>("set-interrupt-handler race");
         }
         assert(interrupt & InterruptHasObject);
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
       }
       case InterruptHasObject: { // invoke over the stored object
         auto exchanged = interrupt_.compare_exchange_strong(
@@ -689,7 +690,7 @@ class Core final : private ResultHolder<T>, public CoreBase {
     auto state = state_.load(std::memory_order_relaxed);
     switch (state) {
       case State::OnlyResult:
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
 
       case State::Done:
         this->result_.~Result();

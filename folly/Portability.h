@@ -27,7 +27,12 @@
 #define FOLLY_CPLUSPLUS __cplusplus
 #endif
 
-static_assert(FOLLY_CPLUSPLUS >= 201402L, "__cplusplus >= 201402L");
+// On MSVC an incorrect <version> header get's picked up
+#if !defined(_MSC_VER) && __has_include(<version>)
+#include <version>
+#endif
+
+static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 
 #if defined(__GNUC__) && !defined(__clang__)
 static_assert(__GNUC__ >= 7, "__GNUC__ >= 7");
@@ -68,18 +73,21 @@ constexpr bool kHasUnalignedAccess = false;
 // warn unused result
 #if defined(__has_cpp_attribute)
 #if __has_cpp_attribute(nodiscard)
+#if defined(__clang__) || defined(__GNUC__)
+#if __clang_major__ >= 10 || __GNUC__ >= 10
+// early clang and gcc both warn on [[nodiscard]] when applied to class ctors
+// easiest option is just to avoid emitting [[nodiscard]] under early clang/gcc
 #define FOLLY_NODISCARD [[nodiscard]]
 #endif
 #endif
-#if !defined FOLLY_NODISCARD
-#if defined(_MSC_VER) && (_MSC_VER >= 1700)
-#define FOLLY_NODISCARD _Check_return_
-#elif defined(__GNUC__)
-#define FOLLY_NODISCARD __attribute__((__warn_unused_result__))
-#else
+#endif
+#endif
+#ifndef FOLLY_NODISCARD
 #define FOLLY_NODISCARD
 #endif
-#endif
+
+// older clang-format gets confused by [[deprecated(...)]] on class decls
+#define FOLLY_DEPRECATED(...) [[deprecated(__VA_ARGS__)]]
 
 // target
 #ifdef _MSC_VER
@@ -119,12 +127,19 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_S390X 0
 #endif
 
+#if defined(__riscv)
+#define FOLLY_RISCV64 1
+#else
+#define FOLLY_RISCV64 0
+#endif
+
 namespace folly {
 constexpr bool kIsArchArm = FOLLY_ARM == 1;
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 constexpr bool kIsArchS390X = FOLLY_S390X == 1;
+constexpr bool kIsArchRISCV64 = FOLLY_RISCV64 == 1;
 } // namespace folly
 
 namespace folly {
@@ -163,6 +178,18 @@ constexpr bool kIsSanitizeDataflow = false;
 constexpr bool kIsSanitize = true;
 #else
 constexpr bool kIsSanitize = false;
+#endif
+
+#if defined(__OPTIMIZE__)
+constexpr bool kIsOptimize = true;
+#else
+constexpr bool kIsOptimize = false;
+#endif
+
+#if defined(__OPTIMIZE_SIZE__)
+constexpr bool kIsOptimizeSize = true;
+#else
+constexpr bool kIsOptimizeSize = false;
 #endif
 } // namespace folly
 
@@ -506,16 +533,6 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR constexpr
 #endif
 
-//  FOLLY_CXX17_CONSTEXPR
-//
-//  C++17 permits more cases to be marked constexpr, including lambda bodies and
-//  the `if` keyword.
-#if FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_CXX17_CONSTEXPR constexpr
-#else
-#define FOLLY_CXX17_CONSTEXPR
-#endif
-
 //  FOLLY_CXX20_CONSTEXPR
 //
 //  C++20 permits more cases to be marked constexpr, including constructors that
@@ -572,26 +589,10 @@ constexpr auto kCpplibVer = 0;
 #endif // FOLLY_CPLUSPLUS >= 201703L
 #endif // FOLLY_CFG_NO_COROUTINES
 
-// MSVC 2017.5 && C++17
-#if __cpp_noexcept_function_type >= 201510 || \
-    (_MSC_FULL_VER >= 191225816 && _MSVC_LANG > 201402)
-#define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
-#endif
-
 #if __cpp_inline_variables >= 201606L || FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_HAS_INLINE_VARIABLES 1
 #define FOLLY_INLINE_VARIABLE inline
 #else
-#define FOLLY_HAS_INLINE_VARIABLES 0
 #define FOLLY_INLINE_VARIABLE
-#endif
-
-// feature test __cpp_lib_string_view is defined in <string>, which is
-// too heavy to include here.
-#if __has_include(<string_view>) && FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_HAS_STRING_VIEW 1
-#else
-#define FOLLY_HAS_STRING_VIEW 0
 #endif
 
 // C++20 consteval
@@ -599,11 +600,4 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CONSTEVAL consteval
 #else
 #define FOLLY_CONSTEVAL constexpr
-#endif
-
-// C++17 deduction guides
-#if defined(__cpp_deduction_guides) && __cpp_deduction_guides >= 201703L
-#define FOLLY_HAS_DEDUCTION_GUIDES 1
-#else
-#define FOLLY_HAS_DEDUCTION_GUIDES 0
 #endif

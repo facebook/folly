@@ -150,7 +150,7 @@ struct MoveOnlyType {
   MoveOnlyType(MoveOnlyType&& other) noexcept
       : value_(std::exchange(other.value_, -1)) {}
 
-  FOLLY_MAYBE_UNUSED MoveOnlyType& operator=(MoveOnlyType&& other) noexcept {
+  [[maybe_unused]] MoveOnlyType& operator=(MoveOnlyType&& other) noexcept {
     value_ = std::exchange(other.value_, -1);
     return *this;
   }
@@ -230,7 +230,7 @@ TEST_F(InlineTaskTest, ExceptionsPropagateFromReturnValueConstructor) {
   struct MyException : std::exception {};
 
   struct ThrowingCopyConstructor {
-    FOLLY_MAYBE_UNUSED ThrowingCopyConstructor() noexcept = default;
+    [[maybe_unused]] ThrowingCopyConstructor() noexcept = default;
 
     [[noreturn]] ThrowingCopyConstructor(
         const ThrowingCopyConstructor&) noexcept(false) {

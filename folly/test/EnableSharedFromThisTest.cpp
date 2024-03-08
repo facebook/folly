@@ -44,7 +44,7 @@ static void test_enable_shared_from_this(std::shared_ptr<C> sp) {
 #endif
 }
 
-TEST(enable_shared_from_this, compatible_with_std_enable_shared_from_this) {
+TEST(enableSharedFromThis, compatibleWithStdEnableSharedFromThis) {
   // Compile-time compatibility.
   class C_std : public std::enable_shared_from_this<C_std> {};
   class C_folly : public folly::enable_shared_from_this<C_folly> {};

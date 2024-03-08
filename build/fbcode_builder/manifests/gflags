@@ -17,6 +17,3 @@ BUILD_gflags_LIB = ON
 
 [debs]
 libgflags-dev
-
-[rpms]
-gflags-devel

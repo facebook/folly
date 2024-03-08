@@ -28,8 +28,8 @@
 #include <folly/MapUtil.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-#include <folly/dynamic.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/json/dynamic.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
@@ -1203,7 +1203,7 @@ TEST(Gen, Guard) {
 }
 
 // Disabled: guard currently can't catch exceptions thrown after a buffering op.
-TEST(Gen, DISABLED_GuardThroughBuffers) {
+TEST(Gen, DISABLEDGuardthroughbuffers) {
   using std::runtime_error;
   // clang-format off
   EXPECT_EQ(

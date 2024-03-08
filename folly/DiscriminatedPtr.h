@@ -17,7 +17,7 @@
 /**
  * Discriminated pointer: Type-safe pointer to one of several types.
  *
- * Similar to boost::variant, but has no space overhead over a raw pointer, as
+ * Similar to std::variant, but has no space overhead over a raw pointer, as
  * it relies on the fact that (on x86_64) there are 16 unused bits in a
  * pointer.
  *
@@ -35,8 +35,8 @@
 #include <folly/Portability.h>
 #include <folly/detail/DiscriminatedPtrDetail.h>
 
-#if !FOLLY_X64 && !FOLLY_AARCH64 && !FOLLY_PPC64
-#error "DiscriminatedPtr is x64, arm64 and ppc64 specific code."
+#if !FOLLY_X64 && !FOLLY_AARCH64 && !FOLLY_PPC64 && !FOLLY_RISCV64
+#error "DiscriminatedPtr is x64, arm64, ppc64 and riscv64 specific code."
 #endif
 
 namespace folly {

@@ -53,7 +53,7 @@ namespace detail {
  * object will then be deleted once each remaining input receiver transitions to
  * the CancellationProcessed state (after we receive each cancelled callback).
  */
-template <typename TValue>
+template <typename TValue, bool WaitForAllInputsToClose>
 class MergeProcessor : public IChannelCallback {
  public:
   MergeProcessor(
@@ -68,7 +68,9 @@ class MergeProcessor : public IChannelCallback {
    * @param inputReceivers: The collection of input receivers to merge.
    */
   void start(std::vector<Receiver<TValue>> inputReceivers) {
-    executor_->add([=, inputReceivers = std::move(inputReceivers)]() mutable {
+    executor_->add([=,
+                    this,
+                    inputReceivers = std::move(inputReceivers)]() mutable {
       if (!sender_->senderWait(this)) {
         sender_->senderClose();
         processSenderCancelled();
@@ -104,7 +106,7 @@ class MergeProcessor : public IChannelCallback {
    * a value from an input receiver or a cancellation from the output receiver).
    */
   void consume(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       if (bridge == sender_.get()) {
         // The consumer of the output receiver has stopped consuming.
         CHECK_NE(getSenderState(), ChannelState::CancellationProcessed);
@@ -125,7 +127,7 @@ class MergeProcessor : public IChannelCallback {
    * the sender or an input receiver).
    */
   void canceled(ChannelBridgeBase* bridge) override {
-    executor_->add([=]() {
+    executor_->add([=, this]() {
       if (bridge == sender_.get()) {
         // We previously cancelled the sender due to an input receiver closure
         // with an exception (or the closure of all input receivers without an
@@ -214,11 +216,14 @@ class MergeProcessor : public IChannelCallback {
     CHECK_EQ(getReceiverState(receiver), ChannelState::CancellationTriggered);
     receivers_.erase(receiver);
     (ChannelBridgePtr<TValue>(receiver));
-    if (closeResult.exception.has_value()) {
-      // We received an exception. We need to close the sender and all other
-      // receivers.
+    if (closeResult.exception.has_value() || !WaitForAllInputsToClose) {
+      // We need to close the sender and all other receivers.
       if (getSenderState() == ChannelState::Active) {
-        sender_->senderClose(std::move(closeResult.exception.value()));
+        if (closeResult.exception.has_value()) {
+          sender_->senderClose(std::move(closeResult.exception.value()));
+        } else {
+          sender_->senderClose();
+        }
       }
       for (auto* otherReceiver : receivers_) {
         if (getReceiverState(otherReceiver) == ChannelState::Active) {
@@ -278,11 +283,18 @@ class MergeProcessor : public IChannelCallback {
 template <typename TReceiver, typename TValue>
 Receiver<TValue> merge(
     std::vector<TReceiver> inputReceivers,
-    folly::Executor::KeepAlive<folly::SequencedExecutor> executor) {
+    folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+    bool waitForAllInputsToClose) {
   auto [outputReceiver, outputSender] = Channel<TValue>::create();
-  auto* processor = new detail::MergeProcessor<TValue>(
-      std::move(outputSender), std::move(executor));
-  processor->start(std::move(inputReceivers));
+  if (waitForAllInputsToClose) {
+    auto* processor = new detail::MergeProcessor<TValue, true>(
+        std::move(outputSender), std::move(executor));
+    processor->start(std::move(inputReceivers));
+  } else {
+    auto* processor = new detail::MergeProcessor<TValue, false>(
+        std::move(outputSender), std::move(executor));
+    processor->start(std::move(inputReceivers));
+  }
   return std::move(outputReceiver);
 }
 } // namespace channels

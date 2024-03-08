@@ -33,7 +33,7 @@
 #include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/detail/PerfScoped.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 
 // This needs to be at the end because some versions end up including
 // Windows.h without defining NOMINMAX, which breaks uses
@@ -81,7 +81,7 @@ FOLLY_GFLAGS_DEFINE_string(
     bm_json_verbose,
     "",
     "File to write verbose JSON format (for BenchmarkCompare / --bm_relative_to). "
-    "NOTE: this is written independent of the above --json / --bm_relative_to.");
+    "NOTE: this file is written regardless of options --json and --bm_relative_to.");
 
 FOLLY_GFLAGS_DEFINE_string(
     bm_regex, "", "Only benchmarks whose names match this regex will be run.");

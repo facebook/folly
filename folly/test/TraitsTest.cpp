@@ -23,11 +23,14 @@
 #include <utility>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace std;
+
+namespace {
 
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
@@ -48,6 +51,52 @@ struct F4 : T1 {};
 template <class>
 struct A {};
 struct B {};
+
+struct HashableStruct1 {};
+struct HashableStruct2 {};
+struct UnhashableStruct {};
+
+template <typename X, typename Y>
+struct CompositeStruct {
+  X x;
+  Y y;
+};
+
+} // namespace
+
+namespace std {
+
+template <>
+struct hash<HashableStruct1> {
+  [[maybe_unused]] size_t operator()(const HashableStruct1&) const noexcept {
+    return 0;
+  }
+};
+
+template <>
+struct hash<HashableStruct2> {
+  [[maybe_unused]] size_t operator()(const HashableStruct2&) const noexcept {
+    return 0;
+  }
+};
+
+template <typename X, typename Y>
+struct hash<enable_std_hash_helper<CompositeStruct<X, Y>, X, Y>> {
+  [[maybe_unused]] size_t operator()(
+      const CompositeStruct<X, Y>& value) const noexcept {
+    return std::hash<X>{}(value.x) + std::hash<Y>{}(value.y);
+  }
+};
+
+static_assert(is_hashable_v<HashableStruct1>);
+static_assert(is_hashable_v<HashableStruct2>);
+static_assert(!is_hashable_v<UnhashableStruct>);
+static_assert(is_hashable_v<CompositeStruct<HashableStruct1, HashableStruct1>>);
+static_assert(is_hashable_v<CompositeStruct<HashableStruct1, HashableStruct2>>);
+static_assert(
+    !is_hashable_v<CompositeStruct<HashableStruct1, UnhashableStruct>>);
+
+} // namespace std
 
 namespace folly {
 template <>
@@ -154,7 +203,7 @@ TEST(Trait, logicOperators) {
   static_assert(Negation<false_type>::value, "");
 }
 
-TEST(Traits, is_negative) {
+TEST(Traits, isNegative) {
   EXPECT_TRUE(folly::is_negative(-1));
   EXPECT_FALSE(folly::is_negative(0));
   EXPECT_FALSE(folly::is_negative(1));
@@ -303,7 +352,7 @@ struct container {
 };
 } // namespace
 
-TEST(Traits, void_t) {
+TEST(Traits, voidT) {
   EXPECT_TRUE((::std::is_same<folly::void_t<>, void>::value));
   EXPECT_TRUE((::std::is_same<folly::void_t<int>, void>::value));
   EXPECT_TRUE((::std::is_same<folly::void_t<int, short>, void>::value));
@@ -313,7 +362,7 @@ TEST(Traits, void_t) {
   EXPECT_FALSE((::has_value_type<int>::value));
 }
 
-TEST(Traits, type_t) {
+TEST(Traits, typeT) {
   EXPECT_TRUE((::std::is_same<folly::type_t<float>, float>::value));
   EXPECT_TRUE((::std::is_same<folly::type_t<float, int>, float>::value));
   EXPECT_TRUE((::std::is_same<folly::type_t<float, int, short>, float>::value));
@@ -333,7 +382,7 @@ template <typename T, typename V>
 using detector_find = decltype(std::declval<T>().find(std::declval<V>()));
 }
 
-TEST(Traits, detected_or_t) {
+TEST(Traits, detectedOrT) {
   EXPECT_TRUE(( //
       std::is_same<
           folly::detected_or_t<float, detector_find, std::string, char>,
@@ -344,7 +393,7 @@ TEST(Traits, detected_or_t) {
           float>::value));
 }
 
-TEST(Traits, detected_t) {
+TEST(Traits, detectedT) {
   EXPECT_TRUE(( //
       std::is_same<
           folly::detected_t<detector_find, std::string, char>,
@@ -355,22 +404,22 @@ TEST(Traits, detected_t) {
           folly::nonesuch>::value));
 }
 
-TEST(Traits, is_detected) {
+TEST(Traits, isDetected) {
   EXPECT_TRUE((folly::is_detected<detector_find, std::string, char>::value));
   EXPECT_FALSE((folly::is_detected<detector_find, double, char>::value));
 }
 
-TEST(Traits, is_detected_v) {
+TEST(Traits, isDetectedV) {
   EXPECT_TRUE((folly::is_detected_v<detector_find, std::string, char>));
   EXPECT_FALSE((folly::is_detected_v<detector_find, double, char>));
 }
 
-TEST(Traits, fallback_is_nothrow_convertible) {
+TEST(Traits, fallbackIsNothrowConvertible) {
   EXPECT_FALSE((folly::fallback::is_nothrow_convertible<int, void>::value));
   EXPECT_TRUE((folly::fallback::is_nothrow_convertible<void, void>::value));
   struct foo {
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+    /* implicit */ [[maybe_unused]] operator std::false_type();
+    /* implicit */ [[maybe_unused]] operator std::true_type() noexcept;
   };
   EXPECT_FALSE(
       (folly::fallback::is_nothrow_convertible<foo, std::false_type>::value));
@@ -378,18 +427,18 @@ TEST(Traits, fallback_is_nothrow_convertible) {
       (folly::fallback::is_nothrow_convertible<foo, std::true_type>::value));
 }
 
-TEST(Traits, is_nothrow_convertible) {
+TEST(Traits, isNothrowConvertible) {
   EXPECT_FALSE((folly::is_nothrow_convertible<int, void>::value));
   EXPECT_TRUE((folly::is_nothrow_convertible<void, void>::value));
   struct foo {
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::false_type();
-    /* implicit */ FOLLY_MAYBE_UNUSED operator std::true_type() noexcept;
+    /* implicit */ [[maybe_unused]] operator std::false_type();
+    /* implicit */ [[maybe_unused]] operator std::true_type() noexcept;
   };
   EXPECT_FALSE((folly::is_nothrow_convertible<foo, std::false_type>::value));
   EXPECT_TRUE((folly::is_nothrow_convertible<foo, std::true_type>::value));
 }
 
-TEST(Traits, aligned_storage_for_t) {
+TEST(Traits, alignedStorageForT) {
   struct alignas(2) Foo {
     char data[4];
   };
@@ -400,7 +449,7 @@ TEST(Traits, aligned_storage_for_t) {
   EXPECT_TRUE(std::is_standard_layout<storage>::value);
 }
 
-TEST(Traits, remove_cvref) {
+TEST(Traits, removeCvref) {
   using folly::remove_cvref;
   using folly::remove_cvref_t;
 
@@ -469,31 +518,63 @@ TEST(Traits, like) {
            value));
 }
 
-TEST(Traits, is_instantiation_of_v) {
+TEST(Traits, isUnboundedArrayV) {
+  EXPECT_FALSE((folly::is_unbounded_array_v<void>));
+  EXPECT_FALSE((folly::is_unbounded_array_v<int>));
+  EXPECT_TRUE((folly::is_unbounded_array_v<int[]>));
+  EXPECT_FALSE((folly::is_unbounded_array_v<int[1]>));
+}
+
+TEST(Traits, isBoundedArrayV) {
+  EXPECT_FALSE((folly::is_bounded_array_v<void>));
+  EXPECT_FALSE((folly::is_bounded_array_v<int>));
+  EXPECT_FALSE((folly::is_bounded_array_v<int[]>));
+  EXPECT_TRUE((folly::is_bounded_array_v<int[1]>));
+}
+
+TEST(Traits, isInstantiationOfV) {
   EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
   EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
 }
 
-TEST(Traits, is_instantiation_of) {
+TEST(Traits, isInstantiationOf) {
   EXPECT_TRUE((detail::is_instantiation_of<A, A<int>>::value));
   EXPECT_FALSE((detail::is_instantiation_of<A, B>::value));
 }
 
-TEST(Traits, is_similar_instantiation_v) {
+TEST(Traits, isSimilarInstantiationV) {
   EXPECT_TRUE((detail::is_similar_instantiation_v<A<int>, A<long>>));
   EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, tag_t<int>>));
   EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, B>));
   EXPECT_FALSE((detail::is_similar_instantiation_v<B, B>));
 }
 
-TEST(Traits, is_similar_instantiation) {
+TEST(Traits, isSimilarInstantiation) {
   EXPECT_TRUE((detail::is_similar_instantiation<A<int>, A<long>>::value));
   EXPECT_FALSE((detail::is_similar_instantiation<A<int>, tag_t<int>>::value));
   EXPECT_FALSE((detail::is_similar_instantiation<A<int>, B>::value));
   EXPECT_FALSE((detail::is_similar_instantiation<B, B>::value));
 }
 
-TEST(Traits, is_constexpr_default_constructible) {
+TEST(Traits, member_pointer_traits_data) {
+  struct o {};
+  using d = float;
+  using mp_do = float o::*;
+  using mp_traits_do = folly::member_pointer_traits<mp_do>;
+  EXPECT_TRUE((std::is_same<d, mp_traits_do::member_type>::value));
+  EXPECT_TRUE((std::is_same<o, mp_traits_do::object_type>::value));
+}
+
+TEST(Traits, member_pointer_traits_function) {
+  struct o {};
+  using f = float(char*) const;
+  using mp_fo = float (o::*)(char*) const;
+  using mp_traits_fo = folly::member_pointer_traits<mp_fo>;
+  EXPECT_TRUE((std::is_same<f, mp_traits_fo::member_type>::value));
+  EXPECT_TRUE((std::is_same<o, mp_traits_fo::object_type>::value));
+}
+
+TEST(Traits, isConstexprDefaultConstructible) {
   EXPECT_TRUE(is_constexpr_default_constructible_v<int>);
   EXPECT_TRUE(is_constexpr_default_constructible<int>{});
 
@@ -502,7 +583,7 @@ TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_TRUE(is_constexpr_default_constructible<Empty>{});
 
   struct NonTrivialDtor {
-    FOLLY_MAYBE_UNUSED ~NonTrivialDtor() {}
+    [[maybe_unused]] ~NonTrivialDtor() {}
   };
   EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
   EXPECT_FALSE(is_constexpr_default_constructible<NonTrivialDtor>{});
@@ -528,7 +609,7 @@ TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_FALSE(is_constexpr_default_constructible<NoDefaultCtor>{});
 }
 
-TEST(Traits, uint_bits) {
+TEST(Traits, uintBits) {
   EXPECT_TRUE((std::is_same_v<uint8_t, uint_bits_t<8>>));
   EXPECT_TRUE((std::is_same_v<uint16_t, uint_bits_t<16>>));
   EXPECT_TRUE((std::is_same_v<uint32_t, uint_bits_t<32>>));
@@ -538,7 +619,7 @@ TEST(Traits, uint_bits) {
 #endif // FOLLY_HAVE_INT128_T
 }
 
-TEST(Traits, uint_bits_lg) {
+TEST(Traits, uintBitsLg) {
   EXPECT_TRUE((std::is_same_v<uint8_t, uint_bits_lg_t<3>>));
   EXPECT_TRUE((std::is_same_v<uint16_t, uint_bits_lg_t<4>>));
   EXPECT_TRUE((std::is_same_v<uint32_t, uint_bits_lg_t<5>>));
@@ -548,7 +629,7 @@ TEST(Traits, uint_bits_lg) {
 #endif // FOLLY_HAVE_INT128_T
 }
 
-TEST(Traits, int_bits) {
+TEST(Traits, intBits) {
   EXPECT_TRUE((std::is_same_v<int8_t, int_bits_t<8>>));
   EXPECT_TRUE((std::is_same_v<int16_t, int_bits_t<16>>));
   EXPECT_TRUE((std::is_same_v<int32_t, int_bits_t<32>>));
@@ -558,7 +639,7 @@ TEST(Traits, int_bits) {
 #endif // FOLLY_HAVE_INT128_T
 }
 
-TEST(Traits, int_bits_lg) {
+TEST(Traits, intBitsLg) {
   EXPECT_TRUE((std::is_same_v<int8_t, int_bits_lg_t<3>>));
   EXPECT_TRUE((std::is_same_v<int16_t, int_bits_lg_t<4>>));
   EXPECT_TRUE((std::is_same_v<int32_t, int_bits_lg_t<5>>));
@@ -580,7 +661,7 @@ struct type_pack_element_test {
   using native_ic = native<IC::value, T...>;
 };
 
-TEST(Traits, type_pack_element_t) {
+TEST(Traits, typePackElementT) {
   using test = type_pack_element_test;
 
   EXPECT_TRUE(( //
@@ -600,7 +681,7 @@ TEST(Traits, type_pack_element_t) {
   EXPECT_FALSE((is_detected_v<test::native_ic, index_constant<0>>));
 }
 
-TEST(Traits, is_allocator) {
+TEST(Traits, isAllocator) {
   static_assert(is_allocator_v<std::allocator<int>>, "");
   static_assert(is_allocator<std::allocator<int>>::value, "");
 
@@ -612,4 +693,14 @@ TEST(Traits, is_allocator) {
 
   static_assert(!is_allocator_v<std::string>, "");
   static_assert(!is_allocator<std::string>::value, "");
+}
+
+TEST(Traits, type_pack_size) {
+  EXPECT_EQ(0, (type_pack_size_v<>));
+  EXPECT_EQ(1, (type_pack_size_v<int>));
+  EXPECT_EQ(5, (type_pack_size_v<long long, long, int, short, char>));
+
+  EXPECT_EQ(0, (type_pack_size_t<>::value));
+  EXPECT_EQ(1, (type_pack_size_t<int>::value));
+  EXPECT_EQ(5, (type_pack_size_t<long long, long, int, short, char>::value));
 }

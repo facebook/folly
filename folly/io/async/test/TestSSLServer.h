@@ -45,6 +45,7 @@ extern const char* kTestCertCN;
 extern const char* kClientTestCert;
 extern const char* kClientTestKey;
 extern const char* kClientTestCA;
+extern const char* kClientTestChain;
 
 class HandshakeCallback;
 

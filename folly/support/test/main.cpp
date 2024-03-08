@@ -21,7 +21,7 @@
 #include <folly/SocketAddress.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
-#include <folly/dynamic.h>
+#include <folly/json/dynamic.h>
 #include <folly/small_vector.h>
 #include <folly/support/test/GdbUtil.h>
 

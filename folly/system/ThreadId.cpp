@@ -65,6 +65,7 @@ struct CacheState {
     AtFork::registerHandler(
         this, [] { return true; }, [] {}, [] { ++epoch; });
   }
+  ~CacheState() { AtFork::unregisterHandler(this); }
 
   // Used to invalidate all caches in the child process on fork. Start at 1 so
   // that 0 is always invalid.

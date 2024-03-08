@@ -232,7 +232,7 @@ bool tryUriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
           break;
         }
         // else fallthrough
-        FOLLY_FALLTHROUGH;
+        [[fallthrough]];
       default:
         ++p;
         break;

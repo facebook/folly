@@ -192,6 +192,8 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   void unlock_shared() noexcept;
 
  private:
+  using folly_coro_aware_mutex = std::true_type;
+
   enum class LockType : std::uint8_t { EXCLUSIVE, SHARED };
 
   class LockAwaiterBase {

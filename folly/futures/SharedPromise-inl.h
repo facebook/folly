@@ -30,13 +30,12 @@ SemiFuture<T> SharedPromise<T>::getSemiFuture() const {
   size_.value++;
   if (hasResult()) {
     return makeFuture<T>(Try<T>(try_.value));
-  } else {
-    promises_.emplace_back();
-    if (interruptHandler_) {
-      promises_.back().setInterruptHandler(interruptHandler_);
-    }
-    return promises_.back().getSemiFuture();
   }
+  auto& promise = promises_.emplace_back();
+  if (interruptHandler_) {
+    promise.setInterruptHandler(interruptHandler_);
+  }
+  return promise.getSemiFuture();
 }
 
 template <class T>

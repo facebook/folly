@@ -171,7 +171,7 @@ class SenderCancellationCallback : public IChannelCallback {
    */
   void consume(ChannelBridgeBase*) override {
     cancelSource_.requestCancellation();
-    executor_->add([=]() {
+    executor_->add([this]() {
       CHECK(!callbackToFire_.second.isReady());
       callbackToFire_.first.setValue(CallbackToFire::Consume);
     });
@@ -183,7 +183,7 @@ class SenderCancellationCallback : public IChannelCallback {
    */
   void canceled(ChannelBridgeBase*) override {
     cancelSource_.requestCancellation();
-    executor_->add([=]() {
+    executor_->add([this]() {
       CHECK(!callbackToFire_.second.isReady());
       callbackToFire_.first.setValue(CallbackToFire::Canceled);
     });
@@ -250,7 +250,7 @@ void runOperationWithSenderCancellation(
     bool alreadyStartedWaiting,
     IChannelCallback* channelCallbackToRestore,
     folly::coro::Task<void> operation,
-    RateLimiter::Token token) noexcept {
+    std::unique_ptr<RateLimiter::Token> token) noexcept {
   if (alreadyStartedWaiting && (!sender || !sender->cancelSenderWait())) {
     // The output receiver was cancelled before starting this operation
     // (indicating that the channel callback already ran).

@@ -19,7 +19,7 @@
 namespace folly {
 
 inline void checkAsyncStackFrameIsActive(
-    FOLLY_MAYBE_UNUSED const folly::AsyncStackFrame& frame) noexcept {
+    [[maybe_unused]] const folly::AsyncStackFrame& frame) noexcept {
   (void)frame;
   assert(frame.stackRoot != nullptr);
   assert(tryGetCurrentAsyncStackRoot() == frame.stackRoot);

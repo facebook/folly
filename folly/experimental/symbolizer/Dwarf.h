@@ -18,8 +18,6 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
-
 #include <folly/Function.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/DwarfUtil.h>

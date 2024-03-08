@@ -174,7 +174,7 @@ class IoUring : public AsyncBase {
   IoUringOp::Options options_;
   struct io_uring_params params_;
   struct io_uring ioRing_;
-  SharedMutex submitMutex_;
+  mutable SharedMutex submitMutex_;
 };
 
 using IoUringQueue = AsyncBaseQueue;

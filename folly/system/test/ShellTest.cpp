@@ -48,7 +48,7 @@ TEST(Shell, Shellify) {
 // Don't warn about using this deprecated function in the test for it.
 FOLLY_PUSH_WARNING
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
-TEST(Shell, Shellify_deprecated) {
+TEST(Shell, ShellifyDeprecated) {
   auto command = shellify("rm -rf /");
   EXPECT_EQ(command[0], "/bin/sh");
   EXPECT_EQ(command[1], "-c");

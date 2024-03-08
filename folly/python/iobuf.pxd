@@ -86,7 +86,7 @@ cdef class IOBuf:
     @staticmethod
     cdef IOBuf create(cIOBuf* this, object parent)
     cdef void cleanup(self)
-    cdef unique_ptr[cIOBuf] c_clone(self)
+    cdef unique_ptr[cIOBuf] c_clone(self) noexcept
 
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view)
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] iobuf)

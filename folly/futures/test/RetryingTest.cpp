@@ -53,7 +53,7 @@ void multiAttemptExpectDurationWithin(
   EXPECT_LE(durations[0].count(), max_duration.count());
 }
 
-TEST(RetryingTest, has_op_call) {
+TEST(RetryingTest, hasOpCall) {
   using ew = exception_wrapper;
   auto policy_raw = [](size_t n, const ew&) { return n < 3; };
   auto policy_fut = [](size_t n, const ew&) { return makeFuture(n < 3); };
@@ -78,7 +78,7 @@ TEST(RetryingTest, basic) {
   EXPECT_EQ(2, r.value());
 }
 
-TEST(RetryingTest, basic_unsafe) {
+TEST(RetryingTest, basicUnsafe) {
   auto r = futures::retryingUnsafe(
                [](size_t n, const exception_wrapper&) { return n < 3; },
                [](size_t n) {
@@ -89,7 +89,7 @@ TEST(RetryingTest, basic_unsafe) {
   EXPECT_EQ(2, r.value());
 }
 
-TEST(RetryingTest, future_factory_throws) {
+TEST(RetryingTest, futureFactoryThrows) {
   struct ReturnedException : exception {};
   struct ThrownException : exception {};
   auto result = futures::retrying(
@@ -110,7 +110,7 @@ TEST(RetryingTest, future_factory_throws) {
   EXPECT_THROW(result.throwUnlessValue(), ThrownException);
 }
 
-TEST(RetryingTest, future_factory_throws_unsafe) {
+TEST(RetryingTest, futureFactoryThrowsUnsafe) {
   struct ReturnedException : exception {};
   struct ThrownException : exception {};
   auto result = futures::retryingUnsafe(
@@ -131,7 +131,7 @@ TEST(RetryingTest, future_factory_throws_unsafe) {
   EXPECT_THROW(result.throwUnlessValue(), ThrownException);
 }
 
-TEST(RetryingTest, policy_throws) {
+TEST(RetryingTest, policyThrows) {
   struct eggs : exception {};
   auto r = futures::retrying(
       [](size_t, exception_wrapper) -> bool { throw eggs(); },
@@ -139,7 +139,7 @@ TEST(RetryingTest, policy_throws) {
   EXPECT_THROW(std::move(r).get(), eggs);
 }
 
-TEST(RetryingTest, policy_throws_unsafe) {
+TEST(RetryingTest, policyThrowsUnsafe) {
   struct eggs : exception {};
   auto r = futures::retryingUnsafe(
       [](size_t, exception_wrapper) -> bool { throw eggs(); },
@@ -147,7 +147,7 @@ TEST(RetryingTest, policy_throws_unsafe) {
   EXPECT_THROW(std::move(r).get(), eggs);
 }
 
-TEST(RetryingTest, policy_future) {
+TEST(RetryingTest, policyFuture) {
   atomic<size_t> sleeps{0};
   auto r =
       futures::retrying(
@@ -165,7 +165,7 @@ TEST(RetryingTest, policy_future) {
   EXPECT_EQ(2, sleeps);
 }
 
-TEST(RetryingTest, policy_future_unsafe) {
+TEST(RetryingTest, policyFutureUnsafe) {
   atomic<size_t> sleeps{0};
   auto r =
       futures::retryingUnsafe(
@@ -183,7 +183,7 @@ TEST(RetryingTest, policy_future_unsafe) {
   EXPECT_EQ(2, sleeps);
 }
 
-TEST(RetryingTest, policy_semi_future) {
+TEST(RetryingTest, policySemiFuture) {
   atomic<size_t> sleeps{0};
   auto r = futures::retrying(
                [&](size_t n, const exception_wrapper&) {
@@ -200,7 +200,7 @@ TEST(RetryingTest, policy_semi_future) {
   EXPECT_EQ(2, sleeps);
 }
 
-TEST(RetryingTest, policy_basic) {
+TEST(RetryingTest, policyBasic) {
   auto r =
       futures::retrying(futures::retryingPolicyBasic(3), [](size_t n) {
         return n < 2 ? makeFuture<size_t>(runtime_error("ha")) : makeFuture(n);
@@ -208,7 +208,7 @@ TEST(RetryingTest, policy_basic) {
   EXPECT_EQ(2, r.value());
 }
 
-TEST(RetryingTest, policy_basic_unsafe) {
+TEST(RetryingTest, policyBasicUnsafe) {
   auto r =
       futures::retryingUnsafe(futures::retryingPolicyBasic(3), [](size_t n) {
         return n < 2 ? makeFuture<size_t>(runtime_error("ha")) : makeFuture(n);
@@ -216,7 +216,7 @@ TEST(RetryingTest, policy_basic_unsafe) {
   EXPECT_EQ(2, r.value());
 }
 
-TEST(RetryingTest, semifuture_policy_basic) {
+TEST(RetryingTest, semifuturePolicyBasic) {
   auto r = futures::retrying(futures::retryingPolicyBasic(3), [](size_t n) {
              return n < 2 ? makeSemiFuture<size_t>(runtime_error("ha"))
                           : makeSemiFuture(n);
@@ -224,7 +224,7 @@ TEST(RetryingTest, semifuture_policy_basic) {
   EXPECT_EQ(2, r.value());
 }
 
-TEST(RetryingTest, policy_capped_jittered_exponential_backoff) {
+TEST(RetryingTest, policyCappedJitteredExponentialBackoff) {
   multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
     using ms = milliseconds;
     auto r = futures::retrying(
@@ -244,7 +244,7 @@ TEST(RetryingTest, policy_capped_jittered_exponential_backoff) {
   });
 }
 
-TEST(RetryingTest, policy_capped_jittered_exponential_backoff_unsafe) {
+TEST(RetryingTest, policyCappedJitteredExponentialBackoffUnsafe) {
   multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
     using ms = milliseconds;
     auto r = futures::retryingUnsafe(
@@ -264,7 +264,7 @@ TEST(RetryingTest, policy_capped_jittered_exponential_backoff_unsafe) {
   });
 }
 
-TEST(RetryingTest, policy_capped_jittered_exponential_backoff_many_retries) {
+TEST(RetryingTest, policyCappedJitteredExponentialBackoffManyRetries) {
   using namespace futures::detail;
   mt19937_64 rng(0);
   Duration min_backoff(1);
@@ -285,7 +285,7 @@ TEST(RetryingTest, policy_capped_jittered_exponential_backoff_many_retries) {
   EXPECT_EQ(backoff.count(), max_backoff.count());
 }
 
-TEST(RetryingTest, policy_capped_jittered_exponential_backoff_min_zero) {
+TEST(RetryingTest, policyCappedJitteredExponentialBackoffMinZero) {
   using namespace futures::detail;
   mt19937_64 rng(0);
 
@@ -309,7 +309,7 @@ TEST(RetryingTest, policy_capped_jittered_exponential_backoff_min_zero) {
       0);
 }
 
-TEST(RetryingTest, policy_sleep_defaults) {
+TEST(RetryingTest, policySleepDefaults) {
   multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
     //  To ensure that this compiles with default params.
     using ms = milliseconds;
@@ -325,7 +325,7 @@ TEST(RetryingTest, policy_sleep_defaults) {
   });
 }
 
-TEST(RetryingTest, large_retries) {
+TEST(RetryingTest, largeRetries) {
 #ifndef _WIN32
   rlimit oldMemLimit;
   PCHECK(getrlimit(RLIMIT_AS, &oldMemLimit) == 0);
@@ -421,7 +421,7 @@ TEST(RetryingTest, retryingJitteredExponentialBackoffDur) {
 }
 
 /*
-TEST(RetryingTest, policy_sleep_cancel) {
+TEST(RetryingTest, policySleepCancel) {
   multiAttemptExpectDurationWithin(5, milliseconds(0), milliseconds(10), []{
     mt19937_64 rng(0);
     using ms = milliseconds;

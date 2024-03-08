@@ -20,6 +20,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
+#include <folly/external/fast-crc32/sse_crc32c_v8s3x3.h>
 #include <folly/hash/Hash.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 #include <folly/portability/GFlags.h>
@@ -105,15 +106,15 @@ void testMatchesBoost32Type() {
 
 } // namespace
 
-TEST(Checksum, crc32c_software) {
+TEST(Checksum, crc32cSoftware) {
   testCRC32C(folly::detail::crc32c_sw);
 }
 
-TEST(Checksum, crc32c_continuation_software) {
+TEST(Checksum, crc32cContinuationSoftware) {
   testCRC32CContinuation(folly::detail::crc32c_sw);
 }
 
-TEST(Checksum, crc32c_hardware) {
+TEST(Checksum, crc32cHardware) {
   if (folly::detail::crc32c_hw_supported()) {
     testCRC32C(folly::detail::crc32c_hw);
   } else {
@@ -122,7 +123,7 @@ TEST(Checksum, crc32c_hardware) {
   }
 }
 
-TEST(Checksum, crc32c_hardware_eq) {
+TEST(Checksum, crc32cHardwareEq) {
   if (folly::detail::crc32c_hw_supported()) {
     for (int i = 0; i < 1000; i++) {
       auto sw = folly::detail::crc32c_sw(buffer, i, 0);
@@ -135,7 +136,7 @@ TEST(Checksum, crc32c_hardware_eq) {
   }
 }
 
-TEST(Checksum, crc32c_continuation_hardware) {
+TEST(Checksum, crc32cContinuationHardware) {
   if (folly::detail::crc32c_hw_supported()) {
     testCRC32CContinuation(folly::detail::crc32c_hw);
   } else {
@@ -144,11 +145,63 @@ TEST(Checksum, crc32c_continuation_hardware) {
   }
 }
 
-TEST(Checksum, crc32c_autodetect) {
+TEST(Checksum, crc32cHardwareSse42) {
+  if (folly::detail::crc32c_hw_supported()) {
+    testCRC32C(folly::detail::sse_crc32c_v8s3x3);
+  } else {
+    LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+  }
+}
+
+TEST(Checksum, crc32cHardwareEqSse42) {
+  if (folly::detail::crc32c_hw_supported()) {
+    for (size_t i = 0; i < 1000; i++) {
+      auto sw = folly::detail::crc32c_sw(buffer, i, 0);
+      auto hw = folly::detail::sse_crc32c_v8s3x3(buffer, i, 0);
+      ASSERT_EQ(sw, hw);
+    }
+  } else {
+    LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+  }
+}
+
+TEST(Checksum, crc32cContinuationHardwareSse42) {
+  if (folly::detail::crc32c_hw_supported()) {
+    testCRC32CContinuation(folly::detail::sse_crc32c_v8s3x3);
+  } else {
+    LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+  }
+}
+
+// Test on very large buffer inputs to attempt to sanity check 32-bit
+// overflow problems on 64-bit platforms.
+#ifdef __LP64__
+TEST(Checksum, crc32clargeBuffers) {
+  constexpr size_t kLargeBufSz = 5ull * 1024 * 1024 * 1024; // 5GiB
+  auto buf = std::make_unique<uint8_t[]>(kLargeBufSz); // 5GiB
+  auto* bufp = buf.get();
+  // Fill with non-zero pattern.
+  memset(bufp, 0x2e, kLargeBufSz);
+
+  constexpr uint32_t kCrc = 2860399007;
+
+  if (folly::detail::crc32c_hw_supported()) {
+    auto crcSse42 = folly::detail::sse_crc32c_v8s3x3(bufp, kLargeBufSz, ~0);
+    ASSERT_EQ(kCrc, crcSse42);
+    auto crcHw = folly::detail::crc32c_hw(bufp, kLargeBufSz, ~0);
+    ASSERT_EQ(kCrc, crcHw);
+  }
+}
+#endif
+
+TEST(Checksum, crc32cAutodetect) {
   testCRC32C(folly::crc32c);
 }
 
-TEST(Checksum, crc32c_continuation_autodetect) {
+TEST(Checksum, crc32cContinuationAutodetect) {
   testCRC32CContinuation(folly::crc32c);
 }
 
@@ -168,7 +221,7 @@ TEST(Checksum, crc32) {
   }
 }
 
-TEST(Checksum, crc32_continuation) {
+TEST(Checksum, crc32Continuation) {
   if (folly::detail::crc32c_hw_supported()) {
     // Just check that sw and hw match
     for (auto expected : expectedResults) {
@@ -195,12 +248,12 @@ TEST(Checksum, crc32_continuation) {
   }
 }
 
-TEST(Checksum, crc32_type) {
+TEST(Checksum, crc32Type) {
   // Test that crc32_type matches boost::crc_32_type
   testMatchesBoost32Type();
 }
 
-TEST(Checksum, crc32_combine) {
+TEST(Checksum, crc32Combine) {
   for (size_t totlen = 1024; totlen < BUFFER_SIZE; totlen += BUFFER_SIZE / 8) {
     auto mid = folly::Random::rand64(0, totlen);
     auto crc1 = folly::crc32(&buffer[0], mid, 0);
@@ -211,7 +264,7 @@ TEST(Checksum, crc32_combine) {
   }
 }
 
-TEST(Checksum, crc32c_combine) {
+TEST(Checksum, crc32cCombine) {
   for (size_t totlen = 1024; totlen < BUFFER_SIZE; totlen += BUFFER_SIZE / 8) {
     auto mid = folly::Random::rand64(0, totlen);
     auto crc1 = folly::crc32c(&buffer[0], mid, 0);
@@ -379,7 +432,7 @@ int main(int argc, char** argv) {
   // on which to compute checksums
   const uint8_t* src = buffer;
   uint64_t* dst = (uint64_t*)buffer;
-  const uint64_t* end = (const uint64_t*)(buffer + BUFFER_SIZE);
+  const uint64_t* end = (const uint64_t*)(buffer + sizeof(buffer));
   *dst++ = 0;
   while (dst < end) {
     *dst++ = folly::hash::fnv64_buf((const char*)src, sizeof(uint64_t));

@@ -38,28 +38,28 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
     } else {
       // some other error
       folly::throwSystemError(
-          "Failed to create eventfd for AtomicNotificationQueue", errno);
+          errno, "Failed to create eventfd for AtomicNotificationQueue");
     }
   }
 #endif
   if (eventfd_ == -1) {
     if (pipe(pipeFds_)) {
       folly::throwSystemError(
-          "Failed to create pipe for AtomicNotificationQueue", errno);
+          errno, "Failed to create pipe for AtomicNotificationQueue");
     }
     try {
       // put both ends of the pipe into non-blocking mode
       if (fcntl(pipeFds_[0], F_SETFL, O_RDONLY | O_NONBLOCK) != 0) {
         folly::throwSystemError(
+            errno,
             "failed to put AtomicNotificationQueue pipe read "
-            "endpoint into non-blocking mode",
-            errno);
+            "endpoint into non-blocking mode");
       }
       if (fcntl(pipeFds_[1], F_SETFL, O_WRONLY | O_NONBLOCK) != 0) {
         folly::throwSystemError(
+            errno,
             "failed to put AtomicNotificationQueue pipe write "
-            "endpoint into non-blocking mode",
-            errno);
+            "endpoint into non-blocking mode");
       }
     } catch (...) {
       ::close(pipeFds_[0]);
@@ -208,9 +208,9 @@ void EventBaseAtomicNotificationQueue<Task, Consumer>::notifyFd() {
 
   if (bytes_written != ssize_t(bytes_expected)) {
     folly::throwSystemError(
+        errno,
         "failed to signal AtomicNotificationQueue after "
-        "write",
-        errno);
+        "write");
   }
 }
 

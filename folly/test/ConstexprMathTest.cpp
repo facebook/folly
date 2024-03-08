@@ -16,6 +16,7 @@
 
 #include <folly/ConstexprMath.h>
 
+#include <array>
 #include <cmath>
 #include <limits>
 #include <type_traits>
@@ -760,6 +761,12 @@ TEST_F(ConstexprMathTest, constexpr_ceil_integral_round) {
     constexpr auto round = 0ll;
     constexpr auto rounded = folly::constexpr_ceil(roundable, round);
     EXPECT_EQ(-20ll, rounded);
+  }
+  {
+    constexpr auto roundable = 0ll;
+    constexpr auto round = std::numeric_limits<long long>::min();
+    constexpr auto rounded = folly::constexpr_ceil(roundable, round);
+    EXPECT_EQ(0ll, rounded);
   }
 }
 

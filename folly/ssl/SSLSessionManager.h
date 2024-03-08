@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
+#include <variant>
 
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
@@ -82,7 +82,7 @@ class SSLSessionManager {
    * The SSL session. Which type the variant contains depends on the
    * session API that is used.
    */
-  boost::variant<
+  std::variant<
       folly::ssl::SSLSessionUniquePtr,
       std::shared_ptr<folly::ssl::detail::OpenSSLSession>>
       session_;

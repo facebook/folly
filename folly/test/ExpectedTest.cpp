@@ -164,7 +164,7 @@ bool operator==(const MoveTester& o1, const MoveTester& o2) {
   return o1.s_ == o2.s_;
 }
 
-TEST(Expected, value_or_rvalue_arg) {
+TEST(Expected, valueOrRvalueArg) {
   Expected<MoveTester, int> ex = makeUnexpected(-1);
   MoveTester dflt = "hello";
   EXPECT_EQ("hello", ex.value_or(dflt));
@@ -190,7 +190,7 @@ TEST(Expected, value_or_rvalue_arg) {
   EXPECT_EQ("hello", dflt); // only moved if used
 }
 
-TEST(Expected, value_or_noncopyable) {
+TEST(Expected, valueOrNoncopyable) {
   Expected<std::unique_ptr<int>, int> ex{unexpected, 42};
   std::unique_ptr<int> dflt(new int(42));
   EXPECT_EQ(42, *std::move(ex).value_or(std::move(dflt)));
@@ -205,14 +205,14 @@ struct ExpectingDeleter {
   }
 };
 
-TEST(Expected, value_move) {
+TEST(Expected, valueMove) {
   auto ptr = Expected<std::unique_ptr<int, ExpectingDeleter>, int>(
                  in_place, new int(42), ExpectingDeleter{1337})
                  .value();
   *ptr = 1337;
 }
 
-TEST(Expected, dereference_move) {
+TEST(Expected, dereferenceMove) {
   auto ptr = *Expected<std::unique_ptr<int, ExpectingDeleter>, int>(
       in_place, new int(42), ExpectingDeleter{1337});
   *ptr = 1337;

@@ -124,7 +124,7 @@ TEST(Hash, Hsieh32) {
   EXPECT_EQ(hsieh_hash32(s3), hsieh_hash32_buf(s3, strlen(s3)));
 }
 
-TEST(Hash, TWang_Mix64) {
+TEST(Hash, TWangMix64) {
   uint64_t i1 = 0x78a87873e2d31dafULL;
   uint64_t i1_res = 3389151152926383528ULL;
   EXPECT_EQ(i1_res, twang_mix64(i1));
@@ -143,7 +143,7 @@ void checkTWang(uint64_t r) {
 }
 } // namespace
 
-TEST(Hash, TWang_Unmix64) {
+TEST(Hash, TWangUnmix64) {
   // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
   for (int i = 1; i < 64; i++) {
     checkTWang((uint64_t(1) << i) - 1);
@@ -152,7 +152,7 @@ TEST(Hash, TWang_Unmix64) {
   }
 }
 
-TEST(Hash, TWang_32From64) {
+TEST(Hash, TWang32From64) {
   uint64_t i1 = 0x78a87873e2d31dafULL;
   uint32_t i1_res = 1525586863ul;
   EXPECT_EQ(twang_32from64(i1), i1_res);
@@ -162,7 +162,7 @@ TEST(Hash, TWang_32From64) {
   EXPECT_EQ(twang_32from64(i2), i2_res);
 }
 
-TEST(Hash, Jenkins_Rev_Mix32) {
+TEST(Hash, JenkinsRevMix32) {
   uint32_t i1 = 3805486511ul;
   uint32_t i1_res = 381808021ul;
   EXPECT_EQ(i1_res, jenkins_rev_mix32(i1));
@@ -181,7 +181,7 @@ void checkJenkins(uint32_t r) {
 }
 } // namespace
 
-TEST(Hash, Jenkins_Rev_Unmix32) {
+TEST(Hash, JenkinsRevUnmix32) {
   // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
   for (int i = 1; i < 32; i++) {
     checkJenkins((1U << i) - 1);
@@ -197,7 +197,7 @@ TEST(Hash, hasher) {
   EXPECT_EQ(get_default(m, 4), 5);
 }
 
-TEST(Hash, integral_types) {
+TEST(Hash, integralTypes) {
   // Basically just confirms that things compile ok.
   std::unordered_set<size_t> hashes;
   folly::Hash hasher;
@@ -375,14 +375,14 @@ TEST(Hash, noCachedHashCode) {
   testNoCachedHashCode<TestEnum, std::string, folly::Hash>();
 }
 
-TEST(Hash, integer_conversion) {
+TEST(Hash, integerConversion) {
   folly::hasher<uint64_t> h;
   uint64_t k = 10;
   EXPECT_EQ(h(k), h(10));
 }
 
 #if FOLLY_HAVE_INT128_T
-TEST(Hash, int128_std_hash) {
+TEST(Hash, int128StdHash) {
   std::unordered_set<__int128> hs;
   hs.insert(__int128_t{1});
   hs.insert(__int128_t{2});
@@ -395,7 +395,7 @@ TEST(Hash, int128_std_hash) {
 }
 #endif
 
-TEST(Hash, float_types) {
+TEST(Hash, floatTypes) {
   folly::Hash hasher;
 
   EXPECT_EQ(hasher(0.0f), hasher(-0.0f));
@@ -454,17 +454,17 @@ TEST(Hash, pair) {
   EXPECT_EQ(hash_combine_test(a, b), hash_combine_test(d, b));
 }
 
-TEST(Hash, hash_combine) {
+TEST(Hash, hashCombine) {
   EXPECT_TRUE(noexcept(hash_combine(1, 2)));
   EXPECT_NE(hash_combine(1, 2), hash_combine(2, 1));
 }
 
-TEST(Hash, hash_bool) {
+TEST(Hash, hashBool) {
   const auto hash = folly::Hash();
   EXPECT_NE(hash(true), hash(false));
 }
 
-TEST(Hash, hash_bool10) {
+TEST(Hash, hashBool10) {
   const auto hash = folly::Hash();
   std::set<size_t> values;
   for (bool b1 : {false, true}) {
@@ -492,7 +492,7 @@ TEST(Hash, hash_bool10) {
   EXPECT_EQ(values.size(), 1 << 10);
 }
 
-TEST(Hash, std_tuple) {
+TEST(Hash, stdTuple) {
   typedef std::tuple<int64_t, std::string, int32_t> tuple3;
   tuple3 t(42, "foo", 1);
 
@@ -501,7 +501,7 @@ TEST(Hash, std_tuple) {
   EXPECT_EQ("bar", m[t]);
 }
 
-TEST(Hash, std_empty_tuple) {
+TEST(Hash, stdEmptyTuple) {
   std::unordered_map<std::tuple<>, std::string, folly::Hash> m;
   m[{}] = "foo";
   EXPECT_EQ(m[{}], "foo");
@@ -510,7 +510,7 @@ TEST(Hash, std_empty_tuple) {
   EXPECT_EQ(h({}), 0);
 }
 
-TEST(Hash, enum_type) {
+TEST(Hash, enumType) {
   const auto hash = folly::Hash();
 
   enum class Enum32 : int32_t { Foo, Bar };
@@ -532,7 +532,7 @@ TEST(Hash, enum_type) {
   EXPECT_EQ("foo", m64[Enum64::Foo]);
 }
 
-TEST(Hash, pair_folly_hash) {
+TEST(Hash, pairFollyHash) {
   typedef std::pair<int64_t, int32_t> pair2;
   pair2 p(42, 1);
 
@@ -541,7 +541,7 @@ TEST(Hash, pair_folly_hash) {
   EXPECT_EQ("bar", m[p]);
 }
 
-TEST(Hash, tuple_folly_hash) {
+TEST(Hash, tupleFollyHash) {
   typedef std::tuple<int64_t, int32_t, int32_t> tuple3;
   tuple3 t(42, 1, 1);
 
@@ -557,13 +557,13 @@ size_t hash_vector(const std::vector<T>& v) {
 }
 } // namespace
 
-TEST(Hash, hash_range) {
+TEST(Hash, hashRange) {
   EXPECT_EQ(hash_vector<int32_t>({1, 2}), hash_vector<int16_t>({1, 2}));
   EXPECT_NE(hash_vector<int>({2, 1}), hash_vector<int>({1, 2}));
   EXPECT_EQ(hash_vector<int>({}), hash_vector<float>({}));
 }
 
-TEST(Hash, commutative_hash_combine) {
+TEST(Hash, commutativeHashCombine) {
   EXPECT_EQ(
       commutative_hash_combine_value_generic(
           folly::Hash{}(12345ul), folly::Hash{}, 6789ul),
@@ -593,7 +593,7 @@ TEST(Hash, commutative_hash_combine) {
       commutative_hash_combine(6789, 12345));
 }
 
-TEST(Hash, std_tuple_different_hash) {
+TEST(Hash, stdTupleDifferentHash) {
   typedef std::tuple<int64_t, std::string, int32_t> tuple3;
   tuple3 t1(42, "foo", 1);
   tuple3 t2(9, "bar", 3);

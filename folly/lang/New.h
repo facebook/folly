@@ -20,72 +20,78 @@
 
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 
-#if defined(__clang__) && FOLLY_HAS_BUILTIN(__builtin_operator_new) >= 201802
-#define FOLLY_DETAIL_LANG_NEW_IMPL_N __builtin_operator_new
+namespace detail {
+
+#if defined(__cpp_aligned_new)
+constexpr auto cpp_aligned_new_ = __cpp_aligned_new >= 201606;
 #else
-#define FOLLY_DETAIL_LANG_NEW_IMPL_N ::operator new
+constexpr auto cpp_aligned_new_ = false;
 #endif
 
-#if defined(__clang__) && FOLLY_HAS_BUILTIN(__builtin_operator_delete) >= 201802
-#define FOLLY_DETAIL_LANG_NEW_IMPL_D __builtin_operator_delete
+#if defined(__cpp_sized_deallocation)
+constexpr auto cpp_sized_deallocation_ = __cpp_sized_deallocation >= 201309L;
 #else
-#define FOLLY_DETAIL_LANG_NEW_IMPL_D ::operator delete
+constexpr auto cpp_sized_deallocation_ = false;
 #endif
 
-#if defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606
-#define FOLLY_DETAIL_LANG_NEW_HAVE_AN 1
-#else
-#define FOLLY_DETAIL_LANG_NEW_HAVE_AN 0
-#endif
+//  https://clang.llvm.org/docs/LanguageExtensions.html#builtin-operator-new-and-builtin-operator-delete
 
-#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
-#define FOLLY_DETAIL_LANG_NEW_HAVE_SD 1
-#elif defined(_CPPLIB_VER) && !__clang__
-#define FOLLY_DETAIL_LANG_NEW_HAVE_SD 1
-#else
-#define FOLLY_DETAIL_LANG_NEW_HAVE_SD 0
-#endif
+constexpr auto op_new_builtin_ =
+    FOLLY_HAS_BUILTIN(__builtin_operator_new) >= 201802L;
+constexpr auto op_del_builtin_ =
+    FOLLY_HAS_BUILTIN(__builtin_operator_del) >= 201802L;
 
-#if FOLLY_DETAIL_LANG_NEW_HAVE_AN
-using std::align_val_t;
-#else
-enum class align_val_t : std::size_t {};
-#endif
+FOLLY_CREATE_QUAL_INVOKER(op_new_builtin_fn_, __builtin_operator_new);
+FOLLY_CREATE_QUAL_INVOKER(op_new_library_fn_, ::operator new);
+
+FOLLY_CREATE_QUAL_INVOKER(op_del_builtin_fn_, __builtin_operator_delete);
+FOLLY_CREATE_QUAL_INVOKER(op_del_library_fn_, ::operator delete);
+
+template <bool Usual, bool C = (Usual && op_new_builtin_)>
+constexpr conditional_t<C, op_new_builtin_fn_, op_new_library_fn_> op_new_;
+
+template <bool Usual, bool C = (Usual && op_del_builtin_)>
+constexpr conditional_t<C, op_del_builtin_fn_, op_del_library_fn_> op_del_;
+
+template <bool Usual, typename... A>
+FOLLY_ERASE void do_op_del_sized_(
+    void* const p, std::size_t const s, A const... a) {
+  if constexpr (detail::cpp_sized_deallocation_) {
+    return op_del_<Usual>(p, s, a...);
+  } else {
+    return op_del_<Usual>(p, a...);
+  }
+}
+
+} // namespace detail
 
 //  operator_new
 struct operator_new_fn {
   FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s) const //
       noexcept(noexcept(::operator new(0))) {
-    return FOLLY_DETAIL_LANG_NEW_IMPL_N(s);
+    return detail::op_new_<true>(s);
   }
   FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s,
-      std::nothrow_t const&) const noexcept {
-    return FOLLY_DETAIL_LANG_NEW_IMPL_N(s, std::nothrow);
+      std::nothrow_t const& nt) const noexcept {
+    return detail::op_new_<true>(s, nt);
   }
   FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s,
-      FOLLY_MAYBE_UNUSED align_val_t const a) const
+      std::align_val_t const a) const //
       noexcept(noexcept(::operator new(0))) {
-#if FOLLY_DETAIL_LANG_NEW_HAVE_AN
-    return FOLLY_DETAIL_LANG_NEW_IMPL_N(s, a);
-#else
-    return FOLLY_DETAIL_LANG_NEW_IMPL_N(s);
-#endif
+    return detail::op_new_<detail::cpp_aligned_new_>(s, a);
   }
   FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
       std::size_t const s,
-      FOLLY_MAYBE_UNUSED align_val_t const a,
-      std::nothrow_t const&) const noexcept {
-#if FOLLY_DETAIL_LANG_NEW_HAVE_AN
-    return FOLLY_DETAIL_LANG_NEW_IMPL_N(s, a, std::nothrow);
-#else
-    return FOLLY_DETAIL_LANG_NEW_IMPL_N(s, std::nothrow);
-#endif
+      std::align_val_t const a,
+      std::nothrow_t const& nt) const noexcept {
+    return detail::op_new_<detail::cpp_aligned_new_>(s, a, nt);
   }
 };
 FOLLY_INLINE_VARIABLE constexpr operator_new_fn operator_new{};
@@ -94,43 +100,23 @@ FOLLY_INLINE_VARIABLE constexpr operator_new_fn operator_new{};
 struct operator_delete_fn {
   FOLLY_ERASE void operator()( //
       void* const p) const noexcept {
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p);
+    return detail::op_del_<true>(p);
   }
   FOLLY_ERASE void operator()( //
       void* const p,
-      FOLLY_MAYBE_UNUSED std::size_t const s) const noexcept {
-#if FOLLY_DETAIL_LANG_NEW_HAVE_SD
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p, s);
-#else
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p);
-#endif
+      std::size_t const s) const noexcept {
+    return detail::do_op_del_sized_<true>(p, s);
   }
   FOLLY_ERASE void operator()( //
       void* const p,
-      FOLLY_MAYBE_UNUSED align_val_t const a) const noexcept {
-#if FOLLY_DETAIL_LANG_NEW_HAVE_AN
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p, a);
-#else
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p);
-#endif
+      std::align_val_t const a) const noexcept {
+    return detail::op_del_<detail::cpp_aligned_new_>(p, a);
   }
   FOLLY_ERASE void operator()( //
       void* const p,
-      FOLLY_MAYBE_UNUSED std::size_t const s,
-      FOLLY_MAYBE_UNUSED align_val_t const a) const noexcept {
-#if FOLLY_DETAIL_LANG_NEW_HAVE_AN
-#if FOLLY_DETAIL_LANG_NEW_HAVE_SD
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p, s, a);
-#else
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p, a);
-#endif
-#else
-#if FOLLY_DETAIL_LANG_NEW_HAVE_SD
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p, s);
-#else
-    return FOLLY_DETAIL_LANG_NEW_IMPL_D(p);
-#endif
-#endif
+      std::size_t const s,
+      std::align_val_t const a) const noexcept {
+    return detail::do_op_del_sized_<detail::cpp_aligned_new_>(p, s, a);
   }
 };
 FOLLY_INLINE_VARIABLE constexpr operator_delete_fn operator_delete{};

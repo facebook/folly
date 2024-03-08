@@ -15,6 +15,8 @@
  */
 
 #pragma once
+#include <thread>
+#include <folly/ScopeGuard.h>
 #include <folly/futures/Future.h>
 
 namespace folly {
@@ -49,6 +51,10 @@ inline void ExecutorLoopController::schedule() {
 }
 
 inline void ExecutorLoopController::runLoop() {
+  auto oldLoopThread = loopThread_.exchange(std::this_thread::get_id());
+  DCHECK(oldLoopThread == std::thread::id{});
+  SCOPE_EXIT { loopThread_ = std::thread::id{}; };
+
   if (!executorKeepAlive_) {
     if (!fm_->hasTasks()) {
       return;
@@ -62,6 +68,7 @@ inline void ExecutorLoopController::runLoop() {
 }
 
 inline void ExecutorLoopController::runEagerFiber(Fiber* fiber) {
+  DCHECK(loopThread_ == std::this_thread::get_id());
   if (!executorKeepAlive_) {
     executorKeepAlive_ = getKeepAliveToken(executor_);
   }

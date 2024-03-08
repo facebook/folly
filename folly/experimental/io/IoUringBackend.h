@@ -152,8 +152,8 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     Options& setInitialProvidedBuffers(size_t eachSize, size_t count) {
-      initalProvidedBuffersCount = count;
-      initalProvidedBuffersEachSize = eachSize;
+      initialProvidedBuffersCount = count;
+      initialProvidedBuffersEachSize = eachSize;
       return *this;
     }
 
@@ -175,6 +175,18 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setTimeout(std::chrono::microseconds v) {
+      timeout = v;
+
+      return *this;
+    }
+
+    Options& setBatchSize(int v) {
+      batchSize = v;
+
+      return *this;
+    }
+
     size_t capacity{256};
     size_t minCapacity{0};
     size_t maxSubmit{128};
@@ -185,14 +197,21 @@ class IoUringBackend : public EventBaseBackendBase {
     uint32_t flags{0};
     bool taskRunCoop{false};
     bool deferTaskRun{false};
+    // Maximum amount of time to wait (in microseconds) per io_uring_enter
+    // Both timeout _and_ batchSize must be set for io_uring_enter wait_nr to be
+    // set!
+    std::chrono::microseconds timeout{0};
+    // Minimum number of requests (defined as sockets with data to read) to wait
+    // for per io_uring_enter
+    int batchSize{0};
 
     std::chrono::milliseconds sqIdle{0};
     std::chrono::milliseconds cqIdle{0};
     std::set<uint32_t> sqCpus;
     std::string sqGroupName;
     size_t sqGroupNumThreads{1};
-    size_t initalProvidedBuffersCount{0};
-    size_t initalProvidedBuffersEachSize{0};
+    size_t initialProvidedBuffersCount{0};
+    size_t initialProvidedBuffersEachSize{0};
   };
 
   explicit IoUringBackend(Options options);
@@ -207,6 +226,9 @@ class IoUringBackend : public EventBaseBackendBase {
   }
   struct io_uring_params const& params() const {
     return params_;
+  }
+  bool useReqBatching() const {
+    return options_.timeout.count() > 0 && options_.batchSize > 0;
   }
 
   // from EventBaseBackendBase
@@ -1076,6 +1098,7 @@ class IoUringBackend : public EventBaseBackendBase {
   size_t waitingToSubmit_{0};
   size_t numInsertedEvents_{0};
   size_t numInternalEvents_{0};
+  size_t numSendEvents_{0};
 
   // number of pooled IoSqe instances in use
   size_t numPooledIoSqeInUse_{0};

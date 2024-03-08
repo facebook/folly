@@ -52,8 +52,6 @@ using namespace std;
 static_assert(folly::detail::range_is_char_type_v_<char*>, "");
 static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>, "");
 
-static_assert(std::is_literal_type<StringPiece>::value, "");
-
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
 
 TEST(StringPiece, All) {
@@ -312,13 +310,11 @@ TEST(ByteRange, FromString) {
       static_cast<const void*>(s.data()), static_cast<const void*>(b.begin()));
   EXPECT_EQ(s.size(), b.size());
 
-#if FOLLY_HAS_STRING_VIEW
   std::string_view sv(s);
   ByteRange b2(sv);
   EXPECT_EQ(
       static_cast<const void*>(s.data()), static_cast<const void*>(b2.begin()));
   EXPECT_EQ(s.size(), b2.size());
-#endif
 }
 
 TEST(StringPiece, InvalidRange) {
@@ -353,13 +349,13 @@ TEST(StringPiece, Constexpr) {
 
 TEST(StringPiece, Prefix) {
   StringPiece a("hello");
-  EXPECT_TRUE(a.startsWith(""));
-  EXPECT_TRUE(a.startsWith("h"));
-  EXPECT_TRUE(a.startsWith('h'));
-  EXPECT_TRUE(a.startsWith("hello"));
-  EXPECT_FALSE(a.startsWith("hellox"));
-  EXPECT_FALSE(a.startsWith('x'));
-  EXPECT_FALSE(a.startsWith("x"));
+  EXPECT_TRUE(a.starts_with(""));
+  EXPECT_TRUE(a.starts_with("h"));
+  EXPECT_TRUE(a.starts_with('h'));
+  EXPECT_TRUE(a.starts_with("hello"));
+  EXPECT_FALSE(a.starts_with("hellox"));
+  EXPECT_FALSE(a.starts_with('x'));
+  EXPECT_FALSE(a.starts_with("x"));
 
   EXPECT_TRUE(a.startsWith("", folly::AsciiCaseInsensitive()));
   EXPECT_TRUE(a.startsWith("hello", folly::AsciiCaseInsensitive()));
@@ -409,13 +405,13 @@ TEST(StringPiece, Prefix) {
 
 TEST(StringPiece, Suffix) {
   StringPiece a("hello");
-  EXPECT_TRUE(a.endsWith(""));
-  EXPECT_TRUE(a.endsWith("o"));
-  EXPECT_TRUE(a.endsWith('o'));
-  EXPECT_TRUE(a.endsWith("hello"));
-  EXPECT_FALSE(a.endsWith("xhello"));
-  EXPECT_FALSE(a.endsWith("x"));
-  EXPECT_FALSE(a.endsWith('x'));
+  EXPECT_TRUE(a.ends_with(""));
+  EXPECT_TRUE(a.ends_with("o"));
+  EXPECT_TRUE(a.ends_with('o'));
+  EXPECT_TRUE(a.ends_with("hello"));
+  EXPECT_FALSE(a.ends_with("xhello"));
+  EXPECT_FALSE(a.ends_with("x"));
+  EXPECT_FALSE(a.ends_with('x'));
 
   EXPECT_TRUE(a.endsWith("", folly::AsciiCaseInsensitive()));
   EXPECT_TRUE(a.endsWith("o", folly::AsciiCaseInsensitive()));
@@ -534,7 +530,7 @@ TEST(StringPiece, erase) {
   EXPECT_EQ(a, "hello");
 }
 
-TEST(StringPiece, split_step_char_delimiter) {
+TEST(StringPiece, splitStepCharDelimiter) {
   //              0         1         2
   //              012345678901234567890123456
   auto const s = "this is just  a test string";
@@ -592,7 +588,7 @@ TEST(StringPiece, split_step_char_delimiter) {
   EXPECT_EQ("", x);
 }
 
-TEST(StringPiece, split_step_range_delimiter) {
+TEST(StringPiece, splitStepRangeDelimiter) {
   //              0         1         2         3
   //              0123456789012345678901234567890123
   auto const s = "this  is  just    a   test  string";
@@ -657,7 +653,7 @@ TEST(StringPiece, split_step_range_delimiter) {
 
 void split_step_with_process_noop(folly::StringPiece) {}
 
-TEST(StringPiece, split_step_with_process_char_delimiter) {
+TEST(StringPiece, splitStepWithProcessCharDelimiter) {
   //              0         1         2
   //              012345678901234567890123456
   auto const s = "this is just  a test string";
@@ -740,7 +736,7 @@ TEST(StringPiece, split_step_with_process_char_delimiter) {
   EXPECT_NO_THROW(p.split_step(' ', split_step_with_process_noop));
 }
 
-TEST(StringPiece, split_step_with_process_range_delimiter) {
+TEST(StringPiece, splitStepWithProcessRangeDelimiter) {
   //              0         1         2         3
   //              0123456789012345678901234567890123
   auto const s = "this  is  just    a   test  string";
@@ -830,7 +826,7 @@ TEST(StringPiece, split_step_with_process_range_delimiter) {
   EXPECT_NO_THROW(p.split_step(' ', split_step_with_process_noop));
 }
 
-TEST(StringPiece, split_step_with_process_char_delimiter_additional_args) {
+TEST(StringPiece, splitStepWithProcessCharDelimiterAdditionalArgs) {
   //              0         1         2
   //              012345678901234567890123456
   auto const s = "this is just  a test string";
@@ -865,7 +861,7 @@ TEST(StringPiece, split_step_with_process_char_delimiter_additional_args) {
   EXPECT_TRUE(p.empty());
 }
 
-TEST(StringPiece, split_step_with_process_range_delimiter_additional_args) {
+TEST(StringPiece, splitStepWithProcessRangeDelimiterAdditionalArgs) {
   //              0         1         2         3
   //              0123456789012345678901234567890123
   auto const s = "this  is  just    a   test  string";
@@ -910,7 +906,7 @@ TEST(StringPiece, NoInvalidImplicitConversions) {
   EXPECT_TRUE(IsString()(s));
 }
 
-TEST(qfind, UInt32_Ranges) {
+TEST(qfind, UInt32Ranges) {
   vector<uint32_t> a({1, 2, 3, 260, 5});
   vector<uint32_t> b({2, 3, 4});
 
@@ -1425,6 +1421,8 @@ TEST(Range, Constructors) {
   EXPECT_EQ(subpiece1.size(), 2);
   EXPECT_EQ(subpiece1.begin(), subpiece2.begin());
   EXPECT_EQ(subpiece1.end(), subpiece2.end());
+
+  EXPECT_EQ(StringPiece("hello world").substr(5, 1), " ");
 }
 
 TEST(Range, ArrayConstructors) {
@@ -1633,7 +1631,22 @@ TEST(Range, MutableStringPieceExplicitConversionOperator) {
   EXPECT_EQ("hello", piecec.to<fake_string_view>(fake_tag{}));
 }
 
-#if FOLLY_HAS_STRING_VIEW
+TEST(Range, InitializerList) {
+  auto check = [](Range<int const*> r) {
+    ASSERT_EQ(r.size(), 3);
+    EXPECT_EQ(*r.begin(), 1);
+    EXPECT_EQ(*(r.begin() + 1), 2);
+    EXPECT_EQ(*(r.begin() + 2), 3);
+  };
+
+  check(range({1, 2, 3}));
+  check(crange({1, 2, 3}));
+
+  static constexpr auto ilist = {1, 2, 3};
+  check(range(ilist));
+  check(crange(ilist));
+}
+
 namespace {
 std::size_t stringViewSize(std::string_view s) {
   return s.size();
@@ -1704,11 +1717,9 @@ class NonPOD {
  public:
   NonPOD() {}
 };
-FOLLY_MAYBE_UNUSED void test_func(Range<const NonPOD*>) {}
+[[maybe_unused]] void test_func(Range<const NonPOD*>) {}
 
 } // anonymous namespace
-
-#endif
 
 namespace {
 // Nested class should not cause compile errors due to incomplete parent

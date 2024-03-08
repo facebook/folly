@@ -38,7 +38,7 @@ template <size_t kMaxSlots>
 class SlotsConfig {
  public:
   FOLLY_EXPORT static void initialize() {
-    FOLLY_MAYBE_UNUSED static const Unit _ = [] {
+    [[maybe_unused]] static const Unit _ = [] {
       // We need at most as many slots as the number of L1 caches, so we can
       // avoid wasting memory if more slots are requested.
       const auto l1Caches = CacheLocality::system().numCachesByLevel.front();

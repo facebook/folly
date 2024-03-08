@@ -331,7 +331,7 @@ int SSLContext::getVerificationMode(
   return mode;
 }
 
-int SSLContext::getVerificationMode() {
+int SSLContext::getVerificationMode() const {
   // the below or'ing is incorrect unless VERIFY_NONE is 0
   static_assert(SSL_VERIFY_NONE == 0);
   return getVerificationMode(verifyClient_) |
@@ -616,7 +616,7 @@ int SSLContext::alpnSelectCallback(
   return SSL_TLSEXT_ERR_OK;
 }
 
-std::string SSLContext::getAdvertisedNextProtocols() {
+std::string SSLContext::getAdvertisedNextProtocols() const {
   if (advertisedNextProtocols_.empty()) {
     return "";
   }

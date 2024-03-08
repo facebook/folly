@@ -28,6 +28,7 @@
 
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/AsyncSSLSocket.h>
@@ -121,23 +122,24 @@ void getctx(
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
 }
 
 std::string getFileAsBuf(const char* fileName) {
   std::string buffer;
-  folly::readFile(fileName, buffer);
+  folly::readFile(find_resource(fileName).c_str(), buffer);
   return buffer;
 }
 
 folly::ssl::X509UniquePtr readCertFromFile(const std::string& filename) {
+  auto path = find_resource(filename);
   folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_file()));
   if (!bio) {
     throw std::runtime_error("Couldn't create BIO");
   }
 
-  if (BIO_read_filename(bio.get(), filename.c_str()) != 1) {
+  if (BIO_read_filename(bio.get(), path.c_str()) != 1) {
     throw std::runtime_error("Couldn't read cert file: " + filename);
   }
   return folly::ssl::X509UniquePtr(
@@ -1057,10 +1059,11 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   serverCtx->setVerificationOption(SSLContext::VerifyClientCertificate::ALWAYS);
   serverCtx->setCiphersuitesOrThrow(
       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kTestCA).c_str());
 
   auto clientCtx = std::make_shared<SSLContext>();
   clientCtx->setVerificationOption(
@@ -1072,9 +1075,9 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   // clientCiphers_ captured and verified below. Remove all of them by setting
   // eNULL.
   clientCtx->setCiphersOrThrow("eNULL");
-  clientCtx->loadPrivateKey(kTestKey);
-  clientCtx->loadCertificate(kTestCert);
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  clientCtx->loadCertificate(find_resource(kTestCert).c_str());
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -1177,16 +1180,17 @@ TEST(AsyncSSLSocketTest, GetClientCertificate) {
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   serverCtx->ciphers("ECDHE-RSA-AES128-SHA:AES128-SHA:AES256-SHA");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kClientTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kClientTestCA);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kClientTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kClientTestCA).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("AES256-SHA:AES128-SHA");
-  clientCtx->loadPrivateKey(kClientTestKey);
-  clientCtx->loadCertificate(kClientTestCert);
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadPrivateKey(find_resource(kClientTestKey).c_str());
+  clientCtx->loadCertificate(find_resource(kClientTestCert).c_str());
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
@@ -1398,7 +1402,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSuccess) {
       new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), true, true);
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   SSLHandshakeServer server(std::move(serverSock), true, true);
 
@@ -1436,7 +1440,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationFailure) {
       new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), true, false);
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   SSLHandshakeServer server(std::move(serverSock), true, true);
 
@@ -1464,7 +1468,7 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierReturns) {
   // the client socket will default to USE_CTX, so set VERIFY here
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   // load root certificate
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   // prepare a basic server (callbacks have a few EXPECTS to fullfil)
   ReadCallback readCallback(nullptr);
@@ -1517,7 +1521,7 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierFailsToConnect) {
   // the client socket will default to USE_CTX, so set VERIFY here
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   // load root certificate
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   // prepare a basic server (callbacks have a few EXPECTS to fullfil)
   ReadCallback readCallback(nullptr);
@@ -1605,7 +1609,7 @@ TEST(
   // the client socket will default to USE_CTX, so set VERIFY here
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   // load root certificate
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -1668,14 +1672,14 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierSucceedsOnServer) {
   // the client socket will default to USE_CTX, so set VERIFY here
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   // load root certificate
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
   // load identity and key on client, it's the same identity as server just for
   // convenience
-  clientCtx->loadCertificate(kTestCert);
-  clientCtx->loadPrivateKey(kTestKey);
+  clientCtx->loadCertificate(find_resource(kTestCert).c_str());
+  clientCtx->loadPrivateKey(find_resource(kTestKey).c_str());
   // instruct server to verify client
   serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
-  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -1749,7 +1753,7 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxDisableVerify) {
       new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClientNoVerify client(std::move(clientSock), false, false);
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   SSLHandshakeServerNoVerify server(std::move(serverSock), false, false);
 
@@ -1776,16 +1780,17 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxEnableVerify) {
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kTestCA).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadPrivateKey(kTestKey);
-  clientCtx->loadCertificate(kTestCert);
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  clientCtx->loadCertificate(find_resource(kTestCert).c_str());
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -1893,16 +1898,17 @@ TEST(AsyncSSLSocketTest, ClientCertHandshakeSuccess) {
   serverCtx->setVerificationOption(
       SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kTestCA).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadPrivateKey(kTestKey);
-  clientCtx->loadCertificate(kTestCert);
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  clientCtx->loadCertificate(find_resource(kTestCert).c_str());
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -1954,10 +1960,11 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
   serverCtx->setVerificationOption(
       SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kTestCA).c_str());
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
@@ -2172,9 +2179,10 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTest) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kTestCA).c_str());
 
   auto rsaPointers =
       setupCustomRSA(kTestCert, kTestKey, jobEvbThread.getEventBase());
@@ -2211,9 +2219,10 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestFailure) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kTestCA).c_str());
   // Set the wrong key for the cert
   auto rsaPointers =
       setupCustomRSA(kTestCert, kClientTestKey, jobEvbThread.getEventBase());
@@ -2250,9 +2259,10 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadTrustedCertificates(kTestCA);
-  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(kTestCA);
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+  serverCtx->setSupportedClientCertificateAuthorityNamesFromFile(
+      find_resource(kTestCA).c_str());
 
   auto rsaPointers =
       setupCustomRSA(kTestCert, kTestKey, jobEvbThread->getEventBase());
@@ -2314,7 +2324,7 @@ TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
   auto ctx = std::make_shared<SSLContext>();
   ctx->loadPrivateKeyFromBufferPEM(key);
   ctx->loadCertificateFromBufferPEM(cert);
-  ctx->loadTrustedCertificates(kTestCA);
+  ctx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   ssl::SSLUniquePtr ssl(ctx->createSSL());
 
@@ -2470,12 +2480,12 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerBasic) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -2505,12 +2515,12 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptError) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -2539,12 +2549,12 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptClose) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -2573,12 +2583,12 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptDestroy) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -2607,12 +2617,12 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiber) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
 
   NetworkSocket fds[2];
   getfds(fds);
@@ -2658,8 +2668,8 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiberCloseSessionCb) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
   SSL_CTX_set_session_cache_mode(
       serverCtx->getSSLCtx(),
       SSL_SESS_CACHE_NO_INTERNAL | SSL_SESS_CACHE_SERVER);
@@ -2670,7 +2680,7 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiberCloseSessionCb) {
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("AES128-SHA256");
-  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
   clientCtx->setOptions(SSL_OP_NO_TICKET);
 
   NetworkSocket fds[2];
@@ -2797,7 +2807,7 @@ TEST(AsyncSSLSocketTest, TTLSDisabled) {
   ReadCallback readCallback(&writeCallback);
   HandshakeCallback handshakeCallback(&readCallback);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
-  TestSSLServer server(&acceptCallback, false);
+  TestSSLServer server(&acceptCallback);
 
   // Set up SSL context.
   auto sslContext = std::make_shared<SSLContext>();
@@ -2927,7 +2937,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFOWithTFOServerDisabled) {
   ReadCallback readCallback(&writeCallback);
   HandshakeCallback handshakeCallback(&readCallback);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
-  TestSSLServer server(&acceptCallback, false);
+  TestSSLServer server(&acceptCallback);
 
   // Set up SSL context.
   auto sslContext = std::make_shared<SSLContext>();
@@ -3214,8 +3224,8 @@ TEST(AsyncSSLSocketTest, TestSSLSetClientOptionsP256) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->setSupportedGroups(std::vector<std::string>({"P-256"}));
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
   ssl::SSLCommonOptions::setClientOptions(*clientCtx);
 
   auto clientSocket =
@@ -3248,8 +3258,8 @@ TEST(AsyncSSLSocketTest, TestSSLSetClientOptionsX25519) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->setSupportedGroups(std::vector<std::string>({"X25519", "P-256"}));
-  serverCtx->loadCertificate(kTestCert);
-  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
   ssl::SSLCommonOptions::setClientOptions(*clientCtx);
 
   auto clientSocket =
@@ -3853,8 +3863,8 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
   EventBase eventBase;
   auto serverCtx = std::make_shared<SSLContext>();
   auto clientCtx = std::make_shared<SSLContext>();
-  serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
 
   auto sessionCb = std::make_unique<SimpleSessionLifecycleCallback>();
   auto sessionCbPtr = sessionCb.get();

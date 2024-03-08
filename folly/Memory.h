@@ -119,7 +119,7 @@ void rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
 
   if (kCanBypass && kAlign > kBaseAlign) {
     // allocating as BaseType isn't sufficient to get alignment, but
-    // since we can bypass Alloc we can use something like posix_memalign
+    // since we can bypass Alloc we can use something like posix_memalign.
     if (kAllocate) {
       raw = aligned_malloc(n * sizeof(T), kAlign);
     } else {

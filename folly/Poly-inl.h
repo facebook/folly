@@ -104,7 +104,7 @@ inline void PolyVal<I>::swap(Poly<I>& that) noexcept {
         std::swap(vptr_, that.vptr_);
         return;
       }
-      FOLLY_FALLTHROUGH;
+      [[fallthrough]];
     case State::eInSitu:
       std::swap(
           *this, static_cast<PolyVal<I>&>(that)); // NOTE: qualified, not ADL

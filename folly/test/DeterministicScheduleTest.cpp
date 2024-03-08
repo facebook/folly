@@ -328,7 +328,7 @@ struct AnnotatedAtomicCounter : public Base<T> {
 
 using Annotated = AnnotatedAtomicCounter<int>;
 
-TEST(DeterministicSchedule, global_invariants) {
+TEST(DeterministicSchedule, globalInvariants) {
   CHECK_GT(FLAGS_num_threads, 0);
 
   DSched sched(DSched::uniform(FLAGS_seed));
@@ -363,7 +363,7 @@ struct DSchedTimestampTest : public DSchedTimestamp {
   explicit DSchedTimestampTest(size_t v) : DSchedTimestamp(v) {}
 };
 
-TEST(DeterministicSchedule, thread_timestamps) {
+TEST(DeterministicSchedule, threadTimestamps) {
   ThreadTimestamps tss;
   DSchedThreadId tid0(0);
   DSchedThreadId tid1(1);

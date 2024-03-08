@@ -57,6 +57,14 @@ class MockFoo : Foo {
   MOCK_METHOD(folly::coro::Task<void>, getVoid, ());
 };
 
+class ExplicitlyCopyableString : public std::string {
+ public:
+  explicit ExplicitlyCopyableString(const char* cstr) : std::string(cstr) {}
+  explicit ExplicitlyCopyableString(const ExplicitlyCopyableString&) = default;
+  ExplicitlyCopyableString(ExplicitlyCopyableString&&) = default;
+  ExplicitlyCopyableString& operator=(const ExplicitlyCopyableString&) = delete;
+  ExplicitlyCopyableString& operator=(ExplicitlyCopyableString&&) = default;
+};
 } // namespace
 
 TEST(CoroGTestHelpers, CoInvokeAvoidsDanglingReferences) {
@@ -103,6 +111,19 @@ TEST(CoroGTestHelpers, CoReturnTest) {
   MockFoo mock;
 
   EXPECT_CALL(mock, getString()).WillRepeatedly(CoReturn(std::string("abc")));
+
+  auto ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+
+  ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+}
+
+TEST(CoroGTestHelpers, CoReturnExplicitCopyTest) {
+  MockFoo mock;
+
+  EXPECT_CALL(mock, getString())
+      .WillRepeatedly(CoReturn(ExplicitlyCopyableString("abc")));
 
   auto ret = folly::coro::blockingWait(mock.getString());
   EXPECT_EQ(ret, "abc");

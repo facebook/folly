@@ -24,25 +24,7 @@ namespace folly {
 
 template <typename VT, typename CT>
 MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
-    size_t nBuckets, size_t nLevels, const Duration levelDurations[])
-    : cachedTime_(), cachedSum_(0), cachedCount_(0) {
-  CHECK_GT(nLevels, 0u);
-  CHECK(levelDurations);
-
-  levels_.reserve(nLevels);
-  for (size_t i = 0; i < nLevels; ++i) {
-    if (levelDurations[i] == Duration(0)) {
-      CHECK_EQ(i, nLevels - 1);
-    } else if (i > 0) {
-      CHECK(levelDurations[i - 1] < levelDurations[i]);
-    }
-    levels_.emplace_back(nBuckets, levelDurations[i]);
-  }
-}
-
-template <typename VT, typename CT>
-MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
-    size_t nBuckets, std::initializer_list<Duration> durations)
+    size_t nBuckets, folly::Range<const Duration*> durations)
     : cachedTime_(), cachedSum_(0), cachedCount_(0) {
   CHECK_GT(durations.size(), 0u);
 

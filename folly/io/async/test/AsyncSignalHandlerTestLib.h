@@ -19,27 +19,9 @@
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
 
-#define FOLLY_SKIP_IF_NULLPTR_BACKEND(evb)                           \
-  std::unique_ptr<EventBase> evb##Ptr;                               \
-  try {                                                              \
-    auto factory = [] {                                              \
-      auto backend = TypeParam::getBackend();                        \
-      if (!backend) {                                                \
-        throw std::runtime_error("backend not available");           \
-      }                                                              \
-      return backend;                                                \
-    };                                                               \
-    evb##Ptr = std::make_unique<EventBase>(                          \
-        EventBase::Options().setBackendFactory(std::move(factory))); \
-  } catch (const std::runtime_error& e) {                            \
-    if (std::string("backend not available") == e.what()) {          \
-      SKIP() << "Backend not available";                             \
-    }                                                                \
-  }                                                                  \
-  EventBase& evb = *evb##Ptr.get()
-
 namespace folly {
 namespace test {
+
 class TestSignalHandler : public AsyncSignalHandler {
  public:
   using AsyncSignalHandler::AsyncSignalHandler;
@@ -51,14 +33,24 @@ class TestSignalHandler : public AsyncSignalHandler {
 
 template <typename T>
 class AsyncSignalHandlerTest : public ::testing::Test {
- public:
-  AsyncSignalHandlerTest() = default;
+ protected:
+  void SetUp() override {
+    SKIP_IF(T::getBackend() == nullptr) << "Backend not available";
+  }
+
+  std::unique_ptr<EventBase> makeEventBase(
+      folly::EventBase::Options opts = folly::EventBase::Options()) {
+    return std::make_unique<EventBase>(
+        opts.setBackendFactory([] { return T::getBackend(); }));
+  }
 };
 
 TYPED_TEST_SUITE_P(AsyncSignalHandlerTest);
 
 TYPED_TEST_P(AsyncSignalHandlerTest, basic) {
-  FOLLY_SKIP_IF_NULLPTR_BACKEND(evb);
+  auto evbPtr = this->makeEventBase();
+  auto& evb = *evbPtr;
+
   TestSignalHandler handler{&evb};
 
   handler.registerSignalHandler(SIGUSR1);
@@ -70,9 +62,11 @@ TYPED_TEST_P(AsyncSignalHandlerTest, basic) {
 }
 
 TYPED_TEST_P(AsyncSignalHandlerTest, attachEventBase) {
+  auto evbPtr = this->makeEventBase();
+  auto& evb = *evbPtr;
+
   TestSignalHandler handler{nullptr};
   EXPECT_FALSE(handler.getEventBase());
-  FOLLY_SKIP_IF_NULLPTR_BACKEND(evb);
 
   handler.attachEventBase(&evb);
   EXPECT_EQ(&evb, handler.getEventBase());

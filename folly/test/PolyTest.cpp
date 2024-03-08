@@ -673,7 +673,7 @@ struct Struct2 : Struct {
 int property(Struct const&) {
   return 42;
 }
-FOLLY_MAYBE_UNUSED void property(Struct&, int) {}
+[[maybe_unused]] void property(Struct&, int) {}
 
 int meow(Struct2&) {
   return 42;

@@ -16,6 +16,8 @@
 
 #include <folly/logging/Init.h>
 
+#include <algorithm>
+
 #include <folly/logging/LogConfig.h>
 #include <folly/logging/LogConfigParser.h>
 #include <folly/logging/LoggerDB.h>
@@ -23,11 +25,15 @@
 
 namespace folly {
 
-void initLogging(StringPiece configString) {
+void initLogging(std::initializer_list<StringPiece> configStrings) {
   // Get the base logging configuration
   auto* const baseConfigStr = getBaseLoggingConfig();
   // Return early if we have nothing to do
-  if (!baseConfigStr && configString.empty()) {
+  auto const anyConfigString =
+      std::any_of(configStrings.begin(), configStrings.end(), [](auto s) {
+        return !s.empty();
+      });
+  if (!baseConfigStr && !anyConfigString) {
     return;
   }
 
@@ -35,20 +41,36 @@ void initLogging(StringPiece configString) {
   LogConfig config;
   if (baseConfigStr) {
     config = parseLogConfig(baseConfigStr);
-    if (!configString.empty()) {
-      config.update(parseLogConfig(configString));
+    for (auto configString : configStrings) {
+      if (!configString.empty()) {
+        config.update(parseLogConfig(configString));
+      }
     }
   } else {
-    config = parseLogConfig(configString);
+    auto first = true;
+    for (auto configString : configStrings) {
+      if (!configString.empty()) {
+        if (first) {
+          first = false;
+          config = parseLogConfig(configString);
+        } else {
+          config.update(parseLogConfig(configString));
+        }
+      }
+    }
   }
 
   // Apply the config settings
   LoggerDB::get().updateConfig(config);
 }
 
-void initLoggingOrDie(StringPiece configString) {
+void initLogging(StringPiece configString) {
+  initLogging(std::initializer_list<StringPiece>{configString});
+}
+
+void initLoggingOrDie(std::initializer_list<StringPiece> configStrings) {
   try {
-    initLogging(configString);
+    initLogging(configStrings);
   } catch (const std::exception& ex) {
     // Print the error message.  We intentionally use ex.what() here instead
     // of folly::exceptionStr() to avoid including the exception type name in
@@ -63,6 +85,10 @@ void initLoggingOrDie(StringPiece configString) {
     fprintf(stderr, "error parsing logging configuration: %s\n", ex.what());
     exit(1);
   }
+}
+
+void initLoggingOrDie(StringPiece configString) {
+  initLoggingOrDie(std::initializer_list<StringPiece>{configString});
 }
 
 } // namespace folly

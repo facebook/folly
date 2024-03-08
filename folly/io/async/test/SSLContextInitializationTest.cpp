@@ -99,7 +99,7 @@ TEST(SSLContextInitializationTest, SSLContextLocksSetAfterInitIgnored) {
       "SSLContextLocksSetAfterInitIgnored passed");
 }
 
-TEST(SSLContextInitializationTest, SSLContext_SSL_CTX_constructor) {
+TEST(SSLContextInitializationTest, SSLContextSslCtxConstructor) {
   folly::ssl::init();
 
   // Used to determine when SSL_CTX is freed.

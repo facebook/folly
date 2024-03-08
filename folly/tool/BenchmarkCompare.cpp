@@ -17,7 +17,7 @@
 #include <folly/Benchmark.h>
 #include <folly/FileUtil.h>
 #include <folly/init/Init.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 
 /**
  * Utility to produce a relative benchmark result from JSON result dumps

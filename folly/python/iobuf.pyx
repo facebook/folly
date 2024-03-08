@@ -80,7 +80,7 @@ cdef class IOBuf:
     cdef void cleanup(self):
         self._ours.reset()
 
-    cdef unique_ptr[cIOBuf] c_clone(self):
+    cdef unique_ptr[cIOBuf] c_clone(self) noexcept:
         return move(self._this.clone())
 
     def clone(self):

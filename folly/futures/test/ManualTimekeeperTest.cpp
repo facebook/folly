@@ -89,4 +89,13 @@ TEST_F(ManualTimekeeperTest, AdvanceWithManyFutures) {
   EXPECT_TRUE(four.isReady());
 }
 
+TEST_F(ManualTimekeeperTest, Cancel) {
+  auto timekeeper = folly::ManualTimekeeper{};
+  auto future = timekeeper.after(100s);
+  future.cancel();
+  ASSERT_TRUE(future.isReady());
+  EXPECT_TRUE(future.result().hasException<FutureCancellation>());
+  timekeeper.advance(100s);
+  EXPECT_TRUE(future.result().hasException<FutureCancellation>());
+}
 } // namespace folly

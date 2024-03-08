@@ -33,6 +33,11 @@ namespace channels {
  *
  * @param executor: A SequencedExecutor used to merge input values.
  *
+ * @param waitForAllInputsToClose: When true, if any input receiver closes
+ * without an exception, the channel continues to merge values from the other
+ * input receivers until all input receivers are closed. If false, the channel
+ * closes as soon as any input receiver has closed.
+ *
  * Example:
  *
  *  // Example function that returns a list of receivers
@@ -46,7 +51,8 @@ namespace channels {
 template <typename TReceiver, typename TValue = typename TReceiver::ValueType>
 Receiver<TValue> merge(
     std::vector<TReceiver> inputReceivers,
-    folly::Executor::KeepAlive<folly::SequencedExecutor> executor);
+    folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+    bool waitForAllInputsToClose = true);
 } // namespace channels
 } // namespace folly
 

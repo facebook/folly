@@ -41,7 +41,7 @@ class ScopedEventBaseThread;
  *
  *  Example:
  *
- *    TEST(MyClient, WhenTheServerIsDown_ThrowsServerDownException) {
+ *    TEST(MyClient, WhenTheServerIsDownThrowsserverdownexception) {
  *      folly::ScopedBoundPort bound;
  *      MyClient client(bound.getAddress(), 100ms);
  *      EXPECT_THROW(client.getData(), ServerDownException);

@@ -4,6 +4,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+# pyre-unsafe
+
 import os
 import re
 import shutil
@@ -148,21 +150,29 @@ incremental = false
     def _build(self, install_dirs, reconfigure) -> None:
         # _prepare has been run already. Actually do the build
         build_source_dir = self.build_source_dir()
+
+        build_args = [
+            "--out-dir",
+            os.path.join(self.inst_dir, "bin"),
+            "-Zunstable-options",
+        ]
+
+        if self.build_opts.build_type != "Debug":
+            build_args.append("--release")
+
         if self.manifests_to_build is None:
             self.run_cargo(
                 install_dirs,
                 "build",
-                ["--out-dir", os.path.join(self.inst_dir, "bin"), "-Zunstable-options"],
+                build_args,
             )
         else:
             for manifest in self.manifests_to_build:
                 self.run_cargo(
                     install_dirs,
                     "build",
-                    [
-                        "--out-dir",
-                        os.path.join(self.inst_dir, "bin"),
-                        "-Zunstable-options",
+                    build_args
+                    + [
                         "--manifest-path",
                         self.manifest_dir(manifest),
                     ],
@@ -328,7 +338,7 @@ path = "{null_file}"
 
             crate_source_map = {}
             if dep_crate_map:
-                for (crate, subpath) in dep_crate_map.items():
+                for crate, subpath in dep_crate_map.items():
                     if crate not in crate_source_map:
                         if self.build_opts.is_windows():
                             subpath = subpath.replace("/", "\\")
@@ -436,7 +446,7 @@ path = "{null_file}"
         """
         search_pattern = '[package]\nname = "{}"'.format(crate)
 
-        for (_crate, crate_source_dir) in crate_source_map.items():
+        for _crate, crate_source_dir in crate_source_map.items():
             for crate_root, _, files in os.walk(crate_source_dir):
                 if "Cargo.toml" in files:
                     with open(os.path.join(crate_root, "Cargo.toml"), "r") as f:

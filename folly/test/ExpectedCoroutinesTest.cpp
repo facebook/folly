@@ -104,6 +104,23 @@ TEST(Expected, CoroutineFailure) {
   EXPECT_NE(Err::baddest(), r1.error());
 }
 
+TEST(Expected, CoroutineAwaitUnexpected) {
+  auto r1 = []() -> Expected<int, Err> {
+    co_await makeUnexpected(Err::badder());
+    throw std::logic_error("should have been unreachable");
+  }();
+  EXPECT_TRUE(r1.hasError());
+  EXPECT_EQ(Err::badder(), r1.error());
+}
+
+TEST(Expected, CoroutineReturnUnexpected) {
+  auto r1 = []() -> Expected<int, Err> {
+    co_return makeUnexpected(Err::badder());
+  }();
+  EXPECT_TRUE(r1.hasError());
+  EXPECT_EQ(Err::badder(), r1.error());
+}
+
 TEST(Expected, CoroutineException) {
   EXPECT_THROW(
       ([]() -> Expected<int, Err> {

@@ -32,13 +32,6 @@
 #include <folly/lang/Exception.h>
 #include <folly/lang/StaticConst.h>
 
-#if defined(__cpp_template_auto) || \
-    defined(__cpp_nontype_template_parameter_auto)
-#define FOLLY_POLY_NTTP_AUTO 1
-#else
-#define FOLLY_POLY_NTTP_AUTO 0
-#endif
-
 namespace folly {
 /// \cond
 namespace detail {
@@ -73,15 +66,8 @@ detail::AddCvrefOf<T, I>& poly_cast(detail::PolyRoot<I>&);
 template <class T, class I>
 detail::AddCvrefOf<T, I> const& poly_cast(detail::PolyRoot<I> const&);
 
-#if !FOLLY_POLY_NTTP_AUTO
-#define FOLLY_AUTO class
-template <class... Ts>
-using PolyMembers = detail::TypeList<Ts...>;
-#else
-#define FOLLY_AUTO auto
 template <auto...>
 struct PolyMembers;
-#endif
 
 /// \cond
 namespace detail {
@@ -240,54 +226,6 @@ using MembersOf = typename I::template Members<remove_cvref_t<T>>;
 template <class I, class T>
 using InterfaceOf = typename I::template Interface<T>;
 
-#if !FOLLY_POLY_NTTP_AUTO
-template <class T, T V>
-using Member = std::integral_constant<T, V>;
-
-template <class M>
-using MemberType = typename M::value_type;
-
-template <class M>
-inline constexpr MemberType<M> memberValue() noexcept {
-  return M::value;
-}
-
-template <class... Ts>
-struct MakeMembers {
-  template <Ts... Vs>
-  using Members = PolyMembers<Member<Ts, Vs>...>;
-};
-
-template <class... Ts>
-MakeMembers<Ts...> deduceMembers(Ts...);
-
-template <class Member, class = MemberType<Member>>
-struct MemberDef;
-
-template <class Member, class R, class D, class... As>
-struct MemberDef<Member, R (D::*)(As...)> {
-  static R value(D& d, As... as) {
-    return folly::invoke(memberValue<Member>(), d, static_cast<As&&>(as)...);
-  }
-};
-
-template <class Member, class R, class D, class... As>
-struct MemberDef<Member, R (D::*)(As...) const> {
-  static R value(D const& d, As... as) {
-    return folly::invoke(memberValue<Member>(), d, static_cast<As&&>(as)...);
-  }
-};
-
-#else
-template <auto M>
-using MemberType = decltype(M);
-
-template <auto M>
-inline constexpr MemberType<M> memberValue() noexcept {
-  return M;
-}
-#endif
-
 struct PolyBase {};
 
 template <class I, class = void>
@@ -402,7 +340,6 @@ struct SignatureOf_<R (C::*)(As...) const, I> {
   using type = Ret<R, I> (*)(Data const&, Arg<As, I>...);
 };
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <class R, class C, class... As, class I>
 struct SignatureOf_<R (C::*)(As...) noexcept, I> {
   using type = std::add_pointer_t<Ret<R, I>(Data&, Arg<As, I>...) noexcept>;
@@ -413,7 +350,6 @@ struct SignatureOf_<R (C::*)(As...) const noexcept, I> {
   using type =
       std::add_pointer_t<Ret<R, I>(Data const&, Arg<As, I>...) noexcept>;
 };
-#endif
 
 template <class R, class This, class... As, class I>
 struct SignatureOf_<R (*)(This&, As...), I> {
@@ -425,25 +361,23 @@ struct SignatureOf_<R (*)(This const&, As...), I> {
   using type = Ret<R, I> (*)(Data const&, Arg<As, I>...);
 };
 
-template <FOLLY_AUTO Arch, class I>
-using SignatureOf = _t<SignatureOf_<MemberType<Arch>, I>>;
+template <auto Arch, class I>
+using SignatureOf = _t<SignatureOf_<decltype(Arch), I>>;
 
-template <FOLLY_AUTO User, class I, class Sig = SignatureOf<User, I>>
+template <auto User, class I, class Sig = SignatureOf<User, I>>
 struct ArgTypes_;
 
-template <FOLLY_AUTO User, class I, class Ret, class Data, class... Args>
+template <auto User, class I, class Ret, class Data, class... Args>
 struct ArgTypes_<User, I, Ret (*)(Data, Args...)> {
   using type = TypeList<Args...>;
 };
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
-template <FOLLY_AUTO User, class I, class Ret, class Data, class... Args>
+template <auto User, class I, class Ret, class Data, class... Args>
 struct ArgTypes_<User, I, Ret (*)(Data, Args...) noexcept> {
   using type = TypeList<Args...>;
 };
-#endif
 
-template <FOLLY_AUTO User, class I>
+template <auto User, class I>
 using ArgTypes = _t<ArgTypes_<User, I>>;
 
 template <class R, class... Args>
@@ -517,17 +451,15 @@ struct IsConstMember<R (C::*)(As...) const> : std::true_type {};
 template <class R, class C, class... As>
 struct IsConstMember<R (*)(C const&, As...)> : std::true_type {};
 
-#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <class R, class C, class... As>
 struct IsConstMember<R (C::*)(As...) const noexcept> : std::true_type {};
 
 template <class R, class C, class... As>
 struct IsConstMember<R (*)(C const&, As...) noexcept> : std::true_type {};
-#endif
 
 template <
     class T,
-    FOLLY_AUTO User,
+    auto User,
     class I,
     class = ArgTypes<User, I>,
     class = Bool<true>>
@@ -538,7 +470,7 @@ struct ThunkFn {
   }
 };
 
-template <class T, FOLLY_AUTO User, class I, class... Args>
+template <class T, auto User, class I, class... Args>
 struct ThunkFn<
     T,
     User,
@@ -546,15 +478,13 @@ struct ThunkFn<
     TypeList<Args...>,
     Bool<
         !std::is_const<std::remove_reference_t<T>>::value ||
-        IsConstMember<MemberType<User>>::value>> {
+        IsConstMember<decltype(User)>::value>> {
   template <class R, class D, class... As>
   constexpr /* implicit */ operator FnPtr<R, D&, As...>() const noexcept {
     struct _ {
       static R call(D& d, As... as) {
         return folly::invoke(
-            memberValue<User>(),
-            get<T>(d),
-            convert<Args>(static_cast<As&&>(as))...);
+            User, get<T>(d), convert<Args>(static_cast<As&&>(as))...);
       }
     };
     return &_::call;
@@ -567,7 +497,7 @@ template <
     class = SubsumptionsOf<I>>
 struct VTable;
 
-template <class T, FOLLY_AUTO User, class I>
+template <class T, auto User, class I>
 inline constexpr ThunkFn<T, User, I> thunk_() noexcept {
   return ThunkFn<T, User, I>{};
 }
@@ -714,11 +644,11 @@ constexpr void* (*getOps() noexcept)(Op, Data*, void*) {
   return getOpsImpl<I, T>(std::integral_constant<bool, inSitu<T>()>{});
 }
 
-template <class I, FOLLY_AUTO... Arch, class... S>
+template <class I, auto... Arch, class... S>
 struct VTable<I, PolyMembers<Arch...>, TypeList<S...>>
     : BasePtr<S>..., std::tuple<SignatureOf<Arch, I>...> {
  private:
-  template <class T, FOLLY_AUTO... User>
+  template <class T, auto... User>
   constexpr VTable(Type<T>, PolyMembers<User...>) noexcept
       : BasePtr<S>{vtableFor<S, T>()}...,
         std::tuple<SignatureOf<Arch, I>...>{thunk_<T, User, I>()...},
@@ -924,8 +854,24 @@ struct Sig<R(A&, As...)> : SigImpl<R, A&, As...> {
   }
 };
 
+template <bool>
+struct ModelsInterfaceFalse0_;
+template <>
+struct ModelsInterfaceFalse0_<false> {
+  template <typename... T>
+  using apply = bool_constant<(!require_sizeof<T> || ...)>;
+};
+template <>
+struct ModelsInterfaceFalse0_<true> {
+  template <typename...>
+  using apply = std::false_type;
+};
+template <typename... T>
+using ModelsInterfaceFalse_ = typename ModelsInterfaceFalse0_<(
+    std::is_function_v<remove_cvref_t<T>> || ...)>::template apply<T...>;
+
 template <class T, class I, class = void>
-struct ModelsInterface2_ : std::false_type {};
+struct ModelsInterface2_ : ModelsInterfaceFalse_<T, I> {};
 
 template <class T, class I>
 struct ModelsInterface2_<
@@ -937,7 +883,7 @@ struct ModelsInterface2_<
         MembersOf<std::decay_t<I>, std::decay_t<T>>>> : std::true_type {};
 
 template <class T, class I, class = void>
-struct ModelsInterface_ : std::false_type {};
+struct ModelsInterface_ : ModelsInterfaceFalse_<T, I> {};
 
 template <class T, class I>
 struct ModelsInterface_<
@@ -969,5 +915,3 @@ struct ReferenceCompatible<I1, I1, I2Ref> : std::false_type {};
 } // namespace detail
 /// \endcond
 } // namespace folly
-
-#undef FOLLY_AUTO

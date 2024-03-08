@@ -3,6 +3,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+# pyre-unsafe
+
 import os
 import shutil
 import subprocess
@@ -59,9 +61,7 @@ def prefetch_dir_if_eden(dirpath) -> None:
         return
     glob = f"{os.path.relpath(dirpath, root).replace(os.sep, '/')}/**"
     print(f"Prefetching {glob}")
-    subprocess.call(
-        ["edenfsctl", "prefetch", "--repo", root, "--silent", glob, "--background"]
-    )
+    subprocess.call(["edenfsctl", "prefetch", "--repo", root, glob, "--background"])
     PREFETCHED_DIRS.add(dirpath)
 
 

@@ -486,10 +486,12 @@ struct unsafe_default_initialized_cv {
   FOLLY_ERASE constexpr /* implicit */ operator T() const noexcept {
 #if defined(__cpp_lib_is_constant_evaluated)
 #if __cpp_lib_is_constant_evaluated >= 201811L
+#if !defined(__MSVC_RUNTIME_CHECKS)
     if (!std::is_constant_evaluated()) {
       T uninit;
       return uninit;
     }
+#endif // !defined(__MSVC_RUNTIME_CHECKS)
 #endif
 #endif
     return T();
@@ -830,24 +832,4 @@ struct invocable_to_fn {
   }
 };
 FOLLY_INLINE_VARIABLE constexpr invocable_to_fn invocable_to{};
-
-// Simulate if constexpr in C++14
-template <bool>
-struct if_constexpr_fn {
-  template <class F, class G>
-  constexpr auto&& operator()(F&& f, G&&) const {
-    return static_cast<F&&>(f);
-  }
-};
-
-template <>
-struct if_constexpr_fn<false> {
-  template <class F, class G>
-  constexpr auto&& operator()(F&&, G&& g) const {
-    return static_cast<G&&>(g);
-  }
-};
-
-template <bool Cond>
-FOLLY_INLINE_VARIABLE constexpr if_constexpr_fn<Cond> if_constexpr{};
 } // namespace folly

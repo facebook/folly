@@ -1547,7 +1547,7 @@ TEST(AsyncSocketTest, GetAddressesNoFd) {
 /**
  * Test getting local and peer addresses after connecting.
  */
-TEST(AsyncSocketTest, GetAddressesAfterConnect_GetWhileOpenAndOnClose) {
+TEST(AsyncSocketTest, GetAddressesAfterConnectGetwhileopenandonclose) {
   EventBase evb;
   auto socket = AsyncSocket::newSocket(&evb);
 
@@ -1603,7 +1603,7 @@ TEST(AsyncSocketTest, GetAddressesAfterConnect_GetWhileOpenAndOnClose) {
  *
  * Only peer address is available under these conditions.
  */
-TEST(AsyncSocketTest, GetAddressesAfterConnect_GetOnlyAfterClose) {
+TEST(AsyncSocketTest, GetAddressesAfterConnectGetonlyafterclose) {
   EventBase evb;
   auto socket = AsyncSocket::newSocket(&evb);
 
@@ -1640,7 +1640,7 @@ TEST(AsyncSocketTest, GetAddressesAfterConnect_GetOnlyAfterClose) {
 /**
  * Test getting local and peer addresses after connecting.
  */
-TEST(AsyncSocketTest, GetAddressesAfterInitFromFd_GetOnInitAndOnClose) {
+TEST(AsyncSocketTest, GetAddressesAfterInitFromFdGetoninitandonclose) {
   EventBase evb;
 
   // Start listening on a local port
@@ -4229,7 +4229,7 @@ class AsyncSocketByteEventTest : public ::testing::Test {
         msghdr* /* message */,
         int flags,
         int returnValue) {
-      if (flags == MSG_ERRQUEUE and returnValue >= 0) {
+      if (flags == MSG_ERRQUEUE && returnValue >= 0) {
         errorQueueReads_ += 1;
       }
     }
@@ -10008,7 +10008,7 @@ TEST(AsyncSocketTest, QueueTimeout) {
         // Allow plenty of time for the AsyncSocketServer's event loop to run.
         // This should leave no doubt that the acceptor thread has enough time
         // to dequeue. If the dequeue succeeds, then our expiry code is broken.
-        constexpr auto kEventLoopTime = kConnectionTimeout * 5;
+        static constexpr auto kEventLoopTime = kConnectionTimeout * 5;
         eventBase.runInEventBaseThread([&]() {
           eventBase.tryRunAfterDelay(
               [&]() { serverSocket->removeAcceptCallback(&acceptCb, nullptr); },

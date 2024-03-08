@@ -1,0 +1,17 @@
+[manifest]
+name = lmdb
+
+[build]
+builder = make
+subdir = lmdb-LMDB_0.9.31/libraries/liblmdb
+
+[download]
+url = https://github.com/LMDB/lmdb/archive/refs/tags/LMDB_0.9.31.tar.gz
+sha256 = dd70a8c67807b3b8532b3e987b0a4e998962ecc28643e1af5ec77696b081c9b0
+
+[make.build_args]
+BUILD_STATIC_ONLY=y
+
+[make.install_args]
+install
+BUILD_STATIC_ONLY=y

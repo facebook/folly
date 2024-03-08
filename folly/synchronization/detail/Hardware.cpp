@@ -121,13 +121,13 @@ FOLLY_RTM_DISABLED_NORETURN static bool rtmTestFunc() {
 }
 
 [[noreturn]] FOLLY_DISABLE_SANITIZERS static void rtmAbortFunc(
-    FOLLY_MAYBE_UNUSED uint8_t status) {
+    [[maybe_unused]] uint8_t status) {
 #if FOLLY_RTM_SUPPORT
   switch (status) {
 #define FOLLY_RTM_ABORT_ONE(z, n, text) \
   case uint8_t(n):                      \
     _xabort(uint8_t(n));                \
-    FOLLY_FALLTHROUGH;
+    [[fallthrough]];
     BOOST_PP_REPEAT(256, FOLLY_RTM_ABORT_ONE, unused)
 #undef FOLLY_RTM_ABORT_ONE
     default:

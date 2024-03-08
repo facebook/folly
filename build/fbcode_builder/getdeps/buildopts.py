@@ -3,6 +3,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+# pyre-unsafe
+
 import errno
 import glob
 import ntpath
@@ -52,6 +54,7 @@ class BuildOptions(object):
         shared_libs: bool = False,
         facebook_internal=None,
         free_up_disk: bool = False,
+        build_type: Optional[str] = None,
     ) -> None:
         """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                              or for shipit-transformed repos, the build dir that
@@ -67,6 +70,7 @@ class BuildOptions(object):
         vcvars_path - Path to external VS toolchain's vsvarsall.bat
         shared_libs - whether to build shared libraries
         free_up_disk - take extra actions to save runner disk space
+        build_type - CMAKE_BUILD_TYPE, used by cmake and cargo builders
         """
 
         if not install_dir:
@@ -106,6 +110,11 @@ class BuildOptions(object):
         self.lfs_path = lfs_path
         self.shared_libs = shared_libs
         self.free_up_disk = free_up_disk
+
+        if build_type is None:
+            build_type = "RelWithDebInfo"
+
+        self.build_type = build_type
 
         lib_path = None
         if self.is_darwin():
@@ -361,6 +370,11 @@ class BuildOptions(object):
             elif "/bz2-" in d:
                 add_flag(env, "CPPFLAGS", f"-I{includedir}", append=append)
 
+            # The thrift compiler's built-in includes are installed directly to the include dir
+            includethriftdir = os.path.join(d, "include", "thrift")
+            if os.path.exists(includethriftdir):
+                add_path_entry(env, "THRIFT_INCLUDE_PATH", includedir, append=append)
+
         # Map from FB python manifests to PYTHONPATH
         pydir = os.path.join(d, "lib", "fb-py-libs")
         if os.path.exists(pydir):
@@ -606,6 +620,7 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
             "lfs_path",
             "shared_libs",
             "free_up_disk",
+            "build_type",
         }
     }
 

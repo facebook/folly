@@ -37,11 +37,16 @@
 
 DEFINE_string(e, "", "Path to ELF object file (.so, binary)");
 DEFINE_bool(demangle, false, "Degmangle symbols");
+DEFINE_bool(C, false, "Degmangle symbols");
 DEFINE_bool(a, false, "Show addresses");
 DEFINE_bool(i, false, "Unwind inlined functions");
 DEFINE_bool(f, false, "Show function names");
 
 using namespace folly::symbolizer;
+
+bool shouldDemangle() {
+  return FLAGS_demangle || FLAGS_C;
+}
 
 void addr2line(std::shared_ptr<ElfFile> elfFile, uintptr_t address) {
   if (elfFile->getSectionContainingAddress(address) == nullptr) {
@@ -90,8 +95,9 @@ void addr2line(std::shared_ptr<ElfFile> elfFile, uintptr_t address) {
   for (size_t i = 0; i < n; i++) {
     const auto& f = frames[i];
     if (FLAGS_f) {
-      std::cout << (f.name ? (FLAGS_demangle ? folly::demangle(f.name) : f.name)
-                           : "??")
+      std::cout << (f.name
+                        ? (shouldDemangle() ? folly::demangle(f.name) : f.name)
+                        : "??")
                 << '\n';
     }
     auto path = f.location.file.toString();
@@ -104,9 +110,16 @@ int main(int argc, char* argv[]) {
   folly::Init init(&argc, &argv);
   auto elfFile = std::make_shared<ElfFile>(FLAGS_e.c_str());
 
-  for (int i = 1; i < argc; i++) {
-    addr2line(elfFile, strtoll(argv[i], nullptr, 0));
+  if (argc == 1) {
+    for (std::string line; std::getline(std::cin, line);) {
+      addr2line(elfFile, strtoll(line.c_str(), nullptr, 0));
+    }
+  } else {
+    for (int i = 1; i < argc; i++) {
+      addr2line(elfFile, strtoll(argv[i], nullptr, 0));
+    }
   }
+
   return 0;
 }
 

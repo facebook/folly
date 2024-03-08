@@ -21,6 +21,15 @@
 
 namespace folly {
 
+TEST(AsyncTimeout, destroy) {
+  std::optional<EventBase> manager{std::in_place};
+  auto observer = AsyncTimeout::make(manager.value(), []() noexcept {});
+  observer->scheduleTimeout(std::chrono::milliseconds(100));
+  EXPECT_EQ(observer->isScheduled(), true);
+  manager.reset();
+  EXPECT_EQ(observer->isScheduled(), false);
+}
+
 TEST(AsyncTimeout, make) {
   int value = 0;
   int expected = 10;
@@ -51,7 +60,7 @@ TEST(AsyncTimeout, schedule) {
   EXPECT_EQ(expected, value);
 }
 
-TEST(AsyncTimeout, schedule_immediate) {
+TEST(AsyncTimeout, scheduleImmediate) {
   int value = 0;
   int expected = 10;
   EventBase manager;
@@ -65,7 +74,7 @@ TEST(AsyncTimeout, schedule_immediate) {
   EXPECT_EQ(expected, value);
 }
 
-TEST(AsyncTimeout, cancel_make) {
+TEST(AsyncTimeout, cancelMake) {
   int value = 0;
   int expected = 10;
   EventBase manager;
@@ -91,7 +100,7 @@ TEST(AsyncTimeout, cancel_make) {
   EXPECT_NE(expected, value);
 }
 
-TEST(AsyncTimeout, cancel_schedule) {
+TEST(AsyncTimeout, cancelSchedule) {
   int value = 0;
   int expected = 10;
   EventBase manager;
