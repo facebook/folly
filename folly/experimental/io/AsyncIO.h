@@ -81,6 +81,7 @@ class AsyncIO : public AsyncBase {
   void initializeContext() override;
 
  protected:
+  int drainPollFd() override;
   int submitOne(AsyncBase::Op* op) override;
   int submitRange(Range<AsyncBase::Op**> ops) override;
 

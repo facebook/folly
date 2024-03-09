@@ -31,6 +31,10 @@
 #include <folly/portability/Unistd.h>
 #include <folly/small_vector.h>
 
+#if __has_include(<sys/eventfd.h>)
+#include <sys/eventfd.h>
+#endif
+
 #if __has_include(<libaio.h>)
 
 // debugging helpers
@@ -146,13 +150,31 @@ std::ostream& operator<<(std::ostream& os, const AsyncIOOp& op) {
 }
 
 AsyncIO::AsyncIO(size_t capacity, PollMode pollMode)
-    : AsyncBase(capacity, pollMode) {}
+    : AsyncBase(capacity, pollMode) {
+  // we need to create the eventfd in the constructor
+  // since we have code that relies on registering the pollFd_
+  // before any operation is started
+
+  if (pollMode_ == POLLABLE) {
+#if __has_include(<sys/eventfd.h>)
+    pollFd_ = eventfd(0, EFD_NONBLOCK);
+    checkUnixError(pollFd_, "AsyncIO: eventfd creation failed");
+#else
+    // fallthrough to not-pollable, observed as: pollFd() == -1
+#endif
+  }
+}
 
 AsyncIO::~AsyncIO() {
   CHECK_EQ(pending_, 0);
   if (ctx_) {
     int rc = io_queue_release(ctx_);
     CHECK_EQ(rc, 0) << "io_queue_release: " << errnoStr(-rc);
+  }
+
+  if (pollFd_ != -1) {
+    CHECK_ERR(close(pollFd_));
+    pollFd_ = -1;
   }
 }
 
@@ -180,9 +202,27 @@ void AsyncIO::initializeContext() {
 
       checkKernelError(rc, "AsyncIO: io_queue_init failed");
       DCHECK(ctx_);
+
       init_.store(true, std::memory_order_release);
     }
   }
+}
+
+int AsyncIO::drainPollFd() {
+  uint64_t numEvents;
+  // This sets the eventFd counter to 0, see
+  // http://www.kernel.org/doc/man-pages/online/pages/man2/eventfd.2.html
+  ssize_t rc;
+  do {
+    rc = ::read(pollFd_, &numEvents, 8);
+  } while (rc == -1 && errno == EINTR);
+  if (FOLLY_UNLIKELY(rc == -1 && errno == EAGAIN)) {
+    return 0;
+  }
+  checkUnixError(rc, "AsyncIO: read from event fd failed");
+  DCHECK_EQ(rc, 8);
+  DCHECK_GT(numEvents, 0);
+  return static_cast<int>(numEvents);
 }
 
 int AsyncIO::submitOne(AsyncBase::Op* op) {

@@ -245,6 +245,7 @@ class AsyncBase {
   int submit(Range<Op**> ops);
 
  protected:
+  virtual int drainPollFd() = 0;
   void complete(Op* op, ssize_t result) { op->complete(result); }
 
   void cancel(Op* op) { op->cancel(); }
@@ -268,6 +269,7 @@ class AsyncBase {
   std::atomic<size_t> pending_{0};
   std::atomic<size_t> submitted_{0};
   const size_t capacity_;
+  const PollMode pollMode_;
   int pollFd_{-1};
   std::vector<Op*> completed_;
   std::vector<Op*> canceled_;

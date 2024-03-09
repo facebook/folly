@@ -211,6 +211,11 @@ IoUring::IoUring(
 
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = roundUpToNextPowerOfTwo(capacity_);
+
+  // we need to call initializeContext() in the constructor
+  // since we have code that relies on registering the pollFd_
+  // before any operation is started
+  initializeContext();
 }
 
 IoUring::~IoUring() {
@@ -219,13 +224,13 @@ IoUring::~IoUring() {
     ::io_uring_queue_exit(&ioRing_);
     ioRing_.ring_fd = -1;
   }
+
+  pollFd_ = -1;
 }
 
 bool IoUring::isAvailable() {
-  IoUring ioUring(1);
-
   try {
-    ioUring.initializeContext();
+    IoUring ioUring(1);
   } catch (...) {
     return false;
   }
@@ -235,16 +240,12 @@ bool IoUring::isAvailable() {
 
 int IoUring::register_buffers(
     const struct iovec* iovecs, unsigned int nr_iovecs) {
-  initializeContext();
-
   std::unique_lock lk(submitMutex_);
 
   return io_uring_register_buffers(&ioRing_, iovecs, nr_iovecs);
 }
 
 int IoUring::unregister_buffers() {
-  initializeContext();
-
   std::unique_lock lk(submitMutex_);
   return io_uring_unregister_buffers(&ioRing_);
 }
@@ -257,12 +258,16 @@ void IoUring::initializeContext() {
           roundUpToNextPowerOfTwo(maxSubmit_), &ioRing_, &params_);
       checkKernelError(rc, "IoUring: io_uring_queue_init_params failed");
       DCHECK_GT(ioRing_.ring_fd, 0);
-      if (pollFd_ != -1) {
-        CHECK_ERR(io_uring_register_eventfd(&ioRing_, pollFd_));
+      if (pollMode_ == POLLABLE) {
+        pollFd_ = ioRing_.ring_fd;
       }
       init_.store(true, std::memory_order_release);
     }
   }
+}
+
+int IoUring::drainPollFd() {
+  return static_cast<int>(::io_uring_cq_ready(&ioRing_));
 }
 
 int IoUring::submitOne(AsyncBase::Op* op) {

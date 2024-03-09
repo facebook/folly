@@ -31,10 +31,6 @@
 #include <folly/portability/Filesystem.h>
 #include <folly/portability/Unistd.h>
 
-#if __has_include(<sys/eventfd.h>)
-#include <sys/eventfd.h>
-#endif
-
 namespace folly {
 
 AsyncBaseOp::AsyncBaseOp(NotificationCallback cb)
@@ -90,24 +86,15 @@ std::string AsyncBaseOp::fd2name(int fd) {
   return fs::read_symlink(link).string();
 }
 
-AsyncBase::AsyncBase(size_t capacity, PollMode pollMode) : capacity_(capacity) {
+AsyncBase::AsyncBase(size_t capacity, PollMode pollMode)
+    : capacity_(capacity), pollMode_(pollMode) {
   CHECK_GT(capacity_, 0);
   completed_.reserve(capacity_);
-  if (pollMode == POLLABLE) {
-#if __has_include(<sys/eventfd.h>)
-    pollFd_ = eventfd(0, EFD_NONBLOCK);
-    checkUnixError(pollFd_, "AsyncBase: eventfd creation failed");
-#else
-    // fallthrough to not-pollable, observed as: pollFd() == -1
-#endif
-  }
 }
 
 AsyncBase::~AsyncBase() {
   CHECK_EQ(pending_, 0);
-  if (pollFd_ != -1) {
-    CHECK_ERR(close(pollFd_));
-  }
+  CHECK_EQ(pollFd_, -1);
 }
 
 void AsyncBase::decrementPending(size_t n) {
@@ -190,20 +177,10 @@ Range<AsyncBase::Op**> AsyncBase::cancel() {
 Range<AsyncBase::Op**> AsyncBase::pollCompleted() {
   CHECK(isInit());
   CHECK_NE(pollFd_, -1) << "pollCompleted() only allowed on pollable object";
-  uint64_t numEvents;
-  // This sets the eventFd counter to 0, see
-  // http://www.kernel.org/doc/man-pages/online/pages/man2/eventfd.2.html
-  ssize_t rc;
-  do {
-    rc = ::read(pollFd_, &numEvents, 8);
-  } while (rc == -1 && errno == EINTR);
-  if (FOLLY_UNLIKELY(rc == -1 && errno == EAGAIN)) {
+
+  if (drainPollFd() <= 0) {
     return Range<Op**>(); // nothing completed
   }
-  checkUnixError(rc, "AsyncBase: read from event fd failed");
-  DCHECK_EQ(rc, 8);
-
-  DCHECK_GT(numEvents, 0);
 
   // Don't reap more than pending_, as we've just reset the counter to 0.
   return doWait(WaitType::COMPLETE, 0, pending_.load(), completed_);
