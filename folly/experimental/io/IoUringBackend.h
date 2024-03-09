@@ -371,7 +371,7 @@ class IoUringBackend : public EventBaseBackendBase {
     int writeFd() const { return fds_[0]; }
 
    private:
-    std::array<int, 2> fds_{{-1, -1}};
+    std::array<int, 2> fds_{-1, -1};
   };
 
   struct UserData {
