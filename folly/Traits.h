@@ -638,7 +638,13 @@ struct IsRelocatable
           !require_sizeof<T> ||
               is_detected_v<traits_detail::detect_IsRelocatable, T>,
           traits_detail::has_true_IsRelocatable<T>,
-          is_trivially_copyable<T>>::type {};
+#if (defined(__clang__) && defined(__clang_major__) && (__clang_major__ >= 19))
+          // Older versions of Clang have false positives with the builtin
+          bool_constant<__is_trivially_relocatable(T)>
+#else
+          is_trivially_copyable<T>
+#endif
+      >::type {};
 
 template <class T>
 struct IsZeroInitializable
