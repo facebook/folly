@@ -56,6 +56,7 @@ struct DebugSections {
   folly::StringPiece debugRnglists; // .debug_rnglists (DWARF 5)
   folly::StringPiece debugStr; // .debug_str
   folly::StringPiece debugStrOffsets; // .debug_str_offsets (DWARF 5)
+  folly::StringPiece gdbIndex; // .gdb_index (GNU extension)
 };
 
 // Abbreviation for a Debugging Information Entry.

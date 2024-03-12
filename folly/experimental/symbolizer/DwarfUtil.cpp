@@ -478,7 +478,8 @@ CompilationUnits getCompilationUnits(
       .debugRanges = cu.mainCompilationUnit.debugSections.debugRanges,
       .debugRnglists = getElfSection(elf, ".debug_rnglists.dwo"),
       .debugStr = getElfSection(elf, ".debug_str.dwo"),
-      .debugStrOffsets = getElfSection(elf, ".debug_str_offsets.dwo")};
+      .debugStrOffsets = getElfSection(elf, ".debug_str_offsets.dwo"),
+      .gdbIndex = {}};
   if (splitCU.debugSections.debugInfo.empty() ||
       splitCU.debugSections.debugAbbrev.empty() ||
       splitCU.debugSections.debugLine.empty() ||
