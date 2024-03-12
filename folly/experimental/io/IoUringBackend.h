@@ -347,7 +347,6 @@ class IoUringBackend : public EventBaseBackendBase {
   void submitNextLoop(IoSqeBase& ioSqe) noexcept;
   void submitSoon(IoSqeBase& ioSqe) noexcept;
   void submitNow(IoSqeBase& ioSqe);
-  void submitNowNoCqe(IoSqeBase& ioSqe, int count = 1);
   void cancel(IoSqeBase* sqe);
 
   // built in buffer provider
