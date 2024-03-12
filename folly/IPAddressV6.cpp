@@ -28,6 +28,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
+#include <xxh3.h>
 
 #ifdef _WIN32
 // Because of the massive pain that is libnl, this can't go into the socket
@@ -325,10 +326,8 @@ size_t IPAddressV6::hash() const {
     return IPAddress::createIPv4(*this).hash();
   }
 
-  static const uint64_t seed = AF_INET6;
-  uint64_t hash1 = 0, hash2 = 0;
-  hash::SpookyHashV2::Hash128(&addr_, 16, &hash1, &hash2);
-  return hash::hash_combine(seed, hash1, hash2);
+  auto res = XXH3_128bits((void*)&addr_, 16);
+  return hash::hash_combine(AF_INET6, res.high64, res.low64);
 }
 
 // public
