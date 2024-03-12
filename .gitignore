@@ -7,14 +7,16 @@ Makefile.in
 .libs
 .deps
 stamp-h1
-folly-config.h
+# This is bazel oriented so we are actually checking in an appropriate
+# folly-config file.
+# folly-config.h
 _configs.sed
 aclocal.m4
 autom4te.cache
 build-aux
 libtool
 folly/test/gtest
-folly/folly-config.h
+# folly/folly-config.h
 folly/**/test/*_benchmark
 folly/**/test/*.log
 folly/**/test/*_test

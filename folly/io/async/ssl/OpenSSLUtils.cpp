@@ -275,19 +275,12 @@ int OpenSSLUtils::getBioShouldRetryWrite(int r) {
 }
 
 void OpenSSLUtils::setBioAppData(BIO* b, void* ptr) {
-#ifdef OPENSSL_IS_BORINGSSL
-  BIO_set_callback_arg(b, static_cast<char*>(ptr));
-#else
+  // Note(BRAISER) This method and the one below have been added to BORINGSSL very recently.
   BIO_set_app_data(b, ptr);
-#endif
 }
 
 void* OpenSSLUtils::getBioAppData(BIO* b) {
-#ifdef OPENSSL_IS_BORINGSSL
-  return BIO_get_callback_arg(b);
-#else
   return BIO_get_app_data(b);
-#endif
 }
 
 NetworkSocket OpenSSLUtils::getBioFd(BIO* b) {
