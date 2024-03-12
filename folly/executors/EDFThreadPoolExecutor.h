@@ -93,6 +93,9 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   bool shouldStop();
   std::shared_ptr<Task> take();
 
+  void fillTaskInfo(const Task& task, TaskInfo& info);
+  void registerTaskEnqueue(const Task& task);
+
   std::unique_ptr<TaskQueue> taskQueue_;
   std::unique_ptr<EDFThreadPoolSemaphore> sem_;
   std::atomic<int> threadsToStop_{0};

@@ -250,6 +250,7 @@ void CPUThreadPoolExecutor::addImpl(
   if (auto queueObserver = getQueueObserver(priority)) {
     task.queueObserverPayload_ = queueObserver->onEnqueued(task.context_.get());
   }
+  registerTaskEnqueue(task);
 
   // It's not safe to expect that the executor is alive after a task is added to
   // the queue (this task could be holding the last KeepAlive and when finished

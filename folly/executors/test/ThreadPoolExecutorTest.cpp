@@ -29,6 +29,7 @@
 
 #include <folly/Exception.h>
 #include <folly/VirtualExecutor.h>
+#include <folly/container/F14Map.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/EDFThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
@@ -304,6 +305,65 @@ static void taskStats() {
 
 TYPED_TEST(ThreadPoolExecutorTypedTest, TaskStats) {
   taskStats<TypeParam>();
+}
+
+TYPED_TEST(ThreadPoolExecutorTypedTest, TaskObserver) {
+  struct TestTaskObserver : ThreadPoolExecutor::TaskObserver {
+    struct TaskState {
+      std::chrono::steady_clock::time_point enqueueTime;
+      std::optional<std::chrono::nanoseconds> waitTime;
+      bool ran = false;
+    };
+
+    void taskEnqueued(
+        const ThreadPoolExecutor::TaskInfo& info) noexcept override {
+      auto ts = taskStates.wlock();
+      auto [it, inserted] = ts->try_emplace(info.taskId);
+      ASSERT_TRUE(inserted);
+      it->second.enqueueTime = info.enqueueTime;
+    }
+
+    void taskDequeued(
+        const ThreadPoolExecutor::DequeuedTaskInfo& info) noexcept override {
+      auto ts = taskStates.wlock();
+      auto it = ts->find(info.taskId);
+      ASSERT_TRUE(it != ts->end());
+      EXPECT_EQ(it->second.enqueueTime, info.enqueueTime);
+      ASSERT_FALSE(std::exchange(it->second.waitTime, info.waitTime));
+    }
+
+    void taskProcessed(
+        const ThreadPoolExecutor::ProcessedTaskInfo& info) noexcept override {
+      auto ts = taskStates.wlock();
+      auto it = ts->find(info.taskId);
+      ASSERT_TRUE(it != ts->end());
+      EXPECT_EQ(it->second.enqueueTime, info.enqueueTime);
+      ASSERT_TRUE(it->second.waitTime);
+      EXPECT_EQ(*it->second.waitTime, info.waitTime);
+      EXPECT_GT(info.runTime.count(), 0);
+      it->second.ran = true;
+    }
+
+    Synchronized<F14FastMap<uint64_t, TaskState>> taskStates;
+  };
+
+  TypeParam ex{4};
+  auto observer = std::make_unique<TestTaskObserver>();
+  auto* observerPtr = observer.get();
+  ex.addTaskObserver(std::move(observer));
+
+  static constexpr size_t kNumTasks = 10;
+  for (size_t i = 0; i < kNumTasks; ++i) {
+    ex.add(burnMs(10));
+  }
+
+  ex.join();
+
+  auto ts = observerPtr->taskStates.exchange({});
+  EXPECT_EQ(ts.size(), kNumTasks);
+  for (auto& [_, taskState] : ts) {
+    EXPECT_TRUE(taskState.ran);
+  }
 }
 
 TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {

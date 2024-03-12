@@ -112,6 +112,7 @@ void MuxIOThreadPoolExecutor::add(
     Func func, std::chrono::milliseconds expiration, Func expireCallback) {
   auto& evbState = pickEvbState();
   auto task = Task(std::move(func), expiration, std::move(expireCallback));
+  registerTaskEnqueue(task);
   auto wrappedFunc = [this, &evbState, task = std::move(task)]() mutable {
     const auto& ioThread = *thisThread_;
     runTask(ioThread, std::move(task));
@@ -124,7 +125,7 @@ void MuxIOThreadPoolExecutor::add(
 
 std::shared_ptr<ThreadPoolExecutor::Thread>
 MuxIOThreadPoolExecutor::makeThread() {
-  return std::make_shared<IOThread>(this);
+  return std::make_shared<IOThread>();
 }
 
 void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {

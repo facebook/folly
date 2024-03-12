@@ -124,8 +124,6 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   struct EvbState;
 
   struct alignas(Thread) IOThread : public Thread {
-    explicit IOThread(MuxIOThreadPoolExecutor* pool) : Thread(pool) {}
-
     EvbState* curEvbState; // Only accessed inside the worker thread.
   };
 

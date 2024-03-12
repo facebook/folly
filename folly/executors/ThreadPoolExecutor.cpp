@@ -18,6 +18,7 @@
 
 #include <ctime>
 
+#include <folly/concurrency/ProcessLocalUniqueId.h>
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/portability/PThread.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
@@ -53,7 +54,6 @@ ThreadPoolExecutor::ThreadPoolExecutor(
     size_t minThreads,
     std::shared_ptr<ThreadFactory> threadFactory)
     : threadFactory_(std::move(threadFactory)),
-      taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads) {
   threadTimeout_ = std::chrono::milliseconds(FLAGS_threadtimeout_ms);
@@ -62,6 +62,11 @@ ThreadPoolExecutor::ThreadPoolExecutor(
 ThreadPoolExecutor::~ThreadPoolExecutor() {
   joinKeepAliveOnce();
   CHECK_EQ(0, threadList_.get().size());
+  auto* taskObserver =
+      taskObservers_.exchange(nullptr, std::memory_order_acquire);
+  while (taskObserver != nullptr) {
+    delete std::exchange(taskObserver, taskObserver->next_);
+  }
 }
 
 ThreadPoolExecutor::Task::Task(
@@ -73,7 +78,8 @@ ThreadPoolExecutor::Task::Task(
       // Assume that the task in enqueued on creation
       enqueueTime_(std::chrono::steady_clock::now()),
       context_(folly::RequestContext::saveContext()),
-      priority_(pri) {
+      priority_(pri),
+      taskId_(processLocalUniqueId()) {
   if (expiration > std::chrono::milliseconds::zero()) {
     expiration_ = std::make_unique<Expiration>();
     expiration_->expiration = expiration;
@@ -81,22 +87,52 @@ ThreadPoolExecutor::Task::Task(
   }
 }
 
+/* static */ void ThreadPoolExecutor::fillTaskInfo(
+    const Task& task, TaskInfo& info) {
+  info.priority = task.priority();
+  if (task.context_) {
+    info.requestId = task.context_->getRootId();
+  }
+  info.enqueueTime = task.enqueueTime_;
+  info.taskId = task.taskId_;
+}
+
+void ThreadPoolExecutor::registerTaskEnqueue(const Task& task) {
+  TaskInfo info;
+  fillTaskInfo(task, info);
+  forEachTaskObserver([&](auto& observer) { observer.taskEnqueued(info); });
+  FOLLY_SDT(
+      folly,
+      thread_pool_executor_task_enqueued,
+      threadFactory_->getNamePrefix().c_str(),
+      info.requestId,
+      info.enqueueTime.time_since_epoch().count(),
+      info.taskId);
+}
+
 void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   thread->idle.store(false, std::memory_order_relaxed);
+
   auto startTime = std::chrono::steady_clock::now();
-  TaskStats stats;
-  stats.enqueueTime = task.enqueueTime_;
-  if (task.context_) {
-    stats.requestId = task.context_->getRootId();
-  }
-  stats.waitTime = startTime - task.enqueueTime_;
+  ProcessedTaskInfo taskInfo;
+  fillTaskInfo(task, taskInfo);
+  taskInfo.waitTime = startTime - task.enqueueTime_;
+  FOLLY_SDT(
+      folly,
+      thread_pool_executor_task_dequeued,
+      threadFactory_->getNamePrefix().c_str(),
+      taskInfo.requestId,
+      taskInfo.enqueueTime.time_since_epoch().count(),
+      taskInfo.waitTime.count(),
+      taskInfo.taskId);
+  forEachTaskObserver([&](auto& observer) { observer.taskDequeued(taskInfo); });
 
   {
     folly::RequestContextScopeGuard rctx(task.context_);
     if (task.expiration_ != nullptr &&
-        stats.waitTime >= task.expiration_->expiration) {
+        taskInfo.waitTime >= task.expiration_->expiration) {
       task.func_ = nullptr;
-      stats.expired = true;
+      taskInfo.expired = true;
       if (task.expiration_->expireCallback != nullptr) {
         invokeCatchingExns(
             "ThreadPoolExecutor: expireCallback",
@@ -110,8 +146,8 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       }
     }
   }
-  if (!stats.expired) {
-    stats.runTime = std::chrono::steady_clock::now() - startTime;
+  if (!taskInfo.expired) {
+    taskInfo.runTime = std::chrono::steady_clock::now() - startTime;
   }
 
   // Times in this USDT use granularity of std::chrono::steady_clock::duration,
@@ -123,23 +159,17 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       folly,
       thread_pool_executor_task_stats,
       threadFactory_->getNamePrefix().c_str(),
-      stats.requestId,
-      stats.enqueueTime.time_since_epoch().count(),
-      stats.waitTime.count(),
-      stats.runTime.count());
+      taskInfo.requestId,
+      taskInfo.enqueueTime.time_since_epoch().count(),
+      taskInfo.waitTime.count(),
+      taskInfo.runTime.count(),
+      taskInfo.taskId);
+  forEachTaskObserver(
+      [&](auto& observer) { observer.taskProcessed(taskInfo); });
 
   thread->idle.store(true, std::memory_order_relaxed);
   thread->lastActiveTime.store(
       std::chrono::steady_clock::now(), std::memory_order_relaxed);
-  thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
-    *thread->taskStatsCallbacks->inCallback = true;
-    SCOPE_EXIT { *thread->taskStatsCallbacks->inCallback = false; };
-    invokeCatchingExns("ThreadPoolExecutor: task stats callback", [&] {
-      for (auto& callback : callbacks) {
-        callback(stats);
-      }
-    });
-  });
 }
 
 void ThreadPoolExecutor::add(Func, std::chrono::milliseconds, Func) {
@@ -331,10 +361,34 @@ std::chrono::nanoseconds ThreadPoolExecutor::Thread::usedCpuTime() const {
 }
 
 void ThreadPoolExecutor::subscribeToTaskStats(TaskStatsCallback cb) {
-  if (*taskStatsCallbacks_->inCallback) {
-    throw std::runtime_error("cannot subscribe in task stats callback");
-  }
-  taskStatsCallbacks_->callbackList.wlock()->push_back(std::move(cb));
+  class TaskStatsCallbackObserver : public TaskObserver {
+   public:
+    explicit TaskStatsCallbackObserver(TaskStatsCallback&& cob)
+        : cob_(std::move(cob)) {}
+
+    void taskProcessed(const ProcessedTaskInfo& info) noexcept override {
+      invokeCatchingExns(
+          "ThreadPoolExecutor: task stats callback", [&] { cob_(info); });
+    }
+
+   private:
+    TaskStatsCallback cob_;
+  };
+
+  addTaskObserver(std::make_unique<TaskStatsCallbackObserver>(std::move(cb)));
+}
+
+void ThreadPoolExecutor::addTaskObserver(
+    std::unique_ptr<TaskObserver> taskObserver) {
+  auto taskObserverPtr = taskObserver.release();
+  auto* head = taskObservers_.load(std::memory_order_relaxed);
+  do {
+    taskObserverPtr->next_ = head;
+  } while (!taskObservers_.compare_exchange_weak(
+      head,
+      taskObserverPtr,
+      std::memory_order_acq_rel,
+      std::memory_order_relaxed));
 }
 
 BlockingQueueAddResult ThreadPoolExecutor::StoppedThreadQueue::add(

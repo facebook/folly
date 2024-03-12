@@ -144,6 +144,7 @@ void IOThreadPoolExecutor::add(
   auto ioThread = pickThread();
 
   auto task = Task(std::move(func), expiration, std::move(expireCallback));
+  registerTaskEnqueue(task);
   auto wrappedFunc = [this, ioThread, task = std::move(task)]() mutable {
     runTask(ioThread, std::move(task));
     ioThread->pendingTasks--;
@@ -207,7 +208,7 @@ EventBaseManager* IOThreadPoolExecutor::getEventBaseManager() {
 }
 
 std::shared_ptr<ThreadPoolExecutor::Thread> IOThreadPoolExecutor::makeThread() {
-  return std::make_shared<IOThread>(this);
+  return std::make_shared<IOThread>();
 }
 
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {

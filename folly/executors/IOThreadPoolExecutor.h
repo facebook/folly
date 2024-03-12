@@ -136,8 +136,6 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
  protected:
   struct alignas(Thread) IOThread : public Thread {
-    explicit IOThread(IOThreadPoolExecutor* pool) : Thread(pool) {}
-
     std::atomic<bool> shouldRun{true};
     std::atomic<size_t> pendingTasks{0};
     folly::EventBase* eventBase{nullptr};
