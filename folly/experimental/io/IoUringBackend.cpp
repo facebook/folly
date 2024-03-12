@@ -323,9 +323,12 @@ static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 #if FOLLY_IO_URING_UP_TO_DATE
 
 class ProvidedBuffersBuffer {
- public:
+ private:
   static constexpr size_t kHugePageMask = (1LLU << 21) - 1; // 2MB
   static constexpr size_t kPageMask = (1LLU << 12) - 1; // 4095
+  static constexpr size_t kBufferAlignMask{31LLU};
+
+ public:
   static size_t calcBufferSize(int bufferShift) {
     if (bufferShift < 5) {
       bufferShift = 5;
@@ -339,9 +342,9 @@ class ProvidedBuffersBuffer {
     // space for the ring
     int ringCount = 1 << ringCountShift;
     ringMask_ = ringCount - 1;
-    ringSize_ = sizeof(struct io_uring_buf) * ringCount;
+    ringMemSize_ = sizeof(struct io_uring_buf) * ringCount;
 
-    allSize_ = (ringSize_ + 31) & ~32LLU;
+    ringMemSize_ = (ringMemSize_ + kBufferAlignMask) & (~kBufferAlignMask);
 
     if (bufferShift_ < 5) {
       bufferShift_ = 5; // for alignment
@@ -349,7 +352,7 @@ class ProvidedBuffersBuffer {
 
     sizePerBuffer_ = calcBufferSize(bufferShift_);
     bufferSize_ = sizePerBuffer_ * count;
-    allSize_ += bufferSize_;
+    allSize_ = ringMemSize_ + bufferSize_;
 
     int pages;
     if (huge_pages) {
@@ -360,7 +363,7 @@ class ProvidedBuffersBuffer {
       pages = allSize_ / (1 + kPageMask);
     }
 
-    buffer_ = mmap(
+    buffer_ = ::mmap(
         nullptr,
         allSize_,
         PROT_READ | PROT_WRITE,
@@ -379,7 +382,7 @@ class ProvidedBuffersBuffer {
           folly::errnoStr(errnoCopy)));
     }
 
-    bufferBuffer_ = ((char*)buffer_) + ringSize_;
+    bufferBuffer_ = ((char*)buffer_) + ringMemSize_;
     ringPtr_ = (struct io_uring_buf_ring*)buffer_;
 
     if (huge_pages) {
@@ -404,7 +407,7 @@ class ProvidedBuffersBuffer {
     return bufferBuffer_ + offset;
   }
 
-  ~ProvidedBuffersBuffer() { munmap(buffer_, allSize_); }
+  ~ProvidedBuffersBuffer() { ::munmap(buffer_, allSize_); }
 
   size_t sizePerBuffer() const { return sizePerBuffer_; }
 
@@ -412,7 +415,7 @@ class ProvidedBuffersBuffer {
   void* buffer_;
   size_t allSize_;
 
-  size_t ringSize_;
+  size_t ringMemSize_;
   struct io_uring_buf_ring* ringPtr_;
   int ringMask_;
 
