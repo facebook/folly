@@ -54,6 +54,10 @@
 #include <openssl/ocsp.h>
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#error openssl < 1.1.0
+#endif
+
 // BoringSSL doesn't have notion of versioning although it defines
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.
