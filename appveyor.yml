@@ -1,0 +1,39 @@
+version: '{build}'
+
+image: Visual Studio 2017
+
+environment:
+  matrix:
+    - compiler: msvc-15-seh
+      generator: "Visual Studio 15 2017 Win64"
+
+    - compiler: msvc-14-seh
+      generator: "Visual Studio 14 2015 Win64"
+
+configuration:
+  - Release
+
+cache:
+  - c:\tools\vcpkg\installed\
+
+matrix:
+  fast_finish: true
+
+install:
+- ps: |
+    & vcpkg install --triplet x64-windows zlib openssl libevent double-conversion glog gflags lz4 liblzma snappy boost-context boost-chrono boost-date-time boost-filesystem boost-program-options boost-regex boost-system boost-thread boost-conversion boost-multi-index boost-crc
+
+build_script:
+- ps: |
+    md _build -Force | Out-Null
+    cd _build
+    $ErrorActionPreference = 'SilentlyContinue'
+    Write-Host $env:configuration
+    & cmake -G "$env:generator" -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=$env:configuration -DVCPKG_TARGET_TRIPLET=x64-windows ..
+    if ($LastExitCode -ne 0) {
+        throw "Exec: $ErrorMessage"
+    }
+    & cmake --build . --config $env:configuration
+    if ($LastExitCode -ne 0) {
+        throw "Exec: $ErrorMessage"
+    }
