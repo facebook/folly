@@ -243,7 +243,6 @@ class SQGroupInfoRegistry {
 
  public:
   SQGroupInfoRegistry() = default;
-  ~SQGroupInfoRegistry() = default;
 
   using FDCreateFunc = folly::Function<int(struct io_uring_params&)>;
   using FDCloseFunc = folly::Function<void()>;
@@ -320,16 +319,6 @@ class SQGroupInfoRegistry {
 };
 
 static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
-
-std::chrono::time_point<std::chrono::steady_clock> getTimerExpireTime(
-    const struct timeval& timeout,
-    std::chrono::steady_clock::time_point now =
-        std::chrono::steady_clock::now()) {
-  using namespace std::chrono;
-  microseconds const us = duration_cast<microseconds>(seconds(timeout.tv_sec)) +
-      microseconds(timeout.tv_usec);
-  return now + us;
-}
 
 #if FOLLY_IO_URING_UP_TO_DATE
 
@@ -1064,6 +1053,15 @@ void timerUserDataFreeFunction(void* v) {
 
 void IoUringBackend::addTimerEvent(
     Event& event, const struct timeval* timeout) {
+  auto getTimerExpireTime = [](const auto& timeout) {
+    using namespace std::chrono;
+    auto now = steady_clock::now();
+
+    auto us = duration_cast<microseconds>(seconds(timeout.tv_sec)) +
+        microseconds(timeout.tv_usec);
+    return now + us;
+  };
+
   auto expire = getTimerExpireTime(*timeout);
 
   TimerUserData* td = (TimerUserData*)event.getUserData();
