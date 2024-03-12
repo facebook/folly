@@ -15,23 +15,6 @@
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 # We use the GoogleTest module if it is available (only in CMake 3.9+)
 # It requires CMP0054 and CMP0057 to be enabled.
-
-IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
-  MESSAGE(STATUS "current platform: Linux ")
-ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Windows")
-  MESSAGE(STATUS "current platform: Windows")
-ELSEIF (CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
-  MESSAGE(STATUS "current platform: FreeBSD")
-ELSEIF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-  MESSAGE(STATUS "current platform: MacOS")
-  set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl" )
-  set(OPENSSL_LIBRARIES "/usr/local/opt/openssl/lib" )
-  set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include" )
-ELSE ()
-  MESSAGE(STATUS "other platform: ${CMAKE_SYSTEM_NAME}")
-ENDIF (CMAKE_SYSTEM_NAME MATCHES "Linux")
-
-
 if (POLICY CMP0054)
   cmake_policy(SET CMP0054 NEW)
 endif()
