@@ -75,9 +75,10 @@ namespace observer {
  *   for example), AtomicObserver and ReadMostlyAtomicObserver offer the best
  *   performance at no additional memory cost.
  *
- * - TLObserver stores a copy of the value for each thread that accesses it,
- *   which avoids any synchronization, but can consume significant amounts of
- *   memory depending on the size of the values.
+ * - TLObserver stores a thread-local snapshot, so that it can be accessed
+ *   without synchronization (except when it needs updating). This however can
+ *   consume significant amounts of memory by stranding old snapshots in threads
+ *   that do not access, and thus refresh, the observer.
  *
  * - HazptrObserver uses hazard pointers to protect the snapshot, which offer
  *   high read scalability and low cost, but the snapshot should be held as
