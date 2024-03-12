@@ -250,7 +250,7 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
   if (!success) {
     // tryUriEscape implementation only fails on invalid argument
     throw_exception<std::invalid_argument>(
-        "imcomplete percent encode sequence");
+        "incomplete percent encode sequence");
   }
 }
 
