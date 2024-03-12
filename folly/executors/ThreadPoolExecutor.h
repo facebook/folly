@@ -230,12 +230,18 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     Task(
         Func&& func,
         std::chrono::milliseconds expiration,
-        Func&& expireCallback);
+        Func&& expireCallback,
+        int8_t pri = 0);
+
+    int8_t priority() const { return priority_; }
 
     Func func_;
     std::chrono::steady_clock::time_point enqueueTime_;
     std::shared_ptr<folly::RequestContext> context_;
     std::unique_ptr<Expiration> expiration_;
+
+   private:
+    int8_t priority_;
   };
 
   void runTask(const ThreadPtr& thread, Task&& task);

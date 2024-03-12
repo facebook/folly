@@ -65,11 +65,15 @@ ThreadPoolExecutor::~ThreadPoolExecutor() {
 }
 
 ThreadPoolExecutor::Task::Task(
-    Func&& func, std::chrono::milliseconds expiration, Func&& expireCallback)
+    Func&& func,
+    std::chrono::milliseconds expiration,
+    Func&& expireCallback,
+    int8_t pri)
     : func_(std::move(func)),
       // Assume that the task in enqueued on creation
       enqueueTime_(std::chrono::steady_clock::now()),
-      context_(folly::RequestContext::saveContext()) {
+      context_(folly::RequestContext::saveContext()),
+      priority_(pri) {
   if (expiration > std::chrono::milliseconds::zero()) {
     expiration_ = std::make_unique<Expiration>();
     expiration_->expiration = expiration;
