@@ -47,7 +47,9 @@ using atomic_value_type_t = typename conditional_t<
     detail::atomic_value_type_alias_,
     detail::atomic_value_type_load_>::template apply<Atomic>;
 template <typename Atomic>
-struct atomic_value_type : type_t<atomic_value_type_t<Atomic>> {};
+struct atomic_value_type {
+  using type = atomic_value_type_t<Atomic>;
+};
 
 //  atomic_compare_exchange_weak_explicit
 //

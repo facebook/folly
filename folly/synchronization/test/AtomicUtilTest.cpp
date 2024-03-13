@@ -35,6 +35,8 @@ static constexpr auto seq_cst = std::memory_order_seq_cst;
 
 static_assert(
     std::is_same_v<int, folly::atomic_value_type_t<std::atomic<int>>>);
+static_assert(
+    std::is_same_v<int, folly::atomic_value_type<std::atomic<int>>::type>);
 
 namespace folly {
 
