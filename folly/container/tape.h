@@ -363,6 +363,9 @@ class tape {
   friend bool operator<=(const tape& x, const tape& y) { return !(y < x); }
   friend bool operator>=(const tape& x, const tape& y) { return !(x < y); }
 
+  const std::vector<difference_type>& markers() const { return markers_; }
+  const container_type& data() const { return data_; }
+
  private:
   template <typename I, typename S>
   void range_constructor(I f, S l);
