@@ -97,7 +97,7 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
   };
 
   static thread_local ThreadEntryList* threadEntryListTL{};
-  if (threadEntryListTL) {
+  if (kUseThreadLocal && threadEntryListTL) {
     return threadEntryListTL;
   }
   auto& instance = detail::createGlobal<PthreadKey, void>();
@@ -112,7 +112,9 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     threadEntryList->count = 1; // Pin once for own onThreadExit callback.
   }
 
-  threadEntryListTL = threadEntryList;
+  if (kUseThreadLocal) {
+    threadEntryListTL = threadEntryList;
+  }
   return threadEntryList;
 }
 
