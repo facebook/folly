@@ -63,7 +63,7 @@ TEST_F(ErrorTest, testNoErrorIndicator) {
 TEST_F(ErrorTest, testNullError) {
   expectThrowsWithMessage(
       []() {
-        PyErr_SetObject(PyExc_RuntimeError, NULL);
+        PyErr_SetObject(PyExc_RuntimeError, nullptr);
         handlePythonError("fail: ");
       },
       "fail: Exception of type: <class 'RuntimeError'>");
