@@ -12,9 +12,9 @@ re2
 re2-devel
 
 [download]
-url = https://github.com/google/re2/archive/2019-06-01.tar.gz
-sha256 = 02b7d73126bd18e9fbfe5d6375a8bb13fadaf8e99e48cbb062e4500fc18e8e2e
+url = https://github.com/google/re2/archive/2020-11-01.tar.gz
+sha256 = 8903cc66c9d34c72e2bc91722288ebc7e3ec37787ecfef44d204b2d6281954d7
 
 [build]
 builder = cmake
-subdir = re2-2019-06-01
+subdir = re2-2020-11-01
