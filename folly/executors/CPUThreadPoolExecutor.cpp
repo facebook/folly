@@ -281,6 +281,10 @@ size_t CPUThreadPoolExecutor::getTaskQueueSize() const {
   return taskQueue_->size();
 }
 
+WorkerProvider* CPUThreadPoolExecutor::getThreadIdCollector() {
+  return threadIdCollector_.get();
+}
+
 BlockingQueue<CPUThreadPoolExecutor::CPUTask>*
 CPUThreadPoolExecutor::getTaskQueue() {
   return taskQueue_.get();

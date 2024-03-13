@@ -71,7 +71,7 @@ class WorkerProvider {
 class GetThreadIdCollector {
  public:
   virtual ~GetThreadIdCollector() = default;
-  virtual folly::WorkerProvider* getThreadIdCollector() = 0;
+  virtual WorkerProvider* getThreadIdCollector() = 0;
 };
 
 class ThreadIdWorkerProvider : public WorkerProvider {

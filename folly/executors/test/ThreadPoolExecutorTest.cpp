@@ -38,10 +38,12 @@
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/executors/thread_factory/InitThreadFactory.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysResource.h>
 #include <folly/synchronization/detail/Spin.h>
+#include <folly/system/ThreadId.h>
 
 using namespace folly;
 using namespace std::chrono;
@@ -965,6 +967,40 @@ TEST(ThreadPoolExecutorTest, DynamicThreadsTest) {
       folly::detail::spin_result::success,
       folly::detail::spin_yield_until(
           std::chrono::steady_clock::now() + std::chrono::seconds(1), pred));
+}
+
+TEST(ThreadPoolExecutorTest, GetThreadIdCollector) {
+  CPUThreadPoolExecutor e(1);
+  auto* collector = e.getThreadIdCollector();
+  ASSERT_TRUE(collector != nullptr);
+
+  EXPECT_THAT(collector->collectThreadIds().threadIds, testing::IsEmpty());
+
+  pid_t tid;
+  Baton<> ready;
+  Baton<> unblock;
+  e.add([&] {
+    tid = getOSThreadID();
+    ready.post();
+    unblock.wait(); // Wait until we acquire the keepalive.
+  });
+
+  ready.wait();
+  auto ids = collector->collectThreadIds();
+  EXPECT_THAT(ids.threadIds, testing::ElementsAre(tid));
+  unblock.post();
+
+  Baton<> joined;
+  std::thread t([&] {
+    e.join();
+    joined.post();
+  });
+  // Until we release ids, the executor join cannot complete
+  EXPECT_FALSE(joined.try_wait_for(100ms));
+  // But things should eventually complete when released.
+  ids = {};
+  t.join();
+  EXPECT_THAT(collector->collectThreadIds().threadIds, testing::IsEmpty());
 }
 
 TEST(ThreadPoolExecutorTest, DynamicThreadAddRemoveRace) {

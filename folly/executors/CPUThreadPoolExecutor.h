@@ -65,7 +65,8 @@ namespace folly {
  * priority tasks could still hog all the threads. (at last check pthreads
  * thread priorities didn't work very well).
  */
-class CPUThreadPoolExecutor : public ThreadPoolExecutor {
+class CPUThreadPoolExecutor : public ThreadPoolExecutor,
+                              public GetThreadIdCollector {
  public:
   struct CPUTask;
   struct Options {
@@ -165,6 +166,9 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   size_t getTaskQueueSize() const;
 
   uint8_t getNumPriorities() const override;
+
+  /// Implements the GetThreadIdCollector interface
+  WorkerProvider* FOLLY_NULLABLE getThreadIdCollector() override;
 
   struct CPUTask : public ThreadPoolExecutor::Task {
     CPUTask(); // Poison.
