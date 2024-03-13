@@ -93,9 +93,7 @@ AsyncIoUringSocket::AsyncIoUringSocket(
 
 AsyncIoUringSocket::AsyncIoUringSocket(
     AsyncTransport::UniquePtr other, IoUringBackend* backend, Options&& options)
-    : AsyncIoUringSocket(getAsyncSocket(other), backend, std::move(options)) {
-  setPreReceivedData(other->takePreReceivedData());
-}
+    : AsyncIoUringSocket(getAsyncSocket(other), backend, std::move(options)) {}
 
 AsyncIoUringSocket::AsyncIoUringSocket(
     EventBase* evb, IoUringBackend* backend, Options&& options)
