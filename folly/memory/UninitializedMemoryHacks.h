@@ -242,7 +242,6 @@ struct MakeUnsafeStringSetLargerSize {
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
 #elif defined(_MSC_VER)
-// MSVC
 
 template <typename Tag, typename T, typename A, A Ptr_Eos>
 struct MakeUnsafeStringSetLargerSize {
@@ -252,6 +251,7 @@ struct MakeUnsafeStringSetLargerSize {
   }
 };
 
+#if _MSC_VER < 1939
 #define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
   template void std::basic_string<TYPE>::_Eos(std::size_t);     \
   template struct folly::detail::MakeUnsafeStringSetLargerSize< \
@@ -260,7 +260,15 @@ struct MakeUnsafeStringSetLargerSize {
       void (std::basic_string<TYPE>::*)(std::size_t),           \
       &std::basic_string<TYPE>::_Eos>;                          \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
-
+#else
+#define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
+  template struct folly::detail::MakeUnsafeStringSetLargerSize< \
+      FollyMemoryDetailTranslationUnitTag,                      \
+      TYPE,                                                     \
+      void (std::basic_string<TYPE>::*)(std::size_t),           \
+      &std::basic_string<TYPE>::_Eos>;                          \
+  FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
+#endif // _MSC_VER < 1939
 #else
 #warning \
     "No implementation for resizeWithoutInitialization of std::basic_string"
