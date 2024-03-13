@@ -31,14 +31,17 @@
 // malloc_usable_size, and that's what we should be using.
 #if defined(__FreeBSD__)
 #include <malloc_np.h> // @manual
+#define FOLLY_HAS_JEMALLOC_DEFS 0
 #else
 #include <jemalloc/jemalloc.h> // @manual
+#define FOLLY_HAS_JEMALLOC_DEFS 1
 #endif
 #else
 #if !defined(__FreeBSD__)
 #if __has_include(<malloc.h>)
 #include <malloc.h>
 #endif
+#define FOLLY_HAS_JEMALLOC_DEFS 0
 #endif
 
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
