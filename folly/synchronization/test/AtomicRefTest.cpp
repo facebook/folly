@@ -18,6 +18,12 @@
 
 #include <folly/portability/GTest.h>
 
+struct foo {};
+static_assert(std::is_same_v<int*, std::atomic_ref<int*>::value_type>);
+static_assert(std::is_same_v<int, std::atomic_ref<int>::value_type>);
+static_assert(std::is_same_v<float, std::atomic_ref<float>::value_type>);
+static_assert(std::is_same_v<foo, std::atomic_ref<foo>::value_type>);
+
 class AtomicRefTest : public testing::Test {};
 
 TEST_F(AtomicRefTest, deduction) {

@@ -31,6 +31,8 @@ struct atomic_ref_base {
   static_assert(alignof(T) == alignof(std::atomic<T>), "alignment mismatch");
   static_assert(is_trivially_copyable_v<T>, "value not trivially-copyable");
 
+  using value_type = T;
+
   explicit atomic_ref_base(T& ref) : ref_(ref) {}
   atomic_ref_base(atomic_ref_base const&) = default;
 
