@@ -39,30 +39,9 @@
 namespace folly {
 
 class OpenSSLTicketHandler;
-
-/**
- * Override the default password collector.
- */
-class PasswordCollector {
- public:
-  virtual ~PasswordCollector() = default;
-  /**
-   * Interface for customizing how to collect private key password.
-   *
-   * By default, OpenSSL prints a prompt on screen and request for password
-   * while loading private key. To implement a custom password collector,
-   * implement this interface and register it with SSLContext.
-   *
-   * @param password Pass collected password back to OpenSSL
-   * @param size     Maximum length of password including nullptr character
-   */
-  virtual void getPassword(std::string& password, int size) const = 0;
-
-  /**
-   * Return a description of this collector for logging purposes
-   */
-  virtual const std::string& describe() const = 0;
-};
+namespace ssl {
+class PasswordCollector;
+}
 
 /**
  * Run SSL_accept via a runner
@@ -460,13 +439,14 @@ class SSLContext {
    *
    * @param collector Instance of user defined password collector
    */
-  virtual void passwordCollector(std::shared_ptr<PasswordCollector> collector);
+  virtual void passwordCollector(
+      std::shared_ptr<ssl::PasswordCollector> collector);
   /**
    * Obtain password collector.
    *
    * @return User defined password collector
    */
-  virtual std::shared_ptr<PasswordCollector> passwordCollector() {
+  virtual std::shared_ptr<ssl::PasswordCollector> passwordCollector() {
     return collector_;
   }
 #if FOLLY_OPENSSL_HAS_SNI
@@ -695,7 +675,7 @@ class SSLContext {
 
   bool checkPeerName_;
   std::string peerFixedName_;
-  std::shared_ptr<PasswordCollector> collector_;
+  std::shared_ptr<ssl::PasswordCollector> collector_;
 #if FOLLY_OPENSSL_HAS_SNI
   ServerNameCallback serverNameCb_;
   std::vector<ClientHelloCallback> clientHelloCbs_;
@@ -767,8 +747,5 @@ class SSLContext {
 };
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
-
-std::ostream& operator<<(
-    std::ostream& os, const folly::PasswordCollector& collector);
 
 } // namespace folly

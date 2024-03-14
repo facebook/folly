@@ -14,25 +14,16 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/PasswordInFile.h>
-
-#include <folly/FileUtil.h>
-#include <folly/portability/OpenSSL.h>
-
-using namespace std;
+#include <folly/ssl/PasswordCollector.h>
 
 namespace folly {
+namespace ssl {
 
-PasswordInFile::PasswordInFile(const string& file) : fileName_(file) {
-  readFile(file.c_str(), password_);
-  auto p = password_.find('\0');
-  if (p != std::string::npos) {
-    password_.erase(p);
-  }
+std::ostream& operator<<(
+    std::ostream& os, const ssl::PasswordCollector& collector) {
+  os << collector.describe();
+  return os;
 }
 
-PasswordInFile::~PasswordInFile() {
-  OPENSSL_cleanse((char*)password_.data(), password_.length());
-}
-
+} // namespace ssl
 } // namespace folly

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Memory.h>
+#include <folly/io/async/AsyncSocketException.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/portability/GMock.h>
 

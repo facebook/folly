@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <folly/io/async/SSLContext.h> // PasswordCollector
+#include <folly/ssl/PasswordCollector.h>
 
 namespace folly {
 
-class PasswordInFile : public PasswordCollector {
+class PasswordInFile : public ssl::PasswordCollector {
  public:
   explicit PasswordInFile(const std::string& file);
   ~PasswordInFile() override;
