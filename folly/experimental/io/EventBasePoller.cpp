@@ -32,6 +32,7 @@
 #include <folly/system/ThreadName.h>
 
 #if FOLLY_HAS_EPOLL
+// @lint-ignore CLANGTIDY facebook-hte-PortabilityInclude-poll.h
 #include <poll.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
@@ -169,6 +170,20 @@ class EventBasePollerImpl : public EventBasePoller {
 
     bool isNotificationFd() const { return group == nullptr; }
 
+    // TSAN is not able to recognize the happens-before relationship between
+    // rearming (epoll_ctl) and handling ready events, so use a fake mutex to
+    // introduce the expected relationships and at the same time check them.
+    FOLLY_ALWAYS_INLINE void markReady() {
+#ifdef FOLLY_SANITIZE_THREAD
+      CHECK(!ready_.exchange(true, std::memory_order_acq_rel));
+#endif
+    }
+    FOLLY_ALWAYS_INLINE void markProcessed() {
+#ifdef FOLLY_SANITIZE_THREAD
+      CHECK(ready_.exchange(false, std::memory_order_release));
+#endif
+    }
+
     void handoff(bool done) override;
 
     void handleHandoff();
@@ -182,6 +197,9 @@ class EventBasePollerImpl : public EventBasePoller {
    private:
     bool joining_ = false;
     Baton<> joined_;
+#ifdef FOLLY_SANITIZE_THREAD
+    std::atomic<bool> ready_{true};
+#endif
   };
 
  private:
@@ -266,6 +284,7 @@ void EventBasePollerImpl::Event::handleHandoff() {
     return;
   }
 
+  markProcessed();
   group->parent.addEvent(this);
 }
 
@@ -299,6 +318,7 @@ void EventBasePollerImpl::handleNotification() {
       event = next;
     }
   }
+  notificationEv_.markProcessed();
   addEvent(&notificationEv_);
 }
 
@@ -321,6 +341,7 @@ void EventBasePollerImpl::handleReadyEvents() {
       if (curGroup == nullptr) {
         // There can only be one notification event.
         CHECK_EQ(readyHandles_.size(), 1);
+        CHECK_EQ(readyHandles_[0], &notificationEv_);
         handleNotification();
       } else {
         curGroup->readyCallback(folly::range(readyHandles_));
@@ -331,6 +352,7 @@ void EventBasePollerImpl::handleReadyEvents() {
       }
       curGroup = (*it)->group;
     }
+    (*it)->markReady();
     readyHandles_.push_back(*it++);
   }
 
@@ -341,7 +363,7 @@ void EventBasePollerImpl::loop(folly::Baton<>& started) {
   setThreadName("EventBasePoller");
 
   setup();
-  addEvent(&notificationEv_);
+  handleNotification(); // Nothing to handle, but arm notificationEv_.
   started.post();
 
   auto lastLoopTs = std::chrono::steady_clock::now();

@@ -167,7 +167,7 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     ioThread->curEvbState = nullptr;
 
     handle->handoff(status == EventBase::LoopStatus::kDone);
-  };
+  }
 
   std::unique_lock w{threadListLock_};
   for (auto& o : observers_) {
