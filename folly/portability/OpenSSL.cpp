@@ -36,23 +36,13 @@ int TLS1_get_client_version(SSL* s) {
 }
 #endif
 
-#if FOLLY_OPENSSL_IS_100
-uint32_t SSL_CIPHER_get_id(const SSL_CIPHER* c) {
-  return c->id;
-}
-
-int TLS1_get_client_version(const SSL* s) {
-  return (s->client_version >> 8) == TLS1_VERSION_MAJOR ? s->client_version : 0;
-}
-#endif
-
-#if FOLLY_OPENSSL_IS_100 || FOLLY_OPENSSL_IS_101
+#if FOLLY_OPENSSL_IS_101
 int X509_get_signature_nid(X509* cert) {
   return OBJ_obj2nid(cert->sig_alg->algorithm);
 }
 #endif
 
-#if FOLLY_OPENSSL_IS_100 || FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
+#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
 int SSL_CTX_up_ref(SSL_CTX* ctx) {
   return CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
 }
