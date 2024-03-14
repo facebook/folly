@@ -16,6 +16,8 @@
 
 #pragma once
 
+#ifndef FOLLY_HAS_MEMORY_RESOURCE
+
 #if defined(__has_include) && __cplusplus >= 201703L
 
 #if __has_include(<memory_resource>)
@@ -51,3 +53,5 @@ namespace std_pmr = ::std::experimental::pmr;
 #define FOLLY_HAS_MEMORY_RESOURCE 0
 
 #endif // __has_include
+
+#endif // FOLLY_HAS_MEMORY_RESOURCE
