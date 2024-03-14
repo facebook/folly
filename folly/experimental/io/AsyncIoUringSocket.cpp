@@ -496,7 +496,7 @@ bool AsyncIoUringSocket::hangup() const {
   }
   struct pollfd fds[1];
   fds[0].fd = fd_.toFd();
-  fds[0].events = POLLRDHUP | POLLHUP;
+  fds[0].events = POLLRDHUP;
   fds[0].revents = 0;
   ::poll(&fds[0], 1, 0);
   return (fds[0].revents & (POLLRDHUP | POLLHUP)) != 0;
