@@ -535,6 +535,19 @@ void testDoubleToString() {
   EXPECT_EQ(to<String>(0.5), "0.5");
   EXPECT_EQ(to<String>(10.25), "10.25");
   EXPECT_EQ(to<String>(1.123e10), "11230000000");
+
+  using namespace double_conversion;
+  String str1;
+  int flags =
+    DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT |
+    DoubleToStringConverter::EMIT_TRAILING_ZERO_AFTER_POINT;
+  toAppend(1.0, &str1, DoubleToStringConverter::SHORTEST, 0, flags);
+  EXPECT_EQ(str1, "1.0");
+
+  String str2;
+  toAppend(1.0, &str2, DoubleToStringConverter::SHORTEST, 0,
+           DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT);
+  EXPECT_EQ(str2, "1.");
 }
 
 TEST(Conv, DoubleToString) {

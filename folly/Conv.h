@@ -652,8 +652,7 @@ toAppend(
     Tgt* result,
     double_conversion::DoubleToStringConverter::DtoaMode mode,
     unsigned int numDigits,
-    double_conversion::DoubleToStringConverter::Flags flags =
-        double_conversion::DoubleToStringConverter::NO_FLAGS) {
+    int flags = double_conversion::DoubleToStringConverter::NO_FLAGS) {
   using namespace double_conversion;
   DoubleToStringConverter conv(
       flags,
