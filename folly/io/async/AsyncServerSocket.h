@@ -823,6 +823,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     return connectionEventCallback_;
   }
 
+  /**
+   * Index of the callback with the same EVB as the current
+   * AsyncServerSocket instance, if any
+   */
+  int getLocalCallbackIndex() const { return localCallbackIndex_; }
+
  protected:
   /**
    * Protected destructor.
@@ -1011,6 +1017,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   BackoffTimeout* backoffTimeout_;
   std::vector<CallbackInfo> callbacks_;
   CallbackAssignFunction callbackAssignFunc_;
+  int localCallbackIndex_{-1};
   bool keepAliveEnabled_;
   bool reusePortEnabled_{false};
   // SO_REUSEADDR is enabled by default
