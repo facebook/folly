@@ -93,6 +93,9 @@ ElfFile::OpenResult ElfFile::openNoThrow(
   if (r == -1) {
     return {kSystemError, "fstat"};
   }
+  if (st.st_blocks == 0) {
+    return {kSystemError, "unalloc"};
+  }
 
   uint64_t mtime_ns = st.st_mtim.tv_sec * 1000'000'000LL + st.st_mtim.tv_nsec;
   fileId_ = ElfFileId{st.st_dev, st.st_ino, st.st_size, mtime_ns};
