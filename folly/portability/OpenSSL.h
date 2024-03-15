@@ -62,9 +62,6 @@
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.
 #if !defined(OPENSSL_IS_BORINGSSL)
-#define FOLLY_OPENSSL_IS_102                \
-  (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
-   OPENSSL_VERSION_NUMBER < 0x10100000L)
 #define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
 // OPENSSL_VERSION_{MAJOR,MINOR} only introduced in 3.0, so need to
 // test if they are defined first
@@ -87,8 +84,7 @@
   (OPENSSL_VERSION_NUMBER >= FOLLY_OPENSSL_CALCULATE_VERSION(major, minor, fix))
 #endif
 
-#if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_102 && \
-    !FOLLY_OPENSSL_IS_110
+#if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_110
 #warning Compiling with unsupported OpenSSL version
 #endif
 
@@ -160,22 +156,6 @@ namespace ssl {
 #ifdef OPENSSL_IS_BORINGSSL
 int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 int TLS1_get_client_version(SSL* s);
-#endif
-
-#if FOLLY_OPENSSL_IS_102
-int SSL_CTX_up_ref(SSL_CTX* session);
-int SSL_SESSION_up_ref(SSL_SESSION* session);
-int X509_up_ref(X509* x);
-int X509_STORE_up_ref(X509_STORE* v);
-void X509_STORE_CTX_set0_verified_chain(
-    X509_STORE_CTX* ctx, STACK_OF(X509) * sk);
-int EVP_PKEY_up_ref(EVP_PKEY* evp);
-void RSA_get0_key(
-    const RSA* r, const BIGNUM** n, const BIGNUM** e, const BIGNUM** d);
-RSA* EVP_PKEY_get0_RSA(EVP_PKEY* pkey);
-DSA* EVP_PKEY_get0_DSA(EVP_PKEY* pkey);
-DH* EVP_PKEY_get0_DH(EVP_PKEY* pkey);
-EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey);
 #endif
 
 #if !FOLLY_OPENSSL_IS_110
