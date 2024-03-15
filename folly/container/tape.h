@@ -363,6 +363,11 @@ class tape {
   friend bool operator<=(const tape& x, const tape& y) { return !(y < x); }
   friend bool operator>=(const tape& x, const tape& y) { return !(x < y); }
 
+  folly::Range<const difference_type*> markers() const { return markers_; }
+  reference scalars() const {
+    return ref_traits::make(data_.begin(), data_.end());
+  }
+
  private:
   template <typename I, typename S>
   void range_constructor(I f, S l);
