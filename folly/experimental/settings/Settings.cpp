@@ -181,11 +181,14 @@ SnapshotBase::SnapshotBase() {
 
 SnapshotBase::~SnapshotBase() {
   std::unique_lock lg(detail::getSavedValuesMutex());
-  auto it = detail::getSavedValues().find(at_);
-  assert(it != detail::getSavedValues().end());
-  --it->second.first;
-  if (!it->second.first) {
-    detail::getSavedValues().erase(at_);
+  auto& savedValues = detail::getSavedValues();
+  auto it = savedValues.find(at_);
+  assert(it != savedValues.end());
+  if (it != savedValues.end()) {
+    --it->second.first;
+    if (!it->second.first) {
+      savedValues.erase(at_);
+    }
   }
 }
 
