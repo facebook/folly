@@ -284,6 +284,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   void runTask(const ThreadPtr& thread, Task&& task);
 
+  virtual void validateNumThreads(size_t /* numThreads */) {}
+
   // The function that will be bound to pool threads. It must call
   // thread->startupBaton.post() when it's ready to consume work.
   virtual void threadRun(ThreadPtr thread) = 0;

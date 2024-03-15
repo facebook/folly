@@ -18,6 +18,7 @@
 
 #include <stdexcept>
 
+#include <fmt/format.h>
 #include <folly/container/Enumerate.h>
 #include <folly/experimental/io/EpollBackend.h>
 #include <folly/lang/Align.h>
@@ -64,11 +65,10 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
     : IOThreadPoolExecutorBase(
           numThreads, numThreads, std::move(threadFactory)),
       options_(std::move(options)),
+      numEventBases_(
+          options_.numEventBases == 0 ? numThreads : options_.numEventBases),
       eventBaseManager_(ebm),
       readyQueueSem_(throttledLifoSemOptions(options.wakeUpInterval)) {
-  auto numEventBases =
-      options_.numEventBases == 0 ? numThreads : options_.numEventBases;
-
   setNumThreads(numThreads);
 
   fdGroup_ = EventBasePoller::get().makeFdGroup(
@@ -79,9 +79,9 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
         readyQueueSem_.post(readyHandles.size());
       });
 
-  evbStates_.reserve(numEventBases);
-  Latch allEvbsRunning(numEventBases);
-  for (size_t i = 0; i < numEventBases; ++i) {
+  evbStates_.reserve(numEventBases_);
+  Latch allEvbsRunning(numEventBases_);
+  for (size_t i = 0; i < numEventBases_; ++i) {
     auto& evbState = evbStates_.emplace_back(std::make_unique<EvbState>());
     evbState->evb.setStrictLoopThread();
     evbState->evb.runInEventBaseThread([&] { allEvbsRunning.count_down(); });
@@ -121,6 +121,15 @@ void MuxIOThreadPoolExecutor::add(
 
   evbState.pendingTasks++;
   evbState.evb.runInEventBaseThread(std::move(wrappedFunc));
+}
+
+void MuxIOThreadPoolExecutor::validateNumThreads(size_t numThreads) {
+  if (numThreads == 0 || numThreads > numEventBases_) {
+    throw std::invalid_argument(fmt::format(
+        "Unsupported number of threads: {} (with {} EventBases)",
+        numThreads,
+        numEventBases_));
+  }
 }
 
 std::shared_ptr<ThreadPoolExecutor::Thread>

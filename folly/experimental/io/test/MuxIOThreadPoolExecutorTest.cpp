@@ -41,17 +41,34 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopRun) {
   options.setNumEventBases(kNumEventBases);
   folly::MuxIOThreadPoolExecutor ex(kNumThreads, options);
 
-  // Ensure that we get to the epoll_wait().
-  /* sleep override */ std::this_thread::sleep_for(
-      std::chrono::milliseconds{100});
+  const auto evbs = ex.getAllEventBases();
+  EXPECT_EQ(ex.numEventBases(), kNumEventBases);
+  EXPECT_EQ(evbs.size(), kNumEventBases);
 
-  folly::Latch latch(kNumEventBases * kLoops);
-  for (size_t k = 0; k < kLoops; ++k) {
-    for (auto evb : ex.getAllEventBases()) {
-      evb->runInEventBaseThread([&]() { latch.count_down(); });
+  const auto testEvbs = [&] {
+    // Ensure that the poller gets to the waiting state.
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds{100});
+
+    folly::Latch latch(kNumEventBases * kLoops);
+    for (size_t k = 0; k < kLoops; ++k) {
+      for (auto evb : evbs) {
+        evb->runInEventBaseThread([&]() { latch.count_down(); });
+      }
     }
-  }
-  latch.wait();
+    latch.wait();
+  };
+
+  testEvbs();
+
+  ex.setNumThreads(1);
+  EXPECT_EQ(ex.numThreads(), 1);
+  EXPECT_EQ(ex.numActiveThreads(), 1);
+  testEvbs();
+
+  ex.setNumThreads(kNumEventBases);
+  EXPECT_EQ(ex.numThreads(), kNumEventBases);
+  testEvbs();
 }
 
 TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {
@@ -59,7 +76,7 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {
   static constexpr uint32_t kMilliseconds = 500;
   folly::MuxIOThreadPoolExecutor ex(kNumThreads);
 
-  // Ensure that we get to the epoll_wait().
+  // Ensure that the poller gets to the waiting state.
   /* sleep override */ std::this_thread::sleep_for(
       std::chrono::milliseconds{100});
 
@@ -70,6 +87,20 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {
     });
   }
   latch.wait();
+}
+
+TEST(MuxIOThreadPoolExecutor, InvalidSetNumThreads) {
+  folly::MuxIOThreadPoolExecutor ex(16);
+  EXPECT_EQ(ex.numEventBases(), 16);
+  ex.setNumThreads(16); // No-op.
+  EXPECT_THROW(ex.setNumThreads(0), std::invalid_argument);
+  EXPECT_THROW(ex.setNumThreads(17), std::invalid_argument);
+
+  EXPECT_THROW(folly::MuxIOThreadPoolExecutor(0), std::invalid_argument);
+  folly::MuxIOThreadPoolExecutor::Options options;
+  options.setNumEventBases(1);
+  EXPECT_THROW(
+      folly::MuxIOThreadPoolExecutor(2, options), std::invalid_argument);
 }
 
 INSTANTIATE_TYPED_TEST_SUITE_P(

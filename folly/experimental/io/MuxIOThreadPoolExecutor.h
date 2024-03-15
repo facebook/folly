@@ -49,7 +49,13 @@ namespace folly {
  * create a large number of EventBases processed by a smaller number of threads
  * and distribute the handlers.
  *
- * TODO(ott): Fully support setNumThreads().
+ * The number of EventBases is set at construction time and cannot be changed
+ * later. The number of threads can be changed dynamically, but setting it to 0
+ * is not supported (otherwise no thread would be left to drive the EventBases)
+ * and it is not useful to run more threads than EventBases, so that is not
+ * supported either: attempting to set the number of threads to 0 or to a value
+ * greater than numEventBases() (either in construction or using
+ * setNumThreads()) will throw std::invalid_argument).
  */
 class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
  public:
@@ -93,6 +99,8 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
   ~MuxIOThreadPoolExecutor() override;
 
+  size_t numEventBases() const { return numEventBases_; }
+
   void add(Func func) override;
   void add(
       Func func,
@@ -129,6 +137,7 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
   void maybeUnregisterEventBases(Observer* o);
 
+  void validateNumThreads(size_t numThreads) override;
   ThreadPtr makeThread() override;
   EvbState& pickEvbState();
   void threadRun(ThreadPtr thread) override;
@@ -136,6 +145,7 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   size_t getPendingTaskCountImpl() const override final;
 
   const Options options_;
+  const size_t numEventBases_;
   folly::EventBaseManager* eventBaseManager_;
 
   std::unique_ptr<EventBasePoller::FdGroup> fdGroup_;
