@@ -62,9 +62,6 @@
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.
 #if !defined(OPENSSL_IS_BORINGSSL)
-#define FOLLY_OPENSSL_IS_101                \
-  (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
-   OPENSSL_VERSION_NUMBER < 0x1000200fL)
 #define FOLLY_OPENSSL_IS_102                \
   (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
    OPENSSL_VERSION_NUMBER < 0x10100000L)
@@ -90,8 +87,8 @@
   (OPENSSL_VERSION_NUMBER >= FOLLY_OPENSSL_CALCULATE_VERSION(major, minor, fix))
 #endif
 
-#if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_101 && \
-    !FOLLY_OPENSSL_IS_102 && !FOLLY_OPENSSL_IS_110
+#if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_102 && \
+    !FOLLY_OPENSSL_IS_110
 #warning Compiling with unsupported OpenSSL version
 #endif
 
@@ -165,11 +162,7 @@ int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 int TLS1_get_client_version(SSL* s);
 #endif
 
-#if FOLLY_OPENSSL_IS_101
-int X509_get_signature_nid(X509* cert);
-#endif
-
-#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
+#if FOLLY_OPENSSL_IS_102
 int SSL_CTX_up_ref(SSL_CTX* session);
 int SSL_SESSION_up_ref(SSL_SESSION* session);
 int X509_up_ref(X509* x);

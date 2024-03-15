@@ -837,9 +837,6 @@ bool AsyncSSLSocket::applyVerificationOptions(const ssl::SSLUniquePtr& ssl) {
   if (verifyPeer_ == SSLContext::SSLVerifyPeerEnum::USE_CTX) {
     if (ctx_->needsPeerVerification()) {
       if (ctx_->checkPeerName()) {
-#if FOLLY_OPENSSL_IS_101
-        return false;
-#else
         std::string peerNameToVerify = !ctx_->peerFixedName().empty()
             ? ctx_->peerFixedName()
             : tlsextHostname_;
@@ -849,7 +846,6 @@ bool AsyncSSLSocket::applyVerificationOptions(const ssl::SSLUniquePtr& ssl) {
                 param, peerNameToVerify.c_str(), peerNameToVerify.length())) {
           return false;
         }
-#endif // FOLLY_OPENSSL_IS_101
       }
 
       SSL_set_verify(

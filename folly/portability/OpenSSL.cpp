@@ -36,13 +36,7 @@ int TLS1_get_client_version(SSL* s) {
 }
 #endif
 
-#if FOLLY_OPENSSL_IS_101
-int X509_get_signature_nid(X509* cert) {
-  return OBJ_obj2nid(cert->sig_alg->algorithm);
-}
-#endif
-
-#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
+#if FOLLY_OPENSSL_IS_102
 int SSL_CTX_up_ref(SSL_CTX* ctx) {
   return CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
 }
