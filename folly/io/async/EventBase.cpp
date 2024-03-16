@@ -157,11 +157,15 @@ EventBaseBackend::~EventBaseBackend() {
 class ExecutionObserverScopeGuard {
  public:
   ExecutionObserverScopeGuard(
-      folly::ExecutionObserver::List* observerList, void* id)
-      : observerList_(observerList), id_{reinterpret_cast<uintptr_t>(id)} {
+      folly::ExecutionObserver::List* observerList,
+      void* id,
+      folly::ExecutionObserver::CallbackType callbackType)
+      : observerList_(observerList),
+        id_{reinterpret_cast<uintptr_t>(id)},
+        callbackType_(callbackType) {
     if (!observerList_->empty()) {
       for (auto& observer : *observerList_) {
-        observer.starting(id_);
+        observer.starting(id_, callbackType_);
       }
     }
   }
@@ -169,7 +173,7 @@ class ExecutionObserverScopeGuard {
   ~ExecutionObserverScopeGuard() {
     if (!observerList_->empty()) {
       for (auto& observer : *observerList_) {
-        observer.stopped(id_);
+        observer.stopped(id_, callbackType_);
       }
     }
   }
@@ -177,6 +181,7 @@ class ExecutionObserverScopeGuard {
  private:
   folly::ExecutionObserver::List* observerList_;
   uintptr_t id_;
+  folly::ExecutionObserver::CallbackType callbackType_;
 };
 } // namespace
 
@@ -187,7 +192,9 @@ class EventBase::FuncRunner {
   explicit FuncRunner(EventBase& eventBase) : eventBase_(eventBase) {}
   void operator()(Func&& func) noexcept {
     ExecutionObserverScopeGuard guard(
-        &eventBase_.getExecutionObserverList(), &func);
+        &eventBase_.getExecutionObserverList(),
+        &func,
+        folly::ExecutionObserver::CallbackType::NotificationQueue);
     std::exchange(func, {})();
   }
 
@@ -924,7 +931,10 @@ void EventBase::runLoopCallbacks(LoopCallbackList& currentCallbacks) {
     LoopCallback* callback = &currentCallbacks.front();
     currentCallbacks.pop_front();
     folly::RequestContextScopeGuard rctx(std::move(callback->context_));
-    ExecutionObserverScopeGuard guard(&executionObserverList_, callback);
+    ExecutionObserverScopeGuard guard(
+        &executionObserverList_,
+        callback,
+        folly::ExecutionObserver::CallbackType::Loop);
     callback->runLoopCallback();
   }
 }

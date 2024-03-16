@@ -163,13 +163,19 @@ FOLLY_ALWAYS_INLINE void scheduleEvents(
 
 class TestObserver : public folly::ExecutionObserver {
  public:
-  virtual void starting(uintptr_t /* id */) noexcept override {
+  virtual void starting(
+      uintptr_t /* id */,
+      folly::ExecutionObserver::CallbackType /* callbackType */) noexcept
+      override {
     if (nestedStart_ == 0) {
       nestedStart_ = 1;
     }
     numStartingCalled_++;
   }
-  virtual void stopped(uintptr_t /* id */) noexcept override {
+  virtual void stopped(
+      uintptr_t /* id */,
+      folly::ExecutionObserver::CallbackType /* callbackType */) noexcept
+      override {
     nestedStart_--;
     numStoppedCalled_++;
   }

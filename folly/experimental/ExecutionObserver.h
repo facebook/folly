@@ -31,6 +31,14 @@ class ExecutionObserver
     : public boost::intrusive::list_base_hook<
           boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
  public:
+  enum class CallbackType {
+    // Owned by EventBase.
+    Event,
+    Loop,
+    NotificationQueue,
+    // Owned by FiberManager.
+    Fiber,
+  };
   // Constant time size = false to support auto_unlink behavior, options are
   // mutually exclusive
   typedef boost::intrusive::
@@ -44,14 +52,14 @@ class ExecutionObserver
    *
    * @param id Unique id for the task which is starting.
    */
-  virtual void starting(uintptr_t id) noexcept = 0;
+  virtual void starting(uintptr_t id, CallbackType callbackType) noexcept = 0;
 
   /**
    * Called just after a task stops executing.
    *
    * @param id Unique id for the task which stopped.
    */
-  virtual void stopped(uintptr_t id) noexcept = 0;
+  virtual void stopped(uintptr_t id, CallbackType callbackType) noexcept = 0;
 };
 
 } // namespace folly

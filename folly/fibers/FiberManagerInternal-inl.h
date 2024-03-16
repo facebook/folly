@@ -138,7 +138,9 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 
   if (!observerList_.empty()) {
     for (auto& observer : observerList_) {
-      observer.starting(reinterpret_cast<uintptr_t>(fiber));
+      observer.starting(
+          reinterpret_cast<uintptr_t>(fiber),
+          folly::ExecutionObserver::CallbackType::Fiber);
     }
   }
 
@@ -160,7 +162,9 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     awaitFunc_(*fiber);
     awaitFunc_ = nullptr;
     for (auto& observer : observerList_) {
-      observer.stopped(reinterpret_cast<uintptr_t>(fiber));
+      observer.stopped(
+          reinterpret_cast<uintptr_t>(fiber),
+          folly::ExecutionObserver::CallbackType::Fiber);
     }
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
@@ -184,7 +188,9 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     }
     // Make sure LocalData is not accessible from its destructor
     for (auto& observer : observerList_) {
-      observer.stopped(reinterpret_cast<uintptr_t>(fiber));
+      observer.stopped(
+          reinterpret_cast<uintptr_t>(fiber),
+          folly::ExecutionObserver::CallbackType::Fiber);
     }
 
     currentFiber_ = nullptr;
@@ -209,7 +215,9 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     }
   } else if (fiber->state_ == Fiber::YIELDED) {
     for (auto& observer : observerList_) {
-      observer.stopped(reinterpret_cast<uintptr_t>(fiber));
+      observer.stopped(
+          reinterpret_cast<uintptr_t>(fiber),
+          folly::ExecutionObserver::CallbackType::Fiber);
     }
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();

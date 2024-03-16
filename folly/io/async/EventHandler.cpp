@@ -151,7 +151,9 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   auto& observers = handler->eventBase_->getExecutionObserverList();
   if (!observers.empty()) {
     for (auto& observer : observers) {
-      observer.starting(reinterpret_cast<uintptr_t>(handler));
+      observer.starting(
+          reinterpret_cast<uintptr_t>(handler),
+          folly::ExecutionObserver::CallbackType::Event);
     }
   }
 
@@ -162,7 +164,9 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
 
   if (!observers.empty()) {
     for (auto& observer : observers) {
-      observer.stopped(reinterpret_cast<uintptr_t>(handler));
+      observer.stopped(
+          reinterpret_cast<uintptr_t>(handler),
+          folly::ExecutionObserver::CallbackType::Event);
     }
   }
 }
