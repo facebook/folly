@@ -127,17 +127,17 @@ namespace detail {
 std::atomic<SettingCoreBase::Version> gGlobalVersion_;
 
 auto& getSavedValuesMutex() {
-  static SharedMutex gSavedValuesMutex;
-  return gSavedValuesMutex;
+  static Indestructible<SharedMutex> gSavedValuesMutex;
+  return *gSavedValuesMutex;
 }
 
 /* Version -> (count of outstanding snapshots, saved setting values) */
 auto& getSavedValues() {
-  static std::unordered_map<
+  static Indestructible<std::unordered_map<
       SettingCoreBase::Version,
-      std::pair<size_t, std::unordered_map<SettingCoreBase::Key, BoxedValue>>>
+      std::pair<size_t, std::unordered_map<SettingCoreBase::Key, BoxedValue>>>>
       gSavedValues;
-  return gSavedValues;
+  return *gSavedValues;
 }
 
 SettingCoreBase::Version nextGlobalVersion() {
