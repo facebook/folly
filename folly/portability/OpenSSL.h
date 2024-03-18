@@ -236,11 +236,6 @@ const X509_ALGOR* X509_get0_tbs_sigalg(const X509* x);
 
 #endif
 
-#if FOLLY_OPENSSL_IS_110
-// Note: this was a type and has been fixed upstream, so the next 1.1.0
-// minor version upgrade will need to remove this
-#define OPENSSL_lh_new OPENSSL_LH_new
-#endif
 } // namespace ssl
 } // namespace portability
 } // namespace folly
