@@ -202,11 +202,6 @@ struct ThreadEntry {
   uint64_t tid_os{};
   aligned_storage_for_t<std::thread::id> tid_data{};
 
-  // StaticMetaBase::onThreadExit is called to clean up
-  // ElementWrapper state. That will also set removed_ to true.
-  // Ensure we do not release ThreadEntry before the cleanup is done.
-  ~ThreadEntry() { CHECK(removed_); }
-
   size_t getElementsCapacity() const noexcept {
     return elementsCapacity.load(std::memory_order_relaxed);
   }
