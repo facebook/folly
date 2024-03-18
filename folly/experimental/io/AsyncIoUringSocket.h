@@ -69,22 +69,11 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
   using UniquePtr = std::unique_ptr<AsyncIoUringSocket, Destructor>;
   explicit AsyncIoUringSocket(
-      AsyncTransport::UniquePtr other,
-      IoUringBackend* backend = nullptr,
-      Options&& options = Options{});
+      AsyncTransport::UniquePtr other, Options&& options = Options{});
+  explicit AsyncIoUringSocket(AsyncSocket* sock, Options&& options = Options{});
+  explicit AsyncIoUringSocket(EventBase* evb, Options&& options = Options{});
   explicit AsyncIoUringSocket(
-      AsyncSocket* sock,
-      IoUringBackend* backend = nullptr,
-      Options&& options = Options{});
-  explicit AsyncIoUringSocket(
-      EventBase* evb,
-      IoUringBackend* backend = nullptr,
-      Options&& options = Options{});
-  explicit AsyncIoUringSocket(
-      EventBase* evb,
-      NetworkSocket ns,
-      IoUringBackend* backend = nullptr,
-      Options&& options = Options{});
+      EventBase* evb, NetworkSocket ns, Options&& options = Options{});
 
   static bool supports(EventBase* backend);
 

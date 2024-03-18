@@ -84,23 +84,20 @@ IoUringBackend* getBackendFromEventBase(EventBase* evb) {
 } // namespace
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    folly::AsyncSocket* other, IoUringBackend* backend, Options&& options)
-    : AsyncIoUringSocket(other->getEventBase(), backend, std::move(options)) {
+    folly::AsyncSocket* other, Options&& options)
+    : AsyncIoUringSocket(other->getEventBase(), std::move(options)) {
   setPreReceivedData(other->takePreReceivedData());
   setFd(other->detachNetworkSocket());
   state_ = State::Established;
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    AsyncTransport::UniquePtr other, IoUringBackend* backend, Options&& options)
-    : AsyncIoUringSocket(getAsyncSocket(other), backend, std::move(options)) {}
+    AsyncTransport::UniquePtr other, Options&& options)
+    : AsyncIoUringSocket(getAsyncSocket(other), std::move(options)) {}
 
-AsyncIoUringSocket::AsyncIoUringSocket(
-    EventBase* evb, IoUringBackend* backend, Options&& options)
-    : evb_(evb), backend_(backend), options_(std::move(options)) {
-  if (!backend_) {
-    backend_ = getBackendFromEventBase(evb);
-  }
+AsyncIoUringSocket::AsyncIoUringSocket(EventBase* evb, Options&& options)
+    : evb_(evb), options_(std::move(options)) {
+  backend_ = getBackendFromEventBase(evb);
 
   if (!backend_->bufferProvider()) {
     throw std::runtime_error("require a IoUringBackend with a buffer provider");
@@ -109,11 +106,8 @@ AsyncIoUringSocket::AsyncIoUringSocket(
 }
 
 AsyncIoUringSocket::AsyncIoUringSocket(
-    EventBase* evb,
-    NetworkSocket ns,
-    IoUringBackend* backend,
-    Options&& options)
-    : AsyncIoUringSocket(evb, backend, std::move(options)) {
+    EventBase* evb, NetworkSocket ns, Options&& options)
+    : AsyncIoUringSocket(evb, std::move(options)) {
   setFd(ns);
   state_ = State::Established;
 }
