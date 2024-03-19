@@ -1623,7 +1623,7 @@ class F14Table : public Policy {
 
  private:
   void adjustSizeAndBeginAfterInsert(ItemIter iter) {
-    if (kEnableItemIteration) {
+    if constexpr (kEnableItemIteration) {
       // packedBegin is the max of all valid ItemIter::pack()
       auto packed = iter.pack();
       if (sizeAndChunkShiftAndPackedBegin_.packedBegin() < packed) {
@@ -1658,7 +1658,7 @@ class F14Table : public Policy {
 
   void adjustSizeAndBeginBeforeErase(ItemIter iter) {
     sizeAndChunkShiftAndPackedBegin_.decrementSize();
-    if (kEnableItemIteration) {
+    if constexpr (kEnableItemIteration) {
       if (iter.pack() == sizeAndChunkShiftAndPackedBegin_.packedBegin()) {
         if (size() == 0) {
           iter = ItemIter{};
