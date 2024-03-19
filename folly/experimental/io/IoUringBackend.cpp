@@ -323,17 +323,9 @@ static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 #if FOLLY_IO_URING_UP_TO_DATE
 
 class ProvidedBuffersBuffer {
- private:
-  static constexpr size_t kHugePageMask = (1LLU << 21) - 1; // 2MB
-  static constexpr size_t kPageMask = (1LLU << 12) - 1; // 4095
-  static constexpr size_t kBufferAlignMask{31LLU};
-
  public:
   static size_t calcBufferSize(int bufferShift) {
-    if (bufferShift < 5) {
-      bufferShift = 5;
-    }
-    return 1LLU << bufferShift;
+    return 1LLU << std::max<int>(5, bufferShift);
   }
 
   ProvidedBuffersBuffer(
@@ -424,6 +416,11 @@ class ProvidedBuffersBuffer {
   size_t sizePerBuffer_;
   char* bufferBuffer_;
   uint32_t bufferCount_;
+
+  // static constexpr
+  static constexpr size_t kHugePageMask = (1LLU << 21) - 1; // 2MB
+  static constexpr size_t kPageMask = (1LLU << 12) - 1; // 4095
+  static constexpr size_t kBufferAlignMask{31LLU};
 };
 
 class ProvidedBufferRing : public IoUringBufferProviderBase {
