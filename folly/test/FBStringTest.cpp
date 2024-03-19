@@ -40,6 +40,45 @@
 using namespace std;
 using namespace folly;
 
+template <typename A, typename B>
+using detect_eq = decltype(FOLLY_DECLVAL(A) == FOLLY_DECLVAL(B));
+template <typename A, typename B>
+using detect_ne = decltype(FOLLY_DECLVAL(A) != FOLLY_DECLVAL(B));
+template <typename A, typename B>
+using detect_lt = decltype(FOLLY_DECLVAL(A) < FOLLY_DECLVAL(B));
+template <typename A, typename B>
+using detect_le = decltype(FOLLY_DECLVAL(A) <= FOLLY_DECLVAL(B));
+template <typename A, typename B>
+using detect_gt = decltype(FOLLY_DECLVAL(A) > FOLLY_DECLVAL(B));
+template <typename A, typename B>
+using detect_ge = decltype(FOLLY_DECLVAL(A) >= FOLLY_DECLVAL(B));
+#if FOLLY_CPLUSPLUS >= 202002
+template <typename A, typename B>
+using detect_3w = decltype(FOLLY_DECLVAL(A) <=> FOLLY_DECLVAL(B));
+#endif
+
+static_assert(!std::is_constructible_v<fbstring, nullptr_t>);
+static_assert(!std::is_assignable_v<fbstring, nullptr_t>);
+
+static_assert(!is_detected_v<detect_eq, fbstring, nullptr_t>);
+static_assert(!is_detected_v<detect_ne, fbstring, nullptr_t>);
+static_assert(!is_detected_v<detect_lt, fbstring, nullptr_t>);
+static_assert(!is_detected_v<detect_le, fbstring, nullptr_t>);
+static_assert(!is_detected_v<detect_gt, fbstring, nullptr_t>);
+static_assert(!is_detected_v<detect_ge, fbstring, nullptr_t>);
+
+static_assert(!is_detected_v<detect_eq, nullptr_t, fbstring>);
+static_assert(!is_detected_v<detect_ne, nullptr_t, fbstring>);
+static_assert(!is_detected_v<detect_lt, nullptr_t, fbstring>);
+static_assert(!is_detected_v<detect_le, nullptr_t, fbstring>);
+static_assert(!is_detected_v<detect_gt, nullptr_t, fbstring>);
+static_assert(!is_detected_v<detect_ge, nullptr_t, fbstring>);
+
+#if FOLLY_CPLUSPLUS >= 202002
+static_assert(!is_detected_v<detect_3w, fbstring, nullptr_t>);
+static_assert(!is_detected_v<detect_3w, nullptr_t, fbstring>);
+#endif
+
 namespace {
 
 static const int seed = folly::randomNumberSeed();
@@ -1290,7 +1329,7 @@ TEST(FBString, testMoveOperatorPlusRhs) {
 //      other than libstdc++. Someday if we deem it important to present
 //      identical undefined behavior for other platforms, we can re-visit this.
 TEST(FBString, testConstructionFromLiteralZero) {
-  EXPECT_THROW(fbstring s(nullptr), std::logic_error);
+  EXPECT_THROW(fbstring s(static_cast<const char*>(nullptr)), std::logic_error);
 }
 
 TEST(FBString, testFixedBugsD479397) {
