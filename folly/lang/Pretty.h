@@ -136,12 +136,6 @@ struct pretty_name_zarray {
   static constexpr pretty_carray<size + 1> zarray = zarray_();
 };
 
-#if FOLLY_CPLUSPLUS < 201703L
-template <typename T, typename Tag>
-constexpr pretty_carray<pretty_name_zarray<T, Tag>::size + 1>
-    pretty_name_zarray<T, Tag>::zarray;
-#endif
-
 template <typename T>
 constexpr const auto& pretty_name_carray() {
   return detail::pretty_name_zarray<T, detail::pretty_default_tag>::zarray;

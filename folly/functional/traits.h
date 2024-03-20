@@ -40,19 +40,11 @@ template <bool Nx>
 struct function_traits_nx_ {
   static constexpr bool is_nothrow = Nx;
 };
-#if FOLLY_CPLUSPLUS < 201703L
-template <bool Nx>
-constexpr bool function_traits_nx_<Nx>::is_nothrow;
-#endif
 
 template <bool Var>
 struct function_traits_var_ {
   static constexpr bool is_variadic = Var;
 };
-#if FOLLY_CPLUSPLUS < 201703L
-template <bool Var>
-constexpr bool function_traits_var_<Var>::is_variadic;
-#endif
 
 template <typename T>
 struct function_traits_cvref_ {

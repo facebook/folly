@@ -141,13 +141,6 @@ struct safe_assert_msg_types<safe_assert_msg_type_s<A...>> {
   static constexpr value_type value = {{A..., safe_assert_msg_type::term}};
 };
 
-#if FOLLY_CPLUSPLUS < 201703L
-template <safe_assert_msg_type... A>
-constexpr
-    typename safe_assert_msg_types<safe_assert_msg_type_s<A...>>::value_type
-        safe_assert_msg_types<safe_assert_msg_type_s<A...>>::value;
-#endif
-
 struct safe_assert_arg {
   char const* expr;
   char const* file;

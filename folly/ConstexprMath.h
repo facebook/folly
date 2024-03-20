@@ -77,11 +77,6 @@ struct floating_point_integral_constant {
   constexpr operator value_type() const noexcept { return value; }
   constexpr value_type operator()() const noexcept { return value; }
 };
-#if FOLLY_CPLUSPLUS < 201703L
-template <typename T, typename S, S Value>
-constexpr typename floating_point_integral_constant<T, S, Value>::value_type
-    floating_point_integral_constant<T, S, Value>::value;
-#endif
 
 //  ----
 
@@ -227,11 +222,6 @@ struct constexpr_iterated_squares_desc {
     return {power, scale};
   }
 };
-#if FOLLY_CPLUSPLUS < 201703L
-template <typename T, std::size_t Size>
-constexpr typename constexpr_iterated_squares_desc<T, Size>::size_type
-    constexpr_iterated_squares_desc<T, Size>::size;
-#endif
 
 /// constexpr_iterated_squares_desc_v
 ///

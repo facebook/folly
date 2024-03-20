@@ -20,8 +20,6 @@
 
 namespace folly {
 
-#if FOLLY_CPLUSPLUS < 201703L
-constexpr std::chrono::nanoseconds WaitOptions::Defaults::spin_max;
-#endif
+//
 
 } // namespace folly

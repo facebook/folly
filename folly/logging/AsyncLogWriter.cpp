@@ -25,10 +25,6 @@
 
 namespace folly {
 
-#if FOLLY_CPLUSPLUS < 201703L
-constexpr size_t AsyncLogWriter::kDefaultMaxBufferSize;
-#endif
-
 AsyncLogWriter::AsyncLogWriter() {
   folly::AtFork::registerHandler(
       this,

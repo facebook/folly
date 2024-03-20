@@ -54,11 +54,6 @@ struct FixedStringBase_ {
   static constexpr std::size_t npos = static_cast<std::size_t>(-1);
 };
 
-#if FOLLY_CPLUSPLUS < 201703L
-template <class Void>
-constexpr std::size_t FixedStringBase_<Void>::npos;
-#endif
-
 using FixedStringBase = FixedStringBase_<>;
 
 // Intentionally NOT constexpr. By making this not constexpr, we make
