@@ -15,8 +15,6 @@
  */
 
 /**
- * @author Giuseppe Ottaviano <ott@fb.com>
- *
  * Shared utils for BitVectorCoding.h and EliasFanoCoding.h.
  */
 

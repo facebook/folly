@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Author: Eric Niebler <eniebler@fb.com>
- */
-
 #pragma once
 
 #include <cassert>

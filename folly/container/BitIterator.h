@@ -22,8 +22,6 @@
  * findFirstSet(BitIterator begin, BitIterator end)
  *    return a BitIterator pointing to the first 1 bit in [begin, end), or
  *    end if all bits in [begin, end) are 0
- *
- * @author Tudor Bosman (tudorb@fb.com)
  */
 
 #pragma once

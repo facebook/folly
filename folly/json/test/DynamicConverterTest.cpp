@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author Nicholas Ormrod <njormrod@fb.com>
-
 #include <folly/json/DynamicConverter.h>
 
 #include <algorithm>

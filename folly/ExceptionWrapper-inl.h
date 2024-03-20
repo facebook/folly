@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/*
- *
- * Author: Eric Niebler <eniebler@fb.com>
- */
-
 #include <folly/Portability.h>
 
 namespace folly {

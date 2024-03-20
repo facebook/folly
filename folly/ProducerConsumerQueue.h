@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-// @author Bo Hu (bhu@fb.com)
-// @author Jordan DeLong (delong.j@fb.com)
-
 #pragma once
 
 #include <atomic>

@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author: Andrei Alexandrescu (aalexandre)
-
 // Test bed for folly/Synchronized.h
 
 #include <folly/Synchronized.h>

@@ -232,9 +232,6 @@ size_t allocationBytesForOverAligned(size_t n) {
 /**
  * For exception safety and consistency with make_shared. Erase me when
  * we have std::make_unique().
- *
- * @author Louis Brandy (ldbrandy@fb.com)
- * @author Xu Ning (xning@fb.com)
  */
 
 #if __cplusplus >= 201402L || __cpp_lib_make_unique >= 201304L || \

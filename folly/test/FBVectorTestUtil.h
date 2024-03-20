@@ -16,9 +16,6 @@
 
 #pragma once
 
-//
-// Author: andrei.alexandrescu@fb.com
-
 #include <list>
 #include <random>
 

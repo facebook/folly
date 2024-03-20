@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// @author Nicholas Ormrod <njormrod@fb.com>
 /**
  * DynamicConverter provides a simple, generic interface by which dynamic
  * objects can be converted to/from concrete C++ types.

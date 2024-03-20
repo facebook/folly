@@ -16,8 +16,6 @@
 
 /**
  * GCC compatible wrappers around clang attributes.
- *
- * @author Dominik Gabi
  */
 
 #pragma once

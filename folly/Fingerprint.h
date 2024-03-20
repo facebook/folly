@@ -37,8 +37,6 @@
  * (unsurprisingly, Fingerprint<96> and Fingerprint<128> take the
  * same amount of time, as they both use 128-bit operations; the least
  * significant 32 bits of Fingerprint<96> will always be 0)
- *
- * @author Tudor Bosman (tudorb@facebook.com)
  */
 
 #pragma once

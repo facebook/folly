@@ -25,8 +25,6 @@
  *  Check out AtomicHashMap.h for more thorough documentation on perf and
  *  general pros and cons relative to other hash maps.
  *
- *  @author Spencer Ahrens <sahrens@fb.com>
- *  @author Jordan DeLong <delong.j@fb.com>
  */
 
 #pragma once

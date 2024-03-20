@@ -78,7 +78,6 @@ using monotonic_clock = std::chrono::steady_clock;
  *    callback action_;
  *  };
  *
- * @author: Marcelo Juchem <marcelo@fb.com>
  */
 template <typename Clock, typename Duration = typename Clock::duration>
 struct custom_stop_watch : private detail::inheritable<Clock> {
@@ -109,7 +108,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *  do_something();
    *  std::cout << "time elapsed: " << watch.elapsed() << std::endl;
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   custom_stop_watch() : checkpoint_(now()) {}
 
@@ -126,7 +124,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *  do_something();
    *  std::cout << "time elapsed: " << watch.elapsed() << std::endl;
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   explicit custom_stop_watch(typename clock_type::time_point checkpoint)
       : checkpoint_(std::move(checkpoint)) {}
@@ -166,7 +163,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *    stop_watch<> time_alive;
    *  };
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   void reset() { checkpoint_ = now(); }
 
@@ -181,7 +177,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *  do_something();
    *  std::cout << "time elapsed: " << watch.elapsed() << std::endl;
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   duration elapsed() const {
     return std::chrono::duration_cast<duration>(now() - checkpoint_);
@@ -200,7 +195,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *
    *  std::cout << "ttl expired? " << std::boolalpha << watch.elapsed(ttl);
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   template <typename UDuration>
   bool elapsed(UDuration&& amount) const {
@@ -225,7 +219,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *    stop_watch<> time_alive;
    *  };
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   duration lap() {
     auto lastCheckpoint = checkpoint_;
@@ -254,7 +247,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *    }
    *  }
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   template <typename UDuration>
   bool lap(UDuration&& amount) {
@@ -297,7 +289,6 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
  *  do_something();
  *  std::cout << "time elapsed: " << watch.elapsed().count() << std::endl;
  *
- * @author: Marcelo Juchem <marcelo@fb.com>
  */
 template <typename Duration = folly::chrono::coarse_steady_clock::duration>
 using coarse_stop_watch =
@@ -318,7 +309,6 @@ using coarse_stop_watch =
  *  do_something();
  *  std::cout << "time elapsed: " << watch.elapsed().count() << std::endl;
  *
- * @author: Marcelo Juchem <marcelo@fb.com>
  */
 template <typename Duration = std::chrono::steady_clock::duration>
 using stop_watch = custom_stop_watch<std::chrono::steady_clock, Duration>;

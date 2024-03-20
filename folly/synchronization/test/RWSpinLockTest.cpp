@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// @author xliu (xliux@fb.com)
-//
-
 #include <folly/synchronization/RWSpinLock.h>
 
 #include <stdlib.h>

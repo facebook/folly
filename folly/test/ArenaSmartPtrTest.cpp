@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * @author: Marcelo Juchem <marcelo@fb.com>
- */
-
 #include <folly/Memory.h>
 #include <folly/memory/Arena.h>
 #include <folly/portability/GTest.h>

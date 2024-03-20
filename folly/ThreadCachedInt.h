@@ -16,8 +16,6 @@
 
 /**
  * Higher performance (up to 10x) atomic increment using thread caching.
- *
- * @author Spencer Ahrens (sahrens)
  */
 
 #pragma once

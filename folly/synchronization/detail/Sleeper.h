@@ -16,11 +16,6 @@
 
 #pragma once
 
-/*
- * @author Keith Adams <kma@fb.com>
- * @author Jordan DeLong <delong.j@fb.com>
- */
-
 #include <chrono>
 #include <cstdint>
 #include <thread>

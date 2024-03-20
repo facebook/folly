@@ -36,7 +36,6 @@
  * If your dynamic has anything illegal with regard to this type
  * system, the serializer will throw.
  *
- * @author Jordan DeLong <delong.j@fb.com>
  * @file json.h
  */
 

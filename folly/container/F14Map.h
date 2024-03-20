@@ -22,9 +22,6 @@
  * F14FastMap conditionally works like F14ValueMap or F14VectorMap
  *
  * See F14.md
- *
- * @author Nathan Bronson <ngbronson@fb.com>
- * @author Xiao Shi       <xshi@fb.com>
  */
 
 #include <cstddef>

@@ -373,7 +373,6 @@ enum PrettyType {
  *     PRETTY_SI           - full SI metric prefixes from yocto to Yotta
  *                           http://en.wikipedia.org/wiki/Metric_prefix
  *
- * @author Mark Rabkin <mrabkin@fb.com>
  */
 std::string prettyPrint(double val, PrettyType, bool addSpace = true);
 

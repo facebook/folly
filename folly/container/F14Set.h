@@ -26,9 +26,6 @@
  * F14FastSet conditionally works like F14ValueSet or F14VectorSet
  *
  * See F14.md
- *
- * @author Nathan Bronson <ngbronson@fb.com>
- * @author Xiao Shi       <xshi@fb.com>
  */
 
 #include <cstddef>

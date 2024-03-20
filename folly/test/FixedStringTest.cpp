@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Author: eniebler@fb.com
-
 #include <folly/FixedString.h>
 
 #include <string_view>

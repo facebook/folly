@@ -48,7 +48,6 @@
  *    Endian::little(x)   little <-> native
  *    Endian::swap(x)     big <-> little
  *
- * @author Tudor Bosman (tudorb@fb.com)
  */
 
 #pragma once

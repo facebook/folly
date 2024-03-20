@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// @author: Andrei Alexandrescu (aalexandre)
 // String type.
 
 #pragma once

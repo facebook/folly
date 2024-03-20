@@ -693,7 +693,6 @@ struct value_compare_set : Compare {
  * @tparam KeyT            key type, for set it is same as T.
  * @tparam ValueCompare    wrapper class to compare Container::value_type
  *
- * @author Zino Benaissa <zinob@fb.com>
  */
 template <
     class T,
@@ -1459,7 +1458,6 @@ using heap_vector_set = folly::heap_vector_set<
  * @tparam Allocator     allocation policy
  * @tparam GrowthPolicy  policy object to control growth
  *
- * @author Zino Benaissa <zinob@fb.com>
  */
 
 template <

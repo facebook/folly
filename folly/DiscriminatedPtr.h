@@ -20,8 +20,6 @@
  * Similar to std::variant, but has no space overhead over a raw pointer, as
  * it relies on the fact that (on x86_64) there are 16 unused bits in a
  * pointer.
- *
- * @author Tudor Bosman (tudorb@fb.com)
  */
 
 #pragma once

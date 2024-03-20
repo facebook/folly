@@ -34,8 +34,6 @@
  * There are two classes here - ThreadLocal and ThreadLocalPtr.  ThreadLocalPtr
  * has semantics similar to boost::thread_specific_ptr. ThreadLocal is a thin
  * wrapper around ThreadLocalPtr that manages allocation automatically.
- *
- * @author Spencer Ahrens (sahrens)
  */
 
 #pragma once

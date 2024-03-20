@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Author: andrei.alexandrescu@fb.com
-
 #include <deque>
 #include <list>
 #include <memory>

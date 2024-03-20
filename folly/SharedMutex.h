@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author Nathan Bronson (ngbronson@fb.com)
-
 #pragma once
 
 #include <stdint.h>

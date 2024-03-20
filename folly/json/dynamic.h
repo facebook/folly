@@ -35,7 +35,6 @@
  * Additional documentation is in
  * https://github.com/facebook/folly/blob/main/folly/docs/Dynamic.md
  *
- * @author Jordan DeLong <delong.j@fb.com>
  * @refcode folly/docs/examples/folly/dynamic.cpp
  * @struct folly::dynamic
  */

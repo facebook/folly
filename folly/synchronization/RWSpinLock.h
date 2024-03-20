@@ -77,8 +77,6 @@
  *    hold it in shared mode, making the lock non-reentrant.
  *
  *    RWSpinLock handles 2^30 - 1 concurrent readers.
- *
- * @author Xin Liu <xliux@fb.com>
  */
 
 #pragma once

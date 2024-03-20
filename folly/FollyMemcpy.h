@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author: Logan Evans <lpe@fb.com>
-
 #include <cstddef>
 
 namespace folly {

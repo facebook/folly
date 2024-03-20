@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author Tudor Bosman (tudorb@fb.com)
-
 #include <folly/lang/Bits.h>
 
 #include <algorithm>

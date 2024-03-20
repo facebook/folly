@@ -262,10 +262,6 @@ void bulk_insert(
  *                              strict weak ordering over instances of T
  * @tparam Allocator       allocation policy
  * @tparam GrowthPolicy    policy object to control growth
- *
- * @author Aditya Agarwal <aditya@fb.com>
- * @author Akhil Wable    <akhil@fb.com>
- * @author Jordan DeLong  <delong.j@fb.com>
  */
 template <
     class T,
@@ -901,10 +897,6 @@ using sorted_vector_set = folly::sorted_vector_set<
  *                            a strict weak ordering over them.
  * @tparam Allocator     allocation policy
  * @tparam GrowthPolicy  policy object to control growth
- *
- * @author Aditya Agarwal <aditya@fb.com>
- * @author Akhil Wable    <akhil@fb.com>
- * @author Jordan DeLong  <delong.j@fb.com>
  */
 template <
     class Key,

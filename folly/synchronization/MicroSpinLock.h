@@ -32,11 +32,6 @@
 
 #pragma once
 
-/*
- * @author Keith Adams <kma@fb.com>
- * @author Jordan DeLong <delong.j@fb.com>
- */
-
 #include <array>
 #include <atomic>
 #include <cassert>

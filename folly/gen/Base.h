@@ -34,7 +34,6 @@
 
 /**
  * Generator-based Sequence Comprehensions in C++, akin to C#'s LINQ
- * @author Tom Jackson <tjackson@fb.com>
  *
  * This library makes it possible to write declarative comprehensions for
  * processing sequences of values efficiently in C++. The operators should be

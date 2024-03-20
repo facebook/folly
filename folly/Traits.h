@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author: Andrei Alexandrescu
-
 #pragma once
 
 #include <cstdint>
@@ -843,10 +841,7 @@ using IsOneOf = StrictDisjunction<std::is_same<T, Ts>...>;
  * Complementary type traits for integral comparisons.
  *
  * For instance, `if(x < 0)` yields an error in clang for unsigned types
- *  when -Werror is used due to -Wtautological-compare
- *
- *
- * @author: Marcelo Juchem <marcelo@fb.com>
+ * when -Werror is used due to -Wtautological-compare
  */
 
 // same as `x < 0`

@@ -35,9 +35,6 @@
  * @struct folly::range
  */
 
-// @author Mark Rabkin (mrabkin@fb.com)
-// @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
-
 #pragma once
 
 #include <folly/Portability.h>
@@ -1157,7 +1154,6 @@ class Range {
    *    }
    *  }
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   Range split_step(value_type delimiter) {
     auto i = find(delimiter);
@@ -1242,7 +1238,6 @@ class Range {
    *    }
    *  };
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   template <typename TProcess, typename... Args>
   auto split_step(value_type delimiter, TProcess&& process, Args&&... args)

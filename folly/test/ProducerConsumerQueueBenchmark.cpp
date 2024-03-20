@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author: Bert Maher <bertrand@fb.com>
-
 #include <folly/ProducerConsumerQueue.h>
 
 #include <cstdio>

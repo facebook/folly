@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author Nicholas Ormrod <njormrod@fb.com>
-
 /*
 
 This file contains an extensive STL compliance test suite for an STL vector

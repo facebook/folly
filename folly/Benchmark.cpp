@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
-
 #include <folly/Benchmark.h>
 
 #include <algorithm>

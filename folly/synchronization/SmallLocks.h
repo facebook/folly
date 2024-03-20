@@ -28,9 +28,6 @@
  * longer it waits between attempts to acquire, so newer waiters are
  * more likely to get the mutex.  For the intended use-case this is
  * fine.
- *
- * @author Keith Adams <kma@fb.com>
- * @author Jordan DeLong <delong.j@fb.com>
  */
 
 #include <folly/MicroLock.h>

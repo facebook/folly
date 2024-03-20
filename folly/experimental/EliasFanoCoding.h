@@ -15,8 +15,6 @@
  */
 
 /**
- * @author Philip Pronin (philipp@fb.com)
- *
  * Based on the paper by Sebastiano Vigna,
  * "Quasi-succinct indices" (arxiv:1206.4300).
  */

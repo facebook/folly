@@ -178,7 +178,6 @@ class AsyncTimeout {
    *    while (!done); // busy wait
    *  }
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   template <typename TCallback>
   static std::unique_ptr<AsyncTimeout> make(
@@ -211,7 +210,6 @@ class AsyncTimeout {
    *    while (!done); // busy wait
    *  }
    *
-   * @author: Marcelo Juchem <marcelo@fb.com>
    */
   template <typename TCallback>
   static std::unique_ptr<AsyncTimeout> schedule(
@@ -239,8 +237,6 @@ namespace detail {
 
 /**
  * Wraps a function object as an AsyncTimeout instance.
- *
- * @author: Marcelo Juchem <marcelo@fb.com>
  */
 template <typename TCallback>
 struct async_timeout_wrapper : public AsyncTimeout {

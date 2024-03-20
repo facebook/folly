@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// @author: Eric Niebler (eniebler)
 // Fixed-size string type, for constexpr string handling.
 
 #pragma once

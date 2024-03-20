@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Author: andrei.alexandrescu@fb.com
-
 #include <folly/FBString.h>
 
 #include <cstdlib>

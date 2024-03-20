@@ -52,9 +52,6 @@
  * TODO(jdelong): should we use the low order bit for the lock, so we
  * get a whole 16-bits for our integer?  (There's also 2 more bits
  * down there if the pointer comes from malloc.)
- *
- * @author Spencer Ahrens <sahrens@fb.com>
- * @author Jordan DeLong <delong.j@fb.com>
  */
 
 namespace folly {

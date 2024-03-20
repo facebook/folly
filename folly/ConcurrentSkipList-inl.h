@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// @author: Xin Liu <xliux@fb.com>
-
 #pragma once
 
 #include <algorithm>

@@ -52,7 +52,6 @@ class any_badge;
  *   }
  *
  *     See: https://awesomekling.github.io/Serenity-C++-patterns-The-Badge/
- *  Author: Andreas Kling (https://github.com/awesomekling)
  *
  */
 template <typename Holder>

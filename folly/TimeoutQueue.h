@@ -21,8 +21,6 @@
  * This class assumes that "time" is an int64_t and doesn't care about time
  * units (seconds, milliseconds, etc).  You call runOnce() / runLoop() using
  * the same time units that you use to specify callbacks.
- *
- * @author Tudor Bosman (tudorb@fb.com)
  */
 
 #pragma once
