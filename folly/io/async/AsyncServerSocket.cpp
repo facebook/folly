@@ -216,7 +216,6 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   std::vector<CallbackInfo> callbacksCopy;
   callbacks_.swap(callbacksCopy);
   localCallbackIndex_ = -1;
-  ;
   for (const auto& callback : callbacksCopy) {
     // consumer may not be set if we are running in primary event base
     if (callback.consumer) {
