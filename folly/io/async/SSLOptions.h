@@ -193,7 +193,7 @@ struct SSLOptions2021 {
 };
 
 using SSLCommonOptions = SSLOptionsCompatibility;
-using SSLServerOptions = SSLServerOptionsCompatibility;
+using SSLServerOptions = SSLOptions2021;
 
 /**
  * Set the cipher suite of ctx to that in TSSLOptions, and print any runtime
