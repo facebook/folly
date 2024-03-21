@@ -35,9 +35,9 @@ class NamedThreadFactory : public ThreadFactory {
   std::thread newThread(Func&& func) override {
     auto name = folly::to<std::string>(prefix_, suffix_++);
     return std::thread(
-        [func = std::move(func), name = std::move(name)]() mutable {
-          folly::setThreadName(name);
-          func();
+        [func_2 = std::move(func), name_2 = std::move(name)]() mutable {
+          folly::setThreadName(name_2);
+          func_2();
         });
   }
 
