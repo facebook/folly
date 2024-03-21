@@ -62,7 +62,6 @@
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.
 #if !defined(OPENSSL_IS_BORINGSSL)
-#define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
 // OPENSSL_VERSION_{MAJOR,MINOR} only introduced in 3.0, so need to
 // test if they are defined first
 #if defined(OPENSSL_VERSION_MAJOR) && defined(OPENSSL_VERSION_MINOR)
@@ -82,10 +81,6 @@
   (((major << 28) | ((minor << 20) | (fix << 12))))
 #define FOLLY_OPENSSL_PREREQ(major, minor, fix) \
   (OPENSSL_VERSION_NUMBER >= FOLLY_OPENSSL_CALCULATE_VERSION(major, minor, fix))
-#endif
-
-#if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_110
-#warning Compiling with unsupported OpenSSL version
 #endif
 
 // BoringSSL and OpenSSL 0.9.8f later with TLS extension support SNI.
@@ -125,22 +120,10 @@
 #define FOLLY_OPENSSL_HAS_BLAKE2B 0
 #endif
 
-#if FOLLY_OPENSSL_IS_110 && \
-    (!defined(OPENSSL_NO_CHACHA) || !defined(OPENSSL_NO_POLY1305))
+#if !defined(OPENSSL_NO_CHACHA) || !defined(OPENSSL_NO_POLY1305)
 #define FOLLY_OPENSSL_HAS_CHACHA 1
 #else
 #define FOLLY_OPENSSL_HAS_CHACHA 0
-#endif
-
-#if !FOLLY_OPENSSL_IS_110
-#define OPENSSL_VERSION SSLEAY_VERSION
-#define OpenSSL_version SSLeay_version
-#define OpenSSL_version_num SSLeay
-#endif
-
-#if !FOLLY_OPENSSL_IS_110
-#define X509_get0_notAfter X509_get_notAfter
-#define X509_get0_notBefore X509_get_notBefore
 #endif
 
 // This attempts to "unify" the OpenSSL libcrypto/libssl APIs between
@@ -156,84 +139,6 @@ namespace ssl {
 #ifdef OPENSSL_IS_BORINGSSL
 int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 int TLS1_get_client_version(SSL* s);
-#endif
-
-#if !FOLLY_OPENSSL_IS_110
-BIO_METHOD* BIO_meth_new(int type, const char* name);
-void BIO_meth_free(BIO_METHOD* biom);
-int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
-int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
-int BIO_meth_set_puts(BIO_METHOD* biom, int (*bputs)(BIO*, const char*));
-int BIO_meth_set_gets(BIO_METHOD* biom, int (*bgets)(BIO*, char*, int));
-int BIO_meth_set_ctrl(BIO_METHOD* biom, long (*ctrl)(BIO*, int, long, void*));
-int BIO_meth_set_create(BIO_METHOD* biom, int (*create)(BIO*));
-int BIO_meth_set_destroy(BIO_METHOD* biom, int (*destroy)(BIO*));
-
-void BIO_set_data(BIO* bio, void* ptr);
-void* BIO_get_data(BIO* bio);
-void BIO_set_init(BIO* bio, int init);
-void BIO_set_shutdown(BIO* bio, int shutdown);
-
-const SSL_METHOD* TLS_server_method(void);
-const SSL_METHOD* TLS_client_method(void);
-
-const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
-unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x);
-
-EVP_MD_CTX* EVP_MD_CTX_new();
-void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
-
-HMAC_CTX* HMAC_CTX_new();
-void HMAC_CTX_free(HMAC_CTX* ctx);
-
-unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
-int SSL_SESSION_has_ticket(const SSL_SESSION* s);
-int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
-void DH_get0_pqg(
-    const DH* dh, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g);
-void DH_get0_key(const DH* dh, const BIGNUM** pub_key, const BIGNUM** priv_key);
-long DH_get_length(const DH* dh);
-int DH_set_length(DH* dh, long length);
-
-void DSA_get0_pqg(
-    const DSA* dsa, const BIGNUM** p, const BIGNUM** q, const BIGNUM** g);
-void DSA_get0_key(
-    const DSA* dsa, const BIGNUM** pub_key, const BIGNUM** priv_key);
-
-STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store);
-
-X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx);
-STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx);
-STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx);
-bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d);
-void RSA_get0_factors(const RSA* r, const BIGNUM** p, const BIGNUM** q);
-void RSA_get0_crt_params(
-    const RSA* r,
-    const BIGNUM** dmp1,
-    const BIGNUM** dmq1,
-    const BIGNUM** iqmp);
-int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s);
-void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps);
-
-using OPENSSL_INIT_SETTINGS = void;
-int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);
-void OPENSSL_cleanup();
-
-const ASN1_INTEGER* X509_REVOKED_get0_serialNumber(const X509_REVOKED* r);
-const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r);
-
-uint32_t X509_get_extension_flags(X509* x);
-uint32_t X509_get_key_usage(X509* x);
-uint32_t X509_get_extended_key_usage(X509* x);
-
-int X509_OBJECT_get_type(const X509_OBJECT* obj);
-X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj);
-
-const ASN1_TIME* X509_CRL_get0_lastUpdate(const X509_CRL* crl);
-const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl);
-
-const X509_ALGOR* X509_get0_tbs_sigalg(const X509* x);
-
 #endif
 
 } // namespace ssl
