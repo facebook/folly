@@ -53,9 +53,9 @@ Task<semi_await_result_t<Awaitable>> detachOnCancel(Awaitable awaitable) {
 
   {
     auto t = co_invoke(
-        [awaitable = std::move(
+        [awaitable_2 = std::move(
              awaitable)]() mutable -> Task<semi_await_result_t<Awaitable>> {
-          co_return co_await std::move(awaitable);
+          co_return co_await std::move(awaitable_2);
         });
     std::move(t)
         .scheduleOn(co_await co_current_executor)
