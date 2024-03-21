@@ -114,7 +114,8 @@ class VirtualEventBase : public folly::TimeoutManager,
 
  protected:
   bool keepAliveAcquire() noexcept override {
-    keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    auto oldCount = keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    DCHECK_NE(oldCount, 0);
     return true;
   }
 
