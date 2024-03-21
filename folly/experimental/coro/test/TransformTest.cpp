@@ -151,7 +151,8 @@ AsyncGenerator<float&> floatRefs(int n) {
   }
 }
 
-auto useStream(auto ag) {
+template <typename T>
+auto useStream(AsyncGenerator<T> ag) {
   std::vector<typename decltype(ag)::value_type> vals;
   blockingWait([&](auto ag) -> Task<void> {
     while (auto item = co_await ag.next()) {

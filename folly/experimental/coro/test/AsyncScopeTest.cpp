@@ -140,10 +140,7 @@ folly::coro::Task<> crash() {
 } // namespace
 
 CO_TEST_F(AsyncScopeTest, DontThrowOnJoin) {
-  EXPECT_EXIT(
-      folly::coro::blockingWait(crash()),
-      ::testing::KilledBySignal(SIGABRT),
-      "");
+  EXPECT_DEATH(folly::coro::blockingWait(crash()), "not yet complete");
   co_return;
 }
 
