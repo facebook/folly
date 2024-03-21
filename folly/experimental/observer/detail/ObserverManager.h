@@ -72,7 +72,7 @@ class ObserverManager {
 
     instance.scheduleCurrent([coreWeak = folly::to_weak_ptr(std::move(core)),
                               &instance,
-                              rh = std::move(rh)]() {
+                              rh_2 = std::move(rh)]() {
       if (auto coreShared = coreWeak.lock()) {
         coreShared->refresh(instance.version_);
       }
