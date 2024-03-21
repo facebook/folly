@@ -166,10 +166,10 @@ ObserverCreator<Observable, Traits>::getObserver() && {
 
   context_->setCore(observer.core_);
 
-  auto scheduleUpdate = [contextWeak = std::move(contextWeak)] {
+  auto scheduleUpdate = [contextWeak_2 = std::move(contextWeak)] {
     observer_detail::ObserverManager::scheduleRefreshNewVersion(
-        [contextWeak]() -> observer_detail::Core::Ptr {
-          if (auto context = contextWeak.lock()) {
+        [contextWeak_2]() -> observer_detail::Core::Ptr {
+          if (auto context = contextWeak_2.lock()) {
             return context->update();
           }
           return nullptr;
