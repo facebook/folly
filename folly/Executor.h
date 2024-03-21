@@ -183,8 +183,8 @@ class Executor {
           is_invocable<KAF, KeepAlive&&>::value,
           "Parameter to add must be void(KeepAlive&&)>");
       auto ex = get();
-      ex->add([ka = std::move(*this), f = std::forward<KAF>(f)]() mutable {
-        f(std::move(ka));
+      ex->add([ka = std::move(*this), f_2 = std::forward<KAF>(f)]() mutable {
+        f_2(std::move(ka));
       });
     }
 
