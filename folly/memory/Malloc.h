@@ -23,8 +23,11 @@
 
 #pragma once
 
+#include <stdexcept>
+
 #include <folly/Portability.h>
 #include <folly/lang/Bits.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Malloc.h>
 
 #ifdef __BMI2__
@@ -514,6 +517,34 @@ FOLLY_MALLOC_CHECKED_MALLOC FOLLY_NOINLINE inline void* smartRealloc(
   }
   // If there's not too much slack, we realloc in hope of coalescing
   return checkedRealloc(p, newCapacity);
+}
+
+/**
+ * @brief Return value of MALLCTL_ARENAS_ALL defined in jemalloc's header.
+ *
+ * Technically doesn't require that the system is using jemalloc, but jemalloc
+ * header must be included, if it is not, then call to this function will
+ * throw std::logic_error exception.
+ *
+ * Usage example:
+ *
+ * if (folly::usingJEMalloc()) {
+ *   static const std::string kCmd = fmt::format("arena.{}.purge",
+ *       folly::getJEMallocMallctlArenasAll());
+ *   folly::mallctlCall(kCmd.c_str());
+ * }
+ *
+ * @return size_t
+ */
+inline size_t getJEMallocMallctlArenasAll() {
+#if FOLLY_HAS_JEMALLOC_DEFS
+  // Code below will not compile if `MALLCTL_ARENAS_ALL` is not defined, which
+  // might happen if jemalloc renames and/or removes this macro.
+  return MALLCTL_ARENAS_ALL;
+#else
+  throw_exception<std::logic_error>(
+      "getJEMallocMallctlArenasAll: jemalloc header was not included");
+#endif
 }
 
 } // namespace folly

@@ -17,6 +17,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Malloc.h>
+#include <folly/test/TestUtils.h>
 
 namespace folly {
 
@@ -66,6 +67,12 @@ TEST(MallocTest, staticConstexprCheck) {
   EXPECT_EQ(
       GoodSizeConstexprChecker<LargeStruct>::value(),
       naiveGoodMallocSize(kLarge));
+}
+
+TEST(MallocTest, getJEMallocMallctlArenasAll) {
+  SKIP_IF(!usingJEMalloc());
+
+  EXPECT_EQ(4096, getJEMallocMallctlArenasAll());
 }
 
 } // namespace folly
