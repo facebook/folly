@@ -714,7 +714,7 @@ auto unwrapTryTuple(Tuple&&);
 template <typename T>
 void tryAssign(Try<T>& t, Try<T>&& other) noexcept;
 
-#if FOLLY_CPLUSPLUS >= 201703L
+#if __cpp_deduction_guides >= 201611
 template <typename T>
 Try(T&&) -> Try<std::decay_t<T>>;
 #endif
