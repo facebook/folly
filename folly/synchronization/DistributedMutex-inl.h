@@ -34,6 +34,7 @@
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Bits.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicUtil.h>
@@ -1342,12 +1343,12 @@ FOLLY_ALWAYS_INLINE std::uintptr_t tryCombine(
   // members of the waiter struct, so it's fine to use those values here
   if (isWaitingCombiner(value) &&
       (iteration <= kMaxCombineIterations || preempted(value, now))) {
-    try {
-      task();
-      waiter->futex_.store(kCombined, std::memory_order_release);
-    } catch (...) {
-      transferCurrentException(waiter);
-    }
+    catch_exception(
+        [&] {
+          task();
+          waiter->futex_.store(kCombined, std::memory_order_release);
+        },
+        [&] { transferCurrentException(waiter); });
     return next;
   }
 
