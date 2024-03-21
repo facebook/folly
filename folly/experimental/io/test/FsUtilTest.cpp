@@ -16,12 +16,15 @@
 
 #include <folly/experimental/io/FsUtil.h>
 
+#include <array>
 #include <fstream>
 #include <random>
 
 #include <fmt/core.h>
 #include <glog/logging.h>
 
+#include <folly/String.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -90,4 +93,31 @@ TEST(Simple, CanonicalizeParent) {
   EXPECT_THROW({ canonical(d); }, filesystem_error);
   EXPECT_EQ(c, canonical_parent(c));
   EXPECT_EQ(c, canonical_parent(d));
+}
+
+TEST(Simple, UniquePath) {
+  constexpr auto size = size_t(1) << 10;
+  constexpr auto tags =
+      std::array{"foo", "bar", "baz", "cat", "dog", "bat", "rat", "tar", "bar"};
+  auto const model = join("-%%-", tags);
+  auto const match = testing::MatchesRegex(join("-[0-9a-f]{2}-", tags));
+  std::unordered_set<std::string> paths;
+  for (size_t i = 0; i < size; ++i) {
+    auto res = std_fs_unique_path(std_fs::path(model)).string();
+    EXPECT_THAT(res, match);
+    paths.insert(std::move(res));
+  }
+  EXPECT_EQ(size, paths.size());
+}
+
+TEST(Simple, UniquePathDefaultModel) {
+  constexpr auto size = size_t(1) << 10;
+  auto const match = testing::MatchesRegex("([0-9a-f]{4}-){3}[0-9a-f]{4}");
+  std::unordered_set<std::string> paths;
+  for (size_t i = 0; i < size; ++i) {
+    auto res = std_fs_unique_path().string();
+    EXPECT_THAT(res, match);
+    paths.insert(std::move(res));
+  }
+  EXPECT_EQ(size, paths.size());
 }

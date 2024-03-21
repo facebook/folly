@@ -16,10 +16,18 @@
 
 #pragma once
 
+#if __has_include(<filesystem>)
+#include <filesystem>
+#endif
+
 #include <boost/filesystem.hpp>
 
 namespace folly {
 namespace fs {
+
+#if __cpp_lib_filesystem >= 201703
+namespace std_fs = std::filesystem;
+#endif
 
 // Functions defined in this file are meant to extend the
 // boost::filesystem library; functions will be named according to boost's
@@ -64,6 +72,17 @@ path canonical_parent(const path& p, const path& basePath = current_path());
  * So this should only be used for tests, logging, or other innocuous purposes.
  */
 path executable_path();
+
+#if __cpp_lib_filesystem >= 201703
+
+struct unique_path_fn {
+  std_fs::path operator()(
+      std_fs::path const& model = "%%%%-%%%%-%%%%-%%%%") const;
+};
+using std_fs_unique_path_fn = unique_path_fn;
+inline constexpr std_fs_unique_path_fn std_fs_unique_path;
+
+#endif
 
 } // namespace fs
 } // namespace folly
