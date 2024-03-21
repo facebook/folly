@@ -15,27 +15,3 @@
  */
 
 #include <folly/portability/OpenSSL.h>
-#include <folly/ssl/detail/OpenSSLThreading.h>
-
-#include <stdexcept>
-
-namespace folly {
-namespace portability {
-namespace ssl {
-
-#ifdef OPENSSL_IS_BORINGSSL
-int SSL_CTX_set1_sigalgs_list(SSL_CTX*, const char*) {
-  return 1; // 0 implies error
-}
-
-int TLS1_get_client_version(SSL* s) {
-  // Note that this isn't the client version, and the API to
-  // get this has been hidden. It may be found by parsing the
-  // ClientHello (there is a callback via the SSL_HANDSHAKE struct)
-  return s->version;
-}
-#endif
-
-} // namespace ssl
-} // namespace portability
-} // namespace folly

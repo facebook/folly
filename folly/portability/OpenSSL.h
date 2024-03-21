@@ -125,27 +125,3 @@
 #else
 #define FOLLY_OPENSSL_HAS_CHACHA 0
 #endif
-
-// This attempts to "unify" the OpenSSL libcrypto/libssl APIs between
-// OpenSSL 1.0.2, 1.1.0 (and some earlier versions) and BoringSSL. The general
-// idea is to provide namespaced wrapper methods for versions which do not
-// which already exist in BoringSSL and 1.1.0, but there are few APIs such as
-// SSL_CTX_set1_sigalgs_list and so on which exist in 1.0.2 but were removed
-// in BoringSSL
-namespace folly {
-namespace portability {
-namespace ssl {
-
-#ifdef OPENSSL_IS_BORINGSSL
-int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
-int TLS1_get_client_version(SSL* s);
-#endif
-
-} // namespace ssl
-} // namespace portability
-} // namespace folly
-
-FOLLY_PUSH_WARNING
-FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
-/* using override */ using namespace folly::portability::ssl;
-FOLLY_POP_WARNING
