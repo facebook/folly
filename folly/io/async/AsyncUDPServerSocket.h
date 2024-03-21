@@ -310,11 +310,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     auto f = [socket = socket_,
               client = clientAddress,
               callback,
-              data = std::move(data),
+              data_2 = std::move(data),
               truncated,
               params]() mutable {
       callback->onDataAvailable(
-          socket, client, std::move(data), truncated, params);
+          socket, client, std::move(data_2), truncated, params);
     };
 
     listeners_[listenerId].first->runInEventBaseThread(std::move(f));
