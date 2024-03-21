@@ -1691,7 +1691,7 @@ void attach(fbvector<T, A>& v, T* data, size_t sz, size_t cap) {
   v.impl_.z_ = data + cap;
 }
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 template <
     class InputIt,
     class Allocator =

@@ -333,7 +333,7 @@ TEST(ReplaceableTest, swapMemberFunctionDelegatesToUserSwap) {
   EXPECT_TRUE(r1->calledSwap);
 }
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 TEST(ReplaceableTest, DeductionGuide) {
   Basic b{};
   Replaceable r{b};

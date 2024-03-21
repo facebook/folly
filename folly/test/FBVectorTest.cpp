@@ -257,7 +257,7 @@ TEST(FBVector, zeroLen) {
   fbvector<int> fb7(fb6.begin(), fb6.end());
 }
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 TEST(FBVector, deductionGuides) {
   fbvector<int> v(3);
 

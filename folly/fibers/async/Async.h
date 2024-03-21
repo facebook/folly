@@ -134,7 +134,7 @@ class [[nodiscard]] Async<void> {
   }
 };
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 /**
  * Deduction guide to make it easier to construct and return Async objects.
  * The guide doesn't permit constructing and returning by reference.

@@ -217,7 +217,7 @@ TEST(AsyncTest, asyncTraits) {
       std::is_same<int&, async::async_inner_type_t<async::Async<int&>>>::value);
 }
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201611
 TEST(AsyncTest, asyncConstructorGuides) {
   auto getLiteral = []() { return async::Async(1); };
   // int&& -> int
