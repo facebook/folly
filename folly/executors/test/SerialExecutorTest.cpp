@@ -25,16 +25,23 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
-using namespace std::chrono;
-using folly::SerialExecutor;
-
 namespace {
-void burnMs(uint64_t ms) {
-  /* sleep override */ std::this_thread::sleep_for(milliseconds(ms));
+
+void sleepMs(uint64_t ms) {
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds(ms));
 }
+
 } // namespace
 
-void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
+template <typename T>
+class SerialExecutorTest : public testing::Test {};
+
+using SerialExecutorTypes = ::testing::Types<folly::SerialExecutor>;
+TYPED_TEST_SUITE(SerialExecutorTest, SerialExecutorTypes);
+
+template <class SerialExecutorType>
+void simpleTest(folly::Executor& parent) {
   class SerialExecutorContextData : public folly::RequestData {
    public:
     static std::string kCtxKey() {
@@ -48,18 +55,16 @@ void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
     const int id_;
   };
 
-  auto executor =
-      SerialExecutor::create(folly::getKeepAliveToken(parent.get()));
+  auto executor = SerialExecutorType::create(&parent);
 
   std::vector<int> values;
   std::vector<int> expected;
 
   for (int i = 0; i < 20; ++i) {
-    auto ctx = std::make_shared<folly::RequestContext>();
-    ctx->setContextData(
+    folly::RequestContextScopeGuard ctxGuard;
+    folly::RequestContext::try_get()->setContextData(
         SerialExecutorContextData::kCtxKey(),
         std::make_unique<SerialExecutorContextData>(i));
-    folly::RequestContextScopeGuard ctxGuard(ctx);
     auto checkReqCtx = [i] {
       EXPECT_EQ(
           i,
@@ -72,7 +77,7 @@ void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
       checkReqCtx();
       // make this extra vulnerable to concurrent execution
       values.push_back(0);
-      burnMs(10);
+      sleepMs(10);
       values.back() = i;
     });
     expected.push_back(i);
@@ -86,20 +91,20 @@ void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
   EXPECT_EQ(expected, values);
 }
 
-TEST(SerialExecutor, Simple) {
-  simpleTest(std::make_shared<folly::CPUThreadPoolExecutor>(4));
+TYPED_TEST(SerialExecutorTest, Simple) {
+  folly::CPUThreadPoolExecutor parent{4};
+  simpleTest<TypeParam>(parent);
 }
-TEST(SerialExecutor, SimpleInline) {
-  simpleTest(std::make_shared<folly::InlineExecutor>());
+TYPED_TEST(SerialExecutorTest, SimpleInline) {
+  simpleTest<TypeParam>(folly::InlineExecutor::instance());
 }
 
 // The Afterlife test only works with an asynchronous executor (not the
 // InlineExecutor), because we want execution of tasks to happen after we
 // destroy the SerialExecutor
-TEST(SerialExecutor, Afterlife) {
-  auto cpu_executor = std::make_shared<folly::CPUThreadPoolExecutor>(4);
-  auto executor =
-      SerialExecutor::create(folly::getKeepAliveToken(cpu_executor.get()));
+TYPED_TEST(SerialExecutorTest, Afterlife) {
+  folly::CPUThreadPoolExecutor parent{4};
+  auto executor = TypeParam::create(&parent);
 
   // block executor until we call start_baton.post()
   folly::Baton<> start_baton;
@@ -112,7 +117,7 @@ TEST(SerialExecutor, Afterlife) {
     executor->add([i, &values] {
       // make this extra vulnerable to concurrent execution
       values.push_back(0);
-      burnMs(10);
+      sleepMs(10);
       values.back() = i;
     });
     expected.push_back(i);
@@ -133,9 +138,9 @@ TEST(SerialExecutor, Afterlife) {
   EXPECT_EQ(expected, values);
 }
 
-void RecursiveAddTest(std::shared_ptr<folly::Executor> const& parent) {
-  auto executor =
-      SerialExecutor::create(folly::getKeepAliveToken(parent.get()));
+template <class SerialExecutorType>
+void recursiveAddTest(folly::Executor& parent) {
+  auto executor = SerialExecutorType::create(&parent);
 
   folly::Baton<> finished_baton;
 
@@ -147,7 +152,7 @@ void RecursiveAddTest(std::shared_ptr<folly::Executor> const& parent) {
     if (i < 10) {
       // make this extra vulnerable to concurrent execution
       values.push_back(0);
-      burnMs(10);
+      sleepMs(10);
       values.back() = i;
       executor->add(lambda);
     } else if (i < 12) {
@@ -171,28 +176,29 @@ void RecursiveAddTest(std::shared_ptr<folly::Executor> const& parent) {
   EXPECT_EQ(expected, values);
 }
 
-TEST(SerialExecutor, RecursiveAdd) {
-  RecursiveAddTest(std::make_shared<folly::CPUThreadPoolExecutor>(4));
+TYPED_TEST(SerialExecutorTest, RecursiveAdd) {
+  folly::CPUThreadPoolExecutor parent{4};
+  recursiveAddTest<TypeParam>(parent);
 }
-TEST(SerialExecutor, RecursiveAddInline) {
-  RecursiveAddTest(std::make_shared<folly::InlineExecutor>());
+TYPED_TEST(SerialExecutorTest, RecursiveAddInline) {
+  recursiveAddTest<TypeParam>(folly::InlineExecutor::instance());
 }
 
-TEST(SerialExecutor, ExecutionThrows) {
-  auto executor = SerialExecutor::create();
+TYPED_TEST(SerialExecutorTest, ExecutionThrows) {
+  auto executor = TypeParam::create();
 
   // an empty Func will throw std::bad_function_call when invoked,
   // but SerialExecutor should catch that exception
   executor->add(folly::Func{});
 }
 
-TEST(SerialExecutor, ParentExecutorDiscardsFunc) {
+TYPED_TEST(SerialExecutorTest, ParentExecutorDiscardsFunc) {
   struct FakeExecutor : folly::Executor {
     void add(folly::Func) override {}
   };
 
   FakeExecutor ex;
-  auto se = folly::SerialExecutor::create(&ex);
+  auto se = TypeParam::create(&ex);
   bool ran = false;
   se->add([&, ka = folly::getKeepAliveToken(se.get())] { ran = true; });
   se.reset();
