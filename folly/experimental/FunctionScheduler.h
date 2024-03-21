@@ -288,10 +288,10 @@ class FunctionScheduler {
 
     static NextRunTimeFunc getNextRunTimeFunc(
         IntervalDistributionFunc&& intervalFn) {
-      return [intervalFn = std::move(intervalFn)](
+      return [intervalFn_2 = std::move(intervalFn)](
                  std::chrono::steady_clock::time_point /* curNextRunTime */,
                  std::chrono::steady_clock::time_point curTime) mutable {
-        return curTime + intervalFn();
+        return curTime + intervalFn_2();
       };
     }
 
