@@ -499,7 +499,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   static F14Chunk* emptyInstance() {
     auto raw = reinterpret_cast<char*>(&kEmptyTagVector);
-    if (kRequiredVectorAlignment > alignof(max_align_t)) {
+    if constexpr (kRequiredVectorAlignment > alignof(max_align_t)) {
       auto delta = kRequiredVectorAlignment -
           (reinterpret_cast<uintptr_t>(raw) % kRequiredVectorAlignment);
       raw += delta;
@@ -539,7 +539,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   bool eof() const { return capacityScale() != 0; }
 
   std::size_t capacityScale() const {
-    if (kCapacityScaleBits == 4) {
+    if constexpr (kCapacityScaleBits == 4) {
       return control_ & 0xf;
     } else {
       uint16_t v;
@@ -553,7 +553,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
         this != emptyInstance() && scale > 0 &&
             scale < (std::size_t{1} << kCapacityScaleBits),
         "");
-    if (kCapacityScaleBits == 4) {
+    if constexpr (kCapacityScaleBits == 4) {
       control_ = static_cast<uint8_t>((control_ & ~0xf) | scale);
     } else {
       uint16_t v = static_cast<uint16_t>(scale);
@@ -1706,7 +1706,7 @@ class F14Table : public Policy {
 
   ChunkPtr lastOccupiedChunk() const {
     FOLLY_SAFE_DCHECK(size() > 0, "");
-    if (kEnableItemIteration) {
+    if constexpr (kEnableItemIteration) {
       return begin().chunk();
     } else {
       return chunks_ + chunkCount() - 1;
@@ -1750,14 +1750,14 @@ class F14Table : public Policy {
       auto n = chunkAllocSize(chunkCount(), scale);
       std::memcpy(&chunks_[0], &src.chunks_[0], n);
       sizeAndChunkShiftAndPackedBegin_.setSize(src.size());
-      if (kEnableItemIteration) {
+      if constexpr (kEnableItemIteration) {
         auto srcBegin = src.begin();
         sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{
                 chunks_ + (srcBegin.chunk() - src.chunks_), srcBegin.index()}
                 .pack();
       }
-      if (kContinuousCapacity) {
+      if constexpr (kContinuousCapacity) {
         // capacityScale might not match even if itemCount matches
         chunks_->setCapacityScale(scale);
       }
@@ -1795,7 +1795,7 @@ class F14Table : public Policy {
       } while (size() != src.size());
 
       // reset doesn't care about packedBegin, so we don't fix it until the end
-      if (kEnableItemIteration) {
+      if constexpr (kEnableItemIteration) {
         std::size_t maxChunkIndex = src.lastOccupiedChunk() - src.chunks_;
         sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{
@@ -2105,7 +2105,7 @@ class F14Table : public Policy {
         }
         ++srcI;
       }
-      if (kEnableItemIteration) {
+      if constexpr (kEnableItemIteration) {
         sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{dstChunk, dstI - 1}.pack();
       }
@@ -2156,7 +2156,7 @@ class F14Table : public Policy {
         --srcChunk;
       }
 
-      if (kEnableItemIteration) {
+      if constexpr (kEnableItemIteration) {
         // this code replaces size invocations of adjustSizeAndBeginAfterInsert
         std::size_t i = chunkCount() - 1;
         while (fullness[i] == 0) {
@@ -2174,7 +2174,7 @@ class F14Table : public Policy {
   // sanitizer builds
 
   FOLLY_ALWAYS_INLINE void debugModeOnReserve(std::size_t capacity) {
-    if (kIsLibrarySanitizeAddress || kIsDebug) {
+    if constexpr (kIsLibrarySanitizeAddress || kIsDebug) {
       if (capacity > size()) {
         tlsPendingSafeInserts(static_cast<std::ptrdiff_t>(capacity - size()));
       }
@@ -2198,14 +2198,16 @@ class F14Table : public Policy {
     // One way to fix this is to call map.reserve(N) before such a
     // sequence, where N is the number of keys that might be inserted
     // within the section that retains references plus the existing size.
-    if (kIsLibrarySanitizeAddress && !tlsPendingSafeInserts() && size() > 0 &&
-        tlsMinstdRand(size()) == 0) {
-      debugModeSpuriousRehash();
+    if constexpr (kIsLibrarySanitizeAddress) {
+      if (!tlsPendingSafeInserts() && size() > 0 &&
+          tlsMinstdRand(size()) == 0) {
+        debugModeSpuriousRehash();
+      }
     }
   }
 
   FOLLY_ALWAYS_INLINE void debugModeAfterInsert() {
-    if (kIsLibrarySanitizeAddress || kIsDebug) {
+    if constexpr (kIsLibrarySanitizeAddress || kIsDebug) {
       tlsPendingSafeInserts(-1);
     }
   }
@@ -2358,7 +2360,7 @@ class F14Table : public Policy {
         }
         chunks_[0].markEof(scale);
       }
-      if (kEnableItemIteration) {
+      if constexpr (kEnableItemIteration) {
         sizeAndChunkShiftAndPackedBegin_.packedBegin() = ItemIter{}.pack();
       }
       sizeAndChunkShiftAndPackedBegin_.setSize(0);
@@ -2416,7 +2418,7 @@ class F14Table : public Policy {
   }
 
   void clear() noexcept {
-    if (kIsLibrarySanitizeAddress) {
+    if constexpr (kIsLibrarySanitizeAddress) {
       // force recycling of heap memory
       auto bc = bucket_count();
       reset();
@@ -2515,7 +2517,7 @@ class F14Table : public Policy {
   F14TableStats computeStats() const {
     F14TableStats stats;
 
-    if (kIsDebug && kEnableItemIteration) {
+    if constexpr (kIsDebug && kEnableItemIteration) {
       // validate iteration
       std::size_t n = 0;
       ItemIter prev;
@@ -2614,7 +2616,7 @@ class F14Table : public Policy {
 namespace f14 {
 namespace test {
 inline void disableInsertOrderRandomization() {
-  if (kIsLibrarySanitizeAddress || kIsDebug) {
+  if constexpr (kIsLibrarySanitizeAddress || kIsDebug) {
     detail::tlsPendingSafeInserts(static_cast<std::ptrdiff_t>(
         (std::numeric_limits<std::size_t>::max)() / 2));
   }
