@@ -36,9 +36,6 @@
 
 namespace folly {
 
-// Using 'auto' for non-type template parameters is only possible from C++17
-#if FOLLY_CPLUSPLUS >= 201703L
-
 //  cpo_t<CPO>
 //
 //  Helper type-trait for obtaining the type of customisation point object.
@@ -57,7 +54,5 @@ namespace folly {
 //  See <folly/functional/Invoke.h> for more details.
 template <const auto& Tag>
 using cpo_t = std::decay_t<decltype(Tag)>;
-
-#endif // FOLLY_CPLUSPLUS >= 201703L
 
 } // namespace folly

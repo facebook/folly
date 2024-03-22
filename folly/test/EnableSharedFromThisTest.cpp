@@ -34,14 +34,10 @@ static void test_enable_shared_from_this(std::shared_ptr<C> sp) {
   ASSERT_EQ(nullptr, wp.lock());
 
   // Test shared_from_this() and weak_from_this() on object not owned by a
-  // shared_ptr. Undefined in C++14 but well-defined in C++17. Also known to
-  // work with libstdc++ >= 20150123. Feel free to add other standard library
-  // versions where the behavior is known.
-#if __cplusplus >= 201700L || __GLIBCXX__ >= 20150123L
+  // shared_ptr.
   C stack_resident;
   ASSERT_THROW(stack_resident.shared_from_this(), std::bad_weak_ptr);
   ASSERT_TRUE(stack_resident.weak_from_this().expired());
-#endif
 }
 
 TEST(enableSharedFromThis, compatibleWithStdEnableSharedFromThis) {

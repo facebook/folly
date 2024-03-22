@@ -83,7 +83,6 @@ constexpr std::memory_order atomic_compare_exchange_succ(
 constexpr std::memory_order atomic_compare_exchange_succ(
     std::memory_order succ, std::memory_order fail) {
   constexpr auto const cond = false //
-      || (FOLLY_CPLUSPLUS < 201702L) //
       || (kGlibcxxVer && kGlibcxxVer < 12 && kGlibcxxAssertions) //
       || (kIsSanitizeThread && kIsClang) //
       || (kIsSanitize && !kIsClang && kGnuc) //

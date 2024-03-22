@@ -326,10 +326,8 @@ TEST(Traits, tag) {
   inspects_tag f;
   EXPECT_FALSE(f.is_char(tag_t<int>{}));
   EXPECT_TRUE(f.is_char(tag_t<char>{}));
-#if __cplusplus >= 201703L
   EXPECT_FALSE(f.is_char(tag<int>));
   EXPECT_TRUE(f.is_char(tag<char>));
-#endif
 }
 
 namespace {
