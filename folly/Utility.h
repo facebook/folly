@@ -165,8 +165,6 @@ constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
  *    std::in_place_index
  */
 
-#if FOLLY_CPLUSPLUS >= 201703L
-
 using std::in_place_t;
 
 using std::in_place_type_t;
@@ -178,29 +176,6 @@ using std::in_place;
 using std::in_place_type;
 
 using std::in_place_index;
-
-#else
-
-struct in_place_t {
-  explicit in_place_t() = default;
-};
-FOLLY_INLINE_VARIABLE constexpr in_place_t in_place{};
-
-template <class>
-struct in_place_type_t {
-  explicit in_place_type_t() = default;
-};
-template <class T>
-FOLLY_INLINE_VARIABLE constexpr in_place_type_t<T> in_place_type{};
-
-template <std::size_t>
-struct in_place_index_t {
-  explicit in_place_index_t() = default;
-};
-template <std::size_t I>
-FOLLY_INLINE_VARIABLE constexpr in_place_index_t<I> in_place_index{};
-
-#endif
 
 /**
  * Initializer lists are a powerful compile time syntax introduced in C++11
