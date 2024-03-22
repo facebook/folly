@@ -22,6 +22,7 @@
 #include <folly/io/async/DelayedDestruction.h>
 
 struct io_uring_sqe;
+struct io_uring_cqe;
 
 namespace folly {
 
@@ -50,8 +51,8 @@ struct IoSqeBase
 
   virtual ~IoSqeBase() = default;
   virtual void processSubmit(struct io_uring_sqe* sqe) noexcept = 0;
-  virtual void callback(int res, uint32_t flags) noexcept = 0;
-  virtual void callbackCancelled(int res, uint32_t flags) noexcept = 0;
+  virtual void callback(const io_uring_cqe* cqe) noexcept = 0;
+  virtual void callbackCancelled(const io_uring_cqe* cqe) noexcept = 0;
   IoSqeBase::Type type() const { return type_; }
   bool inFlight() const { return inFlight_; }
   bool cancelled() const { return cancelled_; }
@@ -66,7 +67,7 @@ struct IoSqeBase
  private:
   friend class IoUringBackend;
   void internalSubmit(struct io_uring_sqe* sqe) noexcept;
-  void internalCallback(int res, uint32_t flags) noexcept;
+  void internalCallback(const io_uring_cqe* cqe) noexcept;
   void internalUnmarkInflight() { inFlight_ = false; }
 
   bool inFlight_ = false;

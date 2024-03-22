@@ -496,10 +496,10 @@ class IoUringBackend : public EventBaseBackendBase {
         bool persist = false)
         : backend_(backend), poolAlloc_(poolAlloc), persist_(persist) {}
 
-    void callback(int res, uint32_t flags) noexcept override {
-      backendCb_(backend_, this, res, flags);
+    void callback(const io_uring_cqe* cqe) noexcept override {
+      backendCb_(backend_, this, cqe->res, cqe->flags);
     }
-    void callbackCancelled(int, uint32_t) noexcept override { release(); }
+    void callbackCancelled(const io_uring_cqe*) noexcept override { release(); }
     virtual void release() noexcept;
 
     IoUringBackend* backend_;

@@ -473,14 +473,14 @@ void IoSqeBase::internalSubmit(struct io_uring_sqe* sqe) noexcept {
   ::io_uring_sqe_set_data(sqe, this);
 }
 
-void IoSqeBase::internalCallback(int res, uint32_t flags) noexcept {
-  if (!(flags & IORING_CQE_F_MORE)) {
+void IoSqeBase::internalCallback(const io_uring_cqe* cqe) noexcept {
+  if (!(cqe->flags & IORING_CQE_F_MORE)) {
     inFlight_ = false;
   }
   if (cancelled_) {
-    callbackCancelled(res, flags);
+    callbackCancelled(cqe);
   } else {
-    callback(res, flags);
+    callback(cqe);
   }
 }
 
@@ -1550,7 +1550,7 @@ unsigned int IoUringBackend::internalProcessCqe(
         if (FOLLY_UNLIKELY(mode == InternalProcessCqeMode::CANCEL_ALL)) {
           sqe->markCancelled();
         }
-        sqe->internalCallback(cqe->res, cqe->flags);
+        sqe->internalCallback(cqe);
       } else {
         // untracked, do not increment count
       }
@@ -1872,11 +1872,13 @@ static bool doKernelSupportsRecvmsgMultishot() {
         sqe->ioprio |= kMultishotFlag;
       }
 
-      void callback(int res, uint32_t) noexcept override {
-        supported = res != -EINVAL;
+      void callback(const io_uring_cqe* cqe) noexcept override {
+        supported = cqe->res != -EINVAL;
       }
 
-      void callbackCancelled(int, uint32_t) noexcept override { delete this; }
+      void callbackCancelled(const io_uring_cqe*) noexcept override {
+        delete this;
+      }
 
       IoUringBufferProviderBase* bp_;
       bool supported = false;

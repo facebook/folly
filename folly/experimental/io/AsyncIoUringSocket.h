@@ -41,7 +41,6 @@
 #include <folly/small_vector.h>
 
 namespace folly {
-
 class AsyncDetachFdCallback {
  public:
   virtual ~AsyncDetachFdCallback() = default;
@@ -49,9 +48,12 @@ class AsyncDetachFdCallback {
       NetworkSocket ns, std::unique_ptr<IOBuf> unread) noexcept = 0;
   virtual void fdDetachFail(const AsyncSocketException& ex) noexcept = 0;
 };
+} // namespace folly
 
 #if FOLLY_HAS_LIBURING
 class IoUringBackend;
+
+namespace folly {
 
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
@@ -265,9 +267,9 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void submitRead(bool now = false);
   void processConnectSubmit(
       struct io_uring_sqe* sqe, sockaddr_storage& storage);
-  void processConnectResult(int i);
+  void processConnectResult(const io_uring_cqe* cqe);
   void processConnectTimeout();
-  void processFastOpenResult(int res, uint32_t flags) noexcept;
+  void processFastOpenResult(const io_uring_cqe* cqe) noexcept;
   void startSendTimeout();
   void sendTimeoutExpired();
   void failWrite(const AsyncSocketException& ex);
@@ -294,8 +296,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     using UniquePtr = std::unique_ptr<ReadSqe, Destructor>;
     explicit ReadSqe(AsyncIoUringSocket* parent);
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
-    void callback(int res, uint32_t flags) noexcept override;
-    void callbackCancelled(int, uint32_t) noexcept override;
+    void callback(const io_uring_cqe* cqe) noexcept override;
+    void callbackCancelled(const io_uring_cqe* cqe) noexcept override;
 
     void setReadCallback(ReadCallback* callback, bool submitNow);
     ReadCallback* readCallback() const { return readCallback_; }
@@ -354,8 +356,10 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->closeProcessSubmit(sqe);
     }
-    void callback(int, uint32_t) noexcept override { delete this; }
-    void callbackCancelled(int, uint32_t) noexcept override { delete this; }
+    void callback(const io_uring_cqe*) noexcept override { delete this; }
+    void callbackCancelled(const io_uring_cqe*) noexcept override {
+      delete this;
+    }
     AsyncIoUringSocket* parent_;
   };
 
@@ -372,8 +376,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     ~WriteSqe() override { DVLOG(5) << "~WriteSqe() " << this; }
 
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
-    void callback(int res, uint32_t flags) noexcept override;
-    void callbackCancelled(int, uint32_t flags) noexcept override;
+    void callback(const io_uring_cqe* cqe) noexcept override;
+    void callbackCancelled(const io_uring_cqe* cqe) noexcept override;
     int sendMsgFlags() const;
     std::pair<
         folly::SemiFuture<std::vector<std::pair<int, uint32_t>>>,
@@ -418,10 +422,12 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->processConnectSubmit(sqe, addrStorage);
     }
-    void callback(int res, uint32_t) noexcept override {
-      parent_->processConnectResult(res);
+    void callback(const io_uring_cqe* cqe) noexcept override {
+      parent_->processConnectResult(cqe);
     }
-    void callbackCancelled(int, uint32_t) noexcept override { delete this; }
+    void callbackCancelled(const io_uring_cqe*) noexcept override {
+      delete this;
+    }
     void timeoutExpired() noexcept override {
       if (!cancelled()) {
         parent_->processConnectTimeout();
@@ -438,11 +444,13 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
         std::unique_ptr<AsyncIoUringSocket::WriteSqe> initialWrite);
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
     void cleanupMsg() noexcept;
-    void callback(int res, uint32_t flags) noexcept override {
+    void callback(const io_uring_cqe* cqe) noexcept override {
       cleanupMsg();
-      parent_->processFastOpenResult(res, flags);
+      parent_->processFastOpenResult(cqe);
     }
-    void callbackCancelled(int, uint32_t) noexcept override { delete this; }
+    void callbackCancelled(const io_uring_cqe*) noexcept override {
+      delete this;
+    }
 
     AsyncIoUringSocket* parent_;
     std::unique_ptr<AsyncIoUringSocket::WriteSqe> initialWrite;
@@ -503,7 +511,6 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
   void closeProcessSubmit(struct io_uring_sqe* sqe);
 };
+} // namespace folly
 
 #endif
-
-} // namespace folly

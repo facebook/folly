@@ -26,8 +26,10 @@ struct NopSqe : IoSqeBase {
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     io_uring_prep_nop(sqe);
   }
-  void callback(int res, uint32_t) noexcept override { prom.setValue(res); }
-  void callbackCancelled(int, uint32_t) noexcept override {
+  void callback(const io_uring_cqe* cqe) noexcept override {
+    prom.setValue(cqe->res);
+  }
+  void callbackCancelled(const io_uring_cqe*) noexcept override {
     prom.setException(FutureCancellation{});
   }
 

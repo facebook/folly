@@ -1391,11 +1391,11 @@ TEST(IoUringBackend, ProvidedBuffers) {
       sqe->buf_group = bgid_;
     }
 
-    void callback(int res, uint32_t flags) noexcept override {
-      oncqe_(res, flags);
+    void callback(const io_uring_cqe* cqe) noexcept override {
+      oncqe_(cqe->res, cqe->flags);
     }
 
-    void callbackCancelled(int, uint32_t) noexcept override { FAIL(); }
+    void callbackCancelled(const io_uring_cqe*) noexcept override { FAIL(); }
 
     int fd_;
     uint16_t bgid_;
@@ -1511,11 +1511,11 @@ TEST(IoUringBackend, DeferTaskRun) {
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_nop(sqe);
     }
-    void callback(int, uint32_t) noexcept override {
+    void callback(const io_uring_cqe*) noexcept override {
       ++val;
       delete this;
     }
-    void callbackCancelled(int, uint32_t) noexcept override {
+    void callbackCancelled(const io_uring_cqe*) noexcept override {
       ++val;
       delete this;
     }

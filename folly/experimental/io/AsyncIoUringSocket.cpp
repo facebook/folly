@@ -351,13 +351,14 @@ void AsyncIoUringSocket::previousReadDone() {
   allowReads();
 }
 
-void AsyncIoUringSocket::processConnectResult(int i) {
+void AsyncIoUringSocket::processConnectResult(const io_uring_cqe* cqe) {
+  auto res = cqe->res;
   DVLOG(5) << "AsyncIoUringSocket::processConnectResult(" << this
-           << ") res=" << i;
+           << ") res=" << res;
   DestructorGuard dg(this);
   connectSqe_.reset();
   connectEndTime_ = std::chrono::steady_clock::now();
-  if (i == 0) {
+  if (res == 0) {
     if (connectCallback_) {
       connectCallback_->connectSuccess();
     }
@@ -366,7 +367,7 @@ void AsyncIoUringSocket::processConnectResult(int i) {
     state_ = State::Error;
     if (connectCallback_) {
       connectCallback_->connectErr(AsyncSocketException(
-          AsyncSocketException::NOT_OPEN, "connect failed", -i));
+          AsyncSocketException::NOT_OPEN, "connect failed", -res));
     }
   }
   connectCallback_ = nullptr;
@@ -389,15 +390,17 @@ void AsyncIoUringSocket::processConnectTimeout() {
 }
 
 void AsyncIoUringSocket::processFastOpenResult(
-    int res, uint32_t flags) noexcept {
-  DVLOG(4) << "processFastOpenResult() this=" << this << " res=" << res
-           << " flags=" << flags;
-  if (res >= 0) {
-    processConnectResult(0);
+    const io_uring_cqe* cqe) noexcept {
+  DVLOG(4) << "processFastOpenResult() this=" << this << " res=" << cqe->res
+           << " flags=" << cqe->flags;
+  if (cqe->res >= 0) {
+    io_uring_cqe tmp{};
+    tmp.res = 0;
+    processConnectResult(&tmp);
     writeSqeActive_ = fastOpenSqe_->initialWrite.release();
-    writeSqeActive_->callback(res, flags);
+    writeSqeActive_->callback(cqe);
   } else {
-    DVLOG(4) << "TFO falling back, did not connect, res = " << res;
+    DVLOG(4) << "TFO falling back, did not connect, res = " << cqe->res;
     DCHECK(connectSqe_);
     backend_->submit(*connectSqe_);
     writeSqeQueue_.push_back(*fastOpenSqe_->initialWrite.release());
@@ -561,7 +564,10 @@ void AsyncIoUringSocket::ReadSqe::processOldEventBaseRead() {
   }
 }
 
-void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
+void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
+  auto res = cqe->res;
+  auto flags = cqe->flags;
+
   DVLOG(5) << "AsyncIoUringSocket::ReadSqe::readCallback() this=" << this
            << " parent=" << parent_ << " cb=" << readCallback_ << " res=" << res
            << " max=" << maxSize_ << " inflight=" << inFlight()
@@ -655,7 +661,10 @@ void AsyncIoUringSocket::ReadSqe::callback(int res, uint32_t flags) noexcept {
 }
 
 void AsyncIoUringSocket::ReadSqe::callbackCancelled(
-    int res, uint32_t flags) noexcept {
+    const io_uring_cqe* cqe) noexcept {
+  auto res = cqe->res;
+  auto flags = cqe->flags;
+
   DVLOG(4) << "AsyncIoUringSocket::ReadSqe::callbackCancelled() this=" << this
            << " parent=" << parent_ << " cb=" << readCallback_ << " res=" << res
            << " inflight=" << inFlight() << " flags=" << flags
@@ -663,7 +672,7 @@ void AsyncIoUringSocket::ReadSqe::callbackCancelled(
            << " bytes_received=" << bytesReceived_;
   DestructorGuard dg(this);
   if (readCallback_) {
-    callback(res, flags);
+    callback(cqe);
   }
   if (!(flags & IORING_CQE_F_MORE)) {
     if (readCallback_ && res > 0) {
@@ -922,14 +931,14 @@ struct CancelSqe : IoSqeBase {
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     ::io_uring_prep_cancel(sqe, target_, 0);
   }
-  void callback(int, uint32_t) noexcept override {
+  void callback(const io_uring_cqe*) noexcept override {
     if (fn_) {
       fn_();
     }
     delete this;
   }
 
-  void callbackCancelled(int, uint32_t) noexcept override {
+  void callbackCancelled(const io_uring_cqe*) noexcept override {
     if (fn_) {
       fn_();
     }
@@ -987,21 +996,26 @@ void AsyncIoUringSocket::attachEventBase(EventBase* evb) {
     alive_ = std::make_shared<folly::Unit>();
     std::move(*detachedWriteResult_)
         .via(evb)
-        .thenValue([w = writeSqeActive_,
-                    a = std::weak_ptr<folly::Unit>(alive_)](auto&& cqes) {
-          DVLOG(5) << "attached write done, " << cqes.size();
-          if (!a.lock()) {
-            return;
-          }
+        .thenValue(
+            [w = writeSqeActive_,
+             a = std::weak_ptr<folly::Unit>(alive_)](auto&& resFlagsPairs) {
+              DVLOG(5) << "attached write done, " << resFlagsPairs.size();
+              if (!a.lock()) {
+                return;
+              }
 
-          for (auto const& cqe : cqes) {
-            if (w->cancelled()) {
-              w->callbackCancelled(cqe.first, cqe.second);
-            } else {
-              w->callback(cqe.first, cqe.second);
-            }
-          }
-        });
+              io_uring_cqe cqe;
+              for (const auto& [res, flags] : resFlagsPairs) {
+                cqe.res = res;
+                cqe.flags = flags;
+
+                if (w->cancelled()) {
+                  w->callbackCancelled(&cqe);
+                } else {
+                  w->callback(&cqe);
+                }
+              }
+            });
   }
 
   writeTimeout_.attachEventBase(evb);
@@ -1276,7 +1290,8 @@ AsyncIoUringSocket::WriteSqe::detachEventBase() {
 }
 
 void AsyncIoUringSocket::WriteSqe::callbackCancelled(
-    int, uint32_t flags) noexcept {
+    const io_uring_cqe* cqe) noexcept {
+  auto flags = cqe->flags;
   DVLOG(5) << "write sqe callback cancelled " << this << " flags=" << flags
            << " refs_=" << refs_ << " more=" << !!(flags & IORING_CQE_F_MORE)
            << " notif=" << !!(flags & IORING_CQE_F_NOTIF);
@@ -1288,7 +1303,10 @@ void AsyncIoUringSocket::WriteSqe::callbackCancelled(
   }
 }
 
-void AsyncIoUringSocket::WriteSqe::callback(int res, uint32_t flags) noexcept {
+void AsyncIoUringSocket::WriteSqe::callback(const io_uring_cqe* cqe) noexcept {
+  auto res = cqe->res;
+  auto flags = cqe->flags;
+
   DVLOG(5) << "write sqe callback " << this << " res=" << res
            << " flags=" << flags << " iovStart=" << iov_.size()
            << " iovRemaining=" << iov_.size() << " length=" << totalLength_
@@ -1465,7 +1483,7 @@ class UnregisterFdSqe : public IoSqeBase {
     ::io_uring_prep_nop(sqe);
   }
 
-  void callback(int, uint32_t) noexcept override {
+  void callback(const io_uring_cqe*) noexcept override {
     auto start = std::chrono::steady_clock::now();
     if (!backend->unregisterFd(fd)) {
       LOG(ERROR) << "Bad fd unregister";
@@ -1481,8 +1499,8 @@ class UnregisterFdSqe : public IoSqeBase {
     delete this;
   }
 
-  void callbackCancelled(int r, uint32_t f) noexcept override {
-    callback(r, f);
+  void callbackCancelled(const io_uring_cqe* cqe) noexcept override {
+    callback(cqe);
   }
 
  private:
