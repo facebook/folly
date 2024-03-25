@@ -18,6 +18,7 @@
 
 #include <chrono>
 
+#include <folly/Random.h>
 #include <folly/ScopeGuard.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/InlineExecutor.h>
@@ -37,8 +38,10 @@ void sleepMs(uint64_t ms) {
 template <typename T>
 class SerialExecutorTest : public testing::Test {};
 
-using SerialExecutorTypes = ::testing::
-    Types<folly::SerialExecutor, folly::SerialExecutorWithLgSegmentSize<5>>;
+using SerialExecutorTypes = ::testing::Types<
+    folly::SerialExecutor,
+    folly::SerialExecutorWithLgSegmentSize<5>,
+    folly::SmallSerialExecutor>;
 TYPED_TEST_SUITE(SerialExecutorTest, SerialExecutorTypes);
 
 template <class SerialExecutorType>
@@ -204,4 +207,69 @@ TYPED_TEST(SerialExecutorTest, ParentExecutorDiscardsFunc) {
   se->add([&, ka = folly::getKeepAliveToken(se.get())] { ran = true; });
   se.reset();
   ASSERT_FALSE(ran);
+}
+
+TYPED_TEST(SerialExecutorTest, Stress) {
+  folly::CPUThreadPoolExecutor parent{4};
+  auto se = TypeParam::create(&parent);
+
+  size_t tasksRan = 0;
+  constexpr size_t kNumProducers = 16;
+  constexpr size_t kNumIterations = 4096;
+  folly::CPUThreadPoolExecutor producers{kNumProducers};
+  for (size_t i = 0; i < kNumProducers; ++i) {
+    producers.add([i, se, &tasksRan] {
+      for (size_t j = 0; j < kNumIterations; ++j) {
+        se->add([i, j, se, &tasksRan] {
+          if (i == j) {
+            // Do a few recursive adds just in case.
+            se->add([&tasksRan] { ++tasksRan; });
+          }
+          ++tasksRan;
+        });
+      }
+    });
+  }
+
+  producers.join();
+  se = {};
+  parent.join();
+  EXPECT_EQ(tasksRan, kNumProducers * (kNumIterations + 1));
+}
+
+// Basic test for SerialExecutorMPSCQueue, does not exercise concurrent access
+// but just ensure that the state stays consistent under different
+// enqueue/dequeue patterns.
+TEST(SerialExecutorTest2, SerialExecutorMPSCQueue) {
+  folly::detail::SerialExecutorMPSCQueue<std::unique_ptr<size_t>> q;
+  size_t size = 0;
+
+  auto produce = [&q, &size, nextWrite = 0](size_t n) mutable {
+    for (size_t i = 0; i < n; ++i) {
+      q.enqueue(std::make_unique<size_t>(nextWrite++));
+    }
+    size += n;
+  };
+
+  auto consume = [&q, &size, nextRead = 0](size_t n) mutable {
+    for (size_t j = 0; j < n; ++j) {
+      std::unique_ptr<size_t> entry;
+      q.dequeue(entry);
+      EXPECT_EQ(*entry, nextRead++);
+    }
+    size -= n;
+  };
+
+  for (size_t round = 0; round < 1024; ++round) {
+    size_t toEnqueue = folly::Random::rand64(128) + 1;
+    produce(toEnqueue);
+
+    // Consume completely with 20% probability, otherwise leave several entries
+    // (possibly multiple segments).
+    size_t toDequeue = folly::Random::oneIn(5)
+        ? size
+        : size - folly::Random::rand64(std::min<size_t>(size, 128));
+    consume(toDequeue);
+  }
+  consume(size);
 }

@@ -143,4 +143,91 @@ void SerialExecutorImpl<Queue>::drain() {
   }
 }
 
+/**
+ * MPSC queue with the additional requirement that the queue must be non-empty
+ * on dequeue(), and the enqueue() that makes the queue non-empty must complete
+ * before the corresponding dequeue(). This is guaranteed in SerialExecutor by
+ * release/acquire synchronization on scheduled_.
+ *
+ * Producers are internally synchronized using a mutex, while the consumer
+ * relies entirely on external synchronization.
+ */
+template <class Task>
+class SerialExecutorMPSCQueue {
+  static_assert(std::is_nothrow_move_constructible_v<Task>);
+
+ public:
+  ~SerialExecutorMPSCQueue() {
+    // Queue must be consumed completely at destruction.
+    CHECK_EQ(head_, tail_);
+    CHECK_EQ(head_->readIdx.load(), head_->writeIdx.load());
+    CHECK(head_->next == nullptr);
+    delete head_;
+    delete segmentCache_.load(std::memory_order_acquire);
+  }
+
+  void enqueue(Task&& task) {
+    mutex_.lock_combine([&] {
+      // dequeue() will not delete a segment or try to read head_->next until
+      // the next write has completed, so this is safe.
+      if (tail_->writeIdx.load() == kSegmentSize) {
+        auto* segment =
+            segmentCache_.exchange(nullptr, std::memory_order_acquire);
+        if (segment == nullptr) {
+          segment = new Segment;
+        } else {
+          std::destroy_at(segment);
+          new (segment) Segment;
+        }
+        tail_->next = segment;
+        tail_ = segment;
+      }
+      auto idx = tail_->writeIdx.load();
+      new (&tail_->tasks[idx]) Task(std::move(task));
+      tail_->writeIdx.store(idx + 1);
+    });
+  }
+
+  void dequeue(Task& task) {
+    auto idx = head_->readIdx.load();
+    DCHECK_LE(idx, kSegmentSize);
+    if (idx == kSegmentSize) {
+      DCHECK(head_->next != nullptr);
+      auto* oldSegment = std::exchange(head_, head_->next);
+      // If there is already a segment in cache, replace it with the latest one,
+      // as it is more likely to still be warm in cache for the producer.
+      delete segmentCache_.exchange(oldSegment, std::memory_order_release);
+      DCHECK_EQ(head_->readIdx.load(), 0);
+      idx = 0;
+    }
+    DCHECK_LT(idx, head_->writeIdx.load());
+    task = std::move(*reinterpret_cast<Task*>(&head_->tasks[idx]));
+    std::destroy_at(&head_->tasks[idx]);
+    head_->readIdx.store(idx + 1);
+  }
+
+ private:
+  static constexpr size_t kSegmentSize = 16;
+
+  struct Segment {
+    // Neither writeIdx or readIdx need to be atomic since each is exclusively
+    // owned by respectively producer and consumer, but we need atomicity for
+    // assertions.
+    // We avoid any padding to minimize memory usage, but at least we can
+    // separate write and read index by interposing the payloads.
+    relaxed_atomic<size_t> writeIdx = 0;
+    std::aligned_storage_t<sizeof(Task), alignof(Task)> tasks[kSegmentSize];
+    relaxed_atomic<size_t> readIdx = 0;
+    Segment* next = nullptr;
+  };
+  static_assert(std::is_trivially_destructible_v<Segment>);
+
+  folly::DistributedMutex mutex_;
+  Segment* tail_ = new Segment;
+  Segment* head_ = tail_;
+  // Cache the allocation for exactly one segment, so that in the common case
+  // where the consumer keeps up with the producer no allocations are needed.
+  std::atomic<Segment*> segmentCache_{nullptr};
+};
+
 } // namespace folly::detail

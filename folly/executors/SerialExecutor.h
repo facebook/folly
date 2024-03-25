@@ -24,6 +24,8 @@
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/SerializedExecutor.h>
 #include <folly/io/async/Request.h>
+#include <folly/synchronization/DistributedMutex.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -138,6 +140,9 @@ struct SerialExecutorWithUnboundedQueue {
   using type = SerialExecutorImpl<queue>;
 };
 
+template <class Task>
+class SerialExecutorMPSCQueue;
+
 } // namespace detail
 
 using SerialExecutor =
@@ -146,6 +151,17 @@ using SerialExecutor =
 template <int LgQueueSegmentSize>
 using SerialExecutorWithLgSegmentSize =
     typename detail::SerialExecutorWithUnboundedQueue<LgQueueSegmentSize>::type;
+
+/**
+ * SerialExecutor implementation that uses a mutex-protected queue. This uses
+ * significantly less memory than SerialExecutor, at the expense of being more
+ * susceptible to contention on add(). This is intended for use cases where
+ * granular SerialExecutors are required, for example one per request. In these
+ * scenarios, there are not many concurrent submitters, so contention is not an
+ * issue, while memory overhead is.
+ */
+using SmallSerialExecutor =
+    detail::SerialExecutorImpl<detail::SerialExecutorMPSCQueue>;
 
 } // namespace folly
 
