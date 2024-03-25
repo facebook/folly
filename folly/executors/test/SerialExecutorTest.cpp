@@ -37,7 +37,8 @@ void sleepMs(uint64_t ms) {
 template <typename T>
 class SerialExecutorTest : public testing::Test {};
 
-using SerialExecutorTypes = ::testing::Types<folly::SerialExecutor>;
+using SerialExecutorTypes = ::testing::
+    Types<folly::SerialExecutor, folly::SerialExecutorWithLgSegmentSize<5>>;
 TYPED_TEST_SUITE(SerialExecutorTest, SerialExecutorTypes);
 
 template <class SerialExecutorType>
