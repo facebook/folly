@@ -236,6 +236,11 @@ class SnapshotBase {
 
   SnapshotBase();
 
+  SnapshotBase(const SnapshotBase&) = delete;
+  SnapshotBase& operator=(const SnapshotBase&) = delete;
+  SnapshotBase(SnapshotBase&&) = delete;
+  SnapshotBase& operator=(SnapshotBase&&) = delete;
+
   template <class T>
   const SettingContents<T>& get(const detail::SettingCore<T>& core) const {
     auto it = snapshotValues_.find(core.getKey());
