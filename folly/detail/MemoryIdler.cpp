@@ -36,7 +36,7 @@
 
 FOLLY_GFLAGS_DEFINE_bool(
     folly_memory_idler_purge_arenas,
-    true,
+    false,
     "if enabled, folly memory-idler purges jemalloc arenas on thread idle");
 
 namespace folly {
