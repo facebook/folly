@@ -156,28 +156,6 @@ constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
 }
 
 /**
- *  Backports from C++17 of:
- *    std::in_place_t
- *    std::in_place_type_t
- *    std::in_place_index_t
- *    std::in_place
- *    std::in_place_type
- *    std::in_place_index
- */
-
-using std::in_place_t;
-
-using std::in_place_type_t;
-
-using std::in_place_index_t;
-
-using std::in_place;
-
-using std::in_place_type;
-
-using std::in_place_index;
-
-/**
  * Initializer lists are a powerful compile time syntax introduced in C++11
  * but due to their often conflicting syntax they are not used by APIs for
  * construction.
