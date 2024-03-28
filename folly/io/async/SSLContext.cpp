@@ -141,10 +141,8 @@ SSLContext::SSLContext(SSLVersion version) {
 
   setupCtx(ctx_);
 
-#if FOLLY_OPENSSL_HAS_SNI
   SSL_CTX_set_tlsext_servername_callback(ctx_, baseServerNameOpenSSLCallback);
   SSL_CTX_set_tlsext_servername_arg(ctx_, this);
-#endif
 }
 
 SSLContext::~SSLContext() {
@@ -533,8 +531,6 @@ void SSLContext::passwordCollector(
   SSL_CTX_set_default_passwd_cb_userdata(ctx_, this);
 }
 
-#if FOLLY_OPENSSL_HAS_SNI
-
 void SSLContext::setServerNameCallback(const ServerNameCallback& cb) {
   serverNameCb_ = cb;
 }
@@ -579,7 +575,6 @@ int SSLContext::baseServerNameOpenSSLCallback(SSL* ssl, int* al, void* data) {
 
   return SSL_TLSEXT_ERR_NOACK;
 }
-#endif // FOLLY_OPENSSL_HAS_SNI
 
 #if FOLLY_OPENSSL_HAS_ALPN
 int SSLContext::alpnSelectCallback(

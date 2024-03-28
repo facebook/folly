@@ -321,7 +321,6 @@ class AsyncSSLSocket : public AsyncSocket {
         new AsyncSSLSocket(ctx, evb, deferSecurityNegotiation));
   }
 
-#if FOLLY_OPENSSL_HAS_SNI
   /**
    * Create a client AsyncSSLSocket with tlsext_servername in
    * the Client Hello message.
@@ -368,7 +367,6 @@ class AsyncSSLSocket : public AsyncSocket {
     return AsyncSSLSocket::UniquePtr(
         new AsyncSSLSocket(ctx, evb, serverName, deferSecurityNegotiation));
   }
-#endif // FOLLY_OPENSSL_HAS_SNI
 
   /**
    * TODO: implement support for SSL renegotiation.
@@ -713,7 +711,6 @@ class AsyncSSLSocket : public AsyncSocket {
     return ctx_;
   }
 
-#if FOLLY_OPENSSL_HAS_SNI
   /**
    * Switch the SSLContext to continue the SSL handshake.
    * It can only be used in server mode.
@@ -736,7 +733,6 @@ class AsyncSSLSocket : public AsyncSocket {
    * ClientHello message.
    */
   void setServerName(std::string serverName) noexcept;
-#endif // FOLLY_OPENSSL_HAS_SNI
 
   void timeoutExpired(std::chrono::milliseconds timeout) noexcept;
 
@@ -1014,10 +1010,8 @@ class AsyncSSLSocket : public AsyncSocket {
   // It doesn't take effect when it is 0.
   size_t minWriteSize_{1500};
 
-#if FOLLY_OPENSSL_HAS_SNI
   std::shared_ptr<const folly::SSLContext> handshakeCtx_;
   std::string tlsextHostname_;
-#endif
 
   // a key that can be used for caching the established session
   std::string sessionKey_;

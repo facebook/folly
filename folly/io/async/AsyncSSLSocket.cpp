@@ -307,7 +307,6 @@ AsyncSSLSocket::AsyncSSLSocket(
     : AsyncSSLSocket(
           ctx, oldAsyncSocket.get(), server, deferSecurityNegotiation) {}
 
-#if FOLLY_OPENSSL_HAS_SNI
 /**
  * Create a client AsyncSSLSocket and allow tlsext_hostname
  * to be sent in Client Hello.
@@ -336,7 +335,6 @@ AsyncSSLSocket::AsyncSSLSocket(
           ctx, evb, fd, false, deferSecurityNegotiation, peerAddress) {
   tlsextHostname_ = serverName;
 }
-#endif // FOLLY_OPENSSL_HAS_SNI
 
 AsyncSSLSocket::~AsyncSSLSocket() {
   VLOG(3) << "actual destruction of AsyncSSLSocket(this=" << this
@@ -656,7 +654,6 @@ void AsyncSSLSocket::detachSSLContext() {
   SSL_set_SSL_CTX(ssl_.get(), dummyCtx->getSSLCtx());
 }
 
-#if FOLLY_OPENSSL_HAS_SNI
 void AsyncSSLSocket::switchServerSSLContext(
     const std::shared_ptr<const SSLContext>& handshakeCtx) {
   CHECK(server_);
@@ -694,8 +691,6 @@ bool AsyncSSLSocket::isServerNameMatch() const {
 void AsyncSSLSocket::setServerName(std::string serverName) noexcept {
   tlsextHostname_ = std::move(serverName);
 }
-
-#endif // FOLLY_OPENSSL_HAS_SNI
 
 void AsyncSSLSocket::timeoutExpired(
     std::chrono::milliseconds timeout) noexcept {
@@ -953,11 +948,9 @@ void AsyncSSLSocket::sslConn(
     sessionResumptionAttempted_ = true;
     SSL_set_session(ssl_.get(), sessionPtr.get());
   }
-#if FOLLY_OPENSSL_HAS_SNI
   if (!tlsextHostname_.empty()) {
     SSL_set_tlsext_host_name(ssl_.get(), tlsextHostname_.c_str());
   }
-#endif
 
   SSL_set_ex_data(ssl_.get(), getSSLExDataIndex(), this);
   sslSessionManager_.attachToSSL(ssl_.get());

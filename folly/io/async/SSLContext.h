@@ -448,7 +448,7 @@ class SSLContext {
   virtual std::shared_ptr<ssl::PasswordCollector> passwordCollector() {
     return collector_;
   }
-#if FOLLY_OPENSSL_HAS_SNI
+
   /**
    * Provide SNI support
    */
@@ -501,7 +501,6 @@ class SSLContext {
    */
   typedef std::function<void(SSL* ssl)> ClientHelloCallback;
   virtual void addClientHelloCallback(const ClientHelloCallback& cb);
-#endif // FOLLY_OPENSSL_HAS_SNI
 
   /**
    * Create an SSL object from this context.
@@ -673,10 +672,8 @@ class SSLContext {
   bool checkPeerName_;
   std::string peerFixedName_;
   std::shared_ptr<ssl::PasswordCollector> collector_;
-#if FOLLY_OPENSSL_HAS_SNI
   ServerNameCallback serverNameCb_;
   std::vector<ClientHelloCallback> clientHelloCbs_;
-#endif
 
   ClientProtocolFilterCallback clientProtoFilter_{nullptr};
 
@@ -718,7 +715,6 @@ class SSLContext {
 
   static int passwordCallback(char* password, int size, int, void* data);
 
-#if FOLLY_OPENSSL_HAS_SNI
   /**
    * The function that will be called directly from openssl
    * in order for the application to get the tlsext_hostname just after
@@ -731,7 +727,6 @@ class SSLContext {
    */
   static int baseServerNameOpenSSLCallback(
       SSL* ssl, int* al /* alert (return value) */, void* data);
-#endif
 
   std::string providedCiphersString_;
 
