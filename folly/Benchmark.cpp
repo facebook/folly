@@ -656,6 +656,7 @@ namespace {
 struct BenchmarksToRun {
   const detail::BenchmarkRegistration* baseline = nullptr;
   std::vector<const detail::BenchmarkRegistration*> benchmarks;
+  std::vector<size_t> separatorsAfter;
 };
 
 BenchmarksToRun selectBenchmarksToRun(
@@ -672,6 +673,7 @@ BenchmarksToRun selectBenchmarksToRun(
 
   for (auto& bm : benchmarks) {
     if (bm.name == "-") { // skip separators
+      res.separatorsAfter.push_back(res.benchmarks.size());
       continue;
     }
 
@@ -683,6 +685,10 @@ BenchmarksToRun selectBenchmarksToRun(
     if (!bmRegex || boost::regex_search(bm.name, *bmRegex)) {
       res.benchmarks.push_back(&bm);
     }
+  }
+
+  if (bmRegex) {
+    res.separatorsAfter.clear();
   }
 
   CHECK(res.baseline);
@@ -706,6 +712,30 @@ void maybeRunWarmUpIteration(const BenchmarksToRun& toRun) {
   }
 }
 
+class ShouldDrawLineTracker {
+ public:
+  explicit ShouldDrawLineTracker(const BenchmarksToRun& toRun)
+      : separatorsAfter_(&toRun.separatorsAfter) {}
+
+  bool operator()() {
+    std::size_t i = curI_++;
+    if (drawAfterI_ >= separatorsAfter_->size()) {
+      return false;
+    }
+    std::size_t nextToDrawAfter = (*separatorsAfter_)[drawAfterI_];
+    if (i == nextToDrawAfter) {
+      ++drawAfterI_;
+      return true;
+    }
+    return false;
+  }
+
+ private:
+  const std::vector<std::size_t>* separatorsAfter_;
+  std::size_t curI_ = 0;
+  std::size_t drawAfterI_ = 0;
+};
+
 std::pair<std::set<std::string>, std::vector<detail::BenchmarkResult>>
 runBenchmarksWithPrinterImpl(
     BenchmarkResultsPrinter* FOLLY_NULLABLE printer,
@@ -719,9 +749,11 @@ runBenchmarksWithPrinterImpl(
       runBenchmarkGetNSPerIteration(toRun.baseline->func, 0);
 
   std::set<std::string> counterNames;
-  for (const auto bmPtr : toRun.benchmarks) {
+  ShouldDrawLineTracker shouldDrawLineTracker(toRun);
+  for (std::size_t i = 0; i != toRun.benchmarks.size(); ++i) {
     std::pair<double, UserCounters> elapsed;
-    const detail::BenchmarkRegistration& bm = *bmPtr;
+    const detail::BenchmarkRegistration& bm = *toRun.benchmarks[i];
+    bool shoudDrawLineAfter = shouldDrawLineTracker();
 
     if (FLAGS_bm_profile) {
       elapsed = runProfilingGetNSPerIteration(bm.func, globalBaseline.first);
@@ -736,6 +768,9 @@ runBenchmarksWithPrinterImpl(
     // counters have been used, then the header can be printed out properly
     if (printer != nullptr) {
       printer->print({{bm.file, bm.name, elapsed.first, elapsed.second}});
+      if (shoudDrawLineAfter) {
+        printer->separator('-');
+      }
     }
     results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
 
