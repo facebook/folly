@@ -517,6 +517,8 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 // need. But it is only necessary to handle those sizes which are multiples of
 // the alignof(Data), and to round up other sizes.
 struct DispatchSmallTrivial {
+  static constexpr bool is_in_situ = true;
+
   template <typename Fun, typename Base>
   static constexpr auto call = Base::template callSmall<Fun>;
 
@@ -540,6 +542,8 @@ struct DispatchSmallTrivial {
 };
 
 struct DispatchSmall {
+  static constexpr bool is_in_situ = true;
+
   template <typename Fun, typename Base>
   static constexpr auto call = Base::template callSmall<Fun>;
 
@@ -561,6 +565,8 @@ struct DispatchSmall {
 };
 
 struct DispatchBig {
+  static constexpr bool is_in_situ = false;
+
   template <typename Fun, typename Base>
   static constexpr auto call = Base::template callBig<Fun>;
 
@@ -580,6 +586,26 @@ struct DispatchBig {
     return sizeof(Fun);
   }
 };
+
+template <bool InSitu, bool IsTriv>
+struct Dispatch;
+template <>
+struct Dispatch<true, true> : DispatchSmallTrivial {};
+template <>
+struct Dispatch<true, false> : DispatchSmall {};
+template <>
+struct Dispatch<false, true> : DispatchBig {};
+template <>
+struct Dispatch<false, false> : DispatchBig {};
+
+template <
+    typename Fun,
+    bool InSituSize = sizeof(Fun) <= sizeof(Data),
+    bool InSituAlign = alignof(Fun) <= alignof(Data),
+    bool InSituNoexcept = noexcept(Fun(FOLLY_DECLVAL(Fun)))>
+using DispatchOf = Dispatch<
+    InSituSize && InSituAlign && InSituNoexcept,
+    is_trivially_copyable_v<Fun>>;
 
 } // namespace function
 } // namespace detail
@@ -674,11 +700,11 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * from being selected by overload resolution when `fun` is not a compatible
    * function.
    *
-   * \note The noexcept requires some explanation. `IsSmall` is true when the
+   * \note The noexcept requires some explanation. `is_in_situ` is true when the
    * decayed type fits within the internal buffer and is noexcept-movable. But
    * this ctor might copy, not move. What we need here, if this ctor does a
    * copy, is that this ctor be noexcept when the copy is noexcept. That is not
-   * checked in `IsSmall`, and shouldn't be, because once the `Function` is
+   * checked in `is_in_situ`, and shouldn't be, because once the `Function` is
    * constructed, the contained object is never copied. This check is for this
    * ctor only, in the case that this ctor does a copy.
    *
@@ -692,25 +718,16 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename Fun,
       typename =
           std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
-      typename = typename Traits::template IfSafeResult<Fun>,
-      bool IsSmall = ( //
-          sizeof(Fun) <= sizeof(Data) && //
-          alignof(Fun) <= alignof(Data) && //
-              noexcept(Fun(FOLLY_DECLVAL(Fun))))>
-  /* implicit */ constexpr Function(Fun fun) noexcept(IsSmall) {
-    using Dispatch = conditional_t<
-        IsSmall && is_trivially_copyable_v<Fun>,
-        detail::function::DispatchSmallTrivial,
-        conditional_t<
-            IsSmall,
-            detail::function::DispatchSmall,
-            detail::function::DispatchBig>>;
+      typename = typename Traits::template IfSafeResult<Fun>>
+  /* implicit */ constexpr Function(Fun fun) noexcept(
+      detail::function::DispatchOf<Fun>::is_in_situ) {
+    using Dispatch = detail::function::DispatchOf<Fun>;
     if constexpr (detail::function::IsNullptrCompatible<Fun>) {
       if (detail::function::isEmptyFunction(fun)) {
         return;
       }
     }
-    if constexpr (IsSmall) {
+    if constexpr (Dispatch::is_in_situ) {
       if constexpr (
           !std::is_empty<Fun>::value || !is_trivially_copyable_v<Fun>) {
         ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
