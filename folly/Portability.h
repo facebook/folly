@@ -585,12 +585,6 @@ constexpr auto kCpplibVer = 0;
 #endif
 #endif // FOLLY_CFG_NO_COROUTINES
 
-#if __cpp_inline_variables >= 201606L || FOLLY_CPLUSPLUS >= 201703L
-#define FOLLY_INLINE_VARIABLE inline
-#else
-#define FOLLY_INLINE_VARIABLE
-#endif
-
 // C++20 consteval
 #if FOLLY_CPLUSPLUS >= 202002L
 #define FOLLY_CONSTEVAL consteval
