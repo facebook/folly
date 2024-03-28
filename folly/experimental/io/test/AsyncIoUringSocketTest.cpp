@@ -313,10 +313,11 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     LOG(FATAL) << ex;
   }
 
+  template <typename ServerReadCallback>
   struct Connected {
     std::unique_ptr<EchoTransport> client;
     AsyncTransport::UniquePtr server;
-    std::unique_ptr<CollectCallback> callback;
+    std::unique_ptr<ServerReadCallback> callback;
     ~Connected() {
       if (server) {
         server->setReadCB(nullptr);
@@ -332,7 +333,9 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     return ret;
   }
 
-  Connected makeConnected(ConnectedOptions options = ConnectedOptions{}) {
+  template <typename ServerReadCallback = CollectCallback>
+  Connected<ServerReadCallback> makeConnected(
+      ConnectedOptions options = ConnectedOptions{}) {
     AsyncSocketTransport::UniquePtr client;
     if (GetParam().ioUringClient) {
       client = AsyncSocketTransport::UniquePtr(
@@ -359,15 +362,16 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
     auto c = std::make_unique<EchoTransport>(
         std::move(client), GetParam().supportBufferMovable);
     c->start();
-    auto cb = std::make_unique<CollectCallback>();
-    AsyncTransport::UniquePtr sock = GetParam().ioUringServer
+    auto serverReadCallback = std::make_unique<ServerReadCallback>();
+    AsyncTransport::UniquePtr server = GetParam().ioUringServer
         ? AsyncTransport::UniquePtr(new AsyncIoUringSocket(
               AsyncSocket::newSocket(base.get(), fd), ioUringSocketOptions()))
         : AsyncTransport::UniquePtr(AsyncSocket::newSocket(base.get(), fd));
     if (options.serverShouldRead) {
-      sock->setReadCB(cb.get());
+      server->setReadCB(serverReadCallback.get());
     }
-    return Connected{std::move(c), std::move(sock), std::move(cb)};
+    return Connected<ServerReadCallback>{
+        std::move(c), std::move(server), std::move(serverReadCallback)};
   }
 
   bool unableToRun = false;
