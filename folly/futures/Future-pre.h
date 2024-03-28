@@ -178,41 +178,6 @@ struct valueExecutorCallableResult {
   typedef Future<value_type> Return;
 };
 
-template <typename L>
-struct Extract : Extract<decltype(&L::operator())> {};
-
-template <typename Class, typename R, typename... Args>
-struct Extract<R (Class::*)(Args...) const> {
-  typedef isFutureOrSemiFuture<R> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
-  typedef typename ReturnsFuture::Inner RawReturn;
-  typedef typename ArgType<Args...>::FirstArg FirstArg;
-};
-
-template <typename Class, typename R, typename... Args>
-struct Extract<R (Class::*)(Args...)> {
-  typedef isFutureOrSemiFuture<R> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
-  typedef typename ReturnsFuture::Inner RawReturn;
-  typedef typename ArgType<Args...>::FirstArg FirstArg;
-};
-
-template <typename R, typename... Args>
-struct Extract<R (*)(Args...)> {
-  typedef isFutureOrSemiFuture<R> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
-  typedef typename ReturnsFuture::Inner RawReturn;
-  typedef typename ArgType<Args...>::FirstArg FirstArg;
-};
-
-template <typename R, typename... Args>
-struct Extract<R (&)(Args...)> {
-  typedef isFutureOrSemiFuture<R> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
-  typedef typename ReturnsFuture::Inner RawReturn;
-  typedef typename ArgType<Args...>::FirstArg FirstArg;
-};
-
 class DeferredExecutor;
 
 template <class T, class F>

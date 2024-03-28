@@ -720,7 +720,7 @@ TEST(SemiFuture, DeferWithinContinuation) {
   ASSERT_EQ(result, 7);
 }
 
-TEST(SemiFuture, onError) {
+TEST(SemiFuture, DeferError) {
   bool theFlag = false;
   auto flag = [&] { theFlag = true; };
 #define EXPECT_FLAG()     \
