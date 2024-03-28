@@ -34,7 +34,7 @@
  * AFAIK, the only other implementation is Anthony Williams from
  * Just::thread library:
  *
- * https://bitbucket.org/anthonyw/atomic_shared_ptr
+ * https://github.com/anthonywilliams/atomic_shared_ptr
  *
  * implementation details:
  *
