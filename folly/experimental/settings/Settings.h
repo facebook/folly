@@ -105,6 +105,16 @@ class SettingWrapper {
    */
   const T& defaultValue() const { return core_.defaultValue(); }
 
+  /**
+   * Returns the setting's current update reason.
+   */
+  StringPiece updateReason() const { return core_.getSlow().updateReason; }
+
+  /**
+   * Returns the setting's update reason in the snapshot.
+   */
+  StringPiece updateReason(const Snapshot& snapshot) const;
+
   explicit SettingWrapper(SettingCore<T>& core) : core_(core) {}
 
  private:
@@ -391,6 +401,12 @@ template <class T, std::atomic<uint64_t>* TrivialPtr>
 inline std::conditional_t<IsSmallPOD<T>::value, T, const T&>
 SettingWrapper<T, TrivialPtr>::value(const Snapshot& snapshot) const {
   return snapshot.get(core_).value;
+}
+
+template <class T, std::atomic<uint64_t>* TrivialPtr>
+StringPiece SettingWrapper<T, TrivialPtr>::updateReason(
+    const Snapshot& snapshot) const {
+  return snapshot.get(core_).updateReason;
 }
 } // namespace detail
 

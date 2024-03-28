@@ -373,7 +373,7 @@ TEST(Settings, snapshot) {
         *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)), "default");
 
     // Set the global value, snapshot doesn't see it
-    some_ns::FOLLY_SETTING(follytest, some_flag).set("global_value");
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("global_value", "global");
     EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value");
     EXPECT_EQ(
         *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)), "default");
@@ -393,6 +393,13 @@ TEST(Settings, snapshot) {
     EXPECT_EQ(
         some_ns::FOLLY_SETTING(follytest, some_flag).value(snapshot),
         "snapshot_value");
+
+    // Set the update reason in the snapshot only
+    EXPECT_EQ(
+        some_ns::FOLLY_SETTING(follytest, some_flag).updateReason(), "global");
+    EXPECT_EQ(
+        some_ns::FOLLY_SETTING(follytest, some_flag).updateReason(snapshot),
+        "api");
   }
   // Discard the snapshot
   EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value");
