@@ -215,7 +215,7 @@ void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
   if (tryPublish(this_idx, next_tail)) {
     enobuf_.store(false, std::memory_order_relaxed);
   }
-  DVLOG(9) << "returnBuffer(" << i << ")@" << this_idx;
+  VLOG(9) << "returnBuffer(" << i << ")@" << this_idx;
 }
 
 } // namespace folly

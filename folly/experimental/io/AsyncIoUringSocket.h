@@ -231,7 +231,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void enableTFO() override {
     // No-op if folly does not allow tfo
 #if FOLLY_ALLOW_TFO
-    DVLOG(5) << "AsyncIoUringSocket::enableTFO()";
+    VLOG(5) << "AsyncIoUringSocket::enableTFO()";
     enableTFO_ = true;
 #endif
   }
@@ -373,7 +373,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
         std::unique_ptr<IOBuf>&& buf,
         WriteFlags flags,
         bool zc);
-    ~WriteSqe() override { DVLOG(5) << "~WriteSqe() " << this; }
+    ~WriteSqe() override { VLOG(5) << "~WriteSqe() " << this; }
 
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
     void callback(const io_uring_cqe* cqe) noexcept override;

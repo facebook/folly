@@ -54,14 +54,14 @@ IoUringEvent::~IoUringEvent() {
   // flush cq:
   while (hasWork() &&
          !backend_.eb_event_base_loop(EVLOOP_NONBLOCK | EVLOOP_ONCE)) {
-    DVLOG(9) << "IoUringEvent::cleanup  done: isWaitingToSubmit="
-             << backend_.isWaitingToSubmit()
-             << " cqes=" << io_uring_cq_ready(backend_.ioRingPtr());
+    VLOG(9) << "IoUringEvent::cleanup  done: isWaitingToSubmit="
+            << backend_.isWaitingToSubmit()
+            << " cqes=" << io_uring_cq_ready(backend_.ioRingPtr());
   }
 }
 
 void IoUringEvent::handlerReady(uint16_t events) noexcept {
-  DVLOG(4) << "IoUringEvent::handlerReady(" << events << ")";
+  VLOG(4) << "IoUringEvent::handlerReady(" << events << ")";
 
   if (!(events & EventHandler::READ)) {
     return;
@@ -98,7 +98,7 @@ void IoUringEvent::handlerReady(uint16_t events) noexcept {
 }
 
 void IoUringEvent::runLoopCallback() noexcept {
-  DVLOG(9) << "IoUringEvent::runLoopCallback";
+  VLOG(9) << "IoUringEvent::runLoopCallback";
 
   eventBase_->runBeforeLoop(this);
 
@@ -113,7 +113,7 @@ void IoUringEvent::runLoopCallback() noexcept {
   if (backend_.isWaitingToSubmit()) {
     backend_.submitOutstanding();
   } else {
-    DVLOG(9) << "IoUringEvent::runLoopCallback nothing to run";
+    VLOG(9) << "IoUringEvent::runLoopCallback nothing to run";
   }
 }
 
