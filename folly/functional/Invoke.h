@@ -72,7 +72,7 @@ struct invoke_fn {
   }
 };
 
-FOLLY_INLINE_VARIABLE constexpr invoke_fn invoke;
+inline constexpr invoke_fn invoke;
 
 } // namespace folly
 
@@ -175,40 +175,37 @@ struct invoke_result<void_t<invoke_result_t<F, A...>>, F, A...> {
 };
 
 template <typename Void, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_invocable_v = ok_<bool, F, A...>{false};
+inline constexpr bool is_invocable_v = ok_<bool, F, A...>{false};
 
 template <typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool
+inline constexpr bool
     is_invocable_v<void_t<invoke_result_t<F, A...>>, F, A...> = true;
 
 template <typename Void, typename R, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_invocable_r_v =
-    ok_<bool, R, F, A...>{false};
+inline constexpr bool is_invocable_r_v = ok_<bool, R, F, A...>{false};
 
 // clang-format off
 template <typename R, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool
+inline constexpr bool
     is_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
         std::is_void<R>::value ||
         std::is_convertible<invoke_result_t<F, A...>, R>::value;
 // clang-format on
 
 template <typename Void, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_v =
-    ok_<bool, F, A...>{false};
+inline constexpr bool is_nothrow_invocable_v = ok_<bool, F, A...>{false};
 
 template <typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool
+inline constexpr bool
     is_nothrow_invocable_v<void_t<invoke_result_t<F, A...>>, F, A...> =
         traits<F>::template nothrow<A...>;
 
 template <typename Void, typename R, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_r_v =
-    ok_<bool, R, F, A...>{false};
+inline constexpr bool is_nothrow_invocable_r_v = ok_<bool, R, F, A...>{false};
 
 // clang-format off
 template <typename R, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool
+inline constexpr bool
     is_nothrow_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
         traits<F>::template nothrow<A...> && (
             std::is_void<R>::value ||
@@ -226,7 +223,7 @@ using invoke_detail::invoke_result_t;
 
 //  mimic: std::is_invocable_v, C++17
 template <typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_invocable_v =
+inline constexpr bool is_invocable_v =
     invoke_detail::is_invocable_v<void, F, A...>;
 
 //  mimic: std::is_invocable, C++17
@@ -235,7 +232,7 @@ struct is_invocable : bool_constant<is_invocable_v<F, A...>> {};
 
 //  mimic: std::is_invocable_r_v, C++17
 template <typename R, typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_invocable_r_v =
+inline constexpr bool is_invocable_r_v =
     invoke_detail::is_invocable_r_v<void, R, F, A...>;
 
 //  mimic: std::is_invocable_r, C++17
@@ -244,7 +241,7 @@ struct is_invocable_r : bool_constant<is_invocable_r_v<R, F, A...>> {};
 
 //  mimic: std::is_nothrow_invocable_v, C++17
 template <typename F, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_v =
+inline constexpr bool is_nothrow_invocable_v =
     invoke_detail::is_nothrow_invocable_v<void, F, A...>;
 
 //  mimic: std::is_nothrow_invocable, C++17
@@ -253,7 +250,7 @@ struct is_nothrow_invocable : bool_constant<is_nothrow_invocable_v<F, A...>> {};
 
 //  mimic: std::is_nothrow_invocable_r_v, C++17
 template <typename R, typename F, typename... Args>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_r_v =
+inline constexpr bool is_nothrow_invocable_r_v =
     invoke_detail::is_nothrow_invocable_r_v<void, R, F, Args...>;
 
 //  mimic: std::is_nothrow_invocable_r, C++17
@@ -275,7 +272,7 @@ template <typename I>
 struct invoke_traits_base_<false, I> {};
 template <typename I>
 struct invoke_traits_base_<true, I> {
-  FOLLY_INLINE_VARIABLE static constexpr I invoke{};
+  inline static constexpr I invoke{};
 };
 template <typename I>
 using invoke_traits_base =
@@ -325,25 +322,25 @@ struct invoke_traits : detail::invoke_traits_base<I> {
   template <typename... A>
   using invoke_result_t = invoke_detail::invoke_result_t<I, A...>;
   template <typename... A>
-  FOLLY_INLINE_VARIABLE static constexpr bool is_invocable_v =
+  inline static constexpr bool is_invocable_v =
       invoke_detail::is_invocable_v<void, I, A...>;
   template <typename... A>
   struct is_invocable //
       : bool_constant<invoke_detail::is_invocable_v<void, I, A...>> {};
   template <typename R, typename... A>
-  FOLLY_INLINE_VARIABLE static constexpr bool is_invocable_r_v =
+  inline static constexpr bool is_invocable_r_v =
       invoke_detail::is_invocable_r_v<void, R, I, A...>;
   template <typename R, typename... A>
   struct is_invocable_r //
       : bool_constant<invoke_detail::is_invocable_r_v<void, R, I, A...>> {};
   template <typename... A>
-  FOLLY_INLINE_VARIABLE static constexpr bool is_nothrow_invocable_v =
+  inline static constexpr bool is_nothrow_invocable_v =
       invoke_detail::is_nothrow_invocable_v<void, I, A...>;
   template <typename... A>
   struct is_nothrow_invocable //
       : bool_constant<invoke_detail::is_nothrow_invocable_v<void, I, A...>> {};
   template <typename R, typename... A>
-  FOLLY_INLINE_VARIABLE static constexpr bool is_nothrow_invocable_r_v =
+  inline static constexpr bool is_nothrow_invocable_r_v =
       invoke_detail::is_nothrow_invocable_r_v<void, R, I, A...>;
   template <typename R, typename... A>
   struct is_nothrow_invocable_r //
@@ -498,7 +495,7 @@ struct invoke_first_match : private Invoker... {
  */
 #define FOLLY_CREATE_FREE_INVOKER_SUITE(funcname, ...)             \
   FOLLY_CREATE_FREE_INVOKER(funcname##_fn, funcname, __VA_ARGS__); \
-  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr funcname##_fn funcname {}
+  [[maybe_unused]] inline constexpr funcname##_fn funcname {}
 
 /***
  *  FOLLY_CREATE_QUAL_INVOKER
@@ -526,7 +523,7 @@ struct invoke_first_match : private Invoker... {
  */
 #define FOLLY_CREATE_QUAL_INVOKER_SUITE(name, funcpath) \
   FOLLY_CREATE_QUAL_INVOKER(name##_fn, funcpath);       \
-  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr name##_fn name {}
+  [[maybe_unused]] inline constexpr name##_fn name {}
 
 /***
  *  FOLLY_INVOKE_QUAL
@@ -602,7 +599,7 @@ struct invoke_first_match : private Invoker... {
  */
 #define FOLLY_CREATE_MEMBER_INVOKER_SUITE(membername)       \
   FOLLY_CREATE_MEMBER_INVOKER(membername##_fn, membername); \
-  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr membername##_fn membername {}
+  [[maybe_unused]] inline constexpr membername##_fn membername {}
 
 /***
  *  FOLLY_INVOKE_MEMBER
@@ -696,11 +693,10 @@ struct invoke_first_match : private Invoker... {
  *
  *  See FOLLY_CREATE_STATIC_MEMBER_INVOKER.
  */
-#define FOLLY_CREATE_STATIC_MEMBER_INVOKER_SUITE(membername)          \
-  FOLLY_CREATE_STATIC_MEMBER_INVOKER(membername##_fn, membername);    \
-  template <typename T>                                               \
-  [[maybe_unused]] FOLLY_INLINE_VARIABLE constexpr membername##_fn<T> \
-      membername {}
+#define FOLLY_CREATE_STATIC_MEMBER_INVOKER_SUITE(membername)       \
+  FOLLY_CREATE_STATIC_MEMBER_INVOKER(membername##_fn, membername); \
+  template <typename T>                                            \
+  [[maybe_unused]] inline constexpr membername##_fn<T> membername {}
 
 namespace folly {
 
@@ -791,7 +787,7 @@ FOLLY_DEFINE_CPO(detail_tag_invoke_fn::tag_invoke_fn, tag_invoke)
 // by ADL can be invoked with the specified types.
 
 template <typename Tag, typename... Args>
-FOLLY_INLINE_VARIABLE constexpr bool is_tag_invocable_v =
+inline constexpr bool is_tag_invocable_v =
     decltype(detail_tag_invoke_fn::try_tag_invoke<Tag, Args...>(0))::value;
 
 template <typename Tag, typename... Args>
@@ -802,7 +798,7 @@ struct is_tag_invocable : bool_constant<is_tag_invocable_v<Tag, Args...>> {};
 // noexcept.
 
 template <typename Tag, typename... Args>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_tag_invocable_v =
+inline constexpr bool is_nothrow_tag_invocable_v =
     noexcept(detail_tag_invoke_fn::try_tag_invoke<Tag, Args...>(0));
 
 template <typename Tag, typename... Args>
@@ -817,7 +813,7 @@ using is_tag_invocable_r =
     folly::is_invocable_r<R, decltype(folly::tag_invoke), Tag, Args...>;
 
 template <typename R, typename Tag, typename... Args>
-FOLLY_INLINE_VARIABLE constexpr bool is_tag_invocable_r_v =
+inline constexpr bool is_tag_invocable_r_v =
     is_tag_invocable_r<R, Tag, Args...>::value;
 
 template <typename R, typename Tag, typename... Args>
@@ -825,7 +821,7 @@ using is_nothrow_tag_invocable_r =
     folly::is_nothrow_invocable_r<R, decltype(folly::tag_invoke), Tag, Args...>;
 
 template <typename R, typename Tag, typename... Args>
-FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_tag_invocable_r_v =
+inline constexpr bool is_nothrow_tag_invocable_r_v =
     is_nothrow_tag_invocable_r<R, Tag, Args...>::value;
 
 using detail_tag_invoke_fn::tag_invoke_result_t;

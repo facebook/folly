@@ -99,7 +99,7 @@ struct atomic_fetch_set_fn {
       std::size_t bit,
       std::memory_order order = std::memory_order_seq_cst) const;
 };
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_set_fn atomic_fetch_set{};
+inline constexpr atomic_fetch_set_fn atomic_fetch_set{};
 
 //  atomic_fetch_reset
 //
@@ -121,7 +121,7 @@ struct atomic_fetch_reset_fn {
       std::size_t bit,
       std::memory_order order = std::memory_order_seq_cst) const;
 };
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_reset_fn atomic_fetch_reset{};
+inline constexpr atomic_fetch_reset_fn atomic_fetch_reset{};
 
 //  atomic_fetch_flip
 //
@@ -142,7 +142,7 @@ struct atomic_fetch_flip_fn {
       std::size_t bit,
       std::memory_order order = std::memory_order_seq_cst) const;
 };
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_flip_fn atomic_fetch_flip{};
+inline constexpr atomic_fetch_flip_fn atomic_fetch_flip{};
 
 //  atomic_fetch_modify
 //
@@ -172,7 +172,7 @@ struct atomic_fetch_modify_fn {
       Op op,
       std::memory_order = std::memory_order_seq_cst) const;
 };
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
+inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 
 } // namespace folly
 

@@ -75,6 +75,6 @@ struct grow_capacity_by_fn {
   }
 };
 
-FOLLY_INLINE_VARIABLE constexpr grow_capacity_by_fn grow_capacity_by{};
+inline constexpr grow_capacity_by_fn grow_capacity_by{};
 
 } // namespace folly

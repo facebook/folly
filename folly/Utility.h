@@ -279,7 +279,7 @@ struct identity_fn {
   }
 };
 using Identity = identity_fn;
-FOLLY_INLINE_VARIABLE constexpr identity_fn identity{};
+inline constexpr identity_fn identity{};
 
 namespace detail {
 
@@ -440,8 +440,7 @@ struct unsafe_default_initialized_cv {
   }
   FOLLY_POP_WARNING
 };
-FOLLY_INLINE_VARIABLE constexpr unsafe_default_initialized_cv
-    unsafe_default_initialized{};
+inline constexpr unsafe_default_initialized_cv unsafe_default_initialized{};
 
 struct to_signed_fn {
   template <typename..., typename T>
@@ -455,7 +454,7 @@ struct to_signed_fn {
     return m < t ? -static_cast<S>(~t) + S{-1} : static_cast<S>(t);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_signed_fn to_signed{};
+inline constexpr to_signed_fn to_signed{};
 
 struct to_unsigned_fn {
   template <typename..., typename T>
@@ -465,11 +464,11 @@ struct to_unsigned_fn {
     return static_cast<U>(t);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_unsigned_fn to_unsigned{};
+inline constexpr to_unsigned_fn to_unsigned{};
 
 namespace detail {
 template <typename Src, typename Dst>
-FOLLY_INLINE_VARIABLE constexpr bool is_to_narrow_convertible_v =
+inline constexpr bool is_to_narrow_convertible_v =
     (std::is_integral<Dst>::value) &&
     (std::is_signed<Dst>::value == std::is_signed<Src>::value);
 }
@@ -523,7 +522,7 @@ struct to_narrow_fn {
     return to_narrow_convertible<Src>{src};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_narrow_fn to_narrow{};
+inline constexpr to_narrow_fn to_narrow{};
 
 template <typename Src>
 class to_integral_convertible {
@@ -573,7 +572,7 @@ struct to_integral_fn {
     return to_integral_convertible<Src>{src};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_integral_fn to_integral{};
+inline constexpr to_integral_fn to_integral{};
 
 template <typename Src>
 class to_floating_point_convertible {
@@ -625,7 +624,7 @@ struct to_floating_point_fn {
     return to_floating_point_convertible<Src>{src};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_floating_point_fn to_floating_point{};
+inline constexpr to_floating_point_fn to_floating_point{};
 
 struct to_underlying_fn {
   template <typename..., class E>
@@ -634,7 +633,7 @@ struct to_underlying_fn {
     return static_cast<std::underlying_type_t<E>>(e);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr to_underlying_fn to_underlying{};
+inline constexpr to_underlying_fn to_underlying{};
 
 namespace detail {
 template <typename R>
@@ -758,5 +757,5 @@ struct invocable_to_fn {
     return R(static_cast<F&&>(f));
   }
 };
-FOLLY_INLINE_VARIABLE constexpr invocable_to_fn invocable_to{};
+inline constexpr invocable_to_fn invocable_to{};
 } // namespace folly

@@ -38,7 +38,7 @@ struct size_fn {
     return N;
   }
 };
-FOLLY_INLINE_VARIABLE constexpr size_fn size{};
+inline constexpr size_fn size{};
 
 //  mimic: std::empty, C++17
 struct empty_fn {
@@ -59,7 +59,7 @@ struct empty_fn {
     return il.size() == 0;
   }
 };
-FOLLY_INLINE_VARIABLE constexpr empty_fn empty{};
+inline constexpr empty_fn empty{};
 
 //  mimic: std::data, C++17
 struct data_fn {
@@ -83,19 +83,19 @@ struct data_fn {
     return il.begin();
   }
 };
-FOLLY_INLINE_VARIABLE constexpr data_fn data{};
+inline constexpr data_fn data{};
 
 //  begin
 //
 //  Invokes unqualified begin with std::begin in scope.
 FOLLY_CREATE_FREE_INVOKER(begin_fn, begin, std);
-FOLLY_INLINE_VARIABLE constexpr begin_fn begin{};
+inline constexpr begin_fn begin{};
 
 //  end
 //
 //  Invokes unqualified end with std::end in scope.
 FOLLY_CREATE_FREE_INVOKER(end_fn, end, std);
-FOLLY_INLINE_VARIABLE constexpr end_fn end{};
+inline constexpr end_fn end{};
 
 } // namespace access
 

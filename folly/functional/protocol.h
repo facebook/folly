@@ -70,7 +70,7 @@ struct match_empty_function_protocol_fn {
     return static_cast<bool>(t == nullptr);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr match_empty_function_protocol_fn
+inline constexpr match_empty_function_protocol_fn
     match_empty_function_protocol{};
 
 //  ----
@@ -197,7 +197,7 @@ using match_safely_invocable_as_protocol_detect_ =
 //  volatile qualifications. See:
 //    http://eel.is/c++draft/func.wrap.move
 template <typename F, typename Sig>
-FOLLY_INLINE_VARIABLE constexpr bool match_safely_invocable_as_protocol_v =
+inline constexpr bool match_safely_invocable_as_protocol_v =
     is_detected_v<detail::match_safely_invocable_as_protocol_detect_, F, Sig>;
 
 } // namespace folly

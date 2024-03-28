@@ -35,7 +35,7 @@ struct asymmetric_thread_fence_light_fn {
     }
   }
 };
-FOLLY_INLINE_VARIABLE constexpr asymmetric_thread_fence_light_fn
+inline constexpr asymmetric_thread_fence_light_fn
     asymmetric_thread_fence_light{};
 
 //  asymmetric_thread_fence_heavy
@@ -54,7 +54,7 @@ struct asymmetric_thread_fence_heavy_fn {
  private:
   static void impl_(std::memory_order) noexcept;
 };
-FOLLY_INLINE_VARIABLE constexpr asymmetric_thread_fence_heavy_fn
+inline constexpr asymmetric_thread_fence_heavy_fn
     asymmetric_thread_fence_heavy{};
 
 } // namespace folly

@@ -858,7 +858,7 @@ inline void swap(
 }
 
 template <typename T>
-FOLLY_INLINE_VARIABLE constexpr bool is_sorted_vector_set_v =
+inline constexpr bool is_sorted_vector_set_v =
     detail::is_instantiation_of_v<sorted_vector_set, T>;
 
 template <typename T>
@@ -1575,7 +1575,7 @@ inline void swap(
 }
 
 template <typename T>
-FOLLY_INLINE_VARIABLE constexpr bool is_sorted_vector_map_v =
+inline constexpr bool is_sorted_vector_map_v =
     detail::is_instantiation_of_v<sorted_vector_map, T>;
 
 template <typename T>

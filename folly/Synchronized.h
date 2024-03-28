@@ -52,23 +52,23 @@ namespace folly {
 namespace detail {
 
 template <typename, typename Mutex>
-FOLLY_INLINE_VARIABLE constexpr bool kSynchronizedMutexIsUnique = false;
+inline constexpr bool kSynchronizedMutexIsUnique = false;
 template <typename Mutex>
-FOLLY_INLINE_VARIABLE constexpr bool kSynchronizedMutexIsUnique<
+inline constexpr bool kSynchronizedMutexIsUnique<
     decltype(void(std::declval<Mutex&>().lock())),
     Mutex> = true;
 
 template <typename, typename Mutex>
-FOLLY_INLINE_VARIABLE constexpr bool kSynchronizedMutexIsShared = false;
+inline constexpr bool kSynchronizedMutexIsShared = false;
 template <typename Mutex>
-FOLLY_INLINE_VARIABLE constexpr bool kSynchronizedMutexIsShared<
+inline constexpr bool kSynchronizedMutexIsShared<
     decltype(void(std::declval<Mutex&>().lock_shared())),
     Mutex> = true;
 
 template <typename, typename Mutex>
-FOLLY_INLINE_VARIABLE constexpr bool kSynchronizedMutexIsUpgrade = false;
+inline constexpr bool kSynchronizedMutexIsUpgrade = false;
 template <typename Mutex>
-FOLLY_INLINE_VARIABLE constexpr bool kSynchronizedMutexIsUpgrade<
+inline constexpr bool kSynchronizedMutexIsUpgrade<
     decltype(void(std::declval<Mutex&>().lock_upgrade())),
     Mutex> = true;
 
@@ -82,7 +82,7 @@ FOLLY_INLINE_VARIABLE constexpr bool kSynchronizedMutexIsUpgrade<
 enum class SynchronizedMutexLevel { Unknown, Unique, Shared, Upgrade };
 
 template <typename Mutex>
-FOLLY_INLINE_VARIABLE constexpr SynchronizedMutexLevel kSynchronizedMutexLevel =
+inline constexpr SynchronizedMutexLevel kSynchronizedMutexLevel =
     kSynchronizedMutexIsUpgrade<void, Mutex>  ? SynchronizedMutexLevel::Upgrade
     : kSynchronizedMutexIsShared<void, Mutex> ? SynchronizedMutexLevel::Shared
     : kSynchronizedMutexIsUnique<void, Mutex> ? SynchronizedMutexLevel::Unique

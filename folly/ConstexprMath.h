@@ -44,25 +44,25 @@ using enable_if_floating_t =
 ///
 /// mimic: std::numbers::e_v, C++20
 template <typename T>
-FOLLY_INLINE_VARIABLE constexpr T e_v = detail::enable_if_floating_t<T>(
+inline constexpr T e_v = detail::enable_if_floating_t<T>(
     2.71828182845904523536028747135266249775724709369995L);
 
 /// ln2_v
 ///
 /// mimic: std::numbers::ln2_v, C++20
 template <typename T>
-FOLLY_INLINE_VARIABLE constexpr T ln2_v = detail::enable_if_floating_t<T>(
+inline constexpr T ln2_v = detail::enable_if_floating_t<T>(
     0.69314718055994530941723212145817656807550013436025L);
 
 /// e
 ///
 /// mimic: std::numbers::e, C++20
-FOLLY_INLINE_VARIABLE constexpr double e = e_v<double>;
+inline constexpr double e = e_v<double>;
 
 /// ln2
 ///
 /// mimic: std::numbers::ln2, C++20
-FOLLY_INLINE_VARIABLE constexpr double ln2 = ln2_v<double>;
+inline constexpr double ln2 = ln2_v<double>;
 
 } // namespace numbers
 
@@ -102,7 +102,7 @@ constexpr size_t constexpr_iterated_squares_desc_size_(T const base) {
 ///
 /// For use with constexpr_iterated_squares_desc below.
 template <typename Base>
-FOLLY_INLINE_VARIABLE constexpr size_t constexpr_iterated_squares_desc_size_v =
+inline constexpr size_t constexpr_iterated_squares_desc_size_v =
     detail::constexpr_iterated_squares_desc_size_(Base::value);
 
 /// constexpr_iterated_squares_desc
@@ -228,7 +228,7 @@ struct constexpr_iterated_squares_desc {
 /// An instance of constexpr_iterated_squares_desc of max size with the given
 /// base.
 template <typename Base>
-FOLLY_INLINE_VARIABLE constexpr auto constexpr_iterated_squares_desc_v =
+inline constexpr auto constexpr_iterated_squares_desc_v =
     constexpr_iterated_squares_desc<
         typename Base::value_type,
         constexpr_iterated_squares_desc_size_v<Base>>{Base::value};

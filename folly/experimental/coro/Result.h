@@ -71,7 +71,7 @@ class co_cancelled_t final {
   }
 };
 
-FOLLY_INLINE_VARIABLE constexpr co_cancelled_t co_cancelled{};
+inline constexpr co_cancelled_t co_cancelled{};
 
 } // namespace coro
 } // namespace folly

@@ -166,6 +166,6 @@ struct make_atomic_ref_t {
   }
 };
 
-FOLLY_INLINE_VARIABLE constexpr make_atomic_ref_t make_atomic_ref;
+inline constexpr make_atomic_ref_t make_atomic_ref;
 
 } // namespace folly

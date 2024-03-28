@@ -94,7 +94,7 @@ struct operator_new_fn {
     return detail::op_new_<detail::cpp_aligned_new_>(s, a, nt);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr operator_new_fn operator_new{};
+inline constexpr operator_new_fn operator_new{};
 
 //  operator_delete
 struct operator_delete_fn {
@@ -119,6 +119,6 @@ struct operator_delete_fn {
     return detail::do_op_del_sized_<detail::cpp_aligned_new_>(p, s, a);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr operator_delete_fn operator_delete{};
+inline constexpr operator_delete_fn operator_delete{};
 
 } // namespace folly

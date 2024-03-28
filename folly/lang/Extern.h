@@ -52,5 +52,4 @@
     }                                               \
   };                                                \
   template <bool E, typename N = decltype(name)>    \
-  FOLLY_INLINE_VARIABLE constexpr N* varname =      \
-      __folly_extern_accessor_##varname::get<E, N>()
+  inline constexpr N* varname = __folly_extern_accessor_##varname::get<E, N>()

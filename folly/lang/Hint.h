@@ -92,8 +92,7 @@ struct compiler_must_not_elide_fn {
   template <typename T>
   FOLLY_ALWAYS_INLINE void operator()(T const& t) const noexcept;
 };
-FOLLY_INLINE_VARIABLE constexpr compiler_must_not_elide_fn
-    compiler_must_not_elide{};
+inline constexpr compiler_must_not_elide_fn compiler_must_not_elide{};
 
 //  compiler_must_not_predict
 //
@@ -110,8 +109,7 @@ struct compiler_must_not_predict_fn {
   template <typename T>
   FOLLY_ALWAYS_INLINE void operator()(T& t) const noexcept;
 };
-FOLLY_INLINE_VARIABLE constexpr compiler_must_not_predict_fn
-    compiler_must_not_predict{};
+inline constexpr compiler_must_not_predict_fn compiler_must_not_predict{};
 
 //  ----
 
@@ -126,11 +124,10 @@ using detect_folly_is_unsafe_for_async_usage =
 //  Whether a type is directly marked as unsafe for async usage with a member
 //  type alias. See unsafe_for_async_usage below.
 template <typename T>
-FOLLY_INLINE_VARIABLE constexpr bool is_unsafe_for_async_usage_v =
-    detected_or_t<
-        std::false_type,
-        detail::detect_folly_is_unsafe_for_async_usage,
-        T>::value;
+inline constexpr bool is_unsafe_for_async_usage_v = detected_or_t<
+    std::false_type,
+    detail::detect_folly_is_unsafe_for_async_usage,
+    T>::value;
 
 } // namespace detail
 

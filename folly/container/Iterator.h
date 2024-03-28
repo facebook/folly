@@ -35,10 +35,10 @@ namespace folly {
 //  Whether std::distance over a pair of iterators is reasonably known to give
 //  the distance without advancing the iterators or copies of them.
 template <typename Iter, typename SentinelIter>
-FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v =
+inline constexpr bool iterator_has_known_distance_v =
     !require_sizeof<Iter> || !require_sizeof<SentinelIter>;
 template <typename Iter>
-FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v<Iter, Iter> =
+inline constexpr bool iterator_has_known_distance_v<Iter, Iter> =
     std::is_base_of<
         std::random_access_iterator_tag,
         typename std::iterator_traits<Iter>::iterator_category>::value;
@@ -69,7 +69,7 @@ FOLLY_INLINE_VARIABLE constexpr bool iterator_has_known_distance_v<Iter, Iter> =
 //      }
 //      return results;
 template <typename Range>
-FOLLY_INLINE_VARIABLE constexpr bool range_has_known_distance_v =
+inline constexpr bool range_has_known_distance_v =
     iterator_has_known_distance_v<
         invoke_result_t<access::begin_fn, Range>,
         invoke_result_t<access::end_fn, Range>>;
@@ -84,10 +84,10 @@ using iterator_category_t =
 namespace detail {
 
 template <typename Iter, typename Category, typename = void>
-FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_ =
+inline constexpr bool iterator_category_matches_v_ =
     !require_sizeof<Iter> || !require_sizeof<Category>;
 template <typename Iter, typename Category>
-FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_<
+inline constexpr bool iterator_category_matches_v_<
     Iter,
     Category,
     void_t<iterator_category_t<Iter>>> =
@@ -102,7 +102,7 @@ FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v_<
 //
 //  Useful for containers deduction guides implementation.
 template <typename Iter, typename Category>
-FOLLY_INLINE_VARIABLE constexpr bool iterator_category_matches_v =
+inline constexpr bool iterator_category_matches_v =
     detail::iterator_category_matches_v_<Iter, Category>;
 
 //  iterator_value_type_t

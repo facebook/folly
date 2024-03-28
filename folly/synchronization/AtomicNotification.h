@@ -58,7 +58,7 @@ struct atomic_wait_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-FOLLY_INLINE_VARIABLE constexpr auto atomic_wait =
+inline constexpr auto atomic_wait =
     detail::atomic_notification::atomic_wait_fn{};
 
 //  mimic: std::atomic_wait_until, p1135r0
@@ -76,7 +76,7 @@ struct atomic_wait_until_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-FOLLY_INLINE_VARIABLE constexpr auto atomic_wait_until =
+inline constexpr auto atomic_wait_until =
     detail::atomic_notification::atomic_wait_until_fn{};
 
 //  mimic: std::atomic_notify_one, p1135r0
@@ -91,7 +91,7 @@ struct atomic_notify_one_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-FOLLY_INLINE_VARIABLE constexpr auto atomic_notify_one =
+inline constexpr auto atomic_notify_one =
     detail::atomic_notification::atomic_notify_one_fn{};
 
 //  mimic: std::atomic_notify_all, p1135r0
@@ -106,7 +106,7 @@ struct atomic_notify_all_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-FOLLY_INLINE_VARIABLE constexpr auto atomic_notify_all =
+inline constexpr auto atomic_notify_all =
     detail::atomic_notification::atomic_notify_all_fn{};
 
 //  mimic: std::atomic_uint_fast_wait_t, p1135r0

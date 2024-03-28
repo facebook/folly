@@ -21,7 +21,7 @@
 
 namespace folly {
 
-FOLLY_INLINE_VARIABLE constexpr size_t demangle_max_symbol_size =
+inline constexpr size_t demangle_max_symbol_size =
 #if defined(FOLLY_DEMANGLE_MAX_SYMBOL_SIZE)
     FOLLY_DEMANGLE_MAX_SYMBOL_SIZE;
 #else

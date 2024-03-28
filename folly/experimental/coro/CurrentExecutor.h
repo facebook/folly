@@ -190,7 +190,7 @@ inline constexpr co_current_cancellation_token_t co_current_cancellation_token{
 //        };
 //      };
 class co_safe_point_t final {};
-FOLLY_INLINE_VARIABLE constexpr co_safe_point_t co_safe_point{};
+inline constexpr co_safe_point_t co_safe_point{};
 
 } // namespace coro
 } // namespace folly

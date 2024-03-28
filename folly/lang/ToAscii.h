@@ -335,15 +335,14 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_with_route(char (&out)[N], uint64_t v) {
 //  In base 10, u64 requires at most 20 bytes, u32 at most 10, u16 at most 5,
 //  and u8 at most 3.
 template <uint64_t Base, typename Int>
-FOLLY_INLINE_VARIABLE constexpr size_t to_ascii_size_max =
+inline constexpr size_t to_ascii_size_max =
     detail::to_ascii_powers<Base, Int>::size;
 
 //  to_ascii_size_max_decimal
 //
 //  An alias to to_ascii_size_max<10>.
 template <typename Int>
-FOLLY_INLINE_VARIABLE constexpr size_t to_ascii_size_max_decimal =
-    to_ascii_size_max<10, Int>;
+inline constexpr size_t to_ascii_size_max_decimal = to_ascii_size_max<10, Int>;
 
 //  to_ascii_size
 //

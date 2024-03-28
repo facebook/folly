@@ -536,7 +536,7 @@ struct make_unique_lock_fn {
     return unique_lock<Mutex>{mutex, static_cast<A&&>(a)...};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr make_unique_lock_fn make_unique_lock{};
+inline constexpr make_unique_lock_fn make_unique_lock{};
 
 //  make_shared_lock
 //
@@ -548,7 +548,7 @@ struct make_shared_lock_fn {
     return shared_lock<Mutex>{mutex, static_cast<A&&>(a)...};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr make_shared_lock_fn make_shared_lock{};
+inline constexpr make_shared_lock_fn make_shared_lock{};
 
 //  make_upgrade_lock
 //
@@ -560,7 +560,7 @@ struct make_upgrade_lock_fn {
     return upgrade_lock<Mutex>{mutex, static_cast<A&&>(a)...};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr make_upgrade_lock_fn make_upgrade_lock{};
+inline constexpr make_upgrade_lock_fn make_upgrade_lock{};
 
 //  make_hybrid_lock
 //
@@ -572,7 +572,7 @@ struct make_hybrid_lock_fn {
     return hybrid_lock<Mutex>{mutex, static_cast<A&&>(a)...};
   }
 };
-FOLLY_INLINE_VARIABLE constexpr make_hybrid_lock_fn make_hybrid_lock{};
+inline constexpr make_hybrid_lock_fn make_hybrid_lock{};
 
 } // namespace folly
 

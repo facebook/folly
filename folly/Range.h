@@ -1753,5 +1753,5 @@ extern const bool enable_view;
 // the view concept (a lightweight, non-owning range).
 namespace ranges {
 template <class Iter>
-FOLLY_INLINE_VARIABLE constexpr bool enable_view<::folly::Range<Iter>> = true;
+inline constexpr bool enable_view<::folly::Range<Iter>> = true;
 } // namespace ranges

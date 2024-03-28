@@ -132,8 +132,7 @@ struct atomic_fetch_set_fallback_fn {
     return (atomic.fetch_or(mask, order) & mask);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_set_fallback_fn
-    atomic_fetch_set_fallback{};
+inline constexpr atomic_fetch_set_fallback_fn atomic_fetch_set_fallback{};
 
 struct atomic_fetch_reset_fallback_fn {
   template <typename Atomic>
@@ -144,8 +143,7 @@ struct atomic_fetch_reset_fallback_fn {
     return (atomic.fetch_and(Integer(~mask), order) & mask);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_reset_fallback_fn
-    atomic_fetch_reset_fallback{};
+inline constexpr atomic_fetch_reset_fallback_fn atomic_fetch_reset_fallback{};
 
 struct atomic_fetch_flip_fallback_fn {
   template <typename Atomic>
@@ -156,8 +154,7 @@ struct atomic_fetch_flip_fallback_fn {
     return (atomic.fetch_xor(mask, order) & mask);
   }
 };
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_flip_fallback_fn
-    atomic_fetch_flip_fallback{};
+inline constexpr atomic_fetch_flip_fallback_fn atomic_fetch_flip_fallback{};
 
 #if FOLLY_X64
 
@@ -266,7 +263,7 @@ struct atomic_fetch_bit_op_native_do_instr_fn {
   }
 };
 template <atomic_fetch_bit_op_native_instr_mnem Instr>
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_bit_op_native_do_instr_fn<Instr>
+inline constexpr atomic_fetch_bit_op_native_do_instr_fn<Instr>
     atomic_fetch_bit_op_native_do_instr{};
 
 static constexpr auto& atomic_fetch_bit_op_native_bts =
@@ -430,16 +427,13 @@ bool atomic_fetch_flip_native(
 #else
 
 using atomic_fetch_set_native_fn = detail::atomic_fetch_set_fallback_fn;
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_set_native_fn
-    atomic_fetch_set_native{};
+inline constexpr atomic_fetch_set_native_fn atomic_fetch_set_native{};
 
 using atomic_fetch_reset_native_fn = detail::atomic_fetch_reset_fallback_fn;
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_reset_native_fn
-    atomic_fetch_reset_native{};
+inline constexpr atomic_fetch_reset_native_fn atomic_fetch_reset_native{};
 
 using atomic_fetch_flip_native_fn = detail::atomic_fetch_flip_fallback_fn;
-FOLLY_INLINE_VARIABLE constexpr atomic_fetch_flip_native_fn
-    atomic_fetch_flip_native{};
+inline constexpr atomic_fetch_flip_native_fn atomic_fetch_flip_native{};
 
 #endif
 
