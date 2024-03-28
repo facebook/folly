@@ -33,7 +33,6 @@
 #include <folly/container/Access.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/portability/OpenSSL.h>
-#include <folly/ssl/OpenSSLLockTypes.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
@@ -656,8 +655,6 @@ class SSLContext {
    */
   void setAllowNoDheKex(bool flag);
 #endif
-
-  [[deprecated("Use folly::ssl::init")]] static void initializeOpenSSL();
 
  protected:
   SSL_CTX* ctx_;

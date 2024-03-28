@@ -23,7 +23,6 @@
 #include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
-#include <folly/ssl/Init.h>
 
 namespace folly {
 
@@ -56,8 +55,6 @@ TEST(AsyncSocketException, SimpleTest) {
 
 TEST(AsyncSocketException, SSLExceptionType) {
   {
-    // Initiailzes OpenSSL everything. Else some of the calls will block
-    folly::ssl::init();
     SSLException eof(SSL_ERROR_ZERO_RETURN, 0, 0, 0);
     EXPECT_EQ(eof.getType(), AsyncSocketException::END_OF_FILE);
 

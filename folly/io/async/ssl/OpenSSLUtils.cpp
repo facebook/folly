@@ -24,7 +24,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
-#include <folly/ssl/Init.h>
 #include <folly/ssl/detail/OpenSSLSession.h>
 
 namespace {
@@ -145,7 +144,6 @@ bool OpenSSLUtils::validatePeerCertNames(
 }
 
 static std::unordered_map<uint16_t, std::string> getOpenSSLCipherNames() {
-  folly::ssl::init();
   std::unordered_map<uint16_t, std::string> ret;
   SSL_CTX* ctx = nullptr;
   SSL* ssl = nullptr;

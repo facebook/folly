@@ -24,7 +24,6 @@
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
-#include <folly/ssl/Init.h>
 
 using std::cerr;
 using std::endl;
@@ -268,7 +267,6 @@ TEST(AsyncSSLSocketTest2, TestLegacyClientCannotConnectToTLS12Server) {
 }
 
 int main(int argc, char* argv[]) {
-  folly::ssl::init();
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 #endif

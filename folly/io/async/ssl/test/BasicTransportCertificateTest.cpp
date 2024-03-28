@@ -19,7 +19,6 @@
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
-#include <folly/ssl/Init.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
 
 using namespace folly;
@@ -29,7 +28,6 @@ using folly::test::find_resource;
 const char* kTestCerts = "folly/io/async/ssl/test/tests-cert.pem";
 
 TEST(BasicTransportCertificateTest, TestCerts) {
-  folly::ssl::init();
   auto path = find_resource(kTestCerts);
   std::string certData;
   EXPECT_TRUE(folly::readFile(path.c_str(), certData));

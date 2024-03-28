@@ -51,7 +51,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Unistd.h>
-#include <folly/ssl/Init.h>
 
 #ifdef __linux__
 #include <dlfcn.h>

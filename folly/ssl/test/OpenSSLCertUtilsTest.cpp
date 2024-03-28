@@ -24,7 +24,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Time.h>
-#include <folly/ssl/Init.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 using namespace testing;
@@ -153,8 +152,6 @@ const std::map<std::string, std::string> testCertWithSanExts{
 class OpenSSLCertUtilsTest : public TestWithParam<bool> {
  public:
   void SetUp() override {
-    folly::ssl::init();
-
     if (GetParam()) {
       // Run the test with an polluted error stack.
       SSLerr(SSL_F_SSL3_READ_BYTES, SSL_R_SSL_HANDSHAKE_FAILURE);

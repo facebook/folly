@@ -21,7 +21,6 @@
 #include <folly/Random.h>
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
-#include <folly/ssl/Init.h>
 #include <folly/ssl/OpenSSLTicketHandler.h>
 #include <folly/ssl/PasswordCollector.h>
 #include <folly/ssl/SSLSessionManager.h>
@@ -124,8 +123,6 @@ static int dispatchTicketCrypto(
 
 // SSLContext implementation
 SSLContext::SSLContext(SSLVersion version) {
-  folly::ssl::init();
-
   ctx_ = SSL_CTX_new(TLS_method());
   if (ctx_ == nullptr) {
     throw std::runtime_error("SSL_CTX_new: " + getErrors());
@@ -784,10 +781,6 @@ void SSLContext::enableFalseStart() {
   SSL_CTX_set_mode(ctx_, SSL_MODE_HANDSHAKE_CUTTHROUGH);
 }
 #endif
-
-void SSLContext::initializeOpenSSL() {
-  folly::ssl::init();
-}
 
 void SSLContext::setOptions(long options) {
   long newOpt = SSL_CTX_set_options(ctx_, options);
