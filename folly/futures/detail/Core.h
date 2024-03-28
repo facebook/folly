@@ -711,7 +711,7 @@ class Core final : private ResultHolder<T>, public CoreBase {
       CoreBase& coreBase, exception_wrapper* ew) {
     auto& core = static_cast<Core&>(coreBase);
     if (ew != nullptr) {
-      core.result_ = Try<T>{std::move(*ew)};
+      core.result_.emplaceException(std::move(*ew));
     }
     return std::move(core.result_);
   }
