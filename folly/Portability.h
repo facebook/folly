@@ -553,7 +553,6 @@ constexpr auto kCpplibVer = 0;
 #if defined(FOLLY_CFG_NO_COROUTINES)
 #define FOLLY_HAS_COROUTINES 0
 #else
-#if FOLLY_CPLUSPLUS >= 201703L
 // folly::coro requires C++17 support
 #if defined(__NVCC__)
 // For now, NVCC matches other compilers but does not offer coroutines.
@@ -584,9 +583,6 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_HAS_COROUTINES 0
 #endif
-#else
-#define FOLLY_HAS_COROUTINES 0
-#endif // FOLLY_CPLUSPLUS >= 201703L
 #endif // FOLLY_CFG_NO_COROUTINES
 
 #if __cpp_inline_variables >= 201606L || FOLLY_CPLUSPLUS >= 201703L
