@@ -623,11 +623,7 @@ class Core final : private ResultHolder<T>, public CoreBase {
                             CoreBase& coreBase,
                             Executor::KeepAlive<>&& ka,
                             exception_wrapper* ew) mutable {
-      auto& core = static_cast<Core&>(coreBase);
-      if (ew != nullptr) {
-        core.result_ = Try<T>{std::move(*ew)};
-      }
-      func(std::move(ka), std::move(core.result_));
+      func(std::move(ka), setCallbackGetResult(coreBase, ew));
     };
 
     setCallback_(std::move(callback), std::move(context), allowInline);
@@ -709,6 +705,15 @@ class Core final : private ResultHolder<T>, public CoreBase {
       default:
         terminate_with<std::logic_error>("~Core unexpected state");
     }
+  }
+
+  static Try<T>&& setCallbackGetResult(
+      CoreBase& coreBase, exception_wrapper* ew) {
+    auto& core = static_cast<Core&>(coreBase);
+    if (ew != nullptr) {
+      core.result_ = Try<T>{std::move(*ew)};
+    }
+    return std::move(core.result_);
   }
 };
 
